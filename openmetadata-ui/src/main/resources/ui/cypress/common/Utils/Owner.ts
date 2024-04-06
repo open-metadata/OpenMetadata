@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { interceptURL, uuid, verifyResponseStatusCode } from '../common';
+import { getToken } from './LocalStorage';
 
 const userURL =
   '/api/v1/search/query?q=**%20AND%20isBot:false&from=0&size=0&index=user_search_index';
@@ -28,7 +29,7 @@ export const generateRandomUser = () => {
 
 export const validateOwnerAndTeamCounts = () => {
   cy.getAllLocalStorage().then((data) => {
-    const token = Object.values(data)[0].oidcIdToken;
+    const token = getToken(data);
 
     cy.request({
       method: 'GET',
@@ -129,6 +130,10 @@ export const removeOwner = (ownerName: string, dataTestId?: string) => {
   interceptURL('PATCH', `/api/v1/**`, 'patchOwner');
 
   cy.get('[data-testid="select-owner-tabs"]').should('be.visible');
+
+  cy.get(
+    '[data-testid="select-owner-tabs"] [data-testid="remove-owner"]'
+  ).scrollIntoView({ offset: { top: -100, left: 0 } });
 
   cy.get(
     '[data-testid="select-owner-tabs"] [data-testid="remove-owner"]'

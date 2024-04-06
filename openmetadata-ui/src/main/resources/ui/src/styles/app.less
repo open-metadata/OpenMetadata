@@ -112,6 +112,23 @@ a[href].link-text-grey,
   }
 }
 
+.remove-button-default-styling {
+  padding: 0;
+  border: none;
+  height: auto;
+  color: initial;
+  overflow: none;
+  background: initial;
+  touch-action: none;
+
+  &:hover {
+    background: initial;
+  }
+  &:focus {
+    background: initial;
+  }
+}
+
 // used in glossary + query right panel, to keep both consistent
 .right-panel-label {
   font-size: 14px;
@@ -736,4 +753,21 @@ a[href].link-text-grey,
   bottom: 20px;
   right: 20px;
   z-index: 1001;
+}
+
+// Task Feed Message Container
+
+.task-feed-message-container {
+  .task-feed-message {
+    height: 100%;
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+
+    &:hover {
+      .ant-typography {
+        color: @primary-color;
+      }
+    }
+  }
 }

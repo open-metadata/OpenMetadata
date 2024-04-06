@@ -237,7 +237,9 @@ class AthenaSource(CommonDbSourceService):
     """
 
     @classmethod
-    def create(cls, config_dict, metadata: OpenMetadata):
+    def create(
+        cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None
+    ):
         config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
         connection: AthenaConnection = config.serviceConnection.__root__.config
         if not isinstance(connection, AthenaConnection):
@@ -316,8 +318,8 @@ class AthenaSource(CommonDbSourceService):
                         tag_fqn=fqn.build(
                             self.metadata,
                             DatabaseSchema,
-                            service_name=self.context.database_service,
-                            database_name=self.context.database,
+                            service_name=self.context.get().database_service,
+                            database_name=self.context.get().database,
                             schema_name=schema_name,
                         ),
                         tags=tag.TagValues,
@@ -345,7 +347,8 @@ class AthenaSource(CommonDbSourceService):
                 table_name, _ = table_name_and_type
                 table_tags = (
                     self.athena_lake_formation_client.get_table_and_column_tags(
-                        schema_name=self.context.database_schema, table_name=table_name
+                        schema_name=self.context.get().database_schema,
+                        table_name=table_name,
                     )
                 )
 
@@ -355,9 +358,9 @@ class AthenaSource(CommonDbSourceService):
                         tag_fqn=fqn.build(
                             self.metadata,
                             Table,
-                            service_name=self.context.database_service,
-                            database_name=self.context.database,
-                            schema_name=self.context.database_schema,
+                            service_name=self.context.get().database_service,
+                            database_name=self.context.get().database,
+                            schema_name=self.context.get().database_schema,
                             table_name=table_name,
                         ),
                         tags=tag.TagValues,
@@ -373,9 +376,9 @@ class AthenaSource(CommonDbSourceService):
                             tag_fqn=fqn.build(
                                 self.metadata,
                                 Column,
-                                service_name=self.context.database_service,
-                                database_name=self.context.database,
-                                schema_name=self.context.database_schema,
+                                service_name=self.context.get().database_service,
+                                database_name=self.context.get().database,
+                                schema_name=self.context.get().database_schema,
                                 table_name=table_name,
                                 column_name=column.Name,
                             ),

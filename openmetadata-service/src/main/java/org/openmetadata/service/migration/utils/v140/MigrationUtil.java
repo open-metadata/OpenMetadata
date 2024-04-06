@@ -11,8 +11,11 @@ import javax.json.JsonString;
 import javax.json.JsonValue;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.core.Handle;
+import org.json.JSONArray;
+import org.json.JSONObject;
 import org.openmetadata.schema.api.services.CreateDatabaseService;
 import org.openmetadata.schema.entity.data.Table;
+import org.openmetadata.schema.entity.events.EventSubscription;
 import org.openmetadata.schema.type.PartitionColumnDetails;
 import org.openmetadata.schema.type.PartitionIntervalTypes;
 import org.openmetadata.schema.type.TablePartition;
@@ -33,6 +36,32 @@ public class MigrationUtil {
 
   private MigrationUtil() {
     /* Cannot create object  util class*/
+  }
+
+  public static void migrateGenericToWebhook(CollectionDAO collectionDAO) {
+    try {
+      List<String> jsonEventSubscription =
+          collectionDAO.eventSubscriptionDAO().listAllEventsSubscriptions();
+      for (String eventSubscription : jsonEventSubscription) {
+        JSONObject jsonObj = new JSONObject(eventSubscription);
+        // Read array detination if exist and check subscription type if Generic then change to
+        // Webhook
+        JSONArray destination = jsonObj.getJSONArray("destinations");
+        if (destination != null && !destination.isEmpty()) {
+          for (Object value : destination) {
+            JSONObject destinationObj = (JSONObject) value;
+            if (destinationObj.getString("type").equals("Generic")) {
+              destinationObj.put("type", "Webhook");
+              collectionDAO
+                  .eventSubscriptionDAO()
+                  .update(JsonUtils.readValue(jsonObj.toString(), EventSubscription.class));
+            }
+          }
+        }
+      }
+    } catch (Exception ex) {
+      LOG.warn("Error running the Generic to Webhook migration ", ex);
+    }
   }
 
   public static void migrateTablePartition(Handle handle, CollectionDAO collectionDAO) {
@@ -66,62 +95,63 @@ public class MigrationUtil {
   }
 
   private static void handleTablePartitionMigration(String jsonRow, CollectionDAO collectionDAO) {
-    JsonObject jsonObj = JsonUtils.readJson(jsonRow).asJsonObject();
+    try {
+      JsonObject jsonObj = JsonUtils.readJson(jsonRow).asJsonObject();
 
-    // We need to pop the tablePartition from the json before serializing it
-    JsonObject tablePartition = jsonObj.getJsonObject("tablePartition");
+      // We need to pop the tablePartition from the json before serializing it
+      JsonObject tablePartition = jsonObj.getJsonObject("tablePartition");
 
-    // Remove the tablePartition from the json. We need to convert it to a map to remove the key
-    // as JsonObject is immutable
-    HashMap<String, Object> jsonMap = JsonUtils.readValue(jsonObj.toString(), HashMap.class);
-    jsonMap.remove("tablePartition");
+      // Remove the tablePartition from the json. We need to convert it to a map to remove the key
+      // as JsonObject is immutable
+      HashMap<String, Object> jsonMap = JsonUtils.readValue(jsonObj.toString(), HashMap.class);
+      jsonMap.remove("tablePartition");
 
-    jsonObj = JsonUtils.readJson(JsonUtils.pojoToJson(jsonMap)).asJsonObject();
+      jsonObj = JsonUtils.readJson(JsonUtils.pojoToJson(jsonMap)).asJsonObject();
 
-    Table table = JsonUtils.readValue(jsonObj.toString(), Table.class);
+      Table table = JsonUtils.readValue(jsonObj.toString(), Table.class);
 
-    JsonArray partitionColumns = tablePartition.getJsonArray("columns");
-    if (tablePartition.isEmpty()) {
-      LOG.info("Table {} does not have partition details", table.getId());
-      return;
-    }
+      if (!tablePartition.isEmpty()) {
+        JsonArray partitionColumns = tablePartition.getJsonArray("columns");
 
-    List<PartitionColumnDetails> partitionColumnDetails = new ArrayList<PartitionColumnDetails>();
+        List<PartitionColumnDetails> partitionColumnDetails = new ArrayList<>();
 
-    if ((partitionColumns == null || partitionColumns.isEmpty())
-        && table.getServiceType() == CreateDatabaseService.DatabaseServiceType.BigQuery) {
-      // BigQuery tables have pseudo columns for partitioning that were not being set in the
-      // partitionColumns entity
-      String interval = tablePartition.getString("interval");
-      if (interval != null) {
-        JsonArrayBuilder jsonArrayBuilder = Json.createArrayBuilder();
-        switch (interval) {
-          case "HOUR" -> partitionColumns = jsonArrayBuilder.add("_PARTITIONTIME").build();
-          case "DAY" -> partitionColumns = jsonArrayBuilder.add("_PARTITIONDATE").build();
+        if ((partitionColumns == null || partitionColumns.isEmpty())
+            && table.getServiceType() == CreateDatabaseService.DatabaseServiceType.BigQuery) {
+          // BigQuery tables can have pseudo columns for partitioning that were not being set in the
+          // partitionColumns entity
+          String interval = tablePartition.getString("interval", null);
+          if (interval != null) {
+            JsonArrayBuilder jsonArrayBuilder = Json.createArrayBuilder();
+            switch (interval) {
+              case "HOUR" -> partitionColumns = jsonArrayBuilder.add("_PARTITIONTIME").build();
+              case "DAY" -> partitionColumns = jsonArrayBuilder.add("_PARTITIONDATE").build();
+            }
+          }
         }
+
+        if (partitionColumns != null && !partitionColumns.isEmpty()) {
+          for (JsonValue column : partitionColumns) {
+            PartitionColumnDetails partitionColumnDetail = new PartitionColumnDetails();
+            partitionColumnDetail.setColumnName(((JsonString) column).getString());
+            String intervalType = tablePartition.getString("intervalType", null);
+            if (intervalType != null) {
+              partitionColumnDetail.setIntervalType(PartitionIntervalTypes.fromValue(intervalType));
+            }
+            partitionColumnDetail.setInterval(tablePartition.getString("interval", null));
+            partitionColumnDetails.add(partitionColumnDetail);
+          }
+
+          table.withTablePartition(new TablePartition().withColumns(partitionColumnDetails));
+
+          collectionDAO.tableDAO().update(table);
+        }
+      } else {
+        LOG.debug("Table {} does not have partition details", table.getId());
       }
-      ;
+    } catch (Exception exc) {
+      LOG.warn(
+          "Fail to migrate table partition. The partition detail may have been migrated already.");
+      LOG.debug(String.format("Table JSON %s\n", jsonRow), exc);
     }
-
-    if (partitionColumns == null || partitionColumns.isEmpty()) {
-      throw new RuntimeException(
-          "tablePartition is not null but not column partition was defined for table "
-              + table.getId());
-    }
-
-    for (JsonValue column : partitionColumns) {
-      PartitionColumnDetails partitionColumnDetail = new PartitionColumnDetails();
-      partitionColumnDetail.setColumnName(((JsonString) column).getString());
-      String intervalType = tablePartition.getString("intervalType");
-      if (intervalType != null) {
-        partitionColumnDetail.setIntervalType(PartitionIntervalTypes.fromValue(intervalType));
-      }
-      partitionColumnDetail.setInterval(tablePartition.getString("interval"));
-      partitionColumnDetails.add(partitionColumnDetail);
-    }
-
-    table.withTablePartition(new TablePartition().withColumns(partitionColumnDetails));
-
-    collectionDAO.tableDAO().update(table);
   }
 }

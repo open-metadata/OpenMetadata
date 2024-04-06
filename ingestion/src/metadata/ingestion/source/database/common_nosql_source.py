@@ -104,7 +104,7 @@ class CommonNoSQLSource(DatabaseServiceSource, ABC):
         yield Either(
             right=CreateDatabaseRequest(
                 name=database_name,
-                service=self.context.database_service,
+                service=self.context.get().database_service,
                 sourceUrl=self.get_source_url(database_name=database_name),
             )
         )
@@ -121,8 +121,8 @@ class CommonNoSQLSource(DatabaseServiceSource, ABC):
             schema_fqn = fqn.build(
                 self.metadata,
                 entity_type=DatabaseSchema,
-                service_name=self.context.database_service,
-                database_name=self.context.database,
+                service_name=self.context.get().database_service,
+                database_name=self.context.get().database,
                 schema_name=schema,
             )
 
@@ -149,11 +149,11 @@ class CommonNoSQLSource(DatabaseServiceSource, ABC):
                 database=fqn.build(
                     metadata=self.metadata,
                     entity_type=Database,
-                    service_name=self.context.database_service,
-                    database_name=self.context.database,
+                    service_name=self.context.get().database_service,
+                    database_name=self.context.get().database,
                 ),
                 sourceUrl=self.get_source_url(
-                    database_name=self.context.database,
+                    database_name=self.context.get().database,
                     schema_name=schema_name,
                 ),
             )
@@ -175,16 +175,16 @@ class CommonNoSQLSource(DatabaseServiceSource, ABC):
 
         :return: tables or views, depending on config
         """
-        schema_name = self.context.database_schema
+        schema_name = self.context.get().database_schema
         if self.source_config.includeTables:
             for collection in self.get_table_name_list(schema_name):
                 table_name = collection
                 table_fqn = fqn.build(
                     self.metadata,
                     entity_type=Table,
-                    service_name=self.context.database_service,
-                    database_name=self.context.database,
-                    schema_name=self.context.database_schema,
+                    service_name=self.context.get().database_service,
+                    database_name=self.context.get().database,
+                    schema_name=self.context.get().database_schema,
                     table_name=table_name,
                 )
                 if filter_by_table(
@@ -226,7 +226,7 @@ class CommonNoSQLSource(DatabaseServiceSource, ABC):
         import pandas as pd  # pylint: disable=import-outside-toplevel
 
         table_name, table_type = table_name_and_type
-        schema_name = self.context.database_schema
+        schema_name = self.context.get().database_schema
         try:
             data = self.get_table_columns_dict(schema_name, table_name)
             df = pd.DataFrame.from_records(list(data))
@@ -239,17 +239,17 @@ class CommonNoSQLSource(DatabaseServiceSource, ABC):
                 tableConstraints=self.get_table_constraints(
                     schema_name=schema_name,
                     table_name=table_name,
-                    db_name=self.context.database,
+                    db_name=self.context.get().database,
                 ),
                 databaseSchema=fqn.build(
                     metadata=self.metadata,
                     entity_type=DatabaseSchema,
-                    service_name=self.context.database_service,
-                    database_name=self.context.database,
+                    service_name=self.context.get().database_service,
+                    database_name=self.context.get().database,
                     schema_name=schema_name,
                 ),
                 sourceUrl=self.get_source_url(
-                    database_name=self.context.database,
+                    database_name=self.context.get().database,
                     schema_name=schema_name,
                     table_name=table_name,
                     table_type=table_type,

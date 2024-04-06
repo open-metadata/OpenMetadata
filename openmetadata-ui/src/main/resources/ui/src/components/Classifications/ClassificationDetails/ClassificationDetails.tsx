@@ -16,7 +16,7 @@ import ButtonGroup from 'antd/lib/button/button-group';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
-import { capitalize, isUndefined, toString } from 'lodash';
+import { capitalize, isEmpty, isUndefined, toString } from 'lodash';
 import React, {
   forwardRef,
   useCallback,
@@ -30,11 +30,7 @@ import { useHistory } from 'react-router-dom';
 import { ReactComponent as IconTag } from '../../../assets/svg/classification.svg';
 import { ReactComponent as LockIcon } from '../../../assets/svg/closed-lock.svg';
 import { ReactComponent as VersionIcon } from '../../../assets/svg/ic-version.svg';
-import {
-  DATA_ASSET_ICON_DIMENSION,
-  DE_ACTIVE_COLOR,
-  PRIMERY_COLOR,
-} from '../../../constants/constants';
+import { DE_ACTIVE_COLOR, PRIMERY_COLOR } from '../../../constants/constants';
 import { EntityField } from '../../../constants/Feeds.constants';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../../context/PermissionProvider/PermissionProvider.interface';
@@ -97,7 +93,6 @@ const ClassificationDetails = forwardRef(
     const history = useHistory();
     const [tags, setTags] = useState<Tag[]>([]);
     const [isTagsLoading, setIsTagsLoading] = useState(false);
-
     const {
       currentPage,
       paging,
@@ -450,13 +445,7 @@ const ClassificationDetails = forwardRef(
                     <Button
                       className="w-16 p-0"
                       data-testid="version-button"
-                      icon={
-                        <Icon
-                          className="vertical-align-text-top"
-                          component={VersionIcon}
-                          style={DATA_ASSET_ICON_DIMENSION}
-                        />
-                      }
+                      icon={<Icon component={VersionIcon} />}
                       onClick={versionHandler}>
                       <Typography.Text>{currentVersion}</Typography.Text>
                     </Button>
@@ -488,7 +477,6 @@ const ClassificationDetails = forwardRef(
             </Col>
           </Row>
         )}
-
         <div className="m-b-sm m-t-xs" data-testid="description-container">
           <DescriptionV1
             className={classNames({
@@ -498,6 +486,7 @@ const ClassificationDetails = forwardRef(
             entityName={getEntityName(currentClassification)}
             entityType={EntityType.CLASSIFICATION}
             hasEditAccess={editDescriptionPermission}
+            isDescriptionExpanded={isEmpty(tags)}
             isEdit={isEditClassification}
             showCommentsIcon={false}
             onCancel={handleCancelEditDescription}

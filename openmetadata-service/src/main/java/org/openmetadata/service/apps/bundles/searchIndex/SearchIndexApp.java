@@ -2,7 +2,7 @@ package org.openmetadata.service.apps.bundles.searchIndex;
 
 import static org.openmetadata.schema.system.IndexingError.ErrorSource.READER;
 import static org.openmetadata.service.apps.scheduler.AbstractOmAppJobListener.APP_RUN_STATS;
-import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.ENTITY_NAME_LIST_KEY;
+import static org.openmetadata.service.apps.scheduler.AppScheduler.ON_DEMAND_JOB;
 import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.ENTITY_TYPE_KEY;
 import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.getTotalRequestToProcess;
 import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.isDataInsightIndex;
@@ -12,7 +12,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.stream.Collectors;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang.exception.ExceptionUtils;
@@ -21,7 +20,6 @@ import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.analytics.ReportData;
 import org.openmetadata.schema.entity.app.App;
 import org.openmetadata.schema.entity.app.AppRunRecord;
-import org.openmetadata.schema.entity.app.AppRunType;
 import org.openmetadata.schema.entity.app.FailureContext;
 import org.openmetadata.schema.entity.app.SuccessContext;
 import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration;
@@ -112,58 +110,23 @@ public class SearchIndexApp extends AbstractNativeApplication {
     if (request.getEntities().contains(ALL)) {
       request.setEntities(ALL_ENTITIES);
     }
-    int totalRecords = getTotalRequestToProcess(request.getEntities(), collectionDAO);
-    this.jobData = request;
-    this.jobData.setStats(
-        new Stats()
-            .withJobStats(
-                new StepStats()
-                    .withTotalRecords(totalRecords)
-                    .withFailedRecords(0)
-                    .withSuccessRecords(0)));
-    request
-        .getEntities()
-        .forEach(
-            entityType -> {
-              if (!isDataInsightIndex(entityType)) {
-                List<String> fields = List.of("*");
-                PaginatedEntitiesSource source =
-                    new PaginatedEntitiesSource(entityType, jobData.getBatchSize(), fields);
-                if (!CommonUtil.nullOrEmpty(request.getAfterCursor())) {
-                  source.setCursor(request.getAfterCursor());
-                }
-                paginatedEntitiesSources.add(source);
-              } else {
-                paginatedDataInsightSources.add(
-                    new PaginatedDataInsightSource(
-                        collectionDAO, entityType, jobData.getBatchSize()));
-              }
-            });
-    if (searchRepository.getSearchType().equals(ElasticSearchConfiguration.SearchType.OPENSEARCH)) {
-      this.entityProcessor = new OpenSearchEntitiesProcessor(totalRecords);
-      this.dataInsightProcessor = new OpenSearchDataInsightProcessor(totalRecords);
-      this.searchIndexSink = new OpenSearchIndexSink(searchRepository, totalRecords);
-    } else {
-      this.entityProcessor = new ElasticSearchEntitiesProcessor(totalRecords);
-      this.dataInsightProcessor = new ElasticSearchDataInsightProcessor(totalRecords);
-      this.searchIndexSink = new ElasticSearchIndexSink(searchRepository, totalRecords);
-    }
+    jobData = request;
   }
 
   @Override
   public void startApp(JobExecutionContext jobExecutionContext) {
     try {
+      initializeJob();
       LOG.info("Executing Reindexing Job with JobData : {}", jobData);
       // Update Job Status
       jobData.setStatus(EventPublisherJob.Status.RUNNING);
 
       // Make recreate as false for onDemand
-      AppRunType runType =
-          AppRunType.fromValue(
-              (String) jobExecutionContext.getJobDetail().getJobDataMap().get("triggerType"));
+      String runType =
+          (String) jobExecutionContext.getJobDetail().getJobDataMap().get("triggerType");
 
-      // Schedule Run has recreate as false always
-      if (runType.equals(AppRunType.Scheduled)) {
+      // Schedule Run has re-create set to false
+      if (!runType.equals(ON_DEMAND_JOB)) {
         jobData.setRecreateIndex(false);
       }
 
@@ -186,6 +149,44 @@ public class SearchIndexApp extends AbstractNativeApplication {
     } finally {
       // Send update
       sendUpdates(jobExecutionContext);
+    }
+  }
+
+  private void initializeJob() {
+    int totalRecords = getTotalRequestToProcess(jobData.getEntities(), collectionDAO);
+    this.jobData.setStats(
+        new Stats()
+            .withJobStats(
+                new StepStats()
+                    .withTotalRecords(totalRecords)
+                    .withFailedRecords(0)
+                    .withSuccessRecords(0)));
+    jobData
+        .getEntities()
+        .forEach(
+            entityType -> {
+              if (!isDataInsightIndex(entityType)) {
+                List<String> fields = List.of("*");
+                PaginatedEntitiesSource source =
+                    new PaginatedEntitiesSource(entityType, jobData.getBatchSize(), fields);
+                if (!CommonUtil.nullOrEmpty(jobData.getAfterCursor())) {
+                  source.setCursor(jobData.getAfterCursor());
+                }
+                paginatedEntitiesSources.add(source);
+              } else {
+                paginatedDataInsightSources.add(
+                    new PaginatedDataInsightSource(
+                        collectionDAO, entityType, jobData.getBatchSize()));
+              }
+            });
+    if (searchRepository.getSearchType().equals(ElasticSearchConfiguration.SearchType.OPENSEARCH)) {
+      this.entityProcessor = new OpenSearchEntitiesProcessor(totalRecords);
+      this.dataInsightProcessor = new OpenSearchDataInsightProcessor(totalRecords);
+      this.searchIndexSink = new OpenSearchIndexSink(searchRepository, totalRecords);
+    } else {
+      this.entityProcessor = new ElasticSearchEntitiesProcessor(totalRecords);
+      this.dataInsightProcessor = new ElasticSearchDataInsightProcessor(totalRecords);
+      this.searchIndexSink = new ElasticSearchIndexSink(searchRepository, totalRecords);
     }
   }
 
@@ -219,18 +220,6 @@ public class SearchIndexApp extends AbstractNativeApplication {
       while (!stopped && !paginatedEntitiesSource.isDone()) {
         try {
           resultList = paginatedEntitiesSource.readNext(null);
-          List<String> entityName =
-              resultList.getData().stream()
-                  .map(
-                      entity ->
-                          String.format(
-                              "%s %s",
-                              paginatedEntitiesSource.getEntityType(),
-                              entity.getFullyQualifiedName()))
-                  .collect(Collectors.toList());
-
-          contextData.put(ENTITY_NAME_LIST_KEY, entityName);
-
           if (!resultList.getData().isEmpty()) {
             searchIndexSink.write(entityProcessor.process(resultList, contextData), contextData);
             if (!resultList.getErrors().isEmpty()) {
@@ -266,15 +255,6 @@ public class SearchIndexApp extends AbstractNativeApplication {
       while (!stopped && !paginatedDataInsightSource.isDone()) {
         try {
           resultList = paginatedDataInsightSource.readNext(null);
-          List<String> entityName =
-              resultList.getData().stream()
-                  .map(
-                      entity ->
-                          String.format(
-                              "%s %s", paginatedDataInsightSource.getEntityType(), entity.getId()))
-                  .collect(Collectors.toList());
-          contextData.put(ENTITY_NAME_LIST_KEY, entityName);
-
           if (!resultList.getData().isEmpty()) {
             searchIndexSink.write(
                 dataInsightProcessor.process(resultList, contextData), contextData);
@@ -314,7 +294,8 @@ public class SearchIndexApp extends AbstractNativeApplication {
     // Update Entity Level Stats
     StepStats entityLevelStats = jobDataStats.getEntityStats();
     if (entityLevelStats == null) {
-      entityLevelStats = new StepStats();
+      entityLevelStats =
+          new StepStats().withTotalRecords(null).withFailedRecords(null).withSuccessRecords(null);
     }
     entityLevelStats.withAdditionalProperty(entityType, currentEntityStats);
 

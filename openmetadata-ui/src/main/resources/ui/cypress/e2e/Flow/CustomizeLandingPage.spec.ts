@@ -21,6 +21,7 @@ import {
   removeAndCheckWidget,
   saveLayout,
 } from '../../common/CustomizeLandingPageUtils';
+import { getToken } from '../../common/Utils/LocalStorage';
 import { PERSONA_DETAILS } from '../../constants/EntityConstant';
 
 describe('Customize Landing Page Flow', { tags: 'Settings' }, () => {
@@ -28,7 +29,7 @@ describe('Customize Landing Page Flow', { tags: 'Settings' }, () => {
   before(() => {
     cy.login();
     cy.getAllLocalStorage().then((data) => {
-      const token = Object.values(data)[0].oidcIdToken;
+      const token = getToken(data);
 
       // Fetch logged in user details to get user id
       cy.request({
@@ -84,20 +85,22 @@ describe('Customize Landing Page Flow', { tags: 'Settings' }, () => {
 
   after(() => {
     cy.login();
-    const token = localStorage.getItem('oidcIdToken');
+    cy.getAllLocalStorage().then((data) => {
+      const token = getToken(data);
 
-    // Delete created user
-    cy.request({
-      method: 'DELETE',
-      url: `/api/v1/personas/${testData.persona.id}`,
-      headers: { Authorization: `Bearer ${token}` },
-    });
+      // Delete created user
+      cy.request({
+        method: 'DELETE',
+        url: `/api/v1/personas/${testData.persona.id}`,
+        headers: { Authorization: `Bearer ${token}` },
+      });
 
-    // Delete created landing page config doc
-    cy.request({
-      method: 'DELETE',
-      url: `/api/v1/docStore/${testData.docStoreData.id}`,
-      headers: { Authorization: `Bearer ${token}` },
+      // Delete created landing page config doc
+      cy.request({
+        method: 'DELETE',
+        url: `/api/v1/docStore/${testData.docStoreData.id}`,
+        headers: { Authorization: `Bearer ${token}` },
+      });
     });
   });
 

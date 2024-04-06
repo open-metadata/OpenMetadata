@@ -18,17 +18,16 @@ import {
   visitServiceDetailsPage,
 } from '../../common/common';
 import { hardDeleteService } from '../../common/EntityUtils';
+import { getToken } from '../../common/Utils/LocalStorage';
 import { addOwner } from '../../common/Utils/Owner';
 import { addTier } from '../../common/Utils/Tier';
 import { DELETE_TERM } from '../../constants/constants';
 import { DOMAIN_CREATION_DETAILS } from '../../constants/EntityConstant';
 import {
-  OWNER,
+  OWNER_DETAILS,
   SERVICE_DETAILS_FOR_VERSION_TEST,
   TIER,
 } from '../../constants/Version.constants';
-
-let domainId;
 
 const navigateToVersionPageFromServicePage = (
   serviceCategory,
@@ -63,28 +62,47 @@ describe(
   'Common prerequisite for service version test',
   { tags: 'Integration' },
   () => {
+    const data = { user: { id: '', displayName: '' }, domain: { id: '' } };
+
     before(() => {
       cy.login();
-      cy.getAllLocalStorage().then((data) => {
-        const token = Object.values(data)[0].oidcIdToken;
+      cy.getAllLocalStorage().then((responseData) => {
+        const token = getToken(responseData);
         cy.request({
           method: 'PUT',
           url: `/api/v1/domains`,
           headers: { Authorization: `Bearer ${token}` },
           body: DOMAIN_CREATION_DETAILS,
         }).then((response) => {
-          domainId = response.body.id;
+          data.domain = response.body;
+        });
+
+        // Create user
+        cy.request({
+          method: 'POST',
+          url: `/api/v1/users/signup`,
+          headers: { Authorization: `Bearer ${token}` },
+          body: OWNER_DETAILS,
+        }).then((response) => {
+          data.user = response.body;
         });
       });
     });
 
     after(() => {
       cy.login();
-      cy.getAllLocalStorage().then((data) => {
-        const token = Object.values(data)[0].oidcIdToken;
+      cy.getAllLocalStorage().then((responseData) => {
+        const token = getToken(responseData);
         cy.request({
           method: 'DELETE',
           url: `/api/v1/domains/name/${DOMAIN_CREATION_DETAILS.name}`,
+          headers: { Authorization: `Bearer ${token}` },
+        });
+
+        // Delete created user
+        cy.request({
+          method: 'DELETE',
+          url: `/api/v1/users/${data.user.id}?hardDelete=true&recursive=false`,
           headers: { Authorization: `Bearer ${token}` },
         });
       });
@@ -104,8 +122,8 @@ describe(
 
           before(() => {
             cy.login();
-            cy.getAllLocalStorage().then((data) => {
-              const token = Object.values(data)[0].oidcIdToken;
+            cy.getAllLocalStorage().then((responseData) => {
+              const token = getToken(responseData);
               cy.request({
                 method: 'POST',
                 url: `/api/v1/services/${serviceCategory}`,
@@ -127,7 +145,7 @@ describe(
                       op: 'add',
                       path: '/domain',
                       value: {
-                        id: domainId,
+                        id: data.domain.id,
                         type: 'domain',
                         name: DOMAIN_CREATION_DETAILS.name,
                         description: DOMAIN_CREATION_DETAILS.description,
@@ -146,7 +164,7 @@ describe(
           after(() => {
             cy.login();
             cy.getAllLocalStorage().then((data) => {
-              const token = Object.values(data)[0].oidcIdToken;
+              const token = getToken(data);
 
               hardDeleteService({
                 token,
@@ -205,7 +223,7 @@ describe(
 
             cy.get('@versionButton').contains('0.2');
 
-            addOwner(OWNER);
+            addOwner(data.user.displayName);
 
             navigateToVersionPageFromServicePage(
               serviceCategory,
@@ -230,7 +248,7 @@ describe(
 
             cy.get('@versionButton').contains('0.2');
 
-            addTier(TIER, `services/${serviceCategory}`);
+            addTier(TIER);
 
             navigateToVersionPageFromServicePage(
               serviceCategory,

@@ -17,94 +17,47 @@ import {
   verifyResponseStatusCode,
   visitDatabaseDetailsPage,
 } from '../../common/common';
+import { getToken } from '../../common/Utils/LocalStorage';
 import { addOwner } from '../../common/Utils/Owner';
 import { addTier } from '../../common/Utils/Tier';
-import { DELETE_TERM } from '../../constants/constants';
-import { DOMAIN_CREATION_DETAILS } from '../../constants/EntityConstant';
 import {
-  COMMON_PATCH_PAYLOAD,
+  commonTestCleanup,
+  databaseVersionPrerequisites,
+} from '../../common/Utils/Versions';
+import { DELETE_TERM } from '../../constants/constants';
+import {
   DATABASE_DETAILS_FOR_VERSION_TEST,
-  OWNER,
   SERVICE_DETAILS_FOR_VERSION_TEST,
   TIER,
 } from '../../constants/Version.constants';
 
 const serviceDetails = SERVICE_DETAILS_FOR_VERSION_TEST.Database;
 
-let domainId;
-
 describe(
   `Database version page should work properly`,
   { tags: 'DataAssets' },
   () => {
-    let databaseId;
-    let databaseFQN;
+    const data = {
+      user: { displayName: '', name: '' },
+      domain: { id: '' },
+      database: { id: '', fullyQualifiedName: '' },
+    };
 
     before(() => {
       cy.login();
-      cy.getAllLocalStorage().then((data) => {
-        const token = Object.values(data)[0].oidcIdToken;
-        cy.request({
-          method: 'PUT',
-          url: `/api/v1/domains`,
-          headers: { Authorization: `Bearer ${token}` },
-          body: DOMAIN_CREATION_DETAILS,
-        }).then((response) => {
-          domainId = response.body.id;
-        });
+      cy.getAllLocalStorage().then((responseData) => {
+        const token = getToken(responseData);
 
-        // Create service
-        cy.request({
-          method: 'POST',
-          url: `/api/v1/services/${serviceDetails.serviceCategory}`,
-          headers: { Authorization: `Bearer ${token}` },
-          body: serviceDetails.entityCreationDetails,
-        });
-
-        // Create Database
-        cy.request({
-          method: 'POST',
-          url: `/api/v1/databases`,
-          headers: { Authorization: `Bearer ${token}` },
-          body: DATABASE_DETAILS_FOR_VERSION_TEST,
-        }).then((response) => {
-          databaseId = response.body.id;
-          databaseFQN = response.body.fullyQualifiedName;
-
-          cy.request({
-            method: 'PATCH',
-            url: `/api/v1/databases/${databaseId}`,
-            headers: {
-              Authorization: `Bearer ${token}`,
-              'Content-Type': 'application/json-patch+json',
-            },
-            body: [
-              ...COMMON_PATCH_PAYLOAD,
-              {
-                op: 'add',
-                path: '/domain',
-                value: {
-                  id: domainId,
-                  type: 'domain',
-                  name: DOMAIN_CREATION_DETAILS.name,
-                  description: DOMAIN_CREATION_DETAILS.description,
-                },
-              },
-            ],
-          });
-        });
+        databaseVersionPrerequisites(token, data);
       });
     });
 
     after(() => {
       cy.login();
-      cy.getAllLocalStorage().then((data) => {
-        const token = Object.values(data)[0].oidcIdToken;
-        cy.request({
-          method: 'DELETE',
-          url: `/api/v1/domains/name/${DOMAIN_CREATION_DETAILS.name}`,
-          headers: { Authorization: `Bearer ${token}` },
-        });
+      cy.getAllLocalStorage().then((responseData) => {
+        const token = getToken(responseData);
+
+        commonTestCleanup(token, data);
       });
     });
 
@@ -117,23 +70,23 @@ describe(
         settingsMenuId: serviceDetails.settingsMenuId,
         serviceCategory: serviceDetails.serviceCategory,
         serviceName: serviceDetails.serviceName,
-        databaseRowKey: databaseId,
+        databaseRowKey: data.database.id,
         databaseName: DATABASE_DETAILS_FOR_VERSION_TEST.name,
       });
 
       interceptURL(
         'GET',
-        `/api/v1/databases/name/${databaseFQN}?include=all`,
+        `/api/v1/databases/name/${data.database.fullyQualifiedName}?include=all`,
         `getDatabaseDetails`
       );
       interceptURL(
         'GET',
-        `/api/v1/databases/${databaseId}/versions`,
+        `/api/v1/databases/${data.database.id}/versions`,
         'getVersionsList'
       );
       interceptURL(
         'GET',
-        `/api/v1/databases/${databaseId}/versions/0.2`,
+        `/api/v1/databases/${data.database.id}/versions/0.2`,
         'getSelectedVersionDetails'
       );
 
@@ -171,7 +124,7 @@ describe(
         settingsMenuId: serviceDetails.settingsMenuId,
         serviceCategory: serviceDetails.serviceCategory,
         serviceName: serviceDetails.serviceName,
-        databaseRowKey: databaseId,
+        databaseRowKey: data.database.id,
         databaseName: DATABASE_DETAILS_FOR_VERSION_TEST.name,
       });
 
@@ -179,21 +132,21 @@ describe(
 
       cy.get('@versionButton').contains('0.2');
 
-      addOwner(OWNER);
+      addOwner(data.user.displayName);
 
       interceptURL(
         'GET',
-        `/api/v1/databases/name/${databaseFQN}?include=all`,
+        `/api/v1/databases/name/${data.database.fullyQualifiedName}?include=all`,
         `getDatabaseDetails`
       );
       interceptURL(
         'GET',
-        `/api/v1/databases/${databaseId}/versions`,
+        `/api/v1/databases/${data.database.id}/versions`,
         'getVersionsList'
       );
       interceptURL(
         'GET',
-        `/api/v1/databases/${databaseId}/versions/0.2`,
+        `/api/v1/databases/${data.database.id}/versions/0.2`,
         'getSelectedVersionDetails'
       );
 
@@ -213,7 +166,7 @@ describe(
         settingsMenuId: serviceDetails.settingsMenuId,
         serviceCategory: serviceDetails.serviceCategory,
         serviceName: serviceDetails.serviceName,
-        databaseRowKey: databaseId,
+        databaseRowKey: data.database.id,
         databaseName: DATABASE_DETAILS_FOR_VERSION_TEST.name,
       });
 
@@ -225,17 +178,17 @@ describe(
 
       interceptURL(
         'GET',
-        `/api/v1/databases/name/${databaseFQN}?include=all`,
+        `/api/v1/databases/name/${data.database.fullyQualifiedName}?include=all`,
         `getDatabaseDetails`
       );
       interceptURL(
         'GET',
-        `/api/v1/databases/${databaseId}/versions`,
+        `/api/v1/databases/${data.database.id}/versions`,
         'getVersionsList'
       );
       interceptURL(
         'GET',
-        `/api/v1/databases/${databaseId}/versions/0.2`,
+        `/api/v1/databases/${data.database.id}/versions/0.2`,
         'getSelectedVersionDetails'
       );
 
@@ -255,7 +208,7 @@ describe(
         settingsMenuId: serviceDetails.settingsMenuId,
         serviceCategory: serviceDetails.serviceCategory,
         serviceName: serviceDetails.serviceName,
-        databaseRowKey: databaseId,
+        databaseRowKey: data.database.id,
         databaseName: DATABASE_DETAILS_FOR_VERSION_TEST.name,
       });
 
@@ -287,17 +240,17 @@ describe(
 
       interceptURL(
         'GET',
-        `/api/v1/databases/name/${databaseFQN}?include=all`,
+        `/api/v1/databases/name/${data.database.fullyQualifiedName}?include=all`,
         `getDatabaseDetails`
       );
       interceptURL(
         'GET',
-        `/api/v1/databases/${databaseId}/versions`,
+        `/api/v1/databases/${data.database.id}/versions`,
         'getVersionsList'
       );
       interceptURL(
         'GET',
-        `/api/v1/databases/${databaseId}/versions/0.3`,
+        `/api/v1/databases/${data.database.id}/versions/0.3`,
         'getSelectedVersionDetails'
       );
 
@@ -332,58 +285,6 @@ describe(
       toastNotification(`Database restored successfully`);
 
       cy.get('@versionButton').should('contain', '0.4');
-    });
-
-    it(`Cleanup for Database version page tests`, () => {
-      visitDatabaseDetailsPage({
-        settingsMenuId: serviceDetails.settingsMenuId,
-        serviceCategory: serviceDetails.serviceCategory,
-        serviceName: serviceDetails.serviceName,
-        databaseRowKey: databaseId,
-        databaseName: DATABASE_DETAILS_FOR_VERSION_TEST.name,
-      });
-
-      // Clicking on permanent delete radio button and checking the service name
-      cy.get('[data-testid="manage-button"]')
-        .should('exist')
-        .should('be.visible')
-        .click();
-
-      cy.get('[data-menu-id*="delete-button"]')
-        .should('exist')
-        .should('be.visible');
-      cy.get('[data-testid="delete-button-title"]')
-        .should('be.visible')
-        .click()
-        .as('deleteBtn');
-
-      // Clicking on permanent delete radio button and checking the service name
-      cy.get('[data-testid="hard-delete-option"]')
-        .contains(DATABASE_DETAILS_FOR_VERSION_TEST.name)
-        .should('be.visible')
-        .click();
-
-      cy.get('[data-testid="confirmation-text-input"]')
-        .should('be.visible')
-        .type(DELETE_TERM);
-      interceptURL('DELETE', `/api/v1/databases/*`, 'deleteService');
-      interceptURL(
-        'GET',
-        '/api/v1/services/*/name/*?fields=owner',
-        'serviceDetails'
-      );
-
-      cy.get('[data-testid="confirm-button"]').should('be.visible').click();
-      verifyResponseStatusCode('@deleteService', 200);
-
-      // Closing the toast notification
-      toastNotification(
-        `"${DATABASE_DETAILS_FOR_VERSION_TEST.name}" deleted successfully!`
-      );
-
-      cy.get(
-        `[data-testid="service-name-${DATABASE_DETAILS_FOR_VERSION_TEST.name}"]`
-      ).should('not.exist');
     });
   }
 );

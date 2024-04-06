@@ -29,6 +29,7 @@ import {
   verifyResponseStatusCode,
 } from '../../common/common';
 import { createEntityTable, hardDeleteService } from '../../common/EntityUtils';
+import { getToken } from '../../common/Utils/LocalStorage';
 import {
   ALERT_DESCRIPTION,
   ALERT_NAME,
@@ -59,10 +60,14 @@ describe(
     const data = {
       testCase: {},
       testSuite: {},
-      pipelineService: {},
+      pipelineService: {
+        id: '',
+      },
       ingestionPipeline: {},
       user: {
+        id: '',
         displayName: '',
+        id: '',
       },
       domain: {
         name: '',
@@ -75,7 +80,7 @@ describe(
     before(() => {
       cy.login();
       cy.getAllLocalStorage().then((storageData) => {
-        const token = Object.values(storageData)[0].oidcIdToken;
+        const token = getToken(storageData);
 
         // Create a table
         createEntityTable({
@@ -182,7 +187,7 @@ describe(
     after(() => {
       cy.login();
       cy.getAllLocalStorage().then((storageData) => {
-        const token = Object.values(storageData)[0].oidcIdToken;
+        const token = getToken(storageData);
 
         // Delete created services
         hardDeleteService({
@@ -334,9 +339,9 @@ describe(
           .click();
       });
 
-      addInternalDestination(1, 'Owners', 'G Chat');
+      addInternalDestination(0, 'Owners', 'G Chat');
       addInternalDestination(
-        2,
+        1,
         'Teams',
         'Slack',
         'Team-select',

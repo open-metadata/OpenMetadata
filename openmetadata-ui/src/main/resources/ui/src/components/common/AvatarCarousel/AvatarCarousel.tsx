@@ -12,16 +12,29 @@
  */
 import { LeftOutlined, RightOutlined } from '@ant-design/icons';
 import { Button, Carousel } from 'antd';
-import React, { useCallback, useEffect, useState } from 'react';
+import React, {
+  RefObject,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+} from 'react';
 import { useSuggestionsContext } from '../../Suggestions/SuggestionsProvider/SuggestionsProvider';
-import UserPopOverCard from '../PopOverCard/UserPopOverCard';
-import ProfilePicture from '../ProfilePicture/ProfilePicture';
+import AvatarCarouselItem from '../AvatarCarouselItem/AvatarCarouselItem';
 import './avatar-carousel.less';
 
-const AvatarCarousel = () => {
-  const { allSuggestionsUsers: avatarList, onUpdateActiveUser } =
-    useSuggestionsContext();
+interface AvatarCarouselProps {
+  showArrows?: boolean;
+}
+
+const AvatarCarousel = ({ showArrows = false }: AvatarCarouselProps) => {
+  const {
+    allSuggestionsUsers: avatarList,
+    onUpdateActiveUser,
+    selectedUserSuggestions,
+  } = useSuggestionsContext();
   const [currentSlide, setCurrentSlide] = useState(-1);
+  const avatarBtnRefs = useRef<RefObject<HTMLButtonElement>[]>([]);
 
   const prevSlide = useCallback(() => {
     setCurrentSlide((prev) => (prev === 0 ? avatarList.length - 1 : prev - 1));
@@ -31,10 +44,17 @@ const AvatarCarousel = () => {
     setCurrentSlide((prev) => (prev === avatarList.length - 1 ? 0 : prev + 1));
   }, [avatarList]);
 
+  const handleMouseOut = useCallback(() => {
+    avatarBtnRefs.current.forEach((ref: any) => {
+      ref.current?.dispatchEvent(new MouseEvent('mouseout', { bubbles: true }));
+    });
+  }, [avatarBtnRefs]);
+
   const onProfileClick = useCallback(
     (index: number) => {
       const activeUser = avatarList[index];
       onUpdateActiveUser(activeUser);
+      handleMouseOut();
     },
     [avatarList]
   );
@@ -43,48 +63,55 @@ const AvatarCarousel = () => {
     onProfileClick(currentSlide);
   }, [currentSlide]);
 
+  useEffect(() => {
+    if (selectedUserSuggestions.length === 0) {
+      setCurrentSlide(-1);
+    }
+  }, [selectedUserSuggestions]);
+
   return (
     <div className="avatar-carousel-container d-flex items-center">
-      <Button
-        className="carousel-arrow"
-        data-testid="prev-slide"
-        disabled={avatarList.length <= 1 || currentSlide <= 0}
-        icon={<LeftOutlined />}
-        size="small"
-        type="text"
-        onClick={prevSlide}
-      />
+      {showArrows && (
+        <Button
+          className="carousel-arrow"
+          data-testid="prev-slide"
+          disabled={avatarList.length <= 1 || currentSlide <= 0}
+          icon={<LeftOutlined />}
+          size="small"
+          type="text"
+          onClick={prevSlide}
+        />
+      )}
+
       <Carousel
         afterChange={(current) => setCurrentSlide(current)}
         dots={false}
         slidesToShow={avatarList.length < 3 ? avatarList.length : 3}>
         {avatarList.map((avatar, index) => (
-          <UserPopOverCard
-            className=""
+          <AvatarCarouselItem
+            avatar={avatar}
+            avatarBtnRefs={avatarBtnRefs}
+            index={index}
+            isActive={currentSlide === index}
             key={avatar.id}
-            userName={avatar?.name ?? ''}>
-            <Button
-              className={`p-0 m-r-xss avatar-item ${
-                currentSlide === index ? 'active' : ''
-              }`}
-              shape="circle"
-              onClick={() => setCurrentSlide(index)}>
-              <ProfilePicture name={avatar.name ?? ''} width="30" />
-            </Button>
-          </UserPopOverCard>
+            onAvatarClick={setCurrentSlide}
+          />
         ))}
       </Carousel>
-      <Button
-        className="carousel-arrow"
-        data-testid="next-slide"
-        disabled={
-          avatarList.length <= 1 || currentSlide === avatarList.length - 1
-        }
-        icon={<RightOutlined />}
-        size="small"
-        type="text"
-        onClick={nextSlide}
-      />
+
+      {showArrows && (
+        <Button
+          className="carousel-arrow"
+          data-testid="next-slide"
+          disabled={
+            avatarList.length <= 1 || currentSlide === avatarList.length - 1
+          }
+          icon={<RightOutlined />}
+          size="small"
+          type="text"
+          onClick={nextSlide}
+        />
+      )}
     </div>
   );
 };

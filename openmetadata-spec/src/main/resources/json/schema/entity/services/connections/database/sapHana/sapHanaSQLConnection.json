@@ -1,0 +1,38 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/services/connections/database/sapHana/sapHanaConnection.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "SapHanaSQLConnection",
+  "description": "Sap Hana Database SQL Connection Config",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.services.connections.database.sapHana.SapHanaSQLConnection",
+  "properties": {
+    "hostPort": {
+      "title": "Host and Port",
+      "description": "Host and port of the Hana service.",
+      "type": "string"
+    },
+    "username": {
+      "title": "Username",
+      "description": "Username to connect to Hana. This user should have privileges to read all the metadata.",
+      "type": "string"
+    },
+    "password": {
+      "title": "Password",
+      "description": "Password to connect to Hana.",
+      "type": "string",
+      "format": "password"
+    },
+    "databaseSchema": {
+      "title": "Database Schema",
+      "description": "Database Schema of the data source. This is an optional parameter, if you would like to restrict the metadata reading to a single schema. When left blank, OpenMetadata Ingestion attempts to scan all the schemas.",
+      "type": "string"
+    },
+    "database": {
+      "title": "Database",
+      "description": "Database of the data source.",
+      "type": "string"
+    }
+  },
+  "additionalProperties": false,
+  "required": ["username", "password", "hostPort"]
+}

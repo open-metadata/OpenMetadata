@@ -97,6 +97,7 @@ import org.openmetadata.schema.api.data.CreateTable;
 import org.openmetadata.schema.api.data.CreateTableProfile;
 import org.openmetadata.schema.api.services.CreateDatabaseService;
 import org.openmetadata.schema.api.tests.CreateCustomMetric;
+import org.openmetadata.schema.api.tests.CreateTestCase;
 import org.openmetadata.schema.api.tests.CreateTestSuite;
 import org.openmetadata.schema.entity.data.Database;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
@@ -105,6 +106,8 @@ import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.services.DatabaseService;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.tests.CustomMetric;
+import org.openmetadata.schema.tests.TestCase;
+import org.openmetadata.schema.tests.TestCaseParameterValue;
 import org.openmetadata.schema.tests.TestSuite;
 import org.openmetadata.schema.type.ApiStatus;
 import org.openmetadata.schema.type.ChangeDescription;
@@ -138,6 +141,7 @@ import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.jdbi3.TableRepository.TableCsv;
 import org.openmetadata.service.resources.EntityResourceTest;
 import org.openmetadata.service.resources.databases.TableResource.TableList;
+import org.openmetadata.service.resources.dqtests.TestCaseResourceTest;
 import org.openmetadata.service.resources.dqtests.TestSuiteResourceTest;
 import org.openmetadata.service.resources.glossary.GlossaryResourceTest;
 import org.openmetadata.service.resources.glossary.GlossaryTermResourceTest;
@@ -1967,7 +1971,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
   }
 
   @Test
-  void test_ownershipInheritance(TestInfo test) throws HttpResponseException {
+  void test_ownershipInheritance(TestInfo test) throws HttpResponseException, IOException {
     // When a databaseSchema has no owner set, it inherits the ownership from database
     // When a table has no owner set, it inherits the ownership from databaseSchema
     Database db =
@@ -1993,7 +1997,8 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
   }
 
   @Test
-  void test_domainInheritance(TestInfo test) throws HttpResponseException {
+  void test_domainInheritance(TestInfo test)
+      throws HttpResponseException, IOException, InterruptedException {
     // Domain is inherited from databaseService > database > databaseSchema > table
     DatabaseService dbService =
         dbServiceTest.createEntity(
@@ -2015,6 +2020,20 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     CreateTable createTable =
         createRequest(test).withDatabaseSchema(schema.getFullyQualifiedName());
     Table table = assertDomainInheritance(createTable, DOMAIN.getEntityReference());
+
+    // Ensure test case domain is inherited from table
+    TestCaseResourceTest testCaseResourceTest = new TestCaseResourceTest();
+    CreateTestCase createTestCase =
+        testCaseResourceTest
+            .createRequest(test)
+            .withEntityLink(String.format("<#E::table::%s>", table.getFullyQualifiedName()))
+            .withTestSuite(TEST_SUITE1.getFullyQualifiedName())
+            .withTestDefinition(TEST_DEFINITION3.getFullyQualifiedName())
+            .withParameterValues(
+                List.of(
+                    new TestCaseParameterValue().withValue("100").withName("missingCountValue")));
+    TestCase testCase =
+        testCaseResourceTest.assertDomainInheritance(createTestCase, DOMAIN.getEntityReference());
 
     // Change the domain of table and ensure further ingestion updates don't overwrite the domain
     assertDomainInheritanceOverride(
@@ -2316,9 +2335,10 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     Column c1 = new Column().withName("c1").withDataType(STRUCT);
     Column c11 = new Column().withName("c11").withDataType(INT);
     Column c2 = new Column().withName("c2").withDataType(INT);
+    Column c3 = new Column().withName("c3").withDataType(BIGINT);
     c1.withChildren(listOf(c11));
     CreateTable createTable =
-        createRequest("s1").withColumns(listOf(c1, c2)).withTableConstraints(null);
+        createRequest("s1").withColumns(listOf(c1, c2, c3)).withTableConstraints(null);
     Table table = createEntity(createTable, ADMIN_AUTH_HEADERS);
 
     // Headers: name, displayName, description, owner, tags, retentionPeriod, sourceUrl, domain
@@ -2330,7 +2350,8 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
                     + "dsp1-new,desc1,type,PII.Sensitive",
                 user1, escapeCsv(DOMAIN.getFullyQualifiedName())),
             ",,,,,,,,c1.c11,dsp11-new,desc11,type1,PII.Sensitive",
-            ",,,,,,,,c2,,,,");
+            ",,,,,,,,c2,,,,",
+            ",,,,,,,,c3,,,,");
 
     // Update created entity with changes
     importCsvAndValidate(table.getFullyQualifiedName(), TableCsv.HEADERS, null, updateRecords);

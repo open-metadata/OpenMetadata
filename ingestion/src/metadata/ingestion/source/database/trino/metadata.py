@@ -183,7 +183,9 @@ class TrinoSource(CommonDbSourceService):
     ] = "JSON"
 
     @classmethod
-    def create(cls, config_dict, metadata: OpenMetadata):
+    def create(
+        cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None
+    ):
         config = WorkflowSource.parse_obj(config_dict)
         connection: TrinoConnection = config.serviceConnection.__root__.config
         if not isinstance(connection, TrinoConnection):
@@ -218,7 +220,7 @@ class TrinoSource(CommonDbSourceService):
                     database_fqn = fqn.build(
                         self.metadata,
                         entity_type=Database,
-                        service_name=self.context.database_service,
+                        service_name=self.context.get().database_service,
                         database_name=new_catalog,
                     )
                     if filter_by_database(

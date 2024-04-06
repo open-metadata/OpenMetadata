@@ -18,8 +18,8 @@ import React, {
   ReactNode,
   useImperativeHandle,
 } from 'react';
-import localState from '../../../utils/LocalStorageUtils';
-import { useAuthContext } from '../AuthProviders/AuthProvider';
+
+import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { AuthenticatorRef } from '../AuthProviders/AuthProvider.interface';
 
 interface Props {
@@ -30,7 +30,7 @@ interface Props {
 const OktaAuthenticator = forwardRef<AuthenticatorRef, Props>(
   ({ children, onLogoutSuccess }: Props, ref) => {
     const { oktaAuth } = useOktaAuth();
-    const { setIsAuthenticated } = useAuthContext();
+    const { setIsAuthenticated, setOidcToken } = useApplicationStore();
 
     const login = async () => {
       oktaAuth.signInWithRedirect();
@@ -54,7 +54,7 @@ const OktaAuthenticator = forwardRef<AuthenticatorRef, Props>(
         oktaAuth.tokenManager.setTokens(renewToken);
         const newToken =
           renewToken?.idToken?.idToken ?? oktaAuth.getIdToken() ?? '';
-        localState.setOidcToken(newToken);
+        setOidcToken(newToken);
 
         return Promise.resolve(newToken);
       },

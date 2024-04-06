@@ -33,6 +33,7 @@ import {
   createSingleLevelEntity,
   hardDeleteService,
 } from '../../common/EntityUtils';
+import { getToken } from '../../common/Utils/LocalStorage';
 import {
   ALERT_DESCRIPTION,
   ALERT_NAME,
@@ -74,7 +75,7 @@ describe(
     before(() => {
       cy.login();
       cy.getAllLocalStorage().then((storageData) => {
-        const token = Object.values(storageData)[0].oidcIdToken;
+        const token = getToken(storageData);
 
         // Create a dashboard
         createSingleLevelEntity({
@@ -107,7 +108,7 @@ describe(
     after(() => {
       cy.login();
       cy.getAllLocalStorage().then((storageData) => {
-        const token = Object.values(storageData)[0].oidcIdToken;
+        const token = getToken(storageData);
 
         hardDeleteService({
           token,
@@ -261,16 +262,16 @@ describe(
           .click();
       });
 
-      addInternalDestination(1, 'Owners', 'G Chat');
+      addInternalDestination(0, 'Owners', 'G Chat');
       addInternalDestination(
-        2,
+        1,
         'Teams',
         'Slack',
         'Team-select',
         'Organization'
       );
       addInternalDestination(
-        3,
+        2,
         'Users',
         'Email',
         'User-select',
@@ -349,7 +350,7 @@ describe(
       addInternalDestination(0, 'Followers', 'Email');
       addExternalDestination(1, 'Email', 'test@example.com');
       addExternalDestination(2, 'G Chat', 'https://gchat.com');
-      addExternalDestination(3, 'Generic', 'https://generic.com');
+      addExternalDestination(3, 'Webhook', 'https://webhook.com');
       addExternalDestination(4, 'Ms Teams', 'https://msteams.com');
       addExternalDestination(5, 'Slack', 'https://slack.com');
 

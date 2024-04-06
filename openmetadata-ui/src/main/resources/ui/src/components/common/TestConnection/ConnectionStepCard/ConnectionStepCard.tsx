@@ -29,7 +29,7 @@ const { Panel } = Collapse;
 
 interface ConnectionStepCardProp {
   testConnectionStep: TestConnectionStep;
-  testConnectionStepResult: TestConnectionStepResult | undefined;
+  testConnectionStepResult?: TestConnectionStepResult;
   isTestingConnection: boolean;
 }
 

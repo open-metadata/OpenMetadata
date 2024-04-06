@@ -23,13 +23,15 @@ source:
   sourceConfig:
     config:
       type: DashboardMetadata
-      dbServiceNames:
-      - mysql
-      - postgres
+      lineageInformation:
+        dbServiceNames:
+        - mysql
+        - postgres
       chartFilterPattern: {}
       # dashboardFilterPattern:
       #   includes:
       #   - .*mysql.*
+      includeDraftDashboard: True
 
 sink:
   type: metadata-rest

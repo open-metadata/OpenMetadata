@@ -27,9 +27,9 @@ import {
   TWO_MINUTE_IN_MILLISECOND,
 } from '../../../constants/constants';
 import { OMD_REPOSITORY_LINK } from '../../../constants/docs.constants';
+import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { getRepositoryData } from '../../../rest/commonAPI';
 import { getReleaseVersionExpiry } from '../../../utils/WhatsNewModal.util';
-import { useAuthContext } from '../../Auth/AuthProviders/AuthProvider';
 import { COOKIE_VERSION } from '../../Modals/WhatsNewModal/whatsNewData';
 import './github-star-card.style.less';
 
@@ -38,7 +38,7 @@ const cookieStorage = new CookieStorage();
 const GithubStarCard = () => {
   const { t } = useTranslation();
   const location = useLocation();
-  const { currentUser } = useAuthContext();
+  const { currentUser } = useApplicationStore();
   const [showGithubStarPopup, setShowGithubStarPopup] = useState(false);
   const [starredCount, setStarredCount] = useState<number>(0);
   const [isLoading, setIsLoading] = useState<boolean>(true);

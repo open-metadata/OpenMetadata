@@ -37,7 +37,7 @@ from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.status import Status
 from metadata.ingestion.lineage.models import ConnectionTypeDialectMapper
 from metadata.ingestion.lineage.sql_lineage import get_lineage_by_query
-from metadata.ingestion.models.topology import TopologyContext
+from metadata.ingestion.models.topology import TopologyContextManager
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.stored_procedures import get_procedure_name_from_call
@@ -81,7 +81,7 @@ class StoredProcedureMixin(ABC):
     It should be inherited in those Sources that implement Stored Procedure ingestion.
     """
 
-    context: TopologyContext
+    context: TopologyContextManager
     status: Status
     source_config: DatabaseServiceMetadataPipeline
     engine: Engine
@@ -138,7 +138,7 @@ class StoredProcedureMixin(ABC):
             return True
 
         if query_type == "INSERT" and re.search(
-            "^.*insert.*into.*select.*$", query_text, re.IGNORECASE
+            "^.*insert.*into.*select.*$", query_text.replace("\n", " "), re.IGNORECASE
         ):
             return True
 
@@ -148,16 +148,16 @@ class StoredProcedureMixin(ABC):
         self, query_by_procedure: QueryByProcedure, procedure: StoredProcedure
     ) -> Iterable[Either[AddLineageRequest]]:
         """Add procedure lineage from its query"""
-        self.context.stored_procedure_query_lineage = False
+        self.context.get().stored_procedure_query_lineage = False
         if self.is_lineage_query(
             query_type=query_by_procedure.query_type,
             query_text=query_by_procedure.query_text,
         ):
-            self.context.stored_procedure_query_lineage = True
+            self.context.get().stored_procedure_query_lineage = True
             for either_lineage in get_lineage_by_query(
                 self.metadata,
                 query=query_by_procedure.query_text,
-                service_name=self.context.database_service,
+                service_name=self.context.get().database_service,
                 database_name=query_by_procedure.query_database_name,
                 schema_name=query_by_procedure.query_schema_name,
                 dialect=ConnectionTypeDialectMapper.dialect_of(
@@ -193,8 +193,10 @@ class StoredProcedureMixin(ABC):
                     id=procedure.id,
                     type="storedProcedure",
                 ),
-                processedLineage=bool(self.context.stored_procedure_query_lineage),
-                service=self.context.database_service,
+                processedLineage=bool(
+                    self.context.get().stored_procedure_query_lineage
+                ),
+                service=self.context.get().database_service,
             )
         )
 
@@ -202,12 +204,12 @@ class StoredProcedureMixin(ABC):
         self,
     ) -> Iterable[Either[Union[AddLineageRequest, CreateQueryRequest]]]:
         """Get all the queries and procedures list and yield them"""
-        if self.context.stored_procedures:
+        if self.context.get().stored_procedures:
             logger.info("Processing Lineage for Stored Procedures")
             # First, get all the query history
             queries_dict = self.get_stored_procedure_queries_dict()
             # Then for each procedure, iterate over all its queries
-            for procedure_fqn in self.context.stored_procedures:
+            for procedure_fqn in self.context.get().stored_procedures:
                 procedure = self.metadata.get_by_name(
                     entity=StoredProcedure, fqn=procedure_fqn
                 )

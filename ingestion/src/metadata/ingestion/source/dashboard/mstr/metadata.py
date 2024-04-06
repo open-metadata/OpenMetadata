@@ -48,7 +48,12 @@ class MstrSource(DashboardServiceSource):
     """
 
     @classmethod
-    def create(cls, config_dict: dict, metadata: OpenMetadata):
+    def create(
+        cls,
+        config_dict: dict,
+        metadata: OpenMetadata,
+        pipeline_name: Optional[str] = None,
+    ):
         config = WorkflowSource.parse_obj(config_dict)
         connection: MstrConnection = config.serviceConnection.__root__.config
         if not isinstance(connection, MstrConnection):
@@ -110,12 +115,12 @@ class MstrSource(DashboardServiceSource):
                     fqn.build(
                         self.metadata,
                         entity_type=Chart,
-                        service_name=self.context.dashboard_service,
+                        service_name=self.context.get().dashboard_service,
                         chart_name=chart,
                     )
-                    for chart in self.context.charts or []
+                    for chart in self.context.get().charts or []
                 ],
-                service=self.context.dashboard_service,
+                service=self.context.get().dashboard_service,
                 owner=self.get_owner_ref(dashboard_details=dashboard_details),
             )
             yield Either(right=dashboard_request)
@@ -169,7 +174,7 @@ class MstrSource(DashboardServiceSource):
                         chartType=get_standard_chart_type(
                             chart.visualizationType
                         ).value,
-                        service=self.context.dashboard_service,
+                        service=self.context.get().dashboard_service,
                     )
                 )
             except Exception as exc:

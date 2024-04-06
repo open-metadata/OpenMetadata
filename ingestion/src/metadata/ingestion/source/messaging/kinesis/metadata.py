@@ -62,13 +62,19 @@ class KinesisSource(MessagingServiceSource):
     topics metadata from Kinesis Source
     """
 
-    def __init__(self, config: WorkflowSource, metadata: OpenMetadata):
+    def __init__(
+        self,
+        config: WorkflowSource,
+        metadata: OpenMetadata,
+    ):
         super().__init__(config, metadata)
         self.generate_sample_data = self.config.sourceConfig.config.generateSampleData
         self.kinesis = self.connection
 
     @classmethod
-    def create(cls, config_dict, metadata: OpenMetadata):
+    def create(
+        cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None
+    ):
         config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
         connection: KinesisConnection = config.serviceConnection.__root__.config
         if not isinstance(connection, KinesisConnection):
@@ -124,7 +130,7 @@ class KinesisSource(MessagingServiceSource):
 
             topic = CreateTopicRequest(
                 name=topic_details.topic_name,
-                service=self.context.messaging_service,
+                service=self.context.get().messaging_service,
                 partitions=len(topic_details.topic_metadata.partitions),
                 retentionTime=self._compute_retention_time(
                     topic_details.topic_metadata.summary
@@ -199,8 +205,8 @@ class KinesisSource(MessagingServiceSource):
             topic_fqn = fqn.build(
                 metadata=self.metadata,
                 entity_type=Topic,
-                service_name=self.context.messaging_service,
-                topic_name=self.context.topic,
+                service_name=self.context.get().messaging_service,
+                topic_name=self.context.get().topic,
             )
             topic_entity = self.metadata.get_by_name(entity=Topic, fqn=topic_fqn)
             if topic_entity and self.generate_sample_data:

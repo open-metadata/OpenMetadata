@@ -14,10 +14,10 @@
 import { interceptURL, verifyResponseStatusCode } from '../../common/common';
 import {
   addReviewer,
-  deleteGlossary,
   removeReviewer,
   visitGlossaryPage,
 } from '../../common/GlossaryUtils';
+import { getToken } from '../../common/Utils/LocalStorage';
 import { addOwner, removeOwner } from '../../common/Utils/Owner';
 import { USER_DETAILS } from '../../constants/EntityConstant';
 import { GLOSSARY_OWNER_LINK_TEST_ID } from '../../constants/glossary.constant';
@@ -29,19 +29,37 @@ import {
   GLOSSARY_TERM_NAME_FOR_VERSION_TEST1,
   GLOSSARY_TERM_NAME_FOR_VERSION_TEST2,
   GLOSSARY_TERM_PATCH_PAYLOAD2,
-  REVIEWER,
+  REVIEWER_DETAILS,
 } from '../../constants/Version.constants';
 
 describe(
   'Glossary and glossary term version pages should work properly',
   { tags: 'Glossary' },
   () => {
-    let data = {};
+    const data = {
+      user: {
+        id: '',
+        displayName: '',
+      },
+      reviewer: {
+        id: '',
+        displayName: '',
+      },
+      glossary: {
+        id: '',
+      },
+      glossaryTerm1: {
+        id: '',
+      },
+      glossaryTerm2: {
+        id: '',
+      },
+    };
 
     before(() => {
       cy.login();
       cy.getAllLocalStorage().then((storageData) => {
-        const token = Object.values(storageData)[0].oidcIdToken;
+        const token = getToken(storageData);
         // Create a new user
         cy.request({
           method: 'POST',
@@ -50,6 +68,16 @@ describe(
           body: USER_DETAILS,
         }).then((response) => {
           data.user = response.body;
+        });
+
+        // Create a new reviewer
+        cy.request({
+          method: 'POST',
+          url: `/api/v1/users/signup`,
+          headers: { Authorization: `Bearer ${token}` },
+          body: REVIEWER_DETAILS,
+        }).then((response) => {
+          data.reviewer = response.body;
         });
 
         // Create Glossary
@@ -129,12 +157,26 @@ describe(
     after(() => {
       cy.login();
       cy.getAllLocalStorage().then((storageData) => {
-        const token = Object.values(storageData)[0].oidcIdToken;
+        const token = getToken(storageData);
 
         // Delete created user
         cy.request({
           method: 'DELETE',
           url: `/api/v1/users/${data.user.id}?hardDelete=true&recursive=false`,
+          headers: { Authorization: `Bearer ${token}` },
+        });
+
+        // Delete created user
+        cy.request({
+          method: 'DELETE',
+          url: `/api/v1/users/${data.reviewer.id}?hardDelete=true&recursive=false`,
+          headers: { Authorization: `Bearer ${token}` },
+        });
+
+        // Delete created user
+        cy.request({
+          method: 'DELETE',
+          url: `/api/v1/glossaries/${data.glossary.id}?hardDelete=true&recursive=true`,
           headers: { Authorization: `Bearer ${token}` },
         });
       });
@@ -200,7 +242,7 @@ describe(
 
       removeOwner(data.user.displayName, GLOSSARY_OWNER_LINK_TEST_ID);
 
-      addReviewer(REVIEWER, 'glossaries');
+      addReviewer(data.reviewer.displayName, 'glossaries');
 
       interceptURL(
         'GET',
@@ -347,7 +389,7 @@ describe(
 
       removeOwner(data.user.displayName, GLOSSARY_OWNER_LINK_TEST_ID);
 
-      addReviewer(REVIEWER, 'glossaryTerms');
+      addReviewer(data.reviewer.displayName, 'glossaryTerms');
 
       interceptURL(
         'GET',
@@ -371,10 +413,6 @@ describe(
       verifyResponseStatusCode('@getChildGlossaryTerms', 200);
 
       removeReviewer('glossaryTerms');
-    });
-
-    it('Cleanup for glossary and glossary term version page tests', () => {
-      deleteGlossary(GLOSSARY_FOR_VERSION_TEST.name);
     });
   }
 );

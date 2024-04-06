@@ -18,38 +18,60 @@ import {
   verifyResponseStatusCode,
 } from '../../common/common';
 import { visitEntityDetailsPage } from '../../common/Utils/Entity';
+import { getToken } from '../../common/Utils/LocalStorage';
 import { addOwner } from '../../common/Utils/Owner';
 import { addTier } from '../../common/Utils/Tier';
 import { visitEntityDetailsVersionPage } from '../../common/VersionUtils';
 import { DOMAIN_CREATION_DETAILS } from '../../constants/EntityConstant';
 import {
   ENTITY_DETAILS_FOR_VERSION_TEST,
-  OWNER,
+  OWNER_DETAILS,
   TIER,
 } from '../../constants/Version.constants';
 
-let domainId: string;
-
 describe('Version page tests for data assets', { tags: 'DataAssets' }, () => {
+  const data = {
+    user: { id: '', displayName: '' },
+    domain: { id: '' },
+  };
   before(() => {
     cy.login();
-    cy.getAllLocalStorage().then((data) => {
-      const token = Object.values(data)[0].oidcIdToken;
+    cy.getAllLocalStorage().then((responseData) => {
+      const token = getToken(responseData);
+
+      // Create user
+      cy.request({
+        method: 'POST',
+        url: `/api/v1/users/signup`,
+        headers: { Authorization: `Bearer ${token}` },
+        body: OWNER_DETAILS,
+      }).then((response) => {
+        data.user = response.body;
+      });
+
       cy.request({
         method: 'PUT',
         url: `/api/v1/domains`,
         headers: { Authorization: `Bearer ${token}` },
         body: DOMAIN_CREATION_DETAILS,
       }).then((response) => {
-        domainId = response.body.id;
+        data.domain = response.body;
       });
     });
   });
 
   after(() => {
     cy.login();
-    cy.getAllLocalStorage().then((data) => {
-      const token = Object.values(data)[0].oidcIdToken;
+    cy.getAllLocalStorage().then((responseData) => {
+      const token = getToken(responseData);
+
+      // Delete created user
+      cy.request({
+        method: 'DELETE',
+        url: `/api/v1/users/${data.user.id}?hardDelete=true&recursive=false`,
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
       cy.request({
         method: 'DELETE',
         url: `/api/v1/domains/name/${DOMAIN_CREATION_DETAILS.name}`,
@@ -68,8 +90,8 @@ describe('Version page tests for data assets', { tags: 'DataAssets' }, () => {
 
         before(() => {
           cy.login();
-          cy.getAllLocalStorage().then((data) => {
-            const token = Object.values(data)[0].oidcIdToken;
+          cy.getAllLocalStorage().then((responseData) => {
+            const token = getToken(responseData);
             cy.request({
               method: 'PUT',
               url: `/api/v1/${entityDetails.entity}`,
@@ -92,7 +114,7 @@ describe('Version page tests for data assets', { tags: 'DataAssets' }, () => {
                     op: 'add',
                     path: '/domain',
                     value: {
-                      id: domainId,
+                      id: data.domain.id,
                       type: 'domain',
                       name: DOMAIN_CREATION_DETAILS.name,
                       description: DOMAIN_CREATION_DETAILS.description,
@@ -153,12 +175,12 @@ describe('Version page tests for data assets', { tags: 'DataAssets' }, () => {
               .should('be.visible');
 
             cy.get(`[data-testid="diff-removed"]`)
-              .contains(entityDetails.entityChildRemovedDescription as string)
+              .contains(entityDetails.entityChildRemovedDescription)
               .scrollIntoView()
               .should('be.visible');
 
             cy.get(`[data-testid="diff-added"]`)
-              .contains(entityDetails.entityChildAddedDescription as string)
+              .contains(entityDetails.entityChildAddedDescription)
               .scrollIntoView()
               .should('be.visible');
           }
@@ -182,7 +204,7 @@ describe('Version page tests for data assets', { tags: 'DataAssets' }, () => {
 
             cy.get('#displayName')
               .clear()
-              .type(entityDetails.columnDisplayNameToUpdate as string);
+              .type(entityDetails.columnDisplayNameToUpdate);
 
             interceptURL('PATCH', `/api/v1/tables/*`, `updateColumnName`);
 
@@ -229,7 +251,7 @@ describe('Version page tests for data assets', { tags: 'DataAssets' }, () => {
 
           cy.get('@versionButton').contains('0.2');
 
-          addOwner(OWNER);
+          addOwner(data.user.displayName);
 
           interceptURL(
             'GET',
@@ -342,7 +364,7 @@ describe('Version page tests for data assets', { tags: 'DataAssets' }, () => {
 
         after(() => {
           cy.getAllLocalStorage().then((data) => {
-            const token = Object.values(data)[0].oidcIdToken;
+            const token = getToken(data);
             cy.request({
               method: 'DELETE',
               url: `/api/v1/${entityDetails.entity}/${entityId}`,

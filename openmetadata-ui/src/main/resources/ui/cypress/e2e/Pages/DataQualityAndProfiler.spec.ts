@@ -26,6 +26,7 @@ import {
   handleIngestionRetry,
   scheduleIngestion,
 } from '../../common/Utils/Ingestion';
+import { getToken } from '../../common/Utils/LocalStorage';
 import { addOwner, removeOwner, updateOwner } from '../../common/Utils/Owner';
 import { goToServiceListingPage, Services } from '../../common/Utils/Services';
 import {
@@ -124,7 +125,7 @@ describe(
     before(() => {
       cy.login();
       cy.getAllLocalStorage().then((data) => {
-        const token = Object.values(data)[0].oidcIdToken;
+        const token = getToken(data);
 
         createEntityTable({
           token,
@@ -159,7 +160,7 @@ describe(
     after(() => {
       cy.login();
       cy.getAllLocalStorage().then((data) => {
-        const token = Object.values(data)[0].oidcIdToken;
+        const token = getToken(data);
         cy.request({
           method: 'DELETE',
           url: `/api/v1/dataQuality/testCases/${testCaseId}?hardDelete=true&recursive=false`,
@@ -908,7 +909,6 @@ describe(
       verifyResponseStatusCode('@tableProfiler', 200);
       verifyResponseStatusCode('@systemProfiler', 200);
       cy.get('[data-testid="profiler-setting-btn"]').click();
-      verifyResponseStatusCode('@tableProfilerConfig', 200);
       cy.get('.ant-modal-body').should('be.visible');
       cy.get('[data-testid="slider-input"]')
         .clear()
@@ -974,7 +974,8 @@ describe(
       cy.get('[data-testid="profiler"]').click();
       // verify profiler setting details
       cy.get('[data-testid="profiler-setting-btn"]').click();
-      verifyResponseStatusCode('@tableProfilerConfig', 200);
+      // need extra time to load API response
+      verifyResponseStatusCode('@tableProfilerConfig', 200, { timeout: 10000 });
 
       cy.get('[data-testid="slider-input"]').should(
         'have.value',

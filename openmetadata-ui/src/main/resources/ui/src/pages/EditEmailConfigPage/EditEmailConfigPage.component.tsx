@@ -61,7 +61,7 @@ function EditEmailConfigPage() {
       {
         name: t('label.email'),
         url: getSettingPath(
-          GlobalSettingsMenuCategory.OPEN_METADATA,
+          GlobalSettingsMenuCategory.PREFERENCES,
           GlobalSettingOptions.EMAIL
         ),
       },
@@ -99,7 +99,7 @@ function EditEmailConfigPage() {
   const handleRedirectionToSettingsPage = useCallback(() => {
     history.push(
       getSettingPath(
-        GlobalSettingsMenuCategory.OPEN_METADATA,
+        GlobalSettingsMenuCategory.PREFERENCES,
         GlobalSettingOptions.EMAIL
       )
     );

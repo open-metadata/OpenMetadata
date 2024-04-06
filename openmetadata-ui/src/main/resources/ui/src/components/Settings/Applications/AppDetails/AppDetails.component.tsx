@@ -16,6 +16,7 @@ import {
   StopOutlined,
   UserOutlined,
 } from '@ant-design/icons';
+import Icon from '@ant-design/icons/lib/components/Icon';
 import { IChangeEvent } from '@rjsf/core';
 import { RJSFSchema } from '@rjsf/utils';
 import validator from '@rjsf/validator-ajv8';
@@ -32,7 +33,7 @@ import {
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
-import { noop } from 'lodash';
+import { isEmpty, noop } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
@@ -40,12 +41,7 @@ import { ReactComponent as IconExternalLink } from '../../../../assets/svg/exter
 import { ReactComponent as DeleteIcon } from '../../../../assets/svg/ic-delete.svg';
 import { ReactComponent as IconRestore } from '../../../../assets/svg/ic-restore.svg';
 import { ReactComponent as IconDropdown } from '../../../../assets/svg/menu.svg';
-
-import Icon from '@ant-design/icons/lib/components/Icon';
-import {
-  DE_ACTIVE_COLOR,
-  ICON_DIMENSION,
-} from '../../../../constants/constants';
+import { ICON_DIMENSION } from '../../../../constants/constants';
 import { GlobalSettingOptions } from '../../../../constants/GlobalSettings.constants';
 import { ServiceCategory } from '../../../../enums/service.enum';
 import {
@@ -80,7 +76,7 @@ import AppSchedule from '../AppSchedule/AppSchedule.component';
 import { ApplicationTabs } from '../MarketPlaceAppDetails/MarketPlaceAppDetails.interface';
 import './app-details.less';
 import { AppAction } from './AppDetails.interface';
-import applicationSchemaClassBase from './ApplicationSchemaClassBase';
+import applicationsClassBase from './ApplicationsClassBase';
 
 const AppDetails = () => {
   const { t } = useTranslation();
@@ -97,7 +93,7 @@ const AppDetails = () => {
     isRunLoading: false,
     isSaveLoading: false,
   });
-  const UiSchema = applicationSchemaClassBase.getJSONUISchema();
+  const UiSchema = applicationsClassBase.getJSONUISchema();
 
   const fetchAppDetails = useCallback(async () => {
     setLoadingState((prev) => ({ ...prev, isFetchLoading: true }));
@@ -108,7 +104,7 @@ const AppDetails = () => {
       });
       setAppData(data);
 
-      const schema = await applicationSchemaClassBase.importSchema(fqn);
+      const schema = await applicationsClassBase.importSchema(fqn);
 
       setJsonSchema(schema.default);
     } catch (error) {
@@ -175,13 +171,7 @@ const AppDetails = () => {
                 description={t('message.restore-action-description', {
                   entityType: getEntityName(appData),
                 })}
-                icon={
-                  <IconRestore
-                    className="m-t-xss"
-                    name="Restore"
-                    width="18px"
-                  />
-                }
+                icon={IconRestore}
                 id="restore-button"
                 name={t('label.restore')}
               />
@@ -202,11 +192,7 @@ const AppDetails = () => {
                 description={t('message.disable-app', {
                   app: getEntityName(appData),
                 })}
-                icon={
-                  <StopOutlined
-                    style={{ fontSize: '18px', color: DE_ACTIVE_COLOR }}
-                  />
-                }
+                icon={StopOutlined as SvgComponent}
                 id="disable-button"
                 name={t('label.disable')}
               />
@@ -219,24 +205,28 @@ const AppDetails = () => {
             },
           },
         ]),
-    {
-      label: (
-        <ManageButtonItemLabel
-          description={t('message.uninstall-app', {
-            app: getEntityName(appData),
-          })}
-          icon={<DeleteIcon color={DE_ACTIVE_COLOR} width="18px" />}
-          id="uninstall-button"
-          name={t('label.uninstall')}
-        />
-      ),
-      key: 'uninstall-button',
-      onClick: () => {
-        setShowDeleteModel(true);
-        setShowActions(false);
-        setAction(AppAction.UNINSTALL);
-      },
-    },
+    ...(appData?.system
+      ? []
+      : [
+          {
+            label: (
+              <ManageButtonItemLabel
+                description={t('message.uninstall-app', {
+                  app: getEntityName(appData),
+                })}
+                icon={DeleteIcon}
+                id="uninstall-button"
+                name={t('label.uninstall')}
+              />
+            ),
+            key: 'uninstall-button',
+            onClick: () => {
+              setShowDeleteModel(true);
+              setShowActions(false);
+              setAction(AppAction.UNINSTALL);
+            },
+          },
+        ]),
   ];
 
   const onConfigSave = async (data: IChangeEvent) => {
@@ -273,8 +263,10 @@ const AppDetails = () => {
       const updatedData = {
         ...appData,
         appSchedule: {
-          scheduleType: ScheduleTimeline.Custom,
-          cronExpression: cron,
+          scheduleTimeline: isEmpty(cron)
+            ? ScheduleTimeline.None
+            : ScheduleTimeline.Custom,
+          ...(cron ? { cronExpression: cron } : {}),
         },
       };
 
