@@ -68,8 +68,8 @@ class JsonUtilsTest {
     newUser2Builder.add("id", newUserId2).add("type", "user").add("name", "adam_wong");
     JsonObject newUser1 = newUser1Builder.build();
     JsonObject newUser2 = newUser2Builder.build();
-    patchBuilder.add("/users/3", newUser2);
     patchBuilder.add("/users/2", newUser1);
+    patchBuilder.add("/users/3", newUser2);
     Team updated = JsonUtils.applyPatch(original, patchBuilder.build(), Team.class);
 
     assertEquals(4, updated.getUsers().size());
@@ -98,7 +98,7 @@ class JsonUtilsTest {
     // Delete the two users from the team
     patchBuilder = Json.createPatchBuilder();
     patchBuilder.remove("/users/0");
-    patchBuilder.remove("/users/1");
+    patchBuilder.remove("/users/0");
     updated = JsonUtils.applyPatch(original, patchBuilder.build(), Team.class);
     // Assert if both the users were removed
     assertTrue(updated.getUsers().isEmpty());

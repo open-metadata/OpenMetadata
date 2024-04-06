@@ -53,6 +53,8 @@ export const useApplicationStore = create<ApplicationStore>()(
       resetTheme: () => {
         set({ theme: { ...DEFAULT_THEME } });
       },
+      searchCriteria: '',
+
       setHelperFunctionsRef: (helperFunctions: HelperFunctions) => {
         set({ ...helperFunctions });
       },
@@ -151,6 +153,9 @@ export const useApplicationStore = create<ApplicationStore>()(
       },
       removeRefreshToken: () => {
         set({ refreshTokenKey: '' });
+      },
+      updateSearchCriteria: (criteria) => {
+        set({ searchCriteria: criteria });
       },
     }),
     {

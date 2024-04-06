@@ -1,5 +1,5 @@
 /*
- *  Copyright 2022 Collate.
+ *  Copyright 2024 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -11,21 +11,15 @@
  *  limitations under the License.
  */
 
-@import url('../../styles/variables.less');
+import { GlossaryTerm } from '../../../generated/entity/data/glossaryTerm';
 
-.logs-heading {
-  background: #222222;
-  .ant-typography {
-    color: #fff;
-  }
+export interface ChangeParentHierarchyProps {
+  selectedData: GlossaryTerm;
+  onCancel: () => void;
+  onSubmit: (id: string) => Promise<void>;
 }
 
-.log-card {
-  .ant-card-body {
-    padding: 0;
-  }
-}
-
-.summary-key {
-  color: @text-color-tertiary;
+export interface SelectOptions {
+  label: string;
+  value: string;
 }
