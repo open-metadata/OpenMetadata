@@ -67,7 +67,7 @@ const AppearanceConfigSettingsPage = () => {
     () =>
       getSettingPageEntityBreadCrumb(
         GlobalSettingsMenuCategory.PREFERENCES,
-        'Appearance'
+        t('label.appearance')
       ),
     []
   );
@@ -246,7 +246,7 @@ const AppearanceConfigSettingsPage = () => {
   }, [theme, applicationConfig]);
 
   return (
-    <PageLayoutV1 pageTitle={t('label.custom-logo')}>
+    <PageLayoutV1 pageTitle={t('label.appearance')}>
       <Row align="middle" className="page-container" gutter={[0, 16]}>
         <Col span={24}>
           <TitleBreadcrumb titleLinks={breadcrumbs} />
@@ -257,7 +257,7 @@ const AppearanceConfigSettingsPage = () => {
               <Space className="w-full justify-between">
                 <PageHeader
                   data={{
-                    header: 'Appearance',
+                    header: t('label.appearance'),
                     subHeader:
                       'Customize OpenMetadata with your company logo, monogram, favicon and brand color.',
                   }}
