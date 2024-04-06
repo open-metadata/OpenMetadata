@@ -1,5 +1,5 @@
 {
-  "summary": "Database CSV file is used for importing and exporting table metadata from and to an **existing** database.",
+  "summary": "Database Service CSV file is used for importing and exporting service metadata from and to an **existing** database service.",
   "headers": [
     {
       "name": "name",
@@ -59,22 +59,6 @@
       "examples": [
         "`Tier.Tier1`",
         "`Tier.Tier2`"
-      ]
-    },
-    {
-      "name": "retentionPeriod",
-      "required": false,
-      "description": "Retention period of the data in the database schema. Period is expressed as duration in ISO 8601 format in UTC. Example - `P23DT23H`. When not set, the retention period is inherited from the parent database, if it exists.",
-      "examples": [
-        "`P23DT23H`"
-      ]
-    },
-    {
-      "name": "sourceUrl",
-      "required": false,
-      "description": "Source URL for the database schema",
-      "examples": [
-        "http://domain.com/system/customer_schema"
       ]
     },
     {

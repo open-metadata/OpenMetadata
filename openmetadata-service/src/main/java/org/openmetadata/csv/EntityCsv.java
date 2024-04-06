@@ -34,6 +34,7 @@ import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVFormat.Builder;
 import org.apache.commons.csv.CSVPrinter;
 import org.apache.commons.csv.CSVRecord;
+import org.apache.commons.lang3.tuple.Pair;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.EntityInterface;
@@ -275,20 +276,26 @@ public abstract class EntityCsv<T extends EntityInterface> {
   }
 
   protected final List<TagLabel> getTagLabels(
-      CSVPrinter printer, CSVRecord csvRecord, int fieldNumber) throws IOException {
+      CSVPrinter printer,
+      CSVRecord csvRecord,
+      List<Pair<Integer, TagSource>> fieldNumbersWithSource)
+      throws IOException {
     if (!processRecord) {
       return null;
     }
-    List<EntityReference> refs = getEntityReferences(printer, csvRecord, fieldNumber, Entity.TAG);
-    if (!processRecord || nullOrEmpty(refs)) {
-      return null;
-    }
     List<TagLabel> tagLabels = new ArrayList<>();
-    for (EntityReference ref : refs) {
-      tagLabels.add(
-          new TagLabel()
-              .withSource(TagSource.CLASSIFICATION)
-              .withTagFQN(ref.getFullyQualifiedName()));
+    for (Pair<Integer, TagSource> pair : fieldNumbersWithSource) {
+      int fieldNumbers = pair.getLeft();
+      TagSource source = pair.getRight();
+      List<EntityReference> refs =
+          source == TagSource.CLASSIFICATION
+              ? getEntityReferences(printer, csvRecord, fieldNumbers, Entity.TAG)
+              : getEntityReferences(printer, csvRecord, fieldNumbers, Entity.GLOSSARY_TERM);
+      if (processRecord && !nullOrEmpty(refs)) {
+        for (EntityReference ref : refs) {
+          tagLabels.add(new TagLabel().withSource(source).withTagFQN(ref.getFullyQualifiedName()));
+        }
+      }
     }
     return tagLabels;
   }
@@ -391,6 +398,7 @@ public abstract class EntityCsv<T extends EntityInterface> {
         responseStatus = response.getStatus();
       } catch (Exception ex) {
         importFailure(resultsPrinter, ex.getMessage(), csvRecord);
+        importResult.setStatus(ApiStatus.FAILURE);
         return;
       }
     } else { // Dry run don't create the entity

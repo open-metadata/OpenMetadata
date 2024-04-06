@@ -132,7 +132,45 @@ public final class CsvUtil {
     csvRecord.add(
         nullOrEmpty(tags)
             ? null
-            : tags.stream().map(TagLabel::getTagFQN).collect(Collectors.joining(FIELD_SEPARATOR)));
+            : tags.stream()
+                .filter(
+                    tagLabel ->
+                        tagLabel.getSource().equals(TagLabel.TagSource.CLASSIFICATION)
+                            && !tagLabel.getTagFQN().split("\\.")[0].equals("Tier")
+                            && !tagLabel.getLabelType().equals(TagLabel.LabelType.DERIVED))
+                .map(TagLabel::getTagFQN)
+                .collect(Collectors.joining(FIELD_SEPARATOR)));
+
+    return csvRecord;
+  }
+
+  public static List<String> addGlossaryTerms(List<String> csvRecord, List<TagLabel> tags) {
+    csvRecord.add(
+        nullOrEmpty(tags)
+            ? null
+            : tags.stream()
+                .filter(
+                    tagLabel ->
+                        tagLabel.getSource().equals(TagLabel.TagSource.GLOSSARY)
+                            && !tagLabel.getTagFQN().split("\\.")[0].equals("Tier"))
+                .map(TagLabel::getTagFQN)
+                .collect(Collectors.joining(FIELD_SEPARATOR)));
+
+    return csvRecord;
+  }
+
+  public static List<String> addTagTiers(List<String> csvRecord, List<TagLabel> tags) {
+    csvRecord.add(
+        nullOrEmpty(tags)
+            ? null
+            : tags.stream()
+                .filter(
+                    tagLabel ->
+                        tagLabel.getSource().equals(TagLabel.TagSource.CLASSIFICATION)
+                            && tagLabel.getTagFQN().split("\\.")[0].equals("Tier"))
+                .map(TagLabel::getTagFQN)
+                .collect(Collectors.joining(FIELD_SEPARATOR)));
+
     return csvRecord;
   }
 
