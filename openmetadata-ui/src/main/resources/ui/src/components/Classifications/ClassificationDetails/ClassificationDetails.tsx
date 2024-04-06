@@ -16,7 +16,7 @@ import ButtonGroup from 'antd/lib/button/button-group';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
-import { capitalize, isUndefined, toString } from 'lodash';
+import { capitalize, isEmpty, isUndefined, toString } from 'lodash';
 import React, {
   forwardRef,
   useCallback,
@@ -93,7 +93,6 @@ const ClassificationDetails = forwardRef(
     const history = useHistory();
     const [tags, setTags] = useState<Tag[]>([]);
     const [isTagsLoading, setIsTagsLoading] = useState(false);
-
     const {
       currentPage,
       paging,
@@ -478,7 +477,6 @@ const ClassificationDetails = forwardRef(
             </Col>
           </Row>
         )}
-
         <div className="m-b-sm m-t-xs" data-testid="description-container">
           <DescriptionV1
             className={classNames({
@@ -488,6 +486,7 @@ const ClassificationDetails = forwardRef(
             entityName={getEntityName(currentClassification)}
             entityType={EntityType.CLASSIFICATION}
             hasEditAccess={editDescriptionPermission}
+            isDescriptionExpanded={isEmpty(tags)}
             isEdit={isEditClassification}
             showCommentsIcon={false}
             onCancel={handleCancelEditDescription}

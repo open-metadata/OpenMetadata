@@ -516,6 +516,7 @@ const DatabaseDetails: FunctionComponent = () => {
                     entityName={getEntityName(database)}
                     entityType={EntityType.DATABASE}
                     hasEditAccess={editDescriptionPermission}
+                    isDescriptionExpanded={isEmpty(database)}
                     isEdit={isEdit}
                     showActions={!database.deleted}
                     onCancel={onCancel}

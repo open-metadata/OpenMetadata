@@ -566,6 +566,7 @@ const ContainerPage = () => {
                   entityName={entityName}
                   entityType={EntityType.CONTAINER}
                   hasEditAccess={editDescriptionPermission}
+                  isDescriptionExpanded={isEmpty(containerChildrenData)}
                   isEdit={isEditDescription}
                   owner={owner}
                   showActions={!deleted}

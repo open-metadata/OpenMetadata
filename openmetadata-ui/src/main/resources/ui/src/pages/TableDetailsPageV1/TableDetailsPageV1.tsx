@@ -518,6 +518,7 @@ const TableDetailsPageV1: React.FC = () => {
               entityName={entityName}
               entityType={EntityType.TABLE}
               hasEditAccess={editDescriptionPermission}
+              isDescriptionExpanded={isEmpty(tableDetails?.columns)}
               isEdit={isEdit}
               owner={tableDetails?.owner}
               showActions={!deleted}

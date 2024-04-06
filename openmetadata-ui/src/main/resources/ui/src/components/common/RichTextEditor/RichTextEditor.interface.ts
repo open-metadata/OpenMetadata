@@ -35,6 +35,7 @@ export interface PreviewerProp {
   className?: string;
   enableSeeMoreVariant?: boolean;
   showReadMoreBtn?: boolean;
+  isDescriptionExpanded?: boolean;
   textVariant?: TextVariant;
 }
 
