@@ -45,6 +45,7 @@ export const useApplicationStore = create<ApplicationStore>()(
       oidcIdToken: '',
       refreshTokenKey: '',
       loading: false,
+      searchCriteria: '',
 
       setHelperFunctionsRef: (helperFunctions: HelperFunctions) => {
         set({ ...helperFunctions });
@@ -144,6 +145,9 @@ export const useApplicationStore = create<ApplicationStore>()(
       },
       removeRefreshToken: () => {
         set({ refreshTokenKey: '' });
+      },
+      updateSearchCriteria: (criteria) => {
+        set({ searchCriteria: criteria });
       },
     }),
     {

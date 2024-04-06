@@ -558,6 +558,7 @@ const DashboardDetails = ({
       hasEditTagAccess,
       handleUpdateChart,
       handleChartTagSelection,
+      charts,
     ]
   );
 
@@ -607,6 +608,7 @@ const DashboardDetails = ({
                   entityName={entityName}
                   entityType={EntityType.DASHBOARD}
                   hasEditAccess={editDescriptionPermission}
+                  isDescriptionExpanded={isEmpty(charts)}
                   isEdit={isEdit}
                   owner={dashboardDetails.owner}
                   showActions={!deleted}
