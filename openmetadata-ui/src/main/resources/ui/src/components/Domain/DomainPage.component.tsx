@@ -25,6 +25,7 @@ import { ResourceEntity } from '../../context/PermissionProvider/PermissionProvi
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { Domain } from '../../generated/entity/domains/domain';
 import { Operation } from '../../generated/entity/policies/policy';
+import { useDomainStore } from '../../hooks/useDomainStore';
 import { useFqn } from '../../hooks/useFqn';
 import { getDomainByName, patchDomains } from '../../rest/domainAPI';
 import { checkPermission } from '../../utils/PermissionsUtils';
@@ -34,7 +35,6 @@ import Loader from '../common/Loader/Loader';
 import './domain.less';
 import DomainDetailsPage from './DomainDetailsPage/DomainDetailsPage.component';
 import DomainsLeftPanel from './DomainLeftPanel/DomainLeftPanel.component';
-import { useDomainProvider } from './DomainProvider/DomainProvider';
 
 const DomainPage = () => {
   const { t } = useTranslation();
@@ -42,7 +42,7 @@ const DomainPage = () => {
   const history = useHistory();
   const { permissions } = usePermissionProvider();
   const { domains, refreshDomains, updateDomains, domainLoading } =
-    useDomainProvider();
+    useDomainStore();
   const [isMainContentLoading, setIsMainContentLoading] = useState(true);
   const [activeDomain, setActiveDomain] = useState<Domain>();
 

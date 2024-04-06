@@ -21,13 +21,11 @@ import 'react-toastify/dist/ReactToastify.min.css';
 import AppRouter from './components/AppRouter/AppRouter';
 import { AuthProvider } from './components/Auth/AuthProviders/AuthProvider';
 import ErrorBoundary from './components/common/ErrorBoundary/ErrorBoundary';
-import DomainProvider from './components/Domain/DomainProvider/DomainProvider';
 import { EntityExportModalProvider } from './components/Entity/EntityExportModalProvider/EntityExportModalProvider.component';
 import ApplicationsProvider from './components/Settings/Applications/ApplicationsProvider/ApplicationsProvider';
 import WebAnalyticsProvider from './components/WebAnalytics/WebAnalyticsProvider';
 import { TOAST_OPTIONS } from './constants/Toasts.constants';
 import DirectionProvider from './context/DirectionProvider/DirectionProvider';
-import GlobalSearchProvider from './context/GlobalSearchProvider/GlobalSearchProvider';
 import PermissionProvider from './context/PermissionProvider/PermissionProvider';
 import TourProvider from './context/TourProvider/TourProvider';
 import WebSocketProvider from './context/WebSocketProvider/WebSocketProvider';
@@ -80,15 +78,11 @@ const App: FC = () => {
                       <WebAnalyticsProvider>
                         <PermissionProvider>
                           <WebSocketProvider>
-                            <GlobalSearchProvider>
-                              <ApplicationsProvider>
-                                <DomainProvider>
-                                  <EntityExportModalProvider>
-                                    <AppRouter />
-                                  </EntityExportModalProvider>
-                                </DomainProvider>
-                              </ApplicationsProvider>
-                            </GlobalSearchProvider>
+                            <ApplicationsProvider>
+                              <EntityExportModalProvider>
+                                <AppRouter />
+                              </EntityExportModalProvider>
+                            </ApplicationsProvider>
                           </WebSocketProvider>
                         </PermissionProvider>
                       </WebAnalyticsProvider>

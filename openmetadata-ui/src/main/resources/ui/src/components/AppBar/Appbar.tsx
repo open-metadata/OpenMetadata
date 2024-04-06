@@ -18,7 +18,6 @@ import { useTranslation } from 'react-i18next';
 import { useHistory, useLocation } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import { getExplorePath, TOUR_SEARCH_TERM } from '../../constants/constants';
-import { useGlobalSearchProvider } from '../../context/GlobalSearchProvider/GlobalSearchProvider';
 import { useTourProvider } from '../../context/TourProvider/TourProvider';
 import { CurrentTourPageType } from '../../enums/tour.enum';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
@@ -40,10 +39,8 @@ const Appbar: React.FC = (): JSX.Element => {
   const { isTourOpen, updateTourPage, updateTourSearch, tourSearchValue } =
     useTourProvider();
 
-  const { isAuthenticated, onLogoutHandler, getOidcToken } =
+  const { isAuthenticated, searchCriteria, onLogoutHandler, getOidcToken } =
     useApplicationStore();
-
-  const { searchCriteria } = useGlobalSearchProvider();
 
   const parsedQueryString = Qs.parse(
     location.search.startsWith('?')

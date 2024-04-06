@@ -13,11 +13,12 @@
 import { Layout } from 'antd';
 import classNames from 'classnames';
 import { isEmpty } from 'lodash';
-import React, { useMemo } from 'react';
+import React, { useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Redirect, Route, Switch } from 'react-router-dom';
 import { ROUTES } from '../../constants/constants';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
+import { useDomainStore } from '../../hooks/useDomainStore';
 import SignUpPage from '../../pages/SignUp/SignUpPage';
 import applicationRoutesClass from '../../utils/ApplicationRoutesClassBase';
 import Appbar from '../AppBar/Appbar';
@@ -29,9 +30,16 @@ const AppContainer = () => {
   const { i18n } = useTranslation();
   const { Header, Sider, Content } = Layout;
   const { currentUser } = useApplicationStore();
+  const { fetchDomainList } = useDomainStore();
   const AuthenticatedRouter = applicationRoutesClass.getRouteElements();
   const ApplicationExtras = applicationsClassBase.getApplicationExtension();
   const isDirectionRTL = useMemo(() => i18n.dir() === 'rtl', [i18n]);
+
+  useEffect(() => {
+    if (currentUser?.id) {
+      fetchDomainList();
+    }
+  }, [currentUser?.id]);
 
   return (
     <Switch>
