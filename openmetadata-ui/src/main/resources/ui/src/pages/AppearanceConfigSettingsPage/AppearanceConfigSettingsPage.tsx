@@ -10,11 +10,27 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Card, Col, Form, FormProps, Row, Space } from 'antd';
+
+import Icon from '@ant-design/icons';
+import {
+  Badge,
+  Button,
+  Card,
+  Col,
+  Form,
+  FormProps,
+  Row,
+  Space,
+  Typography,
+} from 'antd';
 import { Theme } from 'antd/lib/config-provider/context';
-import React, { useMemo } from 'react';
+import { AxiosError } from 'axios';
+import { startCase } from 'lodash';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
+import { ReactComponent as DomainIcon } from '../../assets/svg/ic-domain.svg';
+import { ReactComponent as ShareIcon } from '../../assets/svg/ic-share.svg';
 import BrandImage from '../../components/common/BrandImage/BrandImage';
 import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
 import { TitleBreadcrumbProps } from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.interface';
@@ -23,17 +39,29 @@ import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import { GlobalSettingsMenuCategory } from '../../constants/GlobalSettings.constants';
 import { HEX_COLOR_CODE_REGEX } from '../../constants/regex.constants';
 import { LogoConfiguration } from '../../generated/configuration/logoConfiguration';
+import { Settings, SettingType } from '../../generated/settings/settings';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
 import { FieldProp, FieldTypes } from '../../interface/FormUtils.interface';
+import { updateSettingsConfig } from '../../rest/settingConfigAPI';
 import { getField } from '../../utils/formUtils';
 import { getSettingPageEntityBreadCrumb } from '../../utils/GlobalSettingsUtils';
+import { showErrorToast } from '../../utils/ToastUtils';
 import './appearance-config-settings-page.less';
 
 const AppearanceConfigSettingsPage = () => {
   const history = useHistory();
-  const { theme, setTheme } = useApplicationStore();
+  const { theme, setTheme, resetTheme, applicationConfig } =
+    useApplicationStore();
   const { t } = useTranslation();
   const [form] = Form.useForm();
+  const [loading, setLoading] = useState<boolean>(false);
+
+  const [formState, setFormState] = useState<
+    Partial<LogoConfiguration & Theme>
+  >({
+    ...theme,
+    ...applicationConfig,
+  });
 
   const breadcrumbs: TitleBreadcrumbProps['titleLinks'] = useMemo(
     () =>
@@ -44,16 +72,37 @@ const AppearanceConfigSettingsPage = () => {
     []
   );
 
-  const handleSave: FormProps['onFinish'] = (
+  const handleSave: FormProps['onFinish'] = async (
     values: Theme & LogoConfiguration
   ) => {
-    const {
-      customFaviconUrlPath,
-      customLogoUrlPath,
-      customMonogramUrlPath,
-      ...rest
-    } = values;
-    setTheme(rest);
+    setLoading(true);
+    try {
+      const {
+        primaryColor,
+        errorColor,
+        successColor,
+        warningColor,
+        infoColor,
+        ...configValues
+      } = values;
+      setTheme({
+        primaryColor,
+        errorColor,
+        successColor,
+        warningColor,
+        infoColor,
+      });
+
+      const configData = {
+        config_type: SettingType.CustomLogoConfiguration,
+        config_value: configValues,
+      };
+      await updateSettingsConfig(configData as Settings);
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const themeFormFields: FieldProp[] = [
@@ -185,6 +234,17 @@ const AppearanceConfigSettingsPage = () => {
     },
   ];
 
+  useEffect(() => {
+    setFormState({
+      ...theme,
+      ...applicationConfig,
+    });
+    form.setFieldsValue({
+      ...theme,
+      ...applicationConfig,
+    });
+  }, [theme, applicationConfig]);
+
   return (
     <PageLayoutV1 pageTitle={t('label.custom-logo')}>
       <Row align="middle" className="page-container" gutter={[0, 16]}>
@@ -202,7 +262,9 @@ const AppearanceConfigSettingsPage = () => {
                       'Customize OpenMetadata with your company logo, monogram, favicon and brand color.',
                   }}
                 />
-                <Button type="primary">{t('label.reset')}</Button>
+                <Button type="primary" onClick={resetTheme}>
+                  {t('label.reset')}
+                </Button>
               </Space>
             </Col>
           </Row>
@@ -210,22 +272,31 @@ const AppearanceConfigSettingsPage = () => {
         <Col offset={2} span={20}>
           <Form
             form={form}
-            initialValues={theme}
+            initialValues={{
+              ...theme,
+              ...applicationConfig,
+            }}
             layout="vertical"
-            onFinish={handleSave}>
+            onFinish={handleSave}
+            onValuesChange={(_, allValues) => setFormState({ ...allValues })}>
             <div className="white-label-card-wrapper m-b-md">
-              <Card className="white-label-config-card" title="Custom Logo">
+              <Card
+                className="white-label-config-card"
+                title={t('label.custom-logo')}>
                 <Row className="w-full" gutter={[16, 16]}>
                   {customLogoFormFields.map((field) => {
                     return (
                       <Col className="w-full" key={field.name} span={24}>
                         <Row gutter={[48, 16]}>
                           <Col span={12}>{getField(field)}</Col>
-                          <Col>
+                          <Col style={{ placeSelf: 'center' }}>
                             <BrandImage
                               className="preview-image"
                               height="auto"
                               isMonoGram={field.name !== 'customLogoUrlPath'}
+                              src={
+                                formState[field.name as keyof LogoConfiguration]
+                              }
                               width={100}
                             />
                           </Col>
@@ -235,14 +306,72 @@ const AppearanceConfigSettingsPage = () => {
                   })}
                 </Row>
               </Card>
-              <Card className="white-label-config-card" title="Custom Theme">
+              <Card
+                className="white-label-config-card"
+                title={
+                  <div className="d-flex items-center">
+                    <Typography.Text>{t('label.custom-theme')}</Typography.Text>
+
+                    <Badge
+                      className="custom-theme-beta-tag"
+                      count={t('label.beta')}
+                      offset={[10, 0]}
+                      size="small"
+                    />
+                  </div>
+                }>
                 <Row className="w-full" gutter={[16, 16]}>
                   {themeFormFields.map((field) => {
+                    const currentColor = formState[field.name as keyof Theme];
+
                     return (
                       <Col className="w-full" key={field.name} span={24}>
                         <Row gutter={[48, 16]}>
                           <Col span={12}>{getField(field)}</Col>
-                          <Col />
+                          <Col style={{ placeSelf: 'center' }}>
+                            <Card className="theme-preview">
+                              <Button
+                                style={{
+                                  background: currentColor,
+                                  color: 'white',
+                                  width: '86px',
+                                }}>
+                                {startCase(field.name.replace('Color', ''))}
+                              </Button>
+
+                              <Button
+                                icon={<Icon component={ShareIcon} />}
+                                style={{
+                                  width: '56px',
+                                  color: currentColor,
+                                  borderColor: currentColor,
+                                }}
+                              />
+                              <Button
+                                style={{
+                                  color: currentColor,
+                                  borderColor: currentColor,
+                                  width: '86px',
+                                }}
+                                type="default">
+                                {startCase(field.name.replace('Color', ''))}
+                              </Button>
+                              <DomainIcon
+                                style={{
+                                  color: currentColor,
+                                }}
+                                width={32}
+                              />
+                              <Button
+                                style={{
+                                  color: currentColor,
+                                  padding: 0,
+                                }}
+                                type="link">
+                                {t('label.link')}
+                              </Button>
+                            </Card>
+                          </Col>
                         </Row>
                       </Col>
                     );
@@ -261,7 +390,11 @@ const AppearanceConfigSettingsPage = () => {
                 onClick={() => history.goBack()}>
                 {t('label.cancel')}
               </Button>
-              <Button data-testid="save" htmlType="submit" type="primary">
+              <Button
+                data-testid="save"
+                htmlType="submit"
+                loading={loading}
+                type="primary">
                 {t('label.save')}
               </Button>
             </Space>
