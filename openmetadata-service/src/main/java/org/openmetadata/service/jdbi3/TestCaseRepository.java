@@ -98,8 +98,9 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
   @Override
   public void setInheritedFields(TestCase testCase, Fields fields) {
     EntityLink entityLink = EntityLink.parse(testCase.getEntityLink());
-    Table table = Entity.getEntity(entityLink, "owner", ALL);
+    Table table = Entity.getEntity(entityLink, "owner,domain", ALL);
     inheritOwner(testCase, fields, table);
+    inheritDomain(testCase, fields, table);
   }
 
   @Override
@@ -129,7 +130,8 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
 
     // set the test case result state in the test case entity if the state has changed
     if (!Objects.equals(original, updated)) {
-      TestCase testCase = findByName(fqn, Include.NON_DELETED);
+      TestCase testCase =
+          Entity.getEntityByName(TEST_CASE, fqn, "testDefinition", Include.NON_DELETED);
       setTestCaseResult(testCase, updated, false);
     }
 
@@ -261,6 +263,7 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
     // Validate the request content
     TestCase testCase = findByName(fqn, Include.NON_DELETED);
     ArrayList<String> fields = new ArrayList<>();
+    fields.add("testDefinition");
     fields.add(TEST_SUITE_FIELD);
 
     // set the test case resolution status reference if test failed, by either
@@ -344,7 +347,8 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
   public RestUtil.PutResponse<TestCaseResult> deleteTestCaseResult(
       String updatedBy, String fqn, Long timestamp) {
     // Validate the request content
-    TestCase testCase = findByName(fqn, Include.NON_DELETED);
+    TestCase testCase =
+        Entity.getEntityByName(TEST_CASE, fqn, "testDefinition", Include.NON_DELETED);
     TestCaseResult storedTestCaseResult =
         JsonUtils.readValue(
             daoCollection
@@ -409,13 +413,15 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
       updateResultSummaries(testCase, isDeleted, resultSummaries, resultSummary);
 
       // Update test case result summary attribute for the test suite
+      TestSuiteRepository testSuiteRepository =
+          (TestSuiteRepository) Entity.getEntityRepository(Entity.TEST_SUITE);
+      TestSuite original =
+          TestSuiteRepository.copyTestSuite(
+              testSuite); // we'll need the original state to update the test suite
       testSuite.setTestCaseResultSummary(resultSummaries);
-      daoCollection
-          .testSuiteDAO()
-          .update(
-              testSuite.getId(),
-              testSuite.getFullyQualifiedName(),
-              JsonUtils.pojoToJson(testSuite));
+      EntityRepository<TestSuite>.EntityUpdater testSuiteUpdater =
+          testSuiteRepository.getUpdater(original, testSuite, Operation.PUT);
+      testSuiteUpdater.update();
     }
   }
 
@@ -476,7 +482,12 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
                   .class); // we'll fetch the new latest result to update the test case state
       testCase.setTestCaseResult(latestTestCaseResult);
     }
-    dao.update(testCase.getId(), testCase.getFullyQualifiedName(), JsonUtils.pojoToJson(testCase));
+    // Update test case result attribute for the test case
+    Map<String, Object> jsonMap = JsonUtils.getMap(testCase);
+    jsonMap.remove("testCaseResult");
+    TestCase original = JsonUtils.readOrConvertValue(jsonMap, TestCase.class);
+    EntityUpdater testCaseUpdater = getUpdater(original, testCase, Operation.PUT);
+    testCaseUpdater.update();
   }
 
   private boolean compareTestCaseResult(TestCase testCase, TestCaseResult testCaseResult) {
@@ -652,11 +663,16 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
     testSuite.setSummary(null); // we don't want to store the summary in the database
     List<ResultSummary> resultSummaries = testSuite.getTestCaseResultSummary();
     resultSummaries.removeIf(summary -> summary.getTestCaseName().equals(testCaseFqn));
+
+    TestSuiteRepository testSuiteRepository =
+        (TestSuiteRepository) Entity.getEntityRepository(Entity.TEST_SUITE);
+    TestSuite original =
+        TestSuiteRepository.copyTestSuite(
+            testSuite); // we'll need the original state to update the test suite
     testSuite.setTestCaseResultSummary(resultSummaries);
-    daoCollection
-        .testSuiteDAO()
-        .update(
-            testSuite.getId(), testSuite.getFullyQualifiedName(), JsonUtils.pojoToJson(testSuite));
+    EntityRepository<TestSuite>.EntityUpdater testSuiteUpdater =
+        testSuiteRepository.getUpdater(original, testSuite, Operation.PUT);
+    testSuiteUpdater.update();
   }
 
   @Override
@@ -908,6 +924,7 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
           "computePassedFailedRowCount",
           original.getComputePassedFailedRowCount(),
           updated.getComputePassedFailedRowCount());
+      recordChange("testCaseResult", original.getTestCaseResult(), updated.getTestCaseResult());
     }
   }
 }

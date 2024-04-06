@@ -24,10 +24,12 @@ import {
   PipelineType,
 } from '../../../../generated/api/services/ingestionPipelines/createIngestionPipeline';
 import { IngestionPipeline } from '../../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
+import { useApplicationStore } from '../../../../hooks/useApplicationStore';
 import { IngestionWorkflowData } from '../../../../interface/service.interface';
 import { getIngestionFrequency } from '../../../../utils/CommonUtils';
+import { cleanWorkFlowData } from '../../../../utils/IngestionWorkflowUtils';
 import { getIngestionName } from '../../../../utils/ServiceUtils';
-import { useAuthContext } from '../../../Auth/AuthProviders/AuthProvider';
+import { generateUUID } from '../../../../utils/StringsUtils';
 import SuccessScreen from '../../../common/SuccessScreen/SuccessScreen';
 import DeployIngestionLoaderModal from '../../../Modals/DeployIngestionLoaderModal/DeployIngestionLoaderModal';
 import IngestionStepper from '../Ingestion/IngestionStepper/IngestionStepper.component';
@@ -62,13 +64,15 @@ const AddIngestion = ({
   onFocus,
 }: AddIngestionProps) => {
   const { t } = useTranslation();
-  const { currentUser } = useAuthContext();
+  const { currentUser } = useApplicationStore();
 
   // lazy initialization to initialize the data only once
   const [workflowData, setWorkflowData] = useState<IngestionWorkflowData>(
     () => ({
       ...(data?.sourceConfig.config ?? {}),
-      name: data?.name ?? getIngestionName(serviceData.name, pipelineType),
+      name: data?.name ?? generateUUID(),
+      displayName:
+        data?.displayName ?? getIngestionName(serviceData.name, pipelineType),
       enableDebugLog: data?.loggerLevel === LogLevels.Debug,
     })
   );
@@ -82,10 +86,11 @@ const AddIngestion = ({
   const { ingestionName, retries } = useMemo(
     () => ({
       ingestionName:
-        data?.name ?? getIngestionName(serviceData.name, pipelineType),
+        workflowData?.displayName ??
+        getIngestionName(serviceData.name, pipelineType),
       retries: data?.airflowConfig.retries ?? 0,
     }),
-    [data, pipelineType, serviceData]
+    [data, pipelineType, serviceData, workflowData]
   );
 
   const isSettingsPipeline = useMemo(
@@ -163,7 +168,8 @@ const AddIngestion = ({
         type: serviceCategory.slice(0, -1),
       },
       sourceConfig: {
-        config: { ...rest },
+        // clean the data to remove empty fields
+        config: { ...cleanWorkFlowData(rest) },
       },
     };
 
@@ -204,8 +210,11 @@ const AddIngestion = ({
           : LogLevels.Info,
         sourceConfig: {
           config: {
-            ...(omit(workflowData, ['name', 'enableDebugLog', 'displayName']) ??
-              {}),
+            // clean the data to remove empty fields
+            ...cleanWorkFlowData(
+              omit(workflowData, ['name', 'enableDebugLog', 'displayName']) ??
+                {}
+            ),
           },
         },
       };

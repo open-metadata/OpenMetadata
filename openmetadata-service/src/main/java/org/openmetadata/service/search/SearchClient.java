@@ -8,8 +8,10 @@ import java.text.ParseException;
 import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
+import javax.json.JsonObject;
 import javax.net.ssl.SSLContext;
 import javax.ws.rs.core.Response;
+import lombok.Getter;
 import org.apache.commons.lang3.tuple.Pair;
 import org.openmetadata.schema.dataInsight.DataInsightChartResult;
 import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration;
@@ -42,7 +44,7 @@ public interface SearchClient {
       "if((ctx._source.%s == null) || (ctx._source.%s.id == '%s')) { ctx._source.put('%s', params)}";
   String SOFT_DELETE_RESTORE_SCRIPT = "ctx._source.put('deleted', '%s')";
   String REMOVE_TAGS_CHILDREN_SCRIPT =
-      "for (int i = 0; i < ctx._source.tags.length; i++) { if (ctx._source.tags[i].tagFQN == '%s') { ctx._source.tags.remove(i) }}";
+      "for (int i = 0; i < ctx._source.tags.length; i++) { if (ctx._source.tags[i].tagFQN == params.fqn) { ctx._source.tags.remove(i) }}";
 
   String REMOVE_LINEAGE_SCRIPT =
       "for (int i = 0; i < ctx._source.lineage.length; i++) { if (ctx._source.lineage[i].doc_id == '%s') { ctx._source.lineage.remove(i) }}";
@@ -72,6 +74,16 @@ public interface SearchClient {
 
   Response search(SearchRequest request) throws IOException;
 
+  SearchResultListMapper listWithOffset(
+      String filter,
+      int limit,
+      int offset,
+      String index,
+      String sortField,
+      String sortType,
+      String q)
+      throws IOException;
+
   Response searchBySourceUrl(String sourceUrl) throws IOException;
 
   Response searchLineage(
@@ -86,6 +98,8 @@ public interface SearchClient {
   Response searchByField(String fieldName, String fieldValue, String index) throws IOException;
 
   Response aggregate(String index, String fieldName, String value, String query) throws IOException;
+
+  JsonObject aggregate(String query, String index, JsonObject aggregationJson) throws IOException;
 
   Response suggest(SearchRequest request) throws IOException;
 
@@ -108,6 +122,11 @@ public interface SearchClient {
 
   void updateChildren(
       String indexName,
+      Pair<String, String> fieldAndValue,
+      Pair<String, Map<String, Object>> updates);
+
+  void updateChildren(
+      List<String> indexName,
       Pair<String, String> fieldAndValue,
       Pair<String, Map<String, Object>> updates);
 
@@ -167,5 +186,16 @@ public interface SearchClient {
             elasticSearchConfiguration.getTruststorePassword(),
             "ElasticSearch")
         : null;
+  }
+
+  @Getter
+  class SearchResultListMapper {
+    public List<Map<String, Object>> results;
+    public long total;
+
+    public SearchResultListMapper(List<Map<String, Object>> results, long total) {
+      this.results = results;
+      this.total = total;
+    }
   }
 }

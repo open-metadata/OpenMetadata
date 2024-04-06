@@ -83,7 +83,12 @@ class DomodatabaseSource(DatabaseServiceSource):
         self.test_connection()
 
     @classmethod
-    def create(cls, config_dict: dict, metadata: OpenMetadata):
+    def create(
+        cls,
+        config_dict: dict,
+        metadata: OpenMetadata,
+        pipeline_name: Optional[str] = None,
+    ):
         config = WorkflowSource.parse_obj(config_dict)
         connection: DomoDatabaseConnection = config.serviceConnection.__root__.config
         if not isinstance(connection, DomoDatabaseConnection):
@@ -102,7 +107,7 @@ class DomodatabaseSource(DatabaseServiceSource):
         yield Either(
             right=CreateDatabaseRequest(
                 name=database_name,
-                service=self.context.database_service,
+                service=self.context.get().database_service,
             )
         )
 
@@ -119,14 +124,14 @@ class DomodatabaseSource(DatabaseServiceSource):
                 database=fqn.build(
                     metadata=self.metadata,
                     entity_type=Database,
-                    service_name=self.context.database_service,
-                    database_name=self.context.database,
+                    service_name=self.context.get().database_service,
+                    database_name=self.context.get().database,
                 ),
             )
         )
 
     def get_tables_name_and_type(self) -> Optional[Iterable[Tuple[str, str]]]:
-        schema_name = self.context.database_schema
+        schema_name = self.context.get().database_schema
         try:
             tables = list(self.domo_client.datasets.list())
             for table in tables:
@@ -135,9 +140,9 @@ class DomodatabaseSource(DatabaseServiceSource):
                 table_fqn = fqn.build(
                     self.metadata,
                     entity_type=Table,
-                    service_name=self.context.database_service,
-                    database_name=self.context.database,
-                    schema_name=self.context.database_schema,
+                    service_name=self.context.get().database_service,
+                    database_name=self.context.get().database,
+                    schema_name=self.context.get().database_schema,
                     table_name=table["name"],
                 )
 
@@ -194,9 +199,9 @@ class DomodatabaseSource(DatabaseServiceSource):
                 databaseSchema=fqn.build(
                     metadata=self.metadata,
                     entity_type=DatabaseSchema,
-                    service_name=self.context.database_service,
-                    database_name=self.context.database,
-                    schema_name=self.context.database_schema,
+                    service_name=self.context.get().database_service,
+                    database_name=self.context.get().database,
+                    schema_name=self.context.get().database_schema,
                 ),
                 sourceUrl=self.get_source_url(
                     table_name=table_id,

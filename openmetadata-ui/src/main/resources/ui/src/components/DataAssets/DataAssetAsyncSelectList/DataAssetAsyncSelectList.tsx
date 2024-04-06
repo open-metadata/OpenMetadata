@@ -125,11 +125,16 @@ const DataAssetAsyncSelectList: FC<DataAssetAsyncSelectListProps> = ({
       const { value, reference, displayName } = option;
 
       let label;
-      if (searchIndex === SearchIndex.USER) {
+      if (
+        searchIndex === SearchIndex.USER ||
+        searchIndex.includes('user') ||
+        searchIndex.includes('team')
+      ) {
         label = (
           <Space>
             <ProfilePicture
               className="d-flex"
+              isTeam={reference.type === EntityType.TEAM}
               name={option.name ?? ''}
               type="circle"
               width="24"

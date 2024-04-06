@@ -22,8 +22,9 @@ import React, {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
-import { getTableTabPath, PAGE_SIZE } from '../../../constants/constants';
+import { getEntityDetailsPath, PAGE_SIZE } from '../../../constants/constants';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
+import { EntityTabs, EntityType } from '../../../enums/entity.enum';
 import { SearchIndex } from '../../../enums/search.enum';
 import { TestCase } from '../../../generated/tests/testCase';
 import {
@@ -32,9 +33,12 @@ import {
 } from '../../../interface/search.interface';
 import { searchQuery } from '../../../rest/searchAPI';
 import { getNameFromFQN } from '../../../utils/CommonUtils';
-import { getEntityName } from '../../../utils/EntityUtils';
+import {
+  getColumnNameFromEntityLink,
+  getEntityName,
+} from '../../../utils/EntityUtils';
+import { getEntityFQN } from '../../../utils/FeedUtils';
 import { replacePlus } from '../../../utils/StringsUtils';
-import { getEntityFqnFromEntityLink } from '../../../utils/TableUtils';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../common/Loader/Loader';
 import Searchbar from '../../common/SearchBarComponent/SearchBar.component';
@@ -186,7 +190,7 @@ export const AddTestCaseList = ({
               itemKey="id"
               onScroll={onScroll}>
               {({ _source: test }) => {
-                const tableFqn = getEntityFqnFromEntityLink(test.entityLink);
+                const tableFqn = getEntityFQN(test.entityLink);
                 const tableName = getNameFromFQN(tableFqn);
                 const isColumn = test.entityLink.includes('::columns::');
 
@@ -213,7 +217,11 @@ export const AddTestCaseList = ({
                     <Typography.Paragraph className="m-0">
                       <Link
                         data-testid="table-link"
-                        to={getTableTabPath(tableFqn, 'profiler')}
+                        to={getEntityDetailsPath(
+                          EntityType.TABLE,
+                          tableFqn,
+                          EntityTabs.PROFILER
+                        )}
                         onClick={(e) => e.stopPropagation()}>
                         {tableName}
                       </Link>
@@ -224,13 +232,8 @@ export const AddTestCaseList = ({
                           'label.column'
                         )}:`}</Typography.Text>
                         <Typography.Text className="text-grey-muted text-xs">
-                          {getNameFromFQN(
-                            replacePlus(
-                              getEntityFqnFromEntityLink(
-                                test.entityLink,
-                                isColumn
-                              )
-                            )
+                          {replacePlus(
+                            getColumnNameFromEntityLink(test.entityLink)
                           ) ?? '--'}
                         </Typography.Text>
                       </Space>

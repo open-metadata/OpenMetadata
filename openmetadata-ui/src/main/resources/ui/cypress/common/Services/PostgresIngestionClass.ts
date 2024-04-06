@@ -14,14 +14,13 @@ import { SERVICE_TYPE } from '../../constants/constants';
 import { EntityType } from '../../constants/Entity.interface';
 import {
   checkServiceFieldSectionHighlighting,
-  handleIngestionRetry,
   interceptURL,
-  scheduleIngestion,
   verifyResponseStatusCode,
 } from '../common';
 import ServiceBaseClass from '../Entities/ServiceBaseClass';
 import { visitServiceDetailsPage } from '../serviceUtils';
 import { visitEntityDetailsPage } from '../Utils/Entity';
+import { handleIngestionRetry, scheduleIngestion } from '../Utils/Ingestion';
 import { Services } from '../Utils/Services';
 
 class PostgresIngestionClass extends ServiceBaseClass {
@@ -137,7 +136,7 @@ class PostgresIngestionClass extends ServiceBaseClass {
         verifyResponseStatusCode('@serviceDetails', 200);
         verifyResponseStatusCode('@ingestionPipelines', 200);
 
-        handleIngestionRetry('database', true, 0, 'usage');
+        handleIngestionRetry(0, 'usage');
       });
     });
 
@@ -153,7 +152,11 @@ class PostgresIngestionClass extends ServiceBaseClass {
         entity: EntityType.Table,
       });
       verifyResponseStatusCode('@entityDetailsPage', 200);
-      interceptURL('GET', '/api/v1/queries?*', 'queriesTab');
+      interceptURL(
+        'GET',
+        '/api/v1/search/query?q=*&index=query_search_index*',
+        'queriesTab'
+      );
       cy.get('[data-testid="table_queries"]')
         .should('be.visible')
         .trigger('click');

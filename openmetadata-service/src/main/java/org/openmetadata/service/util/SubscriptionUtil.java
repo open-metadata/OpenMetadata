@@ -20,8 +20,10 @@ import static org.openmetadata.service.Entity.USER;
 import static org.openmetadata.service.events.subscription.AlertsRuleEvaluator.getEntity;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
@@ -155,35 +157,43 @@ public class SubscriptionUtil {
     Thread thread = AlertsRuleEvaluator.getThread(event);
     List<EntityReference> assignees = thread.getTask().getAssignees();
     Set<String> receiversList = new HashSet<>();
-    List<Team> teams = new ArrayList<>();
-    List<User> users = new ArrayList<>();
+    Map<UUID, Team> teams = new HashMap<>();
+    Map<UUID, User> users = new HashMap<>();
+
+    Team tempTeamVar = null;
+    User tempUserVar = null;
     if (!nullOrEmpty(assignees)) {
       for (EntityReference reference : assignees) {
         if (Entity.USER.equals(reference.getType())) {
-          users.add(Entity.getEntity(USER, reference.getId(), "", Include.NON_DELETED));
+          tempUserVar = Entity.getEntity(USER, reference.getId(), "profile", Include.NON_DELETED);
+          users.put(tempUserVar.getId(), tempUserVar);
         } else if (TEAM.equals(reference.getType())) {
-          teams.add(Entity.getEntity(TEAM, reference.getId(), "", Include.NON_DELETED));
+          tempTeamVar = Entity.getEntity(TEAM, reference.getId(), "profile", Include.NON_DELETED);
+          teams.put(tempTeamVar.getId(), tempTeamVar);
         }
       }
     }
 
     for (Post post : thread.getPosts()) {
-      users.add(Entity.getEntityByName(USER, post.getFrom(), "", Include.NON_DELETED));
+      tempUserVar = Entity.getEntityByName(USER, post.getFrom(), "profile", Include.NON_DELETED);
+      users.put(tempUserVar.getId(), tempUserVar);
       List<MessageParser.EntityLink> mentions = MessageParser.getEntityLinks(post.getMessage());
       for (MessageParser.EntityLink link : mentions) {
         if (USER.equals(link.getEntityType())) {
-          users.add(Entity.getEntity(link, "", Include.NON_DELETED));
+          tempUserVar = Entity.getEntity(link, "profile", Include.NON_DELETED);
+          users.put(tempUserVar.getId(), tempUserVar);
         } else if (TEAM.equals(link.getEntityType())) {
-          teams.add(Entity.getEntity(link, "", Include.NON_DELETED));
+          tempTeamVar = Entity.getEntity(link, "profile", Include.NON_DELETED);
+          teams.put(tempTeamVar.getId(), tempTeamVar);
         }
       }
     }
 
     // Users
-    receiversList.addAll(getEmailOrWebhookEndpointForUsers(users, type));
+    receiversList.addAll(getEmailOrWebhookEndpointForUsers(users.values().stream().toList(), type));
 
     // Teams
-    receiversList.addAll(getEmailOrWebhookEndpointForTeams(teams, type));
+    receiversList.addAll(getEmailOrWebhookEndpointForTeams(teams.values().stream().toList(), type));
 
     return receiversList;
   }
@@ -192,36 +202,45 @@ public class SubscriptionUtil {
       SubscriptionDestination.SubscriptionType type, ChangeEvent event) {
     Thread thread = AlertsRuleEvaluator.getThread(event);
     Set<String> receiversList = new HashSet<>();
-    List<Team> teams = new ArrayList<>();
-    List<User> users = new ArrayList<>();
+    Map<UUID, Team> teams = new HashMap<>();
+    Map<UUID, User> users = new HashMap<>();
 
-    users.add(Entity.getEntityByName(USER, thread.getCreatedBy(), "", Include.NON_DELETED));
+    Team tempTeamVar = null;
+    User tempUserVar = null;
+    tempUserVar =
+        Entity.getEntityByName(USER, thread.getCreatedBy(), "profile", Include.NON_DELETED);
+    users.put(tempUserVar.getId(), tempUserVar);
     List<MessageParser.EntityLink> mentions = MessageParser.getEntityLinks(thread.getMessage());
     for (MessageParser.EntityLink link : mentions) {
       if (USER.equals(link.getEntityType())) {
-        users.add(Entity.getEntity(link, "", Include.NON_DELETED));
+        tempUserVar = Entity.getEntity(link, "profile", Include.NON_DELETED);
+        users.put(tempUserVar.getId(), tempUserVar);
       } else if (TEAM.equals(link.getEntityType())) {
-        teams.add(Entity.getEntity(link, "", Include.NON_DELETED));
+        tempTeamVar = Entity.getEntity(link, "", Include.NON_DELETED);
+        teams.put(tempTeamVar.getId(), tempTeamVar);
       }
     }
 
     for (Post post : thread.getPosts()) {
-      users.add(Entity.getEntityByName(USER, post.getFrom(), "", Include.NON_DELETED));
+      tempUserVar = Entity.getEntityByName(USER, post.getFrom(), "profile", Include.NON_DELETED);
+      users.put(tempUserVar.getId(), tempUserVar);
       mentions = MessageParser.getEntityLinks(post.getMessage());
       for (MessageParser.EntityLink link : mentions) {
         if (USER.equals(link.getEntityType())) {
-          users.add(Entity.getEntity(link, "", Include.NON_DELETED));
+          tempUserVar = Entity.getEntity(link, "profile", Include.NON_DELETED);
+          users.put(tempUserVar.getId(), tempUserVar);
         } else if (TEAM.equals(link.getEntityType())) {
-          teams.add(Entity.getEntity(link, "", Include.NON_DELETED));
+          tempTeamVar = Entity.getEntity(link, "profile", Include.NON_DELETED);
+          teams.put(tempTeamVar.getId(), tempTeamVar);
         }
       }
     }
 
     // Users
-    receiversList.addAll(getEmailOrWebhookEndpointForUsers(users, type));
+    receiversList.addAll(getEmailOrWebhookEndpointForUsers(users.values().stream().toList(), type));
 
     // Teams
-    receiversList.addAll(getEmailOrWebhookEndpointForTeams(teams, type));
+    receiversList.addAll(getEmailOrWebhookEndpointForTeams(teams.values().stream().toList(), type));
 
     return receiversList;
   }
@@ -236,7 +255,7 @@ public class SubscriptionUtil {
               case SLACK -> profile.getSubscription().getSlack();
               case MS_TEAMS -> profile.getSubscription().getMsTeams();
               case G_CHAT -> profile.getSubscription().getgChat();
-              case GENERIC -> profile.getSubscription().getGeneric();
+              case WEBHOOK -> profile.getSubscription().getGeneric();
               default -> null;
             };
         if (webhookConfig != null && !CommonUtil.nullOrEmpty(webhookConfig.getEndpoint())) {

@@ -32,7 +32,11 @@ import { ReactComponent as DeleteIcon } from '../../../assets/svg/ic-delete.svg'
 import { ReactComponent as VersionIcon } from '../../../assets/svg/ic-version.svg';
 import { ReactComponent as IconDropdown } from '../../../assets/svg/menu.svg';
 import { ReactComponent as StyleIcon } from '../../../assets/svg/style.svg';
-import { DE_ACTIVE_COLOR } from '../../../constants/constants';
+import {
+  DE_ACTIVE_COLOR,
+  getEntityDetailsPath,
+  getVersionPath,
+} from '../../../constants/constants';
 import { EntityField } from '../../../constants/Feeds.constants';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import {
@@ -59,11 +63,7 @@ import {
   checkPermission,
   DEFAULT_ENTITY_PERMISSION,
 } from '../../../utils/PermissionsUtils';
-import {
-  getDataProductsDetailsPath,
-  getDataProductVersionsPath,
-  getDomainPath,
-} from '../../../utils/RouterUtils';
+import { getDomainPath } from '../../../utils/RouterUtils';
 import {
   escapeESReservedCharacters,
   getEncodedFqn,
@@ -249,7 +249,7 @@ const DataProductsDetailsPage = ({
                 description={t('message.rename-entity', {
                   entity: t('label.data-product'),
                 })}
-                icon={<EditIcon color={DE_ACTIVE_COLOR} width="18px" />}
+                icon={EditIcon}
                 id="rename-button"
                 name={t('label.rename')}
               />
@@ -271,7 +271,7 @@ const DataProductsDetailsPage = ({
                 description={t('message.edit-entity-style-description', {
                   entity: t('label.data-product'),
                 })}
-                icon={<StyleIcon color={DE_ACTIVE_COLOR} width="18px" />}
+                icon={StyleIcon}
                 id="rename-button"
                 name={t('label.style')}
               />
@@ -296,7 +296,7 @@ const DataProductsDetailsPage = ({
                     entityType: t('label.data-product'),
                   }
                 )}
-                icon={<DeleteIcon color={DE_ACTIVE_COLOR} width="14px" />}
+                icon={DeleteIcon}
                 id="delete-button"
                 name={t('label.delete')}
               />
@@ -353,14 +353,17 @@ const DataProductsDetailsPage = ({
       fetchDataProductAssets();
     }
     if (activeKey !== activeTab) {
-      history.push(getDataProductsDetailsPath(dataProductFqn, activeKey));
+      history.push(
+        getEntityDetailsPath(EntityType.DATA_PRODUCT, dataProductFqn, activeKey)
+      );
     }
   };
 
   const handleVersionClick = async () => {
     const path = isVersionsView
-      ? getDataProductsDetailsPath(dataProductFqn)
-      : getDataProductVersionsPath(
+      ? getEntityDetailsPath(EntityType.DATA_PRODUCT, dataProductFqn)
+      : getVersionPath(
+          EntityType.DATA_PRODUCT,
           dataProductFqn,
           toString(dataProduct.version)
         );

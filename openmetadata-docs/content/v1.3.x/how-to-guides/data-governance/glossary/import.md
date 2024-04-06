@@ -11,6 +11,23 @@ OpenMetadata supports **Glossary Bulk Upload** to save time and effort by upload
 
 To import a glossary into OpenMetadata:
 - Navigate to **Govern > Glossary**
+- Click on **Add** a new glossary. `Eg. Banking Glossary`
+You can also bulk upload terms to an existing glossary.
+
+{% image
+src="/images/v1.3/how-to-guides/governance/glossary1.png"
+alt="Add a New Glossary"
+caption="Add a New Glossary"
+/%}
+
+- Add the Name*, Display Name, Description*, Tags, Owner, and Reviewer details for the glossary. The * marked fields are required fields.
+
+{% image
+src="/images/v1.3/how-to-guides/governance/glossary2.png"
+alt="Configure the Glossary"
+caption="Configure the Glossary"
+/%}
+
 - Click on the **⋮** icon and **Export** the glossary file. If you have glossary terms in your Glossary, the same will be exported as a CSV file. If you have If there are no terms in the Glossary, then a blank CSV template will be downloaded.
 
 {% image
@@ -38,23 +55,6 @@ caption="Export Glossary File"
   - **relatedTerms** - A term which has a related concept as the glossary term. This term must be available in OpenMetadata. For e.g., for a term ‘Customer’, the related terms can be ‘Customer LTV (LifeTime Value)’, ‘Customer Acquisition Cost (CAC)’. In the CSV file, the relatedTerms must contain the hierarchy, which is separated by a full stop (.). Multiple terms must be separated by a semicolon (;) as in `Banking.Account.Savings account;Banking.Debit card`
   - **references** - Add links from the internet from where you inherited the term. In the CSV file, the references must be in the format (name;url;name;url) `IBM;https://www.ibm.com/;World Bank;https://www.worldbank.org/`
   - **tags** - Add the tags which are already existing in OpenMetadata. In the CSV file, the tags must be in the format `PII.Sensitive;PersonalData.Personal`
-
-The * marked fields are required fields.
-- To create a new glossary, navigate to **Govern > Glossary** and first **Add**  a new glossary. You can also bulk upload terms to an existing glossary.
-
-{% image
-src="/images/v1.3/how-to-guides/governance/glossary1.png"
-alt="Add a New Glossary"
-caption="Add a New Glossary"
-/%}
-
-- Add the Name*, Display Name, Description*, Tags, Owner, and Reviewer details for the glossary.
-
-{% image
-src="/images/v1.3/how-to-guides/governance/glossary2.png"
-alt="Configure the Glossary"
-caption="Configure the Glossary"
-/%}
 
 ## Mutually Exclusive
 
@@ -105,6 +105,14 @@ caption="Drag and Drop Glossary Terms to Rearrange the Hierarchy"
 /%}
 
 Both importing and exporting the Glossary from OpenMetadata is quick and easy!
+
+{%inlineCallout
+  color="violet-70"
+  bold="Glossary Export"
+  icon="MdArrowForward"
+  href="/how-to-guides/data-governance/glossary/export"%}
+  Quickly export a glossary as a CSV file.
+{%/inlineCallout%}
 
 {%inlineCallout
   color="violet-70"

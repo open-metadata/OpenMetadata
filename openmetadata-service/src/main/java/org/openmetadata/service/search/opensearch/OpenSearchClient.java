@@ -23,7 +23,9 @@ import static org.openmetadata.service.search.EntityBuilderConstant.UNIFIED;
 import static org.openmetadata.service.search.UpdateSearchEventsConstant.SENDING_REQUEST_TO_ELASTIC_SEARCH;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import es.org.elasticsearch.ElasticsearchStatusException;
 import es.org.elasticsearch.index.IndexNotFoundException;
+import es.org.elasticsearch.rest.RestStatus;
 import java.io.IOException;
 import java.text.ParseException;
 import java.util.ArrayList;
@@ -37,6 +39,7 @@ import java.util.Set;
 import java.util.TreeMap;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Stream;
+import javax.json.JsonObject;
 import javax.net.ssl.SSLContext;
 import javax.ws.rs.core.Response;
 import lombok.extern.slf4j.Slf4j;
@@ -51,6 +54,7 @@ import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.DataInsightInterface;
 import org.openmetadata.schema.dataInsight.DataInsightChartResult;
 import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration;
+import org.openmetadata.sdk.exception.SearchException;
 import org.openmetadata.sdk.exception.SearchIndexNotFoundException;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.dataInsight.DataInsightAggregatorInterface;
@@ -139,6 +143,8 @@ import os.org.opensearch.index.reindex.DeleteByQueryRequest;
 import os.org.opensearch.index.reindex.UpdateByQueryRequest;
 import os.org.opensearch.script.Script;
 import os.org.opensearch.script.ScriptType;
+import os.org.opensearch.search.SearchHit;
+import os.org.opensearch.search.SearchHits;
 import os.org.opensearch.search.SearchModule;
 import os.org.opensearch.search.aggregations.AggregationBuilder;
 import os.org.opensearch.search.aggregations.AggregationBuilders;
@@ -287,70 +293,8 @@ public class OpenSearchClient implements SearchClient {
   @Override
   public Response search(SearchRequest request) throws IOException {
     SearchSourceBuilder searchSourceBuilder =
-        switch (request.getIndex()) {
-          case "topic_search_index", "topic" -> buildTopicSearchBuilder(
-              request.getQuery(), request.getFrom(), request.getSize());
-          case "dashboard_search_index", "dashboard" -> buildDashboardSearchBuilder(
-              request.getQuery(), request.getFrom(), request.getSize());
-          case "pipeline_search_index", "pipeline" -> buildPipelineSearchBuilder(
-              request.getQuery(), request.getFrom(), request.getSize());
-          case "mlmodel_search_index", "mlmodel" -> buildMlModelSearchBuilder(
-              request.getQuery(), request.getFrom(), request.getSize());
-          case "table_search_index", "table" -> buildTableSearchBuilder(
-              request.getQuery(), request.getFrom(), request.getSize());
-          case "database_schema_search_index",
-              "databaseSchema",
-              "database_search_index",
-              "database" -> buildGenericDataAssetSearchBuilder(
-              request.getQuery(), request.getFrom(), request.getSize());
-          case "user_search_index",
-              "user",
-              "team_search_index",
-              "team" -> buildUserOrTeamSearchBuilder(
-              request.getQuery(), request.getFrom(), request.getSize());
-          case "glossary_term_search_index", "glossaryTerm" -> buildGlossaryTermSearchBuilder(
-              request.getQuery(), request.getFrom(), request.getSize());
-          case "tag_search_index", "tag" -> buildTagSearchBuilder(
-              request.getQuery(), request.getFrom(), request.getSize());
-          case "container_search_index", "container" -> buildContainerSearchBuilder(
-              request.getQuery(), request.getFrom(), request.getSize());
-          case "query_search_index", "query" -> buildQuerySearchBuilder(
-              request.getQuery(), request.getFrom(), request.getSize());
-          case "test_case_search_index",
-              "testCase",
-              "test_suite_search_index",
-              "testSuite" -> buildTestCaseSearch(
-              request.getQuery(), request.getFrom(), request.getSize());
-          case "stored_procedure_search_index", "storedProcedure" -> buildStoredProcedureSearch(
-              request.getQuery(), request.getFrom(), request.getSize());
-          case "dashboard_data_model_search_index",
-              "dashboardDataModel" -> buildDashboardDataModelsSearch(
-              request.getQuery(), request.getFrom(), request.getSize());
-          case "domain_search_index", "domain" -> buildDomainsSearch(
-              request.getQuery(), request.getFrom(), request.getSize());
-          case "search_entity_search_index", "searchIndex" -> buildSearchEntitySearch(
-              request.getQuery(), request.getFrom(), request.getSize());
-          case "raw_cost_analysis_report_data_index",
-              "aggregated_cost_analysis_report_data_index" -> buildCostAnalysisReportDataSearch(
-              request.getQuery(), request.getFrom(), request.getSize());
-          case "data_product_search_index" -> buildDataProductSearch(
-              request.getQuery(), request.getFrom(), request.getSize());
-          case "test_case_resolution_status_search_index" -> buildTestCaseResolutionStatusSearch(
-              request.getQuery(), request.getFrom(), request.getSize());
-          case "mlmodel_service_search_index",
-              "database_service_search_index",
-              "messaging_service_index",
-              "dashboard_service_index",
-              "pipeline_service_index",
-              "storage_service_index",
-              "search_service_index",
-              "metadata_service_index" -> buildServiceSearchBuilder(
-              request.getQuery(), request.getFrom(), request.getSize());
-          case "all", "dataAsset" -> buildSearchAcrossIndexesBuilder(
-              request.getQuery(), request.getFrom(), request.getSize());
-          default -> buildAggregateSearchBuilder(
-              request.getQuery(), request.getFrom(), request.getSize());
-        };
+        getSearchSourceBuilder(
+            request.getIndex(), request.getQuery(), request.getFrom(), request.getSize());
     if (!nullOrEmpty(request.getQueryFilter()) && !request.getQueryFilter().equals("{}")) {
       try {
         XContentParser filterParser =
@@ -455,6 +399,65 @@ public class OpenSearchClient implements SearchClient {
     } catch (IndexNotFoundException e) {
       throw new SearchIndexNotFoundException(
           String.format("Failed to to find index %s", request.getIndex()));
+    }
+  }
+
+  @Override
+  public SearchResultListMapper listWithOffset(
+      String filter,
+      int limit,
+      int offset,
+      String index,
+      String sortField,
+      String sortType,
+      String q)
+      throws IOException {
+    SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
+    if (!nullOrEmpty(q)) {
+      searchSourceBuilder = getSearchSourceBuilder(index, q, offset, limit);
+    }
+
+    List<Map<String, Object>> results = new ArrayList<>();
+    if (!filter.isEmpty()) {
+      try {
+        XContentParser queryParser = createXContentParser(filter);
+        XContentParser sourceParser = createXContentParser(filter);
+        QueryBuilder queryFromXContent = SearchSourceBuilder.fromXContent(queryParser).query();
+        FetchSourceContext sourceFromXContent =
+            SearchSourceBuilder.fromXContent(sourceParser).fetchSource();
+        BoolQueryBuilder boolQuery = QueryBuilders.boolQuery();
+        boolQuery =
+            nullOrEmpty(q)
+                ? boolQuery.filter(queryFromXContent)
+                : boolQuery.must(searchSourceBuilder.query()).filter(queryFromXContent);
+        searchSourceBuilder.query(boolQuery);
+        searchSourceBuilder.fetchSource(sourceFromXContent);
+      } catch (Exception e) {
+        throw new IOException("Failed to parse query filter: %s", e);
+      }
+    }
+
+    searchSourceBuilder.timeout(new TimeValue(30, TimeUnit.SECONDS));
+    searchSourceBuilder.from(offset);
+    searchSourceBuilder.size(limit);
+    if (sortField != null && sortType != null) {
+      searchSourceBuilder.sort(sortField, SortOrder.fromString(sortType));
+    }
+    try {
+      SearchResponse response =
+          client.search(
+              new os.org.opensearch.action.search.SearchRequest(index).source(searchSourceBuilder),
+              RequestOptions.DEFAULT);
+      SearchHits searchHits = response.getHits();
+      SearchHit[] hits = searchHits.getHits();
+      Arrays.stream(hits).forEach(hit -> results.add(hit.getSourceAsMap()));
+      return new SearchResultListMapper(results, searchHits.getTotalHits().value);
+    } catch (ElasticsearchStatusException e) {
+      if (e.status() == RestStatus.NOT_FOUND) {
+        throw new SearchIndexNotFoundException(String.format("Failed to to find index %s", index));
+      } else {
+        throw new SearchException(String.format("Search failed due to %s", e.getMessage()));
+      }
     }
   }
 
@@ -724,6 +727,82 @@ public class OpenSearchClient implements SearchClient {
     return Response.status(OK).entity(response).build();
   }
 
+  /*
+  Build dynamic aggregation from elasticsearch JSON like aggregation query.
+  See TestSuiteResourceTest for example usage (ln. 506) for tested aggregation query.
+
+  @param aggregations - JsonObject containing the aggregation query
+  */
+  public static List<AggregationBuilder> buildAggregation(JsonObject aggregations) {
+    List<AggregationBuilder> aggregationBuilders = new ArrayList<>();
+    for (String key : aggregations.keySet()) {
+      JsonObject aggregation = aggregations.getJsonObject(key);
+      for (String aggregationType : aggregation.keySet()) {
+        switch (aggregationType) {
+          case "terms":
+            JsonObject termAggregation = aggregation.getJsonObject(aggregationType);
+            TermsAggregationBuilder termsAggregationBuilder =
+                AggregationBuilders.terms(key).field(termAggregation.getString("field"));
+            aggregationBuilders.add(termsAggregationBuilder);
+            break;
+          case "nested":
+            JsonObject nestedAggregation = aggregation.getJsonObject("nested");
+            AggregationBuilder nestedAggregationBuilder =
+                AggregationBuilders.nested(
+                    nestedAggregation.getString("path"), nestedAggregation.getString("path"));
+            JsonObject nestedAggregations = aggregation.getJsonObject("aggs");
+
+            List<AggregationBuilder> nestedAggregationBuilders =
+                buildAggregation(nestedAggregations);
+            for (AggregationBuilder nestedAggregationBuilder1 : nestedAggregationBuilders) {
+              nestedAggregationBuilder.subAggregation(nestedAggregationBuilder1);
+            }
+            aggregationBuilders.add(nestedAggregationBuilder);
+            break;
+          default:
+            break;
+        }
+      }
+    }
+    return aggregationBuilders;
+  }
+
+  @Override
+  public JsonObject aggregate(String query, String index, JsonObject aggregationJson)
+      throws IOException {
+    JsonObject aggregations = aggregationJson.getJsonObject("aggregations");
+    if (aggregations == null) {
+      return null;
+    }
+
+    List<AggregationBuilder> aggregationBuilder = buildAggregation(aggregations);
+    os.org.opensearch.action.search.SearchRequest searchRequest =
+        new os.org.opensearch.action.search.SearchRequest(
+            Entity.getSearchRepository().getIndexOrAliasName(index));
+    SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
+    if (query != null) {
+      XContentParser queryParser =
+          XContentType.JSON
+              .xContent()
+              .createParser(X_CONTENT_REGISTRY, LoggingDeprecationHandler.INSTANCE, query);
+      QueryBuilder parsedQuery = SearchSourceBuilder.fromXContent(queryParser).query();
+      BoolQueryBuilder boolQueryBuilder = QueryBuilders.boolQuery().must(parsedQuery);
+      searchSourceBuilder.query(boolQueryBuilder);
+    }
+
+    searchSourceBuilder.size(0).timeout(new TimeValue(30, TimeUnit.SECONDS));
+
+    for (AggregationBuilder aggregation : aggregationBuilder) {
+      searchSourceBuilder.aggregation(aggregation);
+    }
+
+    searchRequest.source(searchSourceBuilder);
+
+    String response = client.search(searchRequest, RequestOptions.DEFAULT).toString();
+    JsonObject jsonResponse = JsonUtils.readJson(response).asJsonObject();
+    return jsonResponse.getJsonObject("aggregations");
+  }
+
   public void updateSearch(UpdateRequest updateRequest) {
     if (updateRequest != null) {
       updateRequest.docAsUpsert(true);
@@ -833,6 +912,7 @@ public class OpenSearchClient implements SearchClient {
         .aggregation(
             AggregationBuilders.terms("dataModels.displayName.keyword")
                 .field("dataModels.displayName.keyword"))
+        .aggregation(AggregationBuilders.terms("project.keyword").field("project.keyword"))
         .aggregation(
             AggregationBuilders.terms("charts.displayName.keyword")
                 .field("charts.displayName.keyword"));
@@ -1199,6 +1279,23 @@ public class OpenSearchClient implements SearchClient {
     }
   }
 
+  private void updateChildren(
+      UpdateByQueryRequest updateByQueryRequest,
+      Pair<String, String> fieldAndValue,
+      Pair<String, Map<String, Object>> updates) {
+    updateByQueryRequest.setQuery(
+        new MatchQueryBuilder(fieldAndValue.getKey(), fieldAndValue.getValue())
+            .operator(Operator.AND));
+    Script script =
+        new Script(
+            ScriptType.INLINE,
+            Script.DEFAULT_SCRIPT_LANG,
+            updates.getKey(),
+            JsonUtils.getMap(updates.getValue() == null ? new HashMap<>() : updates.getValue()));
+    updateByQueryRequest.setScript(script);
+    updateOpenSearchByQuery(updateByQueryRequest);
+  }
+
   @Override
   public void updateChildren(
       String indexName,
@@ -1206,16 +1303,19 @@ public class OpenSearchClient implements SearchClient {
       Pair<String, Map<String, Object>> updates) {
     if (isClientAvailable) {
       UpdateByQueryRequest updateByQueryRequest = new UpdateByQueryRequest(indexName);
-      updateByQueryRequest.setQuery(
-          new MatchQueryBuilder(fieldAndValue.getKey(), fieldAndValue.getValue()));
-      Script script =
-          new Script(
-              ScriptType.INLINE,
-              Script.DEFAULT_SCRIPT_LANG,
-              updates.getKey(),
-              updates.getValue() == null ? new HashMap<>() : updates.getValue());
-      updateByQueryRequest.setScript(script);
-      updateOpenSearchByQuery(updateByQueryRequest);
+      updateChildren(updateByQueryRequest, fieldAndValue, updates);
+    }
+  }
+
+  @Override
+  public void updateChildren(
+      List<String> indexName,
+      Pair<String, String> fieldAndValue,
+      Pair<String, Map<String, Object>> updates) {
+    if (isClientAvailable) {
+      UpdateByQueryRequest updateByQueryRequest =
+          new UpdateByQueryRequest(indexName.toArray(new String[indexName.size()]));
+      updateChildren(updateByQueryRequest, fieldAndValue, updates);
     }
   }
 
@@ -1772,6 +1872,65 @@ public class OpenSearchClient implements SearchClient {
       }
     } else {
       return null;
+    }
+  }
+
+  private static SearchSourceBuilder getSearchSourceBuilder(
+      String index, String q, int from, int size) {
+    return switch (index) {
+      case "topic_search_index", "topic" -> buildTopicSearchBuilder(q, from, size);
+      case "dashboard_search_index", "dashboard" -> buildDashboardSearchBuilder(q, from, size);
+      case "pipeline_search_index", "pipeline" -> buildPipelineSearchBuilder(q, from, size);
+      case "mlmodel_search_index", "mlmodel" -> buildMlModelSearchBuilder(q, from, size);
+      case "table_search_index", "table" -> buildTableSearchBuilder(q, from, size);
+      case "database_schema_search_index",
+          "databaseSchema",
+          "database_search_index",
+          "database" -> buildGenericDataAssetSearchBuilder(q, from, size);
+      case "user_search_index", "user", "team_search_index", "team" -> buildUserOrTeamSearchBuilder(
+          q, from, size);
+      case "glossary_term_search_index", "glossaryTerm" -> buildGlossaryTermSearchBuilder(
+          q, from, size);
+      case "tag_search_index", "tag" -> buildTagSearchBuilder(q, from, size);
+      case "container_search_index", "container" -> buildContainerSearchBuilder(q, from, size);
+      case "query_search_index", "query" -> buildQuerySearchBuilder(q, from, size);
+      case "test_case_search_index",
+          "testCase",
+          "test_suite_search_index",
+          "testSuite" -> buildTestCaseSearch(q, from, size);
+      case "stored_procedure_search_index", "storedProcedure" -> buildStoredProcedureSearch(
+          q, from, size);
+      case "dashboard_data_model_search_index",
+          "dashboardDataModel" -> buildDashboardDataModelsSearch(q, from, size);
+      case "domain_search_index", "domain" -> buildDomainsSearch(q, from, size);
+      case "search_entity_search_index", "searchIndex" -> buildSearchEntitySearch(q, from, size);
+      case "raw_cost_analysis_report_data_index",
+          "aggregated_cost_analysis_report_data_index" -> buildCostAnalysisReportDataSearch(
+          q, from, size);
+      case "data_product_search_index" -> buildDataProductSearch(q, from, size);
+      case "test_case_resolution_status_search_index" -> buildTestCaseResolutionStatusSearch(
+          q, from, size);
+      case "mlmodel_service_search_index",
+          "database_service_search_index",
+          "messaging_service_index",
+          "dashboard_service_index",
+          "pipeline_service_index",
+          "storage_service_index",
+          "search_service_index",
+          "metadata_service_index" -> buildServiceSearchBuilder(q, from, size);
+      case "all", "dataAsset" -> buildSearchAcrossIndexesBuilder(q, from, size);
+      default -> buildAggregateSearchBuilder(q, from, size);
+    };
+  }
+
+  private XContentParser createXContentParser(String query) throws IOException {
+    try {
+      return XContentType.JSON
+          .xContent()
+          .createParser(X_CONTENT_REGISTRY, LoggingDeprecationHandler.INSTANCE, query);
+    } catch (IOException e) {
+      LOG.error("Failed to create XContentParser", e);
+      throw e;
     }
   }
 }

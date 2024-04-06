@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import Icon from '@ant-design/icons/lib/components/Icon';
 import { Col, Row, Table, Tabs, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
@@ -21,7 +22,10 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
 import { ReactComponent as ExternalLinkIcon } from '../../../assets/svg/external-links.svg';
-import { getDashboardDetailsPath } from '../../../constants/constants';
+import {
+  DATA_ASSET_ICON_DIMENSION,
+  getEntityDetailsPath,
+} from '../../../constants/constants';
 import { FEED_COUNT_INITIAL_DATA } from '../../../constants/entity.constants';
 import LineageProvider from '../../../context/LineageProvider/LineageProvider';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
@@ -32,6 +36,7 @@ import { Dashboard } from '../../../generated/entity/data/dashboard';
 import { ThreadType } from '../../../generated/entity/feed/thread';
 import { TagSource } from '../../../generated/type/schema';
 import { TagLabel } from '../../../generated/type/tagLabel';
+import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { useFqn } from '../../../hooks/useFqn';
 import { FeedCounts } from '../../../interface/feed.interface';
 import { restoreDashboard } from '../../../rest/dashboardAPI';
@@ -53,7 +58,6 @@ import { useActivityFeedProvider } from '../../ActivityFeed/ActivityFeedProvider
 import { ActivityFeedTab } from '../../ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
 import ActivityThreadPanel from '../../ActivityFeed/ActivityThreadPanel/ActivityThreadPanel';
 import { withActivityFeed } from '../../AppRouter/withActivityFeed';
-import { useAuthContext } from '../../Auth/AuthProviders/AuthProvider';
 import { CustomPropertyTable } from '../../common/CustomPropertyTable/CustomPropertyTable';
 import DescriptionV1 from '../../common/EntityDescription/DescriptionV1';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
@@ -90,7 +94,7 @@ const DashboardDetails = ({
   handleToggleDelete,
 }: DashboardDetailsProps) => {
   const { t } = useTranslation();
-  const { currentUser } = useAuthContext();
+  const { currentUser } = useApplicationStore();
   const history = useHistory();
   const { tab: activeTab = EntityTabs.DETAILS } =
     useParams<{ tab: EntityTabs }>();
@@ -225,7 +229,13 @@ const DashboardDetails = ({
 
   const handleTabChange = (activeKey: string) => {
     if (activeKey !== activeTab) {
-      history.push(getDashboardDetailsPath(decodedDashboardFQN, activeKey));
+      history.push(
+        getEntityDetailsPath(
+          EntityType.DASHBOARD,
+          decodedDashboardFQN,
+          activeKey
+        )
+      );
     }
   };
 
@@ -437,10 +447,10 @@ const DashboardDetails = ({
               <Typography.Link href={record.sourceUrl} target="_blank">
                 <span className="break-all">{chartName}</span>
 
-                <ExternalLinkIcon
-                  className="m-l-xs flex-none"
-                  height={14}
-                  width={14}
+                <Icon
+                  className="m-l-xs flex-none align-middle"
+                  component={ExternalLinkIcon}
+                  style={DATA_ASSET_ICON_DIMENSION}
                 />
               </Typography.Link>
             </div>
@@ -548,6 +558,7 @@ const DashboardDetails = ({
       hasEditTagAccess,
       handleUpdateChart,
       handleChartTagSelection,
+      charts,
     ]
   );
 
@@ -597,6 +608,7 @@ const DashboardDetails = ({
                   entityName={entityName}
                   entityType={EntityType.DASHBOARD}
                   hasEditAccess={editDescriptionPermission}
+                  isDescriptionExpanded={isEmpty(charts)}
                   isEdit={isEdit}
                   owner={dashboardDetails.owner}
                   showActions={!deleted}

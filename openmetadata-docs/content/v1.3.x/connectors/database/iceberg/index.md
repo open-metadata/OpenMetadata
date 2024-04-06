@@ -102,15 +102,15 @@ It depends on where and how the Hive / Rest Catalog is setup and where the Icebe
 
 - **Warehouse Location (Optional)**: Custom Warehouse Location. Most Catalogs already have the Warehouse Location defined properly and this shouldn't be needed. In case of a custom implementation you can pass the location here.
 
-
 **For example**: 's3://my-bucket/warehouse/'
 
 - **Ownership Property**: Table property to look for the Owner. It defaults to 'owner'.
 
 The Owner should be the same e-mail set on the OpenMetadata user/group.
 
-**File System**
-- **Local**:
+#### **File System**
+
+- **Local**
 - [**AWS Credentials**](#aws-credentials)
 - [**Azure Credentials**](#azure-credentials)
 
@@ -183,7 +183,9 @@ Find more information about [Source Identity](https://docs.aws.amazon.com/STS/la
 
 - **Tenant ID** : Tenant ID under which the data storage account falls
 
-- **Account Name** : Account Name of the data Storage
+- **Account Name** : Account Name of the Data Storage
+
+- **Key Vault Name**: Azure Key Vault serves as a centralized secrets manager, securely storing and managing sensitive information, such as connection strings and cryptographic keys.
 
 {% /extraContent %}
 

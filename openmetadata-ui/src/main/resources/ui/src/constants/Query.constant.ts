@@ -11,6 +11,8 @@
  *  limitations under the License.
  */
 
+import i18n from '../utils/i18next/LocalUtil';
+
 export const QUERY_USED_BY_TABLE_VIEW_CAP = 3;
 export const QUERY_LINE_HEIGHT = 4;
 export const QUERY_DATE_FORMAT = "'On' MMMM dd 'at' h:mma 'UTC'ZZ"; // eg: On March 6th at 6:20pm UTC+1
@@ -28,3 +30,13 @@ export const QUERY_PAGE_FILTER = {
   team: [],
   user: [],
 };
+export const QUERY_PAGE_DEFAULT_FILTER = {
+  initialOptions: [],
+  options: [],
+  selected: [],
+};
+export const QUERY_SORT_OPTIONS = [
+  { value: 'queryDate', name: i18n.t('label.created-date') },
+  { value: 'updatedAt', name: i18n.t('label.last-updated') },
+  { value: 'totalVotes', name: i18n.t('label.popularity') },
+];

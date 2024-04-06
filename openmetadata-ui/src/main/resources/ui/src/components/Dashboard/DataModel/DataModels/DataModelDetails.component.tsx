@@ -13,13 +13,13 @@
 
 import { Card, Col, Row, Tabs } from 'antd';
 import { AxiosError } from 'axios';
-import { isUndefined, toString } from 'lodash';
+import { isEmpty, isUndefined, toString } from 'lodash';
 import { EntityTags } from 'Models';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
 import {
-  getDataModelDetailsPath,
+  getEntityDetailsPath,
   getVersionPath,
 } from '../../../../constants/constants';
 import { FEED_COUNT_INITIAL_DATA } from '../../../../constants/entity.constants';
@@ -142,7 +142,11 @@ const DataModelDetails = ({
   const handleTabChange = (tabValue: EntityTabs) => {
     if (tabValue !== activeTab) {
       history.push({
-        pathname: getDataModelDetailsPath(decodedDataModelFQN, tabValue),
+        pathname: getEntityDetailsPath(
+          EntityType.DASHBOARD_DATA_MODEL,
+          decodedDataModelFQN,
+          tabValue
+        ),
       });
     }
   };
@@ -216,6 +220,7 @@ const DataModelDetails = ({
               entityName={entityName}
               entityType={EntityType.DASHBOARD_DATA_MODEL}
               hasEditAccess={editDescriptionPermission}
+              isDescriptionExpanded={isEmpty(dataModelData.columns)}
               isEdit={isEditDescription}
               owner={owner}
               showActions={!deleted}
@@ -322,7 +327,7 @@ const DataModelDetails = ({
                     mode={{ name: CSMode.SQL }}
                     options={{
                       styleActiveLine: false,
-                      readOnly: 'nocursor',
+                      readOnly: true,
                     }}
                     value={dataModelData?.sql}
                   />

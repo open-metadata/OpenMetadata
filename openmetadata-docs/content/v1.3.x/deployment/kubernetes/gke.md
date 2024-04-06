@@ -28,9 +28,9 @@ All the code snippets in this section assume the `default` namespace for kuberne
 It is recommended to use GCP [Cloud SQL](https://cloud.google.com/sql/) services for Database and [Elastic Cloud GCP](https://www.elastic.co/partners/google-cloud) for Search Engine for Production.
 
 We support -
-- Cloud SQL (MySQL) engine version 8 or greater
-- Cloud SQL (postgreSQL) engine version 12 or greater
-- ElasticSearch Engine version 8.10
+- Cloud SQL (MySQL) engine version 8 or higher
+- Cloud SQL (postgreSQL) engine version 12 or higher
+- ElasticSearch Engine version 8.X (upto 8.10.X)
 
 We recommend -
 - CloudSQL to be Multi Zone Available
@@ -101,7 +101,7 @@ openmetadata:
 
 {%note noteType="Tip"%}
 
-Make sure to create CloudSQL and ElasticSearch credentials as Kubernetes Secrets mentioned [here](https://docs.open-metadata.org/deployment/kubernetes#quickstart).
+Make sure to create CloudSQL and ElasticSearch credentials as Kubernetes Secrets mentioned [here](/quick-start/local-kubernetes-deployment#2.-create-kubernetes-secrets-required-for-helm-charts).
 
 Also, disable MySQL and ElasticSearch from OpenMetadata Dependencies Helm Charts as mentioned in the FAQs [here](/deployment/kubernetes/faqs#how-to-disable-mysql-and-elasticsearch-from-openmetadata-dependencies-helm-charts).
 

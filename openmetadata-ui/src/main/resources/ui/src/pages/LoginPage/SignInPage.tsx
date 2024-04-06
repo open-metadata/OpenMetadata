@@ -25,14 +25,13 @@ import IconGoogle from '../../assets/img/icon-google.png';
 import IconOkta from '../../assets/img/icon-okta.png';
 import loginBG from '../../assets/img/login-bg.png';
 import { ReactComponent as IconFailBadge } from '../../assets/svg/fail-badge.svg';
-import { useAuthContext } from '../../components/Auth/AuthProviders/AuthProvider';
 import { useBasicAuth } from '../../components/Auth/AuthProviders/BasicAuthProvider';
 import BrandImage from '../../components/common/BrandImage/BrandImage';
 import Loader from '../../components/common/Loader/Loader';
 import LoginButton from '../../components/common/LoginButton/LoginButton';
 import { ROUTES, VALIDATION_MESSAGES } from '../../constants/constants';
 import { AuthProvider } from '../../generated/settings/settings';
-import localState from '../../utils/LocalStorageUtils';
+import { useApplicationStore } from '../../hooks/useApplicationStore';
 import './login.style.less';
 import LoginCarousel from './LoginCarousel';
 
@@ -41,21 +40,21 @@ const SignInPage = () => {
   const [form] = Form.useForm();
 
   const history = useHistory();
-  const { authConfig, onLoginHandler, onLogoutHandler, isAuthenticated } =
-    useAuthContext();
+  const {
+    authConfig,
+    onLoginHandler,
+    onLogoutHandler,
+    isAuthenticated,
+    getOidcToken,
+  } = useApplicationStore();
 
   const { t } = useTranslation();
 
-  const { isAuthProviderBasic } = useMemo(() => {
+  const { isAuthProviderBasic, isAuthProviderLDAP } = useMemo(() => {
     return {
       isAuthProviderBasic:
         authConfig?.provider === AuthProvider.Basic ||
         authConfig?.provider === AuthProvider.LDAP,
-    };
-  }, [authConfig]);
-
-  const { isAuthProviderLDAP } = useMemo(() => {
-    return {
       isAuthProviderLDAP: authConfig?.provider === AuthProvider.LDAP,
     };
   }, [authConfig]);
@@ -63,7 +62,7 @@ const SignInPage = () => {
   const { handleLogin, loginError } = useBasicAuth();
 
   const isTokenExpired = () => {
-    const token = localState.getOidcToken();
+    const token = getOidcToken();
     if (token) {
       try {
         const { exp } = jwtDecode<JwtPayload>(token);
@@ -190,133 +189,134 @@ const SignInPage = () => {
   const onClickForgotPassword = () => history.push(ROUTES.FORGOT_PASSWORD);
 
   return (
-    <div className="d-flex flex-col h-full bg-white">
-      <Row className="flex flex-grow" data-testid="signin-page">
-        <Col span={8}>
-          <div
-            className={classNames('mt-24 text-center flex-center flex-col', {
-              'sso-container': !isAuthProviderBasic,
-            })}>
-            <BrandImage height="auto" width={200} />
-            <Typography.Text className="mt-8 w-80 text-xl font-medium text-grey-muted">
-              {t('message.om-description')}{' '}
-            </Typography.Text>
+    <Row className="h-full" data-testid="signin-page">
+      <Col className="bg-white" span={8}>
+        <div
+          className={classNames('mt-24 text-center flex-center flex-col', {
+            'sso-container': !isAuthProviderBasic,
+          })}>
+          <BrandImage height="auto" width={200} />
+          <Typography.Text className="mt-8 w-80 text-xl font-medium text-grey-muted">
+            {t('message.om-description')}{' '}
+          </Typography.Text>
 
-            {isAuthProviderBasic ? (
-              <div className="login-form ">
-                <Form
-                  className="w-full"
-                  form={form}
-                  layout="vertical"
-                  validateMessages={VALIDATION_MESSAGES}
-                  onFinish={handleSubmit}>
-                  <Form.Item
-                    data-testid="email"
-                    label={
+          {isAuthProviderBasic ? (
+            <div className="login-form ">
+              <Form
+                className="w-full"
+                form={form}
+                layout="vertical"
+                validateMessages={VALIDATION_MESSAGES}
+                onFinish={handleSubmit}>
+                <Form.Item
+                  data-testid="email"
+                  label={
+                    isAuthProviderLDAP
+                      ? t('label.email')
+                      : t('label.username-or-email')
+                  }
+                  name="email"
+                  requiredMark={false}
+                  rules={[{ required: true }]}>
+                  <Input
+                    autoFocus
+                    placeholder={
                       isAuthProviderLDAP
                         ? t('label.email')
                         : t('label.username-or-email')
                     }
-                    name="email"
-                    requiredMark={false}
-                    rules={[{ required: true }]}>
-                    <Input
-                      autoFocus
-                      placeholder={
-                        isAuthProviderLDAP
-                          ? t('label.email')
-                          : t('label.username-or-email')
-                      }
-                    />
-                  </Form.Item>
-                  <Form.Item
-                    data-testid="password"
-                    label={t('label.password')}
-                    name="password"
-                    requiredMark={false}
-                    rules={[{ required: true }]}>
-                    <Input.Password
-                      autoComplete="off"
-                      placeholder={t('label.password')}
-                    />
-                  </Form.Item>
+                  />
+                </Form.Item>
+                <Form.Item
+                  data-testid="password"
+                  label={t('label.password')}
+                  name="password"
+                  requiredMark={false}
+                  rules={[{ required: true }]}>
+                  <Input.Password
+                    autoComplete="off"
+                    placeholder={t('label.password')}
+                  />
+                </Form.Item>
 
-                  <Button
-                    className="w-full"
-                    data-testid="login"
-                    disabled={loading}
-                    htmlType="submit"
-                    loading={loading}
-                    type="primary">
-                    {t('label.login')}
-                  </Button>
-                </Form>
-                {loginError && (
-                  <div
-                    className="d-flex flex-col m-y-md"
-                    data-testid="login-error-container">
-                    <div className="flex global-border rounded-4 p-sm error-alert ">
-                      <div className="m-r-xs">
-                        <Icon
-                          component={IconFailBadge}
-                          style={{ fontSize: '20px' }}
-                        />
-                      </div>
-                      <p data-testid="success-line">
-                        <span>{loginError}</span>
-                      </p>
+                <Button
+                  className="w-full"
+                  data-testid="login"
+                  disabled={loading}
+                  htmlType="submit"
+                  loading={loading}
+                  type="primary">
+                  {t('label.login')}
+                </Button>
+              </Form>
+              {loginError && (
+                <div
+                  className="d-flex flex-col m-y-md"
+                  data-testid="login-error-container">
+                  <div className="flex global-border rounded-4 p-sm error-alert ">
+                    <div className="m-r-xs">
+                      <Icon
+                        component={IconFailBadge}
+                        style={{ fontSize: '20px' }}
+                      />
                     </div>
+                    <p data-testid="success-line">
+                      <span>{loginError}</span>
+                    </p>
                   </div>
-                )}
-                <div className="mt-8" onClick={onClickForgotPassword}>
-                  <Typography.Link underline data-testid="forgot-password">
-                    {t('label.forgot-password')}
-                  </Typography.Link>
                 </div>
+              )}
+              {!isAuthProviderLDAP && (
+                <>
+                  <div className="mt-8" onClick={onClickForgotPassword}>
+                    <Typography.Link underline data-testid="forgot-password">
+                      {t('label.forgot-password')}
+                    </Typography.Link>
+                  </div>
+                  {authConfig?.enableSelfSignup && (
+                    <>
+                      <Divider className="w-min-0 mt-8 mb-12 justify-center">
+                        <Typography.Text className="text-sm" type="secondary">
+                          {t('label.or-lowercase')}
+                        </Typography.Text>
+                      </Divider>
 
-                {(authConfig?.enableSelfSignup || isAuthProviderLDAP) && (
-                  <>
-                    <Divider className="w-min-0 mt-8 mb-12 justify-center">
-                      <Typography.Text className="text-sm" type="secondary">
-                        {t('label.or-lowercase')}
-                      </Typography.Text>
-                    </Divider>
+                      <div className="mt-4 d-flex flex-center">
+                        <Typography.Text className="mr-4">
+                          {t('message.new-to-the-platform')}
+                        </Typography.Text>
+                        <Button
+                          data-testid="signup"
+                          type="link"
+                          onClick={onClickSignUp}>
+                          {t('label.create-entity', {
+                            entity: t('label.account'),
+                          })}
+                        </Button>
+                      </div>
+                    </>
+                  )}
+                </>
+              )}
+            </div>
+          ) : (
+            <div className="">{getSignInButton()}</div>
+          )}
+        </div>
+      </Col>
+      <Col className="relative" span={16}>
+        <div className="absolute inset-0">
+          <img
+            alt="Login Background"
+            className="w-full h-full"
+            data-testid="bg-image"
+            src={loginBG}
+          />
+        </div>
 
-                    <div className="mt-4 d-flex flex-center">
-                      <Typography.Text className="mr-4">
-                        {t('message.new-to-the-platform')}
-                      </Typography.Text>
-                      <Button
-                        data-testid="signup"
-                        type="link"
-                        onClick={onClickSignUp}>
-                        {t('label.create-entity', {
-                          entity: t('label.account'),
-                        })}
-                      </Button>
-                    </div>
-                  </>
-                )}
-              </div>
-            ) : (
-              <div className="">{getSignInButton()}</div>
-            )}
-          </div>
-        </Col>
-        <Col className="relative" span={16}>
-          <div className="absolute inset-0">
-            <img
-              alt="bg-image"
-              className="w-full h-full"
-              data-testid="bg-image"
-              src={loginBG}
-            />
-          </div>
-
-          <LoginCarousel />
-        </Col>
-      </Row>
-    </div>
+        <LoginCarousel />
+      </Col>
+    </Row>
   );
 };
 

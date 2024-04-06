@@ -38,12 +38,12 @@
       "storageService",
       "dataProduct"
     ],
-    "recreateIndex": false,
+    "recreateIndex": true,
     "batchSize": "100",
     "searchIndexMappingLanguage": "EN"
   },
   "appSchedule": {
-    "scheduleType": "Custom",
+    "scheduleTimeline": "Custom",
     "cronExpression": "0 0 * * *"
   }
 }

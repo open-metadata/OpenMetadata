@@ -19,11 +19,12 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import {
-  getDataModelDetailsPath,
+  getEntityDetailsPath,
   INITIAL_PAGING_VALUE,
   PAGE_SIZE_BASE,
   pagingObject,
 } from '../../../../constants/constants';
+import { EntityType } from '../../../../enums/entity.enum';
 import { Include } from '../../../../generated/type/include';
 import { Paging } from '../../../../generated/type/paging';
 import { usePaging } from '../../../../hooks/paging/usePaging';
@@ -69,7 +70,10 @@ const DataModelTable = () => {
               <Link
                 className="break-word"
                 data-testid={`data-model-${dataModelDisplayName}`}
-                to={getDataModelDetailsPath(record.fullyQualifiedName || '')}>
+                to={getEntityDetailsPath(
+                  EntityType.DASHBOARD_DATA_MODEL,
+                  record.fullyQualifiedName || ''
+                )}>
                 {dataModelDisplayName}
               </Link>
             </div>

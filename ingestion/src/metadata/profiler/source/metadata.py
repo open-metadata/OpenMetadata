@@ -43,6 +43,10 @@ from metadata.utils.logger import profiler_logger
 logger = profiler_logger()
 
 
+TABLE_FIELDS = ["tableProfilerConfig", "columns", "customMetrics"]
+TAGS_FIELD = ["tags"]
+
+
 class ProfilerSourceAndEntity(BaseModel):
     """Return class for the OpenMetadata Profiler Source"""
 
@@ -147,7 +151,12 @@ class OpenMetadataSource(Source):
                 )
 
     @classmethod
-    def create(cls, config_dict: dict, metadata: OpenMetadata) -> "Step":
+    def create(
+        cls,
+        config_dict: dict,
+        metadata: OpenMetadata,
+        pipeline_name: Optional[str] = None,
+    ) -> "Step":
         config = parse_workflow_config_gracefully(config_dict)
         return cls(config=config, metadata=metadata)
 
@@ -273,7 +282,9 @@ class OpenMetadataSource(Source):
         """
         tables = self.metadata.list_all_entities(
             entity=Table,
-            fields=["tableProfilerConfig", "columns", "customMetrics"],
+            fields=TABLE_FIELDS
+            if not self.source_config.processPiiSensitive
+            else TABLE_FIELDS + TAGS_FIELD,
             params={
                 "service": self.config.source.serviceName,
                 "database": fqn.build(

@@ -96,8 +96,8 @@ public abstract class PipelineServiceClient {
           "test_suite_task",
           PipelineType.DATA_INSIGHT.toString(),
           "data_insight_task",
-          PipelineType.ELASTIC_SEARCH_REINDEX.toString(),
-          "elasticsearch_reindex_task");
+          PipelineType.APPLICATION.toString(),
+          "application_task");
 
   public static final String SERVER_VERSION;
 

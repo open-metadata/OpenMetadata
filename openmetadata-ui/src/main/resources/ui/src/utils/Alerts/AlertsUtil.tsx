@@ -61,7 +61,7 @@ export const getAlertsActionTypeIcon = (type?: SubscriptionType) => {
       return <MailIcon height={16} width={16} />;
     case SubscriptionType.ActivityFeed:
       return <AllActivityIcon height={16} width={16} />;
-    case SubscriptionType.Generic:
+    case SubscriptionType.Webhook:
     default:
       return <WebhookIcon height={16} width={16} />;
   }
@@ -127,7 +127,7 @@ export const getAlertActionTypeDisplayName = (
       return i18next.t('label.activity-feed-plural');
     case SubscriptionType.Email:
       return i18next.t('label.email');
-    case SubscriptionType.Generic:
+    case SubscriptionType.Webhook:
       return i18next.t('label.webhook');
     case SubscriptionType.Slack:
       return i18next.t('label.slack');
@@ -230,6 +230,13 @@ const getUserOptions = async (searchText: string) => {
   });
 };
 
+const getUserBotOptions = async (searchText: string) => {
+  return searchEntity({
+    searchText,
+    searchIndex: SearchIndex.USER,
+  });
+};
+
 const getTeamOptions = async (searchText: string) => {
   return searchEntity({ searchText, searchIndex: SearchIndex.TEAM });
 };
@@ -281,7 +288,7 @@ export const getDestinationConfigField = (
     case SubscriptionType.Slack:
     case SubscriptionType.MSTeams:
     case SubscriptionType.GChat:
-    case SubscriptionType.Generic:
+    case SubscriptionType.Webhook:
       return (
         <Col span={12}>
           <Form.Item
@@ -378,6 +385,91 @@ export const getDestinationConfigField = (
   }
 };
 
+export const getMessageFromArgumentName = (argumentName: string) => {
+  switch (argumentName) {
+    case 'fqnList':
+      return t('message.field-text-is-required', {
+        fieldText: t('label.entity-list', {
+          entity: t('label.fqn-uppercase'),
+        }),
+      });
+    case 'domainList':
+      return t('message.field-text-is-required', {
+        fieldText: t('label.entity-list', {
+          entity: t('label.domain'),
+        }),
+      });
+    case 'tableNameList':
+      return t('message.field-text-is-required', {
+        fieldText: t('label.entity-list', {
+          entity: t('label.entity-name', {
+            entity: t('label.table'),
+          }),
+        }),
+      });
+    case 'ownerNameList':
+      return t('message.field-text-is-required', {
+        fieldText: t('label.entity-list', {
+          entity: t('label.entity-name', {
+            entity: t('label.owner'),
+          }),
+        }),
+      });
+    case 'updateByUserList':
+    case 'userList':
+      return t('message.field-text-is-required', {
+        fieldText: t('label.entity-list', {
+          entity: t('label.entity-name', {
+            entity: t('label.user'),
+          }),
+        }),
+      });
+    case 'eventTypeList':
+      return t('message.field-text-is-required', {
+        fieldText: t('label.entity-list', {
+          entity: t('label.entity-name', {
+            entity: t('label.event'),
+          }),
+        }),
+      });
+    case 'entityIdList':
+      return t('message.field-text-is-required', {
+        fieldText: t('label.entity-list', {
+          entity: t('label.entity-id', {
+            entity: t('label.data-asset'),
+          }),
+        }),
+      });
+    case 'pipelineStateList':
+    case 'ingestionPipelineStateList':
+      return t('message.field-text-is-required', {
+        fieldText: t('label.entity-list', {
+          entity: t('label.pipeline-state'),
+        }),
+      });
+    case 'testStatusList':
+      return t('message.field-text-is-required', {
+        fieldText: t('label.entity-list', {
+          entity: t('label.test-suite-status'),
+        }),
+      });
+    case 'testResultList':
+      return t('message.field-text-is-required', {
+        fieldText: t('label.entity-list', {
+          entity: t('label.test-case-result'),
+        }),
+      });
+    case 'testSuiteList':
+      return t('message.field-text-is-required', {
+        fieldText: t('label.entity-list', {
+          entity: t('label.test-suite'),
+        }),
+      });
+    default:
+      return '';
+  }
+};
+
 export const getFieldByArgumentType = (
   fieldName: number,
   argument: string,
@@ -400,377 +492,192 @@ export const getFieldByArgumentType = (
   switch (argument) {
     case 'fqnList':
       field = (
-        <Col key="fqn-list-select" span={12}>
-          <Form.Item
-            name={[fieldName, 'arguments', index, 'input']}
-            rules={[
-              {
-                required: true,
-                message: t('message.field-text-is-required', {
-                  fieldText: t('label.entity-list', {
-                    entity: t('label.fqn-uppercase'),
-                  }),
-                }),
-              },
-            ]}>
-            <AsyncSelect
-              api={getEntityByFQN}
-              className="w-full"
-              data-testid="fqn-list-select"
-              maxTagTextLength={45}
-              mode="tags"
-              optionFilterProp="label"
-              placeholder={t('label.search-by-type', {
-                type: t('label.fqn-uppercase'),
-              })}
-              showArrow={false}
-            />
-          </Form.Item>
-        </Col>
+        <AsyncSelect
+          api={getEntityByFQN}
+          className="w-full"
+          data-testid="fqn-list-select"
+          maxTagTextLength={45}
+          mode="tags"
+          optionFilterProp="label"
+          placeholder={t('label.search-by-type', {
+            type: t('label.fqn-uppercase'),
+          })}
+          showArrow={false}
+        />
       );
 
       break;
 
     case 'domainList':
       field = (
-        <Col key="domain-select" span={12}>
-          <Form.Item
-            name={[fieldName, 'arguments', index, 'input']}
-            rules={[
-              {
-                required: true,
-                message: t('message.field-text-is-required', {
-                  fieldText: t('label.entity-list', {
-                    entity: t('label.domain'),
-                  }),
-                }),
-              },
-            ]}>
-            <AsyncSelect
-              api={getDomainOptions}
-              className="w-full"
-              data-testid="domain-select"
-              mode="multiple"
-              placeholder={t('label.search-by-type', {
-                type: t('label.domain-lowercase'),
-              })}
-            />
-          </Form.Item>
-        </Col>
+        <AsyncSelect
+          api={getDomainOptions}
+          className="w-full"
+          data-testid="domain-select"
+          mode="multiple"
+          placeholder={t('label.search-by-type', {
+            type: t('label.domain-lowercase'),
+          })}
+        />
       );
 
       break;
 
     case 'tableNameList':
       field = (
-        <Col key="table-name-select" span={12}>
-          <Form.Item
-            name={[fieldName, 'arguments', index, 'input']}
-            rules={[
-              {
-                required: true,
-                message: t('message.field-text-is-required', {
-                  fieldText: t('label.entity-list', {
-                    entity: t('label.entity-name', {
-                      entity: t('label.table'),
-                    }),
-                  }),
-                }),
-              },
-            ]}>
-            <AsyncSelect
-              api={getTableSuggestions}
-              className="w-full"
-              data-testid="table-name-select"
-              maxTagTextLength={45}
-              mode="tags"
-              optionFilterProp="label"
-              placeholder={t('label.search-by-type', {
-                type: t('label.table-lowercase'),
-              })}
-            />
-          </Form.Item>
-        </Col>
+        <AsyncSelect
+          api={getTableSuggestions}
+          className="w-full"
+          data-testid="table-name-select"
+          maxTagTextLength={45}
+          mode="tags"
+          optionFilterProp="label"
+          placeholder={t('label.search-by-type', {
+            type: t('label.table-lowercase'),
+          })}
+        />
       );
 
       break;
 
     case 'ownerNameList':
       field = (
-        <Col key="owner-select" span={12}>
-          <Form.Item
-            name={[fieldName, 'arguments', index, 'input']}
-            rules={[
-              {
-                required: true,
-                message: t('message.field-text-is-required', {
-                  fieldText: t('label.entity-list', {
-                    entity: t('label.entity-name', {
-                      entity: t('label.owner'),
-                    }),
-                  }),
-                }),
-              },
-            ]}>
-            <AsyncSelect
-              api={getOwnerOptions}
-              className="w-full"
-              data-testid="owner-name-select"
-              mode="multiple"
-              placeholder={t('label.search-by-type', {
-                type: t('label.owner-lowercase'),
-              })}
-            />
-          </Form.Item>
-        </Col>
+        <AsyncSelect
+          api={getOwnerOptions}
+          className="w-full"
+          data-testid="owner-name-select"
+          mode="multiple"
+          placeholder={t('label.search-by-type', {
+            type: t('label.owner-lowercase'),
+          })}
+        />
       );
 
       break;
 
     case 'updateByUserList':
+    case 'userList':
       field = (
-        <Col key="user-select" span={12}>
-          <Form.Item
-            name={[fieldName, 'arguments', index, 'input']}
-            rules={[
-              {
-                required: true,
-                message: t('message.field-text-is-required', {
-                  fieldText: t('label.entity-list', {
-                    entity: t('label.entity-name', {
-                      entity: t('label.user'),
-                    }),
-                  }),
-                }),
-              },
-            ]}>
-            <AsyncSelect
-              api={getUserOptions}
-              className="w-full"
-              data-testid="user-name-select"
-              mode="multiple"
-              placeholder={t('label.search-by-type', {
-                type: t('label.user'),
-              })}
-            />
-          </Form.Item>
-        </Col>
+        <AsyncSelect
+          api={
+            argument === 'updateByUserList'
+              ? getUserBotOptions // For updateByUserList, we need to show bot users as well
+              : getUserOptions // For userList, which is an argument for `conversation` filters we need to show only non-bot users
+          }
+          className="w-full"
+          data-testid="user-name-select"
+          mode="multiple"
+          placeholder={t('label.search-by-type', {
+            type: t('label.user'),
+          })}
+        />
       );
 
       break;
 
     case 'eventTypeList':
       field = (
-        <Col key="event-type-select" span={12}>
-          <Form.Item
-            name={[fieldName, 'arguments', index, 'input']}
-            rules={[
-              {
-                required: true,
-                message: t('message.field-text-is-required', {
-                  fieldText: t('label.entity-list', {
-                    entity: t('label.entity-name', {
-                      entity: t('label.event'),
-                    }),
-                  }),
-                }),
-              },
-            ]}>
-            <Select
-              className="w-full"
-              data-testid="event-type-select"
-              mode="multiple"
-              options={getSelectOptionsFromEnum(EventType)}
-              placeholder={t('label.search-by-type', {
-                type: t('label.event-type-lowercase'),
-              })}
-            />
-          </Form.Item>
-        </Col>
+        <Select
+          className="w-full"
+          data-testid="event-type-select"
+          mode="multiple"
+          options={getSelectOptionsFromEnum(EventType)}
+          placeholder={t('label.search-by-type', {
+            type: t('label.event-type-lowercase'),
+          })}
+        />
       );
 
       break;
 
     case 'entityIdList':
       field = (
-        <Col key="entity-id-select" span={12}>
-          <Form.Item
-            name={[fieldName, 'arguments', index, 'input']}
-            rules={[
-              {
-                required: true,
-                message: t('message.field-text-is-required', {
-                  fieldText: t('label.entity-list', {
-                    entity: t('label.entity-id', {
-                      entity: t('label.data-asset'),
-                    }),
-                  }),
-                }),
-              },
-            ]}>
-            <Select
-              className="w-full"
-              data-testid="entity-id-select"
-              mode="tags"
-              open={false}
-              placeholder={t('label.search-by-type', {
-                type: t('label.entity-id', {
-                  entity: t('label.data-asset'),
-                }),
-              })}
-            />
-          </Form.Item>
-        </Col>
+        <Select
+          className="w-full"
+          data-testid="entity-id-select"
+          mode="tags"
+          open={false}
+          placeholder={t('label.search-by-type', {
+            type: t('label.entity-id', {
+              entity: t('label.data-asset'),
+            }),
+          })}
+        />
       );
 
       break;
 
     case 'pipelineStateList':
       field = (
-        <Col key="pipeline-state-select" span={12}>
-          <Form.Item
-            name={[fieldName, 'arguments', index, 'input']}
-            rules={[
-              {
-                required: true,
-                message: t('message.field-text-is-required', {
-                  fieldText: t('label.entity-list', {
-                    entity: t('label.pipeline-state'),
-                  }),
-                }),
-              },
-            ]}>
-            <Select
-              className="w-full"
-              data-testid="pipeline-status-select"
-              mode="multiple"
-              options={getSelectOptionsFromEnum(StatusType)}
-              placeholder={t('label.select-field', {
-                field: t('label.pipeline-state'),
-              })}
-            />
-          </Form.Item>
-        </Col>
+        <Select
+          className="w-full"
+          data-testid="pipeline-status-select"
+          mode="multiple"
+          options={getSelectOptionsFromEnum(StatusType)}
+          placeholder={t('label.select-field', {
+            field: t('label.pipeline-state'),
+          })}
+        />
       );
 
       break;
 
     case 'ingestionPipelineStateList':
       field = (
-        <Col key="pipeline-state-select" span={11}>
-          <Form.Item
-            name={[fieldName, 'arguments', index, 'input']}
-            rules={[
-              {
-                required: true,
-                message: t('message.field-text-is-required', {
-                  fieldText: t('label.entity-list', {
-                    entity: t('label.pipeline-state'),
-                  }),
-                }),
-              },
-            ]}>
-            <Select
-              className="w-full"
-              data-testid="pipeline-status-select"
-              mode="multiple"
-              options={getSelectOptionsFromEnum(PipelineState)}
-              placeholder={t('label.select-field', {
-                field: t('label.pipeline-state'),
-              })}
-            />
-          </Form.Item>
-        </Col>
+        <Select
+          className="w-full"
+          data-testid="pipeline-status-select"
+          mode="multiple"
+          options={getSelectOptionsFromEnum(PipelineState)}
+          placeholder={t('label.select-field', {
+            field: t('label.pipeline-state'),
+          })}
+        />
       );
 
       break;
 
     case 'testStatusList':
       field = (
-        <Col key="test-status-select" span={12}>
-          <Form.Item
-            name={[fieldName, 'arguments', index, 'input']}
-            rules={[
-              {
-                required: true,
-                message: t('message.field-text-is-required', {
-                  fieldText: t('label.entity-list', {
-                    entity: t('label.test-suite-status'),
-                  }),
-                }),
-              },
-            ]}>
-            <Select
-              className="w-full"
-              data-testid="test-status-select"
-              mode="multiple"
-              options={getSelectOptionsFromEnum(TestCaseStatus)}
-              placeholder={t('label.select-field', {
-                field: t('label.test-suite-status'),
-              })}
-            />
-          </Form.Item>
-        </Col>
+        <Select
+          className="w-full"
+          data-testid="test-status-select"
+          mode="multiple"
+          options={getSelectOptionsFromEnum(TestCaseStatus)}
+          placeholder={t('label.select-field', {
+            field: t('label.test-suite-status'),
+          })}
+        />
       );
 
       break;
 
     case 'testResultList':
       field = (
-        <Col key="test-result-select" span={12}>
-          <Form.Item
-            name={[fieldName, 'arguments', index, 'input']}
-            rules={[
-              {
-                required: true,
-                message: t('message.field-text-is-required', {
-                  fieldText: t('label.entity-list', {
-                    entity: t('label.test-case-result'),
-                  }),
-                }),
-              },
-            ]}>
-            <Select
-              className="w-full"
-              data-testid="test-result-select"
-              mode="multiple"
-              options={getSelectOptionsFromEnum(TestCaseStatus)}
-              placeholder={t('label.select-field', {
-                field: t('label.test-case-result'),
-              })}
-            />
-          </Form.Item>
-        </Col>
+        <Select
+          className="w-full"
+          data-testid="test-result-select"
+          mode="multiple"
+          options={getSelectOptionsFromEnum(TestCaseStatus)}
+          placeholder={t('label.select-field', {
+            field: t('label.test-case-result'),
+          })}
+        />
       );
 
       break;
 
     case 'testSuiteList':
       field = (
-        <Col key="test-suite-select" span={12}>
-          <Form.Item
-            name={[fieldName, 'arguments', index, 'input']}
-            rules={[
-              {
-                required: true,
-                message: t('message.field-text-is-required', {
-                  fieldText: t('label.entity-list', {
-                    entity: t('label.test-suite'),
-                  }),
-                }),
-              },
-            ]}>
-            <AsyncSelect
-              api={getTestSuiteSuggestions}
-              className="w-full"
-              data-testid="test-suite-select"
-              mode="multiple"
-              placeholder={t('label.search-by-type', {
-                type: t('label.test-suite'),
-              })}
-            />
-          </Form.Item>
-        </Col>
+        <AsyncSelect
+          api={getTestSuiteSuggestions}
+          className="w-full"
+          data-testid="test-suite-select"
+          mode="multiple"
+          placeholder={t('label.search-by-type', {
+            type: t('label.test-suite'),
+          })}
+        />
       );
 
       break;
@@ -780,7 +687,18 @@ export const getFieldByArgumentType = (
 
   return (
     <>
-      {field}
+      <Col key={argument} span={12}>
+        <Form.Item
+          name={[fieldName, 'arguments', index, 'input']}
+          rules={[
+            {
+              required: true,
+              message: getMessageFromArgumentName(argument),
+            },
+          ]}>
+          {field}
+        </Form.Item>
+      </Col>
       <Form.Item
         hidden
         dependencies={[fieldName, 'arguments', index, 'input']}
@@ -921,14 +839,24 @@ export const getFilteredDestinationOptions = (
 
     // Logic to filter options for destination type "Internal"
 
-    // Show all options except "Assignees" for all sources.
-    let shouldShowOption = option.value !== SubscriptionCategory.Assignees;
+    // Show all options except "Assignees" and "Mentions" for all sources.
+    let shouldShowOption =
+      option.value !== SubscriptionCategory.Assignees &&
+      option.value !== SubscriptionCategory.Mentions;
 
     // Only show "Owners" and "Assignees" options for "Task" source.
     if (selectedSource === 'task') {
       shouldShowOption = [
         SubscriptionCategory.Owners,
         SubscriptionCategory.Assignees,
+      ].includes(option.value as SubscriptionCategory);
+    }
+
+    // Only show "Owners" and "Mentions" options for "Conversation" source.
+    if (selectedSource === 'conversation') {
+      shouldShowOption = [
+        SubscriptionCategory.Owners,
+        SubscriptionCategory.Mentions,
       ].includes(option.value as SubscriptionCategory);
     }
 

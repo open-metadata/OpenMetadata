@@ -55,7 +55,9 @@ function TeamTypeSelect({
       align="center"
       className="team-type-select"
       data-testid="team-type-select"
-      size={4}>
+      size={4}
+      // Used to stop click propagation event anywhere in the form to parent TeamDetailsV1 collapsible panel
+      onClick={(e) => e.stopPropagation()}>
       <Select
         defaultActiveFirstOption
         options={options}

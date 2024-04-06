@@ -78,3 +78,7 @@ class S3ContainerDetails(BaseModel):
     sourceUrl: Optional[basic.SourceUrl] = Field(
         None, description="Source URL of the container."
     )
+
+    fullPath: Optional[str] = Field(
+        None, description="Full path of the container/file."
+    )

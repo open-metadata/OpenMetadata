@@ -23,7 +23,7 @@ import userEvent from '@testing-library/user-event';
 import React, { ReactNode } from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { AuthProvider } from '../../../generated/settings/settings';
-import { useAuthContext } from '../../Auth/AuthProviders/AuthProvider';
+import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { mockAccessData, mockUserData, mockUserRole } from './mocks/User.mocks';
 import Users from './Users.component';
 import { UserPageTabs } from './Users.interface';
@@ -74,9 +74,14 @@ jest.mock(
 jest.mock(
   '../../MyData/Persona/PersonaSelectableList/PersonaSelectableList.component',
   () => ({
-    PersonaSelectableList: jest
-      .fn()
-      .mockReturnValue(<p>PersonaSelectableList</p>),
+    PersonaSelectableList: jest.fn().mockImplementation(({ onUpdate }) => (
+      <div>
+        <p>PersonaSelectableList</p>
+        <button onClick={() => onUpdate([])}>
+          SavePersonaSelectableListButton
+        </button>
+      </div>
+    )),
   })
 );
 
@@ -99,8 +104,8 @@ jest.mock(
       .mockImplementation(() => <>ActivityFeedTabTest</>),
   })
 );
-jest.mock('../../Auth/AuthProviders/AuthProvider', () => ({
-  useAuthContext: jest.fn(() => ({
+jest.mock('../../../hooks/useApplicationStore', () => ({
+  useApplicationStore: jest.fn(() => ({
     authConfig: {
       provider: AuthProvider.Basic,
     },
@@ -133,16 +138,22 @@ jest.mock('../../PageLayoutV1/PageLayoutV1', () =>
 );
 
 jest.mock('../../common/EntityDescription/DescriptionV1', () => {
-  return jest.fn().mockReturnValue(<p>Description</p>);
+  return jest.fn().mockImplementation(({ onDescriptionUpdate }) => (
+    <div>
+      <span>Description</span>
+      <button onClick={() => onDescriptionUpdate('testDescription')}>
+        SaveDescriptionButton
+      </button>
+    </div>
+  ));
 });
-const updateUserDetails = jest.fn();
 
 const mockProp = {
   queryFilters: {
     myData: 'my-data',
     following: 'following',
   },
-  updateUserDetails,
+  updateUserDetails: jest.fn(),
   handlePaginate: jest.fn(),
 };
 
@@ -190,12 +201,67 @@ describe('Test User Component', () => {
       'UserProfileInheritedRoles'
     );
     const UserProfileRoles = await findByText(container, 'UserProfileRoles');
-
     const UserProfileTeams = await findByText(container, 'UserProfileTeams');
+    const description = await findByText(container, 'Description');
 
+    expect(description).toBeInTheDocument();
     expect(UserProfileRoles).toBeInTheDocument();
     expect(UserProfileTeams).toBeInTheDocument();
     expect(UserProfileInheritedRoles).toBeInTheDocument();
+  });
+
+  it('should call updateUserDetails on click of SaveDescriptionButton', async () => {
+    const { container } = render(
+      <Users userData={mockUserData} {...mockProp} />,
+      {
+        wrapper: MemoryRouter,
+      }
+    );
+
+    const collapsibleButton = await findByRole(container, 'img');
+
+    userEvent.click(collapsibleButton);
+
+    const saveDescriptionButton = await findByText(
+      container,
+      'SaveDescriptionButton'
+    );
+
+    userEvent.click(saveDescriptionButton);
+
+    expect(mockProp.updateUserDetails).toHaveBeenCalledWith(
+      {
+        description: 'testDescription',
+      },
+      'description'
+    );
+  });
+
+  it('should call updateUserDetails on click of SavePersonaSelectableListButton', async () => {
+    const { container } = render(
+      <Users userData={mockUserData} {...mockProp} />,
+      {
+        wrapper: MemoryRouter,
+      }
+    );
+
+    const collapsibleButton = await findByRole(container, 'img');
+
+    userEvent.click(collapsibleButton);
+
+    const savePersonaSelectableListButton = await findByText(
+      container,
+      'SavePersonaSelectableListButton'
+    );
+
+    userEvent.click(savePersonaSelectableListButton);
+
+    expect(mockProp.updateUserDetails).toHaveBeenCalledWith(
+      {
+        personas: [],
+      },
+      'personas'
+    );
   });
 
   it('Tab should not visible to normal user', async () => {
@@ -252,11 +318,13 @@ describe('Test User Component', () => {
   });
 
   it('Access Token tab should show user access component', async () => {
-    (useAuthContext as jest.Mock).mockImplementationOnce(() => ({
-      currentUser: {
-        name: 'test',
-      },
-    }));
+    (useApplicationStore as unknown as jest.Mock).mockImplementationOnce(
+      () => ({
+        currentUser: {
+          name: 'test',
+        },
+      })
+    );
     mockParams.tab = UserPageTabs.ACCESS_TOKEN;
     render(
       <Users

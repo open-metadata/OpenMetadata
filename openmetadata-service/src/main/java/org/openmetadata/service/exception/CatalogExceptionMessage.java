@@ -158,6 +158,10 @@ public final class CatalogExceptionMessage {
     return String.format("Invalid %s name %s", fieldType, fieldName);
   }
 
+  public static String invalidFieldFQN(String fqn) {
+    return String.format("Invalid fully qualified field name %s", fqn);
+  }
+
   public static String entityVersionNotFound(String entityType, UUID id, Double version) {
     return String.format("%s instance for %s and version %s not found", entityType, id, version);
   }
@@ -266,6 +270,10 @@ public final class CatalogExceptionMessage {
 
   public static String systemEntityRenameNotAllowed(String name, String entityType) {
     return String.format("System entity [%s] of type %s can not be renamed.", name, entityType);
+  }
+
+  public static String systemEntityModifyNotAllowed(String name, String entityType) {
+    return String.format("System entity [%s] of type %s can not be modified.", name, entityType);
   }
 
   public static String mutuallyExclusiveLabels(TagLabel tag1, TagLabel tag2) {

@@ -16,7 +16,7 @@ import ButtonGroup from 'antd/lib/button/button-group';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
-import { capitalize, isUndefined, toString } from 'lodash';
+import { capitalize, isEmpty, isUndefined, toString } from 'lodash';
 import React, {
   forwardRef,
   useCallback,
@@ -57,7 +57,7 @@ import {
 import { getErrorText } from '../../../utils/StringsUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import AppBadge from '../../common/Badge/Badge.component';
-import Description from '../../common/EntityDescription/Description';
+import DescriptionV1 from '../../common/EntityDescription/DescriptionV1';
 import ManageButton from '../../common/EntityPageInfos/ManageButton/ManageButton';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import NextPrevious from '../../common/NextPrevious/NextPrevious';
@@ -93,7 +93,6 @@ const ClassificationDetails = forwardRef(
     const history = useHistory();
     const [tags, setTags] = useState<Tag[]>([]);
     const [isTagsLoading, setIsTagsLoading] = useState(false);
-
     const {
       currentPage,
       paging,
@@ -478,16 +477,18 @@ const ClassificationDetails = forwardRef(
             </Col>
           </Row>
         )}
-
         <div className="m-b-sm m-t-xs" data-testid="description-container">
-          <Description
+          <DescriptionV1
             className={classNames({
               'opacity-60': isClassificationDisabled,
             })}
             description={description}
             entityName={getEntityName(currentClassification)}
+            entityType={EntityType.CLASSIFICATION}
             hasEditAccess={editDescriptionPermission}
+            isDescriptionExpanded={isEmpty(tags)}
             isEdit={isEditClassification}
+            showCommentsIcon={false}
             onCancel={handleCancelEditDescription}
             onDescriptionEdit={handleEditDescriptionClick}
             onDescriptionUpdate={handleUpdateDescription}

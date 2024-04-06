@@ -68,6 +68,7 @@ import {
 } from '../../../../generated/tests/testCaseResolutionStatus';
 import { TagLabel } from '../../../../generated/type/tagLabel';
 import { useAuth } from '../../../../hooks/authHooks';
+import { useApplicationStore } from '../../../../hooks/useApplicationStore';
 import Assignees from '../../../../pages/TasksPage/shared/Assignees';
 import DescriptionTask from '../../../../pages/TasksPage/shared/DescriptionTask';
 import TagsTask from '../../../../pages/TasksPage/shared/TagsTask';
@@ -82,6 +83,7 @@ import { getNameFromFQN } from '../../../../utils/CommonUtils';
 import EntityLink from '../../../../utils/EntityLink';
 import { getEntityFQN } from '../../../../utils/FeedUtils';
 import { checkPermission } from '../../../../utils/PermissionsUtils';
+import { getErrorText } from '../../../../utils/StringsUtils';
 import {
   fetchOptions,
   generateOptions,
@@ -95,7 +97,6 @@ import { showErrorToast, showSuccessToast } from '../../../../utils/ToastUtils';
 import ActivityFeedCardV1 from '../../../ActivityFeed/ActivityFeedCard/ActivityFeedCardV1';
 import ActivityFeedEditor from '../../../ActivityFeed/ActivityFeedEditor/ActivityFeedEditor';
 import { useActivityFeedProvider } from '../../../ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
-import { useAuthContext } from '../../../Auth/AuthProviders/AuthProvider';
 import AssigneeList from '../../../common/AssigneeList/AssigneeList';
 import InlineEdit from '../../../common/InlineEdit/InlineEdit.component';
 import { OwnerLabel } from '../../../common/OwnerLabel/OwnerLabel.component';
@@ -114,7 +115,7 @@ export const TaskTab = ({
 }: TaskTabProps) => {
   const history = useHistory();
   const [assigneesForm] = useForm();
-  const { currentUser } = useAuthContext();
+  const { currentUser } = useApplicationStore();
   const markdownRef = useRef<EditorContentRef>();
   const updatedAssignees = Form.useWatch('assignees', assigneesForm);
   const { permissions } = usePermissionProvider();
@@ -266,7 +267,9 @@ export const TaskTab = ({
         rest.onAfterClose?.();
         rest.onUpdateEntityDetails?.();
       })
-      .catch((err: AxiosError) => showErrorToast(err));
+      .catch((err: AxiosError) =>
+        showErrorToast(getErrorText(err, t('server.unexpected-error')))
+      );
   };
 
   const onTaskResolve = () => {
@@ -429,7 +432,9 @@ export const TaskTab = ({
       rest.onAfterClose?.();
       setShowEditTaskModel(false);
     } catch (error) {
-      showErrorToast(error as AxiosError);
+      showErrorToast(
+        getErrorText(error as AxiosError, t('server.unexpected-error'))
+      );
     } finally {
       setIsActionLoading(false);
     }
@@ -746,7 +751,9 @@ export const TaskTab = ({
 
   return (
     <Row className="p-y-sm p-x-md" data-testid="task-tab" gutter={[0, 24]}>
-      <Col className="d-flex items-center" span={24}>
+      <Col
+        className="d-flex items-center task-feed-message-container"
+        span={24}>
         <Icon
           className="m-r-xs"
           component={

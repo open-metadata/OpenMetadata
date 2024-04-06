@@ -55,7 +55,9 @@ class MlflowSource(MlModelServiceSource):
     """
 
     @classmethod
-    def create(cls, config_dict, metadata: OpenMetadata):
+    def create(
+        cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None
+    ):
         config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
         connection: MlflowConnection = config.serviceConnection.__root__.config
         if not isinstance(connection, MlflowConnection):
@@ -126,7 +128,7 @@ class MlflowSource(MlModelServiceSource):
                 run.data, latest_version.run_id, model.name
             ),
             mlStore=self._get_ml_store(latest_version),
-            service=self.context.mlmodel_service,
+            service=self.context.get().mlmodel_service,
             sourceUrl=source_url,
         )
         yield Either(right=mlmodel_request)
