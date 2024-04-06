@@ -21,7 +21,7 @@ const PasswordWidget: FC<WidgetProps> = ({
   ...rest
 }) => {
   return (
-    <Input.Password
+    <Input
       autoComplete="off"
       autoFocus={rest.autofocus}
       disabled={rest.disabled}
