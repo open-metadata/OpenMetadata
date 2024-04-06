@@ -582,6 +582,7 @@ const PipelineDetails = ({
                     entityName={entityName}
                     entityType={EntityType.PIPELINE}
                     hasEditAccess={editDescriptionPermission}
+                    isDescriptionExpanded={isEmpty(tasksInternal)}
                     isEdit={isEdit}
                     owner={owner}
                     showActions={!deleted}
