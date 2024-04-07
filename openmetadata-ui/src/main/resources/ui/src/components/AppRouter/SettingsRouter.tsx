@@ -29,10 +29,8 @@ import ApplicationPage from '../../pages/Application/ApplicationPage';
 import BotsPageV1 from '../../pages/BotsPageV1/BotsPageV1.component';
 import EditLoginConfiguration from '../../pages/Configuration/EditLoginConfiguration/EditLoginConfigurationPage';
 import LoginConfigurationPage from '../../pages/Configuration/LoginConfigurationDetails/LoginConfigurationPage';
-import CustomLogoConfigSettingsPage from '../../pages/CustomLogoConfigSettingsPage/CustomLogoConfigSettingsPage';
 import { CustomPageSettings } from '../../pages/CustomPageSettings/CustomPageSettings';
 import CustomPropertiesPageV1 from '../../pages/CustomPropertiesPageV1/CustomPropertiesPageV1';
-import EditCustomLogoConfig from '../../pages/EditCustomLogoConfig/EditCustomLogoConfig';
 import EditEmailConfigPage from '../../pages/EditEmailConfigPage/EditEmailConfigPage.component';
 import EmailConfigSettingsPage from '../../pages/EmailConfigSettingsPage/EmailConfigSettingsPage.component';
 import GlobalSettingCategoryPage from '../../pages/GlobalSettingPage/GlobalSettingCategory/GlobalSettingCategoryPage';
@@ -97,12 +95,7 @@ const SettingsRouter = () => {
         hasPermission={false}
         path={ROUTES.SETTINGS_EDIT_EMAIL_CONFIG}
       />
-      <AdminProtectedRoute
-        exact
-        component={EditCustomLogoConfig}
-        hasPermission={false}
-        path={ROUTES.SETTINGS_EDIT_CUSTOM_LOGO_CONFIG}
-      />
+
       <AdminProtectedRoute
         exact
         component={EditLoginConfiguration}
@@ -284,15 +277,6 @@ const SettingsRouter = () => {
         path={getSettingPath(
           GlobalSettingsMenuCategory.PREFERENCES,
           GlobalSettingOptions.EMAIL
-        )}
-      />
-      <AdminProtectedRoute
-        exact
-        component={CustomLogoConfigSettingsPage}
-        hasPermission={false}
-        path={getSettingPath(
-          GlobalSettingsMenuCategory.PREFERENCES,
-          GlobalSettingOptions.CUSTOM_LOGO
         )}
       />
       <AdminProtectedRoute

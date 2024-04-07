@@ -25,7 +25,7 @@ import {
 } from 'antd';
 import { Theme } from 'antd/lib/config-provider/context';
 import { AxiosError } from 'axios';
-import { startCase } from 'lodash';
+import { omit, startCase } from 'lodash';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
@@ -50,8 +50,13 @@ import './appearance-config-settings-page.less';
 
 const AppearanceConfigSettingsPage = () => {
   const history = useHistory();
-  const { theme, setTheme, resetTheme, applicationConfig } =
-    useApplicationStore();
+  const {
+    theme,
+    setTheme,
+    resetTheme,
+    applicationConfig,
+    setApplicationConfig,
+  } = useApplicationStore();
   const { t } = useTranslation();
   const [form] = Form.useForm();
   const [loading, setLoading] = useState<boolean>(false);
@@ -83,7 +88,7 @@ const AppearanceConfigSettingsPage = () => {
         successColor,
         warningColor,
         infoColor,
-        ...configValues
+        ...rest
       } = values;
       setTheme({
         primaryColor,
@@ -93,15 +98,37 @@ const AppearanceConfigSettingsPage = () => {
         infoColor,
       });
 
+      const configValues = omit(rest, 'processingColor');
+
       const configData = {
         config_type: SettingType.CustomLogoConfiguration,
         config_value: configValues,
       };
       await updateSettingsConfig(configData as Settings);
+      setApplicationConfig(configValues);
     } catch (error) {
       showErrorToast(error as AxiosError);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleReset = async () => {
+    try {
+      resetTheme();
+      const configValues = {
+        customLogoUrlPath: '',
+        customMonogramUrlPath: '',
+        customFaviconUrlPath: '',
+      };
+      const configData = {
+        config_type: SettingType.CustomLogoConfiguration,
+        config_value: configValues,
+      };
+      await updateSettingsConfig(configData as Settings);
+      setApplicationConfig(configValues);
+    } catch (error) {
+      showErrorToast(error as AxiosError);
     }
   };
 
@@ -258,11 +285,10 @@ const AppearanceConfigSettingsPage = () => {
                 <PageHeader
                   data={{
                     header: t('label.appearance'),
-                    subHeader:
-                      'Customize OpenMetadata with your company logo, monogram, favicon and brand color.',
+                    subHeader: t('message.appearance-configuration-message'),
                   }}
                 />
-                <Button type="primary" onClick={resetTheme}>
+                <Button type="primary" onClick={handleReset}>
                   {t('label.reset')}
                 </Button>
               </Space>
