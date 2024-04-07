@@ -1290,6 +1290,7 @@
     "app-disabled-successfully": "האפליקציה הושבתה בהצלחה",
     "app-installed-successfully": "האפליקציה הותקנה בהצלחה",
     "app-uninstalled-successfully": "האפליקציה הוסרה בהצלחה",
+    "appearance-configuration-message": "Customize OpenMetadata with your company logo, monogram, favicon and brand color.",
     "application-action-successfully": "האפליקציה {{action}} בהצלחה",
     "application-disabled-message": "האפליקציה מושבתת כרגע. לחץ על תפריט הנקודות התלתול בכותרת כדי להפעיל אותה.",
     "application-to-improve-data": "Improve your data using Applications for MetaPilot, Data Insights, and Search Indexing",

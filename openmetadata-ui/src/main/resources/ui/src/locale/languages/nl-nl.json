@@ -1290,6 +1290,7 @@
     "app-disabled-successfully": "Applicatie succesvol uitgeschakeld",
     "app-installed-successfully": "Applicatie succesvol geïnstalleerd",
     "app-uninstalled-successfully": "Applicatie succesvol gedeïnstalleerd",
+    "appearance-configuration-message": "Customize OpenMetadata with your company logo, monogram, favicon and brand color.",
     "application-action-successfully": "Applicatie {{action}} succesvol",
     "application-disabled-message": "De applicatie is momenteel uitgeschakeld. Klik op het ellipsismenu bovenin om het in te schakelen.",
     "application-to-improve-data": "Verbeter je gegevens met behulp van toepassingen voor MetaPilot, data-inzichten en zoekindexering",

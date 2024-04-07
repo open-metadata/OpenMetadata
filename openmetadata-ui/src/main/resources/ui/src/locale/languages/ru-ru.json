@@ -1290,6 +1290,7 @@
     "app-disabled-successfully": "Application disabled successfully",
     "app-installed-successfully": "Application installed successfully",
     "app-uninstalled-successfully": "Application uninstalled successfully",
+    "appearance-configuration-message": "Customize OpenMetadata with your company logo, monogram, favicon and brand color.",
     "application-action-successfully": "Application {{action}} successfully",
     "application-disabled-message": "Application is currently disabled. Click on the ellipsis menu in header to enable it.",
     "application-to-improve-data": "Improve your data using Applications for MetaPilot, Data Insights, and Search Indexing",

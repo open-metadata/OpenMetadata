@@ -1290,6 +1290,7 @@
     "app-disabled-successfully": "Aplicativo desativado com sucesso",
     "app-installed-successfully": "Aplicativo instalado com sucesso",
     "app-uninstalled-successfully": "Aplicativo desinstalado com sucesso",
+    "appearance-configuration-message": "Customize OpenMetadata with your company logo, monogram, favicon and brand color.",
     "application-action-successfully": "Aplicativo {{action}} com sucesso",
     "application-disabled-message": "O aplicativo está atualmente desativado. Clique no menu de reticências no cabeçalho para ativá-lo.",
     "application-to-improve-data": "Aprimore seus dados utilizando Aplicações como MetaPilot, Data Insights e Indexação de Pesquisa",
