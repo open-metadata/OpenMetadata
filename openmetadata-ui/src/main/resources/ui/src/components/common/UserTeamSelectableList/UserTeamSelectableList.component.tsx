@@ -144,6 +144,7 @@ export const UserTeamSelectableList = ({
             id: updateItems[0].id,
             type: activeTab === 'teams' ? EntityType.TEAM : EntityType.USER,
             name: updateItems[0].name,
+            fullyQualifiedName: updateItems[0].fullyQualifiedName,
             displayName: updateItems[0].displayName,
           }
     );
