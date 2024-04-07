@@ -135,7 +135,7 @@ const AppearanceConfigSettingsPage = () => {
   const themeFormFields: FieldProp[] = [
     {
       name: 'primaryColor',
-      id: 'root/color',
+      id: 'primaryColor',
       label: 'Primary Color',
       required: false,
       type: FieldTypes.COLOR_PICKER,
@@ -145,10 +145,13 @@ const AppearanceConfigSettingsPage = () => {
           message: t('message.hex-color-validation'),
         },
       ],
+      props: {
+        'data-testid': 'primaryColor',
+      },
     },
     {
       name: 'errorColor',
-      id: 'root/color',
+      id: 'errorColor',
       label: 'Error Color',
       required: false,
       type: FieldTypes.COLOR_PICKER,
@@ -158,10 +161,13 @@ const AppearanceConfigSettingsPage = () => {
           message: t('message.hex-color-validation'),
         },
       ],
+      props: {
+        'data-testid': 'errorColor',
+      },
     },
     {
       name: 'successColor',
-      id: 'root/color',
+      id: 'successColor',
       label: 'Success Color',
       required: false,
       type: FieldTypes.COLOR_PICKER,
@@ -171,10 +177,13 @@ const AppearanceConfigSettingsPage = () => {
           message: t('message.hex-color-validation'),
         },
       ],
+      props: {
+        'data-testid': 'successColor',
+      },
     },
     {
       name: 'warningColor',
-      id: 'root/color',
+      id: 'warningColor',
       label: 'Warning Color',
       required: false,
       type: FieldTypes.COLOR_PICKER,
@@ -184,10 +193,13 @@ const AppearanceConfigSettingsPage = () => {
           message: t('message.hex-color-validation'),
         },
       ],
+      props: {
+        'data-testid': 'warningColor',
+      },
     },
     {
       name: 'infoColor',
-      id: 'root/color',
+      id: 'infoColor',
       label: 'Info Color',
       required: false,
       type: FieldTypes.COLOR_PICKER,
@@ -197,6 +209,9 @@ const AppearanceConfigSettingsPage = () => {
           message: t('message.hex-color-validation'),
         },
       ],
+      props: {
+        'data-testid': 'infoColor',
+      },
     },
   ];
 
@@ -288,7 +303,10 @@ const AppearanceConfigSettingsPage = () => {
                     subHeader: t('message.appearance-configuration-message'),
                   }}
                 />
-                <Button type="primary" onClick={handleReset}>
+                <Button
+                  data-testid="reset-button"
+                  type="primary"
+                  onClick={handleReset}>
                   {t('label.reset')}
                 </Button>
               </Space>
@@ -341,6 +359,7 @@ const AppearanceConfigSettingsPage = () => {
                     <Badge
                       className="custom-theme-beta-tag"
                       count={t('label.beta')}
+                      data-testid="custom-theme-beta-tag"
                       offset={[10, 0]}
                       size="small"
                     />
@@ -411,13 +430,13 @@ const AppearanceConfigSettingsPage = () => {
               data-testid="cta-buttons"
               size={16}>
               <Button
-                data-testid="cancel"
+                data-testid="cancel-btn"
                 type="link"
                 onClick={() => history.goBack()}>
                 {t('label.cancel')}
               </Button>
               <Button
-                data-testid="save"
+                data-testid="save-btn"
                 htmlType="submit"
                 loading={loading}
                 type="primary">
