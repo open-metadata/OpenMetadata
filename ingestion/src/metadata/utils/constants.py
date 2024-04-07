@@ -98,3 +98,32 @@ ENTITY_REFERENCE_TYPE_MAP = {
     User.__name__: "user",
     Team.__name__: "team",
 }
+
+# Inverse of ENTITY_REFERENCE_TYPE_MAP
+ENTITY_REFERENCE_CLASS_MAP = {
+    # Service Entities
+    "databaseService": DatabaseService,
+    "messagingService": MessagingService,
+    "dashboardService": DashboardService,
+    "pipelineService": PipelineService,
+    "storageService": StorageService,
+    "mlmodelService": MlModelService,
+    "metadataService": MetadataService,
+    "searchService": SearchService,
+    # Data Asset Entities
+    "table": Table,
+    "storedProcedure": StoredProcedure,
+    "database": Database,
+    "databaseSchema": DatabaseSchema,
+    "dashboard": Dashboard,
+    "dashboardDataModel": DashboardDataModel,
+    "pipeline": Pipeline,
+    "chart": Chart,
+    "topic": Topic,
+    "searchIndex": SearchIndex,
+    "mlmodel": MlModel,
+    "container": Container,
+    # User Entities
+    "user": User,
+    "team": Team,
+}

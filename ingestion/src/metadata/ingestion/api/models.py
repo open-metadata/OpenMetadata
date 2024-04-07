@@ -20,6 +20,7 @@ from metadata.generated.schema.entity.services.ingestionPipelines.status import 
 )
 
 # Entities are instances of BaseModel
+Entity = BaseModel
 T = TypeVar("T")
 
 

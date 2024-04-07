@@ -21,12 +21,8 @@ from typing import Generic, List, Optional, Set, Type, TypeVar
 from pydantic import BaseModel
 from requests.utils import quote
 
-from metadata.generated.schema.api.createEventPublisherJob import (
-    CreateEventPublisherJob,
-)
 from metadata.generated.schema.entity.data.container import Container
 from metadata.generated.schema.entity.data.query import Query
-from metadata.generated.schema.system.eventPublisherJob import EventPublisherResult
 from metadata.ingestion.ometa.client import REST, APIError
 from metadata.utils.elasticsearch import ES_INDEX_MAP
 from metadata.utils.logger import ometa_logger
@@ -80,7 +76,7 @@ class ESMixin(Generic[T]):
 
         return None
 
-    def _get_entity_from_es(
+    def get_entity_from_es(
         self, entity: Type[T], query_string: str, fields: Optional[list] = None
     ) -> Optional[T]:
         """Fetch an entity instance from ES"""
