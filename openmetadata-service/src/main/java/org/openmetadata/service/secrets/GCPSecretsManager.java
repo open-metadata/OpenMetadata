@@ -30,6 +30,15 @@ public class GCPSecretsManager extends ExternalSecretsManager {
     this.projectId = (String) secretsConfig.parameters().getAdditionalProperties().getOrDefault(PROJECT_ID_NAME, "");
   }
 
+  /**
+   * GCP Secret Manager does not allow the default '/' separator: They can only contain alphanumeric characters and underscores.
+   * GCP Secret Manager does not need a prefixed separator.
+   */
+  @Override
+  protected SecretsIdConfig builSecretsIdConfig() {
+    return new SecretsIdConfig("_", Boolean.FALSE, "", Pattern.compile("[^A-Za-z0-9_]"));
+  }
+  
   @Override
   void storeSecret(String secretId, String secretValue) {
     try (SecretManagerServiceClient client = SecretManagerServiceClient.create()) {
