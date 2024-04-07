@@ -32,8 +32,10 @@ from metadata.generated.schema.entity.services.ingestionPipelines.status import 
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
+from metadata.generated.schema.type.entityLineage import ColumnLineage
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
+from metadata.ingestion.lineage.sql_lineage import get_column_fqn
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.dashboard.qlikcloud.models import QlikApp, QlikAppList
 from metadata.ingestion.source.dashboard.qliksense.metadata import QliksenseSource
@@ -143,6 +145,42 @@ class QlikcloudSource(QliksenseSource):
                 )
             )
 
+    @staticmethod
+    def _get_data_model_column_fqn(
+        data_model_entity: DashboardDataModel, column: str
+    ) -> Optional[str]:
+        """
+        Get fqn of column if exist in table entity
+        """
+        if not data_model_entity:
+            return None
+        for tbl_column in data_model_entity.columns:
+            if tbl_column.displayName.lower() == column.lower():
+                return tbl_column.fullyQualifiedName.__root__
+        return None
+
+    def _get_column_lineage(
+        self, data_model, om_table, data_model_entity: DashboardDataModel
+    ) -> List[ColumnLineage]:
+        """
+        Get the column lineage from the fields
+        """
+        try:
+            column_lineage = []
+            for field in data_model.fields or []:
+                from_column = get_column_fqn(table_entity=om_table, column=field.name)
+                to_column = self._get_data_model_column_fqn(
+                    data_model_entity=data_model_entity,
+                    column=field.name,
+                )
+                column_lineage.append(
+                    ColumnLineage(fromColumns=[from_column], toColumn=to_column)
+                )
+            return column_lineage
+        except Exception as exc:
+            logger.debug(f"Error to get column lineage: {exc}")
+            logger.debug(traceback.format_exc())
+
     def _get_database_table(
         self,
         db_service_entity: DatabaseService,
@@ -182,16 +220,21 @@ class QlikcloudSource(QliksenseSource):
         db_service_entity = self.metadata.get_by_name(
             entity=DatabaseService, fqn=db_service_name
         )
-        for datamodel_id in self.context.get().dataModels or []:
+        for data_model in self.data_models or []:
             try:
-                data_model_entity = self._get_datamodel(datamodel_id=datamodel_id)
+                data_model_entity = self._get_datamodel(datamodel_id=data_model.id)
                 if data_model_entity:
                     om_table = self._get_database_table(
                         db_service_entity, data_model_entity
                     )
                     if om_table:
+                        column_lineage = self._get_column_lineage(
+                            data_model, om_table, data_model_entity
+                        )
                         yield self._get_add_lineage_request(
-                            to_entity=data_model_entity, from_entity=om_table
+                            to_entity=data_model_entity,
+                            from_entity=om_table,
+                            column_lineage=column_lineage,
                         )
             except Exception as err:
                 yield Either(
