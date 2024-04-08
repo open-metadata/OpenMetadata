@@ -1,5 +1,5 @@
 /*
- *  Copyright 2022 Collate.
+ *  Copyright 2024 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -11,9 +11,9 @@
  *  limitations under the License.
  */
 
-import { Button, Col, Row, Space, Tag, Typography } from 'antd';
+import { Button, Col, Row, Space, Typography } from 'antd';
 import { AxiosError } from 'axios';
-import { isEmpty, isNil, isUndefined, startCase, toNumber } from 'lodash';
+import { isEmpty, isNil, isUndefined, toNumber } from 'lodash';
 import React, {
   Fragment,
   useCallback,
@@ -31,20 +31,18 @@ import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadc
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import { IngestionRecentRuns } from '../../components/Settings/Services/Ingestion/IngestionRecentRun/IngestionRecentRuns.component';
 import { GlobalSettingOptions } from '../../constants/GlobalSettings.constants';
-import { PIPELINE_INGESTION_RUN_STATUS } from '../../constants/pipeline.constants';
 import { PipelineType } from '../../generated/api/services/ingestionPipelines/createIngestionPipeline';
 import { App, AppScheduleClass } from '../../generated/entity/applications/app';
-import { AppRunRecord } from '../../generated/entity/applications/appRunRecord';
 import {
   IngestionPipeline,
-  PipelineState,
+  PipelineStatus,
 } from '../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { Include } from '../../generated/type/include';
 import { Paging } from '../../generated/type/paging';
 import { useFqn } from '../../hooks/useFqn';
 import {
   getApplicationByName,
-  getApplicationRuns,
+  getExternalApplicationRuns,
   getLatestApplicationRuns,
 } from '../../rest/applicationAPI';
 import {
@@ -54,11 +52,11 @@ import {
 import { getEpochMillisForPastDays } from '../../utils/date-time/DateTimeUtils';
 import { getLogBreadCrumbs } from '../../utils/LogsViewer.utils';
 import { showErrorToast } from '../../utils/ToastUtils';
-import './logs-viewer.style.less';
-import LogViewerSkeleton from './LogsViewer-skeleton.component';
-import { LogViewerParams } from './LogsViewer.interfaces';
+import './logs-viewer-page.style.less';
+import { LogViewerParams } from './LogsViewerPage.interfaces';
+import LogViewerPageSkeleton from './LogsViewerPageSkeleton.component';
 
-const LogsViewer = () => {
+const LogsViewerPage = () => {
   const { logEntityType } = useParams<LogViewerParams>();
   const { fqn: ingestionName } = useFqn();
 
@@ -68,7 +66,7 @@ const LogsViewer = () => {
   const [logs, setLogs] = useState<string>('');
   const [ingestionDetails, setIngestionDetails] = useState<IngestionPipeline>();
   const [appData, setAppData] = useState<App>();
-  const [appLatestRun, setAppLatestRun] = useState<AppRunRecord>();
+  const [appRuns, setAppRuns] = useState<PipelineStatus[]>([]);
   const [paging, setPaging] = useState<Paging>();
 
   const isApplicationType = useMemo(
@@ -84,14 +82,14 @@ const LogsViewer = () => {
       if (isApplicationType) {
         const currentTime = Date.now();
         const oneDayAgo = getEpochMillisForPastDays(1);
-        const { data } = await getApplicationRuns(ingestionName, {
+        const { data } = await getExternalApplicationRuns(ingestionName, {
           startTs: oneDayAgo,
           endTs: currentTime,
         });
 
         const logs = await getLatestApplicationRuns(ingestionName);
-        setAppLatestRun(data[0]);
-        setLogs(logs.data_insight_task);
+        setAppRuns(data);
+        setLogs(logs.data_insight_task || logs.application_task);
 
         return;
       }
@@ -267,28 +265,18 @@ const LogsViewer = () => {
   };
 
   const recentRuns = useMemo(() => {
-    if (isApplicationType) {
+    if (!isUndefined(ingestionDetails) || appRuns) {
       return (
-        <Tag
-          className="ingestion-run-badge latest"
-          color={
-            PIPELINE_INGESTION_RUN_STATUS[
-              (appLatestRun?.status as unknown as PipelineState) ??
-                PipelineState.Failed
-            ]
-          }
-          data-testid="pipeline-status">
-          {startCase(appLatestRun?.status)}
-        </Tag>
+        <IngestionRecentRuns
+          appRuns={appRuns}
+          ingestion={ingestionDetails}
+          isApplicationType={isApplicationType}
+        />
       );
     }
 
-    if (ingestionDetails?.fullyQualifiedName) {
-      return <IngestionRecentRuns ingestion={ingestionDetails} />;
-    }
-
     return '--';
-  }, [logEntityType, appLatestRun, ingestionDetails]);
+  }, [isApplicationType, appRuns, ingestionDetails]);
 
   const logSummaries = useMemo(() => {
     const scheduleClass = appData?.appSchedule as AppScheduleClass;
@@ -396,10 +384,10 @@ const LogsViewer = () => {
           </Col>
         </Row>
       ) : (
-        <LogViewerSkeleton />
+        <LogViewerPageSkeleton />
       )}
     </PageLayoutV1>
   );
 };
 
-export default LogsViewer;
+export default LogsViewerPage;
