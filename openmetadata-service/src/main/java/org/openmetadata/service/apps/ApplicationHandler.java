@@ -159,9 +159,9 @@ public class ApplicationHandler {
 
   public void fixCorruptedInstallation(App application) throws SchedulerException {
     JobDetail jobDetails =
-            AppScheduler.getInstance()
-                    .getScheduler()
-                    .getJobDetail(new JobKey(application.getName(), APPS_JOB_GROUP));
+        AppScheduler.getInstance()
+            .getScheduler()
+            .getJobDetail(new JobKey(application.getName(), APPS_JOB_GROUP));
     if (jobDetails == null) {
       return;
     }
