@@ -72,7 +72,7 @@ const AppearanceConfigSettingsPage = () => {
     () =>
       getSettingPageEntityBreadCrumb(
         GlobalSettingsMenuCategory.PREFERENCES,
-        t('label.appearance')
+        t('label.theme')
       ),
     []
   );
@@ -288,7 +288,7 @@ const AppearanceConfigSettingsPage = () => {
   }, [theme, applicationConfig]);
 
   return (
-    <PageLayoutV1 pageTitle={t('label.appearance')}>
+    <PageLayoutV1 pageTitle={t('label.theme')}>
       <Row align="middle" className="page-container" gutter={[0, 16]}>
         <Col span={24}>
           <TitleBreadcrumb titleLinks={breadcrumbs} />
@@ -299,7 +299,7 @@ const AppearanceConfigSettingsPage = () => {
               <Space className="w-full justify-between">
                 <PageHeader
                   data={{
-                    header: t('label.appearance'),
+                    header: t('label.theme'),
                     subHeader: t('message.appearance-configuration-message'),
                   }}
                 />

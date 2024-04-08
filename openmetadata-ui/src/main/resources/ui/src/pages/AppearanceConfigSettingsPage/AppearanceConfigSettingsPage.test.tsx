@@ -43,7 +43,7 @@ describe('Test appearance config page', () => {
   it('Should render the config page', async () => {
     render(<AppearanceConfigSettingsPage />);
 
-    expect(screen.getByText('label.appearance')).toBeInTheDocument();
+    expect(screen.getByText('label.theme')).toBeInTheDocument();
     expect(
       screen.getByText('message.appearance-configuration-message')
     ).toBeInTheDocument();

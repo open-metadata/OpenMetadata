@@ -249,7 +249,7 @@ export const getGlobalSettingsMenuWithPermission = (
       description: i18next.t('message.customize-open-metadata-description'),
       items: [
         {
-          label: i18next.t('label.appearance'),
+          label: i18next.t('label.theme'),
           description: i18next.t('message.appearance-configuration-message'),
           isProtected: Boolean(isAdminUser),
           key: `${GlobalSettingsMenuCategory.PREFERENCES}.${GlobalSettingOptions.APPEARANCE}`,
