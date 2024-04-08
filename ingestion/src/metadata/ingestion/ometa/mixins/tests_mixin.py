@@ -352,7 +352,8 @@ class OMetaTestsMixin:
             except UnicodeError as err:
                 logger.debug(traceback.format_exc())
                 logger.warning(
-                    f"Unicode Error parsing the sample data response from {test_case.fullyQualifiedName.__root__}: {err}"
+                    f"Unicode Error parsing the sample data response from {test_case.fullyQualifiedName.__root__}: "
+                    f"{err}"
                 )
             except Exception as exc:
                 logger.debug(traceback.format_exc())
