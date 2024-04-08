@@ -256,11 +256,11 @@ SELECT * from names
         self.assertEqual(len(source_status.filtered), 29)
         self.assertGreaterEqual(
             (len(source_status.records) + len(source_status.updated_records)),
-            self.expected_tables()
+            self.expected_tables(),
         )
         self.assertEqual(len(sink_status.failures), 0)
         self.assertEqual(len(sink_status.warnings), 0)
         self.assertGreater(
             (len(sink_status.records) + len(sink_status.updated_records)),
-            self.expected_tables()
+            self.expected_tables(),
         )
