@@ -53,6 +53,7 @@ import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
 import org.openmetadata.service.search.SearchListFilter;
+import org.openmetadata.service.search.SearchSortFilter;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.mask.PIIMasker;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
@@ -329,6 +330,18 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
           @QueryParam("sortField")
           String sortField,
       @Parameter(
+              description =
+                  "Set this field if your mapping is nested and you want to sort on a nested field",
+              schema = @Schema(type = "string"))
+          @QueryParam("sortNestedPath")
+          String sortNestedPath,
+      @Parameter(
+              description =
+                  "Set this field if your mapping is nested and you want to sort on a nested field",
+              schema = @Schema(type = "string", example = "min,max,avg,sum,median"))
+          @QueryParam("sortNestedMode")
+          String sortNestedMode,
+      @Parameter(
               description = "Sort type",
               schema =
                   @Schema(
@@ -350,7 +363,8 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
         || (startTimestamp != null && endTimestamp == null)) {
       throw new IllegalArgumentException("startTimestamp and endTimestamp must be used together");
     }
-
+    SearchSortFilter searchSortFilter =
+        new SearchSortFilter(sortField, sortType, sortNestedPath, sortNestedMode);
     SearchListFilter searchListFilter = new SearchListFilter(include);
     searchListFilter.addQueryParam("testSuiteId", testSuiteId);
     searchListFilter.addQueryParam("includeAllTests", includeAllTests.toString());
@@ -385,8 +399,7 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
             searchListFilter,
             limit,
             offset,
-            sortField,
-            sortType,
+            searchSortFilter,
             q,
             operationContext,
             resourceContextInterface);
@@ -717,10 +730,7 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
     OperationContext operationContext =
         new OperationContext(Entity.TABLE, MetadataOperation.EDIT_TESTS);
     authorizer.authorize(securityContext, operationContext, resourceContext);
-    DeleteResponse<TestCase> response =
-        repository.delete(securityContext.getUserPrincipal().getName(), id, false, hardDelete);
-    addHref(uriInfo, response.entity());
-    return response.toResponse();
+    return delete(uriInfo, securityContext, id, false, hardDelete);
   }
 
   @DELETE

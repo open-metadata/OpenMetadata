@@ -10,9 +10,7 @@ import static org.openmetadata.service.Entity.TEST_SUITE;
 import static org.openmetadata.service.util.FullyQualifiedName.quoteName;
 
 import java.io.IOException;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.UUID;
 import javax.json.JsonArray;
 import javax.json.JsonObject;
@@ -23,7 +21,6 @@ import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.tests.ResultSummary;
 import org.openmetadata.schema.tests.TestSuite;
-import org.openmetadata.schema.tests.type.TestCaseStatus;
 import org.openmetadata.schema.tests.type.TestSummary;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EventType;
@@ -57,7 +54,7 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
     entity.setPipelines(
         fields.contains("pipelines") ? getIngestionPipelines(entity) : entity.getPipelines());
     entity.setSummary(
-        fields.contains("summary") ? getTestCasesExecutionSummary(entity) : entity.getSummary());
+        fields.contains("summary") ? getTestSummary(entity.getId()) : entity.getSummary());
     entity.withTests(fields.contains(UPDATE_FIELDS) ? getTestCases(entity) : entity.getTests());
   }
 
@@ -77,15 +74,6 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
     entity.withTests(fields.contains(UPDATE_FIELDS) ? entity.getTests() : null);
   }
 
-  private TestSummary buildTestSummary(Map<String, Integer> testCaseSummary) {
-    return new TestSummary()
-        .withAborted(testCaseSummary.getOrDefault(TestCaseStatus.Aborted.toString(), 0))
-        .withFailed(testCaseSummary.getOrDefault(TestCaseStatus.Failed.toString(), 0))
-        .withSuccess(testCaseSummary.getOrDefault(TestCaseStatus.Success.toString(), 0))
-        .withQueued(testCaseSummary.getOrDefault(TestCaseStatus.Queued.toString(), 0))
-        .withTotal(testCaseSummary.values().stream().mapToInt(Integer::valueOf).sum());
-  }
-
   @Override
   public void setFullyQualifiedName(TestSuite testSuite) {
     if (testSuite.getExecutableEntityReference() != null) {
@@ -95,29 +83,6 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
     } else {
       testSuite.setFullyQualifiedName(quoteName(testSuite.getName()));
     }
-  }
-
-  private Map<String, Integer> getResultSummary(TestSuite testSuite) {
-    Map<String, Integer> testCaseSummary = new HashMap<>();
-    List<EntityReference> testCases = getTestCases(testSuite);
-    for (ResultSummary resultSummary : testSuite.getTestCaseResultSummary()) {
-      String status = resultSummary.getStatus().toString();
-      testCaseSummary.put(status, testCaseSummary.getOrDefault(status, 0) + 1);
-    }
-    List<EntityReference> testCasesWithNoResults =
-        testCases.stream()
-            .filter(
-                tc ->
-                    testSuite.getTestCaseResultSummary().stream()
-                        .noneMatch(tcr -> tc.getFullyQualifiedName().equals(tcr.getTestCaseName())))
-            .toList();
-    testCaseSummary.put(TestCaseStatus.Queued.toString(), testCasesWithNoResults.size());
-    return testCaseSummary;
-  }
-
-  private TestSummary getTestCasesExecutionSummary(TestSuite entity) {
-    Map<String, Integer> testCaseSummary = getResultSummary(entity);
-    return buildTestSummary(testCaseSummary);
   }
 
   private TestSummary getTestCasesExecutionSummary(JsonObject aggregation) {
@@ -151,7 +116,7 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
     return testSummary;
   }
 
-  public TestSummary getTestSummary(UUID testSuiteId) throws IOException {
+  public TestSummary getTestSummary(UUID testSuiteId) {
     String aggregationQuery =
         """
             {
@@ -172,31 +137,36 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
             }
             """;
     JsonObject aggregationJson = JsonUtils.readJson(aggregationQuery).asJsonObject();
-    TestSummary testSummary;
-    if (testSuiteId == null) {
-      JsonObject testCaseResultSummary =
-          searchRepository.aggregate(null, TEST_SUITE, aggregationJson);
-      testSummary = getTestCasesExecutionSummary(testCaseResultSummary);
-    } else {
-      String query =
-          """
-            {
-              "query": {
-                "bool": {
-                    "must": {
-                        "term": {"id": "%s"}
+    try {
+      TestSummary testSummary;
+      if (testSuiteId == null) {
+        JsonObject testCaseResultSummary =
+            searchRepository.aggregate(null, TEST_SUITE, aggregationJson);
+        testSummary = getTestCasesExecutionSummary(testCaseResultSummary);
+      } else {
+        String query =
+            """
+                  {
+                    "query": {
+                      "bool": {
+                          "must": {
+                              "term": {"id": "%s"}
+                          }
+                      }
                     }
-                }
-              }
-            }
-        """
-              .formatted(testSuiteId);
-      // don't want to get it from the cache as test results summary may be stale
-      JsonObject testCaseResultSummary =
-          searchRepository.aggregate(query, TEST_SUITE, aggregationJson);
-      testSummary = getTestCasesExecutionSummary(testCaseResultSummary);
+                  }
+              """
+                .formatted(testSuiteId);
+        // don't want to get it from the cache as test results summary may be stale
+        JsonObject testCaseResultSummary =
+            searchRepository.aggregate(query, TEST_SUITE, aggregationJson);
+        testSummary = getTestCasesExecutionSummary(testCaseResultSummary);
+      }
+      return testSummary;
+    } catch (IOException e) {
+      LOG.error("Error reading aggregation query", e);
     }
-    return testSummary;
+    return null;
   }
 
   @Override
@@ -216,7 +186,11 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
 
   @Override
   public void storeEntity(TestSuite entity, boolean update) {
+    // we don't want to store the tests in the test suite entity
+    List<EntityReference> tests = entity.getTests();
+    entity.setTests(null);
     store(entity, update);
+    entity.setTests(tests);
   }
 
   @Override

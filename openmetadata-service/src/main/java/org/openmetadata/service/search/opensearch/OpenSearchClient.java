@@ -23,9 +23,7 @@ import static org.openmetadata.service.search.EntityBuilderConstant.UNIFIED;
 import static org.openmetadata.service.search.UpdateSearchEventsConstant.SENDING_REQUEST_TO_ELASTIC_SEARCH;
 
 import com.fasterxml.jackson.databind.JsonNode;
-import es.org.elasticsearch.ElasticsearchStatusException;
 import es.org.elasticsearch.index.IndexNotFoundException;
-import es.org.elasticsearch.rest.RestStatus;
 import java.io.IOException;
 import java.text.ParseException;
 import java.util.ArrayList;
@@ -61,6 +59,7 @@ import org.openmetadata.service.dataInsight.DataInsightAggregatorInterface;
 import org.openmetadata.service.jdbi3.DataInsightChartRepository;
 import org.openmetadata.service.search.SearchClient;
 import org.openmetadata.service.search.SearchRequest;
+import org.openmetadata.service.search.SearchSortFilter;
 import org.openmetadata.service.search.indexes.ContainerIndex;
 import org.openmetadata.service.search.indexes.DashboardDataModelIndex;
 import org.openmetadata.service.search.indexes.DashboardIndex;
@@ -96,6 +95,7 @@ import org.openmetadata.service.search.opensearch.dataInsightAggregator.OpenSear
 import org.openmetadata.service.search.opensearch.dataInsightAggregator.OpenSearchTotalEntitiesByTierAggregator;
 import org.openmetadata.service.search.opensearch.dataInsightAggregator.OpenSearchUnusedAssetsAggregator;
 import org.openmetadata.service.util.JsonUtils;
+import os.org.opensearch.OpenSearchStatusException;
 import os.org.opensearch.action.ActionListener;
 import os.org.opensearch.action.admin.indices.alias.IndicesAliasesRequest;
 import os.org.opensearch.action.admin.indices.delete.DeleteIndexRequest;
@@ -141,6 +141,7 @@ import os.org.opensearch.index.query.functionscore.ScriptScoreFunctionBuilder;
 import os.org.opensearch.index.reindex.BulkByScrollResponse;
 import os.org.opensearch.index.reindex.DeleteByQueryRequest;
 import os.org.opensearch.index.reindex.UpdateByQueryRequest;
+import os.org.opensearch.rest.RestStatus;
 import os.org.opensearch.script.Script;
 import os.org.opensearch.script.ScriptType;
 import os.org.opensearch.search.SearchHit;
@@ -158,6 +159,10 @@ import os.org.opensearch.search.aggregations.metrics.SumAggregationBuilder;
 import os.org.opensearch.search.builder.SearchSourceBuilder;
 import os.org.opensearch.search.fetch.subphase.FetchSourceContext;
 import os.org.opensearch.search.fetch.subphase.highlight.HighlightBuilder;
+import os.org.opensearch.search.sort.FieldSortBuilder;
+import os.org.opensearch.search.sort.NestedSortBuilder;
+import os.org.opensearch.search.sort.SortBuilders;
+import os.org.opensearch.search.sort.SortMode;
 import os.org.opensearch.search.sort.SortOrder;
 import os.org.opensearch.search.suggest.Suggest;
 import os.org.opensearch.search.suggest.SuggestBuilder;
@@ -408,8 +413,7 @@ public class OpenSearchClient implements SearchClient {
       int limit,
       int offset,
       String index,
-      String sortField,
-      String sortType,
+      SearchSortFilter searchSortFilter,
       String q)
       throws IOException {
     SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
@@ -440,8 +444,18 @@ public class OpenSearchClient implements SearchClient {
     searchSourceBuilder.timeout(new TimeValue(30, TimeUnit.SECONDS));
     searchSourceBuilder.from(offset);
     searchSourceBuilder.size(limit);
-    if (sortField != null && sortType != null) {
-      searchSourceBuilder.sort(sortField, SortOrder.fromString(sortType));
+    if (searchSortFilter.isSorted()) {
+      FieldSortBuilder fieldSortBuilder =
+          SortBuilders.fieldSort(searchSortFilter.getSortField())
+              .order(SortOrder.fromString(searchSortFilter.getSortType()));
+      if (searchSortFilter.isNested()) {
+        NestedSortBuilder nestedSortBuilder =
+            new NestedSortBuilder(searchSortFilter.getSortNestedPath());
+        fieldSortBuilder.setNestedSort(nestedSortBuilder);
+        fieldSortBuilder.sortMode(
+            SortMode.valueOf(searchSortFilter.getSortNestedMode().toUpperCase()));
+      }
+      searchSourceBuilder.sort(fieldSortBuilder);
     }
     try {
       SearchResponse response =
@@ -452,11 +466,11 @@ public class OpenSearchClient implements SearchClient {
       SearchHit[] hits = searchHits.getHits();
       Arrays.stream(hits).forEach(hit -> results.add(hit.getSourceAsMap()));
       return new SearchResultListMapper(results, searchHits.getTotalHits().value);
-    } catch (ElasticsearchStatusException e) {
+    } catch (OpenSearchStatusException e) {
       if (e.status() == RestStatus.NOT_FOUND) {
         throw new SearchIndexNotFoundException(String.format("Failed to to find index %s", index));
       } else {
-        throw new SearchException(String.format("Search failed due to %s", e.getMessage()));
+        throw new SearchException(String.format("Search failed due to %s", e.getDetailedMessage()));
       }
     }
   }
