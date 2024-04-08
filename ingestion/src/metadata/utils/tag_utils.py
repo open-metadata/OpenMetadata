@@ -21,6 +21,7 @@ from metadata.generated.schema.api.classification.createClassification import (
 )
 from metadata.generated.schema.api.classification.createTag import CreateTagRequest
 from metadata.generated.schema.entity.classification.tag import Tag
+from metadata.generated.schema.entity.data.glossaryTerm import GlossaryTerm
 from metadata.generated.schema.entity.services.ingestionPipelines.status import (
     StackTraceError,
 )
@@ -134,3 +135,35 @@ def get_tag_labels(
                 logger.debug(traceback.format_exc())
                 logger.error(f"Error processing tag labels: {err}")
     return tag_labels_list or None
+
+
+def get_glossary_labels(
+    metadata: OpenMetadata,
+    glossaries: List[str],
+    include_tags: bool = True,
+) -> Optional[List[TagLabel]]:
+    """
+    Method to create glossary labels from the collected glossaries
+    """
+    glossary_labels_list = []
+    if glossaries and include_tags:
+        for glossary_fqn in glossaries:
+            try:
+                # check if glossary exists
+                glossary = metadata.get_by_name(entity=GlossaryTerm, fqn=glossary_fqn)
+                if glossary:
+                    glossary_labels_list.append(
+                        TagLabel(
+                            tagFQN=glossary_fqn,
+                            labelType=LabelType.Automated.value,
+                            state=State.Suggested.value,
+                            source=TagSource.Glossary,
+                        )
+                    )
+                else:
+                    logger.warning(f"Glossary does not exist: {glossary_fqn}")
+
+            except Exception as err:
+                logger.debug(traceback.format_exc())
+                logger.warning(f"Error processing glossary labels: {err}")
+    return glossary_labels_list or None
