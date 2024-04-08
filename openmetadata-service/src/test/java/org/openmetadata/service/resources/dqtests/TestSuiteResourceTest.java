@@ -766,7 +766,8 @@ public class TestSuiteResourceTest extends EntityResourceTest<TestSuite, CreateT
   }
 
   @Test
-  void get_listTestSuiteFromSearchWithPagination(TestInfo testInfo) throws IOException, InterruptedException {
+  void get_listTestSuiteFromSearchWithPagination(TestInfo testInfo)
+      throws IOException, InterruptedException {
     if (supportsSearchIndex) {
       Random rand = new Random();
       int tablesNum = rand.nextInt(3) + 3;
