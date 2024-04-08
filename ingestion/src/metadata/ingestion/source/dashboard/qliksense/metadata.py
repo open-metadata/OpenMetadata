@@ -262,7 +262,10 @@ class QliksenseSource(DashboardServiceSource):
         return None
 
     def _get_column_lineage(
-        self, data_model, om_table, data_model_entity: DashboardDataModel
+        self,
+        data_model: QlikTable,
+        om_table: Table,
+        data_model_entity: DashboardDataModel,
     ) -> List[ColumnLineage]:
         """
         Get the column lineage from the fields
