@@ -531,10 +531,9 @@ class MetadataRestSink(Sink):  # pylint: disable=too-many-public-methods
             self.metadata.patch_tags(
                 entity=record.entity, source=record.table, tag_labels=record.tag_labels
             )
-
             return Either(right=record.table)
 
-        elif record.column_tags:
+        if record.column_tags:
 
             # Patch column glossary
             self.metadata.patch_column_tags(
