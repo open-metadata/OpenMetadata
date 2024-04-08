@@ -22,6 +22,7 @@ import { ActivityFeedTab } from '../../components/ActivityFeed/ActivityFeedTab/A
 import ActivityThreadPanel from '../../components/ActivityFeed/ActivityThreadPanel/ActivityThreadPanel';
 import { withActivityFeed } from '../../components/AppRouter/withActivityFeed';
 
+import { isEmpty } from 'lodash';
 import { CustomPropertyTable } from '../../components/common/CustomPropertyTable/CustomPropertyTable';
 import DescriptionV1 from '../../components/common/EntityDescription/DescriptionV1';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
@@ -550,6 +551,7 @@ const StoredProcedurePage = () => {
                   entityName={entityName}
                   entityType={EntityType.STORED_PROCEDURE}
                   hasEditAccess={editDescriptionPermission}
+                  isDescriptionExpanded={isEmpty(code)}
                   isEdit={isEdit}
                   owner={owner}
                   showActions={!deleted}
@@ -565,7 +567,7 @@ const StoredProcedurePage = () => {
                     mode={{ name: CSMode.SQL }}
                     options={{
                       styleActiveLine: false,
-                      readOnly: 'nocursor',
+                      readOnly: true,
                     }}
                     value={code}
                   />

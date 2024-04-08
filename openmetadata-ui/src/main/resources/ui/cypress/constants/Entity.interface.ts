@@ -33,6 +33,7 @@ export enum EntityType {
   Database = 'databases',
   DatabaseSchema = 'databaseSchemas',
   DataModel = 'dashboard/datamodels',
+  User = 'users',
 }
 
 export const EXPLORE_PAGE_TABS: Record<
@@ -50,6 +51,7 @@ export const EXPLORE_PAGE_TABS: Record<
     | EntityType.GlossaryTerm
     | EntityType.Domain
     | EntityType.MetadataService
+    | EntityType.User
   >,
   string
 > = {
@@ -79,6 +81,7 @@ export const SEARCH_INDEX: Record<
     | EntityType.DatabaseSchema
     | EntityType.GlossaryTerm
     | EntityType.MetadataService
+    | EntityType.User
   >,
   string
 > = {

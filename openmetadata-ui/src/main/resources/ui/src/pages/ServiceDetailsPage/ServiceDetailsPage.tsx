@@ -29,7 +29,6 @@ import React, {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
-
 import AirflowMessageBanner from '../../components/common/AirflowMessageBanner/AirflowMessageBanner';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../components/common/Loader/Loader';
@@ -51,7 +50,7 @@ import { OPEN_METADATA } from '../../constants/Services.constant';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import { OperationPermission } from '../../context/PermissionProvider/PermissionProvider.interface';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
-import { EntityTabs } from '../../enums/entity.enum';
+import { EntityTabs, TabSpecificField } from '../../enums/entity.enum';
 import { ServiceCategory } from '../../enums/service.enum';
 import { PipelineType } from '../../generated/api/services/ingestionPipelines/createIngestionPipeline';
 import { Tag } from '../../generated/entity/classification/tag';
@@ -606,7 +605,9 @@ const ServiceDetailsPage: FunctionComponent = () => {
         serviceCategory,
         decodedServiceFQN,
         {
-          fields: `owner,tags,${isMetadataService ? '' : 'domain'}`,
+          fields: `${TabSpecificField.OWNER},${TabSpecificField.TAGS},${
+            TabSpecificField.DATA_PRODUCTS
+          },${isMetadataService ? '' : 'domain'}`,
           include: Include.All,
         }
       );
