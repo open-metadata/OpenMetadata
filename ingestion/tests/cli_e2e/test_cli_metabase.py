@@ -70,7 +70,7 @@ class MetabaseCliTest(CliCommonDashboard.TestSuite):
         return 0
 
     def expected_filtered_mix(self) -> int:
-        return 3
+        return 4
 
     def expected_filtered_sink_mix(self) -> int:
         return 6
