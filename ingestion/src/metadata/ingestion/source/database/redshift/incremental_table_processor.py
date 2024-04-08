@@ -119,7 +119,6 @@ class RedshiftIncrementalTableProcessor:
             )
             or []
         ):
-
             yield row[0]
 
     def _clean_statement(self, statement: str) -> str:

@@ -76,7 +76,7 @@ const addKpi = (data) => {
   cy.get(`.ant-select-dropdown [title="${data.metricType}"]`).click();
   cy.get('[data-testid="metric-percentage-input"] [role="spinbutton"]')
     .scrollIntoView()
-    .type(100);
+    .type('100');
   cy.get('[data-testid="start-date"]').click().type(`${startDate}{enter}`);
   cy.get('[data-testid="end-date"]').click().type(`${endDate}{enter}`);
   cy.get(descriptionBox).scrollIntoView().type('cypress test');
@@ -139,6 +139,10 @@ describe('Data Insight feature', { tags: 'Observability' }, () => {
     verifyResponseStatusCode('@deploy', 200);
     cy.reload();
     verifyResponseStatusCode('@dataInsightsApplication', 200);
+
+    // Adding a manual wait to allow some time between deploying the pipeline and triggering it
+    // eslint-disable-next-line cypress/no-unnecessary-waiting
+    cy.wait(1000);
     cy.get('[data-testid="run-now-button"]').click();
     verifyResponseStatusCode('@triggerPipeline', 200);
     cy.reload();
@@ -219,7 +223,7 @@ describe('Data Insight feature', { tags: 'Observability' }, () => {
       cy.get('[data-testid="metric-percentage-input"] [role="spinbutton"]')
         .scrollIntoView()
         .clear()
-        .type(50);
+        .type('50');
       cy.get('[data-testid="submit-btn"]').scrollIntoView().click();
       verifyResponseStatusCode('@updateKpi', 200);
     });

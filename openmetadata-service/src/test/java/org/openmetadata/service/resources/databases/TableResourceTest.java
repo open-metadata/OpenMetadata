@@ -32,6 +32,7 @@ import static org.openmetadata.csv.EntityCsvTest.assertRows;
 import static org.openmetadata.csv.EntityCsvTest.assertSummary;
 import static org.openmetadata.csv.EntityCsvTest.createCsv;
 import static org.openmetadata.csv.EntityCsvTest.getFailedRecord;
+import static org.openmetadata.csv.EntityCsvTest.getSuccessRecord;
 import static org.openmetadata.schema.type.ColumnDataType.ARRAY;
 import static org.openmetadata.schema.type.ColumnDataType.BIGINT;
 import static org.openmetadata.schema.type.ColumnDataType.BINARY;
@@ -97,6 +98,7 @@ import org.openmetadata.schema.api.data.CreateTable;
 import org.openmetadata.schema.api.data.CreateTableProfile;
 import org.openmetadata.schema.api.services.CreateDatabaseService;
 import org.openmetadata.schema.api.tests.CreateCustomMetric;
+import org.openmetadata.schema.api.tests.CreateTestCase;
 import org.openmetadata.schema.api.tests.CreateTestSuite;
 import org.openmetadata.schema.entity.data.Database;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
@@ -105,6 +107,8 @@ import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.services.DatabaseService;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.tests.CustomMetric;
+import org.openmetadata.schema.tests.TestCase;
+import org.openmetadata.schema.tests.TestCaseParameterValue;
 import org.openmetadata.schema.tests.TestSuite;
 import org.openmetadata.schema.type.ApiStatus;
 import org.openmetadata.schema.type.ChangeDescription;
@@ -138,6 +142,7 @@ import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.jdbi3.TableRepository.TableCsv;
 import org.openmetadata.service.resources.EntityResourceTest;
 import org.openmetadata.service.resources.databases.TableResource.TableList;
+import org.openmetadata.service.resources.dqtests.TestCaseResourceTest;
 import org.openmetadata.service.resources.dqtests.TestSuiteResourceTest;
 import org.openmetadata.service.resources.glossary.GlossaryResourceTest;
 import org.openmetadata.service.resources.glossary.GlossaryTermResourceTest;
@@ -1967,7 +1972,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
   }
 
   @Test
-  void test_ownershipInheritance(TestInfo test) throws HttpResponseException {
+  void test_ownershipInheritance(TestInfo test) throws HttpResponseException, IOException {
     // When a databaseSchema has no owner set, it inherits the ownership from database
     // When a table has no owner set, it inherits the ownership from databaseSchema
     Database db =
@@ -1993,7 +1998,8 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
   }
 
   @Test
-  void test_domainInheritance(TestInfo test) throws HttpResponseException {
+  void test_domainInheritance(TestInfo test)
+      throws HttpResponseException, IOException, InterruptedException {
     // Domain is inherited from databaseService > database > databaseSchema > table
     DatabaseService dbService =
         dbServiceTest.createEntity(
@@ -2015,6 +2021,20 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     CreateTable createTable =
         createRequest(test).withDatabaseSchema(schema.getFullyQualifiedName());
     Table table = assertDomainInheritance(createTable, DOMAIN.getEntityReference());
+
+    // Ensure test case domain is inherited from table
+    TestCaseResourceTest testCaseResourceTest = new TestCaseResourceTest();
+    CreateTestCase createTestCase =
+        testCaseResourceTest
+            .createRequest(test)
+            .withEntityLink(String.format("<#E::table::%s>", table.getFullyQualifiedName()))
+            .withTestSuite(TEST_SUITE1.getFullyQualifiedName())
+            .withTestDefinition(TEST_DEFINITION3.getFullyQualifiedName())
+            .withParameterValues(
+                List.of(
+                    new TestCaseParameterValue().withValue("100").withName("missingCountValue")));
+    TestCase testCase =
+        testCaseResourceTest.assertDomainInheritance(createTestCase, DOMAIN.getEntityReference());
 
     // Change the domain of table and ensure further ingestion updates don't overwrite the domain
     assertDomainInheritanceOverride(
@@ -2275,7 +2295,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     // Headers: name, displayName, description, owner, tags, retentionPeriod, sourceUrl, domain
     // Create table with invalid tags field
     String resultsHeader = recordToString(EntityCsv.getResultHeaders(TableCsv.HEADERS));
-    String record = "s1,dsp1,dsc1,,Tag.invalidTag,,,,c1,c1,c1,INT,";
+    String record = "s1,dsp1,dsc1,,Tag.invalidTag,,,,,,c1,c1,c1,,INT,,,,";
     String csv = createCsv(TableCsv.HEADERS, listOf(record), null);
     CsvImportResult result = importCsv(tableName, csv, false);
     assertSummary(result, ApiStatus.FAILURE, 2, 1, 1);
@@ -2287,26 +2307,23 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     assertRows(result, expectedRows);
 
     // Add an invalid column tag
-    record = "s1,dsp1,dsc1,,,,,,c1,,,,Tag.invalidTag";
+    record = "s1,dsp1,dsc1,,,,,,,,c1,,,,INT,,,Tag.invalidTag,";
     csv = createCsv(TableCsv.HEADERS, listOf(record), null);
     result = importCsv(tableName, csv, false);
     assertSummary(result, ApiStatus.FAILURE, 2, 1, 1);
     expectedRows =
         new String[] {
           resultsHeader,
-          getFailedRecord(record, EntityCsv.entityNotFound(12, "tag", "Tag.invalidTag"))
+          getFailedRecord(record, EntityCsv.entityNotFound(17, "tag", "Tag.invalidTag"))
         };
     assertRows(result, expectedRows);
 
-    // Update a non existing column
-    record = "s1,dsp1,dsc1,,,,,,nonExistingColumn,,,,";
+    // Update a non-existing column, this should create a new column with name "nonExistingColumn"
+    record = "s1,dsp1,dsc1,,,,,,,,nonExistingColumn,,,,INT,,,,";
     csv = createCsv(TableCsv.HEADERS, listOf(record), null);
     result = importCsv(tableName, csv, false);
-    assertSummary(result, ApiStatus.FAILURE, 2, 1, 1);
-    expectedRows =
-        new String[] {
-          resultsHeader, getFailedRecord(record, EntityCsv.columnNotFound(8, "nonExistingColumn"))
-        };
+    assertSummary(result, ApiStatus.SUCCESS, 2, 2, 0);
+    expectedRows = new String[] {resultsHeader, getSuccessRecord(record, "Entity updated")};
     assertRows(result, expectedRows);
   }
 
@@ -2322,17 +2339,18 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
         createRequest("s1").withColumns(listOf(c1, c2, c3)).withTableConstraints(null);
     Table table = createEntity(createTable, ADMIN_AUTH_HEADERS);
 
-    // Headers: name, displayName, description, owner, tags, retentionPeriod, sourceUrl, domain
+    // Headers: name, displayName, description, owner, tags, glossaryTerms, tiers retentionPeriod,
+    // sourceUrl, domain
     // Update terms with change in description
     List<String> updateRecords =
         listOf(
             String.format(
-                "s1,dsp1,new-dsc1,user;%s,Tier.Tier1,P23DT23H,http://test.com,%s,c1,"
-                    + "dsp1-new,desc1,type,PII.Sensitive",
+                "s1,dsp1,new-dsc1,user;%s,,,Tier.Tier1,P23DT23H,http://test.com,%s,c1,"
+                    + "dsp1-new,desc1,type,STRUCT,,,PII.Sensitive,",
                 user1, escapeCsv(DOMAIN.getFullyQualifiedName())),
-            ",,,,,,,,c1.c11,dsp11-new,desc11,type1,PII.Sensitive",
-            ",,,,,,,,c2,,,,",
-            ",,,,,,,,c3,,,,");
+            ",,,,,,,,,,c1.c11,dsp11-new,desc11,type1,INT,,,PII.Sensitive,",
+            ",,,,,,,,,,c2,,,type1,INT,,,,",
+            ",,,,,,,,,,c3,,,type1,INT,,,,");
 
     // Update created entity with changes
     importCsvAndValidate(table.getFullyQualifiedName(), TableCsv.HEADERS, null, updateRecords);

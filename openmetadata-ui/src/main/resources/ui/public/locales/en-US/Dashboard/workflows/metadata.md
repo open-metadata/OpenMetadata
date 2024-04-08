@@ -94,6 +94,12 @@ Optional configuration to soft delete `dashboards` in OpenMetadata if the source
 $$
 
 $$section
+### Include Draft Dashboard $(id="includeDraftDashboard")
+
+Option to include/exclude draft dashboards. By default it will include draft dashboards.
+$$
+
+$$section
 ### Number of Retries $(id="retries")
 
 Times to retry the workflow in case it ends with a failure.

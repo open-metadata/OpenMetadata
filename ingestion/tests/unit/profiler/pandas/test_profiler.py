@@ -36,6 +36,10 @@ from metadata.generated.schema.entity.data.table import (
     TableProfile,
     TableProfilerConfig,
 )
+from metadata.generated.schema.entity.services.connections.database.datalakeConnection import (
+    DatalakeConnection,
+)
+from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.source import sqa_types
 from metadata.profiler.interface.pandas.profiler_interface import (
     PandasProfilerInterface,
@@ -93,11 +97,49 @@ class ProfilerTest(TestCase):
     table_entity = Table(
         id=uuid4(),
         name="user",
+        databaseSchema=EntityReference(id=uuid4(), type="databaseSchema", name="name"),
+        fileFormat="csv",
         columns=[
             EntityColumn(
-                name=ColumnName(__root__="id"),
+                name=ColumnName(__root__="name"),
+                dataType=DataType.STRING,
+            ),
+            EntityColumn(
+                name=ColumnName(__root__="fullname"),
+                dataType=DataType.STRING,
+            ),
+            EntityColumn(
+                name=ColumnName(__root__="nickname"),
+                dataType=DataType.STRING,
+            ),
+            EntityColumn(
+                name=ColumnName(__root__="comments"),
+                dataType=DataType.STRING,
+            ),
+            EntityColumn(
+                name=ColumnName(__root__="age"),
                 dataType=DataType.INT,
-            )
+            ),
+            EntityColumn(
+                name=ColumnName(__root__="dob"),
+                dataType=DataType.DATETIME,
+            ),
+            EntityColumn(
+                name=ColumnName(__root__="tob"),
+                dataType=DataType.DATE,
+            ),
+            EntityColumn(
+                name=ColumnName(__root__="doe"),
+                dataType=DataType.DATE,
+            ),
+            EntityColumn(
+                name=ColumnName(__root__="json"),
+                dataType=DataType.JSON,
+            ),
+            EntityColumn(
+                name=ColumnName(__root__="array"),
+                dataType=DataType.ARRAY,
+            ),
         ],
     )
 
@@ -106,15 +148,14 @@ class ProfilerTest(TestCase):
         "metadata.profiler.interface.profiler_interface.get_connection",
         return_value=FakeConnection,
     )
-    @mock.patch.object(
-        PandasProfilerInterface,
-        "_convert_table_to_list_of_dataframe_objects",
+    @mock.patch(
+        "metadata.mixins.pandas.pandas_mixin.fetch_dataframe",
         return_value=[df1, pd.concat([df2, pd.DataFrame(index=df1.index)])],
     )
     def setUpClass(cls, mock_get_connection, mocked_dfs):
         cls.datalake_profiler_interface = PandasProfilerInterface(
             entity=cls.table_entity,
-            service_connection_config=None,
+            service_connection_config=DatalakeConnection(configSource={}),
             storage_config=None,
             ometa_client=None,
             thread_count=None,
@@ -266,7 +307,6 @@ class ProfilerTest(TestCase):
         default_profiler = DefaultProfiler(
             profiler_interface=self.datalake_profiler_interface,
         )
-
         column_metrics = default_profiler._prepare_column_metrics()
         for metric in column_metrics:
             if (

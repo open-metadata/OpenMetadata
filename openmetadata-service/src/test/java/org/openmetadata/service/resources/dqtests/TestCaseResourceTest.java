@@ -58,6 +58,7 @@ import org.openmetadata.schema.entity.feed.Thread;
 import org.openmetadata.schema.tests.ResultSummary;
 import org.openmetadata.schema.tests.TestCase;
 import org.openmetadata.schema.tests.TestCaseParameterValue;
+import org.openmetadata.schema.tests.TestPlatform;
 import org.openmetadata.schema.tests.TestSuite;
 import org.openmetadata.schema.tests.type.Assigned;
 import org.openmetadata.schema.tests.type.Resolved;
@@ -751,7 +752,7 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
     }
 
     for (int i = 0; i < testCasesNum; i++) {
-      String tableFQN = tables.get(rand.nextInt(tables.size())).getFullyQualifiedName();
+      String tableFQN = tables.get(i).getFullyQualifiedName();
       String testSuiteFQN = testSuites.get(tableFQN).getFullyQualifiedName();
       CreateTestCase create =
           createRequest(testInfo, i)
@@ -770,13 +771,45 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
               .withTimestamp(TestUtils.dateToTimestamp(String.format("2021-09-%02d", i)));
       putTestCaseResult(testCase.getFullyQualifiedName(), testCaseResult, ADMIN_AUTH_HEADERS);
     }
+    TestCase testCaseForEL = testCases.get(0);
+
     HashMap queryParams = new HashMap<>();
     ResultList<TestCase> allEntities =
         listEntitiesFromSearch(queryParams, testCasesNum, 0, ADMIN_AUTH_HEADERS);
     assertEquals(testCasesNum, allEntities.getData().size());
     queryParams.put("q", "test_getSimplelistFromSearcha");
     allEntities = listEntitiesFromSearch(queryParams, testCasesNum, 0, ADMIN_AUTH_HEADERS);
-    assertNotEquals(0, allEntities.getData().size());
+    assertEquals(1, allEntities.getData().size());
+    org.assertj.core.api.Assertions.assertThat(allEntities.getData().get(0).getName())
+        .contains("test_getSimplelistFromSearcha");
+
+    queryParams.clear();
+    queryParams.put("entityLink", testCaseForEL.getEntityLink());
+    queryParams.put("includeAllTests", true);
+    allEntities = listEntitiesFromSearch(queryParams, testCasesNum, 0, ADMIN_AUTH_HEADERS);
+    assertEquals(1, allEntities.getData().size());
+    org.assertj.core.api.Assertions.assertThat(allEntities.getData().get(0).getEntityLink())
+        .contains(testCaseForEL.getEntityLink());
+
+    queryParams.clear();
+    queryParams.put("testPlatforms", TestPlatform.DEEQU);
+    allEntities = listEntitiesFromSearch(queryParams, testCasesNum, 0, ADMIN_AUTH_HEADERS);
+    assertEquals(
+        0, allEntities.getData().size()); // we don't have any test cases with DEEQU platform
+
+    queryParams.clear();
+    queryParams.put("testPlatforms", TestPlatform.OPEN_METADATA);
+    allEntities = listEntitiesFromSearch(queryParams, testCasesNum, 0, ADMIN_AUTH_HEADERS);
+    assertEquals(
+        testCasesNum,
+        allEntities.getData().size()); // we have all test cases with OPEN_METADATA platform
+
+    queryParams.clear();
+    queryParams.put(
+        "testPlatforms", String.format("%s,%s", TestPlatform.OPEN_METADATA, TestPlatform.DEEQU));
+    allEntities = listEntitiesFromSearch(queryParams, testCasesNum, 0, ADMIN_AUTH_HEADERS);
+    assertEquals(
+        testCasesNum, allEntities.getData().size()); // Should return either values matching
   }
 
   public void putTestCaseResult(String fqn, TestCaseResult data, Map<String, String> authHeaders)

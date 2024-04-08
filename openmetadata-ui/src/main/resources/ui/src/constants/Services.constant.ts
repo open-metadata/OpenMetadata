@@ -284,8 +284,10 @@ export const INGESTION_WORKFLOW_NAME_UI_SCHEMA = {
 
 export const INGESTION_WORKFLOW_UI_SCHEMA = {
   type: { 'ui:widget': 'hidden', 'ui:hideError': true },
+  name: { 'ui:widget': 'hidden', 'ui:hideError': true },
   'ui:order': [
     'name',
+    'displayName',
     'databaseFilterPattern',
     'schemaFilterPattern',
     'tableFilterPattern',
@@ -390,6 +392,7 @@ export const BETA_SERVICES = [
   PipelineServiceType.Spark,
   PipelineServiceType.OpenLineage,
   DashboardServiceType.QlikSense,
+  DashboardServiceType.QlikCloud,
   DatabaseServiceType.Couchbase,
   DatabaseServiceType.Greenplum,
   DatabaseServiceType.Iceberg,
@@ -424,6 +427,10 @@ export const ADVANCED_PROPERTIES = [
   'connectionOptions',
   'scheme',
   'sampleDataStorageConfig',
+  'confidence',
+  'sampleDataCount',
+  'threadCount',
+  'timeoutSeconds',
 ];
 
 export const PIPELINE_SERVICE_PLATFORM = 'Airflow';

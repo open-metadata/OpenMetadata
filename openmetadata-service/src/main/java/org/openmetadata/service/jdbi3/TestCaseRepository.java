@@ -104,8 +104,9 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
   @Override
   public void setInheritedFields(TestCase testCase, Fields fields) {
     EntityLink entityLink = EntityLink.parse(testCase.getEntityLink());
-    Table table = Entity.getEntity(entityLink, "owner", ALL);
+    Table table = Entity.getEntity(entityLink, "owner,domain", ALL);
     inheritOwner(testCase, fields, table);
+    inheritDomain(testCase, fields, table);
   }
 
   @Override

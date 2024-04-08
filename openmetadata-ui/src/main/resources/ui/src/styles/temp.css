@@ -707,7 +707,7 @@ body .list-option.rdw-option-active {
 }
 
 .slick-dots li.slick-active button:before {
-  color: #0968da !important;
+  color: var(--ant-primary-color) !important;
   opacity: 1 !important;
 }
 

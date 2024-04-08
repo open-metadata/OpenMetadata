@@ -55,7 +55,11 @@ import {
   ResourceEntity,
 } from '../../context/PermissionProvider/PermissionProvider.interface';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
-import { EntityTabs, EntityType } from '../../enums/entity.enum';
+import {
+  EntityTabs,
+  EntityType,
+  TabSpecificField,
+} from '../../enums/entity.enum';
 import { CreateThread } from '../../generated/api/feed/createThread';
 import { Tag } from '../../generated/entity/classification/tag';
 import { Database } from '../../generated/entity/data/database';
@@ -192,7 +196,7 @@ const DatabaseDetails: FunctionComponent = () => {
   const getDetailsByFQN = () => {
     setIsDatabaseDetailsLoading(true);
     getDatabaseDetailsByFQN(decodedDatabaseFQN, {
-      fields: 'owner,tags,domain,votes,extension',
+      fields: `${TabSpecificField.OWNER},${TabSpecificField.TAGS},${TabSpecificField.DOMAIN},${TabSpecificField.VOTES},${TabSpecificField.EXTENSION},${TabSpecificField.DATA_PRODUCTS}`,
       include: Include.All,
     })
       .then((res) => {
@@ -512,6 +516,7 @@ const DatabaseDetails: FunctionComponent = () => {
                     entityName={getEntityName(database)}
                     entityType={EntityType.DATABASE}
                     hasEditAccess={editDescriptionPermission}
+                    isDescriptionExpanded={isEmpty(database)}
                     isEdit={isEdit}
                     showActions={!database.deleted}
                     onCancel={onCancel}

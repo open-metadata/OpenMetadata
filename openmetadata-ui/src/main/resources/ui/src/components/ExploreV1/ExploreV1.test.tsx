@@ -37,9 +37,13 @@ jest.mock('./ExploreSearchCard/ExploreSearchCard', () => {
   return jest.fn().mockReturnValue(<p>ExploreSearchCard</p>);
 });
 
-jest.mock('../../context/GlobalSearchProvider/GlobalSearchProvider', () => ({
-  useGlobalSearchProvider: jest.fn().mockImplementation(() => ({
+jest.mock('../../hooks/useApplicationStore', () => ({
+  useApplicationStore: jest.fn().mockImplementation(() => ({
     searchCriteria: '',
+    theme: {
+      primaryColor: '#000000',
+      errorColor: '#000000',
+    },
   })),
 }));
 

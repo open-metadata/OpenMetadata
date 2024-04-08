@@ -245,19 +245,20 @@ const QueryCard: FC<QueryCardProp> = ({
                 styleActiveLine: isEditMode,
                 readOnly: isEditMode ? false : 'nocursor',
               }}
+              showCopyButton={false}
               value={query.query ?? ''}
               onChange={handleQueryChange}
             />
           </div>
           <Row align="middle" className="p-y-md border-top">
-            <Col className="p-l-md" span={16}>
+            <Col className="p-l-md" span={20}>
               <QueryUsedByOtherTable
                 isEditMode={isEditMode}
                 query={query}
                 onChange={(value) => setSelectedTables(value)}
               />
             </Col>
-            <Col span={8}>
+            <Col span={4}>
               {isEditMode && (
                 <Space
                   align="end"
