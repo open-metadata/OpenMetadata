@@ -34,6 +34,7 @@ from metadata.generated.schema.entity.services.ingestionPipelines.status import 
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
+from metadata.generated.schema.type.entityLineage import ColumnLineage
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
@@ -146,6 +147,30 @@ class SupersetSourceMixin(DashboardServiceSource):
             )
         return []
 
+    def get_column_lineage(
+        self, from_entity: DatabaseService, to_entity: DashboardDataModel
+    ) -> List[ColumnLineage]:
+        """
+        Get the column lineage from the columns
+        """
+        try:
+            column_lineage = []
+            for from_column in from_entity.columns or []:
+                from_column_name = from_column.name.__root__
+                for to_column in to_entity.columns:
+                    to_column_name = to_column.displayName
+                    if from_column_name == to_column_name:
+                        column_lineage.append(
+                            ColumnLineage(
+                                fromColumns=[from_column.fullyQualifiedName.__root__],
+                                toColumn=to_column.fullyQualifiedName.__root__,
+                            )
+                        )
+            return column_lineage
+        except Exception as exc:
+            logger.debug(f"Error to get column lineage: {exc}")
+            logger.debug(traceback.format_exc())
+
     def yield_dashboard_lineage_details(
         self,
         dashboard_details: Union[FetchDashboard, DashboardResult],
@@ -181,10 +206,12 @@ class SupersetSourceMixin(DashboardServiceSource):
                             entity=DashboardDataModel,
                             fqn=datamodel_fqn,
                         )
-
+                        column_lineage = self.get_column_lineage(from_entity, to_entity)
                         if from_entity and to_entity:
                             yield self._get_add_lineage_request(
-                                to_entity=to_entity, from_entity=from_entity
+                                to_entity=to_entity,
+                                from_entity=from_entity,
+                                column_lineage=column_lineage,
                             )
                     except Exception as exc:
                         yield Either(
