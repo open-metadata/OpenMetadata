@@ -196,7 +196,7 @@ public class ApplicationHandler {
                 AppScheduler.getInstance().getScheduler().getJobDetail(jobKey).getJobClass();
             if (!jobKey.getName().equals(app.getName())
                 && clz.getName().equals(app.getClassName())) {
-                LOG.info("deleting old job {}", jobKey.getName());
+              LOG.info("deleting old job {}", jobKey.getName());
               AppScheduler.getInstance().getScheduler().deleteJob(jobKey);
             }
           } catch (SchedulerException e) {

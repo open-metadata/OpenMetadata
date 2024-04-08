@@ -41,13 +41,15 @@ public abstract class AbstractOmAppJobListener implements JobListener {
     ApplicationHandler.getInstance().setAppRuntimeProperties(jobApp);
     JobDataMap dataMap = jobExecutionContext.getJobDetail().getJobDataMap();
     long jobStartTime = System.currentTimeMillis();
-    AppRunRecord runRecord = new AppRunRecord()
+    AppRunRecord runRecord =
+        new AppRunRecord()
             .withAppId(jobApp.getId())
             .withStartTime(jobStartTime)
             .withTimestamp(jobStartTime)
             .withRunType(runType)
             .withStatus(AppRunRecord.Status.RUNNING)
-            .withScheduleInfo(jobApp.getAppSchedule());;
+            .withScheduleInfo(jobApp.getAppSchedule());
+    ;
     boolean update = false;
     if (jobExecutionContext.isRecovering()) {
       AppRunRecord latestRunRecord =
