@@ -16,7 +16,6 @@ Module to manage SSL certificates
 import os
 import tempfile
 from functools import singledispatchmethod
-from typing import Union
 
 from metadata.generated.schema.entity.services.connections.database.dorisConnection import (
     DorisConnection,
@@ -76,8 +75,12 @@ class SSLManager:
             pass
 
     @singledispatchmethod
-    def setup_ssl(self, connection: Union[MysqlConnection, DorisConnection]):
+    def setup_ssl(self, _):
+        raise NotImplementedError
 
+    @setup_ssl.register(MysqlConnection)
+    @setup_ssl.register(DorisConnection)
+    def _(self, connection):
         # Use the temporary file paths for SSL configuration
         connection.connectionArguments = (
             connection.connectionArguments or init_empty_connection_arguments()
@@ -92,22 +95,18 @@ class SSLManager:
         connection.connectionArguments["ssl"] = ssl_args
         return connection
 
-    @setup_ssl.register
-    def _(
-        self,
-        connection: Union[PostgresConnection, RedshiftConnection, GreenplumConnection],
-    ):
-        if connection.sslMode:
-            if not connection.connectionArguments:
-                connection.connectionArguments = init_empty_connection_arguments()
+    @setup_ssl.register(PostgresConnection)
+    @setup_ssl.register(RedshiftConnection)
+    @setup_ssl.register(GreenplumConnection)
+    def _(self, connection):
+        if not connection.connectionArguments:
+            connection.connectionArguments = init_empty_connection_arguments()
+        connection.connectionArguments.__root__["sslmode"] = connection.sslMode.value
+        if connection.sslMode in (
+            verifySSLConfig.SslMode.verify_ca,
+            verifySSLConfig.SslMode.verify_full,
+        ):
             connection.connectionArguments.__root__[
-                "sslmode"
-            ] = connection.sslMode.value
-            if connection.sslMode in (
-                verifySSLConfig.SslMode.verify_ca,
-                verifySSLConfig.SslMode.verify_full,
-            ):
-                connection.connectionArguments.__root__[
-                    "sslrootcert"
-                ] = connection.sslConfig.__root__.caCertificate
+                "sslrootcert"
+            ] = connection.sslConfig.__root__.caCertificate
         return connection
