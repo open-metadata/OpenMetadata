@@ -1,5 +1,5 @@
 /*
- *  Copyright 2022 Collate.
+ *  Copyright 2024 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -10,21 +10,20 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { ConfigProvider } from 'antd';
+import React, { FC, ReactNode } from 'react';
+import { useTranslation } from 'react-i18next';
+import { useApplicationStore } from '../../hooks/useApplicationStore';
 
-@import (reference) url('../../../styles/variables.less');
+const AntDConfigProvider: FC<{ children: ReactNode }> = ({ children }) => {
+  const { i18n } = useTranslation();
+  const { theme } = useApplicationStore();
 
-.ant-attribute-modal {
-  .ant-modal-body {
-    padding: 16px 8px;
-    .ant-row {
-      padding: 16px;
-      cursor: pointer;
-    }
-    .ant-row.ant-search-box-row {
-      padding-top: 0px;
-    }
-    .ant-row.selected {
-      background-color: @primary-1;
-    }
-  }
-}
+  ConfigProvider.config({
+    theme,
+  });
+
+  return <ConfigProvider direction={i18n.dir()}>{children}</ConfigProvider>;
+};
+
+export default AntDConfigProvider;

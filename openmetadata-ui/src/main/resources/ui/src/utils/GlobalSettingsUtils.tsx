@@ -15,7 +15,7 @@ import i18next from 'i18next';
 import { ReactComponent as AdminIcon } from '../assets/svg/admin-colored.svg';
 import { ReactComponent as ApplicationIcon } from '../assets/svg/application-colored.svg';
 import { ReactComponent as BotIcon } from '../assets/svg/bot-colored.svg';
-import { ReactComponent as CustomLogoIcon } from '../assets/svg/custom-logo-colored.svg';
+import { ReactComponent as AppearanceIcon } from '../assets/svg/custom-logo-colored.svg';
 import { ReactComponent as CustomDashboardLogoIcon } from '../assets/svg/customize-landing-page-colored.svg';
 import { ReactComponent as DashboardIcon } from '../assets/svg/dashboard-colored.svg';
 import { ReactComponent as DatabaseIcon } from '../assets/svg/database-colored.svg';
@@ -249,6 +249,13 @@ export const getGlobalSettingsMenuWithPermission = (
       description: i18next.t('message.customize-open-metadata-description'),
       items: [
         {
+          label: i18next.t('label.theme'),
+          description: i18next.t('message.appearance-configuration-message'),
+          isProtected: Boolean(isAdminUser),
+          key: `${GlobalSettingsMenuCategory.PREFERENCES}.${GlobalSettingOptions.APPEARANCE}`,
+          icon: AppearanceIcon,
+        },
+        {
           label: i18next.t('label.customize-entity', {
             entity: i18next.t('label.landing-page'),
           }),
@@ -265,13 +272,6 @@ export const getGlobalSettingsMenuWithPermission = (
           isProtected: Boolean(isAdminUser),
           key: `${GlobalSettingsMenuCategory.PREFERENCES}.${GlobalSettingOptions.EMAIL}`,
           icon: EmailIcon,
-        },
-        {
-          label: i18next.t('label.custom-logo'),
-          description: i18next.t('message.custom-logo-configuration-message'),
-          isProtected: Boolean(isAdminUser),
-          key: `${GlobalSettingsMenuCategory.PREFERENCES}.${GlobalSettingOptions.CUSTOM_LOGO}`,
-          icon: CustomLogoIcon,
         },
         {
           label: i18next.t('label.login-configuration'),
