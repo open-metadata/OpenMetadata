@@ -12,6 +12,7 @@ import static org.openmetadata.service.util.TestUtils.assertListNotNull;
 import static org.openmetadata.service.util.TestUtils.assertListNull;
 import static org.openmetadata.service.util.TestUtils.assertResponse;
 import static org.openmetadata.service.util.TestUtils.assertResponseContains;
+import static org.openmetadata.service.util.TestUtils.waitForEsAsyncOp;
 
 import es.org.elasticsearch.search.aggregations.AggregationBuilder;
 import es.org.elasticsearch.search.aggregations.AggregationBuilders;
@@ -765,11 +766,10 @@ public class TestSuiteResourceTest extends EntityResourceTest<TestSuite, CreateT
   }
 
   @Test
-  void get_listTestSuiteFromSearchWithPagination(TestInfo testInfo) throws IOException {
+  void get_listTestSuiteFromSearchWithPagination(TestInfo testInfo) throws IOException, InterruptedException {
     if (supportsSearchIndex) {
       Random rand = new Random();
       int tablesNum = rand.nextInt(3) + 3;
-      int testSuiteNum = rand.nextInt(7) + 3;
 
       TableResourceTest tableResourceTest = new TableResourceTest();
       TestSuiteResourceTest testSuiteResourceTest = new TestSuiteResourceTest();
@@ -798,7 +798,7 @@ public class TestSuiteResourceTest extends EntityResourceTest<TestSuite, CreateT
             testSuiteResourceTest.createExecutableTestSuite(createTestSuite, ADMIN_AUTH_HEADERS);
         testSuites.put(table.getFullyQualifiedName(), testSuite);
       }
-
+      waitForEsAsyncOp();
       validateEntityListFromSearchWithPagination(new HashMap<>(), testSuites.size());
     }
   }
