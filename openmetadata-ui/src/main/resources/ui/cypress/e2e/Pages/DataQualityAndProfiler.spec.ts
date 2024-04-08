@@ -802,7 +802,8 @@ describe(
         .should('have.value', 'collate');
     });
 
-    it('Update displayName of test case', () => {
+    // Skipping As backend throws error for newly created test case, unSkip once backend issue is resolved from @TeddyCr
+    it.skip('Update displayName of test case', () => {
       interceptURL(
         'GET',
         '/api/v1/dataQuality/testCases/search/list?*',
