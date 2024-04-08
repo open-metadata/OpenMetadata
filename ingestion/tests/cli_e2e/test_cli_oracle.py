@@ -253,7 +253,7 @@ SELECT * from names
     ) -> None:
         self.assertEqual(len(source_status.failures), 0)
         self.assertEqual(len(source_status.warnings), 0)
-        self.assertEqual(len(source_status.filtered), 28)
+        self.assertEqual(len(source_status.filtered), 29)
         self.assertGreaterEqual(
             (len(source_status.records) + len(source_status.updated_records)),
             self.expected_tables()
