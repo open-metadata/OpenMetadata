@@ -46,12 +46,14 @@ import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.jdbi3.Filter;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.TestCaseRepository;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
 import org.openmetadata.service.search.SearchListFilter;
+import org.openmetadata.service.search.SearchSortFilter;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.mask.PIIMasker;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
@@ -77,7 +79,7 @@ import org.openmetadata.service.util.ResultList;
 public class TestCaseResource extends EntityResource<TestCase, TestCaseRepository> {
   public static final String COLLECTION_PATH = "/v1/dataQuality/testCases";
 
-  static final String FIELDS = "owner,testSuite,testDefinition,testSuites,incidentId";
+  static final String FIELDS = "owner,testSuite,testDefinition,testSuites,incidentId,domain";
   static final String SEARCH_FIELDS_EXCLUDE = "testPlatforms";
 
   @Override
@@ -328,6 +330,18 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
           @QueryParam("sortField")
           String sortField,
       @Parameter(
+              description =
+                  "Set this field if your mapping is nested and you want to sort on a nested field",
+              schema = @Schema(type = "string"))
+          @QueryParam("sortNestedPath")
+          String sortNestedPath,
+      @Parameter(
+              description =
+                  "Set this field if your mapping is nested and you want to sort on a nested field",
+              schema = @Schema(type = "string", example = "min,max,avg,sum,median"))
+          @QueryParam("sortNestedMode")
+          String sortNestedMode,
+      @Parameter(
               description = "Sort type",
               schema =
                   @Schema(
@@ -336,6 +350,9 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
           @QueryParam("sortType")
           @DefaultValue("desc")
           String sortType,
+      @Parameter(description = "domain filter to use in list", schema = @Schema(type = "string"))
+          @QueryParam("domain")
+          String domain,
       @Parameter(
               description = "search query term to use in list",
               schema = @Schema(type = "string"))
@@ -346,7 +363,8 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
         || (startTimestamp != null && endTimestamp == null)) {
       throw new IllegalArgumentException("startTimestamp and endTimestamp must be used together");
     }
-
+    SearchSortFilter searchSortFilter =
+        new SearchSortFilter(sortField, sortType, sortNestedPath, sortNestedMode);
     SearchListFilter searchListFilter = new SearchListFilter(include);
     searchListFilter.addQueryParam("testSuiteId", testSuiteId);
     searchListFilter.addQueryParam("includeAllTests", includeAllTests.toString());
@@ -355,6 +373,7 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
     searchListFilter.addQueryParam("testPlatforms", testPlatforms);
     searchListFilter.addQueryParam("q", q);
     searchListFilter.addQueryParam("excludeFields", SEARCH_FIELDS_EXCLUDE);
+    searchListFilter.addQueryParam("domain", domain);
 
     if (startTimestamp != null) {
       if (startTimestamp > endTimestamp) {
@@ -365,7 +384,7 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
     }
 
     ResourceContextInterface resourceContextInterface =
-        getResourceContext(entityLink, new ListFilter());
+        getResourceContext(entityLink, searchListFilter);
     // Override OperationContext to change the entity to table and operation from VIEW_ALL to
     // VIEW_TESTS
     OperationContext operationContext =
@@ -380,8 +399,7 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
             searchListFilter,
             limit,
             offset,
-            sortField,
-            sortType,
+            searchSortFilter,
             q,
             operationContext,
             resourceContextInterface);
@@ -712,10 +730,7 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
     OperationContext operationContext =
         new OperationContext(Entity.TABLE, MetadataOperation.EDIT_TESTS);
     authorizer.authorize(securityContext, operationContext, resourceContext);
-    DeleteResponse<TestCase> response =
-        repository.delete(securityContext.getUserPrincipal().getName(), id, false, hardDelete);
-    addHref(uriInfo, response.entity());
-    return response.toResponse();
+    return delete(uriInfo, securityContext, id, false, hardDelete);
   }
 
   @DELETE
@@ -948,7 +963,7 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
     return repository.addTestCasesToLogicalTestSuite(testSuite, testCaseIds).toResponse();
   }
 
-  private ResourceContextInterface getResourceContext(String entityLink, ListFilter filter) {
+  private ResourceContextInterface getResourceContext(String entityLink, Filter filter) {
     ResourceContextInterface resourceContext;
     if (entityLink != null) {
       EntityLink entityLinkParsed = EntityLink.parse(entityLink);

@@ -14,22 +14,30 @@ import { render, screen } from '@testing-library/react';
 import React from 'react';
 import AvatarCarousel from './AvatarCarousel';
 
+const suggestions = [
+  {
+    id: '1',
+    description: 'Test suggestion',
+    createdBy: { id: '1', name: 'Avatar 1', type: 'user' },
+    entityLink: '<#E::table::sample_data.ecommerce_db.shopify.dim_address>',
+  },
+  {
+    id: '2',
+    description: 'Test suggestion',
+    createdBy: { id: '2', name: 'Avatar 2', type: 'user' },
+    entityLink: '<#E::table::sample_data.ecommerce_db.shopify.dim_address>',
+  },
+];
+
+const suggByUser = new Map([
+  ['Avatar 1', [suggestions[0]]],
+  ['Avatar 2', [suggestions[1]]],
+]);
+
 jest.mock('../../Suggestions/SuggestionsProvider/SuggestionsProvider', () => ({
   useSuggestionsContext: jest.fn().mockImplementation(() => ({
-    suggestions: [
-      {
-        id: '1',
-        description: 'Test suggestion',
-        createdBy: { id: '1', name: 'Avatar 1', type: 'user' },
-        entityLink: '<#E::table::sample_data.ecommerce_db.shopify.dim_address>',
-      },
-      {
-        id: '2',
-        description: 'Test suggestion',
-        createdBy: { id: '2', name: 'Avatar 2', type: 'user' },
-        entityLink: '<#E::table::sample_data.ecommerce_db.shopify.dim_address>',
-      },
-    ],
+    suggestions: suggestions,
+    suggestionsByUser: suggByUser,
     allSuggestionsUsers: [
       { id: '1', name: 'Avatar 1', type: 'user' },
       { id: '2', name: 'Avatar 2', type: 'user' },
@@ -51,22 +59,9 @@ jest.mock('../ProfilePicture/ProfilePicture', () =>
 );
 
 jest.mock('../../../rest/suggestionsAPI', () => ({
-  getSuggestionsList: jest.fn().mockImplementation(() =>
-    Promise.resolve([
-      {
-        id: '1',
-        description: 'Test suggestion',
-        createdBy: { id: '1', name: 'Avatar 1', type: 'user' },
-        entityLink: '<#E::table::sample_data.ecommerce_db.shopify.dim_address>',
-      },
-      {
-        id: '2',
-        description: 'Test suggestion',
-        createdBy: { id: '1', name: 'Avatar 2', type: 'user' },
-        entityLink: '<#E::table::sample_data.ecommerce_db.shopify.dim_address>',
-      },
-    ])
-  ),
+  getSuggestionsList: jest
+    .fn()
+    .mockImplementation(() => Promise.resolve(suggestions)),
 }));
 
 describe('AvatarCarousel', () => {

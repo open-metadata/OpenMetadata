@@ -91,7 +91,7 @@ a.ant-typography {
   }
 
   &:focus {
-    color: @link-color;
+    color: @primary-color;
     text-decoration: underline;
     cursor: pointer;
   }
@@ -264,13 +264,13 @@ a[href].link-text-grey,
   background: @body-bg-color;
 }
 .bg-primary-lite {
-  background: @primary-color-hover;
+  background: @primary-1;
 }
 .bg-primary {
   background: @primary-color;
 }
 .bg-primary-hover-lite {
-  background-color: @primary-color-hover;
+  background-color: @primary-1;
 }
 .bg-grey {
   background-color: @border-color;
@@ -298,7 +298,7 @@ a[href].link-text-grey,
 
 .activeCategory {
   border-left: 2px solid @primary-color;
-  background: @primary-color-hover;
+  background: @primary-1;
   padding-left: 10px;
   font-weight: 600;
 
@@ -753,4 +753,21 @@ a[href].link-text-grey,
   bottom: 20px;
   right: 20px;
   z-index: 1001;
+}
+
+// Task Feed Message Container
+
+.task-feed-message-container {
+  .task-feed-message {
+    height: 100%;
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+
+    &:hover {
+      .ant-typography {
+        color: @primary-color;
+      }
+    }
+  }
 }
