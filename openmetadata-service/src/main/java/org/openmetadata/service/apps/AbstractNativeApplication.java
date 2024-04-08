@@ -71,6 +71,7 @@ public class AbstractNativeApplication implements NativeApplication {
         && app.getScheduleType().equals(ScheduleType.Scheduled)) {
       try {
         ApplicationHandler.getInstance().migrateQuartzConfig(app);
+        ApplicationHandler.getInstance().fixCorruptedInstallation(app);
       } catch (SchedulerException e) {
         throw AppException.byMessage(
             "ApplicationHandler",

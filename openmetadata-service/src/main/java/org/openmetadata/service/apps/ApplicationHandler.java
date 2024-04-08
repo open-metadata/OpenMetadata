@@ -3,6 +3,7 @@ package org.openmetadata.service.apps;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.apps.scheduler.AppScheduler.APPS_JOB_GROUP;
 import static org.openmetadata.service.apps.scheduler.AppScheduler.APP_INFO_KEY;
+import static org.openmetadata.service.apps.scheduler.AppScheduler.APP_NAME;
 
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
@@ -154,5 +155,26 @@ public class ApplicationHandler {
     AppScheduler.getInstance().deleteScheduledApplication(updatedApp);
     AppScheduler.getInstance().addApplicationSchedule(updatedApp);
     LOG.info("migrated app configuration for {}", application.getName());
+  }
+
+  public void fixCorruptedInstallation(App application) throws SchedulerException {
+    JobDetail jobDetails =
+            AppScheduler.getInstance()
+                    .getScheduler()
+                    .getJobDetail(new JobKey(application.getName(), APPS_JOB_GROUP));
+    if (jobDetails == null) {
+      return;
+    }
+    JobDataMap jobDataMap = jobDetails.getJobDataMap();
+    if (jobDataMap == null) {
+      return;
+    }
+    String appName = jobDataMap.getString(APP_NAME);
+    if (appName == null) {
+      LOG.info("corrupt entry for app {}, reinstalling", application.getName());
+      App app = appRepository.getDao().findEntityByName(application.getName());
+      AppScheduler.getInstance().deleteScheduledApplication(app);
+      AppScheduler.getInstance().addApplicationSchedule(app);
+    }
   }
 }
