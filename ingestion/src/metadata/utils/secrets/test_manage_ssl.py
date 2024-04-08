@@ -1,3 +1,6 @@
+"""
+Manage SSL test cases
+"""
 import os
 import unittest
 
