@@ -241,13 +241,13 @@ class DbtServiceSource(TopologyRunnerMixin, Source, ABC):
         """
 
     @abstractmethod
-    def yield_dbt_glossary(self, dbt_objects: DbtObjects):
+    def yield_dbt_glossary(self, data_model_link: DbtObjects):
         """
         Method to patch DBT glossary
         """
 
     @abstractmethod
-    def yield_dbt_tier(self, dbt_objects: DbtObjects):
+    def yield_dbt_tier(self, data_model_link: DbtObjects):
         """
         Method to patch DBT Tier
         """

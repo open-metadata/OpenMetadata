@@ -87,6 +87,7 @@ from metadata.ingestion.source.database.dbt.dbt_utils import (
     get_dbt_model_name,
     get_dbt_raw_query,
 )
+from metadata.ingestion.source.database.dbt.models import DbtMeta
 from metadata.utils import fqn
 from metadata.utils.elasticsearch import get_entity_from_es_result
 from metadata.utils.logger import ingestion_logger
@@ -409,24 +410,23 @@ class DbtSource(DbtServiceSource):
 
                     dbt_table_glossaries_list = None
                     dbt_table_tier = None
-                    if manifest_node.meta and manifest_node.meta.get("openmetadata"):
-                        if manifest_node.meta["openmetadata"].get("glossary"):
-                            dbt_table_glossaries_list = get_glossary_labels(
-                                metadata=self.metadata,
-                                glossaries=manifest_node.meta["openmetadata"][
-                                    "glossary"
-                                ],
-                                include_tags=self.source_config.includeTags,
-                            )
-                        if manifest_node.meta["openmetadata"].get("tier"):
-                            tier_fqn = manifest_node.meta["openmetadata"]["tier"]
-                            dbt_table_tier = get_tag_label(
-                                metadata=self.metadata,
-                                tag_name=tier_fqn.split(fqn.FQN_SEPARATOR)[-1],
-                                classification_name=tier_fqn.split(fqn.FQN_SEPARATOR)[
-                                    0
-                                ],
-                            )
+                    dbt_meta_info = DbtMeta(**manifest_node.meta)
+                    if (
+                        dbt_meta_info.openmetadata
+                        and dbt_meta_info.openmetadata.glossary
+                    ):
+                        dbt_table_glossaries_list = get_glossary_labels(
+                            metadata=self.metadata,
+                            glossaries=dbt_meta_info.openmetadata.glossary,
+                            include_tags=self.source_config.includeTags,
+                        )
+                    if dbt_meta_info.openmetadata and dbt_meta_info.openmetadata.tier:
+                        tier_fqn = dbt_meta_info.openmetadata.tier
+                        dbt_table_tier = get_tag_label(
+                            metadata=self.metadata,
+                            tag_name=tier_fqn.split(fqn.FQN_SEPARATOR)[-1],
+                            classification_name=tier_fqn.split(fqn.FQN_SEPARATOR)[0],
+                        )
 
                     dbt_column_glossaries_list = None
                     if manifest_node.columns:
@@ -625,25 +625,24 @@ class DbtSource(DbtServiceSource):
             columns_glossary_list = []
             for key, manifest_column in manifest_columns.items():
                 try:
-                    if manifest_column.meta and manifest_column.meta.get(
-                        "openmetadata"
+                    dbt_column_meta = DbtMeta(**manifest_column.meta)
+                    logger.debug(f"Processing DBT column glossary: {key}")
+                    if (
+                        dbt_column_meta.openmetadata
+                        and dbt_column_meta.openmetadata.glossary
                     ):
-                        logger.debug(f"Processing DBT column glossary: {key}")
-                        if manifest_column.meta["openmetadata"].get("glossary"):
-                            glossary_labels = get_glossary_labels(
-                                metadata=self.metadata,
-                                glossaries=manifest_column.meta["openmetadata"][
-                                    "glossary"
-                                ],
-                                include_tags=self.source_config.includeTags,
-                            )
-                            if glossary_labels:
-                                columns_glossary_list.append(
-                                    ColumnGlossary(
-                                        name=manifest_column.name,
-                                        glossary=glossary_labels,
-                                    )
+                        glossary_labels = get_glossary_labels(
+                            metadata=self.metadata,
+                            glossaries=dbt_column_meta.openmetadata.glossary,
+                            include_tags=self.source_config.includeTags,
+                        )
+                        if glossary_labels:
+                            columns_glossary_list.append(
+                                ColumnGlossary(
+                                    name=manifest_column.name,
+                                    glossary=glossary_labels,
                                 )
+                            )
                 except Exception as exc:  # pylint: disable=broad-except
                     logger.debug(traceback.format_exc())
                     logger.warning(f"Failed to parse DBT column glossary {key}: {exc}")
