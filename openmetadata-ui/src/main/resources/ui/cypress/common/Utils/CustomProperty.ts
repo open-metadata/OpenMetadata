@@ -165,7 +165,7 @@ export const setValueForProperty = (
     .as('editbutton');
 
   // added force true to click on the element to avoid the element is not visible error
-  cy.get('@editbutton').click({ force: true });
+  cy.get('@editbutton').filter(':visible').click({ force: true });
 
   interceptURL('PATCH', `/api/v1/*/*`, 'patchEntity');
   // Checking for value text box or markdown box
@@ -173,7 +173,7 @@ export const setValueForProperty = (
   switch (propertyType) {
     case 'markdown':
       cy.get('.toastui-editor-md-container > .toastui-editor > .ProseMirror')
-        .filter(':visible')
+
         .clear()
         .type(value);
       cy.get('[data-testid="save"]').click();
@@ -182,7 +182,7 @@ export const setValueForProperty = (
 
     case 'email':
       cy.get('[data-testid="email-input"]')
-        .filter(':visible')
+
         .clear()
         .type(value);
       cy.get('[data-testid="inline-save-btn"]').click();
@@ -191,7 +191,7 @@ export const setValueForProperty = (
 
     case 'duration':
       cy.get('[data-testid="duration-input"]')
-        .filter(':visible')
+
         .clear()
         .type(value);
       cy.get('[data-testid="inline-save-btn"]').click();
@@ -213,7 +213,7 @@ export const setValueForProperty = (
 
     case 'timestamp':
       cy.get('[data-testid="timestamp-input"]')
-        .filter(':visible')
+
         .clear()
         .type(value);
       cy.get('[data-testid="inline-save-btn"]').click();
@@ -223,11 +223,11 @@ export const setValueForProperty = (
     case 'timeInterval': {
       const [startValue, endValue] = value.split(',');
       cy.get('[data-testid="start-input"]')
-        .filter(':visible')
+
         .clear()
         .type(startValue);
       cy.get('[data-testid="end-input"]')
-        .filter(':visible')
+
         .clear()
         .type(endValue);
       cy.get('[data-testid="inline-save-btn"]').click();
@@ -239,7 +239,7 @@ export const setValueForProperty = (
     case 'integer':
     case 'number':
       cy.get('[data-testid="value-input"]')
-        .filter(':visible')
+
         .clear()
         .type(value);
       cy.get('[data-testid="inline-save-btn"]').click();
