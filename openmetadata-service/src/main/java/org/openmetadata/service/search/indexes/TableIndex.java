@@ -38,7 +38,6 @@ public record TableIndex(Table table) implements ColumnIndex {
     List<String> columnsWithChildrenName = new ArrayList<>();
     SearchIndexUtils.removeNonIndexableFields(doc, excludeFields);
     if (doc.get("testSuite") != null) {
-      // Remove changeDescription from testSuite
       ((Map<String, Object>) doc.get("testSuite")).remove("changeDescription");
     }
     if (table.getColumns() != null) {
