@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { PopoverProps } from 'antd';
 import { TableDetail } from 'Models';
 import { ReactNode } from 'react';
 import { Tag } from '../../../generated/entity/classification/tag';
@@ -31,4 +32,5 @@ export interface TierCardProps {
     isJoinable?: boolean
   ) => Promise<void>;
   children?: ReactNode;
+  popoverProps?: PopoverProps;
 }
