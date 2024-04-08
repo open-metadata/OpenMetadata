@@ -177,7 +177,7 @@ export const getField = (field: FieldProp) => {
 
       break;
     case FieldTypes.COLOR_PICKER:
-      fieldElement = <ColorPicker />;
+      fieldElement = <ColorPicker {...props} />;
 
       break;
 

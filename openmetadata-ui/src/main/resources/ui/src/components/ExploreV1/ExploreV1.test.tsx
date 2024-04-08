@@ -40,6 +40,10 @@ jest.mock('./ExploreSearchCard/ExploreSearchCard', () => {
 jest.mock('../../hooks/useApplicationStore', () => ({
   useApplicationStore: jest.fn().mockImplementation(() => ({
     searchCriteria: '',
+    theme: {
+      primaryColor: '#000000',
+      errorColor: '#000000',
+    },
   })),
 }));
 

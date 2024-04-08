@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { FilterOutlined } from '@ant-design/icons';
 import { Button, Col, Row, Tooltip } from 'antd';
 import { ColumnsType, TableProps } from 'antd/lib/table';
 import { AxiosError } from 'axios';
@@ -25,13 +26,13 @@ import {
 import { Paging } from '../../../../../generated/type/paging';
 import { usePaging } from '../../../../../hooks/paging/usePaging';
 import { useAirflowStatus } from '../../../../../hooks/useAirflowStatus';
+import { useApplicationStore } from '../../../../../hooks/useApplicationStore';
 import {
   deployIngestionPipelineById,
   getIngestionPipelines,
 } from '../../../../../rest/ingestionPipelineAPI';
 import { getEntityName } from '../../../../../utils/EntityUtils';
 import { getEntityTypeFromServiceCategory } from '../../../../../utils/ServiceUtils';
-import { FilterIcon } from '../../../../../utils/TableUtils';
 import {
   showErrorToast,
   showSuccessToast,
@@ -50,6 +51,7 @@ export const IngestionPipelineList = ({
 }: {
   serviceName: ServiceCategory;
 }) => {
+  const { theme } = useApplicationStore();
   const [pipelines, setPipelines] = useState<Array<IngestionPipeline>>();
   const { isAirflowAvailable, isFetchingStatus } = useAirflowStatus();
 
@@ -107,7 +109,11 @@ export const IngestionPipelineList = ({
         dataIndex: 'pipelineType',
         key: 'pipelineType',
         filterDropdown: ColumnFilter,
-        filterIcon: FilterIcon,
+        filterIcon: (filtered) => (
+          <FilterOutlined
+            style={{ color: filtered ? theme.primaryColor : undefined }}
+          />
+        ),
         filters: map(PipelineType, (value) => ({
           text: startCase(value),
           value,

@@ -48,7 +48,6 @@ import {
 import { ExploreSearchIndex } from '../components/Explore/ExplorePage.interface';
 import { EdgeDetails } from '../components/Lineage/Lineage.interface';
 import { SourceType } from '../components/SearchedData/SearchedData.interface';
-import { INFO_COLOR } from '../constants/constants';
 import {
   EXPANDED_NODE_HEIGHT,
   NODE_HEIGHT,
@@ -427,14 +426,6 @@ export const isColumnLineageTraced = (
       column === edge.sourceHandle);
 
   return incomerEdges || outgoersEdges;
-};
-
-export const getEdgeStyle = (value: boolean) => {
-  return {
-    opacity: value ? 1 : 0.25,
-    strokeWidth: value ? 2 : 1,
-    stroke: value ? INFO_COLOR : undefined,
-  };
 };
 
 export const nodeTypes = {

@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import Icon, { FilterOutlined, SearchOutlined } from '@ant-design/icons';
+import Icon, { SearchOutlined } from '@ant-design/icons';
 import { Tooltip } from 'antd';
 import { ExpandableConfig } from 'antd/lib/table/interface';
 import classNames from 'classnames';
@@ -61,11 +61,7 @@ import { ReactComponent as IconUnique } from '../assets/svg/icon-unique.svg';
 import { ReactComponent as TaskIcon } from '../assets/svg/task-ic.svg';
 import { SourceType } from '../components/SearchedData/SearchedData.interface';
 import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
-import {
-  DE_ACTIVE_COLOR,
-  PRIMERY_COLOR,
-  TEXT_BODY_COLOR,
-} from '../constants/constants';
+import { DE_ACTIVE_COLOR, TEXT_BODY_COLOR } from '../constants/constants';
 import { EntityType, FqnPart } from '../enums/entity.enum';
 import { SearchIndex } from '../enums/search.enum';
 import { ConstraintTypes, PrimaryTableDataTypes } from '../enums/table.enum';
@@ -621,14 +617,3 @@ export const updateFieldTags = <T extends TableFieldsInfoCommonEntities>(
     }
   });
 };
-export const FilterIcon = (filtered: boolean) => (
-  <FilterOutlined style={{ color: filtered ? PRIMERY_COLOR : undefined }} />
-);
-
-export const getFilterIcon = (dataTestId: string) => (filtered: boolean) =>
-  (
-    <FilterOutlined
-      data-testid={dataTestId}
-      style={{ color: filtered ? PRIMERY_COLOR : undefined }}
-    />
-  );

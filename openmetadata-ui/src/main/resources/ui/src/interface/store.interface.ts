@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { Theme } from 'antd/lib/config-provider/context';
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import {
   AuthenticationConfigurationWithScope,
@@ -48,6 +49,9 @@ export interface ApplicationStore
   refreshTokenKey: string;
   authConfig?: AuthenticationConfigurationWithScope;
   applicationConfig?: LogoConfiguration;
+  theme: Theme;
+  setTheme: (theme: Theme) => void;
+  resetTheme: () => void;
   searchCriteria: ExploreSearchIndex | '';
   setSelectedPersona: (persona: EntityReference) => void;
   setApplicationConfig: (config: LogoConfiguration) => void;

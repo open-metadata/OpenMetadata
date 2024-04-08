@@ -212,7 +212,6 @@ jest.mock(
 );
 
 jest.mock('../../../utils/TableUtils', () => ({
-  getFilterIcon: jest.fn().mockReturnValue(<p>FilterIcon</p>),
   getTagsWithoutTier: jest.fn().mockReturnValue([]),
   getTierTags: jest.fn().mockReturnValue([]),
 }));

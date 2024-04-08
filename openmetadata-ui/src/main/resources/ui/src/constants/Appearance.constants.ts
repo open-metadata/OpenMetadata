@@ -10,14 +10,10 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { ConfigProvider } from 'antd';
-import React, { FC, ReactNode } from 'react';
-import { useTranslation } from 'react-i18next';
-
-const DirectionProvider: FC<{ children: ReactNode }> = ({ children }) => {
-  const { i18n } = useTranslation();
-
-  return <ConfigProvider direction={i18n.dir()}>{children}</ConfigProvider>;
+export const DEFAULT_THEME = {
+  primaryColor: '#0968da',
+  infoColor: '#2196f3',
+  successColor: '#008376',
+  warningColor: '#ffc34e',
+  errorColor: '#ff4c3b',
 };
-
-export default DirectionProvider;

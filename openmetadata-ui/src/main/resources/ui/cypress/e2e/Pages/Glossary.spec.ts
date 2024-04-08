@@ -258,7 +258,9 @@ const fillGlossaryTermDetails = (term, glossary, isMutually = false) => {
     cy.get('[data-testid="icon-url"]').scrollIntoView().type(term.icon);
   }
   if (term.color) {
-    cy.get('[data-testid="color-input"]').scrollIntoView().type(term.color);
+    cy.get('[data-testid="root/color-color-input"]')
+      .scrollIntoView()
+      .type(term.color);
   }
 };
 

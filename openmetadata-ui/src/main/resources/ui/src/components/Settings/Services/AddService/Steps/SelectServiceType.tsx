@@ -18,7 +18,6 @@ import { startCase } from 'lodash';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as IconCheckboxPrimary } from '../../../../../assets/svg/checkbox-primary.svg';
-import { PRIMERY_COLOR } from '../../../../../constants/constants';
 import {
   BETA_SERVICES,
   excludedService,
@@ -29,6 +28,7 @@ import { DatabaseServiceType } from '../../../../../generated/entity/data/databa
 import { MetadataServiceType } from '../../../../../generated/entity/services/metadataService';
 import { MlModelServiceType } from '../../../../../generated/entity/services/mlmodelService';
 import { PipelineServiceType } from '../../../../../generated/entity/services/pipelineService';
+import { useApplicationStore } from '../../../../../hooks/useApplicationStore';
 import { errorMsg, getServiceLogo } from '../../../../../utils/CommonUtils';
 import ServiceUtilClassBase from '../../../../../utils/ServiceUtilClassBase';
 import Searchbar from '../../../../common/SearchBarComponent/SearchBar.component';
@@ -44,6 +44,7 @@ const SelectServiceType = ({
   onCancel,
   onNext,
 }: SelectServiceTypeProps) => {
+  const { theme } = useApplicationStore();
   const { t } = useTranslation();
   const [category, setCategory] = useState('');
   const [connectorSearchTerm, setConnectorSearchTerm] = useState('');
@@ -147,7 +148,7 @@ const SelectServiceType = ({
                 ) ? (
                   <Badge
                     className="service-beta-tag"
-                    color={PRIMERY_COLOR}
+                    color={theme.primaryColor}
                     count={t('label.beta')}
                   />
                 ) : null}

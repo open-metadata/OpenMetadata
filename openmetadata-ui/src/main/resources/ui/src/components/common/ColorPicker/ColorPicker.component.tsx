@@ -24,13 +24,13 @@ const ColorPicker = (props: InputProps) => {
       <Input
         {...rest}
         className="style-color-picker"
-        data-testid="color-picker"
+        data-testid={id ? `${id}-color-picker` : 'color-picker'}
         type="color"
       />
       <Input
         {...rest}
         className="style-color-input"
-        data-testid="color-input"
+        data-testid={id ? `${id}-color-input` : 'color-input'}
         id={id}
         placeholder={t('message.hex-code-placeholder')}
       />

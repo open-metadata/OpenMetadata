@@ -14,6 +14,7 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { AuthenticationConfigurationWithScope } from '../components/Auth/AuthProviders/AuthProvider.interface';
 import { EntityUnion } from '../components/Explore/ExplorePage.interface';
+import { DEFAULT_THEME } from '../constants/Appearance.constants';
 import { AuthenticationConfiguration } from '../generated/configuration/authenticationConfiguration';
 import { AuthorizerConfiguration } from '../generated/configuration/authorizerConfiguration';
 import { LogoConfiguration } from '../generated/configuration/logoConfiguration';
@@ -45,6 +46,13 @@ export const useApplicationStore = create<ApplicationStore>()(
       oidcIdToken: '',
       refreshTokenKey: '',
       loading: false,
+      theme: { ...DEFAULT_THEME },
+      setTheme: (theme: ApplicationStore['theme']) => {
+        set({ theme });
+      },
+      resetTheme: () => {
+        set({ theme: { ...DEFAULT_THEME } });
+      },
       searchCriteria: '',
 
       setHelperFunctionsRef: (helperFunctions: HelperFunctions) => {

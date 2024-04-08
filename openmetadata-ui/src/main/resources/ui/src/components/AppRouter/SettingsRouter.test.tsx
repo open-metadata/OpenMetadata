@@ -57,14 +57,6 @@ jest.mock(
   })
 );
 
-jest.mock(
-  '../../pages/CustomLogoConfigSettingsPage/CustomLogoConfigSettingsPage',
-  () => ({
-    __esModule: true,
-    default: jest.fn().mockReturnValue(<div>CustomLogoConfigSettingsPage</div>),
-  })
-);
-
 jest.mock('../../pages/CustomPageSettings/CustomPageSettings', () => ({
   __esModule: true,
   default: jest.fn().mockReturnValue(<div>CustomPageSettings</div>),
@@ -73,11 +65,6 @@ jest.mock('../../pages/CustomPageSettings/CustomPageSettings', () => ({
 jest.mock('../../pages/CustomPropertiesPageV1/CustomPropertiesPageV1', () => ({
   __esModule: true,
   default: jest.fn().mockReturnValue(<div>CustomPropertiesPageV1</div>),
-}));
-
-jest.mock('../../pages/EditCustomLogoConfig/EditCustomLogoConfig', () => ({
-  __esModule: true,
-  default: jest.fn().mockReturnValue(<div>EditCustomLogoConfig</div>),
 }));
 
 jest.mock(
@@ -354,28 +341,6 @@ describe('SettingsRouter', () => {
     );
 
     expect(await screen.findByText('CustomPageSettings')).toBeInTheDocument();
-  });
-
-  it('should render CustomLogoConfigSettingsPage component for custom logo config settings route', async () => {
-    render(
-      <MemoryRouter initialEntries={[`/settings/preferences/customLogo`]}>
-        <SettingsRouter />
-      </MemoryRouter>
-    );
-
-    expect(
-      await screen.findByText('CustomLogoConfigSettingsPage')
-    ).toBeInTheDocument();
-  });
-
-  it('should render EditCustomLogoConfig component for edit custom logo config route', async () => {
-    render(
-      <MemoryRouter initialEntries={[ROUTES.SETTINGS_EDIT_CUSTOM_LOGO_CONFIG]}>
-        <SettingsRouter />
-      </MemoryRouter>
-    );
-
-    expect(await screen.findByText('EditCustomLogoConfig')).toBeInTheDocument();
   });
 
   it('should render EmailConfigSettingsPage component for email config settings route', async () => {
