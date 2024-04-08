@@ -313,7 +313,7 @@ const AppearanceConfigSettingsPage = () => {
             </Col>
           </Row>
         </Col>
-        <Col offset={2} span={20}>
+        <Col span={24}>
           <Form
             form={form}
             initialValues={{
@@ -333,15 +333,17 @@ const AppearanceConfigSettingsPage = () => {
                       <Col className="w-full" key={field.name} span={24}>
                         <Row gutter={[48, 16]}>
                           <Col span={12}>{getField(field)}</Col>
-                          <Col style={{ placeSelf: 'center' }}>
+                          <Col>
                             <BrandImage
                               className="preview-image"
-                              height="auto"
+                              height={70}
                               isMonoGram={field.name !== 'customLogoUrlPath'}
                               src={
                                 formState[field.name as keyof LogoConfiguration]
                               }
-                              width={100}
+                              width={
+                                field.name !== 'customLogoUrlPath' ? 75 : 120
+                              }
                             />
                           </Col>
                         </Row>
