@@ -13,6 +13,7 @@ import org.openmetadata.service.exception.SecretsManagerException;
 import org.openmetadata.service.exception.SecretsManagerUpdateException;
 
 import java.io.IOException;
+import java.util.regex.Pattern;
 import java.util.zip.CRC32C;
 import java.util.zip.Checksum;
 

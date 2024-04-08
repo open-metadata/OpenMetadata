@@ -3,7 +3,7 @@ from typing import Optional
 
 import google_crc32c
 from google.cloud import secretmanager
-from ingestion.build.lib.metadata.generated.schema.security.secrets.secretsManagerClientLoader import (
+from metadata.generated.schema.security.secrets.secretsManagerClientLoader import (
     SecretsManagerClientLoader,
 )
 from metadata.generated.schema.security.credentials.gcpValues import (
