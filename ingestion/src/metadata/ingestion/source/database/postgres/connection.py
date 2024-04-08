@@ -27,12 +27,10 @@ from metadata.generated.schema.entity.services.connections.database.common.basic
 from metadata.generated.schema.entity.services.connections.database.postgresConnection import (
     PostgresConnection,
 )
-from metadata.generated.schema.security.ssl import verifySSLConfig
 from metadata.ingestion.connections.builders import (
     create_generic_db_connection,
     get_connection_args_common,
     get_connection_url_common,
-    init_empty_connection_arguments,
 )
 from metadata.ingestion.connections.test_connections import test_connection_db_common
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
@@ -44,6 +42,7 @@ from metadata.ingestion.source.database.postgres.queries import (
 from metadata.ingestion.source.database.postgres.utils import (
     get_postgres_time_column_name,
 )
+from metadata.utils.secrets.manage_ssl import SSLManager
 
 
 def get_connection(connection: PostgresConnection) -> Engine:
@@ -62,16 +61,10 @@ def get_connection(connection: PostgresConnection) -> Engine:
         )
         connection.authType = BasicAuth(password=access_token_obj.token)
     if connection.sslMode:
-        if not connection.connectionArguments:
-            connection.connectionArguments = init_empty_connection_arguments()
-        connection.connectionArguments.__root__["sslmode"] = connection.sslMode.value
-        if connection.sslMode in (
-            verifySSLConfig.SslMode.verify_ca,
-            verifySSLConfig.SslMode.verify_full,
-        ):
-            connection.connectionArguments.__root__[
-                "sslrootcert"
-            ] = connection.sslConfig.__root__.certificatePath
+        connection = SSLManager(
+            ca=connection.sslConfig.__root__.caCertificate
+        ).setup_ssl(connection)
+
     return create_generic_db_connection(
         connection=connection,
         get_connection_url_fn=get_connection_url_common,

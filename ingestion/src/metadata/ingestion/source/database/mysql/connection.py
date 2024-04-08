@@ -30,12 +30,12 @@ from metadata.ingestion.connections.builders import (
     create_generic_db_connection,
     get_connection_args_common,
     get_connection_url_common,
-    init_empty_connection_arguments,
 )
 from metadata.ingestion.connections.test_connections import (
     test_connection_db_schema_sources,
 )
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.utils.secrets.manage_ssl import SSLManager
 
 
 def get_connection(connection: MysqlConnection) -> Engine:
@@ -57,17 +57,11 @@ def get_connection(connection: MysqlConnection) -> Engine:
             or connection.ssl.__root__.sslCertificate
             or connection.ssl.__root__.sslKey
         ):
-            connection.connectionArguments = (
-                connection.connectionArguments or init_empty_connection_arguments()
-            )
-            ssl_args = connection.connectionArguments.get("ssl", {})
-            if connection.ssl.__root__.caCertificate:
-                ssl_args["ssl_ca"] = connection.ssl.__root__.caCertificate
-            if connection.ssl.__root__.sslCertificate:
-                ssl_args["ssl_cert"] = connection.ssl.__root__.sslCertificate
-            if connection.ssl.__root__.sslKey:
-                ssl_args["ssl_key"] = connection.ssl.__root__.sslKey
-            connection.connectionArguments["ssl"] = ssl_args
+            connection = SSLManager(
+                ca=connection.ssl.__root__.caCertificate,
+                cert=connection.ssl.__root__.sslCertificate,
+                key=connection.ssl.__root__.sslKey,
+            ).setup_ssl(connection)
 
     return create_generic_db_connection(
         connection=connection,
