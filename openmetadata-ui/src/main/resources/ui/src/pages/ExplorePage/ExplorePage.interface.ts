@@ -17,11 +17,13 @@ import { SORT_ORDER } from '../../enums/common.enum';
 export interface QueryFieldValueInterface {
   term: Record<string, string>;
 }
-
+export interface QueryMustNotFieldInterface {
+  exists?: { field: string };
+}
 export interface QueryFieldInterface {
   bool: {
     must?: Array<QueryFieldValueInterface>;
-    must_not?: Array<QueryFieldValueInterface>;
+    must_not?: Array<QueryFieldValueInterface | QueryMustNotFieldInterface>;
     should?: Array<QueryFieldValueInterface>;
   };
 }

@@ -27,19 +27,19 @@ import {
   Switch,
   Typography,
 } from 'antd';
-import { Content } from 'antd/lib/layout/layout';
 import Sider from 'antd/lib/layout/Sider';
+import { Content } from 'antd/lib/layout/layout';
 import { isEmpty, isString, isUndefined, noop, omit } from 'lodash';
 import Qs from 'qs';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
-import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { useAdvanceSearch } from '../../components/Explore/AdvanceSearchProvider/AdvanceSearchProvider.component';
 import AppliedFilterText from '../../components/Explore/AppliedFilterText/AppliedFilterText';
 import EntitySummaryPanel from '../../components/Explore/EntitySummaryPanel/EntitySummaryPanel.component';
 import ExploreQuickFilters from '../../components/Explore/ExploreQuickFilters';
 import SortingDropDown from '../../components/Explore/SortingDropDown';
+import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { ERROR_COLOR } from '../../constants/constants';
 import {
   SEARCH_INDEXING_APPLICATION,
@@ -49,6 +49,7 @@ import { ERROR_PLACEHOLDER_TYPE, SORT_ORDER } from '../../enums/common.enum';
 import {
   QueryFieldInterface,
   QueryFieldValueInterface,
+  QueryMustNotFieldInterface,
 } from '../../pages/ExplorePage/ExplorePage.interface';
 import { getDropDownItems } from '../../utils/AdvancedSearchUtils';
 import { Transi18next } from '../../utils/CommonUtils';
@@ -56,7 +57,6 @@ import { highlightEntityNameAndDescription } from '../../utils/EntityUtils';
 import { getSelectedValuesFromQuickFilter } from '../../utils/Explore.utils';
 import { getApplicationDetailsPath } from '../../utils/RouterUtils';
 import searchClassBase from '../../utils/SearchClassBase';
-import Loader from '../common/Loader/Loader';
 import {
   ExploreProps,
   ExploreQuickFilterField,
@@ -65,6 +65,7 @@ import {
 import PageLayoutV1 from '../PageLayoutV1/PageLayoutV1';
 import SearchedData from '../SearchedData/SearchedData';
 import { SearchedDataProps } from '../SearchedData/SearchedData.interface';
+import Loader from '../common/Loader/Loader';
 import './exploreV1.less';
 
 const IndexNotFoundBanner = () => {
@@ -186,31 +187,75 @@ const ExploreV1: React.FC<ExploreProps> = ({
 
   const handleQuickFiltersChange = (data: ExploreQuickFilterField[]) => {
     const must = [] as Array<QueryFieldInterface>;
+    const should = [] as Array<QueryFieldInterface>;
 
     // Mapping the selected advanced search quick filter dropdown values
     // to form a queryFilter to pass as a search parameter
     data.forEach((filter) => {
+      if (filter.key === 'description') {
+        should.push({
+          nested: {
+            ignore_unmapped: true,
+            path: 'columns',
+            query: {
+              bool: {
+                should: [
+                  {
+                    bool: {
+                      must_not: {
+                        exists: {
+                          field: 'columns.description',
+                        },
+                      },
+                    },
+                  },
+                  {
+                    bool: {
+                      must_not: {
+                        wildcard: {
+                          'columns.description': '*',
+                        },
+                      },
+                    },
+                  },
+                ],
+              },
+            },
+          },
+        });
+
+        return;
+      }
+
       if (!isEmpty(filter.value)) {
         const should = [] as Array<QueryFieldValueInterface>;
+        const mustNot = [] as Array<QueryMustNotFieldInterface>;
         if (filter.value) {
           filter.value.forEach((filterValue) => {
             const term = {} as QueryFieldValueInterface['term'];
 
-            term[filter.key] = filterValue.key;
+            if (filterValue.type === 'must_not') {
+              mustNot.push({ exists: { field: filter.key } });
+            } else {
+              term[filter.key] = filterValue.key;
 
-            should.push({ term });
+              should.push({ term });
+            }
           });
         }
 
-        must.push({ bool: { should } });
+        must.push(
+          { bool: { should } },
+          ...(mustNot ? [{ bool: { must_not: mustNot } }] : [])
+        );
       }
     });
 
     onChangeAdvancedSearchQuickFilters(
-      isEmpty(must)
+      isEmpty(must) && isEmpty(should)
         ? undefined
         : {
-            query: { bool: { must } },
+            query: { bool: { must, should } },
           }
     );
   };

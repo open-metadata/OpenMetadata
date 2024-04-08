@@ -67,6 +67,7 @@ declare module 'Models' {
     key: string;
     doc_count: number;
     label?: string;
+    type?: string;
   };
 
   export type FormattedTableData = {

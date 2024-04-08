@@ -19,8 +19,8 @@ import {
   Fields,
   JsonTree,
   ListItem,
-  SelectFieldSettings,
   Utils as QbUtils,
+  SelectFieldSettings,
 } from 'react-awesome-query-builder';
 import AntdConfig from 'react-awesome-query-builder/lib/config/antd';
 import { EntityFields, SuggestionField } from '../enums/AdvancedSearch.enum';
@@ -41,6 +41,10 @@ export const COMMON_DROPDOWN_ITEMS = [
   {
     label: t('label.owner'),
     key: 'owner.displayName.keyword',
+  },
+  {
+    label: t('label.description'),
+    key: 'description',
   },
   {
     label: t('label.tag'),

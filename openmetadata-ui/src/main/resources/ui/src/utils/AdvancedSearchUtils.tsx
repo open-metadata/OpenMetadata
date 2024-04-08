@@ -21,9 +21,9 @@ import {
   RenderSettings,
 } from 'react-awesome-query-builder';
 import { ReactComponent as IconDeleteColored } from '../assets/svg/ic-delete-colored.svg';
-import ProfilePicture from '../components/common/ProfilePicture/ProfilePicture';
 import { AssetsOfEntity } from '../components/Glossary/GlossaryTerms/tabs/AssetsTabs.interface';
 import { SearchDropdownOption } from '../components/SearchDropdown/SearchDropdown.interface';
+import ProfilePicture from '../components/common/ProfilePicture/ProfilePicture';
 import {
   COMMON_DROPDOWN_ITEMS,
   DOMAIN_DATAPRODUCT_DROPDOWN_ITEMS,
@@ -400,6 +400,7 @@ export const getOptionsFromAggregationBucket = (buckets: Bucket[]) => {
     key: option.key,
     label: option.key,
     count: option.doc_count ?? 0,
+    type: option.type,
   }));
 };
 

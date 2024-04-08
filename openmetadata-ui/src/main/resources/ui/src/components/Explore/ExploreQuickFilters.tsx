@@ -11,10 +11,10 @@
  *  limitations under the License.
  */
 
+import { Bucket } from 'Models';
 import { Space } from 'antd';
 import { AxiosError } from 'axios';
 import { isEqual, isString, isUndefined, uniqWith } from 'lodash';
-import { Bucket } from 'Models';
 import Qs from 'qs';
 import React, { FC, useCallback, useEffect, useMemo, useState } from 'react';
 import { useLocation } from 'react-router-dom';
@@ -85,8 +85,29 @@ const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
   ) => {
     let buckets: Bucket[] = [];
 
-    if (aggregations?.[key] && key !== TIER_FQN_KEY) {
+    if (key === 'description') {
+      setOptions([
+        {
+          key: 'complete',
+          label: 'Complete',
+          count: 0,
+        },
+        {
+          key: 'incomplete',
+          label: 'Incomplete',
+          count: 0,
+        },
+      ]);
+
+      return;
+    } else if (aggregations?.[key] && key !== TIER_FQN_KEY) {
       buckets = aggregations[key].buckets;
+      if (key === 'owner.displayName.keyword') {
+        buckets = [
+          { key: 'No Owner', doc_count: 0, type: 'must_not' },
+          ...buckets,
+        ];
+      }
     } else {
       const [res, tierTags] = await Promise.all([
         getAggregateFieldOptions(

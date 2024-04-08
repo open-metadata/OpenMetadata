@@ -34,4 +34,5 @@ export interface SearchDropdownOption {
   key: string;
   label: string;
   count?: number;
+  type?: string;
 }

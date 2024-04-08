@@ -16,6 +16,7 @@ import { AxiosError } from 'axios';
 import { includes, isEmpty, round, toLower } from 'lodash';
 import React, { FC, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { Link } from 'react-router-dom';
 import {
   CartesianGrid,
   Line,
@@ -26,16 +27,17 @@ import {
   YAxis,
 } from 'recharts';
 import {
-  DEFAULT_CHART_OPACITY,
-  GRAPH_BACKGROUND_COLOR,
-  HOVER_CHART_OPACITY,
-} from '../../constants/constants';
-import {
   BAR_CHART_MARGIN,
   DI_STRUCTURE,
   GRAPH_HEIGHT,
   TOTAL_ENTITY_CHART_COLOR,
 } from '../../constants/DataInsight.constants';
+import {
+  DEFAULT_CHART_OPACITY,
+  GRAPH_BACKGROUND_COLOR,
+  HOVER_CHART_OPACITY,
+  getExplorePath,
+} from '../../constants/constants';
 import { DataReportIndex } from '../../generated/dataInsight/dataInsightChart';
 import {
   DataInsightChartResult,
@@ -55,12 +57,12 @@ import {
   sortEntityByValue,
 } from '../../utils/DataInsightUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
-import Searchbar from '../common/SearchBarComponent/SearchBar.component';
 import PageHeader from '../PageHeader/PageHeader.component';
-import './data-insight-detail.less';
+import Searchbar from '../common/SearchBarComponent/SearchBar.component';
 import DataInsightProgressBar from './DataInsightProgressBar';
 import { EmptyGraphPlaceholder } from './EmptyGraphPlaceholder';
 import EntitySummaryProgressBar from './EntitySummaryProgressBar.component';
+import './data-insight-detail.less';
 
 interface Props {
   chartFilter: ChartFilter;
@@ -286,6 +288,35 @@ const OwnerInsight: FC<Props> = ({
                 </Button>
               </Col>
             )}
+            <Col className="flex justify-end" span={24}>
+              <Link
+                to={getExplorePath({
+                  tab: 'tables',
+                  extraParameters: {
+                    quickFilter: JSON.stringify({
+                      query: {
+                        bool: {
+                          must: [
+                            {
+                              bool: {
+                                must_not: [
+                                  {
+                                    exists: {
+                                      field: 'owner.displayName.keyword',
+                                    },
+                                  },
+                                ],
+                              },
+                            },
+                          ],
+                        },
+                      },
+                    }),
+                  },
+                })}>
+                Explore Assets With No Owner
+              </Link>
+            </Col>
           </Row>
         </Col>
       </Row>

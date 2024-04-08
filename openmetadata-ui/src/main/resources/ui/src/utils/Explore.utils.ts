@@ -83,6 +83,17 @@ export const getSelectedValuesFromQuickFilter = (
 
     mustField.forEach((item) => {
       const filterValues = item?.bool?.should;
+      const mustNot = item?.bool?.must_not;
+
+      if (mustNot) {
+        mustNot.forEach((filter) => {
+          if (filter.exists.field === 'owner.displayName.keyword') {
+            filters.push({
+              term: { 'owner.displayName.keyword': 'No Owner' },
+            });
+          }
+        });
+      }
 
       if (filterValues) {
         filters.push(...filterValues);
