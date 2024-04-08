@@ -7,6 +7,7 @@ import static org.openmetadata.service.apps.scheduler.AppScheduler.APP_NAME;
 
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.util.Collection;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.api.configuration.apps.AppPrivateConfig;
@@ -25,6 +26,7 @@ import org.quartz.JobDataMap;
 import org.quartz.JobDetail;
 import org.quartz.JobKey;
 import org.quartz.SchedulerException;
+import org.quartz.impl.matchers.GroupMatcher;
 
 @Slf4j
 public class ApplicationHandler {
@@ -180,5 +182,26 @@ public class ApplicationHandler {
       AppScheduler.getInstance().deleteScheduledApplication(app);
       AppScheduler.getInstance().addApplicationSchedule(app);
     }
+  }
+
+  public void removeOldJobs(App app) throws SchedulerException {
+    Collection<JobKey> jobKeys =
+        AppScheduler.getInstance()
+            .getScheduler()
+            .getJobKeys(GroupMatcher.groupContains(APPS_JOB_GROUP));
+    jobKeys.forEach(
+        jobKey -> {
+          try {
+            Class<?> clz =
+                AppScheduler.getInstance().getScheduler().getJobDetail(jobKey).getJobClass();
+            if (!jobKey.getName().equals(app.getName())
+                && clz.getName().equals(app.getClassName())) {
+                LOG.info("deleting old job {}", jobKey.getName());
+              AppScheduler.getInstance().getScheduler().deleteJob(jobKey);
+            }
+          } catch (SchedulerException e) {
+            LOG.error("Error deleting job {}", jobKey.getName(), e);
+          }
+        });
   }
 }
