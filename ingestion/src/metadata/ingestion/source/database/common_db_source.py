@@ -69,6 +69,7 @@ from metadata.utils.execution_time_tracker import (
 )
 from metadata.utils.filters import filter_by_table
 from metadata.utils.logger import ingestion_logger
+from metadata.utils.secrets.manage_ssl import SSLManager
 
 logger = ingestion_logger()
 
@@ -601,6 +602,7 @@ class CommonDbSourceService(
             self.connection.close()
         for connection in self._connection_map.values():
             connection.close()
+        SSLManager.cleanup_ssl_files_from_connection(self.service_connection)
         self.engine.dispose()
 
     def fetch_table_tags(
