@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { FilterOutlined } from '@ant-design/icons';
 import { Button, Tooltip, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { ExpandableConfig } from 'antd/lib/table/interface';
@@ -43,6 +44,7 @@ import { EntityType } from '../../../enums/entity.enum';
 import { Column } from '../../../generated/entity/data/table';
 import { TagSource } from '../../../generated/type/schema';
 import { TagLabel } from '../../../generated/type/tagLabel';
+import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { useFqn } from '../../../hooks/useFqn';
 import {
   getEntityName,
@@ -55,7 +57,6 @@ import {
 } from '../../../utils/TableTags/TableTags.utils';
 import {
   getAllRowKeysByKeyName,
-  getFilterIcon,
   getTableExpandableConfig,
   makeData,
   prepareConstraintIcon,
@@ -83,6 +84,7 @@ const SchemaTable = ({
   onThreadLinkSelect,
   tableConstraints,
 }: SchemaTableProps) => {
+  const { theme } = useApplicationStore();
   const { t } = useTranslation();
 
   const [searchedColumns, setSearchedColumns] = useState<Column[]>([]);
@@ -398,7 +400,12 @@ const SchemaTable = ({
         key: 'tags',
         accessor: 'tags',
         width: 250,
-        filterIcon: getFilterIcon('tag-filter'),
+        filterIcon: (filtered: boolean) => (
+          <FilterOutlined
+            data-testid="tag-filter"
+            style={{ color: filtered ? theme.primaryColor : undefined }}
+          />
+        ),
         render: (tags: TagLabel[], record: Column, index: number) => (
           <TableTags<Column>
             entityFqn={decodedEntityFqn}
@@ -423,7 +430,12 @@ const SchemaTable = ({
         key: 'glossary',
         accessor: 'tags',
         width: 250,
-        filterIcon: getFilterIcon('glossary-filter'),
+        filterIcon: (filtered) => (
+          <FilterOutlined
+            data-testid="glossary-filter"
+            style={{ color: filtered ? theme.primaryColor : undefined }}
+          />
+        ),
         render: (tags: TagLabel[], record: Column, index: number) => (
           <TableTags<Column>
             entityFqn={decodedEntityFqn}
