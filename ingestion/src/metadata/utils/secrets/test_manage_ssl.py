@@ -8,6 +8,10 @@ from metadata.utils.secrets.manage_ssl import SSLManager
 
 
 class SSLManagerTest(unittest.TestCase):
+    """
+    Tests to verify the functionality of SSLManager
+    """
+
     def setUp(self):
         self.ca = "CA certificate content"
         self.key = "Private key content"
