@@ -12,6 +12,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.common.utils.CommonUtil.listOf;
+import static org.openmetadata.schema.type.ColumnDataType.BIGINT;
 import static org.openmetadata.schema.type.MetadataOperation.EDIT_TESTS;
 import static org.openmetadata.service.Entity.ADMIN_USER_NAME;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.permissionNotAllowed;
@@ -113,7 +114,15 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
             .withName("testCase'_ Table")
             .withDatabaseSchema(DATABASE_SCHEMA.getFullyQualifiedName())
             .withOwner(USER1_REF)
-            .withColumns(COLUMNS)
+            .withColumns(
+                List.of(
+                    new Column().withName(C1).withDisplayName("c1").withDataType(BIGINT),
+                    new Column()
+                        .withName(C2)
+                        .withDisplayName("c2")
+                        .withDataType(ColumnDataType.VARCHAR)
+                        .withDataLength(10),
+                    new Column().withName(C3).withDisplayName("c3").withDataType(BIGINT)))
             .withOwner(USER1_REF);
     TEST_TABLE1 = tableResourceTest.createAndCheckEntity(tableReq, ADMIN_AUTH_HEADERS);
     tableReq =
