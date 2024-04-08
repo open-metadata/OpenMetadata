@@ -38,6 +38,8 @@ from metadata.ingestion.connections.builders import init_empty_connection_argume
 
 
 class SSLManager:
+    "SSL Manager to manage SSL certificates for service connections"
+
     def __init__(self, ca, key=None, cert=None):
         self.temp_files = []
         self.ca_file_path = self.create_temp_file(ca)
