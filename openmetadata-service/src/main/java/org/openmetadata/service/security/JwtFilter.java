@@ -151,8 +151,7 @@ public class JwtFilter implements ContainerRequestFilter {
 
     // validate access token
     if (claims.containsKey(TOKEN_TYPE)
-        && ServiceTokenType.PERSONAL_ACCESS.equals(
-            ServiceTokenType.fromValue(claims.get(TOKEN_TYPE).asString()))) {
+        && ServiceTokenType.PERSONAL_ACCESS.value().equals(claims.get(TOKEN_TYPE).asString())) {
       validatePersonalAccessToken(tokenFromHeader, userName);
     }
 
