@@ -42,6 +42,7 @@ import org.openmetadata.schema.api.tests.CreateTestCase;
 import org.openmetadata.schema.tests.TestCase;
 import org.openmetadata.schema.tests.TestSuite;
 import org.openmetadata.schema.tests.type.TestCaseResult;
+import org.openmetadata.schema.tests.type.TestCaseStatus;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
@@ -628,6 +629,10 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
     authorizer.authorize(securityContext, operationContext, resourceContext);
     PatchResponse<TestCase> response =
         repository.patch(uriInfo, id, securityContext.getUserPrincipal().getName(), patch);
+    if (response.entity().getTestCaseResult() != null
+        && response.entity().getTestCaseResult().getTestCaseStatus() == TestCaseStatus.Success) {
+      repository.deleteTestCaseFailedSample(id);
+    }
     addHref(uriInfo, response.entity());
     return response.toResponse();
   }
@@ -836,6 +841,10 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
     OperationContext operationContext =
         new OperationContext(Entity.TABLE, MetadataOperation.EDIT_TESTS);
     authorizer.authorize(securityContext, operationContext, resourceContext);
+    if (testCaseResult.getTestCaseStatus() == TestCaseStatus.Success) {
+      TestCase testCase = repository.findByName(fqn, Include.ALL);
+      repository.deleteTestCaseFailedSample(testCase.getId());
+    }
     return repository
         .addTestCaseResult(
             securityContext.getUserPrincipal().getName(), uriInfo, fqn, testCaseResult)
@@ -930,7 +939,10 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
             content =
                 @Content(
                     mediaType = "application/json",
-                    schema = @Schema(implementation = TestCase.class)))
+                    schema = @Schema(implementation = TestCase.class))),
+        @ApiResponse(
+            responseCode = "400",
+            description = "Failed rows can only be added to a failed test case.")
       })
   public TestCase addFailedRowsData(
       @Context UriInfo uriInfo,
@@ -942,8 +954,12 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
     OperationContext operationContext =
         new OperationContext(entityType, MetadataOperation.EDIT_SAMPLE_DATA);
     authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
-    TestCase table = repository.addFailedRowsSample(id, tableData);
-    return addHref(uriInfo, table);
+    TestCase testCase = repository.find(id, Include.NON_DELETED);
+    if (testCase.getTestCaseResult() == null
+        || !testCase.getTestCaseResult().getTestCaseStatus().equals(TestCaseStatus.Failed)) {
+      throw new IllegalArgumentException("Failed rows can only be added to a failed test case.");
+    }
+    return addHref(uriInfo, repository.addFailedRowsSample(testCase, tableData));
   }
 
   @GET
@@ -969,10 +985,10 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
     OperationContext operationContext =
         new OperationContext(entityType, MetadataOperation.VIEW_SAMPLE_DATA);
     ResourceContext<?> resourceContext = getResourceContextById(id);
+    TestCase testCase = repository.find(id, Include.NON_DELETED);
     authorizer.authorize(securityContext, operationContext, resourceContext);
     boolean authorizePII = authorizer.authorizePII(securityContext, resourceContext.getOwner());
-
-    return repository.getSampleData(id, authorizePII);
+    return repository.getSampleData(testCase, authorizePII);
   }
 
   @PUT

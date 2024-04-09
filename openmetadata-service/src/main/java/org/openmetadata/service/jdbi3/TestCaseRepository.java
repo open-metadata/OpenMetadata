@@ -15,6 +15,7 @@ import static org.openmetadata.service.Entity.TEST_SUITE;
 import static org.openmetadata.service.Entity.getEntityByName;
 import static org.openmetadata.service.Entity.getEntityReferenceByName;
 import static org.openmetadata.service.Entity.populateEntityFieldTags;
+import static org.openmetadata.service.exception.CatalogExceptionMessage.entityNotFound;
 import static org.openmetadata.service.security.mask.PIIMasker.maskSampleData;
 
 import com.google.common.collect.ImmutableSet;
@@ -760,8 +761,7 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
   }
 
   @Transaction
-  public TestCase addFailedRowsSample(UUID testCaseId, TableData tableData) {
-    TestCase testCase = find(testCaseId, NON_DELETED);
+  public TestCase addFailedRowsSample(TestCase testCase, TableData tableData) {
     EntityLink entityLink = EntityLink.parse(testCase.getEntityLink());
     Table table = Entity.getEntity(entityLink, "owner", ALL);
     // Validate all the columns
@@ -780,12 +780,16 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
     daoCollection
         .entityExtensionDAO()
         .insert(
-            testCaseId,
+            testCase.getId(),
             FAILED_ROWS_SAMPLE_EXTENSION,
             "failedRowsSample",
             JsonUtils.pojoToJson(tableData));
     setFieldsInternal(testCase, Fields.EMPTY_FIELDS);
     return testCase.withFailedRowsSample(tableData);
+  }
+
+  public void deleteTestCaseFailedSample(UUID id) {
+    daoCollection.entityExtensionDAO().delete(id, FAILED_ROWS_SAMPLE_EXTENSION);
   }
 
   public static class TestCaseFailureResolutionTaskWorkflow extends FeedRepository.TaskWorkflow {
@@ -943,16 +947,18 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
     }
   }
 
-  public TableData getSampleData(UUID testCaseID, boolean authorizePII) {
-    TestCase testCase = find(testCaseID, NON_DELETED);
+  public TableData getSampleData(TestCase testCase, boolean authorizePII) {
     Table table = Entity.getEntity(EntityLink.parse(testCase.getEntityLink()), "owner", ALL);
     // Validate the request content
     TableData sampleData =
         JsonUtils.readValue(
             daoCollection
                 .entityExtensionDAO()
-                .getExtension(testCaseID, FAILED_ROWS_SAMPLE_EXTENSION),
+                .getExtension(testCase.getId(), FAILED_ROWS_SAMPLE_EXTENSION),
             TableData.class);
+    if (sampleData == null) {
+      throw new EntityNotFoundException(entityNotFound(FAILED_ROWS_SAMPLE_EXTENSION, testCase.getId()));
+    }
     // Set the column tags. Will be used to mask the sample data
     if (!authorizePII) {
       populateEntityFieldTags(

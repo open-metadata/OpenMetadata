@@ -16,6 +16,7 @@ import static org.openmetadata.schema.type.ColumnDataType.BIGINT;
 import static org.openmetadata.schema.type.MetadataOperation.EDIT_TESTS;
 import static org.openmetadata.service.Entity.ADMIN_USER_NAME;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.permissionNotAllowed;
+import static org.openmetadata.service.jdbi3.TestCaseRepository.FAILED_ROWS_SAMPLE_EXTENSION;
 import static org.openmetadata.service.security.SecurityUtil.authHeaders;
 import static org.openmetadata.service.security.SecurityUtil.getPrincipalName;
 import static org.openmetadata.service.security.mask.PIIMasker.MASKED_VALUE;
@@ -32,6 +33,7 @@ import static org.openmetadata.service.util.TestUtils.assertListNull;
 import static org.openmetadata.service.util.TestUtils.assertResponse;
 import static org.openmetadata.service.util.TestUtils.assertResponseContains;
 import static org.openmetadata.service.util.TestUtils.dateToTimestamp;
+import static org.openmetadata.service.util.TestUtils.patch;
 
 import java.io.IOException;
 import java.text.ParseException;
@@ -2249,7 +2251,7 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
   }
 
   @Test
-  void put_failedRowSample_200(TestInfo test) throws IOException {
+  void put_failedRowSample_200(TestInfo test) throws IOException, ParseException {
     CreateTestCase create =
         createRequest(test)
             .withEntityLink(TABLE_LINK)
@@ -2268,6 +2270,18 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
             Arrays.asList("c1Value2", null, false),
             Arrays.asList("c1Value3", 3, true));
 
+    // Cannot set failed sample for a non-failing test case
+    assertResponse(
+        () -> putSampleData(testCase, columns, rows, ADMIN_AUTH_HEADERS), BAD_REQUEST, "Failed rows can only be added to a failed test case.");
+
+    // Add failed test case, which will create a NEW incident
+    putTestCaseResult(
+        testCase.getFullyQualifiedName(),
+        new TestCaseResult()
+            .withResult("result")
+            .withTestCaseStatus(TestCaseStatus.Failed)
+            .withTimestamp(TestUtils.dateToTimestamp("2024-01-01")),
+        ADMIN_AUTH_HEADERS);
     // Sample data can be put as an ADMIN
     putSampleData(testCase, columns, rows, ADMIN_AUTH_HEADERS);
 
@@ -2280,6 +2294,18 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
         () -> putSampleData(testCase, columns, rows, authHeaders(USER2.getName())),
         FORBIDDEN,
         permissionNotAllowed(USER2.getName(), List.of(MetadataOperation.EDIT_SAMPLE_DATA)));
+
+    // resolving test case deletes the sample data
+    TestCaseResult testCaseResult =
+        new TestCaseResult()
+            .withResult("tested")
+            .withTestCaseStatus(TestCaseStatus.Success)
+            .withTimestamp(TestUtils.dateToTimestamp("2021-09-09"));
+    putTestCaseResult(testCase.getFullyQualifiedName(), testCaseResult, ADMIN_AUTH_HEADERS);
+    assertResponse(
+        () -> getSampleData(testCase.getId(), ADMIN_AUTH_HEADERS),
+        NOT_FOUND,
+        FAILED_ROWS_SAMPLE_EXTENSION + " instance for " + testCase.getId() + " not found");
   }
 
   @Test
@@ -2339,9 +2365,9 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
     assertEquals(tableData, data);
   }
 
-  public TestCase putSampleData(UUID tableId, TableData data, Map<String, String> authHeaders)
+  public TestCase putSampleData(UUID testCaseId, TableData data, Map<String, String> authHeaders)
       throws HttpResponseException {
-    WebTarget target = getResource(tableId).path("/failedRowsSample");
+    WebTarget target = getResource(testCaseId).path("/failedRowsSample");
     return TestUtils.put(target, data, TestCase.class, OK, authHeaders);
   }
 
