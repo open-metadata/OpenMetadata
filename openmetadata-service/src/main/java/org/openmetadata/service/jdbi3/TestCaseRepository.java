@@ -70,7 +70,8 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
   private static final String TEST_CASE_RESULT_FIELD = "testCaseResult";
   private static final String INCIDENTS_FIELD = "incidentId";
   public static final String COLLECTION_PATH = "/v1/dataQuality/testCases";
-  private static final String UPDATE_FIELDS = "owner,entityLink,testSuite,testDefinition";
+  private static final String UPDATE_FIELDS =
+      "owner,entityLink,testSuite,testSuites,testDefinition";
   private static final String PATCH_FIELDS =
       "owner,entityLink,testSuite,testDefinition,computePassedFailedRowCount";
   public static final String TESTCASE_RESULT_EXTENSION = "testCase.testCaseResult";
@@ -260,8 +261,28 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
 
   @Override
   protected void postDelete(TestCase test) {
+    // delete test case from test suite summary when test case is deleted
+    // from an executable test suite
+    List<TestSuite> testSuites = test.getTestSuites();
+    if (!testSuites.isEmpty()) {
+      for (TestSuite testSuite : testSuites) {
+        removeTestCaseFromTestSuiteResultSummary(testSuite.getId(), test.getFullyQualifiedName());
+      }
+    }
+
     // If we delete the test case, we need to clean up the resolution ts
     daoCollection.testCaseResolutionStatusTimeSeriesDao().delete(test.getFullyQualifiedName());
+  }
+
+  @Override
+  protected void postCreate(TestCase test) {
+    super.postCreate(test);
+    // Update test suite with new test case in search index
+    TestSuiteRepository testSuiteRepository =
+        (TestSuiteRepository) Entity.getEntityRepository(Entity.TEST_SUITE);
+    TestSuite testSuite = Entity.getEntity(test.getTestSuite(), "*", ALL);
+    TestSuite original = testSuiteRepository.copyTestSuite(testSuite);
+    testSuiteRepository.postUpdate(original, testSuite);
   }
 
   public RestUtil.PutResponse<TestCaseResult> addTestCaseResult(
@@ -419,15 +440,7 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
       updateResultSummaries(testCase, isDeleted, resultSummaries, resultSummary);
 
       // Update test case result summary attribute for the test suite
-      TestSuiteRepository testSuiteRepository =
-          (TestSuiteRepository) Entity.getEntityRepository(Entity.TEST_SUITE);
-      TestSuite original =
-          TestSuiteRepository.copyTestSuite(
-              testSuite); // we'll need the original state to update the test suite
-      testSuite.setTestCaseResultSummary(resultSummaries);
-      EntityRepository<TestSuite>.EntityUpdater testSuiteUpdater =
-          testSuiteRepository.getUpdater(original, testSuite, Operation.PUT);
-      testSuiteUpdater.update();
+      putUpdateTestSuite(testSuite, resultSummaries);
     }
   }
 
@@ -607,7 +620,6 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
       TestSuite testSuite, List<UUID> testCaseIds) {
     bulkAddToRelationship(
         testSuite.getId(), testCaseIds, TEST_SUITE, TEST_CASE, Relationship.CONTAINS);
-    List<EntityReference> testCasesEntityReferences = new ArrayList<>();
     List<ResultSummary> resultSummaries = listOrEmpty(testSuite.getTestCaseResultSummary());
     for (UUID testCaseId : testCaseIds) {
       TestCase testCase = Entity.getEntity(Entity.TEST_CASE, testCaseId, "*", Include.ALL);
@@ -626,26 +638,11 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
             summary -> summary.getTestCaseName().equals(resultSummary.getTestCaseName()));
         resultSummaries.add(resultSummary);
       }
-      testCasesEntityReferences.add(
-          new EntityReference()
-              .withId(testCase.getId())
-              .withName(testCase.getName())
-              .withFullyQualifiedName(testCase.getFullyQualifiedName())
-              .withDescription(testCase.getDescription())
-              .withDisplayName(testCase.getDisplayName())
-              .withHref(testCase.getHref())
-              .withDeleted(testCase.getDeleted()));
     }
-    // set test case result summary for logical test suite
-    // and update it in the database
-    testSuite.setTestCaseResultSummary(resultSummaries);
-    testSuite.setSummary(null); // we don't want to store the summary in the database
-    daoCollection
-        .testSuiteDAO()
-        .update(
-            testSuite.getId(), testSuite.getFullyQualifiedName(), JsonUtils.pojoToJson(testSuite));
-
-    testSuite.setTests(testCasesEntityReferences);
+    // Fetch the updated test suite to get the latest tests list associated with it and
+    // set test case result summary for logical test suite and update it in the database
+    testSuite = Entity.getEntity(TEST_SUITE, testSuite.getId(), "*", Include.ALL, false);
+    putUpdateTestSuite(testSuite, resultSummaries);
     return new RestUtil.PutResponse<>(Response.Status.OK, testSuite, LOGICAL_TEST_CASE_ADDED);
   }
 
@@ -667,35 +664,18 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
   private void removeTestCaseFromTestSuiteResultSummary(UUID testSuiteId, String testCaseFqn) {
     TestSuite testSuite = Entity.getEntity(TEST_SUITE, testSuiteId, "*", Include.ALL, false);
     testSuite.setSummary(null); // we don't want to store the summary in the database
+
+    // Update the test suite summary
     List<ResultSummary> resultSummaries = testSuite.getTestCaseResultSummary();
     resultSummaries.removeIf(summary -> summary.getTestCaseName().equals(testCaseFqn));
 
-    TestSuiteRepository testSuiteRepository =
-        (TestSuiteRepository) Entity.getEntityRepository(Entity.TEST_SUITE);
-    TestSuite original =
-        TestSuiteRepository.copyTestSuite(
-            testSuite); // we'll need the original state to update the test suite
-    testSuite.setTestCaseResultSummary(resultSummaries);
-    EntityRepository<TestSuite>.EntityUpdater testSuiteUpdater =
-        testSuiteRepository.getUpdater(original, testSuite, Operation.PUT);
-    testSuiteUpdater.update();
+    // Update test case result summary attribute for the test suite
+    putUpdateTestSuite(testSuite, resultSummaries);
   }
 
   @Override
   public EntityUpdater getUpdater(TestCase original, TestCase updated, Operation operation) {
     return new TestUpdater(original, updated, operation);
-  }
-
-  @Override
-  protected void preDelete(TestCase entity, String deletedBy) {
-    // delete test case from test suite summary when test case is deleted
-    // from an executable test suite
-    List<TestSuite> testSuites = getTestSuites(entity);
-    if (!testSuites.isEmpty()) {
-      for (TestSuite testSuite : testSuites) {
-        removeTestCaseFromTestSuiteResultSummary(testSuite.getId(), entity.getFullyQualifiedName());
-      }
-    }
   }
 
   @Override
@@ -982,5 +962,20 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
       return maskSampleData(testCase.getFailedRowsSample(), table, table.getColumns());
     }
     return sampleData;
+  }
+
+  private void putUpdateTestSuite(TestSuite testSuite, List<ResultSummary> resultSummaries) {
+    // Update test case result summary attribute for the test suite
+    TestSuiteRepository testSuiteRepository =
+        (TestSuiteRepository) Entity.getEntityRepository(Entity.TEST_SUITE);
+    testSuite.setSummary(null); // we don't want to store the summary in the database
+    TestSuite original =
+        TestSuiteRepository.copyTestSuite(
+            testSuite); // we'll need the original state to update the test suite
+    testSuite.setTestCaseResultSummary(
+        resultSummaries != null ? resultSummaries : testSuite.getTestCaseResultSummary());
+    EntityRepository<TestSuite>.EntityUpdater testSuiteUpdater =
+        testSuiteRepository.getUpdater(original, testSuite, Operation.PUT);
+    testSuiteUpdater.update();
   }
 }

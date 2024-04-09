@@ -1300,10 +1300,18 @@ public class TableRepository extends EntityRepository<Table> {
               ? ""
               : entity.getDomain().getFullyQualifiedName();
       addField(recordList, domain);
-      addRecord(csvFile, recordList, table.getColumns().get(0), false);
+      if (!nullOrEmpty(table.getColumns())) {
+        addRecord(csvFile, recordList, table.getColumns().get(0), false);
 
-      for (int i = 1; i < entity.getColumns().size(); i++) {
-        addRecord(csvFile, new ArrayList<>(), table.getColumns().get(i), true);
+        for (int i = 1; i < entity.getColumns().size(); i++) {
+          addRecord(csvFile, new ArrayList<>(), table.getColumns().get(i), true);
+        }
+      } else {
+        // Create a dummy Entry for the Column
+        for (int i = 0; i < 9; i++) {
+          addField(recordList, (String) null); // Add empty fields for table information
+        }
+        addRecord(csvFile, recordList);
       }
     }
 

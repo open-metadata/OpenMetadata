@@ -661,8 +661,7 @@ public class SearchRepository {
       int limit,
       int offset,
       String entityType,
-      String sortField,
-      String sortType,
+      SearchSortFilter searchSortFilter,
       String q)
       throws IOException {
     IndexMapping index = entityIndexMap.get(entityType);
@@ -671,8 +670,7 @@ public class SearchRepository {
         limit,
         offset,
         index.getIndexName(clusterAlias),
-        sortField,
-        sortType,
+        searchSortFilter,
         q);
   }
 
