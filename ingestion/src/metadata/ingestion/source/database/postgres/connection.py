@@ -60,7 +60,7 @@ def get_connection(connection: PostgresConnection) -> Engine:
             *connection.authType.azureConfig.scopes.split(",")
         )
         connection.authType = BasicAuth(password=access_token_obj.token)
-    if connection.sslMode:
+    if connection.sslMode and connection.sslConfig:
         connection = SSLManager(
             ca=connection.sslConfig.__root__.caCertificate
         ).setup_ssl(connection)

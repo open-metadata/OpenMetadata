@@ -38,7 +38,7 @@ def get_connection(connection: DorisConnection) -> Engine:
     """
     Create connection
     """
-    if (
+    if connection.ssl and (
         connection.ssl.__root__.caCertificate
         or connection.ssl.__root__.sslCertificate
         or connection.ssl.__root__.sslKey

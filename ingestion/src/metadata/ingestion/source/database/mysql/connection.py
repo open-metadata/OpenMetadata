@@ -52,16 +52,16 @@ def get_connection(connection: MysqlConnection) -> Engine:
             *connection.authType.azureConfig.scopes.split(",")
         )
         connection.authType = BasicAuth(password=access_token_obj.token)
-        if (
-            connection.ssl.__root__.caCertificate
-            or connection.ssl.__root__.sslCertificate
-            or connection.ssl.__root__.sslKey
-        ):
-            connection = SSLManager(
-                ca=connection.ssl.__root__.caCertificate,
-                cert=connection.ssl.__root__.sslCertificate,
-                key=connection.ssl.__root__.sslKey,
-            ).setup_ssl(connection)
+    if connection.ssl and (
+        connection.ssl.__root__.caCertificate
+        or connection.ssl.__root__.sslCertificate
+        or connection.ssl.__root__.sslKey
+    ):
+        connection = SSLManager(
+            ca=connection.ssl.__root__.caCertificate,
+            cert=connection.ssl.__root__.sslCertificate,
+            key=connection.ssl.__root__.sslKey,
+        ).setup_ssl(connection)
 
     return create_generic_db_connection(
         connection=connection,
