@@ -1583,7 +1583,9 @@ class SampleDataSource(
                 )
 
             life_cycle_request = OMetaLifeCycleData(
-                entity=table, life_cycle=life_cycle_data
+                entity=Table,
+                entity_fqn=table_life_cycle["fqn"],
+                life_cycle=life_cycle_data,
             )
             yield Either(right=life_cycle_request)
 

@@ -76,8 +76,8 @@ describe('Test Add Domain component', () => {
     expect(screen.getByText('label.icon-url')).toBeInTheDocument();
     expect(screen.getByTestId('icon-url')).toBeInTheDocument();
     expect(screen.getByText('label.color')).toBeInTheDocument();
-    expect(screen.getByTestId('color-picker')).toBeInTheDocument();
-    expect(screen.getByTestId('color-input')).toBeInTheDocument();
+    expect(screen.getByTestId('color-color-picker')).toBeInTheDocument();
+    expect(screen.getByTestId('color-color-input')).toBeInTheDocument();
     expect(screen.getByText('label.domain-type')).toBeInTheDocument();
     expect(screen.getAllByTestId('helper-icon')).toHaveLength(2);
     expect(screen.getByText('label.owner')).toBeInTheDocument();

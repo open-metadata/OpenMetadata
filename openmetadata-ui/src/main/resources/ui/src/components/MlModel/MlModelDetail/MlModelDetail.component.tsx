@@ -404,6 +404,7 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
                   entityName={mlModelName}
                   entityType={EntityType.MLMODEL}
                   hasEditAccess={editDescriptionPermission}
+                  isDescriptionExpanded={isEmpty(mlModelDetail.mlFeatures)}
                   isEdit={isEdit}
                   owner={mlModelDetail.owner}
                   showActions={!deleted}

@@ -10,14 +10,21 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { ConfigProvider } from 'antd';
-import React, { FC, ReactNode } from 'react';
-import { useTranslation } from 'react-i18next';
 
-const DirectionProvider: FC<{ children: ReactNode }> = ({ children }) => {
-  const { i18n } = useTranslation();
+export interface IngestionPipelineLogByIdInterface {
+  ingestion_task?: string;
+  profiler_task?: string;
+  usage_task?: string;
+  lineage_task?: string;
+  test_suite_task?: string;
+  data_insight_task?: string;
+  dbt_task?: string;
+  elasticsearch_reindex_task?: string;
+  total?: string;
+  after?: string;
+}
 
-  return <ConfigProvider direction={i18n.dir()}>{children}</ConfigProvider>;
-};
-
-export default DirectionProvider;
+export interface LogViewerParams {
+  logEntityType: string;
+  fqn: string;
+}
