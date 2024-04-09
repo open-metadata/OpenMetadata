@@ -1059,6 +1059,7 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
         .withDisplayName(create.getDisplayName())
         .withParameterValues(create.getParameterValues())
         .withEntityLink(create.getEntityLink())
+        .withComputePassedFailedRowCount(create.getComputePassedFailedRowCount())
         .withEntityFQN(entityLink.getFullyQualifiedFieldValue())
         .withTestSuite(getEntityReference(Entity.TEST_SUITE, create.getTestSuite()))
         .withTestDefinition(getEntityReference(Entity.TEST_DEFINITION, create.getTestDefinition()));
