@@ -85,14 +85,14 @@ class SSLManager:
         connection.connectionArguments = (
             connection.connectionArguments or init_empty_connection_arguments()
         )
-        ssl_args = connection.connectionArguments.get("ssl", {})
+        ssl_args = connection.connectionArguments.__root__.get("ssl", {})
         if connection.ssl.__root__.caCertificate:
             ssl_args["ssl_ca"] = self.ca_file_path
         if connection.ssl.__root__.sslCertificate:
             ssl_args["ssl_cert"] = self.cert_file_path
         if connection.ssl.__root__.sslKey:
             ssl_args["ssl_key"] = self.key_file_path
-        connection.connectionArguments["ssl"] = ssl_args
+        connection.connectionArguments.__root__["ssl"] = ssl_args
         return connection
 
     @setup_ssl.register(PostgresConnection)

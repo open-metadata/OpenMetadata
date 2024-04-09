@@ -41,7 +41,7 @@ def get_connection(connection: RedshiftConnection) -> Engine:
     """
     Create connection
     """
-    if connection.sslMode:
+    if connection.sslMode and connection.sslConfig:
         connection = SSLManager(
             ca=connection.sslConfig.__root__.caCertificate
         ).setup_ssl(connection)
