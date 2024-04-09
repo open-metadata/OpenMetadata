@@ -2311,7 +2311,7 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
   }
 
   @Test
-  void test_sensitivePIISampleData(TestInfo test) throws IOException {
+  void test_sensitivePIISampleData(TestInfo test) throws IOException, ParseException {
     // Create table with owner and a column tagged with PII.Sensitive
     TableResourceTest tableResourceTest = new TableResourceTest();
     CreateTable tableReq = getSensitiveTableReq(test, tableResourceTest);
@@ -2327,6 +2327,13 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
                 List.of(
                     new TestCaseParameterValue().withValue("100").withName("missingCountValue")));
     TestCase testCase = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
+    putTestCaseResult(
+        testCase.getFullyQualifiedName(),
+        new TestCaseResult()
+            .withResult("result")
+            .withTestCaseStatus(TestCaseStatus.Failed)
+            .withTimestamp(TestUtils.dateToTimestamp("2024-01-01")),
+        ADMIN_AUTH_HEADERS);
     List<String> columns = List.of(C1);
     // Add 3 rows of sample data
     List<List<Object>> rows =
