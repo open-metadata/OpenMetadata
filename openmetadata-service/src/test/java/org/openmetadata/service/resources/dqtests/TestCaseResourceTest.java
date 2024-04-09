@@ -2272,7 +2272,9 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
 
     // Cannot set failed sample for a non-failing test case
     assertResponse(
-        () -> putSampleData(testCase, columns, rows, ADMIN_AUTH_HEADERS), BAD_REQUEST, "Failed rows can only be added to a failed test case.");
+        () -> putSampleData(testCase, columns, rows, ADMIN_AUTH_HEADERS),
+        BAD_REQUEST,
+        "Failed rows can only be added to a failed test case.");
 
     // Add failed test case, which will create a NEW incident
     putTestCaseResult(
