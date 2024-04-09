@@ -16,7 +16,7 @@ To be used by OpenMetadata class
 import functools
 import json
 import traceback
-from typing import Generic, List, Optional, Set, Type, TypeVar
+from typing import Generic, List, Optional, Set, Type, TypeVar, Iterable
 
 from pydantic import BaseModel
 from requests.utils import quote
@@ -87,6 +87,23 @@ class ESMixin(Generic[T]):
             )
             for instance in entity_list or []:
                 return instance
+        except Exception as err:
+            logger.debug(traceback.format_exc())
+            logger.warning(f"Could not get {entity.__name__} info from ES due to {err}")
+
+        return None
+
+    def yield_entities_from_es(
+        self, entity: Type[T], query_string: str, fields: Optional[list] = None
+    ) -> Iterable[T]:
+        """Fetch an entity instance from ES"""
+
+        try:
+            entity_list = self._search_es_entity(
+                entity_type=entity, query_string=query_string, fields=fields
+            )
+            for instance in entity_list or []:
+                yield instance
         except Exception as err:
             logger.debug(traceback.format_exc())
             logger.warning(f"Could not get {entity.__name__} info from ES due to {err}")
