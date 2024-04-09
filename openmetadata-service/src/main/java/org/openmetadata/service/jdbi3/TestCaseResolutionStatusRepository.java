@@ -332,7 +332,8 @@ public class TestCaseResolutionStatusRepository
   }
 
   public void deleteTestCaseFailedSamples(TestCaseResolutionStatus entity) {
-    TestCaseRepository testCaseRepository = (TestCaseRepository) Entity.getEntityRepository(Entity.TEST_CASE);
+    TestCaseRepository testCaseRepository =
+        (TestCaseRepository) Entity.getEntityRepository(Entity.TEST_CASE);
     testCaseRepository.deleteTestCaseFailedSample(entity.getTestCaseReference().getId());
   }
 }

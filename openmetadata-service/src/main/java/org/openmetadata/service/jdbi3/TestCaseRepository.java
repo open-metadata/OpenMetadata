@@ -8,7 +8,6 @@ import static org.openmetadata.schema.type.EventType.ENTITY_NO_CHANGE;
 import static org.openmetadata.schema.type.EventType.ENTITY_UPDATED;
 import static org.openmetadata.schema.type.EventType.LOGICAL_TEST_CASE_ADDED;
 import static org.openmetadata.schema.type.Include.ALL;
-import static org.openmetadata.schema.type.Include.NON_DELETED;
 import static org.openmetadata.service.Entity.TEST_CASE;
 import static org.openmetadata.service.Entity.TEST_DEFINITION;
 import static org.openmetadata.service.Entity.TEST_SUITE;
@@ -957,7 +956,8 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
                 .getExtension(testCase.getId(), FAILED_ROWS_SAMPLE_EXTENSION),
             TableData.class);
     if (sampleData == null) {
-      throw new EntityNotFoundException(entityNotFound(FAILED_ROWS_SAMPLE_EXTENSION, testCase.getId()));
+      throw new EntityNotFoundException(
+          entityNotFound(FAILED_ROWS_SAMPLE_EXTENSION, testCase.getId()));
     }
     // Set the column tags. Will be used to mask the sample data
     if (!authorizePII) {
