@@ -13,12 +13,10 @@
 
 package org.openmetadata.service.events;
 
-import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.schema.type.EventType.ENTITY_DELETED;
 import static org.openmetadata.service.events.subscription.AlertsRuleEvaluator.getEntity;
 import static org.openmetadata.service.formatter.util.FormatterUtil.getChangeEventFromResponseContext;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -28,43 +26,38 @@ import javax.ws.rs.core.SecurityContext;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.EntityInterface;
-import org.openmetadata.schema.entity.feed.Thread;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
-import org.openmetadata.service.events.subscription.AlertUtil;
-import org.openmetadata.service.formatter.decorators.FeedMessageDecorator;
 import org.openmetadata.service.jdbi3.CollectionDAO;
-import org.openmetadata.service.jdbi3.FeedRepository;
-import org.openmetadata.service.socket.WebSocketManager;
-import org.openmetadata.service.util.FeedUtils;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.WebsocketNotificationHandler;
 
 @Slf4j
 public class ChangeEventHandler implements EventHandler {
-  private ObjectMapper mapper;
-  private FeedMessageDecorator feedMessageDecorator = new FeedMessageDecorator();
-  private final FeedRepository feedRepository = new FeedRepository();
   private final WebsocketNotificationHandler websocketNotificationHandler =
       new WebsocketNotificationHandler();
 
-  public void init(OpenMetadataApplicationConfig config) {
-    this.mapper = new ObjectMapper();
-  }
+  public void init(OpenMetadataApplicationConfig config) {}
 
   @SneakyThrows
   public Void process(
       ContainerRequestContext requestContext, ContainerResponseContext responseContext) {
+    // GET operations don't produce change events , Response has no entity to produce change event
+    // from
+    if (requestContext.getMethod().equals("GET") || responseContext.getEntity() == null) {
+      return null;
+    }
+
+    // Send to Notification Handler
     websocketNotificationHandler.processNotifications(responseContext);
-    String method = requestContext.getMethod();
+
+    // Send to Change Event Table
     SecurityContext securityContext = requestContext.getSecurityContext();
     String loggedInUserName = securityContext.getUserPrincipal().getName();
     try {
-      CollectionDAO collectionDAO = Entity.getCollectionDAO();
-      CollectionDAO.ChangeEventDAO changeEventDAO = collectionDAO.changeEventDAO();
       Optional<ChangeEvent> optionalChangeEvent =
-          getChangeEventFromResponseContext(responseContext, loggedInUserName, method);
+          getChangeEventFromResponseContext(responseContext, loggedInUserName);
       if (optionalChangeEvent.isPresent()) {
         ChangeEvent changeEvent = optionalChangeEvent.get();
         if (changeEvent.getEntityType().equals(Entity.QUERY)) {
@@ -84,32 +77,19 @@ public class ChangeEventHandler implements EventHandler {
           changeEvent.setEntity(JsonUtils.pojoToMaskedJson(entity));
         }
 
-        changeEventDAO.insert(JsonUtils.pojoToJson(changeEvent));
+        // Thread are created in FeedRepository Directly
+        Entity.getCollectionDAO().changeEventDAO().insert(JsonUtils.pojoToJson(changeEvent));
 
-        // Add a new thread (change event itself should not be for the thread) to the entity for
-        // every change event
-        // for the event to appear in activity feeds
-        if (!changeEvent.getEntityType().equals(Entity.THREAD)
-            && (AlertUtil.shouldProcessActivityFeedRequest(changeEvent))) {
-          for (Thread thread :
-              listOrEmpty(
-                  FeedUtils.getThreadWithMessage(
-                      feedMessageDecorator, changeEvent, loggedInUserName))) {
-            // Don't create a thread if there is no message
-            if (thread.getMessage() != null && !thread.getMessage().isEmpty()) {
-              feedRepository.create(thread, changeEvent);
-              String jsonThread = mapper.writeValueAsString(thread);
-              WebSocketManager.getInstance()
-                  .broadCastMessageToAll(WebSocketManager.FEED_BROADCAST_CHANNEL, jsonThread);
-              if (changeEvent.getEventType().equals(ENTITY_DELETED)) {
-                deleteAllConversationsRelatedToEntity(getEntity(changeEvent), collectionDAO);
-              }
-            }
-          }
+        // Delete all conversations related to the entity
+        if (changeEvent.getEventType().equals(ENTITY_DELETED)) {
+          deleteAllConversationsRelatedToEntity(getEntity(changeEvent), Entity.getCollectionDAO());
         }
       }
     } catch (Exception e) {
-      LOG.error("Failed to capture the change event for method {} due to ", method, e);
+      LOG.error(
+          "Failed to capture the change event for method {} due to ",
+          requestContext.getMethod(),
+          e);
     }
     return null;
   }

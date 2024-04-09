@@ -126,6 +126,14 @@ public final class JsonUtils {
     }
   }
 
+  public static <T> List<T> readOrConvertValues(Object obj, Class<T> clz) {
+    if (obj instanceof String str) {
+      return readObjects(str, clz);
+    } else {
+      return convertObjects(obj, clz);
+    }
+  }
+
   public static <T> T readValue(String json, String clazzName) {
     try {
       return (T) readValue(json, Class.forName(clazzName));
@@ -154,6 +162,15 @@ public final class JsonUtils {
     } catch (JsonProcessingException e) {
       throw new UnhandledServerException(FAILED_TO_PROCESS_JSON, e);
     }
+  }
+
+  /** Convert an array of objects of type {@code T} from json */
+  public static <T> List<T> convertObjects(Object json, Class<T> clz) {
+    if (json == null) {
+      return Collections.emptyList();
+    }
+    TypeFactory typeFactory = OBJECT_MAPPER.getTypeFactory();
+    return OBJECT_MAPPER.convertValue(json, typeFactory.constructCollectionType(List.class, clz));
   }
 
   /** Read an array of objects of type {@code T} from json */
