@@ -272,6 +272,8 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
 
     // If we delete the test case, we need to clean up the resolution ts
     daoCollection.testCaseResolutionStatusTimeSeriesDao().delete(test.getFullyQualifiedName());
+
+    deleteTestCaseFailedRowsSample(test.getId());
   }
 
   @Override
@@ -787,7 +789,7 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
     return testCase.withFailedRowsSample(tableData);
   }
 
-  public void deleteTestCaseFailedSample(UUID id) {
+  public void deleteTestCaseFailedRowsSample(UUID id) {
     daoCollection.entityExtensionDAO().delete(id, FAILED_ROWS_SAMPLE_EXTENSION);
   }
 

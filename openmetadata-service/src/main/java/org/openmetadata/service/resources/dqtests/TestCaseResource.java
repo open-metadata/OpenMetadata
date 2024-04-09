@@ -631,7 +631,7 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
         repository.patch(uriInfo, id, securityContext.getUserPrincipal().getName(), patch);
     if (response.entity().getTestCaseResult() != null
         && response.entity().getTestCaseResult().getTestCaseStatus() == TestCaseStatus.Success) {
-      repository.deleteTestCaseFailedSample(id);
+      repository.deleteTestCaseFailedRowsSample(id);
     }
     addHref(uriInfo, response.entity());
     return response.toResponse();
@@ -843,7 +843,7 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
     authorizer.authorize(securityContext, operationContext, resourceContext);
     if (testCaseResult.getTestCaseStatus() == TestCaseStatus.Success) {
       TestCase testCase = repository.findByName(fqn, Include.ALL);
-      repository.deleteTestCaseFailedSample(testCase.getId());
+      repository.deleteTestCaseFailedRowsSample(testCase.getId());
     }
     return repository
         .addTestCaseResult(
