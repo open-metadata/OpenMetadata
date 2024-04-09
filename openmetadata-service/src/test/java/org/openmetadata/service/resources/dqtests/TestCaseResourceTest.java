@@ -1851,6 +1851,36 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
     assertEquals(7, testCases.getData().size());
   }
 
+  @Test
+  void wrongMinMaxTestParameter(TestInfo test) throws HttpResponseException {
+    CreateTestCase validTestCase = createRequest(test);
+    validTestCase.withTestDefinition(TEST_DEFINITION1.getFullyQualifiedName())
+            .withParameterValues(
+                    List.of(
+                            new TestCaseParameterValue().withName("minLength").withValue("10")));
+    createEntity(validTestCase, ADMIN_AUTH_HEADERS);
+
+    validTestCase = createRequest(test, 1);
+    validTestCase.withTestDefinition(TEST_DEFINITION1.getFullyQualifiedName())
+            .withParameterValues(
+                    List.of(
+                            new TestCaseParameterValue().withName("maxLength").withValue("10")));
+    createEntity(validTestCase, ADMIN_AUTH_HEADERS);
+
+    CreateTestCase invalidTestCase = createRequest(test, 2);
+    invalidTestCase.withTestDefinition(TEST_DEFINITION1.getFullyQualifiedName())
+            .withParameterValues(
+              List.of(
+                new TestCaseParameterValue().withName("minLength").withValue("10"),
+                new TestCaseParameterValue().withName("maxLength").withValue("5")));
+
+    assertResponse(
+            () -> createEntity(invalidTestCase, ADMIN_AUTH_HEADERS),
+            BAD_REQUEST,
+            "`Min value of 10 cannot be greater than Max value of 5");
+  }
+
+
   public void deleteTestCaseResult(String fqn, Long timestamp, Map<String, String> authHeaders)
       throws HttpResponseException {
     WebTarget target = getCollection().path("/" + fqn + "/testCaseResult/" + timestamp);
