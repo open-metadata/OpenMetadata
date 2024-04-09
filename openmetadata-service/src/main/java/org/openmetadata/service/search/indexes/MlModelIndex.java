@@ -48,8 +48,10 @@ public class MlModelIndex implements SearchIndex {
             mlModel.getFullyQualifiedName(),
             suggest.stream().map(SearchSuggest::getInput).toList()));
     doc.put("owner", getEntityWithDisplayName(mlModel.getOwner()));
+    doc.put("ownerKeyword", getOwnerDisplayNameOrNoOwner(mlModel.getOwner()));
     doc.put("service", getEntityWithDisplayName(mlModel.getService()));
     doc.put("domain", getEntityWithDisplayName(mlModel.getDomain()));
+    doc.put("descriptionStatus", getDescriptionStatus(mlModel.getDescription()));
     return doc;
   }
 

@@ -61,6 +61,7 @@ public class IngestionPipelineIndex implements SearchIndex {
             ingestionPipeline.getFullyQualifiedName(),
             suggest.stream().map(SearchSuggest::getInput).toList()));
     doc.put("owner", getEntityWithDisplayName(ingestionPipeline.getOwner()));
+    doc.put("ownerKeyword", getOwnerDisplayNameOrNoOwner(ingestionPipeline.getOwner()));
     doc.put("service", getEntityWithDisplayName(ingestionPipeline.getService()));
     doc.put("domain", getEntityWithDisplayName(ingestionPipeline.getDomain()));
     return doc;

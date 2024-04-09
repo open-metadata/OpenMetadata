@@ -26,8 +26,10 @@ public record DataProductIndex(DataProduct dataProduct) implements SearchIndex {
             suggest.stream().map(SearchSuggest::getInput).toList()));
     doc.put("entityType", Entity.DATA_PRODUCT);
     doc.put("owner", getEntityWithDisplayName(dataProduct.getOwner()));
+    doc.put("ownerKeyword", getOwnerDisplayNameOrNoOwner(dataProduct.getOwner()));
     doc.put("domain", getEntityWithDisplayName(dataProduct.getDomain()));
     doc.put("followers", SearchIndexUtils.parseFollowers(dataProduct.getFollowers()));
+    doc.put("descriptionStatus", getDescriptionStatus(dataProduct.getDescription()));
     return doc;
   }
 

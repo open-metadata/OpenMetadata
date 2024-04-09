@@ -28,6 +28,7 @@ public record DatabaseSchemaIndex(DatabaseSchema databaseSchema) implements Sear
     doc.put("suggest", suggest);
     doc.put("entityType", Entity.DATABASE_SCHEMA);
     doc.put("owner", getEntityWithDisplayName(databaseSchema.getOwner()));
+    doc.put("ownerKeyword", getOwnerDisplayNameOrNoOwner(databaseSchema.getOwner()));
     doc.put(
         "totalVotes",
         CommonUtil.nullOrEmpty(databaseSchema.getVotes())
@@ -35,6 +36,7 @@ public record DatabaseSchemaIndex(DatabaseSchema databaseSchema) implements Sear
             : databaseSchema.getVotes().getUpVotes() - databaseSchema.getVotes().getDownVotes());
     doc.put("domain", getEntityWithDisplayName(databaseSchema.getDomain()));
     doc.put("followers", SearchIndexUtils.parseFollowers(databaseSchema.getFollowers()));
+    doc.put("descriptionStatus", getDescriptionStatus(databaseSchema.getDescription()));
     return doc;
   }
 }

@@ -65,6 +65,7 @@ public record DashboardDataModelIndex(DashboardDataModel dashboardDataModel)
             suggest.stream().map(SearchSuggest::getInput).toList()));
     doc.put("tier", parseTags.getTierTag());
     doc.put("owner", getEntityWithDisplayName(dashboardDataModel.getOwner()));
+    doc.put("ownerKeyword", getOwnerDisplayNameOrNoOwner(dashboardDataModel.getOwner()));
     doc.put("service", getEntityWithDisplayName(dashboardDataModel.getService()));
     doc.put("followers", SearchIndexUtils.parseFollowers(dashboardDataModel.getFollowers()));
     doc.put("lineage", SearchIndex.getLineageData(dashboardDataModel.getEntityReference()));
@@ -75,6 +76,7 @@ public record DashboardDataModelIndex(DashboardDataModel dashboardDataModel)
             : dashboardDataModel.getVotes().getUpVotes()
                 - dashboardDataModel.getVotes().getDownVotes());
     doc.put("domain", getEntityWithDisplayName(dashboardDataModel.getDomain()));
+    doc.put("descriptionStatus", getDescriptionStatus(dashboardDataModel.getDescription(), dashboardDataModel.getColumns()));
     return doc;
   }
 

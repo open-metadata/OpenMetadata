@@ -4,6 +4,9 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.function.Predicate;
+
+import org.openmetadata.common.utils.CommonUtil;
+import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.service.search.models.FlattenColumn;
@@ -35,5 +38,15 @@ public interface ColumnIndex extends SearchIndex {
         parseColumns(col.getChildren(), flattenColumns, col.getName());
       }
     }
+  }
+  default String getDescriptionStatus(String description, List<Column> columns) {
+    for (Column col : columns) {
+      if (CommonUtil.nullOrEmpty(col.getDescription())) {
+        return "INCOMPLETE";
+      }
+    }
+    return CommonUtil.nullOrEmpty(description)
+            ? "INCOMPLETE"
+            : "COMPLETE";
   }
 }

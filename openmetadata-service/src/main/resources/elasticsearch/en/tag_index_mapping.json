@@ -151,6 +151,14 @@
             "path": "deleted"
           }
         ]
+      },
+      "ownerKeyword": {
+        "type": "keyword",
+        "normalizer": "lowercase_normalizer",
+        "ignore_above": 256
+      },
+      "descriptionStatus": {
+        "type": "keyword"
       }
     }
   }

@@ -32,6 +32,7 @@ public record SearchEntityIndex(org.openmetadata.schema.entity.data.SearchIndex 
     doc.put("tags", parseTags.getTags());
     doc.put("tier", parseTags.getTierTag());
     doc.put("owner", getEntityWithDisplayName(searchIndex.getOwner()));
+    doc.put("ownerKeyword", getOwnerDisplayNameOrNoOwner(searchIndex.getOwner()));
     doc.put("service", getEntityWithDisplayName(searchIndex.getService()));
     doc.put("followers", SearchIndexUtils.parseFollowers(searchIndex.getFollowers()));
     doc.put("lineage", SearchIndex.getLineageData(searchIndex.getEntityReference()));
@@ -41,6 +42,7 @@ public record SearchEntityIndex(org.openmetadata.schema.entity.data.SearchIndex 
             ? 0
             : searchIndex.getVotes().getUpVotes() - searchIndex.getVotes().getDownVotes());
     doc.put("domain", getEntityWithDisplayName(searchIndex.getDomain()));
+    doc.put("descriptionStatus", getDescriptionStatus(searchIndex.getDescription()));
     return doc;
   }
 

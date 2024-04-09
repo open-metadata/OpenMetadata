@@ -89,6 +89,11 @@
           }
         ]
       },
+      "ownerKeyword": {
+        "type": "keyword",
+        "ignore_above": 256,
+        "normalizer": "lowercase_normalizer"
+      },
       "description": {
         "type": "text",
         "index_options": "docs",

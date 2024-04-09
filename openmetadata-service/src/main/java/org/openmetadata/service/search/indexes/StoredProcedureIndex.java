@@ -35,6 +35,7 @@ public record StoredProcedureIndex(StoredProcedure storedProcedure) implements S
     doc.put("lineage", SearchIndex.getLineageData(storedProcedure.getEntityReference()));
     doc.put("tier", parseTags.getTierTag());
     doc.put("owner", getEntityWithDisplayName(storedProcedure.getOwner()));
+    doc.put("ownerKeyword", getOwnerDisplayNameOrNoOwner(storedProcedure.getOwner()));
     doc.put("service", getEntityWithDisplayName(storedProcedure.getService()));
     doc.put(
         "totalVotes",
@@ -42,6 +43,7 @@ public record StoredProcedureIndex(StoredProcedure storedProcedure) implements S
             ? 0
             : storedProcedure.getVotes().getUpVotes() - storedProcedure.getVotes().getDownVotes());
     doc.put("domain", getEntityWithDisplayName(storedProcedure.getDomain()));
+    doc.put("descriptionStatus", getDescriptionStatus(storedProcedure.getDescription()));
     return doc;
   }
 

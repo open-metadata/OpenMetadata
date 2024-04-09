@@ -5,21 +5,7 @@ import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.Entity.FIELD_DESCRIPTION;
 import static org.openmetadata.service.Entity.FIELD_DISPLAY_NAME;
 import static org.openmetadata.service.Entity.FIELD_NAME;
-import static org.openmetadata.service.search.EntityBuilderConstant.COLUMNS_NAME_KEYWORD;
-import static org.openmetadata.service.search.EntityBuilderConstant.DATA_MODEL_COLUMNS_NAME_KEYWORD;
-import static org.openmetadata.service.search.EntityBuilderConstant.DOMAIN_DISPLAY_NAME_KEYWORD;
-import static org.openmetadata.service.search.EntityBuilderConstant.ES_MESSAGE_SCHEMA_FIELD_KEYWORD;
-import static org.openmetadata.service.search.EntityBuilderConstant.ES_TAG_FQN_FIELD;
-import static org.openmetadata.service.search.EntityBuilderConstant.FIELD_COLUMN_NAMES;
-import static org.openmetadata.service.search.EntityBuilderConstant.FIELD_DISPLAY_NAME_NGRAM;
-import static org.openmetadata.service.search.EntityBuilderConstant.FIELD_NAME_NGRAM;
-import static org.openmetadata.service.search.EntityBuilderConstant.MAX_AGGREGATE_SIZE;
-import static org.openmetadata.service.search.EntityBuilderConstant.MAX_RESULT_HITS;
-import static org.openmetadata.service.search.EntityBuilderConstant.OWNER_DISPLAY_NAME_KEYWORD;
-import static org.openmetadata.service.search.EntityBuilderConstant.POST_TAG;
-import static org.openmetadata.service.search.EntityBuilderConstant.PRE_TAG;
-import static org.openmetadata.service.search.EntityBuilderConstant.SCHEMA_FIELD_NAMES;
-import static org.openmetadata.service.search.EntityBuilderConstant.UNIFIED;
+import static org.openmetadata.service.search.EntityBuilderConstant.*;
 import static org.openmetadata.service.search.UpdateSearchEventsConstant.SENDING_REQUEST_TO_ELASTIC_SEARCH;
 
 import com.fasterxml.jackson.databind.JsonNode;
@@ -1145,6 +1131,10 @@ public class ElasticSearchClient implements SearchClient {
         .aggregation(
             AggregationBuilders.terms(OWNER_DISPLAY_NAME_KEYWORD)
                 .field(OWNER_DISPLAY_NAME_KEYWORD)
+                .size(MAX_AGGREGATE_SIZE))
+        .aggregation(
+            AggregationBuilders.terms(DESCRIPTION_STATUS_KEYWORD)
+                .field(DESCRIPTION_STATUS_KEYWORD)
                 .size(MAX_AGGREGATE_SIZE))
         .aggregation(
             AggregationBuilders.terms("owner.displayName")

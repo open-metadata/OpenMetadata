@@ -327,14 +327,7 @@
             }
           },
           "displayName": {
-            "type": "keyword",
-            "fields": {
-              "keyword": {
-                "type": "keyword",
-                "normalizer": "lowercase_normalizer",
-                "ignore_above": 256
-              }
-            }
+            "type": "keyword"
           },
           "fullyQualifiedName": {
             "type": "text"
@@ -349,6 +342,11 @@
             "type": "text"
           }
         }
+      },
+      "ownerKeyword": {
+        "type": "keyword",
+        "normalizer": "lowercase_normalizer",
+        "ignore_above": 256
       },
       "service": {
         "properties": {
@@ -510,6 +508,9 @@
       },
       "votes" : {
         "type": "object"
+      },
+      "descriptionStatus": {
+        "type": "keyword"
       }
     }
   }

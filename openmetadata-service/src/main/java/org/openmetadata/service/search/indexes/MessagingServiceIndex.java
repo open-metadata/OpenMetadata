@@ -27,6 +27,7 @@ public record MessagingServiceIndex(MessagingService messagingService) implement
     doc.put("suggest", suggest);
     doc.put("entityType", Entity.MESSAGING_SERVICE);
     doc.put("owner", getEntityWithDisplayName(messagingService.getOwner()));
+    doc.put("ownerKeyword", getOwnerDisplayNameOrNoOwner(messagingService.getOwner()));
     doc.put("domain", getEntityWithDisplayName(messagingService.getDomain()));
     doc.put("followers", SearchIndexUtils.parseFollowers(messagingService.getFollowers()));
     return doc;

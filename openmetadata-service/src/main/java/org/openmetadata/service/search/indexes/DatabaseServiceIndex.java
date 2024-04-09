@@ -27,6 +27,7 @@ public record DatabaseServiceIndex(DatabaseService databaseService) implements S
     doc.put("suggest", suggest);
     doc.put("entityType", Entity.DATABASE_SERVICE);
     doc.put("owner", getEntityWithDisplayName(databaseService.getOwner()));
+    doc.put("ownerKeyword", getOwnerDisplayNameOrNoOwner(databaseService.getOwner()));
     doc.put("domain", getEntityWithDisplayName(databaseService.getDomain()));
     doc.put("followers", SearchIndexUtils.parseFollowers(databaseService.getFollowers()));
     return doc;

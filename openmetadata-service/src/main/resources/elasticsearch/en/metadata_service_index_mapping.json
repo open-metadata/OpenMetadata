@@ -164,13 +164,7 @@
             }
           },
           "displayName": {
-            "type": "keyword",
-            "fields": {
-              "keyword": {
-                "type": "keyword",
-                "ignore_above": 256
-              }
-            }
+            "type": "keyword"
           },
           "fullyQualifiedName": {
             "type": "text"
@@ -185,6 +179,11 @@
             "type": "text"
           }
         }
+      },
+      "ownerKeyword": {
+        "type": "keyword",
+        "normalizer": "lowercase_normalizer",
+        "ignore_above": 256
       },
       "deleted": {
         "type": "text"

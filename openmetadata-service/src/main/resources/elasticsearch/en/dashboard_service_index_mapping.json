@@ -171,13 +171,7 @@
             "type": "text"
           },
           "displayName": {
-            "type": "keyword",
-            "fields": {
-              "keyword": {
-                "type": "keyword",
-                "ignore_above": 256
-              }
-            }
+            "type": "keyword"
           },
           "description": {
             "type": "text"
@@ -189,6 +183,11 @@
             "type": "text"
           }
         }
+      },
+      "ownerKeyword": {
+        "type": "keyword",
+        "normalizer": "lowercase_normalizer",
+        "ignore_above": 256
       },
       "version": {
         "type": "float"

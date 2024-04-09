@@ -321,14 +321,7 @@
             }
           },
           "displayName": {
-            "type": "keyword",
-            "fields": {
-              "keyword": {
-                "type": "keyword",
-                "normalizer": "lowercase_normalizer",
-                "ignore_above": 256
-              }
-            }
+            "type": "keyword"
           },
           "fullyQualifiedName": {
             "type": "text"
@@ -343,6 +336,11 @@
             "type": "text"
           }
         }
+      },
+      "ownerKeyword": {
+        "type": "keyword",
+        "normalizer": "lowercase_normalizer",
+        "ignore_above": 256
       },
       "entityType": {
         "type": "keyword"
@@ -463,6 +461,9 @@
             "type": "text"
           }
         }
+      },
+      "descriptionStatus": {
+        "type": "keyword"
       }
     }
   }
