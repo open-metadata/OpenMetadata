@@ -10,10 +10,10 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Col, Row } from 'antd';
+import { Button, Col, Form, Row, Select, Space } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
-import { isString } from 'lodash';
+import { isEmpty } from 'lodash';
 import QueryString from 'qs';
 import React, {
   ReactNode,
@@ -23,11 +23,18 @@ import React, {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link, useParams } from 'react-router-dom';
-import { getEntityDetailsPath, ROUTES } from '../../../../constants/constants';
+import { Link, useHistory, useLocation, useParams } from 'react-router-dom';
+import {
+  getEntityDetailsPath,
+  INITIAL_PAGING_VALUE,
+  ROUTES,
+} from '../../../../constants/constants';
 import { PROGRESS_BAR_COLOR } from '../../../../constants/TestSuite.constant';
 import { usePermissionProvider } from '../../../../context/PermissionProvider/PermissionProvider';
-import { ERROR_PLACEHOLDER_TYPE } from '../../../../enums/common.enum';
+import {
+  ERROR_PLACEHOLDER_TYPE,
+  SORT_ORDER,
+} from '../../../../enums/common.enum';
 import { EntityTabs, EntityType } from '../../../../enums/entity.enum';
 import { TestSummary } from '../../../../generated/entity/data/table';
 import { EntityReference } from '../../../../generated/entity/type';
@@ -35,8 +42,8 @@ import { TestSuite } from '../../../../generated/tests/testCase';
 import { usePaging } from '../../../../hooks/paging/usePaging';
 import { DataQualityPageTabs } from '../../../../pages/DataQuality/DataQualityPage.interface';
 import {
-  getListTestSuites,
-  ListTestSuitePrams,
+  getListTestSuitesBySearch,
+  ListTestSuitePramsBySearch,
   TestSuiteType,
 } from '../../../../rest/testAPI';
 import { getEntityName } from '../../../../utils/EntityUtils';
@@ -47,14 +54,34 @@ import FilterTablePlaceHolder from '../../../common/ErrorWithPlaceholder/FilterT
 import NextPrevious from '../../../common/NextPrevious/NextPrevious';
 import { PagingHandlerParams } from '../../../common/NextPrevious/NextPrevious.interface';
 import { OwnerLabel } from '../../../common/OwnerLabel/OwnerLabel.component';
+import Searchbar from '../../../common/SearchBarComponent/SearchBar.component';
 import Table from '../../../common/Table/Table';
+import { UserTeamSelectableList } from '../../../common/UserTeamSelectableList/UserTeamSelectableList.component';
 import { TableProfilerTab } from '../../../Database/Profiler/ProfilerDashboard/profilerDashboard.interface';
 import ProfilerProgressWidget from '../../../Database/Profiler/TableProfiler/ProfilerProgressWidget/ProfilerProgressWidget';
+import { DataQualitySearchParams } from '../../DataQuality.interface';
 
 export const TestSuites = ({ summaryPanel }: { summaryPanel: ReactNode }) => {
   const { t } = useTranslation();
   const { tab = DataQualityPageTabs.TABLES } =
     useParams<{ tab: DataQualityPageTabs }>();
+  const history = useHistory();
+  const location = useLocation();
+
+  const params = useMemo(() => {
+    const search = location.search;
+
+    const params = QueryString.parse(
+      search.startsWith('?') ? search.substring(1) : search
+    );
+
+    return params as DataQualitySearchParams;
+  }, [location]);
+  const { searchValue, owner } = params;
+  const selectedOwner = useMemo(
+    () => (owner ? JSON.parse(owner) : undefined),
+    [owner]
+  );
 
   const { permissions } = usePermissionProvider();
   const { testSuite: testSuitePermission } = permissions;
@@ -71,6 +98,14 @@ export const TestSuites = ({ summaryPanel }: { summaryPanel: ReactNode }) => {
 
   const [isLoading, setIsLoading] = useState<boolean>(true);
 
+  const ownerFilterValue = useMemo(() => {
+    return selectedOwner
+      ? {
+          key: selectedOwner.fullyQualifiedName ?? selectedOwner.name,
+          label: getEntityName(selectedOwner),
+        }
+      : undefined;
+  }, [selectedOwner]);
   const columns = useMemo(() => {
     const data: ColumnsType<TestSuite> = [
       {
@@ -153,17 +188,27 @@ export const TestSuites = ({ summaryPanel }: { summaryPanel: ReactNode }) => {
     return data;
   }, []);
 
-  const fetchTestSuites = async (params?: ListTestSuitePrams) => {
+  const fetchTestSuites = async (
+    currentPage = INITIAL_PAGING_VALUE,
+    params?: ListTestSuitePramsBySearch
+  ) => {
     setIsLoading(true);
     try {
-      const result = await getListTestSuites({
+      const result = await getListTestSuitesBySearch({
         ...params,
         fields: 'owner,summary',
-        includeEmptyTestSuites: !(tab === DataQualityPageTabs.TABLES),
+        q: searchValue ? `*${searchValue}*` : undefined,
+        owner: ownerFilterValue?.key,
+        offset: (currentPage - 1) * pageSize,
+        includeEmptyTestSuites: tab !== DataQualityPageTabs.TABLES,
         testSuiteType:
           tab === DataQualityPageTabs.TABLES
             ? TestSuiteType.executable
             : TestSuiteType.logical,
+        sortField: 'testCaseResultSummary.timestamp',
+        sortType: SORT_ORDER.DESC,
+        sortNestedPath: 'testCaseResultSummary',
+        sortNestedMode: ['max'],
       });
       setTestSuites(result.data);
       handlePagingChange(result.paging);
@@ -175,25 +220,38 @@ export const TestSuites = ({ summaryPanel }: { summaryPanel: ReactNode }) => {
   };
 
   const handleTestSuitesPageChange = useCallback(
-    ({ cursorType, currentPage }: PagingHandlerParams) => {
-      if (isString(cursorType)) {
-        fetchTestSuites({
-          [cursorType]: paging?.[cursorType],
-          limit: pageSize,
-        });
-      }
+    ({ currentPage }: PagingHandlerParams) => {
+      fetchTestSuites(currentPage, { limit: pageSize });
       handlePageChange(currentPage);
     },
     [pageSize, paging]
   );
 
+  const handleSearchParam = (
+    value: string,
+    key: keyof DataQualitySearchParams
+  ) => {
+    history.push({
+      search: QueryString.stringify({
+        ...params,
+        [key]: isEmpty(value) ? undefined : value,
+      }),
+    });
+  };
+
+  const handleOwnerSelect = (owner?: EntityReference) => {
+    handleSearchParam(owner ? JSON.stringify(owner) : '', 'owner');
+  };
+
   useEffect(() => {
     if (testSuitePermission?.ViewAll || testSuitePermission?.ViewBasic) {
-      fetchTestSuites({ limit: pageSize });
+      fetchTestSuites(INITIAL_PAGING_VALUE, {
+        limit: pageSize,
+      });
     } else {
       setIsLoading(false);
     }
-  }, [testSuitePermission, pageSize]);
+  }, [testSuitePermission, pageSize, searchValue, owner]);
 
   if (!testSuitePermission?.ViewAll && !testSuitePermission?.ViewBasic) {
     return <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />;
@@ -201,11 +259,45 @@ export const TestSuites = ({ summaryPanel }: { summaryPanel: ReactNode }) => {
 
   return (
     <Row
-      className="p-x-lg p-t-md"
+      className="p-x-lg p-y-md"
       data-testid="test-suite-container"
       gutter={[16, 16]}>
       <Col span={24}>
-        <Row justify="end">
+        <Row justify="space-between">
+          <Col>
+            <Form layout="inline">
+              <Space
+                align="center"
+                className="w-full justify-between"
+                size={16}>
+                <Form.Item className="m-0 w-80">
+                  <Searchbar
+                    removeMargin
+                    searchValue={searchValue}
+                    onSearch={(value) =>
+                      handleSearchParam(value, 'searchValue')
+                    }
+                  />
+                </Form.Item>
+                <Form.Item
+                  className="m-0 w-52"
+                  label={t('label.owner')}
+                  name="owner">
+                  <UserTeamSelectableList
+                    hasPermission
+                    owner={selectedOwner}
+                    onUpdate={handleOwnerSelect}>
+                    <Select
+                      data-testid="owner-select-filter"
+                      open={false}
+                      placeholder={t('label.owner')}
+                      value={ownerFilterValue}
+                    />
+                  </UserTeamSelectableList>
+                </Form.Item>
+              </Space>
+            </Form>
+          </Col>
           <Col>
             {tab === DataQualityPageTabs.TEST_SUITES &&
               testSuitePermission?.Create && (
@@ -239,6 +331,7 @@ export const TestSuites = ({ summaryPanel }: { summaryPanel: ReactNode }) => {
       <Col span={24}>
         {showPagination && (
           <NextPrevious
+            isNumberBased
             currentPage={currentPage}
             pageSize={pageSize}
             paging={paging}

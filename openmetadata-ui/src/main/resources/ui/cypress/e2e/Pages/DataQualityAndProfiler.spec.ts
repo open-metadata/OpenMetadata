@@ -31,7 +31,7 @@ import {
   scheduleIngestion,
 } from '../../common/Utils/Ingestion';
 import { getToken } from '../../common/Utils/LocalStorage';
-import { addOwner, removeOwner, updateOwner } from '../../common/Utils/Owner';
+import { removeOwner, updateOwner } from '../../common/Utils/Owner';
 import { goToServiceListingPage, Services } from '../../common/Utils/Services';
 import {
   DATA_QUALITY_SAMPLE_DATA_TABLE,
@@ -67,25 +67,11 @@ const goToProfilerTab = () => {
 
   cy.get('[data-testid="profiler"]').should('be.visible').click();
 };
-const clickOnTestSuite = (testSuiteName) => {
-  cy.get('[data-testid="test-suite-container"]').then(($body) => {
-    if ($body.find(`[data-testid="${testSuiteName}"]`).length) {
-      cy.get(`[data-testid="${testSuiteName}"]`).scrollIntoView().click();
-    } else {
-      if ($body.find('[data-testid="next"]').length) {
-        cy.get('[data-testid="next"]').click();
-        verifyResponseStatusCode('@testSuite', 200);
-        clickOnTestSuite(testSuiteName);
-      } else {
-        throw new Error('Test Suite not found');
-      }
-    }
-  });
-};
-const visitTestSuiteDetailsPage = (testSuiteName) => {
+
+const visitTestSuiteDetailsPage = (testSuiteName: string) => {
   interceptURL(
     'GET',
-    '/api/v1/dataQuality/testSuites?*testSuiteType=logical*',
+    '/api/v1/dataQuality/testSuites/search/list?*testSuiteType=logical*',
     'testSuite'
   );
   interceptURL('GET', '/api/v1/dataQuality/testCases?fields=*', 'testCase');
@@ -94,7 +80,14 @@ const visitTestSuiteDetailsPage = (testSuiteName) => {
 
   cy.get('[data-testid="by-test-suites"]').click();
   verifyResponseStatusCode('@testSuite', 200);
-  clickOnTestSuite(testSuiteName);
+  interceptURL(
+    'GET',
+    `/api/v1/dataQuality/testSuites/search/list?*${testSuiteName}*testSuiteType=logical*`,
+    'testSuiteBySearch'
+  );
+  cy.get('[data-testid="search-bar-container"]').type(testSuiteName);
+  verifyResponseStatusCode('@testSuiteBySearch', 200);
+  cy.get(`[data-testid="${testSuiteName}"]`).scrollIntoView().click();
 };
 
 const verifyFilterTestCase = () => {
@@ -476,7 +469,7 @@ describe(
       const testCaseName = 'column_value_max_to_be_between';
       interceptURL(
         'GET',
-        '/api/v1/dataQuality/testSuites?*testSuiteType=logical*',
+        '/api/v1/dataQuality/testSuites/search/list?*testSuiteType=logical*',
         'testSuite'
       );
       interceptURL(
@@ -523,9 +516,9 @@ describe(
 
       visitTestSuiteDetailsPage(NEW_TEST_SUITE.name);
 
-      addOwner(OWNER1);
       updateOwner(OWNER2);
       removeOwner(OWNER2);
+      updateOwner(OWNER1);
     });
 
     it('Add test case to logical test suite', () => {
@@ -557,7 +550,7 @@ describe(
       verifyResponseStatusCode('@putTestCase', 200);
     });
 
-    it.skip('Remove test case from logical test suite', () => {
+    it('Remove test case from logical test suite', () => {
       interceptURL('GET', '/api/v1/dataQuality/testCases?fields=*', 'testCase');
       interceptURL(
         'GET',
@@ -582,7 +575,44 @@ describe(
       verifyResponseStatusCode('@removeTestCase', 200);
     });
 
-    it.skip('Delete test suite', () => {
+    it('Test suite filters', () => {
+      interceptURL(
+        'GET',
+        '/api/v1/dataQuality/testSuites/search/list?*testSuiteType=logical*',
+        'testSuite'
+      );
+      interceptURL(
+        'GET',
+        '/api/v1/dataQuality/testSuites/search/list?*owner=*',
+        'testSuiteByOwner'
+      );
+      cy.sidebarClick(SidebarItem.DATA_QUALITY);
+
+      cy.get('[data-testid="by-test-suites"]').click();
+      verifyResponseStatusCode('@testSuite', 200);
+
+      // owner filter
+      cy.get('[data-testid="owner-select-filter"]').click();
+      cy.get("[data-testid='select-owner-tabs']").should('be.visible');
+      cy.get('.ant-tabs [id*=tab-users]').click();
+
+      interceptURL(
+        'GET',
+        `api/v1/search/query?q=*&index=user_search_index*`,
+        'searchOwner'
+      );
+
+      cy.get('[data-testid="owner-select-users-search-bar"]').type(OWNER1);
+
+      verifyResponseStatusCode('@searchOwner', 200);
+      cy.get(`.ant-popover [title="${OWNER1}"]`).click();
+      verifyResponseStatusCode('@testSuiteByOwner', 200);
+      cy.get(`[data-testid="${NEW_TEST_SUITE.name}"]`)
+        .scrollIntoView()
+        .should('be.visible');
+    });
+
+    it('Delete test suite', () => {
       visitTestSuiteDetailsPage(NEW_TEST_SUITE.name);
 
       cy.get('[data-testid="manage-button"]').should('be.visible').click();
@@ -613,7 +643,7 @@ describe(
         .click();
       verifyResponseStatusCode('@deleteTestSuite', 200);
 
-      toastNotification('Test Suite deleted successfully!');
+      toastNotification('"mysql_matrix" deleted successfully!');
     });
 
     it('delete created service', () => {

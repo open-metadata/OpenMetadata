@@ -47,6 +47,15 @@ export type ListTestSuitePrams = ListParams & {
   testSuiteType?: TestSuiteType;
   includeEmptyTestSuites?: boolean;
 };
+export type ListTestSuitePramsBySearch = ListTestSuitePrams & {
+  q?: string;
+  sortType?: SORT_ORDER;
+  sortNestedMode?: string[];
+  sortNestedPath?: string;
+  sortField?: string;
+  owner?: string;
+  offset?: number;
+};
 
 export type ListTestCaseParams = ListParams & {
   entityLink?: string;
@@ -241,6 +250,19 @@ export const getListTestSuites = async (params?: ListTestSuitePrams) => {
   }>(testSuiteUrl, {
     params,
   });
+
+  return response.data;
+};
+
+export const getListTestSuitesBySearch = async (
+  params?: ListTestSuitePramsBySearch
+) => {
+  const response = await APIClient.get<PagingResponse<TestSuite[]>>(
+    `${testSuiteUrl}/search/list`,
+    {
+      params,
+    }
+  );
 
   return response.data;
 };
