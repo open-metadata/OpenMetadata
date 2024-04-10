@@ -17,6 +17,9 @@ import os
 import tempfile
 from functools import singledispatchmethod
 
+from metadata.generated.schema.entity.services.connections.dashboard.qlikSenseConnection import (
+    QlikSenseConnection,
+)
 from metadata.generated.schema.entity.services.connections.database.dorisConnection import (
     DorisConnection,
 )
@@ -65,8 +68,8 @@ class SSLManager:
         self.temp_files = []
 
     @singledispatchmethod
-    def setup_ssl(self, _):
-        raise NotImplementedError
+    def setup_ssl(self, connection):
+        raise NotImplementedError(f"Connection {type(connection)} type not supported")
 
     @setup_ssl.register(MysqlConnection)
     @setup_ssl.register(DorisConnection)
@@ -98,3 +101,11 @@ class SSLManager:
         ):
             connection.connectionArguments.__root__["sslrootcert"] = self.ca_file_path
         return connection
+
+    @setup_ssl.register(QlikSenseConnection)
+    def _(self, connection):
+        return {
+            "ca_certs": self.ca_file_path,
+            "certfile": self.cert_file_path,
+            "keyfile": self.key_file_path,
+        }
