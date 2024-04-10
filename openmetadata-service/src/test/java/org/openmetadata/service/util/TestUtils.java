@@ -645,7 +645,7 @@ public final class TestUtils {
   }
 
   public static void waitForEsAsyncOp() throws InterruptedException {
-    waitForEsAsyncOp(200);
+    waitForEsAsyncOp(500);
   }
 
   public static void waitForEsAsyncOp(Integer milliseconds) throws InterruptedException {
