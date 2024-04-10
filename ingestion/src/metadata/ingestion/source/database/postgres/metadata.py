@@ -63,6 +63,7 @@ from metadata.ingestion.source.database.postgres.utils import (
 from metadata.utils import fqn
 from metadata.utils.filters import filter_by_database
 from metadata.utils.logger import ingestion_logger
+from metadata.utils.secrets.manage_ssl import SSLManager
 from metadata.utils.sqlalchemy_utils import (
     get_all_table_comments,
     get_all_table_owners,
@@ -132,6 +133,23 @@ class PostgresSource(CommonDbSourceService, MultiDBSource):
     Database metadata from Postgres Source
     """
 
+    def __init__(
+        self,
+        config: WorkflowSource,
+        metadata: OpenMetadata,
+    ):
+        self.ssl_manager = None
+        service_connection: PostgresConnection = (
+            config.serviceConnection.__root__.config
+        )
+        if service_connection.sslMode and service_connection.sslConfig:
+            self.ssl_manager = SSLManager(
+                ca=service_connection.sslConfig.__root__.caCertificate
+            )
+
+            service_connection = self.ssl_manager.setup_ssl(service_connection)
+        super().__init__(config, metadata)
+
     @classmethod
     def create(
         cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None
@@ -187,9 +205,11 @@ class PostgresSource(CommonDbSourceService, MultiDBSource):
 
                 if filter_by_database(
                     self.source_config.databaseFilterPattern,
-                    database_fqn
-                    if self.source_config.useFqnForFiltering
-                    else new_database,
+                    (
+                        database_fqn
+                        if self.source_config.useFqnForFiltering
+                        else new_database
+                    ),
                 ):
                     self.status.filter(database_fqn, "Database Filtered Out")
                     continue

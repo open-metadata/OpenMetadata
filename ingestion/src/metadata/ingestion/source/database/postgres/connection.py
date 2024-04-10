@@ -42,7 +42,6 @@ from metadata.ingestion.source.database.postgres.queries import (
 from metadata.ingestion.source.database.postgres.utils import (
     get_postgres_time_column_name,
 )
-from metadata.utils.secrets.manage_ssl import SSLManager
 
 
 def get_connection(connection: PostgresConnection) -> Engine:
@@ -60,11 +59,6 @@ def get_connection(connection: PostgresConnection) -> Engine:
             *connection.authType.azureConfig.scopes.split(",")
         )
         connection.authType = BasicAuth(password=access_token_obj.token)
-    if connection.sslMode and connection.sslConfig:
-        connection = SSLManager(
-            ca=connection.sslConfig.__root__.caCertificate
-        ).setup_ssl(connection)
-
     return create_generic_db_connection(
         connection=connection,
         get_connection_url_fn=get_connection_url_common,
