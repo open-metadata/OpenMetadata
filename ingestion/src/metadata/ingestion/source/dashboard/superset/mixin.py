@@ -152,7 +152,8 @@ class SupersetSourceMixin(DashboardServiceSource):
         self, om_table: Table, data_model_entity: DashboardDataModel
     ) -> List[ColumnLineage]:
         """
-        Get the column lineage from the columns
+        Get the column lineage from database table columns
+        to data_model columns
         """
         try:
             column_lineage = []
