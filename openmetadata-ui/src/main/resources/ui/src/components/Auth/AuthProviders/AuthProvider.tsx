@@ -275,7 +275,7 @@ export const AuthProvider = ({
    * This method will try to signIn silently when token is about to expire
    * if it's not succeed then it will proceed for logout
    */
-  const trySilentSignIn = async () => {
+  const trySilentSignIn = async (forceLogout?: boolean) => {
     const pathName = location.pathname;
     // Do not try silent sign in for SignIn or SignUp route
     if ([ROUTES.SIGNIN, ROUTES.SIGNUP].includes(pathName)) {
@@ -292,7 +292,7 @@ export const AuthProvider = ({
         startTokenExpiryTimer();
       } else {
         // reset user details if silent signIn fails
-        resetUserDetails();
+        resetUserDetails(forceLogout);
       }
     } catch (error) {
       const err = error as AxiosError;
@@ -304,7 +304,7 @@ export const AuthProvider = ({
         return;
       }
       // reset user details if silent signIn fails
-      resetUserDetails();
+      resetUserDetails(forceLogout);
     } finally {
       setLoading(false);
     }
@@ -509,7 +509,7 @@ export const AuthProvider = ({
           const { status } = error.response;
           if (status === ClientErrors.UNAUTHORIZED) {
             storeRedirectPath();
-            resetUserDetails(true);
+            trySilentSignIn(true);
           }
         }
 
