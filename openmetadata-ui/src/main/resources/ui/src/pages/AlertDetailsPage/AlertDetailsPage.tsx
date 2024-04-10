@@ -57,7 +57,6 @@ import {
 } from '../../utils/RouterUtils';
 import { getEntityIcon } from '../../utils/TableUtils';
 import '../AddObservabilityPage/add-observability-page.less';
-import './alert-details-page.styles.less';
 import { AlertDetailsPageProps } from './AlertDetailsPage.interface';
 
 function AlertDetailsPage({
