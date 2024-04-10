@@ -1874,10 +1874,22 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
                 new TestCaseParameterValue().withName("minLength").withValue("10"),
                 new TestCaseParameterValue().withName("maxLength").withValue("5")));
 
-    assertResponse(
+    assertResponseContains(
             () -> createEntity(invalidTestCase, ADMIN_AUTH_HEADERS),
             BAD_REQUEST,
-            "`Min value of 10 cannot be greater than Max value of 5");
+            "Value");
+
+    CreateTestCase invalidTestCaseMixedTypes = createRequest(test, 3);
+    invalidTestCaseMixedTypes.withTestDefinition(TEST_DEFINITION1.getFullyQualifiedName())
+            .withParameterValues(
+                    List.of(
+                            new TestCaseParameterValue().withName("minLength").withValue("10.6"),
+                            new TestCaseParameterValue().withName("maxLength").withValue("5")));
+
+    assertResponseContains(
+            () -> createEntity(invalidTestCaseMixedTypes, ADMIN_AUTH_HEADERS),
+            BAD_REQUEST,
+            "Value");
   }
 
 
