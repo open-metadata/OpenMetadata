@@ -82,7 +82,7 @@ class QlikSenseClient:
             key=self.config.certificates.sslConfig.__root__.sslKey.get_secret_value(),
         )
 
-        return self.ssl_manager.setup_ssl(connection=self.config)
+        return self.ssl_manager.setup_ssl(self.config)
 
     def connect_websocket(self, app_id: str = None) -> None:
         """

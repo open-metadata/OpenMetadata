@@ -103,7 +103,7 @@ class SSLManager:
         return connection
 
     @setup_ssl.register(QlikSenseConnection)
-    def _(self, connection):
+    def _(self, _):
         return {
             "ca_certs": self.ca_file_path,
             "certfile": self.cert_file_path,
