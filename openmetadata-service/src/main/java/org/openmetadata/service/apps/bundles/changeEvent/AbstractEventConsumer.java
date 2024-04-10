@@ -157,7 +157,7 @@ public abstract class AbstractEventConsumer
       return jobStoredOffset.getOffset();
     } else {
       EventSubscriptionOffset eventSubscriptionOffset =
-          getStartingOffset(eventSubscription.getId(), 0);
+          getStartingOffset(eventSubscription.getId());
       // Update the Job Data Map with the latest offset
       context.getJobDetail().getJobDataMap().put(ALERT_OFFSET_KEY, eventSubscriptionOffset);
       return eventSubscriptionOffset.getOffset();

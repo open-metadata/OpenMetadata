@@ -189,8 +189,7 @@ public final class AlertUtil {
     return triggerChangeEvent;
   }
 
-  public static EventSubscriptionOffset getStartingOffset(
-      UUID eventSubscriptionId, int incremental) {
+  public static EventSubscriptionOffset getStartingOffset(UUID eventSubscriptionId) {
     long eventSubscriptionOffset;
     String json =
         Entity.getCollectionDAO()
@@ -203,7 +202,7 @@ public final class AlertUtil {
     } else {
       eventSubscriptionOffset = Entity.getCollectionDAO().changeEventDAO().getLatestOffset();
     }
-    return new EventSubscriptionOffset().withOffset(eventSubscriptionOffset + incremental);
+    return new EventSubscriptionOffset().withOffset(eventSubscriptionOffset);
   }
 
   public static FilteringRules validateAndBuildFilteringConditions(
