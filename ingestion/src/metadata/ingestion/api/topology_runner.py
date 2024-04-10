@@ -253,7 +253,7 @@ class TopologyRunnerMixin(Generic[C]):
             for process in node.post_process:
                 try:
                     node_post_process = getattr(self, process)
-                    for entity_request in node_post_process():
+                    for entity_request in node_post_process() or []:
                         yield entity_request
                 except Exception as exc:
                     logger.debug(traceback.format_exc())

@@ -96,6 +96,7 @@ from metadata.utils.execution_time_tracker import (
 from metadata.utils.filters import filter_by_database
 from metadata.utils.helpers import get_start_and_end
 from metadata.utils.logger import ingestion_logger
+from metadata.utils.secrets.manage_ssl import SSLManager
 from metadata.utils.sqlalchemy_utils import get_all_table_comments
 
 logger = ingestion_logger()
@@ -131,7 +132,22 @@ class RedshiftSource(
     Database metadata from Redshift Source
     """
 
-    def __init__(self, config, metadata, incremental_configuration: IncrementalConfig):
+    def __init__(
+        self,
+        config: WorkflowSource,
+        metadata,
+        incremental_configuration: IncrementalConfig,
+    ):
+        self.ssl_manager = None
+        service_connection: RedshiftConnection = (
+            config.serviceConnection.__root__.config
+        )
+        if service_connection.sslMode and service_connection.sslConfig:
+            self.ssl_manager = SSLManager(
+                ca=service_connection.sslConfig.__root__.caCertificate
+            )
+
+            service_connection = self.ssl_manager.setup_ssl(service_connection)
         super().__init__(config, metadata)
         self.partition_details = {}
         self.life_cycle_query = REDSHIFT_LIFE_CYCLE_QUERY
@@ -289,9 +305,11 @@ class RedshiftSource(
 
                 if filter_by_database(
                     self.source_config.databaseFilterPattern,
-                    database_fqn
-                    if self.source_config.useFqnForFiltering
-                    else new_database,
+                    (
+                        database_fqn
+                        if self.source_config.useFqnForFiltering
+                        else new_database
+                    ),
                 ):
                     self.status.filter(database_fqn, "Database Filtered Out")
                     continue

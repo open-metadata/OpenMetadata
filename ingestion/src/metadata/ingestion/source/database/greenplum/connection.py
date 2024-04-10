@@ -31,17 +31,12 @@ from metadata.ingestion.connections.builders import (
 from metadata.ingestion.connections.test_connections import test_connection_db_common
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.database.greenplum.queries import GREENPLUM_GET_DATABASE
-from metadata.utils.secrets.manage_ssl import SSLManager
 
 
 def get_connection(connection: GreenplumConnection) -> Engine:
     """
     Create connection
     """
-    if connection.sslMode and connection.sslConfig:
-        connection = SSLManager(
-            ca=connection.sslConfig.__root__.caCertificate
-        ).setup_ssl(connection)
     return create_generic_db_connection(
         connection=connection,
         get_connection_url_fn=get_connection_url_common,

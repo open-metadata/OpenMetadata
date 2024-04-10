@@ -31,23 +31,12 @@ from metadata.ingestion.connections.test_connections import (
     test_connection_db_schema_sources,
 )
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.utils.secrets.manage_ssl import SSLManager
 
 
 def get_connection(connection: DorisConnection) -> Engine:
     """
     Create connection
     """
-    if connection.ssl and (
-        connection.ssl.__root__.caCertificate
-        or connection.ssl.__root__.sslCertificate
-        or connection.ssl.__root__.sslKey
-    ):
-        connection = SSLManager(
-            ca=connection.ssl.__root__.caCertificate,
-            cert=connection.ssl.__root__.sslCertificate,
-            key=connection.ssl.__root__.sslKey,
-        ).setup_ssl(connection)
     return create_generic_db_connection(
         connection=connection,
         get_connection_url_fn=get_connection_url_common,

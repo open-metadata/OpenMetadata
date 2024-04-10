@@ -50,6 +50,7 @@ from metadata.ingestion.source.database.doris.utils import (
 )
 from metadata.ingestion.source.database.mysql.utils import parse_column
 from metadata.utils.logger import ingestion_logger
+from metadata.utils.secrets.manage_ssl import SSLManager
 
 MySQLTableDefinitionParser._parse_column = (  # pylint: disable=protected-access
     parse_column
@@ -143,6 +144,24 @@ class DorisSource(CommonDbSourceService):
     Implements the necessary methods to extract
     Database metadata from Mysql Source
     """
+
+    def __init__(self, config: WorkflowSource, metadata: OpenMetadata):
+        self.ssl_manager = None
+        service_connection = config.serviceConnection.__root__.config
+        ssl = service_connection.ssl
+        if ssl and (
+            ssl.__root__.caCertificate
+            or ssl.__root__.sslCertificate
+            or ssl.__root__.sslKey
+        ):
+            self.ssl_manager = SSLManager(
+                ca=ssl.__root__.caCertificate,
+                cert=ssl.__root__.sslCertificate,
+                key=ssl.__root__.sslKey,
+            )
+
+            service_connection = self.ssl_manager.setup_ssl(service_connection)
+        super().__init__(config, metadata)
 
     @classmethod
     def create(

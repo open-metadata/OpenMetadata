@@ -51,28 +51,18 @@ class SSLManager:
 
     def create_temp_file(self, content):
         with tempfile.NamedTemporaryFile(delete=False) as temp_file:
-            temp_file.write(content.encode())
+            temp_file.write(content.get_secret_value().encode())
             temp_file.close()
         self.temp_files.append(temp_file.name)
         return temp_file.name
 
     def cleanup_temp_files(self):
         for temp_file in self.temp_files:
-            os.remove(temp_file)
+            try:
+                os.remove(temp_file)
+            except FileNotFoundError:
+                pass
         self.temp_files = []
-
-    @staticmethod
-    def cleanup_ssl_files_from_connection(connection):
-        try:
-            ssl = connection.connectionArguments.__root__.get("ssl", {})
-            if hasattr(ssl.__root__, "caCertificate"):
-                os.remove(ssl.__root__.caCertificate)
-            if hasattr(ssl.__root__, "sslCertificate"):
-                os.remove(ssl.__root__.sslCertificate)
-            if hasattr(ssl.__root__, "sslKey"):
-                os.remove(ssl.__root__.sslKey)
-        except FileNotFoundError:
-            pass
 
     @singledispatchmethod
     def setup_ssl(self, _):
@@ -106,7 +96,5 @@ class SSLManager:
             verifySSLConfig.SslMode.verify_ca,
             verifySSLConfig.SslMode.verify_full,
         ):
-            connection.connectionArguments.__root__[
-                "sslrootcert"
-            ] = connection.sslConfig.__root__.caCertificate
+            connection.connectionArguments.__root__["sslrootcert"] = self.ca_file_path
         return connection

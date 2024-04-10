@@ -10,17 +10,20 @@
     "caCertificate": {
       "title": "CA Certificate",
       "description": "The CA certificate used for SSL validation.",
-      "type": "string"
+      "type": "string",
+      "format": "password"
     },
     "sslCertificate": {
       "title": "SSL Certificate",
       "description": "The SSL certificate used for client authentication.",
-      "type": "string"
+      "type": "string",
+      "format": "password"
     },
     "sslKey": {
       "title": "SSL Key",
       "description": "The private key associated with the SSL certificate.",
-      "type": "string"
+      "type": "string",
+      "format": "password"
     }
   }
 }

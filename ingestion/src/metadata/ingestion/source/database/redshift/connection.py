@@ -34,18 +34,12 @@ from metadata.ingestion.source.database.redshift.queries import (
     REDSHIFT_TEST_GET_QUERIES,
     REDSHIFT_TEST_PARTITION_DETAILS,
 )
-from metadata.utils.secrets.manage_ssl import SSLManager
 
 
 def get_connection(connection: RedshiftConnection) -> Engine:
     """
     Create connection
     """
-    if connection.sslMode and connection.sslConfig:
-        connection = SSLManager(
-            ca=connection.sslConfig.__root__.caCertificate
-        ).setup_ssl(connection)
-
     return create_generic_db_connection(
         connection=connection,
         get_connection_url_fn=get_connection_url_common,
