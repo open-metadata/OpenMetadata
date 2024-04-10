@@ -18,6 +18,7 @@ import static javax.ws.rs.core.Response.Status.FORBIDDEN;
 import static javax.ws.rs.core.Response.Status.NOT_FOUND;
 import static javax.ws.rs.core.Response.Status.OK;
 import static org.awaitility.Awaitility.with;
+import static org.awaitility.Durations.ONE_MINUTE;
 import static org.awaitility.Durations.ONE_SECOND;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -85,6 +86,7 @@ import org.openmetadata.schema.api.feed.ResolveTask;
 import org.openmetadata.schema.api.feed.ThreadCount;
 import org.openmetadata.schema.api.teams.CreateTeam;
 import org.openmetadata.schema.entity.data.Table;
+import org.openmetadata.schema.entity.events.EventSubscription;
 import org.openmetadata.schema.entity.feed.Thread;
 import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.entity.teams.User;
@@ -110,6 +112,7 @@ import org.openmetadata.service.formatter.decorators.MessageDecorator;
 import org.openmetadata.service.formatter.util.FeedMessage;
 import org.openmetadata.service.jdbi3.FeedRepository.FilterType;
 import org.openmetadata.service.resources.databases.TableResourceTest;
+import org.openmetadata.service.resources.events.EventSubscriptionResourceTest;
 import org.openmetadata.service.resources.feeds.FeedResource.PostList;
 import org.openmetadata.service.resources.feeds.FeedResource.ThreadList;
 import org.openmetadata.service.resources.teams.TeamResourceTest;
@@ -1178,6 +1181,11 @@ public class FeedResourceTest extends OpenMetadataApplicationTest {
 
   @Test
   void list_threadsWithOwnerOrFollowerFilter() throws HttpResponseException {
+    EventSubscriptionResourceTest eventSubscriptionResourceTest =
+        new EventSubscriptionResourceTest();
+    EventSubscription subscription =
+        eventSubscriptionResourceTest.getEntityByName("ActivityFeedAlert", ADMIN_AUTH_HEADERS);
+    eventSubscriptionResourceTest.waitForAllEventToComplete(subscription.getId());
     int totalThreadCount = listThreads(null, null, ADMIN_AUTH_HEADERS).getPaging().getTotal();
     String user1 = USER1.getId().toString(); // user1 is the owner of TABLE
     // Get thread counts for user1 and user2
@@ -1211,6 +1219,7 @@ public class FeedResourceTest extends OpenMetadataApplicationTest {
     followTable(TABLE2.getId(), USER1.getId(), USER_AUTH_HEADERS);
     with()
         .pollInterval(ONE_SECOND)
+        .timeout(ONE_MINUTE)
         .await("Threads With Follows")
         .until(
             () -> {
@@ -1271,6 +1280,7 @@ public class FeedResourceTest extends OpenMetadataApplicationTest {
     // User started following this table
     with()
         .pollInterval(ONE_SECOND)
+        .timeout(ONE_MINUTE)
         .await("Threads With Follows")
         .until(
             () -> {
