@@ -544,8 +544,6 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
             10,
             "entityLink",
             sensitiveColumnLink,
-            "orderByLastExecutionDate",
-            false,
             "fields",
             "*");
     ResultList<TestCase> testCases = getTestCases(queryParamsOne, authHeaders(USER1_REF.getName()));
@@ -559,8 +557,6 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
             10,
             "entityLink",
             sensitiveColumnLink,
-            "orderByLastExecutionDate",
-            false,
             "fields",
             "*");
     ResultList<TestCase> maskedTestCases =
@@ -599,7 +595,6 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
     queryParams.put("limit", 10);
     queryParams.put("entityLink", TABLE_LINK_2);
     queryParams.put("fields", "*");
-    queryParams.put("orderByLastExecutionDate", false);
     ResultList<TestCase> testCaseList = getTestCases(queryParams, ADMIN_AUTH_HEADERS);
     verifyTestCases(testCaseList, expectedTestCaseList, 2);
 
@@ -1188,115 +1183,6 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
     deleteEntity(testCase1.getId(), true, true, ADMIN_AUTH_HEADERS);
     storedTestSuite = testSuiteResourceTest.getEntity(testSuiteId, "*", ADMIN_AUTH_HEADERS);
     assertEquals(1, storedTestSuite.getTestCaseResultSummary().size());
-  }
-
-  @Test
-  void test_listTestCaseByExecutionTime(TestInfo test) throws IOException, ParseException {
-    // if we have no test cases create some
-    for (int i = 0; i < 10; i++) {
-      createAndCheckEntity(createRequest(test, i), ADMIN_AUTH_HEADERS);
-    }
-
-    HashMap<String, Object> queryParams = new HashMap<>();
-    queryParams.put("limit", 10);
-    queryParams.put("fields", "*");
-    queryParams.put("orderByLastExecutionDate", false);
-    ResultList<TestCase> nonExecutionSortedTestCases =
-        getTestCases(queryParams, ADMIN_AUTH_HEADERS);
-
-    TestCase lastTestCaseInList =
-        nonExecutionSortedTestCases
-            .getData()
-            .get(
-                nonExecutionSortedTestCases.getData().size()
-                    - 1); // we'll take the latest one in the list
-    TestCase firstTestCaseInList =
-        nonExecutionSortedTestCases.getData().get(0); // we'll take the first one in the list
-
-    DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd");
-    LocalDate today = LocalDate.now();
-    String todayString = today.format(formatter);
-    for (int i = 11; i <= 15; i++) {
-      TestCaseResult testCaseResult =
-          new TestCaseResult()
-              .withResult("result")
-              .withTestCaseStatus(TestCaseStatus.Failed)
-              .withTimestamp(TestUtils.dateToTimestamp("2023-01-" + i));
-      putTestCaseResult(
-          firstTestCaseInList.getFullyQualifiedName(), testCaseResult, ADMIN_AUTH_HEADERS);
-    }
-    putTestCaseResult(
-        lastTestCaseInList.getFullyQualifiedName(),
-        new TestCaseResult()
-            .withResult("result")
-            .withTestCaseStatus(TestCaseStatus.Failed)
-            .withTimestamp(TestUtils.dateToTimestamp(todayString)),
-        ADMIN_AUTH_HEADERS);
-
-    queryParams.put("orderByLastExecutionDate", true);
-    ResultList<TestCase> executionSortedTestCases = getTestCases(queryParams, ADMIN_AUTH_HEADERS);
-    assertEquals(lastTestCaseInList.getId(), executionSortedTestCases.getData().get(0).getId());
-    assertEquals(
-        lastTestCaseInList.getId(),
-        nonExecutionSortedTestCases
-            .getData()
-            .get(nonExecutionSortedTestCases.getData().size() - 1)
-            .getId());
-  }
-
-  @Test
-  void test_listTestCaseByExecutionTimePagination_200(TestInfo test)
-      throws IOException, ParseException {
-    // Create a number of entities between 5 and 20 inclusive
-    Random rand = new Random();
-    int maxEntities = rand.nextInt(16) + 5;
-
-    List<TestCase> createdTestCase = new ArrayList<>();
-    for (int i = 0; i < maxEntities; i++) {
-      createdTestCase.add(createEntity(createRequest(test, i + 1), ADMIN_AUTH_HEADERS));
-    }
-
-    TestCase firstTestCase = createdTestCase.get(0);
-    TestCase lastTestCase = createdTestCase.get(maxEntities - 1);
-
-    DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd");
-    LocalDate today = LocalDate.now();
-    putTestCaseResult(
-        lastTestCase.getFullyQualifiedName(),
-        new TestCaseResult()
-            .withResult("result")
-            .withTestCaseStatus(TestCaseStatus.Failed)
-            .withTimestamp(TestUtils.dateToTimestamp(today.format(formatter))),
-        ADMIN_AUTH_HEADERS);
-    putTestCaseResult(
-        firstTestCase.getFullyQualifiedName(),
-        new TestCaseResult()
-            .withResult("result")
-            .withTestCaseStatus(TestCaseStatus.Failed)
-            .withTimestamp(TestUtils.dateToTimestamp(today.minusYears(10).format(formatter))),
-        ADMIN_AUTH_HEADERS);
-
-    // List all entities and use it for checking pagination
-    Map<String, Object> queryParams = new HashMap<>();
-    queryParams.put("limit", 1000000);
-    queryParams.put("fields", "*");
-    queryParams.put("orderByLastExecutionDate", true);
-    ResultList<TestCase> allEntities = getTestCases(queryParams, ADMIN_AUTH_HEADERS);
-
-    paginate(maxEntities, allEntities, null);
-
-    // Validate Pagination when filtering by testSuiteId
-    TestSuiteResourceTest testSuiteResourceTest = new TestSuiteResourceTest();
-    CreateTestSuite createLogicalTestSuite = testSuiteResourceTest.createRequest(test);
-    TestSuite logicalTestSuite =
-        testSuiteResourceTest.createEntity(createLogicalTestSuite, ADMIN_AUTH_HEADERS);
-    List<UUID> testCaseIds =
-        createdTestCase.stream().map(TestCase::getId).collect(Collectors.toList());
-    testSuiteResourceTest.addTestCasesToLogicalTestSuite(logicalTestSuite, testCaseIds);
-
-    queryParams.put("testSuiteId", logicalTestSuite.getId().toString());
-    allEntities = getTestCases(queryParams, ADMIN_AUTH_HEADERS);
-    paginate(maxEntities, allEntities, logicalTestSuite);
   }
 
   @Test
@@ -1981,73 +1867,6 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
 
   private void verifyTestCaseResult(TestCaseResult expected, TestCaseResult actual) {
     assertEquals(expected, actual);
-  }
-
-  private void paginate(Integer maxEntities, ResultList<TestCase> allEntities, TestSuite testSuite)
-      throws HttpResponseException {
-    Random random = new Random();
-    int totalRecords = allEntities.getData().size();
-
-    for (int limit = 1; limit < maxEntities; limit += random.nextInt(5) + 1) {
-      String after = null;
-      String before;
-      int pageCount = 0;
-      int indexInAllTables = 0;
-      ResultList<TestCase> forwardPage;
-      ResultList<TestCase> backwardPage;
-      do { // For each limit (or page size) - forward scroll till the end
-        Map<String, Object> queryParams = new HashMap<>();
-        queryParams.put("limit", limit);
-        queryParams.put("after", after == null ? "" : after);
-        queryParams.put("fields", "*");
-        queryParams.put("testSuiteId", testSuite == null ? "" : testSuite.getId().toString());
-        queryParams.put("orderByLastExecutionDate", true);
-        forwardPage = getTestCases(queryParams, ADMIN_AUTH_HEADERS);
-        after = forwardPage.getPaging().getAfter();
-        before = forwardPage.getPaging().getBefore();
-        assertEntityPagination(allEntities.getData(), forwardPage, limit, indexInAllTables);
-
-        if (pageCount == 0) { // CASE 0 - First page is being returned. There is no before-cursor
-          assertNull(before);
-        } else {
-          // Make sure scrolling back based on before cursor returns the correct result
-          queryParams.remove("after");
-          queryParams.put("before", before);
-          backwardPage = getTestCases(queryParams, ADMIN_AUTH_HEADERS);
-          //          getTestCases(queryParams, ADMIN_AUTH_HEADERS);
-          assertEntityPagination(
-              allEntities.getData(), backwardPage, limit, (indexInAllTables - limit));
-        }
-
-        indexInAllTables += forwardPage.getData().size();
-        pageCount++;
-      } while (after != null);
-
-      // We have now reached the last page - test backward scroll till the beginning
-      pageCount = 0;
-      indexInAllTables = totalRecords - limit - forwardPage.getData().size();
-      do {
-        Map<String, Object> queryParams =
-            ImmutableMap.of(
-                "limit",
-                limit,
-                "before",
-                before == null ? "" : before,
-                "fields",
-                "*",
-                "testSuiteId",
-                testSuite == null ? "" : testSuite.getId().toString(),
-                "includeAllTests",
-                false,
-                "orderByLastExecutionDate",
-                true);
-        forwardPage = getTestCases(queryParams, ADMIN_AUTH_HEADERS);
-        before = forwardPage.getPaging().getBefore();
-        assertEntityPagination(allEntities.getData(), forwardPage, limit, indexInAllTables);
-        pageCount++;
-        indexInAllTables -= forwardPage.getData().size();
-      } while (before != null);
-    }
   }
 
   @Override
