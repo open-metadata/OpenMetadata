@@ -273,15 +273,7 @@ const AddNotificationPage = () => {
                         name="provider"
                       />
                       <Col span={24}>
-                        <DestinationFormItem
-                          buttonLabel={t('label.add-entity', {
-                            entity: t('label.destination'),
-                          })}
-                          heading={t('label.destination')}
-                          subHeading={t(
-                            'message.alerts-destination-description'
-                          )}
-                        />
+                        <DestinationFormItem />
                       </Col>
                       <Col flex="auto" />
                       <Col flex="300px" pull="right">

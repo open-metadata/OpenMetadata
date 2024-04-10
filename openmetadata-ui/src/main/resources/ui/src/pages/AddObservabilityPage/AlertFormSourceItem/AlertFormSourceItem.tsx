@@ -14,16 +14,13 @@
 import {
   Button,
   Card,
-  Col,
   Dropdown,
   Form,
   MenuItemProps,
   MenuProps,
-  Row,
   Select,
   Typography,
 } from 'antd';
-import { startCase } from 'lodash';
 import React, {
   ReactNode,
   useCallback,
@@ -32,8 +29,9 @@ import React, {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
+import FormCardSection from '../../../components/common/FormCardSection/FormCardSection';
 import { useFqn } from '../../../hooks/useFqn';
-import { getEntityIcon } from '../../../utils/TableUtils';
+import { getSourceOptionsFromResourceList } from '../../../utils/Alerts/AlertsUtil';
 import './alert-form-source-item.less';
 import { AlertFormSourceItemProps } from './AlertFormSourceItem.interface';
 
@@ -49,19 +47,9 @@ function AlertFormSourceItem({
 
   const resourcesOptions = useMemo(
     () =>
-      filterResources.map((resource) => ({
-        label: (
-          <div
-            className="d-flex items-center gap-2"
-            data-testid={`${resource.name}-option`}>
-            <div className="d-flex h-4 w-4">
-              {getEntityIcon(resource.name ?? '')}
-            </div>
-            <span>{startCase(resource.name)}</span>
-          </div>
-        ),
-        value: resource.name ?? '',
-      })),
+      getSourceOptionsFromResourceList(
+        filterResources.map((r) => r.name ?? '')
+      ),
     [filterResources]
   );
 
@@ -103,71 +91,61 @@ function AlertFormSourceItem({
   }, []);
 
   return (
-    <Card className="alert-form-item-container">
-      <Row gutter={[8, 8]}>
-        <Col span={24}>
-          <Typography.Text className="font-medium">
-            {t('label.source')}
-          </Typography.Text>
-        </Col>
-        <Col span={24}>
-          <Typography.Text className="text-xs text-grey-muted">
-            {t('message.alerts-source-description')}
-          </Typography.Text>
-        </Col>
-        <Col className="source-input-container" ref={newRef} span={24}>
-          <Form.Item
-            required
-            initialValue={
-              fqn
-                ? form.getFieldValue(['filteringRules', 'resources'])
-                : undefined
-            }
-            messageVariables={{
-              fieldName: t('label.data-asset-plural'),
-            }}
-            name={['resources']}
-            rules={[
-              {
-                required: true,
-                message: t('label.please-select-entity', {
-                  entity: t('label.data-asset'),
-                }),
-              },
-            ]}>
-            {isEditMode || fqn ? (
-              <Select
-                className="w-full"
-                data-testid="source-select"
-                options={resourcesOptions}
-                placeholder={t('label.select-field', {
-                  field: t('label.data-asset-plural'),
+    <FormCardSection
+      heading={t('label.source')}
+      subHeading={t('message.alerts-source-description')}>
+      <div className="source-input-container" ref={newRef}>
+        <Form.Item
+          required
+          initialValue={
+            fqn
+              ? form.getFieldValue(['filteringRules', 'resources'])
+              : undefined
+          }
+          messageVariables={{
+            fieldName: t('label.data-asset-plural'),
+          }}
+          name={['resources']}
+          rules={[
+            {
+              required: true,
+              message: t('label.please-select-entity', {
+                entity: t('label.data-asset'),
+              }),
+            },
+          ]}>
+          {isEditMode || fqn ? (
+            <Select
+              className="w-full"
+              data-testid="source-select"
+              options={resourcesOptions}
+              placeholder={t('label.select-field', {
+                field: t('label.data-asset-plural'),
+              })}
+              value={selectedResource[0]}
+              onChange={handleSourceChange}
+            />
+          ) : (
+            <Dropdown
+              destroyPopupOnHide
+              dropdownRender={dropdownCardComponent}
+              getPopupContainer={() => newRef.current ?? document.body}
+              menu={{
+                items: dropdownMenuItems,
+                onClick: handleMenuItemClick,
+              }}
+              placement="bottomRight"
+              trigger={['click']}>
+              <Button data-testid="add-source-button" type="primary">
+                {t('label.add-entity', {
+                  entity: t('label.source'),
                 })}
-                value={selectedResource[0]}
-                onChange={handleSourceChange}
-              />
-            ) : (
-              <Dropdown
-                destroyPopupOnHide
-                dropdownRender={dropdownCardComponent}
-                getPopupContainer={() => newRef.current ?? document.body}
-                menu={{
-                  items: dropdownMenuItems,
-                  onClick: handleMenuItemClick,
-                }}
-                placement="bottomRight"
-                trigger={['click']}>
-                <Button data-testid="add-source-button" type="primary">
-                  {t('label.add-entity', {
-                    entity: t('label.source'),
-                  })}
-                </Button>
-              </Dropdown>
-            )}
-          </Form.Item>
-        </Col>
-      </Row>
-    </Card>
+              </Button>
+            </Dropdown>
+          )}
+        </Form.Item>
+      </div>
+    </FormCardSection>
   );
 }
 

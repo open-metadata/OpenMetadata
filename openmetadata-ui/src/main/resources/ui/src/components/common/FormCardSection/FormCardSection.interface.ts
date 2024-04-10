@@ -11,16 +11,11 @@
  *  limitations under the License.
  */
 
-@import url('../../styles/variables.less');
+import { ReactNode } from 'react';
 
-.alert-page-container {
-  width: 70%;
-  margin: 16px auto 0;
-  padding-bottom: 16px;
-  .ant-form-item {
-    margin: 0px;
-  }
-  .ant-card {
-    border-radius: 10px;
-  }
+export interface FormCardSectionProps {
+  heading: ReactNode;
+  subHeading: ReactNode;
+  children: ReactNode;
+  childrenContainerClassName?: string;
 }
