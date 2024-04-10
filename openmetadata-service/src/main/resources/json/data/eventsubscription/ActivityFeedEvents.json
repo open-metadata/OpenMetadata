@@ -20,7 +20,7 @@
       {
         "name": "matchAnyFieldChange",
         "effect": "exclude",
-        "condition": "matchAnyFieldChange({'usageSummary', 'sourceHash', 'lifeCycle', ''})"
+        "condition": "matchAnyFieldChange({'usageSummary', 'sourceHash', 'lifeCycle', 'votes'})"
       }
     ]
   },

@@ -255,6 +255,12 @@
               "$ref": "./description.json"
             },
             {
+              "$ref": "./owner.json"
+            },
+            {
+              "$ref": "./testCaseResult.json"
+            },
+            {
               "$ref": "./tag.json"
             }
           ]
