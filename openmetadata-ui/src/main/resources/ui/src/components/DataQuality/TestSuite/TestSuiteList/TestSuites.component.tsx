@@ -77,7 +77,11 @@ export const TestSuites = ({ summaryPanel }: { summaryPanel: ReactNode }) => {
 
     return params as DataQualitySearchParams;
   }, [location]);
-  const { searchValue = '' } = params;
+  const { searchValue, owner } = params;
+  const selectedOwner = useMemo(
+    () => (owner ? JSON.parse(owner) : undefined),
+    [owner]
+  );
 
   const { permissions } = usePermissionProvider();
   const { testSuite: testSuitePermission } = permissions;
@@ -93,7 +97,7 @@ export const TestSuites = ({ summaryPanel }: { summaryPanel: ReactNode }) => {
   } = usePaging();
 
   const [isLoading, setIsLoading] = useState<boolean>(true);
-  const [selectedOwner, setSelectedOwner] = useState<EntityReference>();
+
   const ownerFilterValue = useMemo(() => {
     return selectedOwner
       ? {
@@ -194,8 +198,9 @@ export const TestSuites = ({ summaryPanel }: { summaryPanel: ReactNode }) => {
         ...params,
         fields: 'owner,summary',
         q: searchValue ? `*${searchValue}*` : undefined,
+        owner: ownerFilterValue?.key,
         offset: (currentPage - 1) * pageSize,
-        includeEmptyTestSuites: !(tab === DataQualityPageTabs.TABLES),
+        includeEmptyTestSuites: tab !== DataQualityPageTabs.TABLES,
         testSuiteType:
           tab === DataQualityPageTabs.TABLES
             ? TestSuiteType.executable
@@ -221,12 +226,6 @@ export const TestSuites = ({ summaryPanel }: { summaryPanel: ReactNode }) => {
     },
     [pageSize, paging]
   );
-  const handleOwnerSelect = (owner?: EntityReference) => {
-    fetchTestSuites(INITIAL_PAGING_VALUE, {
-      owner: owner?.fullyQualifiedName ?? owner?.name,
-    });
-    setSelectedOwner(owner);
-  };
 
   const handleSearchParam = (
     value: string,
@@ -240,16 +239,19 @@ export const TestSuites = ({ summaryPanel }: { summaryPanel: ReactNode }) => {
     });
   };
 
+  const handleOwnerSelect = (owner?: EntityReference) => {
+    handleSearchParam(owner ? JSON.stringify(owner) : '', 'owner');
+  };
+
   useEffect(() => {
     if (testSuitePermission?.ViewAll || testSuitePermission?.ViewBasic) {
       fetchTestSuites(INITIAL_PAGING_VALUE, {
         limit: pageSize,
-        owner: selectedOwner?.fullyQualifiedName ?? selectedOwner?.name,
       });
     } else {
       setIsLoading(false);
     }
-  }, [testSuitePermission, pageSize, searchValue]);
+  }, [testSuitePermission, pageSize, searchValue, owner]);
 
   if (!testSuitePermission?.ViewAll && !testSuitePermission?.ViewBasic) {
     return <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />;
@@ -257,7 +259,7 @@ export const TestSuites = ({ summaryPanel }: { summaryPanel: ReactNode }) => {
 
   return (
     <Row
-      className="p-x-lg p-t-md"
+      className="p-x-lg p-y-md"
       data-testid="test-suite-container"
       gutter={[16, 16]}>
       <Col span={24}>
