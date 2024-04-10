@@ -1854,44 +1854,41 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
   @Test
   void wrongMinMaxTestParameter(TestInfo test) throws HttpResponseException {
     CreateTestCase validTestCase = createRequest(test);
-    validTestCase.withTestDefinition(TEST_DEFINITION1.getFullyQualifiedName())
-            .withParameterValues(
-                    List.of(
-                            new TestCaseParameterValue().withName("minLength").withValue("10")));
+    validTestCase
+        .withTestDefinition(TEST_DEFINITION1.getFullyQualifiedName())
+        .withParameterValues(
+            List.of(new TestCaseParameterValue().withName("minLength").withValue("10")));
     createEntity(validTestCase, ADMIN_AUTH_HEADERS);
 
     validTestCase = createRequest(test, 1);
-    validTestCase.withTestDefinition(TEST_DEFINITION1.getFullyQualifiedName())
-            .withParameterValues(
-                    List.of(
-                            new TestCaseParameterValue().withName("maxLength").withValue("10")));
+    validTestCase
+        .withTestDefinition(TEST_DEFINITION1.getFullyQualifiedName())
+        .withParameterValues(
+            List.of(new TestCaseParameterValue().withName("maxLength").withValue("10")));
     createEntity(validTestCase, ADMIN_AUTH_HEADERS);
 
     CreateTestCase invalidTestCase = createRequest(test, 2);
-    invalidTestCase.withTestDefinition(TEST_DEFINITION1.getFullyQualifiedName())
-            .withParameterValues(
-              List.of(
+    invalidTestCase
+        .withTestDefinition(TEST_DEFINITION1.getFullyQualifiedName())
+        .withParameterValues(
+            List.of(
                 new TestCaseParameterValue().withName("minLength").withValue("10"),
                 new TestCaseParameterValue().withName("maxLength").withValue("5")));
 
     assertResponseContains(
-            () -> createEntity(invalidTestCase, ADMIN_AUTH_HEADERS),
-            BAD_REQUEST,
-            "Value");
+        () -> createEntity(invalidTestCase, ADMIN_AUTH_HEADERS), BAD_REQUEST, "Value");
 
     CreateTestCase invalidTestCaseMixedTypes = createRequest(test, 3);
-    invalidTestCaseMixedTypes.withTestDefinition(TEST_DEFINITION1.getFullyQualifiedName())
-            .withParameterValues(
-                    List.of(
-                            new TestCaseParameterValue().withName("minLength").withValue("10.6"),
-                            new TestCaseParameterValue().withName("maxLength").withValue("5")));
+    invalidTestCaseMixedTypes
+        .withTestDefinition(TEST_DEFINITION1.getFullyQualifiedName())
+        .withParameterValues(
+            List.of(
+                new TestCaseParameterValue().withName("minLength").withValue("10.6"),
+                new TestCaseParameterValue().withName("maxLength").withValue("5")));
 
     assertResponseContains(
-            () -> createEntity(invalidTestCaseMixedTypes, ADMIN_AUTH_HEADERS),
-            BAD_REQUEST,
-            "Value");
+        () -> createEntity(invalidTestCaseMixedTypes, ADMIN_AUTH_HEADERS), BAD_REQUEST, "Value");
   }
-
 
   public void deleteTestCaseResult(String fqn, Long timestamp, Map<String, String> authHeaders)
       throws HttpResponseException {

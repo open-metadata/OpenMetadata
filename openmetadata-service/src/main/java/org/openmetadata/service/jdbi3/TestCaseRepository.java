@@ -24,7 +24,6 @@ import java.util.UUID;
 import javax.json.JsonPatch;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.UriInfo;
-
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.schema.EntityInterface;
@@ -52,7 +51,6 @@ import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.TaskType;
-import org.openmetadata.schema.type.TestCaseParameterDataType;
 import org.openmetadata.schema.type.TestCaseParameterValidationRuleType;
 import org.openmetadata.schema.utils.EntityInterfaceUtil;
 import org.openmetadata.service.Entity;
@@ -932,25 +930,38 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
 
   private void validateParameterRule(TestCaseParameter parameter, Map<String, Object> values) {
     if (parameter.getValidationRule() != null) {
-      TestCaseParameterValidationRule testCaseParameterValidationRule = parameter.getValidationRule();
-      String parameterFieldToValidateAgainst = testCaseParameterValidationRule.getParameterField(); // parameter name to validate against
-      Object valueToValidateAgainst = values.get(parameterFieldToValidateAgainst); // value to validate against
+      TestCaseParameterValidationRule testCaseParameterValidationRule =
+          parameter.getValidationRule();
+      String parameterFieldToValidateAgainst =
+          testCaseParameterValidationRule.getParameterField(); // parameter name to validate against
+      Object valueToValidateAgainst =
+          values.get(parameterFieldToValidateAgainst); // value to validate against
       Object valueToValidate = values.get(parameter.getName()); // value to validate
 
       if (valueToValidateAgainst != null && valueToValidate != null) {
         // we only validate if the value to validate are not null
-        compareValue(valueToValidate.toString(), valueToValidateAgainst.toString(), testCaseParameterValidationRule.getRule());
+        compareValue(
+            valueToValidate.toString(),
+            valueToValidateAgainst.toString(),
+            testCaseParameterValidationRule.getRule());
       }
     }
   }
 
-  private void compareValue(String valueToValidate, String valueToValidateAgainst, TestCaseParameterValidationRuleType validationRule) {
+  private void compareValue(
+      String valueToValidate,
+      String valueToValidateAgainst,
+      TestCaseParameterValidationRuleType validationRule) {
     Double valueToValidateDouble = parseStringToDouble(valueToValidate);
     Double valueToValidateAgainstDouble = parseStringToDouble(valueToValidateAgainst);
     if (valueToValidateDouble != null && valueToValidateAgainstDouble != null) {
-      compareAndValidateParameterRule(validationRule, valueToValidateDouble, valueToValidateAgainstDouble);
+      compareAndValidateParameterRule(
+          validationRule, valueToValidateDouble, valueToValidateAgainstDouble);
     } else {
-      LOG.warn("One of the 2 values to compare is not a number. Cannot compare values {} and {}. Skipping parameter validation", valueToValidate, valueToValidateAgainst);
+      LOG.warn(
+          "One of the 2 values to compare is not a number. Cannot compare values {} and {}. Skipping parameter validation",
+          valueToValidate,
+          valueToValidateAgainst);
     }
   }
 
@@ -963,29 +974,38 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
     }
   }
 
-  private void compareAndValidateParameterRule(TestCaseParameterValidationRuleType validationRule, Double valueToValidate, Double valueToValidateAgainst) {
+  private void compareAndValidateParameterRule(
+      TestCaseParameterValidationRuleType validationRule,
+      Double valueToValidate,
+      Double valueToValidateAgainst) {
     String message = "Value %s %s %s";
     switch (validationRule) {
       case GREATER_THAN_OR_EQUALS -> {
         if (valueToValidate < valueToValidateAgainst) {
-          throw new IllegalArgumentException(String.format(message, valueToValidate, " is not greater than ", valueToValidateAgainst));
+          throw new IllegalArgumentException(
+              String.format(
+                  message, valueToValidate, " is not greater than ", valueToValidateAgainst));
         }
       }
       case LESS_THAN_OR_EQUALS -> {
         if (valueToValidate > valueToValidateAgainst) {
-          throw new IllegalArgumentException(String.format(message, valueToValidate, " is not less than ", valueToValidateAgainst));
+          throw new IllegalArgumentException(
+              String.format(
+                  message, valueToValidate, " is not less than ", valueToValidateAgainst));
         }
       }
       case EQUALS -> {
         // we'll compare the values with a tolerance of 0.0001 as we are dealing with double values
         if (Math.abs(valueToValidate - valueToValidateAgainst) > 0.0001) {
-          throw new IllegalArgumentException(String.format(message, valueToValidate, " is not equal to ", valueToValidateAgainst));
+          throw new IllegalArgumentException(
+              String.format(message, valueToValidate, " is not equal to ", valueToValidateAgainst));
         }
       }
       case NOT_EQUALS -> {
         // we'll compare the values with a tolerance of 0.0001 as we are dealing with double values
         if ((Math.abs(valueToValidate - valueToValidateAgainst) < 0.0001)) {
-          throw new IllegalArgumentException(String.format(message, valueToValidate, " is equal to ", valueToValidateAgainst));
+          throw new IllegalArgumentException(
+              String.format(message, valueToValidate, " is equal to ", valueToValidateAgainst));
         }
       }
     }
