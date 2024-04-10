@@ -1,5 +1,5 @@
 /*
- *  Copyright 2023 Collate.
+ *  Copyright 2024 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -10,15 +10,21 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { ItemType } from 'antd/lib/menu/hooks/useItems';
-import { Domain } from '../../../generated/entity/domains/domain';
 
-export interface DomainContextType {
-  domains: Domain[];
-  activeDomain: string;
-  domainLoading: boolean;
-  domainOptions: ItemType[];
-  updateDomains: (domainsArr: Domain[]) => void;
-  updateActiveDomain: (activeDomain: string) => void;
-  refreshDomains: () => void;
+export interface IngestionPipelineLogByIdInterface {
+  ingestion_task?: string;
+  profiler_task?: string;
+  usage_task?: string;
+  lineage_task?: string;
+  test_suite_task?: string;
+  data_insight_task?: string;
+  dbt_task?: string;
+  elasticsearch_reindex_task?: string;
+  total?: string;
+  after?: string;
+}
+
+export interface LogViewerParams {
+  logEntityType: string;
+  fqn: string;
 }

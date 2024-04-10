@@ -11,10 +11,15 @@
  *  limitations under the License.
  */
 import { Divider, Space, Typography } from 'antd';
+import { ItemType } from 'antd/lib/menu/hooks/useItems';
+import { t } from 'i18next';
 import { isEmpty } from 'lodash';
 import React, { Fragment, ReactNode } from 'react';
 import { OwnerLabel } from '../components/common/OwnerLabel/OwnerLabel.component';
-import { NO_DATA_PLACEHOLDER } from '../constants/constants';
+import {
+  DEFAULT_DOMAIN_VALUE,
+  NO_DATA_PLACEHOLDER,
+} from '../constants/constants';
 import { DOMAIN_TYPE_DATA } from '../constants/Domain.constants';
 import { EntityField } from '../constants/Feeds.constants';
 import { DataProduct } from '../generated/entity/domains/dataProduct';
@@ -168,3 +173,20 @@ export const domainTypeTooltipDataRender = () => (
     ))}
   </Space>
 );
+
+export const getDomainOptions = (domains: Domain[]) => {
+  const domainOptions: ItemType[] = [
+    {
+      label: t('label.all-domain-plural'),
+      key: DEFAULT_DOMAIN_VALUE,
+    },
+  ];
+  domains.forEach((domain: Domain) => {
+    domainOptions.push({
+      label: getEntityName(domain),
+      key: domain.fullyQualifiedName ?? '',
+    });
+  });
+
+  return domainOptions;
+};
