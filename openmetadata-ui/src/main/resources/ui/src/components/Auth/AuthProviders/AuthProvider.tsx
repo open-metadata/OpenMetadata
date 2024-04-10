@@ -124,7 +124,7 @@ export const AuthProvider = ({
   const { t } = useTranslation();
 
   const [timeoutId, setTimeoutId] = useState<number>();
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
 
   const authenticatorRef = useRef<AuthenticatorRef>(null);
 
