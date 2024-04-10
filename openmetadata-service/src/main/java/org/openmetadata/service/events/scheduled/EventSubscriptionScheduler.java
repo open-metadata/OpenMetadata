@@ -116,7 +116,7 @@ public class EventSubscriptionScheduler {
     JobDataMap dataMap = new JobDataMap();
     dataMap.put(ALERT_INFO_KEY, eventSubscription);
     // Using the incremental as -1 since change Events are inplace created before this is called
-    dataMap.put(ALERT_OFFSET_KEY, getStartingOffset(eventSubscription.getId(), -1));
+    dataMap.put(ALERT_OFFSET_KEY, getStartingOffset(eventSubscription.getId()));
     JobBuilder jobBuilder =
         JobBuilder.newJob(publisher.getClass())
             .withIdentity(jobIdentity, ALERT_JOB_GROUP)
