@@ -210,6 +210,7 @@ class TestCaseRunner(Processor):
                         if test_case_to_create.parameterValues
                         else None,
                         owner=None,
+                        computePassedFailedRowCount=test_case_to_create.computePassedFailedRowCount,
                     )
                 )
                 test_cases.append(test_case)
