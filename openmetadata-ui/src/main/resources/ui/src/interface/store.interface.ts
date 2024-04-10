@@ -43,7 +43,6 @@ export interface ApplicationStore
     LoginConfiguration {
   userProfilePics: Record<string, User>;
   cachedEntityData: Record<string, EntityUnion>;
-  urlPathName: string;
   selectedPersona: EntityReference;
   oidcIdToken: string;
   refreshTokenKey: string;
@@ -55,7 +54,6 @@ export interface ApplicationStore
   searchCriteria: ExploreSearchIndex | '';
   setSelectedPersona: (persona: EntityReference) => void;
   setApplicationConfig: (config: LogoConfiguration) => void;
-  setUrlPathName: (urlPathName: string) => void;
   setCurrentUser: (user: User) => void;
   setAuthConfig: (authConfig: AuthenticationConfigurationWithScope) => void;
   setAuthorizerConfig: (authorizerConfig: AuthorizerConfiguration) => void;
