@@ -32,8 +32,6 @@ import static org.openmetadata.service.util.TestUtils.dateToTimestamp;
 
 import java.io.IOException;
 import java.text.ParseException;
-import java.time.LocalDate;
-import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.stream.Collectors;
 import javax.json.JsonPatch;
@@ -539,26 +537,14 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
 
     // Owner can see the results
     Map<String, Object> queryParamsOne =
-        ImmutableMap.of(
-            "limit",
-            10,
-            "entityLink",
-            sensitiveColumnLink,
-            "fields",
-            "*");
+        ImmutableMap.of("limit", 10, "entityLink", sensitiveColumnLink, "fields", "*");
     ResultList<TestCase> testCases = getTestCases(queryParamsOne, authHeaders(USER1_REF.getName()));
     assertNotNull(testCases.getData().get(0).getDescription());
     assertListNotEmpty(testCases.getData().get(0).getParameterValues());
 
     // Owner can see the results
     Map<String, Object> queryParamsTwo =
-        ImmutableMap.of(
-            "limit",
-            10,
-            "entityLink",
-            sensitiveColumnLink,
-            "fields",
-            "*");
+        ImmutableMap.of("limit", 10, "entityLink", sensitiveColumnLink, "fields", "*");
     ResultList<TestCase> maskedTestCases =
         getTestCases(queryParamsTwo, authHeaders(USER2_REF.getName()));
     assertNull(maskedTestCases.getData().get(0).getDescription());
@@ -757,7 +743,7 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
               .withParameterValues(
                   List.of(
                       new TestCaseParameterValue().withValue("20").withName("missingCountValue")));
-      if (i%2 == 0) {
+      if (i % 2 == 0) {
         // create 3 test cases with USER1_REF as owner
         create.withOwner(USER2_REF);
       }

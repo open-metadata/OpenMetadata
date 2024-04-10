@@ -350,8 +350,8 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
           @QueryParam("domain")
           String domain,
       @Parameter(description = "owner filter to use in list", schema = @Schema(type = "string"))
-      @QueryParam("owner")
-        String owner,
+          @QueryParam("owner")
+          String owner,
       @Parameter(
               description = "search query term to use in list",
               schema = @Schema(type = "string"))
@@ -373,16 +373,16 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
     searchListFilter.addQueryParam("q", q);
     searchListFilter.addQueryParam("excludeFields", SEARCH_FIELDS_EXCLUDE);
     searchListFilter.addQueryParam("domain", domain);
-      if (!nullOrEmpty(owner)) {
-          EntityInterface entity;
-          try {
-              entity = Entity.getEntityByName(Entity.USER, owner, "", ALL);
-          } catch (Exception e) {
-              // If the owner is not a user, then we'll try to geta team
-              entity = Entity.getEntityByName(Entity.TEAM, owner, "", ALL);
-          }
-          searchListFilter.addQueryParam("owner", entity.getId().toString());
+    if (!nullOrEmpty(owner)) {
+      EntityInterface entity;
+      try {
+        entity = Entity.getEntityByName(Entity.USER, owner, "", ALL);
+      } catch (Exception e) {
+        // If the owner is not a user, then we'll try to geta team
+        entity = Entity.getEntityByName(Entity.TEAM, owner, "", ALL);
       }
+      searchListFilter.addQueryParam("owner", entity.getId().toString());
+    }
 
     if (startTimestamp != null) {
       if (startTimestamp > endTimestamp) {
