@@ -59,13 +59,13 @@ export enum GlobalSettingOptions {
   DATA_INSIGHT_REPORT_ALERT = 'dataInsightReport',
   ADD_DATA_INSIGHT_REPORT_ALERT = 'add-data-insight-report',
   EDIT_DATA_INSIGHT_REPORT_ALERT = 'edit-data-insight-report',
-  CUSTOM_LOGO = 'customLogo',
   LOGIN_CONFIGURATION = 'loginConfiguration',
   CUSTOMIZE_LANDING_PAGE = 'customizeLandingPage',
   TOPICS = 'topics',
   CONTAINERS = 'containers',
   APPLICATIONS = 'apps',
   OM_HEALTH = 'om-health',
+  APPEARANCE = 'appearance',
 }
 
 export const SETTINGS_OPTIONS_PATH = {
@@ -158,9 +158,9 @@ export const SETTINGS_OPTIONS_PATH = {
     GlobalSettingsMenuCategory.PREFERENCES,
     `${GlobalSettingsMenuCategory.PREFERENCES}.${GlobalSettingOptions.EMAIL}`,
   ],
-  [GlobalSettingOptions.CUSTOM_LOGO]: [
+  [GlobalSettingOptions.APPEARANCE]: [
     GlobalSettingsMenuCategory.PREFERENCES,
-    `${GlobalSettingsMenuCategory.PREFERENCES}.${GlobalSettingOptions.CUSTOM_LOGO}`,
+    `${GlobalSettingsMenuCategory.PREFERENCES}.${GlobalSettingOptions.APPEARANCE}`,
   ],
   [GlobalSettingOptions.LOGIN_CONFIGURATION]: [
     GlobalSettingsMenuCategory.PREFERENCES,
