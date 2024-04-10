@@ -53,6 +53,7 @@ export const UserTeamSelectableList = ({
   owner,
   onUpdate = noop,
   children,
+  popoverProps,
 }: UserSelectDropdownProps) => {
   const { t } = useTranslation();
   const [popupVisible, setPopupVisible] = useState(false);
@@ -276,7 +277,8 @@ export const UserTeamSelectableList = ({
       placement="bottomRight"
       showArrow={false}
       trigger="click"
-      onOpenChange={setPopupVisible}>
+      onOpenChange={setPopupVisible}
+      {...popoverProps}>
       {children ??
         (hasPermission && (
           <Tooltip

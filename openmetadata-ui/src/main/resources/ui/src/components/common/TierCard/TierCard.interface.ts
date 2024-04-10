@@ -10,10 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { TableDetail } from 'Models';
+import { PopoverProps } from 'antd';
 import { ReactNode } from 'react';
 import { Tag } from '../../../generated/entity/classification/tag';
-import { EntityReference } from '../../../generated/type/entityReference';
 
 export type CardWithListItems = {
   id: string;
@@ -25,10 +24,6 @@ export type CardWithListItems = {
 export interface TierCardProps {
   currentTier?: string;
   updateTier?: (value?: Tag) => Promise<void>;
-  onSave?: (
-    owner?: EntityReference,
-    tier?: TableDetail['tier'],
-    isJoinable?: boolean
-  ) => Promise<void>;
   children?: ReactNode;
+  popoverProps?: PopoverProps;
 }

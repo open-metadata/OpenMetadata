@@ -142,7 +142,7 @@ const AddPipeLineModal = ({
       <div className="edge-option-container">
         {edgeOptions.map((item) => {
           const icon = getEntityIcon(item.type);
-          const breadcrumb = Fqn.split(item.fullyQualifiedName).join('/');
+          const breadcrumb = Fqn.split(item.fullyQualifiedName ?? '').join('/');
 
           return (
             <div

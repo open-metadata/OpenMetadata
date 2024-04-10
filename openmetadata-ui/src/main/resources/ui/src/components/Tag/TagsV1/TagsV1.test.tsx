@@ -99,4 +99,23 @@ describe('Test tags Component', () => {
     expect(mockPush).toHaveBeenCalledTimes(1);
     expect(mockPush).toHaveBeenCalledWith('/glossary/glossaryTag.Test1');
   });
+
+  it('should render size based tags, for small class should contain small', () => {
+    const { container } = render(
+      <TagsV1
+        size="small"
+        startWith={TAG_START_WITH.SOURCE_ICON}
+        tag={{
+          description: 'TestDescription',
+          labelType: LabelType.Manual,
+          source: TagSource.Glossary,
+          state: State.Confirmed,
+          tagFQN: 'glossaryTag.Test1',
+        }}
+      />
+    );
+    const tag = getByTestId(container, 'tags');
+
+    expect(tag).toHaveClass('small');
+  });
 });
