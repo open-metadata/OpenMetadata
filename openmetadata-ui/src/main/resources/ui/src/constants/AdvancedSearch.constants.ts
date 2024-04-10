@@ -40,7 +40,7 @@ export const COMMON_DROPDOWN_ITEMS = [
   },
   {
     label: t('label.owner'),
-    key: 'ownerKeyword',
+    key: 'owner.displayName.keyword',
   },
   {
     label: t('label.tag'),
@@ -144,7 +144,7 @@ export const GLOSSARY_DROPDOWN_ITEMS = [
   },
   {
     label: t('label.owner'),
-    key: 'ownerKeyword',
+    key: 'owner.displayName.keyword',
   },
   {
     label: t('label.tag'),
@@ -174,7 +174,7 @@ export const DATA_PRODUCT_DROPDOWN_ITEMS = [
   },
   {
     label: t('label.owner'),
-    key: 'ownerKeyword',
+    key: 'owner.displayName.keyword',
   },
 ];
 
@@ -187,7 +187,7 @@ export const DOMAIN_DATAPRODUCT_DROPDOWN_ITEMS = [
   },
   {
     label: t('label.owner'),
-    key: 'ownerKeyword',
+    key: 'owner.displayName.keyword',
   },
   {
     label: t('label.tag'),
@@ -220,7 +220,7 @@ export const GLOSSARY_ASSETS_DROPDOWN_ITEMS = [
   },
   {
     label: t('label.owner'),
-    key: 'ownerKeyword',
+    key: 'owner.displayName.keyword',
   },
   {
     label: t('label.tag'),
@@ -277,7 +277,7 @@ export const emptyJsonTree: JsonTree = {
           type: 'rule',
           properties: {
             // owner is common field , so setting owner as default field here
-            field: 'ownerKeyword',
+            field: 'owner.displayName.keyword',
             operator: null,
             value: [],
             valueSrc: ['value'],
@@ -355,7 +355,7 @@ const getCommonQueryBuilderFields = (
       defaultValue: true,
     },
 
-    ownerKeyword: {
+    'owner.displayName.keyword': {
       label: t('label.owner'),
       type: 'select',
       mainWidgetProps,

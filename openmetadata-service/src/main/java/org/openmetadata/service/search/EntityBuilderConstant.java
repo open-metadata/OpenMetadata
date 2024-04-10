@@ -14,7 +14,8 @@ public class EntityBuilderConstant {
   public static final String COLUMNS_NAME_KEYWORD = "columns.name.keyword";
   public static final String FIELD_COLUMN_NAMES = "columnNames";
   public static final String SCHEMA_FIELD_NAMES = "fieldNames";
-  public static final String OWNER_DISPLAY_NAME_KEYWORD = "ownerKeyword";
+  public static final String OWNER_DISPLAY_NAME_KEYWORD = "owner.displayName.keyword";
+  public static final String OWNER_DISPLAY_NAME_KEYWORD_MISSING = "no owner";
   public static final String DESCRIPTION_STATUS_KEYWORD = "descriptionStatus";
   public static final String DOMAIN_DISPLAY_NAME_KEYWORD = "domain.displayName.keyword";
   public static final String DATA_MODEL_COLUMNS_NAME_KEYWORD = "dataModel.columns.name.keyword";

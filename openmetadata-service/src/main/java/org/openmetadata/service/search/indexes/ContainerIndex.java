@@ -71,7 +71,6 @@ public record ContainerIndex(Container container) implements ColumnIndex {
             container.getFullyQualifiedName(),
             suggest.stream().map(SearchSuggest::getInput).toList()));
     doc.put("owner", getEntityWithDisplayName(container.getOwner()));
-    doc.put("ownerKeyword", getOwnerDisplayNameOrNoOwner(container.getOwner()));
     doc.put("service", getEntityWithDisplayName(container.getService()));
     doc.put(
         "totalVotes",
@@ -79,7 +78,9 @@ public record ContainerIndex(Container container) implements ColumnIndex {
             ? 0
             : container.getVotes().getUpVotes() - container.getVotes().getDownVotes());
     doc.put("domain", getEntityWithDisplayName(container.getDomain()));
-    doc.put("descriptionStatus", getDescriptionStatus(container.getDescription(), container.getDataModel().getColumns()));
+    doc.put(
+        "descriptionStatus",
+        getDescriptionStatus(container.getDescription(), container.getDataModel().getColumns()));
     return doc;
   }
 

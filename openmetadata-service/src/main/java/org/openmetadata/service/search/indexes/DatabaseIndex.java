@@ -32,7 +32,6 @@ public record DatabaseIndex(Database database) implements SearchIndex {
             ? 0
             : database.getVotes().getUpVotes() - database.getVotes().getDownVotes());
     doc.put("owner", getEntityWithDisplayName(database.getOwner()));
-    doc.put("ownerKeyword", getOwnerDisplayNameOrNoOwner(database.getOwner()));
     doc.put("domain", getEntityWithDisplayName(database.getDomain()));
     doc.put("followers", SearchIndexUtils.parseFollowers(database.getFollowers()));
     doc.put("descriptionStatus", getDescriptionStatus(database.getDescription()));

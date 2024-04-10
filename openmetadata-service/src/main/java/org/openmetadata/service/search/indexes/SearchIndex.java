@@ -17,7 +17,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import org.openmetadata.common.utils.CommonUtil;
-import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.type.ColumnLineage;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
@@ -56,22 +55,7 @@ public interface SearchIndex {
   }
 
   default String getDescriptionStatus(String description) {
-    return CommonUtil.nullOrEmpty(description)
-          ? "INCOMPLETE"
-          : "COMPLETE";
-  }
-
-  default String getOwnerDisplayNameOrNoOwner(EntityReference entity) {
-    if (entity == null) {
-      return "NO OWNER";
-    }
-    String displayName = CommonUtil.nullOrEmpty(entity.getDisplayName())
-            ? entity.getName()
-            : entity.getDisplayName();
-
-    return CommonUtil.nullOrEmpty(displayName)
-            ? "NO OWNER"
-            : displayName;
+    return CommonUtil.nullOrEmpty(description) ? "INCOMPLETE" : "COMPLETE";
   }
 
   static List<HashMap<String, Object>> getLineageData(EntityReference entity) {

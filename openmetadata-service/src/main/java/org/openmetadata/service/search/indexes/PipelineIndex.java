@@ -60,7 +60,6 @@ public class PipelineIndex implements SearchIndex {
             pipeline.getFullyQualifiedName(),
             suggest.stream().map(SearchSuggest::getInput).toList()));
     doc.put("owner", getEntityWithDisplayName(pipeline.getOwner()));
-    doc.put("ownerKeyword", getOwnerDisplayNameOrNoOwner(pipeline.getOwner()));
     doc.put("service", getEntityWithDisplayName(pipeline.getService()));
     doc.put("domain", getEntityWithDisplayName(pipeline.getDomain()));
     doc.put("descriptionStatus", getDescriptionStatus(pipeline.getDescription()));

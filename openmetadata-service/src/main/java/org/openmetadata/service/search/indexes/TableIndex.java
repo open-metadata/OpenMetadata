@@ -85,7 +85,6 @@ public record TableIndex(Table table) implements ColumnIndex {
             : table.getVotes().getUpVotes() - table.getVotes().getDownVotes());
     doc.put("serviceType", table.getServiceType());
     doc.put("owner", getEntityWithDisplayName(table.getOwner()));
-    doc.put("ownerKeyword", getOwnerDisplayNameOrNoOwner(table.getOwner()));
     doc.put("service", getEntityWithDisplayName(table.getService()));
     doc.put("domain", getEntityWithDisplayName(table.getDomain()));
     doc.put("database", getEntityWithDisplayName(table.getDatabase()));

@@ -27,7 +27,6 @@ public record PipelineServiceIndex(PipelineService pipelineService) implements S
             pipelineService.getFullyQualifiedName(),
             suggest.stream().map(SearchSuggest::getInput).toList()));
     doc.put("owner", getEntityWithDisplayName(pipelineService.getOwner()));
-    doc.put("ownerKeyword", getOwnerDisplayNameOrNoOwner(pipelineService.getOwner()));
     doc.put("followers", SearchIndexUtils.parseFollowers(pipelineService.getFollowers()));
     return doc;
   }

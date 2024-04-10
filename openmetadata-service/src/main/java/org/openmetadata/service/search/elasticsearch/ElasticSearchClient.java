@@ -1130,6 +1130,7 @@ public class ElasticSearchClient implements SearchClient {
             AggregationBuilders.terms("tier.tagFQN").field("tier.tagFQN").size(MAX_AGGREGATE_SIZE))
         .aggregation(
             AggregationBuilders.terms(OWNER_DISPLAY_NAME_KEYWORD)
+                .missing(OWNER_DISPLAY_NAME_KEYWORD_MISSING)
                 .field(OWNER_DISPLAY_NAME_KEYWORD)
                 .size(MAX_AGGREGATE_SIZE))
         .aggregation(

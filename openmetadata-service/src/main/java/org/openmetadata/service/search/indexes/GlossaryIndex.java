@@ -34,7 +34,6 @@ public class GlossaryIndex implements SearchIndex {
     doc.put("suggest", suggest);
     doc.put("entityType", Entity.GLOSSARY);
     doc.put("owner", getEntityWithDisplayName(glossary.getOwner()));
-    doc.put("ownerKeyword", getOwnerDisplayNameOrNoOwner(glossary.getOwner()));
     doc.put(
         "totalVotes",
         CommonUtil.nullOrEmpty(glossary.getVotes())

@@ -127,7 +127,14 @@
             }
           },
           "displayName": {
-            "type": "keyword"
+            "type": "keyword",
+            "fields": {
+              "keyword": {
+                "type": "keyword",
+                "normalizer": "lowercase_normalizer",
+                "ignore_above": 256
+              }
+            }
           },
           "fullyQualifiedName": {
             "type": "text"
@@ -142,11 +149,6 @@
             "type": "text"
           }
         }
-      },
-      "ownerKeyword": {
-        "type": "keyword",
-        "normalizer": "lowercase_normalizer",
-        "ignore_above": 256
       },
       "experts": {
         "properties": {

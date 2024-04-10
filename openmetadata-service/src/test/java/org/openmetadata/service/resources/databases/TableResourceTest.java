@@ -2213,7 +2213,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     Response response;
     Request request = new Request("GET", String.format("%s/_search", index.getIndexName(null)));
     String query =
-        "{\"size\":100,\"query\":{\"bool\":{\"should\":[{\"nested\":{\"ignore_unmapped\":true,\"path\":\"columns\",\"query\":{\"bool\":{\"should\":[{\"bool\":{\"must_not\":{\"exists\":{\"field\":\"columns.description\"}}}},{\"bool\":{\"must_not\":{\"wildcard\":{\"columns.description\":\"*\"}}}}]}}}},{\"bool\":{\"should\":[{\"bool\":{\"must_not\":{\"exists\":{\"field\":\"description\"}}}},{\"bool\":{\"must_not\":{\"wildcard\":{\"description\":\"*\"}}}}]}}]}}}";
+        "{\"size\": 100,\"query\":{\"bool\":{\"must\":[{\"term\":{\"descriptionStatus\":\"INCOMPLETE\"}}]}}}";
     request.setJsonEntity(query);
     try {
       waitForEsAsyncOp();

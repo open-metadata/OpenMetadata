@@ -27,7 +27,6 @@ public record StorageServiceIndex(StorageService storageService) implements Sear
     doc.put("suggest", suggest);
     doc.put("entityType", Entity.STORAGE_SERVICE);
     doc.put("owner", getEntityWithDisplayName(storageService.getOwner()));
-    doc.put("ownerKeyword", getOwnerDisplayNameOrNoOwner(storageService.getOwner()));
     doc.put("followers", SearchIndexUtils.parseFollowers(storageService.getFollowers()));
     return doc;
   }

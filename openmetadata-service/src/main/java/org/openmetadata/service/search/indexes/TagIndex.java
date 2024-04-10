@@ -30,7 +30,6 @@ public record TagIndex(Tag tag) implements SearchIndex {
     doc.put("suggest", suggest);
     doc.put("entityType", Entity.TAG);
     doc.put("owner", getEntityWithDisplayName(tag.getOwner()));
-    doc.put("ownerKeyword", getOwnerDisplayNameOrNoOwner(tag.getOwner()));
     doc.put("followers", SearchIndexUtils.parseFollowers(tag.getFollowers()));
     doc.put("descriptionStatus", getDescriptionStatus(tag.getDescription()));
     return doc;

@@ -16,7 +16,7 @@ import { DATA_ASSETS } from './constants';
 export const COMMON_DROPDOWN_ITEMS = [
   {
     label: 'Owner',
-    key: 'ownerKeyword',
+    key: 'owner.displayName.keyword',
     aggregateKey: 'displayName.keyword',
     filterSearchIndex: 'user_search_index%2Cteam_search_index',
     selectOption1: 'Aaron Johnson',
@@ -107,7 +107,7 @@ export const CONTAINER_DROPDOWN_ITEMS = [
 export const GLOSSARY_DROPDOWN_ITEMS = [
   {
     label: 'Owner',
-    key: 'ownerKeyword',
+    key: 'owner.displayName.keyword',
   },
   {
     label: 'Tag',

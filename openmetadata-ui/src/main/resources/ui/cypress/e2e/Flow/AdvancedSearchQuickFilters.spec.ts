@@ -133,7 +133,7 @@ describe(`Advanced Search Modal`, () => {
                   {
                     bool: {
                       must_not: {
-                        exists: { field: 'ownerKeyword' },
+                        exists: { field: 'owner.displayName.keyword' },
                       },
                     },
                   },
@@ -153,7 +153,7 @@ describe(`Advanced Search Modal`, () => {
           must: [
             {
               bool: {
-                must: [{ exists: { field: 'ownerKeyword' } }],
+                must: [{ exists: { field: 'owner.displayName.keyword' } }],
               },
             },
           ],
