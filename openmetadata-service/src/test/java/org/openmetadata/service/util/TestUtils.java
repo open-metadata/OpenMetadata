@@ -394,8 +394,7 @@ public final class TestUtils {
   public static void validateEntityReference(EntityReference ref) {
     assertNotNull(ref);
     assertNotNull(ref.getId(), invalidEntityReference(ref, "null Id"));
-    // TODO: cannot create Href at EntityRepository
-    // assertNotNull(ref.getHref(), invalidEntityReference(ref, "null href"));
+    assertNotNull(ref.getHref(), invalidEntityReference(ref, "null href"));
     assertNotNull(ref.getName(), invalidEntityReference(ref, "null name"));
     assertNotNull(ref.getFullyQualifiedName(), invalidEntityReference(ref, "null fqn"));
     assertNotNull(ref.getType(), invalidEntityReference(ref, "null type"));

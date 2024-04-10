@@ -127,7 +127,8 @@ public class EventSubscriptionScheduler {
   private Trigger trigger(EventSubscription eventSubscription) {
     return TriggerBuilder.newTrigger()
         .withIdentity(eventSubscription.getId().toString(), ALERT_TRIGGER_GROUP)
-        .withSchedule(SimpleScheduleBuilder.repeatSecondlyForever(2))
+        .withSchedule(
+            SimpleScheduleBuilder.repeatSecondlyForever(eventSubscription.getPollInterval()))
         .startNow()
         .build();
   }

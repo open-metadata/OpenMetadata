@@ -91,5 +91,6 @@
     ]
   },
   "provider" : "system",
+  "pollInterval" : 30,
   "enabled" : true
 }

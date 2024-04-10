@@ -13,23 +13,17 @@
 
 package org.openmetadata.service.events;
 
-import static org.openmetadata.schema.type.EventType.ENTITY_DELETED;
-import static org.openmetadata.service.events.subscription.AlertsRuleEvaluator.getEntity;
 import static org.openmetadata.service.formatter.util.FormatterUtil.getChangeEventFromResponseContext;
 
-import java.util.List;
 import java.util.Optional;
-import java.util.UUID;
 import javax.ws.rs.container.ContainerRequestContext;
 import javax.ws.rs.container.ContainerResponseContext;
 import javax.ws.rs.core.SecurityContext;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
-import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
-import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.WebsocketNotificationHandler;
 
@@ -79,11 +73,6 @@ public class ChangeEventHandler implements EventHandler {
 
         // Thread are created in FeedRepository Directly
         Entity.getCollectionDAO().changeEventDAO().insert(JsonUtils.pojoToJson(changeEvent));
-
-        // Delete all conversations related to the entity
-        if (changeEvent.getEventType().equals(ENTITY_DELETED)) {
-          deleteAllConversationsRelatedToEntity(getEntity(changeEvent), Entity.getCollectionDAO());
-        }
       }
     } catch (Exception e) {
       LOG.error(
@@ -104,17 +93,6 @@ public class ChangeEventHandler implements EventHandler {
         .withTimestamp(changeEvent.getTimestamp())
         .withChangeDescription(changeEvent.getChangeDescription())
         .withCurrentVersion(changeEvent.getCurrentVersion());
-  }
-
-  private void deleteAllConversationsRelatedToEntity(
-      EntityInterface entityInterface, CollectionDAO collectionDAO) {
-    String entityId = entityInterface.getId().toString();
-    List<String> threadIds = collectionDAO.feedDAO().findByEntityId(entityId);
-    for (String threadId : threadIds) {
-      UUID id = UUID.fromString(threadId);
-      collectionDAO.relationshipDAO().deleteAll(id, Entity.THREAD);
-      collectionDAO.feedDAO().delete(id);
-    }
   }
 
   public void close() {
