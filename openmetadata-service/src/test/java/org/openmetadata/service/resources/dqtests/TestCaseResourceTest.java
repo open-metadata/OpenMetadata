@@ -762,6 +762,10 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
               .withParameterValues(
                   List.of(
                       new TestCaseParameterValue().withValue("20").withName("missingCountValue")));
+      if (i%2 == 0) {
+        // create 3 test cases with USER1_REF as owner
+        create.withOwner(USER2_REF);
+      }
       TestCase testCase = createEntity(create, ADMIN_AUTH_HEADERS);
       testCases.add(testCase);
       TestCaseResult testCaseResult =
@@ -810,6 +814,11 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
     allEntities = listEntitiesFromSearch(queryParams, testCasesNum, 0, ADMIN_AUTH_HEADERS);
     assertEquals(
         testCasesNum, allEntities.getData().size()); // Should return either values matching
+
+    queryParams.clear();
+    queryParams.put("owner", USER2_REF.getName());
+    allEntities = listEntitiesFromSearch(queryParams, testCasesNum, 0, ADMIN_AUTH_HEADERS);
+    assertEquals(3, allEntities.getData().size()); // we have 3 test cases with USER2_REF as owner
   }
 
   public void putTestCaseResult(String fqn, TestCaseResult data, Map<String, String> authHeaders)
