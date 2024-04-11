@@ -65,7 +65,7 @@ export const getAlertDestinationCategoryIcons = (type: string) => {
       Icon = MSTeamsIcon;
 
       break;
-    case 'Generic':
+    case 'Webhook':
     case 'Owners':
       Icon = GenericIcon;
 

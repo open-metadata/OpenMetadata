@@ -236,7 +236,9 @@ const fillGlossaryTermDetails = (term, glossary, isMutually = false) => {
     cy.get('[data-testid="icon-url"]').scrollIntoView().type(term.icon);
   }
   if (term.color) {
-    cy.get('[data-testid="color-input"]').scrollIntoView().type(term.color);
+    cy.get('[data-testid="root/color-color-input"]')
+      .scrollIntoView()
+      .type(term.color);
   }
 };
 const createGlossaryTerm = (term, glossary, status, isMutually = false) => {
@@ -298,7 +300,7 @@ describe('Custom Properties should work properly', { tags: 'Settings' }, () => {
       Object.values(ENTITIES).forEach((entity) => {
         const propertyName = `addcyentity${entity.name}test${uuid()}`;
 
-        it(`Add ${type} custom property for ${entity.name}  Entities`, () => {
+        it(`Add/Update/Delete ${type} custom property for ${entity.name} Entities`, () => {
           interceptURL(
             'GET',
             `/api/v1/metadata/types/name/${entity.name}*`,
@@ -318,9 +320,8 @@ describe('Custom Properties should work properly', { tags: 'Settings' }, () => {
           // Navigating back to custom properties page
           cy.settingClick(entity.entityApiType, true);
           verifyResponseStatusCode('@getEntity', 200);
-        });
 
-        it(`Edit created property for ${entity.name} entity`, () => {
+          // `Edit created property for ${entity.name} entity`
           interceptURL(
             'GET',
             `/api/v1/metadata/types/name/${entity.name}*`,
@@ -332,9 +333,8 @@ describe('Custom Properties should work properly', { tags: 'Settings' }, () => {
 
           verifyResponseStatusCode('@getEntity', 200);
           editCreatedProperty(propertyName);
-        });
 
-        it(`Delete created property for ${entity.name} entity`, () => {
+          // `Delete created property for ${entity.name} entity`
           interceptURL(
             'GET',
             `/api/v1/metadata/types/name/${entity.name}*`,
@@ -355,7 +355,7 @@ describe('Custom Properties should work properly', { tags: 'Settings' }, () => {
     Object.values(ENTITIES).forEach((entity) => {
       const propertyName = `addcyentity${entity.name}test${uuid()}`;
 
-      it(`Add Enum custom property for ${entity.name} Entities`, () => {
+      it(`Add/Update/Delete Enum custom property for ${entity.name} Entities`, () => {
         interceptURL(
           'GET',
           `/api/v1/metadata/types/name/${entity.name}*`,
@@ -378,9 +378,8 @@ describe('Custom Properties should work properly', { tags: 'Settings' }, () => {
         cy.settingClick(entity.entityApiType, true);
 
         verifyResponseStatusCode('@getEntity', 200);
-      });
 
-      it(`Edit created property for ${entity.name} entity`, () => {
+        // `Edit created property for ${entity.name} entity`
         interceptURL(
           'GET',
           `/api/v1/metadata/types/name/${entity.name}*`,
@@ -392,9 +391,8 @@ describe('Custom Properties should work properly', { tags: 'Settings' }, () => {
 
         verifyResponseStatusCode('@getEntity', 200);
         editCreatedProperty(propertyName, 'Enum');
-      });
 
-      it(`Delete created property for ${entity.name} entity`, () => {
+        // `Delete created property for ${entity.name} entity`
         interceptURL(
           'GET',
           `/api/v1/metadata/types/name/${entity.name}*`,
@@ -414,7 +412,7 @@ describe('Custom Properties should work properly', { tags: 'Settings' }, () => {
     Object.values(ENTITIES).forEach((entity) => {
       const propertyName = `addcyentity${entity.name}test${uuid()}`;
 
-      it(`Add Entity Reference custom property for ${entity.name} Entities`, () => {
+      it(`Add/Update/Delete Entity Reference custom property for ${entity.name} Entities`, () => {
         interceptURL(
           'GET',
           `/api/v1/metadata/types/name/${entity.name}*`,
@@ -437,9 +435,8 @@ describe('Custom Properties should work properly', { tags: 'Settings' }, () => {
         cy.settingClick(entity.entityApiType, true);
 
         verifyResponseStatusCode('@getEntity', 200);
-      });
 
-      it(`Edit created property for ${entity.name} entity`, () => {
+        // `Edit created property for ${entity.name} entity`
         interceptURL(
           'GET',
           `/api/v1/metadata/types/name/${entity.name}*`,
@@ -451,9 +448,8 @@ describe('Custom Properties should work properly', { tags: 'Settings' }, () => {
 
         verifyResponseStatusCode('@getEntity', 200);
         editCreatedProperty(propertyName, 'Entity Reference');
-      });
 
-      it(`Delete created property for ${entity.name} entity`, () => {
+        // `Delete created property for ${entity.name} entity`
         interceptURL(
           'GET',
           `/api/v1/metadata/types/name/${entity.name}*`,
@@ -473,7 +469,7 @@ describe('Custom Properties should work properly', { tags: 'Settings' }, () => {
     Object.values(ENTITIES).forEach((entity) => {
       const propertyName = `addcyentity${entity.name}test${uuid()}`;
 
-      it(`Add Entity Reference List custom property for ${entity.name} Entities`, () => {
+      it(`Add/Update/Delete Entity Reference List custom property for ${entity.name} Entities`, () => {
         interceptURL(
           'GET',
           `/api/v1/metadata/types/name/${entity.name}*`,
@@ -496,9 +492,8 @@ describe('Custom Properties should work properly', { tags: 'Settings' }, () => {
         cy.settingClick(entity.entityApiType, true);
 
         verifyResponseStatusCode('@getEntity', 200);
-      });
 
-      it(`Edit created property for ${entity.name} entity`, () => {
+        // `Edit created property for ${entity.name} entity`
         interceptURL(
           'GET',
           `/api/v1/metadata/types/name/${entity.name}*`,
@@ -510,9 +505,8 @@ describe('Custom Properties should work properly', { tags: 'Settings' }, () => {
 
         verifyResponseStatusCode('@getEntity', 200);
         editCreatedProperty(propertyName, 'Entity Reference List');
-      });
 
-      it(`Delete created property for ${entity.name} entity`, () => {
+        // `Delete created property for ${entity.name} entity`
         interceptURL(
           'GET',
           `/api/v1/metadata/types/name/${entity.name}*`,

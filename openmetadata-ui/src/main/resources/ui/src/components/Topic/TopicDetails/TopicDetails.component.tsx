@@ -13,6 +13,7 @@
 
 import { Col, Row, Tabs } from 'antd';
 import { AxiosError } from 'axios';
+import { isEmpty } from 'lodash';
 import { EntityTags } from 'Models';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -313,6 +314,9 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
                   entityName={entityName}
                   entityType={EntityType.TOPIC}
                   hasEditAccess={editDescriptionPermission}
+                  isDescriptionExpanded={isEmpty(
+                    topicDetails.messageSchema?.schemaFields
+                  )}
                   isEdit={isEdit}
                   owner={topicDetails.owner}
                   showActions={!deleted}

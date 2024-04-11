@@ -204,6 +204,9 @@ site_menu:
     color: violet-70
     icon: openmetadata
 
+  - category: How-to Guides / OpenMetadata Features in a Nutshell
+    url: /how-to-guides/features
+
   - category: How-to Guides / Admin Guide
     url: /how-to-guides/admin-guide
   - category: How-to Guides / Admin Guide / How to Ingest Metadata
@@ -228,7 +231,7 @@ site_menu:
     url: /how-to-guides/admin-guide/roles-policies/authorization
   - category: How-to Guides / Admin Guide / Advanced Guide for Roles and Policies / Use Cases - Creating Roles & Policies in OpenMetadata
     url: /how-to-guides/admin-guide/roles-policies/use-cases
-  - category: How-to Guides / Admin Guide / Set up Alerts and Notifications
+  - category: How-to Guides / Admin Guide / Set up Data Observability Alerts and Notifications
     url: /how-to-guides/admin-guide/alerts
   - category: How-to Guides / Admin Guide / CLI Ingestion with Basic Auth
     url: /how-to-guides/admin-guide/cli-ingestion-with-basic-auth
@@ -257,6 +260,8 @@ site_menu:
     url: /how-to-guides/guide-for-data-users/glossary
   - category: How-to Guides / Guide for Data Users / How to Create a Custom Property for a Data Asset
     url: /how-to-guides/guide-for-data-users/custom
+  - category: How-to Guides / Guide for Data Users / Conversation Threads
+    url: /how-to-guides/guide-for-data-users/conversation
   - category: How-to Guides / Guide for Data Users / Overview of Announcements
     url: /how-to-guides/guide-for-data-users/announcements
   - category: How-to Guides / Guide for Data Users / How to Create an Announcement
@@ -283,10 +288,14 @@ site_menu:
     url: /how-to-guides/data-collaboration
   - category: How-to Guides / Data Collaboration / Understanding Activity Feeds
     url: /how-to-guides/data-collaboration/activity-feeds
+  - category: How-to Guides / Data Collaboration / Conversation Threads
+    url: /how-to-guides/data-collaboration/conversation
+  - category: How-to Guides / Data Collaboration / Tasks
+    url: /how-to-guides/data-collaboration/tasks
   - category: How-to Guides / Data Collaboration / How to Request for Description
     url: /how-to-guides/data-collaboration/request-description
   - category: How-to Guides / Data Collaboration / How to Request for Tags
-    url: /how-to-guides/data-collaboration/request-tags
+    url: /how-to-guides/data-collaboration/request-tags 
   - category: How-to Guides / Data Collaboration / Overview of Announcements
     url: /how-to-guides/data-collaboration/announcements
   - category: How-to Guides / Data Collaboration / How to Create an Announcement
@@ -804,10 +813,10 @@ site_menu:
     url: /connectors/ingestion/workflows/lineage/filter-query-set
   - category: Connectors / Ingestion / Workflows / dbt
     url: /connectors/ingestion/workflows/dbt
-  - category: Connectors / Ingestion / Workflows / dbt / Ingest dbt UI
-    url: /connectors/ingestion/workflows/dbt/ingest-dbt-ui
-  - category: Connectors / Ingestion / Workflows / dbt / Ingest dbt CLI
-    url: /connectors/ingestion/workflows/dbt/ingest-dbt-cli
+  - category: Connectors / Ingestion / Workflows / dbt / Configure dbt workflow from OpenMetadata UI
+    url: /connectors/ingestion/workflows/dbt/configure-dbt-workflow-from-ui
+  - category: Connectors / Ingestion / Workflows / dbt / Run Externally
+    url: /connectors/ingestion/workflows/dbt/run-dbt-workflow-externally
   - category: Connectors / Ingestion / Workflows / dbt / Ingest dbt Owner
     url: /connectors/ingestion/workflows/dbt/ingest-dbt-owner
   - category: Connectors / Ingestion / Workflows / dbt / Ingest dbt Descriptions
@@ -856,14 +865,6 @@ site_menu:
     url: /connectors/ingestion/deployment
   - category: Connectors / Ingestion / Best Practices
     url: /connectors/ingestion/best-practices
-
-  - category: Features
-    url: /features
-    color: violet-70
-    icon: openmetadata
-
-  - category: Features / Discovery & Collaboration
-    url: /features/discovery-collaboration 
 
   - category: Main Concepts
     url: /main-concepts
@@ -1855,8 +1856,6 @@ site_menu:
     url: /sdk/python/entities/ml-model
   - category: SDK / Python SDK / Ingestion
     url: /sdk/python/ingestion
-  - category: SDK / Python SDK / Ingestion / dbt
-    url: /sdk/python/ingestion/dbt
   - category: SDK / Python SDK / Ingestion / Lineage
     url: /sdk/python/ingestion/lineage
   - category: SDK / Python SDK / Ingestion / Tags

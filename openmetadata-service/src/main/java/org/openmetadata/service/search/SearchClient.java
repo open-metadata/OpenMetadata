@@ -79,8 +79,7 @@ public interface SearchClient {
       int limit,
       int offset,
       String index,
-      String sortField,
-      String sortType,
+      SearchSortFilter searchSortFilter,
       String q)
       throws IOException;
 
@@ -122,6 +121,11 @@ public interface SearchClient {
 
   void updateChildren(
       String indexName,
+      Pair<String, String> fieldAndValue,
+      Pair<String, Map<String, Object>> updates);
+
+  void updateChildren(
+      List<String> indexName,
       Pair<String, String> fieldAndValue,
       Pair<String, Map<String, Object>> updates);
 

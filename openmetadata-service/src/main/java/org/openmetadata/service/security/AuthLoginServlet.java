@@ -24,6 +24,7 @@ import javax.servlet.http.HttpServletResponse;
 import lombok.extern.slf4j.Slf4j;
 import org.pac4j.core.exception.TechnicalException;
 import org.pac4j.core.util.CommonHelper;
+import org.pac4j.oidc.client.GoogleOidcClient;
 import org.pac4j.oidc.client.OidcClient;
 import org.pac4j.oidc.config.OidcConfiguration;
 import org.pac4j.oidc.credentials.OidcCredentials;
@@ -45,10 +46,13 @@ public class AuthLoginServlet extends HttpServlet {
   @Override
   protected void doGet(HttpServletRequest req, HttpServletResponse resp) {
     try {
+      LOG.debug("Performing Auth Login For User Session: {} ", req.getSession().getId());
       Optional<OidcCredentials> credentials = getUserCredentialsFromSession(req, client);
       if (credentials.isPresent()) {
+        LOG.debug("Auth Tokens Located from Session: {} ", req.getSession().getId());
         sendRedirectWithToken(resp, credentials.get(), serverUrl, claimsOrder);
       } else {
+        LOG.debug("Performing Auth Code Flow to Idp: {} ", req.getSession().getId());
         Map<String, String> params = buildParams();
 
         params.put(OidcConfiguration.REDIRECT_URI, client.getCallbackUrl());
@@ -56,7 +60,11 @@ public class AuthLoginServlet extends HttpServlet {
         addStateAndNonceParameters(req, params);
 
         // This is always used to prompt the user to login
-        params.put(OidcConfiguration.PROMPT, "login");
+        if (client instanceof GoogleOidcClient) {
+          params.put(OidcConfiguration.PROMPT, "consent");
+        } else {
+          params.put(OidcConfiguration.PROMPT, "login");
+        }
         params.put(OidcConfiguration.MAX_AGE, "0");
 
         String location = buildAuthenticationRequestUrl(params);
