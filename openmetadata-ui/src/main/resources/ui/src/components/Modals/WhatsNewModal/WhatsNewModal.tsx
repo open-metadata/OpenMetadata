@@ -16,7 +16,8 @@ import classNames from 'classnames';
 import { CookieStorage } from 'cookie-storage';
 import { t } from 'i18next';
 import React, { FunctionComponent, useEffect, useState } from 'react';
-import { DE_ACTIVE_COLOR, PRIMERY_COLOR } from '../../../constants/constants';
+import { DE_ACTIVE_COLOR } from '../../../constants/constants';
+import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { getReleaseVersionExpiry } from '../../../utils/WhatsNewModal.util';
 import CloseIcon from '../CloseIcon.component';
 import { VersionIndicatorIcon } from '../VersionIndicatorIcon.component';
@@ -33,6 +34,8 @@ const WhatsNewModal: FunctionComponent<WhatsNewModalProps> = ({
   onCancel,
   visible,
 }: WhatsNewModalProps) => {
+  const { theme } = useApplicationStore();
+
   const [activeData, setActiveData] = useState(WHATS_NEW[LATEST_VERSION_ID]);
   const [checkedValue, setCheckedValue] = useState<ToggleType>(
     ToggleType.FEATURES
@@ -90,7 +93,9 @@ const WhatsNewModal: FunctionComponent<WhatsNewModalProps> = ({
                 icon={
                   <VersionIndicatorIcon
                     fill={
-                      activeData.id === d.id ? PRIMERY_COLOR : DE_ACTIVE_COLOR
+                      activeData.id === d.id
+                        ? theme.primaryColor ?? ''
+                        : DE_ACTIVE_COLOR
                     }
                   />
                 }

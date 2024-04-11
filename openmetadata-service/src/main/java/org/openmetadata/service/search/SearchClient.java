@@ -79,8 +79,7 @@ public interface SearchClient {
       int limit,
       int offset,
       String index,
-      String sortField,
-      String sortType,
+      SearchSortFilter searchSortFilter,
       String q)
       throws IOException;
 

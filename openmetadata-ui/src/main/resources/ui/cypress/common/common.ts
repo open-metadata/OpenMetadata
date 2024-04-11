@@ -438,3 +438,10 @@ export const visitDatabaseSchemaDetailsPage = ({
     .contains(databaseSchemaName)
     .click();
 };
+
+export const selectOptionFromDropdown = (option: string) => {
+  cy.get('.ant-select-dropdown')
+    .not('.ant-select-dropdown-hidden')
+    .find(`[title="${option}"]`)
+    .click();
+};

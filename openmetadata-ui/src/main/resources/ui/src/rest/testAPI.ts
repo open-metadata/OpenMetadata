@@ -14,6 +14,7 @@
 import { AxiosResponse } from 'axios';
 import { Operation } from 'fast-json-patch';
 import { PagingResponse, RestoreRequestType } from 'Models';
+import { SORT_ORDER } from '../enums/common.enum';
 import { CreateTestCase } from '../generated/api/tests/createTestCase';
 import { CreateTestSuite } from '../generated/api/tests/createTestSuite';
 import {
@@ -46,6 +47,15 @@ export type ListTestSuitePrams = ListParams & {
   testSuiteType?: TestSuiteType;
   includeEmptyTestSuites?: boolean;
 };
+export type ListTestSuitePramsBySearch = ListTestSuitePrams & {
+  q?: string;
+  sortType?: SORT_ORDER;
+  sortNestedMode?: string[];
+  sortNestedPath?: string;
+  sortField?: string;
+  owner?: string;
+  offset?: number;
+};
 
 export type ListTestCaseParams = ListParams & {
   entityLink?: string;
@@ -54,6 +64,18 @@ export type ListTestCaseParams = ListParams & {
   orderByLastExecutionDate?: boolean;
   testCaseStatus?: TestCaseStatus;
   testCaseType?: TestCaseType;
+};
+export type ListTestCaseParamsBySearch = Omit<
+  ListTestCaseParams,
+  'orderByLastExecutionDate'
+> & {
+  q?: string;
+  sortType?: SORT_ORDER;
+  sortField?: string;
+  startTimestamp?: number;
+  endTimestamp?: number;
+  testPlatforms?: TestPlatform[];
+  offset?: number;
 };
 
 export type ListTestDefinitionsParams = ListParams & {
@@ -83,6 +105,19 @@ const testDefinitionUrl = '/dataQuality/testDefinitions';
 export const getListTestCase = async (params?: ListTestCaseParams) => {
   const response = await APIClient.get<PagingResponse<TestCase[]>>(
     testCaseUrl,
+    {
+      params,
+    }
+  );
+
+  return response.data;
+};
+
+export const getListTestCaseBySearch = async (
+  params?: ListTestCaseParamsBySearch
+) => {
+  const response = await APIClient.get<PagingResponse<TestCase[]>>(
+    `${testCaseUrl}/search/list`,
     {
       params,
     }
@@ -215,6 +250,19 @@ export const getListTestSuites = async (params?: ListTestSuitePrams) => {
   }>(testSuiteUrl, {
     params,
   });
+
+  return response.data;
+};
+
+export const getListTestSuitesBySearch = async (
+  params?: ListTestSuitePramsBySearch
+) => {
+  const response = await APIClient.get<PagingResponse<TestSuite[]>>(
+    `${testSuiteUrl}/search/list`,
+    {
+      params,
+    }
+  );
 
   return response.data;
 };
