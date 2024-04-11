@@ -61,14 +61,10 @@ export type ListTestCaseParams = ListParams & {
   entityLink?: string;
   testSuiteId?: string;
   includeAllTests?: boolean;
-  orderByLastExecutionDate?: boolean;
   testCaseStatus?: TestCaseStatus;
   testCaseType?: TestCaseType;
 };
-export type ListTestCaseParamsBySearch = Omit<
-  ListTestCaseParams,
-  'orderByLastExecutionDate'
-> & {
+export type ListTestCaseParamsBySearch = ListTestCaseParams & {
   q?: string;
   sortType?: SORT_ORDER;
   sortField?: string;

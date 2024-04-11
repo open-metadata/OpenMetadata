@@ -147,7 +147,6 @@ const TestSuiteDetailsPage = () => {
       const response = await getListTestCase({
         fields: 'testCaseResult,testDefinition,testSuite,incidentId',
         testSuiteId,
-        orderByLastExecutionDate: true,
         ...param,
         limit: pageSize,
       });
