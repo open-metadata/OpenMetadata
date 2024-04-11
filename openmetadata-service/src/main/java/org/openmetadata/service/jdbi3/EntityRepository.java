@@ -2948,4 +2948,13 @@ public abstract class EntityRepository<T extends EntityInterface> {
       return aboutEntity;
     }
   }
+
+  // Validate if a given column exists in the table
+  public static void validateColumn(Table table, String columnName) {
+    boolean validColumn =
+        table.getColumns().stream().anyMatch(col -> col.getName().equals(columnName));
+    if (!validColumn) {
+      throw new IllegalArgumentException("Invalid column name " + columnName);
+    }
+  }
 }
