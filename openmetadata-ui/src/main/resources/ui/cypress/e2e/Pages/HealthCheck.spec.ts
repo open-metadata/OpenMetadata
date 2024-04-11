@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { interceptURL, verifyResponseStatusCode } from '../../common/common';
 import { GlobalSettingOptions } from '../../constants/settings.constant';
 
 describe('Health Check for Openmetadata', () => {
@@ -18,7 +19,11 @@ describe('Health Check for Openmetadata', () => {
   });
 
   it('All 5 checks should be successful', () => {
+    interceptURL('GET', '/api/v1/system/status', 'getOMStatus');
+
     cy.settingClick(GlobalSettingOptions.OM_HEALTH);
+
+    verifyResponseStatusCode('@getOMStatus', 200);
 
     cy.get('[data-testid="database"] .success-status').should(
       'have.text',
