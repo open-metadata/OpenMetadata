@@ -171,7 +171,7 @@ describe('Classification Page', { tags: 'Governance' }, () => {
     cy.get(descriptionBox).should('be.visible').type(NEW_TAG.description);
 
     cy.get('[data-testid="icon-url"]').scrollIntoView().type(NEW_TAG.icon);
-    cy.get('[data-testid="root/color-color-input"]')
+    cy.get('[data-testid="color-color-input"]')
       .scrollIntoView()
       .type(NEW_TAG.color);
 
