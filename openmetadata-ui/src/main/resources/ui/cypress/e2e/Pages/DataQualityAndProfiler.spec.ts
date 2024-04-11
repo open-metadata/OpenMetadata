@@ -52,15 +52,18 @@ const OWNER1 = 'Aaron Johnson';
 const OWNER2 = 'Cynthia Meyer';
 const { testCase1, testCase2, filterTable, filterTableTestCases } =
   DATA_QUALITY_TEST_CASE_DATA;
-const goToProfilerTab = () => {
+const goToProfilerTab = (data?: { service: string; entityName: string }) => {
+  const { service, entityName } = data;
   interceptURL(
     'GET',
-    `api/v1/tables/name/${serviceName}.*.${TEAM_ENTITY}?fields=*&include=all`,
+    `api/v1/tables/name/${service ?? serviceName}.*.${
+      entityName ?? TEAM_ENTITY
+    }?fields=*&include=all`,
     'waitForPageLoad'
   );
   visitEntityDetailsPage({
-    term: TEAM_ENTITY,
-    serviceName,
+    term: entityName ?? TEAM_ENTITY,
+    serviceName: service ?? serviceName,
     entity: EntityType.Table,
   });
   verifyResponseStatusCode('@waitForPageLoad', 200);
@@ -785,29 +788,17 @@ describe(
 
     it('Array params value should be visible while editing the test case', () => {
       const tableName = DATABASE_SERVICE.entity.name;
-      interceptURL(
-        'GET',
-        `api/v1/tables/name/${DATABASE_SERVICE.service.name}.*.${tableName}?fields=*&include=all`,
-        'waitForPageLoad'
-      );
+      goToProfilerTab({
+        service: DATABASE_SERVICE.service.name,
+        entityName: tableName,
+      });
+
+      interceptURL('GET', '/api/v1/dataQuality/testCases?fields=*', 'testCase');
       interceptURL(
         'GET',
         '/api/v1/dataQuality/testDefinitions/*',
         'testCaseDefinition'
       );
-      visitEntityDetailsPage({
-        term: tableName,
-        serviceName: DATABASE_SERVICE.service.name,
-        entity: EntityType.Table,
-      });
-      verifyResponseStatusCode('@waitForPageLoad', 200);
-      cy.get('[data-testid="entity-header-display-name"]').should(
-        'contain',
-        tableName
-      );
-
-      cy.get('[data-testid="profiler"]').click();
-      interceptURL('GET', '/api/v1/dataQuality/testCases?fields=*', 'testCase');
       cy.get('[data-testid="profiler-tab-left-panel"]')
         .contains('Data Quality')
         .click();
@@ -830,6 +821,73 @@ describe(
       cy.get('#tableTestForm_params_allowedValues_2_value')
         .scrollIntoView()
         .should('have.value', 'collate');
+    });
+
+    it('Validate patch request for edit test case', () => {
+      const tableName = DATABASE_SERVICE.entity.name;
+      goToProfilerTab({
+        service: DATABASE_SERVICE.service.name,
+        entityName: tableName,
+      });
+
+      interceptURL(
+        'PATCH',
+        '/api/v1/dataQuality/testCases/*',
+        'updateTestCase'
+      );
+      interceptURL('GET', '/api/v1/dataQuality/testCases?fields=*', 'testCase');
+      interceptURL(
+        'GET',
+        '/api/v1/dataQuality/testDefinitions/*',
+        'testCaseDefinition'
+      );
+      cy.get('[data-testid="profiler-tab-left-panel"]')
+        .contains('Data Quality')
+        .click();
+      verifyResponseStatusCode('@testCase', 200);
+      cy.get(`[data-testid="edit-${testCase2.name}"]`).scrollIntoView().click();
+
+      verifyResponseStatusCode('@testCaseDefinition', 200);
+      cy.get('#tableTestForm_displayName').type('Table test case display name');
+      cy.get('.ant-modal-footer').contains('Submit').click();
+      cy.wait('@updateTestCase').then((interception) => {
+        const { body } = interception.request;
+
+        expect(body).to.deep.equal([
+          {
+            op: 'add',
+            path: '/displayName',
+            value: 'Table test case display name',
+          },
+        ]);
+      });
+      cy.get(`[data-testid="edit-${testCase2.name}"]`).scrollIntoView().click();
+      cy.get('#tableTestForm_params_allowedValues_0_value')
+        .scrollIntoView()
+        .clear()
+        .type('test');
+      cy.get('.ant-modal-footer').contains('Submit').click();
+      cy.wait('@updateTestCase').then((interception) => {
+        const { body } = interception.request;
+
+        expect(body).to.deep.equal([
+          {
+            op: 'replace',
+            path: '/parameterValues/0/value',
+            value: '["test","yahoo","collate"]',
+          },
+        ]);
+      });
+      cy.get(`[data-testid="edit-${testCase2.name}"]`).scrollIntoView().click();
+      cy.get(descriptionBox).scrollIntoView().type('Test case description');
+      cy.get('.ant-modal-footer').contains('Submit').click();
+      cy.wait('@updateTestCase').then((interception) => {
+        const { body } = interception.request;
+
+        expect(body).to.deep.equal([
+          { op: 'add', path: '/description', value: 'Test case description' },
+        ]);
+      });
     });
 
     // Skipping As backend throws error for newly created test case, unSkip once backend issue is resolved from @TeddyCr
