@@ -4,33 +4,25 @@ ALTER TABLE test_case ADD COLUMN entityLink VARCHAR(512) GENERATED ALWAYS AS (js
 -- change scheduleType to scheduleTimeline
 UPDATE installed_apps
 SET json = jsonb_set(
-        json::jsonb,
-        '{appSchedule}',
-        jsonb_set(
-            json->'appSchedule',
-            '{scheduleTimeline}',
-            json->'appSchedule'->'scheduleType'
-        ) - 'scheduleType',
+        json::jsonb #- '{appSchedule,scheduleType}',
+        '{appSchedule,scheduleTimeline}',
+        (json #> '{appSchedule,scheduleType}')::jsonb,
         true
-    )
-WHERE json->'appSchedule'->>'scheduleType' IS NOT NULL;
-
+    );
 delete from apps_extension_time_series;
 
 -- Change systemApp to system
 UPDATE installed_apps
 SET json = jsonb_set(
-        json::jsonb,
+        json::jsonb #- '{systemApp}',
         '{system}',
-        json->'systemApp'
-    ) - 'systemApp'
-WHERE json ? 'systemApp';
-
+        (json #> '{systemApp}')::jsonb,
+        true
+    );
 UPDATE apps_marketplace
 SET json = jsonb_set(
-        json::jsonb,
+        json::jsonb #- '{systemApp}',
         '{system}',
-        json->'systemApp'
-    ) - 'systemApp'
-WHERE json ? 'systemApp';
-
+        (json #> '{systemApp}')::jsonb,
+        true
+    );
