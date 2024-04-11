@@ -1,20 +1,19 @@
 source:
   type: redshift
-  serviceName: aws_redshift
+  serviceName: aws_redshift_dbt
   serviceConnection:
     config:
-      hostPort: cluster.name.region.redshift.amazonaws.com:5439
-      username: username
-      password: strong_password
+      hostPort: openmetadata-redshift-cluster.cdnpdclcdk2n.us-east-2.redshift.amazonaws.com:5439
+      username: openmetadata
+      password: 87MxnW1nmQ@@B9m@
       database: dev
       type: Redshift
   sourceConfig:
     config:
       type: DatabaseMetadata
       schemaFilterPattern:
-        excludes:
-        - information_schema.*
-        - '[\w]*event_vw.*'
+        includes:
+        - dbt_test_new
 sink:
   type: metadata-rest
   config: {}

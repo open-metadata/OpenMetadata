@@ -31,6 +31,9 @@
       },
       "default": null
     },
+    "dataModels": {
+      "$ref": "../../entity/data/table.json#/definitions/dataModel"
+    },
     "tableConstraints": {
       "type": "array",
       "items": {
