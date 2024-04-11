@@ -28,7 +28,6 @@ from metadata.profiler.metrics.registry import Metrics
 from metadata.profiler.orm.registry import Dialects
 from metadata.profiler.processor.runner import QueryRunner
 from metadata.utils.logger import profiler_interface_registry_logger
-from metadata.profiler.metrics.registry import Metrics
 
 logger = profiler_interface_registry_logger()
 
