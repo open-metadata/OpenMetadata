@@ -189,6 +189,7 @@ class SQAProfilerInterface(ProfilerInterface, SQAInterfaceMixin):
                 runner=runner,
                 metrics=metrics,
                 conn_config=self.service_connection_config,
+                entity=self.table_entity,
             )
             row = table_metric_computer.compute()
             if row:
