@@ -91,7 +91,7 @@ class BaseTableCustomSQLQueryValidator(BaseTestValidator):
         return self.get_test_case_result_object(
             self.execution_date,
             status,
-            f"Found {result_value} row(s). Test query is expected to return 0 row.",
+            f"Found {result_value} row(s). Test query is expected to return {threshold} row.",
             [TestResultValue(name=RESULT_ROW_COUNT, value=str(result_value))],
         )
 
