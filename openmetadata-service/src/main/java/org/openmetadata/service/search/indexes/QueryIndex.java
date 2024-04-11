@@ -46,6 +46,7 @@ public class QueryIndex implements SearchIndex {
         "fqnParts",
         getFQNParts(
             query.getFullyQualifiedName(), suggest.stream().map(SearchSuggest::getInput).toList()));
+    doc.put("descriptionStatus", getDescriptionStatus(query.getDescription()));
     return doc;
   }
 

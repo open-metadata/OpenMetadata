@@ -41,6 +41,7 @@ public class GlossaryIndex implements SearchIndex {
             : glossary.getVotes().getUpVotes() - glossary.getVotes().getDownVotes());
     doc.put("domain", getEntityWithDisplayName(glossary.getDomain()));
     doc.put("followers", SearchIndexUtils.parseFollowers(glossary.getFollowers()));
+    doc.put("descriptionStatus", getDescriptionStatus(glossary.getDescription()));
     return doc;
   }
 }

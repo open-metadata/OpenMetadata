@@ -27,6 +27,7 @@ public record TestSuiteIndex(TestSuite testSuite) implements SearchIndex {
     doc.put("entityType", Entity.TEST_SUITE);
     doc.put("owner", getEntityWithDisplayName(testSuite.getOwner()));
     doc.put("followers", SearchIndexUtils.parseFollowers(testSuite.getFollowers()));
+    doc.put("descriptionStatus", getDescriptionStatus(testSuite.getDescription()));
     return doc;
   }
 }

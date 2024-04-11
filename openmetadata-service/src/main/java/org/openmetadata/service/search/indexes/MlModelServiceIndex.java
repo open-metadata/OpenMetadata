@@ -28,6 +28,7 @@ public record MlModelServiceIndex(MlModelService mlModelService) implements Sear
     doc.put("entityType", Entity.MLMODEL_SERVICE);
     doc.put("owner", getEntityWithDisplayName(mlModelService.getOwner()));
     doc.put("followers", SearchIndexUtils.parseFollowers(mlModelService.getFollowers()));
+    doc.put("descriptionStatus", getDescriptionStatus(mlModelService.getDescription()));
     return doc;
   }
 }

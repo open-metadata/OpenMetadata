@@ -63,6 +63,7 @@ public class IngestionPipelineIndex implements SearchIndex {
     doc.put("owner", getEntityWithDisplayName(ingestionPipeline.getOwner()));
     doc.put("service", getEntityWithDisplayName(ingestionPipeline.getService()));
     doc.put("domain", getEntityWithDisplayName(ingestionPipeline.getDomain()));
+    doc.put("descriptionStatus", getDescriptionStatus(ingestionPipeline.getDescription()));
     return doc;
   }
 

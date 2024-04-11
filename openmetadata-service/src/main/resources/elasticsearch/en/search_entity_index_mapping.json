@@ -453,10 +453,10 @@
       },
       "votes" : {
         "type": "object"
+      },
+      "descriptionStatus": {
+        "type": "keyword"
       }
-    },
-    "descriptionStatus": {
-      "type": "keyword"
     }
   }
 }

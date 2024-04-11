@@ -35,6 +35,7 @@ public class TeamIndex implements SearchIndex {
         "displayName",
         CommonUtil.nullOrEmpty(team.getDisplayName()) ? team.getName() : team.getDisplayName());
     doc.put("followers", SearchIndexUtils.parseFollowers(team.getFollowers()));
+    doc.put("descriptionStatus", getDescriptionStatus(team.getDescription()));
     return doc;
   }
 }

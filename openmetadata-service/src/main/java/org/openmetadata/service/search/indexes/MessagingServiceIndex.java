@@ -29,6 +29,7 @@ public record MessagingServiceIndex(MessagingService messagingService) implement
     doc.put("owner", getEntityWithDisplayName(messagingService.getOwner()));
     doc.put("domain", getEntityWithDisplayName(messagingService.getDomain()));
     doc.put("followers", SearchIndexUtils.parseFollowers(messagingService.getFollowers()));
+    doc.put("descriptionStatus", getDescriptionStatus(messagingService.getDescription()));
     return doc;
   }
 }

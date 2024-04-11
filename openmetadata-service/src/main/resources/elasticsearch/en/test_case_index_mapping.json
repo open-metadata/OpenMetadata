@@ -398,6 +398,9 @@
       },
       "deleted": {
         "type": "text"
+      },
+      "descriptionStatus": {
+        "type": "keyword"
       }
     }
   }

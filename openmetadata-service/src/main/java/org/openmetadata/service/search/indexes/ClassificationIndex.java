@@ -28,6 +28,7 @@ public record ClassificationIndex(Classification classification) implements Sear
     doc.put("entityType", Entity.CLASSIFICATION);
     doc.put("owner", getEntityWithDisplayName(classification.getOwner()));
     doc.put("followers", SearchIndexUtils.parseFollowers(classification.getFollowers()));
+    doc.put("descriptionStatus", getDescriptionStatus(classification.getDescription()));
     return doc;
   }
 }

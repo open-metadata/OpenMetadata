@@ -33,6 +33,7 @@ public record ChartIndex(Chart chart) implements SearchIndex {
         CommonUtil.nullOrEmpty(chart.getVotes())
             ? 0
             : chart.getVotes().getUpVotes() - chart.getVotes().getDownVotes());
+    doc.put("descriptionStatus", getDescriptionStatus(chart.getDescription()));
     return doc;
   }
 }

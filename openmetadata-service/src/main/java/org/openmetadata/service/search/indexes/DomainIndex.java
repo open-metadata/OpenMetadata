@@ -26,6 +26,7 @@ public record DomainIndex(Domain domain) implements SearchIndex {
     doc.put("suggest", suggest);
     doc.put("entityType", Entity.DOMAIN);
     doc.put("followers", SearchIndexUtils.parseFollowers(domain.getFollowers()));
+    doc.put("descriptionStatus", getDescriptionStatus(domain.getDescription()));
     return doc;
   }
 

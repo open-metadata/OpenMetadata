@@ -28,6 +28,7 @@ public record MetadataServiceIndex(MetadataService metadataService) implements S
     doc.put("entityType", Entity.METADATA_SERVICE);
     doc.put("owner", getEntityWithDisplayName(metadataService.getOwner()));
     doc.put("followers", SearchIndexUtils.parseFollowers(metadataService.getFollowers()));
+    doc.put("descriptionStatus", getDescriptionStatus(metadataService.getDescription()));
     return doc;
   }
 }
