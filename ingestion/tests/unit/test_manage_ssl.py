@@ -4,6 +4,8 @@ Manage SSL test cases
 import os
 import unittest
 
+from pydantic import SecretStr
+
 from metadata.utils.secrets.manage_ssl import SSLManager
 
 
@@ -13,23 +15,23 @@ class SSLManagerTest(unittest.TestCase):
     """
 
     def setUp(self):
-        self.ca = "CA certificate content"
-        self.key = "Private key content"
-        self.cert = "Certificate content"
+        self.ca = SecretStr("CA certificate content")
+        self.key = SecretStr("Private key content")
+        self.cert = SecretStr("Certificate content")
         self.ssl_manager = SSLManager(self.ca, self.key, self.cert)
 
     def tearDown(self):
         self.ssl_manager.cleanup_temp_files()
 
     def test_create_temp_file(self):
-        content = "Test content"
+        content = SecretStr("Test content")
         temp_file = self.ssl_manager.create_temp_file(content)
         self.assertTrue(os.path.exists(temp_file))
         with open(temp_file, "r", encoding="UTF-8") as file:
             file_content = file.read()
-        self.assertEqual(file_content, content)
+        self.assertEqual(file_content, content.get_secret_value())
 
     def test_cleanup_temp_files(self):
-        temp_file = self.ssl_manager.create_temp_file("Test content")
+        temp_file = self.ssl_manager.create_temp_file(SecretStr("Test content"))
         self.ssl_manager.cleanup_temp_files()
         self.assertFalse(os.path.exists(temp_file))
