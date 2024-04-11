@@ -59,12 +59,10 @@ class TestEntityLink(TestCase):
                 ],
             ),
             EntityLinkTest(
-                "<#E::ingestionPipeline::bigquery_gcp.shopify.raw_product_catalog3::columns::comment>",
+                "<#E::ingestionPipeline::fivetran_gcp.shopify.raw_product_catalog3>",
                 [
                     "ingestionPipeline",
-                    "bigquery_gcp.shopify.raw_product_catalog3",
-                    "columns",
-                    "comment",
+                    "fivetran_gcp.shopify.raw_product_catalog3",
                 ],
             ),
             EntityLinkTest(
