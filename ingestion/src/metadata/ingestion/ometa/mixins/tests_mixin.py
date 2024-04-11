@@ -348,7 +348,7 @@ class OMetaTestsMixin:
 
         if resp:
             try:
-                return TableData(**resp["failedRowsSamples"])
+                return TableData(**resp["failedRowsSample"])
             except UnicodeError as err:
                 logger.debug(traceback.format_exc())
                 logger.warning(
