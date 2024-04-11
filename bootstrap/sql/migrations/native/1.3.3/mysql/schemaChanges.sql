@@ -1,1 +1,1 @@
--- Nothing add here
+-- Nothing to add here. 1.3.3 migrations only needed for postgres
