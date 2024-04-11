@@ -21,7 +21,7 @@ SET json = jsonb_set(
         '{system}',
         json->'systemApp'
     ) - 'systemApp'
-WHERE json ? 'systemApp';
+WHERE jsonb_exists(json::jsonb, '{systemApp}') = true;
 
 UPDATE apps_marketplace
 SET json = jsonb_set(
@@ -29,4 +29,4 @@ SET json = jsonb_set(
         '{system}',
         json->'systemApp'
     ) - 'systemApp'
-WHERE json ? 'systemApp';
+WHERE jsonb_exists(json::jsonb, '{systemApp}') = true;
