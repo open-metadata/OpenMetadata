@@ -20,7 +20,7 @@
           "description": "Type of the entity. E.g., 'table', 'chart',...",
           "type": "array",
           "items": {
-              "type": "string"
+            "type": "string"
           }
         },
         "queryFilter": {
@@ -31,6 +31,14 @@
     }
   },
   "properties": {
+    "name": {
+      "description": "Name of the automator.",
+      "$ref": "../../../../type/basic.json#/definitions/entityName"
+    },
+    "description": {
+      "description": "Description for the automator.",
+      "type": "string"
+    },
     "type": {
       "title": "Application Type",
       "description": "Application Type",
@@ -56,6 +64,6 @@
       ]
     }
   },
-  "required": ["type", "resources", "action"],
+  "required": ["name", "type", "resources", "action"],
   "additionalProperties": false
 }
