@@ -29,12 +29,15 @@ import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeMap;
+import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Stream;
 import javax.json.JsonObject;
@@ -51,7 +54,9 @@ import org.apache.http.impl.client.BasicCredentialsProvider;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.DataInsightInterface;
 import org.openmetadata.schema.dataInsight.DataInsightChartResult;
+import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration;
+import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.sdk.exception.SearchException;
 import org.openmetadata.sdk.exception.SearchIndexNotFoundException;
 import org.openmetadata.service.Entity;
@@ -405,6 +410,198 @@ public class OpenSearchClient implements SearchClient {
       throw new SearchIndexNotFoundException(
           String.format("Failed to to find index %s", request.getIndex()));
     }
+  }
+
+  @Override
+  public Response searchWithHierarchy(SearchRequest request) throws IOException {
+    SearchSourceBuilder searchSourceBuilder =
+        getSearchSourceBuilder(
+            request.getIndex(), request.getQuery(), request.getFrom(), request.getSize());
+    if (!nullOrEmpty(request.getQueryFilter()) && !request.getQueryFilter().equals("{}")) {
+      try {
+        XContentParser filterParser =
+            XContentType.JSON
+                .xContent()
+                .createParser(
+                    X_CONTENT_REGISTRY,
+                    LoggingDeprecationHandler.INSTANCE,
+                    request.getQueryFilter());
+        QueryBuilder filter = SearchSourceBuilder.fromXContent(filterParser).query();
+        BoolQueryBuilder newQuery =
+            QueryBuilders.boolQuery().must(searchSourceBuilder.query()).filter(filter);
+        searchSourceBuilder.query(newQuery);
+      } catch (Exception ex) {
+        LOG.warn("Error parsing query_filter from query parameters, ignoring filter", ex);
+      }
+    }
+
+    if (!nullOrEmpty(request.getPostFilter())) {
+      try {
+        XContentParser filterParser =
+            XContentType.JSON
+                .xContent()
+                .createParser(
+                    X_CONTENT_REGISTRY,
+                    LoggingDeprecationHandler.INSTANCE,
+                    request.getPostFilter());
+        QueryBuilder filter = SearchSourceBuilder.fromXContent(filterParser).query();
+        searchSourceBuilder.postFilter(filter);
+      } catch (Exception ex) {
+        LOG.warn("Error parsing post_filter from query parameters, ignoring filter", ex);
+      }
+    }
+
+    if (request.getIndex().equalsIgnoreCase("glossary_term_search_index")) {
+
+      searchSourceBuilder
+          .query(
+              QueryBuilders.boolQuery()
+                  .must(searchSourceBuilder.query())
+                  .must(QueryBuilders.matchQuery("status", "Approved")))
+          .sort(SortBuilders.fieldSort("fullyQualifiedName").order(SortOrder.ASC));
+
+    } else {
+      searchSourceBuilder.query(
+          QueryBuilders.boolQuery()
+              .must(searchSourceBuilder.query())
+              .must(QueryBuilders.termQuery("deleted", request.deleted())));
+    }
+
+    /* for performance reasons OpenSearch doesn't provide accurate hits
+    if we enable trackTotalHits parameter it will try to match every result, count and return hits
+    however in most cases for search results an approximate value is good enough.
+    we are displaying total entity counts in landing page and explore page where we need the total count
+    https://github.com/Open/Opensearch/issues/33028 */
+    searchSourceBuilder.fetchSource(
+        new FetchSourceContext(
+            request.fetchSource(),
+            request.getIncludeSourceFields().toArray(String[]::new),
+            new String[] {}));
+
+    if (request.trackTotalHits()) {
+      searchSourceBuilder.trackTotalHits(true);
+    } else {
+      searchSourceBuilder.trackTotalHitsUpTo(MAX_RESULT_HITS);
+    }
+
+    searchSourceBuilder.timeout(new TimeValue(30, TimeUnit.SECONDS));
+    try {
+      // Parse the hits response and build hierarchical structure
+      os.org.opensearch.action.search.SearchRequest searchRequest =
+          new os.org.opensearch.action.search.SearchRequest(
+                  Entity.getSearchRepository().getIndexOrAliasName(request.getIndex()))
+              .source(searchSourceBuilder);
+      SearchResponse searchResponse = client.search(searchRequest, RequestOptions.DEFAULT);
+
+      // Build the nested hierarchy from flat buckets
+      List response = new ArrayList<>();
+      if (request.getIndex().equalsIgnoreCase("glossary_term_search_index")) {
+        response = buildGlossaryTermNestedHierarchy(searchResponse);
+      }
+      return Response.status(OK).entity(response).build();
+    } catch (OpenSearchStatusException e) {
+      if (e.status() == RestStatus.NOT_FOUND) {
+        throw new SearchIndexNotFoundException(
+            String.format("Failed to to find index %s", request.getIndex()));
+      } else {
+        throw new SearchException(String.format("Search failed due to %s", e.getMessage()));
+      }
+    }
+  }
+
+  public List<GlossaryTerm> buildGlossaryTermNestedHierarchy(SearchResponse searchResponse) {
+    Map<String, GlossaryTerm> termMap = new LinkedHashMap<>(); // termMap represent glossary terms
+    Map<String, GlossaryTerm> rootTerms = new LinkedHashMap<>(); // rootTerms represent glossaries
+
+    for (var hit : searchResponse.getHits().getHits()) {
+      Map<String, Object> hitSourceMap = new HashMap<>(JsonUtils.getMap(hit.getSourceAsMap()));
+
+      GlossaryTerm term = createTermFromMap(hitSourceMap);
+      Map<String, Object> glossaryInfo = (Map<String, Object>) hitSourceMap.get("glossary");
+
+      if (glossaryInfo != null) {
+        GlossaryTerm parentTerm = createTermFromMap(glossaryInfo);
+        rootTerms.putIfAbsent(parentTerm.getFullyQualifiedName(), parentTerm);
+      } else {
+        Map<String, Object> parentInfo = (Map<String, Object>) hitSourceMap.get("parent");
+        GlossaryTerm parentTerm = createTermFromMap(parentInfo);
+        termMap.putIfAbsent(parentTerm.getFullyQualifiedName(), parentTerm);
+      }
+
+      termMap.putIfAbsent(term.getFullyQualifiedName(), term);
+    }
+
+    termMap.putAll(rootTerms);
+
+    termMap
+        .values()
+        .forEach(
+            term -> {
+              String parentFQN = getParentFQN(term.getFullyQualifiedName());
+              String termFQN = term.getFullyQualifiedName();
+
+              if (parentFQN != null && termMap.containsKey(parentFQN)) {
+                GlossaryTerm parentTerm = termMap.get(parentFQN);
+
+                List<EntityReference> children = parentTerm.getChildren();
+                EntityReference termRef = term.getEntityReference();
+                termRef.setChildren(term.getChildren());
+                children.add(termRef);
+                children.sort(Comparator.comparing(EntityReference::getName));
+                parentTerm.setChildren(children);
+              } else {
+                if (rootTerms.containsKey(termFQN)) {
+                  GlossaryTerm rootTerm = rootTerms.get(termFQN);
+                  rootTerm.setChildren(term.getChildren());
+                }
+              }
+            });
+
+    return new ArrayList<>(rootTerms.values());
+  }
+
+  private GlossaryTerm createTermFromMap(Map<String, Object> termInfo) {
+    GlossaryTerm term = new GlossaryTerm();
+    if (termInfo != null) {
+      term.setId(UUID.fromString(termInfo.get("id").toString()));
+      term.setName(termInfo.get("name").toString());
+      term.setDisplayName(
+          termInfo.get("displayName") != null
+              ? termInfo.get("displayName").toString()
+              : termInfo.get("name").toString());
+      term.setFullyQualifiedName(termInfo.get("fullyQualifiedName").toString());
+      term.setChildren(new ArrayList<>());
+    }
+    return term;
+  }
+
+  private String getParentFQN(String fullyQualifiedName) {
+    // Iterates through FQN, ignoring dots within quotes or escaped, to accurately identify
+    // hierarchical levels.
+
+    boolean insideQuotes = false;
+    int lastDotIndex = -1;
+
+    for (int i = 0; i < fullyQualifiedName.length(); i++) {
+      char currentChar = fullyQualifiedName.charAt(i);
+
+      if (currentChar == '\\'
+          && i + 1 < fullyQualifiedName.length()
+          && fullyQualifiedName.charAt(i + 1) == '"') {
+        i++;
+        continue;
+      }
+
+      if (currentChar == '"') {
+        insideQuotes = !insideQuotes;
+      }
+
+      if (!insideQuotes && currentChar == '.') {
+        lastDotIndex = i;
+      }
+    }
+
+    return lastDotIndex > 0 ? fullyQualifiedName.substring(0, lastDotIndex) : null;
   }
 
   @Override

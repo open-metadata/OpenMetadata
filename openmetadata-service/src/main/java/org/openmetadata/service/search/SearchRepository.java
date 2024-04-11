@@ -656,6 +656,10 @@ public class SearchRepository {
     return searchClient.search(request);
   }
 
+  public Response searchWithHierarchy(SearchRequest request) throws IOException {
+    return searchClient.searchWithHierarchy(request);
+  }
+
   public SearchClient.SearchResultListMapper listWithOffset(
       SearchListFilter filter,
       int limit,

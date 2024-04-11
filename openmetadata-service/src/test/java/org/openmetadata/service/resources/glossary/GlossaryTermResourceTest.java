@@ -663,6 +663,52 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
         String.format("user instance for %s not found", reviewerReference.getId()));
   }
 
+  @Test
+  public void test_buildGlossaryTermNestedHierarchy(TestInfo test) throws HttpResponseException {
+
+    CreateGlossaryTerm create =
+        createRequest("parentGlossaryTerm", "", "", null)
+            .withReviewers(null)
+            .withSynonyms(null)
+            .withStyle(null);
+    GlossaryTerm parentGlossaryTerm = createEntity(create, ADMIN_AUTH_HEADERS);
+
+    // Create glossary childGlossaryTerm under parentGlossaryTerm in glossary g1
+    create =
+        createRequest("childGlossaryTerm", "", "", null)
+            .withSynonyms(null)
+            .withReviewers(null)
+            .withSynonyms(null)
+            .withParent(parentGlossaryTerm.getFullyQualifiedName());
+    GlossaryTerm childGlossaryTerm = createEntity(create, ADMIN_AUTH_HEADERS);
+    String response = getResponseFormSearchWithHierarchy("glossary_term_search_index");
+    List<GlossaryTerm> glossaries = JsonUtils.readObjects(response, GlossaryTerm.class);
+    boolean isChild =
+        glossaries.stream()
+            .filter(glossary -> "g1".equals(glossary.getName())) // Find glossary with name "g1"
+            .findFirst()
+            .map(
+                g1Glossary ->
+                    g1Glossary.getChildren().stream() // Work with this glossary's children
+                        .filter(
+                            glossary ->
+                                "parentGlossaryTerm"
+                                    .equals(glossary.getName())) // Find the specific parent term
+                        .flatMap(
+                            glossary ->
+                                glossary
+                                    .getChildren()
+                                    .stream()) // Flatten the stream of children terms
+                        .anyMatch(
+                            term ->
+                                "childGlossaryTerm"
+                                    .equals(
+                                        term.getName()))) // Check if the specific child term exists
+            .orElse(false); // Return false if no glossary named "g1" was found
+
+    assertTrue(isChild, "childGlossaryTerm should be a child of parentGlossaryTerm");
+  }
+
   public GlossaryTerm createTerm(Glossary glossary, GlossaryTerm parent, String termName)
       throws IOException {
     return createTerm(glossary, parent, termName, glossary.getReviewers());
