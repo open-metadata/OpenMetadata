@@ -159,11 +159,12 @@ public class PIIMasker {
                   if (entityFQNToTable.containsKey(testCaseLink.getEntityFQN())) {
                     table = entityFQNToTable.get(testCaseLink.getEntityFQN());
                   } else {
-                    table = Entity.getEntityByName(
-                          Entity.TABLE,
-                          testCaseLink.getEntityFQN(),
-                          "owner,tags,columns",
-                          Include.NON_DELETED);
+                    table =
+                        Entity.getEntityByName(
+                            Entity.TABLE,
+                            testCaseLink.getEntityFQN(),
+                            "owner,tags,columns",
+                            Include.NON_DELETED);
                     entityFQNToTable.put(testCaseLink.getEntityFQN(), table);
                   }
 
