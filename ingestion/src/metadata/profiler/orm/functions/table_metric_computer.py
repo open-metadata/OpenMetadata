@@ -28,12 +28,13 @@ from metadata.profiler.metrics.registry import Metrics
 from metadata.profiler.orm.registry import Dialects
 from metadata.profiler.processor.runner import QueryRunner
 from metadata.utils.logger import profiler_interface_registry_logger
+from metadata.profiler.metrics.registry import Metrics
 
 logger = profiler_interface_registry_logger()
 
 COLUMN_COUNT = "columnCount"
 COLUMN_NAMES = "columnNames"
-ROW_COUNT = "rowCount"
+ROW_COUNT = Metrics.ROW_COUNT().name()
 SIZE_IN_BYTES = "sizeInBytes"
 CREATE_DATETIME = "createDateTime"
 
@@ -371,6 +372,11 @@ class MySQLTableMetricComputer(BaseTableMetricComputer):
         ):
             # if we don't have any row count, fallback to the base logic
             return super().compute()
+        res = res._asdict()
+        # innodb row count is an estimate we need to patch the row count with COUNT(*)
+        # https://dev.mysql.com/doc/refman/8.3/en/information-schema-innodb-tablestats-table.html
+        row_count = self.runner.select_first_from_table(Metrics.ROW_COUNT().fn())
+        res.update({ROW_COUNT: row_count.rowCount})
         return res
 
 
