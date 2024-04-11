@@ -23,7 +23,6 @@ from metadata.ingestion.models.table_metadata import ColumnTag
 
 class OMetaGlossariesAndTiersData(BaseModel):
     entity: Optional[Type[Entity]]
-    source: Optional[str]
     tag_labels: Optional[List[TagLabel]]
     table: Optional[Table]
     column_tags: Optional[List[ColumnTag]]
