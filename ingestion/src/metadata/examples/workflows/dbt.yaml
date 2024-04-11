@@ -1,6 +1,6 @@
 source:
   type: dbt
-  serviceName: aws_redshift_dbt
+  serviceName: service_name
   sourceConfig:
     config:
       type: DBT
@@ -15,17 +15,10 @@ source:
         dbtCloudUrl: https://cloud.getdbt.com
       # # For Local
       # dbtConfigSource:
-      #   dbtConfigType: cloud
-      #   dbtCloudAuthToken: token
-      #   dbtCloudAccountId: ID
-      #   dbtCloudJobId: JOB ID
-      #   dbtCloudUrl: https://cloud.getdbt.com
-      # # For Local
-      dbtConfigSource:
-        dbtConfigType: local
-        dbtCatalogFilePath: /Users/suman/Desktop/Projects/Playground/dbt_demo/jaffle_shop/target/catalog.json
-        dbtManifestFilePath: /Users/suman/Desktop/Projects/Playground/dbt_demo/jaffle_shop/target/manifest.json
-        dbtRunResultsFilePath: /Users/suman/Desktop/Projects/Playground/dbt_demo/jaffle_shop/target/run_results.json
+      #   dbtConfigType: local
+      #   dbtCatalogFilePath: path-to-catalog.json
+      #   dbtManifestFilePath: path-to-manifest.json
+      #   dbtRunResultsFilePath: path-to-run_results.json
       # # For HTTP
       # dbtConfigSource:
       #   dbtConfigType: http

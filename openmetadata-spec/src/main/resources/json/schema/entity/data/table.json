@@ -814,22 +814,18 @@
       "additionalProperties": false
     },
     "modelType": {
-      "$comment": "Currently only DBT and DDL model type is supported",
+      "$comment": "Currently only DBT model type is supported",
       "enum": [
-        "DBT",
-        "DDL"
+        "DBT"
       ],
       "javaEnums": [
         {
           "name": "DBT"
-        },
-        {
-          "name": "DDL"
         }
       ]
     },
     "dataModel": {
-      "description": "This captures information about how the table is modeled. Currently only DBT and DDL model is supported.",
+      "description": "This captures information about how the table is modeled. Currently only DBT model is supported.",
       "type": "object",
       "javaType": "org.openmetadata.schema.type.DataModel",
       "properties": {

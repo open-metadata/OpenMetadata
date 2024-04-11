@@ -1328,10 +1328,6 @@
               "updatedBy": "anonymous",
               "href": "http://localhost:8585/api/v1/tables/9c96042f-311a-4826-b5b2-8658914e2ee8",
               "tableType": "Regular",
-              "dataModels": {
-                "modelType" : "DDL",
-                "sql": "CREATE TABLE dim_customer(customer_id NUMERIC PRIMARY KEY, shop_id NUMERIC, average_order_size NUMERIC)"
-              },
               "columns": [
                   {
                       "name": "customer_id",

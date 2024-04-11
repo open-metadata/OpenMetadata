@@ -7,7 +7,7 @@ source:
       type: CustomDatabase
       sourcePythonClass: metadata.ingestion.source.database.sample_data.SampleDataSource
       connectionOptions:
-        sampleDataFolder: "./ingestion/examples/sample_data"
+        sampleDataFolder: "./examples/sample_data"
   sourceConfig: {}
 sink:
   type: metadata-rest
