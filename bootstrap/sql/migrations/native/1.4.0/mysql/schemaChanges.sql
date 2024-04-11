@@ -67,3 +67,8 @@ ALTER TABLE user_entity ADD INDEX index_user_entity_deleted(nameHash, deleted);
 ALTER TABLE apps_extension_time_series ADD INDEX apps_extension_time_series_index(appId);
 ALTER TABLE suggestions ADD INDEX index_suggestions_type(suggestionType);
 ALTER TABLE suggestions ADD INDEX index_suggestions_status(status);
+
+-- Migrate 'QlikSenseDataModel' & 'QlikCloudDataModel' into single entity 'QlikDataModel'
+UPDATE dashboard_data_model_entity
+SET json = JSON_SET(json, '$.dataModelType', 'QlikDataModel')
+WHERE JSON_EXTRACT(json, '$.dataModelType') in ('QlikSenseDataModel', 'QlikCloudDataModel');
