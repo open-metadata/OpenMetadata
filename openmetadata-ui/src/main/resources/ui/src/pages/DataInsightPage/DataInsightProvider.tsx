@@ -21,7 +21,6 @@ import React, {
 } from 'react';
 import Loader from '../../components/common/Loader/Loader';
 import { SearchDropdownOption } from '../../components/SearchDropdown/SearchDropdown.interface';
-import { autocomplete } from '../../constants/AdvancedSearch.constants';
 import { WILD_CARD_CHAR } from '../../constants/char.constants';
 import { PAGE_SIZE_BASE } from '../../constants/constants';
 import { INITIAL_CHART_FILTER } from '../../constants/DataInsight.constants';
@@ -37,6 +36,7 @@ import { ChartFilter } from '../../interface/data-insight.interface';
 import { getListKPIs } from '../../rest/KpiAPI';
 import { searchQuery } from '../../rest/searchAPI';
 import { getTags } from '../../rest/tagAPI';
+import advancedSearchClassBase from '../../utils/AdvancedSearchClassBase';
 import { getEntityName } from '../../utils/EntityUtils';
 import {
   DataInsightContextType,
@@ -48,7 +48,7 @@ import {
 export const DataInsightContext = createContext<DataInsightContextType>(
   {} as DataInsightContextType
 );
-const fetchTeamSuggestions = autocomplete({
+const fetchTeamSuggestions = advancedSearchClassBase.autocomplete({
   searchIndex: SearchIndex.TEAM,
   entityField: EntityFields.OWNER,
 });
