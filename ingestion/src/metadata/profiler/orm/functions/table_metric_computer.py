@@ -22,11 +22,12 @@ from sqlalchemy import Column, MetaData, Table, func, inspect, literal, select
 from sqlalchemy.sql.expression import ColumnOperators, and_, cte
 from sqlalchemy.types import String
 
+from metadata.generated.schema.entity.data.table import Table as OMTable
+from metadata.generated.schema.entity.data.table import TableType
 from metadata.profiler.metrics.registry import Metrics
 from metadata.profiler.orm.registry import Dialects
 from metadata.profiler.processor.runner import QueryRunner
 from metadata.utils.logger import profiler_interface_registry_logger
-from metadata.generated.schema.entity.data.table import Table as OMTable, TableType
 
 logger = profiler_interface_registry_logger()
 
@@ -44,7 +45,9 @@ ERROR_MSG = (
 class AbstractTableMetricComputer(ABC):
     """Base table computer"""
 
-    def __init__(self, runner: QueryRunner, metrics: List[Metrics], conn_config, entity: OMTable):
+    def __init__(
+        self, runner: QueryRunner, metrics: List[Metrics], conn_config, entity: OMTable
+    ):
         """Instantiate base table computer"""
         self._runner = runner
         self._metrics = metrics
@@ -142,6 +145,7 @@ class AbstractTableMetricComputer(ABC):
 
 class BaseTableMetricComputer(AbstractTableMetricComputer):
     """Base table computer"""
+
     def compute(self):
         """Default compute behavior for table metrics"""
         return self.runner.select_first_from_table(
@@ -227,7 +231,9 @@ class OracleTableMetricComputer(BaseTableMetricComputer):
         )
 
         res = self.runner._session.execute(query).first()
-        if res.rowCount is None or (res.rowCount == 0 and self._entity.tableType == TableType.View):
+        if res.rowCount is None or (
+            res.rowCount == 0 and self._entity.tableType == TableType.View
+        ):
             # if we don't have any row count, fallback to the base logic
             return super().compute()
         return res
@@ -254,7 +260,9 @@ class ClickHouseTableMetricComputer(BaseTableMetricComputer):
         )
 
         res = self.runner._session.execute(query).first()
-        if res.rowCount is None or (res.rowCount == 0 and self._entity.tableType == TableType.View):
+        if res.rowCount is None or (
+            res.rowCount == 0 and self._entity.tableType == TableType.View
+        ):
             # if we don't have any row count, fallback to the base logic
             return super().compute()
         return res
@@ -298,7 +306,9 @@ class BigQueryTableMetricComputer(BaseTableMetricComputer):
         )
 
         res = self.runner._session.execute(query).first()
-        if res.rowCount is None or (res.rowCount == 0 and self._entity.tableType == TableType.View):
+        if res.rowCount is None or (
+            res.rowCount == 0 and self._entity.tableType == TableType.View
+        ):
             # if we don't have any row count, fallback to the base logic
             return super().compute()
         return res
@@ -327,7 +337,9 @@ class BigQueryTableMetricComputer(BaseTableMetricComputer):
             where_clause,
         )
         res = self.runner._session.execute(query).first()
-        if res.rowCount is None or (res.rowCount == 0 and self._entity.tableType == TableType.View):
+        if res.rowCount is None or (
+            res.rowCount == 0 and self._entity.tableType == TableType.View
+        ):
             # if we don't have any row count, fallback to the base logic
             return super().compute()
         return res
@@ -354,7 +366,9 @@ class MySQLTableMetricComputer(BaseTableMetricComputer):
         )
 
         res = self.runner._session.execute(query).first()
-        if res.rowCount is None or (res.rowCount == 0 and self._entity.tableType == TableType.View):
+        if res.rowCount is None or (
+            res.rowCount == 0 and self._entity.tableType == TableType.View
+        ):
             # if we don't have any row count, fallback to the base logic
             return super().compute()
         return res
@@ -381,7 +395,9 @@ class RedshiftTableMetricComputer(BaseTableMetricComputer):
             columns, self._build_table("svv_table_info", "pg_catalog"), where_clause
         )
         res = self.runner._session.execute(query).first()
-        if res.rowCount is None or (res.rowCount == 0 and self._entity.tableType == TableType.View):
+        if res.rowCount is None or (
+            res.rowCount == 0 and self._entity.tableType == TableType.View
+        ):
             # if we don't have any row count, fallback to the base logic
             return super().compute()
         return res
@@ -391,7 +407,12 @@ class TableMetricComputer:
     """Table Metric Construct"""
 
     def __init__(
-        self, dialect: str, runner: QueryRunner, metrics: List[Metrics], conn_config, entity: OMTable
+        self,
+        dialect: str,
+        runner: QueryRunner,
+        metrics: List[Metrics],
+        conn_config,
+        entity: OMTable,
     ):
         """Instantiate table metric computer with a dialect computer"""
         self._entity = entity
