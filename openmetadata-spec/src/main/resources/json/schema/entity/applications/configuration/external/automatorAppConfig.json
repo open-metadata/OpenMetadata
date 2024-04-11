@@ -18,7 +18,10 @@
       "properties": {
         "type": {
           "description": "Type of the entity. E.g., 'table', 'chart',...",
-          "type": "array"
+          "type": "array",
+          "items": {
+              "type": "string"
+          }
         },
         "queryFilter": {
           "description": "Query filter to be passed to ES. E.g., `{\"query\":{\"bool\":{\"must\":[{\"bool\":{\"should\":[{\"term\":{\"domain.displayName.keyword\":\"DG Anim\"}}]}}]}}}`. This is the same payload as in the Explore page.",
