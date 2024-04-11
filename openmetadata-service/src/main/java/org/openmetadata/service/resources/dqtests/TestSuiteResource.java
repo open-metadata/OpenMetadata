@@ -1,5 +1,6 @@
 package org.openmetadata.service.resources.dqtests;
 
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.schema.type.Include.ALL;
 
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
@@ -35,6 +36,7 @@ import javax.ws.rs.core.Response;
 import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
 import lombok.extern.slf4j.Slf4j;
+import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.data.RestoreEntity;
 import org.openmetadata.schema.api.tests.CreateTestSuite;
 import org.openmetadata.schema.entity.data.Table;
@@ -49,6 +51,8 @@ import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.TestSuiteRepository;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
+import org.openmetadata.service.search.SearchListFilter;
+import org.openmetadata.service.search.SearchSortFilter;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
@@ -165,6 +169,141 @@ public class TestSuiteResource extends EntityResource<TestSuite, TestSuiteReposi
         limitParam,
         before,
         after,
+        operationContext,
+        resourceContext);
+  }
+
+  @GET
+  @Path("/search/list")
+  @Operation(
+      operationId = "listTestSuiteFromSearchService",
+      summary = "List test suite using search service",
+      description =
+          "Get a list of test suite using the search service. Use `fields` "
+              + "parameter to get only necessary fields. Use offset/limit pagination to limit the number "
+              + "entries in the list using `limit` and `offset` query params."
+              + "Use the `tests` field to get the test cases linked to the test suite "
+              + "and/or use the `summary` field to get a summary of test case executions.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "List of test suites",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = TestSuiteList.class)))
+      })
+  public ResultList<TestSuite> listFromSearch(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(
+              description = "Fields requested in the returned resource",
+              schema = @Schema(type = "string", example = FIELDS))
+          @QueryParam("fields")
+          String fieldsParam,
+      @Parameter(description = "Limit the number test suite returned. (1 to 1000000, default = 10)")
+          @DefaultValue("10")
+          @QueryParam("limit")
+          @Min(0)
+          @Max(1000000)
+          int limit,
+      @Parameter(
+              description = "Returns list of test suite after this offset (default = 0)",
+              schema = @Schema(type = "string"))
+          @QueryParam("offset")
+          @DefaultValue("0")
+          @Min(0)
+          int offset,
+      @Parameter(
+              description =
+                  "Returns executable or logical test suites. If omitted, returns all test suites.",
+              schema = @Schema(type = "string", example = "executable"))
+          @QueryParam("testSuiteType")
+          String testSuiteType,
+      @Parameter(
+              description = "Include empty test suite in the response.",
+              schema = @Schema(type = "boolean", example = "true"))
+          @QueryParam("includeEmptyTestSuites")
+          @DefaultValue("true")
+          Boolean includeEmptyTestSuites,
+      @Parameter(
+              description = "Filter a test suite by fully qualified name.",
+              schema = @Schema(type = "string"))
+          @QueryParam("fullyQualifiedName")
+          String fullyQualifiedName,
+      @Parameter(description = "Filter test suites by owner.", schema = @Schema(type = "string"))
+          @QueryParam("owner")
+          String owner,
+      @Parameter(
+              description = "Include all, deleted, or non-deleted entities.",
+              schema = @Schema(implementation = Include.class))
+          @QueryParam("include")
+          @DefaultValue("non-deleted")
+          Include include,
+      @Parameter(
+              description = "Field used to sort the test cases listing",
+              schema = @Schema(type = "string"))
+          @QueryParam("sortField")
+          String sortField,
+      @Parameter(
+              description =
+                  "Set this field if your mapping is nested and you want to sort on a nested field",
+              schema = @Schema(type = "string"))
+          @QueryParam("sortNestedPath")
+          String sortNestedPath,
+      @Parameter(
+              description =
+                  "Set this field if your mapping is nested and you want to sort on a nested field",
+              schema = @Schema(type = "string", example = "min,max,avg,sum,median"))
+          @QueryParam("sortNestedMode")
+          String sortNestedMode,
+      @Parameter(
+              description = "Sort type",
+              schema =
+                  @Schema(
+                      type = "string",
+                      allowableValues = {"asc", "desc"}))
+          @QueryParam("sortType")
+          @DefaultValue("desc")
+          String sortType,
+      @Parameter(
+              description = "search query term to use in list",
+              schema = @Schema(type = "string"))
+          @QueryParam("q")
+          String q)
+      throws IOException {
+    SearchSortFilter searchSortFilter =
+        new SearchSortFilter(sortField, sortType, sortNestedPath, sortNestedMode);
+    SearchListFilter searchListFilter = new SearchListFilter(include);
+    searchListFilter.addQueryParam("testSuiteType", testSuiteType);
+    searchListFilter.addQueryParam("includeEmptyTestSuites", includeEmptyTestSuites);
+    searchListFilter.addQueryParam("fullyQualifiedName", fullyQualifiedName);
+    if (!nullOrEmpty(owner)) {
+      EntityInterface entity;
+      try {
+        entity = Entity.getEntityByName(Entity.USER, owner, "", ALL);
+      } catch (Exception e) {
+        // If the owner is not a user, then we'll try to geta team
+        entity = Entity.getEntityByName(Entity.TEAM, owner, "", ALL);
+      }
+      searchListFilter.addQueryParam("owner", entity.getId().toString());
+    }
+
+    EntityUtil.Fields fields = getFields(fieldsParam);
+
+    ResourceContext<?> resourceContext = getResourceContext();
+    OperationContext operationContext =
+        new OperationContext(Entity.TABLE, MetadataOperation.VIEW_TESTS);
+
+    return super.listInternalFromSearch(
+        uriInfo,
+        securityContext,
+        fields,
+        searchListFilter,
+        limit,
+        offset,
+        searchSortFilter,
+        q,
         operationContext,
         resourceContext);
   }
@@ -322,8 +461,7 @@ public class TestSuiteResource extends EntityResource<TestSuite, TestSuiteReposi
               description = "get summary for a specific test suite",
               schema = @Schema(type = "String", format = "uuid"))
           @QueryParam("testSuiteId")
-          UUID testSuiteId)
-      throws IOException {
+          UUID testSuiteId) {
     ResourceContext<?> resourceContext = getResourceContext();
     OperationContext operationContext =
         new OperationContext(Entity.TABLE, MetadataOperation.VIEW_TESTS);
