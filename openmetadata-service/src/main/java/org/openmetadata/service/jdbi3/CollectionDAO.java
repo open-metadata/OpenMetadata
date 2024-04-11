@@ -3560,14 +3560,6 @@ public interface CollectionDAO {
       return "fqnHash";
     }
 
-    default List<TestCaseRecord> listBeforeTsOrder(ListFilter filter, int limit, Integer before) {
-      return listBeforeTsOrdered(getTableName(), filter.getCondition(), limit, before);
-    }
-
-    default List<TestCaseRecord> listAfterTsOrder(ListFilter filter, int limit, Integer after) {
-      return listAfterTsOrdered(getTableName(), filter.getCondition(), limit, after);
-    }
-
     default int countOfTestCases(List<UUID> testCaseIds) {
       return countOfTestCases(getTableName(), testCaseIds.stream().map(Object::toString).toList());
     }
@@ -3575,52 +3567,6 @@ public interface CollectionDAO {
     @SqlQuery("SELECT count(*) FROM <table> WHERE id IN (<testCaseIds>)")
     int countOfTestCases(
         @Define("table") String table, @BindList("testCaseIds") List<String> testCaseIds);
-
-    @ConnectionAwareSqlQuery(
-        value =
-            "SELECT * FROM (SELECT json, ranked FROM "
-                + "(SELECT id, json, deleted, ROW_NUMBER() OVER(ORDER BY (json ->> '$.testCaseResult.timestamp') DESC) AS ranked FROM <table> <cond>) executionTimeSorted "
-                + "WHERE ranked < :before "
-                + "ORDER BY ranked DESC "
-                + "LIMIT :limit) rankedBefore ORDER BY ranked",
-        connectionType = MYSQL)
-    @ConnectionAwareSqlQuery(
-        value =
-            "SELECT * FROM (SELECT json, ranked FROM "
-                + "(SELECT id, json, deleted, ROW_NUMBER() OVER(ORDER BY (json -> 'testCaseResult'->>'timestamp') DESC NULLS LAST) AS ranked FROM <table> <cond>) executionTimeSorted "
-                + "WHERE ranked < :before "
-                + "ORDER BY ranked DESC "
-                + "LIMIT :limit) rankedBefore ORDER BY ranked",
-        connectionType = POSTGRES)
-    @RegisterRowMapper(TestCaseRecordMapper.class)
-    List<TestCaseRecord> listBeforeTsOrdered(
-        @Define("table") String table,
-        @Define("cond") String cond,
-        @Bind("limit") int limit,
-        @Bind("before") int before);
-
-    @ConnectionAwareSqlQuery(
-        value =
-            "SELECT json, ranked FROM "
-                + "(SELECT id, json, deleted, ROW_NUMBER() OVER(ORDER BY (json ->> '$.testCaseResult.timestamp') DESC ) AS ranked FROM <table> "
-                + "<cond>) executionTimeSorted "
-                + "WHERE ranked > :after "
-                + "LIMIT :limit",
-        connectionType = MYSQL)
-    @ConnectionAwareSqlQuery(
-        value =
-            "SELECT json, ranked FROM "
-                + "(SELECT id, json, deleted, ROW_NUMBER() OVER(ORDER BY (json->'testCaseResult'->>'timestamp') DESC NULLS LAST) AS ranked FROM <table> "
-                + "<cond>) executionTimeSorted "
-                + "WHERE ranked > :after "
-                + "LIMIT :limit",
-        connectionType = POSTGRES)
-    @RegisterRowMapper(TestCaseRecordMapper.class)
-    List<TestCaseRecord> listAfterTsOrdered(
-        @Define("table") String table,
-        @Define("cond") String cond,
-        @Bind("limit") int limit,
-        @Bind("after") int after);
 
     class TestCaseRecord {
       @Getter String json;
