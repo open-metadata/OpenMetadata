@@ -18,7 +18,7 @@
       "properties": {
         "type": {
           "description": "Type of the entity. E.g., 'table', 'chart',...",
-          "type": "string"
+          "type": "array"
         },
         "queryFilter": {
           "description": "Query filter to be passed to ES. E.g., `{\"query\":{\"bool\":{\"must\":[{\"bool\":{\"should\":[{\"term\":{\"domain.displayName.keyword\":\"DG Anim\"}}]}}]}}}`. This is the same payload as in the Explore page.",
@@ -36,10 +36,7 @@
     },
     "resources": {
       "description": "Entities selected to run the automation.",
-      "type": "array",
-      "items": {
-        "$ref": "#/definitions/resource"
-      }
+      "$ref": "#/definitions/resource"
     },
     "action": {
       "description": "Action to take on those entities. E.g., propagate description through lineage, auto tagging, etc.",
