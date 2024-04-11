@@ -202,7 +202,13 @@
       "owner": {
         "properties": {
           "id": {
-            "type": "text"
+            "type": "keyword",
+            "fields": {
+              "keyword": {
+                "type": "keyword",
+                "ignore_above": 36
+              }
+            }
           },
           "type": {
             "type": "keyword"
