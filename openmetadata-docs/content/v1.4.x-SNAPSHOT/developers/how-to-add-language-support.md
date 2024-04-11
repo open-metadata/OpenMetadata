@@ -52,3 +52,5 @@ We have documentation for some entities on the left sidebar, and we currently su
 Documentation for entities resides in the `openmetadata-ui/src/main/resources/ui/src/public/locales` directory. Our primary language is `en-US`, so you can refer to it and create the same hierarchy for your language.
 
 To add documentation in the `zh-CN` language, you can simply copy the `en-US` directory and rename it to `zh-CN`. Then, update the content of the files according to the `zh-CN` language.
+
+To find the supported language codes, you can refer to this [page](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/src/utils/i18next/i18nextUtil.ts#L27-38).
