@@ -69,6 +69,7 @@ public class AuthCallbackServlet extends HttpServlet {
   @Override
   protected void doGet(HttpServletRequest req, HttpServletResponse resp) {
     try {
+      LOG.debug("Performing Auth Callback For User Session: {} ", req.getSession().getId());
       String computedCallbackUrl = client.getCallbackUrl();
       Map<String, List<String>> parameters = retrieveParameters(req);
       AuthenticationResponse response =
@@ -97,6 +98,12 @@ public class AuthCallbackServlet extends HttpServlet {
 
       // Validations
       validateAndSendTokenRequest(req, credentials, computedCallbackUrl);
+
+      // Log Error if the Refresh Token is null
+      if (credentials.getRefreshToken() == null) {
+        LOG.error("Refresh token is null for user session: {}", req.getSession().getId());
+      }
+
       validateNonceIfRequired(req, credentials.getIdToken().getJWTClaimsSet());
 
       // Put Credentials in Session
@@ -186,6 +193,7 @@ public class AuthCallbackServlet extends HttpServlet {
       HttpServletRequest req, OidcCredentials oidcCredentials, String computedCallbackUrl)
       throws IOException, ParseException, URISyntaxException {
     if (oidcCredentials.getCode() != null) {
+      LOG.debug("Initiating Token Request for User Session: {} ", req.getSession().getId());
       CodeVerifier verifier =
           (CodeVerifier)
               req.getSession().getAttribute(client.getCodeVerifierSessionAttributeName());

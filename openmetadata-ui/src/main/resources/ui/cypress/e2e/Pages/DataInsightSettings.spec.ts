@@ -12,6 +12,7 @@
  */
 
 import { interceptURL, verifyResponseStatusCode } from '../../common/common';
+import { BASE_URL } from '../../constants/constants';
 import { GlobalSettingOptions } from '../../constants/settings.constant';
 
 describe(
@@ -120,8 +121,15 @@ describe(
       verifyResponseStatusCode('@deploy', 200);
       cy.reload();
       verifyResponseStatusCode('@getDataInsightDetails', 200);
+
+      // Adding a manual wait to allow some time between deploying the pipeline and triggering it
+      // eslint-disable-next-line cypress/no-unnecessary-waiting
+      cy.wait(1000);
       cy.get('[data-testid="run-now-button"]').click();
       verifyResponseStatusCode('@triggerPipeline', 200);
+
+      cy.get('[data-testid="logs"]').click();
+      cy.url().should('eq', `${BASE_URL}/apps/DataInsightsApplication/logs`);
     });
   }
 );

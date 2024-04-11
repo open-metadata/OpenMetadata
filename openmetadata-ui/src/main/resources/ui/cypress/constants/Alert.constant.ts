@@ -18,6 +18,34 @@ import {
   USER_DETAILS,
 } from './EntityConstant';
 
+interface ObservabilityCreationDetails {
+  [source: string]: {
+    sourceDisplayName: string;
+    filters: Array<{
+      name: string;
+      inputSelector: string;
+      inputValue: string;
+      exclude?: boolean;
+    }>;
+    actions: Array<{
+      name: string;
+      exclude?: boolean;
+      inputs?: Array<{
+        inputSelector: string;
+        inputValue: string;
+        waitForAPI?: boolean;
+      }>;
+    }>;
+    destinations: Array<{
+      mode: string;
+      category: string;
+      type?: string;
+      inputValue?: string;
+      inputSelector?: string;
+    }>;
+  };
+}
+
 export const ALERT_NAME = `0%alert-cy-${uuid()}`;
 export const ALERT_DESCRIPTION = 'This is alert description';
 export const ALERT_UPDATED_DESCRIPTION = 'New alert description';
@@ -27,7 +55,7 @@ export const TEST_SUITE_FQN = `${TABLE_FQN}.testSuite`;
 
 export const INGESTION_PIPELINE_NAME = `0-cy-ingestion-pipeline-${uuid()}`;
 
-export const OBSERVABILITY_CREATION_DETAILS = {
+export const OBSERVABILITY_CREATION_DETAILS: ObservabilityCreationDetails = {
   table: {
     sourceDisplayName: 'Table',
     filters: [
@@ -150,10 +178,6 @@ export const OBSERVABILITY_CREATION_DETAILS = {
     ],
     actions: [
       {
-        name: 'Get Schema Changes',
-        exclude: true,
-      },
-      {
         name: 'Get Test Case Status Updates',
         inputs: [
           {
@@ -179,8 +203,8 @@ export const OBSERVABILITY_CREATION_DETAILS = {
       },
       {
         mode: 'external',
-        category: 'Generic',
-        inputValue: 'https://generic.com',
+        category: 'Webhook',
+        inputValue: 'https://webhook.com',
       },
     ],
   },
@@ -207,10 +231,6 @@ export const OBSERVABILITY_CREATION_DETAILS = {
       },
     ],
     actions: [
-      {
-        name: 'Get Schema Changes',
-        exclude: true,
-      },
       {
         name: 'Get Test Case Status Updates belonging to a Test Suite',
         inputs: [

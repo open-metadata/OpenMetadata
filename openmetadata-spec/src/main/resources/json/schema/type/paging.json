@@ -19,6 +19,11 @@
       "type": "integer",
       "default": null
     },
+    "limit": {
+      "description": "Limit used in case of offset based pagination.",
+      "type": "integer",
+      "default": null
+    },
     "total": {
       "description": "Total number of entries available to page through.",
       "type": "integer"

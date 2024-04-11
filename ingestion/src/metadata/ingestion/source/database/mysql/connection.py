@@ -16,8 +16,12 @@ from typing import Optional
 
 from sqlalchemy.engine import Engine
 
+from metadata.clients.azure_client import AzureClient
 from metadata.generated.schema.entity.automations.workflow import (
     Workflow as AutomationWorkflow,
+)
+from metadata.generated.schema.entity.services.connections.database.common.basicAuth import (
+    BasicAuth,
 )
 from metadata.generated.schema.entity.services.connections.database.mysqlConnection import (
     MysqlConnection,
@@ -38,6 +42,16 @@ def get_connection(connection: MysqlConnection) -> Engine:
     """
     Create connection
     """
+    if hasattr(connection.authType, "azureConfig"):
+        azure_client = AzureClient(connection.authType.azureConfig).create_client()
+        if not connection.authType.azureConfig.scopes:
+            raise ValueError(
+                "Azure Scopes are missing, please refer https://learn.microsoft.com/en-gb/azure/mysql/flexible-server/how-to-azure-ad#2---retrieve-microsoft-entra-access-token and fetch the resource associated with it, for e.g. https://ossrdbms-aad.database.windows.net/.default"
+            )
+        access_token_obj = azure_client.get_token(
+            *connection.authType.azureConfig.scopes.split(",")
+        )
+        connection.authType = BasicAuth(password=access_token_obj.token)
     if connection.sslCA or connection.sslCert or connection.sslKey:
         if not connection.connectionOptions:
             connection.connectionOptions = init_empty_connection_options()

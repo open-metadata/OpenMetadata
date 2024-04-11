@@ -76,7 +76,7 @@ const GlobalSettingCategoryPage = () => {
 
         break;
       case GlobalSettingOptions.SEARCH:
-        if (category === GlobalSettingsMenuCategory.OPEN_METADATA) {
+        if (category === GlobalSettingsMenuCategory.PREFERENCES) {
           history.push(
             getSettingsPathWithFqn(
               category,

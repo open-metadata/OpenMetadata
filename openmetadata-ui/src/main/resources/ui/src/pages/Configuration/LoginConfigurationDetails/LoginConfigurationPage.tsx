@@ -53,7 +53,7 @@ const LoginConfigurationPage = () => {
   const breadcrumbs: TitleBreadcrumbProps['titleLinks'] = useMemo(
     () =>
       getSettingPageEntityBreadCrumb(
-        GlobalSettingsMenuCategory.OPEN_METADATA,
+        GlobalSettingsMenuCategory.PREFERENCES,
         t('label.login-configuration')
       ),
     []

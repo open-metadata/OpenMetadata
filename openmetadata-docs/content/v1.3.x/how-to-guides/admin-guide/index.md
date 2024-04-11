@@ -41,11 +41,11 @@ Refer to the advanced guide for Roles and Policies once you are ready to start w
   Know it all about Roles and Policies to get started.
 {%/inlineCallout%}
 
-Set up fine-grained alerts and notifications to keep your data teams updated.
+Set up fine-grained alerts and notifications for important data operations such as schema changes, pipeline failures, and data quality issues.
 {%inlineCallout
   color="violet-70"
-  bold="Set up Alerts and Notifications"
-  icon="MdOutlineNotificationsActive"
+  bold="Set up Data Observability Alerts and Notifications"
+  icon="notifications"
   href="/how-to-guides/admin-guide/alerts"%}
   Send alerts to multiple destinations to keep the team informed.
 {%/inlineCallout%}

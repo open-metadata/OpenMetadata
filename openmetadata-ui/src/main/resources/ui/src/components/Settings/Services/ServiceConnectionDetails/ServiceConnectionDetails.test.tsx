@@ -71,10 +71,6 @@ jest.mock('../../../../utils/SearchServiceUtils', () => ({
   }),
 }));
 
-jest.mock('../../../../utils/ServiceUtilClassBase', () => ({
-  serviceUtilClassBase: jest.fn(),
-}));
-
 const databaseSchema = {
   hostPort: 'localhost:5432',
   password: 'testPassword',

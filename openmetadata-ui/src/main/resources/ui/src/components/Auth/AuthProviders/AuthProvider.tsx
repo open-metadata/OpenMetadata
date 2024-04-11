@@ -36,7 +36,6 @@ import React, {
 import { useTranslation } from 'react-i18next';
 import { useHistory, useLocation } from 'react-router-dom';
 import {
-  ACTIVE_DOMAIN_STORAGE_KEY,
   DEFAULT_DOMAIN_VALUE,
   REDIRECT_PATHNAME,
   ROUTES,
@@ -50,6 +49,7 @@ import {
 import { User } from '../../../generated/entity/teams/user';
 import { AuthProvider as AuthProviderEnum } from '../../../generated/settings/settings';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
+import { useDomainStore } from '../../../hooks/useDomainStore';
 import axiosClient from '../../../rest';
 import {
   fetchAuthenticationConfig,
@@ -120,6 +120,7 @@ export const AuthProvider = ({
     urlPathName,
     setUrlPathName,
   } = useApplicationStore();
+  const { activeDomain } = useDomainStore();
 
   const location = useLocation();
   const history = useHistory();
@@ -316,7 +317,8 @@ export const AuthProvider = ({
   const startTokenExpiryTimer = () => {
     // Extract expiry
     const { isExpired, timeoutExpiry } = extractDetailsFromToken(
-      getOidcToken()
+      getOidcToken(),
+      clientType
     );
     const refreshToken = getRefreshToken();
 
@@ -411,8 +413,6 @@ export const AuthProvider = ({
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const withDomainFilter = (config: InternalAxiosRequestConfig<any>) => {
-    const activeDomain =
-      localStorage.getItem(ACTIVE_DOMAIN_STORAGE_KEY) ?? DEFAULT_DOMAIN_VALUE;
     const isGetRequest = config.method === 'get';
     const hasActiveDomain = activeDomain !== DEFAULT_DOMAIN_VALUE;
     const currentPath = window.location.pathname;
@@ -529,7 +529,9 @@ export const AuthProvider = ({
             }
             setLoading(false);
           } else {
-            getLoggedInUserDetails();
+            if (location.pathname !== ROUTES.AUTH_CALLBACK) {
+              getLoggedInUserDetails();
+            }
           }
         } else {
           // provider is either null or not supported

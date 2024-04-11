@@ -240,10 +240,10 @@ class MetabaseUnitTest(TestCase):
             OpenMetadata(self.config.workflowConfig.openMetadataServerConfig),
         )
         self.metabase.client = SimpleNamespace()
-        self.metabase.context.__dict__[
+        self.metabase.context.get().__dict__[
             "dashboard_service"
         ] = MOCK_DASHBOARD_SERVICE.fullyQualifiedName.__root__
-        self.metabase.context.__dict__["project_name"] = "Test Collection"
+        self.metabase.context.get().__dict__["project_name"] = "Test Collection"
 
     def test_dashboard_name(self):
         assert (

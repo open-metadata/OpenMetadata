@@ -197,8 +197,8 @@
       "type": "boolean",
       "default": true
     },
-    "systemApp": {
-      "description": "A system app cannot be uninstall.",
+    "system": {
+      "description": "A system app cannot be uninstalled or modified.",
       "type": "boolean",
       "default": false
     },
@@ -209,6 +209,11 @@
     "privateConfiguration": {
       "description": "Application Private configuration loaded at runtime.",
       "$ref": "./configuration/applicationConfig.json#/definitions/privateConfig"
+    },
+    "preview": {
+      "type": "boolean",
+      "description": "Flag to enable/disable preview for the application. If the app is in preview mode, it can't be installed.",
+      "default": false
     },
     "pipelines": {
       "description": "References to pipelines deployed for this database service to extract metadata, usage, lineage etc..",

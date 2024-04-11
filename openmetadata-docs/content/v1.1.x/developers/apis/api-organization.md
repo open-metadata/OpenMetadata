@@ -5,7 +5,7 @@ slug: /developers/apis/api-organization
 
 # API Organization
 
-OpenMetadata has the following APIs. See this [API documentation](https://docs.open-metadata.org/swagger.html) for full details API endpoints.
+OpenMetadata has the following APIs. See this [API documentation](/swagger.html) for full details API endpoints.
 
 * **Data Asset APIs** - These API endpoints support operations related to data asset entities.
   * `.../api/v1/databases`
