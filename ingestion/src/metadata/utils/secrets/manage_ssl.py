@@ -16,6 +16,7 @@ Module to manage SSL certificates
 import os
 import tempfile
 from functools import singledispatchmethod
+from typing import cast
 
 from metadata.generated.schema.entity.services.connections.dashboard.qlikSenseConnection import (
     QlikSenseConnection,
@@ -34,6 +35,9 @@ from metadata.generated.schema.entity.services.connections.database.postgresConn
 )
 from metadata.generated.schema.entity.services.connections.database.redshiftConnection import (
     RedshiftConnection,
+)
+from metadata.generated.schema.entity.services.connections.messaging.kafkaConnection import (
+    KafkaConnection,
 )
 from metadata.generated.schema.security.ssl import verifySSLConfig
 from metadata.ingestion.connections.builders import init_empty_connection_arguments
@@ -109,3 +113,13 @@ class SSLManager:
             "certfile": self.cert_file_path,
             "keyfile": self.key_file_path,
         }
+
+    @setup_ssl.register(KafkaConnection)
+    def _(self, connection):
+        connection = cast(KafkaConnection, connection)
+        connection.schemaRegistryConfig["ssl.ca.location"] = self.ca_file_path
+        connection.schemaRegistryConfig["ssl.key.location"] = self.key_file_path
+        connection.schemaRegistryConfig[
+            "ssl.certificate.location"
+        ] = self.cert_file_path
+        return connection
