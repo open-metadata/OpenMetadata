@@ -40,3 +40,17 @@ src="/images/v1.3/developers/language-support.png"
 alt="copy-en-us"
 /%}
 
+
+## How to Add Language Support for Entities Documentation
+
+{% note %}
+
+We have documentation for some entities on the left sidebar, and we currently support two languages: `en-US` and `fr-FR`. If you want to add support for other languages in our internationalization, you can follow the steps below.
+
+{% /note %}
+
+Documentation for entities resides in the `openmetadata-ui/src/main/resources/ui/src/public/locales` directory. Our primary language is `en-US`, so you can refer to it and create the same hierarchy for your language.
+
+To add documentation in the `zh-CN` language, you can simply copy the `en-US` directory and rename it to `zh-CN`. Then, update the content of the files according to the `zh-CN` language.
+
+To find the supported language codes, you can refer to this [page](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/src/utils/i18next/i18nextUtil.ts#L27-38).
