@@ -42,9 +42,11 @@ import org.openmetadata.schema.api.tests.CreateTestCase;
 import org.openmetadata.schema.tests.TestCase;
 import org.openmetadata.schema.tests.TestSuite;
 import org.openmetadata.schema.tests.type.TestCaseResult;
+import org.openmetadata.schema.tests.type.TestCaseStatus;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
+import org.openmetadata.schema.type.TableData;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.Filter;
 import org.openmetadata.service.jdbi3.ListFilter;
@@ -57,6 +59,7 @@ import org.openmetadata.service.search.SearchSortFilter;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.mask.PIIMasker;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
+import org.openmetadata.service.security.policyevaluator.ResourceContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContextInterface;
 import org.openmetadata.service.security.policyevaluator.TestCaseResourceContext;
 import org.openmetadata.service.util.EntityUtil.Fields;
@@ -626,6 +629,10 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
     authorizer.authorize(securityContext, operationContext, resourceContext);
     PatchResponse<TestCase> response =
         repository.patch(uriInfo, id, securityContext.getUserPrincipal().getName(), patch);
+    if (response.entity().getTestCaseResult() != null
+        && response.entity().getTestCaseResult().getTestCaseStatus() == TestCaseStatus.Success) {
+      repository.deleteTestCaseFailedRowsSample(id);
+    }
     addHref(uriInfo, response.entity());
     return response.toResponse();
   }
@@ -834,6 +841,10 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
     OperationContext operationContext =
         new OperationContext(Entity.TABLE, MetadataOperation.EDIT_TESTS);
     authorizer.authorize(securityContext, operationContext, resourceContext);
+    if (testCaseResult.getTestCaseStatus() == TestCaseStatus.Success) {
+      TestCase testCase = repository.findByName(fqn, Include.ALL);
+      repository.deleteTestCaseFailedRowsSample(testCase.getId());
+    }
     return repository
         .addTestCaseResult(
             securityContext.getUserPrincipal().getName(), uriInfo, fqn, testCaseResult)
@@ -916,6 +927,71 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
   }
 
   @PUT
+  @Path("/{id}/failedRowsSample")
+  @Operation(
+      operationId = "addFailedRowsSample",
+      summary = "Add failed rows sample data",
+      description = "Add a sample of failed rows for this test case.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Successfully update the test case with failed rows sample data.",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = TestCase.class))),
+        @ApiResponse(
+            responseCode = "400",
+            description = "Failed rows can only be added to a failed test case.")
+      })
+  public TestCase addFailedRowsData(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Id of the test case", schema = @Schema(type = "UUID"))
+          @PathParam("id")
+          UUID id,
+      @Valid TableData tableData) {
+    OperationContext operationContext =
+        new OperationContext(entityType, MetadataOperation.EDIT_SAMPLE_DATA);
+    authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
+    TestCase testCase = repository.find(id, Include.NON_DELETED);
+    if (testCase.getTestCaseResult() == null
+        || !testCase.getTestCaseResult().getTestCaseStatus().equals(TestCaseStatus.Failed)) {
+      throw new IllegalArgumentException("Failed rows can only be added to a failed test case.");
+    }
+    return addHref(uriInfo, repository.addFailedRowsSample(testCase, tableData));
+  }
+
+  @GET
+  @Path("/{id}/failedRowsSample")
+  @Operation(
+      operationId = "getFailedRowsSample",
+      summary = "Get failed rows sample data",
+      description = "Get a sample of failed rows for this test case.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Successfully retrieved the test case with failed rows sample data.",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = TableData.class)))
+      })
+  public TableData getFailedRowsData(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Id of the table", schema = @Schema(type = "UUID")) @PathParam("id")
+          UUID id) {
+    OperationContext operationContext =
+        new OperationContext(entityType, MetadataOperation.VIEW_SAMPLE_DATA);
+    ResourceContext<?> resourceContext = getResourceContextById(id);
+    TestCase testCase = repository.find(id, Include.NON_DELETED);
+    authorizer.authorize(securityContext, operationContext, resourceContext);
+    boolean authorizePII = authorizer.authorizePII(securityContext, resourceContext.getOwner());
+    return repository.getSampleData(testCase, authorizePII);
+  }
+
+  @PUT
   @Path("/logicalTestCases")
   @Operation(
       operationId = "addTestCasesToLogicalTestSuite",
@@ -983,6 +1059,7 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
         .withDisplayName(create.getDisplayName())
         .withParameterValues(create.getParameterValues())
         .withEntityLink(create.getEntityLink())
+        .withComputePassedFailedRowCount(create.getComputePassedFailedRowCount())
         .withEntityFQN(entityLink.getFullyQualifiedFieldValue())
         .withTestSuite(getEntityReference(Entity.TEST_SUITE, create.getTestSuite()))
         .withTestDefinition(getEntityReference(Entity.TEST_DEFINITION, create.getTestDefinition()));
