@@ -332,6 +332,7 @@
     "deployed": "Bereitgestellt",
     "description": "Beschreibung",
     "description-lowercase": "beschreibung",
+    "description-plural": "Descriptions",
     "destination": "Ziel",
     "detail-plural": "Details",
     "developed-by-developer": "Developed by {{developer}}",

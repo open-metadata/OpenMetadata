@@ -332,6 +332,7 @@
     "deployed": "已部署",
     "description": "描述",
     "description-lowercase": "描述",
+    "description-plural": "Descriptions",
     "destination": "目的地",
     "detail-plural": "详情",
     "developed-by-developer": "Developed by {{developer}}",

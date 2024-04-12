@@ -332,6 +332,7 @@
     "deployed": "Desplegado",
     "description": "Descripción",
     "description-lowercase": "descripción",
+    "description-plural": "Descriptions",
     "destination": "Destino",
     "detail-plural": "Detalles",
     "developed-by-developer": "Desarrollado por {{developer}}",

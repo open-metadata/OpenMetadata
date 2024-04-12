@@ -332,6 +332,7 @@
     "deployed": "デプロイされた",
     "description": "説明",
     "description-lowercase": "説明",
+    "description-plural": "Descriptions",
     "destination": "宛先",
     "detail-plural": "詳細",
     "developed-by-developer": "Developed by {{developer}}",
