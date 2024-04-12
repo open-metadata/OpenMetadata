@@ -54,9 +54,11 @@ describe('GlossaryOverviewTab', () => {
     const { container } = render(
       <BrowserRouter>
         <GlossaryOverviewTab
+          editCustomAttributePermission
           isGlossary={isGlossary}
           permissions={permissions}
           selectedData={selectedData}
+          onExtensionUpdate={jest.fn()}
           onThreadLinkSelect={jest.fn()}
           onUpdate={onUpdate}
         />
