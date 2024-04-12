@@ -50,7 +50,11 @@ import { OPEN_METADATA } from '../../constants/Services.constant';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import { OperationPermission } from '../../context/PermissionProvider/PermissionProvider.interface';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
-import { EntityTabs, TabSpecificField } from '../../enums/entity.enum';
+import {
+  EntityTabs,
+  EntityType,
+  TabSpecificField,
+} from '../../enums/entity.enum';
 import { ServiceCategory } from '../../enums/service.enum';
 import { PipelineType } from '../../generated/api/services/ingestionPipelines/createIngestionPipeline';
 import { Tag } from '../../generated/entity/classification/tag';
@@ -100,6 +104,7 @@ import {
   getEntityMissingError,
   sortTagsCaseInsensitive,
 } from '../../utils/CommonUtils';
+import entityUtilClassBase from '../../utils/EntityUtilClassBase';
 import { getEntityName } from '../../utils/EntityUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import {
@@ -137,6 +142,12 @@ const ServiceDetailsPage: FunctionComponent = () => {
   }>();
 
   const { fqn: decodedServiceFQN } = useFqn();
+  const extraDropdownContent = entityUtilClassBase.getManageExtraOptions(
+    serviceCategory === 'databaseServices'
+      ? EntityType.DATABASE_SERVICE
+      : EntityType.ALL,
+    decodedServiceFQN
+  );
 
   const isMetadataService = useMemo(
     () => serviceCategory === ServiceCategory.METADATA_SERVICES,
@@ -1085,6 +1096,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
               afterDomainUpdateAction={afterDomainUpdateAction}
               dataAsset={serviceDetails}
               entityType={entityType}
+              extraDropdownContent={extraDropdownContent}
               permissions={servicePermission}
               showDomain={!isMetadataService}
               onDisplayNameUpdate={handleUpdateDisplayName}

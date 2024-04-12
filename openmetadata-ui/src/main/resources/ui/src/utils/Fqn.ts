@@ -20,7 +20,7 @@ import FqnParser from '../generated/antlr/FqnParser';
 
 export default class Fqn {
   // Equivalent of Java's FullyQualifiedName#split
-  static split(fqn) {
+  static split(fqn: string) {
     const chars = new antlr4.InputStream(fqn);
     const lexer = new FqnLexer(chars);
     const tokens = new antlr4.CommonTokenStream(lexer);
@@ -33,7 +33,7 @@ export default class Fqn {
   }
 
   // Equivalent of Java's FullyQualifiedName#build
-  static build(...xs) {
+  static build(...xs: string[]) {
     const result = [];
     for (const x of xs) {
       result.push(this.quoteName(x));
@@ -43,7 +43,7 @@ export default class Fqn {
   }
 
   // Equivalent of Java's FullyQualifiedName#quoteName
-  static quoteName(name) {
+  static quoteName(name: string) {
     const matcher = /^(")([^"]+)(")$|^(.*)$/.exec(name);
     if (!matcher || matcher[0].length !== name.length) {
       throw new Error(`${i18next.t('label.invalid-name')} ${name}`);

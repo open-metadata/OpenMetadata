@@ -13,6 +13,9 @@ import static org.openmetadata.service.Entity.TEST_DEFINITION;
 import static org.openmetadata.service.Entity.TEST_SUITE;
 import static org.openmetadata.service.Entity.getEntityByName;
 import static org.openmetadata.service.Entity.getEntityReferenceByName;
+import static org.openmetadata.service.Entity.populateEntityFieldTags;
+import static org.openmetadata.service.exception.CatalogExceptionMessage.entityNotFound;
+import static org.openmetadata.service.security.mask.PIIMasker.maskSampleData;
 
 import com.google.common.collect.ImmutableSet;
 import java.util.ArrayList;
@@ -48,6 +51,8 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
+import org.openmetadata.schema.type.TableData;
+import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.TaskType;
 import org.openmetadata.schema.utils.EntityInterfaceUtil;
 import org.openmetadata.service.Entity;
@@ -70,6 +75,7 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
   private static final String PATCH_FIELDS =
       "owner,entityLink,testSuite,testDefinition,computePassedFailedRowCount";
   public static final String TESTCASE_RESULT_EXTENSION = "testCase.testCaseResult";
+  public static final String FAILED_ROWS_SAMPLE_EXTENSION = "testCase.failedRowsSample";
 
   public TestCaseRepository() {
     super(
@@ -266,6 +272,8 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
 
     // If we delete the test case, we need to clean up the resolution ts
     daoCollection.testCaseResolutionStatusTimeSeriesDao().delete(test.getFullyQualifiedName());
+
+    deleteTestCaseFailedRowsSample(test.getId());
   }
 
   @Override
@@ -673,77 +681,6 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
   }
 
   @Override
-  public ResultList<TestCase> listAfter(
-      UriInfo uriInfo, Fields fields, ListFilter filter, int limitParam, String after) {
-    if (!Boolean.parseBoolean(filter.getQueryParam("orderByLastExecutionDate"))) {
-      return super.listAfter(uriInfo, fields, filter, limitParam, after);
-    }
-    int total = dao.listCount(filter);
-    List<TestCase> testCases = new ArrayList<>();
-    if (limitParam > 0) {
-      // forward scrolling, if after == null then first page is being asked
-      String decodedAfter = after == null ? "0" : RestUtil.decodeCursor(after);
-      Integer rankAfter = Integer.parseInt(decodedAfter);
-      List<CollectionDAO.TestCaseDAO.TestCaseRecord> testCaseRecords =
-          daoCollection.testCaseDAO().listAfterTsOrder(filter, limitParam + 1, rankAfter);
-
-      for (CollectionDAO.TestCaseDAO.TestCaseRecord testCaseRecord : testCaseRecords) {
-        TestCase entity =
-            setFieldsInternal(
-                JsonUtils.readValue(testCaseRecord.getJson(), TestCase.class), fields);
-        clearFieldsInternal(entity, fields);
-        testCases.add(withHref(uriInfo, entity));
-      }
-
-      String beforeCursor;
-      String afterCursor = null;
-      beforeCursor = after == null ? null : testCaseRecords.get(0).getRank().toString();
-      if (testCaseRecords.size()
-          > limitParam) { // If extra result exists, then next page exists - return after cursor
-        testCases.remove(limitParam);
-        testCaseRecords.remove(limitParam);
-        afterCursor = testCaseRecords.get(limitParam - 1).getRank().toString();
-      }
-      return getResultList(testCases, beforeCursor, afterCursor, total);
-    } else {
-      // limit == 0 , return total count of entity.
-      return getResultList(testCases, null, null, total);
-    }
-  }
-
-  @Override
-  public ResultList<TestCase> listBefore(
-      UriInfo uriInfo, Fields fields, ListFilter filter, int limitParam, String before) {
-    if (!Boolean.parseBoolean(filter.getQueryParam("orderByLastExecutionDate"))) {
-      return super.listBefore(uriInfo, fields, filter, limitParam, before);
-    }
-    // Reverse scrolling - Get one extra result used for computing before cursor
-    Integer rankBefore = Integer.parseInt(RestUtil.decodeCursor(before));
-    List<CollectionDAO.TestCaseDAO.TestCaseRecord> testCaseRecords =
-        daoCollection.testCaseDAO().listBeforeTsOrder(filter, limitParam + 1, rankBefore);
-
-    List<TestCase> testCases = new ArrayList<>();
-    for (CollectionDAO.TestCaseDAO.TestCaseRecord testCaseRecord : testCaseRecords) {
-      TestCase entity =
-          setFieldsInternal(JsonUtils.readValue(testCaseRecord.getJson(), TestCase.class), fields);
-      clearFieldsInternal(entity, fields);
-      testCases.add(withHref(uriInfo, entity));
-    }
-    int total = dao.listCount(filter);
-
-    String beforeCursor = null;
-    String afterCursor;
-    if (testCases.size()
-        > limitParam) { // If extra result exists, then previous page exists - return before cursor
-      testCaseRecords.remove(0);
-      testCases.remove(0);
-      beforeCursor = testCaseRecords.get(0).getRank().toString();
-    }
-    afterCursor = testCaseRecords.get(testCases.size() - 1).getRank().toString();
-    return getResultList(testCases, beforeCursor, afterCursor, total);
-  }
-
-  @Override
   public FeedRepository.TaskWorkflow getTaskWorkflow(FeedRepository.ThreadContext threadContext) {
     validateTaskThread(threadContext);
     TaskType taskType = threadContext.getThread().getTask().getType();
@@ -751,6 +688,38 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
       return new TestCaseRepository.TestCaseFailureResolutionTaskWorkflow(threadContext);
     }
     return super.getTaskWorkflow(threadContext);
+  }
+
+  @Transaction
+  public TestCase addFailedRowsSample(TestCase testCase, TableData tableData) {
+    EntityLink entityLink = EntityLink.parse(testCase.getEntityLink());
+    Table table = Entity.getEntity(entityLink, "owner", ALL);
+    // Validate all the columns
+    for (String columnName : tableData.getColumns()) {
+      validateColumn(table, columnName);
+    }
+    // Make sure each row has number values for all the columns
+    for (List<Object> row : tableData.getRows()) {
+      if (row.size() != tableData.getColumns().size()) {
+        throw new IllegalArgumentException(
+            String.format(
+                "Number of columns is %d but row has %d sample values",
+                tableData.getColumns().size(), row.size()));
+      }
+    }
+    daoCollection
+        .entityExtensionDAO()
+        .insert(
+            testCase.getId(),
+            FAILED_ROWS_SAMPLE_EXTENSION,
+            "failedRowsSample",
+            JsonUtils.pojoToJson(tableData));
+    setFieldsInternal(testCase, Fields.EMPTY_FIELDS);
+    return testCase.withFailedRowsSample(tableData);
+  }
+
+  public void deleteTestCaseFailedRowsSample(UUID id) {
+    daoCollection.entityExtensionDAO().delete(id, FAILED_ROWS_SAMPLE_EXTENSION);
   }
 
   public static class TestCaseFailureResolutionTaskWorkflow extends FeedRepository.TaskWorkflow {
@@ -906,6 +875,30 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
           updated.getComputePassedFailedRowCount());
       recordChange("testCaseResult", original.getTestCaseResult(), updated.getTestCaseResult());
     }
+  }
+
+  public TableData getSampleData(TestCase testCase, boolean authorizePII) {
+    Table table = Entity.getEntity(EntityLink.parse(testCase.getEntityLink()), "owner", ALL);
+    // Validate the request content
+    TableData sampleData =
+        JsonUtils.readValue(
+            daoCollection
+                .entityExtensionDAO()
+                .getExtension(testCase.getId(), FAILED_ROWS_SAMPLE_EXTENSION),
+            TableData.class);
+    if (sampleData == null) {
+      throw new EntityNotFoundException(
+          entityNotFound(FAILED_ROWS_SAMPLE_EXTENSION, testCase.getId()));
+    }
+    // Set the column tags. Will be used to mask the sample data
+    if (!authorizePII) {
+      populateEntityFieldTags(
+          Entity.TABLE, table.getColumns(), table.getFullyQualifiedName(), true);
+      List<TagLabel> tags = daoCollection.tagUsageDAO().getTags(table.getFullyQualifiedName());
+      table.setTags(tags);
+      return maskSampleData(testCase.getFailedRowsSample(), table, table.getColumns());
+    }
+    return sampleData;
   }
 
   private void putUpdateTestSuite(TestSuite testSuite, List<ResultSummary> resultSummaries) {

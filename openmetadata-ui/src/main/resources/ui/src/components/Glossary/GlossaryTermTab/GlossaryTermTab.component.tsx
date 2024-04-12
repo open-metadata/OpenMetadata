@@ -259,7 +259,7 @@ const GlossaryTermTab = ({
   const handleMoveRow = useCallback(
     async (dragRecord: GlossaryTerm, dropRecord?: GlossaryTerm) => {
       const dropRecordFqnPart =
-        Fqn.split(dragRecord.fullyQualifiedName).length === 2;
+        Fqn.split(dragRecord.fullyQualifiedName ?? '').length === 2;
 
       if (isUndefined(dropRecord) && dropRecordFqnPart) {
         return;
