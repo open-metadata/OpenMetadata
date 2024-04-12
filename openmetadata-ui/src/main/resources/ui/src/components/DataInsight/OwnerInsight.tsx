@@ -16,6 +16,7 @@ import { AxiosError } from 'axios';
 import { includes, isEmpty, round, toLower } from 'lodash';
 import React, { FC, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { Link } from 'react-router-dom';
 import {
   CartesianGrid,
   Line,
@@ -27,6 +28,7 @@ import {
 } from 'recharts';
 import {
   DEFAULT_CHART_OPACITY,
+  getExplorePath,
   GRAPH_BACKGROUND_COLOR,
   HOVER_CHART_OPACITY,
 } from '../../constants/constants';
@@ -36,6 +38,8 @@ import {
   GRAPH_HEIGHT,
   TOTAL_ENTITY_CHART_COLOR,
 } from '../../constants/DataInsight.constants';
+import { NO_OWNER_ADVANCE_SEARCH_FILTER } from '../../constants/explore.constants';
+import { SearchIndex } from '../../enums/search.enum';
 import { DataReportIndex } from '../../generated/dataInsight/dataInsightChart';
 import {
   DataInsightChartResult,
@@ -54,6 +58,7 @@ import {
   getRandomHexColor,
   sortEntityByValue,
 } from '../../utils/DataInsightUtils';
+import searchClassBase from '../../utils/SearchClassBase';
 import { showErrorToast } from '../../utils/ToastUtils';
 import Searchbar from '../common/SearchBarComponent/SearchBar.component';
 import PageHeader from '../PageHeader/PageHeader.component';
@@ -68,6 +73,7 @@ interface Props {
   selectedDays: number;
   dataInsightChartName: DataInsightChartType;
   header?: string;
+  isExploreBtnVisible?: boolean;
 }
 
 const OwnerInsight: FC<Props> = ({
@@ -76,7 +82,9 @@ const OwnerInsight: FC<Props> = ({
   selectedDays,
   dataInsightChartName,
   header,
+  isExploreBtnVisible = false,
 }) => {
+  const tabsInfo = searchClassBase.getTabsInfo();
   const [totalEntitiesOwnerByType, setTotalEntitiesOwnerByType] =
     useState<DataInsightChartResult>();
 
@@ -288,6 +296,22 @@ const OwnerInsight: FC<Props> = ({
             )}
           </Row>
         </Col>
+        {isExploreBtnVisible && (
+          <Col className="d-flex justify-end" span={24}>
+            <Link
+              to={getExplorePath({
+                tab: tabsInfo[SearchIndex.TABLE].path,
+                isPersistFilters: true,
+                extraParameters: {
+                  queryFilter: JSON.stringify(NO_OWNER_ADVANCE_SEARCH_FILTER),
+                },
+              })}>
+              {t('label.explore-asset-plural-with-type', {
+                type: t('label.no-owner'),
+              })}
+            </Link>
+          </Col>
+        )}
       </Row>
     </Card>
   );
