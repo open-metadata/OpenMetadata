@@ -53,17 +53,16 @@ const OWNER2 = 'Cynthia Meyer';
 const { testCase1, testCase2, filterTable, filterTableTestCases } =
   DATA_QUALITY_TEST_CASE_DATA;
 const goToProfilerTab = (data?: { service: string; entityName: string }) => {
-  const { service, entityName } = data;
   interceptURL(
     'GET',
-    `api/v1/tables/name/${service ?? serviceName}.*.${
-      entityName ?? TEAM_ENTITY
+    `api/v1/tables/name/${data?.service ?? serviceName}.*.${
+      data?.entityName ?? TEAM_ENTITY
     }?fields=*&include=all`,
     'waitForPageLoad'
   );
   visitEntityDetailsPage({
-    term: entityName ?? TEAM_ENTITY,
-    serviceName: service ?? serviceName,
+    term: data?.entityName ?? TEAM_ENTITY,
+    serviceName: data?.service ?? serviceName,
     entity: EntityType.Table,
   });
   verifyResponseStatusCode('@waitForPageLoad', 200);
