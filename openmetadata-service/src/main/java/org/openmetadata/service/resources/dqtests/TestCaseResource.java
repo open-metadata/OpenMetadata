@@ -1000,6 +1000,31 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
     return repository.getSampleData(testCase, authorizePII);
   }
 
+  @DELETE
+  @Path("/{id}/failedRowsSample")
+  @Operation(
+      operationId = "deleteFailedRowsSample",
+      summary = "Delete failed rows sample data",
+      description = "Delete a sample of failed rows for this test case.",
+      responses = {
+        @ApiResponse(responseCode = "200", description = "OK"),
+        @ApiResponse(
+            responseCode = "404",
+            description = "Failed rows sample data for test case {id} is not found.")
+      })
+  public Response deleteFailedRowsData(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Id of the table", schema = @Schema(type = "UUID")) @PathParam("id")
+          UUID id) {
+    OperationContext operationContext =
+        new OperationContext(entityType, MetadataOperation.VIEW_SAMPLE_DATA);
+    ResourceContext<?> resourceContext = getResourceContextById(id);
+    authorizer.authorize(securityContext, operationContext, resourceContext);
+    RestUtil.DeleteResponse<TableData> response = repository.deleteTestCaseFailedRowsSample(id);
+    return response.toResponse();
+  }
+
   @PUT
   @Path("/logicalTestCases")
   @Operation(
