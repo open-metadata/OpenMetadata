@@ -19,11 +19,11 @@ import { EdgeProps, getBezierPath } from 'reactflow';
 import { ReactComponent as FunctionIcon } from '../../../assets/svg/ic-function.svg';
 import { ReactComponent as IconTimesCircle } from '../../../assets/svg/ic-times-circle.svg';
 import { ReactComponent as PipelineIcon } from '../../../assets/svg/pipeline-grey.svg';
-import { INFO_COLOR } from '../../../constants/constants';
 import { FOREIGN_OBJECT_SIZE } from '../../../constants/Lineage.constants';
 import { useLineageProvider } from '../../../context/LineageProvider/LineageProvider';
 import { EntityType } from '../../../enums/entity.enum';
 import { StatusType } from '../../../generated/entity/data/pipeline';
+import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { getEntityName } from '../../../utils/EntityUtils';
 import EntityPopOverCard from '../../common/PopOverCard/EntityPopOverCard';
 import { CustomEdgeData } from './EntityLineage.interface';
@@ -86,6 +86,8 @@ export const CustomEdge = ({
     fetchPipelineStatus,
   } = useLineageProvider();
 
+  const { theme } = useApplicationStore();
+
   const isColumnHighlighted = useMemo(() => {
     if (!isColumnLineage) {
       return false;
@@ -135,7 +137,7 @@ export const CustomEdge = ({
 
     return {
       ...style,
-      ...{ stroke: isStrokeNeeded ? INFO_COLOR : undefined },
+      ...{ stroke: isStrokeNeeded ? theme.primaryColor : undefined },
     };
   }, [style, tracedNodes, edge, isColumnHighlighted, isColumnLineage]);
 

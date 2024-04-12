@@ -576,6 +576,25 @@
                     ] 
                 }
             ]
+        },
+        {
+            "name": "zip.column_values_to_be_between_with_sample_rows",
+            "results": [
+                {
+                    "result": "Found min=1001, max=2789 vs. the expected min=90001, max=96162.",
+                    "testCaseStatus": "Failed",
+                    "testResultValues": [
+                        {
+                        "name": "min",
+                        "value": "1001"
+                       },
+                        {
+                        "name": "max",
+                        "value": "2789"
+                       }
+                    ]  
+                }
+            ]
         }
     ]
 }
