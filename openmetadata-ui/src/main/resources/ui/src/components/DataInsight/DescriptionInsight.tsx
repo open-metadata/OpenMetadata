@@ -297,6 +297,7 @@ const DescriptionInsight: FC<Props> = ({
         {isExploreBtnVisible && (
           <Col className="d-flex justify-end" span={24}>
             <Link
+              data-testid="explore-asset-with-no-description"
               to={getExplorePath({
                 tab: tabsInfo[SearchIndex.TABLE].path,
                 isPersistFilters: true,

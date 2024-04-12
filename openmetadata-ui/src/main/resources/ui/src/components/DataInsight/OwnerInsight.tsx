@@ -299,6 +299,7 @@ const OwnerInsight: FC<Props> = ({
         {isExploreBtnVisible && (
           <Col className="d-flex justify-end" span={24}>
             <Link
+              data-testid="explore-asset-with-no-owner"
               to={getExplorePath({
                 tab: tabsInfo[SearchIndex.TABLE].path,
                 isPersistFilters: true,
