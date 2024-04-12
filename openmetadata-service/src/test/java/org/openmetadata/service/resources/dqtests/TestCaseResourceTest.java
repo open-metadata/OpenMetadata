@@ -2144,6 +2144,14 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
             Arrays.asList("c1Value2", null, false),
             Arrays.asList("c1Value3", 3, true));
 
+    putTestCaseResult(
+        testCase.getFullyQualifiedName(),
+        new TestCaseResult()
+            .withResult("result")
+            .withTestCaseStatus(TestCaseStatus.Failed)
+            .withTimestamp(TestUtils.dateToTimestamp("2024-01-01")),
+        ADMIN_AUTH_HEADERS);
+
     putFailedRowsSample(testCase, columns, rows, ADMIN_AUTH_HEADERS);
 
     // resolving test case deletes the sample data
