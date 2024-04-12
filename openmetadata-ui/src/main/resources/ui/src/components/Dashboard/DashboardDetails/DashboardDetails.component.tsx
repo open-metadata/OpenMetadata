@@ -645,16 +645,18 @@ const DashboardDetails = ({
               className="entity-tag-right-panel-container"
               data-testid="entity-right-panel"
               flex="320px">
-              <EntityRightPanel
+              <EntityRightPanel<EntityType.DASHBOARD>
                 customProperties={dashboardDetails}
                 dataProducts={dashboardDetails?.dataProducts ?? []}
                 domain={dashboardDetails?.domain}
+                editCustomAttributePermission={editCustomAttributePermission}
                 editTagPermission={editTagsPermission}
                 entityFQN={decodedDashboardFQN}
                 entityId={dashboardDetails.id}
                 entityType={EntityType.DASHBOARD}
                 selectedTags={dashboardTags}
                 viewAllPermission={viewAllPermission}
+                onExtensionUpdate={onExtensionUpdate}
                 onTagSelectionChange={handleTagSelection}
                 onThreadLinkSelect={onThreadLinkSelect}
               />
