@@ -268,6 +268,11 @@ public class FeedResourceTest extends OpenMetadataApplicationTest {
   @Test
   @Order(1)
   void post_validThreadAndList_200(TestInfo test) throws IOException {
+    EventSubscriptionResourceTest eventSubscriptionResourceTest =
+        new EventSubscriptionResourceTest();
+    EventSubscription subscription =
+        eventSubscriptionResourceTest.getEntityByName("ActivityFeedAlert", ADMIN_AUTH_HEADERS);
+    eventSubscriptionResourceTest.waitForAllEventToComplete(subscription.getId());
     int totalThreadCount = listThreads(null, null, ADMIN_AUTH_HEADERS).getPaging().getTotal();
     int userThreadCount = listThreads(USER_LINK, null, ADMIN_AUTH_HEADERS).getPaging().getTotal();
     int tableThreadCount = listThreads(TABLE_LINK, null, ADMIN_AUTH_HEADERS).getPaging().getTotal();
@@ -756,6 +761,11 @@ public class FeedResourceTest extends OpenMetadataApplicationTest {
   @NullSource
   @MethodSource("provideStringsForListThreads")
   void get_listThreadsWithPagination(String entityLink) throws HttpResponseException {
+    EventSubscriptionResourceTest eventSubscriptionResourceTest =
+        new EventSubscriptionResourceTest();
+    EventSubscription subscription =
+        eventSubscriptionResourceTest.getEntityByName("ActivityFeedAlert", ADMIN_AUTH_HEADERS);
+    eventSubscriptionResourceTest.waitForAllEventToComplete(subscription.getId());
     // Create 10 threads
     int totalThreadCount = listThreads(entityLink, null, ADMIN_AUTH_HEADERS).getPaging().getTotal();
     for (int i = 1; i <= 10; i++) {
@@ -1239,6 +1249,11 @@ public class FeedResourceTest extends OpenMetadataApplicationTest {
   @Test
   @Order(2)
   void list_threadsWithMentionsFilter() throws HttpResponseException {
+    EventSubscriptionResourceTest eventSubscriptionResourceTest =
+        new EventSubscriptionResourceTest();
+    EventSubscription subscription =
+        eventSubscriptionResourceTest.getEntityByName("ActivityFeedAlert", ADMIN_AUTH_HEADERS);
+    eventSubscriptionResourceTest.waitForAllEventToComplete(subscription.getId());
     // Create a thread with user mention
     createAndCheck(
         create()
