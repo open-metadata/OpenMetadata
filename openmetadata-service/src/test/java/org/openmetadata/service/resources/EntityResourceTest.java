@@ -1011,7 +1011,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     Assumptions.assumeTrue(
         Arrays.asList(entityClass.getInterfaces()).contains(EntityInterface.class));
     // We can't create a Glossary or a Tag without description
-    Assumptions.assumeTrue(!List.of(GLOSSARY, TAG).contains(entityType));
+    Assumptions.assumeTrue(!List.of(GLOSSARY, TAG, QUERY).contains(entityType));
     // Create an entity without description
     K createWithNullDescription = createRequest(test, 1).withDescription(null);
     T entityWithNullDescription = createEntity(createWithNullDescription, ADMIN_AUTH_HEADERS);
@@ -1054,6 +1054,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     Assumptions.assumeTrue(supportsSearchIndex);
     Assumptions.assumeTrue(
         Arrays.asList(entityClass.getInterfaces()).contains(EntityInterface.class));
+    Assumptions.assumeTrue(!List.of(QUERY).contains(entityType));
     // Create an entity with empty description
     K createWithEmptyDescription = createRequest(test, 2);
     T entityWithEmptyDescription = createEntity(createWithEmptyDescription, ADMIN_AUTH_HEADERS);

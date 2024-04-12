@@ -126,9 +126,6 @@
       },
       "executable": {
         "type": "text"
-      },
-      "descriptionStatus": {
-        "type": "keyword"
       }
     }
   }
