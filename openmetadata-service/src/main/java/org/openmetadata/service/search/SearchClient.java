@@ -74,8 +74,6 @@ public interface SearchClient {
 
   Response search(SearchRequest request) throws IOException;
 
-  Response searchWithHierarchy(SearchRequest request) throws IOException;
-
   SearchResultListMapper listWithOffset(
       String filter,
       int limit,

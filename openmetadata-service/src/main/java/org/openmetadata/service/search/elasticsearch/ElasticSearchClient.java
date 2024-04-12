@@ -21,6 +21,7 @@ import static org.openmetadata.service.search.EntityBuilderConstant.PRE_TAG;
 import static org.openmetadata.service.search.EntityBuilderConstant.SCHEMA_FIELD_NAMES;
 import static org.openmetadata.service.search.EntityBuilderConstant.UNIFIED;
 import static org.openmetadata.service.search.UpdateSearchEventsConstant.SENDING_REQUEST_TO_ELASTIC_SEARCH;
+import static org.openmetadata.service.util.FullyQualifiedName.getParentFQN;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import es.org.elasticsearch.ElasticsearchStatusException;
@@ -370,7 +371,7 @@ public class ElasticSearchClient implements SearchClient {
               .must(QueryBuilders.termQuery("deleted", request.deleted())));
     }
 
-    if (!nullOrEmpty(request.getSortFieldParam())) {
+    if (!nullOrEmpty(request.getSortFieldParam()) && !request.getHierarchy()) {
       searchSourceBuilder.sort(
           request.getSortFieldParam(), SortOrder.fromString(request.getSortOrder()));
     }
@@ -380,6 +381,12 @@ public class ElasticSearchClient implements SearchClient {
           QueryBuilders.boolQuery()
               .must(searchSourceBuilder.query())
               .must(QueryBuilders.matchQuery("status", "Approved")));
+
+      if (request.getHierarchy()) {
+        searchSourceBuilder.sort(
+            SortBuilders.fieldSort("fullyQualifiedName")
+                .order(SortOrder.ASC)); // to get correct hierarchy of terms
+      }
     }
 
     /* for performance reasons ElasticSearch doesn't provide accurate hits
@@ -401,14 +408,21 @@ public class ElasticSearchClient implements SearchClient {
 
     searchSourceBuilder.timeout(new TimeValue(30, TimeUnit.SECONDS));
     try {
-      String response =
-          client
-              .search(
-                  new es.org.elasticsearch.action.search.SearchRequest(request.getIndex())
-                      .source(searchSourceBuilder),
-                  RequestOptions.DEFAULT)
-              .toString();
-      return Response.status(OK).entity(response).build();
+
+      SearchResponse searchResponse =
+          client.search(
+              new es.org.elasticsearch.action.search.SearchRequest(request.getIndex())
+                  .source(searchSourceBuilder),
+              RequestOptions.DEFAULT);
+
+      if (!request.getHierarchy()) {
+        return Response.status(OK).entity(searchResponse.toString()).build();
+      } else {
+        // Build the nested hierarchy from elastic search response
+        List<?> response = buildSearchHierarchy(request, searchResponse);
+        return Response.status(OK).entity(response).build();
+      }
+
     } catch (ElasticsearchStatusException e) {
       if (e.status() == RestStatus.NOT_FOUND) {
         throw new SearchIndexNotFoundException(
@@ -419,100 +433,15 @@ public class ElasticSearchClient implements SearchClient {
     }
   }
 
-  @Override
-  public Response searchWithHierarchy(SearchRequest request) throws IOException {
-    SearchSourceBuilder searchSourceBuilder =
-        getSearchSourceBuilder(
-            request.getIndex(), request.getQuery(), request.getFrom(), request.getSize());
-    if (!nullOrEmpty(request.getQueryFilter()) && !request.getQueryFilter().equals("{}")) {
-      try {
-        XContentParser filterParser =
-            XContentType.JSON
-                .xContent()
-                .createParser(
-                    xContentRegistry, LoggingDeprecationHandler.INSTANCE, request.getQueryFilter());
-        QueryBuilder filter = SearchSourceBuilder.fromXContent(filterParser).query();
-        BoolQueryBuilder newQuery =
-            QueryBuilders.boolQuery().must(searchSourceBuilder.query()).filter(filter);
-        searchSourceBuilder.query(newQuery);
-      } catch (Exception ex) {
-        LOG.warn("Error parsing query_filter from query parameters, ignoring filter", ex);
-      }
-    }
-
-    if (!nullOrEmpty(request.getPostFilter())) {
-      try {
-        XContentParser filterParser =
-            XContentType.JSON
-                .xContent()
-                .createParser(
-                    xContentRegistry, LoggingDeprecationHandler.INSTANCE, request.getPostFilter());
-        QueryBuilder filter = SearchSourceBuilder.fromXContent(filterParser).query();
-        searchSourceBuilder.postFilter(filter);
-      } catch (Exception ex) {
-        LOG.warn("Error parsing post_filter from query parameters, ignoring filter", ex);
-      }
-    }
-
+  public List<?> buildSearchHierarchy(SearchRequest request, SearchResponse searchResponse) {
+    List<?> response = new ArrayList<>();
     if (request.getIndex().equalsIgnoreCase("glossary_term_search_index")) {
-
-      searchSourceBuilder
-          .query(
-              QueryBuilders.boolQuery()
-                  .must(searchSourceBuilder.query())
-                  .must(QueryBuilders.matchQuery("status", "Approved")))
-          .sort(SortBuilders.fieldSort("fullyQualifiedName").order(SortOrder.ASC));
-
-    } else {
-      searchSourceBuilder.query(
-          QueryBuilders.boolQuery()
-              .must(searchSourceBuilder.query())
-              .must(QueryBuilders.termQuery("deleted", request.deleted())));
+      response = buildGlossaryTermSearchHierarchy(searchResponse);
     }
-
-    /* for performance reasons ElasticSearch doesn't provide accurate hits
-    if we enable trackTotalHits parameter it will try to match every result, count and return hits
-    however in most cases for search results an approximate value is good enough.
-    we are displaying total entity counts in landing page and explore page where we need the total count
-    https://github.com/elastic/elasticsearch/issues/33028 */
-    searchSourceBuilder.fetchSource(
-        new FetchSourceContext(
-            request.fetchSource(),
-            request.getIncludeSourceFields().toArray(String[]::new),
-            new String[] {}));
-
-    if (request.trackTotalHits()) {
-      searchSourceBuilder.trackTotalHits(true);
-    } else {
-      searchSourceBuilder.trackTotalHitsUpTo(MAX_RESULT_HITS);
-    }
-
-    searchSourceBuilder.timeout(new TimeValue(30, TimeUnit.SECONDS));
-    try {
-
-      es.org.elasticsearch.action.search.SearchRequest searchRequest =
-          new es.org.elasticsearch.action.search.SearchRequest(
-                  Entity.getSearchRepository().getIndexOrAliasName(request.getIndex()))
-              .source(searchSourceBuilder);
-      SearchResponse searchResponse = client.search(searchRequest, RequestOptions.DEFAULT);
-
-      // Build the nested hierarchy from elastic search response
-      List response = new ArrayList<>();
-      if (request.getIndex().equalsIgnoreCase("glossary_term_search_index")) {
-        response = buildGlossaryTermNestedHierarchy(searchResponse);
-      }
-      return Response.status(OK).entity(response).build();
-    } catch (ElasticsearchStatusException e) {
-      if (e.status() == RestStatus.NOT_FOUND) {
-        throw new SearchIndexNotFoundException(
-            String.format("Failed to to find index %s", request.getIndex()));
-      } else {
-        throw new SearchException(String.format("Search failed due to %s", e.getMessage()));
-      }
-    }
+    return response;
   }
 
-  public List<GlossaryTerm> buildGlossaryTermNestedHierarchy(SearchResponse searchResponse) {
+  public List<GlossaryTerm> buildGlossaryTermSearchHierarchy(SearchResponse searchResponse) {
     Map<String, GlossaryTerm> termMap = new LinkedHashMap<>(); // termMap represent glossary terms
     Map<String, GlossaryTerm> rootTerms = new LinkedHashMap<>(); // rootTerms represent glossaries
 
@@ -575,35 +504,6 @@ public class ElasticSearchClient implements SearchClient {
       term.setChildren(new ArrayList<>());
     }
     return term;
-  }
-
-  private String getParentFQN(String fullyQualifiedName) {
-    // Iterates through FQN, ignoring dots within quotes or escaped, to accurately identify
-    // hierarchical levels.
-
-    boolean insideQuotes = false;
-    int lastDotIndex = -1;
-
-    for (int i = 0; i < fullyQualifiedName.length(); i++) {
-      char currentChar = fullyQualifiedName.charAt(i);
-
-      if (currentChar == '\\'
-          && i + 1 < fullyQualifiedName.length()
-          && fullyQualifiedName.charAt(i + 1) == '"') {
-        i++;
-        continue;
-      }
-
-      if (currentChar == '"') {
-        insideQuotes = !insideQuotes;
-      }
-
-      if (!insideQuotes && currentChar == '.') {
-        lastDotIndex = i;
-      }
-    }
-
-    return lastDotIndex > 0 ? fullyQualifiedName.substring(0, lastDotIndex) : null;
   }
 
   @Override

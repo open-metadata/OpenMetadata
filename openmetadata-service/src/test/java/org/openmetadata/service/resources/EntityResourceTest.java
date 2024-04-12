@@ -2247,7 +2247,8 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     WebTarget target =
         getResource(
             String.format(
-                "search/queryWithHierarchy?q=&index=%s&from=0&deleted=false&size=100", indexName));
+                "search/query?q=&index=%s&from=0&deleted=false&size=100&getHierarchy=true",
+                indexName));
     return TestUtils.get(target, String.class, ADMIN_AUTH_HEADERS);
   }
 

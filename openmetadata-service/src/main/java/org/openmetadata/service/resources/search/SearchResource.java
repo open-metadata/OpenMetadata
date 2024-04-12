@@ -150,7 +150,13 @@ public class SearchResource {
               description =
                   "Get only selected fields of the document body for each hit. Empty value will return all fields")
           @QueryParam("include_source_fields")
-          List<String> includeSourceFields)
+          List<String> includeSourceFields,
+      @Parameter(
+              description =
+                  "Fetch search results in hierarchical order of children elements. By default hierarchy is not fetched.")
+          @DefaultValue("false")
+          @QueryParam("getHierarchy")
+          boolean getHierarchy)
       throws IOException {
 
     if (nullOrEmpty(query)) {
@@ -169,93 +175,9 @@ public class SearchResource {
             .deleted(deleted)
             .sortOrder(sortOrder)
             .includeSourceFields(includeSourceFields)
+            .getHierarchy(getHierarchy)
             .build();
     return searchRepository.search(request);
-  }
-
-  @GET
-  @Path("/queryWithHierarchy")
-  @Operation(
-      operationId = "searchEntitiesWithHierarchy",
-      summary = "Search entities with hierarchy",
-      description =
-          "Search hierarchical entities using a query text. Supports pagination. "
-              + "Use query params `from` and `size` for pagination. ",
-      responses = {
-        @ApiResponse(
-            responseCode = "200",
-            description = "Hierarchical search response",
-            content =
-                @Content(
-                    mediaType = "application/json",
-                    schema = @Schema(implementation = SearchResponse.class)))
-      })
-  public Response searchWithHierarchy(
-      @Context UriInfo uriInfo,
-      @Parameter(
-              description =
-                  "Search Query Text. Supports wildcards for substring matches and specific syntax for searching fields, tags, and combining queries with logical operators. "
-                      + "Example usage: q=*search_term*, q=column_names:address, q=tags:user.email AND platform:MYSQL.",
-              required = true)
-          @DefaultValue("*")
-          @QueryParam("q")
-          String query,
-      @Parameter(description = "ElasticSearch Index name, defaults to table_search_index")
-          @DefaultValue("table_search_index")
-          @QueryParam("index")
-          String index,
-      @Parameter(description = "Filter documents by deleted param. By default deleted is false")
-          @DefaultValue("false")
-          @QueryParam("deleted")
-          @Deprecated(forRemoval = true)
-          boolean deleted,
-      @Parameter(description = "From field to paginate the results, defaults to 0")
-          @DefaultValue("0")
-          @QueryParam("from")
-          int from,
-      @Parameter(description = "Size field to limit the number of results returned, defaults to 10")
-          @DefaultValue("10")
-          @QueryParam("size")
-          int size,
-      @Parameter(description = "Track Total Hits")
-          @DefaultValue("false")
-          @QueryParam("track_total_hits")
-          boolean trackTotalHits,
-      @Parameter(
-              description =
-                  "Elasticsearch query that will be combined with the query_string query generator from the `query` argument")
-          @QueryParam("query_filter")
-          String queryFilter,
-      @Parameter(description = "Elasticsearch query that will be used as a post_filter")
-          @QueryParam("post_filter")
-          String postFilter,
-      @Parameter(description = "Get document body for each hit")
-          @DefaultValue("true")
-          @QueryParam("fetch_source")
-          boolean fetchSource,
-      @Parameter(
-              description =
-                  "Get only selected fields of the document body for each hit. Empty value will return all fields")
-          @QueryParam("include_source_fields")
-          List<String> includeSourceFields)
-      throws IOException {
-
-    if (nullOrEmpty(query)) {
-      query = "*";
-    }
-
-    SearchRequest request =
-        new SearchRequest.ElasticSearchRequestBuilder(
-                query, size, Entity.getSearchRepository().getIndexOrAliasName(index))
-            .from(from)
-            .queryFilter(queryFilter)
-            .postFilter(postFilter)
-            .fetchSource(fetchSource)
-            .trackTotalHits(trackTotalHits)
-            .deleted(deleted)
-            .includeSourceFields(includeSourceFields)
-            .build();
-    return searchRepository.searchWithHierarchy(request);
   }
 
   @GET
