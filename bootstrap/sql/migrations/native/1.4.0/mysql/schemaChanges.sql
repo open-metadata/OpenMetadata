@@ -72,3 +72,7 @@ ALTER TABLE suggestions ADD INDEX index_suggestions_status(status);
 UPDATE dashboard_data_model_entity
 SET json = JSON_SET(json, '$.dataModelType', 'QlikDataModel')
 WHERE JSON_EXTRACT(json, '$.dataModelType') in ('QlikSenseDataModel', 'QlikCloudDataModel');
+
+-- clean ES pipelines
+DELETE FROM ingestion_pipeline_entity
+WHERE LOWER(JSON_EXTRACT(json, '$.pipelineType')) = 'elasticsearchreindex';

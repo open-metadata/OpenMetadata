@@ -1,6 +1,8 @@
 package org.openmetadata.service.resources.dqtests;
 
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.schema.type.EventType.ENTITY_NO_CHANGE;
+import static org.openmetadata.schema.type.Include.ALL;
 
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Operation;
@@ -36,6 +38,7 @@ import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
 import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
+import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.data.RestoreEntity;
 import org.openmetadata.schema.api.tests.CreateLogicalTestCases;
 import org.openmetadata.schema.api.tests.CreateTestCase;
@@ -166,12 +169,6 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
           @QueryParam("testSuiteId")
           String testSuiteId,
       @Parameter(
-              description = "Returns the list of tests ordered by the most recent execution date",
-              schema = @Schema(type = "boolean"))
-          @QueryParam("orderByLastExecutionDate")
-          @DefaultValue("false")
-          Boolean orderByLastExecutionDate,
-      @Parameter(
               description = "Include all the tests at the entity level",
               schema = @Schema(type = "boolean"))
           @QueryParam("includeAllTests")
@@ -204,7 +201,6 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
         new ListFilter(include)
             .addQueryParam("testSuiteId", testSuiteId)
             .addQueryParam("includeAllTests", includeAllTests.toString())
-            .addQueryParam("orderByLastExecutionDate", orderByLastExecutionDate.toString())
             .addQueryParam("testCaseStatus", status)
             .addQueryParam("testCaseType", type);
     ResourceContextInterface resourceContext = getResourceContext(entityLink, filter);
@@ -356,6 +352,9 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
       @Parameter(description = "domain filter to use in list", schema = @Schema(type = "string"))
           @QueryParam("domain")
           String domain,
+      @Parameter(description = "owner filter to use in list", schema = @Schema(type = "string"))
+          @QueryParam("owner")
+          String owner,
       @Parameter(
               description = "search query term to use in list",
               schema = @Schema(type = "string"))
@@ -377,6 +376,16 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
     searchListFilter.addQueryParam("q", q);
     searchListFilter.addQueryParam("excludeFields", SEARCH_FIELDS_EXCLUDE);
     searchListFilter.addQueryParam("domain", domain);
+    if (!nullOrEmpty(owner)) {
+      EntityInterface entity;
+      try {
+        entity = Entity.getEntityByName(Entity.USER, owner, "", ALL);
+      } catch (Exception e) {
+        // If the owner is not a user, then we'll try to geta team
+        entity = Entity.getEntityByName(Entity.TEAM, owner, "", ALL);
+      }
+      searchListFilter.addQueryParam("owner", entity.getId().toString());
+    }
 
     if (startTimestamp != null) {
       if (startTimestamp > endTimestamp) {

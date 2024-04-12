@@ -26,6 +26,7 @@ public class SearchListFilter extends Filter<SearchListFilter> {
     ArrayList<String> conditions = new ArrayList<>();
     conditions.add(getIncludeCondition());
     conditions.add(getDomainCondition());
+    conditions.add(getOwnerCondition());
 
     if (entityType != null) {
       conditions.add(entityType.equals(Entity.TEST_CASE) ? getTestCaseCondition() : null);
@@ -102,6 +103,14 @@ public class SearchListFilter extends Filter<SearchListFilter> {
     return deleted;
   }
 
+  private String getOwnerCondition() {
+    String owner = getQueryParam("owner");
+    if (!nullOrEmpty(owner)) {
+      return String.format("{\"term\": {\"owner.id\": \"%s\"}}", owner);
+    }
+    return "";
+  }
+
   private String buildQueryFilter(String conditionFilter, String sourceFilter) {
     String q = queryParams.get("q");
     boolean isQEmpty = nullOrEmpty(q);
@@ -176,7 +185,6 @@ public class SearchListFilter extends Filter<SearchListFilter> {
 
     String testSuiteType = getQueryParam("testSuiteType");
     String fullyQualifiedName = getQueryParam("fullyQualifiedName");
-    String owner = getQueryParam("owner");
     Boolean includeEmptyTestSuites = Boolean.parseBoolean(getQueryParam("includeEmptyTestSuites"));
 
     if (testSuiteType != null) {
@@ -196,10 +204,6 @@ public class SearchListFilter extends Filter<SearchListFilter> {
           String.format(
               "{\"term\": {\"fullyQualifiedName\": \"%s\"}}",
               escapeDoubleQuotes(fullyQualifiedName)));
-    }
-
-    if (owner != null) {
-      conditions.add(String.format("{\"term\": {\"owner.id\": \"%s\"}}", owner));
     }
 
     return addCondition(conditions);
