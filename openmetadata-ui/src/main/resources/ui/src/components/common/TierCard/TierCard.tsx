@@ -23,7 +23,7 @@ import {
 } from 'antd';
 import { AxiosError } from 'axios';
 import { t } from 'i18next';
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
 import { Tag } from '../../../generated/entity/classification/tag';
 import { getTags } from '../../../rest/tagAPI';
@@ -35,7 +35,12 @@ import './tier-card.style.less';
 import { CardWithListItems, TierCardProps } from './TierCard.interface';
 
 const { Panel } = Collapse;
-const TierCard = ({ currentTier, updateTier, children }: TierCardProps) => {
+const TierCard = ({
+  currentTier,
+  updateTier,
+  children,
+  popoverProps,
+}: TierCardProps) => {
   const [tiers, setTiers] = useState<Array<Tag>>([]);
   const [tierCardData, setTierCardData] = useState<Array<CardWithListItems>>(
     []
@@ -91,6 +96,12 @@ const TierCard = ({ currentTier, updateTier, children }: TierCardProps) => {
   }: RadioChangeEvent) => {
     updateTierData(value);
   };
+
+  useEffect(() => {
+    if (popoverProps?.open && tierCardData.length === 0) {
+      getTierData();
+    }
+  }, [popoverProps?.open]);
 
   return (
     <Popover
@@ -162,7 +173,8 @@ const TierCard = ({ currentTier, updateTier, children }: TierCardProps) => {
       trigger="click"
       onOpenChange={(visible) =>
         visible && !tierCardData.length && getTierData()
-      }>
+      }
+      {...popoverProps}>
       {children}
     </Popover>
   );

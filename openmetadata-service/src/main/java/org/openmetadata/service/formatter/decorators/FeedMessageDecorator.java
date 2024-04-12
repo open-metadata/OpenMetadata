@@ -51,11 +51,11 @@ public class FeedMessageDecorator implements MessageDecorator<FeedMessage> {
   }
 
   @Override
-  public String getEntityUrl(String entityType, String fqn, String additionalParams) {
+  public String getEntityUrl(String prefix, String fqn, String additionalParams) {
     return String.format(
         "[%s](/%s/%s%s)",
         fqn,
-        entityType,
+        prefix,
         fqn.trim(),
         nullOrEmpty(additionalParams) ? "" : String.format("/%s", additionalParams));
   }
