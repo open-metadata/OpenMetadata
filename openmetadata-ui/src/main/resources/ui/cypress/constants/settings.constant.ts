@@ -60,6 +60,7 @@ export enum GlobalSettingOptions {
   ADD_DATA_INSIGHT_REPORT_ALERT = 'add-data-insight-report',
   EDIT_DATA_INSIGHT_REPORT_ALERT = 'edit-data-insight-report',
   LOGIN_CONFIGURATION = 'loginConfiguration',
+  OPENMETADATA_STATUS = 'openmetadataStatus',
   CUSTOMIZE_LANDING_PAGE = 'customizeLandingPage',
   TOPICS = 'topics',
   CONTAINERS = 'containers',
