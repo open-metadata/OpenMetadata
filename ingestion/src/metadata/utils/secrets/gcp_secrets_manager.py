@@ -2,18 +2,17 @@ from abc import ABC
 from typing import Optional
 
 import google_crc32c
+from google import auth
 from google.cloud import secretmanager
 from metadata.generated.schema.security.secrets.secretsManagerClientLoader import (
     SecretsManagerClientLoader,
-)
-from metadata.generated.schema.security.credentials.gcpValues import (
-    GcpCredentialsValues,
 )
 from metadata.generated.schema.security.secrets.secretsManagerProvider import (
     SecretsManagerProvider,
 )
 from metadata.utils.dispatch import enum_register
 from metadata.utils.secrets.external_secrets_manager import (
+    SECRET_MANAGER_AIRFLOW_CONF,
     ExternalSecretsManager,
     SecretsManagerConfigException,
 )
@@ -31,7 +30,17 @@ def _() -> None:
 
 @secrets_manager_client_loader.add(SecretsManagerClientLoader.airflow.value)
 def _() -> Optional["GCPCredentials"]:
-    pass
+    from airflow.configuration import conf
+    from metadata.generated.schema.security.credentials.gcpCredentials import (
+        GCPCredentials,
+    )
+
+    project_id = conf.get(SECRET_MANAGER_AIRFLOW_CONF, "project_id", fallback=None)
+    if project_id:
+        credentials = GCPCredentials(project_id=project_id)
+        return credentials
+
+    return None
 
 
 @secrets_manager_client_loader.add(SecretsManagerClientLoader.env.value)
@@ -40,8 +49,12 @@ def _() -> Optional["GCPCredentials"]:
         GCPCredentials,
     )
 
-    config = GcpCredentialsValues()
-    return GCPCredentials(gcpConfig=config)
+    # https://google-auth.readthedocs.io/en/master/reference/google.auth.html#google.auth.default
+    _, project_id = auth.default()
+    if project_id:
+        return GCPCredentials(project_id=project_id)
+
+    return None
 
 
 class GCPSecretsManager(ExternalSecretsManager, ABC):
