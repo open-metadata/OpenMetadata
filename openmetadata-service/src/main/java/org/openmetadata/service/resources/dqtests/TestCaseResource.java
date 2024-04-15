@@ -961,7 +961,7 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
           UUID id,
       @Valid TableData tableData) {
     OperationContext operationContext =
-        new OperationContext(entityType, MetadataOperation.EDIT_TEST_CASE_FAILED_ROWS_SAMPLE);
+        new OperationContext(entityType, MetadataOperation.EDIT_TESTS);
     authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
     TestCase testCase = repository.find(id, Include.NON_DELETED);
     if (testCase.getTestCaseResult() == null
