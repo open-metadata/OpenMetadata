@@ -33,7 +33,7 @@
         "EditReviewers",
         "EditRole",
         "EditSampleData",
-        "DeleteSampleData",
+        "DeleteTestCaseFailedRowsSample",
         "EditStatus",
         "EditTags",
         "EditTeams",
