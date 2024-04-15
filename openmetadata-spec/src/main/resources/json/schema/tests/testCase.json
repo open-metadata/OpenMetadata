@@ -111,6 +111,10 @@
       "description": "Reference to an ongoing Incident ID (stateId) for this test case.",
       "$ref": "../type/basic.json#/definitions/uuid"
     },
+    "failedRowsSample": {
+      "description": "Sample of failed rows for this test case.",
+      "$ref": "../entity/data/table.json#/definitions/tableData"
+    },
     "domain" : {
       "description": "Domain the test case belongs to. When not set, the test case inherits the domain from the table it belongs to.",
       "$ref": "../type/entityReference.json"

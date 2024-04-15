@@ -53,6 +53,7 @@ export const UserTeamSelectableList = ({
   owner,
   onUpdate = noop,
   children,
+  popoverProps,
 }: UserSelectDropdownProps) => {
   const { t } = useTranslation();
   const [popupVisible, setPopupVisible] = useState(false);
@@ -144,6 +145,7 @@ export const UserTeamSelectableList = ({
             id: updateItems[0].id,
             type: activeTab === 'teams' ? EntityType.TEAM : EntityType.USER,
             name: updateItems[0].name,
+            fullyQualifiedName: updateItems[0].fullyQualifiedName,
             displayName: updateItems[0].displayName,
           }
     );
@@ -276,7 +278,8 @@ export const UserTeamSelectableList = ({
       placement="bottomRight"
       showArrow={false}
       trigger="click"
-      onOpenChange={setPopupVisible}>
+      onOpenChange={setPopupVisible}
+      {...popoverProps}>
       {children ??
         (hasPermission && (
           <Tooltip

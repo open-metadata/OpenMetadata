@@ -60,6 +60,7 @@ export interface PropertyValueProps {
   hasEditPermissions: boolean;
   versionDataKeys?: string[];
   isVersionView?: boolean;
+  isRenderedInRightPanel?: boolean;
   onExtensionUpdate: (updatedExtension: Table['extension']) => Promise<void>;
 }
 

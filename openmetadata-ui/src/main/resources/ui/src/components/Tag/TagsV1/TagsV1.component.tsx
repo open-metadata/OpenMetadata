@@ -38,6 +38,7 @@ const TagsV1 = ({
   tagProps,
   tooltipOverride,
   tagType,
+  size,
 }: TagsV1Props) => {
   const history = useHistory();
   const color = useMemo(
@@ -141,7 +142,8 @@ const TagsV1 = ({
               (tag as HighlightedTagLabel).isHighlighted
             ),
           },
-          'tag-chip tag-chip-content'
+          'tag-chip tag-chip-content',
+          size
         )}
         data-testid="tags"
         style={

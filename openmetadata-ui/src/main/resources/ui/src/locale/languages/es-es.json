@@ -808,6 +808,7 @@
     "pipeline-name": "Nombre de la pipeline",
     "pipeline-plural": "Pipelines",
     "pipeline-state": "Estado de la pipeline",
+    "platform": "Platform",
     "please-enter-value": "Ingrese el valor de {{name}}",
     "please-password-type-first": "Ingrese primero la contraseña",
     "please-select": "Por favor seleccione",
