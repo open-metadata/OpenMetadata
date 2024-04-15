@@ -13,7 +13,11 @@
 
 import { removeSession } from '@analytics/session-utils';
 import { Auth0Provider } from '@auth0/auth0-react';
-import { Configuration } from '@azure/msal-browser';
+import {
+  Configuration,
+  IPublicClientApplication,
+  PublicClientApplication,
+} from '@azure/msal-browser';
 import { MsalProvider } from '@azure/msal-react';
 import {
   AxiosError,
@@ -62,8 +66,6 @@ import {
   getUrlPathnameExpiry,
   getUserManagerConfig,
   isProtectedRoute,
-  msalInstance,
-  setMsalInstance,
 } from '../../../utils/AuthProvider.util';
 import { escapeESReservedCharacters } from '../../../utils/StringsUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
@@ -125,6 +127,7 @@ export const AuthProvider = ({
 
   const [timeoutId, setTimeoutId] = useState<number>();
   const [loading, setLoading] = useState(false);
+  const [msalInstance, setMsalInstance] = useState<IPublicClientApplication>();
 
   const authenticatorRef = useRef<AuthenticatorRef>(null);
 
@@ -171,10 +174,6 @@ export const AuthProvider = ({
     }
   };
 
-  const setLoadingIndicator = (value: boolean) => {
-    setLoading(value);
-  };
-
   /**
    * Stores redirect URL for successful login
    */
@@ -192,7 +191,7 @@ export const AuthProvider = ({
     setCurrentUser({} as User);
     removeOidcToken();
     setIsUserAuthenticated(false);
-    setLoadingIndicator(false);
+    setLoading(false);
     clearTimeout(timeoutId);
     if (forceLogout) {
       onLogoutHandler();
@@ -414,7 +413,11 @@ export const AuthProvider = ({
     switch (provider) {
       case AuthProviderEnum.Azure:
         {
-          setMsalInstance(otherConfigs as unknown as Configuration);
+          setMsalInstance(
+            new PublicClientApplication(
+              otherConfigs as unknown as Configuration
+            )
+          );
         }
 
         break;
@@ -641,7 +644,7 @@ export const AuthProvider = ({
         );
       }
       case AuthProviderEnum.Azure: {
-        return (
+        return msalInstance ? (
           <MsalProvider instance={msalInstance}>
             <MsalAuthenticator
               ref={authenticatorRef}
@@ -651,6 +654,8 @@ export const AuthProvider = ({
               {childElement}
             </MsalAuthenticator>
           </MsalProvider>
+        ) : (
+          <Loader fullScreen />
         );
       }
       default: {
