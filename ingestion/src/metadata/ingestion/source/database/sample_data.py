@@ -705,7 +705,7 @@ class SampleDataSource(
                 tableType=table["tableType"],
                 tableConstraints=table.get("tableConstraints"),
                 tags=table["tags"],
-                dataModel=table.get("dataModel")
+                dataModel=table.get("dataModel"),
             )
 
             yield Either(right=table_and_db)
@@ -1413,7 +1413,8 @@ class SampleDataSource(
                 yield Either(right=test_case_req)
                 if test_case.get("sampleFailedRows"):
                     test_case_entity = self.metadata.get_or_create_test_case(
-                        test_case_fqn=f"{entity_link.get_table_or_column_fqn(test_case['entityLink'])}.{test_case['name']}",
+                        test_case_fqn=f"{entity_link.get_table_or_column_fqn(
+                            test_case['entityLink'])}.{test_case['name']}",
                     )
 
                     self.metadata.ingest_failed_rows_sample(
@@ -1539,9 +1540,6 @@ class SampleDataSource(
     def ingest_life_cycle(self) -> Iterable[Either[OMetaLifeCycleData]]:
         """Iterate over all the life cycle data and ingest them"""
         for table_life_cycle in self.life_cycle_data["lifeCycleData"]:
-            table = self.metadata.get_by_name(
-                entity=Table, fqn=table_life_cycle["fqn"], fields=["lifeCycle"]
-            )
             life_cycle = table_life_cycle["lifeCycle"]
             life_cycle_data = LifeCycle()
             life_cycle_data.created = AccessDetails(
