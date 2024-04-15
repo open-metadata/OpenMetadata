@@ -36,7 +36,7 @@ const SelectWidget: FC<WidgetProps> = ({
       onFocus={() => onFocus(rest.id, rest.value)}>
       {(rest.options.enumOptions ?? []).map((option) => (
         <Select.Option
-          data-testid={`select-option-${option.value}`}
+          data-testid={`select-option-${option.label}`}
           key={option.value}
           value={option.value}>
           {capitalize(option.label)}
