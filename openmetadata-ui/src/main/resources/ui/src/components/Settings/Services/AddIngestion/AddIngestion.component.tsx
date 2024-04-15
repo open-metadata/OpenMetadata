@@ -27,6 +27,7 @@ import { IngestionPipeline } from '../../../../generated/entity/services/ingesti
 import { useApplicationStore } from '../../../../hooks/useApplicationStore';
 import { IngestionWorkflowData } from '../../../../interface/service.interface';
 import { getIngestionFrequency } from '../../../../utils/CommonUtils';
+import { getSuccessMessage } from '../../../../utils/IngestionUtils';
 import { cleanWorkFlowData } from '../../../../utils/IngestionWorkflowUtils';
 import { getIngestionName } from '../../../../utils/ServiceUtils';
 import { generateUUID } from '../../../../utils/StringsUtils';
@@ -256,32 +257,6 @@ const AddIngestion = ({
     }
   };
 
-  const getSuccessMessage = () => {
-    const updateMessage = showDeployButton
-      ? t('message.action-has-been-done-but-failed-to-deploy', {
-          action: t('label.updated-lowercase'),
-        })
-      : t('message.action-has-been-done-but-deploy-successfully', {
-          action: t('label.updated-lowercase'),
-        });
-    const createMessage = showDeployButton
-      ? t('message.action-has-been-done-but-failed-to-deploy', {
-          action: t('label.created-lowercase'),
-        })
-      : t('message.action-has-been-done-but-deploy-successfully', {
-          action: t('label.created-lowercase'),
-        });
-
-    return (
-      <span>
-        <span className="font-medium">{`"${ingestionName}"`}</span>
-        <span>
-          {status === FormSubmitType.ADD ? createMessage : updateMessage}
-        </span>
-      </span>
-    );
-  };
-
   return (
     <div data-testid="add-ingestion-container">
       <Typography.Title className="font-normal" level={5}>
@@ -346,7 +321,11 @@ const AddIngestion = ({
             showDeployButton={showDeployButton}
             showIngestionButton={false}
             state={status}
-            successMessage={getSuccessMessage()}
+            successMessage={getSuccessMessage(
+              ingestionName,
+              status,
+              showDeployButton
+            )}
             viewServiceText={viewServiceText}
           />
         )}

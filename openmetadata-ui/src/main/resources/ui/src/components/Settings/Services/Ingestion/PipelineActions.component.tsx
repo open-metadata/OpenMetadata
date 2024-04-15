@@ -12,6 +12,7 @@
  */
 import { CheckOutlined } from '@ant-design/icons';
 import { Button, Divider, Space } from 'antd';
+import { isUndefined } from 'lodash';
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useHistory } from 'react-router-dom';
@@ -38,6 +39,7 @@ function PipelineActions({
   handleDeleteSelection,
   handleIsConfirmationModalOpen,
   onIngestionWorkflowsUpdate,
+  handleEditClick,
 }: PipelineActionsProps) {
   const history = useHistory();
   const { t } = useTranslation();
@@ -87,14 +89,20 @@ function PipelineActions({
   };
 
   const handleUpdate = (ingestion: IngestionPipeline) => {
-    history.push(
-      getEditIngestionPath(
-        serviceCategory,
-        serviceName,
-        ingestion.fullyQualifiedName || `${serviceName}.${ingestion.name}`,
-        ingestion.pipelineType
-      )
-    );
+    if (isUndefined(handleEditClick)) {
+      history.push(
+        getEditIngestionPath(
+          serviceCategory,
+          serviceName,
+          ingestion.fullyQualifiedName || `${serviceName}.${ingestion.name}`,
+          ingestion.pipelineType
+        )
+      );
+    } else {
+      handleEditClick(
+        ingestion.fullyQualifiedName || `${serviceName}.${ingestion.name}`
+      );
+    }
   };
 
   const handleConfirmDelete = (id: string, name: string) => {
