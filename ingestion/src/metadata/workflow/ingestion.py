@@ -91,8 +91,6 @@ class IngestionWorkflow(BaseWorkflow, ABC):
         """
 
     def post_init(self) -> None:
-        self.validate()
-
         # Pick up the service connection from the API if needed
         self._retrieve_service_connection_if_needed(self.service_type)
 

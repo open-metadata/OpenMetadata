@@ -18,11 +18,12 @@ from pymongo import MongoClient
 from metadata.profiler.adaptors.dynamodb import DynamoDB
 from metadata.profiler.adaptors.mongodb import MongoDB
 from metadata.profiler.adaptors.nosql_adaptor import NoSQLAdaptor
+from metadata.profiler.factory import Factory
 
 NoSQLAdaptorConstructor = Callable[[any], NoSQLAdaptor]
 
 
-class NoSQLAdaptorFactory:
+class NoSQLAdaptorFactory(Factory):
     """
     A factory class for creating NoSQL client instances.
 
@@ -35,7 +36,7 @@ class NoSQLAdaptorFactory:
 
     Methods:
         register(source_class: Type, target_class: NoSQLClientConstructor): Register a client type with its constructor.
-        construct(source_client: any) -> NoSQLClient: Create a client instance of the type of the given source client.
+        create(source_client: any) -> NoSQLClient: Create a client instance of the type of the given source client.
     """
 
     def __init__(self):
@@ -57,7 +58,7 @@ class NoSQLAdaptorFactory:
         """
         self._clients[source_class_name] = target_class
 
-    def construct(self, source_client: any) -> NoSQLAdaptor:
+    def create(self, source_client: any) -> NoSQLAdaptor:
         """
         Create a client instance of the type of the given source client.
 
