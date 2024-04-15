@@ -15,8 +15,8 @@ Module to manage SSL certificates
 """
 import os
 import tempfile
-from functools import singledispatchmethod
-from typing import cast
+from functools import singledispatch, singledispatchmethod
+from typing import Optional, Union, cast
 
 from metadata.generated.schema.entity.services.connections.dashboard.qlikSenseConnection import (
     QlikSenseConnection,
@@ -79,15 +79,16 @@ class SSLManager:
     @setup_ssl.register(DorisConnection)
     def _(self, connection):
         # Use the temporary file paths for SSL configuration
+        connection = cast(Union[MysqlConnection, DorisConnection], connection)
         connection.connectionArguments = (
             connection.connectionArguments or init_empty_connection_arguments()
         )
         ssl_args = connection.connectionArguments.__root__.get("ssl", {})
-        if connection.ssl.__root__.caCertificate:
+        if connection.sslConfig.__root__.caCertificate:
             ssl_args["ssl_ca"] = self.ca_file_path
-        if connection.ssl.__root__.sslCertificate:
+        if connection.sslConfig.__root__.sslCertificate:
             ssl_args["ssl_cert"] = self.cert_file_path
-        if connection.ssl.__root__.sslKey:
+        if connection.sslConfig.__root__.sslKey:
             ssl_args["ssl_key"] = self.key_file_path
         connection.connectionArguments.__root__["ssl"] = ssl_args
         return connection
@@ -96,6 +97,11 @@ class SSLManager:
     @setup_ssl.register(RedshiftConnection)
     @setup_ssl.register(GreenplumConnection)
     def _(self, connection):
+        connection = cast(
+            Union[PostgresConnection, RedshiftConnection, GreenplumConnection],
+            connection,
+        )
+
         if not connection.connectionArguments:
             connection.connectionArguments = init_empty_connection_arguments()
         connection.connectionArguments.__root__["sslmode"] = connection.sslMode.value
@@ -123,3 +129,38 @@ class SSLManager:
             "ssl.certificate.location"
         ] = self.cert_file_path
         return connection
+
+
+@singledispatch
+def check_ssl_and_init(connection):
+    return connection
+
+
+@check_ssl_and_init.register(MysqlConnection)
+@check_ssl_and_init.register(DorisConnection)
+def _(connection):
+    service_connection = cast(Union[MysqlConnection, DorisConnection], connection)
+    ssl: Optional[verifySSLConfig.SslConfig] = service_connection.sslConfig
+    if ssl and (
+        ssl.__root__.caCertificate or ssl.__root__.sslCertificate or ssl.__root__.sslKey
+    ):
+        return SSLManager(
+            ca=ssl.__root__.caCertificate,
+            cert=ssl.__root__.sslCertificate,
+            key=ssl.__root__.sslKey,
+        )
+    return None
+
+
+@check_ssl_and_init.register(PostgresConnection)
+@check_ssl_and_init.register(RedshiftConnection)
+@check_ssl_and_init.register(GreenplumConnection)
+def _(connection):
+    connection = cast(
+        Union[PostgresConnection, RedshiftConnection, GreenplumConnection],
+        connection,
+    )
+    if connection.sslMode and connection.sslConfig:
+        return SSLManager(ca=connection.sslConfig.__root__.caCertificate)
+
+    return None

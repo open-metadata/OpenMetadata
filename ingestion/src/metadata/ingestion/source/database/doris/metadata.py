@@ -50,7 +50,7 @@ from metadata.ingestion.source.database.doris.utils import (
 )
 from metadata.ingestion.source.database.mysql.utils import parse_column
 from metadata.utils.logger import ingestion_logger
-from metadata.utils.secrets.manage_ssl import SSLManager
+from metadata.utils.secrets.manage_ssl import SSLManager, check_ssl_and_init
 
 MySQLTableDefinitionParser._parse_column = (  # pylint: disable=protected-access
     parse_column
@@ -148,18 +148,8 @@ class DorisSource(CommonDbSourceService):
     def __init__(self, config: WorkflowSource, metadata: OpenMetadata):
         self.ssl_manager = None
         service_connection = config.serviceConnection.__root__.config
-        ssl = service_connection.ssl
-        if ssl and (
-            ssl.__root__.caCertificate
-            or ssl.__root__.sslCertificate
-            or ssl.__root__.sslKey
-        ):
-            self.ssl_manager = SSLManager(
-                ca=ssl.__root__.caCertificate,
-                cert=ssl.__root__.sslCertificate,
-                key=ssl.__root__.sslKey,
-            )
-
+        self.ssl_manager: SSLManager = check_ssl_and_init(service_connection)
+        if self.ssl_manager:
             service_connection = self.ssl_manager.setup_ssl(service_connection)
         super().__init__(config, metadata)
 
