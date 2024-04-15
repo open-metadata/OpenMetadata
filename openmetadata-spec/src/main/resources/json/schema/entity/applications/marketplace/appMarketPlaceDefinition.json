@@ -131,9 +131,14 @@
       },
       "uniqueItems": true
     },
-    "systemApp": {
-      "description": "If the app is a system app, it cannot be uninstalled.",
+    "system": {
+      "description": "A system app cannot be uninstalled or modified.",
       "type": "boolean",
+      "default": false
+    },
+    "preview": {
+      "type": "boolean",
+      "description": "Flag to enable/disable preview for the application. If the app is in preview mode, it can't be installed.",
       "default": false
     }
   },

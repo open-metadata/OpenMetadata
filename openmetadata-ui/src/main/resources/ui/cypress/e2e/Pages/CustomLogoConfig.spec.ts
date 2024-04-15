@@ -25,19 +25,10 @@ describe('Custom Logo Config', { tags: 'Settings' }, () => {
   beforeEach(() => {
     cy.login();
 
-    interceptURL(
-      'GET',
-      'api/v1/system/settings/customLogoConfiguration',
-      'customLogoConfiguration'
-    );
-    cy.settingClick(GlobalSettingOptions.CUSTOM_LOGO);
-
-    verifyResponseStatusCode('@customLogoConfiguration', 200);
+    cy.settingClick(GlobalSettingOptions.APPEARANCE);
   });
 
   it('Should update the config', () => {
-    cy.get('[data-testid="edit-button"]').should('be.visible').click();
-
     cy.get('[data-testid="customLogoUrlPath"]')
       .scrollIntoView()
       .clear()
@@ -66,30 +57,16 @@ describe('Custom Logo Config', { tags: 'Settings' }, () => {
 
     interceptURL('PUT', 'api/v1/system/settings', 'updatedConfig');
 
-    interceptURL(
-      'GET',
-      'api/v1/system/settings/customLogoConfiguration',
-      'updatedCustomLogoConfiguration'
-    );
-
-    cy.get('[data-testid="save-button"]').click();
+    cy.get('[data-testid="save-btn"]').scrollIntoView().click();
 
     verifyResponseStatusCode('@updatedConfig', 200);
-    verifyResponseStatusCode('@updatedCustomLogoConfiguration', 200);
-
-    cy.get('[data-testid="logo-url"]').should('contain', config.logo);
-    cy.get('[data-testid="monogram-url"]').should('contain', config.monogram);
   });
 
   it('Reset to default', () => {
-    cy.get('[data-testid="edit-button"]').should('be.visible').click();
-    cy.get('[data-testid="customLogoUrlPath"]').scrollIntoView().clear();
-    cy.get('[data-testid="customMonogramUrlPath"]').scrollIntoView().clear();
     interceptURL('PUT', 'api/v1/system/settings', 'updatedConfig');
 
-    cy.get('[data-testid="save-button"]').click();
+    cy.get('[data-testid="reset-button"]').click();
 
     verifyResponseStatusCode('@updatedConfig', 200);
-    verifyResponseStatusCode('@customLogoConfiguration', 200);
   });
 });

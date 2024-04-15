@@ -198,7 +198,6 @@ def import_connection_fn(connection: BaseModel, function_name: str) -> Callable:
     # pylint: disable=consider-using-f-string
 
     if connection.type.value.lower().startswith("custom"):
-
         python_class_parts = connection.sourcePythonClass.rsplit(".", 1)
         python_module_path = ".".join(python_class_parts[:-1])
 

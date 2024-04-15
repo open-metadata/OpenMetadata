@@ -25,9 +25,12 @@ public class SearchListFilter extends Filter<SearchListFilter> {
   public String getCondition(String entityType) {
     ArrayList<String> conditions = new ArrayList<>();
     conditions.add(getIncludeCondition());
+    conditions.add(getDomainCondition());
+    conditions.add(getOwnerCondition());
 
     if (entityType != null) {
       conditions.add(entityType.equals(Entity.TEST_CASE) ? getTestCaseCondition() : null);
+      conditions.add(entityType.equals(Entity.TEST_SUITE) ? getTestSuiteCondition() : null);
     }
     String conditionFilter = addCondition(conditions);
     String sourceFilter = getExcludeIncludeFields();
@@ -38,8 +41,8 @@ public class SearchListFilter extends Filter<SearchListFilter> {
   protected String addCondition(List<String> conditions) {
     StringBuffer condition = new StringBuffer();
     for (String c : conditions) {
-      if (!c.isEmpty()) {
-        if (!condition.isEmpty()) {
+      if (!nullOrEmpty(c)) {
+        if (!nullOrEmpty(condition)) {
           // Add `,` between conditions
           condition.append(",\n");
         }
@@ -85,11 +88,27 @@ public class SearchListFilter extends Filter<SearchListFilter> {
   }
 
   private String getIncludeCondition() {
+    String domain = getQueryParam("domain");
+    if (!nullOrEmpty(domain)) {
+      return String.format("{\"term\": {\"domain.fullyQualifiedName\": \"%s\"}}", domain);
+    }
+    return "";
+  }
+
+  private String getDomainCondition() {
     String deleted = "";
     if (include != Include.ALL) {
       deleted = String.format("{\"term\": {\"deleted\": \"%s\"}}", include == Include.DELETED);
     }
     return deleted;
+  }
+
+  private String getOwnerCondition() {
+    String owner = getQueryParam("owner");
+    if (!nullOrEmpty(owner)) {
+      return String.format("{\"term\": {\"owner.id\": \"%s\"}}", owner);
+    }
+    return "";
   }
 
   private String buildQueryFilter(String conditionFilter, String sourceFilter) {
@@ -113,15 +132,17 @@ public class SearchListFilter extends Filter<SearchListFilter> {
     String status = getQueryParam("testCaseStatus");
     String testSuiteId = getQueryParam("testSuiteId");
     String type = getQueryParam("testCaseType");
-    String testPlatform = getQueryParam("testPlatform");
+    String testPlatform = getQueryParam("testPlatforms");
     String startTimestamp = getQueryParam("startTimestamp");
     String endTimestamp = getQueryParam("endTimestamp");
 
     if (entityFQN != null) {
       conditions.add(
           includeAllTests
-              ? String.format("{\"regexp\": {\"entityFQN\": \"%s.*\"}}", entityFQN)
-              : String.format("{\"term\": {\"entityFQN\": \"%s\"}}", entityFQN));
+              ? String.format(
+                  "{\"prefix\": {\"entityFQN\": \"%s\"}}", escapeDoubleQuotes(entityFQN))
+              : String.format(
+                  "{\"term\": {\"entityFQN\": \"%s\"}}", escapeDoubleQuotes(entityFQN)));
     }
 
     if (testSuiteId != null) {
@@ -144,7 +165,9 @@ public class SearchListFilter extends Filter<SearchListFilter> {
     }
 
     if (testPlatform != null) {
-      conditions.add(String.format("{\"term\": {\"testPlatforms\": \"%s\"}}", testPlatform));
+      String platforms =
+          Arrays.stream(testPlatform.split(",")).collect(Collectors.joining("\", \"", "\"", "\""));
+      conditions.add(String.format("{\"terms\": {\"testPlatforms\": [%s]}}", platforms));
     }
 
     if (startTimestamp != null && endTimestamp != null) {
@@ -155,5 +178,38 @@ public class SearchListFilter extends Filter<SearchListFilter> {
     }
 
     return addCondition(conditions);
+  }
+
+  private String getTestSuiteCondition() {
+    ArrayList<String> conditions = new ArrayList<>();
+
+    String testSuiteType = getQueryParam("testSuiteType");
+    String fullyQualifiedName = getQueryParam("fullyQualifiedName");
+    Boolean includeEmptyTestSuites = Boolean.parseBoolean(getQueryParam("includeEmptyTestSuites"));
+
+    if (testSuiteType != null) {
+      Boolean executable = true;
+      if (testSuiteType.equals("logical")) {
+        executable = false;
+      }
+      conditions.add(String.format("{\"term\": {\"executable\": \"%s\"}}", executable));
+    }
+
+    if (!includeEmptyTestSuites) {
+      conditions.add("{\"exists\": {\"field\": \"tests\"}}");
+    }
+
+    if (fullyQualifiedName != null) {
+      conditions.add(
+          String.format(
+              "{\"term\": {\"fullyQualifiedName\": \"%s\"}}",
+              escapeDoubleQuotes(fullyQualifiedName)));
+    }
+
+    return addCondition(conditions);
+  }
+
+  private String escapeDoubleQuotes(String str) {
+    return str.replace("\"", "\\\"");
   }
 }

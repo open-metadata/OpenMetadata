@@ -5,6 +5,7 @@ import static javax.ws.rs.core.Response.Status.OK;
 import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
 import static org.openmetadata.service.util.TestUtils.assertResponseContains;
 import static org.openmetadata.service.util.TestUtils.readResponse;
+import static org.openmetadata.service.util.TestUtils.waitForEsAsyncOp;
 
 import java.io.IOException;
 import java.util.Map;
@@ -49,9 +50,7 @@ public class AppsResourceTest extends EntityResourceTest<App, CreateApp> {
           appMarketPlaceResourceTest.getEntityByName(name, ADMIN_AUTH_HEADERS);
     } catch (EntityNotFoundException | HttpResponseException ex) {
       CreateAppMarketPlaceDefinitionReq req =
-          appMarketPlaceResourceTest
-              .createRequest(name)
-              .withSystemApp(name.equals(SYSTEM_APP_NAME));
+          appMarketPlaceResourceTest.createRequest(name).withSystem(name.equals(SYSTEM_APP_NAME));
       appMarketPlaceDefinition =
           appMarketPlaceResourceTest.createAndCheckEntity(req, ADMIN_AUTH_HEADERS);
     }
@@ -82,7 +81,7 @@ public class AppsResourceTest extends EntityResourceTest<App, CreateApp> {
   @Test
   void post_trigger_app_200() throws HttpResponseException, InterruptedException {
     postTriggerApp("SearchIndexingApplication", ADMIN_AUTH_HEADERS);
-    TimeUnit.MILLISECONDS.sleep(200);
+    waitForEsAsyncOp();
     AppRunRecord latestRun = getLatestAppRun("SearchIndexingApplication", ADMIN_AUTH_HEADERS);
     assert latestRun.getStatus().equals(AppRunRecord.Status.RUNNING);
     TimeUnit timeout = TimeUnit.SECONDS;
