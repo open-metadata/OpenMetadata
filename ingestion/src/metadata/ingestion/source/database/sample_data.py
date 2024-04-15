@@ -705,7 +705,7 @@ class SampleDataSource(
                 tableType=table["tableType"],
                 tableConstraints=table.get("tableConstraints"),
                 tags=table["tags"],
-                dataModels=table.get("dataModels")
+                dataModel=table.get("dataModel")
             )
 
             yield Either(right=table_and_db)

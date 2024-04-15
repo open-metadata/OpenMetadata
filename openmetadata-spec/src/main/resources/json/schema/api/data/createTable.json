@@ -31,7 +31,7 @@
       },
       "default": null
     },
-    "dataModels": {
+    "dataModel": {
       "$ref": "../../entity/data/table.json#/definitions/dataModel"
     },
     "tableConstraints": {
