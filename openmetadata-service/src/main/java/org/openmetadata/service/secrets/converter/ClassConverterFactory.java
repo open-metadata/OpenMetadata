@@ -21,6 +21,7 @@ import org.openmetadata.schema.entity.automations.Workflow;
 import org.openmetadata.schema.metadataIngestion.DbtPipeline;
 import org.openmetadata.schema.metadataIngestion.dbtconfig.DbtGCSConfig;
 import org.openmetadata.schema.security.credentials.GCPCredentials;
+
 import org.openmetadata.schema.services.connections.dashboard.LookerConnection;
 import org.openmetadata.schema.services.connections.dashboard.SupersetConnection;
 import org.openmetadata.schema.services.connections.dashboard.TableauConnection;
@@ -57,6 +58,7 @@ public final class ClassConverterFactory {
             Map.entry(IcebergFileSystem.class, new IcebergFileSystemClassConverter()),
             Map.entry(LookerConnection.class, new LookerConnectionClassConverter()),
             Map.entry(MysqlConnection.class, new MysqlConnectionClassConverter()),
+            Map.entry(RedshiftConnection.class, new RedshiftConnectionClassConverter()),
             Map.entry(PostgresConnection.class, new PostgresConnectionClassConverter()),
             Map.entry(SapHanaConnection.class, new SapHanaConnectionClassConverter()),
             Map.entry(SupersetConnection.class, new SupersetConnectionClassConverter()),

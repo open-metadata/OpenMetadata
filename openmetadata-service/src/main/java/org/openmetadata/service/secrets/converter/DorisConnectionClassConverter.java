@@ -19,7 +19,7 @@ import org.openmetadata.schema.security.credentials.GCPCredentials;
 import org.openmetadata.schema.security.ssl.ValidateSSLClientConfig;
 import org.openmetadata.schema.security.ssl.VerifySSL;
 
-import org.openmetadata.schema.services.connections.database.MysqlConnection;
+import org.openmetadata.schema.services.connections.database.DorisConnection;
 import org.openmetadata.schema.services.connections.database.common.IamAuthConfig;
 import org.openmetadata.schema.services.connections.database.common.basicAuth;
 import org.openmetadata.service.util.JsonUtils;
@@ -27,25 +27,20 @@ import org.openmetadata.service.util.JsonUtils;
 /**
  * Converter class to get an `DatalakeConnection` object.
  */
-public class MysqlConnectionClassConverter extends ClassConverter {
+public class DorisConnectionClassConverter extends ClassConverter {
 
     private static final List<Class<?>> CONFIG_SOURCE_CLASSES = List.of(basicAuth.class, IamAuthConfig.class);
 
     private static final List<Class<?>> SSL_SOURCE_CLASS = List.of(ValidateSSLClientConfig.class);
 
-    public MysqlConnectionClassConverter() {
-        super(MysqlConnection.class);
+    public DorisConnectionClassConverter() {
+        super(DorisConnection.class);
     }
 
     @Override
     public Object convert(Object object) {
-        MysqlConnection mysqlConnection = (MysqlConnection) JsonUtils.convertValue(object, this.clazz);
-
-        tryToConvert(mysqlConnection.getAuthType(), CONFIG_SOURCE_CLASSES).ifPresent(mysqlConnection::setAuthType);
-
-        tryToConvert(mysqlConnection.getSslConfig(), SSL_SOURCE_CLASS).ifPresent(obj -> mysqlConnection.setSslConfig((ValidateSSLClientConfig) obj));
-//
-
-        return mysqlConnection;
+        DorisConnection dorisConnection = (DorisConnection) JsonUtils.convertValue(object, this.clazz);
+        tryToConvert(dorisConnection.getSslConfig(), SSL_SOURCE_CLASS).ifPresent(obj -> dorisConnection.setSslConfig((ValidateSSLClientConfig) obj));
+        return dorisConnection;
     }
 }

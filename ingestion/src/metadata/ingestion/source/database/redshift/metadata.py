@@ -96,7 +96,7 @@ from metadata.utils.execution_time_tracker import (
 from metadata.utils.filters import filter_by_database
 from metadata.utils.helpers import get_start_and_end
 from metadata.utils.logger import ingestion_logger
-from metadata.utils.secrets.manage_ssl import SSLManager
+from metadata.utils.secrets.manage_ssl import SSLManager, check_ssl_and_init
 from metadata.utils.sqlalchemy_utils import get_all_table_comments
 
 logger = ingestion_logger()
@@ -142,11 +142,8 @@ class RedshiftSource(
         service_connection: RedshiftConnection = (
             config.serviceConnection.__root__.config
         )
-        if service_connection.sslMode and service_connection.sslConfig:
-            self.ssl_manager = SSLManager(
-                ca=service_connection.sslConfig.__root__.caCertificate
-            )
-
+        self.ssl_manager: SSLManager = check_ssl_and_init(service_connection)
+        if self.ssl_manager:
             service_connection = self.ssl_manager.setup_ssl(service_connection)
         super().__init__(config, metadata)
         self.partition_details = {}

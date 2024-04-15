@@ -84,7 +84,7 @@
         }
       ]
     },
-    "ssl": {
+    "sslConfig": {
       "title": "SSL",
       "description": "SSL Configuration details.",
       "$ref": "../../../../security/ssl/verifySSLConfig.json#/definitions/sslConfig"
