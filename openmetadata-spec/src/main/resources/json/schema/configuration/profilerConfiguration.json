@@ -60,7 +60,7 @@
             "$ref": "#/definitions/metricType"
           }
         },
-        "disable": {
+        "disabled": {
           "type": "boolean",
           "description": "If true, the metric will not be computed for the data type.",
           "default": false
@@ -76,5 +76,6 @@
           "$ref": "#/definitions/metricConfigurationDefinition"
       }
     }
-  }
+  },
+  "additionalProperties": false
 }
