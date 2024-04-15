@@ -2163,7 +2163,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     TestUtils.delete(target, entityClass, ADMIN_AUTH_HEADERS);
     // search again in search after deleting
 
-    waitForEsAsyncOp();
+    waitForEsAsyncOp(1000);
     response =
         getResponseFormSearch(
             indexMapping.getIndexName(Entity.getSearchRepository().getClusterAlias()));
