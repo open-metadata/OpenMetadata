@@ -1410,18 +1410,6 @@ class SampleDataSource(
                     )  # type: ignore
                 )
                 yield Either(right=test_case_req)
-                if test_case.get("sampleFailedRows"):
-                    test_case_entity = self.metadata.get_or_create_test_case(
-                        test_case_fqn=f"{entity_link.get_table_or_column_fqn(test_case['entityLink'])}.{test_case['name']}",
-                    )
-
-                    self.metadata.ingest_failed_rows_sample(
-                        test_case_entity,
-                        TableData(
-                            rows=test_case["sampleFailedRows"]["rows"],
-                            columns=test_case["sampleFailedRows"]["columns"],
-                        ),
-                    )
 
     def ingest_incidents(self) -> Iterable[Either[OMetaTestCaseResolutionStatus]]:
         """
@@ -1505,6 +1493,14 @@ class SampleDataSource(
                         test_case_name=case.fullyQualifiedName.__root__,
                     )
                     yield Either(right=test_case_result_req)
+            if test_case_results.get("failedRowsSample"):
+                self.metadata.ingest_failed_rows_sample(
+                    case,
+                    TableData(
+                        rows=test_case_results["failedRowsSample"]["rows"],
+                        columns=test_case_results["failedRowsSample"]["columns"],
+                    ),
+                )
 
     def ingest_data_insights(self) -> Iterable[Either[OMetaDataInsightSample]]:
         """Iterate over all the data insights and ingest them"""
