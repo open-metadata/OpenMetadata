@@ -2,6 +2,7 @@ package org.openmetadata.service.search.opensearch;
 
 import static org.openmetadata.schema.system.IndexingError.ErrorSource.SINK;
 import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.ENTITY_NAME_LIST_KEY;
+import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.getErrorsFromBulkResponse;
 import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.getUpdatedStats;
 
 import java.util.ArrayList;
@@ -19,7 +20,6 @@ import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.workflows.interfaces.Sink;
 import os.org.opensearch.action.DocWriteRequest;
-import os.org.opensearch.action.bulk.BulkItemResponse;
 import os.org.opensearch.action.bulk.BulkRequest;
 import os.org.opensearch.action.bulk.BulkResponse;
 import os.org.opensearch.client.RequestOptions;
@@ -42,81 +42,64 @@ public class OpenSearchIndexSink implements Sink<BulkRequest, BulkResponse> {
       throws SearchIndexException {
     LOG.debug("[OsSearchIndexSink] Processing a Batch of Size: {}", data.numberOfActions());
     try {
-      BulkResponse response = null;
-      int offset = 0;
-      int currentSuccess = 0;
-      int currentFailed = 0;
-      List<EntityError> entityErrorList = new ArrayList<>();
       List<?> entityNames =
           (List<?>)
               Optional.ofNullable(contextData.get(ENTITY_NAME_LIST_KEY))
                   .orElse(Collections.emptyList());
+      List<EntityError> entityErrorList = new ArrayList<>();
+      BulkResponse response = null;
 
-      while (offset != data.requests().size()) { // until all requests in the batch are processed
-        BulkRequest bufferData = new BulkRequest();
-        List<Integer> offsetList = new ArrayList<>();
+      BulkRequest bufferData = new BulkRequest();
+      long requestIndex = 0; // Index to track the corresponding entity name
 
-        for (int i = offset; i < data.requests().size(); i++) {
-          DocWriteRequest<?> requestItem = data.requests().get(i);
-          BulkRequest singleBulkRequest = new BulkRequest();
-          singleBulkRequest.add(requestItem);
+      for (DocWriteRequest<?> request : data.requests()) {
+        long requestSize = new BulkRequest().add(request).estimatedSizeInBytes();
 
-          if (singleBulkRequest.estimatedSizeInBytes() > maxPayLoadSizeInBytes) {
-            entityErrorList.add(
-                new EntityError()
-                    .withMessage("Entity size greater than payload size")
-                    .withEntity(entityNames.get(offset)));
-            currentFailed++;
-            offset++;
-            continue;
-          }
-
-          if (bufferData.estimatedSizeInBytes() + singleBulkRequest.estimatedSizeInBytes()
-              <= maxPayLoadSizeInBytes) {
-            bufferData.add(requestItem);
-            offsetList.add(i);
-            offset++;
-          } else {
-            break;
-          }
+        if (requestSize > maxPayLoadSizeInBytes) {
+          entityErrorList.add(
+              new EntityError()
+                  .withMessage("Entity size exceeds elastic search maximum payload size")
+                  .withEntity(entityNames.get(Math.toIntExact(requestIndex))));
+          requestIndex++;
+          continue;
         }
 
-        if (!bufferData.requests().isEmpty()) { // Send the buffered requests to Elasticsearch
+        if (bufferData.estimatedSizeInBytes() + requestSize > maxPayLoadSizeInBytes) {
           response = searchRepository.getSearchClient().bulk(bufferData, RequestOptions.DEFAULT);
-          BulkItemResponse[] responses = response.getItems();
-          for (int j = 0; j < responses.length; j++) {
-            BulkItemResponse bulkItemResponse = responses[j];
-            if (bulkItemResponse.isFailed()) { // get Errors From BulkResponse
-              currentFailed++;
-              entityErrorList.add(
-                  new EntityError()
-                      .withMessage(bulkItemResponse.getFailureMessage())
-                      .withEntity(entityNames.get(offsetList.get(j))));
-            } else {
-              currentSuccess++;
-            }
-          }
+          entityErrorList.addAll(getErrorsFromBulkResponse(response));
+          bufferData = new BulkRequest();
         }
 
-        if (offset == data.requests().size() && currentFailed > 0) {
-          throw new SearchIndexException(
-              new IndexingError()
-                  .withErrorSource(SINK)
-                  .withSubmittedCount(data.numberOfActions())
-                  .withSuccessCount(currentSuccess)
-                  .withFailedCount(currentFailed)
-                  .withMessage("Issues in Sink To Elastic Search.")
-                  .withFailedEntities(entityErrorList));
-        }
-
-        LOG.debug(
-            "[OsSearchIndexSink] Batch Stats :- Submitted : {} Success: {} Failed: {}",
-            data.numberOfActions(),
-            currentSuccess,
-            currentFailed);
-        updateStats(currentSuccess, currentFailed);
+        bufferData.add(request);
+        requestIndex++;
       }
-      return response;
+
+      // Send the last buffer if it has any requests
+      if (!bufferData.requests().isEmpty()) {
+        response = searchRepository.getSearchClient().bulk(bufferData, RequestOptions.DEFAULT);
+        entityErrorList.addAll(getErrorsFromBulkResponse(response));
+      }
+
+      LOG.debug(
+          "[OSSearchIndexSink] Batch Stats :- Submitted : {} Success: {} Failed: {}",
+          data.numberOfActions(),
+          data.numberOfActions() - entityErrorList.size(),
+          entityErrorList.size());
+      updateStats(data.numberOfActions() - entityErrorList.size(), entityErrorList.size());
+
+      // Handle errors
+      if (!entityErrorList.isEmpty()) {
+        throw new SearchIndexException(
+            new IndexingError()
+                .withErrorSource(SINK)
+                .withSubmittedCount(data.numberOfActions())
+                .withSuccessCount(data.numberOfActions() - entityErrorList.size())
+                .withFailedCount(entityErrorList.size())
+                .withMessage("Issues in Sink To Elastic Search.")
+                .withFailedEntities(entityErrorList));
+      }
+
+      return response; // Return the last response
     } catch (SearchIndexException ex) {
       updateStats(ex.getIndexingError().getSuccessCount(), ex.getIndexingError().getFailedCount());
       throw ex;
