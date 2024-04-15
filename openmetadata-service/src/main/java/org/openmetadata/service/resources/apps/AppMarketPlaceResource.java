@@ -212,7 +212,8 @@ public class AppMarketPlaceResource
           @QueryParam("include")
           @DefaultValue("non-deleted")
           Include include) {
-    AppMarketPlaceDefinition definition = getInternal(uriInfo, securityContext, id, fieldsParam, include);
+    AppMarketPlaceDefinition definition =
+        getInternal(uriInfo, securityContext, id, fieldsParam, include);
     definition.setPreview(ApplicationHandler.getInstance().isPreview(definition.getName()));
     return definition;
   }
@@ -250,7 +251,8 @@ public class AppMarketPlaceResource
           @QueryParam("include")
           @DefaultValue("non-deleted")
           Include include) {
-    AppMarketPlaceDefinition definition = getByNameInternal(uriInfo, securityContext, name, fieldsParam, include);
+    AppMarketPlaceDefinition definition =
+        getByNameInternal(uriInfo, securityContext, name, fieldsParam, include);
     definition.setPreview(ApplicationHandler.getInstance().isPreview(definition.getName()));
     return definition;
   }
