@@ -322,38 +322,46 @@ public class SystemResourceTest extends OpenMetadataApplicationTest {
     ProfilerConfiguration profilerConfiguration = new ProfilerConfiguration();
     MetricConfigurationDefinition intMetricConfigDefinition =
         new MetricConfigurationDefinition()
-                .withDataType(ColumnDataType.INT)
-                .withMetrics(List.of(MetricType.COUNT, MetricType.FIRST_QUARTILE, MetricType.MEAN));
+            .withDataType(ColumnDataType.INT)
+            .withMetrics(List.of(MetricType.COUNT, MetricType.FIRST_QUARTILE, MetricType.MEAN));
     MetricConfigurationDefinition dateTimeMetricConfigDefinition =
-            new MetricConfigurationDefinition()
-                    .withDataType(ColumnDataType.DATETIME)
-                    .withDisable(true);
-    profilerConfiguration.setMetricConfiguration(List.of(intMetricConfigDefinition, dateTimeMetricConfigDefinition));
-    Settings profilerSettings = new Settings().withConfigType(SettingsType.PROFILER_CONFIGURATION).withConfigValue(profilerConfiguration);
+        new MetricConfigurationDefinition().withDataType(ColumnDataType.DATETIME).withDisable(true);
+    profilerConfiguration.setMetricConfiguration(
+        List.of(intMetricConfigDefinition, dateTimeMetricConfigDefinition));
+    Settings profilerSettings =
+        new Settings()
+            .withConfigType(SettingsType.PROFILER_CONFIGURATION)
+            .withConfigValue(profilerConfiguration);
     createSystemConfig(profilerSettings);
     ProfilerConfiguration createdProfilerSettings =
-            JsonUtils.convertValue(
-                    getSystemConfig(SettingsType.PROFILER_CONFIGURATION).getConfigValue(),
-                    ProfilerConfiguration.class);
+        JsonUtils.convertValue(
+            getSystemConfig(SettingsType.PROFILER_CONFIGURATION).getConfigValue(),
+            ProfilerConfiguration.class);
     Assertions.assertEquals(profilerConfiguration, createdProfilerSettings);
 
     // Update the profiler config
     profilerConfiguration.setMetricConfiguration(List.of(intMetricConfigDefinition));
-    profilerSettings = new Settings().withConfigType(SettingsType.PROFILER_CONFIGURATION).withConfigValue(profilerConfiguration);
+    profilerSettings =
+        new Settings()
+            .withConfigType(SettingsType.PROFILER_CONFIGURATION)
+            .withConfigValue(profilerConfiguration);
     updateSystemConfig(profilerSettings);
     ProfilerConfiguration updatedProfilerSettings =
-            JsonUtils.convertValue(
-                    getSystemConfig(SettingsType.PROFILER_CONFIGURATION).getConfigValue(),
-                    ProfilerConfiguration.class);
+        JsonUtils.convertValue(
+            getSystemConfig(SettingsType.PROFILER_CONFIGURATION).getConfigValue(),
+            ProfilerConfiguration.class);
     Assertions.assertEquals(profilerConfiguration, updatedProfilerSettings);
 
     // Delete the profiler config
     profilerConfiguration.setMetricConfiguration(new ArrayList<>());
-    updateSystemConfig(new Settings().withConfigType(SettingsType.PROFILER_CONFIGURATION).withConfigValue(profilerConfiguration));
+    updateSystemConfig(
+        new Settings()
+            .withConfigType(SettingsType.PROFILER_CONFIGURATION)
+            .withConfigValue(profilerConfiguration));
     updatedProfilerSettings =
-            JsonUtils.convertValue(
-                    getSystemConfig(SettingsType.PROFILER_CONFIGURATION).getConfigValue(),
-                    ProfilerConfiguration.class);
+        JsonUtils.convertValue(
+            getSystemConfig(SettingsType.PROFILER_CONFIGURATION).getConfigValue(),
+            ProfilerConfiguration.class);
     Assertions.assertEquals(profilerConfiguration, updatedProfilerSettings);
   }
 
