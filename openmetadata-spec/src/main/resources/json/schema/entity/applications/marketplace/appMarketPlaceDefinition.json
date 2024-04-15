@@ -135,6 +135,11 @@
       "description": "A system app cannot be uninstalled or modified.",
       "type": "boolean",
       "default": false
+    },
+    "preview": {
+      "type": "boolean",
+      "description": "Flag to enable/disable preview for the application. If the app is in preview mode, it can't be installed.",
+      "default": false
     }
   },
   "additionalProperties": false,
