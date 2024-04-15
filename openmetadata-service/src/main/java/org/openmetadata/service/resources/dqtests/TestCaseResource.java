@@ -1018,7 +1018,7 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
       @Parameter(description = "Id of the table", schema = @Schema(type = "UUID")) @PathParam("id")
           UUID id) {
     OperationContext operationContext =
-        new OperationContext(entityType, MetadataOperation.VIEW_SAMPLE_DATA);
+        new OperationContext(entityType, MetadataOperation.EDIT_SAMPLE_DATA);
     ResourceContext<?> resourceContext = getResourceContextById(id);
     authorizer.authorize(securityContext, operationContext, resourceContext);
     RestUtil.DeleteResponse<TableData> response = repository.deleteTestCaseFailedRowsSample(id);
