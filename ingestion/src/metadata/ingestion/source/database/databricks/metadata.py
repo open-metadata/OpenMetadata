@@ -20,7 +20,6 @@ from sqlalchemy import types, util
 from sqlalchemy.engine import reflection
 from sqlalchemy.engine.reflection import Inspector
 from sqlalchemy.exc import DatabaseError
-from sqlalchemy.inspection import inspect
 from sqlalchemy.sql.sqltypes import String
 from sqlalchemy_databricks._dialect import DatabricksDialect
 
