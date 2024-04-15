@@ -84,8 +84,6 @@
         "type": "keyword"
       },
       "columns": {
-        "type": "nested",
-        "include_in_parent": true,
         "properties": {
           "name": {
             "type": "text",
@@ -288,6 +286,7 @@
             "fields": {
               "keyword": {
                 "type": "keyword",
+                "normalizer": "lowercase_normalizer",
                 "ignore_above": 256
               }
             }
@@ -538,6 +537,9 @@
       },
       "service_suggest": {
         "type": "completion"
+      },
+      "descriptionStatus": {
+        "type": "keyword"
       }
     }
   }
