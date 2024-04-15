@@ -17,21 +17,21 @@ import {
 } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import React from 'react';
-// import { ROUTES } from '../../../constants/constants';
 import { ROUTES } from '../../../../constants/constants';
 import { mockApplicationData } from '../../../../mocks/rests/applicationAPI.mock';
 import MarketPlaceAppDetails from './MarketPlaceAppDetails.component';
 
 const mockPush = jest.fn();
 const mockShowErrorToast = jest.fn();
-const mockGetApplicationByName = jest.fn().mockReturnValue(mockApplicationData);
-const mockGetMarketPlaceApplicationByFqn = jest.fn().mockReturnValue({
+let mockGetApplicationByName = jest.fn().mockReturnValue(mockApplicationData);
+let mockGetMarketPlaceApplicationByFqn = jest.fn().mockReturnValue({
   description: 'marketplace description',
   fullyQualifiedName: 'marketplace fqn',
   supportEmail: 'support@email.com',
   developerUrl: 'https://xyz.com',
   privacyPolicyUrl: 'https://xyz.com',
   appScreenshots: ['screenshot1', 'screenshot2'],
+  preview: false,
 });
 
 jest.mock('react-router-dom', () => ({
@@ -122,6 +122,30 @@ describe('MarketPlaceAppDetails component', () => {
     );
 
     expect(mockPush).toHaveBeenCalledWith(ROUTES.MARKETPLACE);
+  });
+
+  it('should show install button disabled', async () => {
+    mockGetApplicationByName = jest.fn().mockReturnValue([]);
+    mockGetMarketPlaceApplicationByFqn = jest.fn().mockReturnValue({
+      description: 'marketplace description',
+      fullyQualifiedName: 'marketplace fqn',
+      supportEmail: 'support@email.com',
+      developerUrl: 'https://xyz.com',
+      privacyPolicyUrl: 'https://xyz.com',
+      appScreenshots: ['screenshot1', 'screenshot2'],
+      preview: true,
+    });
+
+    render(<MarketPlaceAppDetails />);
+
+    await waitForElementToBeRemoved(() => screen.getByText('Loader'));
+
+    expect(mockGetMarketPlaceApplicationByFqn).toHaveBeenCalledWith('mockFQN', {
+      fields: expect.anything(),
+    });
+    expect(mockGetApplicationByName).toHaveBeenCalled();
+
+    expect(screen.getByTestId('install-application')).toBeDisabled();
   });
 
   it('should show toast error, if failed to fetch app details', async () => {
