@@ -146,6 +146,7 @@ describe('MarketPlaceAppDetails component', () => {
     expect(mockGetApplicationByName).toHaveBeenCalled();
 
     expect(screen.getByTestId('install-application')).toBeDisabled();
+    expect(screen.getByTestId('appName')).toBeInTheDocument();
   });
 
   it('should show toast error, if failed to fetch app details', async () => {
