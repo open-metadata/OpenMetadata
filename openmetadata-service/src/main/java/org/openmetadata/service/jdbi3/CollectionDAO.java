@@ -1784,6 +1784,12 @@ public interface CollectionDAO {
         condition += pipelineTypeCondition;
       }
 
+      if (filter.getQueryParam("applicationType") != null) {
+        String applicationTypeCondition =
+            String.format(" and %s", filter.getApplicationTypeCondition());
+        condition += applicationTypeCondition;
+      }
+
       if (filter.getQueryParam("service") != null) {
         String serviceCondition = String.format(" and %s", filter.getServiceCondition(null));
         condition += serviceCondition;
@@ -1813,6 +1819,12 @@ public interface CollectionDAO {
         String pipelineTypeCondition =
             String.format(" and %s", filter.getPipelineTypeCondition(null));
         condition += pipelineTypeCondition;
+      }
+
+      if (filter.getQueryParam("applicationType") != null) {
+        String applicationTypeCondition =
+            String.format(" and %s", filter.getApplicationTypeCondition());
+        condition += applicationTypeCondition;
       }
 
       if (filter.getQueryParam("service") != null) {
@@ -1847,6 +1859,12 @@ public interface CollectionDAO {
         String pipelineTypeCondition =
             String.format(" and %s", filter.getPipelineTypeCondition(null));
         condition += pipelineTypeCondition;
+      }
+
+      if (filter.getQueryParam("applicationType") != null) {
+        String applicationTypeCondition =
+            String.format(" and %s", filter.getApplicationTypeCondition());
+        condition += applicationTypeCondition;
       }
 
       if (filter.getQueryParam("service") != null) {
