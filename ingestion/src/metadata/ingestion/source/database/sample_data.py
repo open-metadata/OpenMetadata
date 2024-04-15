@@ -1413,8 +1413,7 @@ class SampleDataSource(
                 yield Either(right=test_case_req)
                 if test_case.get("sampleFailedRows"):
                     test_case_entity = self.metadata.get_or_create_test_case(
-                        test_case_fqn=f"{entity_link.get_table_or_column_fqn(
-                            test_case['entityLink'])}.{test_case['name']}",
+                        test_case_fqn=f"{entity_link.get_table_or_column_fqn(test_case['entityLink'])}.{test_case['name']}",
                     )
 
                     self.metadata.ingest_failed_rows_sample(
