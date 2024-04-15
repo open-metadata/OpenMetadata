@@ -42,6 +42,8 @@ const MarketPlaceAppDetails = () => {
   const [isInstalled, setIsInstalled] = useState(false);
   const [appScreenshots, setAppScreenshots] = useState<JSX.Element[]>([]);
 
+  const isPreviewApp = useMemo(() => !!appData?.preview, [appData]);
+
   const loadScreenshot = async (screenshotName: string) => {
     try {
       const imageModule = await import(
@@ -131,7 +133,7 @@ const MarketPlaceAppDetails = () => {
             block
             className="m-t-md"
             data-testid="install-application"
-            disabled={isInstalled}
+            disabled={isInstalled || isPreviewApp}
             type="primary"
             onClick={installApp}>
             {t('label.install')}
