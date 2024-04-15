@@ -41,10 +41,16 @@ export interface TestSuiteIngestionProps {
   onCancel: () => void;
 }
 
+export type TestSuiteIngestionDataType = {
+  repeatFrequency: string;
+  enableDebugLog?: boolean;
+};
+
 export interface TestSuiteSchedulerProps {
-  initialData?: string;
+  initialData?: Partial<TestSuiteIngestionDataType>;
+  allowEnableDebugLog?: boolean;
   isLoading: boolean;
-  onSubmit: (repeatFrequency: string) => void;
+  onSubmit: (data: TestSuiteIngestionDataType) => void;
   onCancel: () => void;
   buttonProps?: {
     okText: string;
