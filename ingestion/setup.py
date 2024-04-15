@@ -153,7 +153,7 @@ plugins: Dict[str, Set[str]] = {
         VERSIONS["databricks-sdk"],
         "ndg-httpsclient~=0.5.1",
         "pyOpenSSL~=24.1.0",
-        "pyasn1~=0.6.0"
+        "pyasn1~=0.6.0",
     },
     "datalake-azure": {
         VERSIONS["azure-storage-blob"],
