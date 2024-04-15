@@ -14,7 +14,11 @@
 package org.openmetadata.service.security;
 
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
+import static org.openmetadata.service.Entity.ADMIN_ROLE;
+import static org.openmetadata.service.security.jwt.JWTTokenGenerator.ROLES_CLAIM;
 import static org.openmetadata.service.security.jwt.JWTTokenGenerator.TOKEN_TYPE;
+import static org.openmetadata.service.util.UserUtil.getRolesFromString;
+import static org.openmetadata.service.util.UserUtil.isRolesSyncNeeded;
 
 import com.auth0.jwk.Jwk;
 import com.auth0.jwk.JwkProvider;
@@ -29,6 +33,8 @@ import com.google.common.collect.ImmutableList;
 import java.net.URL;
 import java.security.interfaces.RSAPublicKey;
 import java.util.*;
+import java.util.stream.Collectors;
+import javax.json.JsonPatch;
 import javax.ws.rs.container.ContainerRequestContext;
 import javax.ws.rs.container.ContainerRequestFilter;
 import javax.ws.rs.core.MultivaluedMap;
@@ -42,11 +48,17 @@ import org.openmetadata.schema.api.security.AuthenticationConfiguration;
 import org.openmetadata.schema.api.security.AuthorizerConfiguration;
 import org.openmetadata.schema.auth.LogoutRequest;
 import org.openmetadata.schema.auth.ServiceTokenType;
+import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.services.connections.metadata.AuthProvider;
+import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.Include;
+import org.openmetadata.service.Entity;
+import org.openmetadata.service.jdbi3.UserRepository;
 import org.openmetadata.service.security.auth.BotTokenCache;
 import org.openmetadata.service.security.auth.CatalogSecurityContext;
 import org.openmetadata.service.security.auth.UserTokenCache;
 import org.openmetadata.service.security.saml.JwtTokenCacheManager;
+import org.openmetadata.service.util.JsonUtils;
 
 @Slf4j
 @Provider
@@ -59,6 +71,7 @@ public class JwtFilter implements ContainerRequestFilter {
   private String principalDomain;
   private boolean enforcePrincipalDomain;
   private AuthProvider providerType;
+  private boolean useRolesFromProvider = false;
 
   private static final List<String> DEFAULT_PUBLIC_KEY_URLS =
       Arrays.asList(
@@ -104,6 +117,7 @@ public class JwtFilter implements ContainerRequestFilter {
     this.jwkProvider = new MultiUrlJwkProvider(publicKeyUrlsBuilder.build());
     this.principalDomain = authorizerConfiguration.getPrincipalDomain();
     this.enforcePrincipalDomain = authorizerConfiguration.getEnforcePrincipalDomain();
+    this.useRolesFromProvider = authorizerConfiguration.getUseRolesFromProvider();
   }
 
   @VisibleForTesting
@@ -144,8 +158,15 @@ public class JwtFilter implements ContainerRequestFilter {
 
     String userName = validateAndReturnUsername(claims);
 
+    boolean isBot =
+        claims.containsKey(BOT_CLAIM) && Boolean.TRUE.equals(claims.get(BOT_CLAIM).asBoolean());
+    // Re-sync user roles from token
+    if (!isBot && claims.containsKey(ROLES_CLAIM)) {
+      reSyncUserRolesFromToken(uriInfo, userName, claims.get("roles").asList(String.class));
+    }
+
     // validate bot token
-    if (claims.containsKey(BOT_CLAIM) && Boolean.TRUE.equals(claims.get(BOT_CLAIM).asBoolean())) {
+    if (isBot) {
       validateBotToken(tokenFromHeader, userName);
     }
 
@@ -272,6 +293,48 @@ public class JwtFilter implements ContainerRequestFilter {
         JwtTokenCacheManager.getInstance().getLogoutEventForToken(authToken);
     if (previouslyLoggedOutEvent != null) {
       throw new AuthenticationException("Expired token!");
+    }
+  }
+
+  private void reSyncUserRolesFromToken(UriInfo uriInfo, String userName, List<String> roles) {
+    // TODO: Currently LDAP roles are created using mapping from LDAP groups to roles
+    if (providerType.equals(AuthProvider.LDAP)) {
+      return;
+    }
+
+    boolean syncUser = false;
+    if (useRolesFromProvider) {
+      UserRepository userRepository = (UserRepository) Entity.getEntityRepository(Entity.USER);
+      Set<String> rolesFromToken = new HashSet<>(roles);
+      // TODO: This doesn't look like very good option this internally makes role calls
+      User user = Entity.getEntityByName(Entity.USER, userName, "roles", Include.NON_DELETED, true);
+      User updatedUser = JsonUtils.deepCopy(user, User.class);
+      // Check if Admin User
+      if (rolesFromToken.contains(ADMIN_ROLE)) {
+        if (Boolean.FALSE.equals(user.getIsAdmin())) {
+          syncUser = true;
+          updatedUser.setIsAdmin(true);
+        }
+
+        // Remove the Admin Role from the list
+        rolesFromToken.remove(ADMIN_ROLE);
+      }
+
+      Set<String> rolesFromUser =
+          user.getRoles().stream().map(EntityReference::getName).collect(Collectors.toSet());
+
+      // Check if roles are different
+      if (!nullOrEmpty(rolesFromToken) && isRolesSyncNeeded(rolesFromToken, rolesFromUser)) {
+        syncUser = true;
+        List<EntityReference> rolesReferenceFromToken = getRolesFromString(rolesFromToken);
+        updatedUser.setRoles(rolesReferenceFromToken);
+      }
+
+      if (syncUser) {
+        LOG.info("Syncing User Roles for User: {}", userName);
+        JsonPatch patch = JsonUtils.getJsonPatch(user, updatedUser);
+        userRepository.patch(uriInfo, user.getId(), user.getName(), patch);
+      }
     }
   }
 }

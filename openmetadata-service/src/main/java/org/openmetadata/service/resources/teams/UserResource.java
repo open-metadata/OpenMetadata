@@ -24,6 +24,7 @@ import static org.openmetadata.schema.entity.teams.AuthenticationMechanism.AuthT
 import static org.openmetadata.service.exception.CatalogExceptionMessage.EMAIL_SENDING_ISSUE;
 import static org.openmetadata.service.jdbi3.UserRepository.AUTH_MECHANISM_FIELD;
 import static org.openmetadata.service.security.jwt.JWTTokenGenerator.getExpiryDate;
+import static org.openmetadata.service.util.UserUtil.getRoleListFromUser;
 
 import at.favre.lib.crypto.bcrypt.BCrypt;
 import freemarker.template.TemplateException;
@@ -1254,13 +1255,16 @@ public class UserResource extends EntityResource<User, UserRepository> {
       @Valid CreatePersonalToken tokenRequest) {
     String userName = securityContext.getUserPrincipal().getName();
     User user =
-        repository.getByName(null, userName, getFields("email,isBot"), Include.NON_DELETED, false);
+        repository.getByName(
+            null, userName, getFields("roles,email,isBot"), Include.NON_DELETED, false);
     if (Boolean.FALSE.equals(user.getIsBot())) {
       // Create Personal Access Token
       JWTAuthMechanism authMechanism =
           JWTTokenGenerator.getInstance()
               .getJwtAuthMechanism(
                   userName,
+                  getRoleListFromUser(user),
+                  user.getIsAdmin(),
                   user.getEmail(),
                   false,
                   ServiceTokenType.PERSONAL_ACCESS,

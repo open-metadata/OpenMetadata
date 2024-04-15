@@ -37,6 +37,7 @@ import static org.openmetadata.service.exception.CatalogExceptionMessage.TOKEN_E
 import static org.openmetadata.service.exception.CatalogExceptionMessage.TOKEN_EXPIRY_ERROR;
 import static org.openmetadata.service.resources.teams.UserResource.USER_PROTECTED_FIELDS;
 import static org.openmetadata.service.util.EmailUtil.getSmtpSettings;
+import static org.openmetadata.service.util.UserUtil.getRoleListFromUser;
 
 import at.favre.lib.crypto.bcrypt.BCrypt;
 import freemarker.template.TemplateException;
@@ -387,6 +388,8 @@ public class BasicAuthenticator implements AuthenticatorHandler {
         JWTTokenGenerator.getInstance()
             .generateJWTToken(
                 storedUser.getName(),
+                getRoleListFromUser(storedUser),
+                storedUser.getIsAdmin(),
                 storedUser.getEmail(),
                 loginConfiguration.getJwtTokenExpiryTime(),
                 false,
@@ -527,13 +530,15 @@ public class BasicAuthenticator implements AuthenticatorHandler {
             userRepository.getByEmail(
                 null,
                 userName,
-                new EntityUtil.Fields(Set.of(USER_PROTECTED_FIELDS), USER_PROTECTED_FIELDS));
+                new EntityUtil.Fields(
+                    Set.of(USER_PROTECTED_FIELDS, "roles"), "authenticationMechanism,roles"));
       } else {
         storedUser =
             userRepository.getByName(
                 null,
                 userName,
-                new EntityUtil.Fields(Set.of(USER_PROTECTED_FIELDS), USER_PROTECTED_FIELDS));
+                new EntityUtil.Fields(
+                    Set.of(USER_PROTECTED_FIELDS, "roles"), "authenticationMechanism,roles"));
       }
 
       if (storedUser != null && Boolean.TRUE.equals(storedUser.getIsBot())) {

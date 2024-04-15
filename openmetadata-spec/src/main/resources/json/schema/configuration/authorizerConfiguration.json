@@ -58,6 +58,11 @@
     "enableSecureSocketConnection": {
       "description": "Enable Secure Socket Connection.",
       "type": "boolean"
+    },
+    "useRolesFromProvider": {
+      "description": "Use Roles from Provider",
+      "type": "boolean",
+      "default": false
     }
   },
   "required": ["className", "containerRequestFilter", "adminPrincipals", "principalDomain", "enforcePrincipalDomain", "enableSecureSocketConnection"],

@@ -20,16 +20,20 @@ import static org.openmetadata.schema.type.Include.NON_DELETED;
 import static org.openmetadata.service.Entity.ADMIN_USER_NAME;
 
 import at.favre.lib.crypto.bcrypt.BCrypt;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.auth.BasicAuthMechanism;
 import org.openmetadata.schema.auth.JWTAuthMechanism;
 import org.openmetadata.schema.auth.JWTTokenExpiry;
 import org.openmetadata.schema.entity.teams.AuthenticationMechanism;
+import org.openmetadata.schema.entity.teams.Role;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.security.client.OpenMetadataJWTClientConfig;
 import org.openmetadata.schema.services.connections.metadata.AuthProvider;
@@ -241,5 +245,48 @@ public final class UserUtil {
       userOrBot = Entity.getEntityReferenceByName(Entity.BOT, name, NON_DELETED);
     }
     return userOrBot;
+  }
+
+  public static Set<String> getRoleListFromUser(User user) {
+    if (user.getRoles() == null || user.getRoles().isEmpty()) {
+      return Collections.emptySet();
+    }
+    return user.getRoles().stream().map(EntityReference::getName).collect(Collectors.toSet());
+  }
+
+  public static List<EntityReference> getRolesFromString(Set<String> rolesList) {
+    if (nullOrEmpty(rolesList)) {
+      return Collections.emptyList();
+    }
+    List<EntityReference> references = new ArrayList<>();
+
+    // Fetch the roles from the database
+    for (String role : rolesList) {
+      try {
+        Role fetchedRole = Entity.getEntityByName(Entity.ROLE, role, "id", NON_DELETED, true);
+        references.add(fetchedRole.getEntityReference());
+      } catch (EntityNotFoundException ex) {
+        LOG.error("[ReSyncRoles] Role not found: {}", role, ex);
+      }
+    }
+    return references;
+  }
+
+  public static boolean isRolesSyncNeeded(Set<String> fromToken, Set<String> fromDB) {
+    // Check if there are roles in the token that are not present in the DB
+    for (String role : fromToken) {
+      if (!fromDB.contains(role)) {
+        return true;
+      }
+    }
+
+    // Check if there are roles in the DB that are not present in the token
+    for (String role : fromDB) {
+      if (!fromToken.contains(role)) {
+        return true;
+      }
+    }
+
+    return false;
   }
 }
