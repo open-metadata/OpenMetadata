@@ -23,21 +23,22 @@ import {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useAuthContext } from '../../components/Auth/AuthProviders/AuthProvider';
+
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
-import DataModelDetails from '../../components/DataModels/DataModelDetails.component';
-import Loader from '../../components/Loader/Loader';
-import { usePermissionProvider } from '../../components/PermissionProvider/PermissionProvider';
+import Loader from '../../components/common/Loader/Loader';
+import DataModelDetails from '../../components/Dashboard/DataModel/DataModels/DataModelDetails.component';
+import { QueryVote } from '../../components/Database/TableQueries/TableQueries.interface';
+import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import {
   OperationPermission,
   ResourceEntity,
-} from '../../components/PermissionProvider/PermissionProvider.interface';
-import { QueryVote } from '../../components/TableQueries/TableQueries.interface';
+} from '../../context/PermissionProvider/PermissionProvider.interface';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { CreateThread } from '../../generated/api/feed/createThread';
 import { Tag } from '../../generated/entity/classification/tag';
 import { DashboardDataModel } from '../../generated/entity/data/dashboardDataModel';
 import { Include } from '../../generated/type/include';
+import { useApplicationStore } from '../../hooks/useApplicationStore';
 import { useFqn } from '../../hooks/useFqn';
 import {
   addDataModelFollower,
@@ -59,7 +60,7 @@ import { showErrorToast } from '../../utils/ToastUtils';
 
 const DataModelsPage = () => {
   const { t } = useTranslation();
-  const { currentUser } = useAuthContext();
+  const { currentUser } = useApplicationStore();
   const { getEntityPermissionByFqn } = usePermissionProvider();
 
   const { fqn: dashboardDataModelFQN } = useFqn();

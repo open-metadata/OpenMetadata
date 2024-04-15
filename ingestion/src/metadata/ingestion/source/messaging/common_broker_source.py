@@ -104,7 +104,7 @@ class CommonBrokerSource(MessagingServiceSource, ABC):
             logger.info(f"Fetching topic config {topic_details.topic_name}")
             topic = CreateTopicRequest(
                 name=topic_details.topic_name,
-                service=self.context.messaging_service,
+                service=self.context.get().messaging_service,
                 partitions=len(topic_details.topic_metadata.partitions),
                 replicationFactor=len(
                     topic_details.topic_metadata.partitions.get(0).replicas
@@ -219,21 +219,23 @@ class CommonBrokerSource(MessagingServiceSource, ABC):
         topic_fqn = fqn.build(
             metadata=self.metadata,
             entity_type=Topic,
-            service_name=self.context.messaging_service,
-            topic_name=self.context.topic,
+            service_name=self.context.get().messaging_service,
+            topic_name=self.context.get().topic,
         )
         topic_entity = self.metadata.get_by_name(entity=TopicEntity, fqn=topic_fqn)
         if topic_entity and self.generate_sample_data:
             topic_name = topic_details.topic_name
             sample_data = []
+            messages = None
             try:
-                self.consumer_client.subscribe(
-                    [topic_name], on_assign=on_partitions_assignment_to_consumer
-                )
-                logger.info(
-                    f"Broker consumer polling for sample messages in topic {topic_name}"
-                )
-                messages = self.consumer_client.consume(num_messages=10, timeout=10)
+                if self.consumer_client:
+                    self.consumer_client.subscribe(
+                        [topic_name], on_assign=on_partitions_assignment_to_consumer
+                    )
+                    logger.info(
+                        f"Broker consumer polling for sample messages in topic {topic_name}"
+                    )
+                    messages = self.consumer_client.consume(num_messages=10, timeout=10)
             except Exception as exc:
                 yield Either(
                     left=StackTraceError(

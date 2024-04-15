@@ -62,6 +62,7 @@ from metadata.ingestion.models.ometa_classification import OMetaTagAndClassifica
 from metadata.ingestion.models.ometa_topic_data import OMetaTopicSampleData
 from metadata.ingestion.models.patch_request import (
     ALLOWED_COMMON_PATCH_FIELDS,
+    ARRAY_ENTITY_FIELDS,
     RESTRICT_UPDATE_LIST,
     PatchedEntity,
     PatchRequest,
@@ -82,7 +83,7 @@ from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.dashboard.dashboard_service import DashboardUsage
 from metadata.ingestion.source.database.database_service import DataModelLink
 from metadata.profiler.api.models import ProfilerResponse
-from metadata.utils.helpers import calculate_execution_time
+from metadata.utils.execution_time_tracker import calculate_execution_time
 from metadata.utils.logger import get_log_name, ingestion_logger
 
 logger = ingestion_logger()
@@ -116,7 +117,12 @@ class MetadataRestSink(Sink):  # pylint: disable=too-many-public-methods
         self.team_entities = {}
 
     @classmethod
-    def create(cls, config_dict: dict, metadata: OpenMetadata):
+    def create(
+        cls,
+        config_dict: dict,
+        metadata: OpenMetadata,
+        pipeline_name: Optional[str] = None,
+    ):
         config = MetadataRestSinkConfig.parse_obj(config_dict)
         return cls(config, metadata)
 
@@ -129,7 +135,7 @@ class MetadataRestSink(Sink):  # pylint: disable=too-many-public-methods
         logger.debug(f"Processing Create request {type(record)}")
         return self.write_create_request(record)
 
-    @calculate_execution_time
+    @calculate_execution_time(store=False)
     def _run(self, record: Entity, *_, **__) -> Either[Any]:
         """
         Default implementation for the single dispatch
@@ -179,6 +185,7 @@ class MetadataRestSink(Sink):  # pylint: disable=too-many-public-methods
             destination=record.new_entity,
             allowed_fields=ALLOWED_COMMON_PATCH_FIELDS,
             restrict_update_fields=RESTRICT_UPDATE_LIST,
+            array_entity_fields=ARRAY_ENTITY_FIELDS,
         )
         patched_entity = PatchedEntity(new_entity=entity) if entity else None
         return Either(right=patched_entity)
@@ -497,10 +504,19 @@ class MetadataRestSink(Sink):  # pylint: disable=too-many-public-methods
         """
         Ingest the life cycle data
         """
-        self.metadata.patch_life_cycle(
-            entity=record.entity, life_cycle=record.life_cycle
+
+        entity = self.metadata.get_by_name(entity=record.entity, fqn=record.entity_fqn)
+
+        if entity:
+            self.metadata.patch_life_cycle(entity=entity, life_cycle=record.life_cycle)
+            return Either(right=entity)
+
+        return Either(
+            left=StackTraceError(
+                name=record.entity_fqn,
+                error=f"Entity of type '{record.entity}' with name '{record.entity_fqn}' not found.",
+            )
         )
-        return Either(right=record)
 
     @_run_dispatch.register
     def write_profiler_response(self, record: ProfilerResponse) -> Either[Table]:

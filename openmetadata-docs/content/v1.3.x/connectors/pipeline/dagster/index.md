@@ -3,30 +3,27 @@ title: Dagster
 slug: /connectors/pipeline/dagster
 ---
 
-# Dagster
-
-| Stage           | PROD                         |
-|-----------------|------------------------------|
-| Pipelines       | {% icon iconName="check" /%} |
-| Pipeline Status | {% icon iconName="check" /%} |
-| Owners          | {% icon iconName="cross" /%} |
-| Tags            | {% icon iconName="check" /%} |
-| Lineage         | {% icon iconName="cross" /%} |
+{% connectorDetailsHeader
+name="Dagster"
+stage="PROD"
+platform="OpenMetadata"
+availableFeatures=["Pipelines", "Pipeline Status", "Tags"]
+unavailableFeatures=["Owners", "Lineage"]
+/ %}
 
 
 In this section, we provide guides and references to use the Dagster connector.
 
 Configure and schedule Dagster metadata and profiler workflows from the OpenMetadata UI:
 
-- [Dagster](#dagster)
-  - [Requirements](#requirements)
-    - [Dagster Versions](#dagster-versions)
-  - [Metadata Ingestion](#metadata-ingestion)
-      - [Service Name](#service-name)
-      - [Connection Details](#connection-details)
-      - [Metadata Ingestion Options](#metadata-ingestion-options)
-  - [Troubleshooting](#troubleshooting)
-    - [Workflow Deployment Error](#workflow-deployment-error)
+- [Requirements](#requirements)
+  - [Dagster Versions](#dagster-versions)
+- [Metadata Ingestion](#metadata-ingestion)
+    - [Service Name](#service-name)
+    - [Connection Details](#connection-details)
+    - [Metadata Ingestion Options](#metadata-ingestion-options)
+- [Troubleshooting](#troubleshooting)
+  - [Workflow Deployment Error](#workflow-deployment-error)
 
 {% partial file="/v1.3/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/pipeline/dagster/yaml"} /%}
 

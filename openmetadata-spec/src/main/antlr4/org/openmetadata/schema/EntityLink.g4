@@ -78,6 +78,7 @@ ENTITY_TYPE
     | 'all'
     | 'customMetric'
     | 'eventsubscription'
+    | 'ingestionPipeline'
     ;
 
 ENTITY_FIELD
@@ -121,10 +122,16 @@ ENTITY_FIELD
     | 'tests'
     | 'pipelineStatus'
     | 'dataProducts'
+    | 'parameterValues'
+    | 'retentionPeriod'
+    | 'parent'
+    | 'teams'
+    | 'personas'
+    | 'ingestionPipeline'
     ;
 
     
 
 NAME_OR_FQN
-    : ~(':')+ ('>')*? ~(':'|'>')+
+    : ~(':')* ~(':'|'>')+
     ;

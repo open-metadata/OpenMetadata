@@ -24,7 +24,7 @@ const mockProp = {
   data: {},
 };
 
-jest.mock('../../SchemaEditor/SchemaEditor', () => {
+jest.mock('../../Database/SchemaEditor/SchemaEditor', () => {
   return jest.fn().mockReturnValue(<div>SchemaEditor</div>);
 });
 

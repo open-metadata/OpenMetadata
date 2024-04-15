@@ -18,6 +18,7 @@ export const addTier = (tier: string) => {
   interceptURL('GET', '/api/v1/tags?parent=Tier&limit=10', 'fetchTier');
   cy.get('[data-testid="edit-tier"]').click();
   verifyResponseStatusCode('@fetchTier', 200);
+  cy.get(`[data-testid="radio-btn-${tier}"]`).scrollIntoView();
   cy.get(`[data-testid="radio-btn-${tier}"]`).click({
     waitForAnimations: true,
   });

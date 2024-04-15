@@ -14,13 +14,13 @@ import { Button, Col, Row, Space, Typography } from 'antd';
 import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
-import DataInsightSummary from '../../../components/DataInsightDetail/DataInsightSummary';
-import KPIChart from '../../../components/DataInsightDetail/KPIChart';
-import DatePickerMenu from '../../../components/DatePickerMenu/DatePickerMenu.component';
-import { usePermissionProvider } from '../../../components/PermissionProvider/PermissionProvider';
-import { ResourceEntity } from '../../../components/PermissionProvider/PermissionProvider.interface';
+import DatePickerMenu from '../../../components/common/DatePickerMenu/DatePickerMenu.component';
+import DataInsightSummary from '../../../components/DataInsight/DataInsightSummary';
+import KPIChart from '../../../components/DataInsight/KPIChart';
 import SearchDropdown from '../../../components/SearchDropdown/SearchDropdown';
 import { ROUTES } from '../../../constants/constants';
+import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
+import { ResourceEntity } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { Operation } from '../../../generated/entity/policies/policy';
 import { DataInsightTabs } from '../../../interface/data-insight.interface';
 import { getOptionalDataInsightTabFlag } from '../../../utils/DataInsightUtils';
@@ -89,12 +89,14 @@ const DataInsightHeader = ({ onScrollToChart }: DataInsightHeaderProps) => {
         <Space className="w-full justify-between align-center">
           <Space className="w-full" size={16}>
             <SearchDropdown
+              hideCounts
               label={t('label.team')}
               searchKey="teams"
               {...team}
             />
 
             <SearchDropdown
+              hideCounts
               label={t('label.tier')}
               searchKey="tier"
               {...tier}

@@ -27,10 +27,6 @@ import { ReactComponent as TableIcon } from '../assets/svg/ic-table.svg';
 import { ReactComponent as TopicIcon } from '../assets/svg/ic-topic.svg';
 import { ReactComponent as IconTable } from '../assets/svg/table-grey.svg';
 import { ExploreSearchIndex } from '../components/Explore/ExplorePage.interface';
-import {
-  Option,
-  SearchSuggestions,
-} from '../components/GlobalSearchProvider/GlobalSearchSuggestions/GlobalSearchSuggestions.interface';
 import { SourceType } from '../components/SearchedData/SearchedData.interface';
 import {
   COMMON_DROPDOWN_ITEMS,
@@ -53,6 +49,10 @@ import {
   TAGS_INITIAL_SORT_FIELD,
   TAGS_INITIAL_SORT_ORDER,
 } from '../constants/explore.constants';
+import {
+  Option,
+  SearchSuggestions,
+} from '../context/GlobalSearchProvider/GlobalSearchSuggestions/GlobalSearchSuggestions.interface';
 import { EntityType } from '../enums/entity.enum';
 import { SearchIndex } from '../enums/search.enum';
 import { SearchSourceAlias } from '../interface/search.interface';
@@ -76,7 +76,7 @@ class SearchClassBase {
       [EntityType.TOPIC]: SearchIndex.TOPIC,
       [EntityType.CONTAINER]: SearchIndex.CONTAINER,
       [EntityType.TAG]: SearchIndex.TAG,
-      [EntityType.GLOSSARY_TERM]: SearchIndex.GLOSSARY,
+      [EntityType.GLOSSARY_TERM]: SearchIndex.GLOSSARY_TERM,
       [EntityType.STORED_PROCEDURE]: SearchIndex.STORED_PROCEDURE,
       [EntityType.DASHBOARD_DATA_MODEL]: SearchIndex.DASHBOARD_DATA_MODEL,
       [EntityType.SEARCH_INDEX]: SearchIndex.SEARCH_INDEX,
@@ -117,7 +117,7 @@ class SearchClassBase {
         value: SearchIndex.DASHBOARD_DATA_MODEL,
         label: i18n.t('label.data-model'),
       },
-      { value: SearchIndex.GLOSSARY, label: i18n.t('label.glossary') },
+      { value: SearchIndex.GLOSSARY_TERM, label: i18n.t('label.glossary') },
       { value: SearchIndex.TAG, label: i18n.t('label.tag') },
       { value: SearchIndex.SEARCH_INDEX, label: i18n.t('label.search-index') },
       { value: SearchIndex.DATA_PRODUCT, label: i18n.t('label.data-product') },
@@ -203,8 +203,8 @@ class SearchClassBase {
         path: 'searchIndexes',
         icon: SearchOutlined,
       },
-      [SearchIndex.GLOSSARY]: {
-        label: i18n.t('label.glossary-plural'),
+      [SearchIndex.GLOSSARY_TERM]: {
+        label: i18n.t('label.glossary-term-plural'),
         sortingFields: entitySortingFields,
         sortField: INITIAL_SORT_FIELD,
         path: 'glossaries',
@@ -253,19 +253,18 @@ class SearchClassBase {
         ];
       case SearchIndex.CONTAINER:
         return [...COMMON_DROPDOWN_ITEMS, ...CONTAINER_DROPDOWN_ITEMS];
-      case SearchIndex.STORED_PROCEDURE:
-        return [...COMMON_DROPDOWN_ITEMS];
       case SearchIndex.DASHBOARD_DATA_MODEL:
         return [...COMMON_DROPDOWN_ITEMS, ...DASHBOARD_DATA_MODEL_TYPE];
-      case SearchIndex.GLOSSARY:
-        return [...GLOSSARY_DROPDOWN_ITEMS];
+      case SearchIndex.GLOSSARY_TERM:
+        return GLOSSARY_DROPDOWN_ITEMS;
       case SearchIndex.TAG:
-        return [...TAG_DROPDOWN_ITEMS];
+        return TAG_DROPDOWN_ITEMS;
       case SearchIndex.DATA_PRODUCT:
-        return [...DATA_PRODUCT_DROPDOWN_ITEMS];
+        return DATA_PRODUCT_DROPDOWN_ITEMS;
+      case SearchIndex.STORED_PROCEDURE:
       case SearchIndex.DATABASE:
       case SearchIndex.DATABASE_SCHEMA:
-        return [...COMMON_DROPDOWN_ITEMS];
+        return COMMON_DROPDOWN_ITEMS;
 
       default:
         return [];

@@ -17,7 +17,6 @@ import React, { FunctionComponent, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import RichTextEditor from '../../common/RichTextEditor/RichTextEditor';
-import Loader from '../../Loader/Loader';
 import './modal-with-markdown-editor.less';
 import {
   EditorContentRef,
@@ -70,9 +69,10 @@ export const ModalWithMarkdownEditor: FunctionComponent<ModalWithMarkdownEditorP
           <Button
             data-testid="save"
             key="saveButton"
+            loading={isLoading}
             type="primary"
             onClick={handleSaveData}>
-            {isLoading ? <Loader size="small" type="white" /> : t('label.save')}
+            {t('label.save')}
           </Button>,
         ]}
         maskClosable={false}
@@ -81,6 +81,7 @@ export const ModalWithMarkdownEditor: FunctionComponent<ModalWithMarkdownEditorP
         width="90%"
         onCancel={onCancel}>
         <RichTextEditor
+          autofocus
           initialValue={value}
           placeHolder={placeholder}
           ref={markdownRef}

@@ -18,12 +18,12 @@ import TitleBreadcrumb from '../../../components/common/TitleBreadcrumb/TitleBre
 import { TitleBreadcrumbProps } from '../../../components/common/TitleBreadcrumb/TitleBreadcrumb.interface';
 import PageHeader from '../../../components/PageHeader/PageHeader.component';
 import PageLayoutV1 from '../../../components/PageLayoutV1/PageLayoutV1';
-import { usePermissionProvider } from '../../../components/PermissionProvider/PermissionProvider';
-import SettingItemCard from '../../../components/Setting/SettingItemCard/SettingItemCard.component';
+import SettingItemCard from '../../../components/Settings/SettingItemCard/SettingItemCard.component';
 import {
   GlobalSettingOptions,
   GlobalSettingsMenuCategory,
 } from '../../../constants/GlobalSettings.constants';
+import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import { ELASTIC_SEARCH_RE_INDEX_PAGE_TABS } from '../../../enums/ElasticSearch.enum';
 import { TeamType } from '../../../generated/entity/teams/team';
 import { useAuth } from '../../../hooks/authHooks';
@@ -76,7 +76,7 @@ const GlobalSettingCategoryPage = () => {
 
         break;
       case GlobalSettingOptions.SEARCH:
-        if (category === GlobalSettingsMenuCategory.OPEN_METADATA) {
+        if (category === GlobalSettingsMenuCategory.PREFERENCES) {
           history.push(
             getSettingsPathWithFqn(
               category,

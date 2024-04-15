@@ -22,8 +22,8 @@ import { ELASTICSEARCH_ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { pluralize } from '../../utils/CommonUtils';
 import { highlightEntityNameAndDescription } from '../../utils/EntityUtils';
 import ErrorPlaceHolderES from '../common/ErrorWithPlaceholder/ErrorPlaceHolderES';
+import Loader from '../common/Loader/Loader';
 import ExploreSearchCard from '../ExploreV1/ExploreSearchCard/ExploreSearchCard';
-import Loader from '../Loader/Loader';
 import { SearchedDataProps } from './SearchedData.interface';
 
 const ASSETS_NAME = [
@@ -50,6 +50,7 @@ const SearchedData: React.FC<SearchedDataProps> = ({
     return data.map(({ _source: table, highlight }, index) => {
       const matches = highlight
         ? Object.entries(highlight)
+            .filter(([key]) => !key.includes('.ngram'))
             .map(([key, value]) => ({ key, value: value?.length || 1 }))
             .filter((d) => !ASSETS_NAME.includes(d.key))
         : [];

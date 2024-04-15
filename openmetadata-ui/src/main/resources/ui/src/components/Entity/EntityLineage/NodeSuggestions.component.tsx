@@ -14,7 +14,6 @@
 import { Select } from 'antd';
 import { AxiosError } from 'axios';
 import { capitalize, debounce } from 'lodash';
-import { FormattedTableData } from 'Models';
 import React, {
   FC,
   HTMLAttributes,
@@ -28,14 +27,14 @@ import { PAGE_SIZE } from '../../../constants/constants';
 import { EntityType, FqnPart } from '../../../enums/entity.enum';
 import { SearchIndex } from '../../../enums/search.enum';
 import { EntityReference } from '../../../generated/entity/type';
-import { SearchSourceAlias } from '../../../interface/search.interface';
 import { searchData } from '../../../rest/miscAPI';
-import { formatDataResponse } from '../../../utils/APIUtils';
 import { getPartialNameFromTableFQN } from '../../../utils/CommonUtils';
 import { getEntityNodeIcon } from '../../../utils/EntityLineageUtils';
+import { getEntityName } from '../../../utils/EntityUtils';
 import serviceUtilClassBase from '../../../utils/ServiceUtilClassBase';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { ExploreSearchIndex } from '../../Explore/ExplorePage.interface';
+import { SourceType } from '../../SearchedData/SearchedData.interface';
 import './node-suggestion.less';
 
 interface EntitySuggestionProps extends HTMLAttributes<HTMLDivElement> {
@@ -49,7 +48,7 @@ const NodeSuggestions: FC<EntitySuggestionProps> = ({
 }) => {
   const { t } = useTranslation();
 
-  const [data, setData] = useState<Array<FormattedTableData>>([]);
+  const [data, setData] = useState<Array<SourceType>>([]);
 
   const [searchValue, setSearchValue] = useState<string>('');
 
@@ -77,7 +76,8 @@ const NodeSuggestions: FC<EntitySuggestionProps> = ({
         '',
         (entityType as ExploreSearchIndex) ?? SearchIndex.TABLE
       );
-      setData(formatDataResponse(data.data.hits.hits));
+      const sources = data.data.hits.hits.map((hit) => hit._source);
+      setData(sources);
     } catch (error) {
       showErrorToast(
         error as AxiosError,
@@ -132,21 +132,24 @@ const NodeSuggestions: FC<EntitySuggestionProps> = ({
                   alt={entity.serviceType}
                   className="m-r-xs"
                   height="16px"
-                  src={serviceUtilClassBase.getServiceTypeLogo(
-                    entity as SearchSourceAlias
-                  )}
+                  src={serviceUtilClassBase.getServiceTypeLogo(entity)}
                   width="16px"
                 />
                 <div className="flex-1 text-left">
                   {entity.entityType === EntityType.TABLE && (
-                    <p className="d-block text-xs text-grey-muted w-max-400 truncate">
+                    <p className="d-block text-xs text-grey-muted w-max-400 truncate p-b-xss">
                       {getSuggestionLabelHeading(
-                        entity.fullyQualifiedName,
+                        entity.fullyQualifiedName ?? '',
                         entity.entityType as string
                       )}
                     </p>
                   )}
-                  <p className="w-max-400 truncate">{entity.name}</p>
+                  <p className="text-xs text-grey-muted w-max-400 truncate line-height-normal">
+                    {entity.name}
+                  </p>
+                  <p className="w-max-400 text-sm font-medium truncate">
+                    {getEntityName(entity)}
+                  </p>
                 </div>
               </div>
             </>

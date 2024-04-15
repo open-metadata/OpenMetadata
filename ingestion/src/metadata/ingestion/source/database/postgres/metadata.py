@@ -21,7 +21,8 @@ from sqlalchemy.engine import Inspector
 
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.table import (
-    IntervalType,
+    PartitionColumnDetails,
+    PartitionIntervalTypes,
     TablePartition,
     TableType,
 )
@@ -74,9 +75,9 @@ logger = ingestion_logger()
 
 
 INTERVAL_TYPE_MAP = {
-    "list": IntervalType.COLUMN_VALUE.value,
-    "hash": IntervalType.COLUMN_VALUE.value,
-    "range": IntervalType.TIME_UNIT.value,
+    "list": PartitionIntervalTypes.COLUMN_VALUE,
+    "hash": PartitionIntervalTypes.COLUMN_VALUE,
+    "range": PartitionIntervalTypes.TIME_UNIT,
 }
 
 RELKIND_MAP = {
@@ -129,7 +130,9 @@ class PostgresSource(CommonDbSourceService, MultiDBSource):
     """
 
     @classmethod
-    def create(cls, config_dict, metadata: OpenMetadata):
+    def create(
+        cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None
+    ):
         config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
         connection: PostgresConnection = config.serviceConnection.__root__.config
         if not isinstance(connection, PostgresConnection):
@@ -175,7 +178,7 @@ class PostgresSource(CommonDbSourceService, MultiDBSource):
                 database_fqn = fqn.build(
                     self.metadata,
                     entity_type=Database,
-                    service_name=self.context.database_service,
+                    service_name=self.context.get().database_service,
                     database_name=new_database,
                 )
 
@@ -203,12 +206,20 @@ class PostgresSource(CommonDbSourceService, MultiDBSource):
         result = self.engine.execute(
             POSTGRES_PARTITION_DETAILS, table_name=table_name, schema_name=schema_name
         ).all()
+
         if result:
             partition_details = TablePartition(
-                intervalType=INTERVAL_TYPE_MAP.get(
-                    result[0].partition_strategy, IntervalType.COLUMN_VALUE.value
-                ),
-                columns=[row.column_name for row in result if row.column_name],
+                columns=[
+                    PartitionColumnDetails(
+                        columnName=row.column_name,
+                        intervalType=INTERVAL_TYPE_MAP.get(
+                            row.partition_strategy, PartitionIntervalTypes.COLUMN_VALUE
+                        ),
+                        interval=None,
+                    )
+                    for row in result
+                    if row.column_name
+                ]
             )
             return True, partition_details
         return False, None
@@ -222,7 +233,7 @@ class PostgresSource(CommonDbSourceService, MultiDBSource):
         try:
             result = self.engine.execute(
                 POSTGRES_GET_ALL_TABLE_PG_POLICY.format(
-                    database_name=self.context.database,
+                    database_name=self.context.get().database,
                     schema_name=schema_name,
                 )
             ).all()
@@ -231,7 +242,7 @@ class PostgresSource(CommonDbSourceService, MultiDBSource):
                 fqn_elements = [name for name in row[2:] if name]
                 yield from get_ometa_tag_and_classification(
                     tag_fqn=fqn._build(  # pylint: disable=protected-access
-                        self.context.database_service, *fqn_elements
+                        self.context.get().database_service, *fqn_elements
                     ),
                     tags=[row[1]],
                     classification_name=self.service_connection.classificationName,

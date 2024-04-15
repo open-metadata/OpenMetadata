@@ -20,8 +20,10 @@ import static org.openmetadata.service.Entity.USER;
 import static org.openmetadata.service.events.subscription.AlertsRuleEvaluator.getEntity;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
@@ -43,15 +45,18 @@ import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.type.Post;
 import org.openmetadata.schema.type.Profile;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.Webhook;
 import org.openmetadata.schema.type.profile.SubscriptionConfig;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.apps.bundles.changeEvent.Destination;
+import org.openmetadata.service.events.subscription.AlertsRuleEvaluator;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.UserRepository;
+import org.openmetadata.service.resources.feeds.MessageParser;
 
 @Slf4j
 public class SubscriptionUtil {
@@ -147,22 +152,95 @@ public class SubscriptionUtil {
     return data;
   }
 
-  private static Set<UUID> getTaskAssignees(Thread thread) {
+  private static Set<String> getTaskAssignees(
+      SubscriptionDestination.SubscriptionType type, ChangeEvent event) {
+    Thread thread = AlertsRuleEvaluator.getThread(event);
     List<EntityReference> assignees = thread.getTask().getAssignees();
-    Set<UUID> receiversList = new HashSet<>();
-    assignees.forEach(
-        e -> {
-          if (Entity.USER.equals(e.getType())) {
-            receiversList.add(e.getId());
-          } else if (Entity.TEAM.equals(e.getType())) {
-            // fetch all that are there in the team
-            List<CollectionDAO.EntityRelationshipRecord> records =
-                Entity.getCollectionDAO()
-                    .relationshipDAO()
-                    .findTo(e.getId(), TEAM, Relationship.HAS.ordinal(), Entity.USER);
-            records.forEach(eRecord -> receiversList.add(eRecord.getId()));
-          }
-        });
+    Set<String> receiversList = new HashSet<>();
+    Map<UUID, Team> teams = new HashMap<>();
+    Map<UUID, User> users = new HashMap<>();
+
+    Team tempTeamVar = null;
+    User tempUserVar = null;
+    if (!nullOrEmpty(assignees)) {
+      for (EntityReference reference : assignees) {
+        if (Entity.USER.equals(reference.getType())) {
+          tempUserVar = Entity.getEntity(USER, reference.getId(), "profile", Include.NON_DELETED);
+          users.put(tempUserVar.getId(), tempUserVar);
+        } else if (TEAM.equals(reference.getType())) {
+          tempTeamVar = Entity.getEntity(TEAM, reference.getId(), "profile", Include.NON_DELETED);
+          teams.put(tempTeamVar.getId(), tempTeamVar);
+        }
+      }
+    }
+
+    for (Post post : thread.getPosts()) {
+      tempUserVar = Entity.getEntityByName(USER, post.getFrom(), "profile", Include.NON_DELETED);
+      users.put(tempUserVar.getId(), tempUserVar);
+      List<MessageParser.EntityLink> mentions = MessageParser.getEntityLinks(post.getMessage());
+      for (MessageParser.EntityLink link : mentions) {
+        if (USER.equals(link.getEntityType())) {
+          tempUserVar = Entity.getEntity(link, "profile", Include.NON_DELETED);
+          users.put(tempUserVar.getId(), tempUserVar);
+        } else if (TEAM.equals(link.getEntityType())) {
+          tempTeamVar = Entity.getEntity(link, "profile", Include.NON_DELETED);
+          teams.put(tempTeamVar.getId(), tempTeamVar);
+        }
+      }
+    }
+
+    // Users
+    receiversList.addAll(getEmailOrWebhookEndpointForUsers(users.values().stream().toList(), type));
+
+    // Teams
+    receiversList.addAll(getEmailOrWebhookEndpointForTeams(teams.values().stream().toList(), type));
+
+    return receiversList;
+  }
+
+  public static Set<String> handleConversationNotification(
+      SubscriptionDestination.SubscriptionType type, ChangeEvent event) {
+    Thread thread = AlertsRuleEvaluator.getThread(event);
+    Set<String> receiversList = new HashSet<>();
+    Map<UUID, Team> teams = new HashMap<>();
+    Map<UUID, User> users = new HashMap<>();
+
+    Team tempTeamVar = null;
+    User tempUserVar = null;
+    tempUserVar =
+        Entity.getEntityByName(USER, thread.getCreatedBy(), "profile", Include.NON_DELETED);
+    users.put(tempUserVar.getId(), tempUserVar);
+    List<MessageParser.EntityLink> mentions = MessageParser.getEntityLinks(thread.getMessage());
+    for (MessageParser.EntityLink link : mentions) {
+      if (USER.equals(link.getEntityType())) {
+        tempUserVar = Entity.getEntity(link, "profile", Include.NON_DELETED);
+        users.put(tempUserVar.getId(), tempUserVar);
+      } else if (TEAM.equals(link.getEntityType())) {
+        tempTeamVar = Entity.getEntity(link, "", Include.NON_DELETED);
+        teams.put(tempTeamVar.getId(), tempTeamVar);
+      }
+    }
+
+    for (Post post : thread.getPosts()) {
+      tempUserVar = Entity.getEntityByName(USER, post.getFrom(), "profile", Include.NON_DELETED);
+      users.put(tempUserVar.getId(), tempUserVar);
+      mentions = MessageParser.getEntityLinks(post.getMessage());
+      for (MessageParser.EntityLink link : mentions) {
+        if (USER.equals(link.getEntityType())) {
+          tempUserVar = Entity.getEntity(link, "profile", Include.NON_DELETED);
+          users.put(tempUserVar.getId(), tempUserVar);
+        } else if (TEAM.equals(link.getEntityType())) {
+          tempTeamVar = Entity.getEntity(link, "profile", Include.NON_DELETED);
+          teams.put(tempTeamVar.getId(), tempTeamVar);
+        }
+      }
+    }
+
+    // Users
+    receiversList.addAll(getEmailOrWebhookEndpointForUsers(users.values().stream().toList(), type));
+
+    // Teams
+    receiversList.addAll(getEmailOrWebhookEndpointForTeams(teams.values().stream().toList(), type));
 
     return receiversList;
   }
@@ -177,7 +255,7 @@ public class SubscriptionUtil {
               case SLACK -> profile.getSubscription().getSlack();
               case MS_TEAMS -> profile.getSubscription().getMsTeams();
               case G_CHAT -> profile.getSubscription().getgChat();
-              case GENERIC -> profile.getSubscription().getGeneric();
+              case WEBHOOK -> profile.getSubscription().getGeneric();
               default -> null;
             };
         if (webhookConfig != null && !CommonUtil.nullOrEmpty(webhookConfig.getEndpoint())) {
@@ -252,36 +330,45 @@ public class SubscriptionUtil {
     return receiverList;
   }
 
-  public static List<Invocation.Builder> getTargetsForWebhook(
+  public static Set<String> getTargetsForAlert(
       SubscriptionAction action,
       SubscriptionDestination.SubscriptionCategory category,
       SubscriptionDestination.SubscriptionType type,
-      Client client,
       ChangeEvent event) {
-    List<Invocation.Builder> targets = new ArrayList<>();
+    Set<String> receiverUrls = new HashSet<>();
     if (event.getEntityType().equals(THREAD)) {
-      //      Thread thread = AlertsRuleEvaluator.getThread(event);
-      //      Set<String> receiverUrls =  new HashSet<>();
-      //       switch (thread.getType()) {
-      //        case Task -> getTaskAssignees(thread);
-      //        case Conversation -> handleConversationNotification(thread);
-      //        case Announcement -> handleAnnouncementNotification(thread);
-      //      }
+      Thread thread = AlertsRuleEvaluator.getThread(event);
+      switch (thread.getType()) {
+        case Task -> receiverUrls.addAll(getTaskAssignees(type, event));
+        case Conversation -> receiverUrls.addAll(handleConversationNotification(type, event));
+          // TODO: For Announcement, Immediate Consumer needs to be Notified (find information from
+          // Lineage)
+      }
     } else {
       EntityInterface entityInterface = getEntity(event);
-      Set<String> receiversUrls =
+      receiverUrls.addAll(
           buildReceiversListFromActions(
               action,
               category,
               type,
               Entity.getCollectionDAO(),
               entityInterface.getId(),
-              event.getEntityType());
-      for (String url : receiversUrls) {
-        targets.add(client.target(url).request());
-      }
+              event.getEntityType()));
     }
 
+    return receiverUrls;
+  }
+
+  public static List<Invocation.Builder> getTargetsForWebhookAlert(
+      SubscriptionAction action,
+      SubscriptionDestination.SubscriptionCategory category,
+      SubscriptionDestination.SubscriptionType type,
+      Client client,
+      ChangeEvent event) {
+    List<Invocation.Builder> targets = new ArrayList<>();
+    for (String url : getTargetsForAlert(action, category, type, event)) {
+      targets.add(client.target(url).request());
+    }
     return targets;
   }
 

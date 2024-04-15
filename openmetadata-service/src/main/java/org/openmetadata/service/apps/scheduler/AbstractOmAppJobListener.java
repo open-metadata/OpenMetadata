@@ -1,6 +1,6 @@
 package org.openmetadata.service.apps.scheduler;
 
-import static org.openmetadata.service.apps.scheduler.AppScheduler.APP_INFO_KEY;
+import static org.openmetadata.service.apps.scheduler.AppScheduler.APP_NAME;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -8,9 +8,9 @@ import java.util.UUID;
 import org.apache.commons.lang.exception.ExceptionUtils;
 import org.openmetadata.schema.entity.app.App;
 import org.openmetadata.schema.entity.app.AppRunRecord;
-import org.openmetadata.schema.entity.app.AppRunType;
 import org.openmetadata.schema.entity.app.FailureContext;
 import org.openmetadata.schema.entity.app.SuccessContext;
+import org.openmetadata.service.apps.ApplicationHandler;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.util.JsonUtils;
 import org.quartz.JobDataMap;
@@ -35,10 +35,10 @@ public abstract class AbstractOmAppJobListener implements JobListener {
 
   @Override
   public void jobToBeExecuted(JobExecutionContext jobExecutionContext) {
-    AppRunType runType =
-        AppRunType.fromValue(
-            (String) jobExecutionContext.getJobDetail().getJobDataMap().get("triggerType"));
-    App jobApp = (App) jobExecutionContext.getJobDetail().getJobDataMap().get(APP_INFO_KEY);
+    String runType = (String) jobExecutionContext.getJobDetail().getJobDataMap().get("triggerType");
+    String appName = (String) jobExecutionContext.getJobDetail().getJobDataMap().get(APP_NAME);
+    App jobApp = collectionDAO.applicationDAO().findEntityByName(appName);
+    ApplicationHandler.getInstance().setAppRuntimeProperties(jobApp);
     JobDataMap dataMap = jobExecutionContext.getJobDetail().getJobDataMap();
     long jobStartTime = System.currentTimeMillis();
     AppRunRecord runRecord =
@@ -49,13 +49,23 @@ public abstract class AbstractOmAppJobListener implements JobListener {
             .withRunType(runType)
             .withStatus(AppRunRecord.Status.RUNNING)
             .withScheduleInfo(jobApp.getAppSchedule());
-
+    ;
+    boolean update = false;
+    if (jobExecutionContext.isRecovering()) {
+      AppRunRecord latestRunRecord =
+          JsonUtils.readValue(
+              collectionDAO.appExtensionTimeSeriesDao().getLatestAppRun(jobApp.getId()),
+              AppRunRecord.class);
+      if (latestRunRecord != null) {
+        runRecord = latestRunRecord;
+      }
+      update = true;
+    }
     // Put the Context in the Job Data Map
-    dataMap.put(SCHEDULED_APP_RUN_EXTENSION, runRecord);
+    dataMap.put(SCHEDULED_APP_RUN_EXTENSION, JsonUtils.pojoToJson(runRecord));
 
     // Insert new Record Run
-    pushApplicationStatusUpdates(jobExecutionContext, runRecord, false);
-
+    pushApplicationStatusUpdates(jobExecutionContext, runRecord, update);
     this.doJobToBeExecuted(jobExecutionContext);
   }
 
@@ -66,8 +76,9 @@ public abstract class AbstractOmAppJobListener implements JobListener {
   public void jobWasExecuted(
       JobExecutionContext jobExecutionContext, JobExecutionException jobException) {
     AppRunRecord runRecord =
-        (AppRunRecord)
-            jobExecutionContext.getJobDetail().getJobDataMap().get(SCHEDULED_APP_RUN_EXTENSION);
+        JsonUtils.readOrConvertValue(
+            jobExecutionContext.getJobDetail().getJobDataMap().get(SCHEDULED_APP_RUN_EXTENSION),
+            AppRunRecord.class);
     Object jobStats = jobExecutionContext.getJobDetail().getJobDataMap().get(APP_RUN_STATS);
     long endTime = System.currentTimeMillis();
     runRecord.withEndTime(endTime);
@@ -105,15 +116,21 @@ public abstract class AbstractOmAppJobListener implements JobListener {
 
   public AppRunRecord getAppRunRecordForJob(JobExecutionContext context) {
     JobDataMap dataMap = context.getJobDetail().getJobDataMap();
-    return (AppRunRecord) dataMap.get(SCHEDULED_APP_RUN_EXTENSION);
+    return JsonUtils.readOrConvertValue(
+        dataMap.get(SCHEDULED_APP_RUN_EXTENSION), AppRunRecord.class);
   }
 
   public void pushApplicationStatusUpdates(
       JobExecutionContext context, AppRunRecord runRecord, boolean update) {
     JobDataMap dataMap = context.getJobDetail().getJobDataMap();
     if (dataMap.containsKey(SCHEDULED_APP_RUN_EXTENSION)) {
-      App jobApp = (App) context.getJobDetail().getJobDataMap().get(APP_INFO_KEY);
-      updateStatus(jobApp.getId(), runRecord, update);
+      // Update the Run Record in Data Map
+      dataMap.put(SCHEDULED_APP_RUN_EXTENSION, JsonUtils.pojoToJson(runRecord));
+
+      // Push Updates to the Database
+      String appName = (String) context.getJobDetail().getJobDataMap().get(APP_NAME);
+      UUID appId = collectionDAO.applicationDAO().findEntityByName(appName).getId();
+      updateStatus(appId, runRecord, update);
     }
   }
 

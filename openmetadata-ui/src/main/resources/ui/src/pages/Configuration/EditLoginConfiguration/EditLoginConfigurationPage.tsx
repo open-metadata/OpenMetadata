@@ -15,10 +15,10 @@ import { AxiosError } from 'axios';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
+import Loader from '../../../components/common/Loader/Loader';
 import ResizablePanels from '../../../components/common/ResizablePanels/ResizablePanels';
 import ServiceDocPanel from '../../../components/common/ServiceDocPanel/ServiceDocPanel';
 import TitleBreadcrumb from '../../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
-import Loader from '../../../components/Loader/Loader';
 import { VALIDATION_MESSAGES } from '../../../constants/constants';
 import {
   GlobalSettingOptions,
@@ -71,7 +71,7 @@ const EditLoginConfiguration = () => {
       {
         name: t('label.login-configuration'),
         url: getSettingPath(
-          GlobalSettingsMenuCategory.OPEN_METADATA,
+          GlobalSettingsMenuCategory.PREFERENCES,
           GlobalSettingOptions.LOGIN_CONFIGURATION
         ),
       },

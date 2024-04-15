@@ -23,35 +23,38 @@ import { useActivityFeedProvider } from '../../components/ActivityFeed/ActivityF
 import { ActivityFeedTab } from '../../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
 import ActivityThreadPanel from '../../components/ActivityFeed/ActivityThreadPanel/ActivityThreadPanel';
 import { withActivityFeed } from '../../components/AppRouter/withActivityFeed';
-import { useAuthContext } from '../../components/Auth/AuthProviders/AuthProvider';
+import { withSuggestions } from '../../components/AppRouter/withSuggestions';
 import { CustomPropertyTable } from '../../components/common/CustomPropertyTable/CustomPropertyTable';
 import DescriptionV1 from '../../components/common/EntityDescription/DescriptionV1';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import Loader from '../../components/common/Loader/Loader';
 import QueryViewer from '../../components/common/QueryViewer/QueryViewer.component';
+import TabsLabel from '../../components/common/TabsLabel/TabsLabel.component';
 import { DataAssetsHeader } from '../../components/DataAssets/DataAssetsHeader/DataAssetsHeader.component';
+import TableProfiler from '../../components/Database/Profiler/TableProfiler/TableProfiler';
+import SampleDataTableComponent from '../../components/Database/SampleDataTable/SampleDataTable.component';
+import SchemaTab from '../../components/Database/SchemaTab/SchemaTab.component';
+import TableQueries from '../../components/Database/TableQueries/TableQueries';
+import { QueryVote } from '../../components/Database/TableQueries/TableQueries.interface';
 import EntityRightPanel from '../../components/Entity/EntityRightPanel/EntityRightPanel';
 import Lineage from '../../components/Lineage/Lineage.component';
-import LineageProvider from '../../components/LineageProvider/LineageProvider';
-import Loader from '../../components/Loader/Loader';
 import { EntityName } from '../../components/Modals/EntityNameModal/EntityNameModal.interface';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
-import { usePermissionProvider } from '../../components/PermissionProvider/PermissionProvider';
+import { SourceType } from '../../components/SearchedData/SearchedData.interface';
+import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
+import {
+  getEntityDetailsPath,
+  getVersionPath,
+} from '../../constants/constants';
+import { FEED_COUNT_INITIAL_DATA } from '../../constants/entity.constants';
+import { mockDatasetData } from '../../constants/mockTourData.constants';
+import LineageProvider from '../../context/LineageProvider/LineageProvider';
+import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import {
   OperationPermission,
   ResourceEntity,
-} from '../../components/PermissionProvider/PermissionProvider.interface';
-import SampleDataTableComponent from '../../components/SampleDataTable/SampleDataTable.component';
-import SchemaTab from '../../components/SchemaTab/SchemaTab.component';
-import { SourceType } from '../../components/SearchedData/SearchedData.interface';
-import TableProfiler from '../../components/TableProfiler/TableProfiler';
-import TableQueries from '../../components/TableQueries/TableQueries';
-import { QueryVote } from '../../components/TableQueries/TableQueries.interface';
-import TabsLabel from '../../components/TabsLabel/TabsLabel.component';
-import { useTourProvider } from '../../components/TourProvider/TourProvider';
-import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
-import { getTableTabPath, getVersionPath } from '../../constants/constants';
-import { FEED_COUNT_INITIAL_DATA } from '../../constants/entity.constants';
-import { mockDatasetData } from '../../constants/mockTourData.constants';
+} from '../../context/PermissionProvider/PermissionProvider.interface';
+import { useTourProvider } from '../../context/TourProvider/TourProvider';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import {
   EntityTabs,
@@ -62,9 +65,12 @@ import {
 import { CreateThread } from '../../generated/api/feed/createThread';
 import { Tag } from '../../generated/entity/classification/tag';
 import { JoinedWith, Table } from '../../generated/entity/data/table';
+import { Suggestion } from '../../generated/entity/feed/suggestion';
 import { ThreadType } from '../../generated/entity/feed/thread';
 import { TagLabel } from '../../generated/type/tagLabel';
+import { useApplicationStore } from '../../hooks/useApplicationStore';
 import { useFqn } from '../../hooks/useFqn';
+import { useSub } from '../../hooks/usePubSub';
 import { FeedCounts } from '../../interface/feed.interface';
 import { postThread } from '../../rest/feedsAPI';
 import { getQueriesList } from '../../rest/queryAPI';
@@ -84,20 +90,21 @@ import {
   sortTagsCaseInsensitive,
 } from '../../utils/CommonUtils';
 import { defaultFields } from '../../utils/DatasetDetailsUtils';
+import EntityLink from '../../utils/EntityLink';
+import entityUtilClassBase from '../../utils/EntityUtilClassBase';
 import { getEntityName } from '../../utils/EntityUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import { getTagsWithoutTier, getTierTags } from '../../utils/TableUtils';
 import { createTagObject, updateTierTag } from '../../utils/TagsUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import { FrequentlyJoinedTables } from './FrequentlyJoinedTables/FrequentlyJoinedTables.component';
-import { PartitionedKeys } from './PartitionedKeys/PartitionedKeys.component';
 import './table-details-page-v1.less';
 import TableConstraints from './TableConstraints/TableConstraints';
 
-const TableDetailsPageV1 = () => {
+const TableDetailsPageV1: React.FC = () => {
   const { isTourOpen, activeTabForTourDatasetPage, isTourPage } =
     useTourProvider();
-  const { currentUser } = useAuthContext();
+  const { currentUser } = useApplicationStore();
   const [tableDetails, setTableDetails] = useState<Table>();
   const { tab: activeTab = EntityTabs.SCHEMA } =
     useParams<{ tab: EntityTabs }>();
@@ -118,6 +125,11 @@ const TableDetailsPageV1 = () => {
   const [loading, setLoading] = useState(!isTourOpen);
   const [tablePermissions, setTablePermissions] = useState<OperationPermission>(
     DEFAULT_ENTITY_PERMISSION
+  );
+
+  const extraDropdownContent = entityUtilClassBase.getManageExtraOptions(
+    EntityType.TABLE,
+    datasetFQN
   );
 
   const viewUsagePermission = useMemo(
@@ -159,7 +171,7 @@ const TableDetailsPageV1 = () => {
     } finally {
       setLoading(false);
     }
-  }, [tableFqn]);
+  }, [tableFqn, viewUsagePermission]);
 
   const fetchQueryCount = async () => {
     if (!tableDetails?.id) {
@@ -294,7 +306,9 @@ const TableDetailsPageV1 = () => {
   const handleTabChange = (activeKey: string) => {
     if (activeKey !== activeTab) {
       if (!isTourOpen) {
-        history.push(getTableTabPath(tableFqn, activeKey));
+        history.push(
+          getEntityDetailsPath(EntityType.TABLE, tableFqn, activeKey)
+        );
       }
     }
   };
@@ -498,11 +512,13 @@ const TableDetailsPageV1 = () => {
         <Col className="p-t-sm m-l-lg tab-content-height p-r-lg" flex="auto">
           <div className="d-flex flex-col gap-4">
             <DescriptionV1
+              showSuggestions
               description={tableDetails?.description}
               entityFqn={datasetFQN}
               entityName={entityName}
               entityType={EntityType.TABLE}
               hasEditAccess={editDescriptionPermission}
+              isDescriptionExpanded={isEmpty(tableDetails?.columns)}
               isEdit={isEdit}
               owner={tableDetails?.owner}
               showActions={!deleted}
@@ -524,7 +540,6 @@ const TableDetailsPageV1 = () => {
               isReadOnly={deleted}
               joins={tableDetails?.joins?.columnJoins ?? []}
               tableConstraints={tableDetails?.tableConstraints}
-              tablePartitioned={tableDetails?.tablePartition}
               onThreadLinkSelect={onThreadLinkSelect}
               onUpdate={onColumnsUpdate}
             />
@@ -534,7 +549,7 @@ const TableDetailsPageV1 = () => {
           className="entity-tag-right-panel-container"
           data-testid="entity-right-panel"
           flex="320px">
-          <EntityRightPanel
+          <EntityRightPanel<EntityType.TABLE>
             afterSlot={
               <Space
                 className="w-full m-t-lg"
@@ -543,11 +558,6 @@ const TableDetailsPageV1 = () => {
                 <TableConstraints
                   constraints={tableDetails?.tableConstraints}
                 />
-                {tableDetails?.tablePartition ? (
-                  <PartitionedKeys
-                    tablePartition={tableDetails.tablePartition}
-                  />
-                ) : null}
               </Space>
             }
             beforeSlot={
@@ -558,12 +568,15 @@ const TableDetailsPageV1 = () => {
             customProperties={tableDetails}
             dataProducts={tableDetails?.dataProducts ?? []}
             domain={tableDetails?.domain}
+            editCustomAttributePermission={editCustomAttributePermission}
             editTagPermission={editTagsPermission}
             entityFQN={datasetFQN}
             entityId={tableDetails?.id ?? ''}
             entityType={EntityType.TABLE}
             selectedTags={tableTags}
+            tablePartition={tableDetails?.tablePartition}
             viewAllPermission={viewAllPermission}
+            onExtensionUpdate={onExtensionUpdate}
             onTagSelectionChange={handleTagSelection}
             onThreadLinkSelect={onThreadLinkSelect}
           />
@@ -898,6 +911,49 @@ const TableDetailsPageV1 = () => {
     }));
   }, []);
 
+  const updateDescriptionFromSuggestions = useCallback(
+    (suggestion: Suggestion) => {
+      setTableDetails((prev) => {
+        if (!prev) {
+          return;
+        }
+
+        const activeCol = prev?.columns.find((column) => {
+          return (
+            EntityLink.getTableEntityLink(
+              prev.fullyQualifiedName ?? '',
+              column.name ?? ''
+            ) === suggestion.entityLink
+          );
+        });
+
+        if (!activeCol) {
+          return {
+            ...prev,
+            description: suggestion.description,
+          };
+        } else {
+          const updatedColumns = prev.columns.map((column) => {
+            if (column.fullyQualifiedName === activeCol.fullyQualifiedName) {
+              return {
+                ...column,
+                description: suggestion.description,
+              };
+            } else {
+              return column;
+            }
+          });
+
+          return {
+            ...prev,
+            columns: updatedColumns,
+          };
+        }
+      });
+    },
+    []
+  );
+
   useEffect(() => {
     if (isTourOpen || isTourPage) {
       setTableDetails(mockDatasetData.tableDetails as unknown as Table);
@@ -912,6 +968,14 @@ const TableDetailsPageV1 = () => {
       fetchQueryCount();
     }
   }, [tableDetails?.fullyQualifiedName]);
+
+  useSub(
+    'updateDetails',
+    (suggestion: Suggestion) => {
+      updateDescriptionFromSuggestions(suggestion);
+    },
+    [tableDetails]
+  );
 
   const onThreadPanelClose = () => {
     setThreadLink('');
@@ -970,6 +1034,7 @@ const TableDetailsPageV1 = () => {
             afterDomainUpdateAction={updateTableDetailsState}
             dataAsset={tableDetails}
             entityType={EntityType.TABLE}
+            extraDropdownContent={extraDropdownContent}
             openTaskCount={feedCount.openTaskCount}
             permissions={tablePermissions}
             onDisplayNameUpdate={handleDisplayNameUpdate}
@@ -1015,4 +1080,4 @@ const TableDetailsPageV1 = () => {
   );
 };
 
-export default withActivityFeed(TableDetailsPageV1);
+export default withSuggestions(withActivityFeed(TableDetailsPageV1));

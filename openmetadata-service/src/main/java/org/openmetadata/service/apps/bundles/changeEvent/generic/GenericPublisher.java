@@ -13,9 +13,9 @@
 
 package org.openmetadata.service.apps.bundles.changeEvent.generic;
 
-import static org.openmetadata.schema.entity.events.SubscriptionDestination.SubscriptionType.GENERIC;
+import static org.openmetadata.schema.entity.events.SubscriptionDestination.SubscriptionType.WEBHOOK;
 import static org.openmetadata.service.util.SubscriptionUtil.getClient;
-import static org.openmetadata.service.util.SubscriptionUtil.getTargetsForWebhook;
+import static org.openmetadata.service.util.SubscriptionUtil.getTargetsForWebhookAlert;
 import static org.openmetadata.service.util.SubscriptionUtil.postWebhookMessage;
 
 import java.net.UnknownHostException;
@@ -45,7 +45,7 @@ public class GenericPublisher implements Destination<ChangeEvent> {
   @Getter private final SubscriptionDestination subscriptionDestination;
 
   public GenericPublisher(SubscriptionDestination subscription) {
-    if (subscription.getType() == GENERIC) {
+    if (subscription.getType() == WEBHOOK) {
       this.subscriptionDestination = subscription;
       this.webhook = JsonUtils.convertValue(subscription.getConfig(), Webhook.class);
 
@@ -75,8 +75,8 @@ public class GenericPublisher implements Destination<ChangeEvent> {
       // Post to Generic Webhook with Actions
       String eventJson = JsonUtils.pojoToJson(event);
       List<Invocation.Builder> targets =
-          getTargetsForWebhook(
-              webhook, subscriptionDestination.getCategory(), GENERIC, client, event);
+          getTargetsForWebhookAlert(
+              webhook, subscriptionDestination.getCategory(), WEBHOOK, client, event);
       for (Invocation.Builder actionTarget : targets) {
         postWebhookMessage(this, actionTarget, eventJson);
       }
@@ -92,7 +92,7 @@ public class GenericPublisher implements Destination<ChangeEvent> {
         setErrorStatus(attemptTime, 400, "UnknownHostException");
       } else {
         message =
-            CatalogExceptionMessage.eventPublisherFailedToPublish(GENERIC, event, ex.getMessage());
+            CatalogExceptionMessage.eventPublisherFailedToPublish(WEBHOOK, event, ex.getMessage());
         LOG.error(message);
       }
       throw new EventPublisherException(message, Pair.of(subscriptionDestination.getId(), event));

@@ -27,6 +27,7 @@ import {
   MAX_ZOOM_VALUE,
   MIN_ZOOM_VALUE,
 } from '../../constants/Lineage.constants';
+import { useLineageProvider } from '../../context/LineageProvider/LineageProvider';
 import {
   customEdges,
   dragHandle,
@@ -37,10 +38,9 @@ import {
   onNodeMouseMove,
 } from '../../utils/EntityLineageUtils';
 import { getEntityBreadcrumbs } from '../../utils/EntityUtils';
+import Loader from '../common/Loader/Loader';
 import TitleBreadcrumb from '../common/TitleBreadcrumb/TitleBreadcrumb.component';
 import CustomControlsComponent from '../Entity/EntityLineage/CustomControls.component';
-import { useLineageProvider } from '../LineageProvider/LineageProvider';
-import Loader from '../Loader/Loader';
 import { LineageProps } from './Lineage.interface';
 
 const Lineage = ({
@@ -118,7 +118,7 @@ const Lineage = ({
   // considerably. So added an init state for showing loader.
   return (
     <Card
-      className="lineage-card card-body-full w-auto border-none"
+      className="lineage-card card-body-full w-auto border-none card-padding-0"
       data-testid="lineage-details">
       {isFullScreen && (
         <TitleBreadcrumb className="p-md" titleLinks={breadcrumbs} />

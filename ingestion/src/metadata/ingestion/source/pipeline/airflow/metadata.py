@@ -111,7 +111,9 @@ class AirflowSource(PipelineServiceSource):
         self._session = None
 
     @classmethod
-    def create(cls, config_dict, metadata: OpenMetadata) -> "AirflowSource":
+    def create(
+        cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None
+    ) -> "AirflowSource":
         config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
         connection: AirflowConnection = config.serviceConnection.__root__.config
         if not isinstance(connection, AirflowConnection):
@@ -225,7 +227,7 @@ class AirflowSource(PipelineServiceSource):
 
             for dag_run in dag_run_list:
                 if (
-                    dag_run.run_id and self.context.task_names
+                    dag_run.run_id and self.context.get().task_names
                 ):  # Airflow dags can have old task which are turned off/commented out in code
                     tasks = self.get_task_instances(
                         dag_id=dag_run.dag_id,
@@ -245,7 +247,7 @@ class AirflowSource(PipelineServiceSource):
                             ),  # Might be None for running tasks
                         )  # Log link might not be present in all Airflow versions
                         for task in tasks
-                        if task.task_id in self.context.task_names
+                        if task.task_id in self.context.get().task_names
                     ]
 
                     pipeline_status = PipelineStatus(
@@ -258,8 +260,8 @@ class AirflowSource(PipelineServiceSource):
                     pipeline_fqn = fqn.build(
                         metadata=self.metadata,
                         entity_type=Pipeline,
-                        service_name=self.context.pipeline_service,
-                        pipeline_name=self.context.pipeline,
+                        service_name=self.context.get().pipeline_service,
+                        pipeline_name=self.context.get().pipeline,
                     )
                     yield Either(
                         right=OMetaPipelineStatus(
@@ -417,17 +419,17 @@ class AirflowSource(PipelineServiceSource):
                 tasks=self.get_tasks_from_dag(
                     pipeline_details, self.service_connection.hostPort
                 ),
-                service=self.context.pipeline_service,
+                service=self.context.get().pipeline_service,
                 owner=self.get_owner(pipeline_details.owner),
                 scheduleInterval=pipeline_details.schedule_interval,
             )
             yield Either(right=pipeline_request)
             self.register_record(pipeline_request=pipeline_request)
-            self.context.task_names = {
+            self.context.get().task_names = {
                 task.name for task in pipeline_request.tasks or []
             }
         except TypeError as err:
-            self.context.task_names = set()
+            self.context.get().task_names = set()
             yield Either(
                 left=StackTraceError(
                     name=pipeline_details.dag_id,
@@ -439,7 +441,7 @@ class AirflowSource(PipelineServiceSource):
                 )
             )
         except ValidationError as err:
-            self.context.task_names = set()
+            self.context.get().task_names = set()
             yield Either(
                 left=StackTraceError(
                     name=pipeline_details.dag_id,
@@ -449,7 +451,7 @@ class AirflowSource(PipelineServiceSource):
             )
 
         except Exception as err:
-            self.context.task_names = set()
+            self.context.get().task_names = set()
             yield Either(
                 left=StackTraceError(
                     name=pipeline_details.dag_id,
@@ -472,8 +474,8 @@ class AirflowSource(PipelineServiceSource):
         pipeline_fqn = fqn.build(
             metadata=self.metadata,
             entity_type=Pipeline,
-            service_name=self.context.pipeline_service,
-            pipeline_name=self.context.pipeline,
+            service_name=self.context.get().pipeline_service,
+            pipeline_name=self.context.get().pipeline,
         )
         pipeline_entity = self.metadata.get_by_name(entity=Pipeline, fqn=pipeline_fqn)
         if not pipeline_entity:

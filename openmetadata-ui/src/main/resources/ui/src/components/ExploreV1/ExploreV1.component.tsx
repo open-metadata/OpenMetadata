@@ -40,12 +40,12 @@ import AppliedFilterText from '../../components/Explore/AppliedFilterText/Applie
 import EntitySummaryPanel from '../../components/Explore/EntitySummaryPanel/EntitySummaryPanel.component';
 import ExploreQuickFilters from '../../components/Explore/ExploreQuickFilters';
 import SortingDropDown from '../../components/Explore/SortingDropDown';
-import { ERROR_COLOR } from '../../constants/constants';
 import {
   SEARCH_INDEXING_APPLICATION,
   TAG_FQN_KEY,
 } from '../../constants/explore.constants';
 import { ERROR_PLACEHOLDER_TYPE, SORT_ORDER } from '../../enums/common.enum';
+import { useApplicationStore } from '../../hooks/useApplicationStore';
 import {
   QueryFieldInterface,
   QueryFieldValueInterface,
@@ -56,18 +56,19 @@ import { highlightEntityNameAndDescription } from '../../utils/EntityUtils';
 import { getSelectedValuesFromQuickFilter } from '../../utils/Explore.utils';
 import { getApplicationDetailsPath } from '../../utils/RouterUtils';
 import searchClassBase from '../../utils/SearchClassBase';
+import Loader from '../common/Loader/Loader';
 import {
   ExploreProps,
   ExploreQuickFilterField,
   ExploreSearchIndex,
 } from '../Explore/ExplorePage.interface';
-import Loader from '../Loader/Loader';
 import PageLayoutV1 from '../PageLayoutV1/PageLayoutV1';
 import SearchedData from '../SearchedData/SearchedData';
 import { SearchedDataProps } from '../SearchedData/SearchedData.interface';
 import './exploreV1.less';
 
 const IndexNotFoundBanner = () => {
+  const { theme } = useApplicationStore();
   const { t } = useTranslation();
 
   return (
@@ -77,7 +78,7 @@ const IndexNotFoundBanner = () => {
         <div className="d-flex items-start gap-3">
           <ExclamationCircleOutlined
             style={{
-              color: ERROR_COLOR,
+              color: theme.errorColor,
               fontSize: '16px',
             }}
           />

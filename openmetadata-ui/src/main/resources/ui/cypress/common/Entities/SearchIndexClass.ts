@@ -17,12 +17,13 @@ import {
 } from '../../constants/EntityConstant';
 import { createSingleLevelEntity } from '../EntityUtils';
 import { visitEntityDetailsPage } from '../Utils/Entity';
+import { getToken } from '../Utils/LocalStorage';
 import EntityClass from './EntityClass';
 
 class SearchIndexClass extends EntityClass {
   constructor() {
     const topicName = `cypress-search-index-${Date.now()}`;
-    super(topicName, SEARCH_INDEX_DETAILS, EntityType.SeachIndex);
+    super(topicName, SEARCH_INDEX_DETAILS, EntityType.SearchIndex);
 
     this.name = 'SearchIndex';
   }
@@ -45,7 +46,7 @@ class SearchIndexClass extends EntityClass {
     // Handle creation here
 
     cy.getAllLocalStorage().then((data) => {
-      const token = Object.values(data)[0].oidcIdToken;
+      const token = getToken(data);
 
       createSingleLevelEntity({
         ...SEARCH_SERVICE,

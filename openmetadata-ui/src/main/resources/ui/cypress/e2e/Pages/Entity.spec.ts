@@ -11,16 +11,16 @@
  *  limitations under the License.
  */
 
+import ContainerClass from '../../common/Entities/ContainerClass';
+import DashboardDataModelClass from '../../common/Entities/DataModelClass';
 import EntityClass from '../../common/Entities/EntityClass';
+import MlModelClass from '../../common/Entities/MlModelClass';
+import PipelineClass from '../../common/Entities/PipelineClass';
+import SearchIndexClass from '../../common/Entities/SearchIndexClass';
+import TopicClass from '../../common/Entities/TopicClass';
 import { CustomPropertySupportedEntityList } from '../../constants/CustomProperty.constant';
-import ContainerClass from './../../common/Entities/ContainerClass';
 import DashboardClass from './../../common/Entities/DashboardClass';
-import DashboardDataModelClass from './../../common/Entities/DataModelClass';
-import MlModelClass from './../../common/Entities/MlModelClass';
-import PipelineClass from './../../common/Entities/PipelineClass';
-import SearchIndexClass from './../../common/Entities/SearchIndexClass';
-import TopicClass from './../../common/Entities/TopicClass';
-import { CustomPropertyType } from './../../common/Utils/CustomProperty';
+import { CustomPropertyTypeByName } from './../../common/Utils/CustomProperty';
 
 // Run tests over all entities except Database, Schema, Table and Store Procedure
 // Those tests are covered in cypress/new-tests/Database.spec.js
@@ -40,7 +40,7 @@ const OWNER2 = 'Cynthia Meyer';
 const TEAM_OWNER_1 = 'Marketplace';
 const TEAM_OWNER_2 = 'DevOps';
 
-describe('Entity detail page', () => {
+describe('Entity detail page', { tags: 'DataAssets' }, () => {
   before(() => {
     cy.login();
 
@@ -122,10 +122,10 @@ describe('Entity detail page', () => {
 
       // Create custom property only for supported entities
       if (CustomPropertySupportedEntityList.includes(entity.endPoint)) {
-        const properties = Object.values(CustomPropertyType).join(', ');
+        const properties = Object.values(CustomPropertyTypeByName).join(', ');
 
         it(`Set ${properties} Custom Property `, () => {
-          Object.values(CustomPropertyType).forEach((type) => {
+          Object.values(CustomPropertyTypeByName).forEach((type) => {
             entity.setCustomProperty(
               entity.customPropertyValue[type].property,
               entity.customPropertyValue[type].value
@@ -134,7 +134,7 @@ describe('Entity detail page', () => {
         });
 
         it(`Update ${properties} Custom Property`, () => {
-          Object.values(CustomPropertyType).forEach((type) => {
+          Object.values(CustomPropertyTypeByName).forEach((type) => {
             entity.updateCustomProperty(
               entity.customPropertyValue[type].property,
               entity.customPropertyValue[type].newValue

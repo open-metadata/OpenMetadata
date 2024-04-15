@@ -17,10 +17,10 @@ import { compare } from 'fast-json-patch';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
-import { AddTestCaseList } from '../../components/AddTestCaseList/AddTestCaseList.component';
-import Description from '../../components/common/EntityDescription/Description';
+import DescriptionV1 from '../../components/common/EntityDescription/DescriptionV1';
 import ManageButton from '../../components/common/EntityPageInfos/ManageButton/ManageButton';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import Loader from '../../components/common/Loader/Loader';
 import {
   NextPreviousProps,
   PagingHandlerParams,
@@ -28,14 +28,14 @@ import {
 import { OwnerLabel } from '../../components/common/OwnerLabel/OwnerLabel.component';
 import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
 import { TitleBreadcrumbProps } from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.interface';
-import Loader from '../../components/Loader/Loader';
+import DataQualityTab from '../../components/Database/Profiler/DataQualityTab/DataQualityTab';
+import { AddTestCaseList } from '../../components/DataQuality/AddTestCaseList/AddTestCaseList.component';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
-import { usePermissionProvider } from '../../components/PermissionProvider/PermissionProvider';
+import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import {
   OperationPermission,
   ResourceEntity,
-} from '../../components/PermissionProvider/PermissionProvider.interface';
-import DataQualityTab from '../../components/ProfilerDashboard/component/DataQualityTab';
+} from '../../context/PermissionProvider/PermissionProvider.interface';
 import { ACTION_TYPE, ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { EntityType } from '../../enums/entity.enum';
 import { TestCase } from '../../generated/tests/testCase';
@@ -147,7 +147,6 @@ const TestSuiteDetailsPage = () => {
       const response = await getListTestCase({
         fields: 'testCaseResult,testDefinition,testSuite,incidentId',
         testSuiteId,
-        orderByLastExecutionDate: true,
         ...param,
         limit: pageSize,
       });
@@ -373,12 +372,14 @@ const TestSuiteDetailsPage = () => {
             />
           </div>
 
-          <Description
+          <DescriptionV1
             className="test-suite-description"
             description={testSuiteDescription}
             entityName={getEntityName(testSuite)}
+            entityType={EntityType.TEST_SUITE}
             hasEditAccess={isAdminUser}
             isEdit={isDescriptionEditable}
+            showCommentsIcon={false}
             onCancel={() => descriptionHandler(false)}
             onDescriptionEdit={() => descriptionHandler(true)}
             onDescriptionUpdate={onDescriptionUpdate}

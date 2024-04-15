@@ -10,25 +10,41 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import React from 'react';
+import { getListTestCaseIncidentStatus } from '../../rest/incidentManagerAPI';
 import IncidentManagerPage from './IncidentManagerPage';
 
 jest.mock('../../components/common/NextPrevious/NextPrevious', () => {
   return jest.fn().mockImplementation(() => <div>NextPrevious.component</div>);
 });
-jest.mock('../../components/DatePickerMenu/DatePickerMenu.component', () => {
-  return jest
-    .fn()
-    .mockImplementation(() => <div>DatePickerMenu.component</div>);
-});
+jest.mock(
+  '../../components/common/DatePickerMenu/DatePickerMenu.component',
+  () => {
+    return jest.fn().mockImplementation(({ handleDateRangeChange }) => (
+      <div>
+        <p>DatePickerMenu.component</p>
+        <button
+          data-testid="time-filter"
+          onClick={() =>
+            handleDateRangeChange({
+              startTs: 1709556624254,
+              endTs: 1710161424255,
+            })
+          }>
+          time filter
+        </button>
+      </div>
+    ));
+  }
+);
 jest.mock('../../components/PageLayoutV1/PageLayoutV1', () => {
   return jest.fn().mockImplementation(({ children }) => <div>{children}</div>);
 });
 jest.mock('../TasksPage/shared/Assignees', () => {
   return jest.fn().mockImplementation(() => <div>Assignees.component</div>);
 });
-jest.mock('../../components/AsyncSelect/AsyncSelect', () => ({
+jest.mock('../../components/common/AsyncSelect/AsyncSelect', () => ({
   AsyncSelect: jest
     .fn()
     .mockImplementation(() => <div>AsyncSelect.component</div>),
@@ -37,7 +53,7 @@ jest.mock('react-router-dom', () => ({
   ...jest.requireActual('react-router-dom'),
   Link: jest.fn().mockImplementation(() => <div>Link</div>),
 }));
-jest.mock('../../components/PermissionProvider/PermissionProvider', () => ({
+jest.mock('../../context/PermissionProvider/PermissionProvider', () => ({
   usePermissionProvider: jest.fn().mockReturnValue({
     permissions: {
       testCase: {
@@ -94,5 +110,24 @@ describe('IncidentManagerPage', () => {
     expect(
       await screen.findByText('NextPrevious.component')
     ).toBeInTheDocument();
+  });
+
+  it('Incident should be fetch with updated time', async () => {
+    const mockGetListTestCaseIncidentStatus =
+      getListTestCaseIncidentStatus as jest.Mock;
+    render(<IncidentManagerPage />);
+
+    const timeFilterButton = await screen.findByTestId('time-filter');
+
+    act(() => {
+      fireEvent.click(timeFilterButton);
+    });
+
+    expect(mockGetListTestCaseIncidentStatus).toHaveBeenCalledWith({
+      endTs: 1710161424255,
+      latest: true,
+      limit: 10,
+      startTs: 1709556624254,
+    });
   });
 });

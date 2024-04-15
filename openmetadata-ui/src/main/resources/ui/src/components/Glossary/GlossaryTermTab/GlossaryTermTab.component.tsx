@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { FilterOutlined } from '@ant-design/icons';
 import {
   Button,
   Col,
@@ -39,7 +40,6 @@ import ErrorPlaceHolder from '../../../components/common/ErrorWithPlaceholder/Er
 import { OwnerLabel } from '../../../components/common/OwnerLabel/OwnerLabel.component';
 import RichTextEditorPreviewer from '../../../components/common/RichTextEditor/RichTextEditorPreviewer';
 import StatusBadge from '../../../components/common/StatusBadge/StatusBadge.component';
-import Loader from '../../../components/Loader/Loader';
 import { DE_ACTIVE_COLOR } from '../../../constants/constants';
 import { GLOSSARIES_DOCS } from '../../../constants/docs.constants';
 import { TABLE_CONSTANTS } from '../../../constants/Teams.constants';
@@ -49,6 +49,7 @@ import {
   GlossaryTerm,
   Status,
 } from '../../../generated/entity/data/glossaryTerm';
+import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { patchGlossaryTerm } from '../../../rest/glossaryAPI';
 import { Transi18next } from '../../../utils/CommonUtils';
 import { getEntityName } from '../../../utils/EntityUtils';
@@ -59,12 +60,10 @@ import {
   StatusFilters,
 } from '../../../utils/GlossaryUtils';
 import { getGlossaryPath } from '../../../utils/RouterUtils';
-import {
-  FilterIcon,
-  getTableExpandableConfig,
-} from '../../../utils/TableUtils';
+import { getTableExpandableConfig } from '../../../utils/TableUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
-import { DraggableBodyRowProps } from '../../Draggable/DraggableBodyRowProps.interface';
+import { DraggableBodyRowProps } from '../../common/Draggable/DraggableBodyRowProps.interface';
+import Loader from '../../common/Loader/Loader';
 import {
   GlossaryTermTabProps,
   ModifiedGlossaryTerm,
@@ -82,6 +81,7 @@ const GlossaryTermTab = ({
   onEditGlossaryTerm,
   className,
 }: GlossaryTermTabProps) => {
+  const { theme } = useApplicationStore();
   const { t } = useTranslation();
   const [isLoading, setIsLoading] = useState(true);
   const [glossaryTerms, setGlossaryTerms] = useState<ModifiedGlossaryTerm[]>(
@@ -164,7 +164,11 @@ const GlossaryTermTab = ({
         dataIndex: 'status',
         key: 'status',
         width: '12%',
-        filterIcon: FilterIcon,
+        filterIcon: (filtered) => (
+          <FilterOutlined
+            style={{ color: filtered ? theme.primaryColor : undefined }}
+          />
+        ),
         filters: StatusFilters,
         render: (_, record) => {
           const status = record.status ?? Status.Approved;
@@ -255,7 +259,7 @@ const GlossaryTermTab = ({
   const handleMoveRow = useCallback(
     async (dragRecord: GlossaryTerm, dropRecord?: GlossaryTerm) => {
       const dropRecordFqnPart =
-        Fqn.split(dragRecord.fullyQualifiedName).length === 2;
+        Fqn.split(dragRecord.fullyQualifiedName ?? '').length === 2;
 
       if (isUndefined(dropRecord) && dropRecordFqnPart) {
         return;

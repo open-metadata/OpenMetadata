@@ -15,21 +15,19 @@ import { RJSFSchema } from '@rjsf/utils';
 import validator from '@rjsf/validator-ajv8';
 import { Col, Row, Typography } from 'antd';
 import { AxiosError } from 'axios';
+import { isEmpty } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
-import TestSuiteScheduler from '../../components/AddDataQualityTest/components/TestSuiteScheduler';
-import applicationSchemaClassBase from '../../components/Applications/AppDetails/ApplicationSchemaClassBase';
-import AppInstallVerifyCard from '../../components/Applications/AppInstallVerifyCard/AppInstallVerifyCard.component';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import FormBuilder from '../../components/common/FormBuilder/FormBuilder';
-import IngestionStepper from '../../components/IngestionStepper/IngestionStepper.component';
-import Loader from '../../components/Loader/Loader';
+import Loader from '../../components/common/Loader/Loader';
+import TestSuiteScheduler from '../../components/DataQuality/AddDataQualityTest/components/TestSuiteScheduler';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
-import {
-  APP_UI_SCHEMA,
-  STEPS_FOR_APP_INSTALL,
-} from '../../constants/Applications.constant';
+import applicationSchemaClassBase from '../../components/Settings/Applications/AppDetails/ApplicationsClassBase';
+import AppInstallVerifyCard from '../../components/Settings/Applications/AppInstallVerifyCard/AppInstallVerifyCard.component';
+import IngestionStepper from '../../components/Settings/Services/Ingestion/IngestionStepper/IngestionStepper.component';
+import { STEPS_FOR_APP_INSTALL } from '../../constants/Applications.constant';
 import { GlobalSettingOptions } from '../../constants/GlobalSettings.constants';
 import { ServiceCategory } from '../../enums/service.enum';
 import { AppType } from '../../generated/entity/applications/app';
@@ -57,9 +55,11 @@ const AppInstall = () => {
   const { fqn } = useFqn();
   const [appData, setAppData] = useState<AppMarketPlaceDefinition>();
   const [isLoading, setIsLoading] = useState(true);
+  const [isSavingLoading, setIsSavingLoading] = useState(false);
   const [activeServiceStep, setActiveServiceStep] = useState(1);
   const [appConfiguration, setAppConfiguration] = useState();
   const [jsonSchema, setJsonSchema] = useState<RJSFSchema>();
+  const UiSchema = applicationSchemaClassBase.getJSONUISchema();
 
   const stepperList = useMemo(
     () =>
@@ -115,11 +115,14 @@ const AppInstall = () => {
 
   const onSubmit = async (repeatFrequency: string) => {
     try {
+      setIsSavingLoading(true);
       const data: CreateAppRequest = {
         appConfiguration: appConfiguration ?? appData?.appConfiguration,
         appSchedule: {
-          scheduleType: ScheduleTimeline.Custom,
-          cronExpression: repeatFrequency,
+          scheduleTimeline: isEmpty(repeatFrequency)
+            ? ScheduleTimeline.None
+            : ScheduleTimeline.Custom,
+          ...(repeatFrequency ? { cronExpression: repeatFrequency } : {}),
         },
         name: fqn,
         description: appData?.description,
@@ -132,6 +135,8 @@ const AppInstall = () => {
       goToAppPage();
     } catch (error) {
       showErrorToast(error as AxiosError);
+    } finally {
+      setIsSavingLoading(false);
     }
   };
 
@@ -173,7 +178,7 @@ const AppInstall = () => {
               okText={t('label.submit')}
               schema={jsonSchema}
               serviceCategory={ServiceCategory.DASHBOARD_SERVICES}
-              uiSchema={APP_UI_SCHEMA}
+              uiSchema={UiSchema}
               validator={validator}
               onCancel={() => setActiveServiceStep(1)}
               onSubmit={onSaveConfiguration}
@@ -187,6 +192,7 @@ const AppInstall = () => {
             <TestSuiteScheduler
               includePeriodOptions={initialOptions}
               initialData={initialValue}
+              isLoading={isSavingLoading}
               onCancel={() =>
                 setActiveServiceStep(appData.allowConfiguration ? 2 : 1)
               }
@@ -197,7 +203,7 @@ const AppInstall = () => {
       default:
         return <></>;
     }
-  }, [activeServiceStep, appData, jsonSchema, initialOptions]);
+  }, [activeServiceStep, appData, jsonSchema, initialOptions, isSavingLoading]);
 
   useEffect(() => {
     fetchAppDetails();

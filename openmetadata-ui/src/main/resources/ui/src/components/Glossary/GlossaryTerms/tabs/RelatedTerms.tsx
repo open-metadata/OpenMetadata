@@ -20,9 +20,7 @@ import { useHistory } from 'react-router-dom';
 import { ReactComponent as IconTerm } from '../../../../assets/svg/book.svg';
 import { ReactComponent as EditIcon } from '../../../../assets/svg/edit-new.svg';
 import { ReactComponent as PlusIcon } from '../../../../assets/svg/plus-primary.svg';
-import { OperationPermission } from '../../../../components/PermissionProvider/PermissionProvider.interface';
 import TagSelectForm from '../../../../components/Tag/TagsSelectForm/TagsSelectForm.component';
-import TagButton from '../../../../components/TagButton/TagButton.component';
 import {
   DE_ACTIVE_COLOR,
   NO_DATA_PLACEHOLDER,
@@ -30,6 +28,7 @@ import {
 } from '../../../../constants/constants';
 import { EntityField } from '../../../../constants/Feeds.constants';
 import { NO_PERMISSION_FOR_ACTION } from '../../../../constants/HelperTextUtil';
+import { OperationPermission } from '../../../../context/PermissionProvider/PermissionProvider.interface';
 import { SearchIndex } from '../../../../enums/search.enum';
 import { GlossaryTerm } from '../../../../generated/entity/data/glossaryTerm';
 import {
@@ -48,6 +47,7 @@ import {
 import { VersionStatus } from '../../../../utils/EntityVersionUtils.interface';
 import { getEntityReferenceFromGlossary } from '../../../../utils/GlossaryUtils';
 import { getGlossaryPath } from '../../../../utils/RouterUtils';
+import TagButton from '../../../common/TagButton/TagButton.component';
 
 interface RelatedTermsProps {
   isVersionView?: boolean;
@@ -77,11 +77,16 @@ const RelatedTerms = ({
     if (!isArray(selectedData)) {
       return;
     }
+
     const newOptions = uniqWith(
       options,
       (arrVal, othVal) => arrVal.id === othVal.id
     ).filter((item) =>
-      selectedData.find((data) => data.value === item.fullyQualifiedName)
+      selectedData.find((data) =>
+        typeof data === 'string'
+          ? data === item.fullyQualifiedName
+          : data.value === item.fullyQualifiedName
+      )
     );
 
     let updatedGlossaryTerm = cloneDeep(glossaryTerm);
@@ -122,7 +127,7 @@ const RelatedTerms = ({
       '',
       '',
       '',
-      SearchIndex.GLOSSARY
+      SearchIndex.GLOSSARY_TERM
     );
 
     const termResult = formatSearchGlossaryTermResponse(
@@ -281,7 +286,11 @@ const RelatedTerms = ({
         {permissions.EditAll && selectedOption.length > 0 && (
           <Tooltip
             title={
-              permissions.EditAll ? t('label.edit') : NO_PERMISSION_FOR_ACTION
+              permissions.EditAll
+                ? t('label.edit-entity', {
+                    entity: t('label.related-term-plural'),
+                  })
+                : NO_PERMISSION_FOR_ACTION
             }>
             <Button
               className="cursor-pointer flex-center m-l-xss"

@@ -11,13 +11,13 @@
  *  limitations under the License.
  */
 import { Divider, Space, Typography } from 'antd';
+import { ItemType } from 'antd/lib/menu/hooks/useItems';
+import { t } from 'i18next';
 import { isEmpty } from 'lodash';
 import React, { Fragment, ReactNode } from 'react';
-import { Link } from 'react-router-dom';
-import ProfilePicture from '../components/common/ProfilePicture/ProfilePicture';
+import { OwnerLabel } from '../components/common/OwnerLabel/OwnerLabel.component';
 import {
-  getTeamAndUserDetailsPath,
-  getUserPath,
+  DEFAULT_DOMAIN_VALUE,
   NO_DATA_PLACEHOLDER,
 } from '../constants/constants';
 import { DOMAIN_TYPE_DATA } from '../constants/Domain.constants';
@@ -40,24 +40,7 @@ export const getOwner = (
   owner?: EntityReference
 ) => {
   if (owner) {
-    return (
-      <>
-        <ProfilePicture
-          displayName={getEntityName(owner)}
-          name={owner?.name ?? ''}
-          textClass="text-xs"
-          width="20"
-        />
-        <Link
-          to={
-            owner.type === 'team'
-              ? getTeamAndUserDetailsPath(owner.name ?? '')
-              : getUserPath(owner.name ?? '')
-          }>
-          {ownerDisplayName}
-        </Link>
-      </>
-    );
+    return <OwnerLabel owner={owner} ownerDisplayName={ownerDisplayName} />;
   }
   if (!hasPermission) {
     return <div>{NO_DATA_PLACEHOLDER}</div>;
@@ -190,3 +173,20 @@ export const domainTypeTooltipDataRender = () => (
     ))}
   </Space>
 );
+
+export const getDomainOptions = (domains: Domain[]) => {
+  const domainOptions: ItemType[] = [
+    {
+      label: t('label.all-domain-plural'),
+      key: DEFAULT_DOMAIN_VALUE,
+    },
+  ];
+  domains.forEach((domain: Domain) => {
+    domainOptions.push({
+      label: getEntityName(domain),
+      key: domain.fullyQualifiedName ?? '',
+    });
+  });
+
+  return domainOptions;
+};

@@ -29,29 +29,32 @@ import React, {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
-import { useAuthContext } from '../../components/Auth/AuthProviders/AuthProvider';
 import AirflowMessageBanner from '../../components/common/AirflowMessageBanner/AirflowMessageBanner';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import Loader from '../../components/common/Loader/Loader';
 import { PagingHandlerParams } from '../../components/common/NextPrevious/NextPrevious.interface';
+import TabsLabel from '../../components/common/TabsLabel/TabsLabel.component';
 import TestConnection from '../../components/common/TestConnection/TestConnection';
+import DataModelTable from '../../components/Dashboard/DataModel/DataModels/DataModelsTable';
 import { DataAssetsHeader } from '../../components/DataAssets/DataAssetsHeader/DataAssetsHeader.component';
-import DataModelTable from '../../components/DataModels/DataModelsTable';
-import Ingestion from '../../components/Ingestion/Ingestion.component';
-import Loader from '../../components/Loader/Loader';
 import { EntityName } from '../../components/Modals/EntityNameModal/EntityNameModal.interface';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
-import { usePermissionProvider } from '../../components/PermissionProvider/PermissionProvider';
-import { OperationPermission } from '../../components/PermissionProvider/PermissionProvider.interface';
-import ServiceConnectionDetails from '../../components/ServiceConnectionDetails/ServiceConnectionDetails.component';
-import TabsLabel from '../../components/TabsLabel/TabsLabel.component';
+import Ingestion from '../../components/Settings/Services/Ingestion/Ingestion.component';
+import ServiceConnectionDetails from '../../components/Settings/Services/ServiceConnectionDetails/ServiceConnectionDetails.component';
 import {
   getServiceDetailsPath,
   INITIAL_PAGING_VALUE,
   pagingObject,
 } from '../../constants/constants';
 import { OPEN_METADATA } from '../../constants/Services.constant';
+import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
+import { OperationPermission } from '../../context/PermissionProvider/PermissionProvider.interface';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
-import { EntityTabs } from '../../enums/entity.enum';
+import {
+  EntityTabs,
+  EntityType,
+  TabSpecificField,
+} from '../../enums/entity.enum';
 import { ServiceCategory } from '../../enums/service.enum';
 import { PipelineType } from '../../generated/api/services/ingestionPipelines/createIngestionPipeline';
 import { Tag } from '../../generated/entity/classification/tag';
@@ -70,6 +73,7 @@ import { Include } from '../../generated/type/include';
 import { Paging } from '../../generated/type/paging';
 import { useAuth } from '../../hooks/authHooks';
 import { useAirflowStatus } from '../../hooks/useAirflowStatus';
+import { useApplicationStore } from '../../hooks/useApplicationStore';
 import { useFqn } from '../../hooks/useFqn';
 import { ConfigData, ServicesType } from '../../interface/service.interface';
 import {
@@ -100,6 +104,7 @@ import {
   getEntityMissingError,
   sortTagsCaseInsensitive,
 } from '../../utils/CommonUtils';
+import entityUtilClassBase from '../../utils/EntityUtilClassBase';
 import { getEntityName } from '../../utils/EntityUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import {
@@ -129,7 +134,7 @@ export type ServicePageData =
 
 const ServiceDetailsPage: FunctionComponent = () => {
   const { t } = useTranslation();
-  const { currentUser } = useAuthContext();
+  const { currentUser } = useApplicationStore();
   const { isAirflowAvailable } = useAirflowStatus();
   const { serviceCategory, tab } = useParams<{
     serviceCategory: ServiceTypes;
@@ -137,6 +142,12 @@ const ServiceDetailsPage: FunctionComponent = () => {
   }>();
 
   const { fqn: decodedServiceFQN } = useFqn();
+  const extraDropdownContent = entityUtilClassBase.getManageExtraOptions(
+    serviceCategory === 'databaseServices'
+      ? EntityType.DATABASE_SERVICE
+      : EntityType.ALL,
+    decodedServiceFQN
+  );
 
   const isMetadataService = useMemo(
     () => serviceCategory === ServiceCategory.METADATA_SERVICES,
@@ -265,6 +276,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
         const response = await getIngestionPipelines({
           arrQueryFields: ['owner', 'pipelineStatuses'],
           serviceFilter: decodedServiceFQN,
+          serviceType: getEntityTypeFromServiceCategory(serviceCategory),
           paging,
           pipelineType: [
             PipelineType.Metadata,
@@ -321,6 +333,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
     async (id: string, displayName: string) => {
       try {
         const data = await triggerIngestionPipelineById(id);
+        showSuccessToast(t('message.pipeline-trigger-success-message'));
 
         updateCurrentSelectedIngestion(id, data, 'pipelineStatuses');
       } catch (err) {
@@ -603,7 +616,9 @@ const ServiceDetailsPage: FunctionComponent = () => {
         serviceCategory,
         decodedServiceFQN,
         {
-          fields: `owner,tags,${isMetadataService ? '' : 'domain'}`,
+          fields: `${TabSpecificField.OWNER},${TabSpecificField.TAGS},${
+            TabSpecificField.DATA_PRODUCTS
+          },${isMetadataService ? '' : 'domain'}`,
           include: Include.All,
         }
       );
@@ -614,7 +629,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [serviceCategory, decodedServiceFQN, getOtherDetails, isMetadataService]);
+  }, [serviceCategory, decodedServiceFQN, isMetadataService]);
 
   useEffect(() => {
     getOtherDetails();
@@ -1081,6 +1096,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
               afterDomainUpdateAction={afterDomainUpdateAction}
               dataAsset={serviceDetails}
               entityType={entityType}
+              extraDropdownContent={extraDropdownContent}
               permissions={servicePermission}
               showDomain={!isMetadataService}
               onDisplayNameUpdate={handleUpdateDisplayName}

@@ -88,7 +88,6 @@ This page list all the supported helm values for OpenMetadata Helm Charts.
 | openmetadata.config.airflow.auth.password.secretKey | string | `openmetadata-airflow-password` | AIRFLOW_PASSWORD |
 | openmetadata.config.airflow.auth.username | string | `admin` | AIRFLOW_USERNAME |
 | openmetadata.config.airflow.enabled | bool | `true` | |
-| openmetadata.config.airflow.host | string | `http://openmetadata-dependencies-web:8080` | PIPELINE_SERVICE_CLIENT_ENDPOINT |
 | openmetadata.config.airflow.openmetadata.serverHostApiUrl | string | `http://openmetadata:8585/api` | SERVER_HOST_API_URL |
 | openmetadata.config.airflow.sslCertificatePath | string | `/no/path` | PIPELINE_SERVICE_CLIENT_SSL_CERT_PATH |
 | openmetadata.config.airflow.verifySsl | string | `no-ssl` | PIPELINE_SERVICE_CLIENT_VERIFY_SSL |
@@ -211,7 +210,7 @@ This page list all the supported helm values for OpenMetadata Helm Charts.
 | fullnameOverride | string | `"openmetadata"` |
 | image.pullPolicy | string | `"Always"` |
 | image.repository | string | `"docker.getcollate.io/openmetadata/server"` |
-| image.tag | string | `1.3.0` |
+| image.tag | string | `1.3.1` |
 | imagePullSecrets | list | `[]` |
 | ingress.annotations | object | `{}` |
 | ingress.className | string | `""` |

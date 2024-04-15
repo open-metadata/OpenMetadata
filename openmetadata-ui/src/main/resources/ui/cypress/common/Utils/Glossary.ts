@@ -15,7 +15,8 @@ import { EntityType } from '../../constants/Entity.interface';
 import { interceptURL, verifyResponseStatusCode } from '../common';
 
 export const assignGlossaryTerm = (
-  glossaryTerm: string,
+  glossaryTermFQN: string,
+  glossaryTermName: string,
   endPoint: EntityType
 ) => {
   interceptURL('PATCH', `/api/v1/${endPoint}/*`, 'addGlossaryTerm');
@@ -25,26 +26,27 @@ export const assignGlossaryTerm = (
 
   cy.get('[data-testid="tag-selector"] input')
     .should('be.visible')
-    .type(glossaryTerm);
+    .type(glossaryTermName);
 
-  cy.get(`[data-testid="tag-${glossaryTerm}"]`).click();
+  cy.get(`[data-testid="tag-${glossaryTermFQN}"]`).click();
 
   // to close popup
   cy.clickOutside();
 
   cy.get(
-    `[data-testid="tag-selector"] [data-testid="selected-tag-${glossaryTerm}"]`
+    `[data-testid="tag-selector"] [data-testid="selected-tag-${glossaryTermFQN}"]`
   ).should('be.visible');
 
   cy.get('[data-testid="saveAssociatedTag"]').scrollIntoView().click();
   verifyResponseStatusCode('@addGlossaryTerm', 200);
   cy.get(
-    `[data-testid="entity-right-panel"] [data-testid="glossary-container"] [data-testid="tag-${glossaryTerm}"]`
+    `[data-testid="entity-right-panel"] [data-testid="glossary-container"] [data-testid="tag-${glossaryTermFQN}"]`
   ).should('be.visible');
 };
 
 export const udpateGlossaryTerm = (
-  glossaryTerm: string,
+  glossaryTermFQN: string,
+  glossaryTermName: string,
   endPoint: EntityType
 ) => {
   interceptURL('PATCH', `/api/v1/${endPoint}/*`, 'addGlossaryTerm');
@@ -54,20 +56,20 @@ export const udpateGlossaryTerm = (
 
   cy.get('[data-testid="tag-selector"] input')
     .should('be.visible')
-    .type(glossaryTerm);
+    .type(glossaryTermName);
 
-  cy.get(`[data-testid="tag-${glossaryTerm}"]`).click();
+  cy.get(`[data-testid="tag-${glossaryTermFQN}"]`).click();
 
   // to close popup
   cy.clickOutside();
 
   cy.get(
-    `[data-testid="tag-selector"] [data-testid="selected-tag-${glossaryTerm}"]`
+    `[data-testid="tag-selector"] [data-testid="selected-tag-${glossaryTermFQN}"]`
   ).should('be.visible');
   cy.get('[data-testid="saveAssociatedTag"]').scrollIntoView().click();
   verifyResponseStatusCode('@addGlossaryTerm', 200);
   cy.get(
-    `[data-testid="entity-right-panel"] [data-testid="glossary-container"] [data-testid="tag-${glossaryTerm}"]`
+    `[data-testid="entity-right-panel"] [data-testid="glossary-container"] [data-testid="tag-${glossaryTermFQN}"]`
   ).should('be.visible');
 };
 
@@ -95,4 +97,26 @@ export const removeGlossaryTerm = (
   cy.get(
     '[data-testid="entity-right-panel"] [data-testid="glossary-container"] [data-testid="add-tag"]'
   ).should('be.visible');
+};
+
+export const confirmationDragAndDropGlossary = (
+  dragElement: string,
+  dropElement: string,
+  isHeader?: boolean
+) => {
+  interceptURL('PATCH', `/api/v1/glossaryTerms/*`, 'patchGlossaryTerm');
+
+  // confirmation message before the transfer
+  cy.get('[data-testid="confirmation-modal"] .ant-modal-body').contains(
+    `Click on Confirm if you’d like to move ${
+      isHeader
+        ? `${dragElement} under ${dropElement} .`
+        : `${dragElement} term under ${dropElement} term.`
+    }`
+  );
+
+  // click on submit modal button to confirm the transfer
+  cy.get('.ant-modal-footer > .ant-btn-primary').click();
+
+  verifyResponseStatusCode('@patchGlossaryTerm', 200);
 };

@@ -11,58 +11,85 @@
  *  limitations under the License.
  */
 
-import React, { FC } from 'react';
+import { isEmpty } from 'lodash';
+import React, { FC, useEffect } from 'react';
 import { HelmetProvider } from 'react-helmet-async';
 import { I18nextProvider } from 'react-i18next';
 import { Router } from 'react-router-dom';
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.min.css';
-import ApplicationConfigProvider from './components/ApplicationConfigProvider/ApplicationConfigProvider';
 import AppRouter from './components/AppRouter/AppRouter';
 import { AuthProvider } from './components/Auth/AuthProviders/AuthProvider';
-import DirectionProvider from './components/DirectionProvider/DirectionProvider';
-import DomainProvider from './components/Domain/DomainProvider/DomainProvider';
+import ErrorBoundary from './components/common/ErrorBoundary/ErrorBoundary';
 import { EntityExportModalProvider } from './components/Entity/EntityExportModalProvider/EntityExportModalProvider.component';
-import ErrorBoundary from './components/ErrorBoundary/ErrorBoundary';
-import GlobalSearchProvider from './components/GlobalSearchProvider/GlobalSearchProvider';
-import PermissionProvider from './components/PermissionProvider/PermissionProvider';
-import TourProvider from './components/TourProvider/TourProvider';
+import ApplicationsProvider from './components/Settings/Applications/ApplicationsProvider/ApplicationsProvider';
 import WebAnalyticsProvider from './components/WebAnalytics/WebAnalyticsProvider';
-import WebSocketProvider from './components/WebSocketProvider/WebSocketProvider';
 import { TOAST_OPTIONS } from './constants/Toasts.constants';
+import AntDConfigProvider from './context/AntDConfigProvider/AntDConfigProvider';
+import PermissionProvider from './context/PermissionProvider/PermissionProvider';
+import TourProvider from './context/TourProvider/TourProvider';
+import WebSocketProvider from './context/WebSocketProvider/WebSocketProvider';
+import { useApplicationStore } from './hooks/useApplicationStore';
+import { getCustomLogoConfig } from './rest/settingConfigAPI';
 import { history } from './utils/HistoryUtils';
 import i18n from './utils/i18next/LocalUtil';
 
 const App: FC = () => {
+  const { applicationConfig, setApplicationConfig } = useApplicationStore();
+
+  const fetchApplicationConfig = async () => {
+    try {
+      const data = await getCustomLogoConfig();
+
+      setApplicationConfig({
+        ...data,
+      });
+    } catch (error) {
+      // eslint-disable-next-line no-console
+      console.error(error);
+    }
+  };
+
+  useEffect(() => {
+    fetchApplicationConfig();
+  }, []);
+
+  useEffect(() => {
+    const faviconHref = isEmpty(applicationConfig?.customFaviconUrlPath)
+      ? '/favicon.png'
+      : applicationConfig?.customFaviconUrlPath ?? '/favicon.png';
+    const link = document.querySelector('link[rel~="icon"]');
+
+    if (link) {
+      link.setAttribute('href', faviconHref);
+    }
+  }, [applicationConfig]);
+
   return (
     <div className="main-container">
       <div className="content-wrapper" data-testid="content-wrapper">
         <Router history={history}>
           <I18nextProvider i18n={i18n}>
             <ErrorBoundary>
-              <DirectionProvider>
-                <ApplicationConfigProvider>
-                  <AuthProvider childComponentType={AppRouter}>
-                    <TourProvider>
-                      <HelmetProvider>
-                        <WebAnalyticsProvider>
-                          <PermissionProvider>
-                            <WebSocketProvider>
-                              <GlobalSearchProvider>
-                                <DomainProvider>
-                                  <EntityExportModalProvider>
-                                    <AppRouter />
-                                  </EntityExportModalProvider>
-                                </DomainProvider>
-                              </GlobalSearchProvider>
-                            </WebSocketProvider>
-                          </PermissionProvider>
-                        </WebAnalyticsProvider>
-                      </HelmetProvider>
-                    </TourProvider>
-                  </AuthProvider>
-                </ApplicationConfigProvider>
-              </DirectionProvider>
+              <AntDConfigProvider>
+                <AuthProvider childComponentType={AppRouter}>
+                  <TourProvider>
+                    <HelmetProvider>
+                      <WebAnalyticsProvider>
+                        <PermissionProvider>
+                          <WebSocketProvider>
+                            <ApplicationsProvider>
+                              <EntityExportModalProvider>
+                                <AppRouter />
+                              </EntityExportModalProvider>
+                            </ApplicationsProvider>
+                          </WebSocketProvider>
+                        </PermissionProvider>
+                      </WebAnalyticsProvider>
+                    </HelmetProvider>
+                  </TourProvider>
+                </AuthProvider>
+              </AntDConfigProvider>
             </ErrorBoundary>
           </I18nextProvider>
         </Router>

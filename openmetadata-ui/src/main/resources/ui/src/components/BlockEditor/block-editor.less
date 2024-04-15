@@ -27,6 +27,10 @@
     // this is to have enough space after last node, referred from the reference editor
     padding-bottom: 30vh;
   }
+  .om-block-editor > .tableWrapper {
+    width: 100%;
+    overflow-x: auto;
+  }
   // show placeholder when editor is in focused mode
   .tiptap.ProseMirror-focused .is-node-empty.has-focus::before {
     color: @grey-3;
@@ -323,11 +327,11 @@
 
 .om-list-decimal {
   list-style-type: decimal !important;
-  padding-left: 16px;
+  padding-left: 24px;
 }
 .om-list-disc {
   list-style-type: disc !important;
-  padding-left: 16px;
+  padding-left: 24px;
 }
 .om-leading-normal {
   line-height: 1.5;

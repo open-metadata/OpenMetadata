@@ -26,6 +26,8 @@ from metadata.generated.schema.entity.services.ingestionPipelines.status import 
 )
 from metadata.generated.schema.metadataIngestion.workflow import LogLevels
 from metadata.ingestion.api.step import Summary
+from metadata.utils.execution_time_tracker import ExecutionTimeTracker
+from metadata.utils.helpers import pretty_print_time_duration
 from metadata.utils.logger import ANSI, log_ansi_encoded_string
 
 WORKFLOW_FAILURE_MESSAGE = "Workflow finished with failures"
@@ -137,6 +139,25 @@ def is_debug_enabled(workflow) -> bool:
     )
 
 
+def print_execution_time_summary():
+    """Log the ExecutionTimeTracker Summary."""
+    tracker = ExecutionTimeTracker()
+
+    summary_table = {
+        "Context": [],
+        "Execution Time Aggregate": [],
+    }
+
+    for key in sorted(tracker.state.state.keys()):
+        summary_table["Context"].append(key)
+        summary_table["Execution Time Aggregate"].append(
+            pretty_print_time_duration(tracker.state.state[key])
+        )
+
+    log_ansi_encoded_string(bold=True, message="Execution Time Summary")
+    log_ansi_encoded_string(message=f"\n{tabulate(summary_table, tablefmt='grid')}")
+
+
 def print_workflow_summary(workflow: "BaseWorkflow") -> None:
     """
     Args:
@@ -148,6 +169,7 @@ def print_workflow_summary(workflow: "BaseWorkflow") -> None:
 
     if is_debug_enabled(workflow):
         print_workflow_status_debug(workflow)
+        print_execution_time_summary()
 
     failures = []
     total_records = 0

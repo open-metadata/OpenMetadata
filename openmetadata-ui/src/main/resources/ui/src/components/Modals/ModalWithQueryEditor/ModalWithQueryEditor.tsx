@@ -17,8 +17,8 @@ import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { CSMode } from '../../../enums/codemirror.enum';
 import { showErrorToast } from '../../../utils/ToastUtils';
-import Loader from '../../Loader/Loader';
-import SchemaEditor from '../../SchemaEditor/SchemaEditor';
+import Loader from '../../common/Loader/Loader';
+import SchemaEditor from '../../Database/SchemaEditor/SchemaEditor';
 import { ModalWithQueryEditorProps } from './ModalWithQueryEditor.interface';
 
 export const ModalWithQueryEditor = ({
@@ -100,9 +100,7 @@ export const ModalWithQueryEditor = ({
             <SchemaEditor
               className="custom-query-editor query-editor-h-200 custom-code-mirror-theme"
               mode={{ name: CSMode.SQL }}
-              options={{
-                readOnly: false,
-              }}
+              showCopyButton={false}
             />
           </Form.Item>
         </Form>

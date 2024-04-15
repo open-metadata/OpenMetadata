@@ -12,7 +12,7 @@ import { GlobalSettingOptions } from '../../constants/settings.constant';
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-describe('template spec', () => {
+describe('Login configuration', { tags: 'Settings' }, () => {
   beforeEach(() => {
     cy.login();
 
@@ -34,7 +34,7 @@ describe('template spec', () => {
     cy.get('[data-testid="access-block-time"]').should('have.text', '500');
     cy.get('[data-testid="jwt-token-expiry-time"]').should(
       'have.text',
-      '5000 Milliseconds'
+      '5000 Seconds'
     );
     /* ==== End Cypress Studio ==== */
   });

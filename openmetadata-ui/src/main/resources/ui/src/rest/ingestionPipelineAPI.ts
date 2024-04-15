@@ -25,7 +25,7 @@ import {
 import { PipelineServiceClientResponse } from '../generated/entity/services/ingestionPipelines/pipelineServiceClientResponse';
 import { Paging } from '../generated/type/paging';
 import { ListParams } from '../interface/API.interface';
-import { IngestionPipelineLogByIdInterface } from '../pages/LogsViewer/LogsViewer.interfaces';
+import { IngestionPipelineLogByIdInterface } from '../pages/LogsViewerPage/LogsViewerPage.interfaces';
 import { getEncodedFqn } from '../utils/StringsUtils';
 import APIClient from './index';
 
@@ -115,17 +115,9 @@ export const deleteIngestionPipelineById = (
 };
 
 export const updateIngestionPipeline = async (
-  data: CreateIngestionPipeline
+  id: string,
+  data: Operation[]
 ) => {
-  const response = await APIClient.put<
-    CreateIngestionPipeline,
-    AxiosResponse<IngestionPipeline>
-  >(`/services/ingestionPipelines`, data);
-
-  return response.data;
-};
-
-export const patchIngestionPipeline = async (id: string, data: Operation[]) => {
   const response = await APIClient.patch<
     Operation[],
     AxiosResponse<IngestionPipeline>

@@ -13,8 +13,9 @@
 import { CheckOutlined, CloseOutlined } from '@ant-design/icons';
 import { Button, Col, Form, Row, Space } from 'antd';
 import { useForm } from 'antd/lib/form/Form';
+import { DefaultOptionType } from 'antd/lib/select';
 import React, { useState } from 'react';
-import AsyncSelectList from '../../../components/AsyncSelectList/AsyncSelectList';
+import AsyncSelectList from '../../common/AsyncSelectList/AsyncSelectList';
 import './tag-select-fom.style.less';
 import { TagsSelectFormProps } from './TagsSelectForm.interface';
 
@@ -30,15 +31,20 @@ const TagSelectForm = ({
   const [form] = useForm();
   const [isSubmitLoading, setIsSubmitLoading] = useState(false);
 
+  const handleSave = async (data: {
+    tags: DefaultOptionType | DefaultOptionType[];
+  }) => {
+    setIsSubmitLoading(true);
+    await onSubmit(data.tags);
+    setIsSubmitLoading(false);
+  };
+
   return (
     <Form
       form={form}
       initialValues={{ tags: defaultValue }}
       name="tagsForm"
-      onFinish={(data) => {
-        setIsSubmitLoading(true);
-        onSubmit(data.tags);
-      }}>
+      onFinish={handleSave}>
       <Row gutter={[0, 8]}>
         <Col className="gutter-row d-flex justify-end" span={24}>
           <Space align="center">
@@ -65,10 +71,10 @@ const TagSelectForm = ({
         <Col className="gutter-row" span={24}>
           <Form.Item noStyle name="tags">
             <AsyncSelectList
-              className="tag-select-box"
               fetchOptions={fetchApi}
               initialOptions={tagData}
               mode="multiple"
+              optionClassName="tag-select-box"
               placeholder={placeholder}
               tagType={tagType}
             />

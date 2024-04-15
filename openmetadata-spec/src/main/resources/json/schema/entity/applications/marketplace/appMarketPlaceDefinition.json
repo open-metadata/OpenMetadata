@@ -130,6 +130,11 @@
         "type": "string"
       },
       "uniqueItems": true
+    },
+    "system": {
+      "description": "A system app cannot be uninstalled or modified.",
+      "type": "boolean",
+      "default": false
     }
   },
   "additionalProperties": false,

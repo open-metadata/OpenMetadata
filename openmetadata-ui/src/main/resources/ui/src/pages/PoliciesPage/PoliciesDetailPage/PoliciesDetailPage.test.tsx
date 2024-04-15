@@ -35,7 +35,7 @@ jest.mock('../../../rest/teamsAPI', () => ({
   patchTeamDetail: jest.fn().mockImplementation(() => Promise.resolve()),
 }));
 
-jest.mock('../../../components/common/EntityDescription/Description', () =>
+jest.mock('../../../components/common/EntityDescription/DescriptionV1', () =>
   jest
     .fn()
     .mockReturnValue(<div data-testid="description-data">Description</div>)
@@ -57,7 +57,7 @@ jest.mock(
     jest.fn().mockReturnValue(<div data-testid="breadcrumb">BreadCrumb</div>)
 );
 
-jest.mock('../../../components/Loader/Loader', () =>
+jest.mock('../../../components/common/Loader/Loader', () =>
   jest.fn().mockReturnValue(<div>Loader</div>)
 );
 

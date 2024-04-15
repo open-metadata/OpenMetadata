@@ -68,11 +68,15 @@
   }
 }
 .custom-node-column-lineage-normal {
-  border-bottom: 1px solid @border-color;
+  border-top: 1px solid @border-color;
   display: flex;
   justify-content: center;
   align-items: center;
   position: relative;
+  font-size: 12px;
+  &:first-child {
+    border-top: none;
+  }
 }
 
 .custom-node {
@@ -134,6 +138,12 @@
   &.active {
     background-color: @primary-color;
   }
+  &.active:hover {
+    background-color: @primary-color;
+  }
+  &.active:focus {
+    background-color: @primary-color;
+  }
 }
 
 .custom-lineage-heading {
@@ -147,7 +157,7 @@
   width: max-content;
   z-index: 20;
   background-color: @white;
-  color: @text-color-secondary;
+  color: @text-color;
 }
 
 .lineage-card .react-flow__edge.animated path {
@@ -186,13 +196,13 @@
 
 // lineage
 .lineage-card {
-  > .ant-card-body {
-    padding: 0;
-  }
-}
-
-.lineage-card {
   height: calc(100vh - 240px);
+
+  // lineage and it's children's always should be ltr
+  direction: ltr;
+  * {
+    direction: ltr;
+  }
 }
 
 .full-screen-lineage {
@@ -217,7 +227,7 @@
 }
 
 .lineage-node-remove-btn {
-  position: absolute;
+  position: absolute !important;
   top: -20px;
   right: -20px;
   cursor: pointer;

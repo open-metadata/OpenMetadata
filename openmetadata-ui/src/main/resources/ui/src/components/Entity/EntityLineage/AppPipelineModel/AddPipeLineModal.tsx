@@ -31,8 +31,8 @@ import {
 import Fqn from '../../../../utils/Fqn';
 import { getEntityIcon } from '../../../../utils/TableUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
+import '../../../ActivityFeed/FeedEditor/feed-editor.less';
 import ErrorPlaceHolder from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
-import '../../../FeedEditor/feed-editor.less';
 import './add-pipeline-modal.less';
 
 interface AddPipeLineModalType {
@@ -142,7 +142,7 @@ const AddPipeLineModal = ({
       <div className="edge-option-container">
         {edgeOptions.map((item) => {
           const icon = getEntityIcon(item.type);
-          const breadcrumb = Fqn.split(item.fullyQualifiedName).join('/');
+          const breadcrumb = Fqn.split(item.fullyQualifiedName ?? '').join('/');
 
           return (
             <div

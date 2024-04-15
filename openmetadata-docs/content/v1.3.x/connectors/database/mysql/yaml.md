@@ -3,30 +3,13 @@ title: Run the MySQL Connector Externally
 slug: /connectors/database/mysql/yaml
 ---
 
-# Run the MySQL Connector Externally
-
-{% multiTablesWrapper %}
-
-| Feature            | Status                       |
-| :----------------- | :--------------------------- |
-| Stage              | PROD                         |
-| Metadata           | {% icon iconName="check" /%} |
-| Query Usage        | {% icon iconName="cross" /%} |
-| Data Profiler      | {% icon iconName="check" /%} |
-| Data Quality       | {% icon iconName="check" /%} |
-| Stored Procedures  | {% icon iconName="cross" /%} |
-| Owners             | {% icon iconName="cross" /%} |
-| Tags               | {% icon iconName="cross" /%} |
-| DBT                | {% icon iconName="check" /%} |
-| Supported Versions | MySQL >= 8.0.0               |
-
-| Feature      | Status                       |
-| :----------- | :--------------------------- |
-| Lineage      | Partially via Views          |
-| Table-level  | {% icon iconName="check" /%} |
-| Column-level | {% icon iconName="check" /%} |
-
-{% /multiTablesWrapper %}
+{% connectorDetailsHeader
+name="MySQL"
+stage="PROD"
+platform="OpenMetadata"
+availableFeatures=["Metadata", "Data Profiler", "Data Quality", "dbt", "View Lineage", "View Column-level Lineage"]
+unavailableFeatures=["Query Usage", "Owners", "Tags", "Stored Procedures"]
+/ %}
 
 In this section, we provide guides and references to use the MySQL connector.
 
@@ -35,17 +18,12 @@ Configure and schedule MySQL metadata and profiler workflows from the OpenMetada
 - [Requirements](#requirements)
 - [Metadata Ingestion](#metadata-ingestion)
 - [Data Profiler](#data-profiler)
+- [Data Quality](#data-quality)
 - [dbt Integration](#dbt-integration)
 
 {% partial file="/v1.3/connectors/external-ingestion-deployment.md" /%}
 
 ## Requirements
-
-{%inlineCallout icon="description" bold="OpenMetadata 0.12 or later" href="/deployment"%}
-To deploy OpenMetadata, check the Deployment guides.
-{%/inlineCallout%}
-
-
 
 ### Python Requirements
 
@@ -213,14 +191,14 @@ source:
 ```
 ```yaml {% srNumber=2 %}
       authType: 
-            password: <password>
+        password: <password>
 ```
 ```yaml {% srNumber=3 %}
       authType: 
-            awsConfig:
-                  awsAccessKeyId: access key id
-                  awsSecretAccessKey: access secret key
-                  awsRegion: aws region name
+        awsConfig:
+          awsAccessKeyId: access key id
+          awsSecretAccessKey: access secret key
+          awsRegion: aws region name
 ```
 ```yaml {% srNumber=4 %}
       hostPort: <hostPort>
@@ -251,6 +229,8 @@ source:
 {% partial file="/v1.3/connectors/yaml/ingestion-cli.md" /%}
 
 {% partial file="/v1.3/connectors/yaml/data-profiler.md" variables={connector: "mysql"} /%}
+
+{% partial file="/v1.3/connectors/yaml/data-quality.md" /%}
 
 ## dbt Integration
 

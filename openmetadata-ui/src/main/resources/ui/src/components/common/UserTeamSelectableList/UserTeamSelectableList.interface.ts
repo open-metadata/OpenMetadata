@@ -10,12 +10,14 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { PopoverProps } from 'antd';
 import { ReactNode } from 'react';
 import { EntityReference } from '../../../generated/entity/teams/user';
 
 export interface UserSelectDropdownProps {
   hasPermission: boolean;
   owner?: EntityReference;
-  onUpdate: (updatedUser?: EntityReference) => void;
+  onUpdate: (updatedUser?: EntityReference) => void | Promise<void>;
   children?: ReactNode;
+  popoverProps?: PopoverProps;
 }

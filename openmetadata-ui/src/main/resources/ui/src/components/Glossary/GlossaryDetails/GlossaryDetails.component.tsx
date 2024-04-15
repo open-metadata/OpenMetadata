@@ -12,7 +12,7 @@
  */
 
 import { Col, Row, Space, Tabs } from 'antd';
-import { noop } from 'lodash';
+import { isEmpty, noop } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
@@ -28,7 +28,7 @@ import { getEntityName } from '../../../utils/EntityUtils';
 import { getEntityVersionByField } from '../../../utils/EntityVersionUtils';
 import { ActivityFeedTab } from '../../ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
 import DescriptionV1 from '../../common/EntityDescription/DescriptionV1';
-import TabsLabel from '../../TabsLabel/TabsLabel.component';
+import TabsLabel from '../../common/TabsLabel/TabsLabel.component';
 import GlossaryDetailsRightPanel from '../GlossaryDetailsRightPanel/GlossaryDetailsRightPanel.component';
 import GlossaryHeader from '../GlossaryHeader/GlossaryHeader.component';
 import GlossaryTermTab from '../GlossaryTermTab/GlossaryTermTab.component';
@@ -85,7 +85,7 @@ const GlossaryDetails = ({
         ...glossary,
         description: updatedHTML,
       };
-      handleGlossaryUpdate(updatedGlossaryDetails);
+      await handleGlossaryUpdate(updatedGlossaryDetails);
       setIsDescriptionEditable(false);
     } else {
       setIsDescriptionEditable(false);
@@ -152,6 +152,7 @@ const GlossaryDetails = ({
               entityName={getEntityName(glossary)}
               entityType={EntityType.GLOSSARY}
               hasEditAccess={permissions.EditDescription || permissions.EditAll}
+              isDescriptionExpanded={isEmpty(glossaryTerms)}
               isEdit={isDescriptionEditable}
               owner={glossary?.owner}
               showActions={!glossary.deleted}
@@ -179,9 +180,10 @@ const GlossaryDetails = ({
             entityType={EntityType.GLOSSARY_TERM}
             isVersionView={isVersionView}
             permissions={permissions}
+            refreshGlossaryTerms={refreshGlossaryTerms}
             selectedData={glossary}
             onThreadLinkSelect={onThreadLinkSelect}
-            onUpdate={(data) => handleGlossaryUpdate(data as Glossary)}
+            onUpdate={handleGlossaryUpdate}
           />
         </Col>
       </Row>
@@ -262,7 +264,7 @@ const GlossaryDetails = ({
           updateVote={updateVote}
           onAddGlossaryTerm={onAddGlossaryTerm}
           onDelete={handleGlossaryDelete}
-          onUpdate={(data) => handleGlossaryUpdate(data as Glossary)}
+          onUpdate={handleGlossaryUpdate}
         />
       </Col>
       <Col span={24}>

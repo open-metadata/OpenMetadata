@@ -15,12 +15,10 @@ import { Button, Input, Modal, Typography } from 'antd';
 import { t } from 'i18next';
 import React, { ChangeEvent, useEffect, useMemo, useState } from 'react';
 import { Trans } from 'react-i18next';
-import { LOADING_STATE } from '../../../enums/common.enum';
 import { Transi18next } from '../../../utils/CommonUtils';
 import { EntityDeleteModalProp } from './EntityDeleteModal.interface';
 
 const EntityDeleteModal = ({
-  loadingState = 'initial',
   className,
   entityName,
   onCancel,
@@ -30,6 +28,7 @@ const EntityDeleteModal = ({
   bodyText,
 }: EntityDeleteModalProp) => {
   const [name, setName] = useState('');
+  const [saving, setSaving] = useState(false);
 
   const handleOnChange = (e: ChangeEvent<HTMLInputElement>) => {
     setName(e.target.value);
@@ -37,10 +36,11 @@ const EntityDeleteModal = ({
 
   const isNameMatching = useMemo(() => name === 'DELETE', [name]);
 
-  const isLoadingWaiting = useMemo(
-    () => loadingState === LOADING_STATE.WAITING,
-    [loadingState]
-  );
+  const handleSave = async () => {
+    setSaving(true);
+    await onConfirm();
+    setSaving(false);
+  };
 
   // To remove the entered text in the modal input after modal closed
   useEffect(() => {
@@ -59,17 +59,17 @@ const EntityDeleteModal = ({
           <Button
             className="mr-2"
             data-testid="discard-button"
-            disabled={isLoadingWaiting}
+            disabled={saving}
             type="text"
             onClick={onCancel}>
             {t('label.cancel')}
           </Button>
           <Button
-            data-testid={isLoadingWaiting ? 'loading-button' : 'confirm-button'}
+            data-testid={saving ? 'loading-button' : 'confirm-button'}
             disabled={!isNameMatching}
-            loading={isLoadingWaiting}
+            loading={saving}
             type="primary"
-            onClick={onConfirm}>
+            onClick={handleSave}>
             {t('label.confirm')}
           </Button>
         </div>
@@ -114,7 +114,7 @@ const EntityDeleteModal = ({
         <Input
           autoComplete="off"
           data-testid="confirmation-text-input"
-          disabled={loadingState === LOADING_STATE.WAITING}
+          disabled={saving}
           name="entityName"
           placeholder={t('label.delete-uppercase')}
           type="text"

@@ -18,7 +18,7 @@ import {
 } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import React from 'react';
-import { mockUserData } from '../../components/Users/mocks/User.mocks';
+import { mockUserData } from '../../components/Settings/Users/mocks/User.mocks';
 import DataModelsPage from './DataModelPage.component';
 import {
   CREATE_THREAD,
@@ -46,8 +46,8 @@ const mockUpdateTierTag = jest.fn();
 const mockShowErrorToast = jest.fn();
 const ENTITY_MISSING_ERROR = 'Entity missing error.';
 
-jest.mock('../../components/Auth/AuthProviders/AuthProvider', () => ({
-  useAuthContext: jest.fn(() => ({
+jest.mock('../../hooks/useApplicationStore', () => ({
+  useApplicationStore: jest.fn().mockImplementation(() => ({
     currentUser: mockUserData,
   })),
 }));
@@ -56,51 +56,53 @@ jest.mock('../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder', () =>
   jest.fn().mockImplementation(() => <div>{ERROR_PLACEHOLDER}</div>)
 );
 
-jest.mock('../../components/DataModels/DataModelDetails.component', () =>
-  jest
-    .fn()
-    .mockImplementation(
-      ({
-        createThread,
-        dataModelData,
-        handleColumnUpdateDataModel,
-        handleFollowDataModel,
-        handleToggleDelete,
-        handleUpdateDescription,
-        handleUpdateOwner,
-        handleUpdateTags,
-        handleUpdateTier,
-        onUpdateDataModel,
-        onUpdateVote,
-      }) => (
-        <div>
-          DataModelDetails
-          <p>{dataModelData.deleted ? DATA_MODEL_DELETED : ''}</p>
-          <button onClick={createThread}>{CREATE_THREAD}</button>
-          <button
-            onClick={() => {
-              handleColumnUpdateDataModel();
-              handleUpdateDescription();
-              handleUpdateOwner();
-              handleUpdateTags();
-              handleUpdateTier();
-              onUpdateDataModel();
-            }}>
-            {UPDATE_DATA_MODEL}
-          </button>
-          <button onClick={handleFollowDataModel}>{FOLLOW_DATA_MODEL}</button>
-          <button onClick={onUpdateVote}>{UPDATE_VOTE}</button>
-          <button onClick={handleToggleDelete}>{TOGGLE_DELETE}</button>
-        </div>
+jest.mock(
+  '../../components/Dashboard/DataModel/DataModels/DataModelDetails.component',
+  () =>
+    jest
+      .fn()
+      .mockImplementation(
+        ({
+          createThread,
+          dataModelData,
+          handleColumnUpdateDataModel,
+          handleFollowDataModel,
+          handleToggleDelete,
+          handleUpdateDescription,
+          handleUpdateOwner,
+          handleUpdateTags,
+          handleUpdateTier,
+          onUpdateDataModel,
+          onUpdateVote,
+        }) => (
+          <div>
+            DataModelDetails
+            <p>{dataModelData.deleted ? DATA_MODEL_DELETED : ''}</p>
+            <button onClick={createThread}>{CREATE_THREAD}</button>
+            <button
+              onClick={() => {
+                handleColumnUpdateDataModel();
+                handleUpdateDescription();
+                handleUpdateOwner();
+                handleUpdateTags();
+                handleUpdateTier();
+                onUpdateDataModel();
+              }}>
+              {UPDATE_DATA_MODEL}
+            </button>
+            <button onClick={handleFollowDataModel}>{FOLLOW_DATA_MODEL}</button>
+            <button onClick={onUpdateVote}>{UPDATE_VOTE}</button>
+            <button onClick={handleToggleDelete}>{TOGGLE_DELETE}</button>
+          </div>
+        )
       )
-    )
 );
 
-jest.mock('../../components/Loader/Loader', () =>
+jest.mock('../../components/common/Loader/Loader', () =>
   jest.fn().mockImplementation(() => <div>Loader</div>)
 );
 
-jest.mock('../../components/PermissionProvider/PermissionProvider', () => ({
+jest.mock('../../context/PermissionProvider/PermissionProvider', () => ({
   usePermissionProvider: jest.fn().mockReturnValue({
     getEntityPermissionByFqn: jest.fn(() => mockGetEntityPermissionByFqn()),
   }),

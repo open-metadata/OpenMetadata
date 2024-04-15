@@ -35,6 +35,7 @@ import { ReactComponent as MlModelIcon } from '../assets/svg/mlmodal.svg';
 import { ReactComponent as PipelineIcon } from '../assets/svg/pipeline-grey.svg';
 import { ReactComponent as TableIcon } from '../assets/svg/table-grey.svg';
 import { ReactComponent as TopicIcon } from '../assets/svg/topic-grey.svg';
+import Loader from '../components/common/Loader/Loader';
 import { CustomEdge } from '../components/Entity/EntityLineage/CustomEdge.component';
 import CustomNodeV1 from '../components/Entity/EntityLineage/CustomNodeV1.component';
 import {
@@ -46,9 +47,7 @@ import {
 } from '../components/Entity/EntityLineage/EntityLineage.interface';
 import { ExploreSearchIndex } from '../components/Explore/ExplorePage.interface';
 import { EdgeDetails } from '../components/Lineage/Lineage.interface';
-import Loader from '../components/Loader/Loader';
 import { SourceType } from '../components/SearchedData/SearchedData.interface';
-import { INFO_COLOR } from '../constants/constants';
 import {
   EXPANDED_NODE_HEIGHT,
   NODE_HEIGHT,
@@ -71,7 +70,6 @@ import {
   getPartialNameFromTableFQN,
 } from './CommonUtils';
 import { getEntityName } from './EntityUtils';
-import { getDecodedFqn } from './StringsUtils';
 import { showErrorToast } from './ToastUtils';
 
 export const MAX_LINEAGE_LENGTH = 20;
@@ -430,14 +428,6 @@ export const isColumnLineageTraced = (
   return incomerEdges || outgoersEdges;
 };
 
-export const getEdgeStyle = (value: boolean) => {
-  return {
-    opacity: value ? 1 : 0.25,
-    strokeWidth: value ? 2 : 1,
-    stroke: value ? INFO_COLOR : undefined,
-  };
-};
-
 export const nodeTypes = {
   output: CustomNodeV1,
   input: CustomNodeV1,
@@ -604,7 +594,7 @@ export const createNodes = (
       className: '',
       data: {
         node,
-        isRootNode: getDecodedFqn(entityFqn) === node.fullyQualifiedName,
+        isRootNode: entityFqn === node.fullyQualifiedName,
       },
       position: {
         x: position.x,
@@ -671,7 +661,7 @@ export const createEdges = (
         edge,
         isColumnLineage: false,
         isPipelineRootNode: !isNil(edge.pipeline)
-          ? getDecodedFqn(entityFqn) === edge.pipeline?.fullyQualifiedName
+          ? entityFqn === edge.pipeline?.fullyQualifiedName
           : false,
       },
     });

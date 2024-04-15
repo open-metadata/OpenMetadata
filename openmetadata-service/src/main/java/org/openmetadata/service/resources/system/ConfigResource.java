@@ -84,6 +84,8 @@ public class ConfigResource {
                     authenticationConfiguration.getSamlConfiguration().getIdp().getAuthorityUrl()));
         authenticationConfiguration.setSamlConfiguration(ssoClientConfig);
       }
+
+      authenticationConfiguration.setOidcConfiguration(null);
     }
     return authenticationConfiguration;
   }
@@ -150,12 +152,12 @@ public class ConfigResource {
   @GET
   @Path(("/pipeline-service-client"))
   @Operation(
-      operationId = "getAirflowConfiguration",
-      summary = "Get airflow configuration",
+      operationId = "getPipelineServiceConfiguration",
+      summary = "Get Pipeline Service Client configuration",
       responses = {
         @ApiResponse(
             responseCode = "200",
-            description = "Airflow configuration",
+            description = "Pipeline Service Client configuration",
             content =
                 @Content(
                     mediaType = "application/json",

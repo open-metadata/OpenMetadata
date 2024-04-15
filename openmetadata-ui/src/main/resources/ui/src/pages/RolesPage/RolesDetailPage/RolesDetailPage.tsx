@@ -18,10 +18,10 @@ import { isEmpty, isUndefined } from 'lodash';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
-import Description from '../../../components/common/EntityDescription/Description';
+import DescriptionV1 from '../../../components/common/EntityDescription/DescriptionV1';
 import ErrorPlaceHolder from '../../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import Loader from '../../../components/common/Loader/Loader';
 import TitleBreadcrumb from '../../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
-import Loader from '../../../components/Loader/Loader';
 import PageLayoutV1 from '../../../components/PageLayoutV1/PageLayoutV1';
 import {
   GlobalSettingOptions,
@@ -259,14 +259,15 @@ const RolesDetailPage = () => {
                 level={5}>
                 {roleName}
               </Typography.Title>
-              <Description
+              <DescriptionV1
                 hasEditAccess
-                className="m-b-md"
+                className="m-y-md"
                 description={role.description || ''}
                 entityFqn={role.fullyQualifiedName}
                 entityName={roleName}
                 entityType={EntityType.ROLE}
                 isEdit={editDescription}
+                showCommentsIcon={false}
                 onCancel={() => setEditDescription(false)}
                 onDescriptionEdit={() => setEditDescription(true)}
                 onDescriptionUpdate={handleDescriptionUpdate}
@@ -274,7 +275,9 @@ const RolesDetailPage = () => {
 
               <Tabs data-testid="tabs" defaultActiveKey="policies">
                 <TabPane key="policies" tab={t('label.policy-plural')}>
-                  <Space className="w-full" direction="vertical">
+                  <Space
+                    className="role-detail-tab w-full"
+                    direction="vertical">
                     <Button
                       data-testid="add-policy"
                       type="primary"

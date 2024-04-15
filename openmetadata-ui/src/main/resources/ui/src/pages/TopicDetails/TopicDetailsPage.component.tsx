@@ -22,21 +22,22 @@ import React, {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
-import { useAuthContext } from '../../components/Auth/AuthProviders/AuthProvider';
+
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
-import Loader from '../../components/Loader/Loader';
-import { usePermissionProvider } from '../../components/PermissionProvider/PermissionProvider';
+import Loader from '../../components/common/Loader/Loader';
+import { QueryVote } from '../../components/Database/TableQueries/TableQueries.interface';
+import TopicDetails from '../../components/Topic/TopicDetails/TopicDetails.component';
+import { getVersionPath } from '../../constants/constants';
+import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import {
   OperationPermission,
   ResourceEntity,
-} from '../../components/PermissionProvider/PermissionProvider.interface';
-import { QueryVote } from '../../components/TableQueries/TableQueries.interface';
-import TopicDetails from '../../components/TopicDetails/TopicDetails.component';
-import { getVersionPath } from '../../constants/constants';
+} from '../../context/PermissionProvider/PermissionProvider.interface';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { EntityType, TabSpecificField } from '../../enums/entity.enum';
 import { CreateThread } from '../../generated/api/feed/createThread';
 import { Topic } from '../../generated/entity/data/topic';
+import { useApplicationStore } from '../../hooks/useApplicationStore';
 import { useFqn } from '../../hooks/useFqn';
 import { postThread } from '../../rest/feedsAPI';
 import {
@@ -57,7 +58,7 @@ import { showErrorToast } from '../../utils/ToastUtils';
 
 const TopicDetailsPage: FunctionComponent = () => {
   const { t } = useTranslation();
-  const { currentUser } = useAuthContext();
+  const { currentUser } = useApplicationStore();
   const USERId = currentUser?.id ?? '';
   const history = useHistory();
   const { getEntityPermissionByFqn } = usePermissionProvider();

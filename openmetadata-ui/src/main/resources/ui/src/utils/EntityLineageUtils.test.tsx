@@ -27,7 +27,6 @@ import {
   getClassifiedEdge,
   getColumnLineageData,
   getConnectedNodesEdges,
-  getEdgeStyle,
   getLineageDetailsObject,
   getLineageEdge,
   getLineageEdgeForAPI,
@@ -127,24 +126,6 @@ describe('Test EntityLineageUtils utility', () => {
     });
     expect(isColumnTracedTruthy).toBeTruthy();
     expect(isColumnTracedFalsy).toBeFalsy();
-  });
-
-  it('getEdgeStyle should returns the expected edge style for a value', () => {
-    const expectedStyle = {
-      opacity: 1,
-      strokeWidth: 2,
-      stroke: '#2196f3',
-    };
-
-    expect(getEdgeStyle(true)).toEqual(expectedStyle);
-
-    const expectedFalseStyle = {
-      opacity: 0.25,
-      strokeWidth: 1,
-      stroke: undefined,
-    };
-
-    expect(getEdgeStyle(false)).toEqual(expectedFalseStyle);
   });
 
   it('getLineageDetailsObject should return correct object', () => {

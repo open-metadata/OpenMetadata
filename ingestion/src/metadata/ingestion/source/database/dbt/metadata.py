@@ -31,8 +31,6 @@ from metadata.generated.schema.entity.services.databaseService import DatabaseSe
 from metadata.generated.schema.entity.services.ingestionPipelines.status import (
     StackTraceError,
 )
-from metadata.generated.schema.entity.teams.team import Team
-from metadata.generated.schema.entity.teams.user import User
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
@@ -117,7 +115,9 @@ class DbtSource(DbtServiceSource):
         )
 
     @classmethod
-    def create(cls, config_dict, metadata: OpenMetadata):
+    def create(
+        cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None
+    ):
         config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
         return cls(config, metadata)
 
@@ -140,39 +140,29 @@ class DbtSource(DbtServiceSource):
 
     def get_dbt_owner(
         self, manifest_node: dict, catalog_node: Optional[dict]
-    ) -> Optional[str]:
+    ) -> Optional[EntityReference]:
         """
         Returns dbt owner
         """
-        owner = None
-        dbt_owner = None
-        if catalog_node:
-            dbt_owner = catalog_node.metadata.owner
-        if manifest_node:
-            dbt_owner = manifest_node.meta.get(DbtCommonEnum.OWNER.value)
-        if dbt_owner:
-            owner_name = dbt_owner
-            user_owner_fqn = fqn.build(
-                self.metadata, entity_type=User, user_name=owner_name
-            )
-            if user_owner_fqn:
-                owner = self.metadata.get_entity_reference(
-                    entity=User, fqn=user_owner_fqn
-                )
-            else:
-                team_owner_fqn = fqn.build(
-                    self.metadata, entity_type=Team, team_name=owner_name
-                )
-                if team_owner_fqn:
-                    owner = self.metadata.get_entity_reference(
-                        entity=Team, fqn=team_owner_fqn
-                    )
-                else:
+        try:
+            owner = None
+            dbt_owner = None
+            if catalog_node:
+                dbt_owner = catalog_node.metadata.owner
+            if manifest_node:
+                dbt_owner = manifest_node.meta.get(DbtCommonEnum.OWNER.value)
+            if dbt_owner:
+                owner = self.metadata.get_reference_by_name(name=dbt_owner)
+                if not owner:
                     logger.warning(
                         "Unable to ingest owner from DBT since no user or"
                         f" team was found with name {dbt_owner}"
                     )
-        return owner
+            return owner
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.warning(f"Unable to ingest owner from DBT due to: {exc}")
+        return None
 
     def check_columns(self, catalog_node):
         for catalog_key, catalog_column in catalog_node.get("columns").items():
@@ -309,11 +299,13 @@ class DbtSource(DbtServiceSource):
         """
         Method to append dbt test cases for later processing
         """
-        self.context.dbt_tests[key] = {DbtCommonEnum.MANIFEST_NODE.value: manifest_node}
-        self.context.dbt_tests[key][
+        self.context.get().dbt_tests[key] = {
+            DbtCommonEnum.MANIFEST_NODE.value: manifest_node
+        }
+        self.context.get().dbt_tests[key][
             DbtCommonEnum.UPSTREAM.value
         ] = self.parse_upstream_nodes(manifest_entities, manifest_node)
-        self.context.dbt_tests[key][DbtCommonEnum.RESULTS.value] = next(
+        self.context.get().dbt_tests[key][DbtCommonEnum.RESULTS.value] = next(
             (
                 item
                 for item in dbt_objects.dbt_run_results.results
@@ -340,14 +332,14 @@ class DbtSource(DbtServiceSource):
                     **dbt_objects.dbt_catalog.sources,
                     **dbt_objects.dbt_catalog.nodes,
                 }
-            self.context.data_model_links = []
-            self.context.dbt_tests = {}
-            self.context.run_results_generate_time = None
+            self.context.get().data_model_links = []
+            self.context.get().dbt_tests = {}
+            self.context.get().run_results_generate_time = None
             if (
                 dbt_objects.dbt_run_results
                 and dbt_objects.dbt_run_results.metadata.generated_at
             ):
-                self.context.run_results_generate_time = (
+                self.context.get().run_results_generate_time = (
                     dbt_objects.dbt_run_results.metadata.generated_at
                 )
             for key, manifest_node in manifest_entities.items():
@@ -457,7 +449,7 @@ class DbtSource(DbtServiceSource):
                             ),
                         )
                         yield Either(right=data_model_link)
-                        self.context.data_model_links.append(data_model_link)
+                        self.context.get().data_model_links.append(data_model_link)
                     else:
                         logger.warning(
                             f"Unable to find the table '{table_fqn}' in OpenMetadata"
@@ -859,8 +851,8 @@ class DbtSource(DbtServiceSource):
                 dbt_timestamp = None
                 if dbt_test_completed_at:
                     dbt_timestamp = dbt_test_completed_at
-                elif self.context.run_results_generate_time:
-                    dbt_timestamp = self.context.run_results_generate_time
+                elif self.context.get().run_results_generate_time:
+                    dbt_timestamp = self.context.get().run_results_generate_time
 
                 # check if the timestamp is a str type and convert accordingly
                 if isinstance(dbt_timestamp, str):

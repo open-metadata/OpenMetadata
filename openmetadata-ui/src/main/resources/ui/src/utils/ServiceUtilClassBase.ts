@@ -12,7 +12,6 @@
  */
 
 import { cloneDeep } from 'lodash';
-import { SearchSuggestions } from '../components/GlobalSearchProvider/GlobalSearchSuggestions/GlobalSearchSuggestions.interface';
 import {
   AIRBYTE,
   AIRFLOW,
@@ -60,6 +59,7 @@ import {
   MSSQL,
   MYSQL,
   NIFI,
+  OPENLINEAGE,
   OPEN_SEARCH,
   ORACLE,
   PINOT,
@@ -89,6 +89,7 @@ import {
   UNITYCATALOG,
   VERTICA,
 } from '../constants/Services.constant';
+import { SearchSuggestions } from '../context/GlobalSearchProvider/GlobalSearchSuggestions/GlobalSearchSuggestions.interface';
 import { StorageServiceType } from '../generated/entity/data/container';
 import { DashboardServiceType } from '../generated/entity/data/dashboard';
 import { DatabaseServiceType } from '../generated/entity/data/database';
@@ -100,6 +101,7 @@ import { MetadataServiceType } from '../generated/entity/services/metadataServic
 import { SearchSourceAlias } from '../interface/search.interface';
 import customConnection from '../jsons/connectionSchemas/connections/storage/customStorageConnection.json';
 import s3Connection from '../jsons/connectionSchemas/connections/storage/s3Connection.json';
+import { getPipelineConfig } from './PipelineServiceUtils';
 import { customServiceComparator } from './StringsUtils';
 
 class ServiceUtilClassBase {
@@ -107,6 +109,7 @@ class ServiceUtilClassBase {
     StorageServiceType.Adls,
     DatabaseServiceType.QueryLog,
     DatabaseServiceType.Dbt,
+    StorageServiceType.Gcs,
   ];
 
   protected updateUnsupportedServices(types: string[]) {
@@ -302,6 +305,9 @@ class ServiceUtilClassBase {
       case DashboardServiceType.QlikSense:
         return QLIK_SENSE;
 
+      case DashboardServiceType.QlikCloud:
+        return QLIK_SENSE;
+
       case DashboardServiceType.Lightdash:
         return LIGHT_DASH;
 
@@ -334,6 +340,9 @@ class ServiceUtilClassBase {
 
       case PipelineServiceType.DatabricksPipeline:
         return DATABRICK;
+
+      case PipelineServiceType.OpenLineage:
+        return OPENLINEAGE;
 
       case MlModelServiceType.Mlflow:
         return MLFLOW;
@@ -401,6 +410,10 @@ class ServiceUtilClassBase {
     }
 
     return cloneDeep({ schema, uiSchema });
+  }
+
+  public getPipelineServiceConfig(type: PipelineServiceType) {
+    return getPipelineConfig(type);
   }
 }
 

@@ -46,8 +46,8 @@ class ErrorHandler:
     def try_execute(self, func, *args, **kwargs):
         try:
             func(*args, **kwargs)
-        except Exception as e:
-            self.errors.append(e)
+        except Exception as exc:
+            self.errors.append(exc)
 
     def raise_if_errors(self):
         if len(self.errors) == 1:

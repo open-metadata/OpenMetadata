@@ -13,6 +13,7 @@
 import { Col, Row, Space } from 'antd';
 import React, { useMemo, useState } from 'react';
 import { EntityField } from '../../../../constants/Feeds.constants';
+import { OperationPermission } from '../../../../context/PermissionProvider/PermissionProvider.interface';
 import { EntityType } from '../../../../enums/entity.enum';
 import { Glossary } from '../../../../generated/entity/data/glossary';
 import { GlossaryTerm } from '../../../../generated/entity/data/glossaryTerm';
@@ -24,7 +25,6 @@ import {
   getEntityVersionTags,
 } from '../../../../utils/EntityVersionUtils';
 import DescriptionV1 from '../../../common/EntityDescription/DescriptionV1';
-import { OperationPermission } from '../../../PermissionProvider/PermissionProvider.interface';
 import TagsContainerV2 from '../../../Tag/TagsContainerV2/TagsContainerV2';
 import { DisplayType } from '../../../Tag/TagsViewer/TagsViewer.interface';
 import GlossaryDetailsRightPanel from '../../GlossaryDetailsRightPanel/GlossaryDetailsRightPanel.component';
@@ -40,6 +40,8 @@ type Props = {
   isGlossary: boolean;
   isVersionView?: boolean;
   onThreadLinkSelect: (value: string) => void;
+  editCustomAttributePermission: boolean;
+  onExtensionUpdate: (updatedTable: GlossaryTerm) => Promise<void>;
 };
 
 const GlossaryOverviewTab = ({
@@ -49,6 +51,8 @@ const GlossaryOverviewTab = ({
   isGlossary,
   isVersionView,
   onThreadLinkSelect,
+  editCustomAttributePermission,
+  onExtensionUpdate,
 }: Props) => {
   const [isDescriptionEditable, setIsDescriptionEditable] =
     useState<boolean>(false);
@@ -182,11 +186,13 @@ const GlossaryOverviewTab = ({
 
       <Col className="p-t-md" span={6}>
         <GlossaryDetailsRightPanel
+          editCustomAttributePermission={editCustomAttributePermission}
           entityType={EntityType.GLOSSARY_TERM}
           isGlossary={false}
           isVersionView={isVersionView}
           permissions={permissions}
           selectedData={selectedData}
+          onExtensionUpdate={onExtensionUpdate}
           onThreadLinkSelect={onThreadLinkSelect}
           onUpdate={onUpdate}
         />

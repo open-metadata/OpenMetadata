@@ -11,9 +11,9 @@
  *  limitations under the License.
  */
 import Icon from '@ant-design/icons/lib/components/Icon';
-import { Button, Popover, Space, Tabs, Typography } from 'antd';
+import { Button, Popover, Space, Tabs, Tooltip, Typography } from 'antd';
 import { isEmpty, noop, toString } from 'lodash';
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
 import { ReactComponent as IconTeamsGrey } from '../../../assets/svg/teams-grey.svg';
@@ -53,6 +53,7 @@ export const UserTeamSelectableList = ({
   owner,
   onUpdate = noop,
   children,
+  popoverProps,
 }: UserSelectDropdownProps) => {
   const { t } = useTranslation();
   const [popupVisible, setPopupVisible] = useState(false);
@@ -136,17 +137,19 @@ export const UserTeamSelectableList = ({
     }
   };
 
-  const handleUpdate = (updateItems: EntityReference[]) => {
-    onUpdate(
+  const handleUpdate = async (updateItems: EntityReference[]) => {
+    await onUpdate(
       isEmpty(updateItems)
         ? undefined
         : {
             id: updateItems[0].id,
             type: activeTab === 'teams' ? EntityType.TEAM : EntityType.USER,
             name: updateItems[0].name,
+            fullyQualifiedName: updateItems[0].fullyQualifiedName,
             displayName: updateItems[0].displayName,
           }
     );
+
     setPopupVisible(false);
   };
 
@@ -187,6 +190,14 @@ export const UserTeamSelectableList = ({
       }
     }
   };
+
+  const openPopover = useCallback(
+    (e: React.MouseEvent<HTMLElement, MouseEvent>) => {
+      e.stopPropagation();
+      setPopupVisible(true);
+    },
+    []
+  );
 
   useEffect(() => {
     fetchCount();
@@ -257,6 +268,9 @@ export const UserTeamSelectableList = ({
           ]}
           size="small"
           onChange={(key: string) => setActiveTab(key as 'teams' | 'users')}
+          // Used div to stop click propagation event anywhere in the component to parent
+          // Users.component collapsible panel
+          onClick={(e) => e.stopPropagation()}
         />
       }
       open={popupVisible}
@@ -264,17 +278,26 @@ export const UserTeamSelectableList = ({
       placement="bottomRight"
       showArrow={false}
       trigger="click"
-      onOpenChange={setPopupVisible}>
+      onOpenChange={setPopupVisible}
+      {...popoverProps}>
       {children ??
         (hasPermission && (
-          <Button
-            className="flex-center p-0"
-            data-testid="edit-owner"
-            icon={<EditIcon color={DE_ACTIVE_COLOR} width="14px" />}
-            size="small"
-            type="text"
-            onClick={() => setPopupVisible(true)}
-          />
+          <Tooltip
+            title={
+              !popupVisible &&
+              t('label.edit-entity', {
+                entity: t('label.owner'),
+              })
+            }>
+            <Button
+              className="flex-center p-0"
+              data-testid="edit-owner"
+              icon={<EditIcon color={DE_ACTIVE_COLOR} width="14px" />}
+              size="small"
+              type="text"
+              onClick={openPopover}
+            />
+          </Tooltip>
         ))}
     </Popover>
   );

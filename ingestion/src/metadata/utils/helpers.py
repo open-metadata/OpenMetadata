@@ -20,10 +20,8 @@ import re
 import shutil
 import sys
 from datetime import datetime, timedelta
-from functools import wraps
 from math import floor, log
 from pathlib import Path
-from time import perf_counter
 from typing import Any, Dict, Iterable, List, Optional, Tuple, Union
 
 import sqlparse
@@ -99,55 +97,6 @@ om_chart_type_dict = {
     "text": ChartType.Text,
     "scatter": ChartType.Scatter,
 }
-
-
-def calculate_execution_time(func):
-    """
-    Method to calculate workflow execution time
-    """
-
-    @wraps(func)
-    def calculate_debug_time(*args, **kwargs):
-        start = perf_counter()
-        result = func(*args, **kwargs)
-        end = perf_counter()
-        logger.debug(
-            f"{func.__name__} executed in { pretty_print_time_duration(end - start)}"
-        )
-        return result
-
-    return calculate_debug_time
-
-
-def calculate_execution_time_generator(func):
-    """
-    Generator method to calculate workflow execution time
-    """
-
-    def calculate_debug_time(*args, **kwargs):
-        # NOTE: We are basically implementing by hand a simplified version of 'yield from'
-        # in order to be able to calculate the time difference correctly.
-        # The 'while True' loop allows us to guarantee we are iterating over all thje values
-        # from func(*args, **kwargs).
-        generator = func(*args, **kwargs)
-
-        while True:
-            start = perf_counter()
-
-            try:
-                element = next(generator)
-            except StopIteration:
-                return
-
-            end = perf_counter()
-
-            logger.debug(
-                f"{func.__name__} executed in { pretty_print_time_duration(end - start)}"
-            )
-
-            yield element
-
-    return calculate_debug_time
 
 
 def pretty_print_time_duration(duration: Union[int, float]) -> str:
@@ -397,6 +346,8 @@ def format_large_string_numbers(number: Union[float, int]) -> str:
     units = ["", "K", "M", "B", "T"]
     constant_k = 1000.0
     magnitude = int(floor(log(abs(number), constant_k)))
+    if magnitude >= len(units):
+        return f"{int(number / constant_k**magnitude)}e{magnitude*3}"
     return f"{number / constant_k**magnitude:.3f}{units[magnitude]}"
 
 

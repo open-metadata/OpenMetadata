@@ -95,7 +95,9 @@ class MssqlSource(StoredProcedureMixin, CommonDbSourceService, MultiDBSource):
     """
 
     @classmethod
-    def create(cls, config_dict, metadata: OpenMetadata):
+    def create(
+        cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None
+    ):
         """Create class instance"""
         config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
         connection: MssqlConnection = config.serviceConnection.__root__.config
@@ -123,7 +125,7 @@ class MssqlSource(StoredProcedureMixin, CommonDbSourceService, MultiDBSource):
                 database_fqn = fqn.build(
                     self.metadata,
                     entity_type=Database,
-                    service_name=self.context.database_service,
+                    service_name=self.context.get().database_service,
                     database_name=new_database,
                 )
 
@@ -150,8 +152,8 @@ class MssqlSource(StoredProcedureMixin, CommonDbSourceService, MultiDBSource):
         if self.source_config.includeStoredProcedures:
             results = self.engine.execute(
                 MSSQL_GET_STORED_PROCEDURES.format(
-                    database_name=self.context.database,
-                    schema_name=self.context.database_schema,
+                    database_name=self.context.get().database,
+                    schema_name=self.context.get().database_schema,
                 )
             ).all()
             for row in results:
@@ -184,9 +186,9 @@ class MssqlSource(StoredProcedureMixin, CommonDbSourceService, MultiDBSource):
                 databaseSchema=fqn.build(
                     metadata=self.metadata,
                     entity_type=DatabaseSchema,
-                    service_name=self.context.database_service,
-                    database_name=self.context.database,
-                    schema_name=self.context.database_schema,
+                    service_name=self.context.get().database_service,
+                    database_name=self.context.get().database,
+                    schema_name=self.context.get().database_schema,
                 ),
             )
             yield Either(right=stored_procedure_request)

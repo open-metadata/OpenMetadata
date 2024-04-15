@@ -43,8 +43,8 @@ const mockUserData: User = {
   isAdmin: true,
 };
 
-jest.mock('../../Auth/AuthProviders/AuthProvider', () => ({
-  useAuthContext: jest.fn(() => ({
+jest.mock('../../../hooks/useApplicationStore', () => ({
+  useApplicationStore: jest.fn(() => ({
     currentUser: mockUserData,
   })),
 }));
@@ -62,7 +62,7 @@ jest.mock('../../../constants/reactions.constant', () => ({
   ],
 }));
 
-jest.mock('../../Reactions/Reaction', () => {
+jest.mock('../Reactions/Reaction', () => {
   return jest.fn().mockReturnValue(<div data-testid="reaction">Reaction</div>);
 });
 

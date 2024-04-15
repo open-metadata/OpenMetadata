@@ -533,7 +533,9 @@ class SampleDataSource(
         )
 
     @classmethod
-    def create(cls, config_dict, metadata: OpenMetadata):
+    def create(
+        cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None
+    ):
         """Create class instance"""
         config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
         connection: CustomDatabaseConnection = config.serviceConnection.__root__.config
@@ -1408,6 +1410,18 @@ class SampleDataSource(
                     )  # type: ignore
                 )
                 yield Either(right=test_case_req)
+                if test_case.get("sampleFailedRows"):
+                    test_case_entity = self.metadata.get_or_create_test_case(
+                        test_case_fqn=f"{entity_link.get_table_or_column_fqn(test_case['entityLink'])}.{test_case['name']}",
+                    )
+
+                    self.metadata.ingest_failed_rows_sample(
+                        test_case_entity,
+                        TableData(
+                            rows=test_case["sampleFailedRows"]["rows"],
+                            columns=test_case["sampleFailedRows"]["columns"],
+                        ),
+                    )
 
     def ingest_incidents(self) -> Iterable[Either[OMetaTestCaseResolutionStatus]]:
         """
@@ -1581,7 +1595,9 @@ class SampleDataSource(
                 )
 
             life_cycle_request = OMetaLifeCycleData(
-                entity=table, life_cycle=life_cycle_data
+                entity=Table,
+                entity_fqn=table_life_cycle["fqn"],
+                life_cycle=life_cycle_data,
             )
             yield Either(right=life_cycle_request)
 

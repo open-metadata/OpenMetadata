@@ -54,6 +54,10 @@ def _filter(filter_pattern: Optional[FilterPattern], name: str) -> bool:
         # No filter pattern, nothing to filter
         return False
 
+    if filter_pattern and not name:
+        # Filter pattern is present but not the name so we'll filter it out
+        return True
+
     if filter_pattern.includes:
         validate_regex(filter_pattern.includes)
         return not any(  # pylint: disable=use-a-generator

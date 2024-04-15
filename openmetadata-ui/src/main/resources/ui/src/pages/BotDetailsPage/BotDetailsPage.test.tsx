@@ -55,11 +55,14 @@ jest.mock('../../hooks/authHooks', () => ({
   useAuth: jest.fn().mockImplementation(() => ({ isAdminUser: true })),
 }));
 
-jest.mock('../../components/BotDetails/BotDetails.component', () => {
-  return jest
-    .fn()
-    .mockReturnValue(<div data-testid="bots-details">BotsDetails</div>);
-});
+jest.mock(
+  '../../components/Settings/Bot/BotDetails/BotDetails.component',
+  () => {
+    return jest
+      .fn()
+      .mockReturnValue(<div data-testid="bots-details">BotsDetails</div>);
+  }
+);
 
 jest.mock('../../rest/userAPI', () => ({
   getBotByName: jest.fn().mockImplementation(() => Promise.resolve(botData)),
@@ -68,7 +71,7 @@ jest.mock('../../rest/userAPI', () => ({
   updateUserDetail: jest.fn().mockImplementation(() => Promise.resolve()),
 }));
 
-jest.mock('../../components/PermissionProvider/PermissionProvider', () => ({
+jest.mock('../../context/PermissionProvider/PermissionProvider', () => ({
   usePermissionProvider: jest.fn().mockReturnValue({
     getEntityPermissionByFqn: jest.fn().mockReturnValue({
       Create: true,

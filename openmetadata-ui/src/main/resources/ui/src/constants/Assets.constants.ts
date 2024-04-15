@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { AssetsUnion } from '../components/Assets/AssetsSelectionModal/AssetSelectionModal.interface';
+import { AssetsUnion } from '../components/DataAssets/AssetsSelectionModal/AssetSelectionModal.interface';
 import { EntityType } from '../enums/entity.enum';
 import { SearchIndex } from '../enums/search.enum';
 import i18n from '../utils/i18next/LocalUtil';
@@ -53,7 +53,7 @@ export const AssetsFilterOptions: Array<{
   {
     label: i18n.t('label.glossary-plural'),
     key: EntityType.GLOSSARY_TERM,
-    value: SearchIndex.GLOSSARY,
+    value: SearchIndex.GLOSSARY_TERM,
   },
   {
     label: i18n.t('label.stored-procedure-plural'),
