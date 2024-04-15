@@ -33,6 +33,7 @@
         "EditReviewers",
         "EditRole",
         "EditSampleData",
+        "DeleteSampleData",
         "EditStatus",
         "EditTags",
         "EditTeams",
