@@ -21,6 +21,7 @@
         "ViewQueries",
         "ViewDataProfile",
         "ViewSampleData",
+        "ViewTestCaseFailedRowsSample",
         "EditAll",
         "EditCustomFields",
         "EditDataProfile",
@@ -33,17 +34,18 @@
         "EditReviewers",
         "EditRole",
         "EditSampleData",
-        "DeleteTestCaseFailedRowsSample",
         "EditStatus",
         "EditTags",
         "EditTeams",
         "EditTier",
         "EditTests",
+        "EditTestCaseFailedRowsSample",
         "EditUsage",
         "EditUsers",
         "EditLifeCycle",
         "EditKnowledgePanel",
-        "EditPage"
+        "EditPage",
+        "DeleteTestCaseFailedRowsSample"
       ]
     }
   },

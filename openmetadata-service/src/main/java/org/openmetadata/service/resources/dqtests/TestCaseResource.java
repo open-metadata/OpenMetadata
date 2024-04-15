@@ -961,7 +961,7 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
           UUID id,
       @Valid TableData tableData) {
     OperationContext operationContext =
-        new OperationContext(entityType, MetadataOperation.EDIT_SAMPLE_DATA);
+        new OperationContext(entityType, MetadataOperation.EDIT_TEST_CASE_FAILED_ROWS_SAMPLE);
     authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
     TestCase testCase = repository.find(id, Include.NON_DELETED);
     if (testCase.getTestCaseResult() == null
@@ -992,7 +992,7 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
       @Parameter(description = "Id of the table", schema = @Schema(type = "UUID")) @PathParam("id")
           UUID id) {
     OperationContext operationContext =
-        new OperationContext(entityType, MetadataOperation.VIEW_SAMPLE_DATA);
+        new OperationContext(entityType, MetadataOperation.VIEW_TEST_CASE_FAILED_ROWS_SAMPLE);
     ResourceContext<?> resourceContext = getResourceContextById(id);
     TestCase testCase = repository.find(id, Include.NON_DELETED);
     authorizer.authorize(securityContext, operationContext, resourceContext);
