@@ -30,6 +30,7 @@ import { showErrorToast } from '../../../../utils/ToastUtils';
 import Loader from '../../../common/Loader/Loader';
 import RichTextEditorPreviewer from '../../../common/RichTextEditor/RichTextEditorPreviewer';
 import PageLayoutV1 from '../../../PageLayoutV1/PageLayoutV1';
+import applicationsClassBase from '../AppDetails/ApplicationsClassBase';
 import AppLogo from '../AppLogo/AppLogo.component';
 import './market-place-app-details.less';
 
@@ -46,8 +47,8 @@ const MarketPlaceAppDetails = () => {
 
   const loadScreenshot = async (screenshotName: string) => {
     try {
-      const imageModule = await import(
-        `../../../../assets/img/appScreenshots/${screenshotName}`
+      const imageModule = await applicationsClassBase.importAppScreenshot(
+        screenshotName
       );
       const imageSrc = imageModule.default;
 
