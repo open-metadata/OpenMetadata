@@ -142,6 +142,16 @@ class OMetaLineageMixin(Generic[T]):
         original: AddLineageRequest,
         updated: AddLineageRequest,
     ) -> bool:
+        """
+        Patches a lineage edge between two entities.
+
+        Args:
+            original (AddLineageRequest): The original lineage request.
+            updated (AddLineageRequest): The updated lineage request.
+
+        Returns:
+            bool: True if the patch operation is successful, False otherwise.
+        """
         try:
             allowed_fields = {"columnsLineage": True, "pipeline": True}
             patch = build_patch(
