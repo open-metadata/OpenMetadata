@@ -85,7 +85,7 @@ const OmHealthPage = () => {
             validationStatus,
             (validation, key) =>
               validation && (
-                <Col key={key} span={24}>
+                <Col data-testid={key} key={key} span={24}>
                   <ConnectionStepCard
                     isTestingConnection={false}
                     testConnectionStep={{
