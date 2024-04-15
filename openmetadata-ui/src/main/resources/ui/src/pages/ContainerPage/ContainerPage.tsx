@@ -599,10 +599,11 @@ const ContainerPage = () => {
               className="entity-tag-right-panel-container"
               data-testid="entity-right-panel"
               flex="320px">
-              <EntityRightPanel
+              <EntityRightPanel<EntityType.CONTAINER>
                 customProperties={containerData}
                 dataProducts={containerData?.dataProducts ?? []}
                 domain={containerData?.domain}
+                editCustomAttributePermission={editCustomAttributePermission}
                 editTagPermission={
                   editTagsPermission && !containerData?.deleted
                 }
@@ -611,6 +612,7 @@ const ContainerPage = () => {
                 entityType={EntityType.CONTAINER}
                 selectedTags={tags}
                 viewAllPermission={viewAllPermission}
+                onExtensionUpdate={handleExtensionUpdate}
                 onTagSelectionChange={handleTagSelection}
                 onThreadLinkSelect={onThreadLinkSelect}
               />
