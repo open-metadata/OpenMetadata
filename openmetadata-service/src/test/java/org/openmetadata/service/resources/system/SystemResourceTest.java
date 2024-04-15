@@ -325,7 +325,9 @@ public class SystemResourceTest extends OpenMetadataApplicationTest {
             .withDataType(ColumnDataType.INT)
             .withMetrics(List.of(MetricType.COUNT, MetricType.FIRST_QUARTILE, MetricType.MEAN));
     MetricConfigurationDefinition dateTimeMetricConfigDefinition =
-        new MetricConfigurationDefinition().withDataType(ColumnDataType.DATETIME).withDisabled(true);
+        new MetricConfigurationDefinition()
+            .withDataType(ColumnDataType.DATETIME)
+            .withDisabled(true);
     profilerConfiguration.setMetricConfiguration(
         List.of(intMetricConfigDefinition, dateTimeMetricConfigDefinition));
     Settings profilerSettings =
