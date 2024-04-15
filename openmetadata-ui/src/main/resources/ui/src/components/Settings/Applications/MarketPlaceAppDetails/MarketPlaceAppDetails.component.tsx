@@ -11,7 +11,16 @@
  *  limitations under the License.
  */
 import { LeftOutlined } from '@ant-design/icons';
-import { Button, Carousel, Col, Row, Space, Tooltip, Typography } from 'antd';
+import {
+  Alert,
+  Button,
+  Carousel,
+  Col,
+  Row,
+  Space,
+  Tooltip,
+  Typography,
+} from 'antd';
 import { AxiosError } from 'axios';
 import { uniqueId } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
@@ -24,6 +33,7 @@ import { Include } from '../../../../generated/type/include';
 import { useFqn } from '../../../../hooks/useFqn';
 import { getApplicationByName } from '../../../../rest/applicationAPI';
 import { getMarketPlaceApplicationByFqn } from '../../../../rest/applicationMarketPlaceAPI';
+import { Transi18next } from '../../../../utils/CommonUtils';
 import { getEntityName } from '../../../../utils/EntityUtils';
 import { getAppInstallPath } from '../../../../utils/RouterUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
@@ -109,6 +119,17 @@ const MarketPlaceAppDetails = () => {
     history.push(ROUTES.MARKETPLACE);
   };
 
+  const tooltipTitle = useMemo(() => {
+    if (isInstalled) {
+      return t('message.app-already-installed');
+    }
+    if (isPreviewApp) {
+      return t('message.paid-addon-description', { app: appData?.displayName });
+    }
+
+    return '';
+  }, [isInstalled, isPreviewApp, appData?.displayName]);
+
   const leftPanel = useMemo(() => {
     return (
       <div className="p-x-md p-t-md ">
@@ -126,10 +147,7 @@ const MarketPlaceAppDetails = () => {
         <div className="flex-center m-t-md">
           <AppLogo appName={appData?.fullyQualifiedName ?? ''} />
         </div>
-        <Tooltip
-          placement="top"
-          title={isInstalled ? t('message.app-already-installed') : ''}
-          trigger="hover">
+        <Tooltip placement="top" title={tooltipTitle} trigger="hover">
           <Button
             block
             className="m-t-md"
@@ -140,6 +158,30 @@ const MarketPlaceAppDetails = () => {
             {t('label.install')}
           </Button>
         </Tooltip>
+
+        <Alert
+          className="m-t-md text-xs d-flex items-start p-xs"
+          message={
+            <>
+              <Typography.Text>
+                <Transi18next
+                  i18nKey="message.paid-addon-description"
+                  renderElement={
+                    <span data-testid="appName" style={{ fontWeight: 600 }} />
+                  }
+                  values={{
+                    app: appData?.displayName,
+                  }}
+                />
+              </Typography.Text>
+
+              <Typography.Text className="d-block">
+                {t('message.please-contact-us')}
+              </Typography.Text>
+            </>
+          }
+          type="info"
+        />
 
         <div className="m-t-md">
           <CheckMarkIcon className="v-middle m-r-xss" />
@@ -169,7 +211,7 @@ const MarketPlaceAppDetails = () => {
         </Space>
       </div>
     );
-  }, [appData, isInstalled]);
+  }, [appData, isInstalled, tooltipTitle]);
 
   useEffect(() => {
     fetchAppDetails();
