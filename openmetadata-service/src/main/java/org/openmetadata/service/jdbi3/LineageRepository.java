@@ -27,6 +27,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import javax.json.JsonPatch;
+import javax.ws.rs.core.Response;
 import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.apache.commons.lang3.tuple.Pair;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
@@ -42,15 +44,18 @@ import org.openmetadata.schema.type.ColumnLineage;
 import org.openmetadata.schema.type.Edge;
 import org.openmetadata.schema.type.EntityLineage;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.EventType;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.LineageDetails;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
+import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.CollectionDAO.EntityRelationshipRecord;
 import org.openmetadata.service.search.SearchClient;
 import org.openmetadata.service.search.models.IndexMapping;
 import org.openmetadata.service.util.JsonUtils;
+import org.openmetadata.service.util.RestUtil;
 
 @Repository
 public class LineageRepository {
@@ -353,6 +358,37 @@ public class LineageRepository {
     // Recursively add upstream nodes and edges
     for (EntityReference entity : upstreamEntityReferences) {
       getUpstreamLineage(entity.getId(), entity.getType(), lineage, upstreamDepth);
+    }
+  }
+
+  public Response patchLineageEdge(
+      String fromEntity, UUID fromId, String toEntity, UUID toId, JsonPatch patch) {
+    EntityReference from = Entity.getEntityReferenceById(fromEntity, fromId, Include.NON_DELETED);
+    EntityReference to = Entity.getEntityReferenceById(toEntity, toId, Include.NON_DELETED);
+    String json =
+        dao.relationshipDAO()
+            .getRelation(fromId, fromEntity, toId, toEntity, Relationship.UPSTREAM.ordinal());
+
+    if (json != null) {
+
+      LineageDetails original = JsonUtils.readValue(json, LineageDetails.class);
+      LineageDetails updated = JsonUtils.applyPatch(original, patch, LineageDetails.class);
+      String detailsJson = JsonUtils.pojoToJson(updated);
+      dao.relationshipDAO()
+          .insert(fromId, toId, fromEntity, toEntity, Relationship.UPSTREAM.ordinal(), detailsJson);
+      addLineageToSearch(from, to, updated);
+      return new RestUtil.PatchResponse<>(Response.Status.OK, updated, EventType.ENTITY_UPDATED)
+          .toResponse();
+    } else {
+      throw new EntityNotFoundException(
+          "Lineage edge not found between "
+              + fromEntity
+              + " "
+              + fromId
+              + " and "
+              + toEntity
+              + " "
+              + toId);
     }
   }
 

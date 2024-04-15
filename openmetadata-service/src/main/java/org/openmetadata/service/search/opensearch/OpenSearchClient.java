@@ -634,6 +634,36 @@ public class OpenSearchClient implements SearchClient {
     return Response.status(OK).entity(responseMap).build();
   }
 
+  @Override
+  public Response searchLineageEdge(String fromId, String toId, boolean deleted)
+      throws IOException {
+    os.org.opensearch.action.search.SearchRequest searchRequest =
+        new os.org.opensearch.action.search.SearchRequest(GLOBAL_SEARCH_ALIAS);
+    SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
+    BoolQueryBuilder queryBuilder = QueryBuilders.boolQuery();
+    queryBuilder.must(QueryBuilders.termQuery("lineage.fromEntity.id.keyword", fromId));
+    queryBuilder.must(QueryBuilders.termQuery("lineage.toEntity.id.keyword", toId));
+
+    if (CommonUtil.nullOrEmpty(deleted)) {
+      queryBuilder.must(QueryBuilders.termQuery("deleted", deleted));
+    }
+    searchSourceBuilder.query(queryBuilder);
+    Map<String, Object> responseMap = new HashMap<>();
+    searchRequest.source(searchSourceBuilder);
+    SearchResponse searchResponse = client.search(searchRequest, RequestOptions.DEFAULT);
+    for (var hit : searchResponse.getHits().getHits()) {
+      List<Map<String, Object>> lineage =
+          (List<Map<String, Object>>) hit.getSourceAsMap().get("lineage");
+      HashMap<String, Object> tempMap = new HashMap<>(JsonUtils.getMap(hit.getSourceAsMap()));
+      tempMap.keySet().removeAll(FIELDS_TO_REMOVE);
+      for (Map<String, Object> lin : lineage) {
+        responseMap.put("edge", lin);
+        return Response.status(OK).entity(responseMap).build();
+      }
+    }
+    return null;
+  }
+
   private void getLineage(
       String fqn,
       int depth,

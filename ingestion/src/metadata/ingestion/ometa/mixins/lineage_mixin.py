@@ -14,7 +14,8 @@ Mixin class containing Lineage specific methods
 To be used by OpenMetadata class
 """
 import traceback
-from typing import Any, Dict, Generic, Optional, Type, TypeVar, Union
+from copy import deepcopy
+from typing import Any, Dict, Generic, List, Optional, Type, TypeVar, Union
 
 from pydantic import BaseModel
 
@@ -23,6 +24,7 @@ from metadata.generated.schema.entity.services.databaseService import DatabaseSe
 from metadata.generated.schema.type.entityLineage import EntitiesEdge
 from metadata.ingestion.lineage.models import ConnectionTypeDialectMapper
 from metadata.ingestion.lineage.parser import LINEAGE_PARSING_TIMEOUT
+from metadata.ingestion.models.patch_request import build_patch
 from metadata.ingestion.ometa.client import REST, APIError
 from metadata.ingestion.ometa.utils import get_entity_type
 from metadata.utils.logger import ometa_logger
@@ -41,13 +43,63 @@ class OMetaLineageMixin(Generic[T]):
 
     client: REST
 
-    def add_lineage(self, data: AddLineageRequest) -> Dict[str, Any]:
+    def _merge_column_lineage(
+        self, original: List[Dict[str, Any]], updated: List[Dict[str, Any]]
+    ):
+        temp_result = []
+        for column in original or []:
+            temp_result.append((*column.get("fromColumns", []), column.get("toColumn")))
+        for column in updated or []:
+            data = column.dict()
+            temp_result.append((*data.get("fromColumns", []), data.get("toColumn")))
+        return [
+            {"fromColumns": list(col_data[:-1]), "toColumn": col_data[-1]}
+            for col_data in set(temp_result)
+        ]
+
+    def add_lineage(
+        self, data: AddLineageRequest, check_patch: bool = False
+    ) -> Dict[str, Any]:
         """
         Add lineage relationship between two entities and returns
         the entity information of the origin node
         """
         try:
-            self.client.put(self.get_suffix(AddLineageRequest), data=data.json())
+            patch_op_success = False
+            if check_patch and data.edge.lineageDetails:
+                edge = self.get_lineage_edge(data)
+                if edge:
+                    original: AddLineageRequest = deepcopy(data)
+                    original.edge.lineageDetails.columnsLineage = edge["edge"].get(
+                        "columns", []
+                    )
+
+                    original.edge.lineageDetails.pipeline = edge["edge"].get("pipeline")
+
+                    # merge the original and new column level lineage
+                    data.edge.lineageDetails.columnsLineage = (
+                        self._merge_column_lineage(
+                            original.edge.lineageDetails.columnsLineage,
+                            data.edge.lineageDetails.columnsLineage,
+                        )
+                    )
+
+                    # Keep the pipeline information from the original
+                    # lineage if available
+                    if original.edge.lineageDetails.pipeline:
+                        data.edge.lineageDetails.pipeline = (
+                            original.edge.lineageDetails.pipeline
+                        )
+
+                    created_lineage = self.patch_lineage_edge(
+                        original=original, updated=data
+                    )
+                    if created_lineage:
+                        patch_op_success = True
+
+            if patch_op_success is False:
+                self.client.put(self.get_suffix(AddLineageRequest), data=data.json())
+
         except APIError as err:
             logger.debug(traceback.format_exc())
             logger.error(
@@ -63,6 +115,57 @@ class OMetaLineageMixin(Generic[T]):
         )
 
         return from_entity_lineage
+
+    def get_lineage_edge(
+        self,
+        lineage_request: AddLineageRequest,
+        deleted: bool = False,
+    ) -> Optional[Dict[str, Any]]:
+        try:
+            res = self.client.get(
+                f"{self.get_suffix(AddLineageRequest)}/getLineageEdge/"
+                f"{lineage_request.edge.fromEntity.id.__root__}/"
+                f"{lineage_request.edge.toEntity.id.__root__}?includeDeleted={deleted}"
+            )
+            return res
+        except APIError as err:
+            logger.debug(traceback.format_exc())
+            logger.warning(
+                f"Error {err.status_code} trying to GET linage edge between "
+                f"{lineage_request.edge.fromEntity.id.__root__} and "
+                f"{lineage_request.edge.toEntity.id.__root__}: {err}"
+            )
+            return None
+
+    def patch_lineage_edge(
+        self,
+        original: AddLineageRequest,
+        updated: AddLineageRequest,
+    ) -> bool:
+        try:
+            allowed_fields = {"columnsLineage": True, "pipeline": True}
+            patch = build_patch(
+                source=original.edge.lineageDetails,
+                destination=updated.edge.lineageDetails,
+                allowed_fields=allowed_fields,
+                remove_change_description=False,
+            )
+            if patch:
+                self.client.patch(
+                    f"{self.get_suffix(AddLineageRequest)}/{original.edge.fromEntity.type}/"
+                    f"{original.edge.fromEntity.id.__root__}/{original.edge.toEntity.type}"
+                    f"/{original.edge.toEntity.id.__root__}",
+                    data=str(patch),
+                )
+            # Patch Operation Successful
+            return True
+        except APIError as err:
+            logger.debug(traceback.format_exc())
+            logger.warning(
+                f"Error Patching Lineage Edge {err.status_code} "
+                f"for {original.edge.fromEntity.fullyQualifiedName}"
+            )
+            return False
 
     def get_lineage_by_id(
         self,
@@ -155,6 +258,7 @@ class OMetaLineageMixin(Generic[T]):
         database_name: str = None,
         schema_name: str = None,
         timeout: int = LINEAGE_PARSING_TIMEOUT,
+        check_patch: bool = False,
     ) -> None:
         """
         Method parses the query and generated the lineage
@@ -178,7 +282,9 @@ class OMetaLineageMixin(Generic[T]):
             )
             for lineage_request in add_lineage_request or []:
                 if lineage_request.right:
-                    resp = self.add_lineage(lineage_request.right)
+                    resp = self.add_lineage(
+                        lineage_request.right, check_patch=check_patch
+                    )
                     entity_name = resp.get("entity", {}).get("name")
                     for node in resp.get("nodes", []):
                         logger.info(

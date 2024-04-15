@@ -690,6 +690,11 @@ public class SearchRepository {
         fqn, upstreamDepth, downstreamDepth, queryFilter, deleted, entityType);
   }
 
+  public Response searchLineageEdge(String fromId, String toId, boolean deleted)
+      throws IOException {
+    return searchClient.searchLineageEdge(fromId, toId, deleted);
+  }
+
   public Response searchByField(String fieldName, String fieldValue, String index)
       throws IOException {
     return searchClient.searchByField(fieldName, fieldValue, index);
