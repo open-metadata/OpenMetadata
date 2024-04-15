@@ -3762,10 +3762,10 @@
     mkdirp "^1.0.4"
     path-browserify "^1.0.1"
 
-"@types/antlr4@^4.11.2":
-  version "4.11.2"
-  resolved "https://registry.yarnpkg.com/@types/antlr4/-/antlr4-4.11.2.tgz#46b70713b38eecb2d1a8e2ffd14544367067b41e"
-  integrity sha512-WVDiUppozGAKAL76KbXX63A4U4a0HfHM/5X7+GWzen7OaS/7eJEMdd61B+Hhl52Kedcmr80/jNeeWrM3Z/icig==
+"@types/antlr4@4.11.6":
+  version "4.11.6"
+  resolved "https://registry.yarnpkg.com/@types/antlr4/-/antlr4-4.11.6.tgz#e02c8f9d99af34eaea27e7a1a707058975f0496b"
+  integrity sha512-YtxtT6vYfLK6jC55zC4Pb2YwV6Z8exn4DbDlQgoSEc6VqlFZloi6bgm0AqZns/7U4XQCAVMhv/+vnGcfyCkPfg==
 
 "@types/babel__core@^7.0.0", "@types/babel__core@^7.1.0", "@types/babel__core@^7.1.7":
   version "7.1.15"
