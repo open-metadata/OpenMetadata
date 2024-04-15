@@ -10,7 +10,10 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Suggestion } from '../../../generated/entity/feed/suggestion';
+import {
+  Suggestion,
+  SuggestionType,
+} from '../../../generated/entity/feed/suggestion';
 import { EntityReference } from '../../../generated/entity/type';
 
 export interface SuggestionsContextType {
@@ -18,12 +21,18 @@ export interface SuggestionsContextType {
   suggestions: Suggestion[];
   suggestionsByUser: Map<string, Suggestion[]>;
   loading: boolean;
+  loadingAccept: boolean;
+  loadingReject: boolean;
   allSuggestionsUsers: EntityReference[];
-  onUpdateActiveUser: (user: EntityReference) => void;
+  onUpdateActiveUser: (user?: EntityReference) => void;
   fetchSuggestions: (entityFqn: string) => void;
   acceptRejectSuggestion: (
     suggestion: Suggestion,
     action: SuggestionAction
+  ) => void;
+  acceptRejectAllSuggestions: (
+    suggestionType: SuggestionType,
+    status: SuggestionAction
   ) => void;
 }
 

@@ -45,7 +45,7 @@ const HARD_DELETE_TEAM_DETAILS = {
   email: 'team@gmail.com',
 };
 
-describe('Teams flow should work properly', () => {
+describe('Teams flow should work properly', { tags: 'Settings' }, () => {
   beforeEach(() => {
     interceptURL('GET', `/api/v1/users?fields=*`, 'getUserDetails');
     interceptURL('GET', `/api/v1/permissions/team/name/*`, 'permissions');
@@ -267,7 +267,7 @@ describe('Teams flow should work properly', () => {
     verifyResponseStatusCode('@patchDescription', 200);
 
     // Validating the updated description
-    cy.get('[data-testid="description"] p').should(
+    cy.get('[data-testid="asset-description-container"] p').should(
       'contain',
       updatedDescription
     );

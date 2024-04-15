@@ -14,7 +14,7 @@
 import { Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
-import { isEmpty } from 'lodash';
+import { isEmpty, isUndefined } from 'lodash';
 import Qs from 'qs';
 import {
   default as React,
@@ -104,17 +104,30 @@ const UserPage = () => {
   };
 
   const updateUserDetails = useCallback(
-    async (data: Partial<User>) => {
+    async (data: Partial<User>, key: keyof User) => {
       const updatedDetails = { ...userData, ...data };
       const jsonPatch = compare(userData, updatedDetails);
 
       try {
         const response = await updateUserDetail(userData.id, jsonPatch);
         if (response) {
-          if (userData.id === currentUser?.id) {
-            updateCurrentUser(response);
+          const newCurrentUserData = {
+            ...currentUser,
+            [key]: response[key],
+          };
+          const newUserData = { ...userData, [key]: response[key] };
+
+          if (key === 'defaultPersona') {
+            if (isUndefined(response.defaultPersona)) {
+              // remove key from object if value is undefined
+              delete newCurrentUserData[key];
+              delete newUserData[key];
+            }
           }
-          setUserData((prev) => ({ ...prev, ...response }));
+          if (userData.id === currentUser?.id) {
+            updateCurrentUser(newCurrentUserData as User);
+          }
+          setUserData(newUserData);
         } else {
           throw t('message.unexpected-error');
         }

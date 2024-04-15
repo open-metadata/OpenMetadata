@@ -64,7 +64,6 @@ const Users = ({ userData, queryFilters, updateUserDetails }: Props) => {
     useState<EntityDetailsObjectInterface>();
 
   const [isDescriptionEdit, setIsDescriptionEdit] = useState(false);
-
   const { t } = useTranslation();
 
   const isLoggedInUser = useMemo(
@@ -116,9 +115,9 @@ const Users = ({ userData, queryFilters, updateUserDetails }: Props) => {
 
   const handlePersonaUpdate = useCallback(
     async (personas: EntityReference[]) => {
-      await updateUserDetails({ ...userData, personas });
+      await updateUserDetails({ personas }, 'personas');
     },
-    [updateUserDetails, userData]
+    [updateUserDetails]
   );
 
   const tabDataRender = useCallback(
@@ -233,7 +232,7 @@ const Users = ({ userData, queryFilters, updateUserDetails }: Props) => {
 
   const handleDescriptionChange = useCallback(
     async (description: string) => {
-      await updateUserDetails({ description });
+      await updateUserDetails({ description }, 'description');
 
       setIsDescriptionEdit(false);
     },
@@ -304,11 +303,9 @@ const Users = ({ userData, queryFilters, updateUserDetails }: Props) => {
         <Collapse
           accordion
           bordered={false}
-          className="header-collapse-custom-collapse user-profile-container"
-          expandIconPosition="end">
+          className="header-collapse-custom-collapse user-profile-container">
           <Collapse.Panel
             className="header-collapse-custom-panel"
-            collapsible="icon"
             header={userProfileCollapseHeader}
             key="1">
             <Row className="border-top p-y-lg" gutter={[0, 24]}>

@@ -53,7 +53,7 @@ const LoginConfigurationPage = () => {
   const breadcrumbs: TitleBreadcrumbProps['titleLinks'] = useMemo(
     () =>
       getSettingPageEntityBreadCrumb(
-        GlobalSettingsMenuCategory.OPEN_METADATA,
+        GlobalSettingsMenuCategory.PREFERENCES,
         t('label.login-configuration')
       ),
     []
@@ -176,7 +176,7 @@ const LoginConfigurationPage = () => {
             <Col span={24}>
               <Typography.Text data-testid="jwt-token-expiry-time">
                 {loginConfig?.jwtTokenExpiryTime ?? NO_DATA_PLACEHOLDER}{' '}
-                {t('label.ms')}
+                {t('label.seconds')}
               </Typography.Text>
             </Col>
           </Row>

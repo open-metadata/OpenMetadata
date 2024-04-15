@@ -109,11 +109,17 @@ This is a sample config for MSSQL:
 
 {% codeInfo srNumber=5 %}
 
-**Database**: The database of the data source is an optional parameter, if you would like to restrict the metadata reading to a single database. If left blank, OpenMetadata ingestion attempts to scan all the databases.
+**database**: The initial database to establish a connection to the data source.
 
 {% /codeInfo %}
 
 {% codeInfo srNumber=6 %}
+
+**ingestAllDatabases**: If you need to ingest multiple databases - aside from the initial one above - you can enable this option.
+
+{% /codeInfo %}
+
+{% codeInfo srNumber=7 %}
 
 **uriString**: In case of a `pyodbc` connection.
 
@@ -128,13 +134,13 @@ This is a sample config for MSSQL:
 
 #### Advanced Configuration
 
-{% codeInfo srNumber=7 %}
+{% codeInfo srNumber=8 %}
 
 **Connection Options (Optional)**: Enter the details for any additional connection options that can be sent to Athena during the connection. These details must be added as Key-Value pairs.
 
 {% /codeInfo %}
 
-{% codeInfo srNumber=8 %}
+{% codeInfo srNumber=9 %}
 
 **Connection Arguments (Optional)**: Enter the details for any additional connection arguments such as security or protocol configs that can be sent to Athena during the connection. These details must be added as Key-Value pairs.
 
@@ -167,9 +173,12 @@ source:
       hostPort: <hostPort>
 ```
 ```yaml {% srNumber=5 %}
-      # database: <database>
+      database: <database>
 ```
 ```yaml {% srNumber=6 %}
+      ingestAllDatabases: false # true
+```
+```yaml {% srNumber=7 %}
       uriString: uriString
 ```
 ```yaml
@@ -184,11 +193,11 @@ source:
       hostPort: <hostPort>
       # database: <database>
 ```
-```yaml {% srNumber=7 %}
+```yaml {% srNumber=8 %}
       # connectionOptions:
       #   key: value
 ```
-```yaml {% srNumber=8 %}
+```yaml {% srNumber=9 %}
       # connectionArguments:
       #   key: value
 ```

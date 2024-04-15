@@ -28,7 +28,6 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { ReactComponent as IconDelete } from '../../../assets/svg/ic-delete.svg';
 import { ReactComponent as IconDropdown } from '../../../assets/svg/menu.svg';
 import { WORKFLOWS_PROFILER_DOCS } from '../../../constants/docs.constants';
-import { DROPDOWN_ICON_SIZE_PROPS } from '../../../constants/ManageButton.constants';
 import { mockDatasetData } from '../../../constants/mockTourData.constants';
 import { useTourProvider } from '../../../context/TourProvider/TourProvider';
 import { EntityType } from '../../../enums/entity.enum';
@@ -157,13 +156,7 @@ const SampleDataTable = ({
           description={t('message.delete-entity-type-action-description', {
             entityType: t('label.sample-data'),
           })}
-          icon={
-            <IconDelete
-              className="m-t-xss"
-              {...DROPDOWN_ICON_SIZE_PROPS}
-              name="Delete"
-            />
-          }
+          icon={IconDelete}
           id="delete-button"
           name={t('label.delete')}
         />

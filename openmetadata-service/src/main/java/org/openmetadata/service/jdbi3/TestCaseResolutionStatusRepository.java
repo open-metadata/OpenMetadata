@@ -330,4 +330,10 @@ public class TestCaseResolutionStatusRepository
     Severity severity = incidentSeverityClassifier.classifyIncidentSeverity(entity);
     incident.setSeverity(severity);
   }
+
+  public void deleteTestCaseFailedSamples(TestCaseResolutionStatus entity) {
+    TestCaseRepository testCaseRepository =
+        (TestCaseRepository) Entity.getEntityRepository(Entity.TEST_CASE);
+    testCaseRepository.deleteTestCaseFailedRowsSample(entity.getTestCaseReference().getId());
+  }
 }

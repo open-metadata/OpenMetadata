@@ -1493,6 +1493,14 @@ class SampleDataSource(
                         test_case_name=case.fullyQualifiedName.__root__,
                     )
                     yield Either(right=test_case_result_req)
+            if test_case_results.get("failedRowsSample"):
+                self.metadata.ingest_failed_rows_sample(
+                    case,
+                    TableData(
+                        rows=test_case_results["failedRowsSample"]["rows"],
+                        columns=test_case_results["failedRowsSample"]["columns"],
+                    ),
+                )
 
     def ingest_data_insights(self) -> Iterable[Either[OMetaDataInsightSample]]:
         """Iterate over all the data insights and ingest them"""
@@ -1583,7 +1591,9 @@ class SampleDataSource(
                 )
 
             life_cycle_request = OMetaLifeCycleData(
-                entity=table, life_cycle=life_cycle_data
+                entity=Table,
+                entity_fqn=table_life_cycle["fqn"],
+                life_cycle=life_cycle_data,
             )
             yield Either(right=life_cycle_request)
 

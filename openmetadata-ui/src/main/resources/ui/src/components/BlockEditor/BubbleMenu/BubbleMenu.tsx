@@ -130,27 +130,25 @@ const BubbleMenu: FC<BubbleMenuProps> = ({ editor, toggleLink }) => {
       data-testid="menu-container"
       editor={editor}
       shouldShow={handleShouldShow}>
-      <div>
-        {menuList.map(
-          ({ icon: Icon, ariaLabel, className, command, isActive }) => (
-            <Tooltip key={ariaLabel} title={ariaLabel}>
-              <Button
-                aria-label={ariaLabel}
-                className={classNames('p-0', className, {
-                  'is-format-active': isActive(),
-                })}
-                type="text"
-                onClick={command}>
-                {isString(Icon) ? (
-                  <Typography>{Icon}</Typography>
-                ) : (
-                  <Icon className="d-flex" height={24} width={24} />
-                )}
-              </Button>
-            </Tooltip>
-          )
-        )}
-      </div>
+      {menuList.map(
+        ({ icon: Icon, ariaLabel, className, command, isActive }) => (
+          <Tooltip key={ariaLabel} title={ariaLabel}>
+            <Button
+              aria-label={ariaLabel}
+              className={classNames('p-0', className, {
+                'is-format-active': isActive(),
+              })}
+              type="text"
+              onClick={command}>
+              {isString(Icon) ? (
+                <Typography>{Icon}</Typography>
+              ) : (
+                <Icon className="d-flex " height={24} width={24} />
+              )}
+            </Button>
+          </Tooltip>
+        )
+      )}
     </CoreBubbleMenu>
   );
 };

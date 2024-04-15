@@ -17,7 +17,7 @@ import { Services } from '../Utils/Services';
 class S3IngestionClass extends ServiceBaseClass {
   name: string;
   constructor() {
-    super(Services.Storage, 'cypress-s3-storage', 'S3', 'cypress-bucket');
+    super(Services.Storage, 'cypress-s3-storage', 'S3', 'om-cypress-bucket');
   }
 
   createService() {
@@ -37,12 +37,14 @@ class S3IngestionClass extends ServiceBaseClass {
       Cypress.env('s3StorageSecretAccessKey')
     );
     checkServiceFieldSectionHighlighting('awsSecretAccessKey');
-    cy.get('#root\\/awsConfig\\/awsRegion').type('us');
+    cy.get('#root\\/awsConfig\\/awsRegion').type('us-east-2');
     checkServiceFieldSectionHighlighting('awsRegion');
-    cy.get('#root\\/awsConfig\\/endPointURL').type(
-      Cypress.env('s3StorageEndPointUrl')
-    );
-    checkServiceFieldSectionHighlighting('endPointURL');
+  }
+
+  fillIngestionDetails() {
+    cy.get('#root\\/containerFilterPattern\\/includes')
+      .scrollIntoView()
+      .type(`${this.entityName}{enter}`);
   }
 }
 

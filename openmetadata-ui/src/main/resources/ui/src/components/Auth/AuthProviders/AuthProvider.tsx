@@ -15,7 +15,6 @@ import { removeSession } from '@analytics/session-utils';
 import { Auth0Provider } from '@auth0/auth0-react';
 import { Configuration } from '@azure/msal-browser';
 import { MsalProvider } from '@azure/msal-react';
-import { LoginCallback } from '@okta/okta-react';
 import {
   AxiosError,
   AxiosRequestHeaders,
@@ -37,17 +36,20 @@ import React, {
 import { useTranslation } from 'react-i18next';
 import { useHistory, useLocation } from 'react-router-dom';
 import {
-  ACTIVE_DOMAIN_STORAGE_KEY,
   DEFAULT_DOMAIN_VALUE,
   REDIRECT_PATHNAME,
   ROUTES,
 } from '../../../constants/constants';
 import { ClientErrors } from '../../../enums/Axios.enum';
 import { SearchIndex } from '../../../enums/search.enum';
-import { AuthenticationConfiguration } from '../../../generated/configuration/authenticationConfiguration';
+import {
+  AuthenticationConfiguration,
+  ClientType,
+} from '../../../generated/configuration/authenticationConfiguration';
 import { User } from '../../../generated/entity/teams/user';
 import { AuthProvider as AuthProviderEnum } from '../../../generated/settings/settings';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
+import { useDomainStore } from '../../../hooks/useDomainStore';
 import axiosClient from '../../../rest';
 import {
   fetchAuthenticationConfig,
@@ -63,7 +65,6 @@ import {
   msalInstance,
   setMsalInstance,
 } from '../../../utils/AuthProvider.util';
-
 import { escapeESReservedCharacters } from '../../../utils/StringsUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import {
@@ -74,11 +75,11 @@ import { resetWebAnalyticSession } from '../../../utils/WebAnalyticsUtils';
 import Loader from '../../common/Loader/Loader';
 import Auth0Authenticator from '../AppAuthenticators/Auth0Authenticator';
 import BasicAuthAuthenticator from '../AppAuthenticators/BasicAuthAuthenticator';
+import { GenericAuthenticator } from '../AppAuthenticators/GenericAuthenticator';
 import MsalAuthenticator from '../AppAuthenticators/MsalAuthenticator';
 import OidcAuthenticator from '../AppAuthenticators/OidcAuthenticator';
 import OktaAuthenticator from '../AppAuthenticators/OktaAuthenticator';
 import SamlAuthenticator from '../AppAuthenticators/SamlAuthenticator';
-import Auth0Callback from '../AppCallbacks/Auth0Callback/Auth0Callback';
 import { AuthenticatorRef, OidcUser } from './AuthProvider.interface';
 import BasicAuthProvider from './BasicAuthProvider';
 import OktaAuthProvider from './OktaAuthProvider';
@@ -119,6 +120,7 @@ export const AuthProvider = ({
     urlPathName,
     setUrlPathName,
   } = useApplicationStore();
+  const { activeDomain } = useDomainStore();
 
   const location = useLocation();
   const history = useHistory();
@@ -133,8 +135,11 @@ export const AuthProvider = ({
     [authConfig]
   );
 
+  const clientType = authConfig?.clientType ?? ClientType.Public;
+
   const onLoginHandler = () => {
     setLoading(true);
+
     authenticatorRef.current?.invokeLogin();
 
     resetWebAnalyticSession();
@@ -142,7 +147,9 @@ export const AuthProvider = ({
 
   const onLogoutHandler = useCallback(() => {
     clearTimeout(timeoutId);
+
     authenticatorRef.current?.invokeLogout();
+    setIsUserAuthenticated(false);
 
     // reset the user details on logout
     setCurrentUser({} as User);
@@ -310,7 +317,8 @@ export const AuthProvider = ({
   const startTokenExpiryTimer = () => {
     // Extract expiry
     const { isExpired, timeoutExpiry } = extractDetailsFromToken(
-      getOidcToken()
+      getOidcToken(),
+      clientType
     );
     const refreshToken = getRefreshToken();
 
@@ -359,11 +367,12 @@ export const AuthProvider = ({
       .then((res) => {
         if (res) {
           const updatedUserData = getUserDataFromOidc(res, user);
-          if (!matchUserDetails(res, updatedUserData, ['profile', 'email'])) {
+          if (!matchUserDetails(res, updatedUserData, ['email'])) {
             getUpdatedUser(updatedUserData, res);
           } else {
             setCurrentUser(res);
           }
+
           handledVerifiedUser();
           // Start expiry timer on successful login
           startTokenExpiryTimer();
@@ -404,14 +413,14 @@ export const AuthProvider = ({
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const withDomainFilter = (config: InternalAxiosRequestConfig<any>) => {
-    const activeDomain =
-      localStorage.getItem(ACTIVE_DOMAIN_STORAGE_KEY) ?? DEFAULT_DOMAIN_VALUE;
     const isGetRequest = config.method === 'get';
     const hasActiveDomain = activeDomain !== DEFAULT_DOMAIN_VALUE;
     const currentPath = window.location.pathname;
 
-    // Do not intercept requests from domains page
-    if (currentPath.includes('/domain')) {
+    // Do not intercept requests from domains page or /auth endpoints
+    if (
+      ['/domain', '/auth/logout', '/auth/refresh'].indexOf(currentPath) > -1
+    ) {
       return config;
     }
 
@@ -520,7 +529,9 @@ export const AuthProvider = ({
             }
             setLoading(false);
           } else {
-            getLoggedInUserDetails();
+            if (location.pathname !== ROUTES.AUTH_CALLBACK) {
+              getLoggedInUserDetails();
+            }
           }
         } else {
           // provider is either null or not supported
@@ -546,21 +557,14 @@ export const AuthProvider = ({
     }
   };
 
-  const getCallBackComponent = () => {
-    switch (authConfig?.provider) {
-      case AuthProviderEnum.Okta: {
-        return LoginCallback;
-      }
-      case AuthProviderEnum.Auth0: {
-        return Auth0Callback;
-      }
-      default: {
-        return null;
-      }
-    }
-  };
-
   const getProtectedApp = () => {
+    if (clientType === ClientType.Confidential) {
+      return (
+        <GenericAuthenticator ref={authenticatorRef}>
+          {children}
+        </GenericAuthenticator>
+      );
+    }
     switch (authConfig?.provider) {
       case AuthProviderEnum.LDAP:
       case AuthProviderEnum.Basic: {
@@ -656,8 +660,8 @@ export const AuthProvider = ({
     setHelperFunctionsRef({
       onLoginHandler,
       onLogoutHandler,
-      getCallBackComponent,
       handleSuccessfulLogin,
+      handleFailedLogin,
       updateAxiosInterceptors: initializeAxiosInterceptors,
     });
 

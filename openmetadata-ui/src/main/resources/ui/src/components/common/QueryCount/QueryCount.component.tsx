@@ -35,7 +35,7 @@ const QueryCount = ({ tableId }: { tableId: string }) => {
         query: WILD_CARD_CHAR,
         pageNumber: 0,
         pageSize: 0,
-        queryFilter: createQueryFilter([], tableId),
+        queryFilter: createQueryFilter({ tableId }),
         searchIndex: SearchIndex.QUERY,
         includeDeleted: false,
         trackTotalHits: true,

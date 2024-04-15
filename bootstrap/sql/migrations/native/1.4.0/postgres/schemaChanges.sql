@@ -67,3 +67,12 @@ CREATE INDEX apps_extension_time_series_index ON apps_extension_time_series (app
 CREATE INDEX index_suggestions_type ON suggestions (suggestionType);
 CREATE INDEX index_suggestions_status ON suggestions (status);
 
+-- Migrate 'QlikSenseDataModel' & 'QlikCloudDataModel' into single entity 'QlikDataModel'
+UPDATE dashboard_data_model_entity
+SET json = jsonb_set(
+    json, 
+    '{dataModelType}', 
+    '"QlikDataModel"', 
+    true
+)
+WHERE json->>'dataModelType' IN ('QlikSenseDataModel', 'QlikCloudDataModel');

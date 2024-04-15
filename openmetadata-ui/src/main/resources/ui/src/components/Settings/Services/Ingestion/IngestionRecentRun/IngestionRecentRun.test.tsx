@@ -20,6 +20,7 @@ import {
 } from '@testing-library/react';
 import React from 'react';
 import { IngestionPipeline } from '../../../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
+import { mockDataInsightApplicationRun } from '../../../../../mocks/LogsViewerPage.mock';
 import { getRunHistoryForPipeline } from '../../../../../rest/ingestionPipelineAPI';
 import ConnectionStepCard from '../../../../common/TestConnection/ConnectionStepCard/ConnectionStepCard';
 import { IngestionRecentRuns } from './IngestionRecentRuns.component';
@@ -336,5 +337,18 @@ describe('Test IngestionRecentRun component', () => {
     expect(
       await screen.findByText(/testConnectionStepCard/)
     ).toBeInTheDocument();
+  });
+
+  it('should not fetch getRunHistoryForPipeline in case of Application', async () => {
+    await act(async () => {
+      render(
+        <IngestionRecentRuns
+          isApplicationType
+          appRuns={mockDataInsightApplicationRun.data}
+        />
+      );
+    });
+
+    expect(getRunHistoryForPipeline).not.toHaveBeenCalled();
   });
 });

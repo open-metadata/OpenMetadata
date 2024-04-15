@@ -57,7 +57,6 @@ import { ExplorePageTabs } from '../enums/Explore.enum';
 import { SearchIndex } from '../enums/search.enum';
 import { ServiceCategory, ServiceCategoryPlural } from '../enums/service.enum';
 import { PrimaryTableDataTypes } from '../enums/table.enum';
-import { Tag } from '../generated/entity/classification/tag';
 import { Container } from '../generated/entity/data/container';
 import { Dashboard } from '../generated/entity/data/dashboard';
 import { DashboardDataModel } from '../generated/entity/data/dashboardDataModel';
@@ -365,7 +364,8 @@ const getPipelineOverview = (pipelineDetails: Pipeline) => {
 };
 
 const getDashboardOverview = (dashboardDetails: Dashboard) => {
-  const { owner, tags, sourceUrl, service, displayName } = dashboardDetails;
+  const { owner, tags, sourceUrl, service, displayName, project } =
+    dashboardDetails;
   const tier = getTierFromTableTags(tags ?? []);
   const serviceDisplayName = getEntityName(service);
 
@@ -401,13 +401,21 @@ const getDashboardOverview = (dashboardDetails: Dashboard) => {
       isLink: true,
       visible: [DRAWER_NAVIGATION_OPTIONS.lineage],
     },
-
     {
       name: i18next.t('label.tier'),
       value: tier ? tier.split(FQN_SEPARATOR_CHAR)[1] : NO_DATA,
       isLink: false,
       isExternal: false,
       visible: [DRAWER_NAVIGATION_OPTIONS.lineage],
+    },
+    {
+      name: i18next.t('label.project'),
+      value: project ?? NO_DATA,
+      isLink: false,
+      visible: [
+        DRAWER_NAVIGATION_OPTIONS.explore,
+        DRAWER_NAVIGATION_OPTIONS.lineage,
+      ],
     },
   ];
 
@@ -1486,7 +1494,9 @@ export const getEntityBreadcrumbs = (
         return [];
       }
       // eslint-disable-next-line no-case-declarations
-      const fqnList = Fqn.split((entity as GlossaryTerm).fullyQualifiedName);
+      const fqnList = entity.fullyQualifiedName
+        ? Fqn.split(entity.fullyQualifiedName)
+        : [];
       // eslint-disable-next-line no-case-declarations
       const tree = fqnList.slice(1, fqnList.length);
 
@@ -1506,7 +1516,9 @@ export const getEntityBreadcrumbs = (
       ];
     case EntityType.TAG:
       // eslint-disable-next-line no-case-declarations
-      const fqnTagList = Fqn.split((entity as Tag).fullyQualifiedName);
+      const fqnTagList = entity.fullyQualifiedName
+        ? Fqn.split(entity.fullyQualifiedName)
+        : [];
 
       return [
         ...fqnTagList.map((fqn) => ({

@@ -89,6 +89,7 @@ import org.openmetadata.schema.entity.feed.Thread;
 import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.AnnouncementDetails;
+import org.openmetadata.schema.type.ChatbotDetails;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.schema.type.EntityReference;
@@ -129,6 +130,7 @@ public class FeedResourceTest extends OpenMetadataApplicationTest {
   public static List<Column> COLUMNS;
   public static User USER;
   public static String USER_LINK;
+  public static User BOT_USER;
   public static Map<String, String> USER_AUTH_HEADERS;
   public static User USER2;
   public static Map<String, String> USER2_AUTH_HEADERS;
@@ -156,6 +158,8 @@ public class FeedResourceTest extends OpenMetadataApplicationTest {
     USER2 =
         userResourceTest.createEntity(userResourceTest.createRequest(test, 4), ADMIN_AUTH_HEADERS);
     USER2_AUTH_HEADERS = authHeaders(USER2.getName());
+
+    BOT_USER = userResourceTest.createUser("bot_user", true);
 
     CreateTable createTable =
         TABLE_RESOURCE_TEST.createRequest(test).withOwner(TableResourceTest.USER1_REF);
@@ -516,6 +520,17 @@ public class FeedResourceTest extends OpenMetadataApplicationTest {
     announcements = listAnnouncements(about, null, false, ADMIN_AUTH_HEADERS);
     assertEquals(totalAnnouncementCount + 3, announcements.getPaging().getTotal());
     assertEquals(totalAnnouncementCount + 3, announcements.getData().size());
+  }
+
+  @Test
+  void post_validAI_200() throws IOException {
+    // Sample EntityLink
+    String about = String.format("<#E::%s::%s>", Entity.BOT, "ingestion-bot");
+    createAI(USER.getName(), about, "First AI", "query", USER_AUTH_HEADERS);
+    createAI(USER.getName(), about, "Second AI", "query", USER_AUTH_HEADERS);
+
+    // List all the AI and make sure the number of AI increased by 2
+    assertEquals(2, listAI(null, null, ADMIN_AUTH_HEADERS).getPaging().getTotal());
   }
 
   @Test
@@ -920,6 +935,37 @@ public class FeedResourceTest extends OpenMetadataApplicationTest {
     Thread patched = patchThreadAndCheck(updated, originalJson, TEST_AUTH_HEADERS);
     assertNotEquals(patched.getUpdatedAt(), thread.getUpdatedAt());
     assertEquals(TEST_USER_NAME, patched.getUpdatedBy());
+  }
+
+  @Test
+  void patch_ai_200() throws IOException {
+    String about = String.format("<#E::%s::%s>", Entity.BOT, "ingestion-bot");
+
+    // Create thread without AI
+    CreateThread create =
+        new CreateThread()
+            .withFrom(USER.getName())
+            .withMessage("message")
+            .withAbout(about)
+            .withType(ThreadType.Chatbot);
+    Thread thread = createAndCheck(create, ADMIN_AUTH_HEADERS);
+    String originalJson = JsonUtils.pojoToJson(thread);
+
+    Thread updated = thread.withChatbot(new ChatbotDetails().withQuery("query"));
+    Thread patched = patchThreadAndCheck(updated, originalJson, TEST_AUTH_HEADERS);
+
+    assertNotEquals(patched.getUpdatedAt(), thread.getUpdatedAt());
+    assertEquals(TEST_USER_NAME, patched.getUpdatedBy());
+    assertEquals("query", patched.getChatbot().getQuery());
+
+    // Patch again to update the query
+    String originalJson2 = JsonUtils.pojoToJson(patched);
+    Thread updated2 = patched.withChatbot(new ChatbotDetails().withQuery("query2"));
+    Thread patched2 = patchThreadAndCheck(updated2, originalJson2, TEST_AUTH_HEADERS);
+
+    assertNotEquals(patched2.getUpdatedAt(), patched.getUpdatedAt());
+    assertEquals(TEST_USER_NAME, patched2.getUpdatedBy());
+    assertEquals("query2", patched2.getChatbot().getQuery());
   }
 
   @Test
@@ -1404,6 +1450,71 @@ public class FeedResourceTest extends OpenMetadataApplicationTest {
         entityNotFound("Post", NON_EXISTENT_ENTITY));
   }
 
+  @Test
+  void post_createTaskByBotUser_400() {
+    String about = String.format("<#E::%s::%s>", Entity.TABLE, TABLE.getFullyQualifiedName());
+
+    assertResponse(
+        () ->
+            createTaskThread(
+                BOT_USER.getName(),
+                about,
+                USER.getEntityReference(),
+                "old",
+                "new",
+                RequestDescription,
+                ADMIN_AUTH_HEADERS),
+        BAD_REQUEST,
+        "Task cannot be created by bot only by user or teams");
+  }
+
+  @Test
+  void post_assignTaskToBotUser_400() {
+    String about = String.format("<#E::%s::%s>", Entity.TABLE, TABLE.getFullyQualifiedName());
+
+    assertResponse(
+        () ->
+            createTaskThread(
+                USER.getName(),
+                about,
+                BOT_USER.getEntityReference(),
+                "old",
+                "new",
+                RequestDescription,
+                ADMIN_AUTH_HEADERS),
+        BAD_REQUEST,
+        "Assignees can not be bot");
+  }
+
+  @Test
+  void patch_reassignTaskToBotUser_400() throws IOException {
+    String about =
+        String.format(
+            "<#E::%s::%s::columns::%s::description>",
+            Entity.TABLE, TABLE.getFullyQualifiedName(), C1);
+
+    Thread thread =
+        createTaskThread(
+            TEST_USER_NAME,
+            about,
+            USER.getEntityReference(),
+            "old",
+            "new",
+            RequestDescription,
+            ADMIN_AUTH_HEADERS);
+
+    String originalJson = JsonUtils.pojoToJson(thread);
+    TaskDetails upadtedAssigneeTaskDetails =
+        new TaskDetails().withAssignees(List.of(BOT_USER.getEntityReference()));
+
+    // update assignees or reassign task to bot user
+    thread.withTask(upadtedAssigneeTaskDetails);
+    assertResponse(
+        () -> patchThreadAndCheck(thread, originalJson, ADMIN_AUTH_HEADERS),
+        BAD_REQUEST,
+        "Assignees can not be bot");
+  }
+
   public Thread createAndCheck(CreateThread create, Map<String, String> authHeaders)
       throws HttpResponseException {
     // Validate returned thread from POST
@@ -1545,6 +1656,22 @@ public class FeedResourceTest extends OpenMetadataApplicationTest {
         null,
         ThreadType.Announcement.toString(),
         activeAnnouncement,
+        null,
+        null,
+        null);
+  }
+
+  public ThreadList listAI(String entityLink, Integer limitPosts, Map<String, String> authHeaders)
+      throws HttpResponseException {
+    return listThreads(
+        entityLink,
+        limitPosts,
+        authHeaders,
+        null,
+        null,
+        null,
+        ThreadType.Chatbot.toString(),
+        null,
         null,
         null,
         null);
@@ -1773,6 +1900,19 @@ public class FeedResourceTest extends OpenMetadataApplicationTest {
             .withAbout(about)
             .withType(ThreadType.Announcement)
             .withAnnouncementDetails(announcementDetails);
+    return createAndCheck(create, authHeaders);
+  }
+
+  public Thread createAI(
+      String fromUser, String about, String message, String query, Map<String, String> authHeaders)
+      throws HttpResponseException {
+    CreateThread create =
+        new CreateThread()
+            .withFrom(fromUser)
+            .withMessage(message)
+            .withAbout(about)
+            .withType(ThreadType.Chatbot)
+            .withChatbotDetails(new ChatbotDetails().withQuery(query));
     return createAndCheck(create, authHeaders);
   }
 

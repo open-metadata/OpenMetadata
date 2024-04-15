@@ -25,7 +25,6 @@ import { ReactComponent as IconRestore } from '../../../../assets/svg/ic-restore
 import { ReactComponent as IconSetting } from '../../../../assets/svg/ic-settings-gray.svg';
 import { ReactComponent as IconDropdown } from '../../../../assets/svg/menu.svg';
 import { NO_PERMISSION_FOR_ACTION } from '../../../../constants/HelperTextUtil';
-import { DROPDOWN_ICON_SIZE_PROPS } from '../../../../constants/ManageButton.constants';
 import { EntityType } from '../../../../enums/entity.enum';
 import { ANNOUNCEMENT_ENTITIES } from '../../../../utils/AnnouncementsUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
@@ -127,13 +126,7 @@ const ManageButton: FC<ManageButtonProps> = ({
                   description={t('message.restore-action-description', {
                     entityType,
                   })}
-                  icon={
-                    <IconRestore
-                      className="m-t-xss"
-                      name="Restore"
-                      {...DROPDOWN_ICON_SIZE_PROPS}
-                    />
-                  }
+                  icon={IconRestore}
                   id="restore-button"
                   name={t('label.restore')}
                 />
@@ -156,13 +149,7 @@ const ManageButton: FC<ManageButtonProps> = ({
             label: (
               <ManageButtonItemLabel
                 description={t('message.announcement-action-description')}
-                icon={
-                  <IconAnnouncementsBlack
-                    className="m-t-xss"
-                    name="announcement"
-                    {...DROPDOWN_ICON_SIZE_PROPS}
-                  />
-                }
+                icon={IconAnnouncementsBlack}
                 id="announcement-button"
                 name={t('label.announcement-plural')}
               />
@@ -184,7 +171,7 @@ const ManageButton: FC<ManageButtonProps> = ({
                 description={t('message.update-displayName-entity', {
                   entity: entityName,
                 })}
-                icon={<EditIcon width="18px" />}
+                icon={EditIcon}
                 id="rename-button"
                 name={t('label.rename')}
               />
@@ -207,13 +194,7 @@ const ManageButton: FC<ManageButtonProps> = ({
                   deleteButtonDescription ??
                   t('message.update-profiler-settings')
                 }
-                icon={
-                  <IconSetting
-                    className="m-t-xss"
-                    {...DROPDOWN_ICON_SIZE_PROPS}
-                    name="Profiler Settings"
-                  />
-                }
+                icon={IconSetting}
                 id="profiler-setting-button"
                 name={t('label.profiler-setting-plural')}
               />
@@ -237,13 +218,7 @@ const ManageButton: FC<ManageButtonProps> = ({
                     entityType,
                   })
                 }
-                icon={
-                  <IconDelete
-                    className="m-t-xss"
-                    {...DROPDOWN_ICON_SIZE_PROPS}
-                    name="Delete"
-                  />
-                }
+                icon={IconDelete}
                 id="delete-button"
                 name={t('label.delete')}
               />
@@ -263,27 +238,33 @@ const ManageButton: FC<ManageButtonProps> = ({
   return (
     <>
       {items.length ? (
-        <Dropdown
-          align={{ targetOffset: [-12, 0] }}
-          dropdownRender={renderDropdownContainer}
-          menu={{ items }}
-          overlayClassName="manage-dropdown-list-container"
-          overlayStyle={{ width: '350px' }}
-          placement="bottomRight"
-          trigger={['click']}>
-          <Tooltip
-            placement="topRight"
-            title={t('label.manage-entity', {
-              entity: capitalize(entityType),
-            })}>
-            <Button
-              className={classNames('flex-center px-1.5', buttonClassName)}
-              data-testid="manage-button"
-              type="default">
-              <IconDropdown className="anticon self-center manage-dropdown-icon" />
-            </Button>
-          </Tooltip>
-        </Dropdown>
+        // Used Button to stop click propagation event in the
+        // TeamDetailsV1 and User.component collapsible panel.
+        <Button
+          className="remove-button-default-styling"
+          onClick={(e) => e.stopPropagation()}>
+          <Dropdown
+            align={{ targetOffset: [-12, 0] }}
+            dropdownRender={renderDropdownContainer}
+            menu={{ items }}
+            overlayClassName="manage-dropdown-list-container"
+            overlayStyle={{ width: '350px' }}
+            placement="bottomRight"
+            trigger={['click']}>
+            <Tooltip
+              placement="topRight"
+              title={t('label.manage-entity', {
+                entity: capitalize(entityType),
+              })}>
+              <Button
+                className={classNames('flex-center px-1.5', buttonClassName)}
+                data-testid="manage-button"
+                type="default">
+                <IconDropdown className="anticon self-center manage-dropdown-icon" />
+              </Button>
+            </Tooltip>
+          </Dropdown>
+        </Button>
       ) : (
         <></>
       )}

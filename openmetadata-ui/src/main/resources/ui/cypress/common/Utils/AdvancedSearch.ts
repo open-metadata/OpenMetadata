@@ -11,76 +11,26 @@
  *  limitations under the License.
  */
 
-import { SidebarItem } from '../../constants/Entity.interface';
+import { EntityType, SidebarItem } from '../../constants/Entity.interface';
+import { SERVICE_CATEGORIES } from '../../constants/service.constants';
+import { interceptURL, verifyResponseStatusCode } from '../common';
 import {
-  DATABASE_DETAILS,
-  DATABASE_SERVICE_DETAILS,
-  SCHEMA_DETAILS,
-  TABLE_DETAILS,
-} from '../../constants/EntityConstant';
-import { USER_CREDENTIALS } from '../../constants/SearchIndexDetails.constants';
-import { interceptURL, uuid, verifyResponseStatusCode } from '../common';
-import { createEntityTable } from '../EntityUtils';
-import { visitEntityDetailsPage } from './Entity';
+  createEntityTable,
+  getTableCreationDetails,
+  getUserCreationDetails,
+  hardDeleteService,
+} from '../EntityUtils';
+import { deleteEntityViaREST, visitEntityDetailsPage } from './Entity';
 
-export const ADVANCE_SEARCH_TABLES = {
-  table1: TABLE_DETAILS,
-  table2: {
-    name: `cy-table2-${uuid()}`,
-    description: 'description',
-    columns: [
-      {
-        name: 'cypress_first_name',
-        dataType: 'VARCHAR',
-        dataLength: 100,
-        dataTypeDisplay: 'varchar',
-        description: 'First name of the staff member.',
-      },
-      {
-        name: 'cypress_last_name',
-        dataType: 'VARCHAR',
-        dataLength: 100,
-        dataTypeDisplay: 'varchar',
-      },
-      {
-        name: 'cypress_email',
-        dataType: 'VARCHAR',
-        dataLength: 100,
-        dataTypeDisplay: 'varchar',
-        description: 'Email address of the staff member.',
-      },
-    ],
-    databaseSchema: `${DATABASE_SERVICE_DETAILS.name}.${DATABASE_DETAILS.name}.${SCHEMA_DETAILS.name}`,
-  },
-  table3: {
-    name: `cy-table3-${uuid()}`,
-    description: 'description',
-    columns: [
-      {
-        name: 'cypress_user_id',
-        dataType: 'NUMERIC',
-        dataTypeDisplay: 'numeric',
-        description:
-          'Unique identifier for the user of your Shopify POS or your Shopify admin.',
-      },
-      {
-        name: 'cypress_shop_id',
-        dataType: 'NUMERIC',
-        dataTypeDisplay: 'numeric',
-        description:
-          'The ID of the store. This column is a foreign key reference to the shop_id column in the dim.shop table.',
-      },
-    ],
-    databaseSchema: `${DATABASE_SERVICE_DETAILS.name}.${DATABASE_DETAILS.name}.${SCHEMA_DETAILS.name}`,
-  },
-};
+export const ADVANCE_SEARCH_DATABASE_SERVICE = getTableCreationDetails();
 
-export const ADVANCE_SEARCH_DATABASE_SERVICE = {
-  service: DATABASE_SERVICE_DETAILS,
-  database: DATABASE_DETAILS,
-  schema: SCHEMA_DETAILS,
-  tables: Object.values(ADVANCE_SEARCH_TABLES),
-};
+export const ADVANCE_SEARCH_DATABASE_SERVICE_2 = getTableCreationDetails();
+
+export const USER_1 = getUserCreationDetails();
+export const USER_1_FULL_NAME = `${USER_1.user.firstName}${USER_1.user.lastName}`;
+
+export const USER_2 = getUserCreationDetails();
+export const USER_2_FULL_NAME = `${USER_2.user.firstName}${USER_2.user.lastName}`;
 
 export const CONDITIONS_MUST = {
   equalTo: {
@@ -111,22 +61,34 @@ export const CONDITIONS_MUST_NOT = {
     filter: 'must_not',
   },
 };
-const ownerFullName = `${USER_CREDENTIALS.firstName}${USER_CREDENTIALS.lastName}`;
 
-export const FIELDS = {
+export type AdvancedSearchFieldDetails = {
+  name: string;
+  testId: string;
+  searchTerm1?: string;
+  searchCriteriaFirstGroup: string;
+  responseValueFirstGroup: string;
+  searchCriteriaSecondGroup: string;
+  responseValueSecondGroup: string;
+  owner?: boolean;
+  createTagName?: string;
+  isLocalSearch?: boolean;
+};
+
+export const FIELDS: Record<string, AdvancedSearchFieldDetails> = {
   Owner: {
     name: 'Owner',
-    testid: '[title="Owner"]',
-    searchTerm1: ownerFullName,
-    searchCriteriaFirstGroup: ownerFullName,
-    responseValueFirstGroup: `"displayName":"${ownerFullName}"`,
-    searchCriteriaSecondGroup: 'Aaron Singh',
+    testId: '[title="Owner"]',
+    searchTerm1: USER_1_FULL_NAME,
+    searchCriteriaFirstGroup: USER_1_FULL_NAME,
+    responseValueFirstGroup: `"displayName":"${USER_1_FULL_NAME}"`,
+    searchCriteriaSecondGroup: USER_2_FULL_NAME,
     owner: true,
-    responseValueSecondGroup: 'Aaron Singh',
+    responseValueSecondGroup: USER_2_FULL_NAME,
   },
   Tags: {
     name: 'Tags',
-    testid: '[title="Tags"]',
+    testId: '[title="Tags"]',
     createTagName: 'Personal',
     searchCriteriaFirstGroup: 'PersonalData.Personal',
     responseValueFirstGroup: '"tagFQN":"PersonalData.Personal"',
@@ -135,7 +97,7 @@ export const FIELDS = {
   },
   Tiers: {
     name: 'Tier',
-    testid: '[title="Tier"]',
+    testId: '[title="Tier"]',
     searchCriteriaFirstGroup: 'Tier.Tier1',
     responseValueFirstGroup: '"tagFQN":"Tier.Tier1"',
     searchCriteriaSecondGroup: 'Tier.Tier2',
@@ -144,35 +106,37 @@ export const FIELDS = {
   },
   Service: {
     name: 'Service',
-    testid: '[title="Service"]',
-    searchCriteriaFirstGroup: 'sample_data',
-    responseValueFirstGroup: `"name":"sample_data"`,
-    searchCriteriaSecondGroup: DATABASE_SERVICE_DETAILS.name,
-    responseValueSecondGroup: `"name":"${DATABASE_SERVICE_DETAILS.name}"`,
+    testId: '[title="Service"]',
+    searchCriteriaFirstGroup: ADVANCE_SEARCH_DATABASE_SERVICE_2.service.name,
+    responseValueFirstGroup: `"name":"${ADVANCE_SEARCH_DATABASE_SERVICE_2.service.name}"`,
+    searchCriteriaSecondGroup: ADVANCE_SEARCH_DATABASE_SERVICE.service.name,
+    responseValueSecondGroup: `"name":"${ADVANCE_SEARCH_DATABASE_SERVICE.service.name}"`,
   },
   Database: {
     name: 'Database',
-    testid: '[title="Database"]',
-    searchCriteriaFirstGroup: 'ecommerce_db',
-    responseValueFirstGroup: `"name":"ecommerce_db"`,
-    searchCriteriaSecondGroup: DATABASE_DETAILS.name,
-    responseValueSecondGroup: `"name":"${DATABASE_DETAILS.name}"`,
+    testId: '[title="Database"]',
+    searchCriteriaFirstGroup: ADVANCE_SEARCH_DATABASE_SERVICE_2.database.name,
+    responseValueFirstGroup: `"name":"${ADVANCE_SEARCH_DATABASE_SERVICE_2.database.name}"`,
+    searchCriteriaSecondGroup: ADVANCE_SEARCH_DATABASE_SERVICE.database.name,
+    responseValueSecondGroup: `"name":"${ADVANCE_SEARCH_DATABASE_SERVICE.database.name}"`,
   },
   Database_Schema: {
     name: 'Database Schema',
-    testid: '[title="Database Schema"]',
-    searchCriteriaFirstGroup: 'shopify',
-    responseValueFirstGroup: `"name":"shopify"`,
-    searchCriteriaSecondGroup: SCHEMA_DETAILS.name,
-    responseValueSecondGroup: `"name":"${SCHEMA_DETAILS.name}"`,
+    testId: '[title="Database Schema"]',
+    searchCriteriaFirstGroup: ADVANCE_SEARCH_DATABASE_SERVICE_2.schema.name,
+    responseValueFirstGroup: `"name":"${ADVANCE_SEARCH_DATABASE_SERVICE_2.schema.name}"`,
+    searchCriteriaSecondGroup: ADVANCE_SEARCH_DATABASE_SERVICE.schema.name,
+    responseValueSecondGroup: `"name":"${ADVANCE_SEARCH_DATABASE_SERVICE.schema.name}"`,
   },
   Column: {
     name: 'Column',
-    testid: '[title="Column"]',
-    searchCriteriaFirstGroup: 'cypress_first_name',
-    responseValueFirstGroup: '"name":"cypress_first_name"',
-    searchCriteriaSecondGroup: 'cypress_user_id',
-    responseValueSecondGroup: '"name":"cypress_user_id"',
+    testId: '[title="Column"]',
+    searchCriteriaFirstGroup:
+      ADVANCE_SEARCH_DATABASE_SERVICE_2.tables[0].columns[0].name,
+    responseValueFirstGroup: `"name":"${ADVANCE_SEARCH_DATABASE_SERVICE_2.tables[0].columns[0].name}"`,
+    searchCriteriaSecondGroup:
+      ADVANCE_SEARCH_DATABASE_SERVICE.tables[0].columns[0].name,
+    responseValueSecondGroup: `"name":"${ADVANCE_SEARCH_DATABASE_SERVICE.tables[0].columns[0].name}"`,
   },
 };
 
@@ -224,9 +188,9 @@ export const searchForField = (
         .type(searchCriteria);
 
       // checking filter is working
-      cy.get(
-        `.ant-select-item-option-active[title="${searchCriteria}"]`
-      ).should('be.visible');
+      cy.get(`.ant-select-dropdown [title="${searchCriteria}"]`).should(
+        'be.visible'
+      );
 
       // select value from dropdown
       if (!isLocalSearch) {
@@ -246,7 +210,7 @@ export const goToAdvanceSearch = () => {
   cy.get('[data-testid="reset-btn"]').click();
 };
 
-export const checkmustPaths = (
+export const checkMustPaths = (
   condition: string,
   field: string,
   searchCriteria: string,
@@ -278,7 +242,7 @@ export const checkmustPaths = (
   });
 };
 
-export const checkmust_notPaths = (
+export const checkMust_notPaths = (
   condition,
   field,
   searchCriteria,
@@ -338,7 +302,19 @@ export const addTag = ({ tag, term, serviceName, entity }) => {
     .contains(tag);
 };
 
-export const checkAddGroupWithOperator = (
+type CheckAddGroupWithOperatorArgs = {
+  condition_1: string;
+  condition_2: string;
+  fieldId: string;
+  searchCriteria_1: string;
+  searchCriteria_2: string;
+  index_1: number;
+  index_2: number;
+  operatorIndex: number;
+  isLocalSearch?: boolean;
+};
+
+export const checkAddGroupWithOperator = ({
   condition_1,
   condition_2,
   fieldId,
@@ -347,12 +323,8 @@ export const checkAddGroupWithOperator = (
   index_1,
   index_2,
   operatorIndex,
-  filter_1,
-  filter_2,
-  response_1,
-  response_2,
-  isLocalSearch = false
-) => {
+  isLocalSearch = false,
+}: CheckAddGroupWithOperatorArgs) => {
   goToAdvanceSearch();
   // Click on field dropdown
   cy.get('.rule--field > .ant-select > .ant-select-selector')
@@ -474,11 +446,25 @@ export const checkAddGroupWithOperator = (
     const resBody = JSON.stringify(response.body);
 
     expect(request.url).to.contain(encodeURI(searchCriteria_1));
-    expect(resBody).to.not.include(response_2);
+    expect(resBody).to.not.include(response);
   });
 };
 
-export const checkAddRuleWithOperator = (
+type CheckAddRuleWithOperatorArgs = {
+  condition_1: string;
+  condition_2: string;
+  fieldId: string;
+  searchCriteria_1: string;
+  searchCriteria_2: string;
+  index_1: number;
+  index_2: number;
+  operatorIndex: number;
+  filter_1: string;
+  filter_2: string;
+  response: string;
+};
+
+export const checkAddRuleWithOperator = ({
   condition_1,
   condition_2,
   fieldId,
@@ -489,9 +475,8 @@ export const checkAddRuleWithOperator = (
   operatorIndex,
   filter_1,
   filter_2,
-  response_1,
-  response_2
-) => {
+  response,
+}: CheckAddRuleWithOperatorArgs) => {
   goToAdvanceSearch();
   // Click on field dropdown
   cy.get('.rule--field').eq(index_1).should('be.visible').click();
@@ -584,7 +569,7 @@ export const checkAddRuleWithOperator = (
     'GET',
     `/api/v1/search/query?q=&index=*&from=0&size=10&deleted=false&query_filter=*${filter_1}*${encodeURI(
       searchCriteria_1
-    )}*${filter_2}*${encodeURI(response_2)}*`,
+    )}*${filter_2}*${encodeURI(response.replaceAll(' ', '+'))}*`,
     `search${searchCriteria_1}`
   );
 
@@ -595,130 +580,171 @@ export const checkAddRuleWithOperator = (
     const resBody = JSON.stringify(response.body);
 
     expect(request.url).to.contain(encodeURI(searchCriteria_1));
-    expect(resBody).to.not.include(response_2);
+    expect(resBody).to.not.include(response);
   });
 };
 
-export const advanceSearchPreRequests = (token: string) => {
+export const advanceSearchPreRequests = (testData, token: string) => {
   // Create Table hierarchy
-
   createEntityTable({
     token,
     ...ADVANCE_SEARCH_DATABASE_SERVICE,
   });
 
-  // Create a new user
+  createEntityTable({
+    token,
+    ...ADVANCE_SEARCH_DATABASE_SERVICE_2,
+  });
+
   cy.request({
     method: 'POST',
     url: `/api/v1/users/signup`,
     headers: { Authorization: `Bearer ${token}` },
-    body: USER_CREDENTIALS,
+    body: USER_1.user,
   }).then((response) => {
-    USER_CREDENTIALS.id = response.body.id;
-  });
+    testData.user_1 = response.body;
 
-  // Add owner to table 1
-  cy.request({
-    method: 'GET',
-    url: `/api/v1/tables/name/${ADVANCE_SEARCH_TABLES.table1.databaseSchema}.${ADVANCE_SEARCH_TABLES.table1.name}`,
-    headers: { Authorization: `Bearer ${token}` },
-  }).then((response) => {
+    // Add owner to table 1
     cy.request({
-      method: 'PATCH',
-      url: `/api/v1/tables/${response.body.id}`,
-      headers: {
-        Authorization: `Bearer ${token}`,
-        'Content-Type': 'application/json-patch+json',
-      },
-      body: [
-        {
-          op: 'add',
-          path: '/owner',
-          value: {
-            id: USER_CREDENTIALS.id,
-            type: 'user',
-          },
+      method: 'GET',
+      url: `/api/v1/tables/name/${ADVANCE_SEARCH_DATABASE_SERVICE.tables[0].databaseSchema}.${ADVANCE_SEARCH_DATABASE_SERVICE.tables[0].name}`,
+      headers: { Authorization: `Bearer ${token}` },
+    }).then((response) => {
+      cy.request({
+        method: 'PATCH',
+        url: `/api/v1/tables/${response.body.id}`,
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json-patch+json',
         },
-      ],
+        body: [
+          {
+            op: 'add',
+            path: '/owner',
+            value: {
+              id: testData.user_1.id,
+              type: 'user',
+            },
+          },
+        ],
+      });
+    });
+
+    // Create a new users
+    cy.request({
+      method: 'POST',
+      url: `/api/v1/users/signup`,
+      headers: { Authorization: `Bearer ${token}` },
+      body: USER_2.user,
+    }).then((response) => {
+      testData.user_2 = response.body;
+    });
+
+    // Add Tier to table 2
+    cy.request({
+      method: 'GET',
+      url: `/api/v1/tables/name/${ADVANCE_SEARCH_DATABASE_SERVICE.tables[1].databaseSchema}.${ADVANCE_SEARCH_DATABASE_SERVICE.tables[1].name}`,
+      headers: { Authorization: `Bearer ${token}` },
+    }).then((response) => {
+      cy.request({
+        method: 'PATCH',
+        url: `/api/v1/tables/${response.body.id}`,
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json-patch+json',
+        },
+        body: [
+          {
+            op: 'add',
+            path: '/tags/0',
+            value: {
+              name: 'Tier1',
+              tagFQN: 'Tier.Tier1',
+              labelType: 'Manual',
+              state: 'Confirmed',
+            },
+          },
+          {
+            op: 'add',
+            path: '/tags/1',
+            value: {
+              name: 'SpecialCategory',
+              tagFQN: 'PersonalData.SpecialCategory',
+              labelType: 'Manual',
+              state: 'Confirmed',
+            },
+          },
+        ],
+      });
+    });
+
+    // Add Tag to table 3
+    cy.request({
+      method: 'GET',
+      url: `/api/v1/tables/name/${ADVANCE_SEARCH_DATABASE_SERVICE.tables[2].databaseSchema}.${ADVANCE_SEARCH_DATABASE_SERVICE.tables[2].name}`,
+      headers: { Authorization: `Bearer ${token}` },
+    }).then((response) => {
+      cy.request({
+        method: 'PATCH',
+        url: `/api/v1/tables/${response.body.id}`,
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json-patch+json',
+        },
+        body: [
+          {
+            op: 'add',
+            path: '/tags/0',
+            value: {
+              tagFQN: 'PersonalData.Personal',
+              source: 'Classification',
+              name: 'Personal',
+              description:
+                'Data that can be used to directly or indirectly identify a person.',
+              labelType: 'Manual',
+              state: 'Confirmed',
+            },
+          },
+          {
+            op: 'add',
+            path: '/tags/1',
+            value: {
+              name: 'Tier2',
+              tagFQN: 'Tier.Tier2',
+              labelType: 'Manual',
+              state: 'Confirmed',
+            },
+          },
+        ],
+      });
     });
   });
+};
 
-  // Add Tier to table 2
-  cy.request({
-    method: 'GET',
-    url: `/api/v1/tables/name/${ADVANCE_SEARCH_TABLES.table2.databaseSchema}.${ADVANCE_SEARCH_TABLES.table2.name}`,
-    headers: { Authorization: `Bearer ${token}` },
-  }).then((response) => {
-    cy.request({
-      method: 'PATCH',
-      url: `/api/v1/tables/${response.body.id}`,
-      headers: {
-        Authorization: `Bearer ${token}`,
-        'Content-Type': 'application/json-patch+json',
-      },
-      body: [
-        {
-          op: 'add',
-          path: '/tags/0',
-          value: {
-            name: 'Tier1',
-            tagFQN: 'Tier.Tier1',
-            labelType: 'Manual',
-            state: 'Confirmed',
-          },
-        },
-        {
-          op: 'add',
-          path: '/tags/1',
-          value: {
-            name: 'SpecialCategory',
-            tagFQN: 'PersonalData.SpecialCategory',
-            labelType: 'Manual',
-            state: 'Confirmed',
-          },
-        },
-      ],
-    });
+export const advancedSearchFlowCleanup = (token: string) => {
+  // Delete created services
+  hardDeleteService({
+    token,
+    serviceFqn: ADVANCE_SEARCH_DATABASE_SERVICE.service.name,
+    serviceType: SERVICE_CATEGORIES.DATABASE_SERVICES,
   });
 
-  // Add Tag to table 3
-  cy.request({
-    method: 'GET',
-    url: `/api/v1/tables/name/${ADVANCE_SEARCH_TABLES.table3.databaseSchema}.${ADVANCE_SEARCH_TABLES.table3.name}`,
-    headers: { Authorization: `Bearer ${token}` },
-  }).then((response) => {
-    cy.request({
-      method: 'PATCH',
-      url: `/api/v1/tables/${response.body.id}`,
-      headers: {
-        Authorization: `Bearer ${token}`,
-        'Content-Type': 'application/json-patch+json',
-      },
-      body: [
-        {
-          op: 'add',
-          path: '/tags/0',
-          value: {
-            tagFQN: 'PersonalData.Personal',
-            source: 'Classification',
-            name: 'Personal',
-            description:
-              'Data that can be used to directly or indirectly identify a person.',
-            labelType: 'Manual',
-            state: 'Confirmed',
-          },
-        },
-        {
-          op: 'add',
-          path: '/tags/1',
-          value: {
-            name: 'Tier2',
-            tagFQN: 'Tier.Tier2',
-            labelType: 'Manual',
-            state: 'Confirmed',
-          },
-        },
-      ],
-    });
+  hardDeleteService({
+    token,
+    serviceFqn: ADVANCE_SEARCH_DATABASE_SERVICE_2.service.name,
+    serviceType: SERVICE_CATEGORIES.DATABASE_SERVICES,
+  });
+
+  // Delete created users
+  deleteEntityViaREST({
+    token,
+    endPoint: EntityType.User,
+    entityName: USER_1.userName,
+  });
+
+  deleteEntityViaREST({
+    token,
+    endPoint: EntityType.User,
+    entityName: USER_2.userName,
   });
 };

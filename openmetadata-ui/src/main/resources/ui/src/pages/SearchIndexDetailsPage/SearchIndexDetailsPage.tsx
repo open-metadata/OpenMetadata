@@ -14,7 +14,7 @@
 import { Col, Row, Tabs } from 'antd';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
-import { isEqual, isUndefined, omitBy } from 'lodash';
+import { isEmpty, isEqual, isUndefined, omitBy } from 'lodash';
 import { EntityTags } from 'Models';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -392,6 +392,7 @@ function SearchIndexDetailsPage() {
                   entityName={entityName}
                   entityType={EntityType.SEARCH_INDEX}
                   hasEditAccess={editDescriptionPermission}
+                  isDescriptionExpanded={isEmpty(searchIndexDetails?.fields)}
                   isEdit={isEdit}
                   owner={searchIndexDetails?.owner}
                   showActions={!searchIndexDetails?.deleted}
@@ -415,16 +416,18 @@ function SearchIndexDetailsPage() {
               className="entity-tag-right-panel-container"
               data-testid="entity-right-panel"
               flex="320px">
-              <EntityRightPanel
+              <EntityRightPanel<EntityType.SEARCH_INDEX>
                 customProperties={searchIndexDetails}
                 dataProducts={searchIndexDetails?.dataProducts ?? []}
                 domain={searchIndexDetails?.domain}
+                editCustomAttributePermission={editCustomAttributePermission}
                 editTagPermission={editTagsPermission}
                 entityFQN={decodedSearchIndexFQN}
                 entityId={searchIndexDetails?.id ?? ''}
                 entityType={EntityType.SEARCH_INDEX}
                 selectedTags={searchIndexTags}
                 viewAllPermission={viewAllPermission}
+                onExtensionUpdate={onExtensionUpdate}
                 onTagSelectionChange={handleTagSelection}
                 onThreadLinkSelect={onThreadLinkSelect}
               />
