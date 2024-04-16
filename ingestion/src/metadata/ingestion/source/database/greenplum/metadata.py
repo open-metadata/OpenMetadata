@@ -57,7 +57,7 @@ from metadata.ingestion.source.database.multi_db_source import MultiDBSource
 from metadata.utils import fqn
 from metadata.utils.filters import filter_by_database
 from metadata.utils.logger import ingestion_logger
-from metadata.utils.secrets.manage_ssl import SSLManager, check_ssl_and_init
+from metadata.utils.ssl_manager import SSLManager, check_ssl_and_init
 from metadata.utils.sqlalchemy_utils import (
     get_all_table_comments,
     get_all_view_definitions,

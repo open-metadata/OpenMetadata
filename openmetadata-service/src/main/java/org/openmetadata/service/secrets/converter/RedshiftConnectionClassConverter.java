@@ -14,14 +14,8 @@
 package org.openmetadata.service.secrets.converter;
 
 import java.util.List;
-
-import org.openmetadata.schema.security.credentials.GCPCredentials;
 import org.openmetadata.schema.security.ssl.ValidateSSLClientConfig;
-import org.openmetadata.schema.security.ssl.VerifySSL;
-
 import org.openmetadata.schema.services.connections.database.RedshiftConnection;
-import org.openmetadata.schema.services.connections.database.common.IamAuthConfig;
-import org.openmetadata.schema.services.connections.database.common.basicAuth;
 import org.openmetadata.service.util.JsonUtils;
 
 /**
@@ -29,16 +23,18 @@ import org.openmetadata.service.util.JsonUtils;
  */
 public class RedshiftConnectionClassConverter extends ClassConverter {
 
-    private static final List<Class<?>> SSL_SOURCE_CLASS = List.of(ValidateSSLClientConfig.class);
+  private static final List<Class<?>> SSL_SOURCE_CLASS = List.of(ValidateSSLClientConfig.class);
 
-    public RedshiftConnectionClassConverter() {
-        super(RedshiftConnection.class);
-    }
+  public RedshiftConnectionClassConverter() {
+    super(RedshiftConnection.class);
+  }
 
-    @Override
-    public Object convert(Object object) {
-        RedshiftConnection redshiftConnection = (RedshiftConnection) JsonUtils.convertValue(object, this.clazz);
-        tryToConvert(redshiftConnection.getSslConfig(), SSL_SOURCE_CLASS).ifPresent(obj -> redshiftConnection.setSslConfig((ValidateSSLClientConfig) obj));
-        return redshiftConnection;
-    }
+  @Override
+  public Object convert(Object object) {
+    RedshiftConnection redshiftConnection =
+        (RedshiftConnection) JsonUtils.convertValue(object, this.clazz);
+    tryToConvert(redshiftConnection.getSslConfig(), SSL_SOURCE_CLASS)
+        .ifPresent(obj -> redshiftConnection.setSslConfig((ValidateSSLClientConfig) obj));
+    return redshiftConnection;
+  }
 }

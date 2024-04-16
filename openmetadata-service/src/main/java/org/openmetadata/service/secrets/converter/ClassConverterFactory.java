@@ -21,7 +21,6 @@ import org.openmetadata.schema.entity.automations.Workflow;
 import org.openmetadata.schema.metadataIngestion.DbtPipeline;
 import org.openmetadata.schema.metadataIngestion.dbtconfig.DbtGCSConfig;
 import org.openmetadata.schema.security.credentials.GCPCredentials;
-
 import org.openmetadata.schema.services.connections.dashboard.LookerConnection;
 import org.openmetadata.schema.services.connections.dashboard.SupersetConnection;
 import org.openmetadata.schema.services.connections.dashboard.TableauConnection;

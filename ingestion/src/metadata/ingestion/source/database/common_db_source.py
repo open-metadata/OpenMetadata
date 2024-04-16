@@ -69,7 +69,7 @@ from metadata.utils.execution_time_tracker import (
 )
 from metadata.utils.filters import filter_by_table
 from metadata.utils.logger import ingestion_logger
-from metadata.utils.secrets.manage_ssl import SSLManager
+from metadata.utils.ssl_manager import SSLManager
 
 logger = ingestion_logger()
 

@@ -22,7 +22,7 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.messaging.common_broker_source import CommonBrokerSource
-from metadata.utils.secrets.manage_ssl import SSLManager
+from metadata.utils.ssl_manager import SSLManager
 
 
 class KafkaSource(CommonBrokerSource):

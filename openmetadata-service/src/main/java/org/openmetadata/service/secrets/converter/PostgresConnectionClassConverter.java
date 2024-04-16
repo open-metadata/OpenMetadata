@@ -14,8 +14,6 @@
 package org.openmetadata.service.secrets.converter;
 
 import java.util.List;
-
-
 import org.openmetadata.schema.security.ssl.ValidateSSLClientConfig;
 import org.openmetadata.schema.services.connections.database.PostgresConnection;
 import org.openmetadata.schema.services.connections.database.common.IamAuthConfig;
@@ -27,22 +25,23 @@ import org.openmetadata.service.util.JsonUtils;
  */
 public class PostgresConnectionClassConverter extends ClassConverter {
 
-    private static final List<Class<?>> CONFIG_SOURCE_CLASSES =
-            List.of(basicAuth.class, IamAuthConfig.class);
+  private static final List<Class<?>> CONFIG_SOURCE_CLASSES =
+      List.of(basicAuth.class, IamAuthConfig.class);
 
-    public PostgresConnectionClassConverter() {
-        super(PostgresConnection.class);
-    }
+  public PostgresConnectionClassConverter() {
+    super(PostgresConnection.class);
+  }
 
-    @Override
-    public Object convert(Object object) {
-        PostgresConnection postgresConnection =
-                (PostgresConnection) JsonUtils.convertValue(object, this.clazz);
+  @Override
+  public Object convert(Object object) {
+    PostgresConnection postgresConnection =
+        (PostgresConnection) JsonUtils.convertValue(object, this.clazz);
 
-        tryToConvert(postgresConnection.getAuthType(), CONFIG_SOURCE_CLASSES)
-                .ifPresent(postgresConnection::setAuthType);
-        tryToConvert(postgresConnection.getSslConfig(), List.of(ValidateSSLClientConfig.class)).ifPresent(obj -> postgresConnection.setSslConfig((ValidateSSLClientConfig) obj));
+    tryToConvert(postgresConnection.getAuthType(), CONFIG_SOURCE_CLASSES)
+        .ifPresent(postgresConnection::setAuthType);
+    tryToConvert(postgresConnection.getSslConfig(), List.of(ValidateSSLClientConfig.class))
+        .ifPresent(obj -> postgresConnection.setSslConfig((ValidateSSLClientConfig) obj));
 
-        return postgresConnection;
-    }
+    return postgresConnection;
+  }
 }

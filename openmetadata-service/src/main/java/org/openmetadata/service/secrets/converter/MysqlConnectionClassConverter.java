@@ -14,11 +14,7 @@
 package org.openmetadata.service.secrets.converter;
 
 import java.util.List;
-
-import org.openmetadata.schema.security.credentials.GCPCredentials;
 import org.openmetadata.schema.security.ssl.ValidateSSLClientConfig;
-import org.openmetadata.schema.security.ssl.VerifySSL;
-
 import org.openmetadata.schema.services.connections.database.MysqlConnection;
 import org.openmetadata.schema.services.connections.database.common.IamAuthConfig;
 import org.openmetadata.schema.services.connections.database.common.basicAuth;
@@ -29,23 +25,26 @@ import org.openmetadata.service.util.JsonUtils;
  */
 public class MysqlConnectionClassConverter extends ClassConverter {
 
-    private static final List<Class<?>> CONFIG_SOURCE_CLASSES = List.of(basicAuth.class, IamAuthConfig.class);
+  private static final List<Class<?>> CONFIG_SOURCE_CLASSES =
+      List.of(basicAuth.class, IamAuthConfig.class);
 
-    private static final List<Class<?>> SSL_SOURCE_CLASS = List.of(ValidateSSLClientConfig.class);
+  private static final List<Class<?>> SSL_SOURCE_CLASS = List.of(ValidateSSLClientConfig.class);
 
-    public MysqlConnectionClassConverter() {
-        super(MysqlConnection.class);
-    }
+  public MysqlConnectionClassConverter() {
+    super(MysqlConnection.class);
+  }
 
-    @Override
-    public Object convert(Object object) {
-        MysqlConnection mysqlConnection = (MysqlConnection) JsonUtils.convertValue(object, this.clazz);
+  @Override
+  public Object convert(Object object) {
+    MysqlConnection mysqlConnection = (MysqlConnection) JsonUtils.convertValue(object, this.clazz);
 
-        tryToConvert(mysqlConnection.getAuthType(), CONFIG_SOURCE_CLASSES).ifPresent(mysqlConnection::setAuthType);
+    tryToConvert(mysqlConnection.getAuthType(), CONFIG_SOURCE_CLASSES)
+        .ifPresent(mysqlConnection::setAuthType);
 
-        tryToConvert(mysqlConnection.getSslConfig(), SSL_SOURCE_CLASS).ifPresent(obj -> mysqlConnection.setSslConfig((ValidateSSLClientConfig) obj));
-//
+    tryToConvert(mysqlConnection.getSslConfig(), SSL_SOURCE_CLASS)
+        .ifPresent(obj -> mysqlConnection.setSslConfig((ValidateSSLClientConfig) obj));
+    //
 
-        return mysqlConnection;
-    }
+    return mysqlConnection;
+  }
 }

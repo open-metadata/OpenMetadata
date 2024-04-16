@@ -42,7 +42,7 @@ from metadata.ingestion.source.dashboard.qliksense.models import (
 from metadata.utils.constants import UTF_8
 from metadata.utils.helpers import clean_uri
 from metadata.utils.logger import ingestion_logger
-from metadata.utils.secrets.manage_ssl import SSLManager
+from metadata.utils.ssl_manager import SSLManager
 
 logger = ingestion_logger()
 

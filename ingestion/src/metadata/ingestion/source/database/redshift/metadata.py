@@ -96,7 +96,7 @@ from metadata.utils.execution_time_tracker import (
 from metadata.utils.filters import filter_by_database
 from metadata.utils.helpers import get_start_and_end
 from metadata.utils.logger import ingestion_logger
-from metadata.utils.secrets.manage_ssl import SSLManager, check_ssl_and_init
+from metadata.utils.ssl_manager import SSLManager, check_ssl_and_init
 from metadata.utils.sqlalchemy_utils import get_all_table_comments
 
 logger = ingestion_logger()

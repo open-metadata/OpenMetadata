@@ -50,7 +50,7 @@ from metadata.ingestion.source.database.doris.utils import (
 )
 from metadata.ingestion.source.database.mysql.utils import parse_column
 from metadata.utils.logger import ingestion_logger
-from metadata.utils.secrets.manage_ssl import SSLManager, check_ssl_and_init
+from metadata.utils.ssl_manager import SSLManager, check_ssl_and_init
 
 MySQLTableDefinitionParser._parse_column = (  # pylint: disable=protected-access
     parse_column
