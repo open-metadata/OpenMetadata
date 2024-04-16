@@ -813,10 +813,10 @@ site_menu:
     url: /connectors/ingestion/workflows/lineage/filter-query-set
   - category: Connectors / Ingestion / Workflows / dbt
     url: /connectors/ingestion/workflows/dbt
-  - category: Connectors / Ingestion / Workflows / dbt / Ingest dbt UI
-    url: /connectors/ingestion/workflows/dbt/ingest-dbt-ui
-  - category: Connectors / Ingestion / Workflows / dbt / Ingest dbt CLI
-    url: /connectors/ingestion/workflows/dbt/ingest-dbt-cli
+  - category: Connectors / Ingestion / Workflows / dbt / Configure dbt workflow from OpenMetadata UI
+    url: /connectors/ingestion/workflows/dbt/configure-dbt-workflow-from-ui
+  - category: Connectors / Ingestion / Workflows / dbt / Run Externally
+    url: /connectors/ingestion/workflows/dbt/run-dbt-workflow-externally
   - category: Connectors / Ingestion / Workflows / dbt / Ingest dbt Owner
     url: /connectors/ingestion/workflows/dbt/ingest-dbt-owner
   - category: Connectors / Ingestion / Workflows / dbt / Ingest dbt Descriptions
@@ -1856,8 +1856,6 @@ site_menu:
     url: /sdk/python/entities/ml-model
   - category: SDK / Python SDK / Ingestion
     url: /sdk/python/ingestion
-  - category: SDK / Python SDK / Ingestion / dbt
-    url: /sdk/python/ingestion/dbt
   - category: SDK / Python SDK / Ingestion / Lineage
     url: /sdk/python/ingestion/lineage
   - category: SDK / Python SDK / Ingestion / Tags

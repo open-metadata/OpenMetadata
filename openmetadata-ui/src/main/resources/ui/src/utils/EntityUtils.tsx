@@ -57,7 +57,6 @@ import { ExplorePageTabs } from '../enums/Explore.enum';
 import { SearchIndex } from '../enums/search.enum';
 import { ServiceCategory, ServiceCategoryPlural } from '../enums/service.enum';
 import { PrimaryTableDataTypes } from '../enums/table.enum';
-import { Tag } from '../generated/entity/classification/tag';
 import { Container } from '../generated/entity/data/container';
 import { Dashboard } from '../generated/entity/data/dashboard';
 import { DashboardDataModel } from '../generated/entity/data/dashboardDataModel';
@@ -1495,7 +1494,9 @@ export const getEntityBreadcrumbs = (
         return [];
       }
       // eslint-disable-next-line no-case-declarations
-      const fqnList = Fqn.split((entity as GlossaryTerm).fullyQualifiedName);
+      const fqnList = entity.fullyQualifiedName
+        ? Fqn.split(entity.fullyQualifiedName)
+        : [];
       // eslint-disable-next-line no-case-declarations
       const tree = fqnList.slice(1, fqnList.length);
 
@@ -1515,7 +1516,9 @@ export const getEntityBreadcrumbs = (
       ];
     case EntityType.TAG:
       // eslint-disable-next-line no-case-declarations
-      const fqnTagList = Fqn.split((entity as Tag).fullyQualifiedName);
+      const fqnTagList = entity.fullyQualifiedName
+        ? Fqn.split(entity.fullyQualifiedName)
+        : [];
 
       return [
         ...fqnTagList.map((fqn) => ({

@@ -3,9 +3,11 @@ package org.openmetadata.service.apps;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.apps.scheduler.AppScheduler.APPS_JOB_GROUP;
 import static org.openmetadata.service.apps.scheduler.AppScheduler.APP_INFO_KEY;
+import static org.openmetadata.service.apps.scheduler.AppScheduler.APP_NAME;
 
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.util.Collection;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.api.configuration.apps.AppPrivateConfig;
@@ -24,6 +26,7 @@ import org.quartz.JobDataMap;
 import org.quartz.JobDetail;
 import org.quartz.JobKey;
 import org.quartz.SchedulerException;
+import org.quartz.impl.matchers.GroupMatcher;
 
 @Slf4j
 public class ApplicationHandler {
@@ -62,6 +65,18 @@ public class ApplicationHandler {
         }
       }
     }
+  }
+
+  public Boolean isPreview(String appName) {
+    if (privateConfiguration != null
+        && !nullOrEmpty(privateConfiguration.getAppsPrivateConfiguration())) {
+      for (AppPrivateConfig appPrivateConfig : privateConfiguration.getAppsPrivateConfiguration()) {
+        if (appName.equals(appPrivateConfig.getName())) {
+          return appPrivateConfig.getPreview();
+        }
+      }
+    }
+    return false;
   }
 
   public void triggerApplicationOnDemand(
@@ -158,5 +173,47 @@ public class ApplicationHandler {
     AppScheduler.getInstance().deleteScheduledApplication(updatedApp);
     AppScheduler.getInstance().addApplicationSchedule(updatedApp);
     LOG.info("migrated app configuration for {}", application.getName());
+  }
+
+  public void fixCorruptedInstallation(App application) throws SchedulerException {
+    JobDetail jobDetails =
+        AppScheduler.getInstance()
+            .getScheduler()
+            .getJobDetail(new JobKey(application.getName(), APPS_JOB_GROUP));
+    if (jobDetails == null) {
+      return;
+    }
+    JobDataMap jobDataMap = jobDetails.getJobDataMap();
+    if (jobDataMap == null) {
+      return;
+    }
+    String appName = jobDataMap.getString(APP_NAME);
+    if (appName == null) {
+      LOG.info("corrupt entry for app {}, reinstalling", application.getName());
+      App app = appRepository.getDao().findEntityByName(application.getName());
+      AppScheduler.getInstance().deleteScheduledApplication(app);
+      AppScheduler.getInstance().addApplicationSchedule(app);
+    }
+  }
+
+  public void removeOldJobs(App app) throws SchedulerException {
+    Collection<JobKey> jobKeys =
+        AppScheduler.getInstance()
+            .getScheduler()
+            .getJobKeys(GroupMatcher.groupContains(APPS_JOB_GROUP));
+    jobKeys.forEach(
+        jobKey -> {
+          try {
+            Class<?> clz =
+                AppScheduler.getInstance().getScheduler().getJobDetail(jobKey).getJobClass();
+            if (!jobKey.getName().equals(app.getName())
+                && clz.getName().equals(app.getClassName())) {
+              LOG.info("deleting old job {}", jobKey.getName());
+              AppScheduler.getInstance().getScheduler().deleteJob(jobKey);
+            }
+          } catch (SchedulerException e) {
+            LOG.error("Error deleting job {}", jobKey.getName(), e);
+          }
+        });
   }
 }

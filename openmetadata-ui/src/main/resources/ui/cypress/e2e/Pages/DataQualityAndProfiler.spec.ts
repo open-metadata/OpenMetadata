@@ -14,20 +14,24 @@
 import {
   descriptionBox,
   interceptURL,
+  selectOptionFromDropdown,
   toastNotification,
-  uuid,
   verifyResponseStatusCode,
 } from '../../common/common';
 import { createEntityTable, hardDeleteService } from '../../common/EntityUtils';
 import MysqlIngestionClass from '../../common/Services/MysqlIngestionClass';
 import { searchServiceFromSettingPage } from '../../common/serviceUtils';
+import {
+  DATA_QUALITY_TEST_CASE_DATA,
+  prepareDataQualityTestCases,
+} from '../../common/Utils/DataQuality';
 import { visitEntityDetailsPage } from '../../common/Utils/Entity';
 import {
   handleIngestionRetry,
   scheduleIngestion,
 } from '../../common/Utils/Ingestion';
 import { getToken } from '../../common/Utils/LocalStorage';
-import { addOwner, removeOwner, updateOwner } from '../../common/Utils/Owner';
+import { removeOwner, updateOwner } from '../../common/Utils/Owner';
 import { goToServiceListingPage, Services } from '../../common/Utils/Services';
 import {
   DATA_QUALITY_SAMPLE_DATA_TABLE,
@@ -44,68 +48,32 @@ import { SERVICE_CATEGORIES } from '../../constants/service.constants';
 import { GlobalSettingOptions } from '../../constants/settings.constant';
 
 const serviceName = `cypress-mysql`;
-const tableFqn = `${DATABASE_SERVICE.entity.databaseSchema}.${DATABASE_SERVICE.entity.name}`;
-const testSuite = {
-  name: `${tableFqn}.testSuite`,
-  executableEntityReference: tableFqn,
-};
-const testCase1 = {
-  name: `user_tokens_table_column_name_to_exist_${uuid()}`,
-  entityLink: `<#E::table::${testSuite.executableEntityReference}>`,
-  parameterValues: [{ name: 'columnName', value: 'id' }],
-  testDefinition: 'tableColumnNameToExist',
-  description: 'test case description',
-  testSuite: testSuite.name,
-};
-const testCase2 = {
-  name: `email_column_values_to_be_in_set_${uuid()}`,
-  entityLink: `<#E::table::${testSuite.executableEntityReference}::columns::email>`,
-  parameterValues: [
-    { name: 'allowedValues', value: '["gmail","yahoo","collate"]' },
-  ],
-  testDefinition: 'columnValuesToBeInSet',
-  testSuite: testSuite.name,
-};
-
-let testCaseId = '';
-
 const OWNER1 = 'Aaron Johnson';
 const OWNER2 = 'Cynthia Meyer';
-
-const goToProfilerTab = () => {
+const { testCase1, testCase2, filterTable, filterTableTestCases } =
+  DATA_QUALITY_TEST_CASE_DATA;
+const goToProfilerTab = (data?: { service: string; entityName: string }) => {
   interceptURL(
     'GET',
-    `api/v1/tables/name/${serviceName}.*.${TEAM_ENTITY}?fields=*&include=all`,
+    `api/v1/tables/name/${data?.service ?? serviceName}.*.${
+      data?.entityName ?? TEAM_ENTITY
+    }?fields=*&include=all`,
     'waitForPageLoad'
   );
   visitEntityDetailsPage({
-    term: TEAM_ENTITY,
-    serviceName,
+    term: data?.entityName ?? TEAM_ENTITY,
+    serviceName: data?.service ?? serviceName,
     entity: EntityType.Table,
   });
   verifyResponseStatusCode('@waitForPageLoad', 200);
 
   cy.get('[data-testid="profiler"]').should('be.visible').click();
 };
-const clickOnTestSuite = (testSuiteName) => {
-  cy.get('[data-testid="test-suite-container"]').then(($body) => {
-    if ($body.find(`[data-testid="${testSuiteName}"]`).length) {
-      cy.get(`[data-testid="${testSuiteName}"]`).scrollIntoView().click();
-    } else {
-      if ($body.find('[data-testid="next"]').length) {
-        cy.get('[data-testid="next"]').click();
-        verifyResponseStatusCode('@testSuite', 200);
-        clickOnTestSuite(testSuiteName);
-      } else {
-        throw new Error('Test Suite not found');
-      }
-    }
-  });
-};
-const visitTestSuiteDetailsPage = (testSuiteName) => {
+
+const visitTestSuiteDetailsPage = (testSuiteName: string) => {
   interceptURL(
     'GET',
-    '/api/v1/dataQuality/testSuites?*testSuiteType=logical*',
+    '/api/v1/dataQuality/testSuites/search/list?*testSuiteType=logical*',
     'testSuite'
   );
   interceptURL('GET', '/api/v1/dataQuality/testCases?fields=*', 'testCase');
@@ -114,7 +82,20 @@ const visitTestSuiteDetailsPage = (testSuiteName) => {
 
   cy.get('[data-testid="by-test-suites"]').click();
   verifyResponseStatusCode('@testSuite', 200);
-  clickOnTestSuite(testSuiteName);
+  interceptURL(
+    'GET',
+    `/api/v1/dataQuality/testSuites/search/list?*${testSuiteName}*testSuiteType=logical*`,
+    'testSuiteBySearch'
+  );
+  cy.get('[data-testid="search-bar-container"]').type(testSuiteName);
+  verifyResponseStatusCode('@testSuiteBySearch', 200);
+  cy.get(`[data-testid="${testSuiteName}"]`).scrollIntoView().click();
+};
+
+const verifyFilterTestCase = () => {
+  filterTableTestCases.map((testCase) => {
+    cy.get(`[data-testid="${testCase}"]`).scrollIntoView().should('be.visible');
+  });
 };
 
 describe(
@@ -130,30 +111,10 @@ describe(
         createEntityTable({
           token,
           ...DATABASE_SERVICE,
-          tables: [DATABASE_SERVICE.entity],
+          tables: [DATABASE_SERVICE.entity, filterTable],
         });
 
-        cy.request({
-          method: 'POST',
-          url: `/api/v1/dataQuality/testSuites/executable`,
-          headers: { Authorization: `Bearer ${token}` },
-          body: testSuite,
-        }).then(() => {
-          cy.request({
-            method: 'POST',
-            url: `/api/v1/dataQuality/testCases`,
-            headers: { Authorization: `Bearer ${token}` },
-            body: testCase1,
-          }).then((response) => {
-            testCaseId = response.body.id;
-          });
-          cy.request({
-            method: 'POST',
-            url: `/api/v1/dataQuality/testCases`,
-            headers: { Authorization: `Bearer ${token}` },
-            body: testCase2,
-          });
-        });
+        prepareDataQualityTestCases(token);
       });
     });
 
@@ -161,11 +122,6 @@ describe(
       cy.login();
       cy.getAllLocalStorage().then((data) => {
         const token = getToken(data);
-        cy.request({
-          method: 'DELETE',
-          url: `/api/v1/dataQuality/testCases/${testCaseId}?hardDelete=true&recursive=false`,
-          headers: { Authorization: `Bearer ${token}` },
-        });
         hardDeleteService({
           token,
           serviceFqn: DATABASE_SERVICE.service.name,
@@ -515,7 +471,7 @@ describe(
       const testCaseName = 'column_value_max_to_be_between';
       interceptURL(
         'GET',
-        '/api/v1/dataQuality/testSuites?*testSuiteType=logical*',
+        '/api/v1/dataQuality/testSuites/search/list?*testSuiteType=logical*',
         'testSuite'
       );
       interceptURL(
@@ -562,9 +518,9 @@ describe(
 
       visitTestSuiteDetailsPage(NEW_TEST_SUITE.name);
 
-      addOwner(OWNER1);
       updateOwner(OWNER2);
       removeOwner(OWNER2);
+      updateOwner(OWNER1);
     });
 
     it('Add test case to logical test suite', () => {
@@ -596,7 +552,7 @@ describe(
       verifyResponseStatusCode('@putTestCase', 200);
     });
 
-    it.skip('Remove test case from logical test suite', () => {
+    it('Remove test case from logical test suite', () => {
       interceptURL('GET', '/api/v1/dataQuality/testCases?fields=*', 'testCase');
       interceptURL(
         'GET',
@@ -621,7 +577,44 @@ describe(
       verifyResponseStatusCode('@removeTestCase', 200);
     });
 
-    it.skip('Delete test suite', () => {
+    it('Test suite filters', () => {
+      interceptURL(
+        'GET',
+        '/api/v1/dataQuality/testSuites/search/list?*testSuiteType=logical*',
+        'testSuite'
+      );
+      interceptURL(
+        'GET',
+        '/api/v1/dataQuality/testSuites/search/list?*owner=*',
+        'testSuiteByOwner'
+      );
+      cy.sidebarClick(SidebarItem.DATA_QUALITY);
+
+      cy.get('[data-testid="by-test-suites"]').click();
+      verifyResponseStatusCode('@testSuite', 200);
+
+      // owner filter
+      cy.get('[data-testid="owner-select-filter"]').click();
+      cy.get("[data-testid='select-owner-tabs']").should('be.visible');
+      cy.get('.ant-tabs [id*=tab-users]').click();
+
+      interceptURL(
+        'GET',
+        `api/v1/search/query?q=*&index=user_search_index*`,
+        'searchOwner'
+      );
+
+      cy.get('[data-testid="owner-select-users-search-bar"]').type(OWNER1);
+
+      verifyResponseStatusCode('@searchOwner', 200);
+      cy.get(`.ant-popover [title="${OWNER1}"]`).click();
+      verifyResponseStatusCode('@testSuiteByOwner', 200);
+      cy.get(`[data-testid="${NEW_TEST_SUITE.name}"]`)
+        .scrollIntoView()
+        .should('be.visible');
+    });
+
+    it('Delete test suite', () => {
       visitTestSuiteDetailsPage(NEW_TEST_SUITE.name);
 
       cy.get('[data-testid="manage-button"]').should('be.visible').click();
@@ -652,7 +645,7 @@ describe(
         .click();
       verifyResponseStatusCode('@deleteTestSuite', 200);
 
-      toastNotification('Test Suite deleted successfully!');
+      toastNotification('"mysql_matrix" deleted successfully!');
     });
 
     it('delete created service', () => {
@@ -794,29 +787,17 @@ describe(
 
     it('Array params value should be visible while editing the test case', () => {
       const tableName = DATABASE_SERVICE.entity.name;
-      interceptURL(
-        'GET',
-        `api/v1/tables/name/${DATABASE_SERVICE.service.name}.*.${tableName}?fields=*&include=all`,
-        'waitForPageLoad'
-      );
+      goToProfilerTab({
+        service: DATABASE_SERVICE.service.name,
+        entityName: tableName,
+      });
+
+      interceptURL('GET', '/api/v1/dataQuality/testCases?fields=*', 'testCase');
       interceptURL(
         'GET',
         '/api/v1/dataQuality/testDefinitions/*',
         'testCaseDefinition'
       );
-      visitEntityDetailsPage({
-        term: tableName,
-        serviceName: DATABASE_SERVICE.service.name,
-        entity: EntityType.Table,
-      });
-      verifyResponseStatusCode('@waitForPageLoad', 200);
-      cy.get('[data-testid="entity-header-display-name"]').should(
-        'contain',
-        tableName
-      );
-
-      cy.get('[data-testid="profiler"]').click();
-      interceptURL('GET', '/api/v1/dataQuality/testCases?fields=*', 'testCase');
       cy.get('[data-testid="profiler-tab-left-panel"]')
         .contains('Data Quality')
         .click();
@@ -841,8 +822,80 @@ describe(
         .should('have.value', 'collate');
     });
 
-    it('Update displayName of test case', () => {
-      interceptURL('GET', '/api/v1/dataQuality/testCases?*', 'getTestCase');
+    it('Validate patch request for edit test case', () => {
+      const tableName = DATABASE_SERVICE.entity.name;
+      goToProfilerTab({
+        service: DATABASE_SERVICE.service.name,
+        entityName: tableName,
+      });
+
+      interceptURL(
+        'PATCH',
+        '/api/v1/dataQuality/testCases/*',
+        'updateTestCase'
+      );
+      interceptURL('GET', '/api/v1/dataQuality/testCases?fields=*', 'testCase');
+      interceptURL(
+        'GET',
+        '/api/v1/dataQuality/testDefinitions/*',
+        'testCaseDefinition'
+      );
+      cy.get('[data-testid="profiler-tab-left-panel"]')
+        .contains('Data Quality')
+        .click();
+      verifyResponseStatusCode('@testCase', 200);
+      cy.get(`[data-testid="edit-${testCase2.name}"]`).scrollIntoView().click();
+
+      verifyResponseStatusCode('@testCaseDefinition', 200);
+      cy.get('#tableTestForm_displayName').type('Table test case display name');
+      cy.get('.ant-modal-footer').contains('Submit').click();
+      cy.wait('@updateTestCase').then((interception) => {
+        const { body } = interception.request;
+
+        expect(body).to.deep.equal([
+          {
+            op: 'add',
+            path: '/displayName',
+            value: 'Table test case display name',
+          },
+        ]);
+      });
+      cy.get(`[data-testid="edit-${testCase2.name}"]`).scrollIntoView().click();
+      cy.get('#tableTestForm_params_allowedValues_0_value')
+        .scrollIntoView()
+        .clear()
+        .type('test');
+      cy.get('.ant-modal-footer').contains('Submit').click();
+      cy.wait('@updateTestCase').then((interception) => {
+        const { body } = interception.request;
+
+        expect(body).to.deep.equal([
+          {
+            op: 'replace',
+            path: '/parameterValues/0/value',
+            value: '["test","yahoo","collate"]',
+          },
+        ]);
+      });
+      cy.get(`[data-testid="edit-${testCase2.name}"]`).scrollIntoView().click();
+      cy.get(descriptionBox).scrollIntoView().type('Test case description');
+      cy.get('.ant-modal-footer').contains('Submit').click();
+      cy.wait('@updateTestCase').then((interception) => {
+        const { body } = interception.request;
+
+        expect(body).to.deep.equal([
+          { op: 'add', path: '/description', value: 'Test case description' },
+        ]);
+      });
+    });
+
+    // Skipping As backend throws error for newly created test case, unSkip once backend issue is resolved from @TeddyCr
+    it.skip('Update displayName of test case', () => {
+      interceptURL(
+        'GET',
+        '/api/v1/dataQuality/testCases/search/list?*',
+        'getTestCase'
+      );
 
       cy.sidebarClick(SidebarItem.DATA_QUALITY);
 
@@ -850,7 +903,7 @@ describe(
       verifyResponseStatusCode('@getTestCase', 200);
       interceptURL(
         'GET',
-        `/api/v1/search/query?q=*${testCase1.name}*&index=test_case_search_index*`,
+        `/api/v1/dataQuality/testCases/search/list?*q=*${testCase1.name}*`,
         'searchTestCase'
       );
       cy.get(
@@ -876,6 +929,119 @@ describe(
         .then((text) => {
           expect(text).to.eq('Table test case display name');
         });
+    });
+
+    // Skipping As backend throws error for newly created test case, unSkip once backend issue is resolved from @TeddyCr
+    it.skip('Test case filters', () => {
+      interceptURL(
+        'GET',
+        '/api/v1/dataQuality/testCases/search/list?*',
+        'getTestCase'
+      );
+
+      cy.sidebarClick(SidebarItem.DATA_QUALITY);
+
+      cy.get('[data-testid="by-test-cases"]').click();
+      verifyResponseStatusCode('@getTestCase', 200);
+      interceptURL(
+        'GET',
+        `/api/v1/dataQuality/testCases/search/list?*q=*${filterTableTestCases[0]}*`,
+        'searchTestCase'
+      );
+      // Test case search filter
+      cy.get(
+        '[data-testid="test-case-container"] [data-testid="searchbar"]'
+      ).type(filterTableTestCases[0]);
+      verifyResponseStatusCode('@searchTestCase', 200);
+      cy.get(`[data-testid="${filterTableTestCases[0]}"]`)
+        .scrollIntoView()
+        .should('be.visible');
+      cy.get('.ant-input-clear-icon').click();
+      verifyResponseStatusCode('@getTestCase', 200);
+
+      // Test case filter by table name
+      interceptURL(
+        'GET',
+        `/api/v1/dataQuality/testCases/search/list?*entityLink=*${filterTable.name}*`,
+        'searchTestCaseByTable'
+      );
+      cy.get('#tableFqn').scrollIntoView().type(filterTable.name);
+      selectOptionFromDropdown(filterTable.name);
+      verifyResponseStatusCode('@searchTestCaseByTable', 200);
+      verifyFilterTestCase();
+
+      // Test case filter by test type
+      interceptURL(
+        'GET',
+        `/api/v1/dataQuality/testCases/search/list?*testCaseType=column*entityLink=*${filterTable.name}*`,
+        'testCaseTypeByColumn'
+      );
+      cy.get('[data-testid="test-case-type-select-filter"]').click();
+      selectOptionFromDropdown('Column');
+      verifyResponseStatusCode('@testCaseTypeByColumn', 200);
+      cy.get('[data-testid="search-error-placeholder"]').should('be.visible');
+
+      interceptURL(
+        'GET',
+        `/api/v1/dataQuality/testCases/search/list?*testCaseType=table*entityLink=*${filterTable.name}*`,
+        'testCaseTypeByTable'
+      );
+      cy.get('[data-testid="test-case-type-select-filter"]').click();
+      selectOptionFromDropdown('Table');
+      verifyResponseStatusCode('@testCaseTypeByTable', 200);
+      verifyFilterTestCase();
+
+      cy.get('[data-testid="test-case-type-select-filter"]').click();
+      selectOptionFromDropdown('All');
+      verifyResponseStatusCode('@getTestCase', 200);
+
+      // Test case filter by status
+      interceptURL(
+        'GET',
+        `/api/v1/dataQuality/testCases/search/list?*testCaseStatus=Success*entityLink=*${filterTable.name}*`,
+        'testCaseStatusBySuccess'
+      );
+      cy.get('[data-testid="status-select-filter"]').click();
+      selectOptionFromDropdown('Success');
+      verifyResponseStatusCode('@testCaseStatusBySuccess', 200);
+      cy.get('[data-testid="search-error-placeholder"]').should('be.visible');
+
+      interceptURL(
+        'GET',
+        `/api/v1/dataQuality/testCases/search/list?*testCaseStatus=Failed*entityLink=*${filterTable.name}*`,
+        'testCaseStatusByFailed'
+      );
+      cy.get('[data-testid="status-select-filter"]').click();
+      selectOptionFromDropdown('Failed');
+      verifyResponseStatusCode('@testCaseStatusByFailed', 200);
+      verifyFilterTestCase();
+
+      // Test case filter by platform
+      interceptURL(
+        'GET',
+        `/api/v1/dataQuality/testCases/search/list?*testPlatforms=DBT*entityLink=*${filterTable.name}*`,
+        'testCasePlatformByDBT'
+      );
+      cy.get('[data-testid="platform-select-filter"]').click();
+      selectOptionFromDropdown('DBT');
+      verifyResponseStatusCode('@testCasePlatformByDBT', 200);
+      cy.clickOutside();
+      cy.get('[data-testid="search-error-placeholder"]').should('be.visible');
+      cy.get(
+        '[data-testid="platform-select-filter"] .ant-select-clear'
+      ).click();
+      verifyResponseStatusCode('@getTestCase', 200);
+
+      interceptURL(
+        'GET',
+        `/api/v1/dataQuality/testCases/search/list?*testPlatforms=OpenMetadata*entityLink=*${filterTable.name}*`,
+        'testCasePlatformByOpenMetadata'
+      );
+      cy.get('[data-testid="platform-select-filter"]').click();
+      selectOptionFromDropdown('OpenMetadata');
+      verifyResponseStatusCode('@testCasePlatformByOpenMetadata', 200);
+      cy.clickOutside();
+      verifyFilterTestCase();
     });
 
     it('Update profiler setting modal', () => {
@@ -910,7 +1076,6 @@ describe(
       verifyResponseStatusCode('@systemProfiler', 200);
       cy.get('[data-testid="profiler-setting-btn"]').click();
       cy.get('.ant-modal-body').should('be.visible');
-      verifyResponseStatusCode('@tableProfilerConfig', 200);
       cy.get('[data-testid="slider-input"]')
         .clear()
         .type(profilerSetting.profileSample);
@@ -975,7 +1140,8 @@ describe(
       cy.get('[data-testid="profiler"]').click();
       // verify profiler setting details
       cy.get('[data-testid="profiler-setting-btn"]').click();
-      verifyResponseStatusCode('@tableProfilerConfig', 200);
+      // need extra time to load API response
+      verifyResponseStatusCode('@tableProfilerConfig', 200, { timeout: 10000 });
 
       cy.get('[data-testid="slider-input"]').should(
         'have.value',

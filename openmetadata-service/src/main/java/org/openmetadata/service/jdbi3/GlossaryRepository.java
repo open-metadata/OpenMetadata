@@ -38,6 +38,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.csv.CSVPrinter;
 import org.apache.commons.csv.CSVRecord;
 import org.apache.commons.lang3.tuple.ImmutablePair;
+import org.apache.commons.lang3.tuple.Pair;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.csv.CsvUtil;
 import org.openmetadata.csv.EntityCsv;
@@ -50,6 +51,7 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.ProviderType;
 import org.openmetadata.schema.type.Relationship;
+import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.TagLabel.TagSource;
 import org.openmetadata.schema.type.csv.CsvDocumentation;
 import org.openmetadata.schema.type.csv.CsvFile;
@@ -179,7 +181,9 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
           .withSynonyms(CsvUtil.fieldToStrings(csvRecord.get(4)))
           .withRelatedTerms(getEntityReferences(printer, csvRecord, 5, GLOSSARY_TERM))
           .withReferences(getTermReferences(printer, csvRecord))
-          .withTags(getTagLabels(printer, csvRecord, 7))
+          .withTags(
+              getTagLabels(
+                  printer, csvRecord, List.of(Pair.of(7, TagLabel.TagSource.CLASSIFICATION))))
           .withReviewers(getEntityReferences(printer, csvRecord, 8, Entity.USER))
           .withOwner(getOwner(printer, csvRecord, 9))
           .withStatus(getTermStatus(printer, csvRecord));

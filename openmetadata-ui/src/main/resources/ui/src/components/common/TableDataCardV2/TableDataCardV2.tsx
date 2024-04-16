@@ -18,10 +18,10 @@ import { ExtraInfo } from 'Models';
 import React, { forwardRef, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useParams } from 'react-router-dom';
-import { PRIMERY_COLOR } from '../../../constants/constants';
 import { EntityType } from '../../../enums/entity.enum';
 import { OwnerType } from '../../../enums/user.enum';
 import { EntityReference } from '../../../generated/entity/type';
+import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import {
   getEntityPlaceHolder,
   getOwnerValue,
@@ -78,6 +78,7 @@ const TableDataCardV2: React.FC<TableDataCardPropsV2> = forwardRef<
     },
     ref
   ) => {
+    const { theme } = useApplicationStore();
     const { t } = useTranslation();
     const { tab } = useParams<{ tab: string }>();
 
@@ -173,7 +174,7 @@ const TableDataCardV2: React.FC<TableDataCardPropsV2> = forwardRef<
               openEntityInNewPage={openEntityInNewPage}
               serviceName={source?.service?.name ?? ''}
               showName={showName}
-              titleColor={PRIMERY_COLOR}
+              titleColor={theme.primaryColor}
             />
           </Col>
         </Row>
