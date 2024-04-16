@@ -1,7 +1,7 @@
 import sys
 
 import pytest
-from integration.integration_base import int_admin_ometa
+from ..integration_base import int_admin_ometa
 
 from metadata.generated.schema.api.services.createDatabaseService import (
     CreateDatabaseServiceRequest,
