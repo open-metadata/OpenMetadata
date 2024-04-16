@@ -673,6 +673,17 @@
         "schema": "main",
         "database_name": "test",
         "sqlalchemy_uri": "postgres://user:pass@localhost:5432/examples"
+    },
+    {
+        "id":1,
+        "slice_name":"Rural", 
+        "description":"desc", 
+        "table_name":"sample_table", 
+        "schema":"main", 
+        "database_name":"test_db", 
+        "sqlalchemy_uri":"postgres://user:pass@localhost:5432/examples", 
+        "viz_type":"bar_chart", 
+        "datasource_id":99
     }]
 
 }

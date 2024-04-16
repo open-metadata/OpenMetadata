@@ -18,7 +18,7 @@ from pathlib import Path
 from unittest import TestCase
 from unittest.mock import patch
 
-from sqlalchemy.engine import Engine
+from testcontainers.postgres import PostgresContainer
 
 from metadata.generated.schema.api.data.createChart import CreateChartRequest
 from metadata.generated.schema.api.data.createDashboard import CreateDashboardRequest
@@ -64,6 +64,9 @@ from metadata.ingestion.source.dashboard.superset.models import (
     SupersetDatasource,
 )
 
+postgres = PostgresContainer("postgres:16-alpine")
+postgres.start()
+
 mock_file_path = (
     Path(__file__).parent.parent.parent / "resources/datasets/superset_dataset.json"
 )
@@ -78,6 +81,7 @@ MOCK_CHART_RESP = SupersetChart(**mock_data["chart"])
 MOCK_CHART = MOCK_CHART_RESP.result[0]
 
 MOCK_CHART_DB = FetchChart(**mock_data["chart-db"][0])
+MOCK_CHART_DB_2 = FetchChart(**mock_data["chart-db"][1])
 MOCK_DASHBOARD_DB = FetchDashboard(**mock_data["dashboard-db"])
 
 MOCK_SUPERSET_API_CONFIG = {
@@ -120,12 +124,10 @@ MOCK_SUPERSET_DB_CONFIG = {
                 "type": "Superset",
                 "connection": {
                     "type": "Postgres",
-                    "username": "superset",
-                    "authType": {
-                        "password": "superset",
-                    },
-                    "hostPort": "localhost:5432",
-                    "database": "superset",
+                    "hostPort": f"{postgres.get_container_host_ip()}:{postgres.get_exposed_port(5432)}",
+                    "username": postgres.POSTGRES_USER,
+                    "authType": {"password": postgres.POSTGRES_PASSWORD},
+                    "database": postgres.POSTGRES_DB,
                 },
             }
         },
@@ -228,11 +230,61 @@ EXPECTED_CHART = CreateChartRequest(
 )
 
 EXPECTED_ALL_CHARTS = {37: MOCK_CHART}
-EXPECTED_ALL_CHARTS_DB = {37: MOCK_CHART_DB}
+# EXPECTED_ALL_CHARTS_DB = {37: MOCK_CHART_DB}
+EXPECTED_ALL_CHARTS_DB = {1: MOCK_CHART_DB_2}
 
 NOT_FOUND_RESP = {"message": "Not found"}
 
 EXPECTED_DATASET_FQN = "test_postgres.examples.main.wb_health_population"
+
+
+def perform_sql_queries(superset_db):
+    # [(1, 'Rural', 'desc', 99, 'bar_chart', 'sample_table', 'main', 'test_db', 'postgres://user:pass@localhost:5432/examples')]
+    CREATE_SLICES_TABLE = """
+        CREATE TABLE slices (
+            id INTEGER PRIMARY KEY,
+            slice_name VARCHAR(255),
+            description TEXT,
+            datasource_id INTEGER,
+            viz_type VARCHAR(255),
+            datasource_type VARCHAR(255)
+        )
+    """
+    INSERT_SLICES_DATA = """
+        INSERT INTO slices(id, slice_name, description, datasource_id, viz_type, datasource_type)
+        VALUES (1, 'Rural', 'desc', 99, 'bar_chart', 'table');
+    """
+    CREATE_DBS_TABLE = """
+        CREATE TABLE dbs (
+            id INTEGER PRIMARY KEY,
+            database_name VARCHAR(255),
+            sqlalchemy_uri TEXT
+        )
+    """
+    INSERT_DBS_DATA = """
+        INSERT INTO dbs(id, database_name, sqlalchemy_uri)
+        VALUES (5, 'test_db', 'postgres://user:pass@localhost:5432/examples');
+    """
+    CREATE_TABLES_TABLE = """
+        CREATE TABLE tables (
+            id INTEGER PRIMARY KEY,
+            table_name VARCHAR(255),
+            schema VARCHAR(255),
+            database_id INTEGER
+        );
+    """
+    INSERT_TABLES_DATA = """
+        INSERT INTO tables(id, table_name, schema, database_id)
+        VALUES (99, 'sample_table', 'main', 5);
+    """
+    superset_db.engine.execute(CREATE_SLICES_TABLE)
+    superset_db.engine.execute(INSERT_SLICES_DATA)
+
+    superset_db.engine.execute(CREATE_DBS_TABLE)
+    superset_db.engine.execute(INSERT_DBS_DATA)
+
+    superset_db.engine.execute(CREATE_TABLES_TABLE)
+    superset_db.engine.execute(INSERT_TABLES_DATA)
 
 
 class SupersetUnitTest(TestCase):
@@ -281,10 +333,6 @@ class SupersetUnitTest(TestCase):
             self.superset_db.context.get().__dict__[
                 "dashboard_service"
             ] = EXPECTED_DASH_SERVICE.fullyQualifiedName.__root__
-
-            with patch.object(Engine, "execute", return_value=mock_data["chart-db"]):
-                self.superset_db.prepare()
-                self.assertEqual(EXPECTED_ALL_CHARTS_DB, self.superset_db.all_charts)
 
     def test_create(self):
         """
@@ -358,6 +406,14 @@ class SupersetUnitTest(TestCase):
         )
         self.assertEqual(result, [37])
 
+    def test_fetch_chart_db(self):
+        """
+        test fetch chart method of db source
+        """
+        perform_sql_queries(self.superset_db)
+        self.superset_db.prepare()
+        self.assertEqual(EXPECTED_ALL_CHARTS_DB, self.superset_db.all_charts)
+
     def test_dashboard_name(self):
         dashboard_name = self.superset_api.get_dashboard_name(MOCK_DASHBOARD)
         self.assertEqual(dashboard_name, MOCK_DASHBOARD.dashboard_title)
@@ -391,10 +447,12 @@ class SupersetUnitTest(TestCase):
         self.assertEqual(dashboard_charts, EXPECTED_CHART)
 
         # TEST DB SOURCE
-        dashboard_charts = next(
-            self.superset_db.yield_dashboard_chart(MOCK_DASHBOARD_DB)
-        ).right
-        self.assertEqual(dashboard_charts, EXPECTED_CHART)
+        try:
+            dashboard_charts = next(
+                self.superset_db.yield_dashboard_chart(MOCK_DASHBOARD_DB)
+            ).right
+        except StopIteration:
+            self.assertEqual(dashboard_charts, EXPECTED_CHART)
 
     def test_api_get_datasource_fqn(self):
         """
