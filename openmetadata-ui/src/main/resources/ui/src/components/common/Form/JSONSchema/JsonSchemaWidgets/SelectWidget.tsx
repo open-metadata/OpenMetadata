@@ -1,5 +1,5 @@
 /*
- *  Copyright 2023 Collate.
+ *  Copyright 2024 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -12,10 +12,10 @@
  */
 import { WidgetProps } from '@rjsf/utils';
 import { Select } from 'antd';
-import { capitalize, uniqueId } from 'lodash';
+import { capitalize } from 'lodash';
 import React, { FC } from 'react';
 
-const MultiSelectWidget: FC<WidgetProps> = ({
+const SelectWidget: FC<WidgetProps> = ({
   onFocus,
   onBlur,
   onChange,
@@ -25,16 +25,20 @@ const MultiSelectWidget: FC<WidgetProps> = ({
     <Select
       autoFocus={rest.autofocus}
       className="d-block w-full"
+      data-testid="select-widget"
       disabled={rest.disabled}
       id={rest.id}
-      mode={rest.multiple ? 'multiple' : 'tags'}
+      mode={rest.multiple ? 'multiple' : undefined}
       placeholder={rest.placeholder}
       value={rest.value}
       onBlur={() => onBlur(rest.id, rest.value)}
       onChange={(value) => onChange(value)}
       onFocus={() => onFocus(rest.id, rest.value)}>
       {(rest.options.enumOptions ?? []).map((option) => (
-        <Select.Option key={uniqueId()} value={option.value}>
+        <Select.Option
+          data-testid={`select-option-${option.label}`}
+          key={option.value}
+          value={option.value}>
           {capitalize(option.label)}
         </Select.Option>
       ))}
@@ -42,4 +46,4 @@ const MultiSelectWidget: FC<WidgetProps> = ({
   );
 };
 
-export default MultiSelectWidget;
+export default SelectWidget;
