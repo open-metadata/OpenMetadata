@@ -1390,6 +1390,7 @@
     "downstream-depth-tooltip": "Отобразите до 3 узлов нисходящей линии для идентификации цели (дочерние уровни).",
     "drag-and-drop-files-here": "Перетащите файлы сюда",
     "drag-and-drop-or-browse-csv-files-here": "Перетащите или <0>{{text}}</0> CSV-файл сюда ",
+    "drag-and-drop-or-browse-files-here": "Drag & Drop or <0>{{text}}</0> {{type}} file here",
     "duration-in-iso-format": "Duration in ISO 8601 format 'PnYnMnDTnHnMnS'",
     "edit-entity-style-description": "Change icon and badge color for the {{entity}}.",
     "edit-glossary-display-name-help": "Обновить отображаемое имя",

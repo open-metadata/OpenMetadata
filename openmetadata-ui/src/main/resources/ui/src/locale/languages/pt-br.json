@@ -1390,6 +1390,7 @@
     "downstream-depth-tooltip": "Exibir até 3 nós de linhagem a jusante para identificar o alvo (níveis filhos).",
     "drag-and-drop-files-here": "Arraste e solte arquivos aqui",
     "drag-and-drop-or-browse-csv-files-here": "Arraste e Solte ou <0>{{text}}</0> arquivo CSV aqui",
+    "drag-and-drop-or-browse-files-here": "Drag & Drop or <0>{{text}}</0> {{type}} file here",
     "duration-in-iso-format": "Duration in ISO 8601 format 'PnYnMnDTnHnMnS'",
     "edit-entity-style-description": "Mude o ícone e a cor do distintivo para a {{entity}}.",
     "edit-glossary-display-name-help": "Atualizar Nome de Exibição",

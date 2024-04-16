@@ -1390,6 +1390,7 @@
     "downstream-depth-tooltip": "Muestre hasta 3 nodos de linaje para identificar el objetivo (niveles descendientes).",
     "drag-and-drop-files-here": "Arrastre y suelte archivos aquí",
     "drag-and-drop-or-browse-csv-files-here": "Arrastre y suelte o <0>{{text}}</0> archivo CSV aquí",
+    "drag-and-drop-or-browse-files-here": "Drag & Drop or <0>{{text}}</0> {{type}} file here",
     "duration-in-iso-format": "Duration in ISO 8601 format 'PnYnMnDTnHnMnS'",
     "edit-entity-style-description": "Cambie el icono y el color de la insignia para {{entity}}.",
     "edit-glossary-display-name-help": "Actualizar el nombre de visualización",

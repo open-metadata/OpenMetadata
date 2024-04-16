@@ -1390,6 +1390,7 @@
     "downstream-depth-tooltip": "מציג עד ל-3 צמתים של לוקייניאג' מטה כדי לזהות את היעד (רמות הילדים).",
     "drag-and-drop-files-here": "גרור ושחרר קבצים לכאן",
     "drag-and-drop-or-browse-csv-files-here": "גרור ושחרר או <0>{{text}}</0> קובץ CSV לכאן",
+    "drag-and-drop-or-browse-files-here": "Drag & Drop or <0>{{text}}</0> {{type}} file here",
     "duration-in-iso-format": "Duration in ISO 8601 format 'PnYnMnDTnHnMnS'",
     "edit-entity-style-description": "שנה את צבע הסמל והביסוס עבור {{entity}}.",
     "edit-glossary-display-name-help": "עדכן שם תצוגה",

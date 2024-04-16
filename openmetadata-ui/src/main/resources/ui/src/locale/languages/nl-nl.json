@@ -1390,6 +1390,7 @@
     "downstream-depth-tooltip": "Toon maximaal 3 knooppunten van downstream-lineage om het doel (kind-levels) te identificeren.",
     "drag-and-drop-files-here": "Bestanden hierheen slepen en neerzetten",
     "drag-and-drop-or-browse-csv-files-here": "Sleep & neerzetten, of <0>{{text}}</0> CSV-bestand hier",
+    "drag-and-drop-or-browse-files-here": "Drag & Drop or <0>{{text}}</0> {{type}} file here",
     "duration-in-iso-format": "Duration in ISO 8601 format 'PnYnMnDTnHnMnS'",
     "edit-entity-style-description": "Wijzig het pictogram en de badgekleur voor de {{entity}}.",
     "edit-glossary-display-name-help": "Werk de weergavenaam bij",

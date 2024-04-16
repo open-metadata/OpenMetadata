@@ -1390,6 +1390,7 @@
     "downstream-depth-tooltip": "Afficher jusqu'à 3 nœuds de lignée descendante pour identifier la cible (niveaux enfants).",
     "drag-and-drop-files-here": "Glisser et déposer les fichiers ici",
     "drag-and-drop-or-browse-csv-files-here": "Glisser et déposer ou <0>{{text}}</0> fichier CSV ici",
+    "drag-and-drop-or-browse-files-here": "Drag & Drop or <0>{{text}}</0> {{type}} file here",
     "duration-in-iso-format": "Duration in ISO 8601 format 'PnYnMnDTnHnMnS'",
     "edit-entity-style-description": "Change icon and badge color for the {{entity}}.",
     "edit-glossary-display-name-help": "Mise à jour du nom d'affichage",
