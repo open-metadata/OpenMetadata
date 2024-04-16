@@ -17,6 +17,7 @@ import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.Entity.ADMIN_ROLE;
 import static org.openmetadata.service.security.jwt.JWTTokenGenerator.ROLES_CLAIM;
 import static org.openmetadata.service.security.jwt.JWTTokenGenerator.TOKEN_TYPE;
+import static org.openmetadata.service.util.UserUtil.getRoleListFromUser;
 import static org.openmetadata.service.util.UserUtil.getRolesFromString;
 import static org.openmetadata.service.util.UserUtil.isRolesSyncNeeded;
 
@@ -33,7 +34,6 @@ import com.google.common.collect.ImmutableList;
 import java.net.URL;
 import java.security.interfaces.RSAPublicKey;
 import java.util.*;
-import java.util.stream.Collectors;
 import javax.json.JsonPatch;
 import javax.ws.rs.container.ContainerRequestContext;
 import javax.ws.rs.container.ContainerRequestFilter;
@@ -51,7 +51,6 @@ import org.openmetadata.schema.auth.ServiceTokenType;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.services.connections.metadata.AuthProvider;
 import org.openmetadata.schema.type.EntityReference;
-import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.UserRepository;
 import org.openmetadata.service.security.auth.BotTokenCache;
@@ -306,8 +305,7 @@ public class JwtFilter implements ContainerRequestFilter {
     if (useRolesFromProvider) {
       UserRepository userRepository = (UserRepository) Entity.getEntityRepository(Entity.USER);
       Set<String> rolesFromToken = new HashSet<>(roles);
-      // TODO: This doesn't look like very good option this internally makes role calls
-      User user = Entity.getEntityByName(Entity.USER, userName, "roles", Include.NON_DELETED, true);
+      User user = UserRolesCache.getUserWithRoles(userName);
       User updatedUser = JsonUtils.deepCopy(user, User.class);
       // Check if Admin User
       if (rolesFromToken.contains(ADMIN_ROLE)) {
@@ -320,8 +318,7 @@ public class JwtFilter implements ContainerRequestFilter {
         rolesFromToken.remove(ADMIN_ROLE);
       }
 
-      Set<String> rolesFromUser =
-          user.getRoles().stream().map(EntityReference::getName).collect(Collectors.toSet());
+      Set<String> rolesFromUser = getRoleListFromUser(user);
 
       // Check if roles are different
       if (!nullOrEmpty(rolesFromToken) && isRolesSyncNeeded(rolesFromToken, rolesFromUser)) {

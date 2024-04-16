@@ -14,6 +14,7 @@
 package org.openmetadata.service.util;
 
 import static org.openmetadata.common.utils.CommonUtil.listOf;
+import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.schema.entity.teams.AuthenticationMechanism.AuthType.JWT;
 import static org.openmetadata.schema.type.Include.NON_DELETED;
@@ -251,7 +252,9 @@ public final class UserUtil {
     if (user.getRoles() == null || user.getRoles().isEmpty()) {
       return Collections.emptySet();
     }
-    return user.getRoles().stream().map(EntityReference::getName).collect(Collectors.toSet());
+    return listOrEmpty(user.getRoles()).stream()
+        .map(EntityReference::getName)
+        .collect(Collectors.toSet());
   }
 
   public static List<EntityReference> getRolesFromString(Set<String> rolesList) {
