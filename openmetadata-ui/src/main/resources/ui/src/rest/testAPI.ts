@@ -18,6 +18,7 @@ import { SORT_ORDER } from '../enums/common.enum';
 import { CreateTestCase } from '../generated/api/tests/createTestCase';
 import { CreateTestSuite } from '../generated/api/tests/createTestSuite';
 import {
+  TableData,
   TestCase,
   TestCaseResult,
   TestCaseStatus,
@@ -133,6 +134,13 @@ export const getListTestCaseResults = async (
   }>(url, {
     params,
   });
+
+  return response.data;
+};
+
+export const getTestCaseFailedSampleData = async (id: string) => {
+  const url = `${testCaseUrl}/${id}/failedRowsSample`;
+  const response = await APIClient.get<TableData>(url);
 
   return response.data;
 };
