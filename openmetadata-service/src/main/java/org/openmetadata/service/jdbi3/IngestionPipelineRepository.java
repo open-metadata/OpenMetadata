@@ -84,6 +84,10 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
     if (ingestionPipeline.getService() == null) {
       ingestionPipeline.withService(getContainer(ingestionPipeline.getId()));
     }
+    ingestionPipeline.setPipelineStatuses(
+        fields.contains("pipelineStatuses")
+            ? getLatestPipelineStatus(ingestionPipeline)
+            : ingestionPipeline.getPipelineStatuses());
   }
 
   @Override
@@ -188,7 +192,7 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
   public RestUtil.PutResponse<?> addPipelineStatus(
       UriInfo uriInfo, String fqn, PipelineStatus pipelineStatus) {
     // Validate the request content
-    IngestionPipeline ingestionPipeline = findByName(fqn, Include.NON_DELETED);
+    IngestionPipeline ingestionPipeline = getByName(uriInfo, fqn, getFields("service"));
     PipelineStatus storedPipelineStatus =
         JsonUtils.readValue(
             daoCollection
@@ -220,6 +224,11 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
     ChangeDescription change =
         addPipelineStatusChangeDescription(
             ingestionPipeline.getVersion(), pipelineStatus, storedPipelineStatus);
+    ingestionPipeline.setPipelineStatuses(pipelineStatus);
+
+    // Update ES Indexes
+    searchRepository.updateEntity(ingestionPipeline);
+
     ChangeEvent changeEvent =
         getChangeEvent(
             withHref(uriInfo, ingestionPipeline),
