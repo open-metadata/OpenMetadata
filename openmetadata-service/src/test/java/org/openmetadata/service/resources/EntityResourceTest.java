@@ -1026,7 +1026,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
         "{\"size\": 100,\"query\":{\"bool\":{\"must\":[{\"term\":{\"descriptionStatus\":\"INCOMPLETE\"}}]}}}";
     request.setJsonEntity(query);
     try {
-      waitForEsAsyncOp();
+      waitForEsAsyncOp(1000);
       response = searchClient.performRequest(request);
     } finally {
       searchClient.close();
@@ -1072,7 +1072,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
         "{\"size\": 100,\"query\":{\"bool\":{\"must\":[{\"term\":{\"descriptionStatus\":\"INCOMPLETE\"}}]}}}";
     request.setJsonEntity(query);
     try {
-      waitForEsAsyncOp();
+      waitForEsAsyncOp(1000);
       response = searchClient.performRequest(request);
     } finally {
       searchClient.close();
