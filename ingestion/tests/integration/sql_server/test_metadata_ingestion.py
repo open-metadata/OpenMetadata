@@ -1,7 +1,12 @@
+import sys
+
 import pytest
+from integration.integration_base import int_admin_ometa
+
 from metadata.generated.schema.api.services.createDatabaseService import (
     CreateDatabaseServiceRequest,
 )
+from metadata.generated.schema.entity.data.table import Constraint, Table
 from metadata.generated.schema.entity.services.connections.database.mssqlConnection import (
     MssqlConnection,
     MssqlScheme,
@@ -18,11 +23,8 @@ from metadata.generated.schema.metadataIngestion.workflow import (
     SourceConfig,
     WorkflowConfig,
 )
-from metadata.workflow.metadata import MetadataWorkflow
-from integration.integration_base import int_admin_ometa
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-
-from metadata.generated.schema.entity.data.table import Table, Constraint
+from metadata.workflow.metadata import MetadataWorkflow
 
 
 @pytest.fixture(scope="module")
@@ -92,6 +94,7 @@ def db_fqn(db_service: DatabaseService):
     )
 
 
+@pytest.mark.skip(sys.version_info < (3, 9), reason="requires python 3.9")
 def test_pass(
     db_service,
     metadata,
