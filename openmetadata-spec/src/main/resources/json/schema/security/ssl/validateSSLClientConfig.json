@@ -11,19 +11,22 @@
       "title": "CA Certificate",
       "description": "The CA certificate used for SSL validation.",
       "type": "string",
-      "format": "password"
+      "format": "data-url",
+      "accept": [".pem"]
     },
     "sslCertificate": {
       "title": "SSL Certificate",
       "description": "The SSL certificate used for client authentication.",
       "type": "string",
-      "format": "password"
+      "format": "data-url",
+      "accept": [".pem"]
     },
     "sslKey": {
       "title": "SSL Key",
       "description": "The private key associated with the SSL certificate.",
       "type": "string",
-      "format": "password"
+      "format": "data-url",
+      "accept": [".pem"]
     }
   }
 }

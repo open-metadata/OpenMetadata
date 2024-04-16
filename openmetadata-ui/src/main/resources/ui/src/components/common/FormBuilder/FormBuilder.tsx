@@ -26,6 +26,8 @@ import DescriptionFieldTemplate from '../Form/JSONSchema/JSONSchemaTemplate/Desc
 import { FieldErrorTemplate } from '../Form/JSONSchema/JSONSchemaTemplate/FieldErrorTemplate/FieldErrorTemplate';
 import { ObjectFieldTemplate } from '../Form/JSONSchema/JSONSchemaTemplate/ObjectFieldTemplate';
 import AsyncSelectWidget from '../Form/JSONSchema/JsonSchemaWidgets/AsyncSelectWidget';
+import FileUploadWidget from '../Form/JSONSchema/JsonSchemaWidgets/FileUploadWidget';
+import MultiSelectWidget from '../Form/JSONSchema/JsonSchemaWidgets/MultiSelectWidget';
 import PasswordWidget from '../Form/JSONSchema/JsonSchemaWidgets/PasswordWidget';
 import SelectWidget from '../Form/JSONSchema/JsonSchemaWidgets/SelectWidget';
 import Loader from '../Loader/Loader';
@@ -70,7 +72,8 @@ const FormBuilder: FunctionComponent<Props> = forwardRef(
     const widgets = {
       PasswordWidget: PasswordWidget,
       autoComplete: AsyncSelectWidget,
-      ...(useSelectWidget && { SelectWidget: SelectWidget }),
+      FileWidget: FileUploadWidget,
+      ...(useSelectWidget && { SelectWidget: MultiSelectWidget }),
     };
 
     const handleCancel = () => {

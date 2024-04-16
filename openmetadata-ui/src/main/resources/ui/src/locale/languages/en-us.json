@@ -1390,6 +1390,7 @@
     "downstream-depth-tooltip": "Display up to 3 nodes of downstream lineage to identify the target (child levels).",
     "drag-and-drop-files-here": "Drag & drop files here",
     "drag-and-drop-or-browse-csv-files-here": "Drag & Drop or <0>{{text}}</0> CSV file here",
+    "drag-and-drop-or-browse-files-here": "Drag & Drop or <0>{{text}}</0> {{type}} file here",
     "duration-in-iso-format": "Duration in ISO 8601 format 'PnYnMnDTnHnMnS'",
     "edit-entity-style-description": "Change icon and badge color for the {{entity}}.",
     "edit-glossary-display-name-help": "Update Display Name",
