@@ -273,6 +273,7 @@ export const isProtectedRoute = (pathname: string) => {
       ROUTES.ACCOUNT_ACTIVATION,
       ROUTES.HOME,
       ROUTES.AUTH_CALLBACK,
+      ROUTES.NOT_FOUND,
     ].indexOf(pathname) === -1
   );
 };

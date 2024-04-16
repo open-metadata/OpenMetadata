@@ -511,7 +511,7 @@ export const AuthProvider = ({
         if (error.response) {
           const { status } = error.response;
           if (status === ClientErrors.UNAUTHORIZED) {
-            storeRedirectPath();
+            handleStoreProtectedRedirectPath();
             trySilentSignIn(true);
           }
         }
@@ -679,10 +679,6 @@ export const AuthProvider = ({
 
     return cleanup;
   }, []);
-
-  useEffect(() => {
-    handleStoreProtectedRedirectPath();
-  }, [location.pathname]);
 
   const isLoading =
     !authConfig ||
