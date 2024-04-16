@@ -72,7 +72,7 @@ class AdvancedSearchClassBase {
   tableQueryBuilderFields: Fields = {
     'database.displayName.keyword': {
       label: t('label.database'),
-      type: 'multiselect',
+      type: 'select',
       mainWidgetProps: this.mainWidgetProps,
       fieldSettings: {
         asyncFetch: this.autocomplete({
@@ -85,7 +85,7 @@ class AdvancedSearchClassBase {
 
     'databaseSchema.displayName.keyword': {
       label: t('label.database-schema'),
-      type: 'multiselect',
+      type: 'select',
       mainWidgetProps: this.mainWidgetProps,
       fieldSettings: {
         asyncFetch: this.autocomplete({
@@ -98,7 +98,7 @@ class AdvancedSearchClassBase {
 
     'columns.name.keyword': {
       label: t('label.column'),
-      type: 'multiselect',
+      type: 'select',
       mainWidgetProps: this.mainWidgetProps,
       fieldSettings: {
         asyncFetch: this.autocomplete({
@@ -227,7 +227,7 @@ class AdvancedSearchClassBase {
 
       'owner.displayName.keyword': {
         label: t('label.owner'),
-        type: 'multiselect',
+        type: 'select',
         mainWidgetProps: this.mainWidgetProps,
 
         fieldSettings: {
@@ -241,7 +241,7 @@ class AdvancedSearchClassBase {
 
       'tags.tagFQN': {
         label: t('label.tag-plural'),
-        type: 'multiselect',
+        type: 'select',
         mainWidgetProps: this.mainWidgetProps,
         fieldSettings: {
           asyncFetch: this.autocomplete({
@@ -256,7 +256,7 @@ class AdvancedSearchClassBase {
 
       'tier.tagFQN': {
         label: t('label.tier'),
-        type: 'multiselect',
+        type: 'select',
         mainWidgetProps: this.mainWidgetProps,
         fieldSettings: {
           asyncFetch: this.autoCompleteTier(tierOptions),
@@ -274,7 +274,7 @@ class AdvancedSearchClassBase {
     const serviceQueryBuilderFields: Fields = {
       'service.displayName.keyword': {
         label: t('label.service'),
-        type: 'multiselect',
+        type: 'select',
         mainWidgetProps: this.mainWidgetProps,
         fieldSettings: {
           asyncFetch: this.autocomplete({
