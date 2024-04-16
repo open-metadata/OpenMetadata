@@ -32,7 +32,7 @@ import { EntityReference } from '../generated/entity/type';
 export interface HelperFunctions {
   onLoginHandler: () => void;
   onLogoutHandler: () => void;
-  handleSuccessfulLogin: (user: OidcUser) => void;
+  handleSuccessfulLogin: (user: OidcUser) => Promise<void>;
   handleFailedLogin: () => void;
   updateAxiosInterceptors: () => void;
 }
