@@ -67,6 +67,18 @@ public class ApplicationHandler {
     }
   }
 
+  public Boolean isPreview(String appName) {
+    if (privateConfiguration != null
+        && !nullOrEmpty(privateConfiguration.getAppsPrivateConfiguration())) {
+      for (AppPrivateConfig appPrivateConfig : privateConfiguration.getAppsPrivateConfiguration()) {
+        if (appName.equals(appPrivateConfig.getName())) {
+          return appPrivateConfig.getPreview();
+        }
+      }
+    }
+    return false;
+  }
+
   public void triggerApplicationOnDemand(
       App app, CollectionDAO daoCollection, SearchRepository searchRepository) {
     runMethodFromApplication(app, daoCollection, searchRepository, "triggerOnDemand");
