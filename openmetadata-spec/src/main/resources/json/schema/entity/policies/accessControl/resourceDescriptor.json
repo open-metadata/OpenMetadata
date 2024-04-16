@@ -21,6 +21,7 @@
         "ViewQueries",
         "ViewDataProfile",
         "ViewSampleData",
+        "ViewTestCaseFailedRowsSample",
         "EditAll",
         "EditCustomFields",
         "EditDataProfile",
@@ -42,7 +43,8 @@
         "EditUsers",
         "EditLifeCycle",
         "EditKnowledgePanel",
-        "EditPage"
+        "EditPage",
+        "DeleteTestCaseFailedRowsSample"
       ]
     }
   },
