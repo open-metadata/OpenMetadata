@@ -312,7 +312,7 @@ export const verifyCustomPropertyRows = () => {
   ).scrollIntoView();
   cy.get(
     '[data-testid="entity-right-panel"] [data-testid="custom-properties-table"] tbody tr'
-  ).should('have.length', 5);
+  ).should('have.length', 6);
 };
 
 export const deleteCustomProperties = (
