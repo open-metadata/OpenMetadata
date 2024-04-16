@@ -12,6 +12,7 @@
  */
 
 import { StatusType } from '../components/common/StatusBadge/StatusBadge.interface';
+import { ModifiedGlossaryTerm } from '../components/Glossary/GlossaryTermTab/GlossaryTermTab.interface';
 import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
 import { EntityType } from '../enums/entity.enum';
 import { Glossary } from '../generated/entity/data/glossary';
@@ -19,17 +20,6 @@ import { GlossaryTerm, Status } from '../generated/entity/data/glossaryTerm';
 import { EntityReference } from '../generated/type/entityReference';
 import Fqn from './Fqn';
 import { getGlossaryPath } from './RouterUtils';
-
-/**
- * To get list of fqns from list of glossary terms
- * @param terms formatted glossary terms
- * @returns list of term fqns
- */
-export const getGlossaryTermlist = (
-  terms: Array<GlossaryTerm> = []
-): Array<string> => {
-  return terms.map((term: GlossaryTerm) => term.fullyQualifiedName || '');
-};
 
 export const getEntityReferenceFromGlossary = (
   glossary: Glossary
@@ -150,4 +140,26 @@ export const getGlossaryBreadcrumbs = (fqn: string) => {
   ];
 
   return breadcrumbList;
+};
+
+export const findGlossaryTermFromID = (
+  list: ModifiedGlossaryTerm[],
+  id: string
+): GlossaryTerm | Glossary | null => {
+  for (const item of list) {
+    if (item.id === id) {
+      return item;
+    }
+    if (item.children) {
+      const found = findGlossaryTermFromID(
+        item.children as ModifiedGlossaryTerm[],
+        id
+      );
+      if (found) {
+        return found;
+      }
+    }
+  }
+
+  return null;
 };

@@ -12,18 +12,15 @@
  */
 import { CloseOutlined } from '@ant-design/icons';
 import { TagProps, TreeSelect, TreeSelectProps } from 'antd';
+import { DefaultOptionType } from 'antd/lib/select';
 import { AxiosError } from 'axios';
-import { isEmpty, isUndefined, pick } from 'lodash';
+import { isEmpty, isNil, isUndefined, pick } from 'lodash';
 import { CustomTagProps } from 'rc-select/lib/BaseSelect';
 import React, { FC, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import {
-  API_RES_MAX_SIZE,
-  PAGE_SIZE_LARGE,
-} from '../../../constants/constants';
+import { PAGE_SIZE_LARGE } from '../../../constants/constants';
 import { TAG_START_WITH } from '../../../constants/Tag.constants';
 import { Glossary } from '../../../generated/entity/data/glossary';
-import { GlossaryTerm } from '../../../generated/entity/data/glossaryTerm';
 import { LabelType } from '../../../generated/entity/data/table';
 import { Paging } from '../../../generated/type/paging';
 import { TagLabel } from '../../../generated/type/tagLabel';
@@ -31,11 +28,20 @@ import {
   getGlossariesList,
   getGlossaryTerms,
   ListGlossaryTermsParams,
+  searchGlossaryTerms,
 } from '../../../rest/glossaryAPI';
 import { getEntityName } from '../../../utils/EntityUtils';
-import { buildTree } from '../../../utils/GlossaryUtils';
-import { getTagDisplay, tagRender } from '../../../utils/TagsUtils';
+import {
+  buildTree,
+  findGlossaryTermFromID,
+} from '../../../utils/GlossaryUtils';
+import {
+  fetchGlossaryList,
+  getTagDisplay,
+  tagRender,
+} from '../../../utils/TagsUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
+import { ModifiedGlossaryTerm } from '../../Glossary/GlossaryTermTab/GlossaryTermTab.interface';
 import TagsV1 from '../../Tag/TagsV1/TagsV1.component';
 import Loader from '../Loader/Loader';
 import {
@@ -43,50 +49,22 @@ import {
   SelectOption,
 } from './AsyncSelectList.interface';
 
-const TreeAsyncSelectList: FC<AsyncSelectListProps> = ({
+const TreeAsyncSelectList: FC<Omit<AsyncSelectListProps, 'fetchOptions'>> = ({
   onChange,
-  fetchOptions,
   initialOptions,
-  filterOptions = [],
   tagType,
   ...props
 }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [hasContentLoading, setHasContentLoading] = useState(false);
-  const [options, setOptions] = useState<SelectOption[]>([]);
+
   const [searchValue, setSearchValue] = useState<string>('');
   const [paging, setPaging] = useState<Paging>({} as Paging);
   const [currentPage, setCurrentPage] = useState(1);
   const selectedTagsRef = useRef<SelectOption[]>(initialOptions ?? []);
   const { t } = useTranslation();
-  const [optionFilteredCount, setOptionFilteredCount] = useState(0);
   const [glossaries, setGlossaries] = useState([] as Glossary[]);
-  const [isTermsLoading, setIsTermsLoading] = useState(false);
-  const [glossaryTerms, setGlossaryTerms] = useState<GlossaryTerm[]>([]);
-  const [expandedKeys, setExpandedKeys] = useState<string[]>([]);
-
-  const getFilteredOptions = (data: SelectOption[]) => {
-    if (isEmpty(filterOptions)) {
-      return data;
-    }
-
-    let count = optionFilteredCount;
-
-    const filteredData = data.filter((item) => {
-      const isFiltered = filterOptions.includes(
-        item.data?.fullyQualifiedName ?? ''
-      );
-      if (isFiltered) {
-        count = optionFilteredCount + 1;
-      }
-
-      return !isFiltered;
-    });
-
-    setOptionFilteredCount(count);
-
-    return filteredData;
-  };
+  const expandableKeys = useRef<string[]>([]);
 
   const onScroll = async (e: React.UIEvent<HTMLDivElement>) => {
     const { currentTarget } = e;
@@ -95,11 +73,11 @@ const TreeAsyncSelectList: FC<AsyncSelectListProps> = ({
       currentTarget.scrollHeight
     ) {
       // optionFilteredCount added to equalize the options received from the server
-      if (options.length + optionFilteredCount < paging.total) {
+      if (glossaries.length < paging.total) {
         try {
           setHasContentLoading(true);
-          const res = await fetchOptions(searchValue, currentPage + 1);
-          setOptions((prev) => [...prev, ...getFilteredOptions(res.data)]);
+          const res = await fetchGlossaryList(searchValue, currentPage + 1);
+          //   setOptions((prev) => [...prev, ...getFilteredOptions(res.data)]);
           setPaging(res.paging);
           setCurrentPage((prev) => prev + 1);
         } catch (error) {
@@ -177,61 +155,55 @@ const TreeAsyncSelectList: FC<AsyncSelectListProps> = ({
     );
   };
 
-  const handleChange: TreeSelectProps['onChange'] = (
-    values: string[],
-    options
-  ) => {
+  const handleChange: TreeSelectProps['onChange'] = (values: string[]) => {
     const selectedValues = values.map((value) => {
-      const initialData = initialOptions?.find(
-        (item) => item.value === value
-      )?.data;
-      const data = (options as SelectOption[]).find(
-        (option) => option.value === value
+      const initialData = findGlossaryTermFromID(
+        glossaries as ModifiedGlossaryTerm[],
+        value
       );
 
-      return (
-        (initialData
-          ? {
-              value,
-              label: value,
-              data: initialData,
-            }
-          : data) ?? {
-          value,
-          label: value,
-        }
-      );
+      return initialData
+        ? {
+            value: initialData.fullyQualifiedName ?? '',
+            label: getEntityName(initialData),
+          }
+        : {
+            value,
+            label: value,
+          };
     });
     selectedTagsRef.current = selectedValues;
     onChange?.(selectedValues);
   };
-  const fetchGlossaryList = async () => {
-    //   setIsRightPanelLoading(true);
-    //   setIsLoading(true);
+
+  const fetchGlossaryListInternal = async () => {
     try {
-      const { data } = await getGlossariesList({
-        fields: 'owner,tags,reviewers,votes,domain',
+      const { data, paging } = await getGlossariesList({
         limit: PAGE_SIZE_LARGE,
       });
       setGlossaries(data);
+      setPaging(paging);
     } catch (error) {
       showErrorToast(error as AxiosError);
     } finally {
       setIsLoading(false);
-      // setIsRightPanelLoading(false);
     }
   };
 
-  const fetchGlossaryTerm = async (
-    params?: ListGlossaryTermsParams,
-    refresh?: boolean
-  ) => {
-    refresh ? setIsTermsLoading(true) : setIsLoading(true);
+  useEffect(() => {
+    fetchGlossaryListInternal();
+  }, []);
+
+  const fetchGlossaryTerm = async (params?: ListGlossaryTermsParams) => {
+    if (!params?.glossary) {
+      return;
+    }
+    setIsLoading(true);
     try {
       const { data } = await getGlossaryTerms({
         ...params,
-        limit: API_RES_MAX_SIZE,
-        fields: 'children,owner,parent',
+        limit: 500,
+        fields: 'children',
       });
 
       setGlossaries((prev) =>
@@ -240,66 +212,48 @@ const TreeAsyncSelectList: FC<AsyncSelectListProps> = ({
           children:
             glossary.id === params?.glossary
               ? buildTree(data)
-              : glossary['children'],
+              : (glossary as ModifiedGlossaryTerm)['children'],
         }))
       );
-      setGlossaryTerms(data);
     } catch (error) {
-      //   showErrorToast(error as AxiosError);
+      showErrorToast(error as AxiosError);
     } finally {
-      refresh ? setIsTermsLoading(false) : setIsLoading(false);
+      setIsLoading(false);
     }
   };
 
-  //   const loadGlossaryTerms = useCallback(
-  //     (refresh = false) => {
-  //       fetchGlossaryTerm(
-  //         isGlossaryActive ? { glossary: id } : { parent: id },
-  //         refresh
-  //       );
-  //     },
-  //     [id, isGlossaryActive]
-  //   );
-  useEffect(() => {
-    fetchGlossaryList();
-    // loadGlossaryTerms();
-    // fetchGlossaryTerm();
-  }, []);
+  const onSearch = async (value: string) => {
+    await searchGlossaryTerms(value, 1);
+  };
+
   const convertToTreeData = (
-    options: GlossaryTerm[] = [],
-    expandedKeys: string[]
-  ) => {
+    options: ModifiedGlossaryTerm[] = []
+  ): Omit<DefaultOptionType, 'label'>[] => {
     const treeData = options.map((option) => {
       const hasChildren = !isEmpty(option?.children);
-      const isExpanded = expandedKeys.includes(option.id); // Check if the current key is expanded
-      if (!hasChildren || !isExpanded) {
-        // Only include keys with no children or keys that are not expanded
-        return {
-          key: option.id,
-          value: option.id,
-          title: getEntityName(option),
-          isLeaf: false,
-        };
-      } else {
-        return {
-          key: option.id,
-          value: option.id,
-          title: getEntityName(option),
-          children: convertToTreeData(
-            option.children as unknown as GlossaryTerm[],
-            expandedKeys
-          ),
-          isLeaf: false,
-        };
-      }
+
+      // Only include keys with no children or keys that are not expanded
+      return {
+        id: option.id,
+        value: option.fullyQualifiedName,
+        title: getEntityName(option),
+        isLeaf: isNil(option.glossary) ? false : !hasChildren,
+        children: convertToTreeData(option.children as ModifiedGlossaryTerm[]),
+      };
     });
 
     return treeData;
   };
 
+  useEffect(() => {
+    if (glossaries.length) {
+      expandableKeys.current = glossaries.map((glossary) => glossary.id);
+    }
+  }, [glossaries]);
+
   const treeData = useMemo(
-    () => convertToTreeData(glossaries, expandedKeys),
-    [glossaries, expandedKeys]
+    () => convertToTreeData(glossaries as ModifiedGlossaryTerm[]),
+    [glossaries, expandableKeys.current]
   );
 
   return (
@@ -308,37 +262,31 @@ const TreeAsyncSelectList: FC<AsyncSelectListProps> = ({
       showSearch
       treeCheckable
       data-testid="tag-selector"
-      dropdownMatchSelectWidth={false}
       dropdownRender={dropdownRender}
       dropdownStyle={{ width: 300 }}
+      loadData={({ id }) => {
+        if (expandableKeys.current.includes(id)) {
+          return fetchGlossaryTerm({ glossary: id });
+        }
+
+        return Promise.resolve();
+      }}
       notFoundContent={isLoading ? <Loader size="small" /> : null}
-      popupClassName="bg-red"
       style={{ width: '100%' }}
       tagRender={customTagRender}
       treeData={treeData}
       onBlur={() => {
         setCurrentPage(1);
         setSearchValue('');
-        setOptions([]);
       }}
       onChange={handleChange}
-      //   onFocus={() => loadOptions('')}
       onInputKeyDown={(event) => {
         if (event.key === 'Backspace') {
           return event.stopPropagation();
         }
       }}
       onPopupScroll={onScroll}
-      //   onSearch={debounceFetcher}
-
-      onTreeExpand={(keys) => {
-        setExpandedKeys(keys as string[]);
-        keys.forEach((key: string) => {
-          if (!expandedKeys.includes(key)) {
-            fetchGlossaryTerm({ glossary: key, refresh: true });
-          }
-        });
-      }}
+      onSearch={onSearch}
       {...props}
     />
   );

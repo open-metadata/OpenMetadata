@@ -18,8 +18,8 @@ import React, { useState } from 'react';
 import { TagSource } from '../../../generated/type/tagLabel';
 import AsyncSelectList from '../../common/AsyncSelectList/AsyncSelectList';
 import TreeAsyncSelectList from '../../common/AsyncSelectList/TreeAsyncSelectList';
-import { TagsSelectFormProps } from './TagsSelectForm.interface';
 import './tag-select-fom.style.less';
+import { TagsSelectFormProps } from './TagsSelectForm.interface';
 
 const TagSelectForm = ({
   fetchApi,
@@ -83,9 +83,8 @@ const TagSelectForm = ({
               />
             ) : (
               <TreeAsyncSelectList
-                fetchOptions="tag-select-box"
-                fetchOptions={fetchApi}
                 initialOptions={tagData}
+                optionClassName="tag-select-box"
                 placeholder={placeholder}
                 tagType={tagType}
               />
