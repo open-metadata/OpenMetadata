@@ -73,6 +73,7 @@ export type ListTestCaseParamsBySearch = ListTestCaseParams & {
   endTimestamp?: number;
   testPlatforms?: TestPlatform[];
   offset?: number;
+  owner?: string;
 };
 
 export type ListTestDefinitionsParams = ListParams & {
