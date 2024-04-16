@@ -22,6 +22,8 @@ from metadata.workflow.metadata import MetadataWorkflow
 from integration.integration_base import int_admin_ometa
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 
+from metadata.generated.schema.entity.data.table import Table, Constraint
+
 
 @pytest.fixture(scope="module")
 def metadata():
@@ -39,7 +41,7 @@ def metadata():
 )
 def db_service(metadata, sql_server_container, request):
     service = CreateDatabaseServiceRequest(
-        name="docker_test_db_ + " + request.id,
+        name="docker_test_db_" + request.param.name,
         serviceType=DatabaseServiceType.Mssql,
         connection=DatabaseConnection(
             config=MssqlConnection(
@@ -95,4 +97,10 @@ def test_pass(
     metadata,
     db_fqn,
 ):
-    pass
+    table: Table = metadata.get_by_name(Table, f"{db_fqn}.HumanResources.Department")
+    assert table is not None
+    assert table.columns[0].name.__root__ == "DepartmentID"
+    assert table.columns[0].constraint == Constraint.PRIMARY_KEY
+    assert table.columns[1].name.__root__ == "Name"
+    assert table.columns[2].name.__root__ == "GroupName"
+    assert table.columns[3].name.__root__ == "ModifiedDate"
