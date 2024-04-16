@@ -2114,7 +2114,7 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
     assertResponse(
         () -> putFailedRowsSample(testCase, columns, rows, authHeaders(USER2.getName())),
         FORBIDDEN,
-        permissionNotAllowed(USER2.getName(), List.of(MetadataOperation.EDIT_SAMPLE_DATA)));
+        permissionNotAllowed(USER2.getName(), List.of(EDIT_TESTS)));
 
     deleteFailedRowsSample(testCase, ADMIN_AUTH_HEADERS);
 
