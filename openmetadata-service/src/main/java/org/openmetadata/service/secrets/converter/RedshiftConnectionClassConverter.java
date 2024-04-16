@@ -29,8 +29,6 @@ import org.openmetadata.service.util.JsonUtils;
  */
 public class RedshiftConnectionClassConverter extends ClassConverter {
 
-    private static final List<Class<?>> CONFIG_SOURCE_CLASSES = List.of(basicAuth.class, IamAuthConfig.class);
-
     private static final List<Class<?>> SSL_SOURCE_CLASS = List.of(ValidateSSLClientConfig.class);
 
     public RedshiftConnectionClassConverter() {
