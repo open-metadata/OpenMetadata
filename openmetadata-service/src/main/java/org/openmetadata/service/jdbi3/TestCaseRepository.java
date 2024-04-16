@@ -666,7 +666,9 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
     return new RestUtil.DeleteResponse<>(testCase, ENTITY_DELETED);
   }
 
-  /** Remove test case from test suite summary and update test suite */
+  /**
+   * Remove test case from test suite summary and update test suite
+   */
   @Transaction
   private void removeTestCaseFromTestSuiteResultSummary(UUID testSuiteId, String testCaseFqn) {
     TestSuite testSuite = Entity.getEntity(TEST_SUITE, testSuiteId, "*", Include.ALL, false);
@@ -723,8 +725,10 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
     return testCase.withFailedRowsSample(tableData);
   }
 
-  public void deleteTestCaseFailedRowsSample(UUID id) {
+  @Transaction
+  public RestUtil.DeleteResponse<TableData> deleteTestCaseFailedRowsSample(UUID id) {
     daoCollection.entityExtensionDAO().delete(id, FAILED_ROWS_SAMPLE_EXTENSION);
+    return new RestUtil.DeleteResponse<>(null, ENTITY_DELETED);
   }
 
   public static class TestCaseFailureResolutionTaskWorkflow extends FeedRepository.TaskWorkflow {
@@ -740,7 +744,9 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
       this.dataQualityDataTimeSeriesDao = Entity.getCollectionDAO().dataQualityDataTimeSeriesDao();
     }
 
-    /** If the task is resolved, we'll resolve the Incident with the given reason */
+    /**
+     * If the task is resolved, we'll resolve the Incident with the given reason
+     */
     @Override
     @Transaction
     public TestCase performTask(String userName, ResolveTask resolveTask) {
