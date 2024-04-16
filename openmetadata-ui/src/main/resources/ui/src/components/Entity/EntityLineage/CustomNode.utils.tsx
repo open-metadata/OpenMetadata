@@ -123,7 +123,7 @@ export const getTestSuiteSummary = (testSuite?: TestSuite) => {
   }
 
   return (
-    <div className="d-flex justify-between">
+    <div className="d-flex justify-end">
       <div className="profiler-item green" data-testid="test-passed">
         <div className="font-medium" data-testid="test-passed-value">
           {formTwoDigitNumber(testSuite?.summary?.success ?? 0)}

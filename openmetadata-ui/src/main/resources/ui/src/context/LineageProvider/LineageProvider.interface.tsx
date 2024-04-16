@@ -46,7 +46,6 @@ export type UpstreamDownstreamData = {
 };
 
 export enum LineageLayerView {
-  NONE = 'NONE',
   COLUMN = 'COLUMN',
   DATA_QUALITY = 'DATA_QUALITY',
   PIPELINE = 'PIPELINE',
@@ -72,7 +71,7 @@ export interface LineageContextType {
   selectedColumn: string;
   expandAllColumns: boolean;
   pipelineStatus: Record<string, PipelineStatus>;
-  activeLayer: LineageLayerView;
+  activeLayer: LineageLayerView[];
   onInitReactFlow: (reactFlowInstance: ReactFlowInstance) => void;
   onPaneClick: () => void;
   onNodeClick: (node: Node) => void;
@@ -103,5 +102,5 @@ export interface LineageContextType {
   onAddPipelineClick: () => void;
   onConnect: (connection: Edge | Connection) => void;
   updateEntityType: (entityType: EntityType) => void;
-  onUpdateLayerView: (layer: LineageLayerView) => void;
+  onUpdateLayerView: (layers: LineageLayerView[]) => void;
 }

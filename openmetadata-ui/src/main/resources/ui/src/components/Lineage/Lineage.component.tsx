@@ -58,6 +58,7 @@ const Lineage = ({
   const { t } = useTranslation();
   const history = useHistory();
   const reactFlowWrapper = useRef<HTMLDivElement>(null);
+
   const location = useLocation();
   const {
     nodes,
@@ -152,6 +153,7 @@ const Lineage = ({
               onlyRenderVisibleElements
               className="custom-react-flow"
               data-testid="react-flow-component"
+              deleteKeyCode={null}
               edgeTypes={customEdges}
               edges={edges}
               maxZoom={MAX_ZOOM_VALUE}

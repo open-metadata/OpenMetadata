@@ -13,10 +13,6 @@
 
 @import url('../../../../styles/variables.less');
 
-.lineage-layer-radio-btn::before {
-  display: none !important;
-}
-
 .lineage-layer-btn {
   display: flex;
   align-items: center;
@@ -32,10 +28,18 @@
   .ant-popover-inner-content {
     padding: 0;
   }
-  .lineage-layer-radio-btn {
-    height: auto !important;
-    border: 0 !important;
-    border-radius: 0 !important;
+  .lineage-layer-button {
+    padding: 4px 12px;
+    &.active {
+      color: @primary-color;
+      border-color: @primary-color;
+      z-index: 2;
+      background-color: @radio-button-checked-bg;
+    }
+  }
+  .layer-icon {
+    width: 16px;
+    height: 16px;
   }
 }
 

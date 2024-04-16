@@ -118,9 +118,9 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
   const [selectedNode, setSelectedNode] = useState<SourceType>(
     {} as SourceType
   );
-  const [activeLayer, setActiveLayer] = useState<LineageLayerView>(
-    LineageLayerView.COLUMN
-  );
+  const [activeLayer, setActiveLayer] = useState<LineageLayerView[]>([
+    LineageLayerView.COLUMN,
+  ]);
   const [activeNode, setActiveNode] = useState<Node>();
   const [selectedColumn, setSelectedColumn] = useState<string>('');
   const [showAddEdgeModal, setShowAddEdgeModal] = useState<boolean>(false);
@@ -311,8 +311,8 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
     [nodes, edges]
   );
 
-  const onUpdateLayerView = useCallback((layer: LineageLayerView) => {
-    setActiveLayer(layer);
+  const onUpdateLayerView = useCallback((layers: LineageLayerView[]) => {
+    setActiveLayer(layers);
   }, []);
 
   const updateEntityType = useCallback((entityType: EntityType) => {

@@ -18,6 +18,7 @@ import { useTranslation } from 'react-i18next';
 import { BORDER_COLOR } from '../../../../constants/constants';
 import { LINEAGE_COLUMN_NODE_SUPPORTED } from '../../../../constants/Lineage.constants';
 import { useLineageProvider } from '../../../../context/LineageProvider/LineageProvider';
+import { LineageLayerView } from '../../../../context/LineageProvider/LineageProvider.interface';
 import { EntityType } from '../../../../enums/entity.enum';
 import { Container } from '../../../../generated/entity/data/container';
 import { Dashboard } from '../../../../generated/entity/data/dashboard';
@@ -32,13 +33,26 @@ import { EntityChildren, NodeChildrenProps } from './NodeChildren.interface';
 const NodeChildren = ({ node, isConnectable }: NodeChildrenProps) => {
   const { t } = useTranslation();
   const { Panel } = Collapse;
-  const { isEditMode, tracedColumns, expandedNodes, onColumnClick } =
-    useLineageProvider();
+  const {
+    isEditMode,
+    tracedColumns,
+    expandedNodes,
+    activeLayer,
+    onColumnClick,
+  } = useLineageProvider();
   const { entityType, id } = node;
   const [searchValue, setSearchValue] = useState('');
   const [filteredColumns, setFilteredColumns] = useState<EntityChildren>([]);
   const [showAllColumns, setShowAllColumns] = useState(false);
   const [isExpanded, setIsExpanded] = useState<boolean>(false);
+
+  const { showColumns, showDataQuality } = useMemo(() => {
+    return {
+      showColumns: activeLayer.includes(LineageLayerView.COLUMN),
+      showDataQuality: activeLayer.includes(LineageLayerView.DATA_QUALITY),
+      showPipeline: activeLayer.includes(LineageLayerView.PIPELINE),
+    };
+  }, [activeLayer]);
 
   const supportsColumns = useMemo(() => {
     return (
@@ -191,35 +205,40 @@ const NodeChildren = ({ node, isConnectable }: NodeChildrenProps) => {
     [isConnectable, tracedColumns]
   );
 
-  if (supportsColumns) {
+  if (supportsColumns && (showColumns || showDataQuality)) {
     return (
       <div className="column-container bg-grey-1 p-sm p-y-xs">
         <div className="d-flex justify-between items-center">
-          <Button
-            className="flex-center text-primary rounded-4 p-xss"
-            data-testid="expand-cols-btn"
-            icon={
-              <div className="d-flex w-5 h-5 m-r-xs text-base-color">
-                {getEntityIcon(node.entityType ?? '')}
-              </div>
-            }
-            type="text"
-            onClick={(e) => {
-              e.stopPropagation();
-              setIsExpanded((prevIsExpanded: boolean) => !prevIsExpanded);
-            }}>
-            {childrenHeading}
-            {isExpanded ? (
-              <UpOutlined style={{ fontSize: '12px' }} />
-            ) : (
-              <DownOutlined style={{ fontSize: '12px' }} />
+          <div>
+            {showColumns && (
+              <Button
+                className="flex-center text-primary rounded-4 p-xss h-9"
+                data-testid="expand-cols-btn"
+                icon={
+                  <div className="d-flex w-5 h-5 m-r-xs text-base-color">
+                    {getEntityIcon(node.entityType ?? '')}
+                  </div>
+                }
+                type="text"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setIsExpanded((prevIsExpanded: boolean) => !prevIsExpanded);
+                }}>
+                {childrenHeading}
+                {isExpanded ? (
+                  <UpOutlined style={{ fontSize: '12px' }} />
+                ) : (
+                  <DownOutlined style={{ fontSize: '12px' }} />
+                )}
+              </Button>
             )}
-          </Button>
-          {entityType === EntityType.TABLE &&
+          </div>
+          {showDataQuality &&
+            entityType === EntityType.TABLE &&
             getTestSuiteSummary((node as Table).testSuite)}
         </div>
 
-        {isExpanded && (
+        {showColumns && isExpanded && (
           <div className="m-t-md">
             <div className="search-box">
               <Input

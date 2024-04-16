@@ -10,7 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Popover, Radio, RadioChangeEvent, Typography } from 'antd';
+import { Button, Popover, Typography } from 'antd';
+import ButtonGroup from 'antd/lib/button/button-group';
+import classNames from 'classnames';
 import { t } from 'i18next';
 import React from 'react';
 import { ReactComponent as DataQualityIcon } from '../../../../assets/svg/ic-data-contract.svg';
@@ -24,54 +26,63 @@ import './lineage-layers.less';
 const LineageLayers = () => {
   const { activeLayer, onUpdateLayerView } = useLineageProvider();
 
-  const onRadioChange = (e: RadioChangeEvent) => {
-    onUpdateLayerView(e.target.value);
+  const onButtonClick = (value: LineageLayerView) => {
+    const index = activeLayer.indexOf(value);
+    if (index === -1) {
+      onUpdateLayerView([...activeLayer, value]);
+    } else {
+      onUpdateLayerView(activeLayer.filter((layer) => layer !== value));
+    }
   };
-
-  const content = (
-    <Radio.Group size="large" value={activeLayer} onChange={onRadioChange}>
-      <Radio.Button
-        className="lineage-layer-radio-btn"
-        value={LineageLayerView.COLUMN}>
-        <div className="lineage-layer-btn h-15">
-          <div className="d-flex w-5 h-5 text-base-color">
-            {getEntityIcon(EntityType.TABLE)}
-          </div>
-          <Typography.Text className="text-xs text-color-inherit">
-            {t('label.column')}
-          </Typography.Text>
-        </div>
-      </Radio.Button>
-      <Radio.Button
-        className="lineage-layer-radio-btn"
-        value={LineageLayerView.PIPELINE}>
-        <div className="lineage-layer-btn h-15">
-          <div className="d-flex w-5 h-5 text-base-color">
-            {getEntityIcon(EntityType.PIPELINE)}
-          </div>
-          <Typography.Text className="text-xs text-color-inherit">
-            {t('label.pipeline')}
-          </Typography.Text>
-        </div>
-      </Radio.Button>
-      <Radio.Button
-        className="lineage-layer-radio-btn"
-        value={LineageLayerView.DATA_QUALITY}>
-        <div className="lineage-layer-btn h-15">
-          <div className="d-flex w-5 h-5 text-base-color">
-            <DataQualityIcon />
-          </div>
-          <Typography.Text className="text-xs text-color-inherit">
-            {t('label.data-quality')}
-          </Typography.Text>
-        </div>
-      </Radio.Button>
-    </Radio.Group>
-  );
 
   return (
     <Popover
-      content={content}
+      content={
+        <ButtonGroup>
+          <Button
+            className={classNames('lineage-layer-button h-15', {
+              active: activeLayer.includes(LineageLayerView.COLUMN),
+            })}
+            onClick={() => onButtonClick(LineageLayerView.COLUMN)}>
+            <div className="lineage-layer-btn">
+              <div className="layer-icon">
+                {getEntityIcon(EntityType.TABLE)}
+              </div>
+              <Typography.Text className="text-xs">
+                {t('label.column')}
+              </Typography.Text>
+            </div>
+          </Button>
+          <Button
+            className={classNames('lineage-layer-button h-15', {
+              active: activeLayer.includes(LineageLayerView.PIPELINE),
+            })}
+            onClick={() => onButtonClick(LineageLayerView.PIPELINE)}>
+            <div className="lineage-layer-btn">
+              <div className="layer-icon">
+                {getEntityIcon(EntityType.PIPELINE)}
+              </div>
+              <Typography.Text className="text-xs">
+                {t('label.pipeline')}
+              </Typography.Text>
+            </div>
+          </Button>
+          <Button
+            className={classNames('lineage-layer-button h-15', {
+              active: activeLayer.includes(LineageLayerView.DATA_QUALITY),
+            })}
+            onClick={() => onButtonClick(LineageLayerView.DATA_QUALITY)}>
+            <div className="lineage-layer-btn">
+              <div className="layer-icon">
+                <DataQualityIcon />
+              </div>
+              <Typography.Text className="text-xs">
+                {t('label.data-quality')}
+              </Typography.Text>
+            </div>
+          </Button>
+        </ButtonGroup>
+      }
       overlayClassName="lineage-layers-popover"
       placement="right"
       trigger="click">
