@@ -249,8 +249,8 @@ public final class UserUtil {
   }
 
   public static Set<String> getRoleListFromUser(User user) {
-    if (user.getRoles() == null || user.getRoles().isEmpty()) {
-      return Collections.emptySet();
+    if (nullOrEmpty(user.getRoles())) {
+      return new HashSet<>();
     }
     return listOrEmpty(user.getRoles()).stream()
         .map(EntityReference::getName)
