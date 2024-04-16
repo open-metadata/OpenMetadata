@@ -1,7 +1,6 @@
 import sys
 
 import pytest
-from ..integration_base import int_admin_ometa
 
 from metadata.generated.schema.api.services.createDatabaseService import (
     CreateDatabaseServiceRequest,
@@ -25,6 +24,8 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 )
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.workflow.metadata import MetadataWorkflow
+
+from ..integration_base import int_admin_ometa
 
 
 @pytest.fixture(scope="module")

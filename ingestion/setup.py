@@ -309,7 +309,7 @@ test = {
     VERSIONS["giturlparse"],
     VERSIONS["avro"],  # Sample Data
     VERSIONS["grpc-tools"],
-    "testcontainers==3.71.0;python_version<'3.9'",
+    "testcontainers==3.7.1;python_version<'3.9'",
     "testcontainers==4.3.3;python_version>='3.9'",
 }
 
