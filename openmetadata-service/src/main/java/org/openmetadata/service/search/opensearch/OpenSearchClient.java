@@ -6,7 +6,6 @@ import static org.openmetadata.service.Entity.FIELD_DESCRIPTION;
 import static org.openmetadata.service.Entity.FIELD_DISPLAY_NAME;
 import static org.openmetadata.service.Entity.FIELD_NAME;
 import static org.openmetadata.service.search.EntityBuilderConstant.*;
-import static org.openmetadata.service.search.EntityBuilderConstant.DESCRIPTION_STATUS_KEYWORD;
 import static org.openmetadata.service.search.UpdateSearchEventsConstant.SENDING_REQUEST_TO_ELASTIC_SEARCH;
 
 import com.fasterxml.jackson.databind.JsonNode;
@@ -1141,12 +1140,7 @@ public class OpenSearchClient implements SearchClient {
             AggregationBuilders.terms("tier.tagFQN").field("tier.tagFQN").size(MAX_AGGREGATE_SIZE))
         .aggregation(
             AggregationBuilders.terms(OWNER_DISPLAY_NAME_KEYWORD)
-                .missing(OWNER_DISPLAY_NAME_KEYWORD_MISSING)
                 .field(OWNER_DISPLAY_NAME_KEYWORD)
-                .size(MAX_AGGREGATE_SIZE))
-        .aggregation(
-            AggregationBuilders.terms(DESCRIPTION_STATUS_KEYWORD)
-                .field(DESCRIPTION_STATUS_KEYWORD)
                 .size(MAX_AGGREGATE_SIZE))
         .aggregation(
             AggregationBuilders.terms(DOMAIN_DISPLAY_NAME_KEYWORD)
