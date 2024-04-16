@@ -34,6 +34,7 @@ import {
   NodeProps,
   ReactFlowInstance,
   useEdgesState,
+  useKeyPress,
   useNodesState,
 } from 'reactflow';
 import { ReactComponent as IconTimesCircle } from '../../assets/svg/ic-times-circle.svg';
@@ -167,6 +168,8 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
   const [entityType, setEntityType] = useState('');
   const queryParams = new URLSearchParams(location.search);
   const isFullScreen = queryParams.get('fullscreen') === 'true';
+  const deletePressed = useKeyPress('Delete');
+  const backspacePressed = useKeyPress('Backspace');
 
   const fetchLineageData = async (
     fqn: string,
@@ -1026,8 +1029,15 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
   useEffect(() => {
     if (isEditMode) {
       setUpdatedEntityLineage(null);
+      if (deletePressed || backspacePressed) {
+        if (activeNode) {
+          removeNodeHandler(activeNode as Node);
+        } else if (selectedEdge) {
+          removeEdgeHandler(selectedEdge as Edge, true);
+        }
+      }
     }
-  }, [isEditMode]);
+  }, [isEditMode, deletePressed, backspacePressed, activeNode, selectedEdge]);
 
   const activityFeedContextValues = useMemo(() => {
     return {
