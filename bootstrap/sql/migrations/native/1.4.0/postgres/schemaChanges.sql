@@ -92,7 +92,7 @@ UPDATE dbservice_entity
 SET json = jsonb_set(
   json #-'{connection,config,sslCA}',
   '{connection,config,sslConfig}',
-  json#>'{connection,config,sslConfig}' || jsonb_build_object('caCertificate', json#>'{connection,config,sslCA}')
+  jsonb_build_object('caCertificate', json#>'{connection,config,sslCA}')
 )
 WHERE serviceType IN ('Mysql', 'Doris') AND json#>'{connection,config,sslCA}' IS NOT NULL;
 
