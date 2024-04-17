@@ -115,8 +115,8 @@ def get_tag_label(
                 state=State.Suggested.value,
                 source=source,
             )
-        else:
-            logger.warning(f"Tag does not exist: {tag_fqn}")
+        
+        logger.warning(f"Tag does not exist: {tag_fqn}")
 
     except Exception as err:
         logger.debug(traceback.format_exc())
