@@ -41,14 +41,6 @@
     "href": {
       "description": "Link to the entity resource.",
       "$ref": "basic.json#/definitions/href"
-    },
-    "parent": {
-      "description": "Parent entity that this entity is child of.",
-      "$ref": "./entityReference.json"
-    },
-    "children": {
-      "description": "Other entities that are children of this entity.",
-      "$ref": "./entityReferenceList.json"
     }
   },
   "required": ["id", "type"],

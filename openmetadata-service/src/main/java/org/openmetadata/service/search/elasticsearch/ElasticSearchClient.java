@@ -104,7 +104,6 @@ import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
@@ -129,9 +128,8 @@ import org.apache.http.impl.client.BasicCredentialsProvider;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.DataInsightInterface;
 import org.openmetadata.schema.dataInsight.DataInsightChartResult;
-import org.openmetadata.schema.entity.data.GlossaryTerm;
+import org.openmetadata.schema.entity.data.EntityHierarchy__1;
 import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration;
-import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.sdk.exception.SearchException;
 import org.openmetadata.sdk.exception.SearchIndexNotFoundException;
 import org.openmetadata.service.Entity;
@@ -441,22 +439,24 @@ public class ElasticSearchClient implements SearchClient {
     return response;
   }
 
-  public List<GlossaryTerm> buildGlossaryTermSearchHierarchy(SearchResponse searchResponse) {
-    Map<String, GlossaryTerm> termMap = new LinkedHashMap<>(); // termMap represent glossary terms
-    Map<String, GlossaryTerm> rootTerms = new LinkedHashMap<>(); // rootTerms represent glossaries
+  public List<EntityHierarchy__1> buildGlossaryTermSearchHierarchy(SearchResponse searchResponse) {
+    Map<String, EntityHierarchy__1> termMap =
+        new LinkedHashMap<>(); // termMap represent glossary terms
+    Map<String, EntityHierarchy__1> rootTerms =
+        new LinkedHashMap<>(); // rootTerms represent glossaries
 
     for (var hit : searchResponse.getHits().getHits()) {
       Map<String, Object> hitSourceMap = new HashMap<>(JsonUtils.getMap(hit.getSourceAsMap()));
 
-      GlossaryTerm term = createTermFromMap(hitSourceMap);
+      EntityHierarchy__1 term = extractHierarchyTermFromMap(hitSourceMap);
       Map<String, Object> glossaryInfo = (Map<String, Object>) hitSourceMap.get("glossary");
 
       if (glossaryInfo != null) {
-        GlossaryTerm parentTerm = createTermFromMap(glossaryInfo);
+        EntityHierarchy__1 parentTerm = extractHierarchyTermFromMap(glossaryInfo);
         rootTerms.putIfAbsent(parentTerm.getFullyQualifiedName(), parentTerm);
       } else {
         Map<String, Object> parentInfo = (Map<String, Object>) hitSourceMap.get("parent");
-        GlossaryTerm parentTerm = createTermFromMap(parentInfo);
+        EntityHierarchy__1 parentTerm = extractHierarchyTermFromMap(parentInfo);
         termMap.putIfAbsent(parentTerm.getFullyQualifiedName(), parentTerm);
       }
 
@@ -473,16 +473,13 @@ public class ElasticSearchClient implements SearchClient {
               String termFQN = term.getFullyQualifiedName();
 
               if (parentFQN != null && termMap.containsKey(parentFQN)) {
-                GlossaryTerm parentTerm = termMap.get(parentFQN);
-                List<EntityReference> children = parentTerm.getChildren();
-                EntityReference termRef = term.getEntityReference();
-                termRef.setChildren(term.getChildren());
-                children.add(termRef);
-                children.sort(Comparator.comparing(EntityReference::getName));
+                EntityHierarchy__1 parentTerm = termMap.get(parentFQN);
+                List<EntityHierarchy__1> children = parentTerm.getChildren();
+                children.add(term);
                 parentTerm.setChildren(children);
               } else {
                 if (rootTerms.containsKey(termFQN)) {
-                  GlossaryTerm rootTerm = rootTerms.get(termFQN);
+                  EntityHierarchy__1 rootTerm = rootTerms.get(termFQN);
                   rootTerm.setChildren(term.getChildren());
                 }
               }
@@ -491,8 +488,8 @@ public class ElasticSearchClient implements SearchClient {
     return new ArrayList<>(rootTerms.values());
   }
 
-  private GlossaryTerm createTermFromMap(Map<String, Object> termInfo) {
-    GlossaryTerm term = new GlossaryTerm();
+  private EntityHierarchy__1 extractHierarchyTermFromMap(Map<String, Object> termInfo) {
+    EntityHierarchy__1 term = new EntityHierarchy__1();
     if (termInfo != null) {
       term.setId(UUID.fromString(termInfo.get("id").toString()));
       term.setName(termInfo.get("name").toString());
