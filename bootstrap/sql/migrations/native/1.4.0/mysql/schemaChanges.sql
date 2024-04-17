@@ -79,6 +79,7 @@ WHERE JSON_EXTRACT(json, '$.dataModelType') in ('QlikSenseDataModel', 'QlikCloud
 DELETE FROM ingestion_pipeline_entity
 WHERE LOWER(JSON_EXTRACT(json, '$.pipelineType')) = 'elasticsearchreindex';
 
+
 UPDATE dbservice_entity
 SET json = JSON_INSERT(
     JSON_REMOVE(json, '$.connection.config.sslCA'),
@@ -190,6 +191,18 @@ SET json = JSON_INSERT(
 where serviceType = 'Alation'
   AND JSON_EXTRACT(json, '$.connection.config.connection.type') = 'Mysql'
   AND JSON_EXTRACT(json, '$.connection.config.connection.sslCA') IS NOT NULL;
+
+
+UPDATE metadata_service_entity  
+SET json = JSON_INSERT(
+    JSON_REMOVE(json, '$.connection.config.connection.sslConfig.certificatePath'),
+    '$.connection.config.connection.sslConfig',
+    JSON_OBJECT(),
+    '$.connection.config.connection.sslConfig.caCertificate',
+    JSON_EXTRACT(json, '$.connection.config.connection.sslConfig.certificatePath'))
+where serviceType = 'Alation'
+  AND JSON_EXTRACT(json, '$.connection.config.connection.type') = 'Postgres'
+  AND JSON_EXTRACT(json, '$.connection.config.connection.sslConfig.certificatePath') IS NOT NULL;
 
 
 UPDATE dashboard_service_entity

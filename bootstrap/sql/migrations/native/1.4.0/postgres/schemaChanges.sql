@@ -168,6 +168,18 @@ WHERE serviceType IN
 and json#>'{connection,config,metastoreConnection,type}' = '"Mysql"'
   and json#>'{connection,config,metastoreConnection,sslCA}' is not null;
 
+UPDATE dbservice_entity
+ SET json = jsonb_set(
+json #-'{connection,config,metastoreConnection,sslConfig,certificatePath}',
+'{connection,config,metastoreConnection,sslConfig}',
+jsonb_build_object('caCertificate',json#
+>'{connection,config,metastoreConnection,sslConfig,certificatePath}')
+)
+WHERE serviceType IN
+('Hive')
+and json#>'{connection,config,metastoreConnection,type}' = '"Postgres"'
+  and json#>'{connection,config,metastoreConnection,sslConfig,certificatePath}' is not null;
+
 
 UPDATE dbservice_entity
  SET json = jsonb_set(
@@ -180,6 +192,17 @@ WHERE serviceType IN
 ('Redshift', 'Greenplum', 'Postgres')
   and json#>'{connection,config,sslConfig,certificatePath}' is not null;
 
+UPDATE dashboard_service_entity
+ SET json = jsonb_set(
+json #-'{connection,config,connection,sslConfig,certificatePath}',
+'{connection,config,connection,sslConfig}',
+jsonb_build_object('caCertificate',json#
+>'{connection,config,connection,sslConfig,certificatePath}')
+)
+WHERE serviceType IN
+('Superset')
+and json#>'{connection,config,connection,type}' = '"Postgres"'
+  and json#>'{connection,config,connection,sslConfig,certificatePath}' is not null;
 
 UPDATE dashboard_service_entity
  SET json = jsonb_set(
@@ -223,7 +246,17 @@ and json#>'{connection,config,connection,type}' = '"Mysql"'
 
 
 
-
+UPDATE metadata_service_entity
+ SET json = jsonb_set(
+json #-'{connection,config,connection,sslConfig,certificatePath}',
+'{connection,config,connection,sslConfig}',
+jsonb_build_object('caCertificate',json#
+>'{connection,config,connection,sslConfig,certificatePath}')
+)
+WHERE serviceType IN
+('Alation')
+and json#>'{connection,config,connection,type}' = '"Postgres"'
+  and json#>'{connection,config,connection,sslConfig,certificatePath}' is not null;
 
 UPDATE metadata_service_entity
  SET json = jsonb_set(
