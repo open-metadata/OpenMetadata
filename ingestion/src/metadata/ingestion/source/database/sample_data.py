@@ -737,8 +737,7 @@ class SampleDataSource(
 
                 if table_and_db.dataModel:
                     self.metadata.ingest_table_data_model(
-                        table_entity,
-                        table_and_db.dataModel
+                        table_entity, table_and_db.dataModel
                     )
 
             if table.get("customMetrics"):
