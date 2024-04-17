@@ -269,6 +269,18 @@ class AdvancedSearchClassBase {
         mainWidgetProps: this.mainWidgetProps,
         subfields: {},
       },
+      descriptionStatus: {
+        label: t('label.description'),
+        type: 'select',
+        mainWidgetProps: this.mainWidgetProps,
+        valueSources: ['value'],
+        fieldSettings: {
+          listValues: {
+            INCOMPLETE: 'Incomplete',
+            COMPLETE: 'Complete',
+          },
+        },
+      },
     };
 
     const serviceQueryBuilderFields: Fields = {
