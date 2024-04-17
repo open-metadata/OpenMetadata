@@ -1,0 +1,81 @@
+{
+  "$id": "https://open-metadata.org/schema/settings/profilerConfiguration.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ProfilerConfiguration",
+  "description": "This schema defines the profiler configuration. It is used to configure globally the metrics to compute for specific data types.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.api.configuration.profiler.ProfilerConfiguration",
+  "definitions": {
+    "metricType": {
+      "javaType": "org.openmetadata.schema.profiler.MetricType",
+      "description": "This schema defines all possible metric types in OpenMetadata.",
+      "type": "string",
+      "enum": [
+        "MEAN",
+        "COUNT",
+        "COUNT_IN_SET",
+        "COLUMN_COUNT",
+        "DISTINCT_COUNT",
+        "DISTINCT_RATIO",
+        "ILIKE_COUNT",
+        "LIKE_COUNT",
+        "NOT_LIKE_COUNT",
+        "REGEX_COUNT",
+        "NOT_REGEX_COUNT",
+        "MAX",
+        "MAX_LENGTH",
+        "MIN",
+        "MIN_LENGTH",
+        "NULL_COUNT",
+        "ROW_COUNT",
+        "STDDEV",
+        "SUM",
+        "UNIQUE_COUNT",
+        "UNIQUE_RATIO",
+        "COLUMN_NAMES",
+        "DUPLICATE_COUNT",
+        "ILIKE_RATIO",
+        "LIKE_RATIO",
+        "NULL_RATIO",
+        "IQR",
+        "NON_PARAMETRIC_SKEW",
+        "MEDIAN",
+        "FIRST_QUARTILE",
+        "THIRD_QUARTILE",
+        "SYSTEM",
+        "HISTOGRAM"
+      ]
+    },
+    "metricConfigurationDefinition": {
+      "type": "object",
+      "javaType": "org.openmetadata.schema.api.configuration.profiler.MetricConfigurationDefinition",
+      "description": "This schema defines the parameters that can be passed for a Test Case.",
+      "properties": {
+        "dataType": {
+          "$ref": "../entity/data/table.json#/definitions/dataType"
+        },
+        "metrics": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/metricType"
+          }
+        },
+        "disabled": {
+          "type": "boolean",
+          "description": "If true, the metric will not be computed for the data type.",
+          "default": false
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "properties": {
+      "metricConfiguration": {
+      "type": "array",
+      "items": {
+          "$ref": "#/definitions/metricConfigurationDefinition"
+      }
+    }
+  },
+  "additionalProperties": false
+}
