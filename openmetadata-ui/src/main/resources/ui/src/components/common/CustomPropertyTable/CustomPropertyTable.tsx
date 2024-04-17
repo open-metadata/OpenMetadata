@@ -165,6 +165,7 @@ export const CustomPropertyTable = <T extends ExtentionEntitiesKeys>({
           <PropertyValue
             extension={extensionObject.extensionObject}
             hasEditPermissions={hasEditAccess}
+            isRenderedInRightPanel={isRenderedInRightPanel}
             isVersionView={isVersionView}
             property={record}
             versionDataKeys={extensionObject.addedKeysList}
@@ -180,6 +181,7 @@ export const CustomPropertyTable = <T extends ExtentionEntitiesKeys>({
     extensionObject,
     isVersionView,
     onExtensionUpdate,
+    isRenderedInRightPanel,
   ]);
 
   const viewAllBtn = useMemo(() => {
@@ -286,6 +288,7 @@ export const CustomPropertyTable = <T extends ExtentionEntitiesKeys>({
             loading={entityTypeDetailLoading}
             pagination={false}
             rowKey="name"
+            scroll={isRenderedInRightPanel ? { x: true } : undefined}
             size="small"
           />
         </>

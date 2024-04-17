@@ -52,6 +52,10 @@ describe('Search Index Application', { tags: 'Settings' }, () => {
 
     cy.get('#root\\/batchSize').type('0');
     cy.get('form [title="Chart"] [role="img"]').click();
+    cy.get(
+      '[data-testid="select-widget"] > .ant-select-selector > .ant-select-selection-item'
+    ).click();
+    cy.get('[data-testid="select-option-JP"]').click();
 
     cy.get('[data-testid="submit-btn"]').click();
     verifyResponseStatusCode('@updateApplication', 200);
