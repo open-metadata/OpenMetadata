@@ -658,6 +658,29 @@ class SampleDataSource(
             )
             yield Either(right=table_request)
 
+        database_schema_entity = fqn.build(
+            self.metadata,
+            entity_type=DatabaseSchema,
+            service_name=self.database_service.fullyQualifiedName.__root__,
+            database_name=self.database["name"],
+            schema_name=self.database_schema["name"],
+        )
+
+        database_schema_object = self.metadata.get_by_name(
+            entity=DatabaseSchema, fqn=database_schema_entity
+        )
+
+        for table in self.glue_tables["tables"]:
+            table_request = CreateTableRequest(
+                name=table["name"],
+                description=table["description"],
+                columns=table["columns"],
+                databaseSchema=database_schema_object.fullyQualifiedName,
+                tableConstraints=table.get("tableConstraints"),
+                tableType=table["tableType"],
+            )
+            yield Either(right=table_request)
+
     def ingest_tables(self) -> Iterable[Either[Entity]]:
         """Ingest Sample Tables"""
 
