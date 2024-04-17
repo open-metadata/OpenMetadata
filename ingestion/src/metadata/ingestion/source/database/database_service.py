@@ -75,11 +75,6 @@ from metadata.utils.tag_utils import get_tag_label
 logger = ingestion_logger()
 
 
-class ColumnGlossary(BaseModel):
-    name: str
-    glossary: Optional[List[TagLabel]]
-
-
 class DataModelLink(BaseModel):
     """
     Tmp model to handle data model ingestion
@@ -87,9 +82,6 @@ class DataModelLink(BaseModel):
 
     table_entity: Table
     datamodel: DataModel
-    glossary: Optional[List[TagLabel]]
-    tier: Optional[TagLabel]
-    column_glossary: Optional[List[ColumnGlossary]]
 
 
 class DatabaseServiceTopology(ServiceTopology):

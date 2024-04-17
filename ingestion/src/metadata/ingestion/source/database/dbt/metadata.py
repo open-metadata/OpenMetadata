@@ -452,7 +452,7 @@ class DbtSource(DbtServiceSource):
                                     manifest_node=manifest_node,
                                     catalog_node=catalog_node,
                                 ),
-                                tags=dbt_table_tags_list,
+                                tags=dbt_table_tags_list or None,
                             ),
                         )
                         yield Either(right=data_model_link)
@@ -598,7 +598,7 @@ class DbtSource(DbtServiceSource):
                         ordinalPosition=catalog_column.index
                         if catalog_column
                         else None,
-                        tags=dbt_column_tag_list,
+                        tags=dbt_column_tag_list or None,
                     )
                 )
                 logger.debug(f"Successfully processed DBT column: {key}")
