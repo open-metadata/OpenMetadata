@@ -18,11 +18,14 @@ from pathlib import Path
 from unittest import TestCase
 from unittest.mock import patch
 
+import requests
+from testcontainers.general import DockerContainer
 from testcontainers.postgres import PostgresContainer
 
 from metadata.generated.schema.api.data.createChart import CreateChartRequest
 from metadata.generated.schema.api.data.createDashboard import CreateDashboardRequest
 from metadata.generated.schema.entity.data.chart import Chart, ChartType
+from metadata.generated.schema.entity.data.dashboard import DashboardType
 from metadata.generated.schema.entity.services.connections.database.common.basicAuth import (
     BasicAuth,
 )
@@ -45,7 +48,11 @@ from metadata.generated.schema.entity.services.databaseService import (
 from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
 )
-from metadata.generated.schema.type.basic import FullyQualifiedEntityName
+from metadata.generated.schema.type.basic import (
+    EntityName,
+    FullyQualifiedEntityName,
+    SourceUrl,
+)
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.ometa.mixins.server_mixin import OMetaServerMixin
@@ -64,8 +71,23 @@ from metadata.ingestion.source.dashboard.superset.models import (
     SupersetDatasource,
 )
 
+# postgres test container
 postgres = PostgresContainer("postgres:16-alpine")
 postgres.start()
+
+# superset testcontainer
+superset_container = DockerContainer(image="apache/superset")
+superset_container.with_env("SUPERSET_SECRET_KEY", "&3brfbcf192T!)$sabqbie")
+superset_container.with_env("WTF_CSRF_ENABLED", False)
+
+superset_container.with_exposed_ports(8088)
+superset_container.start()
+
+superset_container.exec(
+    "superset fab create-admin --username admin --firstname Superset  --lastname Admin --email admin@superset.com --password admin"
+)
+superset_container.exec("superset db upgrade")
+superset_container.exec("superset init")
 
 mock_file_path = (
     Path(__file__).parent.parent.parent / "resources/datasets/superset_dataset.json"
@@ -76,7 +98,7 @@ with open(mock_file_path, encoding="UTF-8") as file:
 MOCK_DASHBOARD_RESP = SupersetDashboardCount(**mock_data["dashboard"])
 MOCK_DASHBOARD = MOCK_DASHBOARD_RESP.result[0]
 PUBLISHED_DASHBOARD_COUNT = 1
-PUBLISHED_DASHBOARD_NAME = "My DASH"
+PUBLISHED_DASHBOARD_NAME = "Top trades"
 MOCK_CHART_RESP = SupersetChart(**mock_data["chart"])
 MOCK_CHART = MOCK_CHART_RESP.result[0]
 
@@ -90,7 +112,7 @@ MOCK_SUPERSET_API_CONFIG = {
         "serviceName": "test_supserset",
         "serviceConnection": {
             "config": {
-                "hostPort": "https://my-superset.com",
+                "hostPort": f"http://{superset_container.get_container_host_ip()}:{superset_container.get_exposed_port(8088)}",
                 "type": "Superset",
                 "connection": {
                     "username": "admin",
@@ -184,6 +206,16 @@ MOCK_DB_MYSQL_SERVICE_2 = DatabaseService(
     ),
     serviceType=DatabaseServiceType.Mysql,
 )
+MOCK_DASHBOARD_INPUT = {
+    "certification_details": "sample certificate details",
+    "certified_by": "certified by unknown",
+    "css": "css",
+    "dashboard_title": "Top trades",
+    "external_url": "external url",
+    "slug": "top-trades",
+    "published": True,
+    "position_json": '{"CHART-dwSXo_0t5X":{"children":[],"id":"CHART-dwSXo_0t5X","meta":{"chartId":37,"height":50,"sliceName":"% Rural","uuid":"8f663401-854a-4da7-8e50-4b8e4ebb4f22","width":4},"parents":["ROOT_ID","GRID_ID","ROW-z_7odBWenK"],"type":"CHART"},"DASHBOARD_VERSION_KEY":"v2","GRID_ID":{"children":["ROW-z_7odBWenK"],"id":"GRID_ID","parents":["ROOT_ID"],"type":"GRID"},"HEADER_ID":{"id":"HEADER_ID","meta":{"text":"My DASH"},"type":"HEADER"},"ROOT_ID":{"children":["GRID_ID"],"id":"ROOT_ID","type":"ROOT"},"ROW-z_7odBWenK":{"children":["CHART-dwSXo_0t5X"],"id":"ROW-z_7odBWenK","meta":{"background":"BACKGROUND_TRANSPARENT"},"parents":["ROOT_ID","GRID_ID"],"type":"ROW"}}',
+}
 
 MOCK_DB_POSTGRES_SERVICE = DatabaseService(
     id="c3eb265f-5445-4ad3-ba5e-797d3a307122",
@@ -218,6 +250,28 @@ EXPECTED_DASH = CreateDashboardRequest(
     charts=[chart.fullyQualifiedName for chart in EXPECTED_CHART_ENTITY],
     service=EXPECTED_DASH_SERVICE.fullyQualifiedName,
     owner=EXPECTED_USER,
+)
+
+
+EXPECTED_DASH_API = CreateDashboardRequest(
+    name=EntityName(__root__="1"),
+    displayName="Top trades",
+    description=None,
+    dashboardType=DashboardType.Dashboard,
+    sourceUrl=SourceUrl(
+        __root__="http://localhost:55693/superset/dashboard/top-trades/"
+    ),
+    project=None,
+    charts=[FullyQualifiedEntityName(__root__="test_supserset.37")],
+    dataModels=None,
+    tags=None,
+    owner=None,
+    service=FullyQualifiedEntityName(__root__="test_supserset"),
+    extension=None,
+    domain=None,
+    dataProducts=None,
+    lifeCycle=None,
+    sourceHash=None,
 )
 
 EXPECTED_CHART = CreateChartRequest(
@@ -285,6 +339,30 @@ def perform_sql_queries(superset_db):
 
     superset_db.engine.execute(CREATE_TABLES_TABLE)
     superset_db.engine.execute(INSERT_TABLES_DATA)
+
+
+def create_mock_dashboard_via_api(superset_api):
+    session_obj = requests.session()
+    hostPort = superset_api.client.config.hostPort
+    resp = session_obj.post(
+        f"{hostPort}/api/v1/security/login",
+        json={
+            "username": superset_api.client.config.connection.username,
+            "password": superset_api.client.config.connection.password.get_secret_value(),
+            "provider": superset_api.client.config.connection.provider.value,
+        },
+    )
+    access_token = resp.json()["access_token"]
+
+    headers = {"Authorization": f"Bearer {access_token}"}
+    csrf_resp = session_obj.get(
+        f"{hostPort}/api/v1/security/csrf_token", headers=headers
+    )
+    csrf_token = csrf_resp.json()["result"]
+    csrf_header = {"X-CSRF-Token": csrf_token}
+    headers.update(csrf_header)
+    session_obj.headers.update(headers)
+    resp = session_obj.post(f"{hostPort}/api/v1/dashboard", json=MOCK_DASHBOARD_INPUT)
 
 
 class SupersetUnitTest(TestCase):
@@ -373,29 +451,17 @@ class SupersetUnitTest(TestCase):
         """
         Mock the client and check that we get a list
         """
-
-        with patch.object(
-            SupersetAPIClient, "fetch_total_dashboards", return_value=1
-        ), patch.object(
-            SupersetAPIClient, "fetch_dashboards", return_value=MOCK_DASHBOARD_RESP
-        ):
-            dashboard_list = self.superset_api.get_dashboards_list()
-            self.assertEqual(list(dashboard_list), [MOCK_DASHBOARD])
+        create_mock_dashboard_via_api(self.superset_api)
+        dashboard_list = self.superset_api.get_dashboards_list()
+        self.assertEqual(list(dashboard_list), [MOCK_DASHBOARD])
 
     def test_api_get_published_dashboards_list(self):
         """
         Mock the client and check that we get only published dashboards list
         """
-        with patch.object(
-            SupersetAPIClient, "fetch_total_dashboards", return_value=1
-        ), patch.object(
-            SupersetAPIClient, "fetch_dashboards", return_value=MOCK_DASHBOARD_RESP
-        ):
-            dashboard_list = list(self.superset_api.get_dashboards_list())
-            self.assertEqual(len(dashboard_list), PUBLISHED_DASHBOARD_COUNT)
-            self.assertEqual(
-                dashboard_list[0].dashboard_title, PUBLISHED_DASHBOARD_NAME
-            )
+        dashboard_list = list(self.superset_api.get_dashboards_list())
+        self.assertEqual(len(dashboard_list), PUBLISHED_DASHBOARD_COUNT)
+        self.assertEqual(dashboard_list[0].dashboard_title, PUBLISHED_DASHBOARD_NAME)
 
     def test_charts_of_dashboard(self):
         """
@@ -427,7 +493,10 @@ class SupersetUnitTest(TestCase):
                 chart.name.__root__ for chart in EXPECTED_CHART_ENTITY
             ]
             dashboard = next(self.superset_api.yield_dashboard(MOCK_DASHBOARD)).right
-            self.assertEqual(dashboard, EXPECTED_DASH)
+            EXPECTED_DASH_API.sourceUrl = SourceUrl(
+                __root__=f"http://{superset_container.get_container_host_ip()}:{superset_container.get_exposed_port(8088)}/{MOCK_DASHBOARD.url}"
+            )
+            self.assertEqual(dashboard, EXPECTED_DASH_API)
 
         # TEST DB SOURCE
         with patch.object(
@@ -534,3 +603,7 @@ class SupersetUnitTest(TestCase):
             ),
             "/app/superset_home/superset.db",
         )
+
+# stop both testcontainers
+postgres.stop()
+superset_container.stop()
