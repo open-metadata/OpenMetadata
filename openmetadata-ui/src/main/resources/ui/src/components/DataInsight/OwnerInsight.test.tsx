@@ -13,6 +13,7 @@
 
 import { act, queryByAttribute, render, screen } from '@testing-library/react';
 import React from 'react';
+import { MemoryRouter } from 'react-router-dom';
 import { DataInsightChartType } from '../../generated/dataInsight/dataInsightChartResult';
 import {
   DUMMY_GRAPH_DATA,
@@ -51,10 +52,12 @@ jest.mock('../../rest/DataInsightAPI', () => ({
   getAggregateChartData: jest.fn().mockImplementation(() => Promise.resolve()),
 }));
 
-jest.mock('react-i18next', () => ({
-  useTranslation: jest.fn().mockReturnValue({
-    t: (label: string) => label,
-  }),
+jest.mock('react-router-dom', () => ({
+  Link: jest
+    .fn()
+    .mockImplementation(({ children, ...rest }) => (
+      <div {...rest}>{children}</div>
+    )),
 }));
 
 describe('Test DescriptionInsight Component', () => {
@@ -108,5 +111,17 @@ describe('Test DescriptionInsight Component', () => {
       endTs: mockProps.chartFilter.endTs,
       startTs: mockProps.chartFilter.startTs,
     });
+  });
+
+  it('should render explore no owner assets button', async () => {
+    await act(async () => {
+      render(<OwnerInsight {...mockProps} isExploreBtnVisible />, {
+        wrapper: MemoryRouter,
+      });
+    });
+
+    expect(
+      screen.getByTestId('explore-asset-with-no-owner')
+    ).toBeInTheDocument();
   });
 });

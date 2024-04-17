@@ -200,7 +200,7 @@ const ExplorePageV1: FunctionComponent = () => {
                 : undefined,
               sortOrder: tabsInfo[nSearchIndex]?.sortOrder ?? SORT_ORDER.DESC,
             },
-            isPersistFilters: false,
+            isPersistFilters: true,
           })
         );
       },

@@ -94,3 +94,70 @@ export const FAILED_TO_FIND_INDEX_ERROR = 'Failed to to find index';
 export const ES_EXCEPTION_SHARDS_FAILED = 'reason=all shards failed';
 
 export const SEARCH_INDEXING_APPLICATION = 'SearchIndexingApplication';
+
+export const INCOMPLETE_DESCRIPTION_ADVANCE_SEARCH_FILTER = {
+  id: 'descriptionID1',
+  type: 'group',
+  properties: { conjunction: 'AND', not: false },
+  children1: {
+    descriptionID2: {
+      type: 'group',
+      properties: { conjunction: 'AND', not: false },
+      children1: {
+        descriptionID3: {
+          type: 'rule',
+          properties: {
+            field: 'descriptionStatus',
+            operator: 'select_equals',
+            value: ['INCOMPLETE'],
+            valueSrc: ['value'],
+            operatorOptions: null,
+            valueType: ['select'],
+            asyncListValues: [
+              {
+                key: 'INCOMPLETE',
+                value: 'INCOMPLETE',
+                children: 'Incomplete',
+              },
+            ],
+          },
+          id: 'descriptionID3',
+          path: ['descriptionID1', 'descriptionID2', 'descriptionID3'],
+        },
+      },
+      id: 'descriptionID2',
+      path: ['descriptionID1', 'descriptionID2'],
+    },
+  },
+  path: ['descriptionID1'],
+};
+
+export const NO_OWNER_ADVANCE_SEARCH_FILTER = {
+  id: 'ownerID1',
+  type: 'group',
+  properties: { conjunction: 'AND', not: false },
+  children1: {
+    ownerID3: {
+      type: 'group',
+      properties: { conjunction: 'AND', not: false },
+      children1: {
+        ownerID2: {
+          type: 'rule',
+          properties: {
+            field: 'owner.displayName.keyword',
+            operator: 'is_null',
+            value: [],
+            valueSrc: [],
+            operatorOptions: null,
+            valueType: [],
+          },
+          id: 'ownerID2',
+          path: ['ownerID1', 'ownerID3', 'ownerID2'],
+        },
+      },
+      id: 'ownerID3',
+      path: ['ownerID1', 'ownerID3'],
+    },
+  },
+  path: ['ownerID1'],
+};

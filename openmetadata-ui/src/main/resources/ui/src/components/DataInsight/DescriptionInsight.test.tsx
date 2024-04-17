@@ -13,6 +13,7 @@
 
 import { act, queryByAttribute, render, screen } from '@testing-library/react';
 import React from 'react';
+import { MemoryRouter } from 'react-router-dom';
 import { DataInsightChartType } from '../../generated/dataInsight/dataInsightChartResult';
 import {
   DUMMY_GRAPH_DATA,
@@ -49,6 +50,13 @@ jest.mock('./EntitySummaryProgressBar.component', () => {
     </div>
   ));
 });
+jest.mock('react-router-dom', () => ({
+  Link: jest
+    .fn()
+    .mockImplementation(({ children, ...rest }) => (
+      <div {...rest}>{children}</div>
+    )),
+}));
 
 jest.mock('react-i18next', () => ({
   useTranslation: jest.fn().mockReturnValue({
@@ -111,5 +119,17 @@ describe('Test DescriptionInsight Component', () => {
       endTs: mockProps.chartFilter.endTs,
       startTs: mockProps.chartFilter.startTs,
     });
+  });
+
+  it('should render explore no description assets button', async () => {
+    await act(async () => {
+      render(<DescriptionInsight {...mockProps} isExploreBtnVisible />, {
+        wrapper: MemoryRouter,
+      });
+    });
+
+    expect(
+      screen.getByTestId('explore-asset-with-no-description')
+    ).toBeInTheDocument();
   });
 });

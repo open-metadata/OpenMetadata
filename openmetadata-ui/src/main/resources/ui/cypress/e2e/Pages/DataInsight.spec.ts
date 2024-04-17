@@ -23,7 +23,10 @@ import {
 } from '../../common/common';
 import { verifyKpiChart } from '../../common/DataInsightUtils';
 import { getToken } from '../../common/Utils/LocalStorage';
-import { SidebarItem } from '../../constants/Entity.interface';
+import {
+  EXPLORE_PAGE_TABS,
+  SidebarItem,
+} from '../../constants/Entity.interface';
 import { GlobalSettingOptions } from '../../constants/settings.constant';
 
 const KPI_DATA = [
@@ -170,6 +173,47 @@ describe('Data Insight feature', { tags: 'Observability' }, () => {
       .scrollIntoView()
       .should('be.visible');
     cy.get('#TotalEntitiesByTier-graph').scrollIntoView().should('be.visible');
+  });
+
+  it('Verify No owner and description redirection to explore page', () => {
+    cy.sidebarClick(SidebarItem.DATA_INSIGHT);
+    verifyResponseStatusCode('@dataInsightsChart', 200);
+    interceptURL(
+      'GET',
+      '/api/v1/search/query?*descriptionStatus*INCOMPLETE*',
+      'noDescriptionAssets'
+    );
+    cy.get('[data-testid="explore-asset-with-no-description"]')
+      .scrollIntoView()
+      .click();
+    Object.values(EXPLORE_PAGE_TABS).map((tab) => {
+      cy.get(`[data-testid="${tab}-tab"]`).scrollIntoView().click();
+      verifyResponseStatusCode('@noDescriptionAssets', 200);
+      cy.get('[data-testid="advance-search-filter-text"]').should(
+        'contain',
+        "descriptionStatus = 'INCOMPLETE'"
+      );
+    });
+
+    cy.sidebarClick(SidebarItem.DATA_INSIGHT);
+    verifyResponseStatusCode('@dataInsightsChart', 200);
+    interceptURL(
+      'GET',
+      '/api/v1/search/query?*must_not*exists*owner.displayName.keyword*',
+      'noOwnerAssets'
+    );
+    cy.get('[data-testid="explore-asset-with-no-owner"]')
+      .scrollIntoView()
+      .click();
+
+    Object.values(EXPLORE_PAGE_TABS).map((tab) => {
+      cy.get(`[data-testid="${tab}-tab"]`).scrollIntoView().click();
+      verifyResponseStatusCode('@noOwnerAssets', 200);
+      cy.get('[data-testid="advance-search-filter-text"]').should(
+        'contain',
+        'owner.displayName.keyword IS NULL'
+      );
+    });
   });
 
   it('Verifying App analytics tab', () => {
