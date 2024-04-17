@@ -27,19 +27,20 @@ from metadata.generated.schema.metadataIngestion.databaseServiceQueryUsagePipeli
     DatabaseUsageConfigType,
 )
 from metadata.generated.schema.metadataIngestion.workflow import (
+    LogLevels,
     OpenMetadataWorkflowConfig,
+    Processor,
     Sink,
     Source,
     SourceConfig,
     WorkflowConfig,
-    Processor,
-    LogLevels,
 )
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.profiler.api.models import ProfilerProcessorConfig
 from metadata.workflow.metadata import MetadataWorkflow
 from metadata.workflow.profiler import ProfilerWorkflow
 from metadata.workflow.usage import UsageWorkflow
+
 from ..integration_base import int_admin_ometa
 
 if not sys.version_info >= (3, 9):
