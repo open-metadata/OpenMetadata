@@ -127,7 +127,7 @@ def get_tag_label(
 def get_tag_labels(
     metadata: OpenMetadata,
     tags: List[str],
-    classification_name: str = "",
+    classification_name: Optional[str],
     include_tags: bool = True,
     tag_type: Union[Tag, GlossaryTerm] = Tag,
 ) -> Optional[List[TagLabel]]:
