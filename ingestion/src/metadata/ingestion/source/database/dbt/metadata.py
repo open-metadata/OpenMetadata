@@ -21,6 +21,7 @@ from metadata.generated.schema.api.tests.createTestDefinition import (
     CreateTestDefinitionRequest,
 )
 from metadata.generated.schema.entity.classification.tag import Tag
+from metadata.generated.schema.entity.data.glossaryTerm import GlossaryTerm
 from metadata.generated.schema.entity.data.table import (
     Column,
     DataModel,
@@ -53,14 +54,10 @@ from metadata.ingestion.api.models import Either
 from metadata.ingestion.lineage.models import ConnectionTypeDialectMapper
 from metadata.ingestion.lineage.sql_lineage import get_lineage_by_query
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
-from metadata.ingestion.models.patch_tags import OMetaGlossariesAndTiersData
-from metadata.ingestion.models.table_metadata import ColumnDescription, ColumnTag
+from metadata.ingestion.models.table_metadata import ColumnDescription
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.database.column_type_parser import ColumnTypeParser
-from metadata.ingestion.source.database.database_service import (
-    ColumnGlossary,
-    DataModelLink,
-)
+from metadata.ingestion.source.database.database_service import DataModelLink
 from metadata.ingestion.source.database.dbt.constants import (
     DBT_RUN_RESULT_DATE_FORMAT,
     REQUIRED_CATALOG_KEYS,
@@ -91,12 +88,7 @@ from metadata.ingestion.source.database.dbt.models import DbtMeta
 from metadata.utils import fqn
 from metadata.utils.elasticsearch import get_entity_from_es_result
 from metadata.utils.logger import ingestion_logger
-from metadata.utils.tag_utils import (
-    get_glossary_labels,
-    get_ometa_tag_and_classification,
-    get_tag_label,
-    get_tag_labels,
-)
+from metadata.utils.tag_utils import get_ometa_tag_and_classification, get_tag_labels
 from metadata.utils.time_utils import convert_timestamp_to_milliseconds
 
 logger = ingestion_logger()
@@ -399,7 +391,7 @@ class DbtSource(DbtServiceSource):
                     if dbt_objects.dbt_catalog:
                         catalog_node = catalog_entities.get(key)
 
-                    dbt_table_tags_list = None
+                    dbt_table_tags_list = []
                     if manifest_node.tags:
                         dbt_table_tags_list = get_tag_labels(
                             metadata=self.metadata,
@@ -408,30 +400,9 @@ class DbtSource(DbtServiceSource):
                             include_tags=self.source_config.includeTags,
                         )
 
-                    dbt_table_glossaries_list = None
-                    dbt_table_tier = None
-                    dbt_meta_info = DbtMeta(**manifest_node.meta)
-                    if (
-                        dbt_meta_info.openmetadata
-                        and dbt_meta_info.openmetadata.glossary
-                    ):
-                        dbt_table_glossaries_list = get_glossary_labels(
-                            metadata=self.metadata,
-                            glossaries=dbt_meta_info.openmetadata.glossary,
-                            include_tags=self.source_config.includeTags,
-                        )
-                    if dbt_meta_info.openmetadata and dbt_meta_info.openmetadata.tier:
-                        tier_fqn = dbt_meta_info.openmetadata.tier
-                        dbt_table_tier = get_tag_label(
-                            metadata=self.metadata,
-                            tag_name=tier_fqn.split(fqn.FQN_SEPARATOR)[-1],
-                            classification_name=tier_fqn.split(fqn.FQN_SEPARATOR)[0],
-                        )
-
-                    dbt_column_glossaries_list = None
-                    if manifest_node.columns:
-                        dbt_column_glossaries_list = self.parse_glossaries_columns(
-                            manifest_node.columns
+                    if manifest_node.meta:
+                        dbt_table_tags_list.extend(
+                            self.process_dbt_meta(manifest_node.meta) or []
                         )
 
                     dbt_compiled_query = get_dbt_compiled_query(manifest_node)
@@ -462,9 +433,6 @@ class DbtSource(DbtServiceSource):
                     if table_entity:
                         data_model_link = DataModelLink(
                             table_entity=table_entity,
-                            glossary=dbt_table_glossaries_list,
-                            column_glossary=dbt_column_glossaries_list,
-                            tier=dbt_table_tier,
                             datamodel=DataModel(
                                 modelType=ModelType.DBT,
                                 resourceType=manifest_node.resource_type.value,
@@ -587,6 +555,34 @@ class DbtSource(DbtServiceSource):
                 if catalog_column and catalog_column.comment:
                     column_description = catalog_column.comment
 
+                dbt_column_tag_list = []
+                dbt_column_tag_list.extend(
+                    get_tag_labels(
+                        metadata=self.metadata,
+                        tags=manifest_column.tags,
+                        classification_name=self.tag_classification_name,
+                        include_tags=self.source_config.includeTags,
+                    )
+                    or []
+                )
+
+                if manifest_column.meta:
+                    dbt_column_meta = DbtMeta(**manifest_column.meta)
+                    logger.debug(f"Processing DBT column glossary: {key}")
+                    if (
+                        dbt_column_meta.openmetadata
+                        and dbt_column_meta.openmetadata.glossary
+                    ):
+                        dbt_column_tag_list.extend(
+                            get_tag_labels(
+                                metadata=self.metadata,
+                                tags=dbt_column_meta.openmetadata.glossary,
+                                include_tags=self.source_config.includeTags,
+                                tag_type=GlossaryTerm,
+                            )
+                            or []
+                        )
+
                 columns.append(
                     Column(
                         name=column_name,
@@ -602,12 +598,7 @@ class DbtSource(DbtServiceSource):
                         ordinalPosition=catalog_column.index
                         if catalog_column
                         else None,
-                        tags=get_tag_labels(
-                            metadata=self.metadata,
-                            tags=manifest_column.tags,
-                            classification_name=self.tag_classification_name,
-                            include_tags=self.source_config.includeTags,
-                        ),
+                        tags=dbt_column_tag_list,
                     )
                 )
                 logger.debug(f"Successfully processed DBT column: {key}")
@@ -616,44 +607,6 @@ class DbtSource(DbtServiceSource):
                 logger.warning(f"Failed to parse DBT column {column_name}: {exc}")
 
         return columns
-
-    def parse_glossaries_columns(self, manifest_columns: dict) -> Optional[dict]:
-        """
-        Method to parse the DBT columns
-        """
-        try:
-            columns_glossary_list = []
-            for key, manifest_column in manifest_columns.items():
-                try:
-                    dbt_column_meta = DbtMeta(**manifest_column.meta)
-                    logger.debug(f"Processing DBT column glossary: {key}")
-                    if (
-                        dbt_column_meta.openmetadata
-                        and dbt_column_meta.openmetadata.glossary
-                    ):
-                        glossary_labels = get_glossary_labels(
-                            metadata=self.metadata,
-                            glossaries=dbt_column_meta.openmetadata.glossary,
-                            include_tags=self.source_config.includeTags,
-                        )
-                        if glossary_labels:
-                            columns_glossary_list.append(
-                                ColumnGlossary(
-                                    name=manifest_column.name,
-                                    glossary=glossary_labels,
-                                )
-                            )
-                except Exception as exc:  # pylint: disable=broad-except
-                    logger.debug(traceback.format_exc())
-                    logger.warning(f"Failed to parse DBT column glossary {key}: {exc}")
-
-            return columns_glossary_list or None
-
-        except Exception as exc:  # pylint: disable=broad-except
-            logger.debug(traceback.format_exc())
-            logger.warning(f"Failed to parse DBT column glossary : {exc}")
-
-        return None
 
     def create_dbt_lineage(
         self, data_model_link: DataModelLink
@@ -751,6 +704,42 @@ class DbtSource(DbtServiceSource):
                 )
             )
 
+    def process_dbt_meta(self, manifest_meta):
+        """
+        Method to process DBT meta for Tags and GlossaryTerms
+        """
+        dbt_table_tags_list = []
+        try:
+            dbt_meta_info = DbtMeta(**manifest_meta)
+            if dbt_meta_info.openmetadata and dbt_meta_info.openmetadata.glossary:
+                dbt_table_tags_list.extend(
+                    get_tag_labels(
+                        metadata=self.metadata,
+                        tags=dbt_meta_info.openmetadata.glossary,
+                        include_tags=self.source_config.includeTags,
+                        tag_type=GlossaryTerm,
+                    )
+                    or []
+                )
+
+            if dbt_meta_info.openmetadata and dbt_meta_info.openmetadata.tier:
+                tier_fqn = dbt_meta_info.openmetadata.tier
+                dbt_table_tags_list.extend(
+                    get_tag_labels(
+                        metadata=self.metadata,
+                        tags=[tier_fqn.split(fqn.FQN_SEPARATOR)[-1]],
+                        classification_name=tier_fqn.split(fqn.FQN_SEPARATOR)[0],
+                        include_tags=self.source_config.includeTags,
+                    )
+                    or []
+                )
+
+        except Exception as exc:  # pylint: disable=broad-except
+            logger.debug(traceback.format_exc())
+            logger.warning(f"Failed to process meta dbt Tags and GlossaryTerms: {exc}")
+
+        return dbt_table_tags_list or []
+
     def process_dbt_descriptions(self, data_model_link: DataModelLink):
         """
         Method to process DBT descriptions using patch APIs
@@ -809,96 +798,6 @@ class DbtSource(DbtServiceSource):
                 logger.warning(
                     f"Failed to parse the node {table_entity.fullyQualifiedName.__root__} "
                     f"to update dbt description: {exc}"
-                )
-
-    def yield_dbt_glossary(
-        self, data_model_link: DataModelLink
-    ) -> Iterable[Either[OMetaGlossariesAndTiersData]]:
-        """
-        Method to patch DBT glossary
-        """
-        table_entity: Table = data_model_link.table_entity
-        logger.debug(
-            f"Processing DBT glossaries for: {table_entity.fullyQualifiedName.__root__}"
-        )
-        if table_entity:
-            try:
-                service_name, database_name, schema_name, table_name = fqn.split(
-                    table_entity.fullyQualifiedName.__root__
-                )
-
-                if data_model_link.glossary:
-                    yield Either(
-                        right=OMetaGlossariesAndTiersData(
-                            entity=Table,
-                            table=table_entity,
-                            tag_labels=data_model_link.glossary,
-                        )
-                    )
-
-                column_glossary_tags_list = []
-                for column in data_model_link.column_glossary or []:
-                    if column.glossary:
-                        column_fqn = fqn.build(
-                            self.metadata,
-                            entity_type=Column,
-                            service_name=service_name,
-                            database_name=database_name,
-                            schema_name=schema_name,
-                            table_name=table_name,
-                            column_name=column.name,
-                        )
-                        column_glossary_tags_list.append(
-                            [
-                                ColumnTag(
-                                    column_fqn=column_fqn,
-                                    tag_label=glossary,
-                                )
-                                for glossary in column.glossary
-                            ]
-                        )
-
-                for tags in column_glossary_tags_list or []:
-                    yield Either(
-                        right=OMetaGlossariesAndTiersData(
-                            table=table_entity, column_tags=tags
-                        )
-                    )
-
-            except Exception as exc:  # pylint: disable=broad-except
-                yield Either(
-                    left=StackTraceError(
-                        name=table_entity.fullyQualifiedName.__root__,
-                        error=(f"Failed to process table tier due to : {exc}"),
-                        stackTrace=traceback.format_exc(),
-                    )
-                )
-
-    def yield_dbt_tier(self, data_model_link: DataModelLink):
-        """
-        Method to patch DBT tier
-        """
-        table_entity: Table = data_model_link.table_entity
-        logger.debug(
-            f"Processing DBT tier for: {table_entity.fullyQualifiedName.__root__}"
-        )
-        if table_entity:
-            try:
-                if data_model_link.tier:
-                    yield Either(
-                        right=OMetaGlossariesAndTiersData(
-                            entity=Table,
-                            table=table_entity,
-                            tag_labels=[data_model_link.tier],
-                        )
-                    )
-            except Exception as exc:  # pylint: disable=broad-except
-                yield Either(
-                    left=StackTraceError(
-                        name=table_entity.fullyQualifiedName.__root__,
-                        error=(f"Failed to process table tier due to : {exc}"),
-                        stackTrace=traceback.format_exc(),
-                    )
                 )
 
     def create_dbt_tests_definition(

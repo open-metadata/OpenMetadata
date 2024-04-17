@@ -104,17 +104,6 @@ class DbtServiceTopology(ServiceTopology):
                 processor="process_dbt_descriptions",
                 nullable=True,
             ),
-            NodeStage(
-                type_=DataModelLink,
-                processor="yield_dbt_glossary",
-                nullable=True,
-            ),
-            NodeStage(
-                type_=DataModelLink,
-                processor="yield_dbt_tier",
-                nullable=True,
-            ),
-            # process glossary and tiers nodestage
         ],
     )
     process_dbt_tests = TopologyNode(
@@ -238,18 +227,6 @@ class DbtServiceSource(TopologyRunnerMixin, Source, ABC):
     def process_dbt_descriptions(self, data_model_link: DataModelLink):
         """
         Method to process DBT descriptions using patch APIs
-        """
-
-    @abstractmethod
-    def yield_dbt_glossary(self, data_model_link: DbtObjects):
-        """
-        Method to patch DBT glossary
-        """
-
-    @abstractmethod
-    def yield_dbt_tier(self, data_model_link: DbtObjects):
-        """
-        Method to patch DBT Tier
         """
 
     def get_dbt_tests(self) -> dict:

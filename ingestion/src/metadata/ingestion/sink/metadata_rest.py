@@ -67,7 +67,6 @@ from metadata.ingestion.models.patch_request import (
     PatchedEntity,
     PatchRequest,
 )
-from metadata.ingestion.models.patch_tags import OMetaGlossariesAndTiersData
 from metadata.ingestion.models.pipeline_status import OMetaPipelineStatus
 from metadata.ingestion.models.profile_data import OMetaTableProfileSampleData
 from metadata.ingestion.models.search_index_data import OMetaIndexSampleData
@@ -516,37 +515,6 @@ class MetadataRestSink(Sink):  # pylint: disable=too-many-public-methods
             left=StackTraceError(
                 name=record.entity_fqn,
                 error=f"Entity of type '{record.entity}' with name '{record.entity_fqn}' not found.",
-            )
-        )
-
-    @_run_dispatch.register
-    def write_tags_data(self, record: OMetaGlossariesAndTiersData) -> Either[Entity]:
-        """
-        Ingest the tags data
-        """
-
-        if record.tag_labels:
-
-            # Patch table glossary or tiers
-            self.metadata.patch_tags(
-                entity=record.entity, source=record.table, tag_labels=record.tag_labels
-            )
-            return Either(right=record.table)
-
-        if record.column_tags:
-
-            # Patch column glossary
-            self.metadata.patch_column_tags(
-                table=record.table,
-                column_tags=record.column_tags,
-            )
-
-            return Either(right=record.table)
-
-        return Either(
-            left=StackTraceError(
-                name=record.table,
-                error=f"Error patching glossaries for table {record.table}.",
             )
         )
 

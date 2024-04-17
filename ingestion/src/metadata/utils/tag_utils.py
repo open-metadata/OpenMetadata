@@ -14,7 +14,7 @@ Tag utils Module
 
 import functools
 import traceback
-from typing import Iterable, List, Optional
+from typing import Iterable, List, Optional, Union
 
 from metadata.generated.schema.api.classification.createClassification import (
     CreateClassificationRequest,
@@ -83,29 +83,41 @@ def get_ometa_tag_and_classification(
 
 @functools.lru_cache(maxsize=512)
 def get_tag_label(
-    metadata: OpenMetadata, tag_name: str, classification_name: str
+    metadata: OpenMetadata,
+    tag_name: str,
+    classification_name: str,
+    tag_type: Union[Tag, GlossaryTerm] = Tag,
 ) -> Optional[TagLabel]:
     """
     Returns the tag label if the tag is created
     """
     try:
-        # Build the tag FQN
-        tag_fqn = fqn.build(
-            metadata,
-            Tag,
-            classification_name=classification_name,
-            tag_name=tag_name,
-        )
+        if tag_type == Tag:
+            # Build the tag FQN
+            tag_fqn = fqn.build(
+                metadata,
+                tag_type,
+                classification_name=classification_name,
+                tag_name=tag_name,
+            )
+            source = TagSource.Classification.value
+
+        if tag_type == GlossaryTerm:
+            tag_fqn = tag_name
+            source = TagSource.Glossary.value
 
         # Check if the tag exists
-        tag = metadata.get_by_name(entity=Tag, fqn=tag_fqn)
+        tag = metadata.get_by_name(entity=tag_type, fqn=tag_fqn)
         if tag:
             return TagLabel(
                 tagFQN=tag_fqn,
                 labelType=LabelType.Automated.value,
                 state=State.Suggested.value,
-                source=TagSource.Classification.value,
+                source=source,
             )
+        else:
+            logger.warning(f"Tag does not exist: {tag_fqn}")
+
     except Exception as err:
         logger.debug(traceback.format_exc())
         logger.error(f"Error processing tag label: {err}")
@@ -115,8 +127,9 @@ def get_tag_label(
 def get_tag_labels(
     metadata: OpenMetadata,
     tags: List[str],
-    classification_name: str,
+    classification_name: str = "",
     include_tags: bool = True,
+    tag_type: Union[Tag, GlossaryTerm] = Tag,
 ) -> Optional[List[TagLabel]]:
     """
     Method to create tag labels from the collected tags
@@ -126,7 +139,10 @@ def get_tag_labels(
         for tag in tags:
             try:
                 tag_label = get_tag_label(
-                    metadata, tag_name=tag, classification_name=classification_name
+                    metadata,
+                    tag_name=tag,
+                    classification_name=classification_name,
+                    tag_type=tag_type,
                 )
                 if tag_label:
                     tag_labels_list.append(tag_label)
@@ -135,35 +151,3 @@ def get_tag_labels(
                 logger.debug(traceback.format_exc())
                 logger.error(f"Error processing tag labels: {err}")
     return tag_labels_list or None
-
-
-def get_glossary_labels(
-    metadata: OpenMetadata,
-    glossaries: List[str],
-    include_tags: bool = True,
-) -> Optional[List[TagLabel]]:
-    """
-    Method to create glossary labels from the collected glossaries
-    """
-    glossary_labels_list = []
-    if glossaries and include_tags:
-        for glossary_fqn in glossaries:
-            try:
-                # check if glossary exists
-                glossary = metadata.get_by_name(entity=GlossaryTerm, fqn=glossary_fqn)
-                if glossary:
-                    glossary_labels_list.append(
-                        TagLabel(
-                            tagFQN=glossary_fqn,
-                            labelType=LabelType.Automated.value,
-                            state=State.Suggested.value,
-                            source=TagSource.Glossary,
-                        )
-                    )
-                else:
-                    logger.warning(f"Glossary does not exist: {glossary_fqn}")
-
-            except Exception as err:
-                logger.debug(traceback.format_exc())
-                logger.warning(f"Error processing glossary labels: {err}")
-    return glossary_labels_list or None
