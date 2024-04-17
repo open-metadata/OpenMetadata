@@ -369,6 +369,7 @@ def populate_column_lineage_map(raw_column_lineage):
     return lineage_map
 
 
+# pylint: disable=too-many-locals
 def get_lineage_by_query(
     metadata: OpenMetadata,
     service_name: str,
