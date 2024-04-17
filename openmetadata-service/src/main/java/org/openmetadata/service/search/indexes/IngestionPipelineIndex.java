@@ -1,5 +1,7 @@
 package org.openmetadata.service.search.indexes;
 
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -33,7 +35,13 @@ public class IngestionPipelineIndex implements SearchIndex {
     SearchIndexUtils.removeNonIndexableFields(doc, excludeFields);
     List<SearchSuggest> serviceSuggest = new ArrayList<>();
     serviceSuggest.add(
-        SearchSuggest.builder().input(ingestionPipeline.getService().getName()).weight(5).build());
+        SearchSuggest.builder()
+            .input(
+                (ingestionPipeline.getService() != null
+                    ? ingestionPipeline.getService().getName()
+                    : null))
+            .weight(5)
+            .build());
     ParseTags parseTags =
         new ParseTags(Entity.getEntityTags(Entity.INGESTION_PIPELINE, ingestionPipeline));
     Map<String, Object> commonAttributes =
