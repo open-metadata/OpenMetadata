@@ -56,11 +56,9 @@ export interface IAuthContext {
   setIsSigningIn: (authenticated: boolean) => void;
   onLoginHandler: () => void;
   onLogoutHandler: () => void;
-  loading: boolean;
   currentUser?: User;
   newUser?: UserProfile;
   updateNewUser: (user: UserProfile) => void;
-  setLoadingIndicator: (authenticated: boolean) => void;
   handleSuccessfulLogin: (user: OidcUser) => void;
   handleFailedLogin: () => void;
   updateAxiosInterceptors: () => void;
