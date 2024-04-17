@@ -28,6 +28,7 @@ import { ResourceEntity } from '../../../../context/PermissionProvider/Permissio
 import { CSMode } from '../../../../enums/codemirror.enum';
 import { EntityType } from '../../../../enums/entity.enum';
 import { Operation } from '../../../../generated/entity/policies/policy';
+
 import { TestCaseParameterValue } from '../../../../generated/tests/testCase';
 import { updateTestCaseById } from '../../../../rest/testAPI';
 import { checkPermission } from '../../../../utils/PermissionsUtils';
@@ -39,12 +40,15 @@ import EditTestCaseModal from '../../AddDataQualityTest/EditTestCaseModal';
 import '../incident-manager.style.less';
 import './test-case-result-tab.style.less';
 import { TestCaseResultTabProps } from './TestCaseResultTab.interface';
+import testCaseResultTabClassBase from './TestCaseResultTabClassBase';
 
 const TestCaseResultTab = ({
   testCaseData,
   onTestCaseUpdate,
 }: TestCaseResultTabProps) => {
   const { t } = useTranslation();
+  const additionalComponent =
+    testCaseResultTabClassBase.getAdditionalComponents();
   const [isDescriptionEdit, setIsDescriptionEdit] = useState<boolean>(false);
   const [isParameterEdit, setIsParameterEdit] = useState<boolean>(false);
   const { permissions } = usePermissionProvider();
@@ -209,6 +213,11 @@ const TestCaseResultTab = ({
           <TestSummary data={testCaseData} />
         </Col>
       )}
+
+      {!isEmpty(additionalComponent) &&
+        additionalComponent.map(({ Component, id }) => (
+          <Component key={id} testCaseData={testCaseData} />
+        ))}
 
       {testCaseData && isParameterEdit && (
         <EditTestCaseModal

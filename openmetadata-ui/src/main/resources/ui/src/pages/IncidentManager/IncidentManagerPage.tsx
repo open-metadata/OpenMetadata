@@ -492,6 +492,7 @@ const IncidentManagerPage = () => {
               showSearch
               api={searchTestCases}
               className="w-min-20"
+              data-testid="test-case-select"
               options={testCaseInitialOptions}
               placeholder={t('label.test-case')}
               suffixIcon={undefined}
