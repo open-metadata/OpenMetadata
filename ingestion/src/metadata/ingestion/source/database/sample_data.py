@@ -735,6 +735,12 @@ class SampleDataSource(
                     ),
                 )
 
+                if table_and_db.dataModel:
+                    self.metadata.ingest_table_data_model(
+                        table_entity,
+                        table_and_db.dataModel
+                    )
+
             if table.get("customMetrics"):
                 for custom_metric in table["customMetrics"]:
                     self.metadata.create_or_update_custom_metric(
