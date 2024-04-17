@@ -48,7 +48,7 @@ const TestCaseResultTab = ({
 }: TestCaseResultTabProps) => {
   const { t } = useTranslation();
   const additionalComponent =
-    testCaseResultTabClassBase.getAdditionalComponent();
+    testCaseResultTabClassBase.getAdditionalComponents();
   const [isDescriptionEdit, setIsDescriptionEdit] = useState<boolean>(false);
   const [isParameterEdit, setIsParameterEdit] = useState<boolean>(false);
   const { permissions } = usePermissionProvider();
