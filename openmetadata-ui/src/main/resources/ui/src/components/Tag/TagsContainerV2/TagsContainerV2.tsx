@@ -61,6 +61,8 @@ const TagsContainerV2 = ({
   onSelectionChange,
   onThreadLinkSelect,
   children,
+  defaultLabelType,
+  defaultState,
 }: TagsContainerV2Props) => {
   const history = useHistory();
   const [form] = Form.useForm();
@@ -121,8 +123,9 @@ const TagsContainerV2 = ({
           displayName: tag.data?.displayName,
           description: tag.data?.description,
           style: tag.data?.style ?? {},
-          labelType: tag.data?.labelType ?? LabelType.Manual,
-          state: tag.data?.state ?? State.Confirmed,
+          labelType:
+            tag.data?.labelType ?? defaultLabelType ?? LabelType.Manual,
+          state: tag.data?.state ?? defaultState ?? State.Confirmed,
         };
       }
 
