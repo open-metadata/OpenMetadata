@@ -27,6 +27,9 @@ from metadata.workflow.metadata import MetadataWorkflow
 
 from ..integration_base import int_admin_ometa
 
+if not sys.version_info >= (3, 9):
+    pytest.skip("requires python 3.9+", allow_module_level=True)
+
 
 @pytest.fixture(scope="module")
 def metadata():
@@ -95,7 +98,6 @@ def db_fqn(db_service: DatabaseService):
     )
 
 
-@pytest.mark.skip(sys.version_info < (3, 9), reason="requires python 3.9")
 def test_pass(
     db_service,
     metadata,
