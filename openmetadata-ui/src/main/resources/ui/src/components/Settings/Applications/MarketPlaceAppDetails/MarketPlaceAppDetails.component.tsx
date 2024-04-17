@@ -124,7 +124,17 @@ const MarketPlaceAppDetails = () => {
       return t('message.app-already-installed');
     }
     if (isPreviewApp) {
-      return t('message.paid-addon-description', { app: appData?.displayName });
+      return (
+        <Transi18next
+          i18nKey="message.paid-addon-description"
+          renderElement={
+            <span data-testid="appName" style={{ fontWeight: 600 }} />
+          }
+          values={{
+            app: appData?.displayName,
+          }}
+        />
+      );
     }
 
     return '';
