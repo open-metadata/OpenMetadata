@@ -28,7 +28,7 @@ import {
   TAG_START_WITH,
 } from '../../../constants/Tag.constants';
 import { LabelType } from '../../../generated/entity/data/table';
-import { TagSource } from '../../../generated/type/tagLabel';
+import { State, TagSource } from '../../../generated/type/tagLabel';
 import { getEntityFeedLink } from '../../../utils/EntityUtils';
 import { getFilterTags } from '../../../utils/TableTags/TableTags.utils';
 import tagClassBase from '../../../utils/TagClassBase';
@@ -122,6 +122,7 @@ const TagsContainerV2 = ({
           description: tag.data?.description,
           style: tag.data?.style ?? {},
           labelType: tag.data?.labelType ?? LabelType.Manual,
+          state: tag.data?.state ?? State.Confirmed,
         };
       }
 
