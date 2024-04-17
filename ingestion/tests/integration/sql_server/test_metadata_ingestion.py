@@ -1,3 +1,4 @@
+import logging
 import sys
 
 import pytest
@@ -83,8 +84,10 @@ def ingest_metadata(db_service, metadata: OpenMetadata):
         ),
         workflowConfig=WorkflowConfig(openMetadataServerConfig=metadata.config),
     )
+    logging.getLogger("sqlfluff").setLevel(logging.CRITICAL)
     metadata_ingestion = MetadataWorkflow.create(workflow_config)
     metadata_ingestion.execute()
+    metadata_ingestion.raise_from_status()
     return
 
 
