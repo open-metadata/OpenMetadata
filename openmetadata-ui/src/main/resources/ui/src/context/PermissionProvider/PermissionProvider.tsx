@@ -31,7 +31,6 @@ import {
   getLoggedInUserPermissions,
   getResourcePermission,
 } from '../../rest/permissionAPI';
-import { getUrlPathnameExpiryAfterRoute } from '../../utils/AuthProvider.util';
 import {
   getOperationPermissions,
   getUIPermission,
@@ -79,10 +78,7 @@ const PermissionProvider: FC<PermissionProviderProps> = ({ children }) => {
   const redirectToStoredPath = useCallback(() => {
     const urlPathname = cookieStorage.getItem(REDIRECT_PATHNAME);
     if (urlPathname) {
-      cookieStorage.setItem(REDIRECT_PATHNAME, urlPathname, {
-        expires: getUrlPathnameExpiryAfterRoute(),
-        path: '/',
-      });
+      cookieStorage.removeItem(REDIRECT_PATHNAME);
       history.push(urlPathname);
     }
   }, [history]);
