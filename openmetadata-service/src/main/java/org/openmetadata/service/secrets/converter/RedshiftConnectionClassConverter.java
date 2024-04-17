@@ -33,8 +33,6 @@ public class RedshiftConnectionClassConverter extends ClassConverter {
   public Object convert(Object object) {
     RedshiftConnection redshiftConnection =
         (RedshiftConnection) JsonUtils.convertValue(object, this.clazz);
-    tryToConvert(redshiftConnection.getSslConfig(), SSL_SOURCE_CLASS)
-        .ifPresent(obj -> redshiftConnection.setSslConfig((ValidateSSLClientConfig) obj));
     return redshiftConnection;
   }
 }

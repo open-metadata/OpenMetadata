@@ -52,18 +52,18 @@ This is an optional parameter. When set, the value will be used to restrict the 
 $$
 
 $$section
-### SSL CA $(id="sslCA")
-Provide the path to SSL CA file, which needs to be local in the ingestion process.
+### SSL CA $(id="caCertificate")
+The CA certificate used for SSL validation (`ssl_ca`)
 $$
 
 $$section
-### SSL Certificate $(id="sslCert")
-Provide the path to SSL client certificate file (`ssl_cert`)
+### SSL Certificate $(id="sslCertificate")
+The SSL certificate used for client authentication (`ssl_cert`)
 $$
 
 $$section
 ### SSL Key $(id="sslKey")
-Provide the path to SSL key file (`ssl_key`)
+The private key associated with the SSL certificate (`ssl_key`)
 $$
 
 $$section

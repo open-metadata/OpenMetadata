@@ -58,7 +58,7 @@ class SSLManager:
 
     def create_temp_file(self, content):
         with tempfile.NamedTemporaryFile(delete=False) as temp_file:
-            temp_file.write(content.get_secret_value().encode())
+            temp_file.write(content.encode())
             temp_file.close()
         self.temp_files.append(temp_file.name)
         return temp_file.name
