@@ -88,295 +88,178 @@ SET json = jsonb_set(
 )
 WHERE json->>'dataModelType' IN ('QlikSenseDataModel', 'QlikCloudDataModel');
 
+UPDATE dbservice_entity
+SET json = jsonb_set(
+  json #-'{connection,config,sslCA}',
+  '{connection,config,sslConfig}',
+  json#>'{connection,config,sslConfig}' || jsonb_build_object('caCertificate', json#>'{connection,config,sslCA}')
+)
+WHERE serviceType IN ('Mysql', 'Doris') AND json#>'{connection,config,sslCA}' IS NOT NULL;
 
 UPDATE dbservice_entity
 SET json = jsonb_set(
-json #-'{connection,config,sslCA}',
-'{connection,config,sslConfig}',
-json#
->'{connection,config,sslConfig}'|| jsonb_build_object
-('caCertificate',json#>'{connection,config,sslCA}')
+  json #-'{connection,config,sslCert}',
+  '{connection,config,sslConfig}',
+  json#>'{connection,config,sslConfig}' || jsonb_build_object('sslCertificate', json#>'{connection,config,sslCert}')
 )
-WHERE serviceType IN
-('Mysql', 'Doris')
-  and json#>'{connection,config,sslCA}' is not null;
-
+WHERE serviceType IN ('Mysql', 'Doris') AND json#>'{connection,config,sslCert}' IS NOT NULL;
 
 UPDATE dbservice_entity
- SET json = jsonb_set(
-json #-'{connection,config,sslCert}',
-'{connection,config,sslConfig}',
-json#
->'{connection,config,sslConfig}' || jsonb_build_object
-('sslCertificate',json#>'{connection,config,sslCert}')
+SET json = jsonb_set(
+  json #-'{connection,config,sslKey}',
+  '{connection,config,sslConfig}',
+  json#>'{connection,config,sslConfig}' || jsonb_build_object('sslKey', json#>'{connection,config,sslKey}')
 )
-WHERE serviceType IN
-('Mysql', 'Doris')
-  and json#>'{connection,config,sslCert}' is not null;
-
+WHERE serviceType IN ('Mysql', 'Doris') AND json#>'{connection,config,sslKey}' IS NOT NULL;
 
 UPDATE dbservice_entity
- SET json = jsonb_set(
-json #-'{connection,config,sslKey}',
-'{connection,config,sslConfig}',
-json#
->'{connection,config,sslConfig}'|| jsonb_build_object
-('sslKey',json#>'{connection,config,sslKey}')
+SET json = jsonb_set(
+  json #-'{connection,config,metastoreConnection,sslCert}',
+  '{connection,config,metastoreConnection,sslConfig}',
+  jsonb_build_object('sslCertificate', json#>'{connection,config,metastoreConnection,sslCert}')
 )
-WHERE serviceType IN
-('Mysql', 'Doris')
-  and json#>'{connection,config,sslKey}' is not null;
-
+WHERE serviceType IN ('Hive') AND json#>'{connection,config,metastoreConnection,type}' = '"Mysql"' AND json#>'{connection,config,metastoreConnection,sslCert}' IS NOT NULL;
 
 UPDATE dbservice_entity
- SET json = jsonb_set(
-json #-'{connection,config,metastoreConnection,sslCert}',
-'{connection,config,metastoreConnection,sslConfig}',
-jsonb_build_object('sslCertificate',json#
->'{connection,config,metastoreConnection,sslCert}')
+SET json = jsonb_set(
+  json #-'{connection,config,metastoreConnection,sslKey}',
+  '{connection,config,metastoreConnection,sslConfig}',
+  json#>'{connection,config,metastoreConnection,sslConfig}' || jsonb_build_object('sslKey', json#>'{connection,config,metastoreConnection,sslKey}')
 )
-WHERE serviceType IN
-('Hive')
-and json#>'{connection,config,metastoreConnection,type}' = '"Mysql"'
-  and json#>'{connection,config,metastoreConnection,sslCert}' is not null;
-
+WHERE serviceType IN ('Hive') AND json#>'{connection,config,metastoreConnection,type}' = '"Mysql"' AND json#>'{connection,config,metastoreConnection,sslKey}' IS NOT NULL;
 
 UPDATE dbservice_entity
- SET json = jsonb_set(
-json #-'{connection,config,metastoreConnection,sslKey}',
-'{connection,config,metastoreConnection,sslConfig}',
-json#
->'{connection,config,metastoreConnection,sslConfig}'|| jsonb_build_object
-('sslKey',json#>'{connection,config,metastoreConnection,sslKey}')
+SET json = jsonb_set(
+  json #-'{connection,config,metastoreConnection,sslCA}',
+  '{connection,config,metastoreConnection,sslConfig}',
+  json#>'{connection,config,metastoreConnection,sslConfig}' || jsonb_build_object('caCertificate', json#>'{connection,config,metastoreConnection,sslCA}')
 )
-WHERE serviceType IN
-('Hive')
-and json#>'{connection,config,metastoreConnection,type}' = '"Mysql"'
-  and json#>'{connection,config,metastoreConnection,sslKey}' is not null;
-
+WHERE serviceType IN ('Hive') AND json#>'{connection,config,metastoreConnection,type}' = '"Mysql"' AND json#>'{connection,config,metastoreConnection,sslCA}' IS NOT NULL;
 
 UPDATE dbservice_entity
- SET json = jsonb_set(
-json #-'{connection,config,metastoreConnection,sslCA}',
-'{connection,config,metastoreConnection,sslConfig}',
-json#
->'{connection,config,metastoreConnection,sslConfig}'|| jsonb_build_object
-('caCertificate',json#>'{connection,config,metastoreConnection,sslCA}')
+SET json = jsonb_set(
+  json #-'{connection,config,metastoreConnection,sslConfig,certificatePath}',
+  '{connection,config,metastoreConnection,sslConfig}',
+  jsonb_build_object('caCertificate', json#>'{connection,config,metastoreConnection,sslConfig,certificatePath}')
 )
-WHERE serviceType IN
-('Hive')
-and json#>'{connection,config,metastoreConnection,type}' = '"Mysql"'
-  and json#>'{connection,config,metastoreConnection,sslCA}' is not null;
+WHERE serviceType IN ('Hive') AND json#>'{connection,config,metastoreConnection,type}' = '"Postgres"' AND json#>'{connection,config,metastoreConnection,sslConfig,certificatePath}' IS NOT NULL;
 
 UPDATE dbservice_entity
- SET json = jsonb_set(
-json #-'{connection,config,metastoreConnection,sslConfig,certificatePath}',
-'{connection,config,metastoreConnection,sslConfig}',
-jsonb_build_object('caCertificate',json#
->'{connection,config,metastoreConnection,sslConfig,certificatePath}')
+SET json = jsonb_set(
+  json #-'{connection,config,sslConfig,certificatePath}',
+  '{connection,config,sslConfig}',
+  jsonb_build_object('caCertificate', json#>'{connection,config,sslConfig,certificatePath}')
 )
-WHERE serviceType IN
-('Hive')
-and json#>'{connection,config,metastoreConnection,type}' = '"Postgres"'
-  and json#>'{connection,config,metastoreConnection,sslConfig,certificatePath}' is not null;
-
-
-UPDATE dbservice_entity
- SET json = jsonb_set(
-json #-'{connection,config,sslConfig,certificatePath}',
-'{connection,config,sslConfig}',
-jsonb_build_object('caCertificate',json#
->'{connection,config,sslConfig,certificatePath}')
-)
-WHERE serviceType IN
-('Redshift', 'Greenplum', 'Postgres')
-  and json#>'{connection,config,sslConfig,certificatePath}' is not null;
+WHERE serviceType IN ('Redshift', 'Greenplum', 'Postgres') AND json#>'{connection,config,sslConfig,certificatePath}' IS NOT NULL;
 
 UPDATE dashboard_service_entity
- SET json = jsonb_set(
-json #-'{connection,config,connection,sslConfig,certificatePath}',
-'{connection,config,connection,sslConfig}',
-jsonb_build_object('caCertificate',json#
->'{connection,config,connection,sslConfig,certificatePath}')
+SET json = jsonb_set(
+  json #-'{connection,config,connection,sslConfig,certificatePath}',
+  '{connection,config,connection,sslConfig}',
+  jsonb_build_object('caCertificate', json#>'{connection,config,connection,sslConfig,certificatePath}')
 )
-WHERE serviceType IN
-('Superset')
-and json#>'{connection,config,connection,type}' = '"Postgres"'
-  and json#>'{connection,config,connection,sslConfig,certificatePath}' is not null;
+WHERE serviceType IN ('Superset') AND json#>'{connection,config,connection,type}' = '"Postgres"' AND json#>'{connection,config,connection,sslConfig,certificatePath}' IS NOT NULL;
 
 UPDATE dashboard_service_entity
- SET json = jsonb_set(
-json #-'{connection,config,connection,sslCert}',
-'{connection,config,connection,sslConfig}',
-jsonb_build_object('sslCertificate',json#
->'{connection,config,connection,sslCert}')
+SET json = jsonb_set(
+  json #-'{connection,config,connection,sslCert}',
+  '{connection,config,connection,sslConfig}',
+  jsonb_build_object('sslCertificate', json#>'{connection,config,connection,sslCert}')
 )
-WHERE serviceType IN
-('Superset')
-and json#>'{connection,config,connection,type}' = '"Mysql"'
-  and json#>'{connection,config,connection,sslCert}' is not null;
-
+WHERE serviceType IN ('Superset') AND json#>'{connection,config,connection,type}' = '"Mysql"' AND json#>'{connection,config,connection,sslCert}' IS NOT NULL;
 
 UPDATE dashboard_service_entity
- SET json = jsonb_set(
-json #-'{connection,config,connection,sslKey}',
-'{connection,config,connection,sslConfig}',
-json#
->'{connection,config,connection,sslConfig}'|| jsonb_build_object
-('sslKey',json#>'{connection,config,connection,sslKey}')
+SET json = jsonb_set(
+  json #-'{connection,config,connection,sslKey}',
+  '{connection,config,connection,sslConfig}',
+  json#>'{connection,config,connection,sslConfig}' || jsonb_build_object('sslKey', json#>'{connection,config,connection,sslKey}')
 )
-WHERE serviceType IN
-('Superset')
-and json#>'{connection,config,connection,type}' = '"Mysql"'
-  and json#>'{connection,config,connection,sslKey}' is not null;
-
+WHERE serviceType IN ('Superset') AND json#>'{connection,config,connection,type}' = '"Mysql"' AND json#>'{connection,config,connection,sslKey}' IS NOT NULL;
 
 UPDATE dashboard_service_entity
- SET json = jsonb_set(
-json #-'{connection,config,connection,sslCA}',
-'{connection,config,connection,sslConfig}',
-json#
->'{connection,config,connection,sslConfig}'|| jsonb_build_object
-('caCertificate',json#>'{connection,config,connection,sslCA}')
+SET json = jsonb_set(
+  json #-'{connection,config,connection,sslCA}',
+  '{connection,config,connection,sslConfig}',
+  json#>'{connection,config,connection,sslConfig}' || jsonb_build_object('caCertificate', json#>'{connection,config,connection,sslCA}')
 )
-WHERE serviceType IN
-('Superset')
-and json#>'{connection,config,connection,type}' = '"Mysql"'
-  and json#>'{connection,config,connection,sslCA}' is not null;
-
-
+WHERE serviceType IN ('Superset') AND json#>'{connection,config,connection,type}' = '"Mysql"' AND json#>'{connection,config,connection,sslCA}' IS NOT NULL;
 
 UPDATE metadata_service_entity
- SET json = jsonb_set(
-json #-'{connection,config,connection,sslConfig,certificatePath}',
-'{connection,config,connection,sslConfig}',
-jsonb_build_object('caCertificate',json#
->'{connection,config,connection,sslConfig,certificatePath}')
+SET json = jsonb_set(
+  json #-'{connection,config,connection,sslConfig,certificatePath}',
+  '{connection,config,connection,sslConfig}',
+  jsonb_build_object('caCertificate', json#>'{connection,config,connection,sslConfig,certificatePath}')
 )
-WHERE serviceType IN
-('Alation')
-and json#>'{connection,config,connection,type}' = '"Postgres"'
-  and json#>'{connection,config,connection,sslConfig,certificatePath}' is not null;
+WHERE serviceType IN ('Alation') AND json#>'{connection,config,connection,type}' = '"Postgres"' AND json#>'{connection,config,connection,sslConfig,certificatePath}' IS NOT NULL;
 
 UPDATE metadata_service_entity
- SET json = jsonb_set(
-json #-'{connection,config,connection,sslCert}',
-'{connection,config,connection,sslConfig}',
-jsonb_build_object('sslCertificate',json#
->'{connection,config,connection,sslCert}')
+SET json = jsonb_set(
+  json #-'{connection,config,connection,sslCert}',
+  '{connection,config,connection,sslConfig}',
+  jsonb_build_object('sslCertificate', json#>'{connection,config,connection,sslCert}')
 )
-WHERE serviceType IN
-('Alation')
-and json#>'{connection,config,connection,type}' = '"Mysql"'
-  and json#>'{connection,config,connection,sslCert}' is not null;
-
+WHERE serviceType IN ('Alation') AND json#>'{connection,config,connection,type}' = '"Mysql"' AND json#>'{connection,config,connection,sslCert}' IS NOT NULL;
 
 UPDATE metadata_service_entity
- SET json = jsonb_set(
-json #-'{connection,config,connection,sslKey}',
-'{connection,config,connection,sslConfig}',
-json#
->'{connection,config,connection,sslConfig}'|| jsonb_build_object
-('sslKey',json#>'{connection,config,connection,sslKey}')
+SET json = jsonb_set(
+  json #-'{connection,config,connection,sslKey}',
+  '{connection,config,connection,sslConfig}',
+  json#>'{connection,config,connection,sslConfig}' || jsonb_build_object('sslKey', json#>'{connection,config,connection,sslKey}')
 )
-WHERE serviceType IN
-('Alation')
-and json#>'{connection,config,connection,type}' = '"Mysql"'
-  and json#>'{connection,config,connection,sslKey}' is not null;
-
+WHERE serviceType IN ('Alation') AND json#>'{connection,config,connection,type}' = '"Mysql"' AND json#>'{connection,config,connection,sslKey}' IS NOT NULL;
 
 UPDATE metadata_service_entity
- SET json = jsonb_set(
-json #-'{connection,config,connection,sslCA}',
-'{connection,config,connection,sslConfig}',
-json#
->'{connection,config,connection,sslConfig}'|| jsonb_build_object
-('caCertificate',json#>'{connection,config,connection,sslCA}')
+SET json = jsonb_set(
+  json #-'{connection,config,connection,sslCA}',
+  '{connection,config,connection,sslConfig}',
+  json#>'{connection,config,connection,sslConfig}' || jsonb_build_object('caCertificate', json#>'{connection,config,connection,sslCA}')
 )
-WHERE serviceType IN
-('Alation')
-and json#>'{connection,config,connection,type}' = '"Mysql"'
-  and json#>'{connection,config,connection,sslCA}' is not null;
-
+WHERE serviceType IN ('Alation') AND json#>'{connection,config,connection,type}' = '"Mysql"' AND json#>'{connection,config,connection,sslCA}' IS NOT NULL;
 
 UPDATE pipeline_service_entity
- SET json = jsonb_set(
-json #-'{connection,config,connection,sslCert}',
-'{connection,config,connection,sslConfig}',
-jsonb_build_object('sslCertificate',json#
->'{connection,config,connection,sslCert}')
+SET json = jsonb_set(
+  json #-'{connection,config,connection,sslCert}',
+  '{connection,config,connection,sslConfig}',
+  jsonb_build_object('sslCertificate', json#>'{connection,config,connection,sslCert}')
 )
-WHERE serviceType IN
-('Airflow')
-and json#>'{connection,config,connection,type}' = '"Mysql"'
-  and json#>'{connection,config,connection,sslCert}' is not null;
-
+WHERE serviceType IN ('Airflow') AND json#>'{connection,config,connection,type}' = '"Mysql"' AND json#>'{connection,config,connection,sslCert}' IS NOT NULL;
 
 UPDATE pipeline_service_entity
- SET json = jsonb_set(
-json #-'{connection,config,connection,sslKey}',
-'{connection,config,connection,sslConfig}',
-json#
->'{connection,config,connection,sslConfig}'|| jsonb_build_object
-('sslKey',json#>'{connection,config,connection,sslKey}')
+SET json = jsonb_set(
+  json #-'{connection,config,connection,sslKey}',
+  '{connection,config,connection,sslConfig}',
+  json#>'{connection,config,connection,sslConfig}' || jsonb_build_object('sslKey', json#>'{connection,config,connection,sslKey}')
 )
-WHERE serviceType IN
-('Airflow')
-and json#>'{connection,config,connection,type}' = '"Mysql"'
-  and json#>'{connection,config,connection,sslKey}' is not null;
-
+WHERE serviceType IN ('Airflow') AND json#>'{connection,config,connection,type}' = '"Mysql"' AND json#>'{connection,config,connection,sslKey}' IS NOT NULL;
 
 UPDATE pipeline_service_entity
- SET json = jsonb_set(
-json #-'{connection,config,connection,sslCA}',
-'{connection,config,connection,sslConfig}',
-json#
->'{connection,config,connection,sslConfig}'|| jsonb_build_object
-('caCertificate',json#>'{connection,config,connection,sslCA}')
+SET json = jsonb_set(
+  json #-'{connection,config,connection,sslCA}',
+  '{connection,config,connection,sslConfig}',
+  json#>'{connection,config,connection,sslConfig}' || jsonb_build_object('caCertificate', json#>'{connection,config,connection,sslCA}')
 )
-WHERE serviceType IN
-('Airflow')
-and json#>'{connection,config,connection,type}' = '"Mysql"'
-  and json#>'{connection,config,connection,sslCA}' is not null;
-
-
-
+WHERE serviceType IN ('Airflow') AND json#>'{connection,config,connection,type}' = '"Mysql"' AND json#>'{connection,config,connection,sslCA}' IS NOT NULL;
 
 UPDATE pipeline_service_entity
- SET json = jsonb_set(
-json #-'{connection,config,connection,SSLCertificateLocation}',
-'{connection,config,connection,sslConfig}',
-jsonb_build_object('sslCertificate',json#
->'{connection,config,connection,SSLCertificateLocation}')
+SET json = jsonb_set(
+  json #-'{connection,config,connection,SSLCertificateLocation}',
+  '{connection,config,connection,sslConfig}',
+  jsonb_build_object('sslCertificate', json#>'{connection,config,connection,SSLCertificateLocation}')
 )
-WHERE serviceType IN
-('OpenLineage')
-  and json#>'{connection,config,connection,SSLCertificateLocation}' is not null;
-
+WHERE serviceType IN ('OpenLineage') AND json#>'{connection,config,connection,SSLCertificateLocation}' IS NOT NULL;
 
 UPDATE pipeline_service_entity
- SET json = jsonb_set(
-json #-'{connection,config,connection,SSLKeyLocation}',
-'{connection,config,connection,sslConfig}',
-json#
->'{connection,config,connection,sslConfig}'|| jsonb_build_object
-('sslKey',json#>'{connection,config,connection,SSLKeyLocation}')
+SET json = jsonb_set(
+  json #-'{connection,config,connection,SSLKeyLocation}',
+  '{connection,config,connection,sslConfig}',
+  json#>'{connection,config,connection,sslConfig}' || jsonb_build_object('sslKey', json#>'{connection,config,connection,SSLKeyLocation}')
 )
-WHERE serviceType IN
-('OpenLineage')
-  and json#>'{connection,config,connection,SSLKeyLocation}' is not null;
-
+WHERE serviceType IN ('OpenLineage') AND json#>'{connection,config,connection,SSLKeyLocation}' IS NOT NULL;
 
 UPDATE pipeline_service_entity
- SET json = jsonb_set(
-json #-'{connection,config,connection,SSLCALocation}',
-'{connection,config,connection,sslConfig}',
-json#
->'{connection,config,connection,sslConfig}'|| jsonb_build_object
-('caCertificate',json#>'{connection,config,connection,SSLCALocation}')
+SET json = jsonb_set(
+  json #-'{connection,config,connection,SSLCALocation}',
+  '{connection,config,connection,sslConfig}',
+  json#>'{connection,config,connection,sslConfig}' || jsonb_build_object('caCertificate', json#>'{connection,config,connection,SSLCALocation}')
 )
-WHERE serviceType IN
-('OpenLineage')
-  and json#>'{connection,config,connection,SSLCALocation}' is not null;
-
-
+WHERE serviceType IN ('OpenLineage') AND json#>'{connection,config,connection,SSLCALocation}' IS NOT NULL;
