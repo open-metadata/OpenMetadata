@@ -26,6 +26,7 @@ import {
   XAxis,
   YAxis,
 } from 'recharts';
+import { ReactComponent as RightArrowIcon } from '../../assets/svg/right-arrow.svg';
 import {
   DEFAULT_CHART_OPACITY,
   getExplorePath,
@@ -307,9 +308,15 @@ const DescriptionInsight: FC<Props> = ({
                   ),
                 },
               })}>
-              {t('label.explore-asset-plural-with-type', {
-                type: t('label.no-description'),
-              })}
+              <Button
+                className="text-primary d-flex items-center gap-1"
+                size="small"
+                type="text">
+                {t('label.explore-asset-plural-with-type', {
+                  type: t('label.no-description'),
+                })}
+                <RightArrowIcon height={12} width={12} />
+              </Button>
             </Link>
           </Col>
         )}

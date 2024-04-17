@@ -26,6 +26,7 @@ import {
   XAxis,
   YAxis,
 } from 'recharts';
+import { ReactComponent as RightArrowIcon } from '../../assets/svg/right-arrow.svg';
 import {
   DEFAULT_CHART_OPACITY,
   getExplorePath,
@@ -307,9 +308,15 @@ const OwnerInsight: FC<Props> = ({
                   queryFilter: JSON.stringify(NO_OWNER_ADVANCE_SEARCH_FILTER),
                 },
               })}>
-              {t('label.explore-asset-plural-with-type', {
-                type: t('label.no-owner'),
-              })}
+              <Button
+                className="text-primary d-flex items-center gap-1"
+                size="small"
+                type="text">
+                {t('label.explore-asset-plural-with-type', {
+                  type: t('label.no-owner'),
+                })}
+                <RightArrowIcon height={12} width={12} />
+              </Button>
             </Link>
           </Col>
         )}
