@@ -12,6 +12,7 @@
  */
 
 import { Card, Col, Row, Typography } from 'antd';
+import classNames from 'classnames';
 import React from 'react';
 import './form-card-section.less';
 import { FormCardSectionProps } from './FormCardSection.interface';
@@ -20,11 +21,12 @@ function FormCardSection({
   heading,
   subHeading,
   children,
-  childrenContainerClassName,
+  childrenContainerClassName = '',
+  className = '',
 }: Readonly<FormCardSectionProps>) {
   return (
     <Card
-      className="form-card-section-container"
+      className={classNames('form-card-section-container', className)}
       data-testid={`${heading}-container`}>
       <Row gutter={[8, 8]}>
         <Col span={24}>
@@ -35,7 +37,9 @@ function FormCardSection({
             {subHeading}
           </Typography.Text>
         </Col>
-        <Col className={childrenContainerClassName} span={24}>
+        <Col
+          className={classNames('p-t-sm', childrenContainerClassName)}
+          span={24}>
           {children}
         </Col>
       </Row>

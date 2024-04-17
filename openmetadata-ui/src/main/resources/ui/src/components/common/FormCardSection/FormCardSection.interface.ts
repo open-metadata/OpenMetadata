@@ -18,4 +18,5 @@ export interface FormCardSectionProps {
   subHeading: ReactNode;
   children: ReactNode;
   childrenContainerClassName?: string;
+  className?: string;
 }
