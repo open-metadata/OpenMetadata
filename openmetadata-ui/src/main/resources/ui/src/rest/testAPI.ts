@@ -146,6 +146,13 @@ export const getTestCaseFailedSampleData = async (id: string) => {
   return response.data;
 };
 
+export const deleteTestCaseFailedSampleData = async (id: string) => {
+  const url = `${testCaseUrl}/${id}/failedRowsSample`;
+  const response = await APIClient.delete(url);
+
+  return response.data;
+};
+
 export const getTestCaseByFqn = async (
   fqn: string,
   params?: { fields?: string[] }
