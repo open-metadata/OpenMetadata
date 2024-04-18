@@ -35,6 +35,7 @@ export interface HelperFunctions {
   handleSuccessfulLogin: (user: OidcUser) => Promise<void>;
   handleFailedLogin: () => void;
   updateAxiosInterceptors: () => void;
+  trySilentSignIn: (forceLogout?: boolean) => Promise<void>;
 }
 
 export interface ApplicationStore
@@ -74,6 +75,7 @@ export interface ApplicationStore
   removeOidcToken: () => void;
   removeRefreshToken: () => void;
   updateSearchCriteria: (criteria: ExploreSearchIndex | '') => void;
+  trySilentSignIn: (forceLogout?: boolean) => void;
 }
 
 export interface DomainStore {
