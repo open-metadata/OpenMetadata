@@ -184,6 +184,7 @@
             "fields": {
               "keyword": {
                 "type": "keyword",
+                "normalizer": "lowercase_normalizer",
                 "ignore_above": 256
               }
             }
@@ -288,6 +289,9 @@
             "type": "text"
           }
         }
+      },
+      "descriptionStatus": {
+        "type": "keyword"
       }
     }
   }
