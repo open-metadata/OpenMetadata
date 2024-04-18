@@ -82,42 +82,28 @@
         ],
         "result": [
             {
-                "certification_details": "sample certificate details",
-                "certified_by": "certified by unknown",
-                "changed_by": {
-                    "first_name": "Superset",
-                    "id": 1,
-                    "last_name": "Admin"
-                },
-                "changed_by_name": "Superset Admin",
-                "changed_on_delta_humanized": "2 minutes ago",
-                "changed_on_utc": "2024-04-17T11:00:35.533393+0000",
-                "created_by": {
-                    "first_name": "Superset",
-                    "id": 1,
-                    "last_name": "Admin"
-                },
-                "created_on_delta_humanized": "2 minutes ago",
-                "css": "css",
-                "dashboard_title": "Top trades",
-                "id": 1,
+                "certification_details": null,
+                "certified_by": null,
+                "changed_by": null,
+                "changed_by_name": "",
+                "changed_on_delta_humanized": "10 minutes ago",
+                "changed_on_utc": "2024-04-18T13:23:17.562330+0000",
+                "created_by": null,
+                "created_on_delta_humanized": "10 minutes ago",
+                "css": null,
+                "dashboard_title": "Unicode Test",
+                "id": 10,
                 "is_managed_externally": false,
-                "json_metadata": null,
-                "owners": [
-                    {
-                        "first_name": "Superset",
-                        "id": 1,
-                        "last_name": "Admin"
-                    }
-                ],
-                "position_json": "{\"CHART-dwSXo_0t5X\":{\"children\":[],\"id\":\"CHART-dwSXo_0t5X\",\"meta\":{\"chartId\":37,\"height\":50,\"sliceName\":\"% Rural\",\"uuid\":\"8f663401-854a-4da7-8e50-4b8e4ebb4f22\",\"width\":4},\"parents\":[\"ROOT_ID\",\"GRID_ID\",\"ROW-z_7odBWenK\"],\"type\":\"CHART\"},\"DASHBOARD_VERSION_KEY\":\"v2\",\"GRID_ID\":{\"children\":[\"ROW-z_7odBWenK\"],\"id\":\"GRID_ID\",\"parents\":[\"ROOT_ID\"],\"type\":\"GRID\"},\"HEADER_ID\":{\"id\":\"HEADER_ID\",\"meta\":{\"text\":\"My DASH\"},\"type\":\"HEADER\"},\"ROOT_ID\":{\"children\":[\"GRID_ID\"],\"id\":\"ROOT_ID\",\"type\":\"ROOT\"},\"ROW-z_7odBWenK\":{\"children\":[\"CHART-dwSXo_0t5X\"],\"id\":\"ROW-z_7odBWenK\",\"meta\":{\"background\":\"BACKGROUND_TRANSPARENT\"},\"parents\":[\"ROOT_ID\",\"GRID_ID\"],\"type\":\"ROW\"}}",
+                "json_metadata": "{}",
+                "owners": [],
+                "position_json": "{\"CHART-Hkx6154FEm\": {\"children\": [], \"id\": \"CHART-Hkx6154FEm\", \"meta\": {\"chartId\": 69, \"height\": 30, \"sliceName\": \"slice 1\", \"width\": 4, \"uuid\": \"609e26d8-8e1e-4097-9751-931708e24ee4\"}, \"type\": \"CHART\"}, \"GRID_ID\": {\"children\": [\"ROW-SyT19EFEQ\"], \"id\": \"GRID_ID\", \"type\": \"GRID\"}, \"ROOT_ID\": {\"children\": [\"GRID_ID\"], \"id\": \"ROOT_ID\", \"type\": \"ROOT\"}, \"ROW-SyT19EFEQ\": {\"children\": [\"CHART-Hkx6154FEm\"], \"id\": \"ROW-SyT19EFEQ\", \"meta\": {\"background\": \"BACKGROUND_TRANSPARENT\"}, \"type\": \"ROW\"}, \"DASHBOARD_VERSION_KEY\": \"v2\"}",
                 "published": true,
                 "roles": [],
-                "slug": "top-trades",
+                "slug": "unicode-test",
                 "status": "published",
                 "tags": [],
-                "thumbnail_url": "/api/v1/dashboard/1/thumbnail/2a4b49a3d46490d0d62ae55e51460d67/",
-                "url": "/superset/dashboard/top-trades/"
+                "thumbnail_url": "/api/v1/dashboard/10/thumbnail/874aa9f8f41b6956d5cf9740cf43aca4/",
+                "url": "/superset/dashboard/unicode-test/"
             }
         ]
     },
@@ -615,7 +601,7 @@
     "dashboard-db": {
         "id": 14,
         "dashboard_title": "My DASH",
-        "position_json":"{\"CHART-dwSXo_0t5X\":{\"children\":[],\"id\":\"CHART-dwSXo_0t5X\",\"meta\":{\"chartId\":37,\"height\":50,\"sliceName\":\"% Rural\",\"uuid\":\"8f663401-854a-4da7-8e50-4b8e4ebb4f22\",\"width\":4},\"parents\":[\"ROOT_ID\",\"GRID_ID\",\"ROW-z_7odBWenK\"],\"type\":\"CHART\"},\"DASHBOARD_VERSION_KEY\":\"v2\",\"GRID_ID\":{\"children\":[\"ROW-z_7odBWenK\"],\"id\":\"GRID_ID\",\"parents\":[\"ROOT_ID\"],\"type\":\"GRID\"},\"HEADER_ID\":{\"id\":\"HEADER_ID\",\"meta\":{\"text\":\"My DASH\"},\"type\":\"HEADER\"},\"ROOT_ID\":{\"children\":[\"GRID_ID\"],\"id\":\"ROOT_ID\",\"type\":\"ROOT\"},\"ROW-z_7odBWenK\":{\"children\":[\"CHART-dwSXo_0t5X\"],\"id\":\"ROW-z_7odBWenK\",\"meta\":{\"background\":\"BACKGROUND_TRANSPARENT\"},\"parents\":[\"ROOT_ID\",\"GRID_ID\"],\"type\":\"ROW\"}}",
+        "position_json":"{\"CHART-dwSXo_0t5X\":{\"children\":[],\"id\":\"CHART-dwSXo_0t5X\",\"meta\":{\"chartId\":1,\"height\":50,\"sliceName\":\"% Rural\",\"uuid\":\"8f663401-854a-4da7-8e50-4b8e4ebb4f22\",\"width\":4},\"parents\":[\"ROOT_ID\",\"GRID_ID\",\"ROW-z_7odBWenK\"],\"type\":\"CHART\"},\"DASHBOARD_VERSION_KEY\":\"v2\",\"GRID_ID\":{\"children\":[\"ROW-z_7odBWenK\"],\"id\":\"GRID_ID\",\"parents\":[\"ROOT_ID\"],\"type\":\"GRID\"},\"HEADER_ID\":{\"id\":\"HEADER_ID\",\"meta\":{\"text\":\"My DASH\"},\"type\":\"HEADER\"},\"ROOT_ID\":{\"children\":[\"GRID_ID\"],\"id\":\"ROOT_ID\",\"type\":\"ROOT\"},\"ROW-z_7odBWenK\":{\"children\":[\"CHART-dwSXo_0t5X\"],\"id\":\"ROW-z_7odBWenK\",\"meta\":{\"background\":\"BACKGROUND_TRANSPARENT\"},\"parents\":[\"ROOT_ID\",\"GRID_ID\"],\"type\":\"ROW\"}}",
         "email" : "admin@openmetadata.org"
     },
     "chart-db": [
