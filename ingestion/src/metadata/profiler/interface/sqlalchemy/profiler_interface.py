@@ -481,6 +481,7 @@ class SQAProfilerInterface(ProfilerInterface, SQAInterfaceMixin):
                     metric_func,
                 )
                 for metric_func in metric_funcs
+                if metric_func.metrics
             ]
 
             for future in futures:
