@@ -24,7 +24,6 @@ from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.database.common_db_source import CommonDbSourceService
 from metadata.ingestion.source.database.mysql.utils import col_type_map, parse_column
-from metadata.utils.ssl_manager import SSLManager, check_ssl_and_init
 
 ischema_names.update(col_type_map)
 
@@ -39,14 +38,6 @@ class MysqlSource(CommonDbSourceService):
     Implements the necessary methods to extract
     Database metadata from Mysql Source
     """
-
-    def __init__(self, config: WorkflowSource, metadata: OpenMetadata):
-        self.ssl_manager = None
-        service_connection = config.serviceConnection.__root__.config
-        self.ssl_manager: SSLManager = check_ssl_and_init(service_connection)
-        if self.ssl_manager:
-            service_connection = self.ssl_manager.setup_ssl(service_connection)
-        super().__init__(config, metadata)
 
     @classmethod
     def create(

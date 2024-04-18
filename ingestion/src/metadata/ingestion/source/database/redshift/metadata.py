@@ -97,7 +97,6 @@ from metadata.utils.filters import filter_by_database
 from metadata.utils.helpers import get_start_and_end
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.sqlalchemy_utils import get_all_table_comments
-from metadata.utils.ssl_manager import SSLManager, check_ssl_and_init
 
 logger = ingestion_logger()
 
@@ -138,13 +137,6 @@ class RedshiftSource(
         metadata,
         incremental_configuration: IncrementalConfig,
     ):
-        self.ssl_manager = None
-        service_connection: RedshiftConnection = (
-            config.serviceConnection.__root__.config
-        )
-        self.ssl_manager: SSLManager = check_ssl_and_init(service_connection)
-        if self.ssl_manager:
-            service_connection = self.ssl_manager.setup_ssl(service_connection)
         super().__init__(config, metadata)
         self.partition_details = {}
         self.life_cycle_query = REDSHIFT_LIFE_CYCLE_QUERY

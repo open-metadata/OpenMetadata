@@ -36,7 +36,6 @@ from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
 from metadata.ingestion.api.steps import InvalidSourceException
-from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.database.column_type_parser import create_sqlalchemy_type
 from metadata.ingestion.source.database.common_db_source import (
     CommonDbSourceService,
@@ -61,7 +60,6 @@ from metadata.utils.sqlalchemy_utils import (
     get_all_table_comments,
     get_all_view_definitions,
 )
-from metadata.utils.ssl_manager import SSLManager, check_ssl_and_init
 
 TableKey = namedtuple("TableKey", ["schema", "table_name"])
 
@@ -118,20 +116,6 @@ class GreenplumSource(CommonDbSourceService, MultiDBSource):
     Implements the necessary methods to extract
     Database metadata from Greenplum Source
     """
-
-    def __init__(
-        self,
-        config: WorkflowSource,
-        metadata: OpenMetadata,
-    ):
-        self.ssl_manager = None
-        service_connection: GreenplumConnection = (
-            config.serviceConnection.__root__.config
-        )
-        self.ssl_manager: SSLManager = check_ssl_and_init(service_connection)
-        if self.ssl_manager:
-            service_connection = self.ssl_manager.setup_ssl(service_connection)
-        super().__init__(config, metadata)
 
     @classmethod
     def create(

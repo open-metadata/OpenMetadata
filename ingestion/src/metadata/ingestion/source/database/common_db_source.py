@@ -69,7 +69,7 @@ from metadata.utils.execution_time_tracker import (
 )
 from metadata.utils.filters import filter_by_table
 from metadata.utils.logger import ingestion_logger
-from metadata.utils.ssl_manager import SSLManager
+from metadata.utils.ssl_manager import SSLManager, check_ssl_and_init
 
 logger = ingestion_logger()
 
@@ -106,6 +106,14 @@ class CommonDbSourceService(
 
         # It will be one of the Unions. We don't know the specific type here.
         self.service_connection = self.config.serviceConnection.__root__.config
+
+        self.ssl_manager = None
+        self.ssl_manager: SSLManager = check_ssl_and_init(self.service_connection)
+        if self.ssl_manager:
+            self.service_connection = self.ssl_manager.setup_ssl(
+                self.service_connection
+            )
+
         self.engine: Engine = get_connection(self.service_connection)
         self.session = create_and_bind_thread_safe_session(self.engine)
 
