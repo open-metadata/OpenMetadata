@@ -23,6 +23,7 @@ from metadata.profiler.metrics.window.percentille_mixin import PercentilMixin
 from metadata.profiler.orm.functions.length import LenFn
 from metadata.profiler.orm.registry import is_concatenable, is_quantifiable
 from metadata.utils.logger import profiler_logger
+from metadata.generated.schema.configuration.profilerConfiguration import MetricType
 
 logger = profiler_logger()
 
@@ -38,7 +39,7 @@ class Median(StaticMetric, PercentilMixin):
 
     @classmethod
     def name(cls):
-        return "median"
+        return MetricType.median.value
 
     @classmethod
     def is_window_metric(cls):

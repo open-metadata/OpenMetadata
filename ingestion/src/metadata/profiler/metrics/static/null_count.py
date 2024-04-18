@@ -19,6 +19,7 @@ from sqlalchemy import case, column
 
 from metadata.profiler.metrics.core import StaticMetric, _label
 from metadata.profiler.orm.functions.sum import SumFn
+from metadata.generated.schema.configuration.profilerConfiguration import MetricType
 
 
 class NullCount(StaticMetric):
@@ -38,7 +39,7 @@ class NullCount(StaticMetric):
 
     @classmethod
     def name(cls):
-        return "nullCount"
+        return MetricType.nullCount.value
 
     @property
     def metric_type(self):

@@ -19,6 +19,7 @@ from sqlalchemy import case, column, not_
 from metadata.profiler.metrics.core import StaticMetric, _label
 from metadata.profiler.orm.functions.sum import SumFn
 from metadata.profiler.orm.registry import is_concatenable
+from metadata.generated.schema.configuration.profilerConfiguration import MetricType
 
 
 class NotRegexCount(StaticMetric):
@@ -36,7 +37,7 @@ class NotRegexCount(StaticMetric):
 
     @classmethod
     def name(cls):
-        return "notRegexCount"
+        return MetricType.notRegexCount.value
 
     @property
     def metric_type(self):

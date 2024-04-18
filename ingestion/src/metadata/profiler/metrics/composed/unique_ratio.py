@@ -19,6 +19,7 @@ from typing import Any, Dict, Optional, Tuple
 from metadata.profiler.metrics.core import ComposedMetric
 from metadata.profiler.metrics.static.count import Count
 from metadata.profiler.metrics.static.unique_count import UniqueCount
+from metadata.generated.schema.configuration.profilerConfiguration import MetricType
 
 
 class UniqueRatio(ComposedMetric):
@@ -29,7 +30,8 @@ class UniqueRatio(ComposedMetric):
 
     @classmethod
     def name(cls):
-        return "uniqueProportion"
+        return MetricType.uniqueProportion.value
+
 
     @classmethod
     def required_metrics(cls) -> Tuple[str, ...]:

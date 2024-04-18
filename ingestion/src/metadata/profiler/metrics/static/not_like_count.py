@@ -18,6 +18,8 @@ from sqlalchemy import case, column
 
 from metadata.profiler.metrics.core import StaticMetric, _label
 from metadata.profiler.orm.functions.sum import SumFn
+from metadata.generated.schema.configuration.profilerConfiguration import MetricType
+
 
 
 class NotLikeCount(StaticMetric):
@@ -35,7 +37,7 @@ class NotLikeCount(StaticMetric):
 
     @classmethod
     def name(cls):
-        return "notLikeCount"
+        return MetricType.notLikeCount.value
 
     @property
     def metric_type(self):

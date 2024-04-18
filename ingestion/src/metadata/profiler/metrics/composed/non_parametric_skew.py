@@ -20,6 +20,7 @@ from metadata.profiler.metrics.core import ComposedMetric
 from metadata.profiler.metrics.static.mean import Mean
 from metadata.profiler.metrics.static.stddev import StdDev
 from metadata.profiler.metrics.window.median import Median
+from metadata.generated.schema.configuration.profilerConfiguration import MetricType
 
 
 class NonParametricSkew(ComposedMetric):
@@ -29,7 +30,7 @@ class NonParametricSkew(ComposedMetric):
 
     @classmethod
     def name(cls):
-        return "nonParametricSkew"
+        return MetricType.nonParametricSkew.value
 
     @classmethod
     def required_metrics(cls) -> Tuple[str, ...]:

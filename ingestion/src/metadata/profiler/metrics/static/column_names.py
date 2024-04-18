@@ -23,6 +23,7 @@ from sqlalchemy.sql.functions import FunctionElement
 
 from metadata.profiler.metrics.core import CACHE, StaticMetric, _label
 from metadata.profiler.orm.registry import Dialects
+from metadata.generated.schema.configuration.profilerConfiguration import MetricType
 
 
 class ColunNameFn(FunctionElement):
@@ -60,7 +61,7 @@ class ColumnNames(StaticMetric):
 
     @classmethod
     def name(cls):
-        return "columnNames"
+        return MetricType.columnNames.value
 
     @classmethod
     def is_col_metric(cls) -> bool:

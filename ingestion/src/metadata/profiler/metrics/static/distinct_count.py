@@ -21,6 +21,7 @@ from sqlalchemy import column, distinct, func
 from metadata.profiler.metrics.core import StaticMetric, _label
 from metadata.profiler.orm.functions.count import CountFn
 from metadata.utils.logger import profiler_logger
+from metadata.generated.schema.configuration.profilerConfiguration import MetricType
 
 logger = profiler_logger()
 
@@ -34,7 +35,7 @@ class DistinctCount(StaticMetric):
 
     @classmethod
     def name(cls):
-        return "distinctCount"
+        return MetricType.distinctCount.value
 
     @property
     def metric_type(self):

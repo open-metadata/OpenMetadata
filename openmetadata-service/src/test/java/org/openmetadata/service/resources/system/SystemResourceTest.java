@@ -323,7 +323,7 @@ public class SystemResourceTest extends OpenMetadataApplicationTest {
     MetricConfigurationDefinition intMetricConfigDefinition =
         new MetricConfigurationDefinition()
             .withDataType(ColumnDataType.INT)
-            .withMetrics(List.of(MetricType.COUNT, MetricType.FIRST_QUARTILE, MetricType.MEAN));
+            .withMetrics(List.of(MetricType.VALUES_COUNT, MetricType.FIRST_QUARTILE, MetricType.MEAN));
     MetricConfigurationDefinition dateTimeMetricConfigDefinition =
         new MetricConfigurationDefinition()
             .withDataType(ColumnDataType.DATETIME)

@@ -19,6 +19,7 @@ from typing import Any, Dict, Optional, Tuple
 from metadata.profiler.metrics.core import ComposedMetric
 from metadata.profiler.metrics.static.count import Count
 from metadata.profiler.metrics.static.distinct_count import DistinctCount
+from metadata.generated.schema.configuration.profilerConfiguration import MetricType
 
 
 class DuplicateCount(ComposedMetric):
@@ -29,7 +30,7 @@ class DuplicateCount(ComposedMetric):
 
     @classmethod
     def name(cls):
-        return "duplicateCount"
+        return MetricType.duplicateCount.value
 
     @classmethod
     def required_metrics(cls) -> Tuple[str, ...]:

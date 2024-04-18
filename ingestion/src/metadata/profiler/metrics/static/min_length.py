@@ -21,6 +21,7 @@ from metadata.profiler.metrics.core import StaticMetric, _label
 from metadata.profiler.orm.functions.length import LenFn
 from metadata.profiler.orm.registry import is_concatenable
 from metadata.utils.logger import profiler_logger
+from metadata.generated.schema.configuration.profilerConfiguration import MetricType
 
 logger = profiler_logger()
 
@@ -36,7 +37,7 @@ class MinLength(StaticMetric):
 
     @classmethod
     def name(cls):
-        return "minLength"
+        return MetricType.minLength.value
 
     @property
     def metric_type(self):

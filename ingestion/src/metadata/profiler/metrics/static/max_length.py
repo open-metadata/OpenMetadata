@@ -21,6 +21,7 @@ from metadata.profiler.metrics.core import StaticMetric, _label
 from metadata.profiler.orm.functions.length import LenFn
 from metadata.profiler.orm.registry import is_concatenable
 from metadata.utils.logger import profiler_logger
+from metadata.generated.schema.configuration.profilerConfiguration import MetricType
 
 logger = profiler_logger()
 
@@ -36,7 +37,7 @@ class MaxLength(StaticMetric):
 
     @classmethod
     def name(cls):
-        return "maxLength"
+        return MetricType.maxLength.value
 
     @property
     def metric_type(self):

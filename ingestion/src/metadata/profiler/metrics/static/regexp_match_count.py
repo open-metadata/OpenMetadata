@@ -19,6 +19,8 @@ from sqlalchemy import case, column
 from metadata.profiler.metrics.core import StaticMetric, _label
 from metadata.profiler.orm.functions.sum import SumFn
 from metadata.profiler.orm.registry import is_concatenable
+from metadata.generated.schema.configuration.profilerConfiguration import MetricType
+
 
 
 class RegexCount(StaticMetric):
@@ -36,7 +38,7 @@ class RegexCount(StaticMetric):
 
     @classmethod
     def name(cls):
-        return "regexCount"
+        return MetricType.regexCount.value
 
     @property
     def metric_type(self):
