@@ -25,6 +25,7 @@ from typing import Iterable, cast
 
 from sqlalchemy.inspection import inspect
 
+from ingestion.src.metadata.generated.schema.settings.settings import SettingType
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.services.ingestionPipelines.status import (
@@ -117,6 +118,7 @@ class OpenMetadataSourceExt(OpenMetadataSource):
         self._connection = None  # Lazy init as well
 
     def _iter(self, *_, **__) -> Iterable[Either[ProfilerSourceAndEntity]]:
+        global_profiler_config = self.metadata.get_settings_by_name(SettingType.profilerConfiguration)
         for database_name in self.get_database_names():
             try:
                 database_entity = fqn.search_database_from_es(
@@ -150,6 +152,7 @@ class OpenMetadataSourceExt(OpenMetadataSource):
                             self.config,
                             database_entity,
                             self.metadata,
+                            global_profiler_config,
                         )
                         yield Either(
                             right=ProfilerSourceAndEntity(

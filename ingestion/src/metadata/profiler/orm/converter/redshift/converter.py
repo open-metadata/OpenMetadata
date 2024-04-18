@@ -33,3 +33,13 @@ class RedshiftMapTypes(CommonMapTypes):
 
             return GEOMETRY
         return super().return_custom_type(col, table_service_type)
+
+    @staticmethod
+    def map_sqa_to_om_types() -> dict:
+        """returns an ORM type"""
+        from sqlalchemy_redshift.dialect import GEOMETRY
+
+        return {
+            **CommonMapTypes.map_sqa_to_om_types(),
+            GEOMETRY: DataType.GEOMETRY,
+        }

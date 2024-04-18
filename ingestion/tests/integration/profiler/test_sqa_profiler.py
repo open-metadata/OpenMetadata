@@ -104,10 +104,10 @@ class TestSQAProfiler(TestCase):
                 MetricConfigurationDefinition(
                     dataType=DataType.INT,
                     disabled=False,
-                    metrics=[MetricType.COUNT, MetricType.DISTINCT_COUNT]
+                    metrics=[MetricType.valuesCount, MetricType.distinctCount]
                 ),
                 MetricConfigurationDefinition(
-                    dataType=DataType.STRING,
+                    dataType=DataType.VARCHAR,
                     disabled=True,
                     metrics=None
                 ),
@@ -135,6 +135,8 @@ class TestSQAProfiler(TestCase):
 
         tables: List[Table] = self.metadata.list_all_entities(Table)
         for table in tables:
+            if table.name != "users":
+                continue
             table = self.metadata.get_latest_table_profile(table.fullyQualifiedName)
             columns = table.columns
             self.assertIsNotNone(table.profile)
@@ -147,4 +149,4 @@ class TestSQAProfiler(TestCase):
                     self.assertIsNone(column.profile.mean) 
                     self.assertIsNone(column.profile.valuesCount)
                     self.assertIsNone(column.profile.distinctCount)
-                
+

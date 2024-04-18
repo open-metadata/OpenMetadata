@@ -16,6 +16,7 @@ from typing import Iterable, Optional, cast
 
 from pydantic import BaseModel
 
+from ingestion.src.metadata.generated.schema.settings.settings import SettingType
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
 from metadata.generated.schema.entity.data.table import Table, TableType
@@ -126,6 +127,7 @@ class OpenMetadataSource(Source):
         self.metadata.health_check()
 
     def _iter(self, *_, **__) -> Iterable[Either[ProfilerSourceAndEntity]]:
+        global_profiler_config = self.metadata.get_settings_by_name(SettingType.profilerConfiguration)
         for database in self.get_database_entities():
             try:
                 profiler_source = profiler_source_factory.create(
@@ -133,6 +135,7 @@ class OpenMetadataSource(Source):
                     self.config,
                     database,
                     self.metadata,
+                    global_profiler_config,
                 )
                 for entity in self.get_table_entities(database=database):
                     yield Either(

@@ -35,3 +35,13 @@ class SnowflakeMapTypes(CommonMapTypes):
 
             return VARIANT
         return super().return_custom_type(col, table_service_type)
+
+    @staticmethod
+    def map_sqa_to_om_types() -> dict:
+        """returns an ORM type"""
+        from snowflake.sqlalchemy import VARIANT
+
+        return {
+            **CommonMapTypes.map_sqa_to_om_types(column_type),
+            VARIANT: DataType.JSON,
+        }
