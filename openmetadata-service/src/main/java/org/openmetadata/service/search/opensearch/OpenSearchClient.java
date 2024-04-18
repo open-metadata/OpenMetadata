@@ -21,6 +21,7 @@ import static org.openmetadata.service.search.EntityBuilderConstant.PRE_TAG;
 import static org.openmetadata.service.search.EntityBuilderConstant.SCHEMA_FIELD_NAMES;
 import static org.openmetadata.service.search.EntityBuilderConstant.UNIFIED;
 import static org.openmetadata.service.search.UpdateSearchEventsConstant.SENDING_REQUEST_TO_ELASTIC_SEARCH;
+import static org.openmetadata.service.util.FullyQualifiedName.getParentFQN;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import es.org.elasticsearch.index.IndexNotFoundException;
@@ -31,10 +32,12 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeMap;
+import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Stream;
 import javax.json.JsonObject;
@@ -51,6 +54,7 @@ import org.apache.http.impl.client.BasicCredentialsProvider;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.DataInsightInterface;
 import org.openmetadata.schema.dataInsight.DataInsightChartResult;
+import org.openmetadata.schema.entity.data.EntityHierarchy__1;
 import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration;
 import org.openmetadata.sdk.exception.SearchException;
 import org.openmetadata.sdk.exception.SearchIndexNotFoundException;
@@ -362,16 +366,22 @@ public class OpenSearchClient implements SearchClient {
               .must(QueryBuilders.termQuery("deleted", request.deleted())));
     }
 
-    if (!nullOrEmpty(request.getSortFieldParam())) {
+    if (!nullOrEmpty(request.getSortFieldParam()) && !request.getHierarchy()) {
       searchSourceBuilder.sort(
           request.getSortFieldParam(), SortOrder.fromString(request.getSortOrder()));
     }
 
     if (request.getIndex().equalsIgnoreCase("glossary_term_search_index")) {
+
       searchSourceBuilder.query(
           QueryBuilders.boolQuery()
               .must(searchSourceBuilder.query())
               .must(QueryBuilders.matchQuery("status", "Approved")));
+      if (request.getHierarchy()) {
+        searchSourceBuilder.sort(
+            SortBuilders.fieldSort("fullyQualifiedName")
+                .order(SortOrder.ASC)); // to get correct hierarchy of terms
+      }
     }
 
     /* for performance reasons OpenSearch doesn't provide accurate hits
@@ -393,18 +403,94 @@ public class OpenSearchClient implements SearchClient {
 
     searchSourceBuilder.timeout(new TimeValue(30, TimeUnit.SECONDS));
     try {
-      String response =
-          client
-              .search(
-                  new os.org.opensearch.action.search.SearchRequest(request.getIndex())
-                      .source(searchSourceBuilder),
-                  RequestOptions.DEFAULT)
-              .toString();
-      return Response.status(OK).entity(response).build();
+      SearchResponse searchResponse =
+          client.search(
+              new os.org.opensearch.action.search.SearchRequest(request.getIndex())
+                  .source(searchSourceBuilder),
+              RequestOptions.DEFAULT);
+      if (!request.getHierarchy()) {
+        return Response.status(OK).entity(searchResponse.toString()).build();
+      } else {
+        // Build the nested hierarchy from elastic search response
+        List<?> response = buildSearchHierarchy(request, searchResponse);
+        return Response.status(OK).entity(response).build();
+      }
     } catch (IndexNotFoundException e) {
       throw new SearchIndexNotFoundException(
           String.format("Failed to to find index %s", request.getIndex()));
     }
+  }
+
+  public List<?> buildSearchHierarchy(SearchRequest request, SearchResponse searchResponse) {
+    List<?> response = new ArrayList<>();
+    if (request.getIndex().equalsIgnoreCase("glossary_term_search_index")) {
+      response = buildGlossaryTermSearchHierarchy(searchResponse);
+    }
+    return response;
+  }
+
+  public List<EntityHierarchy__1> buildGlossaryTermSearchHierarchy(SearchResponse searchResponse) {
+    Map<String, EntityHierarchy__1> termMap =
+        new LinkedHashMap<>(); // termMap represent glossary terms
+    Map<String, EntityHierarchy__1> rootTerms =
+        new LinkedHashMap<>(); // rootTerms represent glossaries
+
+    for (var hit : searchResponse.getHits().getHits()) {
+      Map<String, Object> hitSourceMap = new HashMap<>(JsonUtils.getMap(hit.getSourceAsMap()));
+
+      EntityHierarchy__1 term = extractHierarchyTermFromMap(hitSourceMap);
+      Map<String, Object> glossaryInfo = (Map<String, Object>) hitSourceMap.get("glossary");
+
+      if (glossaryInfo != null) {
+        EntityHierarchy__1 parentTerm = extractHierarchyTermFromMap(glossaryInfo);
+        rootTerms.putIfAbsent(parentTerm.getFullyQualifiedName(), parentTerm);
+      } else {
+        Map<String, Object> parentInfo = (Map<String, Object>) hitSourceMap.get("parent");
+        EntityHierarchy__1 parentTerm = extractHierarchyTermFromMap(parentInfo);
+        termMap.putIfAbsent(parentTerm.getFullyQualifiedName(), parentTerm);
+      }
+
+      termMap.putIfAbsent(term.getFullyQualifiedName(), term);
+    }
+
+    termMap.putAll(rootTerms);
+
+    termMap
+        .values()
+        .forEach(
+            term -> {
+              String parentFQN = getParentFQN(term.getFullyQualifiedName());
+              String termFQN = term.getFullyQualifiedName();
+
+              if (parentFQN != null && termMap.containsKey(parentFQN)) {
+                EntityHierarchy__1 parentTerm = termMap.get(parentFQN);
+                List<EntityHierarchy__1> children = parentTerm.getChildren();
+                children.add(term);
+                parentTerm.setChildren(children);
+              } else {
+                if (rootTerms.containsKey(termFQN)) {
+                  EntityHierarchy__1 rootTerm = rootTerms.get(termFQN);
+                  rootTerm.setChildren(term.getChildren());
+                }
+              }
+            });
+
+    return new ArrayList<>(rootTerms.values());
+  }
+
+  private EntityHierarchy__1 extractHierarchyTermFromMap(Map<String, Object> termInfo) {
+    EntityHierarchy__1 term = new EntityHierarchy__1();
+    if (termInfo != null) {
+      term.setId(UUID.fromString(termInfo.get("id").toString()));
+      term.setName(termInfo.get("name").toString());
+      term.setDisplayName(
+          termInfo.get("displayName") != null
+              ? termInfo.get("displayName").toString()
+              : termInfo.get("name").toString());
+      term.setFullyQualifiedName(termInfo.get("fullyQualifiedName").toString());
+      term.setChildren(new ArrayList<>());
+    }
+    return term;
   }
 
   @Override

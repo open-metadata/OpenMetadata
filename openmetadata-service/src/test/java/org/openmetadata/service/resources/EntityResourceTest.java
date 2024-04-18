@@ -2341,6 +2341,16 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     return response;
   }
 
+  public static String getResponseFormSearchWithHierarchy(String indexName)
+      throws HttpResponseException {
+    WebTarget target =
+        getResource(
+            String.format(
+                "search/query?q=&index=%s&from=0&deleted=false&size=100&getHierarchy=true",
+                indexName));
+    return TestUtils.get(target, String.class, ADMIN_AUTH_HEADERS);
+  }
+
   @Test
   @Execution(ExecutionMode.CONCURRENT)
   void test_cleanupConversations(TestInfo test) throws HttpResponseException {

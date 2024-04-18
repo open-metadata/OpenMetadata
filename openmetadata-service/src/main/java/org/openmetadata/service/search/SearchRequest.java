@@ -17,6 +17,8 @@ public class SearchRequest {
   private final String sortOrder;
   private final List<String> includeSourceFields;
 
+  private final boolean getHierarchy;
+
   public SearchRequest(ElasticSearchRequestBuilder builder) {
     this.query = builder.query;
     this.from = builder.from;
@@ -31,6 +33,7 @@ public class SearchRequest {
     this.sortOrder = builder.sortOrder;
     this.includeSourceFields = builder.includeSourceFields;
     this.fieldName = builder.fieldName;
+    this.getHierarchy = builder.getHierarchy;
   }
 
   // Getters for the attributes
@@ -87,6 +90,10 @@ public class SearchRequest {
     return includeSourceFields;
   }
 
+  public boolean getHierarchy() {
+    return getHierarchy;
+  }
+
   // Builder class for ElasticSearchRequest
 
   public static class ElasticSearchRequestBuilder {
@@ -103,6 +110,7 @@ public class SearchRequest {
     private boolean deleted;
     private String sortOrder;
     private List<String> includeSourceFields;
+    private boolean getHierarchy;
 
     public ElasticSearchRequestBuilder(String query, int size, String index) {
       this.query = query;
@@ -157,6 +165,11 @@ public class SearchRequest {
 
     public ElasticSearchRequestBuilder fieldName(String fieldName) {
       this.fieldName = fieldName;
+      return this;
+    }
+
+    public ElasticSearchRequestBuilder getHierarchy(boolean getHierarchy) {
+      this.getHierarchy = getHierarchy;
       return this;
     }
 
