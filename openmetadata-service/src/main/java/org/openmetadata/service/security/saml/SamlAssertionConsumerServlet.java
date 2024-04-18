@@ -13,15 +13,23 @@
 
 package org.openmetadata.service.security.saml;
 
+import static org.openmetadata.service.util.UserUtil.getRoleListFromUser;
+
 import com.onelogin.saml2.Auth;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import javax.servlet.annotation.WebServlet;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import lombok.extern.slf4j.Slf4j;
+import org.openmetadata.schema.api.security.AuthorizerConfiguration;
 import org.openmetadata.schema.auth.JWTAuthMechanism;
 import org.openmetadata.schema.auth.ServiceTokenType;
+import org.openmetadata.schema.entity.teams.User;
+import org.openmetadata.schema.type.Include;
+import org.openmetadata.service.Entity;
 import org.openmetadata.service.security.jwt.JWTTokenGenerator;
 
 /**
@@ -32,6 +40,12 @@ import org.openmetadata.service.security.jwt.JWTTokenGenerator;
 @WebServlet("/api/v1/saml/acs")
 @Slf4j
 public class SamlAssertionConsumerServlet extends HttpServlet {
+  private Set<String> admins;
+
+  public SamlAssertionConsumerServlet(AuthorizerConfiguration configuration) {
+    admins = configuration.getAdminPrincipals();
+  }
+
   @Override
   protected void doPost(HttpServletRequest req, HttpServletResponse resp) {
     try {
@@ -68,14 +82,32 @@ public class SamlAssertionConsumerServlet extends HttpServlet {
         email = String.format("%s@%s", username, SamlSettingsHolder.getInstance().getDomain());
       }
 
-      JWTAuthMechanism jwtAuthMechanism =
-          JWTTokenGenerator.getInstance()
-              .generateJWTToken(
-                  username,
-                  email,
-                  SamlSettingsHolder.getInstance().getTokenValidity(),
-                  false,
-                  ServiceTokenType.OM_USER);
+      JWTAuthMechanism jwtAuthMechanism;
+      try {
+        User user = Entity.getEntityByName(Entity.USER, username, "id,roles", Include.NON_DELETED);
+        jwtAuthMechanism =
+            JWTTokenGenerator.getInstance()
+                .generateJWTToken(
+                    username,
+                    getRoleListFromUser(user),
+                    user.getIsAdmin(),
+                    email,
+                    SamlSettingsHolder.getInstance().getTokenValidity(),
+                    false,
+                    ServiceTokenType.OM_USER);
+      } catch (Exception e) {
+        LOG.error("[SAML ACS] User not found: " + username);
+        jwtAuthMechanism =
+            JWTTokenGenerator.getInstance()
+                .generateJWTToken(
+                    username,
+                    new HashSet<>(),
+                    admins.contains(username),
+                    email,
+                    SamlSettingsHolder.getInstance().getTokenValidity(),
+                    false,
+                    ServiceTokenType.OM_USER);
+      }
 
       String url =
           SamlSettingsHolder.getInstance().getRelayState()

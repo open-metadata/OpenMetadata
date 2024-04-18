@@ -161,6 +161,7 @@ authorizerConfiguration:
   principalDomain: ${AUTHORIZER_PRINCIPAL_DOMAIN:-"openmetadata.org"}
   enforcePrincipalDomain: ${AUTHORIZER_ENFORCE_PRINCIPAL_DOMAIN:-false}
   enableSecureSocketConnection : ${AUTHORIZER_ENABLE_SECURE_SOCKET:-false}
+  useRolesFromProvider: ${AUTHORIZER_USE_ROLES_FROM_PROVIDER:-false}
 
 authenticationConfiguration:
   clientType: ${AUTHENTICATION_CLIENT_TYPE:-public}
