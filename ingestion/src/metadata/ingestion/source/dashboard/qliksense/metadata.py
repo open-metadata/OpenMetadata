@@ -314,8 +314,14 @@ class QliksenseSource(DashboardServiceSource):
                         db_service_entity, datamodel=datamodel
                     )
                     if om_table:
+                        columns_list = [col.name for col in datamodel.fields]
+                        column_lineage = self._get_column_lineage(
+                            om_table, data_model_entity, columns_list
+                        )
                         yield self._get_add_lineage_request(
-                            to_entity=data_model_entity, from_entity=om_table
+                            to_entity=data_model_entity,
+                            from_entity=om_table,
+                            column_lineage=column_lineage,
                         )
             except Exception as err:
                 yield Either(
