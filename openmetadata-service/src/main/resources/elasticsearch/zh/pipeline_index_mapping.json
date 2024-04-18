@@ -343,6 +343,9 @@
       },
       "service_suggest": {
         "type": "completion"
+      },
+      "descriptionStatus": {
+        "type": "keyword"
       }
     }
   }
