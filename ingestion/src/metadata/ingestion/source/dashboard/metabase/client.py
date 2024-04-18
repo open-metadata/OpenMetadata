@@ -85,18 +85,49 @@ class MetabaseClient:
         )
         self.client = REST(client_config)
 
-    def get_dashboards_list(self) -> List[MetabaseDashboard]:
+    def get_dashboards_list(
+        self, collections: List[MetabaseCollection]
+    ) -> List[MetabaseDashboard]:
         """
         Get List of all dashboards
         """
-        try:
-            resp_dashboards = self.client.get("/dashboard")
+        dashboards = []
+        for collection in collections or []:
+            try:
+                resp_dashboards = self.client.get(
+                    f"/collection/{collection.id}/items?models=dashboard"
+                )
+                if resp_dashboards:
+                    dashboard_list = MetabaseDashboardList(**resp_dashboards)
+                    dashboards.extend(dashboard_list.data)
+            except Exception:
+                logger.debug(traceback.format_exc())
+                logger.warning("Failed to fetch the dashboard list")
+        return dashboards
+
+    def get_dashboards_list_test_conn(
+        self, collections: List[MetabaseCollection]
+    ) -> List[MetabaseDashboard]:
+        """
+        Get List of all dashboards
+        """
+        for collection in collections or []:
+            resp_dashboards = self.client.get(
+                f"/collection/{collection.id}/items?models=dashboard"
+            )
             if resp_dashboards:
-                dashboard_list = MetabaseDashboardList(dashboards=resp_dashboards)
-                return dashboard_list.dashboards
-        except Exception:
-            logger.debug(traceback.format_exc())
-            logger.warning("Failed to fetch the dashboard list")
+                dashboard_list = MetabaseDashboardList(**resp_dashboards)
+                return dashboard_list.data
+        return []
+
+    def get_collections_list_test_conn(self) -> List[MetabaseCollection]:
+        """
+        Get List of all collections
+        """
+        resp_collections = self.client.get("/collection")
+        if resp_collections:
+            collection_list = MetabaseCollectionList(collections=resp_collections)
+            return collection_list.collections
         return []
 
     def get_collections_list(self) -> List[MetabaseCollection]:

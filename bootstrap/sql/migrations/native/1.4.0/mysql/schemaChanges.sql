@@ -68,11 +68,11 @@ ALTER TABLE apps_extension_time_series ADD INDEX apps_extension_time_series_inde
 ALTER TABLE suggestions ADD INDEX index_suggestions_type(suggestionType);
 ALTER TABLE suggestions ADD INDEX index_suggestions_status(status);
 
--- Change scheduleType to scheduleTimeline
-UPDATE installed_apps
-SET json = JSON_INSERT(
-        JSON_REMOVE(json, '$.appSchedule.scheduleType'),
-        '$.appSchedule.scheduleTimeline',
-        JSON_EXTRACT(json, '$.appSchedule.scheduleType')
-    );
-delete from apps_extension_time_series;
+-- Migrate 'QlikSenseDataModel' & 'QlikCloudDataModel' into single entity 'QlikDataModel'
+UPDATE dashboard_data_model_entity
+SET json = JSON_SET(json, '$.dataModelType', 'QlikDataModel')
+WHERE JSON_EXTRACT(json, '$.dataModelType') in ('QlikSenseDataModel', 'QlikCloudDataModel');
+
+-- clean ES pipelines
+DELETE FROM ingestion_pipeline_entity
+WHERE LOWER(JSON_EXTRACT(json, '$.pipelineType')) = 'elasticsearchreindex';

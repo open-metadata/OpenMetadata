@@ -77,6 +77,7 @@ import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -755,6 +756,79 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
             deleteAndCheckEntity(toBeDeleted, ADMIN_AUTH_HEADERS);
           }
         }
+      }
+    }
+  }
+
+  protected void validateEntityListFromSearchWithPagination(
+      Map<String, String> queryParams, Integer maxEntities) throws IOException {
+    // List all entities and use it for checking pagination
+    Random rand = new Random();
+
+    for (Include include : List.of(Include.NON_DELETED, Include.ALL)) {
+      if (!supportsSoftDelete && include.equals(Include.DELETED)) {
+        continue;
+      }
+      queryParams.put("include", include.value());
+
+      ResultList<T> allEntities = listEntitiesFromSearch(queryParams, 1000, 0, ADMIN_AUTH_HEADERS);
+      int totalRecords = allEntities.getData().size();
+      printEntities(allEntities);
+
+      ResultList<T> forwardPage;
+      ResultList<T> backwardPage;
+      int offset = 0;
+      int cumEntityCount = 0;
+      // List entity with "limit" set from 1 to maxEntities size with random jumps
+      for (int limit = 1; limit <= maxEntities; limit += rand.nextInt(5) + 1) {
+        offset = 0;
+        cumEntityCount = 0;
+        int pageCount = 0;
+        do {
+          LOG.debug(
+              "Limit {} forward pageCount {} totalRecords {} offset {}",
+              limit,
+              pageCount,
+              totalRecords,
+              offset);
+          forwardPage = listEntitiesFromSearch(queryParams, limit, offset, ADMIN_AUTH_HEADERS);
+          assertEntityPagination(allEntities.getData(), forwardPage, limit, offset);
+
+          if (pageCount == 0) { // First page is being returned. Offset should be 0
+            assertEquals(offset, 0);
+          } else {
+            // Make sure scrolling back based on offset - limit cursor returns the correct result
+            backwardPage =
+                listEntitiesFromSearch(queryParams, limit, (offset - limit), ADMIN_AUTH_HEADERS);
+            assertEntityPagination(allEntities.getData(), forwardPage, limit, offset);
+          }
+          offset = offset + limit;
+          cumEntityCount += forwardPage.getData().size();
+          printEntities(forwardPage);
+          pageCount++;
+        } while (offset < totalRecords);
+
+        // We reached the end of the page check total cum number matches total records and paginate
+        // backward
+        assertEquals(totalRecords, cumEntityCount);
+
+        pageCount = 0;
+        cumEntityCount = 0;
+
+        do {
+          LOG.debug(
+              "Limit {} backward pageCount {} totalRecords {} offset {}",
+              limit,
+              pageCount,
+              totalRecords,
+              offset);
+          offset = offset - limit;
+          backwardPage = listEntitiesFromSearch(queryParams, limit, offset, ADMIN_AUTH_HEADERS);
+          assertEntityPagination(allEntities.getData(), backwardPage, limit, offset);
+          printEntities(backwardPage);
+          cumEntityCount += backwardPage.getData().size();
+          pageCount++;
+        } while (offset > 0);
       }
     }
   }
@@ -2962,6 +3036,40 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     }
   }
 
+  protected void assertEntityReferenceFromSearch(T entity, EntityReference actual)
+      throws IOException, InterruptedException {
+    RestClient searchClient = getSearchClient();
+    IndexMapping index = Entity.getSearchRepository().getIndexMapping(entityType);
+    Response response;
+    Request request = new Request("GET", String.format("%s/_search", index.getIndexName(null)));
+    String query =
+        String.format(
+            "{\"query\":{\"bool\":{\"filter\":[{\"term\":{\"_id\":\"%s\"}}]}}}", entity.getId());
+    request.setJsonEntity(query);
+    try {
+      waitForEsAsyncOp();
+      response = searchClient.performRequest(request);
+    } finally {
+      searchClient.close();
+    }
+
+    String jsonString = EntityUtils.toString(response.getEntity());
+    HashMap<String, Object> map =
+        (HashMap<String, Object>) JsonUtils.readOrConvertValue(jsonString, HashMap.class);
+    LinkedHashMap<String, Object> hits = (LinkedHashMap<String, Object>) map.get("hits");
+    ArrayList<LinkedHashMap<String, Object>> hitsList =
+        (ArrayList<LinkedHashMap<String, Object>>) hits.get("hits");
+    assertEquals(1, hitsList.size());
+    LinkedHashMap<String, Object> doc = (LinkedHashMap<String, Object>) hitsList.get(0);
+    LinkedHashMap<String, Object> source = (LinkedHashMap<String, Object>) doc.get("_source");
+
+    EntityReference domainReference =
+        JsonUtils.readOrConvertValue(source.get("domain"), EntityReference.class);
+
+    assertEquals(domainReference.getId(), actual.getId());
+    assertEquals(domainReference.getType(), actual.getType());
+  }
+
   protected static void checkOwnerOwns(EntityReference owner, UUID entityId, boolean expectedOwning)
       throws HttpResponseException {
     if (owner != null) {
@@ -3070,6 +3178,21 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     target = before != null ? target.queryParam("before", before) : target;
     target = after != null ? target.queryParam("after", after) : target;
     return TestUtils.get(target, entityListClass, authHeaders);
+  }
+
+  public ResultList<T> listEntitiesFromSearch(
+      Map<String, String> queryParams,
+      Integer limit,
+      Integer offset,
+      Map<String, String> authHeader)
+      throws HttpResponseException {
+    WebTarget target = getCollection().path("/search/list");
+    for (Map.Entry<String, String> entry : queryParams.entrySet()) {
+      target = target.queryParam(entry.getKey(), entry.getValue());
+    }
+    target = limit != null ? target.queryParam("limit", limit) : target;
+    target = offset != null ? target.queryParam("offset", offset) : target;
+    return TestUtils.get(target, entityListClass, authHeader);
   }
 
   private void printEntities(ResultList<T> list) {
@@ -3338,7 +3461,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   }
 
   public T assertDomainInheritance(K createRequest, EntityReference expectedDomain)
-      throws HttpResponseException {
+      throws HttpResponseException, IOException, InterruptedException, InterruptedException {
     T entity = createEntity(createRequest.withDomain(null), ADMIN_AUTH_HEADERS);
     assertReference(expectedDomain, entity.getDomain()); // Inherited owner
     entity = getEntity(entity.getId(), "domain", ADMIN_AUTH_HEADERS);
@@ -3347,11 +3470,12 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     entity = getEntityByName(entity.getFullyQualifiedName(), "domain", ADMIN_AUTH_HEADERS);
     assertReference(expectedDomain, entity.getDomain()); // Inherited owner
     assertTrue(entity.getDomain().getInherited());
+    assertEntityReferenceFromSearch(entity, expectedDomain);
     return entity;
   }
 
   public void assertDomainInheritanceOverride(T entity, K updateRequest, EntityReference newDomain)
-      throws HttpResponseException {
+      throws HttpResponseException, IOException, InterruptedException {
     // When an entity has domain set, it does not inherit domain from the parent
     String json = JsonUtils.pojoToJson(entity);
     entity.setDomain(newDomain);

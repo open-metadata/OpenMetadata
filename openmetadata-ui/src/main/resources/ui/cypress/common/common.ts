@@ -184,7 +184,8 @@ export const visitServiceDetailsPage = (
 
 export const visitDataModelPage = (
   dataModelFQN: string,
-  dataModelName: string
+  dataModelName: string,
+  serviceName: string
 ) => {
   interceptURL('GET', '/api/v1/services/dashboardServices*', 'getServices');
   cy.settingClick(GlobalSettingOptions.DASHBOARDS);
@@ -192,16 +193,18 @@ export const visitDataModelPage = (
 
   interceptURL(
     'GET',
-    'api/v1/services/dashboardServices/name/sample_looker*',
+    `api/v1/services/dashboardServices/name/${serviceName}*`,
     'getDashboardDetails'
   );
   interceptURL(
     'GET',
-    '/api/v1/dashboard/datamodels?service=sample_looker*',
+    `/api/v1/dashboard/datamodels?service=${serviceName}*`,
     'getDataModels'
   );
 
-  cy.get('[data-testid="service-name-sample_looker"]').scrollIntoView().click();
+  cy.get(`[data-testid="service-name-${serviceName}"]`)
+    .scrollIntoView()
+    .click();
 
   verifyResponseStatusCode('@getDashboardDetails', 200);
   verifyResponseStatusCode('@getDataModels', 200);
@@ -433,5 +436,12 @@ export const visitDatabaseSchemaDetailsPage = ({
 
   cy.get(`[data-row-key="${databaseSchemaRowKey}"]`)
     .contains(databaseSchemaName)
+    .click();
+};
+
+export const selectOptionFromDropdown = (option: string) => {
+  cy.get('.ant-select-dropdown')
+    .not('.ant-select-dropdown-hidden')
+    .find(`[title="${option}"]`)
     .click();
 };

@@ -33,6 +33,7 @@ export enum EntityType {
   Database = 'databases',
   DatabaseSchema = 'databaseSchemas',
   DataModel = 'dashboard/datamodels',
+  User = 'users',
 }
 
 export const EXPLORE_PAGE_TABS: Record<
@@ -50,6 +51,7 @@ export const EXPLORE_PAGE_TABS: Record<
     | EntityType.GlossaryTerm
     | EntityType.Domain
     | EntityType.MetadataService
+    | EntityType.User
   >,
   string
 > = {
@@ -62,7 +64,7 @@ export const EXPLORE_PAGE_TABS: Record<
   [EntityType.SearchIndex]: 'search indexes',
   [EntityType.Table]: 'tables',
   [EntityType.StoreProcedure]: 'stored procedures',
-  [EntityType.Glossary]: 'glossaries',
+  [EntityType.Glossary]: 'glossary terms',
 } as const;
 
 export const SEARCH_INDEX: Record<
@@ -79,6 +81,7 @@ export const SEARCH_INDEX: Record<
     | EntityType.DatabaseSchema
     | EntityType.GlossaryTerm
     | EntityType.MetadataService
+    | EntityType.User
   >,
   string
 > = {
@@ -109,4 +112,20 @@ export enum SidebarItem {
   INSIGHTS = 'insights',
   SETTINGS = 'settings',
   LOGOUT = 'logout',
+}
+
+export enum ENTITY_PATH {
+  tables = 'table',
+  topics = 'topic',
+  dashboards = 'dashboard',
+  pipelines = 'pipeline',
+  mlmodels = 'mlmodel',
+  containers = 'container',
+  tags = 'tag',
+  glossaries = 'glossary',
+  searchIndexes = 'searchIndex',
+  storedProcedures = 'storedProcedure',
+  glossaryTerm = 'glossaryTerm',
+  databases = 'database',
+  databaseSchemas = 'databaseSchema',
 }

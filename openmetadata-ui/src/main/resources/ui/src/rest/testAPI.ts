@@ -14,9 +14,11 @@
 import { AxiosResponse } from 'axios';
 import { Operation } from 'fast-json-patch';
 import { PagingResponse, RestoreRequestType } from 'Models';
+import { SORT_ORDER } from '../enums/common.enum';
 import { CreateTestCase } from '../generated/api/tests/createTestCase';
 import { CreateTestSuite } from '../generated/api/tests/createTestSuite';
 import {
+  TableData,
   TestCase,
   TestCaseResult,
   TestCaseStatus,
@@ -46,14 +48,32 @@ export type ListTestSuitePrams = ListParams & {
   testSuiteType?: TestSuiteType;
   includeEmptyTestSuites?: boolean;
 };
+export type ListTestSuitePramsBySearch = ListTestSuitePrams & {
+  q?: string;
+  sortType?: SORT_ORDER;
+  sortNestedMode?: string[];
+  sortNestedPath?: string;
+  sortField?: string;
+  owner?: string;
+  offset?: number;
+};
 
 export type ListTestCaseParams = ListParams & {
   entityLink?: string;
   testSuiteId?: string;
   includeAllTests?: boolean;
-  orderByLastExecutionDate?: boolean;
   testCaseStatus?: TestCaseStatus;
   testCaseType?: TestCaseType;
+};
+export type ListTestCaseParamsBySearch = ListTestCaseParams & {
+  q?: string;
+  sortType?: SORT_ORDER;
+  sortField?: string;
+  startTimestamp?: number;
+  endTimestamp?: number;
+  testPlatforms?: TestPlatform[];
+  offset?: number;
+  owner?: string;
 };
 
 export type ListTestDefinitionsParams = ListParams & {
@@ -91,6 +111,19 @@ export const getListTestCase = async (params?: ListTestCaseParams) => {
   return response.data;
 };
 
+export const getListTestCaseBySearch = async (
+  params?: ListTestCaseParamsBySearch
+) => {
+  const response = await APIClient.get<PagingResponse<TestCase[]>>(
+    `${testCaseUrl}/search/list`,
+    {
+      params,
+    }
+  );
+
+  return response.data;
+};
+
 export const getListTestCaseResults = async (
   fqn: string,
   params?: ListTestCaseResultsParams
@@ -102,6 +135,20 @@ export const getListTestCaseResults = async (
   }>(url, {
     params,
   });
+
+  return response.data;
+};
+
+export const getTestCaseFailedSampleData = async (id: string) => {
+  const url = `${testCaseUrl}/${id}/failedRowsSample`;
+  const response = await APIClient.get<TableData>(url);
+
+  return response.data;
+};
+
+export const deleteTestCaseFailedSampleData = async (id: string) => {
+  const url = `${testCaseUrl}/${id}/failedRowsSample`;
+  const response = await APIClient.delete(url);
 
   return response.data;
 };
@@ -215,6 +262,19 @@ export const getListTestSuites = async (params?: ListTestSuitePrams) => {
   }>(testSuiteUrl, {
     params,
   });
+
+  return response.data;
+};
+
+export const getListTestSuitesBySearch = async (
+  params?: ListTestSuitePramsBySearch
+) => {
+  const response = await APIClient.get<PagingResponse<TestSuite[]>>(
+    `${testSuiteUrl}/search/list`,
+    {
+      params,
+    }
+  );
 
   return response.data;
 };

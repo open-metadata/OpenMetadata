@@ -281,6 +281,11 @@ class SampleDataSource(
             entity=DatabaseService, config=WorkflowSource(**self.database_service_json)
         )
 
+        self.glue_database_service = self.metadata.get_service_or_create(
+            entity=DatabaseService,
+            config=WorkflowSource(**self.glue_database_service_json),
+        )
+
         self.kafka_service_json = json.load(
             open(  # pylint: disable=consider-using-with
                 sample_data_folder + "/topics/service.json",
@@ -606,9 +611,9 @@ class SampleDataSource(
         """Ingest Sample Data for glue database source"""
 
         db = CreateDatabaseRequest(
-            name=self.database["name"],
-            description=self.database["description"],
-            service=self.database_service.fullyQualifiedName,
+            name=self.glue_database["name"],
+            description=self.glue_database["description"],
+            service=self.glue_database_service.fullyQualifiedName,
         )
 
         yield Either(right=db)
@@ -616,7 +621,7 @@ class SampleDataSource(
         database_entity = fqn.build(
             self.metadata,
             entity_type=Database,
-            service_name=self.database_service.name.__root__,
+            service_name=self.glue_database_service.fullyQualifiedName.__root__,
             database_name=db.name.__root__,
         )
 
@@ -624,8 +629,8 @@ class SampleDataSource(
             entity=Database, fqn=database_entity
         )
         schema = CreateDatabaseSchemaRequest(
-            name=self.database_schema["name"],
-            description=self.database_schema["description"],
+            name=self.glue_database_schema["name"],
+            description=self.glue_database_schema["description"],
             database=database_object.fullyQualifiedName,
         )
         yield Either(right=schema)
@@ -633,7 +638,7 @@ class SampleDataSource(
         database_schema_entity = fqn.build(
             self.metadata,
             entity_type=DatabaseSchema,
-            service_name=self.database_service.name.__root__,
+            service_name=self.glue_database_service.fullyQualifiedName.__root__,
             database_name=db.name.__root__,
             schema_name=schema.name.__root__,
         )
@@ -1493,6 +1498,14 @@ class SampleDataSource(
                         test_case_name=case.fullyQualifiedName.__root__,
                     )
                     yield Either(right=test_case_result_req)
+            if test_case_results.get("failedRowsSample"):
+                self.metadata.ingest_failed_rows_sample(
+                    case,
+                    TableData(
+                        rows=test_case_results["failedRowsSample"]["rows"],
+                        columns=test_case_results["failedRowsSample"]["columns"],
+                    ),
+                )
 
     def ingest_data_insights(self) -> Iterable[Either[OMetaDataInsightSample]]:
         """Iterate over all the data insights and ingest them"""
@@ -1583,7 +1596,9 @@ class SampleDataSource(
                 )
 
             life_cycle_request = OMetaLifeCycleData(
-                entity=table, life_cycle=life_cycle_data
+                entity=Table,
+                entity_fqn=table_life_cycle["fqn"],
+                life_cycle=life_cycle_data,
             )
             yield Either(right=life_cycle_request)
 

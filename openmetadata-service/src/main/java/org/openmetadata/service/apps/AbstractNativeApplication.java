@@ -1,7 +1,7 @@
 package org.openmetadata.service.apps;
 
 import static org.openmetadata.service.apps.scheduler.AbstractOmAppJobListener.JOB_LISTENER_NAME;
-import static org.openmetadata.service.apps.scheduler.AppScheduler.APP_INFO_KEY;
+import static org.openmetadata.service.apps.scheduler.AppScheduler.APP_NAME;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.LIVE_APP_SCHEDULE_ERR;
 
 import java.util.List;
@@ -69,6 +69,16 @@ public class AbstractNativeApplication implements NativeApplication {
     }
     if (app.getAppType() == AppType.Internal
         && app.getScheduleType().equals(ScheduleType.Scheduled)) {
+      try {
+        ApplicationHandler.getInstance().removeOldJobs(app);
+        ApplicationHandler.getInstance().migrateQuartzConfig(app);
+        ApplicationHandler.getInstance().fixCorruptedInstallation(app);
+      } catch (SchedulerException e) {
+        throw AppException.byMessage(
+            "ApplicationHandler",
+            "SchedulerError",
+            "Error while migrating application configuration: " + app.getName());
+      }
       scheduleInternal();
     } else if (app.getAppType() == AppType.External
         && app.getScheduleType().equals(ScheduleType.Scheduled)) {
@@ -203,9 +213,9 @@ public class AbstractNativeApplication implements NativeApplication {
   @Override
   public void execute(JobExecutionContext jobExecutionContext) {
     // This is the part of the code that is executed by the scheduler
-    App jobApp =
-        JsonUtils.readOrConvertValue(
-            jobExecutionContext.getJobDetail().getJobDataMap().get(APP_INFO_KEY), App.class);
+    String appName = (String) jobExecutionContext.getJobDetail().getJobDataMap().get(APP_NAME);
+    App jobApp = collectionDAO.applicationDAO().findEntityByName(appName);
+    ApplicationHandler.getInstance().setAppRuntimeProperties(jobApp);
     // Initialise the Application
     this.init(jobApp);
 

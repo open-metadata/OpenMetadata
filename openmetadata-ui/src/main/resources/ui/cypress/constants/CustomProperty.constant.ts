@@ -25,3 +25,8 @@ export const CustomPropertySupportedEntityList = [
   EntityType.GlossaryTerm,
   EntityType.SearchIndex,
 ];
+
+export const ENTITY_REFERENCE_PROPERTIES = [
+  'Entity Reference',
+  'Entity Reference List',
+];

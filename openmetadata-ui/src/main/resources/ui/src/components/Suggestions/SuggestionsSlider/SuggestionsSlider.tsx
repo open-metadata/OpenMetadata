@@ -10,9 +10,11 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Typography } from 'antd';
+import { CheckOutlined, CloseOutlined } from '@ant-design/icons';
+import { Button, Space, Typography } from 'antd';
 import { t } from 'i18next';
 import React from 'react';
+import { ReactComponent as ExitIcon } from '../../../assets/svg/ic-exit.svg';
 import { SuggestionType } from '../../../generated/entity/feed/suggestion';
 import AvatarCarousel from '../../common/AvatarCarousel/AvatarCarousel';
 import { useSuggestionsContext } from '../SuggestionsProvider/SuggestionsProvider';
@@ -24,6 +26,7 @@ const SuggestionsSlider = () => {
     acceptRejectAllSuggestions,
     loadingAccept,
     loadingReject,
+    onUpdateActiveUser,
   } = useSuggestionsContext();
 
   return (
@@ -33,11 +36,13 @@ const SuggestionsSlider = () => {
       </Typography.Text>
       <AvatarCarousel />
       {selectedUserSuggestions.length > 0 && (
-        <>
+        <Space className="slider-btn-container m-l-xs">
           <Button
+            ghost
+            className="text-xs text-primary font-medium"
             data-testid="accept-all-suggestions"
+            icon={<CheckOutlined />}
             loading={loadingAccept}
-            size="small"
             type="primary"
             onClick={() =>
               acceptRejectAllSuggestions(
@@ -45,15 +50,14 @@ const SuggestionsSlider = () => {
                 SuggestionAction.Accept
               )
             }>
-            <Typography.Text className="text-xs text-white">
-              {t('label.accept-all')}
-            </Typography.Text>
+            {t('label.accept-all')}
           </Button>
           <Button
             ghost
+            className="text-xs text-primary font-medium"
             data-testid="reject-all-suggestions"
+            icon={<CloseOutlined />}
             loading={loadingReject}
-            size="small"
             type="primary"
             onClick={() =>
               acceptRejectAllSuggestions(
@@ -61,11 +65,18 @@ const SuggestionsSlider = () => {
                 SuggestionAction.Reject
               )
             }>
-            <Typography.Text className="text-xs text-primary">
-              {t('label.reject-all')}
-            </Typography.Text>
+            {t('label.reject-all')}
           </Button>
-        </>
+          <Button
+            ghost
+            className="text-xs text-primary font-medium close-suggestion-btn flex-center"
+            data-testid="close-suggestion"
+            type="primary"
+            onClick={() => onUpdateActiveUser()}>
+            <ExitIcon />
+            {t('label.close')}
+          </Button>
+        </Space>
       )}
     </div>
   );

@@ -54,7 +54,11 @@ import {
   ResourceEntity,
 } from '../../context/PermissionProvider/PermissionProvider.interface';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
-import { EntityTabs, EntityType } from '../../enums/entity.enum';
+import {
+  EntityTabs,
+  EntityType,
+  TabSpecificField,
+} from '../../enums/entity.enum';
 import { CreateThread } from '../../generated/api/feed/createThread';
 import { Tag } from '../../generated/entity/classification/tag';
 import { DatabaseSchema } from '../../generated/entity/data/databaseSchema';
@@ -208,7 +212,8 @@ const DatabaseSchemaPage: FunctionComponent = () => {
       const response = await getDatabaseSchemaDetailsByFQN(
         decodedDatabaseSchemaFQN,
         {
-          fields: 'owner,usageSummary,tags,domain,votes,extension',
+          // eslint-disable-next-line max-len
+          fields: `${TabSpecificField.OWNER},${TabSpecificField.USAGE_SUMMARY},${TabSpecificField.TAGS},${TabSpecificField.DOMAIN},${TabSpecificField.VOTES},${TabSpecificField.EXTENSION},${TabSpecificField.DATA_PRODUCTS}`,
           include: Include.All,
         }
       );
@@ -590,16 +595,18 @@ const DatabaseSchemaPage: FunctionComponent = () => {
             className="entity-tag-right-panel-container"
             data-testid="entity-right-panel"
             flex="320px">
-            <EntityRightPanel
+            <EntityRightPanel<EntityType.DATABASE_SCHEMA>
               customProperties={databaseSchema}
               dataProducts={databaseSchema?.dataProducts ?? []}
               domain={databaseSchema?.domain}
+              editCustomAttributePermission={editCustomAttributePermission}
               editTagPermission={editTagsPermission}
               entityFQN={decodedDatabaseSchemaFQN}
               entityId={databaseSchema?.id ?? ''}
               entityType={EntityType.DATABASE_SCHEMA}
               selectedTags={tags}
               viewAllPermission={viewAllPermission}
+              onExtensionUpdate={handleExtensionUpdate}
               onTagSelectionChange={handleTagSelection}
               onThreadLinkSelect={onThreadLinkSelect}
             />

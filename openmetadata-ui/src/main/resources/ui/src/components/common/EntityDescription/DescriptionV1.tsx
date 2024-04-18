@@ -57,6 +57,7 @@ const DescriptionV1 = ({
   showCommentsIcon = true,
   reduceDescription,
   showSuggestions = false,
+  isDescriptionExpanded,
 }: DescriptionProps) => {
   const history = useHistory();
   const { suggestions = [], selectedUserSuggestions = [] } =
@@ -191,13 +192,14 @@ const DescriptionV1 = ({
         <RichTextEditorPreviewer
           className={reduceDescription ? 'max-two-lines' : ''}
           enableSeeMoreVariant={!removeBlur}
+          isDescriptionExpanded={isDescriptionExpanded}
           markdown={description}
         />
       ) : (
         <span>{t('label.no-description')}</span>
       );
     }
-  }, [description, suggestionData]);
+  }, [description, suggestionData, isDescriptionExpanded]);
 
   const content = (
     <Space
@@ -205,7 +207,7 @@ const DescriptionV1 = ({
       data-testid="asset-description-container"
       direction="vertical"
       size={16}>
-      <div className="d-flex justify-between">
+      <div className="d-flex justify-between flex-wrap">
         <div className="d-flex items-center gap-2">
           <Text className="right-panel-label">{t('label.description')}</Text>
           {showActions && actionButtons}

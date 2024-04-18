@@ -11,6 +11,7 @@ import java.util.TreeMap;
 import javax.json.JsonObject;
 import javax.net.ssl.SSLContext;
 import javax.ws.rs.core.Response;
+import lombok.Getter;
 import org.apache.commons.lang3.tuple.Pair;
 import org.openmetadata.schema.dataInsight.DataInsightChartResult;
 import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration;
@@ -73,6 +74,15 @@ public interface SearchClient {
 
   Response search(SearchRequest request) throws IOException;
 
+  SearchResultListMapper listWithOffset(
+      String filter,
+      int limit,
+      int offset,
+      String index,
+      SearchSortFilter searchSortFilter,
+      String q)
+      throws IOException;
+
   Response searchBySourceUrl(String sourceUrl) throws IOException;
 
   Response searchLineage(
@@ -111,6 +121,11 @@ public interface SearchClient {
 
   void updateChildren(
       String indexName,
+      Pair<String, String> fieldAndValue,
+      Pair<String, Map<String, Object>> updates);
+
+  void updateChildren(
+      List<String> indexName,
       Pair<String, String> fieldAndValue,
       Pair<String, Map<String, Object>> updates);
 
@@ -170,5 +185,16 @@ public interface SearchClient {
             elasticSearchConfiguration.getTruststorePassword(),
             "ElasticSearch")
         : null;
+  }
+
+  @Getter
+  class SearchResultListMapper {
+    public List<Map<String, Object>> results;
+    public long total;
+
+    public SearchResultListMapper(List<Map<String, Object>> results, long total) {
+      this.results = results;
+      this.total = total;
+    }
   }
 }

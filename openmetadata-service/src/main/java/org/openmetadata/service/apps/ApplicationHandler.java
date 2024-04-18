@@ -1,19 +1,32 @@
 package org.openmetadata.service.apps;
 
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
+import static org.openmetadata.service.apps.scheduler.AppScheduler.APPS_JOB_GROUP;
+import static org.openmetadata.service.apps.scheduler.AppScheduler.APP_INFO_KEY;
+import static org.openmetadata.service.apps.scheduler.AppScheduler.APP_NAME;
 
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.util.Collection;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.api.configuration.apps.AppPrivateConfig;
 import org.openmetadata.schema.api.configuration.apps.AppsPrivateConfiguration;
 import org.openmetadata.schema.entity.app.App;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
+import org.openmetadata.service.apps.scheduler.AppScheduler;
 import org.openmetadata.service.exception.UnhandledServerException;
+import org.openmetadata.service.jdbi3.AppRepository;
 import org.openmetadata.service.jdbi3.CollectionDAO;
+import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.search.SearchRepository;
+import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.OpenMetadataConnectionBuilder;
+import org.quartz.JobDataMap;
+import org.quartz.JobDetail;
+import org.quartz.JobKey;
+import org.quartz.SchedulerException;
+import org.quartz.impl.matchers.GroupMatcher;
 
 @Slf4j
 public class ApplicationHandler {
@@ -21,10 +34,12 @@ public class ApplicationHandler {
   @Getter private static ApplicationHandler instance;
   private final OpenMetadataApplicationConfig config;
   private final AppsPrivateConfiguration privateConfiguration;
+  private final AppRepository appRepository;
 
   private ApplicationHandler(OpenMetadataApplicationConfig config) {
     this.config = config;
     this.privateConfiguration = config.getAppsPrivateConfiguration();
+    this.appRepository = new AppRepository();
   }
 
   public static void initialize(OpenMetadataApplicationConfig config) {
@@ -37,7 +52,7 @@ public class ApplicationHandler {
   /**
    * Load the apps' OM configuration and private parameters
    */
-  private void setAppRuntimeProperties(App app) {
+  public void setAppRuntimeProperties(App app) {
     app.setOpenMetadataServerConnection(
         new OpenMetadataConnectionBuilder(config, app.getBot().getName()).build());
 
@@ -50,6 +65,18 @@ public class ApplicationHandler {
         }
       }
     }
+  }
+
+  public Boolean isPreview(String appName) {
+    if (privateConfiguration != null
+        && !nullOrEmpty(privateConfiguration.getAppsPrivateConfiguration())) {
+      for (AppPrivateConfig appPrivateConfig : privateConfiguration.getAppsPrivateConfiguration()) {
+        if (appName.equals(appPrivateConfig.getName())) {
+          return appPrivateConfig.getPreview();
+        }
+      }
+    }
+    return false;
   }
 
   public void triggerApplicationOnDemand(
@@ -93,7 +120,9 @@ public class ApplicationHandler {
     return resource;
   }
 
-  /** Load an App from its className and call its methods dynamically */
+  /**
+   * Load an App from its className and call its methods dynamically
+   */
   public void runMethodFromApplication(
       App app, CollectionDAO daoCollection, SearchRepository searchRepository, String methodName) {
     // Native Application
@@ -109,7 +138,82 @@ public class ApplicationHandler {
     } catch (ClassNotFoundException e) {
       throw new UnhandledServerException(e.getMessage());
     } catch (InvocationTargetException e) {
-      throw new AppException(e.getTargetException().getMessage());
+      throw AppException.byMessage(app.getName(), methodName, e.getTargetException().getMessage());
     }
+  }
+
+  public void migrateQuartzConfig(App application) throws SchedulerException {
+    JobDetail jobDetails =
+        AppScheduler.getInstance()
+            .getScheduler()
+            .getJobDetail(new JobKey(application.getName(), APPS_JOB_GROUP));
+    if (jobDetails == null) {
+      return;
+    }
+    JobDataMap jobDataMap = jobDetails.getJobDataMap();
+    if (jobDataMap == null) {
+      return;
+    }
+    String appInfo = jobDataMap.getString(APP_INFO_KEY);
+    if (appInfo == null) {
+      return;
+    }
+    LOG.info("migrating app quartz configuration for {}", application.getName());
+    App updatedApp = JsonUtils.readOrConvertValue(appInfo, App.class);
+    App currentApp = appRepository.getDao().findEntityById(application.getId());
+    updatedApp.setOpenMetadataServerConnection(null);
+    updatedApp.setPrivateConfiguration(null);
+    updatedApp.setScheduleType(currentApp.getScheduleType());
+    updatedApp.setAppSchedule(currentApp.getAppSchedule());
+    updatedApp.setUpdatedBy(currentApp.getUpdatedBy());
+    updatedApp.setFullyQualifiedName(currentApp.getFullyQualifiedName());
+    EntityRepository<App>.EntityUpdater updater =
+        appRepository.getUpdater(currentApp, updatedApp, EntityRepository.Operation.PATCH);
+    updater.update();
+    AppScheduler.getInstance().deleteScheduledApplication(updatedApp);
+    AppScheduler.getInstance().addApplicationSchedule(updatedApp);
+    LOG.info("migrated app configuration for {}", application.getName());
+  }
+
+  public void fixCorruptedInstallation(App application) throws SchedulerException {
+    JobDetail jobDetails =
+        AppScheduler.getInstance()
+            .getScheduler()
+            .getJobDetail(new JobKey(application.getName(), APPS_JOB_GROUP));
+    if (jobDetails == null) {
+      return;
+    }
+    JobDataMap jobDataMap = jobDetails.getJobDataMap();
+    if (jobDataMap == null) {
+      return;
+    }
+    String appName = jobDataMap.getString(APP_NAME);
+    if (appName == null) {
+      LOG.info("corrupt entry for app {}, reinstalling", application.getName());
+      App app = appRepository.getDao().findEntityByName(application.getName());
+      AppScheduler.getInstance().deleteScheduledApplication(app);
+      AppScheduler.getInstance().addApplicationSchedule(app);
+    }
+  }
+
+  public void removeOldJobs(App app) throws SchedulerException {
+    Collection<JobKey> jobKeys =
+        AppScheduler.getInstance()
+            .getScheduler()
+            .getJobKeys(GroupMatcher.groupContains(APPS_JOB_GROUP));
+    jobKeys.forEach(
+        jobKey -> {
+          try {
+            Class<?> clz =
+                AppScheduler.getInstance().getScheduler().getJobDetail(jobKey).getJobClass();
+            if (!jobKey.getName().equals(app.getName())
+                && clz.getName().equals(app.getClassName())) {
+              LOG.info("deleting old job {}", jobKey.getName());
+              AppScheduler.getInstance().getScheduler().deleteJob(jobKey);
+            }
+          } catch (SchedulerException e) {
+            LOG.error("Error deleting job {}", jobKey.getName(), e);
+          }
+        });
   }
 }

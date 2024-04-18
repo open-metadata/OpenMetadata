@@ -504,10 +504,19 @@ class MetadataRestSink(Sink):  # pylint: disable=too-many-public-methods
         """
         Ingest the life cycle data
         """
-        self.metadata.patch_life_cycle(
-            entity=record.entity, life_cycle=record.life_cycle
+
+        entity = self.metadata.get_by_name(entity=record.entity, fqn=record.entity_fqn)
+
+        if entity:
+            self.metadata.patch_life_cycle(entity=entity, life_cycle=record.life_cycle)
+            return Either(right=entity)
+
+        return Either(
+            left=StackTraceError(
+                name=record.entity_fqn,
+                error=f"Entity of type '{record.entity}' with name '{record.entity_fqn}' not found.",
+            )
         )
-        return Either(right=record)
 
     @_run_dispatch.register
     def write_profiler_response(self, record: ProfilerResponse) -> Either[Table]:

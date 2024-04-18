@@ -36,6 +36,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.SortedMap;
+import java.util.UUID;
 import javax.json.JsonObject;
 import javax.ws.rs.core.Response;
 import lombok.Getter;
@@ -53,6 +54,7 @@ import org.openmetadata.schema.tests.TestSuite;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.FieldChange;
+import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.UsageDetails;
 import org.openmetadata.service.Entity;
@@ -321,7 +323,7 @@ public class SearchRepository {
       } catch (Exception ie) {
         LOG.error(
             String.format(
-                "Issue in Updatind the search document for entity [%s] and entityType [%s]. Reason[%s], Cause[%s], Stack [%s]",
+                "Issue in Updating the search document for entity [%s] and entityType [%s]. Reason[%s], Cause[%s], Stack [%s]",
                 entityId,
                 entityType,
                 ie.getMessage(),
@@ -348,20 +350,28 @@ public class SearchRepository {
       Pair<String, Map<String, Object>> updates = getInheritedFieldChanges(changeDescription);
       Pair<String, String> parentMatch;
       if (!updates.getValue().isEmpty()
-          && updates.getValue().get("type").toString().equalsIgnoreCase("domain")
-          && (entityType.equalsIgnoreCase(Entity.DATABASE_SERVICE)
-              || entityType.equalsIgnoreCase(Entity.DASHBOARD_SERVICE)
-              || entityType.equalsIgnoreCase(Entity.MESSAGING_SERVICE)
-              || entityType.equalsIgnoreCase(Entity.PIPELINE_SERVICE)
-              || entityType.equalsIgnoreCase(Entity.MLMODEL_SERVICE)
-              || entityType.equalsIgnoreCase(Entity.STORAGE_SERVICE)
-              || entityType.equalsIgnoreCase(Entity.SEARCH_SERVICE))) {
-        parentMatch = new ImmutablePair<>("service.id", entityId);
+          && updates.getValue().get("type").toString().equalsIgnoreCase("domain")) {
+        if (entityType.equalsIgnoreCase(Entity.DATABASE_SERVICE)
+            || entityType.equalsIgnoreCase(Entity.DASHBOARD_SERVICE)
+            || entityType.equalsIgnoreCase(Entity.MESSAGING_SERVICE)
+            || entityType.equalsIgnoreCase(Entity.PIPELINE_SERVICE)
+            || entityType.equalsIgnoreCase(Entity.MLMODEL_SERVICE)
+            || entityType.equalsIgnoreCase(Entity.STORAGE_SERVICE)
+            || entityType.equalsIgnoreCase(Entity.SEARCH_SERVICE)) {
+          parentMatch = new ImmutablePair<>("service.id", entityId);
+        } else if (entityType.equalsIgnoreCase(Entity.TABLE)) {
+          EntityInterface entity =
+              Entity.getEntity(entityType, UUID.fromString(entityId), "", Include.ALL);
+          parentMatch = new ImmutablePair<>("entityFQN", entity.getFullyQualifiedName());
+        } else {
+          parentMatch = new ImmutablePair<>(entityType + ".id", entityId);
+        }
       } else {
         parentMatch = new ImmutablePair<>(entityType + ".id", entityId);
       }
       if (updates.getKey() != null && !updates.getKey().isEmpty()) {
-        searchClient.updateChildren(indexMapping.getAlias(clusterAlias), parentMatch, updates);
+        searchClient.updateChildren(
+            indexMapping.getChildAliases(clusterAlias), parentMatch, updates);
       }
     }
   }
@@ -644,6 +654,24 @@ public class SearchRepository {
 
   public Response search(SearchRequest request) throws IOException {
     return searchClient.search(request);
+  }
+
+  public SearchClient.SearchResultListMapper listWithOffset(
+      SearchListFilter filter,
+      int limit,
+      int offset,
+      String entityType,
+      SearchSortFilter searchSortFilter,
+      String q)
+      throws IOException {
+    IndexMapping index = entityIndexMap.get(entityType);
+    return searchClient.listWithOffset(
+        filter.getCondition(entityType),
+        limit,
+        offset,
+        index.getIndexName(clusterAlias),
+        searchSortFilter,
+        q);
   }
 
   public Response searchBySourceUrl(String sourceUrl) throws IOException {

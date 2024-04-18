@@ -1,9 +1,10 @@
 package org.openmetadata.service.search.indexes;
 
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.search.ParseTags;
@@ -30,7 +31,13 @@ public class IngestionPipelineIndex implements SearchIndex {
     suggest.add(
         SearchSuggest.builder().input(ingestionPipeline.getDisplayName()).weight(10).build());
     serviceSuggest.add(
-        SearchSuggest.builder().input(ingestionPipeline.getService().getName()).weight(5).build());
+        SearchSuggest.builder()
+            .input(
+                (ingestionPipeline.getService() != null
+                    ? ingestionPipeline.getService().getName()
+                    : null))
+            .weight(5)
+            .build());
     ParseTags parseTags =
         new ParseTags(Entity.getEntityTags(Entity.INGESTION_PIPELINE, ingestionPipeline));
     doc.put(
@@ -51,7 +58,7 @@ public class IngestionPipelineIndex implements SearchIndex {
     doc.put("entityType", Entity.INGESTION_PIPELINE);
     doc.put(
         "totalVotes",
-        CommonUtil.nullOrEmpty(ingestionPipeline.getVotes())
+        nullOrEmpty(ingestionPipeline.getVotes())
             ? 0
             : ingestionPipeline.getVotes().getUpVotes()
                 - ingestionPipeline.getVotes().getDownVotes());

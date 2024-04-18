@@ -147,16 +147,16 @@ class DeltaLakeUnitTest(TestCase):
         )
 
         # Set context
-        cls.delta.context.__dict__[
+        cls.delta.context.get().__dict__[
             "database_service"
         ] = MOCK_DATABASE_SERVICE.name.__root__
-        cls.delta.context.__dict__["database"] = MOCK_DATABASE.name.__root__
-        cls.delta.context.__dict__[
+        cls.delta.context.get().__dict__["database"] = MOCK_DATABASE.name.__root__
+        cls.delta.context.get().__dict__[
             "database_schema"
         ] = MOCK_DATABASE_SCHEMA.name.__root__
         # We pick up the table comments when getting their name and type, so we
         # store the description in the context
-        cls.delta.context.__dict__["table_description"] = "testing around"
+        cls.delta.context.get().__dict__["table_description"] = "testing around"
 
     @classmethod
     def tearDownClass(cls) -> None:

@@ -45,6 +45,7 @@ from metadata.ingestion.source.dashboard.superset.queries import (
     FETCH_ALL_CHARTS,
     FETCH_COLUMN,
     FETCH_DASHBOARDS,
+    FETCH_PUBLISHED_DASHBOARDS,
 )
 from metadata.utils import fqn
 from metadata.utils.filters import filter_by_datamodel
@@ -100,7 +101,12 @@ class SupersetDBSource(SupersetSourceMixin):
         """
         Get List of all dashboards
         """
-        dashboards = self.engine.execute(FETCH_DASHBOARDS)
+        query = (
+            FETCH_DASHBOARDS
+            if self.source_config.includeDraftDashboard
+            else FETCH_PUBLISHED_DASHBOARDS
+        )
+        dashboards = self.engine.execute(query)
         for dashboard in dashboards:
             yield FetchDashboard(**dashboard)
 
@@ -117,12 +123,12 @@ class SupersetDBSource(SupersetSourceMixin):
                     fqn.build(
                         self.metadata,
                         entity_type=Chart,
-                        service_name=self.context.dashboard_service,
+                        service_name=self.context.get().dashboard_service,
                         chart_name=chart,
                     )
-                    for chart in self.context.charts or []
+                    for chart in self.context.get().charts or []
                 ],
-                service=self.context.dashboard_service,
+                service=self.context.get().dashboard_service,
                 owner=self.get_owner_ref(dashboard_details=dashboard_details),
             )
             yield Either(right=dashboard_request)
@@ -169,7 +175,7 @@ class SupersetDBSource(SupersetSourceMixin):
                     description=chart_json.description,
                     chartType=get_standard_chart_type(chart_json.viz_type),
                     sourceUrl=f"{clean_uri(self.service_connection.hostPort)}/explore/?slice_id={chart_json.id}",
-                    service=self.context.dashboard_service,
+                    service=self.context.get().dashboard_service,
                 )
                 yield Either(right=chart)
             except Exception as exc:
@@ -234,7 +240,7 @@ class SupersetDBSource(SupersetSourceMixin):
                     data_model_request = CreateDashboardDataModelRequest(
                         name=chart_json.datasource_id,
                         displayName=chart_json.table_name,
-                        service=self.context.dashboard_service,
+                        service=self.context.get().dashboard_service,
                         columns=self.get_column_info(col_names),
                         dataModelType=DataModelType.SupersetDataModel.value,
                     )
