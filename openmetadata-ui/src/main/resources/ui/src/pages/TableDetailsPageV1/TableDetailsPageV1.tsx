@@ -64,7 +64,11 @@ import {
 } from '../../enums/entity.enum';
 import { CreateThread } from '../../generated/api/feed/createThread';
 import { Tag } from '../../generated/entity/classification/tag';
-import { JoinedWith, Table } from '../../generated/entity/data/table';
+import {
+  JoinedWith,
+  ModelType,
+  Table,
+} from '../../generated/entity/data/table';
 import { Suggestion } from '../../generated/entity/feed/suggestion';
 import { ThreadType } from '../../generated/entity/feed/thread';
 import { TagLabel } from '../../generated/type/tagLabel';
@@ -703,9 +707,7 @@ const TableDetailsPageV1: React.FC = () => {
         label: (
           <TabsLabel id={EntityTabs.DBT} name={t('label.dbt-lowercase')} />
         ),
-        isHidden: !(
-          tableDetails?.dataModel?.sql ?? tableDetails?.dataModel?.rawSql
-        ),
+        isHidden: !(tableDetails?.dataModel?.modelType === ModelType.Dbt),
         key: EntityTabs.DBT,
         children: (
           <QueryViewer
@@ -737,6 +739,22 @@ const TableDetailsPageV1: React.FC = () => {
         isHidden: isUndefined(tableDetails?.viewDefinition),
         key: EntityTabs.VIEW_DEFINITION,
         children: <QueryViewer sqlQuery={tableDetails?.viewDefinition ?? ''} />,
+      },
+      {
+        label: (
+          <TabsLabel id={EntityTabs.DDL} name={t('label.ddl-uppercase')} />
+        ),
+        isHidden: !(tableDetails?.dataModel?.modelType === ModelType.DDL),
+        key: EntityTabs.DDL,
+        children: (
+          <QueryViewer
+            sqlQuery={
+              tableDetails?.dataModel?.sql ??
+              tableDetails?.dataModel?.rawSql ??
+              ''
+            }
+          />
+        ),
       },
       {
         label: (

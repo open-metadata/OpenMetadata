@@ -13,6 +13,7 @@
 import { act, render, screen } from '@testing-library/react';
 import React from 'react';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
+import { ModelType } from '../../generated/entity/data/table';
 import { getTableDetailsByFQN } from '../../rest/tableAPI';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import TableDetailsPageV1 from './TableDetailsPageV1';
@@ -292,7 +293,7 @@ describe('TestDetailsPageV1 component', () => {
         name: 'test',
         id: '123',
         tableFqn: 'fqn',
-        dataModel: { sql: 'somequery' },
+        dataModel: { modelType: ModelType.Dbt, sql: 'somequery' },
       })
     );
 
@@ -301,6 +302,30 @@ describe('TestDetailsPageV1 component', () => {
     });
 
     expect(await screen.findByText('label.dbt-lowercase')).toBeInTheDocument();
+    expect(screen.queryByText('label.view-definition')).not.toBeInTheDocument();
+  });
+
+  it('TableDetailsPageV1 should DDL tab if data is present', async () => {
+    (usePermissionProvider as jest.Mock).mockImplementationOnce(() => ({
+      getEntityPermissionByFqn: jest.fn().mockImplementationOnce(() => ({
+        ViewBasic: true,
+      })),
+    }));
+
+    (getTableDetailsByFQN as jest.Mock).mockImplementationOnce(() =>
+      Promise.resolve({
+        name: 'test',
+        id: '123',
+        tableFqn: 'fqn',
+        dataModel: { modelType: ModelType.DDL, sql: 'somequery' },
+      })
+    );
+
+    await act(async () => {
+      render(<TableDetailsPageV1 />);
+    });
+
+    expect(await screen.findByText('label.ddl-uppercase')).toBeInTheDocument();
     expect(screen.queryByText('label.view-definition')).not.toBeInTheDocument();
   });
 

@@ -160,6 +160,7 @@ export enum EntityTabs {
   SEARCH_INDEX_SETTINGS = 'search-index-settings',
   STORED_PROCEDURE = 'stored_procedure',
   CODE = 'code',
+  DDL = 'ddl',
 }
 
 export enum EntityAction {
