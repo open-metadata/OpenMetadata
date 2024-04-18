@@ -10,8 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { CheckOutlined, CloseOutlined } from '@ant-design/icons';
-import { Button, Col, Form, Row, Space } from 'antd';
+import { Form } from 'antd';
 import { useForm } from 'antd/lib/form/Form';
 import { DefaultOptionType } from 'antd/lib/select';
 import React, { useState } from 'react';
@@ -47,51 +46,29 @@ const TagSelectForm = ({
       initialValues={{ tags: defaultValue }}
       name="tagsForm"
       onFinish={handleSave}>
-      <Row gutter={[0, 8]}>
-        <Col className="gutter-row d-flex justify-end" span={24}>
-          <Space align="center">
-            <Button
-              className="p-x-05"
-              data-testid="cancelAssociatedTag"
-              disabled={isSubmitLoading}
-              icon={<CloseOutlined size={12} />}
-              size="small"
-              onClick={onCancel}
-            />
-            <Button
-              className="p-x-05"
-              data-testid="saveAssociatedTag"
-              htmlType="submit"
-              icon={<CheckOutlined size={12} />}
-              loading={isSubmitLoading}
-              size="small"
-              type="primary"
-            />
-          </Space>
-        </Col>
-
-        <Col className="gutter-row" span={24}>
-          <Form.Item noStyle name="tags">
-            {tagType === TagSource.Classification ? (
-              <AsyncSelectList
-                fetchOptions={fetchApi}
-                initialOptions={tagData}
-                mode="multiple"
-                optionClassName="tag-select-box"
-                placeholder={placeholder}
-                tagType={tagType}
-              />
-            ) : (
-              <TreeAsyncSelectList
-                initialOptions={tagData}
-                optionClassName="tag-select-box"
-                placeholder={placeholder}
-                tagType={tagType}
-              />
-            )}
-          </Form.Item>
-        </Col>
-      </Row>
+      <Form.Item noStyle name="tags">
+        {tagType === TagSource.Classification ? (
+          <AsyncSelectList
+            fetchOptions={fetchApi}
+            initialOptions={tagData}
+            isSubmitLoading={isSubmitLoading}
+            mode="multiple"
+            optionClassName="tag-select-box"
+            placeholder={placeholder}
+            tagType={tagType}
+            onCancel={onCancel}
+          />
+        ) : (
+          <TreeAsyncSelectList
+            initialOptions={tagData}
+            isSubmitLoading={isSubmitLoading}
+            optionClassName="tag-select-box"
+            placeholder={placeholder}
+            tagType={tagType}
+            onCancel={onCancel}
+          />
+        )}
+      </Form.Item>
     </Form>
   );
 };

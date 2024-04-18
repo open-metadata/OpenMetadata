@@ -12,6 +12,8 @@
  */
 import { CloseOutlined } from '@ant-design/icons';
 import {
+  Button,
+  Form,
   Select,
   SelectProps,
   Space,
@@ -48,6 +50,8 @@ const AsyncSelectList: FC<AsyncSelectListProps & SelectProps> = ({
   filterOptions = [],
   optionClassName,
   tagType,
+  onCancel,
+  isSubmitLoading,
   ...props
 }) => {
   const [isLoading, setIsLoading] = useState(false);
@@ -59,6 +63,7 @@ const AsyncSelectList: FC<AsyncSelectListProps & SelectProps> = ({
   const selectedTagsRef = useRef<SelectOption[]>(initialOptions ?? []);
   const { t } = useTranslation();
   const [optionFilteredCount, setOptionFilteredCount] = useState(0);
+  const form = Form.useFormInstance();
 
   const getFilteredOptions = (data: SelectOption[]) => {
     if (isEmpty(filterOptions)) {
@@ -165,10 +170,33 @@ const AsyncSelectList: FC<AsyncSelectListProps & SelectProps> = ({
     }
   };
 
+  const handleSave = useCallback(() => {
+    form.submit();
+  }, [form]);
+
   const dropdownRender = (menu: React.ReactElement) => (
     <>
       {menu}
       {hasContentLoading ? <Loader size="small" /> : null}
+      {onCancel && (
+        <Space className="p-sm p-b-xss p-l-0" size={8}>
+          <Button
+            data-testid="saveAssociatedTag"
+            htmlType="submit"
+            loading={isSubmitLoading}
+            size="small"
+            type="primary"
+            onClick={handleSave}>
+            {t('label.update')}
+          </Button>
+          <Button
+            data-testid="cancelAssociatedTag"
+            size="small"
+            onClick={onCancel}>
+            {t('label.cancel')}
+          </Button>
+        </Space>
+      )}
     </>
   );
 

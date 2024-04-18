@@ -15,7 +15,6 @@ import { AxiosResponse } from 'axios';
 import { Operation } from 'fast-json-patch';
 import { PagingResponse } from 'Models';
 import { VotingDataProps } from '../components/Entity/Voting/voting.interface';
-import { PAGE_SIZE } from '../constants/constants';
 import { SearchIndex } from '../enums/search.enum';
 import { AddGlossaryToAssetsRequest } from '../generated/api/addGlossaryToAssetsRequest';
 import { CreateGlossary } from '../generated/api/data/createGlossary';
@@ -29,7 +28,6 @@ import { EntityHistory } from '../generated/type/entityHistory';
 import { ListParams } from '../interface/API.interface';
 import { getEncodedFqn } from '../utils/StringsUtils';
 import APIClient from './index';
-import { formatSearchQueryResponse } from './searchAPI';
 
 export type ListGlossaryTermsParams = ListParams & {
   glossary?: string;
@@ -280,13 +278,13 @@ export const searchGlossaryTerms = async (search: string, page = 1) => {
   const { data } = await APIClient.get(apiUrl, {
     params: {
       index: SearchIndex.GLOSSARY_TERM,
-      from: (page - 1) * PAGE_SIZE,
-      size: PAGE_SIZE,
+      from: (page - 1) * 100,
+      size: 100,
       deleted: false,
       track_total_hits: true,
       getHierarchy: true,
     },
   });
 
-  return formatSearchQueryResponse(data);
+  return data;
 };

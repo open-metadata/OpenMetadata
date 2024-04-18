@@ -11,7 +11,14 @@
  *  limitations under the License.
  */
 import { CloseOutlined } from '@ant-design/icons';
-import { TagProps, TreeSelect, TreeSelectProps } from 'antd';
+import {
+  Button,
+  Form,
+  Space,
+  TagProps,
+  TreeSelect,
+  TreeSelectProps,
+} from 'antd';
 import { DefaultOptionType } from 'antd/lib/select';
 import { AxiosError } from 'axios';
 import { isEmpty, isNil, isUndefined, pick } from 'lodash';
@@ -22,6 +29,7 @@ import { PAGE_SIZE_LARGE } from '../../../constants/constants';
 import { TAG_START_WITH } from '../../../constants/Tag.constants';
 import { Glossary } from '../../../generated/entity/data/glossary';
 import { LabelType } from '../../../generated/entity/data/table';
+import { EntityReference } from '../../../generated/entity/type';
 import { Paging } from '../../../generated/type/paging';
 import { TagLabel } from '../../../generated/type/tagLabel';
 import {
@@ -53,11 +61,12 @@ const TreeAsyncSelectList: FC<Omit<AsyncSelectListProps, 'fetchOptions'>> = ({
   onChange,
   initialOptions,
   tagType,
+  isSubmitLoading,
+  onCancel,
   ...props
 }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [hasContentLoading, setHasContentLoading] = useState(false);
-
   const [searchValue, setSearchValue] = useState<string>('');
   const [paging, setPaging] = useState<Paging>({} as Paging);
   const [currentPage, setCurrentPage] = useState(1);
@@ -65,6 +74,9 @@ const TreeAsyncSelectList: FC<Omit<AsyncSelectListProps, 'fetchOptions'>> = ({
   const { t } = useTranslation();
   const [glossaries, setGlossaries] = useState([] as Glossary[]);
   const expandableKeys = useRef<string[]>([]);
+  const [searchOptions, setSearchOptions] = useState<SelectOption[]>([]);
+
+  const form = Form.useFormInstance();
 
   const onScroll = async (e: React.UIEvent<HTMLDivElement>) => {
     const { currentTarget } = e;
@@ -93,12 +105,30 @@ const TreeAsyncSelectList: FC<Omit<AsyncSelectListProps, 'fetchOptions'>> = ({
     <>
       {menu}
       {hasContentLoading ? <Loader size="small" /> : null}
+      <Space className="p-sm p-b-xss p-l-0" size={8}>
+        <Button
+          data-testid="saveAssociatedTag"
+          htmlType="submit"
+          loading={isSubmitLoading}
+          size="small"
+          type="default"
+          onClick={() => form.submit()}>
+          {t('label.update')}
+        </Button>
+        <Button
+          data-testid="cancelAssociatedTag"
+          size="small"
+          type="link"
+          onClick={onCancel}>
+          {t('label.cancel')}
+        </Button>
+      </Space>
     </>
   );
 
   const customTagRender = (data: CustomTagProps) => {
     const selectedTag = selectedTagsRef.current.find(
-      (tag) => tag.value === data.label
+      (tag) => tag.value === data.value
     );
 
     if (isUndefined(selectedTag?.data)) {
@@ -166,6 +196,7 @@ const TreeAsyncSelectList: FC<Omit<AsyncSelectListProps, 'fetchOptions'>> = ({
         ? {
             value: initialData.fullyQualifiedName ?? '',
             label: getEntityName(initialData),
+            data: initialData,
           }
         : {
             value,
@@ -223,21 +254,32 @@ const TreeAsyncSelectList: FC<Omit<AsyncSelectListProps, 'fetchOptions'>> = ({
   };
 
   const onSearch = async (value: string) => {
-    await searchGlossaryTerms(value, 1);
+    if (value) {
+      const results = await searchGlossaryTerms(value, 1);
+
+      setSearchOptions(results);
+    } else {
+      setSearchOptions([]);
+    }
   };
 
   const convertToTreeData = (
-    options: ModifiedGlossaryTerm[] = []
+    options: ModifiedGlossaryTerm[] | EntityReference[] = []
   ): Omit<DefaultOptionType, 'label'>[] => {
     const treeData = options.map((option) => {
       const hasChildren = !isEmpty(option?.children);
+
+      const isGlossaryTerm =
+        !isNil((option as ModifiedGlossaryTerm).glossary) ||
+        (option as EntityReference).type === 'glossaryTerm';
 
       // Only include keys with no children or keys that are not expanded
       return {
         id: option.id,
         value: option.fullyQualifiedName,
         title: getEntityName(option),
-        isLeaf: isNil(option.glossary) ? false : !hasChildren,
+        checkable: isGlossaryTerm,
+        isLeaf: isGlossaryTerm ? !hasChildren : false,
         children: convertToTreeData(option.children as ModifiedGlossaryTerm[]),
       };
     });
@@ -252,8 +294,13 @@ const TreeAsyncSelectList: FC<Omit<AsyncSelectListProps, 'fetchOptions'>> = ({
   }, [glossaries]);
 
   const treeData = useMemo(
-    () => convertToTreeData(glossaries as ModifiedGlossaryTerm[]),
-    [glossaries, expandableKeys.current]
+    () =>
+      convertToTreeData(
+        isEmpty(searchOptions)
+          ? (glossaries as ModifiedGlossaryTerm[])
+          : (searchOptions as unknown as ModifiedGlossaryTerm[])
+      ),
+    [glossaries, searchOptions, expandableKeys.current]
   );
 
   return (
@@ -264,6 +311,7 @@ const TreeAsyncSelectList: FC<Omit<AsyncSelectListProps, 'fetchOptions'>> = ({
       data-testid="tag-selector"
       dropdownRender={dropdownRender}
       dropdownStyle={{ width: 300 }}
+      filterTreeNode={false}
       loadData={({ id }) => {
         if (expandableKeys.current.includes(id)) {
           return fetchGlossaryTerm({ glossary: id });
@@ -280,11 +328,6 @@ const TreeAsyncSelectList: FC<Omit<AsyncSelectListProps, 'fetchOptions'>> = ({
         setSearchValue('');
       }}
       onChange={handleChange}
-      onInputKeyDown={(event) => {
-        if (event.key === 'Backspace') {
-          return event.stopPropagation();
-        }
-      }}
       onPopupScroll={onScroll}
       onSearch={onSearch}
       {...props}

@@ -144,16 +144,16 @@ export const getGlossaryBreadcrumbs = (fqn: string) => {
 
 export const findGlossaryTermFromID = (
   list: ModifiedGlossaryTerm[],
-  id: string
+  fullyQualifiedName: string
 ): GlossaryTerm | Glossary | null => {
   for (const item of list) {
-    if (item.id === id) {
+    if (item.fullyQualifiedName === fullyQualifiedName) {
       return item;
     }
     if (item.children) {
       const found = findGlossaryTermFromID(
         item.children as ModifiedGlossaryTerm[],
-        id
+        fullyQualifiedName
       );
       if (found) {
         return found;
