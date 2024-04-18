@@ -18,6 +18,8 @@ import tempfile
 from functools import singledispatch, singledispatchmethod
 from typing import Optional, Union, cast
 
+from pydantic import SecretStr
+
 from metadata.generated.schema.entity.services.connections.dashboard.qlikSenseConnection import (
     QlikSenseConnection,
 )
@@ -58,9 +60,9 @@ class SSLManager:
         if key:
             self.key_file_path = self.create_temp_file(key)
 
-    def create_temp_file(self, content):
+    def create_temp_file(self, content: SecretStr):
         with tempfile.NamedTemporaryFile(delete=False) as temp_file:
-            temp_file.write(content.encode())
+            temp_file.write(content.get_secret_value().encode())
             temp_file.close()
         self.temp_files.append(temp_file.name)
         return temp_file.name

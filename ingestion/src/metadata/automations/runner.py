@@ -64,10 +64,8 @@ def _(
     ssl_manager = None
     ssl_manager: SSLManager = check_ssl_and_init(request.connection.config)
     if ssl_manager:
-        request.connection.config = ssl_manager.setup_ssl(
-            request.connection.config
-        )
-    
+        request.connection.config = ssl_manager.setup_ssl(request.connection.config)
+
     connection = get_connection(request.connection.config)
 
     # Find the test_connection function in each <source>/connection.py file
@@ -75,6 +73,6 @@ def _(
     test_connection_fn(
         metadata, connection, request.connection.config, automation_workflow
     )
-    
+
     if ssl_manager:
         ssl_manager.cleanup_temp_files()
