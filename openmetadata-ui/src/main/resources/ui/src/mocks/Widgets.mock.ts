@@ -10,6 +10,31 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+export const MOCK_PASSWORD_WIDGET = {
+  autofocus: false,
+  disabled: false,
+  formContext: { handleFocus: undefined },
+  hideError: undefined,
+  hideLabel: false,
+  id: 'root/password',
+  label: 'Password',
+  name: 'password',
+  options: {
+    enumOptions: [],
+  },
+  placeholder: '',
+  rawErrors: undefined,
+  readonly: false,
+  required: false,
+  schema: {
+    description: 'this is password field',
+    title: 'Password',
+    formate: 'password',
+  },
+  uiSchema: {},
+  value: 'testing',
+};
+
 export const MOCK_SSL_FILE_CONTENT = `-----BEGIN CERTIFICATE-----MIIDrzCCApegAwIBAgIQCDvgVpBCRrGhdWrJWZHHSjANBgkqhkiG9w04=-----END CERTIFICATE-----`;
 
 export const MOCK_FILE_SELECT_WIDGET = {
@@ -31,8 +56,9 @@ export const MOCK_FILE_SELECT_WIDGET = {
   schema: {
     title: 'CA Certificate',
     description: 'The CA certificate used for SSL validation.',
-    format: 'data-url',
+    format: 'password',
     accept: ['.pem'],
+    uiFieldType: 'file',
   },
   uiSchema: {},
   value: MOCK_SSL_FILE_CONTENT,

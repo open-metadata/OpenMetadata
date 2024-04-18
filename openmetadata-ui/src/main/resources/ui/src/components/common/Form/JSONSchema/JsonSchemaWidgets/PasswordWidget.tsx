@@ -26,6 +26,7 @@ const PasswordWidget: FC<WidgetProps> = (props) => {
     <Input
       autoComplete="off"
       autoFocus={rest.autofocus}
+      data-testid="password-input-widget"
       disabled={rest.disabled}
       id={rest.id}
       name={rest.name}

@@ -16,7 +16,7 @@ import React from 'react';
 import {
   MOCK_FILE_SELECT_WIDGET,
   MOCK_SSL_FILE_CONTENT,
-} from '../../../../../mocks/FileUploadWidget.mock';
+} from '../../../../../mocks/Widgets.mock';
 import FileUploadWidget from './FileUploadWidget';
 
 const mockOnFocus = jest.fn();
@@ -54,8 +54,7 @@ describe('Test FileUploadWidget Component', () => {
     render(<FileUploadWidget {...mockProps} />);
 
     const fileInput = screen.getByTestId('upload-file-widget-content');
-
-    fireEvent.click(fileInput);
+    fireEvent.focus(fileInput);
 
     expect(mockOnFocus).toHaveBeenCalled();
   });
