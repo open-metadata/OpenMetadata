@@ -379,13 +379,14 @@ class PandasProfilerInterface(ProfilerInterface, PandasInterfaceMixin):
 
     def get_all_metrics(
         self,
-        metric_funcs: list,
+        metric_funcs: list[ThreadPoolMetrics],
     ):
         """get all profiler metrics"""
 
         profile_results = {"table": {}, "columns": defaultdict(dict)}
         metric_list = [
             self.compute_metrics(metric_func) for metric_func in metric_funcs
+            if metric_func.metrics
         ]
         for metric_result in metric_list:
             profile, column, metric_type = metric_result
