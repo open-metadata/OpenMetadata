@@ -281,7 +281,7 @@ export const AuthProvider = ({
     if ([ROUTES.SIGNIN, ROUTES.SIGNUP].includes(pathName)) {
       return;
     }
-    setLoading(true);
+
     try {
       // Try to renew token
       const newToken = await renewIdToken();
@@ -305,8 +305,6 @@ export const AuthProvider = ({
       }
       // reset user details if silent signIn fails
       resetUserDetails(forceLogout);
-    } finally {
-      setLoading(false);
     }
   };
 
