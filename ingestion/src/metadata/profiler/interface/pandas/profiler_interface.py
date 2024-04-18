@@ -385,7 +385,8 @@ class PandasProfilerInterface(ProfilerInterface, PandasInterfaceMixin):
 
         profile_results = {"table": {}, "columns": defaultdict(dict)}
         metric_list = [
-            self.compute_metrics(metric_func) for metric_func in metric_funcs
+            self.compute_metrics(metric_func)
+            for metric_func in metric_funcs
             if metric_func.metrics
         ]
         for metric_result in metric_list:

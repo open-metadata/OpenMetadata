@@ -193,7 +193,8 @@ class NoSQLProfilerInterface(ProfilerInterface):
             self.service_connection_config.__class__.__name__, self.connection
         )
         metric_list = [
-            self.compute_metrics(runner, metric_func) for metric_func in metric_funcs
+            self.compute_metrics(runner, metric_func)
+            for metric_func in metric_funcs
             if metric_func.metrics
         ]
         for metric_result in metric_list:
