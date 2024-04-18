@@ -29,13 +29,13 @@ class SSLManagerTest(unittest.TestCase):
         self.assertTrue(os.path.exists(temp_file))
         with open(temp_file, "r", encoding="UTF-8") as file:
             file_content = file.read()
-        self.assertEqual(file_content, content)
-        content = ""
+        self.assertEqual(file_content, content.get_secret_value())
+        content = SecretStr("")
         temp_file = self.ssl_manager.create_temp_file(content)
         self.assertTrue(os.path.exists(temp_file))
         with open(temp_file, "r", encoding="UTF-8") as file:
             file_content = file.read()
-        self.assertEqual(file_content, content)
+        self.assertEqual(file_content, content.get_secret_value())
         with self.assertRaises(AttributeError):
             content = None
             self.ssl_manager.create_temp_file(content)
