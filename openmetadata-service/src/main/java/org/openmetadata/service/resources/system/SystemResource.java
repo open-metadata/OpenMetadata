@@ -127,8 +127,29 @@ public class SystemResource {
       @Parameter(description = "Name of the setting", schema = @Schema(type = "string"))
           @PathParam("name")
           String name) {
-    authorizer.authorizeAdminOrBot(securityContext);
+    authorizer.authorizeAdmin(securityContext);
     return systemRepository.getConfigWithKey(name);
+  }
+
+  @GET
+  @Path("/settings/profilerConfiguration")
+  @Operation(
+      operationId = "getProfilerConfigurationSetting",
+      summary = "Get profiler configuration setting",
+      description = "Get a profiler configuration Settings",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Settings",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = Settings.class)))
+      })
+  public Settings getProfilerConfigurationSetting(
+      @Context UriInfo uriInfo, @Context SecurityContext securityContext) {
+    authorizer.authorizeAdminOrBot(securityContext);
+    return systemRepository.getConfigWithKey(SettingsType.PROFILER_CONFIGURATION.value());
   }
 
   @PUT

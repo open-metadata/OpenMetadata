@@ -323,7 +323,8 @@ public class SystemResourceTest extends OpenMetadataApplicationTest {
     MetricConfigurationDefinition intMetricConfigDefinition =
         new MetricConfigurationDefinition()
             .withDataType(ColumnDataType.INT)
-            .withMetrics(List.of(MetricType.VALUES_COUNT, MetricType.FIRST_QUARTILE, MetricType.MEAN));
+            .withMetrics(
+                List.of(MetricType.VALUES_COUNT, MetricType.FIRST_QUARTILE, MetricType.MEAN));
     MetricConfigurationDefinition dateTimeMetricConfigDefinition =
         new MetricConfigurationDefinition()
             .withDataType(ColumnDataType.DATETIME)
@@ -336,9 +337,7 @@ public class SystemResourceTest extends OpenMetadataApplicationTest {
             .withConfigValue(profilerConfiguration);
     createSystemConfig(profilerSettings);
     ProfilerConfiguration createdProfilerSettings =
-        JsonUtils.convertValue(
-            getSystemConfig(SettingsType.PROFILER_CONFIGURATION).getConfigValue(),
-            ProfilerConfiguration.class);
+        JsonUtils.convertValue(getProfilerConfig().getConfigValue(), ProfilerConfiguration.class);
     Assertions.assertEquals(profilerConfiguration, createdProfilerSettings);
 
     // Update the profiler config
@@ -349,9 +348,7 @@ public class SystemResourceTest extends OpenMetadataApplicationTest {
             .withConfigValue(profilerConfiguration);
     updateSystemConfig(profilerSettings);
     ProfilerConfiguration updatedProfilerSettings =
-        JsonUtils.convertValue(
-            getSystemConfig(SettingsType.PROFILER_CONFIGURATION).getConfigValue(),
-            ProfilerConfiguration.class);
+        JsonUtils.convertValue(getProfilerConfig().getConfigValue(), ProfilerConfiguration.class);
     Assertions.assertEquals(profilerConfiguration, updatedProfilerSettings);
 
     // Delete the profiler config
@@ -361,9 +358,7 @@ public class SystemResourceTest extends OpenMetadataApplicationTest {
             .withConfigType(SettingsType.PROFILER_CONFIGURATION)
             .withConfigValue(profilerConfiguration));
     updatedProfilerSettings =
-        JsonUtils.convertValue(
-            getSystemConfig(SettingsType.PROFILER_CONFIGURATION).getConfigValue(),
-            ProfilerConfiguration.class);
+        JsonUtils.convertValue(getProfilerConfig().getConfigValue(), ProfilerConfiguration.class);
     Assertions.assertEquals(profilerConfiguration, updatedProfilerSettings);
   }
 
@@ -384,6 +379,11 @@ public class SystemResourceTest extends OpenMetadataApplicationTest {
 
   private static Settings getSystemConfig(SettingsType settingsType) throws HttpResponseException {
     WebTarget target = getResource(String.format("system/settings/%s", settingsType.value()));
+    return TestUtils.get(target, Settings.class, ADMIN_AUTH_HEADERS);
+  }
+
+  private static Settings getProfilerConfig() throws HttpResponseException {
+    WebTarget target = getResource("system/settings/profilerConfiguration");
     return TestUtils.get(target, Settings.class, ADMIN_AUTH_HEADERS);
   }
 
