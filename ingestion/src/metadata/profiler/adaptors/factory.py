@@ -11,7 +11,7 @@
 """
 factory for NoSQL adaptors that are used in the NoSQLProfiler.
 """
-from typing import Callable, Dict
+from typing import Callable
 
 from pymongo import MongoClient
 
