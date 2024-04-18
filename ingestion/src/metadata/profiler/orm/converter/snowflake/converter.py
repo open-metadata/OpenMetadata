@@ -22,6 +22,8 @@ from metadata.profiler.orm.registry import CustomTypes
 
 
 class SnowflakeMapTypes(CommonMapTypes):
+    """Snowflake mapper, inherits from CommonMapTypes"""
+
     def __init__(self) -> None:
         self._TYPE_MAP.update({DataType.BINARY: CustomTypes.BYTES.value})
 
@@ -39,9 +41,10 @@ class SnowflakeMapTypes(CommonMapTypes):
     @staticmethod
     def map_sqa_to_om_types() -> dict:
         """returns an ORM type"""
+        # pylint: disable=import-outside-toplevel
         from snowflake.sqlalchemy import VARIANT
 
         return {
-            **CommonMapTypes.map_sqa_to_om_types(column_type),
+            **CommonMapTypes.map_sqa_to_om_types(),
             VARIANT: DataType.JSON,
         }

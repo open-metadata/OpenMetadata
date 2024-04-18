@@ -33,6 +33,7 @@ class BigqueryMapTypes(CommonMapTypes):
     @staticmethod
     def map_sqa_to_om_types() -> dict:
         """returns an ORM type"""
+        # pylint: disable=import-outside-toplevel
         from sqlalchemy_bigquery import STRUCT
 
         return {

@@ -1,6 +1,6 @@
 """Extend the ProfilerSource class to add support for Databricks is_disconnect SQA method"""
 
-from ingestion.src.metadata.generated.schema.configuration.profilerConfiguration import (
+from metadata.generated.schema.configuration.profilerConfiguration import (
     ProfilerConfiguration,
 )
 from metadata.generated.schema.entity.services.databaseService import DatabaseService

@@ -16,7 +16,7 @@ from typing import List, Optional
 
 from sqlalchemy.orm import DeclarativeMeta
 
-from ingestion.src.metadata.generated.schema.configuration.profilerConfiguration import (
+from metadata.generated.schema.configuration.profilerConfiguration import (
     ProfilerConfiguration,
 )
 from metadata.generated.schema.entity.data.table import ColumnProfilerConfig

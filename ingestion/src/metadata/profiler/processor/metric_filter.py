@@ -14,7 +14,6 @@ from typing import List, Optional, Set, Tuple, Type, Union, cast
 
 from sqlalchemy import Column
 
-from ingestion.src.metadata.generated.schema.entity.services import databaseService
 from metadata.generated.schema.configuration.profilerConfiguration import (
     MetricConfigurationDefinition,
     ProfilerConfiguration,
@@ -23,6 +22,7 @@ from metadata.generated.schema.entity.data.table import (
     ColumnProfilerConfig,
     TableProfilerConfig,
 )
+from metadata.generated.schema.entity.services import databaseService
 from metadata.profiler.metrics.core import (
     ComposedMetric,
     CustomMetric,
