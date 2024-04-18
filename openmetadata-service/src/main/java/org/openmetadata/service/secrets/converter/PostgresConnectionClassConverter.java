@@ -14,7 +14,6 @@
 package org.openmetadata.service.secrets.converter;
 
 import java.util.List;
-
 import org.openmetadata.schema.security.ssl.ValidateSSLClientConfig;
 import org.openmetadata.schema.services.connections.database.PostgresConnection;
 import org.openmetadata.schema.services.connections.database.common.IamAuthConfig;
@@ -44,7 +43,7 @@ public class PostgresConnectionClassConverter extends ClassConverter {
         .ifPresent(postgresConnection::setAuthType);
 
     tryToConvert(postgresConnection.getSslConfig(), SSL_SOURCE_CLASS)
-            .ifPresent(obj -> postgresConnection.setSslConfig((ValidateSSLClientConfig) obj));
+        .ifPresent(obj -> postgresConnection.setSslConfig((ValidateSSLClientConfig) obj));
 
     return postgresConnection;
   }
