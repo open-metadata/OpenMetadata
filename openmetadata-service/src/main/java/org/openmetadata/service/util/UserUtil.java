@@ -18,6 +18,7 @@ import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.schema.entity.teams.AuthenticationMechanism.AuthType.JWT;
 import static org.openmetadata.schema.type.Include.NON_DELETED;
+import static org.openmetadata.service.Entity.ADMIN_ROLE;
 import static org.openmetadata.service.Entity.ADMIN_USER_NAME;
 
 import at.favre.lib.crypto.bcrypt.BCrypt;
@@ -29,6 +30,9 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
+import javax.json.JsonPatch;
+import javax.ws.rs.container.ContainerRequestContext;
+import javax.ws.rs.core.UriInfo;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.auth.BasicAuthMechanism;
 import org.openmetadata.schema.auth.JWTAuthMechanism;
@@ -45,6 +49,7 @@ import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.UserRepository;
 import org.openmetadata.service.resources.teams.RoleResource;
+import org.openmetadata.service.security.auth.CatalogSecurityContext;
 import org.openmetadata.service.security.jwt.JWTTokenGenerator;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.RestUtil.PutResponse;
@@ -257,7 +262,7 @@ public final class UserUtil {
         .collect(Collectors.toSet());
   }
 
-  public static List<EntityReference> getRolesFromString(Set<String> rolesList) {
+  public static List<EntityReference> validateAndGetRolesRef(Set<String> rolesList) {
     if (nullOrEmpty(rolesList)) {
       return Collections.emptyList();
     }
@@ -265,14 +270,24 @@ public final class UserUtil {
 
     // Fetch the roles from the database
     for (String role : rolesList) {
-      try {
-        Role fetchedRole = Entity.getEntityByName(Entity.ROLE, role, "id", NON_DELETED, true);
-        references.add(fetchedRole.getEntityReference());
-      } catch (EntityNotFoundException ex) {
-        LOG.error("[ReSyncRoles] Role not found: {}", role, ex);
+      // Admin role is not present in the roles table, it is just a flag in the user table
+      if (!role.equals(ADMIN_ROLE)) {
+        try {
+          Role fetchedRole = Entity.getEntityByName(Entity.ROLE, role, "id", NON_DELETED, true);
+          references.add(fetchedRole.getEntityReference());
+        } catch (EntityNotFoundException ex) {
+          LOG.error("[ReSyncRoles] Role not found: {}", role, ex);
+        }
       }
     }
     return references;
+  }
+
+  public static Set<String> getRolesFromAuthorizationToken(
+      ContainerRequestContext containerRequestContext) {
+    CatalogSecurityContext catalogSecurityContext =
+        (CatalogSecurityContext) containerRequestContext.getSecurityContext();
+    return catalogSecurityContext.getUserRoles();
   }
 
   public static boolean isRolesSyncNeeded(Set<String> fromToken, Set<String> fromDB) {
@@ -291,5 +306,44 @@ public final class UserUtil {
     }
 
     return false;
+  }
+
+  public static boolean reSyncUserRolesFromToken(
+      UriInfo uriInfo, User user, Set<String> rolesFromToken) {
+    boolean syncUser = false;
+
+    User updatedUser = JsonUtils.deepCopy(user, User.class);
+    // Check if Admin User
+    if (rolesFromToken.contains(ADMIN_ROLE)) {
+      if (Boolean.FALSE.equals(user.getIsAdmin())) {
+        syncUser = true;
+        updatedUser.setIsAdmin(true);
+      }
+
+      // Remove the Admin Role from the list
+      rolesFromToken.remove(ADMIN_ROLE);
+    }
+
+    Set<String> rolesFromUser = getRoleListFromUser(user);
+
+    // Check if roles are different
+    if (!nullOrEmpty(rolesFromToken) && isRolesSyncNeeded(rolesFromToken, rolesFromUser)) {
+      syncUser = true;
+      List<EntityReference> rolesReferenceFromToken = validateAndGetRolesRef(rolesFromToken);
+      updatedUser.setRoles(rolesReferenceFromToken);
+    }
+
+    if (syncUser) {
+      LOG.info("Syncing User Roles for User: {}", user.getName());
+      JsonPatch patch = JsonUtils.getJsonPatch(user, updatedUser);
+
+      UserRepository userRepository = (UserRepository) Entity.getEntityRepository(Entity.USER);
+      userRepository.patch(uriInfo, user.getId(), user.getName(), patch);
+
+      // Set the updated roles to the original user
+      user.setRoles(updatedUser.getRoles());
+    }
+
+    return syncUser;
   }
 }

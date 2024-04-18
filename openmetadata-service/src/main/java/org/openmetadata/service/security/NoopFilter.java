@@ -13,6 +13,7 @@
 
 package org.openmetadata.service.security;
 
+import java.util.HashSet;
 import javax.ws.rs.container.ContainerRequestContext;
 import javax.ws.rs.container.ContainerRequestFilter;
 import javax.ws.rs.core.Context;
@@ -35,7 +36,8 @@ public class NoopFilter implements ContainerRequestFilter {
     CatalogPrincipal catalogPrincipal = new CatalogPrincipal("anonymous");
     String scheme = containerRequestContext.getUriInfo().getRequestUri().getScheme();
     CatalogSecurityContext catalogSecurityContext =
-        new CatalogSecurityContext(catalogPrincipal, scheme, SecurityContext.BASIC_AUTH);
+        new CatalogSecurityContext(
+            catalogPrincipal, scheme, SecurityContext.BASIC_AUTH, new HashSet<>());
     LOG.debug("SecurityContext {}", catalogSecurityContext);
     containerRequestContext.setSecurityContext(catalogSecurityContext);
   }

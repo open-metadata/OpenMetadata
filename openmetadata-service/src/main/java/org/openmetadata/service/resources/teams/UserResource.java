@@ -25,6 +25,9 @@ import static org.openmetadata.service.exception.CatalogExceptionMessage.EMAIL_S
 import static org.openmetadata.service.jdbi3.UserRepository.AUTH_MECHANISM_FIELD;
 import static org.openmetadata.service.security.jwt.JWTTokenGenerator.getExpiryDate;
 import static org.openmetadata.service.util.UserUtil.getRoleListFromUser;
+import static org.openmetadata.service.util.UserUtil.getRolesFromAuthorizationToken;
+import static org.openmetadata.service.util.UserUtil.reSyncUserRolesFromToken;
+import static org.openmetadata.service.util.UserUtil.validateAndGetRolesRef;
 
 import at.favre.lib.crypto.bcrypt.BCrypt;
 import freemarker.template.TemplateException;
@@ -65,6 +68,7 @@ import javax.ws.rs.Path;
 import javax.ws.rs.PathParam;
 import javax.ws.rs.Produces;
 import javax.ws.rs.QueryParam;
+import javax.ws.rs.container.ContainerRequestContext;
 import javax.ws.rs.core.Context;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
@@ -78,6 +82,7 @@ import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.TokenInterface;
 import org.openmetadata.schema.api.data.RestoreEntity;
 import org.openmetadata.schema.api.security.AuthenticationConfiguration;
+import org.openmetadata.schema.api.security.AuthorizerConfiguration;
 import org.openmetadata.schema.api.teams.CreateUser;
 import org.openmetadata.schema.auth.BasicAuthMechanism;
 import org.openmetadata.schema.auth.ChangePasswordRequest;
@@ -161,6 +166,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
   private final TokenRepository tokenRepository;
   private boolean isEmailServiceEnabled;
   private AuthenticationConfiguration authenticationConfiguration;
+  private AuthorizerConfiguration authorizerConfiguration;
   private final AuthenticatorHandler authHandler;
   static final String FIELDS = "profile,roles,teams,follows,owns,domain,personas,defaultPersona";
 
@@ -195,6 +201,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
   public void initialize(OpenMetadataApplicationConfig config) throws IOException {
     super.initialize(config);
     this.authenticationConfiguration = config.getAuthenticationConfiguration();
+    this.authorizerConfiguration = config.getAuthorizerConfiguration();
     SmtpSettings smtpSettings = config.getSmtpSettings();
     this.isEmailServiceEnabled = smtpSettings != null && smtpSettings.getEnableSmtpServer();
     this.repository.initializeUsers(config);
@@ -417,6 +424,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
   public User getCurrentLoggedInUser(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
+      @Context ContainerRequestContext containerRequestContext,
       @Parameter(
               description = "Fields requested in the returned resource",
               schema = @Schema(type = "string", example = FIELDS))
@@ -425,6 +433,13 @@ public class UserResource extends EntityResource<User, UserRepository> {
     Fields fields = getFields(fieldsParam);
     String currentUserName = securityContext.getUserPrincipal().getName();
     User user = repository.getByName(uriInfo, currentUserName, fields);
+
+    // Sync the Roles from token to User
+    if (Boolean.TRUE.equals(authorizerConfiguration.getUseRolesFromProvider())
+        && Boolean.FALSE.equals(user.getIsBot() != null && user.getIsBot())) {
+      reSyncUserRolesFromToken(
+          uriInfo, user, getRolesFromAuthorizationToken(containerRequestContext));
+    }
     return addHref(uriInfo, user);
   }
 
@@ -530,6 +545,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
   public Response createUser(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
+      @Context ContainerRequestContext containerRequestContext,
       @Valid CreateUser create) {
     User user = getUser(securityContext.getUserPrincipal().getName(), create);
     if (Boolean.TRUE.equals(create.getIsAdmin())) {
@@ -559,7 +575,16 @@ public class UserResource extends EntityResource<User, UserRepository> {
       }
       // else the user will get a mail if configured smtp
     }
+
+    // Add the roles on user creation
+    if (Boolean.TRUE.equals(authorizerConfiguration.getUseRolesFromProvider())
+        && Boolean.FALSE.equals(user.getIsBot() != null && user.getIsBot())) {
+      user.setRoles(
+          validateAndGetRolesRef(getRolesFromAuthorizationToken(containerRequestContext)));
+    }
+
     // TODO do we need to authenticate user is creating himself?
+
     addHref(uriInfo, repository.create(uriInfo, user));
     if (isBasicAuth() && isEmailServiceEnabled) {
       try {
