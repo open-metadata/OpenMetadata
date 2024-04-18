@@ -118,9 +118,7 @@ class OpenMetadataSourceExt(OpenMetadataSource):
         self._connection = None  # Lazy init as well
 
     def _iter(self, *_, **__) -> Iterable[Either[ProfilerSourceAndEntity]]:
-        global_profiler_config = self.metadata.get_settings_by_name(
-            SettingType.profilerConfiguration
-        )
+        global_profiler_config = self.metadata.get_profiler_config_settings()
         for database_name in self.get_database_names():
             try:
                 database_entity = fqn.search_database_from_es(

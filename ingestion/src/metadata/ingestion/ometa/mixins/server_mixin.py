@@ -107,3 +107,17 @@ class OMetaServerMixin:
         if not response:
             return None
         return Settings.parse_obj(response)
+
+    def get_profiler_config_settings(self) -> Optional[Settings]:
+        """Get profiler config setting
+
+        Args:
+            setting (Settings): setting to update or create
+
+        Returns:
+            Settings
+        """
+        response = self.client.get("/system/settings/profilerConfiguration")
+        if not response:
+            return None
+        return Settings.parse_obj(response)

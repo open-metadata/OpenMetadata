@@ -45,8 +45,8 @@ class TestSQAProfiler(TestCase):
         cls.metadata = int_admin_ometa()
         cls.container_builder = ContainerBuilder()
         try:
-            cls.container_builder.build_postgres_container()
-            cls.container_builder.build_mysql_container()
+            cls.container_builder.run_postgres_container()
+            cls.container_builder.run_mysql_container()
 
             for container in cls.container_builder.containers:
                 container_config = container.get_config()

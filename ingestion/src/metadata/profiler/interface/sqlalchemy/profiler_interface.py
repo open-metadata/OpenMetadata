@@ -26,6 +26,7 @@ from sqlalchemy import Column, inspect, text
 from sqlalchemy.exc import DBAPIError, ProgrammingError, ResourceClosedError
 from sqlalchemy.orm import scoped_session
 
+from metadata.profiler.processor.metric_filter import MetricFilter
 from metadata.generated.schema.entity.data.table import CustomMetricProfile, TableData
 from metadata.generated.schema.tests.customMetric import CustomMetric
 from metadata.ingestion.connections.session import create_and_bind_thread_safe_session
@@ -480,8 +481,7 @@ class SQAProfilerInterface(ProfilerInterface, SQAInterfaceMixin):
                     self.compute_metrics_in_thread,
                     metric_func,
                 )
-                for metric_func in metric_funcs
-                if metric_func.metrics
+                for metric_func in MetricFilter.filter_empty_metrics(metric_funcs)
             ]
 
             for future in futures:

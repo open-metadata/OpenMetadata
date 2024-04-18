@@ -21,13 +21,13 @@ class ContainerBuilder:
     def __init__(self) -> None:
         self.containers: List[AbstractTestContainer] = []
 
-    def build_mysql_container(self):
+    def run_mysql_container(self):
         """build mysql container"""
         container = MySQLTestContainer()
         self.containers.append(container)
         return container
 
-    def build_postgres_container(self):
+    def run_postgres_container(self):
         """build mysql container"""
         container = PostgresTestContainer()
         self.containers.append(container)

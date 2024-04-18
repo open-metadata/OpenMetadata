@@ -127,9 +127,7 @@ class OpenMetadataSource(Source):
         self.metadata.health_check()
 
     def _iter(self, *_, **__) -> Iterable[Either[ProfilerSourceAndEntity]]:
-        global_profiler_config = self.metadata.get_settings_by_name(
-            SettingType.profilerConfiguration
-        )
+        global_profiler_config = self.metadata.get_profiler_config_settings()
         for database in self.get_database_entities():
             try:
                 profiler_source = profiler_source_factory.create(

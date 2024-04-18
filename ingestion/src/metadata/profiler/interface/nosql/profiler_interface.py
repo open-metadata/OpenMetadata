@@ -21,6 +21,7 @@ from typing import Dict, List, Optional, Type
 
 from sqlalchemy import Column
 
+from metadata.profiler.processor.metric_filter import MetricFilter
 from metadata.generated.schema.entity.data.table import TableData
 from metadata.generated.schema.tests.customMetric import CustomMetric
 from metadata.profiler.adaptors.adaptor_factory import factory
@@ -194,8 +195,7 @@ class NoSQLProfilerInterface(ProfilerInterface):
         )
         metric_list = [
             self.compute_metrics(runner, metric_func)
-            for metric_func in metric_funcs
-            if metric_func.metrics
+            for metric_func in MetricFilter.filter_empty_metrics(metric_funcs)
         ]
         for metric_result in metric_list:
             profile, column, metric_type = metric_result

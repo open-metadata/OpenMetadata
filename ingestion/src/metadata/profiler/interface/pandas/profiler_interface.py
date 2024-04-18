@@ -22,6 +22,7 @@ from typing import Dict, List, Optional
 
 from sqlalchemy import Column
 
+from metadata.profiler.processor.metric_filter import MetricFilter
 from metadata.generated.schema.entity.data.table import (
     CustomMetricProfile,
     DataType,
@@ -379,15 +380,14 @@ class PandasProfilerInterface(ProfilerInterface, PandasInterfaceMixin):
 
     def get_all_metrics(
         self,
-        metric_funcs: list[ThreadPoolMetrics],
+        metric_funcs: List[ThreadPoolMetrics],
     ):
         """get all profiler metrics"""
 
         profile_results = {"table": {}, "columns": defaultdict(dict)}
         metric_list = [
             self.compute_metrics(metric_func)
-            for metric_func in metric_funcs
-            if metric_func.metrics
+            for metric_func in MetricFilter.filter_empty_metrics(metric_funcs)
         ]
         for metric_result in metric_list:
             profile, column, metric_type = metric_result
