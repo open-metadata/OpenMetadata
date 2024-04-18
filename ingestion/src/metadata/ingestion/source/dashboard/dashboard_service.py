@@ -481,6 +481,20 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
 
         return None
 
+    @staticmethod
+    def _get_data_model_column_fqn(
+        data_model_entity: DashboardDataModel, column: str
+    ) -> Optional[str]:
+        """
+        Get fqn of column if exist in table entity
+        """
+        if not data_model_entity:
+            return None
+        for tbl_column in data_model_entity.columns:
+            if tbl_column.displayName.lower() == column.lower():
+                return tbl_column.fullyQualifiedName.__root__
+        return None
+
     def get_dashboard(self) -> Any:
         """
         Method to iterate through dashboard lists filter dashboards & yield dashboard details
@@ -634,9 +648,10 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
                     data_model_entity=data_model_entity,
                     column=field,
                 )
-                column_lineage.append(
-                    ColumnLineage(fromColumns=[from_column], toColumn=to_column)
-                )
+                if from_column and to_column:
+                    column_lineage.append(
+                        ColumnLineage(fromColumns=[from_column], toColumn=to_column)
+                    )
             return column_lineage
         except Exception as exc:
             logger.debug(f"Error to get column lineage: {exc}")

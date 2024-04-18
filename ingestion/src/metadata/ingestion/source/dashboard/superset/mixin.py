@@ -258,17 +258,3 @@ class SupersetSourceMixin(DashboardServiceSource):
                 logger.debug(traceback.format_exc())
                 logger.warning(f"Error to yield datamodel column: {exc}")
         return datasource_columns
-
-    @staticmethod
-    def _get_data_model_column_fqn(
-        data_model_entity: DashboardDataModel, column: str
-    ) -> Optional[str]:
-        """
-        Get fqn of column if exist in table entity
-        """
-        if not data_model_entity:
-            return None
-        for tbl_column in data_model_entity.columns:
-            if column.lower() == tbl_column.displayName.lower():
-                return tbl_column.fullyQualifiedName.__root__
-        return None

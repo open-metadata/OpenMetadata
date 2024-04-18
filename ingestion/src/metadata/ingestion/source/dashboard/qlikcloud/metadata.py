@@ -184,16 +184,17 @@ class QlikcloudSource(QliksenseSource):
         db_service_entity = self.metadata.get_by_name(
             entity=DatabaseService, fqn=db_service_name
         )
-        for data_model in self.data_models or []:
+        for datamodel in self.data_models or []:
             try:
-                data_model_entity = self._get_datamodel(datamodel_id=data_model.id)
+                data_model_entity = self._get_datamodel(datamodel_id=datamodel.id)
                 if data_model_entity:
                     om_table = self._get_database_table(
                         db_service_entity, data_model_entity
                     )
                     if om_table:
+                        columns_list = [col.name for col in datamodel.fields]
                         column_lineage = self._get_column_lineage(
-                            data_model, om_table, data_model_entity
+                            om_table, data_model_entity, columns_list
                         )
                         yield self._get_add_lineage_request(
                             to_entity=data_model_entity,
