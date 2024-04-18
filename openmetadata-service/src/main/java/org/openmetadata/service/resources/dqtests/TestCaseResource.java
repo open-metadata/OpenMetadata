@@ -1,6 +1,8 @@
 package org.openmetadata.service.resources.dqtests;
 
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.schema.type.EventType.ENTITY_NO_CHANGE;
+import static org.openmetadata.schema.type.Include.ALL;
 
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Operation;
@@ -36,6 +38,7 @@ import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
 import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
+import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.data.RestoreEntity;
 import org.openmetadata.schema.api.tests.CreateLogicalTestCases;
 import org.openmetadata.schema.api.tests.CreateTestCase;
@@ -166,12 +169,6 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
           @QueryParam("testSuiteId")
           String testSuiteId,
       @Parameter(
-              description = "Returns the list of tests ordered by the most recent execution date",
-              schema = @Schema(type = "boolean"))
-          @QueryParam("orderByLastExecutionDate")
-          @DefaultValue("false")
-          Boolean orderByLastExecutionDate,
-      @Parameter(
               description = "Include all the tests at the entity level",
               schema = @Schema(type = "boolean"))
           @QueryParam("includeAllTests")
@@ -204,7 +201,6 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
         new ListFilter(include)
             .addQueryParam("testSuiteId", testSuiteId)
             .addQueryParam("includeAllTests", includeAllTests.toString())
-            .addQueryParam("orderByLastExecutionDate", orderByLastExecutionDate.toString())
             .addQueryParam("testCaseStatus", status)
             .addQueryParam("testCaseType", type);
     ResourceContextInterface resourceContext = getResourceContext(entityLink, filter);
@@ -356,6 +352,9 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
       @Parameter(description = "domain filter to use in list", schema = @Schema(type = "string"))
           @QueryParam("domain")
           String domain,
+      @Parameter(description = "owner filter to use in list", schema = @Schema(type = "string"))
+          @QueryParam("owner")
+          String owner,
       @Parameter(
               description = "search query term to use in list",
               schema = @Schema(type = "string"))
@@ -377,6 +376,16 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
     searchListFilter.addQueryParam("q", q);
     searchListFilter.addQueryParam("excludeFields", SEARCH_FIELDS_EXCLUDE);
     searchListFilter.addQueryParam("domain", domain);
+    if (!nullOrEmpty(owner)) {
+      EntityInterface entity;
+      try {
+        entity = Entity.getEntityByName(Entity.USER, owner, "", ALL);
+      } catch (Exception e) {
+        // If the owner is not a user, then we'll try to geta team
+        entity = Entity.getEntityByName(Entity.TEAM, owner, "", ALL);
+      }
+      searchListFilter.addQueryParam("owner", entity.getId().toString());
+    }
 
     if (startTimestamp != null) {
       if (startTimestamp > endTimestamp) {
@@ -952,7 +961,7 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
           UUID id,
       @Valid TableData tableData) {
     OperationContext operationContext =
-        new OperationContext(entityType, MetadataOperation.EDIT_SAMPLE_DATA);
+        new OperationContext(entityType, MetadataOperation.EDIT_TESTS);
     authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
     TestCase testCase = repository.find(id, Include.NON_DELETED);
     if (testCase.getTestCaseResult() == null
@@ -983,12 +992,37 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
       @Parameter(description = "Id of the table", schema = @Schema(type = "UUID")) @PathParam("id")
           UUID id) {
     OperationContext operationContext =
-        new OperationContext(entityType, MetadataOperation.VIEW_SAMPLE_DATA);
+        new OperationContext(entityType, MetadataOperation.VIEW_TEST_CASE_FAILED_ROWS_SAMPLE);
     ResourceContext<?> resourceContext = getResourceContextById(id);
     TestCase testCase = repository.find(id, Include.NON_DELETED);
     authorizer.authorize(securityContext, operationContext, resourceContext);
     boolean authorizePII = authorizer.authorizePII(securityContext, resourceContext.getOwner());
     return repository.getSampleData(testCase, authorizePII);
+  }
+
+  @DELETE
+  @Path("/{id}/failedRowsSample")
+  @Operation(
+      operationId = "deleteFailedRowsSample",
+      summary = "Delete failed rows sample data",
+      description = "Delete a sample of failed rows for this test case.",
+      responses = {
+        @ApiResponse(responseCode = "200", description = "OK"),
+        @ApiResponse(
+            responseCode = "404",
+            description = "Failed rows sample data for test case {id} is not found.")
+      })
+  public Response deleteFailedRowsData(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Id of the table", schema = @Schema(type = "UUID")) @PathParam("id")
+          UUID id) {
+    OperationContext operationContext =
+        new OperationContext(entityType, MetadataOperation.DELETE_TEST_CASE_FAILED_ROWS_SAMPLE);
+    ResourceContext<?> resourceContext = getResourceContextById(id);
+    authorizer.authorize(securityContext, operationContext, resourceContext);
+    RestUtil.DeleteResponse<TableData> response = repository.deleteTestCaseFailedRowsSample(id);
+    return response.toResponse();
   }
 
   @PUT

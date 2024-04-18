@@ -164,7 +164,7 @@ export const setValueForProperty = (
     .scrollIntoView()
     .as('editbutton');
 
-  cy.get('@editbutton').click();
+  cy.get('@editbutton').should('be.visible').click();
 
   interceptURL('PATCH', `/api/v1/*/*`, 'patchEntity');
   // Checking for value text box or markdown box
@@ -172,6 +172,7 @@ export const setValueForProperty = (
   switch (propertyType) {
     case 'markdown':
       cy.get('.toastui-editor-md-container > .toastui-editor > .ProseMirror')
+        .should('be.visible')
         .clear()
         .type(value);
       cy.get('[data-testid="save"]').click();
@@ -179,13 +180,19 @@ export const setValueForProperty = (
       break;
 
     case 'email':
-      cy.get('[data-testid="email-input"]').clear().type(value);
+      cy.get('[data-testid="email-input"]')
+        .should('be.visible')
+        .clear()
+        .type(value);
       cy.get('[data-testid="inline-save-btn"]').click();
 
       break;
 
     case 'duration':
-      cy.get('[data-testid="duration-input"]').clear().type(value);
+      cy.get('[data-testid="duration-input"]')
+        .should('be.visible')
+        .clear()
+        .type(value);
       cy.get('[data-testid="inline-save-btn"]').click();
 
       break;
@@ -204,15 +211,24 @@ export const setValueForProperty = (
       break;
 
     case 'timestamp':
-      cy.get('[data-testid="timestamp-input"]').clear().type(value);
+      cy.get('[data-testid="timestamp-input"]')
+        .should('be.visible')
+        .clear()
+        .type(value);
       cy.get('[data-testid="inline-save-btn"]').click();
 
       break;
 
     case 'timeInterval': {
       const [startValue, endValue] = value.split(',');
-      cy.get('[data-testid="start-input"]').clear().type(startValue);
-      cy.get('[data-testid="end-input"]').clear().type(endValue);
+      cy.get('[data-testid="start-input"]')
+        .should('be.visible')
+        .clear()
+        .type(startValue);
+      cy.get('[data-testid="end-input"]')
+        .should('be.visible')
+        .clear()
+        .type(endValue);
       cy.get('[data-testid="inline-save-btn"]').click();
 
       break;
@@ -221,7 +237,10 @@ export const setValueForProperty = (
     case 'string':
     case 'integer':
     case 'number':
-      cy.get('[data-testid="value-input"]').clear().type(value);
+      cy.get('[data-testid="value-input"]')
+        .should('be.visible')
+        .clear()
+        .type(value);
       cy.get('[data-testid="inline-save-btn"]').click();
 
       break;
@@ -293,7 +312,7 @@ export const verifyCustomPropertyRows = () => {
   ).scrollIntoView();
   cy.get(
     '[data-testid="entity-right-panel"] [data-testid="custom-properties-table"] tbody tr'
-  ).should('have.length', 5);
+  ).should('have.length', 6);
 };
 
 export const deleteCustomProperties = (
