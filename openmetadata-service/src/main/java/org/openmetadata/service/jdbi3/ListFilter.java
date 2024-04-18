@@ -180,9 +180,12 @@ public class ListFilter extends Filter<ListFilter> {
     }
     if (Boolean.TRUE.equals(DatasourceConfig.getInstance().isMySQL())) {
       return String.format(
-          "(JSON_UNQUOTE(JSON_EXTRACT(ingestion_pipeline_entity.json, '$.sourceConfig.config.appConfig.type')) = '%s')", applicationType);
+          "(JSON_UNQUOTE(JSON_EXTRACT(ingestion_pipeline_entity.json, '$.sourceConfig.config.appConfig.type')) = '%s')",
+          applicationType);
     }
-    return String.format("(ingestion_pipeline_entity.json ->> '{sourceConfig,config,appConfig,type}' = '%s')", applicationType);
+    return String.format(
+        "(ingestion_pipeline_entity.json ->> '{sourceConfig,config,appConfig,type}' = '%s')",
+        applicationType);
   }
 
   private String getTestCaseCondition() {

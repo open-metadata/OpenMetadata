@@ -172,10 +172,10 @@ public class IngestionPipelineResource
           @QueryParam("serviceType")
           String serviceType,
       @Parameter(
-          description = "Filter Ingestion Pipelines by the type of the application",
-          schema = @Schema(type = "string", example = "Automator"))
-      @QueryParam("applicationType")
-      String applicationType,
+              description = "Filter Ingestion Pipelines by the type of the application",
+              schema = @Schema(type = "string", example = "Automator"))
+          @QueryParam("applicationType")
+          String applicationType,
       @Parameter(description = "Limit the number ingestion returned. (1 to 1000000, default = 10)")
           @DefaultValue("10")
           @Min(0)

@@ -16,7 +16,7 @@ To be used by OpenMetadata class
 import functools
 import json
 import traceback
-from typing import Generic, List, Optional, Set, Type, TypeVar, Iterable
+from typing import Generic, Iterable, List, Optional, Set, Type, TypeVar
 
 from pydantic import BaseModel
 from requests.utils import quote
