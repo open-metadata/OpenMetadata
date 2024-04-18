@@ -219,7 +219,7 @@ SET json = JSON_REMOVE(json,'$.connection.config.certificates.stagingDir'), json
     JSON_EXTRACT(json, '$.connection.config.certificates.clientKeyCertificateData'))  
 
 where lower(serviceType) = 'qliksense'
-  and JSON_EXTRACT(json, '$.connection.config.certificates.rootCertificateData') is not null
+  and JSON_EXTRACT(json, '$.connection.config.certificates.rootCertificateData') is not null;
 
 
 
