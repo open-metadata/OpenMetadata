@@ -191,11 +191,10 @@ public class JwtFilter implements ContainerRequestFilter {
 
     // Check if expired
     // If expiresAt is set to null, treat it as never expiring token
-    //    if (jwt.getExpiresAt() != null
-    //        &&
-    // jwt.getExpiresAt().before(Calendar.getInstance(TimeZone.getTimeZone("UTC")).getTime())) {
-    //      throw new AuthenticationException("Expired token!");
-    //    }
+    if (jwt.getExpiresAt() != null
+        && jwt.getExpiresAt().before(Calendar.getInstance(TimeZone.getTimeZone("UTC")).getTime())) {
+      throw new AuthenticationException("Expired token!");
+    }
 
     // Validate JWT with public key
     Jwk jwk = jwkProvider.get(jwt.getKeyId());
