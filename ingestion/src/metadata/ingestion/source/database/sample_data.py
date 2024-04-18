@@ -710,7 +710,7 @@ class SampleDataSource(
                 tableType=table["tableType"],
                 tableConstraints=table.get("tableConstraints"),
                 tags=table["tags"],
-                dataModel=table.get("dataModel"),
+                schemaDefinition=table.get("schemaDefinition"),
             )
 
             yield Either(right=table_and_db)
@@ -734,11 +734,6 @@ class SampleDataSource(
                         columns=table["sampleData"]["columns"],
                     ),
                 )
-
-                if table_and_db.dataModel:
-                    self.metadata.ingest_table_data_model(
-                        table_entity, table_and_db.dataModel
-                    )
 
             if table.get("customMetrics"):
                 for custom_metric in table["customMetrics"]:

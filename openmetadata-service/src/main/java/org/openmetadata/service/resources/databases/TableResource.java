@@ -90,7 +90,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
   public static final String COLLECTION_PATH = "v1/tables/";
   static final String FIELDS =
       "tableConstraints,tablePartition,usageSummary,owner,customMetrics,columns,"
-          + "tags,followers,joins,viewDefinition,dataModel,extension,testSuite,domain,dataProducts,lifeCycle,sourceHash";
+          + "tags,followers,joins,schemaDefinition,dataModel,extension,testSuite,domain,dataProducts,lifeCycle,sourceHash";
 
   @Override
   public Table addHref(UriInfo uriInfo, Table table) {
@@ -109,7 +109,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
   protected List<MetadataOperation> getEntitySpecificOperations() {
     allowedFields.add("customMetrics");
     addViewOperation(
-        "columns,tableConstraints,tablePartition,joins,viewDefinition,dataModel",
+        "columns,tableConstraints,tablePartition,joins,schemaDefinition,dataModel",
         MetadataOperation.VIEW_BASIC);
     addViewOperation("usageSummary", MetadataOperation.VIEW_USAGE);
     addViewOperation("customMetrics", MetadataOperation.VIEW_TESTS);
@@ -1186,7 +1186,6 @@ public class TableResource extends EntityResource<Table, TableRepository> {
     table.setId(UUID.randomUUID());
     DatabaseUtil.validateConstraints(table.getColumns(), table.getTableConstraints());
     DatabaseUtil.validateTablePartition(table.getColumns(), table.getTablePartition());
-    DatabaseUtil.validateViewDefinition(table.getTableType(), table.getViewDefinition());
     DatabaseUtil.validateColumns(table.getColumns());
     return table;
   }
@@ -1201,7 +1200,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
                 .withTablePartition(create.getTablePartition())
                 .withTableType(create.getTableType())
                 .withFileFormat(create.getFileFormat())
-                .withViewDefinition(create.getViewDefinition())
+                .withSchemaDefinition(create.getSchemaDefinition())
                 .withTableProfilerConfig(create.getTableProfilerConfig())
                 .withDatabaseSchema(
                     getEntityReference(Entity.DATABASE_SCHEMA, create.getDatabaseSchema())))

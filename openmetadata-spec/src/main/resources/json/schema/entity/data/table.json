@@ -985,8 +985,8 @@
       "description": "Reference to the Location that contains this table.",
       "$ref": "../../type/entityReference.json"
     },
-    "viewDefinition": {
-      "description": "View Definition in SQL. Applies to TableType.View only.",
+    "schemaDefinition": {
+      "description": "DDL for Tables and Views",
       "$ref": "../../type/basic.json#/definitions/sqlQuery"
     },
     "tags": {
