@@ -1,3 +1,4 @@
+import logging
 import sys
 
 import pytest
@@ -45,6 +46,11 @@ from ..integration_base import int_admin_ometa
 
 if not sys.version_info >= (3, 9):
     pytest.skip("requires python 3.9+", allow_module_level=True)
+
+
+@pytest.fixture(autouse=True)
+def config_logging():
+    logging.getLogger("sqlfluff").setLevel(logging.CRITICAL)
 
 
 @pytest.fixture(scope="module")
