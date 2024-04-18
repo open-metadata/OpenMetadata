@@ -52,6 +52,7 @@ from metadata.ingestion.api.delete import delete_entity_from_source
 from metadata.ingestion.api.models import Either, Entity
 from metadata.ingestion.api.steps import Source
 from metadata.ingestion.api.topology_runner import C, TopologyRunnerMixin
+from metadata.ingestion.lineage.sql_lineage import get_column_fqn
 from metadata.ingestion.models.delete_entity import DeleteEntity
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.models.patch_request import PatchRequest
@@ -615,3 +616,28 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
                     )
             patch_request.new_entity.dataModels = datamodel_entity_ref_list
         return patch_request
+
+    def _get_column_lineage(
+        self,
+        om_table: Table,
+        data_model_entity: DashboardDataModel,
+        columns_list: List[str],
+    ) -> List[ColumnLineage]:
+        """
+        Get the column lineage from the fields
+        """
+        try:
+            column_lineage = []
+            for field in columns_list or []:
+                from_column = get_column_fqn(table_entity=om_table, column=field)
+                to_column = self._get_data_model_column_fqn(
+                    data_model_entity=data_model_entity,
+                    column=field,
+                )
+                column_lineage.append(
+                    ColumnLineage(fromColumns=[from_column], toColumn=to_column)
+                )
+            return column_lineage
+        except Exception as exc:
+            logger.debug(f"Error to get column lineage: {exc}")
+            logger.debug(traceback.format_exc())

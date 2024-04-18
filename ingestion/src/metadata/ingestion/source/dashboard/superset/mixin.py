@@ -34,11 +34,9 @@ from metadata.generated.schema.entity.services.ingestionPipelines.status import 
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
-from metadata.generated.schema.type.entityLineage import ColumnLineage
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
-from metadata.ingestion.lineage.sql_lineage import get_column_fqn
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.dashboard.dashboard_service import DashboardServiceSource
 from metadata.ingestion.source.dashboard.superset.models import (
@@ -148,29 +146,6 @@ class SupersetSourceMixin(DashboardServiceSource):
             )
         return []
 
-    def _get_column_lineage(
-        self, om_table: Table, data_model_entity: DashboardDataModel
-    ) -> List[ColumnLineage]:
-        """
-        Get the column lineage from database table columns
-        to data_model columns
-        """
-        try:
-            column_lineage = []
-            for column in data_model_entity.columns or []:
-                from_column = get_column_fqn(
-                    table_entity=om_table, column=column.displayName
-                )
-                to_column = column.fullyQualifiedName.__root__
-                if from_column and to_column:
-                    column_lineage.append(
-                        ColumnLineage(fromColumns=[from_column], toColumn=to_column)
-                    )
-            return column_lineage
-        except Exception as exc:
-            logger.debug(f"Error to get column lineage: {exc}")
-            logger.debug(traceback.format_exc())
-
     def yield_dashboard_lineage_details(
         self,
         dashboard_details: Union[FetchDashboard, DashboardResult],
@@ -206,8 +181,16 @@ class SupersetSourceMixin(DashboardServiceSource):
                             entity=DashboardDataModel,
                             fqn=datamodel_fqn,
                         )
+
+                        datasource_json = self.client.fetch_datasource(
+                            chart_json.datasource_id
+                        )
+                        datasource_columns = self.get_column_info(
+                            datasource_json.result.columns
+                        )
+                        columns_list = [col.displayName for col in datasource_columns]
                         column_lineage = self._get_column_lineage(
-                            from_entity, to_entity
+                            from_entity, to_entity, columns_list
                         )
                         if from_entity and to_entity:
                             yield self._get_add_lineage_request(
@@ -275,3 +258,17 @@ class SupersetSourceMixin(DashboardServiceSource):
                 logger.debug(traceback.format_exc())
                 logger.warning(f"Error to yield datamodel column: {exc}")
         return datasource_columns
+
+    @staticmethod
+    def _get_data_model_column_fqn(
+        data_model_entity: DashboardDataModel, column: str
+    ) -> Optional[str]:
+        """
+        Get fqn of column if exist in table entity
+        """
+        if not data_model_entity:
+            return None
+        for tbl_column in data_model_entity.columns:
+            if column.lower() == tbl_column.displayName.lower():
+                return tbl_column.fullyQualifiedName.__root__
+        return None
