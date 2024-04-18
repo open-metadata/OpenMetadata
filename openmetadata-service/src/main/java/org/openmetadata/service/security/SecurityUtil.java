@@ -327,7 +327,8 @@ public final class SecurityUtil {
       HttpServletResponse response,
       OidcCredentials credentials,
       String serverUrl,
-      List<String> claimsOrder)
+      List<String> claimsOrder,
+      String defaultDomain)
       throws ParseException, IOException {
     JWT jwt = credentials.getIdToken();
     Map<String, Object> claims = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
@@ -344,13 +345,13 @@ public final class SecurityUtil {
                         "Invalid JWT token, none of the following claims are present "
                             + claimsOrder));
 
-    String email = (String) jwt.getJWTClaimsSet().getClaim("email");
     String userName;
     if (preferredJwtClaim.contains("@")) {
       userName = preferredJwtClaim.split("@")[0];
     } else {
       userName = preferredJwtClaim;
     }
+    String email = String.format("%s@%s", userName, defaultDomain);
 
     String url =
         String.format(
