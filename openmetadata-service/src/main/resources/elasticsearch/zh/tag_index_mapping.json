@@ -146,6 +146,9 @@
       },
       "entityType": {
         "type": "keyword"
+      },
+      "descriptionStatus": {
+        "type": "keyword"
       }
     }
   }
