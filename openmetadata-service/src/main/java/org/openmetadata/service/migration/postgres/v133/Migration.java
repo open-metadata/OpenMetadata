@@ -1,4 +1,4 @@
-package org.openmetadata.service.migration.postgres.v131;
+package org.openmetadata.service.migration.postgres.v133;
 
 import static org.openmetadata.service.migration.utils.v131.MigrationUtil.migrateCronExpression;
 
