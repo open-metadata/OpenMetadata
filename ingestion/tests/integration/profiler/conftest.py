@@ -11,8 +11,11 @@ from metadata.generated.schema.api.services.createDatabaseService import (
 from metadata.generated.schema.entity.services.connections.database.dynamoDBConnection import (
     DynamoDBConnection,
 )
-from metadata.generated.schema.entity.services.databaseService import DatabaseConnection, DatabaseService, \
-    DatabaseServiceType
+from metadata.generated.schema.entity.services.databaseService import (
+    DatabaseConnection,
+    DatabaseService,
+    DatabaseServiceType,
+)
 from metadata.generated.schema.security.credentials.awsCredentials import AWSCredentials
 
 if TYPE_CHECKING:

@@ -30,22 +30,15 @@ class NoSQLAdaptorFactory(Factory):
     This class maintains a registry of callable constructors for different NoSQL client types.
     The client types are registered with their corresponding constructors,
     and can be created using the `construct` method.
-
-    Attributes:
-        _clients (Dict[str, NoSQLClientConstructor]): A dictionary mapping client type names to their constructors.
-
-    Methods:
-        register(source_class: Type, target_class: NoSQLClientConstructor): Register a client type with its constructor.
-        create(source_client: any) -> NoSQLClient: Create a client instance of the type of the given source client.
     """
 
     def __init__(self):
         """
         Initialize a new instance of NoSQLClientFactory.
         """
-        self._clients: Dict[str, NoSQLAdaptorConstructor] = {}
+        super().__init__()
 
-    def register(self, source_class_name: str, target_class: NoSQLAdaptorConstructor):
+    def register(self, interface_type: str, interface_class: NoSQLAdaptorConstructor):
         """
         Register a client type with its constructor.
 
@@ -56,14 +49,14 @@ class NoSQLAdaptorFactory(Factory):
         Returns:
             None
         """
-        self._clients[source_class_name] = target_class
+        self._interface_type[interface_type] = interface_class
 
-    def create(self, source_client: any) -> NoSQLAdaptor:
+    def create(self, interface_type: any, *args, **kwargs) -> NoSQLAdaptor:
         """
         Create a client instance of the type of the given source client.
 
         Args:
-            source_client (any): The source client instance.
+            interface_type (any): The source client instance.
 
         Returns:
             NoSQLAdaptor: The created client instance.
@@ -71,10 +64,10 @@ class NoSQLAdaptorFactory(Factory):
         Raises:
             ValueError: If the type of the source client is not registered.
         """
-        client_class = self._clients.get(type(source_client).__name__)
+        client_class = self._interface_type.get(type(interface_type).__name__)
         if not client_class:
-            raise ValueError(f"Unknown NoSQL source: {type(source_client).__name__}")
-        return client_class(source_client)
+            raise ValueError(f"Unknown NoSQL source: {type(interface_type).__name__}")
+        return client_class(interface_type)
 
 
 factory = NoSQLAdaptorFactory()

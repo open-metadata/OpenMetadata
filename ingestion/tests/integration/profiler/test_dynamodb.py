@@ -3,19 +3,16 @@ import pytest
 from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.services.databaseService import DatabaseService
 from metadata.generated.schema.metadataIngestion.databaseServiceProfilerPipeline import (
-    DatabaseServiceProfilerPipeline,
     ProfilerConfigType,
 )
 from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
-    Processor,
     Sink,
     Source,
     SourceConfig,
     WorkflowConfig,
 )
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.profiler.api.models import ProfilerProcessorConfig
 from metadata.workflow.metadata import MetadataWorkflow
 from metadata.workflow.profiler import ProfilerWorkflow
 
