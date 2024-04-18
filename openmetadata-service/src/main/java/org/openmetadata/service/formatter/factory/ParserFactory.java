@@ -13,6 +13,7 @@
 
 package org.openmetadata.service.formatter.factory;
 
+import static org.openmetadata.service.Entity.FIELD_ASSETS;
 import static org.openmetadata.service.formatter.field.TestCaseResultFormatter.TEST_RESULT_FIELD;
 
 import org.openmetadata.schema.entity.feed.Thread;
@@ -25,6 +26,7 @@ import org.openmetadata.service.formatter.entity.IngestionPipelineFormatter;
 import org.openmetadata.service.formatter.entity.KpiFormatter;
 import org.openmetadata.service.formatter.entity.PipelineFormatter;
 import org.openmetadata.service.formatter.entity.QueryFormatter;
+import org.openmetadata.service.formatter.field.AssetsFieldFormatter;
 import org.openmetadata.service.formatter.field.DefaultFieldFormatter;
 import org.openmetadata.service.formatter.field.DescriptionFormatter;
 import org.openmetadata.service.formatter.field.FollowersFormatter;
@@ -60,6 +62,7 @@ public final class ParserFactory {
       case Entity.FIELD_OWNER -> new OwnerFormatter(decorator, thread, fieldChange);
       case Entity.FIELD_DESCRIPTION -> new DescriptionFormatter(decorator, thread, fieldChange);
       case TEST_RESULT_FIELD -> new TestCaseResultFormatter(decorator, thread, fieldChange);
+      case FIELD_ASSETS -> new AssetsFieldFormatter(decorator, thread, fieldChange);
       default -> new DefaultFieldFormatter(decorator, thread, fieldChange);
     };
   }
