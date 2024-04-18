@@ -7,7 +7,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.entity.data.DashboardDataModel;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.service.Entity;
@@ -21,17 +20,21 @@ public record DashboardDataModelIndex(DashboardDataModel dashboardDataModel)
     implements ColumnIndex {
   private static final List<String> excludeFields = List.of("changeDescription");
 
-  public Map<String, Object> buildESDoc() {
-    Map<String, Object> doc = JsonUtils.getMap(dashboardDataModel);
-    SearchIndexUtils.removeNonIndexableFields(doc, excludeFields);
+  public List<SearchSuggest> getSuggest() {
     List<SearchSuggest> suggest = new ArrayList<>();
-    List<SearchSuggest> columnSuggest = new ArrayList<>();
     suggest.add(SearchSuggest.builder().input(dashboardDataModel.getName()).weight(10).build());
     suggest.add(
         SearchSuggest.builder()
             .input(dashboardDataModel.getFullyQualifiedName())
             .weight(5)
             .build());
+    return suggest;
+  }
+
+  public Map<String, Object> buildESDoc() {
+    Map<String, Object> doc = JsonUtils.getMap(dashboardDataModel);
+    SearchIndexUtils.removeNonIndexableFields(doc, excludeFields);
+    List<SearchSuggest> columnSuggest = new ArrayList<>();
     Set<List<TagLabel>> tagsWithChildren = new HashSet<>();
     List<String> columnsWithChildrenName = new ArrayList<>();
     SearchIndexUtils.removeNonIndexableFields(doc, excludeFields);
@@ -54,26 +57,14 @@ public record DashboardDataModelIndex(DashboardDataModel dashboardDataModel)
         tagsWithChildren.stream()
             .flatMap(List::stream)
             .collect(ArrayList::new, ArrayList::add, ArrayList::addAll);
+    Map<String, Object> commonAttributes =
+        getCommonAttributesMap(dashboardDataModel, Entity.DASHBOARD_DATA_MODEL);
+    doc.putAll(commonAttributes);
     doc.put("tags", flattenedTagList);
     doc.put("column_suggest", columnSuggest);
-    doc.put("suggest", suggest);
-    doc.put("entityType", Entity.DASHBOARD_DATA_MODEL);
-    doc.put(
-        "fqnParts",
-        getFQNParts(
-            dashboardDataModel.getFullyQualifiedName(),
-            suggest.stream().map(SearchSuggest::getInput).toList()));
     doc.put("tier", parseTags.getTierTag());
-    doc.put("owner", getEntityWithDisplayName(dashboardDataModel.getOwner()));
     doc.put("service", getEntityWithDisplayName(dashboardDataModel.getService()));
-    doc.put("followers", SearchIndexUtils.parseFollowers(dashboardDataModel.getFollowers()));
     doc.put("lineage", SearchIndex.getLineageData(dashboardDataModel.getEntityReference()));
-    doc.put(
-        "totalVotes",
-        CommonUtil.nullOrEmpty(dashboardDataModel.getVotes())
-            ? 0
-            : dashboardDataModel.getVotes().getUpVotes()
-                - dashboardDataModel.getVotes().getDownVotes());
     doc.put("domain", getEntityWithDisplayName(dashboardDataModel.getDomain()));
     return doc;
   }

@@ -12,22 +12,20 @@ import org.openmetadata.service.util.JsonUtils;
 public record MlModelServiceIndex(MlModelService mlModelService) implements SearchIndex {
   private static final List<String> excludeFields = List.of("changeDescription");
 
-  public Map<String, Object> buildESDoc() {
-    Map<String, Object> doc = JsonUtils.getMap(mlModelService);
-    SearchIndexUtils.removeNonIndexableFields(doc, excludeFields);
+  public List<SearchSuggest> getSuggest() {
     List<SearchSuggest> suggest = new ArrayList<>();
     suggest.add(SearchSuggest.builder().input(mlModelService.getName()).weight(5).build());
     suggest.add(
         SearchSuggest.builder().input(mlModelService.getFullyQualifiedName()).weight(5).build());
-    doc.put(
-        "fqnParts",
-        getFQNParts(
-            mlModelService.getFullyQualifiedName(),
-            suggest.stream().map(SearchSuggest::getInput).toList()));
-    doc.put("suggest", suggest);
-    doc.put("entityType", Entity.MLMODEL_SERVICE);
-    doc.put("owner", getEntityWithDisplayName(mlModelService.getOwner()));
-    doc.put("followers", SearchIndexUtils.parseFollowers(mlModelService.getFollowers()));
+    return suggest;
+  }
+
+  public Map<String, Object> buildESDoc() {
+    Map<String, Object> doc = JsonUtils.getMap(mlModelService);
+    SearchIndexUtils.removeNonIndexableFields(doc, excludeFields);
+    Map<String, Object> commonAttributes =
+        getCommonAttributesMap(mlModelService, Entity.MLMODEL_SERVICE);
+    doc.putAll(commonAttributes);
     return doc;
   }
 }

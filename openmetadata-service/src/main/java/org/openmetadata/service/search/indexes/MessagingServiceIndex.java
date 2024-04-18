@@ -12,23 +12,20 @@ import org.openmetadata.service.util.JsonUtils;
 public record MessagingServiceIndex(MessagingService messagingService) implements SearchIndex {
   private static final List<String> excludeFields = List.of("changeDescription");
 
-  public Map<String, Object> buildESDoc() {
-    Map<String, Object> doc = JsonUtils.getMap(messagingService);
-    SearchIndexUtils.removeNonIndexableFields(doc, excludeFields);
+  public List<SearchSuggest> getSuggest() {
     List<SearchSuggest> suggest = new ArrayList<>();
     suggest.add(SearchSuggest.builder().input(messagingService.getName()).weight(5).build());
     suggest.add(
         SearchSuggest.builder().input(messagingService.getFullyQualifiedName()).weight(5).build());
-    doc.put(
-        "fqnParts",
-        getFQNParts(
-            messagingService.getFullyQualifiedName(),
-            suggest.stream().map(SearchSuggest::getInput).toList()));
-    doc.put("suggest", suggest);
-    doc.put("entityType", Entity.MESSAGING_SERVICE);
-    doc.put("owner", getEntityWithDisplayName(messagingService.getOwner()));
-    doc.put("domain", getEntityWithDisplayName(messagingService.getDomain()));
-    doc.put("followers", SearchIndexUtils.parseFollowers(messagingService.getFollowers()));
+    return suggest;
+  }
+
+  public Map<String, Object> buildESDoc() {
+    Map<String, Object> doc = JsonUtils.getMap(messagingService);
+    SearchIndexUtils.removeNonIndexableFields(doc, excludeFields);
+    Map<String, Object> commonAttributes =
+        getCommonAttributesMap(messagingService, Entity.MESSAGING_SERVICE);
+    doc.putAll(commonAttributes);
     return doc;
   }
 }

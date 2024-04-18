@@ -346,6 +346,9 @@
             "type": "text"
           }
         }
+      },
+      "descriptionStatus": {
+        "type": "keyword"
       }
     }
   }

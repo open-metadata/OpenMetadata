@@ -97,6 +97,9 @@
       },
       "disabled" : {
         "type": "text"
+      },
+      "descriptionStatus": {
+        "type": "keyword"
       }
     }
   }
