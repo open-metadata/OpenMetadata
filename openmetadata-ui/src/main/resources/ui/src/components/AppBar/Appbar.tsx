@@ -14,9 +14,7 @@
 import { isString } from 'lodash';
 import Qs from 'qs';
 import React, { useEffect, useState } from 'react';
-import { useTranslation } from 'react-i18next';
 import { useHistory, useLocation } from 'react-router-dom';
-import { toast } from 'react-toastify';
 import { getExplorePath, TOUR_SEARCH_TERM } from '../../constants/constants';
 import { useTourProvider } from '../../context/TourProvider/TourProvider';
 import { CurrentTourPageType } from '../../enums/tour.enum';
@@ -35,11 +33,10 @@ const Appbar: React.FC = (): JSX.Element => {
   const tabsInfo = searchClassBase.getTabsInfo();
   const location = useLocation();
   const history = useHistory();
-  const { t } = useTranslation();
   const { isTourOpen, updateTourPage, updateTourSearch, tourSearchValue } =
     useTourProvider();
 
-  const { isAuthenticated, searchCriteria, onLogoutHandler, getOidcToken } =
+  const { isAuthenticated, searchCriteria, getOidcToken, trySilentSignIn } =
     useApplicationStore();
 
   const parsedQueryString = Qs.parse(
@@ -124,10 +121,10 @@ const Appbar: React.FC = (): JSX.Element => {
       ) {
         return;
       }
-      const { isExpired, exp } = extractDetailsFromToken(getOidcToken());
+      const { isExpired } = extractDetailsFromToken(getOidcToken());
       if (!document.hidden && isExpired) {
-        exp && toast.info(t('message.session-expired'));
-        onLogoutHandler();
+        // force logout
+        trySilentSignIn(true);
       }
     };
 
