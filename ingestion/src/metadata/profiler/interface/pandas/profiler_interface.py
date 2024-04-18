@@ -192,7 +192,6 @@ class PandasProfilerInterface(ProfilerInterface, PandasInterfaceMixin):
 
         row_dict = {}
         try:
-
             for metric in metrics:
                 metric_resp = metric(column).df_fn(runner)
                 row_dict[metric.name()] = (

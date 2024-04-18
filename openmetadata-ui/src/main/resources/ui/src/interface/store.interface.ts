@@ -32,9 +32,10 @@ import { EntityReference } from '../generated/entity/type';
 export interface HelperFunctions {
   onLoginHandler: () => void;
   onLogoutHandler: () => void;
-  handleSuccessfulLogin: (user: OidcUser) => void;
+  handleSuccessfulLogin: (user: OidcUser) => Promise<void>;
   handleFailedLogin: () => void;
   updateAxiosInterceptors: () => void;
+  trySilentSignIn: (forceLogout?: boolean) => Promise<void>;
 }
 
 export interface ApplicationStore
@@ -43,7 +44,6 @@ export interface ApplicationStore
     LoginConfiguration {
   userProfilePics: Record<string, User>;
   cachedEntityData: Record<string, EntityUnion>;
-  urlPathName: string;
   selectedPersona: EntityReference;
   oidcIdToken: string;
   refreshTokenKey: string;
@@ -55,7 +55,6 @@ export interface ApplicationStore
   searchCriteria: ExploreSearchIndex | '';
   setSelectedPersona: (persona: EntityReference) => void;
   setApplicationConfig: (config: LogoConfiguration) => void;
-  setUrlPathName: (urlPathName: string) => void;
   setCurrentUser: (user: User) => void;
   setAuthConfig: (authConfig: AuthenticationConfigurationWithScope) => void;
   setAuthorizerConfig: (authorizerConfig: AuthorizerConfiguration) => void;
@@ -76,6 +75,7 @@ export interface ApplicationStore
   removeOidcToken: () => void;
   removeRefreshToken: () => void;
   updateSearchCriteria: (criteria: ExploreSearchIndex | '') => void;
+  trySilentSignIn: (forceLogout?: boolean) => void;
 }
 
 export interface DomainStore {
