@@ -75,6 +75,7 @@ import java.io.IOException;
 import java.net.URISyntaxException;
 import java.time.Duration;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
@@ -1000,6 +1001,104 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
               entity.getFullyQualifiedName(), queryParams, allFields, ADMIN_AUTH_HEADERS);
       validateDeletedEntity(create, entityBeforeDeletion, entityAfterDeletion, ADMIN_AUTH_HEADERS);
     }
+  }
+
+  @Test
+  @Execution(ExecutionMode.CONCURRENT)
+  void get_entityWithNullDescriptionFromSearch(TestInfo test)
+      throws InterruptedException, IOException {
+    Assumptions.assumeTrue(supportsSearchIndex);
+    Assumptions.assumeTrue(
+        Arrays.asList(entityClass.getInterfaces()).contains(EntityInterface.class));
+    // We can't create a Glossary or a Tag without description
+    Assumptions.assumeTrue(
+        !List.of(GLOSSARY, TAG, QUERY, TEST_CASE, TEST_SUITE).contains(entityType));
+    // Create an entity without description
+    K createWithNullDescription = createRequest(test, 1).withDescription(null);
+    T entityWithNullDescription = createEntity(createWithNullDescription, ADMIN_AUTH_HEADERS);
+
+    // Search for entities without description
+    RestClient searchClient = getSearchClient();
+    IndexMapping index = Entity.getSearchRepository().getIndexMapping(entityType);
+    Response response;
+    Request request = new Request("GET", String.format("%s/_search", index.getIndexName(null)));
+    String query =
+        "{\"size\": 100,\"query\":{\"bool\":{\"must\":[{\"term\":{\"descriptionStatus\":\"INCOMPLETE\"}}]}}}";
+    request.setJsonEntity(query);
+    try {
+      waitForEsAsyncOp(1000);
+      response = searchClient.performRequest(request);
+    } finally {
+      searchClient.close();
+    }
+
+    String jsonString = EntityUtils.toString(response.getEntity());
+    HashMap<String, Object> map =
+        (HashMap<String, Object>) JsonUtils.readOrConvertValue(jsonString, HashMap.class);
+    LinkedHashMap<String, Object> hits = (LinkedHashMap<String, Object>) map.get("hits");
+    ArrayList<LinkedHashMap<String, Object>> hitsList =
+        (ArrayList<LinkedHashMap<String, Object>>) hits.get("hits");
+
+    assertTrue(
+        hitsList.stream()
+            .anyMatch(
+                hit ->
+                    ((LinkedHashMap<String, Object>) hit.get("_source"))
+                        .get("name")
+                        .equals(createWithNullDescription.getName())));
+  }
+
+  @Test
+  @Execution(ExecutionMode.CONCURRENT)
+  void get_entityWithEmptyDescriptionFromSearch(TestInfo test)
+      throws InterruptedException, IOException {
+    Assumptions.assumeTrue(supportsSearchIndex);
+    Assumptions.assumeTrue(
+        Arrays.asList(entityClass.getInterfaces()).contains(EntityInterface.class));
+    Assumptions.assumeTrue(!List.of(QUERY, TEST_CASE, TEST_SUITE).contains(entityType));
+    // Create an entity with empty description
+    K createWithEmptyDescription = createRequest(test, 2);
+    T entityWithEmptyDescription = createEntity(createWithEmptyDescription, ADMIN_AUTH_HEADERS);
+    // Create an entity with empty description
+    K createWithDescription = createRequest(test, 3).withDescription("description");
+    T entityWithDescription = createEntity(createWithDescription, ADMIN_AUTH_HEADERS);
+
+    // Search for entities without description
+    RestClient searchClient = getSearchClient();
+    IndexMapping index = Entity.getSearchRepository().getIndexMapping(entityType);
+    Response response;
+    Request request = new Request("GET", String.format("%s/_search", index.getIndexName(null)));
+    String query =
+        "{\"size\": 100,\"query\":{\"bool\":{\"must\":[{\"term\":{\"descriptionStatus\":\"INCOMPLETE\"}}]}}}";
+    request.setJsonEntity(query);
+    try {
+      waitForEsAsyncOp(1000);
+      response = searchClient.performRequest(request);
+    } finally {
+      searchClient.close();
+    }
+
+    String jsonString = EntityUtils.toString(response.getEntity());
+    HashMap<String, Object> map =
+        (HashMap<String, Object>) JsonUtils.readOrConvertValue(jsonString, HashMap.class);
+    LinkedHashMap<String, Object> hits = (LinkedHashMap<String, Object>) map.get("hits");
+    ArrayList<LinkedHashMap<String, Object>> hitsList =
+        (ArrayList<LinkedHashMap<String, Object>>) hits.get("hits");
+
+    assertTrue(
+        hitsList.stream()
+            .noneMatch(
+                hit ->
+                    ((LinkedHashMap<String, Object>) hit.get("_source"))
+                        .get("name")
+                        .equals(createWithDescription.getName())));
+    assertTrue(
+        hitsList.stream()
+            .anyMatch(
+                hit ->
+                    ((LinkedHashMap<String, Object>) hit.get("_source"))
+                        .get("name")
+                        .equals(createWithEmptyDescription.getName())));
   }
 
   //////////////////////////////////////////////////////////////////////////////////////////////////
@@ -2064,7 +2163,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     TestUtils.delete(target, entityClass, ADMIN_AUTH_HEADERS);
     // search again in search after deleting
 
-    waitForEsAsyncOp();
+    waitForEsAsyncOp(1000);
     response =
         getResponseFormSearch(
             indexMapping.getIndexName(Entity.getSearchRepository().getClusterAlias()));
@@ -2240,6 +2339,16 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
       System.out.println("exception " + e);
     }
     return response;
+  }
+
+  public static String getResponseFormSearchWithHierarchy(String indexName)
+      throws HttpResponseException {
+    WebTarget target =
+        getResource(
+            String.format(
+                "search/query?q=&index=%s&from=0&deleted=false&size=100&getHierarchy=true",
+                indexName));
+    return TestUtils.get(target, String.class, ADMIN_AUTH_HEADERS);
   }
 
   @Test
