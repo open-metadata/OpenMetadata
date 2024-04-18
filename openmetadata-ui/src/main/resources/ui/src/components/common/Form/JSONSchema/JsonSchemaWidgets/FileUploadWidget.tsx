@@ -10,19 +10,15 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { UploadOutlined } from '@ant-design/icons';
 import { WidgetProps } from '@rjsf/utils';
-import { Space, Typography, UploadProps } from 'antd';
-import { UploadChangeParam, UploadFile } from 'antd/lib/upload';
-import Dragger from 'antd/lib/upload/Dragger';
+import { Button, UploadProps } from 'antd';
+import Upload, { UploadChangeParam, UploadFile } from 'antd/lib/upload';
 import { AxiosError } from 'axios';
-import { isArray } from 'lodash';
 import React, { FC, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as ImportIcon } from '../../../../../assets/svg/ic-drag-drop.svg';
 import { FileUploadEnum } from '../../../../../enums/File.enum';
-import { Transi18next } from '../../../../../utils/CommonUtils';
 import { showErrorToast } from '../../../../../utils/ToastUtils';
-import './widget.less';
 
 const FileUploadWidget: FC<WidgetProps> = ({ onChange, onFocus, ...rest }) => {
   const { t } = useTranslation();
@@ -70,10 +66,10 @@ const FileUploadWidget: FC<WidgetProps> = ({ onChange, onFocus, ...rest }) => {
   };
 
   return (
-    <Dragger
+    <Upload
       {...rest}
       accept={rest.schema.accept}
-      className="file-widget-wrapper"
+      className="file-widget-wrapper d-block p-b-xs"
       customRequest={handleRequestUpload}
       data-testid="upload-file-widget"
       defaultFileList={defaultValue}
@@ -81,28 +77,13 @@ const FileUploadWidget: FC<WidgetProps> = ({ onChange, onFocus, ...rest }) => {
       maxCount={1}
       multiple={false}
       onChange={handleChange}>
-      <Space
-        align="center"
-        className="w-full justify-center"
+      <Button
         data-testid="upload-file-widget-content"
-        direction="vertical"
-        size={12}
-        onClick={() => onFocus(rest.id, rest.value)}>
-        <ImportIcon height={60} width={60} />
-        <Typography.Text className="font-medium text-md">
-          <Transi18next
-            i18nKey="message.drag-and-drop-or-browse-files-here"
-            renderElement={<span className="text-primary browse-text" />}
-            values={{
-              text: t('label.browse'),
-              type: isArray(rest.schema.accept)
-                ? rest.schema.accept.map((type) => type).join(', ')
-                : rest.schema.accept,
-            }}
-          />
-        </Typography.Text>
-      </Space>
-    </Dragger>
+        icon={<UploadOutlined />}
+        onFocus={() => onFocus(rest.id, rest.value)}>
+        {t('message.upload-file')}
+      </Button>
+    </Upload>
   );
 };
 

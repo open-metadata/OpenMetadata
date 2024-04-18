@@ -13,13 +13,15 @@
 import { WidgetProps } from '@rjsf/utils';
 import { Input } from 'antd';
 import React, { FC } from 'react';
+import FileUploadWidget from './FileUploadWidget';
 
-const PasswordWidget: FC<WidgetProps> = ({
-  onFocus,
-  onBlur,
-  onChange,
-  ...rest
-}) => {
+const PasswordWidget: FC<WidgetProps> = (props) => {
+  if (props.schema.uiFieldType === 'file') {
+    return <FileUploadWidget {...props} />;
+  }
+
+  const { onFocus, onBlur, onChange, ...rest } = props;
+
   return (
     <Input
       autoComplete="off"
