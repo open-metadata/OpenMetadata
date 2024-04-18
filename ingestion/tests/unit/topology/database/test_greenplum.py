@@ -34,10 +34,6 @@ mock_greenplum_config = {
                 },
                 "hostPort": "localhost:5432",
                 "database": "greenplum",
-                "sslMode": "verify-ca",
-                "sslConfig": {
-                    "caCertificate": "CA certificate content",
-                },
             }
         },
         "sourceConfig": {

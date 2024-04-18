@@ -28,6 +28,15 @@ class SSLManagerTest(unittest.TestCase):
         with open(temp_file, "r", encoding="UTF-8") as file:
             file_content = file.read()
         self.assertEqual(file_content, content)
+        content = ""
+        temp_file = self.ssl_manager.create_temp_file(content)
+        self.assertTrue(os.path.exists(temp_file))
+        with open(temp_file, "r", encoding="UTF-8") as file:
+            file_content = file.read()
+        self.assertEqual(file_content, content)
+        with self.assertRaises(AttributeError):
+            content = None
+            self.ssl_manager.create_temp_file(content)
 
     def test_cleanup_temp_files(self):
         temp_file = self.ssl_manager.create_temp_file("Test content")

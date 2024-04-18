@@ -43,7 +43,6 @@ public class MysqlConnectionClassConverter extends ClassConverter {
 
     tryToConvert(mysqlConnection.getSslConfig(), SSL_SOURCE_CLASS)
         .ifPresent(obj -> mysqlConnection.setSslConfig((ValidateSSLClientConfig) obj));
-    //
 
     return mysqlConnection;
   }

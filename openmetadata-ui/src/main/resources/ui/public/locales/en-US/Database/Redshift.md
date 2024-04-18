@@ -66,10 +66,10 @@ $$
 
 $$section
 ### SSL CA $(id="caCertificate")
-The CA certificate used for SSL validation (`ssl_ca`).
+The CA certificate used for SSL validation (`sslrootcert`).
 $$
 $$note
-Redshift only needs SSL CA
+Redshift only needs CA Certificate
 $$
 $$section
 ### Connection Options $(id="connectionOptions")

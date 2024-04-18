@@ -176,10 +176,10 @@ $$
 
 $$section
 ### SSL CA $(id="caCertificate")
-The CA certificate used for SSL validation (`ssl_ca`).
+The CA certificate used for SSL validation (`sslrootcert`).
 $$
 $$note
-Postgres only needs SSL CA
+Postgres only needs CA Certificate
 $$
 $$section
 ### Classification Name $(id="classificationName")

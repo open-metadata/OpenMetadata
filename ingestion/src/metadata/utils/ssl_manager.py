@@ -46,11 +46,13 @@ from metadata.ingestion.connections.builders import init_empty_connection_argume
 class SSLManager:
     "SSL Manager to manage SSL certificates for service connections"
 
-    def __init__(self, ca, key=None, cert=None):
+    def __init__(self, ca=None, key=None, cert=None):
         self.temp_files = []
-        self.ca_file_path = self.create_temp_file(ca)
+        self.ca_file_path = None
         self.cert_file_path = None
         self.key_file_path = None
+        if ca:
+            self.ca_file_path = self.create_temp_file(ca)
         if cert:
             self.cert_file_path = self.create_temp_file(cert)
         if key:
@@ -109,7 +111,14 @@ class SSLManager:
             verifySSLConfig.SslMode.verify_ca,
             verifySSLConfig.SslMode.verify_full,
         ):
-            connection.connectionArguments.__root__["sslrootcert"] = self.ca_file_path
+            if self.ca_file_path:
+                connection.connectionArguments.__root__[
+                    "sslrootcert"
+                ] = self.ca_file_path
+            else:
+                raise ValueError(
+                    "CA certificate is required for SSL mode verify-ca or verify-full"
+                )
         return connection
 
     @setup_ssl.register(QlikSenseConnection)
@@ -132,8 +141,8 @@ class SSLManager:
 
 
 @singledispatch
-def check_ssl_and_init(connection):
-    return connection
+def check_ssl_and_init(_):
+    return None
 
 
 @check_ssl_and_init.register(MysqlConnection)
@@ -160,7 +169,10 @@ def _(connection):
         Union[PostgresConnection, RedshiftConnection, GreenplumConnection],
         connection,
     )
-    if connection.sslMode and connection.sslConfig:
-        return SSLManager(ca=connection.sslConfig.__root__.caCertificate)
-
+    if connection.sslMode:
+        return SSLManager(
+            ca=connection.sslConfig.__root__.caCertificate
+            if connection.sslConfig
+            else None
+        )
     return None

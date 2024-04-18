@@ -155,10 +155,10 @@ $$
 
 $$section
 ### SSL CA $(id="caCertificate")
-The CA certificate used for SSL validation (`ssl_ca`).
+The CA certificate used for SSL validation (`sslrootcert`).
 $$
 $$note
-Greenplum only needs SSL CA
+Greenplum only needs CA Certificate
 $$
 
 $$section
