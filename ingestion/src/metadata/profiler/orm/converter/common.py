@@ -85,7 +85,11 @@ class CommonMapTypes:
         """returns an ORM type"""
         return {
             sqlalchemy.NUMERIC: {DataType.NUMBER, DataType.NUMERIC},
-            sqlalchemy.SMALLINT: {DataType.TINYINT, DataType.SMALLINT, DataType.BYTEINT},
+            sqlalchemy.SMALLINT: {
+                DataType.TINYINT,
+                DataType.SMALLINT,
+                DataType.BYTEINT,
+            },
             sqlalchemy.INT: {DataType.INT},
             sqlalchemy.BIGINT: {DataType.BIGINT},
             CustomTypes.BYTES.value: {DataType.BLOB, DataType.BYTES},
@@ -101,7 +105,11 @@ class CommonMapTypes:
             sqlalchemy.CHAR: {DataType.CHAR},
             sqlalchemy.VARCHAR: {DataType.VARCHAR},
             sqlalchemy.BOOLEAN: {DataType.BOOLEAN},
-            sqlalchemy.LargeBinary: {DataType.MEDIUMBLOB, DataType.BINARY, DataType.LONGBLOB},
+            sqlalchemy.LargeBinary: {
+                DataType.MEDIUMBLOB,
+                DataType.BINARY,
+                DataType.LONGBLOB,
+            },
             sqlalchemy.VARBINARY: {DataType.VARBINARY},
             CustomTypes.ARRAY.value: {DataType.ARRAY},
             sqa_types.SQAMap: {DataType.MAP},

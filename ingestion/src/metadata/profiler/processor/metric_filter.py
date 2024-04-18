@@ -15,23 +15,38 @@ from typing import List, Optional, Set, Tuple, Type, Union, cast
 from sqlalchemy import Column
 
 from ingestion.src.metadata.generated.schema.entity.services import databaseService
-from metadata.generated.schema.entity.data.table import ColumnProfilerConfig, TableProfilerConfig
+from metadata.generated.schema.configuration.profilerConfiguration import (
+    MetricConfigurationDefinition,
+    ProfilerConfiguration,
+)
+from metadata.generated.schema.entity.data.table import (
+    ColumnProfilerConfig,
+    TableProfilerConfig,
+)
+from metadata.profiler.metrics.core import (
+    ComposedMetric,
+    CustomMetric,
+    HybridMetric,
+    QueryMetric,
+    StaticMetric,
+    SystemMetric,
+    TMetric,
+)
 from metadata.profiler.metrics.registry import Metrics
-from metadata.utils.sqa_like_column import SQALikeColumn
-from metadata.generated.schema.configuration.profilerConfiguration import MetricConfigurationDefinition, ProfilerConfiguration
-from metadata.profiler.metrics.core import ComposedMetric, CustomMetric, HybridMetric, QueryMetric, StaticMetric, SystemMetric, TMetric
 from metadata.profiler.orm.converter.converter_registry import converter_registry
+from metadata.utils.sqa_like_column import SQALikeColumn
 
 
 class MetricFilter:
     """Metric filter class for profiler"""
+
     def __init__(
-            self,
-            metrics: Tuple[Type[TMetric]],
-            global_profiler_config: Optional[ProfilerConfiguration] = None,
-            table_profiler_config: Optional[TableProfilerConfig] = None,
-            column_profiler_config: Optional[List[ColumnProfilerConfig]] = None,
-        ):
+        self,
+        metrics: Tuple[Type[TMetric]],
+        global_profiler_config: Optional[ProfilerConfiguration] = None,
+        table_profiler_config: Optional[TableProfilerConfig] = None,
+        column_profiler_config: Optional[List[ColumnProfilerConfig]] = None,
+    ):
         self.metrics = metrics
         self.global_profiler_config = global_profiler_config
         self.table_profiler_config = table_profiler_config
@@ -39,7 +54,7 @@ class MetricFilter:
 
     @property
     def static_metrics(self) -> List[Type[StaticMetric]]:
-        """Get static metrics. 
+        """Get static metrics.
 
         Returns:
             List[Type[StaticMetric]]:
@@ -76,7 +91,7 @@ class MetricFilter:
     @property
     def system_metrics(self) -> List[Type[SystemMetric]]:
         """Get system metrics. System metrics represent system-level metrics.
-        
+
         Returns:
             List[Type[SystemMetric]]:
         """
@@ -88,7 +103,7 @@ class MetricFilter:
 
         Returns:
             List[Type[HybridMetric]]:
-        """        
+        """
         return self.filter_by_type(HybridMetric)
 
     def filter_by_type(self, _type: Type[TMetric]) -> List[Type[TMetric]]:
@@ -103,11 +118,11 @@ class MetricFilter:
         return [metric for metric in self.metrics if issubclass(metric, _type)]
 
     def filter_column_metrics_from_global_config(
-            self,
-            metrics: List[Type[TMetric]],
-            column: Union[Column, SQALikeColumn],
-            service_type: databaseService.DatabaseServiceType,
-        ) -> List[Optional[Type[TMetric]]]:
+        self,
+        metrics: List[Type[TMetric]],
+        column: Union[Column, SQALikeColumn],
+        service_type: databaseService.DatabaseServiceType,
+    ) -> List[Optional[Type[TMetric]]]:
         """Filter metrics based on profiler global configuration. We first check if we have config
         or if the config has metricConfiguration. If not, we return all metrics. If we have config
         we'll get the om Dtype from the SQA type (or directly from the SQALikeColumn for non SQA sources).
@@ -122,10 +137,16 @@ class MetricFilter:
         Returns:
             List[Type[TMetric]]
         """
-        if not self.global_profiler_config or (self.global_profiler_config and not self.global_profiler_config.metricConfiguration):
+        if not self.global_profiler_config or (
+            self.global_profiler_config
+            and not self.global_profiler_config.metricConfiguration
+        ):
             return [metric for metric in metrics if metric.is_col_metric()]
 
-        self.global_profiler_config.metricConfiguration = cast(List[MetricConfigurationDefinition], self.global_profiler_config.metricConfiguration)
+        self.global_profiler_config.metricConfiguration = cast(
+            List[MetricConfigurationDefinition],
+            self.global_profiler_config.metricConfiguration,
+        )
 
         # TODO: improve the expected type. Currently Column will have SQA type while SQALikeColumn will have OM type
         # Column will be returned by SQA sources while SQALikeColumn will be returned by other sources
@@ -148,8 +169,9 @@ class MetricFilter:
             None,
         )
 
-        if (not col_dtype_config or
-            (not col_dtype_config.disabled and not col_dtype_config.metrics)):
+        if not col_dtype_config or (
+            not col_dtype_config.disabled and not col_dtype_config.metrics
+        ):
             return [metric for metric in metrics if metric.is_col_metric()]
 
         if col_dtype_config.disabled:
@@ -165,9 +187,9 @@ class MetricFilter:
         return metrics
 
     def filter_column_metrics_from_table_config(
-            self,
-            metrics: List[Type[TMetric]],
-            column: Union[Column, SQALikeColumn],
+        self,
+        metrics: List[Type[TMetric]],
+        column: Union[Column, SQALikeColumn],
     ) -> List[Type[TMetric]]:
         """Filter column metrics based on table configuration. Table configuration can be source
         either from the column config or the table config (column config takes precedence over table config)
@@ -177,15 +199,15 @@ class MetricFilter:
 
         Returns:
             List[Type[TMetric]]:
-        """        
+        """
         if not self.table_profiler_config and not self.column_profiler_config:
             return [metric for metric in metrics if metric.is_col_metric()]
 
         columns_config = (
-                self.column_profiler_config
-                if self.column_profiler_config
-                else self.table_profiler_config.includeColumns
-            )
+            self.column_profiler_config
+            if self.column_profiler_config
+            else self.table_profiler_config.includeColumns
+        )
         columns_config = cast(List[ColumnProfilerConfig], columns_config)
         metric_names = next(
             (
@@ -208,10 +230,10 @@ class MetricFilter:
         return [metric for metric in metrics if metric.is_col_metric()]
 
     def get_column_metrics(
-            self,
-            metric_type: Type[TMetric],
-            column: Column,
-            service_type: Optional[databaseService.DatabaseServiceType],
+        self,
+        metric_type: Type[TMetric],
+        column: Column,
+        service_type: Optional[databaseService.DatabaseServiceType],
     ) -> List[Type[TMetric]]:
         """Get column metrics. Column metrics are metrics computed for columns.
 
@@ -219,7 +241,9 @@ class MetricFilter:
             List[Type[TMetric]]:
         """
         _metrics = self.filter_by_type(metric_type)
-        metrics = self.filter_column_metrics_from_global_config(_metrics, column, service_type)
+        metrics = self.filter_column_metrics_from_global_config(
+            _metrics, column, service_type
+        )
         if metrics:
             metrics = self.filter_column_metrics_from_table_config(metrics, column)
 

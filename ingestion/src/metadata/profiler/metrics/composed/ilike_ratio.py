@@ -16,10 +16,10 @@ ILIKE Ratio Composed Metric definition
 
 from typing import Any, Dict, Optional, Tuple
 
+from metadata.generated.schema.configuration.profilerConfiguration import MetricType
 from metadata.profiler.metrics.core import ComposedMetric
 from metadata.profiler.metrics.static.count import Count
 from metadata.profiler.metrics.static.ilike_count import ILikeCount
-from metadata.generated.schema.configuration.profilerConfiguration import MetricType
 
 
 class ILikeRatio(ComposedMetric):

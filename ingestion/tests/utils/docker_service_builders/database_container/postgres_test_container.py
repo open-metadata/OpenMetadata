@@ -11,6 +11,7 @@
 """Postgres test container for integration tests"""
 
 import json
+
 from testcontainers.postgres import PostgresContainer
 
 from .database_test_container import DataBaseTestContainer
@@ -33,15 +34,15 @@ class PostgresTestContainer(DataBaseTestContainer):
         return self.connection_url
 
     def get_config(self) -> str:
-        return json.dumps({
-            "authType": {
-                "password": "test"
-            },
-            "hostPort": f"localhost:{self.postgres_container.get_exposed_port(5432)}",
-            "username": "test",
-            "type": "Postgres",
-            "database": "test",
-        })
+        return json.dumps(
+            {
+                "authType": {"password": "test"},
+                "hostPort": f"localhost:{self.postgres_container.get_exposed_port(5432)}",
+                "username": "test",
+                "type": "Postgres",
+                "database": "test",
+            }
+        )
 
     def get_source_config(self) -> str:
         return json.dumps(

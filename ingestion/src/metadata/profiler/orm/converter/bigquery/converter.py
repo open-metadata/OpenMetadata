@@ -29,7 +29,7 @@ class BigqueryMapTypes(CommonMapTypes):
         ):
             return bigquery_type_mapper(self._TYPE_MAP, col)
         return super().return_custom_type(col, table_service_type)
-    
+
     @staticmethod
     def map_sqa_to_om_types() -> dict:
         """returns an ORM type"""

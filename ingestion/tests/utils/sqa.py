@@ -2,12 +2,12 @@
 
 from typing import Sequence
 
-from sqlalchemy import create_engine
-from sqlalchemy import Column, Integer, String
-from sqlalchemy.orm import declarative_base, Session
+from sqlalchemy import Column, Integer, String, create_engine
+from sqlalchemy.orm import Session, declarative_base
 from sqlalchemy.orm.decl_api import DeclarativeMeta
 
 Base = declarative_base()
+
 
 class User(Base):
     __tablename__ = "users"
@@ -35,8 +35,8 @@ class SQATestUtils:
 
     def load_user_data(self):
         data = [
-            User(name="John", fullname="John Doe", nickname="johnny b goode", age=30), # type: ignore
-            User(name="Jane", fullname="Jone Doe", nickname=None, age=31), # type: ignore
+            User(name="John", fullname="John Doe", nickname="johnny b goode", age=30),  # type: ignore
+            User(name="Jane", fullname="Jone Doe", nickname=None, age=31),  # type: ignore
         ] * 20
         self.load_data(data)
 

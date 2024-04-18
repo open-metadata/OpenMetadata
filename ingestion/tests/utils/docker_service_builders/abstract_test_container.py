@@ -14,15 +14,16 @@ from abc import ABC, abstractmethod
 
 from testcontainers.core.container import DockerContainer
 
+
 class AbstractTestContainer(ABC):
     @abstractmethod
     def get_connection_url(self) -> str:
         raise NotImplementedError
-    
+
     @abstractmethod
     def get_config(self) -> str:
         raise NotImplementedError
-    
+
     @abstractmethod
     def get_source_config(self) -> str:
         raise NotImplementedError
@@ -34,7 +35,7 @@ class AbstractTestContainer(ABC):
     @abstractmethod
     def stop(self):
         raise NotImplementedError
-    
+
     @property
     @abstractmethod
     def container(self) -> DockerContainer:

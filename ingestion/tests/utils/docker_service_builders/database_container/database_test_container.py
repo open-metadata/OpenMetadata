@@ -21,4 +21,3 @@ class DataBaseTestContainer(AbstractTestContainer):
         self.engine = self.sqa_test_utils.engine
         self.sqa_test_utils.create_user_table()
         self.sqa_test_utils.load_user_data()
-        

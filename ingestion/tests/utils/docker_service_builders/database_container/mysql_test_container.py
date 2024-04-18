@@ -11,6 +11,7 @@
 """MySQL test container for integration tests"""
 
 import json
+
 from testcontainers.mysql import MySqlContainer
 
 from .database_test_container import DataBaseTestContainer
@@ -33,16 +34,16 @@ class MySQLTestContainer(DataBaseTestContainer):
         return self.connection_url
 
     def get_config(self) -> str:
-        return json.dumps({
-            "authType": {
-                "password": "test"
-            },
-            "hostPort": f"localhost:{self.mysql_container.get_exposed_port(3306)}",
-            "username": "test",
-            "type": "Mysql",
-            "databaseSchema": "test",
-        })
-    
+        return json.dumps(
+            {
+                "authType": {"password": "test"},
+                "hostPort": f"localhost:{self.mysql_container.get_exposed_port(3306)}",
+                "username": "test",
+                "type": "Mysql",
+                "databaseSchema": "test",
+            }
+        )
+
     def get_source_config(self) -> str:
         return json.dumps({})
 

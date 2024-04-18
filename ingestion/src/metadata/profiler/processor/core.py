@@ -16,17 +16,17 @@ from __future__ import annotations
 
 import traceback
 from datetime import datetime, timezone
-from typing import Any, Dict, Generic, List, Optional, Set, Tuple, Type, cast
+from typing import Any, Dict, Generic, List, Optional, Set, Tuple, Type
 
 from pydantic import ValidationError
 from sqlalchemy import Column
 from sqlalchemy.orm import DeclarativeMeta
 
-from metadata.profiler.processor.metric_filter import MetricFilter
-from metadata.generated.schema.configuration.profilerConfiguration import ProfilerConfiguration
-from metadata.generated.schema.settings.settings import Settings
 from metadata.generated.schema.api.data.createTableProfile import (
     CreateTableProfileRequest,
+)
+from metadata.generated.schema.configuration.profilerConfiguration import (
+    ProfilerConfiguration,
 )
 from metadata.generated.schema.entity.data.table import (
     ColumnName,
@@ -36,6 +36,7 @@ from metadata.generated.schema.entity.data.table import (
     TableData,
     TableProfile,
 )
+from metadata.generated.schema.settings.settings import Settings
 from metadata.generated.schema.tests.customMetric import (
     CustomMetric as CustomMetricEntity,
 )
@@ -43,17 +44,15 @@ from metadata.profiler.api.models import ProfilerResponse, ThreadPoolMetrics
 from metadata.profiler.interface.profiler_interface import ProfilerInterface
 from metadata.profiler.metrics.core import (
     ComposedMetric,
-    CustomMetric,
     HybridMetric,
     MetricTypes,
     QueryMetric,
     StaticMetric,
-    SystemMetric,
     TMetric,
 )
-from metadata.profiler.metrics.registry import Metrics
 from metadata.profiler.metrics.static.row_count import RowCount
 from metadata.profiler.orm.registry import NOT_COMPUTE
+from metadata.profiler.processor.metric_filter import MetricFilter
 from metadata.profiler.processor.sample_data_handler import upload_sample_data
 from metadata.utils.constants import SAMPLE_DATA_DEFAULT_COUNT
 from metadata.utils.execution_time_tracker import calculate_execution_time
@@ -94,7 +93,11 @@ class Profiler(Generic[TMetric]):  # pylint: disable=too-many-public-methods
         :param ignore_cols: List of columns to ignore when computing the profile
         :param profile_sample: % of rows to use for sampling column metrics
         """
-        self.global_profiler_configuration: Optional[ProfilerConfiguration] = global_profiler_configuration.config_value if global_profiler_configuration else None
+        self.global_profiler_configuration: Optional[ProfilerConfiguration] = (
+            global_profiler_configuration.config_value
+            if global_profiler_configuration
+            else None
+        )
         self.profiler_interface = profiler_interface
         self.source_config = self.profiler_interface.source_config
         self.include_columns = include_columns
@@ -224,7 +227,6 @@ class Profiler(Generic[TMetric]):  # pylint: disable=too-many-public-methods
             f"No profile data computed for {self.profiler_interface.table_entity.fullyQualifiedName.__root__}"
         )
 
-
     def get_custom_metrics(
         self, column_name: Optional[str] = None
     ) -> Optional[List[CustomMetricEntity]]:
@@ -286,7 +288,9 @@ class Profiler(Generic[TMetric]):  # pylint: disable=too-many-public-methods
             )
             return
 
-        for metric in self.metric_filter.get_column_metrics(ComposedMetric, col, self.profiler_interface.table_entity.serviceType):
+        for metric in self.metric_filter.get_column_metrics(
+            ComposedMetric, col, self.profiler_interface.table_entity.serviceType
+        ):
             # Composed metrics require the results as an argument
             logger.debug(f"Running composed metric {metric.name()} for {col.name}")
 
@@ -311,7 +315,9 @@ class Profiler(Generic[TMetric]):  # pylint: disable=too-many-public-methods
                 "We do not have any results to base our Hybrid Metrics. Stopping!"
             )
             return
-        for metric in self.metric_filter.get_column_metrics(HybridMetric, col, self.profiler_interface.table_entity.serviceType):
+        for metric in self.metric_filter.get_column_metrics(
+            HybridMetric, col, self.profiler_interface.table_entity.serviceType
+        ):
             logger.debug(f"Running hybrid metric {metric.name()} for {col.name}")
             self._column_results[col.name][
                 metric.name()
@@ -383,7 +389,11 @@ class Profiler(Generic[TMetric]):  # pylint: disable=too-many-public-methods
             ThreadPoolMetrics(
                 metrics=[
                     metric
-                    for metric in self.metric_filter.get_column_metrics(StaticMetric, column, self.profiler_interface.table_entity.serviceType)
+                    for metric in self.metric_filter.get_column_metrics(
+                        StaticMetric,
+                        column,
+                        self.profiler_interface.table_entity.serviceType,
+                    )
                     if not metric.is_window_metric()
                 ],
                 metric_type=MetricTypes.Static,
@@ -400,13 +410,19 @@ class Profiler(Generic[TMetric]):  # pylint: disable=too-many-public-methods
                 table=self.table,
             )
             for column in self.columns
-            for metric in self.metric_filter.get_column_metrics(QueryMetric, column, self.profiler_interface.table_entity.serviceType)
+            for metric in self.metric_filter.get_column_metrics(
+                QueryMetric, column, self.profiler_interface.table_entity.serviceType
+            )
         ]
         window_metrics = [
             ThreadPoolMetrics(
                 metrics=[
                     metric
-                    for metric in self.metric_filter.get_column_metrics(StaticMetric, column, self.profiler_interface.table_entity.serviceType)
+                    for metric in self.metric_filter.get_column_metrics(
+                        StaticMetric,
+                        column,
+                        self.profiler_interface.table_entity.serviceType,
+                    )
                     if metric.is_window_metric()
                 ],
                 metric_type=MetricTypes.Window,

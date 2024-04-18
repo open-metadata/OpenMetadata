@@ -16,6 +16,7 @@ from .abstract_test_container import AbstractTestContainer
 from .database_container.mysql_test_container import MySQLTestContainer
 from .database_container.postgres_test_container import PostgresTestContainer
 
+
 class ContainerBuilder:
     def __init__(self) -> None:
         self.containers: List[AbstractTestContainer] = []

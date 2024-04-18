@@ -15,9 +15,9 @@ OpenMetadata high-level API Server test
 from unittest import TestCase
 
 from metadata.generated.schema.configuration.profilerConfiguration import (
-    ProfilerConfiguration,
     MetricConfigurationDefinition,
-    MetricType
+    MetricType,
+    ProfilerConfiguration,
 )
 from metadata.generated.schema.entity.data.table import DataType
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
@@ -26,10 +26,11 @@ from metadata.generated.schema.entity.services.connections.metadata.openMetadata
 from metadata.generated.schema.security.client.openMetadataJWTClientConfig import (
     OpenMetadataJWTClientConfig,
 )
-from metadata.generated.schema.settings.settings import SettingType, Settings
+from metadata.generated.schema.settings.settings import Settings, SettingType
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 
 TEST_TOKEN = "eyJraWQiOiJHYjM4OWEtOWY3Ni1nZGpzLWE5MmotMDI0MmJrOTQzNTYiLCJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9.eyJzdWIiOiJhZG1pbiIsImlzQm90IjpmYWxzZSwiaXNzIjoib3Blbi1tZXRhZGF0YS5vcmciLCJpYXQiOjE2NjM5Mzg0NjIsImVtYWlsIjoiYWRtaW5Ab3Blbm1ldGFkYXRhLm9yZyJ9.tS8um_5DKu7HgzGBzS1VTA5uUjKWOCU0B_j08WXBiEC0mr0zNREkqVfwFDD-d24HlNEbrqioLsBuFRiwIWKc1m_ZlVQbG7P36RUxhuv2vbSp80FKyNM-Tj93FDzq91jsyNmsQhyNv_fNr3TXfzzSPjHt8Go0FMMP66weoKMgW2PbXlhVKwEuXUHyakLLzewm9UMeQaEiRzhiTMU3UkLXcKbYEJJvfNFcLwSl9W8JCO_l0Yj3ud-qt_nQYEZwqW6u5nfdQllN133iikV4fM5QZsMCnm8Rq1mvLR0y9bmJiD7fwM1tmJ791TUWqmKaTnP49U493VanKpUAfzIiOiIbhg"
+
 
 class OMetaGlossaryTest(TestCase):
     """
@@ -41,7 +42,7 @@ class OMetaGlossaryTest(TestCase):
         hostPort="http://localhost:8585/api",
         authProvider="openmetadata",
         securityConfig=OpenMetadataJWTClientConfig(
-            jwtToken=TEST_TOKEN, # type: ignore
+            jwtToken=TEST_TOKEN,  # type: ignore
         ),
     )
     metadata = OpenMetadata(server_config)
@@ -56,25 +57,24 @@ class OMetaGlossaryTest(TestCase):
                 MetricConfigurationDefinition(
                     dataType=DataType.INT,
                     disabled=False,
-                    metrics=[MetricType.COUNT, MetricType.DISTINCT_COUNT]
+                    metrics=[MetricType.COUNT, MetricType.DISTINCT_COUNT],
                 ),
                 MetricConfigurationDefinition(
-                    dataType=DataType.DATETIME,
-                    disabled=True,
-                    metrics=None
+                    dataType=DataType.DATETIME, disabled=True, metrics=None
                 ),
             ]
         )
 
-        settings = Settings(config_type=SettingType.profilerConfiguration, config_value=profiler_configuration)
+        settings = Settings(
+            config_type=SettingType.profilerConfiguration,
+            config_value=profiler_configuration,
+        )
         created_profiler_settings = self.metadata.create_or_update_settings(settings)
         self.assertEqual(settings.json(), created_profiler_settings.json())
 
         profiler_configuration.metricConfiguration.append(
             MetricConfigurationDefinition(
-                dataType=DataType.STRING,
-                disabled=False,
-                metrics=[MetricType.HISTOGRAM]
+                dataType=DataType.STRING, disabled=False, metrics=[MetricType.HISTOGRAM]
             )
         )
 

@@ -20,10 +20,10 @@ from typing import Dict, List, Optional
 from sqlalchemy import text
 from sqlalchemy.orm import DeclarativeMeta, Session
 
+from metadata.generated.schema.configuration.profilerConfiguration import MetricType
 from metadata.generated.schema.entity.services.connections.database.bigQueryConnection import (
     BigQueryConnection,
 )
-from metadata.generated.schema.configuration.profilerConfiguration import MetricType
 from metadata.generated.schema.entity.services.databaseService import DatabaseService
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.profiler.metrics.core import SystemMetric

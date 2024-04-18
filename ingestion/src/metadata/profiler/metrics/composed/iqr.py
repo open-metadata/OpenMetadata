@@ -16,10 +16,10 @@ Inter Quartile Range Composed Metric definition
 
 from typing import Any, Dict, Optional, Tuple
 
+from metadata.generated.schema.configuration.profilerConfiguration import MetricType
 from metadata.profiler.metrics.core import ComposedMetric
 from metadata.profiler.metrics.window.first_quartile import FirstQuartile
 from metadata.profiler.metrics.window.third_quartile import ThirdQuartile
-from metadata.generated.schema.configuration.profilerConfiguration import MetricType
 
 
 class InterQuartileRange(ComposedMetric):

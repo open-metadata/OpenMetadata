@@ -18,10 +18,10 @@ import json
 
 from sqlalchemy import column, distinct, func
 
+from metadata.generated.schema.configuration.profilerConfiguration import MetricType
 from metadata.profiler.metrics.core import StaticMetric, _label
 from metadata.profiler.orm.functions.count import CountFn
 from metadata.utils.logger import profiler_logger
-from metadata.generated.schema.configuration.profilerConfiguration import MetricType
 
 logger = profiler_logger()
 

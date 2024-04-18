@@ -16,22 +16,28 @@ To run this we need OpenMetadata server up and running.
 No sample data is required beforehand
 """
 
+import json
 from typing import List
 from unittest import TestCase
-import json
 
+from metadata.generated.schema.configuration.profilerConfiguration import (
+    MetricConfigurationDefinition,
+    MetricType,
+    ProfilerConfiguration,
+)
+from metadata.generated.schema.entity.data.table import DataType, Table
+from metadata.generated.schema.entity.services.databaseService import DatabaseService
+from metadata.generated.schema.settings.settings import Settings, SettingType
 from metadata.workflow.metadata import MetadataWorkflow
 from metadata.workflow.profiler import ProfilerWorkflow
-from metadata.generated.schema.entity.services.databaseService import DatabaseService
-from metadata.generated.schema.entity.data.table import Table
-from metadata.generated.schema.configuration.profilerConfiguration import ProfilerConfiguration
-from metadata.generated.schema.configuration.profilerConfiguration import MetricConfigurationDefinition
-from metadata.generated.schema.configuration.profilerConfiguration import MetricType
-from metadata.generated.schema.entity.data.table import DataType
-from metadata.generated.schema.settings.settings import SettingType, Settings
 
 from ...utils.docker_service_builders.test_container_builder import ContainerBuilder
-from ..integration_base import int_admin_ometa, METADATA_INGESTION_CONFIG_TEMPLATE, PROFILER_INGESTION_CONFIG_TEMPLATE
+from ..integration_base import (
+    METADATA_INGESTION_CONFIG_TEMPLATE,
+    PROFILER_INGESTION_CONFIG_TEMPLATE,
+    int_admin_ometa,
+)
+
 
 class TestSQAProfiler(TestCase):
     @classmethod
@@ -66,7 +72,9 @@ class TestSQAProfiler(TestCase):
         cls.container_builder.stop_all_containers()
         db_entities = []
         for container in cls.container_builder.containers:
-            db_entities.append(cls.metadata.get_by_name(DatabaseService, type(container).__name__))
+            db_entities.append(
+                cls.metadata.get_by_name(DatabaseService, type(container).__name__)
+            )
         for db_entity in db_entities:
             cls.metadata.delete(DatabaseService, db_entity.id, True, True)
 
@@ -77,7 +85,7 @@ class TestSQAProfiler(TestCase):
                 config = PROFILER_INGESTION_CONFIG_TEMPLATE.format(
                     type=container.connector_type,
                     service_config=container.get_config(),
-                    service_name=type(container).__name__
+                    service_name=type(container).__name__,
                 )
                 profiler_workflow = ProfilerWorkflow.create(
                     json.loads(config),
@@ -86,7 +94,9 @@ class TestSQAProfiler(TestCase):
                 profiler_workflow.raise_from_status()
                 profiler_workflow.stop()
             except Exception as e:
-                self.fail(f"Profiler workflow failed for {type(container).__name__} with error {e}")
+                self.fail(
+                    f"Profiler workflow failed for {type(container).__name__} with error {e}"
+                )
 
         tables: List[Table] = self.metadata.list_all_entities(Table)
         for table in tables:
@@ -104,17 +114,18 @@ class TestSQAProfiler(TestCase):
                 MetricConfigurationDefinition(
                     dataType=DataType.INT,
                     disabled=False,
-                    metrics=[MetricType.valuesCount, MetricType.distinctCount]
+                    metrics=[MetricType.valuesCount, MetricType.distinctCount],
                 ),
                 MetricConfigurationDefinition(
-                    dataType=DataType.VARCHAR,
-                    disabled=True,
-                    metrics=None
+                    dataType=DataType.VARCHAR, disabled=True, metrics=None
                 ),
             ]
         )
 
-        settings = Settings(config_type=SettingType.profilerConfiguration, config_value=profiler_configuration)
+        settings = Settings(
+            config_type=SettingType.profilerConfiguration,
+            config_value=profiler_configuration,
+        )
         self.metadata.create_or_update_settings(settings)
 
         for container in self.container_builder.containers:
@@ -122,7 +133,7 @@ class TestSQAProfiler(TestCase):
                 config = PROFILER_INGESTION_CONFIG_TEMPLATE.format(
                     type=container.connector_type,
                     service_config=container.get_config(),
-                    service_name=type(container).__name__
+                    service_name=type(container).__name__,
                 )
                 profiler_workflow = ProfilerWorkflow.create(
                     json.loads(config),
@@ -131,7 +142,9 @@ class TestSQAProfiler(TestCase):
                 profiler_workflow.raise_from_status()
                 profiler_workflow.stop()
             except Exception as e:
-                self.fail(f"Profiler workflow failed for {type(container).__name__} with error {e}")
+                self.fail(
+                    f"Profiler workflow failed for {type(container).__name__} with error {e}"
+                )
 
         tables: List[Table] = self.metadata.list_all_entities(Table)
         for table in tables:
@@ -142,11 +155,10 @@ class TestSQAProfiler(TestCase):
             self.assertIsNotNone(table.profile)
             for column in columns:
                 if column.dataType == DataType.INT:
-                    self.assertIsNone(column.profile.mean) 
+                    self.assertIsNone(column.profile.mean)
                     self.assertIsNotNone(column.profile.valuesCount)
                     self.assertIsNotNone(column.profile.distinctCount)
                 if column.dataType == DataType.STRING:
-                    self.assertIsNone(column.profile.mean) 
+                    self.assertIsNone(column.profile.mean)
                     self.assertIsNone(column.profile.valuesCount)
                     self.assertIsNone(column.profile.distinctCount)
-

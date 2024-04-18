@@ -17,7 +17,9 @@ Count Metric definition
 
 from sqlalchemy import column, func
 
-from ingestion.src.metadata.generated.schema.configuration.profilerConfiguration import MetricType
+from ingestion.src.metadata.generated.schema.configuration.profilerConfiguration import (
+    MetricType,
+)
 from metadata.profiler.metrics.core import StaticMetric, _label
 from metadata.profiler.orm.functions.count import CountFn
 from metadata.utils.logger import profiler_logger

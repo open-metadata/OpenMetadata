@@ -18,7 +18,9 @@ from typing import List, Optional, Tuple, cast
 
 from sqlalchemy import MetaData
 
-from metadata.generated.schema.configuration.profilerConfiguration import ProfilerConfiguration
+from metadata.generated.schema.configuration.profilerConfiguration import (
+    ProfilerConfiguration,
+)
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
 from metadata.generated.schema.entity.data.table import ColumnProfilerConfig, Table

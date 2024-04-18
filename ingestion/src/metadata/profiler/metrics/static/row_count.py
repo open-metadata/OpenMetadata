@@ -16,10 +16,11 @@ from typing import Callable
 
 from sqlalchemy import func
 
+from metadata.generated.schema.configuration.profilerConfiguration import MetricType
 from metadata.generated.schema.entity.data.table import Table
 from metadata.profiler.adaptors.nosql_adaptor import NoSQLAdaptor
 from metadata.profiler.metrics.core import StaticMetric, _label
-from metadata.generated.schema.configuration.profilerConfiguration import MetricType
+
 
 class RowCount(StaticMetric):
     """
