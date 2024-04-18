@@ -64,7 +64,7 @@ export const EXPLORE_PAGE_TABS: Record<
   [EntityType.SearchIndex]: 'search indexes',
   [EntityType.Table]: 'tables',
   [EntityType.StoreProcedure]: 'stored procedures',
-  [EntityType.Glossary]: 'glossaries',
+  [EntityType.Glossary]: 'glossary terms',
 } as const;
 
 export const SEARCH_INDEX: Record<
