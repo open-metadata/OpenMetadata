@@ -51,6 +51,7 @@ const mockPush = jest.fn();
 jest.mock('react-router-dom', () => ({
   useLocation: jest.fn().mockReturnValue({
     search: 'queryFilter={"some":"value"}',
+    pathname: '/explore',
   }),
   useParams: jest.fn().mockReturnValue({
     tab: 'tabValue',
