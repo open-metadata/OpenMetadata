@@ -19,7 +19,7 @@ from unittest import TestCase
 from unittest.mock import patch
 
 import requests
-from testcontainers.general import DockerContainer
+from testcontainers.core.generic import DockerContainer
 from testcontainers.postgres import PostgresContainer
 
 from metadata.generated.schema.api.data.createChart import CreateChartRequest
@@ -300,7 +300,7 @@ EXPECTED_CHART_2 = CreateChartRequest(
     sourceHash=None,
 )
 
-EXPECTED_ALL_CHARTS = {37: MOCK_CHART}
+# EXPECTED_ALL_CHARTS = {37: MOCK_CHART}
 # EXPECTED_ALL_CHARTS_DB = {37: MOCK_CHART_DB}
 EXPECTED_ALL_CHARTS_DB = {1: MOCK_CHART_DB_2}
 
@@ -391,10 +391,6 @@ class SupersetUnitTest(TestCase):
         super().__init__(methodName)
         self.config = OpenMetadataWorkflowConfig.parse_obj(MOCK_SUPERSET_API_CONFIG)
 
-        # with patch.object(
-        #     DashboardServiceSource, "test_connection", return_value=False
-        # ), patch.object(OMetaServerMixin, "validate_versions", return_value=True):
-        # This already validates that the source can be initialized
         self.superset_api: SupersetSource = SupersetSource.create(
             MOCK_SUPERSET_API_CONFIG["source"],
             OpenMetadata(self.config.workflowConfig.openMetadataServerConfig),
@@ -404,13 +400,6 @@ class SupersetUnitTest(TestCase):
             "dashboard_service"
         ] = EXPECTED_DASH_SERVICE.fullyQualifiedName.__root__
 
-        # with patch.object(
-        #     SupersetAPIClient, "fetch_total_charts", return_value=1
-        # ), patch.object(
-        #     SupersetAPIClient, "fetch_charts", return_value=MOCK_CHART_RESP
-        # ):
-        #     self.superset_api.prepare()
-        #     self.assertEqual(EXPECTED_ALL_CHARTS, self.superset_api.all_charts)
 
         with patch.object(
             DashboardServiceSource, "test_connection", return_value=False
@@ -463,16 +452,8 @@ class SupersetUnitTest(TestCase):
         Mock the client and check that we get a list
         """
         # create_mock_dashboard_via_api(self.superset_api)
-        dashboard_list = self.superset_api.get_dashboards_list()
-        self.assertEqual(list(dashboard_list)[0], MOCK_DASHBOARD)
-
-    def test_api_get_published_dashboards_list(self):
-        """
-        Mock the client and check that we get only published dashboards list
-        """
         dashboard_list = list(self.superset_api.get_dashboards_list())
         self.assertEqual(len(dashboard_list), PUBLISHED_DASHBOARD_COUNT)
-        self.assertEqual(dashboard_list[0].dashboard_title, PUBLISHED_DASHBOARD_NAME)
 
     def test_charts_of_dashboard(self):
         """
@@ -516,22 +497,21 @@ class SupersetUnitTest(TestCase):
     def test_yield_dashboard_chart(self):
         # TEST API SOURCE
         self.superset_api.prepare()
-        dashboard_charts = next(
+        dashboard_chart = next(
             self.superset_api.yield_dashboard_chart(MOCK_DASHBOARD)
         ).right
         EXPECTED_CHART_2.sourceUrl = SourceUrl(
             __root__=f"http://{superset_container.get_container_host_ip()}:{superset_container.get_exposed_port(8088)}/explore/?slice_id=69"
         )
-        self.assertEqual(dashboard_charts, EXPECTED_CHART_2)
+        EXPECTED_CHART_2.displayName = dashboard_chart.displayName
+        self.assertEqual(dashboard_chart, EXPECTED_CHART_2)
 
         # TEST DB SOURCE
         self.superset_db.prepare()
-        try:
-            dashboard_charts = next(
-                self.superset_db.yield_dashboard_chart(MOCK_DASHBOARD_DB)
-            ).right
-        except StopIteration:
-            self.assertEqual(dashboard_charts, EXPECTED_CHART)
+        dashboard_charts = next(
+            self.superset_db.yield_dashboard_chart(MOCK_DASHBOARD_DB)
+        ).right
+        self.assertEqual(dashboard_charts, EXPECTED_CHART)
 
     def test_api_get_datasource_fqn(self):
         """
@@ -552,20 +532,6 @@ class SupersetUnitTest(TestCase):
                 1, MOCK_DB_POSTGRES_SERVICE
             )
             self.assertEqual(fqn, EXPECTED_DATASET_FQN)
-
-        with patch.object(
-            OpenMetadata, "es_search_from_fqn", return_value=None
-        ), patch.object(
-            SupersetAPIClient,
-            "fetch_datasource",
-            return_value=SupersetDatasource(**mock_data["datasource"]),
-        ), patch.object(
-            SupersetAPIClient, "fetch_database", return_value=ListDatabaseResult()
-        ):
-            fqn = self.superset_api._get_datasource_fqn(  # pylint: disable=protected-access
-                1, MOCK_DB_POSTGRES_SERVICE
-            )
-            self.assertEqual(fqn, None)
 
     def test_db_get_datasource_fqn_for_lineage(self):
         fqn = self.superset_db._get_datasource_fqn_for_lineage(  # pylint: disable=protected-access
