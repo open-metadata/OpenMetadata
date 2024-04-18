@@ -68,7 +68,7 @@ import {
   isProtectedRoute,
 } from '../../../utils/AuthProvider.util';
 import { escapeESReservedCharacters } from '../../../utils/StringsUtils';
-import { showErrorToast } from '../../../utils/ToastUtils';
+import { showErrorToast, showInfoToast } from '../../../utils/ToastUtils';
 import {
   getUserDataFromOidc,
   matchUserDetails,
@@ -195,6 +195,7 @@ export const AuthProvider = ({
     clearTimeout(timeoutId);
     if (forceLogout) {
       onLogoutHandler();
+      showInfoToast(t('message.session-expired'));
     } else {
       history.push(ROUTES.SIGNIN);
     }
@@ -673,6 +674,7 @@ export const AuthProvider = ({
       onLoginHandler,
       onLogoutHandler,
       handleSuccessfulLogin,
+      trySilentSignIn,
       handleFailedLogin,
       updateAxiosInterceptors: initializeAxiosInterceptors,
     });
