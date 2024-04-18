@@ -64,6 +64,7 @@ const SearchDropdown: FC<SearchDropdownProps> = ({
   onSearch,
   index,
   independent = false,
+  hideCounts = false,
 }) => {
   const tabsInfo = searchClassBase.getTabsInfo();
   const { t } = useTranslation();
@@ -89,7 +90,8 @@ const SearchDropdown: FC<SearchDropdownProps> = ({
           item,
           selectedOptionsObj.indexOf(item) !== -1,
           highlight ? searchText : '',
-          showProfilePicture
+          showProfilePicture,
+          hideCounts
         ),
       }));
     } else {
@@ -99,7 +101,8 @@ const SearchDropdown: FC<SearchDropdownProps> = ({
           selectedOptionsObj,
           true,
           highlight ? searchText : '',
-          showProfilePicture
+          showProfilePicture,
+          hideCounts
         ) || [];
 
       // Filtering out unselected options
@@ -114,7 +117,8 @@ const SearchDropdown: FC<SearchDropdownProps> = ({
           unselectedOptions,
           false,
           highlight ? searchText : '',
-          showProfilePicture
+          showProfilePicture,
+          hideCounts
         ) || [];
 
       return [...selectedOptionKeys, ...otherOptions];

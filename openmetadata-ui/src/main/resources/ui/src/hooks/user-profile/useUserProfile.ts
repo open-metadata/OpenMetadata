@@ -19,6 +19,7 @@ import {
   getImageWithResolutionAndFallback,
   ImageQuality,
 } from '../../utils/ProfilerUtils';
+import { getUserWithImage } from '../../utils/UserDataUtils';
 import { useApplicationStore } from '../useApplicationStore';
 
 let userProfilePicsLoading: string[] = [];
@@ -67,20 +68,15 @@ export const useUserProfile = ({
     userProfilePicsLoading = [...userProfilePicsLoading, name];
 
     try {
-      const user = await getUserByName(name, { fields: 'profile' });
-      const profile =
-        getImageWithResolutionAndFallback(
-          ImageQuality['6x'],
-          user.profile?.images
-        ) ?? '';
+      let user = await getUserByName(name, { fields: 'profile' });
+      user = getUserWithImage(user);
 
       updateUserProfilePics({
         id: user.name,
         user,
       });
-      userProfilePicsLoading = userProfilePicsLoading.filter((p) => p !== name);
 
-      setProfilePic(profile);
+      userProfilePicsLoading = userProfilePicsLoading.filter((p) => p !== name);
     } catch (error) {
       // Error
       userProfilePicsLoading = userProfilePicsLoading.filter((p) => p !== name);

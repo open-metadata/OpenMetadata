@@ -67,7 +67,18 @@ CREATE INDEX apps_extension_time_series_index ON apps_extension_time_series (app
 CREATE INDEX index_suggestions_type ON suggestions (suggestionType);
 CREATE INDEX index_suggestions_status ON suggestions (status);
 
+
 -- Add the supportsProfiler field to the DynamoDB connection configuration
 UPDATE dbservice_entity
 SET json = jsonb_set(json::jsonb, '{connection,config,supportsProfiler}', 'true'::jsonb) 
 WHERE serviceType = 'DynamoDB';
+
+-- Migrate 'QlikSenseDataModel' & 'QlikCloudDataModel' into single entity 'QlikDataModel'
+UPDATE dashboard_data_model_entity
+SET json = jsonb_set(
+    json, 
+    '{dataModelType}', 
+    '"QlikDataModel"', 
+    true
+)
+WHERE json->>'dataModelType' IN ('QlikSenseDataModel', 'QlikCloudDataModel');

@@ -124,6 +124,7 @@ import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.LifeCycle;
 import org.openmetadata.schema.type.ProviderType;
 import org.openmetadata.schema.type.Relationship;
+import org.openmetadata.schema.type.SuggestionType;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.TaskType;
 import org.openmetadata.schema.type.ThreadType;
@@ -145,7 +146,10 @@ import org.openmetadata.service.jdbi3.CollectionDAO.ExtensionRecord;
 import org.openmetadata.service.jdbi3.FeedRepository.TaskWorkflow;
 import org.openmetadata.service.jdbi3.FeedRepository.ThreadContext;
 import org.openmetadata.service.resources.tags.TagLabelUtil;
+import org.openmetadata.service.search.SearchClient;
+import org.openmetadata.service.search.SearchListFilter;
 import org.openmetadata.service.search.SearchRepository;
+import org.openmetadata.service.search.SearchSortFilter;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.FullyQualifiedName;
@@ -972,6 +976,45 @@ public abstract class EntityRepository<T extends EntityInterface> {
     if (supportsSearch) {
       searchRepository.softDeleteOrRestoreEntity(entity, false);
     }
+  }
+
+  public ResultList<T> listFromSearchWithOffset(
+      UriInfo uriInfo,
+      Fields fields,
+      SearchListFilter searchListFilter,
+      int limit,
+      int offset,
+      String q)
+      throws IOException {
+    return listFromSearchWithOffset(uriInfo, fields, searchListFilter, limit, offset, null, q);
+  }
+
+  public ResultList<T> listFromSearchWithOffset(
+      UriInfo uriInfo,
+      Fields fields,
+      SearchListFilter searchListFilter,
+      int limit,
+      int offset,
+      SearchSortFilter searchSortFilter,
+      String q)
+      throws IOException {
+    List<T> entityList = new ArrayList<>();
+    Long total = 0L;
+
+    if (limit > 0) {
+      SearchClient.SearchResultListMapper results =
+          searchRepository.listWithOffset(
+              searchListFilter, limit, offset, entityType, searchSortFilter, q);
+      total = results.getTotal();
+      for (Map<String, Object> json : results.getResults()) {
+        T entity = setFieldsInternal(JsonUtils.readOrConvertValue(json, entityClass), fields);
+        setInheritedFields(entity, fields);
+        clearFieldsInternal(entity, fields);
+        entityList.add(withHref(uriInfo, entity));
+      }
+      return new ResultList<>(entityList, offset, limit, total.intValue());
+    }
+    throw new IllegalArgumentException("Limit should be greater than 0");
   }
 
   @Transaction
@@ -1907,6 +1950,25 @@ public abstract class EntityRepository<T extends EntityInterface> {
     return Entity.getEntityReferenceByName(Entity.DOMAIN, domainFqn, NON_DELETED);
   }
 
+  public final void validateDomain(EntityReference domain) {
+    if (!supportsDomain) {
+      throw new IllegalArgumentException(CatalogExceptionMessage.invalidField(FIELD_DOMAIN));
+    }
+    Entity.getEntityReferenceById(Entity.DOMAIN, domain.getId(), NON_DELETED);
+  }
+
+  public final void validateDataProducts(List<EntityReference> dataProducts) {
+    if (!supportsDataProducts) {
+      throw new IllegalArgumentException(CatalogExceptionMessage.invalidField(FIELD_DATA_PRODUCTS));
+    }
+
+    if (!nullOrEmpty(dataProducts)) {
+      for (EntityReference dataProduct : dataProducts) {
+        Entity.getEntityReferenceById(Entity.DATA_PRODUCT, dataProduct.getId(), NON_DELETED);
+      }
+    }
+  }
+
   /** Override this method to support downloading CSV functionality */
   public String exportToCsv(String name, String user) throws IOException {
     throw new IllegalArgumentException(csvNotSupported(entityType));
@@ -1934,13 +1996,20 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
   }
 
-  public SuggestionRepository.SuggestionWorkflow getSuggestionWorkflow(Suggestion suggestion) {
-    return new SuggestionRepository.SuggestionWorkflow(suggestion);
+  public SuggestionRepository.SuggestionWorkflow getSuggestionWorkflow(EntityInterface entity) {
+    return new SuggestionRepository.SuggestionWorkflow(entity);
   }
 
   public EntityInterface applySuggestion(
       EntityInterface entity, String childFQN, Suggestion suggestion) {
     return entity;
+  }
+
+  /**
+   * Bring in the necessary fields required to have all the information before applying a suggestion
+   */
+  public String getSuggestionFields(Suggestion suggestion) {
+    return suggestion.getType() == SuggestionType.SuggestTagLabel ? "tags" : "";
   }
 
   public final void validateTaskThread(ThreadContext threadContext) {
@@ -2263,6 +2332,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
               origDomain.getId(), Entity.DOMAIN, original.getId(), entityType, Relationship.HAS);
         }
         if (updatedDomain != null) {
+          validateDomain(updatedDomain);
           // Add relationship owner --- owns ---> ownedEntity
           LOG.info(
               "Adding domain {} for entity {}",
@@ -2283,6 +2353,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
       }
       List<EntityReference> origDataProducts = listOrEmpty(original.getDataProducts());
       List<EntityReference> updatedDataProducts = listOrEmpty(updated.getDataProducts());
+      validateDataProducts(updatedDataProducts);
       updateFromRelationships(
           FIELD_DATA_PRODUCTS,
           DATA_PRODUCT,
@@ -2299,6 +2370,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
       }
       List<EntityReference> origExperts = getEntityReferences(original.getExperts());
       List<EntityReference> updatedExperts = getEntityReferences(updated.getExperts());
+      validateUsers(updatedExperts);
       updateToRelationships(
           FIELD_EXPERTS,
           entityType,
@@ -2317,6 +2389,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
       }
       List<EntityReference> origReviewers = getEntityReferences(original.getReviewers());
       List<EntityReference> updatedReviewers = getEntityReferences(updated.getReviewers());
+      validateUsers(updatedReviewers);
       updateFromRelationships(
           "reviewers",
           Entity.USER,
@@ -2872,6 +2945,15 @@ public abstract class EntityRepository<T extends EntityInterface> {
       EntityInterface aboutEntity = threadContext.getAboutEntity();
       aboutEntity.setTags(tags);
       return aboutEntity;
+    }
+  }
+
+  // Validate if a given column exists in the table
+  public static void validateColumn(Table table, String columnName) {
+    boolean validColumn =
+        table.getColumns().stream().anyMatch(col -> col.getName().equals(columnName));
+    if (!validColumn) {
+      throw new IllegalArgumentException("Invalid column name " + columnName);
     }
   }
 }

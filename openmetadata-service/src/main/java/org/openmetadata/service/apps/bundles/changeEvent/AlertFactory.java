@@ -16,7 +16,7 @@ public class AlertFactory {
       case SLACK -> new SlackEventPublisher(config);
       case MS_TEAMS -> new MSTeamsPublisher(config);
       case G_CHAT -> new GChatPublisher(config);
-      case GENERIC -> new GenericPublisher(config);
+      case WEBHOOK -> new GenericPublisher(config);
       case EMAIL -> new EmailPublisher(config);
       case ACTIVITY_FEED -> throw new IllegalArgumentException(
           "Cannot create Activity Feed as Publisher.");

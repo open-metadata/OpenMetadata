@@ -257,6 +257,8 @@ site_menu:
     url: /how-to-guides/user-guide-for-data-stewards/overview-data-assets/glossary
   - category: How-to Guides / User Guide for Data Stewards / Overview of Data Assets / How to Create a Custom Property for a Data Asset
     url: /how-to-guides/user-guide-for-data-stewards/overview-data-assets/custom
+  - category: How-to Guides / User Guide for Data Stewards / Overview of Data Assets / Conversation Threads
+    url: /how-to-guides/user-guide-for-data-stewards/overview-data-assets/conversation
   - category: How-to Guides / User Guide for Data Stewards / Overview of Data Assets / Overview of Announcements
     url: /how-to-guides/user-guide-for-data-stewards/overview-data-assets/announcements
   - category: How-to Guides / User Guide for Data Stewards / Overview of Data Assets / How to Create an Announcement
@@ -281,6 +283,10 @@ site_menu:
     url: /how-to-guides/data-collaboration
   - category: How-to Guides / Data Collaboration / Understanding Activity Feeds
     url: /how-to-guides/data-collaboration/activity-feeds
+  - category: How-to Guides / Data Collaboration / Conversation Threads
+    url: /how-to-guides/data-collaboration/conversation
+  - category: How-to Guides / Data Collaboration / Tasks
+    url: /how-to-guides/data-collaboration/tasks
   - category: How-to Guides / Data Collaboration / How to Request for Description
     url: /how-to-guides/data-collaboration/request-description
   - category: How-to Guides / Data Collaboration / How to Request for Tags
@@ -779,14 +785,6 @@ site_menu:
     url: /connectors/ingestion/deployment
   - category: Connectors / Ingestion / Best Practices
     url: /connectors/ingestion/best-practices
-
-  - category: Features
-    url: /features
-    color: violet-70
-    icon: openmetadata
-
-  - category: Features / Discovery & Collaboration
-    url: /features/discovery-collaboration
 
   - category: Main Concepts
     url: /main-concepts

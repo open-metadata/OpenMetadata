@@ -17,6 +17,7 @@ Configure and schedule Snowflake metadata and profiler workflows from the OpenMe
 
 - [Requirements](#requirements)
 - [Metadata Ingestion](#metadata-ingestion)
+    - [Incremental Extraction](/connectors/ingestion/workflows/metadata/incremental-extraction/snowflake)
 - [Query Usage](#query-usage)
 - [Lineage](#lineage)
 - [Data Profiler](#data-profiler)
@@ -68,6 +69,7 @@ GRANT USAGE ON SCHEMA TEST_SCHEMA TO ROLE NEW_ROLE;
 GRANT SELECT ON ALL TABLES IN SCHEMA TEST_SCHEMA TO ROLE NEW_ROLE;
 GRANT SELECT ON ALL EXTERNAL TABLES IN SCHEMA TEST_SCHEMA TO ROLE NEW_ROLE;
 GRANT SELECT ON ALL VIEWS IN SCHEMA TEST_SCHEMA TO ROLE NEW_ROLE;
+GRANT SELECT ON ALL DYNAMIC TABLES IN SCHEMA TEST_SCHEMA TO ROLE NEW_ROLE;
 ```
 
 

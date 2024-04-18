@@ -15,7 +15,6 @@ import React from 'react';
 import { HELP_ITEMS_ENUM } from '../../constants/Navbar.constants';
 import { getVersion } from '../../rest/miscAPI';
 import { getHelpDropdownItems } from '../../utils/NavbarUtils';
-import { mockUserData } from '../Settings/Users/mocks/User.mocks';
 import NavBar from './NavBar';
 
 const mockHandleSearchBoxOpen = jest.fn();
@@ -34,12 +33,14 @@ const mockProps = {
   handleClear: mockHandleClear,
   handleKeyDown: mockHandleKeyDown,
 };
-jest.mock('../../context/GlobalSearchProvider/GlobalSearchProvider', () => ({
-  useGlobalSearchProvider: jest.fn().mockImplementation(() => ({
+
+jest.mock('../../hooks/useApplicationStore', () => ({
+  useApplicationStore: jest.fn().mockImplementation(() => ({
     searchCriteria: '',
     updateSearchCriteria: jest.fn(),
   })),
 }));
+
 jest.mock('../../context/WebSocketProvider/WebSocketProvider', () => ({
   useWebSocketConnector: jest.fn().mockImplementation(() => ({
     socket: {
@@ -61,13 +62,15 @@ jest.mock('../../utils/FeedUtils', () => ({
   getEntityType: jest.fn().mockReturnValue('entityType'),
   prepareFeedLink: jest.fn().mockReturnValue('entity-link'),
 }));
-jest.mock('../Domain/DomainProvider/DomainProvider', () => ({
-  useDomainProvider: jest.fn().mockImplementation(() => ({
+
+jest.mock('../../hooks/useDomainStore', () => ({
+  useDomainStore: jest.fn().mockImplementation(() => ({
     domainOptions: jest.fn().mockReturnValue('domainOptions'),
     activeDomain: jest.fn().mockReturnValue('activeDomain'),
     updateActiveDomain: jest.fn(),
   })),
 }));
+
 jest.mock('../Modals/WhatsNewModal/WhatsNewModal', () => {
   return jest
     .fn()
@@ -94,11 +97,6 @@ jest.mock(
       ),
   })
 );
-jest.mock('../Auth/AuthProviders/AuthProvider', () => ({
-  useAuthContext: jest.fn(() => ({
-    currentUser: mockUserData,
-  })),
-}));
 jest.mock('react-router-dom', () => ({
   useLocation: jest
     .fn()

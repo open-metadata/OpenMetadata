@@ -13,22 +13,20 @@ public record DashboardServiceIndex(DashboardService dashboardService) implement
 
   private static final List<String> excludeFields = List.of("changeDescription");
 
-  public Map<String, Object> buildESDoc() {
-    Map<String, Object> doc = JsonUtils.getMap(dashboardService);
-    SearchIndexUtils.removeNonIndexableFields(doc, excludeFields);
+  public List<SearchSuggest> getSuggest() {
     List<SearchSuggest> suggest = new ArrayList<>();
     suggest.add(SearchSuggest.builder().input(dashboardService.getName()).weight(5).build());
     suggest.add(
         SearchSuggest.builder().input(dashboardService.getDisplayName()).weight(10).build());
-    doc.put(
-        "fqnParts",
-        getFQNParts(
-            dashboardService.getFullyQualifiedName(),
-            suggest.stream().map(SearchSuggest::getInput).toList()));
-    doc.put("suggest", suggest);
-    doc.put("entityType", Entity.DASHBOARD_SERVICE);
-    doc.put("owner", getEntityWithDisplayName(dashboardService.getOwner()));
-    doc.put("domain", getEntityWithDisplayName(dashboardService.getDomain()));
+    return suggest;
+  }
+
+  public Map<String, Object> buildESDoc() {
+    Map<String, Object> doc = JsonUtils.getMap(dashboardService);
+    SearchIndexUtils.removeNonIndexableFields(doc, excludeFields);
+    Map<String, Object> commonAttributes =
+        getCommonAttributesMap(dashboardService, Entity.DASHBOARD_SERVICE);
+    doc.putAll(commonAttributes);
     return doc;
   }
 }

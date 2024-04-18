@@ -26,10 +26,6 @@ import {
   GlobalSettingsMenuCategory,
 } from './GlobalSettings.constants';
 
-export const PRIMERY_COLOR = '#0968da';
-export const SECONDARY_COLOR = '#B02AAC';
-export const INFO_COLOR = '#2196f3';
-export const ERROR_COLOR = '#ff4c3b';
 export const LITE_GRAY_COLOR = '#DBE0EB';
 export const TEXT_BODY_COLOR = '#37352F';
 export const TEXT_GREY_MUTED = '#757575';
@@ -47,9 +43,8 @@ export const LIGHT_GREEN_COLOR = '#4CAF50';
 export const DEFAULT_CHART_OPACITY = 1;
 export const HOVER_CHART_OPACITY = 0.3;
 
-export const SUPPORTED_FIELD_TYPES = ['string', 'markdown', 'integer', 'enum'];
 export const LOGGED_IN_USER_STORAGE_KEY = 'loggedInUsers';
-export const ACTIVE_DOMAIN_STORAGE_KEY = 'activeDomain';
+export const DOMAIN_STORAGE_KEY = 'om_domains';
 export const DEFAULT_DOMAIN_VALUE = 'All Domains';
 
 export const USER_DATA_SIZE = 5;
@@ -171,6 +166,7 @@ export const ROUTES = {
   FORGOT_PASSWORD: '/forgot-password',
   RESET_PASSWORD: '/users/password/reset',
   ACCOUNT_ACTIVATION: '/users/registrationConfirmation',
+  AUTH_CALLBACK: '/auth/callback',
 
   ENTITY_DETAILS: `/${PLACEHOLDER_ROUTE_ENTITY_TYPE}/${PLACEHOLDER_ROUTE_FQN}`,
   ENTITY_DETAILS_WITH_TAB: `/${PLACEHOLDER_ROUTE_ENTITY_TYPE}/${PLACEHOLDER_ROUTE_FQN}/${PLACEHOLDER_ROUTE_TAB}`,
@@ -261,7 +257,6 @@ export const ROUTES = {
   ADD_KPI: `/data-insights/kpi/add-kpi`,
   EDIT_KPI: `/data-insights/kpi/edit-kpi/${PLACEHOLDER_ROUTE_FQN}`,
 
-  SETTINGS_EDIT_CUSTOM_LOGO_CONFIG: `/settings/OpenMetadata/customLogo/edit-custom-logo-configuration`,
   SETTINGS_EDIT_CUSTOM_LOGIN_CONFIG: `/settings/OpenMetadata/loginConfiguration/edit-custom-login-configuration`,
 
   CUSTOMIZE_PAGE: `/customize-page/:fqn/:pageFqn`,

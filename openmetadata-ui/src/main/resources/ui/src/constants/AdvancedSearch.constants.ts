@@ -88,6 +88,10 @@ export const DASHBOARD_DROPDOWN_ITEMS = [
     label: t('label.chart'),
     key: 'charts.displayName.keyword',
   },
+  {
+    label: t('label.project'),
+    key: 'project.keyword',
+  },
 ];
 
 export const DASHBOARD_DATA_MODEL_TYPE = [
@@ -394,6 +398,18 @@ const getCommonQueryBuilderFields = (
       type: '!group',
       mainWidgetProps,
       subfields: {},
+    },
+    descriptionStatus: {
+      label: t('label.description'),
+      type: 'select',
+      mainWidgetProps,
+      valueSources: ['value'],
+      fieldSettings: {
+        listValues: {
+          INCOMPLETE: 'Incomplete',
+          COMPLETE: 'Complete',
+        },
+      },
     },
   };
 

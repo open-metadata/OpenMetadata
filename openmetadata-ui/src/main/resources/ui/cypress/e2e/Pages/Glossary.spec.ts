@@ -24,6 +24,7 @@ import { deleteGlossary } from '../../common/GlossaryUtils';
 import { dragAndDropElement } from '../../common/Utils/DragAndDrop';
 import { visitEntityDetailsPage } from '../../common/Utils/Entity';
 import { confirmationDragAndDropGlossary } from '../../common/Utils/Glossary';
+import { getToken } from '../../common/Utils/LocalStorage';
 import { addOwner, removeOwner } from '../../common/Utils/Owner';
 import {
   COLUMN_NAME_FOR_APPLY_GLOSSARY_TERM,
@@ -257,7 +258,9 @@ const fillGlossaryTermDetails = (term, glossary, isMutually = false) => {
     cy.get('[data-testid="icon-url"]').scrollIntoView().type(term.icon);
   }
   if (term.color) {
-    cy.get('[data-testid="color-input"]').scrollIntoView().type(term.color);
+    cy.get('[data-testid="color-color-input"]')
+      .scrollIntoView()
+      .type(term.color);
   }
 };
 
@@ -684,14 +687,16 @@ const checkSummaryListItemSorting = ({ termFQN, columnName }) => {
 };
 
 const deleteUser = () => {
-  const token = localStorage.getItem('oidcIdToken');
+  cy.getAllLocalStorage().then((storageData) => {
+    const token = getToken(storageData);
 
-  cy.request({
-    method: 'DELETE',
-    url: `/api/v1/users/${createdUserId}?hardDelete=true&recursive=false`,
-    headers: { Authorization: `Bearer ${token}` },
-  }).then((response) => {
-    expect(response.status).to.eq(200);
+    cy.request({
+      method: 'DELETE',
+      url: `/api/v1/users/${createdUserId}?hardDelete=true&recursive=false`,
+      headers: { Authorization: `Bearer ${token}` },
+    }).then((response) => {
+      expect(response.status).to.eq(200);
+    });
   });
 };
 
@@ -915,14 +920,10 @@ describe('Glossary page should work properly', { tags: 'Glossary' }, () => {
 
     cy.get('[data-testid="request-entity-tags"]').should('exist').click();
 
-    // set assignees for task
+    // check assignees for task which will be owner of the glossary term
     cy.get(
       '[data-testid="select-assignee"] > .ant-select-selector > .ant-select-selection-overflow'
-    )
-      .click()
-      .type(userName);
-    cy.get(`[data-testid="${userName}"]`).click();
-    cy.clickOutside();
+    ).should('contain', 'admin');
 
     cy.get('[data-testid="tag-selector"]')
       .click()
@@ -1109,6 +1110,77 @@ describe('Glossary page should work properly', { tags: 'Glossary' }, () => {
     terms.forEach((term) => {
       addAssetToGlossaryTerm(term, CYPRESS_ASSETS_GLOSSARY);
     });
+  });
+
+  it('Change glossary term hierarchy using menu options', () => {
+    interceptURL('PATCH', '/api/v1/glossaryTerms/*', 'saveGlossaryTermData');
+    interceptURL(
+      'GET',
+      '/api/v1/glossaryTerms/name/*',
+      'fetchGlossaryTermData'
+    );
+
+    const parentTerm = CYPRESS_ASSETS_GLOSSARY_TERMS.term_1;
+    const childTerm = CYPRESS_ASSETS_GLOSSARY_TERMS.term_3;
+
+    visitGlossaryTermPage(childTerm.name, childTerm.fullyQualifiedName, true);
+
+    cy.get('[data-testid="manage-button"]').click();
+    cy.get('[data-testid="change-parent-button"]').should('be.visible').click();
+    cy.get(
+      '[data-testid="change-parent-select"] > .ant-select-selector'
+    ).click();
+    cy.get(`[title="${parentTerm.name}"]`).click();
+
+    // Submit the select parent
+    cy.get('.ant-modal-footer > .ant-btn-primary').click();
+
+    verifyResponseStatusCode('@saveGlossaryTermData', 200);
+    verifyResponseStatusCode('@fetchGlossaryTermData', 200);
+
+    cy.get('[data-testid="assets"] [data-testid="filter-count"]')
+      .should('be.visible')
+      .contains('3');
+
+    // checking the breadcrumb, if the change parent term is updated and displayed
+    cy.get('[data-testid="breadcrumb-link"]')
+      .should('be.visible')
+      .contains(`${parentTerm.name}`)
+      .click();
+
+    verifyResponseStatusCode('@fetchGlossaryTermData', 200);
+
+    // checking the child term is updated and displayed under the parent term
+    cy.get('[data-testid="terms"] [data-testid="filter-count"]')
+      .should('be.visible')
+      .contains('1')
+      .click();
+
+    cy.get(`[data-testid="${childTerm.name}"]`).should('be.visible');
+
+    goToGlossaryPage();
+
+    const newTermHierarchy = `${Cypress.$.escapeSelector(
+      CYPRESS_ASSETS_GLOSSARY.name
+    )}.${parentTerm.name}."${childTerm.name}"`;
+
+    // verify the term is moved under the parent term
+    cy.get(`.ant-table-row-level-1[data-row-key='${newTermHierarchy}']`).should(
+      'be.visible'
+    );
+
+    // re-dropping the term to the root level
+    dragAndDropElement(
+      `${CYPRESS_ASSETS_GLOSSARY.name}.${parentTerm.name}."${childTerm.name}"`,
+      '.ant-table-thead > tr',
+      true
+    );
+
+    confirmationDragAndDropGlossary(
+      childTerm.name,
+      CYPRESS_ASSETS_GLOSSARY.name,
+      true
+    );
   });
 
   it('Remove asset from glossary term using asset modal', () => {

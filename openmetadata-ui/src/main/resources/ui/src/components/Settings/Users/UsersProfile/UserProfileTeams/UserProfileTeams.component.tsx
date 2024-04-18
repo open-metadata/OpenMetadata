@@ -40,9 +40,12 @@ const UserProfileTeams = ({
 
   const handleTeamsSave = async () => {
     setIsLoading(true);
-    await updateUserDetails({
-      teams: selectedTeams.map((teamId) => ({ id: teamId.id, type: 'team' })),
-    });
+    await updateUserDetails(
+      {
+        teams: selectedTeams.map((teamId) => ({ id: teamId.id, type: 'team' })),
+      },
+      'teams'
+    );
 
     setIsLoading(false);
     setIsTeamsEdit(false);

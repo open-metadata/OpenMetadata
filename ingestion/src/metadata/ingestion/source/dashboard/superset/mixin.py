@@ -70,7 +70,12 @@ class SupersetSourceMixin(DashboardServiceSource):
         self.all_charts = {}
 
     @classmethod
-    def create(cls, config_dict: dict, metadata: OpenMetadata):
+    def create(
+        cls,
+        config_dict: dict,
+        metadata: OpenMetadata,
+        pipeline_name: Optional[str] = None,
+    ):
         config = WorkflowSource.parse_obj(config_dict)
         connection: SupersetConnection = config.serviceConnection.__root__.config
         if not isinstance(connection, SupersetConnection):
@@ -177,9 +182,21 @@ class SupersetSourceMixin(DashboardServiceSource):
                             fqn=datamodel_fqn,
                         )
 
+                        datasource_json = self.client.fetch_datasource(
+                            chart_json.datasource_id
+                        )
+                        datasource_columns = self.get_column_info(
+                            datasource_json.result.columns
+                        )
+                        columns_list = [col.displayName for col in datasource_columns]
+                        column_lineage = self._get_column_lineage(
+                            from_entity, to_entity, columns_list
+                        )
                         if from_entity and to_entity:
                             yield self._get_add_lineage_request(
-                                to_entity=to_entity, from_entity=from_entity
+                                to_entity=to_entity,
+                                from_entity=from_entity,
+                                column_lineage=column_lineage,
                             )
                     except Exception as exc:
                         yield Either(
@@ -202,7 +219,7 @@ class SupersetSourceMixin(DashboardServiceSource):
         datamodel_fqn = fqn.build(
             self.metadata,
             entity_type=DashboardDataModel,
-            service_name=self.context.dashboard_service,
+            service_name=self.context.get().dashboard_service,
             data_model_name=datamodel.id,
         )
         if datamodel_fqn:

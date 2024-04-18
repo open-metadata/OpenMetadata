@@ -7,7 +7,6 @@ ALTER TABLE query_entity ADD COLUMN checksum VARCHAR(32) GENERATED ALWAYS AS (js
 
 UPDATE query_entity SET json = JSON_INSERT(json, '$.checksum', MD5(JSON_UNQUOTE(JSON_EXTRACT(json, '$.checksum'))));
 
-
 -- Restructure dbServiceNames in ingestion_pipeline_entity
 update ingestion_pipeline_entity set json = 
   JSON_INSERT(
@@ -69,7 +68,18 @@ ALTER TABLE apps_extension_time_series ADD INDEX apps_extension_time_series_inde
 ALTER TABLE suggestions ADD INDEX index_suggestions_type(suggestionType);
 ALTER TABLE suggestions ADD INDEX index_suggestions_status(status);
 
+
 -- Add the supportsProfiler field to the DynamoDB connection configuration
 UPDATE dbservice_entity
 SET json = JSON_INSERT(json, '$.connection.config.supportsProfiler', TRUE)
 WHERE serviceType = 'DynamoDB';
+
+-- Migrate 'QlikSenseDataModel' & 'QlikCloudDataModel' into single entity 'QlikDataModel'
+UPDATE dashboard_data_model_entity
+SET json = JSON_SET(json, '$.dataModelType', 'QlikDataModel')
+WHERE JSON_EXTRACT(json, '$.dataModelType') in ('QlikSenseDataModel', 'QlikCloudDataModel');
+
+-- clean ES pipelines
+DELETE FROM ingestion_pipeline_entity
+WHERE LOWER(JSON_EXTRACT(json, '$.pipelineType')) = 'elasticsearchreindex';
+

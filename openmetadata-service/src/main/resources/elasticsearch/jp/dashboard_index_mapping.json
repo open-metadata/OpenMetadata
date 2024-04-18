@@ -222,6 +222,16 @@
           }
         }
       },
+      "project": {
+        "type": "text",
+        "fields": {
+          "keyword": {
+            "type": "keyword",
+            "normalizer": "lowercase_normalizer",
+            "ignore_above": 256
+          }
+        }
+      },
       "dataModels": {
         "properties": {
           "id": {
@@ -462,6 +472,9 @@
       },
       "service_suggest": {
         "type": "completion"
+      },
+      "descriptionStatus": {
+        "type": "keyword"
       }
     }
   }

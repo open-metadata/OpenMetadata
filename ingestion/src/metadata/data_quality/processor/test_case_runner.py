@@ -210,6 +210,7 @@ class TestCaseRunner(Processor):
                         if test_case_to_create.parameterValues
                         else None,
                         owner=None,
+                        computePassedFailedRowCount=test_case_to_create.computePassedFailedRowCount,
                     )
                 )
                 test_cases.append(test_case)
@@ -309,7 +310,12 @@ class TestCaseRunner(Processor):
         return None
 
     @classmethod
-    def create(cls, config_dict: dict, metadata: OpenMetadata) -> "Step":
+    def create(
+        cls,
+        config_dict: dict,
+        metadata: OpenMetadata,
+        pipeline_name: Optional[str] = None,
+    ) -> "Step":
         config = parse_workflow_config_gracefully(config_dict)
         return cls(config=config, metadata=metadata)
 

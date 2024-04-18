@@ -38,6 +38,7 @@ import { useClipboard } from '../../../hooks/useClipBoard';
 import { useFqn } from '../../../hooks/useFqn';
 import { customFormatDateTime } from '../../../utils/date-time/DateTimeUtils';
 import { parseSearchParams } from '../../../utils/Query/QueryUtils';
+import queryClassBase from '../../../utils/QueryClassBase';
 import { getQueryPath } from '../../../utils/RouterUtils';
 import SchemaEditor from '../SchemaEditor/SchemaEditor';
 import QueryCardExtraOption from './QueryCardExtraOption/QueryCardExtraOption.component';
@@ -59,6 +60,7 @@ const QueryCard: FC<QueryCardProp> = ({
   afterDeleteAction,
 }: QueryCardProp) => {
   const { t } = useTranslation();
+  const QueryExtras = queryClassBase.getQueryExtras();
   const { fqn: datasetFQN } = useFqn();
   const location = useLocation();
   const history = useHistory();
@@ -169,7 +171,7 @@ const QueryCard: FC<QueryCardProp> = ({
 
   return (
     <Row gutter={[0, 8]}>
-      <Col span={24}>
+      <Col span={isExpanded && QueryExtras ? 12 : 24}>
         <Card
           bordered={false}
           className={classNames(
@@ -243,19 +245,20 @@ const QueryCard: FC<QueryCardProp> = ({
                 styleActiveLine: isEditMode,
                 readOnly: isEditMode ? false : 'nocursor',
               }}
+              showCopyButton={false}
               value={query.query ?? ''}
               onChange={handleQueryChange}
             />
           </div>
-          <Row align="middle" className="p-y-xs border-top">
-            <Col className="p-y-0.5 p-l-md" span={16}>
+          <Row align="middle" className="p-y-md border-top">
+            <Col className="p-l-md" span={20}>
               <QueryUsedByOtherTable
                 isEditMode={isEditMode}
                 query={query}
                 onChange={(value) => setSelectedTables(value)}
               />
             </Col>
-            <Col span={8}>
+            <Col span={4}>
               {isEditMode && (
                 <Space
                   align="end"
@@ -284,6 +287,7 @@ const QueryCard: FC<QueryCardProp> = ({
           </Row>
         </Card>
       </Col>
+      {isExpanded && QueryExtras && <QueryExtras />}
     </Row>
   );
 };

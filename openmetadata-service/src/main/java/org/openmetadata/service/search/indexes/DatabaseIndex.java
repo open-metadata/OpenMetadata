@@ -3,7 +3,6 @@ package org.openmetadata.service.search.indexes;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.entity.data.Database;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.search.SearchIndexUtils;
@@ -13,26 +12,18 @@ import org.openmetadata.service.util.JsonUtils;
 public record DatabaseIndex(Database database) implements SearchIndex {
   private static final List<String> excludeFields = List.of("changeDescription");
 
-  public Map<String, Object> buildESDoc() {
-    Map<String, Object> doc = JsonUtils.getMap(database);
-    SearchIndexUtils.removeNonIndexableFields(doc, excludeFields);
+  public List<SearchSuggest> getSuggest() {
     List<SearchSuggest> suggest = new ArrayList<>();
     suggest.add(SearchSuggest.builder().input(database.getName()).weight(5).build());
     suggest.add(SearchSuggest.builder().input(database.getFullyQualifiedName()).weight(5).build());
-    doc.put(
-        "fqnParts",
-        getFQNParts(
-            database.getFullyQualifiedName(),
-            suggest.stream().map(SearchSuggest::getInput).toList()));
-    doc.put("suggest", suggest);
-    doc.put("entityType", Entity.DATABASE);
-    doc.put(
-        "totalVotes",
-        CommonUtil.nullOrEmpty(database.getVotes())
-            ? 0
-            : database.getVotes().getUpVotes() - database.getVotes().getDownVotes());
-    doc.put("owner", getEntityWithDisplayName(database.getOwner()));
-    doc.put("domain", getEntityWithDisplayName(database.getDomain()));
+    return suggest;
+  }
+
+  public Map<String, Object> buildESDoc() {
+    Map<String, Object> doc = JsonUtils.getMap(database);
+    SearchIndexUtils.removeNonIndexableFields(doc, excludeFields);
+    Map<String, Object> commonAttributes = getCommonAttributesMap(database, Entity.DATABASE);
+    doc.putAll(commonAttributes);
     return doc;
   }
 }

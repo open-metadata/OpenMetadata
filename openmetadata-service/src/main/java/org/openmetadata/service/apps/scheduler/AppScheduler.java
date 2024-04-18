@@ -17,15 +17,14 @@ import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.AppRuntime;
 import org.openmetadata.schema.entity.app.App;
-import org.openmetadata.schema.entity.app.AppRunType;
 import org.openmetadata.schema.entity.app.AppSchedule;
+import org.openmetadata.schema.entity.app.ScheduleTimeline;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.apps.NativeApplication;
 import org.openmetadata.service.exception.UnhandledServerException;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
 import org.openmetadata.service.search.SearchRepository;
-import org.openmetadata.service.util.JsonUtils;
 import org.quartz.CronScheduleBuilder;
 import org.quartz.JobBuilder;
 import org.quartz.JobDataMap;
@@ -43,6 +42,7 @@ import org.quartz.impl.StdSchedulerFactory;
 @Slf4j
 public class AppScheduler {
   private static final Map<String, String> defaultAppScheduleConfig = new HashMap<>();
+  public static final String ON_DEMAND_JOB = "OnDemandJob";
 
   static {
     defaultAppScheduleConfig.put("org.quartz.scheduler.instanceName", "AppScheduler");
@@ -66,7 +66,7 @@ public class AppScheduler {
   public static final String APPS_JOB_GROUP = "OMAppsJobGroup";
   public static final String APPS_TRIGGER_GROUP = "OMAppsJobGroup";
   public static final String APP_INFO_KEY = "applicationInfoKey";
-  public static final String SEARCH_CLIENT_KEY = "searchClientKey";
+  public static final String APP_NAME = "appName";
   private static AppScheduler instance;
   private static volatile boolean initialized = false;
   @Getter private final Scheduler scheduler;
@@ -142,8 +142,10 @@ public class AppScheduler {
       AppRuntime context = getAppRuntime(application);
       if (Boolean.TRUE.equals(context.getEnabled())) {
         JobDetail jobDetail = jobBuilder(application, application.getName());
-        Trigger trigger = trigger(application);
-        scheduler.scheduleJob(jobDetail, trigger);
+        if (!application.getAppSchedule().getScheduleTimeline().equals(ScheduleTimeline.NONE)) {
+          Trigger trigger = trigger(application);
+          scheduler.scheduleJob(jobDetail, trigger);
+        }
       } else {
         LOG.info("[Applications] App cannot be scheduled since it is disabled");
       }
@@ -160,18 +162,15 @@ public class AppScheduler {
 
     // OnDemand Jobs
     scheduler.deleteJob(
-        new JobKey(
-            String.format("%s-%s", app.getName(), AppRunType.OnDemand.value()), APPS_JOB_GROUP));
+        new JobKey(String.format("%s-%s", app.getName(), ON_DEMAND_JOB), APPS_JOB_GROUP));
     scheduler.unscheduleJob(
-        new TriggerKey(
-            String.format("%s-%s", app.getName(), AppRunType.OnDemand.value()),
-            APPS_TRIGGER_GROUP));
+        new TriggerKey(String.format("%s-%s", app.getName(), ON_DEMAND_JOB), APPS_TRIGGER_GROUP));
   }
 
   private JobDetail jobBuilder(App app, String jobIdentity) throws ClassNotFoundException {
     JobDataMap dataMap = new JobDataMap();
-    dataMap.put(APP_INFO_KEY, JsonUtils.pojoToJson(app));
-    dataMap.put("triggerType", AppRunType.Scheduled.value());
+    dataMap.put(APP_NAME, app.getName());
+    dataMap.put("triggerType", app.getAppSchedule().getScheduleTimeline().value());
     Class<? extends NativeApplication> clz =
         (Class<? extends NativeApplication>) Class.forName(app.getClassName());
     JobBuilder jobBuilder =
@@ -196,7 +195,7 @@ public class AppScheduler {
   }
 
   public static CronScheduleBuilder getCronSchedule(AppSchedule scheduleInfo) {
-    switch (scheduleInfo.getScheduleType()) {
+    switch (scheduleInfo.getScheduleTimeline()) {
       case HOURLY:
         return CronScheduleBuilder.cronSchedule("0 0 * ? * *");
       case DAILY:
@@ -223,8 +222,7 @@ public class AppScheduler {
       JobDetail jobDetailOnDemand =
           scheduler.getJobDetail(
               new JobKey(
-                  String.format("%s-%s", application.getName(), AppRunType.OnDemand.value()),
-                  APPS_JOB_GROUP));
+                  String.format("%s-%s", application.getName(), ON_DEMAND_JOB), APPS_JOB_GROUP));
       // Check if the job is already running
       List<JobExecutionContext> currentJobs = scheduler.getCurrentlyExecutingJobs();
       for (JobExecutionContext context : currentJobs) {
@@ -240,14 +238,13 @@ public class AppScheduler {
       AppRuntime context = getAppRuntime(application);
       if (Boolean.TRUE.equals(context.getEnabled())) {
         JobDetail newJobDetail =
-            jobBuilder(
-                application,
-                String.format("%s-%s", application.getName(), AppRunType.OnDemand.value()));
-        newJobDetail.getJobDataMap().put("triggerType", AppRunType.OnDemand.value());
+            jobBuilder(application, String.format("%s-%s", application.getName(), ON_DEMAND_JOB));
+        newJobDetail.getJobDataMap().put("triggerType", ON_DEMAND_JOB);
+        newJobDetail.getJobDataMap().put(APP_NAME, application.getFullyQualifiedName());
         Trigger trigger =
             TriggerBuilder.newTrigger()
                 .withIdentity(
-                    String.format("%s-%s", application.getName(), AppRunType.OnDemand.value()),
+                    String.format("%s-%s", application.getName(), ON_DEMAND_JOB),
                     APPS_TRIGGER_GROUP)
                 .startNow()
                 .build();

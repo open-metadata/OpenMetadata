@@ -23,6 +23,8 @@ import { SearchIndex } from '../../../generated/entity/data/searchIndex';
 import { StoredProcedure } from '../../../generated/entity/data/storedProcedure';
 import { Table } from '../../../generated/entity/data/table';
 import { Topic } from '../../../generated/entity/data/topic';
+import { EntityReference } from '../../../generated/entity/type';
+import { CustomProperty } from '../../../generated/type/customProperty';
 
 export type ExtentionEntities = {
   [EntityType.TABLE]: Table;
@@ -51,3 +53,26 @@ export interface CustomPropertyProps<T extends ExtentionEntitiesKeys> {
   maxDataCap?: number;
   isRenderedInRightPanel?: boolean;
 }
+
+export interface PropertyValueProps {
+  property: CustomProperty;
+  extension: Table['extension'];
+  hasEditPermissions: boolean;
+  versionDataKeys?: string[];
+  isVersionView?: boolean;
+  isRenderedInRightPanel?: boolean;
+  onExtensionUpdate: (updatedExtension: Table['extension']) => Promise<void>;
+}
+
+export type TimeIntervalType = {
+  start: number;
+  end: number;
+};
+
+export type PropertyValueType =
+  | string
+  | number
+  | string[]
+  | EntityReference
+  | EntityReference[]
+  | TimeIntervalType;

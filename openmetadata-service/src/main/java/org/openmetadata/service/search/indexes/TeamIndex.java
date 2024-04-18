@@ -18,18 +18,18 @@ public class TeamIndex implements SearchIndex {
     this.team = team;
   }
 
-  public Map<String, Object> buildESDoc() {
-    Map<String, Object> doc = JsonUtils.getMap(team);
-    SearchIndexUtils.removeNonIndexableFields(doc, excludeFields);
+  public List<SearchSuggest> getSuggest() {
     List<SearchSuggest> suggest = new ArrayList<>();
     suggest.add(SearchSuggest.builder().input(team.getName()).weight(5).build());
     suggest.add(SearchSuggest.builder().input(team.getDisplayName()).weight(10).build());
-    doc.put(
-        "fqnParts",
-        getFQNParts(
-            team.getFullyQualifiedName(), suggest.stream().map(SearchSuggest::getInput).toList()));
-    doc.put("suggest", suggest);
-    doc.put("entityType", Entity.TEAM);
+    return suggest;
+  }
+
+  public Map<String, Object> buildESDoc() {
+    Map<String, Object> doc = JsonUtils.getMap(team);
+    SearchIndexUtils.removeNonIndexableFields(doc, excludeFields);
+    Map<String, Object> commonAttributes = getCommonAttributesMap(team, Entity.TEAM);
+    doc.putAll(commonAttributes);
     doc.put("isBot", false);
     doc.put(
         "displayName",

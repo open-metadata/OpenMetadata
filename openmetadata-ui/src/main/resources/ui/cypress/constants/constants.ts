@@ -465,6 +465,7 @@ export const service = {
   description: 'This is a Glue service',
   newDescription: 'This is updated Glue service description',
   Owner: 'Aaron Johnson',
+  serviceType: 'databaseService',
 };
 
 export const SERVICE_TYPE = {
@@ -475,6 +476,7 @@ export const SERVICE_TYPE = {
   MLModels: GlobalSettingOptions.MLMODELS,
   Storage: GlobalSettingOptions.STORAGES,
   Search: GlobalSettingOptions.SEARCH,
+  Metadata: GlobalSettingOptions.METADATA,
   StoredProcedure: GlobalSettingOptions.STORED_PROCEDURES,
 };
 
@@ -490,42 +492,108 @@ export const ENTITY_SERVICE_TYPE = {
 };
 
 export const ENTITIES = {
-  entity_table: {
-    name: 'table',
-    description: 'This is Table custom property',
-    integerValue: '45',
+  entity_container: {
+    name: 'container',
+    description: 'This is Container custom property',
+    integerValue: '14',
     stringValue: 'This is string propery',
     markdownValue: 'This is markdown value',
     enumConfig: {
       values: ['enum1', 'enum2', 'enum3'],
       multiSelect: false,
     },
-    entityObj: SEARCH_ENTITY_TABLE.table_1,
-    entityApiType: 'tables',
+    dateFormatConfig: 'yyyy-mm-dd',
+    dateTimeFormatConfig: 'yyyy-mm-dd hh:mm:ss',
+    entityReferenceConfig: ['User', 'Team'],
+    entityObj: {},
+    entityApiType: 'containers',
   },
-  entity_topic: {
-    name: 'topic',
-    description: 'This is Topic custom property',
-    integerValue: '23',
+
+  entity_dashboard: {
+    name: 'dashboard',
+    description: 'This is Dashboard custom property',
+    integerValue: '14',
     stringValue: 'This is string propery',
     markdownValue: 'This is markdown value',
     enumConfig: {
       values: ['enum1', 'enum2', 'enum3'],
       multiSelect: false,
     },
-    entityObj: SEARCH_ENTITY_TOPIC.topic_1,
-    entityApiType: 'topics',
+    dateFormatConfig: 'yyyy-mm-dd',
+    dateTimeFormatConfig: 'yyyy-mm-dd hh:mm:ss',
+    entityReferenceConfig: ['User', 'Team'],
+    entityObj: SEARCH_ENTITY_DASHBOARD.dashboard_1,
+    entityApiType: 'dashboards',
   },
-  // commenting the dashboard test for not, need to make changes in dynamic data-test side
-  //   entity_dashboard: {
-  //     name: 'dashboard',
-  //     description: 'This is Dashboard custom property',
-  //     integerValue: '14',
-  //     stringValue: 'This is string propery',
-  //     markdownValue: 'This is markdown value',
-  //     entityObj: SEARCH_ENTITY_DASHBOARD.dashboard_1,
-  // entityApiType: "dashboards"
-  //   },
+
+  entity_database: {
+    name: 'database',
+    description: 'This is Database custom property',
+    integerValue: '14',
+    stringValue: 'This is string propery',
+    markdownValue: 'This is markdown value',
+    enumConfig: {
+      values: ['enum1', 'enum2', 'enum3'],
+      multiSelect: false,
+    },
+    dateFormatConfig: 'yyyy-mm-dd',
+    dateTimeFormatConfig: 'yyyy-mm-dd hh:mm:ss',
+    entityReferenceConfig: ['User', 'Team'],
+    entityObj: {},
+    entityApiType: 'databases',
+  },
+
+  entity_databaseSchema: {
+    name: 'databaseSchema',
+    description: 'This is Database Schema custom property',
+    integerValue: '14',
+    stringValue: 'This is string propery',
+    markdownValue: 'This is markdown value',
+    enumConfig: {
+      values: ['enum1', 'enum2', 'enum3'],
+      multiSelect: false,
+    },
+    dateFormatConfig: 'yyyy-mm-dd',
+    dateTimeFormatConfig: 'yyyy-mm-dd hh:mm:ss',
+    entityReferenceConfig: ['User', 'Team'],
+    entityObj: {},
+    entityApiType: 'databaseSchemas',
+  },
+
+  entity_glossaryTerm: {
+    name: 'glossaryTerm',
+    description: 'This is Glossary Term custom property',
+    integerValue: '14',
+    stringValue: 'This is string propery',
+    markdownValue: 'This is markdown value',
+    enumConfig: {
+      values: ['enum1', 'enum2', 'enum3'],
+      multiSelect: false,
+    },
+    dateFormatConfig: 'yyyy-mm-dd',
+    dateTimeFormatConfig: 'yyyy-mm-dd hh:mm:ss',
+    entityReferenceConfig: ['User', 'Team'],
+    entityObj: {},
+    entityApiType: 'glossaryTerm',
+  },
+
+  entity_mlmodel: {
+    name: 'mlmodel',
+    description: 'This is ML Model custom property',
+    integerValue: '14',
+    stringValue: 'This is string propery',
+    markdownValue: 'This is markdown value',
+    enumConfig: {
+      values: ['enum1', 'enum2', 'enum3'],
+      multiSelect: false,
+    },
+    dateFormatConfig: 'yyyy-mm-dd',
+    dateTimeFormatConfig: 'yyyy-mm-dd hh:mm:ss',
+    entityReferenceConfig: ['User', 'Team'],
+    entityObj: {},
+    entityApiType: 'mlmodels',
+  },
+
   entity_pipeline: {
     name: 'pipeline',
     description: 'This is Pipeline custom property',
@@ -536,8 +604,79 @@ export const ENTITIES = {
       values: ['enum1', 'enum2', 'enum3'],
       multiSelect: true,
     },
+    dateFormatConfig: 'yyyy-mm-dd',
+    dateTimeFormatConfig: 'yyyy-mm-dd hh:mm:ss',
+    entityReferenceConfig: ['User', 'Team'],
     entityObj: SEARCH_ENTITY_PIPELINE.pipeline_1,
     entityApiType: 'pipelines',
+  },
+
+  entity_searchIndex: {
+    name: 'searchIndex',
+    description: 'This is Search Index custom property',
+    integerValue: '14',
+    stringValue: 'This is string propery',
+    markdownValue: 'This is markdown value',
+    enumConfig: {
+      values: ['enum1', 'enum2', 'enum3'],
+      multiSelect: false,
+    },
+    dateFormatConfig: 'yyyy-mm-dd',
+    dateTimeFormatConfig: 'yyyy-mm-dd hh:mm:ss',
+    entityReferenceConfig: ['User', 'Team'],
+    entityObj: {},
+    entityApiType: 'searchIndexes',
+  },
+
+  entity_storedProcedure: {
+    name: 'storedProcedure',
+    description: 'This is Stored Procedure custom property',
+    integerValue: '14',
+    stringValue: 'This is string propery',
+    markdownValue: 'This is markdown value',
+    enumConfig: {
+      values: ['enum1', 'enum2', 'enum3'],
+      multiSelect: false,
+    },
+    dateFormatConfig: 'yyyy-mm-dd',
+    dateTimeFormatConfig: 'yyyy-mm-dd hh:mm:ss',
+    entityReferenceConfig: ['User', 'Team'],
+    entityObj: {},
+    entityApiType: 'storedProcedures',
+  },
+
+  entity_table: {
+    name: 'table',
+    description: 'This is Table custom property',
+    integerValue: '45',
+    stringValue: 'This is string propery',
+    markdownValue: 'This is markdown value',
+    enumConfig: {
+      values: ['enum1', 'enum2', 'enum3'],
+      multiSelect: false,
+    },
+    dateFormatConfig: 'yyyy-mm-dd',
+    dateTimeFormatConfig: 'yyyy-mm-dd hh:mm:ss',
+    entityReferenceConfig: ['User', 'Team'],
+    entityObj: SEARCH_ENTITY_TABLE.table_1,
+    entityApiType: 'tables',
+  },
+
+  entity_topic: {
+    name: 'topic',
+    description: 'This is Topic custom property',
+    integerValue: '23',
+    stringValue: 'This is string propery',
+    markdownValue: 'This is markdown value',
+    enumConfig: {
+      values: ['enum1', 'enum2', 'enum3'],
+      multiSelect: false,
+    },
+    dateFormatConfig: 'yyyy-mm-dd',
+    dateTimeFormatConfig: 'yyyy-mm-dd hh:mm:ss',
+    entityReferenceConfig: ['User', 'Team'],
+    entityObj: SEARCH_ENTITY_TOPIC.topic_1,
+    entityApiType: 'topics',
   },
 };
 

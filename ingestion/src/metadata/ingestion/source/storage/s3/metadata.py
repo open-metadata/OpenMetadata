@@ -83,7 +83,9 @@ class S3Source(StorageServiceSource):
         self.s3_reader = get_reader(config_source=S3Config(), client=self.s3_client)
 
     @classmethod
-    def create(cls, config_dict, metadata: OpenMetadata):
+    def create(
+        cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None
+    ):
         config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
         connection: S3Connection = config.serviceConnection.__root__.config
         if not isinstance(connection, S3Connection):
@@ -103,7 +105,10 @@ class S3Source(StorageServiceSource):
                     bucket_response=bucket_response
                 )
                 container_fqn = fqn._build(  # pylint: disable=protected-access
-                    *(self.context.objectstore_service, self.context.container)
+                    *(
+                        self.context.get().objectstore_service,
+                        self.context.get().container,
+                    )
                 )
                 container_entity = self.metadata.get_by_name(
                     entity=Container, fqn=container_fqn
@@ -183,7 +188,7 @@ class S3Source(StorageServiceSource):
             numberOfObjects=container_details.number_of_objects,
             size=container_details.size,
             dataModel=container_details.data_model,
-            service=self.context.objectstore_service,
+            service=self.context.get().objectstore_service,
             parent=container_details.parent,
             sourceUrl=container_details.sourceUrl,
             fileFormats=container_details.file_formats,

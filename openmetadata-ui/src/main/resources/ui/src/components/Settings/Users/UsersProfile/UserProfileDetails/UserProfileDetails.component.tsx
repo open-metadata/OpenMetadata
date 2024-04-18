@@ -105,7 +105,10 @@ const UserProfileDetails = ({
   const handleDisplayNameSave = useCallback(async () => {
     if (displayName !== userData.displayName) {
       setIsLoading(true);
-      await updateUserDetails({ displayName: displayName ?? '' });
+      await updateUserDetails(
+        { displayName: displayName ?? '' },
+        'displayName'
+      );
       setIsLoading(false);
     }
     setIsDisplayNameEdit(false);
@@ -151,7 +154,11 @@ const UserProfileDetails = ({
                 color={DE_ACTIVE_COLOR}
                 data-testid="edit-displayName"
                 {...ICON_DIMENSION}
-                onClick={() => setIsDisplayNameEdit(true)}
+                onClick={(e) => {
+                  // Used to stop click propagation event to parent User.component collapsible panel
+                  e.stopPropagation();
+                  setIsDisplayNameEdit(true);
+                }}
               />
             </Tooltip>
           )}
@@ -175,7 +182,11 @@ const UserProfileDetails = ({
           className="w-full text-xs"
           data-testid="change-password-button"
           type="primary"
-          onClick={() => setIsChangePassword(true)}>
+          onClick={(e) => {
+            // Used to stop click propagation event to parent User.component collapsible panel
+            e.stopPropagation();
+            setIsChangePassword(true);
+          }}>
           {t('label.change-entity', {
             entity: t('label.password-lowercase'),
           })}
@@ -212,49 +223,54 @@ const UserProfileDetails = ({
   };
 
   const userEmailRender = useMemo(
-    () => (
-      <Space align="center">
-        <Typography.Text
-          className="text-grey-muted"
-          data-testid="user-email-label">{`${t(
-          'label.email'
-        )} :`}</Typography.Text>
+    () =>
+      userData.email && (
+        <>
+          <Space align="center">
+            <Typography.Text
+              className="text-grey-muted"
+              data-testid="user-email-label">{`${t(
+              'label.email'
+            )} :`}</Typography.Text>
 
-        <Typography.Paragraph className="m-b-0" data-testid="user-email-value">
-          {userData.email}
-        </Typography.Paragraph>
-      </Space>
-    ),
+            <Typography.Paragraph
+              className="m-b-0"
+              data-testid="user-email-value">
+              {userData.email}
+            </Typography.Paragraph>
+          </Space>
+          <Divider type="vertical" />
+        </>
+      ),
     [userData.email]
   );
 
   const userDomainRender = useMemo(
     () => (
-      <Space align="center">
+      <div className="d-flex items-center gap-2">
         <Typography.Text
           className="text-grey-muted"
           data-testid="user-domain-label">{`${t(
           'label.domain'
         )} :`}</Typography.Text>
-        <Space align="center">
-          <DomainLabel
-            domain={userData?.domain}
-            entityFqn={userData.fullyQualifiedName ?? ''}
-            entityId={userData.id ?? ''}
-            entityType={EntityType.USER}
-            hasPermission={false}
-          />
-        </Space>
-      </Space>
+        <DomainLabel
+          domain={userData?.domain}
+          entityFqn={userData.fullyQualifiedName ?? ''}
+          entityId={userData.id ?? ''}
+          entityType={EntityType.USER}
+          hasPermission={false}
+          textClassName="text-sm text-grey-muted"
+        />
+      </div>
     ),
     [userData.domain]
   );
 
   const handleDefaultPersonaUpdate = useCallback(
     async (defaultPersona?: EntityReference) => {
-      await updateUserDetails({ ...userData, defaultPersona });
+      await updateUserDetails({ defaultPersona }, 'defaultPersona');
     },
-    [updateUserDetails, userData]
+    [updateUserDetails]
   );
 
   const defaultPersonaRender = useMemo(
