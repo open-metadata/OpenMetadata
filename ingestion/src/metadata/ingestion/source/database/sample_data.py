@@ -556,8 +556,8 @@ class SampleDataSource(
     def _iter(self, *_, **__) -> Iterable[Entity]:
         yield from self.ingest_teams()
         yield from self.ingest_users()
-        yield from self.ingest_glue()
         yield from self.ingest_tables()
+        yield from self.ingest_glue()
         yield from self.ingest_stored_procedures()
         yield from self.ingest_topics()
         yield from self.ingest_charts()
