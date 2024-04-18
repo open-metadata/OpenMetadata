@@ -127,7 +127,7 @@ public class SystemResource {
       @Parameter(description = "Name of the setting", schema = @Schema(type = "string"))
           @PathParam("name")
           String name) {
-    authorizer.authorizeAdmin(securityContext);
+    authorizer.authorizeAdminOrBot(securityContext);
     return systemRepository.getConfigWithKey(name);
   }
 
