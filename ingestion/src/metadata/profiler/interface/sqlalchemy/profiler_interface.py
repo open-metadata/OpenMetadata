@@ -26,7 +26,6 @@ from sqlalchemy import Column, inspect, text
 from sqlalchemy.exc import DBAPIError, ProgrammingError, ResourceClosedError
 from sqlalchemy.orm import scoped_session
 
-from metadata.profiler.processor.metric_filter import MetricFilter
 from metadata.generated.schema.entity.data.table import CustomMetricProfile, TableData
 from metadata.generated.schema.tests.customMetric import CustomMetric
 from metadata.ingestion.connections.session import create_and_bind_thread_safe_session
@@ -40,6 +39,7 @@ from metadata.profiler.metrics.static.stddev import StdDev
 from metadata.profiler.metrics.static.sum import Sum
 from metadata.profiler.orm.functions.table_metric_computer import TableMetricComputer
 from metadata.profiler.orm.registry import Dialects
+from metadata.profiler.processor.metric_filter import MetricFilter
 from metadata.profiler.processor.runner import QueryRunner
 from metadata.utils.constants import SAMPLE_DATA_DEFAULT_COUNT
 from metadata.utils.custom_thread_pool import CustomThreadPoolExecutor

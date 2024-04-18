@@ -14,7 +14,6 @@ from typing import List, Optional, Set, Tuple, Type, Union, cast
 
 from sqlalchemy import Column
 
-from metadata.profiler.api.models import ThreadPoolMetrics
 from metadata.generated.schema.configuration.profilerConfiguration import (
     MetricConfigurationDefinition,
     ProfilerConfiguration,
@@ -24,6 +23,7 @@ from metadata.generated.schema.entity.data.table import (
     TableProfilerConfig,
 )
 from metadata.generated.schema.entity.services import databaseService
+from metadata.profiler.api.models import ThreadPoolMetrics
 from metadata.profiler.metrics.core import (
     ComposedMetric,
     CustomMetric,
@@ -108,7 +108,9 @@ class MetricFilter:
         return self.filter_by_type(HybridMetric)
 
     @staticmethod
-    def filter_empty_metrics(metric_funcs: List[ThreadPoolMetrics]) -> List[ThreadPoolMetrics]:
+    def filter_empty_metrics(
+        metric_funcs: List[ThreadPoolMetrics],
+    ) -> List[ThreadPoolMetrics]:
         """filter thread pool object where metrics attribute is empty
 
         Args:
@@ -118,7 +120,6 @@ class MetricFilter:
             List[ThreadPoolMetrics]
         """
         return [metric for metric in metric_funcs if metric.metrics]
-
 
     def filter_by_type(self, _type: Type[TMetric]) -> List[Type[TMetric]]:
         """filter a list of metric by type

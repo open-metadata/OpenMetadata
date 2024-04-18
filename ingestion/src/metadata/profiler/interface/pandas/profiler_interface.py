@@ -22,7 +22,6 @@ from typing import Dict, List, Optional
 
 from sqlalchemy import Column
 
-from metadata.profiler.processor.metric_filter import MetricFilter
 from metadata.generated.schema.entity.data.table import (
     CustomMetricProfile,
     DataType,
@@ -37,6 +36,7 @@ from metadata.profiler.api.models import ThreadPoolMetrics
 from metadata.profiler.interface.profiler_interface import ProfilerInterface
 from metadata.profiler.metrics.core import MetricTypes
 from metadata.profiler.metrics.registry import Metrics
+from metadata.profiler.processor.metric_filter import MetricFilter
 from metadata.utils.constants import COMPLEX_COLUMN_SEPARATOR, SAMPLE_DATA_DEFAULT_COUNT
 from metadata.utils.datalake.datalake_utils import GenericDataFrameColumnParser
 from metadata.utils.logger import profiler_interface_registry_logger

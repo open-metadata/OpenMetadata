@@ -48,6 +48,22 @@ class OMetaGlossaryTest(TestCase):
     metadata = OpenMetadata(server_config)
     assert metadata.health_check()
 
+    @classmethod
+    def tearDownClass(cls):
+        """Clean up after the test"""
+        cls._clean_up_settings()
+
+    @classmethod
+    def _clean_up_settings(cls):
+        """Reset profiler settings"""
+        profiler_configuration = ProfilerConfiguration(metricConfiguration=[])
+
+        settings = Settings(
+            config_type=SettingType.profilerConfiguration,
+            config_value=profiler_configuration,
+        )
+        cls.metadata.create_or_update_settings(settings)
+
     def test_profiler_configuration(self):
         """
         Test get_profiler_configuration
@@ -57,7 +73,7 @@ class OMetaGlossaryTest(TestCase):
                 MetricConfigurationDefinition(
                     dataType=DataType.INT,
                     disabled=False,
-                    metrics=[MetricType.COUNT, MetricType.DISTINCT_COUNT],
+                    metrics=[MetricType.valuesCount, MetricType.distinctCount],
                 ),
                 MetricConfigurationDefinition(
                     dataType=DataType.DATETIME, disabled=True, metrics=None
@@ -74,7 +90,7 @@ class OMetaGlossaryTest(TestCase):
 
         profiler_configuration.metricConfiguration.append(
             MetricConfigurationDefinition(
-                dataType=DataType.STRING, disabled=False, metrics=[MetricType.HISTOGRAM]
+                dataType=DataType.STRING, disabled=False, metrics=[MetricType.histogram]
             )
         )
 

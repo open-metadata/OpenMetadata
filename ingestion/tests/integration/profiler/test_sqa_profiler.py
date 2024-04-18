@@ -77,6 +77,18 @@ class TestSQAProfiler(TestCase):
             )
         for db_entity in db_entities:
             cls.metadata.delete(DatabaseService, db_entity.id, True, True)
+        cls._clean_up_settings()
+
+    @classmethod
+    def _clean_up_settings(cls):
+        """Reset profiler settings"""
+        profiler_configuration = ProfilerConfiguration(metricConfiguration=[])
+
+        settings = Settings(
+            config_type=SettingType.profilerConfiguration,
+            config_value=profiler_configuration,
+        )
+        cls.metadata.create_or_update_settings(settings)
 
     def test_profiler_workflow(self):
         """test a simple profiler workflow on a table in each service and validate the profile is created"""
