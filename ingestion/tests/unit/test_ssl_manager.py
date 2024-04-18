@@ -24,7 +24,7 @@ class SSLManagerTest(unittest.TestCase):
         self.ssl_manager.cleanup_temp_files()
 
     def test_create_temp_file(self):
-        content = "Test content"
+        content = SecretStr("Test content")
         temp_file = self.ssl_manager.create_temp_file(content)
         self.assertTrue(os.path.exists(temp_file))
         with open(temp_file, "r", encoding="UTF-8") as file:
