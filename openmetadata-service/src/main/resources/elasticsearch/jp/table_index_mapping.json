@@ -308,6 +308,7 @@
             "fields": {
               "keyword": {
                 "type": "keyword",
+                "normalizer": "lowercase_normalizer",
                 "ignore_above": 256
               }
             }
@@ -561,6 +562,9 @@
       },
       "service_suggest": {
         "type": "completion"
+      },
+      "descriptionStatus": {
+        "type": "keyword"
       }
     }
   }

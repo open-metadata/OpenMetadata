@@ -12,23 +12,20 @@ import org.openmetadata.service.util.JsonUtils;
 public record DatabaseServiceIndex(DatabaseService databaseService) implements SearchIndex {
   private static final List<String> excludeFields = List.of("changeDescription");
 
-  public Map<String, Object> buildESDoc() {
-    Map<String, Object> doc = JsonUtils.getMap(databaseService);
-    SearchIndexUtils.removeNonIndexableFields(doc, excludeFields);
+  public List<SearchSuggest> getSuggest() {
     List<SearchSuggest> suggest = new ArrayList<>();
     suggest.add(SearchSuggest.builder().input(databaseService.getName()).weight(5).build());
     suggest.add(
         SearchSuggest.builder().input(databaseService.getFullyQualifiedName()).weight(5).build());
-    doc.put(
-        "fqnParts",
-        getFQNParts(
-            databaseService.getFullyQualifiedName(),
-            suggest.stream().map(SearchSuggest::getInput).toList()));
-    doc.put("suggest", suggest);
-    doc.put("entityType", Entity.DATABASE_SERVICE);
-    doc.put("owner", getEntityWithDisplayName(databaseService.getOwner()));
-    doc.put("domain", getEntityWithDisplayName(databaseService.getDomain()));
-    doc.put("followers", SearchIndexUtils.parseFollowers(databaseService.getFollowers()));
+    return suggest;
+  }
+
+  public Map<String, Object> buildESDoc() {
+    Map<String, Object> doc = JsonUtils.getMap(databaseService);
+    SearchIndexUtils.removeNonIndexableFields(doc, excludeFields);
+    Map<String, Object> commonAttributes =
+        getCommonAttributesMap(databaseService, Entity.DATABASE_SERVICE);
+    doc.putAll(commonAttributes);
     return doc;
   }
 }
