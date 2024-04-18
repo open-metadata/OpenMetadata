@@ -315,6 +315,7 @@
     "dbt-run-result-file-path": "dbt Run Results File Path",
     "dbt-run-result-http-path": "dbt Run Results HTTP Path",
     "dbt-source": "dbt Source",
+    "ddl-uppercase": "DDL",
     "deactivated": "非アクティブ化",
     "december": "12月",
     "default": "Default",

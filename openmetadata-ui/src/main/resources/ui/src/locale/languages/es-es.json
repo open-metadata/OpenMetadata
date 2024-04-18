@@ -315,6 +315,7 @@
     "dbt-run-result-file-path": "Ruta del archivo de resultados de ejecución de dbt",
     "dbt-run-result-http-path": "Ruta HTTP de resultados de ejecución de dbt",
     "dbt-source": "Fuente de dbt",
+    "ddl-uppercase": "DDL",
     "deactivated": "Desactivado",
     "december": "Diciembre",
     "default": "Por defecto",

@@ -315,6 +315,7 @@
     "dbt-run-result-file-path": "dbt-Ausführungsergebnisdateipfad",
     "dbt-run-result-http-path": "dbt-Ausführungsergebnis-HTTP-Pfad",
     "dbt-source": "dbt-Quelle",
+    "ddl-uppercase": "DDL",
     "deactivated": "Deaktiviert",
     "december": "Dezember",
     "default": "Default",

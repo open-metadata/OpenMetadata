@@ -315,6 +315,7 @@
     "dbt-run-result-file-path": "Путь к файлу результатов выполнения dbt",
     "dbt-run-result-http-path": "HTTP-путь результатов запуска dbt",
     "dbt-source": "dbt Источник",
+    "ddl-uppercase": "DDL",
     "deactivated": "Отключено",
     "december": "Декабрь",
     "default": "Default",

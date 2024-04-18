@@ -315,6 +315,7 @@
     "dbt-run-result-file-path": "dbt 运行结果文件路径",
     "dbt-run-result-http-path": "dbt 运行结果 HTTP 路径",
     "dbt-source": "DBT 源",
+    "ddl-uppercase": "DDL",
     "deactivated": "已停用",
     "december": "十二月",
     "default": "Default",
