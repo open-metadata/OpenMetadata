@@ -18,6 +18,7 @@ import { SORT_ORDER } from '../enums/common.enum';
 import { CreateTestCase } from '../generated/api/tests/createTestCase';
 import { CreateTestSuite } from '../generated/api/tests/createTestSuite';
 import {
+  TableData,
   TestCase,
   TestCaseResult,
   TestCaseStatus,
@@ -72,6 +73,7 @@ export type ListTestCaseParamsBySearch = ListTestCaseParams & {
   endTimestamp?: number;
   testPlatforms?: TestPlatform[];
   offset?: number;
+  owner?: string;
 };
 
 export type ListTestDefinitionsParams = ListParams & {
@@ -133,6 +135,20 @@ export const getListTestCaseResults = async (
   }>(url, {
     params,
   });
+
+  return response.data;
+};
+
+export const getTestCaseFailedSampleData = async (id: string) => {
+  const url = `${testCaseUrl}/${id}/failedRowsSample`;
+  const response = await APIClient.get<TableData>(url);
+
+  return response.data;
+};
+
+export const deleteTestCaseFailedSampleData = async (id: string) => {
+  const url = `${testCaseUrl}/${id}/failedRowsSample`;
+  const response = await APIClient.delete(url);
 
   return response.data;
 };

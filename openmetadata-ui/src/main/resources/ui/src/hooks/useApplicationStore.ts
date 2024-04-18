@@ -41,11 +41,9 @@ export const useApplicationStore = create<ApplicationStore>()(
       jwtPrincipalClaims: [],
       userProfilePics: {},
       cachedEntityData: {},
-      urlPathName: '',
       selectedPersona: {} as EntityReference,
       oidcIdToken: '',
       refreshTokenKey: '',
-      loading: false,
       theme: { ...DEFAULT_THEME },
       setTheme: (theme: ApplicationStore['theme']) => {
         set({ theme });
@@ -66,11 +64,6 @@ export const useApplicationStore = create<ApplicationStore>()(
       setApplicationConfig: (config: LogoConfiguration) => {
         set({ applicationConfig: config });
       },
-
-      setUrlPathName: (urlPathName: string) => {
-        set({ urlPathName });
-      },
-
       setCurrentUser: (user) => {
         set({ currentUser: user });
       },
@@ -90,9 +83,6 @@ export const useApplicationStore = create<ApplicationStore>()(
       },
       setIsSigningIn: (signingIn: boolean) => {
         set({ isSigningIn: signingIn });
-      },
-      setLoadingIndicator: (loading: boolean) => {
-        set({ loading });
       },
 
       onLoginHandler: () => {
