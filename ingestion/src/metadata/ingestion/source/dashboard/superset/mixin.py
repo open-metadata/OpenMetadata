@@ -182,9 +182,21 @@ class SupersetSourceMixin(DashboardServiceSource):
                             fqn=datamodel_fqn,
                         )
 
+                        datasource_json = self.client.fetch_datasource(
+                            chart_json.datasource_id
+                        )
+                        datasource_columns = self.get_column_info(
+                            datasource_json.result.columns
+                        )
+                        columns_list = [col.displayName for col in datasource_columns]
+                        column_lineage = self._get_column_lineage(
+                            from_entity, to_entity, columns_list
+                        )
                         if from_entity and to_entity:
                             yield self._get_add_lineage_request(
-                                to_entity=to_entity, from_entity=from_entity
+                                to_entity=to_entity,
+                                from_entity=from_entity,
+                                column_lineage=column_lineage,
                             )
                     except Exception as exc:
                         yield Either(

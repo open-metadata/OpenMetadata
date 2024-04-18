@@ -35,6 +35,7 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.ingestion.source.dashboard.qlikcloud.client import QlikCloudClient
 from metadata.ingestion.source.dashboard.qlikcloud.models import QlikApp, QlikAppList
 from metadata.ingestion.source.dashboard.qliksense.metadata import QliksenseSource
 from metadata.ingestion.source.dashboard.qliksense.models import QlikTable
@@ -52,6 +53,7 @@ class QlikcloudSource(QliksenseSource):
     """
 
     config: WorkflowSource
+    client: QlikCloudClient
     metadata_config: OpenMetadataConnection
 
     @classmethod
@@ -182,16 +184,22 @@ class QlikcloudSource(QliksenseSource):
         db_service_entity = self.metadata.get_by_name(
             entity=DatabaseService, fqn=db_service_name
         )
-        for datamodel_id in self.context.get().dataModels or []:
+        for datamodel in self.data_models or []:
             try:
-                data_model_entity = self._get_datamodel(datamodel_id=datamodel_id)
+                data_model_entity = self._get_datamodel(datamodel_id=datamodel.id)
                 if data_model_entity:
                     om_table = self._get_database_table(
                         db_service_entity, data_model_entity
                     )
                     if om_table:
+                        columns_list = [col.name for col in datamodel.fields]
+                        column_lineage = self._get_column_lineage(
+                            om_table, data_model_entity, columns_list
+                        )
                         yield self._get_add_lineage_request(
-                            to_entity=data_model_entity, from_entity=om_table
+                            to_entity=data_model_entity,
+                            from_entity=om_table,
+                            column_lineage=column_lineage,
                         )
             except Exception as err:
                 yield Either(
