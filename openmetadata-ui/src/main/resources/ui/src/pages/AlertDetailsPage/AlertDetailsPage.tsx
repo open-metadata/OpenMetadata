@@ -56,7 +56,6 @@ import {
   getSettingPath,
 } from '../../utils/RouterUtils';
 import { getEntityIcon } from '../../utils/TableUtils';
-import '../AddObservabilityPage/add-observability-page.less';
 import { AlertDetailsPageProps } from './AlertDetailsPage.interface';
 
 function AlertDetailsPage({
@@ -279,7 +278,7 @@ function AlertDetailsPage({
           <Loader />
         ) : (
           <div
-            className="alert-page-container"
+            className="steps-form-container"
             data-testid="alert-details-container">
             <Row
               className="add-notification-container p-x-lg p-t-md"

@@ -13,6 +13,7 @@
 import { act, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import React from 'react';
+import { ROUTES } from '../../../constants/constants';
 import {
   AdvanceSearchProvider,
   useAdvanceSearch,
@@ -51,7 +52,7 @@ const mockPush = jest.fn();
 jest.mock('react-router-dom', () => ({
   useLocation: jest.fn().mockReturnValue({
     search: 'queryFilter={"some":"value"}',
-    pathname: '/explore',
+    pathname: ROUTES.EXPLORE,
   }),
   useParams: jest.fn().mockReturnValue({
     tab: 'tabValue',

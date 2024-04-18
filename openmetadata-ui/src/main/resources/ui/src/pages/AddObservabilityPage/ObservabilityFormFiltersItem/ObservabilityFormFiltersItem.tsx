@@ -114,13 +114,12 @@ function ObservabilityFormFiltersItem({
                             )}
                         </Row>
                       </div>
-                      <div>
-                        <Button
-                          data-testid={`remove-filter-${name}`}
-                          icon={<CloseOutlined />}
-                          onClick={() => remove(name)}
-                        />
-                      </div>
+
+                      <Button
+                        data-testid={`remove-filter-${name}`}
+                        icon={<CloseOutlined />}
+                        onClick={() => remove(name)}
+                      />
                     </div>
                     <Form.Item
                       label={

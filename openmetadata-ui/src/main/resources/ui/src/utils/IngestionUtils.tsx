@@ -349,11 +349,11 @@ export const getSuccessMessage = (
       });
 
   return (
-    <span>
-      <span className="font-medium">{`"${ingestionName}"`}</span>
-      <span>
+    <Typography.Text>
+      <Typography.Text className="font-medium">{`"${ingestionName}"`}</Typography.Text>
+      <Typography.Text>
         {status === FormSubmitType.ADD ? createMessage : updateMessage}
-      </span>
-    </span>
+      </Typography.Text>
+    </Typography.Text>
   );
 };
