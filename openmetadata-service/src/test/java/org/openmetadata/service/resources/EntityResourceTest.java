@@ -3167,7 +3167,8 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     }
   }
 
-  protected void assertEntityReferenceFromSearch(T entity, EntityReference actual) {
+  protected void assertEntityReferenceFromSearch(T entity, EntityReference actual)
+      throws IOException {
     RestClient searchClient = getSearchClient();
     IndexMapping index = Entity.getSearchRepository().getIndexMapping(entityType);
     Request request = new Request("GET", String.format("%s/_search", index.getIndexName(null)));
@@ -3175,43 +3176,35 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
         String.format(
             "{\"query\":{\"bool\":{\"filter\":[{\"term\":{\"_id\":\"%s\"}}]}}}", entity.getId());
     request.setJsonEntity(query);
-    retryPollingTest(
-        "assertEntityReferenceFromSearch_" + entity.getFullyQualifiedName(),
-        () -> {
-          Response response;
-          String jsonString;
-          try {
-            response = searchClient.performRequest(request);
-            jsonString = EntityUtils.toString(response.getEntity());
-          } catch (IOException e) {
-            throw new RuntimeException(e);
-          } finally {
-            try {
-              searchClient.close();
-            } catch (IOException e) {
-              throw new RuntimeException(e);
-            }
-          }
+    try {
+      retryPollingTest(
+          "assertEntityReferenceFromSearch_" + entity.getFullyQualifiedName(),
+          () -> {
+            Response response = searchClient.performRequest(request);
+            String jsonString = EntityUtils.toString(response.getEntity());
+            @SuppressWarnings("unchecked")
+            HashMap<String, Object> map =
+                (HashMap<String, Object>) JsonUtils.readOrConvertValue(jsonString, HashMap.class);
+            @SuppressWarnings("unchecked")
+            LinkedHashMap<String, Object> hits = (LinkedHashMap<String, Object>) map.get("hits");
+            @SuppressWarnings("unchecked")
+            ArrayList<LinkedHashMap<String, Object>> hitsList =
+                (ArrayList<LinkedHashMap<String, Object>>) hits.get("hits");
+            assertEquals(1, hitsList.size());
+            LinkedHashMap<String, Object> doc = hitsList.get(0);
+            @SuppressWarnings("unchecked")
+            LinkedHashMap<String, Object> source =
+                (LinkedHashMap<String, Object>) doc.get("_source");
 
-          @SuppressWarnings("unchecked")
-          HashMap<String, Object> map =
-              (HashMap<String, Object>) JsonUtils.readOrConvertValue(jsonString, HashMap.class);
-          @SuppressWarnings("unchecked")
-          LinkedHashMap<String, Object> hits = (LinkedHashMap<String, Object>) map.get("hits");
-          @SuppressWarnings("unchecked")
-          ArrayList<LinkedHashMap<String, Object>> hitsList =
-              (ArrayList<LinkedHashMap<String, Object>>) hits.get("hits");
-          assertEquals(1, hitsList.size());
-          LinkedHashMap<String, Object> doc = hitsList.get(0);
-          @SuppressWarnings("unchecked")
-          LinkedHashMap<String, Object> source = (LinkedHashMap<String, Object>) doc.get("_source");
+            EntityReference domainReference =
+                JsonUtils.readOrConvertValue(source.get("domain"), EntityReference.class);
 
-          EntityReference domainReference =
-              JsonUtils.readOrConvertValue(source.get("domain"), EntityReference.class);
-
-          assertEquals(domainReference.getId(), actual.getId());
-          assertEquals(domainReference.getType(), actual.getType());
-        });
+            assertEquals(domainReference.getId(), actual.getId());
+            assertEquals(domainReference.getType(), actual.getType());
+          });
+    } finally {
+      searchClient.close();
+    }
   }
 
   protected static void checkOwnerOwns(EntityReference owner, UUID entityId, boolean expectedOwning)
