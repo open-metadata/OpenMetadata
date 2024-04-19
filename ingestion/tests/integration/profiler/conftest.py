@@ -2,7 +2,7 @@ from typing import TYPE_CHECKING
 
 import boto3
 import pytest
-from integration.integration_base import int_admin_ometa
+from ...integration.integration_base import int_admin_ometa
 from testcontainers.localstack import LocalStackContainer
 
 from metadata.generated.schema.api.services.createDatabaseService import (

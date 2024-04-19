@@ -13,8 +13,12 @@ factory for NoSQL adaptors that are used in the NoSQLProfiler.
 """
 from typing import Callable
 
-from pymongo import MongoClient
-
+from metadata.generated.schema.entity.services.connections.database.dynamoDBConnection import (
+    DynamoDBConnection,
+)
+from metadata.generated.schema.entity.services.connections.database.mongoDBConnection import (
+    MongoDBConnection,
+)
 from metadata.profiler.adaptors.dynamodb import DynamoDB
 from metadata.profiler.adaptors.mongodb import MongoDB
 from metadata.profiler.adaptors.nosql_adaptor import NoSQLAdaptor
@@ -31,12 +35,6 @@ class NoSQLAdaptorFactory(Factory):
     The client types are registered with their corresponding constructors,
     and can be created using the `construct` method.
     """
-
-    def __init__(self):
-        """
-        Initialize a new instance of NoSQLClientFactory.
-        """
-        super().__init__()
 
     def register(self, interface_type: str, interface_class: NoSQLAdaptorConstructor):
         """
@@ -56,7 +54,7 @@ class NoSQLAdaptorFactory(Factory):
         Create a client instance of the type of the given source client.
 
         Args:
-            interface_type (any): The source client instance.
+            interface_type (str): The type of the source connection.
 
         Returns:
             NoSQLAdaptor: The created client instance.
@@ -64,12 +62,15 @@ class NoSQLAdaptorFactory(Factory):
         Raises:
             ValueError: If the type of the source client is not registered.
         """
-        client_class = self._interface_type.get(type(interface_type).__name__)
+        client_class = self._interface_type.get(interface_type)
         if not client_class:
-            raise ValueError(f"Unknown NoSQL source: {type(interface_type).__name__}")
-        return client_class(interface_type)
+            raise ValueError(f"Unknown NoSQL source: {interface_type}")
+        return client_class(*args, **kwargs)
 
 
 factory = NoSQLAdaptorFactory()
-factory.register(type(MongoClient).__name__, MongoDB)
-factory.register("dynamodb.ServiceResource", DynamoDB)
+adaptors = {
+    MongoDBConnection.__name__: MongoDB,
+    DynamoDBConnection.__name__: DynamoDB,
+}
+factory.register_many(adaptors)

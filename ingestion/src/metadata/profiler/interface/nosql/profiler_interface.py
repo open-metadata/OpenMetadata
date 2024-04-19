@@ -165,7 +165,10 @@ class NoSQLProfilerInterface(ProfilerInterface):
         return sampler_factory_.create(
             self.service_connection_config.__class__.__name__,
             table=self.table,
-            client=factory.create(self.connection),
+            client=factory.create(
+                self.service_connection_config.config.__class__.__name__,
+                client=self.connection,
+            ),
             profile_sample_config=self.profile_sample_config,
             partition_details=self.partition_details,
             profile_sample_query=self.profile_query,
@@ -187,7 +190,10 @@ class NoSQLProfilerInterface(ProfilerInterface):
     ):
         """get all profiler metrics"""
         profile_results = {"table": {}, "columns": defaultdict(dict)}
-        runner = factory.create(self.connection)
+        runner = factory.create(
+            self.service_connection_config.config.__class__.__name__,
+            client=self.connection,
+        )
         metric_list = [
             self.compute_metrics(runner, metric_func) for metric_func in metric_funcs
         ]
