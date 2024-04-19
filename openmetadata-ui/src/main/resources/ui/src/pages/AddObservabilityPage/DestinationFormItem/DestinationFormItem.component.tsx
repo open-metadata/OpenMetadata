@@ -60,7 +60,7 @@ function DestinationFormItem() {
                   data-testid="add-destination-button"
                   disabled={isEmpty(selectedSource) || isNil(selectedSource)}
                   type="primary"
-                  onClick={add}>
+                  onClick={() => add({})}>
                   {t('label.add-entity', {
                     entity: t('label.destination'),
                   })}
