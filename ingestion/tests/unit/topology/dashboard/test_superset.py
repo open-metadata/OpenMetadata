@@ -150,9 +150,9 @@ MOCK_SUPERSET_DB_CONFIG = {
                 "connection": {
                     "type": "Postgres",
                     "hostPort": f"{postgres.get_container_host_ip()}:{postgres.get_exposed_port(5432)}",
-                    "username": postgres.POSTGRES_USER,
-                    "authType": {"password": postgres.POSTGRES_PASSWORD},
-                    "database": postgres.POSTGRES_DB,
+                    "username": postgres.env.get("POSTGRES_USER"),
+                    "authType": {"password": postgres.env.get("POSTGRES_PASSWORD")},
+                    "database": postgres.env.get("POSTGRES_DB"),
                 },
             }
         },
@@ -399,7 +399,6 @@ class SupersetUnitTest(TestCase):
         self.superset_api.context.get().__dict__[
             "dashboard_service"
         ] = EXPECTED_DASH_SERVICE.fullyQualifiedName.__root__
-
 
         with patch.object(
             DashboardServiceSource, "test_connection", return_value=False
