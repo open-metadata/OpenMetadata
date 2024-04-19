@@ -204,7 +204,6 @@ import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.ResultList;
 import org.openmetadata.service.util.TestUtils;
-import org.opentest4j.AssertionFailedError;
 
 @Slf4j
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
@@ -835,9 +834,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     }
   }
 
-  /**
-   * At the end of test for an entity, delete the parent container to test recursive delete functionality
-   */
+  /** At the end of test for an entity, delete the parent container to test recursive delete functionality */
   private void delete_recursiveTest() throws IOException {
     // Finally, delete the container that contains the entities created for this test
     EntityReference container = getContainer();
@@ -2248,6 +2245,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     TestUtils.retryPollingTest(
         test.getDisplayName(),
         () -> {
+          fqnList.clear();
           SearchResponse afterDeleteResponse;
           try {
             afterDeleteResponse =
@@ -2261,9 +2259,15 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
           for (SearchHit hit : hitsAfterDelete) {
             Map<String, Object> sourceAsMap = hit.getSourceAsMap();
             if (sourceAsMap.get("id").toString().equals(finalEntity.getId().toString())) {
-              throw new AssertionFailedError("Tag is not deleted in search");
+              @SuppressWarnings("unchecked")
+              List<Map<String, String>> listTags =
+                  (List<Map<String, String>>) sourceAsMap.get("tags");
+              listTags.forEach(tempMap -> fqnList.add(tempMap.get("tagFQN")));
+              break;
             }
           }
+          // check if the relationships of tag are also deleted in search
+          assertFalse(fqnList.contains(tagLabel.getTagFQN()));
         });
   }
 
