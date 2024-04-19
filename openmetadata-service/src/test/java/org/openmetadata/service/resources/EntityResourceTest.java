@@ -2254,11 +2254,10 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
         () -> {
           SearchResponse afterDeleteResponse;
           try {
-            waitForEsAsyncOp(100);
             afterDeleteResponse =
                 getResponseFormSearch(
                     indexMapping.getIndexName(Entity.getSearchRepository().getClusterAlias()));
-          } catch (InterruptedException | HttpResponseException e) {
+          } catch (HttpResponseException e) {
             throw new RuntimeException(e);
           }
 
@@ -3195,10 +3194,9 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
           Response response;
           String jsonString;
           try {
-            waitForEsAsyncOp(10);
             response = searchClient.performRequest(request);
             jsonString = EntityUtils.toString(response.getEntity());
-          } catch (IOException | InterruptedException e) {
+          } catch (IOException e) {
             throw new RuntimeException(e);
           } finally {
             try {
