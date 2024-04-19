@@ -202,6 +202,7 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
     assertEntityReferences(glossary.getReviewers(), t12.getReviewers()); // Reviewers are inherited
   }
 
+  @Test
   void test_inheritDomain(TestInfo test) throws IOException, InterruptedException {
     // When domain is not set for a glossary term, carry it forward from the glossary
     CreateGlossary createGlossary =
@@ -215,8 +216,7 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
             .withGlossary(glossary.getFullyQualifiedName())
             .withDescription("desc");
 
-    // TODO this is an unstable test
-    // GlossaryTerm t1 = assertDomainInheritance(create, DOMAIN.getEntityReference());
+    GlossaryTerm t1 = assertDomainInheritance(create, DOMAIN.getEntityReference());
 
     // Create terms t12 under t1 without reviewers and owner
     create =

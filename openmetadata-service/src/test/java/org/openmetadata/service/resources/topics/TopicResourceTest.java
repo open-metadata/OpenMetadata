@@ -557,14 +557,4 @@ public class TopicResourceTest extends EntityResourceTest<Topic, CreateTopic> {
     // Check the nested columns
     assertFields(expectedField.getChildren(), actualField.getChildren());
   }
-
-  @Override
-  @Test
-  protected void deleteTagAndCheckRelationshipsInSearch(TestInfo test) throws HttpResponseException, InterruptedException {
-    try {
-      super.deleteTagAndCheckRelationshipsInSearch(test);
-    } catch (AssertionError e) {
-      LOG.warn("Ignoring unstable test failure: {}", e.getMessage());
-    }
-  }
 }

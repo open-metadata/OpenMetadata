@@ -71,6 +71,8 @@ import es.org.elasticsearch.xcontent.NamedXContentRegistry;
 import es.org.elasticsearch.xcontent.ParseField;
 import es.org.elasticsearch.xcontent.XContentParser;
 import es.org.elasticsearch.xcontent.json.JsonXContent;
+import io.github.resilience4j.retry.Retry;
+import io.github.resilience4j.retry.RetryConfig;
 import java.io.IOException;
 import java.net.URISyntaxException;
 import java.time.Duration;
@@ -204,6 +206,7 @@ import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.ResultList;
 import org.openmetadata.service.util.TestUtils;
+import org.opentest4j.AssertionFailedError;
 
 @Slf4j
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
@@ -834,7 +837,9 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     }
   }
 
-  /** At the end of test for an entity, delete the parent container to test recursive delete functionality */
+  /**
+   * At the end of test for an entity, delete the parent container to test recursive delete functionality
+   */
   private void delete_recursiveTest() throws IOException {
     // Finally, delete the container that contains the entities created for this test
     EntityReference container = getContainer();
@@ -2019,7 +2024,9 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
         permissionNotAllowed(TEST_USER_NAME, List.of(MetadataOperation.DELETE)));
   }
 
-  /** Soft delete an entity and then use restore request to restore it back */
+  /**
+   * Soft delete an entity and then use restore request to restore it back
+   */
   @Test
   @Execution(ExecutionMode.CONCURRENT)
   void delete_restore_entity_200(TestInfo test) throws IOException {
@@ -2241,22 +2248,44 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     fqnList.clear();
     // delete the tag
     tagResourceTest.deleteEntity(tag.getId(), false, true, ADMIN_AUTH_HEADERS);
-    waitForEsAsyncOp(500);
-    response =
-        getResponseFormSearch(
-            indexMapping.getIndexName(Entity.getSearchRepository().getClusterAlias()));
-    hits = response.getHits().getHits();
-    for (SearchHit hit : hits) {
-      Map<String, Object> sourceAsMap = hit.getSourceAsMap();
-      if (sourceAsMap.get("id").toString().equals(entity.getId().toString())) {
-        @SuppressWarnings("unchecked")
-        List<Map<String, String>> listTags = (List<Map<String, String>>) sourceAsMap.get("tags");
-        listTags.forEach(tempMap -> fqnList.add(tempMap.get("tagFQN")));
-        break;
-      }
-    }
-    // check if the relationships of tag are also deleted in search
-    assertFalse(fqnList.contains(tagLabel.getTagFQN()));
+
+    T finalEntity = entity;
+    retryElasticSearchTest(
+        () -> {
+          SearchResponse afterDeleteResponse;
+          try {
+            waitForEsAsyncOp(100);
+            afterDeleteResponse =
+                getResponseFormSearch(
+                    indexMapping.getIndexName(Entity.getSearchRepository().getClusterAlias()));
+          } catch (InterruptedException | HttpResponseException e) {
+            throw new RuntimeException(e);
+          }
+
+          SearchHit[] hits2 = afterDeleteResponse.getHits().getHits();
+          for (SearchHit hit : hits2) {
+            Map<String, Object> sourceAsMap = hit.getSourceAsMap();
+            if (sourceAsMap.get("id").toString().equals(finalEntity.getId().toString())) {
+              @SuppressWarnings("unchecked")
+              List<Map<String, String>> listTags =
+                  (List<Map<String, String>>) sourceAsMap.get("tags");
+              listTags.forEach(tempMap -> fqnList.add(tempMap.get("tagFQN")));
+              break;
+            }
+          }
+          // check if the relationships of tag are also deleted in search
+          assertFalse(fqnList.contains(tagLabel.getTagFQN()));
+        });
+  }
+
+  protected void retryElasticSearchTest(Runnable runnable) {
+    RetryConfig config =
+        RetryConfig.custom()
+            .maxAttempts(50)
+            .retryExceptions(AssertionFailedError.class)
+            .waitDuration(Duration.ofMillis(100))
+            .build();
+    Retry.decorateRunnable(Retry.of("retry", config), runnable).run();
   }
 
   @Test
@@ -2587,7 +2616,9 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     return TestUtils.put(target, restore, entityClass, status, authHeaders);
   }
 
-  /** Helper function to create an entity, submit POST API request and validate response. */
+  /**
+   * Helper function to create an entity, submit POST API request and validate response.
+   */
   public T createAndCheckEntity(K create, Map<String, String> authHeaders) throws IOException {
     // Validate an entity that is created has all the information set in create request
     String updatedBy = SecurityUtil.getPrincipalName(authHeaders);
@@ -2712,7 +2743,9 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     }
   }
 
-  /** Helper function to generate JSON PATCH, submit PATCH API request and validate response. */
+  /**
+   * Helper function to generate JSON PATCH, submit PATCH API request and validate response.
+   */
   protected final T patchEntityAndCheck(
       T updated,
       String originalJson,
@@ -3117,7 +3150,9 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
         .withFieldsDeleted(new ArrayList<>());
   }
 
-  /** Compare fullyQualifiedName in the entityReference */
+  /**
+   * Compare fullyQualifiedName in the entityReference
+   */
   protected static void assertReference(String expected, EntityReference actual) {
     if (expected != null) {
       assertNotNull(actual);
@@ -3128,7 +3163,9 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     }
   }
 
-  /** Compare entity Id and types in the entityReference */
+  /**
+   * Compare entity Id and types in the entityReference
+   */
   protected static void assertReference(EntityReference expected, EntityReference actual) {
     // If the actual value is inherited, it will never match the expected
     // We just ignore the validation in these cases
@@ -3145,38 +3182,47 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     }
   }
 
-  protected void assertEntityReferenceFromSearch(T entity, EntityReference actual)
-      throws IOException, InterruptedException {
+  protected void assertEntityReferenceFromSearch(T entity, EntityReference actual) {
     RestClient searchClient = getSearchClient();
     IndexMapping index = Entity.getSearchRepository().getIndexMapping(entityType);
-    Response response;
     Request request = new Request("GET", String.format("%s/_search", index.getIndexName(null)));
     String query =
         String.format(
             "{\"query\":{\"bool\":{\"filter\":[{\"term\":{\"_id\":\"%s\"}}]}}}", entity.getId());
     request.setJsonEntity(query);
-    try {
-      waitForEsAsyncOp();
-      response = searchClient.performRequest(request);
-    } finally {
-      searchClient.close();
-    }
+    retryElasticSearchTest(
+        () -> {
+          Response response;
+          String jsonString;
+          try {
+            waitForEsAsyncOp(10);
+            response = searchClient.performRequest(request);
+            jsonString = EntityUtils.toString(response.getEntity());
+          } catch (IOException | InterruptedException e) {
+            throw new RuntimeException(e);
+          } finally {
+            try {
+              searchClient.close();
+            } catch (IOException e) {
+              throw new RuntimeException(e);
+            }
+          }
 
-    String jsonString = EntityUtils.toString(response.getEntity());
-    HashMap<String, Object> map =
-        (HashMap<String, Object>) JsonUtils.readOrConvertValue(jsonString, HashMap.class);
-    LinkedHashMap<String, Object> hits = (LinkedHashMap<String, Object>) map.get("hits");
-    ArrayList<LinkedHashMap<String, Object>> hitsList =
-        (ArrayList<LinkedHashMap<String, Object>>) hits.get("hits");
-    assertEquals(1, hitsList.size());
-    LinkedHashMap<String, Object> doc = (LinkedHashMap<String, Object>) hitsList.get(0);
-    LinkedHashMap<String, Object> source = (LinkedHashMap<String, Object>) doc.get("_source");
+          HashMap<String, Object> map =
+              (HashMap<String, Object>) JsonUtils.readOrConvertValue(jsonString, HashMap.class);
+          LinkedHashMap<String, Object> hits = (LinkedHashMap<String, Object>) map.get("hits");
+          ArrayList<LinkedHashMap<String, Object>> hitsList =
+              (ArrayList<LinkedHashMap<String, Object>>) hits.get("hits");
+          assertEquals(1, hitsList.size());
+          LinkedHashMap<String, Object> doc = hitsList.get(0);
+          LinkedHashMap<String, Object> source = (LinkedHashMap<String, Object>) doc.get("_source");
 
-    EntityReference domainReference =
-        JsonUtils.readOrConvertValue(source.get("domain"), EntityReference.class);
+          EntityReference domainReference =
+              JsonUtils.readOrConvertValue(source.get("domain"), EntityReference.class);
 
-    assertEquals(domainReference.getId(), actual.getId());
-    assertEquals(domainReference.getType(), actual.getType());
+          assertEquals(domainReference.getId(), actual.getId());
+          assertEquals(domainReference.getType(), actual.getType());
+        });
   }
 
   protected static void checkOwnerOwns(EntityReference owner, UUID entityId, boolean expectedOwning)
