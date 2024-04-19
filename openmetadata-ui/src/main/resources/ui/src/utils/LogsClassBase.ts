@@ -42,11 +42,11 @@ class LogsClassBase {
    *   name: string
    *   url: string
    */
-  public getLogBreadCrumbs = (
+  public getLogBreadCrumbs(
     serviceType: string,
     ingestionName: string,
     ingestionDetails: IngestionPipeline | undefined
-  ) => {
+  ) {
     const updateIngestionName = Fqn.split(ingestionName);
     if (updateIngestionName.includes(OPEN_METADATA) && ingestionDetails) {
       return [
@@ -114,7 +114,7 @@ class LogsClassBase {
             : '',
       };
     });
-  };
+  }
 }
 
 const logsClassBase = new LogsClassBase();
