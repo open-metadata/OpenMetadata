@@ -192,7 +192,7 @@ public final class TestUtils {
   public static RetryRegistry elasticSearchRetryRegistry =
       RetryRegistry.of(
           RetryConfig.custom()
-              .maxAttempts(100) // about 10 seconds
+              .maxAttempts(30) // about 3 seconds
               .waitDuration(Duration.ofMillis(100))
               .retryExceptions(RetryableAssertionError.class)
               .build());
