@@ -30,8 +30,12 @@ from metadata.profiler.orm.converter.base import build_orm_col
 
 
 class DatabricksProfilerInterface(SQAProfilerInterface):
+    """Databricks profiler interface"""
+
     def visit_column(self, *args, **kwargs):
-        result = super(HiveCompiler, self).visit_column(*args, **kwargs)
+        result = super(  # pylint: disable=bad-super-call
+            HiveCompiler, self
+        ).visit_column(*args, **kwargs)
         dot_count = result.count(".")
         if dot_count > 2:
             splitted_result = result.split(".", 2)[-1].split(".")
@@ -47,17 +51,16 @@ class DatabricksProfilerInterface(SQAProfilerInterface):
         self.set_catalog(self.session)
 
     def _get_struct_columns(self, columns: List[OMColumn], parent: str):
-        """"""
-        # pylint: disable=import-outside-toplevel
+        """Get struct columns"""
 
         columns_list = []
         for idx, col in enumerate(columns):
             if col.dataType != DataType.STRUCT:
                 col.name = ColumnName(__root__=f"{parent}.{col.name.__root__}")
                 col = build_orm_col(idx, col, DatabaseServiceType.Databricks)
-                # pylint: disable=protected-access
-                col._set_parent(self.table.__table__)
-                # pylint: enable=protected-access
+                col._set_parent(  # pylint: disable=protected-access
+                    self.table.__table__
+                )
                 columns_list.append(col)
             else:
                 col = self._get_struct_columns(
@@ -68,8 +71,6 @@ class DatabricksProfilerInterface(SQAProfilerInterface):
 
     def get_columns(self) -> Column:
         """Get columns from table"""
-        # pylint: disable=import-outside-toplevel
-
         columns = []
         for idx, column in enumerate(self.table_entity.columns):
             if column.dataType == DataType.STRUCT:
@@ -78,6 +79,8 @@ class DatabricksProfilerInterface(SQAProfilerInterface):
                 )
             else:
                 col = build_orm_col(idx, column, DatabaseServiceType.Databricks)
-                col._set_parent(self.table.__table__)
+                col._set_parent(  # pylint: disable=protected-access
+                    self.table.__table__
+                )
                 columns.append(col)
         return columns
