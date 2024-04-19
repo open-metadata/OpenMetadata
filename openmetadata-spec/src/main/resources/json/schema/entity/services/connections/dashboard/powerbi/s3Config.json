@@ -1,0 +1,20 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/services/connections/dashboard/powerbi/s3Config.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "S3Config",
+  "description": "S3 storage config for pbit files",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.services.connections.dashboard.powerbi.S3Config",
+  "properties": {
+    "securityConfig": {
+      "title": "S3 Security Config",
+      "$ref": "../../../../../security/credentials/awsCredentials.json"
+    },
+    "prefixConfig": {
+      "title": "Prefix Config",
+      "$ref": "bucketDetails.json"
+    }
+  },
+  "additionalProperties": false,
+  "required": ["securityConfig"]
+}

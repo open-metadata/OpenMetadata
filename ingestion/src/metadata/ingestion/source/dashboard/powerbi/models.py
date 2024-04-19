@@ -116,7 +116,6 @@ class TablesResponse(BaseModel):
     odata_context: str = Field(alias="@odata.context")
     value: List[PowerBiTable]
 
-
 class Dataset(BaseModel):
     """
     PowerBI Dataset Model
@@ -192,3 +191,26 @@ class PowerBiToken(BaseModel):
 
     expires_in: Optional[int]
     access_token: Optional[str]
+
+class RemoteArtifacts(BaseModel):
+    """
+    PowerBI RemoteArtifacts Model
+    """
+
+    DatasetId: str
+    ReportId: str
+
+class ConnectionFile(BaseModel):
+    """
+    PowerBi Connection File Model
+    """
+
+    RemoteArtifacts: Optional[List[RemoteArtifacts]]
+
+class DataModelSchema(BaseModel):
+    """
+    PowerBi Data Model Schema Model
+    """
+
+    tables: Optional[List[PowerBiTable]]
+    connectionFile: Optional[ConnectionFile]

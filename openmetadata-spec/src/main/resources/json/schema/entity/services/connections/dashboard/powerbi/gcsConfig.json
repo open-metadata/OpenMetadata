@@ -1,0 +1,20 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/services/connections/dashboard/powerbi/gcsConfig.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "GCSConfig",
+  "description": "GCS storage config for pbit files",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.services.connections.dasboard.powerbi.GCSConfig",
+  "properties": {
+    "securityConfig": {
+      "title": "GCS Security Config",
+      "$ref": "../../../../../security/credentials/gcpCredentials.json"
+    },
+    "prefixConfig": {
+      "title": "Prefix Config",
+      "$ref": "bucketDetails.json"
+    }
+  },
+  "additionalProperties": false,
+  "required": ["securityConfig"]
+}
