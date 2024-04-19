@@ -461,14 +461,14 @@ public abstract class EntityRepository<T extends EntityInterface> {
     jsonDataFiles.forEach(
         jsonDataFile -> {
           try {
-            String json = CommonUtil.getResourceAsStream(JsonObject.class.getClassLoader(), jsonDataFile);
+            String json =
+                CommonUtil.getResourceAsStream(JsonObject.class.getClassLoader(), jsonDataFile);
             JsonObject obj = JsonUtils.readValue(json, JsonObject.class);
             obj.forEach(jsonObjectBuilder::add);
           } catch (Exception e) {
             LOG.warn("Failed to initialize the bindings from file {}", jsonDataFile, e);
           }
-        }
-    );
+        });
     return jsonObjectBuilder.build();
   }
 

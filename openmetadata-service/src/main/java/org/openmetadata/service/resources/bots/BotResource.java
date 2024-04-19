@@ -94,7 +94,9 @@ public class BotResource extends EntityResource<Bot, BotRepository> {
   public void initialize(OpenMetadataApplicationConfig config) throws IOException {
     // Load system bots
     List<Bot> bots = repository.getEntitiesFromSeedData();
-    JsonObject roleBindings = EntityRepository.getBindingsFromSeedData(String.format(".*json/data/%s/roles/.*\\.json$", entityType));
+    JsonObject roleBindings =
+        EntityRepository.getBindingsFromSeedData(
+            String.format(".*json/data/%s/roles/.*\\.json$", entityType));
     String domain = SecurityUtil.getDomain(config);
     for (Bot bot : bots) {
       String userName = bot.getBotUser().getName();
