@@ -2244,7 +2244,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     tagResourceTest.deleteEntity(tag.getId(), false, true, ADMIN_AUTH_HEADERS);
 
     T finalEntity = entity;
-    TestUtils.retryPollingTest(
+    TestUtils.assertEventually(
         test.getDisplayName(),
         () -> {
           fqnList.clear();
@@ -3177,7 +3177,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
             "{\"query\":{\"bool\":{\"filter\":[{\"term\":{\"_id\":\"%s\"}}]}}}", entity.getId());
     request.setJsonEntity(query);
     try {
-      retryPollingTest(
+      assertEventually(
           "assertEntityReferenceFromSearch_" + entity.getFullyQualifiedName(),
           () -> {
             Response response = searchClient.performRequest(request);

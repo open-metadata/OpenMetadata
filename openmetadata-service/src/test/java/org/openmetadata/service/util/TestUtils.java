@@ -669,7 +669,7 @@ public final class TestUtils {
     TimeUnit.MILLISECONDS.sleep(milliseconds);
   }
 
-  public static void retryPollingTest(String name, CheckedRunnable runnable) {
+  public static void assertEventually(String name, CheckedRunnable runnable) {
     try {
       Retry.decorateCheckedRunnable(
               elasticSearchRetryRegistry.retry(name),
@@ -688,9 +688,9 @@ public final class TestUtils {
           .run();
     } catch (RetryableAssertionError e) {
       throw new AssertionFailedError(
-          "Max retries exceeded polling for ElasticSearch operation", e.getCause());
+          "Max retries exceeded polling for eventual assert", e.getCause());
     } catch (Throwable e) {
-      throw new AssertionFailedError("Unexpected error while running retry", e);
+      throw new AssertionFailedError("Unexpected error while running retry: " + e.getMessage(), e);
     }
   }
 }
