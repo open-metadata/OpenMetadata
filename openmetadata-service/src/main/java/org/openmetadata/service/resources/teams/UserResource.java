@@ -1590,5 +1590,11 @@ public class UserResource extends EntityResource<User, UserRepository> {
             .maskAuthenticationMechanism(user.getName(), user.getAuthenticationMechanism());
       }
     }
+    // Remove mails for non-admin users
+    try {
+      authorizer.authorizeAdmin(securityContext);
+    } catch (AuthorizationException e) {
+      user.setEmail(null);
+    }
   }
 }
