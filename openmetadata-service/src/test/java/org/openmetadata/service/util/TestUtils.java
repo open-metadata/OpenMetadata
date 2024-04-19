@@ -670,7 +670,6 @@ public final class TestUtils {
   }
 
   public static void retryPollingTest(String name, CheckedRunnable runnable) {
-
     try {
       Retry.decorateCheckedRunnable(
               elasticSearchRetryRegistry.retry(name),

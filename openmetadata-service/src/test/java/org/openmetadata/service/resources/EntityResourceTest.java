@@ -204,6 +204,7 @@ import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.ResultList;
 import org.openmetadata.service.util.TestUtils;
+import org.opentest4j.AssertionFailedError;
 
 @Slf4j
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
@@ -2021,9 +2022,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
         permissionNotAllowed(TEST_USER_NAME, List.of(MetadataOperation.DELETE)));
   }
 
-  /**
-   * Soft delete an entity and then use restore request to restore it back
-   */
+  /** Soft delete an entity and then use restore request to restore it back */
   @Test
   @Execution(ExecutionMode.CONCURRENT)
   void delete_restore_entity_200(TestInfo test) throws IOException {
@@ -2242,7 +2241,6 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     }
     // check if the added tag if also added in the entity in search
     assertTrue(fqnList.contains(tagLabel.getTagFQN()));
-    fqnList.clear();
     // delete the tag
     tagResourceTest.deleteEntity(tag.getId(), false, true, ADMIN_AUTH_HEADERS);
 
@@ -2259,19 +2257,13 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
             throw new RuntimeException(e);
           }
 
-          SearchHit[] hits2 = afterDeleteResponse.getHits().getHits();
-          for (SearchHit hit : hits2) {
+          SearchHit[] hitsAfterDelete = afterDeleteResponse.getHits().getHits();
+          for (SearchHit hit : hitsAfterDelete) {
             Map<String, Object> sourceAsMap = hit.getSourceAsMap();
             if (sourceAsMap.get("id").toString().equals(finalEntity.getId().toString())) {
-              @SuppressWarnings("unchecked")
-              List<Map<String, String>> listTags =
-                  (List<Map<String, String>>) sourceAsMap.get("tags");
-              listTags.forEach(tempMap -> fqnList.add(tempMap.get("tagFQN")));
-              break;
+              throw new AssertionFailedError("Tag is not deleted in search");
             }
           }
-          // check if the relationships of tag are also deleted in search
-          assertFalse(fqnList.contains(tagLabel.getTagFQN()));
         });
   }
 
