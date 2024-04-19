@@ -77,20 +77,7 @@ jobs:
           pip install pyyaml
           ./scripts/validate_json_yaml.sh
 
-      - name: Create a comment in the PR with the instructions
-        if: steps.style.outcome != 'success'
-        uses: peter-evans/create-or-update-comment@v1
-        with:
-          issue-number: ${{ github.event.pull_request.number }}
-          body: |
-            **JSON/YAML Validations failed.**
-
-            Please run `./scripts/validate_json_yaml.sh` to find any bad json/yaml files and fix them.
-            You can also use [pre-commit](https://pre-commit.com/) to automate the Python code formatting.
-
-            You can install the pre-commit hooks with `make install_test precommit_install`.
-
-      - name: Python checkstyle failed, check the comment in the PR
+      - name: JSON/Yaml validation failed, check the comment in the PR
         if: steps.style.outcome != 'success'
         run: |
           exit 1
