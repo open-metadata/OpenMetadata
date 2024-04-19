@@ -71,8 +71,6 @@ import es.org.elasticsearch.xcontent.NamedXContentRegistry;
 import es.org.elasticsearch.xcontent.ParseField;
 import es.org.elasticsearch.xcontent.XContentParser;
 import es.org.elasticsearch.xcontent.json.JsonXContent;
-import io.github.resilience4j.retry.Retry;
-import io.github.resilience4j.retry.RetryConfig;
 import java.io.IOException;
 import java.net.URISyntaxException;
 import java.time.Duration;
@@ -206,7 +204,6 @@ import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.ResultList;
 import org.openmetadata.service.util.TestUtils;
-import org.opentest4j.AssertionFailedError;
 
 @Slf4j
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
@@ -2250,7 +2247,8 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     tagResourceTest.deleteEntity(tag.getId(), false, true, ADMIN_AUTH_HEADERS);
 
     T finalEntity = entity;
-    retryElasticSearchTest(
+    TestUtils.retryPollingTest(
+        test.getDisplayName(),
         () -> {
           SearchResponse afterDeleteResponse;
           try {
@@ -2275,16 +2273,6 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
           // check if the relationships of tag are also deleted in search
           assertFalse(fqnList.contains(tagLabel.getTagFQN()));
         });
-  }
-
-  protected void retryElasticSearchTest(Runnable runnable) {
-    RetryConfig config =
-        RetryConfig.custom()
-            .maxAttempts(50)
-            .retryExceptions(AssertionFailedError.class)
-            .waitDuration(Duration.ofMillis(100))
-            .build();
-    Retry.decorateRunnable(Retry.of("retry", config), runnable).run();
   }
 
   @Test
@@ -3189,7 +3177,8 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
         String.format(
             "{\"query\":{\"bool\":{\"filter\":[{\"term\":{\"_id\":\"%s\"}}]}}}", entity.getId());
     request.setJsonEntity(query);
-    retryElasticSearchTest(
+    retryPollingTest(
+        "assertEntityReferenceFromSearch",
         () -> {
           Response response;
           String jsonString;
@@ -3206,13 +3195,17 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
             }
           }
 
+          @SuppressWarnings("unchecked")
           HashMap<String, Object> map =
               (HashMap<String, Object>) JsonUtils.readOrConvertValue(jsonString, HashMap.class);
+          @SuppressWarnings("unchecked")
           LinkedHashMap<String, Object> hits = (LinkedHashMap<String, Object>) map.get("hits");
+          @SuppressWarnings("unchecked")
           ArrayList<LinkedHashMap<String, Object>> hitsList =
               (ArrayList<LinkedHashMap<String, Object>>) hits.get("hits");
           assertEquals(1, hitsList.size());
           LinkedHashMap<String, Object> doc = hitsList.get(0);
+          @SuppressWarnings("unchecked")
           LinkedHashMap<String, Object> source = (LinkedHashMap<String, Object>) doc.get("_source");
 
           EntityReference domainReference =

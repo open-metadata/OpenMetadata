@@ -24,11 +24,16 @@ import static org.openmetadata.service.Entity.ADMIN_USER_NAME;
 import static org.openmetadata.service.Entity.SEPARATOR;
 import static org.openmetadata.service.security.SecurityUtil.authHeaders;
 
+import io.github.resilience4j.core.functions.CheckedRunnable;
+import io.github.resilience4j.retry.Retry;
+import io.github.resilience4j.retry.RetryConfig;
+import io.github.resilience4j.retry.RetryRegistry;
 import java.lang.reflect.Field;
 import java.net.URI;
 import java.text.DateFormat;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.Date;
@@ -85,6 +90,7 @@ import org.openmetadata.service.resources.glossary.GlossaryTermResourceTest;
 import org.openmetadata.service.resources.tags.TagResourceTest;
 import org.openmetadata.service.resources.teams.UserResourceTest;
 import org.openmetadata.service.security.SecurityUtil;
+import org.opentest4j.AssertionFailedError;
 
 @Slf4j
 public final class TestUtils {
@@ -182,6 +188,14 @@ public final class TestUtils {
                   .withHostPort(getUri("http://localhost:8080"))
                   .withUsername("admin")
                   .withPassword("admin"));
+
+  public static RetryRegistry elasticSearchRetryRegistry =
+      RetryRegistry.of(
+          RetryConfig.custom()
+              .maxAttempts(50)
+              .waitDuration(Duration.ofMillis(100))
+              .retryExceptions(RetryableAssertionError.class)
+              .build());
 
   public static void assertCustomProperties(
       List<CustomProperty> expected, List<CustomProperty> actual) {
@@ -653,5 +667,31 @@ public final class TestUtils {
     // Awaitility here as the test method thread is not
     // the owner of the async operation
     TimeUnit.MILLISECONDS.sleep(milliseconds);
+  }
+
+  public static void retryPollingTest(String name, CheckedRunnable runnable) {
+
+    try {
+      Retry.decorateCheckedRunnable(
+              elasticSearchRetryRegistry.retry(name),
+              () -> {
+                try {
+                  runnable.run();
+                } catch (AssertionError e) {
+                  // translate AssertionErrors to Exceptions to that retry processes
+                  // them correctly. This is required because retry library only retries on
+                  // Exceptions and:
+                  // AssertionError -> Error -> Throwable
+                  // RetryableAssertionError -> Exception -> Throwable
+                  throw new RetryableAssertionError(e);
+                }
+              })
+          .run();
+    } catch (RetryableAssertionError e) {
+      throw new AssertionFailedError(
+          "Max retries exceeded polling for ElasticSearch operation", e.getCause());
+    } catch (Throwable e) {
+      throw new AssertionFailedError("Unexpected error while running retry", e);
+    }
   }
 }
