@@ -150,7 +150,13 @@ public class SearchResource {
               description =
                   "Get only selected fields of the document body for each hit. Empty value will return all fields")
           @QueryParam("include_source_fields")
-          List<String> includeSourceFields)
+          List<String> includeSourceFields,
+      @Parameter(
+              description =
+                  "Fetch search results in hierarchical order of children elements. By default hierarchy is not fetched.")
+          @DefaultValue("false")
+          @QueryParam("getHierarchy")
+          boolean getHierarchy)
       throws IOException {
 
     if (nullOrEmpty(query)) {
@@ -169,6 +175,7 @@ public class SearchResource {
             .deleted(deleted)
             .sortOrder(sortOrder)
             .includeSourceFields(includeSourceFields)
+            .getHierarchy(getHierarchy)
             .build();
     return searchRepository.search(request);
   }

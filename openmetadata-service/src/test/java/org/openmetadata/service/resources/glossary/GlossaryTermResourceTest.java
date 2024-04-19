@@ -67,6 +67,7 @@ import org.openmetadata.schema.api.data.CreateGlossaryTerm;
 import org.openmetadata.schema.api.data.CreateTable;
 import org.openmetadata.schema.api.data.TermReference;
 import org.openmetadata.schema.api.feed.ResolveTask;
+import org.openmetadata.schema.entity.data.EntityHierarchy__1;
 import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.entity.data.GlossaryTerm.Status;
@@ -661,6 +662,52 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
         () -> patchEntityAndCheck(entity, originalJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change),
         NOT_FOUND,
         String.format("user instance for %s not found", reviewerReference.getId()));
+  }
+
+  @Test
+  public void test_buildGlossaryTermNestedHierarchy(TestInfo test) throws HttpResponseException {
+
+    CreateGlossaryTerm create =
+        createRequest("parentGlossaryTerm", "", "", null)
+            .withReviewers(null)
+            .withSynonyms(null)
+            .withStyle(null);
+    GlossaryTerm parentGlossaryTerm = createEntity(create, ADMIN_AUTH_HEADERS);
+
+    // Create glossary childGlossaryTerm under parentGlossaryTerm in glossary g1
+    create =
+        createRequest("childGlossaryTerm", "", "", null)
+            .withSynonyms(null)
+            .withReviewers(null)
+            .withSynonyms(null)
+            .withParent(parentGlossaryTerm.getFullyQualifiedName());
+    GlossaryTerm childGlossaryTerm = createEntity(create, ADMIN_AUTH_HEADERS);
+    String response = getResponseFormSearchWithHierarchy("glossary_term_search_index");
+    List<EntityHierarchy__1> glossaries = JsonUtils.readObjects(response, EntityHierarchy__1.class);
+    boolean isChild =
+        glossaries.stream()
+            .filter(glossary -> "g1".equals(glossary.getName())) // Find glossary with name "g1"
+            .findFirst()
+            .map(
+                g1Glossary ->
+                    g1Glossary.getChildren().stream() // Work with this glossary's children
+                        .filter(
+                            glossary ->
+                                "parentGlossaryTerm"
+                                    .equals(glossary.getName())) // Find the specific parent term
+                        .flatMap(
+                            glossary ->
+                                glossary
+                                    .getChildren()
+                                    .stream()) // Flatten the stream of children terms
+                        .anyMatch(
+                            term ->
+                                "childGlossaryTerm"
+                                    .equals(
+                                        term.getName()))) // Check if the specific child term exists
+            .orElse(false); // Return false if no glossary named "g1" was found
+
+    assertTrue(isChild, "childGlossaryTerm should be a child of parentGlossaryTerm");
   }
 
   public GlossaryTerm createTerm(Glossary glossary, GlossaryTerm parent, String termName)

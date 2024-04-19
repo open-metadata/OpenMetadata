@@ -11,24 +11,17 @@
  *  limitations under the License.
  */
 
-import { Button, Card, Col, Form, Row, Typography } from 'antd';
+import { Button, Col, Form, Row } from 'antd';
 import { isEmpty, isNil } from 'lodash';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
+import FormCardSection from '../../../components/common/FormCardSection/FormCardSection';
 import { CreateEventSubscription } from '../../../generated/events/api/createEventSubscription';
 import { listLengthValidator } from '../../../utils/Alerts/AlertsUtil';
 import './destination-form-item.less';
 import DestinationSelectItem from './DestinationSelectItem/DestinationSelectItem';
 
-function DestinationFormItem({
-  heading,
-  subHeading,
-  buttonLabel,
-}: Readonly<{
-  heading: string;
-  subHeading: string;
-  buttonLabel: string;
-}>) {
+function DestinationFormItem() {
   const { t } = useTranslation();
   const form = Form.useFormInstance();
 
@@ -37,61 +30,51 @@ function DestinationFormItem({
     [];
 
   return (
-    <Card className="alert-form-item-container">
-      <Row gutter={[8, 8]}>
-        <Col span={24}>
-          <Typography.Text className="font-medium">{heading}</Typography.Text>
-        </Col>
-        <Col span={24}>
-          <Typography.Text className="text-xs text-grey-muted">
-            {subHeading}
-          </Typography.Text>
-        </Col>
-        <Col span={24}>
-          <Form.List
-            name={['destinations']}
-            rules={[
-              {
-                validator: listLengthValidator(t('label.destination')),
-              },
-            ]}>
-            {(fields, { add, remove }, { errors }) => {
-              return (
-                <Row
-                  data-testid="destination-list"
-                  gutter={[16, 16]}
-                  key="destinations">
-                  {fields.map(({ key, name }) => (
-                    <DestinationSelectItem
-                      id={name}
-                      key={key}
-                      remove={remove}
-                      selectorKey={key}
-                    />
-                  ))}
+    <FormCardSection
+      heading={t('label.destination')}
+      subHeading={t('message.alerts-destination-description')}>
+      <Form.List
+        name={['destinations']}
+        rules={[
+          {
+            validator: listLengthValidator(t('label.destination')),
+          },
+        ]}>
+        {(fields, { add, remove }, { errors }) => {
+          return (
+            <Row
+              data-testid="destination-list"
+              gutter={[16, 16]}
+              key="destinations">
+              {fields.map(({ key, name }) => (
+                <DestinationSelectItem
+                  id={name}
+                  key={key}
+                  remove={remove}
+                  selectorKey={key}
+                />
+              ))}
 
-                  <Col span={24}>
-                    <Button
-                      data-testid="add-destination-button"
-                      disabled={
-                        isEmpty(selectedSource) || isNil(selectedSource)
-                      }
-                      type="primary"
-                      onClick={() => add({})}>
-                      {buttonLabel}
-                    </Button>
-                  </Col>
+              <Col span={24}>
+                <Button
+                  data-testid="add-destination-button"
+                  disabled={isEmpty(selectedSource) || isNil(selectedSource)}
+                  type="primary"
+                  onClick={() => add({})}>
+                  {t('label.add-entity', {
+                    entity: t('label.destination'),
+                  })}
+                </Button>
+              </Col>
 
-                  <Col span={24}>
-                    <Form.ErrorList errors={errors} />
-                  </Col>
-                </Row>
-              );
-            }}
-          </Form.List>
-        </Col>
-      </Row>
-    </Card>
+              <Col span={24}>
+                <Form.ErrorList errors={errors} />
+              </Col>
+            </Row>
+          );
+        }}
+      </Form.List>
+    </FormCardSection>
   );
 }
 

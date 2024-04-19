@@ -47,9 +47,9 @@ def get_connection(connection: OpenLineageConnection) -> KafkaConsumer:
             config.update(
                 {
                     "security.protocol": connection.securityProtocol.value,
-                    "ssl.ca.location": connection.SSLCALocation,
-                    "ssl.certificate.location": connection.SSLCertificateLocation,
-                    "ssl.key.location": connection.SSLKeyLocation,
+                    "ssl.ca.location": connection.sslConfig.__root__.caCertificate,
+                    "ssl.certificate.location": connection.sslConfig.__root__.sslCertificate,
+                    "ssl.key.location": connection.sslConfig.__root__.sslKey,
                 }
             )
 
