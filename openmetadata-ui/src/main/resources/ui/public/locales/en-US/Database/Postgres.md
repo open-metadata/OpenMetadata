@@ -173,6 +173,14 @@ $$
 $$note
 if you are using `IAM auth`, select either `allow` (recommended) or other option based on your use case.
 $$
+
+$$section
+### SSL CA $(id="caCertificate")
+The CA certificate used for SSL validation (`sslrootcert`).
+$$
+$$note
+Postgres only needs CA Certificate
+$$
 $$section
 ### Classification Name $(id="classificationName")
 
