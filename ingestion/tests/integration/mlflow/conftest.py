@@ -14,7 +14,6 @@ The following steps are taken:
 6. Needed configurations are yielded back to the test.
 """
 import io
-import random
 from dataclasses import asdict, dataclass
 from typing import Optional
 
