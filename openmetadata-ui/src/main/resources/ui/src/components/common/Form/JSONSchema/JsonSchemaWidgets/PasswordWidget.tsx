@@ -13,9 +13,18 @@
 import { WidgetProps } from '@rjsf/utils';
 import { Input } from 'antd';
 import React, { FC } from 'react';
+import { ASTERISKS_MORE_THAN_TWICE_REGEX } from '../../../../../constants/regex.constants';
 import FileUploadWidget from './FileUploadWidget';
 
 const PasswordWidget: FC<WidgetProps> = (props) => {
+  const getValue = (value: string) => {
+    if (ASTERISKS_MORE_THAN_TWICE_REGEX.test(value)) {
+      return undefined;
+    } else {
+      return value;
+    }
+  };
+
   if (props.schema.uiFieldType === 'file') {
     return <FileUploadWidget {...props} />;
   }
@@ -23,7 +32,7 @@ const PasswordWidget: FC<WidgetProps> = (props) => {
   const { onFocus, onBlur, onChange, ...rest } = props;
 
   return (
-    <Input
+    <Input.Password
       autoComplete="off"
       autoFocus={rest.autofocus}
       data-testid="password-input-widget"
@@ -33,7 +42,7 @@ const PasswordWidget: FC<WidgetProps> = (props) => {
       placeholder={rest.placeholder}
       readOnly={rest.readonly}
       required={rest.required}
-      value={rest.value}
+      value={getValue(props.value)}
       onBlur={() => onBlur(rest.id, rest.value)}
       onChange={(e) => onChange(e.target.value)}
       onFocus={() => onFocus(rest.id, rest.value)}
