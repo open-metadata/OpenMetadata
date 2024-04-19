@@ -50,7 +50,7 @@ import {
   getIngestionPipelineLogById,
 } from '../../rest/ingestionPipelineAPI';
 import { getEpochMillisForPastDays } from '../../utils/date-time/DateTimeUtils';
-import { getLogBreadCrumbs } from '../../utils/LogsViewer.utils';
+import logsClassBase from '../../utils/LogsClassBase';
 import { showErrorToast } from '../../utils/ToastUtils';
 import './logs-viewer-page.style.less';
 import { LogViewerParams } from './LogsViewerPage.interfaces';
@@ -108,6 +108,10 @@ const LogsViewerPage = () => {
       switch (pipelineType || ingestionDetails?.pipelineType) {
         case PipelineType.Metadata:
           setLogs(logs.concat(res.data?.ingestion_task || ''));
+
+          break;
+        case PipelineType.Application:
+          setLogs(logs.concat(res.data?.application_task || ''));
 
           break;
         case PipelineType.Profiler:
@@ -303,7 +307,7 @@ const LogsViewerPage = () => {
       <Space align="start" className="w-full m-md m-t-xs" direction="vertical">
         <Space align="center">
           <TitleBreadcrumb
-            titleLinks={getLogBreadCrumbs(
+            titleLinks={logsClassBase.getLogBreadCrumbs(
               logEntityType,
               ingestionName,
               ingestionDetails
