@@ -2019,7 +2019,9 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
         permissionNotAllowed(TEST_USER_NAME, List.of(MetadataOperation.DELETE)));
   }
 
-  /** Soft delete an entity and then use restore request to restore it back */
+  /**
+   * Soft delete an entity and then use restore request to restore it back
+   */
   @Test
   @Execution(ExecutionMode.CONCURRENT)
   void delete_restore_entity_200(TestInfo test) throws IOException {
@@ -3174,7 +3176,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
             "{\"query\":{\"bool\":{\"filter\":[{\"term\":{\"_id\":\"%s\"}}]}}}", entity.getId());
     request.setJsonEntity(query);
     retryPollingTest(
-        "assertEntityReferenceFromSearch",
+        "assertEntityReferenceFromSearch_" + entity.getFullyQualifiedName(),
         () -> {
           Response response;
           String jsonString;
