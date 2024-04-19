@@ -22,7 +22,11 @@ from typing import Dict, List, Optional
 
 from sqlalchemy import Column
 
-from metadata.generated.schema.entity.data.table import CustomMetricProfile, TableData
+from metadata.generated.schema.entity.data.table import (
+    CustomMetricProfile,
+    DataType,
+    TableData,
+)
 from metadata.generated.schema.entity.services.connections.database.datalakeConnection import (
     DatalakeConnection,
 )
@@ -32,12 +36,8 @@ from metadata.profiler.api.models import ThreadPoolMetrics
 from metadata.profiler.interface.profiler_interface import ProfilerInterface
 from metadata.profiler.metrics.core import MetricTypes
 from metadata.profiler.metrics.registry import Metrics
-from metadata.readers.dataframe.models import DatalakeTableSchemaWrapper
 from metadata.utils.constants import COMPLEX_COLUMN_SEPARATOR, SAMPLE_DATA_DEFAULT_COUNT
-from metadata.utils.datalake.datalake_utils import (
-    GenericDataFrameColumnParser,
-    fetch_dataframe,
-)
+from metadata.utils.datalake.datalake_utils import GenericDataFrameColumnParser
 from metadata.utils.logger import profiler_interface_registry_logger
 from metadata.utils.sqa_like_column import SQALikeColumn
 
@@ -85,29 +85,48 @@ class PandasProfilerInterface(ProfilerInterface, PandasInterfaceMixin):
         )
 
         self.client = self.connection.client
-        self.dfs = self._convert_table_to_list_of_dataframe_objects()
-        self.sampler = self._get_sampler()
-        self.complex_dataframe_sample = deepcopy(self.sampler.random_sample())
-
-    def _convert_table_to_list_of_dataframe_objects(self):
-        """From a table entity, return the corresponding dataframe object
-
-        Returns:
-            List[DataFrame]
-        """
-        data = fetch_dataframe(
-            config_source=self.service_connection_config.configSource,
+        self.dfs = self.return_ometa_dataframes_sampled(
+            service_connection_config=self.service_connection_config,
             client=self.client,
-            file_fqn=DatalakeTableSchemaWrapper(
-                key=self.table_entity.name.__root__,
-                bucket_name=self.table_entity.databaseSchema.name,
-                file_extension=self.table_entity.fileFormat,
-            ),
+            table=self.table_entity,
+            profile_sample_config=profile_sample_config,
         )
+        self.sampler = self._get_sampler()
+        self.complex_dataframe_sample = deepcopy(
+            self.sampler.random_sample(is_sampled=True)
+        )
+        self.complex_df()
 
-        if not data:
-            raise TypeError(f"Couldn't fetch {self.table_entity.name.__root__}")
-        return data
+    def complex_df(self):
+        """Assign DataTypes to dataframe columns as per the parsed column type"""
+        coltype_mapping_df = []
+        data_formats = (
+            GenericDataFrameColumnParser._data_formats  # pylint: disable=protected-access
+        )
+        for index, df in enumerate(self.complex_dataframe_sample):
+            if index == 0:
+                for col in self.table.columns:
+                    coltype = next(
+                        (
+                            key
+                            for key, value in data_formats.items()
+                            if col.dataType == value
+                        ),
+                        None,
+                    )
+                    if coltype and col.dataType not in {DataType.JSON, DataType.ARRAY}:
+                        coltype_mapping_df.append(coltype)
+                    else:
+                        coltype_mapping_df.append("object")
+
+            try:
+                self.complex_dataframe_sample[index] = df.astype(
+                    dict(zip(df.keys(), coltype_mapping_df))
+                )
+            except (TypeError, ValueError) as err:
+                self.complex_dataframe_sample[index] = df
+                logger.warning(f"NaN/NoneType found in the Dataframe: {err}")
+                break
 
     def _get_sampler(self):
         """Get dataframe sampler from config"""
@@ -171,19 +190,19 @@ class PandasProfilerInterface(ProfilerInterface, PandasInterfaceMixin):
         """
         import pandas as pd  # pylint: disable=import-outside-toplevel
 
+        row_dict = {}
         try:
-            row_dict = {}
             for metric in metrics:
                 metric_resp = metric(column).df_fn(runner)
                 row_dict[metric.name()] = (
                     None if pd.isnull(metric_resp) else metric_resp
                 )
-            return row_dict
         except Exception as exc:
             logger.debug(
                 f"{traceback.format_exc()}\nError trying to compute profile for {exc}"
             )
             raise RuntimeError(exc)
+        return row_dict
 
     def _compute_query_metrics(
         self,
@@ -283,7 +302,7 @@ class PandasProfilerInterface(ProfilerInterface, PandasInterfaceMixin):
         metric_func: ThreadPoolMetrics,
     ):
         """Run metrics in processor worker"""
-        logger.debug(f"Running profiler for {metric_func.table}")
+        logger.debug(f"Running profiler for {metric_func.table.name.__root__}")
         try:
             row = None
             if self.complex_dataframe_sample:

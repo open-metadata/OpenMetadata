@@ -171,7 +171,9 @@ describe('Classification Page', { tags: 'Governance' }, () => {
     cy.get(descriptionBox).should('be.visible').type(NEW_TAG.description);
 
     cy.get('[data-testid="icon-url"]').scrollIntoView().type(NEW_TAG.icon);
-    cy.get('[data-testid="color-input"]').scrollIntoView().type(NEW_TAG.color);
+    cy.get('[data-testid="tags_color-color-input"]')
+      .scrollIntoView()
+      .type(NEW_TAG.color);
 
     interceptURL('POST', '/api/v1/tags', 'createTag');
     submitForm();

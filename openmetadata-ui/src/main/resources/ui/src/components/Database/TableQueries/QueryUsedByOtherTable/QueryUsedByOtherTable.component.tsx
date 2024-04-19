@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Popover, Space, Typography } from 'antd';
+import { Col, Popover, Row, Space, Typography } from 'antd';
 import { DefaultOptionType } from 'antd/lib/select';
 import { isArray, isUndefined, slice, uniqBy } from 'lodash';
 import React, { useEffect, useMemo, useState } from 'react';
@@ -171,7 +171,7 @@ const QueryUsedByOtherTable = ({
     ) : (
       <AsyncSelect
         api={fetchTableEntity}
-        className="w-min-15"
+        className="w-min-15 w-full"
         data-testid="edit-query-used-in"
         defaultValue={defaultValue}
         mode="multiple"
@@ -192,10 +192,12 @@ const QueryUsedByOtherTable = ({
   }, [isEditMode]);
 
   return (
-    <Space className="m-b-0" data-testid="para-container">
-      <Text>{`${t('message.query-used-by-other-tables')}:`}</Text>
-      {isEditMode ? selectList : tableNames}
-    </Space>
+    <Row wrap data-testid="para-container">
+      <Col flex="200px">
+        <Text>{`${t('message.query-used-by-other-tables')}:`}</Text>
+      </Col>
+      <Col>{isEditMode ? selectList : tableNames}</Col>
+    </Row>
   );
 };
 

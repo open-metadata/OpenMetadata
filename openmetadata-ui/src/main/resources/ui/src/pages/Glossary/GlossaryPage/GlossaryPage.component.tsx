@@ -198,7 +198,7 @@ const GlossaryPage = () => {
     async (data: VotingDataProps) => {
       try {
         const isGlossaryEntity =
-          Fqn.split(selectedData?.fullyQualifiedName).length <= 1;
+          Fqn.split(selectedData?.fullyQualifiedName ?? '').length <= 1;
 
         if (isGlossaryEntity) {
           const {

@@ -53,11 +53,11 @@ public class EmailMessageDecorator implements MessageDecorator<EmailMessage> {
   }
 
   @Override
-  public String getEntityUrl(String entityType, String fqn, String additionalParams) {
+  public String getEntityUrl(String prefix, String fqn, String additionalParams) {
     return String.format(
         "<a href = '%s/%s/%s%s'>%s</a>",
         getSmtpSettings().getOpenMetadataUrl(),
-        entityType,
+        prefix,
         fqn.trim(),
         nullOrEmpty(additionalParams) ? "" : String.format("/%s", additionalParams),
         fqn.trim());

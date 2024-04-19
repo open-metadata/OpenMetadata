@@ -14,6 +14,7 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { AuthenticationConfigurationWithScope } from '../components/Auth/AuthProviders/AuthProvider.interface';
 import { EntityUnion } from '../components/Explore/ExplorePage.interface';
+import { DEFAULT_THEME } from '../constants/Appearance.constants';
 import { AuthenticationConfiguration } from '../generated/configuration/authenticationConfiguration';
 import { AuthorizerConfiguration } from '../generated/configuration/authorizerConfiguration';
 import { LogoConfiguration } from '../generated/configuration/logoConfiguration';
@@ -40,11 +41,17 @@ export const useApplicationStore = create<ApplicationStore>()(
       jwtPrincipalClaims: [],
       userProfilePics: {},
       cachedEntityData: {},
-      urlPathName: '',
       selectedPersona: {} as EntityReference,
       oidcIdToken: '',
       refreshTokenKey: '',
-      loading: false,
+      theme: { ...DEFAULT_THEME },
+      setTheme: (theme: ApplicationStore['theme']) => {
+        set({ theme });
+      },
+      resetTheme: () => {
+        set({ theme: { ...DEFAULT_THEME } });
+      },
+      searchCriteria: '',
 
       setHelperFunctionsRef: (helperFunctions: HelperFunctions) => {
         set({ ...helperFunctions });
@@ -57,11 +64,6 @@ export const useApplicationStore = create<ApplicationStore>()(
       setApplicationConfig: (config: LogoConfiguration) => {
         set({ applicationConfig: config });
       },
-
-      setUrlPathName: (urlPathName: string) => {
-        set({ urlPathName });
-      },
-
       setCurrentUser: (user) => {
         set({ currentUser: user });
       },
@@ -82,9 +84,6 @@ export const useApplicationStore = create<ApplicationStore>()(
       setIsSigningIn: (signingIn: boolean) => {
         set({ isSigningIn: signingIn });
       },
-      setLoadingIndicator: (loading: boolean) => {
-        set({ loading });
-      },
 
       onLoginHandler: () => {
         // This is a placeholder function that will be replaced by the actual function
@@ -101,6 +100,11 @@ export const useApplicationStore = create<ApplicationStore>()(
       },
       updateAxiosInterceptors: () => {
         // This is a placeholder function that will be replaced by the actual function
+      },
+      trySilentSignIn: (forceLogout?: boolean) => {
+        if (forceLogout) {
+          // This is a placeholder function that will be replaced by the actual function
+        }
       },
       updateCurrentUser: (user) => {
         set({ currentUser: user });
@@ -144,6 +148,9 @@ export const useApplicationStore = create<ApplicationStore>()(
       },
       removeRefreshToken: () => {
         set({ refreshTokenKey: '' });
+      },
+      updateSearchCriteria: (criteria) => {
+        set({ searchCriteria: criteria });
       },
     }),
     {

@@ -68,6 +68,7 @@ export const getSchemaByWorkflowType = (
     displayName: {
       description: 'Display Name of the workflow',
       type: 'string',
+      title: 'Name',
     },
     name: {
       description: 'Name of the workflow',

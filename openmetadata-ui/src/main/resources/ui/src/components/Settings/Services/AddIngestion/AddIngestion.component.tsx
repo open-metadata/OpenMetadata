@@ -27,8 +27,10 @@ import { IngestionPipeline } from '../../../../generated/entity/services/ingesti
 import { useApplicationStore } from '../../../../hooks/useApplicationStore';
 import { IngestionWorkflowData } from '../../../../interface/service.interface';
 import { getIngestionFrequency } from '../../../../utils/CommonUtils';
+import { getSuccessMessage } from '../../../../utils/IngestionUtils';
 import { cleanWorkFlowData } from '../../../../utils/IngestionWorkflowUtils';
 import { getIngestionName } from '../../../../utils/ServiceUtils';
+import { generateUUID } from '../../../../utils/StringsUtils';
 import SuccessScreen from '../../../common/SuccessScreen/SuccessScreen';
 import DeployIngestionLoaderModal from '../../../Modals/DeployIngestionLoaderModal/DeployIngestionLoaderModal';
 import IngestionStepper from '../Ingestion/IngestionStepper/IngestionStepper.component';
@@ -69,7 +71,9 @@ const AddIngestion = ({
   const [workflowData, setWorkflowData] = useState<IngestionWorkflowData>(
     () => ({
       ...(data?.sourceConfig.config ?? {}),
-      name: data?.name ?? getIngestionName(serviceData.name, pipelineType),
+      name: data?.name ?? generateUUID(),
+      displayName:
+        data?.displayName ?? getIngestionName(serviceData.name, pipelineType),
       enableDebugLog: data?.loggerLevel === LogLevels.Debug,
     })
   );
@@ -83,10 +87,11 @@ const AddIngestion = ({
   const { ingestionName, retries } = useMemo(
     () => ({
       ingestionName:
-        data?.name ?? getIngestionName(serviceData.name, pipelineType),
+        workflowData?.displayName ??
+        getIngestionName(serviceData.name, pipelineType),
       retries: data?.airflowConfig.retries ?? 0,
     }),
-    [data, pipelineType, serviceData]
+    [data, pipelineType, serviceData, workflowData]
   );
 
   const isSettingsPipeline = useMemo(
@@ -252,32 +257,6 @@ const AddIngestion = ({
     }
   };
 
-  const getSuccessMessage = () => {
-    const updateMessage = showDeployButton
-      ? t('message.action-has-been-done-but-failed-to-deploy', {
-          action: t('label.updated-lowercase'),
-        })
-      : t('message.action-has-been-done-but-deploy-successfully', {
-          action: t('label.updated-lowercase'),
-        });
-    const createMessage = showDeployButton
-      ? t('message.action-has-been-done-but-failed-to-deploy', {
-          action: t('label.created-lowercase'),
-        })
-      : t('message.action-has-been-done-but-deploy-successfully', {
-          action: t('label.created-lowercase'),
-        });
-
-    return (
-      <span>
-        <span className="font-medium">{`"${ingestionName}"`}</span>
-        <span>
-          {status === FormSubmitType.ADD ? createMessage : updateMessage}
-        </span>
-      </span>
-    );
-  };
-
   return (
     <div data-testid="add-ingestion-container">
       <Typography.Title className="font-normal" level={5}>
@@ -342,7 +321,11 @@ const AddIngestion = ({
             showDeployButton={showDeployButton}
             showIngestionButton={false}
             state={status}
-            successMessage={getSuccessMessage()}
+            successMessage={getSuccessMessage(
+              ingestionName,
+              status,
+              showDeployButton
+            )}
             viewServiceText={viewServiceText}
           />
         )}

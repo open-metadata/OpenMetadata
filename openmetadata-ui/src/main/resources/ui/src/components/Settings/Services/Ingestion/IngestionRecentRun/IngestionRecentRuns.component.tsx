@@ -43,8 +43,10 @@ import ConnectionStepCard from '../../../../common/TestConnection/ConnectionStep
 import './ingestion-recent-run.style.less';
 
 interface Props {
-  ingestion: IngestionPipeline;
+  ingestion?: IngestionPipeline;
   classNames?: string;
+  appRuns?: PipelineStatus[];
+  isApplicationType?: boolean;
 }
 const queryParams = {
   startTs: getEpochMillisForPastDays(1),
@@ -54,6 +56,8 @@ const queryParams = {
 export const IngestionRecentRuns: FunctionComponent<Props> = ({
   ingestion,
   classNames,
+  appRuns,
+  isApplicationType,
 }: Props) => {
   const { t } = useTranslation();
   const [recentRunStatus, setRecentRunStatus] = useState<PipelineStatus[]>([]);
@@ -137,27 +141,30 @@ export const IngestionRecentRuns: FunctionComponent<Props> = ({
     setLoading(true);
     try {
       const response = await getRunHistoryForPipeline(
-        ingestion.fullyQualifiedName ?? '',
+        ingestion?.fullyQualifiedName ?? '',
         queryParams
       );
 
       const runs = response.data.splice(0, 5).reverse() ?? [];
 
       setRecentRunStatus(
-        runs.length === 0 && ingestion.pipelineStatuses
+        runs.length === 0 && ingestion?.pipelineStatuses
           ? [ingestion.pipelineStatuses]
           : runs
       );
     } finally {
       setLoading(false);
     }
-  }, [ingestion, ingestion.fullyQualifiedName]);
+  }, [ingestion, ingestion?.fullyQualifiedName]);
 
   useEffect(() => {
-    if (ingestion.fullyQualifiedName) {
+    if (isApplicationType && appRuns) {
+      setRecentRunStatus(appRuns.splice(0, 5).reverse() ?? []);
+      setLoading(false);
+    } else if (ingestion?.fullyQualifiedName) {
       fetchPipelineStatus();
     }
-  }, [ingestion, ingestion.fullyQualifiedName]);
+  }, [ingestion, ingestion?.fullyQualifiedName]);
 
   const handleRunStatusClick = (status: PipelineStatus) => {
     setExpandedKeys([]);

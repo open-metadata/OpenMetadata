@@ -4,6 +4,7 @@ import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
 import static javax.ws.rs.core.Response.Status.NOT_FOUND;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
 import static org.openmetadata.service.util.TestUtils.LONG_ENTITY_NAME;
@@ -11,6 +12,7 @@ import static org.openmetadata.service.util.TestUtils.assertListNotNull;
 import static org.openmetadata.service.util.TestUtils.assertListNull;
 import static org.openmetadata.service.util.TestUtils.assertResponse;
 import static org.openmetadata.service.util.TestUtils.assertResponseContains;
+import static org.openmetadata.service.util.TestUtils.waitForEsAsyncOp;
 
 import es.org.elasticsearch.search.aggregations.AggregationBuilder;
 import es.org.elasticsearch.search.aggregations.AggregationBuilders;
@@ -20,12 +22,14 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Random;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import javax.json.JsonObject;
 import javax.ws.rs.client.WebTarget;
 import javax.ws.rs.core.Response;
 import org.apache.http.client.HttpResponseException;
+import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
 import org.openmetadata.schema.api.data.CreateTable;
@@ -292,6 +296,7 @@ public class TestSuiteResourceTest extends EntityResourceTest<TestSuite, CreateT
                         .withDataLength(10)));
     Table table = tableResourceTest.createEntity(tableReq, ADMIN_AUTH_HEADERS);
     CreateTestSuite createExecutableTestSuite = createRequest(table.getFullyQualifiedName());
+    createExecutableTestSuite.withOwner(USER1_REF);
     TestSuite executableTestSuite =
         createExecutableTestSuite(createExecutableTestSuite, ADMIN_AUTH_HEADERS);
     List<EntityReference> testCases1 = new ArrayList<>();
@@ -309,6 +314,7 @@ public class TestSuiteResourceTest extends EntityResourceTest<TestSuite, CreateT
 
     // We'll create a logical test suite and associate the test cases to it
     CreateTestSuite createTestSuite = createRequest(test);
+    createTestSuite.withOwner(TEAM11_REF);
     TestSuite testSuite = createEntity(createTestSuite, ADMIN_AUTH_HEADERS);
     addTestCasesToLogicalTestSuite(
         testSuite, testCases1.stream().map(EntityReference::getId).collect(Collectors.toList()));
@@ -318,6 +324,102 @@ public class TestSuiteResourceTest extends EntityResourceTest<TestSuite, CreateT
         getEntityByName(executableTestSuite.getFullyQualifiedName(), "*", ADMIN_AUTH_HEADERS);
     // Check that the logical test suite has the test cases
     verifyTestCases(executableTestSuite.getTests(), logicalTestSuite.getTests());
+
+    /* We'll then list the test suite from search
+    List from search test path:
+      1. List all test suites w/o filters
+      2. List only executable test suites
+      3. List only logical test suites
+      4. List non-empty test suites
+      5. List test suites with a query
+      6. List test suites with a nested sort
+      7. List test suites with fqn
+      8. List test suites with owner
+     */
+    Map<String, String> queryParams = new HashMap<>();
+    queryParams.put("fields", "tests");
+    // 1. List all test suites w/o filters
+    ResultList<TestSuite> allEntities =
+        listEntitiesFromSearch(queryParams, 100, 0, ADMIN_AUTH_HEADERS);
+    Assertions.assertTrue(
+        allEntities.getData().stream().anyMatch(ts -> ts.getId().equals(logicalTestSuite.getId())));
+    TestSuite finalExecutableTestSuite = executableTestSuite;
+    Assertions.assertTrue(
+        allEntities.getData().stream()
+            .anyMatch(ts -> ts.getId().equals(finalExecutableTestSuite.getId())));
+    // 2. List only executable test suites
+    queryParams.put("testSuiteType", "executable");
+    queryParams.put("fields", "tests");
+    ResultList<TestSuite> executableTestSuites =
+        listEntitiesFromSearch(queryParams, 100, 0, ADMIN_AUTH_HEADERS);
+    Assertions.assertTrue(
+        executableTestSuites.getData().stream()
+            .anyMatch(ts -> ts.getId().equals(finalExecutableTestSuite.getId())));
+    // 3. List only logical test suites
+    queryParams.put("testSuiteType", "logical");
+    queryParams.put("fields", "tests");
+    ResultList<TestSuite> logicalTestSuites =
+        listEntitiesFromSearch(queryParams, 100, 0, ADMIN_AUTH_HEADERS);
+    Assertions.assertTrue(
+        logicalTestSuites.getData().stream()
+            .anyMatch(ts -> ts.getId().equals(logicalTestSuite.getId())));
+    // 4. List non-empty test suites
+    queryParams.clear();
+    queryParams.put("includeEmptyTestSuites", "false");
+    queryParams.put("fields", "tests");
+    ResultList<TestSuite> nonEmptyTestSuites =
+        listEntitiesFromSearch(queryParams, 100, 0, ADMIN_AUTH_HEADERS);
+    Assertions.assertTrue(
+        nonEmptyTestSuites.getData().stream().anyMatch(ts -> !ts.getTests().isEmpty()));
+    // 5. List test suite with a query
+    queryParams.clear();
+    queryParams.put("q", logicalTestSuite.getFullyQualifiedName());
+    ResultList<TestSuite> queryTestSuites =
+        listEntitiesFromSearch(queryParams, 100, 0, ADMIN_AUTH_HEADERS);
+    Assertions.assertTrue(
+        queryTestSuites.getData().stream()
+            .allMatch(
+                ts -> ts.getFullyQualifiedName().equals(logicalTestSuite.getFullyQualifiedName())));
+    // 6. List test suites with a nested sort
+    queryParams.clear();
+    queryParams.put("fields", "tests");
+    queryParams.put("sortField", "testCaseResultSummary.timestamp");
+    queryParams.put("sortOrder", "asc");
+    queryParams.put("sortNestedPath", "testCaseResultSummary");
+    queryParams.put("sortNestedMode", "max");
+    ResultList<TestSuite> sortedTestSuites =
+        listEntitiesFromSearch(queryParams, 100, 0, ADMIN_AUTH_HEADERS);
+    assertNotNull(sortedTestSuites.getData());
+
+    // 7. List test suites with fqn
+    queryParams.clear();
+    queryParams.put("fullyQualifiedName", logicalTestSuite.getFullyQualifiedName());
+    ResultList<TestSuite> fqnTestSuites =
+        listEntitiesFromSearch(queryParams, 100, 0, ADMIN_AUTH_HEADERS);
+    Assertions.assertTrue(
+        fqnTestSuites.getData().stream()
+            .allMatch(ts -> ts.getId().equals(logicalTestSuite.getId())));
+
+    // 8. List test suites with owner
+    // 8.1 Team owner
+    queryParams.clear();
+    queryParams.put("owner", TEAM11_REF.getFullyQualifiedName());
+    queryParams.put("fields", "owner");
+    ResultList<TestSuite> teamOwnerTestSuites =
+        listEntitiesFromSearch(queryParams, 100, 0, ADMIN_AUTH_HEADERS);
+    Assertions.assertTrue(
+        teamOwnerTestSuites.getData().stream()
+            .allMatch(ts -> ts.getOwner().getId().equals(TEAM11_REF.getId())));
+
+    // 8.2 User owner
+    queryParams.clear();
+    queryParams.put("owner", USER1_REF.getFullyQualifiedName());
+    queryParams.put("fields", "owner");
+    ResultList<TestSuite> userOwnerTestSuites =
+        listEntitiesFromSearch(queryParams, 100, 0, ADMIN_AUTH_HEADERS);
+    Assertions.assertTrue(
+        userOwnerTestSuites.getData().stream()
+            .allMatch(ts -> ts.getOwner().getId().equals(USER1_REF.getId())));
   }
 
   @Test
@@ -661,6 +763,45 @@ public class TestSuiteResourceTest extends EntityResourceTest<TestSuite, CreateT
     TestSuite actualExecutableTestSuite =
         getEntity(executableTestSuite.getId(), "*", ADMIN_AUTH_HEADERS);
     assertEquals(5, actualExecutableTestSuite.getTests().size());
+  }
+
+  @Test
+  void get_listTestSuiteFromSearchWithPagination(TestInfo testInfo)
+      throws IOException, InterruptedException {
+    if (supportsSearchIndex) {
+      Random rand = new Random();
+      int tablesNum = rand.nextInt(3) + 3;
+
+      TableResourceTest tableResourceTest = new TableResourceTest();
+      TestSuiteResourceTest testSuiteResourceTest = new TestSuiteResourceTest();
+
+      List<Table> tables = new ArrayList<>();
+      Map<String, TestSuite> testSuites = new HashMap<>();
+
+      for (int i = 0; i < tablesNum; i++) {
+        CreateTable tableReq =
+            tableResourceTest
+                .createRequest(testInfo, i)
+                .withDatabaseSchema(DATABASE_SCHEMA.getFullyQualifiedName())
+                .withColumns(
+                    List.of(
+                        new Column()
+                            .withName(C1)
+                            .withDisplayName("c1")
+                            .withDataType(ColumnDataType.VARCHAR)
+                            .withDataLength(10)))
+                .withOwner(USER1_REF);
+        Table table = tableResourceTest.createEntity(tableReq, ADMIN_AUTH_HEADERS);
+        tables.add(table);
+        CreateTestSuite createTestSuite =
+            testSuiteResourceTest.createRequest(table.getFullyQualifiedName());
+        TestSuite testSuite =
+            testSuiteResourceTest.createExecutableTestSuite(createTestSuite, ADMIN_AUTH_HEADERS);
+        testSuites.put(table.getFullyQualifiedName(), testSuite);
+      }
+      waitForEsAsyncOp();
+      validateEntityListFromSearchWithPagination(new HashMap<>(), testSuites.size());
+    }
   }
 
   public ResultList<TestSuite> getTestSuites(

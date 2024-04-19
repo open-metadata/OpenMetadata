@@ -24,6 +24,7 @@ import {
   ProfileSampleType,
 } from '../generated/entity/data/table';
 import { TestCaseStatus } from '../generated/tests/testCase';
+import { TestPlatform } from '../generated/tests/testDefinition';
 import { TestCaseType } from '../rest/testAPI';
 import {
   getCurrentMillis,
@@ -414,6 +415,11 @@ export const TEST_CASE_STATUS_OPTION = [
     value: value,
   })),
 ];
+
+export const TEST_CASE_PLATFORM_OPTION = values(TestPlatform).map((value) => ({
+  label: value,
+  value: value,
+}));
 
 export const INITIAL_COLUMN_METRICS_VALUE = {
   countMetrics: INITIAL_COUNT_METRIC_VALUE,

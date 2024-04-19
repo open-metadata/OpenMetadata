@@ -409,6 +409,12 @@
       <groupId>org.apache.johnzon</groupId>
       <artifactId>johnzon-core</artifactId>
     </dependency>
+    <!-- Json-Patch since Johnzon JSONPatch.createDiff doesn't work as expected -->
+    <dependency>
+      <groupId>com.github.java-json-tools</groupId>
+      <artifactId>json-patch</artifactId>
+      <version>1.13</version>
+    </dependency>
     <dependency>
       <groupId>com.fasterxml.jackson.datatype</groupId>
       <artifactId>jackson-datatype-jsr353</artifactId>
@@ -592,6 +598,12 @@
     <dependency>
       <groupId>info.picocli</groupId>
       <artifactId>picocli</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>com.github.java-json-tools</groupId>
+      <artifactId>json-patch</artifactId>
+      <version>1.13</version>
+      <scope>compile</scope>
     </dependency>
   </dependencies>
 

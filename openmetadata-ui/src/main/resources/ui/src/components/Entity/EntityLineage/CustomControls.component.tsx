@@ -29,7 +29,6 @@ import { ReactComponent as ExitFullScreen } from '../../../assets/svg/exit-full-
 import { ReactComponent as FullScreen } from '../../../assets/svg/full-screen.svg';
 import { ReactComponent as EditIconColor } from '../../../assets/svg/ic-edit-lineage-colored.svg';
 import { ReactComponent as EditIcon } from '../../../assets/svg/ic-edit-lineage.svg';
-import { PRIMERY_COLOR } from '../../../constants/constants';
 import { NO_PERMISSION_FOR_ACTION } from '../../../constants/HelperTextUtil';
 import {
   LINEAGE_DEFAULT_QUICK_FILTERS,
@@ -37,6 +36,7 @@ import {
 } from '../../../constants/Lineage.constants';
 import { useLineageProvider } from '../../../context/LineageProvider/LineageProvider';
 import { SearchIndex } from '../../../enums/search.enum';
+import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { getAssetsPageQuickFilters } from '../../../utils/AdvancedSearchUtils';
 import { handleSearchFilterOption } from '../../../utils/CommonUtils';
 import { getLoadingStatusValue } from '../../../utils/EntityLineageUtils';
@@ -59,6 +59,7 @@ const CustomControls: FC<ControlProps> = ({
   handleFullScreenViewClick,
   onExitFullScreenViewClick,
 }: ControlProps) => {
+  const { theme } = useApplicationStore();
   const { t } = useTranslation();
   const [dialogVisible, setDialogVisible] = useState<boolean>(false);
   const {
@@ -267,7 +268,7 @@ const CustomControls: FC<ControlProps> = ({
                   icon={
                     <span className="anticon">
                       <FullScreen
-                        color={PRIMERY_COLOR}
+                        color={theme.primaryColor}
                         height={16}
                         width={16}
                       />
@@ -285,7 +286,7 @@ const CustomControls: FC<ControlProps> = ({
                   icon={
                     <span className="anticon">
                       <ExitFullScreen
-                        color={PRIMERY_COLOR}
+                        color={theme.primaryColor}
                         height={16}
                         width={16}
                       />
@@ -303,7 +304,7 @@ const CustomControls: FC<ControlProps> = ({
                 disabled={isEditMode}
                 icon={
                   <SettingOutlined
-                    style={{ fontSize: '16px', color: PRIMERY_COLOR }}
+                    style={{ fontSize: '16px', color: theme.primaryColor }}
                   />
                 }
                 onClick={() => setDialogVisible(true)}

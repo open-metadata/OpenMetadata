@@ -140,8 +140,8 @@ export const getTableTags = (
 };
 
 //  Will return tag with ellipses if it exceeds the limit
-export const getTagDisplay = (tag: string) => {
-  const tagLevelsArray = tag.split(FQN_SEPARATOR_CHAR);
+export const getTagDisplay = (tag?: string) => {
+  const tagLevelsArray = tag?.split(FQN_SEPARATOR_CHAR) ?? [];
 
   if (tagLevelsArray.length > 3) {
     return `${tagLevelsArray[0]}...${tagLevelsArray

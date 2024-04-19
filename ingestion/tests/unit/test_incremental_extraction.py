@@ -102,7 +102,6 @@ class IncrementalConfigCreatorTest(TestCase):
         with patch.object(
             IncrementalConfigCreator, "_get_pipeline_statuses", return_value=None
         ):
-
             incremental_config_creator = IncrementalConfigCreator(
                 incremental=Incremental(enabled=True),
                 pipeline_name="noop",
@@ -128,7 +127,6 @@ class IncrementalConfigCreatorTest(TestCase):
             "_get_pipeline_statuses",
             return_value=pipeline_runs,
         ):
-
             incremental_config_creator = IncrementalConfigCreator(
                 incremental=Incremental(enabled=True),
                 pipeline_name="noop",
@@ -147,7 +145,6 @@ class IncrementalConfigCreatorTest(TestCase):
             "_get_pipeline_statuses",
             return_value=INCREMENTAL_CONFIG_ENABLED["input"]["pipeline_runs"],
         ):
-
             incremental_config_creator = IncrementalConfigCreator(
                 incremental=INCREMENTAL_CONFIG_ENABLED["input"]["incremental_config"],
                 pipeline_name="noop",

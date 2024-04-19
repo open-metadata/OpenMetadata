@@ -78,6 +78,7 @@ ENTITY_TYPE
     | 'all'
     | 'customMetric'
     | 'eventsubscription'
+    | 'ingestionPipeline'
     ;
 
 ENTITY_FIELD
@@ -132,5 +133,5 @@ ENTITY_FIELD
     
 
 NAME_OR_FQN
-    : ~(':')+ ('>')*? ~(':'|'>')+
+    : ~(':')* ~(':'|'>')+
     ;

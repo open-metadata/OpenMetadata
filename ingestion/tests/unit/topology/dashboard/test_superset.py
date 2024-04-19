@@ -72,6 +72,8 @@ with open(mock_file_path, encoding="UTF-8") as file:
 
 MOCK_DASHBOARD_RESP = SupersetDashboardCount(**mock_data["dashboard"])
 MOCK_DASHBOARD = MOCK_DASHBOARD_RESP.result[0]
+PUBLISHED_DASHBOARD_COUNT = 1
+PUBLISHED_DASHBOARD_NAME = "My DASH"
 MOCK_CHART_RESP = SupersetChart(**mock_data["chart"])
 MOCK_CHART = MOCK_CHART_RESP.result[0]
 
@@ -94,9 +96,7 @@ MOCK_SUPERSET_API_CONFIG = {
             }
         },
         "sourceConfig": {
-            "config": {
-                "type": "DashboardMetadata",
-            }
+            "config": {"type": "DashboardMetadata", "includeDraftDashboard": False}
         },
     },
     "sink": {"type": "metadata-rest", "config": {}},
@@ -333,6 +333,21 @@ class SupersetUnitTest(TestCase):
         ):
             dashboard_list = self.superset_api.get_dashboards_list()
             self.assertEqual(list(dashboard_list), [MOCK_DASHBOARD])
+
+    def test_api_get_published_dashboards_list(self):
+        """
+        Mock the client and check that we get only published dashboards list
+        """
+        with patch.object(
+            SupersetAPIClient, "fetch_total_dashboards", return_value=1
+        ), patch.object(
+            SupersetAPIClient, "fetch_dashboards", return_value=MOCK_DASHBOARD_RESP
+        ):
+            dashboard_list = list(self.superset_api.get_dashboards_list())
+            self.assertEqual(len(dashboard_list), PUBLISHED_DASHBOARD_COUNT)
+            self.assertEqual(
+                dashboard_list[0].dashboard_title, PUBLISHED_DASHBOARD_NAME
+            )
 
     def test_charts_of_dashboard(self):
         """

@@ -13,6 +13,7 @@
 
 import { Col, Row, Tabs } from 'antd';
 import { AxiosError } from 'axios';
+import { isEmpty } from 'lodash';
 import { EntityTags } from 'Models';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -313,6 +314,9 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
                   entityName={entityName}
                   entityType={EntityType.TOPIC}
                   hasEditAccess={editDescriptionPermission}
+                  isDescriptionExpanded={isEmpty(
+                    topicDetails.messageSchema?.schemaFields
+                  )}
                   isEdit={isEdit}
                   owner={topicDetails.owner}
                   showActions={!deleted}
@@ -336,16 +340,18 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
               className="entity-tag-right-panel-container"
               data-testid="entity-right-panel"
               flex="320px">
-              <EntityRightPanel
+              <EntityRightPanel<EntityType.TOPIC>
                 customProperties={topicDetails}
                 dataProducts={topicDetails?.dataProducts ?? []}
                 domain={topicDetails?.domain}
+                editCustomAttributePermission={editCustomAttributePermission}
                 editTagPermission={editTagsPermission}
                 entityFQN={decodedTopicFQN}
                 entityId={topicDetails.id}
                 entityType={EntityType.TOPIC}
                 selectedTags={topicTags}
                 viewAllPermission={viewAllPermission}
+                onExtensionUpdate={onExtensionUpdate}
                 onTagSelectionChange={handleTagSelection}
                 onThreadLinkSelect={onThreadLinkSelect}
               />

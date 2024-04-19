@@ -88,14 +88,14 @@ public class PaginatedEntitiesSource implements Source<ResultList<? extends Enti
         } else {
           this.cursor = result.getPaging().getAfter();
         }
-        updateStats(result.getData().size(), result.getErrors().size());
+        // updateStats(result.getData().size(), result.getErrors().size());
         return result;
       }
 
       LOG.debug(
           "[PaginatedEntitiesSource] Batch Stats :- %n Submitted : {} Success: {} Failed: {}",
           batchSize, result.getData().size(), result.getErrors().size());
-      updateStats(result.getData().size(), result.getErrors().size());
+      // updateStats(result.getData().size(), result.getErrors().size());
     } catch (Exception e) {
       lastFailedCursor = this.cursor;
       int remainingRecords =

@@ -12,6 +12,7 @@
 """
 Unique Count Metric definition
 """
+import json
 from typing import Optional
 
 from sqlalchemy import column, func
@@ -72,7 +73,14 @@ class UniqueCount(QueryMetric):
             counter = Counter()
             for df in dfs:
                 df_col_value = df[self.col.name].dropna().to_list()
-                counter.update(df_col_value)
+                try:
+                    counter.update(df_col_value)
+                except TypeError as err:
+                    if isinstance(df_col_value, list):
+                        for value in df_col_value:
+                            counter.update([json.dumps(value)])
+                    else:
+                        raise err
             return len([key for key, value in counter.items() if value == 1])
         except Exception as err:
             logger.debug(

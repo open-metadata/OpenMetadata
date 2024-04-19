@@ -10,25 +10,32 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { Theme } from 'antd/lib/config-provider/context';
+import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import {
   AuthenticationConfigurationWithScope,
   IAuthContext,
   OidcUser,
 } from '../components/Auth/AuthProviders/AuthProvider.interface';
-import { EntityUnion } from '../components/Explore/ExplorePage.interface';
+import {
+  EntityUnion,
+  ExploreSearchIndex,
+} from '../components/Explore/ExplorePage.interface';
 import { AuthenticationConfiguration } from '../generated/configuration/authenticationConfiguration';
 import { AuthorizerConfiguration } from '../generated/configuration/authorizerConfiguration';
 import { LoginConfiguration } from '../generated/configuration/loginConfiguration';
 import { LogoConfiguration } from '../generated/configuration/logoConfiguration';
+import { Domain } from '../generated/entity/domains/domain';
 import { User } from '../generated/entity/teams/user';
 import { EntityReference } from '../generated/entity/type';
 
 export interface HelperFunctions {
   onLoginHandler: () => void;
   onLogoutHandler: () => void;
-  handleSuccessfulLogin: (user: OidcUser) => void;
+  handleSuccessfulLogin: (user: OidcUser) => Promise<void>;
   handleFailedLogin: () => void;
   updateAxiosInterceptors: () => void;
+  trySilentSignIn: (forceLogout?: boolean) => Promise<void>;
 }
 
 export interface ApplicationStore
@@ -37,15 +44,17 @@ export interface ApplicationStore
     LoginConfiguration {
   userProfilePics: Record<string, User>;
   cachedEntityData: Record<string, EntityUnion>;
-  urlPathName: string;
   selectedPersona: EntityReference;
   oidcIdToken: string;
   refreshTokenKey: string;
   authConfig?: AuthenticationConfigurationWithScope;
   applicationConfig?: LogoConfiguration;
+  theme: Theme;
+  setTheme: (theme: Theme) => void;
+  resetTheme: () => void;
+  searchCriteria: ExploreSearchIndex | '';
   setSelectedPersona: (persona: EntityReference) => void;
   setApplicationConfig: (config: LogoConfiguration) => void;
-  setUrlPathName: (urlPathName: string) => void;
   setCurrentUser: (user: User) => void;
   setAuthConfig: (authConfig: AuthenticationConfigurationWithScope) => void;
   setAuthorizerConfig: (authorizerConfig: AuthorizerConfiguration) => void;
@@ -65,4 +74,17 @@ export interface ApplicationStore
   setOidcToken: (oidcToken: string) => void;
   removeOidcToken: () => void;
   removeRefreshToken: () => void;
+  updateSearchCriteria: (criteria: ExploreSearchIndex | '') => void;
+  trySilentSignIn: (forceLogout?: boolean) => void;
+}
+
+export interface DomainStore {
+  domains: Domain[];
+  domainLoading: boolean;
+  activeDomain: string;
+  domainOptions: ItemType[];
+  fetchDomainList: () => Promise<void>;
+  updateDomains: (domainsArr: Domain[]) => void;
+  refreshDomains: () => Promise<void>;
+  updateActiveDomain: (activeDomainKey: string) => void;
 }

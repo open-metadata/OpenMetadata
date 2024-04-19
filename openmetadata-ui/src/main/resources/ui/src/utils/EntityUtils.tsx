@@ -12,7 +12,7 @@
  */
 
 import { Popover } from 'antd';
-import i18next from 'i18next';
+import i18next, { t } from 'i18next';
 import {
   isEmpty,
   isNil,
@@ -57,7 +57,6 @@ import { ExplorePageTabs } from '../enums/Explore.enum';
 import { SearchIndex } from '../enums/search.enum';
 import { ServiceCategory, ServiceCategoryPlural } from '../enums/service.enum';
 import { PrimaryTableDataTypes } from '../enums/table.enum';
-import { Tag } from '../generated/entity/classification/tag';
 import { Container } from '../generated/entity/data/container';
 import { Dashboard } from '../generated/entity/data/dashboard';
 import { DashboardDataModel } from '../generated/entity/data/dashboardDataModel';
@@ -1495,7 +1494,9 @@ export const getEntityBreadcrumbs = (
         return [];
       }
       // eslint-disable-next-line no-case-declarations
-      const fqnList = Fqn.split((entity as GlossaryTerm).fullyQualifiedName);
+      const fqnList = entity.fullyQualifiedName
+        ? Fqn.split(entity.fullyQualifiedName)
+        : [];
       // eslint-disable-next-line no-case-declarations
       const tree = fqnList.slice(1, fqnList.length);
 
@@ -1515,7 +1516,9 @@ export const getEntityBreadcrumbs = (
       ];
     case EntityType.TAG:
       // eslint-disable-next-line no-case-declarations
-      const fqnTagList = Fqn.split((entity as Tag).fullyQualifiedName);
+      const fqnTagList = entity.fullyQualifiedName
+        ? Fqn.split(entity.fullyQualifiedName)
+        : [];
 
       return [
         ...fqnTagList.map((fqn) => ({
@@ -1790,4 +1793,64 @@ export const columnSorter = (
  */
 export const getColumnNameFromEntityLink = (entityLink: string) => {
   return EntityLink.getTableColumnName(entityLink);
+};
+
+export const getEntityNameLabel = (entityName?: string) => {
+  const entityNameLabels = {
+    table: t('label.table'),
+    topic: t('label.topic'),
+    pipeline: t('label.pipeline'),
+    container: t('label.container'),
+    dashboard: t('label.dashboard'),
+    testCase: t('label.test-case'),
+    testSuite: t('label.test-suite'),
+    ingestionPipeline: t('label.ingestion-pipeline'),
+    all: t('label.all'),
+    announcement: t('label.announcement'),
+    chart: t('label.chart'),
+    conversation: t('label.conversation'),
+    dashboardDataModel: t('label.data-model'),
+    databaseSchema: t('label.database-schema'),
+    databaseService: t('label.entity-service', {
+      entity: t('label.database'),
+    }),
+    dashboardService: t('label.entity-service', {
+      entity: t('label.dashboard'),
+    }),
+    messagingService: t('label.entity-service', {
+      entity: t('label.messaging'),
+    }),
+    mlmodelService: t('label.entity-service', {
+      entity: t('label.ml-model'),
+    }),
+    pipelineService: t('label.entity-service', {
+      entity: t('label.pipeline'),
+    }),
+    storageService: t('label.entity-service', {
+      entity: t('label.storage'),
+    }),
+    searchService: t('label.entity-service', { entity: t('label.search') }),
+    metadataService: t('label.entity-service', {
+      entity: t('label.metadata'),
+    }),
+    glossary: t('label.glossary'),
+    glossaryTerm: t('label.glossary-term'),
+    tag: t('label.tag'),
+    tagCategory: t('label.classification'),
+    user: t('label.user'),
+    domain: t('label.domain'),
+    dataProduct: t('label.data-product'),
+    storedProcedure: t('label.stored-procedure'),
+    searchIndex: t('label.search-index'),
+    task: t('label.task'),
+    mlmodel: t('label.ml-model'),
+    location: t('label.location'),
+    database: t('label.database'),
+    query: t('label.query'),
+  };
+
+  return (
+    entityNameLabels[entityName as keyof typeof entityNameLabels] ||
+    startCase(entityName)
+  );
 };

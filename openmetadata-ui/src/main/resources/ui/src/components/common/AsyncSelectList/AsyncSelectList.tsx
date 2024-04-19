@@ -39,14 +39,14 @@ import {
   SelectOption,
 } from './AsyncSelectList.interface';
 
-const AsyncSelectList: FC<AsyncSelectListProps> = ({
+const AsyncSelectList: FC<AsyncSelectListProps & SelectProps> = ({
   mode,
   onChange,
   fetchOptions,
   debounceTimeout = 800,
   initialOptions,
   filterOptions = [],
-  className,
+  optionClassName,
   tagType,
   ...props
 }) => {
@@ -220,6 +220,7 @@ const AsyncSelectList: FC<AsyncSelectListProps> = ({
 
     return (
       <TagsV1
+        size={props.size}
         startWith={TAG_START_WITH.SOURCE_ICON}
         tag={tag}
         tagProps={tagProps}
@@ -286,7 +287,7 @@ const AsyncSelectList: FC<AsyncSelectListProps> = ({
       {...props}>
       {tagOptions.map(({ label, value, displayName, data }) => (
         <Select.Option
-          className={`${className} w-full`}
+          className={`${optionClassName} w-full`}
           data={data}
           data-testid={`tag-${value}`}
           key={label}

@@ -38,6 +38,7 @@ const mockProp: PreviewerProp = {
   className: '',
   maxLength: 300,
   enableSeeMoreVariant: true,
+  isDescriptionExpanded: false,
 };
 
 describe('Test RichTextEditor Previewer Component', () => {
@@ -456,5 +457,28 @@ describe('Test RichTextEditor Previewer Component', () => {
     expect(markdownParser.querySelector('pre')).toBeInTheDocument();
 
     expect(screen.getByTestId('code-block-copy-icon')).toBeInTheDocument();
+  });
+
+  it('Should render read less button if isDescriptionExpanded is true', async () => {
+    const { container } = render(
+      <RichTextEditorPreviewer {...mockProp} isDescriptionExpanded />,
+      {
+        wrapper: MemoryRouter,
+      }
+    );
+
+    const readLessButton = await findByTestId(container, 'read-less-button');
+
+    expect(readLessButton).toBeInTheDocument();
+  });
+
+  it('Should render read more button if isDescriptionExpanded is false', async () => {
+    const { container } = render(<RichTextEditorPreviewer {...mockProp} />, {
+      wrapper: MemoryRouter,
+    });
+
+    const readMoreButton = await findByTestId(container, 'read-more-button');
+
+    expect(readMoreButton).toBeInTheDocument();
   });
 });

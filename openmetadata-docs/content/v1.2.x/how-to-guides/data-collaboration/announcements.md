@@ -54,7 +54,7 @@ caption="Landing Page Announcement Display (Top Right)"
 Furthermore, users can react with emojis and reply to the announcements from both the Activity Feed in the homepage and from the data asset page.
 
 {% image
-src="/images/v1.2/how-to-guides/user-guide-for-data-stewards/react.png"
+src="/images/v1.2/how-to-guides/user-guide-for-data-stewards/react.webp"
 alt="Reply or React to an Announcement"
 caption="Reply or React to an Announcement"
 /%}

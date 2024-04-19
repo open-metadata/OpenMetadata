@@ -7,6 +7,13 @@ slug: /connectors/ingestion/workflows/profiler
 
 Learn how to configure and run the Profiler Workflow to extract Profiler data and execute the Data Quality.
 
+
+{% note %}
+
+During data profiling for Datalake Profiling, we drop NaN (Not a Number) values from the DataFrame using the dropna() method. However, we make an exception for null values, which are retained. This ensures that our computations are accurate while handling missing data
+
+{% /note %}
+
 ## UI configuration
 After the metadata ingestion has been done correctly, we can configure and deploy the Profiler Workflow.
 

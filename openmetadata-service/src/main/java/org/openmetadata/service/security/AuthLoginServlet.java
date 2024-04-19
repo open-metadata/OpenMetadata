@@ -22,8 +22,11 @@ import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import lombok.extern.slf4j.Slf4j;
+import org.openmetadata.schema.api.security.AuthenticationConfiguration;
+import org.openmetadata.schema.api.security.AuthorizerConfiguration;
 import org.pac4j.core.exception.TechnicalException;
 import org.pac4j.core.util.CommonHelper;
+import org.pac4j.oidc.client.GoogleOidcClient;
 import org.pac4j.oidc.client.OidcClient;
 import org.pac4j.oidc.config.OidcConfiguration;
 import org.pac4j.oidc.credentials.OidcCredentials;
@@ -35,11 +38,16 @@ public class AuthLoginServlet extends HttpServlet {
   private final OidcClient client;
   private final List<String> claimsOrder;
   private final String serverUrl;
+  private final String principalDomain;
 
-  public AuthLoginServlet(OidcClient oidcClient, String serverUrl, List<String> claimsOrder) {
+  public AuthLoginServlet(
+      OidcClient oidcClient,
+      AuthenticationConfiguration authenticationConfiguration,
+      AuthorizerConfiguration authorizerConfiguration) {
     this.client = oidcClient;
-    this.serverUrl = serverUrl;
-    this.claimsOrder = claimsOrder;
+    this.serverUrl = authenticationConfiguration.getOidcConfiguration().getServerUrl();
+    this.claimsOrder = authenticationConfiguration.getJwtPrincipalClaims();
+    this.principalDomain = authorizerConfiguration.getPrincipalDomain();
   }
 
   @Override
@@ -49,7 +57,7 @@ public class AuthLoginServlet extends HttpServlet {
       Optional<OidcCredentials> credentials = getUserCredentialsFromSession(req, client);
       if (credentials.isPresent()) {
         LOG.debug("Auth Tokens Located from Session: {} ", req.getSession().getId());
-        sendRedirectWithToken(resp, credentials.get(), serverUrl, claimsOrder);
+        sendRedirectWithToken(resp, credentials.get(), serverUrl, claimsOrder, principalDomain);
       } else {
         LOG.debug("Performing Auth Code Flow to Idp: {} ", req.getSession().getId());
         Map<String, String> params = buildParams();
@@ -59,7 +67,11 @@ public class AuthLoginServlet extends HttpServlet {
         addStateAndNonceParameters(req, params);
 
         // This is always used to prompt the user to login
-        params.put(OidcConfiguration.PROMPT, "login");
+        if (client instanceof GoogleOidcClient) {
+          params.put(OidcConfiguration.PROMPT, "consent");
+        } else {
+          params.put(OidcConfiguration.PROMPT, "login");
+        }
         params.put(OidcConfiguration.MAX_AGE, "0");
 
         String location = buildAuthenticationRequestUrl(params);
@@ -100,8 +112,13 @@ public class AuthLoginServlet extends HttpServlet {
     }
 
     CodeChallengeMethod pkceMethod = client.getConfiguration().findPkceMethod();
+
+    // Use Default PKCE method if not disabled
+    if (pkceMethod == null && !client.getConfiguration().isDisablePkce()) {
+      pkceMethod = CodeChallengeMethod.S256;
+    }
     if (pkceMethod != null) {
-      CodeVerifier verfifier = new CodeVerifier(CommonHelper.randomString(10));
+      CodeVerifier verfifier = new CodeVerifier(CommonHelper.randomString(43));
       request.getSession().setAttribute(client.getCodeVerifierSessionAttributeName(), verfifier);
       params.put(
           OidcConfiguration.CODE_CHALLENGE,

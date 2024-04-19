@@ -58,6 +58,7 @@ const DataAssetsTab = () => {
       </Col>
       <Col span={24}>
         <DescriptionInsight
+          isExploreBtnVisible
           chartFilter={chartFilter}
           dataInsightChartName={
             DataInsightChartType.PercentageOfEntitiesWithDescriptionByType
@@ -71,6 +72,7 @@ const DataAssetsTab = () => {
       </Col>
       <Col span={24}>
         <OwnerInsight
+          isExploreBtnVisible
           chartFilter={chartFilter}
           dataInsightChartName={
             DataInsightChartType.PercentageOfEntitiesWithOwnerByType

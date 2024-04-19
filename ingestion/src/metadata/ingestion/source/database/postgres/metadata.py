@@ -15,6 +15,7 @@ import traceback
 from collections import namedtuple
 from typing import Iterable, Optional, Tuple
 
+from sqlalchemy import String as SqlAlchemyString
 from sqlalchemy import sql
 from sqlalchemy.dialects.postgresql.base import PGDialect, ischema_names
 from sqlalchemy.engine import Inspector
@@ -96,6 +97,7 @@ ischema_names.update(
         "point": POINT,
         "polygon": POLYGON,
         "box": create_sqlalchemy_type("BOX"),
+        "bpchar": SqlAlchemyString,
         "circle": create_sqlalchemy_type("CIRCLE"),
         "line": create_sqlalchemy_type("LINE"),
         "lseg": create_sqlalchemy_type("LSEG"),
@@ -104,6 +106,7 @@ ischema_names.update(
         "pg_snapshot": create_sqlalchemy_type("PG_SNAPSHOT"),
         "tsquery": create_sqlalchemy_type("TSQUERY"),
         "txid_snapshot": create_sqlalchemy_type("TXID_SNAPSHOT"),
+        "xid": SqlAlchemyString,
         "xml": create_sqlalchemy_type("XML"),
     }
 )
@@ -184,9 +187,11 @@ class PostgresSource(CommonDbSourceService, MultiDBSource):
 
                 if filter_by_database(
                     self.source_config.databaseFilterPattern,
-                    database_fqn
-                    if self.source_config.useFqnForFiltering
-                    else new_database,
+                    (
+                        database_fqn
+                        if self.source_config.useFqnForFiltering
+                        else new_database
+                    ),
                 ):
                     self.status.filter(database_fqn, "Database Filtered Out")
                     continue

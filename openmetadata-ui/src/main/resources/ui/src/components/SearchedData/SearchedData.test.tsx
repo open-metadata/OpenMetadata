@@ -48,6 +48,10 @@ const mockData: SearchedDataProps['data'] = [
     highlight: {
       name: ['raw_<span class="text-highlighter">customer</span>'],
       displayName: ['raw_<span class="text-highlighter">customer</span>'],
+      'name.ngram': ['raw_<span class="text-highlighter">customer</span>'],
+      'displayName.ngram': [
+        'raw_<span class="text-highlighter">customer</span>',
+      ],
     },
   },
   {
@@ -179,5 +183,18 @@ describe('Test SearchedData Component', () => {
     );
 
     expect(getByText(container, /ErrorPlaceHolderES/i)).toBeInTheDocument();
+  });
+
+  it('Component should render highlights', () => {
+    const { container } = render(<SearchedData {...MOCK_PROPS} />, {
+      wrapper: MemoryRouter,
+    });
+
+    const searchedDataContainer = getByTestId(container, 'search-container');
+
+    expect(searchedDataContainer).toBeInTheDocument();
+    expect(getByTestId(container, 'matches-stats')).toHaveTextContent(
+      'label.matches:1 in Name,1 in Display Name'
+    );
   });
 });

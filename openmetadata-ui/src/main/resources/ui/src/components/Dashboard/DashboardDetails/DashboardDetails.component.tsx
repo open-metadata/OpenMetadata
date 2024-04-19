@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { FilterOutlined } from '@ant-design/icons';
 import Icon from '@ant-design/icons/lib/components/Icon';
 import { Col, Row, Table, Tabs, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
@@ -47,11 +48,7 @@ import {
   getAllTags,
   searchTagInData,
 } from '../../../utils/TableTags/TableTags.utils';
-import {
-  getFilterIcon,
-  getTagsWithoutTier,
-  getTierTags,
-} from '../../../utils/TableUtils';
+import { getTagsWithoutTier, getTierTags } from '../../../utils/TableUtils';
 import { createTagObject, updateTierTag } from '../../../utils/TagsUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import { useActivityFeedProvider } from '../../ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
@@ -94,7 +91,7 @@ const DashboardDetails = ({
   handleToggleDelete,
 }: DashboardDetailsProps) => {
   const { t } = useTranslation();
-  const { currentUser } = useApplicationStore();
+  const { currentUser, theme } = useApplicationStore();
   const history = useHistory();
   const { tab: activeTab = EntityTabs.DETAILS } =
     useParams<{ tab: EntityTabs }>();
@@ -504,7 +501,12 @@ const DashboardDetails = ({
         key: 'tags',
         accessor: 'tags',
         width: 300,
-        filterIcon: getFilterIcon('tag-filter'),
+        filterIcon: (filtered) => (
+          <FilterOutlined
+            data-testid="tag-filter"
+            style={{ color: filtered ? theme.primaryColor : undefined }}
+          />
+        ),
         render: (tags: TagLabel[], record: ChartType, index: number) => {
           return (
             <TableTags<ChartType>
@@ -531,7 +533,12 @@ const DashboardDetails = ({
         key: 'glossary',
         accessor: 'tags',
         width: 300,
-        filterIcon: getFilterIcon('glossary-filter'),
+        filterIcon: (filtered) => (
+          <FilterOutlined
+            data-testid="glossary-filter"
+            style={{ color: filtered ? theme.primaryColor : undefined }}
+          />
+        ),
         render: (tags: TagLabel[], record: ChartType, index: number) => (
           <TableTags<ChartType>
             entityFqn={decodedDashboardFQN}
@@ -558,6 +565,7 @@ const DashboardDetails = ({
       hasEditTagAccess,
       handleUpdateChart,
       handleChartTagSelection,
+      charts,
     ]
   );
 
@@ -607,6 +615,7 @@ const DashboardDetails = ({
                   entityName={entityName}
                   entityType={EntityType.DASHBOARD}
                   hasEditAccess={editDescriptionPermission}
+                  isDescriptionExpanded={isEmpty(charts)}
                   isEdit={isEdit}
                   owner={dashboardDetails.owner}
                   showActions={!deleted}
@@ -636,16 +645,18 @@ const DashboardDetails = ({
               className="entity-tag-right-panel-container"
               data-testid="entity-right-panel"
               flex="320px">
-              <EntityRightPanel
+              <EntityRightPanel<EntityType.DASHBOARD>
                 customProperties={dashboardDetails}
                 dataProducts={dashboardDetails?.dataProducts ?? []}
                 domain={dashboardDetails?.domain}
+                editCustomAttributePermission={editCustomAttributePermission}
                 editTagPermission={editTagsPermission}
                 entityFQN={decodedDashboardFQN}
                 entityId={dashboardDetails.id}
                 entityType={EntityType.DASHBOARD}
                 selectedTags={dashboardTags}
                 viewAllPermission={viewAllPermission}
+                onExtensionUpdate={onExtensionUpdate}
                 onTagSelectionChange={handleTagSelection}
                 onThreadLinkSelect={onThreadLinkSelect}
               />

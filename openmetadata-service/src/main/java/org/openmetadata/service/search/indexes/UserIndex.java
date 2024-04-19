@@ -19,25 +19,24 @@ public class UserIndex implements SearchIndex {
     this.user = user;
   }
 
-  public Map<String, Object> buildESDoc() {
-    Map<String, Object> doc = JsonUtils.getMap(user);
-    SearchIndexUtils.removeNonIndexableFields(doc, excludeFields);
+  public List<SearchSuggest> getSuggest() {
     List<SearchSuggest> suggest = new ArrayList<>();
     suggest.add(SearchSuggest.builder().input(user.getName()).weight(5).build());
     suggest.add(SearchSuggest.builder().input(user.getDisplayName()).weight(10).build());
-    doc.put(
-        "fqnParts",
-        getFQNParts(
-            user.getFullyQualifiedName(), suggest.stream().map(SearchSuggest::getInput).toList()));
-    doc.put("suggest", suggest);
-    doc.put("entityType", Entity.USER);
+    return suggest;
+  }
+
+  public Map<String, Object> buildESDoc() {
+    Map<String, Object> doc = JsonUtils.getMap(user);
+    SearchIndexUtils.removeNonIndexableFields(doc, excludeFields);
+    Map<String, Object> commonAttributes = getCommonAttributesMap(user, Entity.USER);
+    doc.putAll(commonAttributes);
     doc.put(
         "displayName",
         CommonUtil.nullOrEmpty(user.getDisplayName()) ? user.getName() : user.getDisplayName());
     if (user.getIsBot() == null) {
       doc.put("isBot", false);
     }
-    doc.put("followers", SearchIndexUtils.parseFollowers(user.getFollowers()));
     return doc;
   }
 

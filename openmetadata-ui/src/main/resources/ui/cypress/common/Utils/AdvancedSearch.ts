@@ -84,7 +84,7 @@ export const FIELDS: Record<string, AdvancedSearchFieldDetails> = {
     responseValueFirstGroup: `"displayName":"${USER_1_FULL_NAME}"`,
     searchCriteriaSecondGroup: USER_2_FULL_NAME,
     owner: true,
-    responseValueSecondGroup: `"displayName":"${USER_2_FULL_NAME}"`,
+    responseValueSecondGroup: USER_2_FULL_NAME,
   },
   Tags: {
     name: 'Tags',
@@ -284,11 +284,11 @@ export const addTag = ({ tag, term, serviceName, entity }) => {
     .scrollIntoView()
     .click();
 
-  cy.get('[data-testid="tag-selector"]').should('be.visible').click().type(tag);
+  cy.get('[data-testid="tag-selector"]').scrollIntoView().click().type(tag);
 
   cy.get('.ant-select-item-option-content')
     .contains(tag)
-    .should('be.visible')
+    .scrollIntoView()
     .click();
 
   // to close popup
@@ -296,9 +296,9 @@ export const addTag = ({ tag, term, serviceName, entity }) => {
 
   cy.get('[data-testid="tag-selector"] > .ant-select-selector').contains(tag);
 
-  cy.get('[data-testid="saveAssociatedTag"]').should('be.visible').click();
+  cy.get('[data-testid="saveAssociatedTag"]').scrollIntoView().click();
   cy.get('[data-testid="entity-right-panel"] [data-testid="entity-tags"]')
-    .should('be.visible')
+    .scrollIntoView()
     .contains(tag);
 };
 
@@ -329,20 +329,20 @@ export const checkAddGroupWithOperator = ({
   // Click on field dropdown
   cy.get('.rule--field > .ant-select > .ant-select-selector')
     .eq(index_1)
-    .should('be.visible')
+    .scrollIntoView()
     .click();
   // Select owner fields
-  cy.get(fieldId).eq(0).should('be.visible').click();
+  cy.get(fieldId).eq(0).scrollIntoView().click();
   // Select the condition
   cy.get('.rule--operator > .ant-select > .ant-select-selector')
     .eq(index_1)
-    .should('be.visible')
+    .scrollIntoView()
     .click();
 
-  cy.get(`[label="${condition_1}"]`).eq(index_1).should('be.visible').click();
+  cy.get(`[label="${condition_1}"]`).eq(index_1).scrollIntoView().click();
   // Verify the condition
   cy.get('.rule--operator .ant-select-selection-item')
-    .should('be.visible')
+    .scrollIntoView()
     .should('contain', `${condition_1}`);
 
   // Verify the search criteria for the condition
@@ -350,7 +350,7 @@ export const checkAddGroupWithOperator = ({
     if ($body.find('.ant-col > .ant-input').length) {
       cy.get('.ant-col > .ant-input')
         .eq(index_1)
-        .should('be.visible')
+        .scrollIntoView()
         .type(searchCriteria_1);
     } else {
       if (!isLocalSearch) {
@@ -358,7 +358,7 @@ export const checkAddGroupWithOperator = ({
       }
       cy.get('.widget--widget > .ant-select > .ant-select-selector')
         .eq(index_1)
-        .should('be.visible')
+        .scrollIntoView()
         .type(searchCriteria_1);
 
       if (!isLocalSearch) {
@@ -367,7 +367,7 @@ export const checkAddGroupWithOperator = ({
       cy.get('.ant-select-dropdown')
         .not('.ant-select-dropdown-hidden')
         .find(`[title="${searchCriteria_1}"]`)
-        .should('be.visible')
+        .scrollIntoView()
         .trigger('mouseover')
         .trigger('click');
     }
@@ -377,11 +377,7 @@ export const checkAddGroupWithOperator = ({
   cy.get('.ant-modal-header').click();
 
   // Select add-group button
-  cy.get('.action--ADD-GROUP')
-    .eq(0)
-    .scrollIntoView()
-    .should('be.visible')
-    .click();
+  cy.get('.action--ADD-GROUP').eq(0).scrollIntoView().scrollIntoView().click();
 
   // Select the AND/OR condition
   cy.get(
@@ -389,25 +385,26 @@ export const checkAddGroupWithOperator = ({
   ).click();
 
   // Click on field dropdown
-  cy.get('.rule--field').eq(index_2).should('be.visible').click();
+  cy.get('.rule--field').eq(index_2).scrollIntoView().click();
 
-  cy.get(fieldId).eq(2).should('be.visible').click();
+  cy.get(fieldId).eq(2).scrollIntoView().click();
 
   // Select the condition
-  cy.get('.rule--operator').eq(index_2).should('be.visible').click();
+  cy.get('.rule--operator').eq(index_2).scrollIntoView().click();
 
-  cy.get(`[label="${condition_2}"]`).eq(index_2).should('be.visible').click();
+  cy.get(`[label="${condition_2}"]`).eq(index_2).scrollIntoView().click();
   // Verify the condition
-  cy.get('.rule--operator .ant-select-selection-item')
-    .should('be.visible')
-    .should('contain', `${condition_2}`);
+  cy.get('.rule--operator .ant-select-selection-item').should(
+    'contain',
+    `${condition_2}`
+  );
 
   // Verify the search criteria for the condition
   cy.get('body').then(($body) => {
     if ($body.find('.ant-col > .ant-input').length) {
       cy.get('.ant-col > .ant-input')
         .eq(index_2)
-        .should('be.visible')
+        .scrollIntoView()
         .type(searchCriteria_2);
     } else {
       if (!isLocalSearch) {
@@ -415,7 +412,7 @@ export const checkAddGroupWithOperator = ({
       }
       cy.get('.widget--widget > .ant-select > .ant-select-selector')
         .eq(index_2)
-        .should('be.visible')
+        .scrollIntoView()
         .type(searchCriteria_2);
 
       if (!isLocalSearch) {
@@ -425,7 +422,7 @@ export const checkAddGroupWithOperator = ({
       cy.get('.ant-select-dropdown')
         .not('.ant-select-dropdown-hidden')
         .find(`[title="${searchCriteria_2}"]`)
-        .should('be.visible')
+        .scrollIntoView()
         .trigger('mouseover')
         .trigger('click');
     }
@@ -479,16 +476,16 @@ export const checkAddRuleWithOperator = ({
 }: CheckAddRuleWithOperatorArgs) => {
   goToAdvanceSearch();
   // Click on field dropdown
-  cy.get('.rule--field').eq(index_1).should('be.visible').click();
+  cy.get('.rule--field').eq(index_1).scrollIntoView().click();
   // Select owner fields
-  cy.get(fieldId).eq(0).should('be.visible').click();
+  cy.get(fieldId).eq(0).scrollIntoView().click();
   // Select the condition
-  cy.get('.rule--operator').eq(index_1).should('be.visible').click();
+  cy.get('.rule--operator').eq(index_1).scrollIntoView().click();
 
-  cy.get(`[label="${condition_1}"]`).eq(index_1).should('be.visible').click();
+  cy.get(`[label="${condition_1}"]`).eq(index_1).scrollIntoView().click();
   // Verify the condition
   cy.get('.rule--operator .ant-select-selection-item')
-    .should('be.visible')
+    .scrollIntoView()
     .should('contain', `${condition_1}`);
 
   // Verify the search criteria for the condition
@@ -496,20 +493,20 @@ export const checkAddRuleWithOperator = ({
     if ($body.find('.ant-col > .ant-input').length) {
       cy.get('.ant-col > .ant-input')
         .eq(index_1)
-        .should('be.visible')
+        .scrollIntoView()
         .type(searchCriteria_1);
     } else {
       interceptURL('GET', '/api/v1/search/aggregate?*', 'suggestApi');
 
       cy.get('.widget--widget > .ant-select > .ant-select-selector')
         .eq(index_1)
-        .should('be.visible')
+        .scrollIntoView()
         .type(searchCriteria_1);
 
       verifyResponseStatusCode('@suggestApi', 200);
 
       cy.get(`[title = '${searchCriteria_1}']`)
-        .should('be.visible')
+        .scrollIntoView()
         .trigger('mouseover')
         .trigger('click');
     }
@@ -519,7 +516,7 @@ export const checkAddRuleWithOperator = ({
   cy.get('.ant-modal-header').click();
 
   // Select add-group button
-  cy.get('.action--ADD-RULE').eq(1).should('be.visible').click();
+  cy.get('.action--ADD-RULE').eq(1).scrollIntoView().click();
 
   // Select the AND/OR condition
   cy.get(
@@ -527,31 +524,32 @@ export const checkAddRuleWithOperator = ({
   ).click();
 
   // Click on field dropdown
-  cy.get('.rule--field').eq(index_2).should('be.visible').click();
+  cy.get('.rule--field').eq(index_2).scrollIntoView().click();
 
-  cy.get(fieldId).eq(2).should('be.visible').click();
+  cy.get(fieldId).eq(2).scrollIntoView().click();
 
   // Select the condition
-  cy.get('.rule--operator').eq(index_2).should('be.visible').click();
+  cy.get('.rule--operator').eq(index_2).scrollIntoView().click();
 
-  cy.get(`[label="${condition_2}"]`).eq(index_2).should('be.visible').click();
+  cy.get(`[label="${condition_2}"]`).eq(index_2).scrollIntoView().click();
   // Verify the condition
-  cy.get('.rule--operator .ant-select-selection-item')
-    .should('be.visible')
-    .should('contain', `${condition_2}`);
+  cy.get('.rule--operator .ant-select-selection-item').should(
+    'contain',
+    `${condition_2}`
+  );
 
   // Verify the search criteria for the condition
   cy.get('body').then(($body) => {
     if ($body.find('.ant-col > .ant-input').length) {
       cy.get('.ant-col > .ant-input')
         .eq(index_2)
-        .should('be.visible')
+        .scrollIntoView()
         .type(searchCriteria_2);
     } else {
       interceptURL('GET', '/api/v1/search/aggregate?*', 'suggestApi');
       cy.get('.widget--widget > .ant-select > .ant-select-selector')
         .eq(index_2)
-        .should('be.visible')
+        .scrollIntoView()
         .type(searchCriteria_2);
 
       verifyResponseStatusCode('@suggestApi', 200);
@@ -559,7 +557,7 @@ export const checkAddRuleWithOperator = ({
       cy.get('.ant-select-dropdown')
         .not('.ant-select-dropdown-hidden')
         .find(`[title="${searchCriteria_2}"]`)
-        .should('be.visible')
+        .scrollIntoView()
         .contains(searchCriteria_2)
         .click();
     }
@@ -596,7 +594,6 @@ export const advanceSearchPreRequests = (testData, token: string) => {
     ...ADVANCE_SEARCH_DATABASE_SERVICE_2,
   });
 
-  // Create a new users
   cy.request({
     method: 'POST',
     url: `/api/v1/users/signup`,
@@ -604,15 +601,6 @@ export const advanceSearchPreRequests = (testData, token: string) => {
     body: USER_1.user,
   }).then((response) => {
     testData.user_1 = response.body;
-  });
-
-  cy.request({
-    method: 'POST',
-    url: `/api/v1/users/signup`,
-    headers: { Authorization: `Bearer ${token}` },
-    body: USER_2.user,
-  }).then((response) => {
-    testData.user_2 = response.body;
 
     // Add owner to table 1
     cy.request({
@@ -632,12 +620,22 @@ export const advanceSearchPreRequests = (testData, token: string) => {
             op: 'add',
             path: '/owner',
             value: {
-              id: testData.user_2.id,
+              id: testData.user_1.id,
               type: 'user',
             },
           },
         ],
       });
+    });
+
+    // Create a new users
+    cy.request({
+      method: 'POST',
+      url: `/api/v1/users/signup`,
+      headers: { Authorization: `Bearer ${token}` },
+      body: USER_2.user,
+    }).then((response) => {
+      testData.user_2 = response.body;
     });
 
     // Add Tier to table 2

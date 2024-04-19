@@ -27,6 +27,7 @@ public class ListFilter extends Filter<ListFilter> {
     conditions.add(getDatabaseSchemaCondition(tableName));
     conditions.add(getServiceCondition(tableName));
     conditions.add(getPipelineTypeCondition(tableName));
+    conditions.add(getApplicationTypeCondition());
     conditions.add(getParentCondition(tableName));
     conditions.add(getDisabledCondition());
     conditions.add(getCategoryCondition(tableName));
@@ -170,6 +171,21 @@ public class ListFilter extends Filter<ListFilter> {
   public String getPipelineTypeCondition(String tableName) {
     String pipelineType = queryParams.get("pipelineType");
     return pipelineType == null ? "" : getPipelineTypePrefixCondition(tableName, pipelineType);
+  }
+
+  public String getApplicationTypeCondition() {
+    String applicationType = queryParams.get("applicationType");
+    if (applicationType == null) {
+      return "";
+    }
+    if (Boolean.TRUE.equals(DatasourceConfig.getInstance().isMySQL())) {
+      return String.format(
+          "(JSON_UNQUOTE(JSON_EXTRACT(ingestion_pipeline_entity.json, '$.sourceConfig.config.appConfig.type')) = '%s')",
+          applicationType);
+    }
+    return String.format(
+        "(ingestion_pipeline_entity.json ->> '{sourceConfig,config,appConfig,type}' = '%s')",
+        applicationType);
   }
 
   private String getTestCaseCondition() {

@@ -645,13 +645,13 @@ public final class TestUtils {
   }
 
   public static void waitForEsAsyncOp() throws InterruptedException {
-    waitForEsAsyncOp(100);
+    waitForEsAsyncOp(750);
   }
 
   public static void waitForEsAsyncOp(Integer milliseconds) throws InterruptedException {
     // Wait for the async operation to complete. We cannot use
     // Awaitility here as the test method thread is not
     // the owner of the async operation
-    TimeUnit.MILLISECONDS.sleep(1000);
+    TimeUnit.MILLISECONDS.sleep(milliseconds);
   }
 }

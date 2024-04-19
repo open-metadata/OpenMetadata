@@ -115,8 +115,6 @@ QUANTIFIABLE_SET = {
 
 CONCATENABLE_SET = {DataType.STRING.value, DataType.TEXT.value}
 
-DATATIME_SET = {DataType.DATETIME.value}
-
 
 # Now, let's define some helper methods to identify
 # the nature of an SQLAlchemy type
@@ -139,7 +137,11 @@ def is_date_time(_type) -> bool:
     Check if sqlalchemy _type is derived from Date, Time or DateTime Type
     """
     if isinstance(_type, DataType):
-        return _type.value in DATATIME_SET
+        return _type.value in {
+            DataType.DATETIME.value,
+            DataType.TIME.value,
+            DataType.DATE.value,
+        }
     return (
         issubclass(_type.__class__, Date)
         or issubclass(_type.__class__, Time)

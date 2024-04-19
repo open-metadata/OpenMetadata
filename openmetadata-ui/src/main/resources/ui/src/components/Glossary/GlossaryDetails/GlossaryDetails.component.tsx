@@ -12,7 +12,7 @@
  */
 
 import { Col, Row, Space, Tabs } from 'antd';
-import { noop } from 'lodash';
+import { isEmpty, noop } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
@@ -152,6 +152,7 @@ const GlossaryDetails = ({
               entityName={getEntityName(glossary)}
               entityType={EntityType.GLOSSARY}
               hasEditAccess={permissions.EditDescription || permissions.EditAll}
+              isDescriptionExpanded={isEmpty(glossaryTerms)}
               isEdit={isDescriptionEditable}
               owner={glossary?.owner}
               showActions={!glossary.deleted}

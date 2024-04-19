@@ -77,6 +77,11 @@ class SupersetAPISource(SupersetSourceMixin):
             dashboards = self.client.fetch_dashboards(current_page, page_size)
             current_page += 1
             for dashboard in dashboards.result:
+                if (
+                    not self.source_config.includeDraftDashboard
+                    and not dashboard.published
+                ):
+                    continue
                 yield dashboard
 
     def yield_dashboard(

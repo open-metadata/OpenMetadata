@@ -21,7 +21,7 @@ from setuptools import setup
 VERSIONS = {
     "airflow": "apache-airflow==2.7.3",
     "adlfs": "adlfs~=2022.11",
-    "avro": "avro~=1.11",
+    "avro": "avro>=1.11.3,<1.12",
     "boto3": "boto3>=1.20,<2.0",  # No need to add botocore separately. It's a dep from boto3
     "geoalchemy2": "GeoAlchemy2~=0.12",
     "google-cloud-storage": "google-cloud-storage==1.43.0",
@@ -42,7 +42,6 @@ VERSIONS = {
     "azure-identity": "azure-identity~=1.12",
     "sqlalchemy-databricks": "sqlalchemy-databricks~=0.1",
     "databricks-sdk": "databricks-sdk>=0.18.0,<0.20.0",
-    "google": "google>=3.0.0",
     "trino": "trino[sqlalchemy]",
     "spacy": "spacy==3.5.0",
     "looker-sdk": "looker-sdk>=22.20.0",
@@ -59,6 +58,7 @@ VERSIONS = {
 
 COMMONS = {
     "datalake": {
+        VERSIONS["avro"],
         VERSIONS["boto3"],
         VERSIONS["pandas"],
         VERSIONS["pyarrow"],
@@ -83,38 +83,24 @@ COMMONS = {
     },
 }
 
-# required library for pii tagging
-pii_requirements = {
-    VERSIONS["spacy"],
-    VERSIONS["pandas"],
-    "presidio-analyzer==2.2.32",
-}
 
 base_requirements = {
     "antlr4-python3-runtime==4.9.2",
     VERSIONS["azure-identity"],
     "azure-keyvault-secrets",  # Azure Key Vault SM
-    VERSIONS["avro"],  # Used in sample data
     VERSIONS["boto3"],  # Required in base for the secrets manager
-    "cached-property==1.5.2",
-    "chardet==4.0.0",
-    "croniter~=1.3.0",
-    "cryptography",
-    "email-validator>=1.0.3",
-    VERSIONS["google"],
-    "google-auth>=1.33.0",
-    VERSIONS["grpc-tools"],  # Used in sample data
-    "idna<3,>=2.5",
+    "cached-property==1.5.2",  # LineageParser
+    "chardet==4.0.0",  # Used in the profiler
+    "cryptography>=42.0.0",
+    "email-validator>=1.0.3",  # For the pydantic generated models for Email
     "importlib-metadata>=4.13.0",  # From airflow constraints
     "Jinja2>=2.11.3",
     "jsonpatch<2.0, >=1.24",
-    "jsonschema",
     "memory-profiler",
     "mypy_extensions>=0.4.3",
     VERSIONS["pydantic"],
     VERSIONS["pymysql"],
     "python-dateutil>=2.8.1",
-    "python-jose~=3.3",
     "PyYAML~=6.0",
     "requests>=2.23",
     "requests-aws4auth~=1.1",  # Only depends on requests as external package. Leaving as base.
@@ -123,7 +109,6 @@ base_requirements = {
     "collate-sqllineage~=1.3.0",
     "tabulate==0.9.0",
     "typing-inspect",
-    "wheel~=0.38.4",
 }
 
 
@@ -163,7 +148,13 @@ plugins: Dict[str, Set[str]] = {
     },
     "db2": {"ibm-db-sa~=0.3"},
     "db2-ibmi": {"sqlalchemy-ibmi~=0.9.3"},
-    "databricks": {VERSIONS["sqlalchemy-databricks"], VERSIONS["databricks-sdk"]},
+    "databricks": {
+        VERSIONS["sqlalchemy-databricks"],
+        VERSIONS["databricks-sdk"],
+        "ndg-httpsclient~=0.5.1",
+        "pyOpenSSL~=24.1.0",
+        "pyasn1~=0.6.0",
+    },
     "datalake-azure": {
         VERSIONS["azure-storage-blob"],
         VERSIONS["azure-identity"],
@@ -202,7 +193,7 @@ plugins: Dict[str, Set[str]] = {
         "impyla~=0.18.0",
     },
     "iceberg": {
-        "pyiceberg",
+        "pyiceberg<1",
         # Forcing the version of a few packages so it plays nicely with other requirements.
         VERSIONS["pydantic"],
         VERSIONS["adlfs"],
@@ -218,7 +209,6 @@ plugins: Dict[str, Set[str]] = {
     },
     "kafka": {*COMMONS["kafka"]},
     "kinesis": {VERSIONS["boto3"]},
-    "ldap-users": {"ldap3==2.9.1"},
     "looker": {
         VERSIONS["looker-sdk"],
         VERSIONS["lkml"],
@@ -232,7 +222,6 @@ plugins: Dict[str, Set[str]] = {
     "mssql-odbc": {VERSIONS["pyodbc"]},
     "mysql": {VERSIONS["pymysql"]},
     "nifi": {},  # uses requests
-    "okta": {"okta~=2.3"},
     "openlineage": {*COMMONS["kafka"]},
     "oracle": {"cx_Oracle>=8.3.0,<9", "oracledb~=1.2"},
     "pgspider": {"psycopg2-binary", "sqlalchemy-pgspider"},
@@ -258,6 +247,7 @@ plugins: Dict[str, Set[str]] = {
     },
     "sagemaker": {VERSIONS["boto3"]},
     "salesforce": {"simple_salesforce==1.11.4"},
+    "sample-data": {VERSIONS["avro"], VERSIONS["grpc-tools"]},
     "sap-hana": {"hdbcli", "sqlalchemy-hana"},
     "sas": {},
     "singlestore": {VERSIONS["pymysql"]},
@@ -267,7 +257,11 @@ plugins: Dict[str, Set[str]] = {
     "tableau": {VERSIONS["tableau"], VERSIONS["validators"], VERSIONS["packaging"]},
     "trino": {VERSIONS["trino"]},
     "vertica": {"sqlalchemy-vertica[vertica-python]>=0.0.5"},
-    "pii-processor": pii_requirements,
+    "pii-processor": {
+        VERSIONS["spacy"],
+        VERSIONS["pandas"],
+        "presidio-analyzer==2.2.32",
+    },
 }
 
 dev = {
@@ -297,7 +291,6 @@ test = {
     "dbt-artifacts-parser",
     VERSIONS["sqlalchemy-databricks"],
     VERSIONS["databricks-sdk"],
-    VERSIONS["google"],
     VERSIONS["scikit-learn"],
     VERSIONS["pyarrow"],
     VERSIONS["trino"],
@@ -312,7 +305,10 @@ test = {
     VERSIONS["snowflake"],
     VERSIONS["elasticsearch8"],
     VERSIONS["giturlparse"],
-    "testcontainers==3.7.1",
+    VERSIONS["avro"],  # Sample Data
+    VERSIONS["grpc-tools"],
+    "testcontainers==3.7.1;python_version<'3.9'",
+    "testcontainers==4.3.3;python_version>='3.9'",
 }
 
 e2e_test = {

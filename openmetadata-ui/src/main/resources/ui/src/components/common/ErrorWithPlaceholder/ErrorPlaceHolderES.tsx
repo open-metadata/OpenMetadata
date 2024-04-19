@@ -30,9 +30,9 @@ import {
   ELASTICSEARCH_ERROR_PLACEHOLDER_TYPE,
   ERROR_PLACEHOLDER_TYPE,
 } from '../../../enums/common.enum';
+import { useDomainStore } from '../../../hooks/useDomainStore';
 import { Transi18next } from '../../../utils/CommonUtils';
 import i18n from '../../../utils/i18next/LocalUtil';
-import { useDomainProvider } from '../../Domain/DomainProvider/DomainProvider';
 import ErrorPlaceHolder from './ErrorPlaceHolder';
 
 type Props = {
@@ -73,7 +73,7 @@ const ErrorPlaceHolderES = ({ type, errorMessage, query }: Props) => {
   const { tab } = useParams<{ tab: string }>();
   const { t } = useTranslation();
   const history = useHistory();
-  const { activeDomain } = useDomainProvider();
+  const { activeDomain } = useDomainStore();
 
   const isQuery = useMemo(
     () =>

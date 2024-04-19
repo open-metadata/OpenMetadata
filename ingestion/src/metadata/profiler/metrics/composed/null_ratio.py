@@ -48,10 +48,12 @@ class NullRatio(ComposedMetric):
         Safely compute null ratio based on the profiler
         results of other Metrics
         """
+        import pandas as pd
+
         res_count = res.get(Count.name())
         res_null = res.get(NullCount.name())
 
-        if res_count is not None and res_null is not None:
-            return res_null / (res_null + res_count)
-
+        if not pd.isnull(res_count) and not pd.isnull(res_null):
+            result = res_null / (res_null + res_count)
+            return None if pd.isnull(result) else result
         return None
