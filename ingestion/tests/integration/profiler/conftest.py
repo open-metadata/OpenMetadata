@@ -2,7 +2,6 @@ from typing import TYPE_CHECKING
 
 import boto3
 import pytest
-from ...integration.integration_base import int_admin_ometa
 from testcontainers.localstack import LocalStackContainer
 
 from metadata.generated.schema.api.services.createDatabaseService import (
@@ -17,6 +16,8 @@ from metadata.generated.schema.entity.services.databaseService import (
     DatabaseServiceType,
 )
 from metadata.generated.schema.security.credentials.awsCredentials import AWSCredentials
+
+from ...integration.integration_base import int_admin_ometa
 
 if TYPE_CHECKING:
     from mypy_boto3_dynamodb.client import DynamoDBClient
