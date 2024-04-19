@@ -64,17 +64,7 @@
       "type": "string"
     },
     "sslMode": {
-      "title": "SSL Mode",
-      "description": "SSL Mode to connect to Greenplum database.",
-      "enum": [
-        "disable",
-        "allow",
-        "prefer",
-        "require",
-        "verify-ca",
-        "verify-full"
-      ],
-      "default": "disable"
+      "$ref": "../../../../security/ssl/verifySSLConfig.json#/definitions/sslMode"
     },
     "sslConfig": {
       "$ref": "../../../../security/ssl/verifySSLConfig.json#/definitions/sslConfig"
