@@ -1,24 +1,31 @@
 import os
+from urllib.parse import urlparse
+
 import mlflow
+import mlflow.sklearn
 import numpy as np
 import pandas as pd
-import mlflow.sklearn
 import pytest
-from urllib.parse import urlparse
 from mlflow.models import infer_signature
 from sklearn.linear_model import ElasticNet
 from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
 from sklearn.model_selection import train_test_split
 
+from metadata.generated.schema.api.services.createMlModelService import (
+    CreateMlModelServiceRequest,
+)
 from metadata.generated.schema.entity.data.mlmodel import MlModel
-from metadata.generated.schema.api.services.createMlModelService import CreateMlModelServiceRequest
+from metadata.generated.schema.entity.services.connections.mlmodel.mlflowConnection import (
+    MlflowConnection,
+)
 from metadata.generated.schema.entity.services.mlmodelService import (
-    MlModelServiceType,
     MlModelConnection,
     MlModelService,
+    MlModelServiceType,
 )
-from metadata.generated.schema.metadataIngestion.mlmodelServiceMetadataPipeline import MlModelServiceMetadataPipeline
-from metadata.generated.schema.entity.services.connections.mlmodel.mlflowConnection import MlflowConnection
+from metadata.generated.schema.metadataIngestion.mlmodelServiceMetadataPipeline import (
+    MlModelServiceMetadataPipeline,
+)
 from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
     Sink,
@@ -30,18 +37,9 @@ from metadata.workflow.metadata import MetadataWorkflow
 
 from ..integration_base import int_admin_ometa
 
-
 MODEL_HYPERPARAMS = {
-    "alpha": {
-        "name": "alpha",
-        "value": "0.5",
-        "description": None
-    },
-    "l1_ratio": {
-        "name": "l1_ratio",
-        "value": "1.0",
-        "description": None
-    }
+    "alpha": {"name": "alpha", "value": "0.5", "description": None},
+    "l1_ratio": {"name": "l1_ratio", "value": "1.0", "description": None},
 }
 
 MODEL_NAME = "ElasticnetWineModel"
@@ -63,7 +61,9 @@ def create_data(mlflow_environment):
 
     os.environ["AWS_ACCESS_KEY_ID"] = "minio"
     os.environ["AWS_SECRET_ACCESS_KEY"] = "password"
-    os.environ["MLFLOW_S3_ENDPOINT_URL"] = f"http://localhost:{mlflow_environment.minio_configs.exposed_port}"
+    os.environ[
+        "MLFLOW_S3_ENDPOINT_URL"
+    ] = f"http://localhost:{mlflow_environment.minio_configs.exposed_port}"
 
     np.random.seed(40)
 
@@ -132,9 +132,9 @@ def service(metadata, mlflow_environment):
             config=MlflowConnection(
                 type="Mlflow",
                 trackingUri=f"http://localhost:{mlflow_environment.mlflow_configs.exposed_port}",
-                registryUri=f"mysql+pymysql://mlflow:password@localhost:{mlflow_environment.mysql_configs.exposed_port}/experiments"
+                registryUri=f"mysql+pymysql://mlflow:password@localhost:{mlflow_environment.mysql_configs.exposed_port}/experiments",
             )
-        )
+        ),
     )
 
     service_entity = metadata.create_or_update(data=service)
@@ -149,13 +149,10 @@ def ingest_mlflow(metadata, service, create_data):
             type=service.connection.config.type.value.lower(),
             serviceName=service.fullyQualifiedName.__root__,
             serviceConnection=service.connection,
-            sourceConfig=SourceConfig(config=MlModelServiceMetadataPipeline())
+            sourceConfig=SourceConfig(config=MlModelServiceMetadataPipeline()),
         ),
-        sink=Sink(
-            type="metadata-rest",
-            config={}
-        ),
-        workflowConfig=WorkflowConfig(openMetadataServerConfig=metadata.config)
+        sink=Sink(type="metadata-rest", config={}),
+        workflowConfig=WorkflowConfig(openMetadataServerConfig=metadata.config),
     )
 
     metadata_ingestion = MetadataWorkflow.create(workflow_config)
@@ -163,15 +160,12 @@ def ingest_mlflow(metadata, service, create_data):
     return
 
 
-
 def test_mlflow(ingest_mlflow, metadata):
     ml_models = metadata.list_all_entities(entity=MlModel)
 
     # Check we only get the same amount of models we should have ingested
     filtered_ml_models = [
-        ml_model
-        for ml_model in ml_models
-        if ml_model.service.name == SERVICE_NAME
+        ml_model for ml_model in ml_models if ml_model.service.name == SERVICE_NAME
     ]
 
     assert len(filtered_ml_models) == 1

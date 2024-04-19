@@ -13,17 +13,18 @@ The following steps are taken:
 5. Any specific configuration is done
 6. Needed configurations are yielded back to the test.
 """
-from typing import Optional
 import io
-import pytest
 import socket
 from contextlib import closing
-from testcontainers.core.docker_client import DockerClient
+from dataclasses import asdict, dataclass
+from typing import Optional
+
+import pytest
 from testcontainers.core.container import DockerContainer
+from testcontainers.core.docker_client import DockerClient
 from testcontainers.core.network import Network
-from testcontainers.mysql import MySqlContainer
 from testcontainers.minio import MinioContainer
-from dataclasses import dataclass, asdict
+from testcontainers.mysql import MySqlContainer
 
 
 # ------------------------------------------------------------
@@ -32,6 +33,7 @@ from dataclasses import dataclass, asdict
 @dataclass
 class MySqlContainerConfigs:
     """MySQL Configurations"""
+
     image: str = "mysql:8"
     username: str = "mlflow"
     password: str = "password"
@@ -47,6 +49,7 @@ class MySqlContainerConfigs:
 @dataclass
 class MinioContainerConfigs:
     """MinIO Configurations"""
+
     access_key: str = "minio"
     secret_key: str = "password"
     port: int = 9000
@@ -60,6 +63,7 @@ class MinioContainerConfigs:
 @dataclass
 class MlflowContainerConfigs:
     """MLFlow Configurations"""
+
     backend_uri: str = "mysql+pymysql://mlflow:password@mlflow-db:3306/experiments"
     artifact_bucket: str = "mlops.local.com"
     port: int = 6000
@@ -71,6 +75,7 @@ class MlflowContainerConfigs:
 
 class MlflowTestConfiguration:
     """Responsible to hold all the configurations used by the test"""
+
     def __init__(self):
         self.mysql_configs = MySqlContainerConfigs()
         self.minio_configs = MinioContainerConfigs()
@@ -111,7 +116,7 @@ def mlflow_environment():
 # ------------------------------------------------------------
 def find_free_port():
     with closing(socket.socket(socket.AF_INET, socket.SOCK_STREAM)) as s:
-        s.bind(('', 0))
+        s.bind(("", 0))
         s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         return s.getsockname()[1]
 
@@ -125,39 +130,47 @@ def get_docker_network(name: str = "docker_mlflow_test_nw"):
 def build_and_get_mlflow_container(mlflow_config: MlflowContainerConfigs):
     docker_client = DockerClient()
 
-    dockerfile = io.BytesIO(b"""
+    dockerfile = io.BytesIO(
+        b"""
         FROM python:3.10-slim-buster
         RUN python -m pip install --upgrade pip
         RUN pip install cryptography mlflow boto3 pymysql
-        """)
+        """
+    )
 
     docker_client.client.images.build(fileobj=dockerfile, tag="mlflow_image:latest")
 
     container = DockerContainer("mlflow_image:latest")
     container.with_bind_ports(mlflow_config.port, find_free_port())
-    container.with_command(f"mlflow server --backend-store-uri {mlflow_config.backend_uri} --default-artifact-root s3://{mlflow_config.artifact_bucket} --host 0.0.0.0 --port {mlflow_config.port}")
+    container.with_command(
+        f"mlflow server --backend-store-uri {mlflow_config.backend_uri} --default-artifact-root s3://{mlflow_config.artifact_bucket} --host 0.0.0.0 --port {mlflow_config.port}"
+    )
 
     return container
 
 
 def get_mysql_container(mysql_config: MySqlContainerConfigs):
 
-    container = MySqlContainer(**{
-        k: v
-        for k, v in asdict(mysql_config).items()
-        if k not in ["exposed_port", "container_name"]
-    })
+    container = MySqlContainer(
+        **{
+            k: v
+            for k, v in asdict(mysql_config).items()
+            if k not in ["exposed_port", "container_name"]
+        }
+    )
     container.with_name(mysql_config.container_name)
 
     return container
 
 
 def get_minio_container(minio_config: MinioContainerConfigs):
-    container = MinioContainer(**{
-        k: v
-        for k, v in asdict(minio_config).items()
-        if k not in ["exposed_port", "container_name"]
-    })
+    container = MinioContainer(
+        **{
+            k: v
+            for k, v in asdict(minio_config).items()
+            if k not in ["exposed_port", "container_name"]
+        }
+    )
     container.with_name(minio_config.container_name)
 
     return container
