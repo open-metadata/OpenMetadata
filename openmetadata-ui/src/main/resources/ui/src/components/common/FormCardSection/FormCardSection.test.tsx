@@ -11,22 +11,20 @@
  *  limitations under the License.
  */
 
-.alert-page-container {
-  width: 70%;
-  margin: 16px auto 0;
-  padding-bottom: 16px;
-  .ant-form-item {
-    margin: 0px;
-  }
+import { render, screen } from '@testing-library/react';
+import React from 'react';
+import FormCardSection from './FormCardSection';
 
-  .ant-card {
-    border-radius: 10px;
-  }
-}
+describe('FormCardSection component', () => {
+  it('should render heading, subheading and children properly', () => {
+    render(
+      <FormCardSection heading="heading" subHeading="subHeading">
+        children
+      </FormCardSection>
+    );
 
-.alert-form-item-container {
-  background-color: #f9f9f9;
-  .ant-card-body {
-    padding: 20px;
-  }
-}
+    expect(screen.getByText('heading')).toBeInTheDocument();
+    expect(screen.getByText('subHeading')).toBeInTheDocument();
+    expect(screen.getByText('children')).toBeInTheDocument();
+  });
+});

@@ -21,6 +21,7 @@ import 'reactflow/dist/base.css';
 import 'reactflow/dist/style.css';
 import './antd-master.less';
 import './app.less';
+import './components/add-edit-form-steps.less';
 import './components/badge.less';
 import './components/code-mirror.less';
 import './components/drawer.less';

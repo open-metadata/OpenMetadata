@@ -16,17 +16,13 @@ To be used by OpenMetadata class
 import functools
 import json
 import traceback
-from typing import Generic, List, Optional, Set, Type, TypeVar
+from typing import Generic, Iterable, List, Optional, Set, Type, TypeVar
 
 from pydantic import BaseModel
 from requests.utils import quote
 
-from metadata.generated.schema.api.createEventPublisherJob import (
-    CreateEventPublisherJob,
-)
 from metadata.generated.schema.entity.data.container import Container
 from metadata.generated.schema.entity.data.query import Query
-from metadata.generated.schema.system.eventPublisherJob import EventPublisherResult
 from metadata.ingestion.ometa.client import REST, APIError
 from metadata.utils.elasticsearch import ES_INDEX_MAP
 from metadata.utils.logger import ometa_logger
@@ -80,7 +76,7 @@ class ESMixin(Generic[T]):
 
         return None
 
-    def _get_entity_from_es(
+    def get_entity_from_es(
         self, entity: Type[T], query_string: str, fields: Optional[list] = None
     ) -> Optional[T]:
         """Fetch an entity instance from ES"""
@@ -91,6 +87,23 @@ class ESMixin(Generic[T]):
             )
             for instance in entity_list or []:
                 return instance
+        except Exception as err:
+            logger.debug(traceback.format_exc())
+            logger.warning(f"Could not get {entity.__name__} info from ES due to {err}")
+
+        return None
+
+    def yield_entities_from_es(
+        self, entity: Type[T], query_string: str, fields: Optional[list] = None
+    ) -> Iterable[T]:
+        """Fetch an entity instance from ES"""
+
+        try:
+            entity_list = self._search_es_entity(
+                entity_type=entity, query_string=query_string, fields=fields
+            )
+            for instance in entity_list or []:
+                yield instance
         except Exception as err:
             logger.debug(traceback.format_exc())
             logger.warning(f"Could not get {entity.__name__} info from ES due to {err}")
@@ -204,33 +217,6 @@ class ESMixin(Generic[T]):
                 f"Elasticsearch search failed for query [{query_string}]: {exc}"
             )
         return None
-
-    def reindex_es(
-        self,
-        config: CreateEventPublisherJob,
-    ) -> Optional[EventPublisherResult]:
-        """
-        Method to trigger elasticsearch reindex
-        """
-        try:
-            resp = self.client.post(path="/search/reindex", data=config.json())
-            return EventPublisherResult(**resp)
-        except APIError as err:
-            logger.debug(traceback.format_exc())
-            logger.debug(f"Failed to trigger es reindex job due to {err}")
-            return None
-
-    def get_reindex_job_status(self, job_id: str) -> Optional[EventPublisherResult]:
-        """
-        Method to fetch the elasticsearch reindex job status
-        """
-        try:
-            resp = self.client.get(path=f"/search/reindex/{job_id}")
-            return EventPublisherResult(**resp)
-        except APIError as err:
-            logger.debug(traceback.format_exc())
-            logger.debug(f"Failed to fetch reindex job status due to {err}")
-            return None
 
     @staticmethod
     def get_query_with_lineage_filter(service_name: str) -> str:

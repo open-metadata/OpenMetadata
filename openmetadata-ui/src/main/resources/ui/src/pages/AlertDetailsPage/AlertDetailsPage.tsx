@@ -13,7 +13,6 @@
 
 import {
   Button,
-  Card,
   Col,
   Divider,
   Row,
@@ -25,7 +24,6 @@ import {
 import { isEmpty, isNil, startCase } from 'lodash';
 import React, {
   Fragment,
-  ReactNode,
   useCallback,
   useEffect,
   useMemo,
@@ -36,6 +34,7 @@ import { Link, useHistory } from 'react-router-dom';
 import { ReactComponent as EditIcon } from '../../assets/svg/edit-new.svg';
 import { ReactComponent as DeleteIcon } from '../../assets/svg/ic-delete.svg';
 import DeleteWidgetModal from '../../components/common/DeleteWidget/DeleteWidgetModal';
+import FormCardSection from '../../components/common/FormCardSection/FormCardSection';
 import Loader from '../../components/common/Loader/Loader';
 import ResizablePanels from '../../components/common/ResizablePanels/ResizablePanels';
 import RichTextEditorPreviewer from '../../components/common/RichTextEditor/RichTextEditorPreviewer';
@@ -57,7 +56,6 @@ import {
   getSettingPath,
 } from '../../utils/RouterUtils';
 import { getEntityIcon } from '../../utils/TableUtils';
-import '../AddObservabilityPage/add-observability-page.less';
 import { AlertDetailsPageProps } from './AlertDetailsPage.interface';
 
 function AlertDetailsPage({
@@ -133,34 +131,6 @@ function AlertDetailsPage({
       ? history.push(ROUTES.NOTIFICATION_ALERTS)
       : history.push(ROUTES.OBSERVABILITY_ALERTS);
   }, [history]);
-
-  const getObservabilityDetailsItem = ({
-    heading,
-    subHeading,
-    details,
-  }: {
-    heading: ReactNode;
-    subHeading: ReactNode;
-    details: ReactNode;
-  }) => (
-    <Card
-      className="alert-form-item-container"
-      data-testid={`${heading}-container`}>
-      <Row gutter={[8, 8]}>
-        <Col span={24}>
-          <Typography.Text className="font-medium">{heading}</Typography.Text>
-        </Col>
-        <Col span={24}>
-          <Typography.Text className="text-xs text-grey-muted">
-            {subHeading}
-          </Typography.Text>
-        </Col>
-        <Col className="bg-white p-y-xs p-x-sm border rounded-4" span={24}>
-          {details}
-        </Col>
-      </Row>
-    </Card>
-  );
 
   const getFilterDetails = (isFilter: boolean, filters?: ArgumentsInput[]) => (
     <div className="p-md">
@@ -308,7 +278,7 @@ function AlertDetailsPage({
           <Loader />
         ) : (
           <div
-            className="alert-page-container"
+            className="steps-form-container"
             data-testid="alert-details-container">
             <Row
               className="add-notification-container p-x-lg p-t-md"
@@ -388,45 +358,47 @@ function AlertDetailsPage({
                 </Col>
               )}
               <Col span={24}>
-                {getObservabilityDetailsItem({
-                  details: (
-                    <div className="d-flex items-center gap-2 m-l-sm">
-                      <div className="d-flex h-4 w-4">
-                        {getEntityIcon(resource ?? '')}
-                      </div>
-                      <span data-testid="resource-name">
-                        {startCase(resource)}
-                      </span>
+                <FormCardSection
+                  childrenContainerClassName="bg-white p-y-xs p-x-sm border rounded-4"
+                  heading={t('label.source')}
+                  subHeading={t('message.alerts-source-description')}>
+                  <div className="d-flex items-center gap-2 m-l-sm">
+                    <div className="d-flex h-4 w-4">
+                      {getEntityIcon(resource ?? '')}
                     </div>
-                  ),
-                  heading: t('label.source'),
-                  subHeading: t('message.alerts-source-description'),
-                })}
+                    <span data-testid="resource-name">
+                      {startCase(resource)}
+                    </span>
+                  </div>
+                </FormCardSection>
               </Col>
               {!isEmpty(filters) && !isNil(filters) && (
                 <Col span={24}>
-                  {getObservabilityDetailsItem({
-                    details: getFilterDetails(true, filters),
-                    heading: t('label.filter-plural'),
-                    subHeading: t('message.alerts-filter-description'),
-                  })}
+                  <FormCardSection
+                    childrenContainerClassName="bg-white p-y-xs p-x-sm border rounded-4"
+                    heading={t('label.filter-plural')}
+                    subHeading={t('message.alerts-filter-description')}>
+                    {getFilterDetails(true, filters)}
+                  </FormCardSection>
                 </Col>
               )}
               {!isEmpty(actions) && !isNil(actions) && (
                 <Col span={24}>
-                  {getObservabilityDetailsItem({
-                    details: getFilterDetails(false, actions),
-                    heading: t('label.trigger'),
-                    subHeading: t('message.alerts-trigger-description'),
-                  })}
+                  <FormCardSection
+                    childrenContainerClassName="bg-white p-y-xs p-x-sm border rounded-4"
+                    heading={t('label.trigger')}
+                    subHeading={t('message.alerts-trigger-description')}>
+                    {getFilterDetails(false, actions)}
+                  </FormCardSection>
                 </Col>
               )}
               <Col span={24}>
-                {getObservabilityDetailsItem({
-                  details: destinationDetails,
-                  heading: t('label.destination'),
-                  subHeading: t('message.alerts-destination-description'),
-                })}
+                <FormCardSection
+                  childrenContainerClassName="bg-white p-y-xs p-x-sm border rounded-4"
+                  heading={t('label.destination')}
+                  subHeading={t('message.alerts-destination-description')}>
+                  {destinationDetails}
+                </FormCardSection>
               </Col>
             </Row>
             <DeleteWidgetModal

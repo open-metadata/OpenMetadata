@@ -34,6 +34,7 @@ import {
 } from '../constants/Ingestions.constant';
 import { ERROR_PLACEHOLDER_TYPE } from '../enums/common.enum';
 import { ELASTIC_SEARCH_RE_INDEX_PAGE_TABS } from '../enums/ElasticSearch.enum';
+import { FormSubmitType } from '../enums/form.enum';
 import { PipelineType } from '../generated/api/services/ingestionPipelines/createIngestionPipeline';
 import { HiveMetastoreConnection as Connection } from '../generated/entity/services/databaseService';
 import { IngestionPipeline } from '../generated/entity/services/ingestionPipelines/ingestionPipeline';
@@ -325,4 +326,34 @@ export const getIngestionButtonText = (
           ),
         });
   }
+};
+
+export const getSuccessMessage = (
+  ingestionName: string,
+  status: FormSubmitType,
+  showDeployButton?: boolean
+) => {
+  const updateMessage = showDeployButton
+    ? t('message.action-has-been-done-but-failed-to-deploy', {
+        action: t('label.updated-lowercase'),
+      })
+    : t('message.action-has-been-done-but-deploy-successfully', {
+        action: t('label.updated-lowercase'),
+      });
+  const createMessage = showDeployButton
+    ? t('message.action-has-been-done-but-failed-to-deploy', {
+        action: t('label.created-lowercase'),
+      })
+    : t('message.action-has-been-done-but-deploy-successfully', {
+        action: t('label.created-lowercase'),
+      });
+
+  return (
+    <Typography.Text>
+      <Typography.Text className="font-medium">{`"${ingestionName}"`}</Typography.Text>
+      <Typography.Text>
+        {status === FormSubmitType.ADD ? createMessage : updateMessage}
+      </Typography.Text>
+    </Typography.Text>
+  );
 };

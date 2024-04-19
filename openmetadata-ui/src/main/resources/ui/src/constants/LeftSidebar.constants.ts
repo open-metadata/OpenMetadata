@@ -25,6 +25,7 @@ import { ReactComponent as SettingsIcon } from '../assets/svg/ic-settings-v1.svg
 import { ReactComponent as InsightsIcon } from '../assets/svg/lamp-charge.svg';
 import { ReactComponent as LogoutIcon } from '../assets/svg/logout.svg';
 
+import { LeftSidebarItem } from '../components/MyData/LeftSidebar/LeftSidebar.interface';
 import { SidebarItem } from '../enums/sidebar.enum';
 import { getDataInsightPathWithFqn } from '../utils/DataInsightUtils';
 import { ROUTES } from './constants';
@@ -33,7 +34,7 @@ export const SIDEBAR_NESTED_KEYS = {
   [ROUTES.OBSERVABILITY_ALERTS]: ROUTES.OBSERVABILITY_ALERTS,
 };
 
-export const SIDEBAR_LIST = [
+export const SIDEBAR_LIST: Array<LeftSidebarItem> = [
   {
     key: ROUTES.EXPLORE,
     label: i18next.t('label.explore'),

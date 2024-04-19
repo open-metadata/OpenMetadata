@@ -149,7 +149,7 @@ export const OBSERVABILITY_CREATION_DETAILS: ObservabilityCreationDetails = {
     ],
   },
   testCase: {
-    sourceDisplayName: 'Test Case',
+    sourceDisplayName: 'Test case',
     filters: [
       {
         name: 'Test Case Name',

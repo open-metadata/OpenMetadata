@@ -171,6 +171,11 @@ public class IngestionPipelineResource
               schema = @Schema(type = "string", example = "messagingService"))
           @QueryParam("serviceType")
           String serviceType,
+      @Parameter(
+              description = "Filter Ingestion Pipelines by the type of the application",
+              schema = @Schema(type = "string", example = "Automator"))
+          @QueryParam("applicationType")
+          String applicationType,
       @Parameter(description = "Limit the number ingestion returned. (1 to 1000000, default = 10)")
           @DefaultValue("10")
           @Min(0)
@@ -198,7 +203,8 @@ public class IngestionPipelineResource
             .addQueryParam("service", serviceParam)
             .addQueryParam("pipelineType", pipelineType)
             .addQueryParam("serviceType", serviceType)
-            .addQueryParam("testSuite", testSuiteParam);
+            .addQueryParam("testSuite", testSuiteParam)
+            .addQueryParam("applicationType", applicationType);
     ResultList<IngestionPipeline> ingestionPipelines =
         super.listInternal(
             uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);

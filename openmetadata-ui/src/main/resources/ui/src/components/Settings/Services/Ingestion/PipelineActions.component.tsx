@@ -12,7 +12,8 @@
  */
 import { CheckOutlined } from '@ant-design/icons';
 import { Button, Divider, Space } from 'antd';
-import React, { useState } from 'react';
+import { isNil, isUndefined } from 'lodash';
+import React, { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useHistory } from 'react-router-dom';
 import { IngestionPipeline } from '../../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
@@ -38,7 +39,8 @@ function PipelineActions({
   handleDeleteSelection,
   handleIsConfirmationModalOpen,
   onIngestionWorkflowsUpdate,
-}: PipelineActionsProps) {
+  handleEditClick,
+}: Readonly<PipelineActionsProps>) {
   const history = useHistory();
   const { t } = useTranslation();
 
@@ -47,6 +49,13 @@ function PipelineActions({
   const [currPauseId, setCurrPauseId] = useState({ id: '', state: '' });
   const [isKillModalOpen, setIsKillModalOpen] = useState<boolean>(false);
   const [selectedPipeline, setSelectedPipeline] = useState<IngestionPipeline>();
+
+  const { recordId } = useMemo(
+    () => ({
+      recordId: record.id ?? '',
+    }),
+    [record]
+  );
 
   const getEditPermission = (service: string): boolean =>
     !ingestionPipelinesPermission?.[service]?.EditAll;
@@ -87,14 +96,24 @@ function PipelineActions({
   };
 
   const handleUpdate = (ingestion: IngestionPipeline) => {
-    history.push(
-      getEditIngestionPath(
-        serviceCategory,
-        serviceName,
-        ingestion.fullyQualifiedName || `${serviceName}.${ingestion.name}`,
-        ingestion.pipelineType
-      )
-    );
+    const fullyQualifiedName =
+      isUndefined(ingestion.fullyQualifiedName) ||
+      isNil(ingestion.fullyQualifiedName)
+        ? `${serviceName}.${ingestion.name}`
+        : ingestion.fullyQualifiedName;
+
+    if (isUndefined(handleEditClick)) {
+      history.push(
+        getEditIngestionPath(
+          serviceCategory,
+          serviceName,
+          fullyQualifiedName,
+          ingestion.pipelineType
+        )
+      );
+    } else {
+      handleEditClick(fullyQualifiedName);
+    }
   };
 
   const handleConfirmDelete = (id: string, name: string) => {
@@ -173,7 +192,7 @@ function PipelineActions({
               data-testid="pause"
               disabled={getIngestionPermission(record.name)}
               type="link"
-              onClick={() => onPauseUnpauseClick(record.id || '')}>
+              onClick={() => onPauseUnpauseClick(recordId)}>
               {getLoadingStatus(currPauseId, record.id, t('label.pause'))}
             </Button>
           </>
@@ -183,7 +202,7 @@ function PipelineActions({
             data-testid="unpause"
             disabled={getIngestionPermission(record.name)}
             type="link"
-            onClick={() => onPauseUnpauseClick(record.id || '')}>
+            onClick={() => onPauseUnpauseClick(recordId)}>
             {getLoadingStatus(currPauseId, record.id, t('label.unpause'))}
           </Button>
         )}
@@ -202,7 +221,7 @@ function PipelineActions({
           data-testid="delete"
           disabled={!ingestionPipelinesPermission?.[record.name]?.Delete}
           type="link"
-          onClick={() => handleConfirmDelete(record.id as string, record.name)}>
+          onClick={() => handleConfirmDelete(recordId, record.name)}>
           {getDeleteButton()}
         </Button>
         <Divider className="border-gray" type="vertical" />
@@ -221,8 +240,8 @@ function PipelineActions({
         <Link
           to={getLogsViewerPath(
             serviceCategory,
-            record.service?.name || '',
-            record?.fullyQualifiedName || record?.name || ''
+            record.service?.name ?? '',
+            record?.fullyQualifiedName ?? record?.name ?? ''
           )}>
           <Button
             className="p-x-xss"
