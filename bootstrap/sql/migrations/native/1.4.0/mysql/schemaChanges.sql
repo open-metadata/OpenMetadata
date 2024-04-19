@@ -85,6 +85,7 @@ WHERE JSON_EXTRACT(json, '$.dataModelType') in ('QlikSenseDataModel', 'QlikCloud
 DELETE FROM ingestion_pipeline_entity
 WHERE LOWER(JSON_EXTRACT(json, '$.pipelineType')) = 'elasticsearchreindex';
 
+
 UPDATE dbservice_entity
 SET json = JSON_INSERT(
     JSON_REMOVE(json, '$.connection.config.sslCA'),
