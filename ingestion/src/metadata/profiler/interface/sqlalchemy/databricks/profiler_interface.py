@@ -13,14 +13,71 @@
 Interfaces with database for all database engine
 supporting sqlalchemy abstraction layer
 """
+from typing import List
 
+from pyhive.sqlalchemy_hive import HiveCompiler
+from sqlalchemy import Column
 
+from metadata.generated.schema.entity.data.table import Column as OMColumn
+from metadata.generated.schema.entity.data.table import ColumnName, DataType
+from metadata.generated.schema.entity.services.databaseService import (
+    DatabaseServiceType,
+)
 from metadata.profiler.interface.sqlalchemy.profiler_interface import (
     SQAProfilerInterface,
 )
+from metadata.profiler.orm.converter.base import build_orm_col
 
 
 class DatabricksProfilerInterface(SQAProfilerInterface):
+    def visit_column(self, *args, **kwargs):
+        result = super(HiveCompiler, self).visit_column(*args, **kwargs)
+        dot_count = result.count(".")
+        if dot_count > 2:
+            splitted_result = result.split(".", 2)[-1].split(".")
+            result = ".".join(result.split(".", 2)[:-1])
+            result += "." + "`.`".join(splitted_result)
+
+        return result
+
+    HiveCompiler.visit_column = visit_column
+
     def __init__(self, service_connection_config, **kwargs):
         super().__init__(service_connection_config=service_connection_config, **kwargs)
         self.set_catalog(self.session)
+
+    def _get_struct_columns(self, columns: List[OMColumn], parent: str):
+        """"""
+        # pylint: disable=import-outside-toplevel
+
+        columns_list = []
+        for idx, col in enumerate(columns):
+            if col.dataType != DataType.STRUCT:
+                col.name = ColumnName(__root__=f"{parent}.{col.name.__root__}")
+                col = build_orm_col(idx, col, DatabaseServiceType.Databricks)
+                # pylint: disable=protected-access
+                col._set_parent(self.table.__table__)
+                # pylint: enable=protected-access
+                columns_list.append(col)
+            else:
+                col = self._get_struct_columns(
+                    col.children, f"{parent}.{col.name.__root__}"
+                )
+                columns_list.extend(col)
+        return columns_list
+
+    def get_columns(self) -> Column:
+        """Get columns from table"""
+        # pylint: disable=import-outside-toplevel
+
+        columns = []
+        for idx, column in enumerate(self.table_entity.columns):
+            if column.dataType == DataType.STRUCT:
+                columns.extend(
+                    self._get_struct_columns(column.children, column.name.__root__)
+                )
+            else:
+                col = build_orm_col(idx, column, DatabaseServiceType.Databricks)
+                col._set_parent(self.table.__table__)
+                columns.append(col)
+        return columns
