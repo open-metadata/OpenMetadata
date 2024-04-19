@@ -93,6 +93,14 @@ describe('Test PasswordWidget Component', () => {
     expect(mockOnChange).toHaveBeenCalled();
   });
 
+  it('Should not show password if the value is masked', async () => {
+    render(<PasswordWidget {...mockProps} />);
+
+    const passwordInput = screen.getByTestId('password-input-widget');
+
+    expect(passwordInput).toHaveValue('');
+  });
+
   it('Should render FileWidget component if uiFieldType is file', async () => {
     render(<PasswordWidget {...mockProps2} />);
 
