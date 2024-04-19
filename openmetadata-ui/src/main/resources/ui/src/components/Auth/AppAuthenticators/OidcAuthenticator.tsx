@@ -65,12 +65,10 @@ const OidcAuthenticator = forwardRef<AuthenticatorRef, Props>(
     ref
   ) => {
     const {
-      loading,
       isAuthenticated,
       setIsAuthenticated,
       isSigningIn,
       setIsSigningIn,
-      setLoadingIndicator,
       updateAxiosInterceptors,
       currentUser,
       newUser,
@@ -87,7 +85,6 @@ const OidcAuthenticator = forwardRef<AuthenticatorRef, Props>(
     };
 
     const logout = () => {
-      setLoadingIndicator(true);
       userManager.removeUser();
       onLogoutSuccess();
     };
@@ -176,7 +173,7 @@ const OidcAuthenticator = forwardRef<AuthenticatorRef, Props>(
             <AppWithAuth />
           )}
         </Switch>
-        {loading && isSigningIn && <Loader fullScreen />}
+        {isSigningIn && <Loader fullScreen />}
       </>
     );
   }

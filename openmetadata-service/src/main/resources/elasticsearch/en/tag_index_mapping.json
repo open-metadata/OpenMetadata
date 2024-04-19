@@ -151,6 +151,9 @@
             "path": "deleted"
           }
         ]
+      },
+      "descriptionStatus": {
+        "type": "keyword"
       }
     }
   }

@@ -29,7 +29,10 @@ import {
   CreateIngestionPipeline,
   PipelineType,
 } from '../../../generated/api/services/ingestionPipelines/createIngestionPipeline';
-import { IngestionPipeline } from '../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
+import {
+  IngestionPipeline,
+  LogLevels,
+} from '../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { useFqn } from '../../../hooks/useFqn';
 import {
   addIngestionPipeline,
@@ -46,7 +49,10 @@ import { getIngestionName } from '../../../utils/ServiceUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import SuccessScreen from '../../common/SuccessScreen/SuccessScreen';
 import DeployIngestionLoaderModal from '../../Modals/DeployIngestionLoaderModal/DeployIngestionLoaderModal';
-import { TestSuiteIngestionProps } from './AddDataQualityTest.interface';
+import {
+  TestSuiteIngestionDataType,
+  TestSuiteIngestionProps,
+} from './AddDataQualityTest.interface';
 import TestSuiteScheduler from './components/TestSuiteScheduler';
 
 const TestSuiteIngestion: React.FC<TestSuiteIngestionProps> = ({
@@ -90,6 +96,15 @@ const TestSuiteIngestion: React.FC<TestSuiteIngestionProps> = ({
     );
   }, [ingestionData, showDeployButton]);
 
+  const initialFormData = useMemo(() => {
+    return {
+      repeatFrequency:
+        ingestionPipeline?.airflowConfig.scheduleInterval ||
+        getIngestionFrequency(PipelineType.TestSuite),
+      enableDebugLog: ingestionPipeline?.loggerLevel === LogLevels.Debug,
+    };
+  }, [ingestionPipeline]);
+
   const handleIngestionDeploy = (id?: string) => {
     setShowDeployModal(true);
 
@@ -117,7 +132,7 @@ const TestSuiteIngestion: React.FC<TestSuiteIngestionProps> = ({
       .finally(() => setTimeout(() => setShowDeployModal(false), 500));
   };
 
-  const createIngestionPipeline = async (repeatFrequency: string) => {
+  const createIngestionPipeline = async (data: TestSuiteIngestionDataType) => {
     const tableName = replaceAllSpacialCharWith_(
       getNameFromFQN(
         testSuite.executableEntityReference?.fullyQualifiedName ?? ''
@@ -127,11 +142,12 @@ const TestSuiteIngestion: React.FC<TestSuiteIngestionProps> = ({
 
     const ingestionPayload: CreateIngestionPipeline = {
       airflowConfig: {
-        scheduleInterval: isEmpty(repeatFrequency)
+        scheduleInterval: isEmpty(data.repeatFrequency)
           ? undefined
-          : repeatFrequency,
+          : data.repeatFrequency,
       },
       name: updatedName,
+      loggerLevel: data.enableDebugLog ? LogLevels.Debug : LogLevels.Info,
       pipelineType: PipelineType.TestSuite,
       service: {
         id: testSuite.id ?? '',
@@ -152,7 +168,9 @@ const TestSuiteIngestion: React.FC<TestSuiteIngestionProps> = ({
     handleIngestionDeploy(ingestion.id);
   };
 
-  const onUpdateIngestionPipeline = async (repeatFrequency: string) => {
+  const onUpdateIngestionPipeline = async (
+    data: TestSuiteIngestionDataType
+  ) => {
     if (isUndefined(ingestionPipeline)) {
       return;
     }
@@ -161,10 +179,11 @@ const TestSuiteIngestion: React.FC<TestSuiteIngestionProps> = ({
       ...ingestionPipeline,
       airflowConfig: {
         ...ingestionPipeline?.airflowConfig,
-        scheduleInterval: isEmpty(repeatFrequency)
+        scheduleInterval: isEmpty(data.repeatFrequency)
           ? undefined
-          : repeatFrequency,
+          : data.repeatFrequency,
       },
+      loggerLevel: data.enableDebugLog ? LogLevels.Debug : LogLevels.Info,
     };
     const jsonPatch = compare(ingestionPipeline, updatedPipelineData);
     try {
@@ -184,12 +203,12 @@ const TestSuiteIngestion: React.FC<TestSuiteIngestionProps> = ({
   };
 
   const handleIngestionSubmit = useCallback(
-    async (repeatFrequency: string) => {
+    async (data: TestSuiteIngestionDataType) => {
       setIsLoading(true);
       if (ingestionFQN) {
-        await onUpdateIngestionPipeline(repeatFrequency);
+        await onUpdateIngestionPipeline(data);
       } else {
-        await createIngestionPipeline(repeatFrequency);
+        await createIngestionPipeline(data);
       }
       setIsLoading(false);
     },
@@ -234,10 +253,8 @@ const TestSuiteIngestion: React.FC<TestSuiteIngestionProps> = ({
           />
         ) : (
           <TestSuiteScheduler
-            initialData={
-              ingestionPipeline?.airflowConfig.scheduleInterval ||
-              getIngestionFrequency(PipelineType.TestSuite)
-            }
+            allowEnableDebugLog
+            initialData={initialFormData}
             isLoading={isLoading}
             onCancel={onCancel}
             onSubmit={handleIngestionSubmit}

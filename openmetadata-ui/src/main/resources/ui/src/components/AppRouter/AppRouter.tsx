@@ -19,7 +19,6 @@ import AppContainer from '../../components/AppContainer/AppContainer';
 import { ROUTES } from '../../constants/constants';
 import { CustomEventTypes } from '../../generated/analytics/webAnalyticEventData';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
-import Loader from '../common/Loader/Loader';
 import { UnAuthenticatedAppRouter } from './UnAuthenticatedAppRouter';
 import withSuspenseFallback from './withSuspenseFallback';
 
@@ -33,7 +32,7 @@ const AppRouter = () => {
   // web analytics instance
   const analytics = useAnalytics();
 
-  const { isAuthenticated, loading } = useApplicationStore();
+  const { isAuthenticated } = useApplicationStore();
 
   useEffect(() => {
     const { pathname } = location;
@@ -70,10 +69,6 @@ const AppRouter = () => {
 
     return () => targetNode.removeEventListener('click', handleClickEvent);
   }, [handleClickEvent]);
-
-  if (loading) {
-    return <Loader fullScreen />;
-  }
 
   return (
     <Switch>

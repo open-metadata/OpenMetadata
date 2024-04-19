@@ -148,7 +148,13 @@ plugins: Dict[str, Set[str]] = {
     },
     "db2": {"ibm-db-sa~=0.3"},
     "db2-ibmi": {"sqlalchemy-ibmi~=0.9.3"},
-    "databricks": {VERSIONS["sqlalchemy-databricks"], VERSIONS["databricks-sdk"]},
+    "databricks": {
+        VERSIONS["sqlalchemy-databricks"],
+        VERSIONS["databricks-sdk"],
+        "ndg-httpsclient~=0.5.1",
+        "pyOpenSSL~=24.1.0",
+        "pyasn1~=0.6.0",
+    },
     "datalake-azure": {
         VERSIONS["azure-storage-blob"],
         VERSIONS["azure-identity"],
@@ -304,7 +310,8 @@ test = {
     VERSIONS["giturlparse"],
     VERSIONS["avro"],  # Sample Data
     VERSIONS["grpc-tools"],
-    "testcontainers==3.7.1",
+    "testcontainers==3.7.1;python_version<'3.9'",
+    "testcontainers==4.3.3;python_version>='3.9'",
 }
 
 e2e_test = {

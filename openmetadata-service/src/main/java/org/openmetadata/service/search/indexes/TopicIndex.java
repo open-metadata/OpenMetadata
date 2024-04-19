@@ -9,7 +9,6 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.function.Predicate;
-import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.entity.data.Topic;
 import org.openmetadata.schema.type.Field;
 import org.openmetadata.schema.type.TagLabel;
@@ -30,15 +29,19 @@ public class TopicIndex implements SearchIndex {
     this.topic = topic;
   }
 
+  public List<SearchSuggest> getSuggest() {
+    List<SearchSuggest> suggest = new ArrayList<>();
+    suggest.add(SearchSuggest.builder().input(topic.getFullyQualifiedName()).weight(5).build());
+    suggest.add(SearchSuggest.builder().input(topic.getName()).weight(10).build());
+    return suggest;
+  }
+
   public Map<String, Object> buildESDoc() {
     Map<String, Object> doc = JsonUtils.getMap(topic);
-    List<SearchSuggest> suggest = new ArrayList<>();
     List<SearchSuggest> fieldSuggest = new ArrayList<>();
     List<SearchSuggest> serviceSuggest = new ArrayList<>();
     Set<List<TagLabel>> tagsWithChildren = new HashSet<>();
     List<String> fieldsWithChildrenName = new ArrayList<>();
-    suggest.add(SearchSuggest.builder().input(topic.getFullyQualifiedName()).weight(5).build());
-    suggest.add(SearchSuggest.builder().input(topic.getName()).weight(10).build());
     serviceSuggest.add(
         SearchSuggest.builder().input(topic.getService().getName()).weight(5).build());
     SearchIndexUtils.removeNonIndexableFields(doc, excludeTopicFields);
@@ -65,30 +68,18 @@ public class TopicIndex implements SearchIndex {
         tagsWithChildren.stream()
             .flatMap(List::stream)
             .collect(ArrayList::new, ArrayList::add, ArrayList::addAll);
+    Map<String, Object> commonAttributes = getCommonAttributesMap(topic, Entity.TOPIC);
+    doc.putAll(commonAttributes);
     doc.put(
         "displayName", topic.getDisplayName() != null ? topic.getDisplayName() : topic.getName());
     doc.put("tags", flattenedTagList);
     doc.put("tier", parseTags.getTierTag());
-    doc.put("followers", SearchIndexUtils.parseFollowers(topic.getFollowers()));
-    doc.put("suggest", suggest);
     doc.put("field_suggest", fieldSuggest);
     doc.put("service_suggest", serviceSuggest);
-    doc.put("entityType", Entity.TOPIC);
     doc.put("serviceType", topic.getServiceType());
     doc.put("lineage", SearchIndex.getLineageData(topic.getEntityReference()));
-    doc.put(
-        "totalVotes",
-        CommonUtil.nullOrEmpty(topic.getVotes())
-            ? 0
-            : topic.getVotes().getUpVotes() - topic.getVotes().getDownVotes());
     doc.put("messageSchema", topic.getMessageSchema() != null ? topic.getMessageSchema() : null);
-    doc.put(
-        "fqnParts",
-        getFQNParts(
-            topic.getFullyQualifiedName(), suggest.stream().map(SearchSuggest::getInput).toList()));
-    doc.put("owner", getEntityWithDisplayName(topic.getOwner()));
     doc.put("service", getEntityWithDisplayName(topic.getService()));
-    doc.put("domain", getEntityWithDisplayName(topic.getDomain()));
     return doc;
   }
 

@@ -325,7 +325,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
    * operations. It is also used during PUT and PATCH operations to set up fields that can be updated.
    */
   protected abstract void clearFields(T entity, Fields fields);
-  ;
 
   /**
    * This method is used for validating an entity to be created during POST, PUT, and PATCH operations and prepare the

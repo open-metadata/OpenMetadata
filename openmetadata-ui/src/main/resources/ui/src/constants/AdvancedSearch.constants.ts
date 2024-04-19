@@ -399,6 +399,18 @@ const getCommonQueryBuilderFields = (
       mainWidgetProps,
       subfields: {},
     },
+    descriptionStatus: {
+      label: t('label.description'),
+      type: 'select',
+      mainWidgetProps,
+      valueSources: ['value'],
+      fieldSettings: {
+        listValues: {
+          INCOMPLETE: 'Incomplete',
+          COMPLETE: 'Complete',
+        },
+      },
+    },
   };
 
   return commonQueryBuilderFields;
