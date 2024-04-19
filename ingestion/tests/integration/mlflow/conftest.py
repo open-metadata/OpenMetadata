@@ -14,8 +14,7 @@ The following steps are taken:
 6. Needed configurations are yielded back to the test.
 """
 import io
-import socket
-from contextlib import closing
+import random
 from dataclasses import asdict, dataclass
 from typing import Optional
 
@@ -114,13 +113,6 @@ def mlflow_environment():
 # ------------------------------------------------------------
 # Utility functions
 # ------------------------------------------------------------
-def find_free_port():
-    with closing(socket.socket(socket.AF_INET, socket.SOCK_STREAM)) as s:
-        s.bind(("", 0))
-        s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-        return s.getsockname()[1]
-
-
 def get_docker_network(name: str = "docker_mlflow_test_nw"):
     network = Network()
     network.name = name
@@ -141,7 +133,7 @@ def build_and_get_mlflow_container(mlflow_config: MlflowContainerConfigs):
     docker_client.client.images.build(fileobj=dockerfile, tag="mlflow_image:latest")
 
     container = DockerContainer("mlflow_image:latest")
-    container.with_bind_ports(mlflow_config.port, find_free_port())
+    container.with_bind_ports(mlflow_config.port, 8778)
     container.with_command(
         f"mlflow server --backend-store-uri {mlflow_config.backend_uri} --default-artifact-root s3://{mlflow_config.artifact_bucket} --host 0.0.0.0 --port {mlflow_config.port}"
     )
