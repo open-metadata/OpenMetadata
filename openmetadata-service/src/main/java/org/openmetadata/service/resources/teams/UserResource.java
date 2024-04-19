@@ -1439,8 +1439,6 @@ public class UserResource extends EntityResource<User, UserRepository> {
               create.getAuthenticationMechanism(),
               original.getAuthenticationMechanism());
       user.setRoles(original.getRoles());
-    } else if (bot != null && ProviderType.SYSTEM.equals(bot.getProvider())) {
-      user.setRoles(UserUtil.getRoleForBot(botName));
     }
     // TODO remove this
     addAuthMechanismToBot(user, create, uriInfo);

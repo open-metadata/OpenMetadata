@@ -30,6 +30,7 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
+import javax.json.JsonObject;
 import javax.json.JsonPatch;
 import javax.ws.rs.container.ContainerRequestContext;
 import javax.ws.rs.core.UriInfo;
@@ -232,15 +233,14 @@ public final class UserUtil {
     }
   }
 
-  public static List<EntityReference> getRoleForBot(String botName) {
-    String botRole =
-        switch (botName) {
-          case Entity.INGESTION_BOT_NAME -> Entity.INGESTION_BOT_ROLE;
-          case Entity.QUALITY_BOT_NAME -> Entity.QUALITY_BOT_ROLE;
-          case Entity.PROFILER_BOT_NAME -> Entity.PROFILER_BOT_ROLE;
-          default -> throw new IllegalArgumentException("No role found for the bot " + botName);
-        };
-    return listOf(RoleResource.getRole(botRole));
+  public static List<EntityReference> getRoleForBot(String botName, JsonObject roleBindings) {
+    try {
+      String botRole = roleBindings.getString(botName);
+      return listOf(RoleResource.getRole(botRole));
+    } catch (Exception e) {
+      LOG.error("Bot Role not found: {}", botName, e);
+    }
+    return List.of();
   }
 
   public static EntityReference getUserOrBot(String name) {

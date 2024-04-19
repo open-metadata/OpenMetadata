@@ -27,6 +27,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import java.io.IOException;
 import java.util.List;
 import java.util.UUID;
+import javax.json.JsonObject;
 import javax.json.JsonPatch;
 import javax.validation.Valid;
 import javax.validation.constraints.Max;
@@ -93,6 +94,7 @@ public class BotResource extends EntityResource<Bot, BotRepository> {
   public void initialize(OpenMetadataApplicationConfig config) throws IOException {
     // Load system bots
     List<Bot> bots = repository.getEntitiesFromSeedData();
+    JsonObject roleBindings = EntityRepository.getBindingsFromSeedData(String.format(".*json/data/%s/roles/.*\\.json$", entityType));
     String domain = SecurityUtil.getDomain(config);
     for (Bot bot : bots) {
       String userName = bot.getBotUser().getName();
@@ -100,7 +102,7 @@ public class BotResource extends EntityResource<Bot, BotRepository> {
 
       // Add role corresponding to the bot to the user
       // we need to set a mutable list here
-      user.setRoles(getRoleForBot(bot.getName()));
+      user.setRoles(getRoleForBot(bot.getName(), roleBindings));
       user = UserUtil.addOrUpdateBotUser(user);
       bot.withBotUser(user.getEntityReference());
       repository.initializeEntity(bot);
