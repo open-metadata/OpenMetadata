@@ -34,11 +34,15 @@ jest.mock('../../../utils/ObservabilityUtils', () => ({
     .mockImplementation(() => <span data-testid="icon">Icon</span>),
 }));
 
-const mockProps = {
-  heading: 'heading',
-  subHeading: 'subHeading',
-  buttonLabel: 'buttonLabel',
-};
+jest.mock('../../../components/common/FormCardSection/FormCardSection', () =>
+  jest.fn().mockImplementation(({ heading, subHeading, children }) => (
+    <div>
+      <div>{heading}</div>
+      <div>{subHeading}</div>
+      <div>{children}</div>
+    </div>
+  ))
+);
 
 describe('DestinationFormItem', () => {
   it('should renders without crashing', () => {
@@ -55,11 +59,13 @@ describe('DestinationFormItem', () => {
     const useWatchMock = jest.spyOn(Form, 'useWatch');
     useWatchMock.mockImplementation(() => ['container']);
 
-    render(<DestinationFormItem {...mockProps} />);
+    render(<DestinationFormItem />);
 
-    expect(screen.getByText('heading')).toBeInTheDocument();
-    expect(screen.getByText('subHeading')).toBeInTheDocument();
-    expect(screen.getByText('buttonLabel')).toBeInTheDocument();
+    expect(screen.getByText('label.destination')).toBeInTheDocument();
+    expect(
+      screen.getByText('message.alerts-destination-description')
+    ).toBeInTheDocument();
+    expect(screen.getByText('label.add-entity')).toBeInTheDocument();
 
     expect(screen.getByTestId('add-destination-button')).toBeInTheDocument();
   });
@@ -78,7 +84,7 @@ describe('DestinationFormItem', () => {
     const useWatchMock = jest.spyOn(Form, 'useWatch');
     useWatchMock.mockImplementation(() => []);
 
-    render(<DestinationFormItem {...mockProps} />);
+    render(<DestinationFormItem />);
 
     expect(screen.getByTestId('add-destination-button')).toBeDisabled();
   });
@@ -97,7 +103,7 @@ describe('DestinationFormItem', () => {
     const useWatchMock = jest.spyOn(Form, 'useWatch');
     useWatchMock.mockImplementation(() => ['container']);
 
-    render(<DestinationFormItem {...mockProps} />);
+    render(<DestinationFormItem />);
 
     expect(screen.getByTestId('add-destination-button')).toBeEnabled();
   });

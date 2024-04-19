@@ -1,5 +1,5 @@
 /*
- *  Copyright 2023 Collate.
+ *  Copyright 2024 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -10,20 +10,12 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { LeftSidebarItem } from '../components/MyData/LeftSidebar/LeftSidebar.interface';
-import { SIDEBAR_LIST } from '../constants/LeftSidebar.constants';
 
-class LeftSidebarClassBase {
-  /**
-   * getSidebarItems
-   */
-  public getSidebarItems(): Array<LeftSidebarItem> {
-    return SIDEBAR_LIST;
-  }
+export interface LeftSidebarItem {
+  key: string;
+  label: string;
+  redirect_url?: string;
+  icon: SvgComponent;
+  dataTestId: string;
+  children?: Array<LeftSidebarItem>;
 }
-
-const leftSidebarClassBase = new LeftSidebarClassBase();
-
-export default leftSidebarClassBase;
-
-export { LeftSidebarClassBase };
