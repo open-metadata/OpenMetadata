@@ -152,6 +152,15 @@ $$note
 if you are using `IAM auth`, select either `allow` (recommended) or other option based on your use case.
 $$
 
+
+$$section
+### SSL CA $(id="caCertificate")
+The CA certificate used for SSL validation (`sslrootcert`).
+$$
+$$note
+Greenplum only needs CA Certificate
+$$
+
 $$section
 ### Ingest All Databases $(id="ingestAllDatabases")
 

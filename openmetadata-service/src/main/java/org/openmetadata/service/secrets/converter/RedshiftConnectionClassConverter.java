@@ -15,35 +15,27 @@ package org.openmetadata.service.secrets.converter;
 
 import java.util.List;
 import org.openmetadata.schema.security.ssl.ValidateSSLClientConfig;
-import org.openmetadata.schema.services.connections.database.MysqlConnection;
-import org.openmetadata.schema.services.connections.database.common.IamAuthConfig;
-import org.openmetadata.schema.services.connections.database.common.basicAuth;
+import org.openmetadata.schema.services.connections.database.RedshiftConnection;
 import org.openmetadata.service.util.JsonUtils;
 
 /**
  * Converter class to get an `DatalakeConnection` object.
  */
-public class MysqlConnectionClassConverter extends ClassConverter {
-
-  private static final List<Class<?>> CONFIG_SOURCE_CLASSES =
-      List.of(basicAuth.class, IamAuthConfig.class);
+public class RedshiftConnectionClassConverter extends ClassConverter {
 
   private static final List<Class<?>> SSL_SOURCE_CLASS = List.of(ValidateSSLClientConfig.class);
 
-  public MysqlConnectionClassConverter() {
-    super(MysqlConnection.class);
+  public RedshiftConnectionClassConverter() {
+    super(RedshiftConnection.class);
   }
 
   @Override
   public Object convert(Object object) {
-    MysqlConnection mysqlConnection = (MysqlConnection) JsonUtils.convertValue(object, this.clazz);
+    RedshiftConnection redshiftConnection =
+        (RedshiftConnection) JsonUtils.convertValue(object, this.clazz);
+    tryToConvert(redshiftConnection.getSslConfig(), SSL_SOURCE_CLASS)
+        .ifPresent(obj -> redshiftConnection.setSslConfig((ValidateSSLClientConfig) obj));
 
-    tryToConvert(mysqlConnection.getAuthType(), CONFIG_SOURCE_CLASSES)
-        .ifPresent(mysqlConnection::setAuthType);
-
-    tryToConvert(mysqlConnection.getSslConfig(), SSL_SOURCE_CLASS)
-        .ifPresent(obj -> mysqlConnection.setSslConfig((ValidateSSLClientConfig) obj));
-
-    return mysqlConnection;
+    return redshiftConnection;
   }
 }

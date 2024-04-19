@@ -131,7 +131,12 @@ class RedshiftSource(
     Database metadata from Redshift Source
     """
 
-    def __init__(self, config, metadata, incremental_configuration: IncrementalConfig):
+    def __init__(
+        self,
+        config: WorkflowSource,
+        metadata,
+        incremental_configuration: IncrementalConfig,
+    ):
         super().__init__(config, metadata)
         self.partition_details = {}
         self.life_cycle_query = REDSHIFT_LIFE_CYCLE_QUERY
@@ -289,9 +294,11 @@ class RedshiftSource(
 
                 if filter_by_database(
                     self.source_config.databaseFilterPattern,
-                    database_fqn
-                    if self.source_config.useFqnForFiltering
-                    else new_database,
+                    (
+                        database_fqn
+                        if self.source_config.useFqnForFiltering
+                        else new_database
+                    ),
                 ):
                     self.status.filter(database_fqn, "Database Filtered Out")
                     continue

@@ -10,7 +10,7 @@
 #  limitations under the License.
 
 """
-Test Redshift using the topology
+Test Greenplum using the topology
 """
 
 from unittest import TestCase
@@ -19,28 +19,33 @@ from unittest.mock import patch
 from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
 )
-from metadata.ingestion.source.database.redshift.metadata import RedshiftSource
+from metadata.ingestion.source.database.greenplum.metadata import GreenplumSource
 
-mock_redshift_config = {
+mock_greenplum_config = {
     "source": {
-        "type": "redshift",
-        "serviceName": "local_redshift",
+        "type": "greenplum",
+        "serviceName": "local_greenplum1",
         "serviceConnection": {
             "config": {
-                "type": "Redshift",
+                "type": "Greenplum",
                 "username": "username",
-                "password": "password",
-                "database": "database",
-                "hostPort": "cluster.name.region.redshift.amazonaws.com:5439",
-                "sslMode": "verify-full",
-                "sslConfig": {
-                    "caCertificate": "CA certificate content",
+                "authType": {
+                    "password": "password",
                 },
+                "hostPort": "localhost:5432",
+                "database": "greenplum",
             }
         },
-        "sourceConfig": {"config": {"type": "DatabaseMetadata"}},
+        "sourceConfig": {
+            "config": {
+                "type": "DatabaseMetadata",
+            }
+        },
     },
-    "sink": {"type": "metadata-rest", "config": {}},
+    "sink": {
+        "type": "metadata-rest",
+        "config": {},
+    },
     "workflowConfig": {
         "openMetadataServerConfig": {
             "hostPort": "http://localhost:8585/api",
@@ -53,31 +58,18 @@ mock_redshift_config = {
 }
 
 
-RAW_DIST_STYLE = ["KEY(eventid)", "EVEN", "ALL"]
-
-EXPECTED_PARTITION_COLUMNS = ["eventid", None, None]
-
-
-class RedshiftUnitTest(TestCase):
+class greenplumUnitTest(TestCase):
     @patch(
         "metadata.ingestion.source.database.common_db_source.CommonDbSourceService.test_connection"
     )
     def __init__(self, methodName, test_connection) -> None:
         super().__init__(methodName)
         test_connection.return_value = False
-        self.config = OpenMetadataWorkflowConfig.parse_obj(mock_redshift_config)
-        self.redshift_source = RedshiftSource.create(
-            mock_redshift_config["source"],
+        self.config = OpenMetadataWorkflowConfig.parse_obj(mock_greenplum_config)
+        self.greenplum_source = GreenplumSource.create(
+            mock_greenplum_config["source"],
             self.config.workflowConfig.openMetadataServerConfig,
         )
-
-    def test_partition_parse_columns(self):
-        for i in range(len(RAW_DIST_STYLE)):
-            with self.subTest(i=i):
-                self.assertEqual(
-                    self.redshift_source._get_partition_key(RAW_DIST_STYLE[i]),
-                    EXPECTED_PARTITION_COLUMNS[i],
-                )
 
     @patch("sqlalchemy.engine.base.Engine")
     @patch(
@@ -85,4 +77,4 @@ class RedshiftUnitTest(TestCase):
     )
     def test_close_connection(self, engine, connection):
         connection.return_value = True
-        self.redshift_source.close()
+        self.greenplum_source.close()

@@ -65,6 +65,13 @@ SSL Mode to connect to redshift database. E.g, `prefer`, `verify-ca` etc.
 $$
 
 $$section
+### SSL CA $(id="caCertificate")
+The CA certificate used for SSL validation (`sslrootcert`).
+$$
+$$note
+Redshift only needs CA Certificate
+$$
+$$section
 ### Connection Options $(id="connectionOptions")
 Additional connection options to build the URL that can be sent to service during the connection.
 $$

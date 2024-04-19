@@ -91,6 +91,13 @@ def get_connection(connection: TrinoConnection) -> Engine:
     """
     Create connection
     """
+    if connection.verify:
+        connection.connectionArguments = (
+            connection.connectionArguments or init_empty_connection_arguments()
+        )
+        connection.connectionArguments.__root__["verify"] = {
+            "verify": connection.verify
+        }
     return create_generic_db_connection(
         connection=connection,
         get_connection_url_fn=get_connection_url,

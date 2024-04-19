@@ -1759,6 +1759,7 @@
     "update-profiler-settings": "עדכן הגדרות הפרופיילר.",
     "update-tag-message": "Request to update tags for",
     "updating-existing-not-possible-can-add-new-values": "Updating existing values is not possible,only the addition of new values is allowed.",
+    "upload-file": "Upload File",
     "upstream-depth-message": "יש לבחור ערך עבור עומק מערכת השואבת",
     "upstream-depth-tooltip": "הצג עד 3 צמתים של יחידת יורשת לזיהוי מקור (רמות ההורים).",
     "usage-ingestion-description": "ניתן להגדיר ולהפעיל את תהליך הספקת השימוש לאחר הגדרת השקפץ של מטה-דאטה. תהליך ספקת השימוש מקבל את לוגי השאילתות ופרטי יצירת הטבלה מהמסד נתונים התחתי ומספק אותם ל-OpenMetadata. יש רק פייפל אחד לשירות מסד נתונים. יש להגדיר משך לוגי השאילתות (בימים), מקום שמירת הקובץ הביניים, ומגבלת תוצאות להתחלה.",
