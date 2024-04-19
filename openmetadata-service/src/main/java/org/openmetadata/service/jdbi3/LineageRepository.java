@@ -13,6 +13,7 @@
 
 package org.openmetadata.service.jdbi3;
 
+import static javax.ws.rs.core.Response.Status.OK;
 import static org.openmetadata.service.Entity.CONTAINER;
 import static org.openmetadata.service.Entity.DASHBOARD;
 import static org.openmetadata.service.Entity.DASHBOARD_DATA_MODEL;
@@ -361,13 +362,24 @@ public class LineageRepository {
     }
   }
 
+  public Response getLineageEdge(UUID fromId, UUID toId) {
+    String json = dao.relationshipDAO().getRelation(fromId, toId, Relationship.UPSTREAM.ordinal());
+    if (json != null) {
+      Map<String, Object> responseMap = new HashMap<>();
+      LineageDetails lineageDetails = JsonUtils.readValue(json, LineageDetails.class);
+      responseMap.put("edge", lineageDetails);
+      return Response.status(OK).entity(responseMap).build();
+    } else {
+      throw new EntityNotFoundException(
+          "Lineage edge not found between " + fromId + " and " + " " + toId);
+    }
+  }
+
   public Response patchLineageEdge(
       String fromEntity, UUID fromId, String toEntity, UUID toId, JsonPatch patch) {
     EntityReference from = Entity.getEntityReferenceById(fromEntity, fromId, Include.NON_DELETED);
     EntityReference to = Entity.getEntityReferenceById(toEntity, toId, Include.NON_DELETED);
-    String json =
-        dao.relationshipDAO()
-            .getRelation(fromId, fromEntity, toId, toEntity, Relationship.UPSTREAM.ordinal());
+    String json = dao.relationshipDAO().getRelation(fromId, toId, Relationship.UPSTREAM.ordinal());
 
     if (json != null) {
 

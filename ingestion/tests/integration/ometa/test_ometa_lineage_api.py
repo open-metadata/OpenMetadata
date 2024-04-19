@@ -56,7 +56,11 @@ from metadata.generated.schema.entity.services.pipelineService import (
 from metadata.generated.schema.security.client.openMetadataJWTClientConfig import (
     OpenMetadataJWTClientConfig,
 )
-from metadata.generated.schema.type.entityLineage import EntitiesEdge, LineageDetails
+from metadata.generated.schema.type.entityLineage import (
+    ColumnLineage,
+    EntitiesEdge,
+    LineageDetails,
+)
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 
@@ -131,13 +135,27 @@ class OMetaLineageTest(TestCase):
 
         create_schema_entity = cls.metadata.create_or_update(data=create_schema)
 
-        cls.table = CreateTableRequest(
-            name="test",
+        cls.table1 = CreateTableRequest(
+            name="table1",
             databaseSchema=create_schema_entity.fullyQualifiedName,
-            columns=[Column(name="id", dataType=DataType.BIGINT)],
+            columns=[
+                Column(name="id", dataType=DataType.BIGINT),
+                Column(name="name", dataType=DataType.STRING),
+            ],
         )
 
-        cls.table_entity = cls.metadata.create_or_update(data=cls.table)
+        cls.table1_entity = cls.metadata.create_or_update(data=cls.table1)
+
+        cls.table2 = CreateTableRequest(
+            name="table2",
+            databaseSchema=create_schema_entity.fullyQualifiedName,
+            columns=[
+                Column(name="id", dataType=DataType.BIGINT),
+                Column(name="name", dataType=DataType.STRING),
+            ],
+        )
+
+        cls.table2_entity = cls.metadata.create_or_update(data=cls.table2)
 
         cls.pipeline = CreatePipelineRequest(
             name="test",
@@ -148,8 +166,8 @@ class OMetaLineageTest(TestCase):
 
         cls.create = AddLineageRequest(
             edge=EntitiesEdge(
-                fromEntity=EntityReference(id=cls.table_entity.id, type="table"),
-                toEntity=EntityReference(id=cls.pipeline_entity.id, type="pipeline"),
+                fromEntity=EntityReference(id=cls.table1_entity.id, type="table"),
+                toEntity=EntityReference(id=cls.table2_entity.id, type="table"),
                 lineageDetails=LineageDetails(description="test lineage"),
             ),
         )
@@ -190,8 +208,8 @@ class OMetaLineageTest(TestCase):
         We can create a Lineage and get the origin node lineage info back
         """
 
-        from_id = str(self.table_entity.id.__root__)
-        to_id = str(self.pipeline_entity.id.__root__)
+        from_id = str(self.table1_entity.id.__root__)
+        to_id = str(self.table2_entity.id.__root__)
 
         res = self.metadata.add_lineage(data=self.create)
 
@@ -203,3 +221,84 @@ class OMetaLineageTest(TestCase):
             iter([node["id"] for node in res["nodes"] if node["id"] == to_id]), None
         )
         assert node_id
+
+        # Add Pipeline to the lineage edge
+        linage_request_1 = AddLineageRequest(
+            edge=EntitiesEdge(
+                fromEntity=EntityReference(id=self.table1_entity.id, type="table"),
+                toEntity=EntityReference(id=self.table2_entity.id, type="table"),
+                lineageDetails=LineageDetails(
+                    description="test lineage",
+                    pipeline=EntityReference(
+                        id=self.pipeline_entity.id, type="pipeline"
+                    ),
+                ),
+            ),
+        )
+
+        res = self.metadata.add_lineage(data=linage_request_1, check_patch=True)
+
+        res["entity"]["id"] = str(res["entity"]["id"])
+        self.assertEqual(len(res["downstreamEdges"]), 1)
+        self.assertEqual(
+            res["downstreamEdges"][0]["lineageDetails"]["pipeline"]["id"],
+            str(self.pipeline_entity.id.__root__),
+        )
+
+        # Add a column to the lineage edge
+        linage_request_2 = AddLineageRequest(
+            edge=EntitiesEdge(
+                fromEntity=EntityReference(id=self.table1_entity.id, type="table"),
+                toEntity=EntityReference(id=self.table2_entity.id, type="table"),
+                lineageDetails=LineageDetails(
+                    description="test lineage",
+                    columnsLineage=[
+                        ColumnLineage(
+                            fromColumns=[f"{self.table1_entity.fullyQualifiedName.__root__}.id"],
+                            toColumn=f"{self.table2_entity.fullyQualifiedName.__root__}.id",
+                        )
+                    ],
+                ),
+            ),
+        )
+
+        res = self.metadata.add_lineage(data=linage_request_2, check_patch=True)
+
+        res["entity"]["id"] = str(res["entity"]["id"])
+        self.assertEqual(len(res["downstreamEdges"]), 1)
+        self.assertEqual(
+            res["downstreamEdges"][0]["lineageDetails"]["pipeline"]["id"],
+            str(self.pipeline_entity.id.__root__),
+        )
+        self.assertEqual(
+            len(res["downstreamEdges"][0]["lineageDetails"]["columnsLineage"]), 1
+        )
+
+        # Add a new column to the lineage edge
+        linage_request_2 = AddLineageRequest(
+            edge=EntitiesEdge(
+                fromEntity=EntityReference(id=self.table1_entity.id, type="table"),
+                toEntity=EntityReference(id=self.table2_entity.id, type="table"),
+                lineageDetails=LineageDetails(
+                    description="test lineage",
+                    columnsLineage=[
+                        ColumnLineage(
+                            fromColumns=[f"{self.table1_entity.fullyQualifiedName}.name"],
+                            toColumn=f"{self.table2_entity.fullyQualifiedName}.name",
+                        )
+                    ],
+                ),
+            ),
+        )
+
+        res = self.metadata.add_lineage(data=linage_request_2, check_patch=True)
+
+        res["entity"]["id"] = str(res["entity"]["id"])
+        self.assertEqual(len(res["downstreamEdges"]), 1)
+        self.assertEqual(
+            res["downstreamEdges"][0]["lineageDetails"]["pipeline"]["id"],
+            str(self.pipeline_entity.id.__root__),
+        )
+        self.assertEqual(
+            len(res["downstreamEdges"][0]["lineageDetails"]["columnsLineage"]), 2
+        )

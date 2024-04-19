@@ -94,8 +94,6 @@ public interface SearchClient {
       String entityType)
       throws IOException;
 
-  Response searchLineageEdge(String fromId, String toId, boolean deleted) throws IOException;
-
   Response searchByField(String fieldName, String fieldValue, String index) throws IOException;
 
   Response aggregate(String index, String fieldName, String value, String query) throws IOException;

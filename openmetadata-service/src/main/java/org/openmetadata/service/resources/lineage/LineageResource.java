@@ -248,15 +248,11 @@ public class LineageResource {
       @Context SecurityContext securityContext,
       @Parameter(description = "Entity FQN", required = true, schema = @Schema(type = "string"))
           @PathParam("fromId")
-          String fromId,
+          UUID fromId,
       @Parameter(description = "Entity FQN", required = true, schema = @Schema(type = "string"))
           @PathParam("toId")
-          String toId,
-      @Parameter(description = "Filter documents by deleted param. By default deleted is false")
-          @QueryParam("includeDeleted")
-          boolean deleted)
-      throws IOException {
-    return Entity.getSearchRepository().searchLineageEdge(fromId, toId, deleted);
+          UUID toId) {
+    return dao.getLineageEdge(fromId, toId);
   }
 
   @PATCH

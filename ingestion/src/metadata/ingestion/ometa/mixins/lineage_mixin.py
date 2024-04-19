@@ -73,24 +73,7 @@ class OMetaLineageMixin(Generic[T]):
                     original.edge.lineageDetails.columnsLineage = edge["edge"].get(
                         "columns", []
                     )
-
                     original.edge.lineageDetails.pipeline = edge["edge"].get("pipeline")
-
-                    # merge the original and new column level lineage
-                    data.edge.lineageDetails.columnsLineage = (
-                        self._merge_column_lineage(
-                            original.edge.lineageDetails.columnsLineage,
-                            data.edge.lineageDetails.columnsLineage,
-                        )
-                    )
-
-                    # Keep the pipeline information from the original
-                    # lineage if available
-                    if original.edge.lineageDetails.pipeline:
-                        data.edge.lineageDetails.pipeline = (
-                            original.edge.lineageDetails.pipeline
-                        )
-
                     created_lineage = self.patch_lineage_edge(
                         original=original, updated=data
                     )
@@ -119,13 +102,12 @@ class OMetaLineageMixin(Generic[T]):
     def get_lineage_edge(
         self,
         lineage_request: AddLineageRequest,
-        deleted: bool = False,
     ) -> Optional[Dict[str, Any]]:
         try:
             res = self.client.get(
                 f"{self.get_suffix(AddLineageRequest)}/getLineageEdge/"
                 f"{lineage_request.edge.fromEntity.id.__root__}/"
-                f"{lineage_request.edge.toEntity.id.__root__}?includeDeleted={deleted}"
+                f"{lineage_request.edge.toEntity.id.__root__}"
             )
             return res
         except APIError as err:
@@ -158,6 +140,7 @@ class OMetaLineageMixin(Generic[T]):
                 source=original.edge.lineageDetails,
                 destination=updated.edge.lineageDetails,
                 allowed_fields=allowed_fields,
+                restrict_update_fields=allowed_fields.keys(),
                 remove_change_description=False,
             )
             if patch:

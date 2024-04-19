@@ -867,13 +867,11 @@ public interface CollectionDAO {
 
     @SqlQuery(
         "SELECT json FROM entity_relationship WHERE fromId = :fromId "
-            + " and fromEntity = :fromEntity AND toEntity = :toEntity AND toId = :toId "
-            + " and relation = :relation ")
+            + " AND toId = :toId "
+            + " AND relation = :relation ")
     String getRelation(
         @BindUUID("fromId") UUID fromId,
-        @Bind("fromEntity") String fromEntity,
         @BindUUID("toId") UUID toId,
-        @Bind("toEntity") String toEntity,
         @Bind("relation") int relation);
 
     //
