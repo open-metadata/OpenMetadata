@@ -40,7 +40,6 @@ import {
 import { handleAlertSave } from '../../utils/Alerts/AlertsUtil';
 import { getObservabilityAlertDetailsPath } from '../../utils/RouterUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
-import './add-observability-page.less';
 import { ModifiedEventSubscription } from './AddObservabilityPage.interface';
 import { default as AlertFormSourceItem } from './AlertFormSourceItem/AlertFormSourceItem';
 import DestinationFormItem from './DestinationFormItem/DestinationFormItem.component';
@@ -194,7 +193,7 @@ function AddObservabilityPage() {
       hideSecondPanel
       firstPanel={{
         children: (
-          <div className="alert-page-container">
+          <div className="steps-form-container">
             <Row className="p-x-lg p-t-md" gutter={[16, 16]}>
               <Col span={24}>
                 <TitleBreadcrumb titleLinks={breadcrumb} />
@@ -280,13 +279,7 @@ function AddObservabilityPage() {
                       name="provider"
                     />
                     <Col span={24}>
-                      <DestinationFormItem
-                        buttonLabel={t('label.add-entity', {
-                          entity: t('label.destination'),
-                        })}
-                        heading={t('label.destination')}
-                        subHeading={t('message.alerts-destination-description')}
-                      />
+                      <DestinationFormItem />
                     </Col>
                     <Col flex="auto" />
                     <Col flex="300px" pull="right">

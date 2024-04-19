@@ -43,9 +43,11 @@ MOCK_OL_CONFIG = {
                 "consumerGroupName": "test-consumergroup",
                 "consumerOffsets": ConsumerOffsets.earliest,
                 "securityProtocol": SecurityProtocol.PLAINTEXT,
-                "SSLCertificateLocation": "",
-                "SSLKeyLocation": "",
-                "SSLCALocation": "",
+                "sslConfig": {
+                    "caCertificate": "",
+                    "sslCertificate": "",
+                    "sslKey": "",
+                },
                 "poolTimeout": 0.3,
                 "sessionTimeout": 1,
             }

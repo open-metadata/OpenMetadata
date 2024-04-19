@@ -78,7 +78,7 @@ class OMetaUserMixin:
             query_string = self.email_search_query_es(entity=entity).format(
                 email=email, from_=from_count, size=size
             )
-            return self._get_entity_from_es(
+            return self.get_entity_from_es(
                 entity=entity, query_string=query_string, fields=fields
             )
 
@@ -105,7 +105,7 @@ class OMetaUserMixin:
             query_string = self.name_search_query_es(entity=entity).format(
                 name=name, from_=from_count, size=size
             )
-            return self._get_entity_from_es(
+            return self.get_entity_from_es(
                 entity=entity, query_string=query_string, fields=fields
             )
 
