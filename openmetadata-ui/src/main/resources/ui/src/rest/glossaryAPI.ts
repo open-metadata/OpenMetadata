@@ -15,6 +15,7 @@ import { AxiosResponse } from 'axios';
 import { Operation } from 'fast-json-patch';
 import { PagingResponse } from 'Models';
 import { VotingDataProps } from '../components/Entity/Voting/voting.interface';
+import { PAGE_SIZE_MEDIUM } from '../constants/constants';
 import { SearchIndex } from '../enums/search.enum';
 import { AddGlossaryToAssetsRequest } from '../generated/api/addGlossaryToAssetsRequest';
 import { CreateGlossary } from '../generated/api/data/createGlossary';
@@ -278,8 +279,8 @@ export const searchGlossaryTerms = async (search: string, page = 1) => {
   const { data } = await APIClient.get(apiUrl, {
     params: {
       index: SearchIndex.GLOSSARY_TERM,
-      from: (page - 1) * 100,
-      size: 100,
+      from: (page - 1) * PAGE_SIZE_MEDIUM,
+      size: PAGE_SIZE_MEDIUM,
       deleted: false,
       track_total_hits: true,
       getHierarchy: true,

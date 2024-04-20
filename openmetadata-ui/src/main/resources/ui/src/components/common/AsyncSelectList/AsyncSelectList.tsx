@@ -179,13 +179,13 @@ const AsyncSelectList: FC<AsyncSelectListProps & SelectProps> = ({
       {menu}
       {hasContentLoading ? <Loader size="small" /> : null}
       {onCancel && (
-        <Space className="p-sm p-b-xss p-l-0" size={8}>
+        <Space className="p-sm p-b-xss p-l-xs custom-dropdown-render" size={8}>
           <Button
+            className="update-btn"
             data-testid="saveAssociatedTag"
             htmlType="submit"
             loading={isSubmitLoading}
             size="small"
-            type="primary"
             onClick={handleSave}>
             {t('label.update')}
           </Button>

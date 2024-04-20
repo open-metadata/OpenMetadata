@@ -20,8 +20,9 @@ import {
   TreeSelectProps,
 } from 'antd';
 import { DefaultOptionType } from 'antd/lib/select';
+import { Key } from 'antd/lib/table/interface';
 import { AxiosError } from 'axios';
-import { isEmpty, isNil, isUndefined, pick } from 'lodash';
+import { debounce, isEmpty, isUndefined, pick } from 'lodash';
 import { CustomTagProps } from 'rc-select/lib/BaseSelect';
 import React, { FC, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -29,8 +30,6 @@ import { PAGE_SIZE_LARGE } from '../../../constants/constants';
 import { TAG_START_WITH } from '../../../constants/Tag.constants';
 import { Glossary } from '../../../generated/entity/data/glossary';
 import { LabelType } from '../../../generated/entity/data/table';
-import { EntityReference } from '../../../generated/entity/type';
-import { Paging } from '../../../generated/type/paging';
 import { TagLabel } from '../../../generated/type/tagLabel';
 import {
   getGlossariesList,
@@ -43,11 +42,7 @@ import {
   buildTree,
   findGlossaryTermFromID,
 } from '../../../utils/GlossaryUtils';
-import {
-  fetchGlossaryList,
-  getTagDisplay,
-  tagRender,
-} from '../../../utils/TagsUtils';
+import { getTagDisplay, tagRender } from '../../../utils/TagsUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { ModifiedGlossaryTerm } from '../../Glossary/GlossaryTermTab/GlossaryTermTab.interface';
 import TagsV1 from '../../Tag/TagsV1/TagsV1.component';
@@ -66,47 +61,38 @@ const TreeAsyncSelectList: FC<Omit<AsyncSelectListProps, 'fetchOptions'>> = ({
   ...props
 }) => {
   const [isLoading, setIsLoading] = useState(false);
-  const [hasContentLoading, setHasContentLoading] = useState(false);
-  const [searchValue, setSearchValue] = useState<string>('');
-  const [paging, setPaging] = useState<Paging>({} as Paging);
-  const [currentPage, setCurrentPage] = useState(1);
   const selectedTagsRef = useRef<SelectOption[]>(initialOptions ?? []);
   const { t } = useTranslation();
   const [glossaries, setGlossaries] = useState([] as Glossary[]);
   const expandableKeys = useRef<string[]>([]);
-  const [searchOptions, setSearchOptions] = useState<SelectOption[]>([]);
+  const [expandedRowKeys, setExpandedRowKeys] = useState<Key[]>([]);
+  const [searchOptions, setSearchOptions] = useState<Glossary[]>([]);
 
   const form = Form.useFormInstance();
 
-  const onScroll = async (e: React.UIEvent<HTMLDivElement>) => {
-    const { currentTarget } = e;
-    if (
-      currentTarget.scrollTop + currentTarget.offsetHeight ===
-      currentTarget.scrollHeight
-    ) {
-      // optionFilteredCount added to equalize the options received from the server
-      if (glossaries.length < paging.total) {
-        try {
-          setHasContentLoading(true);
-          const res = await fetchGlossaryList(searchValue, currentPage + 1);
-          //   setOptions((prev) => [...prev, ...getFilteredOptions(res.data)]);
-          setPaging(res.paging);
-          setCurrentPage((prev) => prev + 1);
-        } catch (error) {
-          showErrorToast(error as AxiosError);
-        } finally {
-          setHasContentLoading(false);
-        }
-      }
+  const fetchGlossaryListInternal = async () => {
+    try {
+      const { data } = await getGlossariesList({
+        limit: PAGE_SIZE_LARGE,
+      });
+      setGlossaries((prev) => [...prev, ...data]);
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    } finally {
+      setIsLoading(false);
     }
   };
+
+  useEffect(() => {
+    fetchGlossaryListInternal();
+  }, []);
 
   const dropdownRender = (menu: React.ReactElement) => (
     <>
       {menu}
-      {hasContentLoading ? <Loader size="small" /> : null}
-      <Space className="p-sm p-b-xss p-l-0" size={8}>
+      <Space className="p-sm p-b-xss p-l-xs custom-dropdown-render" size={8}>
         <Button
+          className="update-btn"
           data-testid="saveAssociatedTag"
           htmlType="submit"
           loading={isSubmitLoading}
@@ -207,24 +193,6 @@ const TreeAsyncSelectList: FC<Omit<AsyncSelectListProps, 'fetchOptions'>> = ({
     onChange?.(selectedValues);
   };
 
-  const fetchGlossaryListInternal = async () => {
-    try {
-      const { data, paging } = await getGlossariesList({
-        limit: PAGE_SIZE_LARGE,
-      });
-      setGlossaries(data);
-      setPaging(paging);
-    } catch (error) {
-      showErrorToast(error as AxiosError);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchGlossaryListInternal();
-  }, []);
-
   const fetchGlossaryTerm = async (params?: ListGlossaryTermsParams) => {
     if (!params?.glossary) {
       return;
@@ -233,7 +201,7 @@ const TreeAsyncSelectList: FC<Omit<AsyncSelectListProps, 'fetchOptions'>> = ({
     try {
       const { data } = await getGlossaryTerms({
         ...params,
-        limit: 500,
+        limit: PAGE_SIZE_LARGE,
         fields: 'children',
       });
 
@@ -253,25 +221,28 @@ const TreeAsyncSelectList: FC<Omit<AsyncSelectListProps, 'fetchOptions'>> = ({
     }
   };
 
-  const onSearch = async (value: string) => {
+  const onSearch = debounce(async (value: string) => {
     if (value) {
-      const results = await searchGlossaryTerms(value, 1);
+      const results: Glossary[] = await searchGlossaryTerms(value);
 
       setSearchOptions(results);
+      setExpandedRowKeys(
+        results.map((result) => result.fullyQualifiedName as string)
+      );
     } else {
       setSearchOptions([]);
     }
-  };
+  }, 300);
 
   const convertToTreeData = (
-    options: ModifiedGlossaryTerm[] | EntityReference[] = []
+    options: ModifiedGlossaryTerm[] = [],
+    level = 0
   ): Omit<DefaultOptionType, 'label'>[] => {
     const treeData = options.map((option) => {
-      const hasChildren = !isEmpty(option?.children);
+      const hasChildren = 'children' in option && !isEmpty(option?.children);
 
-      const isGlossaryTerm =
-        !isNil((option as ModifiedGlossaryTerm).glossary) ||
-        (option as EntityReference).type === 'glossaryTerm';
+      // for 0th level we don't want check option to available
+      const isGlossaryTerm = level !== 0;
 
       // Only include keys with no children or keys that are not expanded
       return {
@@ -280,7 +251,13 @@ const TreeAsyncSelectList: FC<Omit<AsyncSelectListProps, 'fetchOptions'>> = ({
         title: getEntityName(option),
         checkable: isGlossaryTerm,
         isLeaf: isGlossaryTerm ? !hasChildren : false,
-        children: convertToTreeData(option.children as ModifiedGlossaryTerm[]),
+        selectable: isGlossaryTerm,
+        children:
+          hasChildren &&
+          convertToTreeData(
+            option.children as ModifiedGlossaryTerm[],
+            level + 1
+          ),
       };
     });
 
@@ -323,13 +300,10 @@ const TreeAsyncSelectList: FC<Omit<AsyncSelectListProps, 'fetchOptions'>> = ({
       style={{ width: '100%' }}
       tagRender={customTagRender}
       treeData={treeData}
-      onBlur={() => {
-        setCurrentPage(1);
-        setSearchValue('');
-      }}
+      treeExpandedKeys={isEmpty(searchOptions) ? undefined : expandedRowKeys}
       onChange={handleChange}
-      onPopupScroll={onScroll}
       onSearch={onSearch}
+      onTreeExpand={setExpandedRowKeys}
       {...props}
     />
   );

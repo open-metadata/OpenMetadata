@@ -30,9 +30,6 @@ export const assignGlossaryTerm = (
 
   cy.get(`[data-testid="tag-${glossaryTermFQN}"]`).click();
 
-  // to close popup
-  cy.clickOutside();
-
   cy.get(
     `[data-testid="tag-selector"] [data-testid="selected-tag-${glossaryTermFQN}"]`
   ).should('be.visible');
@@ -59,9 +56,6 @@ export const udpateGlossaryTerm = (
     .type(glossaryTermName);
 
   cy.get(`[data-testid="tag-${glossaryTermFQN}"]`).click();
-
-  // to close popup
-  cy.clickOutside();
 
   cy.get(
     `[data-testid="tag-selector"] [data-testid="selected-tag-${glossaryTermFQN}"]`
