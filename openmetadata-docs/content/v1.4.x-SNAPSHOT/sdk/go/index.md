@@ -10,7 +10,7 @@ We now present a high-level Go API as a gentle wrapper to interact with the Open
 The open-source OpenMetadata SDK for Go simplifies provisioning, managing, and using OpenMetadata resources from the Go application code. \
 The OpenMetadata SDK for Go modules build on top of the underlying OpenMetadata REST API, allows you to use those APIs through familiar Go paradigms.
 
-You can find the source code for the OpenMetadata libraries in the [GitHub repository](https://github.com/open-metadata/OpenMetadata/tree/main/openmetadata-go-client). As an open-source project, contributions are always welcome!
+You can find the source code for the OpenMetadata libraries in the [GitHub repository](https://github.com/open-metadata/openmetadata-sdk/tree/main/openmetadata-go-client). As an open-source project, contributions are always welcome!
 
 You can add the module to your application with the below command
 
