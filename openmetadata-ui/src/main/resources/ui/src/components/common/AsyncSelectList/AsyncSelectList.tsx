@@ -170,10 +170,6 @@ const AsyncSelectList: FC<AsyncSelectListProps & SelectProps> = ({
     }
   };
 
-  const handleSave = useCallback(() => {
-    form.submit();
-  }, [form]);
-
   const dropdownRender = (menu: React.ReactElement) => (
     <>
       {menu}
@@ -186,7 +182,7 @@ const AsyncSelectList: FC<AsyncSelectListProps & SelectProps> = ({
             htmlType="submit"
             loading={isSubmitLoading}
             size="small"
-            onClick={handleSave}>
+            onClick={() => form.submit()}>
             {t('label.update')}
           </Button>
           <Button
@@ -298,11 +294,6 @@ const AsyncSelectList: FC<AsyncSelectListProps & SelectProps> = ({
       optionLabelProp="label"
       style={{ width: '100%' }}
       tagRender={customTagRender}
-      onBlur={() => {
-        setCurrentPage(1);
-        setSearchValue('');
-        setOptions([]);
-      }}
       onChange={handleChange}
       onFocus={() => loadOptions('')}
       onInputKeyDown={(event) => {
