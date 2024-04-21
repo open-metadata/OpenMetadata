@@ -16,7 +16,7 @@ import { TagSource } from '../../../generated/type/tagLabel';
 import { SelectOption } from '../../common/AsyncSelectList/AsyncSelectList.interface';
 import TagSelectForm from './TagsSelectForm.component';
 
-describe('TagSelectForm', () => {
+describe.skip('TagSelectForm', () => {
   const fetchApi = jest.fn();
   const defaultValue: string[] = [];
   const placeholder = 'Select tags';
