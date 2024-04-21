@@ -12,6 +12,7 @@
  */
 import { ReactNode } from 'react';
 import { Config, ImmutableTree } from 'react-awesome-query-builder';
+import { SearchIndex } from '../../../enums/search.enum';
 
 export interface AdvanceSearchProviderProps {
   children: ReactNode;
@@ -27,7 +28,9 @@ export interface AdvanceSearchContext {
   onReset: () => void;
   onResetAllFilters: () => void;
   onUpdateConfig: (config: Config) => void;
-  searchIndex: string;
+  onChangeSearchIndex: (index: SearchIndex | Array<SearchIndex>) => void;
+  searchIndex: string | Array<string>;
+  onSubmit: () => void;
 }
 
 export type FilterObject = Record<string, string[]>;

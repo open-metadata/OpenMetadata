@@ -15,6 +15,7 @@ package org.openmetadata.service.security;
 
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 
+import java.util.HashSet;
 import javax.annotation.Priority;
 import javax.ws.rs.container.ContainerRequestContext;
 import javax.ws.rs.container.ContainerRequestFilter;
@@ -50,7 +51,8 @@ public class CatalogOpenIdAuthorizationRequestFilter implements ContainerRequest
     CatalogPrincipal catalogPrincipal = new CatalogPrincipal(principal);
     String scheme = containerRequestContext.getUriInfo().getRequestUri().getScheme();
     CatalogSecurityContext catalogSecurityContext =
-        new CatalogSecurityContext(catalogPrincipal, scheme, CatalogSecurityContext.OPENID_AUTH);
+        new CatalogSecurityContext(
+            catalogPrincipal, scheme, CatalogSecurityContext.OPENID_AUTH, new HashSet<>());
     LOG.debug("SecurityContext {}", catalogSecurityContext);
     containerRequestContext.setSecurityContext(catalogSecurityContext);
   }

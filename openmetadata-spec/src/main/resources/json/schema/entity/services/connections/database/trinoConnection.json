@@ -72,6 +72,11 @@
         "type": "string"
       }
     },
+    "verify": {
+      "title": "Verify",
+      "description": "Verify ( Connection Argument for SSL ) to connect to Trino.",
+      "type": "string"
+    },
     "connectionOptions": {
       "title": "Connection Options",
       "$ref": "../connectionBasicType.json#/definitions/connectionOptions"
