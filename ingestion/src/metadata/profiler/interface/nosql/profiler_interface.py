@@ -228,4 +228,5 @@ class NoSQLProfilerInterface(ProfilerInterface):
         ]
 
     def close(self):
-        self.connection.close()
+        if getattr(self.connection, "close", None):
+            self.connection.close()
