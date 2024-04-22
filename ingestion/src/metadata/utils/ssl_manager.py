@@ -124,11 +124,12 @@ class SSLManager:
         return connection
 
     @setup_ssl.register(QlikSenseConnection)
-    def _(self, _):
+    def _(self, connection):
         return {
             "ca_certs": self.ca_file_path,
             "certfile": self.cert_file_path,
             "keyfile": self.key_file_path,
+            "check_hostname": connection.validateHostName,
         }
 
     @setup_ssl.register(KafkaConnection)
