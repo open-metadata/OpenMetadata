@@ -46,13 +46,13 @@ const App: FC = () => {
         ...data,
         customTheme: {
           primaryColor:
-            data?.customTheme?.primaryColor ?? DEFAULT_THEME.primaryColor,
-          errorColor: data?.customTheme?.errorColor ?? DEFAULT_THEME.errorColor,
+            data?.customTheme?.primaryColor || DEFAULT_THEME.primaryColor,
+          errorColor: data?.customTheme?.errorColor || DEFAULT_THEME.errorColor,
           successColor:
-            data?.customTheme?.successColor ?? DEFAULT_THEME.successColor,
+            data?.customTheme?.successColor || DEFAULT_THEME.successColor,
           warningColor:
-            data?.customTheme?.warningColor ?? DEFAULT_THEME.warningColor,
-          infoColor: data?.customTheme?.infoColor ?? DEFAULT_THEME.infoColor,
+            data?.customTheme?.warningColor || DEFAULT_THEME.warningColor,
+          infoColor: data?.customTheme?.infoColor || DEFAULT_THEME.infoColor,
         },
       });
     } catch (error) {
