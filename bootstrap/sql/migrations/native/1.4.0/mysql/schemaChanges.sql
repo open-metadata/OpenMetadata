@@ -70,6 +70,12 @@ ALTER TABLE apps_extension_time_series ADD INDEX apps_extension_time_series_inde
 ALTER TABLE suggestions ADD INDEX index_suggestions_type(suggestionType);
 ALTER TABLE suggestions ADD INDEX index_suggestions_status(status);
 
+
+-- Add the supportsProfiler field to the DynamoDB connection configuration
+UPDATE dbservice_entity
+SET json = JSON_INSERT(json, '$.connection.config.supportsProfiler', TRUE)
+WHERE serviceType = 'DynamoDB';
+
 -- Migrate 'QlikSenseDataModel' & 'QlikCloudDataModel' into single entity 'QlikDataModel'
 UPDATE dashboard_data_model_entity
 SET json = JSON_SET(json, '$.dataModelType', 'QlikDataModel')
@@ -267,4 +273,3 @@ SET json = JSON_INSERT(
     
 where serviceType = 'OpenLineage'
   AND JSON_EXTRACT(json, '$.connection.config.SSLCALocation') IS NOT NULL;
-

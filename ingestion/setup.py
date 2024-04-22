@@ -267,6 +267,7 @@ plugins: Dict[str, Set[str]] = {
 dev = {
     "black==22.3.0",
     "datamodel-code-generator==0.24.2",
+    "boto3-stubs[essential]",
     "isort",
     "pre-commit",
     "pycln",
