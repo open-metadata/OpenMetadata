@@ -86,7 +86,11 @@ const LineageLayers = () => {
       overlayClassName="lineage-layers-popover"
       placement="right"
       trigger="click">
-      <Button ghost className="layers-btn h-15" type="primary">
+      <Button
+        ghost
+        className="layers-btn h-15"
+        data-testid="lineage-layer-btn"
+        type="primary">
         <div className="lineage-layer-btn">
           <Layers width={16} />
           <Typography.Text className="text-xs">

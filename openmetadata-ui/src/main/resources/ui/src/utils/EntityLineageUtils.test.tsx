@@ -16,7 +16,12 @@ import { EdgeTypeEnum } from '../components/Entity/EntityLineage/EntityLineage.i
 import { EdgeDetails } from '../components/Lineage/Lineage.interface';
 import { SourceType } from '../components/SearchedData/SearchedData.interface';
 import { AddLineage } from '../generated/api/lineage/addLineage';
-import { MOCK_NODES_AND_EDGES } from '../mocks/Lineage.mock';
+import {
+  MOCK_CHILD_MAP,
+  MOCK_LINEAGE_DATA_NEW,
+  MOCK_NODES_AND_EDGES,
+  MOCK_PAGINATED_CHILD_MAP,
+} from '../mocks/Lineage.mock';
 import { addLineage } from '../rest/miscAPI';
 import {
   addLineageHandler,
@@ -24,12 +29,14 @@ import {
   getAllTracedColumnEdge,
   getAllTracedEdges,
   getAllTracedNodes,
+  getChildMap,
   getClassifiedEdge,
   getColumnLineageData,
   getConnectedNodesEdges,
   getLineageDetailsObject,
   getLineageEdge,
   getLineageEdgeForAPI,
+  getPaginatedChildMap,
   getUpdatedColumnsFromEdge,
   getUpstreamDownstreamNodesEdges,
   isColumnLineageTraced,
@@ -415,6 +422,21 @@ describe('Test EntityLineageUtils utility', () => {
         toColumn: 'shopId',
       },
     ]);
+  });
+
+  it('getChildMap should return valid map object', () => {
+    expect(
+      getChildMap(
+        MOCK_LINEAGE_DATA_NEW,
+        's3_storage_sample.departments.media.movies'
+      )
+    ).toEqual(MOCK_CHILD_MAP);
+  });
+
+  it('getPaginatedChildMap should return valid map object', () => {
+    expect(
+      getPaginatedChildMap(MOCK_LINEAGE_DATA_NEW, MOCK_CHILD_MAP, {}, 50)
+    ).toEqual(MOCK_PAGINATED_CHILD_MAP);
   });
 
   describe('createNewEdge', () => {

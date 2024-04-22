@@ -631,19 +631,14 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
         return;
       }
 
-      switch (node.type) {
-        case EntityLineageNodeType.LOAD_MORE:
-          selectLoadMoreNode(node);
-
-          break;
-        default:
-          setSelectedEdge(undefined);
-          setActiveNode(node);
-          setSelectedNode(node.data.node as SourceType);
-          setIsDrawerOpen(true);
-          handleLineageTracing(node);
-
-          break;
+      if (node.type === EntityLineageNodeType.LOAD_MORE) {
+        selectLoadMoreNode(node);
+      } else {
+        setSelectedEdge(undefined);
+        setActiveNode(node);
+        setSelectedNode(node.data.node as SourceType);
+        setIsDrawerOpen(true);
+        handleLineageTracing(node);
       }
     },
     [handleLineageTracing]
@@ -1126,9 +1121,9 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
       setUpdatedEntityLineage(null);
       if (deletePressed || backspacePressed) {
         if (activeNode) {
-          removeNodeHandler(activeNode as Node);
+          removeNodeHandler(activeNode);
         } else if (selectedEdge) {
-          removeEdgeHandler(selectedEdge as Edge, true);
+          removeEdgeHandler(selectedEdge, true);
         }
       }
     }
