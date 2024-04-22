@@ -1,6 +1,7 @@
 from typing import TYPE_CHECKING
 
 import boto3
+import botocore
 import pytest
 from testcontainers.localstack import LocalStackContainer
 
@@ -42,6 +43,8 @@ def ingest_sample_data(localstack_container):
         "dynamodb",
         region_name="us-east-1",
         endpoint_url=localstack_container.get_url(),
+        aws_access_key_id="does-not-matter",
+        aws_secret_access_key="does-not-matter",
     )
     client.create_table(
         TableName="test_table",
