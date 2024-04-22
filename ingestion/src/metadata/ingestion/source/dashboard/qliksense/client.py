@@ -73,6 +73,7 @@ class QlikSenseClient:
                 "ca_certs": self.config.certificates.rootCertificate,
                 "certfile": self.config.certificates.clientCertificate,
                 "keyfile": self.config.certificates.clientKeyCertificate,
+                "check_hostname": self.config.validateHostName,
             }
             return context
 

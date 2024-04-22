@@ -592,7 +592,9 @@ public class FeedResource {
         .withAnnouncement(create.getAnnouncementDetails())
         .withChatbot(create.getChatbotDetails())
         .withUpdatedBy(securityContext.getUserPrincipal().getName())
-        .withUpdatedAt(System.currentTimeMillis());
+        .withUpdatedAt(System.currentTimeMillis())
+        .withEntityType(Entity.THREAD)
+        .withGeneratedBy(Thread.GeneratedBy.USER);
   }
 
   private Post getPost(CreatePost create) {

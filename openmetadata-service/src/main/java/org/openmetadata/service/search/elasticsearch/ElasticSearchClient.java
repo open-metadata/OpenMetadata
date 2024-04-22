@@ -81,6 +81,7 @@ import es.org.elasticsearch.search.aggregations.BucketOrder;
 import es.org.elasticsearch.search.aggregations.bucket.histogram.DateHistogramAggregationBuilder;
 import es.org.elasticsearch.search.aggregations.bucket.histogram.DateHistogramInterval;
 import es.org.elasticsearch.search.aggregations.bucket.terms.IncludeExclude;
+import es.org.elasticsearch.search.aggregations.bucket.terms.Terms;
 import es.org.elasticsearch.search.aggregations.bucket.terms.TermsAggregationBuilder;
 import es.org.elasticsearch.search.aggregations.metrics.MaxAggregationBuilder;
 import es.org.elasticsearch.search.aggregations.metrics.SumAggregationBuilder;
@@ -376,15 +377,36 @@ public class ElasticSearchClient implements SearchClient {
     }
 
     if (request.getIndex().equalsIgnoreCase("glossary_term_search_index")) {
-      searchSourceBuilder.query(
+      QueryBuilder baseQuery =
           QueryBuilders.boolQuery()
-              .must(searchSourceBuilder.query())
-              .must(QueryBuilders.matchQuery("status", "Approved")));
+              .must(searchSourceBuilder.query()) // get user input terms
+              .must(QueryBuilders.matchQuery("status", "Approved"));
+
+      searchSourceBuilder.query(baseQuery);
 
       if (request.getHierarchy()) {
-        searchSourceBuilder.sort(
-            SortBuilders.fieldSort("fullyQualifiedName")
-                .order(SortOrder.ASC)); // to get correct hierarchy of terms
+        SearchResponse searchResponse =
+            client.search(
+                new es.org.elasticsearch.action.search.SearchRequest(request.getIndex())
+                    .source(searchSourceBuilder),
+                RequestOptions.DEFAULT);
+
+        // Build  query to get parent terms for the user input terms , to build correct hierarchy
+        BoolQueryBuilder parentTermQueryBuilder = QueryBuilders.boolQuery();
+        Terms glossaryNameTerms = searchResponse.getAggregations().get("glossary.name.keyword");
+        glossaryNameTerms.getBuckets().stream()
+            .map(Terms.Bucket::getKeyAsString)
+            .forEach(
+                glossaryName ->
+                    parentTermQueryBuilder.should(
+                        QueryBuilders.prefixQuery("fullyQualifiedName", glossaryName)));
+
+        // Combine the base query and parentTermQuery under OR logic
+        BoolQueryBuilder finalQueryBuilder =
+            QueryBuilders.boolQuery().should(baseQuery).should(parentTermQueryBuilder);
+
+        searchSourceBuilder.query(finalQueryBuilder);
+        searchSourceBuilder.sort(SortBuilders.fieldSort("fullyQualifiedName").order(SortOrder.ASC));
       }
     }
 
@@ -686,7 +708,6 @@ public class ElasticSearchClient implements SearchClient {
       throws IOException {
     Set<Map<String, Object>> edges = new HashSet<>();
     Set<Map<String, Object>> nodes = new HashSet<>();
-    responseMap.put("entity", null);
     es.org.elasticsearch.action.search.SearchRequest searchRequest =
         new es.org.elasticsearch.action.search.SearchRequest(GLOBAL_SEARCH_ALIAS);
     SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
@@ -744,6 +765,22 @@ public class ElasticSearchClient implements SearchClient {
               "lineage.fromEntity.fqn.keyword",
               deleted);
         }
+      }
+    }
+    // TODO: Fix this , this is hack
+    if (edges.isEmpty()) {
+      es.org.elasticsearch.action.search.SearchRequest searchRequestForEntity =
+          new es.org.elasticsearch.action.search.SearchRequest(GLOBAL_SEARCH_ALIAS);
+      SearchSourceBuilder searchSourceBuilderForEntity = new SearchSourceBuilder();
+      searchSourceBuilderForEntity.query(
+          QueryBuilders.boolQuery().must(QueryBuilders.termQuery("fullyQualifiedName", fqn)));
+      searchRequestForEntity.source(searchSourceBuilderForEntity.size(1000));
+      SearchResponse searchResponseForEntity =
+          client.search(searchRequestForEntity, RequestOptions.DEFAULT);
+      for (var hit : searchResponseForEntity.getHits().getHits()) {
+        HashMap<String, Object> tempMap = new HashMap<>(JsonUtils.getMap(hit.getSourceAsMap()));
+        tempMap.keySet().removeAll(FIELDS_TO_REMOVE);
+        responseMap.put("entity", tempMap);
       }
     }
     responseMap.put("edges", edges);

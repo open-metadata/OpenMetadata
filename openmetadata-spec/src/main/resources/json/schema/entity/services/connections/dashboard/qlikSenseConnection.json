@@ -86,6 +86,12 @@
                 }
             ]
         },
+        "validateHostName": {
+            "title": "Validate Host Name",
+            "description": "Validate Host Name",
+            "type": "boolean",
+            "default": false
+        },
         "userDirectory": {
             "title": "User Directory",
             "description": "User Directory.",
