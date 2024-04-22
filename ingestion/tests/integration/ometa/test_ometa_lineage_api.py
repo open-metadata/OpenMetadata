@@ -14,51 +14,29 @@ OpenMetadata high-level API Lineage test
 """
 from unittest import TestCase
 
-from metadata.generated.schema.api.data.createDatabase import CreateDatabaseRequest
-from metadata.generated.schema.api.data.createDatabaseSchema import (
-    CreateDatabaseSchemaRequest,
-)
-from metadata.generated.schema.api.data.createPipeline import CreatePipelineRequest
-from metadata.generated.schema.api.data.createTable import CreateTableRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
-from metadata.generated.schema.api.services.createDatabaseService import (
-    CreateDatabaseServiceRequest,
+from metadata.generated.schema.entity.data.dashboard import Dashboard
+from metadata.generated.schema.entity.data.dashboardDataModel import DashboardDataModel
+from metadata.generated.schema.entity.data.database import Database
+from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
+from metadata.generated.schema.entity.data.pipeline import Pipeline
+from metadata.generated.schema.entity.data.table import Table
+from metadata.generated.schema.entity.services.dashboardService import DashboardService
+from metadata.generated.schema.entity.services.databaseService import DatabaseService
+from metadata.generated.schema.entity.services.pipelineService import PipelineService
+from metadata.generated.schema.type.entityLineage import (
+    EntitiesEdge,
+    EntityLineage,
+    LineageDetails,
 )
-from metadata.generated.schema.api.services.createPipelineService import (
-    CreatePipelineServiceRequest,
-)
-from metadata.generated.schema.entity.data.table import Column, DataType
-from metadata.generated.schema.entity.services.connections.database.common.basicAuth import (
-    BasicAuth,
-)
-from metadata.generated.schema.entity.services.connections.database.mysqlConnection import (
-    MysqlConnection,
-)
-from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
-    OpenMetadataConnection,
-)
-from metadata.generated.schema.entity.services.connections.pipeline.airflowConnection import (
-    AirflowConnection,
-)
-from metadata.generated.schema.entity.services.connections.pipeline.backendConnection import (
-    BackendConnection,
-)
-from metadata.generated.schema.entity.services.databaseService import (
-    DatabaseConnection,
-    DatabaseService,
-    DatabaseServiceType,
-)
-from metadata.generated.schema.entity.services.pipelineService import (
-    PipelineConnection,
-    PipelineService,
-    PipelineServiceType,
-)
-from metadata.generated.schema.security.client.openMetadataJWTClientConfig import (
-    OpenMetadataJWTClientConfig,
-)
-from metadata.generated.schema.type.entityLineage import EntitiesEdge, LineageDetails
 from metadata.generated.schema.type.entityReference import EntityReference
-from metadata.ingestion.ometa.ometa_api import OpenMetadata
+
+from ..integration_base import (
+    generate_name,
+    get_create_entity,
+    get_create_service,
+    int_admin_ometa,
+)
 
 
 class OMetaLineageTest(TestCase):
@@ -69,41 +47,20 @@ class OMetaLineageTest(TestCase):
 
     service_entity_id = None
 
-    # pylint: disable=line-too-long
-    server_config = OpenMetadataConnection(
-        hostPort="http://localhost:8585/api",
-        authProvider="openmetadata",
-        securityConfig=OpenMetadataJWTClientConfig(
-            jwtToken="eyJraWQiOiJHYjM4OWEtOWY3Ni1nZGpzLWE5MmotMDI0MmJrOTQzNTYiLCJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9.eyJzdWIiOiJhZG1pbiIsImlzQm90IjpmYWxzZSwiaXNzIjoib3Blbi1tZXRhZGF0YS5vcmciLCJpYXQiOjE2NjM5Mzg0NjIsImVtYWlsIjoiYWRtaW5Ab3Blbm1ldGFkYXRhLm9yZyJ9.tS8um_5DKu7HgzGBzS1VTA5uUjKWOCU0B_j08WXBiEC0mr0zNREkqVfwFDD-d24HlNEbrqioLsBuFRiwIWKc1m_ZlVQbG7P36RUxhuv2vbSp80FKyNM-Tj93FDzq91jsyNmsQhyNv_fNr3TXfzzSPjHt8Go0FMMP66weoKMgW2PbXlhVKwEuXUHyakLLzewm9UMeQaEiRzhiTMU3UkLXcKbYEJJvfNFcLwSl9W8JCO_l0Yj3ud-qt_nQYEZwqW6u5nfdQllN133iikV4fM5QZsMCnm8Rq1mvLR0y9bmJiD7fwM1tmJ791TUWqmKaTnP49U493VanKpUAfzIiOiIbhg"
-        ),
-    )
-    metadata = OpenMetadata(server_config)
+    metadata = int_admin_ometa()
 
     assert metadata.health_check()
 
-    db_service = CreateDatabaseServiceRequest(
-        name="test-service-db-lineage",
-        serviceType=DatabaseServiceType.Mysql,
-        connection=DatabaseConnection(
-            config=MysqlConnection(
-                username="username",
-                authType=BasicAuth(
-                    password="password",
-                ),
-                hostPort="http://localhost:1234",
-            )
-        ),
-    )
+    db_service_name = generate_name()
+    pipeline_service_name = generate_name()
+    dashboard_service_name = generate_name()
 
-    pipeline_service = CreatePipelineServiceRequest(
-        name="test-service-pipeline-lineage",
-        serviceType=PipelineServiceType.Airflow,
-        connection=PipelineConnection(
-            config=AirflowConnection(
-                hostPort="http://localhost:8080",
-                connection=BackendConnection(),
-            ),
-        ),
+    db_service = get_create_service(entity=DatabaseService, name=db_service_name)
+    pipeline_service = get_create_service(
+        entity=PipelineService, name=pipeline_service_name
+    )
+    dashboard_service = get_create_service(
+        entity=DashboardService, name=dashboard_service_name
     )
 
     @classmethod
@@ -112,46 +69,62 @@ class OMetaLineageTest(TestCase):
         Prepare ingredients
         """
 
-        cls.db_service_entity = cls.metadata.create_or_update(data=cls.db_service)
-        cls.pipeline_service_entity = cls.metadata.create_or_update(
+        cls.db_service_entity: DatabaseService = cls.metadata.create_or_update(
+            data=cls.db_service
+        )
+        cls.pipeline_service_entity: PipelineService = cls.metadata.create_or_update(
             data=cls.pipeline_service
         )
-
-        create_db = CreateDatabaseRequest(
-            name="test-db",
-            service=cls.db_service_entity.fullyQualifiedName,
+        cls.dashboard_service_entity: DashboardService = cls.metadata.create_or_update(
+            data=cls.dashboard_service
         )
 
-        create_db_entity = cls.metadata.create_or_update(data=create_db)
-
-        create_schema = CreateDatabaseSchemaRequest(
-            name="test-schema",
-            database=create_db_entity.fullyQualifiedName,
+        create_db_entity: Database = cls.metadata.create_or_update(
+            data=get_create_entity(
+                entity=Database,
+                reference=cls.db_service_entity.fullyQualifiedName,
+                name=generate_name(),
+            )
         )
 
-        create_schema_entity = cls.metadata.create_or_update(data=create_schema)
+        create_schema_entity = cls.metadata.create_or_update(
+            data=get_create_entity(
+                entity=DatabaseSchema,
+                reference=create_db_entity.fullyQualifiedName,
+                name=generate_name(),
+            )
+        )
 
-        cls.table = CreateTableRequest(
-            name="test",
-            databaseSchema=create_schema_entity.fullyQualifiedName,
-            columns=[Column(name="id", dataType=DataType.BIGINT)],
+        cls.table = get_create_entity(
+            name=generate_name(),
+            entity=Table,
+            reference=create_schema_entity.fullyQualifiedName,
         )
 
         cls.table_entity = cls.metadata.create_or_update(data=cls.table)
 
-        cls.pipeline = CreatePipelineRequest(
-            name="test",
-            service=cls.pipeline_service_entity.fullyQualifiedName,
+        cls.pipeline = get_create_entity(
+            name=generate_name(),
+            entity=Pipeline,
+            reference=cls.pipeline_service_entity.fullyQualifiedName,
         )
 
         cls.pipeline_entity = cls.metadata.create_or_update(data=cls.pipeline)
 
-        cls.create = AddLineageRequest(
-            edge=EntitiesEdge(
-                fromEntity=EntityReference(id=cls.table_entity.id, type="table"),
-                toEntity=EntityReference(id=cls.pipeline_entity.id, type="pipeline"),
-                lineageDetails=LineageDetails(description="test lineage"),
-            ),
+        cls.dashboard = get_create_entity(
+            name=generate_name(),
+            entity=Dashboard,
+            reference=cls.dashboard_service_entity.fullyQualifiedName,
+        )
+        cls.dashboard_entity = cls.metadata.create_or_update(data=cls.dashboard)
+
+        cls.dashboard_datamodel = get_create_entity(
+            name=generate_name(),
+            entity=DashboardDataModel,
+            reference=cls.dashboard_service_entity.fullyQualifiedName,
+        )
+        cls.dashboard_datamodel_entity = cls.metadata.create_or_update(
+            data=cls.dashboard_datamodel
         )
 
     @classmethod
@@ -162,13 +135,19 @@ class OMetaLineageTest(TestCase):
 
         db_service_id = str(
             cls.metadata.get_by_name(
-                entity=DatabaseService, fqn="test-service-db-lineage"
+                entity=DatabaseService, fqn=cls.db_service_name
             ).id.__root__
         )
 
         pipeline_service_id = str(
             cls.metadata.get_by_name(
-                entity=PipelineService, fqn="test-service-pipeline-lineage"
+                entity=PipelineService, fqn=cls.pipeline_service_name
+            ).id.__root__
+        )
+
+        dashboard_service_id = str(
+            cls.metadata.get_by_name(
+                entity=DashboardService, fqn=cls.dashboard_service_name
             ).id.__root__
         )
 
@@ -184,6 +163,12 @@ class OMetaLineageTest(TestCase):
             recursive=True,
             hard_delete=True,
         )
+        cls.metadata.delete(
+            entity=DashboardService,
+            entity_id=dashboard_service_id,
+            recursive=True,
+            hard_delete=True,
+        )
 
     def test_create(self):
         """
@@ -193,13 +178,53 @@ class OMetaLineageTest(TestCase):
         from_id = str(self.table_entity.id.__root__)
         to_id = str(self.pipeline_entity.id.__root__)
 
-        res = self.metadata.add_lineage(data=self.create)
+        res = self.metadata.add_lineage(
+            data=AddLineageRequest(
+                edge=EntitiesEdge(
+                    fromEntity=EntityReference(id=self.table_entity.id, type="table"),
+                    toEntity=EntityReference(
+                        id=self.pipeline_entity.id, type="pipeline"
+                    ),
+                    lineageDetails=LineageDetails(description="test lineage"),
+                ),
+            )
+        )
 
         # Check that we get the origin ID in the entity
-        assert res["entity"]["id"] == from_id
+        self.assertEqual(from_id, res["entity"]["id"])
 
         # Check that the toEntity is a node in the origin lineage
         node_id = next(
             iter([node["id"] for node in res["nodes"] if node["id"] == to_id]), None
         )
-        assert node_id
+        self.assertIsNotNone(node_id)
+
+    def test_table_datamodel_lineage(self):
+        """We can create and get lineage for a table to a dashboard datamodel"""
+
+        from_id = str(self.table_entity.id.__root__)
+
+        res = self.metadata.add_lineage(
+            data=AddLineageRequest(
+                edge=EntitiesEdge(
+                    fromEntity=EntityReference(id=self.table_entity.id, type="table"),
+                    toEntity=EntityReference(
+                        id=self.dashboard_datamodel_entity.id, type="dashboardDataModel"
+                    ),
+                    lineageDetails=LineageDetails(description="test lineage"),
+                ),
+            )
+        )
+
+        # Check that we get the origin ID in the entity
+        self.assertEqual(from_id, res["entity"]["id"])
+
+        # use the SDK to get the lineage
+        datamodel_lineage = self.metadata.get_lineage_by_name(
+            entity=DashboardDataModel,
+            fqn=self.dashboard_datamodel_entity.fullyQualifiedName.__root__,
+        )
+        entity_lineage = EntityLineage.parse_obj(datamodel_lineage)
+        self.assertEqual(
+            from_id, str(entity_lineage.upstreamEdges[0].fromEntity.__root__)
+        )

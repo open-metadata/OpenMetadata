@@ -18,12 +18,19 @@ from typing import Any, List, Optional, Type
 from airflow import DAG
 from airflow.operators.bash import BashOperator
 
+from metadata.generated.schema.api.data.createDashboard import CreateDashboardRequest
+from metadata.generated.schema.api.data.createDashboardDataModel import (
+    CreateDashboardDataModelRequest,
+)
 from metadata.generated.schema.api.data.createDatabase import CreateDatabaseRequest
 from metadata.generated.schema.api.data.createDatabaseSchema import (
     CreateDatabaseSchemaRequest,
 )
 from metadata.generated.schema.api.data.createPipeline import CreatePipelineRequest
 from metadata.generated.schema.api.data.createTable import CreateTableRequest
+from metadata.generated.schema.api.services.createDashboardService import (
+    CreateDashboardServiceRequest,
+)
 from metadata.generated.schema.api.services.createDatabaseService import (
     CreateDatabaseServiceRequest,
 )
@@ -37,10 +44,18 @@ from metadata.generated.schema.api.tests.createTestDefinition import (
     CreateTestDefinitionRequest,
 )
 from metadata.generated.schema.api.tests.createTestSuite import CreateTestSuiteRequest
+from metadata.generated.schema.entity.data.dashboard import Dashboard
+from metadata.generated.schema.entity.data.dashboardDataModel import (
+    DashboardDataModel,
+    DataModelType,
+)
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
 from metadata.generated.schema.entity.data.pipeline import Pipeline, Task
 from metadata.generated.schema.entity.data.table import Column, DataType, Table
+from metadata.generated.schema.entity.services.connections.dashboard.lookerConnection import (
+    LookerConnection,
+)
 from metadata.generated.schema.entity.services.connections.database.common.basicAuth import (
     BasicAuth,
 )
@@ -54,6 +69,11 @@ from metadata.generated.schema.entity.services.connections.metadata.openMetadata
 from metadata.generated.schema.entity.services.connections.pipeline.customPipelineConnection import (
     CustomPipelineConnection,
     CustomPipelineType,
+)
+from metadata.generated.schema.entity.services.dashboardService import (
+    DashboardConnection,
+    DashboardService,
+    DashboardServiceType,
 )
 from metadata.generated.schema.entity.services.databaseService import (
     DatabaseConnection,
@@ -79,6 +99,18 @@ from metadata.ingestion.ometa.ometa_api import C, OpenMetadata, T
 from metadata.utils.dispatch import class_register
 
 OM_JWT = "eyJraWQiOiJHYjM4OWEtOWY3Ni1nZGpzLWE5MmotMDI0MmJrOTQzNTYiLCJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9.eyJzdWIiOiJhZG1pbiIsImlzQm90IjpmYWxzZSwiaXNzIjoib3Blbi1tZXRhZGF0YS5vcmciLCJpYXQiOjE2NjM5Mzg0NjIsImVtYWlsIjoiYWRtaW5Ab3Blbm1ldGFkYXRhLm9yZyJ9.tS8um_5DKu7HgzGBzS1VTA5uUjKWOCU0B_j08WXBiEC0mr0zNREkqVfwFDD-d24HlNEbrqioLsBuFRiwIWKc1m_ZlVQbG7P36RUxhuv2vbSp80FKyNM-Tj93FDzq91jsyNmsQhyNv_fNr3TXfzzSPjHt8Go0FMMP66weoKMgW2PbXlhVKwEuXUHyakLLzewm9UMeQaEiRzhiTMU3UkLXcKbYEJJvfNFcLwSl9W8JCO_l0Yj3ud-qt_nQYEZwqW6u5nfdQllN133iikV4fM5QZsMCnm8Rq1mvLR0y9bmJiD7fwM1tmJ791TUWqmKaTnP49U493VanKpUAfzIiOiIbhg"
+COLUMNS = [
+    Column(name="id", dataType=DataType.BIGINT),
+    Column(name="another", dataType=DataType.BIGINT),
+    Column(
+        name="struct",
+        dataType=DataType.STRUCT,
+        children=[
+            Column(name="id", dataType=DataType.INT),
+            Column(name="name", dataType=DataType.STRING),
+        ],
+    ),
+]
 
 
 def int_admin_ometa(url: str = "http://localhost:8585/api") -> OpenMetadata:
@@ -132,18 +164,6 @@ def _(name: EntityName) -> C:
     """Prepare a Create service request"""
     return CreateDatabaseServiceRequest(
         name=name,
-        serviceType=DatabaseServiceType.CustomDatabase,
-        connection=DatabaseConnection(
-            config=CustomDatabaseConnection(type=CustomDatabaseType.CustomDatabase)
-        ),
-    )
-
-
-@create_service_registry.add(DatabaseService)
-def _(name: EntityName) -> C:
-    """Prepare a Create service request"""
-    return CreateDatabaseServiceRequest(
-        name=name,
         serviceType=DatabaseServiceType.Mysql,
         connection=DatabaseConnection(
             config=MysqlConnection(
@@ -152,6 +172,20 @@ def _(name: EntityName) -> C:
                     password="password",
                 ),
                 hostPort="http://localhost:1234",
+            )
+        ),
+    )
+
+
+@create_service_registry.add(DashboardService)
+def _(name: EntityName) -> C:
+    """Prepare a Create service request"""
+    return CreateDashboardServiceRequest(
+        name=name,
+        serviceType=DashboardServiceType.Looker,
+        connection=DashboardConnection(
+            config=LookerConnection(
+                hostPort="http://hostPort", clientId="id", clientSecret="secret"
             )
         ),
     )
@@ -213,18 +247,25 @@ def _(reference: FullyQualifiedEntityName, name: EntityName) -> C:
     return CreateTableRequest(
         name=name,
         databaseSchema=reference,
-        columns=[
-            Column(name="id", dataType=DataType.BIGINT),
-            Column(name="another", dataType=DataType.BIGINT),
-            Column(
-                name="struct",
-                dataType=DataType.STRUCT,
-                children=[
-                    Column(name="id", dataType=DataType.INT),
-                    Column(name="name", dataType=DataType.STRING),
-                ],
-            ),
-        ],
+        columns=COLUMNS,
+    )
+
+
+@create_entity_registry.add(Dashboard)
+def _(reference: FullyQualifiedEntityName, name: EntityName) -> C:
+    return CreateDashboardRequest(
+        name=name,
+        service=reference,
+    )
+
+
+@create_entity_registry.add(DashboardDataModel)
+def _(reference: FullyQualifiedEntityName, name: EntityName) -> C:
+    return CreateDashboardDataModelRequest(
+        name=name,
+        service=reference,
+        dataModelType=DataModelType.LookMlExplore,
+        columns=COLUMNS,
     )
 
 
