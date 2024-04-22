@@ -120,39 +120,37 @@ const NodeSuggestions: FC<EntitySuggestionProps> = ({
         options={(data || []).map((entity) => ({
           value: entity.fullyQualifiedName,
           label: (
-            <>
-              <div
-                className="d-flex items-center"
-                data-testid={`node-suggestion-${entity.fullyQualifiedName}`}
-                key={entity.fullyQualifiedName}
-                onClick={() => {
-                  onSelectHandler?.(entity as EntityReference);
-                }}>
-                <img
-                  alt={entity.serviceType}
-                  className="m-r-xs"
-                  height="16px"
-                  src={serviceUtilClassBase.getServiceTypeLogo(entity)}
-                  width="16px"
-                />
-                <div className="flex-1 text-left">
-                  {entity.entityType === EntityType.TABLE && (
-                    <p className="d-block text-xs text-grey-muted w-max-400 truncate p-b-xss">
-                      {getSuggestionLabelHeading(
-                        entity.fullyQualifiedName ?? '',
-                        entity.entityType as string
-                      )}
-                    </p>
-                  )}
-                  <p className="text-xs text-grey-muted w-max-400 truncate line-height-normal">
-                    {entity.name}
+            <div
+              className="d-flex items-center"
+              data-testid={`node-suggestion-${entity.fullyQualifiedName}`}
+              key={entity.fullyQualifiedName}
+              onClick={() => {
+                onSelectHandler?.(entity as EntityReference);
+              }}>
+              <img
+                alt={entity.serviceType}
+                className="m-r-xs"
+                height="16px"
+                src={serviceUtilClassBase.getServiceTypeLogo(entity)}
+                width="16px"
+              />
+              <div className="flex-1 text-left">
+                {entity.entityType === EntityType.TABLE && (
+                  <p className="d-block text-xs text-grey-muted w-max-400 truncate p-b-xss">
+                    {getSuggestionLabelHeading(
+                      entity.fullyQualifiedName ?? '',
+                      entity.entityType as string
+                    )}
                   </p>
-                  <p className="w-max-400 text-sm font-medium truncate">
-                    {getEntityName(entity)}
-                  </p>
-                </div>
+                )}
+                <p className="text-xs text-grey-muted w-max-400 truncate line-height-normal">
+                  {entity.name}
+                </p>
+                <p className="w-max-400 text-sm font-medium truncate">
+                  {getEntityName(entity)}
+                </p>
               </div>
-            </>
+            </div>
           ),
         }))}
         placeholder={`${t('label.search-for-type', {
