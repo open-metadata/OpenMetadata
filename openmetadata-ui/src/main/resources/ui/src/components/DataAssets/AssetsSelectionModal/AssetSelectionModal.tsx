@@ -92,7 +92,7 @@ export const AssetSelectionModal = ({
   queryFilter,
   emptyPlaceHolderText,
 }: AssetSelectionModalProps) => {
-  const { theme } = useApplicationStore();
+  const { applicationConfig } = useApplicationStore();
   const { t } = useTranslation();
   const ES_UPDATE_DELAY = 500;
   const [search, setSearch] = useState('');
@@ -560,7 +560,10 @@ export const AssetSelectionModal = ({
             message={
               <div className="d-flex items-center gap-3">
                 <ExclamationCircleOutlined
-                  style={{ color: theme.errorColor, fontSize: '24px' }}
+                  style={{
+                    color: applicationConfig?.customTheme?.errorColor,
+                    fontSize: '24px',
+                  }}
                 />
                 <Typography.Text className="font-semibold text-sm">
                   {t('label.validation-error-plural')}
@@ -617,7 +620,8 @@ export const AssetSelectionModal = ({
                           <div className="d-flex gap-3 p-x-sm p-b-sm">
                             <ExclamationCircleOutlined
                               style={{
-                                color: theme.errorColor,
+                                color:
+                                  applicationConfig?.customTheme?.errorColor,
                                 fontSize: '24px',
                               }}
                             />

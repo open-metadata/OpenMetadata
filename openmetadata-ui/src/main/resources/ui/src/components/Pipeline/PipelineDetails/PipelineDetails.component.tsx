@@ -99,7 +99,7 @@ const PipelineDetails = ({
   const history = useHistory();
   const { tab } = useParams<{ tab: EntityTabs }>();
   const { t } = useTranslation();
-  const { currentUser, theme } = useApplicationStore();
+  const { currentUser, applicationConfig } = useApplicationStore();
   const { postFeed, deleteFeed, updateFeed } = useActivityFeedProvider();
   const userID = currentUser?.id ?? '';
   const {
@@ -439,7 +439,11 @@ const PipelineDetails = ({
         filterIcon: (filtered) => (
           <FilterOutlined
             data-testid="tag-filter"
-            style={{ color: filtered ? theme.primaryColor : undefined }}
+            style={{
+              color: filtered
+                ? applicationConfig?.customTheme?.primaryColor
+                : undefined,
+            }}
           />
         ),
         render: (owner) => <OwnerLabel hasPermission={false} owner={owner} />,
@@ -453,7 +457,11 @@ const PipelineDetails = ({
         filterIcon: (filtered) => (
           <FilterOutlined
             data-testid="tag-filter"
-            style={{ color: filtered ? theme.primaryColor : undefined }}
+            style={{
+              color: filtered
+                ? applicationConfig?.customTheme?.primaryColor
+                : undefined,
+            }}
           />
         ),
         render: (tags, record, index) => (
@@ -483,7 +491,11 @@ const PipelineDetails = ({
         filterIcon: (filtered) => (
           <FilterOutlined
             data-testid="glossary-filter"
-            style={{ color: filtered ? theme.primaryColor : undefined }}
+            style={{
+              color: filtered
+                ? applicationConfig?.customTheme?.primaryColor
+                : undefined,
+            }}
           />
         ),
         filters: tagFilter.Glossary,

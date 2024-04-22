@@ -17,10 +17,13 @@ import { useApplicationStore } from '../../hooks/useApplicationStore';
 
 const AntDConfigProvider: FC<{ children: ReactNode }> = ({ children }) => {
   const { i18n } = useTranslation();
-  const { theme } = useApplicationStore();
+  const { applicationConfig } = useApplicationStore();
+  applicationConfig?.customTheme;
 
   ConfigProvider.config({
-    theme,
+    theme: {
+      ...applicationConfig?.customTheme,
+    },
   });
 
   return <ConfigProvider direction={i18n.dir()}>{children}</ConfigProvider>;

@@ -34,7 +34,7 @@ const WhatsNewModal: FunctionComponent<WhatsNewModalProps> = ({
   onCancel,
   visible,
 }: WhatsNewModalProps) => {
-  const { theme } = useApplicationStore();
+  const { applicationConfig } = useApplicationStore();
 
   const [activeData, setActiveData] = useState(WHATS_NEW[LATEST_VERSION_ID]);
   const [checkedValue, setCheckedValue] = useState<ToggleType>(
@@ -94,7 +94,7 @@ const WhatsNewModal: FunctionComponent<WhatsNewModalProps> = ({
                   <VersionIndicatorIcon
                     fill={
                       activeData.id === d.id
-                        ? theme.primaryColor ?? ''
+                        ? applicationConfig?.customTheme?.primaryColor ?? ''
                         : DE_ACTIVE_COLOR
                     }
                   />

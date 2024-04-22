@@ -68,7 +68,7 @@ import { SearchedDataProps } from '../SearchedData/SearchedData.interface';
 import './exploreV1.less';
 
 const IndexNotFoundBanner = () => {
-  const { theme } = useApplicationStore();
+  const { applicationConfig } = useApplicationStore();
   const { t } = useTranslation();
 
   return (
@@ -78,7 +78,7 @@ const IndexNotFoundBanner = () => {
         <div className="d-flex items-start gap-3">
           <ExclamationCircleOutlined
             style={{
-              color: theme.errorColor,
+              color: applicationConfig?.customTheme?.errorColor,
               fontSize: '16px',
             }}
           />

@@ -81,7 +81,7 @@ const GlossaryTermTab = ({
   onEditGlossaryTerm,
   className,
 }: GlossaryTermTabProps) => {
-  const { theme } = useApplicationStore();
+  const { applicationConfig } = useApplicationStore();
   const { t } = useTranslation();
   const [isLoading, setIsLoading] = useState(true);
   const [glossaryTerms, setGlossaryTerms] = useState<ModifiedGlossaryTerm[]>(
@@ -166,7 +166,11 @@ const GlossaryTermTab = ({
         width: '12%',
         filterIcon: (filtered) => (
           <FilterOutlined
-            style={{ color: filtered ? theme.primaryColor : undefined }}
+            style={{
+              color: filtered
+                ? applicationConfig?.customTheme?.primaryColor
+                : undefined,
+            }}
           />
         ),
         filters: StatusFilters,

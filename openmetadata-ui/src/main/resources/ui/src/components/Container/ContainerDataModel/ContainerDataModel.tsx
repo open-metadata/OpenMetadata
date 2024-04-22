@@ -55,7 +55,7 @@ const ContainerDataModel: FC<ContainerDataModelProps> = ({
   entityFqn,
   onThreadLinkSelect,
 }) => {
-  const { theme } = useApplicationStore();
+  const { applicationConfig } = useApplicationStore();
   const { t } = useTranslation();
 
   const [editContainerColumnDescription, setEditContainerColumnDescription] =
@@ -175,7 +175,11 @@ const ContainerDataModel: FC<ContainerDataModelProps> = ({
         filterIcon: (filtered) => (
           <FilterOutlined
             data-testid="tag-filter"
-            style={{ color: filtered ? theme.primaryColor : undefined }}
+            style={{
+              color: filtered
+                ? applicationConfig?.customTheme?.primaryColor
+                : undefined,
+            }}
           />
         ),
         filters: tagFilter.Classification,
@@ -205,7 +209,11 @@ const ContainerDataModel: FC<ContainerDataModelProps> = ({
         filterIcon: (filtered) => (
           <FilterOutlined
             data-testid="glossary-filter"
-            style={{ color: filtered ? theme.primaryColor : undefined }}
+            style={{
+              color: filtered
+                ? applicationConfig?.customTheme?.primaryColor
+                : undefined,
+            }}
           />
         ),
         filters: tagFilter.Glossary,

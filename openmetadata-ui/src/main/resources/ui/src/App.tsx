@@ -30,7 +30,7 @@ import PermissionProvider from './context/PermissionProvider/PermissionProvider'
 import TourProvider from './context/TourProvider/TourProvider';
 import WebSocketProvider from './context/WebSocketProvider/WebSocketProvider';
 import { useApplicationStore } from './hooks/useApplicationStore';
-import { getCustomLogoConfig } from './rest/settingConfigAPI';
+import { getCustomUiThemePreference } from './rest/settingConfigAPI';
 import { history } from './utils/HistoryUtils';
 import i18n from './utils/i18next/LocalUtil';
 
@@ -39,7 +39,7 @@ const App: FC = () => {
 
   const fetchApplicationConfig = async () => {
     try {
-      const data = await getCustomLogoConfig();
+      const data = await getCustomUiThemePreference();
 
       setApplicationConfig({
         ...data,
@@ -55,9 +55,12 @@ const App: FC = () => {
   }, []);
 
   useEffect(() => {
-    const faviconHref = isEmpty(applicationConfig?.customFaviconUrlPath)
+    const faviconHref = isEmpty(
+      applicationConfig?.customLogoConfig?.customFaviconUrlPath
+    )
       ? '/favicon.png'
-      : applicationConfig?.customFaviconUrlPath ?? '/favicon.png';
+      : applicationConfig?.customLogoConfig?.customFaviconUrlPath ??
+        '/favicon.png';
     const link = document.querySelector('link[rel~="icon"]');
 
     if (link) {

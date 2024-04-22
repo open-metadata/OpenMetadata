@@ -86,7 +86,7 @@ export const CustomEdge = ({
     fetchPipelineStatus,
   } = useLineageProvider();
 
-  const { theme } = useApplicationStore();
+  const { applicationConfig } = useApplicationStore();
 
   const isColumnHighlighted = useMemo(() => {
     if (!isColumnLineage) {
@@ -137,7 +137,11 @@ export const CustomEdge = ({
 
     return {
       ...style,
-      ...{ stroke: isStrokeNeeded ? theme.primaryColor : undefined },
+      ...{
+        stroke: isStrokeNeeded
+          ? applicationConfig?.customTheme?.primaryColor
+          : undefined,
+      },
     };
   }, [style, tracedNodes, edge, isColumnHighlighted, isColumnLineage]);
 

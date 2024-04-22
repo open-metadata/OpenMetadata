@@ -31,10 +31,12 @@ const DeployIngestionLoaderModal = ({
   isDeployed,
   visible,
 }: DeployIngestionLoaderModalProps) => {
-  const { theme } = useApplicationStore();
+  const { applicationConfig } = useApplicationStore();
 
   const isActive = (value: boolean) => {
-    return value ? theme.primaryColor : LITE_GRAY_COLOR;
+    return value
+      ? applicationConfig?.customTheme?.primaryColor
+      : LITE_GRAY_COLOR;
   };
 
   return (
@@ -53,7 +55,7 @@ const DeployIngestionLoaderModal = ({
             <Typography.Text
               className={classNames('ingestion-deploy-line')}
               style={{
-                background: `linear-gradient(to right, ${theme.primaryColor} ${progress}%, ${LITE_GRAY_COLOR} ${progress}%)`,
+                background: `linear-gradient(to right, ${applicationConfig?.customTheme?.primaryColor} ${progress}%, ${LITE_GRAY_COLOR} ${progress}%)`,
               }}
             />
 

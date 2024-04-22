@@ -88,7 +88,7 @@ const ClassificationDetails = forwardRef(
     }: Readonly<ClassificationDetailsProps>,
     ref
   ) => {
-    const { theme } = useApplicationStore();
+    const { applicationConfig } = useApplicationStore();
     const { permissions } = usePermissionProvider();
     const { t } = useTranslation();
     const { fqn: tagCategoryName } = useFqn();
@@ -399,7 +399,7 @@ const ClassificationDetails = forwardRef(
                     {currentClassification?.mutuallyExclusive && (
                       <div data-testid="mutually-exclusive-container">
                         <AppBadge
-                          bgColor={theme.primaryColor}
+                          bgColor={applicationConfig?.customTheme?.primaryColor}
                           label={t('label.mutually-exclusive')}
                         />
                       </div>

@@ -91,7 +91,7 @@ const DashboardDetails = ({
   handleToggleDelete,
 }: DashboardDetailsProps) => {
   const { t } = useTranslation();
-  const { currentUser, theme } = useApplicationStore();
+  const { currentUser, applicationConfig } = useApplicationStore();
   const history = useHistory();
   const { tab: activeTab = EntityTabs.DETAILS } =
     useParams<{ tab: EntityTabs }>();
@@ -504,7 +504,11 @@ const DashboardDetails = ({
         filterIcon: (filtered) => (
           <FilterOutlined
             data-testid="tag-filter"
-            style={{ color: filtered ? theme.primaryColor : undefined }}
+            style={{
+              color: filtered
+                ? applicationConfig?.customTheme?.primaryColor
+                : undefined,
+            }}
           />
         ),
         render: (tags: TagLabel[], record: ChartType, index: number) => {
@@ -536,7 +540,11 @@ const DashboardDetails = ({
         filterIcon: (filtered) => (
           <FilterOutlined
             data-testid="glossary-filter"
-            style={{ color: filtered ? theme.primaryColor : undefined }}
+            style={{
+              color: filtered
+                ? applicationConfig?.customTheme?.primaryColor
+                : undefined,
+            }}
           />
         ),
         render: (tags: TagLabel[], record: ChartType, index: number) => (

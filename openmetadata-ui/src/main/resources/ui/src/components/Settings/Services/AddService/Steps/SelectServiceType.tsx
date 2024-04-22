@@ -44,7 +44,7 @@ const SelectServiceType = ({
   onCancel,
   onNext,
 }: SelectServiceTypeProps) => {
-  const { theme } = useApplicationStore();
+  const { applicationConfig } = useApplicationStore();
   const { t } = useTranslation();
   const [category, setCategory] = useState('');
   const [connectorSearchTerm, setConnectorSearchTerm] = useState('');
@@ -148,7 +148,7 @@ const SelectServiceType = ({
                 ) ? (
                   <Badge
                     className="service-beta-tag"
-                    color={theme.primaryColor}
+                    color={applicationConfig?.customTheme?.primaryColor}
                     count={t('label.beta')}
                   />
                 ) : null}

@@ -17,7 +17,7 @@ import { EntityUnion } from '../components/Explore/ExplorePage.interface';
 import { DEFAULT_THEME } from '../constants/Appearance.constants';
 import { AuthenticationConfiguration } from '../generated/configuration/authenticationConfiguration';
 import { AuthorizerConfiguration } from '../generated/configuration/authorizerConfiguration';
-import { LogoConfiguration } from '../generated/configuration/logoConfiguration';
+import { UIThemePreference } from '../generated/configuration/uiThemePreference';
 import { User } from '../generated/entity/teams/user';
 import { EntityReference } from '../generated/entity/type';
 import {
@@ -31,7 +31,11 @@ export const OM_SESSION_KEY = 'om-session';
 export const useApplicationStore = create<ApplicationStore>()(
   persist(
     (set, get) => ({
-      applicationConfig: {} as LogoConfiguration,
+      applicationConfig: {
+        customTheme: {
+          ...DEFAULT_THEME,
+        },
+      } as UIThemePreference,
       currentUser: undefined,
       newUser: undefined,
       isAuthenticated: Boolean(getOidcToken()),
@@ -44,13 +48,6 @@ export const useApplicationStore = create<ApplicationStore>()(
       selectedPersona: {} as EntityReference,
       oidcIdToken: '',
       refreshTokenKey: '',
-      theme: { ...DEFAULT_THEME },
-      setTheme: (theme: ApplicationStore['theme']) => {
-        set({ theme });
-      },
-      resetTheme: () => {
-        set({ theme: { ...DEFAULT_THEME } });
-      },
       searchCriteria: '',
 
       setHelperFunctionsRef: (helperFunctions: HelperFunctions) => {
@@ -61,7 +58,7 @@ export const useApplicationStore = create<ApplicationStore>()(
         set({ selectedPersona: persona });
       },
 
-      setApplicationConfig: (config: LogoConfiguration) => {
+      setApplicationConfig: (config: UIThemePreference) => {
         set({ applicationConfig: config });
       },
       setCurrentUser: (user) => {

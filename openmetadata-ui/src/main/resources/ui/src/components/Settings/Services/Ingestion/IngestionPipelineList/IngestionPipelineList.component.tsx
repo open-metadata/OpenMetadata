@@ -51,7 +51,7 @@ export const IngestionPipelineList = ({
 }: {
   serviceName: ServiceCategory;
 }) => {
-  const { theme } = useApplicationStore();
+  const { applicationConfig } = useApplicationStore();
   const [pipelines, setPipelines] = useState<Array<IngestionPipeline>>();
   const { isAirflowAvailable, isFetchingStatus } = useAirflowStatus();
 
@@ -111,7 +111,11 @@ export const IngestionPipelineList = ({
         filterDropdown: ColumnFilter,
         filterIcon: (filtered) => (
           <FilterOutlined
-            style={{ color: filtered ? theme.primaryColor : undefined }}
+            style={{
+              color: filtered
+                ? applicationConfig?.customTheme?.primaryColor
+                : undefined,
+            }}
           />
         ),
         filters: map(PipelineType, (value) => ({
