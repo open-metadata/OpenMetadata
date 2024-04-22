@@ -80,6 +80,7 @@ import es.org.elasticsearch.search.aggregations.BucketOrder;
 import es.org.elasticsearch.search.aggregations.bucket.histogram.DateHistogramAggregationBuilder;
 import es.org.elasticsearch.search.aggregations.bucket.histogram.DateHistogramInterval;
 import es.org.elasticsearch.search.aggregations.bucket.terms.IncludeExclude;
+import es.org.elasticsearch.search.aggregations.bucket.terms.Terms;
 import es.org.elasticsearch.search.aggregations.bucket.terms.TermsAggregationBuilder;
 import es.org.elasticsearch.search.aggregations.metrics.MaxAggregationBuilder;
 import es.org.elasticsearch.search.aggregations.metrics.SumAggregationBuilder;
@@ -375,15 +376,36 @@ public class ElasticSearchClient implements SearchClient {
     }
 
     if (request.getIndex().equalsIgnoreCase("glossary_term_search_index")) {
-      searchSourceBuilder.query(
+      QueryBuilder baseQuery =
           QueryBuilders.boolQuery()
-              .must(searchSourceBuilder.query())
-              .must(QueryBuilders.matchQuery("status", "Approved")));
+              .must(searchSourceBuilder.query()) // get user input terms
+              .must(QueryBuilders.matchQuery("status", "Approved"));
+
+      searchSourceBuilder.query(baseQuery);
 
       if (request.getHierarchy()) {
-        searchSourceBuilder.sort(
-            SortBuilders.fieldSort("fullyQualifiedName")
-                .order(SortOrder.ASC)); // to get correct hierarchy of terms
+        SearchResponse searchResponse =
+            client.search(
+                new es.org.elasticsearch.action.search.SearchRequest(request.getIndex())
+                    .source(searchSourceBuilder),
+                RequestOptions.DEFAULT);
+
+        // Build  query to get parent terms for the user input terms , to build correct hierarchy
+        BoolQueryBuilder parentTermQueryBuilder = QueryBuilders.boolQuery();
+        Terms glossaryNameTerms = searchResponse.getAggregations().get("glossary.name.keyword");
+        glossaryNameTerms.getBuckets().stream()
+            .map(Terms.Bucket::getKeyAsString)
+            .forEach(
+                glossaryName ->
+                    parentTermQueryBuilder.should(
+                        QueryBuilders.prefixQuery("fullyQualifiedName", glossaryName)));
+
+        // Combine the base query and parentTermQuery under OR logic
+        BoolQueryBuilder finalQueryBuilder =
+            QueryBuilders.boolQuery().should(baseQuery).should(parentTermQueryBuilder);
+
+        searchSourceBuilder.query(finalQueryBuilder);
+        searchSourceBuilder.sort(SortBuilders.fieldSort("fullyQualifiedName").order(SortOrder.ASC));
       }
     }
 
