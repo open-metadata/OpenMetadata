@@ -79,6 +79,8 @@ def db_service(metadata, localstack_container):
                 awsConfig=AWSCredentials(
                     awsRegion="us-east-1",
                     endPointURL=localstack_container.get_url(),
+                    awsAccessKeyId="does-not-matter",
+                    awsSecretAccessKey="does-not-matter",
                 ),
             ),
         ),
