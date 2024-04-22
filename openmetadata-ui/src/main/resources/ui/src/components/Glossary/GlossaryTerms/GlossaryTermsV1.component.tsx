@@ -166,10 +166,15 @@ const GlossaryTermsV1 = ({
         key: 'overview',
         children: (
           <GlossaryOverviewTab
+            editCustomAttributePermission={
+              !isVersionView &&
+              (permissions.EditAll || permissions.EditCustomFields)
+            }
             isGlossary={false}
             isVersionView={isVersionView}
             permissions={permissions}
             selectedData={glossaryTerm}
+            onExtensionUpdate={onExtensionUpdate}
             onThreadLinkSelect={onThreadLinkSelect}
             onUpdate={onTermUpdate}
           />

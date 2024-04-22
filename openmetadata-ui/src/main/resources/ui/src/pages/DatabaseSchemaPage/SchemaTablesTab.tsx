@@ -13,6 +13,7 @@
 
 import { Col, Row, Switch, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
+import { isEmpty } from 'lodash';
 import { PagingResponse } from 'Models';
 import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -114,6 +115,7 @@ function SchemaTablesTab({
             description={description}
             entityFqn={databaseSchemaDetails.fullyQualifiedName}
             entityType={EntityType.DATABASE_SCHEMA}
+            isDescriptionExpanded={isEmpty(tableData.data)}
             showActions={false}
           />
         ) : (
@@ -123,6 +125,7 @@ function SchemaTablesTab({
             entityName={getEntityName(databaseSchemaDetails)}
             entityType={EntityType.DATABASE_SCHEMA}
             hasEditAccess={editDescriptionPermission}
+            isDescriptionExpanded={isEmpty(tableData.data)}
             isEdit={isEdit}
             showActions={!databaseSchemaDetails.deleted}
             onCancel={onCancel}

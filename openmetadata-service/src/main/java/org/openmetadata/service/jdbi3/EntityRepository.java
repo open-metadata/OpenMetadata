@@ -149,6 +149,7 @@ import org.openmetadata.service.resources.tags.TagLabelUtil;
 import org.openmetadata.service.search.SearchClient;
 import org.openmetadata.service.search.SearchListFilter;
 import org.openmetadata.service.search.SearchRepository;
+import org.openmetadata.service.search.SearchSortFilter;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.FullyQualifiedName;
@@ -324,7 +325,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
    * operations. It is also used during PUT and PATCH operations to set up fields that can be updated.
    */
   protected abstract void clearFields(T entity, Fields fields);
-  ;
 
   /**
    * This method is used for validating an entity to be created during POST, PUT, and PATCH operations and prepare the
@@ -986,8 +986,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
       int offset,
       String q)
       throws IOException {
-    return listFromSearchWithOffset(
-        uriInfo, fields, searchListFilter, limit, offset, null, null, q);
+    return listFromSearchWithOffset(uriInfo, fields, searchListFilter, limit, offset, null, q);
   }
 
   public ResultList<T> listFromSearchWithOffset(
@@ -996,8 +995,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
       SearchListFilter searchListFilter,
       int limit,
       int offset,
-      String sortField,
-      String sortType,
+      SearchSortFilter searchSortFilter,
       String q)
       throws IOException {
     List<T> entityList = new ArrayList<>();
@@ -1006,7 +1004,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     if (limit > 0) {
       SearchClient.SearchResultListMapper results =
           searchRepository.listWithOffset(
-              searchListFilter, limit, offset, entityType, sortField, sortType, q);
+              searchListFilter, limit, offset, entityType, searchSortFilter, q);
       total = results.getTotal();
       for (Map<String, Object> json : results.getResults()) {
         T entity = setFieldsInternal(JsonUtils.readOrConvertValue(json, entityClass), fields);
@@ -2947,6 +2945,15 @@ public abstract class EntityRepository<T extends EntityInterface> {
       EntityInterface aboutEntity = threadContext.getAboutEntity();
       aboutEntity.setTags(tags);
       return aboutEntity;
+    }
+  }
+
+  // Validate if a given column exists in the table
+  public static void validateColumn(Table table, String columnName) {
+    boolean validColumn =
+        table.getColumns().stream().anyMatch(col -> col.getName().equals(columnName));
+    if (!validColumn) {
+      throw new IllegalArgumentException("Invalid column name " + columnName);
     }
   }
 }

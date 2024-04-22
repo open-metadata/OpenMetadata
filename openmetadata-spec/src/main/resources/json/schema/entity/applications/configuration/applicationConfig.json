@@ -8,10 +8,10 @@
     "appConfig": {
       "oneOf": [
         {
-          "$ref": "./external/autoTaggerAppConfig.json"
+          "$ref": "external/metaPilotAppConfig.json"
         },
         {
-          "$ref": "./external/metaPilotAppConfig.json"
+          "$ref": "external/automatorAppConfig.json"
         },
         {
           "$ref": "internal/dataInsightsReportAppConfig.json"

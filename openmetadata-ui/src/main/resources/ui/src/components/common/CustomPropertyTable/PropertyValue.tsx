@@ -65,6 +65,7 @@ export const PropertyValue: FC<PropertyValueProps> = ({
   onExtensionUpdate,
   hasEditPermissions,
   property,
+  isRenderedInRightPanel = false,
 }) => {
   const propertyName = property.name;
   const propertyType = property.propertyType;
@@ -825,7 +826,9 @@ export const PropertyValue: FC<PropertyValueProps> = ({
                 title={t('label.edit-entity', { entity: propertyName })}>
                 <Icon
                   component={EditIconComponent}
-                  data-testid="edit-icon"
+                  data-testid={`edit-icon${
+                    isRenderedInRightPanel ? '-right-panel' : ''
+                  }`}
                   style={{ color: DE_ACTIVE_COLOR, ...ICON_DIMENSION }}
                   onClick={onShowInput}
                 />

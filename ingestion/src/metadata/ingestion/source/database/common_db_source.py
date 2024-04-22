@@ -14,7 +14,7 @@ Generic source to build SQL connectors.
 import traceback
 from abc import ABC
 from copy import deepcopy
-from typing import Any, Iterable, List, Optional, Tuple, Union
+from typing import Any, Iterable, List, Optional, Tuple, Union, cast
 
 from pydantic import BaseModel
 from sqlalchemy.engine import Connection
@@ -69,6 +69,7 @@ from metadata.utils.execution_time_tracker import (
 )
 from metadata.utils.filters import filter_by_table
 from metadata.utils.logger import ingestion_logger
+from metadata.utils.ssl_manager import SSLManager, check_ssl_and_init
 
 logger = ingestion_logger()
 
@@ -105,6 +106,13 @@ class CommonDbSourceService(
 
         # It will be one of the Unions. We don't know the specific type here.
         self.service_connection = self.config.serviceConnection.__root__.config
+
+        self.ssl_manager = None
+        self.ssl_manager: SSLManager = check_ssl_and_init(self.service_connection)
+        if self.ssl_manager:
+            self.service_connection = self.ssl_manager.setup_ssl(
+                self.service_connection
+            )
 
         self.engine: Engine = get_connection(self.service_connection)
         self.session = create_and_bind_thread_safe_session(self.engine)
@@ -304,9 +312,11 @@ class CommonDbSourceService(
                     )
                     if filter_by_table(
                         self.source_config.tableFilterPattern,
-                        table_fqn
-                        if self.source_config.useFqnForFiltering
-                        else table_name,
+                        (
+                            table_fqn
+                            if self.source_config.useFqnForFiltering
+                            else table_name
+                        ),
                     ):
                         self.status.filter(
                             table_fqn,
@@ -331,9 +341,11 @@ class CommonDbSourceService(
 
                     if filter_by_table(
                         self.source_config.tableFilterPattern,
-                        view_fqn
-                        if self.source_config.useFqnForFiltering
-                        else view_name,
+                        (
+                            view_fqn
+                            if self.source_config.useFqnForFiltering
+                            else view_name
+                        ),
                     ):
                         self.status.filter(
                             view_fqn,
@@ -601,6 +613,9 @@ class CommonDbSourceService(
             self.connection.close()
         for connection in self._connection_map.values():
             connection.close()
+        if hasattr(self, "ssl_manager") and self.ssl_manager:
+            self.ssl_manager = cast(SSLManager, self.ssl_manager)
+            self.ssl_manager.cleanup_temp_files()
         self.engine.dispose()
 
     def fetch_table_tags(

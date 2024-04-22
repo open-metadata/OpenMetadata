@@ -44,6 +44,24 @@
       ]
     },
     {
+      "name": "glossaryTerms",
+      "required": false,
+      "description": "Fully qualified glossary term names associated with the database schema separated by ';'. Tags derived from the glossary term are automatically applied to the database schema.",
+      "examples": [
+        "`Glossary.GlossaryTerm1`",
+        "`Glossary.GlossaryTerm1.GlossaryTerm2`"
+      ]
+    },
+    {
+      "name": "tiers",
+      "required": false,
+      "description": "Fully qualified tier tags names associated with the table separated by ';'.",
+      "examples": [
+        "`Tier.Tier1`",
+        "`Tier.Tier2`"
+      ]
+    },
+    {
       "name": "retentionPeriod",
       "required": false,
       "description": "Retention period of the data in the database schema. Period is expressed as duration in ISO 8601 format in UTC. Example - `P23DT23H`. When not set, the retention period is inherited from the parent database, if it exists.",

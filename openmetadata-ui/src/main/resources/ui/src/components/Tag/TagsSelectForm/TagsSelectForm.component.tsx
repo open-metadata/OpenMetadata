@@ -71,10 +71,10 @@ const TagSelectForm = ({
         <Col className="gutter-row" span={24}>
           <Form.Item noStyle name="tags">
             <AsyncSelectList
-              className="tag-select-box"
               fetchOptions={fetchApi}
               initialOptions={tagData}
               mode="multiple"
+              optionClassName="tag-select-box"
               placeholder={placeholder}
               tagType={tagType}
             />

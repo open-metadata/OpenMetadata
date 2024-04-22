@@ -21,6 +21,7 @@ interface BrandImageProps {
   width: number | string;
   height: number | string;
   isMonoGram?: boolean;
+  src?: string;
 }
 
 const BrandImage: FC<BrandImageProps> = ({
@@ -29,6 +30,7 @@ const BrandImage: FC<BrandImageProps> = ({
   width,
   height,
   className,
+  src,
   isMonoGram = false,
 }) => {
   const { MonoGram, Logo } = useMemo(
@@ -54,8 +56,11 @@ const BrandImage: FC<BrandImageProps> = ({
       data-testid={dataTestId ?? 'brand-logo-image'}
       height={height}
       id="brand-image"
-      src={logoSource}
+      src={src ?? logoSource}
       width={width}
+      onError={(e) => {
+        e.currentTarget.src = logoSource;
+      }}
     />
   );
 };

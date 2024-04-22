@@ -11,14 +11,17 @@ import java.io.IOException;
 import java.util.List;
 import java.util.Map;
 import org.apache.http.client.HttpResponseException;
+import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
 import org.openmetadata.schema.api.tests.CreateTestDefinition;
+import org.openmetadata.schema.tests.TestCaseParameter;
 import org.openmetadata.schema.tests.TestDefinition;
 import org.openmetadata.schema.tests.TestPlatform;
 import org.openmetadata.schema.type.TestDefinitionEntityType;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.EntityResourceTest;
+import org.openmetadata.service.util.ResultList;
 
 public class TestDefinitionResourceTest
     extends EntityResourceTest<TestDefinition, CreateTestDefinition> {
@@ -57,6 +60,33 @@ public class TestDefinitionResourceTest
         () -> createEntity(createRequest(test).withName(null), ADMIN_AUTH_HEADERS),
         BAD_REQUEST,
         "[name must not be null]");
+  }
+
+  @Test
+  void checkValidationParamIsSet(TestInfo test) throws HttpResponseException {
+    ResultList<TestDefinition> testDefinitions = listEntities(null, ADMIN_AUTH_HEADERS);
+    // Get all test definitions that have min or max as parameter (infer from `between`)
+    List<TestDefinition> testDefinitionsWithMinMax =
+        testDefinitions.getData().stream()
+            .filter(t -> t.getName().toLowerCase().contains("between"))
+            .toList();
+    for (TestDefinition testDefinition : testDefinitionsWithMinMax) {
+      List<TestCaseParameter> parameters = testDefinition.getParameterDefinition();
+      for (TestCaseParameter parameter : parameters) {
+        // If a test definition has a parameter with min or max in the name we'll test:
+        // 1. That the validation rule is set
+        // 2. That the validation rule is set to compare with the max field
+        if ((parameter.getName().toLowerCase().contains("min")
+            || parameter.getName().toLowerCase().contains("max"))) {
+          Assertions.assertNotNull(parameter.getValidationRule());
+          Assertions.assertNotNull(
+              parameters.stream()
+                  .filter(
+                      p -> p.getName().equals(parameter.getValidationRule().getParameterField()))
+                  .findFirst());
+        }
+      }
+    }
   }
 
   @Override

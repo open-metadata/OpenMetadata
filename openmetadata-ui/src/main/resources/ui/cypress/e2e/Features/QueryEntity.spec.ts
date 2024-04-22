@@ -23,6 +23,7 @@ import {
 } from '../../common/EntityUtils';
 import { visitEntityDetailsPage } from '../../common/Utils/Entity';
 import { getToken } from '../../common/Utils/LocalStorage';
+import { generateRandomUser } from '../../common/Utils/Owner';
 import { EntityType } from '../../constants/Entity.interface';
 import {
   DATABASE_SERVICE,
@@ -39,6 +40,8 @@ const queryTable = {
 };
 const table1 = generateRandomTable();
 const table2 = generateRandomTable();
+const user = generateRandomUser();
+let userId = '';
 
 const DATA = {
   ...queryTable,
@@ -64,6 +67,7 @@ const queryFilters = ({
   cy.get(`[data-testid="search-dropdown-${key}"]`).click();
   cy.get('[data-testid="search-input"]').type(filter);
   verifyResponseStatusCode(apiKey, 200);
+  cy.get(`[data-testid="search-dropdown-${key}"]`).trigger('mouseout');
   cy.get(`[data-testid="drop-down-menu"] [title="${filter}"]`).click();
   cy.get('[data-testid="update-btn"]').click();
   verifyResponseStatusCode('@fetchQuery', 200);
@@ -82,6 +86,16 @@ describe('Query Entity', { tags: 'DataAssets' }, () => {
       });
       // get Table by name and create query in the table
       createQueryByTableName(token, table1);
+
+      // Create a new user
+      cy.request({
+        method: 'POST',
+        url: `/api/v1/users/signup`,
+        headers: { Authorization: `Bearer ${token}` },
+        body: user,
+      }).then((response) => {
+        userId = response.body.id;
+      });
     });
   });
 
@@ -94,6 +108,13 @@ describe('Query Entity', { tags: 'DataAssets' }, () => {
         token,
         serviceFqn: DATABASE_SERVICE.service.name,
         serviceType: SERVICE_CATEGORIES.DATABASE_SERVICES,
+      });
+
+      // Delete created user
+      cy.request({
+        method: 'DELETE',
+        url: `/api/v1/users/${userId}?hardDelete=true&recursive=false`,
+        headers: { Authorization: `Bearer ${token}` },
       });
     });
   });
@@ -207,7 +228,7 @@ describe('Query Entity', { tags: 'DataAssets' }, () => {
     cy.get('[data-testid="table_queries"]').click();
     verifyResponseStatusCode('@fetchQuery', 200);
     queryFilters({
-      filter: 'Aaron Singh',
+      filter: `${user.firstName}${user.lastName}`,
       apiKey: '@searchOwner',
       key: 'Owner',
     });

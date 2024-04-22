@@ -56,6 +56,7 @@ import org.openmetadata.schema.TokenInterface;
 import org.openmetadata.schema.analytics.ReportData;
 import org.openmetadata.schema.analytics.WebAnalyticEvent;
 import org.openmetadata.schema.api.configuration.LoginConfiguration;
+import org.openmetadata.schema.api.configuration.profiler.ProfilerConfiguration;
 import org.openmetadata.schema.auth.EmailVerificationToken;
 import org.openmetadata.schema.auth.PasswordResetToken;
 import org.openmetadata.schema.auth.PersonalAccessToken;
@@ -1784,6 +1785,12 @@ public interface CollectionDAO {
         condition += pipelineTypeCondition;
       }
 
+      if (filter.getQueryParam("applicationType") != null) {
+        String applicationTypeCondition =
+            String.format(" and %s", filter.getApplicationTypeCondition());
+        condition += applicationTypeCondition;
+      }
+
       if (filter.getQueryParam("service") != null) {
         String serviceCondition = String.format(" and %s", filter.getServiceCondition(null));
         condition += serviceCondition;
@@ -1813,6 +1820,12 @@ public interface CollectionDAO {
         String pipelineTypeCondition =
             String.format(" and %s", filter.getPipelineTypeCondition(null));
         condition += pipelineTypeCondition;
+      }
+
+      if (filter.getQueryParam("applicationType") != null) {
+        String applicationTypeCondition =
+            String.format(" and %s", filter.getApplicationTypeCondition());
+        condition += applicationTypeCondition;
       }
 
       if (filter.getQueryParam("service") != null) {
@@ -1847,6 +1860,12 @@ public interface CollectionDAO {
         String pipelineTypeCondition =
             String.format(" and %s", filter.getPipelineTypeCondition(null));
         condition += pipelineTypeCondition;
+      }
+
+      if (filter.getQueryParam("applicationType") != null) {
+        String applicationTypeCondition =
+            String.format(" and %s", filter.getApplicationTypeCondition());
+        condition += applicationTypeCondition;
       }
 
       if (filter.getQueryParam("service") != null) {
@@ -3560,14 +3579,6 @@ public interface CollectionDAO {
       return "fqnHash";
     }
 
-    default List<TestCaseRecord> listBeforeTsOrder(ListFilter filter, int limit, Integer before) {
-      return listBeforeTsOrdered(getTableName(), filter.getCondition(), limit, before);
-    }
-
-    default List<TestCaseRecord> listAfterTsOrder(ListFilter filter, int limit, Integer after) {
-      return listAfterTsOrdered(getTableName(), filter.getCondition(), limit, after);
-    }
-
     default int countOfTestCases(List<UUID> testCaseIds) {
       return countOfTestCases(getTableName(), testCaseIds.stream().map(Object::toString).toList());
     }
@@ -3575,52 +3586,6 @@ public interface CollectionDAO {
     @SqlQuery("SELECT count(*) FROM <table> WHERE id IN (<testCaseIds>)")
     int countOfTestCases(
         @Define("table") String table, @BindList("testCaseIds") List<String> testCaseIds);
-
-    @ConnectionAwareSqlQuery(
-        value =
-            "SELECT * FROM (SELECT json, ranked FROM "
-                + "(SELECT id, json, deleted, ROW_NUMBER() OVER(ORDER BY (json ->> '$.testCaseResult.timestamp') DESC) AS ranked FROM <table> <cond>) executionTimeSorted "
-                + "WHERE ranked < :before "
-                + "ORDER BY ranked DESC "
-                + "LIMIT :limit) rankedBefore ORDER BY ranked",
-        connectionType = MYSQL)
-    @ConnectionAwareSqlQuery(
-        value =
-            "SELECT * FROM (SELECT json, ranked FROM "
-                + "(SELECT id, json, deleted, ROW_NUMBER() OVER(ORDER BY (json -> 'testCaseResult'->>'timestamp') DESC NULLS LAST) AS ranked FROM <table> <cond>) executionTimeSorted "
-                + "WHERE ranked < :before "
-                + "ORDER BY ranked DESC "
-                + "LIMIT :limit) rankedBefore ORDER BY ranked",
-        connectionType = POSTGRES)
-    @RegisterRowMapper(TestCaseRecordMapper.class)
-    List<TestCaseRecord> listBeforeTsOrdered(
-        @Define("table") String table,
-        @Define("cond") String cond,
-        @Bind("limit") int limit,
-        @Bind("before") int before);
-
-    @ConnectionAwareSqlQuery(
-        value =
-            "SELECT json, ranked FROM "
-                + "(SELECT id, json, deleted, ROW_NUMBER() OVER(ORDER BY (json ->> '$.testCaseResult.timestamp') DESC ) AS ranked FROM <table> "
-                + "<cond>) executionTimeSorted "
-                + "WHERE ranked > :after "
-                + "LIMIT :limit",
-        connectionType = MYSQL)
-    @ConnectionAwareSqlQuery(
-        value =
-            "SELECT json, ranked FROM "
-                + "(SELECT id, json, deleted, ROW_NUMBER() OVER(ORDER BY (json->'testCaseResult'->>'timestamp') DESC NULLS LAST) AS ranked FROM <table> "
-                + "<cond>) executionTimeSorted "
-                + "WHERE ranked > :after "
-                + "LIMIT :limit",
-        connectionType = POSTGRES)
-    @RegisterRowMapper(TestCaseRecordMapper.class)
-    List<TestCaseRecord> listAfterTsOrdered(
-        @Define("table") String table,
-        @Define("cond") String cond,
-        @Bind("limit") int limit,
-        @Bind("after") int after);
 
     class TestCaseRecord {
       @Getter String json;
@@ -3993,6 +3958,7 @@ public interface CollectionDAO {
             case SLACK_APP_CONFIGURATION -> JsonUtils.readValue(json, String.class);
             case SLACK_BOT, SLACK_INSTALLER -> JsonUtils.readValue(
                 json, new TypeReference<HashMap<String, Object>>() {});
+            case PROFILER_CONFIGURATION -> JsonUtils.readValue(json, ProfilerConfiguration.class);
             default -> throw new IllegalArgumentException("Invalid Settings Type " + configType);
           };
       settings.setConfigValue(value);

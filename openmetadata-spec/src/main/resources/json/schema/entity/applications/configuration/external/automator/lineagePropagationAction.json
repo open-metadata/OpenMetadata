@@ -1,0 +1,37 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/applications/configuration/external/automator/lineagePropagationAction.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "LineagePropagationAction",
+  "description": "Propagate description and tags via lineage",
+  "type": "object",
+  "definitions": {
+    "lineagePropagationActionType": {
+      "description": "Lineage propagation action type.",
+      "type": "string",
+      "enum": ["LineagePropagationAction"],
+      "default": "LineagePropagationAction"
+    }
+  },
+  "properties": {
+    "type": {
+      "title": "Application Type",
+      "description": "Application Type",
+      "$ref": "#/definitions/lineagePropagationActionType",
+      "default": "LineagePropagationAction"
+    },
+    "overwriteDescriptions": {
+      "title": "Overwrite Descriptions",
+      "description": "Update descriptions via lineage even if they are already defined in the asset. By default, descriptions are only updated if they are not already defined in the asset.",
+      "type": "boolean",
+      "default": false
+    },
+    "overwriteTags": {
+      "title": "Overwrite Tags",
+      "description": "Update tags via lineage disregarding the existing tags in the asset. By default, we merge the existing tags with the ones coming from the lineage.",
+      "type": "boolean",
+      "default": false
+    }
+  },
+  "required": ["type"],
+  "additionalProperties": false
+}

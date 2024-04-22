@@ -13,7 +13,7 @@
 
 import { Card, Col, Row, Tabs } from 'antd';
 import { AxiosError } from 'axios';
-import { isUndefined, toString } from 'lodash';
+import { isEmpty, isUndefined, toString } from 'lodash';
 import { EntityTags } from 'Models';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -220,6 +220,7 @@ const DataModelDetails = ({
               entityName={entityName}
               entityType={EntityType.DASHBOARD_DATA_MODEL}
               hasEditAccess={editDescriptionPermission}
+              isDescriptionExpanded={isEmpty(dataModelData.columns)}
               isEdit={isEditDescription}
               owner={owner}
               showActions={!deleted}

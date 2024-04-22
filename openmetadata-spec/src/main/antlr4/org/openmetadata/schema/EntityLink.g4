@@ -78,6 +78,7 @@ ENTITY_TYPE
     | 'all'
     | 'customMetric'
     | 'eventsubscription'
+    | 'ingestionPipeline'
     ;
 
 ENTITY_FIELD

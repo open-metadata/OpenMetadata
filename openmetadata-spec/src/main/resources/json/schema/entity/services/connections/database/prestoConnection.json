@@ -9,13 +9,17 @@
     "prestoType": {
       "description": "Service type.",
       "type": "string",
-      "enum": ["Presto"],
+      "enum": [
+        "Presto"
+      ],
       "default": "Presto"
     },
     "prestoScheme": {
       "description": "SQLAlchemy driver scheme options.",
       "type": "string",
-      "enum": ["presto"],
+      "enum": [
+        "presto"
+      ],
       "default": "presto"
     }
   },
@@ -58,6 +62,16 @@
       "description": "Presto catalog",
       "type": "string"
     },
+    "protocol": {
+      "title": "Protocol",
+      "description": "Protocol ( Connection Argument ) to connect to Presto.",
+      "type": "string"
+    },
+    "verify": {
+      "title": "Verify",
+      "description": "Verify ( Connection Argument for SSL ) to connect to Presto.",
+      "type": "string"
+    },
     "connectionOptions": {
       "title": "Connection Options",
       "$ref": "../connectionBasicType.json#/definitions/connectionOptions"
@@ -91,5 +105,8 @@
     }
   },
   "additionalProperties": false,
-  "required": ["hostPort", "username"]
+  "required": [
+    "hostPort",
+    "username"
+  ]
 }

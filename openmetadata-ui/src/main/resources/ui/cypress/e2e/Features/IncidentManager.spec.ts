@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { interceptURL, verifyResponseStatusCode } from '../../common/common';
+import { triggerTestCasePipeline } from '../../common/Utils/DataQuality';
 import {
   createEntityTableViaREST,
   deleteEntityViaREST,
@@ -49,29 +50,6 @@ const goToProfilerTab = () => {
   cy.get('[data-testid="profiler"]').should('be.visible').click();
 };
 
-const verifySuccessStatus = (time = 20000) => {
-  const newTime = time / 2;
-  interceptURL('GET', '/api/v1/tables/name/*?fields=testSuite*', 'testSuite');
-  interceptURL(
-    'GET',
-    '/api/v1/services/ingestionPipelines/*/pipelineStatus?startTs=*&endTs=*',
-    'pipelineStatus'
-  );
-  cy.wait(time);
-  cy.reload();
-  verifyResponseStatusCode('@testSuite', 200);
-  cy.get('[id*="tab-pipeline"]').click();
-  verifyResponseStatusCode('@pipelineStatus', 200);
-  cy.get('[data-testid="pipeline-status"]').then(($el) => {
-    const text = $el.text();
-    if (text !== 'Success' && text !== 'Failed' && newTime > 0) {
-      verifySuccessStatus(newTime);
-    } else {
-      cy.get('[data-testid="pipeline-status"]').should('contain', 'Success');
-    }
-  });
-};
-
 const acknowledgeTask = (testCase: string) => {
   goToProfilerTab();
 
@@ -95,40 +73,6 @@ const acknowledgeTask = (testCase: string) => {
   cy.get('#update-status-button').click();
   verifyResponseStatusCode('@updateTestCaseIncidentStatus', 200);
   cy.get(`[data-testid="${testCase}-status"]`).should('contain', 'Ack');
-};
-
-const triggerTestCasePipeline = () => {
-  interceptURL('GET', `/api/v1/tables/*/systemProfile?*`, 'systemProfile');
-  interceptURL('GET', `/api/v1/tables/*/tableProfile?*`, 'tableProfile');
-  goToProfilerTab();
-  interceptURL(
-    'GET',
-    `api/v1/tables/name/${DATABASE_SERVICE.service.name}.*.${TABLE_NAME}?include=all`,
-    'addTableTestPage'
-  );
-  verifyResponseStatusCode('@systemProfile', 200);
-  verifyResponseStatusCode('@tableProfile', 200);
-  interceptURL('GET', '/api/v1/dataQuality/testCases?fields=*', 'testCase');
-  cy.get('[data-testid="profiler-tab-left-panel"]')
-    .contains('Data Quality')
-    .click();
-  verifyResponseStatusCode('@testCase', 200);
-
-  interceptURL(
-    'GET',
-    '/api/v1/services/ingestionPipelines/*/pipelineStatus?startTs=*&endTs=*',
-    'getPipelineStatus'
-  );
-  interceptURL(
-    'POST',
-    '/api/v1/services/ingestionPipelines/trigger/*',
-    'triggerPipeline'
-  );
-  cy.get('[id*="tab-pipeline"]').click();
-  verifyResponseStatusCode('@getPipelineStatus', 200);
-  cy.get('[data-testid="run"]').click();
-  cy.wait('@triggerPipeline');
-  verifySuccessStatus();
 };
 
 const assignIncident = (testCaseName: string) => {
@@ -227,7 +171,10 @@ describe('Incident Manager', { tags: 'Observability' }, () => {
       });
     });
 
-    triggerTestCasePipeline();
+    triggerTestCasePipeline({
+      serviceName: DATABASE_SERVICE.service.name,
+      tableName: TABLE_NAME,
+    });
   });
 
   after(() => {
@@ -421,7 +368,10 @@ describe('Incident Manager', { tags: 'Observability' }, () => {
     });
 
     it('Re-run pipeline', () => {
-      triggerTestCasePipeline();
+      triggerTestCasePipeline({
+        serviceName: DATABASE_SERVICE.service.name,
+        tableName: TABLE_NAME,
+      });
     });
 
     it('Verify open and closed task', () => {
@@ -480,7 +430,10 @@ describe('Incident Manager', { tags: 'Observability' }, () => {
     });
 
     it('Re-run pipeline', () => {
-      triggerTestCasePipeline();
+      triggerTestCasePipeline({
+        serviceName: DATABASE_SERVICE.service.name,
+        tableName: TABLE_NAME,
+      });
     });
 
     it("Verify incident's status on DQ page", () => {

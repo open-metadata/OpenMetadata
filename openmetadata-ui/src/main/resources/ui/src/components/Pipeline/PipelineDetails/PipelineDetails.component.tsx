@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { FilterOutlined } from '@ant-design/icons';
 import Icon from '@ant-design/icons/lib/components/Icon';
 import { Card, Col, Radio, Row, Tabs, Typography } from 'antd';
 import Table, { ColumnsType } from 'antd/lib/table';
@@ -54,11 +55,7 @@ import {
   getAllTags,
   searchTagInData,
 } from '../../../utils/TableTags/TableTags.utils';
-import {
-  getFilterIcon,
-  getTagsWithoutTier,
-  getTierTags,
-} from '../../../utils/TableUtils';
+import { getTagsWithoutTier, getTierTags } from '../../../utils/TableUtils';
 import { createTagObject, updateTierTag } from '../../../utils/TagsUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import { useActivityFeedProvider } from '../../ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
@@ -102,7 +99,7 @@ const PipelineDetails = ({
   const history = useHistory();
   const { tab } = useParams<{ tab: EntityTabs }>();
   const { t } = useTranslation();
-  const { currentUser } = useApplicationStore();
+  const { currentUser, theme } = useApplicationStore();
   const { postFeed, deleteFeed, updateFeed } = useActivityFeedProvider();
   const userID = currentUser?.id ?? '';
   const {
@@ -439,7 +436,12 @@ const PipelineDetails = ({
         key: 'owner',
         width: 120,
         accessor: 'owner',
-        filterIcon: getFilterIcon('tag-filter'),
+        filterIcon: (filtered) => (
+          <FilterOutlined
+            data-testid="tag-filter"
+            style={{ color: filtered ? theme.primaryColor : undefined }}
+          />
+        ),
         render: (owner) => <OwnerLabel hasPermission={false} owner={owner} />,
       },
       {
@@ -448,7 +450,12 @@ const PipelineDetails = ({
         key: 'tags',
         accessor: 'tags',
         width: 300,
-        filterIcon: getFilterIcon('tag-filter'),
+        filterIcon: (filtered) => (
+          <FilterOutlined
+            data-testid="tag-filter"
+            style={{ color: filtered ? theme.primaryColor : undefined }}
+          />
+        ),
         render: (tags, record, index) => (
           <TableTags<Task>
             entityFqn={pipelineFQN}
@@ -473,7 +480,12 @@ const PipelineDetails = ({
         key: 'glossary',
         accessor: 'tags',
         width: 300,
-        filterIcon: getFilterIcon('glossary-filter'),
+        filterIcon: (filtered) => (
+          <FilterOutlined
+            data-testid="glossary-filter"
+            style={{ color: filtered ? theme.primaryColor : undefined }}
+          />
+        ),
         filters: tagFilter.Glossary,
         filterDropdown: ColumnFilter,
         onFilter: searchTagInData,
@@ -582,6 +594,7 @@ const PipelineDetails = ({
                     entityName={entityName}
                     entityType={EntityType.PIPELINE}
                     hasEditAccess={editDescriptionPermission}
+                    isDescriptionExpanded={isEmpty(tasksInternal)}
                     isEdit={isEdit}
                     owner={owner}
                     showActions={!deleted}
@@ -624,16 +637,18 @@ const PipelineDetails = ({
               className="entity-tag-right-panel-container"
               data-testid="entity-right-panel"
               flex="320px">
-              <EntityRightPanel
+              <EntityRightPanel<EntityType.PIPELINE>
                 customProperties={pipelineDetails}
                 dataProducts={pipelineDetails?.dataProducts ?? []}
                 domain={pipelineDetails?.domain}
+                editCustomAttributePermission={editCustomAttributePermission}
                 editTagPermission={editTagsPermission}
                 entityFQN={pipelineFQN}
                 entityId={pipelineDetails.id}
                 entityType={EntityType.PIPELINE}
                 selectedTags={tags}
                 viewAllPermission={viewAllPermission}
+                onExtensionUpdate={onExtensionUpdate}
                 onTagSelectionChange={handleTagSelection}
                 onThreadLinkSelect={onThreadLinkSelect}
               />

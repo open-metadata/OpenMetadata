@@ -39,12 +39,10 @@ public class PIIMasker {
     /* Private constructor for Utility class */
   }
 
-  public static Table getSampleData(Table table) {
-    TableData sampleData = table.getSampleData();
-
+  public static TableData maskSampleData(TableData sampleData, Table table, List<Column> columns) {
     // If we don't have sample data, there's nothing to do
     if (sampleData == null) {
-      return table;
+      return null;
     }
 
     List<Integer> columnsPositionToBeMasked;
@@ -52,11 +50,11 @@ public class PIIMasker {
     // If the table itself is marked as PII, mask all the sample data
     if (hasPiiSensitiveTag(table)) {
       columnsPositionToBeMasked =
-          IntStream.range(0, table.getColumns().size()).boxed().collect(Collectors.toList());
+          IntStream.range(0, columns.size()).boxed().collect(Collectors.toList());
     } else {
       // Otherwise, mask only the PII columns
       columnsPositionToBeMasked =
-          table.getColumns().stream()
+          columns.stream()
               .collect(
                   Collectors.toMap(
                       Function.identity(), c -> sampleData.getColumns().indexOf(c.getName())))
@@ -80,6 +78,11 @@ public class PIIMasker {
         position ->
             sampleDataColumns.set(position, flagMaskedName(sampleDataColumns.get(position))));
 
+    return sampleData;
+  }
+
+  public static Table getSampleData(Table table) {
+    TableData sampleData = maskSampleData(table.getSampleData(), table, table.getColumns());
     table.setSampleData(sampleData);
     return table;
   }

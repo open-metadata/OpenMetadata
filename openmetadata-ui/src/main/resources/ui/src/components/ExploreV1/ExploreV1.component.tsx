@@ -40,12 +40,12 @@ import AppliedFilterText from '../../components/Explore/AppliedFilterText/Applie
 import EntitySummaryPanel from '../../components/Explore/EntitySummaryPanel/EntitySummaryPanel.component';
 import ExploreQuickFilters from '../../components/Explore/ExploreQuickFilters';
 import SortingDropDown from '../../components/Explore/SortingDropDown';
-import { ERROR_COLOR } from '../../constants/constants';
 import {
   SEARCH_INDEXING_APPLICATION,
   TAG_FQN_KEY,
 } from '../../constants/explore.constants';
 import { ERROR_PLACEHOLDER_TYPE, SORT_ORDER } from '../../enums/common.enum';
+import { useApplicationStore } from '../../hooks/useApplicationStore';
 import {
   QueryFieldInterface,
   QueryFieldValueInterface,
@@ -68,6 +68,7 @@ import { SearchedDataProps } from '../SearchedData/SearchedData.interface';
 import './exploreV1.less';
 
 const IndexNotFoundBanner = () => {
+  const { theme } = useApplicationStore();
   const { t } = useTranslation();
 
   return (
@@ -77,7 +78,7 @@ const IndexNotFoundBanner = () => {
         <div className="d-flex items-start gap-3">
           <ExclamationCircleOutlined
             style={{
-              color: ERROR_COLOR,
+              color: theme.errorColor,
               fontSize: '16px',
             }}
           />
@@ -245,7 +246,10 @@ const ExploreV1: React.FC<ExploreProps> = ({
   }, []);
 
   useEffect(() => {
-    const dropdownItems = getDropDownItems(activeTabKey);
+    const dropdownItems: Array<{
+      label: string;
+      key: string;
+    }> = getDropDownItems(activeTabKey);
 
     setSelectedQuickFilters(
       dropdownItems.map((item) => ({

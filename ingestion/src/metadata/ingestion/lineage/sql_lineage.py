@@ -27,7 +27,11 @@ from metadata.generated.schema.type.entityLineage import (
 from metadata.generated.schema.type.entityLineage import Source as LineageSource
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.models import Either
-from metadata.ingestion.lineage.models import Dialect
+from metadata.ingestion.lineage.models import (
+    Dialect,
+    QueryParsingError,
+    QueryParsingFailures,
+)
 from metadata.ingestion.lineage.parser import LINEAGE_PARSING_TIMEOUT, LineageParser
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.utils import fqn
@@ -365,6 +369,7 @@ def populate_column_lineage_map(raw_column_lineage):
     return lineage_map
 
 
+# pylint: disable=too-many-locals
 def get_lineage_by_query(
     metadata: OpenMetadata,
     service_name: str,
@@ -380,6 +385,7 @@ def get_lineage_by_query(
     and returns True if target table is found to create lineage otherwise returns False.
     """
     column_lineage = {}
+    query_parsing_failures = QueryParsingFailures()
 
     try:
         logger.debug(f"Running lineage with query: {query}")
@@ -427,6 +433,12 @@ def get_lineage_by_query(
                         column_lineage_map=column_lineage,
                         lineage_source=lineage_source,
                     )
+        if not lineage_parser.query_parsing_success:
+            query_parsing_failures.add(
+                QueryParsingError(
+                    query=query, error=lineage_parser.query_parsing_failure_reason
+                )
+            )
     except Exception as exc:
         yield Either(
             left=StackTraceError(
@@ -450,6 +462,7 @@ def get_lineage_via_table_entity(
 ) -> Iterable[Either[AddLineageRequest]]:
     """Get lineage from table entity"""
     column_lineage = {}
+    query_parsing_failures = QueryParsingFailures()
 
     try:
         logger.debug(f"Getting lineage via table entity using query: {query}")
@@ -468,6 +481,12 @@ def get_lineage_via_table_entity(
                 column_lineage_map=column_lineage,
                 lineage_source=lineage_source,
             ) or []
+        if not lineage_parser.query_parsing_success:
+            query_parsing_failures.add(
+                QueryParsingError(
+                    query=query, error=lineage_parser.query_parsing_failure_reason
+                )
+            )
     except Exception as exc:  # pylint: disable=broad-except
         Either(
             left=StackTraceError(
