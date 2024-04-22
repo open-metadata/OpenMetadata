@@ -101,13 +101,13 @@ function FollowingWidget({
               <Typography.Paragraph>
                 {t('message.not-followed-anything')}
               </Typography.Paragraph>
-              <Link
+              <a
                 className="link-title"
+                href={FOLLOW_DATA_ASSET}
                 rel="noreferrer"
-                target="_blank"
-                to={{ pathname: FOLLOW_DATA_ASSET }}>
+                target="_blank">
                 {t('label.learn-more')}
-              </Link>
+              </a>
             </ErrorPlaceHolder>
           </div>
         }
