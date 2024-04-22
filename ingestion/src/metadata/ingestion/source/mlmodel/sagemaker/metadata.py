@@ -151,6 +151,22 @@ class SagemakerSource(MlModelServiceSource):
                 )
             )
 
+    def _get_image_repository(self, model_name: str, model_info: dict) -> Optional[str]:
+        try:
+            return model_info["PrimaryContainer"]["Image"]
+        except Exception:
+            logger.debug(traceback.format_exc())
+            logger.warning(f"Model {model_name} has no 'imageRepository' info.")
+        return None
+
+    def _get_storage(self, model_name: str, model_info: dict) -> Optional[str]:
+        try:
+            return model_info["PrimaryContainer"]["ModelDataUrl"]
+        except Exception:
+            logger.debug(traceback.format_exc())
+            logger.warning(f"Model {model_name} has no 'storage' info.")
+        return None
+
     def _get_ml_store(  # pylint: disable=arguments-differ
         self,
         model_name: str,
@@ -160,7 +176,13 @@ class SagemakerSource(MlModelServiceSource):
         """
         try:
             model_info = self.sagemaker.describe_model(ModelName=model_name)
-            return MlStore(imageRepository=model_info["PrimaryContainer"]["Image"])
+            image_repository = self._get_image_repository(model_name, model_info)
+            storage = self._get_storage(model_name, model_info)
+            if image_repository or storage:
+                return MlStore(
+                    storage=storage,
+                    imageRepository=image_repository
+                )
         except ValidationError as err:
             logger.debug(traceback.format_exc())
             logger.warning(
