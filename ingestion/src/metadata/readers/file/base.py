@@ -55,3 +55,9 @@ class Reader(ABC):
             logger.debug(traceback.format_exc())
             logger.error(f"Error getting file tree [{err}]")
         return None
+
+    def download(self, path: str, **kwargs) -> Union[str, bytes]:
+        """
+        Given a path, download the file
+        """
+        pass

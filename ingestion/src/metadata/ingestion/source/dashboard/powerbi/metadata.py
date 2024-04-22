@@ -94,6 +94,10 @@ class PowerbiSource(DashboardServiceSource):
             self.workspace_data = self.get_filtered_workspaces(groups)
         return super().prepare()
 
+    def close(self):
+        self.metadata.close()
+        self.client.file_client.delete_tmp_files()
+
     def get_filtered_workspaces(self, groups: List[Group]) -> List[Group]:
         """
         Method to get the workspaces filtered by project filter pattern
@@ -531,10 +535,11 @@ class PowerbiSource(DashboardServiceSource):
                     )
 
                     # create the lineage between table and datamodel using the pbit files
-                    yield from self.create_table_datamodel_lineage_from_files(
-                        db_service_name=db_service_name,
-                        datamodel_entity=datamodel_entity,
-                    )
+                    if self.client.file_client:
+                        yield from self.create_table_datamodel_lineage_from_files(
+                            db_service_name=db_service_name,
+                            datamodel_entity=datamodel_entity,
+                        )
         except Exception as exc:  # pylint: disable=broad-except
             yield Either(
                 left=StackTraceError(
@@ -546,8 +551,13 @@ class PowerbiSource(DashboardServiceSource):
                     stackTrace=traceback.format_exc(),
                 )
             )
-    
-    def _get_table_and_datamodel_lineage(self,  db_service_name: str, table: PowerBiTable, datamodel_entity: DashboardDataModel) -> Iterable[Either[AddLineageRequest]]:
+
+    def _get_table_and_datamodel_lineage(
+        self,
+        db_service_name: str,
+        table: PowerBiTable,
+        datamodel_entity: DashboardDataModel,
+    ) -> Iterable[Either[AddLineageRequest]]:
         """
         Method to create lineage between table and datamodels
         """
@@ -580,7 +590,7 @@ class PowerbiSource(DashboardServiceSource):
                     stackTrace=traceback.format_exc(),
                 )
             )
-    
+
     def create_table_datamodel_lineage_from_files(
         self,
         db_service_name: str,
@@ -593,15 +603,19 @@ class PowerbiSource(DashboardServiceSource):
             # check if the datamodel_file_mappings is populated or not
             # if not, then populate the datamodel_file_mappings and process the lineage
             if not self.datamodel_file_mappings:
-                self.datamodel_file_mappings = self.client.file_client.get_data_model_schema_mappings()
-            
+                self.datamodel_file_mappings = (
+                    self.client.file_client.get_data_model_schema_mappings()
+                )
+
             # search which file contains the datamodel and for the given datamodel_entity
             datamodel_file_list = []
             for datamodel_schema in self.datamodel_file_mappings or []:
-                for connections in datamodel_schema.connectionFile.RemoteArtifacts or []:
+                for connections in (
+                    datamodel_schema.connectionFile.RemoteArtifacts or []
+                ):
                     if connections.DatasetId == model_str(datamodel_entity.name):
                         datamodel_file_list.append(datamodel_schema)
-            
+
             for datamodel_schema_file in datamodel_file_list:
                 for table in datamodel_schema_file.tables or []:
                     yield self._get_table_and_datamodel_lineage(
@@ -620,7 +634,6 @@ class PowerbiSource(DashboardServiceSource):
                     stackTrace=traceback.format_exc(),
                 )
             )
-
 
     def create_table_datamodel_lineage(
         self,

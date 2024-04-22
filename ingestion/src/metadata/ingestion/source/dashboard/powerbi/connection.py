@@ -12,7 +12,7 @@
 """
 Source connection handler
 """
-from typing import Optional, Tuple
+from typing import Optional
 
 from metadata.generated.schema.entity.automations.workflow import (
     Workflow as AutomationWorkflow,
@@ -22,8 +22,10 @@ from metadata.generated.schema.entity.services.connections.dashboard.powerBIConn
 )
 from metadata.ingestion.connections.test_connections import test_connection_steps
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.ingestion.source.dashboard.powerbi.client import PowerBiApiClient, PowerBiClient
-
+from metadata.ingestion.source.dashboard.powerbi.client import (
+    PowerBiApiClient,
+    PowerBiClient,
+)
 from metadata.ingestion.source.dashboard.powerbi.file_client import PowerBiFileClient
 
 
@@ -31,9 +33,7 @@ def get_connection(connection: PowerBIConnection) -> PowerBiApiClient:
     """
     Create connection
     """
-    client = PowerBiClient(
-        api_client=PowerBiApiClient(connection)
-    )
+    client = PowerBiClient(api_client=PowerBiApiClient(connection))
     if connection.pbitFilesSource:
         client.file_client = PowerBiFileClient(connection)
     return client

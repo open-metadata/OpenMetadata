@@ -17,10 +17,22 @@
       "description": "Local config source where no extra information needs to be sent.",
       "type": "object",
       "properties": {
+        "pbitFileConfigType": {
+          "description": "pbit File Configuration type",
+          "type": "string",
+          "enum": ["local"],
+          "default": "local"
+        },
         "path": {
           "title": "Path",
           "description": "Directory path for the pbit files",
           "type": "string"
+        },
+        "pbitFilesExtractDir": {
+          "title": "pbit Files Extraction Directory",
+          "description": "Path of the folder where the .pbit files will be unzipped and datamodel schema will be extracted",
+          "type": "string",
+          "default": "/tmp/pbitFiles"
         }
       },
       "additionalProperties": false

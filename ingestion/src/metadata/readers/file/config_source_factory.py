@@ -18,6 +18,15 @@ ConfigSource Reader Factory: Helps us choose the reader from
 """
 from typing import Any
 
+from metadata.generated.schema.entity.services.connections.dashboard.powerbi.azureConfig import (
+    AzureConfig as PowerBiAzureConfig,
+)
+from metadata.generated.schema.entity.services.connections.dashboard.powerbi.gcsConfig import (
+    GCSConfig as PowerBiGCSConfig,
+)
+from metadata.generated.schema.entity.services.connections.dashboard.powerbi.s3Config import (
+    S3Config as PowerBiS3Config,
+)
 from metadata.generated.schema.entity.services.connections.database.datalake.azureConfig import (
     AzureConfig,
 )
@@ -30,9 +39,6 @@ from metadata.generated.schema.entity.services.connections.database.datalake.s3C
 from metadata.generated.schema.entity.services.connections.database.datalakeConnection import (
     LocalConfig,
 )
-from metadata.generated.schema.entity.services.connections.dashboard.powerbi.azureConfig import AzureConfig as PowerBiAzureConfig
-from metadata.generated.schema.entity.services.connections.dashboard.powerbi.s3Config import S3Config as PowerBiS3Config
-from metadata.generated.schema.entity.services.connections.dashboard.powerbi.gcsConfig import GCSConfig as PowerBiGCSConfig
 from metadata.generated.schema.metadataIngestion.dbtconfig.dbtAzureConfig import (
     DbtAzureConfig,
 )
