@@ -18,7 +18,6 @@ import { useApplicationStore } from '../../hooks/useApplicationStore';
 const AntDConfigProvider: FC<{ children: ReactNode }> = ({ children }) => {
   const { i18n } = useTranslation();
   const { applicationConfig } = useApplicationStore();
-  applicationConfig?.customTheme;
 
   ConfigProvider.config({
     theme: {

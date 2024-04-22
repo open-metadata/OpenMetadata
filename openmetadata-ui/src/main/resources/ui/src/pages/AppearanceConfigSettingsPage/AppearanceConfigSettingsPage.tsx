@@ -278,14 +278,12 @@ const AppearanceConfigSettingsPage = () => {
   ];
 
   useEffect(() => {
-    setFormState({
+    const configValues = {
       ...applicationConfig?.customLogoConfig,
       ...applicationConfig?.customTheme,
-    });
-    form.setFieldsValue({
-      ...applicationConfig?.customLogoConfig,
-      ...applicationConfig?.customTheme,
-    });
+    };
+    setFormState(configValues);
+    form.setFieldsValue(configValues);
   }, [applicationConfig]);
 
   return (
@@ -318,7 +316,8 @@ const AppearanceConfigSettingsPage = () => {
           <Form
             form={form}
             initialValues={{
-              ...applicationConfig,
+              ...applicationConfig?.customLogoConfig,
+              ...applicationConfig?.customTheme,
             }}
             layout="vertical"
             onFinish={handleSave}

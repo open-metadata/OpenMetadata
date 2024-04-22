@@ -24,6 +24,7 @@ import ErrorBoundary from './components/common/ErrorBoundary/ErrorBoundary';
 import { EntityExportModalProvider } from './components/Entity/EntityExportModalProvider/EntityExportModalProvider.component';
 import ApplicationsProvider from './components/Settings/Applications/ApplicationsProvider/ApplicationsProvider';
 import WebAnalyticsProvider from './components/WebAnalytics/WebAnalyticsProvider';
+import { DEFAULT_THEME } from './constants/Appearance.constants';
 import { TOAST_OPTIONS } from './constants/Toasts.constants';
 import AntDConfigProvider from './context/AntDConfigProvider/AntDConfigProvider';
 import PermissionProvider from './context/PermissionProvider/PermissionProvider';
@@ -43,6 +44,16 @@ const App: FC = () => {
 
       setApplicationConfig({
         ...data,
+        customTheme: {
+          primaryColor:
+            data?.customTheme?.primaryColor ?? DEFAULT_THEME.primaryColor,
+          errorColor: data?.customTheme?.errorColor ?? DEFAULT_THEME.errorColor,
+          successColor:
+            data?.customTheme?.successColor ?? DEFAULT_THEME.successColor,
+          warningColor:
+            data?.customTheme?.warningColor ?? DEFAULT_THEME.warningColor,
+          infoColor: data?.customTheme?.infoColor ?? DEFAULT_THEME.infoColor,
+        },
       });
     } catch (error) {
       // eslint-disable-next-line no-console
