@@ -34,12 +34,6 @@ import { PipelineServiceType } from '../../../../generated/entity/services/pipel
 import { SearchServiceType } from '../../../../generated/entity/services/searchService';
 import { StorageServiceType } from '../../../../generated/entity/services/storageService';
 import { ConfigData } from '../../../../interface/service.interface';
-import { getDashboardConfig } from '../../../../utils/DashboardServiceUtils';
-import { getDatabaseConfig } from '../../../../utils/DatabaseServiceUtils';
-import { getMessagingConfig } from '../../../../utils/MessagingServiceUtils';
-import { getMetadataConfig } from '../../../../utils/MetadataServiceUtils';
-import { getMlmodelConfig } from '../../../../utils/MlmodelServiceUtils';
-import { getSearchServiceConfig } from '../../../../utils/SearchServiceUtils';
 import serviceUtilClassBase from '../../../../utils/ServiceUtilClassBase';
 
 type ServiceConnectionDetailsProps = {
@@ -211,18 +205,26 @@ const ServiceConnectionDetails = ({
   useEffect(() => {
     switch (serviceCategory.slice(0, -1)) {
       case EntityType.DATABASE_SERVICE:
-        setSchema(getDatabaseConfig(serviceFQN as DatabaseServiceType).schema);
+        setSchema(
+          serviceUtilClassBase.getDatabaseServiceConfig(
+            serviceFQN as DatabaseServiceType
+          ).schema
+        );
 
         break;
       case EntityType.DASHBOARD_SERVICE:
         setSchema(
-          getDashboardConfig(serviceFQN as DashboardServiceType).schema
+          serviceUtilClassBase.getDashboardServiceConfig(
+            serviceFQN as DashboardServiceType
+          ).schema
         );
 
         break;
       case EntityType.MESSAGING_SERVICE:
         setSchema(
-          getMessagingConfig(serviceFQN as MessagingServiceType).schema
+          serviceUtilClassBase.getMessagingServiceConfig(
+            serviceFQN as MessagingServiceType
+          ).schema
         );
 
         break;
@@ -235,11 +237,19 @@ const ServiceConnectionDetails = ({
 
         break;
       case EntityType.MLMODEL_SERVICE:
-        setSchema(getMlmodelConfig(serviceFQN as MlModelServiceType).schema);
+        setSchema(
+          serviceUtilClassBase.getMlModelServiceConfig(
+            serviceFQN as MlModelServiceType
+          ).schema
+        );
 
         break;
       case EntityType.METADATA_SERVICE:
-        setSchema(getMetadataConfig(serviceFQN as MetadataServiceType).schema);
+        setSchema(
+          serviceUtilClassBase.getMetadataServiceConfig(
+            serviceFQN as MetadataServiceType
+          ).schema
+        );
 
         break;
       case EntityType.STORAGE_SERVICE:
@@ -252,7 +262,9 @@ const ServiceConnectionDetails = ({
         break;
       case EntityType.SEARCH_SERVICE:
         setSchema(
-          getSearchServiceConfig(serviceFQN as SearchServiceType).schema
+          serviceUtilClassBase.getSearchServiceConfig(
+            serviceFQN as SearchServiceType
+          ).schema
         );
     }
   }, [serviceCategory, serviceFQN]);

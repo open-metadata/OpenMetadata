@@ -101,7 +101,13 @@ import { MetadataServiceType } from '../generated/entity/services/metadataServic
 import { SearchSourceAlias } from '../interface/search.interface';
 import customConnection from '../jsons/connectionSchemas/connections/storage/customStorageConnection.json';
 import s3Connection from '../jsons/connectionSchemas/connections/storage/s3Connection.json';
+import { getDashboardConfig } from './DashboardServiceUtils';
+import { getDatabaseConfig } from './DatabaseServiceUtils';
+import { getMessagingConfig } from './MessagingServiceUtils';
+import { getMetadataConfig } from './MetadataServiceUtils';
+import { getMlmodelConfig } from './MlmodelServiceUtils';
 import { getPipelineConfig } from './PipelineServiceUtils';
+import { getSearchServiceConfig } from './SearchServiceUtils';
 import { customServiceComparator } from './StringsUtils';
 
 class ServiceUtilClassBase {
@@ -414,6 +420,30 @@ class ServiceUtilClassBase {
 
   public getPipelineServiceConfig(type: PipelineServiceType) {
     return getPipelineConfig(type);
+  }
+
+  public getDatabaseServiceConfig(type: DatabaseServiceType) {
+    return getDatabaseConfig(type);
+  }
+
+  public getDashboardServiceConfig(type: DashboardServiceType) {
+    return getDashboardConfig(type);
+  }
+
+  public getMessagingServiceConfig(type: MessagingServiceType) {
+    return getMessagingConfig(type);
+  }
+
+  public getMlModelServiceConfig(type: MlModelServiceType) {
+    return getMlmodelConfig(type);
+  }
+
+  public getSearchServiceConfig(type: SearchServiceType) {
+    return getSearchServiceConfig(type);
+  }
+
+  public getMetadataServiceConfig(type: MetadataServiceType) {
+    return getMetadataConfig(type);
   }
 }
 
