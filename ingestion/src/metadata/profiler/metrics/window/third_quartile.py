@@ -18,6 +18,7 @@ from typing import List, cast
 
 from sqlalchemy import column
 
+from metadata.generated.schema.configuration.profilerConfiguration import MetricType
 from metadata.profiler.metrics.core import StaticMetric, _label
 from metadata.profiler.metrics.window.percentille_mixin import PercentilMixin
 from metadata.profiler.orm.functions.length import LenFn
@@ -38,7 +39,7 @@ class ThirdQuartile(StaticMetric, PercentilMixin):
 
     @classmethod
     def name(cls):
-        return "thirdQuartile"
+        return MetricType.thirdQuartile.value
 
     @classmethod
     def is_window_metric(cls):

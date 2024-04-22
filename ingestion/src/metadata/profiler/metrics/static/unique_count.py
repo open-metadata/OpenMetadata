@@ -18,6 +18,7 @@ from typing import Optional
 from sqlalchemy import column, func
 from sqlalchemy.orm import DeclarativeMeta, Session
 
+from metadata.generated.schema.configuration.profilerConfiguration import MetricType
 from metadata.profiler.metrics.core import QueryMetric
 from metadata.profiler.orm.functions.unique_count import _unique_count_query_mapper
 from metadata.profiler.orm.registry import NOT_COMPUTE
@@ -35,7 +36,7 @@ class UniqueCount(QueryMetric):
 
     @classmethod
     def name(cls):
-        return "uniqueCount"
+        return MetricType.uniqueCount.value
 
     @property
     def metric_type(self):

@@ -16,6 +16,7 @@ Null Ratio Composed Metric definition
 
 from typing import Any, Dict, Optional, Tuple
 
+from metadata.generated.schema.configuration.profilerConfiguration import MetricType
 from metadata.profiler.metrics.core import ComposedMetric
 from metadata.profiler.metrics.static.count import Count
 from metadata.profiler.metrics.static.null_count import NullCount
@@ -29,7 +30,7 @@ class NullRatio(ComposedMetric):
 
     @classmethod
     def name(cls):
-        return "nullProportion"
+        return MetricType.nullProportion.value
 
     @classmethod
     def required_metrics(cls) -> Tuple[str, ...]:

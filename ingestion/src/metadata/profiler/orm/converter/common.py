@@ -79,3 +79,50 @@ class CommonMapTypes:
 
     def return_custom_type(self, col: Column, _):
         return self._TYPE_MAP.get(col.dataType)
+
+    @staticmethod
+    def map_sqa_to_om_types() -> dict:
+        """returns an ORM type"""
+        return {
+            sqlalchemy.NUMERIC: {DataType.NUMBER, DataType.NUMERIC},
+            sqlalchemy.SMALLINT: {
+                DataType.TINYINT,
+                DataType.SMALLINT,
+                DataType.BYTEINT,
+            },
+            sqlalchemy.INT: {DataType.INT},
+            sqlalchemy.BIGINT: {DataType.BIGINT},
+            CustomTypes.BYTES.value: {DataType.BLOB, DataType.BYTES},
+            sqlalchemy.FLOAT: {DataType.FLOAT},
+            sqlalchemy.DECIMAL: {DataType.DOUBLE, DataType.DECIMAL},
+            CustomTypes.TIMESTAMP.value: {DataType.TIMESTAMP},
+            sqlalchemy.TIME: {DataType.TIME},
+            sqlalchemy.DATE: {DataType.DATE},
+            sqlalchemy.DATETIME: {DataType.DATETIME},
+            sqlalchemy.Interval: {DataType.INTERVAL},
+            sqlalchemy.String: {DataType.STRING},
+            sqlalchemy.TEXT: {DataType.TEXT, DataType.MEDIUMTEXT},
+            sqlalchemy.CHAR: {DataType.CHAR},
+            sqlalchemy.VARCHAR: {DataType.VARCHAR},
+            sqlalchemy.BOOLEAN: {DataType.BOOLEAN},
+            sqlalchemy.LargeBinary: {
+                DataType.MEDIUMBLOB,
+                DataType.BINARY,
+                DataType.LONGBLOB,
+            },
+            sqlalchemy.VARBINARY: {DataType.VARBINARY},
+            CustomTypes.ARRAY.value: {DataType.ARRAY},
+            sqa_types.SQAMap: {DataType.MAP},
+            sqa_types.SQAStruct: {DataType.STRUCT},
+            sqa_types.SQAUnion: {DataType.UNION},
+            sqa_types.SQASet: {DataType.SET},
+            sqa_types.SQASGeography: {DataType.GEOGRAPHY},
+            sqlalchemy.Enum: {DataType.ENUM},
+            sqlalchemy.JSON: {DataType.JSON},
+            CustomTypes.UUID.value: {DataType.UUID},
+            CustomTypes.BYTEA.value: {DataType.BYTEA},
+            sqlalchemy.NVARCHAR: {DataType.NTEXT},
+            CustomTypes.IMAGE.value: {DataType.IMAGE},
+            CustomTypes.IP.value: {DataType.IPV6, DataType.IPV4},
+            CustomTypes.SQADATETIMERANGE.value: {DataType.DATETIMERANGE},
+        }

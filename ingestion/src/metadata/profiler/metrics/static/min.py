@@ -19,6 +19,7 @@ from sqlalchemy import TIME, column
 from sqlalchemy.ext.compiler import compiles
 from sqlalchemy.sql.functions import GenericFunction
 
+from metadata.generated.schema.configuration.profilerConfiguration import MetricType
 from metadata.generated.schema.entity.data.table import DataType, Table
 from metadata.profiler.adaptors.nosql_adaptor import NoSQLAdaptor
 from metadata.profiler.metrics.core import CACHE, StaticMetric, T, _label
@@ -81,7 +82,7 @@ class Min(StaticMetric):
 
     @classmethod
     def name(cls):
-        return "min"
+        return MetricType.min.value
 
     @_label
     def fn(self):

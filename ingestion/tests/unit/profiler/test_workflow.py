@@ -285,6 +285,7 @@ def test_profile_def(mocked_method, mocked_orm):  # pylint: disable=unused-argum
             serviceType=DatabaseServiceType.SQLite,
         ),  # type: ignore
         profile_workflow.metadata,
+        None,
     )
     profiler_runner = profiler_source.get_profiler_runner(
         TABLE, profiler_processor_step.profiler_config
@@ -328,6 +329,7 @@ def test_default_profile_def(
             serviceType=DatabaseServiceType.SQLite,
         ),  # type: ignore
         profile_workflow.metadata,
+        None,
     )
     profiler_runner = profiler_source.get_profiler_runner(
         TABLE, profiler_processor_step.profiler_config

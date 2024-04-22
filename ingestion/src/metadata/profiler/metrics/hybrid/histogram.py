@@ -18,6 +18,7 @@ from typing import Any, Dict, List, Optional, Union, cast
 from sqlalchemy import and_, case, column, func
 from sqlalchemy.orm import DeclarativeMeta, Session
 
+from metadata.generated.schema.configuration.profilerConfiguration import MetricType
 from metadata.profiler.metrics.composed.iqr import InterQuartileRange
 from metadata.profiler.metrics.core import HybridMetric
 from metadata.profiler.metrics.static.count import Count
@@ -44,7 +45,7 @@ class Histogram(HybridMetric):
 
     @classmethod
     def name(cls):
-        return "histogram"
+        return MetricType.histogram.value
 
     @property
     def metric_type(self):

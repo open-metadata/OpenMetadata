@@ -749,7 +749,7 @@ class MetricsTest(TestCase):
             ._column_results
         )
 
-        assert res.get(EmptyUser.age.name).get(Metrics.HISTOGRAM.name) is None
+        assert res.get(EmptyUser.age.name) is None
 
     def test_not_like_count(self):
         """

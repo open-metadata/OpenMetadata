@@ -13,8 +13,13 @@ Mixin class containing Server and client specific methods
 
 To be used by OpenMetadata class
 """
+from typing import Optional
+
 from metadata.__version__ import get_client_version, get_server_version_from_string
+from metadata.generated.schema.settings.settings import Settings, SettingType
+from metadata.ingestion.models.encoders import show_secrets_encoder
 from metadata.ingestion.ometa.client import REST
+from metadata.ingestion.ometa.routes import ROUTES
 from metadata.utils.logger import ometa_logger
 
 logger = ometa_logger()
@@ -73,3 +78,46 @@ class OMetaServerMixin:
             raise VersionMismatchException(
                 f"Server version is {server_version} vs. Client version {client_version}. Both should match."
             )
+
+    def create_or_update_settings(self, settings: Settings) -> Settings:
+        """Create of update setting
+
+        Args:
+            setting (Settings): setting to update or create
+
+        Returns:
+            Settings
+        """
+        data = settings.json(encoder=show_secrets_encoder)
+        response = self.client.put(ROUTES.get(Settings.__name__), data)
+        return Settings.parse_obj(response)
+
+    def get_settings_by_name(self, setting_type: SettingType) -> Optional[Settings]:
+        """Get setting by name
+
+        Args:
+            setting (Settings): setting to update or create
+
+        Returns:
+            Settings
+        """
+        response = self.client.get(
+            f"{ROUTES.get(Settings.__name__)}/{setting_type.value}"
+        )
+        if not response:
+            return None
+        return Settings.parse_obj(response)
+
+    def get_profiler_config_settings(self) -> Optional[Settings]:
+        """Get profiler config setting
+
+        Args:
+            setting (Settings): setting to update or create
+
+        Returns:
+            Settings
+        """
+        response = self.client.get("/system/settings/profilerConfiguration")
+        if not response:
+            return None
+        return Settings.parse_obj(response)
