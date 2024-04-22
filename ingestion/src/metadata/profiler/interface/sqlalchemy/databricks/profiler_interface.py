@@ -37,6 +37,10 @@ class DatabricksProfilerInterface(SQAProfilerInterface):
             HiveCompiler, self
         ).visit_column(*args, **kwargs)
         dot_count = result.count(".")
+        # Here the databricks uses HiveCompiler.
+        # the `result` here would be `db.schema.table` or `db.schema.table.column`
+        # for struct it will be `db.schema.table.column.nestedchild.nestedchild` etc
+        # the logic is to add the backticks to nested children.
         if dot_count > 2:
             splitted_result = result.split(".", 2)[-1].split(".")
             result = ".".join(result.split(".", 2)[:-1])
