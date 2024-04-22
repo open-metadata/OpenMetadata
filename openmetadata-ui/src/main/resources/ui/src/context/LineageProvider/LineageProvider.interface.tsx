@@ -27,7 +27,7 @@ import {
 } from '../../components/Entity/EntityLineage/EntityLineage.interface';
 import {
   EdgeDetails,
-  EntityLineageReponse,
+  EntityLineageResponse,
 } from '../../components/Lineage/Lineage.interface';
 import { SourceType } from '../../components/SearchedData/SearchedData.interface';
 import { EntityType } from '../../enums/entity.enum';
@@ -65,7 +65,7 @@ export interface LineageContextType {
   init: boolean;
   status: LoadingState;
   isEditMode: boolean;
-  entityLineage: EntityLineageReponse;
+  entityLineage: EntityLineageResponse;
   selectedNode: SourceType;
   upstreamDownstreamData: UpstreamDownstreamData;
   selectedColumn: string;

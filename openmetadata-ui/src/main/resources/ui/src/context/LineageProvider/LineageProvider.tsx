@@ -45,13 +45,15 @@ import {
   EdgeData,
   EdgeTypeEnum,
   ElementLoadingState,
+  EntityReferenceChild,
   LineageConfig,
+  NodeIndexMap,
 } from '../../components/Entity/EntityLineage/EntityLineage.interface';
 import EntityLineageSidebar from '../../components/Entity/EntityLineage/EntityLineageSidebar.component';
 import NodeSuggestions from '../../components/Entity/EntityLineage/NodeSuggestions.component';
 import {
   EdgeDetails,
-  EntityLineageReponse,
+  EntityLineageResponse,
 } from '../../components/Lineage/Lineage.interface';
 import { SourceType } from '../../components/SearchedData/SearchedData.interface';
 import {
@@ -83,6 +85,7 @@ import {
   createNodes,
   getAllTracedColumnEdge,
   getAllTracedNodes,
+  getChildMap,
   getClassifiedEdge,
   getConnectedNodesEdges,
   getLayoutedElements,
@@ -91,6 +94,7 @@ import {
   getLoadingStatusValue,
   getModalBodyText,
   getNewLineageConnectionDetails,
+  getPaginatedChildMap,
   getUpdatedColumnsFromEdge,
   getUpstreamDownstreamNodesEdges,
   onLoad,
@@ -128,13 +132,13 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
   const [expandedNodes, setExpandedNodes] = useState<string[]>([]);
   const [expandAllColumns, setExpandAllColumns] = useState(false);
   const [selectedEdge, setSelectedEdge] = useState<Edge>();
-  const [entityLineage, setEntityLineage] = useState<EntityLineageReponse>({
+  const [entityLineage, setEntityLineage] = useState<EntityLineageResponse>({
     nodes: [],
     edges: [],
     entity: {} as EntityReference,
   });
   const [updatedEntityLineage, setUpdatedEntityLineage] =
-    useState<EntityLineageReponse | null>(null);
+    useState<EntityLineageResponse | null>(null);
   const [showDeleteModal, setShowDeleteModal] = useState<boolean>(false);
   const [upstreamDownstreamData, setUpstreamDownstreamData] =
     useState<UpstreamDownstreamData>({
@@ -170,17 +174,42 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
   const isFullScreen = queryParams.get('fullscreen') === 'true';
   const deletePressed = useKeyPress('Delete');
   const backspacePressed = useKeyPress('Backspace');
+  const [childMap, setChildMap] = useState<EntityReferenceChild>();
+  const [paginationData, setPaginationData] = useState({});
 
-  const fetchLineageData = async (
-    fqn: string,
-    entityType: string,
-    config?: LineageConfig
-  ) => {
-    if (isTourOpen) {
-      return;
-    } else {
+  const initLineageChildMaps = useCallback(
+    (
+      lineageData: EntityLineageResponse,
+      childMapObj: EntityReferenceChild | undefined,
+      paginationObj: Record<string, NodeIndexMap>
+    ) => {
+      if (lineageData && childMapObj) {
+        const { nodes: newNodes, edges } = getPaginatedChildMap(
+          lineageData,
+          childMapObj,
+          paginationObj,
+          lineageConfig.nodesPerLayer
+        );
+
+        setEntityLineage({
+          ...entityLineage,
+          nodes: newNodes,
+          edges: [...(entityLineage.edges ?? []), ...edges],
+        });
+      }
+    },
+    [entityLineage]
+  );
+
+  const fetchLineageData = useCallback(
+    async (fqn: string, entityType: string, config?: LineageConfig) => {
+      if (isTourOpen) {
+        return;
+      }
+
       setLoading(true);
       setInit(false);
+
       try {
         const res = await getLineageDataByFQN(
           fqn,
@@ -189,13 +218,32 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
           queryFilter
         );
         if (res) {
+          const { nodes = [], entity } = res;
           const allNodes = uniqWith(
-            [...(res.nodes ?? []), ...(res.entity ? [res.entity] : [])],
+            [...nodes, entity].filter(Boolean),
             isEqual
           );
+          const childMapObj = getChildMap(
+            { ...res, nodes: allNodes },
+            decodedFqn
+          );
+
+          setChildMap(childMapObj);
+
+          const { nodes: newNodes, edges: newEdges } = getPaginatedChildMap(
+            {
+              ...res,
+              nodes: allNodes,
+            },
+            childMapObj,
+            {},
+            config?.nodesPerLayer ?? 50
+          );
+
           setEntityLineage({
             ...res,
-            nodes: allNodes,
+            nodes: newNodes,
+            edges: [...(res.edges ?? []), ...newEdges],
           });
         } else {
           showErrorToast(
@@ -215,8 +263,9 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
         setInit(true);
         setLoading(false);
       }
-    }
-  };
+    },
+    [paginationData]
+  );
 
   const loadChildNodesHandler = useCallback(
     async (node: SourceType, direction: EdgeTypeEnum) => {
@@ -541,14 +590,60 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
     setQueryFilter(query);
   }, []);
 
+  const selectLoadMoreNode = (node: Node) => {
+    const { pagination_data, edgeType } = node.data.node;
+    setPaginationData(
+      (prevState: {
+        [key: string]: { upstream: number[]; downstream: number[] };
+      }) => {
+        const { parentId, index } = pagination_data;
+        const updatedParentData = prevState[parentId] || {
+          upstream: [],
+          downstream: [],
+        };
+        const updatedIndexList =
+          edgeType === EdgeTypeEnum.DOWN_STREAM
+            ? {
+                upstream: updatedParentData.upstream,
+                downstream: [index],
+              }
+            : {
+                upstream: [index],
+                downstream: updatedParentData.downstream,
+              };
+
+        const retnObj = {
+          ...prevState,
+          [parentId]: updatedIndexList,
+        };
+        if (entityLineage) {
+          initLineageChildMaps(entityLineage, childMap, retnObj);
+        }
+
+        return retnObj;
+      }
+    );
+  };
+
   const onNodeClick = useCallback(
     (node: Node) => {
-      if (node) {
-        setSelectedEdge(undefined);
-        setActiveNode(node);
-        setSelectedNode(node.data.node as SourceType);
-        setIsDrawerOpen(true);
-        handleLineageTracing(node);
+      if (!node) {
+        return;
+      }
+
+      switch (node.type) {
+        case EntityLineageNodeType.LOAD_MORE:
+          selectLoadMoreNode(node);
+
+          break;
+        default:
+          setSelectedEdge(undefined);
+          setActiveNode(node);
+          setSelectedNode(node.data.node as SourceType);
+          setIsDrawerOpen(true);
+          handleLineageTracing(node);
+
+          break;
       }
     },
     [handleLineageTracing]
@@ -955,7 +1050,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
   };
 
   const redrawLineage = useCallback(
-    (lineageData: EntityLineageReponse) => {
+    (lineageData: EntityLineageResponse) => {
       const allNodes = uniqWith(
         [...(lineageData.nodes ?? []), lineageData.entity],
         isEqual
@@ -1135,10 +1230,11 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
 
   useEffect(() => {
     if (isTourOpen || isTourPage) {
+      setPaginationData({});
       setInit(true);
       setLoading(false);
       setEntityLineage(
-        mockDatasetData.entityLineage as unknown as EntityLineageReponse
+        mockDatasetData.entityLineage as unknown as EntityLineageResponse
       );
     }
   }, [isTourOpen, isTourPage]);

@@ -15,7 +15,16 @@ import { CheckOutlined, SearchOutlined } from '@ant-design/icons';
 import { AxiosError } from 'axios';
 import dagre from 'dagre';
 import { t } from 'i18next';
-import { isEmpty, isNil, isUndefined, upperCase } from 'lodash';
+import {
+  cloneDeep,
+  isEmpty,
+  isEqual,
+  isNil,
+  isUndefined,
+  uniqueId,
+  uniqWith,
+  upperCase,
+} from 'lodash';
 import { LoadingState } from 'Models';
 import React, { MouseEvent as ReactMouseEvent } from 'react';
 import {
@@ -44,9 +53,15 @@ import {
   CustomFlow,
   EdgeData,
   EdgeTypeEnum,
+  EntityReferenceChild,
+  NodeIndexMap,
 } from '../components/Entity/EntityLineage/EntityLineage.interface';
+import LoadMoreNode from '../components/Entity/EntityLineage/LoadMoreNode/LoadMoreNode';
 import { ExploreSearchIndex } from '../components/Explore/ExplorePage.interface';
-import { EdgeDetails } from '../components/Lineage/Lineage.interface';
+import {
+  EdgeDetails,
+  EntityLineageResponse,
+} from '../components/Lineage/Lineage.interface';
 import { SourceType } from '../components/SearchedData/SearchedData.interface';
 import {
   EXPANDED_NODE_HEIGHT,
@@ -432,7 +447,7 @@ export const nodeTypes = {
   output: CustomNodeV1,
   input: CustomNodeV1,
   default: CustomNodeV1,
-  'load-more': CustomNodeV1,
+  'load-more': LoadMoreNode,
 };
 
 export const customEdges = { buttonedge: CustomEdge };
@@ -515,7 +530,7 @@ const removeDuplicateNodes = (nodesData: EntityReference[]) => {
   const uniqueNodesMap = new Map<string, EntityReference>();
   nodesData.forEach((node) => {
     // Check if the node is not null before adding it to the map
-    if (node && node.fullyQualifiedName) {
+    if (node?.fullyQualifiedName) {
       uniqueNodesMap.set(node.fullyQualifiedName, node);
     }
   });
@@ -584,7 +599,10 @@ export const createNodes = (
 
   return uniqueNodesData.map((node, index) => {
     const position = layoutPositions[index];
-    const type = getNodeType(edgesData, node.id);
+    const type =
+      node.type === EntityLineageNodeType.LOAD_MORE
+        ? node.type
+        : getNodeType(edgesData, node.id);
 
     return {
       id: `${node.id}`,
@@ -982,4 +1000,193 @@ export const getUpstreamDownstreamNodesEdges = (
   findUpstream(activeNode);
 
   return { downstreamEdges, upstreamEdges, downstreamNodes, upstreamNodes };
+};
+
+export const getLineageChildParents = (
+  obj: EntityLineageResponse,
+  nodeSet: Set<string>,
+  id: string,
+  isParent = false,
+  index = 0
+) => {
+  const edges = isParent ? obj.upstreamEdges || [] : obj.downstreamEdges || [];
+  const filtered = edges.filter((edge) => {
+    return isParent ? edge.toEntity.id === id : edge.fromEntity.id === id;
+  });
+
+  return filtered.reduce((childMap: EntityReferenceChild[], edge, i) => {
+    const node = obj.nodes?.find((node) => {
+      return isParent
+        ? node.id === edge.fromEntity.id
+        : node.id === edge.toEntity.id;
+    });
+
+    if (node && !nodeSet.has(node.id)) {
+      nodeSet.add(node.id);
+      const childNodes = getLineageChildParents(
+        obj,
+        nodeSet,
+        node.id,
+        isParent,
+        i
+      );
+      const lineage: EntityReferenceChild = { ...node, pageIndex: index + i };
+
+      if (isParent) {
+        lineage.parents = childNodes;
+      } else {
+        lineage.children = childNodes;
+      }
+
+      childMap.push(lineage);
+    }
+
+    return childMap;
+  }, []);
+};
+
+export const removeDuplicates = (arr: EdgeDetails[]) => {
+  return uniqWith(arr, isEqual);
+};
+
+export const getChildMap = (obj: EntityLineageResponse, decodedFqn: string) => {
+  const nodeSet = new Set<string>();
+  nodeSet.add(obj.entity.id);
+
+  const data = getUpstreamDownstreamNodesEdges(
+    obj.edges ?? [],
+    obj.nodes ?? [],
+    decodedFqn
+  );
+
+  const newData = cloneDeep(obj);
+  newData.downstreamEdges = removeDuplicates(data.downstreamEdges || []);
+  newData.upstreamEdges = removeDuplicates(data.upstreamEdges || []);
+
+  const childMap: EntityReferenceChild[] = getLineageChildParents(
+    newData,
+    nodeSet,
+    obj.entity.id,
+    false
+  );
+
+  const parentsMap: EntityReferenceChild[] = getLineageChildParents(
+    newData,
+    nodeSet,
+    obj.entity.id,
+    true
+  );
+
+  const map: EntityReferenceChild = {
+    ...obj.entity,
+    children: childMap,
+    parents: parentsMap,
+  };
+
+  return map;
+};
+
+export const flattenObj = (
+  entityObj: EntityLineageResponse,
+  childMapObj: EntityReferenceChild,
+  downwards: boolean,
+  id: string,
+  nodes: EntityReference[],
+  edges: EdgeDetails[],
+  pagination_data: Record<string, NodeIndexMap>,
+  maxLineageLength = 50
+) => {
+  const children = downwards ? childMapObj.children : childMapObj.parents;
+  if (!children) {
+    return;
+  }
+  const startIndex =
+    pagination_data[id]?.[downwards ? 'downstream' : 'upstream'][0] ?? 0;
+  const hasMoreThanLimit = children.length > startIndex + maxLineageLength;
+  const endIndex = startIndex + maxLineageLength;
+
+  children.slice(0, endIndex).forEach((item) => {
+    if (item) {
+      flattenObj(
+        entityObj,
+        item,
+        downwards,
+        item.id,
+        nodes,
+        edges,
+        pagination_data,
+        maxLineageLength
+      );
+      nodes.push(item);
+    }
+  });
+
+  if (hasMoreThanLimit) {
+    const newNodeId = `loadmore_${uniqueId('node_')}_${id}_${startIndex}`;
+    const childrenLength = children.length - endIndex;
+
+    const newNode = {
+      description: 'Demo description',
+      displayName: 'Load More',
+      name: `load_more_${id}`,
+      fullyQualifiedName: `load_more_${id}`,
+      id: newNodeId,
+      type: EntityLineageNodeType.LOAD_MORE,
+      pagination_data: {
+        index: endIndex,
+        parentId: id,
+        childrenLength,
+      },
+      edgeType: downwards ? EdgeTypeEnum.DOWN_STREAM : EdgeTypeEnum.UP_STREAM,
+    };
+    nodes.push(newNode);
+    const newEdge: EdgeDetails = {
+      fromEntity: {
+        fqn: '',
+        id: downwards ? id : newNodeId,
+        type: '',
+      },
+      toEntity: {
+        fqn: '',
+        id: downwards ? newNodeId : id,
+        type: '',
+      },
+    };
+    edges.push(newEdge);
+  }
+};
+
+export const getPaginatedChildMap = (
+  obj: EntityLineageResponse,
+  map: EntityReferenceChild | undefined,
+  pagination_data: Record<string, NodeIndexMap>,
+  maxLineageLength: number
+) => {
+  const nodes = [];
+  const edges: EdgeDetails[] = [];
+  nodes.push(obj.entity);
+  if (map) {
+    flattenObj(
+      obj,
+      map,
+      true,
+      obj.entity.id,
+      nodes,
+      edges,
+      pagination_data,
+      maxLineageLength
+    );
+    flattenObj(
+      obj,
+      map,
+      false,
+      obj.entity.id,
+      nodes,
+      edges,
+      pagination_data,
+      maxLineageLength
+    );
+  }
+
+  return { nodes, edges };
 };
