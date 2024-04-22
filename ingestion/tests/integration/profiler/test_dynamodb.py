@@ -6,6 +6,7 @@ from metadata.generated.schema.metadataIngestion.databaseServiceProfilerPipeline
     ProfilerConfigType,
 )
 from metadata.generated.schema.metadataIngestion.workflow import (
+    LogLevels,
     OpenMetadataWorkflowConfig,
     Sink,
     Source,
@@ -36,6 +37,7 @@ def ingest_metadata(
     )
     metadata_ingestion = MetadataWorkflow.create(workflow_config)
     metadata_ingestion.execute()
+    metadata_ingestion.raise_from_status()
     return
 
 
@@ -70,6 +72,7 @@ def test_sample_data(db_service, db_fqn, metadata):
             "config": {},
         },
         "workflowConfig": {
+            "loggerLevel": LogLevels.DEBUG,
             "openMetadataServerConfig": metadata.config.dict(),
         },
     }
