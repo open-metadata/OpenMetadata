@@ -215,6 +215,7 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
             .withName("t1")
             .withGlossary(glossary.getFullyQualifiedName())
             .withDescription("desc");
+
     GlossaryTerm t1 = assertDomainInheritance(create, DOMAIN.getEntityReference());
 
     // Create terms t12 under t1 without reviewers and owner
