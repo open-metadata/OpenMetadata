@@ -21,6 +21,7 @@ import { ReactComponent as IconTimesCircle } from '../../../assets/svg/ic-times-
 import { ReactComponent as PipelineIcon } from '../../../assets/svg/pipeline-grey.svg';
 import { FOREIGN_OBJECT_SIZE } from '../../../constants/Lineage.constants';
 import { useLineageProvider } from '../../../context/LineageProvider/LineageProvider';
+import { LineageLayerView } from '../../../context/LineageProvider/LineageProvider.interface';
 import { EntityType } from '../../../enums/entity.enum';
 import { StatusType } from '../../../generated/entity/data/pipeline';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
@@ -81,6 +82,7 @@ export const CustomEdge = ({
     tracedColumns,
     isEditMode,
     pipelineStatus,
+    activeLayer,
     onAddPipelineClick,
     onColumnEdgeRemove,
     fetchPipelineStatus,
@@ -309,10 +311,10 @@ export const CustomEdge = ({
   }, [edge, isColumnLineage, sourceHandle, targetHandle]);
 
   useEffect(() => {
-    if (data.edge.pipeline) {
+    if (data.edge.pipeline && activeLayer.includes(LineageLayerView.PIPELINE)) {
       fetchPipelineStatus(data.edge.pipeline?.fullyQualifiedName);
     }
-  }, [data.edge.pipeline]);
+  }, [data.edge.pipeline, activeLayer]);
 
   return (
     <Fragment>
