@@ -30,6 +30,7 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
 import org.openmetadata.api.configuration.LogoConfiguration;
+import org.openmetadata.api.configuration.UiThemePreference;
 import org.openmetadata.schema.api.configuration.LoginConfiguration;
 import org.openmetadata.schema.api.security.AuthenticationConfiguration;
 import org.openmetadata.schema.api.security.AuthorizerConfiguration;
@@ -110,6 +111,22 @@ class ConfigResourceTest extends OpenMetadataApplicationTest {
 
     assertEquals("", logoConfiguration.getCustomLogoUrlPath());
     assertEquals("", logoConfiguration.getCustomMonogramUrlPath());
+  }
+
+  @Test
+  void get_Custom_Ui_Theme_Preference_200_OK() throws IOException {
+    // Test Against Default Values
+    WebTarget target = getConfigResource("customUiThemePreference");
+    UiThemePreference uiThemePreference =
+        TestUtils.get(target, UiThemePreference.class, TEST_AUTH_HEADERS);
+
+    assertEquals("", uiThemePreference.getCustomTheme().getPrimaryColor());
+    assertEquals("", uiThemePreference.getCustomTheme().getSuccessColor());
+    assertEquals("", uiThemePreference.getCustomTheme().getErrorColor());
+    assertEquals("", uiThemePreference.getCustomTheme().getWarningColor());
+    assertEquals("", uiThemePreference.getCustomTheme().getInfoColor());
+    assertEquals("", uiThemePreference.getCustomLogoConfig().getCustomLogoUrlPath());
+    assertEquals("", uiThemePreference.getCustomLogoConfig().getCustomMonogramUrlPath());
   }
 
   @Test

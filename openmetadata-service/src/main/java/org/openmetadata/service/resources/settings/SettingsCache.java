@@ -14,6 +14,7 @@
 package org.openmetadata.service.resources.settings;
 
 import static org.openmetadata.schema.settings.SettingsType.CUSTOM_LOGO_CONFIGURATION;
+import static org.openmetadata.schema.settings.SettingsType.CUSTOM_UI_THEME_PREFERENCE;
 import static org.openmetadata.schema.settings.SettingsType.EMAIL_CONFIGURATION;
 import static org.openmetadata.schema.settings.SettingsType.LOGIN_CONFIGURATION;
 
@@ -25,6 +26,8 @@ import javax.annotation.CheckForNull;
 import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.api.configuration.LogoConfiguration;
+import org.openmetadata.api.configuration.ThemeConfiguration;
+import org.openmetadata.api.configuration.UiThemePreference;
 import org.openmetadata.schema.api.configuration.LoginConfiguration;
 import org.openmetadata.schema.email.SmtpSettings;
 import org.openmetadata.schema.settings.Settings;
@@ -82,6 +85,30 @@ public class SettingsCache {
                       .withCustomLogoUrlPath("")
                       .withCustomMonogramUrlPath("")
                       .withCustomFaviconUrlPath(""));
+      systemRepository.createNewSetting(setting);
+    }
+
+    // Initialise Theme Setting
+    Settings storedCustomUiThemeConf =
+        systemRepository.getConfigWithKey(CUSTOM_UI_THEME_PREFERENCE.toString());
+    if (storedCustomUiThemeConf == null) {
+      // Only in case a config doesn't exist in DB we insert it
+      Settings setting =
+          new Settings()
+              .withConfigType(CUSTOM_UI_THEME_PREFERENCE)
+              .withConfigValue(
+                  new UiThemePreference()
+                      .withCustomLogoConfig(
+                          new LogoConfiguration()
+                              .withCustomLogoUrlPath("")
+                              .withCustomMonogramUrlPath(""))
+                      .withCustomTheme(
+                          new ThemeConfiguration()
+                              .withPrimaryColor("")
+                              .withSuccessColor("")
+                              .withErrorColor("")
+                              .withWarningColor("")
+                              .withInfoColor("")));
       systemRepository.createNewSetting(setting);
     }
 

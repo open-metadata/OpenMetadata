@@ -24,6 +24,7 @@ import javax.ws.rs.Path;
 import javax.ws.rs.Produces;
 import javax.ws.rs.core.MediaType;
 import org.openmetadata.api.configuration.LogoConfiguration;
+import org.openmetadata.api.configuration.UiThemePreference;
 import org.openmetadata.catalog.security.client.SamlSSOClientConfig;
 import org.openmetadata.catalog.type.IdentityProviderConfig;
 import org.openmetadata.schema.api.configuration.LoginConfiguration;
@@ -107,6 +108,25 @@ public class ConfigResource {
   public LogoConfiguration getCustomLogoConfig() {
     return SettingsCache.getSetting(
         SettingsType.CUSTOM_LOGO_CONFIGURATION, LogoConfiguration.class);
+  }
+
+  @GET
+  @Path(("/customUiThemePreference"))
+  @Operation(
+      operationId = "getCustomUiThemePreference",
+      summary = "Get Custom Ui Theme Preference",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "UI Theme Configuration as per Preference",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = AuthenticationConfiguration.class)))
+      })
+  public UiThemePreference getCustomUiThemePreference() {
+    return SettingsCache.getSetting(
+        SettingsType.CUSTOM_UI_THEME_PREFERENCE, UiThemePreference.class);
   }
 
   @GET
