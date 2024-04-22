@@ -548,7 +548,7 @@ class CommonDbSourceService(
                 metadata=self.metadata,
                 table_name=column.get("referred_table"),
                 schema_name=column.get("referred_schema"),
-                database_name=None,
+                database_name=column.get("referred_database"),
                 service_name=self.context.get().database_service,
             )
             if referred_table:

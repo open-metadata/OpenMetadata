@@ -63,6 +63,120 @@ def get_etable_owner(
 
 
 @reflection.cache
+def get_foreign_keys(
+    self, connection, table_name, schema=None, postgresql_ignore_search_path=False, **kw
+):
+    preparer = self.identifier_preparer
+    table_oid = self.get_table_oid(
+        connection, table_name, schema, info_cache=kw.get("info_cache")
+    )
+
+    FK_SQL = """
+        SELECT r.conname,
+            pg_catalog.pg_get_constraintdef(r.oid, true) as condef,
+            n.nspname as conschema,
+            d.datname AS con_db_name
+        FROM  pg_catalog.pg_constraint r,
+            pg_namespace n,
+            pg_class c
+        JOIN pg_database d ON d.datname = current_database()
+        WHERE r.conrelid = :table AND
+            r.contype = 'f' AND
+            c.oid = confrelid AND
+            n.oid = c.relnamespace
+        ORDER BY 1
+    """
+    # https://www.postgresql.org/docs/9.0/static/sql-createtable.html
+    FK_REGEX = re.compile(
+        r"FOREIGN KEY \((.*?)\) REFERENCES (?:(.*?)\.)?(.*?)\((.*?)\)"
+        r"[\s]?(MATCH (FULL|PARTIAL|SIMPLE)+)?"
+        r"[\s]?(ON UPDATE "
+        r"(CASCADE|RESTRICT|NO ACTION|SET NULL|SET DEFAULT)+)?"
+        r"[\s]?(ON DELETE "
+        r"(CASCADE|RESTRICT|NO ACTION|SET NULL|SET DEFAULT)+)?"
+        r"[\s]?(DEFERRABLE|NOT DEFERRABLE)?"
+        r"[\s]?(INITIALLY (DEFERRED|IMMEDIATE)+)?"
+    )
+
+    t = sql.text(FK_SQL).columns(
+        conname=sqltypes.Unicode, condef=sqltypes.Unicode, con_db_name=sqltypes.Unicode
+    )
+    c = connection.execute(t, dict(table=table_oid))
+    fkeys = []
+    for conname, condef, conschema, con_db_name in c.fetchall():
+        m = re.search(FK_REGEX, condef).groups()
+
+        (
+            constrained_columns,
+            referred_schema,
+            referred_table,
+            referred_columns,
+            _,
+            match,
+            _,
+            onupdate,
+            _,
+            ondelete,
+            deferrable,
+            _,
+            initially,
+        ) = m
+
+        if deferrable is not None:
+            deferrable = True if deferrable == "DEFERRABLE" else False
+        constrained_columns = [
+            preparer._unquote_identifier(x)
+            for x in re.split(r"\s*,\s*", constrained_columns)
+        ]
+
+        if postgresql_ignore_search_path:
+            # when ignoring search path, we use the actual schema
+            # provided it isn't the "default" schema
+            if conschema != self.default_schema_name:
+                referred_schema = conschema
+            else:
+                referred_schema = schema
+        elif referred_schema:
+            # referred_schema is the schema that we regexp'ed from
+            # pg_get_constraintdef().  If the schema is in the search
+            # path, pg_get_constraintdef() will give us None.
+            referred_schema = preparer._unquote_identifier(referred_schema)
+        elif schema is not None and schema == conschema:
+            # If the actual schema matches the schema of the table
+            # we're reflecting, then we will use that.
+            referred_schema = schema
+
+        referred_table = preparer._unquote_identifier(referred_table)
+        referred_columns = [
+            preparer._unquote_identifier(x)
+            for x in re.split(r"\s*,\s", referred_columns)
+        ]
+        options = {
+            k: v
+            for k, v in [
+                ("onupdate", onupdate),
+                ("ondelete", ondelete),
+                ("initially", initially),
+                ("deferrable", deferrable),
+                ("match", match),
+            ]
+            if v is not None and v != "NO ACTION"
+        }
+        referred_database = con_db_name if con_db_name else ""
+        fkey_d = {
+            "name": conname,
+            "constrained_columns": constrained_columns,
+            "referred_schema": referred_schema,
+            "referred_table": referred_table,
+            "referred_columns": referred_columns,
+            "options": options,
+            "referred_database": referred_database,
+        }
+        fkeys.append(fkey_d)
+    return fkeys
+
+
+@reflection.cache
 def get_table_owner(
     self, connection, table_name, schema=None, **kw
 ):  # pylint: disable=unused-argument
