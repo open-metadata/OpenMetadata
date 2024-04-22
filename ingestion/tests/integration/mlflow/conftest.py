@@ -23,7 +23,6 @@ from testcontainers.core.container import DockerContainer
 from testcontainers.core.docker_client import DockerClient
 from testcontainers.mysql import MySqlContainer
 
-
 # HACK: This test is only possible for Python3.9 or higher.
 # This allows pytest to parse the file even on lower verions.
 if sys.version_info >= (3, 9):
@@ -31,6 +30,7 @@ if sys.version_info >= (3, 9):
     from testcontainers.minio import MinioContainer
 else:
     from unittest.mock import MagicMock
+
     Network = MagicMock()
     MinioContainer = MagicMock()
 
