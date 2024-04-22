@@ -53,4 +53,4 @@ export const TASK_SANITIZE_VALUE_REGEX = /^"|"$/g;
 
 export const TIMESTAMP_UNIX_IN_MILLISECONDS_REGEX = /^\d{13}$/;
 
-export const ASTERISKS_MORE_THAN_TWICE_REGEX = /\*{3,}/;
+export const ALL_ASTERISKS_REGEX = /^\*+$/;

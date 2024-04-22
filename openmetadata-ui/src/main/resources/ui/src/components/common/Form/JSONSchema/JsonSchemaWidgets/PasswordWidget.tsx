@@ -12,18 +12,18 @@
  */
 import { WidgetProps } from '@rjsf/utils';
 import { Input } from 'antd';
-import React, { FC } from 'react';
-import { ASTERISKS_MORE_THAN_TWICE_REGEX } from '../../../../../constants/regex.constants';
+import React, { FC, useMemo } from 'react';
+import { ALL_ASTERISKS_REGEX } from '../../../../../constants/regex.constants';
 import FileUploadWidget from './FileUploadWidget';
 
 const PasswordWidget: FC<WidgetProps> = (props) => {
-  const getValue = (value: string) => {
-    if (ASTERISKS_MORE_THAN_TWICE_REGEX.test(value)) {
-      return undefined;
+  const passwordWidgetValue = useMemo(() => {
+    if (ALL_ASTERISKS_REGEX.test(props.value)) {
+      return undefined; // Do not show the password if it is masked
     } else {
-      return value;
+      return props.value;
     }
-  };
+  }, [props.value]);
 
   if (props.schema.uiFieldType === 'file') {
     return <FileUploadWidget {...props} />;
@@ -42,7 +42,7 @@ const PasswordWidget: FC<WidgetProps> = (props) => {
       placeholder={rest.placeholder}
       readOnly={rest.readonly}
       required={rest.required}
-      value={getValue(props.value)}
+      value={passwordWidgetValue}
       onBlur={() => onBlur(rest.id, rest.value)}
       onChange={(e) => onChange(e.target.value)}
       onFocus={() => onFocus(rest.id, rest.value)}
