@@ -181,6 +181,7 @@ export const testConnection = () => {
   );
 
   interceptURL('GET', '/api/v1/automations/workflows/*', 'getWorkflow');
+  interceptURL('DELETE', '/api/v1/automations/workflows/*', 'deleteWorkflow');
 
   cy.get('[data-testid="test-connection-btn"]').should('exist').click();
 
@@ -192,6 +193,11 @@ export const testConnection = () => {
     responseTimeout: 120000,
   });
   cy.get('[data-testid="test-connection-modal"]').should('exist');
+
+  // added extra buffer time as deleteWorkflow API can take up to 2 minute or more to send request
+  verifyResponseStatusCode('@deleteWorkflow', 200, {
+    requestTimeout: 150000,
+  });
   cy.get('.ant-modal-footer > .ant-btn-primary')
     .should('exist')
     .contains('OK')
