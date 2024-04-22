@@ -160,7 +160,10 @@ class SagemakerSource(MlModelServiceSource):
         """
         try:
             model_info = self.sagemaker.describe_model(ModelName=model_name)
-            return MlStore(imageRepository=model_info["PrimaryContainer"]["Image"])
+            storage = model_info.get("PrimaryContainer", {}).get("ModelDataUrl")
+            image_repository = model_info.get("PrimaryContainer", {}).get("Image")
+            if image_repository or storage:
+                return MlStore(storage=storage, imageRepository=image_repository)
         except ValidationError as err:
             logger.debug(traceback.format_exc())
             logger.warning(
