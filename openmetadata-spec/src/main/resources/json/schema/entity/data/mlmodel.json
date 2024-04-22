@@ -141,7 +141,7 @@
       "properties": {
         "storage": {
           "description": "Storage Layer containing the ML Model data.",
-          "$ref": "../../type/basic.json#/definitions/href"
+          "type": "string"
         },
         "imageRepository": {
           "description": "Container Repository with the ML Model image.",

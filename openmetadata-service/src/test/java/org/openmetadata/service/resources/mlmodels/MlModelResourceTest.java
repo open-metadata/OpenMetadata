@@ -84,7 +84,7 @@ public class MlModelResourceTest extends EntityResourceTest<MlModel, CreateMlMod
   public static final URI SERVER = URI.create("http://localhost.com/mlModel");
   public static final MlStore ML_STORE =
       new MlStore()
-          .withStorage(URI.create("s3://my-bucket.com/mlModel"))
+          .withStorage(URI.create("s3://my-bucket.com/mlModel").toString())
           .withImageRepository(URI.create("https://12345.dkr.ecr.region.amazonaws.com").toString());
 
   public static final List<MlFeature> ML_FEATURES =
