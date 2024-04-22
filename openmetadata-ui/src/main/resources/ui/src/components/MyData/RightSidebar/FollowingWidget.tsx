@@ -105,7 +105,7 @@ function FollowingWidget({
                 className="link-title"
                 rel="noreferrer"
                 target="_blank"
-                to={FOLLOW_DATA_ASSET}>
+                to={{ pathname: FOLLOW_DATA_ASSET }}>
                 {t('label.learn-more')}
               </Link>
             </ErrorPlaceHolder>

@@ -119,7 +119,7 @@ const RecentlyViewed = ({
                   className="link-title"
                   rel="noreferrer"
                   target="_blank"
-                  to={RECENTLY_VIEWED}>
+                  to={{ pathname: RECENTLY_VIEWED }}>
                   {t('label.learn-more')}
                 </Link>
               </ErrorPlaceHolder>
