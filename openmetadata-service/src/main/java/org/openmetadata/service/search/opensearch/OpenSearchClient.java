@@ -904,7 +904,8 @@ public class OpenSearchClient implements SearchClient {
             }
             JsonObject subAggregation = aggregation.getJsonObject("aggs");
             if (!nullOrEmpty(aggregationBuilders)) {
-              AggregationBuilder aggregationBuilder = aggregationBuilders.get(aggregationBuilders.size()-1);
+              AggregationBuilder aggregationBuilder =
+                  aggregationBuilders.get(aggregationBuilders.size() - 1);
               List<AggregationBuilder> subAggregationBuilders = buildAggregation(subAggregation);
               for (AggregationBuilder subAggregationBuilder : subAggregationBuilders) {
                 aggregationBuilder.subAggregation(subAggregationBuilder);

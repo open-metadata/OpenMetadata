@@ -43,7 +43,7 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
   private static final String PATCH_FIELDS = "tests";
 
   private static final String EXECUTION_SUMMARY_AGGS =
-    """
+      """
         {
           "aggregations": {
               "status_counts": {
@@ -56,7 +56,7 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
         """;
 
   private static final String ENTITY_EXECUTION_SUMMARY_AGGS =
-  """
+      """
   {
     "aggregations": {
       "entityLinks": {
@@ -75,7 +75,7 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
   }""";
 
   private static final String ENTITY_EXECUTION_SUMMARY_FILTER =
-    """
+      """
       {
         "query": {
           "bool": {
@@ -152,51 +152,58 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
   private TestSummary getTestCasesExecutionSummary(JsonObject aggregation) {
     // Initialize the test summary with 0 values
     TestSummary testSummary =
-        new TestSummary()
-                .withAborted(0)
-                .withFailed(0)
-                .withSuccess(0)
-                .withQueued(0)
-                .withTotal(0);
-    Optional<JsonObject> summary = Optional.ofNullable(aggregation.getJsonObject("sterms#status_counts"));
-    return summary.map(
+        new TestSummary().withAborted(0).withFailed(0).withSuccess(0).withQueued(0).withTotal(0);
+    Optional<JsonObject> summary =
+        Optional.ofNullable(aggregation.getJsonObject("sterms#status_counts"));
+    return summary
+        .map(
             s -> {
               JsonArray buckets = s.getJsonArray("buckets");
               for (JsonValue bucket : buckets) {
                 updateTestSummaryFromBucket(((JsonObject) bucket), testSummary);
               }
               return testSummary;
-            }
-    ).orElse(testSummary);
+            })
+        .orElse(testSummary);
   }
 
   private TestSummary getEntityTestCasesExecutionSummary(JsonObject aggregation) {
     TestSummary testSummary =
-            new TestSummary().withAborted(0).withFailed(0).withSuccess(0).withQueued(0).withTotal(0);
+        new TestSummary().withAborted(0).withFailed(0).withSuccess(0).withQueued(0).withTotal(0);
     List<ColumnTestSummaryDefinition> columnTestSummaries = new ArrayList<>();
-    Optional<JsonObject> entityLinkAgg =  Optional.ofNullable(SearchClient.getAggregationObject(aggregation, "sterms#entityLinks"));
+    Optional<JsonObject> entityLinkAgg =
+        Optional.ofNullable(SearchClient.getAggregationObject(aggregation, "sterms#entityLinks"));
 
-    return entityLinkAgg.map(
+    return entityLinkAgg
+        .map(
             entityLinkAggJson -> {
               JsonArray entityLinkBuckets = SearchClient.getAggregationBuckets(entityLinkAggJson);
               for (JsonValue entityLinkBucket : entityLinkBuckets) {
-                JsonObject statusAgg = SearchClient.getAggregationObject((JsonObject) entityLinkBucket, "sterms#status_counts");
+                JsonObject statusAgg =
+                    SearchClient.getAggregationObject(
+                        (JsonObject) entityLinkBucket, "sterms#status_counts");
                 JsonArray statusBuckets = SearchClient.getAggregationBuckets(statusAgg);
-                String entityLinkString = SearchClient.getAggregationKeyValue((JsonObject) entityLinkBucket);
+                String entityLinkString =
+                    SearchClient.getAggregationKeyValue((JsonObject) entityLinkBucket);
 
-                MessageParser.EntityLink entityLink = entityLinkString != null ? MessageParser.EntityLink.parse(entityLinkString) : null;
+                MessageParser.EntityLink entityLink =
+                    entityLinkString != null
+                        ? MessageParser.EntityLink.parse(entityLinkString)
+                        : null;
                 ColumnTestSummaryDefinition columnTestSummary =
-                        new ColumnTestSummaryDefinition()
-                                .withAborted(0)
-                                .withFailed(0)
-                                .withSuccess(0)
-                                .withQueued(0)
-                                .withTotal(0)
-                                .withEntityLink(entityLinkString);
+                    new ColumnTestSummaryDefinition()
+                        .withAborted(0)
+                        .withFailed(0)
+                        .withSuccess(0)
+                        .withQueued(0)
+                        .withTotal(0)
+                        .withEntityLink(entityLinkString);
                 for (JsonValue statusBucket : statusBuckets) {
                   updateColumnTestSummaryFromBucket(((JsonObject) statusBucket), columnTestSummary);
                   updateTestSummaryFromBucket(((JsonObject) statusBucket), testSummary);
-                  if (entityLink != null && entityLink.getFieldName() != null && entityLink.getFieldName().equals("columns")) {
+                  if (entityLink != null
+                      && entityLink.getFieldName() != null
+                      && entityLink.getFieldName().equals("columns")) {
                     // Set the column summary if we have entity link column aggregation
                     columnTestSummaries.add(columnTestSummary);
                   }
@@ -204,8 +211,8 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
               }
               testSummary.setColumnTestSummary(columnTestSummaries);
               return testSummary;
-            }
-    ).orElse(testSummary);
+            })
+        .orElse(testSummary);
   }
 
   public TestSummary getTestSummary(UUID testSuiteId) {
@@ -299,6 +306,7 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
     LOG.info("{} deleted {}", hardDelete ? "Hard" : "Soft", updated.getFullyQualifiedName());
     return new RestUtil.DeleteResponse<>(updated, changeType);
   }
+
   private void updateTestSummaryFromBucket(JsonObject bucket, TestSummary testSummary) {
     String key = bucket.getString("key");
     Integer count = bucket.getJsonNumber("doc_count").intValue();
@@ -319,7 +327,8 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
     testSummary.setTotal(testSummary.getTotal() + count);
   }
 
-  private void updateColumnTestSummaryFromBucket(JsonObject bucket, ColumnTestSummaryDefinition columnTestSummary) {
+  private void updateColumnTestSummaryFromBucket(
+      JsonObject bucket, ColumnTestSummaryDefinition columnTestSummary) {
     String key = bucket.getString("key");
     Integer count = bucket.getJsonNumber("doc_count").intValue();
     switch (key) {

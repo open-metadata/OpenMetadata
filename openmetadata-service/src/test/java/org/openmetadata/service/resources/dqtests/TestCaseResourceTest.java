@@ -74,7 +74,6 @@ import org.openmetadata.schema.tests.type.TestSummary;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnDataType;
-import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.TableData;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.TaskStatus;
@@ -83,7 +82,6 @@ import org.openmetadata.service.resources.EntityResourceTest;
 import org.openmetadata.service.resources.databases.TableResourceTest;
 import org.openmetadata.service.resources.feeds.FeedResourceTest;
 import org.openmetadata.service.resources.feeds.MessageParser;
-import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.ResultList;
 import org.openmetadata.service.util.TestUtils;
@@ -289,7 +287,8 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
   }
 
   @Test
-  void put_testCaseResults_200(TestInfo test) throws IOException, ParseException, InterruptedException {
+  void put_testCaseResults_200(TestInfo test)
+      throws IOException, ParseException, InterruptedException {
     CreateTestCase create = createRequest(test);
     create
         .withEntityLink(TABLE_COLUMN_LINK)
@@ -434,7 +433,8 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
   }
 
   @Test
-  void test_resultSummaryCascadeToAllSuites(TestInfo test) throws IOException, ParseException, InterruptedException {
+  void test_resultSummaryCascadeToAllSuites(TestInfo test)
+      throws IOException, ParseException, InterruptedException {
     TestCase testCase = createAndCheckEntity(createRequest(test, 1), ADMIN_AUTH_HEADERS);
     TestCase testCase1 = createAndCheckEntity(createRequest(test, 2), ADMIN_AUTH_HEADERS);
 
@@ -1844,17 +1844,19 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
     return testSuiteResourceTest.getTestSummary(ADMIN_AUTH_HEADERS, testSuiteId);
   }
 
-  private void getAndValidateTestSummary(String testSuiteId) throws IOException, InterruptedException {
+  private void getAndValidateTestSummary(String testSuiteId)
+      throws IOException, InterruptedException {
     TestSuiteResourceTest testSuiteResourceTest = new TestSuiteResourceTest();
     TestSummary testSummary = getTestSummary(testSuiteId);
     validateTestSummary(testSummary, testSuiteId);
   }
 
-  private void validateTestSummary(TestSummary testSummary, String testSuiteId) throws HttpResponseException {
+  private void validateTestSummary(TestSummary testSummary, String testSuiteId)
+      throws HttpResponseException {
     HashMap<String, Integer> testSummaryMap = JsonUtils.convertValue(testSummary, HashMap.class);
     List<TestCase> testCases;
 
-    HashMap<String,  HashMap<String, Integer>> columnsMap = new HashMap<>();
+    HashMap<String, HashMap<String, Integer>> columnsMap = new HashMap<>();
     HashMap<String, Integer> map = new HashMap<>(5);
     map.put("success", 0);
     map.put("failed", 0);
@@ -1878,9 +1880,16 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
         continue;
       }
 
-      MessageParser.EntityLink entityLink = testCase.getEntityLink() != null ? MessageParser.EntityLink.parse(testCase.getEntityLink()) : null;
-      if (entityLink != null && entityLink.getFieldName() != null && entityLink.getFieldName().equals("columns") && testSuiteId != null) {
-        HashMap<String, Integer> columnMap = columnsMap.get(entityLink.getFullyQualifiedFieldValue());
+      MessageParser.EntityLink entityLink =
+          testCase.getEntityLink() != null
+              ? MessageParser.EntityLink.parse(testCase.getEntityLink())
+              : null;
+      if (entityLink != null
+          && entityLink.getFieldName() != null
+          && entityLink.getFieldName().equals("columns")
+          && testSuiteId != null) {
+        HashMap<String, Integer> columnMap =
+            columnsMap.get(entityLink.getFullyQualifiedFieldValue());
         if (columnMap == null) {
           columnMap = new HashMap<>(5);
           columnMap.put("success", 0);
@@ -1890,7 +1899,8 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
           columnMap.put("total", 0);
           columnsMap.put(entityLink.getLinkString(), columnMap);
         }
-        columnMap.merge(testCaseResult.getTestCaseStatus().toString().toLowerCase(), 1, Integer::sum);
+        columnMap.merge(
+            testCaseResult.getTestCaseStatus().toString().toLowerCase(), 1, Integer::sum);
         columnMap.merge("total", 1, Integer::sum);
       }
       map.merge(testCaseResult.getTestCaseStatus().toString().toLowerCase(), 1, Integer::sum);
@@ -1906,8 +1916,10 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
       List<ColumnTestSummaryDefinition> columnTestSummary = testSummary.getColumnTestSummary();
       assertEquals(columnsMap.size(), columnTestSummary.size());
       for (ColumnTestSummaryDefinition columnTestSummaryDefinition : columnTestSummary) {
-        HashMap<String, Integer> columnSummary = JsonUtils.convertValue(columnTestSummaryDefinition, HashMap.class);
-        HashMap<String, Integer> columnMap = columnsMap.get(columnTestSummaryDefinition.getEntityLink());
+        HashMap<String, Integer> columnSummary =
+            JsonUtils.convertValue(columnTestSummaryDefinition, HashMap.class);
+        HashMap<String, Integer> columnMap =
+            columnsMap.get(columnTestSummaryDefinition.getEntityLink());
         for (Map.Entry<String, Integer> entry : columnMap.entrySet()) {
           assertEquals(entry.getValue(), columnSummary.get(entry.getKey()));
         }

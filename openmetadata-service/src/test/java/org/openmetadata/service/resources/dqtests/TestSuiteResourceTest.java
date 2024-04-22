@@ -12,7 +12,6 @@ import static org.openmetadata.service.util.TestUtils.assertListNotNull;
 import static org.openmetadata.service.util.TestUtils.assertListNull;
 import static org.openmetadata.service.util.TestUtils.assertResponse;
 import static org.openmetadata.service.util.TestUtils.assertResponseContains;
-import static org.openmetadata.service.util.TestUtils.waitForEsAsyncOp;
 
 import es.org.elasticsearch.search.aggregations.AggregationBuilder;
 import es.org.elasticsearch.search.aggregations.AggregationBuilders;
@@ -720,7 +719,7 @@ public class TestSuiteResourceTest extends EntityResourceTest<TestSuite, CreateT
 
     // Test aggregation with nested aggregation and sub-aggregation
     aggregationQuery =
-      """
+        """
           {
             "aggregations": {
               "my-first-agg-name": {
@@ -759,19 +758,18 @@ public class TestSuiteResourceTest extends EntityResourceTest<TestSuite, CreateT
 
     expected.clear();
     expected.addAll(
-            List.of(
-                    AggregationBuilders.nested("testCaseResultSummary", "testCaseResultSummary")
-                            .subAggregation(
-                                    AggregationBuilders.terms("status_counts")
-                                            .field("testCaseResultSummary.status"))
-                            .subAggregation(
-                                    AggregationBuilders.terms("other_status_counts")
-                                            .field("testCaseResultSummary.status")),
-                    AggregationBuilders.terms("my-first-agg-name")
-                            .field("my-field")
-                            .subAggregation(
-                                    AggregationBuilders.terms("my-nested-agg-name")
-                                            .field("my-other-field"))));
+        List.of(
+            AggregationBuilders.nested("testCaseResultSummary", "testCaseResultSummary")
+                .subAggregation(
+                    AggregationBuilders.terms("status_counts")
+                        .field("testCaseResultSummary.status"))
+                .subAggregation(
+                    AggregationBuilders.terms("other_status_counts")
+                        .field("testCaseResultSummary.status")),
+            AggregationBuilders.terms("my-first-agg-name")
+                .field("my-field")
+                .subAggregation(
+                    AggregationBuilders.terms("my-nested-agg-name").field("my-other-field"))));
 
     actual = ElasticSearchClient.buildAggregation(aggregationJson.getJsonObject("aggregations"));
     assertThat(actual).hasSameElementsAs(expected);
