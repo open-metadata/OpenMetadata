@@ -557,7 +557,7 @@ class PowerbiSource(DashboardServiceSource):
         db_service_name: str,
         table: PowerBiTable,
         datamodel_entity: DashboardDataModel,
-    ) -> Iterable[Either[AddLineageRequest]]:
+    ) -> Optional[Iterable[Either[AddLineageRequest]]]:
         """
         Method to create lineage between table and datamodels
         """
@@ -590,6 +590,7 @@ class PowerbiSource(DashboardServiceSource):
                     stackTrace=traceback.format_exc(),
                 )
             )
+        return None
 
     def create_table_datamodel_lineage_from_files(
         self,

@@ -59,10 +59,8 @@ class GCSReader(Reader):
         **__,
     ) -> bytes:
         try:
-            return (
-                self.client.get_bucket(bucket_name)
-                .get_blob(path)
-                .download_to_filename(local_file_path)
+            self.client.get_bucket(bucket_name).get_blob(path).download_to_filename(
+                local_file_path
             )
         except Exception as err:
             if verbose:

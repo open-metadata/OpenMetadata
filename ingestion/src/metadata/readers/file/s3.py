@@ -55,9 +55,9 @@ class S3Reader(Reader):
         bucket_name: str = None,
         verbose: bool = True,
         **__,
-    ) -> bytes:
+    ):
         try:
-            return self.client.download_file(bucket_name, path, local_file_path)
+            self.client.download_file(bucket_name, path, local_file_path)
         except Exception as err:
             if verbose:
                 logger.debug(traceback.format_exc())

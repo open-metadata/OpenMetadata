@@ -85,7 +85,7 @@ def download_pbit_files(
     """
     Method to download the files from sources
     """
-    for (  # pylint: disable=too-many-nested-blocks
+    for (
         key,
         blobs,
     ) in blob_grouped_by_directory.items():
@@ -295,6 +295,7 @@ def _(config: LocalConfig):
     except Exception as exc:
         logger.debug(traceback.format_exc())
         logger.error(f"Error getting pbit files from local: {exc}")
+    return None
 
 
 class PowerBIFileConfigException(Exception):

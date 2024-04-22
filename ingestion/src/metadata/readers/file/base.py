@@ -56,8 +56,9 @@ class Reader(ABC):
             logger.error(f"Error getting file tree [{err}]")
         return None
 
-    def download(self, path: str, **kwargs) -> Union[str, bytes]:
+    @abstractmethod
+    def download(self, path: str, local_file_path: str, **kwargs):
         """
         Given a path, download the file
         """
-        pass
+        raise NotImplementedError("Missing download implementation")
