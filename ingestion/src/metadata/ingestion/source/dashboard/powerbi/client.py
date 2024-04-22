@@ -324,6 +324,7 @@ class PowerBiApiClient:
 
         return False
 
+
 class PowerBiClient(BaseModel):
     class Config:
         arbitrary_types_allowed = True
