@@ -154,3 +154,10 @@ $$section
 
 This field specifies the user id of the user.
 $$
+
+
+$$section
+### Validate Host Name $(id="validateHostName")
+
+Enable/Disable this field to validate the host name against the provided certificates.
+$$
