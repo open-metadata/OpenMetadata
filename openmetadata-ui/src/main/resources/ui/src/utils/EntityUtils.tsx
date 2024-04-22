@@ -1847,6 +1847,7 @@ export const getEntityNameLabel = (entityName?: string) => {
     location: t('label.location'),
     database: t('label.database'),
     query: t('label.query'),
+    THREAD: t('label.thread'),
   };
 
   return (

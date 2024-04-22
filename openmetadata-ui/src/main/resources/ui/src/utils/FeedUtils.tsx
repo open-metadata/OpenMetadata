@@ -15,7 +15,7 @@ import { RightOutlined } from '@ant-design/icons';
 import { AxiosError } from 'axios';
 import { Operation } from 'fast-json-patch';
 import i18next from 'i18next';
-import { isEqual } from 'lodash';
+import { isEqual, isUndefined } from 'lodash';
 import React from 'react';
 import ReactDOM from 'react-dom';
 import Showdown from 'showdown';
@@ -24,6 +24,7 @@ import { MentionSuggestionsItem } from '../components/ActivityFeed/FeedEditor/Fe
 import { UserTeam } from '../components/common/AssigneeList/AssigneeList.interface';
 import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
 import {
+  EntityField,
   entityLinkRegEx,
   EntityRegEx,
   entityRegex,
@@ -36,7 +37,11 @@ import {
 } from '../constants/Feeds.constants';
 import { EntityType, FqnPart, TabSpecificField } from '../enums/entity.enum';
 import { SearchIndex } from '../enums/search.enum';
-import { Thread, ThreadType } from '../generated/entity/feed/thread';
+import {
+  FieldOperation,
+  Thread,
+  ThreadType,
+} from '../generated/entity/feed/thread';
 import { User } from '../generated/entity/teams/user';
 import {
   deletePostById,
@@ -571,4 +576,51 @@ export const getFeedPanelHeaderText = (
     default:
       return i18next.t('label.conversation');
   }
+};
+
+export const getFeedChangeActionLabel = (fieldOperation?: FieldOperation) => {
+  switch (fieldOperation) {
+    case FieldOperation.Added:
+      return i18next.t('label.added');
+    case FieldOperation.Updated:
+      return i18next.t('label.updated');
+    case FieldOperation.Deleted:
+      return i18next.t('label.deleted');
+
+    default:
+      return '';
+  }
+};
+
+export const getFeedChangeFieldLabel = (fieldName?: EntityField) => {
+  const fieldNameLabelMapping = {
+    [EntityField.DESCRIPTION]: i18next.t('label.description'),
+    [EntityField.COLUMNS]: i18next.t('label.column-plural'),
+    [EntityField.SCHEMA_FIELDS]: i18next.t('label.schema-field-plural'),
+    [EntityField.TAGS]: i18next.t('label.tag-plural'),
+    [EntityField.TASKS]: i18next.t('label.task-plural'),
+    [EntityField.ML_FEATURES]: i18next.t('label.ml-feature-plural'),
+    [EntityField.SCHEMA_TEXT]: i18next.t('label.schema-text'),
+    [EntityField.OWNER]: i18next.t('label.owner'),
+    [EntityField.REVIEWERS]: i18next.t('label.reviewer-plural'),
+    [EntityField.SYNONYMS]: i18next.t('label.synonym-plural'),
+    [EntityField.RELATEDTERMS]: i18next.t('label.related-term-plural'),
+    [EntityField.REFERENCES]: i18next.t('label.reference-plural'),
+    [EntityField.EXTENSION]: i18next.t('label.extension'),
+    [EntityField.DISPLAYNAME]: i18next.t('label.display-name'),
+    [EntityField.NAME]: i18next.t('label.name'),
+    [EntityField.MESSAGE_SCHEMA]: i18next.t('label.message-schema'),
+    [EntityField.CHARTS]: i18next.t('label.chart-plural'),
+    [EntityField.DATA_MODEL]: i18next.t('label.data-model'),
+    [EntityField.CONSTRAINT]: i18next.t('label.constraint'),
+    [EntityField.TABLE_CONSTRAINTS]: i18next.t('label.table-constraint-plural'),
+    [EntityField.PARTITIONS]: i18next.t('label.partition-plural'),
+    [EntityField.REPLICATION_FACTOR]: i18next.t('label.replication-factor'),
+    [EntityField.SOURCE_URL]: i18next.t('label.source-url'),
+    [EntityField.MUTUALLY_EXCLUSIVE]: i18next.t('label.mutually-exclusive'),
+    [EntityField.EXPERTS]: i18next.t('label.expert-plural'),
+    [EntityField.FIELDS]: i18next.t('label.field-plural'),
+  };
+
+  return isUndefined(fieldName) ? '' : fieldNameLabelMapping[fieldName];
 };

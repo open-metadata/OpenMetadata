@@ -15,7 +15,6 @@ import { Tooltip, Typography } from 'antd';
 import classNames from 'classnames';
 import { isUndefined } from 'lodash';
 import React, { useMemo } from 'react';
-import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { getUserPath } from '../../../../constants/constants';
 import { useUserProfile } from '../../../../hooks/user-profile/useUserProfile';
@@ -23,16 +22,21 @@ import {
   formatDateTime,
   getRelativeTime,
 } from '../../../../utils/date-time/DateTimeUtils';
-import { getEntityName } from '../../../../utils/EntityUtils';
+import {
+  getEntityName,
+  getEntityNameLabel,
+} from '../../../../utils/EntityUtils';
 import {
   entityDisplayName,
-  getEntityField,
-  getEntityFieldDisplay,
   getEntityFQN,
   getEntityType,
+  getFeedChangeActionLabel,
+  getFeedChangeFieldLabel,
 } from '../../../../utils/FeedUtils';
 import EntityPopOverCard from '../../../common/PopOverCard/EntityPopOverCard';
 
+import { useTranslation } from 'react-i18next';
+import { EntityField } from '../../../../constants/Feeds.constants';
 import { EntityType } from '../../../../enums/entity.enum';
 import entityUtilClassBase from '../../../../utils/EntityUtilClassBase';
 import UserPopOverCard from '../../../common/PopOverCard/UserPopOverCard';
@@ -40,25 +44,25 @@ import './feed-card-header-v2.less';
 import { FeedCardHeaderV2Props } from './FeedCardHeaderV2.interface';
 
 const FeedCardHeaderV2 = ({
-  about: entityLink = '',
-  createdBy = '',
-  timeStamp,
   className = '',
-  isEntityFeed = false,
+  feed,
+  post,
+  isEntityFeed,
 }: FeedCardHeaderV2Props) => {
   const [, , user] = useUserProfile({
     permission: true,
-    name: createdBy ?? '',
+    name: feed.createdBy ?? '',
   });
-
   const { t } = useTranslation();
 
-  const { entityFQN, entityType, entityField } = useMemo(() => {
+  const { from: createdBy, postTs: timeStamp } = post;
+  const { about: entityLink } = feed;
+
+  const { entityFQN, entityType } = useMemo(() => {
     const entityFQN = getEntityFQN(entityLink) ?? '';
     const entityType = getEntityType(entityLink) ?? '';
-    const entityField = getEntityField(entityLink) ?? '';
 
-    return { entityFQN, entityType, entityField };
+    return { entityFQN, entityType };
   }, [entityLink]);
 
   const entityCheck = useMemo(
@@ -80,49 +84,44 @@ const FeedCardHeaderV2 = ({
           </Link>
         </UserPopOverCard>
 
-        {entityCheck && (
-          <span className="font-normal" data-testid="headerText">
-            <span className="m-r-xss">{t('label.posted-on-lowercase')}</span>
-            {isEntityFeed ? (
-              <span data-testid="headerText-entityField">
-                {getEntityFieldDisplay(entityField)}
-              </span>
+        {entityCheck && !isEntityFeed && (
+          <Typography.Text className="font-normal" data-testid="headerText">
+            <Typography.Text className="m-r-xss">
+              {getFeedChangeActionLabel(feed.fieldOperation)}
+            </Typography.Text>
+            <Typography.Text className="m-r-xss" data-testid="entityType">
+              {getFeedChangeFieldLabel(feed.feedInfo?.fieldName as EntityField)}
+            </Typography.Text>
+            <Typography.Text className="m-r-xss">
+              {t('label.for-lowercase')}
+            </Typography.Text>
+            <Typography.Text className="m-r-xss">
+              {getEntityNameLabel(feed.entityType)}
+            </Typography.Text>
+
+            {isUserOrTeam ? (
+              <UserPopOverCard
+                showUserName
+                showUserProfile={false}
+                userName={createdBy}>
+                <Link
+                  className="break-all text-body"
+                  data-testid="entity-link"
+                  to={entityUtilClassBase.getEntityLink(entityType, entityFQN)}>
+                  <span>{entityDisplayName(entityType, entityFQN)}</span>
+                </Link>
+              </UserPopOverCard>
             ) : (
-              <>
-                <span data-testid="entityType">{entityType} </span>
-                {isUserOrTeam ? (
-                  <UserPopOverCard
-                    showUserName
-                    showUserProfile={false}
-                    userName={createdBy}>
-                    <Link
-                      className="break-all text-body"
-                      data-testid="entity-link"
-                      to={entityUtilClassBase.getEntityLink(
-                        entityType,
-                        entityFQN
-                      )}>
-                      <span>{entityDisplayName(entityType, entityFQN)}</span>
-                    </Link>
-                  </UserPopOverCard>
-                ) : (
-                  <EntityPopOverCard
-                    entityFQN={entityFQN}
-                    entityType={entityType}>
-                    <Link
-                      className="break-all"
-                      data-testid="entity-link"
-                      to={entityUtilClassBase.getEntityLink(
-                        entityType,
-                        entityFQN
-                      )}>
-                      <span>{entityDisplayName(entityType, entityFQN)}</span>
-                    </Link>
-                  </EntityPopOverCard>
-                )}
-              </>
+              <EntityPopOverCard entityFQN={entityFQN} entityType={entityType}>
+                <Link
+                  className="break-all"
+                  data-testid="entity-link"
+                  to={entityUtilClassBase.getEntityLink(entityType, entityFQN)}>
+                  <span>{entityDisplayName(entityType, entityFQN)}</span>
+                </Link>
+              </EntityPopOverCard>
             )}
-          </span>
+          </Typography.Text>
         )}
       </Typography.Text>
       {timeStamp && (

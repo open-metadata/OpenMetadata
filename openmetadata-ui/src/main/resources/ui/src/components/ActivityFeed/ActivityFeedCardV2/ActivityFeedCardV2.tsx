@@ -107,12 +107,7 @@ const ActivityFeedCardV2 = ({
           onMouseLeave={handleMouseLeave}>
           <Row className="w-full">
             <Col span={24}>
-              <FeedCardHeaderV2
-                about={!isPost ? feed.about : undefined}
-                createdBy={post.from}
-                isEntityFeed={isPost}
-                timeStamp={post.postTs}
-              />
+              <FeedCardHeaderV2 feed={feed} isEntityFeed={isPost} post={post} />
             </Col>
             <Col span={24}>
               <FeedCardBodyV1
