@@ -246,7 +246,10 @@ const ExploreV1: React.FC<ExploreProps> = ({
   }, []);
 
   useEffect(() => {
-    const dropdownItems = getDropDownItems(activeTabKey);
+    const dropdownItems: Array<{
+      label: string;
+      key: string;
+    }> = getDropDownItems(activeTabKey);
 
     setSelectedQuickFilters(
       dropdownItems.map((item) => ({
