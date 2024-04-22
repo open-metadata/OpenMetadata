@@ -254,3 +254,19 @@ def get_mview_definition(self, mview_name, schema=None):
         return self.dialect.get_view_definition(
             conn, mview_name, schema, info_cache=self.info_cache
         )
+
+
+def convert_numpy_to_list(data):
+    """
+    Recursively converts numpy arrays to lists in a nested data structure.
+    """
+    import numpy as np  # pylint: disable=import-outside-toplevel
+
+    if isinstance(data, np.ndarray):
+        return data.tolist()
+    elif isinstance(data, list):
+        return [convert_numpy_to_list(item) for item in data]
+    elif isinstance(data, dict):
+        return {key: convert_numpy_to_list(value) for key, value in data.items()}
+    else:
+        return data

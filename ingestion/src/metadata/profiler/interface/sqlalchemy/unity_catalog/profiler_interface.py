@@ -24,9 +24,6 @@ from metadata.profiler.interface.sqlalchemy.databricks.profiler_interface import
 
 
 class UnityCatalogProfilerInterface(DatabricksProfilerInterface):
-    def __init__(self, service_connection_config, **kwargs):
-        super().__init__(service_connection_config=service_connection_config, **kwargs)
-
     def create_session(self):
         self.connection = databricks_get_connection(self.service_connection_config)
         super().create_session()
