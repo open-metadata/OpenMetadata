@@ -1,0 +1,84 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/services/connections/database/teradataConnection.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "TeradataConnection",
+  "description": "Teradata Database Connection Config",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.services.connections.database.TeradataConnection",
+  "definitions": {
+    "teradataType": {
+      "description": "Service type.",
+      "type": "string",
+      "enum": ["Teradata"],
+      "default": "Teradata"
+    },
+    "teradataScheme": {
+      "description": "SQLAlchemy driver scheme options.",
+      "type": "string",
+      "enum": ["teradatasql"],
+      "default": "teradatasql"
+    }
+  },
+  "properties": {
+    "type": {
+      "title": "Service Type",
+      "description": "Service Type",
+      "$ref": "#/definitions/teradataType",
+      "default": "Teradata"
+    },
+    "scheme": {
+      "title": "Connection Scheme",
+      "description": "SQLAlchemy driver scheme options.",
+      "$ref": "#/definitions/teradataScheme",
+      "default": "teradatasql"
+    },
+    "username": {
+      "title": "Username",
+      "description": "Username to connect to Teradata. This user should have privileges to read all the metadata in Teradata.",
+      "type": "string"
+    },
+    "password": {
+      "title": "Password",
+      "description": "Password to connect to Teradata.",
+      "type": "string",
+      "format": "password"
+    },
+    "host": {
+      "title": "Teradata server",
+      "description": "Host of the Teradata service.",
+      "type": "string"
+    },
+    "dbs_port": {
+      "title": "DBS Port",
+      "description": "Port of the Teradata service. Default is 1025",
+      "type": "string",
+      "default": "1025"
+    },
+    "logmech": {
+      "title": "Logon mechanism",
+      "description": "Specifies the logon authentication method. Possible values are TD2 (the default), JWT, LDAP, KRB5 for Kerberos, or TDNEGO.",
+      "type": "string",
+      "default": "TD2"
+    },
+    "ingestAllDatabases": {
+      "title": "Ingest All Databases",
+      "description": "Ingest data from all databases in teradata. You can use databaseFilterPattern on top of this.",
+      "type": "boolean",
+      "default": true
+    },
+    "connectionOptions": {
+      "title": "Connection Options",
+      "$ref": "../connectionBasicType.json#/definitions/connectionOptions"
+    },
+    "connectionArguments": {
+      "title": "Connection Arguments",
+      "$ref": "../connectionBasicType.json#/definitions/connectionArguments"
+    },
+    "supportsMetadataExtraction": {
+      "title": "Supports Metadata Extraction",
+      "$ref": "../connectionBasicType.json#/definitions/supportsMetadataExtraction"
+    }
+  },
+  "additionalProperties": false,
+  "required": ["host"]
+}

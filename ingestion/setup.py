@@ -21,7 +21,7 @@ from setuptools import setup
 VERSIONS = {
     "airflow": "apache-airflow==2.7.3",
     "adlfs": "adlfs~=2022.11",
-    "avro": "avro>=1.11.3,<1.12",
+    "avro": "avro~=1.11",
     "boto3": "boto3>=1.20,<2.0",  # No need to add botocore separately. It's a dep from boto3
     "geoalchemy2": "GeoAlchemy2~=0.12",
     "google-cloud-storage": "google-cloud-storage==1.43.0",
@@ -54,6 +54,7 @@ VERSIONS = {
     "elasticsearch8": "elasticsearch8~=8.9.0",
     "giturlparse": "giturlparse",
     "validators": "validators~=0.22.0",
+    "teradata": "teradatasqlalchemy>=20.0.0.0"
 }
 
 COMMONS = {
@@ -91,7 +92,7 @@ base_requirements = {
     VERSIONS["boto3"],  # Required in base for the secrets manager
     "cached-property==1.5.2",  # LineageParser
     "chardet==4.0.0",  # Used in the profiler
-    "cryptography>=42.0.0",
+    "cryptography",
     "email-validator>=1.0.3",  # For the pydantic generated models for Email
     "importlib-metadata>=4.13.0",  # From airflow constraints
     "Jinja2>=2.11.3",
@@ -209,6 +210,7 @@ plugins: Dict[str, Set[str]] = {
     },
     "kafka": {*COMMONS["kafka"]},
     "kinesis": {VERSIONS["boto3"]},
+    "ldap-users": {"ldap3==2.9.1"},
     "looker": {
         VERSIONS["looker-sdk"],
         VERSIONS["lkml"],
@@ -222,6 +224,7 @@ plugins: Dict[str, Set[str]] = {
     "mssql-odbc": {VERSIONS["pyodbc"]},
     "mysql": {VERSIONS["pymysql"]},
     "nifi": {},  # uses requests
+    "okta": {"okta~=2.3"},
     "openlineage": {*COMMONS["kafka"]},
     "oracle": {"cx_Oracle>=8.3.0,<9", "oracledb~=1.2"},
     "pgspider": {"psycopg2-binary", "sqlalchemy-pgspider"},
@@ -255,6 +258,7 @@ plugins: Dict[str, Set[str]] = {
     "snowflake": {VERSIONS["snowflake"]},
     "superset": {},  # uses requests
     "tableau": {VERSIONS["tableau"], VERSIONS["validators"], VERSIONS["packaging"]},
+    "teradata": {VERSIONS["teradata"]},
     "trino": {VERSIONS["trino"]},
     "vertica": {"sqlalchemy-vertica[vertica-python]>=0.0.5"},
     "pii-processor": {
