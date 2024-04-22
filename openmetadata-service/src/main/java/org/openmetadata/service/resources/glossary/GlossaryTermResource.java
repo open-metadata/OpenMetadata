@@ -244,7 +244,7 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
     } else { // Forward paging or first page
       terms = repository.listAfter(uriInfo, fields, filter, limitParam, after);
     }
-    repository.addChildrenCount(terms);
+    // repository.addChildrenCount(terms);
     return addHref(uriInfo, terms);
   }
 
