@@ -15,6 +15,7 @@ import { Avatar, Col, Divider, Row } from 'antd';
 import classNames from 'classnames';
 import { compare } from 'fast-json-patch';
 import React, { useMemo, useState } from 'react';
+import { EntityField } from '../../../constants/Feeds.constants';
 import { getRandomColor } from '../../../utils/CommonUtils';
 import FeedCardBodyV1 from '../ActivityFeedCard/FeedCardBody/FeedCardBodyV1';
 import { useActivityFeedProvider } from '../ActivityFeedProvider/ActivityFeedProvider';
@@ -107,7 +108,14 @@ const ActivityFeedCardV2 = ({
           onMouseLeave={handleMouseLeave}>
           <Row className="w-full">
             <Col span={24}>
-              <FeedCardHeaderV2 feed={feed} isEntityFeed={isPost} post={post} />
+              <FeedCardHeaderV2
+                about={!isPost ? feed.about : undefined}
+                createdBy={post.from}
+                fieldName={feed.feedInfo?.fieldName as EntityField}
+                fieldOperation={feed.fieldOperation}
+                isEntityFeed={isPost}
+                timeStamp={post.postTs}
+              />
             </Col>
             <Col span={24}>
               <FeedCardBodyV1

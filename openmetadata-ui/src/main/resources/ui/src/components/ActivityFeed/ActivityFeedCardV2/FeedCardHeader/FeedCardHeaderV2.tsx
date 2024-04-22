@@ -45,18 +45,19 @@ import { FeedCardHeaderV2Props } from './FeedCardHeaderV2.interface';
 
 const FeedCardHeaderV2 = ({
   className = '',
-  feed,
-  post,
-  isEntityFeed,
+  about: entityLink = '',
+  createdBy = '',
+  timeStamp,
+  isEntityFeed = false,
+  isAnnouncement = false,
+  fieldOperation,
+  fieldName,
 }: FeedCardHeaderV2Props) => {
   const [, , user] = useUserProfile({
     permission: true,
-    name: feed.createdBy ?? '',
+    name: createdBy ?? '',
   });
   const { t } = useTranslation();
-
-  const { from: createdBy, postTs: timeStamp } = post;
-  const { about: entityLink } = feed;
 
   const { entityFQN, entityType } = useMemo(() => {
     const entityFQN = getEntityFQN(entityLink) ?? '';
@@ -86,18 +87,26 @@ const FeedCardHeaderV2 = ({
 
         {entityCheck && !isEntityFeed && (
           <Typography.Text className="font-normal" data-testid="headerText">
-            <Typography.Text className="m-r-xss">
-              {getFeedChangeActionLabel(feed.fieldOperation)}
-            </Typography.Text>
-            <Typography.Text className="m-r-xss" data-testid="entityType">
-              {getFeedChangeFieldLabel(feed.feedInfo?.fieldName as EntityField)}
-            </Typography.Text>
-            <Typography.Text className="m-r-xss">
-              {t('label.for-lowercase')}
-            </Typography.Text>
-            <Typography.Text className="m-r-xss">
-              {getEntityNameLabel(feed.entityType)}
-            </Typography.Text>
+            {isAnnouncement ? (
+              <Typography.Text className="m-r-xss">
+                {t('label.posted-on-lowercase')}
+              </Typography.Text>
+            ) : (
+              <>
+                <Typography.Text className="m-r-xss">
+                  {getFeedChangeActionLabel(fieldOperation)}
+                </Typography.Text>
+                <Typography.Text className="m-r-xss" data-testid="entityType">
+                  {getFeedChangeFieldLabel(fieldName as EntityField)}
+                </Typography.Text>
+                <Typography.Text className="m-r-xss">
+                  {t('label.for-lowercase')}
+                </Typography.Text>
+                <Typography.Text className="m-r-xss">
+                  {getEntityNameLabel(entityType)}
+                </Typography.Text>
+              </>
+            )}
 
             {isUserOrTeam ? (
               <UserPopOverCard

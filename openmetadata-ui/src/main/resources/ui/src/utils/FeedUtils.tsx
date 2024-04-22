@@ -581,11 +581,11 @@ export const getFeedPanelHeaderText = (
 export const getFeedChangeActionLabel = (fieldOperation?: FieldOperation) => {
   switch (fieldOperation) {
     case FieldOperation.Added:
-      return i18next.t('label.added');
+      return i18next.t('label.added-lowercase');
     case FieldOperation.Updated:
-      return i18next.t('label.updated');
+      return i18next.t('label.updated-lowercase');
     case FieldOperation.Deleted:
-      return i18next.t('label.deleted');
+      return i18next.t('label.deleted-lowercase');
 
     default:
       return '';

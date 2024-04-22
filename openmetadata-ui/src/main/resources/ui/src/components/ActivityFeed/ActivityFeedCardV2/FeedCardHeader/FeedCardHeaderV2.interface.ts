@@ -11,11 +11,15 @@
  *  limitations under the License.
  */
 
-import { Post, Thread } from '../../../../generated/entity/feed/thread';
+import { FieldOperation } from '../../../../generated/entity/feed/thread';
 
 export interface FeedCardHeaderV2Props {
   className?: string;
   isEntityFeed?: boolean;
-  feed: Thread;
-  post: Post;
+  isAnnouncement?: boolean;
+  about?: string;
+  createdBy?: string;
+  timeStamp?: number;
+  fieldOperation?: FieldOperation;
+  fieldName?: string;
 }

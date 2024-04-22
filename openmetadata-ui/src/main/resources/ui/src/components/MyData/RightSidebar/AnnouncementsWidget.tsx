@@ -73,9 +73,11 @@ function AnnouncementsWidget({
                   description={
                     <>
                       <FeedCardHeaderV2
+                        isAnnouncement
                         about={item.about}
                         className="d-inline"
                         createdBy={item.createdBy}
+                        fieldName={item.feedInfo?.fieldName}
                         timeStamp={item.threadTs}
                       />
                       <FeedCardBodyV1
