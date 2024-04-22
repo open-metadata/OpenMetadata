@@ -22,16 +22,21 @@ from pydantic import BaseModel
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.entity.services.databaseService import DatabaseService
 from metadata.generated.schema.type.entityLineage import EntitiesEdge
+from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.lineage.models import ConnectionTypeDialectMapper
 from metadata.ingestion.lineage.parser import LINEAGE_PARSING_TIMEOUT
 from metadata.ingestion.models.patch_request import build_patch
 from metadata.ingestion.ometa.client import REST, APIError
 from metadata.ingestion.ometa.utils import get_entity_type
 from metadata.utils.logger import ometa_logger
+from metadata.utils.lru_cache import LRU_CACHE_SIZE, LRUCache
 
 logger = ometa_logger()
 
 T = TypeVar("T", bound=BaseModel)
+
+
+search_cache = LRUCache(LRU_CACHE_SIZE)
 
 
 class OMetaLineageMixin(Generic[T]):
@@ -57,6 +62,30 @@ class OMetaLineageMixin(Generic[T]):
             for col_data in set(temp_result)
         ]
 
+    def _update_cache(self, request: AddLineageRequest, response: Dict[str, Any]):
+        try:
+            for res in response.get("downstreamEdges", []):
+                if str(request.edge.toEntity.id.__root__) == res.get("toEntity"):
+                    search_cache.put(
+                        (
+                            request.edge.fromEntity.id.__root__,
+                            request.edge.toEntity.id.__root__,
+                        ),
+                        {"edge": res.get("lineageDetails")},
+                    )
+                    return
+        except Exception as e:
+            logger.debug(f"Error while updating cache: {e}")
+
+        # discard the cache if failed to update
+        search_cache.put(
+            (
+                request.edge.fromEntity.id.__root__,
+                request.edge.toEntity.id.__root__,
+            ),
+            None,
+        )
+
     def add_lineage(
         self, data: AddLineageRequest, check_patch: bool = False
     ) -> Dict[str, Any]:
@@ -67,17 +96,38 @@ class OMetaLineageMixin(Generic[T]):
         try:
             patch_op_success = False
             if check_patch and data.edge.lineageDetails:
-                edge = self.get_lineage_edge(data)
+                from_id = data.edge.fromEntity.id.__root__
+                to_id = data.edge.toEntity.id.__root__
+                edge = self.get_lineage_edge(from_id, to_id)
                 if edge:
                     original: AddLineageRequest = deepcopy(data)
                     original.edge.lineageDetails.columnsLineage = edge["edge"].get(
-                        "columns", []
+                        "columnsLineage", []
                     )
-                    original.edge.lineageDetails.pipeline = edge["edge"].get("pipeline")
-                    created_lineage = self.patch_lineage_edge(
-                        original=original, updated=data
+                    original.edge.lineageDetails.pipeline = (
+                        EntityReference(**edge["edge"].get("pipeline"))
+                        if edge["edge"].get("pipeline")
+                        else None
                     )
-                    if created_lineage:
+                    # merge the original and new column level lineage
+                    data.edge.lineageDetails.columnsLineage = (
+                        self._merge_column_lineage(
+                            original.edge.lineageDetails.columnsLineage,
+                            data.edge.lineageDetails.columnsLineage,
+                        )
+                    )
+
+                    # Keep the pipeline information from the original
+                    # lineage if available
+                    if (
+                        original.edge.lineageDetails.pipeline
+                        and not data.edge.lineageDetails.pipeline
+                    ):
+                        data.edge.lineageDetails.pipeline = (
+                            original.edge.lineageDetails.pipeline
+                        )
+                    patch = self.patch_lineage_edge(original=original, updated=data)
+                    if patch is not None:
                         patch_op_success = True
 
             if patch_op_success is False:
@@ -97,25 +147,29 @@ class OMetaLineageMixin(Generic[T]):
             data.edge.fromEntity.type, str(data.edge.fromEntity.id.__root__)
         )
 
+        self._update_cache(data, from_entity_lineage)
         return from_entity_lineage
 
     def get_lineage_edge(
         self,
-        lineage_request: AddLineageRequest,
+        from_id: str,
+        to_id: str,
     ) -> Optional[Dict[str, Any]]:
         try:
-            res = self.client.get(
-                f"{self.get_suffix(AddLineageRequest)}/getLineageEdge/"
-                f"{lineage_request.edge.fromEntity.id.__root__}/"
-                f"{lineage_request.edge.toEntity.id.__root__}"
-            )
-            return res
+            if (from_id, to_id) in search_cache:
+                return search_cache.get((from_id, to_id))
+            else:
+                res = self.client.get(
+                    f"{self.get_suffix(AddLineageRequest)}/getLineageEdge/"
+                    f"{from_id}/{to_id}"
+                )
+                search_cache.put((from_id, to_id), res)
+                return res
         except APIError as err:
             logger.debug(traceback.format_exc())
             logger.warning(
                 f"Error {err.status_code} trying to GET linage edge between "
-                f"{lineage_request.edge.fromEntity.id.__root__} and "
-                f"{lineage_request.edge.toEntity.id.__root__}: {err}"
+                f"{from_id} and {to_id}: {err}"
             )
             return None
 
@@ -123,7 +177,7 @@ class OMetaLineageMixin(Generic[T]):
         self,
         original: AddLineageRequest,
         updated: AddLineageRequest,
-    ) -> bool:
+    ) -> Optional[str]:
         """
         Patches a lineage edge between two entities.
 
@@ -140,7 +194,6 @@ class OMetaLineageMixin(Generic[T]):
                 source=original.edge.lineageDetails,
                 destination=updated.edge.lineageDetails,
                 allowed_fields=allowed_fields,
-                restrict_update_fields=allowed_fields.keys(),
                 remove_change_description=False,
             )
             if patch:
@@ -150,15 +203,14 @@ class OMetaLineageMixin(Generic[T]):
                     f"/{original.edge.toEntity.id.__root__}",
                     data=str(patch),
                 )
-            # Patch Operation Successful
-            return True
+                return str(patch)
         except APIError as err:
             logger.debug(traceback.format_exc())
             logger.warning(
                 f"Error Patching Lineage Edge {err.status_code} "
                 f"for {original.edge.fromEntity.fullyQualifiedName}"
             )
-            return False
+        return None
 
     def get_lineage_by_id(
         self,

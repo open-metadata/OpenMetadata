@@ -385,6 +385,13 @@ public class LineageRepository {
 
       LineageDetails original = JsonUtils.readValue(json, LineageDetails.class);
       LineageDetails updated = JsonUtils.applyPatch(original, patch, LineageDetails.class);
+      if (updated.getPipeline() != null){
+        // Validate pipeline entity
+        EntityReference pipeline = updated.getPipeline();
+        pipeline =
+                Entity.getEntityReferenceById(pipeline.getType(), pipeline.getId(), Include.NON_DELETED);
+        updated.withPipeline(pipeline);
+      }
       String detailsJson = JsonUtils.pojoToJson(updated);
       dao.relationshipDAO()
           .insert(fromId, toId, fromEntity, toEntity, Relationship.UPSTREAM.ordinal(), detailsJson);
