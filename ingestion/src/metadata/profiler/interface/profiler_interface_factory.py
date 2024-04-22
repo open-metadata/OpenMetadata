@@ -27,6 +27,9 @@ from metadata.generated.schema.entity.services.connections.database.datalakeConn
 from metadata.generated.schema.entity.services.connections.database.db2Connection import (
     Db2Connection,
 )
+from metadata.generated.schema.entity.services.connections.database.dynamoDBConnection import (
+    DynamoDBConnection,
+)
 from metadata.generated.schema.entity.services.connections.database.mariaDBConnection import (
     MariaDBConnection,
 )
@@ -104,5 +107,6 @@ profilers = {
     DatabricksConnection.__name__: DatabricksProfilerInterface,
     Db2Connection.__name__: DB2ProfilerInterface,
     MongoDBConnection.__name__: NoSQLProfilerInterface,
+    DynamoDBConnection.__name__: NoSQLProfilerInterface,
 }
 profiler_interface_factory.register_many(profilers)
