@@ -155,16 +155,25 @@ class OMetaLineageMixin(Generic[T]):
         from_id: str,
         to_id: str,
     ) -> Optional[Dict[str, Any]]:
+        """
+        Get the lineage edge between two entities.
+
+        Args:
+            from_id (str): The ID of the source entity.
+            to_id (str): The ID of the target entity.
+
+        Returns:
+            Optional[Dict[str, Any]]: The lineage edge if found, None otherwise.
+        """
         try:
             if (from_id, to_id) in search_cache:
                 return search_cache.get((from_id, to_id))
-            else:
-                res = self.client.get(
-                    f"{self.get_suffix(AddLineageRequest)}/getLineageEdge/"
-                    f"{from_id}/{to_id}"
-                )
-                search_cache.put((from_id, to_id), res)
-                return res
+            res = self.client.get(
+                f"{self.get_suffix(AddLineageRequest)}/getLineageEdge/"
+                f"{from_id}/{to_id}"
+            )
+            search_cache.put((from_id, to_id), res)
+            return res
         except APIError as err:
             logger.debug(traceback.format_exc())
             logger.warning(
