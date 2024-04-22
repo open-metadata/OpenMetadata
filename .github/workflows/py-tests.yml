@@ -84,7 +84,7 @@ jobs:
       run: |
         source env/bin/activate
         make run_python_tests
-      environment:
+      env:
         TESTCONTAINERS_RYUK_DISABLED: true
       
     - name: Run Python Tests & record coverage
