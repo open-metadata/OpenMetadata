@@ -17,6 +17,7 @@ from typing import Callable, Optional
 
 from sqlalchemy import column
 
+from metadata.generated.schema.configuration.profilerConfiguration import MetricType
 from metadata.generated.schema.entity.data.table import Table
 from metadata.profiler.adaptors.nosql_adaptor import NoSQLAdaptor
 from metadata.profiler.metrics.core import StaticMetric, T, _label
@@ -38,7 +39,7 @@ class Sum(StaticMetric):
 
     @classmethod
     def name(cls):
-        return "sum"
+        return MetricType.sum.value
 
     @_label
     def fn(self):
