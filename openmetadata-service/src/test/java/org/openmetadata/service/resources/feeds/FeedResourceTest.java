@@ -1278,6 +1278,11 @@ public class FeedResourceTest extends OpenMetadataApplicationTest {
 
   @Test
   void list_threadsWithFollowsFilter() throws HttpResponseException {
+    EventSubscriptionResourceTest eventSubscriptionResourceTest =
+        new EventSubscriptionResourceTest();
+    EventSubscription subscription =
+        eventSubscriptionResourceTest.getEntityByName("ActivityFeedAlert", ADMIN_AUTH_HEADERS);
+    eventSubscriptionResourceTest.waitForAllEventToComplete(subscription.getId());
     // Get the initial thread count of TABLE2
     String entityLink = String.format("<#E::table::%s>", TABLE2.getFullyQualifiedName());
     int initialThreadCount =
