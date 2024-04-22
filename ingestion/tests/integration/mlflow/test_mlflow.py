@@ -1,4 +1,5 @@
 import os
+import sys
 from urllib.parse import urlparse
 
 import mlflow
@@ -160,6 +161,10 @@ def ingest_mlflow(metadata, service, create_data):
     return
 
 
+@pytest.mark.skipif(
+    sys.version_info < (3, 9),
+    reason="testcontainers Network feature requires python3.9 or higher",
+)
 def test_mlflow(ingest_mlflow, metadata):
     ml_models = metadata.list_all_entities(entity=MlModel)
 
