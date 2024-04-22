@@ -1,0 +1,25 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/feed/testCaseResult.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "TestCaseResultFeedInfo",
+  "description": "This schema defines the schema for Test Case Result Updates for Feed.",
+  "javaType": "org.openmetadata.schema.entity.feed.TestCaseResultFeedInfo",
+  "type": "object",
+  "properties": {
+    "entityTestResultSummary": {
+      "description": "Summary of test case execution",
+      "type": "array",
+      "items": {
+        "$ref": "../../tests/testSuite.json#/definitions/testSuiteConnection/resultSummary"
+      }
+    },
+    "testCaseResult": {
+      "description": "Test Case Result for last 7 days.",
+      "type": "array",
+      "items": {
+        "$ref": "../../tests/basic.json#/definitions/testCaseResult"
+      }
+    }
+  },
+  "additionalProperties": false
+}
