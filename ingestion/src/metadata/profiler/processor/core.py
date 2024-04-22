@@ -108,7 +108,6 @@ class Profiler(Generic[TMetric]):  # pylint: disable=too-many-public-methods
 
         # We will get columns from the property
         self._columns: Optional[List[Column]] = None
-        self.fetch_column_from_property()
         self.data_frame_list = None
 
     @property
@@ -162,14 +161,7 @@ class Profiler(Generic[TMetric]):  # pylint: disable=too-many-public-methods
                 if column.name not in self._get_excluded_columns()
             ]
 
-        return [
-            column
-            for column in self._columns
-            if column.type.__class__.__name__ not in NOT_COMPUTE
-        ]
-
-    def fetch_column_from_property(self) -> Optional[List[Column]]:
-        self._columns = self.columns
+        return self._columns
 
     def _get_excluded_columns(self) -> Optional[Set[str]]:
         """Get excluded  columns for table being profiled"""
@@ -443,6 +435,11 @@ class Profiler(Generic[TMetric]):  # pylint: disable=too-many-public-methods
     def _prepare_column_metrics(self) -> List:
         """prepare column metrics"""
         column_metrics_for_thread_pool = []
+        columns = [
+            column
+            for column in self.columns
+            if column.type.__class__.__name__ not in NOT_COMPUTE
+        ]
         static_metrics = [
             ThreadPoolMetrics(
                 metrics=[
@@ -454,7 +451,7 @@ class Profiler(Generic[TMetric]):  # pylint: disable=too-many-public-methods
                 column=column,
                 table=self.table,
             )
-            for column in self.columns
+            for column in columns
         ]
         query_metrics = [
             ThreadPoolMetrics(
@@ -463,7 +460,7 @@ class Profiler(Generic[TMetric]):  # pylint: disable=too-many-public-methods
                 column=column,
                 table=self.table,
             )
-            for column in self.columns
+            for column in columns
             for metric in self.get_col_metrics(self.query_metrics, column)
         ]
         window_metrics = [
@@ -477,7 +474,7 @@ class Profiler(Generic[TMetric]):  # pylint: disable=too-many-public-methods
                 column=column,
                 table=self.table,
             )
-            for column in self.columns
+            for column in columns
         ]
 
         # we'll add the system metrics to the thread pool computation
@@ -485,7 +482,7 @@ class Profiler(Generic[TMetric]):  # pylint: disable=too-many-public-methods
             column_metrics_for_thread_pool.extend(metric_type)
 
         # we'll add the custom metrics to the thread pool computation
-        for column in self.columns:
+        for column in columns:
             custom_metrics = self.get_custom_metrics(column.name)
             if custom_metrics:
                 column_metrics_for_thread_pool.append(
