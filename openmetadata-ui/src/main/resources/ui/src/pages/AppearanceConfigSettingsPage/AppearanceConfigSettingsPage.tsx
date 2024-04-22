@@ -24,7 +24,7 @@ import {
   Typography,
 } from 'antd';
 import { AxiosError } from 'axios';
-import { omit, startCase } from 'lodash';
+import { startCase } from 'lodash';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
@@ -80,20 +80,18 @@ const AppearanceConfigSettingsPage = () => {
   ) => {
     setLoading(true);
     try {
-      const filteredValues = omit(values, 'processingColor');
-
       const configValues = {
         customLogoConfig: {
-          customLogoUrlPath: filteredValues?.customLogoUrlPath ?? '',
-          customMonogramUrlPath: filteredValues?.customMonogramUrlPath ?? '',
-          customFaviconUrlPath: filteredValues?.customFaviconUrlPath ?? '',
+          customLogoUrlPath: values?.customLogoUrlPath ?? '',
+          customMonogramUrlPath: values?.customMonogramUrlPath ?? '',
+          customFaviconUrlPath: values?.customFaviconUrlPath ?? '',
         },
         customTheme: {
-          primaryColor: filteredValues?.primaryColor ?? '',
-          errorColor: filteredValues?.errorColor ?? '',
-          successColor: filteredValues?.successColor ?? '',
-          warningColor: filteredValues?.warningColor ?? '',
-          infoColor: filteredValues?.infoColor ?? '',
+          primaryColor: values?.primaryColor ?? '',
+          errorColor: values?.errorColor ?? '',
+          successColor: values?.successColor ?? '',
+          warningColor: values?.warningColor ?? '',
+          infoColor: values?.infoColor ?? '',
         },
       };
 
