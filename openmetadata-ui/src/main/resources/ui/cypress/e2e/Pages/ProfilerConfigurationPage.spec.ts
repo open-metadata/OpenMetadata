@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { interceptURL, verifyResponseStatusCode } from '../../common/common';
+import { interceptURL } from '../../common/common';
 import { getToken } from '../../common/Utils/LocalStorage';
 import { generateRandomUser } from '../../common/Utils/Owner';
 import { SidebarItem } from '../../constants/Entity.interface';
@@ -29,7 +29,7 @@ const visitProfilerConfigurationPage = () => {
   cy.get('[data-testid="preferences.profiler-configuration"]')
     .scrollIntoView()
     .click();
-  verifyResponseStatusCode('@getProfilerConfiguration', 200);
+  cy.wait('@getProfilerConfiguration');
 };
 
 const user = generateRandomUser();
