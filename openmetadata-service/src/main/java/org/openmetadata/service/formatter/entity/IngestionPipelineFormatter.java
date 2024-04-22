@@ -18,8 +18,11 @@ import static org.openmetadata.service.formatter.util.FormatterUtil.transformMes
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import org.openmetadata.schema.EntityInterface;
+import org.openmetadata.schema.entity.feed.Thread;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineStatus;
 import org.openmetadata.schema.type.FieldChange;
+import org.openmetadata.schema.type.Include;
+import org.openmetadata.service.Entity;
 import org.openmetadata.service.formatter.decorators.MessageDecorator;
 import org.openmetadata.service.formatter.util.FormatterUtil;
 import org.openmetadata.service.util.JsonUtils;
@@ -30,17 +33,19 @@ public class IngestionPipelineFormatter implements EntityFormatter {
   @Override
   public String format(
       MessageDecorator<?> messageFormatter,
+      Thread thread,
       FieldChange fieldChange,
-      EntityInterface entity,
       FormatterUtil.CHANGE_TYPE changeType) {
     if (PIPELINE_STATUS_FIELD.equals(fieldChange.getName())) {
-      return transformIngestionPipelineStatus(messageFormatter, fieldChange, entity);
+      return transformIngestionPipelineStatus(messageFormatter, thread, fieldChange);
     }
-    return transformMessage(messageFormatter, fieldChange, entity, changeType);
+    return transformMessage(messageFormatter, thread, fieldChange, changeType);
   }
 
   private String transformIngestionPipelineStatus(
-      MessageDecorator<?> messageFormatter, FieldChange fieldChange, EntityInterface entity) {
+      MessageDecorator<?> messageFormatter, Thread thread, FieldChange fieldChange) {
+    EntityInterface entity =
+        Entity.getEntity(thread.getEntityType(), thread.getEntityId(), "id", Include.ALL);
     String ingestionPipelineName = entity.getName();
     PipelineStatus status =
         JsonUtils.readOrConvertValue(fieldChange.getNewValue(), PipelineStatus.class);

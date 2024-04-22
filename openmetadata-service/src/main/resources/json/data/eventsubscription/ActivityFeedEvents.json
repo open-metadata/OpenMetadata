@@ -10,7 +10,7 @@
       {
         "name": "matchAnySource",
         "effect": "include",
-        "condition": "matchAnySource({'chart','container','dashboard','dashboardDataModel','database','databaseSchema','glossary','glossaryTerm','mlmodel','pipeline','query','report','searchIndex','storedProcedure','table','topic','testSuite','testCase'})"
+        "condition": "matchAnySource({'chart','container','dashboard','dashboardDataModel','database','databaseSchema','glossary','glossaryTerm','mlmodel','pipeline','query','report','searchIndex','storedProcedure','table','topic','testSuite','testCase', 'domain', 'dataProduct'})"
       },
       {
         "name": "matchUpdatedBy",
@@ -19,8 +19,8 @@
       },
       {
         "name": "matchAnyFieldChange",
-        "effect": "exclude",
-        "condition": "matchAnyFieldChange({'usageSummary', 'sourceHash', 'lifeCycle'})"
+        "effect": "include",
+        "condition": "matchAnyFieldChange({'description', 'domain', 'owner', 'tags', 'followers', 'extension','parameterValues', 'assets'})"
       }
     ]
   },
@@ -57,7 +57,9 @@
               "table",
               "topic",
               "testSuite",
-              "testCase"
+              "testCase",
+              "domain",
+              "dataProduct"
             ]
           }
         ]
@@ -76,14 +78,18 @@
       },
       {
         "name": "filterByFieldChange",
-        "effect" : "exclude",
+        "effect" : "include",
         "arguments": [
           {
             "name": "fieldChangeList",
             "input": [
-              "usageSummary",
-              "sourceHash",
-              "lifeCycle"
+              "description",
+              "domain",
+              "owner",
+              "tags",
+              "followers",
+              "extension",
+              "parameterValues"
             ]
           }
         ]
@@ -91,5 +97,6 @@
     ]
   },
   "provider" : "system",
+  "pollInterval" : 30,
   "enabled" : true
 }

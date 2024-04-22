@@ -13,17 +13,14 @@
 
 package org.openmetadata.service.formatter.field;
 
+import org.openmetadata.schema.entity.feed.Thread;
+import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.service.formatter.decorators.MessageDecorator;
-import org.openmetadata.service.resources.feeds.MessageParser;
 
 public class FollowersFormatter extends DefaultFieldFormatter {
   public FollowersFormatter(
-      MessageDecorator<?> messageDecorator,
-      String fieldOldValue,
-      String fieldNewValue,
-      String fieldChangeName,
-      MessageParser.EntityLink entityLink) {
-    super(messageDecorator, fieldOldValue, fieldNewValue, fieldChangeName, entityLink);
+      MessageDecorator<?> messageDecorator, Thread thread, FieldChange fieldChange) {
+    super(messageDecorator, thread, fieldChange);
   }
 
   @Override

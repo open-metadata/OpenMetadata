@@ -137,14 +137,6 @@ public final class AlertUtil {
     return config.getResources().contains(event.getEntityType()); // Use Trigger Specific Settings
   }
 
-  public static boolean shouldProcessActivityFeedRequest(ChangeEvent event) {
-    // Check Trigger Conditions
-    FilteringRules filteringRules =
-        ActivityFeedAlertCache.getActivityFeedAlert().getFilteringRules();
-    return AlertUtil.shouldTriggerAlert(event, filteringRules)
-        && AlertUtil.evaluateAlertConditions(event, filteringRules.getRules());
-  }
-
   public static SubscriptionStatus buildSubscriptionStatus(
       SubscriptionStatus.Status status,
       Long lastSuccessful,
