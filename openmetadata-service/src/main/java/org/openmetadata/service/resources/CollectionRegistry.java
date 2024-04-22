@@ -176,6 +176,24 @@ public final class CollectionRegistry {
         });
   }
 
+  public void loadSeedData(
+      Jdbi jdbi,
+      OpenMetadataApplicationConfig config,
+      Authorizer authorizer,
+      AuthenticatorHandler authenticatorHandler) {
+    // Build list of ResourceDescriptors
+    for (Map.Entry<String, CollectionDetails> e : collectionMap.entrySet()) {
+      CollectionDetails details = e.getValue();
+      String resourceClass = details.resourceClass;
+      try {
+        Object resource =
+            createResource(jdbi, resourceClass, config, authorizer, authenticatorHandler);
+      } catch (Exception ex) {
+        LOG.warn("Failed to create resource for class {} {}", resourceClass, ex);
+      }
+    }
+  }
+
   /** Get collection details based on annotations in Resource classes */
   private static CollectionDetails getCollection(Class<?> cl) {
     int order = 0;

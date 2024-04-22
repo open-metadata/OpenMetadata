@@ -61,6 +61,7 @@ import org.openmetadata.service.jdbi3.MigrationDAO;
 import org.openmetadata.service.jdbi3.locator.ConnectionAwareAnnotationSqlLocator;
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
 import org.openmetadata.service.migration.api.MigrationWorkflow;
+import org.openmetadata.service.resources.CollectionRegistry;
 import org.openmetadata.service.resources.databases.DatasourceConfig;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.secrets.SecretsManager;
@@ -248,12 +249,20 @@ public class OpenMetadataOperations implements Callable<Integer> {
           boolean recreateIndexes) {
     try {
       parseConfig();
+      CollectionRegistry.initialize();
       ApplicationHandler.initialize(config);
+      // load seed data so that repositories are initialized
+      CollectionRegistry.getInstance().loadSeedData(jdbi, config, null, null);
+      ApplicationHandler.initialize(config);
+      // creates the default search index application
       AppScheduler.initialize(config, collectionDAO, searchRepository);
+
+      String appName = "SearchIndexingApplication";
       App searchIndexApp =
           new App()
               .withId(UUID.randomUUID())
-              .withName("SearchIndexApp")
+              .withName(appName)
+              .withFullyQualifiedName(appName)
               .withClassName("org.openmetadata.service.apps.bundles.searchIndex.SearchIndexApp")
               .withAppSchedule(new AppSchedule().withScheduleTimeline(ScheduleTimeline.DAILY))
               .withAppConfiguration(
