@@ -660,9 +660,10 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
     deleteRelationship(testSuiteId, TEST_SUITE, testCaseId, TEST_CASE, Relationship.CONTAINS);
     // remove test case from logical test suite summary and update test suite
     removeTestCaseFromTestSuiteResultSummary(testSuiteId, testCase.getFullyQualifiedName());
-    EntityReference entityReference =
-        Entity.getEntityReferenceById(TEST_SUITE, testSuiteId, Include.ALL);
-    testCase.setTestSuite(entityReference);
+    TestCase updatedTestCase = Entity.getEntity(Entity.TEST_CASE, testCaseId, "*", Include.ALL);
+    postUpdate(testCase, updatedTestCase);
+    testCase.setTestSuite(updatedTestCase.getTestSuite());
+    testCase.setTestSuites(updatedTestCase.getTestSuites());
     return new RestUtil.DeleteResponse<>(testCase, ENTITY_DELETED);
   }
 
