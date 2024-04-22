@@ -90,6 +90,7 @@ import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.JsonUtils;
+import org.openmetadata.service.util.ResultList;
 import org.openmetadata.service.util.WebsocketNotificationHandler;
 
 @Slf4j
@@ -666,6 +667,18 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
       feedRepository.closeTask(
           taskThread, entity.getUpdatedBy(), new CloseTask().withComment(comment));
     }
+  }
+
+  public final void addChildrenCount(ResultList<GlossaryTerm> list) {
+    listOrEmpty(list.getData())
+        .forEach(
+            term -> {
+              if (term.getChildren() != null) {
+                term.setChildrenCount(term.getChildren().size());
+              } else {
+                term.setChildrenCount(0);
+              }
+            });
   }
 
   /** Handles entity updated from PUT and POST operation. */
