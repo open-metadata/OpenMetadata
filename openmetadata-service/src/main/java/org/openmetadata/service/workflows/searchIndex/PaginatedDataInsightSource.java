@@ -84,7 +84,7 @@ public class PaginatedDataInsightSource implements Source<ResultList<ReportData>
           batchSize,
           result.getData().size(),
           0);
-      updateStats(result.getData().size(), result.getErrors().size());
+      // updateStats(result.getData().size(), result.getErrors().size());
     } catch (Exception ex) {
       IndexingError indexingError =
           new IndexingError()

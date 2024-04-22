@@ -14,9 +14,7 @@
 import {
   BrowserCacheLocation,
   Configuration,
-  IPublicClientApplication,
   PopupRequest,
-  PublicClientApplication,
 } from '@azure/msal-browser';
 import jwtDecode, { JwtPayload } from 'jwt-decode';
 import { first, isNil } from 'lodash';
@@ -33,8 +31,6 @@ import {
 } from '../generated/configuration/authenticationConfiguration';
 import { AuthProvider } from '../generated/settings/settings';
 import { isDev } from './EnvironmentUtils';
-
-export let msalInstance: IPublicClientApplication;
 
 // 25s for server auth approch
 export const EXPIRY_THRESHOLD_MILLES = 25 * 1000;
@@ -214,10 +210,6 @@ export const getAuthConfig = (
   return config as AuthenticationConfigurationWithScope;
 };
 
-export const setMsalInstance = (configs: Configuration) => {
-  msalInstance = new PublicClientApplication(configs);
-};
-
 // Add here scopes for id token to be used at MS Identity Platform endpoints.
 export const msalLoginRequest: PopupRequest = {
   scopes: ['openid', 'profile', 'email', 'offline_access'],
@@ -281,6 +273,7 @@ export const isProtectedRoute = (pathname: string) => {
       ROUTES.ACCOUNT_ACTIVATION,
       ROUTES.HOME,
       ROUTES.AUTH_CALLBACK,
+      ROUTES.NOT_FOUND,
     ].indexOf(pathname) === -1
   );
 };
@@ -291,10 +284,6 @@ export const isTourRoute = (pathname: string) => {
 
 export const getUrlPathnameExpiry = () => {
   return new Date(Date.now() + 60 * 60 * 1000);
-};
-
-export const getUrlPathnameExpiryAfterRoute = () => {
-  return new Date(Date.now() + 1000);
 };
 
 /**

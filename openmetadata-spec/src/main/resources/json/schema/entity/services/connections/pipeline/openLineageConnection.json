@@ -9,7 +9,9 @@
     "OpenLineageType": {
       "description": "Service type.",
       "type": "string",
-      "enum": ["OpenLineage"],
+      "enum": [
+        "OpenLineage"
+      ],
       "default": "OpenLineage"
     }
   },
@@ -39,7 +41,10 @@
       "description": "initial Kafka consumer offset",
       "default": "earliest",
       "type": "string",
-      "enum": ["earliest", "latest"],
+      "enum": [
+        "earliest",
+        "latest"
+      ],
       "javaEnums": [
         {
           "name": "earliest"
@@ -66,7 +71,10 @@
       "description": "Kafka security protocol config",
       "default": "PLAINTEXT",
       "type": "string",
-      "enum": ["PLAINTEXT", "SSL"],
+      "enum": [
+        "PLAINTEXT",
+        "SSL"
+      ],
       "javaEnums": [
         {
           "name": "PLAINTEXT"
@@ -76,20 +84,10 @@
         }
       ]
     },
-    "SSLCertificateLocation": {
-      "title": "SSL Certificate location",
-      "description": "Kafka SSL certificate location",
-      "type": "string"
-    },
-    "SSLKeyLocation": {
-      "title": "SSL Key location",
-      "description": "Kafka SSL key location",
-      "type": "string"
-    },
-    "SSLCALocation": {
-      "title": "SSL CA location",
-      "description": "Kafka SSL ca location",
-      "type": "string"
+    "sslConfig": {
+      "title": "SSL",
+      "description": "SSL Configuration details.",
+      "$ref": "../../../../security/ssl/verifySSLConfig.json#/definitions/sslConfig"
     },
     "supportsMetadataExtraction": {
       "$ref": "../connectionBasicType.json#/definitions/supportsMetadataExtraction"

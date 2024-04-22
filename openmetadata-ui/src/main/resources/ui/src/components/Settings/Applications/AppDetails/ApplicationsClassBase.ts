@@ -31,6 +31,10 @@ class ApplicationsClassBase {
   public getApplicationExtension(): FC | null {
     return null;
   }
+
+  public importAppScreenshot(screenshotName: string) {
+    return import(`../../../../assets/img/appScreenshots/${screenshotName}`);
+  }
 }
 
 const applicationsClassBase = new ApplicationsClassBase();

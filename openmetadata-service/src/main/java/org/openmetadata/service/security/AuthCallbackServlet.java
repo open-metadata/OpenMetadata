@@ -45,6 +45,8 @@ import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import lombok.extern.slf4j.Slf4j;
+import org.openmetadata.schema.api.security.AuthenticationConfiguration;
+import org.openmetadata.schema.api.security.AuthorizerConfiguration;
 import org.pac4j.core.exception.TechnicalException;
 import org.pac4j.core.util.CommonHelper;
 import org.pac4j.oidc.client.OidcClient;
@@ -57,13 +59,19 @@ public class AuthCallbackServlet extends HttpServlet {
   private final ClientAuthentication clientAuthentication;
   private final List<String> claimsOrder;
   private final String serverUrl;
+  private final String principalDomain;
 
-  public AuthCallbackServlet(OidcClient oidcClient, String serverUrl, List<String> claimsOrder) {
-    CommonHelper.assertNotBlank("ServerUrl", serverUrl);
+  public AuthCallbackServlet(
+      OidcClient oidcClient,
+      AuthenticationConfiguration authenticationConfiguration,
+      AuthorizerConfiguration authorizerConfiguration) {
+    CommonHelper.assertNotBlank(
+        "ServerUrl", authenticationConfiguration.getOidcConfiguration().getServerUrl());
     this.client = oidcClient;
-    this.claimsOrder = claimsOrder;
-    this.serverUrl = serverUrl;
+    this.claimsOrder = authenticationConfiguration.getJwtPrincipalClaims();
+    this.serverUrl = authenticationConfiguration.getOidcConfiguration().getServerUrl();
     this.clientAuthentication = getClientAuthentication(client.getConfiguration());
+    this.principalDomain = authorizerConfiguration.getPrincipalDomain();
   }
 
   @Override
@@ -110,7 +118,7 @@ public class AuthCallbackServlet extends HttpServlet {
       req.getSession().setAttribute(OIDC_CREDENTIAL_PROFILE, credentials);
 
       // Redirect
-      sendRedirectWithToken(resp, credentials, serverUrl, claimsOrder);
+      sendRedirectWithToken(resp, credentials, serverUrl, claimsOrder, principalDomain);
     } catch (Exception e) {
       getErrorMessage(resp, e);
     }
