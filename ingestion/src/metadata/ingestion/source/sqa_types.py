@@ -17,7 +17,7 @@ SQA dialects and OM rich type system
 from sqlalchemy import types
 from sqlalchemy.sql.sqltypes import TypeDecorator
 
-from metadata.ingestion.source.database.oracle.utils import convert_numpy_to_list
+from metadata.utils.sqlalchemy_utils import convert_numpy_to_list
 
 
 class SQAMap(types.String):

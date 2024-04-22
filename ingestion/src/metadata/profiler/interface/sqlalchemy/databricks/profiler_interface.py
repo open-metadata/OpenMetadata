@@ -18,8 +18,8 @@ from typing import List
 from pyhive.sqlalchemy_hive import HiveCompiler
 from sqlalchemy import Column, inspect
 
-from metadata.generated.schema.entity.data.table import Column as OMColumn, TableData
-from metadata.generated.schema.entity.data.table import ColumnName, DataType
+from metadata.generated.schema.entity.data.table import Column as OMColumn
+from metadata.generated.schema.entity.data.table import ColumnName, DataType, TableData
 from metadata.generated.schema.entity.services.databaseService import (
     DatabaseServiceType,
 )
@@ -88,8 +88,7 @@ class DatabricksProfilerInterface(SQAProfilerInterface):
                 )
                 columns.append(col)
         return columns
-    
-    
+
     def fetch_sample_data(self, table, columns) -> TableData:
         """Fetch sample data from database
 
@@ -103,4 +102,4 @@ class DatabricksProfilerInterface(SQAProfilerInterface):
             table=table,
         )
 
-        return sampler.fetch_sample_data([col for col in inspect(self.table).c])
+        return sampler.fetch_sample_data(list(inspect(self.table).c))
