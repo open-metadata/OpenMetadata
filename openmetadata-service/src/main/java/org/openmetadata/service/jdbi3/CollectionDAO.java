@@ -56,6 +56,7 @@ import org.openmetadata.schema.TokenInterface;
 import org.openmetadata.schema.analytics.ReportData;
 import org.openmetadata.schema.analytics.WebAnalyticEvent;
 import org.openmetadata.schema.api.configuration.LoginConfiguration;
+import org.openmetadata.schema.api.configuration.profiler.ProfilerConfiguration;
 import org.openmetadata.schema.auth.EmailVerificationToken;
 import org.openmetadata.schema.auth.PasswordResetToken;
 import org.openmetadata.schema.auth.PersonalAccessToken;
@@ -1784,6 +1785,12 @@ public interface CollectionDAO {
         condition += pipelineTypeCondition;
       }
 
+      if (filter.getQueryParam("applicationType") != null) {
+        String applicationTypeCondition =
+            String.format(" and %s", filter.getApplicationTypeCondition());
+        condition += applicationTypeCondition;
+      }
+
       if (filter.getQueryParam("service") != null) {
         String serviceCondition = String.format(" and %s", filter.getServiceCondition(null));
         condition += serviceCondition;
@@ -1813,6 +1820,12 @@ public interface CollectionDAO {
         String pipelineTypeCondition =
             String.format(" and %s", filter.getPipelineTypeCondition(null));
         condition += pipelineTypeCondition;
+      }
+
+      if (filter.getQueryParam("applicationType") != null) {
+        String applicationTypeCondition =
+            String.format(" and %s", filter.getApplicationTypeCondition());
+        condition += applicationTypeCondition;
       }
 
       if (filter.getQueryParam("service") != null) {
@@ -1847,6 +1860,12 @@ public interface CollectionDAO {
         String pipelineTypeCondition =
             String.format(" and %s", filter.getPipelineTypeCondition(null));
         condition += pipelineTypeCondition;
+      }
+
+      if (filter.getQueryParam("applicationType") != null) {
+        String applicationTypeCondition =
+            String.format(" and %s", filter.getApplicationTypeCondition());
+        condition += applicationTypeCondition;
       }
 
       if (filter.getQueryParam("service") != null) {
@@ -3939,6 +3958,7 @@ public interface CollectionDAO {
             case SLACK_APP_CONFIGURATION -> JsonUtils.readValue(json, String.class);
             case SLACK_BOT, SLACK_INSTALLER -> JsonUtils.readValue(
                 json, new TypeReference<HashMap<String, Object>>() {});
+            case PROFILER_CONFIGURATION -> JsonUtils.readValue(json, ProfilerConfiguration.class);
             default -> throw new IllegalArgumentException("Invalid Settings Type " + configType);
           };
       settings.setConfigValue(value);

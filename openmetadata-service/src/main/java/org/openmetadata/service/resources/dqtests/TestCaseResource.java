@@ -961,7 +961,7 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
           UUID id,
       @Valid TableData tableData) {
     OperationContext operationContext =
-        new OperationContext(entityType, MetadataOperation.EDIT_SAMPLE_DATA);
+        new OperationContext(entityType, MetadataOperation.EDIT_TESTS);
     authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
     TestCase testCase = repository.find(id, Include.NON_DELETED);
     if (testCase.getTestCaseResult() == null
@@ -992,12 +992,37 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
       @Parameter(description = "Id of the table", schema = @Schema(type = "UUID")) @PathParam("id")
           UUID id) {
     OperationContext operationContext =
-        new OperationContext(entityType, MetadataOperation.VIEW_SAMPLE_DATA);
+        new OperationContext(entityType, MetadataOperation.VIEW_TEST_CASE_FAILED_ROWS_SAMPLE);
     ResourceContext<?> resourceContext = getResourceContextById(id);
     TestCase testCase = repository.find(id, Include.NON_DELETED);
     authorizer.authorize(securityContext, operationContext, resourceContext);
     boolean authorizePII = authorizer.authorizePII(securityContext, resourceContext.getOwner());
     return repository.getSampleData(testCase, authorizePII);
+  }
+
+  @DELETE
+  @Path("/{id}/failedRowsSample")
+  @Operation(
+      operationId = "deleteFailedRowsSample",
+      summary = "Delete failed rows sample data",
+      description = "Delete a sample of failed rows for this test case.",
+      responses = {
+        @ApiResponse(responseCode = "200", description = "OK"),
+        @ApiResponse(
+            responseCode = "404",
+            description = "Failed rows sample data for test case {id} is not found.")
+      })
+  public Response deleteFailedRowsData(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Id of the table", schema = @Schema(type = "UUID")) @PathParam("id")
+          UUID id) {
+    OperationContext operationContext =
+        new OperationContext(entityType, MetadataOperation.DELETE_TEST_CASE_FAILED_ROWS_SAMPLE);
+    ResourceContext<?> resourceContext = getResourceContextById(id);
+    authorizer.authorize(securityContext, operationContext, resourceContext);
+    RestUtil.DeleteResponse<TableData> response = repository.deleteTestCaseFailedRowsSample(id);
+    return response.toResponse();
   }
 
   @PUT

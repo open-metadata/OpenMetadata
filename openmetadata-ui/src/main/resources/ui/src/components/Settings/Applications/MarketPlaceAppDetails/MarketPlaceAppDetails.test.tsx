@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import {
+  queryByTestId,
   render,
   screen,
   waitForElementToBeRemoved,
@@ -95,7 +96,7 @@ jest.mock('../AppLogo/AppLogo.component', () =>
 
 describe('MarketPlaceAppDetails component', () => {
   it('should render all necessary elements if app details fetch successfully', async () => {
-    render(<MarketPlaceAppDetails />);
+    const { container } = render(<MarketPlaceAppDetails />);
 
     await waitForElementToBeRemoved(() => screen.getByText('Loader'));
 
@@ -115,6 +116,10 @@ describe('MarketPlaceAppDetails component', () => {
     ).toBeInTheDocument();
     expect(screen.getByText('label.privacy-policy')).toBeInTheDocument();
     expect(screen.getByText('label.get-app-support')).toBeInTheDocument();
+
+    const appName = queryByTestId(container, 'appName');
+
+    expect(appName).not.toBeInTheDocument();
 
     // actions check
     userEvent.click(

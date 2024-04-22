@@ -223,19 +223,25 @@ const UserProfileDetails = ({
   };
 
   const userEmailRender = useMemo(
-    () => (
-      <Space align="center">
-        <Typography.Text
-          className="text-grey-muted"
-          data-testid="user-email-label">{`${t(
-          'label.email'
-        )} :`}</Typography.Text>
+    () =>
+      userData.email && (
+        <>
+          <Space align="center">
+            <Typography.Text
+              className="text-grey-muted"
+              data-testid="user-email-label">{`${t(
+              'label.email'
+            )} :`}</Typography.Text>
 
-        <Typography.Paragraph className="m-b-0" data-testid="user-email-value">
-          {userData.email}
-        </Typography.Paragraph>
-      </Space>
-    ),
+            <Typography.Paragraph
+              className="m-b-0"
+              data-testid="user-email-value">
+              {userData.email}
+            </Typography.Paragraph>
+          </Space>
+          <Divider type="vertical" />
+        </>
+      ),
     [userData.email]
   );
 

@@ -124,7 +124,17 @@ const MarketPlaceAppDetails = () => {
       return t('message.app-already-installed');
     }
     if (isPreviewApp) {
-      return t('message.paid-addon-description', { app: appData?.displayName });
+      return (
+        <Transi18next
+          i18nKey="message.paid-addon-description"
+          renderElement={
+            <span data-testid="appName" style={{ fontWeight: 600 }} />
+          }
+          values={{
+            app: appData?.displayName,
+          }}
+        />
+      );
     }
 
     return '';
@@ -143,7 +153,6 @@ const MarketPlaceAppDetails = () => {
             {t('label.browse-app-plural')}
           </Typography.Text>
         </Button>
-
         <div className="flex-center m-t-md">
           <AppLogo appName={appData?.fullyQualifiedName ?? ''} />
         </div>
@@ -159,37 +168,37 @@ const MarketPlaceAppDetails = () => {
           </Button>
         </Tooltip>
 
-        <Alert
-          className="m-t-md text-xs d-flex items-start p-xs"
-          message={
-            <>
-              <Typography.Text>
-                <Transi18next
-                  i18nKey="message.paid-addon-description"
-                  renderElement={
-                    <span data-testid="appName" style={{ fontWeight: 600 }} />
-                  }
-                  values={{
-                    app: appData?.displayName,
-                  }}
-                />
-              </Typography.Text>
+        {isPreviewApp && (
+          <Alert
+            className="m-t-md text-xs d-flex items-start p-xs"
+            message={
+              <>
+                <Typography.Text>
+                  <Transi18next
+                    i18nKey="message.paid-addon-description"
+                    renderElement={
+                      <span data-testid="appName" style={{ fontWeight: 600 }} />
+                    }
+                    values={{
+                      app: appData?.displayName,
+                    }}
+                  />
+                </Typography.Text>
 
-              <Typography.Text className="d-block">
-                {t('message.please-contact-us')}
-              </Typography.Text>
-            </>
-          }
-          type="info"
-        />
-
+                <Typography.Text className="d-block">
+                  {t('message.please-contact-us')}
+                </Typography.Text>
+              </>
+            }
+            type="info"
+          />
+        )}
         <div className="m-t-md">
           <CheckMarkIcon className="v-middle m-r-xss" />
           <Typography.Text className="text-xs font-medium text-grey-muted">
             {t('message.marketplace-verify-msg')}
           </Typography.Text>
         </div>
-
         <Space className="p-t-lg" direction="vertical" size={8}>
           <Typography.Text>
             {appData?.supportEmail && (
