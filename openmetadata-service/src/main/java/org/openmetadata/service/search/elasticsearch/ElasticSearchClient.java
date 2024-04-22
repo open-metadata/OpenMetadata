@@ -707,7 +707,6 @@ public class ElasticSearchClient implements SearchClient {
       throws IOException {
     Set<Map<String, Object>> edges = new HashSet<>();
     Set<Map<String, Object>> nodes = new HashSet<>();
-    responseMap.put("entity", null);
     es.org.elasticsearch.action.search.SearchRequest searchRequest =
         new es.org.elasticsearch.action.search.SearchRequest(GLOBAL_SEARCH_ALIAS);
     SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
@@ -765,6 +764,22 @@ public class ElasticSearchClient implements SearchClient {
               "lineage.fromEntity.fqn.keyword",
               deleted);
         }
+      }
+    }
+    // TODO: Fix this , this is hack
+    if (edges.isEmpty()) {
+      es.org.elasticsearch.action.search.SearchRequest searchRequestForEntity =
+          new es.org.elasticsearch.action.search.SearchRequest(GLOBAL_SEARCH_ALIAS);
+      SearchSourceBuilder searchSourceBuilderForEntity = new SearchSourceBuilder();
+      searchSourceBuilderForEntity.query(
+          QueryBuilders.boolQuery().must(QueryBuilders.termQuery("fullyQualifiedName", fqn)));
+      searchRequestForEntity.source(searchSourceBuilderForEntity.size(1000));
+      SearchResponse searchResponseForEntity =
+          client.search(searchRequestForEntity, RequestOptions.DEFAULT);
+      for (var hit : searchResponseForEntity.getHits().getHits()) {
+        HashMap<String, Object> tempMap = new HashMap<>(JsonUtils.getMap(hit.getSourceAsMap()));
+        tempMap.keySet().removeAll(FIELDS_TO_REMOVE);
+        responseMap.put("entity", tempMap);
       }
     }
     responseMap.put("edges", edges);
