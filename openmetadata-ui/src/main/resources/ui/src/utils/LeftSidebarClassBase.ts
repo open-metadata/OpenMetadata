@@ -10,13 +10,14 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { LeftSidebarItem } from '../components/MyData/LeftSidebar/LeftSidebar.interface';
 import { SIDEBAR_LIST } from '../constants/LeftSidebar.constants';
 
 class LeftSidebarClassBase {
   /**
    * getSidebarItems
    */
-  public getSidebarItems(): typeof SIDEBAR_LIST {
+  public getSidebarItems(): Array<LeftSidebarItem> {
     return SIDEBAR_LIST;
   }
 }

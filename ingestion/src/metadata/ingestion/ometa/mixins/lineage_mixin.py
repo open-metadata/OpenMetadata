@@ -184,3 +184,7 @@ class OMetaLineageMixin(Generic[T]):
                         logger.info(
                             f"added lineage between table {node.get('name')} and {entity_name} "
                         )
+                elif lineage_request.left:
+                    logger.error(
+                        f"Error while adding lineage: {lineage_request.left.error}"
+                    )

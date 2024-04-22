@@ -28,7 +28,7 @@ import {
   TAG_START_WITH,
 } from '../../../constants/Tag.constants';
 import { LabelType } from '../../../generated/entity/data/table';
-import { TagSource } from '../../../generated/type/tagLabel';
+import { State, TagSource } from '../../../generated/type/tagLabel';
 import { getEntityFeedLink } from '../../../utils/EntityUtils';
 import { getFilterTags } from '../../../utils/TableTags/TableTags.utils';
 import tagClassBase from '../../../utils/TagClassBase';
@@ -61,6 +61,8 @@ const TagsContainerV2 = ({
   onSelectionChange,
   onThreadLinkSelect,
   children,
+  defaultLabelType,
+  defaultState,
 }: TagsContainerV2Props) => {
   const history = useHistory();
   const [form] = Form.useForm();
@@ -121,7 +123,9 @@ const TagsContainerV2 = ({
           displayName: tag.data?.displayName,
           description: tag.data?.description,
           style: tag.data?.style ?? {},
-          labelType: tag.data?.labelType ?? LabelType.Manual,
+          labelType:
+            tag.data?.labelType ?? defaultLabelType ?? LabelType.Manual,
+          state: tag.data?.state ?? defaultState ?? State.Confirmed,
         };
       }
 
