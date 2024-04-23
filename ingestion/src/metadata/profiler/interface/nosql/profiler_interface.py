@@ -23,12 +23,13 @@ from sqlalchemy import Column
 
 from metadata.generated.schema.entity.data.table import TableData
 from metadata.generated.schema.tests.customMetric import CustomMetric
-from metadata.profiler.adaptors.adaptor_factory import factory
+from metadata.profiler.adaptors.factory import factory
 from metadata.profiler.adaptors.nosql_adaptor import NoSQLAdaptor
 from metadata.profiler.api.models import ThreadPoolMetrics
 from metadata.profiler.interface.profiler_interface import ProfilerInterface
 from metadata.profiler.metrics.core import Metric, MetricTypes
 from metadata.profiler.metrics.registry import Metrics
+from metadata.profiler.processor.metric_filter import MetricFilter
 from metadata.profiler.processor.sampler.nosql.sampler import NoSQLSampler
 from metadata.utils.logger import profiler_interface_registry_logger
 from metadata.utils.sqa_like_column import SQALikeColumn
@@ -166,7 +167,8 @@ class NoSQLProfilerInterface(ProfilerInterface):
             self.service_connection_config.__class__.__name__,
             table=self.table,
             client=factory.create(
-                self.service_connection_config.__class__.__name__, self.connection
+                self.service_connection_config.__class__.__name__,
+                client=self.connection,
             ),
             profile_sample_config=self.profile_sample_config,
             partition_details=self.partition_details,
@@ -190,10 +192,12 @@ class NoSQLProfilerInterface(ProfilerInterface):
         """get all profiler metrics"""
         profile_results = {"table": {}, "columns": defaultdict(dict)}
         runner = factory.create(
-            self.service_connection_config.__class__.__name__, self.connection
+            self.service_connection_config.__class__.__name__,
+            client=self.connection,
         )
         metric_list = [
-            self.compute_metrics(runner, metric_func) for metric_func in metric_funcs
+            self.compute_metrics(runner, metric_func)
+            for metric_func in MetricFilter.filter_empty_metrics(metric_funcs)
         ]
         for metric_result in metric_list:
             profile, column, metric_type = metric_result

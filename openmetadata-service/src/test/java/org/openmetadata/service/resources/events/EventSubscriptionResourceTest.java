@@ -189,7 +189,7 @@ public class EventSubscriptionResourceTest
     deleteEntity(alert.getId(), ADMIN_AUTH_HEADERS);
   }
 
-  private void waitForAllEventToComplete(UUID alertId) throws HttpResponseException {
+  public void waitForAllEventToComplete(UUID alertId) throws HttpResponseException {
     boolean result;
     do {
       WebTarget target =

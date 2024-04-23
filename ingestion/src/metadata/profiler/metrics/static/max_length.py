@@ -17,6 +17,7 @@ MAX_LENGTH Metric definition
 
 from sqlalchemy import column, func
 
+from metadata.generated.schema.configuration.profilerConfiguration import MetricType
 from metadata.profiler.metrics.core import StaticMetric, _label
 from metadata.profiler.orm.functions.length import LenFn
 from metadata.profiler.orm.registry import is_concatenable
@@ -36,7 +37,7 @@ class MaxLength(StaticMetric):
 
     @classmethod
     def name(cls):
-        return "maxLength"
+        return MetricType.maxLength.value
 
     @property
     def metric_type(self):
