@@ -15,6 +15,8 @@ LRU cache
 
 from collections import OrderedDict
 
+LRU_CACHE_SIZE = 4096
+
 
 class LRUCache:
     """Least Recently Used cache"""
