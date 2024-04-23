@@ -9,13 +9,17 @@
     "teradataType": {
       "description": "Service type.",
       "type": "string",
-      "enum": ["Teradata"],
+      "enum": [
+        "Teradata"
+      ],
       "default": "Teradata"
     },
     "teradataScheme": {
       "description": "SQLAlchemy driver scheme options.",
       "type": "string",
-      "enum": ["teradatasql"],
+      "enum": [
+        "teradatasql"
+      ],
       "default": "teradatasql"
     }
   },
@@ -43,28 +47,39 @@
       "type": "string",
       "format": "password"
     },
-    "host": {
-      "title": "Teradata server",
-      "description": "Host of the Teradata service.",
-      "type": "string"
-    },
-    "dbs_port": {
-      "title": "DBS Port",
-      "description": "Port of the Teradata service. Default is 1025",
-      "type": "string",
-      "default": "1025"
-    },
     "logmech": {
-      "title": "Logon mechanism",
-      "description": "Specifies the logon authentication method. Possible values are TD2 (the default), JWT, LDAP, KRB5 for Kerberos, or TDNEGO.",
+      "title": "LOGMECH",
+      "description": "Specifies the logon authentication method. Possible values are TD2 (the default), JWT, LDAP, KRB5 for Kerberos, or TDNEGO",
       "type": "string",
+      "enum": ["TD2", "JWT", "KRB5", "CUSTOM", "TDNEGO"],
       "default": "TD2"
     },
-    "ingestAllDatabases": {
-      "title": "Ingest All Databases",
-      "description": "Ingest data from all databases in teradata. You can use databaseFilterPattern on top of this.",
-      "type": "boolean",
-      "default": true
+    "logdata": {
+      "title": "Extra data for the chosen logon authentication method",
+      "description": "Specifies additional data needed by a logon mechanism, such as a secure token, Distinguished Name, or a domain/realm name. LOGDATA values are specific to each logon mechanism.",
+      "type": "string"
+    },
+    "hostPort": {
+      "title": "Host and Port",
+      "description": "Host and port of the Teradata service.",
+      "type": "string"
+    },
+    "databaseName": {
+      "title": "Database Name",
+      "description": "Specifies the initial database to use after logon, instead of the user's default database.",
+      "type": "string"
+    },
+    "tmode": {
+      "title": "Transaction mode",
+      "description": "Specifies the transaction mode for the connection",
+      "type": "string",
+      "enum": ["ANSI", "TERA", "DEFAULT"],
+      "default": "DEFAULT"
+    },
+    "account": {
+      "title": "Teradata Database account",
+      "description": "Specifies an account string to override the default account string defined for the database user. Accounts are used by the database for workload management and resource usage monitoring.",
+      "type": "string"
     },
     "connectionOptions": {
       "title": "Connection Options",
@@ -77,8 +92,32 @@
     "supportsMetadataExtraction": {
       "title": "Supports Metadata Extraction",
       "$ref": "../connectionBasicType.json#/definitions/supportsMetadataExtraction"
+    },
+    "supportsUsageExtraction": {
+      "$ref": "../connectionBasicType.json#/definitions/supportsUsageExtraction"
+    },
+    "supportsDBTExtraction": {
+      "$ref": "../connectionBasicType.json#/definitions/supportsDBTExtraction"
+    },
+    "supportsLineageExtraction": {
+      "$ref": "../connectionBasicType.json#/definitions/supportsLineageExtraction"
+    },
+    "supportsProfiler": {
+      "title": "Supports Profiler",
+      "$ref": "../connectionBasicType.json#/definitions/supportsProfiler"
+    },
+    "supportsQueryComment": {
+      "title": "Supports Query Comment",
+      "$ref": "../connectionBasicType.json#/definitions/supportsQueryComment"
+    },
+    "sampleDataStorageConfig": {
+      "title": "Storage Config for Sample Data",
+      "$ref": "../connectionBasicType.json#/definitions/sampleDataStorageConfig"
     }
   },
   "additionalProperties": false,
-  "required": ["host"]
+  "required": [
+    "hostPort",
+    "username"
+  ]
 }
