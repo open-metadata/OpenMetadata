@@ -57,6 +57,8 @@ def get_entity_type(
         return class_name.replace("databaseschema", "databaseSchema")
     if "searchindex" in class_name:
         return class_name.replace("searchindex", "searchIndex")
+    if "dashboarddatamodel" in class_name:
+        return class_name.replace("dashboarddatamodel", "dashboardDataModel")
 
     return class_name
 
