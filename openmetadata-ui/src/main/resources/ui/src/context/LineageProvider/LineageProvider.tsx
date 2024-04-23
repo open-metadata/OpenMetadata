@@ -223,28 +223,36 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
             [...nodes, entity].filter(Boolean),
             isEqual
           );
-          const childMapObj = getChildMap(
-            { ...res, nodes: allNodes },
-            decodedFqn
-          );
 
-          setChildMap(childMapObj);
+          if (entityType !== EntityType.PIPELINE) {
+            const childMapObj = getChildMap(
+              { ...res, nodes: allNodes },
+              decodedFqn
+            );
 
-          const { nodes: newNodes, edges: newEdges } = getPaginatedChildMap(
-            {
+            setChildMap(childMapObj);
+
+            const { nodes: newNodes, edges: newEdges } = getPaginatedChildMap(
+              {
+                ...res,
+                nodes: allNodes,
+              },
+              childMapObj,
+              {},
+              config?.nodesPerLayer ?? 50
+            );
+
+            setEntityLineage({
+              ...res,
+              nodes: newNodes,
+              edges: [...(res.edges ?? []), ...newEdges],
+            });
+          } else {
+            setEntityLineage({
               ...res,
               nodes: allNodes,
-            },
-            childMapObj,
-            {},
-            config?.nodesPerLayer ?? 50
-          );
-
-          setEntityLineage({
-            ...res,
-            nodes: newNodes,
-            edges: [...(res.edges ?? []), ...newEdges],
-          });
+            });
+          }
         } else {
           showErrorToast(
             t('server.entity-fetch-error', {

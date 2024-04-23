@@ -57,6 +57,7 @@ import {
   NodeIndexMap,
 } from '../components/Entity/EntityLineage/EntityLineage.interface';
 import LoadMoreNode from '../components/Entity/EntityLineage/LoadMoreNode/LoadMoreNode';
+import { EntityChildren } from '../components/Entity/EntityLineage/NodeChildren/NodeChildren.interface';
 import { ExploreSearchIndex } from '../components/Explore/ExplorePage.interface';
 import {
   EdgeDetails,
@@ -64,7 +65,6 @@ import {
 } from '../components/Lineage/Lineage.interface';
 import { SourceType } from '../components/SearchedData/SearchedData.interface';
 import {
-  EXPANDED_NODE_HEIGHT,
   NODE_HEIGHT,
   NODE_WIDTH,
   ZOOM_VALUE,
@@ -77,6 +77,11 @@ import {
 } from '../enums/entity.enum';
 import { SearchIndex } from '../enums/search.enum';
 import { AddLineage, EntitiesEdge } from '../generated/api/lineage/addLineage';
+import { Container } from '../generated/entity/data/container';
+import { Dashboard } from '../generated/entity/data/dashboard';
+import { Mlmodel } from '../generated/entity/data/mlmodel';
+import { Column, Table } from '../generated/entity/data/table';
+import { Topic } from '../generated/entity/data/topic';
 import { ColumnLineage, LineageDetails } from '../generated/type/entityLineage';
 import { EntityReference } from '../generated/type/entityReference';
 import { addLineage, deleteLineageEdge } from '../rest/miscAPI';
@@ -121,46 +126,46 @@ export const getLayoutedElements = (
 ) => {
   const dagreGraph = new dagre.graphlib.Graph();
   dagreGraph.setDefaultEdgeLabel(() => ({}));
-
-  const { node, edge } = elements;
-  const isHorizontal = direction === EntityLineageDirection.LEFT_RIGHT;
   dagreGraph.setGraph({ rankdir: direction });
 
-  const nodeIds = node.map((item) => item.id);
+  const isHorizontal = direction === EntityLineageDirection.LEFT_RIGHT;
+  const nodeSet = new Set(elements.node.map((item) => item.id));
 
-  node.forEach((el) => {
+  const nodeData = elements.node.map((el) => {
+    const { childrenHeight } = getEntityChildrenAndLabel(el.data.node);
+    const nodeHeight = isExpanded ? childrenHeight + 220 : NODE_HEIGHT;
+
     dagreGraph.setNode(el.id, {
       width: NODE_WIDTH,
-      height: isExpanded ? EXPANDED_NODE_HEIGHT : NODE_HEIGHT,
+      height: nodeHeight,
     });
+
+    return {
+      ...el,
+      nodeHeight,
+      childrenHeight,
+    };
   });
 
-  const edgesRequired: Edge[] = [];
-
-  edge.forEach((el) => {
-    if (
-      nodeIds.indexOf(el.source) !== -1 &&
-      nodeIds.indexOf(el.target) !== -1
-    ) {
-      edgesRequired.push(el);
-      dagreGraph.setEdge(el.source, el.target);
-    }
-  });
+  const edgesRequired = elements.edge.filter(
+    (el) => nodeSet.has(el.source) && nodeSet.has(el.target)
+  );
+  edgesRequired.forEach((el) => dagreGraph.setEdge(el.source, el.target));
 
   dagre.layout(dagreGraph);
 
-  const uNode = node.map((el) => {
-    const isExpanded = el.data.isExpanded;
-    const nodeHight = isExpanded ? EXPANDED_NODE_HEIGHT : NODE_HEIGHT;
+  const uNode = nodeData.map((el) => {
     const nodeWithPosition = dagreGraph.node(el.id);
-    el.targetPosition = isHorizontal ? Position.Left : Position.Top;
-    el.sourcePosition = isHorizontal ? Position.Right : Position.Bottom;
-    el.position = {
-      x: nodeWithPosition.x - NODE_WIDTH / 2,
-      y: nodeWithPosition.y - nodeHight / 2,
-    };
 
-    return el;
+    return {
+      ...el,
+      targetPosition: isHorizontal ? Position.Left : Position.Top,
+      sourcePosition: isHorizontal ? Position.Right : Position.Bottom,
+      position: {
+        x: nodeWithPosition.x - NODE_WIDTH / 2,
+        y: nodeWithPosition.y - el.nodeHeight / 2,
+      },
+    };
   });
 
   return { node: uNode, edge: edgesRequired };
@@ -485,6 +490,64 @@ export const removeLineageHandler = async (data: EdgeData): Promise<void> => {
 
     throw err;
   }
+};
+
+const calculateHeight = (children: Column[]) => {
+  let totalHeight = 0;
+  children.forEach((child) => {
+    totalHeight += 27; // Add height for the current child
+    if (child.children && child.children.length > 0) {
+      totalHeight += 8; // Add child padding
+      totalHeight += calculateHeight(child.children); // Recursively add the height of sub-children
+    }
+  });
+
+  return totalHeight;
+};
+
+export const getEntityChildrenAndLabel = (node: SourceType) => {
+  const entityMappings: Record<
+    string,
+    { data: EntityChildren; label: string }
+  > = {
+    [EntityType.TABLE]: {
+      data: (node as Table).columns ?? [],
+      label: t('label.column-plural'),
+    },
+    [EntityType.DASHBOARD]: {
+      data: (node as Dashboard).charts ?? [],
+      label: t('label.chart-plural'),
+    },
+    [EntityType.MLMODEL]: {
+      data: (node as Mlmodel).mlFeatures ?? [],
+      label: t('label.feature-plural'),
+    },
+    [EntityType.DASHBOARD_DATA_MODEL]: {
+      data: (node as Table).columns ?? [],
+      label: t('label.column-plural'),
+    },
+    [EntityType.CONTAINER]: {
+      data: (node as Container).dataModel?.columns ?? [],
+      label: t('label.column-plural'),
+    },
+    [EntityType.TOPIC]: {
+      data: (node as Topic).messageSchema?.schemaFields ?? [],
+      label: t('label.field-plural'),
+    },
+  };
+
+  const { data, label } = entityMappings[node.entityType as EntityType] || {
+    data: [],
+    label: '',
+  };
+
+  const childrenHeight = calculateHeight(data as Column[]);
+
+  return {
+    children: data,
+    childrenHeading: label,
+    childrenHeight: childrenHeight,
+  };
 };
 
 // Nodes Icons

@@ -20,11 +20,8 @@ import { LINEAGE_COLUMN_NODE_SUPPORTED } from '../../../../constants/Lineage.con
 import { useLineageProvider } from '../../../../context/LineageProvider/LineageProvider';
 import { LineageLayerView } from '../../../../context/LineageProvider/LineageProvider.interface';
 import { EntityType } from '../../../../enums/entity.enum';
-import { Container } from '../../../../generated/entity/data/container';
-import { Dashboard } from '../../../../generated/entity/data/dashboard';
-import { Mlmodel } from '../../../../generated/entity/data/mlmodel';
 import { Column, Table } from '../../../../generated/entity/data/table';
-import { Topic } from '../../../../generated/entity/data/topic';
+import { getEntityChildrenAndLabel } from '../../../../utils/EntityLineageUtils';
 import { getEntityName } from '../../../../utils/EntityUtils';
 import { getEntityIcon } from '../../../../utils/TableUtils';
 import { getColumnContent, getTestSuiteSummary } from '../CustomNode.utils';
@@ -33,17 +30,11 @@ import { EntityChildren, NodeChildrenProps } from './NodeChildren.interface';
 const NodeChildren = ({ node, isConnectable }: NodeChildrenProps) => {
   const { t } = useTranslation();
   const { Panel } = Collapse;
-  const {
-    isEditMode,
-    tracedColumns,
-    expandedNodes,
-    activeLayer,
-    onColumnClick,
-  } = useLineageProvider();
+  const { tracedColumns, expandedNodes, activeLayer, onColumnClick } =
+    useLineageProvider();
   const { entityType, id } = node;
   const [searchValue, setSearchValue] = useState('');
   const [filteredColumns, setFilteredColumns] = useState<EntityChildren>([]);
-  const [showAllColumns, setShowAllColumns] = useState(false);
   const [isExpanded, setIsExpanded] = useState<boolean>(false);
 
   const { showColumns, showDataQuality } = useMemo(() => {
@@ -61,47 +52,10 @@ const NodeChildren = ({ node, isConnectable }: NodeChildrenProps) => {
     );
   }, [node.id]);
 
-  const { children, childrenHeading } = useMemo(() => {
-    const entityMappings: Record<
-      string,
-      { data: EntityChildren; label: string }
-    > = {
-      [EntityType.TABLE]: {
-        data: (node as Table).columns ?? [],
-        label: t('label.column-plural'),
-      },
-      [EntityType.DASHBOARD]: {
-        data: (node as Dashboard).charts ?? [],
-        label: t('label.chart-plural'),
-      },
-      [EntityType.MLMODEL]: {
-        data: (node as Mlmodel).mlFeatures ?? [],
-        label: t('label.feature-plural'),
-      },
-      [EntityType.DASHBOARD_DATA_MODEL]: {
-        data: (node as Table).columns ?? [],
-        label: t('label.column-plural'),
-      },
-      [EntityType.CONTAINER]: {
-        data: (node as Container).dataModel?.columns ?? [],
-        label: t('label.column-plural'),
-      },
-      [EntityType.TOPIC]: {
-        data: (node as Topic).messageSchema?.schemaFields ?? [],
-        label: t('label.field-plural'),
-      },
-    };
-
-    const { data, label } = entityMappings[node.entityType as EntityType] || {
-      data: [],
-      label: '',
-    };
-
-    return {
-      children: data,
-      childrenHeading: label,
-    };
-  }, [node.id]);
+  const { children, childrenHeading } = useMemo(
+    () => getEntityChildrenAndLabel(node),
+    [node.id]
+  );
 
   const handleSearchChange = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -110,11 +64,9 @@ const NodeChildren = ({ node, isConnectable }: NodeChildrenProps) => {
       setSearchValue(value);
 
       if (value.trim() === '') {
-        // If search value is empty, show all columns or the default number of columns
+        // If search value is empty, show all columns
         const filterColumns = Object.values(children ?? {});
-        setFilteredColumns(
-          showAllColumns ? filterColumns : filterColumns.slice(0, 5)
-        );
+        setFilteredColumns(filterColumns);
       } else {
         // Filter columns based on search value
         const filtered = Object.values(children ?? {}).filter((column) =>
@@ -132,26 +84,9 @@ const NodeChildren = ({ node, isConnectable }: NodeChildrenProps) => {
 
   useEffect(() => {
     if (!isEmpty(children)) {
-      setFilteredColumns(children.slice(0, 5));
+      setFilteredColumns(children);
     }
   }, [children]);
-
-  useEffect(() => {
-    if (!isExpanded) {
-      setShowAllColumns(false);
-    } else if (!isEmpty(children) && Object.values(children).length < 5) {
-      setShowAllColumns(true);
-    }
-  }, [isEditMode, isExpanded, children]);
-
-  const handleShowMoreClick = useCallback(
-    (e: React.MouseEvent<HTMLButtonElement>) => {
-      e.stopPropagation();
-      setShowAllColumns(true);
-      setFilteredColumns(children ?? []);
-    },
-    [children]
-  );
 
   const renderRecord = useCallback(
     (record: Column) => {
@@ -189,7 +124,7 @@ const NodeChildren = ({ node, isConnectable }: NodeChildrenProps) => {
   const renderColumnsData = useCallback(
     (column: Column) => {
       const { fullyQualifiedName, dataType } = column;
-      if (['RECORD', 'STRUCT'].includes(dataType)) {
+      if (['RECORD', 'STRUCT', 'ARRAY'].includes(dataType)) {
         return renderRecord(column);
       } else {
         const isColumnTraced = tracedColumns.includes(fullyQualifiedName ?? '');
@@ -258,18 +193,6 @@ const NodeChildren = ({ node, isConnectable }: NodeChildrenProps) => {
                 )}
               </div>
             </section>
-
-            {!showAllColumns && (
-              <Button
-                className="m-t-xs text-primary"
-                data-testid="show-more-cols-btn"
-                type="text"
-                onClick={handleShowMoreClick}>
-                {t('label.show-more-entity', {
-                  entity: childrenHeading,
-                })}
-              </Button>
-            )}
           </div>
         )}
       </div>
