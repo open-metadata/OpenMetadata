@@ -410,9 +410,9 @@ def get_schema_foreign_keys(self, connection, schema, **kw):
                 "referred_columns": [
                     self.normalize_name(row._mapping["pk_column_name"])
                 ],
+                "referred_database": self.normalize_name(row._mapping["pk_database_name"]),
                 "name": name,
                 "table_name": self.normalize_name(row._mapping["fk_table_name"]),
-                "referred_database": current_database
             }
             options = {}
             if self.normalize_name(row._mapping["delete_rule"]) != "NO ACTION":
