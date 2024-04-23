@@ -45,6 +45,7 @@ import { FieldProp, FieldTypes } from '../../interface/FormUtils.interface';
 import { updateSettingsConfig } from '../../rest/settingConfigAPI';
 import { getField } from '../../utils/formUtils';
 import { getSettingPageEntityBreadCrumb } from '../../utils/GlobalSettingsUtils';
+import { getThemeConfig } from '../../utils/ThemeUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import './appearance-config-settings-page.less';
 
@@ -54,6 +55,7 @@ const AppearanceConfigSettingsPage = () => {
   const { t } = useTranslation();
   const [form] = Form.useForm();
   const [loading, setLoading] = useState<boolean>(false);
+  const [resetting, setResetting] = useState<boolean>(false);
 
   const [formState, setFormState] = useState<
     Partial<
@@ -108,6 +110,7 @@ const AppearanceConfigSettingsPage = () => {
   };
 
   const handleReset = async () => {
+    setResetting(true);
     try {
       const configValues = {
         customLogoConfig: {
@@ -128,9 +131,14 @@ const AppearanceConfigSettingsPage = () => {
         config_value: configValues,
       };
       await updateSettingsConfig(configData as Settings);
-      setApplicationConfig(configValues);
+      setApplicationConfig({
+        ...configValues,
+        customTheme: getThemeConfig(configValues.customTheme),
+      });
     } catch (error) {
       showErrorToast(error as AxiosError);
+    } finally {
+      setResetting(false);
     }
   };
 
@@ -305,6 +313,7 @@ const AppearanceConfigSettingsPage = () => {
                 />
                 <Button
                   data-testid="reset-button"
+                  loading={resetting}
                   type="primary"
                   onClick={handleReset}>
                   {t('label.reset')}
