@@ -24,7 +24,6 @@ import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.schema.type.PartitionColumnDetails;
 import org.openmetadata.schema.type.TableConstraint;
 import org.openmetadata.schema.type.TablePartition;
-import org.openmetadata.schema.type.TableType;
 
 public final class DatabaseUtil {
   private DatabaseUtil() {}

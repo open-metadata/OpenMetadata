@@ -180,7 +180,8 @@ public class TableRepository extends EntityRepository<Table> {
         fields.contains("tableConstraints") ? table.getTableConstraints() : null);
     table.setUsageSummary(fields.contains("usageSummary") ? table.getUsageSummary() : null);
     table.setJoins(fields.contains("joins") ? table.getJoins() : null);
-    table.setSchemaDefinition(fields.contains("schemaDefinition") ? table.getSchemaDefinition() : null);
+    table.setSchemaDefinition(
+        fields.contains("schemaDefinition") ? table.getSchemaDefinition() : null);
     table.setTableProfilerConfig(
         fields.contains(TABLE_PROFILER_CONFIG) ? table.getTableProfilerConfig() : null);
     table.setTestSuite(fields.contains("testSuite") ? table.getTestSuite() : null);
