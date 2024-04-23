@@ -298,6 +298,7 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
     TestCase testCase = findByName(fqn, Include.NON_DELETED);
     ArrayList<String> fields = new ArrayList<>();
     fields.add("testDefinition");
+    fields.add("owner");
     fields.add(TEST_SUITE_FIELD);
 
     // set the test case resolution status reference if test failed, by either

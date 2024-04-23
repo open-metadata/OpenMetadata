@@ -880,17 +880,17 @@ public class ElasticSearchClient implements SearchClient {
             break;
           case "aggs":
             // Sub aggregation logic
-            if (keySet.contains("nested")) {
-              break;
-            }
-            JsonObject subAggregation = aggregation.getJsonObject("aggs");
-            if (!nullOrEmpty(aggregationBuilders)) {
-              AggregationBuilder aggregationBuilder =
-                  aggregationBuilders.get(aggregationBuilders.size() - 1);
-              List<AggregationBuilder> subAggregationBuilders = buildAggregation(subAggregation);
-              for (AggregationBuilder subAggregationBuilder : subAggregationBuilders) {
-                aggregationBuilder.subAggregation(subAggregationBuilder);
+            if (!keySet.contains("nested")) {
+              JsonObject subAggregation = aggregation.getJsonObject("aggs");
+              if (!nullOrEmpty(aggregationBuilders)) {
+                AggregationBuilder aggregationBuilder =
+                        aggregationBuilders.get(aggregationBuilders.size() - 1);
+                List<AggregationBuilder> subAggregationBuilders = buildAggregation(subAggregation);
+                for (AggregationBuilder subAggregationBuilder : subAggregationBuilders) {
+                  aggregationBuilder.subAggregation(subAggregationBuilder);
+                }
               }
+              break;
             }
             break;
           default:
