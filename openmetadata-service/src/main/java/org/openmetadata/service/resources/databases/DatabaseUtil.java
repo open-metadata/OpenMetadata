@@ -85,17 +85,6 @@ public final class DatabaseUtil {
     }
   }
 
-  public static void validateViewDefinition(TableType tableType, String viewDefinition) {
-    if ((tableType == null
-            || tableType.equals(TableType.Regular)
-            || tableType.equals(TableType.External))
-        && viewDefinition != null
-        && !viewDefinition.isEmpty()) {
-      throw new IllegalArgumentException(
-          "ViewDefinition can only be set on TableType View, SecureView or MaterializedView");
-    }
-  }
-
   public static void validateColumns(List<Column> columns) {
     validateColumnNames(columns);
     for (Column c : columns) {

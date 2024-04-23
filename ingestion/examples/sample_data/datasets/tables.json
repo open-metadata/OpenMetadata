@@ -735,8 +735,8 @@
               "updatedAt": 1638354087591,
               "updatedBy": "anonymous",
               "href": "http://localhost:8585/api/v1/tables/1cda9ecb-f4c6-4ed4-8506-abe965b64c87",
-              "tableType": "Regular",
-              "schemaDefinition": "CREATE TABLE dim_address_clean(address_id NUMERIC PRIMARY KEY, shop_id NUMERIC)",
+              "tableType": "View",
+              "schemaDefinition": "CREATE VIEW dim_address_clean(address_id NUMERIC PRIMARY KEY, shop_id NUMERIC)",
               "columns": [
                   {
                       "name": "address_id",

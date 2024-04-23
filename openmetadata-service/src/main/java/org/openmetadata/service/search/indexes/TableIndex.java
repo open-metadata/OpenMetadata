@@ -25,7 +25,7 @@ public record TableIndex(Table table) implements ColumnIndex {
           "tableProfile",
           "joins",
           "changeDescription",
-          "viewDefinition, tableProfilerConfig, profile, location, tableQueries, tests, dataModel");
+          "schemaDefinition, tableProfilerConfig, profile, location, tableQueries, tests, dataModel");
 
   public Map<String, Object> buildESDoc() {
     Map<String, Object> doc = JsonUtils.getMap(table);
