@@ -2980,7 +2980,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
       assertEquals(EventType.ENTITY_CREATED, changeEvent.getEventType());
       assertEquals(0.1, changeEvent.getPreviousVersion());
       assertNull(changeEvent.getChangeDescription());
-      T changeEventEntity = JsonUtils.readValue((String) changeEvent.getEntity(), entityClass);
+      T changeEventEntity = JsonUtils.readOrConvertValue(changeEvent.getEntity(), entityClass);
       validateCommonEntityFields(entity, changeEventEntity, getPrincipalName(authHeaders));
       compareChangeEventsEntities(entity, changeEventEntity, authHeaders);
     } else if (expectedEventType == EventType.ENTITY_UPDATED) {

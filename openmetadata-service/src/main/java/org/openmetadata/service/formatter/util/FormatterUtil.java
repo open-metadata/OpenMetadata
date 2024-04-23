@@ -13,36 +13,26 @@
 
 package org.openmetadata.service.formatter.util;
 
-import static java.lang.String.format;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.schema.type.EventType.ENTITY_CREATED;
-import static org.openmetadata.service.Entity.FIELD_DISPLAY_NAME;
-import static org.openmetadata.service.Entity.FIELD_NAME;
 import static org.openmetadata.service.Entity.THREAD;
 import static org.openmetadata.service.formatter.factory.ParserFactory.getFieldParserObject;
+import static org.openmetadata.service.formatter.field.DefaultFieldFormatter.getFieldNameChange;
 
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
-import javax.json.JsonArray;
-import javax.json.JsonObject;
-import javax.json.JsonValue;
-import javax.json.stream.JsonParsingException;
 import javax.ws.rs.container.ContainerResponseContext;
 import javax.ws.rs.core.Response;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.lang.StringUtils;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.feed.Thread;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.ChangeEvent;
-import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EventType;
 import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.service.formatter.decorators.MessageDecorator;
@@ -56,10 +46,11 @@ import org.openmetadata.service.util.RestUtil;
 @Slf4j
 public class FormatterUtil {
 
-  public static MessageParser.EntityLink getEntityLink(String fieldName, EntityInterface entity) {
-    EntityReference entityReference = entity.getEntityReference();
-    String entityType = entityReference.getType();
-    String entityFQN = entityReference.getFullyQualifiedName();
+  public static MessageParser.EntityLink getEntityLinkForFieldName(
+      String fieldName, Thread thread) {
+    MessageParser.EntityLink entityLink = MessageParser.EntityLink.parse(thread.getAbout());
+    String entityType = thread.getEntityType();
+    String entityFQN = entityLink.getEntityFQN();
     String arrayFieldName = null;
     String arrayFieldValue = null;
 
@@ -77,53 +68,6 @@ public class FormatterUtil {
 
     return new MessageParser.EntityLink(
         entityType, entityFQN, fieldName, arrayFieldName, arrayFieldValue);
-  }
-
-  public static String getFieldValue(Object fieldValue) {
-    if (nullOrEmpty(fieldValue)) {
-      return StringUtils.EMPTY;
-    }
-    try {
-      JsonValue json = JsonUtils.readJson(fieldValue.toString());
-      if (json.getValueType() == JsonValue.ValueType.ARRAY) {
-        JsonArray jsonArray = json.asJsonArray();
-        List<String> labels = new ArrayList<>();
-        for (JsonValue item : jsonArray) {
-          if (item.getValueType() == JsonValue.ValueType.OBJECT) {
-            Set<String> keys = item.asJsonObject().keySet();
-            if (keys.contains("tagFQN")) {
-              labels.add(item.asJsonObject().getString("tagFQN"));
-            } else if (keys.contains(FIELD_DISPLAY_NAME)) {
-              // Entity Reference will have a displayName
-              labels.add(item.asJsonObject().getString(FIELD_DISPLAY_NAME));
-            } else if (keys.contains(FIELD_NAME)) {
-              // Glossary term references have only "name" field
-              labels.add(item.asJsonObject().getString(FIELD_NAME));
-            } else if (keys.contains("constraintType")) {
-              labels.add(item.asJsonObject().getString("constraintType"));
-            }
-          } else if (item.getValueType() == JsonValue.ValueType.STRING) {
-            // The string might be enclosed with double quotes
-            // Check if string has double quotes and strip trailing whitespaces
-            String label = item.toString().replaceAll("^\"|\"$", "");
-            labels.add(label.strip());
-          }
-        }
-        return String.join(", ", labels);
-      } else if (json.getValueType() == JsonValue.ValueType.OBJECT) {
-        JsonObject jsonObject = json.asJsonObject();
-        // Entity Reference will have a displayName
-        Set<String> keys = jsonObject.asJsonObject().keySet();
-        if (keys.contains(FIELD_DISPLAY_NAME)) {
-          return jsonObject.asJsonObject().getString(FIELD_DISPLAY_NAME);
-        } else if (keys.contains(FIELD_NAME)) {
-          return jsonObject.asJsonObject().getString(FIELD_NAME);
-        }
-      }
-    } catch (JsonParsingException ex) {
-      // If unable to parse json, just return the string
-    }
-    return fieldValue.toString();
   }
 
   ////// used in alerts rule evaluator///
@@ -151,33 +95,21 @@ public class FormatterUtil {
 
   public static String transformMessage(
       MessageDecorator<?> messageFormatter,
+      Thread thread,
       FieldChange fieldChange,
-      EntityInterface entity,
       CHANGE_TYPE changeType) {
-    MessageParser.EntityLink link = getEntityLink(fieldChange.getName(), entity);
-    String arrayFieldName = link.getArrayFieldName();
+    MessageParser.EntityLink link = getEntityLinkForFieldName(fieldChange.getName(), thread);
     String arrayFieldValue = link.getArrayFieldValue();
-
-    String message;
-    String updatedField = fieldChange.getName();
-    if (arrayFieldValue != null) {
-      updatedField = format("%s.%s", arrayFieldName, arrayFieldValue);
-    } else if (arrayFieldName != null) {
-      updatedField = format("%s.%s", fieldChange.getName(), arrayFieldName);
-    }
-
-    String oldField = getFieldValue(fieldChange.getOldValue());
-    String newField = getFieldValue(fieldChange.getNewValue());
+    String updateField = getFieldNameChange(fieldChange.getName(), thread);
     DefaultFieldFormatter fieldSpecificFormatter;
     if (nullOrEmpty(arrayFieldValue)) {
       fieldSpecificFormatter =
-          getFieldParserObject(messageFormatter, oldField, newField, updatedField, link);
+          getFieldParserObject(messageFormatter, thread, fieldChange, updateField);
     } else {
       fieldSpecificFormatter =
-          getFieldParserObject(messageFormatter, oldField, newField, arrayFieldValue, link);
+          getFieldParserObject(messageFormatter, thread, fieldChange, arrayFieldValue);
     }
-    message = fieldSpecificFormatter.getFormattedMessage(changeType);
-    return message;
+    return fieldSpecificFormatter.getFormattedMessage(changeType);
   }
 
   public enum CHANGE_TYPE {
@@ -186,15 +118,13 @@ public class FormatterUtil {
     DELETE
   }
 
-  public static Map<MessageParser.EntityLink, String> getFormattedMessages(
-      MessageDecorator<?> messageFormatter,
-      ChangeDescription changeDescription,
-      EntityInterface entity) {
+  public static List<Thread> getFormattedMessages(
+      MessageDecorator<?> messageFormatter, Thread thread, ChangeDescription changeDescription) {
     // Store a map of entityLink -> message
     List<FieldChange> fieldsUpdated = changeDescription.getFieldsUpdated();
-    Map<MessageParser.EntityLink, String> messages =
+    List<Thread> messages =
         getFormattedMessagesForAllFieldChange(
-            messageFormatter, entity, fieldsUpdated, CHANGE_TYPE.UPDATE);
+            messageFormatter, thread, fieldsUpdated, CHANGE_TYPE.UPDATE);
 
     // fieldsAdded and fieldsDeleted need special handling since
     // there is a possibility to merge them as one update message.
@@ -202,13 +132,13 @@ public class FormatterUtil {
     List<FieldChange> fieldsDeleted = changeDescription.getFieldsDeleted();
     if (fieldsAdded.isEmpty() || fieldsDeleted.isEmpty()) {
       if (!fieldsAdded.isEmpty()) {
-        messages.putAll(
+        messages.addAll(
             getFormattedMessagesForAllFieldChange(
-                messageFormatter, entity, fieldsAdded, CHANGE_TYPE.ADD));
+                messageFormatter, thread, fieldsAdded, CHANGE_TYPE.ADD));
       } else if (!fieldsDeleted.isEmpty()) {
-        messages.putAll(
+        messages.addAll(
             getFormattedMessagesForAllFieldChange(
-                messageFormatter, entity, fieldsDeleted, CHANGE_TYPE.DELETE));
+                messageFormatter, thread, fieldsDeleted, CHANGE_TYPE.DELETE));
       }
       return messages;
     }
@@ -217,61 +147,59 @@ public class FormatterUtil {
           fieldsAdded.stream().filter(f -> f.getName().equals(field.getName())).findAny();
       if (addedField.isPresent()) {
         String fieldName = field.getName();
-        MessageParser.EntityLink link = FormatterUtil.getEntityLink(fieldName, entity);
+        MessageParser.EntityLink link = FormatterUtil.getEntityLinkForFieldName(fieldName, thread);
         // convert the added field and deleted field into one update message
+        Thread tempThread = JsonUtils.deepCopy(thread, Thread.class);
         String message =
             ParserFactory.getEntityParser(link.getEntityType())
                 .format(
                     messageFormatter,
+                    tempThread,
                     new FieldChange()
                         .withName(fieldName)
                         .withOldValue(field.getOldValue())
                         .withNewValue(addedField.get().getNewValue()),
-                    entity,
                     CHANGE_TYPE.UPDATE);
-        messages.put(link, message);
+        tempThread.withMessage(message);
+        messages.add(tempThread);
         // Remove the field from addedFields list to avoid double processing
         fieldsAdded = fieldsAdded.stream().filter(f -> !f.equals(addedField.get())).toList();
       } else {
         // process the deleted field
-        messages.putAll(
+        messages.addAll(
             getFormattedMessagesForAllFieldChange(
-                messageFormatter, entity, Collections.singletonList(field), CHANGE_TYPE.DELETE));
+                messageFormatter, thread, Collections.singletonList(field), CHANGE_TYPE.DELETE));
       }
     }
     // process the remaining added fields
     if (!fieldsAdded.isEmpty()) {
-      messages.putAll(
+      messages.addAll(
           getFormattedMessagesForAllFieldChange(
-              messageFormatter, entity, fieldsAdded, CHANGE_TYPE.ADD));
+              messageFormatter, thread, fieldsAdded, CHANGE_TYPE.ADD));
     }
     return messages;
   }
 
-  private static Map<MessageParser.EntityLink, String> getFormattedMessagesForAllFieldChange(
+  private static List<Thread> getFormattedMessagesForAllFieldChange(
       MessageDecorator<?> messageFormatter,
-      EntityInterface entity,
+      Thread thread,
       List<FieldChange> fields,
       CHANGE_TYPE changeType) {
-    Map<MessageParser.EntityLink, String> messages = new HashMap<>();
+    List<Thread> threads = new ArrayList<>();
     for (FieldChange field : fields) {
-      MessageParser.EntityLink link = FormatterUtil.getEntityLink(field.getName(), entity);
+      Thread tempEntity = JsonUtils.deepCopy(thread, Thread.class).withId(UUID.randomUUID());
+      // We are creating multiple thread on the same entity based on different messages
       String message =
-          ParserFactory.getEntityParser(link.getEntityType())
-              .format(messageFormatter, field, entity, changeType);
-      messages.put(link, message);
+          ParserFactory.getEntityParser(thread.getEntityType())
+              .format(messageFormatter, tempEntity, field, changeType);
+      tempEntity.withMessage(message);
+      threads.add(tempEntity);
     }
-    return messages;
+    return threads;
   }
 
   public static Optional<ChangeEvent> getChangeEventFromResponseContext(
-      ContainerResponseContext responseContext, String updateBy, String method) {
-    // GET operations don't produce change events , Response has no entity to produce change event
-    // from
-    if (method.equals("GET") || responseContext.getEntity() == null) {
-      return Optional.empty();
-    }
-
+      ContainerResponseContext responseContext, String updateBy) {
     Optional<EventType> eventType = getEventTypeFromResponse(responseContext);
     if (eventType.isEmpty() || !responseContext.hasEntity()) {
       return Optional.empty();
