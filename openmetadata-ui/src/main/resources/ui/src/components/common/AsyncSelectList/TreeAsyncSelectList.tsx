@@ -283,6 +283,7 @@ const TreeAsyncSelectList: FC<Omit<AsyncSelectListProps, 'fetchOptions'>> = ({
   return (
     <TreeSelect
       autoFocus
+      open
       showSearch
       treeCheckable
       data-testid="tag-selector"

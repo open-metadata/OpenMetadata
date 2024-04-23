@@ -285,6 +285,7 @@ const AsyncSelectList: FC<AsyncSelectListProps & SelectProps> = ({
   return (
     <Select
       autoFocus
+      open
       showSearch
       data-testid="tag-selector"
       dropdownRender={dropdownRender}
