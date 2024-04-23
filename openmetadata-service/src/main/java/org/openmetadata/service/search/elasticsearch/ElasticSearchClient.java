@@ -884,7 +884,7 @@ public class ElasticSearchClient implements SearchClient {
               JsonObject subAggregation = aggregation.getJsonObject("aggs");
               if (!nullOrEmpty(aggregationBuilders)) {
                 AggregationBuilder aggregationBuilder =
-                        aggregationBuilders.get(aggregationBuilders.size() - 1);
+                    aggregationBuilders.get(aggregationBuilders.size() - 1);
                 List<AggregationBuilder> subAggregationBuilders = buildAggregation(subAggregation);
                 for (AggregationBuilder subAggregationBuilder : subAggregationBuilders) {
                   aggregationBuilder.subAggregation(subAggregationBuilder);
