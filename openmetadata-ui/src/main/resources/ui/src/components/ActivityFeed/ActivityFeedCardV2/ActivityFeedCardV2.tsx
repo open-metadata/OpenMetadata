@@ -120,6 +120,7 @@ const ActivityFeedCardV2 = ({
             <Col span={24}>
               <FeedCardBodyV1
                 announcement={!isPost ? feed.announcement : undefined}
+                feed={feed}
                 isEditPost={isEditPost}
                 message={post.message}
                 onEditCancel={() => setIsEditPost(false)}

@@ -84,6 +84,7 @@ function AnnouncementsWidget({
                         isOpenInDrawer
                         announcement={item.announcement}
                         className="p-t-xs"
+                        feed={item}
                         isEditPost={false}
                         message={item.message}
                         showSchedule={false}

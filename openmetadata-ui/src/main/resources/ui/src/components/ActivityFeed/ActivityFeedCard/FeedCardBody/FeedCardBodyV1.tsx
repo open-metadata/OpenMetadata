@@ -17,14 +17,17 @@ import React, { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import ActivityFeedEditor from '../../../../components/ActivityFeed/ActivityFeedEditor/ActivityFeedEditor';
 import RichTextEditorPreviewer from '../../../../components/common/RichTextEditor/RichTextEditorPreviewer';
+import { EntityField } from '../../../../constants/Feeds.constants';
 import { formatDateTime } from '../../../../utils/date-time/DateTimeUtils';
 import {
   getFrontEndFormat,
   MarkdownToHTMLConverter,
 } from '../../../../utils/FeedUtils';
+import DescriptionFeed from '../../ActivityFeedCardV2/FeedCardBody/DescriptionFeed';
 import { FeedCardBodyV1Props } from './FeedCardBodyV1.interface';
 
 const FeedCardBodyV1 = ({
+  feed,
   isEditPost,
   className,
   showSchedule = true,
@@ -36,6 +39,12 @@ const FeedCardBodyV1 = ({
   const { t } = useTranslation();
   const [postMessage, setPostMessage] = useState<string>(message);
 
+  const { fieldName } = useMemo(() => {
+    return {
+      fieldName: feed.feedInfo?.fieldName ?? '',
+    };
+  }, [feed]);
+
   const handleSave = useCallback(() => {
     onUpdate?.(postMessage ?? '');
   }, [onUpdate, postMessage]);
@@ -44,9 +53,9 @@ const FeedCardBodyV1 = ({
     return MarkdownToHTMLConverter.makeHtml(getFrontEndFormat(defaultMessage));
   };
 
-  const feedBody = useMemo(
-    () =>
-      isEditPost ? (
+  const feedBody = useMemo(() => {
+    if (isEditPost) {
+      return (
         <ActivityFeedEditor
           focused
           className="mb-8"
@@ -75,14 +84,20 @@ const FeedCardBodyV1 = ({
           onSave={handleSave}
           onTextChange={(message) => setPostMessage(message)}
         />
-      ) : (
-        <RichTextEditorPreviewer
-          className="activity-feed-card-v1-text"
-          markdown={getFrontEndFormat(message)}
-        />
-      ),
-    [isEditPost, message, postMessage]
-  );
+      );
+    }
+
+    if (fieldName === EntityField.DESCRIPTION) {
+      return <DescriptionFeed feed={feed} />;
+    }
+
+    return (
+      <RichTextEditorPreviewer
+        className="text-wrap"
+        markdown={getFrontEndFormat(message)}
+      />
+    );
+  }, [isEditPost, message, postMessage, fieldName, feed]);
 
   return (
     <div
@@ -115,7 +130,7 @@ const FeedCardBodyV1 = ({
             <Row>
               <Col span={24}>
                 <RichTextEditorPreviewer
-                  className="activity-feed-card-v1-text"
+                  className="text-wrap"
                   markdown={announcement.description ?? ''}
                 />
               </Col>

@@ -30,8 +30,8 @@ import {
   entityDisplayName,
   getEntityFQN,
   getEntityType,
-  getFeedChangeActionLabel,
   getFeedChangeFieldLabel,
+  getFeedChangeOperationLabel,
 } from '../../../../utils/FeedUtils';
 import EntityPopOverCard from '../../../common/PopOverCard/EntityPopOverCard';
 
@@ -94,7 +94,7 @@ const FeedCardHeaderV2 = ({
             ) : (
               <>
                 <Typography.Text className="m-r-xss">
-                  {getFeedChangeActionLabel(fieldOperation)}
+                  {getFeedChangeOperationLabel(fieldOperation)}
                 </Typography.Text>
                 <Typography.Text className="m-r-xss" data-testid="entityType">
                   {getFeedChangeFieldLabel(fieldName as EntityField)}

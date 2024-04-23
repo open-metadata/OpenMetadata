@@ -20,6 +20,8 @@ import React from 'react';
 import ReactDOM from 'react-dom';
 import Showdown from 'showdown';
 import TurndownService from 'turndown';
+import { ReactComponent as AddIcon } from '../assets/svg/added-icon.svg';
+import { ReactComponent as UpdatedIcon } from '../assets/svg/updated-icon.svg';
 import { MentionSuggestionsItem } from '../components/ActivityFeed/FeedEditor/FeedEditor.interface';
 import { UserTeam } from '../components/common/AssigneeList/AssigneeList.interface';
 import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
@@ -578,7 +580,9 @@ export const getFeedPanelHeaderText = (
   }
 };
 
-export const getFeedChangeActionLabel = (fieldOperation?: FieldOperation) => {
+export const getFeedChangeOperationLabel = (
+  fieldOperation?: FieldOperation
+) => {
   switch (fieldOperation) {
     case FieldOperation.Added:
       return i18next.t('label.added-lowercase');
@@ -623,4 +627,22 @@ export const getFeedChangeFieldLabel = (fieldName?: EntityField) => {
   };
 
   return isUndefined(fieldName) ? '' : fieldNameLabelMapping[fieldName];
+};
+
+export const getFieldOperationIcon = (fieldOperation?: FieldOperation) => {
+  let Icon = UpdatedIcon;
+
+  switch (fieldOperation) {
+    case FieldOperation.Added:
+      Icon = AddIcon;
+
+      break;
+    case FieldOperation.Updated:
+    case FieldOperation.Deleted:
+      Icon = UpdatedIcon;
+
+      break;
+  }
+
+  return <Icon height={16} width={16} />;
 };
