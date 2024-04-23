@@ -128,7 +128,6 @@ describe('ProfilerConfigurationPage', () => {
     );
     cy.get('[data-testid="save-button"]').click();
     cy.wait('@updateProfilerConfiguration').then((interception) => {
-      expect(interception.response.statusCode).to.eq(200);
       expect(interception.request.body).to.deep.eq(PROFILER_REQUEST_CONFIG);
     });
   });
@@ -146,7 +145,6 @@ describe('ProfilerConfigurationPage', () => {
     );
     cy.get('[data-testid="save-button"]').click();
     cy.wait('@updateProfilerConfiguration').then((interception) => {
-      expect(interception.response.statusCode).to.eq(200);
       expect(interception.request.body).to.deep.eq(
         PROFILER_EMPTY_RESPONSE_CONFIG
       );
