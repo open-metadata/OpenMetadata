@@ -21,7 +21,15 @@ const config = {
   monogramError: 'Monogram URL is not valid url',
 };
 
-describe('Custom Logo Config', { tags: 'Settings' }, () => {
+const themeConfig = {
+  primaryColor: '#6809dc',
+  infoColor: '#2196f3',
+  successColor: '#008376',
+  warningColor: '#ffc34e',
+  errorColor: '#ff4c3b',
+};
+
+describe('Custom Theme Config', { tags: 'Settings' }, () => {
   beforeEach(() => {
     cy.login();
 
@@ -55,11 +63,42 @@ describe('Custom Logo Config', { tags: 'Settings' }, () => {
       .clear()
       .type(config.monogram);
 
+    // theme config
+    cy.get('[data-testid="primaryColor-color-input"]')
+      .scrollIntoView()
+      .clear()
+      .type(themeConfig.primaryColor);
+
+    cy.get('[data-testid="infoColor-color-input"]')
+      .scrollIntoView()
+      .clear()
+      .type(themeConfig.infoColor);
+
+    cy.get('[data-testid="successColor-color-input"]')
+      .scrollIntoView()
+      .clear()
+      .type(themeConfig.successColor);
+
+    cy.get('[data-testid="warningColor-color-input"]')
+      .scrollIntoView()
+      .clear()
+      .type(themeConfig.warningColor);
+
+    cy.get('[data-testid="errorColor-color-input"]')
+      .scrollIntoView()
+      .clear()
+      .type(themeConfig.errorColor);
+
     interceptURL('PUT', 'api/v1/system/settings', 'updatedConfig');
 
     cy.get('[data-testid="save-btn"]').scrollIntoView().click();
 
     verifyResponseStatusCode('@updatedConfig', 200);
+
+    // check if the color is updated
+    cy.get('[data-testid="save-btn"]')
+      .invoke('css', 'background-color')
+      .should('eq', 'rgb(136, 46, 232)');
   });
 
   it('Reset to default', () => {
