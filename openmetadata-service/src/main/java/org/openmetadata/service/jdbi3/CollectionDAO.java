@@ -866,6 +866,15 @@ public interface CollectionDAO {
     int findIfAnyRelationExist(
         @Bind("fromEntity") String fromEntity, @Bind("toEntity") String toEntity);
 
+    @SqlQuery(
+        "SELECT json FROM entity_relationship WHERE fromId = :fromId "
+            + " AND toId = :toId "
+            + " AND relation = :relation ")
+    String getRelation(
+        @BindUUID("fromId") UUID fromId,
+        @BindUUID("toId") UUID toId,
+        @Bind("relation") int relation);
+
     //
     // Delete Operations
     //
