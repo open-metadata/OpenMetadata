@@ -25,6 +25,7 @@ from metadata.generated.schema.entity.services.dashboardService import Dashboard
 from metadata.generated.schema.entity.services.databaseService import DatabaseService
 from metadata.generated.schema.entity.services.pipelineService import PipelineService
 from metadata.generated.schema.type.entityLineage import (
+    ColumnLineage,
     EntitiesEdge,
     EntityLineage,
     LineageDetails,
@@ -95,13 +96,20 @@ class OMetaLineageTest(TestCase):
             )
         )
 
-        cls.table = get_create_entity(
+        cls.table1 = get_create_entity(
             name=generate_name(),
             entity=Table,
             reference=create_schema_entity.fullyQualifiedName,
         )
 
-        cls.table_entity = cls.metadata.create_or_update(data=cls.table)
+        cls.table1_entity = cls.metadata.create_or_update(data=cls.table1)
+        cls.table2 = get_create_entity(
+            name=generate_name(),
+            entity=Table,
+            reference=create_schema_entity.fullyQualifiedName,
+        )
+
+        cls.table2_entity = cls.metadata.create_or_update(data=cls.table2)
 
         cls.pipeline = get_create_entity(
             name=generate_name(),
@@ -175,16 +183,14 @@ class OMetaLineageTest(TestCase):
         We can create a Lineage and get the origin node lineage info back
         """
 
-        from_id = str(self.table_entity.id.__root__)
-        to_id = str(self.pipeline_entity.id.__root__)
+        from_id = str(self.table1_entity.id.__root__)
+        to_id = str(self.table2_entity.id.__root__)
 
         res = self.metadata.add_lineage(
             data=AddLineageRequest(
                 edge=EntitiesEdge(
-                    fromEntity=EntityReference(id=self.table_entity.id, type="table"),
-                    toEntity=EntityReference(
-                        id=self.pipeline_entity.id, type="pipeline"
-                    ),
+                    fromEntity=EntityReference(id=self.table1_entity.id, type="table"),
+                    toEntity=EntityReference(id=self.table2_entity.id, type="table"),
                     lineageDetails=LineageDetails(description="test lineage"),
                 ),
             )
@@ -199,15 +205,100 @@ class OMetaLineageTest(TestCase):
         )
         self.assertIsNotNone(node_id)
 
+        # Add pipeline to the lineage edge
+        linage_request_1 = AddLineageRequest(
+            edge=EntitiesEdge(
+                fromEntity=EntityReference(id=self.table1_entity.id, type="table"),
+                toEntity=EntityReference(id=self.table2_entity.id, type="table"),
+                lineageDetails=LineageDetails(
+                    description="test lineage",
+                    pipeline=EntityReference(
+                        id=self.pipeline_entity.id, type="pipeline"
+                    ),
+                ),
+            ),
+        )
+
+        res = self.metadata.add_lineage(data=linage_request_1, check_patch=True)
+
+        res["entity"]["id"] = str(res["entity"]["id"])
+        self.assertEqual(len(res["downstreamEdges"]), 1)
+        self.assertEqual(
+            res["downstreamEdges"][0]["lineageDetails"]["pipeline"]["id"],
+            str(self.pipeline_entity.id.__root__),
+        )
+
+        # Add a column to the lineage edge
+        linage_request_2 = AddLineageRequest(
+            edge=EntitiesEdge(
+                fromEntity=EntityReference(id=self.table1_entity.id, type="table"),
+                toEntity=EntityReference(id=self.table2_entity.id, type="table"),
+                lineageDetails=LineageDetails(
+                    description="test lineage",
+                    columnsLineage=[
+                        ColumnLineage(
+                            fromColumns=[
+                                f"{self.table1_entity.fullyQualifiedName.__root__}.id"
+                            ],
+                            toColumn=f"{self.table2_entity.fullyQualifiedName.__root__}.id",
+                        )
+                    ],
+                ),
+            ),
+        )
+
+        res = self.metadata.add_lineage(data=linage_request_2, check_patch=True)
+
+        res["entity"]["id"] = str(res["entity"]["id"])
+        self.assertEqual(len(res["downstreamEdges"]), 1)
+        self.assertEqual(
+            res["downstreamEdges"][0]["lineageDetails"]["pipeline"]["id"],
+            str(self.pipeline_entity.id.__root__),
+        )
+        self.assertEqual(
+            len(res["downstreamEdges"][0]["lineageDetails"]["columnsLineage"]), 1
+        )
+
+        # Add a new column to the lineage edge
+        linage_request_2 = AddLineageRequest(
+            edge=EntitiesEdge(
+                fromEntity=EntityReference(id=self.table1_entity.id, type="table"),
+                toEntity=EntityReference(id=self.table2_entity.id, type="table"),
+                lineageDetails=LineageDetails(
+                    description="test lineage",
+                    columnsLineage=[
+                        ColumnLineage(
+                            fromColumns=[
+                                f"{self.table1_entity.fullyQualifiedName.__root__}.name"
+                            ],
+                            toColumn=f"{self.table2_entity.fullyQualifiedName.__root__}.name",
+                        )
+                    ],
+                ),
+            ),
+        )
+
+        res = self.metadata.add_lineage(data=linage_request_2, check_patch=True)
+
+        res["entity"]["id"] = str(res["entity"]["id"])
+        self.assertEqual(len(res["downstreamEdges"]), 1)
+        self.assertEqual(
+            res["downstreamEdges"][0]["lineageDetails"]["pipeline"]["id"],
+            str(self.pipeline_entity.id.__root__),
+        )
+        self.assertEqual(
+            len(res["downstreamEdges"][0]["lineageDetails"]["columnsLineage"]), 2
+        )
+
     def test_table_datamodel_lineage(self):
         """We can create and get lineage for a table to a dashboard datamodel"""
 
-        from_id = str(self.table_entity.id.__root__)
+        from_id = str(self.table1_entity.id.__root__)
 
         res = self.metadata.add_lineage(
             data=AddLineageRequest(
                 edge=EntitiesEdge(
-                    fromEntity=EntityReference(id=self.table_entity.id, type="table"),
+                    fromEntity=EntityReference(id=self.table1_entity.id, type="table"),
                     toEntity=EntityReference(
                         id=self.dashboard_datamodel_entity.id, type="dashboardDataModel"
                     ),
