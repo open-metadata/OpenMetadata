@@ -90,7 +90,17 @@ describe('Test PasswordWidget Component', () => {
 
     fireEvent.change(passwordInput, { target: { value: 'password' } });
 
-    expect(mockOnChange).toHaveBeenCalled();
+    expect(mockOnChange).toHaveBeenCalledWith('password');
+  });
+
+  it('Should call onChange with asterisk', async () => {
+    render(<PasswordWidget {...mockProps} />);
+
+    const passwordInput = screen.getByTestId('password-input-widget');
+
+    fireEvent.change(passwordInput, { target: { value: '*******' } });
+
+    expect(mockOnChange).toHaveBeenCalledWith('*******');
   });
 
   it('Should not show password if the value is masked', async () => {
