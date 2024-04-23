@@ -68,7 +68,6 @@ class MissingMetricException(Exception):
     """
 
 
-
 class Profiler(Generic[TMetric]):
     """
     Core Profiler.
