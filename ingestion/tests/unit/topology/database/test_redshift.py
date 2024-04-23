@@ -32,6 +32,10 @@ mock_redshift_config = {
                 "password": "password",
                 "database": "database",
                 "hostPort": "cluster.name.region.redshift.amazonaws.com:5439",
+                "sslMode": "verify-full",
+                "sslConfig": {
+                    "caCertificate": "CA certificate content",
+                },
             }
         },
         "sourceConfig": {"config": {"type": "DatabaseMetadata"}},
@@ -74,3 +78,11 @@ class RedshiftUnitTest(TestCase):
                     self.redshift_source._get_partition_key(RAW_DIST_STYLE[i]),
                     EXPECTED_PARTITION_COLUMNS[i],
                 )
+
+    @patch("sqlalchemy.engine.base.Engine")
+    @patch(
+        "metadata.ingestion.source.database.common_db_source.CommonDbSourceService.connection"
+    )
+    def test_close_connection(self, engine, connection):
+        connection.return_value = True
+        self.redshift_source.close()

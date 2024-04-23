@@ -130,6 +130,12 @@ You will have to replace new lines with `\n` and the final private key that you 
 
 {% /codeInfo %}
 
+{% codeInfo srNumber=7 %}
+
+**validateHostName**: Enable/Disable this field to validate the host name against the provided certificates.
+
+{% /codeInfo %}
+
 {% partial file="/v1.4/connectors/yaml/dashboard/source-config-def.md" /%}
 
 {% partial file="/v1.4/connectors/yaml/ingestion-sink-def.md" /%}
@@ -174,7 +180,9 @@ source:
 ```yaml {% srNumber=6 %}
       userDirectory: user_dir
 ```
-
+```yaml {% srNumber=6 %}
+      validateHostName: false
+```
 {% partial file="/v1.4/connectors/yaml/dashboard/source-config.md" /%}
 
 {% partial file="/v1.4/connectors/yaml/ingestion-sink.md" /%}

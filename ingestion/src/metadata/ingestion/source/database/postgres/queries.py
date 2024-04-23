@@ -76,7 +76,7 @@ POSTGRES_PARTITION_DETAILS = textwrap.dedent(
 )
 
 POSTGRES_GET_ALL_TABLE_PG_POLICY = """
-SELECT object_id, polname, table_catalog , table_schema ,table_name  
+SELECT object_id, polname, table_catalog, table_schema, table_name  
 FROM information_schema.tables AS it
 JOIN (SELECT pc.oid as object_id, pc.relname, pp.*
       FROM pg_policy AS pp

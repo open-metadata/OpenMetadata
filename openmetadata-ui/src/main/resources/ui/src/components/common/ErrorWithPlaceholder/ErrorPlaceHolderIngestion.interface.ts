@@ -10,24 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
-@import url('../../styles/variables.less');
-
-.alert-page-container {
-  width: 70%;
-  margin: 16px auto 0;
-  padding-bottom: 16px;
-  .ant-form-item {
-    margin: 0px;
-  }
-  .ant-card {
-    border-radius: 10px;
-  }
-}
-
-.alert-form-item-container {
-  background-color: @grey-6;
-  .ant-card-body {
-    padding: 20px;
-  }
+export interface ErrorPlaceHolderIngestionProps {
+  cardClassName?: string;
 }
