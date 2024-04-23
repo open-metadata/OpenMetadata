@@ -35,7 +35,6 @@ import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadc
 import { TitleBreadcrumbProps } from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.interface';
 import PageHeader from '../../components/PageHeader/PageHeader.component';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
-import { DEFAULT_THEME } from '../../constants/Appearance.constants';
 import { GlobalSettingsMenuCategory } from '../../constants/GlobalSettings.constants';
 import { HEX_COLOR_CODE_REGEX } from '../../constants/regex.constants';
 import { LogoConfiguration } from '../../generated/configuration/logoConfiguration';
@@ -117,7 +116,11 @@ const AppearanceConfigSettingsPage = () => {
           customFaviconUrlPath: '',
         },
         customTheme: {
-          ...DEFAULT_THEME,
+          primaryColor: '',
+          errorColor: '',
+          successColor: '',
+          warningColor: '',
+          infoColor: '',
         },
       };
       const configData = {
