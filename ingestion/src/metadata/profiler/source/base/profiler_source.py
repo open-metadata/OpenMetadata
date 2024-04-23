@@ -18,6 +18,9 @@ from typing import List, Optional, Tuple, cast
 
 from sqlalchemy import MetaData
 
+from metadata.generated.schema.configuration.profilerConfiguration import (
+    ProfilerConfiguration,
+)
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
 from metadata.generated.schema.entity.data.table import ColumnProfilerConfig, Table
@@ -58,6 +61,7 @@ class ProfilerSource(ProfilerSourceInterface):
         config: OpenMetadataWorkflowConfig,
         database: DatabaseService,
         ometa_client: OpenMetadata,
+        global_profiler_configuration: ProfilerConfiguration,
     ):
         self.service_conn_config = self._copy_service_config(config, database)
         self.source_config = config.source.sourceConfig.config
@@ -71,6 +75,7 @@ class ProfilerSource(ProfilerSourceInterface):
         self.profiler_interface_type: str = self._get_profiler_interface_type(config)
         self.sqa_metadata = self._set_sqa_metadata()
         self._interface = None
+        self.global_profiler_configuration = global_profiler_configuration
 
     @property
     def interface(
@@ -273,6 +278,7 @@ class ProfilerSource(ProfilerSourceInterface):
                 profiler_interface=profiler_interface,
                 include_columns=self._get_include_columns(entity, table_config),
                 exclude_columns=self._get_exclude_columns(entity, table_config),
+                global_profiler_configuration=self.global_profiler_configuration,
             )
 
         metrics = (
@@ -290,4 +296,5 @@ class ProfilerSource(ProfilerSourceInterface):
             profiler_interface=profiler_interface,
             include_columns=self._get_include_columns(entity, table_config),
             exclude_columns=self._get_exclude_columns(entity, table_config),
+            global_profiler_configuration=self.global_profiler_configuration,
         )
