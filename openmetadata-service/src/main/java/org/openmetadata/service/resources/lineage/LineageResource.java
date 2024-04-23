@@ -16,15 +16,20 @@ package org.openmetadata.service.resources.lineage;
 import static javax.ws.rs.core.Response.Status.NOT_FOUND;
 
 import es.org.elasticsearch.action.search.SearchResponse;
+import io.dropwizard.jersey.PATCH;
 import io.dropwizard.jersey.errors.ErrorMessage;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.ExampleObject;
 import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import java.io.IOException;
 import java.util.List;
+import java.util.UUID;
+import javax.json.JsonPatch;
 import javax.validation.Valid;
 import javax.validation.constraints.Max;
 import javax.validation.constraints.Min;
@@ -223,6 +228,82 @@ public class LineageResource {
         new LineageResourceContext());
     dao.addLineage(addLineage);
     return Response.status(Status.OK).build();
+  }
+
+  @GET
+  @Path("/getLineageEdge/{fromId}/{toId}")
+  @Operation(
+      operationId = "getLineageEdge",
+      summary = "Get  a lineage edge",
+      description =
+          "Get a lineage edge with from entity as upstream node and to entity as downstream node.",
+      responses = {
+        @ApiResponse(responseCode = "200"),
+        @ApiResponse(
+            responseCode = "404",
+            description = "Entity for instance {fromId} is not found")
+      })
+  public Response getLineageEdge(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Entity FQN", required = true, schema = @Schema(type = "string"))
+          @PathParam("fromId")
+          UUID fromId,
+      @Parameter(description = "Entity FQN", required = true, schema = @Schema(type = "string"))
+          @PathParam("toId")
+          UUID toId) {
+    return dao.getLineageEdge(fromId, toId);
+  }
+
+  @PATCH
+  @Path("/{fromEntity}/{fromId}/{toEntity}/{toId}")
+  @Operation(
+      operationId = "patchLineageEdge",
+      summary = "Patch a lineage edge",
+      description =
+          "Patch a lineage edge with from entity as upstream node and to entity as downstream node.",
+      responses = {
+        @ApiResponse(responseCode = "200"),
+        @ApiResponse(
+            responseCode = "404",
+            description = "Entity for instance {fromId} is not found")
+      })
+  @Consumes(MediaType.APPLICATION_JSON_PATCH_JSON)
+  public Response patchLineageEdge(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(
+              description = "Entity type of upstream entity of the edge",
+              required = true,
+              schema = @Schema(type = "string", example = "table, report, metrics, or dashboard"))
+          @PathParam("fromEntity")
+          String fromEntity,
+      @Parameter(description = "Entity id", required = true, schema = @Schema(type = "string"))
+          @PathParam("fromId")
+          UUID fromId,
+      @Parameter(
+              description = "Entity type for downstream entity of the edge",
+              required = true,
+              schema = @Schema(type = "string", example = "table, report, metrics, or dashboard"))
+          @PathParam("toEntity")
+          String toEntity,
+      @Parameter(description = "Entity id", required = true, schema = @Schema(type = "string"))
+          @PathParam("toId")
+          UUID toId,
+      @RequestBody(
+              description = "JsonPatch with array of operations",
+              content =
+                  @Content(
+                      mediaType = MediaType.APPLICATION_JSON_PATCH_JSON,
+                      examples = {
+                        @ExampleObject("[{op:remove, path:/a},{op:add, path: /b, value: val}]")
+                      }))
+          JsonPatch patch) {
+    authorizer.authorize(
+        securityContext,
+        new OperationContext(LINEAGE_FIELD, MetadataOperation.EDIT_LINEAGE),
+        new LineageResourceContext());
+    return dao.patchLineageEdge(fromEntity, fromId, toEntity, toId, patch);
   }
 
   @DELETE
