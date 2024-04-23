@@ -16,7 +16,7 @@ import traceback
 from copy import deepcopy
 from typing import Any, Dict, Iterable, List, Optional, Tuple
 
-from sqlalchemy import exc, inspect, sql, util
+from sqlalchemy import exc, sql, util
 from sqlalchemy.engine.base import Connection
 from sqlalchemy.sql import sqltypes
 from trino.sqlalchemy import datatype, error
