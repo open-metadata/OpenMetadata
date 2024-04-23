@@ -18,15 +18,12 @@ supporting sqlalchemy abstraction layer
 from metadata.ingestion.source.database.databricks.connection import (
     get_connection as databricks_get_connection,
 )
-from metadata.profiler.interface.sqlalchemy.profiler_interface import (
-    SQAProfilerInterface,
+from metadata.profiler.interface.sqlalchemy.databricks.profiler_interface import (
+    DatabricksProfilerInterface,
 )
 
 
-class UnityCatalogProfilerInterface(SQAProfilerInterface):
-    def __init__(self, service_connection_config, **kwargs):
-        super().__init__(service_connection_config=service_connection_config, **kwargs)
-
+class UnityCatalogProfilerInterface(DatabricksProfilerInterface):
     def create_session(self):
         self.connection = databricks_get_connection(self.service_connection_config)
         super().create_session()

@@ -13,8 +13,6 @@ SAP Hana source module
 """
 from typing import Iterable, Optional
 
-from sqlalchemy import inspect
-
 from metadata.generated.schema.entity.services.connections.database.sapHanaConnection import (
     SapHanaConnection,
 )
@@ -51,7 +49,8 @@ class SaphanaSource(CommonDbSourceService):
         """
         Check if the db is configured, or query the name
         """
-        self.inspector = inspect(self.engine)
+        self._connection_map = {}  # Lazy init as well
+        self._inspector_map = {}
 
         if getattr(self.service_connection.connection, "database"):
             yield self.service_connection.connection.database
