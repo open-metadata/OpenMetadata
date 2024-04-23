@@ -726,6 +726,15 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
   }
 
   @Transaction
+  public TestCase addInspectionQuery(UriInfo uri, UUID testCaseId, String sql) {
+    TestCase original = get(uri,testCaseId, getFields(PATCH_FIELDS));
+    TestCase updated = JsonUtils.readValue(JsonUtils.pojoToJson(original), TestCase.class).withInspectionQuery(sql);
+    EntityUpdater entityUpdater = getUpdater(original, updated, Operation.PATCH);
+    entityUpdater.update();
+    return updated;
+  }
+
+  @Transaction
   public RestUtil.DeleteResponse<TableData> deleteTestCaseFailedRowsSample(UUID id) {
     daoCollection.entityExtensionDAO().delete(id, FAILED_ROWS_SAMPLE_EXTENSION);
     return new RestUtil.DeleteResponse<>(null, ENTITY_DELETED);
@@ -880,6 +889,7 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
           TEST_CASE,
           updated.getId());
       recordChange("parameterValues", original.getParameterValues(), updated.getParameterValues());
+      recordChange("inspectionQuery", original.getInspectionQuery(), updated.getInspectionQuery());
       recordChange(
           "computePassedFailedRowCount",
           original.getComputePassedFailedRowCount(),
