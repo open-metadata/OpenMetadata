@@ -362,3 +362,5 @@ set json = JSON_INSERT(
 )
 WHERE name = 'tableRowInsertedCountToBeBetween';
 -- End of Test Definition Parameter Definition Validation Migration
+
+DELETE from openmetadata_settings where configType = 'customLogoConfiguration';
