@@ -727,8 +727,10 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
 
   @Transaction
   public TestCase addInspectionQuery(UriInfo uri, UUID testCaseId, String sql) {
-    TestCase original = get(uri,testCaseId, getFields(PATCH_FIELDS));
-    TestCase updated = JsonUtils.readValue(JsonUtils.pojoToJson(original), TestCase.class).withInspectionQuery(sql);
+    TestCase original = get(uri, testCaseId, getFields(PATCH_FIELDS));
+    TestCase updated =
+        JsonUtils.readValue(JsonUtils.pojoToJson(original), TestCase.class)
+            .withInspectionQuery(sql);
     EntityUpdater entityUpdater = getUpdater(original, updated, Operation.PATCH);
     entityUpdater.update();
     return updated;

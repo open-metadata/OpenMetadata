@@ -2258,13 +2258,13 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
   @Test
   void test_addInspectionQuery(TestInfo test) throws IOException {
     CreateTestCase create =
-            createRequest(test)
-                    .withEntityLink(TABLE_LINK)
-                    .withTestSuite(TEST_SUITE1.getFullyQualifiedName())
-                    .withTestDefinition(TEST_DEFINITION3.getFullyQualifiedName())
-                    .withParameterValues(
-                            List.of(
-                                    new TestCaseParameterValue().withValue("100").withName("missingCountValue")));
+        createRequest(test)
+            .withEntityLink(TABLE_LINK)
+            .withTestSuite(TEST_SUITE1.getFullyQualifiedName())
+            .withTestDefinition(TEST_DEFINITION3.getFullyQualifiedName())
+            .withParameterValues(
+                List.of(
+                    new TestCaseParameterValue().withValue("100").withName("missingCountValue")));
     TestCase testCase = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
     String inspectionQuery = "SELECT * FROM test_table WHERE column1 = 'value1'";
     putInspectionQuery(testCase, inspectionQuery, ADMIN_AUTH_HEADERS);
@@ -2272,9 +2272,8 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
     assertEquals(updated.getInspectionQuery(), inspectionQuery);
   }
 
-  private void putInspectionQuery(
-    TestCase testCase, String sql, Map<String, String> authHeaders)
-          throws IOException {
+  private void putInspectionQuery(TestCase testCase, String sql, Map<String, String> authHeaders)
+      throws IOException {
     TestCase putResponse = putInspectionQuery(testCase.getId(), sql, authHeaders);
     assertEquals(sql, putResponse.getInspectionQuery());
   }
@@ -2306,9 +2305,8 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
     return TestUtils.put(target, data, TestCase.class, OK, authHeaders);
   }
 
-  public TestCase putInspectionQuery(
-          UUID testCaseId, String sql, Map<String, String> authHeaders)
-          throws HttpResponseException {
+  public TestCase putInspectionQuery(UUID testCaseId, String sql, Map<String, String> authHeaders)
+      throws HttpResponseException {
     WebTarget target = getResource(testCaseId).path("/inspectionQuery");
     return TestUtils.put(target, sql, TestCase.class, OK, authHeaders);
   }
