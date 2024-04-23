@@ -23,7 +23,6 @@
         "sandboxModeEnabled",
         "slackChat",
         "emailConfiguration",
-        "customLogoConfiguration",
         "customUiThemePreference",
         "loginConfiguration",
         "slackAppConfiguration",

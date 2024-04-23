@@ -23,7 +23,6 @@ import javax.ws.rs.GET;
 import javax.ws.rs.Path;
 import javax.ws.rs.Produces;
 import javax.ws.rs.core.MediaType;
-import org.openmetadata.api.configuration.LogoConfiguration;
 import org.openmetadata.api.configuration.UiThemePreference;
 import org.openmetadata.catalog.security.client.SamlSSOClientConfig;
 import org.openmetadata.catalog.type.IdentityProviderConfig;
@@ -89,25 +88,6 @@ public class ConfigResource {
       authenticationConfiguration.setOidcConfiguration(null);
     }
     return authenticationConfiguration;
-  }
-
-  @GET
-  @Path(("/customLogoConfiguration"))
-  @Operation(
-      operationId = "getCustomLogoConfiguration",
-      summary = "Get Custom Logo configuration",
-      responses = {
-        @ApiResponse(
-            responseCode = "200",
-            description = "Logo Configuration",
-            content =
-                @Content(
-                    mediaType = "application/json",
-                    schema = @Schema(implementation = AuthenticationConfiguration.class)))
-      })
-  public LogoConfiguration getCustomLogoConfig() {
-    return SettingsCache.getSetting(
-        SettingsType.CUSTOM_LOGO_CONFIGURATION, LogoConfiguration.class);
   }
 
   @GET

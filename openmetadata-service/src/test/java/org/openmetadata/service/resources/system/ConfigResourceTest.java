@@ -29,7 +29,6 @@ import javax.ws.rs.client.WebTarget;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
-import org.openmetadata.api.configuration.LogoConfiguration;
 import org.openmetadata.api.configuration.UiThemePreference;
 import org.openmetadata.schema.api.configuration.LoginConfiguration;
 import org.openmetadata.schema.api.security.AuthenticationConfiguration;
@@ -100,17 +99,6 @@ class ConfigResourceTest extends OpenMetadataApplicationTest {
         TestUtils.get(target, PipelineServiceAPIClientConfig.class, TEST_AUTH_HEADERS);
     assertEquals(
         config.getPipelineServiceClientConfiguration().getApiEndpoint(), auth.getApiEndpoint());
-  }
-
-  @Test
-  void get_Custom_Logo_Configuration_200_OK() throws IOException {
-    // Test Against Default Values
-    WebTarget target = getConfigResource("customLogoConfiguration");
-    LogoConfiguration logoConfiguration =
-        TestUtils.get(target, LogoConfiguration.class, TEST_AUTH_HEADERS);
-
-    assertEquals("", logoConfiguration.getCustomLogoUrlPath());
-    assertEquals("", logoConfiguration.getCustomMonogramUrlPath());
   }
 
   @Test

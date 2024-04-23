@@ -13,7 +13,6 @@
 
 package org.openmetadata.service.resources.settings;
 
-import static org.openmetadata.schema.settings.SettingsType.CUSTOM_LOGO_CONFIGURATION;
 import static org.openmetadata.schema.settings.SettingsType.CUSTOM_UI_THEME_PREFERENCE;
 import static org.openmetadata.schema.settings.SettingsType.EMAIL_CONFIGURATION;
 import static org.openmetadata.schema.settings.SettingsType.LOGIN_CONFIGURATION;
@@ -69,22 +68,6 @@ public class SettingsCache {
       SmtpSettings emailConfig = applicationConfig.getSmtpSettings();
       Settings setting =
           new Settings().withConfigType(EMAIL_CONFIGURATION).withConfigValue(emailConfig);
-      systemRepository.createNewSetting(setting);
-    }
-
-    // Initialise Logo Setting
-    Settings storedCustomLogoConf =
-        systemRepository.getConfigWithKey(CUSTOM_LOGO_CONFIGURATION.toString());
-    if (storedCustomLogoConf == null) {
-      // Only in case a config doesn't exist in DB we insert it
-      Settings setting =
-          new Settings()
-              .withConfigType(CUSTOM_LOGO_CONFIGURATION)
-              .withConfigValue(
-                  new LogoConfiguration()
-                      .withCustomLogoUrlPath("")
-                      .withCustomMonogramUrlPath("")
-                      .withCustomFaviconUrlPath(""));
       systemRepository.createNewSetting(setting);
     }
 
