@@ -94,7 +94,7 @@ const FeedCardHeaderV2 = ({
             ) : (
               <>
                 <Typography.Text className="m-r-xss">
-                  {getFeedChangeOperationLabel(fieldOperation)}
+                  {getFeedChangeOperationLabel(fieldOperation, false)}
                 </Typography.Text>
                 <Typography.Text className="m-r-xss" data-testid="entityType">
                   {getFeedChangeFieldLabel(fieldName as EntityField)}

@@ -581,19 +581,28 @@ export const getFeedPanelHeaderText = (
 };
 
 export const getFeedChangeOperationLabel = (
-  fieldOperation?: FieldOperation
+  fieldOperation?: FieldOperation,
+  showStartCase = true
 ) => {
-  switch (fieldOperation) {
-    case FieldOperation.Added:
-      return i18next.t('label.added-lowercase');
-    case FieldOperation.Updated:
-      return i18next.t('label.updated-lowercase');
-    case FieldOperation.Deleted:
-      return i18next.t('label.deleted-lowercase');
-
-    default:
-      return '';
+  if (isUndefined(fieldOperation)) {
+    return '';
   }
+
+  const startCaseOperationLabelMapping = {
+    [FieldOperation.Added]: i18next.t('label.added'),
+    [FieldOperation.Updated]: i18next.t('label.updated'),
+    [FieldOperation.Deleted]: i18next.t('label.deleted'),
+  };
+
+  const lowerCaseOperationLabelMapping = {
+    [FieldOperation.Added]: i18next.t('label.added-lowercase'),
+    [FieldOperation.Updated]: i18next.t('label.updated-lowercase'),
+    [FieldOperation.Deleted]: i18next.t('label.deleted-lowercase'),
+  };
+
+  return showStartCase
+    ? startCaseOperationLabelMapping[fieldOperation]
+    : lowerCaseOperationLabelMapping[fieldOperation];
 };
 
 export const getFeedChangeFieldLabel = (fieldName?: EntityField) => {
