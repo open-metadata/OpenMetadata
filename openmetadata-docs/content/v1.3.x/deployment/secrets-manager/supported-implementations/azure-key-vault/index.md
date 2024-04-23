@@ -49,7 +49,7 @@ While the Airflow part only needs to read the secrets hence the role `Key Vault 
 
 ### 3. Update configuration
 
-We have to set up the secret manager provider we want to use, that in our case is `azure-kv`, and the credentials for our App Registration.
+We have to set up the secret manager provider we want to use, that in our case is `azure-kv`, and the credentials.
 
 The changes to be done in `openmetadata.yaml` file of the OpenMetadata server are:
 
