@@ -98,6 +98,7 @@ from metadata.ingestion.source.database.snowflake.utils import (
     get_view_names,
     get_view_names_reflection,
     normalize_names,
+    get_schema_foreign_keys
 )
 from metadata.ingestion.source.database.stored_procedures_mixin import (
     QueryByProcedure,
@@ -136,6 +137,7 @@ SnowflakeDialect._current_database_schema = (  # pylint: disable=protected-acces
 SnowflakeDialect.get_pk_constraint = get_pk_constraint
 SnowflakeDialect.get_foreign_keys = get_foreign_keys
 SnowflakeDialect.get_columns = get_columns
+SnowflakeDialect._get_schema_foreign_keys = get_schema_foreign_keys
 
 
 class SnowflakeSource(
