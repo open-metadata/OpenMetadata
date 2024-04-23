@@ -84,7 +84,9 @@ jobs:
       run: |
         source env/bin/activate
         make run_python_tests
-
+      env:
+        TESTCONTAINERS_RYUK_DISABLED: true
+      
     - name: Run Python Tests & record coverage
       if: ${{ matrix.py-version == '3.9' }}
       run: |
