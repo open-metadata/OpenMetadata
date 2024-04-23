@@ -35,4 +35,6 @@ class DynamoDB(NoSQLAdaptor):
     def scan(
         self, table: Table, columns: List[Column], limit: int
     ) -> List[Dict[str, any]]:
-        return []
+        table = self.client.Table(table.name.__root__)
+        response = table.scan(Limit=limit)
+        return response["Items"]
