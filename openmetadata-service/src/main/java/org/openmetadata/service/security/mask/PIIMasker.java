@@ -3,6 +3,7 @@ package org.openmetadata.service.security.mask;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.service.jdbi3.TopicRepository.getAllFieldTags;
 
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -147,18 +148,25 @@ public class PIIMasker {
 
   public static ResultList<TestCase> getTestCases(
       ResultList<TestCase> testCases, Authorizer authorizer, SecurityContext securityContext) {
+    Map<String, Table> entityFQNToTable = new HashMap<>();
     List<TestCase> maskedTests =
         testCases.getData().stream()
             .map(
                 testCase -> {
                   MessageParser.EntityLink testCaseLink =
                       MessageParser.EntityLink.parse(testCase.getEntityLink());
-                  Table table =
-                      Entity.getEntityByName(
-                          Entity.TABLE,
-                          testCaseLink.getEntityFQN(),
-                          "owner,tags,columns",
-                          Include.NON_DELETED);
+                  Table table;
+                  if (entityFQNToTable.containsKey(testCaseLink.getEntityFQN())) {
+                    table = entityFQNToTable.get(testCaseLink.getEntityFQN());
+                  } else {
+                    table =
+                        Entity.getEntityByName(
+                            Entity.TABLE,
+                            testCaseLink.getEntityFQN(),
+                            "owner,tags,columns",
+                            Include.NON_DELETED);
+                    entityFQNToTable.put(testCaseLink.getEntityFQN(), table);
+                  }
 
                   // Ignore table tests
                   if (testCaseLink.getFieldName() == null) return testCase;
