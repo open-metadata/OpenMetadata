@@ -37,10 +37,9 @@ from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.utils import fqn
 from metadata.utils.fqn import build_es_fqn_search_string
 from metadata.utils.logger import utils_logger
-from metadata.utils.lru_cache import LRUCache
+from metadata.utils.lru_cache import LRU_CACHE_SIZE, LRUCache
 
 logger = utils_logger()
-LRU_CACHE_SIZE = 4096
 DEFAULT_SCHEMA_NAME = "<default>"
 
 

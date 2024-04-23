@@ -33,6 +33,7 @@ logger = cli_logger()
 class LineageWorkflow(BaseModel):
     filePath: Optional[str]
     query: Optional[str]
+    checkPatch: Optional[bool] = True
     serviceName: str
     workflowConfig: WorkflowConfig
     parseTimeout: Optional[int] = 5 * 60  # default parsing timeout to be 5 mins
@@ -67,7 +68,10 @@ def run_lineage(config_path: Path) -> None:
     )
     if service:
         metadata.add_lineage_by_query(
-            database_service=service, timeout=workflow.parseTimeout, sql=sql
+            database_service=service,
+            timeout=workflow.parseTimeout,
+            sql=sql,
+            check_patch=workflow.checkPatch,
         )
     else:
         logger.error(f"Service not found with name {workflow.serviceName}")
