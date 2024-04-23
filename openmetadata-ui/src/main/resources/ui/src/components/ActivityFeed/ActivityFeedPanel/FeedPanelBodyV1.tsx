@@ -14,29 +14,11 @@
 import { Button } from 'antd';
 import classNames from 'classnames';
 import React, { FC, useCallback, useMemo } from 'react';
-import {
-  Post,
-  Thread,
-  ThreadType,
-} from '../../../generated/entity/feed/thread';
+import { Post, ThreadType } from '../../../generated/entity/feed/thread';
 import ActivityFeedCardV2 from '../ActivityFeedCardV2/ActivityFeedCardV2';
 import TaskFeedCard from '../TaskFeedCard/TaskFeedCard.component';
-
-interface FeedPanelBodyPropV1 {
-  feed: Thread;
-  className?: string;
-  FeedContainerClassName?: string;
-  showThread?: boolean;
-  isOpenInDrawer?: boolean;
-  onFeedClick?: (feed: Thread) => void;
-  isActive?: boolean;
-  isForFeedTab?: boolean;
-  componentsVisibility?: {
-    showThreadIcon?: boolean;
-    showRepliesContainer?: boolean;
-  };
-  hidePopover: boolean;
-}
+import './feed-panel-body-v1.less';
+import { FeedPanelBodyPropV1 } from './FeedPanelBodyV1.interface';
 
 const FeedPanelBodyV1: FC<FeedPanelBodyPropV1> = ({
   feed,
@@ -72,11 +54,7 @@ const FeedPanelBodyV1: FC<FeedPanelBodyPropV1> = ({
   return (
     <Button
       block
-      ghost
-      className={classNames(
-        className,
-        'activity-feed-card-container h-auto text-left p-0 border-none'
-      )}
+      className={classNames('activity-feed-card-container', className)}
       data-testid="message-container"
       onClick={handleFeedClick}>
       {feed.type === ThreadType.Task ? (
