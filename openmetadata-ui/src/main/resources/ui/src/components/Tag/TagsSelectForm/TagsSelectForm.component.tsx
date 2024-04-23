@@ -49,6 +49,7 @@ const TagSelectForm = ({
       <Form.Item noStyle name="tags">
         {tagType === TagSource.Classification ? (
           <AsyncSelectList
+            open
             fetchOptions={fetchApi}
             initialOptions={tagData}
             isSubmitLoading={isSubmitLoading}
