@@ -34,9 +34,9 @@ def _(element, compiler, **kw):
 
 @compiles(SumFn, Dialects.Trino)
 def _(element, compiler, **kw):
-    """Cast to BIGINT to address cannot cast nan to bigint"""
+    """Cast to DECIMAL to address cannot cast nan to bigint"""
     proc = compiler.process(element.clauses, **kw)
-    return f"SUM(TRY_CAST({proc} AS BIGINT))"
+    return f"SUM(TRY_CAST({proc} AS DECIMAL))"
 
 
 @compiles(SumFn, Dialects.BigQuery)

@@ -205,7 +205,8 @@ class TrinoSource(CommonDbSourceService):
         new_service_connection = deepcopy(self.service_connection)
         new_service_connection.catalog = database_name
         self.engine = get_connection(new_service_connection)
-        self.inspector = inspect(self.engine)
+        self._connection_map = {}  # Lazy init as well
+        self._inspector_map = {}
 
     def get_database_names(self) -> Iterable[str]:
         configured_catalog = self.service_connection.catalog
