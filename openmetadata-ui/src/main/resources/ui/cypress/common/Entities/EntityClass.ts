@@ -71,7 +71,7 @@ export const domainDetails1 = {
   style: {},
 };
 
-const domainDetails2 = {
+export const domainDetails2 = {
   name: `cypress-domain-${uuid()}`,
   displayName: `Cypress%Domain.${uuid()}`,
   description: 'Cypress domain description',
@@ -90,7 +90,7 @@ export const glossaryDetails1 = {
   mutuallyExclusive: false,
 };
 
-const glossaryDetails2 = {
+export const glossaryDetails2 = {
   name: `Cypress%Person ${uuid()}`,
   displayName: `Cypress % Person ${uuid()}`,
   description:
@@ -114,7 +114,7 @@ export const glossaryTermDetails1 = {
   glossary: glossaryDetails1.name,
 };
 
-const glossaryTermDetails2 = {
+export const glossaryTermDetails2 = {
   name: 'CypressAddress',
   displayName: 'Cypress Address',
   description: 'Address of a Person.',

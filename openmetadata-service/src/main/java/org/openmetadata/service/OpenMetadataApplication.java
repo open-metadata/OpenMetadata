@@ -174,6 +174,8 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     // Configure the Fernet instance
     Fernet.getInstance().setFernetKey(catalogConfig);
 
+    initializeWebsockets(catalogConfig, environment);
+
     // init Secret Manager
     SecretsManagerFactory.createSecretsManager(
         catalogConfig.getSecretsManagerConfiguration(), catalogConfig.getClusterName());
@@ -233,7 +235,6 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
 
     registerMicrometerFilter(environment, catalogConfig.getEventMonitorConfiguration());
 
-    initializeWebsockets(catalogConfig, environment);
     registerSamlServlets(catalogConfig, environment);
 
     // Asset Servlet Registration
