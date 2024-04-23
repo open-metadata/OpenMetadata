@@ -12,7 +12,6 @@ import static org.openmetadata.service.util.TestUtils.assertListNotNull;
 import static org.openmetadata.service.util.TestUtils.assertListNull;
 import static org.openmetadata.service.util.TestUtils.assertResponse;
 import static org.openmetadata.service.util.TestUtils.assertResponseContains;
-import static org.openmetadata.service.util.TestUtils.waitForEsAsyncOp;
 
 import es.org.elasticsearch.search.aggregations.AggregationBuilder;
 import es.org.elasticsearch.search.aggregations.AggregationBuilders;
@@ -717,6 +716,63 @@ public class TestSuiteResourceTest extends EntityResourceTest<TestSuite, CreateT
 
     actual = ElasticSearchClient.buildAggregation(aggregationJson.getJsonObject("aggregations"));
     assertThat(actual).hasSameElementsAs(expected);
+
+    // Test aggregation with nested aggregation and sub-aggregation
+    aggregationQuery =
+        """
+          {
+            "aggregations": {
+              "my-first-agg-name": {
+                "terms": {
+                  "field": "my-field"
+                },
+                "aggs": {
+                  "my-nested-agg-name": {
+                    "terms": {
+                      "field": "my-other-field"
+                    }
+                  }
+                }
+              },
+              "test_case_results": {
+                "nested": {
+                  "path": "testCaseResultSummary"
+                },
+                "aggs": {
+                  "status_counts": {
+                    "terms": {
+                      "field": "testCaseResultSummary.status"
+                    }
+                  },
+                  "other_status_counts": {
+                    "terms": {
+                      "field": "testCaseResultSummary.status"
+                    }
+                  }
+                }
+              }
+            }
+          }
+          """;
+    aggregationJson = JsonUtils.readJson(aggregationQuery).asJsonObject();
+
+    expected.clear();
+    expected.addAll(
+        List.of(
+            AggregationBuilders.nested("testCaseResultSummary", "testCaseResultSummary")
+                .subAggregation(
+                    AggregationBuilders.terms("status_counts")
+                        .field("testCaseResultSummary.status"))
+                .subAggregation(
+                    AggregationBuilders.terms("other_status_counts")
+                        .field("testCaseResultSummary.status")),
+            AggregationBuilders.terms("my-first-agg-name")
+                .field("my-field")
+                .subAggregation(
+                    AggregationBuilders.terms("my-nested-agg-name").field("my-other-field"))));
+
+    actual = ElasticSearchClient.buildAggregation(aggregationJson.getJsonObject("aggregations"));
+    assertThat(actual).hasSameElementsAs(expected);
   }
 
   @Test
@@ -799,7 +855,6 @@ public class TestSuiteResourceTest extends EntityResourceTest<TestSuite, CreateT
             testSuiteResourceTest.createExecutableTestSuite(createTestSuite, ADMIN_AUTH_HEADERS);
         testSuites.put(table.getFullyQualifiedName(), testSuite);
       }
-      waitForEsAsyncOp();
       validateEntityListFromSearchWithPagination(new HashMap<>(), testSuites.size());
     }
   }
