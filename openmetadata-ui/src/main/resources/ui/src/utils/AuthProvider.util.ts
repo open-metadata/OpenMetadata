@@ -16,6 +16,7 @@ import {
   Configuration,
   PopupRequest,
 } from '@azure/msal-browser';
+import { CookieStorage } from 'cookie-storage';
 import jwtDecode, { JwtPayload } from 'jwt-decode';
 import { first, isNil } from 'lodash';
 import { WebStorageStateStore } from 'oidc-client';
@@ -23,7 +24,7 @@ import {
   AuthenticationConfigurationWithScope,
   UserProfile,
 } from '../components/Auth/AuthProviders/AuthProvider.interface';
-import { ROUTES } from '../constants/constants';
+import { REDIRECT_PATHNAME, ROUTES } from '../constants/constants';
 import { EMAIL_REG_EX } from '../constants/regex.constants';
 import {
   AuthenticationConfiguration,
@@ -31,6 +32,8 @@ import {
 } from '../generated/configuration/authenticationConfiguration';
 import { AuthProvider } from '../generated/settings/settings';
 import { isDev } from './EnvironmentUtils';
+
+const cookieStorage = new CookieStorage();
 
 // 25s for server auth approch
 export const EXPIRY_THRESHOLD_MILLES = 25 * 1000;
@@ -334,4 +337,12 @@ export const extractDetailsFromToken = (
 
     timeoutExpiry: 0,
   };
+};
+
+export const setUrlPathnameExpiryAfterRoute = (pathname: string) => {
+  cookieStorage.setItem(REDIRECT_PATHNAME, pathname, {
+    // 1 second expiry
+    expires: new Date(Date.now() + 1000),
+    path: '/',
+  });
 };
