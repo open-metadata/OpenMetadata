@@ -15,7 +15,6 @@ Hive source methods.
 from typing import Optional, Tuple
 
 from pyhive.sqlalchemy_hive import HiveDialect
-from sqlalchemy.inspection import inspect
 
 from metadata.generated.schema.entity.services.connections.database.hiveConnection import (
     HiveConnection,
@@ -95,4 +94,5 @@ class HiveSource(CommonDbSourceService):
             self.engine = get_metastore_connection(
                 self.service_connection.metastoreConnection
             )
-        self.inspector = inspect(self.engine)
+        self._connection_map = {}  # Lazy init as well
+        self._inspector_map = {}
