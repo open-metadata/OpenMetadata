@@ -71,7 +71,7 @@ class TableauCliTest(CliCommonDashboard.TestSuite):
         return 2
 
     def expected_filtered_sink_mix(self) -> int:
-        return 10
+        return 14
 
     def expected_dashboards_and_charts_after_patch(self) -> int:
-        return 4
+        return 8
