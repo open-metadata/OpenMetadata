@@ -164,7 +164,7 @@ const NodeChildren = ({ node, isConnectable }: NodeChildrenProps) => {
             key={record.fullyQualifiedName ?? ''}>
             {record?.children?.map((child) => {
               const { fullyQualifiedName, dataType } = child;
-              if (['RECORD', 'STRUCT'].includes(dataType)) {
+              if (['RECORD', 'STRUCT', 'ARRAY'].includes(dataType)) {
                 return renderRecord(child);
               } else {
                 const isColumnTraced = tracedColumns.includes(
