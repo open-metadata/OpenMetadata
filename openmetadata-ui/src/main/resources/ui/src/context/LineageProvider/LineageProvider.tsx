@@ -768,12 +768,8 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
       // Decode the source and target handle. This contains column's fqn.
       // This is further used in the Lineage API for creating the column level lineage.
       if (columnConnection) {
-        if (params.sourceHandle) {
-          params.sourceHandle = decodeLineageHandles(params.sourceHandle);
-        }
-        if (params.targetHandle) {
-          params.targetHandle = decodeLineageHandles(params.targetHandle);
-        }
+        params.sourceHandle = decodeLineageHandles(params.sourceHandle);
+        params.targetHandle = decodeLineageHandles(params.targetHandle);
       }
 
       setStatus('waiting');

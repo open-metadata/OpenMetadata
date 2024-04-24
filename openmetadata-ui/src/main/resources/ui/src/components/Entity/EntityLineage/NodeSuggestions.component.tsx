@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Select } from 'antd';
+import { Button, Select, Space } from 'antd';
 import { AxiosError } from 'axios';
 import { capitalize, debounce } from 'lodash';
 import React, {
@@ -120,42 +120,47 @@ const NodeSuggestions: FC<EntitySuggestionProps> = ({
         options={(data || []).map((entity) => ({
           value: entity.fullyQualifiedName,
           label: (
-            <div
-              className="d-flex items-center"
+            <Button
+              className="d-flex items-center w-full node-suggestion-option-btn"
               data-testid={`node-suggestion-${entity.fullyQualifiedName}`}
               key={entity.fullyQualifiedName}
-              onClick={() => {
+              type="text"
+              onClick={(e) => {
+                e.stopPropagation(); // Prevent select from closing
                 onSelectHandler?.(entity as EntityReference);
               }}>
-              <img
-                alt={entity.serviceType}
-                className="m-r-xs"
-                height="16px"
-                src={serviceUtilClassBase.getServiceTypeLogo(entity)}
-                width="16px"
-              />
-              <div className="flex-1 text-left">
-                {entity.entityType === EntityType.TABLE && (
-                  <p className="d-block text-xs text-grey-muted w-max-400 truncate p-b-xss">
-                    {getSuggestionLabelHeading(
-                      entity.fullyQualifiedName ?? '',
-                      entity.entityType as string
-                    )}
+              <Space size={0}>
+                <img
+                  alt={entity.serviceType}
+                  className="m-r-xs"
+                  height="16px"
+                  src={serviceUtilClassBase.getServiceTypeLogo(entity)}
+                  width="16px"
+                />
+                <div className="d-flex align-start flex-column flex-1">
+                  {entity.entityType === EntityType.TABLE && (
+                    <p className="d-block text-xs text-grey-muted w-max-400 truncate p-b-xss">
+                      {getSuggestionLabelHeading(
+                        entity.fullyQualifiedName ?? '',
+                        entity.entityType as string
+                      )}
+                    </p>
+                  )}
+                  <p className="text-xs text-grey-muted w-max-400 truncate line-height-normal">
+                    {entity.name}
                   </p>
-                )}
-                <p className="text-xs text-grey-muted w-max-400 truncate line-height-normal">
-                  {entity.name}
-                </p>
-                <p className="w-max-400 text-sm font-medium truncate">
-                  {getEntityName(entity)}
-                </p>
-              </div>
-            </div>
+                  <p className="w-max-400 text-sm font-medium truncate">
+                    {getEntityName(entity)}
+                  </p>
+                </div>
+              </Space>
+            </Button>
           ),
         }))}
         placeholder={`${t('label.search-for-type', {
           type: capitalize(entityType),
         })}s...`}
+        popupClassName="lineage-suggestion-select-menu"
         onChange={handleChange}
         onClick={(e) => e.stopPropagation()}
         onSearch={debouncedOnSearch}

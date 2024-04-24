@@ -96,8 +96,8 @@ export const encodeLineageHandles = (handle: string) => {
   return btoa(encodeURIComponent(handle));
 };
 
-export const decodeLineageHandles = (handle: string) => {
-  return decodeURIComponent(atob(handle));
+export const decodeLineageHandles = (handle?: string | null) => {
+  return handle ? decodeURIComponent(atob(handle)) : handle;
 };
 
 export const getColumnSourceTargetHandles = (obj: {
@@ -107,12 +107,8 @@ export const getColumnSourceTargetHandles = (obj: {
   const { sourceHandle, targetHandle } = obj;
 
   return {
-    sourceHandle: sourceHandle
-      ? decodeLineageHandles(sourceHandle)
-      : sourceHandle,
-    targetHandle: targetHandle
-      ? decodeLineageHandles(targetHandle)
-      : targetHandle,
+    sourceHandle: decodeLineageHandles(sourceHandle),
+    targetHandle: decodeLineageHandles(targetHandle),
   };
 };
 
@@ -1093,7 +1089,7 @@ export const getLineageChildParents = (
   }, []);
 };
 
-export const removeDuplicates = (arr: EdgeDetails[]) => {
+export const removeDuplicates = (arr: EdgeDetails[] = []) => {
   return uniqWith(arr, isEqual);
 };
 
@@ -1108,8 +1104,8 @@ export const getChildMap = (obj: EntityLineageResponse, decodedFqn: string) => {
   );
 
   const newData = cloneDeep(obj);
-  newData.downstreamEdges = removeDuplicates(data.downstreamEdges || []);
-  newData.upstreamEdges = removeDuplicates(data.upstreamEdges || []);
+  newData.downstreamEdges = removeDuplicates(data.downstreamEdges);
+  newData.upstreamEdges = removeDuplicates(data.upstreamEdges);
 
   const childMap: EntityReferenceChild[] = getLineageChildParents(
     newData,
