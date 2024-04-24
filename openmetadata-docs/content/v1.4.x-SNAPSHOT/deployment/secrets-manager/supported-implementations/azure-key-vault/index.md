@@ -64,9 +64,8 @@ secretsManagerConfiguration:
   parameters:
     enabled: true
     vaultName: ${OM_SM_VAULT_NAME:-""}
-extraEnvs:
-  - name: PIPELINE_SERVICE_CLIENT_SECRETS_MANAGER_LOADER
-    value: airflow
+pipelineServiceClientConfiguration:
+  secretsManagerLoader: ${PIPELINE_SERVICE_CLIENT_SECRETS_MANAGER_LOADER:-airflow}
 ```
 
 #### Client Secret Credential
@@ -83,9 +82,8 @@ secretsManagerConfiguration:
     clientSecret: ${OM_SM_CLIENT_SECRET:-""}
     tenantId: ${OM_SM_TENANT_ID:-""}
     vaultName: ${OM_SM_VAULT_NAME:-""}
-extraEnvs:
-  - name: PIPELINE_SERVICE_CLIENT_SECRETS_MANAGER_LOADER
-    value: airflow
+pipelineServiceClientConfiguration:
+  secretsManagerLoader: ${PIPELINE_SERVICE_CLIENT_SECRETS_MANAGER_LOADER:-airflow}
 ```
 
 The changes to be done in `airflow.yaml` file of the Airflow are:
