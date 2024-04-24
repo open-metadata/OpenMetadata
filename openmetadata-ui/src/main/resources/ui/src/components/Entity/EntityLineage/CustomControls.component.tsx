@@ -35,7 +35,6 @@ import {
   ZOOM_TRANSITION_DURATION,
 } from '../../../constants/Lineage.constants';
 import { useLineageProvider } from '../../../context/LineageProvider/LineageProvider';
-import { LineageLayerView } from '../../../context/LineageProvider/LineageProvider.interface';
 import { SearchIndex } from '../../../enums/search.enum';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { getAssetsPageQuickFilters } from '../../../utils/AdvancedSearchUtils';
@@ -66,15 +65,12 @@ const CustomControls: FC<ControlProps> = ({
   const {
     nodes,
     lineageConfig,
-    expandAllColumns,
     onLineageEditClick,
     zoomValue,
     loading,
     status,
     reactFlowInstance,
-    toggleColumnView,
     isEditMode,
-    activeLayer,
     onLineageConfigUpdate,
     onQueryFilterUpdate,
     onNodeClick,
@@ -183,10 +179,6 @@ const CustomControls: FC<ControlProps> = ({
     [setSelectedQuickFilters]
   );
 
-  const showExpandCollapseBtn = useMemo(() => {
-    return activeLayer.includes(LineageLayerView.COLUMN);
-  }, [activeLayer]);
-
   useEffect(() => {
     const updatedQuickFilters = filters
       .filter((filter) => selectedFilter.includes(filter.key))
@@ -255,19 +247,6 @@ const CustomControls: FC<ControlProps> = ({
         </Col>
         <Col flex="250px">
           <Space className="justify-end w-full" size={16}>
-            {showExpandCollapseBtn && (
-              <Button
-                ghost
-                className="expand-btn"
-                data-testid="expand-column"
-                type="primary"
-                onClick={toggleColumnView}>
-                {expandAllColumns
-                  ? t('label.collapse-all')
-                  : t('label.expand-all')}
-              </Button>
-            )}
-
             {handleFullScreenViewClick && (
               <Tooltip title={t('label.fit-to-screen')}>
                 <Button

@@ -30,12 +30,11 @@ import { EntityChildren, NodeChildrenProps } from './NodeChildren.interface';
 const NodeChildren = ({ node, isConnectable }: NodeChildrenProps) => {
   const { t } = useTranslation();
   const { Panel } = Collapse;
-  const { tracedColumns, expandedNodes, activeLayer, onColumnClick } =
-    useLineageProvider();
-  const { entityType, id } = node;
+  const { tracedColumns, activeLayer, onColumnClick } = useLineageProvider();
+  const { entityType } = node;
   const [searchValue, setSearchValue] = useState('');
   const [filteredColumns, setFilteredColumns] = useState<EntityChildren>([]);
-  const [isExpanded, setIsExpanded] = useState<boolean>(false);
+  const [isExpanded, setIsExpanded] = useState<boolean>(true);
 
   const { showColumns, showDataQuality } = useMemo(() => {
     return {
@@ -77,10 +76,6 @@ const NodeChildren = ({ node, isConnectable }: NodeChildrenProps) => {
     },
     [children]
   );
-
-  useEffect(() => {
-    setIsExpanded(expandedNodes.includes(id ?? ''));
-  }, [expandedNodes, id]);
 
   useEffect(() => {
     if (!isEmpty(children)) {
