@@ -275,7 +275,7 @@ dev = {
     # For publishing
     "twine",
     "build",
-    plugins["sample-data"],
+    *plugins["sample-data"],
 }
 
 
