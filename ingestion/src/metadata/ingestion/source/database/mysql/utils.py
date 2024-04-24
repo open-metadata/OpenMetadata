@@ -17,6 +17,7 @@ from sqlalchemy import util
 from sqlalchemy.dialects.mysql.enumerated import ENUM, SET
 from sqlalchemy.dialects.mysql.reflection import _strip_values
 from sqlalchemy.dialects.mysql.types import DATETIME, TIME, TIMESTAMP
+from sqlalchemy.engine import reflection
 from sqlalchemy.sql import sqltypes
 
 from metadata.ingestion.source.database.column_type_parser import create_sqlalchemy_type
@@ -151,3 +152,47 @@ def parse_column(self, line, state):
     }
     col_d.update(col_kw)
     state.columns.append(col_d)
+
+
+@reflection.cache
+def get_foreign_keys(self, connection, table_name, schema=None, **kw):
+
+    parsed_state = self._parsed_state_or_create(connection, table_name, schema, **kw)
+    default_schema = None
+
+    fkeys = []
+
+    for spec in parsed_state.fk_constraints:
+        ref_name = spec["table"][-1]
+        ref_schema = len(spec["table"]) > 1 and spec["table"][-2] or schema
+
+        if not ref_schema:
+            if default_schema is None:
+                default_schema = connection.dialect.default_schema_name
+            if schema == default_schema:
+                ref_schema = schema
+
+        loc_names = spec["local"]
+        ref_names = spec["foreign"]
+        ref_database = spec["database"][-1]
+
+        con_kw = {}
+        for opt in ("onupdate", "ondelete"):
+            if spec.get(opt, False) not in ("NO ACTION", None):
+                con_kw[opt] = spec[opt]
+
+        fkey_d = {
+            "name": spec["name"],
+            "constrained_columns": loc_names,
+            "referred_schema": ref_schema,
+            "referred_table": ref_name,
+            "referred_columns": ref_names,
+            "options": con_kw,
+            "referred_database": ref_database,
+        }
+        fkeys.append(fkey_d)
+
+    if self._needs_correct_for_88718_96365:
+        self._correct_for_mysql_bugs_88718_96365(fkeys, connection)
+
+    return fkeys

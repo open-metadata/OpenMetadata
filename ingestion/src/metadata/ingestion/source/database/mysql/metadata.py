@@ -11,7 +11,7 @@
 """Mysql source module"""
 from typing import Optional, cast
 
-from sqlalchemy.dialects.mysql.base import ischema_names
+from sqlalchemy.dialects.mysql.base import MySQLDialect, ischema_names
 from sqlalchemy.dialects.mysql.reflection import MySQLTableDefinitionParser
 
 from metadata.generated.schema.entity.services.connections.database.mysqlConnection import (
@@ -23,7 +23,11 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.database.common_db_source import CommonDbSourceService
-from metadata.ingestion.source.database.mysql.utils import col_type_map, parse_column
+from metadata.ingestion.source.database.mysql.utils import (
+    col_type_map,
+    get_foreign_keys,
+    parse_column,
+)
 
 ischema_names.update(col_type_map)
 
@@ -31,6 +35,7 @@ ischema_names.update(col_type_map)
 MySQLTableDefinitionParser._parse_column = (  # pylint: disable=protected-access
     parse_column
 )
+MySQLDialect.get_foreign_keys = get_foreign_keys
 
 
 class MysqlSource(CommonDbSourceService):

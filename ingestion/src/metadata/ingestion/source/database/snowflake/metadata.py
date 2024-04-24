@@ -90,6 +90,7 @@ from metadata.ingestion.source.database.snowflake.utils import (
     get_foreign_keys,
     get_pk_constraint,
     get_schema_columns,
+    get_schema_foreign_keys,
     get_table_comment,
     get_table_names,
     get_table_names_reflection,
@@ -98,7 +99,6 @@ from metadata.ingestion.source.database.snowflake.utils import (
     get_view_names,
     get_view_names_reflection,
     normalize_names,
-    get_schema_foreign_keys
 )
 from metadata.ingestion.source.database.stored_procedures_mixin import (
     QueryByProcedure,
