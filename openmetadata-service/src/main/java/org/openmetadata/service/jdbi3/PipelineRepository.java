@@ -205,6 +205,10 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
     ChangeDescription change =
         addPipelineStatusChangeDescription(
             pipeline.getVersion(), pipelineStatus, storedPipelineStatus);
+    pipeline.setPipelineStatus(pipelineStatus);
+
+    // Update ES Indexes
+    searchRepository.updateEntity(pipeline);
 
     return new RestUtil.PutResponse<>(
         Response.Status.OK,
