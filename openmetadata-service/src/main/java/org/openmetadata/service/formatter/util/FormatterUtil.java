@@ -180,7 +180,7 @@ public class FormatterUtil {
     return messages;
   }
 
-  private static List<Thread> getFormattedMessagesForAllFieldChange(
+  public static List<Thread> getFormattedMessagesForAllFieldChange(
       MessageDecorator<?> messageFormatter,
       Thread thread,
       List<FieldChange> fields,
