@@ -13,7 +13,6 @@
 
 package org.openmetadata.service.util;
 
-import static org.openmetadata.common.utils.CommonUtil.listOf;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.schema.entity.teams.AuthenticationMechanism.AuthType.JWT;
@@ -30,7 +29,6 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
-import javax.json.JsonObject;
 import javax.json.JsonPatch;
 import javax.ws.rs.container.ContainerRequestContext;
 import javax.ws.rs.core.UriInfo;
@@ -49,7 +47,6 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.UserRepository;
-import org.openmetadata.service.resources.teams.RoleResource;
 import org.openmetadata.service.security.auth.CatalogSecurityContext;
 import org.openmetadata.service.security.jwt.JWTTokenGenerator;
 import org.openmetadata.service.util.EntityUtil.Fields;
@@ -231,16 +228,6 @@ public final class UserUtil {
       LOG.debug("Bot entity: {} does not exists.", user);
       return null;
     }
-  }
-
-  public static List<EntityReference> getRoleForBot(String botName, JsonObject roleBindings) {
-    try {
-      String botRole = roleBindings.getString(botName);
-      return listOf(RoleResource.getRole(botRole));
-    } catch (Exception e) {
-      LOG.error("Bot Role not found: {}", botName, e);
-    }
-    return List.of();
   }
 
   public static EntityReference getUserOrBot(String name) {
