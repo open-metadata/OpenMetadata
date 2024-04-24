@@ -199,6 +199,7 @@ class ProfilerSource(ProfilerSourceInterface):
         db_service: Optional[DatabaseService],
     ) -> ProfilerInterface:
         """Create sqlalchemy profiler interface"""
+        # pylint: disable=import-outside-toplevel
         from metadata.profiler.interface.profiler_interface_factory import (
             profiler_interface_factory,
         )
