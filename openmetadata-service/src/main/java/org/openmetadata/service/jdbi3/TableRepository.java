@@ -649,9 +649,12 @@ public class TableRepository extends EntityRepository<Table> {
 
   @Override
   public void storeEntity(Table table, boolean update) {
-    // Relationships and fields such as service are derived and not stored as part of json
+    // Relationships and fields such as service, databaseSchema, database are derived and not stored
+    // as part of json
     EntityReference service = table.getService();
-    table.withService(null);
+    EntityReference databaseSchema = table.getDatabaseSchema();
+    EntityReference database = table.getDatabase();
+    table.withService(null).withDatabase(null).withDatabaseSchema(null);
 
     // Don't store column tags as JSON but build it on the fly based on relationships
     List<Column> columnWithTags = table.getColumns();
@@ -661,7 +664,11 @@ public class TableRepository extends EntityRepository<Table> {
     store(table, update);
 
     // Restore the relationships
-    table.withColumns(columnWithTags).withService(service);
+    table
+        .withColumns(columnWithTags)
+        .withService(service)
+        .withDatabase(database)
+        .withDatabaseSchema(databaseSchema);
   }
 
   @Override
