@@ -30,6 +30,7 @@ import { ReactComponent as OMHealthIcon } from '../assets/svg/om-health-colored.
 import { ReactComponent as PersonasIcon } from '../assets/svg/persona-colored.svg';
 import { ReactComponent as PipelineIcon } from '../assets/svg/pipeline-colored.svg';
 import { ReactComponent as PoliciesIcon } from '../assets/svg/policies-colored.svg';
+import { ReactComponent as ProfilerConfigIcon } from '../assets/svg/profiler-configuration-logo.svg';
 import { ReactComponent as RolesIcon } from '../assets/svg/role-colored.svg';
 import { ReactComponent as SearchIcon } from '../assets/svg/search-colored.svg';
 import { ReactComponent as AccessControlIcon } from '../assets/svg/setting-access-control.svg';
@@ -290,6 +291,15 @@ export const getGlobalSettingsMenuWithPermission = (
           isProtected: Boolean(isAdminUser),
           key: `${GlobalSettingsMenuCategory.PREFERENCES}.${GlobalSettingOptions.OM_HEALTH}`,
           icon: OMHealthIcon,
+        },
+        {
+          label: i18next.t('label.profiler-configuration'),
+          description: i18next.t(
+            'message.page-sub-header-for-profiler-configuration'
+          ),
+          isProtected: Boolean(isAdminUser),
+          key: `${GlobalSettingsMenuCategory.PREFERENCES}.${GlobalSettingOptions.PROFILER_CONFIGURATION}`,
+          icon: ProfilerConfigIcon,
         },
       ],
     },

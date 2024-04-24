@@ -23,6 +23,7 @@ import {
   PartitionIntervalUnit,
   ProfileSampleType,
 } from '../generated/entity/data/table';
+import { MetricType } from '../generated/settings/settings';
 import { TestCaseStatus } from '../generated/tests/testCase';
 import { TestPlatform } from '../generated/tests/testDefinition';
 import { TestCaseType } from '../rest/testAPI';
@@ -427,4 +428,27 @@ export const INITIAL_COLUMN_METRICS_VALUE = {
   mathMetrics: INITIAL_MATH_METRIC_VALUE,
   sumMetrics: INITIAL_SUM_METRIC_VALUE,
   quartileMetrics: INITIAL_QUARTILE_METRIC_VALUE,
+};
+
+export const PROFILER_METRICS_TYPE_OPTIONS = [
+  {
+    label: 'All',
+    key: 'all',
+    value: 'all',
+    children: values(MetricType).map((value) => ({
+      label: value,
+      key: value,
+      value,
+    })),
+  },
+];
+
+export const DEFAULT_PROFILER_CONFIG_VALUE = {
+  metricConfiguration: [
+    {
+      dataType: undefined,
+      metrics: undefined,
+      disabled: false,
+    },
+  ],
 };
