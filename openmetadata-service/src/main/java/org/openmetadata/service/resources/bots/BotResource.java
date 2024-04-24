@@ -13,7 +13,7 @@
 
 package org.openmetadata.service.resources.bots;
 
-import static org.openmetadata.service.util.UserUtil.getRoleForBot;
+import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Operation;
@@ -27,7 +27,6 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import java.io.IOException;
 import java.util.List;
 import java.util.UUID;
-import javax.json.JsonObject;
 import javax.json.JsonPatch;
 import javax.validation.Valid;
 import javax.validation.constraints.Max;
@@ -65,8 +64,10 @@ import org.openmetadata.service.jdbi3.BotRepository;
 import org.openmetadata.service.jdbi3.CollectionDAO.EntityRelationshipRecord;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
+import org.openmetadata.service.jdbi3.UserRepository;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
+import org.openmetadata.service.resources.teams.RoleResource;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.SecurityUtil;
 import org.openmetadata.service.util.EntityUtil;
@@ -92,21 +93,31 @@ public class BotResource extends EntityResource<Bot, BotRepository> {
 
   @Override
   public void initialize(OpenMetadataApplicationConfig config) throws IOException {
-    // Load system bots
-    List<Bot> bots = repository.getEntitiesFromSeedData();
-    JsonObject roleBindings =
-        EntityRepository.getBindingsFromSeedData(
-            String.format(".*json/data/%s/roles/.*\\.json$", entityType));
     String domain = SecurityUtil.getDomain(config);
+    // First, load the bot users and assign their roles
+    UserRepository userRepository = (UserRepository) Entity.getEntityRepository(Entity.USER);
+    List<User> botUsers = userRepository.getEntitiesFromSeedData(".*json/data/botUser/.*\\.json$");
+    for (User botUser : botUsers) {
+      User user =
+          UserUtil.user(botUser.getName(), domain, botUser.getName())
+              .withIsBot(true)
+              .withIsAdmin(false);
+      user.setRoles(
+          listOrEmpty(botUser.getRoles()).stream()
+              .map(entityReference -> RoleResource.getRole(entityReference.getName()))
+              .toList());
+      // Add or update User Bot
+      UserUtil.addOrUpdateBotUser(user);
+    }
+
+    // Then, load the bots and bind them to the users
+    List<Bot> bots = repository.getEntitiesFromSeedData();
     for (Bot bot : bots) {
       String userName = bot.getBotUser().getName();
-      User user = UserUtil.user(userName, domain, userName).withIsBot(true).withIsAdmin(false);
-
-      // Add role corresponding to the bot to the user
-      // we need to set a mutable list here
-      user.setRoles(getRoleForBot(bot.getName(), roleBindings));
-      user = UserUtil.addOrUpdateBotUser(user);
-      bot.withBotUser(user.getEntityReference());
+      bot.withBotUser(
+          userRepository
+              .getByName(null, userName, userRepository.getFields("id"))
+              .getEntityReference());
       repository.initializeEntity(bot);
     }
   }

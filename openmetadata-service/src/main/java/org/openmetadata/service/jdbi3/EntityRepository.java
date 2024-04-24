@@ -92,9 +92,6 @@ import java.util.concurrent.TimeUnit;
 import java.util.function.BiPredicate;
 import java.util.function.Function;
 import java.util.stream.Collectors;
-import javax.json.Json;
-import javax.json.JsonObject;
-import javax.json.JsonObjectBuilder;
 import javax.json.JsonPatch;
 import javax.validation.constraints.NotNull;
 import javax.ws.rs.core.Response.Status;
@@ -452,26 +449,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
           }
         });
     return entities;
-  }
-
-  /**
-   * Merge the contents from the json files in the path into a single JsonObject
-   */
-  public static JsonObject getBindingsFromSeedData(String path) throws IOException {
-    JsonObjectBuilder jsonObjectBuilder = Json.createObjectBuilder();
-    List<String> jsonDataFiles = EntityUtil.getJsonDataResources(path);
-    jsonDataFiles.forEach(
-        jsonDataFile -> {
-          try {
-            String json =
-                CommonUtil.getResourceAsStream(JsonObject.class.getClassLoader(), jsonDataFile);
-            JsonObject obj = JsonUtils.readValue(json, JsonObject.class);
-            obj.forEach(jsonObjectBuilder::add);
-          } catch (Exception e) {
-            LOG.warn("Failed to initialize the bindings from file {}", jsonDataFile, e);
-          }
-        });
-    return jsonObjectBuilder.build();
   }
 
   /** Initialize a given entity if it does not exist. */
