@@ -13,6 +13,7 @@
 import { act, render, screen } from '@testing-library/react';
 import React from 'react';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
+import { TableType } from '../../generated/entity/data/table';
 import { getTableDetailsByFQN } from '../../rest/tableAPI';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import TableDetailsPageV1 from './TableDetailsPageV1';
@@ -338,6 +339,7 @@ describe('TestDetailsPageV1 component', () => {
         name: 'test',
         id: '123',
         schemaDefinition: 'viewDefinition query',
+        tableType: TableType.View,
       })
     );
 
