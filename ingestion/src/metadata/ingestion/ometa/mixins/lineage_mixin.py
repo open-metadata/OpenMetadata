@@ -177,7 +177,7 @@ class OMetaLineageMixin(Generic[T]):
         except APIError as err:
             if err.status_code != 404:
                 logger.debug(traceback.format_exc())
-                logger.warning(
+                logger.debug(
                     f"Error {err.status_code} trying to GET linage edge between "
                     f"{from_id} and {to_id}: {err}"
                 )
