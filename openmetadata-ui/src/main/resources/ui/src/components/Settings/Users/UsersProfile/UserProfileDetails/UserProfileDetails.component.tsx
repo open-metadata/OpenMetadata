@@ -37,6 +37,7 @@ import {
   showErrorToast,
   showSuccessToast,
 } from '../../../../../utils/ToastUtils';
+import { isMaskedEmail } from '../../../../../utils/Users.util';
 import Chip from '../../../../common/Chip/Chip.component';
 import { DomainLabel } from '../../../../common/DomainLabel/DomainLabel.component';
 import InlineEdit from '../../../../common/InlineEdit/InlineEdit.component';
@@ -224,7 +225,7 @@ const UserProfileDetails = ({
 
   const userEmailRender = useMemo(
     () =>
-      userData.email && (
+      !isMaskedEmail(userData.email) && (
         <>
           <Space align="center">
             <Typography.Text
@@ -318,7 +319,6 @@ const UserProfileDetails = ({
           <Divider type="vertical" />
 
           {userEmailRender}
-          <Divider type="vertical" />
 
           {defaultPersonaRender}
           <Divider type="vertical" />
