@@ -14,6 +14,7 @@ This page list all the supported helm values for OpenMetadata Helm Charts.
 | Key | Type | Default | Environment Variable from openmetadata.yaml | 
 |-----|------|---------| ---------------------- |
 | openmetadata.config.authentication.enabled | bool | `true` | |
+| openmetadata.config.authentication.clientType | string | `public` | AUTHENTICATION_CLIENT_TYPE |
 | openmetadata.config.authentication.provider | string | `basic` | AUTHENTICATION_PROVIDER |
 | openmetadata.config.authentication.publicKeys | list | `[http://openmetadata:8585/api/v1/system/config/jwks]` | AUTHENTICATION_PUBLIC_KEYS |
 | openmetadata.config.authentication.authority | string | `https://accounts.google.com` | AUTHENTICATION_AUTHORITY |
@@ -50,6 +51,24 @@ This page list all the supported helm values for OpenMetadata Helm Charts.
 | openmetadata.config.authentication.ldapConfiguration.trustStoreConfig.hostNameConfig.acceptableHostNames | string | `[Empty String]` | AUTHENTICATION_LDAP_ALLOWED_HOSTNAMES |
 | openmetadata.config.authentication.ldapConfiguration.trustStoreConfig.jvmDefaultConfig.verifyHostname | string | `Empty String` | AUTHENTICATION_LDAP_SSL_VERIFY_CERT_HOST |
 | openmetadata.config.authentication.ldapConfiguration.trustStoreConfig.trustAllConfig.examineValidityDates | bool | `true` | AUTHENTICATION_LDAP_EXAMINE_VALIDITY_DATES |
+| openmetadata.config.authentication.oidcConfiguration.callbackUrl | string | `http://openmetadata:8585/callback` | OIDC_CALLBACK |
+| openmetadata.config.authentication.oidcConfiguration.clientAuthenticationMethod | string | `client_secret_post` | OIDC_CLIENT_AUTH_METHOD |
+| openmetadata.config.authentication.oidcConfiguration.clientId.secretKey | string | `openmetadata-oidc-client-id` | OIDC_CLIENT_ID |
+| openmetadata.config.authentication.oidcConfiguration.clientId.secretRef | string | `oidc-secrets` | OIDC_CLIENT_ID |
+| openmetadata.config.authentication.oidcConfiguration.clientSecret.secretKey | string | `openmetadata-oidc-client-secret` | OIDC_CLIENT_SECRET |
+| openmetadata.config.authentication.oidcConfiguration.clientSecret.secretRef | string | `oidc-secrets` | OIDC_CLIENT_SECRET |
+| openmetadata.config.authentication.oidcConfiguration.customParams | string | `Empty` | OIDC_CUSTOM_PARAMS |
+| openmetadata.config.authentication.oidcConfiguration.disablePkce | bool | true | OIDC_DISABLE_PKCE |
+| openmetadata.config.authentication.oidcConfiguration.discoveryUri | string | `Empty` | OIDC_DISCOVERY_URI |
+| openmetadata.config.authentication.oidcConfiguration.enabled | bool | false | |
+| openmetadata.config.authentication.oidcConfiguration.maxClockSkew | string | `Empty` | OIDC_MAX_CLOCK_SKEW |
+| openmetadata.config.authentication.oidcConfiguration.oidcType | string | `Empty` | OIDC_TYPE |
+| openmetadata.config.authentication.oidcConfiguration.preferredJwsAlgorithm | string | `RS256` | OIDC_PREFERRED_JWS |
+| openmetadata.config.authentication.oidcConfiguration.responseType | string | `code` | OIDC_RESPONSE_TYPE |
+| openmetadata.config.authentication.oidcConfiguration.scope | string | `openid email profile` | OIDC_SCOPE |
+| openmetadata.config.authentication.oidcConfiguration.serverUrl | string | `http://openmetadata:8585` | OIDC_SERVER_URL |
+| openmetadata.config.authentication.oidcConfiguration.tenant | string | `Empty` | OIDC_TENANT |
+| openmetadata.config.authentication.oidcConfiguration.useNonce | bool | `true` | OIDC_USE_NONCE |
 | openmetadata.config.authentication.saml.debugMode | bool | false | SAML_DEBUG_MODE |
 | openmetadata.config.authentication.saml.idp.entityId | string | `Empty` | SAML_IDP_ENTITY_ID |
 | openmetadata.config.authentication.saml.idp.ssoLoginUrl |  string | `Empty` | SAML_IDP_SSO_LOGIN_URL |
@@ -88,6 +107,7 @@ This page list all the supported helm values for OpenMetadata Helm Charts.
 | openmetadata.config.airflow.auth.password.secretKey | string | `openmetadata-airflow-password` | AIRFLOW_PASSWORD |
 | openmetadata.config.airflow.auth.username | string | `admin` | AIRFLOW_USERNAME |
 | openmetadata.config.airflow.enabled | bool | `true` | |
+| openmetadata.config.airflow.host | string | `http://openmetadata-dependencies-web:8080` | PIPELINE_SERVICE_CLIENT_ENDPOINT |
 | openmetadata.config.airflow.openmetadata.serverHostApiUrl | string | `http://openmetadata:8585/api` | SERVER_HOST_API_URL |
 | openmetadata.config.airflow.sslCertificatePath | string | `/no/path` | PIPELINE_SERVICE_CLIENT_SSL_CERT_PATH |
 | openmetadata.config.airflow.verifySsl | string | `no-ssl` | PIPELINE_SERVICE_CLIENT_VERIFY_SSL |
@@ -151,12 +171,20 @@ This page list all the supported helm values for OpenMetadata Helm Charts.
 | openmetadata.config.pipelineServiceClientConfig.verifySsl | string | `no-ssl` | PIPELINE_SERVICE_CLIENT_VERIFY_SSL |
 | openmetadata.config.pipelineServiceClientConfig.hostIp | string | `Empty` | PIPELINE_SERVICE_CLIENT_HOST_IP |
 | openmetadata.config.secretsManager.enabled | bool | `true` | |
-| openmetadata.config.secretsManager.provider | string | `db` | SECRET_MANAGER |
+| openmetadata.config.secretsManager.provider | string | `Empty String` | SECRET_MANAGER |
 | openmetadata.config.secretsManager.prefix | string | `Empty String` | SECRET_MANAGER_PREFIX |
 | openmetadata.config.secretsManager.tags | list | `[]` | SECRET_MANAGER_TAGS |
 | openmetadata.config.secretsManager.additionalParameters.enabled | bool | `false` | |
 | openmetadata.config.secretsManager.additionalParameters.accessKeyId.secretRef | string | `aws-access-key-secret` | OM_SM_ACCESS_KEY_ID |
 | openmetadata.config.secretsManager.additionalParameters.accessKeyId.secretKey | string | `aws-key-secret` | OM_SM_ACCESS_KEY_ID |
+| openmetadata.config.secretsManager.additionalParameters.clientId.secretRef | string | `azure-client-id-secret` | OM_SM_CLIENT_ID |
+| openmetadata.config.secretsManager.additionalParameters.clientId.secretKey | string | `azure-key-secret` | OM_SM_CLIENT_ID |
+| openmetadata.config.secretsManager.additionalParameters.clientSecret.secretRef | string | `azure-client-secret` | OM_SM_CLIENT_SECRET |
+| openmetadata.config.secretsManager.additionalParameters.clientSecret.secretKey | string | `azure-key-secret` | OM_SM_CLIENT_SECRET |
+| openmetadata.config.secretsManager.additionalParameters.tenantId.secretRef | string | `azure-tenant-id-secret` | OM_SM_TENANT_ID |
+| openmetadata.config.secretsManager.additionalParameters.tenantId.secretKey | string | `azure-key-secret` | OM_SM_TENANT_ID |
+| openmetadata.config.secretsManager.additionalParameters.vaultName.secretRef | string | `azure-vault-name-secret` | OM_SM_VAULT_NAME |
+| openmetadata.config.secretsManager.additionalParameters.vaultName.secretKey | string | `azure-key-secret` | OM_SM_VAULT_NAME |
 | openmetadata.config.secretsManager.additionalParameters.region | string | `Empty String` | OM_SM_REGION |
 | openmetadata.config.secretsManager.additionalParameters.secretAccessKey.secretRef | string | `aws-secret-access-key-secret` | OM_SM_ACCESS_KEY |
 | openmetadata.config.secretsManager.additionalParameters.secretAccessKey.secretKey | string | `aws-key-secret` | OM_SM_ACCESS_KEY |
@@ -170,8 +198,8 @@ This page list all the supported helm values for OpenMetadata Helm Charts.
 | openmetadata.config.smtpConfig.supportUrl | string | `https://slack.open-metadata.org` | OM_SUPPORT_URL |
 | openmetadata.config.smtpConfig.transportationStrategy | string | `SMTP_TLS` | SMTP_SERVER_STRATEGY |
 | openmetadata.config.smtpConfig.username | string | `Empty String` | SMTP_SERVER_USERNAME |
-| openmetadata.config.upgradeMigrationConfigs.force | bool | `false` |  |
-| openmetadata.config.upgradeMigrationConfigs.migrationLimitParam | int | `1200` | MIGRATION_LIMIT_PARAM |
+| openmetadata.config.upgradeMigrationConfigs.debug | bool | `false` |  |
+| openmetadata.config.upgradeMigrationConfigs.additionalArgs | string | `Empty String` |  |
 | openmetadata.config.web.enabled | bool | `true` | |
 | openmetadata.config.web.contentTypeOptions.enabled | bool | `false` | WEB_CONF_CONTENT_TYPE_OPTIONS_ENABLED |
 | openmetadata.config.web.csp.enabled | bool | `false` | WEB_CONF_XSS_CSP_ENABLED |
@@ -210,7 +238,7 @@ This page list all the supported helm values for OpenMetadata Helm Charts.
 | fullnameOverride | string | `"openmetadata"` |
 | image.pullPolicy | string | `"Always"` |
 | image.repository | string | `"docker.getcollate.io/openmetadata/server"` |
-| image.tag | string | `1.3.1` |
+| image.tag | string | `1.3.3` |
 | imagePullSecrets | list | `[]` |
 | ingress.annotations | object | `{}` |
 | ingress.className | string | `""` |
