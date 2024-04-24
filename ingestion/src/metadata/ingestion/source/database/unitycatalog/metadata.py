@@ -388,17 +388,20 @@ class UnitycatalogSource(
             ref_table_fqn = column.parent_table
             table_fqn_list = fqn.split(ref_table_fqn)
 
-            referred_table = fqn.search_table_from_es(
-                metadata=self.metadata,
+            referred_table_fqn = fqn.build(
+                self.metadata,
+                entity_type=Table,
                 table_name=table_fqn_list[2],
                 schema_name=table_fqn_list[1],
                 database_name=table_fqn_list[0],
                 service_name=self.context.get().database_service,
             )
-            if referred_table:
+            if referred_table_fqn:
                 for parent_column in column.parent_columns:
-                    col_fqn = get_column_fqn(
-                        table_entity=referred_table, column=parent_column
+                    col_fqn = fqn._build(
+                        referred_table_fqn,
+                        parent_column,
+                        quote=False
                     )
                     if col_fqn:
                         referred_column_fqns.append(col_fqn)
