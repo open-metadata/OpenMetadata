@@ -10,11 +10,23 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+@import url('../../styles/variables.less');
 
-import { TokenType } from '../generated/auth/personalAccessToken';
+.profiler-configuration-page-container {
+  width: 70%;
+  margin: 16px auto 0;
+  padding-bottom: 16px;
+  .ant-form-item {
+    margin: 0px;
+  }
+  .ant-card {
+    border-radius: 10px;
+  }
+}
 
-export const USER_DEFAULT_AUTHENTICATION_MECHANISM = {
-  tokenType: TokenType.PersonalAccessToken,
-};
-
-export const MASKED_EMAIL = '********@masked.com';
+.profiler-configuration-form-item-container {
+  background-color: @grey-6;
+  .ant-card-body {
+    padding: 20px;
+  }
+}
