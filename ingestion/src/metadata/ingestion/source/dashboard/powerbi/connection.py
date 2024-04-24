@@ -33,10 +33,12 @@ def get_connection(connection: PowerBIConnection) -> PowerBiApiClient:
     """
     Create connection
     """
-    client = PowerBiClient(api_client=PowerBiApiClient(connection))
+    file_client = None
     if connection.pbitFilesSource:
-        client.file_client = PowerBiFileClient(connection)
-    return client
+        file_client = PowerBiFileClient(connection)
+    return PowerBiClient(
+        api_client=PowerBiApiClient(connection), file_client=file_client
+    )
 
 
 def test_connection(
