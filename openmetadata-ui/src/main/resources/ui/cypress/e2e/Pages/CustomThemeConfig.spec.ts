@@ -94,6 +94,11 @@ describe('Custom Theme Config', { tags: 'Settings' }, () => {
     cy.get('[data-testid="save-btn"]').scrollIntoView().click();
 
     verifyResponseStatusCode('@updatedConfig', 200);
+
+    // check if the color is updated
+    cy.get('[data-testid="save-btn"]')
+      .invoke('css', 'background-color')
+      .should('eq', 'rgb(104, 9, 220)');
   });
 
   it('Reset to default', () => {
