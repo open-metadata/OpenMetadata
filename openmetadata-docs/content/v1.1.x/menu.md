@@ -257,8 +257,6 @@ site_menu:
     url: /how-to-guides/user-guide-for-data-stewards/overview-data-assets/glossary
   - category: How-to Guides / User Guide for Data Stewards / Overview of Data Assets / How to Create a Custom Property for a Data Asset
     url: /how-to-guides/user-guide-for-data-stewards/overview-data-assets/custom
-  - category: How-to Guides / User Guide for Data Stewards / Overview of Data Assets / Conversation Threads
-    url: /how-to-guides/user-guide-for-data-stewards/overview-data-assets/conversation
   - category: How-to Guides / User Guide for Data Stewards / Overview of Data Assets / Overview of Announcements
     url: /how-to-guides/user-guide-for-data-stewards/overview-data-assets/announcements
   - category: How-to Guides / User Guide for Data Stewards / Overview of Data Assets / How to Create an Announcement
