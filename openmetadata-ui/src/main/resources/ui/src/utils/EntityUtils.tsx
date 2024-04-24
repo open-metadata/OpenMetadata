@@ -1171,10 +1171,7 @@ export const getFrequentlyJoinedColumns = (
               className="link-text"
               to={getEntityDetailsPath(
                 EntityType.TABLE,
-                getTableFQNFromColumnFQN(columnJoin.fullyQualifiedName),
-                getPartialNameFromTableFQN(columnJoin.fullyQualifiedName, [
-                  FqnPart.Column,
-                ])
+                columnJoin.fullyQualifiedName
               )}>
               {getPartialNameFromTableFQN(
                 columnJoin.fullyQualifiedName,
