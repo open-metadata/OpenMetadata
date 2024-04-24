@@ -12,10 +12,11 @@
  */
 
 import { RightOutlined } from '@ant-design/icons';
+import { Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { Operation } from 'fast-json-patch';
 import i18next from 'i18next';
-import { isEqual, isUndefined } from 'lodash';
+import { isEqual, isUndefined, lowerCase } from 'lodash';
 import React from 'react';
 import ReactDOM from 'react-dom';
 import Showdown from 'showdown';
@@ -40,7 +41,9 @@ import {
 import { EntityType, FqnPart, TabSpecificField } from '../enums/entity.enum';
 import { SearchIndex } from '../enums/search.enum';
 import {
+  EntityTestResultSummaryObject,
   FieldOperation,
+  TestCaseStatus,
   Thread,
   ThreadType,
 } from '../generated/entity/feed/thread';
@@ -54,6 +57,7 @@ import {
 } from '../rest/feedsAPI';
 import { searchData } from '../rest/miscAPI';
 import {
+  formTwoDigitNumber,
   getEntityPlaceHolder,
   getPartialNameFromFQN,
   getPartialNameFromTableFQN,
@@ -654,4 +658,107 @@ export const getFieldOperationIcon = (fieldOperation?: FieldOperation) => {
   }
 
   return <Icon height={16} width={16} />;
+};
+
+export const getTestCaseNameListForResult = (
+  testResultSummary: Array<EntityTestResultSummaryObject>,
+  status: TestCaseStatus
+) =>
+  testResultSummary.reduce((acc, curr) => {
+    if (curr.status === status) {
+      acc.push(curr.testCaseName ?? '');
+    }
+
+    return acc;
+  }, [] as Array<string>);
+
+export const getTestCaseResultCount = (
+  count: number,
+  status: TestCaseStatus
+) => (
+  <div
+    className={`test-result-container ${lowerCase(status)}`}
+    data-testid={`test-${status}`}>
+    <Typography.Text
+      className="font-medium text-sm"
+      data-testid={`test-${status}-value`}>
+      {formTwoDigitNumber(count)}
+    </Typography.Text>
+  </div>
+);
+
+export const getTestStatusLabel = (status: TestCaseStatus) => {
+  const statusLabelMapping = {
+    [TestCaseStatus.Success]: i18next.t('label.test-status-plural', {
+      status: i18next.t('label.passed'),
+    }),
+    [TestCaseStatus.Failed]: i18next.t('label.test-status-plural', {
+      status: i18next.t('label.failed'),
+    }),
+    [TestCaseStatus.Aborted]: i18next.t('label.test-status-plural', {
+      status: i18next.t('label.aborted'),
+    }),
+    [TestCaseStatus.Queued]: i18next.t('label.test-status-plural', {
+      status: i18next.t('label.queued'),
+    }),
+  };
+
+  return statusLabelMapping[status];
+};
+
+export const getTestNamesListMarkdown = (
+  caseInfos: {
+    status: TestCaseStatus;
+    count: number;
+    testCases: string[];
+  }[]
+) => {
+  let testNamesList = '';
+
+  caseInfos.forEach((caseInfo) => {
+    let testDetailsList = `**${getTestStatusLabel(caseInfo.status)}**: \n`;
+
+    caseInfo.testCases.forEach(
+      (testCase) => (testDetailsList += `${testCase} \n`)
+    );
+
+    testNamesList += testDetailsList;
+  });
+
+  return testNamesList;
+};
+
+export const formatTestStatusData = (
+  testResultSummary: Array<EntityTestResultSummaryObject>
+) => {
+  const successCases = getTestCaseNameListForResult(
+    testResultSummary,
+    TestCaseStatus.Success
+  );
+  const failedCases = getTestCaseNameListForResult(
+    testResultSummary,
+    TestCaseStatus.Failed
+  );
+  const abortedCases = getTestCaseNameListForResult(
+    testResultSummary,
+    TestCaseStatus.Aborted
+  );
+
+  return {
+    success: {
+      status: TestCaseStatus.Success,
+      count: successCases.length,
+      testCases: successCases,
+    },
+    failed: {
+      status: TestCaseStatus.Failed,
+      count: failedCases.length,
+      testCases: failedCases,
+    },
+    aborted: {
+      status: TestCaseStatus.Aborted,
+      count: abortedCases.length,
+      testCases: abortedCases,
+    },
+  };
 };

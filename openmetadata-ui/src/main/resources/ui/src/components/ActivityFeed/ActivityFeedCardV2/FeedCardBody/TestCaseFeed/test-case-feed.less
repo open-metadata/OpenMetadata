@@ -10,8 +10,24 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Thread } from '../../../../generated/entity/feed/thread';
+@import url('../../../../../styles/variables.less');
 
-export interface DescriptionFeedProps {
-  feed: Thread;
+.test-result-container {
+  width: 36px;
+  height: 36px;
+  text-align: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  border-radius: 5px;
+  &.success {
+    background: @green-2;
+  }
+  &.aborted {
+    background: @yellow-1;
+  }
+  &.failed {
+    background: @red-2;
+  }
 }

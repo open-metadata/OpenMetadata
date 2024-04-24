@@ -17,13 +17,17 @@ import React, { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import ActivityFeedEditor from '../../../../components/ActivityFeed/ActivityFeedEditor/ActivityFeedEditor';
 import RichTextEditorPreviewer from '../../../../components/common/RichTextEditor/RichTextEditorPreviewer';
-import { EntityField } from '../../../../constants/Feeds.constants';
+import {
+  CardStyle,
+  EntityTestResultSummaryObject,
+} from '../../../../generated/entity/feed/thread';
 import { formatDateTime } from '../../../../utils/date-time/DateTimeUtils';
 import {
   getFrontEndFormat,
   MarkdownToHTMLConverter,
 } from '../../../../utils/FeedUtils';
-import DescriptionFeed from '../../ActivityFeedCardV2/FeedCardBody/DescriptionFeed';
+import DescriptionFeed from '../../ActivityFeedCardV2/FeedCardBody/DescriptionFeed/DescriptionFeed';
+import TestCaseFeed from '../../ActivityFeedCardV2/FeedCardBody/TestCaseFeed/TestCaseFeed';
 import { FeedCardBodyV1Props } from './FeedCardBodyV1.interface';
 
 const FeedCardBodyV1 = ({
@@ -39,9 +43,9 @@ const FeedCardBodyV1 = ({
   const { t } = useTranslation();
   const [postMessage, setPostMessage] = useState<string>(message);
 
-  const { fieldName } = useMemo(() => {
+  const { cardStyle } = useMemo(() => {
     return {
-      fieldName: feed.feedInfo?.fieldName ?? '',
+      cardStyle: feed.cardStyle ?? '',
     };
   }, [feed]);
 
@@ -87,8 +91,19 @@ const FeedCardBodyV1 = ({
       );
     }
 
-    if (fieldName === EntityField.DESCRIPTION) {
+    if (cardStyle === CardStyle.Description) {
       return <DescriptionFeed feed={feed} />;
+    }
+
+    if (cardStyle === CardStyle.TestCaseResult) {
+      return (
+        <TestCaseFeed
+          testResultSummary={
+            feed.feedInfo?.entitySpecificInfo
+              ?.entityTestResultSummary as EntityTestResultSummaryObject[]
+          }
+        />
+      );
     }
 
     return (
@@ -97,7 +112,7 @@ const FeedCardBodyV1 = ({
         markdown={getFrontEndFormat(message)}
       />
     );
-  }, [isEditPost, message, postMessage, fieldName, feed]);
+  }, [isEditPost, message, postMessage, cardStyle, feed]);
 
   return (
     <div

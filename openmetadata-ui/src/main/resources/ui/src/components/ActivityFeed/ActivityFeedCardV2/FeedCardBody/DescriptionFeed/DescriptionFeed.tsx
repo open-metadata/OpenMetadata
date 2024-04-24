@@ -13,18 +13,18 @@
 
 import { Col, Row, Typography } from 'antd';
 import React, { useMemo } from 'react';
-import { EntityField } from '../../../../constants/Feeds.constants';
-import { getTextDiff } from '../../../../utils/EntityVersionUtils';
+import { EntityField } from '../../../../../constants/Feeds.constants';
+import { getTextDiff } from '../../../../../utils/EntityVersionUtils';
 import {
   getFeedChangeFieldLabel,
   getFeedChangeOperationLabel,
   getFieldOperationIcon,
   getFrontEndFormat,
-} from '../../../../utils/FeedUtils';
-import RichTextEditorPreviewer from '../../../common/RichTextEditor/RichTextEditorPreviewer';
+} from '../../../../../utils/FeedUtils';
+import RichTextEditorPreviewer from '../../../../common/RichTextEditor/RichTextEditorPreviewer';
 import { DescriptionFeedProps } from './DescriptionFeed.interface';
 
-function DescriptionFeed({ feed }: DescriptionFeedProps) {
+function DescriptionFeed({ feed }: Readonly<DescriptionFeedProps>) {
   const { message, fieldOperation, fieldChanged } = useMemo(() => {
     const diffText = getTextDiff(
       feed.feedInfo?.entitySpecificInfo?.previousDescription ?? '',
