@@ -1132,6 +1132,7 @@
     "test-email-connection": "Test Email Connection",
     "test-entity": "Тест {{entity}}",
     "test-plural": "Тесты",
+    "test-status-plural": "Tests {{status}}",
     "test-suite": "Тестирование",
     "test-suite-ingestion": "Загрузка тестового набора",
     "test-suite-lowercase": "тестирование",

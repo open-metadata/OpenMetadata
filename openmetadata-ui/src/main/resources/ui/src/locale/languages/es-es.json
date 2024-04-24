@@ -1132,6 +1132,7 @@
     "test-email-connection": "Probar conexión de email",
     "test-entity": "Prueba {{entity}}",
     "test-plural": "Pruebas",
+    "test-status-plural": "Tests {{status}}",
     "test-suite": "Suite de Pruebas",
     "test-suite-ingestion": "Ingesta de Suite de Tests",
     "test-suite-lowercase": "suite de pruebas",

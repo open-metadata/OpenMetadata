@@ -1132,6 +1132,7 @@
     "test-email-connection": "Test Email Connection",
     "test-entity": "テスト {{entity}}",
     "test-plural": "テスト",
+    "test-status-plural": "Tests {{status}}",
     "test-suite": "テストスイート",
     "test-suite-ingestion": "Test suite ingestion",
     "test-suite-lowercase": "test suite",
