@@ -175,11 +175,12 @@ class OMetaLineageMixin(Generic[T]):
             search_cache.put((from_id, to_id), res)
             return res
         except APIError as err:
-            logger.debug(traceback.format_exc())
-            logger.warning(
-                f"Error {err.status_code} trying to GET linage edge between "
-                f"{from_id} and {to_id}: {err}"
-            )
+            if err.status_code != 404:
+                logger.debug(traceback.format_exc())
+                logger.warning(
+                    f"Error {err.status_code} trying to GET linage edge between "
+                    f"{from_id} and {to_id}: {err}"
+                )
             return None
 
     def patch_lineage_edge(
