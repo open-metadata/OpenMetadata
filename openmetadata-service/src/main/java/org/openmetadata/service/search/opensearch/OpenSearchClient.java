@@ -25,6 +25,7 @@ import static org.openmetadata.service.util.FullyQualifiedName.getParentFQN;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import es.org.elasticsearch.index.IndexNotFoundException;
+import es.org.elasticsearch.search.aggregations.bucket.terms.Terms;
 import java.io.IOException;
 import java.text.ParseException;
 import java.util.ArrayList;
@@ -372,15 +373,36 @@ public class OpenSearchClient implements SearchClient {
     }
 
     if (request.getIndex().equalsIgnoreCase("glossary_term_search_index")) {
-
-      searchSourceBuilder.query(
+      QueryBuilder baseQuery =
           QueryBuilders.boolQuery()
-              .must(searchSourceBuilder.query())
-              .must(QueryBuilders.matchQuery("status", "Approved")));
+              .must(searchSourceBuilder.query()) // get user input terms
+              .must(QueryBuilders.matchQuery("status", "Approved"));
+
+      searchSourceBuilder.query(baseQuery);
+
       if (request.getHierarchy()) {
-        searchSourceBuilder.sort(
-            SortBuilders.fieldSort("fullyQualifiedName")
-                .order(SortOrder.ASC)); // to get correct hierarchy of terms
+        SearchResponse searchResponse =
+            client.search(
+                new os.org.opensearch.action.search.SearchRequest(request.getIndex())
+                    .source(searchSourceBuilder),
+                RequestOptions.DEFAULT);
+
+        // Build  query to get parent terms for the user input terms , to build correct hierarchy
+        BoolQueryBuilder parentTermQueryBuilder = QueryBuilders.boolQuery();
+        Terms glossaryNameTerms = searchResponse.getAggregations().get("glossary.name.keyword");
+        glossaryNameTerms.getBuckets().stream()
+            .map(Terms.Bucket::getKeyAsString)
+            .forEach(
+                glossaryName ->
+                    parentTermQueryBuilder.should(
+                        QueryBuilders.prefixQuery("fullyQualifiedName", glossaryName)));
+
+        // Combine the base query and parentTermQuery under OR logic
+        BoolQueryBuilder finalQueryBuilder =
+            QueryBuilders.boolQuery().should(baseQuery).should(parentTermQueryBuilder);
+
+        searchSourceBuilder.query(finalQueryBuilder);
+        searchSourceBuilder.sort(SortBuilders.fieldSort("fullyQualifiedName").order(SortOrder.ASC));
       }
     }
 
@@ -748,6 +770,21 @@ public class OpenSearchClient implements SearchClient {
         }
       }
     }
+    if (edges.isEmpty()) {
+      os.org.opensearch.action.search.SearchRequest searchRequestForEntity =
+          new os.org.opensearch.action.search.SearchRequest(GLOBAL_SEARCH_ALIAS);
+      SearchSourceBuilder searchSourceBuilderForEntity = new SearchSourceBuilder();
+      searchSourceBuilderForEntity.query(
+          QueryBuilders.boolQuery().must(QueryBuilders.termQuery("fullyQualifiedName", fqn)));
+      searchRequestForEntity.source(searchSourceBuilderForEntity.size(1000));
+      SearchResponse searchResponseForEntity =
+          client.search(searchRequestForEntity, RequestOptions.DEFAULT);
+      for (var hit : searchResponseForEntity.getHits().getHits()) {
+        HashMap<String, Object> tempMap = new HashMap<>(JsonUtils.getMap(hit.getSourceAsMap()));
+        tempMap.keySet().removeAll(FIELDS_TO_REMOVE);
+        responseMap.put("entity", tempMap);
+      }
+    }
     responseMap.put("edges", edges);
     responseMap.put("nodes", nodes);
     return Response.status(OK).entity(responseMap).build();
@@ -837,7 +874,8 @@ public class OpenSearchClient implements SearchClient {
     List<AggregationBuilder> aggregationBuilders = new ArrayList<>();
     for (String key : aggregations.keySet()) {
       JsonObject aggregation = aggregations.getJsonObject(key);
-      for (String aggregationType : aggregation.keySet()) {
+      Set<String> keySet = aggregation.keySet();
+      for (String aggregationType : keySet) {
         switch (aggregationType) {
           case "terms":
             JsonObject termAggregation = aggregation.getJsonObject(aggregationType);
@@ -858,6 +896,21 @@ public class OpenSearchClient implements SearchClient {
               nestedAggregationBuilder.subAggregation(nestedAggregationBuilder1);
             }
             aggregationBuilders.add(nestedAggregationBuilder);
+            break;
+          case "aggs":
+            // Sub aggregation logic
+            if (!keySet.contains("nested")) {
+              JsonObject subAggregation = aggregation.getJsonObject("aggs");
+              if (!nullOrEmpty(aggregationBuilders)) {
+                AggregationBuilder aggregationBuilder =
+                    aggregationBuilders.get(aggregationBuilders.size() - 1);
+                List<AggregationBuilder> subAggregationBuilders = buildAggregation(subAggregation);
+                for (AggregationBuilder subAggregationBuilder : subAggregationBuilders) {
+                  aggregationBuilder.subAggregation(subAggregationBuilder);
+                }
+              }
+              break;
+            }
             break;
           default:
             break;

@@ -18,6 +18,9 @@ from typing import List, Optional, Tuple, cast
 
 from sqlalchemy import MetaData
 
+from metadata.generated.schema.configuration.profilerConfiguration import (
+    ProfilerConfiguration,
+)
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
 from metadata.generated.schema.entity.data.table import ColumnProfilerConfig, Table
@@ -37,9 +40,6 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.profiler.api.models import ProfilerProcessorConfig, TableConfig
 from metadata.profiler.interface.profiler_interface import ProfilerInterface
-from metadata.profiler.interface.profiler_interface_factory import (
-    profiler_interface_factory,
-)
 from metadata.profiler.metrics.registry import Metrics
 from metadata.profiler.processor.core import Profiler
 from metadata.profiler.processor.default import DefaultProfiler, get_default_metrics
@@ -58,6 +58,7 @@ class ProfilerSource(ProfilerSourceInterface):
         config: OpenMetadataWorkflowConfig,
         database: DatabaseService,
         ometa_client: OpenMetadata,
+        global_profiler_configuration: ProfilerConfiguration,
     ):
         self.service_conn_config = self._copy_service_config(config, database)
         self.source_config = config.source.sourceConfig.config
@@ -71,6 +72,7 @@ class ProfilerSource(ProfilerSourceInterface):
         self.profiler_interface_type: str = self._get_profiler_interface_type(config)
         self.sqa_metadata = self._set_sqa_metadata()
         self._interface = None
+        self.global_profiler_configuration = global_profiler_configuration
 
     @property
     def interface(
@@ -197,6 +199,10 @@ class ProfilerSource(ProfilerSourceInterface):
         db_service: Optional[DatabaseService],
     ) -> ProfilerInterface:
         """Create sqlalchemy profiler interface"""
+        from metadata.profiler.interface.profiler_interface_factory import (
+            profiler_interface_factory,
+        )
+
         profiler_interface: ProfilerInterface = profiler_interface_factory.create(
             self.profiler_interface_type,
             entity,
@@ -273,6 +279,7 @@ class ProfilerSource(ProfilerSourceInterface):
                 profiler_interface=profiler_interface,
                 include_columns=self._get_include_columns(entity, table_config),
                 exclude_columns=self._get_exclude_columns(entity, table_config),
+                global_profiler_configuration=self.global_profiler_configuration,
             )
 
         metrics = (
@@ -290,4 +297,5 @@ class ProfilerSource(ProfilerSourceInterface):
             profiler_interface=profiler_interface,
             include_columns=self._get_include_columns(entity, table_config),
             exclude_columns=self._get_exclude_columns(entity, table_config),
+            global_profiler_configuration=self.global_profiler_configuration,
         )

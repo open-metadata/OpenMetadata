@@ -114,11 +114,20 @@ public class AppResource extends EntityResource<App, AppRepository> {
       searchRepository = new SearchRepository(config.getElasticSearchConfiguration());
       AppScheduler.initialize(config, dao, searchRepository);
 
-      // Get Create App Requests
+      // Initialize Default Apps
       List<CreateApp> createAppsReq =
           getEntitiesFromSeedData(
               APPLICATION, String.format(".*json/data/%s/.*\\.json$", entityType), CreateApp.class);
-      for (CreateApp createApp : createAppsReq) {
+      loadDefaultApplications(createAppsReq);
+    } catch (Exception ex) {
+      LOG.error("Failed in Create App Requests", ex);
+    }
+  }
+
+  private void loadDefaultApplications(List<CreateApp> defaultAppCreateRequests) {
+    // Get Create App Requests
+    for (CreateApp createApp : defaultAppCreateRequests) {
+      try {
         AppMarketPlaceDefinition definition =
             repository
                 .getMarketPlace()
@@ -139,9 +148,9 @@ public class AppResource extends EntityResource<App, AppRepository> {
           ApplicationHandler.getInstance()
               .installApplication(app, Entity.getCollectionDAO(), searchRepository);
         }
+      } catch (Exception ex) {
+        LOG.error("Failed in Creation/Initialization of Application : {}", createApp.getName(), ex);
       }
-    } catch (Exception ex) {
-      LOG.error("Failed in Create App Requests", ex);
     }
   }
 
