@@ -1081,18 +1081,23 @@ public abstract class EntityRepository<T extends EntityInterface> {
       throw new IllegalArgumentException(CatalogExceptionMessage.entityIsNotEmpty(entityType));
     }
     // Delete all the contained entities
-    for (EntityRelationshipRecord entityRelationshipRecord : childrenRecords) {
+    deleteChildren(childrenRecords, hardDelete, updatedBy);
+  }
+
+  @Transaction
+  protected void deleteChildren(List<EntityRelationshipRecord> children, boolean hardDelete, String updatedBy) {
+    for (EntityRelationshipRecord entityRelationshipRecord : children) {
       LOG.info(
-          "Recursively {} deleting {} {}",
-          hardDelete ? "hard" : "soft",
-          entityRelationshipRecord.getType(),
-          entityRelationshipRecord.getId());
+              "Recursively {} deleting {} {}",
+              hardDelete ? "hard" : "soft",
+              entityRelationshipRecord.getType(),
+              entityRelationshipRecord.getId());
       Entity.deleteEntity(
-          updatedBy,
-          entityRelationshipRecord.getType(),
-          entityRelationshipRecord.getId(),
-          true,
-          hardDelete);
+              updatedBy,
+              entityRelationshipRecord.getType(),
+              entityRelationshipRecord.getId(),
+              true,
+              hardDelete);
     }
   }
 
@@ -1581,7 +1586,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
         : null;
   }
 
-  public final void ensureSingleRelationship(
+  public static void ensureSingleRelationship(
       String entityType,
       UUID id,
       List<EntityRelationshipRecord> relations,

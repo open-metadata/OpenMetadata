@@ -6,11 +6,15 @@ import java.util.UUID;
 import lombok.Getter;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.schema.EntityTimeSeriesInterface;
+import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.ResultList;
+
+import static org.openmetadata.schema.type.Include.ALL;
 
 @Repository
 public abstract class EntityTimeSeriesRepository<T extends EntityTimeSeriesInterface> {
@@ -38,22 +42,93 @@ public abstract class EntityTimeSeriesRepository<T extends EntityTimeSeriesInter
   @Transaction
   public T createNewRecord(T recordEntity, String extension, String recordFQN) {
     recordEntity.setId(UUID.randomUUID());
-    timeSeriesDao.insert(recordFQN, extension, entityType, JsonUtils.pojoToJson(recordEntity));
+    storeInternal(recordEntity, recordFQN, extension);
+    storeRelationshipInternal(recordEntity);
+    postCreate(recordEntity);
+    return recordEntity;
+  }
+
+
+  public T createNewRecord(T recordEntity, String recordFQN) {
+    recordEntity.setId(UUID.randomUUID());
+    storeInternal(recordEntity, recordFQN);
+    storeRelationshipInternal(recordEntity);
     postCreate(recordEntity);
     return recordEntity;
   }
 
   @Transaction
-  public T createNewRecord(T recordEntity, String recordFQN) {
-    recordEntity.setId(UUID.randomUUID());
+  protected void storeInternal(T recordEntity, String recordFQN) {
     timeSeriesDao.insert(recordFQN, entityType, JsonUtils.pojoToJson(recordEntity));
-    postCreate(recordEntity);
-    return recordEntity;
   }
 
-  protected void postCreate(T entity) {
-    searchRepository.createTimeSeriesEntity(JsonUtils.deepCopy(entity, entityClass));
+  @Transaction
+  protected void storeInternal(T recordEntity, String recordFQN, String extension) {
+    timeSeriesDao.insert(recordFQN, extension, entityType, JsonUtils.pojoToJson(recordEntity));
   }
+
+  protected void storeRelationshipInternal(T recordEntity) {
+    storeRelationship(recordEntity);
+  }
+
+  protected void storeRelationship(T recordEntity) {
+    // Nothing to do in the default implementation
+  }
+
+  protected void setInheritedFields(T recordEntity) {
+    // Nothing to do in the default implementation
+  }
+
+  @Transaction
+  public final void addRelationship(
+          UUID fromId,
+          UUID toId,
+          String fromEntity,
+          String toEntity,
+          Relationship relationship,
+          String json,
+          boolean bidirectional) {
+    UUID from = fromId;
+    UUID to = toId;
+    if (bidirectional && fromId.compareTo(toId) > 0) {
+      // For bidirectional relationship, instead of adding two row fromId -> toId and toId ->
+      // fromId, just add one row where fromId is alphabetically less than toId
+      from = toId;
+      to = fromId;
+    }
+    daoCollection
+            .relationshipDAO()
+            .insert(from, to, fromEntity, toEntity, relationship.ordinal(), json);
+  }
+
+  protected void postCreate(T recordEntity) {
+    searchRepository.createTimeSeriesEntity(JsonUtils.deepCopy(recordEntity, entityClass));
+  }
+
+  protected void postDelete(T recordEntity) {
+      searchRepository.deleteTimeSeriesEntityById(JsonUtils.deepCopy(recordEntity, entityClass));
+  }
+
+  public final List<CollectionDAO.EntityRelationshipRecord> findFromRecords(
+          UUID toId, String toEntityType, Relationship relationship, String fromEntityType) {
+    // When fromEntityType is null, all the relationships from any entity is returned
+    return fromEntityType == null
+            ? daoCollection.relationshipDAO().findFrom(toId, toEntityType, relationship.ordinal())
+            : daoCollection
+            .relationshipDAO()
+            .findFrom(toId, toEntityType, relationship.ordinal(), fromEntityType);
+  }
+
+  protected EntityReference getFromEntityRef(UUID toId, Relationship relationship, String fromEntityType, boolean mustHaveRelationship) {
+    List<CollectionDAO.EntityRelationshipRecord> records =
+            findFromRecords(toId, entityType, relationship, fromEntityType);
+    EntityRepository.ensureSingleRelationship(
+            entityType, toId, records, relationship.value(), fromEntityType, mustHaveRelationship);
+    return !records.isEmpty()
+            ? Entity.getEntityReferenceById(records.get(0).getType(), records.get(0).getId(), ALL)
+            : null;
+  }
+
 
   public final ResultList<T> getResultList(
       List<T> entities, String beforeCursor, String afterCursor, int total) {
@@ -90,8 +165,9 @@ public abstract class EntityTimeSeriesRepository<T extends EntityTimeSeriesInter
           timeSeriesDao.listWithOffset(filter, limitParam, offsetInt, startTs, endTs, latest);
 
       for (String json : jsons) {
-        T entity = JsonUtils.readValue(json, entityClass);
-        entityList.add(entity);
+        T recordEntity = JsonUtils.readValue(json, entityClass);
+        setInheritedFields(recordEntity);
+        entityList.add(recordEntity);
       }
       return getResultList(entityList, beforeOffset, afterOffset, total);
     } else {
@@ -109,7 +185,9 @@ public abstract class EntityTimeSeriesRepository<T extends EntityTimeSeriesInter
     if (jsonRecord == null) {
       return null;
     }
-    return JsonUtils.readValue(jsonRecord, entityClass);
+    T entityRecord = JsonUtils.readValue(jsonRecord, entityClass);
+    setInheritedFields(entityRecord);
+    return entityRecord;
   }
 
   public T getById(UUID id) {
@@ -117,6 +195,22 @@ public abstract class EntityTimeSeriesRepository<T extends EntityTimeSeriesInter
     if (jsonRecord == null) {
       return null;
     }
-    return JsonUtils.readValue(jsonRecord, entityClass);
+    T entityRecord = JsonUtils.readValue(jsonRecord, entityClass);
+    setInheritedFields(entityRecord);
+    return entityRecord;
+  }
+
+  public void deleteById(UUID id, boolean hardDelete) {
+    if (!hardDelete) {
+      // time series entities by definition cannot be soft deleted (i.e. they do not have a state
+      // and they should be immutable) thought they can be contained inside entities that can be soft deleted
+      return;
+    }
+    T entityRecord = getById(id);
+    if (entityRecord == null) {
+      return;
+    }
+    timeSeriesDao.deleteById(id);
+    postDelete(entityRecord);
   }
 }

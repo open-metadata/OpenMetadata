@@ -7,6 +7,7 @@ import java.beans.IntrospectionException;
 import java.beans.Introspector;
 import java.beans.PropertyDescriptor;
 import java.lang.reflect.InvocationTargetException;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
@@ -14,6 +15,7 @@ import javax.json.JsonPatch;
 import javax.ws.rs.core.Response;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.schema.EntityInterface;
+import org.openmetadata.schema.api.feed.CloseTask;
 import org.openmetadata.schema.api.feed.ResolveTask;
 import org.openmetadata.schema.entity.feed.Thread;
 import org.openmetadata.schema.entity.teams.User;
@@ -25,6 +27,7 @@ import org.openmetadata.schema.tests.type.TestCaseResolutionStatus;
 import org.openmetadata.schema.tests.type.TestCaseResolutionStatusTypes;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.TaskDetails;
 import org.openmetadata.schema.type.TaskStatus;
 import org.openmetadata.schema.type.TaskType;
@@ -53,11 +56,16 @@ public class TestCaseResolutionStatusRepository
 
   public ResultList<TestCaseResolutionStatus> listTestCaseResolutionStatusesForStateId(
       UUID stateId) {
+    List<TestCaseResolutionStatus> testCaseResolutionStatuses = new ArrayList<>();
     List<String> jsons =
         ((CollectionDAO.TestCaseResolutionStatusTimeSeriesDAO) timeSeriesDao)
             .listTestCaseResolutionStatusesForStateId(stateId.toString());
-    List<TestCaseResolutionStatus> testCaseResolutionStatuses =
-        JsonUtils.readObjects(jsons, TestCaseResolutionStatus.class);
+
+    for (String json : jsons) {
+      TestCaseResolutionStatus testCaseResolutionStatus = JsonUtils.readValue(json, TestCaseResolutionStatus.class);
+      setInheritedFields(testCaseResolutionStatus);
+      testCaseResolutionStatuses.add(testCaseResolutionStatus);
+    }
 
     return getResultList(testCaseResolutionStatuses, null, null, testCaseResolutionStatuses.size());
   }
@@ -145,11 +153,9 @@ public class TestCaseResolutionStatusRepository
 
   @Override
   @Transaction
-  public TestCaseResolutionStatus createNewRecord(
-      TestCaseResolutionStatus recordEntity, String recordFQN) {
+  public void storeInternal(TestCaseResolutionStatus recordEntity, String recordFQN) {
 
-    TestCaseResolutionStatus lastIncident =
-        getLatestRecord(recordEntity.getTestCaseReference().getFullyQualifiedName());
+    TestCaseResolutionStatus lastIncident = getLatestRecord(recordFQN);
 
     if (recordEntity.getStateId() == null) {
       recordEntity.setStateId(UUID.randomUUID());
@@ -177,7 +183,7 @@ public class TestCaseResolutionStatusRepository
       case New -> {
         // If there is already an existing New incident we'll return it
         if (Boolean.TRUE.equals(unresolvedIncident(lastIncident))) {
-          return lastIncident;
+          return;
         }
       }
       case Ack, Assigned -> openOrAssignTask(recordEntity);
@@ -187,12 +193,33 @@ public class TestCaseResolutionStatusRepository
         // We don't create a new record. The new status will be added via the
         // TestCaseFailureResolutionTaskWorkflow
         // implemented in the TestCaseRepository.
-        return getLatestRecord(recordEntity.getTestCaseReference().getFullyQualifiedName());
+        return;
       }
       default -> throw new IllegalArgumentException(
           String.format("Invalid status %s", recordEntity.getTestCaseResolutionStatusType()));
     }
-    return super.createNewRecord(recordEntity, recordFQN);
+    EntityReference testCaseReference = recordEntity.getTestCaseReference();
+    recordEntity.withTestCaseReference(null); // we don't want to store the reference in the record
+    super.storeInternal(recordEntity, recordFQN);
+    recordEntity.withTestCaseReference(testCaseReference);
+  }
+
+  @Override
+  protected void storeRelationship(TestCaseResolutionStatus recordEntity) {
+    addRelationship(
+        recordEntity.getTestCaseReference().getId(),
+        recordEntity.getId(),
+        Entity.TEST_CASE,
+        Entity.TEST_CASE_RESOLUTION_STATUS,
+        Relationship.PARENT_OF,
+        null,
+        false);
+  }
+
+  @Override
+  protected void setInheritedFields(TestCaseResolutionStatus recordEntity) {
+    recordEntity.setTestCaseReference(
+        getFromEntityRef(recordEntity.getId(), Relationship.PARENT_OF, Entity.TEST_CASE, true));
   }
 
   private void openOrAssignTask(TestCaseResolutionStatus incidentStatus) {
@@ -253,17 +280,21 @@ public class TestCaseResolutionStatusRepository
     Thread thread = getIncidentTask(lastIncidentStatus);
 
     if (thread != null) {
-      // If there is an existing task, we'll resolve it and create a new incident
-      // status with the Resolved status flow
+      // If there is an existing task, we'll close it without performing the workflow
+      // (i.e. creating a new incident which will be handled here).
+      FeedRepository.ThreadContext threadContext = new FeedRepository.ThreadContext(thread);
+      threadContext.getThread().getTask().withNewValue(resolveTask.getNewValue());
       Entity.getFeedRepository()
-          .resolveTask(
-              new FeedRepository.ThreadContext(thread),
+          .closeTaskWithoutWorkflow(
+              threadContext.getThread(),
               updatedBy.getFullyQualifiedName(),
-              resolveTask);
-    } else {
-      // if there is no task, we'll simply create a new incident status (e.g. New -> Resolved)
-      super.createNewRecord(newIncidentStatus, testCase.getFullyQualifiedName());
+                  new CloseTask());
     }
+    // if there is no task, we'll simply create a new incident status (e.g. New -> Resolved)
+    EntityReference testCaseReference = newIncidentStatus.getTestCaseReference();
+    newIncidentStatus.setTestCaseReference(null); // we don't want to store the reference in the record
+    super.storeInternal(newIncidentStatus, testCase.getFullyQualifiedName());
+    newIncidentStatus.setTestCaseReference(testCaseReference);
   }
 
   private void createTask(
