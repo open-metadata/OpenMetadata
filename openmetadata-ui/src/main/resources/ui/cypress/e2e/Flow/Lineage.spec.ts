@@ -209,7 +209,9 @@ const addColumnLineage = (fromNode, toNode, exitEditMode = true) => {
     cy.get('[data-testid="edit-lineage"]').click();
   }
   cy.get(
-    `[data-testid="column-edge-${fromNode.columns[0]}-${toNode.columns[0]}"]`
+    `[data-testid="column-edge-${btoa(fromNode.columns[0])}-${btoa(
+      toNode.columns[0]
+    )}"]`
   );
 };
 

@@ -12,6 +12,7 @@
  */
 import { fireEvent, render } from '@testing-library/react';
 import React from 'react';
+import { LineageLayerView } from '../../../context/LineageProvider/LineageProvider.interface';
 import { LOADING_STATE } from '../../../enums/common.enum';
 import { MOCK_LINEAGE_DATA } from '../../../mocks/Lineage.mock';
 import CustomControlsComponent from './CustomControls.component';
@@ -46,6 +47,7 @@ jest.mock('../../../context/LineageProvider/LineageProvider', () => ({
   useLineageProvider: jest.fn().mockImplementation(() => ({
     toggleColumnView: mockOnExpandColumnClick,
     onLineageEditClick: mockOnEditLineageClick,
+    activeLayer: [LineageLayerView.COLUMN],
   })),
 }));
 
