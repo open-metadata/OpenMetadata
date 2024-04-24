@@ -8,11 +8,11 @@
   "properties": {
     "previousOwner": {
       "description": "List of previous tags.",
-      "type": "string"
+      "$ref": "../../type/entityReference.json"
     },
     "updatedOwner": {
       "description": "Updated Owners.",
-      "type": "string"
+      "$ref": "../../type/entityReference.json"
     }
   },
   "additionalProperties": false
