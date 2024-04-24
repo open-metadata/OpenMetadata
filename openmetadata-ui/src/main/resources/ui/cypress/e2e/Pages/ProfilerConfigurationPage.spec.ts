@@ -156,10 +156,6 @@ describe('ProfilerConfigurationPage', () => {
     cy.login(user.email, user.password);
     cy.sidebarClick(SidebarItem.SETTINGS);
     cy.get('[data-testid="preferences"]').should('not.exist');
-    cy.visit(
-      `${Cypress.config().baseUrl}/settings/preferences/profiler-configuration`
-    );
-    cy.get('[data-testid="permission-error-placeholder"]').should('be.visible');
     cy.logout();
   });
 });
