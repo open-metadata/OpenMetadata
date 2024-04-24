@@ -34,7 +34,8 @@ jest.mock('react-router-dom', () => ({
     ingestionName: 'ingestion_123456',
   }),
 }));
-jest.mock('../../utils/LogsViewer.utils', () => ({
+
+jest.mock('../../utils/LogsClassBase', () => ({
   getLogBreadCrumbs: jest
     .fn()
     .mockReturnValue({ name: 'getLogBreadCrumbs', url: '' }),

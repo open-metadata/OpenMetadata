@@ -82,6 +82,8 @@ You will have to replace new lines with `\n` and the final private key that you 
 
 **User ID**: This field specifies the user id of the user.
 
+**Validate Host Name**: Enable/Disable this field to validate the host name against the provided certificates.
+
 {% /extraContent %}
 
 {% partial file="/v1.4/connectors/test-connection.md" /%}

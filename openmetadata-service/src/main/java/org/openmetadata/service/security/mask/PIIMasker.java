@@ -3,6 +3,7 @@ package org.openmetadata.service.security.mask;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.service.jdbi3.TopicRepository.getAllFieldTags;
 
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -16,6 +17,7 @@ import org.openmetadata.schema.entity.data.Query;
 import org.openmetadata.schema.entity.data.SearchIndex;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.data.Topic;
+import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.tests.TestCase;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.Field;
@@ -34,6 +36,7 @@ public class PIIMasker {
   public static final String SENSITIVE_PII_TAG = "PII.Sensitive";
   public static final String MASKED_VALUE = "********";
   public static final String MASKED_NAME = "[MASKED]";
+  public static final String MASKED_MAIL = "********@masked.com";
 
   private PIIMasker() {
     /* Private constructor for Utility class */
@@ -147,18 +150,25 @@ public class PIIMasker {
 
   public static ResultList<TestCase> getTestCases(
       ResultList<TestCase> testCases, Authorizer authorizer, SecurityContext securityContext) {
+    Map<String, Table> entityFQNToTable = new HashMap<>();
     List<TestCase> maskedTests =
         testCases.getData().stream()
             .map(
                 testCase -> {
                   MessageParser.EntityLink testCaseLink =
                       MessageParser.EntityLink.parse(testCase.getEntityLink());
-                  Table table =
-                      Entity.getEntityByName(
-                          Entity.TABLE,
-                          testCaseLink.getEntityFQN(),
-                          "owner,tags,columns",
-                          Include.NON_DELETED);
+                  Table table;
+                  if (entityFQNToTable.containsKey(testCaseLink.getEntityFQN())) {
+                    table = entityFQNToTable.get(testCaseLink.getEntityFQN());
+                  } else {
+                    table =
+                        Entity.getEntityByName(
+                            Entity.TABLE,
+                            testCaseLink.getEntityFQN(),
+                            "owner,tags,columns",
+                            Include.NON_DELETED);
+                    entityFQNToTable.put(testCaseLink.getEntityFQN(), table);
+                  }
 
                   // Ignore table tests
                   if (testCaseLink.getFieldName() == null) return testCase;
@@ -255,5 +265,11 @@ public class PIIMasker {
 
   private static String flagMaskedName(String name) {
     return String.format("%s %s", name, MASKED_NAME);
+  }
+
+  public static User maskUser(Authorizer authorizer, SecurityContext securityContext, User user) {
+    if (authorizer.authorizePII(securityContext, null)) return user;
+    user.setEmail(MASKED_MAIL);
+    return user;
   }
 }

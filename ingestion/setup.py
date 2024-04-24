@@ -273,6 +273,7 @@ plugins: Dict[str, Set[str]] = {
 dev = {
     "black==22.3.0",
     "datamodel-code-generator==0.24.2",
+    "boto3-stubs[essential]",
     "isort",
     "pre-commit",
     "pycln",
@@ -286,6 +287,7 @@ dev = {
 test = {
     # Install Airflow as it's not part of `all` plugin
     VERSIONS["airflow"],
+    "boto3-stubs[boto3]",
     "coverage",
     # Install GE because it's not in the `all` plugin
     VERSIONS["great-expectations"],
@@ -314,7 +316,8 @@ test = {
     VERSIONS["avro"],  # Sample Data
     VERSIONS["grpc-tools"],
     "testcontainers==3.7.1;python_version<'3.9'",
-    "testcontainers==4.3.3;python_version>='3.9'",
+    "testcontainers==4.4.0;python_version>='3.9'",
+    "minio==7.2.5",
 }
 
 e2e_test = {
