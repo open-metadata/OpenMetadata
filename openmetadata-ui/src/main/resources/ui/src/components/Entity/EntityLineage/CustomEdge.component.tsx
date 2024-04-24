@@ -341,6 +341,7 @@ export const CustomEdge = ({
 
     if (
       data.edge.pipeline &&
+      data.edge.pipeline.type === EntityType.PIPELINE &&
       !wasPipelineAlreadyActive &&
       isPipelineActiveNow
     ) {

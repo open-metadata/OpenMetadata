@@ -225,7 +225,10 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
             isEqual
           );
 
-          if (entityType !== EntityType.PIPELINE) {
+          if (
+            entityType !== EntityType.PIPELINE &&
+            entityType !== EntityType.STORED_PROCEDURE
+          ) {
             const childMapObj = getChildMap(
               { ...res, nodes: allNodes },
               decodedFqn
