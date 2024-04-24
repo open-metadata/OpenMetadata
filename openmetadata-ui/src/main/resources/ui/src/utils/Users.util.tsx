@@ -18,6 +18,7 @@ import { isEmpty, isUndefined, uniqueId } from 'lodash';
 import React from 'react';
 import { Link } from 'react-router-dom';
 import UserPopOverCard from '../components/common/PopOverCard/UserPopOverCard';
+import { MASKED_EMAIL } from '../constants/User.constants';
 import { EntityReference, User } from '../generated/entity/teams/user';
 import { getEntityName } from './EntityUtils';
 import { LIST_CAP } from './PermissionsUtils';
@@ -145,3 +146,7 @@ export const commonUserDetailColumns = (
     },
   },
 ];
+
+export const isMaskedEmail = (email: string) => {
+  return email === MASKED_EMAIL;
+};
