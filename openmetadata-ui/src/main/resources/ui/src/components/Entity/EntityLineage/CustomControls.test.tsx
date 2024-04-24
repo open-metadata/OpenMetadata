@@ -87,16 +87,6 @@ describe('CustomControls', () => {
     expect(mockOnEditLineageClick).toHaveBeenCalled();
   });
 
-  it('calls onExpandColumnClick on Expand Column button click', () => {
-    const { getByTestId } = render(
-      <CustomControlsComponent {...customProps} />
-    );
-    const expandColumnButton = getByTestId('expand-column');
-    fireEvent.click(expandColumnButton);
-
-    expect(mockOnExpandColumnClick).toHaveBeenCalled();
-  });
-
   it('calls mockHandleFullScreenViewClick on Full Screen button click', () => {
     const { getByTestId } = render(
       <CustomControlsComponent {...customProps} />
