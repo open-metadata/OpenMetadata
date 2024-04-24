@@ -62,7 +62,8 @@ public class TestCaseResolutionStatusRepository
             .listTestCaseResolutionStatusesForStateId(stateId.toString());
 
     for (String json : jsons) {
-      TestCaseResolutionStatus testCaseResolutionStatus = JsonUtils.readValue(json, TestCaseResolutionStatus.class);
+      TestCaseResolutionStatus testCaseResolutionStatus =
+          JsonUtils.readValue(json, TestCaseResolutionStatus.class);
       setInheritedFields(testCaseResolutionStatus);
       testCaseResolutionStatuses.add(testCaseResolutionStatus);
     }
@@ -286,13 +287,12 @@ public class TestCaseResolutionStatusRepository
       threadContext.getThread().getTask().withNewValue(resolveTask.getNewValue());
       Entity.getFeedRepository()
           .closeTaskWithoutWorkflow(
-              threadContext.getThread(),
-              updatedBy.getFullyQualifiedName(),
-                  new CloseTask());
+              threadContext.getThread(), updatedBy.getFullyQualifiedName(), new CloseTask());
     }
     // if there is no task, we'll simply create a new incident status (e.g. New -> Resolved)
     EntityReference testCaseReference = newIncidentStatus.getTestCaseReference();
-    newIncidentStatus.setTestCaseReference(null); // we don't want to store the reference in the record
+    newIncidentStatus.setTestCaseReference(
+        null); // we don't want to store the reference in the record
     super.storeInternal(newIncidentStatus, testCase.getFullyQualifiedName());
     newIncidentStatus.setTestCaseReference(testCaseReference);
   }

@@ -368,27 +368,27 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
             .withUpdatedAt(System.currentTimeMillis())
             .withTestCaseReference(testCase.getEntityReference());
 
-    testCaseResolutionStatusRepository.createNewRecord(
-            status, testCase.getFullyQualifiedName());
+    testCaseResolutionStatusRepository.createNewRecord(status, testCase.getFullyQualifiedName());
     TestCaseResolutionStatus incident =
-            testCaseResolutionStatusRepository.getLatestRecord(testCase.getFullyQualifiedName());
+        testCaseResolutionStatusRepository.getLatestRecord(testCase.getFullyQualifiedName());
 
     return incident.getStateId();
   }
 
   @Transaction
   @Override
-  protected void deleteChildren(List<CollectionDAO.EntityRelationshipRecord> children, boolean hardDelete, String updatedBy) {
+  protected void deleteChildren(
+      List<CollectionDAO.EntityRelationshipRecord> children, boolean hardDelete, String updatedBy) {
     if (hardDelete) {
       for (CollectionDAO.EntityRelationshipRecord entityRelationshipRecord : children) {
         LOG.info(
-                "Recursively {} deleting {} {}",
-                hardDelete ? "hard" : "soft",
-                entityRelationshipRecord.getType(),
-                entityRelationshipRecord.getId());
+            "Recursively {} deleting {} {}",
+            hardDelete ? "hard" : "soft",
+            entityRelationshipRecord.getType(),
+            entityRelationshipRecord.getId());
         TestCaseResolutionStatusRepository testCaseResolutionStatusRepository =
-                (TestCaseResolutionStatusRepository)
-                        Entity.getEntityTimeSeriesRepository(Entity.TEST_CASE_RESOLUTION_STATUS);
+            (TestCaseResolutionStatusRepository)
+                Entity.getEntityTimeSeriesRepository(Entity.TEST_CASE_RESOLUTION_STATUS);
         for (CollectionDAO.EntityRelationshipRecord child : children) {
           testCaseResolutionStatusRepository.deleteById(child.getId(), hardDelete);
         }

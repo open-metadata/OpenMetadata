@@ -1349,15 +1349,19 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
     // 2. hard delete - should delete the test case resolution status
     deleteEntity(testCaseEntity1.getId(), true, false, ADMIN_AUTH_HEADERS);
     storedTestCaseResolutions =
-            getTestCaseFailureStatus(startTs, endTs, null, TestCaseResolutionStatusTypes.Ack);
+        getTestCaseFailureStatus(startTs, endTs, null, TestCaseResolutionStatusTypes.Ack);
     assertEquals(2, storedTestCaseResolutions.getData().size());
-    assertTrue(storedTestCaseResolutions.getData().stream().anyMatch(t -> t.getTestCaseReference().getId().equals(testCaseEntity1.getId())));
+    assertTrue(
+        storedTestCaseResolutions.getData().stream()
+            .anyMatch(t -> t.getTestCaseReference().getId().equals(testCaseEntity1.getId())));
 
     deleteEntity(testCaseEntity1.getId(), true, true, ADMIN_AUTH_HEADERS);
     storedTestCaseResolutions =
-            getTestCaseFailureStatus(startTs, endTs, null, TestCaseResolutionStatusTypes.Ack);
+        getTestCaseFailureStatus(startTs, endTs, null, TestCaseResolutionStatusTypes.Ack);
     assertEquals(1, storedTestCaseResolutions.getData().size());
-    assertTrue(storedTestCaseResolutions.getData().stream().noneMatch(t -> t.getTestCaseReference().getId().equals(testCaseEntity1.getId())));
+    assertTrue(
+        storedTestCaseResolutions.getData().stream()
+            .noneMatch(t -> t.getTestCaseReference().getId().equals(testCaseEntity1.getId())));
   }
 
   @Test

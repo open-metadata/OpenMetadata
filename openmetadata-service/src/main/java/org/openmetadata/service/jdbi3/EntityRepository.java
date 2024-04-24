@@ -1085,19 +1085,20 @@ public abstract class EntityRepository<T extends EntityInterface> {
   }
 
   @Transaction
-  protected void deleteChildren(List<EntityRelationshipRecord> children, boolean hardDelete, String updatedBy) {
+  protected void deleteChildren(
+      List<EntityRelationshipRecord> children, boolean hardDelete, String updatedBy) {
     for (EntityRelationshipRecord entityRelationshipRecord : children) {
       LOG.info(
-              "Recursively {} deleting {} {}",
-              hardDelete ? "hard" : "soft",
-              entityRelationshipRecord.getType(),
-              entityRelationshipRecord.getId());
+          "Recursively {} deleting {} {}",
+          hardDelete ? "hard" : "soft",
+          entityRelationshipRecord.getType(),
+          entityRelationshipRecord.getId());
       Entity.deleteEntity(
-              updatedBy,
-              entityRelationshipRecord.getType(),
-              entityRelationshipRecord.getId(),
-              true,
-              hardDelete);
+          updatedBy,
+          entityRelationshipRecord.getType(),
+          entityRelationshipRecord.getId(),
+          true,
+          hardDelete);
     }
   }
 

@@ -511,13 +511,13 @@ public class SearchRepository {
         searchClient.deleteEntity(indexMapping.getIndexName(clusterAlias), entityId);
       } catch (Exception ie) {
         LOG.error(
-                String.format(
-                        "Issue in Deleting the search document for entityID [%s] and entityType [%s]. Reason[%s], Cause[%s], Stack [%s]",
-                        entityId,
-                        entityType,
-                        ie.getMessage(),
-                        ie.getCause(),
-                        ExceptionUtils.getStackTrace(ie)));
+            String.format(
+                "Issue in Deleting the search document for entityID [%s] and entityType [%s]. Reason[%s], Cause[%s], Stack [%s]",
+                entityId,
+                entityType,
+                ie.getMessage(),
+                ie.getCause(),
+                ExceptionUtils.getStackTrace(ie)));
       }
     }
   }
