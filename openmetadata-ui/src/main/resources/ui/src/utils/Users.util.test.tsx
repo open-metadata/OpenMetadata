@@ -10,11 +10,20 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { isMaskedEmail } from './Users.util';
 
-import { TokenType } from '../generated/auth/personalAccessToken';
+describe('User Utils -- isMaskedEmail', () => {
+  it('should return true for masked email', () => {
+    const email = '********@masked.com';
+    const result = isMaskedEmail(email);
 
-export const USER_DEFAULT_AUTHENTICATION_MECHANISM = {
-  tokenType: TokenType.PersonalAccessToken,
-};
+    expect(result).toBe(true);
+  });
 
-export const MASKED_EMAIL = '********@masked.com';
+  it('should return false for non-masked email', () => {
+    const email = 'test@example.com';
+    const result = isMaskedEmail(email);
+
+    expect(result).toBe(false);
+  });
+});

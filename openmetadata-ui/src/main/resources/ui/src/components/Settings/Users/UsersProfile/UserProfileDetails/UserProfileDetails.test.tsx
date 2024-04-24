@@ -263,20 +263,4 @@ describe('Test User Profile Details Component', () => {
       'defaultPersona'
     );
   });
-
-  it('should not render if not present', async () => {
-    render(
-      <UserProfileDetails
-        {...mockPropsData}
-        userData={{ ...USER_DATA, email: '' }}
-      />,
-      {
-        wrapper: MemoryRouter,
-      }
-    );
-
-    // user email
-    expect(screen.queryByTestId('user-email-label')).not.toBeInTheDocument();
-    expect(screen.queryByTestId('user-email-value')).not.toBeInTheDocument();
-  });
 });

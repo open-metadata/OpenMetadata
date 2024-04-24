@@ -130,6 +130,7 @@ import org.openmetadata.service.resources.bots.BotResourceTest;
 import org.openmetadata.service.resources.databases.TableResourceTest;
 import org.openmetadata.service.resources.teams.UserResource.UserList;
 import org.openmetadata.service.security.AuthenticationException;
+import org.openmetadata.service.security.mask.PIIMasker;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.PasswordUtil;
@@ -1297,6 +1298,17 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
     // Create a user without domain and ensure it inherits domain from the parent
     CreateUser create = createRequest(test).withTeams(listOf(team.getId()));
     assertDomainInheritance(create, DOMAIN.getEntityReference());
+  }
+
+  @Test
+  void test_maskEmail() throws HttpResponseException {
+    // Admins can check the mail
+    User user = getEntityByName(USER1.getName(), ADMIN_AUTH_HEADERS);
+    assertEquals(USER1.getEmail(), user.getEmail());
+
+    // non-admins cannot see the mail
+    User noEmailUser = getEntityByName(USER1.getName(), authHeaders(USER2.getName()));
+    assertEquals(PIIMasker.MASKED_MAIL, noEmailUser.getEmail());
   }
 
   private DecodedJWT decodedJWT(String token) {
