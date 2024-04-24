@@ -42,7 +42,7 @@ import {
 import {
   assignGlossaryTerm,
   removeGlossaryTerm,
-  udpateGlossaryTerm,
+  updateGlossaryTerm,
 } from '../Utils/Glossary';
 import { getToken } from '../Utils/LocalStorage';
 import {
@@ -395,7 +395,7 @@ class EntityClass {
     );
   }
   updateGlossary() {
-    udpateGlossaryTerm(
+    updateGlossaryTerm(
       `${glossaryDetails2.name}.${glossaryTermDetails2.name}`,
       glossaryTermDetails2.name,
       this.endPoint

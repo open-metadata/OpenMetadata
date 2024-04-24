@@ -249,6 +249,7 @@ const TreeAsyncSelectList: FC<Omit<AsyncSelectListProps, 'fetchOptions'>> = ({
         id: option.id,
         value: option.fullyQualifiedName,
         title: getEntityName(option),
+        'data-testid': `tag-${option.fullyQualifiedName}`,
         checkable: isGlossaryTerm,
         isLeaf: isGlossaryTerm ? !hasChildren : false,
         selectable: isGlossaryTerm,
