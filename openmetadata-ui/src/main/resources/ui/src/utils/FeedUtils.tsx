@@ -41,6 +41,7 @@ import {
 import { EntityType, FqnPart, TabSpecificField } from '../enums/entity.enum';
 import { SearchIndex } from '../enums/search.enum';
 import {
+  CardStyle,
   EntityTestResultSummaryObject,
   FieldOperation,
   TestCaseStatus,
@@ -62,6 +63,7 @@ import {
   getPartialNameFromFQN,
   getPartialNameFromTableFQN,
   getRandomColor,
+  Transi18next,
 } from './CommonUtils';
 import { getRelativeCalendar } from './date-time/DateTimeUtils';
 import EntityLink from './EntityLink';
@@ -761,4 +763,66 @@ export const formatTestStatusData = (
       testCases: abortedCases,
     },
   };
+};
+
+export const getFeedHeaderTextFromCardStyle = (
+  fieldOperation?: FieldOperation,
+  entityType?: string,
+  cardStyle?: CardStyle,
+  fieldName?: string
+) => {
+  if (fieldName === 'assets') {
+    return (
+      <Transi18next
+        i18nKey="message.feed-entity-created-header"
+        renderElement={<Typography.Text className="font-bold" />}
+      />
+    );
+  }
+  switch (cardStyle) {
+    case CardStyle.CustomProperties:
+      return (
+        <Transi18next
+          i18nKey="message.feed-custom-property-header"
+          renderElement={<Typography.Text className="font-bold" />}
+        />
+      );
+    case CardStyle.TestCaseResult:
+      return (
+        <Transi18next
+          i18nKey="message.feed-test-case-header"
+          renderElement={<Typography.Text className="font-bold" />}
+        />
+      );
+    case CardStyle.Description:
+    case CardStyle.Tags:
+    case CardStyle.Owner:
+      return (
+        <Transi18next
+          i18nKey="message.feed-field-action-entity-header"
+          renderElement={<Typography.Text className="font-bold" />}
+          values={{
+            field: i18next.t(
+              `label.${cardStyle === CardStyle.Tags ? 'tag-plural' : cardStyle}`
+            ),
+            action: i18next.t(
+              `label.${fieldOperation ?? FieldOperation.Updated}-lowercase`
+            ),
+            entity: entityType ? i18next.t(`label.${entityType}`) : '',
+          }}
+        />
+      );
+
+    case CardStyle.EntityCreated:
+      return (
+        <Transi18next
+          i18nKey="message.feed-entity-created-header"
+          renderElement={<Typography.Text className="font-bold" />}
+        />
+      );
+
+    case CardStyle.Default:
+    default:
+      return i18next.t('label.posted-on-lowercase');
+  }
 };

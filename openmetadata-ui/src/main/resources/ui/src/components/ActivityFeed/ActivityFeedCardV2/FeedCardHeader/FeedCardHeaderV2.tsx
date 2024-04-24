@@ -22,21 +22,16 @@ import {
   formatDateTime,
   getRelativeTime,
 } from '../../../../utils/date-time/DateTimeUtils';
-import {
-  getEntityName,
-  getEntityNameLabel,
-} from '../../../../utils/EntityUtils';
+import { getEntityName } from '../../../../utils/EntityUtils';
 import {
   entityDisplayName,
   getEntityFQN,
   getEntityType,
-  getFeedChangeFieldLabel,
-  getFeedChangeOperationLabel,
+  getFeedHeaderTextFromCardStyle,
 } from '../../../../utils/FeedUtils';
 import EntityPopOverCard from '../../../common/PopOverCard/EntityPopOverCard';
 
 import { useTranslation } from 'react-i18next';
-import { EntityField } from '../../../../constants/Feeds.constants';
 import { EntityType } from '../../../../enums/entity.enum';
 import entityUtilClassBase from '../../../../utils/EntityUtilClassBase';
 import UserPopOverCard from '../../../common/PopOverCard/UserPopOverCard';
@@ -52,6 +47,7 @@ const FeedCardHeaderV2 = ({
   isAnnouncement = false,
   fieldOperation,
   fieldName,
+  cardStyle,
 }: FeedCardHeaderV2Props) => {
   const [, , user] = useUserProfile({
     permission: true,
@@ -94,17 +90,18 @@ const FeedCardHeaderV2 = ({
             ) : (
               <>
                 <Typography.Text className="m-r-xss">
-                  {getFeedChangeOperationLabel(fieldOperation, false)}
+                  {getFeedHeaderTextFromCardStyle(
+                    fieldOperation,
+                    entityType,
+                    cardStyle,
+                    fieldName
+                  )}
                 </Typography.Text>
-                <Typography.Text className="m-r-xss" data-testid="entityType">
-                  {getFeedChangeFieldLabel(fieldName as EntityField)}
-                </Typography.Text>
-                <Typography.Text className="m-r-xss">
-                  {t('label.for-lowercase')}
-                </Typography.Text>
-                <Typography.Text className="m-r-xss">
-                  {getEntityNameLabel(entityType)}
-                </Typography.Text>
+                {fieldName === 'assets' && (
+                  <Typography.Text className="m-r-xss">
+                    {t('label.to-lowercase')}
+                  </Typography.Text>
+                )}
               </>
             )}
 

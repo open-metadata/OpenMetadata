@@ -110,6 +110,7 @@ const ActivityFeedCardV2 = ({
             <Col span={24}>
               <FeedCardHeaderV2
                 about={!isPost ? feed.about : undefined}
+                cardStyle={feed.cardStyle}
                 createdBy={post.from}
                 fieldName={feed.feedInfo?.fieldName as EntityField}
                 fieldOperation={feed.fieldOperation}

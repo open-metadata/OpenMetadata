@@ -11,7 +11,10 @@
  *  limitations under the License.
  */
 
-import { FieldOperation } from '../../../../generated/entity/feed/thread';
+import {
+  CardStyle,
+  FieldOperation,
+} from '../../../../generated/entity/feed/thread';
 
 export interface FeedCardHeaderV2Props {
   className?: string;
@@ -22,4 +25,5 @@ export interface FeedCardHeaderV2Props {
   timeStamp?: number;
   fieldOperation?: FieldOperation;
   fieldName?: string;
+  cardStyle?: CardStyle;
 }
