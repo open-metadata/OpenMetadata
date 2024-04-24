@@ -24,7 +24,7 @@ from metadata.profiler.orm.functions.sum import SumFn
 
 class NullMissingCount(StaticMetric):
     """
-    NULL COUNT Metric
+    NULL + Empty COUNT Metric
 
     Given a column, return the null count.
 
@@ -39,15 +39,23 @@ class NullMissingCount(StaticMetric):
 
     @classmethod
     def name(cls):
+        """
+        Returns the name of the metric.
+        """
         return MetricType.nullCount.value
 
     @property
     def metric_type(self):
+        """
+        Returns the type of the metric.
+        """
         return int
 
     @_label
     def fn(self):
-        """sqlalchemy function"""
+        """
+        Returns the SQLAlchemy function for calculating the metric.
+        """
         return SumFn(
             case(
                 [
@@ -59,5 +67,7 @@ class NullMissingCount(StaticMetric):
         )
 
     def df_fn(self, dfs=None):
-        """pandas function"""
+        """
+        Returns the pandas function for calculating the metric.
+        """
         return sum(df[self.col.name].isnull().sum() for df in dfs)
