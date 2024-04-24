@@ -83,6 +83,7 @@ import {
   createEdges,
   createNewEdge,
   createNodes,
+  decodeLineageHandles,
   getAllTracedColumnEdge,
   getAllTracedNodes,
   getChildMap,
@@ -338,10 +339,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
         };
       });
     } catch (error) {
-      showErrorToast(
-        error as AxiosError,
-        t('message.fetch-pipeline-status-error')
-      );
+      // do not show toast error
     }
   }, []);
 
@@ -763,6 +761,17 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
 
       const columnConnection =
         source !== sourceHandle && target !== targetHandle;
+
+      // Decode the source and target handle. This contains column's fqn.
+      // This is further used in the Lineage API for creating the column level lineage.
+      if (columnConnection) {
+        if (params.sourceHandle) {
+          params.sourceHandle = decodeLineageHandles(params.sourceHandle);
+        }
+        if (params.targetHandle) {
+          params.targetHandle = decodeLineageHandles(params.targetHandle);
+        }
+      }
 
       setStatus('waiting');
       setLoading(true);

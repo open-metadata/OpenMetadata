@@ -50,7 +50,6 @@ import CustomNodeV1 from '../components/Entity/EntityLineage/CustomNodeV1.compon
 import {
   CustomEdgeData,
   CustomElement,
-  CustomFlow,
   EdgeData,
   EdgeTypeEnum,
   EntityReferenceChild,
@@ -80,6 +79,7 @@ import { AddLineage, EntitiesEdge } from '../generated/api/lineage/addLineage';
 import { Container } from '../generated/entity/data/container';
 import { Dashboard } from '../generated/entity/data/dashboard';
 import { Mlmodel } from '../generated/entity/data/mlmodel';
+import { SearchIndex as SearchIndexEntity } from '../generated/entity/data/searchIndex';
 import { Column, Table } from '../generated/entity/data/table';
 import { Topic } from '../generated/entity/data/topic';
 import { ColumnLineage, LineageDetails } from '../generated/type/entityLineage';
@@ -93,6 +93,30 @@ import { getEntityName } from './EntityUtils';
 import { showErrorToast } from './ToastUtils';
 
 export const MAX_LINEAGE_LENGTH = 20;
+
+export const encodeLineageHandles = (handle: string) => {
+  return btoa(encodeURIComponent(handle));
+};
+
+export const decodeLineageHandles = (handle: string) => {
+  return decodeURIComponent(atob(handle));
+};
+
+export const getColumnSourceTargetHandles = (obj: {
+  sourceHandle?: string | null;
+  targetHandle?: string | null;
+}) => {
+  const { sourceHandle, targetHandle } = obj;
+
+  return {
+    sourceHandle: sourceHandle
+      ? decodeLineageHandles(sourceHandle)
+      : sourceHandle,
+    targetHandle: targetHandle
+      ? decodeLineageHandles(targetHandle)
+      : targetHandle,
+  };
+};
 
 export const onLoad = (reactFlowInstance: ReactFlowInstance) => {
   reactFlowInstance.fitView();
@@ -200,20 +224,6 @@ export const getModalBodyText = (selectedEdge: Edge) => {
     sourceDisplayName: sourceEntity,
     targetDisplayName: targetEntity,
   });
-};
-
-export const getUniqueFlowElements = (elements: CustomFlow[]) => {
-  const flag: { [x: string]: boolean } = {};
-  const uniqueElements: CustomFlow[] = [];
-
-  elements.forEach((elem) => {
-    if (!flag[elem.id]) {
-      flag[elem.id] = true;
-      uniqueElements.push(elem);
-    }
-  });
-
-  return uniqueElements;
 };
 
 export const getNewLineageConnectionDetails = (
@@ -346,26 +356,6 @@ export const getClassifiedEdge = (edges: Edge[]) => {
   );
 };
 
-export const isTracedEdge = (
-  selectedNode: Node,
-  edge: Edge,
-  incomerIds: string[],
-  outgoerIds: string[]
-) => {
-  const incomerEdges =
-    incomerIds.includes(edge.source) &&
-    (incomerIds.includes(edge.target) || selectedNode.id === edge.target);
-  const outgoersEdges =
-    outgoerIds.includes(edge.target) &&
-    (outgoerIds.includes(edge.source) || selectedNode.id === edge.source);
-
-  return (
-    (incomerEdges || outgoersEdges) &&
-    isUndefined(edge.sourceHandle) &&
-    isUndefined(edge.targetHandle)
-  );
-};
-
 const getTracedEdge = (
   selectedColumn: string,
   edges: Edge[],
@@ -428,24 +418,6 @@ export const getAllTracedColumnEdge = (column: string, columnEdge: Edge[]) => {
       ...outGoingColumnEdges,
     ],
   };
-};
-
-export const isColumnLineageTraced = (
-  column: string,
-  edge: Edge,
-  incomingColumnEdges: string[],
-  outGoingColumnEdges: string[]
-) => {
-  const incomerEdges =
-    incomingColumnEdges.includes(`${edge.sourceHandle}`) &&
-    (incomingColumnEdges.includes(`${edge.targetHandle}`) ||
-      column === edge.targetHandle);
-  const outgoersEdges =
-    outGoingColumnEdges.includes(`${edge.targetHandle}`) &&
-    (outGoingColumnEdges.includes(`${edge.sourceHandle}`) ||
-      column === edge.sourceHandle);
-
-  return incomerEdges || outgoersEdges;
 };
 
 export const nodeTypes = {
@@ -532,6 +504,10 @@ export const getEntityChildrenAndLabel = (node: SourceType) => {
     },
     [EntityType.TOPIC]: {
       data: (node as Topic).messageSchema?.schemaFields ?? [],
+      label: t('label.field-plural'),
+    },
+    [EntityType.SEARCH_INDEX]: {
+      data: (node as SearchIndexEntity).fields ?? [],
       label: t('label.field-plural'),
     },
   };
@@ -705,12 +681,15 @@ export const createEdges = (
         const toColumn = e.toColumn ?? '';
         if (toColumn && e.fromColumns && e.fromColumns.length > 0) {
           e.fromColumns.forEach((fromColumn) => {
+            const encodedFromColumn = encodeLineageHandles(fromColumn);
+            const encodedToColumn = encodeLineageHandles(toColumn);
+
             lineageEdgesV1.push({
-              id: `column-${fromColumn}-${toColumn}-edge-${edge.fromEntity.id}-${edge.toEntity.id}`,
+              id: `column-${encodedFromColumn}-${encodedToColumn}-edge-${edge.fromEntity.id}-${edge.toEntity.id}`,
               source: edge.fromEntity.id,
               target: edge.toEntity.id,
-              targetHandle: toColumn,
-              sourceHandle: fromColumn,
+              targetHandle: encodedToColumn,
+              sourceHandle: encodedFromColumn,
               style: { strokeWidth: '2px' },
               type: 'buttonedge',
               markerEnd: {
@@ -719,8 +698,8 @@ export const createEdges = (
               data: {
                 edge,
                 isColumnLineage: true,
-                targetHandle: toColumn,
-                sourceHandle: fromColumn,
+                targetHandle: encodedToColumn,
+                sourceHandle: encodedFromColumn,
               },
             });
           });
@@ -1152,13 +1131,14 @@ export const getChildMap = (obj: EntityLineageResponse, decodedFqn: string) => {
 export const flattenObj = (
   entityObj: EntityLineageResponse,
   childMapObj: EntityReferenceChild,
-  downwards: boolean,
   id: string,
   nodes: EntityReference[],
   edges: EdgeDetails[],
   pagination_data: Record<string, NodeIndexMap>,
-  maxLineageLength = 50
+  config: { downwards: boolean; maxLineageLength?: number }
 ) => {
+  const { downwards, maxLineageLength = 50 } = config;
+
   const children = downwards ? childMapObj.children : childMapObj.parents;
   if (!children) {
     return;
@@ -1170,16 +1150,10 @@ export const flattenObj = (
 
   children.slice(0, endIndex).forEach((item) => {
     if (item) {
-      flattenObj(
-        entityObj,
-        item,
+      flattenObj(entityObj, item, item.id, nodes, edges, pagination_data, {
         downwards,
-        item.id,
-        nodes,
-        edges,
-        pagination_data,
-        maxLineageLength
-      );
+        maxLineageLength,
+      });
       nodes.push(item);
     }
   });
@@ -1229,26 +1203,14 @@ export const getPaginatedChildMap = (
   const edges: EdgeDetails[] = [];
   nodes.push(obj.entity);
   if (map) {
-    flattenObj(
-      obj,
-      map,
-      true,
-      obj.entity.id,
-      nodes,
-      edges,
-      pagination_data,
-      maxLineageLength
-    );
-    flattenObj(
-      obj,
-      map,
-      false,
-      obj.entity.id,
-      nodes,
-      edges,
-      pagination_data,
-      maxLineageLength
-    );
+    flattenObj(obj, map, obj.entity.id, nodes, edges, pagination_data, {
+      downwards: true,
+      maxLineageLength,
+    });
+    flattenObj(obj, map, obj.entity.id, nodes, edges, pagination_data, {
+      downwards: false,
+      maxLineageLength,
+    });
   }
 
   return { nodes, edges };

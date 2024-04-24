@@ -99,4 +99,5 @@ export const LINEAGE_COLUMN_NODE_SUPPORTED = [
   EntityType.DASHBOARD_DATA_MODEL,
   EntityType.CONTAINER,
   EntityType.TOPIC,
+  EntityType.SEARCH_INDEX,
 ];

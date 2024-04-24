@@ -31,6 +31,7 @@ import { LineageLayerView } from '../../../context/LineageProvider/LineageProvid
 import { EntityType } from '../../../enums/entity.enum';
 import { StatusType } from '../../../generated/entity/data/pipeline';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
+import { getColumnSourceTargetHandles } from '../../../utils/EntityLineageUtils';
 import { getEntityName } from '../../../utils/EntityUtils';
 import EntityPopOverCard from '../../common/PopOverCard/EntityPopOverCard';
 import { CustomEdgeData } from './EntityLineage.interface';
@@ -112,9 +113,14 @@ export const CustomEdge = ({
       return false;
     }
 
+    const decodedHandles = getColumnSourceTargetHandles({
+      sourceHandle,
+      targetHandle,
+    });
+
     return (
-      tracedColumns.includes(sourceHandle) &&
-      tracedColumns.includes(targetHandle)
+      tracedColumns.includes(decodedHandles.sourceHandle ?? '') &&
+      tracedColumns.includes(decodedHandles.targetHandle ?? '')
     );
   }, [isColumnLineage, tracedColumns, sourceHandle, targetHandle]);
 
