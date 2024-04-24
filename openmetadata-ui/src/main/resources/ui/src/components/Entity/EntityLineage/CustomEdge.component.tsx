@@ -14,7 +14,13 @@
 import Icon from '@ant-design/icons/lib/components/Icon';
 import { Button, Tag } from 'antd';
 import classNames from 'classnames';
-import React, { Fragment, useCallback, useEffect, useMemo } from 'react';
+import React, {
+  Fragment,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+} from 'react';
 import { EdgeProps, getBezierPath } from 'reactflow';
 import { ReactComponent as FunctionIcon } from '../../../assets/svg/ic-function.svg';
 import { ReactComponent as IconTimesCircle } from '../../../assets/svg/ic-times-circle.svg';
@@ -54,6 +60,15 @@ export const LineageEdgeIcon = ({
   );
 };
 
+function usePrevious<T>(value: T) {
+  const ref = useRef<T>(value);
+  useEffect(() => {
+    ref.current = value;
+  }, [value]);
+
+  return ref.current;
+}
+
 export const CustomEdge = ({
   id,
   sourceX,
@@ -87,6 +102,8 @@ export const CustomEdge = ({
     onColumnEdgeRemove,
     fetchPipelineStatus,
   } = useLineageProvider();
+
+  const prevActiveLayer = usePrevious(activeLayer);
 
   const { theme } = useApplicationStore();
 
@@ -311,8 +328,17 @@ export const CustomEdge = ({
   }, [edge, isColumnLineage, sourceHandle, targetHandle]);
 
   useEffect(() => {
-    if (data.edge.pipeline && activeLayer.includes(LineageLayerView.PIPELINE)) {
-      fetchPipelineStatus(data.edge.pipeline?.fullyQualifiedName);
+    const wasPipelineAlreadyActive = prevActiveLayer?.includes(
+      LineageLayerView.PIPELINE
+    );
+    const isPipelineActiveNow = activeLayer.includes(LineageLayerView.PIPELINE);
+
+    if (
+      data.edge.pipeline &&
+      !wasPipelineAlreadyActive &&
+      isPipelineActiveNow
+    ) {
+      fetchPipelineStatus(data.edge.pipeline.fullyQualifiedName);
     }
   }, [data.edge.pipeline, activeLayer]);
 
