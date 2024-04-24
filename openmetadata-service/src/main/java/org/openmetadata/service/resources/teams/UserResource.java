@@ -135,6 +135,7 @@ import org.openmetadata.service.security.auth.AuthenticatorHandler;
 import org.openmetadata.service.security.auth.BotTokenCache;
 import org.openmetadata.service.security.auth.UserTokenCache;
 import org.openmetadata.service.security.jwt.JWTTokenGenerator;
+import org.openmetadata.service.security.mask.PIIMasker;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
 import org.openmetadata.service.security.saml.JwtTokenCacheManager;
@@ -1590,5 +1591,8 @@ public class UserResource extends EntityResource<User, UserRepository> {
             .maskAuthenticationMechanism(user.getName(), user.getAuthenticationMechanism());
       }
     }
+
+    // Remove mails for non-admin users
+    PIIMasker.maskUser(authorizer, securityContext, user);
   }
 }
