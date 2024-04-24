@@ -17,6 +17,7 @@ import org.openmetadata.schema.entity.data.Query;
 import org.openmetadata.schema.entity.data.SearchIndex;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.data.Topic;
+import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.tests.TestCase;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.Field;
@@ -35,6 +36,7 @@ public class PIIMasker {
   public static final String SENSITIVE_PII_TAG = "PII.Sensitive";
   public static final String MASKED_VALUE = "********";
   public static final String MASKED_NAME = "[MASKED]";
+  public static final String MASKED_MAIL = "********@masked.com";
 
   private PIIMasker() {
     /* Private constructor for Utility class */
@@ -263,5 +265,11 @@ public class PIIMasker {
 
   private static String flagMaskedName(String name) {
     return String.format("%s %s", name, MASKED_NAME);
+  }
+
+  public static User maskUser(Authorizer authorizer, SecurityContext securityContext, User user) {
+    if (authorizer.authorizePII(securityContext, null)) return user;
+    user.setEmail(MASKED_MAIL);
+    return user;
   }
 }
