@@ -312,17 +312,17 @@ class MssqlUnitTest(TestCase):
             "database_service"
         ] = MOCK_DATABASE_SERVICE.name.__root__
         self.thread_id = self.mssql.context.get_current_thread_id()
-        self.mssql._inspector_map[self.thread_id] = types.SimpleNamespace()
-        self.mssql._inspector_map[
+        self.mssql._connection._inspector_map[self.thread_id] = types.SimpleNamespace()
+        self.mssql._connection._inspector_map[
             self.thread_id
         ].get_columns = lambda table_name, schema_name, db_name: MOCK_COLUMN_VALUE
-        self.mssql._inspector_map[
+        self.mssql._connection._inspector_map[
             self.thread_id
         ].get_pk_constraint = lambda table_name, schema_name: []
-        self.mssql._inspector_map[
+        self.mssql._connection._inspector_map[
             self.thread_id
         ].get_unique_constraints = lambda table_name, schema_name: []
-        self.mssql._inspector_map[
+        self.mssql._connection._inspector_map[
             self.thread_id
         ].get_foreign_keys = lambda table_name, schema_name: []
 

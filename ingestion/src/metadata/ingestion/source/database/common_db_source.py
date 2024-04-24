@@ -70,6 +70,7 @@ from metadata.utils.execution_time_tracker import (
 from metadata.utils.filters import filter_by_table
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.ssl_manager import SSLManager, check_ssl_and_init
+from metadata.connection.sqa import SqlAlchemyConnection
 
 logger = ingestion_logger()
 
@@ -114,15 +115,12 @@ class CommonDbSourceService(
                 self.service_connection
             )
 
-        self.engine: Engine = get_connection(self.service_connection)
-        self.session = create_and_bind_thread_safe_session(self.engine)
+        self._connection = SqlAlchemyConnection.from_config(self.service_connection, self.context)
+
 
         # Flag the connection for the test connection
-        self.connection_obj = self.engine
         self.test_connection()
 
-        self._connection_map = {}  # Lazy init as well
-        self._inspector_map = {}
         self.table_constraints = None
         self.database_source_state = set()
         self.context.get_global().table_views = []
@@ -140,10 +138,8 @@ class CommonDbSourceService(
 
         new_service_connection = deepcopy(self.service_connection)
         new_service_connection.database = database_name
-        self.engine = get_connection(new_service_connection)
 
-        self._connection_map = {}  # Lazy init as well
-        self._inspector_map = {}
+        self._connection = SqlAlchemyconnection.from_config(new_service_connection, self.context)
 
     def get_database_names(self) -> Iterable[str]:
         """
@@ -592,31 +588,18 @@ class CommonDbSourceService(
         """
         Return the SQLAlchemy connection
         """
-        thread_id = self.context.get_current_thread_id()
-
-        if not self._connection_map.get(thread_id):
-            self._connection_map[thread_id] = self.engine.connect()
-
-        return self._connection_map[thread_id]
+        return self._connection.connection
 
     @property
     def inspector(self) -> Inspector:
-        thread_id = self.context.get_current_thread_id()
-
-        if not self._inspector_map.get(thread_id):
-            self._inspector_map[thread_id] = inspect(self.connection)
-
-        return self._inspector_map[thread_id]
+        return self._connection.inspector
 
     def close(self):
-        if self.connection is not None:
-            self.connection.close()
-        for connection in self._connection_map.values():
-            connection.close()
         if hasattr(self, "ssl_manager") and self.ssl_manager:
             self.ssl_manager = cast(SSLManager, self.ssl_manager)
             self.ssl_manager.cleanup_temp_files()
-        self.engine.dispose()
+
+        self._connection.close()
 
     def fetch_table_tags(
         self,
