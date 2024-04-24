@@ -337,7 +337,7 @@ public class SystemRepository {
         .withPassed(Boolean.FALSE)
         .withMessage(
             String.format(
-                "Missing versions that were not executed %s. Unexpected executed migrations %s",
+                "Missing migrations that were not executed %s. Unexpected executed migrations %s",
                 missingVersions, unexpectedVersions));
   }
 }
