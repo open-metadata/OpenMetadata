@@ -264,9 +264,12 @@ export const MOCK_NODES_AND_EDGES = {
       id: 'column-sample_data.ecommerce_db.shopify.raw_product_catalog.comments-sample_data.ecommerce_db.shopify.dim_location.location_id-edge-a0f3199f-5fea-4c41-af43-bb66ef3c845e-f52acb5f-2b2c-440c-91c1-90b46d138fad',
       source: 'a0f3199f-5fea-4c41-af43-bb66ef3c845e',
       target: 'f52acb5f-2b2c-440c-91c1-90b46d138fad',
-      targetHandle: 'sample_data.ecommerce_db.shopify.dim_location.location_id',
-      sourceHandle:
-        'sample_data.ecommerce_db.shopify.raw_product_catalog.comments',
+      targetHandle: btoa(
+        'sample_data.ecommerce_db.shopify.dim_location.location_id'
+      ),
+      sourceHandle: btoa(
+        'sample_data.ecommerce_db.shopify.raw_product_catalog.comments'
+      ),
       type: 'buttonedge',
       markerEnd: {
         type: MarkerType.ArrowClosed,
@@ -275,10 +278,12 @@ export const MOCK_NODES_AND_EDGES = {
         id: 'column-sample_data.ecommerce_db.shopify.raw_product_catalog.comments-sample_data.ecommerce_db.shopify.dim_location.location_id-edge-a0f3199f-5fea-4c41-af43-bb66ef3c845e-f52acb5f-2b2c-440c-91c1-90b46d138fad',
         source: 'a0f3199f-5fea-4c41-af43-bb66ef3c845e',
         target: 'f52acb5f-2b2c-440c-91c1-90b46d138fad',
-        targetHandle:
-          'sample_data.ecommerce_db.shopify.dim_location.location_id',
-        sourceHandle:
-          'sample_data.ecommerce_db.shopify.raw_product_catalog.comments',
+        targetHandle: btoa(
+          'sample_data.ecommerce_db.shopify.dim_location.location_id'
+        ),
+        sourceHandle: btoa(
+          'sample_data.ecommerce_db.shopify.raw_product_catalog.comments'
+        ),
         isEditMode: false,
         isColumnLineage: true,
       },

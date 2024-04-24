@@ -85,11 +85,9 @@ import { Topic } from '../generated/entity/data/topic';
 import { ColumnLineage, LineageDetails } from '../generated/type/entityLineage';
 import { EntityReference } from '../generated/type/entityReference';
 import { addLineage, deleteLineageEdge } from '../rest/miscAPI';
-import {
-  getPartialNameFromFQN,
-  getPartialNameFromTableFQN,
-} from './CommonUtils';
+import { getPartialNameFromTableFQN } from './CommonUtils';
 import { getEntityName } from './EntityUtils';
+import Fqn from './Fqn';
 import { showErrorToast } from './ToastUtils';
 
 export const MAX_LINEAGE_LENGTH = 20;
@@ -198,26 +196,29 @@ export const getLayoutedElements = (
 export const getModalBodyText = (selectedEdge: Edge) => {
   const { data } = selectedEdge;
   const { fromEntity, toEntity } = data.edge as EdgeDetails;
+  const { sourceHandle = '', targetHandle = '' } =
+    getColumnSourceTargetHandles(selectedEdge);
+
   const { isColumnLineage } = data as CustomEdgeData;
   let sourceEntity = '';
   let targetEntity = '';
 
-  const sourceFQN = isColumnLineage ? data?.sourceHandle : fromEntity.fqn;
-
-  const targetFQN = isColumnLineage ? data?.targetHandle : toEntity.fqn;
-
+  const sourceFQN = isColumnLineage ? sourceHandle : fromEntity.fqn;
+  const targetFQN = isColumnLineage ? targetHandle : toEntity.fqn;
   const fqnPart = isColumnLineage ? FqnPart.Column : FqnPart.Table;
 
   if (fromEntity.type === EntityType.TABLE) {
-    sourceEntity = getPartialNameFromTableFQN(sourceFQN || '', [fqnPart]);
+    sourceEntity = getPartialNameFromTableFQN(sourceFQN ?? '', [fqnPart]);
   } else {
-    sourceEntity = getPartialNameFromFQN(sourceFQN || '', ['database']);
+    const arrFqn = Fqn.split(sourceFQN ?? '');
+    sourceEntity = arrFqn[arrFqn.length - 1];
   }
 
   if (toEntity.type === EntityType.TABLE) {
-    targetEntity = getPartialNameFromTableFQN(targetFQN || '', [fqnPart]);
+    targetEntity = getPartialNameFromTableFQN(targetFQN ?? '', [fqnPart]);
   } else {
-    targetEntity = getPartialNameFromFQN(targetFQN || '', ['database']);
+    const arrFqn = Fqn.split(targetFQN ?? '');
+    targetEntity = arrFqn[arrFqn.length - 1];
   }
 
   return t('message.remove-edge-between-source-and-target', {
@@ -367,11 +368,16 @@ const getTracedEdge = (
 
   const tracedEdgeIds = edges
     .filter((e) => {
-      const id = isIncomer ? e.targetHandle : e.sourceHandle;
+      const { sourceHandle, targetHandle } = getColumnSourceTargetHandles(e);
+      const id = isIncomer ? targetHandle : sourceHandle;
 
       return id === selectedColumn;
     })
-    .map((e) => (isIncomer ? `${e.sourceHandle}` : `${e.targetHandle}`));
+    .map((e) => {
+      const { sourceHandle, targetHandle } = getColumnSourceTargetHandles(e);
+
+      return isIncomer ? sourceHandle ?? '' : targetHandle ?? '';
+    });
 
   return tracedEdgeIds;
 };

@@ -29,6 +29,7 @@ import {
   getAllTracedEdges,
   getChildMap,
   getColumnLineageData,
+  getColumnSourceTargetHandles,
   getConnectedNodesEdges,
   getLineageDetailsObject,
   getLineageEdge,
@@ -364,6 +365,47 @@ describe('Test EntityLineageUtils utility', () => {
     expect(
       getPaginatedChildMap(MOCK_LINEAGE_DATA_NEW, MOCK_CHILD_MAP, {}, 50)
     ).toEqual(MOCK_PAGINATED_CHILD_MAP);
+  });
+
+  // generate test for getColumnSourceTargetHandles
+  describe('getColumnSourceTargetHandles', () => {
+    it('should handle various states of source and target handles correctly', () => {
+      // Test with both handles defined
+      const obj1 = {
+        sourceHandle: 'c291cmNlSGFuZGxl',
+        targetHandle: 'dGFyZ2V0SGFuZGxl',
+      };
+      const result1 = getColumnSourceTargetHandles(obj1);
+
+      expect(result1).toEqual({
+        sourceHandle: 'sourceHandle',
+        targetHandle: 'targetHandle',
+      });
+
+      // Test with null source handle
+      const obj2 = {
+        sourceHandle: null,
+        targetHandle: 'dGFyZ2V0SGFuZGxl',
+      };
+      const result2 = getColumnSourceTargetHandles(obj2);
+
+      expect(result2).toEqual({
+        sourceHandle: null,
+        targetHandle: 'targetHandle',
+      });
+
+      // Test with null target handle
+      const obj3 = {
+        sourceHandle: 'c291cmNlSGFuZGxl',
+        targetHandle: null,
+      };
+      const result3 = getColumnSourceTargetHandles(obj3);
+
+      expect(result3).toEqual({
+        sourceHandle: 'sourceHandle',
+        targetHandle: null,
+      });
+    });
   });
 
   describe('createNewEdge', () => {

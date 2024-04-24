@@ -78,6 +78,7 @@ export const LINEAGE_DEFAULT_QUICK_FILTERS = [
   'domain.displayName.keyword',
   'owner.displayName.keyword',
   'tags.tagFQN',
+  'columns.name.keyword',
 ];
 
 export const LINEAGE_SOURCE: { [key in Source]: string } = {

@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { DownOutlined, SearchOutlined, UpOutlined } from '@ant-design/icons';
-import { Button, Collapse, Input } from 'antd';
+import { Button, Collapse, Input, Space } from 'antd';
 import { isEmpty } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -149,22 +149,22 @@ const NodeChildren = ({ node, isConnectable }: NodeChildrenProps) => {
               <Button
                 className="flex-center text-primary rounded-4 p-xss h-9"
                 data-testid="expand-cols-btn"
-                icon={
-                  <div className="d-flex w-5 h-5 m-r-xs text-base-color">
-                    {getEntityIcon(node.entityType ?? '')}
-                  </div>
-                }
                 type="text"
                 onClick={(e) => {
                   e.stopPropagation();
                   setIsExpanded((prevIsExpanded: boolean) => !prevIsExpanded);
                 }}>
-                {childrenHeading}
-                {isExpanded ? (
-                  <UpOutlined style={{ fontSize: '12px' }} />
-                ) : (
-                  <DownOutlined style={{ fontSize: '12px' }} />
-                )}
+                <Space>
+                  <div className=" w-5 h-5 text-base-color">
+                    {getEntityIcon(node.entityType ?? '')}
+                  </div>
+                  {childrenHeading}
+                  {isExpanded ? (
+                    <UpOutlined style={{ fontSize: '12px' }} />
+                  ) : (
+                    <DownOutlined style={{ fontSize: '12px' }} />
+                  )}
+                </Space>
               </Button>
             )}
           </div>
