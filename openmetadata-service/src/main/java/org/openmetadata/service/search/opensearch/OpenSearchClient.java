@@ -874,7 +874,8 @@ public class OpenSearchClient implements SearchClient {
     List<AggregationBuilder> aggregationBuilders = new ArrayList<>();
     for (String key : aggregations.keySet()) {
       JsonObject aggregation = aggregations.getJsonObject(key);
-      for (String aggregationType : aggregation.keySet()) {
+      Set<String> keySet = aggregation.keySet();
+      for (String aggregationType : keySet) {
         switch (aggregationType) {
           case "terms":
             JsonObject termAggregation = aggregation.getJsonObject(aggregationType);
@@ -895,6 +896,21 @@ public class OpenSearchClient implements SearchClient {
               nestedAggregationBuilder.subAggregation(nestedAggregationBuilder1);
             }
             aggregationBuilders.add(nestedAggregationBuilder);
+            break;
+          case "aggs":
+            // Sub aggregation logic
+            if (!keySet.contains("nested")) {
+              JsonObject subAggregation = aggregation.getJsonObject("aggs");
+              if (!nullOrEmpty(aggregationBuilders)) {
+                AggregationBuilder aggregationBuilder =
+                    aggregationBuilders.get(aggregationBuilders.size() - 1);
+                List<AggregationBuilder> subAggregationBuilders = buildAggregation(subAggregation);
+                for (AggregationBuilder subAggregationBuilder : subAggregationBuilders) {
+                  aggregationBuilder.subAggregation(subAggregationBuilder);
+                }
+              }
+              break;
+            }
             break;
           default:
             break;
