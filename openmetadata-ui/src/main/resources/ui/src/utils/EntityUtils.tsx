@@ -1175,7 +1175,12 @@ export const getFrequentlyJoinedColumns = (
               )}>
               {getPartialNameFromTableFQN(
                 columnJoin.fullyQualifiedName,
-                [FqnPart.Database, FqnPart.Table, FqnPart.Column],
+                [
+                  FqnPart.Database,
+                  FqnPart.Table,
+                  FqnPart.Schema,
+                  FqnPart.Column,
+                ],
                 FQN_SEPARATOR_CHAR
               )}
             </Link>
