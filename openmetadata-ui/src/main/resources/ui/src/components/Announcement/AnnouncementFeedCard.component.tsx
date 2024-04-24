@@ -27,10 +27,10 @@ import AnnouncementFeedCardBody from './AnnouncementFeedCardBody.component';
 const AnnouncementFeedCard = ({
   feed,
   task,
-  editAnnouncementPermission,
+  editPermission,
+  postFeed,
   onConfirmation,
   updateThreadHandler,
-  postFeed,
 }: AnnouncementFeedCardProp) => {
   const { t } = useTranslation();
   const [isReplyThreadVisible, setReplyThreadVisible] =
@@ -65,7 +65,7 @@ const AnnouncementFeedCard = ({
   };
 
   const handleSaveReply = async (value: string) => {
-    await postFeed?.(value, task.id);
+    await postFeed(value, task.id);
 
     if (isReplyThreadVisible) {
       fetchAnnouncementThreadData();
@@ -96,12 +96,11 @@ const AnnouncementFeedCard = ({
           isEntityFeed
           isThread
           announcementDetails={task.announcement}
-          editAnnouncementPermission={editAnnouncementPermission}
+          editPermission={editPermission}
           entityLink={task.about}
           feed={feed}
           feedType={task.type || ThreadType.Conversation}
           isReplyThreadOpen={isReplyThreadVisible}
-          key={`${task.id}-card`}
           showReplyThread={handleOpenReplyThread}
           task={task}
           threadId={task.id}
@@ -122,6 +121,7 @@ const AnnouncementFeedCard = ({
                 <AnnouncementFeedCardBody
                   isEntityFeed
                   className="m-b-sm"
+                  editPermission={editPermission}
                   feed={reply}
                   feedType={task.type || ThreadType.Conversation}
                   key={key}

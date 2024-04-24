@@ -30,8 +30,8 @@ import AnnouncementThreads from './AnnouncementThreads';
 
 const AnnouncementThreadBody = ({
   threadLink,
-  editAnnouncementPermission,
-  onCancel,
+  refetchThread,
+  editPermission,
   postFeedHandler,
   deletePostHandler,
   updateThreadHandler,
@@ -68,6 +68,12 @@ const AnnouncementThreadBody = ({
     }
   };
 
+  const loadNewThreads = () => {
+    setTimeout(() => {
+      getThreads();
+    }, 500);
+  };
+
   const onDiscard = () => {
     setConfirmationState(confirmStateInitialValue);
   };
@@ -81,7 +87,7 @@ const AnnouncementThreadBody = ({
       );
     }
     onDiscard();
-    await getThreads();
+    loadNewThreads();
   };
 
   const onConfirmation = (data: ConfirmState) => {
@@ -89,8 +95,8 @@ const AnnouncementThreadBody = ({
   };
 
   const postFeed = async (value: string, id: string): Promise<void> => {
-    postFeedHandler?.(value, id);
-    await getThreads();
+    await postFeedHandler?.(value, id);
+    loadNewThreads();
   };
 
   const onUpdateThread = async (
@@ -99,26 +105,13 @@ const AnnouncementThreadBody = ({
     isThread: boolean,
     data: Operation[]
   ): Promise<void> => {
-    updateThreadHandler(threadId, postId, isThread, data);
-    await getThreads();
+    await updateThreadHandler(threadId, postId, isThread, data);
+    loadNewThreads();
   };
 
   useEffect(() => {
-    const escapeKeyHandler = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        onCancel?.();
-      }
-    };
-    document.addEventListener('keydown', escapeKeyHandler);
-
-    return () => {
-      document.removeEventListener('keydown', escapeKeyHandler);
-    };
-  }, []);
-
-  useEffect(() => {
     getThreads();
-  }, [threadLink]);
+  }, [threadLink, refetchThread]);
 
   if (isEmpty(threads) && !isThreadLoading) {
     return (
@@ -135,7 +128,7 @@ const AnnouncementThreadBody = ({
   return (
     <div className="m-t-lg" id="thread-panel-body">
       <AnnouncementThreads
-        editAnnouncementPermission={editAnnouncementPermission}
+        editPermission={editPermission}
         postFeed={postFeed}
         threads={threads}
         updateThreadHandler={onUpdateThread}

@@ -27,6 +27,7 @@ jest.mock('../../../utils/FeedUtils', () => ({
 const mockAnnouncementThreadsProp = {
   threads: mockThreadData,
   selectedThreadId: '',
+  editPermission: true,
   postFeed: jest.fn(),
   onThreadIdSelect: jest.fn(),
   onThreadSelect: jest.fn(),

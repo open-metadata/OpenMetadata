@@ -45,12 +45,12 @@ const AnnouncementFeedCardBody = ({
   isEntityFeed,
   threadId,
   isThread,
+  editPermission,
   showRepliesButton = true,
   onConfirmation,
   updateThreadHandler,
   task,
   announcementDetails,
-  editAnnouncementPermission,
   isReplyThreadOpen,
   showReplyThread,
   onReply,
@@ -173,7 +173,7 @@ const AnnouncementFeedCardBody = ({
         align={{ targetOffset: [0, -16] }}
         content={
           <PopoverContent
-            editAnnouncementPermission={editAnnouncementPermission}
+            editAnnouncementPermission={editPermission}
             isAnnouncement={!isUndefined(announcementDetails)}
             isAuthor={isAuthor}
             isThread={isThread}

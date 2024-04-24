@@ -31,8 +31,8 @@ interface Props {
   open: boolean;
   entityType: string;
   entityFQN: string;
+  createPermission: boolean;
   onClose: () => void;
-  createPermission?: boolean;
 }
 
 const AnnouncementDrawer: FC<Props> = ({
@@ -40,12 +40,13 @@ const AnnouncementDrawer: FC<Props> = ({
   onClose,
   entityFQN,
   entityType,
-  createPermission,
+  createPermission = false,
 }) => {
   const { t } = useTranslation();
   const { currentUser } = useApplicationStore();
   const [isAddAnnouncementOpen, setIsAddAnnouncementOpen] =
     useState<boolean>(false);
+  const [refetchThread, setRefetchThread] = useState<boolean>(false);
 
   const title = (
     <Space
@@ -68,11 +69,18 @@ const AnnouncementDrawer: FC<Props> = ({
     await deletePost(threadId, postId, isThread);
   };
 
-  const postFeedHandler = (value: string, id: string) => {
+  const postFeedHandler = async (value: string, id: string): Promise<void> => {
     const data = {
       message: value,
       from: currentUser?.name,
     } as Post;
+
+    try {
+      await postFeedById(id, data);
+    } catch (err) {
+      showErrorToast(err as AxiosError);
+    }
+
     postFeedById(id, data).catch((err: AxiosError) => {
       showErrorToast(err);
     });
@@ -100,38 +108,42 @@ const AnnouncementDrawer: FC<Props> = ({
     []
   );
 
-  return (
-    <>
-      <div data-testid="announcement-drawer">
-        <Drawer
-          closable={false}
-          open={open}
-          placement="right"
-          title={title}
-          width={576}
-          onClose={onClose}>
-          <div className="d-flex justify-end">
-            <Tooltip
-              title={!createPermission && t('message.no-permission-to-view')}>
-              <Button
-                data-testid="add-announcement"
-                disabled={!createPermission}
-                type="primary"
-                onClick={handleOpenAnnouncementModal}>
-                {t('label.add-entity', { entity: t('label.announcement') })}
-              </Button>
-            </Tooltip>
-          </div>
+  const handleSaveAnnouncement = useCallback(() => {
+    handleCloseAnnouncementModal();
+    setRefetchThread((prev) => !prev);
+  }, []);
 
-          <AnnouncementThreadBody
-            deletePostHandler={deletePostHandler}
-            editAnnouncementPermission={createPermission}
-            postFeedHandler={postFeedHandler}
-            threadLink={getEntityFeedLink(entityType, entityFQN)}
-            updateThreadHandler={updateThreadHandler}
-          />
-        </Drawer>
-      </div>
+  return (
+    <div data-testid="announcement-drawer">
+      <Drawer
+        closable={false}
+        open={open}
+        placement="right"
+        title={title}
+        width={576}
+        onClose={onClose}>
+        <div className="d-flex justify-end">
+          <Tooltip
+            title={!createPermission && t('message.no-permission-to-view')}>
+            <Button
+              data-testid="add-announcement"
+              disabled={!createPermission}
+              type="primary"
+              onClick={handleOpenAnnouncementModal}>
+              {t('label.add-entity', { entity: t('label.announcement') })}
+            </Button>
+          </Tooltip>
+        </div>
+
+        <AnnouncementThreadBody
+          deletePostHandler={deletePostHandler}
+          editPermission={createPermission}
+          postFeedHandler={postFeedHandler}
+          refetchThread={refetchThread}
+          threadLink={getEntityFeedLink(entityType, entityFQN)}
+          updateThreadHandler={updateThreadHandler}
+        />
+      </Drawer>
 
       {isAddAnnouncementOpen && (
         <AddAnnouncementModal
@@ -139,9 +151,10 @@ const AnnouncementDrawer: FC<Props> = ({
           entityType={entityType || ''}
           open={isAddAnnouncementOpen}
           onCancel={handleCloseAnnouncementModal}
+          onSave={handleSaveAnnouncement}
         />
       )}
-    </>
+    </div>
   );
 };
 

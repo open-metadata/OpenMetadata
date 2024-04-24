@@ -434,35 +434,60 @@ export const getEntityFieldDisplay = (entityField: string) => {
   return null;
 };
 
-export const updateThreadData = (
+export const updateThreadData = async (
   threadId: string,
   postId: string,
   isThread: boolean,
   data: Operation[],
   callback: (value: React.SetStateAction<Thread[]>) => void
-) => {
+): Promise<void> => {
   if (isThread) {
-    updateThread(threadId, data)
-      .then((res) => {
-        callback((prevData) => {
-          return prevData.map((thread) => {
-            if (isEqual(threadId, thread.id)) {
-              return {
-                ...thread,
-                reactions: res.reactions,
-                message: res.message,
-                announcement: res?.announcement,
-              };
-            } else {
-              return thread;
-            }
-          });
+    try {
+      const res = await updateThread(threadId, data);
+      callback((prevData) => {
+        return prevData.map((thread) => {
+          if (isEqual(threadId, thread.id)) {
+            return {
+              ...thread,
+              reactions: res.reactions,
+              message: res.message,
+              announcement: res?.announcement,
+            };
+          } else {
+            return thread;
+          }
         });
-      })
-      .catch((err: AxiosError) => {
-        showErrorToast(err);
       });
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    }
   } else {
+    try {
+      const res = await updatePost(threadId, postId, data);
+      callback((prevData) => {
+        return prevData.map((thread) => {
+          if (isEqual(threadId, thread.id)) {
+            const updatedPosts = (thread.posts || []).map((post) => {
+              if (isEqual(postId, post.id)) {
+                return {
+                  ...post,
+                  reactions: res.reactions,
+                  message: res.message,
+                };
+              } else {
+                return post;
+              }
+            });
+
+            return { ...thread, posts: updatedPosts };
+          } else {
+            return thread;
+          }
+        });
+      });
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    }
     updatePost(threadId, postId, data)
       .then((res) => {
         callback((prevData) => {

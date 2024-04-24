@@ -12,7 +12,7 @@
  */
 
 import { Divider, Typography } from 'antd';
-import React, { FC, useCallback } from 'react';
+import React, { FC, useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Post, Thread } from '../../generated/entity/feed/thread';
 import { isActiveAnnouncement } from '../../utils/AnnouncementsUtils';
@@ -23,34 +23,41 @@ import AnnouncementFeedCard from './AnnouncementFeedCard.component';
 
 const AnnouncementThreads: FC<AnnouncementThreadListProp> = ({
   threads,
-  className,
-  onConfirmation,
+  editPermission,
   postFeed,
+  onConfirmation,
   updateThreadHandler,
-  editAnnouncementPermission,
 }) => {
   const { t } = useTranslation();
   const { updatedFeedList: updatedThreads } =
     getFeedListWithRelativeDays(threads);
 
-  const activeAnnouncements = updatedThreads.filter(
-    (thread) =>
-      thread.announcement &&
-      isActiveAnnouncement(
-        thread.announcement?.startTime,
-        thread.announcement?.endTime
-      )
+  const activeAnnouncements = useMemo(
+    () =>
+      updatedThreads.filter(
+        (thread) =>
+          thread.announcement &&
+          isActiveAnnouncement(
+            thread.announcement?.startTime,
+            thread.announcement?.endTime
+          )
+      ),
+    [updatedThreads]
   );
 
-  const inActiveAnnouncements = updatedThreads.filter(
-    (thread) =>
-      !(
-        thread.announcement &&
-        isActiveAnnouncement(
-          thread.announcement?.startTime,
-          thread.announcement?.endTime
-        )
-      )
+  const inActiveAnnouncements = useMemo(
+    () =>
+      updatedThreads.filter(
+        (thread) =>
+          !(
+            thread.announcement &&
+            isActiveAnnouncement(
+              thread.announcement?.startTime,
+              thread.announcement?.endTime
+            )
+          )
+      ),
+    [updatedThreads]
   );
 
   const getAnnouncements = useCallback(
@@ -66,7 +73,7 @@ const AnnouncementThreads: FC<AnnouncementThreadListProp> = ({
 
         return (
           <AnnouncementFeedCard
-            editAnnouncementPermission={editAnnouncementPermission}
+            editPermission={editPermission}
             feed={mainFeed}
             key={thread.id}
             postFeed={postFeed}
@@ -77,11 +84,11 @@ const AnnouncementThreads: FC<AnnouncementThreadListProp> = ({
         );
       });
     },
-    [editAnnouncementPermission, postFeed, updateThreadHandler, onConfirmation]
+    [editPermission, postFeed, updateThreadHandler, onConfirmation]
   );
 
   return (
-    <div className={className}>
+    <>
       {getAnnouncements(activeAnnouncements)}
       {Boolean(inActiveAnnouncements.length) && (
         <div className="d-flex flex-column items-end m-y-xlg">
@@ -96,7 +103,7 @@ const AnnouncementThreads: FC<AnnouncementThreadListProp> = ({
       )}
 
       {getAnnouncements(inActiveAnnouncements)}
-    </div>
+    </>
   );
 };
 

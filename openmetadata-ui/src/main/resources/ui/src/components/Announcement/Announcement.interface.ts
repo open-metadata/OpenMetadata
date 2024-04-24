@@ -32,7 +32,7 @@ export interface AnnouncementThreadProp extends HTMLAttributes<HTMLDivElement> {
   threadLink: string;
   threadType?: ThreadType;
   open?: boolean;
-  postFeedHandler: (value: string, id: string) => void;
+  postFeedHandler: (value: string, id: string) => Promise<void>;
   createThread: (data: CreateThread) => Promise<void>;
   updateThreadHandler: ThreadUpdatedFunction;
   onCancel?: () => void;
@@ -50,35 +50,35 @@ export interface AnnouncementThreadBodyProp
       | 'threadLink'
       | 'updateThreadHandler'
       | 'postFeedHandler'
-      | 'onCancel'
       | 'deletePostHandler'
     > {
-  editAnnouncementPermission?: boolean;
-  showHeader?: boolean;
+  refetchThread: boolean;
+  editPermission: boolean;
 }
 
 export interface AnnouncementThreadListProp
   extends HTMLAttributes<HTMLDivElement>,
-    Pick<AnnouncementThreadProp, 'deletePostHandler' | 'updateThreadHandler'> {
-  editAnnouncementPermission?: boolean;
+    Pick<AnnouncementThreadProp, 'updateThreadHandler'> {
+  editPermission: boolean;
   threads: Thread[];
   postFeed: (value: string, id: string) => Promise<void>;
-  onConfirmation?: (data: ConfirmState) => void;
+  onConfirmation: (data: ConfirmState) => void;
 }
 
 export interface AnnouncementFeedCardProp {
   feed: Post;
   task: Thread;
-  editAnnouncementPermission?: boolean;
-  onConfirmation?: (data: ConfirmState) => void;
+  editPermission: boolean;
+  onConfirmation: (data: ConfirmState) => void;
   updateThreadHandler: ThreadUpdatedFunction;
-  postFeed?: (value: string, id: string) => Promise<void>;
+  postFeed: (value: string, id: string) => Promise<void>;
 }
 
 export interface AnnouncementFeedCardBodyProp
   extends HTMLAttributes<HTMLDivElement> {
   feed: Post;
   feedType: ThreadType;
+  editPermission: boolean;
   entityLink?: string;
   repliedUsers?: Array<string>;
   replies?: number;
@@ -93,7 +93,6 @@ export interface AnnouncementFeedCardBodyProp
   onConfirmation?: (data: ConfirmState) => void;
   updateThreadHandler: ThreadUpdatedFunc;
   onReply?: () => void;
-  editAnnouncementPermission?: boolean;
   showUserAvatar?: boolean;
   postFeed?: (value: string) => void;
   showReplyThread?: () => void;
