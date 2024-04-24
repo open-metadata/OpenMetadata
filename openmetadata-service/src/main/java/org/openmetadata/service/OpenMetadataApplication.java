@@ -149,7 +149,7 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     validateConfiguration(catalogConfig);
 
     // Instantiate incident severity classifier
-    IncidentSeverityClassifierInterface.createInstance(catalogConfig.getDataQualityConfiguration());
+    IncidentSeverityClassifierInterface.createInstance();
 
     // init for dataSourceFactory
     DatasourceConfig.initialize(catalogConfig.getDataSourceFactory().getDriverClass());
@@ -173,6 +173,8 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
 
     // Configure the Fernet instance
     Fernet.getInstance().setFernetKey(catalogConfig);
+
+    initializeWebsockets(catalogConfig, environment);
 
     // init Secret Manager
     SecretsManagerFactory.createSecretsManager(
@@ -233,7 +235,6 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
 
     registerMicrometerFilter(environment, catalogConfig.getEventMonitorConfiguration());
 
-    initializeWebsockets(catalogConfig, environment);
     registerSamlServlets(catalogConfig, environment);
 
     // Asset Servlet Registration
@@ -276,8 +277,8 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
                   "oauth_login",
                   new AuthLoginServlet(
                       oidcClient,
-                      config.getAuthenticationConfiguration().getOidcConfiguration().getServerUrl(),
-                      config.getAuthenticationConfiguration().getJwtPrincipalClaims()));
+                      config.getAuthenticationConfiguration(),
+                      config.getAuthorizerConfiguration()));
       authLogin.addMapping("/api/v1/auth/login");
       ServletRegistration.Dynamic authCallback =
           environment
@@ -286,8 +287,8 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
                   "auth_callback",
                   new AuthCallbackServlet(
                       oidcClient,
-                      config.getAuthenticationConfiguration().getOidcConfiguration().getServerUrl(),
-                      config.getAuthenticationConfiguration().getJwtPrincipalClaims()));
+                      config.getAuthenticationConfiguration(),
+                      config.getAuthorizerConfiguration()));
       authCallback.addMapping("/callback");
 
       ServletRegistration.Dynamic authLogout =
@@ -364,7 +365,11 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
           environment.servlets().addServlet("saml_login", new SamlLoginServlet());
       samlRedirectServlet.addMapping("/api/v1/saml/login");
       ServletRegistration.Dynamic samlReceiverServlet =
-          environment.servlets().addServlet("saml_acs", new SamlAssertionConsumerServlet());
+          environment
+              .servlets()
+              .addServlet(
+                  "saml_acs",
+                  new SamlAssertionConsumerServlet(catalogConfig.getAuthorizerConfiguration()));
       samlReceiverServlet.addMapping("/api/v1/saml/acs");
       ServletRegistration.Dynamic samlMetadataServlet =
           environment.servlets().addServlet("saml_metadata", new SamlMetadataServlet());

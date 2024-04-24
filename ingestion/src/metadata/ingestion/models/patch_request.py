@@ -311,6 +311,7 @@ def build_patch(
     allowed_fields: Optional[Dict] = None,
     restrict_update_fields: Optional[List] = None,
     array_entity_fields: Optional[List] = None,
+    remove_change_description: bool = True,
 ) -> Optional[jsonpatch.JsonPatch]:
     """
     Given an Entity type and Source entity and Destination entity,
@@ -327,8 +328,9 @@ def build_patch(
     """
 
     # remove change descriptions from entities
-    source = _remove_change_description(source)
-    destination = _remove_change_description(destination)
+    if remove_change_description:
+        source = _remove_change_description(source)
+        destination = _remove_change_description(destination)
 
     if array_entity_fields:
         _sort_array_entity_fields(

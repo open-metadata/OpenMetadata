@@ -8,7 +8,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.regex.Pattern;
-import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.service.Entity;
@@ -27,9 +26,29 @@ public record TableIndex(Table table) implements ColumnIndex {
           "changeDescription",
           "schemaDefinition, tableProfilerConfig, profile, location, tableQueries, tests, dataModel");
 
+  public List<SearchSuggest> getSuggest() {
+    List<SearchSuggest> suggest = new ArrayList<>();
+    suggest.add(SearchSuggest.builder().input(table.getFullyQualifiedName()).weight(5).build());
+    suggest.add(SearchSuggest.builder().input(table.getName()).weight(10).build());
+    suggest.add(SearchSuggest.builder().input(table.getDatabase().getName()).weight(5).build());
+    suggest.add(
+        SearchSuggest.builder().input(table.getDatabaseSchema().getName()).weight(5).build());
+    // Table FQN has 4 parts
+    String[] fqnPartsWithoutService =
+        table.getFullyQualifiedName().split(Pattern.quote(Entity.SEPARATOR), 2);
+    if (fqnPartsWithoutService.length == 2) {
+      suggest.add(SearchSuggest.builder().input(fqnPartsWithoutService[1]).weight(5).build());
+      String[] fqnPartsWithoutDB =
+          fqnPartsWithoutService[1].split(Pattern.quote(Entity.SEPARATOR), 2);
+      if (fqnPartsWithoutDB.length == 2) {
+        suggest.add(SearchSuggest.builder().input(fqnPartsWithoutDB[1]).weight(5).build());
+      }
+    }
+    return suggest;
+  }
+
   public Map<String, Object> buildESDoc() {
     Map<String, Object> doc = JsonUtils.getMap(table);
-    List<SearchSuggest> suggest = new ArrayList<>();
     List<SearchSuggest> columnSuggest = new ArrayList<>();
     List<SearchSuggest> schemaSuggest = new ArrayList<>();
     List<SearchSuggest> databaseSuggest = new ArrayList<>();
@@ -53,7 +72,6 @@ public record TableIndex(Table table) implements ColumnIndex {
       }
       doc.put("columnNames", columnsWithChildrenName);
     }
-    parseTableSuggest(suggest);
     serviceSuggest.add(
         SearchSuggest.builder().input(table.getService().getName()).weight(5).build());
     databaseSuggest.add(
@@ -66,53 +84,22 @@ public record TableIndex(Table table) implements ColumnIndex {
         tagsWithChildren.stream()
             .flatMap(List::stream)
             .collect(ArrayList::new, ArrayList::add, ArrayList::addAll);
+    Map<String, Object> commonAttributes = getCommonAttributesMap(table, Entity.TABLE);
+    doc.putAll(commonAttributes);
     doc.put(
         "displayName", table.getDisplayName() != null ? table.getDisplayName() : table.getName());
     doc.put("tags", flattenedTagList);
     doc.put("tier", parseTags.getTierTag());
-    doc.put("followers", SearchIndexUtils.parseFollowers(table.getFollowers()));
-    doc.put(
-        "fqnParts",
-        getFQNParts(
-            table.getFullyQualifiedName(), suggest.stream().map(SearchSuggest::getInput).toList()));
-    doc.put("suggest", suggest);
     doc.put("service_suggest", serviceSuggest);
     doc.put("column_suggest", columnSuggest);
     doc.put("schema_suggest", schemaSuggest);
     doc.put("database_suggest", databaseSuggest);
-    doc.put("entityType", Entity.TABLE);
-    doc.put(
-        "totalVotes",
-        CommonUtil.nullOrEmpty(table.getVotes())
-            ? 0
-            : table.getVotes().getUpVotes() - table.getVotes().getDownVotes());
     doc.put("serviceType", table.getServiceType());
-    doc.put("owner", getEntityWithDisplayName(table.getOwner()));
     doc.put("service", getEntityWithDisplayName(table.getService()));
-    doc.put("domain", getEntityWithDisplayName(table.getDomain()));
     doc.put("database", getEntityWithDisplayName(table.getDatabase()));
     doc.put("lineage", SearchIndex.getLineageData(table.getEntityReference()));
     doc.put("databaseSchema", getEntityWithDisplayName(table.getDatabaseSchema()));
     return doc;
-  }
-
-  private void parseTableSuggest(List<SearchSuggest> suggest) {
-    suggest.add(SearchSuggest.builder().input(table.getFullyQualifiedName()).weight(5).build());
-    suggest.add(SearchSuggest.builder().input(table.getName()).weight(10).build());
-    suggest.add(SearchSuggest.builder().input(table.getDatabase().getName()).weight(5).build());
-    suggest.add(
-        SearchSuggest.builder().input(table.getDatabaseSchema().getName()).weight(5).build());
-    // Table FQN has 4 parts
-    String[] fqnPartsWithoutService =
-        table.getFullyQualifiedName().split(Pattern.quote(Entity.SEPARATOR), 2);
-    if (fqnPartsWithoutService.length == 2) {
-      suggest.add(SearchSuggest.builder().input(fqnPartsWithoutService[1]).weight(5).build());
-      String[] fqnPartsWithoutDB =
-          fqnPartsWithoutService[1].split(Pattern.quote(Entity.SEPARATOR), 2);
-      if (fqnPartsWithoutDB.length == 2) {
-        suggest.add(SearchSuggest.builder().input(fqnPartsWithoutDB[1]).weight(5).build());
-      }
-    }
   }
 
   public static Map<String, Float> getFields() {

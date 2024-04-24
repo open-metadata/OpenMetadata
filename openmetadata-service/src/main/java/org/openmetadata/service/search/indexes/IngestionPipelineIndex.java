@@ -1,7 +1,5 @@
 package org.openmetadata.service.search.indexes;
 
-import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
-
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -21,15 +19,19 @@ public class IngestionPipelineIndex implements SearchIndex {
     this.ingestionPipeline = ingestionPipeline;
   }
 
-  public Map<String, Object> buildESDoc() {
-    Map<String, Object> doc = JsonUtils.getMap(ingestionPipeline);
-    SearchIndexUtils.removeNonIndexableFields(doc, excludeFields);
+  public List<SearchSuggest> getSuggest() {
     List<SearchSuggest> suggest = new ArrayList<>();
-    List<SearchSuggest> serviceSuggest = new ArrayList<>();
     suggest.add(
         SearchSuggest.builder().input(ingestionPipeline.getFullyQualifiedName()).weight(5).build());
     suggest.add(
         SearchSuggest.builder().input(ingestionPipeline.getDisplayName()).weight(10).build());
+    return suggest;
+  }
+
+  public Map<String, Object> buildESDoc() {
+    Map<String, Object> doc = JsonUtils.getMap(ingestionPipeline);
+    SearchIndexUtils.removeNonIndexableFields(doc, excludeFields);
+    List<SearchSuggest> serviceSuggest = new ArrayList<>();
     serviceSuggest.add(
         SearchSuggest.builder()
             .input(
@@ -40,6 +42,9 @@ public class IngestionPipelineIndex implements SearchIndex {
             .build());
     ParseTags parseTags =
         new ParseTags(Entity.getEntityTags(Entity.INGESTION_PIPELINE, ingestionPipeline));
+    Map<String, Object> commonAttributes =
+        getCommonAttributesMap(ingestionPipeline, Entity.INGESTION_PIPELINE);
+    doc.putAll(commonAttributes);
     doc.put(
         "name",
         ingestionPipeline.getName() != null
@@ -50,26 +55,10 @@ public class IngestionPipelineIndex implements SearchIndex {
         ingestionPipeline.getDisplayName() != null
             ? ingestionPipeline.getDisplayName()
             : ingestionPipeline.getName());
-    doc.put("followers", SearchIndexUtils.parseFollowers(ingestionPipeline.getFollowers()));
     doc.put("tags", parseTags.getTags());
     doc.put("tier", parseTags.getTierTag());
-    doc.put("suggest", suggest);
     doc.put("service_suggest", serviceSuggest);
-    doc.put("entityType", Entity.INGESTION_PIPELINE);
-    doc.put(
-        "totalVotes",
-        nullOrEmpty(ingestionPipeline.getVotes())
-            ? 0
-            : ingestionPipeline.getVotes().getUpVotes()
-                - ingestionPipeline.getVotes().getDownVotes());
-    doc.put(
-        "fqnParts",
-        getFQNParts(
-            ingestionPipeline.getFullyQualifiedName(),
-            suggest.stream().map(SearchSuggest::getInput).toList()));
-    doc.put("owner", getEntityWithDisplayName(ingestionPipeline.getOwner()));
     doc.put("service", getEntityWithDisplayName(ingestionPipeline.getService()));
-    doc.put("domain", getEntityWithDisplayName(ingestionPipeline.getDomain()));
     return doc;
   }
 

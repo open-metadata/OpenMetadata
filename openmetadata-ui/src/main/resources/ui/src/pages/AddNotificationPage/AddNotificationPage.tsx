@@ -49,7 +49,6 @@ import { ModifiedEventSubscription } from '../AddObservabilityPage/AddObservabil
 import AlertFormSourceItem from '../AddObservabilityPage/AlertFormSourceItem/AlertFormSourceItem';
 import DestinationFormItem from '../AddObservabilityPage/DestinationFormItem/DestinationFormItem.component';
 import ObservabilityFormFiltersItem from '../AddObservabilityPage/ObservabilityFormFiltersItem/ObservabilityFormFiltersItem';
-import './add-alerts-page.styles.less';
 
 const AddNotificationPage = () => {
   const { t } = useTranslation();
@@ -189,7 +188,7 @@ const AddNotificationPage = () => {
       hideSecondPanel
       firstPanel={{
         children: (
-          <div className="alert-page-container">
+          <div className="steps-form-container">
             <Row className="page-container" gutter={[16, 16]}>
               <Col span={24}>
                 <TitleBreadcrumb titleLinks={breadcrumb} />
@@ -273,15 +272,7 @@ const AddNotificationPage = () => {
                         name="provider"
                       />
                       <Col span={24}>
-                        <DestinationFormItem
-                          buttonLabel={t('label.add-entity', {
-                            entity: t('label.destination'),
-                          })}
-                          heading={t('label.destination')}
-                          subHeading={t(
-                            'message.alerts-destination-description'
-                          )}
-                        />
+                        <DestinationFormItem />
                       </Col>
                       <Col flex="auto" />
                       <Col flex="300px" pull="right">

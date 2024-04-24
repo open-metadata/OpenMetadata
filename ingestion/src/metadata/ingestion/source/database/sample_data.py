@@ -556,8 +556,8 @@ class SampleDataSource(
     def _iter(self, *_, **__) -> Iterable[Entity]:
         yield from self.ingest_teams()
         yield from self.ingest_users()
-        yield from self.ingest_glue()
         yield from self.ingest_tables()
+        yield from self.ingest_glue()
         yield from self.ingest_stored_procedures()
         yield from self.ingest_topics()
         yield from self.ingest_charts()
@@ -641,6 +641,29 @@ class SampleDataSource(
             service_name=self.glue_database_service.fullyQualifiedName.__root__,
             database_name=db.name.__root__,
             schema_name=schema.name.__root__,
+        )
+
+        database_schema_object = self.metadata.get_by_name(
+            entity=DatabaseSchema, fqn=database_schema_entity
+        )
+
+        for table in self.glue_tables["tables"]:
+            table_request = CreateTableRequest(
+                name=table["name"],
+                description=table["description"],
+                columns=table["columns"],
+                databaseSchema=database_schema_object.fullyQualifiedName,
+                tableConstraints=table.get("tableConstraints"),
+                tableType=table["tableType"],
+            )
+            yield Either(right=table_request)
+
+        database_schema_entity = fqn.build(
+            self.metadata,
+            entity_type=DatabaseSchema,
+            service_name=self.database_service.fullyQualifiedName.__root__,
+            database_name=self.database["name"],
+            schema_name=self.database_schema["name"],
         )
 
         database_schema_object = self.metadata.get_by_name(

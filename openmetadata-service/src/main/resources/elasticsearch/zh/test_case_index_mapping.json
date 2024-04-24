@@ -94,7 +94,12 @@
       },
       "entityLink": {
         "type": "keyword",
-        "normalizer": "lowercase_normalizer"
+        "normalizer": "lowercase_normalizer",
+        "fields": {
+          "nonNormalized": {
+            "type": "keyword"
+          }
+        }
       },
       "testPlatforms": {
         "type": "keyword",
@@ -228,6 +233,7 @@
             "fields": {
               "keyword": {
                 "type": "keyword",
+                "normalizer": "lowercase_normalizer",
                 "ignore_above": 256
               }
             }
@@ -297,7 +303,12 @@
         "properties": {
           "id": {
             "type": "keyword",
-            "normalizer": "lowercase_normalizer"
+            "fields": {
+              "keyword": {
+                "type": "keyword",
+                "ignore_above": 36
+              }
+            }
           },
           "name": {
             "type": "keyword",
@@ -336,9 +347,16 @@
         }
       },
       "testSuites": {
+        "type": "nested",
         "properties": {
           "id": {
-            "type": "text"
+            "type": "keyword",
+            "fields": {
+              "keyword": {
+                "type": "keyword",
+                "ignore_above": 36
+              }
+            }
           },
           "name": {
             "type": "keyword",
