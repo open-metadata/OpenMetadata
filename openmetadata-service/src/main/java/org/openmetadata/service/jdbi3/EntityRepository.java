@@ -2225,7 +2225,10 @@ public abstract class EntityRepository<T extends EntityInterface> {
         updated.setDescription(original.getDescription());
         return;
       }
-      recordChange(FIELD_DESCRIPTION, original.getDescription(), updated.getDescription());
+      recordChange(
+          FIELD_DESCRIPTION,
+          nullOrEmpty(original.getDescription()) ? null : original.getDescription(),
+          updated.getDescription());
     }
 
     private void updateDeleted() {
