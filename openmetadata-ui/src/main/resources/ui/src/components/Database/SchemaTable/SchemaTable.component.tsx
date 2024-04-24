@@ -84,7 +84,7 @@ const SchemaTable = ({
   onThreadLinkSelect,
   tableConstraints,
 }: SchemaTableProps) => {
-  const { applicationConfig } = useApplicationStore();
+  const { theme } = useApplicationStore();
   const { t } = useTranslation();
 
   const [searchedColumns, setSearchedColumns] = useState<Column[]>([]);
@@ -404,9 +404,7 @@ const SchemaTable = ({
           <FilterOutlined
             data-testid="tag-filter"
             style={{
-              color: filtered
-                ? applicationConfig?.customTheme?.primaryColor
-                : undefined,
+              color: filtered ? theme.primaryColor : undefined,
             }}
           />
         ),
@@ -438,9 +436,7 @@ const SchemaTable = ({
           <FilterOutlined
             data-testid="glossary-filter"
             style={{
-              color: filtered
-                ? applicationConfig?.customTheme?.primaryColor
-                : undefined,
+              color: filtered ? theme.primaryColor : undefined,
             }}
           />
         ),

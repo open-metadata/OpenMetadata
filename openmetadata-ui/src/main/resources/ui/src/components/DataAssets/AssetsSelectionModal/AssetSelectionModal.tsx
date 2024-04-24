@@ -92,7 +92,7 @@ export const AssetSelectionModal = ({
   queryFilter,
   emptyPlaceHolderText,
 }: AssetSelectionModalProps) => {
-  const { applicationConfig } = useApplicationStore();
+  const { theme } = useApplicationStore();
   const { t } = useTranslation();
   const ES_UPDATE_DELAY = 500;
   const [search, setSearch] = useState('');
@@ -561,7 +561,7 @@ export const AssetSelectionModal = ({
               <div className="d-flex items-center gap-3">
                 <ExclamationCircleOutlined
                   style={{
-                    color: applicationConfig?.customTheme?.errorColor,
+                    color: theme.errorColor,
                     fontSize: '24px',
                   }}
                 />
@@ -620,8 +620,7 @@ export const AssetSelectionModal = ({
                           <div className="d-flex gap-3 p-x-sm p-b-sm">
                             <ExclamationCircleOutlined
                               style={{
-                                color:
-                                  applicationConfig?.customTheme?.errorColor,
+                                color: theme.errorColor,
                                 fontSize: '24px',
                               }}
                             />

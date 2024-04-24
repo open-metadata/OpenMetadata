@@ -14,7 +14,6 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { AuthenticationConfigurationWithScope } from '../components/Auth/AuthProviders/AuthProvider.interface';
 import { EntityUnion } from '../components/Explore/ExplorePage.interface';
-import { DEFAULT_THEME } from '../constants/Appearance.constants';
 import { AuthenticationConfiguration } from '../generated/configuration/authenticationConfiguration';
 import { AuthorizerConfiguration } from '../generated/configuration/authorizerConfiguration';
 import { UIThemePreference } from '../generated/configuration/uiThemePreference';
@@ -25,16 +24,16 @@ import {
   HelperFunctions,
 } from '../interface/store.interface';
 import { getOidcToken } from '../utils/LocalStorageUtils';
+import { getThemeConfig } from '../utils/ThemeUtils';
 
 export const OM_SESSION_KEY = 'om-session';
 
 export const useApplicationStore = create<ApplicationStore>()(
   persist(
     (set, get) => ({
+      theme: getThemeConfig(),
       applicationConfig: {
-        customTheme: {
-          ...DEFAULT_THEME,
-        },
+        customTheme: getThemeConfig(),
       } as UIThemePreference,
       currentUser: undefined,
       newUser: undefined,
@@ -59,7 +58,7 @@ export const useApplicationStore = create<ApplicationStore>()(
       },
 
       setApplicationConfig: (config: UIThemePreference) => {
-        set({ applicationConfig: config });
+        set({ applicationConfig: config, theme: config.customTheme });
       },
       setCurrentUser: (user) => {
         set({ currentUser: user });

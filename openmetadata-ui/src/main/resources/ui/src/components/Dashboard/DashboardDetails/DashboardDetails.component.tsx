@@ -91,7 +91,7 @@ const DashboardDetails = ({
   handleToggleDelete,
 }: DashboardDetailsProps) => {
   const { t } = useTranslation();
-  const { currentUser, applicationConfig } = useApplicationStore();
+  const { currentUser, theme } = useApplicationStore();
   const history = useHistory();
   const { tab: activeTab = EntityTabs.DETAILS } =
     useParams<{ tab: EntityTabs }>();
@@ -505,9 +505,7 @@ const DashboardDetails = ({
           <FilterOutlined
             data-testid="tag-filter"
             style={{
-              color: filtered
-                ? applicationConfig?.customTheme?.primaryColor
-                : undefined,
+              color: filtered ? theme.primaryColor : undefined,
             }}
           />
         ),
@@ -541,9 +539,7 @@ const DashboardDetails = ({
           <FilterOutlined
             data-testid="glossary-filter"
             style={{
-              color: filtered
-                ? applicationConfig?.customTheme?.primaryColor
-                : undefined,
+              color: filtered ? theme.primaryColor : undefined,
             }}
           />
         ),

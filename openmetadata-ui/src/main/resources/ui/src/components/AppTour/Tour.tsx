@@ -23,7 +23,7 @@ import './tour.style.less';
 
 const Tour = ({ steps }: { steps: TourSteps[] }) => {
   const { isTourOpen, updateIsTourOpen, updateTourPage } = useTourProvider();
-  const { applicationConfig } = useApplicationStore();
+  const { theme } = useApplicationStore();
   const [showTourEndModal, setShowTourEndModal] = useState(false);
   const history = useHistory();
 
@@ -44,7 +44,7 @@ const Tour = ({ steps }: { steps: TourSteps[] }) => {
           disableKeyboardNavigation
           showCloseButton
           showNumber
-          accentColor={applicationConfig?.customTheme?.primaryColor ?? ''}
+          accentColor={theme.primaryColor ?? ''}
           inViewThreshold={200}
           lastStepNextButton={
             <Button

@@ -70,7 +70,7 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
   isVersionView = false,
   schemaTypePlaceholder,
 }) => {
-  const { applicationConfig } = useApplicationStore();
+  const { theme } = useApplicationStore();
   const { t } = useTranslation();
   const [editFieldDescription, setEditFieldDescription] = useState<Field>();
   const [expandedRowKeys, setExpandedRowKeys] = useState<string[]>([]);
@@ -218,9 +218,7 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
           <FilterOutlined
             data-testid="tag-filter"
             style={{
-              color: filtered
-                ? applicationConfig?.customTheme?.primaryColor
-                : undefined,
+              color: filtered ? theme.primaryColor : undefined,
             }}
           />
         ),
@@ -252,9 +250,7 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
           <FilterOutlined
             data-testid="glossary-filter"
             style={{
-              color: filtered
-                ? applicationConfig?.customTheme?.primaryColor
-                : undefined,
+              color: filtered ? theme.primaryColor : undefined,
             }}
           />
         ),

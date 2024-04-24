@@ -99,7 +99,7 @@ const PipelineDetails = ({
   const history = useHistory();
   const { tab } = useParams<{ tab: EntityTabs }>();
   const { t } = useTranslation();
-  const { currentUser, applicationConfig } = useApplicationStore();
+  const { currentUser, theme } = useApplicationStore();
   const { postFeed, deleteFeed, updateFeed } = useActivityFeedProvider();
   const userID = currentUser?.id ?? '';
   const {
@@ -440,9 +440,7 @@ const PipelineDetails = ({
           <FilterOutlined
             data-testid="tag-filter"
             style={{
-              color: filtered
-                ? applicationConfig?.customTheme?.primaryColor
-                : undefined,
+              color: filtered ? theme.primaryColor : undefined,
             }}
           />
         ),
@@ -458,9 +456,7 @@ const PipelineDetails = ({
           <FilterOutlined
             data-testid="tag-filter"
             style={{
-              color: filtered
-                ? applicationConfig?.customTheme?.primaryColor
-                : undefined,
+              color: filtered ? theme.primaryColor : undefined,
             }}
           />
         ),
@@ -492,9 +488,7 @@ const PipelineDetails = ({
           <FilterOutlined
             data-testid="glossary-filter"
             style={{
-              color: filtered
-                ? applicationConfig?.customTheme?.primaryColor
-                : undefined,
+              color: filtered ? theme.primaryColor : undefined,
             }}
           />
         ),

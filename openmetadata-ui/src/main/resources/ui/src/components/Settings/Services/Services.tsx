@@ -70,7 +70,7 @@ interface ServicesProps {
 }
 
 const Services = ({ serviceName }: ServicesProps) => {
-  const { applicationConfig } = useApplicationStore();
+  const { theme } = useApplicationStore();
   const { t } = useTranslation();
   const { isFetchingStatus, platform } = useAirflowStatus();
 
@@ -327,9 +327,7 @@ const Services = ({ serviceName }: ServicesProps) => {
       filterIcon: (filtered) => (
         <FilterOutlined
           style={{
-            color: filtered
-              ? applicationConfig?.customTheme?.primaryColor
-              : undefined,
+            color: filtered ? theme.primaryColor : undefined,
           }}
         />
       ),

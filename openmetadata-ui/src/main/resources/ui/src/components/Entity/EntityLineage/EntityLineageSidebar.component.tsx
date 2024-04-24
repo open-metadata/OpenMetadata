@@ -34,7 +34,7 @@ interface EntityNodeProps extends HTMLAttributes<HTMLDivElement> {
 }
 
 const EntityNode: FC<EntityNodeProps> = ({ type, label, draggable }) => {
-  const { applicationConfig } = useApplicationStore();
+  const { theme } = useApplicationStore();
   const onDragStart = (event: React.DragEvent, nodeType: string) => {
     event.dataTransfer.setData('application/reactflow', nodeType);
     event.dataTransfer.effectAllowed = 'move';
@@ -64,7 +64,7 @@ const EntityNode: FC<EntityNodeProps> = ({ type, label, draggable }) => {
             component={DragIconDotted}
             rotate={90}
             style={{
-              color: applicationConfig?.customTheme?.primaryColor,
+              color: theme.primaryColor,
             }}
           />
         </span>

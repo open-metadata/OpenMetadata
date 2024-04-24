@@ -50,6 +50,7 @@ export interface ApplicationStore
   authConfig?: AuthenticationConfigurationWithScope;
   applicationConfig?: UIThemePreference;
   searchCriteria: ExploreSearchIndex | '';
+  theme: UIThemePreference['customTheme'];
   setSelectedPersona: (persona: EntityReference) => void;
   setApplicationConfig: (config: UIThemePreference) => void;
   setCurrentUser: (user: User) => void;

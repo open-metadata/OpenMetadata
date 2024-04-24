@@ -78,7 +78,7 @@ const TableDataCardV2: React.FC<TableDataCardPropsV2> = forwardRef<
     },
     ref
   ) => {
-    const { applicationConfig } = useApplicationStore();
+    const { theme } = useApplicationStore();
     const { t } = useTranslation();
     const { tab } = useParams<{ tab: string }>();
 
@@ -174,7 +174,7 @@ const TableDataCardV2: React.FC<TableDataCardPropsV2> = forwardRef<
               openEntityInNewPage={openEntityInNewPage}
               serviceName={source?.service?.name ?? ''}
               showName={showName}
-              titleColor={applicationConfig?.customTheme?.primaryColor}
+              titleColor={theme.primaryColor}
             />
           </Col>
         </Row>

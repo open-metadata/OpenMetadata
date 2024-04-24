@@ -13,7 +13,7 @@
 import { DEFAULT_THEME } from '../constants/Appearance.constants';
 import { UIThemePreference } from '../generated/configuration/uiThemePreference';
 
-export const getThemeConfig = (theme: UIThemePreference['customTheme']) => {
+export const getThemeConfig = (theme?: UIThemePreference['customTheme']) => {
   return {
     primaryColor: theme?.primaryColor || DEFAULT_THEME.primaryColor,
     errorColor: theme?.errorColor || DEFAULT_THEME.errorColor,

@@ -59,7 +59,7 @@ const CustomControls: FC<ControlProps> = ({
   handleFullScreenViewClick,
   onExitFullScreenViewClick,
 }: ControlProps) => {
-  const { applicationConfig } = useApplicationStore();
+  const { theme } = useApplicationStore();
   const { t } = useTranslation();
   const [dialogVisible, setDialogVisible] = useState<boolean>(false);
   const {
@@ -268,7 +268,7 @@ const CustomControls: FC<ControlProps> = ({
                   icon={
                     <span className="anticon">
                       <FullScreen
-                        color={applicationConfig?.customTheme?.primaryColor}
+                        color={theme.primaryColor}
                         height={16}
                         width={16}
                       />
@@ -286,7 +286,7 @@ const CustomControls: FC<ControlProps> = ({
                   icon={
                     <span className="anticon">
                       <ExitFullScreen
-                        color={applicationConfig?.customTheme?.primaryColor}
+                        color={theme.primaryColor}
                         height={16}
                         width={16}
                       />
@@ -306,7 +306,7 @@ const CustomControls: FC<ControlProps> = ({
                   <SettingOutlined
                     style={{
                       fontSize: '16px',
-                      color: applicationConfig?.customTheme?.primaryColor,
+                      color: theme.primaryColor,
                     }}
                   />
                 }
