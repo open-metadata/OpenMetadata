@@ -115,6 +115,7 @@ export enum TabSpecificField {
   SCHEDULE_INTERVAL = 'scheduleInterval',
   TESTSUITE = 'testSuite',
   VIEW_DEFINITION = 'viewDefinition',
+  SCHEMA_DEFINITION = 'schemaDefinition',
   FIELDS = 'fields',
   VOTES = 'votes',
   DOMAIN = 'domain',
@@ -141,6 +142,7 @@ export enum EntityTabs {
   LINEAGE = 'lineage',
   DBT = 'dbt',
   VIEW_DEFINITION = 'view_definition',
+  SCHEMA_DEFINITION = 'schema_definition',
   CUSTOM_PROPERTIES = 'custom_properties',
   MODEL = 'model',
   FEATURES = 'features',
@@ -160,7 +162,6 @@ export enum EntityTabs {
   SEARCH_INDEX_SETTINGS = 'search-index-settings',
   STORED_PROCEDURE = 'stored_procedure',
   CODE = 'code',
-  DDL = 'ddl',
 }
 
 export enum EntityAction {
