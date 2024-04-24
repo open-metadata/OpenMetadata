@@ -38,11 +38,12 @@ public class MigrationUtil {
   private static final String POSTGRES_QUERY_TABLES_WITH_PARTITION =
       "SELECT json " + "FROM table_entity " + "WHERE json->'tablePartition' IS NOT NULL";
 
-  private static final String TEST_CASE_RESOLUTION_QUERY = "SELECT json FROM test_case_resolution_status_time_series";
+  private static final String TEST_CASE_RESOLUTION_QUERY =
+      "SELECT json FROM test_case_resolution_status_time_series";
   private static final String MYSQL_TEST_CASE_RESOLUTION_UPDATE_QUERY =
       "UPDATE test_case_resolution_status_time_series SET json = :json WHERE id = :id";
   private static final String POSTGRES_TEST_CASE_RESOLUTION_UPDATE_QUERY =
-          "UPDATE test_case_resolution_status_time_series SET json = :json::jsonb WHERE id = :id";
+      "UPDATE test_case_resolution_status_time_series SET json = :json::jsonb WHERE id = :id";
 
   private MigrationUtil() {
     /* Cannot create object  util class*/
@@ -83,13 +84,20 @@ public class MigrationUtil {
               row -> {
                 try {
                   TestCaseResolutionStatus testCaseResolutionStatus =
-                      JsonUtils.readValue(row.get("json").toString(), TestCaseResolutionStatus.class);
+                      JsonUtils.readValue(
+                          row.get("json").toString(), TestCaseResolutionStatus.class);
                   UUID fromId = testCaseResolutionStatus.getTestCaseReference().getId();
                   UUID toId = testCaseResolutionStatus.getId();
                   // Store the test case <-> incident relationship
                   collectionDAO
                       .relationshipDAO()
-                      .insert(fromId, toId, Entity.TEST_CASE, Entity.TEST_CASE_RESOLUTION_STATUS, Relationship.PARENT_OF.ordinal(), null);
+                      .insert(
+                          fromId,
+                          toId,
+                          Entity.TEST_CASE,
+                          Entity.TEST_CASE_RESOLUTION_STATUS,
+                          Relationship.PARENT_OF.ordinal(),
+                          null);
                   // Remove the test case reference from the test case resolution status
                   testCaseResolutionStatus.setTestCaseReference(null);
                   String json = JsonUtils.pojoToJson(testCaseResolutionStatus);
@@ -97,15 +105,17 @@ public class MigrationUtil {
                   if (Boolean.FALSE.equals(DatasourceConfig.getInstance().isMySQL())) {
                     updateQuery = POSTGRES_TEST_CASE_RESOLUTION_UPDATE_QUERY;
                   }
-                  handle.createUpdate(updateQuery)
-                          .bind("json", json)
-                          .bind("id", toId.toString()).execute();
+                  handle
+                      .createUpdate(updateQuery)
+                      .bind("json", json)
+                      .bind("id", toId.toString())
+                      .execute();
                 } catch (Exception ex) {
                   LOG.warn("Error during the test case resolution migration due to ", ex);
                 }
               });
     } catch (Exception ex) {
-        LOG.warn("Error running the test case resolution migration ", ex);
+      LOG.warn("Error running the test case resolution migration ", ex);
     }
   }
 
