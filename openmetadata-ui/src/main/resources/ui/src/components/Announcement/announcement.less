@@ -1,5 +1,5 @@
 /*
- *  Copyright 2023 Collate.
+ *  Copyright 2024 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -10,13 +10,45 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+@import (reference) url('../../styles/variables.less');
 
-@import url('../../../styles/variables.less');
-
-.announcement-thread-card {
+.ant-card.announcement-thread-card {
   margin-top: 20px;
   padding-top: 8px;
   border-radius: 8px;
   border: 1px solid @announcement-border;
   background: @announcement-background;
+
+  .avatar-column {
+    position: relative;
+
+    &::after {
+      position: absolute;
+      content: '';
+      top: 0;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 2px;
+      background: @announcement-border-light;
+      width: 2px;
+      height: 100%;
+      z-index: 1;
+    }
+
+    .assignee-item {
+      margin: 0;
+      z-index: 10;
+    }
+
+    .ant-avatar-group {
+      z-index: 10;
+    }
+  }
+}
+
+.feed-line {
+  margin-right: 20px;
+  background: @announcement-border-light;
+  width: 2px;
+  height: calc(100% - 160px);
 }

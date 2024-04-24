@@ -28,12 +28,9 @@ jest.mock('../../../../utils/ToastUtils', () => ({
   showErrorToast: jest.fn(),
 }));
 
-jest.mock(
-  '../../../ActivityFeed/ActivityThreadPanel/ActivityThreadPanelBody',
-  () => {
-    return jest.fn().mockReturnValue(<div>ActivityThreadPanelBody</div>);
-  }
-);
+jest.mock('../../../Announcement/AnnouncementThreadBody.component', () => {
+  return jest.fn().mockReturnValue(<div>AnnouncementThreadBody</div>);
+});
 
 jest.mock('../../../Modals/AnnouncementModal/AddAnnouncementModal', () => {
   return jest.fn().mockReturnValue(<div>AddAnnouncementModal</div>);
@@ -55,7 +52,7 @@ describe('Test Announcement drawer component', () => {
 
     const addButton = await screen.findByTestId('add-announcement');
 
-    const announcements = await screen.findByText('ActivityThreadPanelBody');
+    const announcements = await screen.findByText('AnnouncementThreadBody');
 
     expect(drawer).toBeInTheDocument();
     expect(addButton).toBeInTheDocument();

@@ -15,21 +15,16 @@ import { CloseOutlined } from '@ant-design/icons';
 import { Button, Drawer, Space, Tooltip, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { Operation } from 'fast-json-patch';
-import { uniqueId } from 'lodash';
-import React, { FC, useState } from 'react';
+import React, { FC, useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import {
-  CreateThread,
-  ThreadType,
-} from '../../../../generated/api/feed/createThread';
 import { Post } from '../../../../generated/entity/feed/thread';
-import { postFeedById, postThread } from '../../../../rest/feedsAPI';
+import { postFeedById } from '../../../../rest/feedsAPI';
 import { getEntityFeedLink } from '../../../../utils/EntityUtils';
 import { deletePost, updateThreadData } from '../../../../utils/FeedUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
-import ActivityThreadPanelBody from '../../../ActivityFeed/ActivityThreadPanel/ActivityThreadPanelBody';
 
 import { useApplicationStore } from '../../../../hooks/useApplicationStore';
+import AnnouncementThreadBody from '../../../Announcement/AnnouncementThreadBody.component';
 import AddAnnouncementModal from '../../../Modals/AnnouncementModal/AddAnnouncementModal';
 
 interface Props {
@@ -49,7 +44,8 @@ const AnnouncementDrawer: FC<Props> = ({
 }) => {
   const { t } = useTranslation();
   const { currentUser } = useApplicationStore();
-  const [isAnnouncement, setIsAnnouncement] = useState<boolean>(false);
+  const [isAddAnnouncementOpen, setIsAddAnnouncementOpen] =
+    useState<boolean>(false);
 
   const title = (
     <Space
@@ -64,20 +60,12 @@ const AnnouncementDrawer: FC<Props> = ({
     </Space>
   );
 
-  const createThread = async (data: CreateThread) => {
-    try {
-      await postThread(data);
-    } catch (err) {
-      showErrorToast(err as AxiosError);
-    }
-  };
-
-  const deletePostHandler = (
+  const deletePostHandler = async (
     threadId: string,
     postId: string,
     isThread: boolean
-  ) => {
-    deletePost(threadId, postId, isThread);
+  ): Promise<void> => {
+    await deletePost(threadId, postId, isThread);
   };
 
   const postFeedHandler = (value: string, id: string) => {
@@ -90,18 +78,27 @@ const AnnouncementDrawer: FC<Props> = ({
     });
   };
 
-  const updateThreadHandler = (
+  const updateThreadHandler = async (
     threadId: string,
     postId: string,
     isThread: boolean,
     data: Operation[]
-  ) => {
+  ): Promise<void> => {
     const callback = () => {
       return;
     };
 
-    updateThreadData(threadId, postId, isThread, data, callback);
+    await updateThreadData(threadId, postId, isThread, data, callback);
   };
+
+  const handleCloseAnnouncementModal = useCallback(
+    () => setIsAddAnnouncementOpen(false),
+    []
+  );
+  const handleOpenAnnouncementModal = useCallback(
+    () => setIsAddAnnouncementOpen(true),
+    []
+  );
 
   return (
     <>
@@ -120,33 +117,28 @@ const AnnouncementDrawer: FC<Props> = ({
                 data-testid="add-announcement"
                 disabled={!createPermission}
                 type="primary"
-                onClick={() => setIsAnnouncement(true)}>
+                onClick={handleOpenAnnouncementModal}>
                 {t('label.add-entity', { entity: t('label.announcement') })}
               </Button>
             </Tooltip>
           </div>
 
-          <ActivityThreadPanelBody
-            className="p-0"
-            createThread={createThread}
+          <AnnouncementThreadBody
             deletePostHandler={deletePostHandler}
             editAnnouncementPermission={createPermission}
-            key={uniqueId()}
             postFeedHandler={postFeedHandler}
-            showHeader={false}
             threadLink={getEntityFeedLink(entityType, entityFQN)}
-            threadType={ThreadType.Announcement}
             updateThreadHandler={updateThreadHandler}
           />
         </Drawer>
       </div>
 
-      {isAnnouncement && (
+      {isAddAnnouncementOpen && (
         <AddAnnouncementModal
           entityFQN={entityFQN || ''}
           entityType={entityType || ''}
-          open={isAnnouncement}
-          onCancel={() => setIsAnnouncement(false)}
+          open={isAddAnnouncementOpen}
+          onCancel={handleCloseAnnouncementModal}
         />
       )}
     </>
