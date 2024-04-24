@@ -230,28 +230,30 @@ public class LineageRepository {
     return CsvUtil.formatCsv(csvFile);
   }
 
-  private String getStringOrNull(HashMap map, String key){
+  private String getStringOrNull(HashMap map, String key) {
     return nullOrEmpty(map.get(key)) ? "" : map.get(key).toString();
   }
 
-  private String getStringOrNull(HashMap map, String key, String nestedKey){
-    return nullOrEmpty(map.get(key)) ? "" : getStringOrNull((HashMap<String, Object>)map.get(key), nestedKey);
+  private String getStringOrNull(HashMap map, String key, String nestedKey) {
+    return nullOrEmpty(map.get(key))
+        ? ""
+        : getStringOrNull((HashMap<String, Object>) map.get(key), nestedKey);
   }
 
-  private String processColumnLineage(HashMap lineageMap){
-    if (lineageMap.get("columns") != null){
+  private String processColumnLineage(HashMap lineageMap) {
+    if (lineageMap.get("columns") != null) {
       StringBuilder str = new StringBuilder();
       Collection collection = (Collection<ColumnLineage>) lineageMap.get("columns");
       HashSet<HashMap> hashSet = new HashSet<HashMap>(collection);
-      for (HashMap colLineage: hashSet){
-        for (String fromColumn: (List<String>)colLineage.get("fromColumns")){
+      for (HashMap colLineage : hashSet) {
+        for (String fromColumn : (List<String>) colLineage.get("fromColumns")) {
           str.append(fromColumn);
           str.append(":");
           str.append(colLineage.get("toColumn"));
           str.append(";");
         }
         // remove the last ;
-        return str.toString().substring(0,str.toString().length()-1);
+        return str.toString().substring(0, str.toString().length() - 1);
       }
     }
     return "";
@@ -262,7 +264,7 @@ public class LineageRepository {
       Collection collection = (Collection<HashMap>) lineageMap.get("edges");
       HashSet<HashMap> edges = new HashSet<HashMap>(collection);
       List<List<String>> finalRecordList = csvFile.getRecords();
-      for(HashMap edge: edges){
+      for (HashMap edge : edges) {
         List<String> recordList = new ArrayList<>();
         addField(recordList, getStringOrNull(edge, "fromEntity", "id"));
         addField(recordList, getStringOrNull(edge, "fromEntity", "type"));
@@ -274,8 +276,8 @@ public class LineageRepository {
         addField(recordList, getStringOrNull(edge, "pipeline", "id"));
         addField(recordList, getStringOrNull(edge, "pipeline", "fullyQualifiedName"));
         addField(recordList, processColumnLineage(edge));
-        addField(recordList, getStringOrNull(edge,"sqlQuery"));
-        addField(recordList, getStringOrNull(edge,"source"));
+        addField(recordList, getStringOrNull(edge, "sqlQuery"));
+        addField(recordList, getStringOrNull(edge, "source"));
         finalRecordList.add(recordList);
       }
       csvFile.withRecords(finalRecordList);
