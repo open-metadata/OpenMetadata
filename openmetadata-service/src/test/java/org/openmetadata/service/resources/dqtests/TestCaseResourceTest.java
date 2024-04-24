@@ -33,7 +33,7 @@ import static org.openmetadata.service.util.TestUtils.assertListNull;
 import static org.openmetadata.service.util.TestUtils.assertResponse;
 import static org.openmetadata.service.util.TestUtils.assertResponseContains;
 import static org.openmetadata.service.util.TestUtils.dateToTimestamp;
-import static org.openmetadata.service.util.TestUtils.patch;
+import static org.openmetadata.service.util.TestUtils.waitForEsAsyncOp;
 
 import java.io.IOException;
 import java.text.ParseException;
@@ -62,6 +62,7 @@ import org.openmetadata.schema.tests.TestCaseParameterValue;
 import org.openmetadata.schema.tests.TestPlatform;
 import org.openmetadata.schema.tests.TestSuite;
 import org.openmetadata.schema.tests.type.Assigned;
+import org.openmetadata.schema.tests.type.ColumnTestSummaryDefinition;
 import org.openmetadata.schema.tests.type.Resolved;
 import org.openmetadata.schema.tests.type.Severity;
 import org.openmetadata.schema.tests.type.TestCaseFailureReasonType;
@@ -73,7 +74,6 @@ import org.openmetadata.schema.tests.type.TestSummary;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnDataType;
-import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.TableData;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.TaskStatus;
@@ -81,6 +81,7 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.EntityResourceTest;
 import org.openmetadata.service.resources.databases.TableResourceTest;
 import org.openmetadata.service.resources.feeds.FeedResourceTest;
+import org.openmetadata.service.resources.feeds.MessageParser;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.ResultList;
 import org.openmetadata.service.util.TestUtils;
@@ -96,6 +97,7 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
   public static String TABLE_COLUMN_LINK_2;
   public static String INVALID_LINK1;
   public static String INVALID_LINK2;
+  protected boolean supportsSearchIndex = true;
 
   public TestCaseResourceTest() {
     super(
@@ -285,10 +287,11 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
   }
 
   @Test
-  void put_testCaseResults_200(TestInfo test) throws IOException, ParseException {
+  void put_testCaseResults_200(TestInfo test)
+      throws IOException, ParseException, InterruptedException {
     CreateTestCase create = createRequest(test);
     create
-        .withEntityLink(TABLE_LINK)
+        .withEntityLink(TABLE_COLUMN_LINK)
         .withTestSuite(TEST_SUITE1.getFullyQualifiedName())
         .withTestDefinition(TEST_DEFINITION3.getFullyQualifiedName())
         .withParameterValues(
@@ -391,11 +394,7 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
 
     TestSummary testSummary;
     if (supportsSearchIndex) {
-      testSummary = getTestSummary(null);
-      assertNotEquals(0, testSummary.getFailed());
-      assertNotEquals(0, testSummary.getSuccess());
-      assertNotEquals(0, testSummary.getTotal());
-      assertEquals(0, testSummary.getAborted());
+      getAndValidateTestSummary(null);
     }
 
     // Test that we can get the test summary for a logical test suite and that
@@ -409,9 +408,8 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
     testSuiteResourceTest.addTestCasesToLogicalTestSuite(logicalTestSuite, testCaseIds);
 
     if (supportsSearchIndex) {
-      testSummary = getTestSummary(logicalTestSuite.getId().toString());
-      assertEquals(1, testSummary.getTotal());
-      assertEquals(1, testSummary.getFailed());
+      getAndValidateTestSummary(logicalTestSuite.getId().toString());
+      getAndValidateTestSummary(null);
     }
 
     // add a new test case to the logical test suite to validate if the
@@ -420,8 +418,8 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
     testCaseIds.add(testCase.getId());
     testSuiteResourceTest.addTestCasesToLogicalTestSuite(logicalTestSuite, testCaseIds);
     if (supportsSearchIndex) {
-      testSummary = getTestSummary(logicalTestSuite.getId().toString());
-      assertEquals(2, testSummary.getTotal());
+      getAndValidateTestSummary(logicalTestSuite.getId().toString());
+      getAndValidateTestSummary(null);
     }
 
     // remove test case from logical test suite and validate
@@ -429,13 +427,14 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
     deleteLogicalTestCase(logicalTestSuite, testCase.getId());
 
     if (supportsSearchIndex) {
-      testSummary = getTestSummary(logicalTestSuite.getId().toString());
-      assertEquals(1, testSummary.getTotal());
+      getAndValidateTestSummary(logicalTestSuite.getId().toString());
+      getAndValidateTestSummary(null);
     }
   }
 
   @Test
-  void test_resultSummaryCascadeToAllSuites(TestInfo test) throws IOException, ParseException {
+  void test_resultSummaryCascadeToAllSuites(TestInfo test)
+      throws IOException, ParseException, InterruptedException {
     TestCase testCase = createAndCheckEntity(createRequest(test, 1), ADMIN_AUTH_HEADERS);
     TestCase testCase1 = createAndCheckEntity(createRequest(test, 2), ADMIN_AUTH_HEADERS);
 
@@ -472,43 +471,32 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
         testSuiteResourceTest.getEntity(testCase.getTestSuite().getId(), "*", ADMIN_AUTH_HEADERS);
     if (supportsSearchIndex) {
       // test we get the right summary for the executable test suite
-      TestSummary executableTestSummary =
-          getTestSummary(testCase.getTestSuite().getId().toString());
-      assertEquals(testSuite.getTests().size(), executableTestSummary.getTotal());
+      getAndValidateTestSummary(testCase.getTestSuite().getId().toString());
     }
 
     // test we get the right summary for the logical test suite
 
     if (supportsSearchIndex) {
-      TestSummary logicalTestSummary = getTestSummary(logicalTestSuite.getId().toString());
-      assertEquals(1, logicalTestSummary.getTotal());
+      getAndValidateTestSummary(logicalTestSuite.getId().toString());
     }
     testCaseIds.clear();
     testCaseIds.add(testCase.getId());
     testSuiteResourceTest.addTestCasesToLogicalTestSuite(logicalTestSuite, testCaseIds);
     if (supportsSearchIndex) {
-      TestSummary logicalTestSummary = getTestSummary(logicalTestSuite.getId().toString());
-      assertEquals(2, logicalTestSummary.getTotal());
+      getAndValidateTestSummary(logicalTestSuite.getId().toString());
     }
     deleteEntity(testCase1.getId(), ADMIN_AUTH_HEADERS);
-    testSuite =
-        testSuiteResourceTest.getEntity(testCase.getTestSuite().getId(), "*", ADMIN_AUTH_HEADERS);
 
     if (supportsSearchIndex) {
-      TestSummary executableTestSummary =
-          getTestSummary(testCase.getTestSuite().getId().toString());
-      assertEquals(testSuite.getTests().size(), executableTestSummary.getTotal());
-      TestSummary logicalTestSummary = getTestSummary(logicalTestSuite.getId().toString());
-      assertEquals(2, logicalTestSummary.getTotal());
+      getAndValidateTestSummary(testCase.getTestSuite().getId().toString());
+      getAndValidateTestSummary(logicalTestSuite.getId().toString());
     }
     // check the deletion of the test case from the executable test suite
     // cascaded to the logical test suite
     deleteLogicalTestCase(logicalTestSuite, testCase.getId());
 
     if (supportsSearchIndex) {
-      TestSummary logicalTestSummary = getTestSummary(logicalTestSuite.getId().toString());
-      // check the deletion of the test case from the logical test suite is reflected in the summary
-      assertEquals(1, logicalTestSummary.getTotal());
+      getAndValidateTestSummary(logicalTestSuite.getId().toString());
     }
   }
 
@@ -648,7 +636,7 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
 
   @Test
   void get_listTestCasesFromSearchWithPagination(TestInfo testInfo)
-      throws IOException, ParseException {
+      throws IOException, ParseException, InterruptedException {
     if (supportsSearchIndex) {
       Random rand = new Random();
       int tablesNum = rand.nextInt(3) + 3;
@@ -817,6 +805,12 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
       throws HttpResponseException {
     WebTarget target = getCollection().path("/" + fqn + "/testCaseResult");
     TestUtils.put(target, data, CREATED, authHeaders);
+  }
+
+  public void deleteTestCaseResult(String fqn, Map<String, String> authHeaders)
+      throws HttpResponseException {
+    WebTarget target = getCollection().path("/" + fqn + "/testCaseResult");
+    TestUtils.delete(target, authHeaders);
   }
 
   @Test
@@ -1743,6 +1737,45 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
     assertEquals(7, testCases.getData().size());
   }
 
+  @Test
+  void wrongMinMaxTestParameter(TestInfo test) throws HttpResponseException {
+    CreateTestCase validTestCase = createRequest(test);
+    validTestCase
+        .withTestDefinition(TEST_DEFINITION1.getFullyQualifiedName())
+        .withParameterValues(
+            List.of(new TestCaseParameterValue().withName("minLength").withValue("10")));
+    createEntity(validTestCase, ADMIN_AUTH_HEADERS);
+
+    validTestCase = createRequest(test, 1);
+    validTestCase
+        .withTestDefinition(TEST_DEFINITION1.getFullyQualifiedName())
+        .withParameterValues(
+            List.of(new TestCaseParameterValue().withName("maxLength").withValue("10")));
+    createEntity(validTestCase, ADMIN_AUTH_HEADERS);
+
+    CreateTestCase invalidTestCase = createRequest(test, 2);
+    invalidTestCase
+        .withTestDefinition(TEST_DEFINITION1.getFullyQualifiedName())
+        .withParameterValues(
+            List.of(
+                new TestCaseParameterValue().withName("minLength").withValue("10"),
+                new TestCaseParameterValue().withName("maxLength").withValue("5")));
+
+    assertResponseContains(
+        () -> createEntity(invalidTestCase, ADMIN_AUTH_HEADERS), BAD_REQUEST, "Value");
+
+    CreateTestCase invalidTestCaseMixedTypes = createRequest(test, 3);
+    invalidTestCaseMixedTypes
+        .withTestDefinition(TEST_DEFINITION1.getFullyQualifiedName())
+        .withParameterValues(
+            List.of(
+                new TestCaseParameterValue().withName("minLength").withValue("10.6"),
+                new TestCaseParameterValue().withName("maxLength").withValue("5")));
+
+    assertResponseContains(
+        () -> createEntity(invalidTestCaseMixedTypes, ADMIN_AUTH_HEADERS), BAD_REQUEST, "Value");
+  }
+
   public void deleteTestCaseResult(String fqn, Long timestamp, Map<String, String> authHeaders)
       throws HttpResponseException {
     WebTarget target = getCollection().path("/" + fqn + "/testCaseResult/" + timestamp);
@@ -1805,9 +1838,93 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
     return TestUtils.get(target, TestCase.class, authHeaders);
   }
 
-  private TestSummary getTestSummary(String testSuiteId) throws IOException {
+  private TestSummary getTestSummary(String testSuiteId) throws IOException, InterruptedException {
+    waitForEsAsyncOp();
     TestSuiteResourceTest testSuiteResourceTest = new TestSuiteResourceTest();
     return testSuiteResourceTest.getTestSummary(ADMIN_AUTH_HEADERS, testSuiteId);
+  }
+
+  private void getAndValidateTestSummary(String testSuiteId)
+      throws IOException, InterruptedException {
+    TestSuiteResourceTest testSuiteResourceTest = new TestSuiteResourceTest();
+    TestSummary testSummary = getTestSummary(testSuiteId);
+    validateTestSummary(testSummary, testSuiteId);
+  }
+
+  private void validateTestSummary(TestSummary testSummary, String testSuiteId)
+      throws HttpResponseException {
+    HashMap<String, Integer> testSummaryMap = JsonUtils.convertValue(testSummary, HashMap.class);
+    List<TestCase> testCases;
+
+    HashMap<String, HashMap<String, Integer>> columnsMap = new HashMap<>();
+    HashMap<String, Integer> map = new HashMap<>(5);
+    map.put("success", 0);
+    map.put("failed", 0);
+    map.put("aborted", 0);
+    map.put("queued", 0);
+    map.put("total", 0);
+    HashMap<String, String> params = new HashMap<>();
+
+    if (testSuiteId != null) {
+      params.put("testSuiteId", testSuiteId);
+    }
+    params.put("fields", "testCaseResult");
+    params.put("limit", "10000");
+    params.put("include", "all");
+
+    ResultList<TestCase> testCaseResultList = listEntities(params, ADMIN_AUTH_HEADERS);
+    testCases = testCaseResultList.getData();
+    for (TestCase testCase : testCases) {
+      TestCaseResult testCaseResult = testCase.getTestCaseResult();
+      if (testCaseResult == null) {
+        continue;
+      }
+
+      MessageParser.EntityLink entityLink =
+          testCase.getEntityLink() != null
+              ? MessageParser.EntityLink.parse(testCase.getEntityLink())
+              : null;
+      if (entityLink != null
+          && entityLink.getFieldName() != null
+          && entityLink.getFieldName().equals("columns")
+          && testSuiteId != null) {
+        HashMap<String, Integer> columnMap =
+            columnsMap.get(entityLink.getFullyQualifiedFieldValue());
+        if (columnMap == null) {
+          columnMap = new HashMap<>(5);
+          columnMap.put("success", 0);
+          columnMap.put("failed", 0);
+          columnMap.put("aborted", 0);
+          columnMap.put("queued", 0);
+          columnMap.put("total", 0);
+          columnsMap.put(entityLink.getLinkString(), columnMap);
+        }
+        columnMap.merge(
+            testCaseResult.getTestCaseStatus().toString().toLowerCase(), 1, Integer::sum);
+        columnMap.merge("total", 1, Integer::sum);
+      }
+      map.merge(testCaseResult.getTestCaseStatus().toString().toLowerCase(), 1, Integer::sum);
+      map.merge("total", 1, Integer::sum);
+    }
+
+    for (Map.Entry<String, Integer> entry : map.entrySet()) {
+      assertEquals(entry.getValue(), testSummaryMap.get(entry.getKey()));
+    }
+
+    if (testSuiteId != null) {
+      // we validate column summary is set properly when requesting summary at the column level
+      List<ColumnTestSummaryDefinition> columnTestSummary = testSummary.getColumnTestSummary();
+      assertEquals(columnsMap.size(), columnTestSummary.size());
+      for (ColumnTestSummaryDefinition columnTestSummaryDefinition : columnTestSummary) {
+        HashMap<String, Integer> columnSummary =
+            JsonUtils.convertValue(columnTestSummaryDefinition, HashMap.class);
+        HashMap<String, Integer> columnMap =
+            columnsMap.get(columnTestSummaryDefinition.getEntityLink());
+        for (Map.Entry<String, Integer> entry : columnMap.entrySet()) {
+          assertEquals(entry.getValue(), columnSummary.get(entry.getKey()));
+        }
+      }
+    }
   }
 
   public ResultList<TestCase> getTestCases(
@@ -2065,7 +2182,7 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
   }
 
   @Test
-  void put_failedRowSample_200(TestInfo test) throws IOException, ParseException {
+  void put_and_delete_failedRowSample_200(TestInfo test) throws IOException, ParseException {
     CreateTestCase create =
         createRequest(test)
             .withEntityLink(TABLE_LINK)
@@ -2086,7 +2203,7 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
 
     // Cannot set failed sample for a non-failing test case
     assertResponse(
-        () -> putSampleData(testCase, columns, rows, ADMIN_AUTH_HEADERS),
+        () -> putFailedRowsSample(testCase, columns, rows, ADMIN_AUTH_HEADERS),
         BAD_REQUEST,
         "Failed rows can only be added to a failed test case.");
 
@@ -2099,17 +2216,55 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
             .withTimestamp(TestUtils.dateToTimestamp("2024-01-01")),
         ADMIN_AUTH_HEADERS);
     // Sample data can be put as an ADMIN
-    putSampleData(testCase, columns, rows, ADMIN_AUTH_HEADERS);
+    putFailedRowsSample(testCase, columns, rows, ADMIN_AUTH_HEADERS);
 
     // Sample data can be put as owner
     rows.get(0).set(1, 2); // Change value 1 to 2
-    putSampleData(testCase, columns, rows, authHeaders(USER1.getName()));
+    putFailedRowsSample(testCase, columns, rows, authHeaders(USER1.getName()));
 
     // Sample data can't be put as non-owner, non-admin
     assertResponse(
-        () -> putSampleData(testCase, columns, rows, authHeaders(USER2.getName())),
+        () -> putFailedRowsSample(testCase, columns, rows, authHeaders(USER2.getName())),
         FORBIDDEN,
-        permissionNotAllowed(USER2.getName(), List.of(MetadataOperation.EDIT_SAMPLE_DATA)));
+        permissionNotAllowed(USER2.getName(), List.of(EDIT_TESTS)));
+
+    deleteFailedRowsSample(testCase, ADMIN_AUTH_HEADERS);
+
+    assertResponse(
+        () -> getSampleData(testCase.getId(), ADMIN_AUTH_HEADERS),
+        NOT_FOUND,
+        FAILED_ROWS_SAMPLE_EXTENSION + " instance for " + testCase.getId() + " not found");
+  }
+
+  @Test
+  void resolved_test_case_deletes_sample_data(TestInfo test) throws IOException, ParseException {
+    CreateTestCase create =
+        createRequest(test)
+            .withEntityLink(TABLE_LINK)
+            .withTestSuite(TEST_SUITE1.getFullyQualifiedName())
+            .withTestDefinition(TEST_DEFINITION3.getFullyQualifiedName())
+            .withParameterValues(
+                List.of(
+                    new TestCaseParameterValue().withValue("100").withName("missingCountValue")));
+    TestCase testCase = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
+    List<String> columns = Arrays.asList(C1, C2, C3);
+
+    // Add 3 rows of sample data for 3 columns
+    List<List<Object>> rows =
+        Arrays.asList(
+            Arrays.asList("c1Value1", 1, true),
+            Arrays.asList("c1Value2", null, false),
+            Arrays.asList("c1Value3", 3, true));
+
+    putTestCaseResult(
+        testCase.getFullyQualifiedName(),
+        new TestCaseResult()
+            .withResult("result")
+            .withTestCaseStatus(TestCaseStatus.Failed)
+            .withTimestamp(TestUtils.dateToTimestamp("2024-01-01")),
+        ADMIN_AUTH_HEADERS);
+
+    putFailedRowsSample(testCase, columns, rows, ADMIN_AUTH_HEADERS);
 
     // resolving test case deletes the sample data
     TestCaseResult testCaseResult =
@@ -2153,7 +2308,7 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
     List<List<Object>> rows =
         Arrays.asList(List.of("c1Value1"), List.of("c1Value2"), List.of("c1Value3"));
     // add sample data
-    putSampleData(testCase, columns, rows, ADMIN_AUTH_HEADERS);
+    putFailedRowsSample(testCase, columns, rows, ADMIN_AUTH_HEADERS);
     // assert values are not masked for the table owner
     TableData data = getSampleData(testCase.getId(), authHeaders(USER1.getName()));
     assertFalse(
@@ -2174,21 +2329,28 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
             .count());
   }
 
-  private void putSampleData(
+  private void putFailedRowsSample(
       TestCase testCase,
       List<String> columns,
       List<List<Object>> rows,
       Map<String, String> authHeaders)
       throws IOException {
     TableData tableData = new TableData().withColumns(columns).withRows(rows);
-    TestCase putResponse = putSampleData(testCase.getId(), tableData, authHeaders);
+    TestCase putResponse = putFailedRowsSample(testCase.getId(), tableData, authHeaders);
     assertEquals(tableData, putResponse.getFailedRowsSample());
 
     TableData data = getSampleData(testCase.getId(), ADMIN_AUTH_HEADERS);
     assertEquals(tableData, data);
   }
 
-  public TestCase putSampleData(UUID testCaseId, TableData data, Map<String, String> authHeaders)
+  private TestCase deleteFailedRowsSample(TestCase testCase, Map<String, String> authHeaders)
+      throws IOException {
+    WebTarget target = getResource(testCase.getId()).path("/failedRowsSample");
+    return TestUtils.delete(target, TestCase.class, authHeaders);
+  }
+
+  public TestCase putFailedRowsSample(
+      UUID testCaseId, TableData data, Map<String, String> authHeaders)
       throws HttpResponseException {
     WebTarget target = getResource(testCaseId).path("/failedRowsSample");
     return TestUtils.put(target, data, TestCase.class, OK, authHeaders);

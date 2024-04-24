@@ -31,13 +31,13 @@ import {
   getLoggedInUserPermissions,
   getResourcePermission,
 } from '../../rest/permissionAPI';
-import { getUrlPathnameExpiryAfterRoute } from '../../utils/AuthProvider.util';
 import {
   getOperationPermissions,
   getUIPermission,
 } from '../../utils/PermissionsUtils';
 
 import { useApplicationStore } from '../../hooks/useApplicationStore';
+import { setUrlPathnameExpiryAfterRoute } from '../../utils/AuthProvider.util';
 import {
   EntityPermissionMap,
   PermissionContextType,
@@ -79,10 +79,7 @@ const PermissionProvider: FC<PermissionProviderProps> = ({ children }) => {
   const redirectToStoredPath = useCallback(() => {
     const urlPathname = cookieStorage.getItem(REDIRECT_PATHNAME);
     if (urlPathname) {
-      cookieStorage.setItem(REDIRECT_PATHNAME, urlPathname, {
-        expires: getUrlPathnameExpiryAfterRoute(),
-        path: '/',
-      });
+      setUrlPathnameExpiryAfterRoute(urlPathname);
       history.push(urlPathname);
     }
   }, [history]);

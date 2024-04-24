@@ -27,6 +27,7 @@ import {
 } from '../../../../generated/entity/applications/app';
 import { getIngestionPipelineByFqn } from '../../../../rest/ingestionPipelineAPI';
 import Loader from '../../../common/Loader/Loader';
+import { TestSuiteIngestionDataType } from '../../../DataQuality/AddDataQualityTest/AddDataQualityTest.interface';
 import TestSuiteScheduler from '../../../DataQuality/AddDataQualityTest/components/TestSuiteScheduler';
 import AppRunsHistory from '../AppRunsHistory/AppRunsHistory.component';
 import { AppRunsHistoryRef } from '../AppRunsHistory/AppRunsHistory.interface';
@@ -84,9 +85,9 @@ const AppSchedule = ({
     setShowModal(false);
   };
 
-  const onDialogSave = async (cron: string) => {
+  const onDialogSave = async (data: TestSuiteIngestionDataType) => {
     setIsSaveLoading(true);
-    await onSave(cron);
+    await onSave(data.repeatFrequency);
     setIsSaveLoading(false);
     setShowModal(false);
   };
@@ -229,9 +230,10 @@ const AppSchedule = ({
             okText: t('label.save'),
           }}
           includePeriodOptions={initialOptions}
-          initialData={
-            (appData.appSchedule as AppScheduleClass)?.cronExpression
-          }
+          initialData={{
+            repeatFrequency: (appData.appSchedule as AppScheduleClass)
+              ?.cronExpression,
+          }}
           isLoading={isSaveLoading}
           onCancel={onDialogCancel}
           onSubmit={onDialogSave}

@@ -11,10 +11,13 @@
 """
 factory for NoSQL adaptors that are used in the NoSQLProfiler.
 """
-
+from metadata.generated.schema.entity.services.connections.database.dynamoDBConnection import (
+    DynamoDBConnection,
+)
 from metadata.generated.schema.entity.services.connections.database.mongoDBConnection import (
     MongoDBConnection,
 )
+from metadata.profiler.adaptors.dynamodb import DynamoDB
 from metadata.profiler.adaptors.mongodb import MongoDB
 from metadata.profiler.factory import Factory
 from metadata.utils.logger import profiler_logger
@@ -34,6 +37,7 @@ class NoSQLAdaptorFactory(Factory):
 
 adaptors = profilers = {
     MongoDBConnection.__name__: MongoDB,
+    DynamoDBConnection.__name__: DynamoDB,
 }
 factory = NoSQLAdaptorFactory()
 factory.register_many(adaptors)

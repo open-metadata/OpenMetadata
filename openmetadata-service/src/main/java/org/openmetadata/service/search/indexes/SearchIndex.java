@@ -17,6 +17,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import org.openmetadata.common.utils.CommonUtil;
+import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.type.ColumnLineage;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
@@ -24,11 +25,39 @@ import org.openmetadata.schema.type.LineageDetails;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.CollectionDAO;
+import org.openmetadata.service.search.SearchIndexUtils;
+import org.openmetadata.service.search.models.SearchSuggest;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.JsonUtils;
 
 public interface SearchIndex {
   Map<String, Object> buildESDoc();
+
+  default List<SearchSuggest> getSuggest() {
+    return null;
+  }
+
+  default Map<String, Object> getCommonAttributesMap(EntityInterface entity, String entityType) {
+    Map<String, Object> map = new HashMap<>();
+    List<SearchSuggest> suggest = getSuggest();
+    map.put("entityType", entityType);
+    map.put("owner", getEntityWithDisplayName(entity.getOwner()));
+    map.put("domain", getEntityWithDisplayName(entity.getDomain()));
+    map.put("followers", SearchIndexUtils.parseFollowers(entity.getFollowers()));
+    map.put(
+        "totalVotes",
+        CommonUtil.nullOrEmpty(entity.getVotes())
+            ? 0
+            : entity.getVotes().getUpVotes() - entity.getVotes().getDownVotes());
+    map.put("descriptionStatus", getDescriptionStatus(entity));
+    map.put("suggest", suggest);
+    map.put(
+        "fqnParts",
+        getFQNParts(
+            entity.getFullyQualifiedName(),
+            suggest.stream().map(SearchSuggest::getInput).toList()));
+    return map;
+  }
 
   default Set<String> getFQNParts(String fqn, List<String> fqnSplits) {
     Set<String> fqnParts = new HashSet<>();
@@ -52,6 +81,10 @@ public interface SearchIndex {
             ? cloneEntity.getName()
             : cloneEntity.getDisplayName());
     return cloneEntity;
+  }
+
+  default String getDescriptionStatus(EntityInterface entity) {
+    return CommonUtil.nullOrEmpty(entity.getDescription()) ? "INCOMPLETE" : "COMPLETE";
   }
 
   static List<HashMap<String, Object>> getLineageData(EntityReference entity) {

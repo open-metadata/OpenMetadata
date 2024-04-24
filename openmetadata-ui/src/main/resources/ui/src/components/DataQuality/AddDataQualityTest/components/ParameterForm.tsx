@@ -22,6 +22,7 @@ import {
   Select,
   Switch,
 } from 'antd';
+import { RuleRender } from 'antd/lib/form';
 import 'codemirror/addon/fold/foldgutter.css';
 import { isUndefined } from 'lodash';
 import React from 'react';
@@ -30,9 +31,16 @@ import { ReactComponent as IconDelete } from '../../../../assets/svg/ic-delete.s
 import { SUPPORTED_PARTITION_TYPE_FOR_DATE_TIME } from '../../../../constants/profiler.constant';
 import { CSMode } from '../../../../enums/codemirror.enum';
 import {
+  Rule,
   TestCaseParameterDefinition,
   TestDataType,
 } from '../../../../generated/tests/testDefinition';
+import {
+  validateEquals,
+  validateGreaterThanOrEquals,
+  validateLessThanOrEquals,
+  validateNotEquals,
+} from '../../../../utils/ParameterForm/ParameterFormUtils';
 import '../../../Database/Profiler/TableProfiler/table-profiler.less';
 import SchemaEditor from '../../../Database/SchemaEditor/SchemaEditor';
 import { ParameterFormProps } from '../AddDataQualityTest.interface';
@@ -41,6 +49,30 @@ const ParameterForm: React.FC<ParameterFormProps> = ({ definition, table }) => {
   const { t } = useTranslation();
 
   const prepareForm = (data: TestCaseParameterDefinition) => {
+    const ruleValidation: RuleRender = ({ getFieldValue }) => ({
+      validator(_, value) {
+        if (data?.validationRule) {
+          const fieldValue = data.validationRule.parameterField
+            ? getFieldValue(['params', data.validationRule.parameterField])
+            : undefined;
+          if (fieldValue && value) {
+            switch (data.validationRule.rule) {
+              case Rule.GreaterThanOrEquals:
+                return validateGreaterThanOrEquals(fieldValue, value);
+              case Rule.LessThanOrEquals:
+                return validateLessThanOrEquals(fieldValue, value);
+              case Rule.Equals:
+                return validateEquals(fieldValue, value);
+              case Rule.NotEquals:
+                return validateNotEquals(fieldValue, value);
+            }
+          }
+        }
+
+        return Promise.resolve();
+      },
+    });
+
     let internalFormItemProps: FormItemProps = {};
     let Field = (
       <Input
@@ -221,6 +253,7 @@ const ParameterForm: React.FC<ParameterFormProps> = ({ definition, table }) => {
               fieldText: data.displayName,
             })}`,
           },
+          ruleValidation,
         ]}
         tooltip={data.description}
         {...internalFormItemProps}>

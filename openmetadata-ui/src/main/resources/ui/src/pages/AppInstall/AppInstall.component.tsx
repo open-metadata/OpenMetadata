@@ -22,6 +22,7 @@ import { useHistory } from 'react-router-dom';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import FormBuilder from '../../components/common/FormBuilder/FormBuilder';
 import Loader from '../../components/common/Loader/Loader';
+import { TestSuiteIngestionDataType } from '../../components/DataQuality/AddDataQualityTest/AddDataQualityTest.interface';
 import TestSuiteScheduler from '../../components/DataQuality/AddDataQualityTest/components/TestSuiteScheduler';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import applicationSchemaClassBase from '../../components/Settings/Applications/AppDetails/ApplicationsClassBase';
@@ -80,10 +81,12 @@ const AppInstall = () => {
 
     return {
       initialOptions,
-      initialValue: getCronInitialValue(
-        appData?.appType ?? AppType.Internal,
-        appData?.name ?? ''
-      ),
+      initialValue: {
+        repeatFrequency: getCronInitialValue(
+          appData?.appType ?? AppType.Internal,
+          appData?.name ?? ''
+        ),
+      },
     };
   }, [appData?.name, appData?.appType]);
 
@@ -113,7 +116,8 @@ const AppInstall = () => {
     history.push(getSettingPath(GlobalSettingOptions.APPLICATIONS));
   };
 
-  const onSubmit = async (repeatFrequency: string) => {
+  const onSubmit = async (updatedValue: TestSuiteIngestionDataType) => {
+    const { repeatFrequency } = updatedValue;
     try {
       setIsSavingLoading(true);
       const data: CreateAppRequest = {

@@ -27,7 +27,8 @@
         "loginConfiguration",
         "slackAppConfiguration",
         "slackBot",
-        "slackInstaller"
+        "slackInstaller",
+        "profilerConfiguration"
       ]
     }
   },
@@ -67,8 +68,10 @@
         },
         {
           "$ref": "../configuration/slackAppConfiguration.json"
+        },
+        {
+          "$ref": "../configuration/profilerConfiguration.json"
         }
-        
       ]
     }
   },

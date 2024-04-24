@@ -225,6 +225,7 @@
             "fields": {
               "keyword": {
                 "type": "keyword",
+                "normalizer": "lowercase_normalizer",
                 "ignore_above": 256
               }
             }
@@ -399,6 +400,9 @@
       },
       "deleted": {
         "type": "text"
+      },
+      "descriptionStatus": {
+        "type": "keyword"
       }
     }
   }

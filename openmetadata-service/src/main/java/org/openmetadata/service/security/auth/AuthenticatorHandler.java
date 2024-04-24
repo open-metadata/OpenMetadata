@@ -1,6 +1,7 @@
 package org.openmetadata.service.security.auth;
 
 import static org.openmetadata.service.exception.CatalogExceptionMessage.NOT_IMPLEMENTED_METHOD;
+import static org.openmetadata.service.util.UserUtil.getRoleListFromUser;
 
 import freemarker.template.TemplateException;
 import java.io.IOException;
@@ -104,6 +105,8 @@ public interface AuthenticatorHandler {
         JWTTokenGenerator.getInstance()
             .generateJWTToken(
                 storedUser.getName(),
+                getRoleListFromUser(storedUser),
+                storedUser.getIsAdmin(),
                 storedUser.getEmail(),
                 expireInSeconds,
                 false,
