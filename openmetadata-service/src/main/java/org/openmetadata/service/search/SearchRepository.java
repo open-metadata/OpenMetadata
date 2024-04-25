@@ -710,6 +710,18 @@ public class SearchRepository {
         fqn, upstreamDepth, downstreamDepth, queryFilter, deleted, entityType);
   }
 
+  public Map<String, Object> searchLineageForExport(
+      String fqn,
+      int upstreamDepth,
+      int downstreamDepth,
+      String queryFilter,
+      boolean deleted,
+      String entityType)
+      throws IOException {
+    return searchClient.searchLineageInternal(
+        fqn, upstreamDepth, downstreamDepth, queryFilter, deleted, entityType);
+  }
+
   public Response searchByField(String fieldName, String fieldValue, String index)
       throws IOException {
     return searchClient.searchByField(fieldName, fieldValue, index);
