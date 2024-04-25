@@ -633,7 +633,7 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
                 .withName("testUser1")
                 .withDisplayName("displayName")
                 .withEmail("testUser1@email.com"),
-            authHeaders("test1@email.com"));
+            ADMIN_AUTH_HEADERS);
     String userJson = JsonUtils.pojoToJson(user);
     List<EntityReference> teams = user.getTeams();
     teams.add(team1);
