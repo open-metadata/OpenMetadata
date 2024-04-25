@@ -560,7 +560,10 @@ export const AssetSelectionModal = ({
             message={
               <div className="d-flex items-center gap-3">
                 <ExclamationCircleOutlined
-                  style={{ color: theme.errorColor, fontSize: '24px' }}
+                  style={{
+                    color: theme.errorColor,
+                    fontSize: '24px',
+                  }}
                 />
                 <Typography.Text className="font-semibold text-sm">
                   {t('label.validation-error-plural')}
