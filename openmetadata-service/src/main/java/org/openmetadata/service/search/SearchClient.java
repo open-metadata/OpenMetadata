@@ -95,6 +95,15 @@ public interface SearchClient {
       String entityType)
       throws IOException;
 
+  Map<String, Object> searchLineageInternal(
+      String fqn,
+      int upstreamDepth,
+      int downstreamDepth,
+      String queryFilter,
+      boolean deleted,
+      String entityType)
+      throws IOException;
+
   Response searchByField(String fieldName, String fieldValue, String index) throws IOException;
 
   Response aggregate(String index, String fieldName, String value, String query) throws IOException;
