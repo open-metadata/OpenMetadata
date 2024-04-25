@@ -66,8 +66,8 @@ EXECUTION_DATE = datetime.strptime("2021-07-03", "%Y-%m-%d")
             "COLUMN",
             (
                 TestCaseResult,
+                "0",
                 "8",
-                "14",
                 TestCaseStatus.Failed,
                 20.0,
                 10.0,
@@ -216,9 +216,9 @@ EXECUTION_DATE = datetime.strptime("2021-07-03", "%Y-%m-%d")
             "COLUMN",
             (
                 TestCaseResult,
-                "10",
+                "20",
                 None,
-                TestCaseStatus.Success,
+                TestCaseStatus.Failed,
                 None,
                 None,
                 None,
@@ -229,7 +229,7 @@ EXECUTION_DATE = datetime.strptime("2021-07-03", "%Y-%m-%d")
             "test_case_column_values_missing_count_to_be_equal_missing_values",
             "columnValuesMissingCount",
             "COLUMN",
-            (TestCaseResult, "20", None, TestCaseStatus.Failed, None, None, None, None),
+            (TestCaseResult, "30", None, TestCaseStatus.Failed, None, None, None, None),
         ),
         (
             "test_case_column_values_not_in_set",

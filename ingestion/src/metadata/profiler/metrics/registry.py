@@ -42,6 +42,7 @@ from metadata.profiler.metrics.static.min_length import MinLength
 from metadata.profiler.metrics.static.not_like_count import NotLikeCount
 from metadata.profiler.metrics.static.not_regexp_match_count import NotRegexCount
 from metadata.profiler.metrics.static.null_count import NullCount
+from metadata.profiler.metrics.static.null_missing_count import NullMissingCount
 from metadata.profiler.metrics.static.regexp_match_count import RegexCount
 from metadata.profiler.metrics.static.row_count import RowCount
 from metadata.profiler.metrics.static.stddev import StdDev
@@ -103,3 +104,6 @@ class Metrics(MetricRegistry):
 
     # Hybrid Metrics
     HISTOGRAM = Histogram
+
+    # Missing Count
+    NULL_MISSING_COUNT = NullMissingCount

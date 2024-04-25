@@ -102,7 +102,7 @@ def create_sqlite_table():
                 name="John",
                 first_name="Jo",
                 fullname="John Doe",
-                nickname="johnny b goode",
+                nickname="",
                 age=30,
                 inserted_date=datetime.today() - timedelta(days=i),
             ),
