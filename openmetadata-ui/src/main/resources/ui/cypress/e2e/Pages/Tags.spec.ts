@@ -210,7 +210,7 @@ describe('Classification Page', { tags: 'Governance' }, () => {
     interceptURL('PATCH', '/api/v1/databaseSchemas/*', 'addTags');
 
     const entity = SEARCH_ENTITY_TABLE.table_3;
-    const tag = 'Sensitive';
+    const tag = 'PII.Sensitive';
 
     visitEntityDetailsPage({
       term: entity.term,
