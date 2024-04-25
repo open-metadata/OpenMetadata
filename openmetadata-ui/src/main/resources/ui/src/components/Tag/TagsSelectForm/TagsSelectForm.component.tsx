@@ -42,6 +42,7 @@ const TagSelectForm = ({
 
   return (
     <Form
+      data-testid="tag-form"
       form={form}
       initialValues={{ tags: defaultValue }}
       name="tagsForm"

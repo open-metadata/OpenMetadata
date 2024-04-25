@@ -19,7 +19,6 @@ import {
   TreeSelect,
   TreeSelectProps,
 } from 'antd';
-import { DefaultOptionType } from 'antd/lib/select';
 import { Key } from 'antd/lib/table/interface';
 import { AxiosError } from 'axios';
 import { debounce, isEmpty, isUndefined, pick } from 'lodash';
@@ -40,7 +39,8 @@ import {
 import { getEntityName } from '../../../utils/EntityUtils';
 import {
   buildTree,
-  findGlossaryTermFromID,
+  convertGlossaryTermsToTreeOptions,
+  findGlossaryTermByFqn,
 } from '../../../utils/GlossaryUtils';
 import { getTagDisplay, tagRender } from '../../../utils/TagsUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
@@ -63,7 +63,7 @@ const TreeAsyncSelectList: FC<Omit<AsyncSelectListProps, 'fetchOptions'>> = ({
   const [isLoading, setIsLoading] = useState(false);
   const selectedTagsRef = useRef<SelectOption[]>(initialOptions ?? []);
   const { t } = useTranslation();
-  const [glossaries, setGlossaries] = useState([] as Glossary[]);
+  const [glossaries, setGlossaries] = useState<Glossary[]>([]);
   const expandableKeys = useRef<string[]>([]);
   const [expandedRowKeys, setExpandedRowKeys] = useState<Key[]>([]);
   const [searchOptions, setSearchOptions] = useState<Glossary[]>([]);
@@ -173,7 +173,7 @@ const TreeAsyncSelectList: FC<Omit<AsyncSelectListProps, 'fetchOptions'>> = ({
 
   const handleChange: TreeSelectProps['onChange'] = (values: string[]) => {
     const selectedValues = values.map((value) => {
-      const initialData = findGlossaryTermFromID(
+      const initialData = findGlossaryTermByFqn(
         glossaries as ModifiedGlossaryTerm[],
         value
       );
@@ -234,37 +234,6 @@ const TreeAsyncSelectList: FC<Omit<AsyncSelectListProps, 'fetchOptions'>> = ({
     }
   }, 300);
 
-  const convertToTreeData = (
-    options: ModifiedGlossaryTerm[] = [],
-    level = 0
-  ): Omit<DefaultOptionType, 'label'>[] => {
-    const treeData = options.map((option) => {
-      const hasChildren = 'children' in option && !isEmpty(option?.children);
-
-      // for 0th level we don't want check option to available
-      const isGlossaryTerm = level !== 0;
-
-      // Only include keys with no children or keys that are not expanded
-      return {
-        id: option.id,
-        value: option.fullyQualifiedName,
-        title: getEntityName(option),
-        'data-testid': `tag-${option.fullyQualifiedName}`,
-        checkable: isGlossaryTerm,
-        isLeaf: isGlossaryTerm ? !hasChildren : false,
-        selectable: isGlossaryTerm,
-        children:
-          hasChildren &&
-          convertToTreeData(
-            option.children as ModifiedGlossaryTerm[],
-            level + 1
-          ),
-      };
-    });
-
-    return treeData;
-  };
-
   useEffect(() => {
     if (glossaries.length) {
       expandableKeys.current = glossaries.map((glossary) => glossary.id);
@@ -273,7 +242,7 @@ const TreeAsyncSelectList: FC<Omit<AsyncSelectListProps, 'fetchOptions'>> = ({
 
   const treeData = useMemo(
     () =>
-      convertToTreeData(
+      convertGlossaryTermsToTreeOptions(
         isEmpty(searchOptions)
           ? (glossaries as ModifiedGlossaryTerm[])
           : (searchOptions as unknown as ModifiedGlossaryTerm[])

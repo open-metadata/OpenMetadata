@@ -11,6 +11,8 @@
  *  limitations under the License.
  */
 
+import { DefaultOptionType } from 'antd/lib/select';
+import { isEmpty } from 'lodash';
 import { StatusType } from '../components/common/StatusBadge/StatusBadge.interface';
 import { ModifiedGlossaryTerm } from '../components/Glossary/GlossaryTermTab/GlossaryTermTab.interface';
 import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
@@ -18,6 +20,7 @@ import { EntityType } from '../enums/entity.enum';
 import { Glossary } from '../generated/entity/data/glossary';
 import { GlossaryTerm, Status } from '../generated/entity/data/glossaryTerm';
 import { EntityReference } from '../generated/type/entityReference';
+import { getEntityName } from './EntityUtils';
 import Fqn from './Fqn';
 import { getGlossaryPath } from './RouterUtils';
 
@@ -142,7 +145,7 @@ export const getGlossaryBreadcrumbs = (fqn: string) => {
   return breadcrumbList;
 };
 
-export const findGlossaryTermFromID = (
+export const findGlossaryTermByFqn = (
   list: ModifiedGlossaryTerm[],
   fullyQualifiedName: string
 ): GlossaryTerm | Glossary | null => {
@@ -151,7 +154,7 @@ export const findGlossaryTermFromID = (
       return item;
     }
     if (item.children) {
-      const found = findGlossaryTermFromID(
+      const found = findGlossaryTermByFqn(
         item.children as ModifiedGlossaryTerm[],
         fullyQualifiedName
       );
@@ -162,4 +165,35 @@ export const findGlossaryTermFromID = (
   }
 
   return null;
+};
+
+export const convertGlossaryTermsToTreeOptions = (
+  options: ModifiedGlossaryTerm[] = [],
+  level = 0
+): Omit<DefaultOptionType, 'label'>[] => {
+  const treeData = options.map((option) => {
+    const hasChildren = 'children' in option && !isEmpty(option?.children);
+
+    // for 0th level we don't want check option to available
+    const isGlossaryTerm = level !== 0;
+
+    // Only include keys with no children or keys that are not expanded
+    return {
+      id: option.id,
+      value: option.fullyQualifiedName,
+      title: getEntityName(option),
+      'data-testid': `tag-${option.fullyQualifiedName}`,
+      checkable: isGlossaryTerm,
+      isLeaf: isGlossaryTerm ? !hasChildren : false,
+      selectable: isGlossaryTerm,
+      children:
+        hasChildren &&
+        convertGlossaryTermsToTreeOptions(
+          option.children as ModifiedGlossaryTerm[],
+          level + 1
+        ),
+    };
+  });
+
+  return treeData;
 };
