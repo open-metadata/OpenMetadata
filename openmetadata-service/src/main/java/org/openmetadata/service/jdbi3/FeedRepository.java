@@ -414,6 +414,20 @@ public class FeedRepository {
     sortPosts(thread);
   }
 
+  @Transaction
+  public void closeTaskWithoutWorkflow(Thread thread, String user, CloseTask closeTask) {
+    TaskDetails task = thread.getTask();
+    if (task.getStatus() != Open) {
+      return;
+    }
+    task.withStatus(TaskStatus.Closed).withClosedBy(user).withClosedAt(System.currentTimeMillis());
+    thread.withTask(task).withUpdatedBy(user).withUpdatedAt(System.currentTimeMillis());
+
+    dao.feedDAO().update(thread.getId(), JsonUtils.pojoToJson(thread));
+    addClosingPost(thread, user, closeTask.getComment());
+    sortPosts(thread);
+  }
+
   private void storeMentions(Thread thread, String message) {
     // Create relationship for users, teams, and other entities that are mentioned in the post
     // Multiple mentions of the same entity is handled by taking distinct mentions
