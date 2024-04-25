@@ -38,6 +38,7 @@ import org.jdbi.v3.sqlobject.SqlObjects;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.ServiceEntityInterface;
 import org.openmetadata.schema.entity.app.App;
+import org.openmetadata.schema.entity.app.AppRunRecord;
 import org.openmetadata.schema.entity.app.AppSchedule;
 import org.openmetadata.schema.entity.app.ScheduleTimeline;
 import org.openmetadata.schema.entity.app.ScheduledExecutionContext;
@@ -53,6 +54,7 @@ import org.openmetadata.service.apps.scheduler.AppScheduler;
 import org.openmetadata.service.clients.pipeline.PipelineServiceClientFactory;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.fernet.Fernet;
+import org.openmetadata.service.jdbi3.AppRepository;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.IngestionPipelineRepository;
@@ -277,6 +279,23 @@ public class OpenMetadataOperations implements Callable<Integer> {
       do {
         Thread.sleep(3000l);
       } while (!AppScheduler.getInstance().getScheduler().getCurrentlyExecutingJobs().isEmpty());
+      AppRepository appRepository = (AppRepository) Entity.getEntityRepository(Entity.APPLICATION);
+      AppRunRecord appRunRecord = appRepository.getLatestAppRuns(searchIndexApp.getId());
+      if (appRunRecord != null) {
+        List<String> columns =
+            new ArrayList<>(
+                List.of("status", "startTime", "endTime", "executionTime", "success", "failure"));
+        List<List<String>> rows = new ArrayList<>();
+        rows.add(
+            Arrays.asList(
+                appRunRecord.getStatus().value(),
+                appRunRecord.getStartTime().toString(),
+                appRunRecord.getEndTime().toString(),
+                appRunRecord.getExecutionTime().toString(),
+                appRunRecord.getSuccessContext().toString(),
+                appRunRecord.getFailureContext().toString()));
+        printToAsciiTable(columns, rows, "No Search Indexing Application found");
+      }
       return 0;
     } catch (Exception e) {
       LOG.error("Failed to reindex due to ", e);
