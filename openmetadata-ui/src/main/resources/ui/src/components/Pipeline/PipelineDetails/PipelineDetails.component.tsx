@@ -439,7 +439,9 @@ const PipelineDetails = ({
         filterIcon: (filtered) => (
           <FilterOutlined
             data-testid="tag-filter"
-            style={{ color: filtered ? theme.primaryColor : undefined }}
+            style={{
+              color: filtered ? theme.primaryColor : undefined,
+            }}
           />
         ),
         render: (owner) => <OwnerLabel hasPermission={false} owner={owner} />,
@@ -453,7 +455,9 @@ const PipelineDetails = ({
         filterIcon: (filtered) => (
           <FilterOutlined
             data-testid="tag-filter"
-            style={{ color: filtered ? theme.primaryColor : undefined }}
+            style={{
+              color: filtered ? theme.primaryColor : undefined,
+            }}
           />
         ),
         render: (tags, record, index) => (
@@ -483,7 +487,9 @@ const PipelineDetails = ({
         filterIcon: (filtered) => (
           <FilterOutlined
             data-testid="glossary-filter"
-            style={{ color: filtered ? theme.primaryColor : undefined }}
+            style={{
+              color: filtered ? theme.primaryColor : undefined,
+            }}
           />
         ),
         filters: tagFilter.Glossary,

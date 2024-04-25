@@ -111,7 +111,9 @@ export const IngestionPipelineList = ({
         filterDropdown: ColumnFilter,
         filterIcon: (filtered) => (
           <FilterOutlined
-            style={{ color: filtered ? theme.primaryColor : undefined }}
+            style={{
+              color: filtered ? theme.primaryColor : undefined,
+            }}
           />
         ),
         filters: map(PipelineType, (value) => ({

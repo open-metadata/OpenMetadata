@@ -137,7 +137,9 @@ export const CustomEdge = ({
 
     return {
       ...style,
-      ...{ stroke: isStrokeNeeded ? theme.primaryColor : undefined },
+      ...{
+        stroke: isStrokeNeeded ? theme.primaryColor : undefined,
+      },
     };
   }, [style, tracedNodes, edge, isColumnHighlighted, isColumnLineage]);
 

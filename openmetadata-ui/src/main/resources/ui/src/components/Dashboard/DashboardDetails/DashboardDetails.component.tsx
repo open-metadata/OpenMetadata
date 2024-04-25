@@ -504,7 +504,9 @@ const DashboardDetails = ({
         filterIcon: (filtered) => (
           <FilterOutlined
             data-testid="tag-filter"
-            style={{ color: filtered ? theme.primaryColor : undefined }}
+            style={{
+              color: filtered ? theme.primaryColor : undefined,
+            }}
           />
         ),
         render: (tags: TagLabel[], record: ChartType, index: number) => {
@@ -536,7 +538,9 @@ const DashboardDetails = ({
         filterIcon: (filtered) => (
           <FilterOutlined
             data-testid="glossary-filter"
-            style={{ color: filtered ? theme.primaryColor : undefined }}
+            style={{
+              color: filtered ? theme.primaryColor : undefined,
+            }}
           />
         ),
         render: (tags: TagLabel[], record: ChartType, index: number) => (

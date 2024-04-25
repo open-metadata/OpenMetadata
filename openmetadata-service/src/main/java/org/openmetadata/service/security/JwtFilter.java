@@ -70,7 +70,7 @@ public class JwtFilter implements ContainerRequestFilter {
       List.of(
           "v1/system/config/jwks",
           "v1/system/config/authorizer",
-          "v1/system/config/customLogoConfiguration",
+          "v1/system/config/customUiThemePreference",
           "v1/system/config/auth",
           "v1/users/signup",
           "v1/system/version",

@@ -304,7 +304,10 @@ const CustomControls: FC<ControlProps> = ({
                 disabled={isEditMode}
                 icon={
                   <SettingOutlined
-                    style={{ fontSize: '16px', color: theme.primaryColor }}
+                    style={{
+                      fontSize: '16px',
+                      color: theme.primaryColor,
+                    }}
                   />
                 }
                 onClick={() => setDialogVisible(true)}

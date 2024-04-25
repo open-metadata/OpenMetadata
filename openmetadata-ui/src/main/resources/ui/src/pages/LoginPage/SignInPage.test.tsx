@@ -32,8 +32,10 @@ jest.mock('react-router-dom', () => ({
 jest.mock('../../hooks/useApplicationStore', () => ({
   useApplicationStore: jest.fn().mockImplementation(() => ({
     applicationConfig: {
-      customLogoUrlPath: 'https://custom-logo.png',
-      customMonogramUrlPath: 'https://custom-monogram.png',
+      customLogoConfig: {
+        customLogoUrlPath: 'https://custom-logo.png',
+        customMonogramUrlPath: 'https://custom-monogram.png',
+      },
     },
     getOidcToken: jest.fn(),
   })),
@@ -131,8 +133,10 @@ describe('Test SignInPage Component', () => {
       onLogoutHandler: jest.fn(),
       getOidcToken: jest.fn(),
       applicationConfig: {
-        customLogoUrlPath: 'https://custom-logo.png',
-        customMonogramUrlPath: 'https://custom-monogram.png',
+        customLogoConfig: {
+          customLogoUrlPath: 'https://custom-logo.png',
+          customMonogramUrlPath: 'https://custom-monogram.png',
+        },
       },
     });
     render(<SignInPage />, {

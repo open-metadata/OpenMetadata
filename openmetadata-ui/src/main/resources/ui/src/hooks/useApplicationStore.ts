@@ -14,10 +14,9 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { AuthenticationConfigurationWithScope } from '../components/Auth/AuthProviders/AuthProvider.interface';
 import { EntityUnion } from '../components/Explore/ExplorePage.interface';
-import { DEFAULT_THEME } from '../constants/Appearance.constants';
 import { AuthenticationConfiguration } from '../generated/configuration/authenticationConfiguration';
 import { AuthorizerConfiguration } from '../generated/configuration/authorizerConfiguration';
-import { LogoConfiguration } from '../generated/configuration/logoConfiguration';
+import { UIThemePreference } from '../generated/configuration/uiThemePreference';
 import { User } from '../generated/entity/teams/user';
 import { EntityReference } from '../generated/entity/type';
 import {
@@ -25,13 +24,17 @@ import {
   HelperFunctions,
 } from '../interface/store.interface';
 import { getOidcToken } from '../utils/LocalStorageUtils';
+import { getThemeConfig } from '../utils/ThemeUtils';
 
 export const OM_SESSION_KEY = 'om-session';
 
 export const useApplicationStore = create<ApplicationStore>()(
   persist(
     (set, get) => ({
-      applicationConfig: {} as LogoConfiguration,
+      theme: getThemeConfig(),
+      applicationConfig: {
+        customTheme: getThemeConfig(),
+      } as UIThemePreference,
       currentUser: undefined,
       newUser: undefined,
       isAuthenticated: Boolean(getOidcToken()),
@@ -44,13 +47,6 @@ export const useApplicationStore = create<ApplicationStore>()(
       selectedPersona: {} as EntityReference,
       oidcIdToken: '',
       refreshTokenKey: '',
-      theme: { ...DEFAULT_THEME },
-      setTheme: (theme: ApplicationStore['theme']) => {
-        set({ theme });
-      },
-      resetTheme: () => {
-        set({ theme: { ...DEFAULT_THEME } });
-      },
       searchCriteria: '',
 
       setHelperFunctionsRef: (helperFunctions: HelperFunctions) => {
@@ -61,8 +57,8 @@ export const useApplicationStore = create<ApplicationStore>()(
         set({ selectedPersona: persona });
       },
 
-      setApplicationConfig: (config: LogoConfiguration) => {
-        set({ applicationConfig: config });
+      setApplicationConfig: (config: UIThemePreference) => {
+        set({ applicationConfig: config, theme: config.customTheme });
       },
       setCurrentUser: (user) => {
         set({ currentUser: user });

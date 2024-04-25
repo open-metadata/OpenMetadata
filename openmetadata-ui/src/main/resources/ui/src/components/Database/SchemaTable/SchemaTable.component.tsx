@@ -414,7 +414,9 @@ const SchemaTable = ({
         filterIcon: (filtered: boolean) => (
           <FilterOutlined
             data-testid="tag-filter"
-            style={{ color: filtered ? theme.primaryColor : undefined }}
+            style={{
+              color: filtered ? theme.primaryColor : undefined,
+            }}
           />
         ),
         render: (tags: TagLabel[], record: Column, index: number) => (
@@ -444,7 +446,9 @@ const SchemaTable = ({
         filterIcon: (filtered) => (
           <FilterOutlined
             data-testid="glossary-filter"
-            style={{ color: filtered ? theme.primaryColor : undefined }}
+            style={{
+              color: filtered ? theme.primaryColor : undefined,
+            }}
           />
         ),
         render: (tags: TagLabel[], record: Column, index: number) => (

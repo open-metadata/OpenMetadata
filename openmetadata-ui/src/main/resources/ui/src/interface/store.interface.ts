@@ -10,7 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Theme } from 'antd/lib/config-provider/context';
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import {
   AuthenticationConfigurationWithScope,
@@ -25,6 +24,7 @@ import { AuthenticationConfiguration } from '../generated/configuration/authenti
 import { AuthorizerConfiguration } from '../generated/configuration/authorizerConfiguration';
 import { LoginConfiguration } from '../generated/configuration/loginConfiguration';
 import { LogoConfiguration } from '../generated/configuration/logoConfiguration';
+import { UIThemePreference } from '../generated/configuration/uiThemePreference';
 import { Domain } from '../generated/entity/domains/domain';
 import { User } from '../generated/entity/teams/user';
 import { EntityReference } from '../generated/entity/type';
@@ -48,13 +48,11 @@ export interface ApplicationStore
   oidcIdToken: string;
   refreshTokenKey: string;
   authConfig?: AuthenticationConfigurationWithScope;
-  applicationConfig?: LogoConfiguration;
-  theme: Theme;
-  setTheme: (theme: Theme) => void;
-  resetTheme: () => void;
+  applicationConfig?: UIThemePreference;
   searchCriteria: ExploreSearchIndex | '';
+  theme: UIThemePreference['customTheme'];
   setSelectedPersona: (persona: EntityReference) => void;
-  setApplicationConfig: (config: LogoConfiguration) => void;
+  setApplicationConfig: (config: UIThemePreference) => void;
   setCurrentUser: (user: User) => void;
   setAuthConfig: (authConfig: AuthenticationConfigurationWithScope) => void;
   setAuthorizerConfig: (authorizerConfig: AuthorizerConfiguration) => void;

@@ -12,6 +12,7 @@ import javax.ws.rs.core.Response;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
+import org.openmetadata.api.configuration.UiThemePreference;
 import org.openmetadata.schema.api.configuration.SlackAppConfiguration;
 import org.openmetadata.schema.email.SmtpSettings;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineServiceClientResponse;
@@ -193,6 +194,8 @@ public class SystemRepository {
         SlackAppConfiguration appConfiguration =
             JsonUtils.convertValue(setting.getConfigValue(), SlackAppConfiguration.class);
         setting.setConfigValue(encryptSlackAppSetting(appConfiguration));
+      } else if (setting.getConfigType() == SettingsType.CUSTOM_UI_THEME_PREFERENCE) {
+        JsonUtils.validateJsonSchema(setting.getConfigValue(), UiThemePreference.class);
       }
       dao.insertSettings(
           setting.getConfigType().toString(), JsonUtils.pojoToJson(setting.getConfigValue()));

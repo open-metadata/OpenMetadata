@@ -25,6 +25,8 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.TestMethodOrder;
 import org.openmetadata.api.configuration.LogoConfiguration;
+import org.openmetadata.api.configuration.ThemeConfiguration;
+import org.openmetadata.api.configuration.UiThemePreference;
 import org.openmetadata.schema.api.configuration.profiler.MetricConfigurationDefinition;
 import org.openmetadata.schema.api.configuration.profiler.ProfilerConfiguration;
 import org.openmetadata.schema.api.data.*;
@@ -185,14 +187,19 @@ public class SystemResourceTest extends OpenMetadataApplicationTest {
     expected.setPassword("***********");
     Assertions.assertEquals(expected, smtp);
 
-    // Test Custom Log Config
-    Settings logoConfigWrapped = getSystemConfig(SettingsType.CUSTOM_LOGO_CONFIGURATION);
-    LogoConfiguration loginConfiguration =
-        JsonUtils.convertValue(logoConfigWrapped.getConfigValue(), LogoConfiguration.class);
+    // Test Custom Ui Theme Preference Config
+    Settings uiThemeConfigWrapped = getSystemConfig(SettingsType.CUSTOM_UI_THEME_PREFERENCE);
+    UiThemePreference uiThemePreference =
+        JsonUtils.convertValue(uiThemeConfigWrapped.getConfigValue(), UiThemePreference.class);
 
     // Defaults
-    Assertions.assertEquals("", loginConfiguration.getCustomLogoUrlPath());
-    Assertions.assertEquals("", loginConfiguration.getCustomMonogramUrlPath());
+    Assertions.assertEquals("", uiThemePreference.getCustomTheme().getPrimaryColor());
+    Assertions.assertEquals("", uiThemePreference.getCustomTheme().getSuccessColor());
+    Assertions.assertEquals("", uiThemePreference.getCustomTheme().getErrorColor());
+    Assertions.assertEquals("", uiThemePreference.getCustomTheme().getWarningColor());
+    Assertions.assertEquals("", uiThemePreference.getCustomTheme().getInfoColor());
+    Assertions.assertEquals("", uiThemePreference.getCustomLogoConfig().getCustomLogoUrlPath());
+    Assertions.assertEquals("", uiThemePreference.getCustomLogoConfig().getCustomMonogramUrlPath());
   }
 
   @Test
@@ -213,20 +220,29 @@ public class SystemResourceTest extends OpenMetadataApplicationTest {
     Assertions.assertEquals(updateEmailSettings.getUsername(), test.getDisplayName());
     Assertions.assertEquals(updateEmailSettings.getEmailingEntity(), test.getDisplayName());
 
-    // Test Custom Logo Update
-    LogoConfiguration updateConfigReq =
-        new LogoConfiguration()
-            .withCustomLogoUrlPath("http://test.com")
-            .withCustomMonogramUrlPath("http://test.com");
+    // Test Custom Logo Update and theme preference
+    UiThemePreference updateConfigReq =
+        new UiThemePreference()
+            .withCustomLogoConfig(
+                new LogoConfiguration()
+                    .withCustomLogoUrlPath("http://test.com")
+                    .withCustomMonogramUrlPath("http://test.com"))
+            .withCustomTheme(
+                new ThemeConfiguration()
+                    .withPrimaryColor("")
+                    .withSuccessColor("")
+                    .withErrorColor("")
+                    .withWarningColor("")
+                    .withInfoColor(""));
     // Update Custom Logo Settings
     updateSystemConfig(
         new Settings()
-            .withConfigType(SettingsType.CUSTOM_LOGO_CONFIGURATION)
+            .withConfigType(SettingsType.CUSTOM_UI_THEME_PREFERENCE)
             .withConfigValue(updateConfigReq));
-    LogoConfiguration updatedConfig =
+    UiThemePreference updatedConfig =
         JsonUtils.convertValue(
-            getSystemConfig(SettingsType.CUSTOM_LOGO_CONFIGURATION).getConfigValue(),
-            LogoConfiguration.class);
+            getSystemConfig(SettingsType.CUSTOM_UI_THEME_PREFERENCE).getConfigValue(),
+            UiThemePreference.class);
     Assertions.assertEquals(updateConfigReq, updatedConfig);
   }
 
