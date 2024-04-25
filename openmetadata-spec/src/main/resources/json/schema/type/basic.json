@@ -106,8 +106,6 @@
     "entityName": {
       "description": "Name that identifies an entity.",
       "type": "string",
-      "minLength": 1,
-      "maxLength": 256,
       "pattern": "^((?!::).)*$"
     },
     "fullyQualifiedEntityName": {
