@@ -24,6 +24,7 @@ import { getAllFeeds } from '../../rest/feedsAPI';
 import { showErrorToast } from '../../utils/ToastUtils';
 import { ConfirmState } from '../ActivityFeed/ActivityFeedCard/ActivityFeedCard.interface';
 import ErrorPlaceHolder from '../common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import Loader from '../common/Loader/Loader';
 import ConfirmationModal from '../Modals/ConfirmationModal/ConfirmationModal';
 import { AnnouncementThreadBodyProp } from './Announcement.interface';
 import AnnouncementThreads from './AnnouncementThreads';
@@ -112,6 +113,10 @@ const AnnouncementThreadBody = ({
     getThreads();
   }, [threadLink, refetchThread]);
 
+  if (isThreadLoading) {
+    return <Loader />;
+  }
+
   if (isEmpty(threads) && !isThreadLoading) {
     return (
       <ErrorPlaceHolder
@@ -125,7 +130,7 @@ const AnnouncementThreadBody = ({
   }
 
   return (
-    <div className="m-t-lg" id="thread-panel-body">
+    <div className="m-t-lg" data-testid="announcement-thread-body">
       <AnnouncementThreads
         editPermission={editPermission}
         postFeed={postFeed}

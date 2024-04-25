@@ -65,6 +65,7 @@ const ProfilePicture = ({
     return (
       <Avatar
         className={classNames('flex-center', className)}
+        data-testid="profile-avatar"
         icon={character}
         shape={type}
         size={size || parseInt(width)}
