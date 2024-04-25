@@ -11,6 +11,7 @@ import java.util.Set;
 import java.util.stream.Collectors;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.Field;
+import org.openmetadata.schema.type.SearchIndexField;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.util.FullyQualifiedName;
@@ -66,6 +67,14 @@ public final class ColumnUtil {
 
   // validate if a given field exists in the topic
   public static void validateFieldFQN(List<Field> fields, String fieldFQN) {
+    boolean exists = findChildren(fields, "getChildren", fieldFQN);
+    if (!exists) {
+      throw new IllegalArgumentException(
+          CatalogExceptionMessage.invalidFieldName("field", fieldFQN));
+    }
+  }
+
+  public static void validateSearchIndexFieldFQN(List<SearchIndexField> fields, String fieldFQN) {
     boolean exists = findChildren(fields, "getChildren", fieldFQN);
     if (!exists) {
       throw new IllegalArgumentException(
