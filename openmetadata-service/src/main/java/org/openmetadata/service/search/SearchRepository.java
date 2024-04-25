@@ -566,7 +566,8 @@ public class SearchRepository {
           Entity.MLMODEL_SERVICE,
           Entity.STORAGE_SERVICE,
           Entity.SEARCH_SERVICE -> searchClient.deleteEntityByFields(
-          indexMapping.getChildAliases(clusterAlias), List.of(new ImmutablePair<>("service.id", docId)));
+          indexMapping.getChildAliases(clusterAlias),
+          List.of(new ImmutablePair<>("service.id", docId)));
       default -> searchClient.deleteEntityByFields(
           indexMapping.getChildAliases(clusterAlias),
           List.of(new ImmutablePair<>(entityType + ".id", docId)));
