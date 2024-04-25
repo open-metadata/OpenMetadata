@@ -24,6 +24,7 @@ from metadata.ingestion.ometa.ometa_api import OpenMetadata
 CLASSIFICATION_NAME = "TestTag"
 PRIMARY_TAG_NAME = "TestPrimaryTag"
 SECONDARY_TAG_NAME = "TestSecondaryTag"
+TEST_SPECIAL_CHARS_TAG_NAME = "Test/Sepcial_Chars/Tag"
 
 
 class OMetaTagMixinPost(TestCase):
@@ -72,6 +73,20 @@ class OMetaTagMixinPost(TestCase):
         assert (
             secondary_tag.fullyQualifiedName
             == f"{CLASSIFICATION_NAME}.{PRIMARY_TAG_NAME}.{SECONDARY_TAG_NAME}"
+        )
+
+        create_special_char_tag = CreateTagRequest(
+            name=TEST_SPECIAL_CHARS_TAG_NAME,
+            classification=CLASSIFICATION_NAME,
+            description="test special char tag",
+            parent=primary_tag.fullyQualifiedName,
+        )
+
+        special_char_tag: Tag = self.metadata.create_or_update(create_special_char_tag)
+
+        assert (
+            special_char_tag.fullyQualifiedName
+            == f"{CLASSIFICATION_NAME}.{PRIMARY_TAG_NAME}.{TEST_SPECIAL_CHARS_TAG_NAME}"
         )
 
     def test_get_classification(self):
