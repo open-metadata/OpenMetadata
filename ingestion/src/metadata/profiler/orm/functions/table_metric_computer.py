@@ -194,7 +194,7 @@ class OracleTableMetricComputer(BaseTableMetricComputer):
                     Column("object_name").label("table_name"),
                     Column("created"),
                 ],
-                self._build_table("dba_objects", None),
+                self._build_table("all_objects", None),
                 [
                     func.lower(Column("owner")) == self.schema_name.lower(),
                     func.lower(Column("object_name")) == self.table_name.lower(),
@@ -209,7 +209,7 @@ class OracleTableMetricComputer(BaseTableMetricComputer):
                     Column("table_name"),
                     Column("NUM_ROWS"),
                 ],
-                self._build_table("dba_tables", None),
+                self._build_table("all_tables", None),
                 [
                     func.lower(Column("owner")) == self.schema_name.lower(),
                     func.lower(Column("table_name")) == self.table_name.lower(),

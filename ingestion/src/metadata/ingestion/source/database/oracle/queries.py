@@ -14,51 +14,51 @@ SQL Queries used during ingestion
 
 import textwrap
 
-ORACLE_DBA_TABLE_COMMENTS = textwrap.dedent(
+ORACLE_ALL_TABLE_COMMENTS = textwrap.dedent(
     """
 SELECT
 	comments table_comment,
 	LOWER(table_name) "table_name",
 	LOWER(owner) "schema" 	
-FROM dba_tab_comments
+FROM ALL_TAB_COMMENTS
 where comments is not null and owner not in ('SYSTEM', 'SYS')
 """
 )
 
 
-ORACLE_DBA_VIEW_DEFINITIONS = textwrap.dedent(
+ORACLE_ALL_VIEW_DEFINITIONS = textwrap.dedent(
     """
 SELECT
 LOWER(view_name) AS "view_name",
 LOWER(owner) AS "schema",
 DBMS_METADATA.GET_DDL('VIEW', view_name, owner) AS view_def
-FROM DBA_VIEWS
+FROM ALL_VIEWS
 WHERE owner NOT IN ('SYSTEM', 'SYS')
 UNION ALL
 SELECT
 LOWER(mview_name) AS "view_name",
 LOWER(owner) AS "schema",
 DBMS_METADATA.GET_DDL('MATERIALIZED_VIEW', mview_name, owner) AS view_def
-FROM DBA_MVIEWS
+FROM ALL_MVIEWS
 WHERE owner NOT IN ('SYSTEM', 'SYS')
 """
 )
 
 GET_MATERIALIZED_VIEW_NAMES = textwrap.dedent(
     """
-SELECT mview_name FROM DBA_MVIEWS WHERE owner = :owner
+SELECT mview_name FROM ALL_MVIEWS WHERE owner = :owner
 """
 )
 
 ORACLE_GET_TABLE_NAMES = textwrap.dedent(
     """
-SELECT table_name FROM DBA_TABLES WHERE 
+SELECT table_name FROM ALL_TABLES WHERE 
 {tablespace}
 OWNER = :owner  
 AND IOT_NAME IS NULL 
 AND DURATION IS NULL
 AND TABLE_NAME NOT IN 
-(SELECT mview_name FROM DBA_MVIEWS WHERE owner = :owner)
+(SELECT mview_name FROM ALL_MVIEWS WHERE owner = :owner)
 """
 )
 
@@ -67,7 +67,7 @@ ORACLE_IDENTITY_TYPE = textwrap.dedent(
 col.default_on_null,
 (
 	SELECT id.generation_type || ',' || id.IDENTITY_OPTIONS
-	FROM DBA_TAB_IDENTITY_COLS{dblink} id
+	FROM ALL_TAB_IDENTITY_COLS{dblink} id
 	WHERE col.table_name = id.table_name
 	AND col.column_name = id.column_name
 	AND col.owner = id.owner
@@ -83,12 +83,12 @@ SELECT
     LINE,
     TEXT
 FROM
-    DBA_SOURCE
+    ALL_SOURCE
 WHERE
     type = 'PROCEDURE' and owner = '{schema}'
 """
 )
-CHECK_ACCESS_TO_DBA = "SELECT table_name FROM DBA_TABLES where ROWNUM < 2"
+CHECK_ACCESS_TO_ALL = "SELECT table_name FROM ALL_TABLES where ROWNUM < 2"
 ORACLE_GET_STORED_PROCEDURE_QUERIES = textwrap.dedent(
     """
 WITH SP_HISTORY AS (SELECT
@@ -152,8 +152,8 @@ ORACLE_GET_COLUMNS = textwrap.dedent(
             com.comments,
             col.virtual_column,
             {identity_cols}
-        FROM DBA_TAB_COLS{dblink} col
-        LEFT JOIN dba_col_comments{dblink} com
+        FROM ALL_TAB_COLS{dblink} col
+        LEFT JOIN ALL_COL_COMMENTS{dblink} com
         ON col.table_name = com.table_name
         AND col.column_name = com.column_name
         AND col.owner = com.owner
