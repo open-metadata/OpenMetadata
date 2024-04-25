@@ -19,6 +19,13 @@
       "$ref": "#/definitions/removeTagsActionType",
       "default": "AddTagsAction"
     },
+    "tags": {
+      "description": "Tags to remove",
+      "type": "array",
+      "items": {
+        "$ref": "../../../../../type/tagLabel.json"
+      }
+    },
     "applyToChildren": {
       "title": "Apply to Children",
       "description": "Remove tags from all the children of the selected assets. E.g., columns, tasks, topic fields,...",
@@ -26,6 +33,6 @@
       "default": false
     }
   },
-  "required": ["type"],
+  "required": ["type", "tags"],
   "additionalProperties": false
 }
