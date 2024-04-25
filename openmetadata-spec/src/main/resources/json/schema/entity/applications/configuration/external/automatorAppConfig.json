@@ -52,6 +52,18 @@
         },
         {
           "$ref": "automator/ruleBasedTaggingAction.json"
+        },
+        {
+          "$ref": "automator/addDomainAction.json"
+        },
+        {
+          "$ref": "automator/addDescriptionAction.json"
+        },
+        {
+          "$ref": "automator/addTierAction.json"
+        },
+        {
+          "$ref": "automator/addOwnerAction.json"
         }
       ]
     }
