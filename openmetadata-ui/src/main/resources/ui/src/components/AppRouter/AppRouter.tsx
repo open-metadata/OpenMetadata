@@ -19,11 +19,6 @@ import { CustomEventTypes } from '../../generated/analytics/webAnalyticEventData
 import { useApplicationStore } from '../../hooks/useApplicationStore';
 import AppContainer from '../AppContainer/AppContainer';
 import { UnAuthenticatedAppRouter } from './UnAuthenticatedAppRouter';
-import withSuspenseFallback from './withSuspenseFallback';
-
-const PageNotFound = withSuspenseFallback(
-  React.lazy(() => import('../../pages/PageNotFound/PageNotFound'))
-);
 
 const AppRouter = () => {
   const location = useLocation();
