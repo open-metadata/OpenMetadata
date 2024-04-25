@@ -14,6 +14,7 @@
 import { render, screen } from '@testing-library/react';
 import React from 'react';
 import { OperationPermission } from '../../../../context/PermissionProvider/PermissionProvider.interface';
+import { MOCK_TABLE } from '../../../../mocks/TableData.mock';
 import { getListTestCase } from '../../../../rest/testAPI';
 import { TableProfilerProvider } from './TableProfilerProvider';
 
@@ -69,27 +70,20 @@ const mockPermissions = {
 } as OperationPermission;
 
 describe('TableProfilerProvider', () => {
-  it('renders children without crashing', async () => {
+  beforeEach(() => {
     render(
-      <TableProfilerProvider
-        isTableDeleted={false}
-        permissions={mockPermissions}>
+      <TableProfilerProvider permissions={mockPermissions} table={MOCK_TABLE}>
         <div>Test Children</div>
       </TableProfilerProvider>
     );
+  });
 
+  it('renders children without crashing', async () => {
     expect(await screen.findByText('Test Children')).toBeInTheDocument();
   });
 
   it('test cases should be fetch on data quality tab', async () => {
     const mockGetListTestCase = getListTestCase as jest.Mock;
-    render(
-      <TableProfilerProvider
-        isTableDeleted={false}
-        permissions={mockPermissions}>
-        <div>Test Children</div>
-      </TableProfilerProvider>
-    );
 
     expect(mockGetListTestCase).toHaveBeenCalledTimes(1);
     expect(mockGetListTestCase).toHaveBeenCalledWith({

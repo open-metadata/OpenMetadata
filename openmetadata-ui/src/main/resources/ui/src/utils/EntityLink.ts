@@ -59,6 +59,17 @@ export default class EntityLink {
 
   /**
    *
+   * @param string entityLink column
+   * @returns entityColumn fqn
+   */
+  static getEntityColumnFqn(entityLink: string) {
+    const parts = this.split(entityLink);
+
+    return `${parts[1]}${parts[3] ? '.' + parts[3] : ''}`;
+  }
+
+  /**
+   *
    * @param string entityLink
    * @returns entity field
    */

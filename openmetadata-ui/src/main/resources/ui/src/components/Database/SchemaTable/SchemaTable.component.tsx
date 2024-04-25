@@ -19,6 +19,7 @@ import {
   cloneDeep,
   groupBy,
   isEmpty,
+  isEqual,
   isUndefined,
   set,
   sortBy,
@@ -52,6 +53,7 @@ import {
   getFrequentlyJoinedColumns,
   searchInColumns,
 } from '../../../utils/EntityUtils';
+import { getEntityColumnFQN } from '../../../utils/FeedUtils';
 import {
   getAllTags,
   searchTagInData,
@@ -66,6 +68,7 @@ import {
 import { showErrorToast } from '../../../utils/ToastUtils';
 import FilterTablePlaceHolder from '../../common/ErrorWithPlaceholder/FilterTablePlaceHolder';
 import Table from '../../common/Table/Table';
+import TestCaseStatusSummaryIndicator from '../../common/TestCaseStatusSummaryIndicator/TestCaseStatusSummaryIndicator.component';
 import EntityNameModal from '../../Modals/EntityNameModal/EntityNameModal.component';
 import { EntityName } from '../../Modals/EntityNameModal/EntityNameModal.interface';
 import { ModalWithMarkdownEditor } from '../../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
@@ -75,18 +78,25 @@ import TableTags from '../TableTags/TableTags.component';
 import { SchemaTableProps, TableCellRendered } from './SchemaTable.interface';
 
 const SchemaTable = ({
-  tableColumns,
   searchText,
   onUpdate,
   hasDescriptionEditAccess,
   hasTagEditAccess,
-  joins,
   isReadOnly = false,
   onThreadLinkSelect,
-  tableConstraints,
+  table,
 }: SchemaTableProps) => {
   const { theme } = useApplicationStore();
   const { t } = useTranslation();
+  const { testCaseCounts, tableColumns, joins, tableConstraints } = useMemo(
+    () => ({
+      testCaseCounts: table?.testSuite?.summary?.columnTestSummary ?? [],
+      tableColumns: table?.columns ?? [],
+      joins: table?.joins?.columnJoins ?? [],
+      tableConstraints: table?.tableConstraints,
+    }),
+    [table]
+  );
 
   const [searchedColumns, setSearchedColumns] = useState<Column[]>([]);
   const [expandedRowKeys, setExpandedRowKeys] = useState<string[]>([]);
@@ -455,6 +465,24 @@ const SchemaTable = ({
         filterDropdown: ColumnFilter,
         onFilter: searchTagInData,
       },
+      {
+        title: t('label.data-quality-test-plural'),
+        dataIndex: 'dataQualityTest',
+        key: 'dataQualityTest',
+        width: 170,
+        render: (_, record) => {
+          const testCounts = testCaseCounts.find((column) => {
+            return isEqual(
+              getEntityColumnFQN(column.entityLink ?? ''),
+              record.fullyQualifiedName
+            );
+          });
+
+          return (
+            <TestCaseStatusSummaryIndicator testCaseStatusCounts={testCounts} />
+          );
+        },
+      },
     ],
     [
       decodedEntityFqn,
@@ -468,6 +496,7 @@ const SchemaTable = ({
       handleTagSelection,
       onThreadLinkSelect,
       tagFilter,
+      testCaseCounts,
     ]
   );
 

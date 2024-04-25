@@ -16,6 +16,8 @@ const entityLink =
   '<#E::table::sample_data.ecommerce_db.shopify.dim_address::description>';
 const entityLinkWithColumn =
   '<#E::table::sample_data.ecommerce_db.shopify.dim_address::columns::address_id::tags>';
+const entityLinkWithNestedColumn =
+  '<#E::table::sample_data.ecommerce_db.shopify.dim_address::columns::"address_id.city"::tags>';
 
 describe('Test EntityLink', () => {
   it('Should split the entityLink into parts', () => {
@@ -79,6 +81,26 @@ describe('Test EntityLink', () => {
       )
     ).toStrictEqual(
       '<#E::table::sample_data.ecommerce_db.shopify.dim_address>'
+    );
+  });
+
+  it('Should return entityFqn from entityLink', () => {
+    expect(EntityLink.getEntityColumnFqn(entityLink)).toStrictEqual(
+      'sample_data.ecommerce_db.shopify.dim_address'
+    );
+  });
+
+  it('Should return entityColumnFqn from entityLink for column', () => {
+    expect(EntityLink.getEntityColumnFqn(entityLinkWithColumn)).toStrictEqual(
+      'sample_data.ecommerce_db.shopify.dim_address.address_id'
+    );
+  });
+
+  it('Should return entityColumnFqn from entityLink for nested column', () => {
+    expect(
+      EntityLink.getEntityColumnFqn(entityLinkWithNestedColumn)
+    ).toStrictEqual(
+      'sample_data.ecommerce_db.shopify.dim_address."address_id.city"'
     );
   });
 });
