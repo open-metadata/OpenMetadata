@@ -90,7 +90,7 @@ class S3Source(StorageServiceSource):
         connection: S3Connection = config.serviceConnection.__root__.config
         if not isinstance(connection, S3Connection):
             raise InvalidSourceException(
-                f"Expected S3StoreConnection, but got {connection}"
+                f"Expected S3Connection, but got {connection}"
             )
         return cls(config, metadata)
 
