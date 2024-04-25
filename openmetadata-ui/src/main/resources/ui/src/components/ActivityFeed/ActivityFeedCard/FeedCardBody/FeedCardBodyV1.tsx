@@ -34,6 +34,7 @@ import {
 } from '../../../../utils/FeedUtils';
 import ExploreSearchCard from '../../../ExploreV1/ExploreSearchCard/ExploreSearchCard';
 import DescriptionFeed from '../../ActivityFeedCardV2/FeedCardBody/DescriptionFeed/DescriptionFeed';
+import TagsFeed from '../../ActivityFeedCardV2/FeedCardBody/TagsFeed/TagsFeed';
 import TestCaseFeed from '../../ActivityFeedCardV2/FeedCardBody/TestCaseFeed/TestCaseFeed';
 import './feed-card-body-v1.less';
 import { FeedCardBodyV1Props } from './FeedCardBodyV1.interface';
@@ -108,6 +109,10 @@ const FeedCardBodyV1 = ({
 
     if (cardStyle === CardStyle.Description) {
       return <DescriptionFeed feed={feed} />;
+    }
+
+    if (cardStyle === CardStyle.Tags) {
+      return <TagsFeed feed={feed} />;
     }
 
     if (cardStyle === CardStyle.TestCaseResult) {

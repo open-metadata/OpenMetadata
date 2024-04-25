@@ -57,6 +57,7 @@ import { ExplorePageTabs } from '../enums/Explore.enum';
 import { SearchIndex } from '../enums/search.enum';
 import { ServiceCategory, ServiceCategoryPlural } from '../enums/service.enum';
 import { PrimaryTableDataTypes } from '../enums/table.enum';
+import { Classification } from '../generated/entity/classification/classification';
 import { Container } from '../generated/entity/data/container';
 import { Dashboard } from '../generated/entity/data/dashboard';
 import { DashboardDataModel } from '../generated/entity/data/dashboardDataModel';
@@ -1525,6 +1526,14 @@ export const getEntityBreadcrumbs = (
           name: fqn,
           url: getTagsDetailsPath(entity?.fullyQualifiedName ?? ''),
         })),
+      ];
+
+    case EntityType.CLASSIFICATION:
+      return [
+        {
+          name: getEntityName(entity as Classification),
+          url: '',
+        },
       ];
 
     case EntityType.DATABASE:
