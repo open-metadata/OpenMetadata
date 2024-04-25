@@ -28,6 +28,47 @@
           "type": "string"
         }
       }
+    },
+    "action": {
+      "description": "Action to take on those entities. E.g., propagate description through lineage, auto tagging, etc.",
+      "oneOf": [
+        {
+          "$ref": "automator/addTagsAction.json"
+        },
+        {
+          "$ref": "automator/removeTagsAction.json"
+        },
+        {
+          "$ref": "automator/addDomainAction.json"
+        },
+        {
+          "$ref": "automator/removeDomainAction.json"
+        },
+        {
+          "$ref": "automator/addDescriptionAction.json"
+        },
+        {
+          "$ref": "automator/removeDescriptionAction.json"
+        },
+        {
+          "$ref": "automator/addTierAction.json"
+        },
+        {
+          "$ref": "automator/removeTierAction.json"
+        },
+        {
+          "$ref": "automator/addOwnerAction.json"
+        },
+        {
+          "$ref": "automator/removeOwnerAction.json"
+        },
+        {
+          "$ref": "automator/lineagePropagationAction.json"
+        },
+        {
+          "$ref": "automator/mlTaggingAction.json"
+        }
+      ]
     }
   },
   "properties": {
@@ -41,33 +82,14 @@
       "description": "Entities selected to run the automation.",
       "$ref": "#/definitions/resource"
     },
-    "action": {
+    "actions": {
       "description": "Action to take on those entities. E.g., propagate description through lineage, auto tagging, etc.",
-      "oneOf": [
-        {
-          "$ref": "automator/lineagePropagationAction.json"
-        },
-        {
-          "$ref": "automator/mlTaggingAction.json"
-        },
-        {
-          "$ref": "automator/ruleBasedTaggingAction.json"
-        },
-        {
-          "$ref": "automator/addDomainAction.json"
-        },
-        {
-          "$ref": "automator/addDescriptionAction.json"
-        },
-        {
-          "$ref": "automator/addTierAction.json"
-        },
-        {
-          "$ref": "automator/addOwnerAction.json"
-        }
-      ]
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/action"
+      }
     }
   },
-  "required": ["type", "resources", "action"],
+  "required": ["type", "resources", "actions"],
   "additionalProperties": false
 }
