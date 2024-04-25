@@ -40,12 +40,13 @@ import {
   OperationPermission,
   ResourceEntity,
 } from '../../../context/PermissionProvider/PermissionProvider.interface';
-import { EntityType } from '../../../enums/entity.enum';
+import { EntityType, FqnPart } from '../../../enums/entity.enum';
 import { Column } from '../../../generated/entity/data/table';
 import { TagSource } from '../../../generated/type/schema';
 import { TagLabel } from '../../../generated/type/tagLabel';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { useFqn } from '../../../hooks/useFqn';
+import { getPartialNameFromTableFQN } from '../../../utils/CommonUtils';
 import {
   getEntityName,
   getFrequentlyJoinedColumns,
@@ -477,6 +478,23 @@ const SchemaTable = ({
   useEffect(() => {
     setExpandedRowKeys(nestedTableFqnKeys);
   }, [searchText]);
+
+  // Need to scroll to the selected row
+  useEffect(() => {
+    const columnName = getPartialNameFromTableFQN(decodedEntityFqn, [
+      FqnPart.Column,
+    ]);
+    if (!columnName) {
+      return;
+    }
+
+    const row = document.querySelector(`[data-row-key="${decodedEntityFqn}"]`);
+
+    if (row && data.length > 0) {
+      // Need to wait till table loads fully so that we can call scroll accurately
+      setTimeout(() => row.scrollIntoView(), 1);
+    }
+  }, [data, decodedEntityFqn]);
 
   return (
     <>
