@@ -48,6 +48,11 @@
         },
         {
           "$ref": "../database/mysqlConnection.json"
+        },
+        {
+          "title": "None",
+          "type": "object",
+          "additionalProperties": false
         }
       ]
     },
