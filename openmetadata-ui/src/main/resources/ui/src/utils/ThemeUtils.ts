@@ -10,22 +10,15 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { ConfigProvider } from 'antd';
-import React, { FC, ReactNode } from 'react';
-import { useTranslation } from 'react-i18next';
-import { useApplicationStore } from '../../hooks/useApplicationStore';
+import { DEFAULT_THEME } from '../constants/Appearance.constants';
+import { UIThemePreference } from '../generated/configuration/uiThemePreference';
 
-const AntDConfigProvider: FC<{ children: ReactNode }> = ({ children }) => {
-  const { i18n } = useTranslation();
-  const { applicationConfig } = useApplicationStore();
-
-  ConfigProvider.config({
-    theme: {
-      ...applicationConfig?.customTheme,
-    },
-  });
-
-  return <ConfigProvider direction={i18n.dir()}>{children}</ConfigProvider>;
+export const getThemeConfig = (theme?: UIThemePreference['customTheme']) => {
+  return {
+    primaryColor: theme?.primaryColor || DEFAULT_THEME.primaryColor,
+    errorColor: theme?.errorColor || DEFAULT_THEME.errorColor,
+    successColor: theme?.successColor || DEFAULT_THEME.successColor,
+    warningColor: theme?.warningColor || DEFAULT_THEME.warningColor,
+    infoColor: theme?.infoColor || DEFAULT_THEME.infoColor,
+  };
 };
-
-export default AntDConfigProvider;

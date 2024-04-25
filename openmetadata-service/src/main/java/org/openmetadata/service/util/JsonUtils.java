@@ -40,7 +40,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Objects;
+import java.util.Set;
 import java.util.TreeMap;
+import java.util.stream.Collectors;
 import javax.json.Json;
 import javax.json.JsonArray;
 import javax.json.JsonArrayBuilder;
@@ -49,6 +51,11 @@ import javax.json.JsonPatch;
 import javax.json.JsonReader;
 import javax.json.JsonStructure;
 import javax.json.JsonValue;
+import javax.validation.ConstraintViolation;
+import javax.validation.ConstraintViolationException;
+import javax.validation.Validation;
+import javax.validation.Validator;
+import javax.validation.ValidatorFactory;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.annotations.ExposedField;
@@ -69,7 +76,7 @@ public final class JsonUtils {
   private static final ObjectMapper MASKER_OBJECT_MAPPER;
   private static final JsonSchemaFactory schemaFactory =
       JsonSchemaFactory.getInstance(VersionFlag.V7);
-  private static final String FAILED_TO_PROCESS_JSON = "Failed to process JSON";
+  private static final String FAILED_TO_PROCESS_JSON = "Failed to process JSON ";
 
   static {
     OBJECT_MAPPER = new ObjectMapper();
@@ -507,6 +514,30 @@ public final class JsonUtils {
 
     // Extract the final value
     return JsonUtils.treeToValue(jsonNode, (Class<T>) getValueClass(jsonNode));
+  }
+
+  /**
+   * Validates the JSON structure against a Java class schema. This method is specifically
+   * designed to handle and validate complex JSON data that includes nested JSON objects,
+   * addressing limitations of earlier validation methods which did not support nested structures.
+   *
+   **/
+  public static <T> void validateJsonSchema(Object fromValue, Class<T> toValueType) {
+    // Convert JSON to Java object
+    T convertedValue = OBJECT_MAPPER.convertValue(fromValue, toValueType);
+
+    try (ValidatorFactory validatorFactory = Validation.buildDefaultValidatorFactory()) {
+      Validator validator = validatorFactory.getValidator();
+
+      Set<ConstraintViolation<T>> violations = validator.validate(convertedValue);
+      if (!violations.isEmpty()) {
+        String detailedErrors =
+            violations.stream()
+                .map(violation -> violation.getPropertyPath() + ": " + violation.getMessage())
+                .collect(Collectors.joining(", "));
+        throw new ConstraintViolationException(FAILED_TO_PROCESS_JSON + detailedErrors, violations);
+      }
+    }
   }
 
   private static Class<?> getValueClass(JsonNode jsonNode) {
