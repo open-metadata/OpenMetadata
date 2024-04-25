@@ -255,7 +255,7 @@ const CustomControls: FC<ControlProps> = ({
               })}>
               <Button
                 className="flex-center"
-                data-testid="lineage-config"
+                data-testid="lineage-export"
                 disabled={isEditMode}
                 icon={
                   <span className="anticon">

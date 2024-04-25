@@ -25,6 +25,7 @@ const mockHandleFullScreenViewClick = jest.fn();
 const mockOnExitFullScreenViewClick = jest.fn();
 const mockOnZoomHandler = jest.fn();
 const mockZoomValue = 1;
+const mockOnExportClick = jest.fn();
 
 jest.mock('../../Explore/ExploreQuickFilters', () =>
   jest.fn().mockReturnValue(<p>ExploreQuickFilters</p>)
@@ -47,6 +48,7 @@ jest.mock('../../../context/LineageProvider/LineageProvider', () => ({
   useLineageProvider: jest.fn().mockImplementation(() => ({
     toggleColumnView: mockOnExpandColumnClick,
     onLineageEditClick: mockOnEditLineageClick,
+    onExportClick: mockOnExportClick,
     activeLayer: [LineageLayerView.COLUMN],
   })),
 }));
@@ -95,6 +97,16 @@ describe('CustomControls', () => {
     fireEvent.click(fullScreenButton);
 
     expect(mockHandleFullScreenViewClick).toHaveBeenCalled();
+  });
+
+  it('calls mockOnExportClick on Export click', () => {
+    const { getByTestId } = render(
+      <CustomControlsComponent {...customProps} />
+    );
+    const fullScreenButton = getByTestId('lineage-export');
+    fireEvent.click(fullScreenButton);
+
+    expect(mockOnExportClick).toHaveBeenCalled();
   });
 
   it('calls mockOnExitFullScreenViewClick on Exit Full Screen button click', () => {
