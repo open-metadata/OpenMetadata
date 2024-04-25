@@ -595,7 +595,7 @@ public class ElasticSearchClient implements SearchClient {
   }
 
   @Override
-  public Response searchLineage(
+  public Map<String, Object> searchLineageInternal(
       String fqn,
       int upstreamDepth,
       int downstreamDepth,
@@ -629,6 +629,21 @@ public class ElasticSearchClient implements SearchClient {
         fqn, upstreamDepth, edges, nodes, queryFilter, "lineage.toEntity.fqn.keyword", deleted);
     responseMap.put("edges", edges);
     responseMap.put("nodes", nodes);
+    return responseMap;
+  }
+
+  @Override
+  public Response searchLineage(
+      String fqn,
+      int upstreamDepth,
+      int downstreamDepth,
+      String queryFilter,
+      boolean deleted,
+      String entityType)
+      throws IOException {
+    Map<String, Object> responseMap =
+        searchLineageInternal(
+            fqn, upstreamDepth, downstreamDepth, queryFilter, deleted, entityType);
     return Response.status(OK).entity(responseMap).build();
   }
 
@@ -697,7 +712,7 @@ public class ElasticSearchClient implements SearchClient {
     }
   }
 
-  private Response searchPipelineLineage(
+  private Map<String, Object> searchPipelineLineage(
       String fqn,
       int upstreamDepth,
       int downstreamDepth,
@@ -784,7 +799,7 @@ public class ElasticSearchClient implements SearchClient {
     }
     responseMap.put("edges", edges);
     responseMap.put("nodes", nodes);
-    return Response.status(OK).entity(responseMap).build();
+    return responseMap;
   }
 
   @Override
