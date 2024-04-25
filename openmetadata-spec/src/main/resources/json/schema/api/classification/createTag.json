@@ -17,7 +17,7 @@
       "$ref": "../../type/basic.json#/definitions/fullyQualifiedEntityName"
     },
     "name": {
-      "$ref": "../../entity/classification/tag.json#/definitions/tagName"
+      "$ref": "../../type/basic.json#/definitions/entityName"
     },
     "displayName": {
       "description": "Display Name that identifies this tag.",
