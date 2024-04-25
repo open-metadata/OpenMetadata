@@ -80,10 +80,6 @@ const AnnouncementDrawer: FC<Props> = ({
     } catch (err) {
       showErrorToast(err as AxiosError);
     }
-
-    postFeedById(id, data).catch((err: AxiosError) => {
-      showErrorToast(err);
-    });
   };
 
   const updateThreadHandler = async (

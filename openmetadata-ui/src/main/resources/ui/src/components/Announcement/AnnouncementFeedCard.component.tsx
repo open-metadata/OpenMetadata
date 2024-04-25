@@ -20,6 +20,7 @@ import { getFeedById } from '../../rest/feedsAPI';
 import { showErrorToast } from '../../utils/ToastUtils';
 import ActivityFeedEditor from '../ActivityFeed/ActivityFeedEditor/ActivityFeedEditor';
 import AnnouncementBadge from '../ActivityFeed/Shared/AnnouncementBadge';
+import ProfilePicture from '../common/ProfilePicture/ProfilePicture';
 import { AnnouncementFeedCardProp } from './Announcement.interface';
 import './announcement.less';
 import AnnouncementFeedCardBody from './AnnouncementFeedCardBody.component';
@@ -33,7 +34,7 @@ const AnnouncementFeedCard = ({
   updateThreadHandler,
 }: AnnouncementFeedCardProp) => {
   const { t } = useTranslation();
-  const [isReplyThreadVisible, setReplyThreadVisible] =
+  const [isReplyThreadVisible, setIsReplyThreadVisible] =
     useState<boolean>(false);
   const [postFeedData, setPostFeedData] = useState<Post[]>([]);
 
@@ -74,7 +75,7 @@ const AnnouncementFeedCard = ({
 
   const handleOpenReplyThread = () => {
     fetchAnnouncementThreadData();
-    setReplyThreadVisible((prev) => !prev);
+    setIsReplyThreadVisible((prev) => !prev);
   };
 
   // fetch announcement thread after delete action
@@ -111,29 +112,47 @@ const AnnouncementFeedCard = ({
       </Card>
 
       {isReplyThreadVisible && (
-        <Row className="m-t-lg" gutter={[10, 0]} wrap={false}>
-          <Col className="d-flex justify-end" flex="74px">
-            <div className="feed-line" />
+        <Row className="m-t-lg" gutter={[0, 10]}>
+          <Col span={24}>
+            <Row gutter={[10, 0]} wrap={false}>
+              <Col className="d-flex justify-center" flex="70px">
+                <div className="feed-line" />
+              </Col>
+              <Col flex="auto">
+                <div className="w-full m-l-xs" data-testid="replies">
+                  {postFeedData.map((reply) => (
+                    <AnnouncementFeedCardBody
+                      isEntityFeed
+                      className="m-b-sm"
+                      editPermission={editPermission}
+                      feed={reply}
+                      feedType={task.type ?? ThreadType.Conversation}
+                      key={reply.id}
+                      showRepliesButton={false}
+                      task={task}
+                      threadId={task.id}
+                      updateThreadHandler={handleUpdateThreadHandler}
+                      onConfirmation={onConfirmation}
+                    />
+                  ))}
+                </div>
+              </Col>
+            </Row>
           </Col>
-          <Col flex="auto">
-            <div className="w-full m-l-xs" data-testid="replies">
-              {postFeedData.map((reply, key) => (
-                <AnnouncementFeedCardBody
-                  isEntityFeed
-                  className="m-b-sm"
-                  editPermission={editPermission}
-                  feed={reply}
-                  feedType={task.type || ThreadType.Conversation}
-                  key={key}
-                  showRepliesButton={false}
-                  task={task}
-                  threadId={task.id}
-                  updateThreadHandler={handleUpdateThreadHandler}
-                  onConfirmation={onConfirmation}
+          <Col span={24}>
+            <Row gutter={[10, 0]} wrap={false}>
+              <Col className="d-flex justify-center" flex="70px">
+                <ProfilePicture
+                  avatarType="outlined"
+                  className="m-l-xs"
+                  name={feed.from}
+                  width="24"
                 />
-              ))}
-            </div>
-            <ActivityFeedEditor onSave={handleSaveReply} />
+              </Col>
+              <Col flex="auto">
+                <ActivityFeedEditor onSave={handleSaveReply} />
+              </Col>
+            </Row>
           </Col>
         </Row>
       )}

@@ -101,12 +101,13 @@ describe('Database hierarchy details page', { tags: 'DataAssets' }, () => {
         entity.renameEntity();
       });
 
-      it(`Annoucement create & delete`, () => {
+      it(`Announcement create & delete`, () => {
         entity.createAnnouncement();
+        entity.replyAnnouncement();
         entity.removeAnnouncement();
       });
 
-      it(`Inactive annoucement create & delete`, () => {
+      it(`Inactive announcement create & delete`, () => {
         entity.createInactiveAnnouncement();
         entity.removeInactiveAnnouncement();
       });

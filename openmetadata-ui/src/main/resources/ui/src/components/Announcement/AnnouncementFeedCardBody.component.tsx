@@ -64,8 +64,8 @@ const AnnouncementFeedCardBody = ({
   const [feedDetail, setFeedDetail] = useState<Post>(feed);
 
   const [visible, setVisible] = useState<boolean>(false);
-  const [isEditAnnouncement, setEditAnnouncement] = useState<boolean>(false);
-  const [isEditPost, setEditPost] = useState<boolean>(false);
+  const [isEditAnnouncement, setIsEditAnnouncement] = useState<boolean>(false);
+  const [isEditPost, setIsEditPost] = useState<boolean>(false);
 
   const isAuthor = feedDetail.from === currentUser?.name;
 
@@ -131,7 +131,7 @@ const AnnouncementFeedCardBody = ({
     const patch = compare(existingAnnouncement, updatedAnnouncement);
 
     onFeedUpdate(patch);
-    setEditAnnouncement(false);
+    setIsEditAnnouncement(false);
   };
 
   const handlePostUpdate = (message: string) => {
@@ -140,14 +140,14 @@ const AnnouncementFeedCardBody = ({
     const patch = compare(feedDetail, updatedPost);
 
     onFeedUpdate(patch);
-    setEditPost(false);
+    setIsEditPost(false);
   };
 
   const handleThreadEdit = () => {
     if (announcementDetails) {
-      setEditAnnouncement(true);
+      setIsEditAnnouncement(true);
     } else {
-      setEditPost(true);
+      setIsEditPost(true);
     }
   };
 
@@ -162,7 +162,7 @@ const AnnouncementFeedCardBody = ({
   return (
     <div
       className={classNames(
-        'bg-grey-1-hover m--x-sm p-x-sm m--t-xss py-2 m-b-xss rounded-4',
+        'bg-grey-1-hover m--x-sm w-full p-x-sm m--t-xss py-2 m-b-xss rounded-4',
         {
           'bg-grey-1-hover': visible,
         }
@@ -203,7 +203,7 @@ const AnnouncementFeedCardBody = ({
               <Avatar.Group>
                 {(task.posts ?? []).map((u) => (
                   <ProfilePicture
-                    data-testid={`replied-user-${u.from}`}
+                    avatarType="outlined"
                     key={u.id}
                     name={u.from}
                     width="18"
@@ -230,13 +230,14 @@ const AnnouncementFeedCardBody = ({
                 isThread={isThread}
                 message={feedDetail.message}
                 reactions={feedDetail.reactions || []}
-                onCancelPostUpdate={() => setEditPost(false)}
+                onCancelPostUpdate={() => setIsEditPost(false)}
                 onPostUpdate={handlePostUpdate}
                 onReactionSelect={onReactionSelect}
               />
               {!isEmpty(task.posts) && showRepliesButton ? (
                 <Button
                   className="p-0 h-auto line-height-16 text-announcement m-r-xs m-t-xs d-flex items-center"
+                  data-testid="show-reply-thread"
                   type="text"
                   onClick={showReplyThread}>
                   {`${task.postsCount} ${t('label.reply-lowercase-plural')}`}
@@ -261,7 +262,7 @@ const AnnouncementFeedCardBody = ({
           announcement={announcementDetails}
           announcementTitle={feedDetail.message}
           open={isEditAnnouncement}
-          onCancel={() => setEditAnnouncement(false)}
+          onCancel={() => setIsEditAnnouncement(false)}
           onConfirm={handleAnnouncementUpdate}
         />
       )}

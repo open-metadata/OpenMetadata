@@ -51,8 +51,7 @@ const AnnouncementThreadBody = ({
         threadLink,
         after,
         ThreadType.Announcement,
-        FeedFilter.ALL,
-        undefined
+        FeedFilter.ALL
       );
 
       setThreads(res.data);
