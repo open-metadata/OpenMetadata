@@ -4,17 +4,9 @@ import static org.openmetadata.schema.type.EventType.ENTITY_CREATED;
 import static org.openmetadata.schema.type.EventType.ENTITY_DELETED;
 import static org.openmetadata.schema.type.EventType.ENTITY_UPDATED;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.List;
-import java.util.Set;
-import java.util.stream.Collectors;
 import javax.json.JsonPatch;
 import javax.json.JsonValue;
-import javax.validation.ConstraintViolation;
-import javax.validation.ConstraintViolationException;
-import javax.validation.Validation;
-import javax.validation.Validator;
-import javax.validation.ValidatorFactory;
 import javax.ws.rs.core.Response;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
@@ -202,7 +194,7 @@ public class SystemRepository {
             JsonUtils.convertValue(setting.getConfigValue(), SlackAppConfiguration.class);
         setting.setConfigValue(encryptSlackAppSetting(appConfiguration));
       } else if (setting.getConfigType() == SettingsType.CUSTOM_UI_THEME_PREFERENCE) {
-        validateJsonSchema(setting.getConfigValue(), UiThemePreference.class);
+        JsonUtils.validateJsonSchema(setting.getConfigValue(), UiThemePreference.class);
       }
       dao.insertSettings(
           setting.getConfigType().toString(), JsonUtils.pojoToJson(setting.getConfigValue()));
@@ -214,27 +206,6 @@ public class SystemRepository {
           Response.Status.INTERNAL_SERVER_ERROR,
           "FAILED_TO_UPDATE_SLACK_OR_EMAIL",
           ex.getMessage());
-    }
-  }
-
-  public static <T> void validateJsonSchema(Object fromValue, Class<T> toValueType) {
-    // Convert JSON to Java object
-    ObjectMapper mapper = new ObjectMapper();
-    ValidatorFactory factory = Validation.buildDefaultValidatorFactory();
-    Validator validator = factory.getValidator();
-
-    T obj = mapper.convertValue(fromValue, toValueType);
-
-    // Validate the object
-    Set<ConstraintViolation<T>> violations = validator.validate(obj);
-    if (!violations.isEmpty()) {
-      String detailedErrors =
-          violations.stream()
-              .map(violation -> violation.getPropertyPath() + ": " + violation.getMessage())
-              .collect(Collectors.joining(", "));
-
-      throw new ConstraintViolationException(
-          "Json validation failed: " + detailedErrors, violations);
     }
   }
 
