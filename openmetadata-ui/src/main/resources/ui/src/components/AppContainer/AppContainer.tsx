@@ -19,6 +19,7 @@ import { Redirect, Route, Switch } from 'react-router-dom';
 import { ROUTES } from '../../constants/constants';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
 import { useDomainStore } from '../../hooks/useDomainStore';
+import PageNotFound from '../../pages/PageNotFound/PageNotFound';
 import SignUpPage from '../../pages/SignUp/SignUpPage';
 import applicationRoutesClass from '../../utils/ApplicationRoutesClassBase';
 import Appbar from '../AppBar/Appbar';
@@ -46,6 +47,8 @@ const AppContainer = () => {
       <Route exact component={SignUpPage} path={ROUTES.SIGNUP}>
         {!isEmpty(currentUser) && <Redirect to={ROUTES.HOME} />}
       </Route>
+      {/* Do not move this route as we don't want to render the sidebar and header in 404 page */}
+      <Route exact component={PageNotFound} path={ROUTES.NOT_FOUND} />
 
       <Layout className="app-container">
         <Sider

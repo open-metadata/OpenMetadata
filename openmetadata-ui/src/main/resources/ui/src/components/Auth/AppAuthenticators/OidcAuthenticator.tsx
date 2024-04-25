@@ -26,7 +26,6 @@ import { Redirect, Route, Switch, useHistory } from 'react-router-dom';
 import { ROUTES } from '../../../constants/constants';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import SignInPage from '../../../pages/LoginPage/SignInPage';
-import PageNotFound from '../../../pages/PageNotFound/PageNotFound';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import Loader from '../../common/Loader/Loader';
 import {
@@ -121,7 +120,6 @@ const OidcAuthenticator = forwardRef<AuthenticatorRef, Props>(
               <Redirect to={ROUTES.MY_DATA} />
             )}
           </Route>
-          <Route exact component={PageNotFound} path={ROUTES.NOT_FOUND} />
           {!isSigningIn ? (
             <Route exact component={SignInPage} path={ROUTES.SIGNIN} />
           ) : null}
