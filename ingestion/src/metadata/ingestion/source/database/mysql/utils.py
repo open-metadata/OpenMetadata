@@ -174,7 +174,9 @@ def get_foreign_keys(self, connection, table_name, schema=None, **kw):
 
         loc_names = spec["local"]
         ref_names = spec["foreign"]
-        ref_database = spec["database"][-1]
+        ref_database = None
+        if len(spec["table"]) > 2 and spec["table"][-3]:
+            ref_database = spec["table"][-3]
 
         con_kw = {}
         for opt in ("onupdate", "ondelete"):
