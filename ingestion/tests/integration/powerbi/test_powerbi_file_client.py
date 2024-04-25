@@ -19,7 +19,10 @@ from unittest import TestCase
 from metadata.generated.schema.entity.services.connections.dashboard.powerBIConnection import (
     PowerBIConnection,
 )
-from metadata.ingestion.source.dashboard.powerbi.file_client import PowerBiFileClient
+from metadata.ingestion.source.dashboard.powerbi.file_client import (
+    PowerBiFileClient,
+    _get_datamodel_schema_list,
+)
 from metadata.ingestion.source.dashboard.powerbi.models import (
     ConnectionFile,
     DataModelSchema,
@@ -256,17 +259,14 @@ class PowerBIFileClientTests(TestCase):
 
     file_client = PowerBiFileClient(PowerBIConnection(**powerbi_connection_config))
 
-    def x_test_parsing_pbit_files(self):
+    def test_parsing_pbit_files(self):
         """
-        We cannot upload pbit files to the repo, so we will skip this test
-        We'll execute it locally as and when required
         Test unzipping pbit files from local and extract the datamodels and connections
         """
-        datamodel_mappings = self.file_client.get_data_model_schema_mappings()
+        datamodel_mappings = _get_datamodel_schema_list(
+            path=self.file_client.config.pbitFilesSource.path
+        )
         for _, (exptected, original) in enumerate(
             zip(EXPECTED_DATAMODEL_MAPPINGS, datamodel_mappings)
         ):
             self.assertEqual(exptected, original)
-
-    def tearDown(self) -> None:
-        self.file_client.delete_tmp_files()
