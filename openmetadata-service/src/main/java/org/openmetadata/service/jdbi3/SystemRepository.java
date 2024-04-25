@@ -4,6 +4,7 @@ import static org.openmetadata.schema.type.EventType.ENTITY_CREATED;
 import static org.openmetadata.schema.type.EventType.ENTITY_DELETED;
 import static org.openmetadata.schema.type.EventType.ENTITY_UPDATED;
 
+import java.util.ArrayList;
 import java.util.List;
 import javax.json.JsonPatch;
 import javax.json.JsonValue;
@@ -324,12 +325,19 @@ public class SystemRepository {
           .withDescription(ValidationStepDescription.MIGRATION.key)
           .withPassed(Boolean.TRUE);
     }
+    List<String> missingVersions =
+        new ArrayList<>(migrationValidationClient.getExpectedMigrationList());
+    missingVersions.removeAll(currentVersions);
+
+    List<String> unexpectedVersions = new ArrayList<>(currentVersions);
+    unexpectedVersions.removeAll(migrationValidationClient.getExpectedMigrationList());
+
     return new StepValidation()
         .withDescription(ValidationStepDescription.MIGRATION.key)
         .withPassed(Boolean.FALSE)
         .withMessage(
             String.format(
-                "Found the versions [%s], but expected [%s]",
-                currentVersions, migrationValidationClient.getExpectedMigrationList()));
+                "Missing migrations that were not executed %s. Unexpected executed migrations %s",
+                missingVersions, unexpectedVersions));
   }
 }
