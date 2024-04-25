@@ -5,7 +5,7 @@
   "description": "Remove Owner Action Type",
   "type": "object",
   "definitions": {
-    "removeDomainAction": {
+    "removeDomainActionType": {
       "description": "Remove Domain Action Type",
       "type": "string",
       "enum": ["RemoveDomainAction"],
@@ -16,7 +16,7 @@
     "type": {
       "title": "Application Type",
       "description": "Application Type",
-      "$ref": "#/definitions/removeDomainAction",
+      "$ref": "#/definitions/removeDomainActionType",
       "default": "RemoveDomainAction"
     }
   },

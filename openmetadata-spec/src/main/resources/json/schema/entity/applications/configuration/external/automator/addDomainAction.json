@@ -5,7 +5,7 @@
   "description": "Add an owner to the selected assets.",
   "type": "object",
   "definitions": {
-    "addDomainAction": {
+    "addDomainActionType": {
       "description": "Add Owner Action Type.",
       "type": "string",
       "enum": ["AddDomainAction"],
@@ -16,7 +16,7 @@
     "type": {
       "title": "Application Type",
       "description": "Application Type",
-      "$ref": "#/definitions/addDomainAction",
+      "$ref": "#/definitions/addDomainActionType",
       "default": "AddDomainAction"
     },
     "domain": {

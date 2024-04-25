@@ -5,7 +5,7 @@
   "description": "Apply Tags to the selected assets.",
   "type": "object",
   "definitions": {
-    "addDescriptionAction": {
+    "addDescriptionActionType": {
       "description": "Add Description Action Type.",
       "type": "string",
       "enum": ["AddDescriptionAction"],
@@ -16,7 +16,7 @@
     "type": {
       "title": "Application Type",
       "description": "Application Type",
-      "$ref": "#/definitions/addDescriptionAction",
+      "$ref": "#/definitions/addDescriptionActionType",
       "default": "AddDescriptionAction"
     },
     "description": {

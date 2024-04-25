@@ -5,7 +5,7 @@
   "description": "Remove Tags Action Type",
   "type": "object",
   "definitions": {
-    "removeTagsAction": {
+    "removeTagsActionType": {
       "description": "Remove Tags Action Type.",
       "type": "string",
       "enum": ["RemoveTagsAction"],
@@ -16,7 +16,7 @@
     "type": {
       "title": "Application Type",
       "description": "Application Type",
-      "$ref": "#/definitions/removeTagsAction",
+      "$ref": "#/definitions/removeTagsActionType",
       "default": "AddTagsAction"
     },
     "applyToChildren": {

@@ -5,7 +5,7 @@
   "description": "Add an owner to the selected assets.",
   "type": "object",
   "definitions": {
-    "addOwnerAction": {
+    "addOwnerActionType": {
       "description": "Add Owner Action Type.",
       "type": "string",
       "enum": ["AddOwnerAction"],
@@ -16,7 +16,7 @@
     "type": {
       "title": "Application Type",
       "description": "Application Type",
-      "$ref": "#/definitions/addOwnerAction",
+      "$ref": "#/definitions/addOwnerActionType",
       "default": "AddOwnerAction"
     },
     "owner": {
