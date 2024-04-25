@@ -26,8 +26,11 @@
     "applyToChildren": {
       "title": "Apply to Children",
       "description": "Apply the description to the children of the selected assets that match the criteria. E.g., columns, tasks, topic fields,...",
-      "type": "boolean",
-      "default": false
+      "type": "array",
+      "items": {
+        "$ref": "../../../../../type/basic.json#/definitions/entityName"
+      },
+      "default": null
     },
     "overwriteMetadata": {
       "title": "Overwrite Metadata",
