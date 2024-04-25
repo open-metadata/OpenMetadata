@@ -18,6 +18,7 @@ import static org.openmetadata.service.Entity.CONTAINER;
 import static org.openmetadata.service.Entity.DASHBOARD;
 import static org.openmetadata.service.Entity.DASHBOARD_DATA_MODEL;
 import static org.openmetadata.service.Entity.MLMODEL;
+import static org.openmetadata.service.Entity.SEARCH_INDEX;
 import static org.openmetadata.service.Entity.TABLE;
 import static org.openmetadata.service.Entity.TOPIC;
 import static org.openmetadata.service.search.SearchClient.GLOBAL_SEARCH_ALIAS;
@@ -39,6 +40,7 @@ import org.openmetadata.schema.entity.data.Container;
 import org.openmetadata.schema.entity.data.Dashboard;
 import org.openmetadata.schema.entity.data.DashboardDataModel;
 import org.openmetadata.schema.entity.data.MlModel;
+import org.openmetadata.schema.entity.data.SearchIndex;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.data.Topic;
 import org.openmetadata.schema.type.ColumnLineage;
@@ -206,6 +208,11 @@ public class LineageRepository {
         Table table =
             Entity.getEntity(TABLE, entityReference.getId(), "columns", Include.NON_DELETED);
         ColumnUtil.validateColumnFQN(table.getColumns(), columnFQN);
+      }
+      case SEARCH_INDEX -> {
+        SearchIndex searchIndex =
+            Entity.getEntity(SEARCH_INDEX, entityReference.getId(), "fields", Include.NON_DELETED);
+        ColumnUtil.validateSearchIndexFieldFQN(searchIndex.getFields(), columnFQN);
       }
       case TOPIC -> {
         Topic topic =
