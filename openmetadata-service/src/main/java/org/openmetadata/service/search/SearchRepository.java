@@ -537,7 +537,7 @@ public class SearchRepository {
         // we are doing below because we want to delete the data products with domain when domain is
         // deleted
         searchClient.deleteEntityByFields(
-            indexMapping.getAlias(clusterAlias),
+            indexMapping.getChildAliases(clusterAlias),
             List.of(new ImmutablePair<>(entityType + ".id", docId)));
       }
       case Entity.TAG, Entity.GLOSSARY_TERM -> searchClient.updateChildren(
@@ -550,11 +550,11 @@ public class SearchRepository {
         TestSuite testSuite = (TestSuite) entity;
         if (Boolean.TRUE.equals(testSuite.getExecutable())) {
           searchClient.deleteEntityByFields(
-              indexMapping.getAlias(clusterAlias),
-              List.of(new ImmutablePair<>("testSuites.id", docId)));
+              indexMapping.getChildAliases(clusterAlias),
+              List.of(new ImmutablePair<>("testSuite.id", docId)));
         } else {
           searchClient.updateChildren(
-              indexMapping.getAlias(clusterAlias),
+              indexMapping.getChildAliases(clusterAlias),
               new ImmutablePair<>("testSuites.id", testSuite.getId().toString()),
               new ImmutablePair<>(REMOVE_TEST_SUITE_CHILDREN_SCRIPT, null));
         }
@@ -566,9 +566,9 @@ public class SearchRepository {
           Entity.MLMODEL_SERVICE,
           Entity.STORAGE_SERVICE,
           Entity.SEARCH_SERVICE -> searchClient.deleteEntityByFields(
-          indexMapping.getAlias(clusterAlias), List.of(new ImmutablePair<>("service.id", docId)));
+          indexMapping.getChildAliases(clusterAlias), List.of(new ImmutablePair<>("service.id", docId)));
       default -> searchClient.deleteEntityByFields(
-          indexMapping.getAlias(clusterAlias),
+          indexMapping.getChildAliases(clusterAlias),
           List.of(new ImmutablePair<>(entityType + ".id", docId)));
     }
   }
@@ -586,11 +586,11 @@ public class SearchRepository {
           Entity.MLMODEL_SERVICE,
           Entity.STORAGE_SERVICE,
           Entity.SEARCH_SERVICE -> searchClient.softDeleteOrRestoreChildren(
-          indexMapping.getAlias(clusterAlias),
+          indexMapping.getChildAliases(clusterAlias),
           scriptTxt,
           List.of(new ImmutablePair<>("service.id", docId)));
       default -> searchClient.softDeleteOrRestoreChildren(
-          indexMapping.getAlias(clusterAlias),
+          indexMapping.getChildAliases(clusterAlias),
           scriptTxt,
           List.of(new ImmutablePair<>(entityType + ".id", docId)));
     }
