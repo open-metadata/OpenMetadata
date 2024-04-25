@@ -33,8 +33,8 @@ function TagsFeed({ feed }: Readonly<TagsFeedProps>) {
     <Row gutter={[8, 8]}>
       {!isEmpty(updatedTags) && (
         <Col span={24}>
-          <Row align="middle" gutter={[12, 12]} wrap={false}>
-            <Col span={4}>
+          <Row align="middle" gutter={[12, 12]}>
+            <Col>
               <Row align="middle" gutter={[4, 4]} wrap={false}>
                 <Col className="h-4">
                   <AddIcon height={16} width={16} />
@@ -56,8 +56,8 @@ function TagsFeed({ feed }: Readonly<TagsFeedProps>) {
       )}
       {!isEmpty(previousTags) && (
         <Col span={24}>
-          <Row align="middle" gutter={[12, 12]} wrap={false}>
-            <Col span={4}>
+          <Row align="middle" gutter={[12, 12]}>
+            <Col>
               <Row align="middle" gutter={[4, 4]} wrap={false}>
                 <Col className="h-4">
                   <UpdatedIcon height={16} width={16} />
