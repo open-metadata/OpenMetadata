@@ -598,12 +598,14 @@ export const getFeedChangeOperationLabel = (
     [FieldOperation.Added]: i18next.t('label.added'),
     [FieldOperation.Updated]: i18next.t('label.updated'),
     [FieldOperation.Deleted]: i18next.t('label.deleted'),
+    [FieldOperation.None]: '',
   };
 
   const lowerCaseOperationLabelMapping = {
     [FieldOperation.Added]: i18next.t('label.added-lowercase'),
     [FieldOperation.Updated]: i18next.t('label.updated-lowercase'),
     [FieldOperation.Deleted]: i18next.t('label.deleted-lowercase'),
+    [FieldOperation.None]: '',
   };
 
   return showStartCase
@@ -765,6 +767,18 @@ export const formatTestStatusData = (
   };
 };
 
+const getActionLabelFromCardStyle = (cardStyle?: CardStyle) => {
+  let action = i18next.t('label.added-lowercase');
+
+  if (cardStyle === CardStyle.EntityDeleted) {
+    action = i18next.t('label.deleted-lowercase');
+  } else if (cardStyle === CardStyle.EntitySoftDeleted) {
+    action = i18next.t('label.soft-deleted-lowercase');
+  }
+
+  return action;
+};
+
 export const getFeedHeaderTextFromCardStyle = (
   fieldOperation?: FieldOperation,
   entityType?: string,
@@ -774,8 +788,11 @@ export const getFeedHeaderTextFromCardStyle = (
   if (fieldName === 'assets') {
     return (
       <Transi18next
-        i18nKey="message.feed-entity-created-header"
+        i18nKey="message.feed-entity-action-header"
         renderElement={<Typography.Text className="font-bold" />}
+        values={{
+          action: getActionLabelFromCardStyle(cardStyle),
+        }}
       />
     );
   }
@@ -814,10 +831,15 @@ export const getFeedHeaderTextFromCardStyle = (
       );
 
     case CardStyle.EntityCreated:
+    case CardStyle.EntityDeleted:
+    case CardStyle.EntitySoftDeleted:
       return (
         <Transi18next
-          i18nKey="message.feed-entity-created-header"
+          i18nKey="message.feed-entity-action-header"
           renderElement={<Typography.Text className="font-bold" />}
+          values={{
+            action: getActionLabelFromCardStyle(cardStyle),
+          }}
         />
       );
 

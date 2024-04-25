@@ -10,24 +10,32 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+
 import { Button, Col, Row, Typography } from 'antd';
 import classNames from 'classnames';
 import { isUndefined } from 'lodash';
 import React, { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { Link } from 'react-router-dom';
 import ActivityFeedEditor from '../../../../components/ActivityFeed/ActivityFeedEditor/ActivityFeedEditor';
 import RichTextEditorPreviewer from '../../../../components/common/RichTextEditor/RichTextEditorPreviewer';
+import { ASSET_CARD_STYLES } from '../../../../constants/Feeds.constants';
 import {
   CardStyle,
   EntityTestResultSummaryObject,
 } from '../../../../generated/entity/feed/thread';
 import { formatDateTime } from '../../../../utils/date-time/DateTimeUtils';
+import entityUtilClassBase from '../../../../utils/EntityUtilClassBase';
 import {
+  getEntityFQN,
+  getEntityType,
   getFrontEndFormat,
   MarkdownToHTMLConverter,
 } from '../../../../utils/FeedUtils';
+import ExploreSearchCard from '../../../ExploreV1/ExploreSearchCard/ExploreSearchCard';
 import DescriptionFeed from '../../ActivityFeedCardV2/FeedCardBody/DescriptionFeed/DescriptionFeed';
 import TestCaseFeed from '../../ActivityFeedCardV2/FeedCardBody/TestCaseFeed/TestCaseFeed';
+import './feed-card-body-v1.less';
 import { FeedCardBodyV1Props } from './FeedCardBodyV1.interface';
 
 const FeedCardBodyV1 = ({
@@ -42,6 +50,13 @@ const FeedCardBodyV1 = ({
 }: FeedCardBodyV1Props) => {
   const { t } = useTranslation();
   const [postMessage, setPostMessage] = useState<string>(message);
+
+  const { entityFQN, entityType } = useMemo(() => {
+    const entityFQN = getEntityFQN(feed.about) ?? '';
+    const entityType = getEntityType(feed.about) ?? '';
+
+    return { entityFQN, entityType };
+  }, [feed]);
 
   const { cardStyle } = useMemo(() => {
     return {
@@ -103,6 +118,28 @@ const FeedCardBodyV1 = ({
               ?.entityTestResultSummary as EntityTestResultSummaryObject[]
           }
         />
+      );
+    }
+
+    if (ASSET_CARD_STYLES.includes(cardStyle as CardStyle)) {
+      const entityInfo = feed.feedInfo?.entitySpecificInfo?.entity;
+      const entityCard = (
+        <ExploreSearchCard
+          className="asset-info-card"
+          id={`tabledatacard${entityInfo.id}`}
+          showTags={false}
+          source={{ ...entityInfo, entityType }}
+        />
+      );
+
+      return cardStyle === CardStyle.EntityDeleted ? (
+        entityCard
+      ) : (
+        <Link
+          className="no-underline"
+          to={entityUtilClassBase.getEntityLink(entityType, entityFQN)}>
+          {entityCard}
+        </Link>
       );
     }
 
