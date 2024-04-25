@@ -13,7 +13,7 @@ Postgres source module
 """
 import traceback
 from collections import namedtuple
-from typing import Iterable, List, Optional, Tuple
+from typing import Iterable, Optional, Tuple
 
 from sqlalchemy import String as SqlAlchemyString
 from sqlalchemy import sql
@@ -22,11 +22,8 @@ from sqlalchemy.engine import Inspector
 
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.table import (
-    ConstraintType,
     PartitionColumnDetails,
     PartitionIntervalTypes,
-    Table,
-    TableConstraint,
     TablePartition,
     TableType,
 )
@@ -269,40 +266,3 @@ class PostgresSource(CommonDbSourceService, MultiDBSource):
                     stackTrace=traceback.format_exc(),
                 )
             )
-
-    def _get_foreign_constraints(self, foreign_columns) -> List[TableConstraint]:
-        """
-        Search the referred table for foreign constraints
-        and get referred column fqn
-        """
-
-        foreign_constraints = []
-        for column in foreign_columns:
-            referred_column_fqns = []
-            referred_table_fqn = fqn.build(
-                metadata=self.metadata,
-                entity_type=Table,
-                table_name=column.get("referred_table"),
-                schema_name=column.get("referred_schema"),
-                database_name=column.get("referred_database"),
-                service_name=self.context.get().database_service,
-            )
-            if referred_table_fqn:
-                for referred_column in column.get("referred_columns"):
-                    col_fqn = fqn._build(
-                        referred_table_fqn, referred_column, quote=False
-                    )
-                    if col_fqn:
-                        referred_column_fqns.append(col_fqn)
-            else:
-                # do not build partial foreign constraint. It will updated in next run.
-                continue
-            foreign_constraints.append(
-                TableConstraint(
-                    constraintType=ConstraintType.FOREIGN_KEY,
-                    columns=column.get("constrained_columns"),
-                    referredColumns=referred_column_fqns,
-                )
-            )
-
-        return foreign_constraints

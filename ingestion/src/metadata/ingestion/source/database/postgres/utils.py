@@ -25,6 +25,7 @@ from sqlalchemy.sql import sqltypes
 
 from metadata.ingestion.source.database.postgres.queries import (
     POSTGRES_COL_IDENTITY,
+    POSTGRES_FETCH_FK,
     POSTGRES_GET_SERVER_VERSION,
     POSTGRES_SQL_COLUMNS,
     POSTGRES_TABLE_COMMENTS,
@@ -71,21 +72,6 @@ def get_foreign_keys(
         connection, table_name, schema, info_cache=kw.get("info_cache")
     )
 
-    FK_SQL = """
-        SELECT r.conname,
-            pg_catalog.pg_get_constraintdef(r.oid, true) as condef,
-            n.nspname as conschema,
-            d.datname AS con_db_name
-        FROM  pg_catalog.pg_constraint r,
-            pg_namespace n,
-            pg_class c
-        JOIN pg_database d ON d.datname = current_database()
-        WHERE r.conrelid = :table AND
-            r.contype = 'f' AND
-            c.oid = confrelid AND
-            n.oid = c.relnamespace
-        ORDER BY 1
-    """
     # https://www.postgresql.org/docs/9.0/static/sql-createtable.html
     FK_REGEX = re.compile(
         r"FOREIGN KEY \((.*?)\) REFERENCES (?:(.*?)\.)?(.*?)\((.*?)\)"
@@ -98,7 +84,7 @@ def get_foreign_keys(
         r"[\s]?(INITIALLY (DEFERRED|IMMEDIATE)+)?"
     )
 
-    t = sql.text(FK_SQL).columns(
+    t = sql.text(POSTGRES_FETCH_FK).columns(
         conname=sqltypes.Unicode, condef=sqltypes.Unicode, con_db_name=sqltypes.Unicode
     )
     c = connection.execute(t, dict(table=table_oid))
@@ -124,9 +110,9 @@ def get_foreign_keys(
 
         if deferrable is not None:
             deferrable = True if deferrable == "DEFERRABLE" else False
+        constrained_columns = tuple(re.split(r"\s*,\s*", constrained_columns))
         constrained_columns = [
-            preparer._unquote_identifier(x)
-            for x in re.split(r"\s*,\s*", constrained_columns)
+            preparer._unquote_identifier(x) for x in constrained_columns
         ]
 
         if postgresql_ignore_search_path:
@@ -147,10 +133,8 @@ def get_foreign_keys(
             referred_schema = schema
 
         referred_table = preparer._unquote_identifier(referred_table)
-        referred_columns = [
-            preparer._unquote_identifier(x)
-            for x in re.split(r"\s*,\s", referred_columns)
-        ]
+        referred_columns = tuple(re.split(r"\s*,\s", referred_columns))
+        referred_columns = [preparer._unquote_identifier(x) for x in referred_columns]
         options = {
             k: v
             for k, v in [
