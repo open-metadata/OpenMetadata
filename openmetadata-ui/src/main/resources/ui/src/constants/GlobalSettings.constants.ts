@@ -67,6 +67,7 @@ export enum GlobalSettingOptions {
   CONTAINERS = 'containers',
   APPLICATIONS = 'apps',
   OM_HEALTH = 'om-health',
+  PROFILER_CONFIGURATION = 'profiler-configuration',
   APPEARANCE = 'appearance',
 }
 
