@@ -121,7 +121,8 @@ const NodeSuggestions: FC<EntitySuggestionProps> = ({
           value: entity.fullyQualifiedName,
           label: (
             <Button
-              className="d-flex items-center w-full node-suggestion-option-btn"
+              block
+              className="d-flex items-center node-suggestion-option-btn"
               data-testid={`node-suggestion-${entity.fullyQualifiedName}`}
               key={entity.fullyQualifiedName}
               type="text"

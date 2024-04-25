@@ -38,6 +38,7 @@ import {
   useNodesState,
 } from 'reactflow';
 import { ReactComponent as IconTimesCircle } from '../../assets/svg/ic-times-circle.svg';
+import { useEntityExportModalProvider } from '../../components/Entity/EntityExportModalProvider/EntityExportModalProvider.component';
 import EdgeInfoDrawer from '../../components/Entity/EntityInfoDrawer/EdgeInfoDrawer.component';
 import EntityInfoDrawer from '../../components/Entity/EntityInfoDrawer/EntityInfoDrawer.component';
 import AddPipeLineModal from '../../components/Entity/EntityLineage/AppPipelineModel/AddPipeLineModal';
@@ -75,7 +76,11 @@ import {
   LineageDetails,
 } from '../../generated/type/entityLineage';
 import { useFqn } from '../../hooks/useFqn';
-import { getLineageDataByFQN, updateLineageEdge } from '../../rest/lineageAPI';
+import {
+  exportLineage,
+  getLineageDataByFQN,
+  updateLineageEdge,
+} from '../../rest/lineageAPI';
 import { getPipelineStatus } from '../../rest/pipelineAPI';
 import { getEpochMillisForPastDays } from '../../utils/date-time/DateTimeUtils';
 import {
@@ -177,6 +182,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
   const backspacePressed = useKeyPress('Backspace');
   const [childMap, setChildMap] = useState<EntityReferenceChild>();
   const [paginationData, setPaginationData] = useState({});
+  const { showModal } = useEntityExportModalProvider();
 
   const initLineageChildMaps = useCallback(
     (
@@ -278,6 +284,38 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
     },
     [paginationData]
   );
+
+  const exportLineageData = useCallback(
+    async (name: string) => {
+      try {
+        return await exportLineage(
+          name,
+          entityType,
+          lineageConfig,
+          queryFilter
+        );
+      } catch (err) {
+        showErrorToast(
+          err as AxiosError,
+          t('server.entity-fetch-error', {
+            entity: t('label.lineage-data-lowercase'),
+          })
+        );
+
+        return '';
+      }
+    },
+    [entityType, lineageConfig, queryFilter]
+  );
+
+  const onExportClick = useCallback(() => {
+    if (decodedFqn) {
+      showModal({
+        name: decodedFqn,
+        onExport: exportLineageData,
+      });
+    }
+  }, [decodedFqn]);
 
   const loadChildNodesHandler = useCallback(
     async (node: SourceType, direction: EdgeTypeEnum) => {
@@ -1191,6 +1229,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
       onLineageEditClick,
       onAddPipelineClick,
       onUpdateLayerView,
+      onExportClick,
     };
   }, [
     isDrawerOpen,
@@ -1237,6 +1276,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
     onLineageEditClick,
     onAddPipelineClick,
     onUpdateLayerView,
+    onExportClick,
   ]);
 
   useEffect(() => {

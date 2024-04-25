@@ -96,6 +96,7 @@ export interface LineageContextType {
     entityType: string,
     lineageConfig: LineageConfig
   ) => void;
+  onExportClick: () => void;
   fetchPipelineStatus: (pipelineFqn: string) => void;
   removeNodeHandler: (node: Node | NodeProps) => void;
   onColumnEdgeRemove: () => void;

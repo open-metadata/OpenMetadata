@@ -29,6 +29,7 @@ import { ReactComponent as ExitFullScreen } from '../../../assets/svg/exit-full-
 import { ReactComponent as FullScreen } from '../../../assets/svg/full-screen.svg';
 import { ReactComponent as EditIconColor } from '../../../assets/svg/ic-edit-lineage-colored.svg';
 import { ReactComponent as EditIcon } from '../../../assets/svg/ic-edit-lineage.svg';
+import { ReactComponent as ExportIcon } from '../../../assets/svg/ic-export.svg';
 import { NO_PERMISSION_FOR_ACTION } from '../../../constants/HelperTextUtil';
 import {
   LINEAGE_DEFAULT_QUICK_FILTERS,
@@ -74,6 +75,7 @@ const CustomControls: FC<ControlProps> = ({
     onLineageConfigUpdate,
     onQueryFilterUpdate,
     onNodeClick,
+    onExportClick,
   } = useLineageProvider();
   const [selectedFilter, setSelectedFilter] = useState<string[]>([]);
   const [selectedQuickFilters, setSelectedQuickFilters] = useState<
@@ -247,10 +249,30 @@ const CustomControls: FC<ControlProps> = ({
         </Col>
         <Col flex="250px">
           <Space className="justify-end w-full" size={16}>
+            <Tooltip
+              title={t('label.export-entity', {
+                entity: t('label.lineage'),
+              })}>
+              <Button
+                className="flex-center"
+                data-testid="lineage-config"
+                disabled={isEditMode}
+                icon={
+                  <span className="anticon">
+                    <ExportIcon
+                      color={theme.primaryColor}
+                      height={14}
+                      width={14}
+                    />
+                  </span>
+                }
+                onClick={onExportClick}
+              />
+            </Tooltip>
+
             {handleFullScreenViewClick && (
               <Tooltip title={t('label.fit-to-screen')}>
                 <Button
-                  className="custom-control-fit-screen-button"
                   data-testid="full-screen"
                   icon={
                     <span className="anticon">
@@ -268,7 +290,6 @@ const CustomControls: FC<ControlProps> = ({
             {onExitFullScreenViewClick && (
               <Tooltip title={t('label.exit-fit-to-screen')}>
                 <Button
-                  className=" custom-control-fit-screen-button"
                   data-testid="exit-full-screen"
                   icon={
                     <span className="anticon">
@@ -286,7 +307,6 @@ const CustomControls: FC<ControlProps> = ({
 
             <Tooltip title={t('label.setting-plural')}>
               <Button
-                className=" custom-control-fit-screen-button"
                 data-testid="lineage-config"
                 disabled={isEditMode}
                 icon={
