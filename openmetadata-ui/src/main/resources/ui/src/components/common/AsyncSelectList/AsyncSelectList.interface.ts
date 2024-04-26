@@ -34,6 +34,8 @@ export interface AsyncSelectListProps {
   initialOptions?: SelectOption[];
   filterOptions?: string[]; // array of fqn
   onChange?: (option: DefaultOptionType | DefaultOptionType[]) => void;
+  onCancel?: () => void;
+  isSubmitLoading?: boolean;
   fetchOptions: (
     search: string,
     page: number
