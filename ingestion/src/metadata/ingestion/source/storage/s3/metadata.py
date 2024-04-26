@@ -89,9 +89,7 @@ class S3Source(StorageServiceSource):
         config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
         connection: S3Connection = config.serviceConnection.__root__.config
         if not isinstance(connection, S3Connection):
-            raise InvalidSourceException(
-                f"Expected S3StoreConnection, but got {connection}"
-            )
+            raise InvalidSourceException(f"Expected S3Connection, but got {connection}")
         return cls(config, metadata)
 
     def get_containers(self) -> Iterable[S3ContainerDetails]:
