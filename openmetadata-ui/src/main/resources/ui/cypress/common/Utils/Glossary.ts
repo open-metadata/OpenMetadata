@@ -28,10 +28,9 @@ export const assignGlossaryTerm = (
     .should('be.visible')
     .type(glossaryTermName);
 
-  cy.get(`[data-testid="tag-${glossaryTermFQN}"]`).click();
-
-  // to close popup
-  cy.clickOutside();
+  cy.get(
+    `[data-testid="tag-${glossaryTermFQN}"] .ant-select-tree-checkbox`
+  ).click();
 
   cy.get(
     `[data-testid="tag-selector"] [data-testid="selected-tag-${glossaryTermFQN}"]`
@@ -44,7 +43,7 @@ export const assignGlossaryTerm = (
   ).should('be.visible');
 };
 
-export const udpateGlossaryTerm = (
+export const updateGlossaryTerm = (
   glossaryTermFQN: string,
   glossaryTermName: string,
   endPoint: EntityType
@@ -59,9 +58,6 @@ export const udpateGlossaryTerm = (
     .type(glossaryTermName);
 
   cy.get(`[data-testid="tag-${glossaryTermFQN}"]`).click();
-
-  // to close popup
-  cy.clickOutside();
 
   cy.get(
     `[data-testid="tag-selector"] [data-testid="selected-tag-${glossaryTermFQN}"]`
