@@ -20,6 +20,7 @@ from .database_test_container import DataBaseTestContainer
 class PostgresTestContainer(DataBaseTestContainer):
     def __init__(self):
         self.postgres_container = PostgresContainer("postgres:latest")
+        self.postgres_container.with_env("TC_POOLING_INTERVAL", "3")
         self.start()
         self.connection_url = self.postgres_container.get_connection_url()
         super().__init__()
