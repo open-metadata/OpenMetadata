@@ -229,7 +229,7 @@ export const IngestionRecentRuns: FunctionComponent<Props> = ({
           ) : (
             status
           );
-        }) ?? '--'
+        })
       )}
 
       <Modal
