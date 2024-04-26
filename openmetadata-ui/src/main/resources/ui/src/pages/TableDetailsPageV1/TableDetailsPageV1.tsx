@@ -136,8 +136,13 @@ const TableDetailsPageV1: React.FC = () => {
     datasetFQN
   );
 
-  const viewUsagePermission = useMemo(
-    () => tablePermissions.ViewAll || tablePermissions.ViewUsage,
+  const { viewUsagePermission, viewTestCasePermission } = useMemo(
+    () => ({
+      viewUsagePermission:
+        tablePermissions.ViewAll || tablePermissions.ViewUsage,
+      viewTestCasePermission:
+        tablePermissions.ViewAll || tablePermissions.ViewTests,
+    }),
     [tablePermissions]
   );
 
@@ -162,6 +167,9 @@ const TableDetailsPageV1: React.FC = () => {
       let fields = defaultFields;
       if (viewUsagePermission) {
         fields += `,${TabSpecificField.USAGE_SUMMARY}`;
+      }
+      if (viewTestCasePermission) {
+        fields += `,${TabSpecificField.TESTSUITE}`;
       }
 
       const details = await getTableDetailsByFQN(tableFqn, { fields });
@@ -537,18 +545,10 @@ const TableDetailsPageV1: React.FC = () => {
               onThreadLinkSelect={onThreadLinkSelect}
             />
             <SchemaTab
-              columnName={getPartialNameFromTableFQN(
-                tableFqn,
-                [FqnPart['Column']],
-                FQN_SEPARATOR_CHAR
-              )}
-              columns={tableDetails?.columns ?? []}
-              entityFqn={datasetFQN}
               hasDescriptionEditAccess={editDescriptionPermission}
               hasTagEditAccess={editTagsPermission}
               isReadOnly={deleted}
-              joins={tableDetails?.joins?.columnJoins ?? []}
-              tableConstraints={tableDetails?.tableConstraints}
+              table={tableDetails}
               onThreadLinkSelect={onThreadLinkSelect}
               onUpdate={onColumnsUpdate}
             />
@@ -688,8 +688,8 @@ const TableDetailsPageV1: React.FC = () => {
             <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />
           ) : (
             <TableProfiler
-              isTableDeleted={deleted}
               permissions={tablePermissions}
+              table={tableDetails}
             />
           ),
       },
