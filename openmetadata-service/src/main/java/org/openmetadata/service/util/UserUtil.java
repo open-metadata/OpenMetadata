@@ -13,7 +13,6 @@
 
 package org.openmetadata.service.util;
 
-import static org.openmetadata.common.utils.CommonUtil.listOf;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.schema.entity.teams.AuthenticationMechanism.AuthType.JWT;
@@ -48,7 +47,6 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.UserRepository;
-import org.openmetadata.service.resources.teams.RoleResource;
 import org.openmetadata.service.security.auth.CatalogSecurityContext;
 import org.openmetadata.service.security.jwt.JWTTokenGenerator;
 import org.openmetadata.service.util.EntityUtil.Fields;
@@ -230,17 +228,6 @@ public final class UserUtil {
       LOG.debug("Bot entity: {} does not exists.", user);
       return null;
     }
-  }
-
-  public static List<EntityReference> getRoleForBot(String botName) {
-    String botRole =
-        switch (botName) {
-          case Entity.INGESTION_BOT_NAME -> Entity.INGESTION_BOT_ROLE;
-          case Entity.QUALITY_BOT_NAME -> Entity.QUALITY_BOT_ROLE;
-          case Entity.PROFILER_BOT_NAME -> Entity.PROFILER_BOT_ROLE;
-          default -> throw new IllegalArgumentException("No role found for the bot " + botName);
-        };
-    return listOf(RoleResource.getRole(botRole));
   }
 
   public static EntityReference getUserOrBot(String name) {
