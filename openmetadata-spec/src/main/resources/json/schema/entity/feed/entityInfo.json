@@ -7,7 +7,7 @@
   "type": "object",
   "properties": {
     "entity": {
-      "description": "List of previous tags."
+      "description": "Entity Details in case of Creation , Soft Deletion and Deletion."
     }
   },
   "additionalProperties": false
