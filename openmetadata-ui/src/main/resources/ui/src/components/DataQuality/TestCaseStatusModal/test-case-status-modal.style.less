@@ -1,5 +1,5 @@
 /*
- *  Copyright 2023 Collate.
+ *  Copyright 2024 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -10,12 +10,16 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { TestCaseResolutionStatus } from '../../../generated/tests/testCaseResolutionStatus';
+.test-case-status-modal-container {
+  .assignee-field {
+    .ant-form-item-row {
+      gap: 16px;
+      flex-direction: row;
+      align-items: center;
 
-export interface TestCaseStatusModalProps {
-  open: boolean;
-  data?: TestCaseResolutionStatus;
-  testCaseFqn: string;
-  onCancel: () => void;
-  onSubmit: (data: TestCaseResolutionStatus) => void;
+      .ant-form-item-label {
+        padding: 0;
+      }
+    }
+  }
 }
