@@ -20,7 +20,10 @@ import { useTranslation } from 'react-i18next';
 import { ReactComponent as ArrowBottom } from '../../assets/svg/ic-arrow-down.svg';
 import { ANNOUNCEMENT_COLOR } from '../../constants/constants';
 import { ReactionOperation } from '../../enums/reactions.enum';
-import { AnnouncementDetails } from '../../generated/api/feed/createThread';
+import {
+  AnnouncementDetails,
+  ThreadType,
+} from '../../generated/api/feed/createThread';
 import { Post } from '../../generated/entity/feed/thread';
 import { Reaction, ReactionType } from '../../generated/type/reaction';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
@@ -40,20 +43,17 @@ import './announcement.less';
 
 const AnnouncementFeedCardBody = ({
   feed,
-  feedType,
   entityLink,
-  isEntityFeed,
-  threadId,
   isThread,
   editPermission,
   showRepliesButton = true,
+  showReplyThread,
+  onReply,
+  announcementDetails,
   onConfirmation,
   updateThreadHandler,
   task,
-  announcementDetails,
   isReplyThreadOpen,
-  showReplyThread,
-  onReply,
 }: AnnouncementFeedCardBodyProp) => {
   const { t } = useTranslation();
   const entityType = getEntityType(entityLink ?? '');
@@ -68,6 +68,8 @@ const AnnouncementFeedCardBody = ({
   const [isEditPost, setIsEditPost] = useState<boolean>(false);
 
   const isAuthor = feedDetail.from === currentUser?.name;
+
+  const { id: threadId, type: feedType } = task;
 
   const onFeedUpdate = (data: Operation[]) => {
     updateThreadHandler(
@@ -215,12 +217,12 @@ const AnnouncementFeedCardBody = ({
           <Col flex="auto">
             <div>
               <FeedCardHeader
+                isEntityFeed
                 createdBy={feedDetail.from}
                 entityFQN={entityFQN}
                 entityField={entityField ?? ''}
                 entityType={entityType}
-                feedType={feedType}
-                isEntityFeed={isEntityFeed}
+                feedType={feedType ?? ThreadType.Conversation}
                 task={task}
                 timeStamp={feedDetail.postTs}
               />

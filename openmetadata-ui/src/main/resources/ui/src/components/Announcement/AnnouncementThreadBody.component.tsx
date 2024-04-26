@@ -24,7 +24,6 @@ import { getAllFeeds } from '../../rest/feedsAPI';
 import { showErrorToast } from '../../utils/ToastUtils';
 import { ConfirmState } from '../ActivityFeed/ActivityFeedCard/ActivityFeedCard.interface';
 import ErrorPlaceHolder from '../common/ErrorWithPlaceholder/ErrorPlaceHolder';
-import Loader from '../common/Loader/Loader';
 import ConfirmationModal from '../Modals/ConfirmationModal/ConfirmationModal';
 import { AnnouncementThreadBodyProp } from './Announcement.interface';
 import AnnouncementThreads from './AnnouncementThreads';
@@ -112,10 +111,6 @@ const AnnouncementThreadBody = ({
   useEffect(() => {
     getThreads();
   }, [threadLink, refetchThread]);
-
-  if (isThreadLoading) {
-    return <Loader />;
-  }
 
   if (isEmpty(threads) && !isThreadLoading) {
     return (

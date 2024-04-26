@@ -77,25 +77,15 @@ export interface AnnouncementFeedCardProp {
 export interface AnnouncementFeedCardBodyProp
   extends HTMLAttributes<HTMLDivElement> {
   feed: Post;
-  feedType: ThreadType;
   editPermission: boolean;
   entityLink?: string;
-  repliedUsers?: Array<string>;
-  replies?: number;
-  isEntityFeed?: boolean;
-  threadId?: string;
-  lastReplyTimeStamp?: number;
-  isFooterVisible?: boolean;
   isThread?: boolean;
   task: Thread;
   announcementDetails?: AnnouncementDetails;
-  onThreadSelect?: (id: string) => void;
-  onConfirmation?: (data: ConfirmState) => void;
-  updateThreadHandler: ThreadUpdatedFunc;
-  onReply?: () => void;
-  showUserAvatar?: boolean;
-  postFeed?: (value: string) => void;
-  showReplyThread?: () => void;
   showRepliesButton?: boolean;
   isReplyThreadOpen?: boolean;
+  onReply?: () => void;
+  onConfirmation: (data: ConfirmState) => void;
+  showReplyThread?: () => void;
+  updateThreadHandler: ThreadUpdatedFunc;
 }

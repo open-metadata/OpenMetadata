@@ -15,7 +15,7 @@ import { AxiosError } from 'axios';
 import { Operation } from 'fast-json-patch';
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Post, ThreadType } from '../../generated/entity/feed/thread';
+import { Post } from '../../generated/entity/feed/thread';
 import { getFeedById } from '../../rest/feedsAPI';
 import { showErrorToast } from '../../utils/ToastUtils';
 import ActivityFeedEditor from '../ActivityFeed/ActivityFeedEditor/ActivityFeedEditor';
@@ -94,17 +94,14 @@ const AnnouncementFeedCard = ({
         data-testid="announcement-card">
         <AnnouncementBadge />
         <AnnouncementFeedCardBody
-          isEntityFeed
           isThread
           announcementDetails={task.announcement}
           editPermission={editPermission}
           entityLink={task.about}
           feed={feed}
-          feedType={task.type || ThreadType.Conversation}
           isReplyThreadOpen={isReplyThreadVisible}
           showReplyThread={handleOpenReplyThread}
           task={task}
-          threadId={task.id}
           updateThreadHandler={handleUpdateThreadHandler}
           onConfirmation={onConfirmation}
           onReply={handleOpenReplyThread}
@@ -122,15 +119,11 @@ const AnnouncementFeedCard = ({
                 <div className="w-full m-l-xs" data-testid="replies">
                   {postFeedData.map((reply) => (
                     <AnnouncementFeedCardBody
-                      isEntityFeed
-                      className="m-b-sm"
                       editPermission={editPermission}
                       feed={reply}
-                      feedType={task.type ?? ThreadType.Conversation}
                       key={reply.id}
                       showRepliesButton={false}
                       task={task}
-                      threadId={task.id}
                       updateThreadHandler={handleUpdateThreadHandler}
                       onConfirmation={onConfirmation}
                     />

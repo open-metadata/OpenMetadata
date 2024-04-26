@@ -69,10 +69,6 @@ jest.mock('../common/ErrorWithPlaceholder/ErrorPlaceHolder', () => {
   return jest.fn().mockReturnValue(<p>ErrorPlaceHolder</p>);
 });
 
-jest.mock('../common/Loader/Loader', () => {
-  return jest.fn().mockReturnValue(<p>Loader</p>);
-});
-
 jest.mock('../../utils/ToastUtils', () => ({
   showErrorToast: jest.fn(),
 }));
@@ -96,16 +92,6 @@ describe('Test AnnouncementThreadBody Component', () => {
       'Announcement',
       'ALL'
     );
-  });
-
-  it('should render loader', async () => {
-    render(<AnnouncementThreadBody {...mockProps} />);
-
-    expect(screen.getByText('Loader')).toBeInTheDocument();
-    expect(screen.queryByText('ErrorPlaceHolder')).not.toBeInTheDocument();
-    expect(
-      screen.queryByTestId('announcement-thread-body')
-    ).not.toBeInTheDocument();
   });
 
   it('should render empty placeholder when data is not there', async () => {

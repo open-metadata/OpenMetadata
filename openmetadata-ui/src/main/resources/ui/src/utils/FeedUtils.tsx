@@ -488,33 +488,6 @@ export const updateThreadData = async (
     } catch (error) {
       showErrorToast(error as AxiosError);
     }
-    updatePost(threadId, postId, data)
-      .then((res) => {
-        callback((prevData) => {
-          return prevData.map((thread) => {
-            if (isEqual(threadId, thread.id)) {
-              const updatedPosts = (thread.posts || []).map((post) => {
-                if (isEqual(postId, post.id)) {
-                  return {
-                    ...post,
-                    reactions: res.reactions,
-                    message: res.message,
-                  };
-                } else {
-                  return post;
-                }
-              });
-
-              return { ...thread, posts: updatedPosts };
-            } else {
-              return thread;
-            }
-          });
-        });
-      })
-      .catch((err: AxiosError) => {
-        showErrorToast(err);
-      });
   }
 };
 
