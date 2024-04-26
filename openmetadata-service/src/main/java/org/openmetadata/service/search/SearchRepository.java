@@ -502,6 +502,26 @@ public class SearchRepository {
     }
   }
 
+  public void deleteEntity(EntityReference entityReference) {
+    if (entityReference != null) {
+      String entityId = entityReference.getId().toString();
+      String entityType = entityReference.getType();
+      IndexMapping indexMapping = entityIndexMap.get(entityType);
+      try {
+        searchClient.deleteEntity(indexMapping.getIndexName(clusterAlias), entityId);
+      } catch (Exception ie) {
+        LOG.error(
+            String.format(
+                "Issue in Deleting the search document for entityID [%s] and entityType [%s]. Reason[%s], Cause[%s], Stack [%s]",
+                entityId,
+                entityType,
+                ie.getMessage(),
+                ie.getCause(),
+                ExceptionUtils.getStackTrace(ie)));
+      }
+    }
+  }
+
   public void deleteTimeSeriesEntityById(EntityTimeSeriesInterface entity) {
     if (entity != null) {
       String entityId = entity.getId().toString();
@@ -531,7 +551,29 @@ public class SearchRepository {
       try {
         searchClient.softDeleteOrRestoreEntity(
             indexMapping.getIndexName(clusterAlias), entityId, scriptTxt);
-        softDeleteOrRestoredChildren(entity, indexMapping, delete);
+        softDeleteOrRestoredChildren(entity.getEntityReference(), indexMapping, delete);
+      } catch (Exception ie) {
+        LOG.error(
+            String.format(
+                "Issue in Soft Deleting the search document for entityID [%s] and entityType [%s]. Reason[%s], Cause[%s], Stack [%s]",
+                entityId,
+                entityType,
+                ie.getMessage(),
+                ie.getCause(),
+                ExceptionUtils.getStackTrace(ie)));
+      }
+    }
+  }
+
+  public void softDeleteOrRestoreEntity(EntityReference entityReference, boolean delete) {
+    if (entityReference != null) {
+      String entityId = entityReference.getId().toString();
+      String entityType = entityReference.getType();
+      IndexMapping indexMapping = entityIndexMap.get(entityType);
+      String scriptTxt = String.format(SOFT_DELETE_RESTORE_SCRIPT, delete);
+      try {
+        searchClient.softDeleteOrRestoreEntity(
+            indexMapping.getIndexName(clusterAlias), entityId, scriptTxt);
       } catch (Exception ie) {
         LOG.error(
             String.format(
@@ -595,9 +637,9 @@ public class SearchRepository {
   }
 
   public void softDeleteOrRestoredChildren(
-      EntityInterface entity, IndexMapping indexMapping, boolean delete) {
-    String docId = entity.getId().toString();
-    String entityType = entity.getEntityReference().getType();
+      EntityReference entityReference, IndexMapping indexMapping, boolean delete) {
+    String docId = entityReference.getId().toString();
+    String entityType = entityReference.getType();
     String scriptTxt = String.format(SOFT_DELETE_RESTORE_SCRIPT, delete);
     switch (entityType) {
       case Entity.DASHBOARD_SERVICE,

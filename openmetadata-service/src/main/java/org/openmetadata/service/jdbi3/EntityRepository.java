@@ -974,6 +974,16 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
   }
 
+  public final void deleteFromSearch(EntityReference entityReference, EventType changeType) {
+    if (supportsSearch) {
+      if (changeType.equals(ENTITY_SOFT_DELETED)) {
+        searchRepository.softDeleteOrRestoreEntity(entityReference, true);
+      } else {
+        searchRepository.deleteEntity(entityReference);
+      }
+    }
+  }
+
   public final void restoreFromSearch(T entity) {
     if (supportsSearch) {
       searchRepository.softDeleteOrRestoreEntity(entity, false);
@@ -1099,6 +1109,11 @@ public abstract class EntityRepository<T extends EntityInterface> {
           entityRelationshipRecord.getId(),
           true,
           hardDelete);
+      deleteFromSearch(
+          new EntityReference()
+              .withId(entityRelationshipRecord.getId())
+              .withType(entityRelationshipRecord.getType()),
+          hardDelete ? ENTITY_DELETED : ENTITY_SOFT_DELETED);
     }
   }
 

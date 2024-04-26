@@ -4,7 +4,7 @@
     "indexMappingFile": "/elasticsearch/%s/table_index_mapping.json",
     "alias": "table",
     "parentAliases": ["database", "databaseSchema", "databaseService", "all", "dataAsset"],
-    "childAliases": ["testCase"]
+    "childAliases": ["testSuite", "testCase"]
   },
   "storedProcedure": {
     "indexName": "stored_procedure_search_index",
@@ -17,14 +17,14 @@
     "indexMappingFile": "/elasticsearch/%s/database_schema_index_mapping.json",
     "alias": "databaseSchema",
     "parentAliases": ["database", "databaseService", "all", "dataAsset"],
-    "childAliases": ["table", "storedProcedure", "testCase"]
+    "childAliases": ["table", "storedProcedure", "testSuite", "testCase"]
   },
   "database": {
     "indexName": "database_search_index",
     "alias": "database",
     "indexMappingFile": "/elasticsearch/%s/database_index_mapping.json",
     "parentAliases": ["databaseService", "all", "dataAsset"],
-    "childAliases": ["databaseSchema", "table", "storedProcedure", "testCase"]
+    "childAliases": ["databaseSchema", "table", "storedProcedure", "testSuite","testCase"]
   },
   "chart": {
     "indexName": "chart_search_index",
@@ -199,7 +199,7 @@
     "indexMappingFile": "/elasticsearch/%s/database_service_index_mapping.json",
     "alias": "databaseService",
     "parentAliases": ["all"],
-    "childAliases": ["database", "databaseSchema", "storedProcedure", "table", "testCase"]
+    "childAliases": ["database", "databaseSchema", "storedProcedure", "table", "testSuite", "testCase"]
   },
   "messagingService": {
     "indexName": "messaging_service_search_index",
