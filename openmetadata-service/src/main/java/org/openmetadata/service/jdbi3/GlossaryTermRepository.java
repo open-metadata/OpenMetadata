@@ -118,12 +118,15 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
         fields.contains("relatedTerms") ? getRelatedTerms(entity) : entity.getRelatedTerms());
     entity.withUsageCount(
         fields.contains("usageCount") ? getUsageCount(entity) : entity.getUsageCount());
+    entity.withChildrenCount(
+        fields.contains("childrenCount") ? getChildrenCount(entity) : entity.getChildrenCount());
   }
 
   @Override
   public void clearFields(GlossaryTerm entity, Fields fields) {
     entity.setRelatedTerms(fields.contains("relatedTerms") ? entity.getRelatedTerms() : null);
     entity.withUsageCount(fields.contains("usageCount") ? entity.getUsageCount() : null);
+    entity.withChildrenCount(fields.contains("childrenCount") ? entity.getChildrenCount() : null);
   }
 
   @Override
@@ -138,6 +141,13 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
     return daoCollection
         .tagUsageDAO()
         .getTagCount(TagSource.GLOSSARY.ordinal(), term.getFullyQualifiedName());
+  }
+
+  private Integer getChildrenCount(GlossaryTerm term) {
+    return daoCollection
+        .relationshipDAO()
+        .findTo(term.getId(), GLOSSARY_TERM, Relationship.CONTAINS.ordinal(), GLOSSARY_TERM)
+        .size();
   }
 
   private List<EntityReference> getRelatedTerms(GlossaryTerm entity) {
