@@ -455,7 +455,7 @@ describe(
           cy.get('[data-testid="confirmation-text-input"]').type(DELETE_TERM);
           interceptURL(
             'DELETE',
-            '/api/v1/dataQuality/testCases/*?hardDelete=true&recursive=false',
+            '/api/v1/dataQuality/testCases/*?hardDelete=true&recursive=true',
             'deleteTest'
           );
           interceptURL('GET', '/api/v1/dataQuality/testCases?*', 'getTestCase');
