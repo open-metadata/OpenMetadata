@@ -13,7 +13,6 @@
 Source connection handler
 """
 from typing import Optional
-from urllib.parse import quote_plus
 
 from sqlalchemy.engine import Engine
 
@@ -25,10 +24,11 @@ from metadata.generated.schema.entity.services.connections.database.athenaConnec
     AthenaConnection,
 )
 from metadata.ingestion.connections.builders import (
-    create_generic_db_connection,
     get_connection_args_common,
 )
 from metadata.ingestion.connections.test_connections import test_connection_db_common
+from metadata.ingestion.connections.sql.builders.url import SqlAlchemyUrlBuilder
+from metadata.ingestion.connections.sql.builders.engine import default_engine_builder
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 
 
@@ -46,32 +46,31 @@ def get_connection_url(connection: AthenaConnection) -> str:
             aws_secret_access_key = assume_configs.secretAccessKey
             aws_session_token = assume_configs.sessionToken
 
-    url = f"{connection.scheme.value}://"
-    if aws_access_key_id:
-        url += aws_access_key_id
-        if aws_secret_access_key:
-            url += f":{aws_secret_access_key.get_secret_value()}"
-    else:
-        url += ":"
-    url += f"@athena.{connection.awsConfig.awsRegion}.amazonaws.com:443"
+    url = SqlAlchemyUrlBuilder.from_driver(connection.scheme.value)
+    url.with_username(aws_access_key_id or "")
+    url.with_password(aws_secret_access_key or "")
+    url.with_hostport(f"athena.{connection.awsConfig.awsRegion}.amazonaws.com:443")
 
-    url += f"?s3_staging_dir={quote_plus(connection.s3StagingDir)}"
-    if connection.workgroup:
-        url += f"&work_group={connection.workgroup}"
-    if aws_session_token:
-        url += f"&aws_session_token={quote_plus(aws_session_token)}"
+    query_params = {
+        "s3_staging_dir": connection.s3StagingDir,
+        "work_group": connection.workgroup,
+        "aws_session_token": aws_session_token
+    }
 
-    return url
+    query_params = {key: value for key, value in query_params.items() if value}
+
+    url.with_query_params(query_params)
+
+    return url.build()
 
 
 def get_connection(connection: AthenaConnection) -> Engine:
     """
     Create connection
     """
-    return create_generic_db_connection(
-        connection=connection,
-        get_connection_url_fn=get_connection_url,
-        get_connection_args_fn=get_connection_args_common,
+    return default_engine_builder(
+        get_connection_url(connection),
+        get_connection_args_common(connection)
     )
 
 

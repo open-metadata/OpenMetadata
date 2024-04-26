@@ -14,13 +14,11 @@ Generic source to build SQL connectors.
 import traceback
 from abc import ABC
 from copy import deepcopy
-from typing import Any, Iterable, List, Optional, Tuple, Union, cast
+from typing import Any, Iterable, List, Optional, Tuple, Union
 
 from pydantic import BaseModel
 from sqlalchemy.engine import Connection
-from sqlalchemy.engine.base import Engine
 from sqlalchemy.engine.reflection import Inspector
-from sqlalchemy.inspection import inspect
 
 from metadata.generated.schema.api.data.createDatabase import CreateDatabaseRequest
 from metadata.generated.schema.api.data.createDatabaseSchema import (
@@ -51,7 +49,6 @@ from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
 from metadata.ingestion.api.models import Either
-from metadata.ingestion.connections.session import create_and_bind_thread_safe_session
 from metadata.ingestion.lineage.sql_lineage import get_column_fqn
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
@@ -69,8 +66,7 @@ from metadata.utils.execution_time_tracker import (
 )
 from metadata.utils.filters import filter_by_table
 from metadata.utils.logger import ingestion_logger
-from metadata.utils.ssl_manager import SSLManager, check_ssl_and_init
-from metadata.connection.sqa import SqlAlchemyConnection
+from metadata.ingestion.connections.sql.connection import SqlAlchemyConnection
 
 logger = ingestion_logger()
 
@@ -108,14 +104,10 @@ class CommonDbSourceService(
         # It will be one of the Unions. We don't know the specific type here.
         self.service_connection = self.config.serviceConnection.__root__.config
 
-        self.ssl_manager = None
-        self.ssl_manager: SSLManager = check_ssl_and_init(self.service_connection)
-        if self.ssl_manager:
-            self.service_connection = self.ssl_manager.setup_ssl(
-                self.service_connection
-            )
-
-        self._connection = SqlAlchemyConnection.from_config(self.service_connection, self.context)
+        self._connection = get_connection(self.service_connection) \
+            .with_context(self.context) \
+            .build()
+        self.connection_obj = self._connection._engine
 
 
         # Flag the connection for the test connection
@@ -136,10 +128,7 @@ class CommonDbSourceService(
         """
         logger.info(f"Ingesting from database: {database_name}")
 
-        new_service_connection = deepcopy(self.service_connection)
-        new_service_connection.database = database_name
-
-        self._connection = SqlAlchemyconnection.from_config(new_service_connection, self.context)
+        self._connection.set_database(database_name)
 
     def get_database_names(self) -> Iterable[str]:
         """
@@ -595,10 +584,6 @@ class CommonDbSourceService(
         return self._connection.inspector
 
     def close(self):
-        if hasattr(self, "ssl_manager") and self.ssl_manager:
-            self.ssl_manager = cast(SSLManager, self.ssl_manager)
-            self.ssl_manager.cleanup_temp_files()
-
         self._connection.close()
 
     def fetch_table_tags(
