@@ -104,8 +104,8 @@ describe('ProfilerConfigurationPage', () => {
       .click();
     cy.clickOutside();
     cy.get('#metricConfiguration_1_metrics').click().type('column');
-    cy.get(`[role="tree"] [title="COLUMN_COUNT"]`).filter(':visible').click();
-    cy.get(`[role="tree"] [title="COLUMN_NAMES"]`).filter(':visible').click();
+    cy.get(`[role="tree"] [title="Column Count"]`).filter(':visible').click();
+    cy.get(`[role="tree"] [title="Column Names"]`).filter(':visible').click();
     cy.clickOutside();
 
     cy.get('[data-testid="add-fields"]').click();

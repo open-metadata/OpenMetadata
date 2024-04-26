@@ -12,7 +12,7 @@
  */
 
 import { t } from 'i18next';
-import { capitalize, map, values } from 'lodash';
+import { capitalize, map, startCase, values } from 'lodash';
 import { DateFilterType, StepperStepType } from 'Models';
 import { CSMode } from '../enums/codemirror.enum';
 import { DMLOperationType } from '../generated/api/data/createTableProfile';
@@ -436,7 +436,7 @@ export const PROFILER_METRICS_TYPE_OPTIONS = [
     key: 'all',
     value: 'all',
     children: values(MetricType).map((value) => ({
-      label: value,
+      label: startCase(value),
       key: value,
       value,
     })),
