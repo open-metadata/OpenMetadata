@@ -62,7 +62,7 @@ export const DATA_QUALITY_TEST_CASE_DATA = {
 
 const verifyPipelineSuccessStatus = (time = 20000) => {
   const newTime = time / 2;
-  interceptURL('GET', '/api/v1/tables/name/*?fields=testSuite*', 'testSuite');
+  interceptURL('GET', '/api/v1/tables/name/*?*testSuite*', 'testSuite');
   interceptURL(
     'GET',
     '/api/v1/services/ingestionPipelines/*/pipelineStatus?startTs=*&endTs=*',
