@@ -18,7 +18,6 @@ from pathlib import Path
 from unittest import TestCase
 from unittest.mock import patch
 
-import requests
 from testcontainers.core.generic import DockerContainer
 from testcontainers.postgres import PostgresContainer
 
@@ -71,25 +70,6 @@ from metadata.ingestion.source.dashboard.superset.models import (
     SupersetDatasource,
 )
 
-# postgres test container
-postgres = PostgresContainer("postgres:16-alpine")
-postgres.start()
-
-# superset testcontainer
-superset_container = DockerContainer(image="apache/superset")
-superset_container.with_env("SUPERSET_SECRET_KEY", "&3brfbcf192T!)$sabqbie")
-superset_container.with_env("WTF_CSRF_ENABLED", False)
-
-superset_container.with_exposed_ports(8088)
-superset_container.start()
-
-superset_container.exec(
-    "superset fab create-admin --username admin --firstname Superset  --lastname Admin --email admin@superset.com --password admin"
-)
-superset_container.exec("superset db upgrade")
-superset_container.exec("superset init")
-superset_container.exec("superset load-examples")
-
 mock_file_path = (
     Path(__file__).parent.parent.parent / "resources/datasets/superset_dataset.json"
 )
@@ -107,71 +87,6 @@ MOCK_CHART_DB = FetchChart(**mock_data["chart-db"][0])
 MOCK_CHART_DB_2 = FetchChart(**mock_data["chart-db"][1])
 MOCK_DASHBOARD_DB = FetchDashboard(**mock_data["dashboard-db"])
 
-MOCK_SUPERSET_API_CONFIG = {
-    "source": {
-        "type": "superset",
-        "serviceName": "test_supserset",
-        "serviceConnection": {
-            "config": {
-                "hostPort": f"http://{superset_container.get_container_host_ip()}:{superset_container.get_exposed_port(8088)}",
-                "type": "Superset",
-                "connection": {
-                    "username": "admin",
-                    "password": "admin",
-                    "provider": "db",
-                },
-            }
-        },
-        "sourceConfig": {
-            "config": {"type": "DashboardMetadata", "includeDraftDashboard": False}
-        },
-    },
-    "sink": {"type": "metadata-rest", "config": {}},
-    "workflowConfig": {
-        "openMetadataServerConfig": {
-            "hostPort": "http://localhost:8585/api",
-            "authProvider": "openmetadata",
-            "securityConfig": {
-                "jwtToken": "eyJraWQiOiJHYjM4OWEtOWY3Ni1nZGpzLWE5MmotMDI0MmJrOTQzNTYiLCJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9.eyJzdWIiOiJhZG1pbiIsImlzQm90IjpmYWxzZSwiaXNzIjoib3Blbi1tZXRhZGF0YS5vcmciLCJpYXQiOjE2NjM5Mzg0NjIsImVtYWlsIjoiYWRtaW5Ab3Blbm1ldGFkYXRhLm9yZyJ9.tS8um_5DKu7HgzGBzS1VTA5uUjKWOCU0B_j08WXBiEC0mr0zNREkqVfwFDD-d24HlNEbrqioLsBuFRiwIWKc1m_ZlVQbG7P36RUxhuv2vbSp80FKyNM-Tj93FDzq91jsyNmsQhyNv_fNr3TXfzzSPjHt8Go0FMMP66weoKMgW2PbXlhVKwEuXUHyakLLzewm9UMeQaEiRzhiTMU3UkLXcKbYEJJvfNFcLwSl9W8JCO_l0Yj3ud-qt_nQYEZwqW6u5nfdQllN133iikV4fM5QZsMCnm8Rq1mvLR0y9bmJiD7fwM1tmJ791TUWqmKaTnP49U493VanKpUAfzIiOiIbhg"
-            },
-        },
-    },
-}
-
-
-MOCK_SUPERSET_DB_CONFIG = {
-    "source": {
-        "type": "superset",
-        "serviceName": "test_supserset",
-        "serviceConnection": {
-            "config": {
-                "hostPort": "https://my-superset.com",
-                "type": "Superset",
-                "connection": {
-                    "type": "Postgres",
-                    "hostPort": f"{postgres.get_container_host_ip()}:{postgres.get_exposed_port(5432)}",
-                    "username": postgres.env.get("POSTGRES_USER"),
-                    "authType": {"password": postgres.env.get("POSTGRES_PASSWORD")},
-                    "database": postgres.env.get("POSTGRES_DB"),
-                },
-            }
-        },
-        "sourceConfig": {
-            "config": {
-                "type": "DashboardMetadata",
-            }
-        },
-    },
-    "sink": {"type": "metadata-rest", "config": {}},
-    "workflowConfig": {
-        "openMetadataServerConfig": {
-            "hostPort": "http://localhost:8585/api",
-            "authProvider": "openmetadata",
-            "securityConfig": {"jwtToken": "token"},
-        },
-    },
-}
-
 EXPECTED_DASH_SERVICE = DashboardService(
     id="c3eb265f-5445-4ad3-ba5e-797d3a3071bb",
     fullyQualifiedName=FullyQualifiedEntityName(__root__="test_supserset"),
@@ -179,7 +94,7 @@ EXPECTED_DASH_SERVICE = DashboardService(
     connection=DashboardConnection(),
     serviceType=DashboardServiceType.Superset,
 )
-EXPECTED_USER = EntityReference(id=uuid.uuid4(), type="user")
+EXPECTED_USER = EntityReference(id="21af89aa-1bab-41aa-a567-5e68f78acdc0", type="user")
 
 MOCK_DB_MYSQL_SERVICE_1 = DatabaseService(
     id="c3eb265f-5445-4ad3-ba5e-797d3a307122",
@@ -358,28 +273,33 @@ def perform_sql_queries(superset_db):
     superset_db.engine.execute(INSERT_TABLES_DATA)
 
 
-def create_mock_dashboard_via_api(superset_api):
-    session_obj = requests.session()
-    hostPort = superset_api.client.config.hostPort
-    resp = session_obj.post(
-        f"{hostPort}/api/v1/security/login",
-        json={
-            "username": superset_api.client.config.connection.username,
-            "password": superset_api.client.config.connection.password.get_secret_value(),
-            "provider": superset_api.client.config.connection.provider.value,
-        },
-    )
-    access_token = resp.json()["access_token"]
+INITIAL_SETUP = True
+superset_container = postgres_container = None
 
-    headers = {"Authorization": f"Bearer {access_token}"}
-    csrf_resp = session_obj.get(
-        f"{hostPort}/api/v1/security/csrf_token", headers=headers
-    )
-    csrf_token = csrf_resp.json()["result"]
-    csrf_header = {"X-CSRF-Token": csrf_token}
-    headers.update(csrf_header)
-    session_obj.headers.update(headers)
-    resp = session_obj.post(f"{hostPort}/api/v1/dashboard", json=MOCK_DASHBOARD_INPUT)
+
+def set_testcontainers():
+    global INITIAL_SETUP, superset_container, postgres_container
+    if INITIAL_SETUP:
+        # postgres test container
+        postgres_container = PostgresContainer("postgres:16-alpine")
+        postgres_container.start()
+
+        # superset testcontainer
+        superset_container = DockerContainer(image="apache/superset")
+        superset_container.with_env("SUPERSET_SECRET_KEY", "&3brfbcf192T!)$sabqbie")
+        superset_container.with_env("WTF_CSRF_ENABLED", False)
+
+        superset_container.with_exposed_ports(8088)
+        superset_container.start()
+
+        superset_container.exec(
+            "superset fab create-admin --username admin --firstname Superset  --lastname Admin --email admin@superset.com --password admin"
+        )
+        superset_container.exec("superset db upgrade")
+        superset_container.exec("superset init")
+        superset_container.exec("superset load-examples")
+        INITIAL_SETUP = False
+    return superset_container, postgres_container
 
 
 class SupersetUnitTest(TestCase):
@@ -387,8 +307,87 @@ class SupersetUnitTest(TestCase):
     Validate how we work with Superset metadata
     """
 
+    @classmethod
+    def teardown_class(cls):
+        """Teardown class"""
+        # stop containers
+        superset_container.stop()
+        postgres_container.stop()
+
     def __init__(self, methodName) -> None:
         super().__init__(methodName)
+
+        superset_container, postgres_container = set_testcontainers()
+
+        MOCK_SUPERSET_API_CONFIG = {
+            "source": {
+                "type": "superset",
+                "serviceName": "test_supserset",
+                "serviceConnection": {
+                    "config": {
+                        "hostPort": f"http://{superset_container.get_container_host_ip()}:{superset_container.get_exposed_port(8088)}",
+                        "type": "Superset",
+                        "connection": {
+                            "username": "admin",
+                            "password": "admin",
+                            "provider": "db",
+                        },
+                    }
+                },
+                "sourceConfig": {
+                    "config": {
+                        "type": "DashboardMetadata",
+                        "includeDraftDashboard": False,
+                    }
+                },
+            },
+            "sink": {"type": "metadata-rest", "config": {}},
+            "workflowConfig": {
+                "openMetadataServerConfig": {
+                    "hostPort": "http://localhost:8585/api",
+                    "authProvider": "openmetadata",
+                    "securityConfig": {
+                        "jwtToken": "eyJraWQiOiJHYjM4OWEtOWY3Ni1nZGpzLWE5MmotMDI0MmJrOTQzNTYiLCJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9.eyJzdWIiOiJhZG1pbiIsImlzQm90IjpmYWxzZSwiaXNzIjoib3Blbi1tZXRhZGF0YS5vcmciLCJpYXQiOjE2NjM5Mzg0NjIsImVtYWlsIjoiYWRtaW5Ab3Blbm1ldGFkYXRhLm9yZyJ9.tS8um_5DKu7HgzGBzS1VTA5uUjKWOCU0B_j08WXBiEC0mr0zNREkqVfwFDD-d24HlNEbrqioLsBuFRiwIWKc1m_ZlVQbG7P36RUxhuv2vbSp80FKyNM-Tj93FDzq91jsyNmsQhyNv_fNr3TXfzzSPjHt8Go0FMMP66weoKMgW2PbXlhVKwEuXUHyakLLzewm9UMeQaEiRzhiTMU3UkLXcKbYEJJvfNFcLwSl9W8JCO_l0Yj3ud-qt_nQYEZwqW6u5nfdQllN133iikV4fM5QZsMCnm8Rq1mvLR0y9bmJiD7fwM1tmJ791TUWqmKaTnP49U493VanKpUAfzIiOiIbhg"
+                    },
+                },
+            },
+        }
+        MOCK_SUPERSET_DB_CONFIG = {
+            "source": {
+                "type": "superset",
+                "serviceName": "test_supserset",
+                "serviceConnection": {
+                    "config": {
+                        "hostPort": f"http://{superset_container.get_container_host_ip()}:{superset_container.get_exposed_port(8088)}",
+                        "type": "Superset",
+                        "connection": {
+                            "type": "Postgres",
+                            "hostPort": f"{postgres_container.get_container_host_ip()}:{postgres_container.get_exposed_port(5432)}",
+                            "username": postgres_container.env.get("POSTGRES_USER"),
+                            "authType": {
+                                "password": postgres_container.env.get(
+                                    "POSTGRES_PASSWORD"
+                                )
+                            },
+                            "database": postgres_container.env.get("POSTGRES_DB"),
+                        },
+                    }
+                },
+                "sourceConfig": {
+                    "config": {
+                        "type": "DashboardMetadata",
+                    }
+                },
+            },
+            "sink": {"type": "metadata-rest", "config": {}},
+            "workflowConfig": {
+                "openMetadataServerConfig": {
+                    "hostPort": "http://localhost:8585/api",
+                    "authProvider": "openmetadata",
+                    "securityConfig": {"jwtToken": "token"},
+                },
+            },
+        }
         self.config = OpenMetadataWorkflowConfig.parse_obj(MOCK_SUPERSET_API_CONFIG)
 
         self.superset_api: SupersetSource = SupersetSource.create(
@@ -450,7 +449,6 @@ class SupersetUnitTest(TestCase):
         """
         Mock the client and check that we get a list
         """
-        # create_mock_dashboard_via_api(self.superset_api)
         dashboard_list = list(self.superset_api.get_dashboards_list())
         self.assertEqual(len(dashboard_list), PUBLISHED_DASHBOARD_COUNT)
 
@@ -484,14 +482,14 @@ class SupersetUnitTest(TestCase):
         self.assertEqual(dashboard, EXPECTED_API_DASHBOARD)
 
         # TEST DB SOURCE
-        with patch.object(
-            SupersetDBSource, "_get_user_by_email", return_value=EXPECTED_USER
-        ):
-            self.superset_db.context.get().__dict__["charts"] = [
-                chart.name.__root__ for chart in EXPECTED_CHART_ENTITY
-            ]
-            dashboard = next(self.superset_db.yield_dashboard(MOCK_DASHBOARD_DB)).right
-            self.assertEqual(dashboard, EXPECTED_DASH)
+        self.superset_db.context.get().__dict__["charts"] = [
+            chart.name.__root__ for chart in EXPECTED_CHART_ENTITY
+        ]
+        dashboard = next(self.superset_db.yield_dashboard(MOCK_DASHBOARD_DB)).right
+        EXPECTED_DASH.sourceUrl = SourceUrl(
+            __root__=f"http://{superset_container.get_container_host_ip()}:{superset_container.get_exposed_port(8088)}/superset/dashboard/14/"
+        )
+        self.assertEqual(dashboard, EXPECTED_DASH)
 
     def test_yield_dashboard_chart(self):
         # TEST API SOURCE
@@ -510,6 +508,9 @@ class SupersetUnitTest(TestCase):
         dashboard_charts = next(
             self.superset_db.yield_dashboard_chart(MOCK_DASHBOARD_DB)
         ).right
+        EXPECTED_CHART.sourceUrl = SourceUrl(
+            __root__=f"http://{superset_container.get_container_host_ip()}:{superset_container.get_exposed_port(8088)}/explore/?slice_id=1"
+        )
         self.assertEqual(dashboard_charts, EXPECTED_CHART)
 
     def test_api_get_datasource_fqn(self):
@@ -578,6 +579,3 @@ class SupersetUnitTest(TestCase):
             ),
             "/app/superset_home/superset.db",
         )
-        # stop both testcontainers after all tests performed
-        # postgres.stop()
-        # superset_container.stop()
