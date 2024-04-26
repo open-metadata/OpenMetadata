@@ -624,7 +624,9 @@ export const createNodes = (
 
   // Add nodes to the graph
   uniqueNodesData.forEach((node) => {
-    graph.setNode(node.id, { width: NODE_WIDTH, height: NODE_HEIGHT });
+    const { childrenHeight } = getEntityChildrenAndLabel(node as SourceType);
+    const nodeHeight = childrenHeight + 220;
+    graph.setNode(node.id, { width: NODE_WIDTH, height: nodeHeight });
   });
 
   // Add edges to the graph (if you have edge information)
