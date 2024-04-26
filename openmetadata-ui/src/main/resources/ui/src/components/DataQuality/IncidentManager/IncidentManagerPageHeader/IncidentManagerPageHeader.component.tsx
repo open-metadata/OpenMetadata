@@ -215,7 +215,6 @@ const IncidentManagerPageHeader = ({
 
           <TestCaseIncidentManagerStatus
             data={testCaseStatusData}
-            usersList={initialAssignees}
             onSubmit={onIncidentStatusUpdate}
           />
         </Typography.Text>
