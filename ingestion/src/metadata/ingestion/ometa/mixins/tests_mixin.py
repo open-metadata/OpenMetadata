@@ -362,3 +362,18 @@ class OMetaTestsMixin:
                 )
 
         return None
+
+    def ingest_inspection_query(
+        self, test_case: TestCase, inspection_query: str
+    ) -> Optional[TestCase]:
+        """
+        PUT inspection query for a test case.
+
+        :param test_case: The test case that failed
+        :param inspection_query: SQL query to inspect the failed rows
+        """
+        resp = self.client.put(
+            f"{self.get_suffix(TestCase)}/{test_case.id.__root__}/inspectionQuery",
+            data=inspection_query,
+        )
+        return TestCase(**resp)

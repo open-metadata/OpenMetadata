@@ -981,6 +981,34 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
     return addHref(uriInfo, repository.addFailedRowsSample(testCase, tableData));
   }
 
+  @PUT
+  @Path("/{id}/inspectionQuery")
+  @Operation(
+      operationId = "addInspectionQuery",
+      summary = "Add inspection query data",
+      description = "Add an inspection query for this test case.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Successfully update the test case with an inspection query.",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = TestCase.class)))
+      })
+  public TestCase addInspectionQuery(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Id of the test case", schema = @Schema(type = "UUID"))
+          @PathParam("id")
+          UUID id,
+      @Valid String query) {
+    OperationContext operationContext =
+        new OperationContext(entityType, MetadataOperation.EDIT_TESTS);
+    authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
+    return addHref(uriInfo, repository.addInspectionQuery(uriInfo, id, query));
+  }
+
   @GET
   @Path("/{id}/failedRowsSample")
   @Operation(
