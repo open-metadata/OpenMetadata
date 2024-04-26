@@ -216,6 +216,9 @@ public class AppScheduler {
   }
 
   public void triggerOnDemandApplication(App application) {
+    if (application.getFullyQualifiedName() == null) {
+      throw new IllegalArgumentException("Application's fullyQualifiedName is null.");
+    }
     try {
       JobDetail jobDetailScheduled =
           scheduler.getJobDetail(new JobKey(application.getName(), APPS_JOB_GROUP));

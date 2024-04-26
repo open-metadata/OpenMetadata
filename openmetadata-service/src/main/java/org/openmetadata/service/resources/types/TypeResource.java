@@ -100,7 +100,7 @@ public class TypeResource extends EntityResource<Type, TypeRepository> {
     types.forEach(
         type -> {
           type.withId(UUID.randomUUID()).withUpdatedBy(ADMIN_USER_NAME).withUpdatedAt(now);
-          LOG.info("Loading type {}", type.getName());
+          LOG.debug("Loading type {}", type.getName());
           try {
             Fields fields = getFields(PROPERTIES_FIELD);
             try {
