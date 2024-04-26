@@ -485,6 +485,7 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
           />
         ) : (
           <DeleteWidgetModal
+            isRecursiveDelete
             afterDeleteAction={afterDeleteAction}
             allowSoftDelete={false}
             entityId={selectedTestCase?.data?.id ?? ''}

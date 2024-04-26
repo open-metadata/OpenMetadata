@@ -502,6 +502,26 @@ public class SearchRepository {
     }
   }
 
+  public void deleteTimeSeriesEntityById(EntityTimeSeriesInterface entity) {
+    if (entity != null) {
+      String entityId = entity.getId().toString();
+      String entityType = entity.getEntityReference().getType();
+      IndexMapping indexMapping = entityIndexMap.get(entityType);
+      try {
+        searchClient.deleteEntity(indexMapping.getIndexName(clusterAlias), entityId);
+      } catch (Exception ie) {
+        LOG.error(
+            String.format(
+                "Issue in Deleting the search document for entityID [%s] and entityType [%s]. Reason[%s], Cause[%s], Stack [%s]",
+                entityId,
+                entityType,
+                ie.getMessage(),
+                ie.getCause(),
+                ExceptionUtils.getStackTrace(ie)));
+      }
+    }
+  }
+
   public void softDeleteOrRestoreEntity(EntityInterface entity, boolean delete) {
     if (entity != null) {
       String entityId = entity.getId().toString();
@@ -687,6 +707,18 @@ public class SearchRepository {
       String entityType)
       throws IOException {
     return searchClient.searchLineage(
+        fqn, upstreamDepth, downstreamDepth, queryFilter, deleted, entityType);
+  }
+
+  public Map<String, Object> searchLineageForExport(
+      String fqn,
+      int upstreamDepth,
+      int downstreamDepth,
+      String queryFilter,
+      boolean deleted,
+      String entityType)
+      throws IOException {
+    return searchClient.searchLineageInternal(
         fqn, upstreamDepth, downstreamDepth, queryFilter, deleted, entityType);
   }
 
