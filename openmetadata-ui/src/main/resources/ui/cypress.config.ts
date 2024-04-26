@@ -34,6 +34,6 @@ export default defineConfig({
 
       return config;
     },
-    specPattern: ['cypress/e2e/Flow/ObservabilityAlerts.spec.ts'],
+    specPattern: ['cypress/e2e/**/*.{js,jsx,ts,tsx}'],
   },
 });
