@@ -106,6 +106,14 @@
     "entityName": {
       "description": "Name that identifies an entity.",
       "type": "string",
+      "minLength": 1,
+      "maxLength": 256,
+      "pattern": "^((?!::).)*$"
+    },
+    "testCaseEntityName": {
+      "description": "Name that identifies a test definition and test case.",
+      "type": "string",
+      "minLength": 1,
       "pattern": "^((?!::).)*$"
     },
     "fullyQualifiedEntityName": {
