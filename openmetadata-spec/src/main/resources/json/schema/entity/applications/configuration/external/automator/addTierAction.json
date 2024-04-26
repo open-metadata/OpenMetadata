@@ -19,9 +19,9 @@
       "$ref": "#/definitions/addTierActionType",
       "default": "AddTierAction"
     },
-    "owner": {
-      "description": "Owner to apply",
-      "$ref": "../../../../../type/entityReference.json"
+    "tier": {
+      "description": "tier to apply",
+      "$ref": "../../../../../type/tagLabel.json"
     },
     "overwriteMetadata": {
       "title": "Overwrite Metadata",
@@ -30,6 +30,6 @@
       "default": false
     }
   },
-  "required": ["type", "owner"],
+  "required": ["type", "tier"],
   "additionalProperties": false
 }
