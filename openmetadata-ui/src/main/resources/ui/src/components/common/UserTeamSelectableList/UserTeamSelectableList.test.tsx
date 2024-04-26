@@ -16,10 +16,26 @@ import React from 'react';
 import { UserTeamSelectableList } from './UserTeamSelectableList.component';
 
 const mockOnUpdate = jest.fn();
+const mockSelectedUser = {
+  id: 'id',
+  name: 'name',
+  type: 'team',
+  displayName: 'displayName',
+  fullyQualifiedName: 'fullyQualifiedName',
+};
 
 jest.mock('../SelectableList/SelectableList.component', () => {
   return {
-    SelectableList: jest.fn().mockReturnValue(<div>SelectableList</div>),
+    SelectableList: jest.fn().mockImplementation(({ onUpdate }) => (
+      <div>
+        <p>SelectableList</p>
+        <button
+          data-testid="update-button"
+          onClick={() => onUpdate([mockSelectedUser])}>
+          update
+        </button>
+      </div>
+    )),
   };
 });
 
@@ -50,6 +66,18 @@ describe('UserTeamSelectableList Component Test', () => {
   it('should render children if provided', () => {
     render(
       <UserTeamSelectableList hasPermission onUpdate={mockOnUpdate}>
+        <p>CustomRenderer</p>
+      </UserTeamSelectableList>
+    );
+
+    const children = screen.getByText('CustomRenderer');
+
+    expect(children).toBeInTheDocument();
+  });
+
+  it('should render component even if onUpdate in not provided', () => {
+    render(
+      <UserTeamSelectableList hasPermission>
         <p>CustomRenderer</p>
       </UserTeamSelectableList>
     );

@@ -46,6 +46,8 @@ from metadata.generated.schema.security.client.openMetadataJWTClientConfig impor
     OpenMetadataJWTClientConfig,
 )
 from metadata.generated.schema.type.basic import EntityExtension
+from metadata.generated.schema.type.customProperties.enumConfig import EnumConfig
+from metadata.generated.schema.type.customProperty import CustomPropertyConfig
 from metadata.ingestion.models.custom_properties import (
     CustomPropertyDataTypes,
     OMetaCustomProperties,
@@ -186,6 +188,44 @@ class OMetaCustomAttributeTest(TestCase):
             ometa_custom_property=ometa_custom_property_request
         )
 
+        # Create single select enum custom property for a table
+        ometa_custom_property_request = OMetaCustomProperties(
+            entity_type=Table,
+            createCustomPropertyRequest=CreateCustomPropertyRequest(
+                name="Rating",
+                description="Rating of a table",
+                propertyType=self.metadata.get_property_type_ref(
+                    CustomPropertyDataTypes.ENUM
+                ),
+                customPropertyConfig=CustomPropertyConfig(
+                    config=EnumConfig(
+                        multiSelect=False, values=["Good", "Average", "Bad"]
+                    )
+                ),
+            ),
+        )
+        self.metadata.create_or_update_custom_property(
+            ometa_custom_property=ometa_custom_property_request
+        )
+
+        # Create multi select enum custom property for a table
+        ometa_custom_property_request = OMetaCustomProperties(
+            entity_type=Table,
+            createCustomPropertyRequest=CreateCustomPropertyRequest(
+                name="Department",
+                description="Department of a table",
+                propertyType=self.metadata.get_property_type_ref(
+                    CustomPropertyDataTypes.ENUM
+                ),
+                customPropertyConfig=CustomPropertyConfig(
+                    config=EnumConfig(multiSelect=True, values=["D1", "D2", "D3"])
+                ),
+            ),
+        )
+        self.metadata.create_or_update_custom_property(
+            ometa_custom_property=ometa_custom_property_request
+        )
+
     def test_add_custom_property_table(self):
         """
         Test to add the extension/custom property to the table
@@ -197,6 +237,8 @@ class OMetaCustomAttributeTest(TestCase):
         extensions = {
             "DataQuality": '<div><p><b>Last evaluation:</b> 07/24/2023<br><b>Interval: </b>30 days <br><b>Next run:</b> 08/23/2023, 10:44:21<br><b>Measurement unit:</b> percent [%]</p><br><table><tbody><tr><th>Metric</th><th>Target</th><th>Latest result</th></tr><tr><td><p class="text-success">Completeness</p></td><td>90%</td><td><div class="bar fabric" style="width: 93%;"><strong>93%</strong></div></td></tr><tr><td><p class="text-success">Integrity</p></td><td>90%</td><td><div class="bar fabric" style="width: 100%;"><strong>100%</strong></div></td></tr><tr><td><p class="text-warning">Timeliness</p></td><td>90%</td><td><div class="bar fabric" style="width: 56%;"><strong>56%</strong></div></td></tr><tr><td><p class="text-success">Uniqueness</p></td><td>90%</td><td><div class="bar fabric" style="width: 100%;"><strong>100%</strong></div></td></tr><tr><td><p class="text-success">Validity</p></td><td>90%</td><td><div class="bar fabric" style="width: 100%;"><strong>100%</strong></div></td></tr></tbody></table><h3>Overall score of the table is: 89%</h3><hr style="border-width: 5px;"></div>',
             "TableSize": "250 MB",
+            "Rating": ["Good"],
+            "Department": ["D1", "D2"],
         }
 
         self.create_table(name="test_custom_properties", extensions=extensions)
@@ -210,6 +252,8 @@ class OMetaCustomAttributeTest(TestCase):
             res.extension.__root__["DataQuality"], extensions["DataQuality"]
         )
         self.assertEqual(res.extension.__root__["TableSize"], extensions["TableSize"])
+        self.assertEqual(res.extension.__root__["Rating"], extensions["Rating"])
+        self.assertEqual(res.extension.__root__["Department"], extensions["Department"])
 
     def test_add_custom_property_schema(self):
         """

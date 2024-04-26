@@ -27,7 +27,11 @@ DB_PASSWORD_VAR=`echo "${DB_PASSWORD}" | python3 -c "import urllib.parse; encode
 
 DB_CONN=`echo -n "${DB_SCHEME}://${DB_USER_VAR}:${DB_PASSWORD_VAR}@${DB_HOST}:${DB_PORT}/${AIRFLOW_DB}${DB_PROPERTIES}"`
 
-export AIRFLOW__DATABASE__SQL_ALCHEMY_CONN=$DB_CONN
+# Set the default necessary auth_backend information
+export AIRFLOW__API__AUTH_BACKEND=${AIRFLOW__API__AUTH_BACKENDS:-"airflow.api.auth.backend.basic_auth,airflow.api.auth.backend.session"}
+
+# Use the default airflow env var or the one we set from OM properties
+export AIRFLOW__DATABASE__SQL_ALCHEMY_CONN=${AIRFLOW__DATABASE__SQL_ALCHEMY_CONN:-$DB_CONN}
 
 airflow db init
 

@@ -166,7 +166,9 @@ const GlossaryTermTab = ({
         width: '12%',
         filterIcon: (filtered) => (
           <FilterOutlined
-            style={{ color: filtered ? theme.primaryColor : undefined }}
+            style={{
+              color: filtered ? theme.primaryColor : undefined,
+            }}
           />
         ),
         filters: StatusFilters,
