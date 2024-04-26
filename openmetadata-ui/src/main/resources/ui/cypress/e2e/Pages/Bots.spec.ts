@@ -215,7 +215,7 @@ describe('Bots Page should work properly', { tags: 'Settings' }, () => {
 
   it('Delete created bot', () => {
     // Click on delete button
-    cy.get(`[data-testid="bot-delete-${updatedBotName}"]`)
+    cy.get(`[data-testid="bot-delete-${botName}"]`)
       .should('be.visible')
       .click();
     // Select permanent delete
