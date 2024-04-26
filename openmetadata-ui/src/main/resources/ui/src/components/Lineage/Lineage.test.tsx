@@ -15,9 +15,9 @@ import React from 'react';
 import { EntityType } from '../../enums/entity.enum';
 import { MOCK_EXPLORE_SEARCH_RESULTS } from '../Explore/Explore.mock';
 import Lineage from './Lineage.component';
-import { EntityLineageReponse } from './Lineage.interface';
+import { EntityLineageResponse } from './Lineage.interface';
 
-let entityLineage: EntityLineageReponse | undefined = {
+let entityLineage: EntityLineageResponse | undefined = {
   entity: {
     name: 'fact_sale',
     fullyQualifiedName: 'sample_data.ecommerce_db.shopify.fact_sale',

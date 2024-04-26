@@ -15,6 +15,7 @@ import { render, screen } from '@testing-library/react';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { EdgeProps, Position } from 'reactflow';
+import { LineageLayerView } from '../../../context/LineageProvider/LineageProvider.interface';
 import { EntityType } from '../../../enums/entity.enum';
 import { CustomEdge } from './CustomEdge.component';
 
@@ -70,6 +71,7 @@ jest.mock('../../../context/LineageProvider/LineageProvider', () => ({
     tracedNodes: [],
     tracedColumns: [],
     pipelineStatus: {},
+    activeLayer: [LineageLayerView.COLUMN],
     fetchPipelineStatus: jest.fn(),
   })),
 }));

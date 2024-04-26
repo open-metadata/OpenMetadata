@@ -27,7 +27,7 @@ import {
 } from '../../components/Entity/EntityLineage/EntityLineage.interface';
 import {
   EdgeDetails,
-  EntityLineageReponse,
+  EntityLineageResponse,
 } from '../../components/Lineage/Lineage.interface';
 import { SourceType } from '../../components/SearchedData/SearchedData.interface';
 import { EntityType } from '../../enums/entity.enum';
@@ -45,6 +45,12 @@ export type UpstreamDownstreamData = {
   upstreamNodes: EntityReference[];
 };
 
+export enum LineageLayerView {
+  COLUMN = 'COLUMN',
+  DATA_QUALITY = 'DATA_QUALITY',
+  PIPELINE = 'PIPELINE',
+}
+
 export interface LineageContextType {
   reactFlowInstance?: ReactFlowInstance;
   nodes: Node[];
@@ -59,12 +65,13 @@ export interface LineageContextType {
   init: boolean;
   status: LoadingState;
   isEditMode: boolean;
-  entityLineage: EntityLineageReponse;
+  entityLineage: EntityLineageResponse;
   selectedNode: SourceType;
   upstreamDownstreamData: UpstreamDownstreamData;
   selectedColumn: string;
   expandAllColumns: boolean;
   pipelineStatus: Record<string, PipelineStatus>;
+  activeLayer: LineageLayerView[];
   onInitReactFlow: (reactFlowInstance: ReactFlowInstance) => void;
   onPaneClick: () => void;
   onNodeClick: (node: Node) => void;
@@ -89,10 +96,12 @@ export interface LineageContextType {
     entityType: string,
     lineageConfig: LineageConfig
   ) => void;
+  onExportClick: () => void;
   fetchPipelineStatus: (pipelineFqn: string) => void;
   removeNodeHandler: (node: Node | NodeProps) => void;
   onColumnEdgeRemove: () => void;
   onAddPipelineClick: () => void;
   onConnect: (connection: Edge | Connection) => void;
   updateEntityType: (entityType: EntityType) => void;
+  onUpdateLayerView: (layers: LineageLayerView[]) => void;
 }

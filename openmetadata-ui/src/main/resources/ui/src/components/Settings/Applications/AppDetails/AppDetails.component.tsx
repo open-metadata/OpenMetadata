@@ -332,7 +332,7 @@ const AppDetails = () => {
               ),
               key: ApplicationTabs.CONFIGURATION,
               children: (
-                <div className="p-lg">
+                <div className="m-auto max-width-md w-9/10 p-lg p-y-0">
                   <FormBuilder
                     hideCancelButton
                     useSelectWidget

@@ -14,10 +14,8 @@
 import { LoadingState } from 'Models';
 import { HTMLAttributes } from 'react';
 import { Edge as FlowEdge, Node } from 'reactflow';
-import { EntityType } from '../../../enums/entity.enum';
 import { Column } from '../../../generated/entity/data/container';
 import { EntityReference } from '../../../generated/entity/type';
-import { SourceType } from '../../SearchedData/SearchedData.interface';
 
 export interface SelectedNode {
   name: string;
@@ -26,14 +24,6 @@ export interface SelectedNode {
   displayName?: string;
   id?: string;
   entityId: string;
-}
-
-export interface EntityLineageProp {
-  entityType: EntityType;
-  deleted?: boolean;
-  hasEditAccess: boolean;
-  isFullScreen?: boolean;
-  entity?: SourceType;
 }
 
 export interface Edge {
@@ -83,9 +73,8 @@ export interface SelectedEdge {
 }
 
 export type ElementLoadingState = Exclude<LoadingState, 'waiting'>;
-
 export type CustomElement = { node: Node[]; edge: FlowEdge[] };
-export type CustomFlow = Node | FlowEdge;
+
 export type ModifiedColumn = Column & {
   type: string;
 };
