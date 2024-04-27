@@ -304,21 +304,22 @@ public class OpenMetadataOperations implements Callable<Integer> {
         AppRepository appRepository =
             (AppRepository) Entity.getEntityRepository(Entity.APPLICATION);
         appRunRecord = appRepository.getLatestAppRuns(searchIndexApp.getId());
-        if (appRunRecord != null) {
-          List<String> columns =
-              new ArrayList<>(
-                  List.of("status", "startTime", "endTime", "executionTime", "success", "failure"));
-          List<List<String>> rows = new ArrayList<>();
-          rows.add(
-              Arrays.asList(
-                  appRunRecord.getStatus().value(),
-                  appRunRecord.getStartTime().toString(),
-                  appRunRecord.getEndTime().toString(),
-                  appRunRecord.getExecutionTime().toString(),
-                  appRunRecord.getSuccessContext().toString(),
-                  appRunRecord.getFailureContext().toString()));
-          printToAsciiTable(columns, rows, "No Search Indexing Application found");
-        }
+        //        if (appRunRecord != null) {
+        //          List<String> columns =
+        //              new ArrayList<>(
+        //                  List.of("status", "startTime", "endTime", "executionTime", "success",
+        // "failure"));
+        //          List<List<String>> rows = new ArrayList<>();
+        //          rows.add(
+        //              Arrays.asList(
+        //                  appRunRecord.getStatus().value(),
+        //                  appRunRecord.getStartTime().toString(),
+        //                  appRunRecord.getEndTime().toString(),
+        //                  appRunRecord.getExecutionTime().toString(),
+        //                  appRunRecord.getSuccessContext().toString(),
+        //                  appRunRecord.getFailureContext().toString()));
+        //          printToAsciiTable(columns, rows, "No Search Indexing Application found");
+        //        }
       } catch (UnhandledServerException e) {
         LOG.info(
             "Reindexing Status not available yet, waiting for 10 seconds to fetch the status.");
