@@ -26,7 +26,10 @@ import { CSMode } from '../../../enums/codemirror.enum';
 import { EntityType } from '../../../enums/entity.enum';
 import { Source } from '../../../generated/type/entityLineage';
 import { getNameFromFQN } from '../../../utils/CommonUtils';
-import { getLineageDetailsObject } from '../../../utils/EntityLineageUtils';
+import {
+  getColumnSourceTargetHandles,
+  getLineageDetailsObject,
+} from '../../../utils/EntityLineageUtils';
 import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
 import { getEntityName } from '../../../utils/EntityUtils';
 import Loader from '../../common/Loader/Loader';
@@ -60,7 +63,9 @@ const EdgeInfoDrawer = ({
   }, [edge]);
 
   const getEdgeInfo = () => {
-    const { source, target, data, sourceHandle, targetHandle } = edge;
+    const { source, target, data } = edge;
+    const { sourceHandle, targetHandle } = getColumnSourceTargetHandles(edge);
+
     let sourceData: Node | undefined, targetData: Node | undefined;
     nodes.forEach((node) => {
       if (source === node.id) {

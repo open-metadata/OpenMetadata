@@ -49,6 +49,10 @@ export const entityData = [
     label: t('label.container-plural'),
   },
   {
+    type: SearchIndex.PIPELINE,
+    label: t('label.pipeline-plural'),
+  },
+  {
     type: SearchIndex.SEARCH_INDEX,
     label: t('label.search-index-plural'),
   },
@@ -74,6 +78,7 @@ export const LINEAGE_DEFAULT_QUICK_FILTERS = [
   'domain.displayName.keyword',
   'owner.displayName.keyword',
   'tags.tagFQN',
+  'columns.name.keyword',
 ];
 
 export const LINEAGE_SOURCE: { [key in Source]: string } = {
@@ -95,4 +100,5 @@ export const LINEAGE_COLUMN_NODE_SUPPORTED = [
   EntityType.DASHBOARD_DATA_MODEL,
   EntityType.CONTAINER,
   EntityType.TOPIC,
+  EntityType.SEARCH_INDEX,
 ];

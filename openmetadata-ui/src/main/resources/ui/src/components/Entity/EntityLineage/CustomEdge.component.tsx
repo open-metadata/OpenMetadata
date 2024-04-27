@@ -14,16 +14,24 @@
 import Icon from '@ant-design/icons/lib/components/Icon';
 import { Button, Tag } from 'antd';
 import classNames from 'classnames';
-import React, { Fragment, useCallback, useEffect, useMemo } from 'react';
+import React, {
+  Fragment,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+} from 'react';
 import { EdgeProps, getBezierPath } from 'reactflow';
 import { ReactComponent as FunctionIcon } from '../../../assets/svg/ic-function.svg';
 import { ReactComponent as IconTimesCircle } from '../../../assets/svg/ic-times-circle.svg';
 import { ReactComponent as PipelineIcon } from '../../../assets/svg/pipeline-grey.svg';
 import { FOREIGN_OBJECT_SIZE } from '../../../constants/Lineage.constants';
 import { useLineageProvider } from '../../../context/LineageProvider/LineageProvider';
+import { LineageLayerView } from '../../../context/LineageProvider/LineageProvider.interface';
 import { EntityType } from '../../../enums/entity.enum';
 import { StatusType } from '../../../generated/entity/data/pipeline';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
+import { getColumnSourceTargetHandles } from '../../../utils/EntityLineageUtils';
 import { getEntityName } from '../../../utils/EntityUtils';
 import EntityPopOverCard from '../../common/PopOverCard/EntityPopOverCard';
 import { CustomEdgeData } from './EntityLineage.interface';
@@ -53,6 +61,15 @@ export const LineageEdgeIcon = ({
   );
 };
 
+function usePrevious<T>(value: T) {
+  const ref = useRef<T>(value);
+  useEffect(() => {
+    ref.current = value;
+  }, [value]);
+
+  return ref.current;
+}
+
 export const CustomEdge = ({
   id,
   sourceX,
@@ -81,10 +98,13 @@ export const CustomEdge = ({
     tracedColumns,
     isEditMode,
     pipelineStatus,
+    activeLayer,
     onAddPipelineClick,
     onColumnEdgeRemove,
     fetchPipelineStatus,
   } = useLineageProvider();
+
+  const prevActiveLayer = usePrevious(activeLayer);
 
   const { theme } = useApplicationStore();
 
@@ -93,9 +113,14 @@ export const CustomEdge = ({
       return false;
     }
 
+    const decodedHandles = getColumnSourceTargetHandles({
+      sourceHandle,
+      targetHandle,
+    });
+
     return (
-      tracedColumns.includes(sourceHandle) &&
-      tracedColumns.includes(targetHandle)
+      tracedColumns.includes(decodedHandles.sourceHandle ?? '') &&
+      tracedColumns.includes(decodedHandles.targetHandle ?? '')
     );
   }, [isColumnLineage, tracedColumns, sourceHandle, targetHandle]);
 
@@ -311,10 +336,20 @@ export const CustomEdge = ({
   }, [edge, isColumnLineage, sourceHandle, targetHandle]);
 
   useEffect(() => {
-    if (data.edge.pipeline) {
-      fetchPipelineStatus(data.edge.pipeline?.fullyQualifiedName);
+    const wasPipelineAlreadyActive = prevActiveLayer?.includes(
+      LineageLayerView.PIPELINE
+    );
+    const isPipelineActiveNow = activeLayer.includes(LineageLayerView.PIPELINE);
+
+    if (
+      data.edge.pipeline &&
+      data.edge.pipeline.type === EntityType.PIPELINE &&
+      !wasPipelineAlreadyActive &&
+      isPipelineActiveNow
+    ) {
+      fetchPipelineStatus(data.edge.pipeline.fullyQualifiedName);
     }
-  }, [data.edge.pipeline]);
+  }, [data.edge.pipeline, activeLayer]);
 
   return (
     <Fragment>

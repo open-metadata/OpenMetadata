@@ -42,7 +42,7 @@ import {
 import {
   assignGlossaryTerm,
   removeGlossaryTerm,
-  udpateGlossaryTerm,
+  updateGlossaryTerm,
 } from '../Utils/Glossary';
 import { getToken } from '../Utils/LocalStorage';
 import {
@@ -54,7 +54,7 @@ import {
   updateTeamAsOwner,
   validateOwnerAndTeamCounts,
 } from '../Utils/Owner';
-import { assignTags, removeTags, udpateTags } from '../Utils/Tags';
+import { assignTags, removeTags, updateTags } from '../Utils/Tags';
 import { addTier, removeTier, updateTier } from '../Utils/Tier';
 import { downVoteEntity, upVoteEntity } from '../Utils/Voting';
 
@@ -379,7 +379,7 @@ class EntityClass {
     assignTags('PersonalData.Personal', this.endPoint);
   }
   updateTags() {
-    udpateTags('PII.None', this.endPoint);
+    updateTags('PII.None', this.endPoint);
   }
   removeTags() {
     removeTags(['PersonalData.Personal', 'PII.None'], this.endPoint);
@@ -395,7 +395,7 @@ class EntityClass {
     );
   }
   updateGlossary() {
-    udpateGlossaryTerm(
+    updateGlossaryTerm(
       `${glossaryDetails2.name}.${glossaryTermDetails2.name}`,
       glossaryTermDetails2.name,
       this.endPoint
