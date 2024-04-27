@@ -15,10 +15,9 @@ import { Avatar, Button, Col, Popover, Row } from 'antd';
 import classNames from 'classnames';
 import { compare, Operation } from 'fast-json-patch';
 import { isEmpty, isUndefined } from 'lodash';
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as ArrowBottom } from '../../assets/svg/ic-arrow-down.svg';
-import { ANNOUNCEMENT_COLOR } from '../../constants/constants';
 import { ReactionOperation } from '../../enums/reactions.enum';
 import {
   AnnouncementDetails,
@@ -69,7 +68,22 @@ const AnnouncementFeedCardBody = ({
 
   const isAuthor = feedDetail.from === currentUser?.name;
 
-  const { id: threadId, type: feedType } = task;
+  const { id: threadId, type: feedType, posts } = task;
+
+  const repliesPostAvatarGroup = useMemo(() => {
+    return (
+      <Avatar.Group>
+        {(posts ?? []).map((u) => (
+          <ProfilePicture
+            avatarType="outlined"
+            key={u.id}
+            name={u.from}
+            width="18"
+          />
+        ))}
+      </Avatar.Group>
+    );
+  }, [posts]);
 
   const onFeedUpdate = (data: Operation[]) => {
     updateThreadHandler(
@@ -112,7 +126,9 @@ const AnnouncementFeedCardBody = ({
       }
     );
 
-    onFeedUpdate(patch);
+    if (!isEmpty(patch)) {
+      onFeedUpdate(patch);
+    }
   };
 
   const handleAnnouncementUpdate = (
@@ -132,7 +148,9 @@ const AnnouncementFeedCardBody = ({
 
     const patch = compare(existingAnnouncement, updatedAnnouncement);
 
-    onFeedUpdate(patch);
+    if (!isEmpty(patch)) {
+      onFeedUpdate(patch);
+    }
     setIsEditAnnouncement(false);
   };
 
@@ -141,7 +159,9 @@ const AnnouncementFeedCardBody = ({
 
     const patch = compare(feedDetail, updatedPost);
 
-    onFeedUpdate(patch);
+    if (!isEmpty(patch)) {
+      onFeedUpdate(patch);
+    }
     setIsEditPost(false);
   };
 
@@ -201,18 +221,7 @@ const AnnouncementFeedCardBody = ({
           <Col className="avatar-column d-flex flex-column items-center justify-between">
             <UserPopOverCard userName={feedDetail.from} />
 
-            {showRepliesButton && (
-              <Avatar.Group>
-                {(task.posts ?? []).map((u) => (
-                  <ProfilePicture
-                    avatarType="outlined"
-                    key={u.id}
-                    name={u.from}
-                    width="18"
-                  />
-                ))}
-              </Avatar.Group>
-            )}
+            {showRepliesButton && repliesPostAvatarGroup}
           </Col>
           <Col flex="auto">
             <div>
@@ -245,12 +254,10 @@ const AnnouncementFeedCardBody = ({
                   {`${task.postsCount} ${t('label.reply-lowercase-plural')}`}
 
                   <Icon
+                    className={classNames('arrow-icon', {
+                      'rotate-180': isReplyThreadOpen,
+                    })}
                     component={ArrowBottom}
-                    style={{
-                      fontSize: '10px',
-                      color: ANNOUNCEMENT_COLOR,
-                      transform: `rotate(${isReplyThreadOpen ? 180 : 0}deg)`,
-                    }}
                   />
                 </Button>
               ) : null}

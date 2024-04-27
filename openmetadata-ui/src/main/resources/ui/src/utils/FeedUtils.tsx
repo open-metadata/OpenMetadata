@@ -385,9 +385,9 @@ export const deletePost = async (
     }
   } else {
     try {
-      const deletResponse = await deletePostById(threadId, postId);
+      const deleteResponse = await deletePostById(threadId, postId);
       // get updated thread only if delete response and callback is present
-      if (deletResponse && callback) {
+      if (deleteResponse && callback) {
         const data = await getUpdatedThread(threadId);
         callback((pre) => {
           return pre.map((thread) => {

@@ -12,35 +12,51 @@
  */
 @import (reference) url('../../styles/variables.less');
 
-.ant-card.announcement-thread-card {
-  margin-top: 20px;
-  padding-top: 8px;
-  border-radius: 8px;
-  border: 1px solid @announcement-border;
-  background: @announcement-background;
+.announcement-thread-body {
+  margin-top: 16px;
 
-  .avatar-column {
-    position: relative;
+  .text-announcement {
+    color: @announcement-border;
+  }
 
-    &::after {
-      position: absolute;
-      content: '';
-      top: 0;
-      left: 50%;
-      transform: translateX(-50%);
-      width: 1px;
-      background: @announcement-border-light;
-      height: calc(100% - 10px);
-      z-index: 1;
+  .ant-card.announcement-thread-card {
+    margin-top: 20px;
+    padding-top: 8px;
+    border-radius: 8px;
+    border: 1px solid @announcement-border;
+    background: @announcement-background;
+
+    .avatar-column {
+      position: relative;
+
+      &::after {
+        position: absolute;
+        content: '';
+        top: 0;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 1px;
+        background: @announcement-border-light;
+        height: calc(100% - 10px);
+        z-index: 1;
+      }
+
+      .assignee-item {
+        margin: 0;
+        z-index: 10;
+      }
+
+      .ant-avatar-group {
+        z-index: 10;
+      }
     }
 
-    .assignee-item {
-      margin: 0;
-      z-index: 10;
+    .arrow-icon {
+      font-size: 10px;
     }
 
-    .ant-avatar-group {
-      z-index: 10;
+    .rotate-180 {
+      transform: rotate(180deg);
     }
   }
 }

@@ -32,33 +32,35 @@ const AnnouncementThreads: FC<AnnouncementThreadListProp> = ({
   const { updatedFeedList: updatedThreads } =
     getFeedListWithRelativeDays(threads);
 
-  const activeAnnouncements = useMemo(
-    () =>
-      updatedThreads.filter(
-        (thread) =>
-          thread.announcement &&
+  const { activeAnnouncements, inActiveAnnouncements } = useMemo(() => {
+    return updatedThreads.reduce(
+      (
+        acc: {
+          activeAnnouncements: Thread[];
+          inActiveAnnouncements: Thread[];
+        },
+        cv: Thread
+      ) => {
+        if (
+          cv.announcement &&
           isActiveAnnouncement(
-            thread.announcement?.startTime,
-            thread.announcement?.endTime
+            cv.announcement?.startTime,
+            cv.announcement?.endTime
           )
-      ),
-    [updatedThreads]
-  );
+        ) {
+          acc.activeAnnouncements.push(cv);
+        } else {
+          acc.inActiveAnnouncements.push(cv);
+        }
 
-  const inActiveAnnouncements = useMemo(
-    () =>
-      updatedThreads.filter(
-        (thread) =>
-          !(
-            thread.announcement &&
-            isActiveAnnouncement(
-              thread.announcement?.startTime,
-              thread.announcement?.endTime
-            )
-          )
-      ),
-    [updatedThreads]
-  );
+        return acc;
+      },
+      {
+        activeAnnouncements: [],
+        inActiveAnnouncements: [],
+      }
+    );
+  }, [updatedThreads]);
 
   const getAnnouncements = useCallback(
     (announcements: Thread[]) => {

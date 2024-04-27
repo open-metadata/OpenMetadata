@@ -13,7 +13,7 @@
 import { Card, Col, Row } from 'antd';
 import { AxiosError } from 'axios';
 import { Operation } from 'fast-json-patch';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Post } from '../../generated/entity/feed/thread';
 import { getFeedById } from '../../rest/feedsAPI';
@@ -78,6 +78,28 @@ const AnnouncementFeedCard = ({
     setIsReplyThreadVisible((prev) => !prev);
   };
 
+  const postFeedReplies = useMemo(
+    () =>
+      postFeedData.map((reply) => (
+        <AnnouncementFeedCardBody
+          editPermission={editPermission}
+          feed={reply}
+          key={reply.id}
+          showRepliesButton={false}
+          task={task}
+          updateThreadHandler={handleUpdateThreadHandler}
+          onConfirmation={onConfirmation}
+        />
+      )),
+    [
+      task,
+      postFeedData,
+      editPermission,
+      onConfirmation,
+      handleUpdateThreadHandler,
+    ]
+  );
+
   // fetch announcement thread after delete action
   useEffect(() => {
     if (postFeedData.length !== task.postsCount) {
@@ -117,17 +139,7 @@ const AnnouncementFeedCard = ({
               </Col>
               <Col flex="auto">
                 <div className="w-full m-l-xs" data-testid="replies">
-                  {postFeedData.map((reply) => (
-                    <AnnouncementFeedCardBody
-                      editPermission={editPermission}
-                      feed={reply}
-                      key={reply.id}
-                      showRepliesButton={false}
-                      task={task}
-                      updateThreadHandler={handleUpdateThreadHandler}
-                      onConfirmation={onConfirmation}
-                    />
-                  ))}
+                  {postFeedReplies}
                 </div>
               </Col>
             </Row>

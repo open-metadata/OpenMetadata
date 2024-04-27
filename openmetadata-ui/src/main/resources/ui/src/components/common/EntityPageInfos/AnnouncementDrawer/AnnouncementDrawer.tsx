@@ -110,36 +110,34 @@ const AnnouncementDrawer: FC<Props> = ({
   }, []);
 
   return (
-    <div data-testid="announcement-drawer">
-      <Drawer
-        closable={false}
-        open={open}
-        placement="right"
-        title={title}
-        width={576}
-        onClose={onClose}>
-        <div className="d-flex justify-end">
-          <Tooltip
-            title={!createPermission && t('message.no-permission-to-view')}>
-            <Button
-              data-testid="add-announcement"
-              disabled={!createPermission}
-              type="primary"
-              onClick={handleOpenAnnouncementModal}>
-              {t('label.add-entity', { entity: t('label.announcement') })}
-            </Button>
-          </Tooltip>
-        </div>
+    <Drawer
+      closable={false}
+      open={open}
+      placement="right"
+      title={title}
+      width={576}
+      onClose={onClose}>
+      <div className="d-flex justify-end">
+        <Tooltip
+          title={!createPermission && t('message.no-permission-to-view')}>
+          <Button
+            data-testid="add-announcement"
+            disabled={!createPermission}
+            type="primary"
+            onClick={handleOpenAnnouncementModal}>
+            {t('label.add-entity', { entity: t('label.announcement') })}
+          </Button>
+        </Tooltip>
+      </div>
 
-        <AnnouncementThreadBody
-          deletePostHandler={deletePostHandler}
-          editPermission={createPermission}
-          postFeedHandler={postFeedHandler}
-          refetchThread={refetchThread}
-          threadLink={getEntityFeedLink(entityType, entityFQN)}
-          updateThreadHandler={updateThreadHandler}
-        />
-      </Drawer>
+      <AnnouncementThreadBody
+        deletePostHandler={deletePostHandler}
+        editPermission={createPermission}
+        postFeedHandler={postFeedHandler}
+        refetchThread={refetchThread}
+        threadLink={getEntityFeedLink(entityType, entityFQN)}
+        updateThreadHandler={updateThreadHandler}
+      />
 
       {isAddAnnouncementOpen && (
         <AddAnnouncementModal
@@ -150,7 +148,7 @@ const AnnouncementDrawer: FC<Props> = ({
           onSave={handleSaveAnnouncement}
         />
       )}
-    </div>
+    </Drawer>
   );
 };
 

@@ -125,7 +125,9 @@ const AnnouncementThreadBody = ({
   }
 
   return (
-    <div className="m-t-lg" data-testid="announcement-thread-body">
+    <div
+      className="announcement-thread-body"
+      data-testid="announcement-thread-body">
       <AnnouncementThreads
         editPermission={editPermission}
         postFeed={postFeed}
