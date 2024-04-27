@@ -23,6 +23,10 @@ import { VotingDataProps } from '../../../components/Entity/Voting/voting.interf
 import EntitySummaryPanel from '../../../components/Explore/EntitySummaryPanel/EntitySummaryPanel.component';
 import { EntityDetailsObjectInterface } from '../../../components/Explore/ExplorePage.interface';
 import GlossaryV1 from '../../../components/Glossary/GlossaryV1.component';
+import {
+  ModifiedGlossary,
+  useGlossaryStore,
+} from '../../../components/Glossary/useGlossary.store';
 import PageLayoutV1 from '../../../components/PageLayoutV1/PageLayoutV1';
 import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
 import { PAGE_SIZE_LARGE, ROUTES } from '../../../constants/constants';
@@ -55,16 +59,24 @@ const GlossaryPage = () => {
   const { permissions } = usePermissionProvider();
   const { fqn: glossaryFqn } = useFqn();
   const history = useHistory();
-  const [glossaries, setGlossaries] = useState<Glossary[]>([]);
+
   const [isLoading, setIsLoading] = useState(true);
-  const [selectedData, setSelectedData] = useState<Glossary | GlossaryTerm>();
+
   const [isRightPanelLoading, setIsRightPanelLoading] = useState(true);
   const [previewAsset, setPreviewAsset] =
     useState<EntityDetailsObjectInterface>();
 
+  const {
+    glossaries,
+    setGlossaries,
+    activeGlossary,
+    setActiveGlossary,
+    updateActiveGlossary,
+  } = useGlossaryStore();
+
   const isGlossaryActive = useMemo(() => {
     setIsRightPanelLoading(true);
-    setSelectedData(undefined);
+    setActiveGlossary({} as ModifiedGlossary);
 
     if (glossaryFqn) {
       return Fqn.split(glossaryFqn).length === 1;
@@ -140,7 +152,7 @@ const GlossaryPage = () => {
         fields:
           'relatedTerms,reviewers,tags,owner,children,votes,domain,extension',
       });
-      setSelectedData(response);
+      setActiveGlossary(response as ModifiedGlossary);
     } catch (error) {
       showErrorToast(error as AxiosError);
     } finally {
@@ -153,7 +165,7 @@ const GlossaryPage = () => {
       if (!isGlossaryActive) {
         fetchGlossaryTermDetails();
       } else {
-        setSelectedData(
+        setActiveGlossary(
           glossaries.find(
             (glossary) => glossary.fullyQualifiedName === glossaryFqn
           ) || glossaries[0]
@@ -167,25 +179,17 @@ const GlossaryPage = () => {
   }, [isGlossaryActive, glossaryFqn, glossaries]);
 
   const updateGlossary = async (updatedData: Glossary) => {
-    const jsonPatch = compare(selectedData as Glossary, updatedData);
+    const jsonPatch = compare(activeGlossary as Glossary, updatedData);
 
     try {
       const response = await patchGlossaries(
-        selectedData?.id as string,
+        activeGlossary?.id as string,
         jsonPatch
       );
 
-      setGlossaries((pre) => {
-        return pre.map((item) => {
-          if (item.name === response.name) {
-            return response;
-          } else {
-            return item;
-          }
-        });
-      });
+      updateGlossary(response);
 
-      if (selectedData?.name !== updatedData.name) {
+      if (activeGlossary?.name !== updatedData.name) {
         history.push(getGlossaryPath(response.fullyQualifiedName));
         fetchGlossaryList();
       }
@@ -198,36 +202,24 @@ const GlossaryPage = () => {
     async (data: VotingDataProps) => {
       try {
         const isGlossaryEntity =
-          Fqn.split(selectedData?.fullyQualifiedName ?? '').length <= 1;
+          Fqn.split(activeGlossary?.fullyQualifiedName ?? '').length <= 1;
 
         if (isGlossaryEntity) {
           const {
             entity: { votes },
-          } = await updateGlossaryVotes(selectedData?.id ?? '', data);
-          setSelectedData(
-            (pre) =>
-              pre && {
-                ...pre,
-                votes,
-              }
-          );
+          } = await updateGlossaryVotes(activeGlossary?.id ?? '', data);
+          updateActiveGlossary({ votes });
         } else {
           const {
             entity: { votes },
-          } = await updateGlossaryTermVotes(selectedData?.id ?? '', data);
-          setSelectedData(
-            (pre) =>
-              pre && {
-                ...pre,
-                votes,
-              }
-          );
+          } = await updateGlossaryTermVotes(activeGlossary?.id ?? '', data);
+          updateActiveGlossary({ votes });
         }
       } catch (error) {
         showErrorToast(error as AxiosError);
       }
     },
-    [setSelectedData, selectedData]
+    [updateActiveGlossary, activeGlossary]
   );
 
   const handleGlossaryDelete = async (id: string) => {
@@ -260,18 +252,18 @@ const GlossaryPage = () => {
 
   const handleGlossaryTermUpdate = useCallback(
     async (updatedData: GlossaryTerm) => {
-      const jsonPatch = compare(selectedData as GlossaryTerm, updatedData);
+      const jsonPatch = compare(activeGlossary as GlossaryTerm, updatedData);
       if (isEmpty(jsonPatch)) {
         return;
       }
       try {
         const response = await patchGlossaryTerm(
-          selectedData?.id as string,
+          activeGlossary?.id as string,
           jsonPatch
         );
         if (response) {
-          setSelectedData(response);
-          if (selectedData?.name !== updatedData.name) {
+          setActiveGlossary(response as ModifiedGlossary);
+          if (activeGlossary?.name !== updatedData.name) {
             history.push(getGlossaryPath(response.fullyQualifiedName));
             fetchGlossaryList();
           }
@@ -284,7 +276,7 @@ const GlossaryPage = () => {
         showErrorToast(error as AxiosError);
       }
     },
-    [selectedData]
+    [activeGlossary]
   );
 
   const handleGlossaryTermDelete = async (id: string) => {
@@ -373,7 +365,7 @@ const GlossaryPage = () => {
           isSummaryPanelOpen={Boolean(previewAsset)}
           isVersionsView={false}
           refreshActiveGlossaryTerm={fetchGlossaryTermDetails}
-          selectedData={selectedData as Glossary}
+          selectedData={activeGlossary as Glossary}
           updateGlossary={updateGlossary}
           updateVote={updateVote}
           onAssetClick={handleAssetClick}

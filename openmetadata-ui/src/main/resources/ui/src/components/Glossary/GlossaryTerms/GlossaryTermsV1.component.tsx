@@ -51,6 +51,7 @@ import { AssetSelectionModal } from '../../DataAssets/AssetsSelectionModal/Asset
 import { GlossaryTabs } from '../GlossaryDetails/GlossaryDetails.interface';
 import GlossaryHeader from '../GlossaryHeader/GlossaryHeader.component';
 import GlossaryTermTab from '../GlossaryTermTab/GlossaryTermTab.component';
+import { useGlossaryStore } from '../useGlossary.store';
 import { GlossaryTermsV1Props } from './GlossaryTermsV1.interface';
 import AssetsTabs, { AssetsTabRef } from './tabs/AssetsTabs.component';
 import { AssetsOfEntity } from './tabs/AssetsTabs.interface';
@@ -58,7 +59,6 @@ import GlossaryOverviewTab from './tabs/GlossaryOverviewTab.component';
 
 const GlossaryTermsV1 = ({
   glossaryTerm,
-  childGlossaryTerms,
   handleGlossaryTermUpdate,
   handleGlossaryTermDelete,
   permissions,
@@ -82,6 +82,8 @@ const GlossaryTermsV1 = ({
     FEED_COUNT_INITIAL_DATA
   );
   const [assetCount, setAssetCount] = useState<number>(0);
+  const { activeGlossary } = useGlossaryStore();
+  const childGlossaryTerms = activeGlossary?.children ?? [];
 
   const assetPermissions = useMemo(() => {
     const glossaryTermStatus = glossaryTerm.status ?? Status.Approved;
@@ -198,12 +200,10 @@ const GlossaryTermsV1 = ({
               key: 'terms',
               children: (
                 <GlossaryTermTab
-                  childGlossaryTerms={childGlossaryTerms}
                   className="p-md glossary-term-table-container"
                   isGlossary={false}
                   permissions={permissions}
                   refreshGlossaryTerms={refreshGlossaryTerms}
-                  selectedData={glossaryTerm}
                   termsLoading={termsLoading}
                   onAddGlossaryTerm={onAddGlossaryTerm}
                   onEditGlossaryTerm={onEditGlossaryTerm}

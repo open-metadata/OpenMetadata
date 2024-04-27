@@ -15,6 +15,7 @@ import { DefaultOptionType } from 'antd/lib/select';
 import { isEmpty } from 'lodash';
 import { StatusType } from '../components/common/StatusBadge/StatusBadge.interface';
 import { ModifiedGlossaryTerm } from '../components/Glossary/GlossaryTermTab/GlossaryTermTab.interface';
+import { ModifiedGlossary } from '../components/Glossary/useGlossary.store';
 import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
 import { EntityType } from '../enums/entity.enum';
 import { Glossary } from '../generated/entity/data/glossary';
@@ -148,7 +149,7 @@ export const getGlossaryBreadcrumbs = (fqn: string) => {
 export const findGlossaryTermByFqn = (
   list: ModifiedGlossaryTerm[],
   fullyQualifiedName: string
-): GlossaryTerm | Glossary | null => {
+): GlossaryTerm | Glossary | ModifiedGlossary | null => {
   for (const item of list) {
     if (item.fullyQualifiedName === fullyQualifiedName) {
       return item;
