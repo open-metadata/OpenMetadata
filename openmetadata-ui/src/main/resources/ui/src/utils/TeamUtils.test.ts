@@ -12,7 +12,8 @@
  */
 
 import { TeamType } from '../generated/entity/teams/team';
-import { isDropRestricted } from './TeamUtils';
+import { MOCK_CHILD_TEAMS } from '../mocks/Teams.mock';
+import { filterChildTeams, isDropRestricted } from './TeamUtils';
 
 describe('isDropRestricted', () => {
   it('should be droppable if on drop team is BusinessUnit', () => {
@@ -108,5 +109,33 @@ describe('isDropRestricted', () => {
     );
 
     expect(groupDragResult).toBe(false);
+  });
+});
+
+describe('filterChildTeams', () => {
+  it('should return deleted terms if show deleted is true', () => {
+    const filterTerms = filterChildTeams(MOCK_CHILD_TEAMS, true);
+
+    expect(filterTerms).toEqual([MOCK_CHILD_TEAMS[2]]);
+  });
+
+  it('should return non-deleted terms if show deleted is false', () => {
+    const filterTerms = filterChildTeams(MOCK_CHILD_TEAMS, false);
+
+    expect(filterTerms).toEqual([
+      MOCK_CHILD_TEAMS[3],
+      MOCK_CHILD_TEAMS[0],
+      MOCK_CHILD_TEAMS[1],
+    ]);
+  });
+
+  it('should return deleted terms in sorted manner', () => {
+    const filterTerms = filterChildTeams(MOCK_CHILD_TEAMS, false);
+
+    expect(filterTerms).toEqual([
+      MOCK_CHILD_TEAMS[3],
+      MOCK_CHILD_TEAMS[0],
+      MOCK_CHILD_TEAMS[1],
+    ]);
   });
 });
