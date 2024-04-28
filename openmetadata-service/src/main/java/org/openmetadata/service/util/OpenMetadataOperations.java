@@ -322,11 +322,11 @@ public class OpenMetadataOperations implements Callable<Integer> {
                   nullOrEmpty(appRunRecord.getFailureContext())
                       ? "Unavailable"
                       : JsonUtils.pojoToJson(appRunRecord.getFailureContext())));
-          printToAsciiTable(columns, rows, "No Search Indexing Application found");
+          printToAsciiTable(columns, rows, "Failed to run Search Reindexing");
         }
       } catch (UnhandledServerException e) {
         LOG.info(
-            "Reindexing Status not available yet, waiting for 10 seconds to fetch the status.");
+            "Reindexing Status not available yet, waiting for 10 seconds to fetch the status again.");
         appRunRecord = null;
         Thread.sleep(10000);
       }
@@ -339,7 +339,7 @@ public class OpenMetadataOperations implements Callable<Integer> {
       LOG.debug("Reindexing Completed Successfully.");
       return 0;
     }
-    LOG.error("Failed to fetch reindexing app status, Something went wrong");
+    LOG.error("Reindexing completed in Failure.");
     return 1;
   }
 
