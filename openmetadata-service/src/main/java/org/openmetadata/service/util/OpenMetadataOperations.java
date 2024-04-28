@@ -1,6 +1,7 @@
 package org.openmetadata.service.util;
 
 import static org.flywaydb.core.internal.info.MigrationInfoDumper.dumpToAsciiTable;
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.Entity.FIELD_OWNER;
 
 import ch.qos.logback.classic.Level;
@@ -304,29 +305,34 @@ public class OpenMetadataOperations implements Callable<Integer> {
         AppRepository appRepository =
             (AppRepository) Entity.getEntityRepository(Entity.APPLICATION);
         appRunRecord = appRepository.getLatestAppRuns(searchIndexApp.getId());
-        //        if (appRunRecord != null) {
-        //          List<String> columns =
-        //              new ArrayList<>(
-        //                  List.of("status", "startTime", "endTime", "executionTime", "success",
-        // "failure"));
-        //          List<List<String>> rows = new ArrayList<>();
-        //          rows.add(
-        //              Arrays.asList(
-        //                  appRunRecord.getStatus().value(),
-        //                  appRunRecord.getStartTime().toString(),
-        //                  appRunRecord.getEndTime().toString(),
-        //                  appRunRecord.getExecutionTime().toString(),
-        //                  appRunRecord.getSuccessContext().toString(),
-        //                  appRunRecord.getFailureContext().toString()));
-        //          printToAsciiTable(columns, rows, "No Search Indexing Application found");
-        //        }
+        if (appRunRecord != null) {
+          List<String> columns =
+              new ArrayList<>(
+                  List.of("status", "startTime", "endTime", "executionTime", "success", "failure"));
+          List<List<String>> rows = new ArrayList<>();
+          rows.add(
+              Arrays.asList(
+                  appRunRecord.getStatus().value(),
+                  appRunRecord.getStartTime().toString(),
+                  appRunRecord.getEndTime().toString(),
+                  appRunRecord.getExecutionTime().toString(),
+                  nullOrEmpty(appRunRecord.getSuccessContext())
+                      ? "Unavailable"
+                      : JsonUtils.pojoToJson(appRunRecord.getSuccessContext()),
+                  nullOrEmpty(appRunRecord.getFailureContext())
+                      ? "Unavailable"
+                      : JsonUtils.pojoToJson(appRunRecord.getFailureContext())));
+          printToAsciiTable(columns, rows, "No Search Indexing Application found");
+        }
       } catch (UnhandledServerException e) {
         LOG.info(
             "Reindexing Status not available yet, waiting for 10 seconds to fetch the status.");
         appRunRecord = null;
         Thread.sleep(10000);
       }
-    } while (appRunRecord == null);
+    } while (appRunRecord == null
+        && (appRunRecord.getStatus().equals(AppRunRecord.Status.SUCCESS)
+            || appRunRecord.getStatus().equals(AppRunRecord.Status.FAILED)));
 
     if (appRunRecord.getStatus().equals(AppRunRecord.Status.SUCCESS)
         || appRunRecord.getStatus().equals(AppRunRecord.Status.COMPLETED)) {
