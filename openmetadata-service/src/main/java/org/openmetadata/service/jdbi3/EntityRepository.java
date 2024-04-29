@@ -860,6 +860,32 @@ public abstract class EntityRepository<T extends EntityInterface> {
   }
 
   @Transaction
+  public final PatchResponse<T> patch(UriInfo uriInfo, String fqn, String user, JsonPatch patch) {
+    // Get all the fields in the original entity that can be updated during PATCH operation
+    T original = setFieldsInternal(findByName(fqn, NON_DELETED), patchFields);
+    setInheritedFields(original, patchFields);
+
+    // Apply JSON patch to the original entity to get the updated entity
+    T updated = JsonUtils.applyPatch(original, patch, entityClass);
+    updated.setUpdatedBy(user);
+    updated.setUpdatedAt(System.currentTimeMillis());
+
+    prepareInternal(updated, true);
+    populateOwner(updated.getOwner());
+    restorePatchAttributes(original, updated);
+
+    // Update the attributes and relationships of an entity
+    EntityUpdater entityUpdater = getUpdater(original, updated, Operation.PATCH);
+    entityUpdater.update();
+    EventType change = ENTITY_NO_CHANGE;
+    if (entityUpdater.fieldsChanged()) {
+      change = EventType.ENTITY_UPDATED;
+      setInheritedFields(original, patchFields); // Restore inherited fields after a change
+    }
+    return new PatchResponse<>(Status.OK, withHref(uriInfo, updated), change);
+  }
+
+  @Transaction
   public final PutResponse<T> addFollower(String updatedBy, UUID entityId, UUID userId) {
     T entity = find(entityId, NON_DELETED);
 

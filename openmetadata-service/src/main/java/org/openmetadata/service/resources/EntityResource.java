@@ -66,7 +66,7 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
     Entity.registerResourcePermissions(entityType, getEntitySpecificOperations());
   }
 
-  /** Method used for initializing a resource, such as creating default policies, roles, etc. */
+  //  /** Method used for initializing a resource, such as creating default policies, roles, etc. */
   public void initialize(OpenMetadataApplicationConfig config) throws IOException {}
 
   /**
@@ -290,6 +290,16 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
     authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
     PatchResponse<T> response =
         repository.patch(uriInfo, id, securityContext.getUserPrincipal().getName(), patch);
+    addHref(uriInfo, response.entity());
+    return response.toResponse();
+  }
+
+  public Response patchInternal(
+      UriInfo uriInfo, SecurityContext securityContext, String fqn, JsonPatch patch) {
+    OperationContext operationContext = new OperationContext(entityType, patch);
+    authorizer.authorize(securityContext, operationContext, getResourceContextByName(fqn));
+    PatchResponse<T> response =
+        repository.patch(uriInfo, fqn, securityContext.getUserPrincipal().getName(), patch);
     addHref(uriInfo, response.entity());
     return response.toResponse();
   }
