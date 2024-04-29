@@ -18,6 +18,7 @@ from sqlalchemy import types, util
 from sqlalchemy.engine import reflection
 
 from metadata.ingestion.source.database.hive.queries import HIVE_GET_COMMENTS
+from metadata.utils.sqlalchemy_utils import get_table_ddl_wrapper
 
 complex_data_types = ["struct", "map", "array", "union"]
 
@@ -181,3 +182,17 @@ def get_view_definition(self, connection, view_name, schema=None, **kw):
     if res:
         return "\n".join(i[0] for i in res)
     return None
+
+
+@reflection.cache
+def get_table_ddl(
+    self, connection, table_name, schema=None, **kw
+):  # pylint: disable=unused-argument
+
+    return get_table_ddl_wrapper(
+        self,
+        connection=connection,
+        query=None,
+        table_name=table_name,
+        schema=schema,
+    )

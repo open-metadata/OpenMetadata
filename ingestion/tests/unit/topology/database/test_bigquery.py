@@ -177,7 +177,7 @@ MOCK_TABLE = Table(
         id="c3eb265f-5445-4ad3-ba5e-797d3a3071bb", type="databaseSchema"
     ),
     tags=[],
-    viewDefinition=None,
+    schemaDefinition=None,
     retentionPeriod=None,
     extension=None,
     sourceUrl=SourceUrl(
@@ -411,7 +411,7 @@ EXPECTED_TABLE = [
                 __root__="bigquery_source_test.random-project-id.sample_schema"
             ),
             tags=[],
-            viewDefinition=None,
+            schemaDefinition=None,
             retentionPeriod=None,
             extension=None,
             sourceUrl=SourceUrl(
@@ -507,7 +507,7 @@ EXPECTED_TABLE = [
                 __root__="bigquery_source_test.random-project-id.sample_schema"
             ),
             tags=[],
-            viewDefinition=None,
+            schemaDefinition=None,
             retentionPeriod=None,
             extension=None,
             sourceUrl=SourceUrl(

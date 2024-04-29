@@ -34,6 +34,7 @@ from metadata.ingestion.source.database.postgres.queries import (
 from metadata.utils.logger import utils_logger
 from metadata.utils.sqlalchemy_utils import (
     get_table_comment_wrapper,
+    get_table_ddl_wrapper,
     get_table_owner_wrapper,
     get_view_definition_wrapper,
 )
@@ -70,6 +71,19 @@ def get_table_owner(
         self,
         connection=connection,
         query=POSTGRES_TABLE_OWNERS,
+        table_name=table_name,
+        schema=schema,
+    )
+
+
+@reflection.cache
+def get_table_ddl(
+    self, connection, table_name, schema=None, **kw
+):  # pylint: disable=unused-argument
+    return get_table_ddl_wrapper(
+        self,
+        connection=connection,
+        query=None,
         table_name=table_name,
         schema=schema,
     )

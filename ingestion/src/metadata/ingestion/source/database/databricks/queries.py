@@ -24,6 +24,7 @@ DATABRICKS_VIEW_DEFINITIONS = textwrap.dedent(
     """
 )
 
+DATABRICKS_GET_TABLE_COMMENTS_WC = "DESCRIBE TABLE EXTENDED {schema_name}.{table_name}"
 
 DATABRICKS_GET_TABLE_COMMENTS = (
     "DESCRIBE TABLE EXTENDED {catalog_name}.{schema_name}.{table_name}"

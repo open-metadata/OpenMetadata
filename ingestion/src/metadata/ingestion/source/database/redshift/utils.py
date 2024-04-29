@@ -34,7 +34,10 @@ from metadata.ingestion.source.database.redshift.queries import (
     REDSHIFT_TABLE_COMMENTS,
 )
 from metadata.utils.execution_time_tracker import calculate_execution_time
-from metadata.utils.sqlalchemy_utils import get_table_comment_wrapper
+from metadata.utils.sqlalchemy_utils import (
+    get_table_comment_wrapper,
+    get_table_ddl_wrapper,
+)
 
 sa_version = Version(sa.__version__)
 
@@ -395,3 +398,16 @@ def _get_all_relation_info(self, connection, **kw):  # pylint: disable=unused-ar
         key = RelationKey(rel.relname, rel.schema, connection)
         relations[key] = rel
     return relations
+
+
+@reflection.cache
+def get_table_ddl(
+    self, connection, table_name, schema=None, **kw
+):  # pylint: disable=unused-argument
+    return get_table_ddl_wrapper(
+        self,
+        connection=connection,
+        query=None,
+        table_name=table_name,
+        schema=schema,
+    )

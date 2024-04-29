@@ -47,10 +47,11 @@ from metadata.ingestion.source.database.databricks.queries import (
     DATABRICKS_GET_CATALOGS_TAGS,
     DATABRICKS_GET_COLUMN_TAGS,
     DATABRICKS_GET_SCHEMA_TAGS,
-    DATABRICKS_GET_TABLE_COMMENTS,
+    DATABRICKS_GET_TABLE_COMMENTS_WC,
     DATABRICKS_GET_TABLE_TAGS,
     DATABRICKS_VIEW_DEFINITIONS,
 )
+from metadata.ingestion.source.database.databricks.utils import get_table_ddl
 from metadata.ingestion.source.database.external_table_lineage_mixin import (
     ExternalTableLineageMixin,
 )
@@ -60,6 +61,7 @@ from metadata.utils.constants import DEFAULT_DATABASE
 from metadata.utils.filters import filter_by_database
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.sqlalchemy_utils import (
+    get_all_table_ddls,
     get_all_view_definitions,
     get_view_definition_wrapper,
 )
@@ -222,7 +224,7 @@ def get_table_comment(  # pylint: disable=unused-argument
     Returns comment of table
     """
     cursor = connection.execute(
-        DATABRICKS_GET_TABLE_COMMENTS.format(
+        DATABRICKS_GET_TABLE_COMMENTS_WC.format(
             schema_name=schema_name, table_name=table_name
         )
     )
@@ -259,6 +261,8 @@ DatabricksDialect.get_schema_names = get_schema_names
 DatabricksDialect.get_view_definition = get_view_definition
 DatabricksDialect.get_all_view_definitions = get_all_view_definitions
 reflection.Inspector.get_schema_names = get_schema_names_reflection
+reflection.Inspector.get_all_table_ddls = get_all_table_ddls
+reflection.Inspector.get_table_ddl = get_table_ddl
 
 
 class DatabricksSource(ExternalTableLineageMixin, CommonDbSourceService, MultiDBSource):
@@ -595,10 +599,8 @@ class DatabricksSource(ExternalTableLineageMixin, CommonDbSourceService, MultiDB
         description = None
         try:
             cursor = self.connection.execute(
-                DATABRICKS_GET_TABLE_COMMENTS.format(
-                    schema_name=schema_name,
-                    table_name=table_name,
-                    catalog_name=self.context.get().database,
+                DATABRICKS_GET_TABLE_COMMENTS_WC.format(
+                    schema_name=schema_name, table_name=table_name
                 )
             )
             for result in list(cursor):

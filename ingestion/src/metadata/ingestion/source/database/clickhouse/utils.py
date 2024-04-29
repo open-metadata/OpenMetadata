@@ -28,6 +28,7 @@ from metadata.ingestion.source.database.clickhouse.queries import (
 from metadata.ingestion.source.database.column_type_parser import create_sqlalchemy_type
 from metadata.utils.sqlalchemy_utils import (
     get_table_comment_wrapper,
+    get_table_ddl_wrapper,
     get_view_definition_wrapper,
 )
 
@@ -218,3 +219,16 @@ def _get_column_info(
     if col_type == Array:
         result["is_complex"] = True
     return result
+
+
+@reflection.cache
+def get_table_ddl(
+    self, connection, table_name, schema=None, **kw
+):  # pylint: disable=unused-argument
+    return get_table_ddl_wrapper(
+        self,
+        connection=connection,
+        query=None,
+        table_name=table_name,
+        schema=schema,
+    )

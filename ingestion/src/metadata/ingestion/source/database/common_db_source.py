@@ -363,23 +363,29 @@ class CommonDbSourceService(
     def get_view_definition(
         self, table_type: str, table_name: str, schema_name: str, inspector: Inspector
     ) -> Optional[str]:
-        if table_type in (TableType.View, TableType.MaterializedView):
-            try:
-                view_definition = inspector.get_view_definition(table_name, schema_name)
-                view_definition = (
-                    "" if view_definition is None else str(view_definition)
+        """
+        Get the DDL statement or View Definition for a table
+        """
+        try:
+            if table_type in (TableType.View, TableType.MaterializedView):
+                schema_definition = inspector.get_view_definition(
+                    table_name, schema_name
                 )
-                return view_definition
-
-            except NotImplementedError:
-                logger.warning("View definition not implemented")
-
-            except Exception as exc:
-                logger.debug(traceback.format_exc())
-                logger.warning(
-                    f"Failed to fetch view definition for {table_name}: {exc}"
+            else:
+                schema_definition = inspector.get_table_ddl(
+                    self.connection, table_name, schema_name
                 )
-            return None
+            schema_definition = (
+                "" if schema_definition is None else str(schema_definition)
+            )
+            return schema_definition
+
+        except NotImplementedError:
+            logger.warning("View definition not implemented")
+
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.warning(f"Failed to fetch view definition for {table_name}: {exc}")
         return None
 
     def is_partition(  # pylint: disable=unused-argument
@@ -450,7 +456,7 @@ class CommonDbSourceService(
                 inspector=self.inspector,
             )
 
-            view_definition = self.get_view_definition(
+            schema_definition = self.get_view_definition(
                 table_type=table_type,
                 table_name=table_name,
                 schema_name=schema_name,
@@ -469,7 +475,7 @@ class CommonDbSourceService(
                 ),
                 columns=columns,
                 tableConstraints=table_constraints,
-                viewDefinition=view_definition,
+                schemaDefinition=schema_definition,
                 databaseSchema=fqn.build(
                     metadata=self.metadata,
                     entity_type=DatabaseSchema,
@@ -502,13 +508,13 @@ class CommonDbSourceService(
             self.register_record(table_request=table_request)
 
             # Flag view as visited
-            if table_type == TableType.View or view_definition:
+            if table_type == TableType.View or schema_definition:
                 table_view = TableView.parse_obj(
                     {
                         "table_name": table_name,
                         "schema_name": schema_name,
                         "db_name": self.context.get().database,
-                        "view_definition": view_definition,
+                        "view_definition": schema_definition,
                     }
                 )
                 self.context.get_global().table_views.append(table_view)

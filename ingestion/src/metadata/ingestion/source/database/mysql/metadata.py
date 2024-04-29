@@ -13,6 +13,7 @@ from typing import Optional, cast
 
 from sqlalchemy.dialects.mysql.base import ischema_names
 from sqlalchemy.dialects.mysql.reflection import MySQLTableDefinitionParser
+from sqlalchemy.engine.reflection import Inspector
 
 from metadata.generated.schema.entity.services.connections.database.mysqlConnection import (
     MysqlConnection,
@@ -23,7 +24,12 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.database.common_db_source import CommonDbSourceService
-from metadata.ingestion.source.database.mysql.utils import col_type_map, parse_column
+from metadata.ingestion.source.database.mysql.utils import (
+    col_type_map,
+    get_table_ddl,
+    parse_column,
+)
+from metadata.utils.sqlalchemy_utils import get_all_table_ddls
 
 ischema_names.update(col_type_map)
 
@@ -31,6 +37,9 @@ ischema_names.update(col_type_map)
 MySQLTableDefinitionParser._parse_column = (  # pylint: disable=protected-access
     parse_column
 )
+
+Inspector.get_all_table_ddls = get_all_table_ddls
+Inspector.get_table_ddl = get_table_ddl
 
 
 class MysqlSource(CommonDbSourceService):

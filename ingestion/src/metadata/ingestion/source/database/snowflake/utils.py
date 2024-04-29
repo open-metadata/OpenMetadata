@@ -47,6 +47,7 @@ from metadata.utils import fqn
 from metadata.utils.sqlalchemy_utils import (
     get_display_datatype,
     get_table_comment_wrapper,
+    get_table_ddl_wrapper,
 )
 
 Query = str
@@ -410,3 +411,16 @@ def get_columns(self, connection, table_name, schema=None, **kw):
     if normalized_table_name not in schema_columns:
         raise sa_exc.NoSuchTableError()
     return schema_columns[normalized_table_name]
+
+
+@reflection.cache
+def get_table_ddl(
+    self, connection, table_name, schema=None, **kw
+):  # pylint: disable=unused-argument
+    return get_table_ddl_wrapper(
+        self,
+        connection=connection,
+        query=None,
+        table_name=table_name,
+        schema=schema,
+    )

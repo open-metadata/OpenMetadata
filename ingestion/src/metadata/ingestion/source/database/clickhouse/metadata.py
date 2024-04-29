@@ -34,6 +34,7 @@ from metadata.ingestion.source.database.clickhouse.utils import (
     get_mview_names_dialect,
     get_pk_constraint,
     get_table_comment,
+    get_table_ddl,
     get_unique_constraints,
     get_view_definition,
     get_view_names,
@@ -45,6 +46,7 @@ from metadata.ingestion.source.database.common_db_source import (
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.sqlalchemy_utils import (
     get_all_table_comments,
+    get_all_table_ddls,
     get_all_view_definitions,
 )
 
@@ -95,6 +97,8 @@ ClickHouseDialect._get_column_info = (  # pylint: disable=protected-access
 )
 Inspector.get_mview_names = get_mview_names
 ClickHouseDialect.get_mview_names = get_mview_names_dialect
+Inspector.get_all_table_ddls = get_all_table_ddls
+Inspector.get_table_ddl = get_table_ddl
 
 
 class ClickhouseSource(CommonDbSourceService):
@@ -145,22 +149,23 @@ class ClickhouseSource(CommonDbSourceService):
     def get_view_definition(
         self, table_type: str, table_name: str, schema_name: str, inspector: Inspector
     ) -> Optional[str]:
-        if table_type in {TableType.View, TableType.MaterializedView}:
-            definition_fn = inspector.get_view_definition
-            try:
-                view_definition = definition_fn(table_name, schema_name)
-                view_definition = (
-                    "" if view_definition is None else str(view_definition)
+        try:
+            if table_type in {TableType.View, TableType.MaterializedView}:
+                definition_fn = inspector.get_view_definition
+                schema_definition = definition_fn(table_name, schema_name)
+            else:
+                schema_definition = inspector.get_table_ddl(
+                    self.connection, table_name, schema_name
                 )
-                return view_definition
+            schema_definition = (
+                "" if schema_definition is None else str(schema_definition)
+            )
+            return schema_definition
 
-            except NotImplementedError:
-                logger.warning("View definition not implemented")
+        except NotImplementedError:
+            logger.warning("Schema definition not implemented")
 
-            except Exception as exc:
-                logger.debug(traceback.format_exc())
-                logger.warning(
-                    f"Failed to fetch view definition for {table_name}: {exc}"
-                )
-            return None
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.warning(f"Failed to fetch schema definition for {table_name}: {exc}")
         return None

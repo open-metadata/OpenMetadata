@@ -284,7 +284,7 @@ class DeltalakeSource(DatabaseServiceSource):
                     database_name=self.context.get().database,
                     schema_name=schema_name,
                 ),
-                viewDefinition=view_definition,
+                schemaDefinition=view_definition,
             )
 
             yield Either(right=table_request)
