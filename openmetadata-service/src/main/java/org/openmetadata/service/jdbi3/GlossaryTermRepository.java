@@ -691,11 +691,11 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
     private boolean validateIfTagsAreEqual(
         List<TagLabel> originalTags, List<TagLabel> updatedTags) {
       Set<String> originalTagsFqn =
-          originalTags.stream()
+          listOrEmpty(originalTags).stream()
               .map(TagLabel::getTagFQN)
               .collect(Collectors.toCollection(TreeSet::new));
       Set<String> updatedTagsFqn =
-          updatedTags.stream()
+          listOrEmpty(updatedTags).stream()
               .map(TagLabel::getTagFQN)
               .collect(Collectors.toCollection(TreeSet::new));
 
@@ -712,8 +712,7 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
       // updatedTags cannot be immutable list, as we are adding the origTags to updatedTags even if
       // its empty.
       updatedTags = Optional.ofNullable(updatedTags).orElse(new ArrayList<>());
-      if (!origTags.isEmpty()
-          && !updatedTags.isEmpty()
+      if (!(origTags.isEmpty() && updatedTags.isEmpty())
           && !validateIfTagsAreEqual(origTags, updatedTags)) {
         List<String> targetFQNHashes = daoCollection.tagUsageDAO().getTargetFQNHashForTag(fqn);
         for (String fqnHash : targetFQNHashes) {
