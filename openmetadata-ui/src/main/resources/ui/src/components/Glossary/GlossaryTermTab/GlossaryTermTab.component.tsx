@@ -19,7 +19,7 @@ import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { compare } from 'fast-json-patch';
 import { cloneDeep, isEmpty, isUndefined } from 'lodash';
-import React, { useCallback, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import { DndProvider } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
 import { useTranslation } from 'react-i18next';
@@ -60,6 +60,7 @@ import { getEntityName } from '../../../utils/EntityUtils';
 import Fqn from '../../../utils/Fqn';
 import {
   buildTree,
+  findExpandableKeysForArray,
   findGlossaryTermByFqn,
   StatusClass,
   StatusFilters,
@@ -97,7 +98,6 @@ const GlossaryTermTab = ({
   const [isTableLoading, setIsTableLoading] = useState(false);
   const [isTableHovered, setIsTableHovered] = useState(false);
   const [expandedRowKeys, setExpandedRowKeys] = useState<string[]>([]);
-  const expandableKeys = useRef<string[]>([]);
 
   const glossaryTermStatus: Status | null = useMemo(() => {
     if (!isGlossary) {
@@ -106,6 +106,10 @@ const GlossaryTermTab = ({
 
     return null;
   }, [isGlossary, activeGlossary]);
+
+  const expandableKeys = useMemo(() => {
+    return findExpandableKeysForArray(glossaryTerms);
+  }, [glossaryTerms]);
 
   const columns = useMemo(() => {
     const data: ColumnsType<ModifiedGlossaryTerm> = [
@@ -252,10 +256,6 @@ const GlossaryTermTab = ({
   const expandableConfig: ExpandableConfig<ModifiedGlossaryTerm> = useMemo(
     () => ({
       expandIcon: ({ expanded, onExpand, record }) => {
-        expandableKeys.current = [
-          ...expandableKeys.current,
-          record.fullyQualifiedName || '',
-        ];
         const { children, childrenCount } = record;
 
         return childrenCount ?? children?.length ?? 0 > 0 ? (
@@ -396,20 +396,30 @@ const GlossaryTermTab = ({
     updateActiveGlossary({
       children: buildTree(data) as ModifiedGlossary['children'],
     });
-    const keys = data.map((term) => term.fullyQualifiedName ?? '');
-    expandableKeys.current = keys;
+    const keys = data.reduce((prev, curr) => {
+      if (curr.children?.length) {
+        prev.push(curr.fullyQualifiedName ?? '');
+      }
+
+      return prev;
+    }, [] as string[]);
+
     setExpandedRowKeys(keys);
 
     setIsTableLoading(false);
   };
 
   const toggleExpandAll = () => {
-    if (expandedRowKeys.length === expandableKeys.current.length) {
+    if (expandedRowKeys.length === expandableKeys.length) {
       setExpandedRowKeys([]);
     } else {
       fetchAllTerms();
     }
   };
+
+  const isAllExpanded = useMemo(() => {
+    return expandedRowKeys.length === expandableKeys.length;
+  }, [expandedRowKeys, expandableKeys]);
 
   if (termsLoading) {
     return <Loader />;
@@ -443,15 +453,13 @@ const GlossaryTermTab = ({
             type="text"
             onClick={toggleExpandAll}>
             <Space align="center" size={4}>
-              {expandedRowKeys.length === expandableKeys.current.length ? (
+              {isAllExpanded ? (
                 <DownUpArrowIcon color={DE_ACTIVE_COLOR} height="14px" />
               ) : (
                 <UpDownArrowIcon color={DE_ACTIVE_COLOR} height="14px" />
               )}
 
-              {expandedRowKeys.length === expandableKeys.current.length
-                ? t('label.collapse-all')
-                : t('label.expand-all')}
+              {isAllExpanded ? t('label.collapse-all') : t('label.expand-all')}
             </Space>
           </Button>
         </div>

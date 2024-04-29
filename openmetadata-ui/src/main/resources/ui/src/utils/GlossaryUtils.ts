@@ -198,3 +198,53 @@ export const convertGlossaryTermsToTreeOptions = (
 
   return treeData;
 };
+
+/**
+ * Finds the expandable keys in a glossary term.
+ * @param glossaryTerm - The glossary term to search for expandable keys.
+ * @returns An array of expandable keys found in the glossary term.
+ */
+export const findExpandableKeys = (
+  glossaryTerm?: ModifiedGlossaryTerm
+): string[] => {
+  let expandableKeys: string[] = [];
+
+  if (!glossaryTerm) {
+    return expandableKeys;
+  }
+
+  if (glossaryTerm.children) {
+    glossaryTerm.children.forEach((child) => {
+      expandableKeys = expandableKeys.concat(
+        findExpandableKeys(child as ModifiedGlossaryTerm)
+      );
+    });
+    if (glossaryTerm.fullyQualifiedName) {
+      expandableKeys.push(glossaryTerm.fullyQualifiedName);
+    }
+  } else if (glossaryTerm.childrenCount) {
+    if (glossaryTerm.fullyQualifiedName) {
+      expandableKeys.push(glossaryTerm.fullyQualifiedName);
+    }
+  }
+
+  return expandableKeys;
+};
+
+/**
+ * Finds the expandable keys for an array of glossary terms.
+ *
+ * @param glossaryTerms - An array of ModifiedGlossaryTerm objects.
+ * @returns An array of expandable keys.
+ */
+export const findExpandableKeysForArray = (
+  glossaryTerms: ModifiedGlossaryTerm[]
+): string[] => {
+  let expandableKeys: string[] = [];
+
+  glossaryTerms.forEach((glossaryTerm) => {
+    expandableKeys = expandableKeys.concat(findExpandableKeys(glossaryTerm));
+  });
+
+  return expandableKeys;
+};
