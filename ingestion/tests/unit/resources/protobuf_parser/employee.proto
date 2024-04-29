@@ -1,0 +1,11 @@
+syntax = "proto3";
+
+import "team.proto";
+import "contact.proto";
+
+message Employee {
+  string first_name = 1;
+  string last_name = 2;
+  Team team = 3;
+  Contact contact = 4;
+}
