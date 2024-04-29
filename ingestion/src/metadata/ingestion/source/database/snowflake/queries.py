@@ -325,5 +325,5 @@ ORDER BY PROCEDURE_START_TIME DESC
 )
 
 SNOWFLAKE_GET_TABLE_DDL = """
-SELECT GET_DDL('TABLE', '{table_name}') AS table_ddl
+SELECT GET_DDL('TABLE','{table_name}') AS \"text\"
 """
