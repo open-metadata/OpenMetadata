@@ -54,13 +54,20 @@ from metadata.ingestion.source.database.oracle.queries import (
 )
 from metadata.ingestion.source.database.oracle.utils import (
     _get_col_type,
+    _get_default_schema_name,
+    _prepare_reflection_args,
     get_columns,
+    get_foreign_keys,
     get_mview_definition,
     get_mview_names,
     get_mview_names_dialect,
+    get_pk_constraint,
+    get_schema_names,
     get_table_comment,
     get_table_names,
+    get_unique_constraints,
     get_view_definition,
+    get_view_names,
 )
 from metadata.ingestion.source.database.stored_procedures_mixin import (
     QueryByProcedure,
@@ -95,6 +102,13 @@ OracleDialect.get_table_names = get_table_names
 Inspector.get_mview_names = get_mview_names
 Inspector.get_mview_definition = get_mview_definition
 OracleDialect.get_mview_names = get_mview_names_dialect
+OracleDialect.get_schema_names = get_schema_names
+OracleDialect.get_pk_constraint = get_pk_constraint
+OracleDialect.get_unique_constraints = get_unique_constraints
+OracleDialect.get_foreign_keys = get_foreign_keys
+OracleDialect.get_view_names = get_view_names
+OracleDialect._get_default_schema_name = _get_default_schema_name
+OracleDialect._prepare_reflection_args = _prepare_reflection_args
 
 
 class OracleSource(StoredProcedureMixin, CommonDbSourceService):

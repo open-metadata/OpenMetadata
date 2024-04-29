@@ -31,8 +31,8 @@ Base = declarative_base()
 SQA_RESERVED_ATTRIBUTES = ["metadata"]
 
 
-def check_snowflake_case_sensitive(table_service_type, table_or_col) -> Optional[bool]:
-    """Check whether column or table name are not uppercase for snowflake table.
+def check_db_case_sensitive(table_service_type, table_or_col) -> Optional[bool]:
+    """Check whether column or table name are not uppercase for snowflake / oracle table.
     If so, then force quoting, If not return None to let engine backend handle the logic.
 
     Args:
@@ -40,7 +40,10 @@ def check_snowflake_case_sensitive(table_service_type, table_or_col) -> Optional
     Return:
         None or True
     """
-    if table_service_type == databaseService.DatabaseServiceType.Snowflake:
+    if table_service_type in {
+        databaseService.DatabaseServiceType.Snowflake,
+        databaseService.DatabaseServiceType.Oracle,
+    }:
         return True if not str(table_or_col).isupper() else None
 
     return None
@@ -83,7 +86,7 @@ def build_orm_col(idx: int, col: Column, table_service_type) -> sqlalchemy.Colum
         ),
         primary_key=not bool(idx),  # The first col seen is used as PK
         quote=check_if_should_quote_column_name(table_service_type)
-        or check_snowflake_case_sensitive(table_service_type, col.name.__root__),
+        or check_db_case_sensitive(table_service_type, col.name.__root__),
         key=str(
             col.name.__root__
         ).lower(),  # Add lowercase column name as key for snowflake case sensitive columns
@@ -132,7 +135,7 @@ def ometa_to_sqa_orm(
                 if table.serviceType != databaseService.DatabaseServiceType.SQLite
                 else None,
                 "extend_existing": True,  # Recreates the table ORM object if it already exists. Useful for testing
-                "quote": check_snowflake_case_sensitive(
+                "quote": check_db_case_sensitive(
                     table.serviceType, table.name.__root__
                 ),
             },
