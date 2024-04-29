@@ -90,6 +90,7 @@ from metadata.ingestion.source.database.snowflake.utils import (
     get_foreign_keys,
     get_pk_constraint,
     get_schema_columns,
+    get_schema_foreign_keys,
     get_table_comment,
     get_table_names,
     get_table_names_reflection,
@@ -136,6 +137,7 @@ SnowflakeDialect._current_database_schema = (  # pylint: disable=protected-acces
 SnowflakeDialect.get_pk_constraint = get_pk_constraint
 SnowflakeDialect.get_foreign_keys = get_foreign_keys
 SnowflakeDialect.get_columns = get_columns
+SnowflakeDialect._get_schema_foreign_keys = get_schema_foreign_keys
 
 
 class SnowflakeSource(

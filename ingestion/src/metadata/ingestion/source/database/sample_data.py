@@ -1529,6 +1529,11 @@ class SampleDataSource(
                         columns=test_case_results["failedRowsSample"]["columns"],
                     ),
                 )
+            if test_case_results.get("inspectionQuery"):
+                self.metadata.ingest_inspection_query(
+                    case,
+                    test_case_results["inspectionQuery"],
+                )
 
     def ingest_data_insights(self) -> Iterable[Either[OMetaDataInsightSample]]:
         """Iterate over all the data insights and ingest them"""

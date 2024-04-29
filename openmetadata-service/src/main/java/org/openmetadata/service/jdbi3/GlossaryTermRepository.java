@@ -694,6 +694,23 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
       updateRelatedTerms(original, updated);
       updateName(original, updated);
       updateParent(original, updated);
+      // Mutually exclusive cannot be updated
+      updated.setMutuallyExclusive(original.getMutuallyExclusive());
+    }
+
+    private boolean validateIfTagsAreEqual(
+        List<TagLabel> originalTags, List<TagLabel> updatedTags) {
+      Set<String> originalTagsFqn =
+          listOrEmpty(originalTags).stream()
+              .map(TagLabel::getTagFQN)
+              .collect(Collectors.toCollection(TreeSet::new));
+      Set<String> updatedTagsFqn =
+          listOrEmpty(updatedTags).stream()
+              .map(TagLabel::getTagFQN)
+              .collect(Collectors.toCollection(TreeSet::new));
+
+      // Validate if both are exactly equal
+      return originalTagsFqn.equals(updatedTagsFqn);
     }
 
     @Override
@@ -705,34 +722,34 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
       // updatedTags cannot be immutable list, as we are adding the origTags to updatedTags even if
       // its empty.
       updatedTags = Optional.ofNullable(updatedTags).orElse(new ArrayList<>());
-      if (origTags.isEmpty() && updatedTags.isEmpty()) {
-        return; // Nothing to update
+      if (!(origTags.isEmpty() && updatedTags.isEmpty())
+          && !validateIfTagsAreEqual(origTags, updatedTags)) {
+        List<String> targetFQNHashes = daoCollection.tagUsageDAO().getTargetFQNHashForTag(fqn);
+        for (String fqnHash : targetFQNHashes) {
+          Map<String, List<TagLabel>> allAssetTags =
+              daoCollection.tagUsageDAO().getTagsByPrefix(fqnHash, "%", false);
+
+          // Assets FQN is not available / we can use fqnHash for now
+          checkMutuallyExclusiveForParentAndSubField("", fqnHash, allAssetTags, updatedTags, true);
+        }
+
+        // Remove current entity tags in the database. It will be added back later from the merged
+        // tag
+        // list.
+        daoCollection.tagUsageDAO().deleteTagsByTarget(fqn);
+
+        if (operation.isPut()) {
+          // PUT operation merges tags in the request with what already exists
+          EntityUtil.mergeTags(updatedTags, origTags);
+          checkMutuallyExclusive(updatedTags);
+        }
+
+        List<TagLabel> addedTags = new ArrayList<>();
+        List<TagLabel> deletedTags = new ArrayList<>();
+        recordListChange(fieldName, origTags, updatedTags, addedTags, deletedTags, tagLabelMatch);
+        updatedTags.sort(compareTagLabel);
+        applyTags(updatedTags, fqn);
       }
-
-      List<String> targetFQNHashes = daoCollection.tagUsageDAO().getTargetFQNHashForTag(fqn);
-      for (String fqnHash : targetFQNHashes) {
-        Map<String, List<TagLabel>> allAssetTags =
-            daoCollection.tagUsageDAO().getTagsByPrefix(fqnHash, "%", false);
-
-        // Assets FQN is not available / we can use fqnHash for now
-        checkMutuallyExclusiveForParentAndSubField("", fqnHash, allAssetTags, updatedTags, true);
-      }
-
-      // Remove current entity tags in the database. It will be added back later from the merged tag
-      // list.
-      daoCollection.tagUsageDAO().deleteTagsByTarget(fqn);
-
-      if (operation.isPut()) {
-        // PUT operation merges tags in the request with what already exists
-        EntityUtil.mergeTags(updatedTags, origTags);
-        checkMutuallyExclusive(updatedTags);
-      }
-
-      List<TagLabel> addedTags = new ArrayList<>();
-      List<TagLabel> deletedTags = new ArrayList<>();
-      recordListChange(fieldName, origTags, updatedTags, addedTags, deletedTags, tagLabelMatch);
-      updatedTags.sort(compareTagLabel);
-      applyTags(updatedTags, fqn);
     }
 
     private void updateStatus(GlossaryTerm origTerm, GlossaryTerm updatedTerm) {

@@ -51,7 +51,6 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 )
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
-from metadata.ingestion.lineage.sql_lineage import get_column_fqn
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.database.column_type_parser import ColumnTypeParser
@@ -388,18 +387,17 @@ class UnitycatalogSource(
             ref_table_fqn = column.parent_table
             table_fqn_list = fqn.split(ref_table_fqn)
 
-            referred_table = fqn.search_table_from_es(
-                metadata=self.metadata,
+            referred_table_fqn = fqn.build(
+                self.metadata,
+                entity_type=Table,
                 table_name=table_fqn_list[2],
                 schema_name=table_fqn_list[1],
                 database_name=table_fqn_list[0],
                 service_name=self.context.get().database_service,
             )
-            if referred_table:
+            if referred_table_fqn:
                 for parent_column in column.parent_columns:
-                    col_fqn = get_column_fqn(
-                        table_entity=referred_table, column=parent_column
-                    )
+                    col_fqn = fqn._build(referred_table_fqn, parent_column, quote=False)
                     if col_fqn:
                         referred_column_fqns.append(col_fqn)
             else:
