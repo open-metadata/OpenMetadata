@@ -37,6 +37,8 @@ from metadata.generated.schema.entity.teams.user import User
 
 from metadata.generated.schema.entity.domains.domain import Domain
 
+from metadata.generated.schema.entity.domains.dataProduct import DataProduct
+
 DOT = "_DOT_"
 TEN_MIN = 10 * 60
 UTF_8 = "utf-8"
@@ -100,6 +102,7 @@ ENTITY_REFERENCE_CLASS_MAP = {
     "team": Team,
     # Domain
     "domain": Domain,
+    "dataProduct": DataProduct,
 }
 
 ENTITY_REFERENCE_TYPE_MAP = {
