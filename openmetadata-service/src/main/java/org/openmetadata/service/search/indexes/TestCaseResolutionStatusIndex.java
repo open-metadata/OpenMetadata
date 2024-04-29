@@ -15,13 +15,21 @@ public record TestCaseResolutionStatusIndex(TestCaseResolutionStatus testCaseRes
 
     Map<String, Object> doc = JsonUtils.getMap(testCaseResolutionStatus);
     List<SearchSuggest> suggest = new ArrayList<>();
-    suggest.add(SearchSuggest.builder().input(testCaseResolutionStatus.getTestCaseReference().getFullyQualifiedName()).weight(5).build());
-    suggest.add(SearchSuggest.builder().input(testCaseResolutionStatus.getTestCaseReference().getName()).weight(10).build());
+    suggest.add(
+        SearchSuggest.builder()
+            .input(testCaseResolutionStatus.getTestCaseReference().getFullyQualifiedName())
+            .weight(5)
+            .build());
+    suggest.add(
+        SearchSuggest.builder()
+            .input(testCaseResolutionStatus.getTestCaseReference().getName())
+            .weight(10)
+            .build());
     doc.put(
-            "fqnParts",
-            getFQNParts(
-                    testCaseResolutionStatus.getTestCaseReference().getFullyQualifiedName(),
-                    suggest.stream().map(SearchSuggest::getInput).toList()));
+        "fqnParts",
+        getFQNParts(
+            testCaseResolutionStatus.getTestCaseReference().getFullyQualifiedName(),
+            suggest.stream().map(SearchSuggest::getInput).toList()));
     doc.put("suggest", suggest);
     return doc;
   }
