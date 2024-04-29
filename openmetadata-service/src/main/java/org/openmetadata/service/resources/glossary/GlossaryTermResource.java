@@ -89,7 +89,7 @@ import org.openmetadata.service.util.ResultList;
 public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryTermRepository> {
   public static final String COLLECTION_PATH = "v1/glossaryTerms/";
   static final String FIELDS =
-      "children,relatedTerms,reviewers,owner,tags,usageCount,domain,extension";
+      "children,relatedTerms,reviewers,owner,tags,usageCount,domain,extension,childrenCount";
 
   @Override
   public GlossaryTerm addHref(UriInfo uriInfo, GlossaryTerm term) {
@@ -210,7 +210,14 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
               schema = @Schema(implementation = Include.class))
           @QueryParam("include")
           @DefaultValue("non-deleted")
-          Include include) {
+          Include include,
+      @Parameter(
+              description =
+                  "List glossary terms filtered to retrieve the first level/immediate children of the glossary term "
+                      + "`directChildrenOf` parameter.",
+              schema = @Schema(type = "string"))
+          @QueryParam("directChildrenOf")
+          String parentTermFQNParam) {
     RestUtil.validateCursors(before, after);
     Fields fields = getFields(fieldsParam);
 
@@ -234,7 +241,10 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
                 parentTermParam.toString(), glossaryIdParam));
       }
     }
-    ListFilter filter = new ListFilter(include).addQueryParam("parent", fqn);
+    ListFilter filter =
+        new ListFilter(include)
+            .addQueryParam("parent", fqn)
+            .addQueryParam("directChildrenOf", parentTermFQNParam);
 
     ResultList<GlossaryTerm> terms;
     if (before != null) { // Reverse paging

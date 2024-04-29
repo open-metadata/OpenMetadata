@@ -153,6 +153,10 @@
     },
     "votes" : {
       "$ref": "../../type/votes.json"
+    },
+    "childrenCount": {
+      "description": "Count of immediate children glossary terms.",
+      "type": "integer"
     }
   },
   "required": ["id", "name", "description", "glossary"],
