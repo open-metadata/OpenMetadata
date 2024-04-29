@@ -1140,7 +1140,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
   }
 
   @Test
-  void put_schemaDefinition_invalid_table_4xx(TestInfo test) {
+  void put_schemaDefinition_invalid_table_4xx(TestInfo test) throws HttpResponseException {
     CreateTable createTable = createRequest(test);
     createTable.setTableType(TableType.Regular);
     String query =
