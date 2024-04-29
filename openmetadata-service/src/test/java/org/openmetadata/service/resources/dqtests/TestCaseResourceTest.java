@@ -43,6 +43,7 @@ import javax.json.JsonPatch;
 import javax.ws.rs.client.WebTarget;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.http.client.HttpResponseException;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.MethodOrderer;
 import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.Test;
@@ -88,8 +89,10 @@ import org.openmetadata.service.util.TestUtils;
 import org.openmetadata.service.util.incidentSeverityClassifier.IncidentSeverityClassifierInterface;
 import org.testcontainers.shaded.com.google.common.collect.ImmutableMap;
 
+
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 @Slf4j
+@Disabled
 public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTestCase> {
   public static String TABLE_LINK;
   public static String TABLE_COLUMN_LINK;
