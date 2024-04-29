@@ -35,6 +35,8 @@ from metadata.generated.schema.entity.services.storageService import StorageServ
 from metadata.generated.schema.entity.teams.team import Team
 from metadata.generated.schema.entity.teams.user import User
 
+from metadata.generated.schema.entity.domains.domain import Domain
+
 DOT = "_DOT_"
 TEN_MIN = 10 * 60
 UTF_8 = "utf-8"
@@ -96,6 +98,8 @@ ENTITY_REFERENCE_CLASS_MAP = {
     # User Entities
     "user": User,
     "team": Team,
+    # Domain
+    "domain": Domain,
 }
 
 ENTITY_REFERENCE_TYPE_MAP = {
