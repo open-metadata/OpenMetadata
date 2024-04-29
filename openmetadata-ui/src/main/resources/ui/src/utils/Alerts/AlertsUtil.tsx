@@ -160,7 +160,7 @@ export const searchEntity = async ({
   searchIndex,
   filters,
   showDisplayNameAsLabel = true,
-  setSourceAsValue = true,
+  setSourceAsValue = false,
 }: {
   searchText: string;
   searchIndex: SearchIndex | SearchIndex[];
