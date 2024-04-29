@@ -155,16 +155,18 @@ export const getDisplayNameForEntities = (entity: string) => {
 export const EDIT_LINK_PATH = `/settings/notifications/edit-alert`;
 export const EDIT_DATA_INSIGHT_REPORT_PATH = `/settings/notifications/edit-data-insight-report`;
 
-const searchEntity = async ({
+export const searchEntity = async ({
   searchText,
   searchIndex,
   filters,
   showDisplayNameAsLabel = true,
+  setSourceAsValue = true,
 }: {
   searchText: string;
   searchIndex: SearchIndex | SearchIndex[];
   filters?: string;
   showDisplayNameAsLabel?: boolean;
+  setSourceAsValue?: boolean;
 }) => {
   try {
     const response = await searchData(
@@ -176,6 +178,8 @@ const searchEntity = async ({
       '',
       searchIndex
     );
+    const searchIndexEntityTypeMapping =
+      searchClassBase.getSearchIndexEntityTypeMapping();
 
     return uniqBy(
       response.data.hits.hits.map((d) => {
@@ -187,9 +191,16 @@ const searchEntity = async ({
           ? getEntityName(d._source)
           : d._source.fullyQualifiedName ?? '';
 
+        const value = setSourceAsValue
+          ? JSON.stringify({
+              ...d._source,
+              type: searchIndexEntityTypeMapping[d._index],
+            })
+          : d._source.fullyQualifiedName ?? '';
+
         return {
           label: displayName,
-          value: d._source.fullyQualifiedName ?? '',
+          value,
         };
       }),
       'label'
@@ -211,11 +222,11 @@ const getTestSuiteSuggestions = async (searchText: string) => {
   return searchEntity({ searchText, searchIndex: SearchIndex.TEST_SUITE });
 };
 
-export const getDomainOptions = async (searchText: string) => {
+const getDomainOptions = async (searchText: string) => {
   return searchEntity({ searchText, searchIndex: SearchIndex.DOMAIN });
 };
 
-export const getOwnerOptions = async (searchText: string) => {
+const getOwnerOptions = async (searchText: string) => {
   return searchEntity({
     searchText,
     searchIndex: [SearchIndex.TEAM, SearchIndex.USER],
