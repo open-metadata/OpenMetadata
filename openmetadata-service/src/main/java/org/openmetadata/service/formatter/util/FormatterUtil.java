@@ -15,6 +15,7 @@ package org.openmetadata.service.formatter.util;
 
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.schema.type.EventType.ENTITY_CREATED;
+import static org.openmetadata.service.Entity.FIELD_EXTENSION;
 import static org.openmetadata.service.Entity.THREAD;
 import static org.openmetadata.service.formatter.factory.ParserFactory.getFieldParserObject;
 import static org.openmetadata.service.formatter.field.DefaultFieldFormatter.getFieldNameChange;
@@ -62,7 +63,12 @@ public class FormatterUtil {
         arrayFieldName = fieldNameParts[1];
         arrayFieldValue = fieldNameParts[2];
       } else if (fieldNameParts.length == 2) {
-        arrayFieldName = fieldNameParts[1];
+        // Extension is not a subfield
+        if (fieldNameParts[0].equals(FIELD_EXTENSION)) {
+          arrayFieldName = fieldNameParts[0];
+        } else {
+          arrayFieldName = fieldNameParts[1];
+        }
       }
     }
 
@@ -84,7 +90,12 @@ public class FormatterUtil {
             String fieldName = field.getName();
             if (fieldName.contains(".")) {
               String[] tokens = fieldName.split("\\.");
-              fields.add(tokens[tokens.length - 1]);
+              // Extension Parsing is different from entity fields
+              if (tokens[0].equals(FIELD_EXTENSION)) {
+                fields.add(FIELD_EXTENSION);
+              } else {
+                fields.add(tokens[tokens.length - 1]);
+              }
             } else {
               fields.add(fieldName);
             }

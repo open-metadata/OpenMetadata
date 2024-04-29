@@ -228,7 +228,7 @@
     "cardStyle": {
       "description": "Card style for the thread.",
       "type": "string",
-      "enum": ["default", "logicalTestCaseAdded", "entityCreated", "entityDeleted", "entitySoftDeleted", "description", "tags", "owner", "testCaseResult", "customProperties"],
+      "enum": ["default", "logicalTestCaseAdded", "entityCreated", "entityDeleted", "entitySoftDeleted", "description", "tags", "owner", "testCaseResult", "customProperties", "assets", "domain"],
       "default": "default"
     },
     "fieldOperation": {

@@ -58,7 +58,7 @@ public class DomainFormatter extends DefaultFieldFormatter {
                         "")))
             .withFieldName(FIELD_DOMAIN)
             .withEntitySpecificInfo(domainFeedInfo);
-    populateThreadFeedInfo(thread, threadMessage, Thread.CardStyle.OWNER, operation, feedInfo);
+    populateThreadFeedInfo(thread, threadMessage, Thread.CardStyle.DOMAIN, operation, feedInfo);
   }
 
   private String getHeaderForOwnerUpdate(String eventTypeMessage, String domainUrl) {
