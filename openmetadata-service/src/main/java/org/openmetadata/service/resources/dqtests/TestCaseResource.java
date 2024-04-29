@@ -737,6 +737,11 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
           @QueryParam("hardDelete")
           @DefaultValue("false")
           boolean hardDelete,
+      @Parameter(
+              description = "Recursively delete this entity and it's children. (Default `false`)")
+          @DefaultValue("false")
+          @QueryParam("recursive")
+          boolean recursive,
       @Parameter(description = "Id of the test case", schema = @Schema(type = "UUID"))
           @PathParam("id")
           UUID id) {
@@ -746,7 +751,7 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
     OperationContext operationContext =
         new OperationContext(Entity.TABLE, MetadataOperation.EDIT_TESTS);
     authorizer.authorize(securityContext, operationContext, resourceContext);
-    return delete(uriInfo, securityContext, id, false, hardDelete);
+    return delete(uriInfo, securityContext, id, recursive, hardDelete);
   }
 
   @DELETE
@@ -767,11 +772,16 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
           @DefaultValue("false")
           boolean hardDelete,
       @Parameter(
+              description = "Recursively delete this entity and it's children. (Default `false`)")
+          @DefaultValue("false")
+          @QueryParam("recursive")
+          boolean recursive,
+      @Parameter(
               description = "Fully qualified name of the test case",
               schema = @Schema(type = "string"))
           @PathParam("fqn")
           String fqn) {
-    return deleteByName(uriInfo, securityContext, fqn, false, hardDelete);
+    return deleteByName(uriInfo, securityContext, fqn, recursive, hardDelete);
   }
 
   @DELETE
@@ -969,6 +979,34 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
       throw new IllegalArgumentException("Failed rows can only be added to a failed test case.");
     }
     return addHref(uriInfo, repository.addFailedRowsSample(testCase, tableData));
+  }
+
+  @PUT
+  @Path("/{id}/inspectionQuery")
+  @Operation(
+      operationId = "addInspectionQuery",
+      summary = "Add inspection query data",
+      description = "Add an inspection query for this test case.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Successfully update the test case with an inspection query.",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = TestCase.class)))
+      })
+  public TestCase addInspectionQuery(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Id of the test case", schema = @Schema(type = "UUID"))
+          @PathParam("id")
+          UUID id,
+      @Valid String query) {
+    OperationContext operationContext =
+        new OperationContext(entityType, MetadataOperation.EDIT_TESTS);
+    authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
+    return addHref(uriInfo, repository.addInspectionQuery(uriInfo, id, query));
   }
 
   @GET

@@ -19,6 +19,7 @@ import {
   cloneDeep,
   groupBy,
   isEmpty,
+  isEqual,
   isUndefined,
   set,
   sortBy,
@@ -40,17 +41,19 @@ import {
   OperationPermission,
   ResourceEntity,
 } from '../../../context/PermissionProvider/PermissionProvider.interface';
-import { EntityType } from '../../../enums/entity.enum';
+import { EntityType, FqnPart } from '../../../enums/entity.enum';
 import { Column } from '../../../generated/entity/data/table';
 import { TagSource } from '../../../generated/type/schema';
 import { TagLabel } from '../../../generated/type/tagLabel';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { useFqn } from '../../../hooks/useFqn';
+import { getPartialNameFromTableFQN } from '../../../utils/CommonUtils';
 import {
   getEntityName,
   getFrequentlyJoinedColumns,
   searchInColumns,
 } from '../../../utils/EntityUtils';
+import { getEntityColumnFQN } from '../../../utils/FeedUtils';
 import {
   getAllTags,
   searchTagInData,
@@ -65,6 +68,7 @@ import {
 import { showErrorToast } from '../../../utils/ToastUtils';
 import FilterTablePlaceHolder from '../../common/ErrorWithPlaceholder/FilterTablePlaceHolder';
 import Table from '../../common/Table/Table';
+import TestCaseStatusSummaryIndicator from '../../common/TestCaseStatusSummaryIndicator/TestCaseStatusSummaryIndicator.component';
 import EntityNameModal from '../../Modals/EntityNameModal/EntityNameModal.component';
 import { EntityName } from '../../Modals/EntityNameModal/EntityNameModal.interface';
 import { ModalWithMarkdownEditor } from '../../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
@@ -74,18 +78,25 @@ import TableTags from '../TableTags/TableTags.component';
 import { SchemaTableProps, TableCellRendered } from './SchemaTable.interface';
 
 const SchemaTable = ({
-  tableColumns,
   searchText,
   onUpdate,
   hasDescriptionEditAccess,
   hasTagEditAccess,
-  joins,
   isReadOnly = false,
   onThreadLinkSelect,
-  tableConstraints,
+  table,
 }: SchemaTableProps) => {
   const { theme } = useApplicationStore();
   const { t } = useTranslation();
+  const { testCaseCounts, tableColumns, joins, tableConstraints } = useMemo(
+    () => ({
+      testCaseCounts: table?.testSuite?.summary?.columnTestSummary ?? [],
+      tableColumns: table?.columns ?? [],
+      joins: table?.joins?.columnJoins ?? [],
+      tableConstraints: table?.tableConstraints,
+    }),
+    [table]
+  );
 
   const [searchedColumns, setSearchedColumns] = useState<Column[]>([]);
   const [expandedRowKeys, setExpandedRowKeys] = useState<string[]>([]);
@@ -403,7 +414,9 @@ const SchemaTable = ({
         filterIcon: (filtered: boolean) => (
           <FilterOutlined
             data-testid="tag-filter"
-            style={{ color: filtered ? theme.primaryColor : undefined }}
+            style={{
+              color: filtered ? theme.primaryColor : undefined,
+            }}
           />
         ),
         render: (tags: TagLabel[], record: Column, index: number) => (
@@ -433,7 +446,9 @@ const SchemaTable = ({
         filterIcon: (filtered) => (
           <FilterOutlined
             data-testid="glossary-filter"
-            style={{ color: filtered ? theme.primaryColor : undefined }}
+            style={{
+              color: filtered ? theme.primaryColor : undefined,
+            }}
           />
         ),
         render: (tags: TagLabel[], record: Column, index: number) => (
@@ -454,6 +469,24 @@ const SchemaTable = ({
         filterDropdown: ColumnFilter,
         onFilter: searchTagInData,
       },
+      {
+        title: t('label.data-quality-test-plural'),
+        dataIndex: 'dataQualityTest',
+        key: 'dataQualityTest',
+        width: 170,
+        render: (_, record) => {
+          const testCounts = testCaseCounts.find((column) => {
+            return isEqual(
+              getEntityColumnFQN(column.entityLink ?? ''),
+              record.fullyQualifiedName
+            );
+          });
+
+          return (
+            <TestCaseStatusSummaryIndicator testCaseStatusCounts={testCounts} />
+          );
+        },
+      },
     ],
     [
       decodedEntityFqn,
@@ -467,12 +500,30 @@ const SchemaTable = ({
       handleTagSelection,
       onThreadLinkSelect,
       tagFilter,
+      testCaseCounts,
     ]
   );
 
   useEffect(() => {
     setExpandedRowKeys(nestedTableFqnKeys);
   }, [searchText]);
+
+  // Need to scroll to the selected row
+  useEffect(() => {
+    const columnName = getPartialNameFromTableFQN(decodedEntityFqn, [
+      FqnPart.Column,
+    ]);
+    if (!columnName) {
+      return;
+    }
+
+    const row = document.querySelector(`[data-row-key="${decodedEntityFqn}"]`);
+
+    if (row && data.length > 0) {
+      // Need to wait till table loads fully so that we can call scroll accurately
+      setTimeout(() => row.scrollIntoView(), 1);
+    }
+  }, [data, decodedEntityFqn]);
 
   return (
     <>

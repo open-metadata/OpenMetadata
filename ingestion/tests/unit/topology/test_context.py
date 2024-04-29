@@ -22,7 +22,6 @@ from metadata.generated.schema.api.data.createStoredProcedure import (
     CreateStoredProcedureRequest,
 )
 from metadata.generated.schema.api.data.createTable import CreateTableRequest
-from metadata.generated.schema.entity.classification.tag import TagName
 from metadata.generated.schema.entity.data.storedProcedure import (
     Language,
     StoredProcedure,
@@ -127,11 +126,11 @@ class TopologyContextTest(TestCase):
         classification_and_tag = OMetaTagAndClassification(
             fqn=None,
             classification_request=CreateClassificationRequest(
-                name=TagName(__root__="my_classification"),
+                name="my_classification",
                 description=Markdown(__root__="something"),
             ),
             tag_request=CreateTagRequest(
-                name=TagName(__root__="my_tag"),
+                name="my_tag",
                 description=Markdown(__root__="something"),
             ),
         )
