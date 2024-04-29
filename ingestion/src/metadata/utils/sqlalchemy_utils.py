@@ -140,7 +140,6 @@ def get_all_table_ddls(
     meta = MetaData()
     meta.reflect(bind=connection.engine, schema=schema_name)
     for table in meta.sorted_tables or []:
-        print(f"{table.name} {table.schema} = {str(CreateTable(table))}")
         self.all_table_ddls[(table.schema, table.name)] = str(CreateTable(table))
 
 
