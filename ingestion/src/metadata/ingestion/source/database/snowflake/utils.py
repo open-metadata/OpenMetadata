@@ -382,6 +382,65 @@ def get_foreign_keys(self, connection, table_name, schema=None, **kw):
 
 
 @reflection.cache
+def get_schema_foreign_keys(self, connection, schema, **kw):
+    current_database, current_schema = self._current_database_schema(connection, **kw)
+    result = connection.execute(
+        text(
+            f"SHOW /* sqlalchemy:_get_schema_foreign_keys */ IMPORTED KEYS IN SCHEMA {schema}"
+        )
+    )
+    foreign_key_map = {}
+    for row in result:
+        name = self.normalize_name(row._mapping["fk_name"])
+        if name not in foreign_key_map:
+            referred_schema = self.normalize_name(row._mapping["pk_schema_name"])
+            foreign_key_map[name] = {
+                "constrained_columns": [
+                    self.normalize_name(row._mapping["fk_column_name"])
+                ],
+                # referred schema should be None in context where it doesn't need to be specified
+                # https://docs.sqlalchemy.org/en/14/core/reflection.html#reflection-schema-qualified-interaction
+                "referred_schema": (
+                    referred_schema
+                    if referred_schema not in (self.default_schema_name, current_schema)
+                    else None
+                ),
+                "referred_table": self.normalize_name(row._mapping["pk_table_name"]),
+                "referred_columns": [
+                    self.normalize_name(row._mapping["pk_column_name"])
+                ],
+                "referred_database": self.normalize_name(
+                    row._mapping["pk_database_name"]
+                ),
+                "name": name,
+                "table_name": self.normalize_name(row._mapping["fk_table_name"]),
+            }
+            options = {}
+            if self.normalize_name(row._mapping["delete_rule"]) != "NO ACTION":
+                options["ondelete"] = self.normalize_name(row._mapping["delete_rule"])
+            if self.normalize_name(row._mapping["update_rule"]) != "NO ACTION":
+                options["onupdate"] = self.normalize_name(row._mapping["update_rule"])
+            foreign_key_map[name]["options"] = options
+        else:
+            foreign_key_map[name]["constrained_columns"].append(
+                self.normalize_name(row._mapping["fk_column_name"])
+            )
+            foreign_key_map[name]["referred_columns"].append(
+                self.normalize_name(row._mapping["pk_column_name"])
+            )
+
+    ans = {}
+
+    for _, v in foreign_key_map.items():
+        if v["table_name"] not in ans:
+            ans[v["table_name"]] = []
+        ans[v["table_name"]].append(
+            {k2: v2 for k2, v2 in v.items() if k2 != "table_name"}
+        )
+    return ans
+
+
+@reflection.cache
 def get_unique_constraints(self, connection, table_name, schema, **kw):
     schema = schema or self.default_schema_name
     schema = _quoted_name(entity_name=schema)

@@ -363,22 +363,26 @@ set json = JSON_INSERT(
 WHERE name = 'tableRowInsertedCountToBeBetween';
 -- End of Test Definition Parameter Definition Validation Migration
 
--- update existing customLogoConfiguration config with new customUiThemePreference
-UPDATE openmetadata_settings
+-- Start of updating existing customLogoConfiguration config with new customUiThemePreference
+UPDATE openmetadata_settings AS ui
+JOIN openmetadata_settings AS logo
+ON ui.configType = 'customUiThemePreference' AND logo.configType = 'customLogoConfiguration'
 SET
-  configType = 'customUiThemePreference',
-  json = JSON_OBJECT(
-    'customTheme', JSON_OBJECT(
-      'infoColor', '',
-      'errorColor', '',
-      'primaryColor', '',
-      'successColor', '',
-      'warningColor', ''
+  ui.json = JSON_OBJECT(
+  'customLogoConfig', JSON_OBJECT(
+      'customLogoUrlPath', JSON_UNQUOTE(JSON_EXTRACT(logo.json, '$.customLogoUrlPath')),
+      'customFaviconUrlPath', JSON_UNQUOTE(JSON_EXTRACT(logo.json, '$.customFaviconUrlPath')),
+      'customMonogramUrlPath', JSON_UNQUOTE(JSON_EXTRACT(logo.json, '$.customMonogramUrlPath'))
     ),
-    'customLogoConfig', JSON_OBJECT(
-      'customLogoUrlPath', JSON_UNQUOTE(JSON_EXTRACT(json, '$.customLogoUrlPath')),
-      'customFaviconUrlPath', JSON_UNQUOTE(JSON_EXTRACT(json, '$.customFaviconUrlPath')),
-      'customMonogramUrlPath', JSON_UNQUOTE(JSON_EXTRACT(json, '$.customMonogramUrlPath'))
+    'customTheme', JSON_OBJECT(
+    	'primaryColor', '',
+    	'errorColor', '',
+    	'successColor', '',
+      'warningColor', '',
+      'infoColor', ''
     )
   )
-WHERE configType = 'customLogoConfiguration';
+WHERE ui.configType = 'customUiThemePreference';
+
+DELETE from openmetadata_settings where configType = 'customLogoConfiguration';
+-- End of updating  customUiThemePreference config

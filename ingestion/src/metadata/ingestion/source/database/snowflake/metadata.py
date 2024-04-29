@@ -90,6 +90,7 @@ from metadata.ingestion.source.database.snowflake.utils import (
     get_foreign_keys,
     get_pk_constraint,
     get_schema_columns,
+    get_schema_foreign_keys,
     get_table_comment,
     get_table_ddl,
     get_table_names,
@@ -139,6 +140,7 @@ SnowflakeDialect.get_foreign_keys = get_foreign_keys
 SnowflakeDialect.get_columns = get_columns
 Inspector.get_all_table_ddls = get_all_table_ddls
 Inspector.get_table_ddl = get_table_ddl
+SnowflakeDialect._get_schema_foreign_keys = get_schema_foreign_keys
 
 
 class SnowflakeSource(

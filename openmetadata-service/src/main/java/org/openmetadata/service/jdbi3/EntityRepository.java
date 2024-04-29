@@ -456,16 +456,16 @@ public abstract class EntityRepository<T extends EntityInterface> {
   public final void initializeEntity(T entity) {
     T existingEntity = findByNameOrNull(entity.getFullyQualifiedName(), ALL);
     if (existingEntity != null) {
-      LOG.info("{} {} is already initialized", entityType, entity.getFullyQualifiedName());
+      LOG.debug("{} {} is already initialized", entityType, entity.getFullyQualifiedName());
       return;
     }
 
-    LOG.info("{} {} is not initialized", entityType, entity.getFullyQualifiedName());
+    LOG.debug("{} {} is not initialized", entityType, entity.getFullyQualifiedName());
     entity.setUpdatedBy(ADMIN_USER_NAME);
     entity.setUpdatedAt(System.currentTimeMillis());
     entity.setId(UUID.randomUUID());
     create(null, entity);
-    LOG.info("Created a new {} {}", entityType, entity.getFullyQualifiedName());
+    LOG.debug("Created a new {} {}", entityType, entity.getFullyQualifiedName());
   }
 
   public final T copy(T entity, CreateEntity request, String updatedBy) {
@@ -2514,7 +2514,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
       } else if (fieldsChanged()) {
         newVersion = nextVersion(oldVersion);
       }
-      LOG.info(
+      LOG.debug(
           "{} {}->{} - Fields added {}, updated {}, deleted {}",
           original.getId(),
           oldVersion,
