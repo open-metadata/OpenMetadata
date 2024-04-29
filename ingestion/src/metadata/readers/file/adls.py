@@ -68,3 +68,23 @@ class ADLSReader(Reader):
         to traverse any directories.
         """
         raise NotImplementedError("Not implemented")
+
+    def download(
+        self,
+        path: str,
+        local_file_path: str,
+        *,
+        bucket_name: str = None,
+        verbose: bool = True,
+        **__,
+    ):
+        try:
+            container_client = self.client.get_container_client(bucket_name)
+            with open(local_file_path, "wb") as download_file:
+                download_file.write(
+                    container_client.get_blob_client(path).download_blob().readall()
+                )
+        except Exception as err:
+            if verbose:
+                logger.debug(traceback.format_exc())
+            raise ReadException(f"Error downloading file [{path}] from ADLS: {err}")
