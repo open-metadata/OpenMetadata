@@ -26,6 +26,7 @@
       "enum": [
         "Regular",
         "External",
+        "Dynamic",
         "View",
         "SecureView",
         "MaterializedView",
@@ -41,6 +42,9 @@
         },
         {
           "name": "External"
+        },
+        {
+          "name": "Dynamic"
         },
         {
           "name": "View"
@@ -1089,5 +1093,5 @@
     "name",
     "columns"
   ],
-  "additionalProperties": false
+  "additionalProperties": false 
 }
