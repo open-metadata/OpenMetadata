@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { MlFeature } from '../../../../generated/entity/data/mlmodel';
+import { SearchIndexField } from '../../../../generated/entity/data/searchIndex';
 import { Column } from '../../../../generated/entity/data/table';
 import { Field } from '../../../../generated/entity/data/topic';
 import { EntityReference } from '../../../../generated/entity/type';
@@ -25,4 +26,5 @@ export type EntityChildren =
   | Column[]
   | EntityReference[]
   | MlFeature[]
-  | Field[];
+  | Field[]
+  | SearchIndexField[];

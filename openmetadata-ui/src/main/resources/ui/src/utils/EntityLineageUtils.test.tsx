@@ -16,24 +16,27 @@ import { EdgeTypeEnum } from '../components/Entity/EntityLineage/EntityLineage.i
 import { EdgeDetails } from '../components/Lineage/Lineage.interface';
 import { SourceType } from '../components/SearchedData/SearchedData.interface';
 import { AddLineage } from '../generated/api/lineage/addLineage';
-import { MOCK_NODES_AND_EDGES } from '../mocks/Lineage.mock';
+import {
+  MOCK_CHILD_MAP,
+  MOCK_LINEAGE_DATA_NEW,
+  MOCK_NODES_AND_EDGES,
+  MOCK_PAGINATED_CHILD_MAP,
+} from '../mocks/Lineage.mock';
 import { addLineage } from '../rest/miscAPI';
 import {
   addLineageHandler,
   createNewEdge,
-  getAllTracedColumnEdge,
   getAllTracedEdges,
-  getAllTracedNodes,
-  getClassifiedEdge,
+  getChildMap,
   getColumnLineageData,
+  getColumnSourceTargetHandles,
   getConnectedNodesEdges,
   getLineageDetailsObject,
   getLineageEdge,
   getLineageEdgeForAPI,
+  getPaginatedChildMap,
   getUpdatedColumnsFromEdge,
   getUpstreamDownstreamNodesEdges,
-  isColumnLineageTraced,
-  isTracedEdge,
 } from './EntityLineageUtils';
 
 jest.mock('../rest/miscAPI', () => ({
@@ -42,34 +45,6 @@ jest.mock('../rest/miscAPI', () => ({
 
 // test
 describe('Test EntityLineageUtils utility', () => {
-  it('getAllTracedNodes & isTracedEdge function should work properly', () => {
-    const { nodes, edges } = MOCK_NODES_AND_EDGES;
-    const incomerNode = getAllTracedNodes(nodes[1], nodes, edges, [], true);
-    const outGoverNode = getAllTracedNodes(nodes[1], nodes, edges, [], false);
-    const noData = getAllTracedNodes(nodes[0], [], [], [], true);
-
-    const incomerNodeId = incomerNode.map((node) => node.id);
-    const outGoverNodeId = outGoverNode.map((node) => node.id);
-    const isTracedTruthy = isTracedEdge(
-      nodes[1],
-      edges[1],
-      incomerNodeId,
-      outGoverNodeId
-    );
-    const isTracedFalsy = isTracedEdge(
-      nodes[1],
-      edges[0],
-      incomerNodeId,
-      outGoverNodeId
-    );
-
-    expect(incomerNode).toStrictEqual([nodes[0]]);
-    expect(outGoverNode).toStrictEqual([]);
-    expect(isTracedTruthy).toBeTruthy();
-    expect(isTracedFalsy).toBeFalsy();
-    expect(noData).toMatchObject([]);
-  });
-
   it('getAllTracedEdges function should work properly', () => {
     const { edges } = MOCK_NODES_AND_EDGES;
     const selectedIncomerColumn =
@@ -86,46 +61,6 @@ describe('Test EntityLineageUtils utility', () => {
       'sample_data.ecommerce_db.shopify.raw_product_catalog.comments',
     ]);
     expect(noData).toStrictEqual([]);
-  });
-
-  it('getClassifiedEdge & getAllTracedColumnEdge function should work properly', () => {
-    const { edges } = MOCK_NODES_AND_EDGES;
-    const selectedColumn =
-      'sample_data.ecommerce_db.shopify.dim_location.location_id';
-    const classifiedEdges = getClassifiedEdge(edges);
-    const allTracedEdges = getAllTracedColumnEdge(
-      selectedColumn,
-      classifiedEdges.columnEdge
-    );
-    const isColumnTracedTruthy = isColumnLineageTraced(
-      selectedColumn,
-      edges[0],
-      allTracedEdges.incomingColumnEdges,
-      allTracedEdges.outGoingColumnEdges
-    );
-    const isColumnTracedFalsy = isColumnLineageTraced(
-      selectedColumn,
-      edges[1],
-      allTracedEdges.incomingColumnEdges,
-      allTracedEdges.outGoingColumnEdges
-    );
-
-    expect(classifiedEdges).toStrictEqual({
-      normalEdge: [edges[1]],
-      columnEdge: [edges[0]],
-    });
-    expect(allTracedEdges).toStrictEqual({
-      incomingColumnEdges: [
-        'sample_data.ecommerce_db.shopify.raw_product_catalog.comments',
-      ],
-      outGoingColumnEdges: [],
-      connectedColumnEdges: [
-        'sample_data.ecommerce_db.shopify.dim_location.location_id',
-        'sample_data.ecommerce_db.shopify.raw_product_catalog.comments',
-      ],
-    });
-    expect(isColumnTracedTruthy).toBeTruthy();
-    expect(isColumnTracedFalsy).toBeFalsy();
   });
 
   it('getLineageDetailsObject should return correct object', () => {
@@ -415,6 +350,62 @@ describe('Test EntityLineageUtils utility', () => {
         toColumn: 'shopId',
       },
     ]);
+  });
+
+  it('getChildMap should return valid map object', () => {
+    expect(
+      getChildMap(
+        MOCK_LINEAGE_DATA_NEW,
+        's3_storage_sample.departments.media.movies'
+      )
+    ).toEqual(MOCK_CHILD_MAP);
+  });
+
+  it('getPaginatedChildMap should return valid map object', () => {
+    expect(
+      getPaginatedChildMap(MOCK_LINEAGE_DATA_NEW, MOCK_CHILD_MAP, {}, 50)
+    ).toEqual(MOCK_PAGINATED_CHILD_MAP);
+  });
+
+  // generate test for getColumnSourceTargetHandles
+  describe('getColumnSourceTargetHandles', () => {
+    it('should handle various states of source and target handles correctly', () => {
+      // Test with both handles defined
+      const obj1 = {
+        sourceHandle: 'c291cmNlSGFuZGxl',
+        targetHandle: 'dGFyZ2V0SGFuZGxl',
+      };
+      const result1 = getColumnSourceTargetHandles(obj1);
+
+      expect(result1).toEqual({
+        sourceHandle: 'sourceHandle',
+        targetHandle: 'targetHandle',
+      });
+
+      // Test with null source handle
+      const obj2 = {
+        sourceHandle: null,
+        targetHandle: 'dGFyZ2V0SGFuZGxl',
+      };
+      const result2 = getColumnSourceTargetHandles(obj2);
+
+      expect(result2).toEqual({
+        sourceHandle: null,
+        targetHandle: 'targetHandle',
+      });
+
+      // Test with null target handle
+      const obj3 = {
+        sourceHandle: 'c291cmNlSGFuZGxl',
+        targetHandle: null,
+      };
+      const result3 = getColumnSourceTargetHandles(obj3);
+
+      expect(result3).toEqual({
+        sourceHandle: 'sourceHandle',
+        targetHandle: null,
+      });
+    });
   });
 
   describe('createNewEdge', () => {

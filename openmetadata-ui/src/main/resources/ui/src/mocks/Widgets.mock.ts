@@ -32,7 +32,7 @@ export const MOCK_PASSWORD_WIDGET = {
     formate: 'password',
   },
   uiSchema: {},
-  value: 'testing',
+  value: '******',
 };
 
 export const MOCK_SSL_FILE_CONTENT = `-----BEGIN CERTIFICATE-----MIIDrzCCApegAwIBAgIQCDvgVpBCRrGhdWrJWZHHSjANBgkqhkiG9w04=-----END CERTIFICATE-----`;
