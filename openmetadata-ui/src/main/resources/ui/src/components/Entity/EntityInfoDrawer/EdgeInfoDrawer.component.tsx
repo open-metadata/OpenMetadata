@@ -75,16 +75,23 @@ const EdgeInfoDrawer = ({
       }
     });
 
+    const {
+      entityType: sourceEntityType = '',
+      fullyQualifiedName: sourceFqn = '',
+    } = sourceData?.data?.node ?? {};
+
+    const {
+      entityType: targetEntityType = '',
+      fullyQualifiedName: targetFqn = '',
+    } = targetData?.data?.node ?? {};
+
     setEdgeData({
       sourceData: {
         key: t('label.source'),
         value: sourceData && getEntityName(sourceData?.data?.node),
         link:
           sourceData &&
-          entityUtilClassBase.getEntityLink(
-            data.sourceType,
-            sourceData.data.node.fullyQualifiedName
-          ),
+          entityUtilClassBase.getEntityLink(sourceEntityType, sourceFqn),
       },
       sourceColumn: {
         key: t('label.source-column'),
@@ -95,10 +102,7 @@ const EdgeInfoDrawer = ({
         value: targetData ? getEntityName(targetData?.data?.node) : undefined,
         link:
           targetData &&
-          entityUtilClassBase.getEntityLink(
-            data.targetData,
-            targetData.data.node.fullyQualifiedName
-          ),
+          entityUtilClassBase.getEntityLink(targetEntityType, targetFqn),
       },
       targetColumn: {
         key: t('label.target-column'),

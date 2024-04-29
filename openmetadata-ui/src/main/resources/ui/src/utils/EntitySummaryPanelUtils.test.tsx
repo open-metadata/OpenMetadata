@@ -85,6 +85,16 @@ describe('EntitySummaryPanelUtils tests', () => {
 
       expect(resultFormattedData).toEqual(mockInvalidDataResponse);
     });
+
+    it('getFormattedEntityData should render nesting for schema fields', () => {
+      const resultFormattedData = getFormattedEntityData(
+        SummaryEntityType.SCHEMAFIELD,
+        mockEntityDataWithNesting,
+        mockHighlights
+      );
+
+      expect(resultFormattedData).toEqual(mockEntityDataWithNestingResponse);
+    });
   });
 
   describe('getSortedTagsWithHighlight', () => {

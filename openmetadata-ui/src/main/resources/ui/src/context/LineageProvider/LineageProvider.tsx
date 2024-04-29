@@ -1183,6 +1183,20 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
     }
   }, [isEditMode, deletePressed, backspacePressed, activeNode, selectedEdge]);
 
+  useEffect(() => {
+    const { node, edge } = getLayoutedElements(
+      {
+        node: nodes,
+        edge: edges,
+      },
+      EntityLineageDirection.LEFT_RIGHT,
+      activeLayer.includes(LineageLayerView.COLUMN)
+    );
+
+    setNodes(node);
+    setEdges(edge);
+  }, [activeLayer]);
+
   const activityFeedContextValues = useMemo(() => {
     return {
       isDrawerOpen,
