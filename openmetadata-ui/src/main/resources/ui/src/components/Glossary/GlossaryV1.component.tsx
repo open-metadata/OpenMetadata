@@ -53,7 +53,7 @@ import GlossaryTermsV1 from './GlossaryTerms/GlossaryTermsV1.component';
 import { GlossaryV1Props } from './GlossaryV1.interfaces';
 import './glossaryV1.less';
 import ImportGlossary from './ImportGlossary/ImportGlossary';
-import { ModifiedGlossary, useGlossaryStore } from './useGlossary.store';
+import { useGlossaryStore } from './useGlossary.store';
 
 const GlossaryV1 = ({
   isGlossaryActive,
@@ -78,7 +78,8 @@ const GlossaryV1 = ({
     ThreadType.Conversation
   );
   const { postFeed, deleteFeed, updateFeed } = useActivityFeedProvider();
-
+  const [activeGlossaryTerm, setActiveGlossaryTerm] =
+    useState<GlossaryTerm | null>(null);
   const { getEntityPermission } = usePermissionProvider();
   const [isLoading, setIsLoading] = useState(true);
   const [isTermsLoading, setIsTermsLoading] = useState(false);
@@ -95,8 +96,7 @@ const GlossaryV1 = ({
 
   const [editMode, setEditMode] = useState(false);
 
-  const { activeGlossary, setActiveGlossary, updateActiveGlossary } =
-    useGlossaryStore();
+  const { activeGlossary, updateActiveGlossary } = useGlossaryStore();
 
   const { id, fullyQualifiedName } = activeGlossary ?? {};
 
@@ -198,10 +198,10 @@ const GlossaryV1 = ({
 
   const handleGlossaryTermModalAction = (
     editMode: boolean,
-    glossaryTerm: GlossaryTerm | undefined
+    glossaryTerm: GlossaryTerm | null
   ) => {
     setEditMode(editMode);
-    setActiveGlossary((glossaryTerm ?? {}) as ModifiedGlossary);
+    setActiveGlossaryTerm(glossaryTerm);
     setIsEditModalOpen(true);
   };
 
@@ -261,9 +261,9 @@ const GlossaryV1 = ({
           (item) => item.fullyQualifiedName || ''
         ),
         glossary:
-          (activeGlossary as GlossaryTerm)?.glossary?.name ||
+          activeGlossaryTerm?.glossary?.name ||
           (selectedData.fullyQualifiedName ?? ''),
-        parent: activeGlossary?.fullyQualifiedName,
+        parent: activeGlossaryTerm?.fullyQualifiedName,
       });
       onTermModalSuccess();
     } catch (error) {
@@ -289,9 +289,9 @@ const GlossaryV1 = ({
   };
 
   const handleGlossaryTermSave = async (formData: GlossaryTermForm) => {
-    const newTermData = cloneDeep(activeGlossary as GlossaryTerm);
+    const newTermData = cloneDeep(activeGlossaryTerm);
     if (editMode) {
-      if (newTermData && activeGlossary) {
+      if (newTermData && activeGlossaryTerm) {
         const {
           name,
           displayName,
@@ -320,7 +320,7 @@ const GlossaryV1 = ({
           id: term,
           type: 'glossaryTerm',
         }));
-        await updateGlossaryTerm(activeGlossary as GlossaryTerm, newTermData);
+        await updateGlossaryTerm(activeGlossaryTerm, newTermData);
       }
     } else {
       await handleGlossaryTermAdd(formData);
@@ -359,10 +359,10 @@ const GlossaryV1 = ({
             updateGlossary={updateGlossary}
             updateVote={updateVote}
             onAddGlossaryTerm={(term) =>
-              handleGlossaryTermModalAction(false, term)
+              handleGlossaryTermModalAction(false, term ?? null)
             }
             onEditGlossaryTerm={(term) =>
-              handleGlossaryTermModalAction(true, term)
+              handleGlossaryTermModalAction(true, term ?? null)
             }
             onThreadLinkSelect={onThreadLinkSelect}
           />
@@ -379,7 +379,7 @@ const GlossaryV1 = ({
             termsLoading={isTermsLoading}
             updateVote={updateVote}
             onAddGlossaryTerm={(term) =>
-              handleGlossaryTermModalAction(false, term)
+              handleGlossaryTermModalAction(false, term ?? null)
             }
             onAssetClick={onAssetClick}
             onEditGlossaryTerm={(term) =>
@@ -403,7 +403,7 @@ const GlossaryV1 = ({
       {isEditModalOpen && (
         <GlossaryTermModal
           editMode={editMode}
-          glossaryTermFQN={activeGlossary?.fullyQualifiedName}
+          glossaryTermFQN={activeGlossaryTerm?.fullyQualifiedName}
           visible={isEditModalOpen}
           onCancel={() => setIsEditModalOpen(false)}
           onSave={handleGlossaryTermSave}

@@ -13,16 +13,7 @@
 
 import { FilterOutlined } from '@ant-design/icons';
 import Icon from '@ant-design/icons/lib/components/Icon';
-import {
-  Button,
-  Col,
-  Modal,
-  Row,
-  Space,
-  Table,
-  TableProps,
-  Tooltip,
-} from 'antd';
+import { Button, Col, Modal, Row, Space, TableProps, Tooltip } from 'antd';
 import { ColumnsType, ExpandableConfig } from 'antd/lib/table/interface';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
@@ -61,6 +52,7 @@ import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import {
   getFirstLevelGlossaryTerms,
   getGlossaryTerms,
+  GlossaryTermWithChildren,
   patchGlossaryTerm,
 } from '../../../rest/glossaryAPI';
 import { Transi18next } from '../../../utils/CommonUtils';
@@ -76,6 +68,7 @@ import { getGlossaryPath } from '../../../utils/RouterUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { DraggableBodyRowProps } from '../../common/Draggable/DraggableBodyRowProps.interface';
 import Loader from '../../common/Loader/Loader';
+import Table from '../../common/Table/Table';
 import { ModifiedGlossary, useGlossaryStore } from '../useGlossary.store';
 import {
   GlossaryTermTabProps,
@@ -258,15 +251,15 @@ const GlossaryTermTab = ({
 
   const expandableConfig: ExpandableConfig<ModifiedGlossaryTerm> = useMemo(
     () => ({
-      expandIcon: ({ expanded, onExpand, record }) =>
-        record.childrenCount ?? record.children?.length ?? 0 > 0 ? (
+      expandIcon: ({ expanded, onExpand, record }) => {
+        expandableKeys.current = [
+          ...expandableKeys.current,
+          record.fullyQualifiedName || '',
+        ];
+        const { children, childrenCount } = record;
+
+        return childrenCount ?? children?.length ?? 0 > 0 ? (
           <>
-            {
-              (expandableKeys.current = [
-                ...expandableKeys.current,
-                record.fullyQualifiedName || '',
-              ])
-            }
             <IconDrag className="m-r-xs drag-icon" height={12} width={8} />
             <Icon
               className="m-r-xs vertical-baseline"
@@ -281,28 +274,39 @@ const GlossaryTermTab = ({
             <IconDrag className="m-r-xs drag-icon" height={12} width={8} />
             <span className="expand-cell-empty-icon-container" />
           </>
-        ),
+        );
+      },
       expandedRowKeys: expandedRowKeys,
       onExpand: async (expanded, record) => {
-        if (expanded && !record.children?.length) {
-          setIsTableLoading(true);
-          const { data } = await getFirstLevelGlossaryTerms(
-            record.fullyQualifiedName || ''
+        if (expanded) {
+          let children = record.children as GlossaryTermWithChildren[];
+          if (!children?.length) {
+            const { data } = await getFirstLevelGlossaryTerms(
+              record.fullyQualifiedName || ''
+            );
+            const terms = cloneDeep(glossaryTerms) ?? [];
+
+            const item = findGlossaryTermByFqn(
+              terms,
+              record.fullyQualifiedName ?? ''
+            );
+
+            (item as ModifiedGlossary).children = data;
+
+            updateActiveGlossary({ children: terms });
+
+            children = data;
+          }
+          setExpandedRowKeys([
+            ...expandedRowKeys,
+            record.fullyQualifiedName || '',
+          ]);
+
+          return children;
+        } else {
+          setExpandedRowKeys(
+            expandedRowKeys.filter((key) => key !== record.fullyQualifiedName)
           );
-          const children = cloneDeep(glossaryTerms) ?? [];
-
-          const item = findGlossaryTermByFqn(
-            children,
-            record.fullyQualifiedName ?? ''
-          );
-
-          (item as ModifiedGlossary).children = data;
-
-          updateActiveGlossary({ children });
-
-          setIsTableLoading(false);
-
-          return data;
         }
 
         return <Loader />;
