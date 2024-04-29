@@ -24,6 +24,8 @@ from metadata.generated.schema.entity.data.searchIndex import SearchIndex
 from metadata.generated.schema.entity.data.storedProcedure import StoredProcedure
 from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.data.topic import Topic
+from metadata.generated.schema.entity.domains.dataProduct import DataProduct
+from metadata.generated.schema.entity.domains.domain import Domain
 from metadata.generated.schema.entity.services.dashboardService import DashboardService
 from metadata.generated.schema.entity.services.databaseService import DatabaseService
 from metadata.generated.schema.entity.services.messagingService import MessagingService
@@ -34,10 +36,6 @@ from metadata.generated.schema.entity.services.searchService import SearchServic
 from metadata.generated.schema.entity.services.storageService import StorageService
 from metadata.generated.schema.entity.teams.team import Team
 from metadata.generated.schema.entity.teams.user import User
-
-from metadata.generated.schema.entity.domains.domain import Domain
-
-from metadata.generated.schema.entity.domains.dataProduct import DataProduct
 
 DOT = "_DOT_"
 TEN_MIN = 10 * 60
