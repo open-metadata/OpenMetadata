@@ -78,12 +78,12 @@ const EdgeInfoDrawer = ({
     const {
       entityType: sourceEntityType = '',
       fullyQualifiedName: sourceFqn = '',
-    } = sourceData?.data?.node;
+    } = sourceData?.data?.node ?? {};
 
     const {
       entityType: targetEntityType = '',
       fullyQualifiedName: targetFqn = '',
-    } = targetData?.data?.node;
+    } = targetData?.data?.node ?? {};
 
     setEdgeData({
       sourceData: {

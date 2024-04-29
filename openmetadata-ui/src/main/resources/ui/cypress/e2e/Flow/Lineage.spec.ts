@@ -43,6 +43,10 @@ const performZoomOut = () => {
   }
 };
 
+const performFitToView = () => {
+  cy.get('.react-flow__controls-fitview').click({ force: true });
+};
+
 const connectEdgeBetweenNodes = (fromNode, toNode) => {
   interceptURL('PUT', '/api/v1/lineage', 'lineageApi');
   const type = toNode.searchIndex;
@@ -242,13 +246,14 @@ describe('Lineage verification', { tags: 'DataAssets' }, () => {
       for (let i = 0; i < LINEAGE_ITEMS.length; i++) {
         if (i !== index) {
           connectEdgeBetweenNodes(entity, LINEAGE_ITEMS[i]);
+          performFitToView();
         }
       }
 
       cy.get('[data-testid="edit-lineage"]').click();
       cy.reload();
 
-      performZoomOut();
+      performFitToView();
 
       // Verify Added Nodes
       for (let i = 0; i < LINEAGE_ITEMS.length; i++) {
@@ -270,7 +275,7 @@ describe('Lineage verification', { tags: 'DataAssets' }, () => {
       cy.get('[data-testid="lineage"]').click();
       cy.get('[data-testid="edit-lineage"]').click();
 
-      performZoomOut();
+      performFitToView();
 
       // Delete Nodes
       for (let i = 0; i < LINEAGE_ITEMS.length; i++) {
