@@ -449,6 +449,7 @@ class SnowflakeSource(
             TableType.Regular: {},
             TableType.External: {"external_tables": True},
             TableType.Transient: {"include_transient_tables": True},
+            TableType.Dynamic: {"dynamic_tables": True},
         }
 
         snowflake_tables = self.inspector.get_table_names(
@@ -491,6 +492,10 @@ class SnowflakeSource(
 
         table_list.extend(
             self._get_table_names_and_types(schema_name, table_type=TableType.External)
+        )
+
+        table_list.extend(
+            self._get_table_names_and_types(schema_name, table_type=TableType.Dynamic)
         )
 
         if self.service_connection.includeTransientTables:
