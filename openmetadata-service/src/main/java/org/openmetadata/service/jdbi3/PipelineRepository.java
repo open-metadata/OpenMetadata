@@ -206,16 +206,14 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
         addPipelineStatusChangeDescription(
             pipeline.getVersion(), pipelineStatus, storedPipelineStatus);
     pipeline.setPipelineStatus(pipelineStatus);
+    pipeline.setChangeDescription(change);
 
     // Update ES Indexes
     searchRepository.updateEntity(pipeline);
 
     return new RestUtil.PutResponse<>(
         Response.Status.OK,
-        pipeline
-            .withPipelineStatus(pipelineStatus)
-            .withUpdatedAt(System.currentTimeMillis())
-            .withChangeDescription(change),
+        pipeline.withPipelineStatus(pipelineStatus).withUpdatedAt(System.currentTimeMillis()),
         ENTITY_UPDATED);
   }
 
