@@ -300,6 +300,12 @@
             "type": "text"
           }
         }
+      },
+      "fqnParts": {
+        "type": "keyword"
+      },
+      "suggest": {
+        "type": "completion"
       }
     }
   }

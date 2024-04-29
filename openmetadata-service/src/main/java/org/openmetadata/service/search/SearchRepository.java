@@ -37,6 +37,7 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.SortedMap;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import javax.json.JsonObject;
 import javax.ws.rs.core.Response;
 import lombok.Getter;
@@ -502,26 +503,6 @@ public class SearchRepository {
     }
   }
 
-  public void deleteEntity(EntityReference entityReference) {
-    if (entityReference != null) {
-      String entityId = entityReference.getId().toString();
-      String entityType = entityReference.getType();
-      IndexMapping indexMapping = entityIndexMap.get(entityType);
-      try {
-        searchClient.deleteEntity(indexMapping.getIndexName(clusterAlias), entityId);
-      } catch (Exception ie) {
-        LOG.error(
-            String.format(
-                "Issue in Deleting the search document for entityID [%s] and entityType [%s]. Reason[%s], Cause[%s], Stack [%s]",
-                entityId,
-                entityType,
-                ie.getMessage(),
-                ie.getCause(),
-                ExceptionUtils.getStackTrace(ie)));
-      }
-    }
-  }
-
   public void deleteTimeSeriesEntityById(EntityTimeSeriesInterface entity) {
     if (entity != null) {
       String entityId = entity.getId().toString();
@@ -565,31 +546,17 @@ public class SearchRepository {
     }
   }
 
-  public void softDeleteOrRestoreEntity(EntityReference entityReference, boolean delete) {
-    if (entityReference != null) {
-      String entityId = entityReference.getId().toString();
-      String entityType = entityReference.getType();
-      IndexMapping indexMapping = entityIndexMap.get(entityType);
-      String scriptTxt = String.format(SOFT_DELETE_RESTORE_SCRIPT, delete);
-      try {
-        searchClient.softDeleteOrRestoreEntity(
-            indexMapping.getIndexName(clusterAlias), entityId, scriptTxt);
-      } catch (Exception ie) {
-        LOG.error(
-            String.format(
-                "Issue in Soft Deleting the search document for entityID [%s] and entityType [%s]. Reason[%s], Cause[%s], Stack [%s]",
-                entityId,
-                entityType,
-                ie.getMessage(),
-                ie.getCause(),
-                ExceptionUtils.getStackTrace(ie)));
-      }
-    }
-  }
-
   public void deleteOrUpdateChildren(EntityInterface entity, IndexMapping indexMapping) {
     String docId = entity.getId().toString();
     String entityType = entity.getEntityReference().getType();
+    List<String> testRelatedAliases = indexMapping
+            .getChildAliases(clusterAlias)
+            .stream().filter(
+                    alias ->
+                            alias.contains("testCase") ||
+                                    alias.contains("testCaseResolutionStatus") ||
+                                    alias.contains("testSuite")
+            ).collect(Collectors.toList());
     switch (entityType) {
       case Entity.DOMAIN -> {
         searchClient.updateChildren(
@@ -614,6 +581,9 @@ public class SearchRepository {
           searchClient.deleteEntityByFields(
               indexMapping.getChildAliases(clusterAlias),
               List.of(new ImmutablePair<>("testSuite.id", docId)));
+          searchClient.deleteEntityByFields(
+                  testRelatedAliases,
+                  List.of(new ImmutablePair<>("fqnParts", entity.getFullyQualifiedName())));
         } else {
           searchClient.updateChildren(
               indexMapping.getChildAliases(clusterAlias),
@@ -627,12 +597,28 @@ public class SearchRepository {
           Entity.PIPELINE_SERVICE,
           Entity.MLMODEL_SERVICE,
           Entity.STORAGE_SERVICE,
-          Entity.SEARCH_SERVICE -> searchClient.deleteEntityByFields(
-          indexMapping.getChildAliases(clusterAlias),
-          List.of(new ImmutablePair<>("service.id", docId)));
-      default -> searchClient.deleteEntityByFields(
-          indexMapping.getChildAliases(clusterAlias),
-          List.of(new ImmutablePair<>(entityType + ".id", docId)));
+          Entity.SEARCH_SERVICE -> {
+        searchClient.deleteEntityByFields(
+                indexMapping.getChildAliases(clusterAlias),
+                List.of(new ImmutablePair<>("service.id", docId)));
+        if (!nullOrEmpty(testRelatedAliases)) {
+            searchClient.deleteEntityByFields(
+                    testRelatedAliases,
+                    List.of(new ImmutablePair<>("fqnParts", entity.getFullyQualifiedName())));
+
+        }
+      }
+      default -> {
+        searchClient.deleteEntityByFields(
+                indexMapping.getChildAliases(clusterAlias),
+                List.of(new ImmutablePair<>(entityType + ".id", docId)));
+        if (!nullOrEmpty(testRelatedAliases)) {
+          searchClient.deleteEntityByFields(
+                  testRelatedAliases,
+                  List.of(new ImmutablePair<>("fqnParts", entity.getFullyQualifiedName())));
+
+        }
+      }
     }
   }
 
