@@ -17,7 +17,7 @@ import { EntityReference } from '../../../generated/entity/teams/user';
 export interface UserSelectDropdownProps {
   hasPermission: boolean;
   owner?: EntityReference;
-  onUpdate?: (updatedUser?: EntityReference) => void | Promise<void>;
+  onUpdate: (updatedUser?: EntityReference) => void | Promise<void>;
   children?: ReactNode;
   popoverProps?: PopoverProps;
 }
