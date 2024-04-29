@@ -31,12 +31,14 @@ from metadata.ingestion.source.database.snowflake.models import (
 )
 from metadata.ingestion.source.database.snowflake.queries import (
     SNOWFLAKE_GET_COMMENTS,
+    SNOWFLAKE_GET_DYNAMIC_TABLE_NAMES,
     SNOWFLAKE_GET_EXTERNAL_TABLE_NAMES,
     SNOWFLAKE_GET_MVIEW_NAMES,
     SNOWFLAKE_GET_SCHEMA_COLUMNS,
     SNOWFLAKE_GET_TRANSIENT_NAMES,
     SNOWFLAKE_GET_VIEW_NAMES,
     SNOWFLAKE_GET_WITHOUT_TRANSIENT_TABLE_NAMES,
+    SNOWFLAKE_INCREMENTAL_GET_DYNAMIC_TABLE_NAMES,
     SNOWFLAKE_INCREMENTAL_GET_EXTERNAL_TABLE_NAMES,
     SNOWFLAKE_INCREMENTAL_GET_MVIEW_NAMES,
     SNOWFLAKE_INCREMENTAL_GET_TRANSIENT_NAMES,
@@ -58,11 +60,13 @@ TABLE_QUERY_MAPS = {
         "default": SNOWFLAKE_GET_WITHOUT_TRANSIENT_TABLE_NAMES,
         "transient_tables": SNOWFLAKE_GET_TRANSIENT_NAMES,
         "external_tables": SNOWFLAKE_GET_EXTERNAL_TABLE_NAMES,
+        "dynamic_tables": SNOWFLAKE_GET_DYNAMIC_TABLE_NAMES,
     },
     "incremental": {
         "default": SNOWFLAKE_INCREMENTAL_GET_WITHOUT_TRANSIENT_TABLE_NAMES,
         "transient_tables": SNOWFLAKE_INCREMENTAL_GET_TRANSIENT_NAMES,
         "external_tables": SNOWFLAKE_INCREMENTAL_GET_EXTERNAL_TABLE_NAMES,
+        "dynamic_tables": SNOWFLAKE_INCREMENTAL_GET_DYNAMIC_TABLE_NAMES,
     },
 }
 
@@ -168,6 +172,9 @@ def get_table_names(self, connection, schema: str, **kw):
 
     if kw.get("external_tables"):
         query = queries["external_tables"]
+
+    if kw.get("dynamic_tables"):
+        query = queries["dynamic_tables"]
 
     cursor = connection.execute(query.format(**parameters))
     result = SnowflakeTableList(
