@@ -686,6 +686,21 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
       updateParent(original, updated);
     }
 
+    private boolean validateIfTagsAreEqual(
+        List<TagLabel> originalTags, List<TagLabel> updatedTags) {
+      Set<String> originalTagsFqn =
+          originalTags.stream()
+              .map(TagLabel::getTagFQN)
+              .collect(Collectors.toCollection(TreeSet::new));
+      Set<String> updatedTagsFqn =
+          updatedTags.stream()
+              .map(TagLabel::getTagFQN)
+              .collect(Collectors.toCollection(TreeSet::new));
+
+      // Validate if both are exactly equal
+      return originalTagsFqn.equals(updatedTagsFqn);
+    }
+
     @Override
     protected void updateTags(
         String fqn, String fieldName, List<TagLabel> origTags, List<TagLabel> updatedTags) {
@@ -697,6 +712,11 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
       updatedTags = Optional.ofNullable(updatedTags).orElse(new ArrayList<>());
       if (origTags.isEmpty() && updatedTags.isEmpty()) {
         return; // Nothing to update
+      }
+
+      // If equal return
+      if (validateIfTagsAreEqual(origTags, updatedTags)) {
+        return;
       }
 
       List<String> targetFQNHashes = daoCollection.tagUsageDAO().getTargetFQNHashForTag(fqn);
