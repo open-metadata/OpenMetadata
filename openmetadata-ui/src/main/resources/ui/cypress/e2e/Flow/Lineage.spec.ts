@@ -21,13 +21,19 @@ import {
 
 const dataTransfer = new DataTransfer();
 
-const dragConnection = (sourceId, targetId) => {
-  cy.get(`[data-testid="${sourceId}"] .react-flow__handle-right`).click({
+const dragConnection = (sourceId, targetId, isColumnLineage = false) => {
+  const selector = !isColumnLineage
+    ? '.lineage-node-handle'
+    : '.lineage-column-node-handle';
+
+  cy.get(
+    `[data-testid="${sourceId}"] ${selector}.react-flow__handle-right`
+  ).click({
     force: true,
   }); // Adding force true for handles because it can be hidden behind the node
 
   return cy
-    .get(`[data-testid="${targetId}"] .react-flow__handle-left`)
+    .get(`[data-testid="${targetId}"] ${selector}.react-flow__handle-left`)
     .click({ force: true }); // Adding force true for handles because it can be hidden behind the node
 };
 
@@ -198,18 +204,19 @@ const expandCols = (nodeFqn, hasShowMore) => {
 
 const addColumnLineage = (fromNode, toNode, exitEditMode = true) => {
   interceptURL('PUT', '/api/v1/lineage', 'lineageApi');
-  expandCols(fromNode.fqn, false);
-  expandCols(toNode.fqn, toNode.entityType === EntityType.Table);
   dragConnection(
     `column-${fromNode.columns[0]}`,
-    `column-${toNode.columns[0]}`
+    `column-${toNode.columns[0]}`,
+    true
   );
   verifyResponseStatusCode('@lineageApi', 200);
   if (exitEditMode) {
     cy.get('[data-testid="edit-lineage"]').click();
   }
   cy.get(
-    `[data-testid="column-edge-${fromNode.columns[0]}-${toNode.columns[0]}"]`
+    `[data-testid="column-edge-${btoa(fromNode.columns[0])}-${btoa(
+      toNode.columns[0]
+    )}"]`
   );
 };
 

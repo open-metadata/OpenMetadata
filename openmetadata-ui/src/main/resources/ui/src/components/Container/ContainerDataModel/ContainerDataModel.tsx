@@ -175,7 +175,9 @@ const ContainerDataModel: FC<ContainerDataModelProps> = ({
         filterIcon: (filtered) => (
           <FilterOutlined
             data-testid="tag-filter"
-            style={{ color: filtered ? theme.primaryColor : undefined }}
+            style={{
+              color: filtered ? theme.primaryColor : undefined,
+            }}
           />
         ),
         filters: tagFilter.Classification,
@@ -205,7 +207,9 @@ const ContainerDataModel: FC<ContainerDataModelProps> = ({
         filterIcon: (filtered) => (
           <FilterOutlined
             data-testid="glossary-filter"
-            style={{ color: filtered ? theme.primaryColor : undefined }}
+            style={{
+              color: filtered ? theme.primaryColor : undefined,
+            }}
           />
         ),
         filters: tagFilter.Glossary,

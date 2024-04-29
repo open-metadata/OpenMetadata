@@ -10,7 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { EntityType } from '../../new-tests/base/EntityClass';
+
+import { EntityType } from '../../constants/Entity.interface';
 import { interceptURL, verifyResponseStatusCode } from '../common';
 
 export const assignTags = (tag: string, endPoint: EntityType) => {
@@ -23,9 +24,6 @@ export const assignTags = (tag: string, endPoint: EntityType) => {
 
   cy.get(`[data-testid="tag-${tag}"]`).click();
 
-  // to close popup
-  cy.clickOutside();
-
   cy.get(
     `[data-testid="tag-selector"] [data-testid="selected-tag-${tag}"]`
   ).should('be.visible');
@@ -37,7 +35,7 @@ export const assignTags = (tag: string, endPoint: EntityType) => {
   ).should('be.visible');
 };
 
-export const udpateTags = (tag: string, endPoint: EntityType) => {
+export const updateTags = (tag: string, endPoint: EntityType) => {
   interceptURL('PATCH', `/api/v1/${endPoint}/*`, 'addTags');
   cy.get(
     '[data-testid="entity-right-panel"]  [data-testid="tags-container"] [data-testid="edit-button"]'
@@ -46,9 +44,6 @@ export const udpateTags = (tag: string, endPoint: EntityType) => {
   cy.get('[data-testid="tag-selector"] input').should('be.visible').type(tag);
 
   cy.get(`[data-testid="tag-${tag}"]`).click();
-
-  // to close popup
-  cy.clickOutside();
 
   cy.get(
     `[data-testid="tag-selector"] [data-testid="selected-tag-${tag}"]`
