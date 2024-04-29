@@ -47,7 +47,7 @@ from metadata.ingestion.source.database.databricks.queries import (
     DATABRICKS_GET_CATALOGS_TAGS,
     DATABRICKS_GET_COLUMN_TAGS,
     DATABRICKS_GET_SCHEMA_TAGS,
-    DATABRICKS_GET_TABLE_COMMENTS_WC,
+    DATABRICKS_GET_TABLE_COMMENTS,
     DATABRICKS_GET_TABLE_TAGS,
     DATABRICKS_VIEW_DEFINITIONS,
 )
@@ -159,20 +159,13 @@ def get_columns(self, connection, table_name, schema=None, **kw):
             "system_data_type": raw_col_type,
         }
         if col_type in {"array", "struct", "map"}:
-            if db_name and schema:
-                rows = dict(
-                    connection.execute(
-                        f"DESCRIBE {db_name}.{schema}.{table_name} {col_name}"
-                    ).fetchall()
-                )
-            else:
-                rows = dict(
-                    connection.execute(
-                        f"DESCRIBE {schema}.{table_name} {col_name}"
-                        if schema
-                        else f"DESCRIBE {table_name} {col_name}"
-                    ).fetchall()
-                )
+            rows = dict(
+                connection.execute(
+                    f"DESCRIBE {schema}.{table_name} {col_name}"
+                    if schema
+                    else f"DESCRIBE {table_name} {col_name}"
+                ).fetchall()
+            )
 
             col_info["system_data_type"] = rows["data_type"]
             col_info["is_complex"] = True
@@ -224,7 +217,7 @@ def get_table_comment(  # pylint: disable=unused-argument
     Returns comment of table
     """
     cursor = connection.execute(
-        DATABRICKS_GET_TABLE_COMMENTS_WC.format(
+        DATABRICKS_GET_TABLE_COMMENTS.format(
             schema_name=schema_name, table_name=table_name
         )
     )
@@ -599,7 +592,7 @@ class DatabricksSource(ExternalTableLineageMixin, CommonDbSourceService, MultiDB
         description = None
         try:
             cursor = self.connection.execute(
-                DATABRICKS_GET_TABLE_COMMENTS_WC.format(
+                DATABRICKS_GET_TABLE_COMMENTS.format(
                     schema_name=schema_name, table_name=table_name
                 )
             )
