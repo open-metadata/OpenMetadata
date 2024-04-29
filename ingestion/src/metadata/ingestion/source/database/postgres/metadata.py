@@ -56,6 +56,7 @@ from metadata.ingestion.source.database.postgres.utils import (
     get_column_info,
     get_columns,
     get_etable_owner,
+    get_foreign_keys,
     get_table_comment,
     get_table_owner,
     get_view_definition,
@@ -124,6 +125,8 @@ PGDialect.get_table_owner = get_table_owner
 PGDialect.ischema_names = ischema_names
 
 Inspector.get_table_owner = get_etable_owner
+
+PGDialect.get_foreign_keys = get_foreign_keys
 
 
 class PostgresSource(CommonDbSourceService, MultiDBSource):
