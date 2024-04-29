@@ -67,7 +67,6 @@ export const POSITION_Y = 60;
 
 export const NODE_WIDTH = 400;
 export const NODE_HEIGHT = 90;
-export const EXPANDED_NODE_HEIGHT = 350;
 
 export const ELEMENT_DELETE_STATE = {
   loading: false,
