@@ -73,6 +73,7 @@ select TABLE_NAME, NULL from information_schema.tables
 where TABLE_SCHEMA = '{schema}'
 AND TABLE_TYPE = 'BASE TABLE'
 AND IS_TRANSIENT != 'YES'
+AND IS_DYNAMIC != 'YES'
 """
 
 SNOWFLAKE_INCREMENTAL_GET_WITHOUT_TRANSIENT_TABLE_NAMES = """
@@ -89,6 +90,7 @@ from (
     and TABLE_SCHEMA = '{schema}'
     and TABLE_TYPE = 'BASE TABLE'
     and IS_TRANSIENT != 'YES'
+    AND IS_DYNAMIC != 'YES'
     and DATE_PART(epoch_millisecond, LAST_DDL) >= '{date}'
 )
 where ROW_NUMBER = 1
@@ -161,6 +163,32 @@ from (
     and TABLE_SCHEMA = '{schema}'
     and TABLE_TYPE = 'BASE TABLE'
     and IS_TRANSIENT = 'YES'
+    and DATE_PART(epoch_millisecond, LAST_DDL) >= '{date}'
+)
+where ROW_NUMBER = 1
+"""
+
+SNOWFLAKE_GET_DYNAMIC_TABLE_NAMES = """
+select TABLE_NAME, NULL from information_schema.tables
+where TABLE_SCHEMA = '{schema}'
+AND TABLE_TYPE = 'BASE TABLE'
+AND IS_DYNAMIC = 'YES'
+"""
+
+SNOWFLAKE_INCREMENTAL_GET_DYNAMIC_TABLE_NAMES = """
+select TABLE_NAME, DELETED
+from (
+    select
+        TABLE_NAME,
+        DELETED,
+        ROW_NUMBER() over (
+            partition by TABLE_NAME order by LAST_DDL desc
+        ) as ROW_NUMBER
+    from snowflake.account_usage.tables
+    where TABLE_CATALOG = '{database}'
+    and TABLE_SCHEMA = '{schema}'
+    and TABLE_TYPE = 'BASE TABLE'
+    and IS_DYNAMIC = 'YES'
     and DATE_PART(epoch_millisecond, LAST_DDL) >= '{date}'
 )
 where ROW_NUMBER = 1
