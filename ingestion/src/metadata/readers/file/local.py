@@ -78,3 +78,15 @@ class LocalReader(Reader):
                     file_paths.append(f"{root}/{fle}")
 
         return file_paths
+
+    def download(
+        self,
+        path: str,
+        local_file_path: str,
+        *,
+        bucket_name: str = None,
+        verbose: bool = True,
+        **__,
+    ):
+        # Nothing to download for local files
+        pass
