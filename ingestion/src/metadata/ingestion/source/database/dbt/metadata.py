@@ -22,6 +22,7 @@ from metadata.generated.schema.api.tests.createTestDefinition import (
 )
 from metadata.generated.schema.entity.classification.tag import Tag
 from metadata.generated.schema.entity.data.glossaryTerm import GlossaryTerm
+from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.table import (
     Column,
     DataModel,
@@ -116,6 +117,16 @@ class DbtSource(DbtServiceSource):
             else "dbtTags"
         )
 
+        # Create a service map to get dbt model lineage across different databases
+        all_databases = self.metadata.es_search_from_fqn(
+            entity_type=Database,
+            fqn_search_string="*",
+        )
+        self.database_services_map = {
+            result.dict()["name"]: result.dict()["service"]["name"]
+            for result in all_databases
+        }
+
     @classmethod
     def create(
         cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None
@@ -165,6 +176,12 @@ class DbtSource(DbtServiceSource):
             logger.debug(traceback.format_exc())
             logger.warning(f"Unable to ingest owner from DBT due to: {exc}")
         return None
+
+    def get_service_name(self, database_name: str) -> str:
+        """
+        Method to get database name from database service map
+        """
+        return self.database_services_map.get(database_name, self.config.serviceName)
 
     def check_columns(self, catalog_node):
         for catalog_key, catalog_column in catalog_node.get("columns").items():
@@ -413,7 +430,7 @@ class DbtSource(DbtServiceSource):
                     table_fqn = fqn.build(
                         self.metadata,
                         entity_type=Table,
-                        service_name=self.config.serviceName,
+                        service_name=self.get_service_name(manifest_node.database),
                         database_name=get_corrected_name(manifest_node.database),
                         schema_name=get_corrected_name(manifest_node.schema_),
                         table_name=model_name,
@@ -507,7 +524,7 @@ class DbtSource(DbtServiceSource):
                         parent_fqn = fqn.build(
                             self.metadata,
                             entity_type=Table,
-                            service_name=self.config.serviceName,
+                            service_name=self.get_service_name(parent_node.database),
                             database_name=get_corrected_name(parent_node.database),
                             schema_name=get_corrected_name(parent_node.schema_),
                             table_name=table_name,
@@ -948,7 +965,7 @@ class DbtSource(DbtServiceSource):
                     test_case_fqn = fqn.build(
                         self.metadata,
                         entity_type=TestCase,
-                        service_name=self.config.serviceName,
+                        service_name=self.get_service_name(manifest_node.database),
                         database_name=source_elements[1],
                         schema_name=source_elements[2],
                         table_name=source_elements[3],
