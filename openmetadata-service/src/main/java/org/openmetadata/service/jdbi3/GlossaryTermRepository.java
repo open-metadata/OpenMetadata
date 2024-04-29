@@ -684,6 +684,8 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
       updateRelatedTerms(original, updated);
       updateName(original, updated);
       updateParent(original, updated);
+      // Mutually exclusive cannot be updated
+      updated.setMutuallyExclusive(original.getMutuallyExclusive());
     }
 
     private boolean validateIfTagsAreEqual(
