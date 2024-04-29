@@ -411,6 +411,9 @@
       },
       "descriptionStatus": {
         "type": "keyword"
+      },
+      "childrenCount": {
+        "type": "integer"
       }
     }
   }
