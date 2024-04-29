@@ -20,6 +20,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
+import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.entity.type.Style;
 import org.openmetadata.schema.type.*;
 import org.openmetadata.schema.utils.EntityInterfaceUtil;
@@ -189,7 +190,7 @@ public interface EntityInterface {
                 ? EntityInterfaceUtil.quoteName(getName())
                 : getFullyQualifiedName())
         .withDescription(getDescription())
-        .withDisplayName(getDisplayName())
+        .withDisplayName(CommonUtil.nullOrEmpty(getDisplayName()) ? getName() : getDisplayName())
         .withType(
             CANONICAL_ENTITY_NAME_MAP.get(this.getClass().getSimpleName().toLowerCase(Locale.ROOT)))
         .withDeleted(getDeleted())
