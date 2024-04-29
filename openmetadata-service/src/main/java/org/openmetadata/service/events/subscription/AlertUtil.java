@@ -95,19 +95,40 @@ public final class AlertUtil {
   public static String buildCompleteCondition(List<EventFilterRule> alertFilterRules) {
     StringBuilder builder = new StringBuilder();
     for (int i = 0; i < alertFilterRules.size(); i++) {
-      EventFilterRule rule = alertFilterRules.get(i);
-      builder.append("(");
-      if (rule.getEffect() == ArgumentsInput.Effect.INCLUDE) {
-        builder.append(rule.getCondition());
-      } else {
-        builder.append("!");
-        builder.append(rule.getCondition());
-      }
-      builder.append(")");
-      if (i != (alertFilterRules.size() - 1)) builder.append(" && ");
+      builder.append(getWrappedCondition(alertFilterRules.get(i), i));
+    }
+    return builder.toString();
+  }
+
+  private static String getWrappedCondition(EventFilterRule rule, int index) {
+    String prefixCondition = "";
+
+    // First Condition, no need to add prefix
+    if (index != 0) {
+      String rawCondition = getRawCondition(rule.getPrefixCondition());
+      prefixCondition = nullOrEmpty(rawCondition) ? " && " : rawCondition;
     }
 
-    return builder.toString();
+    StringBuilder builder = new StringBuilder();
+    builder.append("(");
+    if (rule.getEffect() == ArgumentsInput.Effect.INCLUDE) {
+      builder.append(rule.getCondition());
+    } else {
+      builder.append("!");
+      builder.append(rule.getCondition());
+    }
+    builder.append(")");
+    return String.format("%s%s", prefixCondition, builder);
+  }
+
+  private static String getRawCondition(ArgumentsInput.PrefixCondition prefixCondition) {
+    if (prefixCondition.equals(ArgumentsInput.PrefixCondition.AND)) {
+      return " && ";
+    } else if (prefixCondition.equals(ArgumentsInput.PrefixCondition.OR)) {
+      return " || ";
+    } else {
+      return "";
+    }
   }
 
   public static boolean shouldTriggerAlert(ChangeEvent event, FilteringRules config) {

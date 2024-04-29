@@ -1,0 +1,19 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/feed/domain.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "DomainFeedInfo",
+  "javaType": "org.openmetadata.schema.entity.feed.DomainFeedInfo",
+  "description": "This schema defines the schema for Assets addition/deletion Updates.",
+  "type": "object",
+  "properties": {
+    "previousDomain": {
+      "description": "Previous Domain.",
+      "$ref": "../../type/entityReference.json"
+    },
+    "updatedDomain": {
+      "description": "Updated Domain.",
+      "$ref": "../../type/entityReference.json"
+    }
+  },
+  "additionalProperties": false
+}

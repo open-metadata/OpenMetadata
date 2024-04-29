@@ -1,0 +1,14 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/feed/tag.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "EntityInfo",
+  "description": "EntityInfo In case of Entity Created, Updated Or Deleted.",
+  "javaType": "org.openmetadata.schema.entity.feed.EntityInfo",
+  "type": "object",
+  "properties": {
+    "entity": {
+      "description": "Entity Details in case of Creation , Soft Deletion and Deletion."
+    }
+  },
+  "additionalProperties": false
+}

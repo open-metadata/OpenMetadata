@@ -19,6 +19,10 @@
         "effect" : {
           "$ref": "./eventFilterRule.json#/definitions/effect"
         },
+        "prefixCondition": {
+          "description": "Prefix Condition for the filter.",
+          "$ref": "../events/eventFilterRule.json#/definitions/prefixCondition"
+        },
         "arguments": {
           "description": "Arguments List",
           "type": "array",

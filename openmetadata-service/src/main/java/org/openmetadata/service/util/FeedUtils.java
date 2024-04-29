@@ -21,6 +21,8 @@ import java.util.List;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.EntityInterface;
+import org.openmetadata.schema.entity.feed.EntityInfo;
+import org.openmetadata.schema.entity.feed.FeedInfo;
 import org.openmetadata.schema.entity.feed.Thread;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.service.Entity;
@@ -72,6 +74,8 @@ public final class FeedUtils {
             String.format(
                 "Created **%s**: `%s`",
                 changeEvent.getEntityType(), entityInterface.getFullyQualifiedName());
+        // Populate Entity details
+        addEntityInfoToThread(thread, Thread.CardStyle.ENTITY_CREATED, message, entityInterface);
         yield List.of(thread.withMessage(message));
       }
       case ENTITY_UPDATED -> getFormattedMessages(
@@ -81,6 +85,8 @@ public final class FeedUtils {
             String.format(
                 "Soft deleted **%s**: `%s`",
                 changeEvent.getEntityType(), entityInterface.getFullyQualifiedName());
+        addEntityInfoToThread(
+            thread, Thread.CardStyle.ENTITY_SOFT_DELETED, message, entityInterface);
         yield List.of(thread.withMessage(message));
       }
       case ENTITY_DELETED -> {
@@ -88,6 +94,7 @@ public final class FeedUtils {
             String.format(
                 "Permanently Deleted **%s**: `%s`",
                 changeEvent.getEntityType(), entityInterface.getFullyQualifiedName());
+        addEntityInfoToThread(thread, Thread.CardStyle.ENTITY_DELETED, message, entityInterface);
         yield List.of(thread.withMessage(message));
       }
       case LOGICAL_TEST_CASE_ADDED -> {
@@ -95,6 +102,8 @@ public final class FeedUtils {
             String.format(
                 "Added Logical Test Cases to **%s**: `%s`",
                 changeEvent.getEntityType(), entityInterface.getFullyQualifiedName());
+        addEntityInfoToThread(
+            thread, Thread.CardStyle.LOGICAL_TEST_CASE_ADDED, message, entityInterface);
         yield List.of(thread.withMessage(message));
       }
       default -> {
@@ -104,6 +113,18 @@ public final class FeedUtils {
         yield getFormattedMessages(messageDecorator, thread, changeEvent.getChangeDescription());
       }
     };
+  }
+
+  private static void addEntityInfoToThread(
+      Thread thread, Thread.CardStyle cardStyle, String message, EntityInterface entityInterface) {
+    thread.withMessage(message);
+    thread.withCardStyle(cardStyle);
+    thread.withFieldOperation(Thread.FieldOperation.NONE);
+    thread.withFeedInfo(
+        new FeedInfo()
+            .withFieldName(null)
+            .withHeaderMessage(message)
+            .withEntitySpecificInfo(new EntityInfo().withEntity(entityInterface)));
   }
 
   public static Thread getThread(
