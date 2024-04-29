@@ -286,6 +286,8 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
     @Override
     public void entitySpecificUpdate() {
       updateName(original, updated);
+      // Mutually exclusive cannot be updated
+      updated.setMutuallyExclusive(original.getMutuallyExclusive());
     }
 
     public void updateName(Glossary original, Glossary updated) {
