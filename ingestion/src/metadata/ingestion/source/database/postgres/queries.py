@@ -188,3 +188,19 @@ POSTGRES_SQL_COLUMNS = """
 POSTGRES_GET_SERVER_VERSION = """
 show server_version
 """
+
+POSTGRES_FETCH_FK = """
+    SELECT r.conname,
+        pg_catalog.pg_get_constraintdef(r.oid, true) as condef,
+        n.nspname as conschema,
+        d.datname AS con_db_name
+    FROM  pg_catalog.pg_constraint r,
+        pg_namespace n,
+        pg_class c
+    JOIN pg_database d ON d.datname = current_database()
+    WHERE r.conrelid = :table AND
+        r.contype = 'f' AND
+        c.oid = confrelid AND
+        n.oid = c.relnamespace
+    ORDER BY 1
+"""

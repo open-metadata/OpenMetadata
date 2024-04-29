@@ -52,7 +52,6 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 )
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.connections.session import create_and_bind_thread_safe_session
-from metadata.ingestion.lineage.sql_lineage import get_column_fqn
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.connections import get_connection
@@ -540,21 +539,27 @@ class CommonDbSourceService(
         Search the referred table for foreign constraints
         and get referred column fqn
         """
+        supports_database = hasattr(self.service_connection, "supportsDatabase")
 
         foreign_constraints = []
         for column in foreign_columns:
             referred_column_fqns = []
-            referred_table = fqn.search_table_from_es(
+            if supports_database:
+                database_name = column.get("referred_database")
+            else:
+                database_name = self.context.get().database
+            referred_table_fqn = fqn.build(
                 metadata=self.metadata,
+                entity_type=Table,
                 table_name=column.get("referred_table"),
                 schema_name=column.get("referred_schema"),
-                database_name=None,
+                database_name=database_name,
                 service_name=self.context.get().database_service,
             )
-            if referred_table:
+            if referred_table_fqn:
                 for referred_column in column.get("referred_columns"):
-                    col_fqn = get_column_fqn(
-                        table_entity=referred_table, column=referred_column
+                    col_fqn = fqn._build(
+                        referred_table_fqn, referred_column, quote=False
                     )
                     if col_fqn:
                         referred_column_fqns.append(col_fqn)
