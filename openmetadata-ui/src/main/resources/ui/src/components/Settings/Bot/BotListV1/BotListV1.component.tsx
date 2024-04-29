@@ -158,7 +158,7 @@ const BotListV1 = ({
           return (
             <Tooltip placement="topRight" title={title}>
               <Button
-                data-testid={`bot-delete-${getEntityName(record)}`}
+                data-testid={`bot-delete-${record.name}`}
                 disabled={isDisabled}
                 icon={
                   <Icon

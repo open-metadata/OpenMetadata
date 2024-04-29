@@ -595,7 +595,7 @@ public class ElasticSearchClient implements SearchClient {
   }
 
   @Override
-  public Response searchLineage(
+  public Map<String, Object> searchLineageInternal(
       String fqn,
       int upstreamDepth,
       int downstreamDepth,
@@ -629,6 +629,21 @@ public class ElasticSearchClient implements SearchClient {
         fqn, upstreamDepth, edges, nodes, queryFilter, "lineage.toEntity.fqn.keyword", deleted);
     responseMap.put("edges", edges);
     responseMap.put("nodes", nodes);
+    return responseMap;
+  }
+
+  @Override
+  public Response searchLineage(
+      String fqn,
+      int upstreamDepth,
+      int downstreamDepth,
+      String queryFilter,
+      boolean deleted,
+      String entityType)
+      throws IOException {
+    Map<String, Object> responseMap =
+        searchLineageInternal(
+            fqn, upstreamDepth, downstreamDepth, queryFilter, deleted, entityType);
     return Response.status(OK).entity(responseMap).build();
   }
 
@@ -697,7 +712,7 @@ public class ElasticSearchClient implements SearchClient {
     }
   }
 
-  private Response searchPipelineLineage(
+  private Map<String, Object> searchPipelineLineage(
       String fqn,
       int upstreamDepth,
       int downstreamDepth,
@@ -784,7 +799,7 @@ public class ElasticSearchClient implements SearchClient {
     }
     responseMap.put("edges", edges);
     responseMap.put("nodes", nodes);
-    return Response.status(OK).entity(responseMap).build();
+    return responseMap;
   }
 
   @Override
@@ -855,7 +870,8 @@ public class ElasticSearchClient implements SearchClient {
     List<AggregationBuilder> aggregationBuilders = new ArrayList<>();
     for (String key : aggregations.keySet()) {
       JsonObject aggregation = aggregations.getJsonObject(key);
-      for (String aggregationType : aggregation.keySet()) {
+      Set<String> keySet = aggregation.keySet();
+      for (String aggregationType : keySet) {
         switch (aggregationType) {
           case "terms":
             JsonObject termAggregation = aggregation.getJsonObject(aggregationType);
@@ -876,6 +892,21 @@ public class ElasticSearchClient implements SearchClient {
               nestedAggregationBuilder.subAggregation(nestedAggregationBuilder1);
             }
             aggregationBuilders.add(nestedAggregationBuilder);
+            break;
+          case "aggs":
+            // Sub aggregation logic
+            if (!keySet.contains("nested")) {
+              JsonObject subAggregation = aggregation.getJsonObject("aggs");
+              if (!nullOrEmpty(aggregationBuilders)) {
+                AggregationBuilder aggregationBuilder =
+                    aggregationBuilders.get(aggregationBuilders.size() - 1);
+                List<AggregationBuilder> subAggregationBuilders = buildAggregation(subAggregation);
+                for (AggregationBuilder subAggregationBuilder : subAggregationBuilders) {
+                  aggregationBuilder.subAggregation(subAggregationBuilder);
+                }
+              }
+              break;
+            }
             break;
           default:
             break;

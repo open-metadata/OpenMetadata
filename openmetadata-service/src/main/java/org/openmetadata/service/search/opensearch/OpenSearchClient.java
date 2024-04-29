@@ -596,8 +596,7 @@ public class OpenSearchClient implements SearchClient {
     return Response.status(OK).entity(response).build();
   }
 
-  @Override
-  public Response searchLineage(
+  public Map<String, Object> searchLineageInternal(
       String fqn,
       int upstreamDepth,
       int downstreamDepth,
@@ -605,14 +604,13 @@ public class OpenSearchClient implements SearchClient {
       boolean deleted,
       String entityType)
       throws IOException {
+    if (entityType.equalsIgnoreCase(Entity.PIPELINE)
+        || entityType.equalsIgnoreCase(Entity.STORED_PROCEDURE)) {
+      return searchPipelineLineage(fqn, upstreamDepth, downstreamDepth, queryFilter, deleted);
+    }
     Map<String, Object> responseMap = new HashMap<>();
     Set<Map<String, Object>> edges = new HashSet<>();
     Set<Map<String, Object>> nodes = new HashSet<>();
-    if (entityType.equalsIgnoreCase(Entity.PIPELINE)
-        || entityType.equalsIgnoreCase(Entity.STORED_PROCEDURE)) {
-      return searchPipelineLineage(
-          fqn, upstreamDepth, downstreamDepth, queryFilter, deleted, responseMap);
-    }
     os.org.opensearch.action.search.SearchRequest searchRequest =
         new os.org.opensearch.action.search.SearchRequest(GLOBAL_SEARCH_ALIAS);
     SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
@@ -631,6 +629,21 @@ public class OpenSearchClient implements SearchClient {
         fqn, upstreamDepth, edges, nodes, queryFilter, "lineage.toEntity.fqn.keyword", deleted);
     responseMap.put("edges", edges);
     responseMap.put("nodes", nodes);
+    return responseMap;
+  }
+
+  @Override
+  public Response searchLineage(
+      String fqn,
+      int upstreamDepth,
+      int downstreamDepth,
+      String queryFilter,
+      boolean deleted,
+      String entityType)
+      throws IOException {
+    Map<String, Object> responseMap =
+        searchLineageInternal(
+            fqn, upstreamDepth, downstreamDepth, queryFilter, deleted, entityType);
     return Response.status(OK).entity(responseMap).build();
   }
 
@@ -700,14 +713,10 @@ public class OpenSearchClient implements SearchClient {
     }
   }
 
-  private Response searchPipelineLineage(
-      String fqn,
-      int upstreamDepth,
-      int downstreamDepth,
-      String queryFilter,
-      boolean deleted,
-      Map<String, Object> responseMap)
+  private Map<String, Object> searchPipelineLineage(
+      String fqn, int upstreamDepth, int downstreamDepth, String queryFilter, boolean deleted)
       throws IOException {
+    Map<String, Object> responseMap = new HashMap<>();
     Set<Map<String, Object>> edges = new HashSet<>();
     Set<Map<String, Object>> nodes = new HashSet<>();
     responseMap.put("entity", null);
@@ -787,7 +796,7 @@ public class OpenSearchClient implements SearchClient {
     }
     responseMap.put("edges", edges);
     responseMap.put("nodes", nodes);
-    return Response.status(OK).entity(responseMap).build();
+    return responseMap;
   }
 
   private static ScriptScoreFunctionBuilder boostScore() {
@@ -874,7 +883,8 @@ public class OpenSearchClient implements SearchClient {
     List<AggregationBuilder> aggregationBuilders = new ArrayList<>();
     for (String key : aggregations.keySet()) {
       JsonObject aggregation = aggregations.getJsonObject(key);
-      for (String aggregationType : aggregation.keySet()) {
+      Set<String> keySet = aggregation.keySet();
+      for (String aggregationType : keySet) {
         switch (aggregationType) {
           case "terms":
             JsonObject termAggregation = aggregation.getJsonObject(aggregationType);
@@ -895,6 +905,21 @@ public class OpenSearchClient implements SearchClient {
               nestedAggregationBuilder.subAggregation(nestedAggregationBuilder1);
             }
             aggregationBuilders.add(nestedAggregationBuilder);
+            break;
+          case "aggs":
+            // Sub aggregation logic
+            if (!keySet.contains("nested")) {
+              JsonObject subAggregation = aggregation.getJsonObject("aggs");
+              if (!nullOrEmpty(aggregationBuilders)) {
+                AggregationBuilder aggregationBuilder =
+                    aggregationBuilders.get(aggregationBuilders.size() - 1);
+                List<AggregationBuilder> subAggregationBuilders = buildAggregation(subAggregation);
+                for (AggregationBuilder subAggregationBuilder : subAggregationBuilders) {
+                  aggregationBuilder.subAggregation(subAggregationBuilder);
+                }
+              }
+              break;
+            }
             break;
           default:
             break;

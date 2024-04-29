@@ -762,7 +762,8 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   }
 
   protected void validateEntityListFromSearchWithPagination(
-      Map<String, String> queryParams, Integer maxEntities) throws IOException {
+      Map<String, String> queryParams, Integer maxEntities)
+      throws IOException, InterruptedException {
     // List all entities and use it for checking pagination
     Random rand = new Random();
 
@@ -772,6 +773,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
       }
       queryParams.put("include", include.value());
 
+      waitForEsAsyncOp();
       ResultList<T> allEntities = listEntitiesFromSearch(queryParams, 1000, 0, ADMIN_AUTH_HEADERS);
       int totalRecords = allEntities.getData().size();
       printEntities(allEntities);

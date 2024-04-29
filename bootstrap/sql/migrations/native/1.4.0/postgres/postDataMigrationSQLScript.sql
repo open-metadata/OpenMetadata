@@ -362,3 +362,26 @@ SET json = jsonb_set(
 )
 WHERE name = 'tableRowInsertedCountToBeBetween';
 -- End of Test Definition Parameter Definition Validation Migration
+
+-- Start of updating existing customLogoConfiguration config with new customUiThemePreference
+UPDATE openmetadata_settings AS ui
+SET json = jsonb_build_object(
+    'customLogoConfig', jsonb_build_object(
+        'customLogoUrlPath', logo.json -> 'customLogoUrlPath',
+        'customFaviconUrlPath', logo.json -> 'customFaviconUrlPath',
+        'customMonogramUrlPath', logo.json -> 'customMonogramUrlPath'
+    ),
+    'customTheme', jsonb_build_object(
+        'primaryColor', '',
+        'errorColor', '',
+        'successColor', '',
+        'warningColor', '',
+        'infoColor', ''
+    )
+)
+FROM openmetadata_settings AS logo
+WHERE ui.configType = 'customUiThemePreference'
+AND logo.configType = 'customLogoConfiguration';
+
+DELETE from openmetadata_settings where configType = 'customLogoConfiguration';
+-- End of updating  customUiThemePreference config

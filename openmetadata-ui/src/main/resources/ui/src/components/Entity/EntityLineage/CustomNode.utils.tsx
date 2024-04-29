@@ -20,6 +20,7 @@ import { ReactComponent as PlusIcon } from '../../../assets/svg/plus-outlined.sv
 import { EntityLineageNodeType } from '../../../enums/entity.enum';
 import { Column, TestSuite } from '../../../generated/entity/data/table';
 import { formTwoDigitNumber } from '../../../utils/CommonUtils';
+import { encodeLineageHandles } from '../../../utils/EntityLineageUtils';
 import { getEntityName } from '../../../utils/EntityUtils';
 import { getConstraintIcon } from '../../../utils/TableUtils';
 import { EdgeTypeEnum } from './EntityLineage.interface';
@@ -123,7 +124,7 @@ export const getTestSuiteSummary = (testSuite?: TestSuite) => {
   }
 
   return (
-    <div className="d-flex justify-between">
+    <div className="d-flex justify-end">
       <div className="profiler-item green" data-testid="test-passed">
         <div className="font-medium" data-testid="test-passed-value">
           {formTwoDigitNumber(testSuite?.summary?.success ?? 0)}
@@ -169,7 +170,7 @@ export const getColumnContent = (
         EntityLineageNodeType.DEFAULT,
         isConnectable,
         'lineage-column-node-handle',
-        fullyQualifiedName
+        encodeLineageHandles(fullyQualifiedName ?? '')
       )}
       {getConstraintIcon({
         constraint: column.constraint,

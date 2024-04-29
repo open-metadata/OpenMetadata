@@ -275,9 +275,6 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
       }
     }
 
-    // If we delete the test case, we need to clean up the resolution ts
-    daoCollection.testCaseResolutionStatusTimeSeriesDao().delete(test.getFullyQualifiedName());
-
     deleteTestCaseFailedRowsSample(test.getId());
   }
 
@@ -298,6 +295,7 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
     TestCase testCase = findByName(fqn, Include.NON_DELETED);
     ArrayList<String> fields = new ArrayList<>();
     fields.add("testDefinition");
+    fields.add("owner");
     fields.add(TEST_SUITE_FIELD);
 
     // set the test case resolution status reference if test failed, by either
@@ -371,11 +369,32 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
             .withUpdatedAt(System.currentTimeMillis())
             .withTestCaseReference(testCase.getEntityReference());
 
+    testCaseResolutionStatusRepository.createNewRecord(status, testCase.getFullyQualifiedName());
     TestCaseResolutionStatus incident =
-        testCaseResolutionStatusRepository.createNewRecord(
-            status, testCase.getFullyQualifiedName());
+        testCaseResolutionStatusRepository.getLatestRecord(testCase.getFullyQualifiedName());
 
     return incident.getStateId();
+  }
+
+  @Transaction
+  @Override
+  protected void deleteChildren(
+      List<CollectionDAO.EntityRelationshipRecord> children, boolean hardDelete, String updatedBy) {
+    if (hardDelete) {
+      for (CollectionDAO.EntityRelationshipRecord entityRelationshipRecord : children) {
+        LOG.info(
+            "Recursively {} deleting {} {}",
+            hardDelete ? "hard" : "soft",
+            entityRelationshipRecord.getType(),
+            entityRelationshipRecord.getId());
+        TestCaseResolutionStatusRepository testCaseResolutionStatusRepository =
+            (TestCaseResolutionStatusRepository)
+                Entity.getEntityTimeSeriesRepository(Entity.TEST_CASE_RESOLUTION_STATUS);
+        for (CollectionDAO.EntityRelationshipRecord child : children) {
+          testCaseResolutionStatusRepository.deleteById(child.getId(), hardDelete);
+        }
+      }
+    }
   }
 
   public RestUtil.PutResponse<TestCaseResult> deleteTestCaseResult(
@@ -660,9 +679,10 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
     deleteRelationship(testSuiteId, TEST_SUITE, testCaseId, TEST_CASE, Relationship.CONTAINS);
     // remove test case from logical test suite summary and update test suite
     removeTestCaseFromTestSuiteResultSummary(testSuiteId, testCase.getFullyQualifiedName());
-    EntityReference entityReference =
-        Entity.getEntityReferenceById(TEST_SUITE, testSuiteId, Include.ALL);
-    testCase.setTestSuite(entityReference);
+    TestCase updatedTestCase = Entity.getEntity(Entity.TEST_CASE, testCaseId, "*", Include.ALL);
+    postUpdate(testCase, updatedTestCase);
+    testCase.setTestSuite(updatedTestCase.getTestSuite());
+    testCase.setTestSuites(updatedTestCase.getTestSuites());
     return new RestUtil.DeleteResponse<>(testCase, ENTITY_DELETED);
   }
 
@@ -726,6 +746,17 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
   }
 
   @Transaction
+  public TestCase addInspectionQuery(UriInfo uri, UUID testCaseId, String sql) {
+    TestCase original = get(uri, testCaseId, getFields(PATCH_FIELDS));
+    TestCase updated =
+        JsonUtils.readValue(JsonUtils.pojoToJson(original), TestCase.class)
+            .withInspectionQuery(sql);
+    EntityUpdater entityUpdater = getUpdater(original, updated, Operation.PATCH);
+    entityUpdater.update();
+    return updated;
+  }
+
+  @Transaction
   public RestUtil.DeleteResponse<TableData> deleteTestCaseFailedRowsSample(UUID id) {
     daoCollection.entityExtensionDAO().delete(id, FAILED_ROWS_SAMPLE_EXTENSION);
     return new RestUtil.DeleteResponse<>(null, ENTITY_DELETED);
@@ -776,12 +807,16 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
               .withTestCaseReference(latestTestCaseResolutionStatus.getTestCaseReference())
               .withUpdatedBy(user.getEntityReference());
 
+      EntityReference testCaseReference = testCaseResolutionStatus.getTestCaseReference();
+      testCaseResolutionStatus.setTestCaseReference(null);
       Entity.getCollectionDAO()
           .testCaseResolutionStatusTimeSeriesDao()
           .insert(
-              testCaseResolutionStatus.getTestCaseReference().getFullyQualifiedName(),
+              testCaseReference.getFullyQualifiedName(),
               Entity.TEST_CASE_RESOLUTION_STATUS,
               JsonUtils.pojoToJson(testCaseResolutionStatus));
+      testCaseResolutionStatus.setTestCaseReference(testCaseReference);
+      testCaseResolutionStatusRepository.storeRelationship(testCaseResolutionStatus);
       testCaseResolutionStatusRepository.postCreate(testCaseResolutionStatus);
 
       // Return the TestCase with the StateId to avoid any unnecessary PATCH when resolving the task
@@ -831,12 +866,16 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
               .withTestCaseReference(latestTestCaseResolutionStatus.getTestCaseReference())
               .withUpdatedBy(user.getEntityReference());
 
+      EntityReference testCaseReference = testCaseResolutionStatus.getTestCaseReference();
+      testCaseResolutionStatus.setTestCaseReference(null);
       Entity.getCollectionDAO()
           .testCaseResolutionStatusTimeSeriesDao()
           .insert(
-              testCaseResolutionStatus.getTestCaseReference().getFullyQualifiedName(),
+              testCaseReference.getFullyQualifiedName(),
               Entity.TEST_CASE_RESOLUTION_STATUS,
               JsonUtils.pojoToJson(testCaseResolutionStatus));
+      testCaseResolutionStatus.setTestCaseReference(testCaseReference);
+      testCaseResolutionStatusRepository.storeRelationship(testCaseResolutionStatus);
       testCaseResolutionStatusRepository.postCreate(testCaseResolutionStatus);
     }
   }
@@ -880,6 +919,7 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
           TEST_CASE,
           updated.getId());
       recordChange("parameterValues", original.getParameterValues(), updated.getParameterValues());
+      recordChange("inspectionQuery", original.getInspectionQuery(), updated.getInspectionQuery());
       recordChange(
           "computePassedFailedRowCount",
           original.getComputePassedFailedRowCount(),

@@ -40,9 +40,6 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.profiler.api.models import ProfilerProcessorConfig, TableConfig
 from metadata.profiler.interface.profiler_interface import ProfilerInterface
-from metadata.profiler.interface.profiler_interface_factory import (
-    profiler_interface_factory,
-)
 from metadata.profiler.metrics.registry import Metrics
 from metadata.profiler.processor.core import Profiler
 from metadata.profiler.processor.default import DefaultProfiler, get_default_metrics
@@ -202,6 +199,10 @@ class ProfilerSource(ProfilerSourceInterface):
         db_service: Optional[DatabaseService],
     ) -> ProfilerInterface:
         """Create sqlalchemy profiler interface"""
+        from metadata.profiler.interface.profiler_interface_factory import (  # pylint: disable=import-outside-toplevel
+            profiler_interface_factory,
+        )
+
         profiler_interface: ProfilerInterface = profiler_interface_factory.create(
             self.profiler_interface_type,
             entity,

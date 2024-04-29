@@ -110,7 +110,6 @@ import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
-import org.openmetadata.schema.type.ProviderType;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.service.Entity;
@@ -135,6 +134,7 @@ import org.openmetadata.service.security.auth.AuthenticatorHandler;
 import org.openmetadata.service.security.auth.BotTokenCache;
 import org.openmetadata.service.security.auth.UserTokenCache;
 import org.openmetadata.service.security.jwt.JWTTokenGenerator;
+import org.openmetadata.service.security.mask.PIIMasker;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
 import org.openmetadata.service.security.saml.JwtTokenCacheManager;
@@ -146,7 +146,6 @@ import org.openmetadata.service.util.PasswordUtil;
 import org.openmetadata.service.util.RestUtil.PutResponse;
 import org.openmetadata.service.util.ResultList;
 import org.openmetadata.service.util.TokenUtil;
-import org.openmetadata.service.util.UserUtil;
 
 @Slf4j
 @Path("/v1/users")
@@ -1439,8 +1438,6 @@ public class UserResource extends EntityResource<User, UserRepository> {
               create.getAuthenticationMechanism(),
               original.getAuthenticationMechanism());
       user.setRoles(original.getRoles());
-    } else if (bot != null && ProviderType.SYSTEM.equals(bot.getProvider())) {
-      user.setRoles(UserUtil.getRoleForBot(botName));
     }
     // TODO remove this
     addAuthMechanismToBot(user, create, uriInfo);
@@ -1590,5 +1587,8 @@ public class UserResource extends EntityResource<User, UserRepository> {
             .maskAuthenticationMechanism(user.getName(), user.getAuthenticationMechanism());
       }
     }
+
+    // Remove mails for non-admin users
+    PIIMasker.maskUser(authorizer, securityContext, user);
   }
 }

@@ -8,6 +8,7 @@ import java.text.ParseException;
 import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
+import javax.json.JsonArray;
 import javax.json.JsonObject;
 import javax.net.ssl.SSLContext;
 import javax.ws.rs.core.Response;
@@ -86,6 +87,15 @@ public interface SearchClient {
   Response searchBySourceUrl(String sourceUrl) throws IOException;
 
   Response searchLineage(
+      String fqn,
+      int upstreamDepth,
+      int downstreamDepth,
+      String queryFilter,
+      boolean deleted,
+      String entityType)
+      throws IOException;
+
+  Map<String, Object> searchLineageInternal(
       String fqn,
       int upstreamDepth,
       int downstreamDepth,
@@ -196,5 +206,17 @@ public interface SearchClient {
       this.results = results;
       this.total = total;
     }
+  }
+
+  static JsonArray getAggregationBuckets(JsonObject aggregationJson) {
+    return aggregationJson.getJsonArray("buckets");
+  }
+
+  static JsonObject getAggregationObject(JsonObject aggregationJson, String key) {
+    return aggregationJson.getJsonObject(key);
+  }
+
+  static String getAggregationKeyValue(JsonObject aggregationJson) {
+    return aggregationJson.getString("key");
   }
 }
