@@ -1,0 +1,32 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/services/connections/dashboard/powerbi/azureConfig.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "AzureConfig",
+  "description": "Azure storage config for pbit files",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.services.connections.dashboard.powerbi.AzureConfig",
+  "properties": {
+    "pbitFileConfigType": {
+      "description": "pbit File Configuration type",
+      "type": "string",
+      "enum": ["azure"],
+      "default": "azure"
+    },
+    "securityConfig": {
+      "title": "Azure Config Source",
+      "$ref": "../../../../../security/credentials/azureCredentials.json"
+    },
+    "prefixConfig": {
+      "title": "Prefix Config",
+      "$ref": "bucketDetails.json"
+    },
+    "pbitFilesExtractDir": {
+      "title": "pbit Files Extraction Directory",
+      "description": "Path of the folder where the .pbit files will be unzipped and datamodel schema will be extracted",
+      "type": "string",
+      "default": "/tmp/pbitFiles"
+    }
+  },
+  "additionalProperties": false,
+  "required": ["securityConfig"]
+}
