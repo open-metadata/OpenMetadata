@@ -84,6 +84,7 @@ public class SettingsCache {
                       .withCustomLogoConfig(
                           new LogoConfiguration()
                               .withCustomLogoUrlPath("")
+                              .withCustomFaviconUrlPath("")
                               .withCustomMonogramUrlPath(""))
                       .withCustomTheme(
                           new ThemeConfiguration()
