@@ -53,7 +53,7 @@ public abstract class AbstractOmAppJobListener implements JobListener {
               .withRunType(runType)
               .withStatus(AppRunRecord.Status.RUNNING)
               .withScheduleInfo(jobApp.getAppSchedule());
-      ;
+
       boolean update = false;
       if (jobExecutionContext.isRecovering()) {
         AppRunRecord latestRunRecord =
@@ -89,6 +89,7 @@ public abstract class AbstractOmAppJobListener implements JobListener {
     Object jobStats = jobExecutionContext.getJobDetail().getJobDataMap().get(APP_RUN_STATS);
     long endTime = System.currentTimeMillis();
     runRecord.withEndTime(endTime);
+    runRecord.setExecutionTime(endTime - runRecord.getStartTime());
 
     if (jobException == null
         && !(runRecord.getStatus() == AppRunRecord.Status.FAILED
