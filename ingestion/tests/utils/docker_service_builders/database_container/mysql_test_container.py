@@ -20,6 +20,7 @@ from .database_test_container import DataBaseTestContainer
 class MySQLTestContainer(DataBaseTestContainer):
     def __init__(self):
         self.mysql_container = MySqlContainer("mysql:latest")
+        self.mysql_container.with_env("TC_POOLING_INTERVAL", "3")
         self.start()
         self.connection_url = self.mysql_container.get_connection_url()
         super().__init__()
