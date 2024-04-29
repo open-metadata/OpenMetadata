@@ -83,27 +83,15 @@ const assignIncident = (testCaseName: string) => {
     .click();
   cy.get(`[data-testid="test-case-resolution-status-type"]`).click();
   cy.get(`[title="Assigned"]`).click();
-  cy.get('[data-testid="add-assignee-button"]').should('be.visible');
+  cy.get('#testCaseResolutionStatusDetails_assignee').should('be.visible');
   interceptURL(
     'GET',
-    `api/v1/search/query?q=*&index=user_search_index*`,
+    '/api/v1/search/suggest?q=Aaron%20Johnson&index=user_search_index',
     'searchAssignee'
   );
-  interceptURL(
-    'GET',
-    `api/v1/search/query?q=*&index=team_search_index*`,
-    'teamSearchIndex'
-  );
-  cy.get('[data-testid="add-assignee-button"]').click({
-    waitForAnimations: true,
-  });
-  verifyResponseStatusCode('@teamSearchIndex', 200);
-  cy.get("[data-testid='select-owner-tabs']").should('be.visible');
-  cy.get('.ant-tabs [id*=tab-users]').click();
+  cy.get('#testCaseResolutionStatusDetails_assignee').type('Aaron Johnson');
   verifyResponseStatusCode('@searchAssignee', 200);
-  cy.get('[data-testid="owner-select-users-search-bar"]').type('Aaron Johnson');
-  verifyResponseStatusCode('@searchAssignee', 200);
-  cy.get(`.ant-popover [title="Aaron Johnson"]`).click();
+  cy.get('[data-testid="aaron_johnson0"]').click();
   interceptURL(
     'POST',
     '/api/v1/dataQuality/testCases/testCaseIncidentStatus',

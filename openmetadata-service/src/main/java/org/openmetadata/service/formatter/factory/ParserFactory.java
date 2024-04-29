@@ -14,6 +14,12 @@
 package org.openmetadata.service.formatter.factory;
 
 import static org.openmetadata.service.Entity.FIELD_ASSETS;
+import static org.openmetadata.service.Entity.FIELD_DESCRIPTION;
+import static org.openmetadata.service.Entity.FIELD_DOMAIN;
+import static org.openmetadata.service.Entity.FIELD_EXTENSION;
+import static org.openmetadata.service.Entity.FIELD_FOLLOWERS;
+import static org.openmetadata.service.Entity.FIELD_OWNER;
+import static org.openmetadata.service.Entity.FIELD_TAGS;
 import static org.openmetadata.service.formatter.field.TestCaseResultFormatter.TEST_RESULT_FIELD;
 
 import org.openmetadata.schema.entity.feed.Thread;
@@ -27,8 +33,10 @@ import org.openmetadata.service.formatter.entity.KpiFormatter;
 import org.openmetadata.service.formatter.entity.PipelineFormatter;
 import org.openmetadata.service.formatter.entity.QueryFormatter;
 import org.openmetadata.service.formatter.field.AssetsFieldFormatter;
+import org.openmetadata.service.formatter.field.CustomPropertiesFormatter;
 import org.openmetadata.service.formatter.field.DefaultFieldFormatter;
 import org.openmetadata.service.formatter.field.DescriptionFormatter;
+import org.openmetadata.service.formatter.field.DomainFormatter;
 import org.openmetadata.service.formatter.field.FollowersFormatter;
 import org.openmetadata.service.formatter.field.OwnerFormatter;
 import org.openmetadata.service.formatter.field.TagFormatter;
@@ -57,10 +65,12 @@ public final class ParserFactory {
       FieldChange fieldChange,
       String fieldChangeName) {
     return switch (fieldChangeName) {
-      case Entity.FIELD_TAGS -> new TagFormatter(decorator, thread, fieldChange);
-      case Entity.FIELD_FOLLOWERS -> new FollowersFormatter(decorator, thread, fieldChange);
-      case Entity.FIELD_OWNER -> new OwnerFormatter(decorator, thread, fieldChange);
-      case Entity.FIELD_DESCRIPTION -> new DescriptionFormatter(decorator, thread, fieldChange);
+      case FIELD_TAGS -> new TagFormatter(decorator, thread, fieldChange);
+      case FIELD_FOLLOWERS -> new FollowersFormatter(decorator, thread, fieldChange);
+      case FIELD_OWNER -> new OwnerFormatter(decorator, thread, fieldChange);
+      case FIELD_DESCRIPTION -> new DescriptionFormatter(decorator, thread, fieldChange);
+      case FIELD_DOMAIN -> new DomainFormatter(decorator, thread, fieldChange);
+      case FIELD_EXTENSION -> new CustomPropertiesFormatter(decorator, thread, fieldChange);
       case TEST_RESULT_FIELD -> new TestCaseResultFormatter(decorator, thread, fieldChange);
       case FIELD_ASSETS -> new AssetsFieldFormatter(decorator, thread, fieldChange);
       default -> new DefaultFieldFormatter(decorator, thread, fieldChange);

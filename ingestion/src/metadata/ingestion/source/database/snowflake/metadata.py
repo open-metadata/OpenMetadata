@@ -90,6 +90,7 @@ from metadata.ingestion.source.database.snowflake.utils import (
     get_foreign_keys,
     get_pk_constraint,
     get_schema_columns,
+    get_schema_foreign_keys,
     get_table_comment,
     get_table_names,
     get_table_names_reflection,
@@ -136,6 +137,7 @@ SnowflakeDialect._current_database_schema = (  # pylint: disable=protected-acces
 SnowflakeDialect.get_pk_constraint = get_pk_constraint
 SnowflakeDialect.get_foreign_keys = get_foreign_keys
 SnowflakeDialect.get_columns = get_columns
+SnowflakeDialect._get_schema_foreign_keys = get_schema_foreign_keys
 
 
 class SnowflakeSource(
@@ -444,6 +446,7 @@ class SnowflakeSource(
             TableType.Regular: {},
             TableType.External: {"external_tables": True},
             TableType.Transient: {"include_transient_tables": True},
+            TableType.Dynamic: {"dynamic_tables": True},
         }
 
         snowflake_tables = self.inspector.get_table_names(
@@ -486,6 +489,10 @@ class SnowflakeSource(
 
         table_list.extend(
             self._get_table_names_and_types(schema_name, table_type=TableType.External)
+        )
+
+        table_list.extend(
+            self._get_table_names_and_types(schema_name, table_type=TableType.Dynamic)
         )
 
         if self.service_connection.includeTransientTables:
