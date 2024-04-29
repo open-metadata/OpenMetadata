@@ -211,11 +211,11 @@ const getTestSuiteSuggestions = async (searchText: string) => {
   return searchEntity({ searchText, searchIndex: SearchIndex.TEST_SUITE });
 };
 
-const getDomainOptions = async (searchText: string) => {
+export const getDomainOptions = async (searchText: string) => {
   return searchEntity({ searchText, searchIndex: SearchIndex.DOMAIN });
 };
 
-const getOwnerOptions = async (searchText: string) => {
+export const getOwnerOptions = async (searchText: string) => {
   return searchEntity({
     searchText,
     searchIndex: [SearchIndex.TEAM, SearchIndex.USER],

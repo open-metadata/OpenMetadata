@@ -70,6 +70,7 @@ class SearchClassBase {
     return {
       [EntityType.ALL]: SearchIndex.ALL,
       [EntityType.TABLE]: SearchIndex.TABLE,
+      [EntityType.CHART]: SearchIndex.CHART,
       [EntityType.PIPELINE]: SearchIndex.PIPELINE,
       [EntityType.DASHBOARD]: SearchIndex.DASHBOARD,
       [EntityType.MLMODEL]: SearchIndex.MLMODEL,
