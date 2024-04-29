@@ -10,9 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Form, Modal, Select } from 'antd';
+import { Button, Form, Modal, Select, Space } from 'antd';
 import { AxiosError } from 'axios';
-import { startCase, unionBy } from 'lodash';
+import { startCase } from 'lodash';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import RichTextEditor from '../../../components/common/RichTextEditor/RichTextEditor';
@@ -21,14 +21,20 @@ import { EntityType } from '../../../enums/entity.enum';
 import { CreateTestCaseResolutionStatus } from '../../../generated/api/tests/createTestCaseResolutionStatus';
 import { TestCaseFailureReasonType } from '../../../generated/tests/resolved';
 import { TestCaseResolutionStatusTypes } from '../../../generated/tests/testCaseResolutionStatus';
-import Assignees from '../../../pages/TasksPage/shared/Assignees';
-import { Option } from '../../../pages/TasksPage/TasksPage.interface';
 import { postTestCaseIncidentStatus } from '../../../rest/incidentManagerAPI';
-import { getEntityReferenceFromEntity } from '../../../utils/EntityUtils';
-import { fetchOptions, generateOptions } from '../../../utils/TasksUtils';
+import {
+  getEntityName,
+  getEntityReferenceFromEntity,
+} from '../../../utils/EntityUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 
+import { PlusOutlined } from '@ant-design/icons';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
+import { UserTeam } from '../../common/AssigneeList/AssigneeList.interface';
+import { UserTag } from '../../common/UserTag/UserTag.component';
+import { UserTagSize } from '../../common/UserTag/UserTag.interface';
+import { UserTeamSelectableList } from '../../common/UserTeamSelectableList/UserTeamSelectableList.component';
+import './test-case-status-modal.style.less';
 import { TestCaseStatusModalProps } from './TestCaseStatusModal.interface';
 
 export const TestCaseStatusModal = ({
@@ -37,26 +43,12 @@ export const TestCaseStatusModal = ({
   testCaseFqn,
   onSubmit,
   onCancel,
-  usersList,
 }: TestCaseStatusModalProps) => {
   const { t } = useTranslation();
   const { currentUser } = useApplicationStore();
   const [form] = Form.useForm();
   const markdownRef = useRef<EditorContentRef>();
   const [isLoading, setIsLoading] = useState<boolean>(false);
-  const [options, setOptions] = useState<Option[]>([]);
-
-  const { assigneeOptions } = useMemo(() => {
-    const initialAssignees = data?.testCaseResolutionStatusDetails?.assignee
-      ? generateOptions([data.testCaseResolutionStatusDetails.assignee])
-      : [];
-    const assigneeOptions = unionBy(
-      [...initialAssignees, ...generateOptions(usersList ?? [])],
-      'value'
-    );
-
-    return { initialAssignees, assigneeOptions };
-  }, [data, usersList]);
 
   const statusType = Form.useWatch('testCaseResolutionStatusType', form);
   const updatedAssignees = Form.useWatch(
@@ -135,11 +127,10 @@ export const TestCaseStatusModal = ({
     ) {
       form.setFieldValue(
         ['testCaseResolutionStatusDetails', 'assignee'],
-        [assignee.id]
+        assignee
       );
     }
-    setOptions(assigneeOptions);
-  }, [data, assigneeOptions]);
+  }, [data]);
 
   return (
     <Modal
@@ -157,6 +148,7 @@ export const TestCaseStatusModal = ({
       width={750}
       onCancel={onCancel}>
       <Form<CreateTestCaseResolutionStatus>
+        className="test-case-status-modal-container"
         data-testid="update-status-form"
         form={form}
         id="update-status-form"
@@ -247,6 +239,7 @@ export const TestCaseStatusModal = ({
         )}
         {statusType === TestCaseResolutionStatusTypes.Assigned && (
           <Form.Item
+            className="assignee-field"
             label={t('label.assignee')}
             name={['testCaseResolutionStatusDetails', 'assignee']}
             rules={[
@@ -256,27 +249,35 @@ export const TestCaseStatusModal = ({
                   field: t('label.assignee'),
                 }),
               },
-            ]}>
-            <Assignees
-              allowClear
-              isSingleSelect
-              options={options}
-              value={updatedAssignees}
-              onChange={(values) =>
-                form.setFieldValue(
-                  ['testCaseResolutionStatusDetails', 'assignee'],
-                  values
-                )
-              }
-              onSearch={(query) =>
-                fetchOptions({
-                  query,
-                  setOptions,
-                  onlyUsers: true,
-                  initialOptions: assigneeOptions,
-                })
-              }
-            />
+            ]}
+            trigger="onUpdate"
+            valuePropName="owner"
+            wrapperCol={{ span: 20 }}>
+            <UserTeamSelectableList hasPermission>
+              <Space size={16}>
+                <Button
+                  data-testid="add-assignee-button"
+                  icon={
+                    <PlusOutlined
+                      style={{ color: 'white', fontSize: '12px' }}
+                    />
+                  }
+                  size="small"
+                  type="primary"
+                />
+
+                {updatedAssignees && (
+                  <div data-testid="assignee-container">
+                    <UserTag
+                      id={updatedAssignees.name ?? updatedAssignees.id}
+                      isTeam={updatedAssignees.type === UserTeam.Team}
+                      name={getEntityName(updatedAssignees)}
+                      size={UserTagSize.small}
+                    />
+                  </div>
+                )}
+              </Space>
+            </UserTeamSelectableList>
           </Form.Item>
         )}
       </Form>

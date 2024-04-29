@@ -1333,6 +1333,25 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
     assertEquals(
         TestCaseResolutionStatusTypes.Ack,
         storedTestCaseResolutions.getData().get(0).getTestCaseResolutionStatusType());
+
+    // Delete test case recursively and check that the test case resolution status is also deleted
+    // 1. soft delete - should not delete the test case resolution status
+    // 2. hard delete - should delete the test case resolution status
+    deleteEntity(testCaseEntity1.getId(), true, false, ADMIN_AUTH_HEADERS);
+    storedTestCaseResolutions =
+        getTestCaseFailureStatus(startTs, endTs, null, TestCaseResolutionStatusTypes.Ack);
+    assertEquals(2, storedTestCaseResolutions.getData().size());
+    assertTrue(
+        storedTestCaseResolutions.getData().stream()
+            .anyMatch(t -> t.getTestCaseReference().getId().equals(testCaseEntity1.getId())));
+
+    deleteEntity(testCaseEntity1.getId(), true, true, ADMIN_AUTH_HEADERS);
+    storedTestCaseResolutions =
+        getTestCaseFailureStatus(startTs, endTs, null, TestCaseResolutionStatusTypes.Ack);
+    assertEquals(1, storedTestCaseResolutions.getData().size());
+    assertTrue(
+        storedTestCaseResolutions.getData().stream()
+            .noneMatch(t -> t.getTestCaseReference().getId().equals(testCaseEntity1.getId())));
   }
 
   @Test
@@ -1834,7 +1853,7 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
   public TestCase getTestCase(String fqn, Map<String, String> authHeaders)
       throws HttpResponseException {
     WebTarget target = getCollection().path("/name/" + fqn);
-    target = target.queryParam("fields", "incidentId");
+    target = target.queryParam("fields", "incidentId,inspectionQuery");
     return TestUtils.get(target, TestCase.class, authHeaders);
   }
 
@@ -2329,6 +2348,29 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
             .count());
   }
 
+  @Test
+  void test_addInspectionQuery(TestInfo test) throws IOException {
+    CreateTestCase create =
+        createRequest(test)
+            .withEntityLink(TABLE_LINK)
+            .withTestSuite(TEST_SUITE1.getFullyQualifiedName())
+            .withTestDefinition(TEST_DEFINITION3.getFullyQualifiedName())
+            .withParameterValues(
+                List.of(
+                    new TestCaseParameterValue().withValue("100").withName("missingCountValue")));
+    TestCase testCase = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
+    String inspectionQuery = "SELECT * FROM test_table WHERE column1 = 'value1'";
+    putInspectionQuery(testCase, inspectionQuery, ADMIN_AUTH_HEADERS);
+    TestCase updated = getTestCase(testCase.getFullyQualifiedName(), ADMIN_AUTH_HEADERS);
+    assertEquals(updated.getInspectionQuery(), inspectionQuery);
+  }
+
+  private void putInspectionQuery(TestCase testCase, String sql, Map<String, String> authHeaders)
+      throws IOException {
+    TestCase putResponse = putInspectionQuery(testCase.getId(), sql, authHeaders);
+    assertEquals(sql, putResponse.getInspectionQuery());
+  }
+
   private void putFailedRowsSample(
       TestCase testCase,
       List<String> columns,
@@ -2354,6 +2396,12 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
       throws HttpResponseException {
     WebTarget target = getResource(testCaseId).path("/failedRowsSample");
     return TestUtils.put(target, data, TestCase.class, OK, authHeaders);
+  }
+
+  public TestCase putInspectionQuery(UUID testCaseId, String sql, Map<String, String> authHeaders)
+      throws HttpResponseException {
+    WebTarget target = getResource(testCaseId).path("/inspectionQuery");
+    return TestUtils.put(target, sql, TestCase.class, OK, authHeaders);
   }
 
   public TableData getSampleData(UUID testCaseId, Map<String, String> authHeaders)

@@ -4,6 +4,7 @@ import static org.openmetadata.schema.type.EventType.ENTITY_CREATED;
 import static org.openmetadata.schema.type.EventType.ENTITY_DELETED;
 import static org.openmetadata.schema.type.EventType.ENTITY_UPDATED;
 
+import java.util.ArrayList;
 import java.util.List;
 import javax.json.JsonPatch;
 import javax.json.JsonValue;
@@ -11,6 +12,7 @@ import javax.ws.rs.core.Response;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
+import org.openmetadata.api.configuration.UiThemePreference;
 import org.openmetadata.schema.api.configuration.SlackAppConfiguration;
 import org.openmetadata.schema.email.SmtpSettings;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineServiceClientResponse;
@@ -192,6 +194,8 @@ public class SystemRepository {
         SlackAppConfiguration appConfiguration =
             JsonUtils.convertValue(setting.getConfigValue(), SlackAppConfiguration.class);
         setting.setConfigValue(encryptSlackAppSetting(appConfiguration));
+      } else if (setting.getConfigType() == SettingsType.CUSTOM_UI_THEME_PREFERENCE) {
+        JsonUtils.validateJsonSchema(setting.getConfigValue(), UiThemePreference.class);
       }
       dao.insertSettings(
           setting.getConfigType().toString(), JsonUtils.pojoToJson(setting.getConfigValue()));
@@ -324,12 +328,19 @@ public class SystemRepository {
           .withDescription(ValidationStepDescription.MIGRATION.key)
           .withPassed(Boolean.TRUE);
     }
+    List<String> missingVersions =
+        new ArrayList<>(migrationValidationClient.getExpectedMigrationList());
+    missingVersions.removeAll(currentVersions);
+
+    List<String> unexpectedVersions = new ArrayList<>(currentVersions);
+    unexpectedVersions.removeAll(migrationValidationClient.getExpectedMigrationList());
+
     return new StepValidation()
         .withDescription(ValidationStepDescription.MIGRATION.key)
         .withPassed(Boolean.FALSE)
         .withMessage(
             String.format(
-                "Found the versions [%s], but expected [%s]",
-                currentVersions, migrationValidationClient.getExpectedMigrationList()));
+                "Missing migrations that were not executed %s. Unexpected executed migrations %s",
+                missingVersions, unexpectedVersions));
   }
 }

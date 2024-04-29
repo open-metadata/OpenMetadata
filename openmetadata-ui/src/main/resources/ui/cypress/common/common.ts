@@ -84,21 +84,15 @@ export const addNewTagToEntity = (term: typeof NEW_TAG) => {
     '[data-testid="classification-tags-0"] [data-testid="entity-tags"] [data-testid="add-tag"]'
   )
     .eq(0)
-    .should('be.visible')
     .scrollIntoView()
     .click();
 
-  cy.get('[data-testid="tag-selector"] input').should('be.visible').type(name);
+  cy.get('[data-testid="tag-selector"] input').type(name);
 
-  cy.get(`[data-testid="tag-${fqn}"]`).should('be.visible').click();
-  // to close popup
-  cy.clickOutside();
+  cy.get(`[data-testid="tag-${fqn}"]`).click();
 
   cy.get('[data-testid="tag-selector"] > .ant-select-selector').contains(name);
-  cy.get('[data-testid="saveAssociatedTag"]')
-    .scrollIntoView()
-    .should('be.visible')
-    .click();
+  cy.get('[data-testid="saveAssociatedTag"]').scrollIntoView().click();
   cy.get('[data-testid="classification-tags-0"] [data-testid="tags-container"]')
     .scrollIntoView()
     .contains(name)

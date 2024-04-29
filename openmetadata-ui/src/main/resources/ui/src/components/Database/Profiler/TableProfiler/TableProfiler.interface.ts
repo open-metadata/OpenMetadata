@@ -29,8 +29,8 @@ import { UsePagingInterface } from '../../../../hooks/paging/usePaging';
 import { ListTestCaseParams } from '../../../../rest/testAPI';
 
 export interface TableProfilerProps {
-  isTableDeleted?: boolean;
   permissions: OperationPermission;
+  table?: Table;
 }
 
 export interface TableProfilerProviderProps extends TableProfilerProps {
@@ -54,6 +54,7 @@ export interface TableProfilerContextInterface {
   dateRangeObject: DateRangeObject;
   onDateRangeChange: (dateRange: DateRangeObject) => void;
   testCasePaging: UsePagingInterface;
+  table?: Table;
 }
 
 export type TableTestsType = {

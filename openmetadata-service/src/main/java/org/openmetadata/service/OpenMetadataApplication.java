@@ -149,7 +149,7 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     validateConfiguration(catalogConfig);
 
     // Instantiate incident severity classifier
-    IncidentSeverityClassifierInterface.createInstance(catalogConfig.getDataQualityConfiguration());
+    IncidentSeverityClassifierInterface.createInstance();
 
     // init for dataSourceFactory
     DatasourceConfig.initialize(catalogConfig.getDataSourceFactory().getDriverClass());

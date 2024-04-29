@@ -23,9 +23,8 @@ import {
   Space,
   Typography,
 } from 'antd';
-import { Theme } from 'antd/lib/config-provider/context';
 import { AxiosError } from 'axios';
-import { omit, startCase } from 'lodash';
+import { startCase } from 'lodash';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
@@ -39,33 +38,32 @@ import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import { GlobalSettingsMenuCategory } from '../../constants/GlobalSettings.constants';
 import { HEX_COLOR_CODE_REGEX } from '../../constants/regex.constants';
 import { LogoConfiguration } from '../../generated/configuration/logoConfiguration';
+import { UIThemePreference } from '../../generated/configuration/uiThemePreference';
 import { Settings, SettingType } from '../../generated/settings/settings';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
 import { FieldProp, FieldTypes } from '../../interface/FormUtils.interface';
 import { updateSettingsConfig } from '../../rest/settingConfigAPI';
 import { getField } from '../../utils/formUtils';
 import { getSettingPageEntityBreadCrumb } from '../../utils/GlobalSettingsUtils';
+import { getThemeConfig } from '../../utils/ThemeUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import './appearance-config-settings-page.less';
 
 const AppearanceConfigSettingsPage = () => {
   const history = useHistory();
-  const {
-    theme,
-    setTheme,
-    resetTheme,
-    applicationConfig,
-    setApplicationConfig,
-  } = useApplicationStore();
+  const { applicationConfig, setApplicationConfig } = useApplicationStore();
   const { t } = useTranslation();
   const [form] = Form.useForm();
   const [loading, setLoading] = useState<boolean>(false);
+  const [resetting, setResetting] = useState<boolean>(false);
 
   const [formState, setFormState] = useState<
-    Partial<LogoConfiguration & Theme>
+    Partial<
+      UIThemePreference['customLogoConfig'] & UIThemePreference['customTheme']
+    >
   >({
-    ...theme,
-    ...applicationConfig,
+    ...applicationConfig?.customLogoConfig,
+    ...applicationConfig?.customTheme,
   });
 
   const breadcrumbs: TitleBreadcrumbProps['titleLinks'] = useMemo(
@@ -78,30 +76,28 @@ const AppearanceConfigSettingsPage = () => {
   );
 
   const handleSave: FormProps['onFinish'] = async (
-    values: Theme & LogoConfiguration
+    values: UIThemePreference['customLogoConfig'] &
+      UIThemePreference['customTheme']
   ) => {
     setLoading(true);
     try {
-      const {
-        primaryColor,
-        errorColor,
-        successColor,
-        warningColor,
-        infoColor,
-        ...rest
-      } = values;
-      setTheme({
-        primaryColor,
-        errorColor,
-        successColor,
-        warningColor,
-        infoColor,
-      });
-
-      const configValues = omit(rest, 'processingColor');
+      const configValues = {
+        customLogoConfig: {
+          customLogoUrlPath: values?.customLogoUrlPath ?? '',
+          customMonogramUrlPath: values?.customMonogramUrlPath ?? '',
+          customFaviconUrlPath: values?.customFaviconUrlPath ?? '',
+        },
+        customTheme: {
+          primaryColor: values?.primaryColor ?? '',
+          errorColor: values?.errorColor ?? '',
+          successColor: values?.successColor ?? '',
+          warningColor: values?.warningColor ?? '',
+          infoColor: values?.infoColor ?? '',
+        },
+      };
 
       const configData = {
-        config_type: SettingType.CustomLogoConfiguration,
+        config_type: SettingType.CustomUIThemePreference,
         config_value: configValues,
       };
       await updateSettingsConfig(configData as Settings);
@@ -114,21 +110,35 @@ const AppearanceConfigSettingsPage = () => {
   };
 
   const handleReset = async () => {
+    setResetting(true);
     try {
-      resetTheme();
       const configValues = {
-        customLogoUrlPath: '',
-        customMonogramUrlPath: '',
-        customFaviconUrlPath: '',
+        customLogoConfig: {
+          customLogoUrlPath: '',
+          customMonogramUrlPath: '',
+          customFaviconUrlPath: '',
+        },
+        customTheme: {
+          primaryColor: '',
+          errorColor: '',
+          successColor: '',
+          warningColor: '',
+          infoColor: '',
+        },
       };
       const configData = {
-        config_type: SettingType.CustomLogoConfiguration,
+        config_type: SettingType.CustomUIThemePreference,
         config_value: configValues,
       };
       await updateSettingsConfig(configData as Settings);
-      setApplicationConfig(configValues);
+      setApplicationConfig({
+        ...configValues,
+        customTheme: getThemeConfig(configValues.customTheme),
+      });
     } catch (error) {
       showErrorToast(error as AxiosError);
+    } finally {
+      setResetting(false);
     }
   };
 
@@ -277,15 +287,13 @@ const AppearanceConfigSettingsPage = () => {
   ];
 
   useEffect(() => {
-    setFormState({
-      ...theme,
-      ...applicationConfig,
-    });
-    form.setFieldsValue({
-      ...theme,
-      ...applicationConfig,
-    });
-  }, [theme, applicationConfig]);
+    const configValues = {
+      ...applicationConfig?.customLogoConfig,
+      ...applicationConfig?.customTheme,
+    };
+    setFormState(configValues);
+    form.setFieldsValue(configValues);
+  }, [applicationConfig]);
 
   return (
     <PageLayoutV1 pageTitle={t('label.theme')}>
@@ -305,6 +313,7 @@ const AppearanceConfigSettingsPage = () => {
                 />
                 <Button
                   data-testid="reset-button"
+                  loading={resetting}
                   type="primary"
                   onClick={handleReset}>
                   {t('label.reset')}
@@ -317,8 +326,8 @@ const AppearanceConfigSettingsPage = () => {
           <Form
             form={form}
             initialValues={{
-              ...theme,
-              ...applicationConfig,
+              ...applicationConfig?.customLogoConfig,
+              ...applicationConfig?.customTheme,
             }}
             layout="vertical"
             onFinish={handleSave}
@@ -369,7 +378,10 @@ const AppearanceConfigSettingsPage = () => {
                 }>
                 <Row className="w-full" gutter={[16, 16]}>
                   {themeFormFields.map((field) => {
-                    const currentColor = formState[field.name as keyof Theme];
+                    const currentColor =
+                      formState[
+                        field.name as keyof UIThemePreference['customTheme']
+                      ];
 
                     return (
                       <Col className="w-full" key={field.name} span={24}>
