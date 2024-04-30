@@ -385,9 +385,9 @@ export const deletePost = async (
     }
   } else {
     try {
-      const deletResponse = await deletePostById(threadId, postId);
+      const deleteResponse = await deletePostById(threadId, postId);
       // get updated thread only if delete response and callback is present
-      if (deletResponse && callback) {
+      if (deleteResponse && callback) {
         const data = await getUpdatedThread(threadId);
         callback((pre) => {
           return pre.map((thread) => {
@@ -437,62 +437,60 @@ export const getEntityFieldDisplay = (entityField: string) => {
   return null;
 };
 
-export const updateThreadData = (
+export const updateThreadData = async (
   threadId: string,
   postId: string,
   isThread: boolean,
   data: Operation[],
   callback: (value: React.SetStateAction<Thread[]>) => void
-) => {
+): Promise<void> => {
   if (isThread) {
-    updateThread(threadId, data)
-      .then((res) => {
-        callback((prevData) => {
-          return prevData.map((thread) => {
-            if (isEqual(threadId, thread.id)) {
-              return {
-                ...thread,
-                reactions: res.reactions,
-                message: res.message,
-                announcement: res?.announcement,
-              };
-            } else {
-              return thread;
-            }
-          });
+    try {
+      const res = await updateThread(threadId, data);
+      callback((prevData) => {
+        return prevData.map((thread) => {
+          if (isEqual(threadId, thread.id)) {
+            return {
+              ...thread,
+              reactions: res.reactions,
+              message: res.message,
+              announcement: res?.announcement,
+            };
+          } else {
+            return thread;
+          }
         });
-      })
-      .catch((err: AxiosError) => {
-        showErrorToast(err);
       });
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    }
   } else {
-    updatePost(threadId, postId, data)
-      .then((res) => {
-        callback((prevData) => {
-          return prevData.map((thread) => {
-            if (isEqual(threadId, thread.id)) {
-              const updatedPosts = (thread.posts || []).map((post) => {
-                if (isEqual(postId, post.id)) {
-                  return {
-                    ...post,
-                    reactions: res.reactions,
-                    message: res.message,
-                  };
-                } else {
-                  return post;
-                }
-              });
+    try {
+      const res = await updatePost(threadId, postId, data);
+      callback((prevData) => {
+        return prevData.map((thread) => {
+          if (isEqual(threadId, thread.id)) {
+            const updatedPosts = (thread.posts || []).map((post) => {
+              if (isEqual(postId, post.id)) {
+                return {
+                  ...post,
+                  reactions: res.reactions,
+                  message: res.message,
+                };
+              } else {
+                return post;
+              }
+            });
 
-              return { ...thread, posts: updatedPosts };
-            } else {
-              return thread;
-            }
-          });
+            return { ...thread, posts: updatedPosts };
+          } else {
+            return thread;
+          }
         });
-      })
-      .catch((err: AxiosError) => {
-        showErrorToast(err);
       });
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    }
   }
 };
 

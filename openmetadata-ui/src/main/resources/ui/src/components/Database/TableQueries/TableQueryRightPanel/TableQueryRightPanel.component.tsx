@@ -147,7 +147,6 @@ const TableQueryRightPanel = ({
                       <ProfilePicture
                         displayName={getEntityName(user)}
                         name={user.name || ''}
-                        textClass="text-xs"
                         width="20"
                       />
                       <Link to={getUserPath(user.name ?? '')}>

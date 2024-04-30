@@ -35,6 +35,7 @@ interface Props {
   entityType: string;
   entityFQN: string;
   onCancel: () => void;
+  onSave: () => void;
 }
 
 export interface CreateAnnouncement {
@@ -47,6 +48,7 @@ export interface CreateAnnouncement {
 const AddAnnouncementModal: FC<Props> = ({
   open,
   onCancel,
+  onSave,
   entityType,
   entityFQN,
 }) => {
@@ -85,7 +87,7 @@ const AddAnnouncementModal: FC<Props> = ({
         if (data) {
           showSuccessToast(t('message.announcement-created-successfully'));
         }
-        onCancel();
+        onSave();
       } catch (error) {
         showErrorToast(error as AxiosError);
       } finally {

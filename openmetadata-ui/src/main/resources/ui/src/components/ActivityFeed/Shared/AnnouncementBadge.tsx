@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import Icon from '@ant-design/icons/lib/components/Icon';
 import { Typography } from 'antd';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
@@ -22,11 +23,11 @@ const AnnouncementBadge = () => {
 
   return (
     <div className="announcement-badge-container">
-      <AnnouncementIcon className="announcement-badge" />
+      <Icon className="announcement-badge" component={AnnouncementIcon} />
 
-      <Typography.Paragraph className="text-xs m-l-xss m-b-0 text-primary">
+      <Typography.Text className="announcement-text">
         {t('label.announcement')}
-      </Typography.Paragraph>
+      </Typography.Text>
     </div>
   );
 };

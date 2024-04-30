@@ -42,12 +42,14 @@ jest.mock('react-router-dom', () => ({
   useLocation: jest.fn().mockReturnValue({ pathname: 'pathname' }),
 }));
 const onCancel = jest.fn();
+const onSave = jest.fn();
 
 const mockProps = {
   open: true,
   entityType: '',
   entityFQN: '',
   onCancel,
+  onSave,
 };
 
 describe('Test Add Announcement modal', () => {

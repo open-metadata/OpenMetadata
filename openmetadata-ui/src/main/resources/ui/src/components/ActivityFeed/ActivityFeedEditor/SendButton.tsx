@@ -11,10 +11,12 @@
  *  limitations under the License.
  */
 
+import Icon from '@ant-design/icons/lib/components/Icon';
 import { Button } from 'antd';
 import classNames from 'classnames';
 import React, { FC } from 'react';
-import { ReactComponent as IconPaperPlanePrimary } from '../../../assets/svg/paper-plane-primary.svg';
+import { ReactComponent as IconPaperPlanePrimary } from '../../../assets/svg/paper-plane-fill.svg';
+import './send-button.less';
 
 interface SendButtonProp {
   editorValue: string;
@@ -28,12 +30,10 @@ export const SendButton: FC<SendButtonProp> = ({
   onSaveHandler,
 }) => (
   <Button
-    className={classNames('absolute', className)}
+    className={classNames('send-button', className)}
     data-testid="send-button"
     disabled={editorValue.length === 0}
-    icon={<IconPaperPlanePrimary height={18} width={18} />}
-    size="small"
-    style={{ bottom: '2px', right: '5px' }}
+    icon={<Icon component={IconPaperPlanePrimary} />}
     type="text"
     onClick={onSaveHandler}
   />

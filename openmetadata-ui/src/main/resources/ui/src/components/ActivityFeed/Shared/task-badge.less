@@ -20,16 +20,23 @@
   background: @announcement-background-dark;
   border-radius: 4px;
   border: 1px solid @announcement-border;
-  padding: 0 8px;
+  padding: 3px 8px;
   display: flex;
   align-items: center;
   justify-content: center;
-}
 
-.announcement-badge {
-  width: 14px;
-  height: 14px;
-  color: @primary-color;
+  .announcement-badge {
+    width: 14px;
+    height: 14px;
+    color: @announcement-border;
+  }
+
+  .announcement-text {
+    margin-left: 4px;
+    color: @announcement-border;
+    font-size: 12px;
+    font-weight: 700;
+  }
 }
 
 .task-badge {
