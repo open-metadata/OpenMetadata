@@ -211,7 +211,7 @@ class AdvancedSearchClassBase {
    */
   containerQueryBuilderFields: Fields = {
     'dataModel.columns.name.keyword': {
-      label: t('label.column'),
+      label: t('label.container-column'),
       type: 'select',
       mainWidgetProps: this.mainWidgetProps,
       fieldSettings: {
@@ -259,7 +259,7 @@ class AdvancedSearchClassBase {
       },
     },
     'columns.name.keyword': {
-      label: t('label.column'),
+      label: t('label.data-model-column'),
       type: 'select',
       mainWidgetProps: this.mainWidgetProps,
       fieldSettings: {
