@@ -265,19 +265,25 @@
         "entitySpecificInfo": {
           "oneOf": [
             {
+              "$ref": "./assets.json"
+            },
+            {
+              "$ref": "./customProperty.json"
+            },
+            {
               "$ref": "./description.json"
             },
             {
-              "$ref": "./owner.json"
+              "$ref": "./domain.json"
             },
             {
-              "$ref": "./testCaseResult.json"
+              "$ref": "./entityInfo.json"
             },
             {
               "$ref": "./tag.json"
             },
             {
-              "$ref": "./entityInfo.json"
+              "$ref": "./testCaseResult.json"
             }
           ]
         }
