@@ -117,16 +117,6 @@ class DbtSource(DbtServiceSource):
             else "dbtTags"
         )
 
-        # Create a service map to get dbt model lineage across different databases
-        all_databases = self.metadata.es_search_from_fqn(
-            entity_type=Database,
-            fqn_search_string="*",
-        )
-        self.database_services_map = {
-            result.dict()["name"]: result.dict()["service"]["name"]
-            for result in all_databases
-        }
-
     @classmethod
     def create(
         cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None
@@ -430,7 +420,7 @@ class DbtSource(DbtServiceSource):
                     table_fqn = fqn.build(
                         self.metadata,
                         entity_type=Table,
-                        service_name=self.get_service_name(manifest_node.database),
+                        service_name="*",
                         database_name=get_corrected_name(manifest_node.database),
                         schema_name=get_corrected_name(manifest_node.schema_),
                         table_name=model_name,
@@ -524,7 +514,7 @@ class DbtSource(DbtServiceSource):
                         parent_fqn = fqn.build(
                             self.metadata,
                             entity_type=Table,
-                            service_name=self.get_service_name(parent_node.database),
+                            service_name="*",
                             database_name=get_corrected_name(parent_node.database),
                             schema_name=get_corrected_name(parent_node.schema_),
                             table_name=table_name,
@@ -965,7 +955,7 @@ class DbtSource(DbtServiceSource):
                     test_case_fqn = fqn.build(
                         self.metadata,
                         entity_type=TestCase,
-                        service_name=self.get_service_name(manifest_node.database),
+                        service_name="*",
                         database_name=source_elements[1],
                         schema_name=source_elements[2],
                         table_name=source_elements[3],
