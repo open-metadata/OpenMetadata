@@ -223,7 +223,9 @@ class S3Source(StorageServiceSource):
                 return S3ContainerDetails(
                     name=metadata_entry.dataPath.strip(KEY_SEPARATOR),
                     prefix=prefix,
-                    creation_date=bucket_response.creation_date.isoformat(),
+                    creation_date=bucket_response.creation_date.isoformat()
+                    if bucket_response.creation_date
+                    else None,
                     number_of_objects=self._fetch_metric(
                         bucket_name=bucket_name, metric=S3Metric.NUMBER_OF_OBJECTS
                     ),
@@ -270,6 +272,11 @@ class S3Source(StorageServiceSource):
     def fetch_buckets(self) -> List[S3BucketResponse]:
         results: List[S3BucketResponse] = []
         try:
+            if self.service_connection.bucketName:
+                results.append(
+                    S3BucketResponse(Name=self.service_connection.bucketName)
+                )
+                return results
             # No pagination required, as there is a hard 1000 limit on nr of buckets per aws account
             for bucket in self.s3_client.list_buckets().get("Buckets") or []:
                 if filter_by_container(
@@ -335,7 +342,9 @@ class S3Source(StorageServiceSource):
         return S3ContainerDetails(
             name=bucket_response.name,
             prefix=KEY_SEPARATOR,
-            creation_date=bucket_response.creation_date.isoformat(),
+            creation_date=bucket_response.creation_date.isoformat()
+            if bucket_response.creation_date
+            else None,
             number_of_objects=self._fetch_metric(
                 bucket_name=bucket_response.name, metric=S3Metric.NUMBER_OF_OBJECTS
             ),

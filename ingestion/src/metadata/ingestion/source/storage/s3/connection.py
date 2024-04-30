@@ -59,8 +59,13 @@ def test_connection(
     of a metadata workflow or during an Automation Workflow
     """
 
+    def test_buckets(connection: S3Connection, client: S3ObjectStoreClient):
+        if connection.bucketName:
+            return partial(client.s3_client.list_objects, Bucket=connection.bucketName)
+        return client.s3_client.list_buckets
+
     test_fn = {
-        "ListBuckets": client.s3_client.list_buckets,
+        "ListBuckets": test_buckets(service_connection, client),
         "GetMetrics": partial(
             client.cloudwatch_client.list_metrics, Namespace="AWS/S3"
         ),
