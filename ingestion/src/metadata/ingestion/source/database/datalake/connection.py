@@ -103,7 +103,7 @@ def set_gcs_datalake_client(config: GCSConfig, project_id: str):
         gcs_config.securityConfig.gcpConfig.projectId = SingleProjectId.parse_obj(
             project_id
         )
-    return get_datalake_client(config=gcs_config)
+    return get_datalake_client(gcs_config)
 
 
 def get_connection(connection: DatalakeConnection) -> DatalakeClient:
