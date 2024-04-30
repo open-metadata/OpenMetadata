@@ -40,6 +40,7 @@ import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.ResultList;
+import org.openmetadata.service.util.WebsocketNotificationHandler;
 import org.openmetadata.service.util.incidentSeverityClassifier.IncidentSeverityClassifierInterface;
 
 public class TestCaseResolutionStatusRepository
@@ -324,6 +325,9 @@ public class TestCaseResolutionStatusRepository
             .withUpdatedAt(System.currentTimeMillis());
     FeedRepository feedRepository = Entity.getFeedRepository();
     feedRepository.create(thread);
+
+    // Send WebSocket Notification
+    WebsocketNotificationHandler.handleTaskNotification(thread);
   }
 
   private void patchTaskAssignee(Thread originalTask, EntityReference newAssignee, String user) {
@@ -334,7 +338,10 @@ public class TestCaseResolutionStatusRepository
     JsonPatch patch = JsonUtils.getJsonPatch(originalTask, updatedTask);
 
     FeedRepository feedRepository = Entity.getFeedRepository();
-    feedRepository.patchThread(null, originalTask.getId(), user, patch);
+    RestUtil.PatchResponse<Thread> thread = feedRepository.patchThread(null, originalTask.getId(), user, patch);
+
+    // Send WebSocket Notification
+    WebsocketNotificationHandler.handleTaskNotification(thread.entity());
   }
 
   public void inferIncidentSeverity(TestCaseResolutionStatus incident) {
