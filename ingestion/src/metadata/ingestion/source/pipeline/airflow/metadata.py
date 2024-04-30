@@ -18,9 +18,11 @@ from enum import Enum
 from typing import Iterable, List, Optional, cast
 
 from airflow.models import BaseOperator, DagRun, TaskInstance
+from airflow.models.dag import DagModel
 from airflow.models.serialized_dag import SerializedDagModel
 from airflow.serialization.serialized_objects import SerializedDAG
 from pydantic import BaseModel, ValidationError
+from sqlalchemy import join
 from sqlalchemy.orm import Session
 
 from metadata.generated.schema.api.data.createPipeline import CreatePipelineRequest
@@ -291,11 +293,23 @@ class AirflowSource(PipelineServiceSource):
             if hasattr(SerializedDagModel, "_data")
             else SerializedDagModel.data  # For 2.2.5 and 2.1.4
         )
-        for serialized_dag in self.session.query(
+
+        session_query = self.session.query(
             SerializedDagModel.dag_id,
             json_data_column,
             SerializedDagModel.fileloc,
-        ).yield_per(100):
+        )
+        if not self.source_config.includeUnDeployedPipelines:
+            session_query = session_query.select_from(
+                join(
+                    SerializedDagModel,
+                    DagModel,
+                    SerializedDagModel.dag_id == DagModel.dag_id,
+                )
+            ).filter(
+                DagModel.is_paused == False  # pylint: disable=singleton-comparison
+            )
+        for serialized_dag in session_query.yield_per(100):
             try:
                 data = serialized_dag[1]["dag"]
                 dag = AirflowDagDetails(

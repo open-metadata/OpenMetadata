@@ -12,8 +12,8 @@
  */
 
 import { CheckOutlined, SearchOutlined } from '@ant-design/icons';
+import { graphlib, layout } from '@dagrejs/dagre';
 import { AxiosError } from 'axios';
-import dagre from 'dagre';
 import { t } from 'i18next';
 import {
   cloneDeep,
@@ -142,7 +142,8 @@ export const getLayoutedElements = (
   direction = EntityLineageDirection.LEFT_RIGHT,
   isExpanded = true
 ) => {
-  const dagreGraph = new dagre.graphlib.Graph();
+  const Graph = graphlib.Graph;
+  const dagreGraph = new Graph();
   dagreGraph.setDefaultEdgeLabel(() => ({}));
   dagreGraph.setGraph({ rankdir: direction });
 
@@ -170,7 +171,7 @@ export const getLayoutedElements = (
   );
   edgesRequired.forEach((el) => dagreGraph.setEdge(el.source, el.target));
 
-  dagre.layout(dagreGraph);
+  layout(dagreGraph);
 
   const uNode = nodeData.map((el) => {
     const nodeWithPosition = dagreGraph.node(el.id);
@@ -613,18 +614,22 @@ export const createNodes = (
     getEntityName(a).localeCompare(getEntityName(b))
   );
 
-  // Create a new dagre graph
-  const graph = new dagre.graphlib.Graph();
+  const GraphInstance = graphlib.Graph;
+  const graph = new GraphInstance();
 
   // Set an object for the graph label
-  graph.setGraph({ rankdir: EntityLineageDirection.LEFT_RIGHT });
+  graph.setGraph({
+    rankdir: EntityLineageDirection.LEFT_RIGHT,
+  });
 
   // Default to assigning a new object as a label for each new edge.
   graph.setDefaultEdgeLabel(() => ({}));
 
   // Add nodes to the graph
   uniqueNodesData.forEach((node) => {
-    graph.setNode(node.id, { width: NODE_WIDTH, height: NODE_HEIGHT });
+    const { childrenHeight } = getEntityChildrenAndLabel(node as SourceType);
+    const nodeHeight = childrenHeight + 220;
+    graph.setNode(node.id, { width: NODE_WIDTH, height: nodeHeight });
   });
 
   // Add edges to the graph (if you have edge information)
@@ -633,7 +638,7 @@ export const createNodes = (
   });
 
   // Perform the layout
-  dagre.layout(graph);
+  layout(graph);
 
   // Get the layout positions
   const layoutPositions = graph.nodes().map((nodeId) => graph.node(nodeId));
@@ -656,8 +661,8 @@ export const createNodes = (
         isRootNode: entityFqn === node.fullyQualifiedName,
       },
       position: {
-        x: position.x,
-        y: position.y,
+        x: position.x - NODE_WIDTH / 2,
+        y: position.y - position.height / 2,
       },
     };
   });

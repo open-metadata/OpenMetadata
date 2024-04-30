@@ -15,15 +15,10 @@ package org.openmetadata.service.apps.bundles.changeEvent.feed;
 
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.schema.entity.events.SubscriptionDestination.SubscriptionType.ACTIVITY_FEED;
-import static org.openmetadata.schema.type.EventType.ENTITY_DELETED;
-import static org.openmetadata.service.events.subscription.AlertsRuleEvaluator.getEntity;
 
-import java.util.List;
-import java.util.UUID;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.tuple.Pair;
-import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.events.SubscriptionDestination;
 import org.openmetadata.schema.entity.feed.Thread;
 import org.openmetadata.schema.type.ChangeEvent;
@@ -32,7 +27,6 @@ import org.openmetadata.service.apps.bundles.changeEvent.Destination;
 import org.openmetadata.service.events.errors.EventPublisherException;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.formatter.decorators.FeedMessageDecorator;
-import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.FeedRepository;
 import org.openmetadata.service.socket.WebSocketManager;
 import org.openmetadata.service.util.FeedUtils;
@@ -66,11 +60,6 @@ public class ActivityFeedPublisher implements Destination<ChangeEvent> {
             WebSocketManager.getInstance()
                 .broadCastMessageToAll(
                     WebSocketManager.FEED_BROADCAST_CHANNEL, JsonUtils.pojoToJson(thread));
-            // Delete all conversations related to the entity
-            if (changeEvent.getEventType().equals(ENTITY_DELETED)) {
-              deleteAllConversationsRelatedToEntity(
-                  getEntity(changeEvent), Entity.getCollectionDAO());
-            }
           }
         }
       }
@@ -81,17 +70,6 @@ public class ActivityFeedPublisher implements Destination<ChangeEvent> {
       LOG.error(message);
       throw new EventPublisherException(
           message, Pair.of(subscriptionDestination.getId(), changeEvent));
-    }
-  }
-
-  private void deleteAllConversationsRelatedToEntity(
-      EntityInterface entityInterface, CollectionDAO collectionDAO) {
-    String entityId = entityInterface.getId().toString();
-    List<String> threadIds = collectionDAO.feedDAO().findByEntityId(entityId);
-    for (String threadId : threadIds) {
-      UUID id = UUID.fromString(threadId);
-      collectionDAO.relationshipDAO().deleteAll(id, Entity.THREAD);
-      collectionDAO.feedDAO().delete(id);
     }
   }
 
