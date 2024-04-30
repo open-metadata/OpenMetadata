@@ -32,7 +32,10 @@ public class PipelineIndex implements SearchIndex {
     List<SearchSuggest> serviceSuggest = new ArrayList<>();
     List<SearchSuggest> taskSuggest = new ArrayList<>();
     serviceSuggest.add(
-        SearchSuggest.builder().input(pipeline.getService().getName()).weight(5).build());
+        SearchSuggest.builder()
+            .input((pipeline.getService() != null ? pipeline.getService().getName() : null))
+            .weight(5)
+            .build());
     if (pipeline.getTasks() != null) {
       for (Task task : pipeline.getTasks()) {
         taskSuggest.add(SearchSuggest.builder().input(task.getName()).weight(5).build());

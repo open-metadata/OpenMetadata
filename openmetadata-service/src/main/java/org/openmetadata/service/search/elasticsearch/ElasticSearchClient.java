@@ -21,6 +21,7 @@ import static org.openmetadata.service.search.EntityBuilderConstant.PRE_TAG;
 import static org.openmetadata.service.search.EntityBuilderConstant.SCHEMA_FIELD_NAMES;
 import static org.openmetadata.service.search.EntityBuilderConstant.UNIFIED;
 import static org.openmetadata.service.search.UpdateSearchEventsConstant.SENDING_REQUEST_TO_ELASTIC_SEARCH;
+import static org.openmetadata.service.search.elasticsearch.ElasticSearchEntitiesProcessor.getUpdateRequest;
 import static org.openmetadata.service.util.FullyQualifiedName.getParentFQN;
 
 import com.fasterxml.jackson.databind.JsonNode;
@@ -131,6 +132,8 @@ import org.openmetadata.schema.DataInsightInterface;
 import org.openmetadata.schema.dataInsight.DataInsightChartResult;
 import org.openmetadata.schema.entity.data.EntityHierarchy__1;
 import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration;
+import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.Include;
 import org.openmetadata.sdk.exception.SearchException;
 import org.openmetadata.sdk.exception.SearchIndexNotFoundException;
 import org.openmetadata.service.Entity;
@@ -175,6 +178,7 @@ import org.openmetadata.service.search.indexes.TopicIndex;
 import org.openmetadata.service.search.indexes.UserIndex;
 import org.openmetadata.service.search.models.IndexMapping;
 import org.openmetadata.service.util.JsonUtils;
+import org.openmetadata.service.workflows.searchIndex.ReindexingUtil;
 
 @Slf4j
 // Not tagged with Repository annotation as it is programmatically initialized
@@ -350,7 +354,7 @@ public class ElasticSearchClient implements SearchClient {
           QueryBuilders.boolQuery()
               .must(searchSourceBuilder.query())
               .must(QueryBuilders.existsQuery("deleted"))
-              .must(QueryBuilders.termQuery("deleted", request.deleted())));
+              .must(QueryBuilders.termQuery("deleted", request.isDeleted())));
       boolQueryBuilder.should(
           QueryBuilders.boolQuery()
               .must(searchSourceBuilder.query())
@@ -367,10 +371,10 @@ public class ElasticSearchClient implements SearchClient {
       searchSourceBuilder.query(
           QueryBuilders.boolQuery()
               .must(searchSourceBuilder.query())
-              .must(QueryBuilders.termQuery("deleted", request.deleted())));
+              .must(QueryBuilders.termQuery("deleted", request.isDeleted())));
     }
 
-    if (!nullOrEmpty(request.getSortFieldParam()) && !request.getHierarchy()) {
+    if (!nullOrEmpty(request.getSortFieldParam()) && !request.isGetHierarchy()) {
       searchSourceBuilder.sort(
           request.getSortFieldParam(), SortOrder.fromString(request.getSortOrder()));
     }
@@ -383,7 +387,7 @@ public class ElasticSearchClient implements SearchClient {
 
       searchSourceBuilder.query(baseQuery);
 
-      if (request.getHierarchy()) {
+      if (request.isGetHierarchy()) {
         SearchResponse searchResponse =
             client.search(
                 new es.org.elasticsearch.action.search.SearchRequest(request.getIndex())
@@ -416,11 +420,11 @@ public class ElasticSearchClient implements SearchClient {
     https://github.com/elastic/elasticsearch/issues/33028 */
     searchSourceBuilder.fetchSource(
         new FetchSourceContext(
-            request.fetchSource(),
+            request.isFetchSource(),
             request.getIncludeSourceFields().toArray(String[]::new),
             new String[] {}));
 
-    if (request.trackTotalHits()) {
+    if (request.isTrackTotalHits()) {
       searchSourceBuilder.trackTotalHits(true);
     } else {
       searchSourceBuilder.trackTotalHitsUpTo(MAX_RESULT_HITS);
@@ -435,7 +439,7 @@ public class ElasticSearchClient implements SearchClient {
                   .source(searchSourceBuilder),
               RequestOptions.DEFAULT);
 
-      if (!request.getHierarchy()) {
+      if (!request.isGetHierarchy()) {
         return Response.status(OK).entity(searchResponse.toString()).build();
       } else {
         // Build the nested hierarchy from elastic search response
@@ -997,7 +1001,7 @@ public class ElasticSearchClient implements SearchClient {
               "deleted",
               Collections.singletonList(
                   CategoryQueryContext.builder()
-                      .setCategory(String.valueOf(request.deleted()))
+                      .setCategory(String.valueOf(request.isDeleted()))
                       .build())));
     }
     SuggestBuilder suggestBuilder = new SuggestBuilder();
@@ -1007,7 +1011,7 @@ public class ElasticSearchClient implements SearchClient {
         .timeout(new TimeValue(30, TimeUnit.SECONDS))
         .fetchSource(
             new FetchSourceContext(
-                request.fetchSource(),
+                request.isFetchSource(),
                 request.getIncludeSourceFields().toArray(String[]::new),
                 new String[] {}));
     es.org.elasticsearch.action.search.SearchRequest searchRequest =
@@ -1442,6 +1446,54 @@ public class ElasticSearchClient implements SearchClient {
       updateRequest.scriptedUpsert(true);
       updateRequest.script(script);
       updateElasticSearch(updateRequest);
+    }
+  }
+
+  @Override
+  public void reindexAcrossIndices(String matchingKey, EntityReference sourceRef) {
+    if (isClientAvailable) {
+      getAsyncExecutor()
+          .submit(
+              () -> {
+                try {
+                  // Initialize the 'from' parameter to 0
+                  int from = 0;
+                  boolean hasMoreResults = true;
+
+                  while (hasMoreResults) {
+                    List<EntityReference> entities =
+                        ReindexingUtil.findReferenceInElasticSearchAcrossAllIndexes(
+                            matchingKey, sourceRef.getFullyQualifiedName(), from);
+
+                    // Async Re-index the entities which matched
+                    processEntitiesForReindex(entities);
+
+                    // Update from
+                    from += entities.size();
+                    hasMoreResults = !entities.isEmpty();
+                  }
+                } catch (Exception ex) {
+                  LOG.error("Reindexing Across Entities Failed", ex);
+                }
+              });
+    }
+  }
+
+  private void processEntitiesForReindex(List<EntityReference> references) throws IOException {
+    if (!references.isEmpty()) {
+      // Process entities for reindex
+      BulkRequest bulkRequests = new BulkRequest();
+      // Build Bulk request
+      for (EntityReference entityRef : references) {
+        // Reindex entity
+        UpdateRequest request =
+            getUpdateRequest(entityRef.getType(), Entity.getEntity(entityRef, "*", Include.ALL));
+        bulkRequests.add(request);
+      }
+
+      if (isClientAvailable) {
+        client.bulk(bulkRequests, RequestOptions.DEFAULT);
+      }
     }
   }
 
