@@ -17,7 +17,8 @@ import { EntityType, ENTITY_PATH } from '../../constants/Entity.interface';
 import {
   createAnnouncement as createAnnouncementUtil,
   createInactiveAnnouncement as createInactiveAnnouncementUtil,
-  deleteAnnoucement,
+  deleteAnnouncement,
+  replyAnnouncementUtil,
 } from '../Utils/Annoucement';
 import {
   createCustomPropertyForEntity,
@@ -449,26 +450,30 @@ class EntityClass {
 
   createAnnouncement() {
     createAnnouncementUtil({
-      title: 'Cypress annocement',
-      description: 'Cypress annocement description',
+      title: 'Cypress announcement',
+      description: 'Cypress announcement description',
     });
   }
 
+  replyAnnouncement() {
+    replyAnnouncementUtil();
+  }
+
   removeAnnouncement() {
-    deleteAnnoucement();
+    deleteAnnouncement();
   }
 
   // Inactive Announcement
 
   createInactiveAnnouncement() {
     createInactiveAnnouncementUtil({
-      title: 'Inactive Cypress annocement',
-      description: 'Inactive Cypress annocement description',
+      title: 'Inactive Cypress announcement',
+      description: 'Inactive Cypress announcement description',
     });
   }
 
   removeInactiveAnnouncement() {
-    deleteAnnoucement();
+    deleteAnnouncement();
   }
 
   followUnfollowEntity() {

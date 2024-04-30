@@ -695,6 +695,12 @@ public class SearchRepository {
         fieldAddParams.put(fieldChange.getName(), doc.get("votes"));
         scriptTxt.append("ctx._source.votes = params.votes;");
       }
+      if (fieldChange.getName().equalsIgnoreCase("pipelineStatus")) {
+        scriptTxt.append(
+            "if (ctx._source.containsKey('pipelineStatus')) { ctx._source.pipelineStatus = params.newPipelineStatus; } else { ctx._source['pipelineStatus'] = params.newPipelineStatus;}");
+        Map<String, Object> doc = JsonUtils.getMap(entity);
+        fieldAddParams.put("newPipelineStatus", doc.get("pipelineStatus"));
+      }
     }
     return scriptTxt.toString();
   }
