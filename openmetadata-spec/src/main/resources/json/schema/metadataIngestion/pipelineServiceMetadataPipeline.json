@@ -69,6 +69,12 @@
       "type": "boolean",
       "default": true,
       "title": "Include Tags"
+    },
+    "includeUnDeployedPipelines": {
+      "description": "Optional configuration to toggle whether the un-deployed pipelines should be ingested or not. If set to false, only deployed pipelines will be ingested.",
+      "type": "boolean",
+      "default": true,
+      "title": "Include UnDeployed Pipelines"
     }
   },
   "additionalProperties": false
