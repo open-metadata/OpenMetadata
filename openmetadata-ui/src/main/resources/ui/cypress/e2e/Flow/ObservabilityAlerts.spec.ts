@@ -67,7 +67,6 @@ describe(
       user: {
         id: '',
         displayName: '',
-        id: '',
       },
       domain: {
         name: '',
@@ -404,14 +403,19 @@ describe(
               .click();
 
             // Search and select filter input value
-            interceptURL('GET', `/api/v1/search/query?q=*`, 'getSearchResult');
+            interceptURL(
+              'GET',
+              `/api/v1/search/query?q=*`,
+              `search${filter.name}`
+            );
             cy.get(`[data-testid="${filter.inputSelector}"]`)
               .click()
               .type(filter.inputValue);
 
-            // Adding manual wait here as as safe since debounced API is not being detected in the cypress
-            cy.wait(500);
-            verifyResponseStatusCode('@getSearchResult', 200);
+            cy.wait(`@search${filter.name}`, {
+              requestTimeout: 10000,
+            });
+
             cy.get(`[title="${filter.inputValue}"]`)
               .filter(':visible')
               .scrollIntoView()

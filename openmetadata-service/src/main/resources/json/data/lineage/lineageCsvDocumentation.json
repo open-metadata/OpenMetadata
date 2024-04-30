@@ -1,0 +1,101 @@
+{
+    "summary": "Lineage CSV file is used for exporting lineage of an entity.",
+    "headers": [
+      {
+        "name": "fromId",
+        "required": true,
+        "description": "The UUID of the source entity",
+        "examples": [
+          "`123e4567-e89b-12d3-a456-426614174000`"
+        ]
+      },
+      {
+        "name": "fromEntityType",
+        "required": true,
+        "description": "Entity type of the source entity",
+        "examples": [
+          "`table`, `topic`"
+        ]
+      },
+      {
+        "name": "fromFullyQualifiedName",
+        "required": true,
+        "description": "Fully qualified name of the source entity",
+        "examples": [
+          "`Redshift_DWH.prod.sales.customer`"
+        ]
+      },
+      {
+        "name": "toId",
+        "required": true,
+        "description": "The UUID of the destination entity",
+        "examples": [
+          "`123e4567-e89b-12d3-a456-426614174000`"
+        ]
+      },
+      {
+        "name": "toEntityType",
+        "required": true,
+        "description": "Entity type of the destination entity",
+        "examples": [
+          "`table`, `topic`"
+        ]
+      },
+      {
+        "name": "toFullyQualifiedName",
+        "required": true,
+        "description": "Fully qualified name of the destination entity",
+        "examples": [
+          "`Redshift_DWH.prod.sales.customer`"
+        ]
+      },
+      {
+        "name": "description",
+        "required": false,
+        "description": "Description for the lineage edge.",
+        "examples": [
+          "Data flow from `Redshift_DWH.prod.sales.customer` to `Redshift_DWH.prod.sales.orders`"
+        ]
+      },
+      {
+        "name": "pipelineId",
+        "required": false,
+        "description": "Id of the pipeline involved in lineage",
+        "examples": [
+          "`123e4567-e89b-12d3-a456-426614174000`"
+        ]
+      },
+      {
+        "name": "pipelineFullyQualifiedName",
+        "required": false,
+        "description": "Fully Qualified Name of the pipeline involved in lineage",
+        "examples": [
+          "`Airflow.transformation_pipeline`"
+        ]
+      },
+      {
+        "name": "columnLineage",
+        "required": false,
+        "description": "Columns involved in the lineage in format `fromCol1:toCol1;fromCol2:toCol2`.",
+        "examples": [
+          "`sample_data.ecommerce_db.shopify.raw_customer.comments:sample_data.ecommerce_db.shopify.dim_address.address_id;sample_data.ecommerce_db.shopify.raw_customer.creditcard:sample_data.ecommerce_db.shopify.dim_address.address_id`"
+        ]
+      },
+      {
+        "name": "sqlQuery",
+        "required": false,
+        "description": "SQL used for transformation",
+        "examples": [
+          "`create table dest as select * from source`"
+        ]
+      },
+      {
+        "name": "source",
+        "required": false,
+        "description": "Source of lineage information",
+        "examples": [
+          "`Manual`, `ViewLineage`, `PipelineLineage`"
+        ]
+      }
+    ]
+  }

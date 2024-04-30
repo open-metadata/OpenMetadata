@@ -272,6 +272,12 @@ export const getFormattedEntityData = (
     const { listHighlights, listHighlightsMap } =
       getMapOfListHighlights(highlights);
 
+    const entityHasChildren = [
+      SummaryEntityType.COLUMN,
+      SummaryEntityType.FIELD,
+      SummaryEntityType.SCHEMAFIELD,
+    ].includes(entityType);
+
     const { highlightedListItem, remainingListItem } = entityInfo.reduce(
       (acc, listItem) => {
         // return the highlight of listItem
@@ -297,8 +303,7 @@ export const getFormattedEntityData = (
           ...(entityType === SummaryEntityType.MLFEATURE && {
             algorithm: (listItem as MlFeature).featureAlgorithm,
           }),
-          ...((entityType === SummaryEntityType.COLUMN ||
-            entityType === SummaryEntityType.FIELD) && {
+          ...(entityHasChildren && {
             children: getFormattedEntityData(
               entityType,
               (listItem as Column | Field).children,

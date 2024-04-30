@@ -12,6 +12,8 @@
  */
 import { CloseOutlined } from '@ant-design/icons';
 import {
+  Button,
+  Form,
   Select,
   SelectProps,
   Space,
@@ -49,6 +51,8 @@ const AsyncSelectList: FC<AsyncSelectListProps & SelectProps> = ({
   filterOptions = [],
   optionClassName,
   tagType,
+  onCancel,
+  isSubmitLoading,
   ...props
 }) => {
   const [isLoading, setIsLoading] = useState(false);
@@ -60,6 +64,7 @@ const AsyncSelectList: FC<AsyncSelectListProps & SelectProps> = ({
   const selectedTagsRef = useRef<SelectOption[]>(initialOptions ?? []);
   const { t } = useTranslation();
   const [optionFilteredCount, setOptionFilteredCount] = useState(0);
+  const form = Form.useFormInstance();
 
   const getFilteredOptions = (data: SelectOption[]) => {
     if (isEmpty(filterOptions)) {
@@ -170,6 +175,25 @@ const AsyncSelectList: FC<AsyncSelectListProps & SelectProps> = ({
     <>
       {menu}
       {hasContentLoading ? <Loader size="small" /> : null}
+      {onCancel && (
+        <Space className="p-sm p-b-xss p-l-xs custom-dropdown-render" size={8}>
+          <Button
+            className="update-btn"
+            data-testid="saveAssociatedTag"
+            htmlType="submit"
+            loading={isSubmitLoading}
+            size="small"
+            onClick={() => form.submit()}>
+            {t('label.update')}
+          </Button>
+          <Button
+            data-testid="cancelAssociatedTag"
+            size="small"
+            onClick={onCancel}>
+            {t('label.cancel')}
+          </Button>
+        </Space>
+      )}
     </>
   );
 
@@ -272,11 +296,6 @@ const AsyncSelectList: FC<AsyncSelectListProps & SelectProps> = ({
       optionLabelProp="label"
       style={{ width: '100%' }}
       tagRender={customTagRender}
-      onBlur={() => {
-        setCurrentPage(1);
-        setSearchValue('');
-        setOptions([]);
-      }}
       onChange={handleChange}
       onFocus={() => loadOptions('')}
       onInputKeyDown={(event) => {

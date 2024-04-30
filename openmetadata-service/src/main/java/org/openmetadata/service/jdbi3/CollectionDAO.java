@@ -51,7 +51,7 @@ import org.jdbi.v3.sqlobject.customizer.BindMap;
 import org.jdbi.v3.sqlobject.customizer.Define;
 import org.jdbi.v3.sqlobject.statement.SqlQuery;
 import org.jdbi.v3.sqlobject.statement.SqlUpdate;
-import org.openmetadata.api.configuration.LogoConfiguration;
+import org.openmetadata.api.configuration.UiThemePreference;
 import org.openmetadata.schema.TokenInterface;
 import org.openmetadata.schema.analytics.ReportData;
 import org.openmetadata.schema.analytics.WebAnalyticEvent;
@@ -1764,6 +1764,51 @@ public interface CollectionDAO {
     @Override
     default String getNameHashColumn() {
       return "fqnHash";
+    }
+
+    @Override
+    default int listCount(ListFilter filter) {
+      String condition = filter.getCondition();
+      String directChildrenOf = filter.getQueryParam("directChildrenOf");
+
+      if (!nullOrEmpty(directChildrenOf)) {
+        condition =
+            String.format(
+                " %s AND fqnHash = CONCAT('%s', '.', MD5( IF(name LIKE '%%.%%', CONCAT('\"', name, '\"'), name)))  ",
+                condition, FullyQualifiedName.buildHash(directChildrenOf));
+      }
+
+      return listCount(getTableName(), getNameHashColumn(), condition);
+    }
+
+    @Override
+    default List<String> listBefore(ListFilter filter, int limit, String before) {
+      String condition = filter.getCondition();
+      String directChildrenOf = filter.getQueryParam("directChildrenOf");
+
+      if (!nullOrEmpty(directChildrenOf)) {
+        condition =
+            String.format(
+                " %s AND fqnHash = CONCAT('%s', '.', MD5( IF(name LIKE '%%.%%', CONCAT('\"', name, '\"'), name)))  ",
+                condition, FullyQualifiedName.buildHash(directChildrenOf));
+      }
+
+      return listBefore(getTableName(), condition, limit, before);
+    }
+
+    @Override
+    default List<String> listAfter(ListFilter filter, int limit, String after) {
+      String condition = filter.getCondition();
+      String directChildrenOf = filter.getQueryParam("directChildrenOf");
+
+      if (!nullOrEmpty(directChildrenOf)) {
+        condition =
+            String.format(
+                " %s AND fqnHash = CONCAT('%s', '.', MD5( IF(name LIKE '%%.%%', CONCAT('\"', name, '\"'), name)))  ",
+                condition, FullyQualifiedName.buildHash(directChildrenOf));
+      }
+
+      return listAfter(getTableName(), condition, limit, after);
     }
   }
 
@@ -3962,7 +4007,7 @@ public interface CollectionDAO {
       Object value =
           switch (configType) {
             case EMAIL_CONFIGURATION -> JsonUtils.readValue(json, SmtpSettings.class);
-            case CUSTOM_LOGO_CONFIGURATION -> JsonUtils.readValue(json, LogoConfiguration.class);
+            case CUSTOM_UI_THEME_PREFERENCE -> JsonUtils.readValue(json, UiThemePreference.class);
             case LOGIN_CONFIGURATION -> JsonUtils.readValue(json, LoginConfiguration.class);
             case SLACK_APP_CONFIGURATION -> JsonUtils.readValue(json, String.class);
             case SLACK_BOT, SLACK_INSTALLER -> JsonUtils.readValue(

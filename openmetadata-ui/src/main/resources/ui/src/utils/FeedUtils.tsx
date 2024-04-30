@@ -87,6 +87,9 @@ export const getEntityType = (entityLink: string) => {
 export const getEntityFQN = (entityLink: string) => {
   return EntityLink.getEntityFqn(entityLink);
 };
+export const getEntityColumnFQN = (entityLink: string) => {
+  return EntityLink.getEntityColumnFqn(entityLink);
+};
 export const getEntityField = (entityLink: string) => {
   const match = EntityRegEx.exec(entityLink);
 

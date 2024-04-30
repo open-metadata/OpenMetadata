@@ -82,8 +82,8 @@
           "type": "string"
         },
         "testCaseResolutionStatusId": {
-            "description": "The test case resolution status id for which the task is created.",
-            "$ref": "../../type/basic.json#/definitions/uuid"
+          "description": "The test case resolution status id for which the task is created.",
+          "$ref": "../../type/basic.json#/definitions/uuid"
         }
       },
       "required": ["id", "assignees", "type"],
@@ -230,19 +230,24 @@
       "type": "string",
       "enum": [
         "default",
+        "logicalTestCaseAdded",
         "entityCreated",
+        "entityDeleted",
+        "entitySoftDeleted",
         "description",
         "tags",
         "owner",
         "testCaseResult",
-        "customProperties"
+        "customProperties",
+        "assets",
+        "domain"
       ],
       "default": "default"
     },
     "fieldOperation": {
       "description": "Operation on thread, whether the field was added, or updated or deleted.",
       "type": "string",
-      "enum": ["added", "updated", "deleted"],
+      "enum": ["added", "updated", "deleted", "none"],
       "default": "updated"
     },
     "feedInfo": {
@@ -250,12 +255,12 @@
       "type": "object",
       "properties": {
         "headerMessage": {
-            "description": "Header message for the feed.",
-            "type": "string"
+          "description": "Header message for the feed.",
+          "type": "string"
         },
         "fieldName": {
-            "description": "Field Name message for the feed.",
-            "type": "string"
+          "description": "Field Name message for the feed.",
+          "type": "string"
         },
         "entitySpecificInfo": {
           "oneOf": [
@@ -270,6 +275,9 @@
             },
             {
               "$ref": "./tag.json"
+            },
+            {
+              "$ref": "./entityInfo.json"
             }
           ]
         }

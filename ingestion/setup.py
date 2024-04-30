@@ -232,7 +232,13 @@ plugins: Dict[str, Set[str]] = {
         VERSIONS["geoalchemy2"],
         VERSIONS["packaging"],
     },
-    "powerbi": {VERSIONS["msal"]},
+    "powerbi": {
+        VERSIONS["msal"],
+        VERSIONS["boto3"],
+        VERSIONS["google-cloud-storage"],
+        VERSIONS["azure-storage-blob"],
+        VERSIONS["azure-identity"],
+    },
     "qliksense": {"websocket-client~=1.6.1"},
     "presto": {*COMMONS["hive"]},
     "pymssql": {"pymssql~=2.2.0"},
@@ -275,6 +281,7 @@ dev = {
     # For publishing
     "twine",
     "build",
+    *plugins["sample-data"],
 }
 
 
