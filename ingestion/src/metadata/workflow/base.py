@@ -102,6 +102,7 @@ class BaseWorkflow(ABC, WorkflowStatusMixin):
         # We create the ometa client at the workflow level and pass it to the steps
         self.metadata_config = metadata_config
         self.metadata = create_ometa_client(metadata_config)
+        self.set_ingestion_pipeline_status(state=PipelineState.running)
 
         self.post_init()
 
@@ -180,7 +181,6 @@ class BaseWorkflow(ABC, WorkflowStatusMixin):
         pipeline_state = PipelineState.success
         self.timer.trigger()
         try:
-            self.set_ingestion_pipeline_status(state=PipelineState.running)
             self.execute_internal()
 
             if SUCCESS_THRESHOLD_VALUE <= self.calculate_success() < 100:
