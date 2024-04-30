@@ -946,6 +946,9 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
 
         if (pipelineData) {
           existingEdge.pipeline = pipelineData;
+          existingEdge.pipelineEntityType = pipelineData.type as
+            | EntityType.PIPELINE
+            | EntityType.STORED_PROCEDURE;
         }
       }
 
