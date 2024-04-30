@@ -65,6 +65,7 @@ const EdgeInfoDrawer = ({
   const getEdgeInfo = () => {
     const { source, target, data } = edge;
     const { sourceHandle, targetHandle } = getColumnSourceTargetHandles(edge);
+    const { pipeline, pipelineEntityType } = data?.edge ?? {};
 
     let sourceData: Node | undefined, targetData: Node | undefined;
     nodes.forEach((node) => {
@@ -110,14 +111,12 @@ const EdgeInfoDrawer = ({
       },
       pipeline: {
         key: t('label.edge'),
-        value: data?.edge?.pipeline
-          ? getEntityName(data?.edge?.pipeline)
-          : undefined,
+        value: pipeline ? getEntityName(pipeline) : undefined,
         link:
-          data?.edge?.pipeline &&
+          pipeline &&
           entityUtilClassBase.getEntityLink(
-            data?.edge?.pipeline.type,
-            data?.edge?.pipeline.fullyQualifiedName
+            pipelineEntityType,
+            pipeline.fullyQualifiedName
           ),
       },
       functionInfo: {
