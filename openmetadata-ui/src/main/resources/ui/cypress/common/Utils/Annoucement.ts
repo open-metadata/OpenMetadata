@@ -118,11 +118,11 @@ export const replyAnnouncementUtil = () => {
     '[data-testid="announcement-card"] [data-testid="main-message"]'
   ).trigger('mouseover');
 
-  cy.get('[data-testid="add-reply"]').click();
-
-  verifyResponseStatusCode('@allAnnouncementFeed', 200);
+  cy.get('[data-testid="add-reply"]').should('be.visible').click();
 
   cy.get('[data-testid="send-button"]').should('be.disabled');
+
+  verifyResponseStatusCode('@allAnnouncementFeed', 200);
 
   cy.get('[data-testid="editor-wrapper"] .ql-editor').type('Reply message');
 
@@ -143,7 +143,7 @@ export const replyAnnouncementUtil = () => {
     'mouseover'
   );
 
-  cy.get('[data-testid="edit-message"]').click();
+  cy.get('[data-testid="edit-message"]').should('be.visible').click();
 
   cy.get('.feed-message [data-testid="editor-wrapper"] .ql-editor')
     .clear()
