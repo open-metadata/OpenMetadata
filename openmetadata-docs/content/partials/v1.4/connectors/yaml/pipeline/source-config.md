@@ -8,6 +8,7 @@
       # markDeletedPipelines: True
       # includeTags: True
       # includeLineage: true
+      # includeUnDeployedPipelines: true
       # pipelineFilterPattern:
       #   includes:
       #     - pipeline1
