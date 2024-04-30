@@ -22,6 +22,7 @@ import static org.openmetadata.service.security.SecurityUtil.getPrincipalName;
 import static org.openmetadata.service.security.mask.PIIMasker.MASKED_VALUE;
 import static org.openmetadata.service.util.EntityUtil.fieldUpdated;
 import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
+import static org.openmetadata.service.util.TestUtils.LONG_ENTITY_NAME;
 import static org.openmetadata.service.util.TestUtils.TEST_AUTH_HEADERS;
 import static org.openmetadata.service.util.TestUtils.TEST_USER_NAME;
 import static org.openmetadata.service.util.TestUtils.UpdateType.CHANGE_CONSOLIDATED;
@@ -48,6 +49,10 @@ import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.TestMethodOrder;
+import org.junit.jupiter.api.parallel.Execution;
+import org.junit.jupiter.api.parallel.ExecutionMode;
+import org.openmetadata.schema.CreateEntity;
+import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.data.CreateTable;
 import org.openmetadata.schema.api.feed.CloseTask;
 import org.openmetadata.schema.api.feed.ResolveTask;
@@ -2363,6 +2368,27 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
     putInspectionQuery(testCase, inspectionQuery, ADMIN_AUTH_HEADERS);
     TestCase updated = getTestCase(testCase.getFullyQualifiedName(), ADMIN_AUTH_HEADERS);
     assertEquals(updated.getInspectionQuery(), inspectionQuery);
+  }
+
+  @Test
+  @Execution(ExecutionMode.CONCURRENT)
+  protected void post_entityCreateWithInvalidName_400() {
+    // Create an entity with mandatory name field null
+    final CreateTestCase request = createRequest(null, "description", "displayName", null);
+    assertResponseContains(
+            () -> createEntity(request, ADMIN_AUTH_HEADERS), BAD_REQUEST, "[name must not be null]");
+
+    // Create an entity with mandatory name field empty
+    final CreateTestCase request1 = createRequest("", "description", "displayName", null);
+    assertResponseContains(
+            () -> createEntity(request1, ADMIN_AUTH_HEADERS),
+            BAD_REQUEST,
+            TestUtils.getEntityNameLengthError(entityClass));
+
+    // Any entity name that has EntityLink separator must fail
+    final CreateTestCase request3 = createRequest("invalid::Name", "description", "displayName", null);
+    assertResponseContains(
+            () -> createEntity(request3, ADMIN_AUTH_HEADERS), BAD_REQUEST, "name must match");
   }
 
   private void putInspectionQuery(TestCase testCase, String sql, Map<String, String> authHeaders)
