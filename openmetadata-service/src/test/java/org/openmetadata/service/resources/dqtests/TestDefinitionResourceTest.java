@@ -17,7 +17,6 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
-import org.openmetadata.schema.api.tests.CreateTestCase;
 import org.openmetadata.schema.api.tests.CreateTestDefinition;
 import org.openmetadata.schema.tests.TestCaseParameter;
 import org.openmetadata.schema.tests.TestDefinition;
@@ -100,19 +99,20 @@ public class TestDefinitionResourceTest
     // Create an entity with mandatory name field null
     final CreateTestDefinition request = createRequest(null, "description", "displayName", null);
     assertResponseContains(
-            () -> createEntity(request, ADMIN_AUTH_HEADERS), BAD_REQUEST, "[name must not be null]");
+        () -> createEntity(request, ADMIN_AUTH_HEADERS), BAD_REQUEST, "[name must not be null]");
 
     // Create an entity with mandatory name field empty
     final CreateTestDefinition request1 = createRequest("", "description", "displayName", null);
     assertResponseContains(
-            () -> createEntity(request1, ADMIN_AUTH_HEADERS),
-            BAD_REQUEST,
-            TestUtils.getEntityNameLengthError(entityClass));
+        () -> createEntity(request1, ADMIN_AUTH_HEADERS),
+        BAD_REQUEST,
+        TestUtils.getEntityNameLengthError(entityClass));
 
     // Any entity name that has EntityLink separator must fail
-    final CreateTestDefinition request3 = createRequest("invalid::Name", "description", "displayName", null);
+    final CreateTestDefinition request3 =
+        createRequest("invalid::Name", "description", "displayName", null);
     assertResponseContains(
-            () -> createEntity(request3, ADMIN_AUTH_HEADERS), BAD_REQUEST, "name must match");
+        () -> createEntity(request3, ADMIN_AUTH_HEADERS), BAD_REQUEST, "name must match");
   }
 
   @Override
