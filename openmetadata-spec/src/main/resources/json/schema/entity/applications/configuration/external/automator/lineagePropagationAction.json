@@ -19,15 +19,9 @@
       "$ref": "#/definitions/lineagePropagationActionType",
       "default": "LineagePropagationAction"
     },
-    "overwriteDescriptions": {
-      "title": "Overwrite Descriptions",
-      "description": "Update descriptions via lineage even if they are already defined in the asset. By default, descriptions are only updated if they are not already defined in the asset.",
-      "type": "boolean",
-      "default": false
-    },
-    "overwriteTags": {
-      "title": "Overwrite Tags",
-      "description": "Update tags via lineage disregarding the existing tags in the asset. By default, we merge the existing tags with the ones coming from the lineage.",
+    "overwriteMetadata": {
+      "title": "Overwrite Metadata",
+      "description": "Update descriptions and tags via lineage even if they are already defined in the asset. By default, descriptions are only updated if they are not already defined in the asset, and incoming tags are merged with the existing ones.",
       "type": "boolean",
       "default": false
     }

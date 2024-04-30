@@ -15,6 +15,7 @@ import { SearchedDataProps } from '../components/SearchedData/SearchedData.inter
 import { DataInsightIndex } from '../enums/DataInsight.enum';
 import { SearchIndex } from '../enums/search.enum';
 import { Tag } from '../generated/entity/classification/tag';
+import { Chart } from '../generated/entity/data/chart';
 import { Container } from '../generated/entity/data/container';
 import { Dashboard } from '../generated/entity/data/dashboard';
 import { DashboardDataModel } from '../generated/entity/data/dashboardDataModel';
@@ -90,6 +91,8 @@ export interface UserSearchSource extends SearchSourceBase, User {} // extends E
 export interface TeamSearchSource extends SearchSourceBase, Team {} // extends EntityInterface
 
 export interface ContainerSearchSource extends SearchSourceBase, Container {} // extends EntityInterface
+
+export interface ChartSearchSource extends SearchSourceBase, Chart {} // extends EntityInterface
 export interface DataBaseSchemaSearchSource
   extends SearchSourceBase,
     DatabaseSchema {} // extends EntityInterface
@@ -187,6 +190,7 @@ export type SearchIndexSearchSourceMapping = {
   [SearchIndex.ALL]: TableSearchSource;
   [SearchIndex.DATA_ASSET]: TableSearchSource;
   [SearchIndex.TABLE]: TableSearchSource;
+  [SearchIndex.CHART]: ChartSearchSource;
   [SearchIndex.MLMODEL]: MlmodelSearchSource;
   [SearchIndex.PIPELINE]: PipelineSearchSource;
   [SearchIndex.DASHBOARD]: DashboardSearchSource;
