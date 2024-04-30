@@ -60,9 +60,9 @@ BIGQUERY_TABLE_AND_TYPE = textwrap.dedent(
 
 BIGQUERY_TABLE_CONSTRAINTS = textwrap.dedent(
     """
-    SELECT *
-    FROM `{project_id}`.{schema_name}.INFORMATION_SCHEMA.CONSTRAINT_COLUMN_USAGE
-    WHERE table_name = '{table_name}' AND constraint_name LIKE '%pk$';
+    SELECT * 
+    FROM `{project_id}`.{schema_name}.INFORMATION_SCHEMA.CONSTRAINT_COLUMN_USAGE 
+    WHERE constraint_name LIKE '%pk$';
     """
 )
 
@@ -73,10 +73,11 @@ BIGQUERY_FOREIGN_CONSTRAINTS = textwrap.dedent(
       r.table_schema as referred_schema,
       r.constraint_name as name,
       c.column_name as referred_columns,
-      c.column_name as constrained_columns
-    FROM `{project_id}`.{schema_name}.INFORMATION_SCHEMA.CONSTRAINT_COLUMN_USAGE c
-    JOIN `{project_id}`.{schema_name}.INFORMATION_SCHEMA.TABLE_CONSTRAINTS r ON c.constraint_name = r.constraint_name
-    WHERE r.constraint_type = 'FOREIGN KEY' AND r.table_name='{table_name}';
+      c.column_name as constrained_columns,
+      r.table_name as table_name
+    FROM `{project_id}`.{schema_name}.INFORMATION_SCHEMA.CONSTRAINT_COLUMN_USAGE c 
+    JOIN `{project_id}`.{schema_name}.INFORMATION_SCHEMA.TABLE_CONSTRAINTS r ON c.constraint_name = r.constraint_name 
+    WHERE r.constraint_type = 'FOREIGN KEY';
     """
 )
 
