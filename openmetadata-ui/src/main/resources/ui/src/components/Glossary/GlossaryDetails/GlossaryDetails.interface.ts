@@ -24,8 +24,7 @@ export enum GlossaryTabs {
 export type GlossaryDetailsProps = {
   isVersionView?: boolean;
   permissions: OperationPermission;
-  glossary: Glossary;
-  glossaryTerms: GlossaryTerm[];
+
   termsLoading: boolean;
   updateGlossary: (value: Glossary) => Promise<void>;
   updateVote?: (data: VotingDataProps) => Promise<void>;

@@ -49,7 +49,7 @@ const ProfilePicture = ({
 }: Props) => {
   const { permissions } = usePermissionProvider();
   const { color, character, backgroundColor } = getRandomColor(
-    displayName || name
+    displayName ?? name
   );
 
   const viewUserPermission = useMemo(() => {
@@ -66,9 +66,10 @@ const ProfilePicture = ({
     return (
       <Avatar
         className={classNames('flex-center', className)}
+        data-testid="profile-avatar"
         icon={character}
         shape={type}
-        size={size || parseInt(width)}
+        size={size ?? parseInt(width)}
         style={{
           color: avatarType === 'solid' ? 'default' : color,
           backgroundColor: avatarType === 'solid' ? color : backgroundColor,
@@ -109,7 +110,7 @@ const ProfilePicture = ({
       className={className}
       data-testid="profile-image"
       shape={type}
-      size={size || parseInt(width)}
+      size={size ?? parseInt(width)}
       src={profileURL}
     />
   ) : (

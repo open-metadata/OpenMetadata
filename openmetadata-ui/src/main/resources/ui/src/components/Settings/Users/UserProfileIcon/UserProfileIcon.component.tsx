@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { CheckOutlined } from '@ant-design/icons';
-import { Avatar, Dropdown, Space, Tooltip, Typography } from 'antd';
+import { Dropdown, Space, Tooltip, Typography } from 'antd';
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import { isEmpty } from 'lodash';
 import React, {
@@ -34,13 +34,13 @@ import {
 } from '../../../../constants/constants';
 import { EntityReference } from '../../../../generated/entity/type';
 import { useApplicationStore } from '../../../../hooks/useApplicationStore';
-import { getRandomColor } from '../../../../utils/CommonUtils';
 import { getEntityName } from '../../../../utils/EntityUtils';
 import i18n from '../../../../utils/i18next/LocalUtil';
 import {
   getImageWithResolutionAndFallback,
   ImageQuality,
 } from '../../../../utils/ProfilerUtils';
+import ProfilePicture from '../../../common/ProfilePicture/ProfilePicture';
 import './user-profile-icon.less';
 
 type ListMenuItemProps = {
@@ -317,8 +317,6 @@ export const UserProfileIcon = () => {
     );
   }, [currentUser?.defaultPersona]);
 
-  const { color, character } = getRandomColor(userName);
-
   return (
     <Dropdown
       menu={{
@@ -339,14 +337,7 @@ export const UserProfileIcon = () => {
               onError={handleOnImageError}
             />
           ) : (
-            <Avatar
-              icon={character}
-              shape="circle"
-              size={36}
-              style={{
-                backgroundColor: color,
-              }}
-            />
+            <ProfilePicture name={userName} width="36" />
           )}
           <div className="d-flex flex-col">
             <Tooltip title={getEntityName(currentUser)}>
