@@ -316,7 +316,7 @@ public class KpiResource extends EntityResource<Kpi, KpiRepository> {
   }
 
   @PATCH
-  @Path("/fqn/{fqn}")
+  @Path("/name/{fqn}")
   @Operation(
       operationId = "patchKpi",
       summary = "Update a KPI",

@@ -342,7 +342,7 @@ public class SearchIndexResource extends EntityResource<SearchIndex, SearchIndex
   }
 
   @PATCH
-  @Path("/fqn/{fqn}")
+  @Path("/name/{fqn}")
   @Operation(
       operationId = "patchSearchIndex",
       summary = "Update a SearchIndex",

@@ -411,7 +411,7 @@ public class DatabaseServiceResource
   }
 
   @PATCH
-  @Path("/fqn/{fqn}")
+  @Path("/name/{fqn}")
   @Operation(
       operationId = "patchDatabaseService",
       summary = "Update a database service",

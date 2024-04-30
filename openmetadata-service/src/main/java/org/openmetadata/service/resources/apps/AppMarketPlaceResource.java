@@ -341,7 +341,7 @@ public class AppMarketPlaceResource
   }
 
   @PATCH
-  @Path("/fqn/{fqn}")
+  @Path("/name/{fqn}")
   @Operation(
       operationId = "patchApplication",
       summary = "Updates a App",

@@ -402,7 +402,7 @@ public class WorkflowResource extends EntityResource<Workflow, WorkflowRepositor
   }
 
   @PATCH
-  @Path("/fqn/{fqn}")
+  @Path("/name/{fqn}")
   @Operation(
       operationId = "patchWorkflow",
       summary = "Update a Workflow",

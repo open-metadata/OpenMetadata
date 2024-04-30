@@ -333,7 +333,7 @@ public class DashboardDataModelResource
   }
 
   @PATCH
-  @Path("/fqn/{fqn}")
+  @Path("/name/{fqn}")
   @Operation(
       operationId = "patchDataModel",
       summary = "Update a dashboard datamodel",

@@ -370,7 +370,7 @@ public class DomainResource extends EntityResource<Domain, DomainRepository> {
   }
 
   @PATCH
-  @Path("/fqn/{fqn}")
+  @Path("/name/{fqn}")
   @Operation(
       operationId = "patchDomain",
       summary = "Update a domain",

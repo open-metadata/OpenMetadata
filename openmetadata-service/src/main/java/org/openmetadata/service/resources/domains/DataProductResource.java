@@ -394,7 +394,7 @@ public class DataProductResource extends EntityResource<DataProduct, DataProduct
   }
 
   @PATCH
-  @Path("/fqn/{fqn}")
+  @Path("/name/{fqn}")
   @Operation(
       operationId = "patchDataProduct",
       summary = "Update a patchDataProduct",

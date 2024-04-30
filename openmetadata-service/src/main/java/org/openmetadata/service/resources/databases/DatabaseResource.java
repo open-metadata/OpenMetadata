@@ -343,7 +343,7 @@ public class DatabaseResource extends EntityResource<Database, DatabaseRepositor
   }
 
   @PATCH
-  @Path("/fqn/{fqn}")
+  @Path("/name/{fqn}")
   @Operation(
       operationId = "patchDatabase",
       summary = "Update a database",

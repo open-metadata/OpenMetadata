@@ -341,7 +341,7 @@ public class QueryResource extends EntityResource<Query, QueryRepository> {
   }
 
   @PATCH
-  @Path("/fqn/{fqn}")
+  @Path("/name/{fqn}")
   @Operation(
       operationId = "patchQuery",
       summary = "Update a query",

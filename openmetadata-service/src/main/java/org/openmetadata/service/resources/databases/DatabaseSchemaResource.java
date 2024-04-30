@@ -340,7 +340,7 @@ public class DatabaseSchemaResource
   }
 
   @PATCH
-  @Path("/fqn/{fqn}")
+  @Path("/name/{fqn}")
   @Operation(
       operationId = "patchDBSchema",
       summary = "Update a database schema",

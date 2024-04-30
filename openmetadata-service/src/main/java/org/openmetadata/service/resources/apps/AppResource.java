@@ -608,7 +608,7 @@ public class AppResource extends EntityResource<App, AppRepository> {
   }
 
   @PATCH
-  @Path("/fqn/{fqn}")
+  @Path("/name/{fqn}")
   @Operation(
       operationId = "patchApplication",
       summary = "Updates a App",

@@ -332,7 +332,7 @@ public class ChartResource extends EntityResource<Chart, ChartRepository> {
   }
 
   @PATCH
-  @Path("/fqn/{fqn}")
+  @Path("/name/{fqn}")
   @Operation(
       operationId = "patchChart",
       summary = "Update a chart",

@@ -345,7 +345,7 @@ public class PipelineResource extends EntityResource<Pipeline, PipelineRepositor
   }
 
   @PATCH
-  @Path("/fqn/{fqn}")
+  @Path("/name/{fqn}")
   @Operation(
       operationId = "patchPipeline",
       summary = "Update a pipeline",

@@ -419,7 +419,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
   }
 
   @PATCH
-  @Path("/fqn/{fqn}")
+  @Path("/name/{fqn}")
   @Operation(
       operationId = "patchTable",
       summary = "Update a table",

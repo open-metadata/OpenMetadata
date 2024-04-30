@@ -449,7 +449,7 @@ public class TagResource extends EntityResource<Tag, TagRepository> {
   }
 
   @PATCH
-  @Path("/fqn/{fqn}")
+  @Path("/name/{fqn}")
   @Operation(
       operationId = "patchTag",
       summary = "Update a tag",

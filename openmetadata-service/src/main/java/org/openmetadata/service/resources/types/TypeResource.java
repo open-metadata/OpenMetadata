@@ -351,7 +351,7 @@ public class TypeResource extends EntityResource<Type, TypeRepository> {
   }
 
   @PATCH
-  @Path("/fqn/{fqn}")
+  @Path("/name/{fqn}")
   @Operation(
       operationId = "patchType",
       summary = "Update a type",

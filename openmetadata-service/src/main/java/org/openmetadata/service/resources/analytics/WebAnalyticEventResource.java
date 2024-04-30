@@ -258,7 +258,7 @@ public class WebAnalyticEventResource
   }
 
   @PATCH
-  @Path("/fqn/{fqn}")
+  @Path("/name/{fqn}")
   @Operation(
       operationId = "patchWebAnalyticEventTypeById",
       summary = "Update a web analytic event type by name",

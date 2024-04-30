@@ -333,7 +333,7 @@ public class DataInsightChartResource
   }
 
   @PATCH
-  @Path("/fqn/{fqn}")
+  @Path("/name/{fqn}")
   @Operation(
       operationId = "patchDataInsightChart",
       summary = "Update a data insight chart",

@@ -478,7 +478,7 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
   }
 
   @PATCH
-  @Path("/fqn/{fqn}")
+  @Path("/name/{fqn}")
   @Consumes(MediaType.APPLICATION_JSON_PATCH_JSON)
   @Operation(
       operationId = "patchTeam",

@@ -352,7 +352,7 @@ public class DocStoreResource extends EntityResource<Document, DocumentRepositor
   }
 
   @PATCH
-  @Path("/fqn/{fqn}")
+  @Path("/name/{fqn}")
   @Consumes(MediaType.APPLICATION_JSON_PATCH_JSON)
   @Operation(
       operationId = "patchDocument",

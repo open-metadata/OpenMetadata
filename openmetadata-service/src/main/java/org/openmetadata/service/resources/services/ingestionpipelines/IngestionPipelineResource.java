@@ -426,7 +426,7 @@ public class IngestionPipelineResource
   }
 
   @PATCH
-  @Path("/fqn/{fqn}")
+  @Path("/name/{fqn}")
   @Operation(
       operationId = "patchIngestionPipeline",
       summary = "Update an ingestion pipeline",

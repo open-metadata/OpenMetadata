@@ -414,7 +414,7 @@ public class PipelineServiceResource
   }
 
   @PATCH
-  @Path("/fqn/{fqn}")
+  @Path("/name/{fqn}")
   @Operation(
       operationId = "patchPipelineService",
       summary = "Update a pipeline service",

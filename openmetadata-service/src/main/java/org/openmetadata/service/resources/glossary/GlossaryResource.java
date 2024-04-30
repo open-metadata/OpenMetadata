@@ -327,7 +327,7 @@ public class GlossaryResource extends EntityResource<Glossary, GlossaryRepositor
   }
 
   @PATCH
-  @Path("/fqn/{fqn}")
+  @Path("/name/{fqn}")
   @Operation(
       operationId = "patchGlossary",
       summary = "Update a glossary",

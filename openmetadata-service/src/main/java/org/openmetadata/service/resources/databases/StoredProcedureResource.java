@@ -305,7 +305,7 @@ public class StoredProcedureResource
   }
 
   @PATCH
-  @Path("/fqn/{fqn}")
+  @Path("/name/{fqn}")
   @Operation(
       operationId = "patchStoredProcedure",
       summary = "Update a Stored Procedure",

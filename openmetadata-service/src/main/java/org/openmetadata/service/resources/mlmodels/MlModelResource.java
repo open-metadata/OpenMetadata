@@ -283,7 +283,7 @@ public class MlModelResource extends EntityResource<MlModel, MlModelRepository> 
   }
 
   @PATCH
-  @Path("/fqn/{fqn}")
+  @Path("/name/{fqn}")
   @Operation(
       operationId = "patchMlModel",
       summary = "Update an ML model",

@@ -413,7 +413,7 @@ public class MlModelServiceResource
   }
 
   @PATCH
-  @Path("/fqn/{fqn}")
+  @Path("/name/{fqn}")
   @Operation(
       operationId = "patchMlModelService",
       summary = "Update an ML model service",

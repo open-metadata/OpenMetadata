@@ -349,7 +349,7 @@ public class ClassificationResource
   }
 
   @PATCH
-  @Path("/fqn/{fqn}")
+  @Path("/name/{fqn}")
   @Operation(
       operationId = "patchClassification",
       summary = "Update a classification",

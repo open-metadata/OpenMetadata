@@ -394,7 +394,7 @@ public class DashboardServiceResource
   }
 
   @PATCH
-  @Path("/fqn/{fqn}")
+  @Path("/name/{fqn}")
   @Operation(
       operationId = "patchDashboardService",
       summary = "Update a dashboard service",

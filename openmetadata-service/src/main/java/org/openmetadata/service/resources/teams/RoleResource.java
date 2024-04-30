@@ -387,7 +387,7 @@ public class RoleResource extends EntityResource<Role, RoleRepository> {
   }
 
   @PATCH
-  @Path("/fqn/{fqn}")
+  @Path("/name/{fqn}")
   @Consumes(MediaType.APPLICATION_JSON_PATCH_JSON)
   @Operation(
       operationId = "patchRole",

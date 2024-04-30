@@ -441,7 +441,7 @@ public class MetadataServiceResource
   }
 
   @PATCH
-  @Path("/fqn/{fqn}")
+  @Path("/name/{fqn}")
   @Operation(
       operationId = "patchMetadataService",
       summary = "Update a metadata service",

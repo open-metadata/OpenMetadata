@@ -332,7 +332,7 @@ public class PersonaResource extends EntityResource<Persona, PersonaRepository> 
   }
 
   @PATCH
-  @Path("/fqn/{fqn}")
+  @Path("/name/{fqn}")
   @Consumes(MediaType.APPLICATION_JSON_PATCH_JSON)
   @Operation(
       operationId = "patchPersona",

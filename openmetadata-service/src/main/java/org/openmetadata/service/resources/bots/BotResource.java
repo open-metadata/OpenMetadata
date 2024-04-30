@@ -353,7 +353,7 @@ public class BotResource extends EntityResource<Bot, BotRepository> {
   }
 
   @PATCH
-  @Path("/fqn/{fqn}")
+  @Path("/name/{fqn}")
   @Operation(
       operationId = "patchBot",
       summary = "Update a bot",

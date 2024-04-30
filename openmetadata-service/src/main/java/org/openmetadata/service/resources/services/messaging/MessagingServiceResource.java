@@ -401,7 +401,7 @@ public class MessagingServiceResource
   }
 
   @PATCH
-  @Path("/fqn/{fqn}")
+  @Path("/name/{fqn}")
   @Operation(
       operationId = "patchMessagingService",
       summary = "Update a messaging service",

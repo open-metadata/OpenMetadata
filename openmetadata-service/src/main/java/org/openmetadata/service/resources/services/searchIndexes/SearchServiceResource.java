@@ -391,7 +391,7 @@ public class SearchServiceResource
   }
 
   @PATCH
-  @Path("/fqn/{fqn}")
+  @Path("/name/{fqn}")
   @Operation(
       operationId = "patchSearchService",
       summary = "Update an search service",

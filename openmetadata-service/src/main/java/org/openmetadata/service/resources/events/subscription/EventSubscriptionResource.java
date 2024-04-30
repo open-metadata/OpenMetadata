@@ -350,7 +350,7 @@ public class EventSubscriptionResource
   }
 
   @PATCH
-  @Path("/fqn/{fqn}")
+  @Path("/name/{fqn}")
   @Operation(
       operationId = "patchEventSubscription",
       summary = "Update an Event Subscriptions",

@@ -391,7 +391,7 @@ public class PolicyResource extends EntityResource<Policy, PolicyRepository> {
   }
 
   @PATCH
-  @Path("/fqn/{fqn}")
+  @Path("/name/{fqn}")
   @Operation(
       operationId = "patchPolicy",
       summary = "Update a policy",

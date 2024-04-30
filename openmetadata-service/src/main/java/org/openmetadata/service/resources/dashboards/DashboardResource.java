@@ -343,7 +343,7 @@ public class DashboardResource extends EntityResource<Dashboard, DashboardReposi
   }
 
   @PATCH
-  @Path("/fqn/{fqn}")
+  @Path("/name/{fqn}")
   @Operation(
       operationId = "patchDashboard",
       summary = "Update a dashboard",

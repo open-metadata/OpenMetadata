@@ -245,7 +245,6 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
         new ListFilter(include)
             .addQueryParam("parent", fqn)
             .addQueryParam("directChildrenOf", parentTermFQNParam);
-
     ResultList<GlossaryTerm> terms;
     if (before != null) { // Reverse paging
       terms =
@@ -440,7 +439,7 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
   }
 
   @PATCH
-  @Path("/fqn/{fqn}")
+  @Path("/name/{fqn}")
   @Operation(
       operationId = "patchGlossaryTerm",
       summary = "Update a glossary term",

@@ -334,7 +334,7 @@ public class TopicResource extends EntityResource<Topic, TopicRepository> {
   }
 
   @PATCH
-  @Path("/fqn/{fqn}")
+  @Path("/name/{fqn}")
   @Operation(
       operationId = "patchTopic",
       summary = "Update a topic",

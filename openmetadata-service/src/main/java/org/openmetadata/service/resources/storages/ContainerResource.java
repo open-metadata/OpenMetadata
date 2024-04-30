@@ -272,7 +272,7 @@ public class ContainerResource extends EntityResource<Container, ContainerReposi
   }
 
   @PATCH
-  @Path("/fqn/{fqn}")
+  @Path("/name/{fqn}")
   @Operation(
       operationId = "patchContainer",
       summary = "Update a Container",
