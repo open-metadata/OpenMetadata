@@ -1658,6 +1658,7 @@
     "please-enter-to-find-data-assets": "יש ללחוץ Enter כדי למצוא נכסי נתונים הכוללים <0>{{keyword}}</0>",
     "please-refresh-the-page": "Please refresh the page to see the changes.",
     "please-type-text-to-confirm": "Please type {{text}} to confirm.",
+    "popup-block-message": "Popup is blocked by the browser. Please enable it and try again.",
     "process-pii-sensitive-column-message": "בדוק את שמות העמודות כדי לקבוע תגי PII Sensistive/NonSensitive באופן אוטומטי.",
     "process-pii-sensitive-column-message-profiler": "כאשר מופעל, המידע הדוגמא ינתח כדי לקבוע תגי PII המתאימים לכל עמודה.",
     "profile-sample-percentage-message": "הגדר את ערך הפרופילר כאחוז",

@@ -1658,6 +1658,7 @@
     "please-enter-to-find-data-assets": "Press Enter to find data assets containing <0>{{keyword}}<0>",
     "please-refresh-the-page": "Please refresh the page to see the changes.",
     "please-type-text-to-confirm": "Please type {{text}} to confirm.",
+    "popup-block-message": "Popup is blocked by the browser. Please enable it and try again.",
     "process-pii-sensitive-column-message": "Проверьте имена столбцов, чтобы автоматически пометить столбцы с конфиденциальной/неконфиденциальной информацией PII.",
     "process-pii-sensitive-column-message-profiler": "Если эта функция включена, образцы данных будут проанализированы для определения соответствующих тегов PII для каждого столбца.",
     "profile-sample-percentage-message": "Установите значение профайлера в процентах",
