@@ -10,6 +10,8 @@ import io.dropwizard.jackson.Jackson;
 import io.dropwizard.jersey.validation.Validators;
 import java.io.IOException;
 import java.net.URISyntaxException;
+import java.util.ArrayList;
+import java.util.List;
 import javax.validation.Validator;
 import javax.ws.rs.client.WebTarget;
 import javax.ws.rs.core.Response;
@@ -23,6 +25,10 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.TestMethodOrder;
 import org.openmetadata.api.configuration.LogoConfiguration;
+import org.openmetadata.api.configuration.ThemeConfiguration;
+import org.openmetadata.api.configuration.UiThemePreference;
+import org.openmetadata.schema.api.configuration.profiler.MetricConfigurationDefinition;
+import org.openmetadata.schema.api.configuration.profiler.ProfilerConfiguration;
 import org.openmetadata.schema.api.data.*;
 import org.openmetadata.schema.api.services.CreateDashboardService;
 import org.openmetadata.schema.api.services.CreateDatabaseService;
@@ -37,9 +43,12 @@ import org.openmetadata.schema.auth.SSOAuthMechanism;
 import org.openmetadata.schema.email.SmtpSettings;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.teams.AuthenticationMechanism;
+import org.openmetadata.schema.profiler.MetricType;
 import org.openmetadata.schema.security.client.GoogleSSOClientConfig;
 import org.openmetadata.schema.settings.Settings;
 import org.openmetadata.schema.settings.SettingsType;
+import org.openmetadata.schema.system.ValidationResponse;
+import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.schema.util.EntitiesCount;
 import org.openmetadata.schema.util.ServicesCount;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
@@ -178,14 +187,19 @@ public class SystemResourceTest extends OpenMetadataApplicationTest {
     expected.setPassword("***********");
     Assertions.assertEquals(expected, smtp);
 
-    // Test Custom Log Config
-    Settings logoConfigWrapped = getSystemConfig(SettingsType.CUSTOM_LOGO_CONFIGURATION);
-    LogoConfiguration loginConfiguration =
-        JsonUtils.convertValue(logoConfigWrapped.getConfigValue(), LogoConfiguration.class);
+    // Test Custom Ui Theme Preference Config
+    Settings uiThemeConfigWrapped = getSystemConfig(SettingsType.CUSTOM_UI_THEME_PREFERENCE);
+    UiThemePreference uiThemePreference =
+        JsonUtils.convertValue(uiThemeConfigWrapped.getConfigValue(), UiThemePreference.class);
 
     // Defaults
-    Assertions.assertEquals("", loginConfiguration.getCustomLogoUrlPath());
-    Assertions.assertEquals("", loginConfiguration.getCustomMonogramUrlPath());
+    Assertions.assertEquals("", uiThemePreference.getCustomTheme().getPrimaryColor());
+    Assertions.assertEquals("", uiThemePreference.getCustomTheme().getSuccessColor());
+    Assertions.assertEquals("", uiThemePreference.getCustomTheme().getErrorColor());
+    Assertions.assertEquals("", uiThemePreference.getCustomTheme().getWarningColor());
+    Assertions.assertEquals("", uiThemePreference.getCustomTheme().getInfoColor());
+    Assertions.assertEquals("", uiThemePreference.getCustomLogoConfig().getCustomLogoUrlPath());
+    Assertions.assertEquals("", uiThemePreference.getCustomLogoConfig().getCustomMonogramUrlPath());
   }
 
   @Test
@@ -206,20 +220,29 @@ public class SystemResourceTest extends OpenMetadataApplicationTest {
     Assertions.assertEquals(updateEmailSettings.getUsername(), test.getDisplayName());
     Assertions.assertEquals(updateEmailSettings.getEmailingEntity(), test.getDisplayName());
 
-    // Test Custom Logo Update
-    LogoConfiguration updateConfigReq =
-        new LogoConfiguration()
-            .withCustomLogoUrlPath("http://test.com")
-            .withCustomMonogramUrlPath("http://test.com");
+    // Test Custom Logo Update and theme preference
+    UiThemePreference updateConfigReq =
+        new UiThemePreference()
+            .withCustomLogoConfig(
+                new LogoConfiguration()
+                    .withCustomLogoUrlPath("http://test.com")
+                    .withCustomMonogramUrlPath("http://test.com"))
+            .withCustomTheme(
+                new ThemeConfiguration()
+                    .withPrimaryColor("")
+                    .withSuccessColor("")
+                    .withErrorColor("")
+                    .withWarningColor("")
+                    .withInfoColor(""));
     // Update Custom Logo Settings
     updateSystemConfig(
         new Settings()
-            .withConfigType(SettingsType.CUSTOM_LOGO_CONFIGURATION)
+            .withConfigType(SettingsType.CUSTOM_UI_THEME_PREFERENCE)
             .withConfigValue(updateConfigReq));
-    LogoConfiguration updatedConfig =
+    UiThemePreference updatedConfig =
         JsonUtils.convertValue(
-            getSystemConfig(SettingsType.CUSTOM_LOGO_CONFIGURATION).getConfigValue(),
-            LogoConfiguration.class);
+            getSystemConfig(SettingsType.CUSTOM_UI_THEME_PREFERENCE).getConfigValue(),
+            UiThemePreference.class);
     Assertions.assertEquals(updateConfigReq, updatedConfig);
   }
 
@@ -301,6 +324,65 @@ public class SystemResourceTest extends OpenMetadataApplicationTest {
     Assertions.assertEquals(beforeUserCount, afterUserCount);
   }
 
+  @Test
+  void validate_test() throws HttpResponseException {
+    ValidationResponse response = getValidation();
+
+    // Check migrations are OK
+    Assertions.assertEquals(Boolean.TRUE, response.getMigrations().getPassed());
+  }
+
+  @Test
+  void globalProfilerConfig(TestInfo test) throws HttpResponseException {
+    // Create a profiler config
+    ProfilerConfiguration profilerConfiguration = new ProfilerConfiguration();
+    MetricConfigurationDefinition intMetricConfigDefinition =
+        new MetricConfigurationDefinition()
+            .withDataType(ColumnDataType.INT)
+            .withMetrics(
+                List.of(MetricType.VALUES_COUNT, MetricType.FIRST_QUARTILE, MetricType.MEAN));
+    MetricConfigurationDefinition dateTimeMetricConfigDefinition =
+        new MetricConfigurationDefinition()
+            .withDataType(ColumnDataType.DATETIME)
+            .withDisabled(true);
+    profilerConfiguration.setMetricConfiguration(
+        List.of(intMetricConfigDefinition, dateTimeMetricConfigDefinition));
+    Settings profilerSettings =
+        new Settings()
+            .withConfigType(SettingsType.PROFILER_CONFIGURATION)
+            .withConfigValue(profilerConfiguration);
+    createSystemConfig(profilerSettings);
+    ProfilerConfiguration createdProfilerSettings =
+        JsonUtils.convertValue(getProfilerConfig().getConfigValue(), ProfilerConfiguration.class);
+    Assertions.assertEquals(profilerConfiguration, createdProfilerSettings);
+
+    // Update the profiler config
+    profilerConfiguration.setMetricConfiguration(List.of(intMetricConfigDefinition));
+    profilerSettings =
+        new Settings()
+            .withConfigType(SettingsType.PROFILER_CONFIGURATION)
+            .withConfigValue(profilerConfiguration);
+    updateSystemConfig(profilerSettings);
+    ProfilerConfiguration updatedProfilerSettings =
+        JsonUtils.convertValue(getProfilerConfig().getConfigValue(), ProfilerConfiguration.class);
+    Assertions.assertEquals(profilerConfiguration, updatedProfilerSettings);
+
+    // Delete the profiler config
+    profilerConfiguration.setMetricConfiguration(new ArrayList<>());
+    updateSystemConfig(
+        new Settings()
+            .withConfigType(SettingsType.PROFILER_CONFIGURATION)
+            .withConfigValue(profilerConfiguration));
+    updatedProfilerSettings =
+        JsonUtils.convertValue(getProfilerConfig().getConfigValue(), ProfilerConfiguration.class);
+    Assertions.assertEquals(profilerConfiguration, updatedProfilerSettings);
+  }
+
+  private static ValidationResponse getValidation() throws HttpResponseException {
+    WebTarget target = getResource("system/status");
+    return TestUtils.get(target, ValidationResponse.class, ADMIN_AUTH_HEADERS);
+  }
+
   private static EntitiesCount getEntitiesCount() throws HttpResponseException {
     WebTarget target = getResource("system/entities/count");
     return TestUtils.get(target, EntitiesCount.class, ADMIN_AUTH_HEADERS);
@@ -316,8 +398,18 @@ public class SystemResourceTest extends OpenMetadataApplicationTest {
     return TestUtils.get(target, Settings.class, ADMIN_AUTH_HEADERS);
   }
 
+  private static Settings getProfilerConfig() throws HttpResponseException {
+    WebTarget target = getResource("system/settings/profilerConfiguration");
+    return TestUtils.get(target, Settings.class, ADMIN_AUTH_HEADERS);
+  }
+
   private static void updateSystemConfig(Settings updatedSetting) throws HttpResponseException {
     WebTarget target = getResource("system/settings");
     TestUtils.put(target, updatedSetting, Response.Status.OK, ADMIN_AUTH_HEADERS);
+  }
+
+  private static void createSystemConfig(Settings updatedSetting) throws HttpResponseException {
+    WebTarget target = getResource("system/settings");
+    TestUtils.put(target, updatedSetting, Response.Status.CREATED, ADMIN_AUTH_HEADERS);
   }
 }

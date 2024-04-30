@@ -40,3 +40,12 @@ Refer to the advanced guide for Roles and Policies once you are ready to start w
   href="/how-to-guides/admin-guide/roles-policies"%}
   Know it all about Roles and Policies to get started.
 {%/inlineCallout%}
+
+Set up fine-grained alerts and notifications to keep your data teams updated.
+{%inlineCallout
+  color="violet-70"
+  bold="Set up Alerts and Notifications"
+  icon="MdOutlineNotificationsActive"
+  href="/how-to-guides/admin-guide/alerts"%}
+  Send alerts to multiple destinations to keep the team informed.
+{%/inlineCallout%}

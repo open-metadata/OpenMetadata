@@ -54,7 +54,7 @@ public class MSTeamsPublisher implements Destination<ChangeEvent> {
       client = getClient(subscription.getTimeout(), subscription.getReadTimeout());
 
       // Build Target
-      if (webhook.getEndpoint() != null) {
+      if (webhook != null && webhook.getEndpoint() != null) {
         String msTeamsWebhookURL = webhook.getEndpoint().toString();
         if (!CommonUtil.nullOrEmpty(msTeamsWebhookURL)) {
           target = client.target(msTeamsWebhookURL).request();

@@ -65,13 +65,7 @@ public class SocketAddressFilter implements Filter {
       if (enableSecureSocketConnection) {
         String tokenWithType = httpServletRequest.getHeader("Authorization");
         requestWrapper.addHeader("Authorization", tokenWithType);
-        String token = JwtFilter.extractToken(tokenWithType);
-        // validate token
-        DecodedJWT jwt = jwtFilter.validateAndReturnDecodedJwtToken(token);
-        // validate Domain and Username
-        Map<String, Claim> claims = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
-        claims.putAll(jwt.getClaims());
-        jwtFilter.validateAndReturnUsername(claims);
+        validatePrefixedTokenRequest(jwtFilter, tokenWithType);
       }
       // Goes to default servlet.
       chain.doFilter(requestWrapper, response);
@@ -85,4 +79,14 @@ public class SocketAddressFilter implements Filter {
 
   @Override
   public void init(FilterConfig filterConfig) {}
+
+  public static void validatePrefixedTokenRequest(JwtFilter jwtFilter, String prefixedToken) {
+    String token = JwtFilter.extractToken(prefixedToken);
+    // validate token
+    DecodedJWT jwt = jwtFilter.validateAndReturnDecodedJwtToken(token);
+    // validate Domain and Username
+    Map<String, Claim> claims = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
+    claims.putAll(jwt.getClaims());
+    jwtFilter.validateAndReturnUsername(claims);
+  }
 }

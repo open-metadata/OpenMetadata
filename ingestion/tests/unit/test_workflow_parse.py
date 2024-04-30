@@ -417,7 +417,7 @@ class TestWorkflowParse(TestCase):
                     "type": "PipelineMetadata",
                     "includeTags": True,
                     "includeOwners": True,
-                    "dbServiceNames": ["dev"],
+                    "lineageInformation": {"dbServiceNames": ["dev"]},
                     "includeLineage": True,
                     "markDeletedPipelines": True,
                     "pipelineFilterPattern": {
@@ -454,7 +454,7 @@ class TestWorkflowParse(TestCase):
                     "type": "PipelineMetadata",
                     "includeTags": True,
                     "includeOwners": True,
-                    "dbServiceNames": ["dev"],
+                    "lineageInformation": {"dbServiceNames": ["dev"]},
                     "includeViewLineage": True,
                     "markDeletedDbs": True,
                     "pipelineFilterPatterns": {

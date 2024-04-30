@@ -12,10 +12,9 @@
 Hive source methods.
 """
 
-from typing import Tuple
+from typing import Optional, Tuple
 
 from pyhive.sqlalchemy_hive import HiveDialect
-from sqlalchemy.inspection import inspect
 
 from metadata.generated.schema.entity.services.connections.database.hiveConnection import (
     HiveConnection,
@@ -56,7 +55,9 @@ class HiveSource(CommonDbSourceService):
     service_connection: HiveConnection
 
     @classmethod
-    def create(cls, config_dict, metadata: OpenMetadata):
+    def create(
+        cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None
+    ):
         config = WorkflowSource.parse_obj(config_dict)
         connection: HiveConnection = config.serviceConnection.__root__.config
         if not isinstance(connection, HiveConnection):
@@ -93,4 +94,5 @@ class HiveSource(CommonDbSourceService):
             self.engine = get_metastore_connection(
                 self.service_connection.metastoreConnection
             )
-        self.inspector = inspect(self.engine)
+        self._connection_map = {}  # Lazy init as well
+        self._inspector_map = {}

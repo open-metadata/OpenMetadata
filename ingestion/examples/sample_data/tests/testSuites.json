@@ -323,6 +323,23 @@
                             }
                         ]
                     }
+                },
+                {
+                    "name": "column_values_to_be_between_with_sample_rows",
+                    "description": "example of failing test with sample rows",
+                    "entityLink": "<#E::table::sample_data.ecommerce_db.shopify.dim_address::columns::zip>",
+                    "testDefinitionName": "columnValuesToBeBetween",
+                    "parameterValues": [
+                        {
+                            "name": "min",
+                            "value": 90001
+                        },
+                        {
+                            "name": "max",
+                            "value": 96162
+                        }
+                    ],
+                    "resolutions": {}
                 }
             ]
         }

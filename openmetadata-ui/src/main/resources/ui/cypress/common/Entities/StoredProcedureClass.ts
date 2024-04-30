@@ -20,6 +20,7 @@ import {
   deleteEntityViaREST,
   visitEntityDetailsPage,
 } from '../Utils/Entity';
+import { getToken } from '../Utils/LocalStorage';
 import EntityClass from './EntityClass';
 
 class StoreProcedureClass extends EntityClass {
@@ -51,7 +52,7 @@ class StoreProcedureClass extends EntityClass {
     // Handle creation here
 
     cy.getAllLocalStorage().then((data) => {
-      const token = Object.values(data)[0].oidcIdToken as string;
+      const token = getToken(data);
 
       createEntityTableViaREST({
         token,
@@ -73,7 +74,7 @@ class StoreProcedureClass extends EntityClass {
   override cleanup() {
     super.cleanup();
     cy.getAllLocalStorage().then((data) => {
-      const token = Object.values(data)[0].oidcIdToken as string;
+      const token = getToken(data);
       deleteEntityViaREST({
         token,
         endPoint: EntityType.DatabaseService,

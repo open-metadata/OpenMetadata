@@ -12,7 +12,7 @@
  */
 
 import { Col, Row, Space, Tabs } from 'antd';
-import { noop } from 'lodash';
+import { isEmpty, noop } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
@@ -32,6 +32,7 @@ import TabsLabel from '../../common/TabsLabel/TabsLabel.component';
 import GlossaryDetailsRightPanel from '../GlossaryDetailsRightPanel/GlossaryDetailsRightPanel.component';
 import GlossaryHeader from '../GlossaryHeader/GlossaryHeader.component';
 import GlossaryTermTab from '../GlossaryTermTab/GlossaryTermTab.component';
+import { useGlossaryStore } from '../useGlossary.store';
 import './glossary-details.less';
 import {
   GlossaryDetailsProps,
@@ -40,11 +41,9 @@ import {
 
 const GlossaryDetails = ({
   permissions,
-  glossary,
   updateGlossary,
   updateVote,
   handleGlossaryDelete,
-  glossaryTerms,
   termsLoading,
   refreshGlossaryTerms,
   onAddGlossaryTerm,
@@ -54,7 +53,7 @@ const GlossaryDetails = ({
 }: GlossaryDetailsProps) => {
   const { t } = useTranslation();
   const history = useHistory();
-
+  const { activeGlossary: glossary } = useGlossaryStore();
   const { tab: activeTab } = useParams<{ tab: string }>();
   const [feedCount, setFeedCount] = useState<FeedCounts>(
     FEED_COUNT_INITIAL_DATA
@@ -152,6 +151,7 @@ const GlossaryDetails = ({
               entityName={getEntityName(glossary)}
               entityType={EntityType.GLOSSARY}
               hasEditAccess={permissions.EditDescription || permissions.EditAll}
+              isDescriptionExpanded={isEmpty(glossary.children)}
               isEdit={isDescriptionEditable}
               owner={glossary?.owner}
               showActions={!glossary.deleted}
@@ -163,10 +163,8 @@ const GlossaryDetails = ({
 
             <GlossaryTermTab
               isGlossary
-              childGlossaryTerms={glossaryTerms}
               permissions={permissions}
               refreshGlossaryTerms={refreshGlossaryTerms}
-              selectedData={glossary}
               termsLoading={termsLoading}
               onAddGlossaryTerm={onAddGlossaryTerm}
               onEditGlossaryTerm={onEditGlossaryTerm}
@@ -191,7 +189,6 @@ const GlossaryDetails = ({
     isVersionView,
     permissions,
     glossary,
-    glossaryTerms,
     termsLoading,
     description,
     isDescriptionEditable,

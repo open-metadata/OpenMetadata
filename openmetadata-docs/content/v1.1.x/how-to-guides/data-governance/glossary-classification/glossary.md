@@ -5,7 +5,7 @@ slug: /how-to-guides/data-governance/glossary-classification/glossary
 
 # What is a Glossary
 
-A Glossary is a Controlled Vocabulary to describe important concepts and terminologies within your organization to foster a common and consistent understanding of data. It defines concepts related to a specific domain. For example, Business Glossary or Bank Glossary. A well-defined business glossary helps foster team collaboration with the use of standard terms. Glossaries are important for data discovery, retrieval, and exploration through conceptual terms, and facilitates **Data Governance**.
+A Glossary is a Controlled Vocabulary to describe important concepts and terminologies within your organization to foster a common and consistent understanding of data. It defines concepts related to a specific domain. For example, Business Glossary or Bank Glossary. A well-defined business glossary helps foster team collaboration with the use of standard terms. Glossaries are important for data discovery, retrieval, and exploration through conceptual terms, and facilitates **Data Governance**. The terms from the glossary can be used for labeling or tagging as additional metadata of data assets for describing and categorizing things.
 
 Glossary adds semantics or meaning to data. OpenMetadata models a Glossary as a Thesauri that organizes terms with **hierarchical**, equivalent, and associative relationships within a domain.
 
@@ -40,9 +40,9 @@ The glossary term can include additional information as follows:
 
 - **Mutually Exclusive** - There are cases where only one term from a particular glossary is relevant for a data asset. For example, an asset can either be ‘PII-Sensitive’ or a ‘PII-NonSensitive’. It cannot be both. For such cases, a Glossary or a Glossary Term can be created where the child terms can be mutually exclusive. If this configuration is enabled, you won’t be able to assign multiple terms from the same Glossary/Term to the same data asset.
 
-- **Reviewers** - Multiple reviewers can be added. 
+- **Reviewers** - A term also has a set of Reviewers who review and accept the changes to the Glossary for Governance. Multiple reviewers can be added. 
 
-- **Assets** - After creating a glossary term, data assets can be associated with the term.
+- **Assets** - After creating a glossary term, data assets can be associated with the term, which helps in data discovery.
 
 {% image
 src="/images/v1.1/how-to-guides/governance/glossary-term.png"
@@ -50,7 +50,7 @@ alt="Glossary Term Requirements"
 caption="Glossary Term Requirements"
 /%}
 
-The details of a Glossary Term in OpenMetadata are displayed in three tabs: Overview, Glossary Terms, and Assets. The **Overview tab** displays the details of the term, along with the synonyms, related terms, references, and tags. It also displays the Owner and the Reviewers for the Glossary Term.
+Each term has a **life cycle status** (e.g., Draft, Approved). The details of a Glossary Term in OpenMetadata are displayed in three tabs: Overview, Glossary Terms, and Assets. The **Overview tab** displays the details of the term, along with the synonyms, related terms, references, and tags. It also displays the Owner and the Reviewers for the Glossary Term.
 
 {% image
 src="/images/v1.1/how-to-guides/governance/term1.png"

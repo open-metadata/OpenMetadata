@@ -92,6 +92,7 @@ NOT_COMPUTE = {
     sqa_types.SQASet.__name__,
     sqa_types.SQAUnion.__name__,
     sqa_types.SQASGeography.__name__,
+    DataType.GEOMETRY.value,
     DataType.ARRAY.value,
     DataType.JSON.value,
     CustomTypes.ARRAY.value.__name__,
@@ -113,8 +114,6 @@ QUANTIFIABLE_SET = {
 }
 
 CONCATENABLE_SET = {DataType.STRING.value, DataType.TEXT.value}
-
-DATATIME_SET = {DataType.DATETIME.value}
 
 
 # Now, let's define some helper methods to identify
@@ -138,7 +137,11 @@ def is_date_time(_type) -> bool:
     Check if sqlalchemy _type is derived from Date, Time or DateTime Type
     """
     if isinstance(_type, DataType):
-        return _type.value in DATATIME_SET
+        return _type.value in {
+            DataType.DATETIME.value,
+            DataType.TIME.value,
+            DataType.DATE.value,
+        }
     return (
         issubclass(_type.__class__, Date)
         or issubclass(_type.__class__, Time)

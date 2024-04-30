@@ -18,6 +18,7 @@ package org.openmetadata.service.resources.glossary;
 
 import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
 import static javax.ws.rs.core.Response.Status.FORBIDDEN;
+import static javax.ws.rs.core.Response.Status.NOT_FOUND;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.openmetadata.common.utils.CommonUtil.listOf;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
@@ -53,6 +54,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.UUID;
 import javax.ws.rs.core.Response;
 import org.apache.http.client.HttpResponseException;
 import org.junit.jupiter.api.MethodOrderer;
@@ -65,6 +67,7 @@ import org.openmetadata.schema.api.data.CreateGlossaryTerm;
 import org.openmetadata.schema.api.data.CreateTable;
 import org.openmetadata.schema.api.data.TermReference;
 import org.openmetadata.schema.api.feed.ResolveTask;
+import org.openmetadata.schema.entity.data.EntityHierarchy__1;
 import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.entity.data.GlossaryTerm.Status;
@@ -200,7 +203,7 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
   }
 
   @Test
-  void test_inheritDomain(TestInfo test) throws IOException {
+  void test_inheritDomain(TestInfo test) throws IOException, InterruptedException {
     // When domain is not set for a glossary term, carry it forward from the glossary
     CreateGlossary createGlossary =
         glossaryTest.createRequest(test).withDomain(DOMAIN.getFullyQualifiedName());
@@ -212,6 +215,7 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
             .withName("t1")
             .withGlossary(glossary.getFullyQualifiedName())
             .withDescription("desc");
+
     GlossaryTerm t1 = assertDomainInheritance(create, DOMAIN.getEntityReference());
 
     // Create terms t12 under t1 without reviewers and owner
@@ -644,6 +648,69 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
     assertTrue(table.getTags().isEmpty()); // tag t1 is removed
   }
 
+  @Test
+  void patchWrongReviewers(TestInfo test) throws IOException {
+    GlossaryTerm entity = createEntity(createRequest(test, 0), ADMIN_AUTH_HEADERS);
+
+    // Add random domain reference
+    EntityReference reviewerReference =
+        new EntityReference().withId(UUID.randomUUID()).withType(Entity.USER);
+    String originalJson = JsonUtils.pojoToJson(entity);
+    ChangeDescription change = getChangeDescription(entity, MINOR_UPDATE);
+    entity.setReviewers(List.of(reviewerReference));
+
+    assertResponse(
+        () -> patchEntityAndCheck(entity, originalJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change),
+        NOT_FOUND,
+        String.format("user instance for %s not found", reviewerReference.getId()));
+  }
+
+  @Test
+  public void test_buildGlossaryTermNestedHierarchy(TestInfo test) throws HttpResponseException {
+
+    CreateGlossaryTerm create =
+        createRequest("parentGlossaryTerm", "", "", null)
+            .withReviewers(null)
+            .withSynonyms(null)
+            .withStyle(null);
+    GlossaryTerm parentGlossaryTerm = createEntity(create, ADMIN_AUTH_HEADERS);
+
+    // Create glossary childGlossaryTerm under parentGlossaryTerm in glossary g1
+    create =
+        createRequest("childGlossaryTerm", "", "", null)
+            .withSynonyms(null)
+            .withReviewers(null)
+            .withSynonyms(null)
+            .withParent(parentGlossaryTerm.getFullyQualifiedName());
+    GlossaryTerm childGlossaryTerm = createEntity(create, ADMIN_AUTH_HEADERS);
+    String response = getResponseFormSearchWithHierarchy("glossary_term_search_index");
+    List<EntityHierarchy__1> glossaries = JsonUtils.readObjects(response, EntityHierarchy__1.class);
+    boolean isChild =
+        glossaries.stream()
+            .filter(glossary -> "g1".equals(glossary.getName())) // Find glossary with name "g1"
+            .findFirst()
+            .map(
+                g1Glossary ->
+                    g1Glossary.getChildren().stream() // Work with this glossary's children
+                        .filter(
+                            glossary ->
+                                "parentGlossaryTerm"
+                                    .equals(glossary.getName())) // Find the specific parent term
+                        .flatMap(
+                            glossary ->
+                                glossary
+                                    .getChildren()
+                                    .stream()) // Flatten the stream of children terms
+                        .anyMatch(
+                            term ->
+                                "childGlossaryTerm"
+                                    .equals(
+                                        term.getName()))) // Check if the specific child term exists
+            .orElse(false); // Return false if no glossary named "g1" was found
+
+    assertTrue(isChild, "childGlossaryTerm should be a child of parentGlossaryTerm");
+  }
+
   public GlossaryTerm createTerm(Glossary glossary, GlossaryTerm parent, String termName)
       throws IOException {
     return createTerm(glossary, parent, termName, glossary.getReviewers());
@@ -916,6 +983,33 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
     for (GlossaryTerm child : listOrEmpty(children)) {
       assertTrue(child.getFullyQualifiedName().startsWith(newTerm.getFullyQualifiedName()));
     }
+  }
+
+  @Test
+  public void test_getImmediateChildrenGlossaryTermsWithParentFQN() throws IOException {
+    Glossary glossary1 = createGlossary("glossary1", null, null);
+
+    GlossaryTerm term1 = createTerm(glossary1, null, "term1");
+    GlossaryTerm term11 = createTerm(glossary1, term1, "term11");
+    GlossaryTerm term12 = createTerm(glossary1, term1, "term12");
+    GlossaryTerm term111 = createTerm(glossary1, term11, "term111");
+    term1.setChildren(List.of(term11.getEntityReference(), term12.getEntityReference()));
+
+    // List children glossary terms with  term1 as the parent and getting immediate children only
+    Map<String, String> queryParams = new HashMap<>();
+    queryParams.put("directChildrenOf", term1.getFullyQualifiedName());
+    List<GlossaryTerm> children = listEntities(queryParams, ADMIN_AUTH_HEADERS).getData();
+
+    assertEquals(term1.getChildren().size(), children.size());
+
+    for (int i = 0; i < children.size(); i++) {
+      GlossaryTerm responseChild = children.get(i);
+      GlossaryTerm child = children.get(i);
+      assertTrue(child.getFullyQualifiedName().startsWith(responseChild.getFullyQualifiedName()));
+    }
+
+    GlossaryTerm response = getEntity(term1.getId(), "childrenCount", ADMIN_AUTH_HEADERS);
+    assertEquals(term1.getChildren().size(), response.getChildrenCount());
   }
 
   public Glossary createGlossary(

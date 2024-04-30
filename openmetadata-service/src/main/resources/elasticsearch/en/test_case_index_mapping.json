@@ -56,8 +56,14 @@
         }
       },
       "fullyQualifiedName": {
-        "type": "keyword",
-        "normalizer": "lowercase_normalizer"
+        "type": "text",
+        "analyzer": "om_analyzer",
+        "fields": {
+          "keyword": {
+            "type": "keyword",
+            "normalizer": "lowercase_normalizer"
+          }
+        }
       },
       "fqnParts": {
         "type": "keyword"
@@ -78,11 +84,20 @@
       },
       "description": {
         "type": "text",
-        "analyzer": "om_analyzer",
-        "index_options": "docs"
+        "analyzer": "om_analyzer"
       },
       "entityLink": {
-        "type": "text"
+        "type": "keyword",
+        "normalizer": "lowercase_normalizer",
+        "fields": {
+          "nonNormalized": {
+            "type": "keyword"
+          }
+        }
+      },
+      "testPlatforms": {
+        "type": "keyword",
+        "normalizer": "lowercase_normalizer"
       },
       "entityFQN": {
         "type": "keyword",
@@ -135,9 +150,7 @@
             }
           },
           "description": {
-            "type": "text",
-            "analyzer": "om_analyzer",
-            "index_options": "docs"
+            "type": "text"
           },
           "entityType": {
             "type": "keyword"
@@ -169,7 +182,13 @@
       "owner": {
         "properties": {
           "id": {
-            "type": "text"
+            "type": "keyword",
+            "fields": {
+              "keyword": {
+                "type": "keyword",
+                "ignore_above": 36
+              }
+            }
           },
           "type": {
             "type": "keyword"
@@ -189,6 +208,7 @@
             "fields": {
               "keyword": {
                 "type": "keyword",
+                "normalizer": "lowercase_normalizer",
                 "ignore_above": 256
               }
             }
@@ -207,10 +227,63 @@
           }
         }
       },
+      "domain" : {
+        "properties": {
+          "id": {
+            "type": "keyword",
+            "fields": {
+              "keyword": {
+                "type": "keyword",
+                "ignore_above": 36
+              }
+            }
+          },
+          "type": {
+            "type": "keyword"
+          },
+          "name": {
+            "type": "keyword",
+            "fields": {
+              "keyword": {
+                "type": "keyword",
+                "ignore_above": 256
+              }
+            }
+          },
+          "displayName": {
+            "type": "keyword",
+            "fields": {
+              "keyword": {
+                "type": "keyword",
+                "normalizer": "lowercase_normalizer",
+                "ignore_above": 256
+              }
+            }
+          },
+          "fullyQualifiedName": {
+            "type": "keyword"
+          },
+          "description": {
+            "type": "text"
+          },
+          "deleted": {
+            "type": "text"
+          },
+          "href": {
+            "type": "text"
+          }
+        }
+      },
       "testSuite": {
         "properties": {
           "id": {
-            "type": "text"
+            "type": "keyword",
+            "fields": {
+              "keyword": {
+                "type": "keyword",
+                "ignore_above": 36
+              }
+            }
           },
           "name": {
             "type": "keyword",
@@ -249,9 +322,16 @@
         }
       },
       "testSuites": {
+        "type": "nested",
         "properties": {
           "id": {
-            "type": "text"
+            "type": "keyword",
+            "fields": {
+              "keyword": {
+                "type": "keyword",
+                "ignore_above": 36
+              }
+            }
           },
           "name": {
             "type": "keyword",
@@ -286,6 +366,43 @@
           },
           "executable": {
             "type": "text"
+          }
+        }
+      },
+      "testCaseResult":  {
+        "properties": {
+          "result": {
+            "type": "text"
+          },
+          "testCaseStatus": {
+            "type": "keyword",
+            "normalizer": "lowercase_normalizer"
+          },
+          "testResultValue": {
+            "properties": {
+              "name": {
+                "type": "text",
+                "fields": {
+                  "keyword": {
+                    "type": "keyword",
+                    "ignore_above": 256
+                  }
+                }
+              },
+              "value": {
+                "type": "text",
+                "fields": {
+                  "keyword": {
+                    "type": "keyword",
+                    "ignore_above": 256
+                  }
+                }
+              }
+            }
+          },
+          "timestamp": {
+            "type": "date",
+            "format": "epoch_millis"
           }
         }
       },

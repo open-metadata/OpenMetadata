@@ -90,6 +90,16 @@ from metadata.generated.schema.api.tests.createTestDefinition import (
 from metadata.generated.schema.api.tests.createTestSuite import CreateTestSuiteRequest
 from metadata.generated.schema.dataInsight.dataInsightChart import DataInsightChart
 from metadata.generated.schema.dataInsight.kpi.kpi import Kpi
+from metadata.generated.schema.entity.applications.app import App
+from metadata.generated.schema.entity.applications.createAppRequest import (
+    CreateAppRequest,
+)
+from metadata.generated.schema.entity.applications.marketplace.appMarketPlaceDefinition import (
+    AppMarketPlaceDefinition,
+)
+from metadata.generated.schema.entity.applications.marketplace.createAppMarketPlaceDefinitionReq import (
+    CreateAppMarketPlaceDefinitionRequest,
+)
 from metadata.generated.schema.entity.automations.workflow import Workflow
 from metadata.generated.schema.entity.bot import Bot
 from metadata.generated.schema.entity.classification.classification import (
@@ -134,6 +144,7 @@ from metadata.generated.schema.entity.services.storageService import StorageServ
 from metadata.generated.schema.entity.teams.role import Role
 from metadata.generated.schema.entity.teams.team import Team
 from metadata.generated.schema.entity.teams.user import AuthenticationMechanism, User
+from metadata.generated.schema.settings.settings import Settings
 from metadata.generated.schema.tests.testCase import TestCase
 from metadata.generated.schema.tests.testDefinition import TestDefinition
 from metadata.generated.schema.tests.testSuite import TestSuite
@@ -232,4 +243,11 @@ ROUTES = {
     # Suggestions
     Suggestion.__name__: "/suggestions",
     CreateSuggestionRequest.__name__: "/suggestions",
+    # Apps
+    App.__name__: "/apps",
+    CreateAppRequest.__name__: "/apps",
+    AppMarketPlaceDefinition.__name__: "/apps/marketplace",
+    CreateAppMarketPlaceDefinitionRequest.__name__: "/apps/marketplace",
+    # Settings
+    Settings.__name__: "/system/settings",
 }

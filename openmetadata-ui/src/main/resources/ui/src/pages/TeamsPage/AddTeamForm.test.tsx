@@ -18,6 +18,10 @@ import AddTeamForm from './AddTeamForm';
 const mockCancel = jest.fn();
 const mockSave = jest.fn();
 
+jest.mock('../../constants/constants', () => ({
+  VALIDATION_MESSAGES: [],
+}));
+
 describe('AddTeamForm component', () => {
   it('should render form with required fields', () => {
     const { getByTestId } = render(

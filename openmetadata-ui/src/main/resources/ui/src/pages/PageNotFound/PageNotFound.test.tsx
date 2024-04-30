@@ -16,6 +16,10 @@ import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import PageNotFound from './PageNotFound';
 
+jest.mock('../../constants/constants', () => ({
+  ROUTES: {},
+}));
+
 describe('Test PageNotFound Component', () => {
   it('Component should render', () => {
     const { container } = render(<PageNotFound />, {

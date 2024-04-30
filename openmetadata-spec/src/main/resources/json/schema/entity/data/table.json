@@ -26,6 +26,7 @@
       "enum": [
         "Regular",
         "External",
+        "Dynamic",
         "View",
         "SecureView",
         "MaterializedView",
@@ -41,6 +42,9 @@
         },
         {
           "name": "External"
+        },
+        {
+          "name": "Dynamic"
         },
         {
           "name": "View"
@@ -724,16 +728,16 @@
       "javaType": "org.openmetadata.schema.type.TableProfilerConfig",
       "description": "This schema defines the type for Table profile config.",
       "properties": {
-        "profileSample": {
-          "description": "Percentage of data or no. of rows we want to execute the profiler and tests on",
-          "type": "number",
-          "default": null
-        },
         "profileSampleType": {
           "$ref": "#/definitions/profileSampleType"
         },
+        "profileSample": {
+          "description": "Percentage of data or no. of rows used to compute the profiler metrics and run data quality tests",
+          "type": "number",
+          "default": null
+        },
         "sampleDataCount": {
-          "description": "Number of row of sample data to be generated",
+          "description": "Number of sample rows to ingest when 'Generate Sample Data' is enabled",
           "type": "integer",
           "default": 50,
           "title": "Sample Data Rows Count"

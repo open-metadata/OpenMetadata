@@ -287,6 +287,10 @@ describe('Test DatabaseDetails page', () => {
       'testDatabaseSchemaTable'
     );
 
+    expect(getDatabaseDetailsByFQN).toHaveBeenCalledWith('bigquery.shopify', {
+      fields: 'owner,tags,domain,votes,extension,dataProducts',
+      include: 'all',
+    });
     expect(entityHeader).toBeInTheDocument();
     expect(descriptionContainer).toBeInTheDocument();
     expect(databaseTable).toBeInTheDocument();

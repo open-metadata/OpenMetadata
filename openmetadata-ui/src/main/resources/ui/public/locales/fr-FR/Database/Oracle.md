@@ -17,6 +17,9 @@ GRANT new_role TO user_name;
 
 -- GRANT CREATE SESSION PRIVILEGE TO USER
 GRANT CREATE SESSION TO new_role;
+
+-- GRANT SELECT CATALOG ROLE PRIVILEGE TO FETCH METADATA TO ROLE / USER
+GRANT SELECT_CATALOG_ROLE TO new_role;
 ```
 
 **Important:** OpenMetadata utilise `python-oracledb` qui supoorte seulement les version 12c, 18c, 19c, et 21c d'Oracle.

@@ -68,7 +68,9 @@ class DagsterSource(PipelineServiceSource):
     """
 
     @classmethod
-    def create(cls, config_dict, metadata: OpenMetadata):
+    def create(
+        cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None
+    ):
         config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
         connection: DagsterConnection = config.serviceConnection.__root__.config
         if not isinstance(connection, DagsterConnection):
@@ -91,8 +93,8 @@ class DagsterSource(PipelineServiceSource):
         """Method to collect all the tasks from dagster and return it in a task list"""
         jobs = self.client.get_jobs(
             pipeline_name=pipeline_name,
-            repository_name=self.context.repository_name,
-            repository_location=self.context.repository_location,
+            repository_name=self.context.get().repository_name,
+            repository_location=self.context.get().repository_location,
         )
         task_list: List[Task] = []
         if jobs:
@@ -126,10 +128,10 @@ class DagsterSource(PipelineServiceSource):
                 displayName=pipeline_details.name,
                 description=pipeline_details.description,
                 tasks=self._get_task_list(pipeline_name=pipeline_details.name),
-                service=self.context.pipeline_service,
+                service=self.context.get().pipeline_service,
                 tags=get_tag_labels(
                     metadata=self.metadata,
-                    tags=[self.context.repository_name],
+                    tags=[self.context.get().repository_name],
                     classification_name=DAGSTER_TAG_CATEGORY,
                     include_tags=self.source_config.includeTags,
                 ),
@@ -150,7 +152,7 @@ class DagsterSource(PipelineServiceSource):
 
     def yield_tag(self, *_, **__) -> Iterable[Either[OMetaTagAndClassification]]:
         yield from get_ometa_tag_and_classification(
-            tags=[self.context.repository_name],
+            tags=[self.context.get().repository_name],
             classification_name=DAGSTER_TAG_CATEGORY,
             tag_description="Dagster Tag",
             classification_description="Tags associated with dagster entities",
@@ -187,8 +189,8 @@ class DagsterSource(PipelineServiceSource):
             pipeline_fqn = fqn.build(
                 metadata=self.metadata,
                 entity_type=Pipeline,
-                service_name=self.context.pipeline_service,
-                pipeline_name=self.context.pipeline,
+                service_name=self.context.get().pipeline_service,
+                pipeline_name=self.context.get().pipeline,
             )
             pipeline_status_yield = OMetaPipelineStatus(
                 pipeline_fqn=pipeline_fqn,
@@ -211,17 +213,19 @@ class DagsterSource(PipelineServiceSource):
         pipeline_fqn = fqn.build(
             metadata=self.metadata,
             entity_type=Pipeline,
-            service_name=self.context.pipeline_service,
-            pipeline_name=self.context.pipeline,
+            service_name=self.context.get().pipeline_service,
+            pipeline_name=self.context.get().pipeline,
         )
-        pipeline_entity = self.metadata.get_by_name(entity=Pipeline, fqn=pipeline_fqn)
+        pipeline_entity = self.metadata.get_by_name(
+            entity=Pipeline, fqn=pipeline_fqn, fields=["tasks"]
+        )
         for task in pipeline_entity.tasks or []:
             try:
                 runs = self.client.get_task_runs(
                     task.name,
                     pipeline_name=pipeline_details.name,
-                    repository_name=self.context.repository_name,
-                    repository_location=self.context.repository_location,
+                    repository_name=self.context.get().repository_name,
+                    repository_location=self.context.get().repository_location,
                 )
                 for run in runs.solidHandle.stepStats.nodes or []:
                     yield from self._get_task_status(run=run, task_name=task.name)
@@ -246,8 +250,8 @@ class DagsterSource(PipelineServiceSource):
         try:
             results = self.client.get_run_list()
             for result in results:
-                self.context.repository_location = result.location.name
-                self.context.repository_name = result.name
+                self.context.get().repository_location = result.location.name
+                self.context.get().repository_name = result.name
                 for job in result.pipelines or []:
                     yield job
         except Exception as exc:
@@ -270,7 +274,7 @@ class DagsterSource(PipelineServiceSource):
         try:
             url = (
                 f"{clean_uri(self.service_connection.host)}/locations/"
-                f"{self.context.repository_location}/jobs/{pipeline_name}/"
+                f"{self.context.get().repository_location}/jobs/{pipeline_name}/"
             )
             if task_name:
                 url = f"{url}{task_name}"

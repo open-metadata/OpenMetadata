@@ -12,7 +12,6 @@
  */
 import {
   interceptURL,
-  login,
   uuid,
   verifyResponseStatusCode,
 } from '../../common/common';
@@ -22,6 +21,7 @@ import {
   createEntityTableViaREST,
   visitEntityDetailsPage,
 } from '../../common/Utils/Entity';
+import { getToken } from '../../common/Utils/LocalStorage';
 import { EntityType } from '../../constants/Entity.interface';
 import { DATABASE_SERVICE, USER_DETAILS } from '../../constants/EntityConstant';
 import { SERVICE_CATEGORIES } from '../../constants/service.constants';
@@ -179,7 +179,7 @@ const createViewBasicRoleViaREST = ({ token }) => {
 const preRequisite = () => {
   cy.login();
   cy.getAllLocalStorage().then((data) => {
-    const token = Object.values(data)[0].oidcIdToken;
+    const token = getToken(data);
     createViewBasicRoleViaREST({
       token,
     });
@@ -234,7 +234,7 @@ const preRequisite = () => {
 const cleanUp = () => {
   cy.login();
   cy.getAllLocalStorage().then((data) => {
-    const token = Object.values(data)[0].oidcIdToken;
+    const token = getToken(data);
     hardDeleteService({
       token,
       serviceFqn: DATABASE_SERVICE.service.name,
@@ -293,7 +293,7 @@ const checkPermission = (permission?: {
   viewTests?: boolean;
   editDisplayName?: boolean;
 }) => {
-  login(USER_DETAILS.email, USER_DETAILS.password);
+  cy.login(USER_DETAILS.email, USER_DETAILS.password);
   visitEntityDetailsPage({
     term: DATABASE_SERVICE.entity.name,
     serviceName: DATABASE_SERVICE.service.name,
@@ -307,7 +307,7 @@ const updatePolicy = (
 ) => {
   cy.login();
   cy.getAllLocalStorage().then((data) => {
-    const token = Object.values(data)[0].oidcIdToken;
+    const token = getToken(data);
     cy.request({
       method: 'PATCH',
       url: `/api/v1/policies/${policy.id}`,
@@ -352,13 +352,17 @@ describe('Permissions', { tags: 'Settings' }, () => {
       { op: 'add', path: '/rules/0/operations/5', value: 'EditQueries' },
     ]);
 
-    login(USER_DETAILS.email, USER_DETAILS.password);
+    cy.login(USER_DETAILS.email, USER_DETAILS.password);
     visitEntityDetailsPage({
       term: DATABASE_SERVICE.entity.name,
       serviceName: DATABASE_SERVICE.service.name,
       entity: EntityType.Table,
     });
-    interceptURL('GET', '/api/v1/queries?*', 'getQueries');
+    interceptURL(
+      'GET',
+      '/api/v1/search/query?q=*&index=query_search_index*',
+      'getQueries'
+    );
     cy.get('[data-testid="table_queries"]').click();
     verifyResponseStatusCode('@getQueries', 200);
     cy.get('[data-testid="query-btn"]').click();
@@ -385,7 +389,7 @@ describe('Permissions', { tags: 'Settings' }, () => {
       },
     ]);
 
-    login(USER_DETAILS.email, USER_DETAILS.password);
+    cy.login(USER_DETAILS.email, USER_DETAILS.password);
     visitEntityDetailsPage({
       term: DATABASE_SERVICE.entity.name,
       serviceName: DATABASE_SERVICE.service.name,

@@ -20,6 +20,7 @@ from typing import Dict, Iterable, List, Optional, Tuple
 import requests
 
 from metadata.clients.aws_client import AWSClient
+from metadata.clients.azure_client import AzureClient
 from metadata.generated.schema.metadataIngestion.dbtconfig.dbtAzureConfig import (
     DbtAzureConfig,
 )
@@ -172,7 +173,7 @@ def _(config: DbtCloudConfig):  # pylint: disable=too-many-locals
             params_data["job_definition_id"] = job_id
 
         response = client.get(f"/accounts/{account_id}/runs", data=params_data)
-        if not response and not response.get("data"):
+        if not response or not response.get("data"):
             raise DBTConfigException(
                 "Unable to get the dbt job runs information.\n"
                 "Please check if the auth token is correct and has the necessary scopes to fetch dbt runs"
@@ -357,21 +358,8 @@ def _(config: DbtGcsConfig):
 def _(config: DbtAzureConfig):
     try:
         bucket_name, prefix = get_dbt_prefix_config(config)
-        from azure.identity import (  # pylint: disable=import-outside-toplevel
-            ClientSecretCredential,
-        )
-        from azure.storage.blob import (  # pylint: disable=import-outside-toplevel
-            BlobServiceClient,
-        )
 
-        client = BlobServiceClient(
-            f"https://{config.dbtSecurityConfig.accountName}.blob.core.windows.net/",
-            credential=ClientSecretCredential(
-                config.dbtSecurityConfig.tenantId,
-                config.dbtSecurityConfig.clientId,
-                config.dbtSecurityConfig.clientSecret.get_secret_value(),
-            ),
-        )
+        client = AzureClient(config.dbtSecurityConfig).create_blob_client()
 
         if not bucket_name:
             container_dicts = client.list_containers()

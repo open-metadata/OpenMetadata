@@ -1,0 +1,97 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/services/connections/pipeline/openLineageConnection.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "OpenLineageConnection",
+  "description": "OpenLineage Connection Config",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.services.connections.pipeline.OpenLineageConnection",
+  "definitions": {
+    "OpenLineageType": {
+      "description": "Service type.",
+      "type": "string",
+      "enum": [
+        "OpenLineage"
+      ],
+      "default": "OpenLineage"
+    }
+  },
+  "properties": {
+    "type": {
+      "description": "Service Type",
+      "$ref": "#/definitions/OpenLineageType",
+      "default": "OpenLineage"
+    },
+    "brokersUrl": {
+      "title": "Kafka brokers list",
+      "description": "service type of the messaging source",
+      "type": "string"
+    },
+    "topicName": {
+      "title": "Topic Name",
+      "description": "topic from where Open lineage events will be pulled ",
+      "type": "string"
+    },
+    "consumerGroupName": {
+      "title": "Consumer Group",
+      "description": "consumer group name ",
+      "type": "string"
+    },
+    "consumerOffsets": {
+      "title": "Initial consumer offsets",
+      "description": "initial Kafka consumer offset",
+      "default": "earliest",
+      "type": "string",
+      "enum": [
+        "earliest",
+        "latest"
+      ],
+      "javaEnums": [
+        {
+          "name": "earliest"
+        },
+        {
+          "name": "latest"
+        }
+      ]
+    },
+    "poolTimeout": {
+      "title": "Single pool call timeout",
+      "description": "max allowed wait time",
+      "type": "number",
+      "default": 1.0
+    },
+    "sessionTimeout": {
+      "title": "Broker inactive session timeout",
+      "description": "max allowed inactivity time",
+      "type": "integer",
+      "default": 30
+    },
+    "securityProtocol": {
+      "title": "Kafka security protocol",
+      "description": "Kafka security protocol config",
+      "default": "PLAINTEXT",
+      "type": "string",
+      "enum": [
+        "PLAINTEXT",
+        "SSL"
+      ],
+      "javaEnums": [
+        {
+          "name": "PLAINTEXT"
+        },
+        {
+          "name": "SSL"
+        }
+      ]
+    },
+    "sslConfig": {
+      "title": "SSL",
+      "description": "SSL Configuration details.",
+      "$ref": "../../../../security/ssl/verifySSLConfig.json#/definitions/sslConfig"
+    },
+    "supportsMetadataExtraction": {
+      "$ref": "../connectionBasicType.json#/definitions/supportsMetadataExtraction"
+    }
+  },
+  "additionalProperties": false
+}

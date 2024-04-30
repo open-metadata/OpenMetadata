@@ -15,5 +15,5 @@ import { User } from '../../../../../generated/entity/teams/user';
 
 export interface UserProfileDetailsProps {
   userData: User;
-  updateUserDetails: (data: Partial<User>) => Promise<void>;
+  updateUserDetails: (data: Partial<User>, key: keyof User) => Promise<void>;
 }

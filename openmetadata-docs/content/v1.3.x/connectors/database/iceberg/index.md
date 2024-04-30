@@ -183,7 +183,9 @@ Find more information about [Source Identity](https://docs.aws.amazon.com/STS/la
 
 - **Tenant ID** : Tenant ID under which the data storage account falls
 
-- **Account Name** : Account Name of the data Storage
+- **Account Name** : Account Name of the Data Storage
+
+- **Key Vault Name**: Azure Key Vault serves as a centralized secrets manager, securely storing and managing sensitive information, such as connection strings and cryptographic keys.
 
 {% /extraContent %}
 

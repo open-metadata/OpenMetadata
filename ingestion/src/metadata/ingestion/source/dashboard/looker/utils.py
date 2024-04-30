@@ -54,14 +54,16 @@ def _clone_repo(
             return
 
         url = None
+        allow_unsafe_protocols = False
         if isinstance(credential, GitHubCredentials):
             url = f"https://x-oauth-basic:{credential.token.__root__.get_secret_value()}@github.com/{repo_name}.git"
         elif isinstance(credential, BitBucketCredentials):
-            url = f"https://x-token-auth::{credential.token.__root__.get_secret_value()}@bitbucket.or/{repo_name}.git"
+            url = f"https://x-token-auth:{credential.token.__root__.get_secret_value()}@bitbucket.org/{repo_name}.git"
+            allow_unsafe_protocols = True
 
         assert url is not None
 
-        Repo.clone_from(url, path)
+        Repo.clone_from(url, path, allow_unsafe_protocols=allow_unsafe_protocols)
 
         logger.info(f"repo {repo_name} cloned to {path}")
     except Exception as exc:

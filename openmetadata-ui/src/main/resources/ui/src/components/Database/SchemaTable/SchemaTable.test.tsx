@@ -15,10 +15,11 @@ import { render, screen } from '@testing-library/react';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { Column } from '../../../generated/entity/data/container';
-import { Table, TablePartition } from '../../../generated/entity/data/table';
+import { Table } from '../../../generated/entity/data/table';
+import { MOCK_TABLE } from '../../../mocks/TableData.mock';
 import EntityTableV1 from './SchemaTable.component';
+import { SchemaTableProps } from './SchemaTable.interface';
 
-const onEntityFieldSelect = jest.fn();
 const onThreadLinkSelect = jest.fn();
 const onUpdate = jest.fn();
 
@@ -28,60 +29,52 @@ const mockTableConstraints = [
     columns: ['address_id', 'shop_id'],
   },
 ] as Table['tableConstraints'];
+const columns = [
+  {
+    name: 'comments',
+    dataType: 'STRING',
+    dataLength: 1,
+    dataTypeDisplay: 'string',
+    fullyQualifiedName:
+      'bigquery_gcp.ecommerce.shopify.raw_product_catalog.comments',
+    tags: [],
+    constraint: 'NULL',
+    ordinalPosition: 1,
+  },
+  {
+    name: 'products',
+    dataType: 'ARRAY',
+    arrayDataType: 'STRUCT',
+    dataLength: 1,
+    dataTypeDisplay:
+      'array<struct<product_id:character varying(24),price:int,onsale:boolean,tax:int,weight:int,others:int,vendor:character varying(64), stock:int>>',
+    fullyQualifiedName:
+      'bigquery_gcp.ecommerce.shopify.raw_product_catalog.products',
+    tags: [],
+    constraint: 'NULL',
+    ordinalPosition: 2,
+  },
+  {
+    name: 'platform',
+    dataType: 'STRING',
+    dataLength: 1,
+    dataTypeDisplay: 'string',
+    fullyQualifiedName:
+      'bigquery_gcp.ecommerce.shopify.raw_product_catalog.platform',
+    tags: [],
+    constraint: 'NULL',
+    ordinalPosition: 3,
+  },
+] as Column[];
 
-const mockEntityTableProp = {
-  tableColumns: [
-    {
-      name: 'comments',
-      dataType: 'STRING',
-      dataLength: 1,
-      dataTypeDisplay: 'string',
-      fullyQualifiedName:
-        'bigquery_gcp.ecommerce.shopify.raw_product_catalog.comments',
-      tags: [],
-      constraint: 'NULL',
-      ordinalPosition: 1,
-    },
-    {
-      name: 'products',
-      dataType: 'ARRAY',
-      arrayDataType: 'STRUCT',
-      dataLength: 1,
-      dataTypeDisplay:
-        'array<struct<product_id:character varying(24),price:int,onsale:boolean,tax:int,weight:int,others:int,vendor:character varying(64), stock:int>>',
-      fullyQualifiedName:
-        'bigquery_gcp.ecommerce.shopify.raw_product_catalog.products',
-      tags: [],
-      constraint: 'NULL',
-      ordinalPosition: 2,
-    },
-    {
-      name: 'platform',
-      dataType: 'STRING',
-      dataLength: 1,
-      dataTypeDisplay: 'string',
-      fullyQualifiedName:
-        'bigquery_gcp.ecommerce.shopify.raw_product_catalog.platform',
-      tags: [],
-      constraint: 'NULL',
-      ordinalPosition: 3,
-    },
-  ] as Column[],
+const mockEntityTableProp: SchemaTableProps = {
   searchText: '',
-  hasEditAccess: false,
-  joins: [],
-  entityFieldThreads: [],
   hasDescriptionEditAccess: true,
   isReadOnly: false,
-  entityFqn: 'bigquery_gcp.ecommerce.shopify.raw_product_catalog',
-  owner: {} as Table['owner'],
-  columnName: '',
   hasTagEditAccess: true,
-  tableConstraints: mockTableConstraints,
-  tablePartitioned: {} as TablePartition,
-  onEntityFieldSelect,
   onThreadLinkSelect,
   onUpdate,
+  table: { ...MOCK_TABLE, columns, tableConstraints: mockTableConstraints },
 };
 
 const columnsWithDisplayName = [
@@ -201,9 +194,15 @@ describe('Test EntityTable Component', () => {
   });
 
   it('Table should load empty when no data present', async () => {
-    render(<EntityTableV1 {...mockEntityTableProp} tableColumns={[]} />, {
-      wrapper: MemoryRouter,
-    });
+    render(
+      <EntityTableV1
+        {...mockEntityTableProp}
+        table={{ ...MOCK_TABLE, columns: [] }}
+      />,
+      {
+        wrapper: MemoryRouter,
+      }
+    );
 
     const entityTable = await screen.findByTestId('entity-table');
 
@@ -232,7 +231,7 @@ describe('Test EntityTable Component', () => {
     render(
       <EntityTableV1
         {...mockEntityTableProp}
-        tableColumns={[...columnsWithDisplayName]}
+        table={{ ...MOCK_TABLE, columns: columnsWithDisplayName }}
       />,
       {
         wrapper: MemoryRouter,
@@ -249,5 +248,22 @@ describe('Test EntityTable Component', () => {
 
     expect(columnDisplayName[0].textContent).toBe('Comments');
     expect(columnName[0].textContent).toBe('comments');
+  });
+
+  it('should not render edit displayName button is table is deleted', async () => {
+    render(
+      <EntityTableV1
+        {...mockEntityTableProp}
+        isReadOnly
+        table={{ ...MOCK_TABLE, columns: columnsWithDisplayName }}
+      />,
+      {
+        wrapper: MemoryRouter,
+      }
+    );
+
+    expect(
+      screen.queryByTestId('edit-displayName-button')
+    ).not.toBeInTheDocument();
   });
 });

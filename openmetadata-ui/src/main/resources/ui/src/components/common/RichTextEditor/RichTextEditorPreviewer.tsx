@@ -31,10 +31,10 @@ const RichTextEditorPreviewer = ({
   textVariant = 'black',
   showReadMoreBtn = true,
   maxLength = DESCRIPTION_MAX_PREVIEW_CHARACTERS,
+  isDescriptionExpanded = false,
 }: PreviewerProp) => {
   const { t, i18n } = useTranslation();
   const [content, setContent] = useState<string>('');
-
   // initially read more will be false
   const [readMore, setReadMore] = useState<boolean>(false);
 
@@ -94,6 +94,10 @@ const RichTextEditorPreviewer = ({
 
     return () => window.removeEventListener('mousedown', handleMouseDownEvent);
   }, [handleMouseDownEvent]);
+
+  useEffect(() => {
+    setReadMore(Boolean(isDescriptionExpanded));
+  }, [isDescriptionExpanded]);
 
   return (
     <div

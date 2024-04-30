@@ -13,6 +13,7 @@
 
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import React from 'react';
+import { MemoryRouter } from 'react-router-dom';
 import { PropertyValue } from './PropertyValue';
 
 jest.mock('../../common/RichTextEditor/RichTextEditorPreviewer', () => {
@@ -39,6 +40,21 @@ jest.mock('./PropertyInput', () => ({
       <div data-testid="PropertyInput">{children}</div>
     )),
 }));
+
+jest.mock('../../Database/SchemaEditor/SchemaEditor', () =>
+  jest.fn().mockReturnValue(<div data-testid="SchemaEditor">SchemaEditor</div>)
+);
+jest.mock(
+  '../../DataAssets/DataAssetAsyncSelectList/DataAssetAsyncSelectList',
+  () =>
+    jest
+      .fn()
+      .mockReturnValue(
+        <div data-testid="entity-reference-select">
+          DataAssetAsyncSelectList
+        </div>
+      )
+);
 
 const mockUpdate = jest.fn();
 
@@ -114,10 +130,238 @@ describe('Test PropertyValue Component', () => {
   });
 
   it('Should render select component for enum type', async () => {
-    const extension = { yNumber: 'enumValue' };
+    const extension = { yNumber: ['enumValue1', 'enumValue2'] };
     const propertyType = {
       ...mockData.property.propertyType,
       name: 'enum',
+    };
+    render(
+      <PropertyValue
+        {...mockData}
+        extension={extension}
+        property={{ ...mockData.property, propertyType: propertyType }}
+      />
+    );
+
+    const iconElement = await screen.findByTestId('edit-icon');
+
+    expect(await screen.findByTestId('enum-value')).toHaveTextContent(
+      'enumValue1, enumValue2'
+    );
+
+    await act(async () => {
+      fireEvent.click(iconElement);
+    });
+
+    expect(await screen.findByTestId('enum-select')).toBeInTheDocument();
+  });
+
+  it('Should render date picker component for "date" type', async () => {
+    const extension = { yNumber: '20-03-2024' };
+    const propertyType = {
+      ...mockData.property.propertyType,
+      name: 'date',
+    };
+    render(
+      <PropertyValue
+        {...mockData}
+        extension={extension}
+        property={{ ...mockData.property, propertyType: propertyType }}
+      />
+    );
+
+    const iconElement = await screen.findByTestId('edit-icon');
+
+    expect(await screen.findByTestId('value')).toHaveTextContent('20-03-2024');
+
+    await act(async () => {
+      fireEvent.click(iconElement);
+    });
+
+    expect(await screen.findByTestId('date-time-picker')).toBeInTheDocument();
+  });
+
+  it('Should render date picker component for "dateTime" type', async () => {
+    const extension = {
+      yNumber: '20-03-2024 2:00:00',
+    };
+    const propertyType = {
+      ...mockData.property.propertyType,
+      name: 'dateTime',
+    };
+    render(
+      <PropertyValue
+        {...mockData}
+        extension={extension}
+        property={{ ...mockData.property, propertyType: propertyType }}
+      />
+    );
+
+    const iconElement = await screen.findByTestId('edit-icon');
+
+    expect(await screen.findByTestId('value')).toHaveTextContent(
+      '20-03-2024 2:00:00'
+    );
+
+    await act(async () => {
+      fireEvent.click(iconElement);
+    });
+
+    expect(await screen.findByTestId('date-time-picker')).toBeInTheDocument();
+  });
+
+  it('Should render time picker component for "time" type', async () => {
+    const extension = {
+      yNumber: '2:00:00',
+    };
+    const propertyType = {
+      ...mockData.property.propertyType,
+      name: 'time',
+    };
+    render(
+      <PropertyValue
+        {...mockData}
+        extension={extension}
+        property={{ ...mockData.property, propertyType: propertyType }}
+      />
+    );
+
+    const iconElement = await screen.findByTestId('edit-icon');
+
+    expect(await screen.findByTestId('value')).toHaveTextContent('2:00:00');
+
+    await act(async () => {
+      fireEvent.click(iconElement);
+    });
+
+    expect(await screen.findByTestId('time-picker')).toBeInTheDocument();
+  });
+
+  it('Should render email input component for "email" type', async () => {
+    const extension = {
+      yNumber: 'john@doe.com',
+    };
+    const propertyType = {
+      ...mockData.property.propertyType,
+      name: 'email',
+    };
+    render(
+      <PropertyValue
+        {...mockData}
+        extension={extension}
+        property={{ ...mockData.property, propertyType: propertyType }}
+      />
+    );
+
+    const iconElement = await screen.findByTestId('edit-icon');
+
+    expect(await screen.findByTestId('value')).toHaveTextContent(
+      'john@doe.com'
+    );
+
+    await act(async () => {
+      fireEvent.click(iconElement);
+    });
+
+    expect(await screen.findByTestId('email-input')).toBeInTheDocument();
+  });
+
+  it('Should render timestamp input component for "timestamp" type', async () => {
+    const extension = {
+      yNumber: 1736255200000,
+    };
+    const propertyType = {
+      ...mockData.property.propertyType,
+      name: 'timestamp',
+    };
+    render(
+      <PropertyValue
+        {...mockData}
+        extension={extension}
+        property={{ ...mockData.property, propertyType: propertyType }}
+      />
+    );
+
+    const iconElement = await screen.findByTestId('edit-icon');
+
+    expect(await screen.findByTestId('value')).toHaveTextContent(
+      '1736255200000'
+    );
+
+    await act(async () => {
+      fireEvent.click(iconElement);
+    });
+
+    expect(await screen.findByTestId('timestamp-input')).toBeInTheDocument();
+  });
+
+  it('Should render start and end input component for "timeInterval" type', async () => {
+    const extension = {
+      yNumber: {
+        start: '1736255200000',
+        end: '1736255200020',
+      },
+    };
+    const propertyType = {
+      ...mockData.property.propertyType,
+      name: 'timeInterval',
+    };
+    render(
+      <PropertyValue
+        {...mockData}
+        extension={extension}
+        property={{ ...mockData.property, propertyType: propertyType }}
+      />
+    );
+
+    const iconElement = await screen.findByTestId('edit-icon');
+
+    expect(await screen.findByTestId('time-interval-value')).toHaveTextContent(
+      'StartTime: 1736255200000EndTime: 1736255200020'
+    );
+
+    await act(async () => {
+      fireEvent.click(iconElement);
+    });
+
+    expect(await screen.findByTestId('start-input')).toBeInTheDocument();
+    expect(await screen.findByTestId('end-input')).toBeInTheDocument();
+  });
+
+  it('Should render duration input component for "duration" type', async () => {
+    const extension = {
+      yNumber: 'P1Y2M3DT4H5M6S',
+    };
+    const propertyType = {
+      ...mockData.property.propertyType,
+      name: 'duration',
+    };
+    render(
+      <PropertyValue
+        {...mockData}
+        extension={extension}
+        property={{ ...mockData.property, propertyType: propertyType }}
+      />
+    );
+
+    const iconElement = await screen.findByTestId('edit-icon');
+
+    expect(await screen.findByTestId('value')).toHaveTextContent(
+      'P1Y2M3DT4H5M6S'
+    );
+
+    await act(async () => {
+      fireEvent.click(iconElement);
+    });
+
+    expect(await screen.findByTestId('duration-input')).toBeInTheDocument();
+  });
+
+  it('Should render sqlQuery editor component for "sqlQuery" type', async () => {
+    const extension = {};
+    const propertyType = {
+      ...mockData.property.propertyType,
+      name: 'sqlQuery',
     };
     render(
       <PropertyValue
@@ -133,6 +377,97 @@ describe('Test PropertyValue Component', () => {
       fireEvent.click(iconElement);
     });
 
-    expect(await screen.findByTestId('enum-select')).toBeInTheDocument();
+    expect(await screen.findByTestId('SchemaEditor')).toBeInTheDocument();
+  });
+
+  it('Should render entity reference select component for "entityReference" type', async () => {
+    const extension = {
+      yNumber: {
+        id: 'entityReferenceId',
+        name: 'entityReferenceName',
+        fullyQualifiedName: 'entityReferenceFullyQualifiedName',
+        type: 'entityReference',
+      },
+    };
+    const propertyType = {
+      ...mockData.property.propertyType,
+      name: 'entityReference',
+    };
+    render(
+      <PropertyValue
+        {...mockData}
+        extension={extension}
+        property={{ ...mockData.property, propertyType: propertyType }}
+      />,
+      { wrapper: MemoryRouter }
+    );
+
+    const iconElement = await screen.findByTestId('edit-icon');
+
+    expect(
+      await screen.findByTestId('entityReference-value')
+    ).toBeInTheDocument();
+    expect(
+      await screen.findByTestId('entityReference-value-name')
+    ).toHaveTextContent('entityReferenceName');
+
+    await act(async () => {
+      fireEvent.click(iconElement);
+    });
+
+    expect(
+      await screen.findByTestId('entity-reference-select')
+    ).toBeInTheDocument();
+  });
+
+  it('Should render entity reference select component for "entityReferenceList" type', async () => {
+    const extension = {
+      yNumber: [
+        {
+          id: 'entityReferenceId',
+          name: 'entityReferenceName',
+          fullyQualifiedName: 'entityReferenceFullyQualifiedName',
+          type: 'entityReference',
+        },
+        {
+          id: 'entityReferenceId2',
+          name: 'entityReferenceName2',
+          fullyQualifiedName: 'entityReferenceFullyQualifiedName2',
+          type: 'entityReference',
+        },
+      ],
+    };
+    const propertyType = {
+      ...mockData.property.propertyType,
+      name: 'entityReferenceList',
+    };
+    render(
+      <PropertyValue
+        {...mockData}
+        extension={extension}
+        property={{ ...mockData.property, propertyType: propertyType }}
+      />,
+      {
+        wrapper: MemoryRouter,
+      }
+    );
+
+    const iconElement = await screen.findByTestId('edit-icon');
+
+    expect(
+      await screen.findByTestId('entityReferenceName')
+    ).toBeInTheDocument();
+
+    expect(
+      await screen.findByTestId('entityReferenceName2')
+    ).toBeInTheDocument();
+
+    await act(async () => {
+      fireEvent.click(iconElement);
+    });
+
+    expect(
+      await screen.findByTestId('entity-reference-select')
+    ).toBeInTheDocument();
   });
 });

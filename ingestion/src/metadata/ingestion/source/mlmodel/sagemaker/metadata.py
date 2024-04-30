@@ -67,7 +67,9 @@ class SagemakerSource(MlModelServiceSource):
         self.sagemaker = self.client
 
     @classmethod
-    def create(cls, config_dict, metadata: OpenMetadata):
+    def create(
+        cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None
+    ):
         config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
         connection: SageMakerConnection = config.serviceConnection.__root__.config
         if not isinstance(connection, SageMakerConnection):
@@ -136,7 +138,7 @@ class SagemakerSource(MlModelServiceSource):
                 name=model.name,
                 algorithm=self._get_algorithm(),  # Setting this to a constant
                 mlStore=self._get_ml_store(model.name),
-                service=self.context.mlmodel_service,
+                service=self.context.get().mlmodel_service,
             )
             yield Either(right=mlmodel_request)
             self.register_record(mlmodel_request=mlmodel_request)
@@ -158,7 +160,10 @@ class SagemakerSource(MlModelServiceSource):
         """
         try:
             model_info = self.sagemaker.describe_model(ModelName=model_name)
-            return MlStore(imageRepository=model_info["PrimaryContainer"]["Image"])
+            storage = model_info.get("PrimaryContainer", {}).get("ModelDataUrl")
+            image_repository = model_info.get("PrimaryContainer", {}).get("Image")
+            if image_repository or storage:
+                return MlStore(storage=storage, imageRepository=image_repository)
         except ValidationError as err:
             logger.debug(traceback.format_exc())
             logger.warning(

@@ -97,6 +97,9 @@
       "sourceUrl": {
         "type": "keyword"
       },
+      "fullPath": {
+        "type": "keyword"
+      },
       "lineage": {
         "type" : "object"
       },
@@ -553,6 +556,9 @@
       },
       "votes" : {
         "type": "object"
+      },
+      "descriptionStatus": {
+        "type": "keyword"
       }
     }
   }

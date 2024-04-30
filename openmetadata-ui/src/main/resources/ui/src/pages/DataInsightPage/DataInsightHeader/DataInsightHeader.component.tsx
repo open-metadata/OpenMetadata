@@ -89,12 +89,14 @@ const DataInsightHeader = ({ onScrollToChart }: DataInsightHeaderProps) => {
         <Space className="w-full justify-between align-center">
           <Space className="w-full" size={16}>
             <SearchDropdown
+              hideCounts
               label={t('label.team')}
               searchKey="teams"
               {...team}
             />
 
             <SearchDropdown
+              hideCounts
               label={t('label.tier')}
               searchKey="tier"
               {...tier}

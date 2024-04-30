@@ -53,6 +53,7 @@ export const UserTeamSelectableList = ({
   owner,
   onUpdate = noop,
   children,
+  popoverProps,
 }: UserSelectDropdownProps) => {
   const { t } = useTranslation();
   const [popupVisible, setPopupVisible] = useState(false);
@@ -144,6 +145,7 @@ export const UserTeamSelectableList = ({
             id: updateItems[0].id,
             type: activeTab === 'teams' ? EntityType.TEAM : EntityType.USER,
             name: updateItems[0].name,
+            fullyQualifiedName: updateItems[0].fullyQualifiedName,
             displayName: updateItems[0].displayName,
           }
     );
@@ -189,7 +191,13 @@ export const UserTeamSelectableList = ({
     }
   };
 
-  const openPopover = useCallback(() => setPopupVisible(true), []);
+  const openPopover = useCallback(
+    (e: React.MouseEvent<HTMLElement, MouseEvent>) => {
+      e.stopPropagation();
+      setPopupVisible(true);
+    },
+    []
+  );
 
   useEffect(() => {
     fetchCount();
@@ -260,6 +268,9 @@ export const UserTeamSelectableList = ({
           ]}
           size="small"
           onChange={(key: string) => setActiveTab(key as 'teams' | 'users')}
+          // Used div to stop click propagation event anywhere in the component to parent
+          // Users.component collapsible panel
+          onClick={(e) => e.stopPropagation()}
         />
       }
       open={popupVisible}
@@ -267,7 +278,8 @@ export const UserTeamSelectableList = ({
       placement="bottomRight"
       showArrow={false}
       trigger="click"
-      onOpenChange={setPopupVisible}>
+      onOpenChange={setPopupVisible}
+      {...popoverProps}>
       {children ??
         (hasPermission && (
           <Tooltip

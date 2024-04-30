@@ -61,8 +61,11 @@ CREATE ROLE new_role;
 -- GRANT ROLE TO USER 
 GRANT new_role TO user_name;
 
--- GRANT CREATE SESSION PRIVILEGE TO USER
+-- GRANT CREATE SESSION PRIVILEGE TO ROLE / USER
 GRANT CREATE SESSION TO new_role;
+
+-- GRANT SELECT CATALOG ROLE PRIVILEGE TO FETCH METADATA TO ROLE / USER
+GRANT SELECT_CATALOG_ROLE TO new_role;
 ```
 
 With just these permissions, your user should be able to ingest the schemas, but not the tables inside them. To get

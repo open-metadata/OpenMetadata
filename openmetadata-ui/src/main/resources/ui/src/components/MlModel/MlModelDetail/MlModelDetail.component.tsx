@@ -19,7 +19,7 @@ import { EntityTags } from 'Models';
 import React, { FC, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
-import { getMlModelDetailsPath } from '../../../constants/constants';
+import { getEntityDetailsPath } from '../../../constants/constants';
 import { FEED_COUNT_INITIAL_DATA } from '../../../constants/entity.constants';
 import LineageProvider from '../../../context/LineageProvider/LineageProvider';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
@@ -30,6 +30,7 @@ import { Tag } from '../../../generated/entity/classification/tag';
 import { Mlmodel, MlStore } from '../../../generated/entity/data/mlmodel';
 import { ThreadType } from '../../../generated/entity/feed/thread';
 import { TagLabel } from '../../../generated/type/schema';
+import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { useFqn } from '../../../hooks/useFqn';
 import { FeedCounts } from '../../../interface/feed.interface';
 import { restoreMlmodel } from '../../../rest/mlModelAPI';
@@ -43,7 +44,6 @@ import { useActivityFeedProvider } from '../../ActivityFeed/ActivityFeedProvider
 import { ActivityFeedTab } from '../../ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
 import ActivityThreadPanel from '../../ActivityFeed/ActivityThreadPanel/ActivityThreadPanel';
 import { withActivityFeed } from '../../AppRouter/withActivityFeed';
-import { useAuthContext } from '../../Auth/AuthProviders/AuthProvider';
 import { CustomPropertyTable } from '../../common/CustomPropertyTable/CustomPropertyTable';
 import DescriptionV1 from '../../common/EntityDescription/DescriptionV1';
 import TabsLabel from '../../common/TabsLabel/TabsLabel.component';
@@ -73,7 +73,7 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
   handleToggleDelete,
 }) => {
   const { t } = useTranslation();
-  const { currentUser } = useAuthContext();
+  const { currentUser } = useApplicationStore();
   const history = useHistory();
   const { postFeed, deleteFeed, updateFeed } = useActivityFeedProvider();
   const { tab: activeTab } = useParams<{ tab: EntityTabs }>();
@@ -150,7 +150,9 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
 
   const handleTabChange = (activeKey: string) => {
     if (activeKey !== activeTab) {
-      history.push(getMlModelDetailsPath(decodedMlModelFqn, activeKey));
+      history.push(
+        getEntityDetailsPath(EntityType.MLMODEL, decodedMlModelFqn, activeKey)
+      );
     }
   };
 
@@ -402,6 +404,7 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
                   entityName={mlModelName}
                   entityType={EntityType.MLMODEL}
                   hasEditAccess={editDescriptionPermission}
+                  isDescriptionExpanded={isEmpty(mlModelDetail.mlFeatures)}
                   isEdit={isEdit}
                   owner={mlModelDetail.owner}
                   showActions={!deleted}
@@ -424,16 +427,18 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
               className="entity-tag-right-panel-container"
               data-testid="entity-right-panel"
               flex="320px">
-              <EntityRightPanel
+              <EntityRightPanel<EntityType.MLMODEL>
                 customProperties={mlModelDetail}
                 dataProducts={mlModelDetail?.dataProducts ?? []}
                 domain={mlModelDetail?.domain}
+                editCustomAttributePermission={editCustomAttributePermission}
                 editTagPermission={editTagsPermission}
                 entityFQN={decodedMlModelFqn}
                 entityId={mlModelDetail.id}
                 entityType={EntityType.MLMODEL}
                 selectedTags={mlModelTags}
                 viewAllPermission={viewAllPermission}
+                onExtensionUpdate={onExtensionUpdate}
                 onTagSelectionChange={handleTagSelection}
                 onThreadLinkSelect={handleThreadLinkSelect}
               />

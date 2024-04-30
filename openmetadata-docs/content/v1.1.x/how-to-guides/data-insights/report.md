@@ -7,7 +7,7 @@ slug: /how-to-guides/data-insights/report
 
 The data insights report provides a quick glance at aspects like data ownership, description coverage, data tiering, and so on. Admins can view the aggregated user activity and get insights into user engagement and user growth. Admins can check for Daily active users and know how the tool is being used.
 
-OpenMetadata offers a suite of reports providing platform analytics around specific areas. The reports are available in three sections:
+OpenMetadata offers a suite of reports providing platform analytics around specific areas. The reports are available in three sections: 
 - Data Assets
 - App Analytics
 - KPIs
@@ -46,7 +46,7 @@ caption="Total Data Assets"
 
 ### Percentage of Data Assets with Description
 
-It displays the percentage of data assets with description by data asset type.
+It displays the percentage of data assets with description by data asset type. For Table asset type, this condition is true only if the table and column description are filed. It allows you to quickly view the description coverage for your data assets in OpenMetadata.
 
 {% image
 src="/images/v1.1/how-to-guides/insights/pdad.png"

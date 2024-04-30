@@ -90,7 +90,7 @@ signed or encrypted or both responses from the IDP.
 
 Jwt Configuration is mandatory for Saml SSO.
 
-- Follow the guide here for JWT Configuration [Enable JWT Token](https://docs.open-metadata.org/deployment/security/enable-jwt-tokens).
+- Follow the guide here for JWT Configuration [Enable JWT Token](/deployment/security/enable-jwt-tokens).
 
 {% note %}
 

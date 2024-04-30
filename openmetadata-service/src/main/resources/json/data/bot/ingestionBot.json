@@ -1,5 +1,6 @@
 {
   "name": "ingestion-bot",
+  "displayName": "IngestionBot",
   "description": "Bot used for ingesting metadata.",
   "fullyQualifiedName": "ingestion-bot",
   "botUser": {

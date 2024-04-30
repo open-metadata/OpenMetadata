@@ -15,7 +15,7 @@ import i18next from 'i18next';
 import { ReactComponent as AdminIcon } from '../assets/svg/admin-colored.svg';
 import { ReactComponent as ApplicationIcon } from '../assets/svg/application-colored.svg';
 import { ReactComponent as BotIcon } from '../assets/svg/bot-colored.svg';
-import { ReactComponent as CustomLogoIcon } from '../assets/svg/custom-logo-colored.svg';
+import { ReactComponent as AppearanceIcon } from '../assets/svg/custom-logo-colored.svg';
 import { ReactComponent as CustomDashboardLogoIcon } from '../assets/svg/customize-landing-page-colored.svg';
 import { ReactComponent as DashboardIcon } from '../assets/svg/dashboard-colored.svg';
 import { ReactComponent as DatabaseIcon } from '../assets/svg/database-colored.svg';
@@ -26,9 +26,11 @@ import { ReactComponent as LoginIcon } from '../assets/svg/login-colored.svg';
 import { ReactComponent as OpenMetadataIcon } from '../assets/svg/logo-monogram.svg';
 import { ReactComponent as MessagingIcon } from '../assets/svg/messaging-colored.svg';
 import { ReactComponent as MlModelIcon } from '../assets/svg/ml-model-colored.svg';
+import { ReactComponent as OMHealthIcon } from '../assets/svg/om-health-colored.svg';
 import { ReactComponent as PersonasIcon } from '../assets/svg/persona-colored.svg';
 import { ReactComponent as PipelineIcon } from '../assets/svg/pipeline-colored.svg';
 import { ReactComponent as PoliciesIcon } from '../assets/svg/policies-colored.svg';
+import { ReactComponent as ProfilerConfigIcon } from '../assets/svg/profiler-configuration-logo.svg';
 import { ReactComponent as RolesIcon } from '../assets/svg/role-colored.svg';
 import { ReactComponent as SearchIcon } from '../assets/svg/search-colored.svg';
 import { ReactComponent as AccessControlIcon } from '../assets/svg/setting-access-control.svg';
@@ -242,11 +244,18 @@ export const getGlobalSettingsMenuWithPermission = (
       ],
     },
     {
-      category: i18next.t('label.customize-open-metadata'),
-      key: GlobalSettingsMenuCategory.OPEN_METADATA,
+      category: i18next.t('label.preference-plural'),
+      key: GlobalSettingsMenuCategory.PREFERENCES,
       icon: OpenMetadataIcon,
       description: i18next.t('message.customize-open-metadata-description'),
       items: [
+        {
+          label: i18next.t('label.theme'),
+          description: i18next.t('message.appearance-configuration-message'),
+          isProtected: Boolean(isAdminUser),
+          key: `${GlobalSettingsMenuCategory.PREFERENCES}.${GlobalSettingOptions.APPEARANCE}`,
+          icon: AppearanceIcon,
+        },
         {
           label: i18next.t('label.customize-entity', {
             entity: i18next.t('label.landing-page'),
@@ -255,22 +264,15 @@ export const getGlobalSettingsMenuWithPermission = (
             'message.page-sub-header-for-customize-landing-page'
           ),
           isProtected: Boolean(isAdminUser),
-          key: `${GlobalSettingsMenuCategory.OPEN_METADATA}.${GlobalSettingOptions.CUSTOMIZE_LANDING_PAGE}`,
+          key: `${GlobalSettingsMenuCategory.PREFERENCES}.${GlobalSettingOptions.CUSTOMIZE_LANDING_PAGE}`,
           icon: CustomDashboardLogoIcon,
         },
         {
           label: i18next.t('label.email'),
           description: i18next.t('message.email-configuration-message'),
           isProtected: Boolean(isAdminUser),
-          key: `${GlobalSettingsMenuCategory.OPEN_METADATA}.${GlobalSettingOptions.EMAIL}`,
+          key: `${GlobalSettingsMenuCategory.PREFERENCES}.${GlobalSettingOptions.EMAIL}`,
           icon: EmailIcon,
-        },
-        {
-          label: i18next.t('label.custom-logo'),
-          description: i18next.t('message.custom-logo-configuration-message'),
-          isProtected: Boolean(isAdminUser),
-          key: `${GlobalSettingsMenuCategory.OPEN_METADATA}.${GlobalSettingOptions.CUSTOM_LOGO}`,
-          icon: CustomLogoIcon,
         },
         {
           label: i18next.t('label.login-configuration'),
@@ -278,8 +280,26 @@ export const getGlobalSettingsMenuWithPermission = (
             'message.page-sub-header-for-login-configuration'
           ),
           isProtected: Boolean(isAdminUser),
-          key: `${GlobalSettingsMenuCategory.OPEN_METADATA}.${GlobalSettingOptions.LOGIN_CONFIGURATION}`,
+          key: `${GlobalSettingsMenuCategory.PREFERENCES}.${GlobalSettingOptions.LOGIN_CONFIGURATION}`,
           icon: LoginIcon,
+        },
+        {
+          label: i18next.t('label.om-status'),
+          description: i18next.t(
+            'message.page-sub-header-for-om-health-configuration'
+          ),
+          isProtected: Boolean(isAdminUser),
+          key: `${GlobalSettingsMenuCategory.PREFERENCES}.${GlobalSettingOptions.OM_HEALTH}`,
+          icon: OMHealthIcon,
+        },
+        {
+          label: i18next.t('label.profiler-configuration'),
+          description: i18next.t(
+            'message.page-sub-header-for-profiler-configuration'
+          ),
+          isProtected: Boolean(isAdminUser),
+          key: `${GlobalSettingsMenuCategory.PREFERENCES}.${GlobalSettingOptions.PROFILER_CONFIGURATION}`,
+          icon: ProfilerConfigIcon,
         },
       ],
     },
@@ -459,9 +479,9 @@ export const settingCategories = {
     name: i18next.t('label.access-control'),
     url: GlobalSettingsMenuCategory.ACCESS,
   },
-  [GlobalSettingsMenuCategory.OPEN_METADATA]: {
-    name: i18next.t('label.open-metadata'),
-    url: GlobalSettingsMenuCategory.OPEN_METADATA,
+  [GlobalSettingsMenuCategory.PREFERENCES]: {
+    name: i18next.t('label.preference-plural'),
+    url: GlobalSettingsMenuCategory.PREFERENCES,
   },
   [GlobalSettingsMenuCategory.CUSTOM_PROPERTIES]: {
     name: i18next.t('label.custom-property-plural'),

@@ -45,6 +45,7 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.util.JsonUtils;
 import org.springframework.expression.Expression;
+import org.springframework.expression.spel.support.SimpleEvaluationContext;
 
 @Slf4j
 public final class AlertUtil {
@@ -56,8 +57,13 @@ public final class AlertUtil {
     }
     Expression expression = parseExpression(condition);
     AlertsRuleEvaluator ruleEvaluator = new AlertsRuleEvaluator(null);
+    SimpleEvaluationContext context =
+        SimpleEvaluationContext.forReadOnlyDataBinding()
+            .withInstanceMethods()
+            .withRootObject(ruleEvaluator)
+            .build();
     try {
-      expression.getValue(ruleEvaluator, clz);
+      expression.getValue(context, clz);
     } catch (Exception exception) {
       // Remove unnecessary class details in the exception message
       String message =
@@ -73,7 +79,12 @@ public final class AlertUtil {
       String completeCondition = buildCompleteCondition(alertFilterRules);
       AlertsRuleEvaluator ruleEvaluator = new AlertsRuleEvaluator(changeEvent);
       Expression expression = parseExpression(completeCondition);
-      result = Boolean.TRUE.equals(expression.getValue(ruleEvaluator, Boolean.class));
+      SimpleEvaluationContext context =
+          SimpleEvaluationContext.forReadOnlyDataBinding()
+              .withInstanceMethods()
+              .withRootObject(ruleEvaluator)
+              .build();
+      result = Boolean.TRUE.equals(expression.getValue(context, Boolean.class));
       LOG.debug("Alert evaluated as Result : {}", result);
       return result;
     } else {
@@ -84,19 +95,40 @@ public final class AlertUtil {
   public static String buildCompleteCondition(List<EventFilterRule> alertFilterRules) {
     StringBuilder builder = new StringBuilder();
     for (int i = 0; i < alertFilterRules.size(); i++) {
-      EventFilterRule rule = alertFilterRules.get(i);
-      builder.append("(");
-      if (rule.getEffect() == ArgumentsInput.Effect.INCLUDE) {
-        builder.append(rule.getCondition());
-      } else {
-        builder.append("!");
-        builder.append(rule.getCondition());
-      }
-      builder.append(")");
-      if (i != (alertFilterRules.size() - 1)) builder.append(" && ");
+      builder.append(getWrappedCondition(alertFilterRules.get(i), i));
+    }
+    return builder.toString();
+  }
+
+  private static String getWrappedCondition(EventFilterRule rule, int index) {
+    String prefixCondition = "";
+
+    // First Condition, no need to add prefix
+    if (index != 0) {
+      String rawCondition = getRawCondition(rule.getPrefixCondition());
+      prefixCondition = nullOrEmpty(rawCondition) ? " && " : rawCondition;
     }
 
-    return builder.toString();
+    StringBuilder builder = new StringBuilder();
+    builder.append("(");
+    if (rule.getEffect() == ArgumentsInput.Effect.INCLUDE) {
+      builder.append(rule.getCondition());
+    } else {
+      builder.append("!");
+      builder.append(rule.getCondition());
+    }
+    builder.append(")");
+    return String.format("%s%s", prefixCondition, builder);
+  }
+
+  private static String getRawCondition(ArgumentsInput.PrefixCondition prefixCondition) {
+    if (prefixCondition.equals(ArgumentsInput.PrefixCondition.AND)) {
+      return " && ";
+    } else if (prefixCondition.equals(ArgumentsInput.PrefixCondition.OR)) {
+      return " || ";
+    } else {
+      return "";
+    }
   }
 
   public static boolean shouldTriggerAlert(ChangeEvent event, FilteringRules config) {
@@ -124,14 +156,6 @@ public final class AlertUtil {
     }
 
     return config.getResources().contains(event.getEntityType()); // Use Trigger Specific Settings
-  }
-
-  public static boolean shouldProcessActivityFeedRequest(ChangeEvent event) {
-    // Check Trigger Conditions
-    FilteringRules filteringRules =
-        ActivityFeedAlertCache.getActivityFeedAlert().getFilteringRules();
-    return AlertUtil.shouldTriggerAlert(event, filteringRules)
-        && AlertUtil.evaluateAlertConditions(event, filteringRules.getRules());
   }
 
   public static SubscriptionStatus buildSubscriptionStatus(

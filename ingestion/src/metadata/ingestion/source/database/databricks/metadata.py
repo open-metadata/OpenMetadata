@@ -18,8 +18,8 @@ from typing import Iterable, Optional, Tuple, Union
 from pyhive.sqlalchemy_hive import _type_map
 from sqlalchemy import types, util
 from sqlalchemy.engine import reflection
+from sqlalchemy.engine.reflection import Inspector
 from sqlalchemy.exc import DatabaseError
-from sqlalchemy.inspection import inspect
 from sqlalchemy.sql.sqltypes import String
 from sqlalchemy_databricks._dialect import DatabricksDialect
 
@@ -50,6 +50,9 @@ from metadata.ingestion.source.database.databricks.queries import (
     DATABRICKS_GET_TABLE_COMMENTS,
     DATABRICKS_GET_TABLE_TAGS,
     DATABRICKS_VIEW_DEFINITIONS,
+)
+from metadata.ingestion.source.database.external_table_lineage_mixin import (
+    ExternalTableLineageMixin,
 )
 from metadata.ingestion.source.database.multi_db_source import MultiDBSource
 from metadata.utils import fqn
@@ -258,7 +261,7 @@ DatabricksDialect.get_all_view_definitions = get_all_view_definitions
 reflection.Inspector.get_schema_names = get_schema_names_reflection
 
 
-class DatabricksSource(CommonDbSourceService, MultiDBSource):
+class DatabricksSource(ExternalTableLineageMixin, CommonDbSourceService, MultiDBSource):
     """
     Implements the necessary methods to extract
     Database metadata from Databricks Source using
@@ -272,6 +275,7 @@ class DatabricksSource(CommonDbSourceService, MultiDBSource):
         self.catalog_tags = {}
         self.schema_tags = {}
         self.table_tags = {}
+        self.external_location_map = {}
         self.column_tags = {}
 
     def _init_version(self):
@@ -283,7 +287,9 @@ class DatabricksSource(CommonDbSourceService, MultiDBSource):
             self.is_older_version = True
 
     @classmethod
-    def create(cls, config_dict, metadata: OpenMetadata):
+    def create(
+        cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None
+    ):
         config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
         connection: DatabricksConnection = config.serviceConnection.__root__.config
         if not isinstance(connection, DatabricksConnection):
@@ -303,8 +309,9 @@ class DatabricksSource(CommonDbSourceService, MultiDBSource):
         new_service_connection = deepcopy(self.service_connection)
         new_service_connection.catalog = database_name
         self.engine = get_connection(new_service_connection)
-        self.inspector = inspect(self.engine)
-        self._connection = None  # Lazy init as well
+
+        self._connection_map = {}  # Lazy init as well
+        self._inspector_map = {}
 
     def get_configured_database(self) -> Optional[str]:
         return self.service_connection.catalog
@@ -422,7 +429,7 @@ class DatabricksSource(CommonDbSourceService, MultiDBSource):
                 database_fqn = fqn.build(
                     self.metadata,
                     entity_type=Database,
-                    service_name=self.context.database_service,
+                    service_name=self.context.get().database_service,
                     database_name=new_catalog,
                 )
                 if filter_by_database(
@@ -448,7 +455,7 @@ class DatabricksSource(CommonDbSourceService, MultiDBSource):
             yield self.service_connection.databaseSchema
         else:
             for schema_name in self.inspector.get_schema_names(
-                database=self.context.database,
+                database=self.context.get().database,
                 is_old_version=self.is_older_version,
             ):
                 yield schema_name
@@ -466,7 +473,7 @@ class DatabricksSource(CommonDbSourceService, MultiDBSource):
                     tag_fqn=fqn.build(
                         self.metadata,
                         Database,
-                        service_name=self.context.database_service,
+                        service_name=self.context.get().database_service,
                         database_name=database_name,
                     ),
                     tags=[tag_value],
@@ -491,14 +498,16 @@ class DatabricksSource(CommonDbSourceService, MultiDBSource):
         Method to yield schema tags
         """
         try:
-            schema_tags = self.schema_tags.get((self.context.database, schema_name), [])
+            schema_tags = self.schema_tags.get(
+                (self.context.get().database, schema_name), []
+            )
             for tag_name, tag_value in schema_tags:
                 yield from get_ometa_tag_and_classification(
                     tag_fqn=fqn.build(
                         self.metadata,
                         DatabaseSchema,
-                        service_name=self.context.database_service,
-                        database_name=self.context.database,
+                        service_name=self.context.get().database_service,
+                        database_name=self.context.get().database,
                         schema_name=schema_name,
                     ),
                     tags=[tag_value],
@@ -522,16 +531,21 @@ class DatabricksSource(CommonDbSourceService, MultiDBSource):
         table_name, _ = table_name_and_type
         try:
             table_tags = self.table_tags.get(
-                (self.context.database, self.context.database_schema, table_name), []
+                (
+                    self.context.get().database,
+                    self.context.get().database_schema,
+                    table_name,
+                ),
+                [],
             )
             for tag_name, tag_value in table_tags:
                 yield from get_ometa_tag_and_classification(
                     tag_fqn=fqn.build(
                         self.metadata,
                         Table,
-                        service_name=self.context.database_service,
-                        database_name=self.context.database,
-                        schema_name=self.context.database_schema,
+                        service_name=self.context.get().database_service,
+                        database_name=self.context.get().database,
+                        schema_name=self.context.get().database_schema,
                         table_name=table_name,
                     ),
                     tags=[tag_value],
@@ -541,7 +555,12 @@ class DatabricksSource(CommonDbSourceService, MultiDBSource):
                 )
 
             column_tags = self.column_tags.get(
-                (self.context.database, self.context.database_schema, table_name), {}
+                (
+                    self.context.get().database,
+                    self.context.get().database_schema,
+                    table_name,
+                ),
+                {},
             )
             for column_name, tags in column_tags.items():
                 for tag_name, tag_value in tags or []:
@@ -549,9 +568,9 @@ class DatabricksSource(CommonDbSourceService, MultiDBSource):
                         tag_fqn=fqn.build(
                             self.metadata,
                             Column,
-                            service_name=self.context.database_service,
-                            database_name=self.context.database,
-                            schema_name=self.context.database_schema,
+                            service_name=self.context.get().database_service,
+                            database_name=self.context.get().database,
+                            schema_name=self.context.get().database_schema,
                             table_name=table_name,
                             column_name=column_name,
                         ),
@@ -569,3 +588,36 @@ class DatabricksSource(CommonDbSourceService, MultiDBSource):
                     stackTrace=traceback.format_exc(),
                 )
             )
+
+    def get_table_description(
+        self, schema_name: str, table_name: str, inspector: Inspector
+    ) -> str:
+        description = None
+        try:
+            cursor = self.connection.execute(
+                DATABRICKS_GET_TABLE_COMMENTS.format(
+                    schema_name=schema_name,
+                    table_name=table_name,
+                    catalog_name=self.context.get().database,
+                )
+            )
+            for result in list(cursor):
+                data = result.values()
+                if data[0] and data[0].strip() == "Comment":
+                    description = data[1] if data and data[1] else None
+                elif data[0] and data[0].strip() == "Location":
+                    self.external_location_map[
+                        (self.context.get().database, schema_name, table_name)
+                    ] = (
+                        data[1]
+                        if data and data[1] and not data[1].startswith("dbfs")
+                        else None
+                    )
+
+        # Catch any exception without breaking the ingestion
+        except Exception as exc:  # pylint: disable=broad-except
+            logger.debug(traceback.format_exc())
+            logger.warning(
+                f"Table description error for table [{schema_name}.{table_name}]: {exc}"
+            )
+        return description

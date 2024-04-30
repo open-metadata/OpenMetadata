@@ -15,7 +15,7 @@ export enum GlobalSettingsMenuCategory {
   ACCESS = 'access',
   NOTIFICATIONS = 'notifications',
   CUSTOM_PROPERTIES = 'customProperties',
-  OPEN_METADATA = 'openMetadata',
+  PREFERENCES = 'preferences',
   MEMBERS = 'members',
   SERVICES = 'services',
   BOTS = 'bots',
@@ -59,12 +59,14 @@ export enum GlobalSettingOptions {
   DATA_INSIGHT_REPORT_ALERT = 'dataInsightReport',
   ADD_DATA_INSIGHT_REPORT_ALERT = 'add-data-insight-report',
   EDIT_DATA_INSIGHT_REPORT_ALERT = 'edit-data-insight-report',
-  CUSTOM_LOGO = 'customLogo',
   LOGIN_CONFIGURATION = 'loginConfiguration',
+  OPENMETADATA_STATUS = 'openmetadataStatus',
   CUSTOMIZE_LANDING_PAGE = 'customizeLandingPage',
   TOPICS = 'topics',
   CONTAINERS = 'containers',
   APPLICATIONS = 'apps',
+  OM_HEALTH = 'om-health',
+  APPEARANCE = 'appearance',
 }
 
 export const SETTINGS_OPTIONS_PATH = {
@@ -150,20 +152,24 @@ export const SETTINGS_OPTIONS_PATH = {
   // Open-metadata
 
   [GlobalSettingOptions.CUSTOMIZE_LANDING_PAGE]: [
-    GlobalSettingsMenuCategory.OPEN_METADATA,
-    `${GlobalSettingsMenuCategory.OPEN_METADATA}.${GlobalSettingOptions.CUSTOMIZE_LANDING_PAGE}`,
+    GlobalSettingsMenuCategory.PREFERENCES,
+    `${GlobalSettingsMenuCategory.PREFERENCES}.${GlobalSettingOptions.CUSTOMIZE_LANDING_PAGE}`,
   ],
   [GlobalSettingOptions.EMAIL]: [
-    GlobalSettingsMenuCategory.OPEN_METADATA,
-    `${GlobalSettingsMenuCategory.OPEN_METADATA}.${GlobalSettingOptions.EMAIL}`,
+    GlobalSettingsMenuCategory.PREFERENCES,
+    `${GlobalSettingsMenuCategory.PREFERENCES}.${GlobalSettingOptions.EMAIL}`,
   ],
-  [GlobalSettingOptions.CUSTOM_LOGO]: [
-    GlobalSettingsMenuCategory.OPEN_METADATA,
-    `${GlobalSettingsMenuCategory.OPEN_METADATA}.${GlobalSettingOptions.CUSTOM_LOGO}`,
+  [GlobalSettingOptions.APPEARANCE]: [
+    GlobalSettingsMenuCategory.PREFERENCES,
+    `${GlobalSettingsMenuCategory.PREFERENCES}.${GlobalSettingOptions.APPEARANCE}`,
   ],
   [GlobalSettingOptions.LOGIN_CONFIGURATION]: [
-    GlobalSettingsMenuCategory.OPEN_METADATA,
-    `${GlobalSettingsMenuCategory.OPEN_METADATA}.${GlobalSettingOptions.LOGIN_CONFIGURATION}`,
+    GlobalSettingsMenuCategory.PREFERENCES,
+    `${GlobalSettingsMenuCategory.PREFERENCES}.${GlobalSettingOptions.LOGIN_CONFIGURATION}`,
+  ],
+  [GlobalSettingOptions.OM_HEALTH]: [
+    GlobalSettingsMenuCategory.PREFERENCES,
+    `${GlobalSettingsMenuCategory.PREFERENCES}.${GlobalSettingOptions.OM_HEALTH}`,
   ],
   [GlobalSettingOptions.GLOSSARY_TERM]: [
     GlobalSettingsMenuCategory.CUSTOM_PROPERTIES,

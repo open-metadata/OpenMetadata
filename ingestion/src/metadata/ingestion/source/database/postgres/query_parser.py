@@ -13,7 +13,7 @@ Postgres Query parser module
 """
 import traceback
 from abc import ABC
-from typing import Iterable
+from typing import Iterable, Optional
 
 from sqlalchemy.engine.base import Engine
 
@@ -53,7 +53,9 @@ class PostgresQueryParserSource(QueryParserSource, ABC):
         self.start, self.end = get_start_and_end(duration)
 
     @classmethod
-    def create(cls, config_dict, metadata: OpenMetadata):
+    def create(
+        cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None
+    ):
         config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
         connection: PostgresConnection = config.serviceConnection.__root__.config
         if not isinstance(connection, PostgresConnection):

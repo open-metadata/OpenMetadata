@@ -193,11 +193,13 @@ class CouchbaseUnitTest(TestCase):
             mock_couch_config["source"],
             OpenMetadata(self.config.workflowConfig.openMetadataServerConfig),
         )
-        self.couch_source.context.__dict__[
+        self.couch_source.context.get().__dict__[
             "database_service"
         ] = MOCK_DATABASE_SERVICE.name.__root__
-        self.couch_source.context.__dict__["database"] = MOCK_DATABASE.name.__root__
-        self.couch_source.context.__dict__[
+        self.couch_source.context.get().__dict__[
+            "database"
+        ] = MOCK_DATABASE.name.__root__
+        self.couch_source.context.get().__dict__[
             "database_schema"
         ] = MOCK_DATABASE_SCHEMA.name.__root__
 

@@ -5,7 +5,6 @@ import static org.openmetadata.schema.type.Include.ALL;
 import static org.openmetadata.service.Entity.APPLICATION;
 import static org.openmetadata.service.Entity.BOT;
 import static org.openmetadata.service.Entity.FIELD_OWNER;
-import static org.openmetadata.service.apps.ApplicationHandler.removeUninstalledApp;
 import static org.openmetadata.service.jdbi3.EntityRepository.getEntitiesFromSeedData;
 
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
@@ -46,8 +45,6 @@ import javax.ws.rs.core.UriInfo;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.ServiceEntityInterface;
-import org.openmetadata.schema.api.configuration.apps.AppPrivateConfig;
-import org.openmetadata.schema.api.configuration.apps.AppsPrivateConfiguration;
 import org.openmetadata.schema.api.data.RestoreEntity;
 import org.openmetadata.schema.entity.app.App;
 import org.openmetadata.schema.entity.app.AppMarketPlaceDefinition;
@@ -69,6 +66,7 @@ import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.apps.ApplicationHandler;
 import org.openmetadata.service.apps.scheduler.AppScheduler;
 import org.openmetadata.service.clients.pipeline.PipelineServiceClientFactory;
+import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.AppRepository;
 import org.openmetadata.service.jdbi3.CollectionDAO;
@@ -99,7 +97,6 @@ import org.quartz.SchedulerException;
 public class AppResource extends EntityResource<App, AppRepository> {
   public static final String COLLECTION_PATH = "v1/apps/";
   private OpenMetadataApplicationConfig openMetadataApplicationConfig;
-  private AppsPrivateConfiguration privateConfiguration;
   private PipelineServiceClient pipelineServiceClient;
   static final String FIELDS = "owner";
   private SearchRepository searchRepository;
@@ -108,7 +105,6 @@ public class AppResource extends EntityResource<App, AppRepository> {
   public void initialize(OpenMetadataApplicationConfig config) {
     try {
       this.openMetadataApplicationConfig = config;
-      this.privateConfiguration = config.getAppsPrivateConfiguration();
       this.pipelineServiceClient =
           PipelineServiceClientFactory.createPipelineServiceClient(
               config.getPipelineServiceClientConfiguration());
@@ -118,11 +114,20 @@ public class AppResource extends EntityResource<App, AppRepository> {
       searchRepository = new SearchRepository(config.getElasticSearchConfiguration());
       AppScheduler.initialize(config, dao, searchRepository);
 
-      // Get Create App Requests
+      // Initialize Default Apps
       List<CreateApp> createAppsReq =
           getEntitiesFromSeedData(
               APPLICATION, String.format(".*json/data/%s/.*\\.json$", entityType), CreateApp.class);
-      for (CreateApp createApp : createAppsReq) {
+      loadDefaultApplications(createAppsReq);
+    } catch (Exception ex) {
+      LOG.error("Failed in Create App Requests", ex);
+    }
+  }
+
+  private void loadDefaultApplications(List<CreateApp> defaultAppCreateRequests) {
+    // Get Create App Requests
+    for (CreateApp createApp : defaultAppCreateRequests) {
+      try {
         AppMarketPlaceDefinition definition =
             repository
                 .getMarketPlace()
@@ -140,27 +145,12 @@ public class AppResource extends EntityResource<App, AppRepository> {
 
         // Schedule
         if (app.getScheduleType().equals(ScheduleType.Scheduled)) {
-          setAppRuntimeProperties(app);
-          ApplicationHandler.installApplication(app, Entity.getCollectionDAO(), searchRepository);
+          ApplicationHandler.getInstance()
+              .installApplication(app, Entity.getCollectionDAO(), searchRepository);
         }
+      } catch (Exception ex) {
+        LOG.error("Failed in Creation/Initialization of Application : {}", createApp.getName(), ex);
       }
-
-      // Initialize installed applications
-      for (App installedApp : repository.listAll()) {
-        App appWithBot = getAppForInit(installedApp.getName());
-        if (appWithBot == null) {
-          LOG.error(
-              String.format(
-                  "Failed to init app [%s]. GET should return the installed app",
-                  installedApp.getName()));
-        } else {
-          setAppRuntimeProperties(appWithBot);
-          ApplicationHandler.runAppInit(appWithBot, dao, searchRepository);
-          LOG.info(String.format("Initialized installed app [%s]", installedApp.getName()));
-        }
-      }
-    } catch (Exception ex) {
-      LOG.error("Failed in Create App Requests", ex);
     }
   }
 
@@ -182,24 +172,6 @@ public class AppResource extends EntityResource<App, AppRepository> {
 
   public static class AppRunList extends ResultList<AppRunRecord> {
     /* Required for serde */
-  }
-
-  /**
-   * Load the apps' OM configuration and private parameters
-   */
-  private void setAppRuntimeProperties(App app) {
-    app.setOpenMetadataServerConnection(
-        new OpenMetadataConnectionBuilder(openMetadataApplicationConfig, app.getBot().getName())
-            .build());
-
-    if (privateConfiguration != null
-        && !nullOrEmpty(privateConfiguration.getAppsPrivateConfiguration())) {
-      for (AppPrivateConfig appPrivateConfig : privateConfiguration.getAppsPrivateConfiguration()) {
-        if (app.getName().equals(appPrivateConfig.getName())) {
-          app.setPrivateConfiguration(appPrivateConfig.getParameters());
-        }
-      }
-    }
   }
 
   /**
@@ -581,10 +553,11 @@ public class AppResource extends EntityResource<App, AppRepository> {
                 create.getName(),
                 new EntityUtil.Fields(repository.getMarketPlace().getAllowedFields()));
     App app = getApplication(definition, create, securityContext.getUserPrincipal().getName());
-    setAppRuntimeProperties(app);
     if (app.getScheduleType().equals(ScheduleType.Scheduled)) {
-      ApplicationHandler.installApplication(app, Entity.getCollectionDAO(), searchRepository);
-      ApplicationHandler.configureApplication(app, Entity.getCollectionDAO(), searchRepository);
+      ApplicationHandler.getInstance()
+          .installApplication(app, Entity.getCollectionDAO(), searchRepository);
+      ApplicationHandler.getInstance()
+          .configureApplication(app, Entity.getCollectionDAO(), searchRepository);
     }
     // We don't want to store this information
     unsetAppRuntimeProperties(app);
@@ -618,13 +591,16 @@ public class AppResource extends EntityResource<App, AppRepository> {
           JsonPatch patch)
       throws SchedulerException {
     App app = repository.get(null, id, repository.getFields("bot,pipelines"));
+    if (app.getSystem()) {
+      throw new IllegalArgumentException(
+          CatalogExceptionMessage.systemEntityModifyNotAllowed(app.getName(), "SystemApp"));
+    }
     AppScheduler.getInstance().deleteScheduledApplication(app);
     Response response = patchInternal(uriInfo, securityContext, id, patch);
     App updatedApp = (App) response.getEntity();
-    setAppRuntimeProperties(updatedApp);
     if (app.getScheduleType().equals(ScheduleType.Scheduled)) {
-      ApplicationHandler.installApplication(
-          updatedApp, Entity.getCollectionDAO(), searchRepository);
+      ApplicationHandler.getInstance()
+          .installApplication(updatedApp, Entity.getCollectionDAO(), searchRepository);
     }
     // We don't want to store this information
     unsetAppRuntimeProperties(updatedApp);
@@ -657,9 +633,9 @@ public class AppResource extends EntityResource<App, AppRepository> {
                 new EntityUtil.Fields(repository.getMarketPlace().getAllowedFields()));
     App app = getApplication(definition, create, securityContext.getUserPrincipal().getName());
     AppScheduler.getInstance().deleteScheduledApplication(app);
-    setAppRuntimeProperties(app);
     if (app.getScheduleType().equals(ScheduleType.Scheduled)) {
-      ApplicationHandler.installApplication(app, Entity.getCollectionDAO(), searchRepository);
+      ApplicationHandler.getInstance()
+          .installApplication(app, Entity.getCollectionDAO(), searchRepository);
     }
     // We don't want to store this information
     unsetAppRuntimeProperties(app);
@@ -674,6 +650,9 @@ public class AppResource extends EntityResource<App, AppRepository> {
       description = "Delete a App by `name`.",
       responses = {
         @ApiResponse(responseCode = "200", description = "OK"),
+        @ApiResponse(
+            responseCode = "400",
+            description = "System entity {name} of type SystemApp can not be deleted."),
         @ApiResponse(responseCode = "404", description = "App for instance {name} is not found")
       })
   public Response delete(
@@ -687,6 +666,10 @@ public class AppResource extends EntityResource<App, AppRepository> {
           @PathParam("name")
           String name) {
     App app = repository.getByName(null, name, repository.getFields("bot,pipelines"));
+    if (app.getSystem()) {
+      throw new IllegalArgumentException(
+          CatalogExceptionMessage.systemEntityDeleteNotAllowed(app.getName(), "SystemApp"));
+    }
     // Remove from Pipeline Service
     deleteApp(securityContext, app, hardDelete);
     return deleteByName(uriInfo, securityContext, name, true, hardDelete);
@@ -700,6 +683,9 @@ public class AppResource extends EntityResource<App, AppRepository> {
       description = "Delete a App by `Id`.",
       responses = {
         @ApiResponse(responseCode = "200", description = "OK"),
+        @ApiResponse(
+            responseCode = "400",
+            description = "System entity {name} of type SystemApp can not be deleted."),
         @ApiResponse(responseCode = "404", description = "App for instance {id} is not found")
       })
   public Response delete(
@@ -712,6 +698,10 @@ public class AppResource extends EntityResource<App, AppRepository> {
       @Parameter(description = "Id of the App", schema = @Schema(type = "UUID")) @PathParam("id")
           UUID id) {
     App app = repository.get(null, id, repository.getFields("bot,pipelines"));
+    if (app.getSystem()) {
+      throw new IllegalArgumentException(
+          CatalogExceptionMessage.systemEntityDeleteNotAllowed(app.getName(), "SystemApp"));
+    }
     // Remove from Pipeline Service
     deleteApp(securityContext, app, hardDelete);
     // Remove from repository
@@ -740,9 +730,9 @@ public class AppResource extends EntityResource<App, AppRepository> {
     Response response = restoreEntity(uriInfo, securityContext, restore.getId());
     if (response.getStatus() == Response.Status.OK.getStatusCode()) {
       App app = (App) response.getEntity();
-      setAppRuntimeProperties(app);
       if (app.getScheduleType().equals(ScheduleType.Scheduled)) {
-        ApplicationHandler.installApplication(app, Entity.getCollectionDAO(), searchRepository);
+        ApplicationHandler.getInstance()
+            .installApplication(app, Entity.getCollectionDAO(), searchRepository);
       }
       // We don't want to store this information
       unsetAppRuntimeProperties(app);
@@ -776,9 +766,9 @@ public class AppResource extends EntityResource<App, AppRepository> {
       @Context SecurityContext securityContext) {
     App app =
         repository.getByName(uriInfo, name, new EntityUtil.Fields(repository.getAllowedFields()));
-    setAppRuntimeProperties(app);
     if (app.getScheduleType().equals(ScheduleType.Scheduled)) {
-      ApplicationHandler.installApplication(app, repository.getDaoCollection(), searchRepository);
+      ApplicationHandler.getInstance()
+          .installApplication(app, repository.getDaoCollection(), searchRepository);
       return Response.status(Response.Status.OK).entity("App is Scheduled.").build();
     }
     throw new IllegalArgumentException("App is not of schedule type Scheduled.");
@@ -812,9 +802,9 @@ public class AppResource extends EntityResource<App, AppRepository> {
         repository.getByName(uriInfo, name, new EntityUtil.Fields(repository.getAllowedFields()));
     // The application will have the updated appConfiguration we can use to run the `configure`
     // logic
-    setAppRuntimeProperties(app);
     try {
-      ApplicationHandler.configureApplication(app, repository.getDaoCollection(), searchRepository);
+      ApplicationHandler.getInstance()
+          .configureApplication(app, repository.getDaoCollection(), searchRepository);
       return Response.status(Response.Status.OK).entity("App has been configured.").build();
     } catch (RuntimeException e) {
       return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
@@ -846,10 +836,9 @@ public class AppResource extends EntityResource<App, AppRepository> {
           String name) {
     EntityUtil.Fields fields = getFields(String.format("%s,bot,pipelines", FIELD_OWNER));
     App app = repository.getByName(uriInfo, name, fields);
-    setAppRuntimeProperties(app);
     if (app.getAppType().equals(AppType.Internal)) {
-      ApplicationHandler.triggerApplicationOnDemand(
-          app, Entity.getCollectionDAO(), searchRepository);
+      ApplicationHandler.getInstance()
+          .triggerApplicationOnDemand(app, Entity.getCollectionDAO(), searchRepository);
       return Response.status(Response.Status.OK).entity("Application Triggered").build();
     } else {
       if (!app.getPipelines().isEmpty()) {
@@ -895,9 +884,9 @@ public class AppResource extends EntityResource<App, AppRepository> {
           String name) {
     EntityUtil.Fields fields = getFields(String.format("%s,bot,pipelines", FIELD_OWNER));
     App app = repository.getByName(uriInfo, name, fields);
-    setAppRuntimeProperties(app);
     if (app.getAppType().equals(AppType.Internal)) {
-      ApplicationHandler.installApplication(app, Entity.getCollectionDAO(), searchRepository);
+      ApplicationHandler.getInstance()
+          .installApplication(app, Entity.getCollectionDAO(), searchRepository);
       return Response.status(Response.Status.OK).entity("Application Deployed").build();
     } else {
       if (!app.getPipelines().isEmpty()) {
@@ -979,7 +968,8 @@ public class AppResource extends EntityResource<App, AppRepository> {
             .withAppScreenshots(marketPlaceDefinition.getAppScreenshots())
             .withFeatures(marketPlaceDefinition.getFeatures())
             .withSourcePythonClass(marketPlaceDefinition.getSourcePythonClass())
-            .withAllowConfiguration(marketPlaceDefinition.getAllowConfiguration());
+            .withAllowConfiguration(marketPlaceDefinition.getAllowConfiguration())
+            .withSystem(marketPlaceDefinition.getSystem());
 
     // validate Bot if provided
     validateAndAddBot(app, createAppRequest.getBot());
@@ -1031,8 +1021,5 @@ public class AppResource extends EntityResource<App, AppRepository> {
         }
       }
     }
-
-    // Remove App from instances Map Lookup
-    removeUninstalledApp(installedApp.getClassName());
   }
 }

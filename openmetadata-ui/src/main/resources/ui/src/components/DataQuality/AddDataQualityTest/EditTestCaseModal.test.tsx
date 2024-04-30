@@ -36,6 +36,9 @@ jest.mock('./components/ParameterForm', () => {
 });
 jest.mock('../../../rest/testAPI', () => {
   return {
+    getTestCaseByFqn: jest
+      .fn()
+      .mockImplementation(() => Promise.resolve(MOCK_TEST_CASE[0])),
     getTestDefinitionById: jest
       .fn()
       .mockImplementation(() =>

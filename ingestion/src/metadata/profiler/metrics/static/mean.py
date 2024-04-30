@@ -19,6 +19,7 @@ from sqlalchemy import column, func
 from sqlalchemy.ext.compiler import compiles
 from sqlalchemy.sql.functions import GenericFunction
 
+from metadata.generated.schema.configuration.profilerConfiguration import MetricType
 from metadata.generated.schema.entity.data.table import Table
 from metadata.profiler.adaptors.nosql_adaptor import NoSQLAdaptor
 from metadata.profiler.metrics.core import CACHE, StaticMetric, T, _label
@@ -88,7 +89,7 @@ class Mean(StaticMetric):
 
     @classmethod
     def name(cls):
-        return "mean"
+        return MetricType.mean.value
 
     @property
     def metric_type(self):
@@ -118,25 +119,23 @@ class Mean(StaticMetric):
 
         means = []
         weights = []
-
-        if is_quantifiable(self.col.type):
-            for df in dfs:
-                mean = df[self.col.name].mean()
-                if not pd.isnull(mean):
-                    means.append(mean)
-                    weights.append(df[self.col.name].count())
-
-        if is_concatenable(self.col.type):
-            length_vectorize_func = vectorize(len)
-            for df in dfs:
+        length_vectorize_func = vectorize(len)
+        for df in dfs:
+            processed_df = df[self.col.name].dropna()
+            try:
                 mean = None
-                if any(df[self.col.name]):
-                    mean = length_vectorize_func(
-                        df[self.col.name].dropna().astype(str)
-                    ).mean()
+                if is_quantifiable(self.col.type):
+                    mean = processed_df.mean()
+                if is_concatenable(self.col.type):
+                    mean = length_vectorize_func(processed_df.astype(str)).mean()
                 if not pd.isnull(mean):
                     means.append(mean)
-                    weights.append(df[self.col.name].dropna().count())
+                    weights.append(processed_df.count())
+            except Exception as err:
+                logger.debug(
+                    f"Error while computing mean for column {self.col.name}: {err}"
+                )
+                return None
 
         if means:
             return average(means, weights=weights)

@@ -281,6 +281,11 @@ class SampleDataSource(
             entity=DatabaseService, config=WorkflowSource(**self.database_service_json)
         )
 
+        self.glue_database_service = self.metadata.get_service_or_create(
+            entity=DatabaseService,
+            config=WorkflowSource(**self.glue_database_service_json),
+        )
+
         self.kafka_service_json = json.load(
             open(  # pylint: disable=consider-using-with
                 sample_data_folder + "/topics/service.json",
@@ -533,7 +538,9 @@ class SampleDataSource(
         )
 
     @classmethod
-    def create(cls, config_dict, metadata: OpenMetadata):
+    def create(
+        cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None
+    ):
         """Create class instance"""
         config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
         connection: CustomDatabaseConnection = config.serviceConnection.__root__.config
@@ -549,8 +556,8 @@ class SampleDataSource(
     def _iter(self, *_, **__) -> Iterable[Entity]:
         yield from self.ingest_teams()
         yield from self.ingest_users()
-        yield from self.ingest_glue()
         yield from self.ingest_tables()
+        yield from self.ingest_glue()
         yield from self.ingest_stored_procedures()
         yield from self.ingest_topics()
         yield from self.ingest_charts()
@@ -604,9 +611,9 @@ class SampleDataSource(
         """Ingest Sample Data for glue database source"""
 
         db = CreateDatabaseRequest(
-            name=self.database["name"],
-            description=self.database["description"],
-            service=self.database_service.fullyQualifiedName,
+            name=self.glue_database["name"],
+            description=self.glue_database["description"],
+            service=self.glue_database_service.fullyQualifiedName,
         )
 
         yield Either(right=db)
@@ -614,7 +621,7 @@ class SampleDataSource(
         database_entity = fqn.build(
             self.metadata,
             entity_type=Database,
-            service_name=self.database_service.name.__root__,
+            service_name=self.glue_database_service.fullyQualifiedName.__root__,
             database_name=db.name.__root__,
         )
 
@@ -622,8 +629,8 @@ class SampleDataSource(
             entity=Database, fqn=database_entity
         )
         schema = CreateDatabaseSchemaRequest(
-            name=self.database_schema["name"],
-            description=self.database_schema["description"],
+            name=self.glue_database_schema["name"],
+            description=self.glue_database_schema["description"],
             database=database_object.fullyQualifiedName,
         )
         yield Either(right=schema)
@@ -631,9 +638,32 @@ class SampleDataSource(
         database_schema_entity = fqn.build(
             self.metadata,
             entity_type=DatabaseSchema,
-            service_name=self.database_service.name.__root__,
+            service_name=self.glue_database_service.fullyQualifiedName.__root__,
             database_name=db.name.__root__,
             schema_name=schema.name.__root__,
+        )
+
+        database_schema_object = self.metadata.get_by_name(
+            entity=DatabaseSchema, fqn=database_schema_entity
+        )
+
+        for table in self.glue_tables["tables"]:
+            table_request = CreateTableRequest(
+                name=table["name"],
+                description=table["description"],
+                columns=table["columns"],
+                databaseSchema=database_schema_object.fullyQualifiedName,
+                tableConstraints=table.get("tableConstraints"),
+                tableType=table["tableType"],
+            )
+            yield Either(right=table_request)
+
+        database_schema_entity = fqn.build(
+            self.metadata,
+            entity_type=DatabaseSchema,
+            service_name=self.database_service.fullyQualifiedName.__root__,
+            database_name=self.database["name"],
+            schema_name=self.database_schema["name"],
         )
 
         database_schema_object = self.metadata.get_by_name(
@@ -1491,6 +1521,19 @@ class SampleDataSource(
                         test_case_name=case.fullyQualifiedName.__root__,
                     )
                     yield Either(right=test_case_result_req)
+            if test_case_results.get("failedRowsSample"):
+                self.metadata.ingest_failed_rows_sample(
+                    case,
+                    TableData(
+                        rows=test_case_results["failedRowsSample"]["rows"],
+                        columns=test_case_results["failedRowsSample"]["columns"],
+                    ),
+                )
+            if test_case_results.get("inspectionQuery"):
+                self.metadata.ingest_inspection_query(
+                    case,
+                    test_case_results["inspectionQuery"],
+                )
 
     def ingest_data_insights(self) -> Iterable[Either[OMetaDataInsightSample]]:
         """Iterate over all the data insights and ingest them"""
@@ -1581,7 +1624,9 @@ class SampleDataSource(
                 )
 
             life_cycle_request = OMetaLifeCycleData(
-                entity=table, life_cycle=life_cycle_data
+                entity=Table,
+                entity_fqn=table_life_cycle["fqn"],
+                life_cycle=life_cycle_data,
             )
             yield Either(right=life_cycle_request)
 

@@ -47,7 +47,7 @@
     height: 36px;
     margin-right: 4px;
     border-radius: 4px;
-    line-height: 21px;
+    line-height: 36px;
     font-size: 14px;
     &.green {
       border: 1px solid @green-5;
@@ -57,6 +57,29 @@
     }
     &.red {
       border: 1px solid @red-5;
+    }
+  }
+  .column-container {
+    min-height: 48px;
+    padding: 6px 12px;
+    .ant-collapse-arrow {
+      margin-right: 0 !important;
+    }
+    .ant-collapse {
+      border-radius: 0;
+      border: 1px solid @border-color;
+      border-color: @border-color;
+    }
+    .ant-collapse-header {
+      padding: 4px 12px !important;
+      font-size: 12px;
+    }
+    .ant-collapse-content-box {
+      padding: 4px !important;
+    }
+    .ant-collapse-item {
+      border: none !important;
+      border-radius: 0;
     }
   }
 }
@@ -73,10 +96,7 @@
 
 .react-flow__node-load-more {
   padding: 0 !important;
-  border-color: @border-color !important;
-  border-radius: 4px !important;
   box-shadow: none !important;
-  border: 2px dashed @grey-4;
   font-weight: 500;
   font-size: 16px;
 }
@@ -119,20 +139,20 @@
     }
   }
   .label-container {
-    background: @primary-color-hover;
+    background: @primary-1;
   }
   .column-container {
-    background: @primary-color-hover;
+    background: @primary-1;
     border-top: 1px solid @border-color;
   }
 }
 
 .custom-node-header-active {
   .label-container {
-    background: @primary-color-hover;
+    background: @primary-1;
   }
   .column-container {
-    background: @primary-color-hover;
+    background: @primary-1;
     border-top: 1px solid @border-color;
   }
 }
@@ -151,13 +171,13 @@
 }
 
 .react-flow .lineage-node-handle {
-  width: 35px;
-  min-width: 35px;
-  height: 35px;
-  border-radius: 50%;
-  border-color: @lineage-border;
-  background: @white;
-  top: 43px; // Need to show handles on top half
+  width: 35px !important;
+  min-width: 35px !important;
+  height: 35px !important;
+  border-radius: 50% !important;
+  border-color: @lineage-border !important;
+  background: @white !important;
+  top: 43px !important; // Need to show handles on top half
   svg {
     color: @text-grey-muted;
   }

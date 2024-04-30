@@ -10,6 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { act, render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import React from 'react';
 import { ReactComponent as AllActivityIcon } from '../../assets/svg/all-activity.svg';
 import { ReactComponent as MailIcon } from '../../assets/svg/ic-mail.svg';
@@ -26,14 +28,28 @@ import {
   mockNonTaskInternalDestinationOptions,
   mockTaskInternalDestinationOptions,
 } from '../../mocks/AlertUtil.mock';
+import { searchData } from '../../rest/miscAPI';
 import {
   getAlertActionTypeDisplayName,
   getAlertsActionTypeIcon,
   getDisplayNameForEntities,
+  getFieldByArgumentType,
   getFilteredDestinationOptions,
   getFunctionDisplayName,
   listLengthValidator,
 } from './AlertsUtil';
+
+jest.mock('../../components/common/AsyncSelect/AsyncSelect', () => ({
+  AsyncSelect: jest
+    .fn()
+    .mockImplementation(({ api }: { api: () => void }) => (
+      <button onClick={() => api()}>AsyncSelect</button>
+    )),
+}));
+
+jest.mock('../../rest/miscAPI', () => ({
+  searchData: jest.fn(),
+}));
 
 describe('AlertsUtil tests', () => {
   it('getFunctionDisplayName should return correct text for matchAnyEntityFqn', () => {
@@ -95,7 +111,7 @@ describe('AlertsUtil tests', () => {
   });
 
   it('getAlertsActionTypeIcon should return correct icon for generic', () => {
-    const icon = getAlertsActionTypeIcon(SubscriptionType.Generic);
+    const icon = getAlertsActionTypeIcon(SubscriptionType.Webhook);
 
     expect(icon).toStrictEqual(<WebhookIcon height={16} width={16} />);
   });
@@ -131,7 +147,7 @@ describe('AlertsUtil tests', () => {
   });
 
   it('getAlertActionTypeDisplayName should return correct text for generic', () => {
-    expect(getAlertActionTypeDisplayName(SubscriptionType.Generic)).toBe(
+    expect(getAlertActionTypeDisplayName(SubscriptionType.Webhook)).toBe(
       'label.webhook'
     );
   });
@@ -211,5 +227,281 @@ describe('AlertsUtil tests', () => {
         ).toBeTruthy()
       );
     });
+  });
+});
+
+describe('getFieldByArgumentType tests', () => {
+  it('should return correct fields for argumentType fqnList', async () => {
+    const field = getFieldByArgumentType(0, 'fqnList', 0, 'table');
+
+    render(field);
+
+    const selectDiv = screen.getByText('AsyncSelect');
+
+    await act(async () => {
+      userEvent.click(selectDiv);
+    });
+
+    expect(searchData).toHaveBeenCalledWith(
+      undefined,
+      1,
+      50,
+      '',
+      '',
+      '',
+      'table_search_index'
+    );
+  });
+
+  it('should return correct fields for argumentType domainList', async () => {
+    const field = getFieldByArgumentType(0, 'domainList', 0, 'container');
+
+    render(field);
+
+    const selectDiv = screen.getByText('AsyncSelect');
+
+    await act(async () => {
+      userEvent.click(selectDiv);
+    });
+
+    expect(searchData).toHaveBeenCalledWith(
+      undefined,
+      1,
+      50,
+      '',
+      '',
+      '',
+      'domain_search_index'
+    );
+  });
+
+  it('should return correct fields for argumentType tableNameList', async () => {
+    const field = getFieldByArgumentType(
+      0,
+      'tableNameList',
+      0,
+      'selectedTrigger'
+    );
+
+    render(field);
+
+    const selectDiv = screen.getByText('AsyncSelect');
+
+    await act(async () => {
+      userEvent.click(selectDiv);
+    });
+
+    expect(searchData).toHaveBeenCalledWith(
+      undefined,
+      1,
+      50,
+      '',
+      '',
+      '',
+      'table_search_index'
+    );
+  });
+
+  it('should return correct fields for argumentType ownerNameList', async () => {
+    const field = getFieldByArgumentType(
+      0,
+      'ownerNameList',
+      0,
+      'selectedTrigger'
+    );
+
+    render(field);
+
+    const selectDiv = screen.getByText('AsyncSelect');
+
+    await act(async () => {
+      userEvent.click(selectDiv);
+    });
+
+    expect(searchData).toHaveBeenCalledWith(
+      undefined,
+      1,
+      50,
+      'isBot:false',
+      '',
+      '',
+      ['team_search_index', 'user_search_index']
+    );
+  });
+
+  it('should return correct fields for argumentType updateByUserList', async () => {
+    const field = getFieldByArgumentType(
+      0,
+      'updateByUserList',
+      0,
+      'selectedTrigger'
+    );
+
+    render(field);
+
+    const selectDiv = screen.getByText('AsyncSelect');
+
+    await act(async () => {
+      userEvent.click(selectDiv);
+    });
+
+    expect(searchData).toHaveBeenCalledWith(
+      undefined,
+      1,
+      50,
+      '',
+      '',
+      '',
+      'user_search_index'
+    );
+  });
+
+  it('should return correct fields for argumentType userList', async () => {
+    const field = getFieldByArgumentType(0, 'userList', 0, 'selectedTrigger');
+
+    render(field);
+
+    const selectDiv = screen.getByText('AsyncSelect');
+
+    await act(async () => {
+      userEvent.click(selectDiv);
+    });
+
+    expect(searchData).toHaveBeenCalledWith(
+      undefined,
+      1,
+      50,
+      'isBot:false',
+      '',
+      '',
+      'user_search_index'
+    );
+  });
+
+  it('should return correct fields for argumentType eventTypeList', async () => {
+    const field = getFieldByArgumentType(
+      0,
+      'eventTypeList',
+      0,
+      'selectedTrigger'
+    );
+
+    render(field);
+
+    const selectDiv = screen.getByTestId('event-type-select');
+
+    expect(selectDiv).toBeInTheDocument();
+  });
+
+  it('should return correct fields for argumentType entityIdList', () => {
+    const field = getFieldByArgumentType(
+      0,
+      'entityIdList',
+      0,
+      'selectedTrigger'
+    );
+
+    render(field);
+
+    const selectDiv = screen.getByTestId('entity-id-select');
+
+    expect(selectDiv).toBeInTheDocument();
+  });
+
+  it('should return correct fields for argumentType pipelineStateList', () => {
+    const field = getFieldByArgumentType(
+      0,
+      'pipelineStateList',
+      0,
+      'selectedTrigger'
+    );
+
+    render(field);
+
+    const selectDiv = screen.getByTestId('pipeline-status-select');
+
+    expect(selectDiv).toBeInTheDocument();
+  });
+
+  it('should return correct fields for argumentType ingestionPipelineStateList', () => {
+    const field = getFieldByArgumentType(
+      0,
+      'ingestionPipelineStateList',
+      0,
+      'selectedTrigger'
+    );
+
+    render(field);
+
+    const selectDiv = screen.getByTestId('pipeline-status-select');
+
+    expect(selectDiv).toBeInTheDocument();
+  });
+
+  it('should return correct fields for argumentType testStatusList', () => {
+    const field = getFieldByArgumentType(
+      0,
+      'testStatusList',
+      0,
+      'selectedTrigger'
+    );
+
+    render(field);
+
+    const selectDiv = screen.getByTestId('test-status-select');
+
+    expect(selectDiv).toBeInTheDocument();
+  });
+
+  it('should return correct fields for argumentType testResultList', () => {
+    const field = getFieldByArgumentType(
+      0,
+      'testResultList',
+      0,
+      'selectedTrigger'
+    );
+
+    render(field);
+
+    const selectDiv = screen.getByTestId('test-result-select');
+
+    expect(selectDiv).toBeInTheDocument();
+  });
+
+  it('should return correct fields for argumentType testSuiteList', async () => {
+    const field = getFieldByArgumentType(
+      0,
+      'testSuiteList',
+      0,
+      'selectedTrigger'
+    );
+
+    render(field);
+
+    const selectDiv = screen.getByText('AsyncSelect');
+
+    await act(async () => {
+      userEvent.click(selectDiv);
+    });
+
+    expect(searchData).toHaveBeenCalledWith(
+      undefined,
+      1,
+      50,
+      '',
+      '',
+      '',
+      'test_suite_search_index'
+    );
+  });
+
+  it('should not return select component for random argumentType', () => {
+    const field = getFieldByArgumentType(0, 'unknown', 0, 'selectedTrigger');
+
+    render(field);
+
+    const selectDiv = screen.queryByText('AsyncSelect');
+
+    expect(selectDiv).toBeNull();
   });
 });

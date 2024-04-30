@@ -297,7 +297,7 @@ public class FeedResource {
           String id,
       @Valid ResolveTask resolveTask) {
     Thread task = dao.getTask(Integer.parseInt(id));
-    dao.checkPermissionsForResolveTask(task, false, securityContext);
+    dao.checkPermissionsForResolveTask(authorizer, task, false, securityContext);
     return dao.resolveTask(uriInfo, task, securityContext.getUserPrincipal().getName(), resolveTask)
         .toResponse();
   }
@@ -326,7 +326,7 @@ public class FeedResource {
           String id,
       @Valid CloseTask closeTask) {
     Thread task = dao.getTask(Integer.parseInt(id));
-    dao.checkPermissionsForResolveTask(task, true, securityContext);
+    dao.checkPermissionsForResolveTask(authorizer, task, true, securityContext);
     return dao.closeTask(uriInfo, task, securityContext.getUserPrincipal().getName(), closeTask)
         .toResponse();
   }
@@ -590,8 +590,11 @@ public class FeedResource {
         .withType(create.getType())
         .withTask(getTaskDetails(create.getTaskDetails()))
         .withAnnouncement(create.getAnnouncementDetails())
+        .withChatbot(create.getChatbotDetails())
         .withUpdatedBy(securityContext.getUserPrincipal().getName())
-        .withUpdatedAt(System.currentTimeMillis());
+        .withUpdatedAt(System.currentTimeMillis())
+        .withEntityType(Entity.THREAD)
+        .withGeneratedBy(Thread.GeneratedBy.USER);
   }
 
   private Post getPost(CreatePost create) {

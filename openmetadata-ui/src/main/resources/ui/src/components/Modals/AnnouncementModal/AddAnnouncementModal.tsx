@@ -25,7 +25,8 @@ import { postThread } from '../../../rest/feedsAPI';
 import { getTimeZone } from '../../../utils/date-time/DateTimeUtils';
 import { getEntityFeedLink } from '../../../utils/EntityUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
-import { useAuthContext } from '../../Auth/AuthProviders/AuthProvider';
+
+import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import RichTextEditor from '../../common/RichTextEditor/RichTextEditor';
 import './announcement-modal.less';
 
@@ -34,6 +35,7 @@ interface Props {
   entityType: string;
   entityFQN: string;
   onCancel: () => void;
+  onSave: () => void;
 }
 
 export interface CreateAnnouncement {
@@ -46,10 +48,11 @@ export interface CreateAnnouncement {
 const AddAnnouncementModal: FC<Props> = ({
   open,
   onCancel,
+  onSave,
   entityType,
   entityFQN,
 }) => {
-  const { currentUser } = useAuthContext();
+  const { currentUser } = useApplicationStore();
 
   const [isLoading, setIsLoading] = useState<boolean>(false);
 
@@ -84,7 +87,7 @@ const AddAnnouncementModal: FC<Props> = ({
         if (data) {
           showSuccessToast(t('message.announcement-created-successfully'));
         }
-        onCancel();
+        onSave();
       } catch (error) {
         showErrorToast(error as AxiosError);
       } finally {

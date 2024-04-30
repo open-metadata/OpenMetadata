@@ -12,11 +12,17 @@
  */
 import { Button } from 'antd';
 import classNames from 'classnames';
+import { isEmpty } from 'lodash';
 import React, { Fragment } from 'react';
 import { Handle, HandleProps, HandleType, Position } from 'reactflow';
 import { ReactComponent as MinusIcon } from '../../../assets/svg/control-minus.svg';
 import { ReactComponent as PlusIcon } from '../../../assets/svg/plus-outlined.svg';
 import { EntityLineageNodeType } from '../../../enums/entity.enum';
+import { Column, TestSuite } from '../../../generated/entity/data/table';
+import { formTwoDigitNumber } from '../../../utils/CommonUtils';
+import { encodeLineageHandles } from '../../../utils/EntityLineageUtils';
+import { getEntityName } from '../../../utils/EntityUtils';
+import { getConstraintIcon } from '../../../utils/TableUtils';
 import { EdgeTypeEnum } from './EntityLineage.interface';
 
 export const getHandleByType = (
@@ -109,5 +115,67 @@ export const getCollapseHandle = (
         onClickHandler();
       }}
     />
+  );
+};
+
+export const getTestSuiteSummary = (testSuite?: TestSuite) => {
+  if (isEmpty(testSuite)) {
+    return null;
+  }
+
+  return (
+    <div className="d-flex justify-end">
+      <div className="profiler-item green" data-testid="test-passed">
+        <div className="font-medium" data-testid="test-passed-value">
+          {formTwoDigitNumber(testSuite?.summary?.success ?? 0)}
+        </div>
+      </div>
+      <div className="profiler-item amber" data-testid="test-aborted">
+        <div className="font-medium" data-testid="test-aborted-value">
+          {formTwoDigitNumber(testSuite?.summary?.aborted ?? 0)}
+        </div>
+      </div>
+      <div className="profiler-item red" data-testid="test-failed">
+        <div className="font-medium" data-testid="test-failed-value">
+          {formTwoDigitNumber(testSuite?.summary?.failed ?? 0)}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export const getColumnContent = (
+  column: Column,
+  isColumnTraced: boolean,
+  isConnectable: boolean,
+  onColumnClick: (column: string) => void
+) => {
+  const { fullyQualifiedName } = column;
+
+  return (
+    <div
+      className={classNames(
+        'custom-node-column-container',
+        isColumnTraced
+          ? 'custom-node-header-tracing'
+          : 'custom-node-column-lineage-normal bg-white'
+      )}
+      data-testid={`column-${fullyQualifiedName}`}
+      key={fullyQualifiedName}
+      onClick={(e) => {
+        e.stopPropagation();
+        onColumnClick(fullyQualifiedName ?? '');
+      }}>
+      {getColumnHandle(
+        EntityLineageNodeType.DEFAULT,
+        isConnectable,
+        'lineage-column-node-handle',
+        encodeLineageHandles(fullyQualifiedName ?? '')
+      )}
+      {getConstraintIcon({
+        constraint: column.constraint,
+      })}
+      <p className="p-xss">{getEntityName(column)}</p>
+    </div>
   );
 };

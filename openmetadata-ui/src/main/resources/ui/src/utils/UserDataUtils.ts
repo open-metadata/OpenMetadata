@@ -21,6 +21,11 @@ import { getSearchedTeams, getSearchedUsers } from '../rest/miscAPI';
 import { User } from './../generated/entity/teams/user';
 import { formatTeamsResponse, formatUsersResponse } from './APIUtils';
 import { getImages } from './CommonUtils';
+import {
+  getImageWithResolutionAndFallback,
+  ImageQuality,
+} from './ProfilerUtils';
+import userClassBase from './UserClassBase';
 
 export const getUserDataFromOidc = (
   userData: User,
@@ -97,4 +102,25 @@ export const searchFormattedUsersAndTeams = async (
   } catch (error) {
     return { users: [], teams: [], usersTotal: 0, teamsTotal: 0 };
   }
+};
+
+export const getUserWithImage = (user: User) => {
+  const profile =
+    getImageWithResolutionAndFallback(
+      ImageQuality['6x'],
+      user.profile?.images
+    ) ?? '';
+
+  if (!profile && user.isBot) {
+    user = {
+      ...user,
+      profile: {
+        images: {
+          image: userClassBase.getBotLogo(user.name) ?? '',
+        },
+      },
+    };
+  }
+
+  return user;
 };

@@ -24,9 +24,12 @@ import {
   Space,
   Tooltip,
 } from 'antd';
+import { AxiosError } from 'axios';
+import classNames from 'classnames';
 import { CookieStorage } from 'cookie-storage';
 import i18next from 'i18next';
 import { debounce, upperCase } from 'lodash';
+import { MenuInfo } from 'rc-menu/lib/interface';
 import React, {
   useCallback,
   useEffect,
@@ -42,21 +45,23 @@ import { ReactComponent as IconBell } from '../../assets/svg/ic-alert-bell.svg';
 import { ReactComponent as DomainIcon } from '../../assets/svg/ic-domain.svg';
 import { ReactComponent as Help } from '../../assets/svg/ic-help.svg';
 import { ReactComponent as IconSearch } from '../../assets/svg/search.svg';
-
-import classNames from 'classnames';
 import {
   NOTIFICATION_READ_TIMER,
   SOCKET_EVENTS,
 } from '../../constants/constants';
-import { useGlobalSearchProvider } from '../../context/GlobalSearchProvider/GlobalSearchProvider';
+import { HELP_ITEMS_ENUM } from '../../constants/Navbar.constants';
 import { useWebSocketConnector } from '../../context/WebSocketProvider/WebSocketProvider';
 import { EntityTabs, EntityType } from '../../enums/entity.enum';
+import { useApplicationStore } from '../../hooks/useApplicationStore';
+import { useDomainStore } from '../../hooks/useDomainStore';
+import { getVersion } from '../../rest/miscAPI';
 import brandImageClassBase from '../../utils/BrandImage/BrandImageClassBase';
 import {
   hasNotificationPermission,
   shouldRequestPermission,
 } from '../../utils/BrowserNotificationUtils';
-import { getEntityDetailLink, refreshPage } from '../../utils/CommonUtils';
+import { refreshPage } from '../../utils/CommonUtils';
+import entityUtilClassBase from '../../utils/EntityUtilClassBase';
 import {
   getEntityFQN,
   getEntityType,
@@ -67,16 +72,17 @@ import {
   SupportedLocales,
 } from '../../utils/i18next/i18nextUtil';
 import { isCommandKeyPress, Keys } from '../../utils/KeyboardUtil';
+import { getHelpDropdownItems } from '../../utils/NavbarUtils';
 import {
   inPageSearchOptions,
   isInPageSearchAllowed,
 } from '../../utils/RouterUtils';
 import searchClassBase from '../../utils/SearchClassBase';
+import { showErrorToast } from '../../utils/ToastUtils';
 import { ActivityFeedTabs } from '../ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
 import SearchOptions from '../AppBar/SearchOptions';
 import Suggestions from '../AppBar/Suggestions';
 import CmdKIcon from '../common/CmdKIcon/CmdKIcon.component';
-import { useDomainProvider } from '../Domain/DomainProvider/DomainProvider';
 import WhatsNewModal from '../Modals/WhatsNewModal/WhatsNewModal';
 import NotificationBox from '../NotificationBox/NotificationBox.component';
 import { UserProfileIcon } from '../Settings/Users/UserProfileIcon/UserProfileIcon.component';
@@ -87,26 +93,22 @@ import popupAlertsCardsClassBase from './PopupAlertClassBase';
 const cookieStorage = new CookieStorage();
 
 const NavBar = ({
-  supportDropdown,
   searchValue,
-  isFeatureModalOpen,
   isTourRoute = false,
   pathname,
   isSearchBoxOpen,
   handleSearchBoxOpen,
-  handleFeatureModal,
   handleSearchChange,
   handleKeyDown,
   handleOnClick,
   handleClear,
 }: NavBarProps) => {
-  const { searchCriteria, updateSearchCriteria } = useGlobalSearchProvider();
+  const { searchCriteria, updateSearchCriteria } = useApplicationStore();
   const searchContainerRef = useRef<HTMLDivElement>(null);
   const Logo = useMemo(() => brandImageClassBase.getMonogram().src, []);
 
   const history = useHistory();
-  const { domainOptions, activeDomain, updateActiveDomain } =
-    useDomainProvider();
+  const { domainOptions, activeDomain, updateActiveDomain } = useDomainStore();
   const { t } = useTranslation();
   const { Option } = Select;
   const searchRef = useRef<InputRef>(null);
@@ -117,6 +119,22 @@ const NavBar = ({
   const [hasMentionNotification, setHasMentionNotification] =
     useState<boolean>(false);
   const [activeTab, setActiveTab] = useState<string>('Task');
+  const [isFeatureModalOpen, setIsFeatureModalOpen] = useState<boolean>(false);
+  const [version, setVersion] = useState<string>();
+
+  const fetchOMVersion = async () => {
+    try {
+      const res = await getVersion();
+      setVersion(res.version);
+    } catch (err) {
+      showErrorToast(
+        err as AxiosError,
+        t('server.entity-fetch-error', {
+          entity: t('label.version'),
+        })
+      );
+    }
+  };
 
   const renderAlertCards = useMemo(() => {
     const cardList = popupAlertsCardsClassBase.alertsCards();
@@ -127,6 +145,12 @@ const NavBar = ({
       return <Component key={key} />;
     });
   }, []);
+
+  const handleSupportClick = ({ key }: MenuInfo): void => {
+    if (key === HELP_ITEMS_ENUM.WHATS_NEW) {
+      setIsFeatureModalOpen(true);
+    }
+  };
 
   const entitiesSelect = useMemo(
     () => (
@@ -226,7 +250,7 @@ const NavBar = ({
           user: createdBy,
         });
 
-        path = getEntityDetailLink(
+        path = entityUtilClassBase.getEntityLink(
           entityType as EntityType,
           entityFQN,
           EntityTabs.ACTIVITY_FEED,
@@ -303,6 +327,10 @@ const NavBar = ({
   }, [socket]);
 
   useEffect(() => {
+    fetchOMVersion();
+  }, []);
+
+  useEffect(() => {
     const targetNode = document.body;
     targetNode.addEventListener('keydown', handleKeyPress);
 
@@ -319,7 +347,7 @@ const NavBar = ({
     refreshPage();
   }, []);
 
-  const handleModalCancel = useCallback(() => handleFeatureModal(false), []);
+  const handleModalCancel = useCallback(() => setIsFeatureModalOpen(false), []);
 
   const handleSelectOption = useCallback((text: string) => {
     history.replace({
@@ -509,7 +537,10 @@ const NavBar = ({
           </Dropdown>
 
           <Dropdown
-            menu={{ items: supportDropdown }}
+            menu={{
+              items: getHelpDropdownItems(version),
+              onClick: handleSupportClick,
+            }}
             overlayStyle={{ width: 175 }}
             placement="bottomRight"
             trigger={['click']}>

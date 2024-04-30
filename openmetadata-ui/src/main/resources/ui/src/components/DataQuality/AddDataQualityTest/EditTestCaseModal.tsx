@@ -32,6 +32,7 @@ import {
 } from '../../../interface/FormUtils.interface';
 import { getTableDetailsByFQN } from '../../../rest/tableAPI';
 import {
+  getTestCaseByFqn,
   getTestDefinitionById,
   updateTestCaseById,
 } from '../../../rest/testAPI';
@@ -130,7 +131,9 @@ const EditTestCaseModal: React.FC<EditTestCaseModalProps> = ({
         ? undefined
         : value.description,
       displayName: value.displayName,
-      computePassedFailedRowCount: value.computePassedFailedRowCount,
+      computePassedFailedRowCount: isComputeRowCountFieldVisible
+        ? value.computePassedFailedRowCount
+        : testCase?.computePassedFailedRowCount,
     };
     const jsonPatch = compare(testCase, updatedTestCase);
 
@@ -183,8 +186,12 @@ const EditTestCaseModal: React.FC<EditTestCaseModalProps> = ({
   const fetchTestDefinitionById = async () => {
     setIsLoading(true);
     try {
+      const testCaseDetails = await getTestCaseByFqn(
+        testCase?.fullyQualifiedName ?? '',
+        { fields: ['testDefinition'] }
+      );
       const definition = await getTestDefinitionById(
-        testCase.testDefinition.id || ''
+        testCaseDetails.testDefinition.id || ''
       );
       form.setFieldsValue({
         name: testCase?.name,
@@ -194,6 +201,7 @@ const EditTestCaseModal: React.FC<EditTestCaseModalProps> = ({
         table: getNameFromFQN(tableFqn),
         column: getColumnNameFromEntityLink(testCase?.entityLink),
         computePassedFailedRowCount: testCase?.computePassedFailedRowCount,
+        description: testCase?.description,
       });
       setSelectedDefinition(definition);
     } catch (error) {
@@ -290,10 +298,14 @@ const EditTestCaseModal: React.FC<EditTestCaseModalProps> = ({
 
           {!showOnlyParameter && (
             <>
-              <Form.Item label={t('label.description')} name="description">
+              <Form.Item
+                label={t('label.description')}
+                name="description"
+                trigger="onTextChange"
+                valuePropName="initialValue">
                 <RichTextEditor
                   height="200px"
-                  initialValue={testCase?.description || ''}
+                  initialValue={testCase?.description ?? ''}
                   style={{
                     margin: 0,
                   }}

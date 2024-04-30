@@ -9,7 +9,7 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 """Mysql source module"""
-from typing import cast
+from typing import Optional, cast
 
 from sqlalchemy.dialects.mysql.base import ischema_names
 from sqlalchemy.dialects.mysql.reflection import MySQLTableDefinitionParser
@@ -40,7 +40,9 @@ class MysqlSource(CommonDbSourceService):
     """
 
     @classmethod
-    def create(cls, config_dict, metadata: OpenMetadata):
+    def create(
+        cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None
+    ):
         config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
         connection = cast(MysqlConnection, config.serviceConnection.__root__.config)
         if not isinstance(connection, MysqlConnection):

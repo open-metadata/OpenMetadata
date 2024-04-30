@@ -17,7 +17,7 @@ export enum GlobalSettingsMenuCategory {
   ACCESS = 'access',
   NOTIFICATIONS = 'notifications',
   CUSTOM_PROPERTIES = 'customProperties',
-  OPEN_METADATA = 'openMetadata',
+  PREFERENCES = 'preferences',
   MEMBERS = 'members',
   SERVICES = 'services',
   BOTS = 'bots',
@@ -61,12 +61,14 @@ export enum GlobalSettingOptions {
   DATA_INSIGHT_REPORT_ALERT = 'dataInsightReport',
   ADD_DATA_INSIGHT_REPORT_ALERT = 'add-data-insight-report',
   EDIT_DATA_INSIGHT_REPORT_ALERT = 'edit-data-insight-report',
-  CUSTOM_LOGO = 'customLogo',
   LOGIN_CONFIGURATION = 'loginConfiguration',
   CUSTOMIZE_LANDING_PAGE = 'customizeLandingPage',
   TOPICS = 'topics',
   CONTAINERS = 'containers',
   APPLICATIONS = 'apps',
+  OM_HEALTH = 'om-health',
+  PROFILER_CONFIGURATION = 'profiler-configuration',
+  APPEARANCE = 'appearance',
 }
 
 export const GLOBAL_SETTING_PERMISSION_RESOURCES = [

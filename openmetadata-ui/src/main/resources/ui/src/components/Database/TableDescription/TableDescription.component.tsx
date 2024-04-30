@@ -12,13 +12,18 @@
  */
 
 import { Button, Space, Tooltip } from 'antd';
-import React from 'react';
+import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
 import { DE_ACTIVE_COLOR, ICON_DIMENSION } from '../../../constants/constants';
 import { EntityField } from '../../../constants/Feeds.constants';
+import { EntityType } from '../../../enums/entity.enum';
 import EntityTasks from '../../../pages/TasksPage/EntityTasks/EntityTasks.component';
+import EntityLink from '../../../utils/EntityLink';
+import { getEntityFeedLink } from '../../../utils/EntityUtils';
 import RichTextEditorPreviewer from '../../common/RichTextEditor/RichTextEditorPreviewer';
+import SuggestionsAlert from '../../Suggestions/SuggestionsAlert/SuggestionsAlert';
+import { useSuggestionsContext } from '../../Suggestions/SuggestionsProvider/SuggestionsProvider';
 import { TableDescriptionProps } from './TableDescription.interface';
 
 const TableDescription = ({
@@ -32,23 +37,63 @@ const TableDescription = ({
   onThreadLinkSelect,
 }: TableDescriptionProps) => {
   const { t } = useTranslation();
+  const { selectedUserSuggestions = [] } = useSuggestionsContext();
 
-  return (
-    <Space
-      className="hover-icon-group"
-      data-testid="description"
-      direction="vertical"
-      id={`field-description-${index}`}>
-      {columnData.field ? (
-        <RichTextEditorPreviewer markdown={columnData.field} />
-      ) : (
+  const entityLink = useMemo(
+    () =>
+      entityType === EntityType.TABLE
+        ? EntityLink.getTableEntityLink(
+            entityFqn,
+            columnData.record?.name ?? ''
+          )
+        : getEntityFeedLink(entityType, columnData.fqn),
+    [entityType, entityFqn]
+  );
+
+  const suggestionData = useMemo(() => {
+    const activeSuggestion = selectedUserSuggestions.find(
+      (suggestion) => suggestion.entityLink === entityLink
+    );
+
+    if (activeSuggestion?.entityLink === entityLink) {
+      return (
+        <SuggestionsAlert
+          hasEditAccess={hasEditPermission}
+          maxLength={40}
+          showSuggestedBy={false}
+          suggestion={activeSuggestion}
+        />
+      );
+    }
+
+    return null;
+  }, [hasEditPermission, entityLink, selectedUserSuggestions]);
+
+  const descriptionContent = useMemo(() => {
+    if (suggestionData) {
+      return suggestionData;
+    } else if (columnData.field) {
+      return <RichTextEditorPreviewer markdown={columnData.field} />;
+    } else {
+      return (
         <span className="text-grey-muted">
           {t('label.no-entity', {
             entity: t('label.description'),
           })}
         </span>
-      )}
-      {!isReadOnly ? (
+      );
+    }
+  }, [columnData, suggestionData]);
+
+  return (
+    <Space
+      className="hover-icon-group w-full d-flex"
+      data-testid="description"
+      direction="vertical"
+      id={`field-description-${index}`}>
+      {descriptionContent}
+
+      {!suggestionData && !isReadOnly ? (
         <Space align="baseline" size="middle">
           {hasEditPermission && (
             <Tooltip

@@ -12,7 +12,7 @@
  */
 
 import EntityClass from '../../common/Entities/EntityClass';
-import { CustomPropertyType } from '../../common/Utils/CustomProperty';
+import { CustomPropertyTypeByName } from '../../common/Utils/CustomProperty';
 import DatabaseClass from './../../common/Entities/DatabaseClass';
 import DatabaseSchemaClass from './../../common/Entities/DatabaseSchemaClass';
 import StoreProcedureClass from './../../common/Entities/StoredProcedureClass';
@@ -101,17 +101,21 @@ describe('Database hierarchy details page', { tags: 'DataAssets' }, () => {
         entity.renameEntity();
       });
 
-      it(`Annoucement create & delete`, () => {
+      it(`Announcement create & delete`, () => {
         entity.createAnnouncement();
+        /**
+         * Todo: Fix the flakiness issue with the Activity feed changes and enable this test
+         */
+        // entity.replyAnnouncement();
         entity.removeAnnouncement();
       });
 
-      it(`Inactive annoucement create & delete`, () => {
+      it(`Inactive announcement create & delete`, () => {
         entity.createInactiveAnnouncement();
         entity.removeInactiveAnnouncement();
       });
 
-      Object.values(CustomPropertyType).forEach((type) => {
+      Object.values(CustomPropertyTypeByName).forEach((type) => {
         it(`Set ${type} Custom Property `, () => {
           entity.setCustomProperty(
             entity.customPropertyValue[type].property,

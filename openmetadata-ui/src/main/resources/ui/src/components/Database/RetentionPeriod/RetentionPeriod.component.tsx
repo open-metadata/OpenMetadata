@@ -37,7 +37,7 @@ import { RetentionPeriodProps } from './RetentionPeriod.interface';
 const RetentionPeriod = ({
   retentionPeriod,
   onUpdate,
-  permissions,
+  hasPermission,
 }: RetentionPeriodProps) => {
   const { t } = useTranslation();
   const [form] = useForm();
@@ -70,7 +70,7 @@ const RetentionPeriod = ({
           value={retentionPeriod ?? NO_DATA_PLACEHOLDER}
         />
 
-        {permissions?.EditAll && (
+        {hasPermission && (
           <Tooltip
             title={t('label.edit-entity', {
               entity: t('label.retention-period'),

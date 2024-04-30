@@ -236,6 +236,7 @@ class StorageUnitTest(TestCase):
                 sourceUrl=SourceUrl(
                     __root__="https://s3.console.aws.amazon.com/s3/buckets/test_bucket?region=us-east-1&tab=objects"
                 ),
+                fullPath="s3://test_bucket",
             ),
             self.object_store_source._generate_unstructured_container(
                 bucket_response=bucket_response
@@ -280,6 +281,7 @@ class StorageUnitTest(TestCase):
                 sourceUrl=SourceUrl(
                     __root__="https://s3.console.aws.amazon.com/s3/buckets/test_bucket?region=us-east-1&prefix=transactions/&showversions=false"
                 ),
+                fullPath="s3://test_bucket/transactions",
             ),
             self.object_store_source._generate_container_details(
                 S3BucketResponse(
@@ -298,15 +300,18 @@ class StorageUnitTest(TestCase):
     def test_extract_column_definitions(self):
         with patch(
             "metadata.ingestion.source.storage.storage_service.fetch_dataframe",
-            return_value=[
-                pd.DataFrame.from_dict(
-                    [
-                        {"transaction_id": 1, "transaction_value": 100},
-                        {"transaction_id": 2, "transaction_value": 200},
-                        {"transaction_id": 3, "transaction_value": 300},
-                    ]
-                )
-            ],
+            return_value=(
+                [
+                    pd.DataFrame.from_dict(
+                        [
+                            {"transaction_id": 1, "transaction_value": 100},
+                            {"transaction_id": 2, "transaction_value": 200},
+                            {"transaction_id": 3, "transaction_value": 300},
+                        ]
+                    )
+                ],
+                None,
+            ),
         ):
             Column.__eq__ = custom_column_compare
             self.assertListEqual(

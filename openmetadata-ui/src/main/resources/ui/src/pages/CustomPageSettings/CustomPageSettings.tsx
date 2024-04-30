@@ -66,7 +66,7 @@ export const CustomPageSettings = () => {
   const breadcrumbs: TitleBreadcrumbProps['titleLinks'] = useMemo(
     () =>
       getSettingPageEntityBreadCrumb(
-        GlobalSettingsMenuCategory.OPEN_METADATA,
+        GlobalSettingsMenuCategory.PREFERENCES,
         t('label.customize-entity', {
           entity: t('label.landing-page'),
         })

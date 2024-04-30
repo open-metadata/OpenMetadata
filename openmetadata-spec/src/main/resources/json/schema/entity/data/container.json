@@ -169,6 +169,10 @@
       "description": "Source URL of container.",
       "$ref": "../../type/basic.json#/definitions/sourceUrl"
     },
+    "fullPath": {
+      "description": "Full path of the container/file.",
+      "type": "string"
+    },
     "domain" : {
       "description": "Domain the Container belongs to. When not set, the Container inherits the domain from the storage service it belongs to.",
       "$ref": "../../type/entityReference.json"

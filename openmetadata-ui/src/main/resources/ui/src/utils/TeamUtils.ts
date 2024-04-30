@@ -22,6 +22,7 @@ import {
   Team,
   TeamType,
 } from '../generated/entity/teams/team';
+import { getEntityName } from './EntityUtils';
 
 /**
  * To get filtered list of non-deleted(active) users
@@ -35,7 +36,14 @@ export const getActiveUsers = (users?: Array<EntityReference>) => {
 export const filterChildTeams = (
   teamsList: Team[],
   showDeletedTeams: boolean
-) => teamsList.filter((d) => d.deleted === showDeletedTeams);
+) =>
+  teamsList
+    .filter((d) => d.deleted === showDeletedTeams)
+    .sort((a, b) =>
+      getEntityName(a)
+        .toLowerCase()
+        .localeCompare(getEntityName(b).toLowerCase())
+    );
 
 export const getDeleteMessagePostFix = (
   teamName: string,

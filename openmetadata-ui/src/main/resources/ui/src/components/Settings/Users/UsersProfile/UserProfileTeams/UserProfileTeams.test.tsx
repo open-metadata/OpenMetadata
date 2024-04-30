@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { fireEvent, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import React from 'react';
 import { useAuth } from '../../../../../hooks/authHooks';
 import { USER_DATA, USER_TEAMS } from '../../../../../mocks/User.mock';
@@ -28,11 +28,18 @@ jest.mock('../../../../../hooks/authHooks', () => ({
 }));
 
 jest.mock('../../../../../utils/CommonUtils', () => ({
-  getNonDeletedTeams: jest.fn(),
+  getNonDeletedTeams: jest.fn().mockReturnValue([]),
 }));
 
 jest.mock('../../../../common/InlineEdit/InlineEdit.component', () => {
-  return jest.fn().mockReturnValue(<p>InlineEdit</p>);
+  return jest.fn().mockImplementation(({ onSave }) => (
+    <div data-testid="inline-edit">
+      <span>InlineEdit</span>
+      <button data-testid="save" onClick={onSave}>
+        save
+      </button>
+    </div>
+  ));
 });
 
 jest.mock('../../../../common/Chip/Chip.component', () => {
@@ -72,6 +79,25 @@ describe('Test User Profile Teams Component', () => {
     fireEvent.click(editButton);
 
     expect(screen.getByText('InlineEdit')).toBeInTheDocument();
+  });
+
+  it('should call updateUserDetails on click save', async () => {
+    render(<UserProfileTeams {...mockPropsData} teams={USER_DATA.teams} />);
+
+    const editButton = screen.getByTestId('edit-teams-button');
+
+    fireEvent.click(editButton);
+
+    expect(screen.getByText('InlineEdit')).toBeInTheDocument();
+
+    act(() => {
+      fireEvent.click(screen.getByTestId('save'));
+    });
+
+    expect(mockPropsData.updateUserDetails).toHaveBeenCalledWith(
+      { teams: [] },
+      'teams'
+    );
   });
 
   it('should not render edit button to non admin user', async () => {

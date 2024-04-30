@@ -44,9 +44,9 @@ import { EntityName } from '../../components/Modals/EntityNameModal/EntityNameMo
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import {
-  getDatabaseDetailsPath,
+  getEntityDetailsPath,
   getExplorePath,
-  getVersionPathWithTab,
+  getVersionPath,
 } from '../../constants/constants';
 import { FEED_COUNT_INITIAL_DATA } from '../../constants/entity.constants';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
@@ -55,7 +55,11 @@ import {
   ResourceEntity,
 } from '../../context/PermissionProvider/PermissionProvider.interface';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
-import { EntityTabs, EntityType } from '../../enums/entity.enum';
+import {
+  EntityTabs,
+  EntityType,
+  TabSpecificField,
+} from '../../enums/entity.enum';
 import { CreateThread } from '../../generated/api/feed/createThread';
 import { Tag } from '../../generated/entity/classification/tag';
 import { Database } from '../../generated/entity/data/database';
@@ -77,6 +81,7 @@ import {
   sortTagsCaseInsensitive,
 } from '../../utils/CommonUtils';
 import { getQueryFilterForDatabase } from '../../utils/Database/Database.util';
+import entityUtilClassBase from '../../utils/EntityUtilClassBase';
 import { getEntityName } from '../../utils/EntityUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import { getTagsWithoutTier, getTierTags } from '../../utils/TableUtils';
@@ -117,6 +122,11 @@ const DatabaseDetails: FunctionComponent = () => {
 
   const [updateProfilerSetting, setUpdateProfilerSetting] =
     useState<boolean>(false);
+
+  const extraDropdownContent = entityUtilClassBase.getManageExtraOptions(
+    EntityType.DATABASE,
+    decodedDatabaseFQN
+  );
 
   const history = useHistory();
   const isMounting = useRef(true);
@@ -186,7 +196,7 @@ const DatabaseDetails: FunctionComponent = () => {
   const getDetailsByFQN = () => {
     setIsDatabaseDetailsLoading(true);
     getDatabaseDetailsByFQN(decodedDatabaseFQN, {
-      fields: 'owner,tags,domain,votes,extension',
+      fields: `${TabSpecificField.OWNER},${TabSpecificField.TAGS},${TabSpecificField.DOMAIN},${TabSpecificField.VOTES},${TabSpecificField.EXTENSION},${TabSpecificField.DATA_PRODUCTS}`,
       include: Include.All,
     })
       .then((res) => {
@@ -252,7 +262,11 @@ const DatabaseDetails: FunctionComponent = () => {
   const activeTabHandler = (key: string) => {
     if (key !== activeTab) {
       history.push({
-        pathname: getDatabaseDetailsPath(decodedDatabaseFQN, key),
+        pathname: getEntityDetailsPath(
+          EntityType.DATABASE,
+          decodedDatabaseFQN,
+          key
+        ),
       });
     }
   };
@@ -434,7 +448,7 @@ const DatabaseDetails: FunctionComponent = () => {
   const versionHandler = useCallback(() => {
     currentVersion &&
       history.push(
-        getVersionPathWithTab(
+        getVersionPath(
           EntityType.DATABASE,
           decodedDatabaseFQN,
           toString(currentVersion),
@@ -502,6 +516,7 @@ const DatabaseDetails: FunctionComponent = () => {
                     entityName={getEntityName(database)}
                     entityType={EntityType.DATABASE}
                     hasEditAccess={editDescriptionPermission}
+                    isDescriptionExpanded={isEmpty(database)}
                     isEdit={isEdit}
                     showActions={!database.deleted}
                     onCancel={onCancel}
@@ -519,16 +534,18 @@ const DatabaseDetails: FunctionComponent = () => {
               className="entity-tag-right-panel-container"
               data-testid="entity-right-panel"
               flex="320px">
-              <EntityRightPanel
+              <EntityRightPanel<EntityType.DATABASE>
                 customProperties={database}
                 dataProducts={database?.dataProducts ?? []}
                 domain={database?.domain}
+                editCustomAttributePermission={editCustomAttributePermission}
                 editTagPermission={editTagsPermission}
                 entityFQN={decodedDatabaseFQN}
                 entityId={database?.id ?? ''}
                 entityType={EntityType.DATABASE}
                 selectedTags={tags}
                 viewAllPermission={viewAllPermission}
+                onExtensionUpdate={settingsUpdateHandler}
                 onTagSelectionChange={handleTagSelection}
                 onThreadLinkSelect={onThreadLinkSelect}
               />
@@ -641,6 +658,7 @@ const DatabaseDetails: FunctionComponent = () => {
               afterDomainUpdateAction={afterDomainUpdateAction}
               dataAsset={database}
               entityType={EntityType.DATABASE}
+              extraDropdownContent={extraDropdownContent}
               openTaskCount={feedCount.openTaskCount}
               permissions={databasePermission}
               onDisplayNameUpdate={handleUpdateDisplayName}

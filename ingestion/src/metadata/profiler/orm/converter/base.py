@@ -127,7 +127,10 @@ def ometa_to_sqa_orm(
         {
             "__tablename__": str(table.name.__root__),
             "__table_args__": {
-                "schema": orm_schema_name,
+                # SQLite does not support schemas
+                "schema": orm_schema_name
+                if table.serviceType != databaseService.DatabaseServiceType.SQLite
+                else None,
                 "extend_existing": True,  # Recreates the table ORM object if it already exists. Useful for testing
                 "quote": check_snowflake_case_sensitive(
                     table.serviceType, table.name.__root__

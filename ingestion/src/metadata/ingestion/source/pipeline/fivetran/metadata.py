@@ -67,7 +67,9 @@ class FivetranSource(PipelineServiceSource):
     """
 
     @classmethod
-    def create(cls, config_dict, metadata: OpenMetadata):
+    def create(
+        cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None
+    ):
         config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
         connection: FivetranConnection = config.serviceConnection.__root__.config
         if not isinstance(connection, FivetranConnection):
@@ -97,7 +99,7 @@ class FivetranSource(PipelineServiceSource):
             name=pipeline_details.pipeline_name,
             displayName=pipeline_details.pipeline_display_name,
             tasks=self.get_connections_jobs(pipeline_details),
-            service=self.context.pipeline_service,
+            service=self.context.get().pipeline_service,
             sourceUrl=self.get_source_url(
                 connector_id=pipeline_details.source.get("id"),
                 group_id=pipeline_details.group.get("id"),
@@ -163,8 +165,8 @@ class FivetranSource(PipelineServiceSource):
                 pipeline_fqn = fqn.build(
                     metadata=self.metadata,
                     entity_type=Pipeline,
-                    service_name=self.context.pipeline_service,
-                    pipeline_name=self.context.pipeline,
+                    service_name=self.context.get().pipeline_service,
+                    pipeline_name=self.context.get().pipeline,
                 )
                 pipeline_entity = self.metadata.get_by_name(
                     entity=Pipeline, fqn=pipeline_fqn

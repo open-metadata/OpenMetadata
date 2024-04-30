@@ -62,11 +62,12 @@ from metadata.ingestion.models.ometa_classification import OMetaTagAndClassifica
 from metadata.ingestion.models.topology import (
     NodeStage,
     ServiceTopology,
-    TopologyContext,
+    TopologyContextManager,
     TopologyNode,
 )
 from metadata.ingestion.source.connections import get_test_connection_fn
 from metadata.utils import fqn
+from metadata.utils.execution_time_tracker import calculate_execution_time
 from metadata.utils.filters import filter_by_schema
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.tag_utils import get_tag_label
@@ -108,7 +109,11 @@ class DatabaseServiceTopology(ServiceTopology):
         # Note how we have `yield_view_lineage` and `yield_stored_procedure_lineage`
         # as post_processed. This is because we cannot ensure proper lineage processing
         # until we have finished ingesting all the metadata from the source.
-        post_process=["yield_view_lineage", "yield_procedure_lineage_and_queries"],
+        post_process=[
+            "yield_view_lineage",
+            "yield_procedure_lineage_and_queries",
+            "yield_external_table_lineage",
+        ],
     )
     database = TopologyNode(
         producer="get_database_names",
@@ -152,6 +157,7 @@ class DatabaseServiceTopology(ServiceTopology):
         ],
         children=["table", "stored_procedure"],
         post_process=["mark_tables_as_deleted", "mark_stored_procedures_as_deleted"],
+        threads=True,
     )
     table = TopologyNode(
         producer="get_tables_name_and_type",
@@ -212,7 +218,7 @@ class DatabaseServiceSource(
     inspector: Inspector
 
     topology = DatabaseServiceTopology()
-    context = TopologyContext.create(topology)
+    context = TopologyContextManager(topology)
 
     @property
     def name(self) -> str:
@@ -380,7 +386,7 @@ class DatabaseServiceSource(
         """
 
         tag_labels = []
-        for tag_and_category in self.context.tags or []:
+        for tag_and_category in self.context.get().tags or []:
             if tag_and_category.fqn and tag_and_category.fqn.__root__ == entity_fqn:
                 tag_label = get_tag_label(
                     metadata=self.metadata,
@@ -400,7 +406,7 @@ class DatabaseServiceSource(
         database_fqn = fqn.build(
             self.metadata,
             entity_type=Database,
-            service_name=self.context.database_service,
+            service_name=self.context.get().database_service,
             database_name=database_name,
         )
         return self.get_tag_by_fqn(entity_fqn=database_fqn)
@@ -414,12 +420,13 @@ class DatabaseServiceSource(
         schema_fqn = fqn.build(
             self.metadata,
             entity_type=DatabaseSchema,
-            service_name=self.context.database_service,
-            database_name=self.context.database,
+            service_name=self.context.get().database_service,
+            database_name=self.context.get().database,
             schema_name=schema_name,
         )
         return self.get_tag_by_fqn(entity_fqn=schema_fqn)
 
+    @calculate_execution_time()
     def get_tag_labels(self, table_name: str) -> Optional[List[TagLabel]]:
         """
         This will only get executed if the tags context
@@ -428,9 +435,9 @@ class DatabaseServiceSource(
         table_fqn = fqn.build(
             self.metadata,
             entity_type=Table,
-            service_name=self.context.database_service,
-            database_name=self.context.database,
-            schema_name=self.context.database_schema,
+            service_name=self.context.get().database_service,
+            database_name=self.context.get().database,
+            schema_name=self.context.get().database_schema,
             table_name=table_name,
             skip_es_search=True,
         )
@@ -446,14 +453,15 @@ class DatabaseServiceSource(
         col_fqn = fqn.build(
             self.metadata,
             entity_type=Column,
-            service_name=self.context.database_service,
-            database_name=self.context.database,
-            schema_name=self.context.database_schema,
+            service_name=self.context.get().database_service,
+            database_name=self.context.get().database,
+            schema_name=self.context.get().database_schema,
             table_name=table_name,
             column_name=column["name"],
         )
         return self.get_tag_by_fqn(entity_fqn=col_fqn)
 
+    @calculate_execution_time()
     def register_record(self, table_request: CreateTableRequest) -> None:
         """
         Mark the table record as scanned and update the database_source_state
@@ -461,9 +469,9 @@ class DatabaseServiceSource(
         table_fqn = fqn.build(
             self.metadata,
             entity_type=Table,
-            service_name=self.context.database_service,
-            database_name=self.context.database,
-            schema_name=self.context.database_schema,
+            service_name=self.context.get().database_service,
+            database_name=self.context.get().database,
+            schema_name=self.context.get().database_schema,
             table_name=table_request.name.__root__,
             skip_es_search=True,
         )
@@ -479,9 +487,9 @@ class DatabaseServiceSource(
         table_fqn = fqn.build(
             self.metadata,
             entity_type=StoredProcedure,
-            service_name=self.context.database_service,
-            database_name=self.context.database,
-            schema_name=self.context.database_schema,
+            service_name=self.context.get().database_service,
+            database_name=self.context.get().database,
+            schema_name=self.context.get().database_schema,
             procedure_name=stored_proc_request.name.__root__,
         )
 
@@ -494,8 +502,8 @@ class DatabaseServiceSource(
             schema_fqn = fqn.build(
                 self.metadata,
                 entity_type=DatabaseSchema,
-                service_name=self.context.database_service,
-                database_name=self.context.database,
+                service_name=self.context.get().database_service,
+                database_name=self.context.get().database,
                 schema_name=schema_name,
             )
             if filter_by_schema(
@@ -507,6 +515,7 @@ class DatabaseServiceSource(
                 continue
             yield schema_fqn if return_fqn else schema_name
 
+    @calculate_execution_time()
     def get_owner_ref(self, table_name: str) -> Optional[EntityReference]:
         """
         Method to process the table owners
@@ -514,9 +523,9 @@ class DatabaseServiceSource(
         try:
             if self.source_config.includeOwners:
                 owner_name = self.inspector.get_table_owner(
-                    connection=self.connection,  # pylint: disable=no-member
+                    connection=self.connection,  # pylint: disable=no-member.fetchall()
                     table_name=table_name,
-                    schema=self.context.database_schema,
+                    schema=self.context.get().database_schema,
                 )
                 owner_ref = self.metadata.get_reference_by_name(name=owner_name)
                 return owner_ref
@@ -529,14 +538,14 @@ class DatabaseServiceSource(
         """
         Use the current inspector to mark tables as deleted
         """
-        if not self.context.__dict__.get("database"):
+        if not self.context.get().__dict__.get("database"):
             raise ValueError(
                 "No Database found in the context. We cannot run the table deletion."
             )
 
         if self.source_config.markDeletedTables:
             logger.info(
-                f"Mark Deleted Tables set to True. Processing database [{self.context.database}]"
+                f"Mark Deleted Tables set to True. Processing database [{self.context.get().database}]"
             )
             schema_fqn_list = self._get_filtered_schema_names(
                 return_fqn=True, add_to_status=False
@@ -557,7 +566,7 @@ class DatabaseServiceSource(
         """
         if self.source_config.markDeletedStoredProcedures:
             logger.info(
-                f"Mark Deleted Stored Procedures Processing database [{self.context.database}]"
+                f"Mark Deleted Stored Procedures Processing database [{self.context.get().database}]"
             )
 
             schema_fqn_list = self._get_filtered_schema_names(
@@ -576,6 +585,11 @@ class DatabaseServiceSource(
     def yield_life_cycle_data(self, _) -> Iterable[Either[OMetaLifeCycleData]]:
         """
         Get the life cycle data of the table
+        """
+
+    def yield_external_table_lineage(self) -> Iterable[Either[AddLineageRequest]]:
+        """
+        Process external table lineage
         """
 
     def test_connection(self) -> None:

@@ -16,7 +16,7 @@ import re
 import traceback
 from typing import Dict, Iterable, List, Optional, Tuple
 
-from sqlalchemy import inspect, sql
+from sqlalchemy import sql
 from sqlalchemy.dialects.postgresql.base import PGDialect
 from sqlalchemy.engine.reflection import Inspector
 from sqlalchemy_redshift.dialect import RedshiftDialect, RedshiftDialectMixin
@@ -34,6 +34,7 @@ from metadata.generated.schema.entity.data.table import (
     ConstraintType,
     PartitionColumnDetails,
     PartitionIntervalTypes,
+    Table,
     TableConstraint,
     TablePartition,
     TableType,
@@ -48,6 +49,7 @@ from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
 from metadata.generated.schema.type.basic import EntityName
+from metadata.ingestion.api.delete import delete_entity_by_name
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
@@ -55,10 +57,16 @@ from metadata.ingestion.source.database.common_db_source import (
     CommonDbSourceService,
     TableNameAndType,
 )
+from metadata.ingestion.source.database.incremental_metadata_extraction import (
+    IncrementalConfig,
+)
 from metadata.ingestion.source.database.life_cycle_query_mixin import (
     LifeCycleQueryMixin,
 )
 from metadata.ingestion.source.database.multi_db_source import MultiDBSource
+from metadata.ingestion.source.database.redshift.incremental_table_processor import (
+    RedshiftIncrementalTableProcessor,
+)
 from metadata.ingestion.source.database.redshift.models import RedshiftStoredProcedure
 from metadata.ingestion.source.database.redshift.queries import (
     REDSHIFT_GET_ALL_RELATION_INFO,
@@ -81,6 +89,10 @@ from metadata.ingestion.source.database.stored_procedures_mixin import (
     StoredProcedureMixin,
 )
 from metadata.utils import fqn
+from metadata.utils.execution_time_tracker import (
+    calculate_execution_time,
+    calculate_execution_time_generator,
+)
 from metadata.utils.filters import filter_by_database
 from metadata.utils.helpers import get_start_and_end
 from metadata.utils.logger import ingestion_logger
@@ -119,20 +131,41 @@ class RedshiftSource(
     Database metadata from Redshift Source
     """
 
-    def __init__(self, config, metadata):
+    def __init__(
+        self,
+        config: WorkflowSource,
+        metadata,
+        incremental_configuration: IncrementalConfig,
+    ):
         super().__init__(config, metadata)
         self.partition_details = {}
         self.life_cycle_query = REDSHIFT_LIFE_CYCLE_QUERY
+        self.context.get_global().deleted_tables = []
+        self.incremental = incremental_configuration
+        self.incremental_table_processor: Optional[
+            RedshiftIncrementalTableProcessor
+        ] = None
+
+        if self.incremental.enabled:
+            logger.info(
+                "Starting Incremental Metadata Extraction.\n\t Considering Table changes from %s",
+                self.incremental.start_datetime_utc,
+            )
 
     @classmethod
-    def create(cls, config_dict, metadata: OpenMetadata):
+    def create(
+        cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None
+    ):
         config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
         connection: RedshiftConnection = config.serviceConnection.__root__.config
         if not isinstance(connection, RedshiftConnection):
             raise InvalidSourceException(
                 f"Expected RedshiftConnection, but got {connection}"
             )
-        return cls(config, metadata)
+        incremental_config = IncrementalConfig.create(
+            config.sourceConfig.config.incremental, pipeline_name, metadata
+        )
+        return cls(config, metadata, incremental_config)
 
     def get_partition_details(self) -> None:
         """
@@ -140,7 +173,7 @@ class RedshiftSource(
         """
         try:
             self.partition_details.clear()
-            results = self.engine.execute(REDSHIFT_PARTITION_DETAILS).fetchall()
+            results = self.connection.execute(REDSHIFT_PARTITION_DETAILS).fetchall()
             for row in results:
                 self.partition_details[f"{row.schema}.{row.table}"] = row.diststyle
         except Exception as exe:
@@ -159,11 +192,50 @@ class RedshiftSource(
             {"schema": schema_name},
         )
 
+        if self.incremental.enabled:
+            result = [
+                (name, relkind)
+                for name, relkind in result
+                if name
+                in self.incremental_table_processor.get_not_deleted(
+                    schema_name=schema_name
+                )
+            ]
+
         return [
             TableNameAndType(
                 name=name, type_=STANDARD_TABLE_TYPES.get(relkind, TableType.Regular)
             )
             for name, relkind in result
+        ]
+
+    def query_view_names_and_types(
+        self, schema_name: str
+    ) -> Iterable[TableNameAndType]:
+        """
+        Connect to the source database to get the view
+        name and type. By default, use the inspector method
+        to get the names and pass the View type.
+
+        This is useful for sources where we need fine-grained
+        logic on how to handle table types, e.g., material views,...
+        """
+
+        result = self.inspector.get_view_names(schema_name) or []
+
+        if self.incremental.enabled:
+            result = [
+                name
+                for name in result
+                if name
+                in self.incremental_table_processor.get_not_deleted(
+                    schema_name=schema_name
+                )
+            ]
+
+        return [
+            TableNameAndType(name=table_name, type_=TableType.View)
+            for table_name in result
         ]
 
     def get_configured_database(self) -> Optional[str]:
@@ -174,25 +246,59 @@ class RedshiftSource(
     def get_database_names_raw(self) -> Iterable[str]:
         yield from self._execute_database_query(REDSHIFT_GET_DATABASE_NAMES)
 
+    def _set_incremental_table_processor(self, database: str):
+        """Prepares the needed data for doing incremental metadata extration for a given database.
+
+        1. Queries Redshift to get the changes done after the `self.incremental.start_datetime_utc`
+        2. Sets the table map with the changes within the RedshiftIncrementalTableProcessor
+        3. Sets the deleted tables in the context
+        """
+        if self.incremental.enabled:
+            self.incremental_table_processor = RedshiftIncrementalTableProcessor.create(
+                self.connection, self.inspector.default_schema_name
+            )
+
+            self.incremental_table_processor.set_table_map(
+                database=database, start_date=self.incremental.start_datetime_utc
+            )
+
+            self.context.get_global().deleted_tables.extend(
+                fqn.build(
+                    metadata=self.metadata,
+                    entity_type=Table,
+                    service_name=self.context.get().database_service,
+                    database_name=database,
+                    schema_name=schema_name,
+                    table_name=table_name,
+                )
+                for schema_name, table_name in self.incremental_table_processor.get_deleted()
+            )
+
     def get_database_names(self) -> Iterable[str]:
         if not self.config.serviceConnection.__root__.config.ingestAllDatabases:
-            self.inspector = inspect(self.engine)
             self.get_partition_details()
+
+            self._set_incremental_table_processor(
+                self.config.serviceConnection.__root__.config.database
+            )
+
             yield self.config.serviceConnection.__root__.config.database
         else:
             for new_database in self.get_database_names_raw():
                 database_fqn = fqn.build(
                     self.metadata,
                     entity_type=Database,
-                    service_name=self.context.database_service,
+                    service_name=self.context.get().database_service,
                     database_name=new_database,
                 )
 
                 if filter_by_database(
                     self.source_config.databaseFilterPattern,
-                    database_fqn
-                    if self.source_config.useFqnForFiltering
-                    else new_database,
+                    (
+                        database_fqn
+                        if self.source_config.useFqnForFiltering
+                        else new_database
+                    ),
                 ):
                     self.status.filter(database_fqn, "Database Filtered Out")
                     continue
@@ -200,6 +306,9 @@ class RedshiftSource(
                 try:
                     self.set_inspector(database_name=new_database)
                     self.get_partition_details()
+
+                    self._set_incremental_table_processor(new_database)
+
                     yield new_database
                 except Exception as exc:
                     logger.debug(traceback.format_exc())
@@ -217,6 +326,7 @@ class RedshiftSource(
             logger.warning(err)
         return None
 
+    @calculate_execution_time()
     def get_table_partition_details(
         self, table_name: str, schema_name: str, inspector: Inspector
     ) -> Tuple[bool, Optional[TablePartition]]:
@@ -233,7 +343,7 @@ class RedshiftSource(
                         )
                     ]
                 )
-            return True, partition_details
+                return True, partition_details
         return False, None
 
     def process_additional_table_constraints(
@@ -262,15 +372,16 @@ class RedshiftSource(
     def get_stored_procedures(self) -> Iterable[RedshiftStoredProcedure]:
         """List Snowflake stored procedures"""
         if self.source_config.includeStoredProcedures:
-            results = self.engine.execute(
+            results = self.connection.execute(
                 REDSHIFT_GET_STORED_PROCEDURES.format(
-                    schema_name=self.context.database_schema,
+                    schema_name=self.context.get().database_schema,
                 )
             ).all()
             for row in results:
                 stored_procedure = RedshiftStoredProcedure.parse_obj(dict(row))
                 yield stored_procedure
 
+    @calculate_execution_time_generator()
     def yield_stored_procedure(
         self, stored_procedure: RedshiftStoredProcedure
     ) -> Iterable[Either[CreateStoredProcedureRequest]]:
@@ -286,9 +397,9 @@ class RedshiftSource(
                 databaseSchema=fqn.build(
                     metadata=self.metadata,
                     entity_type=DatabaseSchema,
-                    service_name=self.context.database_service,
-                    database_name=self.context.database,
-                    schema_name=self.context.database_schema,
+                    service_name=self.context.get().database_service,
+                    database_name=self.context.get().database,
+                    schema_name=self.context.get().database_schema,
                 ),
             )
             yield Either(right=stored_procedure_request)
@@ -312,7 +423,7 @@ class RedshiftSource(
         start, _ = get_start_and_end(self.source_config.queryLogDuration)
         query = REDSHIFT_GET_STORED_PROCEDURE_QUERIES.format(
             start_date=start,
-            database_name=self.context.database,
+            database_name=self.context.get().database,
         )
 
         queries_dict = self.procedure_queries_dict(
@@ -320,3 +431,26 @@ class RedshiftSource(
         )
 
         return queries_dict
+
+    def mark_tables_as_deleted(self):
+        """
+        Use the current inspector to mark tables as deleted
+        """
+        if self.incremental.enabled:
+            if not self.context.get().__dict__.get("database"):
+                raise ValueError(
+                    "No Database found in the context. We cannot run the table deletion."
+                )
+
+            if self.source_config.markDeletedTables:
+                logger.info(
+                    f"Mark Deleted Tables set to True. Processing database [{self.context.get().database}]"
+                )
+                yield from delete_entity_by_name(
+                    self.metadata,
+                    entity_type=Table,
+                    entity_names=self.context.get_global().deleted_tables,
+                    mark_deleted_entity=self.source_config.markDeletedTables,
+                )
+        else:
+            yield from super().mark_tables_as_deleted()

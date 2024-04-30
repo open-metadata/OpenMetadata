@@ -11,16 +11,33 @@
  *  limitations under the License.
  */
 
-import { Badge, Button, Card, Col, Divider, Row, Space } from 'antd';
-import { isNil } from 'lodash';
-import React, { useCallback } from 'react';
+import {
+  Badge,
+  Button,
+  Card,
+  Col,
+  Divider,
+  Row,
+  Space,
+  Table,
+  Typography,
+} from 'antd';
+import { isEmpty, isNil } from 'lodash';
+import React, { useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { LazyLog } from 'react-lazylog';
 import { ReactComponent as IconSuccessBadge } from '../../../../assets/svg/success-badge.svg';
+import { getEntityStatsData } from '../../../../utils/ApplicationUtils';
 import { formatDateTimeWithTimezone } from '../../../../utils/date-time/DateTimeUtils';
 import { formatJsonString } from '../../../../utils/StringsUtils';
+import AppBadge from '../../../common/Badge/Badge.component';
 import CopyToClipboardButton from '../../../common/CopyToClipboardButton/CopyToClipboardButton';
-import { AppLogsViewerProps, JobStats } from './AppLogsViewer.interface';
+import './app-logs-viewer.less';
+import {
+  AppLogsViewerProps,
+  EntityStats,
+  JobStats,
+} from './AppLogsViewer.interface';
 
 const AppLogsViewer = ({ data }: AppLogsViewerProps) => {
   const { t } = useTranslation();
@@ -74,7 +91,7 @@ const AppLogsViewer = ({ data }: AppLogsViewerProps) => {
 
   const statsRender = useCallback(
     (jobStats: JobStats) => (
-      <Card size="small">
+      <Card data-testid="stats-component" size="small">
         <Row gutter={[16, 8]}>
           <Col span={24}>
             <Space wrap direction="horizontal" size={0}>
@@ -96,6 +113,7 @@ const AppLogsViewer = ({ data }: AppLogsViewerProps) => {
                 <span className="m-l-xs">
                   <Space size={8}>
                     <Badge
+                      showZero
                       className="request-badge running"
                       count={jobStats.totalRecords}
                       overflowCount={99999999}
@@ -105,6 +123,7 @@ const AppLogsViewer = ({ data }: AppLogsViewerProps) => {
                     />
 
                     <Badge
+                      showZero
                       className="request-badge success"
                       count={jobStats.successRecords}
                       overflowCount={99999999}
@@ -142,10 +161,110 @@ const AppLogsViewer = ({ data }: AppLogsViewerProps) => {
     [timestamp, formatDateTimeWithTimezone]
   );
 
+  const tableColumn = useMemo(() => {
+    const entityTotalJobStatsData =
+      successContext?.stats?.jobStats || failureContext?.stats?.jobStats;
+
+    return isEmpty(entityTotalJobStatsData)
+      ? []
+      : [
+          {
+            title: t('label.name'),
+            dataIndex: 'name',
+            key: 'name',
+          },
+          {
+            title: (
+              <div className="d-flex items-center">
+                <Typography.Text>
+                  {t('label.entity-record-plural', {
+                    entity: t('label.total'),
+                  })}{' '}
+                </Typography.Text>
+                <AppBadge
+                  className="entity-stats total m-l-sm"
+                  label={entityTotalJobStatsData.totalRecords}
+                />
+              </div>
+            ),
+            dataIndex: 'totalRecords',
+            key: 'totalRecords',
+            render: (text: string) => (
+              <Typography.Text className="text-primary">{text}</Typography.Text>
+            ),
+          },
+          {
+            title: (
+              <div className="d-flex items-center">
+                <Typography.Text>
+                  {t('label.entity-record-plural', {
+                    entity: t('label.success'),
+                  })}{' '}
+                </Typography.Text>
+                <AppBadge
+                  className="entity-stats success m-l-sm"
+                  label={entityTotalJobStatsData.successRecords}
+                />
+              </div>
+            ),
+            dataIndex: 'successRecords',
+            key: 'successRecords',
+            render: (text: string) => (
+              <Typography.Text className="text-success">{text}</Typography.Text>
+            ),
+          },
+          {
+            title: (
+              <div className="d-flex items-center">
+                <Typography.Text>
+                  {t('label.entity-record-plural', {
+                    entity: t('label.failed'),
+                  })}{' '}
+                </Typography.Text>
+                <AppBadge
+                  className="entity-stats failure m-l-sm"
+                  label={entityTotalJobStatsData.failedRecords}
+                />
+              </div>
+            ),
+            dataIndex: 'failedRecords',
+            key: 'failedRecords',
+            render: (text: string) => (
+              <Typography.Text className="text-failure">{text}</Typography.Text>
+            ),
+          },
+        ];
+  }, [successContext, failureContext]);
+
+  const entityStatsRenderer = useCallback(
+    (entityStats: EntityStats) => {
+      return (
+        <Table
+          bordered
+          className="m-t-md"
+          columns={tableColumn}
+          data-testid="app-entity-stats-history-table"
+          dataSource={getEntityStatsData(entityStats)}
+          pagination={false}
+          rowKey="name"
+          scroll={{ y: 200 }}
+          size="small"
+        />
+      );
+    },
+    [tableColumn]
+  );
+
   return (
     <>
       {successContext?.stats && statsRender(successContext?.stats.jobStats)}
       {failureContext?.stats && statsRender(failureContext?.stats.jobStats)}
+
+      {successContext?.stats?.entityStats &&
+        entityStatsRenderer(successContext.stats.entityStats)}
+      {failureContext?.stats?.entityStats &&
+        entityStatsRenderer(failureContext.stats.entityStats)}
+
       {logsRender(
         formatJsonString(
           JSON.stringify(

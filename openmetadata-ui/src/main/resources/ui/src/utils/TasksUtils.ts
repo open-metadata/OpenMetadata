@@ -17,9 +17,10 @@ import i18Next from 'i18next';
 import { isEmpty, isEqual, isUndefined } from 'lodash';
 import { ActivityFeedTabs } from '../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
 import {
-  getDatabaseDetailsPath,
-  getDatabaseSchemaDetailsPath,
+  getEntityDetailsPath,
+  getGlossaryTermDetailsPath,
   getServiceDetailsPath,
+  getUserPath,
   PLACEHOLDER_ROUTE_ENTITY_TYPE,
   PLACEHOLDER_ROUTE_FQN,
   ROUTES,
@@ -46,6 +47,7 @@ import { TaskType, Thread } from '../generated/entity/feed/thread';
 import { EntityReference } from '../generated/entity/type';
 import { TagLabel } from '../generated/type/tagLabel';
 import { SearchSourceAlias } from '../interface/search.interface';
+import { IncidentManagerTabs } from '../pages/IncidentManager/IncidentManager.interface';
 import {
   EntityData,
   Option,
@@ -67,7 +69,7 @@ import { getContainerByFQN } from '../rest/storageAPI';
 import { getStoredProceduresByFqn } from '../rest/storedProceduresAPI';
 import { getTableDetailsByFQN } from '../rest/tableAPI';
 import { getTopicByFqn } from '../rest/topicsAPI';
-import { getEntityDetailLink, getPartialNameFromTableFQN } from './CommonUtils';
+import { getPartialNameFromTableFQN } from './CommonUtils';
 import { ContainerFields } from './ContainerDetailUtils';
 import {
   defaultFields as DashboardFields,
@@ -83,6 +85,7 @@ import { getEntityFQN, getEntityType } from './FeedUtils';
 import { getGlossaryBreadcrumbs } from './GlossaryUtils';
 import { defaultFields as MlModelFields } from './MlModelDetailsUtils';
 import { defaultFields as PipelineFields } from './PipelineDetailsUtils';
+import { getIncidentManagerDetailPagePath } from './RouterUtils';
 import serviceUtilClassBase from './ServiceUtilClassBase';
 import { STORED_PROCEDURE_DEFAULT_FIELDS } from './StoredProceduresUtils';
 import { getEncodedFqn } from './StringsUtils';
@@ -172,7 +175,28 @@ export const getTaskDetailPath = (task: Thread) => {
   const entityFqn = getEntityFQN(task.about) ?? '';
   const entityType = getEntityType(task.about) ?? '';
 
-  return getEntityDetailLink(
+  if (entityType === EntityType.TEST_CASE) {
+    return getIncidentManagerDetailPagePath(
+      entityFqn,
+      IncidentManagerTabs.ISSUES
+    );
+  } else if (entityType === EntityType.USER) {
+    return getUserPath(
+      entityFqn,
+      EntityTabs.ACTIVITY_FEED,
+      ActivityFeedTabs.TASKS
+    );
+  } else if (
+    [EntityType.GLOSSARY, EntityType.GLOSSARY_TERM].includes(entityType)
+  ) {
+    return getGlossaryTermDetailsPath(
+      entityFqn,
+      EntityTabs.ACTIVITY_FEED,
+      ActivityFeedTabs.TASKS
+    );
+  }
+
+  return getEntityDetailsPath(
     entityType as EntityType,
     entityFqn,
     EntityTabs.ACTIVITY_FEED,
@@ -329,7 +353,8 @@ export const getBreadCrumbList = (
       (entityData as Table).database?.fullyQualifiedName || '',
       [FqnPart.Database]
     ),
-    url: getDatabaseDetailsPath(
+    url: getEntityDetailsPath(
+      EntityType.DATABASE,
       (entityData as Table).database?.fullyQualifiedName || ''
     ),
   };
@@ -339,7 +364,8 @@ export const getBreadCrumbList = (
       (entityData as Table).databaseSchema?.fullyQualifiedName || '',
       [FqnPart.Schema]
     ),
-    url: getDatabaseSchemaDetailsPath(
+    url: getEntityDetailsPath(
+      EntityType.DATABASE_SCHEMA,
       (entityData as Table).databaseSchema?.fullyQualifiedName || ''
     ),
   };
@@ -535,7 +561,9 @@ export const fetchEntityDetail = (
 
       break;
     case EntityType.GLOSSARY:
-      getGlossariesByName(entityFQN, { fields: TabSpecificField.TAGS })
+      getGlossariesByName(entityFQN, {
+        fields: [TabSpecificField.OWNER, TabSpecificField.TAGS].join(','),
+      })
         .then((res) => {
           setEntityData(res);
         })
@@ -544,7 +572,7 @@ export const fetchEntityDetail = (
       break;
     case EntityType.GLOSSARY_TERM:
       getGlossaryTermByFQN(entityFQN, {
-        fields: TabSpecificField.TAGS,
+        fields: [TabSpecificField.OWNER, TabSpecificField.TAGS].join(','),
       })
         .then((res) => {
           setEntityData(res);

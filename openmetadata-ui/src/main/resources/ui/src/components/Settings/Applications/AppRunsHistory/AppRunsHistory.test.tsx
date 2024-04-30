@@ -19,7 +19,6 @@ import {
 import userEvent from '@testing-library/user-event';
 import { Table as AntdTable } from 'antd';
 import React from 'react';
-import { NO_DATA_PLACEHOLDER } from '../../../../constants/constants';
 import { AppType } from '../../../../generated/entity/applications/app';
 import { mockApplicationData } from '../../../../mocks/rests/applicationAPI.mock';
 import AppRunsHistory from './AppRunsHistory.component';
@@ -121,6 +120,10 @@ jest.mock('react-router-dom', () => ({
   })),
 }));
 
+jest.mock('../../../../constants/constants', () => ({
+  NO_DATA_PLACEHOLDER: '--',
+}));
+
 const mockProps1 = {
   appData: mockApplicationData,
   maxRecords: 10,
@@ -150,7 +153,7 @@ describe('AppRunsHistory component', () => {
       userEvent.click(screen.getByText('label.log-plural'));
     });
 
-    expect(screen.queryByText(NO_DATA_PLACEHOLDER)).not.toBeInTheDocument();
+    expect(screen.queryByText('--')).not.toBeInTheDocument();
 
     expect(screen.getByText('NextPrevious')).toBeInTheDocument();
   });
@@ -236,6 +239,6 @@ describe('AppRunsHistory component', () => {
     render(<AppRunsHistory />);
     await waitForElementToBeRemoved(() => screen.getByText('TableLoader'));
 
-    expect(screen.getByText(NO_DATA_PLACEHOLDER)).toBeInTheDocument();
+    expect(screen.getByText('--')).toBeInTheDocument();
   });
 });

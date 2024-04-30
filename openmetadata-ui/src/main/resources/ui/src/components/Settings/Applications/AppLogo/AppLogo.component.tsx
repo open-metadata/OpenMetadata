@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 import { Avatar } from 'antd';
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
+import applicationsClassBase from '../AppDetails/ApplicationsClassBase';
 
 const AppLogo = ({
   logo,
@@ -22,18 +23,21 @@ const AppLogo = ({
 }) => {
   const [appLogo, setAppLogo] = useState<JSX.Element | null>(null);
 
-  useEffect(() => {
+  const fetchLogo = useCallback(async () => {
     if (!logo) {
-      import(`../../../../assets/svg/${appName}.svg`).then((data) => {
-        const Icon = data.ReactComponent as React.ComponentType<
-          JSX.IntrinsicElements['svg']
-        >;
-        setAppLogo(<Icon height={55} width={55} />);
-      });
+      const data = await applicationsClassBase.importAppLogo(appName);
+      const Icon = data.ReactComponent as React.ComponentType<
+        JSX.IntrinsicElements['svg']
+      >;
+      setAppLogo(<Icon />);
     } else {
       setAppLogo(logo);
     }
-  }, [appName, logo]);
+  }, [logo, appName]);
+
+  useEffect(() => {
+    fetchLogo();
+  }, [appName]);
 
   return <Avatar className="flex-center bg-grey-1" icon={appLogo} size={100} />;
 };

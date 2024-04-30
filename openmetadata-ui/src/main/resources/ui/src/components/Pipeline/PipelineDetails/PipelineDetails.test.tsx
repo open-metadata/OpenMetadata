@@ -84,8 +84,8 @@ jest.mock('../../Entity/EntityRightPanel/EntityRightPanel', () => {
   return jest.fn().mockReturnValue(<p>EntityRightPanel</p>);
 });
 
-jest.mock('../../Auth/AuthProviders/AuthProvider', () => ({
-  useAuthContext: jest.fn().mockReturnValue({
+jest.mock('../../../hooks/useApplicationStore', () => ({
+  useApplicationStore: jest.fn().mockReturnValue({
     currentUser: {
       id: 'testUser',
     },
@@ -212,7 +212,6 @@ jest.mock(
 );
 
 jest.mock('../../../utils/TableUtils', () => ({
-  getFilterIcon: jest.fn().mockReturnValue(<p>FilterIcon</p>),
   getTagsWithoutTier: jest.fn().mockReturnValue([]),
   getTierTags: jest.fn().mockReturnValue([]),
 }));

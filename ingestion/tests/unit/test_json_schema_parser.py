@@ -30,15 +30,18 @@ class JsonSchemaParserTests(TestCase):
         "properties": {
             "firstName": {
             "type": "string",
+            "title": "First Name",
             "description": "The person's first name."
             },
             "lastName": {
             "type": "string",
+            "title": "Last Name",
             "description": "The person's last name."
             },
             "age": {
             "description": "Age in years which must be equal to or greater than zero.",
             "type": "integer",
+            "title": "Person Age",
             "minimum": 0
             }
         }
@@ -57,6 +60,12 @@ class JsonSchemaParserTests(TestCase):
             str(field.name.__root__) for field in self.parsed_schema[0].children
         }
         self.assertEqual(field_names, {"firstName", "lastName", "age"})
+
+        # validate display names
+        field_display_names = {
+            str(field.displayName) for field in self.parsed_schema[0].children
+        }
+        self.assertEqual(field_display_names, {"First Name", "Last Name", "Person Age"})
 
     def test_field_types(self):
         field_types = {

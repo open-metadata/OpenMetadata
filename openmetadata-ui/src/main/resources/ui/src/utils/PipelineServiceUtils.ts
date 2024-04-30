@@ -23,6 +23,7 @@ import domoPipelineConnection from '../jsons/connectionSchemas/connections/pipel
 import fivetranConnection from '../jsons/connectionSchemas/connections/pipeline/fivetranConnection.json';
 import gluePipelineConnection from '../jsons/connectionSchemas/connections/pipeline/gluePipelineConnection.json';
 import nifiConnection from '../jsons/connectionSchemas/connections/pipeline/nifiConnection.json';
+import openLineageConnection from '../jsons/connectionSchemas/connections/pipeline/openLineageConnection.json';
 import splineConnection from '../jsons/connectionSchemas/connections/pipeline/splineConnection.json';
 
 export const getPipelineConfig = (type: PipelineServiceType) => {
@@ -77,6 +78,11 @@ export const getPipelineConfig = (type: PipelineServiceType) => {
     }
     case PipelineServiceType.Spline: {
       schema = splineConnection;
+
+      break;
+    }
+    case PipelineServiceType.OpenLineage: {
+      schema = openLineageConnection;
 
       break;
     }

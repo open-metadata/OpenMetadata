@@ -24,7 +24,7 @@ public class SuggestionFilter {
     StringBuilder condition = new StringBuilder();
     condition.append("WHERE TRUE ");
     if (suggestionType != null) {
-      condition.append(String.format(" AND type = '%s' ", suggestionType.value()));
+      condition.append(String.format(" AND suggestionType = '%s' ", suggestionType.value()));
     }
     if (suggestionStatus != null) {
       condition.append(String.format(" AND status = '%s' ", suggestionStatus.value()));

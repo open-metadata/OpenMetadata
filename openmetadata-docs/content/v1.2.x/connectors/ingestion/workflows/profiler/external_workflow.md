@@ -45,7 +45,7 @@ pip install "openmetadata-ingestion[<connector>,datalake,trino]~=1.2.1"
 ```
 
 Where `<connector>` is the name of the connector that you want to run against. Each specific installation command
-will be shared on its documentation [page](https://docs.open-metadata.org/v1.2.x/connectors/database).
+will be shared on its documentation [page](/connectors/database).
 
 For example, to run against Athena, we need to install:
 
@@ -60,7 +60,7 @@ pip install "openmetadata-ingestion[athena,datalake,trino]~=1.2.1"
 ## 1. Define the YAML Config
 
 You will need to prepare a yaml file for the data profiler depending on the database source. 
-You can get details of how to define a yaml file for data profiler for each connector [here](https://docs.open-metadata.org/v1.2.x/connectors/database).
+You can get details of how to define a yaml file for data profiler for each connector [here](/connectors/database).
 
 For example, consider if the data source was snowflake, then the yaml file would have looked like as follows.
 
@@ -105,6 +105,7 @@ processor:
     #       bucketName: awsdatalake-testing
     #       prefix: data/sales/demo1
     #       overwriteData: false
+    #       filePathPattern: "{service_name}/{database_name}_{database_schema_name}_{table_name}.parquet"
     #       storageConfig:
     #         awsRegion: us-east-2
     #         awsAccessKeyId: <your-access-key-id>
@@ -123,6 +124,7 @@ processor:
     #       bucketName: awsdatalake-testing
     #       prefix: data/sales/demo1
     #       overwriteData: false
+    #       filePathPattern: "{service_name}/{database_name}_{database_schema_name}_{table_name}.parquet"
     #       storageConfig:
     #         awsRegion: us-east-2
     #         awsAccessKeyId: <your-access-key-id>

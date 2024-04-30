@@ -12,23 +12,23 @@ import org.openmetadata.service.util.JsonUtils;
 public record TagIndex(Tag tag) implements SearchIndex {
   private static final List<String> excludeFields = List.of("changeDescription");
 
-  public Map<String, Object> buildESDoc() {
-    Map<String, Object> doc = JsonUtils.getMap(tag);
-    SearchIndexUtils.removeNonIndexableFields(doc, excludeFields);
+  public List<SearchSuggest> getSuggest() {
     List<SearchSuggest> suggest = new ArrayList<>();
     suggest.add(SearchSuggest.builder().input(tag.getFullyQualifiedName()).weight(5).build());
     suggest.add(SearchSuggest.builder().input(tag.getName()).weight(10).build());
-    doc.put(
-        "fqnParts",
-        getFQNParts(
-            tag.getFullyQualifiedName(), suggest.stream().map(SearchSuggest::getInput).toList()));
+    return suggest;
+  }
+
+  public Map<String, Object> buildESDoc() {
+    Map<String, Object> doc = JsonUtils.getMap(tag);
+    SearchIndexUtils.removeNonIndexableFields(doc, excludeFields);
+    Map<String, Object> commonAttributes = getCommonAttributesMap(tag, Entity.TAG);
+    doc.putAll(commonAttributes);
     if (tag.getDisabled() != null && tag.getDisabled()) {
       doc.put("disabled", tag.getDisabled());
     } else {
       doc.put("disabled", "false");
     }
-    doc.put("suggest", suggest);
-    doc.put("entityType", Entity.TAG);
     return doc;
   }
 

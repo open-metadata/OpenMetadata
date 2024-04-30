@@ -36,6 +36,7 @@ class TestCaseDefinition(ConfigModel):
     testDefinitionName: str
     columnName: Optional[str] = None
     parameterValues: Optional[List[TestCaseParameterValue]]
+    computePassedFailedRowCount: Optional[bool] = False
 
 
 class TestSuiteProcessorConfig(ConfigModel):

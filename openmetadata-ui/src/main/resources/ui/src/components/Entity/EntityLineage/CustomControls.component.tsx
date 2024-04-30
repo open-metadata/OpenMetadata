@@ -29,7 +29,7 @@ import { ReactComponent as ExitFullScreen } from '../../../assets/svg/exit-full-
 import { ReactComponent as FullScreen } from '../../../assets/svg/full-screen.svg';
 import { ReactComponent as EditIconColor } from '../../../assets/svg/ic-edit-lineage-colored.svg';
 import { ReactComponent as EditIcon } from '../../../assets/svg/ic-edit-lineage.svg';
-import { PRIMERY_COLOR } from '../../../constants/constants';
+import { ReactComponent as ExportIcon } from '../../../assets/svg/ic-export.svg';
 import { NO_PERMISSION_FOR_ACTION } from '../../../constants/HelperTextUtil';
 import {
   LINEAGE_DEFAULT_QUICK_FILTERS,
@@ -37,6 +37,7 @@ import {
 } from '../../../constants/Lineage.constants';
 import { useLineageProvider } from '../../../context/LineageProvider/LineageProvider';
 import { SearchIndex } from '../../../enums/search.enum';
+import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { getAssetsPageQuickFilters } from '../../../utils/AdvancedSearchUtils';
 import { handleSearchFilterOption } from '../../../utils/CommonUtils';
 import { getLoadingStatusValue } from '../../../utils/EntityLineageUtils';
@@ -59,22 +60,22 @@ const CustomControls: FC<ControlProps> = ({
   handleFullScreenViewClick,
   onExitFullScreenViewClick,
 }: ControlProps) => {
+  const { theme } = useApplicationStore();
   const { t } = useTranslation();
   const [dialogVisible, setDialogVisible] = useState<boolean>(false);
   const {
     nodes,
     lineageConfig,
-    expandAllColumns,
     onLineageEditClick,
     zoomValue,
     loading,
     status,
     reactFlowInstance,
-    toggleColumnView,
     isEditMode,
     onLineageConfigUpdate,
     onQueryFilterUpdate,
     onNodeClick,
+    onExportClick,
   } = useLineageProvider();
   const [selectedFilter, setSelectedFilter] = useState<string[]>([]);
   const [selectedQuickFilters, setSelectedQuickFilters] = useState<
@@ -248,26 +249,35 @@ const CustomControls: FC<ControlProps> = ({
         </Col>
         <Col flex="250px">
           <Space className="justify-end w-full" size={16}>
-            <Button
-              ghost
-              className="expand-btn"
-              data-testid="expand-column"
-              type="primary"
-              onClick={toggleColumnView}>
-              {expandAllColumns
-                ? t('label.collapse-all')
-                : t('label.expand-all')}
-            </Button>
+            <Tooltip
+              title={t('label.export-entity', {
+                entity: t('label.lineage'),
+              })}>
+              <Button
+                className="flex-center"
+                data-testid="lineage-export"
+                disabled={isEditMode}
+                icon={
+                  <span className="anticon">
+                    <ExportIcon
+                      color={theme.primaryColor}
+                      height={14}
+                      width={14}
+                    />
+                  </span>
+                }
+                onClick={onExportClick}
+              />
+            </Tooltip>
 
             {handleFullScreenViewClick && (
               <Tooltip title={t('label.fit-to-screen')}>
                 <Button
-                  className="custom-control-fit-screen-button"
                   data-testid="full-screen"
                   icon={
                     <span className="anticon">
                       <FullScreen
-                        color={PRIMERY_COLOR}
+                        color={theme.primaryColor}
                         height={16}
                         width={16}
                       />
@@ -280,12 +290,11 @@ const CustomControls: FC<ControlProps> = ({
             {onExitFullScreenViewClick && (
               <Tooltip title={t('label.exit-fit-to-screen')}>
                 <Button
-                  className=" custom-control-fit-screen-button"
                   data-testid="exit-full-screen"
                   icon={
                     <span className="anticon">
                       <ExitFullScreen
-                        color={PRIMERY_COLOR}
+                        color={theme.primaryColor}
                         height={16}
                         width={16}
                       />
@@ -298,12 +307,14 @@ const CustomControls: FC<ControlProps> = ({
 
             <Tooltip title={t('label.setting-plural')}>
               <Button
-                className=" custom-control-fit-screen-button"
                 data-testid="lineage-config"
                 disabled={isEditMode}
                 icon={
                   <SettingOutlined
-                    style={{ fontSize: '16px', color: PRIMERY_COLOR }}
+                    style={{
+                      fontSize: '16px',
+                      color: theme.primaryColor,
+                    }}
                   />
                 }
                 onClick={() => setDialogVisible(true)}

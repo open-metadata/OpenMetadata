@@ -11,6 +11,35 @@
       "type": "string",
       "enum": ["DatabaseMetadata"],
       "default": "DatabaseMetadata"
+    },
+    "incremental": {
+      "description": "Use incremental Metadata extraction after the first execution. This is commonly done by getting the changes from Audit tables on the supporting databases.",
+      "type": "object",
+      "title": "Incremental Metadata Extraction Configuration",
+      "properties": {
+        "enabled": {
+          "description": "If True, enables Metadata Extraction to be incremental",
+          "type": "boolean",
+          "default": false,
+          "title": "Enabled"
+        },
+        "lookbackDays": {
+          "description": "Number os days to search back for a successful pipeline run. The timestamp of the last found successful pipeline run will be used as a base to search for updated entities.",
+          "type": "integer",
+          "default": 7,
+          "title": "Successful Pipeline Run Lookback Days"
+        },
+        "safetyMarginDays": {
+          "description": "Number of days to add to the last successful pipeline run timestamp to search for updated entities.",
+          "type": "integer",
+          "default": 1,
+          "title": "Safety Margin Days"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "enabled"
+      ]
     }
   },
   "properties": {
@@ -93,6 +122,17 @@
       "description": "Regex to only fetch databases that matches the pattern.",
       "$ref": "../type/filterPattern.json#/definitions/filterPattern",
       "title": "Database Filter Pattern"
+    },
+    "threads": {
+      "description": "Number of Threads to use in order to paralellize Table ingestion.",
+      "type": "integer",
+      "default": 1,
+      "title": "Number of Threads"
+    },
+    "incremental": {
+      "title": "Incremental Metadata Extraction Configuration",
+      "description": "Use incremental Metadata extraction after the first execution. This is commonly done by getting the changes from Audit tables on the supporting databases.",
+      "$ref": "#/definitions/incremental"
     }
   },
   "additionalProperties": false

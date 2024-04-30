@@ -93,7 +93,7 @@ Then, you can prepare `Run Configurations` to execute the ingestion as you would
 {% image src="/images/v1.3/developers/contribute/build-code-and-run-tests/pycharm-run-config.png" alt="PyCharm run config" caption=" " /%}
 
 Note that in the example we are preparing a configuration to run and test Superset. In order to understand how to run
-ingestions via the CLI, you can refer to each connector's [docs](https://docs.open-metadata.org/connectors/dashboard/superset/cli).
+ingestions via the CLI, you can refer to each connector's [docs](/connectors/dashboard/superset).
 
 The important part is that we are not running a script, but rather a `module`: `metadata`. Based on this, we can work as
 we would usually do with the CLI for any ingestion, profiler, or test workflow.

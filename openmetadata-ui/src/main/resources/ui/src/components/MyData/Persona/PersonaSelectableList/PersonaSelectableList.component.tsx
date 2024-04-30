@@ -112,42 +112,47 @@ export const PersonaSelectableList = ({
   }
 
   return (
-    <Popover
-      destroyTooltipOnHide
-      content={
-        <SelectableList
-          customTagRenderer={PersonaListItemRenderer}
-          fetchOptions={fetchOptions}
-          multiSelect={multiSelect}
-          searchPlaceholder={t('label.search-for-type', {
-            type: t('label.persona'),
-          })}
-          selectedItems={selectedPersonas}
-          onCancel={() => setPopupVisible(false)}
-          onUpdate={handleUpdate}
-        />
-      }
-      open={popupVisible}
-      overlayClassName="user-select-popover p-0"
-      placement="bottomRight"
-      showArrow={false}
-      trigger="click"
-      onOpenChange={setPopupVisible}
-      {...popoverProps}>
-      {children ?? (
-        <Tooltip
-          title={t('label.edit-entity', {
-            entity: t('label.persona'),
-          })}>
-          <Button
-            className="p-0 flex-center"
-            data-testid="edit-persona"
-            icon={<EditIcon color={DE_ACTIVE_COLOR} width="14px" />}
-            size="small"
-            type="text"
+    // Used Button to stop click propagation event anywhere in the form to parent User.component collapsible panel
+    <Button
+      className="remove-button-default-styling"
+      onClick={(e) => e.stopPropagation()}>
+      <Popover
+        destroyTooltipOnHide
+        content={
+          <SelectableList
+            customTagRenderer={PersonaListItemRenderer}
+            fetchOptions={fetchOptions}
+            multiSelect={multiSelect}
+            searchPlaceholder={t('label.search-for-type', {
+              type: t('label.persona'),
+            })}
+            selectedItems={selectedPersonas}
+            onCancel={() => setPopupVisible(false)}
+            onUpdate={handleUpdate}
           />
-        </Tooltip>
-      )}
-    </Popover>
+        }
+        open={popupVisible}
+        overlayClassName="user-select-popover p-0"
+        placement="bottomRight"
+        showArrow={false}
+        trigger="click"
+        onOpenChange={setPopupVisible}
+        {...popoverProps}>
+        {children ?? (
+          <Tooltip
+            title={t('label.edit-entity', {
+              entity: t('label.persona'),
+            })}>
+            <Button
+              className="p-0 flex-center"
+              data-testid="edit-persona"
+              icon={<EditIcon color={DE_ACTIVE_COLOR} width="14px" />}
+              size="small"
+              type="text"
+            />
+          </Tooltip>
+        )}
+      </Popover>
+    </Button>
   );
 };

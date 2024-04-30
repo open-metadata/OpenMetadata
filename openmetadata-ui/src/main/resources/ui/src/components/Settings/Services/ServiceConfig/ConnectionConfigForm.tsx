@@ -38,14 +38,7 @@ import {
   ServicesType,
 } from '../../../../interface/service.interface';
 import { getPipelineServiceHostIp } from '../../../../rest/ingestionPipelineAPI';
-import { getDashboardConfig } from '../../../../utils/DashboardServiceUtils';
-import { getDatabaseConfig } from '../../../../utils/DatabaseServiceUtils';
 import { formatFormDataForSubmit } from '../../../../utils/JSONSchemaFormUtils';
-import { getMessagingConfig } from '../../../../utils/MessagingServiceUtils';
-import { getMetadataConfig } from '../../../../utils/MetadataServiceUtils';
-import { getMlmodelConfig } from '../../../../utils/MlmodelServiceUtils';
-import { getPipelineConfig } from '../../../../utils/PipelineServiceUtils';
-import { getSearchServiceConfig } from '../../../../utils/SearchServiceUtils';
 import serviceUtilClassBase from '../../../../utils/ServiceUtilClassBase';
 import AirflowMessageBanner from '../../../common/AirflowMessageBanner/AirflowMessageBanner';
 import FormBuilder from '../../../common/FormBuilder/FormBuilder';
@@ -130,32 +123,44 @@ const ConnectionConfigForm: FunctionComponent<Props> = ({
 
     switch (serviceCategory) {
       case ServiceCategory.DATABASE_SERVICES: {
-        connSch = getDatabaseConfig(serviceType as DatabaseServiceType);
+        connSch = serviceUtilClassBase.getDatabaseServiceConfig(
+          serviceType as DatabaseServiceType
+        );
 
         break;
       }
       case ServiceCategory.MESSAGING_SERVICES: {
-        connSch = getMessagingConfig(serviceType as MessagingServiceType);
+        connSch = serviceUtilClassBase.getMessagingServiceConfig(
+          serviceType as MessagingServiceType
+        );
 
         break;
       }
       case ServiceCategory.DASHBOARD_SERVICES: {
-        connSch = getDashboardConfig(serviceType as DashboardServiceType);
+        connSch = serviceUtilClassBase.getDashboardServiceConfig(
+          serviceType as DashboardServiceType
+        );
 
         break;
       }
       case ServiceCategory.PIPELINE_SERVICES: {
-        connSch = getPipelineConfig(serviceType as PipelineServiceType);
+        connSch = serviceUtilClassBase.getPipelineServiceConfig(
+          serviceType as PipelineServiceType
+        );
 
         break;
       }
       case ServiceCategory.ML_MODEL_SERVICES: {
-        connSch = getMlmodelConfig(serviceType as MlModelServiceType);
+        connSch = serviceUtilClassBase.getMlModelServiceConfig(
+          serviceType as MlModelServiceType
+        );
 
         break;
       }
       case ServiceCategory.METADATA_SERVICES: {
-        connSch = getMetadataConfig(serviceType as MetadataServiceType);
+        connSch = serviceUtilClassBase.getMetadataServiceConfig(
+          serviceType as MetadataServiceType
+        );
 
         break;
       }
@@ -167,7 +172,9 @@ const ConnectionConfigForm: FunctionComponent<Props> = ({
         break;
       }
       case ServiceCategory.SEARCH_SERVICES: {
-        connSch = getSearchServiceConfig(serviceType as SearchServiceType);
+        connSch = serviceUtilClassBase.getSearchServiceConfig(
+          serviceType as SearchServiceType
+        );
 
         break;
       }

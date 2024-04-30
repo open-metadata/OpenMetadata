@@ -498,6 +498,7 @@ public class PolicyResource extends EntityResource<Policy, PolicyRepository> {
       @Parameter(description = "Expression of validating rule", schema = @Schema(type = "string"))
           @PathParam("expression")
           String expression) {
+    authorizer.authorizeAdmin(securityContext);
     CompiledRule.validateExpression(expression, Boolean.class);
   }
 

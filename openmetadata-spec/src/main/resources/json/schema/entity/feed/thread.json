@@ -4,7 +4,6 @@
   "title": "Thread",
   "description": "This schema defines the Thread entity. A Thread is a collection of posts made by the users. The first post that starts a thread is **about** a data asset **from** a user. Other users can respond to this post by creating new posts in the thread. Note that bot users can also interact with a thread. A post can contains links that mention Users or other Data Assets.",
   "type": "object",
-
   "definitions": {
     "taskType": {
       "javaType": "org.openmetadata.schema.type.TaskType",
@@ -109,7 +108,7 @@
       "javaType": "org.openmetadata.schema.type.ThreadType",
       "type": "string",
       "description": "Type of thread.",
-      "enum": ["Conversation", "Task", "Announcement"],
+      "enum": ["Conversation", "Task", "Announcement", "Chatbot"],
       "javaEnums": [
         {
           "name": "Conversation"
@@ -119,6 +118,9 @@
         },
         {
           "name": "Announcement"
+        },
+        {
+          "name": "Chatbot"
         }
       ],
       "default": "Conversation"
@@ -143,6 +145,17 @@
       },
       "required": ["startTime", "endTime"],
       "additionalProperties": false
+    },
+    "chatbotDetails": {
+      "javaType": "org.openmetadata.schema.type.ChatbotDetails",
+      "description": "Details about the Chatbot conversation. This is only applicable if thread is of type Chatbot.",
+      "type": "object",
+      "properties": {
+        "query": {
+          "description": "The query being discussed with the Chatbot",
+          "type": "string"
+        }
+      }
     },
     "post": {
       "javaType": "org.openmetadata.schema.type.Post",
@@ -198,6 +211,66 @@
       "description": "Entity Id of the entity in `about` that the thread belongs to.",
       "$ref": "../../type/basic.json#/definitions/uuid"
     },
+    "entityType": {
+      "description": "Entity Type the thread is about.",
+      "type": "string"
+    },
+    "entityUrlLink": {
+      "description": "Link to the entity in `about` that the thread belongs to.",
+      "type": "string"
+    },
+    "generatedBy": {
+      "description": "User or team that generated the thread.",
+      "type": "string",
+      "enum": ["user", "system"],
+      "default": "user"
+    },
+    "cardStyle": {
+      "description": "Card style for the thread.",
+      "type": "string",
+      "enum": ["default", "logicalTestCaseAdded", "entityCreated", "entityDeleted", "entitySoftDeleted", "description", "tags", "owner", "testCaseResult", "customProperties", "assets", "domain"],
+      "default": "default"
+    },
+    "fieldOperation": {
+      "description": "Operation on thread, whether the field was added, or updated or deleted.",
+      "type": "string",
+      "enum": ["added", "updated", "deleted", "none"],
+      "default": "updated"
+    },
+    "feedInfo": {
+      "description": "Entity Id of the entity in `about` that the thread belongs to.",
+      "type": "object",
+      "properties": {
+        "headerMessage": {
+            "description": "Header message for the feed.",
+            "type": "string"
+        },
+        "fieldName": {
+            "description": "Field Name message for the feed.",
+            "type": "string"
+        },
+        "entitySpecificInfo": {
+          "oneOf": [
+            {
+              "$ref": "./description.json"
+            },
+            {
+              "$ref": "./owner.json"
+            },
+            {
+              "$ref": "./testCaseResult.json"
+            },
+            {
+              "$ref": "./tag.json"
+            },
+            {
+              "$ref": "./entityInfo.json"
+            }
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
     "addressedTo": {
       "description": "User or team this thread is addressed to in format <#E::{entities}::{entityName}::{field}::{fieldValue}.",
       "$ref": "../../type/basic.json#/definitions/entityLink"
@@ -245,6 +318,10 @@
     "announcement": {
       "description": "Details about the announcement. This is only applicable if thread is of type announcement.",
       "$ref": "#/definitions/announcementDetails"
+    },
+    "chatbot": {
+      "description": "Details about the Chatbot conversation. This is only applicable if thread is of type Chatbot.",
+      "$ref": "#/definitions/chatbotDetails"
     }
   },
   "required": ["id", "about", "message"],

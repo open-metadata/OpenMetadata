@@ -12,8 +12,9 @@ source:
       type: DashboardMetadata
       dashboardFilterPattern: {}
       chartFilterPattern: {}
-      dbServiceNames:
-      - local_redshift_metabase
+      lineageInformation:
+        dbServiceNames:
+        - local_redshift_metabase
 sink:
   type: metadata-rest
   config: {}

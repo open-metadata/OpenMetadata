@@ -13,5 +13,7 @@ public interface NativeApplication extends Job {
 
   void configure();
 
+  void raisePreviewMessage(App app);
+
   default void startApp(JobExecutionContext jobExecutionContext) {}
 }

@@ -155,8 +155,8 @@ class DomoDashboardUnitTest(TestCase):
             mock_domopipeline_config["source"],
             self.config.workflowConfig.openMetadataServerConfig,
         )
-        self.domodashboard.context.__dict__["dashboard"] = MOCK_DASHBOARD.name
-        self.domodashboard.context.__dict__[
+        self.domodashboard.context.get().__dict__["dashboard"] = MOCK_DASHBOARD.name
+        self.domodashboard.context.get().__dict__[
             "dashboard_service"
         ] = MOCK_DASHBOARD_SERVICE.fullyQualifiedName.__root__
 

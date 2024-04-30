@@ -30,8 +30,8 @@ import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import TagsContainerV2 from '../../components/Tag/TagsContainerV2/TagsContainerV2';
 import { DisplayType } from '../../components/Tag/TagsViewer/TagsViewer.interface';
 import {
-  getDatabaseDetailsPath,
-  getVersionPathWithTab,
+  getEntityDetailsPath,
+  getVersionPath,
 } from '../../constants/constants';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import {
@@ -162,16 +162,13 @@ function DatabaseVersionPage() {
     () => ({
       versionHandler: (newVersion = version) => {
         history.push(
-          getVersionPathWithTab(
-            EntityType.DATABASE,
-            decodedEntityFQN,
-            newVersion,
-            tab
-          )
+          getVersionPath(EntityType.DATABASE, decodedEntityFQN, newVersion, tab)
         );
       },
       backHandler: () => {
-        history.push(getDatabaseDetailsPath(decodedEntityFQN));
+        history.push(
+          getEntityDetailsPath(EntityType.DATABASE, decodedEntityFQN, tab)
+        );
       },
     }),
     [decodedEntityFQN, decodedEntityFQN, tab]
@@ -179,7 +176,7 @@ function DatabaseVersionPage() {
 
   const handleTabChange = (activeKey: string) => {
     history.push(
-      getVersionPathWithTab(
+      getVersionPath(
         EntityType.DATABASE,
         decodedEntityFQN,
         String(version),

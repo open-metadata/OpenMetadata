@@ -113,7 +113,7 @@ class BaseTestValidator(ABC):
             sampleData=None,
         )
 
-        if (row_count is not None) and (
+        if (row_count is not None and row_count != 0) and (
             # we'll need at least one of these to be not None to compute the other
             (failed_rows is not None)
             or (passed_rows is not None)

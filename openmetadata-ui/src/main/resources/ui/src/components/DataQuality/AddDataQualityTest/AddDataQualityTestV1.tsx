@@ -26,7 +26,7 @@ import {
 } from 'react';
 import { useHistory, useParams } from 'react-router-dom';
 import { HTTP_STATUS_CODE } from '../../../constants/Auth.constants';
-import { getTableTabPath } from '../../../constants/constants';
+import { getEntityDetailsPath } from '../../../constants/constants';
 import {
   DEFAULT_RANGE_DATA,
   STEPS_FOR_ADD_TEST_CASE,
@@ -38,6 +38,7 @@ import { OwnerType } from '../../../enums/user.enum';
 import { CreateTestCase } from '../../../generated/api/tests/createTestCase';
 import { TestCase } from '../../../generated/tests/testCase';
 import { TestSuite } from '../../../generated/tests/testSuite';
+import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { useFqn } from '../../../hooks/useFqn';
 import {
   createExecutableTestSuite,
@@ -48,7 +49,6 @@ import {
   getEntityName,
 } from '../../../utils/EntityUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
-import { useAuthContext } from '../../Auth/AuthProviders/AuthProvider';
 import ResizablePanels from '../../common/ResizablePanels/ResizablePanels';
 import SuccessScreen from '../../common/SuccessScreen/SuccessScreen';
 import TitleBreadcrumb from '../../common/TitleBreadcrumb/TitleBreadcrumb.component';
@@ -77,14 +77,15 @@ const AddDataQualityTestV1: React.FC<AddDataQualityTestProps> = ({
   const [testSuiteData, setTestSuiteData] = useState<TestSuite>();
   const [testCaseRes, setTestCaseRes] = useState<TestCase>();
   const [addIngestion, setAddIngestion] = useState(false);
-  const { currentUser } = useAuthContext();
+  const { currentUser } = useApplicationStore();
 
   const breadcrumb = useMemo(() => {
     const data: TitleBreadcrumbProps['titleLinks'] = [
       ...getEntityBreadcrumbs(table, EntityType.TABLE),
       {
         name: getEntityName(table),
-        url: getTableTabPath(
+        url: getEntityDetailsPath(
+          EntityType.TABLE,
           table.fullyQualifiedName ?? '',
           EntityTabs.PROFILER
         ),
@@ -111,7 +112,8 @@ const AddDataQualityTestV1: React.FC<AddDataQualityTestProps> = ({
 
   const handleRedirection = () => {
     history.push({
-      pathname: getTableTabPath(
+      pathname: getEntityDetailsPath(
+        EntityType.TABLE,
         table.fullyQualifiedName ?? '',
         EntityTabs.PROFILER
       ),

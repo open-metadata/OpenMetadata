@@ -52,7 +52,7 @@ public class SlackEventPublisher implements Destination<ChangeEvent> {
       client = getClient(subscription.getTimeout(), subscription.getReadTimeout());
 
       // Build Target
-      if (webhook.getEndpoint() != null) {
+      if (webhook != null && webhook.getEndpoint() != null) {
         String slackWebhookURL = webhook.getEndpoint().toString();
         if (!CommonUtil.nullOrEmpty(slackWebhookURL)) {
           target = client.target(slackWebhookURL).request();

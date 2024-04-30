@@ -21,6 +21,7 @@ import static org.openmetadata.schema.type.EventType.ENTITY_FIELDS_CHANGED;
 import static org.openmetadata.schema.type.EventType.ENTITY_NO_CHANGE;
 import static org.openmetadata.schema.type.EventType.ENTITY_RESTORED;
 import static org.openmetadata.schema.type.EventType.ENTITY_SOFT_DELETED;
+import static org.openmetadata.schema.type.EventType.ENTITY_UPDATED;
 import static org.openmetadata.schema.type.Include.ALL;
 import static org.openmetadata.schema.type.Include.DELETED;
 import static org.openmetadata.schema.type.Include.NON_DELETED;
@@ -120,10 +121,12 @@ import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EventType;
+import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.LifeCycle;
 import org.openmetadata.schema.type.ProviderType;
 import org.openmetadata.schema.type.Relationship;
+import org.openmetadata.schema.type.SuggestionType;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.TaskType;
 import org.openmetadata.schema.type.ThreadType;
@@ -145,7 +148,10 @@ import org.openmetadata.service.jdbi3.CollectionDAO.ExtensionRecord;
 import org.openmetadata.service.jdbi3.FeedRepository.TaskWorkflow;
 import org.openmetadata.service.jdbi3.FeedRepository.ThreadContext;
 import org.openmetadata.service.resources.tags.TagLabelUtil;
+import org.openmetadata.service.search.SearchClient;
+import org.openmetadata.service.search.SearchListFilter;
 import org.openmetadata.service.search.SearchRepository;
+import org.openmetadata.service.search.SearchSortFilter;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.FullyQualifiedName;
@@ -450,16 +456,16 @@ public abstract class EntityRepository<T extends EntityInterface> {
   public final void initializeEntity(T entity) {
     T existingEntity = findByNameOrNull(entity.getFullyQualifiedName(), ALL);
     if (existingEntity != null) {
-      LOG.info("{} {} is already initialized", entityType, entity.getFullyQualifiedName());
+      LOG.debug("{} {} is already initialized", entityType, entity.getFullyQualifiedName());
       return;
     }
 
-    LOG.info("{} {} is not initialized", entityType, entity.getFullyQualifiedName());
+    LOG.debug("{} {} is not initialized", entityType, entity.getFullyQualifiedName());
     entity.setUpdatedBy(ADMIN_USER_NAME);
     entity.setUpdatedAt(System.currentTimeMillis());
     entity.setId(UUID.randomUUID());
     create(null, entity);
-    LOG.info("Created a new {} {}", entityType, entity.getFullyQualifiedName());
+    LOG.debug("Created a new {} {}", entityType, entity.getFullyQualifiedName());
   }
 
   public final T copy(T entity, CreateEntity request, String updatedBy) {
@@ -974,6 +980,45 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
   }
 
+  public ResultList<T> listFromSearchWithOffset(
+      UriInfo uriInfo,
+      Fields fields,
+      SearchListFilter searchListFilter,
+      int limit,
+      int offset,
+      String q)
+      throws IOException {
+    return listFromSearchWithOffset(uriInfo, fields, searchListFilter, limit, offset, null, q);
+  }
+
+  public ResultList<T> listFromSearchWithOffset(
+      UriInfo uriInfo,
+      Fields fields,
+      SearchListFilter searchListFilter,
+      int limit,
+      int offset,
+      SearchSortFilter searchSortFilter,
+      String q)
+      throws IOException {
+    List<T> entityList = new ArrayList<>();
+    Long total = 0L;
+
+    if (limit > 0) {
+      SearchClient.SearchResultListMapper results =
+          searchRepository.listWithOffset(
+              searchListFilter, limit, offset, entityType, searchSortFilter, q);
+      total = results.getTotal();
+      for (Map<String, Object> json : results.getResults()) {
+        T entity = setFieldsInternal(JsonUtils.readOrConvertValue(json, entityClass), fields);
+        setInheritedFields(entity, fields);
+        clearFieldsInternal(entity, fields);
+        entityList.add(withHref(uriInfo, entity));
+      }
+      return new ResultList<>(entityList, offset, limit, total.intValue());
+    }
+    throw new IllegalArgumentException("Limit should be greater than 0");
+  }
+
   @Transaction
   private DeleteResponse<T> delete(
       String deletedBy, T original, boolean recursive, boolean hardDelete) {
@@ -1036,7 +1081,13 @@ public abstract class EntityRepository<T extends EntityInterface> {
       throw new IllegalArgumentException(CatalogExceptionMessage.entityIsNotEmpty(entityType));
     }
     // Delete all the contained entities
-    for (EntityRelationshipRecord entityRelationshipRecord : childrenRecords) {
+    deleteChildren(childrenRecords, hardDelete, updatedBy);
+  }
+
+  @Transaction
+  protected void deleteChildren(
+      List<EntityRelationshipRecord> children, boolean hardDelete, String updatedBy) {
+    for (EntityRelationshipRecord entityRelationshipRecord : children) {
       LOG.info(
           "Recursively {} deleting {} {}",
           hardDelete ? "hard" : "soft",
@@ -1536,7 +1587,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
         : null;
   }
 
-  public final void ensureSingleRelationship(
+  public static void ensureSingleRelationship(
       String entityType,
       UUID id,
       List<EntityRelationshipRecord> relations,
@@ -1793,7 +1844,48 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
 
     result.withSuccessRequest(success);
+
+    // Create a Change Event on successful addition/removal of assets
+    if (result.getStatus().equals(ApiStatus.SUCCESS)) {
+      EntityInterface entityInterface = Entity.getEntity(fromEntity, entityId, "id", ALL);
+      ChangeDescription change =
+          addBulkAddRemoveChangeDescription(
+              entityInterface.getVersion(), isAdd, request.getAssets(), null);
+      ChangeEvent changeEvent =
+          getChangeEvent(entityInterface, change, fromEntity, entityInterface.getVersion());
+      Entity.getCollectionDAO().changeEventDAO().insert(JsonUtils.pojoToJson(changeEvent));
+    }
+
     return result;
+  }
+
+  private ChangeDescription addBulkAddRemoveChangeDescription(
+      Double version, boolean isAdd, Object newValue, Object oldValue) {
+    FieldChange fieldChange =
+        new FieldChange().withName("assets").withNewValue(newValue).withOldValue(oldValue);
+    ChangeDescription change = new ChangeDescription().withPreviousVersion(version);
+    if (isAdd) {
+      change.getFieldsAdded().add(fieldChange);
+    } else {
+      change.getFieldsDeleted().add(fieldChange);
+    }
+    return change;
+  }
+
+  private ChangeEvent getChangeEvent(
+      EntityInterface updated, ChangeDescription change, String entityType, Double prevVersion) {
+    return new ChangeEvent()
+        .withId(UUID.randomUUID())
+        .withEntity(updated)
+        .withChangeDescription(change)
+        .withEventType(ENTITY_UPDATED)
+        .withEntityType(entityType)
+        .withEntityId(updated.getId())
+        .withEntityFullyQualifiedName(updated.getFullyQualifiedName())
+        .withUserName(updated.getUpdatedBy())
+        .withTimestamp(System.currentTimeMillis())
+        .withCurrentVersion(updated.getVersion())
+        .withPreviousVersion(prevVersion);
   }
 
   /** Remove owner relationship for a given entity */
@@ -1907,6 +1999,25 @@ public abstract class EntityRepository<T extends EntityInterface> {
     return Entity.getEntityReferenceByName(Entity.DOMAIN, domainFqn, NON_DELETED);
   }
 
+  public final void validateDomain(EntityReference domain) {
+    if (!supportsDomain) {
+      throw new IllegalArgumentException(CatalogExceptionMessage.invalidField(FIELD_DOMAIN));
+    }
+    Entity.getEntityReferenceById(Entity.DOMAIN, domain.getId(), NON_DELETED);
+  }
+
+  public final void validateDataProducts(List<EntityReference> dataProducts) {
+    if (!supportsDataProducts) {
+      throw new IllegalArgumentException(CatalogExceptionMessage.invalidField(FIELD_DATA_PRODUCTS));
+    }
+
+    if (!nullOrEmpty(dataProducts)) {
+      for (EntityReference dataProduct : dataProducts) {
+        Entity.getEntityReferenceById(Entity.DATA_PRODUCT, dataProduct.getId(), NON_DELETED);
+      }
+    }
+  }
+
   /** Override this method to support downloading CSV functionality */
   public String exportToCsv(String name, String user) throws IOException {
     throw new IllegalArgumentException(csvNotSupported(entityType));
@@ -1934,13 +2045,20 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
   }
 
-  public SuggestionRepository.SuggestionWorkflow getSuggestionWorkflow(Suggestion suggestion) {
-    return new SuggestionRepository.SuggestionWorkflow(suggestion);
+  public SuggestionRepository.SuggestionWorkflow getSuggestionWorkflow(EntityInterface entity) {
+    return new SuggestionRepository.SuggestionWorkflow(entity);
   }
 
   public EntityInterface applySuggestion(
       EntityInterface entity, String childFQN, Suggestion suggestion) {
     return entity;
+  }
+
+  /**
+   * Bring in the necessary fields required to have all the information before applying a suggestion
+   */
+  public String getSuggestionFields(Suggestion suggestion) {
+    return suggestion.getType() == SuggestionType.SuggestTagLabel ? "tags" : "";
   }
 
   public final void validateTaskThread(ThreadContext threadContext) {
@@ -2263,6 +2381,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
               origDomain.getId(), Entity.DOMAIN, original.getId(), entityType, Relationship.HAS);
         }
         if (updatedDomain != null) {
+          validateDomain(updatedDomain);
           // Add relationship owner --- owns ---> ownedEntity
           LOG.info(
               "Adding domain {} for entity {}",
@@ -2283,6 +2402,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
       }
       List<EntityReference> origDataProducts = listOrEmpty(original.getDataProducts());
       List<EntityReference> updatedDataProducts = listOrEmpty(updated.getDataProducts());
+      validateDataProducts(updatedDataProducts);
       updateFromRelationships(
           FIELD_DATA_PRODUCTS,
           DATA_PRODUCT,
@@ -2299,6 +2419,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
       }
       List<EntityReference> origExperts = getEntityReferences(original.getExperts());
       List<EntityReference> updatedExperts = getEntityReferences(updated.getExperts());
+      validateUsers(updatedExperts);
       updateToRelationships(
           FIELD_EXPERTS,
           entityType,
@@ -2317,6 +2438,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
       }
       List<EntityReference> origReviewers = getEntityReferences(original.getReviewers());
       List<EntityReference> updatedReviewers = getEntityReferences(updated.getReviewers());
+      validateUsers(updatedReviewers);
       updateFromRelationships(
           "reviewers",
           Entity.USER,
@@ -2392,7 +2514,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
       } else if (fieldsChanged()) {
         newVersion = nextVersion(oldVersion);
       }
-      LOG.info(
+      LOG.debug(
           "{} {}->{} - Fields added {}, updated {}, deleted {}",
           original.getId(),
           oldVersion,
@@ -2872,6 +2994,15 @@ public abstract class EntityRepository<T extends EntityInterface> {
       EntityInterface aboutEntity = threadContext.getAboutEntity();
       aboutEntity.setTags(tags);
       return aboutEntity;
+    }
+  }
+
+  // Validate if a given column exists in the table
+  public static void validateColumn(Table table, String columnName) {
+    boolean validColumn =
+        table.getColumns().stream().anyMatch(col -> col.getName().equals(columnName));
+    if (!validColumn) {
+      throw new IllegalArgumentException("Invalid column name " + columnName);
     }
   }
 }

@@ -14,7 +14,7 @@
 import { Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
-import { isEmpty } from 'lodash';
+import { isEmpty, isUndefined } from 'lodash';
 import Qs from 'qs';
 import {
   default as React,
@@ -25,10 +25,10 @@ import {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
-import { useAuthContext } from '../../components/Auth/AuthProviders/AuthProvider';
 import Loader from '../../components/common/Loader/Loader';
 import Users from '../../components/Settings/Users/Users.component';
 import { User } from '../../generated/entity/teams/user';
+import { useApplicationStore } from '../../hooks/useApplicationStore';
 import { useFqn } from '../../hooks/useFqn';
 import { getUserByName, updateUserDetail } from '../../rest/userAPI';
 import { Transi18next } from '../../utils/CommonUtils';
@@ -41,7 +41,7 @@ const UserPage = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [userData, setUserData] = useState<User>({} as User);
   const [isError, setIsError] = useState(false);
-  const { currentUser, updateCurrentUser } = useAuthContext();
+  const { currentUser, updateCurrentUser } = useApplicationStore();
 
   const fetchUserData = async () => {
     try {
@@ -104,17 +104,30 @@ const UserPage = () => {
   };
 
   const updateUserDetails = useCallback(
-    async (data: Partial<User>) => {
+    async (data: Partial<User>, key: keyof User) => {
       const updatedDetails = { ...userData, ...data };
       const jsonPatch = compare(userData, updatedDetails);
 
       try {
         const response = await updateUserDetail(userData.id, jsonPatch);
         if (response) {
-          if (userData.id === currentUser?.id) {
-            updateCurrentUser(response);
+          const newCurrentUserData = {
+            ...currentUser,
+            [key]: response[key],
+          };
+          const newUserData = { ...userData, [key]: response[key] };
+
+          if (key === 'defaultPersona') {
+            if (isUndefined(response.defaultPersona)) {
+              // remove key from object if value is undefined
+              delete newCurrentUserData[key];
+              delete newUserData[key];
+            }
           }
-          setUserData((prev) => ({ ...prev, ...response }));
+          if (userData.id === currentUser?.id) {
+            updateCurrentUser(newCurrentUserData as User);
+          }
+          setUserData(newUserData);
         } else {
           throw t('message.unexpected-error');
         }

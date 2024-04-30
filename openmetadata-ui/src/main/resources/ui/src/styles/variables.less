@@ -11,11 +11,15 @@
  *  limitations under the License.
  */
 
-@primary-color: #0968da;
-@primary-color-hover: #e6f4ff;
-@secondary-color: #b02aac;
-@link-color: #0968da;
-@success-color: #008376;
+@primary-color: ~'var(--ant-primary-color)';
+@success-color: ~'var(--ant-success-color)';
+@warning-color: ~'var(--ant-warning-color)';
+@error-color: ~'var(--ant-error-color)';
+@info-color: ~'var(--ant-info-color)';
+@link-color: ~'var(--ant-primary-color)';
+@primary-1: ~'var(--ant-primary-1)';
+@radio-button-checked-bg: ~'var(--ant-primary-1)';
+@left-nav-item-background: ~'var(--ant-primary-1)';
 @green-1: #28a744;
 @green-2: #ebf9f4;
 @green-3: #48ca9e;
@@ -23,14 +27,13 @@
 @green-5: #91ffd8;
 @green-6: #effffb;
 @green-7: #00b871;
-@warning-color: #ffc34e;
 @yellow-1: #fbf2db;
 @yellow-2: #ffbe0e;
 @yellow-3: #ffbe0e1a;
 @yellow-4: #ffd978;
 @yellow-5: #fff8e6;
 @yellow-6: #c18100;
-@error-color: #ff4c3b;
+@yellow-7: #e7b85d;
 @error-light-color: #e5493740;
 @failed-color: #cb2431;
 @red-1: #cb2531;
@@ -46,11 +49,12 @@
 @blue-1: #ebf6fe;
 @blue-2: #3ca2f4;
 @blue-3: #0950c5;
+@blue-4: #f1f9ff;
+@partial-success-1: #06a4a4;
+@partial-success-2: #bdeeee;
 @black: #000000;
 @aborted-color: #efae2f;
-@info-color: #2196f3;
 @text-color: #292929;
-@text-color-secondary: #292929;
 @text-color-tertiary: #00000080;
 @grey-1: #f8f8f8;
 @grey-2: #f2f2f2;
@@ -58,6 +62,7 @@
 @grey-4: #757575;
 @grey-5: #fbfbfb;
 @grey-6: #f9f9f9;
+@grey-7: #9ca3af;
 @text-grey-muted: @grey-4;
 @font-size-base: 14px;
 @box-shadow-base: 0px 2px 10px rgba(0, 0, 0, 0.12);
@@ -76,14 +81,13 @@
 @global-border: 1px solid @border-color;
 @active-color: #e8f4ff;
 @background-color: #ffffff;
-@radio-button-checked-bg: @primary-color-hover;
-@announcement-background: #e3f2fd30;
-@announcement-background-dark: #9dd6ff;
-@announcement-border: #2196f3;
+@announcement-background: #0950c50d;
+@announcement-background-dark: #e1edff;
+@announcement-border: @blue-3;
+@announcement-border-light: #e2e2e2;
 @test-parameter-bg-color: #e7ebf0;
 @group-title-color: #76746f;
 @light-border-color: #f0f0f0;
-@left-nav-item-background: #e6f4ff;
 @code-background: #ebeff480;
 @timestamp-color: #9197b3;
 @left-sidebar-icon-hover: #edecf8;
@@ -127,3 +131,17 @@
 @severity-3-background: rgba(255, 165, 33, 0.1);
 @severity-4-background: rgba(255, 206, 41, 0.1);
 @severity-5-background: rgba(181, 198, 33, 0.1);
+
+// vertical paddings
+@padding-lg: 24px; // containers
+@padding-md: 16px; // small containers and buttons
+@padding-sm: 12px; // Form controls and items
+@padding-xs: 8px; // small items
+@padding-xss: 4px; // more small
+
+// vertical margins
+@margin-lg: 24px; // containers
+@margin-md: 16px; // small containers and buttons
+@margin-sm: 12px; // Form controls and items
+@margin-xs: 8px; // small items
+@margin-xss: 4px; // more small

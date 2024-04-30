@@ -14,7 +14,7 @@
 import { Col, Row, Tabs } from 'antd';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
-import { isEqual, isUndefined, omitBy } from 'lodash';
+import { isEmpty, isEqual, isUndefined, omitBy } from 'lodash';
 import { EntityTags } from 'Models';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -24,7 +24,6 @@ import ActivityFeedProvider, {
 } from '../../components/ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
 import { ActivityFeedTab } from '../../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
 import ActivityThreadPanel from '../../components/ActivityFeed/ActivityThreadPanel/ActivityThreadPanel';
-import { useAuthContext } from '../../components/Auth/AuthProviders/AuthProvider';
 import { CustomPropertyTable } from '../../components/common/CustomPropertyTable/CustomPropertyTable';
 import DescriptionV1 from '../../components/common/EntityDescription/DescriptionV1';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
@@ -39,7 +38,10 @@ import Lineage from '../../components/Lineage/Lineage.component';
 import { EntityName } from '../../components/Modals/EntityNameModal/EntityNameModal.interface';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import { SourceType } from '../../components/SearchedData/SearchedData.interface';
-import { getVersionPath } from '../../constants/constants';
+import {
+  getEntityDetailsPath,
+  getVersionPath,
+} from '../../constants/constants';
 import { FEED_COUNT_INITIAL_DATA } from '../../constants/entity.constants';
 import LineageProvider from '../../context/LineageProvider/LineageProvider';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
@@ -55,6 +57,7 @@ import {
 } from '../../generated/api/feed/createThread';
 import { Tag } from '../../generated/entity/classification/tag';
 import { SearchIndex, TagLabel } from '../../generated/entity/data/searchIndex';
+import { useApplicationStore } from '../../hooks/useApplicationStore';
 import { useFqn } from '../../hooks/useFqn';
 import { FeedCounts } from '../../interface/feed.interface';
 import { postThread } from '../../rest/feedsAPI';
@@ -73,10 +76,7 @@ import {
 } from '../../utils/CommonUtils';
 import { getEntityName } from '../../utils/EntityUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
-import {
-  defaultFields,
-  getSearchIndexTabPath,
-} from '../../utils/SearchIndexUtils';
+import { defaultFields } from '../../utils/SearchIndexUtils';
 import { getTagsWithoutTier, getTierTags } from '../../utils/TableUtils';
 import { createTagObject, updateTierTag } from '../../utils/TagsUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
@@ -89,7 +89,7 @@ function SearchIndexDetailsPage() {
   const { fqn: decodedSearchIndexFQN } = useFqn();
   const { t } = useTranslation();
   const history = useHistory();
-  const { currentUser } = useAuthContext();
+  const { currentUser } = useApplicationStore();
   const USERId = currentUser?.id ?? '';
   const [loading, setLoading] = useState<boolean>(true);
   const [searchIndexDetails, setSearchIndexDetails] = useState<SearchIndex>();
@@ -229,7 +229,13 @@ function SearchIndexDetailsPage() {
 
   const handleTabChange = (activeKey: string) => {
     if (activeKey !== activeTab) {
-      history.push(getSearchIndexTabPath(decodedSearchIndexFQN, activeKey));
+      history.push(
+        getEntityDetailsPath(
+          EntityType.SEARCH_INDEX,
+          decodedSearchIndexFQN,
+          activeKey
+        )
+      );
     }
   };
   const saveUpdatedSearchIndexData = useCallback(
@@ -386,6 +392,7 @@ function SearchIndexDetailsPage() {
                   entityName={entityName}
                   entityType={EntityType.SEARCH_INDEX}
                   hasEditAccess={editDescriptionPermission}
+                  isDescriptionExpanded={isEmpty(searchIndexDetails?.fields)}
                   isEdit={isEdit}
                   owner={searchIndexDetails?.owner}
                   showActions={!searchIndexDetails?.deleted}
@@ -409,16 +416,18 @@ function SearchIndexDetailsPage() {
               className="entity-tag-right-panel-container"
               data-testid="entity-right-panel"
               flex="320px">
-              <EntityRightPanel
+              <EntityRightPanel<EntityType.SEARCH_INDEX>
                 customProperties={searchIndexDetails}
                 dataProducts={searchIndexDetails?.dataProducts ?? []}
                 domain={searchIndexDetails?.domain}
+                editCustomAttributePermission={editCustomAttributePermission}
                 editTagPermission={editTagsPermission}
                 entityFQN={decodedSearchIndexFQN}
                 entityId={searchIndexDetails?.id ?? ''}
                 entityType={EntityType.SEARCH_INDEX}
                 selectedTags={searchIndexTags}
                 viewAllPermission={viewAllPermission}
+                onExtensionUpdate={onExtensionUpdate}
                 onTagSelectionChange={handleTagSelection}
                 onThreadLinkSelect={onThreadLinkSelect}
               />

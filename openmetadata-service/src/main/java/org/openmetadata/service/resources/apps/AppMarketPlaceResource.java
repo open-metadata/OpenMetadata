@@ -47,6 +47,7 @@ import org.openmetadata.schema.type.Include;
 import org.openmetadata.sdk.PipelineServiceClient;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
+import org.openmetadata.service.apps.ApplicationHandler;
 import org.openmetadata.service.clients.pipeline.PipelineServiceClientFactory;
 import org.openmetadata.service.jdbi3.AppMarketPlaceRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
@@ -211,7 +212,10 @@ public class AppMarketPlaceResource
           @QueryParam("include")
           @DefaultValue("non-deleted")
           Include include) {
-    return getInternal(uriInfo, securityContext, id, fieldsParam, include);
+    AppMarketPlaceDefinition definition =
+        getInternal(uriInfo, securityContext, id, fieldsParam, include);
+    definition.setPreview(ApplicationHandler.getInstance().isPreview(definition.getName()));
+    return definition;
   }
 
   @GET
@@ -247,7 +251,10 @@ public class AppMarketPlaceResource
           @QueryParam("include")
           @DefaultValue("non-deleted")
           Include include) {
-    return getByNameInternal(uriInfo, securityContext, name, fieldsParam, include);
+    AppMarketPlaceDefinition definition =
+        getByNameInternal(uriInfo, securityContext, name, fieldsParam, include);
+    definition.setPreview(ApplicationHandler.getInstance().isPreview(definition.getName()));
+    return definition;
   }
 
   @GET
@@ -442,7 +449,8 @@ public class AppMarketPlaceResource
             .withAppScreenshots(create.getAppScreenshots())
             .withFeatures(create.getFeatures())
             .withSourcePythonClass(create.getSourcePythonClass())
-            .withAllowConfiguration(create.getAllowConfiguration());
+            .withAllowConfiguration(create.getAllowConfiguration())
+            .withSystem(create.getSystem());
 
     // Validate App
     validateApplication(app);

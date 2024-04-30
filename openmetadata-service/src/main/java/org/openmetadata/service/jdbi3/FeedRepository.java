@@ -64,6 +64,7 @@ import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EventType;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.Post;
 import org.openmetadata.schema.type.Reaction;
 import org.openmetadata.schema.type.Relationship;
@@ -85,6 +86,9 @@ import org.openmetadata.service.resources.feeds.FeedUtil;
 import org.openmetadata.service.resources.feeds.MessageParser;
 import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
 import org.openmetadata.service.security.AuthorizationException;
+import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.security.policyevaluator.OperationContext;
+import org.openmetadata.service.security.policyevaluator.ResourceContext;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.JsonUtils;
@@ -402,6 +406,20 @@ public class FeedRepository {
     }
     TaskWorkflow workflow = threadContext.getTaskWorkflow();
     workflow.closeTask(user, closeTask);
+    task.withStatus(TaskStatus.Closed).withClosedBy(user).withClosedAt(System.currentTimeMillis());
+    thread.withTask(task).withUpdatedBy(user).withUpdatedAt(System.currentTimeMillis());
+
+    dao.feedDAO().update(thread.getId(), JsonUtils.pojoToJson(thread));
+    addClosingPost(thread, user, closeTask.getComment());
+    sortPosts(thread);
+  }
+
+  @Transaction
+  public void closeTaskWithoutWorkflow(Thread thread, String user, CloseTask closeTask) {
+    TaskDetails task = thread.getTask();
+    if (task.getStatus() != Open) {
+      return;
+    }
     task.withStatus(TaskStatus.Closed).withClosedBy(user).withClosedAt(System.currentTimeMillis());
     thread.withTask(task).withUpdatedBy(user).withUpdatedAt(System.currentTimeMillis());
 
@@ -771,6 +789,7 @@ public class FeedRepository {
     if (updated.getTask() != null) {
       populateAssignees(updated);
       updated.getTask().getAssignees().sort(compareEntityReference);
+      validateAssignee(updated);
     }
 
     if (updated.getAnnouncement() != null) {
@@ -785,11 +804,12 @@ public class FeedRepository {
   }
 
   public void checkPermissionsForResolveTask(
-      Thread thread, boolean closeTask, SecurityContext securityContext) {
+      Authorizer authorizer, Thread thread, boolean closeTask, SecurityContext securityContext) {
     String userName = securityContext.getUserPrincipal().getName();
     User user = Entity.getEntityByName(USER, userName, TEAMS_FIELD, NON_DELETED);
     EntityLink about = EntityLink.parse(thread.getAbout());
     EntityReference aboutRef = EntityUtil.validateEntityLink(about);
+    ThreadContext threadContext = getThreadContext(thread);
     if (Boolean.TRUE.equals(user.getIsAdmin())) {
       return; // Allow admin resolve/close task
     }
@@ -799,9 +819,27 @@ public class FeedRepository {
     // Allow if user created the task to close task (and not resolve task)
     EntityReference owner = Entity.getOwner(aboutRef);
     List<EntityReference> assignees = thread.getTask().getAssignees();
-    if (assignees.stream().anyMatch(assignee -> assignee.getName().equals(userName))
-        || owner.getName().equals(userName)
-        || closeTask && thread.getCreatedBy().equals(userName)) {
+    if (owner != null
+        && (owner.getName().equals(userName)
+            || closeTask && thread.getCreatedBy().equals(userName))) {
+      return;
+    }
+
+    // Allow if user is an assignee of the task and if the assignee has permissions to update the
+    // entity
+    if (assignees.stream().anyMatch(assignee -> assignee.getName().equals(userName))) {
+      // If entity does not exist, this is a create operation, else update operation
+      ResourceContext resourceContext =
+          new ResourceContext<>(aboutRef.getType(), aboutRef.getId(), null);
+      if (EntityUtil.isDescriptionTask(threadContext.getTaskWorkflow().getTaskType())) {
+        OperationContext operationContext =
+            new OperationContext(aboutRef.getType(), MetadataOperation.EDIT_DESCRIPTION);
+        authorizer.authorize(securityContext, operationContext, resourceContext);
+      } else if (EntityUtil.isTagTask(threadContext.getTaskWorkflow().getTaskType())) {
+        OperationContext operationContext =
+            new OperationContext(aboutRef.getType(), MetadataOperation.EDIT_TAGS);
+        authorizer.authorize(securityContext, operationContext, resourceContext);
+      }
       return;
     }
 
@@ -838,6 +876,13 @@ public class FeedRepository {
 
   private void validateAssignee(Thread thread) {
     if (thread != null && ThreadType.Task.equals(thread.getType())) {
+      String createdByUserName = thread.getCreatedBy();
+      User createdByUser =
+          Entity.getEntityByName(USER, createdByUserName, TEAMS_FIELD, NON_DELETED);
+      if (Boolean.TRUE.equals(createdByUser.getIsBot())) {
+        throw new IllegalArgumentException("Task cannot be created by bot only by user or teams");
+      }
+
       List<EntityReference> assignees = thread.getTask().getAssignees();
 
       // Assignees can only be user or teams
@@ -913,7 +958,7 @@ public class FeedRepository {
   }
 
   private boolean fieldsChanged(Thread original, Thread updated) {
-    // Patch supports isResolved, message, task assignees, reactions, and announcements for now
+    // Patch supports isResolved, message, task assignees, reactions, announcements and AI for now
     return !original.getResolved().equals(updated.getResolved())
         || !original.getMessage().equals(updated.getMessage())
         || (Collections.isEmpty(original.getReactions())
@@ -935,6 +980,10 @@ public class FeedRepository {
                 || !Objects.equals(
                     original.getAnnouncement().getEndTime(),
                     updated.getAnnouncement().getEndTime())))
+        || (original.getChatbot() == null && updated.getChatbot() != null)
+        || (original.getChatbot() != null
+            && updated.getChatbot() != null
+            && !original.getChatbot().getQuery().equals(updated.getChatbot().getQuery()))
         || (original.getTask() != null
             && (original.getTask().getAssignees().size() != updated.getTask().getAssignees().size()
                 || !original

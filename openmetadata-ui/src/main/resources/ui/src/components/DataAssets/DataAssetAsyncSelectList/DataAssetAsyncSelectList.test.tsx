@@ -102,18 +102,7 @@ const mockSearchAPIResponse = {
 describe('DataAssetAsyncSelectList', () => {
   function toggleOpen(container: ReturnType<typeof render>['container']): void {
     fireEvent.mouseDown(container.querySelector('.ant-select-selector'));
-    act(() => {
-      jest.runAllTimers();
-    });
   }
-
-  beforeEach(() => {
-    jest.useFakeTimers();
-  });
-
-  afterEach(() => {
-    jest.useRealTimers();
-  });
 
   it('should render without crashing', async () => {
     await act(async () => {

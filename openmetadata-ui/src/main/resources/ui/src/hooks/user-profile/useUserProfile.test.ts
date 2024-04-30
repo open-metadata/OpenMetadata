@@ -14,21 +14,18 @@ import { renderHook } from '@testing-library/react-hooks';
 import { getUserByName } from '../../rest/userAPI';
 import { useUserProfile } from './useUserProfile';
 
-jest.mock(
-  '../../context/ApplicationConfigProvider/ApplicationConfigProvider',
-  () => ({
-    useApplicationConfigContext: jest.fn().mockImplementation(() => ({
-      userProfilePics: {
-        chirag: {
-          profile: {
-            iamge512: 'profile512',
-          },
+jest.mock('../useApplicationStore', () => ({
+  useApplicationStore: jest.fn().mockImplementation(() => ({
+    userProfilePics: {
+      userJohn: {
+        profile: {
+          iamge512: 'profile512',
         },
       },
-      updateUserProfilePics: jest.fn(),
-    })),
-  })
-);
+    },
+    updateUserProfilePics: jest.fn(),
+  })),
+}));
 
 jest.mock('../../rest/userAPI', () => ({
   getUserByName: jest.fn(),
@@ -81,7 +78,7 @@ describe('useUserProfile hook', () => {
 
   it('should return profileURL & user data for name mentioned if already present', async () => {
     const { result } = renderHook(() =>
-      useUserProfile({ permission: true, name: 'chirag' })
+      useUserProfile({ permission: true, name: 'userJohn' })
     );
 
     expect(result.current[0]).toBe('');

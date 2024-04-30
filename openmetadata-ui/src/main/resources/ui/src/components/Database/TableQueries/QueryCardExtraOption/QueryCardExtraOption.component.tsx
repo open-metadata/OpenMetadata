@@ -12,7 +12,7 @@
  */
 import { Button, Dropdown, MenuProps, Space, Tag, Tooltip } from 'antd';
 import { isUndefined, split } from 'lodash';
-import React, { useMemo, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as EditIcon } from '../../../../assets/svg/edit-new.svg';
 import { ReactComponent as DeleteIcon } from '../../../../assets/svg/ic-delete.svg';
@@ -25,9 +25,14 @@ import { QueryVoteType } from '../TableQueries.interface';
 import { QueryCardExtraOptionProps } from './QueryCardExtraOption.interface';
 
 import { AxiosError } from 'axios';
+import Qs from 'qs';
+import { useHistory } from 'react-router-dom';
+import { useApplicationStore } from '../../../../hooks/useApplicationStore';
+import { useFqn } from '../../../../hooks/useFqn';
 import { deleteQuery } from '../../../../rest/queryAPI';
+import queryClassBase from '../../../../utils/QueryClassBase';
+import { getQueryPath } from '../../../../utils/RouterUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
-import { useAuthContext } from '../../../Auth/AuthProviders/AuthProvider';
 import ConfirmationModal from '../../../Modals/ConfirmationModal/ConfirmationModal';
 import './query-card-extra-option.style.less';
 
@@ -39,7 +44,10 @@ const QueryCardExtraOption = ({
   afterDeleteAction,
 }: QueryCardExtraOptionProps) => {
   const { EditAll, EditQueries, Delete } = permission;
-  const { currentUser } = useAuthContext();
+  const { fqn: datasetFQN } = useFqn();
+  const history = useHistory();
+  const QueryHeaderButton = queryClassBase.getQueryHeaderActionsButtons();
+  const { currentUser } = useApplicationStore();
   const { t } = useTranslation();
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [loading, setLoading] = useState<QueryVoteType | null>(null);
@@ -56,6 +64,13 @@ const QueryCardExtraOption = ({
       setIsDeleting(false);
     }
   };
+
+  const onExpandClick = useCallback(() => {
+    history.push({
+      search: Qs.stringify({ query: query.id }),
+      pathname: getQueryPath(datasetFQN, query.id ?? ''),
+    });
+  }, [query]);
 
   const dropdownItems = useMemo(() => {
     const items: MenuProps['items'] = [
@@ -130,16 +145,21 @@ const QueryCardExtraOption = ({
       className="query-card-extra-option"
       data-testid="extra-option-container"
       size={8}>
+      {QueryHeaderButton && (
+        <QueryHeaderButton onClickHandler={onExpandClick} />
+      )}
+
       <Tag className="query-lines" data-testid="query-line">
         {queryLine}
       </Tag>
+
       <Tooltip title={t('label.up-vote')}>
         <Button
           className="vote-button"
           data-testid="up-vote-btn"
           icon={
             voteStatus === QueryVoteType.votedUp ? (
-              <ThumbsUpFilled color="#008376" height={15} width={15} />
+              <ThumbsUpFilled className="text-success" height={15} width={15} />
             ) : (
               <ThumbsUpOutline height={15} width={15} />
             )
@@ -158,8 +178,7 @@ const QueryCardExtraOption = ({
           icon={
             voteStatus === QueryVoteType.votedDown ? (
               <ThumbsUpFilled
-                className="rotate-inverse"
-                color="#E7B85D"
+                className="rotate-inverse text-warning-7"
                 height={15}
                 width={15}
               />

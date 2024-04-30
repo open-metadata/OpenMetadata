@@ -21,7 +21,6 @@ import React, {
   useCallback,
   useEffect,
   useMemo,
-  useRef,
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -44,8 +43,8 @@ import EntityRightPanel from '../../components/Entity/EntityRightPanel/EntityRig
 import { EntityName } from '../../components/Modals/EntityNameModal/EntityNameModal.interface';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import {
-  getDatabaseSchemaDetailsPath,
-  getVersionPathWithTab,
+  getEntityDetailsPath,
+  getVersionPath,
   INITIAL_PAGING_VALUE,
 } from '../../constants/constants';
 import { FEED_COUNT_INITIAL_DATA } from '../../constants/entity.constants';
@@ -55,7 +54,11 @@ import {
   ResourceEntity,
 } from '../../context/PermissionProvider/PermissionProvider.interface';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
-import { EntityTabs, EntityType } from '../../enums/entity.enum';
+import {
+  EntityTabs,
+  EntityType,
+  TabSpecificField,
+} from '../../enums/entity.enum';
 import { CreateThread } from '../../generated/api/feed/createThread';
 import { Tag } from '../../generated/entity/classification/tag';
 import { DatabaseSchema } from '../../generated/entity/data/databaseSchema';
@@ -80,6 +83,7 @@ import {
   getFeedCounts,
   sortTagsCaseInsensitive,
 } from '../../utils/CommonUtils';
+import entityUtilClassBase from '../../utils/EntityUtilClassBase';
 import { getEntityName } from '../../utils/EntityUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import { getTagsWithoutTier, getTierTags } from '../../utils/TableUtils';
@@ -96,7 +100,6 @@ const DatabaseSchemaPage: FunctionComponent = () => {
     useParams<{ tab: EntityTabs }>();
   const { fqn: decodedDatabaseSchemaFQN } = useFqn();
   const history = useHistory();
-  const isMounting = useRef(true);
 
   const [threadType, setThreadType] = useState<ThreadType>(
     ThreadType.Conversation
@@ -127,6 +130,11 @@ const DatabaseSchemaPage: FunctionComponent = () => {
 
   const [updateProfilerSetting, setUpdateProfilerSetting] =
     useState<boolean>(false);
+
+  const extraDropdownContent = entityUtilClassBase.getManageExtraOptions(
+    EntityType.DATABASE_SCHEMA,
+    decodedDatabaseSchemaFQN
+  );
 
   const handleShowDeletedTables = (value: boolean) => {
     setShowDeletedTables(value);
@@ -169,7 +177,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
   const viewDatabaseSchemaPermission = useMemo(
     () =>
       databaseSchemaPermission.ViewAll || databaseSchemaPermission.ViewBasic,
-    [databaseSchemaPermission]
+    [databaseSchemaPermission?.ViewAll, databaseSchemaPermission?.ViewBasic]
   );
 
   const onThreadLinkSelect = useCallback(
@@ -204,7 +212,8 @@ const DatabaseSchemaPage: FunctionComponent = () => {
       const response = await getDatabaseSchemaDetailsByFQN(
         decodedDatabaseSchemaFQN,
         {
-          fields: 'owner,usageSummary,tags,domain,votes,extension',
+          // eslint-disable-next-line max-len
+          fields: `${TabSpecificField.OWNER},${TabSpecificField.USAGE_SUMMARY},${TabSpecificField.TAGS},${TabSpecificField.DOMAIN},${TabSpecificField.VOTES},${TabSpecificField.EXTENSION},${TabSpecificField.DATA_PRODUCTS}`,
           include: Include.All,
         }
       );
@@ -292,7 +301,8 @@ const DatabaseSchemaPage: FunctionComponent = () => {
     (activeKey: string) => {
       if (activeKey !== activeTab) {
         history.push({
-          pathname: getDatabaseSchemaDetailsPath(
+          pathname: getEntityDetailsPath(
+            EntityType.DATABASE_SCHEMA,
             decodedDatabaseSchemaFQN,
             activeKey
           ),
@@ -449,7 +459,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
   const versionHandler = useCallback(() => {
     currentVersion &&
       history.push(
-        getVersionPathWithTab(
+        getVersionPath(
           EntityType.DATABASE_SCHEMA,
           decodedDatabaseSchemaFQN,
           String(currentVersion),
@@ -496,7 +506,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
       fetchStoreProcedureCount();
       getEntityFeedCount();
     }
-  }, [viewDatabaseSchemaPermission, decodedDatabaseSchemaFQN]);
+  }, [viewDatabaseSchemaPermission]);
 
   useEffect(() => {
     if (viewDatabaseSchemaPermission && decodedDatabaseSchemaFQN) {
@@ -508,11 +518,6 @@ const DatabaseSchemaPage: FunctionComponent = () => {
     viewDatabaseSchemaPermission,
     deleted,
   ]);
-
-  // always Keep this useEffect at the end...
-  useEffect(() => {
-    isMounting.current = false;
-  }, []);
 
   const {
     editTagsPermission,
@@ -590,16 +595,18 @@ const DatabaseSchemaPage: FunctionComponent = () => {
             className="entity-tag-right-panel-container"
             data-testid="entity-right-panel"
             flex="320px">
-            <EntityRightPanel
+            <EntityRightPanel<EntityType.DATABASE_SCHEMA>
               customProperties={databaseSchema}
               dataProducts={databaseSchema?.dataProducts ?? []}
               domain={databaseSchema?.domain}
+              editCustomAttributePermission={editCustomAttributePermission}
               editTagPermission={editTagsPermission}
               entityFQN={decodedDatabaseSchemaFQN}
               entityId={databaseSchema?.id ?? ''}
               entityType={EntityType.DATABASE_SCHEMA}
               selectedTags={tags}
               viewAllPermission={viewAllPermission}
+              onExtensionUpdate={handleExtensionUpdate}
               onTagSelectionChange={handleTagSelection}
               onThreadLinkSelect={onThreadLinkSelect}
             />
@@ -723,6 +730,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
                 afterDomainUpdateAction={afterDomainUpdateAction}
                 dataAsset={databaseSchema}
                 entityType={EntityType.DATABASE_SCHEMA}
+                extraDropdownContent={extraDropdownContent}
                 permissions={databaseSchemaPermission}
                 onDisplayNameUpdate={handleUpdateDisplayName}
                 onOwnerUpdate={handleUpdateOwner}

@@ -46,7 +46,7 @@ from metadata.ingestion.ometa.mixins.patch_mixin_utils import (
 )
 from metadata.ingestion.ometa.utils import model_str
 from metadata.utils.deprecation import deprecated
-from metadata.utils.logger import ometa_logger
+from metadata.utils.logger import get_log_name, ometa_logger
 
 logger = ometa_logger()
 
@@ -119,6 +119,7 @@ class OMetaPatchMixin(OMetaPatchMixinBase):
         destination: T,
         allowed_fields: Optional[Dict] = None,
         restrict_update_fields: Optional[List] = None,
+        array_entity_fields: Optional[List] = None,
     ) -> Optional[T]:
         """
         Given an Entity type and Source entity and Destination entity,
@@ -140,6 +141,7 @@ class OMetaPatchMixin(OMetaPatchMixinBase):
                 destination=destination,
                 allowed_fields=allowed_fields,
                 restrict_update_fields=restrict_update_fields,
+                array_entity_fields=array_entity_fields,
             )
 
             if not patch:
@@ -153,9 +155,7 @@ class OMetaPatchMixin(OMetaPatchMixinBase):
 
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.error(
-                f"Error trying to PATCH {entity.__name__} [{source.id.__root__}]: {exc}"
-            )
+            logger.error(f"Error trying to PATCH {get_log_name(source)}: {exc}")
 
         return None
 
@@ -234,9 +234,10 @@ class OMetaPatchMixin(OMetaPatchMixinBase):
 
     def patch_test_case_definition(
         self,
-        source: TestCase,
+        test_case: TestCase,
         entity_link: str,
         test_case_parameter_values: Optional[List[TestCaseParameterValue]] = None,
+        compute_passed_failed_row_count: Optional[bool] = False,
     ) -> Optional[TestCase]:
         """Given a test case and a test case definition JSON PATCH the test case
 
@@ -245,7 +246,7 @@ class OMetaPatchMixin(OMetaPatchMixinBase):
             test_case_definition: test case definition to add
         """
         source: TestCase = self._fetch_entity_if_exists(
-            entity=TestCase, entity_id=source.id, fields=["testDefinition", "testSuite"]
+            entity=TestCase, entity_id=test_case.id, fields=["testDefinition", "testSuite"]  # type: ignore
         )  # type: ignore
 
         if not source:
@@ -256,6 +257,8 @@ class OMetaPatchMixin(OMetaPatchMixinBase):
         destination.entityLink = EntityLink(__root__=entity_link)
         if test_case_parameter_values:
             destination.parameterValues = test_case_parameter_values
+        if compute_passed_failed_row_count != source.computePassedFailedRowCount:
+            destination.computePassedFailedRowCount = compute_passed_failed_row_count
 
         return self.patch(entity=TestCase, source=source, destination=destination)
 

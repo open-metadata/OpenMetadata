@@ -105,7 +105,8 @@ For details step please refer to this [link](https://docs.microsoft.com/en-us/sq
 - **Password**: Password to connect to MSSQL.
 - **Host and Port**: Enter the fully qualified hostname and port number for your MSSQL deployment in the Host and Port field.
 - **URI String**: In case of a `pyodbc` connection.
-- **Database (Optional)**: The database of the data source is an optional parameter, if you would like to restrict the metadata reading to a single database. If left blank, OpenMetadata ingestion attempts to scan all the databases.
+- **Database**: The initial database to establish a connection to the data source.
+- **Ingest All Databases**: If you need to ingest multiple databases - aside from the initial one above - you can enable this option.
 
 {% partial file="/v1.3/connectors/database/advanced-configuration.md" /%}
 

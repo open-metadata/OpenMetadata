@@ -24,11 +24,16 @@ import static org.openmetadata.service.Entity.ADMIN_USER_NAME;
 import static org.openmetadata.service.Entity.SEPARATOR;
 import static org.openmetadata.service.security.SecurityUtil.authHeaders;
 
+import io.github.resilience4j.core.functions.CheckedRunnable;
+import io.github.resilience4j.retry.Retry;
+import io.github.resilience4j.retry.RetryConfig;
+import io.github.resilience4j.retry.RetryRegistry;
 import java.lang.reflect.Field;
 import java.net.URI;
 import java.text.DateFormat;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.Date;
@@ -36,6 +41,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.TimeUnit;
 import javax.json.JsonObject;
 import javax.json.JsonPatch;
 import javax.validation.constraints.Size;
@@ -84,6 +90,7 @@ import org.openmetadata.service.resources.glossary.GlossaryTermResourceTest;
 import org.openmetadata.service.resources.tags.TagResourceTest;
 import org.openmetadata.service.resources.teams.UserResourceTest;
 import org.openmetadata.service.security.SecurityUtil;
+import org.opentest4j.AssertionFailedError;
 
 @Slf4j
 public final class TestUtils {
@@ -182,6 +189,14 @@ public final class TestUtils {
                   .withUsername("admin")
                   .withPassword("admin"));
 
+  public static RetryRegistry elasticSearchRetryRegistry =
+      RetryRegistry.of(
+          RetryConfig.custom()
+              .maxAttempts(30) // about 3 seconds
+              .waitDuration(Duration.ofMillis(100))
+              .retryExceptions(RetryableAssertionError.class)
+              .build());
+
   public static void assertCustomProperties(
       List<CustomProperty> expected, List<CustomProperty> actual) {
     if (expected == actual) { // Take care of both being null
@@ -200,6 +215,10 @@ public final class TestUtils {
             expected.get(i).getPropertyType().getType(), actual.get(i).getPropertyType().getType());
       }
     }
+  }
+
+  public static boolean isCI() {
+    return System.getenv("CI") != null;
   }
 
   public enum UpdateType {
@@ -637,5 +656,41 @@ public final class TestUtils {
     if (expected == null) return;
     assertEquals(expected.getIconURL(), actual.getIconURL());
     assertEquals(expected.getColor(), actual.getColor());
+  }
+
+  public static void waitForEsAsyncOp() throws InterruptedException {
+    waitForEsAsyncOp(1000);
+  }
+
+  public static void waitForEsAsyncOp(Integer milliseconds) throws InterruptedException {
+    // Wait for the async operation to complete. We cannot use
+    // Awaitility here as the test method thread is not
+    // the owner of the async operation
+    TimeUnit.MILLISECONDS.sleep(milliseconds);
+  }
+
+  public static void assertEventually(String name, CheckedRunnable runnable) {
+    try {
+      Retry.decorateCheckedRunnable(
+              elasticSearchRetryRegistry.retry(name),
+              () -> {
+                try {
+                  runnable.run();
+                } catch (AssertionError e) {
+                  // translate AssertionErrors to Exceptions to that retry processes
+                  // them correctly. This is required because retry library only retries on
+                  // Exceptions and:
+                  // AssertionError -> Error -> Throwable
+                  // RetryableAssertionError -> Exception -> Throwable
+                  throw new RetryableAssertionError(e);
+                }
+              })
+          .run();
+    } catch (RetryableAssertionError e) {
+      throw new AssertionFailedError(
+          "Max retries exceeded polling for eventual assert", e.getCause());
+    } catch (Throwable e) {
+      throw new AssertionFailedError("Unexpected error while running retry: " + e.getMessage(), e);
+    }
   }
 }

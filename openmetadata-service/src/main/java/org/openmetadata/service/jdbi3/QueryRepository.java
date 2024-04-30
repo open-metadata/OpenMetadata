@@ -275,8 +275,9 @@ public class QueryRepository extends EntityRepository<Query> {
         String originalChecksum = EntityUtil.hash(original.getQuery());
         String updatedChecksum = EntityUtil.hash(updated.getQuery());
         if (!originalChecksum.equals(updatedChecksum)) {
+          updated.setChecksum(updatedChecksum);
           recordChange("query", original.getQuery(), updated.getQuery());
-          recordChange("checkSum", original.getChecksum(), updatedChecksum);
+          recordChange("checksum", original.getChecksum(), updated.getChecksum());
         }
       }
     }

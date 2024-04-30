@@ -82,7 +82,11 @@ const RelatedTerms = ({
       options,
       (arrVal, othVal) => arrVal.id === othVal.id
     ).filter((item) =>
-      selectedData.find((data) => data.value === item.fullyQualifiedName)
+      selectedData.find((data) =>
+        typeof data === 'string'
+          ? data === item.fullyQualifiedName
+          : data.value === item.fullyQualifiedName
+      )
     );
 
     let updatedGlossaryTerm = cloneDeep(glossaryTerm);

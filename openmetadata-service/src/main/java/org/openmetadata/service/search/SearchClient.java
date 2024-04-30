@@ -8,11 +8,17 @@ import java.text.ParseException;
 import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import javax.json.JsonArray;
+import javax.json.JsonObject;
 import javax.net.ssl.SSLContext;
 import javax.ws.rs.core.Response;
+import lombok.Getter;
 import org.apache.commons.lang3.tuple.Pair;
 import org.openmetadata.schema.dataInsight.DataInsightChartResult;
 import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration;
+import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.service.exception.CustomExceptionMessage;
 import org.openmetadata.service.search.models.IndexMapping;
 import org.openmetadata.service.util.SSLUtil;
@@ -21,6 +27,7 @@ import os.org.opensearch.action.bulk.BulkResponse;
 import os.org.opensearch.client.RequestOptions;
 
 public interface SearchClient {
+  ExecutorService asyncExecutor = Executors.newFixedThreadPool(1);
 
   String UPDATE = "update";
 
@@ -42,7 +49,7 @@ public interface SearchClient {
       "if((ctx._source.%s == null) || (ctx._source.%s.id == '%s')) { ctx._source.put('%s', params)}";
   String SOFT_DELETE_RESTORE_SCRIPT = "ctx._source.put('deleted', '%s')";
   String REMOVE_TAGS_CHILDREN_SCRIPT =
-      "for (int i = 0; i < ctx._source.tags.length; i++) { if (ctx._source.tags[i].tagFQN == '%s') { ctx._source.tags.remove(i) }}";
+      "for (int i = 0; i < ctx._source.tags.length; i++) { if (ctx._source.tags[i].tagFQN == params.fqn) { ctx._source.tags.remove(i) }}";
 
   String REMOVE_LINEAGE_SCRIPT =
       "for (int i = 0; i < ctx._source.lineage.length; i++) { if (ctx._source.lineage[i].doc_id == '%s') { ctx._source.lineage.remove(i) }}";
@@ -72,9 +79,31 @@ public interface SearchClient {
 
   Response search(SearchRequest request) throws IOException;
 
+  default ExecutorService getAsyncExecutor() {
+    return asyncExecutor;
+  }
+
+  SearchResultListMapper listWithOffset(
+      String filter,
+      int limit,
+      int offset,
+      String index,
+      SearchSortFilter searchSortFilter,
+      String q)
+      throws IOException;
+
   Response searchBySourceUrl(String sourceUrl) throws IOException;
 
   Response searchLineage(
+      String fqn,
+      int upstreamDepth,
+      int downstreamDepth,
+      String queryFilter,
+      boolean deleted,
+      String entityType)
+      throws IOException;
+
+  Map<String, Object> searchLineageInternal(
       String fqn,
       int upstreamDepth,
       int downstreamDepth,
@@ -87,6 +116,8 @@ public interface SearchClient {
 
   Response aggregate(String index, String fieldName, String value, String query) throws IOException;
 
+  JsonObject aggregate(String query, String index, JsonObject aggregationJson) throws IOException;
+
   Response suggest(SearchRequest request) throws IOException;
 
   void createEntity(String indexName, String docId, String doc);
@@ -94,6 +125,9 @@ public interface SearchClient {
   void createTimeSeriesEntity(String indexName, String docId, String doc);
 
   void updateEntity(String indexName, String docId, Map<String, Object> doc, String scriptTxt);
+
+  /* This function takes in Entity Reference, Search for occurances of those  entity across ES, and perform an update for that with reindexing the data from the database to ES */
+  void reindexAcrossIndices(String matchingKey, EntityReference sourceRef);
 
   void deleteByScript(String indexName, String scriptTxt, Map<String, Object> params);
 
@@ -108,6 +142,11 @@ public interface SearchClient {
 
   void updateChildren(
       String indexName,
+      Pair<String, String> fieldAndValue,
+      Pair<String, Map<String, Object>> updates);
+
+  void updateChildren(
+      List<String> indexName,
       Pair<String, String> fieldAndValue,
       Pair<String, Map<String, Object>> updates);
 
@@ -167,5 +206,28 @@ public interface SearchClient {
             elasticSearchConfiguration.getTruststorePassword(),
             "ElasticSearch")
         : null;
+  }
+
+  @Getter
+  class SearchResultListMapper {
+    public List<Map<String, Object>> results;
+    public long total;
+
+    public SearchResultListMapper(List<Map<String, Object>> results, long total) {
+      this.results = results;
+      this.total = total;
+    }
+  }
+
+  static JsonArray getAggregationBuckets(JsonObject aggregationJson) {
+    return aggregationJson.getJsonArray("buckets");
+  }
+
+  static JsonObject getAggregationObject(JsonObject aggregationJson, String key) {
+    return aggregationJson.getJsonObject(key);
+  }
+
+  static String getAggregationKeyValue(JsonObject aggregationJson) {
+    return aggregationJson.getString("key");
   }
 }

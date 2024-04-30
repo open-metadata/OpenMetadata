@@ -336,14 +336,21 @@ class HiveUnitTest(TestCase):
             mock_hive_config["source"],
             self.config.workflowConfig.openMetadataServerConfig,
         )
-        self.hive.context.__dict__[
+        self.hive.context.get().__dict__[
             "database_service"
         ] = MOCK_DATABASE_SERVICE.name.__root__
-        self.hive.inspector = types.SimpleNamespace()
+        self.thread_id = self.hive.context.get_current_thread_id()
+        self.hive._inspector_map[self.thread_id] = types.SimpleNamespace()
 
-        self.hive.inspector.get_pk_constraint = lambda table_name, schema_name: []
-        self.hive.inspector.get_unique_constraints = lambda table_name, schema_name: []
-        self.hive.inspector.get_foreign_keys = lambda table_name, schema_name: []
+        self.hive._inspector_map[
+            self.thread_id
+        ].get_pk_constraint = lambda table_name, schema_name: []
+        self.hive._inspector_map[
+            self.thread_id
+        ].get_unique_constraints = lambda table_name, schema_name: []
+        self.hive._inspector_map[
+            self.thread_id
+        ].get_foreign_keys = lambda table_name, schema_name: []
 
     def test_yield_database(self):
         assert EXPECTED_DATABASE == [
@@ -351,10 +358,10 @@ class HiveUnitTest(TestCase):
             for either in self.hive.yield_database(MOCK_DATABASE.name.__root__)
         ]
 
-        self.hive.context.__dict__[
+        self.hive.context.get().__dict__[
             "database_service"
         ] = MOCK_DATABASE_SERVICE.name.__root__
-        self.hive.context.__dict__["database"] = MOCK_DATABASE.name.__root__
+        self.hive.context.get().__dict__["database"] = MOCK_DATABASE.name.__root__
 
     def test_yield_schema(self):
         assert EXPECTED_DATABASE_SCHEMA == [
@@ -364,7 +371,7 @@ class HiveUnitTest(TestCase):
             )
         ]
 
-        self.hive.context.__dict__[
+        self.hive.context.get().__dict__[
             "database_schema"
         ] = MOCK_DATABASE_SCHEMA.name.__root__
 

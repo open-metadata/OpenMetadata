@@ -43,6 +43,10 @@ jest.mock('../../rest/tableAPI', () => ({
   restoreTable: jest.fn(),
 }));
 
+jest.mock('../../rest/suggestionsAPI', () => ({
+  getSuggestionsList: jest.fn().mockImplementation(() => Promise.resolve([])),
+}));
+
 jest.mock('../../utils/CommonUtils', () => ({
   getFeedCounts: jest.fn(),
   getPartialNameFromTableFQN: jest.fn().mockImplementation(() => 'fqn'),
@@ -157,6 +161,25 @@ jest.mock(
   })
 );
 
+jest.mock(
+  '../../components/Suggestions/SuggestionsProvider/SuggestionsProvider',
+  () => ({
+    useSuggestionsContext: jest.fn().mockImplementation(() => ({
+      suggestions: [],
+      suggestionsByUser: new Map(),
+      selectedUserSuggestions: [],
+      entityFqn: 'fqn',
+      loading: false,
+      allSuggestionsUsers: [],
+      onUpdateActiveUser: jest.fn(),
+      fetchSuggestions: jest.fn(),
+      acceptRejectSuggestion: jest.fn(),
+    })),
+    __esModule: true,
+    default: 'SuggestionsProvider',
+  })
+);
+
 jest.mock('react-router-dom', () => ({
   useParams: jest
     .fn()
@@ -221,7 +244,7 @@ describe('TestDetailsPageV1 component', () => {
     });
 
     expect(getTableDetailsByFQN).toHaveBeenCalledWith('fqn', {
-      fields: `${COMMON_API_FIELDS},usageSummary`,
+      fields: `${COMMON_API_FIELDS},usageSummary,testSuite`,
     });
   });
 

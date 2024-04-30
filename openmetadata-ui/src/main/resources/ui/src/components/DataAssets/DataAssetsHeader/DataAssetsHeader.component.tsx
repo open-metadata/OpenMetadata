@@ -30,7 +30,10 @@ import { DomainLabel } from '../../../components/common/DomainLabel/DomainLabel.
 import { OwnerLabel } from '../../../components/common/OwnerLabel/OwnerLabel.component';
 import TierCard from '../../../components/common/TierCard/TierCard';
 import EntityHeaderTitle from '../../../components/Entity/EntityHeaderTitle/EntityHeaderTitle.component';
-import { DE_ACTIVE_COLOR } from '../../../constants/constants';
+import {
+  DATA_ASSET_ICON_DIMENSION,
+  DE_ACTIVE_COLOR,
+} from '../../../constants/constants';
 import { SERVICE_TYPES } from '../../../constants/Services.constant';
 import { useTourProvider } from '../../../context/TourProvider/TourProvider';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
@@ -41,8 +44,8 @@ import { useClipboard } from '../../../hooks/useClipBoard';
 import { SearchSourceAlias } from '../../../interface/search.interface';
 import { getActiveAnnouncement } from '../../../rest/feedsAPI';
 import { getContainerByName } from '../../../rest/storageAPI';
-import { getEntityDetailLink } from '../../../utils/CommonUtils';
 import { getDataAssetsHeaderInfo } from '../../../utils/DataAssetsHeader.utils';
+import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
 import {
   getEntityFeedLink,
   getEntityName,
@@ -51,7 +54,8 @@ import {
 import serviceUtilClassBase from '../../../utils/ServiceUtilClassBase';
 import { getTierTags } from '../../../utils/TableUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
-import { useAuthContext } from '../../Auth/AuthProviders/AuthProvider';
+
+import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import AnnouncementCard from '../../common/EntityPageInfos/AnnouncementCard/AnnouncementCard';
 import AnnouncementDrawer from '../../common/EntityPageInfos/AnnouncementDrawer/AnnouncementDrawer';
 import ManageButton from '../../common/EntityPageInfos/ManageButton/ManageButton';
@@ -59,6 +63,7 @@ import TitleBreadcrumb from '../../common/TitleBreadcrumb/TitleBreadcrumb.compon
 import RetentionPeriod from '../../Database/RetentionPeriod/RetentionPeriod.component';
 import Voting from '../../Entity/Voting/Voting.component';
 import { VotingDataProps } from '../../Entity/Voting/voting.interface';
+import './data-asset-header.less';
 import {
   DataAssetHeaderInfo,
   DataAssetsHeaderProps,
@@ -104,7 +109,11 @@ export const ExtraInfoLink = ({
       <Typography.Link href={href} style={{ fontSize: '12px' }}>
         {value}{' '}
       </Typography.Link>
-      <IconExternalLink className="m-l-xss " width={14} />{' '}
+      <Icon
+        className="m-l-xs"
+        component={IconExternalLink}
+        style={DATA_ASSET_ICON_DIMENSION}
+      />
     </div>
   </>
 );
@@ -128,8 +137,9 @@ export const DataAssetsHeader = ({
   afterDomainUpdateAction,
   onProfilerSettingUpdate,
   onUpdateRetentionPeriod,
+  extraDropdownContent,
 }: DataAssetsHeaderProps) => {
-  const { currentUser } = useAuthContext();
+  const { currentUser } = useApplicationStore();
   const USER_ID = currentUser?.id ?? '';
   const { t } = useTranslation();
   const { isTourPage } = useTourProvider();
@@ -263,7 +273,7 @@ export const DataAssetsHeader = ({
     }
 
     history.push(
-      getEntityDetailLink(
+      entityUtilClassBase.getEntityLink(
         entityType,
         dataAsset.fullyQualifiedName,
         EntityTabs.ACTIVITY_FEED,
@@ -401,7 +411,7 @@ export const DataAssetsHeader = ({
 
                 {entityType === EntityType.TABLE && onUpdateRetentionPeriod && (
                   <RetentionPeriod
-                    permissions={permissions}
+                    hasPermission={permissions.EditAll && !dataAsset.deleted}
                     retentionPeriod={(dataAsset as Table).retentionPeriod}
                     onUpdate={onUpdateRetentionPeriod}
                   />
@@ -416,7 +426,10 @@ export const DataAssetsHeader = ({
         <Col span={7}>
           <Space className="items-end w-full" direction="vertical" size={16}>
             <Space>
-              <ButtonGroup data-testid="asset-header-btn-group" size="small">
+              <ButtonGroup
+                className="data-asset-button-group"
+                data-testid="asset-header-btn-group"
+                size="small">
                 {onUpdateVote && (
                   <Voting
                     disabled={deleted}
@@ -489,6 +502,7 @@ export const DataAssetsHeader = ({
                   entityId={dataAsset.id}
                   entityName={dataAsset.name}
                   entityType={entityType}
+                  extraDropdownContent={extraDropdownContent}
                   isRecursiveDelete={isRecursiveDelete}
                   onAnnouncementClick={
                     permissions?.EditAll

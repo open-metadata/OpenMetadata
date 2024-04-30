@@ -161,8 +161,10 @@ authorizerConfiguration:
   principalDomain: ${AUTHORIZER_PRINCIPAL_DOMAIN:-"openmetadata.org"}
   enforcePrincipalDomain: ${AUTHORIZER_ENFORCE_PRINCIPAL_DOMAIN:-false}
   enableSecureSocketConnection : ${AUTHORIZER_ENABLE_SECURE_SOCKET:-false}
+  useRolesFromProvider: ${AUTHORIZER_USE_ROLES_FROM_PROVIDER:-false}
 
 authenticationConfiguration:
+  clientType: ${AUTHENTICATION_CLIENT_TYPE:-public}
   provider: ${AUTHENTICATION_PROVIDER:-basic}
   # This is used by auth provider provide response as either id_token or code
   responseType: ${AUTHENTICATION_RESPONSE_TYPE:-id_token}
@@ -174,6 +176,22 @@ authenticationConfiguration:
   callbackUrl: ${AUTHENTICATION_CALLBACK_URL:-""}
   jwtPrincipalClaims: ${AUTHENTICATION_JWT_PRINCIPAL_CLAIMS:-[email,preferred_username,sub]}
   enableSelfSignup : ${AUTHENTICATION_ENABLE_SELF_SIGNUP:-true}
+  oidcConfiguration:
+    id: ${OIDC_CLIENT_ID:-""}
+    type: ${OIDC_TYPE:-""} # google, azure etc.
+    secret: ${OIDC_CLIENT_SECRET:-""}
+    scope: ${OIDC_SCOPE:-"openid email profile"}
+    discoveryUri: ${OIDC_DISCOVERY_URI:-""}
+    useNonce: ${OIDC_USE_NONCE:-true}
+    preferredJwsAlgorithm: ${OIDC_PREFERRED_JWS:-"RS256"}
+    responseType: ${OIDC_RESPONSE_TYPE:-"code"}
+    disablePkce: ${OIDC_DISABLE_PKCE:-true}
+    callbackUrl: ${OIDC_CALLBACK:-"http://localhost:8585/callback"}
+    serverUrl: ${OIDC_SERVER_URL:-"http://localhost:8585"}
+    clientAuthenticationMethod: ${OIDC_CLIENT_AUTH_METHOD:-"client_secret_post"}
+    tenant: ${OIDC_TENANT:-""}
+    maxClockSkew: ${OIDC_MAX_CLOCK_SKEW:-""}
+    customParams: ${OIDC_CUSTOM_PARAMS:-}
   samlConfiguration:
     debugMode: ${SAML_DEBUG_MODE:-false}
     idp:
@@ -256,6 +274,7 @@ elasticsearch:
   socketTimeoutSecs: ${ELASTICSEARCH_SOCKET_TIMEOUT_SECS:-60}
   keepAliveTimeoutSecs: ${ELASTICSEARCH_KEEP_ALIVE_TIMEOUT_SECS:-600}
   batchSize: ${ELASTICSEARCH_BATCH_SIZE:-10}
+  payLoadSize: ${ELASTICSEARCH_PAYLOAD_BYTES_SIZE:-10485760}   #max payLoadSize in Bytes
   searchIndexMappingLanguage : ${ELASTICSEARCH_INDEX_MAPPING_LANG:-EN}
   searchIndexFactoryClassName : org.openmetadata.service.search.SearchIndexFactory
 
@@ -263,7 +282,7 @@ eventMonitoringConfiguration:
   eventMonitor: ${EVENT_MONITOR:-prometheus}  # Possible values are "prometheus", "cloudwatch"
   batchSize: ${EVENT_MONITOR_BATCH_SIZE:-10}
   pathPattern: ${EVENT_MONITOR_PATH_PATTERN:-["/api/v1/tables/*", "/api/v1/health-check"]}
-  latency: ${EVENT_MONITOR_LATENCY:-[]} # For value p99=0.99, p90=0.90, p50=0.50 etc.
+  latency: ${EVENT_MONITOR_LATENCY:-[0.99, 0.90]} # For value p99=0.99, p90=0.90, p50=0.50 etc.
   # it will use the default auth provider for AWS services if parameters are not set
   # parameters:
   #   region: ${OM_MONITOR_REGION:-""}
@@ -274,7 +293,6 @@ eventHandlerConfiguration:
   eventHandlerClassNames:
     - "org.openmetadata.service.events.AuditEventHandler"
     - "org.openmetadata.service.events.ChangeEventHandler"
-    - "org.openmetadata.service.events.WebAnalyticEventHandler"
 
 pipelineServiceClientConfiguration:
   enabled: ${PIPELINE_SERVICE_CLIENT_ENABLED:-true}
@@ -376,6 +394,3 @@ web:
   permission-policy:
     enabled: ${WEB_CONF_PERMISSION_POLICY_ENABLED:-false}
     option: ${WEB_CONF_PERMISSION_POLICY_OPTION:-""}
-
-dataQualityConfiguration:
-  severityIncidentClassifier: ${DATA_QUALITY_SEVERITY_INCIDENT_CLASSIFIER:-"org.openmetadata.service.util.incidentSeverityClassifier.LogisticRegressionIncidentSeverityClassifier"}

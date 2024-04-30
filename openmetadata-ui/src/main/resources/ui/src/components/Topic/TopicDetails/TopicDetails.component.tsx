@@ -13,11 +13,12 @@
 
 import { Col, Row, Tabs } from 'antd';
 import { AxiosError } from 'axios';
+import { isEmpty } from 'lodash';
 import { EntityTags } from 'Models';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
-import { getTopicDetailsPath } from '../../../constants/constants';
+import { getEntityDetailsPath } from '../../../constants/constants';
 import { FEED_COUNT_INITIAL_DATA } from '../../../constants/entity.constants';
 import LineageProvider from '../../../context/LineageProvider/LineageProvider';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
@@ -27,6 +28,7 @@ import { Topic } from '../../../generated/entity/data/topic';
 import { DataProduct } from '../../../generated/entity/domains/dataProduct';
 import { ThreadType } from '../../../generated/entity/feed/thread';
 import { TagLabel } from '../../../generated/type/schema';
+import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { useFqn } from '../../../hooks/useFqn';
 import { FeedCounts } from '../../../interface/feed.interface';
 import { restoreTopic } from '../../../rest/topicsAPI';
@@ -42,7 +44,6 @@ import { useActivityFeedProvider } from '../../ActivityFeed/ActivityFeedProvider
 import { ActivityFeedTab } from '../../ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
 import ActivityThreadPanel from '../../ActivityFeed/ActivityThreadPanel/ActivityThreadPanel';
 import { withActivityFeed } from '../../AppRouter/withActivityFeed';
-import { useAuthContext } from '../../Auth/AuthProviders/AuthProvider';
 import { CustomPropertyTable } from '../../common/CustomPropertyTable/CustomPropertyTable';
 import DescriptionV1 from '../../common/EntityDescription/DescriptionV1';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
@@ -72,7 +73,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
   onUpdateVote,
 }: TopicDetailsProps) => {
   const { t } = useTranslation();
-  const { currentUser } = useAuthContext();
+  const { currentUser } = useApplicationStore();
   const { postFeed, deleteFeed, updateFeed } = useActivityFeedProvider();
   const { tab: activeTab = EntityTabs.SCHEMA } =
     useParams<{ tab: EntityTabs }>();
@@ -177,7 +178,9 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
 
   const handleTabChange = (activeKey: string) => {
     if (activeKey !== activeTab) {
-      history.push(getTopicDetailsPath(decodedTopicFQN, activeKey));
+      history.push(
+        getEntityDetailsPath(EntityType.TOPIC, decodedTopicFQN, activeKey)
+      );
     }
   };
 
@@ -311,6 +314,9 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
                   entityName={entityName}
                   entityType={EntityType.TOPIC}
                   hasEditAccess={editDescriptionPermission}
+                  isDescriptionExpanded={isEmpty(
+                    topicDetails.messageSchema?.schemaFields
+                  )}
                   isEdit={isEdit}
                   owner={topicDetails.owner}
                   showActions={!deleted}
@@ -334,16 +340,18 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
               className="entity-tag-right-panel-container"
               data-testid="entity-right-panel"
               flex="320px">
-              <EntityRightPanel
+              <EntityRightPanel<EntityType.TOPIC>
                 customProperties={topicDetails}
                 dataProducts={topicDetails?.dataProducts ?? []}
                 domain={topicDetails?.domain}
+                editCustomAttributePermission={editCustomAttributePermission}
                 editTagPermission={editTagsPermission}
                 entityFQN={decodedTopicFQN}
                 entityId={topicDetails.id}
                 entityType={EntityType.TOPIC}
                 selectedTags={topicTags}
                 viewAllPermission={viewAllPermission}
+                onExtensionUpdate={onExtensionUpdate}
                 onTagSelectionChange={handleTagSelection}
                 onThreadLinkSelect={onThreadLinkSelect}
               />

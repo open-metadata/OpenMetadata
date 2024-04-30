@@ -129,6 +129,9 @@ public interface MigrationDAO {
   @RegisterRowMapper(FromServerChangeLogMapper.class)
   List<ServerChangeLog> listMetricsFromDBMigrations();
 
+  @SqlQuery("SELECT version FROM SERVER_CHANGE_LOG")
+  List<String> getMigrationVersions();
+
   @Getter
   @Setter
   class ServerMigrationSQLTable {

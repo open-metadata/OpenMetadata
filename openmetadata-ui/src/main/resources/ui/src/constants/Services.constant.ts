@@ -54,6 +54,7 @@ import msAzure from '../assets/img/service-icon-ms-azure.png';
 import mssql from '../assets/img/service-icon-mssql.png';
 import mstr from '../assets/img/service-icon-mstr.png';
 import nifi from '../assets/img/service-icon-nifi.png';
+import openlineage from '../assets/img/service-icon-openlineage.svg';
 import oracle from '../assets/img/service-icon-oracle.png';
 import pinot from '../assets/img/service-icon-pinot.png';
 import postgres from '../assets/img/service-icon-post.png';
@@ -168,6 +169,7 @@ export const FIVETRAN = fivetran;
 export const AMUNDSEN = amundsen;
 export const ATLAS = atlas;
 export const SAS = sas;
+export const OPENLINEAGE = openlineage;
 export const LOGO = logo;
 
 export const AIRFLOW = airflow;
@@ -282,8 +284,10 @@ export const INGESTION_WORKFLOW_NAME_UI_SCHEMA = {
 
 export const INGESTION_WORKFLOW_UI_SCHEMA = {
   type: { 'ui:widget': 'hidden', 'ui:hideError': true },
+  name: { 'ui:widget': 'hidden', 'ui:hideError': true },
   'ui:order': [
     'name',
+    'displayName',
     'databaseFilterPattern',
     'schemaFilterPattern',
     'tableFilterPattern',
@@ -386,7 +390,9 @@ export const BETA_SERVICES = [
   DatabaseServiceType.Doris,
   PipelineServiceType.Spline,
   PipelineServiceType.Spark,
+  PipelineServiceType.OpenLineage,
   DashboardServiceType.QlikSense,
+  DashboardServiceType.QlikCloud,
   DatabaseServiceType.Couchbase,
   DatabaseServiceType.Greenplum,
   DatabaseServiceType.Iceberg,
@@ -421,6 +427,10 @@ export const ADVANCED_PROPERTIES = [
   'connectionOptions',
   'scheme',
   'sampleDataStorageConfig',
+  'confidence',
+  'sampleDataCount',
+  'threadCount',
+  'timeoutSeconds',
 ];
 
 export const PIPELINE_SERVICE_PLATFORM = 'Airflow';

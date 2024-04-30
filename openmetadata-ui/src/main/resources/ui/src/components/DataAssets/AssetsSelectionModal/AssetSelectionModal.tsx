@@ -41,7 +41,7 @@ import {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as FilterIcon } from '../../../assets/svg/ic-feeds-filter.svg';
-import { ERROR_COLOR, PAGE_SIZE_MEDIUM } from '../../../constants/constants';
+import { PAGE_SIZE_MEDIUM } from '../../../constants/constants';
 import { SearchIndex } from '../../../enums/search.enum';
 import { GlossaryTerm } from '../../../generated/entity/data/glossaryTerm';
 import { DataProduct } from '../../../generated/entity/domains/dataProduct';
@@ -50,6 +50,7 @@ import {
   BulkOperationResult,
   Status,
 } from '../../../generated/type/bulkOperationResult';
+import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { Aggregations } from '../../../interface/search.interface';
 import { QueryFilterInterface } from '../../../pages/ExplorePage/ExplorePage.interface';
 import {
@@ -91,6 +92,7 @@ export const AssetSelectionModal = ({
   queryFilter,
   emptyPlaceHolderText,
 }: AssetSelectionModalProps) => {
+  const { theme } = useApplicationStore();
   const { t } = useTranslation();
   const ES_UPDATE_DELAY = 500;
   const [search, setSearch] = useState('');
@@ -558,7 +560,10 @@ export const AssetSelectionModal = ({
             message={
               <div className="d-flex items-center gap-3">
                 <ExclamationCircleOutlined
-                  style={{ color: ERROR_COLOR, fontSize: '24px' }}
+                  style={{
+                    color: theme.errorColor,
+                    fontSize: '24px',
+                  }}
                 />
                 <Typography.Text className="font-semibold text-sm">
                   {t('label.validation-error-plural')}
@@ -614,7 +619,10 @@ export const AssetSelectionModal = ({
                           </div>
                           <div className="d-flex gap-3 p-x-sm p-b-sm">
                             <ExclamationCircleOutlined
-                              style={{ color: ERROR_COLOR, fontSize: '24px' }}
+                              style={{
+                                color: theme.errorColor,
+                                fontSize: '24px',
+                              }}
                             />
                             <Typography.Text className="break-all">
                               {errorMessage}

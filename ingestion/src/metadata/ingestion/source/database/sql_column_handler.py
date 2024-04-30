@@ -26,6 +26,7 @@ from metadata.generated.schema.entity.data.table import (
     TableConstraint,
 )
 from metadata.ingestion.source.database.column_type_parser import ColumnTypeParser
+from metadata.utils.execution_time_tracker import calculate_execution_time
 from metadata.utils.helpers import clean_up_starting_ending_double_quotes_in_string
 from metadata.utils.logger import ingestion_logger
 
@@ -195,6 +196,7 @@ class SqlColumnHandlerMixin:
             ]
         return Column(**parsed_string)
 
+    @calculate_execution_time()
     def get_columns_and_constraints(  # pylint: disable=too-many-locals
         self, schema_name: str, table_name: str, db_name: str, inspector: Inspector
     ) -> Tuple[

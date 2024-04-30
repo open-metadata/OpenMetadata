@@ -15,7 +15,6 @@ package org.openmetadata.service.resources.events.subscription;
 
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
-import static org.openmetadata.schema.api.events.CreateEventSubscription.AlertType.ACTIVITY_FEED;
 import static org.openmetadata.schema.api.events.CreateEventSubscription.AlertType.NOTIFICATION;
 import static org.openmetadata.service.events.subscription.AlertUtil.validateAndBuildFilteringConditions;
 
@@ -135,15 +134,11 @@ public class EventSubscriptionResource
     try {
       CollectionDAO daoCollection = repository.getDaoCollection();
       List<String> listAllEventsSubscriptions =
-          daoCollection
-              .eventSubscriptionDAO()
-              .listAllEventsSubscriptions(daoCollection.eventSubscriptionDAO().getTableName());
+          daoCollection.eventSubscriptionDAO().listAllEventsSubscriptions();
       List<EventSubscription> eventSubList =
           JsonUtils.readObjects(listAllEventsSubscriptions, EventSubscription.class);
       for (EventSubscription subscription : eventSubList) {
-        if (subscription.getAlertType() != ACTIVITY_FEED) {
-          EventSubscriptionScheduler.getInstance().addSubscriptionPublisher(subscription);
-        }
+        EventSubscriptionScheduler.getInstance().addSubscriptionPublisher(subscription);
       }
     } catch (Exception ex) {
       // Starting application should not fail

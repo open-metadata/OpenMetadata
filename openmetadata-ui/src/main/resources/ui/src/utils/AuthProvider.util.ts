@@ -14,10 +14,9 @@
 import {
   BrowserCacheLocation,
   Configuration,
-  IPublicClientApplication,
   PopupRequest,
-  PublicClientApplication,
 } from '@azure/msal-browser';
+import { CookieStorage } from 'cookie-storage';
 import jwtDecode, { JwtPayload } from 'jwt-decode';
 import { first, isNil } from 'lodash';
 import { WebStorageStateStore } from 'oidc-client';
@@ -25,15 +24,21 @@ import {
   AuthenticationConfigurationWithScope,
   UserProfile,
 } from '../components/Auth/AuthProviders/AuthProvider.interface';
-import { oidcTokenKey, ROUTES } from '../constants/constants';
+import { REDIRECT_PATHNAME, ROUTES } from '../constants/constants';
 import { EMAIL_REG_EX } from '../constants/regex.constants';
-import { AuthenticationConfiguration } from '../generated/configuration/authenticationConfiguration';
+import {
+  AuthenticationConfiguration,
+  ClientType,
+} from '../generated/configuration/authenticationConfiguration';
 import { AuthProvider } from '../generated/settings/settings';
 import { isDev } from './EnvironmentUtils';
 
-export let msalInstance: IPublicClientApplication;
+const cookieStorage = new CookieStorage();
 
-export const EXPIRY_THRESHOLD_MILLES = 5 * 60 * 1000;
+// 25s for server auth approch
+export const EXPIRY_THRESHOLD_MILLES = 25 * 1000;
+// 2 minutes for client auth approch
+export const EXPIRY_THRESHOLD_MILLES_PUBLIC = 2 * 60 * 1000;
 
 export const getRedirectUri = (callbackUrl: string) => {
   return isDev()
@@ -83,6 +88,7 @@ export const getAuthConfig = (
     enableSelfSignup,
     samlConfiguration,
     responseType = 'id_token',
+    clientType = 'public',
   } = authClient;
   let config = {};
   const redirectUri = getRedirectUri(callbackUrl);
@@ -96,6 +102,7 @@ export const getAuthConfig = (
           scopes: ['openid', 'profile', 'email', 'offline_access'],
           pkce: true,
           provider,
+          clientType,
         };
       }
 
@@ -110,6 +117,7 @@ export const getAuthConfig = (
           providerName,
           scope: 'openid email profile',
           responseType,
+          clientType,
         };
       }
 
@@ -123,6 +131,7 @@ export const getAuthConfig = (
           provider,
           scope: 'openid email profile',
           responseType,
+          clientType,
         };
       }
 
@@ -132,6 +141,7 @@ export const getAuthConfig = (
         config = {
           samlConfiguration,
           provider,
+          clientType,
         };
       }
 
@@ -145,6 +155,7 @@ export const getAuthConfig = (
           provider,
           scope: 'openid email profile',
           responseType: 'code',
+          clientType,
         };
       }
 
@@ -155,6 +166,7 @@ export const getAuthConfig = (
         clientId,
         callbackUrl: redirectUri,
         provider,
+        clientType,
       };
 
       break;
@@ -173,6 +185,7 @@ export const getAuthConfig = (
         },
         provider,
         enableSelfSignup,
+        clientType,
       };
 
       break;
@@ -190,6 +203,7 @@ export const getAuthConfig = (
             cacheLocation: BrowserCacheLocation.LocalStorage,
           },
           provider,
+          clientType,
         } as Configuration;
       }
 
@@ -197,10 +211,6 @@ export const getAuthConfig = (
   }
 
   return config as AuthenticationConfigurationWithScope;
-};
-
-export const setMsalInstance = (configs: Configuration) => {
-  msalInstance = new PublicClientApplication(configs);
 };
 
 // Add here scopes for id token to be used at MS Identity Platform endpoints.
@@ -265,6 +275,8 @@ export const isProtectedRoute = (pathname: string) => {
       ROUTES.RESET_PASSWORD,
       ROUTES.ACCOUNT_ACTIVATION,
       ROUTES.HOME,
+      ROUTES.AUTH_CALLBACK,
+      ROUTES.NOT_FOUND,
     ].indexOf(pathname) === -1
   );
 };
@@ -277,10 +289,6 @@ export const getUrlPathnameExpiry = () => {
   return new Date(Date.now() + 60 * 60 * 1000);
 };
 
-export const getUrlPathnameExpiryAfterRoute = () => {
-  return new Date(Date.now() + 1000);
-};
-
 /**
  * @exp expiry of token
  * @isExpired Whether token is already expired or not
@@ -288,25 +296,29 @@ export const getUrlPathnameExpiryAfterRoute = () => {
  * @timeoutExpiry time in ms for try to silent sign-in
  * @returns exp, isExpired, diff, timeoutExpiry
  */
-export const extractDetailsFromToken = () => {
-  const token = localStorage.getItem(oidcTokenKey) || '';
+export const extractDetailsFromToken = (
+  token: string,
+  clientType = ClientType.Public
+) => {
   if (token) {
     try {
       const { exp } = jwtDecode<JwtPayload>(token);
       const dateNow = Date.now();
-      if (exp === null) {
+
+      if (isNil(exp)) {
         return {
           exp,
           isExpired: false,
-          timeoutExpiry: 0,
         };
       }
+      const threshouldMillis =
+        clientType === ClientType.Public
+          ? EXPIRY_THRESHOLD_MILLES_PUBLIC
+          : EXPIRY_THRESHOLD_MILLES;
 
       const diff = exp && exp * 1000 - dateNow;
       const timeoutExpiry =
-        diff && diff > EXPIRY_THRESHOLD_MILLES
-          ? diff - EXPIRY_THRESHOLD_MILLES
-          : 0;
+        diff && diff > threshouldMillis ? diff - threshouldMillis : 0;
 
       return {
         exp,
@@ -325,4 +337,12 @@ export const extractDetailsFromToken = () => {
 
     timeoutExpiry: 0,
   };
+};
+
+export const setUrlPathnameExpiryAfterRoute = (pathname: string) => {
+  cookieStorage.setItem(REDIRECT_PATHNAME, pathname, {
+    // 1 second expiry
+    expires: new Date(Date.now() + 1000),
+    path: '/',
+  });
 };

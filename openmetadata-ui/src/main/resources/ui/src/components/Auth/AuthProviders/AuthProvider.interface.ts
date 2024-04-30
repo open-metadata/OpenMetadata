@@ -12,7 +12,7 @@
  */
 
 import { Profile } from 'oidc-client';
-import { ComponentType, FC, ReactNode } from 'react';
+import { ComponentType, ReactNode } from 'react';
 import { AuthenticationConfiguration } from '../../../generated/configuration/authenticationConfiguration';
 import { AuthorizerConfiguration } from '../../../generated/configuration/authorizerConfiguration';
 import { User } from '../../../generated/entity/teams/user';
@@ -56,13 +56,11 @@ export interface IAuthContext {
   setIsSigningIn: (authenticated: boolean) => void;
   onLoginHandler: () => void;
   onLogoutHandler: () => void;
-  getCallBackComponent: () => FC | null;
-  loading: boolean;
   currentUser?: User;
   newUser?: UserProfile;
   updateNewUser: (user: UserProfile) => void;
-  setLoadingIndicator: (authenticated: boolean) => void;
   handleSuccessfulLogin: (user: OidcUser) => void;
+  handleFailedLogin: () => void;
   updateAxiosInterceptors: () => void;
   updateCurrentUser: (user: User) => void;
   jwtPrincipalClaims: string[];

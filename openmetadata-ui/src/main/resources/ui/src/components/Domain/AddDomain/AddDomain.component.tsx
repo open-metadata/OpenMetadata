@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import { Typography } from 'antd';
-import { useForm } from 'antd/lib/form/Form';
 import { AxiosError } from 'axios';
 import React, { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -19,6 +18,7 @@ import { useHistory } from 'react-router-dom';
 import { ERROR_MESSAGE } from '../../../constants/constants';
 import { CreateDataProduct } from '../../../generated/api/domains/createDataProduct';
 import { CreateDomain } from '../../../generated/api/domains/createDomain';
+import { useDomainStore } from '../../../hooks/useDomainStore';
 import { addDomains } from '../../../rest/domainAPI';
 import { getIsErrorMatch } from '../../../utils/CommonUtils';
 import { getDomainPath } from '../../../utils/RouterUtils';
@@ -27,15 +27,13 @@ import ResizablePanels from '../../common/ResizablePanels/ResizablePanels';
 import TitleBreadcrumb from '../../common/TitleBreadcrumb/TitleBreadcrumb.component';
 import AddDomainForm from '../AddDomainForm/AddDomainForm.component';
 import { DomainFormType } from '../DomainPage.interface';
-import { useDomainProvider } from '../DomainProvider/DomainProvider';
 import './add-domain.less';
 
 const AddDomain = () => {
   const { t } = useTranslation();
   const history = useHistory();
-  const [form] = useForm();
   const [isLoading, setIsLoading] = useState<boolean>(false);
-  const { refreshDomains } = useDomainProvider();
+  const { refreshDomains } = useDomainStore();
 
   const goToDomain = (name = '') => {
     history.push(getDomainPath(name));
@@ -114,7 +112,6 @@ const AddDomain = () => {
               })}
             </Typography.Title>
             <AddDomainForm
-              formRef={form}
               isFormInDialog={false}
               loading={isLoading}
               type={DomainFormType.DOMAIN}

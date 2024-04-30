@@ -19,6 +19,7 @@ import { SearchIndex } from '../enums/search.enum';
 import { AuthenticationConfiguration } from '../generated/configuration/authenticationConfiguration';
 import { AuthorizerConfiguration } from '../generated/configuration/authorizerConfiguration';
 import { PipelineServiceClientConfiguration } from '../generated/configuration/pipelineServiceClientConfiguration';
+import { ValidationResponse } from '../generated/system/validationResponse';
 import { Paging } from '../generated/type/paging';
 import {
   RawSuggestResponse,
@@ -315,6 +316,12 @@ export const fetchMarkdownFile = async (filePath: string) => {
       Accept: 'text/markdown',
     },
   });
+
+  return response.data;
+};
+
+export const fetchOMStatus = async () => {
+  const response = await APIClient.get<ValidationResponse>('/system/status');
 
   return response.data;
 };

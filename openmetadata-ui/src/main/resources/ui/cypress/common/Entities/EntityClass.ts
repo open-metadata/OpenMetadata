@@ -13,18 +13,17 @@
 
 import { uuid } from '../../constants/constants';
 import { CustomPropertySupportedEntityList } from '../../constants/CustomProperty.constant';
-import { EntityType } from '../../constants/Entity.interface';
+import { EntityType, ENTITY_PATH } from '../../constants/Entity.interface';
 import {
   createAnnouncement as createAnnouncementUtil,
   createInactiveAnnouncement as createInactiveAnnouncementUtil,
-  deleteAnnoucement,
+  deleteAnnouncement,
+  replyAnnouncementUtil,
 } from '../Utils/Annoucement';
 import {
   createCustomPropertyForEntity,
   CustomProperty,
-  CustomPropertyType,
-  deleteCustomPropertyForEntity,
-  generateCustomProperty,
+  deleteCustomProperties,
   setValueForProperty,
   validateValueForProperty,
 } from '../Utils/CustomProperty';
@@ -44,8 +43,9 @@ import {
 import {
   assignGlossaryTerm,
   removeGlossaryTerm,
-  udpateGlossaryTerm,
+  updateGlossaryTerm,
 } from '../Utils/Glossary';
+import { getToken } from '../Utils/LocalStorage';
 import {
   addOwner,
   addTeamAsOwner,
@@ -55,7 +55,7 @@ import {
   updateTeamAsOwner,
   validateOwnerAndTeamCounts,
 } from '../Utils/Owner';
-import { assignTags, removeTags, udpateTags } from '../Utils/Tags';
+import { assignTags, removeTags, updateTags } from '../Utils/Tags';
 import { addTier, removeTier, updateTier } from '../Utils/Tier';
 import { downVoteEntity, upVoteEntity } from '../Utils/Voting';
 
@@ -63,7 +63,7 @@ const description =
   // eslint-disable-next-line max-len
   'Lorem ipsum dolor sit amet, consectetur adipiscing elit. Phasellus varius quam eu mi ullamcorper, in porttitor magna mollis. Duis a tellus aliquet nunc commodo bibendum. Donec euismod maximus porttitor. Aenean quis lacus ultrices, tincidunt erat ac, dapibus felis.';
 
-const domainDetails1 = {
+export const domainDetails1 = {
   name: `cypress-domain-${uuid()}`,
   displayName: `Cypress%Domain.${uuid()}`,
   description: 'Cypress domain description',
@@ -72,7 +72,7 @@ const domainDetails1 = {
   style: {},
 };
 
-const domainDetails2 = {
+export const domainDetails2 = {
   name: `cypress-domain-${uuid()}`,
   displayName: `Cypress%Domain.${uuid()}`,
   description: 'Cypress domain description',
@@ -81,7 +81,7 @@ const domainDetails2 = {
   style: {},
 };
 
-const glossaryDetails1 = {
+export const glossaryDetails1 = {
   name: `Cypress%General ${uuid()}`,
   displayName: `Cypress % General ${uuid()}`,
   description:
@@ -91,7 +91,7 @@ const glossaryDetails1 = {
   mutuallyExclusive: false,
 };
 
-const glossaryDetails2 = {
+export const glossaryDetails2 = {
   name: `Cypress%Person ${uuid()}`,
   displayName: `Cypress % Person ${uuid()}`,
   description:
@@ -102,8 +102,8 @@ const glossaryDetails2 = {
   mutuallyExclusive: false,
 };
 
-const glossaryTermDetails1 = {
-  name: 'CypressBankNumber',
+export const glossaryTermDetails1 = {
+  name: `CypressBankNumber-${uuid()}`,
   displayName: 'Cypress BankNumber',
   description: 'A bank account number.',
   reviewers: [],
@@ -115,7 +115,7 @@ const glossaryTermDetails1 = {
   glossary: glossaryDetails1.name,
 };
 
-const glossaryTermDetails2 = {
+export const glossaryTermDetails2 = {
   name: 'CypressAddress',
   displayName: 'Cypress Address',
   description: 'Address of a Person.',
@@ -135,12 +135,8 @@ class EntityClass {
   endPoint: EntityType;
   protected name: string;
 
-  intergerPropertyDetails: CustomProperty;
-  stringPropertyDetails: CustomProperty;
-  markdownPropertyDetails: CustomProperty;
-
   customPropertyValue: Record<
-    CustomPropertyType,
+    string,
     { value: string; newValue: string; property: CustomProperty }
   >;
 
@@ -152,34 +148,6 @@ class EntityClass {
     this.entityName = entityName;
     this.entityDetails = entityDetails;
     this.endPoint = endPoint;
-
-    this.intergerPropertyDetails = generateCustomProperty(
-      CustomPropertyType.INTEGER
-    );
-    this.stringPropertyDetails = generateCustomProperty(
-      CustomPropertyType.STRING
-    );
-    this.markdownPropertyDetails = generateCustomProperty(
-      CustomPropertyType.MARKDOWN
-    );
-
-    this.customPropertyValue = {
-      Integer: {
-        value: '123',
-        newValue: '456',
-        property: this.intergerPropertyDetails,
-      },
-      String: {
-        value: '123',
-        newValue: '456',
-        property: this.stringPropertyDetails,
-      },
-      Markdown: {
-        value: '**Bold statement**',
-        newValue: '__Italic statement__',
-        property: this.markdownPropertyDetails,
-      },
-    };
   }
 
   public getName() {
@@ -189,7 +157,7 @@ class EntityClass {
   async setToken() {
     await new Promise<void>((res) =>
       cy.getAllLocalStorage().then((data) => {
-        const token = Object.values(data)[0].oidcIdToken;
+        const token = getToken(data);
 
         this.token = token;
         res();
@@ -203,26 +171,22 @@ class EntityClass {
 
     // Create custom property only for supported entities
     if (CustomPropertySupportedEntityList.includes(this.endPoint)) {
-      createCustomPropertyForEntity({
-        property: this.intergerPropertyDetails,
-        type: this.endPoint,
-      });
-
-      createCustomPropertyForEntity({
-        property: this.stringPropertyDetails,
-        type: this.endPoint,
-      });
-
-      createCustomPropertyForEntity({
-        property: this.markdownPropertyDetails,
-        type: this.endPoint,
+      createCustomPropertyForEntity(this.endPoint).then((data) => {
+        this.customPropertyValue = data as unknown as Record<
+          string,
+          {
+            value: string;
+            newValue: string;
+            property: CustomProperty;
+          }
+        >;
       });
     }
   }
 
   static preRequisitesForTests() {
     cy.getAllLocalStorage().then((data) => {
-      const token = Object.values(data)[0].oidcIdToken;
+      const token = getToken(data);
 
       // assign DevOps team to user
 
@@ -279,24 +243,22 @@ class EntityClass {
   cleanup() {
     // Delete custom property only for supported entities
     if (CustomPropertySupportedEntityList.includes(this.endPoint)) {
-      deleteCustomPropertyForEntity({
-        property: this.intergerPropertyDetails,
-        type: this.endPoint,
-      });
-      deleteCustomPropertyForEntity({
-        property: this.stringPropertyDetails,
-        type: this.endPoint,
-      });
-      deleteCustomPropertyForEntity({
-        property: this.markdownPropertyDetails,
-        type: this.endPoint,
+      cy.getAllLocalStorage().then((data) => {
+        const token = getToken(data);
+        cy.request({
+          method: 'GET',
+          url: `/api/v1/metadata/types/name/${ENTITY_PATH[this.endPoint]}`,
+          headers: { Authorization: `Bearer ${token}` },
+        }).then(({ body }) => {
+          deleteCustomProperties(body.id, token);
+        });
       });
     }
   }
 
   static postRequisitesForTests() {
     cy.getAllLocalStorage().then((data) => {
-      const token = Object.values(data)[0].oidcIdToken;
+      const token = getToken(data);
 
       // Remove devops as team
       //   cy.get('[data-testid="dropdown-profile"]').click();
@@ -368,6 +330,9 @@ class EntityClass {
     addDomainToEntity(domainDetails1.displayName);
   }
 
+  // eslint-disable-next-line @typescript-eslint/no-empty-function
+  validateDomainVersionForEntity() {}
+
   updateDomain() {
     addDomainToEntity(domainDetails2.displayName);
   }
@@ -415,7 +380,7 @@ class EntityClass {
     assignTags('PersonalData.Personal', this.endPoint);
   }
   updateTags() {
-    udpateTags('PII.None', this.endPoint);
+    updateTags('PII.None', this.endPoint);
   }
   removeTags() {
     removeTags(['PersonalData.Personal', 'PII.None'], this.endPoint);
@@ -426,12 +391,14 @@ class EntityClass {
   assignGlossary() {
     assignGlossaryTerm(
       `${glossaryDetails1.name}.${glossaryTermDetails1.name}`,
+      glossaryTermDetails1.name,
       this.endPoint
     );
   }
   updateGlossary() {
-    udpateGlossaryTerm(
+    updateGlossaryTerm(
       `${glossaryDetails2.name}.${glossaryTermDetails2.name}`,
+      glossaryTermDetails2.name,
       this.endPoint
     );
   }
@@ -483,26 +450,30 @@ class EntityClass {
 
   createAnnouncement() {
     createAnnouncementUtil({
-      title: 'Cypress annocement',
-      description: 'Cypress annocement description',
+      title: 'Cypress announcement',
+      description: 'Cypress announcement description',
     });
   }
 
+  replyAnnouncement() {
+    replyAnnouncementUtil();
+  }
+
   removeAnnouncement() {
-    deleteAnnoucement();
+    deleteAnnouncement();
   }
 
   // Inactive Announcement
 
   createInactiveAnnouncement() {
     createInactiveAnnouncementUtil({
-      title: 'Inactive Cypress annocement',
-      description: 'Inactive Cypress annocement description',
+      title: 'Inactive Cypress announcement',
+      description: 'Inactive Cypress announcement description',
     });
   }
 
   removeInactiveAnnouncement() {
-    deleteAnnoucement();
+    deleteAnnouncement();
   }
 
   followUnfollowEntity() {
@@ -516,13 +487,29 @@ class EntityClass {
   // Custom property
 
   setCustomProperty(propertydetails: CustomProperty, value: string) {
-    setValueForProperty(propertydetails.name, value);
-    validateValueForProperty(propertydetails.name, value);
+    setValueForProperty(
+      propertydetails.name,
+      value,
+      propertydetails.propertyType.name
+    );
+    validateValueForProperty(
+      propertydetails.name,
+      value,
+      propertydetails.propertyType.name
+    );
   }
 
   updateCustomProperty(propertydetails: CustomProperty, value: string) {
-    setValueForProperty(propertydetails.name, value);
-    validateValueForProperty(propertydetails.name, value);
+    setValueForProperty(
+      propertydetails.name,
+      value,
+      propertydetails.propertyType.name
+    );
+    validateValueForProperty(
+      propertydetails.name,
+      value,
+      propertydetails.propertyType.name
+    );
   }
 }
 

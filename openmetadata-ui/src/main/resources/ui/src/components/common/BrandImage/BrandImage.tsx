@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import React, { FC, useMemo } from 'react';
-import { useApplicationConfigContext } from '../../../context/ApplicationConfigProvider/ApplicationConfigProvider';
+import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import brandImageClassBase from '../../../utils/BrandImage/BrandImageClassBase';
 
 interface BrandImageProps {
@@ -21,6 +21,7 @@ interface BrandImageProps {
   width: number | string;
   height: number | string;
   isMonoGram?: boolean;
+  src?: string;
 }
 
 const BrandImage: FC<BrandImageProps> = ({
@@ -29,6 +30,7 @@ const BrandImage: FC<BrandImageProps> = ({
   width,
   height,
   className,
+  src,
   isMonoGram = false,
 }) => {
   const { MonoGram, Logo } = useMemo(
@@ -39,8 +41,9 @@ const BrandImage: FC<BrandImageProps> = ({
     []
   );
 
+  const { applicationConfig } = useApplicationStore();
   const { customLogoUrlPath = '', customMonogramUrlPath = '' } =
-    useApplicationConfigContext();
+    applicationConfig?.customLogoConfig ?? {};
 
   const logoSource = isMonoGram
     ? customMonogramUrlPath || MonoGram
@@ -53,8 +56,11 @@ const BrandImage: FC<BrandImageProps> = ({
       data-testid={dataTestId ?? 'brand-logo-image'}
       height={height}
       id="brand-image"
-      src={logoSource}
+      src={src ?? logoSource}
       width={width}
+      onError={(e) => {
+        e.currentTarget.src = logoSource;
+      }}
     />
   );
 };

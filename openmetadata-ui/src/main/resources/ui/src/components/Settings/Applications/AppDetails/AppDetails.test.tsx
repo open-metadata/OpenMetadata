@@ -22,6 +22,10 @@ import { GlobalSettingOptions } from '../../../../constants/GlobalSettings.const
 import { mockApplicationData } from '../../../../mocks/rests/applicationAPI.mock';
 import AppDetails from './AppDetails.component';
 
+jest.mock('../../../../constants/constants', () => ({
+  DE_ACTIVE_COLOR: '#fefefe',
+}));
+
 jest.mock('../../../common/Loader/Loader', () =>
   jest.fn().mockReturnValue(<div>Loader</div>)
 );
@@ -134,8 +138,9 @@ jest.mock('../AppSchedule/AppSchedule.component', () =>
     ))
 );
 
-jest.mock('./ApplicationSchemaClassBase', () => ({
+jest.mock('./ApplicationsClassBase', () => ({
   importSchema: jest.fn().mockReturnValue({ default: ['table'] }),
+  getJSONUISchema: jest.fn().mockReturnValue({}),
 }));
 
 jest.mock('react-router-dom', () => ({

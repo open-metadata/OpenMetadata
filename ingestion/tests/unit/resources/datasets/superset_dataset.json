@@ -1,9 +1,9 @@
 {
     "dashboard": {
-        "count": 3,
+        "count": 1,
         "description_columns": {},
         "ids": [
-            14
+            1
         ],
         "label_columns": {
             "certification_details": "Certification Details",
@@ -11,9 +11,7 @@
             "changed_by.first_name": "Changed By First Name",
             "changed_by.id": "Changed By Id",
             "changed_by.last_name": "Changed By Last Name",
-            "changed_by.username": "Changed By Username",
             "changed_by_name": "Changed By Name",
-            "changed_by_url": "Changed By Url",
             "changed_on_delta_humanized": "Changed On Delta Humanized",
             "changed_on_utc": "Changed On Utc",
             "created_by.first_name": "Created By First Name",
@@ -25,17 +23,18 @@
             "id": "Id",
             "is_managed_externally": "Is Managed Externally",
             "json_metadata": "Json Metadata",
-            "owners.email": "Owners Email",
             "owners.first_name": "Owners First Name",
             "owners.id": "Owners Id",
             "owners.last_name": "Owners Last Name",
-            "owners.username": "Owners Username",
             "position_json": "Position Json",
             "published": "Published",
             "roles.id": "Roles Id",
             "roles.name": "Roles Name",
             "slug": "Slug",
             "status": "Status",
+            "tags.id": "Tags Id",
+            "tags.name": "Tags Name",
+            "tags.type": "Tags Type",
             "thumbnail_url": "Thumbnail Url",
             "url": "Url"
         },
@@ -53,10 +52,8 @@
             "certification_details",
             "changed_by.first_name",
             "changed_by.last_name",
-            "changed_by.username",
             "changed_by.id",
             "changed_by_name",
-            "changed_by_url",
             "changed_on_utc",
             "changed_on_delta_humanized",
             "created_on_delta_humanized",
@@ -65,13 +62,14 @@
             "created_by.last_name",
             "dashboard_title",
             "owners.id",
-            "owners.username",
             "owners.first_name",
             "owners.last_name",
-            "owners.email",
             "roles.id",
             "roles.name",
-            "is_managed_externally"
+            "is_managed_externally",
+            "tags.id",
+            "tags.name",
+            "tags.type"
         ],
         "list_title": "List Dashboard",
         "order_columns": [
@@ -84,45 +82,28 @@
         ],
         "result": [
             {
-                "certification_details": "",
-                "certified_by": "",
-                "changed_by": {
-                    "first_name": "Superset",
-                    "id": 1,
-                    "last_name": "Admin",
-                    "username": "admin"
-                },
-                "changed_by_name": "Superset Admin",
-                "changed_by_url": "/superset/profile/admin",
-                "changed_on_delta_humanized": "2 days ago",
-                "changed_on_utc": "2023-01-30T10:53:25.572977+0000",
-                "created_by": {
-                    "first_name": "Superset",
-                    "id": 1,
-                    "last_name": "Admin"
-                },
-                "created_on_delta_humanized": "2 days ago",
-                "css": "",
-                "dashboard_title": "My DASH",
-                "id": 14,
+                "certification_details": null,
+                "certified_by": null,
+                "changed_by": null,
+                "changed_by_name": "",
+                "changed_on_delta_humanized": "10 minutes ago",
+                "changed_on_utc": "2024-04-18T13:23:17.562330+0000",
+                "created_by": null,
+                "created_on_delta_humanized": "10 minutes ago",
+                "css": null,
+                "dashboard_title": "Unicode Test",
+                "id": 10,
                 "is_managed_externally": false,
-                "json_metadata": "{\"show_native_filters\": true, \"color_scheme\": \"\", \"refresh_frequency\": 0, \"shared_label_colors\": {}, \"color_scheme_domain\": [], \"expanded_slices\": {}, \"label_colors\": {}, \"timed_refresh_immune_slices\": [], \"default_filters\": \"{}\", \"chart_configuration\": {}}",
-                "owners": [
-                    {
-                        "email": "admin@openmetadata.org",
-                        "first_name": "Superset",
-                        "id": 1,
-                        "last_name": "Admin",
-                        "username": "admin"
-                    }
-                ],
-                "position_json": "{\"CHART-dwSXo_0t5X\":{\"children\":[],\"id\":\"CHART-dwSXo_0t5X\",\"meta\":{\"chartId\":37,\"height\":50,\"sliceName\":\"% Rural\",\"uuid\":\"8f663401-854a-4da7-8e50-4b8e4ebb4f22\",\"width\":4},\"parents\":[\"ROOT_ID\",\"GRID_ID\",\"ROW-z_7odBWenK\"],\"type\":\"CHART\"},\"DASHBOARD_VERSION_KEY\":\"v2\",\"GRID_ID\":{\"children\":[\"ROW-z_7odBWenK\"],\"id\":\"GRID_ID\",\"parents\":[\"ROOT_ID\"],\"type\":\"GRID\"},\"HEADER_ID\":{\"id\":\"HEADER_ID\",\"meta\":{\"text\":\"My DASH\"},\"type\":\"HEADER\"},\"ROOT_ID\":{\"children\":[\"GRID_ID\"],\"id\":\"ROOT_ID\",\"type\":\"ROOT\"},\"ROW-z_7odBWenK\":{\"children\":[\"CHART-dwSXo_0t5X\"],\"id\":\"ROW-z_7odBWenK\",\"meta\":{\"background\":\"BACKGROUND_TRANSPARENT\"},\"parents\":[\"ROOT_ID\",\"GRID_ID\"],\"type\":\"ROW\"}}",
+                "json_metadata": "{}",
+                "owners": [],
+                "position_json": "{\"CHART-Hkx6154FEm\": {\"children\": [], \"id\": \"CHART-Hkx6154FEm\", \"meta\": {\"chartId\": 69, \"height\": 30, \"sliceName\": \"slice 1\", \"width\": 4, \"uuid\": \"609e26d8-8e1e-4097-9751-931708e24ee4\"}, \"type\": \"CHART\"}, \"GRID_ID\": {\"children\": [\"ROW-SyT19EFEQ\"], \"id\": \"GRID_ID\", \"type\": \"GRID\"}, \"ROOT_ID\": {\"children\": [\"GRID_ID\"], \"id\": \"ROOT_ID\", \"type\": \"ROOT\"}, \"ROW-SyT19EFEQ\": {\"children\": [\"CHART-Hkx6154FEm\"], \"id\": \"ROW-SyT19EFEQ\", \"meta\": {\"background\": \"BACKGROUND_TRANSPARENT\"}, \"type\": \"ROW\"}, \"DASHBOARD_VERSION_KEY\": \"v2\"}",
                 "published": true,
                 "roles": [],
-                "slug": null,
+                "slug": "unicode-test",
                 "status": "published",
-                "thumbnail_url": "/api/v1/dashboard/14/thumbnail/0088b55d1a7c34b5aa121f11252c11d5/",
-                "url": "/superset/dashboard/14/"
+                "tags": [],
+                "thumbnail_url": "/api/v1/dashboard/10/thumbnail/874aa9f8f41b6956d5cf9740cf43aca4/",
+                "url": "/superset/dashboard/unicode-test/"
             }
         ]
     },
@@ -620,7 +601,7 @@
     "dashboard-db": {
         "id": 14,
         "dashboard_title": "My DASH",
-        "position_json":"{\"CHART-dwSXo_0t5X\":{\"children\":[],\"id\":\"CHART-dwSXo_0t5X\",\"meta\":{\"chartId\":37,\"height\":50,\"sliceName\":\"% Rural\",\"uuid\":\"8f663401-854a-4da7-8e50-4b8e4ebb4f22\",\"width\":4},\"parents\":[\"ROOT_ID\",\"GRID_ID\",\"ROW-z_7odBWenK\"],\"type\":\"CHART\"},\"DASHBOARD_VERSION_KEY\":\"v2\",\"GRID_ID\":{\"children\":[\"ROW-z_7odBWenK\"],\"id\":\"GRID_ID\",\"parents\":[\"ROOT_ID\"],\"type\":\"GRID\"},\"HEADER_ID\":{\"id\":\"HEADER_ID\",\"meta\":{\"text\":\"My DASH\"},\"type\":\"HEADER\"},\"ROOT_ID\":{\"children\":[\"GRID_ID\"],\"id\":\"ROOT_ID\",\"type\":\"ROOT\"},\"ROW-z_7odBWenK\":{\"children\":[\"CHART-dwSXo_0t5X\"],\"id\":\"ROW-z_7odBWenK\",\"meta\":{\"background\":\"BACKGROUND_TRANSPARENT\"},\"parents\":[\"ROOT_ID\",\"GRID_ID\"],\"type\":\"ROW\"}}",
+        "position_json":"{\"CHART-dwSXo_0t5X\":{\"children\":[],\"id\":\"CHART-dwSXo_0t5X\",\"meta\":{\"chartId\":1,\"height\":50,\"sliceName\":\"% Rural\",\"uuid\":\"8f663401-854a-4da7-8e50-4b8e4ebb4f22\",\"width\":4},\"parents\":[\"ROOT_ID\",\"GRID_ID\",\"ROW-z_7odBWenK\"],\"type\":\"CHART\"},\"DASHBOARD_VERSION_KEY\":\"v2\",\"GRID_ID\":{\"children\":[\"ROW-z_7odBWenK\"],\"id\":\"GRID_ID\",\"parents\":[\"ROOT_ID\"],\"type\":\"GRID\"},\"HEADER_ID\":{\"id\":\"HEADER_ID\",\"meta\":{\"text\":\"My DASH\"},\"type\":\"HEADER\"},\"ROOT_ID\":{\"children\":[\"GRID_ID\"],\"id\":\"ROOT_ID\",\"type\":\"ROOT\"},\"ROW-z_7odBWenK\":{\"children\":[\"CHART-dwSXo_0t5X\"],\"id\":\"ROW-z_7odBWenK\",\"meta\":{\"background\":\"BACKGROUND_TRANSPARENT\"},\"parents\":[\"ROOT_ID\",\"GRID_ID\"],\"type\":\"ROW\"}}",
         "email" : "admin@openmetadata.org"
     },
     "chart-db": [
@@ -632,6 +613,17 @@
         "schema": "main",
         "database_name": "test",
         "sqlalchemy_uri": "postgres://user:pass@localhost:5432/examples"
+    },
+    {
+        "id":1,
+        "slice_name":"Rural", 
+        "description":"desc", 
+        "table_name":"sample_table", 
+        "schema":"main", 
+        "database_name":"test_db", 
+        "sqlalchemy_uri":"postgres://user:pass@localhost:5432/examples", 
+        "viz_type":"bar_chart", 
+        "datasource_id":99
     }]
 
 }

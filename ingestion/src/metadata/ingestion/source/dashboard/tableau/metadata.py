@@ -47,9 +47,11 @@ from metadata.generated.schema.entity.services.ingestionPipelines.status import 
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
+from metadata.generated.schema.type.entityLineage import ColumnLineage
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
+from metadata.ingestion.lineage.sql_lineage import get_column_fqn
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.dashboard.dashboard_service import DashboardServiceSource
@@ -88,7 +90,12 @@ class TableauSource(DashboardServiceSource):
     client: TableauClient
 
     @classmethod
-    def create(cls, config_dict: dict, metadata: OpenMetadata):
+    def create(
+        cls,
+        config_dict: dict,
+        metadata: OpenMetadata,
+        pipeline_name: Optional[str] = None,
+    ):
         config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
         connection: TableauConnection = config.serviceConnection.__root__.config
         if not isinstance(connection, TableauConnection):
@@ -184,7 +191,7 @@ class TableauSource(DashboardServiceSource):
                     data_model_request = CreateDashboardDataModelRequest(
                         name=data_model.id,
                         displayName=data_model_name,
-                        service=self.context.dashboard_service,
+                        service=self.context.get().dashboard_service,
                         dataModelType=DataModelType.TableauDataModel.value,
                         serviceType=DashboardServiceType.Tableau.value,
                         columns=self.get_column_info(data_model),
@@ -228,19 +235,19 @@ class TableauSource(DashboardServiceSource):
                     fqn.build(
                         self.metadata,
                         entity_type=Chart,
-                        service_name=self.context.dashboard_service,
+                        service_name=self.context.get().dashboard_service,
                         chart_name=chart,
                     )
-                    for chart in self.context.charts or []
+                    for chart in self.context.get().charts or []
                 ],
                 dataModels=[
                     fqn.build(
                         self.metadata,
                         entity_type=DashboardDataModel,
-                        service_name=self.context.dashboard_service,
+                        service_name=self.context.get().dashboard_service,
                         data_model_name=data_model,
                     )
-                    for data_model in self.context.dataModels or []
+                    for data_model in self.context.get().dataModels or []
                 ],
                 tags=get_tag_labels(
                     metadata=self.metadata,
@@ -249,7 +256,7 @@ class TableauSource(DashboardServiceSource):
                     include_tags=self.source_config.includeTags,
                 ),
                 sourceUrl=dashboard_url,
-                service=self.context.dashboard_service,
+                service=self.context.get().dashboard_service,
                 owner=self.get_owner_ref(dashboard_details=dashboard_details),
             )
             yield Either(right=dashboard_request)
@@ -262,6 +269,50 @@ class TableauSource(DashboardServiceSource):
                     stackTrace=traceback.format_exc(),
                 )
             )
+
+    @staticmethod
+    def _get_data_model_column_fqn(
+        data_model_entity: DashboardDataModel, column: str
+    ) -> Optional[str]:
+        """
+        Get fqn of column if exist in table entity
+        """
+        if not data_model_entity:
+            return None
+        for tbl_column in data_model_entity.columns:
+            for child_column in tbl_column.children or []:
+                if column.lower() == child_column.name.__root__.lower():
+                    return child_column.fullyQualifiedName.__root__
+        return None
+
+    def _get_column_lineage(
+        self,
+        upstream_table: UpstreamTable,
+        table_entity: Table,
+        data_model_entity: DashboardDataModel,
+        upstream_col_set: Set[str],
+    ) -> List[ColumnLineage]:
+        """
+        Get the column lineage from the fields
+        """
+        try:
+            column_lineage = []
+            for column in upstream_table.columns or []:
+                if column.id in upstream_col_set:
+                    from_column = get_column_fqn(
+                        table_entity=table_entity, column=column.name
+                    )
+                    to_column = self._get_data_model_column_fqn(
+                        data_model_entity=data_model_entity,
+                        column=column.id,
+                    )
+                    column_lineage.append(
+                        ColumnLineage(fromColumns=[from_column], toColumn=to_column)
+                    )
+            return column_lineage
+        except Exception as exc:
+            logger.debug(f"Error to get column lineage: {exc}")
+            logger.debug(traceback.format_exc())
 
     def yield_dashboard_lineage_details(
         self, dashboard_details: TableauDashboard, db_service_name: str
@@ -285,12 +336,22 @@ class TableauSource(DashboardServiceSource):
         for datamodel in dashboard_details.dataModels or []:
             try:
                 data_model_entity = self._get_datamodel(datamodel=datamodel)
+                upstream_col_set = {
+                    column.id
+                    for field in datamodel.fields
+                    for column in field.upstreamColumns
+                }
                 if data_model_entity:
                     for table in datamodel.upstreamTables or []:
                         om_table = self._get_database_table(db_service_entity, table)
                         if om_table:
+                            column_lineage = self._get_column_lineage(
+                                table, om_table, data_model_entity, upstream_col_set
+                            )
                             yield self._get_add_lineage_request(
-                                to_entity=data_model_entity, from_entity=om_table
+                                to_entity=data_model_entity,
+                                from_entity=om_table,
+                                column_lineage=column_lineage,
                             )
             except Exception as err:
                 yield Either(
@@ -340,7 +401,7 @@ class TableauSource(DashboardServiceSource):
                         classification_name=TABLEAU_TAG_CATEGORY,
                         include_tags=self.source_config.includeTags,
                     ),
-                    service=self.context.dashboard_service,
+                    service=self.context.get().dashboard_service,
                 )
                 yield Either(right=chart)
             except Exception as exc:
@@ -408,7 +469,7 @@ class TableauSource(DashboardServiceSource):
         datamodel_fqn = fqn.build(
             self.metadata,
             entity_type=DashboardDataModel,
-            service_name=self.context.dashboard_service,
+            service_name=self.context.get().dashboard_service,
             data_model_name=datamodel.id,
         )
         if datamodel_fqn:

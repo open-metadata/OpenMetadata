@@ -40,6 +40,8 @@ type Props = {
   isGlossary: boolean;
   isVersionView?: boolean;
   onThreadLinkSelect: (value: string) => void;
+  editCustomAttributePermission: boolean;
+  onExtensionUpdate: (updatedTable: GlossaryTerm) => Promise<void>;
 };
 
 const GlossaryOverviewTab = ({
@@ -49,6 +51,8 @@ const GlossaryOverviewTab = ({
   isGlossary,
   isVersionView,
   onThreadLinkSelect,
+  editCustomAttributePermission,
+  onExtensionUpdate,
 }: Props) => {
   const [isDescriptionEditable, setIsDescriptionEditable] =
     useState<boolean>(false);
@@ -182,11 +186,13 @@ const GlossaryOverviewTab = ({
 
       <Col className="p-t-md" span={6}>
         <GlossaryDetailsRightPanel
+          editCustomAttributePermission={editCustomAttributePermission}
           entityType={EntityType.GLOSSARY_TERM}
           isGlossary={false}
           isVersionView={isVersionView}
           permissions={permissions}
           selectedData={selectedData}
+          onExtensionUpdate={onExtensionUpdate}
           onThreadLinkSelect={onThreadLinkSelect}
           onUpdate={onUpdate}
         />

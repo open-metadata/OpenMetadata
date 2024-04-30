@@ -104,7 +104,9 @@ class OracleSource(StoredProcedureMixin, CommonDbSourceService):
     """
 
     @classmethod
-    def create(cls, config_dict, metadata: OpenMetadata):
+    def create(
+        cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None
+    ):
         config = WorkflowSource.parse_obj(config_dict)
         connection: OracleConnection = config.serviceConnection.__root__.config
         if not isinstance(connection, OracleConnection):
@@ -179,7 +181,7 @@ class OracleSource(StoredProcedureMixin, CommonDbSourceService):
         if self.source_config.includeStoredProcedures:
             results: FetchProcedureList = self.engine.execute(
                 ORACLE_GET_STORED_PROCEDURES.format(
-                    schema=self.context.database_schema.upper()
+                    schema=self.context.get().database_schema.upper()
                 )
             ).all()
             results = self.process_result(data=results)
@@ -207,9 +209,9 @@ class OracleSource(StoredProcedureMixin, CommonDbSourceService):
                 databaseSchema=fqn.build(
                     metadata=self.metadata,
                     entity_type=DatabaseSchema,
-                    service_name=self.context.database_service,
-                    database_name=self.context.database,
-                    schema_name=self.context.database_schema,
+                    service_name=self.context.get().database_service,
+                    database_name=self.context.get().database,
+                    schema_name=self.context.get().database_schema,
                 ),
             )
             yield Either(right=stored_procedure_request)

@@ -23,8 +23,8 @@ import {
   AccessTokenResponse,
   getAccessTokenOnExpiry,
 } from '../../../rest/auth-API';
-import localState from '../../../utils/LocalStorageUtils';
-import { useAuthContext } from '../AuthProviders/AuthProvider';
+
+import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { useBasicAuth } from '../AuthProviders/BasicAuthProvider';
 
 interface BasicAuthenticatorInterface {
@@ -35,10 +35,16 @@ const BasicAuthenticator = forwardRef(
   ({ children }: BasicAuthenticatorInterface, ref) => {
     const { handleLogout } = useBasicAuth();
     const { t } = useTranslation();
-    const { setIsAuthenticated, authConfig } = useAuthContext();
+    const {
+      setIsAuthenticated,
+      authConfig,
+      getRefreshToken,
+      setRefreshToken,
+      setOidcToken,
+    } = useApplicationStore();
 
     const handleSilentSignIn = async (): Promise<AccessTokenResponse> => {
-      const refreshToken = localState.getRefreshToken();
+      const refreshToken = getRefreshToken();
 
       if (
         authConfig?.provider !== AuthProvider.Basic &&
@@ -51,8 +57,8 @@ const BasicAuthenticator = forwardRef(
         refreshToken: refreshToken as string,
       });
 
-      localState.setRefreshToken(response.refreshToken);
-      localState.setOidcToken(response.accessToken);
+      setRefreshToken(response.refreshToken);
+      setOidcToken(response.accessToken);
 
       return Promise.resolve(response);
     };

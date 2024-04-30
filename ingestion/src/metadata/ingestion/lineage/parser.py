@@ -67,6 +67,8 @@ class LineageParser:
         timeout_seconds: int = LINEAGE_PARSING_TIMEOUT,
     ):
         self.query = query
+        self.query_parsing_success = True
+        self.query_parsing_failure_reason = None
         self._clean_query = self.clean_raw_query(query)
         self.parser = self._evaluate_best_parser(
             self._clean_query, dialect=dialect, timeout_seconds=timeout_seconds
@@ -217,6 +219,11 @@ class LineageParser:
         """
         aliases = self.table_aliases
         values = identifier.value.split(".")
+
+        if len(values) > 4:
+            logger.debug(f"Invalid comparison element from identifier: {identifier}")
+            return None, None
+
         database_name, schema_name, table_or_alias, column_name = (
             [None] * (4 - len(values))
         ) + values
@@ -307,29 +314,39 @@ class LineageParser:
                 comparisons.append(sub)
 
         for comparison in comparisons:
-            if "." not in comparison.left.value or "." not in comparison.right.value:
-                logger.debug(f"Ignoring comparison {comparison}")
-                continue
+            try:
+                if (
+                    "." not in comparison.left.value
+                    or "." not in comparison.right.value
+                ):
+                    logger.debug(f"Ignoring comparison {comparison}")
+                    continue
 
-            table_left, column_left = self.get_comparison_elements(
-                identifier=comparison.left
-            )
-            table_right, column_right = self.get_comparison_elements(
-                identifier=comparison.right
-            )
+                table_left, column_left = self.get_comparison_elements(
+                    identifier=comparison.left
+                )
+                table_right, column_right = self.get_comparison_elements(
+                    identifier=comparison.right
+                )
 
-            if not table_left or not table_right:
-                logger.warning(f"Cannot find ingredients from {comparison}")
-                continue
+                if not table_left or not table_right:
+                    logger.warning(
+                        f"Can't extract table names when parsing JOIN information from {comparison}"
+                    )
+                    logger.debug(f"Query: {sql_statement}")
+                    continue
 
-            left_table_column = TableColumn(table=table_left, column=column_left)
-            right_table_column = TableColumn(table=table_right, column=column_right)
+                left_table_column = TableColumn(table=table_left, column=column_left)
+                right_table_column = TableColumn(table=table_right, column=column_right)
 
-            # We just send the info once, from Left -> Right.
-            # The backend will prepare the symmetric information.
-            self.stateful_add_table_joins(
-                join_data, left_table_column, right_table_column
-            )
+                # We just send the info once, from Left -> Right.
+                # The backend will prepare the symmetric information.
+                self.stateful_add_table_joins(
+                    join_data, left_table_column, right_table_column
+                )
+            except Exception as exc:
+                logger.debug(f"Cannot process comparison {comparison}: {exc}")
+                logger.debug(traceback.format_exc())
 
     @cached_property
     def table_joins(self) -> Dict[str, List[TableColumnJoin]]:
@@ -385,9 +402,8 @@ class LineageParser:
 
         return clean_query.strip()
 
-    @staticmethod
     def _evaluate_best_parser(
-        query: str, dialect: Dialect, timeout_seconds: int
+        self, query: str, dialect: Dialect, timeout_seconds: int
     ) -> Optional[LineageRunner]:
         if query is None:
             return None
@@ -409,15 +425,19 @@ class LineageParser:
                 )
             )
         except TimeoutError:
-            logger.debug(
-                f"Lineage with SqlFluff failed for the [{dialect.value}] query: [{query}]: "
+            self.query_parsing_success = False
+            self.query_parsing_failure_reason = (
+                f"Lineage with SqlFluff failed for the [{dialect.value}]. "
                 f"Parser has been running for more than {timeout_seconds} seconds."
             )
+            logger.debug(f"{self.query_parsing_failure_reason}] query: [{query}]")
             lr_sqlfluff = None
         except Exception:
-            logger.debug(
-                f"Lineage with SqlFluff failed for the [{dialect.value}] query: [{query}]"
+            self.query_parsing_success = False
+            self.query_parsing_failure_reason = (
+                f"Lineage with SqlFluff failed for the [{dialect.value}]"
             )
+            logger.debug(f"{self.query_parsing_failure_reason} query: [{query}]")
             lr_sqlfluff = None
 
         lr_sqlparser = LineageRunner(query)
@@ -436,10 +456,12 @@ class LineageParser:
         if lr_sqlfluff:
             # if sqlparser retrieve more lineage info that sqlfluff
             if sqlparser_count > sqlfluff_count:
-                logger.debug(
+                self.query_parsing_success = False
+                self.query_parsing_failure_reason = (
                     "Lineage computed with SqlFluff did not perform as expected "
-                    f"for the [{dialect.value}] query: [{query}]"
+                    f"for the [{dialect.value}]"
                 )
+                logger.debug(f"{self.query_parsing_failure_reason} query: [{query}]")
                 return lr_sqlparser
             return lr_sqlfluff
         return lr_sqlparser

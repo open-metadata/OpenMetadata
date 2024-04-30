@@ -84,7 +84,7 @@
                                                     <table border="0" cellspacing="0" cellpadding="0" role="presentation">
                                                       <tbody>
                                                         <tr>
-                                                          <td bgcolor="#11A683" style="border-radius:5px;background-color:#7147E8"><a style="font-size:14px;font-family:poppins,Helvetica,Arial,sans-serif;font-weight:400;line-height:32px;color:#ffffff;text-align:center;text-decoration:none;display:block;background-color:#7147E8;padding:8px 32px;border-radius:5px" href="${viewReportUrl}" title="" target="_blank" data-saferedirecturl="#">View Details</a></td>
+                                                          <td bgcolor="#11A683" style="border-radius:5px;background-color:#7147E8"><a style="font-size:14px;font-family:poppins,Helvetica,Arial,sans-serif;font-weight:400;line-height:32px;color:#ffffff;text-align:center;text-decoration:none;display:block;background-color:#0950C5;padding:8px 32px;border-radius:5px" href="${viewReportUrl}" title="" target="_blank" data-saferedirecturl="#">View Report</a></td>
                                                         </tr>
                                                       </tbody>
                                                     </table>
@@ -104,45 +104,139 @@
                         </tr>
                       </tbody>
                     </table>
-                    <table cellpadding="0" cellspacing="0" border="0" width="100%" bgcolor="#f8f8f8">
+                    <table cellpadding="" cellspacing="0" border="0" width="100%" bgcolor="#f8f8f8" style="padding: 20px">
+                      <tbody style="padding: 20px">
+                        <tr>
+                          <td style="padding:0px 30px; border-right:1px solid #75757529; border-bottom:1px solid #75757529">
+                            <p style="font-size:14px; color:#757575">Total Data Assets<br><span style="color:rgb(46,53,67);font-family:poppins,Helvetica,Arial,sans-serif;font-size:20px;line-height:150%;font-weight:600;">${totalAssetObj.totalDataAssets}</span><br><span style="font-size:12px; color:#757575">${totalAssetObj.percentChangeMessage} [${totalAssetObj.numberOfDaysChange} Days Change] </span></p>
+                          </td>
+                          <td style="padding: 0px 30px; border-bottom:1px solid #75757529">
+                            <p style="font-size:14px; color:#757575">Data Assets with Description<br><span style="color:rgb(46,53,67);font-family:poppins,Helvetica,Arial,sans-serif;font-size:20px;line-height:150%;font-weight:600;">${descriptionObj.totalAssets}</span><br><span style="font-size:12px; color:#757575"> ${descriptionObj.percentChangeMessage} [${descriptionObj.numberOfDaysChange} Days Change] </span></p>
+                          </td>
+                        </tr>
+                        <tr>
+                          <td style="padding: 0px 30px; border-right:1px solid #75757529">
+                            <p style="font-size:14px; color:#757575">Total Data Assets with Owner<br><span style="color:rgb(46,53,67);font-family:poppins,Helvetica,Arial,sans-serif;font-size:20px;line-height:150%;font-weight:600;">${ownershipObj.totalAssets}</span><br><span style="font-size:12px; color:#757575"> ${ownershipObj.percentChangeMessage} [${ownershipObj.numberOfDaysChange} Days Change] </span></p>
+                          </td>
+                          <td style="padding: 0px 30px">
+                            <p style="font-size:14px; color:#757575">Data Assets with Tiers<br><span style="color:rgb(46,53,67);font-family:poppins,Helvetica,Arial,sans-serif;font-size:20px;line-height:150%;font-weight:600;">${tierObj.totalAssets}</span><br><span style="font-size:12px; color:#757575"> ${tierObj.percentChangeMessage} [${tierObj.numberOfDaysChange} Days Change] </span></p>
+                          </td>
+                        </tr>
+                      </tbody>
+                    </table>
+                    <table cellpadding="0" cellspacing="0" border="0" width="100%">
                       <tbody>
                         <tr>
-                          <td align="center" valign="top">
-                            <table cellpadding="0" cellspacing="0" border="0" width="100%">
+                          <td bgcolor="#ffffff" height="20" style="line-height:20px;font-size:20px">&nbsp;</td>
+                        </tr>
+                      </tbody>
+                    </table>
+                    <table cellpadding="0" cellspacing="0" border="0" width="100%">
+                      <tbody>
+                        <tr>
+                          <td valign="middle" align="left" bgcolor="#FFFFFF" width="342">
+                            <table cellpadding="0" cellspacing="0" border="0">
                               <tbody>
                                 <tr>
-                                  <td bgcolor="#ffffff" height="20" style="line-height:20px;font-size:20px">&nbsp;</td>
+                                  <td width="30"></td>
+                                  <td align="left" style="color:rgb(46,53,67);font-family:poppins,Helvetica,Arial,sans-serif;font-size:14px;line-height:150%;font-weight:bold;">
+                                    <table cellpadding="0" cellspacing="0" border="0" width="95%">
+                                      <tbody>
+                                        <tr>
+                                          <td align="left" style="color:rgb(46,53,67);font-family:poppins,Helvetica,Arial,sans-serif;font-size:20px;line-height:150%;font-weight:600;"> Total Data Assets</td>
+                                        </tr>
+                                      </tbody>
+                                    </table>
+                                  </td>
                                 </tr>
                                 <tr>
-                                  <td align="center">
+                                  <td colspan="2" bgcolor="#FFFFFF" height="20" style="line-height:20px;font-size:20px">&nbsp;</td>
+                                </tr>
+                                <tr>
+                                  <td width="30"></td>
+                                  <td align="left" style="color:#757575;font-family:poppins,Helvetica,Arial,sans-serif;font-size:14px;line-height:150%;font-weight:normal">${totalAssetObj.completeMessage}</td>
+                                </tr>
+                                <tr>
+                                  <td colspan="2" bgcolor="#FFFFFF" height="20" style="line-height:20px;font-size:20px">&nbsp;</td>
+                                </tr>
+                                <tr>
+                                  <td width="30"></td>
+                                  <td colspan="2" bgcolor="#FFFFFF" height="20" style="font-size:12px; color:#757575"> ${totalAssetObj.percentChangeMessage} [${totalAssetObj.numberOfDaysChange} Days Change]</td>
+                                </tr>
+                              </tbody>
+                            </table>
+                          </td>
+                          <td valign="middle" align="right" bgcolor="#f8f8f8" width="208" height="210">
+                            <table cellpadding="0" cellspacing="0" border="0">
+                              <tbody>
+                                <tr>
+                                  <td align="right" style="color:#292929;font-family:poppins,Helvetica,Arial,sans-serif;font-size:32px;line-height:normal;font-weight:bold">0</td>
+                                </tr>
+                                <tr>
+                                  <td align="right" style="color:#757575;font-family:poppins,Helvetica,Arial,sans-serif;font-size:15px;line-height:normal;font-weight:normal">Total Data Assets</td>
+                                </tr>
+                                <tr>
+                                  <td valign="bottom" width="160" align="right" style="color:rgb(253,253,253);font-family:poppins,Helvetica,Arial,sans-serif;font-size:15px;line-height:normal;font-weight:normal">
                                     <table cellpadding="0" cellspacing="0" border="0">
                                       <tbody>
                                         <tr>
-                                          <td>
-                                            <table cellpadding="0" cellspacing="0" border="0">
+                                          <td align="right" valign="bottom" bgcolor="#f8f8f8" width="100%" height="40">
+                                            <table cellspacing="0" cellpadding="0" border="0" align="right">
                                               <tbody>
                                                 <tr>
-                                                  <td valign="middle" align="center" width="400" height="45">
-                                                    <table cellpadding="0" cellspacing="0" border="0">
+                                                  <td align="right" valign="bottom">
+                                                    <table cellpadding="0" cellspacing="0" border="0" align="right">
                                                       <tbody>
                                                         <tr>
-                                                          <td bgcolor="#f8f8f8" height="20" style="line-height:20px;font-size:20px">&nbsp;</td>
-                                                        </tr>
-                                                        <tr>
-                                                          <td bgcolor="#f8f8f8" height="20" style="line-height:20px;font-size:20px">&nbsp;</td>
-                                                        </tr>
-                                                        <tr>
-                                                          <td valign="top" style="color:#292929;font-family:poppins,Helvetica,Arial,sans-serif;font-size:20px;line-height:normal;font-weight:600;text-align: center;">Total Data Assets</td>
-                                                        </tr>
-                                                        <tr>
-                                                          <td colspan="3" style="line-height:18px;font-size:14px; text-align: center; color:#757575">${totalAssetObj.completeMessage}</td>
-                                                        </tr>
-                                                        <tr>
-                                                          <td colspan="3" style="color:#361A8F;font-family:poppins,Helvetica,Arial,sans-serif;font-size:30px;line-height:150%;font-weight:400; text-align: center"><strong>${totalAssetObj.totalDataAssets}</strong></td>
+                                                          <td width="2"></td>
+                                                          <#list totalAssetObj.dateMap?keys as key>
+                                                            <td valign="bottom">
+                                                              <table cellspacing="0" cellpadding="0" border="0" width="10" align="left">
+                                                                <tbody>
+                                                                  <tr>
+                                                                    <td valign="bottom" bgcolor="#f8f8f8" height="0" style="line-height:0px;font-size:0px">&nbsp;</td>
+                                                                  </tr>
+                                                                  <tr>
+                                                                    <td valign="bottom" bgcolor="#0950C5" height="${totalAssetObj.dateMap[key]}" style="line-height:${totalAssetObj.dateMap[key]}px;font-size:40px; border-radius: 50px;">&nbsp;</td>
+                                                                  </tr>
+                                                                </tbody>
+                                                              </table>
+                                                            </td>
+                                                            <td width="30"></td>
+                                                          </#list>
                                                         </tr>
                                                       </tbody>
                                                     </table>
                                                   </td>
+                                                </tr>
+                                                <tr>
+                                                  <td width="100%" bgcolor="#757575" height="1" style="line-height:1px;font-size:1px">&nbsp;</td>
+                                                </tr>
+                                              </tbody>
+                                            </table>
+                                          </td>
+                                        </tr>
+                                        <tr>
+                                          <td align="right" valign="bottom">
+                                            <table cellpadding="0" cellspacing="0" border="0" width="100%">
+                                              <tbody>
+                                                <tr>
+                                                  <td bgcolor="#f8f8f8" height="10" style="line-height:10px;font-size:10px">&nbsp;</td>
+                                                </tr>
+                                              </tbody>
+                                            </table>
+                                          </td>
+                                        </tr>
+                                        <tr>
+                                          <td width="160" align="right" valign="bottom">
+                                            <table cellpadding="0" cellspacing="0" border="0" width="100%">
+                                              <tbody>
+                                                <tr>
+                                                  <td width="5"></td>
+                                                  <#list totalAssetObj.dateMap?keys as key>
+                                                    <td valign="bottom" align="right" style="color:#757575;font-family:poppins,Helvetica,Arial,sans-serif;font-size:8px;line-height:150%;font-weight:normal;text-transform:uppercase;letter-spacing:0.3px" aria-label="TotalAssetObjGraph ${key}">${key}</td>
+                                                    <td width="30"></td>
+                                                  </#list>
                                                 </tr>
                                               </tbody>
                                             </table>
@@ -151,12 +245,11 @@
                                       </tbody>
                                     </table>
                                   </td>
+                                  <td width="15"></td>
+                                  <td width="15"></td>
                                 </tr>
                                 <tr>
-                                  <td bgcolor="#f8f8f8" height="20" style="line-height:20px;font-size:20px">&nbsp;</td>
-                                </tr>
-                                <tr>
-                                  <td bgcolor="#f8f8f8" height="20" style="line-height:20px;font-size:20px">&nbsp;</td>
+                                  <td colspan="3" bgcolor="#f8f8f8" height="10" style="line-height:10px;font-size:10px">&nbsp;</td>
                                 </tr>
                               </tbody>
                             </table>
@@ -199,12 +292,16 @@
                                 <tr>
                                   <td colspan="2" bgcolor="#FFFFFF" height="20" style="line-height:20px;font-size:20px">&nbsp;</td>
                                 </tr>
-                                <#if descriptionObj.kpiAvailable> 
+                                <#if descriptionObj.kpiAvailable>
                                   <tr>
                                     <td width="30"></td>
                                     <td colspan="2" bgcolor="#FFFFFF" height="20" style="font-size:12px; color:#757575"><span style="color:#292929; font-weight: 600">Target KPI:</span> ${descriptionObj.targetKpi}% | <span style="color:#292929 ; font-weight: 600">Current KPI:</span> ${descriptionObj.percentCompleted}%</td>
                                   </tr>
-                                </#if>  
+                                </#if>
+                                <tr>
+                                  <td width="30"></td>
+                                  <td colspan="2" bgcolor="#FFFFFF" height="20" style="font-size:12px; color:#757575"> ${descriptionObj.percentChangeMessage} [${descriptionObj.numberOfDaysChange} Days Change]</td>
+                                </tr>
                               </tbody>
                             </table>
                           </td>
@@ -337,12 +434,16 @@
                                 <tr>
                                   <td colspan="2" bgcolor="#FFFFFF" height="20" style="line-height:20px;font-size:20px">&nbsp;</td>
                                 </tr>
-                                <#if ownershipObj.kpiAvailable> 
+                                <#if ownershipObj.kpiAvailable>
                                   <tr>
                                     <td width="30"></td>
                                     <td colspan="2" bgcolor="#FFFFFF" height="20" style="font-size:12px; color:#757575"><span style="color:#292929; font-weight: 600">Target KPI:</span> ${ownershipObj.targetKpi}% | <span style="color:#292929 ; font-weight: 600">Current KPI:</span> ${ownershipObj.percentCompleted}%</td>
                                   </tr>
                                 </#if>
+                                <tr>
+                                 <td width="30"></td>
+                                 <td colspan="2" bgcolor="#FFFFFF" height="20" style="font-size:12px; color:#757575"> ${ownershipObj.percentChangeMessage} [${ownershipObj.numberOfDaysChange} Days Change]</td>
+                                </tr>                                
                               </tbody>
                             </table>
                           </td>
@@ -475,6 +576,10 @@
                                 <tr>
                                   <td colspan="2" bgcolor="#FFFFFF" height="20" style="line-height:20px;font-size:20px">&nbsp;</td>
                                 </tr>
+                                <tr>
+                                  <td width="30"></td>
+                                  <td colspan="2" bgcolor="#FFFFFF" height="20" style="font-size:12px; color:#757575"> ${tierObj.percentChangeMessage} [${tierObj.numberOfDaysChange} Days Change]</td>
+                                </tr>
                               </tbody>
                             </table>
                           </td>
@@ -507,7 +612,7 @@
                                                           <#list tierObj.dateMap?keys as key>
                                                             <td valign="bottom">
                                                               <table cellspacing="0" cellpadding="0" border="0" width="10" align="left">
-                                                                <tbody>                                                         
+                                                                <tbody>
                                                                   <tr>
                                                                     <td valign="bottom" bgcolor="#f8f8f8" height="0" style="line-height:0px;font-size:0px">&nbsp;</td>
                                                                   </tr>

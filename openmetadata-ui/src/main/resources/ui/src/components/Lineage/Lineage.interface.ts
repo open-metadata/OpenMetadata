@@ -23,10 +23,12 @@ export interface LineageProps {
   entity?: SourceType;
 }
 
-export interface EntityLineageReponse {
+export interface EntityLineageResponse {
   entity: EntityReference;
   nodes?: EntityReference[];
   edges?: EdgeDetails[];
+  downstreamEdges?: EdgeDetails[];
+  upstreamEdges?: EdgeDetails[];
 }
 
 export type LineageRequest = {
@@ -49,4 +51,5 @@ export interface EdgeDetails {
   sqlQuery?: string;
   columns?: ColumnLineage[];
   description?: string;
+  pipelineEntityType?: EntityType.PIPELINE | EntityType.STORED_PROCEDURE;
 }

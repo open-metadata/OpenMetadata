@@ -14,6 +14,7 @@ Module handles the output messages from different workflows
 """
 
 import time
+import traceback
 from typing import Type, Union
 
 from metadata.config.common import ConfigurationError
@@ -110,6 +111,7 @@ def print_init_error(
         print_more_info(workflow_type)
     else:
         print_error_msg(f"\nError initializing {workflow_type.name}: {exc}")
+        print_error_msg(traceback.format_exc())
         print_more_info(workflow_type)
 
 

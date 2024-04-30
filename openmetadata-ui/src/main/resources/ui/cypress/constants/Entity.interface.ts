@@ -21,7 +21,7 @@ export enum EntityType {
   Domain = 'domains',
   Glossary = 'glossaries',
   GlossaryTerm = 'glossaryTerms',
-  SeachIndex = 'searchIndexes',
+  SearchIndex = 'searchIndexes',
   DatabaseService = 'services/databaseServices',
   DashboardService = 'services/dashboardServices',
   StorageService = 'services/storageServices',
@@ -33,6 +33,7 @@ export enum EntityType {
   Database = 'databases',
   DatabaseSchema = 'databaseSchemas',
   DataModel = 'dashboard/datamodels',
+  User = 'users',
 }
 
 export const EXPLORE_PAGE_TABS: Record<
@@ -46,23 +47,24 @@ export const EXPLORE_PAGE_TABS: Record<
     | EntityType.StorageService
     | EntityType.PipelineService
     | EntityType.Database
-    | EntityType.DatabaseSchema
     | EntityType.GlossaryTerm
     | EntityType.Domain
     | EntityType.MetadataService
+    | EntityType.User
   >,
   string
 > = {
+  [EntityType.DatabaseSchema]: 'database schemas',
   [EntityType.Dashboard]: 'dashboards',
   [EntityType.DataModel]: 'dashboard data models',
   [EntityType.Pipeline]: 'pipelines',
   [EntityType.Topic]: 'topics',
   [EntityType.MlModel]: 'ml models',
   [EntityType.Container]: 'containers',
-  [EntityType.SeachIndex]: 'search indexes',
+  [EntityType.SearchIndex]: 'search indexes',
   [EntityType.Table]: 'tables',
   [EntityType.StoreProcedure]: 'stored procedures',
-  [EntityType.Glossary]: 'glossaries',
+  [EntityType.Glossary]: 'glossary terms',
 } as const;
 
 export const SEARCH_INDEX: Record<
@@ -79,6 +81,7 @@ export const SEARCH_INDEX: Record<
     | EntityType.DatabaseSchema
     | EntityType.GlossaryTerm
     | EntityType.MetadataService
+    | EntityType.User
   >,
   string
 > = {
@@ -88,7 +91,7 @@ export const SEARCH_INDEX: Record<
   [EntityType.Topic]: 'topic_search_index',
   [EntityType.MlModel]: 'mlmodel_search_index',
   [EntityType.Container]: 'container_search_index',
-  [EntityType.SeachIndex]: 'search_entity_search_index',
+  [EntityType.SearchIndex]: 'search_entity_search_index',
   [EntityType.Table]: 'table_search_index',
   [EntityType.StoreProcedure]: 'store_procedure_search_index',
   [EntityType.Glossary]: 'glossary_search_index',
@@ -109,4 +112,20 @@ export enum SidebarItem {
   INSIGHTS = 'insights',
   SETTINGS = 'settings',
   LOGOUT = 'logout',
+}
+
+export enum ENTITY_PATH {
+  tables = 'table',
+  topics = 'topic',
+  dashboards = 'dashboard',
+  pipelines = 'pipeline',
+  mlmodels = 'mlmodel',
+  containers = 'container',
+  tags = 'tag',
+  glossaries = 'glossary',
+  searchIndexes = 'searchIndex',
+  storedProcedures = 'storedProcedure',
+  glossaryTerm = 'glossaryTerm',
+  databases = 'database',
+  databaseSchemas = 'databaseSchema',
 }

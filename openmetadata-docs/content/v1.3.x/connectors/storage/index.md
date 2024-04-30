@@ -7,11 +7,7 @@ slug: /connectors/storage
 
 This is the supported list of connectors for Storage Services:
 
-{% connectorsListContainer %}
-
-{% connectorInfoCard name="S3" stage="PROD" href="/connectors/storage/s3" platform="OpenMetadata" / %}
-
-{% /connectorsListContainer %}
+{% partial file="/v1.3/connectors/storage/connectors-list.md" /%}
 
 If you have a request for a new connector, don't hesitate to reach out in [Slack](https://slack.open-metadata.org/) or
 open a [feature request](https://github.com/open-metadata/OpenMetadata/issues/new/choose) in our GitHub repo.

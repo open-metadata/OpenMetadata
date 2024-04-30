@@ -14,6 +14,7 @@
 import { DefaultOptionType } from 'antd/lib/select';
 import { HTMLAttributes } from 'react';
 import { OperationPermission } from '../../../context/PermissionProvider/PermissionProvider.interface';
+import { SORT_ORDER } from '../../../enums/common.enum';
 import { Query } from '../../../generated/entity/data/query';
 import { EntityReference } from '../../../generated/type/entityReference';
 import { SearchDropdownOption } from '../../SearchDropdown/SearchDropdown.interface';
@@ -32,6 +33,21 @@ export interface TableQueriesProp {
   isTableDeleted?: boolean;
   tableId: string;
 }
+
+export type QueryFilterType = {
+  initialOptions: SearchDropdownOption[];
+  options: SearchDropdownOption[];
+  selected: SearchDropdownOption[];
+};
+
+export type FetchFilteredQueriesType = {
+  tags?: SearchDropdownOption[];
+  owners?: SearchDropdownOption[];
+  pageNumber?: number;
+  timeRange?: { startTs: number; endTs: number };
+  sortField?: string;
+  sortOrder?: SORT_ORDER;
+};
 
 export interface QueryCardProp extends HTMLAttributes<HTMLDivElement> {
   isExpanded: boolean;
@@ -68,7 +84,7 @@ export type QuerySearchParams = {
 
 export type QuerySearchShouldFilterType = {
   term: {
-    'owner.id': string;
+    'tags.tagFQN': string;
   };
 };
 export type QuerySearchMustFilterType = {

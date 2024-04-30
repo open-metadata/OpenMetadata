@@ -23,8 +23,8 @@ import { TitleBreadcrumbProps } from '../../components/common/TitleBreadcrumb/Ti
 import RightPanel from '../../components/DataQuality/AddDataQualityTest/components/RightPanel';
 import { INGESTION_DATA } from '../../components/DataQuality/AddDataQualityTest/rightPanelData';
 import TestSuiteIngestion from '../../components/DataQuality/AddDataQualityTest/TestSuiteIngestion';
-import { getTableTabPath } from '../../constants/constants';
-import { EntityTabs } from '../../enums/entity.enum';
+import { getEntityDetailsPath } from '../../constants/constants';
+import { EntityTabs, EntityType } from '../../enums/entity.enum';
 import { IngestionPipeline } from '../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { TestSuite } from '../../generated/tests/testSuite';
 import { useFqn } from '../../hooks/useFqn';
@@ -78,7 +78,8 @@ const TestSuiteIngestionPage = () => {
         },
         {
           name: getEntityName(response.executableEntityReference),
-          url: getTableTabPath(
+          url: getEntityDetailsPath(
+            EntityType.TABLE,
             response.executableEntityReference?.fullyQualifiedName ?? '',
             EntityTabs.PROFILER
           ),

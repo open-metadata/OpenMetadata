@@ -151,10 +151,6 @@ jest.mock('../../../../utils/SearchServiceUtils', () => ({
   }),
 }));
 
-jest.mock('../../../../utils/ServiceUtilClassBase', () => ({
-  serviceUtilClassBase: jest.fn(),
-}));
-
 jest.mock('../../../../utils/JSONSchemaFormUtils', () => ({
   formatFormDataForSubmit: jest.fn(),
 }));

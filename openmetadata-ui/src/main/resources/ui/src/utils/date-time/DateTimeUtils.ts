@@ -187,3 +187,13 @@ export const getDaysRemaining = (timestamp: number) =>
   toInteger(
     -DateTime.now().diff(DateTime.fromMillis(timestamp), ['days']).days
   );
+
+export const isValidDateFormat = (format: string) => {
+  try {
+    const dt = DateTime.fromFormat(DateTime.now().toFormat(format), format);
+
+    return dt.isValid;
+  } catch (error) {
+    return false;
+  }
+};

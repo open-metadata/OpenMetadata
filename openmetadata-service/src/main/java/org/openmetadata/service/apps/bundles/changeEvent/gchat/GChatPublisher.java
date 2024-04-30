@@ -54,7 +54,7 @@ public class GChatPublisher implements Destination<ChangeEvent> {
       client = getClient(subscription.getTimeout(), subscription.getReadTimeout());
 
       // Build Target
-      if (webhook.getEndpoint() != null) {
+      if (webhook != null && webhook.getEndpoint() != null) {
         String gChatWebhookURL = webhook.getEndpoint().toString();
         if (!CommonUtil.nullOrEmpty(gChatWebhookURL)) {
           target = client.target(gChatWebhookURL).request();

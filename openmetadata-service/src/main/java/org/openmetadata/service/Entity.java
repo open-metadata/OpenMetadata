@@ -217,6 +217,7 @@ public final class Entity {
   //
   // Reserved names in OpenMetadata
   //
+  public static final String ADMIN_ROLE = "Admin";
   public static final String ADMIN_USER_NAME = "admin";
   public static final String ORGANIZATION_NAME = "Organization";
   public static final String ORGANIZATION_POLICY_NAME = "OrganizationPolicy";
@@ -578,5 +579,9 @@ public final class Entity {
       return searchRepository.getSearchIndexFactory().buildIndex(entityType, entity);
     }
     throw new BadRequestException("searchrepository not initialized");
+  }
+
+  public static <T> T getDao() {
+    return (T) collectionDAO;
   }
 }

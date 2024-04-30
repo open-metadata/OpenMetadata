@@ -12,7 +12,8 @@
 Snowflake models
 """
 import urllib
-from typing import Optional
+from datetime import datetime
+from typing import List, Optional
 
 from pydantic import BaseModel, Field, validator
 from requests.utils import quote
@@ -72,3 +73,25 @@ class SnowflakeStoredProcedure(BaseModel):
 
     def unquote_signature(self) -> Optional[str]:
         return urllib.parse.unquote(self.signature) if self.signature else "()"
+
+
+class SnowflakeTable(BaseModel):
+    """Models the items returned from the Table and View Queries used to get the entities to process.
+    :name: Holds the table/view name.
+    :deleted: Holds either a datetime if the table was deleted or None.
+    """
+
+    name: str
+    deleted: Optional[datetime]
+
+
+class SnowflakeTableList(BaseModel):
+    """Understands how to return the deleted and not deleted tables/views from a given list."""
+
+    tables: List[SnowflakeTable]
+
+    def get_deleted(self) -> List[SnowflakeTable]:
+        return [table for table in self.tables if table.deleted]
+
+    def get_not_deleted(self) -> List[SnowflakeTable]:
+        return [table for table in self.tables if not table.deleted]

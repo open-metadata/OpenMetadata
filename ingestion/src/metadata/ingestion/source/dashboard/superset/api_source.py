@@ -77,6 +77,11 @@ class SupersetAPISource(SupersetSourceMixin):
             dashboards = self.client.fetch_dashboards(current_page, page_size)
             current_page += 1
             for dashboard in dashboards.result:
+                if (
+                    not self.source_config.includeDraftDashboard
+                    and not dashboard.published
+                ):
+                    continue
                 yield dashboard
 
     def yield_dashboard(
@@ -94,12 +99,12 @@ class SupersetAPISource(SupersetSourceMixin):
                     fqn.build(
                         self.metadata,
                         entity_type=Chart,
-                        service_name=self.context.dashboard_service,
+                        service_name=self.context.get().dashboard_service,
                         chart_name=chart,
                     )
-                    for chart in self.context.charts or []
+                    for chart in self.context.get().charts or []
                 ],
-                service=self.context.dashboard_service,
+                service=self.context.get().dashboard_service,
                 owner=self.get_owner_ref(dashboard_details=dashboard_details),
             )
             yield Either(right=dashboard_request)
@@ -140,7 +145,7 @@ class SupersetAPISource(SupersetSourceMixin):
                     description=chart_json.description,
                     chartType=get_standard_chart_type(chart_json.viz_type),
                     sourceUrl=f"{clean_uri(self.service_connection.hostPort)}{chart_json.url}",
-                    service=self.context.dashboard_service,
+                    service=self.context.get().dashboard_service,
                 )
                 yield Either(right=chart)
             except Exception as exc:  # pylint: disable=broad-except
@@ -215,7 +220,7 @@ class SupersetAPISource(SupersetSourceMixin):
                     data_model_request = CreateDashboardDataModelRequest(
                         name=datasource_json.id,
                         displayName=datasource_json.result.table_name,
-                        service=self.context.dashboard_service,
+                        service=self.context.get().dashboard_service,
                         columns=self.get_column_info(datasource_json.result.columns),
                         dataModelType=DataModelType.SupersetDataModel.value,
                     )

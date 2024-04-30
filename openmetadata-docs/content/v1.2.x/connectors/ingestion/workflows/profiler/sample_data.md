@@ -93,6 +93,7 @@ The OpenMetadata UI will always show 50 or fewer rows of sample data. *Sample Da
 - **Bucket Name**: A bucket name is a unique identifier used to organize and store data objects. It's similar to a folder name, but it's used for object storage rather than file storage.
 - **Prefix**: The prefix of a data source refers to the first part of the data path that identifies the source or origin of the data. The generated sample data parquet file will be uploaded to this prefix path in your bucket.
 - **Overwrite Sample Data**: If this flag is enabled, only one parquet file will be generated per table to store the sample data. Otherwise, a parquet file will be generated for each day when the profiler workflow runs.
+- **File Path Pattern**: You can customize how the file will be stored into your storage bucket, by default the file gets stored at the following path `{service_name}/{database_name}/{database_schema_name}/{table_name}/sample_data.parquet`. For instance you do want all the files to be generated in a single folder then you can provide the path like `{service_name}_{database_name}_{database_schema_name}_{table_name}.parquet` not that the pattern must contain the following elements `{service_name}`, `{database_name}`, `{database_schema_name}` `{table_name}` and the pattern must end with the extension `.parquet` and using these elements you can create your own custom pattern.
 
 #### Connection Details for AWS S3
 

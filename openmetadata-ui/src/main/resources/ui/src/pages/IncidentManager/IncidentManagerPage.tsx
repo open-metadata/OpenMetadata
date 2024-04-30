@@ -15,7 +15,7 @@ import { DefaultOptionType } from 'antd/lib/select';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
-import { isEqual, startCase } from 'lodash';
+import { isEqual, pick, startCase } from 'lodash';
 import { DateRangeObject } from 'Models';
 import QueryString from 'qs';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
@@ -34,7 +34,7 @@ import TestCaseIncidentManagerStatus from '../../components/DataQuality/Incident
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import { WILD_CARD_CHAR } from '../../constants/char.constants';
 import {
-  getTableTabPath,
+  getEntityDetailsPath,
   PAGE_SIZE_BASE,
   PAGE_SIZE_MEDIUM,
 } from '../../constants/constants';
@@ -242,13 +242,11 @@ const IncidentManagerPage = () => {
   };
 
   const handleDateRangeChange = (value: DateRangeObject) => {
-    const dateRangeObject = {
-      startTs: filters.startTs,
-      endTs: filters.endTs,
-    };
+    const updatedFilter = pick(value, ['startTs', 'endTs']);
+    const existingFilters = pick(filters, ['startTs', 'endTs']);
 
-    if (!isEqual(value, dateRangeObject)) {
-      setFilters((pre) => ({ ...pre, ...dateRangeObject }));
+    if (!isEqual(existingFilters, updatedFilter)) {
+      setFilters((pre) => ({ ...pre, ...updatedFilter }));
     }
   };
 
@@ -374,7 +372,11 @@ const IncidentManagerPage = () => {
             <Link
               data-testid="table-link"
               to={{
-                pathname: getTableTabPath(tableFqn, EntityTabs.PROFILER),
+                pathname: getEntityDetailsPath(
+                  EntityType.TABLE,
+                  tableFqn,
+                  EntityTabs.PROFILER
+                ),
                 search: QueryString.stringify({
                   activeTab: TableProfilerTab.DATA_QUALITY,
                 }),
@@ -490,6 +492,7 @@ const IncidentManagerPage = () => {
               showSearch
               api={searchTestCases}
               className="w-min-20"
+              data-testid="test-case-select"
               options={testCaseInitialOptions}
               placeholder={t('label.test-case')}
               suffixIcon={undefined}

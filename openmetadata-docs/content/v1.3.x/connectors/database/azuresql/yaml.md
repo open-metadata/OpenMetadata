@@ -100,6 +100,30 @@ You can download the ODBC driver from [here](https://learn.microsoft.com/en-us/s
 
 {% /codeInfo %}
 
+{% codeInfo srNumber=8 %}
+
+**Authentication Mode**:
+
+1. **Authentication**:
+   - The `authentication` parameter determines the method of authentication when connecting to AzureSQL using ODBC (Open Database Connectivity).
+   - If you select **"Active Directory Password"**, you'll need to provide the password associated with your Azure Active Directory account.
+   - Alternatively, if you choose **"Active Directory Integrated"**, the connection will use the credentials of the currently logged-in user. This mode ensures secure and seamless connections with AzureSQL.
+
+2. **Encrypt**:
+   - The `encrypt` setting in the connection string pertains to data encryption during communication with AzureSQL.
+   - When enabled, it ensures that data exchanged between your application and the database is encrypted, enhancing security.
+
+3. **Trust Server Certificate**:
+   - The `trustServerCertificate` option also relates to security.
+   - When set to true, your application will trust the server's SSL certificate without validation. Use this cautiously, as it bypasses certificate validation checks.
+
+4. **Connection Timeout**:
+   - The `connectionTimeout` parameter specifies the maximum time (in seconds) that your application will wait while attempting to establish a connection to AzureSQL.
+   - If the connection cannot be established within this timeframe, an error will be raised.
+
+{% /codeInfo %}
+
+
 {% partial file="/v1.3/connectors/yaml/database/source-config-def.md" /%}
 
 {% partial file="/v1.3/connectors/yaml/ingestion-sink-def.md" /%}
@@ -148,6 +172,13 @@ source:
 ```
 ```yaml {% srNumber=5 %}
       # driver: ODBC Driver 18 for SQL Server (default)
+```
+```yaml {% srNumber=8 %}
+      # authenticationMode:
+      #   authentication: ActiveDirectoryPassword #ActiveDirectoryIntegrated
+      #   encrypt: true
+      #   trustServerCertificate: false
+      #   connectionTimeout: 130
 ```
 ```yaml {% srNumber=6 %}
       connectionOptions:

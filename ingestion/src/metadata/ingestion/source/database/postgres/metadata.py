@@ -15,6 +15,7 @@ import traceback
 from collections import namedtuple
 from typing import Iterable, Optional, Tuple
 
+from sqlalchemy import String as SqlAlchemyString
 from sqlalchemy import sql
 from sqlalchemy.dialects.postgresql.base import PGDialect, ischema_names
 from sqlalchemy.engine import Inspector
@@ -55,6 +56,7 @@ from metadata.ingestion.source.database.postgres.utils import (
     get_column_info,
     get_columns,
     get_etable_owner,
+    get_foreign_keys,
     get_table_comment,
     get_table_owner,
     get_view_definition,
@@ -96,6 +98,7 @@ ischema_names.update(
         "point": POINT,
         "polygon": POLYGON,
         "box": create_sqlalchemy_type("BOX"),
+        "bpchar": SqlAlchemyString,
         "circle": create_sqlalchemy_type("CIRCLE"),
         "line": create_sqlalchemy_type("LINE"),
         "lseg": create_sqlalchemy_type("LSEG"),
@@ -104,6 +107,7 @@ ischema_names.update(
         "pg_snapshot": create_sqlalchemy_type("PG_SNAPSHOT"),
         "tsquery": create_sqlalchemy_type("TSQUERY"),
         "txid_snapshot": create_sqlalchemy_type("TXID_SNAPSHOT"),
+        "xid": SqlAlchemyString,
         "xml": create_sqlalchemy_type("XML"),
     }
 )
@@ -122,6 +126,8 @@ PGDialect.ischema_names = ischema_names
 
 Inspector.get_table_owner = get_etable_owner
 
+PGDialect.get_foreign_keys = get_foreign_keys
+
 
 class PostgresSource(CommonDbSourceService, MultiDBSource):
     """
@@ -130,7 +136,9 @@ class PostgresSource(CommonDbSourceService, MultiDBSource):
     """
 
     @classmethod
-    def create(cls, config_dict, metadata: OpenMetadata):
+    def create(
+        cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None
+    ):
         config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
         connection: PostgresConnection = config.serviceConnection.__root__.config
         if not isinstance(connection, PostgresConnection):
@@ -176,15 +184,17 @@ class PostgresSource(CommonDbSourceService, MultiDBSource):
                 database_fqn = fqn.build(
                     self.metadata,
                     entity_type=Database,
-                    service_name=self.context.database_service,
+                    service_name=self.context.get().database_service,
                     database_name=new_database,
                 )
 
                 if filter_by_database(
                     self.source_config.databaseFilterPattern,
-                    database_fqn
-                    if self.source_config.useFqnForFiltering
-                    else new_database,
+                    (
+                        database_fqn
+                        if self.source_config.useFqnForFiltering
+                        else new_database
+                    ),
                 ):
                     self.status.filter(database_fqn, "Database Filtered Out")
                     continue
@@ -231,7 +241,7 @@ class PostgresSource(CommonDbSourceService, MultiDBSource):
         try:
             result = self.engine.execute(
                 POSTGRES_GET_ALL_TABLE_PG_POLICY.format(
-                    database_name=self.context.database,
+                    database_name=self.context.get().database,
                     schema_name=schema_name,
                 )
             ).all()
@@ -240,7 +250,7 @@ class PostgresSource(CommonDbSourceService, MultiDBSource):
                 fqn_elements = [name for name in row[2:] if name]
                 yield from get_ometa_tag_and_classification(
                     tag_fqn=fqn._build(  # pylint: disable=protected-access
-                        self.context.database_service, *fqn_elements
+                        self.context.get().database_service, *fqn_elements
                     ),
                     tags=[row[1]],
                     classification_name=self.service_connection.classificationName,

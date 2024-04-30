@@ -17,6 +17,7 @@ from functools import singledispatch
 
 import requests
 
+from metadata.clients.azure_client import AzureClient
 from metadata.generated.schema.entity.services.connections.database.datalake.azureConfig import (
     AzureConfig,
 )
@@ -153,21 +154,7 @@ def _(config: StorageMetadataAdlsConfig) -> ManifestMetadataConfig:
             else STORAGE_METADATA_MANIFEST_FILE_NAME
         )
 
-        from azure.identity import (  # pylint: disable=import-outside-toplevel
-            ClientSecretCredential,
-        )
-        from azure.storage.blob import (  # pylint: disable=import-outside-toplevel
-            BlobServiceClient,
-        )
-
-        blob_client = BlobServiceClient(
-            account_url=f"https://{config.securityConfig.accountName}.blob.core.windows.net/",
-            credential=ClientSecretCredential(
-                config.securityConfig.tenantId,
-                config.securityConfig.clientId,
-                config.securityConfig.clientSecret.get_secret_value(),
-            ),
-        )
+        blob_client = AzureClient(config.securityConfig).create_blob_client()
 
         reader = get_reader(
             config_source=AzureConfig(securityConfig=config.securityConfig),

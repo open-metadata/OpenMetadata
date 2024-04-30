@@ -35,12 +35,27 @@
       "$ref": "../type/filterPattern.json#/definitions/filterPattern",
       "title": "Pipeline Filter Pattern"
     },
-    "dbServiceNames": {
-      "title": "Database Service Names List",
-      "description": "List of Database Service Names for creation of lineage",
-      "type": "array",
-      "items": {
-        "type": "string"
+    "lineageInformation": {
+      "description": "Details required to generate Lineage",
+      "type": "object",
+      "title": "Lineage Information",
+      "properties": {
+        "dbServiceNames": {
+          "title": "Database Service Names List",
+          "description": "List of Database Service Names for creation of lineage",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "storageServiceNames": {
+          "title": "Storage Service Names List",
+          "description": "List of Storage Service Names for creation of lineage",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
       }
     },
     "markDeletedPipelines": {
@@ -54,6 +69,12 @@
       "type": "boolean",
       "default": true,
       "title": "Include Tags"
+    },
+    "includeUnDeployedPipelines": {
+      "description": "Optional configuration to toggle whether the un-deployed pipelines should be ingested or not. If set to false, only deployed pipelines will be ingested.",
+      "type": "boolean",
+      "default": true,
+      "title": "Include UnDeployed Pipelines"
     }
   },
   "additionalProperties": false

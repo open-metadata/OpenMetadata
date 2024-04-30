@@ -26,6 +26,7 @@ from metadata.generated.schema.entity.services.ingestionPipelines.status import 
 )
 from metadata.generated.schema.metadataIngestion.workflow import LogLevels
 from metadata.ingestion.api.step import Summary
+from metadata.ingestion.lineage.models import QueryParsingFailures
 from metadata.utils.execution_time_tracker import ExecutionTimeTracker
 from metadata.utils.helpers import pretty_print_time_duration
 from metadata.utils.logger import ANSI, log_ansi_encoded_string
@@ -148,14 +149,34 @@ def print_execution_time_summary():
         "Execution Time Aggregate": [],
     }
 
-    for key in sorted(tracker.state.keys()):
+    for key in sorted(tracker.state.state.keys()):
         summary_table["Context"].append(key)
         summary_table["Execution Time Aggregate"].append(
-            pretty_print_time_duration(tracker.state[key])
+            pretty_print_time_duration(tracker.state.state[key])
         )
 
     log_ansi_encoded_string(bold=True, message="Execution Time Summary")
     log_ansi_encoded_string(message=f"\n{tabulate(summary_table, tablefmt='grid')}")
+
+
+def print_query_parsing_issues():
+    """Log the QueryParsingFailures Summary."""
+    query_failures = QueryParsingFailures()
+
+    summary_table = {
+        "Query": [],
+        "Error": [],
+    }
+
+    for failure in query_failures:
+        summary_table["Query"].append(failure.query)
+        summary_table["Error"].append(failure.error)
+
+    if summary_table["Query"]:
+        log_ansi_encoded_string(bold=True, message="Query Parsing Error Summary")
+        log_ansi_encoded_string(
+            message=f"\n{tabulate(summary_table, tablefmt='grid', headers=summary_table.keys())}"
+        )
 
 
 def print_workflow_summary(workflow: "BaseWorkflow") -> None:
@@ -170,6 +191,7 @@ def print_workflow_summary(workflow: "BaseWorkflow") -> None:
     if is_debug_enabled(workflow):
         print_workflow_status_debug(workflow)
         print_execution_time_summary()
+        print_query_parsing_issues()
 
     failures = []
     total_records = 0

@@ -16,7 +16,7 @@ import ButtonGroup from 'antd/lib/button/button-group';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
-import { capitalize, isUndefined, toString } from 'lodash';
+import { capitalize, isEmpty, isUndefined, toString } from 'lodash';
 import React, {
   forwardRef,
   useCallback,
@@ -30,7 +30,7 @@ import { useHistory } from 'react-router-dom';
 import { ReactComponent as IconTag } from '../../../assets/svg/classification.svg';
 import { ReactComponent as LockIcon } from '../../../assets/svg/closed-lock.svg';
 import { ReactComponent as VersionIcon } from '../../../assets/svg/ic-version.svg';
-import { DE_ACTIVE_COLOR, PRIMERY_COLOR } from '../../../constants/constants';
+import { DE_ACTIVE_COLOR } from '../../../constants/constants';
 import { EntityField } from '../../../constants/Feeds.constants';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../../context/PermissionProvider/PermissionProvider.interface';
@@ -41,6 +41,7 @@ import { Tag } from '../../../generated/entity/classification/tag';
 import { Operation } from '../../../generated/entity/policies/policy';
 import { Paging } from '../../../generated/type/paging';
 import { usePaging } from '../../../hooks/paging/usePaging';
+import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { useFqn } from '../../../hooks/useFqn';
 import { getTags } from '../../../rest/tagAPI';
 import {
@@ -87,13 +88,13 @@ const ClassificationDetails = forwardRef(
     }: Readonly<ClassificationDetailsProps>,
     ref
   ) => {
+    const { theme } = useApplicationStore();
     const { permissions } = usePermissionProvider();
     const { t } = useTranslation();
     const { fqn: tagCategoryName } = useFqn();
     const history = useHistory();
     const [tags, setTags] = useState<Tag[]>([]);
     const [isTagsLoading, setIsTagsLoading] = useState(false);
-
     const {
       currentPage,
       paging,
@@ -398,7 +399,7 @@ const ClassificationDetails = forwardRef(
                     {currentClassification?.mutuallyExclusive && (
                       <div data-testid="mutually-exclusive-container">
                         <AppBadge
-                          bgColor={PRIMERY_COLOR}
+                          bgColor={theme.primaryColor}
                           label={t('label.mutually-exclusive')}
                         />
                       </div>
@@ -478,7 +479,6 @@ const ClassificationDetails = forwardRef(
             </Col>
           </Row>
         )}
-
         <div className="m-b-sm m-t-xs" data-testid="description-container">
           <DescriptionV1
             className={classNames({
@@ -488,6 +488,7 @@ const ClassificationDetails = forwardRef(
             entityName={getEntityName(currentClassification)}
             entityType={EntityType.CLASSIFICATION}
             hasEditAccess={editDescriptionPermission}
+            isDescriptionExpanded={isEmpty(tags)}
             isEdit={isEditClassification}
             showCommentsIcon={false}
             onCancel={handleCancelEditDescription}

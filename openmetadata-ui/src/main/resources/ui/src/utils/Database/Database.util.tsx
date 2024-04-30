@@ -17,10 +17,10 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import RichTextEditorPreviewer from '../../components/common/RichTextEditor/RichTextEditorPreviewer';
 import {
-  getDatabaseSchemaDetailsPath,
+  getEntityDetailsPath,
   NO_DATA_PLACEHOLDER,
 } from '../../constants/constants';
-import { TabSpecificField } from '../../enums/entity.enum';
+import { EntityType, TabSpecificField } from '../../enums/entity.enum';
 import { DatabaseSchema } from '../../generated/entity/data/databaseSchema';
 import { EntityReference } from '../../generated/entity/type';
 import { UsageDetails } from '../../generated/type/entityUsage';
@@ -65,7 +65,10 @@ export const schemaTableColumns: ColumnsType<DatabaseSchema> = [
           data-testid={record.name}
           to={
             record.fullyQualifiedName
-              ? getDatabaseSchemaDetailsPath(record.fullyQualifiedName)
+              ? getEntityDetailsPath(
+                  EntityType.DATABASE_SCHEMA,
+                  record.fullyQualifiedName
+                )
               : ''
           }>
           {getEntityName(record)}

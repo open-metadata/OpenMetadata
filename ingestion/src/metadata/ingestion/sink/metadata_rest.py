@@ -62,6 +62,7 @@ from metadata.ingestion.models.ometa_classification import OMetaTagAndClassifica
 from metadata.ingestion.models.ometa_topic_data import OMetaTopicSampleData
 from metadata.ingestion.models.patch_request import (
     ALLOWED_COMMON_PATCH_FIELDS,
+    ARRAY_ENTITY_FIELDS,
     RESTRICT_UPDATE_LIST,
     PatchedEntity,
     PatchRequest,
@@ -116,7 +117,12 @@ class MetadataRestSink(Sink):  # pylint: disable=too-many-public-methods
         self.team_entities = {}
 
     @classmethod
-    def create(cls, config_dict: dict, metadata: OpenMetadata):
+    def create(
+        cls,
+        config_dict: dict,
+        metadata: OpenMetadata,
+        pipeline_name: Optional[str] = None,
+    ):
         config = MetadataRestSinkConfig.parse_obj(config_dict)
         return cls(config, metadata)
 
@@ -179,6 +185,7 @@ class MetadataRestSink(Sink):  # pylint: disable=too-many-public-methods
             destination=record.new_entity,
             allowed_fields=ALLOWED_COMMON_PATCH_FIELDS,
             restrict_update_fields=RESTRICT_UPDATE_LIST,
+            array_entity_fields=ARRAY_ENTITY_FIELDS,
         )
         patched_entity = PatchedEntity(new_entity=entity) if entity else None
         return Either(right=patched_entity)
@@ -239,7 +246,7 @@ class MetadataRestSink(Sink):  # pylint: disable=too-many-public-methods
 
     @_run_dispatch.register
     def write_lineage(self, add_lineage: AddLineageRequest) -> Either[Dict[str, Any]]:
-        created_lineage = self.metadata.add_lineage(add_lineage)
+        created_lineage = self.metadata.add_lineage(add_lineage, check_patch=True)
         return Either(right=created_lineage["entity"]["fullyQualifiedName"])
 
     def _create_role(self, create_role: CreateRoleRequest) -> Optional[Role]:
@@ -497,10 +504,19 @@ class MetadataRestSink(Sink):  # pylint: disable=too-many-public-methods
         """
         Ingest the life cycle data
         """
-        self.metadata.patch_life_cycle(
-            entity=record.entity, life_cycle=record.life_cycle
+
+        entity = self.metadata.get_by_name(entity=record.entity, fqn=record.entity_fqn)
+
+        if entity:
+            self.metadata.patch_life_cycle(entity=entity, life_cycle=record.life_cycle)
+            return Either(right=entity)
+
+        return Either(
+            left=StackTraceError(
+                name=record.entity_fqn,
+                error=f"Entity of type '{record.entity}' with name '{record.entity_fqn}' not found.",
+            )
         )
-        return Either(right=record)
 
     @_run_dispatch.register
     def write_profiler_response(self, record: ProfilerResponse) -> Either[Table]:

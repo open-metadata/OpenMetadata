@@ -16,12 +16,12 @@ import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import MsalAuthenticator from './MsalAuthenticator';
 
-jest.mock('../AuthProviders/AuthProvider', () => {
+jest.mock('../../../hooks/useApplicationStore', () => {
   return {
-    useAuthContext: jest.fn(() => ({
+    useApplicationStore: jest.fn(() => ({
       authConfig: {},
-      setIsAuthenticated: jest.fn(),
-      onLogoutHandler: jest.fn(),
+      getOidcToken: jest.fn(),
+      setOidcToken: jest.fn(),
     })),
   };
 });

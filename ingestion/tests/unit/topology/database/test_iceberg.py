@@ -526,9 +526,9 @@ class IcebergUnitTest(TestCase):
                 OpenMetadata(self.config.workflowConfig.openMetadataServerConfig),
             )
 
-        self.iceberg.context.database_service = "test_iceberg"
-        self.iceberg.context.database = "default"
-        self.iceberg.context.database_schema = "schema"
+        self.iceberg.context.get().database_service = "test_iceberg"
+        self.iceberg.context.get().database = "default"
+        self.iceberg.context.get().database_schema = "schema"
 
     def test_create(self):
         """
@@ -588,7 +588,7 @@ class IcebergUnitTest(TestCase):
         database_name = "database"
 
         expected = CreateDatabaseRequest(
-            name="database", service=self.iceberg.context.database_service
+            name="database", service=self.iceberg.context.get().database_service
         )
         self.assertEqual(
             next(self.iceberg.yield_database(database_name)).right, expected
@@ -682,8 +682,8 @@ class IcebergUnitTest(TestCase):
 
         iceberg_table_with_owner = {
             "identifier": (
-                self.iceberg.context.database,
-                self.iceberg.context.database_schema,
+                self.iceberg.context.get().database,
+                self.iceberg.context.get().database_schema,
                 table_name,
             ),
             "metadata": TableMetadataV1.parse_obj(
@@ -701,7 +701,9 @@ class IcebergUnitTest(TestCase):
             "catalog": self.iceberg.connection_obj,
         }
 
-        self.iceberg.context.iceberg_table = PyIcebergTable(**iceberg_table_with_owner)
+        self.iceberg.context.get().iceberg_table = PyIcebergTable(
+            **iceberg_table_with_owner
+        )
 
         with patch.object(OpenMetadata, "get_reference_by_email", return_value=ref):
             self.assertEqual(
@@ -713,8 +715,8 @@ class IcebergUnitTest(TestCase):
         # Then None is returned
         iceberg_table_without_owner = {
             "identifier": (
-                self.iceberg.context.database,
-                self.iceberg.context.database_schema,
+                self.iceberg.context.get().database,
+                self.iceberg.context.get().database_schema,
                 table_name,
             ),
             "metadata": TableMetadataV1.parse_obj(
@@ -731,7 +733,7 @@ class IcebergUnitTest(TestCase):
             "io": "pyiceberg.io.pyarrow.PyArrowFileIO",
             "catalog": self.iceberg.connection_obj,
         }
-        self.iceberg.context.iceberg_table = PyIcebergTable(
+        self.iceberg.context.get().iceberg_table = PyIcebergTable(
             **iceberg_table_without_owner
         )
 
@@ -745,8 +747,8 @@ class IcebergUnitTest(TestCase):
 
         iceberg_table = {
             "identifier": (
-                self.iceberg.context.database,
-                self.iceberg.context.database_schema,
+                self.iceberg.context.get().database,
+                self.iceberg.context.get().database_schema,
                 table_name,
             ),
             "metadata": TableMetadataV1.parse_obj(
@@ -784,7 +786,7 @@ class IcebergUnitTest(TestCase):
         fq_database_schema = "FullyQualifiedDatabaseSchema"
 
         ref = EntityReference(id=uuid.uuid4(), type="user")
-        self.iceberg.context.iceberg_table = PyIcebergTable(**iceberg_table)
+        self.iceberg.context.get().iceberg_table = PyIcebergTable(**iceberg_table)
 
         expected = CreateTableRequest(
             name=table_name,

@@ -24,13 +24,13 @@ import {
 import { FormSubmitType } from '../../../../enums/form.enum';
 import { OwnerType } from '../../../../enums/user.enum';
 import { TestSuite } from '../../../../generated/tests/testSuite';
+import { useApplicationStore } from '../../../../hooks/useApplicationStore';
 import {
   addTestCaseToLogicalTestSuite,
   createTestSuites,
 } from '../../../../rest/testAPI';
 import { getTestSuitePath } from '../../../../utils/RouterUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
-import { useAuthContext } from '../../../Auth/AuthProviders/AuthProvider';
 import ResizablePanels from '../../../common/ResizablePanels/ResizablePanels';
 import SuccessScreen from '../../../common/SuccessScreen/SuccessScreen';
 import TitleBreadcrumb from '../../../common/TitleBreadcrumb/TitleBreadcrumb.component';
@@ -43,7 +43,7 @@ import AddTestSuiteForm from '../AddTestSuiteForm/AddTestSuiteForm';
 const TestSuiteStepper = () => {
   const { t } = useTranslation();
   const history = useHistory();
-  const { currentUser } = useAuthContext();
+  const { currentUser } = useApplicationStore();
   const [activeServiceStep, setActiveServiceStep] = useState(1);
   const [testSuiteResponse, setTestSuiteResponse] = useState<TestSuite>();
 

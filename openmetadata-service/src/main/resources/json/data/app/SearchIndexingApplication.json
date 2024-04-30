@@ -43,7 +43,7 @@
     "searchIndexMappingLanguage": "EN"
   },
   "appSchedule": {
-    "scheduleType": "Custom",
+    "scheduleTimeline": "Custom",
     "cronExpression": "0 0 * * *"
   }
 }

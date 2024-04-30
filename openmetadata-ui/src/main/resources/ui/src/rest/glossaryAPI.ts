@@ -15,6 +15,8 @@ import { AxiosResponse } from 'axios';
 import { Operation } from 'fast-json-patch';
 import { PagingResponse } from 'Models';
 import { VotingDataProps } from '../components/Entity/Voting/voting.interface';
+import { PAGE_SIZE_MEDIUM } from '../constants/constants';
+import { SearchIndex } from '../enums/search.enum';
 import { AddGlossaryToAssetsRequest } from '../generated/api/addGlossaryToAssetsRequest';
 import { CreateGlossary } from '../generated/api/data/createGlossary';
 import { CreateGlossaryTerm } from '../generated/api/data/createGlossaryTerm';
@@ -269,4 +271,41 @@ export const removeAssetsFromGlossaryTerm = async (
   >(`/glossaryTerms/${glossaryTerm.id}/assets/remove`, data);
 
   return response.data;
+};
+
+export const searchGlossaryTerms = async (search: string, page = 1) => {
+  const apiUrl = `/search/query?q=*${search ?? ''}*`;
+
+  const { data } = await APIClient.get(apiUrl, {
+    params: {
+      index: SearchIndex.GLOSSARY_TERM,
+      from: (page - 1) * PAGE_SIZE_MEDIUM,
+      size: PAGE_SIZE_MEDIUM,
+      deleted: false,
+      track_total_hits: true,
+      getHierarchy: true,
+    },
+  });
+
+  return data;
+};
+
+export type GlossaryTermWithChildren = Omit<GlossaryTerm, 'children'> & {
+  children?: GlossaryTerm[];
+};
+
+export const getFirstLevelGlossaryTerms = async (parentFQN: string) => {
+  const apiUrl = `/glossaryTerms`;
+
+  const { data } = await APIClient.get<
+    PagingResponse<GlossaryTermWithChildren[]>
+  >(apiUrl, {
+    params: {
+      directChildrenOf: parentFQN,
+      fields: 'childrenCount',
+      limit: 100000,
+    },
+  });
+
+  return data;
 };

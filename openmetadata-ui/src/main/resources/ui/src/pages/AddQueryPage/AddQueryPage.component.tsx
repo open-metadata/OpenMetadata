@@ -16,7 +16,7 @@ import { AxiosError } from 'axios';
 import { filter, isEmpty } from 'lodash';
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useAuthContext } from '../../components/Auth/AuthProviders/AuthProvider';
+
 import { AsyncSelect } from '../../components/common/AsyncSelect/AsyncSelect';
 import ResizablePanels from '../../components/common/ResizablePanels/ResizablePanels';
 import RichTextEditor from '../../components/common/RichTextEditor/RichTextEditor';
@@ -25,7 +25,7 @@ import { TitleBreadcrumbProps } from '../../components/common/TitleBreadcrumb/Ti
 import SchemaEditor from '../../components/Database/SchemaEditor/SchemaEditor';
 import { HTTP_STATUS_CODE } from '../../constants/Auth.constants';
 import {
-  getTableTabPath,
+  getEntityDetailsPath,
   INITIAL_PAGING_VALUE,
   PAGE_SIZE_MEDIUM,
 } from '../../constants/constants';
@@ -37,6 +37,7 @@ import { SearchIndex } from '../../enums/search.enum';
 import { OwnerType } from '../../enums/user.enum';
 import { CreateQuery } from '../../generated/api/data/createQuery';
 import { Table } from '../../generated/entity/data/table';
+import { useApplicationStore } from '../../hooks/useApplicationStore';
 import { useFqn } from '../../hooks/useFqn';
 import { searchData } from '../../rest/miscAPI';
 import { postQuery } from '../../rest/queryAPI';
@@ -48,7 +49,7 @@ import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 
 const AddQueryPage = () => {
   const { t } = useTranslation();
-  const { currentUser } = useAuthContext();
+  const { currentUser } = useApplicationStore();
   const { fqn: datasetFQN } = useFqn();
   const { permissions } = usePermissionProvider();
   const [form] = Form.useForm();
@@ -68,7 +69,11 @@ const AddQueryPage = () => {
         ...getEntityBreadcrumbs(tableRes, EntityType.TABLE),
         {
           name: getEntityName(tableRes),
-          url: getTableTabPath(datasetFQN, 'table_queries'),
+          url: getEntityDetailsPath(
+            EntityType.TABLE,
+            datasetFQN,
+            'table_queries'
+          ),
         },
         {
           name: t('label.add-entity', {
@@ -222,9 +227,7 @@ const AddQueryPage = () => {
                   <SchemaEditor
                     className="custom-query-editor query-editor-h-200 custom-code-mirror-theme"
                     mode={{ name: CSMode.SQL }}
-                    options={{
-                      readOnly: false,
-                    }}
+                    showCopyButton={false}
                   />
                 </Form.Item>
                 <Form.Item

@@ -71,12 +71,22 @@ import org.openmetadata.service.util.TestUtils;
 
 @Slf4j
 public class TopicResourceTest extends EntityResourceTest<Topic, CreateTopic> {
-  private static final String SCHEMA_TEXT =
+  public static final String SCHEMA_TEXT =
       "{\"namespace\":\"org.open-metadata.kafka\",\"name\":\"Customer\",\"type\":\"record\","
           + "\"fields\":[{\"name\":\"id\",\"type\":\"string\"},{\"name\":\"first_name\",\"type\":\"string\"},{\"name\":\"last_name\",\"type\":\"string\"},"
           + "{\"name\":\"email\",\"type\":\"string\"},{\"name\":\"address_line_1\",\"type\":\"string\"},{\"name\":\"address_line_2\",\"type\":\"string\"},"
           + "{\"name\":\"post_code\",\"type\":\"string\"},{\"name\":\"country\",\"type\":\"string\"}]}";
-  private static final MessageSchema schema =
+  public static final List<Field> fields =
+      Arrays.asList(
+          getField("id", FieldDataType.STRING, null),
+          getField("first_name", FieldDataType.STRING, null),
+          getField("last_name", FieldDataType.STRING, null),
+          getField("email", FieldDataType.STRING, null),
+          getField("address_line_1", FieldDataType.STRING, null),
+          getField("address_line_2", FieldDataType.STRING, null),
+          getField("post_code", FieldDataType.STRING, null),
+          getField("county", FieldDataType.STRING, PERSONAL_DATA_TAG_LABEL));
+  public static final MessageSchema SCHEMA =
       new MessageSchema().withSchemaText(SCHEMA_TEXT).withSchemaType(SchemaType.Avro);
 
   public TopicResourceTest() {
@@ -171,16 +181,6 @@ public class TopicResourceTest extends EntityResourceTest<Topic, CreateTopic> {
 
   @Test
   void put_topicSchemaFields_200_ok(TestInfo test) throws IOException {
-    List<Field> fields =
-        Arrays.asList(
-            getField("id", FieldDataType.STRING, null),
-            getField("first_name", FieldDataType.STRING, null),
-            getField("last_name", FieldDataType.STRING, null),
-            getField("email", FieldDataType.STRING, null),
-            getField("address_line_1", FieldDataType.STRING, null),
-            getField("address_line_2", FieldDataType.STRING, null),
-            getField("post_code", FieldDataType.STRING, null),
-            getField("county", FieldDataType.STRING, PERSONAL_DATA_TAG_LABEL));
 
     CreateTopic createTopic =
         createRequest(test)
@@ -191,7 +191,7 @@ public class TopicResourceTest extends EntityResourceTest<Topic, CreateTopic> {
             .withReplicationFactor(1)
             .withRetentionTime(1.0)
             .withRetentionSize(1.0)
-            .withMessageSchema(schema.withSchemaFields(fields))
+            .withMessageSchema(SCHEMA.withSchemaFields(fields))
             .withCleanupPolicies(List.of(CleanupPolicy.COMPACT));
 
     // Patch and update the topic
@@ -221,7 +221,7 @@ public class TopicResourceTest extends EntityResourceTest<Topic, CreateTopic> {
             .withReplicationFactor(1)
             .withRetentionTime(1.0)
             .withRetentionSize(1.0)
-            .withMessageSchema(schema.withSchemaFields(fields))
+            .withMessageSchema(SCHEMA.withSchemaFields(fields))
             .withCleanupPolicies(List.of(CleanupPolicy.COMPACT));
 
     // Patch and update the topic
@@ -236,7 +236,7 @@ public class TopicResourceTest extends EntityResourceTest<Topic, CreateTopic> {
         .withReplicationFactor(2)
         .withRetentionTime(2.0)
         .withRetentionSize(2.0)
-        .withMessageSchema(schema.withSchemaFields(fields))
+        .withMessageSchema(SCHEMA.withSchemaFields(fields))
         .withCleanupPolicies(List.of(CleanupPolicy.DELETE));
 
     ChangeDescription change = getChangeDescription(topic, MINOR_UPDATE);
@@ -284,7 +284,7 @@ public class TopicResourceTest extends EntityResourceTest<Topic, CreateTopic> {
     Field field =
         getField("first_name", FieldDataType.STRING, null)
             .withTags(listOf(TIER1_TAG_LABEL, TIER2_TAG_LABEL));
-    create1.withMessageSchema(schema.withSchemaFields(List.of(field)));
+    create1.withMessageSchema(SCHEMA.withSchemaFields(List.of(field)));
     assertResponse(
         () -> createEntity(create1, ADMIN_AUTH_HEADERS),
         BAD_REQUEST,
@@ -304,7 +304,7 @@ public class TopicResourceTest extends EntityResourceTest<Topic, CreateTopic> {
         getField("testNested", FieldDataType.STRING, null)
             .withTags(listOf(TIER1_TAG_LABEL, TIER2_TAG_LABEL));
     Field field1 = getField("test", FieldDataType.RECORD, null).withChildren(List.of(nestedField));
-    create2.setMessageSchema(schema.withSchemaFields(List.of(field1)));
+    create2.setMessageSchema(SCHEMA.withSchemaFields(List.of(field1)));
     assertResponse(
         () -> createEntity(create2, ADMIN_AUTH_HEADERS),
         BAD_REQUEST,
@@ -337,7 +337,7 @@ public class TopicResourceTest extends EntityResourceTest<Topic, CreateTopic> {
   }
 
   @Test
-  void test_inheritDomain(TestInfo test) throws IOException {
+  void test_inheritDomain(TestInfo test) throws IOException, InterruptedException {
     // When domain is not set for a topic, carry it forward from the messaging service
     MessagingServiceResourceTest serviceTest = new MessagingServiceResourceTest();
     CreateMessagingService createService =

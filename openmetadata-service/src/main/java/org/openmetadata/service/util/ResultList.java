@@ -95,6 +95,17 @@ public class ResultList<T> {
     paging = new Paging().withBefore(null).withAfter(null).withTotal(total).withOffset(offset);
   }
 
+  public ResultList(List<T> data, Integer offset, Integer limit, Integer total) {
+    this.data = data;
+    paging =
+        new Paging()
+            .withBefore(null)
+            .withAfter(null)
+            .withTotal(total)
+            .withOffset(offset)
+            .withLimit(limit);
+  }
+
   public ResultList(
       List<T> data, List<EntityError> errors, String beforeCursor, String afterCursor, int total) {
     this.data = data;

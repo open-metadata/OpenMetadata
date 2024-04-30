@@ -93,7 +93,12 @@ class MetadataUsageBulkSink(BulkSink):
         return "OpenMetadata"
 
     @classmethod
-    def create(cls, config_dict: dict, metadata: OpenMetadata):
+    def create(
+        cls,
+        config_dict: dict,
+        metadata: OpenMetadata,
+        pipeline_name: Optional[str] = None,
+    ):
         config = MetadataUsageSinkConfig.parse_obj(config_dict)
         return cls(config, metadata)
 

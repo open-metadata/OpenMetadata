@@ -51,11 +51,12 @@ import org.jdbi.v3.sqlobject.customizer.BindMap;
 import org.jdbi.v3.sqlobject.customizer.Define;
 import org.jdbi.v3.sqlobject.statement.SqlQuery;
 import org.jdbi.v3.sqlobject.statement.SqlUpdate;
-import org.openmetadata.api.configuration.LogoConfiguration;
+import org.openmetadata.api.configuration.UiThemePreference;
 import org.openmetadata.schema.TokenInterface;
 import org.openmetadata.schema.analytics.ReportData;
 import org.openmetadata.schema.analytics.WebAnalyticEvent;
 import org.openmetadata.schema.api.configuration.LoginConfiguration;
+import org.openmetadata.schema.api.configuration.profiler.ProfilerConfiguration;
 import org.openmetadata.schema.auth.EmailVerificationToken;
 import org.openmetadata.schema.auth.PasswordResetToken;
 import org.openmetadata.schema.auth.PersonalAccessToken;
@@ -122,7 +123,6 @@ import org.openmetadata.schema.util.EntitiesCount;
 import org.openmetadata.schema.util.ServicesCount;
 import org.openmetadata.schema.utils.EntityInterfaceUtil;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.exception.UnhandledServerException;
 import org.openmetadata.service.jdbi3.CollectionDAO.TagUsageDAO.TagLabelMapper;
 import org.openmetadata.service.jdbi3.CollectionDAO.UsageDAO.UsageDetailsMapper;
 import org.openmetadata.service.jdbi3.FeedRepository.FilterType;
@@ -522,7 +522,7 @@ public interface CollectionDAO {
       }
 
       String sqlCondition = String.format("%s AND er.toId is NULL", condition);
-      return listCount(getTableName(), sqlCondition);
+      return listCount(getTableName(), getNameHashColumn(), sqlCondition);
     }
 
     @SqlQuery(
@@ -563,7 +563,17 @@ public interface CollectionDAO {
         @Bind("limit") int limit,
         @Bind("after") String after);
 
-    @SqlQuery(
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT count(<nameHashColumn>) FROM <table> ce "
+                + "LEFT JOIN ("
+                + "  SELECT toId FROM entity_relationship "
+                + "  WHERE fromEntity = 'container' AND toEntity = 'container' AND relation = 0 "
+                + ") er "
+                + "on ce.id = er.toId "
+                + "<sqlCondition>",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlQuery(
         value =
             "SELECT count(*) FROM <table> ce "
                 + "LEFT JOIN ("
@@ -571,8 +581,12 @@ public interface CollectionDAO {
                 + "  WHERE fromEntity = 'container' AND toEntity = 'container' AND relation = 0 "
                 + ") er "
                 + "on ce.id = er.toId "
-                + "<sqlCondition>")
-    int listCount(@Define("table") String table, @Define("sqlCondition") String mysqlCond);
+                + "<sqlCondition>",
+        connectionType = POSTGRES)
+    int listCount(
+        @Define("table") String table,
+        @Define("nameHashColumn") String nameHashColumn,
+        @Define("sqlCondition") String mysqlCond);
   }
 
   interface SearchServiceDAO extends EntityDAO<SearchService> {
@@ -850,6 +864,15 @@ public interface CollectionDAO {
         "SELECT count(*) FROM entity_relationship WHERE fromEntity = :fromEntity AND toEntity = :toEntity")
     int findIfAnyRelationExist(
         @Bind("fromEntity") String fromEntity, @Bind("toEntity") String toEntity);
+
+    @SqlQuery(
+        "SELECT json FROM entity_relationship WHERE fromId = :fromId "
+            + " AND toId = :toId "
+            + " AND relation = :relation ")
+    String getRelation(
+        @BindUUID("fromId") UUID fromId,
+        @BindUUID("toId") UUID toId,
+        @Bind("relation") int relation);
 
     //
     // Delete Operations
@@ -1573,8 +1596,8 @@ public interface CollectionDAO {
       return "nameHash";
     }
 
-    @SqlQuery("SELECT json FROM <table>")
-    List<String> listAllEventsSubscriptions(@Define("table") String table);
+    @SqlQuery("SELECT json FROM event_subscription_entity")
+    List<String> listAllEventsSubscriptions();
 
     @Override
     default boolean supportsSoftDelete() {
@@ -1742,6 +1765,51 @@ public interface CollectionDAO {
     default String getNameHashColumn() {
       return "fqnHash";
     }
+
+    @Override
+    default int listCount(ListFilter filter) {
+      String condition = filter.getCondition();
+      String directChildrenOf = filter.getQueryParam("directChildrenOf");
+
+      if (!nullOrEmpty(directChildrenOf)) {
+        condition =
+            String.format(
+                " %s AND fqnHash = CONCAT('%s', '.', MD5( IF(name LIKE '%%.%%', CONCAT('\"', name, '\"'), name)))  ",
+                condition, FullyQualifiedName.buildHash(directChildrenOf));
+      }
+
+      return listCount(getTableName(), getNameHashColumn(), condition);
+    }
+
+    @Override
+    default List<String> listBefore(ListFilter filter, int limit, String before) {
+      String condition = filter.getCondition();
+      String directChildrenOf = filter.getQueryParam("directChildrenOf");
+
+      if (!nullOrEmpty(directChildrenOf)) {
+        condition =
+            String.format(
+                " %s AND fqnHash = CONCAT('%s', '.', MD5( IF(name LIKE '%%.%%', CONCAT('\"', name, '\"'), name)))  ",
+                condition, FullyQualifiedName.buildHash(directChildrenOf));
+      }
+
+      return listBefore(getTableName(), condition, limit, before);
+    }
+
+    @Override
+    default List<String> listAfter(ListFilter filter, int limit, String after) {
+      String condition = filter.getCondition();
+      String directChildrenOf = filter.getQueryParam("directChildrenOf");
+
+      if (!nullOrEmpty(directChildrenOf)) {
+        condition =
+            String.format(
+                " %s AND fqnHash = CONCAT('%s', '.', MD5( IF(name LIKE '%%.%%', CONCAT('\"', name, '\"'), name)))  ",
+                condition, FullyQualifiedName.buildHash(directChildrenOf));
+      }
+
+      return listAfter(getTableName(), condition, limit, after);
+    }
   }
 
   interface IngestionPipelineDAO extends EntityDAO<IngestionPipeline> {
@@ -1769,6 +1837,12 @@ public interface CollectionDAO {
         String pipelineTypeCondition =
             String.format(" and %s", filter.getPipelineTypeCondition(null));
         condition += pipelineTypeCondition;
+      }
+
+      if (filter.getQueryParam("applicationType") != null) {
+        String applicationTypeCondition =
+            String.format(" and %s", filter.getApplicationTypeCondition());
+        condition += applicationTypeCondition;
       }
 
       if (filter.getQueryParam("service") != null) {
@@ -1800,6 +1874,12 @@ public interface CollectionDAO {
         String pipelineTypeCondition =
             String.format(" and %s", filter.getPipelineTypeCondition(null));
         condition += pipelineTypeCondition;
+      }
+
+      if (filter.getQueryParam("applicationType") != null) {
+        String applicationTypeCondition =
+            String.format(" and %s", filter.getApplicationTypeCondition());
+        condition += applicationTypeCondition;
       }
 
       if (filter.getQueryParam("service") != null) {
@@ -1834,6 +1914,12 @@ public interface CollectionDAO {
         String pipelineTypeCondition =
             String.format(" and %s", filter.getPipelineTypeCondition(null));
         condition += pipelineTypeCondition;
+      }
+
+      if (filter.getQueryParam("applicationType") != null) {
+        String applicationTypeCondition =
+            String.format(" and %s", filter.getApplicationTypeCondition());
+        condition += applicationTypeCondition;
       }
 
       if (filter.getQueryParam("service") != null) {
@@ -1971,11 +2057,11 @@ public interface CollectionDAO {
             String.format("%s %s", mySqlCondition, filter.getCondition(getTableName()));
         postgresCondition =
             String.format("%s %s", postgresCondition, filter.getCondition(getTableName()));
-        return listCount(getTableName(), mySqlCondition, postgresCondition);
+        return listCount(getTableName(), getNameHashColumn(), mySqlCondition, postgresCondition);
       }
 
       String condition = filter.getCondition(getTableName());
-      return listCount(getTableName(), condition, condition);
+      return listCount(getTableName(), getNameHashColumn(), condition, condition);
     }
 
     @Override
@@ -2217,7 +2303,7 @@ public interface CollectionDAO {
 
       mySqlCondition = String.format("%s %s", mySqlCondition, filter.getCondition("tag"));
       postgresCondition = String.format("%s %s", postgresCondition, filter.getCondition("tag"));
-      return listCount(getTableName(), mySqlCondition, postgresCondition);
+      return listCount(getTableName(), getNameHashColumn(), mySqlCondition, postgresCondition);
     }
 
     @Override
@@ -2645,7 +2731,7 @@ public interface CollectionDAO {
                 "%s AND ((json#>'{isJoinable}')::boolean)  = %s ", postgresCondition, isJoinable);
       }
 
-      return listCount(getTableName(), mySqlCondition, postgresCondition);
+      return listCount(getTableName(), getNameHashColumn(), mySqlCondition, postgresCondition);
     }
 
     @Override
@@ -3222,7 +3308,8 @@ public interface CollectionDAO {
     List<String> listWithoutEntityFilter(
         @Bind("eventType") String eventType, @Bind("timestamp") long timestamp);
 
-    @SqlQuery("SELECT json FROM change_event ORDER BY eventTime ASC LIMIT :limit OFFSET :offset")
+    @SqlQuery(
+        "SELECT json FROM change_event ce where ce.offset > :offset ORDER BY ce.eventTime ASC LIMIT :limit")
     List<String> list(@Bind("limit") long limit, @Bind("offset") long offset);
 
     @SqlQuery("SELECT count(*) FROM change_event")
@@ -3385,7 +3472,8 @@ public interface CollectionDAO {
         String psqlStr = String.format("AND supported_data_types @> '`%s`' ", supportedDataType);
         psqlCondition.append(psqlStr.replace('`', '"'));
       }
-      return listCount(getTableName(), mysqlCondition.toString(), psqlCondition.toString());
+      return listCount(
+          getTableName(), getNameHashColumn(), mysqlCondition.toString(), psqlCondition.toString());
     }
 
     @ConnectionAwareSqlQuery(
@@ -3427,13 +3515,14 @@ public interface CollectionDAO {
         @Bind("after") String after);
 
     @ConnectionAwareSqlQuery(
-        value = "SELECT count(*) FROM <table> <mysqlCond>",
+        value = "SELECT count(<nameHashColumn>) FROM <table> <mysqlCond>",
         connectionType = MYSQL)
     @ConnectionAwareSqlQuery(
         value = "SELECT count(*) FROM <table> <psqlCond>",
         connectionType = POSTGRES)
     int listCount(
         @Define("table") String table,
+        @Define("nameHashColumn") String nameHashColumn,
         @Define("mysqlCond") String mysqlCond,
         @Define("psqlCond") String psqlCond);
   }
@@ -3473,7 +3562,7 @@ public interface CollectionDAO {
         postgresCondition =
             String.format("%s %s", postgresCondition, filter.getCondition(getTableName()));
       }
-      return listCount(
+      return listCountDistinct(
           getTableName(),
           mySqlCondition,
           postgresCondition,
@@ -3544,14 +3633,6 @@ public interface CollectionDAO {
       return "fqnHash";
     }
 
-    default List<TestCaseRecord> listBeforeTsOrder(ListFilter filter, int limit, Integer before) {
-      return listBeforeTsOrdered(getTableName(), filter.getCondition(), limit, before);
-    }
-
-    default List<TestCaseRecord> listAfterTsOrder(ListFilter filter, int limit, Integer after) {
-      return listAfterTsOrdered(getTableName(), filter.getCondition(), limit, after);
-    }
-
     default int countOfTestCases(List<UUID> testCaseIds) {
       return countOfTestCases(getTableName(), testCaseIds.stream().map(Object::toString).toList());
     }
@@ -3559,52 +3640,6 @@ public interface CollectionDAO {
     @SqlQuery("SELECT count(*) FROM <table> WHERE id IN (<testCaseIds>)")
     int countOfTestCases(
         @Define("table") String table, @BindList("testCaseIds") List<String> testCaseIds);
-
-    @ConnectionAwareSqlQuery(
-        value =
-            "SELECT * FROM (SELECT json, ranked FROM "
-                + "(SELECT id, json, deleted, ROW_NUMBER() OVER(ORDER BY (json ->> '$.testCaseResult.timestamp') DESC) AS ranked FROM <table> <cond>) executionTimeSorted "
-                + "WHERE ranked < :before "
-                + "ORDER BY ranked DESC "
-                + "LIMIT :limit) rankedBefore ORDER BY ranked",
-        connectionType = MYSQL)
-    @ConnectionAwareSqlQuery(
-        value =
-            "SELECT * FROM (SELECT json, ranked FROM "
-                + "(SELECT id, json, deleted, ROW_NUMBER() OVER(ORDER BY (json -> 'testCaseResult'->>'timestamp') DESC NULLS LAST) AS ranked FROM <table> <cond>) executionTimeSorted "
-                + "WHERE ranked < :before "
-                + "ORDER BY ranked DESC "
-                + "LIMIT :limit) rankedBefore ORDER BY ranked",
-        connectionType = POSTGRES)
-    @RegisterRowMapper(TestCaseRecordMapper.class)
-    List<TestCaseRecord> listBeforeTsOrdered(
-        @Define("table") String table,
-        @Define("cond") String cond,
-        @Bind("limit") int limit,
-        @Bind("before") int before);
-
-    @ConnectionAwareSqlQuery(
-        value =
-            "SELECT json, ranked FROM "
-                + "(SELECT id, json, deleted, ROW_NUMBER() OVER(ORDER BY (json ->> '$.testCaseResult.timestamp') DESC ) AS ranked FROM <table> "
-                + "<cond>) executionTimeSorted "
-                + "WHERE ranked > :after "
-                + "LIMIT :limit",
-        connectionType = MYSQL)
-    @ConnectionAwareSqlQuery(
-        value =
-            "SELECT json, ranked FROM "
-                + "(SELECT id, json, deleted, ROW_NUMBER() OVER(ORDER BY (json->'testCaseResult'->>'timestamp') DESC NULLS LAST) AS ranked FROM <table> "
-                + "<cond>) executionTimeSorted "
-                + "WHERE ranked > :after "
-                + "LIMIT :limit",
-        connectionType = POSTGRES)
-    @RegisterRowMapper(TestCaseRecordMapper.class)
-    List<TestCaseRecord> listAfterTsOrdered(
-        @Define("table") String table,
-        @Define("cond") String cond,
-        @Bind("limit") int limit,
-        @Bind("after") int after);
 
     class TestCaseRecord {
       @Getter String json;
@@ -3698,7 +3733,7 @@ public interface CollectionDAO {
       if (!nullOrEmpty(result)) {
         return result.get(0);
       }
-      throw new UnhandledServerException("No Available Application Run Records.");
+      return null;
     }
   }
 
@@ -3863,6 +3898,29 @@ public interface CollectionDAO {
   interface SystemDAO {
     @ConnectionAwareSqlQuery(
         value =
+            "SELECT (SELECT COUNT(fqnHash) FROM table_entity <cond>) as tableCount, "
+                + "(SELECT COUNT(fqnHash) FROM topic_entity <cond>) as topicCount, "
+                + "(SELECT COUNT(fqnHash) FROM dashboard_entity <cond>) as dashboardCount, "
+                + "(SELECT COUNT(fqnHash) FROM pipeline_entity <cond>) as pipelineCount, "
+                + "(SELECT COUNT(fqnHash) FROM ml_model_entity <cond>) as mlmodelCount, "
+                + "(SELECT COUNT(fqnHash) FROM storage_container_entity <cond>) as storageContainerCount, "
+                + "(SELECT COUNT(fqnHash) FROM search_index_entity <cond>) as searchIndexCount, "
+                + "(SELECT COUNT(nameHash) FROM glossary_entity <cond>) as glossaryCount, "
+                + "(SELECT COUNT(fqnHash) FROM glossary_term_entity <cond>) as glossaryTermCount, "
+                + "(SELECT (SELECT COUNT(nameHash) FROM metadata_service_entity <cond>) + "
+                + "(SELECT COUNT(nameHash) FROM dbservice_entity <cond>)+"
+                + "(SELECT COUNT(nameHash) FROM messaging_service_entity <cond>)+ "
+                + "(SELECT COUNT(nameHash) FROM dashboard_service_entity <cond>)+ "
+                + "(SELECT COUNT(nameHash) FROM pipeline_service_entity <cond>)+ "
+                + "(SELECT COUNT(nameHash) FROM mlmodel_service_entity <cond>)+ "
+                + "(SELECT COUNT(nameHash) FROM search_service_entity <cond>)+ "
+                + "(SELECT COUNT(nameHash) FROM storage_service_entity <cond>)) as servicesCount, "
+                + "(SELECT COUNT(nameHash) FROM user_entity <cond> AND (JSON_EXTRACT(json, '$.isBot') IS NULL OR JSON_EXTRACT(json, '$.isBot') = FALSE)) as userCount, "
+                + "(SELECT COUNT(nameHash) FROM team_entity <cond>) as teamCount, "
+                + "(SELECT COUNT(fqnHash) FROM test_suite <cond>) as testSuiteCount",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlQuery(
+        value =
             "SELECT (SELECT COUNT(*) FROM table_entity <cond>) as tableCount, "
                 + "(SELECT COUNT(*) FROM topic_entity <cond>) as topicCount, "
                 + "(SELECT COUNT(*) FROM dashboard_entity <cond>) as dashboardCount, "
@@ -3880,29 +3938,6 @@ public interface CollectionDAO {
                 + "(SELECT COUNT(*) FROM mlmodel_service_entity <cond>)+ "
                 + "(SELECT COUNT(*) FROM search_service_entity <cond>)+ "
                 + "(SELECT COUNT(*) FROM storage_service_entity <cond>)) as servicesCount, "
-                + "(SELECT COUNT(*) FROM user_entity <cond> AND (JSON_EXTRACT(json, '$.isBot') IS NULL OR JSON_EXTRACT(json, '$.isBot') = FALSE)) as userCount, "
-                + "(SELECT COUNT(*) FROM team_entity <cond>) as teamCount, "
-                + "(SELECT COUNT(*) FROM test_suite <cond>) as testSuiteCount",
-        connectionType = MYSQL)
-    @ConnectionAwareSqlQuery(
-        value =
-            "SELECT (SELECT COUNT(*) FROM table_entity <cond>) as tableCount, "
-                + "(SELECT COUNT(*) FROM topic_entity <cond>) as topicCount, "
-                + "(SELECT COUNT(*) FROM dashboard_entity <cond>) as dashboardCount, "
-                + "(SELECT COUNT(*) FROM pipeline_entity <cond>) as pipelineCount, "
-                + "(SELECT COUNT(*) FROM ml_model_entity <cond>) as mlmodelCount, "
-                + "(SELECT COUNT(*) FROM storage_container_entity <cond>) as storageContainerCount, "
-                + "(SELECT COUNT(*) FROM search_index_entity <cond>) as searchIndexCount, "
-                + "(SELECT COUNT(*) FROM glossary_entity <cond>) as glossaryCount, "
-                + "(SELECT COUNT(*) FROM glossary_term_entity <cond>) as glossaryTermCount, "
-                + "(SELECT (SELECT COUNT(*) FROM metadata_service_entity <cond>) + "
-                + "(SELECT COUNT(*) FROM dbservice_entity <cond>)+ "
-                + "(SELECT COUNT(*) FROM messaging_service_entity <cond>)+ "
-                + "(SELECT COUNT(*) FROM dashboard_service_entity <cond>)+ "
-                + "(SELECT COUNT(*) FROM pipeline_service_entity <cond>)+ "
-                + "(SELECT COUNT(*) FROM mlmodel_service_entity <cond>)+ "
-                + "(SELECT COUNT(*) FROM search_service_entity <cond>)+ "
-                + "(SELECT COUNT(*) FROM storage_service_entity <cond>)) as servicesCount, "
                 + "(SELECT COUNT(*) FROM user_entity <cond> AND (json#>'{isBot}' IS NULL OR ((json#>'{isBot}')::boolean) = FALSE)) as userCount, "
                 + "(SELECT COUNT(*) FROM team_entity <cond>) as teamCount, "
                 + "(SELECT COUNT(*) FROM test_suite <cond>) as testSuiteCount",
@@ -3910,14 +3945,26 @@ public interface CollectionDAO {
     @RegisterRowMapper(EntitiesCountRowMapper.class)
     EntitiesCount getAggregatedEntitiesCount(@Define("cond") String cond) throws StatementException;
 
-    @SqlQuery(
-        "SELECT (SELECT COUNT(*) FROM database_entity <cond>) as databaseServiceCount, "
-            + "(SELECT COUNT(*) FROM messaging_service_entity <cond>) as messagingServiceCount, "
-            + "(SELECT COUNT(*) FROM dashboard_service_entity <cond>) as dashboardServiceCount, "
-            + "(SELECT COUNT(*) FROM pipeline_service_entity <cond>) as pipelineServiceCount, "
-            + "(SELECT COUNT(*) FROM mlmodel_service_entity <cond>) as mlModelServiceCount, "
-            + "(SELECT COUNT(*) FROM storage_service_entity <cond>) as storageServiceCount, "
-            + "(SELECT COUNT(*) FROM search_service_entity <cond>) as searchServiceCount")
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT (SELECT COUNT(nameHash) FROM dbservice_entity <cond>) as databaseServiceCount, "
+                + "(SELECT COUNT(nameHash) FROM messaging_service_entity <cond>) as messagingServiceCount, "
+                + "(SELECT COUNT(nameHash) FROM dashboard_service_entity <cond>) as dashboardServiceCount, "
+                + "(SELECT COUNT(nameHash) FROM pipeline_service_entity <cond>) as pipelineServiceCount, "
+                + "(SELECT COUNT(nameHash) FROM mlmodel_service_entity <cond>) as mlModelServiceCount, "
+                + "(SELECT COUNT(nameHash) FROM storage_service_entity <cond>) as storageServiceCount, "
+                + "(SELECT COUNT(nameHash) FROM search_service_entity <cond>) as searchServiceCount",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT (SELECT COUNT(*) FROM dbservice_entity <cond>) as databaseServiceCount, "
+                + "(SELECT COUNT(*) FROM messaging_service_entity <cond>) as messagingServiceCount, "
+                + "(SELECT COUNT(*) FROM dashboard_service_entity <cond>) as dashboardServiceCount, "
+                + "(SELECT COUNT(*) FROM pipeline_service_entity <cond>) as pipelineServiceCount, "
+                + "(SELECT COUNT(*) FROM mlmodel_service_entity <cond>) as mlModelServiceCount, "
+                + "(SELECT COUNT(*) FROM storage_service_entity <cond>) as storageServiceCount, "
+                + "(SELECT COUNT(*) FROM search_service_entity <cond>) as searchServiceCount",
+        connectionType = POSTGRES)
     @RegisterRowMapper(ServicesCountRowMapper.class)
     ServicesCount getAggregatedServicesCount(@Define("cond") String cond) throws StatementException;
 
@@ -3943,6 +3990,9 @@ public interface CollectionDAO {
 
     @SqlUpdate(value = "DELETE from openmetadata_settings WHERE configType = :configType")
     void delete(@Bind("configType") String configType);
+
+    @SqlQuery("SELECT 42")
+    Integer testConnection() throws StatementException;
   }
 
   class SettingsRowMapper implements RowMapper<Settings> {
@@ -3957,11 +4007,12 @@ public interface CollectionDAO {
       Object value =
           switch (configType) {
             case EMAIL_CONFIGURATION -> JsonUtils.readValue(json, SmtpSettings.class);
-            case CUSTOM_LOGO_CONFIGURATION -> JsonUtils.readValue(json, LogoConfiguration.class);
+            case CUSTOM_UI_THEME_PREFERENCE -> JsonUtils.readValue(json, UiThemePreference.class);
             case LOGIN_CONFIGURATION -> JsonUtils.readValue(json, LoginConfiguration.class);
             case SLACK_APP_CONFIGURATION -> JsonUtils.readValue(json, String.class);
             case SLACK_BOT, SLACK_INSTALLER -> JsonUtils.readValue(
                 json, new TypeReference<HashMap<String, Object>>() {});
+            case PROFILER_CONFIGURATION -> JsonUtils.readValue(json, ProfilerConfiguration.class);
             default -> throw new IllegalArgumentException("Invalid Settings Type " + configType);
           };
       settings.setConfigValue(value);
@@ -4289,7 +4340,8 @@ public interface CollectionDAO {
         psqlCondition.append(String.format(" AND entityType='%s' ", entityType));
       }
 
-      return listCount(getTableName(), mysqlCondition.toString(), psqlCondition.toString());
+      return listCount(
+          getTableName(), getNameHashColumn(), mysqlCondition.toString(), psqlCondition.toString());
     }
 
     @ConnectionAwareSqlQuery(
@@ -4329,17 +4381,6 @@ public interface CollectionDAO {
         @Define("psqlCond") String psqlCond,
         @Bind("limit") int limit,
         @Bind("after") String after);
-
-    @ConnectionAwareSqlQuery(
-        value = "SELECT count(*) FROM <table> <mysqlCond>",
-        connectionType = MYSQL)
-    @ConnectionAwareSqlQuery(
-        value = "SELECT count(*) FROM <table> <psqlCond>",
-        connectionType = POSTGRES)
-    int listCount(
-        @Define("table") String table,
-        @Define("mysqlCond") String mysqlCond,
-        @Define("psqlCond") String psqlCond);
   }
 
   interface SuggestionDAO {

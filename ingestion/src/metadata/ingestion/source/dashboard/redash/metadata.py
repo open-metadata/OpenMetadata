@@ -68,7 +68,12 @@ class RedashSource(DashboardServiceSource):
         self.tags = []  # To create the tags before yielding final entities
 
     @classmethod
-    def create(cls, config_dict: dict, metadata: OpenMetadata):
+    def create(
+        cls,
+        config_dict: dict,
+        metadata: OpenMetadata,
+        pipeline_name: Optional[str] = None,
+    ):
         config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
         connection: RedashConnection = config.serviceConnection.__root__.config
         if not isinstance(connection, RedashConnection):
@@ -154,12 +159,12 @@ class RedashSource(DashboardServiceSource):
                     fqn.build(
                         self.metadata,
                         entity_type=Chart,
-                        service_name=self.context.dashboard_service,
+                        service_name=self.context.get().dashboard_service,
                         chart_name=chart,
                     )
-                    for chart in self.context.charts or []
+                    for chart in self.context.get().charts or []
                 ],
-                service=self.context.dashboard_service,
+                service=self.context.get().dashboard_service,
                 sourceUrl=self.get_dashboard_url(dashboard_details),
                 tags=get_tag_labels(
                     metadata=self.metadata,
@@ -266,7 +271,7 @@ class RedashSource(DashboardServiceSource):
                         chartType=get_standard_chart_type(
                             visualization["type"] if visualization else ""
                         ),
-                        service=self.context.dashboard_service,
+                        service=self.context.get().dashboard_service,
                         sourceUrl=self.get_dashboard_url(dashboard_details),
                         description=visualization["description"]
                         if visualization

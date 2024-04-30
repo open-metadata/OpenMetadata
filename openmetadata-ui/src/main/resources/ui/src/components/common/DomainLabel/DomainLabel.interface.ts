@@ -23,5 +23,6 @@ export type DomainLabelProps = {
   entityType: EntityType;
   entityFqn: string;
   entityId: string;
+  textClassName?: string;
   showDomainHeading?: boolean;
 };

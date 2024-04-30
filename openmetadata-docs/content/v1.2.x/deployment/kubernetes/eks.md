@@ -72,7 +72,7 @@ openmetadata:
   ...
 ```
 
-Make sure to create RDS and OpenSearch credentials as Kubernetes Secrets mentioned [here](https://docs.open-metadata.org/deployment/kubernetes#quickstart).
+Make sure to create RDS and OpenSearch credentials as Kubernetes Secrets mentioned [here](/deployment/kubernetes#quickstart).
 
 Also, disable MySQL and ElasticSearch from OpenMetadata Dependencies Helm Charts as mentioned in the FAQs [here](/deployment/kubernetes/faqs#how-to-disable-mysql-and-elasticsearch-from-openmetadata-dependencies-helm-charts).
 

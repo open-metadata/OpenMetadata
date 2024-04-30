@@ -291,7 +291,12 @@ export const SelectableList = ({
               }
               key={item.id}
               title={getEntityName(item)}
-              onClick={() => selectionHandler(item)}>
+              onClick={(e) => {
+                // Used to stop click propagation event anywhere in the component to parent
+                // TeamDetailsV1 collapsible panel
+                e.stopPropagation();
+                selectionHandler(item);
+              }}>
               {customTagRenderer ? (
                 customTagRenderer(item)
               ) : (

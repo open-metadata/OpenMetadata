@@ -13,7 +13,9 @@
 
 import { t } from 'i18next';
 import { ElementLoadingState } from '../components/Entity/EntityLineage/EntityLineage.interface';
+import { EntityType } from '../enums/entity.enum';
 import { SearchIndex } from '../enums/search.enum';
+import { Source } from '../generated/type/entityLineage';
 
 export const FOREIGN_OBJECT_SIZE = 40;
 export const ZOOM_VALUE = 0.75;
@@ -47,6 +49,10 @@ export const entityData = [
     label: t('label.container-plural'),
   },
   {
+    type: SearchIndex.PIPELINE,
+    label: t('label.pipeline-plural'),
+  },
+  {
     type: SearchIndex.SEARCH_INDEX,
     label: t('label.search-index-plural'),
   },
@@ -61,7 +67,6 @@ export const POSITION_Y = 60;
 
 export const NODE_WIDTH = 400;
 export const NODE_HEIGHT = 90;
-export const EXPANDED_NODE_HEIGHT = 350;
 
 export const ELEMENT_DELETE_STATE = {
   loading: false,
@@ -72,4 +77,27 @@ export const LINEAGE_DEFAULT_QUICK_FILTERS = [
   'domain.displayName.keyword',
   'owner.displayName.keyword',
   'tags.tagFQN',
+  'columns.name.keyword',
+];
+
+export const LINEAGE_SOURCE: { [key in Source]: string } = {
+  [Source.DashboardLineage]: 'Dashboard Lineage',
+  [Source.DbtLineage]: 'dbt Lineage',
+  [Source.Manual]: 'Manual',
+  [Source.PipelineLineage]: 'Pipeline Lineage',
+  [Source.QueryLineage]: 'Query Lineage',
+  [Source.SparkLineage]: 'Spark Lineage',
+  [Source.ViewLineage]: 'View Lineage',
+  [Source.OpenLineage]: 'OpenLineage',
+  [Source.ExternalTableLineage]: 'External Table Lineage',
+};
+
+export const LINEAGE_COLUMN_NODE_SUPPORTED = [
+  EntityType.TABLE,
+  EntityType.DASHBOARD,
+  EntityType.MLMODEL,
+  EntityType.DASHBOARD_DATA_MODEL,
+  EntityType.CONTAINER,
+  EntityType.TOPIC,
+  EntityType.SEARCH_INDEX,
 ];

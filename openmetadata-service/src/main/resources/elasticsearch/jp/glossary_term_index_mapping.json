@@ -408,6 +408,12 @@
             "path": "deleted"
           }
         ]
+      },
+      "descriptionStatus": {
+        "type": "keyword"
+      },
+      "childrenCount": {
+        "type": "integer"
       }
     }
   }

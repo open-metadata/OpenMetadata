@@ -12,10 +12,10 @@
  */
 
 import { isEmpty } from 'lodash';
-import { useAuthContext } from '../components/Auth/AuthProviders/AuthProvider';
+import { useApplicationStore } from './useApplicationStore';
 
 export const useAuth = () => {
-  const { currentUser, newUser } = useAuthContext();
+  const { currentUser, newUser } = useApplicationStore();
 
   return {
     isAdminUser: currentUser?.isAdmin,

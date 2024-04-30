@@ -37,6 +37,7 @@ class CustomPropertyDataTypes(Enum):
     TIME = "time"
     TIMEINTERVAL = "timeInterval"
     TIMESTAMP = "timestamp"
+    ENUM = "enum"
 
 
 class OMetaCustomProperties(BaseModel):

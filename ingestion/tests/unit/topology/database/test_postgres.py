@@ -53,6 +53,10 @@ mock_postgres_config = {
                 },
                 "hostPort": "localhost:5432",
                 "database": "postgres",
+                "sslMode": "verify-ca",
+                "sslConfig": {
+                    "caCertificate": "CA certificate content",
+                },
             }
         },
         "sourceConfig": {
@@ -282,11 +286,13 @@ class PostgresUnitTest(TestCase):
             self.config.workflowConfig.openMetadataServerConfig,
         )
 
-        self.postgres_source.context.__dict__[
+        self.postgres_source.context.get().__dict__[
             "database_service"
         ] = MOCK_DATABASE_SERVICE.name.__root__
-        self.postgres_source.context.__dict__["database"] = MOCK_DATABASE.name.__root__
-        self.postgres_source.context.__dict__[
+        self.postgres_source.context.get().__dict__[
+            "database"
+        ] = MOCK_DATABASE.name.__root__
+        self.postgres_source.context.get().__dict__[
             "database_schema"
         ] = MOCK_DATABASE_SCHEMA.name.__root__
 
@@ -325,3 +331,11 @@ class PostgresUnitTest(TestCase):
 
         engine.execute.return_value = [[]]
         self.assertIsNone(get_postgres_version(engine))
+
+    @patch("sqlalchemy.engine.base.Engine")
+    @patch(
+        "metadata.ingestion.source.database.common_db_source.CommonDbSourceService.connection"
+    )
+    def test_close_connection(self, engine, connection):
+        connection.return_value = True
+        self.postgres_source.close()

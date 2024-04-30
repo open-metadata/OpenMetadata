@@ -42,11 +42,11 @@ import {
   mockSearchData,
   MOCK_EXPLORE_PAGE_COUNT,
 } from '../../constants/mockTourData.constants';
-import { useGlobalSearchProvider } from '../../context/GlobalSearchProvider/GlobalSearchProvider';
 import { useTourProvider } from '../../context/TourProvider/TourProvider';
 import { SORT_ORDER } from '../../enums/common.enum';
 import { EntityType } from '../../enums/entity.enum';
 import { SearchIndex } from '../../enums/search.enum';
+import { useApplicationStore } from '../../hooks/useApplicationStore';
 import { Aggregations, SearchResponse } from '../../interface/search.interface';
 import { searchQuery } from '../../rest/searchAPI';
 import { getCountBadge } from '../../utils/CommonUtils';
@@ -72,7 +72,7 @@ const ExplorePageV1: FunctionComponent = () => {
 
   const { tab } = useParams<UrlParams>();
 
-  const { searchCriteria } = useGlobalSearchProvider();
+  const { searchCriteria } = useApplicationStore();
 
   const [searchResults, setSearchResults] =
     useState<SearchResponse<ExploreSearchIndex>>();
@@ -200,7 +200,7 @@ const ExplorePageV1: FunctionComponent = () => {
                 : undefined,
               sortOrder: tabsInfo[nSearchIndex]?.sortOrder ?? SORT_ORDER.DESC,
             },
-            isPersistFilters: false,
+            isPersistFilters: true,
           })
         );
       },

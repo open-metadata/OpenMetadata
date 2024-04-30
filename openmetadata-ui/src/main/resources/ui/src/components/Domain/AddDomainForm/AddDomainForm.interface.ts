@@ -19,7 +19,7 @@ export interface AddDomainFormProps {
   isFormInDialog: boolean;
   onCancel: () => void;
   onSubmit: (data: CreateDomain | CreateDataProduct) => Promise<void>;
-  formRef: FormInstance<CreateDomain | CreateDataProduct>;
+  formRef?: FormInstance<CreateDomain | CreateDataProduct>;
   loading: boolean;
   type: DomainFormType;
 }

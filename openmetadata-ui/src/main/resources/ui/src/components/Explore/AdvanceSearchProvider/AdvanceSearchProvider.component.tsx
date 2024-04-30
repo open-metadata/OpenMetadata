@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { isEmpty, isEqual, isNil, isString } from 'lodash';
+import { isArray, isEmpty, isEqual, isNil, isString } from 'lodash';
 import Qs from 'qs';
 import React, {
   useCallback,
@@ -28,12 +28,11 @@ import {
   ValueSource,
 } from 'react-awesome-query-builder';
 import { useHistory, useLocation, useParams } from 'react-router-dom';
-import {
-  emptyJsonTree,
-  getQbConfigs,
-} from '../../../constants/AdvancedSearch.constants';
+import { emptyJsonTree } from '../../../constants/AdvancedSearch.constants';
+import { ROUTES } from '../../../constants/constants';
 import { SearchIndex } from '../../../enums/search.enum';
 import { getTypeByFQN } from '../../../rest/metadataTypeAPI';
+import advancedSearchClassBase from '../../../utils/AdvancedSearchClassBase';
 import { getTierOptions } from '../../../utils/AdvancedSearchUtils';
 import { EntitiesSupportedCustomProperties } from '../../../utils/CustomProperties/CustomProperty.utils';
 import { elasticSearchFormat } from '../../../utils/QueryBuilderElasticsearchFormatUtils';
@@ -41,7 +40,7 @@ import searchClassBase from '../../../utils/SearchClassBase';
 import { getEntityTypeFromSearchIndex } from '../../../utils/SearchUtils';
 import Loader from '../../common/Loader/Loader';
 import { AdvancedSearchModal } from '../AdvanceSearchModal.component';
-import { ExploreSearchIndex, UrlParams } from '../ExplorePage.interface';
+import { UrlParams } from '../ExplorePage.interface';
 import {
   AdvanceSearchContext,
   AdvanceSearchProviderProps,
@@ -56,12 +55,15 @@ export const AdvanceSearchProvider = ({
 }: AdvanceSearchProviderProps) => {
   const tierOptions = useMemo(getTierOptions, []);
 
-  const tabsInfo = searchClassBase.getTabsInfo();
+  const tabsInfo = useMemo(
+    () => searchClassBase.getTabsInfo(),
+    [searchClassBase]
+  );
   const location = useLocation();
   const history = useHistory();
   const { tab } = useParams<UrlParams>();
   const [loading, setLoading] = useState(true);
-  const searchIndex = useMemo(() => {
+  const getSearchIndexFromTabInfo = useCallback(() => {
     const tabInfo = Object.entries(tabsInfo).find(
       ([, tabInfo]) => tabInfo.path === tab
     );
@@ -69,10 +71,31 @@ export const AdvanceSearchProvider = ({
       return SearchIndex.TABLE;
     }
 
-    return tabInfo[0] as ExploreSearchIndex;
-  }, [tab]);
+    return tabInfo[0] as SearchIndex;
+  }, [tabsInfo, tab]);
+
+  const isExplorePage = useMemo(
+    () => location.pathname.startsWith(ROUTES.EXPLORE),
+    [location]
+  );
+
+  const [searchIndex, setSearchIndex] = useState<
+    SearchIndex | Array<SearchIndex>
+  >(getSearchIndexFromTabInfo());
+
+  const changeSearchIndex = useCallback(
+    (index: SearchIndex | Array<SearchIndex>) => {
+      setSearchIndex(index);
+    },
+    []
+  );
+
   const [config, setConfig] = useState<Config>(
-    getQbConfigs(searchIndex, tierOptions)
+    advancedSearchClassBase.getQbConfigs(
+      tierOptions,
+      isArray(searchIndex) ? searchIndex : [searchIndex],
+      isExplorePage
+    )
   );
   const [initialised, setInitialised] = useState(false);
 
@@ -85,7 +108,7 @@ export const AdvanceSearchProvider = ({
     () =>
       Qs.parse(
         location.search.startsWith('?')
-          ? location.search.substr(1)
+          ? location.search.slice(1)
           : location.search
       ),
     [location.search]
@@ -123,8 +146,14 @@ export const AdvanceSearchProvider = ({
   );
 
   useEffect(() => {
-    setConfig(getQbConfigs(searchIndex, tierOptions));
-  }, [searchIndex]);
+    setConfig(
+      advancedSearchClassBase.getQbConfigs(
+        tierOptions,
+        isArray(searchIndex) ? searchIndex : [searchIndex],
+        isExplorePage
+      )
+    );
+  }, [searchIndex, isExplorePage]);
 
   const handleChange = useCallback(
     (nTree, nConfig) => {
@@ -183,11 +212,17 @@ export const AdvanceSearchProvider = ({
     > = {};
 
     try {
-      if (!EntitiesSupportedCustomProperties.includes(searchIndex)) {
+      if (
+        !EntitiesSupportedCustomProperties.includes(
+          isArray(searchIndex) ? searchIndex[0] : searchIndex
+        )
+      ) {
         return subfields;
       }
 
-      const entityType = getEntityTypeFromSearchIndex(searchIndex);
+      const entityType = getEntityTypeFromSearchIndex(
+        isArray(searchIndex) ? searchIndex[0] : searchIndex
+      );
       if (!entityType) {
         return subfields;
       }
@@ -212,7 +247,11 @@ export const AdvanceSearchProvider = ({
   }
 
   const loadData = async () => {
-    const actualConfig = getQbConfigs(searchIndex, tierOptions);
+    const actualConfig = advancedSearchClassBase.getQbConfigs(
+      tierOptions,
+      isArray(searchIndex) ? searchIndex : [searchIndex],
+      isExplorePage
+    );
 
     const extensionSubField = await getCustomAttributesSubfields();
 
@@ -245,6 +284,10 @@ export const AdvanceSearchProvider = ({
   );
 
   useEffect(() => {
+    setSearchIndex(getSearchIndexFromTabInfo());
+  }, [tabsInfo, tab]);
+
+  useEffect(() => {
     loadData();
   }, [searchIndex]);
 
@@ -269,9 +312,10 @@ export const AdvanceSearchProvider = ({
     setSQLQuery(
       treeInternal ? QbUtils.sqlFormat(treeInternal, config) ?? '' : ''
     );
-    handleTreeUpdate(treeInternal);
+
+    isExplorePage && handleTreeUpdate(treeInternal);
     setShowModal(false);
-  }, [treeInternal, config, handleTreeUpdate]);
+  }, [treeInternal, config, handleTreeUpdate, isExplorePage]);
 
   const contextValues = useMemo(
     () => ({
@@ -285,6 +329,8 @@ export const AdvanceSearchProvider = ({
       onReset: handleReset,
       onResetAllFilters: handleResetAllFilters,
       onUpdateConfig: handleConfigUpdate,
+      onChangeSearchIndex: changeSearchIndex,
+      onSubmit: handleSubmit,
     }),
     [
       queryFilter,
@@ -297,6 +343,8 @@ export const AdvanceSearchProvider = ({
       handleReset,
       handleResetAllFilters,
       handleConfigUpdate,
+      changeSearchIndex,
+      handleSubmit,
     ]
   );
 

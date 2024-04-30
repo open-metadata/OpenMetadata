@@ -14,15 +14,16 @@ import { render, screen } from '@testing-library/react';
 import React from 'react';
 import BrandImage from './BrandImage';
 
-jest.mock(
-  '../../../context/ApplicationConfigProvider/ApplicationConfigProvider',
-  () => ({
-    useApplicationConfigContext: jest.fn().mockImplementation(() => ({
-      customLogoUrlPath: 'https://custom-logo.png',
-      customMonogramUrlPath: 'https://custom-monogram.png',
-    })),
-  })
-);
+jest.mock('../../../hooks/useApplicationStore', () => ({
+  useApplicationStore: jest.fn().mockImplementation(() => ({
+    applicationConfig: {
+      customLogoConfig: {
+        customLogoUrlPath: 'https://custom-logo.png',
+        customMonogramUrlPath: 'https://custom-monogram.png',
+      },
+    },
+  })),
+}));
 
 describe('Test Brand Logo', () => {
   it('Should render the brand logo with default props value', () => {

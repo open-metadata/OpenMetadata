@@ -84,7 +84,7 @@ public class MlModelResourceTest extends EntityResourceTest<MlModel, CreateMlMod
   public static final URI SERVER = URI.create("http://localhost.com/mlModel");
   public static final MlStore ML_STORE =
       new MlStore()
-          .withStorage(URI.create("s3://my-bucket.com/mlModel"))
+          .withStorage(URI.create("s3://my-bucket.com/mlModel").toString())
           .withImageRepository(URI.create("https://12345.dkr.ecr.region.amazonaws.com").toString());
 
   public static final List<MlFeature> ML_FEATURES =
@@ -420,7 +420,7 @@ public class MlModelResourceTest extends EntityResourceTest<MlModel, CreateMlMod
   }
 
   @Test
-  void test_inheritDomain(TestInfo test) throws IOException {
+  void test_inheritDomain(TestInfo test) throws IOException, InterruptedException {
     // When domain is not set for an ML Model, carry it forward from the ML Model Service
     MlModelServiceResourceTest serviceTest = new MlModelServiceResourceTest();
     CreateMlModelService createService =
@@ -465,12 +465,12 @@ public class MlModelResourceTest extends EntityResourceTest<MlModel, CreateMlMod
         model.getUsageSummary());
 
     // .../models?fields=mlFeatures,mlHyperParameters
-    fields = "owner,dashboard,followers,tags,usageSummary";
+    fields = "owner,followers,tags,usageSummary";
     model =
         byName
             ? getEntityByName(model.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)
             : getEntity(model.getId(), fields, ADMIN_AUTH_HEADERS);
-    assertListNotNull(model.getDashboard(), model.getUsageSummary());
+    assertListNotNull(model.getUsageSummary());
     // Checks for other owner, tags, and followers is done in the base class
     return model;
   }
@@ -482,7 +482,6 @@ public class MlModelResourceTest extends EntityResourceTest<MlModel, CreateMlMod
         .withAlgorithm(ALGORITHM)
         .withMlFeatures(ML_FEATURES)
         .withMlHyperParameters(ML_HYPERPARAMS)
-        .withDashboard(DASHBOARD.getFullyQualifiedName())
         .withService(MLFLOW_REFERENCE.getFullyQualifiedName());
   }
 

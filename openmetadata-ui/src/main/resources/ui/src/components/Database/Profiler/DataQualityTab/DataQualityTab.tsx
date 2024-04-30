@@ -23,12 +23,12 @@ import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { ReactComponent as IconEdit } from '../../../../assets/svg/edit-new.svg';
 import { ReactComponent as IconDelete } from '../../../../assets/svg/ic-delete.svg';
-import { getTableTabPath } from '../../../../constants/constants';
+import { getEntityDetailsPath } from '../../../../constants/constants';
 import { DATA_QUALITY_PROFILER_DOCS } from '../../../../constants/docs.constants';
 import { NO_PERMISSION_FOR_ACTION } from '../../../../constants/HelperTextUtil';
 import { usePermissionProvider } from '../../../../context/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../../../context/PermissionProvider/PermissionProvider.interface';
-import { EntityType } from '../../../../enums/entity.enum';
+import { EntityTabs, EntityType } from '../../../../enums/entity.enum';
 import { TestCaseStatus } from '../../../../generated/configuration/testResultNotificationConfiguration';
 import { Operation } from '../../../../generated/entity/policies/policy';
 import { TestCase, TestCaseResult } from '../../../../generated/tests/testCase';
@@ -185,7 +185,11 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
                   <Link
                     data-testid="table-link"
                     to={{
-                      pathname: getTableTabPath(tableFqn, 'profiler'),
+                      pathname: getEntityDetailsPath(
+                        EntityType.TABLE,
+                        tableFqn,
+                        EntityTabs.PROFILER
+                      ),
                       search: QueryString.stringify({
                         activeTab: TableProfilerTab.DATA_QUALITY,
                       }),
@@ -481,6 +485,7 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
           />
         ) : (
           <DeleteWidgetModal
+            isRecursiveDelete
             afterDeleteAction={afterDeleteAction}
             allowSoftDelete={false}
             entityId={selectedTestCase?.data?.id ?? ''}

@@ -22,9 +22,10 @@ import { useTranslation } from 'react-i18next';
 import { ReactComponent as EditIcon } from '../../../../../assets/svg/edit-new.svg';
 import { Team } from '../../../../../generated/entity/teams/team';
 import { useAuth } from '../../../../../hooks/authHooks';
+import { useApplicationStore } from '../../../../../hooks/useApplicationStore';
 import { hasEditAccess } from '../../../../../utils/CommonUtils';
+import { getEntityName } from '../../../../../utils/EntityUtils';
 import { showErrorToast } from '../../../../../utils/ToastUtils';
-import { useAuthContext } from '../../../../Auth/AuthProviders/AuthProvider';
 import { TeamsHeadingLabelProps } from '../team.interface';
 
 const TeamsHeadingLabel = ({
@@ -39,7 +40,7 @@ const TeamsHeadingLabel = ({
     currentTeam ? currentTeam.displayName : ''
   );
   const { isAdminUser } = useAuth();
-  const { currentUser } = useAuthContext();
+  const { currentUser } = useApplicationStore();
   const { owner } = useMemo(() => currentTeam, [currentTeam]);
 
   const isCurrentTeamOwner = useMemo(
@@ -82,14 +83,16 @@ const TeamsHeadingLabel = ({
   };
 
   const handleClose = useCallback(() => {
-    setHeading(currentTeam ? currentTeam.displayName : '');
+    setHeading(currentTeam ? getEntityName(currentTeam) : '');
     setIsHeadingEditing(false);
-  }, [currentTeam.displayName]);
+  }, [currentTeam]);
 
   const teamHeadingRender = useMemo(
     () =>
       isHeadingEditing ? (
-        <Space>
+        // Used onClick stop click propagation event anywhere in the component to parent
+        // TeamDetailsV1 component collapsible panel
+        <Space onClick={(e) => e.stopPropagation()}>
           <Input
             className="w-48"
             data-testid="team-name-input"
@@ -155,7 +158,11 @@ const TeamsHeadingLabel = ({
                   data-testid="edit-team-name"
                   disabled={!hasEditDisplayNamePermission}
                   style={{ fontSize: '16px' }}
-                  onClick={() => setIsHeadingEditing(true)}
+                  onClick={(e) => {
+                    // Used to stop click propagation event to parent TeamDetailV1 collapsible panel
+                    e.stopPropagation();
+                    setIsHeadingEditing(true);
+                  }}
                 />
               </Tooltip>
             )}

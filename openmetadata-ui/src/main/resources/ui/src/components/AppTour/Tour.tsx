@@ -15,14 +15,15 @@ import ReactTutorial, { TourSteps } from '@deuex-solutions/react-tour';
 import { Button } from 'antd';
 import React, { useState } from 'react';
 import { useHistory } from 'react-router-dom';
-import { PRIMERY_COLOR } from '../../constants/constants';
 import { useTourProvider } from '../../context/TourProvider/TourProvider';
 import { CurrentTourPageType } from '../../enums/tour.enum';
+import { useApplicationStore } from '../../hooks/useApplicationStore';
 import TourEndModal from '../Modals/TourEndModal/TourEndModal';
 import './tour.style.less';
 
 const Tour = ({ steps }: { steps: TourSteps[] }) => {
   const { isTourOpen, updateIsTourOpen, updateTourPage } = useTourProvider();
+  const { theme } = useApplicationStore();
   const [showTourEndModal, setShowTourEndModal] = useState(false);
   const history = useHistory();
 
@@ -43,7 +44,7 @@ const Tour = ({ steps }: { steps: TourSteps[] }) => {
           disableKeyboardNavigation
           showCloseButton
           showNumber
-          accentColor={PRIMERY_COLOR}
+          accentColor={theme.primaryColor ?? ''}
           inViewThreshold={200}
           lastStepNextButton={
             <Button

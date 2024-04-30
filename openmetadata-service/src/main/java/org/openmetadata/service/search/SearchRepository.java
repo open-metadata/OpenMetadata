@@ -28,6 +28,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.text.ParseException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -35,6 +36,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.SortedMap;
+import java.util.UUID;
 import javax.json.JsonObject;
 import javax.ws.rs.core.Response;
 import lombok.Getter;
@@ -52,6 +54,7 @@ import org.openmetadata.schema.tests.TestSuite;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.FieldChange;
+import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.UsageDetails;
 import org.openmetadata.service.Entity;
@@ -320,7 +323,7 @@ public class SearchRepository {
       } catch (Exception ie) {
         LOG.error(
             String.format(
-                "Issue in Updatind the search document for entity [%s] and entityType [%s]. Reason[%s], Cause[%s], Stack [%s]",
+                "Issue in Updating the search document for entity [%s] and entityType [%s]. Reason[%s], Cause[%s], Stack [%s]",
                 entityId,
                 entityType,
                 ie.getMessage(),
@@ -347,20 +350,28 @@ public class SearchRepository {
       Pair<String, Map<String, Object>> updates = getInheritedFieldChanges(changeDescription);
       Pair<String, String> parentMatch;
       if (!updates.getValue().isEmpty()
-          && updates.getValue().get("type").toString().equalsIgnoreCase("domain")
-          && (entityType.equalsIgnoreCase(Entity.DATABASE_SERVICE)
-              || entityType.equalsIgnoreCase(Entity.DASHBOARD_SERVICE)
-              || entityType.equalsIgnoreCase(Entity.MESSAGING_SERVICE)
-              || entityType.equalsIgnoreCase(Entity.PIPELINE_SERVICE)
-              || entityType.equalsIgnoreCase(Entity.MLMODEL_SERVICE)
-              || entityType.equalsIgnoreCase(Entity.STORAGE_SERVICE)
-              || entityType.equalsIgnoreCase(Entity.SEARCH_SERVICE))) {
-        parentMatch = new ImmutablePair<>("service.id", entityId);
+          && updates.getValue().get("type").toString().equalsIgnoreCase("domain")) {
+        if (entityType.equalsIgnoreCase(Entity.DATABASE_SERVICE)
+            || entityType.equalsIgnoreCase(Entity.DASHBOARD_SERVICE)
+            || entityType.equalsIgnoreCase(Entity.MESSAGING_SERVICE)
+            || entityType.equalsIgnoreCase(Entity.PIPELINE_SERVICE)
+            || entityType.equalsIgnoreCase(Entity.MLMODEL_SERVICE)
+            || entityType.equalsIgnoreCase(Entity.STORAGE_SERVICE)
+            || entityType.equalsIgnoreCase(Entity.SEARCH_SERVICE)) {
+          parentMatch = new ImmutablePair<>("service.id", entityId);
+        } else if (entityType.equalsIgnoreCase(Entity.TABLE)) {
+          EntityInterface entity =
+              Entity.getEntity(entityType, UUID.fromString(entityId), "", Include.ALL);
+          parentMatch = new ImmutablePair<>("entityFQN", entity.getFullyQualifiedName());
+        } else {
+          parentMatch = new ImmutablePair<>(entityType + ".id", entityId);
+        }
       } else {
         parentMatch = new ImmutablePair<>(entityType + ".id", entityId);
       }
       if (updates.getKey() != null && !updates.getKey().isEmpty()) {
-        searchClient.updateChildren(indexMapping.getAlias(clusterAlias), parentMatch, updates);
+        searchClient.updateChildren(
+            indexMapping.getChildAliases(clusterAlias), parentMatch, updates);
       }
     }
   }
@@ -491,6 +502,26 @@ public class SearchRepository {
     }
   }
 
+  public void deleteTimeSeriesEntityById(EntityTimeSeriesInterface entity) {
+    if (entity != null) {
+      String entityId = entity.getId().toString();
+      String entityType = entity.getEntityReference().getType();
+      IndexMapping indexMapping = entityIndexMap.get(entityType);
+      try {
+        searchClient.deleteEntity(indexMapping.getIndexName(clusterAlias), entityId);
+      } catch (Exception ie) {
+        LOG.error(
+            String.format(
+                "Issue in Deleting the search document for entityID [%s] and entityType [%s]. Reason[%s], Cause[%s], Stack [%s]",
+                entityId,
+                entityType,
+                ie.getMessage(),
+                ie.getCause(),
+                ExceptionUtils.getStackTrace(ie)));
+      }
+    }
+  }
+
   public void softDeleteOrRestoreEntity(EntityInterface entity, boolean delete) {
     if (entity != null) {
       String entityId = entity.getId().toString();
@@ -532,7 +563,9 @@ public class SearchRepository {
       case Entity.TAG, Entity.GLOSSARY_TERM -> searchClient.updateChildren(
           GLOBAL_SEARCH_ALIAS,
           new ImmutablePair<>("tags.tagFQN", entity.getFullyQualifiedName()),
-          new ImmutablePair<>(REMOVE_TAGS_CHILDREN_SCRIPT, null));
+          new ImmutablePair<>(
+              REMOVE_TAGS_CHILDREN_SCRIPT,
+              Collections.singletonMap("fqn", entity.getFullyQualifiedName())));
       case Entity.TEST_SUITE -> {
         TestSuite testSuite = (TestSuite) entity;
         if (Boolean.TRUE.equals(testSuite.getExecutable())) {
@@ -635,12 +668,36 @@ public class SearchRepository {
         fieldAddParams.put(fieldChange.getName(), doc.get("votes"));
         scriptTxt.append("ctx._source.votes = params.votes;");
       }
+      if (fieldChange.getName().equalsIgnoreCase("pipelineStatus")) {
+        scriptTxt.append(
+            "if (ctx._source.containsKey('pipelineStatus')) { ctx._source.pipelineStatus = params.newPipelineStatus; } else { ctx._source['pipelineStatus'] = params.newPipelineStatus;}");
+        Map<String, Object> doc = JsonUtils.getMap(entity);
+        fieldAddParams.put("newPipelineStatus", doc.get("pipelineStatus"));
+      }
     }
     return scriptTxt.toString();
   }
 
   public Response search(SearchRequest request) throws IOException {
     return searchClient.search(request);
+  }
+
+  public SearchClient.SearchResultListMapper listWithOffset(
+      SearchListFilter filter,
+      int limit,
+      int offset,
+      String entityType,
+      SearchSortFilter searchSortFilter,
+      String q)
+      throws IOException {
+    IndexMapping index = entityIndexMap.get(entityType);
+    return searchClient.listWithOffset(
+        filter.getCondition(entityType),
+        limit,
+        offset,
+        index.getIndexName(clusterAlias),
+        searchSortFilter,
+        q);
   }
 
   public Response searchBySourceUrl(String sourceUrl) throws IOException {
@@ -659,6 +716,18 @@ public class SearchRepository {
         fqn, upstreamDepth, downstreamDepth, queryFilter, deleted, entityType);
   }
 
+  public Map<String, Object> searchLineageForExport(
+      String fqn,
+      int upstreamDepth,
+      int downstreamDepth,
+      String queryFilter,
+      boolean deleted,
+      String entityType)
+      throws IOException {
+    return searchClient.searchLineageInternal(
+        fqn, upstreamDepth, downstreamDepth, queryFilter, deleted, entityType);
+  }
+
   public Response searchByField(String fieldName, String fieldValue, String index)
       throws IOException {
     return searchClient.searchByField(fieldName, fieldValue, index);
@@ -667,6 +736,11 @@ public class SearchRepository {
   public Response aggregate(String index, String fieldName, String value, String query)
       throws IOException {
     return searchClient.aggregate(index, fieldName, value, query);
+  }
+
+  public JsonObject aggregate(String query, String index, JsonObject aggregationJson)
+      throws IOException {
+    return searchClient.aggregate(query, index, aggregationJson);
   }
 
   public Response suggest(SearchRequest request) throws IOException {

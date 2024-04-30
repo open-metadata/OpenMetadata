@@ -1,3 +1,5 @@
+FROM mysql:8.3 as mysql
+
 FROM apache/airflow:2.7.3-python3.10
 USER root
 RUN curl -sS https://packages.microsoft.com/keys/microsoft.asc | apt-key add -
@@ -38,6 +40,7 @@ RUN apt-get -qq update \
     # Accept MSSQL ODBC License
     && ACCEPT_EULA=Y apt-get -qq install -y msodbcsql18 \
     && rm -rf /var/lib/apt/lists/*
+COPY --from=mysql /usr/bin/mysqldump /usr/bin/mysqldump
 
 RUN if [[ $(uname -m) == "arm64" || $(uname -m) == "aarch64" ]]; \
  then \

@@ -31,6 +31,8 @@ import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
+import org.openmetadata.service.search.SearchListFilter;
+import org.openmetadata.service.search.SearchSortFilter;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.CreateResourceContext;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
@@ -142,6 +144,23 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
       resultList = repository.listAfter(uriInfo, fields, filter, limitParam, after);
     }
     return addHref(uriInfo, resultList);
+  }
+
+  public ResultList<T> listInternalFromSearch(
+      UriInfo uriInfo,
+      SecurityContext securityContext,
+      Fields fields,
+      SearchListFilter searchListFilter,
+      int limit,
+      int offset,
+      SearchSortFilter searchSortFilter,
+      String q,
+      OperationContext operationContext,
+      ResourceContextInterface resourceContext)
+      throws IOException {
+    authorizer.authorize(securityContext, operationContext, resourceContext);
+    return repository.listFromSearchWithOffset(
+        uriInfo, fields, searchListFilter, limit, offset, searchSortFilter, q);
   }
 
   public T getInternal(

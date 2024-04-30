@@ -17,7 +17,6 @@ import { CookieStorage } from 'cookie-storage';
 import React, { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
-import { useAuthContext } from '../../components/Auth/AuthProviders/AuthProvider';
 import { UserProfile } from '../../components/Auth/AuthProviders/AuthProvider.interface';
 import TeamsSelectable from '../../components/Settings/Team/TeamsSelectable/TeamsSelectable';
 import {
@@ -26,8 +25,12 @@ import {
   VALIDATION_MESSAGES,
 } from '../../constants/constants';
 import { EntityReference } from '../../generated/entity/type';
+import { useApplicationStore } from '../../hooks/useApplicationStore';
 import { createUser } from '../../rest/userAPI';
-import { getNameFromUserData } from '../../utils/AuthProvider.util';
+import {
+  getNameFromUserData,
+  setUrlPathnameExpiryAfterRoute,
+} from '../../utils/AuthProvider.util';
 import brandImageClassBase from '../../utils/BrandImage/BrandImageClassBase';
 import { getImages, Transi18next } from '../../utils/CommonUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
@@ -43,7 +46,7 @@ const SignUp = () => {
     authorizerConfig,
     updateCurrentUser,
     newUser,
-  } = useAuthContext();
+  } = useApplicationStore();
 
   const [loading, setLoading] = useState<boolean>(false);
   const OMDLogo = useMemo(() => brandImageClassBase.getMonogram().svg, []);
@@ -60,7 +63,10 @@ const SignUp = () => {
         },
       });
       updateCurrentUser(res);
-      cookieStorage.removeItem(REDIRECT_PATHNAME);
+      const urlPathname = cookieStorage.getItem(REDIRECT_PATHNAME);
+      if (urlPathname) {
+        setUrlPathnameExpiryAfterRoute(urlPathname);
+      }
       setIsSigningIn(false);
       history.push(ROUTES.HOME);
     } catch (error) {

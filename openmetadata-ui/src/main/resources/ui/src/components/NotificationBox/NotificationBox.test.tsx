@@ -60,12 +60,6 @@ const mockThread = [
 const tabList = ['Tasks', 'Mentions'];
 const mockShowErrorToast = jest.fn();
 const mockOnMarkTaskNotificationRead = jest.fn();
-const mockUserData = {
-  name: 'aaron_johnson0',
-  email: 'testUser1@email.com',
-  id: '011bdb24-90a7-4a97-ba66-24002adb2b12',
-  isAdmin: true,
-};
 
 const mockProps = {
   hasMentionNotification: true,
@@ -93,12 +87,6 @@ jest.mock('../../utils/FeedUtils', () => ({
 jest.mock('./NotificationFeedCard.component', () => {
   return jest.fn().mockReturnValue(<p>NotificationFeedCard</p>);
 });
-
-jest.mock('../Auth/AuthProviders/AuthProvider', () => ({
-  useAuthContext: jest.fn(() => ({
-    currentUser: mockUserData,
-  })),
-}));
 
 jest.mock('../../utils/ToastUtils', () => ({
   showErrorToast: jest.fn().mockImplementation(() => mockShowErrorToast()),

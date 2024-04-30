@@ -70,6 +70,7 @@ class SearchClassBase {
     return {
       [EntityType.ALL]: SearchIndex.ALL,
       [EntityType.TABLE]: SearchIndex.TABLE,
+      [EntityType.CHART]: SearchIndex.CHART,
       [EntityType.PIPELINE]: SearchIndex.PIPELINE,
       [EntityType.DASHBOARD]: SearchIndex.DASHBOARD,
       [EntityType.MLMODEL]: SearchIndex.MLMODEL,
@@ -97,6 +98,43 @@ class SearchClassBase {
       [EntityType.TEST_SUITE]: SearchIndex.TEST_SUITE,
       [EntityType.GLOSSARY]: SearchIndex.GLOSSARY,
       [EntityType.INGESTION_PIPELINE]: SearchIndex.INGESTION_PIPELINE,
+    };
+  }
+
+  public getSearchIndexEntityTypeMapping(): Partial<
+    Record<SearchIndex, EntityType>
+  > {
+    return {
+      [SearchIndex.ALL]: EntityType.ALL,
+      [SearchIndex.TABLE]: EntityType.TABLE,
+      [SearchIndex.CHART]: EntityType.CHART,
+      [SearchIndex.PIPELINE]: EntityType.PIPELINE,
+      [SearchIndex.DASHBOARD]: EntityType.DASHBOARD,
+      [SearchIndex.MLMODEL]: EntityType.MLMODEL,
+      [SearchIndex.TOPIC]: EntityType.TOPIC,
+      [SearchIndex.CONTAINER]: EntityType.CONTAINER,
+      [SearchIndex.TAG]: EntityType.TAG,
+      [SearchIndex.GLOSSARY_TERM]: EntityType.GLOSSARY_TERM,
+      [SearchIndex.STORED_PROCEDURE]: EntityType.STORED_PROCEDURE,
+      [SearchIndex.DASHBOARD_DATA_MODEL]: EntityType.DASHBOARD_DATA_MODEL,
+      [SearchIndex.SEARCH_INDEX]: EntityType.SEARCH_INDEX,
+      [SearchIndex.DATABASE_SERVICE]: EntityType.DATABASE_SERVICE,
+      [SearchIndex.MESSAGING_SERVICE]: EntityType.MESSAGING_SERVICE,
+      [SearchIndex.DASHBOARD_SERVICE]: EntityType.DASHBOARD_SERVICE,
+      [SearchIndex.PIPELINE_SERVICE]: EntityType.PIPELINE_SERVICE,
+      [SearchIndex.ML_MODEL_SERVICE]: EntityType.MLMODEL_SERVICE,
+      [SearchIndex.STORAGE_SERVICE]: EntityType.STORAGE_SERVICE,
+      [SearchIndex.SEARCH_SERVICE]: EntityType.SEARCH_SERVICE,
+      [SearchIndex.DOMAIN]: EntityType.DOMAIN,
+      [SearchIndex.DATA_PRODUCT]: EntityType.DATA_PRODUCT,
+      [SearchIndex.DATABASE]: EntityType.DATABASE,
+      [SearchIndex.DATABASE_SCHEMA]: EntityType.DATABASE_SCHEMA,
+      [SearchIndex.USER]: EntityType.USER,
+      [SearchIndex.TEAM]: EntityType.TEAM,
+      [SearchIndex.TEST_CASE]: EntityType.TEST_CASE,
+      [SearchIndex.TEST_SUITE]: EntityType.TEST_SUITE,
+      [SearchIndex.GLOSSARY]: EntityType.GLOSSARY,
+      [SearchIndex.INGESTION_PIPELINE]: EntityType.INGESTION_PIPELINE,
     };
   }
 
@@ -253,19 +291,18 @@ class SearchClassBase {
         ];
       case SearchIndex.CONTAINER:
         return [...COMMON_DROPDOWN_ITEMS, ...CONTAINER_DROPDOWN_ITEMS];
-      case SearchIndex.STORED_PROCEDURE:
-        return [...COMMON_DROPDOWN_ITEMS];
       case SearchIndex.DASHBOARD_DATA_MODEL:
         return [...COMMON_DROPDOWN_ITEMS, ...DASHBOARD_DATA_MODEL_TYPE];
       case SearchIndex.GLOSSARY_TERM:
-        return [...GLOSSARY_DROPDOWN_ITEMS];
+        return GLOSSARY_DROPDOWN_ITEMS;
       case SearchIndex.TAG:
-        return [...TAG_DROPDOWN_ITEMS];
+        return TAG_DROPDOWN_ITEMS;
       case SearchIndex.DATA_PRODUCT:
-        return [...DATA_PRODUCT_DROPDOWN_ITEMS];
+        return DATA_PRODUCT_DROPDOWN_ITEMS;
+      case SearchIndex.STORED_PROCEDURE:
       case SearchIndex.DATABASE:
       case SearchIndex.DATABASE_SCHEMA:
-        return [...COMMON_DROPDOWN_ITEMS];
+        return COMMON_DROPDOWN_ITEMS;
 
       default:
         return [];

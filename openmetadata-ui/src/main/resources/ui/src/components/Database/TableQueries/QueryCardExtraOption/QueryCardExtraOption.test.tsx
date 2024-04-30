@@ -35,8 +35,8 @@ let mockUserData: User = {
   email: '',
 };
 
-jest.mock('../../../Auth/AuthProviders/AuthProvider', () => ({
-  useAuthContext: jest.fn(() => ({
+jest.mock('../../../../hooks/useApplicationStore', () => ({
+  useApplicationStore: jest.fn(() => ({
     currentUser: mockUserData,
   })),
 }));
@@ -44,6 +44,10 @@ jest.mock('../../../Auth/AuthProviders/AuthProvider', () => ({
 jest.mock('../../../../rest/queryAPI', () => ({
   ...jest.requireActual('../../../../rest/queryAPI'),
   deleteQuery: jest.fn(),
+}));
+
+jest.mock('../../../../hooks/useFqn', () => ({
+  useFqn: jest.fn().mockImplementation(() => ({ fqn: 'testFqn' })),
 }));
 
 describe('QueryCardExtraOption component test', () => {

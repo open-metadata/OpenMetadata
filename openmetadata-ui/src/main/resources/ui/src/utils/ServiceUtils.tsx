@@ -16,7 +16,6 @@ import cryptoRandomString from 'crypto-random-string-with-promisify-polyfill';
 import { t } from 'i18next';
 import { ServiceTypes } from 'Models';
 import React from 'react';
-import { getDatabaseDetailsPath } from '../constants/constants';
 import { GlobalSettingOptions } from '../constants/GlobalSettings.constants';
 import {
   SERVICE_TYPES_ENUM,
@@ -78,6 +77,7 @@ export const getIngestionName = (
       IngestionPipelineType.Metadata,
       IngestionPipelineType.Lineage,
       IngestionPipelineType.Dbt,
+      IngestionPipelineType.Application,
     ].includes(type)
   ) {
     return `${replaceAllSpacialCharWith_(
@@ -475,6 +475,6 @@ export const getLinkForFqn = (serviceCategory: ServiceTypes, fqn: string) => {
 
     case ServiceCategory.DATABASE_SERVICES:
     default:
-      return getDatabaseDetailsPath(fqn);
+      return entityUtilClassBase.getEntityLink(EntityType.DATABASE, fqn);
   }
 };

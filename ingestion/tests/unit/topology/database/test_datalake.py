@@ -33,7 +33,10 @@ from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.source.database.datalake.metadata import DatalakeSource
 from metadata.readers.dataframe.avro import AvroDataFrameReader
 from metadata.readers.dataframe.json import JSONDataFrameReader
-from metadata.utils.datalake.datalake_utils import GenericDataFrameColumnParser
+from metadata.utils.datalake.datalake_utils import (
+    GenericDataFrameColumnParser,
+    JsonDataFrameColumnParser,
+)
 
 mock_datalake_config = {
     "source": {
@@ -231,6 +234,60 @@ EXAMPLE_JSON_COL_3 = [
 
 
 EXAMPLE_JSON_COL_4 = deepcopy(EXAMPLE_JSON_COL_3)
+
+EXAMPLE_JSON_TEST_5 = """
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Person",
+  "type": "object",
+  "properties": {
+    "firstName": {
+      "type": "string",
+      "title": "First Name",
+      "description": "The person's first name."
+    },
+    "lastName": {
+      "title": "Last Name",
+      "type": "string",
+      "description": "The person's last name."
+    },
+    "age": {
+      "type": "integer",
+      "description": "Age in years.",
+      "minimum": 0
+    }
+  },
+  "required": ["firstName", "lastName"]
+}
+"""
+
+EXAMPLE_JSON_COL_5 = [
+    Column(
+        name="Person",
+        dataType="RECORD",
+        children=[
+            Column(
+                name="firstName",
+                dataType="STRING",
+                description="The person's first name.",
+                displayName="First Name",
+            ),
+            Column(
+                name="lastName",
+                dataType="STRING",
+                description="The person's last name.",
+                displayName="Last Name",
+            ),
+            Column(
+                name="age",
+                dataType="INT",
+                description="Age in years.",
+            ),
+        ],
+    )
+]
+
+
 EXAMPLE_JSON_COL_4[3].children[3].children = [
     Column(
         name="lat",
@@ -419,8 +476,10 @@ class DatalakeUnitTest(TestCase):
             mock_datalake_config["source"],
             self.config.workflowConfig.openMetadataServerConfig,
         )
-        self.datalake_source.context.__dict__["database"] = MOCK_DATABASE.name.__root__
-        self.datalake_source.context.__dict__[
+        self.datalake_source.context.get().__dict__[
+            "database"
+        ] = MOCK_DATABASE.name.__root__
+        self.datalake_source.context.get().__dict__[
             "database_service"
         ] = MOCK_DATABASE_SERVICE.name.__root__
 
@@ -446,10 +505,10 @@ class DatalakeUnitTest(TestCase):
 
         actual_df_1 = JSONDataFrameReader.read_from_json(
             key="file.json", json_text=EXAMPLE_JSON_TEST_1, decode=True
-        )[0]
+        )[0][0]
         actual_df_2 = JSONDataFrameReader.read_from_json(
             key="file.json", json_text=EXAMPLE_JSON_TEST_2, decode=True
-        )[0]
+        )[0][0]
 
         assert actual_df_1.compare(exp_df_list).empty
         assert actual_df_2.compare(exp_df_obj).empty
@@ -458,7 +517,7 @@ class DatalakeUnitTest(TestCase):
 
         actual_df_3 = JSONDataFrameReader.read_from_json(
             key="file.json", json_text=EXAMPLE_JSON_TEST_3, decode=True
-        )[0]
+        )[0][0]
         actual_cols_3 = GenericDataFrameColumnParser._get_columns(
             actual_df_3
         )  # pylint: disable=protected-access
@@ -466,11 +525,18 @@ class DatalakeUnitTest(TestCase):
 
         actual_df_4 = JSONDataFrameReader.read_from_json(
             key="file.json", json_text=EXAMPLE_JSON_TEST_4, decode=True
-        )[0]
+        )[0][0]
         actual_cols_4 = GenericDataFrameColumnParser._get_columns(
             actual_df_4
         )  # pylint: disable=protected-access
         assert actual_cols_4 == EXAMPLE_JSON_COL_4
+
+        actual_df_5, raw_data = JSONDataFrameReader.read_from_json(
+            key="file.json", json_text=EXAMPLE_JSON_TEST_5, decode=True
+        )
+        json_parser = JsonDataFrameColumnParser(actual_df_5[0], raw_data=raw_data)
+        actual_cols_5 = json_parser.get_columns()
+        assert actual_cols_5 == EXAMPLE_JSON_COL_5
 
     def test_avro_file_parse(self):
         columns = AvroDataFrameReader.read_from_avro(AVRO_SCHEMA_FILE)
@@ -549,8 +615,10 @@ class DatalakeGCSUnitTest(TestCase):
             mock_datalake_gcs_config["source"],
             self.config.workflowConfig.openMetadataServerConfig,
         )
-        self.datalake_source.context.__dict__["database"] = MOCK_DATABASE.name.__root__
-        self.datalake_source.context.__dict__[
+        self.datalake_source.context.get().__dict__[
+            "database"
+        ] = MOCK_DATABASE.name.__root__
+        self.datalake_source.context.get().__dict__[
             "database_service"
         ] = MOCK_DATABASE_SERVICE.name.__root__
 

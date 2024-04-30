@@ -12,6 +12,8 @@
  */
 import { CloseOutlined } from '@ant-design/icons';
 import {
+  Button,
+  Form,
   Select,
   SelectProps,
   Space,
@@ -39,15 +41,17 @@ import {
   SelectOption,
 } from './AsyncSelectList.interface';
 
-const AsyncSelectList: FC<AsyncSelectListProps> = ({
+const AsyncSelectList: FC<AsyncSelectListProps & SelectProps> = ({
   mode,
   onChange,
   fetchOptions,
   debounceTimeout = 800,
   initialOptions,
   filterOptions = [],
-  className,
+  optionClassName,
   tagType,
+  onCancel,
+  isSubmitLoading,
   ...props
 }) => {
   const [isLoading, setIsLoading] = useState(false);
@@ -59,6 +63,7 @@ const AsyncSelectList: FC<AsyncSelectListProps> = ({
   const selectedTagsRef = useRef<SelectOption[]>(initialOptions ?? []);
   const { t } = useTranslation();
   const [optionFilteredCount, setOptionFilteredCount] = useState(0);
+  const form = Form.useFormInstance();
 
   const getFilteredOptions = (data: SelectOption[]) => {
     if (isEmpty(filterOptions)) {
@@ -169,6 +174,25 @@ const AsyncSelectList: FC<AsyncSelectListProps> = ({
     <>
       {menu}
       {hasContentLoading ? <Loader size="small" /> : null}
+      {onCancel && (
+        <Space className="p-sm p-b-xss p-l-xs custom-dropdown-render" size={8}>
+          <Button
+            className="update-btn"
+            data-testid="saveAssociatedTag"
+            htmlType="submit"
+            loading={isSubmitLoading}
+            size="small"
+            onClick={() => form.submit()}>
+            {t('label.update')}
+          </Button>
+          <Button
+            data-testid="cancelAssociatedTag"
+            size="small"
+            onClick={onCancel}>
+            {t('label.cancel')}
+          </Button>
+        </Space>
+      )}
     </>
   );
 
@@ -220,6 +244,7 @@ const AsyncSelectList: FC<AsyncSelectListProps> = ({
 
     return (
       <TagsV1
+        size={props.size}
         startWith={TAG_START_WITH.SOURCE_ICON}
         tag={tag}
         tagProps={tagProps}
@@ -269,11 +294,6 @@ const AsyncSelectList: FC<AsyncSelectListProps> = ({
       optionLabelProp="label"
       style={{ width: '100%' }}
       tagRender={customTagRender}
-      onBlur={() => {
-        setCurrentPage(1);
-        setSearchValue('');
-        setOptions([]);
-      }}
       onChange={handleChange}
       onFocus={() => loadOptions('')}
       onInputKeyDown={(event) => {
@@ -286,7 +306,7 @@ const AsyncSelectList: FC<AsyncSelectListProps> = ({
       {...props}>
       {tagOptions.map(({ label, value, displayName, data }) => (
         <Select.Option
-          className={`${className} w-full`}
+          className={`${optionClassName} w-full`}
           data={data}
           data-testid={`tag-${value}`}
           key={label}

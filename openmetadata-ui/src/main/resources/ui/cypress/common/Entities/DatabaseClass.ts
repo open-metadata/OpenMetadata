@@ -19,6 +19,7 @@ import {
 import { EntityType } from '../../constants/Entity.interface';
 import { DATABASE_SERVICE } from '../../constants/EntityConstant';
 import { GlobalSettingOptions } from '../../constants/settings.constant';
+import { getToken } from '../Utils/LocalStorage';
 import EntityClass from './EntityClass';
 
 class DatabaseClass extends EntityClass {
@@ -60,7 +61,7 @@ class DatabaseClass extends EntityClass {
     // Handle creation here
 
     cy.getAllLocalStorage().then((data) => {
-      const token = Object.values(data)[0].oidcIdToken as string;
+      const token = getToken(data);
 
       createEntityTableViaREST({
         token,
@@ -76,7 +77,7 @@ class DatabaseClass extends EntityClass {
   override cleanup() {
     super.cleanup();
     cy.getAllLocalStorage().then((data) => {
-      const token = Object.values(data)[0].oidcIdToken as string;
+      const token = getToken(data);
       deleteEntityViaREST({
         token,
         endPoint: EntityType.DatabaseService,

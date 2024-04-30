@@ -6,8 +6,9 @@ import java.util.Map;
 import java.util.UUID;
 import lombok.SneakyThrows;
 import org.openmetadata.schema.tests.TestCase;
+import org.openmetadata.schema.tests.TestDefinition;
+import org.openmetadata.schema.tests.TestPlatform;
 import org.openmetadata.schema.tests.TestSuite;
-import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.search.SearchIndexUtils;
@@ -40,32 +41,15 @@ public record TestCaseIndex(TestCase testCase) implements SearchIndex {
     doc.put("suggest", suggest);
     doc.put("entityType", Entity.TEST_CASE);
     doc.put("owner", getEntityWithDisplayName(testCase.getOwner()));
+    doc.put("testPlatforms", getTestDefinitionPlatforms(testCase.getTestDefinition().getId()));
+    doc.put("followers", SearchIndexUtils.parseFollowers(testCase.getFollowers()));
     return doc;
   }
 
-  public Map<String, Object> buildESDocForCreate() {
-    EntityReference testSuiteEntityReference = testCase.getTestSuite();
-    TestSuite testSuite = getTestSuite(testSuiteEntityReference.getId());
-    List<TestSuite> testSuiteArray = new ArrayList<>();
-    testSuiteArray.add(testSuite);
-    Map<String, Object> doc = JsonUtils.getMap(testCase);
-    SearchIndexUtils.removeNonIndexableFields(doc, excludeFields);
-    doc.put("testSuites", testSuiteArray);
-    return doc;
-  }
-
-  private TestSuite getTestSuite(UUID testSuiteId) {
-    TestSuite testSuite = Entity.getEntity(Entity.TEST_SUITE, testSuiteId, "", Include.ALL);
-    return new TestSuite()
-        .withId(testSuite.getId())
-        .withName(testSuite.getName())
-        .withDisplayName(testSuite.getDisplayName())
-        .withDescription(testSuite.getDescription())
-        .withFullyQualifiedName(testSuite.getFullyQualifiedName())
-        .withDeleted(testSuite.getDeleted())
-        .withHref(testSuite.getHref())
-        .withExecutable(testSuite.getExecutable())
-        .withChangeDescription(null);
+  private List<TestPlatform> getTestDefinitionPlatforms(UUID testDefinitionId) {
+    TestDefinition testDefinition =
+        Entity.getEntity(Entity.TEST_DEFINITION, testDefinitionId, "", Include.ALL);
+    return testDefinition.getTestPlatforms();
   }
 
   public static Map<String, Float> getFields() {

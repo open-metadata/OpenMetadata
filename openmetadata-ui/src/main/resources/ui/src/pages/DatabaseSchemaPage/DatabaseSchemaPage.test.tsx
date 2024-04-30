@@ -183,6 +183,7 @@ const API_FIELDS = [
   'domain',
   'votes',
   'extension',
+  'dataProducts',
 ];
 
 jest.mock('react-router-dom', () => ({
