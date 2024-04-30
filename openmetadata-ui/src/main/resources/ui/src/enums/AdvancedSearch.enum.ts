@@ -35,6 +35,15 @@ export enum AdvancedFields {
 }
 
 export enum EntityFields {
+  SERVICE_TYPE = 'serviceType',
+  DATA_MODEL_TYPE = 'dataModelType',
+  DOMAIN = 'domain.displayName.keyword',
+  DATA_MODEL = 'dataModels.displayName.keyword',
+  CONTAINER_COLUMN = 'dataModel.columns.name.keyword',
+  PROJECT = 'project.keyword',
+  SCHEMA_FIELD = 'messageSchema.schemaFields.name',
+  FEATURE = 'mlFeatures.name',
+  FIELD = 'fields.name.keyword',
   OWNER = 'displayName.keyword',
   TAG = 'tags.tagFQN',
   TIER = 'tier.tagFQN',
