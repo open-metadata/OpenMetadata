@@ -167,12 +167,6 @@ class DbtSource(DbtServiceSource):
             logger.warning(f"Unable to ingest owner from DBT due to: {exc}")
         return None
 
-    def get_service_name(self, database_name: str) -> str:
-        """
-        Method to get database name from database service map
-        """
-        return self.database_services_map.get(database_name, self.config.serviceName)
-
     def check_columns(self, catalog_node):
         for catalog_key, catalog_column in catalog_node.get("columns").items():
             if all(
