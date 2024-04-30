@@ -21,7 +21,6 @@ from metadata.generated.schema.api.tests.createTestDefinition import (
     CreateTestDefinitionRequest,
 )
 from metadata.generated.schema.entity.classification.tag import Tag
-from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.glossaryTerm import GlossaryTerm
 from metadata.generated.schema.entity.data.table import (
     Column,
