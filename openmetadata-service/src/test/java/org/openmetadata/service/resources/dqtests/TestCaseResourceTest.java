@@ -1857,7 +1857,7 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
   }
 
   private TestSummary getTestSummary(String testSuiteId) throws IOException, InterruptedException {
-    waitForEsAsyncOp(250);
+    waitForEsAsyncOp();
     TestSuiteResourceTest testSuiteResourceTest = new TestSuiteResourceTest();
     return testSuiteResourceTest.getTestSummary(ADMIN_AUTH_HEADERS, testSuiteId);
   }
