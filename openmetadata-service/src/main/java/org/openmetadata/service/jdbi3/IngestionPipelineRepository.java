@@ -68,7 +68,7 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
         Entity.getCollectionDAO().ingestionPipelineDAO(),
         PATCH_FIELDS,
         UPDATE_FIELDS);
-
+    this.supportsSearch = true;
     this.openMetadataApplicationConfig = config;
   }
 
