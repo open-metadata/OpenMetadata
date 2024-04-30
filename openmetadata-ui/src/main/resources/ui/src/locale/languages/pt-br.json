@@ -1660,6 +1660,7 @@
     "please-enter-to-find-data-assets": "Pressione Enter para encontrar ativos de dados contendo <0>{{keyword}}<0>",
     "please-refresh-the-page": "Please refresh the page to see the changes.",
     "please-type-text-to-confirm": "Digite {{text}} para confirmar.",
+    "popup-block-message": "The sign in pop-up was blocked by the browser. Please <0>enable</0> it and try again.",
     "process-pii-sensitive-column-message": "Verifique os nomes das colunas para marcar automaticamente as colunas PII Sensíveis/Não Sensíveis.",
     "process-pii-sensitive-column-message-profiler": "Quando ativado, os dados de amostra serão analisados para determinar as tags PII apropriadas para cada coluna.",
     "profile-sample-percentage-message": "Defina o valor do Examinador como porcentagem",

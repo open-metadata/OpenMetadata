@@ -1,10 +1,14 @@
 package org.openmetadata.service.search;
 
 import java.util.List;
+import lombok.Getter;
+import lombok.Setter;
 
+@Getter
+@Setter
 public class SearchRequest {
   private final String query;
-  private final int from;
+  private int from;
   private final int size;
   private final String queryFilter;
   private final String postFilter;
@@ -16,7 +20,6 @@ public class SearchRequest {
   private final String fieldName;
   private final String sortOrder;
   private final List<String> includeSourceFields;
-
   private final boolean getHierarchy;
 
   public SearchRequest(ElasticSearchRequestBuilder builder) {
@@ -34,64 +37,6 @@ public class SearchRequest {
     this.includeSourceFields = builder.includeSourceFields;
     this.fieldName = builder.fieldName;
     this.getHierarchy = builder.getHierarchy;
-  }
-
-  // Getters for the attributes
-
-  public String getQuery() {
-    return query;
-  }
-
-  public int getFrom() {
-    return from;
-  }
-
-  public int getSize() {
-    return size;
-  }
-
-  public String getQueryFilter() {
-    return queryFilter;
-  }
-
-  public String getPostFilter() {
-    return postFilter;
-  }
-
-  public boolean fetchSource() {
-    return fetchSource;
-  }
-
-  public boolean trackTotalHits() {
-    return trackTotalHits;
-  }
-
-  public String getSortFieldParam() {
-    return sortFieldParam;
-  }
-
-  public boolean deleted() {
-    return deleted;
-  }
-
-  public String getIndex() {
-    return index;
-  }
-
-  public String getFieldName() {
-    return fieldName;
-  }
-
-  public String getSortOrder() {
-    return sortOrder;
-  }
-
-  public List<String> getIncludeSourceFields() {
-    return includeSourceFields;
-  }
-
-  public boolean getHierarchy() {
-    return getHierarchy;
   }
 
   // Builder class for ElasticSearchRequest

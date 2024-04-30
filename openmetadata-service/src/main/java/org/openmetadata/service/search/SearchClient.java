@@ -8,6 +8,8 @@ import java.text.ParseException;
 import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import javax.json.JsonArray;
 import javax.json.JsonObject;
 import javax.net.ssl.SSLContext;
@@ -16,6 +18,7 @@ import lombok.Getter;
 import org.apache.commons.lang3.tuple.Pair;
 import org.openmetadata.schema.dataInsight.DataInsightChartResult;
 import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration;
+import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.service.exception.CustomExceptionMessage;
 import org.openmetadata.service.search.models.IndexMapping;
 import org.openmetadata.service.util.SSLUtil;
@@ -24,6 +27,7 @@ import os.org.opensearch.action.bulk.BulkResponse;
 import os.org.opensearch.client.RequestOptions;
 
 public interface SearchClient {
+  ExecutorService asyncExecutor = Executors.newFixedThreadPool(1);
 
   String UPDATE = "update";
 
@@ -75,6 +79,10 @@ public interface SearchClient {
 
   Response search(SearchRequest request) throws IOException;
 
+  default ExecutorService getAsyncExecutor() {
+    return asyncExecutor;
+  }
+
   SearchResultListMapper listWithOffset(
       String filter,
       int limit,
@@ -117,6 +125,9 @@ public interface SearchClient {
   void createTimeSeriesEntity(String indexName, String docId, String doc);
 
   void updateEntity(String indexName, String docId, Map<String, Object> doc, String scriptTxt);
+
+  /* This function takes in Entity Reference, Search for occurances of those  entity across ES, and perform an update for that with reindexing the data from the database to ES */
+  void reindexAcrossIndices(String matchingKey, EntityReference sourceRef);
 
   void deleteByScript(String indexName, String scriptTxt, Map<String, Object> params);
 
