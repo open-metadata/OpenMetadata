@@ -37,6 +37,9 @@ from metadata.utils.sqlalchemy_utils import get_table_ddl_wrapper
 
 logger = ingestion_logger()
 
+FK_CACHE = {}
+PK_CACHE = {}
+
 
 class InspectorWrapper(BaseModel):
     client: Any
@@ -82,14 +85,18 @@ def get_pk_constraint(
     This function overrides to get primary key constraint
     """
     try:
-        table_constraints = connection.engine.execute(
-            BIGQUERY_TABLE_CONSTRAINTS.format(
-                project_id=connection.engine.url.host,
-                schema_name=schema,
-                table_name=table_name,
+        constraints = PK_CACHE.get(f"{connection.engine.url.host}.{schema}")
+        if constraints is None:
+            constraints = connection.engine.execute(
+                BIGQUERY_TABLE_CONSTRAINTS.format(
+                    project_id=connection.engine.url.host,
+                    schema_name=schema,
+                )
             )
-        )
+            PK_CACHE[f"{connection.engine.url.host}.{schema}"] = constraints.fetchall()
+
         col_name = []
+        table_constraints = [row for row in constraints if row.table_name == table_name]
         for table_constraint in table_constraints:
             col_name.append(table_constraint.column_name)
         return {"constrained_columns": tuple(col_name)}
@@ -108,14 +115,18 @@ def get_foreign_keys(
     This function overrides to get foreign key constraint
     """
     try:
-        table_constraints = connection.engine.execute(
-            BIGQUERY_FOREIGN_CONSTRAINTS.format(
-                project_id=connection.engine.url.host,
-                schema_name=schema,
-                table_name=table_name,
+        constraints = FK_CACHE.get(f"{connection.engine.url.host}.{schema}")
+        if constraints is None:
+            constraints = connection.engine.execute(
+                BIGQUERY_FOREIGN_CONSTRAINTS.format(
+                    project_id=connection.engine.url.host,
+                    schema_name=schema,
+                )
             )
-        )
+            FK_CACHE[f"{connection.engine.url.host}.{schema}"] = constraints.fetchall()
+
         col_name = []
+        table_constraints = [row for row in constraints if row.table_name == table_name]
         for table_constraint in table_constraints:
             col_name.append(
                 {
