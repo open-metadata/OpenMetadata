@@ -1362,6 +1362,7 @@
     "custom-logo-url-path-message": "Ruta URL para el logotipo de la página de inicio de sesión.",
     "custom-monogram-url-path-message": "Ruta URL para el logotipo de la barra de navegación.",
     "custom-properties-description": "Captura metadatos personalizados para enriquecer tus activos de datos mediante la extensión de los atributos.",
+    "custom-property-is-set-to-message": "{{fieldName}} is set to",
     "custom-property-name-validation": "El nombre debe comenzar con minúsculas sin espacios, guiones bajos o puntos.",
     "customize-landing-page-header": "Personalizar la página de inicio para la persona \"<0>{{persona}}</0>\"",
     "customize-open-metadata-description": "Adapte la experiencia de usuario de OpenMetadata para satisfacer las necesidades de su organización y equipo.",

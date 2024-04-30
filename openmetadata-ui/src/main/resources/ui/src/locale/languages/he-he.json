@@ -1362,6 +1362,7 @@
     "custom-logo-url-path-message": "נתיב URL עבור לוגו דף הכניסה.",
     "custom-monogram-url-path-message": "נתיב URL עבור לוגו סרגל הניווט.",
     "custom-properties-description": " Capture custom metadata to enrich your data assets by extending the attributes.",
+    "custom-property-is-set-to-message": "{{fieldName}} is set to",
     "custom-property-name-validation": "השם חייב להתחיל באות קטנה ללא רווח, קו תחתון או נקודות.",
     "customize-landing-page-header": "התאמה אישית של עמוד הנחיתה עבור דמות \"<0>{{persona}}</0>\"",
     "customize-open-metadata-description": "Tailor the OpenMetadata UX to suit your organizational and team needs.",

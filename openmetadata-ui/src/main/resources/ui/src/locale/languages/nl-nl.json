@@ -1362,6 +1362,7 @@
     "custom-logo-url-path-message": "URL-pad voor het inlogpagina-logo.",
     "custom-monogram-url-path-message": "URL-pad voor het navigatiebalk-logo.",
     "custom-properties-description": "Leg aangepaste metadata vast om uw data-assets te verrijken door het uitbreiden van de attributen.",
+    "custom-property-is-set-to-message": "{{fieldName}} is set to",
     "custom-property-name-validation": "De naam moet beginnen met een kleine letter zonder spaties, underscores of punten.",
     "customize-landing-page-header": "Pas de landingspagina aan voor Persona \"<0>{{persona}}</0>\"",
     "customize-open-metadata-description": "De OpenMetadata UX aanpassen aan de behoeften van uw organisatie en team.",

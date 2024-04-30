@@ -1362,6 +1362,7 @@
     "custom-logo-url-path-message": "登录页 Logo 指向的 URL 地址",
     "custom-monogram-url-path-message": "导航栏 Logo 指向的 URL 地址",
     "custom-properties-description": " Capture custom metadata to enrich your data assets by extending the attributes.",
+    "custom-property-is-set-to-message": "{{fieldName}} is set to",
     "custom-property-name-validation": "命名首字母必须是小写字母不能为空格、下划线或点号",
     "customize-landing-page-header": "Customize Landing Page for Persona \"<0>{{persona}}</0>\"",
     "customize-open-metadata-description": "Tailor the OpenMetadata UX to suit your organizational and team needs.",
