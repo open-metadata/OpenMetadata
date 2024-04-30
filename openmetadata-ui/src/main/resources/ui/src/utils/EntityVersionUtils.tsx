@@ -24,6 +24,7 @@ import {
   cloneDeep,
   isEmpty,
   isEqual,
+  isObject,
   isUndefined,
   toString,
   uniqBy,
@@ -179,6 +180,36 @@ export const getTextDiff = (
     }
 
     return ReactDOMServer.renderToString(getNormalDiffElement(diff.value));
+  });
+
+  return result.join('');
+};
+
+const getCustomPropertyValue = (value: unknown) => {
+  if (isObject(value)) {
+    return JSON.stringify(value);
+  }
+
+  return toString(value);
+};
+
+export const getTextDiffCustomProperty = (
+  fieldName: string,
+  oldText: string,
+  newText: string
+) => {
+  if (oldText && newText) {
+    return `* ${t('message.custom-property-is-set-to-message', {
+      fieldName,
+    })} **${getTextDiff(oldText, newText)}**`;
+  }
+
+  const result = JSON.parse(newText).map((diff: Record<string, string>) => {
+    const objKeys = Object.keys(diff);
+
+    return `* ${t('message.custom-property-is-set-to-message', {
+      fieldName: objKeys[0],
+    })} **${getCustomPropertyValue(diff[objKeys[0]])}** \n`;
   });
 
   return result.join('');

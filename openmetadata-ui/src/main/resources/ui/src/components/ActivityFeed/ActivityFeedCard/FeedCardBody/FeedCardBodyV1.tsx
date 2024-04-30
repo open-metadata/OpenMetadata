@@ -33,6 +33,7 @@ import {
   MarkdownToHTMLConverter,
 } from '../../../../utils/FeedUtils';
 import ExploreSearchCard from '../../../ExploreV1/ExploreSearchCard/ExploreSearchCard';
+import CustomPropertyFeed from '../../ActivityFeedCardV2/FeedCardBody/CustomPropertyFeed/CustomPropertyFeed.component';
 import DescriptionFeed from '../../ActivityFeedCardV2/FeedCardBody/DescriptionFeed/DescriptionFeed';
 import TagsFeed from '../../ActivityFeedCardV2/FeedCardBody/TagsFeed/TagsFeed';
 import TestCaseFeed from '../../ActivityFeedCardV2/FeedCardBody/TestCaseFeed/TestCaseFeed';
@@ -146,6 +147,10 @@ const FeedCardBodyV1 = ({
           {entityCard}
         </Link>
       );
+    }
+
+    if (cardStyle === CardStyle.CustomProperties) {
+      return <CustomPropertyFeed feed={feed} />;
     }
 
     return (
