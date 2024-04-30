@@ -338,7 +338,8 @@ public class TestCaseResolutionStatusRepository
     JsonPatch patch = JsonUtils.getJsonPatch(originalTask, updatedTask);
 
     FeedRepository feedRepository = Entity.getFeedRepository();
-    RestUtil.PatchResponse<Thread> thread = feedRepository.patchThread(null, originalTask.getId(), user, patch);
+    RestUtil.PatchResponse<Thread> thread =
+        feedRepository.patchThread(null, originalTask.getId(), user, patch);
 
     // Send WebSocket Notification
     WebsocketNotificationHandler.handleTaskNotification(thread.entity());
