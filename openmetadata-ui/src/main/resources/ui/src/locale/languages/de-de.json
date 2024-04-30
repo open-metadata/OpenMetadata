@@ -1658,6 +1658,7 @@
     "please-enter-to-find-data-assets": "Drücke Enter, um Datenvermögenswerte mit <0>{{keyword}}<0> zu finden.",
     "please-refresh-the-page": "Please refresh the page to see the changes.",
     "please-type-text-to-confirm": "Please type {{text}} to confirm.",
+    "popup-block-message": "The sign in pop-up was blocked by the browser. Please <0>enable</0> it and try again.",
     "process-pii-sensitive-column-message": "Überprüfe die Spaltennamen, um PII-sensitive/nicht sensitive Spalten automatisch zu taggen.",
     "process-pii-sensitive-column-message-profiler": "Wenn aktiviert, wird die Beispiel-Daten analysiert, um geeignete PII-Tags für jede Spalte zu bestimmen.",
     "profile-sample-percentage-message": "Setze den Profiler-Wert als Prozentsatz",

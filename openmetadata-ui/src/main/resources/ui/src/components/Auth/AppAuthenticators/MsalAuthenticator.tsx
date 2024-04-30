@@ -26,8 +26,11 @@ import React, {
   useImperativeHandle,
 } from 'react';
 import { useMutex } from 'react-context-mutex';
+import { toast } from 'react-toastify';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { msalLoginRequest } from '../../../utils/AuthProvider.util';
+import { getPopupSettingLink } from '../../../utils/BrowserUtils';
+import { Transi18next } from '../../../utils/CommonUtils';
 import {
   AuthenticatorRef,
   OidcUser,
@@ -114,6 +117,20 @@ const MsalAuthenticator = forwardRef<AuthenticatorRef, Props>(
             .catch((e) => {
               // eslint-disable-next-line no-console
               console.error(e);
+              if (e?.message?.includes('popup_window_error')) {
+                toast.error(
+                  <Transi18next
+                    i18nKey="message.popup-block-message"
+                    renderElement={
+                      <a
+                        href={getPopupSettingLink()}
+                        rel="noopener noreferrer"
+                        target="_blank"
+                      />
+                    }
+                  />
+                );
+              }
 
               throw e;
             });
