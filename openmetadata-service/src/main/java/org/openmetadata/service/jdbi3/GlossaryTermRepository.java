@@ -99,6 +99,10 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
   private static final String UPDATE_FIELDS = "references,relatedTerms,synonyms";
   private static final String PATCH_FIELDS = "references,relatedTerms,synonyms";
 
+  /*
+    Holds the term's value prior to the latest update, may differ from the original if multiple
+    updates occur in the same session.
+  */
   private static GlossaryTerm valueBeforeUpdate = new GlossaryTerm();
 
   public GlossaryTermRepository() {
@@ -535,22 +539,9 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
         closeApprovalTask(updated, "Rejected the glossary term");
       }
     }
-
-    // Update ES indexes of entity tagged with the glossary term to reflect its latest value.
-    Set<String> targetFQNHashesFromDb =
-        new HashSet<>(
-            daoCollection.tagUsageDAO().getTargetFQNHashForTag(updated.getFullyQualifiedName()));
-
-    // List of entity references tagged with the glossary term
-    Map<String, EntityReference> targetFQNFromES =
-        getGlossaryUsageFromES(
-            valueBeforeUpdate.getFullyQualifiedName(), targetFQNHashesFromDb.size());
-
-    if (targetFQNHashesFromDb.size() == targetFQNFromES.size()) {
-      for (String fqnHash : targetFQNHashesFromDb) {
-        EntityReference refDetails = targetFQNFromES.get(fqnHash);
-        searchRepository.updateEntity(refDetails); // update ES index
-      }
+    if (!nullOrEmpty(valueBeforeUpdate)
+        && !valueBeforeUpdate.getFullyQualifiedName().equals(updated.getFullyQualifiedName())) {
+      updateAssetIndexesOnGlossaryTermUpdate(valueBeforeUpdate, updated);
     }
   }
 
@@ -695,6 +686,24 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
     if (TaskStatus.Open.equals(taskThread.getTask().getStatus())) {
       feedRepository.closeTask(
           taskThread, entity.getUpdatedBy(), new CloseTask().withComment(comment));
+    }
+  }
+
+  private void updateAssetIndexesOnGlossaryTermUpdate(GlossaryTerm original, GlossaryTerm updated) {
+    // Update ES indexes of entity tagged with the glossary term to reflect its latest value.
+    Set<String> targetFQNHashesFromDb =
+        new HashSet<>(
+            daoCollection.tagUsageDAO().getTargetFQNHashForTag(updated.getFullyQualifiedName()));
+
+    // List of entity references tagged with the glossary term
+    Map<String, EntityReference> targetFQNFromES =
+        getGlossaryUsageFromES(original.getFullyQualifiedName(), targetFQNHashesFromDb.size());
+
+    if (targetFQNHashesFromDb.size() == targetFQNFromES.size()) {
+      for (String fqnHash : targetFQNHashesFromDb) {
+        EntityReference refDetails = targetFQNFromES.get(fqnHash);
+        searchRepository.updateEntity(refDetails); // update ES index
+      }
     }
   }
 
