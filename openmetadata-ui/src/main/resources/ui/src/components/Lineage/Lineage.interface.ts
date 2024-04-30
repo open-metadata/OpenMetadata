@@ -51,4 +51,5 @@ export interface EdgeDetails {
   sqlQuery?: string;
   columns?: ColumnLineage[];
   description?: string;
+  pipelineEntityType?: EntityType.PIPELINE | EntityType.STORED_PROCEDURE;
 }
