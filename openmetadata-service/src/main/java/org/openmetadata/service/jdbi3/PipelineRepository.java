@@ -208,8 +208,11 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
     pipeline.setPipelineStatus(pipelineStatus);
     pipeline.setChangeDescription(change);
 
-    // Update ES Indexes
+    // Update ES Indexes and usage of this pipeline index
     searchRepository.updateEntity(pipeline);
+    searchRepository
+        .getSearchClient()
+        .reindexAcrossIndices("lineage.pipeline.fullyQualifiedName", pipeline.getEntityReference());
 
     return new RestUtil.PutResponse<>(
         Response.Status.OK,
