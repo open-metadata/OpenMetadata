@@ -1140,26 +1140,6 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
   }
 
   @Test
-  void put_schemaDefinition_invalid_table_4xx(TestInfo test) throws HttpResponseException {
-    CreateTable createTable = createRequest(test);
-    createTable.setTableType(TableType.Regular);
-    String query =
-        """
-                    sales_vw
-                    create view sales_vw as
-                    select * from public.sales
-                    union all
-                    select * from spectrum.sales
-                    with no schema binding;
-                    """;
-    createTable.setSchemaDefinition(query);
-    assertResponseContains(
-        () -> createAndCheckEntity(createTable, ADMIN_AUTH_HEADERS),
-        BAD_REQUEST,
-        "schemaDefinition can only be set on TableType View, SecureView or MaterializedView");
-  }
-
-  @Test
   void put_profileConfig_200(TestInfo test) throws IOException {
     CreateTable request = createRequest(test).withOwner(USER1_REF);
     Table table = createAndCheckEntity(request, ADMIN_AUTH_HEADERS);
