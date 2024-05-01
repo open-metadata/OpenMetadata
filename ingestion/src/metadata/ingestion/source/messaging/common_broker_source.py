@@ -47,6 +47,7 @@ from metadata.parsers.schema_parsers import (
 )
 from metadata.utils import fqn
 from metadata.utils.logger import ingestion_logger
+from metadata.utils.messaging_utils import merge_and_clean_protobuf_schema
 
 logger = ingestion_logger()
 
@@ -75,6 +76,7 @@ class CommonBrokerSource(MessagingServiceSource, ABC):
         self.generate_sample_data = self.config.sourceConfig.config.generateSampleData
         self.admin_client = self.connection.admin_client
         self.schema_registry_client = self.connection.schema_registry_client
+        self.context.processed_schemas = {}
         if self.generate_sample_data:
             self.consumer_client = self.connection.consumer_client
 
@@ -125,9 +127,14 @@ class CommonBrokerSource(MessagingServiceSource, ABC):
                     raise InvalidSchemaTypeException(
                         f"Cannot find {schema_type} in parser providers registry."
                     )
-                schema_fields = load_parser_fn(
-                    topic_details.topic_name, topic_schema.schema_str
-                )
+                schema_text = topic_schema.schema_str
+
+                # In protobuf schema, we need to merge all the schema text with references
+                if schema_type == SchemaType.Protobuf.value.lower():
+                    schema_text = merge_and_clean_protobuf_schema(
+                        self._get_schema_text_with_references(schema=topic_schema)
+                    )
+                schema_fields = load_parser_fn(topic_details.topic_name, schema_text)
 
                 topic.messageSchema = Topic(
                     schemaText=topic_schema.schema_str,
@@ -194,6 +201,38 @@ class CommonBrokerSource(MessagingServiceSource, ABC):
             logger.warning(
                 f"Exception adding properties to topic [{topic.name}]: {exc}"
             )
+
+    def _get_schema_text_with_references(self, schema) -> Optional[str]:
+        """
+        Returns the schema text with references resolved using recursive calls
+        """
+        try:
+            if schema:
+                schema_text = schema.schema_str
+                for reference in schema.references or []:
+                    if not self.context.processed_schemas.get(reference.name):
+                        self.context.processed_schemas[reference.name] = True
+                        reference_schema = (
+                            self.schema_registry_client.get_latest_version(
+                                reference.name
+                            )
+                        )
+                        if reference_schema.schema.references:
+                            schema_text = (
+                                schema_text
+                                + self._get_schema_text_with_references(
+                                    reference_schema.schema
+                                )
+                            )
+                        else:
+                            schema_text = (
+                                schema_text + reference_schema.schema.schema_str
+                            )
+                return schema_text
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.warning(f"Failed to get schema with references: {exc}")
+        return None
 
     def _parse_topic_metadata(self, topic_name: str) -> Optional[Schema]:
         try:
