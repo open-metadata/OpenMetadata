@@ -17,6 +17,7 @@ import {
   DASHBOARD_DROPDOWN_ITEMS,
   DATA_PRODUCT_DROPDOWN_ITEMS,
   GLOSSARY_DROPDOWN_ITEMS,
+  ML_MODEL_DROPDOWN_ITEMS,
   PIPELINE_DROPDOWN_ITEMS,
   SEARCH_INDEX_DROPDOWN_ITEMS,
   TABLE_DROPDOWN_ITEMS,
@@ -153,7 +154,8 @@ describe('SearchClassBase', () => {
     ]);
 
     expect(mlmodelsItems).toEqual([
-      ...COMMON_DROPDOWN_ITEMS.filter((item) => item.key !== 'service_type'),
+      ...COMMON_DROPDOWN_ITEMS,
+      ...ML_MODEL_DROPDOWN_ITEMS,
     ]);
 
     expect(searchIndexItems).toEqual([

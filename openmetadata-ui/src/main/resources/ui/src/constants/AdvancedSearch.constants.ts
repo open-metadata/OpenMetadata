@@ -13,149 +13,157 @@
 
 import { t } from 'i18next';
 import { JsonTree, Utils as QbUtils } from 'react-awesome-query-builder';
+import { EntityFields } from '../enums/AdvancedSearch.enum';
 
 export const COMMON_DROPDOWN_ITEMS = [
   {
     label: t('label.domain'),
-    key: 'domain.displayName.keyword',
+    key: EntityFields.DOMAIN,
   },
   {
     label: t('label.owner'),
-    key: 'owner.displayName.keyword',
+    key: EntityFields.OWNER,
   },
   {
     label: t('label.tag'),
-    key: 'tags.tagFQN',
+    key: EntityFields.TAG,
   },
   {
     label: t('label.tier'),
-    key: 'tier.tagFQN',
+    key: EntityFields.TIER,
   },
   {
     label: t('label.service'),
-    key: 'service.displayName.keyword',
+    key: EntityFields.SERVICE,
   },
   {
     label: t('label.service-type'),
-    key: 'serviceType',
+    key: EntityFields.SERVICE_TYPE,
   },
 ];
 
 export const TABLE_DROPDOWN_ITEMS = [
   {
     label: t('label.database'),
-    key: 'database.displayName.keyword',
+    key: EntityFields.DATABASE,
   },
   {
     label: t('label.schema'),
-    key: 'databaseSchema.displayName.keyword',
+    key: EntityFields.DATABASE_SCHEMA,
   },
   {
     label: t('label.column'),
-    key: 'columns.name.keyword',
+    key: EntityFields.COLUMN,
   },
   {
     label: t('label.table-type'),
-    key: 'tableType',
+    key: EntityFields.TABLE_TYPE,
   },
 ];
 
 export const DASHBOARD_DROPDOWN_ITEMS = [
   {
     label: t('label.data-model'),
-    key: 'dataModels.displayName.keyword',
+    key: EntityFields.DATA_MODEL,
   },
   {
     label: t('label.chart'),
-    key: 'charts.displayName.keyword',
+    key: EntityFields.CHART,
   },
   {
     label: t('label.project'),
-    key: 'project.keyword',
+    key: EntityFields.PROJECT,
   },
 ];
 
 export const DASHBOARD_DATA_MODEL_TYPE = [
   {
     label: t('label.data-model-type'),
-    key: 'dataModelType',
+    key: EntityFields.DATA_MODEL_TYPE,
   },
   {
     label: t('label.column'),
-    key: 'columns.name.keyword',
+    key: EntityFields.COLUMN,
   },
   {
     label: t('label.project'),
-    key: 'project.keyword',
+    key: EntityFields.PROJECT,
   },
 ];
 
 export const PIPELINE_DROPDOWN_ITEMS = [
   {
     label: t('label.task'),
-    key: 'tasks.displayName.keyword',
+    key: EntityFields.TASK,
   },
 ];
 
 export const SEARCH_INDEX_DROPDOWN_ITEMS = [
   {
     label: t('label.field'),
-    key: 'fields.name.keyword',
+    key: EntityFields.FIELD,
+  },
+];
+
+export const ML_MODEL_DROPDOWN_ITEMS = [
+  {
+    label: t('label.feature'),
+    key: EntityFields.FEATURE,
   },
 ];
 
 export const TOPIC_DROPDOWN_ITEMS = [
   {
     label: t('label.schema-field'),
-    key: 'messageSchema.schemaFields.name',
+    key: EntityFields.SCHEMA_FIELD,
   },
 ];
 
 export const CONTAINER_DROPDOWN_ITEMS = [
   {
     label: t('label.column'),
-    key: 'dataModel.columns.name.keyword',
+    key: EntityFields.CONTAINER_COLUMN,
   },
 ];
 
 export const GLOSSARY_DROPDOWN_ITEMS = [
   {
     label: t('label.domain'),
-    key: 'domain.displayName.keyword',
+    key: EntityFields.DOMAIN,
   },
   {
     label: t('label.owner'),
-    key: 'owner.displayName.keyword',
+    key: EntityFields.OWNER,
   },
   {
     label: t('label.tag'),
-    key: 'tags.tagFQN',
+    key: EntityFields.TAG,
   },
   {
     label: t('label.glossary-plural'),
-    key: 'glossary.name.keyword',
+    key: EntityFields.GLOSSARY,
   },
 ];
 
 export const TAG_DROPDOWN_ITEMS = [
   {
     label: t('label.domain'),
-    key: 'domain.displayName.keyword',
+    key: EntityFields.DOMAIN,
   },
   {
     label: t('label.classification'),
-    key: 'classification.name.keyword',
+    key: EntityFields.CLASSIFICATION,
   },
 ];
 
 export const DATA_PRODUCT_DROPDOWN_ITEMS = [
   {
     label: t('label.domain'),
-    key: 'domain.displayName.keyword',
+    key: EntityFields.DOMAIN,
   },
   {
     label: t('label.owner'),
-    key: 'owner.displayName.keyword',
+    key: EntityFields.OWNER,
   },
 ];
 
@@ -164,27 +172,27 @@ export const DOMAIN_DATAPRODUCT_DROPDOWN_ITEMS = [
     label: t('label.entity-type-plural', {
       entity: t('label.entity'),
     }),
-    key: 'entityType',
+    key: EntityFields.ENTITY_TYPE,
   },
   {
     label: t('label.owner'),
-    key: 'owner.displayName.keyword',
+    key: EntityFields.OWNER,
   },
   {
     label: t('label.tag'),
-    key: 'tags.tagFQN',
+    key: EntityFields.TAG,
   },
   {
     label: t('label.tier'),
-    key: 'tier.tagFQN',
+    key: EntityFields.TIER,
   },
   {
     label: t('label.service'),
-    key: 'service.displayName.keyword',
+    key: EntityFields.SERVICE,
   },
   {
     label: t('label.service-type'),
-    key: 'serviceType',
+    key: EntityFields.SERVICE_TYPE,
   },
 ];
 
@@ -193,31 +201,31 @@ export const GLOSSARY_ASSETS_DROPDOWN_ITEMS = [
     label: t('label.entity-type-plural', {
       entity: t('label.entity'),
     }),
-    key: 'entityType',
+    key: EntityFields.ENTITY_TYPE,
   },
   {
     label: t('label.domain'),
-    key: 'domain.displayName.keyword',
+    key: EntityFields.DOMAIN,
   },
   {
     label: t('label.owner'),
-    key: 'owner.displayName.keyword',
+    key: EntityFields.OWNER,
   },
   {
     label: t('label.tag'),
-    key: 'tags.tagFQN',
+    key: EntityFields.TAG,
   },
   {
     label: t('label.tier'),
-    key: 'tier.tagFQN',
+    key: EntityFields.TIER,
   },
   {
     label: t('label.service'),
-    key: 'service.displayName.keyword',
+    key: EntityFields.SERVICE,
   },
   {
     label: t('label.service-type'),
-    key: 'serviceType',
+    key: EntityFields.SERVICE_TYPE,
   },
 ];
 
@@ -225,7 +233,7 @@ export const LINEAGE_DROPDOWN_ITEMS = [
   ...COMMON_DROPDOWN_ITEMS,
   {
     label: t('label.column'),
-    key: 'columns.name.keyword',
+    key: EntityFields.COLUMN,
   },
 ];
 
@@ -251,7 +259,7 @@ export const emptyJsonTree: JsonTree = {
           type: 'rule',
           properties: {
             // owner is common field , so setting owner as default field here
-            field: 'owner.displayName.keyword',
+            field: EntityFields.OWNER,
             operator: null,
             value: [],
             valueSrc: ['value'],
