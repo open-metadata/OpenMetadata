@@ -50,7 +50,7 @@ export const DataInsightContext = createContext<DataInsightContextType>(
 );
 const fetchTeamSuggestions = advancedSearchClassBase.autocomplete({
   searchIndex: SearchIndex.TEAM,
-  entityField: EntityFields.OWNER,
+  entityField: EntityFields.DISPLAY_NAME_KEYWORD,
 });
 
 const DataInsightProvider = ({ children }: DataInsightProviderProps) => {

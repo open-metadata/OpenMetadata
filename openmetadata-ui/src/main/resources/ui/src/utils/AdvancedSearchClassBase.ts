@@ -132,7 +132,7 @@ class AdvancedSearchClassBase {
    * Fields specific to topics
    */
   topicQueryBuilderFields: Fields = {
-    'messageSchema.schemaFields.name': {
+    'messageSchema.schemaFields.name.keyword': {
       label: t('label.schema-field'),
       type: 'select',
       mainWidgetProps: this.mainWidgetProps,
@@ -211,7 +211,7 @@ class AdvancedSearchClassBase {
    */
   containerQueryBuilderFields: Fields = {
     'dataModel.columns.name.keyword': {
-      label: t('label.column'),
+      label: t('label.container-column'),
       type: 'select',
       mainWidgetProps: this.mainWidgetProps,
       fieldSettings: {
@@ -259,7 +259,7 @@ class AdvancedSearchClassBase {
       },
     },
     'columns.name.keyword': {
-      label: t('label.column'),
+      label: t('label.data-model-column'),
       type: 'select',
       mainWidgetProps: this.mainWidgetProps,
       fieldSettings: {
@@ -404,7 +404,7 @@ class AdvancedSearchClassBase {
         fieldSettings: {
           asyncFetch: this.autocomplete({
             searchIndex: [SearchIndex.USER, SearchIndex.TEAM],
-            entityField: EntityFields.OWNER,
+            entityField: EntityFields.DISPLAY_NAME_KEYWORD,
           }),
           useAsyncSearch: true,
         },
