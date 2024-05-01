@@ -1774,7 +1774,7 @@ public interface CollectionDAO {
       if (!nullOrEmpty(directChildrenOf)) {
         condition =
             String.format(
-                " %s AND fqnHash = CONCAT('%s', '.', MD5( IF(name LIKE '%%.%%', CONCAT('\"', name, '\"'), name)))  ",
+                " %s AND fqnHash = CONCAT('%s', '.', MD5(CASE WHEN name LIKE '%%.%%' THEN CONCAT('\"', name, '\"') ELSE name END))  ",
                 condition, FullyQualifiedName.buildHash(directChildrenOf));
       }
 
@@ -1789,7 +1789,7 @@ public interface CollectionDAO {
       if (!nullOrEmpty(directChildrenOf)) {
         condition =
             String.format(
-                " %s AND fqnHash = CONCAT('%s', '.', MD5( IF(name LIKE '%%.%%', CONCAT('\"', name, '\"'), name)))  ",
+                " %s AND fqnHash = CONCAT('%s', '.', MD5(CASE WHEN name LIKE '%%.%%' THEN CONCAT('\"', name, '\"') ELSE name END))  ",
                 condition, FullyQualifiedName.buildHash(directChildrenOf));
       }
 
@@ -1804,7 +1804,7 @@ public interface CollectionDAO {
       if (!nullOrEmpty(directChildrenOf)) {
         condition =
             String.format(
-                " %s AND fqnHash = CONCAT('%s', '.', MD5( IF(name LIKE '%%.%%', CONCAT('\"', name, '\"'), name)))  ",
+                " %s AND fqnHash = CONCAT('%s', '.', MD5(CASE WHEN name LIKE '%%.%%' THEN CONCAT('\"', name, '\"') ELSE name END))  ",
                 condition, FullyQualifiedName.buildHash(directChildrenOf));
       }
 
