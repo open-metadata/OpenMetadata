@@ -948,7 +948,7 @@ class DbtSource(DbtServiceSource):
                     test_case_fqn = fqn.build(
                         self.metadata,
                         entity_type=TestCase,
-                        service_name="*",
+                        service_name=source_elements[0],
                         database_name=source_elements[1],
                         schema_name=source_elements[2],
                         table_name=source_elements[3],
