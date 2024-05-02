@@ -2,7 +2,6 @@
   sourceConfig:
     config:
       type: DashboardMetadata
-      overrideOwner: True
       # lineageInformation:
       #   dbServiceNames:
       #     - service1
