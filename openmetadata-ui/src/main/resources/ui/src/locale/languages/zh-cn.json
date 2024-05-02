@@ -1141,7 +1141,6 @@
     "test-email-connection": "Test Email Connection",
     "test-entity": "测试{{entity}}",
     "test-plural": "测试",
-    "test-status-plural": "Tests {{status}}",
     "test-suite": "质控测试集",
     "test-suite-ingestion": "质控测试集提取",
     "test-suite-lowercase": "质控测试集",
