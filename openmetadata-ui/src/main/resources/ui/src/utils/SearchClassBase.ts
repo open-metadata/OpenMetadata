@@ -35,6 +35,7 @@ import {
   DASHBOARD_DROPDOWN_ITEMS,
   DATA_PRODUCT_DROPDOWN_ITEMS,
   GLOSSARY_DROPDOWN_ITEMS,
+  ML_MODEL_DROPDOWN_ITEMS,
   PIPELINE_DROPDOWN_ITEMS,
   SEARCH_INDEX_DROPDOWN_ITEMS,
   TABLE_DROPDOWN_ITEMS,
@@ -284,11 +285,7 @@ class SearchClassBase {
         return [...COMMON_DROPDOWN_ITEMS, ...SEARCH_INDEX_DROPDOWN_ITEMS];
 
       case SearchIndex.MLMODEL:
-        return [
-          ...COMMON_DROPDOWN_ITEMS.filter(
-            (item) => item.key !== 'service_type'
-          ),
-        ];
+        return [...COMMON_DROPDOWN_ITEMS, ...ML_MODEL_DROPDOWN_ITEMS];
       case SearchIndex.CONTAINER:
         return [...COMMON_DROPDOWN_ITEMS, ...CONTAINER_DROPDOWN_ITEMS];
       case SearchIndex.DASHBOARD_DATA_MODEL:
