@@ -3,7 +3,6 @@ package org.openmetadata.service.search.indexes;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.tests.TestSuite;
 import org.openmetadata.schema.type.EntityReference;
@@ -42,7 +41,8 @@ public record TestSuiteIndex(TestSuite testSuite) implements SearchIndex {
     addTestSuiteParentEntityRelations(entityReference, doc);
   }
 
-  protected static void addTestSuiteParentEntityRelations(EntityReference testSuiteRef, Map<String, Object> doc) {
+  protected static void addTestSuiteParentEntityRelations(
+      EntityReference testSuiteRef, Map<String, Object> doc) {
     if (testSuiteRef.getType().equals(Entity.TABLE)) {
       Table table = Entity.getEntity(testSuiteRef, "", Include.ALL);
       doc.put("table", table.getEntityReference());

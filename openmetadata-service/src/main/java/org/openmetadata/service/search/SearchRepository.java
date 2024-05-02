@@ -37,7 +37,6 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.SortedMap;
 import java.util.UUID;
-import java.util.stream.Collectors;
 import javax.json.JsonObject;
 import javax.ws.rs.core.Response;
 import lombok.Getter;

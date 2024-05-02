@@ -374,7 +374,8 @@ public final class Entity {
         : getEntityByName(ref.getType(), ref.getFullyQualifiedName(), fields, include);
   }
 
-  public static <T> T getEntityOrNull(EntityReference entityReference, String field, Include include) {
+  public static <T> T getEntityOrNull(
+      EntityReference entityReference, String field, Include include) {
     if (entityReference == null) return null;
     return Entity.getEntity(entityReference, field, include);
   }

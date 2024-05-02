@@ -78,7 +78,7 @@ public class TestSuiteResource extends EntityResource<TestSuite, TestSuiteReposi
   static final String FIELDS = "owner,tests,summary";
   static final String SEARCH_FIELDS_EXCLUDE = "table,database,databaseSchema,service";
 
-    public TestSuiteResource(Authorizer authorizer) {
+  public TestSuiteResource(Authorizer authorizer) {
     super(Entity.TEST_SUITE, authorizer);
   }
 
