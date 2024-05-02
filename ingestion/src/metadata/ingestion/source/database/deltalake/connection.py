@@ -65,13 +65,13 @@ def get_connection(connection: DeltaLakeConnection) -> SparkSession:
             )
         if connection.metastoreConnection.jdbcDriverClassPath:
             builder.config(
-                "sparks.driver.extraClassPath",
+                "spark.driver.extraClassPath",
                 connection.metastoreConnection.jdbcDriverClassPath,
             )
         if connection.metastoreConnection.username:
             builder.config(
                 "spark.hadoop.javax.jdo.option.ConnectionUserName",
-                connection.metastoreConnection.metastoreDb,
+                connection.metastoreConnection.username,
             )
         if connection.metastoreConnection.password:
             builder.config(

@@ -51,7 +51,7 @@
         },
         "jdbcDriverClassPath": {
           "title": "JDBC Driver Class Path",
-          "description": "Class path to JDBC driver required for JDBC connection. The value will be mapped as sparks.driver.extraClassPath sparks property.",
+          "description": "Class path to JDBC driver required for JDBC connection. The value will be mapped as spark.driver.extraClassPath sparks property.",
           "type": "string"
         }
       },
