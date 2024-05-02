@@ -188,9 +188,9 @@ export const customServiceComparator = (a: string, b: string): number => {
 export const replacePlus = (fqn: string) => fqn.replaceAll('+', ' ');
 
 export const ES_RESERVED_CHARACTERS: Record<string, string> = {
-  '&': '%26',
-  '#': '%23',
-  '+': '%2B',
+  '&': '\\&',
+  '#': '\\#',
+  '+': '\\+',
   '-': '\\-',
   '=': '\\=',
   '&&': '\\&&',
