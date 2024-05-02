@@ -10,14 +10,18 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+
+@import (reference) url('../../../styles/variables.less');
+
 .activity-feed-card-container.ant-btn {
   height: auto;
   text-align: left;
   padding: 0px;
   border: none;
-}
+  transition: 0.3s ease-in-out;
 
-.activity-feed-card-container.ant-btn:hover {
-  color: inherit;
-  background-color: inherit;
+  &:hover {
+    color: inherit;
+    background-color: @grey-1;
+  }
 }

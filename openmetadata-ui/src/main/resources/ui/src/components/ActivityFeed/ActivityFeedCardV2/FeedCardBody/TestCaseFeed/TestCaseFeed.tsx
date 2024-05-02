@@ -11,8 +11,9 @@
  *  limitations under the License.
  */
 
-import { Col, Row } from 'antd';
+import { Col, Row, Typography } from 'antd';
 import React, { useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { DESCRIPTION_MAX_PREVIEW_CHARACTERS } from '../../../../../constants/constants';
 import {
   formatTestStatusData,
@@ -24,13 +25,20 @@ import './test-case-feed.less';
 import { TestCaseFeedProps } from './TestCaseFeed.interface';
 
 function TestCaseFeed({ testResultSummary }: Readonly<TestCaseFeedProps>) {
+  const { t } = useTranslation();
+
   const { success, failed, aborted } = useMemo(
     () => formatTestStatusData(testResultSummary),
     [testResultSummary]
   );
 
   return (
-    <Row gutter={[8, 8]}>
+    <Row gutter={[0, 12]}>
+      <Col span={24}>
+        <Typography.Text className="font-bold">{`${t(
+          'label.tests-summary'
+        )}:`}</Typography.Text>
+      </Col>
       <Col span={24}>
         <Row gutter={16}>
           {[success, aborted, failed].map((testCase) => (
@@ -43,7 +51,7 @@ function TestCaseFeed({ testResultSummary }: Readonly<TestCaseFeedProps>) {
 
       <Col span={24}>
         <RichTextEditorPreviewer
-          markdown={getTestNamesListMarkdown([success, aborted, failed])}
+          markdown={getTestNamesListMarkdown([aborted, failed])}
           maxLength={DESCRIPTION_MAX_PREVIEW_CHARACTERS}
         />
       </Col>

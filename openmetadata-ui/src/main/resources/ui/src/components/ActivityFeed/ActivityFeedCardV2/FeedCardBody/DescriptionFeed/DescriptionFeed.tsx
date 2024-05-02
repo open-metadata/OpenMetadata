@@ -11,13 +11,12 @@
  *  limitations under the License.
  */
 
-import { Col, Row, Typography } from 'antd';
+import { Col, Row } from 'antd';
 import React, { useMemo } from 'react';
 import { EntityField } from '../../../../../constants/Feeds.constants';
 import { getTextDiff } from '../../../../../utils/EntityVersionUtils';
 import {
   getFeedChangeFieldLabel,
-  getFeedChangeOperationLabel,
   getFieldOperationIcon,
   getFrontEndFormat,
 } from '../../../../../utils/FeedUtils';
@@ -25,7 +24,7 @@ import RichTextEditorPreviewer from '../../../../common/RichTextEditor/RichTextE
 import { DescriptionFeedProps } from './DescriptionFeed.interface';
 
 function DescriptionFeed({ feed }: Readonly<DescriptionFeedProps>) {
-  const { message, fieldOperation, fieldChanged } = useMemo(() => {
+  const { message, fieldOperation } = useMemo(() => {
     const diffText = getTextDiff(
       feed.feedInfo?.entitySpecificInfo?.previousDescription ?? '',
       feed.feedInfo?.entitySpecificInfo?.newDescription ?? ''
@@ -47,19 +46,7 @@ function DescriptionFeed({ feed }: Readonly<DescriptionFeedProps>) {
 
   return (
     <Row gutter={[12, 12]} wrap={false}>
-      <Col>
-        <Row align="middle" gutter={[4, 4]} wrap={false}>
-          <Col className="h-4">{operationIcon}</Col>
-          <Col>
-            <Typography.Text>
-              {getFeedChangeOperationLabel(fieldOperation)}
-            </Typography.Text>
-          </Col>
-          <Col className="font-bold">
-            <Typography.Text>{`${fieldChanged}:`}</Typography.Text>
-          </Col>
-        </Row>
-      </Col>
+      <Col className="h-4">{operationIcon}</Col>
       <Col>
         <RichTextEditorPreviewer
           className="text-wrap"

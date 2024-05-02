@@ -587,33 +587,6 @@ export const getFeedPanelHeaderText = (
   }
 };
 
-export const getFeedChangeOperationLabel = (
-  fieldOperation?: FieldOperation,
-  showStartCase = true
-) => {
-  if (isUndefined(fieldOperation)) {
-    return '';
-  }
-
-  const startCaseOperationLabelMapping = {
-    [FieldOperation.Added]: i18next.t('label.added'),
-    [FieldOperation.Updated]: i18next.t('label.updated'),
-    [FieldOperation.Deleted]: i18next.t('label.deleted'),
-    [FieldOperation.None]: '',
-  };
-
-  const lowerCaseOperationLabelMapping = {
-    [FieldOperation.Added]: i18next.t('label.added-lowercase'),
-    [FieldOperation.Updated]: i18next.t('label.updated-lowercase'),
-    [FieldOperation.Deleted]: i18next.t('label.deleted-lowercase'),
-    [FieldOperation.None]: '',
-  };
-
-  return showStartCase
-    ? startCaseOperationLabelMapping[fieldOperation]
-    : lowerCaseOperationLabelMapping[fieldOperation];
-};
-
 export const getFeedChangeFieldLabel = (fieldName?: EntityField) => {
   const fieldNameLabelMapping = {
     [EntityField.DESCRIPTION]: i18next.t('label.description'),
@@ -685,7 +658,7 @@ export const getTestCaseResultCount = (
     className={`test-result-container ${lowerCase(status)}`}
     data-testid={`test-${status}`}>
     <Typography.Text
-      className="font-medium text-sm"
+      className="font-medium text-md"
       data-testid={`test-${status}-value`}>
       {formTwoDigitNumber(count)}
     </Typography.Text>
@@ -694,18 +667,10 @@ export const getTestCaseResultCount = (
 
 export const getTestStatusLabel = (status: TestCaseStatus) => {
   const statusLabelMapping = {
-    [TestCaseStatus.Success]: i18next.t('label.test-status-plural', {
-      status: i18next.t('label.passed'),
-    }),
-    [TestCaseStatus.Failed]: i18next.t('label.test-status-plural', {
-      status: i18next.t('label.failed'),
-    }),
-    [TestCaseStatus.Aborted]: i18next.t('label.test-status-plural', {
-      status: i18next.t('label.aborted'),
-    }),
-    [TestCaseStatus.Queued]: i18next.t('label.test-status-plural', {
-      status: i18next.t('label.queued'),
-    }),
+    [TestCaseStatus.Success]: i18next.t('label.passed'),
+    [TestCaseStatus.Failed]: i18next.t('label.failed'),
+    [TestCaseStatus.Aborted]: i18next.t('label.aborted'),
+    [TestCaseStatus.Queued]: i18next.t('label.queued'),
   };
 
   return statusLabelMapping[status];

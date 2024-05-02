@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Avatar, Col, Divider, Row } from 'antd';
+import { Avatar, Col, Row } from 'antd';
 import classNames from 'classnames';
 import { compare } from 'fast-json-patch';
 import React, { useMemo, useState } from 'react';
@@ -95,7 +95,6 @@ const ActivityFeedCardV2 = ({
             border: `0.5px solid ${color}`,
           }}
         />
-        {!isPost && <Divider className="flex-1" type="vertical" />}
       </div>
       <Row className="w-full">
         <Col

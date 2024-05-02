@@ -34,6 +34,7 @@ import EntityPopOverCard from '../../../common/PopOverCard/EntityPopOverCard';
 import { useTranslation } from 'react-i18next';
 import { EntityType } from '../../../../enums/entity.enum';
 import entityUtilClassBase from '../../../../utils/EntityUtilClassBase';
+import { getEntityIcon } from '../../../../utils/TableUtils';
 import UserPopOverCard from '../../../common/PopOverCard/UserPopOverCard';
 import './feed-card-header-v2.less';
 import { FeedCardHeaderV2Props } from './FeedCardHeaderV2.interface';
@@ -62,15 +63,60 @@ const FeedCardHeaderV2 = ({
     return { entityFQN, entityType };
   }, [entityLink]);
 
-  const entityCheck = useMemo(
-    () => !isUndefined(entityFQN) && !isUndefined(entityType),
-    [entityFQN, entityType]
-  );
+  const { entityCheck, isUserOrTeam, showEntityLink } = useMemo(() => {
+    return {
+      entityCheck: !isUndefined(entityFQN) && !isUndefined(entityType),
+      isUserOrTeam: [EntityType.USER, EntityType.TEAM].includes(entityType),
+      showEntityLink: ![EntityType.GLOSSARY, EntityType.GLOSSARY_TERM].includes(
+        entityType
+      ),
+    };
+  }, [entityFQN, entityType]);
 
-  const isUserOrTeam = useMemo(
-    () => [EntityType.USER, EntityType.TEAM].includes(entityType),
-    [entityType]
-  );
+  const renderEntityLink = useMemo(() => {
+    if (isUserOrTeam) {
+      return (
+        <UserPopOverCard
+          showUserName
+          showUserProfile={false}
+          userName={createdBy}>
+          <Link
+            className="break-all text-body"
+            data-testid="entity-link"
+            to={entityUtilClassBase.getEntityLink(entityType, entityFQN)}>
+            <span>{entityDisplayName(entityType, entityFQN)}</span>
+          </Link>
+        </UserPopOverCard>
+      );
+    } else if (showEntityLink) {
+      return (
+        <EntityPopOverCard entityFQN={entityFQN} entityType={entityType}>
+          <>
+            <span className="w-6 h-6 m-r-xss d-inline-flex text-xl align-middle">
+              {getEntityIcon(entityType ?? '')}
+            </span>
+            <Link
+              className="break-all"
+              data-testid="entity-link"
+              to={entityUtilClassBase.getEntityLink(entityType, entityFQN)}>
+              <span>{entityDisplayName(entityType, entityFQN)}</span>
+            </Link>
+          </>
+        </EntityPopOverCard>
+      );
+    } else {
+      return (
+        <>
+          <span className="w-6 h-6 m-r-xss d-inline-flex text-xl align-middle">
+            {getEntityIcon(entityType ?? '')}
+          </span>
+          <Typography.Text className="break-all font-bold">
+            {entityDisplayName(entityType, entityFQN)}
+          </Typography.Text>
+        </>
+      );
+    }
+  }, [entityType, entityFQN, showEntityLink, isUserOrTeam]);
 
   return (
     <div className={classNames('feed-card-header-v2', className)}>
@@ -82,7 +128,9 @@ const FeedCardHeaderV2 = ({
         </UserPopOverCard>
 
         {entityCheck && !isEntityFeed && (
-          <Typography.Text className="font-normal" data-testid="headerText">
+          <Typography.Text
+            className="font-normal whitespace-normal"
+            data-testid="headerText">
             {isAnnouncement ? (
               <Typography.Text className="m-r-xss">
                 {t('label.posted-on-lowercase')}
@@ -105,28 +153,7 @@ const FeedCardHeaderV2 = ({
               </>
             )}
 
-            {isUserOrTeam ? (
-              <UserPopOverCard
-                showUserName
-                showUserProfile={false}
-                userName={createdBy}>
-                <Link
-                  className="break-all text-body"
-                  data-testid="entity-link"
-                  to={entityUtilClassBase.getEntityLink(entityType, entityFQN)}>
-                  <span>{entityDisplayName(entityType, entityFQN)}</span>
-                </Link>
-              </UserPopOverCard>
-            ) : (
-              <EntityPopOverCard entityFQN={entityFQN} entityType={entityType}>
-                <Link
-                  className="break-all"
-                  data-testid="entity-link"
-                  to={entityUtilClassBase.getEntityLink(entityType, entityFQN)}>
-                  <span>{entityDisplayName(entityType, entityFQN)}</span>
-                </Link>
-              </EntityPopOverCard>
-            )}
+            {renderEntityLink}
           </Typography.Text>
         )}
       </Typography.Text>
