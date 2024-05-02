@@ -45,6 +45,7 @@ const ErrorFallback: React.FC<FallbackProps> = ({
 
   return (
     <Result
+      className="error-boundary-result"
       extra={
         <Button
           className="ant-btn-primary-custom"
