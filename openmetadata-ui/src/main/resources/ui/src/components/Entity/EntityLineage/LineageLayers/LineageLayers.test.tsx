@@ -106,12 +106,10 @@ describe('LineageLayers component', () => {
     expect(popover).toBeInTheDocument();
 
     const columnButton = screen.getByText('label.column');
-    const pipelineButton = screen.getByText('label.pipeline');
-    const dataQualityButton = screen.getByText('label.data-quality');
+    const dataObservabilityBtn = screen.getByText('label.data-observability');
 
     expect(columnButton).toBeInTheDocument();
-    expect(pipelineButton).toBeInTheDocument();
-    expect(dataQualityButton).toBeInTheDocument();
+    expect(dataObservabilityBtn).toBeInTheDocument();
 
     userEvent.click(columnButton as HTMLElement);
 
@@ -119,16 +117,10 @@ describe('LineageLayers component', () => {
       LineageLayerView.COLUMN,
     ]);
 
-    userEvent.click(pipelineButton as HTMLElement);
+    userEvent.click(dataObservabilityBtn as HTMLElement);
 
     expect(onMockUpdateLayerView).toHaveBeenCalledWith([
-      LineageLayerView.PIPELINE,
-    ]);
-
-    userEvent.click(dataQualityButton as HTMLElement);
-
-    expect(onMockUpdateLayerView).toHaveBeenCalledWith([
-      LineageLayerView.DATA_QUALITY,
+      LineageLayerView.DATA_OBSERVARABILITY,
     ]);
   });
 });

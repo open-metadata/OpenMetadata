@@ -59,6 +59,11 @@ const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
     [location.search]
   );
 
+  const showDeleted = useMemo(
+    () => parsedSearch.showDeleted === 'true',
+    [parsedSearch.showDeleted]
+  );
+
   const getAdvancedSearchQuickFilters = useCallback(() => {
     if (!isString(parsedSearch.quickFilter)) {
       return undefined;
@@ -93,7 +98,8 @@ const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
           index,
           key,
           '',
-          JSON.stringify(combinedQueryFilter)
+          JSON.stringify(combinedQueryFilter),
+          showDeleted
         ),
         key === TIER_FQN_KEY
           ? getTags({ parent: 'Tier' })

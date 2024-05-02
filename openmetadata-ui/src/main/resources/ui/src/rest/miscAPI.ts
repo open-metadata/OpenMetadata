@@ -275,10 +275,17 @@ export const getAggregateFieldOptions = (
   index: SearchIndex | SearchIndex[],
   field: string,
   value: string,
-  q: string
+  q: string,
+  deleted = false
 ) => {
   const withWildCardValue = value ? `.*${value}.*` : '.*';
-  const params = { index, field, value: withWildCardValue, q };
+  const params = {
+    index,
+    field,
+    value: withWildCardValue,
+    q,
+    deleted,
+  };
 
   return APIClient.get<SearchResponse<ExploreSearchIndex>>(
     `/search/aggregate`,

@@ -36,11 +36,12 @@ const NodeChildren = ({ node, isConnectable }: NodeChildrenProps) => {
   const [filteredColumns, setFilteredColumns] = useState<EntityChildren>([]);
   const [isExpanded, setIsExpanded] = useState<boolean>(true);
 
-  const { showColumns, showDataQuality } = useMemo(() => {
+  const { showColumns, showDataObservability } = useMemo(() => {
     return {
       showColumns: activeLayer.includes(LineageLayerView.COLUMN),
-      showDataQuality: activeLayer.includes(LineageLayerView.DATA_QUALITY),
-      showPipeline: activeLayer.includes(LineageLayerView.PIPELINE),
+      showDataObservability: activeLayer.includes(
+        LineageLayerView.DATA_OBSERVARABILITY
+      ),
     };
   }, [activeLayer]);
 
@@ -135,7 +136,7 @@ const NodeChildren = ({ node, isConnectable }: NodeChildrenProps) => {
     [isConnectable, tracedColumns]
   );
 
-  if (supportsColumns && (showColumns || showDataQuality)) {
+  if (supportsColumns && (showColumns || showDataObservability)) {
     return (
       <div className="column-container bg-grey-1 p-sm p-y-xs">
         <div className="d-flex justify-between items-center">
@@ -163,7 +164,7 @@ const NodeChildren = ({ node, isConnectable }: NodeChildrenProps) => {
               </Button>
             )}
           </div>
-          {showDataQuality &&
+          {showDataObservability &&
             entityType === EntityType.TABLE &&
             getTestSuiteSummary((node as Table).testSuite)}
         </div>

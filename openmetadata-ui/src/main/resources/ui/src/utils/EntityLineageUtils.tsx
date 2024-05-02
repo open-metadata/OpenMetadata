@@ -481,6 +481,13 @@ const calculateHeight = (children: Column[]) => {
 };
 
 export const getEntityChildrenAndLabel = (node: SourceType) => {
+  if (!node) {
+    return {
+      children: [],
+      childrenHeading: '',
+      childrenHeight: 0,
+    };
+  }
   const entityMappings: Record<
     string,
     { data: EntityChildren; label: string }
