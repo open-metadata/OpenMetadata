@@ -5,13 +5,10 @@ import java.util.List;
 import java.util.Map;
 import org.openmetadata.schema.entity.data.Database;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.search.SearchIndexUtils;
 import org.openmetadata.service.search.models.SearchSuggest;
-import org.openmetadata.service.util.JsonUtils;
 
 public record DatabaseIndex(Database database) implements SearchIndex {
-  private static final List<String> excludeFields = List.of("changeDescription");
-
+  @Override
   public List<SearchSuggest> getSuggest() {
     List<SearchSuggest> suggest = new ArrayList<>();
     suggest.add(SearchSuggest.builder().input(database.getName()).weight(5).build());
@@ -19,9 +16,12 @@ public record DatabaseIndex(Database database) implements SearchIndex {
     return suggest;
   }
 
-  public Map<String, Object> buildESDoc() {
-    Map<String, Object> doc = JsonUtils.getMap(database);
-    SearchIndexUtils.removeNonIndexableFields(doc, excludeFields);
+  @Override
+  public Object getEntity() {
+    return database;
+  }
+
+  public Map<String, Object> buildESDocInternal(Map<String, Object> doc) {
     Map<String, Object> commonAttributes = getCommonAttributesMap(database, Entity.DATABASE);
     doc.putAll(commonAttributes);
     return doc;

@@ -86,7 +86,8 @@ public class OpenSearchDataInsightProcessor
             indexMapping.getIndexName(Entity.getSearchRepository().getClusterAlias()),
             reportData.getId().toString());
     updateRequest.doc(
-        JsonUtils.pojoToJson(new ReportDataIndexes(reportData).buildESDoc()), XContentType.JSON);
+        JsonUtils.pojoToJson(new ReportDataIndexes(reportData).buildElasticSearchDocument()),
+        XContentType.JSON);
     updateRequest.docAsUpsert(true);
     return updateRequest;
   }

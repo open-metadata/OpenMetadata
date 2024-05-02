@@ -89,7 +89,8 @@ public class OpenSearchEntitiesProcessor
             entity.getId().toString());
     updateRequest.doc(
         JsonUtils.pojoToJson(
-            Objects.requireNonNull(Entity.buildSearchIndex(entityType, entity)).buildESDoc()),
+            Objects.requireNonNull(Entity.buildSearchIndex(entityType, entity))
+                .buildElasticSearchDocument()),
         XContentType.JSON);
     updateRequest.docAsUpsert(true);
     return updateRequest;

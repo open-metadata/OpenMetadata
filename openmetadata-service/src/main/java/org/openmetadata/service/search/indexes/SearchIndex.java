@@ -11,7 +11,9 @@ import static org.openmetadata.service.search.EntityBuilderConstant.FULLY_QUALIF
 import static org.openmetadata.service.search.EntityBuilderConstant.FULLY_QUALIFIED_NAME_PARTS;
 import static org.openmetadata.service.search.EntityBuilderConstant.NAME_KEYWORD;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -31,7 +33,28 @@ import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.JsonUtils;
 
 public interface SearchIndex {
-  Map<String, Object> buildESDoc();
+  Set<String> DEFAULT_EXCLUDED_FIELDS = Set.of("changeDescription");
+
+  default Map<String, Object> buildElasticSearchDocument() {
+    JsonNode rootNode = JsonUtils.valueToTree(getEntity());
+    // Remove non indexable fields
+    SearchIndexUtils.removeAllNonIndexableFields(rootNode, DEFAULT_EXCLUDED_FIELDS);
+
+    // Remove Entity Specific Field
+    SearchIndexUtils.removeAllNonIndexableFields(rootNode, getExcludedFields());
+
+    Map<String, Object> esDoc = JsonUtils.convertValue(rootNode, Map.class);
+    // Build Index Doc
+    return this.buildESDocInternal(esDoc);
+  }
+
+  Object getEntity();
+
+  default Set<String> getExcludedFields() {
+    return Collections.emptySet();
+  }
+
+  Map<String, Object> buildESDocInternal(Map<String, Object> esDoc);
 
   default List<SearchSuggest> getSuggest() {
     return null;

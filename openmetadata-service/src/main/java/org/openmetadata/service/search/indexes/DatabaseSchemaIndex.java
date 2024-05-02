@@ -5,12 +5,9 @@ import java.util.List;
 import java.util.Map;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.search.SearchIndexUtils;
 import org.openmetadata.service.search.models.SearchSuggest;
-import org.openmetadata.service.util.JsonUtils;
 
 public record DatabaseSchemaIndex(DatabaseSchema databaseSchema) implements SearchIndex {
-  private static final List<String> excludeFields = List.of("changeDescription");
 
   public List<SearchSuggest> getSuggest() {
     List<SearchSuggest> suggest = new ArrayList<>();
@@ -20,12 +17,15 @@ public record DatabaseSchemaIndex(DatabaseSchema databaseSchema) implements Sear
     return suggest;
   }
 
-  public Map<String, Object> buildESDoc() {
-    Map<String, Object> doc = JsonUtils.getMap(databaseSchema);
+  @Override
+  public Object getEntity() {
+    return databaseSchema;
+  }
+
+  public Map<String, Object> buildESDocInternal(Map<String, Object> doc) {
     Map<String, Object> commonAttributes =
         getCommonAttributesMap(databaseSchema, Entity.DATABASE_SCHEMA);
     doc.putAll(commonAttributes);
-    SearchIndexUtils.removeNonIndexableFields(doc, excludeFields);
     return doc;
   }
 }

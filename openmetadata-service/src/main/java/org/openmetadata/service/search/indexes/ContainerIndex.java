@@ -11,14 +11,11 @@ import org.openmetadata.schema.entity.data.Container;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.search.ParseTags;
-import org.openmetadata.service.search.SearchIndexUtils;
 import org.openmetadata.service.search.models.FlattenColumn;
 import org.openmetadata.service.search.models.SearchSuggest;
-import org.openmetadata.service.util.JsonUtils;
 
 public record ContainerIndex(Container container) implements ColumnIndex {
-  private static final List<String> excludeFields = List.of("changeDescription");
-
+  @Override
   public List<SearchSuggest> getSuggest() {
     List<SearchSuggest> suggest = new ArrayList<>();
     suggest.add(SearchSuggest.builder().input(container.getFullyQualifiedName()).weight(5).build());
@@ -26,13 +23,16 @@ public record ContainerIndex(Container container) implements ColumnIndex {
     return suggest;
   }
 
-  public Map<String, Object> buildESDoc() {
-    Map<String, Object> doc = JsonUtils.getMap(container);
+  @Override
+  public Object getEntity() {
+    return container;
+  }
+
+  public Map<String, Object> buildESDocInternal(Map<String, Object> doc) {
     List<SearchSuggest> columnSuggest = new ArrayList<>();
     List<SearchSuggest> serviceSuggest = new ArrayList<>();
     Set<List<TagLabel>> tagsWithChildren = new HashSet<>();
     List<String> columnsWithChildrenName = new ArrayList<>();
-    SearchIndexUtils.removeNonIndexableFields(doc, excludeFields);
     if (container.getDataModel() != null && container.getDataModel().getColumns() != null) {
       List<FlattenColumn> cols = new ArrayList<>();
       parseColumns(container.getDataModel().getColumns(), cols, null);

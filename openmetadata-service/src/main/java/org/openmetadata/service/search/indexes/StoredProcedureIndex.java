@@ -6,13 +6,10 @@ import java.util.Map;
 import org.openmetadata.schema.entity.data.StoredProcedure;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.search.ParseTags;
-import org.openmetadata.service.search.SearchIndexUtils;
 import org.openmetadata.service.search.models.SearchSuggest;
-import org.openmetadata.service.util.JsonUtils;
 
 public record StoredProcedureIndex(StoredProcedure storedProcedure) implements SearchIndex {
-  private static final List<String> excludeFields = List.of("changeDescription");
-
+  @Override
   public List<SearchSuggest> getSuggest() {
     List<SearchSuggest> suggest = new ArrayList<>();
     suggest.add(
@@ -21,9 +18,12 @@ public record StoredProcedureIndex(StoredProcedure storedProcedure) implements S
     return suggest;
   }
 
-  public Map<String, Object> buildESDoc() {
-    Map<String, Object> doc = JsonUtils.getMap(storedProcedure);
-    SearchIndexUtils.removeNonIndexableFields(doc, excludeFields);
+  @Override
+  public Object getEntity() {
+    return storedProcedure;
+  }
+
+  public Map<String, Object> buildESDocInternal(Map<String, Object> doc) {
     Map<String, Object> commonAttributes =
         getCommonAttributesMap(storedProcedure, Entity.STORED_PROCEDURE);
     doc.putAll(commonAttributes);

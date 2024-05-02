@@ -3,22 +3,22 @@ package org.openmetadata.service.search.indexes;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.search.ParseTags;
-import org.openmetadata.service.search.SearchIndexUtils;
 import org.openmetadata.service.search.models.SearchSuggest;
-import org.openmetadata.service.util.JsonUtils;
 
 public class IngestionPipelineIndex implements SearchIndex {
   final IngestionPipeline ingestionPipeline;
-  final List<String> excludeFields =
-      List.of("changeDescription", "sourceConfig", "openMetadataServerConnection", "airflowConfig");
+  final Set<String> excludeFields =
+      Set.of("sourceConfig", "openMetadataServerConnection", "airflowConfig");
 
   public IngestionPipelineIndex(IngestionPipeline ingestionPipeline) {
     this.ingestionPipeline = ingestionPipeline;
   }
 
+  @Override
   public List<SearchSuggest> getSuggest() {
     List<SearchSuggest> suggest = new ArrayList<>();
     suggest.add(
@@ -28,9 +28,17 @@ public class IngestionPipelineIndex implements SearchIndex {
     return suggest;
   }
 
-  public Map<String, Object> buildESDoc() {
-    Map<String, Object> doc = JsonUtils.getMap(ingestionPipeline);
-    SearchIndexUtils.removeNonIndexableFields(doc, excludeFields);
+  @Override
+  public Object getEntity() {
+    return ingestionPipeline;
+  }
+
+  @Override
+  public Set<String> getExcludedFields() {
+    return excludeFields;
+  }
+
+  public Map<String, Object> buildESDocInternal(Map<String, Object> doc) {
     List<SearchSuggest> serviceSuggest = new ArrayList<>();
     serviceSuggest.add(
         SearchSuggest.builder()
