@@ -11,7 +11,6 @@ import static org.openmetadata.service.search.EntityBuilderConstant.FULLY_QUALIF
 import static org.openmetadata.service.search.EntityBuilderConstant.FULLY_QUALIFIED_NAME_PARTS;
 import static org.openmetadata.service.search.EntityBuilderConstant.NAME_KEYWORD;
 
-import com.fasterxml.jackson.databind.JsonNode;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -36,14 +35,14 @@ public interface SearchIndex {
   Set<String> DEFAULT_EXCLUDED_FIELDS = Set.of("changeDescription");
 
   default Map<String, Object> buildElasticSearchDocument() {
-    JsonNode rootNode = JsonUtils.valueToTree(getEntity());
+    Map<String, Object> esDoc = JsonUtils.getMap(getEntity());
+
     // Remove non indexable fields
-    SearchIndexUtils.removeAllNonIndexableFields(rootNode, DEFAULT_EXCLUDED_FIELDS);
+    SearchIndexUtils.removeNonIndexableFields(esDoc, DEFAULT_EXCLUDED_FIELDS);
 
     // Remove Entity Specific Field
-    SearchIndexUtils.removeAllNonIndexableFields(rootNode, getExcludedFields());
+    SearchIndexUtils.removeNonIndexableFields(esDoc, getExcludedFields());
 
-    Map<String, Object> esDoc = JsonUtils.convertValue(rootNode, Map.class);
     // Build Index Doc
     return this.buildESDocInternal(esDoc);
   }

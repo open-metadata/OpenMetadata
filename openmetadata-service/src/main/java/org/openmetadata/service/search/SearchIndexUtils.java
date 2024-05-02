@@ -1,9 +1,6 @@
 package org.openmetadata.service.search;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.util.Collections;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -23,34 +20,32 @@ public final class SearchIndexUtils {
 
   public static void removeNonIndexableFields(Map<String, Object> doc, Set<String> fields) {
     for (String key : fields) {
-      doc.remove(key);
+      if (key.contains(".")) {
+        removeFieldByPath(doc, key);
+      } else {
+        doc.remove(key);
+      }
     }
   }
 
-  public static void removeAllNonIndexableFields(JsonNode rootNode, Set<String> fields) {
-    for (String key : fields) {
-      removeFieldRecursively(rootNode, key);
-    }
-  }
+  public static void removeFieldByPath(Map<String, Object> jsonMap, String path) {
+    String[] pathElements = path.split("\\.");
+    Map<String, Object> currentMap = jsonMap;
 
-  private static void removeFieldRecursively(JsonNode node, String fieldName) {
-    if (node.isObject()) {
-      ObjectNode objectNode = (ObjectNode) node;
-      Iterator<Map.Entry<String, JsonNode>> fieldsIterator = objectNode.fields();
-      while (fieldsIterator.hasNext()) {
-        Map.Entry<String, JsonNode> field = fieldsIterator.next();
-        if (field.getKey().equals(fieldName)) {
-          fieldsIterator.remove(); // Remove the field
-        } else {
-          removeFieldRecursively(
-              field.getValue(), fieldName); // Recursively remove from nested objects
-        }
-      }
-    } else if (node.isArray()) {
-      for (JsonNode arrayElement : node) {
-        removeFieldRecursively(arrayElement, fieldName); // Recursively remove from array elements
+    for (int i = 0; i < pathElements.length - 1; i++) {
+      String key = pathElements[i];
+      Object value = currentMap.get(key);
+      if (value instanceof Map) {
+        currentMap = (Map<String, Object>) value;
+      } else {
+        // Path Not Found
+        return;
       }
     }
+
+    // Remove the field at the last path element
+    String lastKey = pathElements[pathElements.length - 1];
+    currentMap.remove(lastKey);
   }
 
   public static List<TagLabel> parseTags(List<TagLabel> tags) {

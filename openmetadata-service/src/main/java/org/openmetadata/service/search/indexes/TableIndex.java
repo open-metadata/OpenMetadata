@@ -21,7 +21,8 @@ public record TableIndex(Table table) implements ColumnIndex {
           "sampleData",
           "tableProfile",
           "joins",
-          "viewDefinition, tableProfilerConfig, profile, location, tableQueries, tests, dataModel");
+          "viewDefinition, tableProfilerConfig, profile, location, tableQueries, tests, dataModel",
+          "testSuite.changeDescription");
 
   @Override
   public List<SearchSuggest> getSuggest() {
