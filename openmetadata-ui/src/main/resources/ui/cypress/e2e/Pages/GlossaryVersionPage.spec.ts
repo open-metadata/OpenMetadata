@@ -148,7 +148,7 @@ describe(
       interceptURL('GET', `/api/v1/glossaries?fields=*`, 'getGlossaryDetails');
       interceptURL(
         'GET',
-        '/api/v1/glossaryTerms?glossary=*',
+        '/api/v1/glossaryTerms?directChildrenOf=*',
         'getGlossaryTerms'
       );
       visitGlossaryPage();
