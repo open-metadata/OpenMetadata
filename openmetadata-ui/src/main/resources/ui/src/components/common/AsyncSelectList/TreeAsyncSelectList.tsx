@@ -189,7 +189,7 @@ const TreeAsyncSelectList: FC<Omit<AsyncSelectListProps, 'fetchOptions'>> = ({
             label: value,
           };
     });
-    selectedTagsRef.current = selectedValues;
+    selectedTagsRef.current = selectedValues as SelectOption[];
     onChange?.(selectedValues);
   };
 

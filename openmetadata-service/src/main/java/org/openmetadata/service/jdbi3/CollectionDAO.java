@@ -1765,6 +1765,51 @@ public interface CollectionDAO {
     default String getNameHashColumn() {
       return "fqnHash";
     }
+
+    @Override
+    default int listCount(ListFilter filter) {
+      String condition = filter.getCondition();
+      String directChildrenOf = filter.getQueryParam("directChildrenOf");
+
+      if (!nullOrEmpty(directChildrenOf)) {
+        condition =
+            String.format(
+                " %s AND fqnHash = CONCAT('%s', '.', MD5(CASE WHEN name LIKE '%%.%%' THEN CONCAT('\"', name, '\"') ELSE name END))  ",
+                condition, FullyQualifiedName.buildHash(directChildrenOf));
+      }
+
+      return listCount(getTableName(), getNameHashColumn(), condition);
+    }
+
+    @Override
+    default List<String> listBefore(ListFilter filter, int limit, String before) {
+      String condition = filter.getCondition();
+      String directChildrenOf = filter.getQueryParam("directChildrenOf");
+
+      if (!nullOrEmpty(directChildrenOf)) {
+        condition =
+            String.format(
+                " %s AND fqnHash = CONCAT('%s', '.', MD5(CASE WHEN name LIKE '%%.%%' THEN CONCAT('\"', name, '\"') ELSE name END))  ",
+                condition, FullyQualifiedName.buildHash(directChildrenOf));
+      }
+
+      return listBefore(getTableName(), condition, limit, before);
+    }
+
+    @Override
+    default List<String> listAfter(ListFilter filter, int limit, String after) {
+      String condition = filter.getCondition();
+      String directChildrenOf = filter.getQueryParam("directChildrenOf");
+
+      if (!nullOrEmpty(directChildrenOf)) {
+        condition =
+            String.format(
+                " %s AND fqnHash = CONCAT('%s', '.', MD5(CASE WHEN name LIKE '%%.%%' THEN CONCAT('\"', name, '\"') ELSE name END))  ",
+                condition, FullyQualifiedName.buildHash(directChildrenOf));
+      }
+
+      return listAfter(getTableName(), condition, limit, after);
+    }
   }
 
   interface IngestionPipelineDAO extends EntityDAO<IngestionPipeline> {

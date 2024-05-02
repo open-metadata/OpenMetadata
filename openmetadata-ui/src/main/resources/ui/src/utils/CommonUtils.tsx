@@ -421,17 +421,18 @@ export const getNameFromFQN = (fqn: string): string => {
 
 export const getRandomColor = (name: string) => {
   const firstAlphabet = name.charAt(0).toLowerCase();
-  const asciiCode = firstAlphabet.charCodeAt(0);
-  const colorNum =
-    asciiCode.toString() + asciiCode.toString() + asciiCode.toString();
+  // Convert the user's name to a numeric value
+  let nameValue = 0;
+  for (let i = 0; i < name.length; i++) {
+    nameValue += name.charCodeAt(i) * 8;
+  }
 
-  const num = Math.round(0xffffff * parseInt(colorNum));
-  const r = (num >> 16) & 255;
-  const g = (num >> 8) & 255;
-  const b = num & 255;
+  // Generate a random hue based on the name value
+  const hue = nameValue % 360;
 
   return {
-    color: 'rgb(' + r + ', ' + g + ', ' + b + ', 0.6)',
+    color: `hsl(${hue}, 70%, 40%)`,
+    backgroundColor: `hsl(${hue}, 100%, 92%)`,
     character: firstAlphabet.toUpperCase(),
   };
 };

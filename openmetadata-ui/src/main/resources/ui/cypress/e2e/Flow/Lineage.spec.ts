@@ -38,7 +38,7 @@ const dragConnection = (sourceId, targetId, isColumnLineage = false) => {
 };
 
 const performZoomOut = () => {
-  for (let i = 0; i < 7; i++) {
+  for (let i = 0; i < 12; i++) {
     cy.get('.react-flow__controls-zoomout').click({ force: true });
   }
 };
@@ -227,6 +227,7 @@ describe('Lineage verification', { tags: 'DataAssets' }, () => {
 
   LINEAGE_ITEMS.forEach((entity, index) => {
     it(`Lineage Add Node for entity ${entity.entityType}`, () => {
+      interceptURL('GET', '/api/v1/lineage', 'lineageApi');
       visitEntityDetailsPage({
         term: entity.term,
         serviceName: entity.serviceName,
@@ -247,6 +248,8 @@ describe('Lineage verification', { tags: 'DataAssets' }, () => {
 
       cy.get('[data-testid="edit-lineage"]').click();
       cy.reload();
+
+      verifyResponseStatusCode('@lineageApi', 200);
 
       performZoomOut();
 

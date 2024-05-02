@@ -402,6 +402,7 @@ const IncidentManagerPage = () => {
         render: (_, record: TestCaseResolutionStatus) => (
           <TestCaseIncidentManagerStatus
             data={record}
+            usersList={initialAssignees}
             onSubmit={handleStatusSubmit}
           />
         ),

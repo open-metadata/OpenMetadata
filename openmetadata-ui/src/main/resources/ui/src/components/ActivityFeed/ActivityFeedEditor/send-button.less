@@ -10,16 +10,38 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-.test-case-status-modal-container {
-  .assignee-field {
-    .ant-form-item-row {
-      gap: 16px;
-      flex-direction: row;
-      align-items: center;
+@import (reference) url('../../../styles/variables.less');
 
-      .ant-form-item-label {
-        padding: 0;
-      }
+// Define a mixin for repeated styles
+.buttonStyle() {
+  background: @primary-color;
+  color: @white;
+}
+
+.ant-btn.send-button {
+  position: absolute;
+  bottom: 8px;
+  right: 8px;
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  border-radius: 50%;
+
+  // Apply the mixin to the base and hover, disabled states
+  .buttonStyle();
+
+  &:hover {
+    .buttonStyle();
+    opacity: 0.9;
+  }
+
+  &:disabled {
+    .buttonStyle();
+    opacity: 0.8;
+
+    &:hover {
+      .buttonStyle();
+      opacity: 0.8;
     }
   }
 }
