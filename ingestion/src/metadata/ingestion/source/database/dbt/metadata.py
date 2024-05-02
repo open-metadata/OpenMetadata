@@ -132,13 +132,7 @@ class DbtSource(DbtServiceSource):
         """
         By default for DBT nothing is required to be prepared
         """
-        database_service = self.metadata.get_by_name(
-            entity=DatabaseService, fqn=self.config.serviceName
-        )
-        if not database_service:
-            raise InvalidServiceException(
-                f"Service with name {self.config.serviceName} not found"
-            )
+        pass
 
     def get_dbt_owner(
         self, manifest_node: dict, catalog_node: Optional[dict]
