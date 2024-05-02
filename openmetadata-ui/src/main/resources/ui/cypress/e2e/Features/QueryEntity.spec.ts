@@ -204,7 +204,6 @@ describe('Query Entity', { tags: 'DataAssets' }, () => {
     cy.get('[data-testid="entity-tags"] .ant-tag').filter(':visible').click();
     cy.get('[data-testid="tag-selector"]').type(DATA.tag);
     cy.get('[data-testid="tag-PersonalData.Personal"]').click();
-    cy.clickOutside();
     cy.get('[data-testid="saveAssociatedTag"]').scrollIntoView().click();
     verifyResponseStatusCode('@patchQuery', 200);
   });

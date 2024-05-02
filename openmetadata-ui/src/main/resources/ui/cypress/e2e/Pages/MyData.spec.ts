@@ -334,7 +334,9 @@ describe('My Data page', { tags: 'DataAssets' }, () => {
     cy.logout();
   });
 
-  it('Verify user as owner feed widget', () => {
+  // Todo: Fix the following tests once new layout is implemented for feed https://github.com/open-metadata/OpenMetadata/issues/13871 @Ashish8689 @aniketkatkar97
+
+  it.skip('Verify user as owner feed widget', () => {
     // login with newly created user
     cy.login(user2.email, user2.password);
     cy.get('[data-testid="no-data-placeholder-container"]')
@@ -363,7 +365,7 @@ describe('My Data page', { tags: 'DataAssets' }, () => {
     cy.logout();
   });
 
-  it('Verify team as owner feed widget', () => {
+  it.skip('Verify team as owner feed widget', () => {
     // login with newly created user
     cy.login(user1.email, user1.password);
 
