@@ -4,7 +4,13 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+
+import org.openmetadata.schema.tests.TestCase;
+import org.openmetadata.schema.tests.TestSuite;
 import org.openmetadata.schema.tests.type.TestCaseResolutionStatus;
+import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.Include;
+import org.openmetadata.service.Entity;
 import org.openmetadata.service.search.models.SearchSuggest;
 import org.openmetadata.service.util.JsonUtils;
 
@@ -31,7 +37,20 @@ public record TestCaseResolutionStatusIndex(TestCaseResolutionStatus testCaseRes
             testCaseResolutionStatus.getTestCaseReference().getFullyQualifiedName(),
             suggest.stream().map(SearchSuggest::getInput).toList()));
     doc.put("suggest", suggest);
+    setParentRelationships(doc);
     return doc;
+  }
+
+  private void setParentRelationships(Map<String, Object> doc) {
+    // denormalize the parent relationships for search
+    EntityReference testCaseReference = testCaseResolutionStatus.getTestCaseReference();
+    TestCase testCase = Entity.getEntityOrNull(testCaseReference, "testSuite", Include.ALL);
+    if (testCase == null) return;
+    doc.put("testCase", testCase.getEntityReference());
+    TestSuite testSuite = Entity.getEntityOrNull(testCase.getTestSuite(), "", Include.ALL);
+    if (testSuite == null) return;
+    doc.put("testSuite", testSuite.getEntityReference());
+    TestSuiteIndex.addTestSuiteParentEntityRelations(testSuite.getExecutableEntityReference(), doc);
   }
 
   public static Map<String, Float> getFields() {

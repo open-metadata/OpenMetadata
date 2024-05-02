@@ -549,14 +549,6 @@ public class SearchRepository {
   public void deleteOrUpdateChildren(EntityInterface entity, IndexMapping indexMapping) {
     String docId = entity.getId().toString();
     String entityType = entity.getEntityReference().getType();
-    List<String> testRelatedAliases =
-        indexMapping.getChildAliases(clusterAlias).stream()
-            .filter(
-                alias ->
-                    alias.contains("testCase")
-                        || alias.contains("testCaseResolutionStatus")
-                        || alias.contains("testSuite"))
-            .collect(Collectors.toList());
     switch (entityType) {
       case Entity.DOMAIN -> {
         searchClient.updateChildren(
@@ -581,9 +573,6 @@ public class SearchRepository {
           searchClient.deleteEntityByFields(
               indexMapping.getChildAliases(clusterAlias),
               List.of(new ImmutablePair<>("testSuite.id", docId)));
-          searchClient.deleteEntityByFields(
-              testRelatedAliases,
-              List.of(new ImmutablePair<>("fqnParts", entity.getFullyQualifiedName())));
         } else {
           searchClient.updateChildren(
               indexMapping.getChildAliases(clusterAlias),
@@ -601,21 +590,11 @@ public class SearchRepository {
         searchClient.deleteEntityByFields(
             indexMapping.getChildAliases(clusterAlias),
             List.of(new ImmutablePair<>("service.id", docId)));
-        if (!nullOrEmpty(testRelatedAliases)) {
-          searchClient.deleteEntityByFields(
-              testRelatedAliases,
-              List.of(new ImmutablePair<>("fqnParts", entity.getFullyQualifiedName())));
-        }
       }
       default -> {
         searchClient.deleteEntityByFields(
             indexMapping.getChildAliases(clusterAlias),
             List.of(new ImmutablePair<>(entityType + ".id", docId)));
-        if (!nullOrEmpty(testRelatedAliases)) {
-          searchClient.deleteEntityByFields(
-              testRelatedAliases,
-              List.of(new ImmutablePair<>("fqnParts", entity.getFullyQualifiedName())));
-        }
       }
     }
   }
