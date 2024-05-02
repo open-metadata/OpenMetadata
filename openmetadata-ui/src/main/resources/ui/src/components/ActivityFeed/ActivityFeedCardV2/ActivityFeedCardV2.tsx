@@ -122,6 +122,7 @@ const ActivityFeedCardV2 = ({
                 announcement={!isPost ? feed.announcement : undefined}
                 feed={feed}
                 isEditPost={isEditPost}
+                isPost={isPost}
                 message={post.message}
                 onEditCancel={() => setIsEditPost(false)}
                 onUpdate={onUpdate}

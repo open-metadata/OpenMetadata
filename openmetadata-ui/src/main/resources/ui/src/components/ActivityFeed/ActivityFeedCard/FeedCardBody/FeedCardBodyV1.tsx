@@ -20,10 +20,7 @@ import { Link } from 'react-router-dom';
 import ActivityFeedEditor from '../../../../components/ActivityFeed/ActivityFeedEditor/ActivityFeedEditor';
 import RichTextEditorPreviewer from '../../../../components/common/RichTextEditor/RichTextEditorPreviewer';
 import { ASSET_CARD_STYLES } from '../../../../constants/Feeds.constants';
-import {
-  CardStyle,
-  EntityTestResultSummaryObject,
-} from '../../../../generated/entity/feed/thread';
+import { CardStyle } from '../../../../generated/entity/feed/thread';
 import { formatDateTime } from '../../../../utils/date-time/DateTimeUtils';
 import entityUtilClassBase from '../../../../utils/EntityUtilClassBase';
 import {
@@ -41,6 +38,7 @@ import './feed-card-body-v1.less';
 import { FeedCardBodyV1Props } from './FeedCardBodyV1.interface';
 
 const FeedCardBodyV1 = ({
+  isPost = false,
   feed,
   isEditPost,
   className,
@@ -108,49 +106,52 @@ const FeedCardBodyV1 = ({
       );
     }
 
-    if (cardStyle === CardStyle.Description) {
-      return <DescriptionFeed feed={feed} />;
-    }
+    if (!isPost) {
+      if (cardStyle === CardStyle.Description) {
+        return <DescriptionFeed feed={feed} />;
+      }
 
-    if (cardStyle === CardStyle.Tags) {
-      return <TagsFeed feed={feed} />;
-    }
+      if (cardStyle === CardStyle.Tags) {
+        return <TagsFeed feed={feed} />;
+      }
 
-    if (cardStyle === CardStyle.TestCaseResult) {
-      return (
-        <TestCaseFeed
-          testResultSummary={
-            feed.feedInfo?.entitySpecificInfo
-              ?.entityTestResultSummary as EntityTestResultSummaryObject[]
-          }
-        />
-      );
-    }
+      if (cardStyle === CardStyle.TestCaseResult) {
+        return (
+          <TestCaseFeed
+            entitySpecificInfo={feed.feedInfo?.entitySpecificInfo}
+            // testResultSummary={
+            //   feed.feedInfo?.entitySpecificInfo
+            //     ?.entityTestResultSummary as EntityTestResultSummaryObject[]
+            // }
+          />
+        );
+      }
 
-    if (ASSET_CARD_STYLES.includes(cardStyle as CardStyle)) {
-      const entityInfo = feed.feedInfo?.entitySpecificInfo?.entity;
-      const entityCard = (
-        <ExploreSearchCard
-          className="asset-info-card"
-          id={`tabledatacard${entityInfo.id}`}
-          showTags={false}
-          source={{ ...entityInfo, entityType }}
-        />
-      );
+      if (ASSET_CARD_STYLES.includes(cardStyle as CardStyle)) {
+        const entityInfo = feed.feedInfo?.entitySpecificInfo?.entity;
+        const entityCard = (
+          <ExploreSearchCard
+            className="asset-info-card"
+            id={`tabledatacard${entityInfo.id}`}
+            showTags={false}
+            source={{ ...entityInfo, entityType }}
+          />
+        );
 
-      return cardStyle === CardStyle.EntityDeleted ? (
-        entityCard
-      ) : (
-        <Link
-          className="no-underline"
-          to={entityUtilClassBase.getEntityLink(entityType, entityFQN)}>
-          {entityCard}
-        </Link>
-      );
-    }
+        return cardStyle === CardStyle.EntityDeleted ? (
+          entityCard
+        ) : (
+          <Link
+            className="no-underline"
+            to={entityUtilClassBase.getEntityLink(entityType, entityFQN)}>
+            {entityCard}
+          </Link>
+        );
+      }
 
-    if (cardStyle === CardStyle.CustomProperties) {
-      return <CustomPropertyFeed feed={feed} />;
+      if (cardStyle === CardStyle.CustomProperties) {
+        return <CustomPropertyFeed feed={feed} />;
+      }
     }
 
     return (

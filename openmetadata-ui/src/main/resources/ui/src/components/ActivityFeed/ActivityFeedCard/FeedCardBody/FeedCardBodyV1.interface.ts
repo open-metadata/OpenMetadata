@@ -16,6 +16,7 @@ import {
 } from '../../../../generated/entity/feed/thread';
 
 export interface FeedCardBodyV1Props {
+  isPost: boolean;
   feed: Thread;
   isEditPost: boolean;
   className?: string;
