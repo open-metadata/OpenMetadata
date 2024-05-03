@@ -91,7 +91,7 @@ def update_column_description(
     col_dict = {col.column_fqn.lower(): col.description for col in column_descriptions}
     for col in columns:
         # For dbt the column names in OM and dbt are not always in the same case.
-        # We'll match the column names in case sensitive way
+        # We'll match the column names in case insensitive way
         desc_column = col_dict.get(col.fullyQualifiedName.__root__.lower())
         if desc_column:
             if col.description and not force:
