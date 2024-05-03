@@ -242,7 +242,7 @@ class ReportDataResourceTest extends OpenMetadataApplicationTest {
   private void assertDocumentCountEquals(String query, String index, Integer count)
       throws IOException, InterruptedException {
     // async client will return a future which we don't have access to, hence sleep
-    TestUtils.waitForEsAsyncOp();
+    waitForEsAsyncOp();
     JsonNode json = runSearchQuery(query, index);
     Integer docCount = json.get("hits").get("total").get("value").asInt();
     assertEquals(count, docCount);

@@ -1,10 +1,12 @@
 package org.openmetadata.service.search.elasticsearch;
 
+import static javax.ws.rs.core.Response.Status.NOT_FOUND;
 import static javax.ws.rs.core.Response.Status.OK;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.Entity.FIELD_DESCRIPTION;
 import static org.openmetadata.service.Entity.FIELD_DISPLAY_NAME;
 import static org.openmetadata.service.Entity.FIELD_NAME;
+import static org.openmetadata.service.exception.CatalogGenericExceptionMapper.getResponse;
 import static org.openmetadata.service.search.EntityBuilderConstant.COLUMNS_NAME_KEYWORD;
 import static org.openmetadata.service.search.EntityBuilderConstant.DATA_MODEL_COLUMNS_NAME_KEYWORD;
 import static org.openmetadata.service.search.EntityBuilderConstant.DOMAIN_DISPLAY_NAME_KEYWORD;
@@ -34,6 +36,8 @@ import es.org.elasticsearch.action.bulk.BulkRequest;
 import es.org.elasticsearch.action.bulk.BulkResponse;
 import es.org.elasticsearch.action.delete.DeleteRequest;
 import es.org.elasticsearch.action.delete.DeleteResponse;
+import es.org.elasticsearch.action.get.GetRequest;
+import es.org.elasticsearch.action.get.GetResponse;
 import es.org.elasticsearch.action.search.SearchResponse;
 import es.org.elasticsearch.action.support.WriteRequest;
 import es.org.elasticsearch.action.support.master.AcknowledgedResponse;
@@ -455,6 +459,27 @@ public class ElasticSearchClient implements SearchClient {
         throw new SearchException(String.format("Search failed due to %s", e.getMessage()));
       }
     }
+  }
+
+  @Override
+  public Response getDocWithId(String indexName, String entityId) throws IOException {
+    try {
+      GetRequest request = new GetRequest(indexName, entityId);
+      GetResponse response = client.get(request, RequestOptions.DEFAULT);
+
+      if (response.isExists()) {
+        return Response.status(OK).entity(response.toString()).build();
+      }
+
+    } catch (ElasticsearchStatusException e) {
+      if (e.status() == RestStatus.NOT_FOUND) {
+        throw new SearchIndexNotFoundException(
+            String.format("Failed to to find doc with id %s", entityId));
+      } else {
+        throw new SearchException(String.format("Search failed due to %s", e.getMessage()));
+      }
+    }
+    return getResponse(NOT_FOUND, "Document not found.");
   }
 
   public List<?> buildSearchHierarchy(SearchRequest request, SearchResponse searchResponse) {

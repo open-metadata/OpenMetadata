@@ -79,6 +79,8 @@ public interface SearchClient {
 
   Response search(SearchRequest request) throws IOException;
 
+  Response getDocWithId(String indexName, String entityId) throws IOException;
+
   default ExecutorService getAsyncExecutor() {
     return asyncExecutor;
   }

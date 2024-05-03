@@ -1,10 +1,12 @@
 package org.openmetadata.service.search.opensearch;
 
+import static javax.ws.rs.core.Response.Status.NOT_FOUND;
 import static javax.ws.rs.core.Response.Status.OK;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.Entity.FIELD_DESCRIPTION;
 import static org.openmetadata.service.Entity.FIELD_DISPLAY_NAME;
 import static org.openmetadata.service.Entity.FIELD_NAME;
+import static org.openmetadata.service.exception.CatalogGenericExceptionMapper.getResponse;
 import static org.openmetadata.service.search.EntityBuilderConstant.COLUMNS_NAME_KEYWORD;
 import static org.openmetadata.service.search.EntityBuilderConstant.DATA_MODEL_COLUMNS_NAME_KEYWORD;
 import static org.openmetadata.service.search.EntityBuilderConstant.DOMAIN_DISPLAY_NAME_KEYWORD;
@@ -104,6 +106,7 @@ import org.openmetadata.service.search.opensearch.dataInsightAggregator.OpenSear
 import org.openmetadata.service.search.opensearch.dataInsightAggregator.OpenSearchUnusedAssetsAggregator;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.workflows.searchIndex.ReindexingUtil;
+import os.org.opensearch.OpenSearchException;
 import os.org.opensearch.OpenSearchStatusException;
 import os.org.opensearch.action.ActionListener;
 import os.org.opensearch.action.admin.indices.alias.IndicesAliasesRequest;
@@ -113,6 +116,8 @@ import os.org.opensearch.action.bulk.BulkRequest;
 import os.org.opensearch.action.bulk.BulkResponse;
 import os.org.opensearch.action.delete.DeleteRequest;
 import os.org.opensearch.action.delete.DeleteResponse;
+import os.org.opensearch.action.get.GetRequest;
+import os.org.opensearch.action.get.GetResponse;
 import os.org.opensearch.action.search.SearchResponse;
 import os.org.opensearch.action.support.WriteRequest;
 import os.org.opensearch.action.support.master.AcknowledgedResponse;
@@ -445,6 +450,27 @@ public class OpenSearchClient implements SearchClient {
       throw new SearchIndexNotFoundException(
           String.format("Failed to to find index %s", request.getIndex()));
     }
+  }
+
+  @Override
+  public Response getDocWithId(String indexName, String entityId) throws IOException {
+    try {
+      GetRequest request = new GetRequest(indexName, entityId);
+      GetResponse response = client.get(request, RequestOptions.DEFAULT);
+
+      if (response.isExists()) {
+        return Response.status(OK).entity(response.toString()).build();
+      }
+
+    } catch (OpenSearchException e) {
+      if (e.status() == RestStatus.NOT_FOUND) {
+        throw new SearchIndexNotFoundException(
+            String.format("Failed to to find doc with id %s", entityId));
+      } else {
+        throw new SearchException(String.format("Search failed due to %s", e.getMessage()));
+      }
+    }
+    return getResponse(NOT_FOUND, "Document not found.");
   }
 
   public List<?> buildSearchHierarchy(SearchRequest request, SearchResponse searchResponse) {
