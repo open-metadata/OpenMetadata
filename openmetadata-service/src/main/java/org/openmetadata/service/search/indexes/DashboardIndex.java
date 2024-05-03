@@ -9,18 +9,16 @@ import org.openmetadata.schema.entity.data.Dashboard;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.search.ParseTags;
-import org.openmetadata.service.search.SearchIndexUtils;
 import org.openmetadata.service.search.models.SearchSuggest;
-import org.openmetadata.service.util.JsonUtils;
 
 public class DashboardIndex implements SearchIndex {
   final Dashboard dashboard;
-  final List<String> excludeFields = List.of("changeDescription");
 
   public DashboardIndex(Dashboard dashboard) {
     this.dashboard = dashboard;
   }
 
+  @Override
   public List<SearchSuggest> getSuggest() {
     List<SearchSuggest> suggest = new ArrayList<>();
     suggest.add(SearchSuggest.builder().input(dashboard.getFullyQualifiedName()).weight(5).build());
@@ -28,9 +26,12 @@ public class DashboardIndex implements SearchIndex {
     return suggest;
   }
 
-  public Map<String, Object> buildESDoc() {
-    Map<String, Object> doc = JsonUtils.getMap(dashboard);
-    SearchIndexUtils.removeNonIndexableFields(doc, excludeFields);
+  @Override
+  public Object getEntity() {
+    return dashboard;
+  }
+
+  public Map<String, Object> buildSearchIndexDocInternal(Map<String, Object> doc) {
     List<SearchSuggest> serviceSuggest = new ArrayList<>();
     List<SearchSuggest> chartSuggest = new ArrayList<>();
     List<SearchSuggest> dataModelSuggest = new ArrayList<>();

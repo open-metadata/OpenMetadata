@@ -5,13 +5,11 @@ import java.util.List;
 import java.util.Map;
 import org.openmetadata.schema.entity.services.StorageService;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.search.SearchIndexUtils;
 import org.openmetadata.service.search.models.SearchSuggest;
-import org.openmetadata.service.util.JsonUtils;
 
 public record StorageServiceIndex(StorageService storageService) implements SearchIndex {
-  private static final List<String> excludeFields = List.of("changeDescription");
 
+  @Override
   public List<SearchSuggest> getSuggest() {
     List<SearchSuggest> suggest = new ArrayList<>();
     suggest.add(SearchSuggest.builder().input(storageService.getName()).weight(5).build());
@@ -20,9 +18,12 @@ public record StorageServiceIndex(StorageService storageService) implements Sear
     return suggest;
   }
 
-  public Map<String, Object> buildESDoc() {
-    Map<String, Object> doc = JsonUtils.getMap(storageService);
-    SearchIndexUtils.removeNonIndexableFields(doc, excludeFields);
+  @Override
+  public Object getEntity() {
+    return storageService;
+  }
+
+  public Map<String, Object> buildSearchIndexDocInternal(Map<String, Object> doc) {
     Map<String, Object> commonAttributes =
         getCommonAttributesMap(storageService, Entity.STORAGE_SERVICE);
     doc.putAll(commonAttributes);
