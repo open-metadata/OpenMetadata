@@ -16,6 +16,7 @@ import classNames from 'classnames';
 import { compare } from 'fast-json-patch';
 import React, { useMemo, useState } from 'react';
 import { EntityField } from '../../../constants/Feeds.constants';
+import { GeneratedBy } from '../../../generated/entity/feed/thread';
 import { getRandomColor } from '../../../utils/CommonUtils';
 import FeedCardBodyV1 from '../ActivityFeedCard/FeedCardBody/FeedCardBodyV1';
 import { useActivityFeedProvider } from '../ActivityFeedProvider/ActivityFeedProvider';
@@ -74,9 +75,8 @@ const ActivityFeedCardV2 = ({
   return (
     <div
       className={classNames(
-        'feed-card-v2-container',
+        'feed-card-v2-container p-sm',
         {
-          'p-sm': !isOpenInDrawer,
           active: isActive,
         },
         className
@@ -96,7 +96,7 @@ const ActivityFeedCardV2 = ({
           }}
         />
       </div>
-      <Row className="w-full">
+      <Row className="w-full" gutter={[0, 10]}>
         <Col
           className={classNames('feed-card-v2', {
             'feed-reply-card-v2': isPost,
@@ -137,7 +137,7 @@ const ActivityFeedCardV2 = ({
               />
             </Col>
           </Row>
-          {showActions && (
+          {showActions && feed.generatedBy !== GeneratedBy.System && (
             <ActivityFeedActions
               feed={feed}
               isPost={isPost}

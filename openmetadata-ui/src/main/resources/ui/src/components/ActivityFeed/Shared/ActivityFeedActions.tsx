@@ -23,6 +23,7 @@ import {
   ThreadType,
 } from '../../../generated/entity/feed/thread';
 
+import { ReactComponent as IconReply } from '../../../assets/svg/ic-reply.svg';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { useActivityFeedProvider } from '../ActivityFeedProvider/ActivityFeedProvider';
 import './activity-feed-actions.less';
@@ -44,7 +45,14 @@ const ActivityFeedActions = ({
   const { currentUser } = useApplicationStore();
   const isAuthor = post.from === currentUser?.name;
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
-  const { deleteFeed, hideDrawer } = useActivityFeedProvider();
+  const { deleteFeed, showDrawer, hideDrawer, updateEditorFocus } =
+    useActivityFeedProvider();
+
+  const onReply = () => {
+    showDrawer(feed);
+
+    updateEditorFocus(true);
+  };
 
   const handleDelete = () => {
     deleteFeed(feed.id, post.id, !isPost).catch(() => {
@@ -81,6 +89,16 @@ const ActivityFeedActions = ({
   return (
     <>
       <Space className="feed-actions" data-testid="feed-actions" size={12}>
+        {!isPost && (
+          <Icon
+            className="toolbar-button"
+            component={IconReply}
+            data-testid="add-reply"
+            style={{ fontSize: '16px' }}
+            onClick={onReply}
+          />
+        )}
+
         {editCheck && (
           <Icon
             className="toolbar-button"
@@ -100,7 +118,6 @@ const ActivityFeedActions = ({
             onClick={() => setShowDeleteDialog(true)}
           />
         )}
-        {/* </div> */}
       </Space>
       <ConfirmationModal
         bodyText={t('message.confirm-delete-message')}

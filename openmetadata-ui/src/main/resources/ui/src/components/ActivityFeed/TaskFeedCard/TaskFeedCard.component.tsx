@@ -65,7 +65,7 @@ const TaskFeedCard = ({
   const history = useHistory();
   const { t } = useTranslation();
   const { showDrawer, setActiveThread } = useActivityFeedProvider();
-
+  const [showActions, setShowActions] = useState(false);
   const {
     threadTs: timeStamp,
     task: taskDetails,
@@ -146,6 +146,14 @@ const TaskFeedCard = ({
     [isEntityDetailsAvailable, entityFQN, entityType, taskDetails]
   );
 
+  const handleMouseEnter = () => {
+    setShowActions(true);
+  };
+
+  const handleMouseLeave = () => {
+    setShowActions(false);
+  };
+
   return (
     <div
       className={classNames(
@@ -153,7 +161,9 @@ const TaskFeedCard = ({
         'task-feed-card-v1 activity-feed-card activity-feed-card-v1',
         { active: isActive }
       )}
-      data-testid="task-feed-card">
+      data-testid="task-feed-card"
+      onMouseEnter={handleMouseEnter}
+      onMouseLeave={handleMouseLeave}>
       <Row gutter={[0, 8]}>
         <Col
           className="d-flex items-center task-feed-message-container"
@@ -237,7 +247,7 @@ const TaskFeedCard = ({
         ) : null}
       </Row>
 
-      {!hidePopover && (
+      {!hidePopover && showActions && (
         <ActivityFeedActions
           feed={feed}
           isPost={false}

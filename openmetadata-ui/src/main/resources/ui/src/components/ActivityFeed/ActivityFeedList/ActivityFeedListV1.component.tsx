@@ -83,7 +83,7 @@ const ActivityFeedListV1 = ({
       </ErrorPlaceHolder>
     </div>
   ) : (
-    <div className="feed-list-container p-y-md" id="feedData">
+    <div className="feed-list-container p-md" id="feedData">
       {entityThread.map((feed) => (
         <FeedPanelBodyV1
           componentsVisibility={componentsVisibility}
