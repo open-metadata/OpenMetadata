@@ -390,6 +390,33 @@ public class SearchServiceResource
     return patchInternal(uriInfo, securityContext, id, patch);
   }
 
+  @PATCH
+  @Path("/name/{fqn}")
+  @Operation(
+      operationId = "patchSearchService",
+      summary = "Update an search service using name.",
+      description = "Update an existing search service using JsonPatch.",
+      externalDocs =
+          @ExternalDocumentation(
+              description = "JsonPatch RFC",
+              url = "https://tools.ietf.org/html/rfc6902"))
+  @Consumes(MediaType.APPLICATION_JSON_PATCH_JSON)
+  public Response patch(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @PathParam("fqn") String fqn,
+      @RequestBody(
+              description = "JsonPatch with array of operations",
+              content =
+                  @Content(
+                      mediaType = MediaType.APPLICATION_JSON_PATCH_JSON,
+                      examples = {
+                        @ExampleObject("[{op:remove, path:/a},{op:add, path: /b, value: val}]")
+                      }))
+          JsonPatch patch) {
+    return patchInternal(uriInfo, securityContext, fqn, patch);
+  }
+
   @DELETE
   @Path("/{id}")
   @Operation(

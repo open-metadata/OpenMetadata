@@ -439,6 +439,35 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
     return patchInternal(uriInfo, securityContext, id, patch);
   }
 
+  @PATCH
+  @Path("/name/{fqn}")
+  @Operation(
+      operationId = "patchGlossaryTerm",
+      summary = "Update a glossary term by name.",
+      description = "Update an existing glossary term using JsonPatch.",
+      externalDocs =
+          @ExternalDocumentation(
+              description = "JsonPatch RFC",
+              url = "https://tools.ietf.org/html/rfc6902"))
+  @Consumes(MediaType.APPLICATION_JSON_PATCH_JSON)
+  public Response patch(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Name of the glossary term", schema = @Schema(type = "string"))
+          @PathParam("fqn")
+          String fqn,
+      @RequestBody(
+              description = "JsonPatch with array of operations",
+              content =
+                  @Content(
+                      mediaType = MediaType.APPLICATION_JSON_PATCH_JSON,
+                      examples = {
+                        @ExampleObject("[{op:remove, path:/a},{op:add, path: /b, value: val}]")
+                      }))
+          JsonPatch patch) {
+    return patchInternal(uriInfo, securityContext, fqn, patch);
+  }
+
   @PUT
   @Operation(
       operationId = "createOrUpdateGlossaryTerm",

@@ -308,6 +308,48 @@ public class SearchIndexResourceTest extends EntityResourceTest<SearchIndex, Cre
   }
 
   @Test
+  void patch_usingFqn_searchIndexAttributes_200_ok(TestInfo test) throws IOException {
+    List<SearchIndexField> fields =
+        Arrays.asList(
+            getField("id", SearchIndexDataType.KEYWORD, null),
+            getField("first_name", SearchIndexDataType.KEYWORD, null),
+            getField("last_name", SearchIndexDataType.TEXT, null),
+            getField("email", SearchIndexDataType.KEYWORD, null),
+            getField("address_line_1", SearchIndexDataType.ARRAY, null),
+            getField("address_line_2", SearchIndexDataType.TEXT, null),
+            getField("post_code", SearchIndexDataType.TEXT, null),
+            getField("county", SearchIndexDataType.TEXT, PERSONAL_DATA_TAG_LABEL));
+    CreateSearchIndex createSearchIndex =
+        createRequest(test).withOwner(USER1_REF).withFields(fields);
+
+    SearchIndex searchIndex = createEntity(createSearchIndex, ADMIN_AUTH_HEADERS);
+    String origJson = JsonUtils.pojoToJson(searchIndex);
+
+    List<SearchIndexField> updatedFields =
+        Arrays.asList(
+            getField("id", SearchIndexDataType.KEYWORD, null),
+            getField("first_name", SearchIndexDataType.KEYWORD, null),
+            getField("last_name", SearchIndexDataType.TEXT, null),
+            getField("email", SearchIndexDataType.KEYWORD, null),
+            getField("address_line_1", SearchIndexDataType.ARRAY, null),
+            getField("address_line_2", SearchIndexDataType.TEXT, null),
+            getField("post_code", SearchIndexDataType.TEXT, null),
+            getField("county", SearchIndexDataType.TEXT, PERSONAL_DATA_TAG_LABEL),
+            getField("phone", SearchIndexDataType.TEXT, PERSONAL_DATA_TAG_LABEL));
+
+    searchIndex.withOwner(TEAM11_REF).withFields(updatedFields);
+
+    SearchIndexField addedField = updatedFields.get(updatedFields.size() - 1);
+    addedField.setFullyQualifiedName(
+        searchIndex.getFullyQualifiedName() + "." + addedField.getName());
+
+    ChangeDescription change = getChangeDescription(searchIndex, MINOR_UPDATE);
+    fieldUpdated(change, FIELD_OWNER, USER1_REF, TEAM11_REF);
+    fieldAdded(change, "fields", JsonUtils.pojoToJson(List.of(addedField)));
+    patchEntityUsingFqnAndCheck(searchIndex, origJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
+  }
+
+  @Test
   void test_inheritDomain(TestInfo test) throws IOException, InterruptedException {
     // When domain is not set for a searchIndex, carry it forward from the search service
     SearchServiceResourceTest serviceTest = new SearchServiceResourceTest();

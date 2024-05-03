@@ -401,6 +401,38 @@ public class WorkflowResource extends EntityResource<Workflow, WorkflowRepositor
         .build();
   }
 
+  @PATCH
+  @Path("/name/{fqn}")
+  @Operation(
+      operationId = "patchWorkflow",
+      summary = "Update a Workflow by name.",
+      description = "Update an existing Workflow using JsonPatch.",
+      externalDocs =
+          @ExternalDocumentation(
+              description = "JsonPatch RFC",
+              url = "https://tools.ietf.org/html/rfc6902"))
+  @Consumes(MediaType.APPLICATION_JSON_PATCH_JSON)
+  public Response updateDescription(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Name of the Workflow", schema = @Schema(type = "string"))
+          @PathParam("fqn")
+          String fqn,
+      @RequestBody(
+              description = "JsonPatch with array of operations",
+              content =
+                  @Content(
+                      mediaType = MediaType.APPLICATION_JSON_PATCH_JSON,
+                      examples = {
+                        @ExampleObject("[{op:remove, path:/a},{op:add, path: /b, value: val}]")
+                      }))
+          JsonPatch patch) {
+    Response response = patchInternal(uriInfo, securityContext, fqn, patch);
+    return Response.fromResponse(response)
+        .entity(decryptOrNullify(securityContext, (Workflow) response.getEntity()))
+        .build();
+  }
+
   @PUT
   @Operation(
       operationId = "createOrUpdateWorkflow",

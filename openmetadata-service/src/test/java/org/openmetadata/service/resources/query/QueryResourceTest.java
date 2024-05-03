@@ -256,6 +256,43 @@ public class QueryResourceTest extends EntityResourceTest<Query, CreateQuery> {
   }
 
   @Test
+  void patch_usingFqn_queryAttributes_200_ok(TestInfo test) throws IOException {
+    CreateQuery create = createRequest(getEntityName(test));
+    Query query = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
+
+    // Add queryUsedIn as TEST_TABLE2
+    String origJson = JsonUtils.pojoToJson(query);
+    query.setQueryUsedIn(List.of(TEST_TABLE2.getEntityReference()));
+    ChangeDescription change = getChangeDescription(query, MINOR_UPDATE);
+    fieldAdded(change, "queryUsedIn", List.of(TEST_TABLE2.getEntityReference()));
+    fieldDeleted(change, "queryUsedIn", List.of(TABLE_REF));
+    patchEntityUsingFqnAndCheck(query, origJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
+    Query updatedQuery = getEntity(query.getId(), ADMIN_AUTH_HEADERS);
+    assertEquals(List.of(TEST_TABLE2.getEntityReference()), updatedQuery.getQueryUsedIn());
+    updatedQuery.setQuery("select * from table1");
+    updatedQuery.setQueryUsedIn(List.of(TABLE_REF, TEST_TABLE2.getEntityReference()));
+  }
+
+  @Test
+  void test_usingFqn_patchQueryMustUpdateChecksum(TestInfo test) throws IOException {
+    CreateQuery create = createRequest(getEntityName(test));
+    Query query = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
+
+    // Add queryUsedIn as TEST_TABLE2
+    String origJson = JsonUtils.pojoToJson(query);
+    String queryText = String.format(QUERY, "test3");
+    query.setQuery(queryText);
+    ChangeDescription change = getChangeDescription(query, MINOR_UPDATE);
+    fieldUpdated(change, "query", create.getQuery(), queryText);
+    fieldUpdated(
+        change, "checksum", EntityUtil.hash(create.getQuery()), EntityUtil.hash(queryText));
+    patchEntityUsingFqnAndCheck(query, origJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
+    Query updatedQuery = getEntity(query.getId(), ADMIN_AUTH_HEADERS);
+    assertEquals(updatedQuery.getQuery(), queryText);
+    assertEquals(updatedQuery.getChecksum(), EntityUtil.hash(updatedQuery.getQuery()));
+  }
+
+  @Test
   void test_duplicateQueryFail() throws IOException {
     String query = "select * from test";
     CreateQuery create = createRequest("duplicateQuery");

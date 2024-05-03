@@ -386,6 +386,35 @@ public class RoleResource extends EntityResource<Role, RoleRepository> {
     return patchInternal(uriInfo, securityContext, id, patch);
   }
 
+  @PATCH
+  @Path("/name/{fqn}")
+  @Consumes(MediaType.APPLICATION_JSON_PATCH_JSON)
+  @Operation(
+      operationId = "patchRole",
+      summary = "Update a role using name.",
+      description = "Update an existing role with JsonPatch.",
+      externalDocs =
+          @ExternalDocumentation(
+              description = "JsonPatch RFC",
+              url = "https://tools.ietf.org/html/rfc6902"))
+  public Response patch(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Name of the role", schema = @Schema(type = "string"))
+          @PathParam("fqn")
+          String fqn,
+      @RequestBody(
+              description = "JsonPatch with array of operations",
+              content =
+                  @Content(
+                      mediaType = MediaType.APPLICATION_JSON_PATCH_JSON,
+                      examples = {
+                        @ExampleObject("[{op:remove, path:/a},{op:add, path: /b, value: val}]")
+                      }))
+          JsonPatch patch) {
+    return patchInternal(uriInfo, securityContext, fqn, patch);
+  }
+
   @DELETE
   @Path("/{id}")
   @Operation(

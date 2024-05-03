@@ -2514,6 +2514,20 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     return TestUtils.patch(getResource(id), patch, entityClass, authHeaders);
   }
 
+  public final T patchEntityUsingFqn(
+      String fqn, String originalJson, T updated, Map<String, String> authHeaders)
+      throws HttpResponseException {
+    updated.setOwner(reduceEntityReference(updated.getOwner()));
+    String updatedEntityJson = JsonUtils.pojoToJson(updated);
+    JsonPatch patch = JsonUtils.getJsonPatch(originalJson, updatedEntityJson);
+    return patchEntityUsingFqn(fqn, patch, authHeaders);
+  }
+
+  public final T patchEntityUsingFqn(String fqn, JsonPatch patch, Map<String, String> authHeaders)
+      throws HttpResponseException {
+    return TestUtils.patch(getResourceByName(fqn), patch, entityClass, authHeaders);
+  }
+
   public final T deleteAndCheckEntity(T entity, Map<String, String> authHeaders)
       throws IOException {
     return deleteAndCheckEntity(entity, false, false, authHeaders);
@@ -2749,6 +2763,46 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
 
     // Validate information returned in patch response has the updates
     T returned = patchEntity(updated.getId(), originalJson, updated, authHeaders);
+
+    validateCommonEntityFields(updated, returned, updatedBy);
+    compareEntities(updated, returned, authHeaders);
+    validateChangeDescription(returned, updateType, expectedChange);
+    validateEntityHistory(returned.getId(), updateType, expectedChange, authHeaders);
+    validateLatestVersion(returned, updateType, expectedChange, authHeaders);
+
+    // GET the entity and Validate information returned
+    T getEntity = getEntity(returned.getId(), authHeaders);
+    validateCommonEntityFields(updated, returned, updatedBy);
+    compareEntities(updated, getEntity, authHeaders);
+    validateChangeDescription(getEntity, updateType, expectedChange);
+
+    // Check if the entity change events are record
+    if (listOf(CREATED, MINOR_UPDATE, MAJOR_UPDATE).contains(updateType)) {
+      EventType expectedEventType =
+          updateType == CREATED ? EventType.ENTITY_CREATED : EventType.ENTITY_UPDATED;
+      validateChangeEvents(
+          returned, returned.getUpdatedAt(), expectedEventType, expectedChange, authHeaders);
+    }
+    return returned;
+  }
+
+  /**
+   * Helper function to generate JSON PATCH, submit PATCH API using fully qualified name and validate response.
+   */
+  protected final T patchEntityUsingFqnAndCheck(
+      T updated,
+      String originalJson,
+      Map<String, String> authHeaders,
+      UpdateType updateType,
+      ChangeDescription expectedChange)
+      throws IOException {
+
+    String updatedBy =
+        updateType == NO_CHANGE ? updated.getUpdatedBy() : getPrincipalName(authHeaders);
+
+    // Validate information returned in patch response has the updates
+    T returned =
+        patchEntityUsingFqn(updated.getFullyQualifiedName(), originalJson, updated, authHeaders);
 
     validateCommonEntityFields(updated, returned, updatedBy);
     compareEntities(updated, returned, authHeaders);

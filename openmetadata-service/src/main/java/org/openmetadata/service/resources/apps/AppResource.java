@@ -607,6 +607,50 @@ public class AppResource extends EntityResource<App, AppRepository> {
     return response;
   }
 
+  @PATCH
+  @Path("/name/{fqn}")
+  @Operation(
+      operationId = "patchApplication",
+      summary = "Updates a App by name.",
+      description = "Update an existing App using JsonPatch.",
+      externalDocs =
+          @ExternalDocumentation(
+              description = "JsonPatch RFC",
+              url = "https://tools.ietf.org/html/rfc6902"))
+  @Consumes(MediaType.APPLICATION_JSON_PATCH_JSON)
+  public Response patchApplication(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Name of the App", schema = @Schema(type = "string"))
+          @PathParam("fqn")
+          String fqn,
+      @RequestBody(
+              description = "JsonPatch with array of operations",
+              content =
+                  @Content(
+                      mediaType = MediaType.APPLICATION_JSON_PATCH_JSON,
+                      examples = {
+                        @ExampleObject("[{op:remove, path:/a},{op:add, path: /b, value: val}]")
+                      }))
+          JsonPatch patch)
+      throws SchedulerException {
+    App app = repository.getByName(null, fqn, repository.getFields("bot,pipelines"));
+    if (app.getSystem()) {
+      throw new IllegalArgumentException(
+          CatalogExceptionMessage.systemEntityModifyNotAllowed(app.getName(), "SystemApp"));
+    }
+    AppScheduler.getInstance().deleteScheduledApplication(app);
+    Response response = patchInternal(uriInfo, securityContext, fqn, patch);
+    App updatedApp = (App) response.getEntity();
+    if (app.getScheduleType().equals(ScheduleType.Scheduled)) {
+      ApplicationHandler.getInstance()
+          .installApplication(updatedApp, Entity.getCollectionDAO(), searchRepository);
+    }
+    // We don't want to store this information
+    unsetAppRuntimeProperties(updatedApp);
+    return response;
+  }
+
   @PUT
   @Operation(
       operationId = "createOrUpdateApp",

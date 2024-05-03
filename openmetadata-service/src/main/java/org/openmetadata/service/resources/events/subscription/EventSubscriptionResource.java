@@ -349,6 +349,38 @@ public class EventSubscriptionResource
     return response;
   }
 
+  @PATCH
+  @Path("/name/{fqn}")
+  @Operation(
+      operationId = "patchEventSubscription",
+      summary = "Update an Event Subscriptions by name.",
+      description = "Update an existing Event Subscriptions using JsonPatch.",
+      externalDocs =
+          @ExternalDocumentation(
+              description = "JsonPatch RFC",
+              url = "https://tools.ietf.org/html/rfc6902"))
+  @Consumes(MediaType.APPLICATION_JSON_PATCH_JSON)
+  public Response patchEventSubscription(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Name of the event Subscription", schema = @Schema(type = "string"))
+          @PathParam("fqn")
+          String fqn,
+      @RequestBody(
+              description = "JsonPatch with array of operations",
+              content =
+                  @Content(
+                      mediaType = MediaType.APPLICATION_JSON_PATCH_JSON,
+                      examples = {
+                        @ExampleObject("[{op:remove, path:/a},{op:add, path: /b, value: val}]")
+                      }))
+          JsonPatch patch) {
+    Response response = patchInternal(uriInfo, securityContext, fqn, patch);
+    EventSubscriptionScheduler.getInstance()
+        .updateEventSubscription((EventSubscription) response.getEntity());
+    return response;
+  }
+
   @GET
   @Path("/{id}/versions")
   @Operation(

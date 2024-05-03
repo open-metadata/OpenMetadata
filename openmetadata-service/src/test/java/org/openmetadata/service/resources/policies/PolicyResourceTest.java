@@ -445,6 +445,77 @@ public class PolicyResourceTest extends EntityResourceTest<Policy, CreatePolicy>
   }
 
   @Test
+  void patch_usingFqn_PolicyRules(TestInfo test) throws IOException {
+    Rule rule1 = accessControlRule("rule1", List.of(ALL_RESOURCES), List.of(VIEW_ALL), ALLOW);
+    Policy policy =
+        createAndCheckEntity(createRequest(test).withRules(List.of(rule1)), ADMIN_AUTH_HEADERS);
+
+    // Change existing rule1 fields
+    String origJson = JsonUtils.pojoToJson(policy);
+    ChangeDescription change = getChangeDescription(policy, MINOR_UPDATE);
+    rule1
+        .withDescription("description")
+        .withEffect(DENY)
+        .withResources(List.of("table"))
+        .withOperations(List.of(EDIT_ALL))
+        .withCondition("isOwner()");
+    fieldAdded(change, getRuleField(rule1, FIELD_DESCRIPTION), "description");
+    fieldUpdated(change, getRuleField(rule1, "effect"), ALLOW, DENY);
+    fieldUpdated(
+        change, getRuleField(rule1, "resources"), List.of(ALL_RESOURCES), List.of("table"));
+    fieldUpdated(change, getRuleField(rule1, "operations"), List.of(VIEW_ALL), List.of(EDIT_ALL));
+    fieldAdded(change, getRuleField(rule1, "condition"), "isOwner()");
+    policy.setRules(List.of(rule1));
+    policy =
+        patchEntityUsingFqnAndCheck(policy, origJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
+
+    // Change existing rule1 fields. Update description and condition
+    // Changes from this PATCH is consolidated with the previous changes
+    origJson = JsonUtils.pojoToJson(policy);
+    change = getChangeDescription(policy, CHANGE_CONSOLIDATED);
+    rule1.withDescription("newDescription").withCondition("noOwner()");
+    fieldAdded(change, getRuleField(rule1, FIELD_DESCRIPTION), "newDescription");
+    fieldUpdated(change, getRuleField(rule1, "effect"), ALLOW, DENY);
+    fieldUpdated(
+        change, getRuleField(rule1, "resources"), List.of(ALL_RESOURCES), List.of("table"));
+    fieldUpdated(change, getRuleField(rule1, "operations"), List.of(VIEW_ALL), List.of(EDIT_ALL));
+    fieldAdded(change, getRuleField(rule1, "condition"), "noOwner()");
+    policy.setRules(List.of(rule1));
+    policy =
+        patchEntityUsingFqnAndCheck(
+            policy, origJson, ADMIN_AUTH_HEADERS, CHANGE_CONSOLIDATED, change);
+
+    // Add a new rule - Changes from this PATCH is consolidated with the previous changes
+    origJson = JsonUtils.pojoToJson(policy);
+    Rule newRule =
+        accessControlRule(
+            "newRule", List.of(ALL_RESOURCES), List.of(MetadataOperation.EDIT_DESCRIPTION), ALLOW);
+    policy.getRules().add(newRule);
+    change = getChangeDescription(policy, CHANGE_CONSOLIDATED);
+    fieldAdded(change, getRuleField(rule1, FIELD_DESCRIPTION), "newDescription");
+    fieldUpdated(change, getRuleField(rule1, "effect"), ALLOW, DENY);
+    fieldUpdated(
+        change, getRuleField(rule1, "resources"), List.of(ALL_RESOURCES), List.of("table"));
+    fieldUpdated(change, getRuleField(rule1, "operations"), List.of(VIEW_ALL), List.of(EDIT_ALL));
+    fieldAdded(change, getRuleField(rule1, "condition"), "noOwner()");
+    fieldAdded(change, "rules", List.of(newRule));
+    policy =
+        patchEntityUsingFqnAndCheck(
+            policy, origJson, ADMIN_AUTH_HEADERS, CHANGE_CONSOLIDATED, change);
+
+    // Delete rule1 rule
+    // Changes from this PATCH is consolidated with the previous changes
+    origJson = JsonUtils.pojoToJson(policy);
+    policy.setRules(List.of(newRule));
+    change = getChangeDescription(policy, CHANGE_CONSOLIDATED);
+    // Revert all the changes made to rule1 to the state when it was added first
+    rule1 = accessControlRule("rule1", List.of(ALL_RESOURCES), List.of(VIEW_ALL), ALLOW);
+    fieldAdded(change, "rules", List.of(newRule));
+    fieldDeleted(change, "rules", List.of(rule1));
+    patchEntityUsingFqnAndCheck(policy, origJson, ADMIN_AUTH_HEADERS, CHANGE_CONSOLIDATED, change);
+  }
+
+  @Test
   void get_policyFunctions() throws HttpResponseException {
     // Ensure all the functions for authoring policy rule conditions are returned
     List<Function> actualFunctions = getPolicyFunctions(ADMIN_AUTH_HEADERS).getData();
