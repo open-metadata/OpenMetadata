@@ -586,9 +586,10 @@ class DbtSource(DbtServiceSource):
                 columns.append(
                     Column(
                         name=column_name,
-                        description=manifest_column.description
-                        if manifest_column.description
-                        else column_description,
+                        # If the catalog description is present, use it, else use the manifest description
+                        description=column_description
+                        if column_description
+                        else manifest_column.description,
                         dataType=ColumnTypeParser.get_column_type(
                             catalog_column.type
                             if catalog_column

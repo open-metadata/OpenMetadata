@@ -85,7 +85,7 @@ def get_ometa_tag_and_classification(
 def get_tag_label(
     metadata: OpenMetadata,
     tag_name: str,
-    classification_name: str,
+    classification_name: Optional[str],
     tag_type: Union[Tag, GlossaryTerm] = Tag,
 ) -> Optional[TagLabel]:
     """
@@ -127,7 +127,7 @@ def get_tag_label(
 def get_tag_labels(
     metadata: OpenMetadata,
     tags: List[str],
-    classification_name: Optional[str],
+    classification_name: Optional[str] = None,
     include_tags: bool = True,
     tag_type: Union[Tag, GlossaryTerm] = Tag,
 ) -> Optional[List[TagLabel]]:
