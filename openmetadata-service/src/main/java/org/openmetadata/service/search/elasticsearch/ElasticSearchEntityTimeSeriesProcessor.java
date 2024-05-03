@@ -89,7 +89,7 @@ public class ElasticSearchEntityTimeSeriesProcessor
             entity.getId().toString());
     updateRequest.doc(
         JsonUtils.pojoToJson(
-            Objects.requireNonNull(Entity.buildSearchIndex(entityType, entity).buildESDoc())),
+            Objects.requireNonNull(Entity.buildSearchIndex(entityType, entity).buildSearchIndexDoc())),
         XContentType.JSON);
     updateRequest.docAsUpsert(true);
     return updateRequest;
