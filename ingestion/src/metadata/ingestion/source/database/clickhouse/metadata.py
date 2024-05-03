@@ -146,9 +146,12 @@ class ClickhouseSource(CommonDbSourceService):
 
         return regular_tables + material_tables + view_tables
 
-    def get_view_definition(
+    def get_schema_definition(
         self, table_type: str, table_name: str, schema_name: str, inspector: Inspector
     ) -> Optional[str]:
+        """
+        Get the DDL statement or View Definition for a table
+        """
         try:
             if table_type in {TableType.View, TableType.MaterializedView}:
                 definition_fn = inspector.get_view_definition
@@ -158,7 +161,7 @@ class ClickhouseSource(CommonDbSourceService):
                     self.connection, table_name, schema_name
                 )
             schema_definition = (
-                "" if schema_definition is None else str(schema_definition)
+                str(schema_definition) if schema_definition is not None else None
             )
             return schema_definition
 

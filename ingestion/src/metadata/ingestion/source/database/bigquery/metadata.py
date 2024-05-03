@@ -605,18 +605,21 @@ class BigquerySource(
                         f"Error trying to connect to database {project_id}: {exc}"
                     )
 
-    def get_view_definition(
+    def get_schema_definition(
         self, table_type: str, table_name: str, schema_name: str, inspector: Inspector
     ) -> Optional[str]:
+        """
+        Get the DDL statement or View Definition for a table
+        """
         try:
             if table_type == TableType.View:
                 view_definition = inspector.get_view_definition(
                     fqn._build(self.context.get().database, schema_name, table_name)
                 )
                 view_definition = (
-                    ""
-                    if view_definition is None
-                    else f"CREATE VIEW {schema_name}.{table_name} AS {str(view_definition)}"
+                    f"CREATE VIEW {schema_name}.{table_name} AS {str(view_definition)}"
+                    if view_definition is not None
+                    else None
                 )
                 return view_definition
 
@@ -624,11 +627,11 @@ class BigquerySource(
                 self.connection, table_name, schema_name
             )
             schema_definition = (
-                "" if schema_definition is None else str(schema_definition)
+                str(schema_definition) if schema_definition is not None else None
             )
             return schema_definition
         except NotImplementedError:
-            logger.warning("View definition not implemented")
+            logger.warning("Schema definition not implemented")
         return None
 
     def get_table_partition_details(

@@ -143,9 +143,12 @@ class OracleSource(StoredProcedureMixin, CommonDbSourceService):
 
         return regular_tables + material_tables
 
-    def get_view_definition(
+    def get_schema_definition(
         self, table_type: str, table_name: str, schema_name: str, inspector: Inspector
     ) -> Optional[str]:
+        """
+        Get the DDL statement or View Definition for a table
+        """
         try:
             if table_type not in {TableType.View, TableType.MaterializedView}:
                 schema_definition = inspector.get_table_ddl(
@@ -160,7 +163,7 @@ class OracleSource(StoredProcedureMixin, CommonDbSourceService):
                 schema_definition = definition_fn(table_name, schema_name)
 
             schema_definition = (
-                "" if schema_definition is None else str(schema_definition)
+                str(schema_definition) if schema_definition is not None else None
             )
             return schema_definition
 

@@ -103,7 +103,7 @@ class HiveSource(CommonDbSourceService):
         self._connection_map = {}  # Lazy init as well
         self._inspector_map = {}
 
-    def get_view_definition(  # pylint: disable=unused-argument
+    def get_schema_definition(  # pylint: disable=unused-argument
         self, table_type: str, table_name: str, schema_name: str, inspector: Inspector
     ) -> Optional[str]:
         """
@@ -112,14 +112,14 @@ class HiveSource(CommonDbSourceService):
         try:
             schema_definition = inspector.get_view_definition(table_name, schema_name)
             schema_definition = (
-                "" if schema_definition is None else str(schema_definition)
+                str(schema_definition) if schema_definition is not None else None
             )
             return schema_definition
 
         except NotImplementedError:
-            logger.warning("View definition not implemented")
+            logger.warning("Schema definition not implemented")
 
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.warning(f"Failed to fetch view definition for {table_name}: {exc}")
+            logger.warning(f"Failed to fetch schema definition for {table_name}: {exc}")
         return None

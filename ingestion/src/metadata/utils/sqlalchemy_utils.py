@@ -12,11 +12,15 @@
 """
 Module for sqlalchemy dialect utils
 """
-
+import traceback
 from typing import Dict, Optional, Tuple
 
 from sqlalchemy.engine import Engine, reflection
 from sqlalchemy.schema import CreateTable, MetaData
+
+from metadata.utils.logger import ingestion_logger
+
+logger = ingestion_logger()
 
 
 @reflection.cache
@@ -135,12 +139,16 @@ def get_all_table_ddls(
     """
     Method to fetch ddl of all available tables
     """
-    self.all_table_ddls: Dict[Tuple[str, str], str] = {}
-    self.current_db: str = schema_name
-    meta = MetaData()
-    meta.reflect(bind=connection.engine, schema=schema_name)
-    for table in meta.sorted_tables or []:
-        self.all_table_ddls[(table.schema, table.name)] = str(CreateTable(table))
+    try:
+        self.all_table_ddls: Dict[Tuple[str, str], str] = {}
+        self.current_db: str = schema_name
+        meta = MetaData()
+        meta.reflect(bind=connection.engine, schema=schema_name)
+        for table in meta.sorted_tables or []:
+            self.all_table_ddls[(table.schema, table.name)] = str(CreateTable(table))
+    except Exception as exc:
+        logger.debug(traceback.format_exc())
+        logger.warning(f"Failed to get table ddls for {schema_name}: {exc}")
 
 
 def get_table_ddl_wrapper(
