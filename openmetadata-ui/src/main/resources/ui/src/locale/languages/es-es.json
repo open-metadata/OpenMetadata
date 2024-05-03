@@ -1693,6 +1693,7 @@
     "result-limit-message": "Configuración para establecer el límite de los registros de consulta.",
     "retention-period-description": "Retention period se refiere a la duración durante la cual los datos se retienen antes de que sean elegibles para su eliminación o archivo.",
     "run-sample-data-to-ingest-sample-data": "'Ejecutar datos de muestra para ingresar activos de datos de muestra en tu OpenMetadata.'",
+    "run-status-at-timestamp": "Run status: {{status}} at {{timestamp}}",
     "schedule-for-ingestion-description": "La programación se puede configurar en una cadencia horaria, diaria o semanal.",
     "scheduled-run-every": "Programado para ejecutarse cada",
     "scopes-comma-separated": "Agrega el valor de ámbitos, separados por comas",
