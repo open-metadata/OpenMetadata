@@ -76,6 +76,7 @@ public class TestSuiteResource extends EntityResource<TestSuite, TestSuiteReposi
       "Cannot delete executable test suite. To delete executable test suite, use DELETE /v1/dataQuality/testSuites/executable/<...>";
 
   static final String FIELDS = "owner,tests,summary";
+  static final String SEARCH_FIELDS_EXCLUDE = "table,database,databaseSchema,service";
 
   public TestSuiteResource(Authorizer authorizer) {
     super(Entity.TEST_SUITE, authorizer);
@@ -278,6 +279,7 @@ public class TestSuiteResource extends EntityResource<TestSuite, TestSuiteReposi
     searchListFilter.addQueryParam("testSuiteType", testSuiteType);
     searchListFilter.addQueryParam("includeEmptyTestSuites", includeEmptyTestSuites);
     searchListFilter.addQueryParam("fullyQualifiedName", fullyQualifiedName);
+    searchListFilter.addQueryParam("excludeFields", SEARCH_FIELDS_EXCLUDE);
     if (!nullOrEmpty(owner)) {
       EntityInterface entity;
       try {
@@ -704,11 +706,7 @@ public class TestSuiteResource extends EntityResource<TestSuite, TestSuiteReposi
     if (Boolean.FALSE.equals(testSuite.getExecutable())) {
       throw new IllegalArgumentException(EXECUTABLE_TEST_SUITE_DELETION_ERROR);
     }
-    RestUtil.DeleteResponse<TestSuite> response =
-        repository.deleteByName(
-            securityContext.getUserPrincipal().getName(), name, recursive, hardDelete);
-    addHref(uriInfo, response.entity());
-    return response.toResponse();
+    return deleteByName(uriInfo, securityContext, name, recursive, hardDelete);
   }
 
   @DELETE
@@ -744,10 +742,7 @@ public class TestSuiteResource extends EntityResource<TestSuite, TestSuiteReposi
     if (Boolean.FALSE.equals(testSuite.getExecutable())) {
       throw new IllegalArgumentException(EXECUTABLE_TEST_SUITE_DELETION_ERROR);
     }
-    RestUtil.DeleteResponse<TestSuite> response =
-        repository.delete(securityContext.getUserPrincipal().getName(), id, recursive, hardDelete);
-    addHref(uriInfo, response.entity());
-    return response.toResponse();
+    return delete(uriInfo, securityContext, id, recursive, hardDelete);
   }
 
   @PUT
