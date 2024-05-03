@@ -9,7 +9,7 @@
   "properties": {
     "name": {
       "description": "Name that identifies this test case.",
-      "$ref": "../../type/basic.json#/definitions/entityName"
+      "$ref": "../../type/basic.json#/definitions/testCaseEntityName"
     },
     "description": {
       "description": "Description of the testcase.",
