@@ -243,6 +243,42 @@ public class ChartResourceTest extends EntityResourceTest<Chart, CreateChart> {
     assertEquals(createRequest.getSourceUrl(), chart.getSourceUrl());
   }
 
+  @Test
+  void patch_usingFqn_chart_200(TestInfo test) throws IOException {
+    ChartType type1 = ChartType.Bar;
+    ChartType type2 = ChartType.Line;
+
+    // Create with no url, description and chart type.
+    CreateChart request =
+        createRequest(test)
+            .withService(METABASE_REFERENCE.getName())
+            .withSourceUrl(null)
+            .withDescription(null)
+            .withChartType(null);
+    Chart chart = createAndCheckEntity(request, ADMIN_AUTH_HEADERS);
+    String originalJson = JsonUtils.pojoToJson(chart);
+
+    // Set url, description and chart type.
+    ChangeDescription change = getChangeDescription(chart, MINOR_UPDATE);
+    chart.withChartType(type1).withSourceUrl("url1").withDescription("desc1");
+    fieldAdded(change, "description", "desc1");
+    fieldAdded(change, "chartType", type1);
+    fieldAdded(change, "sourceUrl", "url1");
+    chart =
+        patchEntityUsingFqnAndCheck(chart, originalJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
+
+    // Update description, chartType and chart url and verify patch
+    // Changes from this PATCH is consolidated with the previous changes
+    originalJson = JsonUtils.pojoToJson(chart);
+    change = getChangeDescription(chart, CHANGE_CONSOLIDATED);
+    fieldAdded(change, "description", "desc2");
+    fieldAdded(change, "chartType", type2);
+    fieldAdded(change, "sourceUrl", "url2");
+    chart.withChartType(type2).withSourceUrl("url2").withDescription("desc2");
+    patchEntityUsingFqnAndCheck(
+        chart, originalJson, ADMIN_AUTH_HEADERS, CHANGE_CONSOLIDATED, change);
+  }
+
   @Override
   public void compareEntities(Chart expected, Chart patched, Map<String, String> authHeaders) {
     assertReference(expected.getService(), patched.getService());
