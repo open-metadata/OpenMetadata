@@ -99,6 +99,8 @@ class SearchClassBase {
       [EntityType.TEST_SUITE]: SearchIndex.TEST_SUITE,
       [EntityType.GLOSSARY]: SearchIndex.GLOSSARY,
       [EntityType.INGESTION_PIPELINE]: SearchIndex.INGESTION_PIPELINE,
+      [EntityType.TEST_CASE_RESOLUTION_STATUS]:
+        SearchIndex.TEST_CASE_RESOLUTION_STATUS,
     };
   }
 
@@ -136,6 +138,8 @@ class SearchClassBase {
       [SearchIndex.TEST_SUITE]: EntityType.TEST_SUITE,
       [SearchIndex.GLOSSARY]: EntityType.GLOSSARY,
       [SearchIndex.INGESTION_PIPELINE]: EntityType.INGESTION_PIPELINE,
+      [SearchIndex.TEST_CASE_RESOLUTION_STATUS]:
+        EntityType.TEST_CASE_RESOLUTION_STATUS,
     };
   }
 

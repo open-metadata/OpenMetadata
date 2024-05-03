@@ -29,11 +29,14 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.EntityRepository;
+import org.openmetadata.service.jdbi3.EntityTimeSeriesRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.search.SearchRequest;
 import org.openmetadata.service.util.JsonUtils;
 import os.org.opensearch.action.bulk.BulkItemResponse;
 import os.org.opensearch.action.bulk.BulkResponse;
+
+import static org.openmetadata.service.apps.bundles.searchIndex.SearchIndexApp.TIME_SERIES_ENTITIES;
 
 public class ReindexingUtil {
   private ReindexingUtil() {
@@ -55,13 +58,19 @@ public class ReindexingUtil {
   public static int getTotalRequestToProcess(Set<String> entities, CollectionDAO dao) {
     int total = 0;
     for (String entityType : entities) {
-      if (!isDataInsightIndex(entityType)) {
+      if (!TIME_SERIES_ENTITIES.contains(entityType)) {
         EntityRepository<?> repository = Entity.getEntityRepository(entityType);
         total += repository.getDao().listTotalCount();
       } else {
-        total +=
-            dao.reportDataTimeSeriesDao()
-                .listCount(new ListFilter(null).addQueryParam("entityFQNHash", entityType));
+        EntityTimeSeriesRepository<?> repository;
+        ListFilter listFilter = new ListFilter(null);
+        if (isDataInsightIndex(entityType)) {
+          listFilter.addQueryParam("entityFQNHash", entityType);
+          repository = Entity.getEntityTimeSeriesRepository(Entity.ENTITY_REPORT_DATA);
+        } else {
+          repository = Entity.getEntityTimeSeriesRepository(entityType);
+        }
+        total += repository.getTimeSeriesDao().listCount(listFilter);
       }
     }
     return total;

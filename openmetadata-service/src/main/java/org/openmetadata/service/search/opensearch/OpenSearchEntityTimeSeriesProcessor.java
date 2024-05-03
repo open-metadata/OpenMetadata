@@ -5,15 +5,16 @@ import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.getU
 
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
+
 import lombok.extern.slf4j.Slf4j;
 import org.glassfish.jersey.internal.util.ExceptionUtils;
 import org.openmetadata.common.utils.CommonUtil;
-import org.openmetadata.schema.analytics.ReportData;
+import org.openmetadata.schema.EntityTimeSeriesInterface;
 import org.openmetadata.schema.system.IndexingError;
 import org.openmetadata.schema.system.StepStats;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.SearchIndexException;
-import org.openmetadata.service.search.indexes.ReportDataIndexes;
 import org.openmetadata.service.search.models.IndexMapping;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.ResultList;
@@ -23,16 +24,16 @@ import os.org.opensearch.action.update.UpdateRequest;
 import os.org.opensearch.common.xcontent.XContentType;
 
 @Slf4j
-public class OpenSearchDataInsightProcessor
-    implements Processor<BulkRequest, ResultList<ReportData>> {
+public class OpenSearchEntityTimeSeriesProcessor
+    implements Processor<BulkRequest, ResultList<? extends EntityTimeSeriesInterface>> {
   private final StepStats stats = new StepStats();
 
-  public OpenSearchDataInsightProcessor(int total) {
+  public OpenSearchEntityTimeSeriesProcessor(int total) {
     this.stats.withTotalRecords(total).withSuccessRecords(0).withFailedRecords(0);
   }
 
   @Override
-  public BulkRequest process(ResultList<ReportData> input, Map<String, Object> contextData)
+  public BulkRequest process(ResultList<? extends EntityTimeSeriesInterface> input, Map<String, Object> contextData)
       throws SearchIndexException {
     String entityType = (String) contextData.get(ENTITY_TYPE_KEY);
     if (CommonUtil.nullOrEmpty(entityType)) {
@@ -70,23 +71,24 @@ public class OpenSearchDataInsightProcessor
     return requests;
   }
 
-  private BulkRequest buildBulkRequests(String entityType, List<ReportData> entities) {
+  private BulkRequest buildBulkRequests(String entityType, List<? extends EntityTimeSeriesInterface> entities) {
     BulkRequest bulkRequests = new BulkRequest();
-    for (ReportData reportData : entities) {
-      UpdateRequest request = getUpdateRequest(entityType, reportData);
+    for (EntityTimeSeriesInterface entity : entities) {
+      UpdateRequest request = getUpdateRequest(entityType, entity);
       bulkRequests.add(request);
     }
     return bulkRequests;
   }
 
-  private UpdateRequest getUpdateRequest(String entityType, ReportData reportData) {
+  private UpdateRequest getUpdateRequest(String entityType, EntityTimeSeriesInterface entity) {
     IndexMapping indexMapping = Entity.getSearchRepository().getIndexMapping(entityType);
     UpdateRequest updateRequest =
         new UpdateRequest(
             indexMapping.getIndexName(Entity.getSearchRepository().getClusterAlias()),
-            reportData.getId().toString());
+            entity.getId().toString());
     updateRequest.doc(
-        JsonUtils.pojoToJson(new ReportDataIndexes(reportData).buildESDoc()), XContentType.JSON);
+        JsonUtils.pojoToJson(
+                Objects.requireNonNull(Entity.buildSearchIndex(entityType, entity).buildESDoc())), XContentType.JSON);
     updateRequest.docAsUpsert(true);
     return updateRequest;
   }

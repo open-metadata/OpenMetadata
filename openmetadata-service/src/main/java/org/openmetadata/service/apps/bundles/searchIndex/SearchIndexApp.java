@@ -6,7 +6,6 @@ import static org.openmetadata.service.apps.scheduler.AppScheduler.ON_DEMAND_JOB
 import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.ENTITY_NAME_LIST_KEY;
 import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.ENTITY_TYPE_KEY;
 import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.getTotalRequestToProcess;
-import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.isDataInsightIndex;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -19,7 +18,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang.exception.ExceptionUtils;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.EntityInterface;
-import org.openmetadata.schema.analytics.ReportData;
+import org.openmetadata.schema.EntityTimeSeriesInterface;
 import org.openmetadata.schema.entity.app.App;
 import org.openmetadata.schema.entity.app.AppRunRecord;
 import org.openmetadata.schema.entity.app.FailureContext;
@@ -33,11 +32,11 @@ import org.openmetadata.service.apps.AbstractNativeApplication;
 import org.openmetadata.service.exception.SearchIndexException;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.search.SearchRepository;
-import org.openmetadata.service.search.elasticsearch.ElasticSearchDataInsightProcessor;
+import org.openmetadata.service.search.elasticsearch.ElasticSearchEntityTimeSeriesProcessor;
 import org.openmetadata.service.search.elasticsearch.ElasticSearchEntitiesProcessor;
 import org.openmetadata.service.search.elasticsearch.ElasticSearchIndexSink;
 import org.openmetadata.service.search.models.IndexMapping;
-import org.openmetadata.service.search.opensearch.OpenSearchDataInsightProcessor;
+import org.openmetadata.service.search.opensearch.OpenSearchEntityTimeSeriesProcessor;
 import org.openmetadata.service.search.opensearch.OpenSearchEntitiesProcessor;
 import org.openmetadata.service.search.opensearch.OpenSearchIndexSink;
 import org.openmetadata.service.socket.WebSocketManager;
@@ -45,8 +44,9 @@ import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.ResultList;
 import org.openmetadata.service.workflows.interfaces.Processor;
 import org.openmetadata.service.workflows.interfaces.Sink;
-import org.openmetadata.service.workflows.searchIndex.PaginatedDataInsightSource;
+import org.openmetadata.service.workflows.interfaces.Source;
 import org.openmetadata.service.workflows.searchIndex.PaginatedEntitiesSource;
+import org.openmetadata.service.workflows.searchIndex.PaginatedEntityTimeSeriesSource;
 import org.quartz.JobExecutionContext;
 
 @Slf4j
@@ -88,11 +88,17 @@ public class SearchIndexApp extends AbstractNativeApplication {
           "webAnalyticUserActivityReportData",
           "domain",
           "storedProcedure",
-          "storageService");
-  private final List<PaginatedEntitiesSource> paginatedEntitiesSources = new ArrayList<>();
-  private final List<PaginatedDataInsightSource> paginatedDataInsightSources = new ArrayList<>();
+          "storageService",
+          "testCaseResolutionStatus");
+  public static final Set<String> TIME_SERIES_ENTITIES =
+      Set.of(
+          "entityReportData",
+          "webAnalyticEntityViewReportData",
+          "webAnalyticUserActivityReportData",
+          "testCaseResolutionStatus");
+  private final List<Source> paginatedSources = new ArrayList<>();
   private Processor entityProcessor;
-  private Processor dataInsightProcessor;
+  private Processor entityTimeSeriesProcessor;
   private Sink searchIndexSink;
 
   @Getter EventPublisherJob jobData;
@@ -133,8 +139,7 @@ public class SearchIndexApp extends AbstractNativeApplication {
       }
 
       // Run ReIndexing
-      entitiesReIndex(jobExecutionContext);
-      dataInsightReindex(jobExecutionContext);
+      performReindex(jobExecutionContext);
       // Mark Job as Completed
       updateJobStatus();
     } catch (Exception ex) {
@@ -167,27 +172,31 @@ public class SearchIndexApp extends AbstractNativeApplication {
         .getEntities()
         .forEach(
             entityType -> {
-              if (!isDataInsightIndex(entityType)) {
+              if (!TIME_SERIES_ENTITIES.contains(entityType)) {
                 List<String> fields = List.of("*");
                 PaginatedEntitiesSource source =
                     new PaginatedEntitiesSource(entityType, jobData.getBatchSize(), fields);
                 if (!CommonUtil.nullOrEmpty(jobData.getAfterCursor())) {
                   source.setCursor(jobData.getAfterCursor());
                 }
-                paginatedEntitiesSources.add(source);
+                paginatedSources.add(source);
               } else {
-                paginatedDataInsightSources.add(
-                    new PaginatedDataInsightSource(
-                        collectionDAO, entityType, jobData.getBatchSize()));
+                PaginatedEntityTimeSeriesSource source =
+                    new PaginatedEntityTimeSeriesSource(
+                        entityType, jobData.getBatchSize(), List.of("*"));
+                if (!CommonUtil.nullOrEmpty(jobData.getAfterCursor())) {
+                  source.setCursor(jobData.getAfterCursor());
+                }
+                paginatedSources.add(source);
               }
             });
     if (searchRepository.getSearchType().equals(ElasticSearchConfiguration.SearchType.OPENSEARCH)) {
       this.entityProcessor = new OpenSearchEntitiesProcessor(totalRecords);
-      this.dataInsightProcessor = new OpenSearchDataInsightProcessor(totalRecords);
+      this.entityTimeSeriesProcessor = new OpenSearchEntityTimeSeriesProcessor(totalRecords);
       this.searchIndexSink = new OpenSearchIndexSink(searchRepository, totalRecords);
     } else {
       this.entityProcessor = new ElasticSearchEntitiesProcessor(totalRecords);
-      this.dataInsightProcessor = new ElasticSearchDataInsightProcessor(totalRecords);
+      this.entityTimeSeriesProcessor = new ElasticSearchEntityTimeSeriesProcessor(totalRecords);
       this.searchIndexSink = new ElasticSearchIndexSink(searchRepository, totalRecords);
     }
   }
@@ -213,89 +222,96 @@ public class SearchIndexApp extends AbstractNativeApplication {
     pushAppStatusUpdates(jobExecutionContext, appRecord, true);
   }
 
-  private void entitiesReIndex(JobExecutionContext jobExecutionContext) {
+  private void performReindex(JobExecutionContext jobExecutionContext) throws SearchIndexException {
     Map<String, Object> contextData = new HashMap<>();
-    for (PaginatedEntitiesSource paginatedEntitiesSource : paginatedEntitiesSources) {
-      reCreateIndexes(paginatedEntitiesSource.getEntityType());
-      contextData.put(ENTITY_TYPE_KEY, paginatedEntitiesSource.getEntityType());
-      ResultList<? extends EntityInterface> resultList;
-      while (!stopped && !paginatedEntitiesSource.isDone()) {
+    for (Source paginatedSource : paginatedSources) {
+      List<String> entityName = new ArrayList<>();
+      reCreateIndexes(paginatedSource.getEntityType());
+      contextData.put(ENTITY_TYPE_KEY, paginatedSource.getEntityType());
+      Object resultList;
+      while (!stopped && !paginatedSource.isDone()) {
         try {
-          resultList = paginatedEntitiesSource.readNext(null);
-          List<String> entityName =
-              resultList.getData().stream()
-                  .map(
-                      entity ->
-                          String.format(
-                              "%s %s",
-                              paginatedEntitiesSource.getEntityType(),
-                              entity.getFullyQualifiedName()))
-                  .collect(Collectors.toList());
-
-          contextData.put(ENTITY_NAME_LIST_KEY, entityName);
-          if (!resultList.getData().isEmpty()) {
-            searchIndexSink.write(entityProcessor.process(resultList, contextData), contextData);
-            if (!resultList.getErrors().isEmpty()) {
-              throw new SearchIndexException(
-                  new IndexingError()
-                      .withErrorSource(READER)
-                      .withLastFailedCursor(paginatedEntitiesSource.getLastFailedCursor())
-                      .withSubmittedCount(paginatedEntitiesSource.getBatchSize())
-                      .withSuccessCount(resultList.getData().size())
-                      .withFailedCount(resultList.getErrors().size())
-                      .withMessage(
-                          "Issues in Reading A Batch For Entities. Check Errors Corresponding to Entities.")
-                      .withFailedEntities(resultList.getErrors()));
-            }
-            paginatedEntitiesSource.updateStats(resultList.getData().size(), 0);
+          resultList =  paginatedSource.readNext(null);
+          if (!TIME_SERIES_ENTITIES.contains(paginatedSource.getEntityType())) {
+            entityName = getEntityNameFromEntity((ResultList<? extends EntityInterface>) resultList, paginatedSource.getEntityType());
+            contextData.put(ENTITY_NAME_LIST_KEY, entityName);
+            processEntity((ResultList<? extends EntityInterface>) resultList, contextData, paginatedSource);
+          } else {
+            entityName = getEntityNameFromEntityTimeSeries((ResultList<? extends EntityTimeSeriesInterface>) resultList, paginatedSource.getEntityType());
+            contextData.put(ENTITY_NAME_LIST_KEY, entityName);
+            processEntityTimeSeries((ResultList<? extends EntityTimeSeriesInterface>) resultList, contextData, paginatedSource);
           }
+
         } catch (SearchIndexException rx) {
           jobData.setStatus(EventPublisherJob.Status.FAILED);
           jobData.setFailure(rx.getIndexingError());
-          paginatedEntitiesSource.updateStats(
-              rx.getIndexingError().getSuccessCount(), rx.getIndexingError().getFailedCount());
+          paginatedSource.updateStats(
+                  rx.getIndexingError().getSuccessCount(), rx.getIndexingError().getFailedCount());
         } finally {
-          updateStats(paginatedEntitiesSource.getEntityType(), paginatedEntitiesSource.getStats());
+          updateStats(paginatedSource.getEntityType(), paginatedSource.getStats());
           sendUpdates(jobExecutionContext);
         }
       }
     }
   }
 
-  private void dataInsightReindex(JobExecutionContext jobExecutionContext) {
-    Map<String, Object> contextData = new HashMap<>();
-    for (PaginatedDataInsightSource paginatedDataInsightSource : paginatedDataInsightSources) {
-      reCreateIndexes(paginatedDataInsightSource.getEntityType());
-      contextData.put(ENTITY_TYPE_KEY, paginatedDataInsightSource.getEntityType());
-      ResultList<ReportData> resultList;
-      while (!stopped && !paginatedDataInsightSource.isDone()) {
-        try {
-          resultList = paginatedDataInsightSource.readNext(null);
-          List<String> entityName =
-              resultList.getData().stream()
-                  .map(
-                      entity ->
-                          String.format(
-                              "%s %s", paginatedDataInsightSource.getEntityType(), entity.getId()))
-                  .collect(Collectors.toList());
+  private List<String> getEntityNameFromEntity(ResultList<? extends EntityInterface> resultList, String entityType)  {
+    return resultList.getData().stream()
+                    .map(
+                            entity ->
+                                    String.format(
+                                            "%s %s", entityType, entity.getId())).toList();
+  }
 
-          contextData.put(ENTITY_NAME_LIST_KEY, entityName);
-          if (!resultList.getData().isEmpty()) {
-            searchIndexSink.write(
-                dataInsightProcessor.process(resultList, contextData), contextData);
-          }
-          paginatedDataInsightSource.updateStats(resultList.getData().size(), 0);
-        } catch (SearchIndexException ex) {
-          jobData.setStatus(EventPublisherJob.Status.FAILED);
-          jobData.setFailure(ex.getIndexingError());
-          paginatedDataInsightSource.updateStats(
-              ex.getIndexingError().getSuccessCount(), ex.getIndexingError().getFailedCount());
-        } finally {
-          updateStats(
-              paginatedDataInsightSource.getEntityType(), paginatedDataInsightSource.getStats());
-          sendUpdates(jobExecutionContext);
-        }
+  private List<String> getEntityNameFromEntityTimeSeries(ResultList<? extends EntityTimeSeriesInterface> resultList, String entityType)  {
+    return resultList.getData().stream()
+            .map(
+                    entity ->
+                            String.format(
+                                    "%s %s", entityType, entity.getId())).toList();
+  }
+
+  private void processEntity(
+          ResultList<? extends EntityInterface> resultList,
+          Map<String, Object> contextData,
+          Source paginatedSource) throws SearchIndexException {
+    if (!resultList.getData().isEmpty()) {
+      searchIndexSink.write(entityProcessor.process(resultList, contextData), contextData);
+      if (!resultList.getErrors().isEmpty()) {
+        throw new SearchIndexException(
+                new IndexingError()
+                        .withErrorSource(READER)
+                        .withLastFailedCursor(paginatedSource.getLastFailedCursor())
+                        .withSubmittedCount(paginatedSource.getBatchSize())
+                        .withSuccessCount(resultList.getData().size())
+                        .withFailedCount(resultList.getErrors().size())
+                        .withMessage(
+                                "Issues in Reading A Batch For Entities. Check Errors Corresponding to Entities.")
+                        .withFailedEntities(resultList.getErrors()));
       }
+      paginatedSource.updateStats(resultList.getData().size(), 0);
+    }
+  }
+
+  private void processEntityTimeSeries(
+          ResultList<? extends EntityTimeSeriesInterface> resultList,
+          Map<String, Object> contextData,
+          Source paginatedSource) throws SearchIndexException {
+    if (!resultList.getData().isEmpty()) {
+      searchIndexSink.write(entityTimeSeriesProcessor.process(resultList, contextData), contextData);
+      if (!resultList.getErrors().isEmpty()) {
+        throw new SearchIndexException(
+                new IndexingError()
+                        .withErrorSource(READER)
+                        .withLastFailedCursor(paginatedSource.getLastFailedCursor())
+                        .withSubmittedCount(paginatedSource.getBatchSize())
+                        .withSuccessCount(resultList.getData().size())
+                        .withFailedCount(resultList.getErrors().size())
+                        .withMessage(
+                                "Issues in Reading A Batch For Entities. Check Errors Corresponding to Entities.")
+                        .withFailedEntities(resultList.getErrors()));
+      }
+      paginatedSource.updateStats(resultList.getData().size(), 0);
     }
   }
 
