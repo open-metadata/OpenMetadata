@@ -24,11 +24,14 @@
       "title": "AWS Credentials Configuration",
       "$ref": "../../../../security/credentials/awsCredentials.json"
     },
-    "bucketName": {
-      "title": "Bucket Name",
-      "description": "Bucket Name of the data source.",
-      "type": "string",
-      "default": ""
+    "bucketNames": {
+      "title": "Bucket Names",
+      "description": "Bucket Names of the data source.",
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "default": null
     },
     "connectionOptions": {
       "title": "Connection Options",

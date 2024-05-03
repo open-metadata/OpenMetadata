@@ -272,11 +272,11 @@ class S3Source(StorageServiceSource):
     def fetch_buckets(self) -> List[S3BucketResponse]:
         results: List[S3BucketResponse] = []
         try:
-            if self.service_connection.bucketName:
-                results.append(
-                    S3BucketResponse(Name=self.service_connection.bucketName)
-                )
-                return results
+            if self.service_connection.bucketNames:
+                return [
+                    S3BucketResponse(Name=bucket_name)
+                    for bucket_name in self.service_connection.bucketNames
+                ]
             # No pagination required, as there is a hard 1000 limit on nr of buckets per aws account
             for bucket in self.s3_client.list_buckets().get("Buckets") or []:
                 if filter_by_container(

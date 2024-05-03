@@ -234,7 +234,7 @@ Find more information about [Source Identity](https://docs.aws.amazon.com/STS/la
 
 {% codeInfo srNumber=13 %}
 
-- **Bucket Name (Optional)**: Provide the name of bucket in case you want to ingest metadata from only one s3 bucket, if you want to ingest metadata from multiple buckets then leave this field empty.
+- **Bucket Names (Optional)**: Provide the names of buckets that you would want to ingest, if you want to ingest metadata from all buckets or apply a filter to ingest buckets then leave this field empty.
 
 {% /codeInfo %}
 
@@ -277,7 +277,9 @@ source:
         # assumeRoleSourceIdentity: identity
 ```
 ```yaml {% srNumber=13 %}
-      bucketName: s3-testing
+      bucketName: 
+      - s3-testing-1
+      - s3-testing-2
 ```
 ```yaml {% srNumber=11 %}
       # connectionOptions:
