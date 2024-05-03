@@ -14,15 +14,11 @@
 import { interceptURL, verifyResponseStatusCode } from '../../common/common';
 import { getToken } from '../../common/Utils/LocalStorage';
 import { performLogin } from '../../common/Utils/Login';
+import { generateRandomUser } from '../../common/Utils/Owner';
 import { BASE_URL, LOGIN_ERROR_MESSAGE } from '../../constants/constants';
 
-const CREDENTIALS = {
-  firstName: 'Test',
-  lastName: 'User',
-  email: 'user@openmetadata.org',
-  password: 'User@OMD123',
-  id: '',
-};
+const CREDENTIALS = generateRandomUser();
+let userId = '';
 const invalidEmail = 'userTest@openmetadata.org';
 const invalidPassword = 'testUsers@123';
 
@@ -34,7 +30,7 @@ describe('Login flow should work properly', { tags: 'Settings' }, () => {
       const token = getToken(data);
       cy.request({
         method: 'DELETE',
-        url: `/api/v1/users/${CREDENTIALS.id}?hardDelete=true&recursive=false`,
+        url: `/api/v1/users/${userId}?hardDelete=true&recursive=false`,
         headers: { Authorization: `Bearer ${token}` },
       });
     });
@@ -80,22 +76,23 @@ describe('Login flow should work properly', { tags: 'Settings' }, () => {
     cy.url().should('eq', `${BASE_URL}/my-data`);
 
     // Verify user profile
-    cy.get('[data-testid="avatar"]')
-      .first()
-      .should('be.visible')
-      .trigger('mouseover')
-      .click();
+    cy.get('[data-testid="dropdown-profile"]').click();
 
     cy.get('[data-testid="user-name"]')
       .should('be.visible')
       .invoke('text')
       .should('contain', `${CREDENTIALS.firstName}${CREDENTIALS.lastName}`);
-    interceptURL('GET', 'api/v1/users/name/*', 'getUser');
+    interceptURL(
+      'GET',
+      '/api/v1/users/name/*?fields=profile*roles*teams*',
+      'getUser'
+    );
     cy.get('[data-testid="user-name"]')
       .should('be.visible')
       .click({ force: true });
-    cy.wait('@getUser').then((response) => {
-      CREDENTIALS.id = response.response?.body.id;
+    cy.wait('@getUser', { requestTimeout: 10000 }).then((response) => {
+      userId = response.response?.body.id;
+      cy.log('User ID:', response.response?.body.id);
     });
     cy.get(
       '[data-testid="user-profile"] [data-testid="user-profile-details"]'
@@ -135,5 +132,6 @@ describe('Login flow should work properly', { tags: 'Settings' }, () => {
     cy.get('[id="email"]').should('be.visible').clear().type(CREDENTIALS.email);
     // Click on submit
     cy.get('.ant-btn').contains('Submit').click();
+    cy.get('[data-testid="go-back-button"]').scrollIntoView().click();
   });
 });

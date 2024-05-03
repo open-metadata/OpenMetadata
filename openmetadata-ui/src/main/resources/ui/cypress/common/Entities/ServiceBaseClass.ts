@@ -277,6 +277,11 @@ class ServiceBaseClass {
           });
         }
 
+        cy.contains('td', `${ingestionType}`) // find the element with the text
+          .parent('tr') // find the parent 'tr'
+          .find('[data-testid="run"]')
+          .click();
+
         // Check cron schedule for Hour here
         // Being set from this.scheduleIngestion method
         cy.get('.ant-table-cell').should('contain', '0 * * * *');

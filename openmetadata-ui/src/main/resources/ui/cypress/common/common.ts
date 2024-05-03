@@ -46,7 +46,7 @@ export const interceptURL = (
 // waiting for response and validating the response status code
 export const verifyResponseStatusCode = (
   alias: string,
-  responseCode: number,
+  responseCode: number | number[],
   option?: Partial<WaitOptions>,
   hasMultipleResponseCode = false
 ) => {

@@ -79,7 +79,7 @@ describe('ProfilerConfigurationPage', () => {
       'Data Type is required.'
     );
     cy.get('[data-testid="cancel-button"]').click();
-    cy.url().should('eq', `${Cypress.config().baseUrl}/settings/preferences`);
+    cy.url().should('include', `/settings/preferences`);
   });
 
   it('Update profiler configuration', () => {

@@ -14,7 +14,12 @@
 import { interceptURL, verifyResponseStatusCode } from '../../common/common';
 import UsersTestClass from '../../common/Entities/UserClass';
 import { visitEntityDetailsPage } from '../../common/Utils/Entity';
-import { addOwner, removeOwner } from '../../common/Utils/Owner';
+import { getToken } from '../../common/Utils/LocalStorage';
+import {
+  addOwner,
+  generateRandomUser,
+  removeOwner,
+} from '../../common/Utils/Owner';
 import {
   addUser,
   editRole,
@@ -48,7 +53,9 @@ const expirationTime = {
   threemonths: '90',
 };
 const name = `Usercttest${uuid()}`;
-const ownerName = 'Aaron Warren';
+const owner = generateRandomUser();
+let userId = '';
+const ownerName = `${owner.firstName}${owner.lastName}`;
 const user = {
   name: name,
   email: `${name}@gmail.com`,
@@ -61,6 +68,36 @@ const user = {
 };
 
 describe('User with different Roles', { tags: 'Settings' }, () => {
+  before(() => {
+    cy.login();
+    cy.getAllLocalStorage().then((data) => {
+      const token = getToken(data);
+
+      // Create a new user
+      cy.request({
+        method: 'POST',
+        url: `/api/v1/users/signup`,
+        headers: { Authorization: `Bearer ${token}` },
+        body: owner,
+      }).then((response) => {
+        userId = response.body.id;
+      });
+    });
+  });
+  after(() => {
+    cy.login();
+    cy.getAllLocalStorage().then((data) => {
+      const token = getToken(data);
+
+      // Delete created user
+      cy.request({
+        method: 'DELETE',
+        url: `/api/v1/users/${userId}?hardDelete=true&recursive=false`,
+        headers: { Authorization: `Bearer ${token}` },
+      });
+    });
+  });
+
   it('Update own admin details', () => {
     cy.login();
     updateDetails({
