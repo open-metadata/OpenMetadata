@@ -120,9 +120,10 @@ function IngestionRunDetailsModal({
       closable={false}
       maskClosable={false}
       okButtonProps={{ style: { display: 'none' } }}
-      title={`Run status: ${startCase(
-        pipelineStatus?.pipelineState
-      )} at ${formatDateTime(pipelineStatus?.timestamp)}`}
+      title={t('label.run-status-at-timestamp', {
+        status: startCase(pipelineStatus?.pipelineState),
+        timestamp: formatDateTime(pipelineStatus?.timestamp),
+      })}
       width="80%"
       onCancel={handleCancel}>
       <Table
