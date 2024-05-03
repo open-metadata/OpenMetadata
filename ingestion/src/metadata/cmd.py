@@ -38,8 +38,6 @@ class MetadataCommands(Enum):
     USAGE = "usage"
     PROFILE = "profile"
     TEST = "test"
-    BACKUP = "backup"
-    RESTORE = "restore"
     WEBHOOK = "webhook"
     INSIGHT = "insight"
     LINEAGE = "lineage"
