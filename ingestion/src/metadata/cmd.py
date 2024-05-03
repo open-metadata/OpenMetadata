@@ -19,15 +19,12 @@ from pathlib import Path
 
 from metadata.__version__ import get_metadata_version
 from metadata.cli.app import run_app
-from metadata.cli.backup import UploadDestinationType, run_backup
 from metadata.cli.dataquality import run_test
 from metadata.cli.ingest import run_ingest
 from metadata.cli.insight import run_insight
 from metadata.cli.lineage import run_lineage
 from metadata.cli.profile import run_profiler
-from metadata.cli.restore import run_restore
 from metadata.cli.usage import run_usage
-from metadata.utils.helpers import BackupRestoreArgs
 from metadata.utils.logger import cli_logger, set_loggers_level
 
 logger = cli_logger()
@@ -55,32 +52,6 @@ RUN_PATH_METHODS = {
 }
 
 
-BACKUP_HELP = """
-    Run a backup for the metadata DB. Uses a custom dump strategy for OpenMetadata tables.
-
-    We can pass as many connection options as required with `-o <opt1>, -o <opt2> [...]`
-    Same with connection arguments `-a <arg1>, -a <arg2> [...]`
-
-    To run the upload, provide the information as
-    `--upload endpoint bucket key` and properly configure the environment
-    variables AWS_ACCESS_KEY_ID & AWS_SECRET_ACCESS_KEY.
-
-    If `-s` or `--schema` is provided, we will trigger a Postgres backup instead
-    of a MySQL backup. This is the value of the schema containing the OpenMetadata
-    tables.
-    """
-RESTORE_HELP = """
-    Run a restore for the metadata DB.
-
-    We can pass as many connection options as required with `-o <opt1>, -o <opt2> [...]`
-    Same with connection arguments `-a <arg1>, -a <arg2> [...]`
-
-    If `-s` or `--schema` is provided, we will trigger a Postgres Restore instead
-    of a MySQL restore. This is the value of the schema containing the OpenMetadata
-    tables.
-    """
-
-
 def create_common_config_parser_args(parser: argparse.ArgumentParser):
     parser.add_argument(
         "-c",
@@ -99,125 +70,6 @@ def webhook_args(parser: argparse.ArgumentParser):
         "-H", "--host", help="Webserver Host", type=str, default="0.0.0.0"
     )
     parser.add_argument("-p", "--port", help="Webserver Port", type=int, default=8000)
-
-
-def backup_args(parser: argparse.ArgumentParser):
-    """
-    Additional Parser Arguments for Backup
-    """
-    parser.add_argument(
-        "-H", "--host", help="Host that runs the database", required=True
-    )
-    parser.add_argument(
-        "-u",
-        "--user",
-        help="User to run the backup",
-        required=True,
-    )
-    parser.add_argument(
-        "-p",
-        "--password",
-        help="Credentials for the user",
-        required=True,
-    )
-    parser.add_argument(
-        "-d",
-        "--database",
-        help="Database to backup",
-        required=True,
-    )
-    parser.add_argument(
-        "--port",
-        help="Database service port",
-        default="3306",
-    )
-    parser.add_argument(
-        "--output",
-        help="Local path to store the backup",
-        type=Path,
-        default=None,
-    )
-    parser.add_argument(
-        "--filename",
-        help="Filename to store the backup",
-        default=None,
-    )
-    parser.add_argument(
-        "--upload-destination-type",
-        help="AWS or AZURE",
-        choices=UploadDestinationType.__members__,
-        default=None,
-    )
-    parser.add_argument(
-        "--upload",
-        help="S3 endpoint, bucket & key to upload the backup file",
-        nargs=3,
-        default=None,
-    )
-    parser.add_argument("-o", "--options", default=None, action="append")
-    parser.add_argument("-a", "--arguments", default=None, action="append")
-    parser.add_argument(
-        "-s",
-        "--schema",
-        default=None,
-    )
-
-
-def restore_args(parser: argparse.ArgumentParser):
-    """
-    Additional Parser Arguments for Restore
-    """
-    parser.add_argument(
-        "-H",
-        "--host",
-        help="Host that runs the database",
-        required=True,
-    )
-    parser.add_argument(
-        "-u",
-        "--user",
-        help="User to run the restore backup",
-        required=True,
-    )
-
-    parser.add_argument(
-        "-p",
-        "--password",
-        help="Credentials for the user",
-        required=True,
-    )
-
-    parser.add_argument(
-        "-d",
-        "--database",
-        help="Database to restore",
-        required=True,
-    )
-
-    parser.add_argument(
-        "--port",
-        help="Database service port",
-        default="3306",
-        required=False,
-    )
-
-    parser.add_argument(
-        "--input",
-        help="Local backup file path for restore",
-        type=Path,
-        required=True,
-    )
-
-    parser.add_argument("-o", "--options", default=None, action="append")
-
-    parser.add_argument("-a", "--arguments", default=None, action="append")
-
-    parser.add_argument(
-        "-s",
-        "--schema",
-        default=None,
-        required=False,
-    )
 
 
 def add_metadata_args(parser: argparse.ArgumentParser):
@@ -272,18 +124,6 @@ def get_parser(args=None):
             help="Workflow for running external applications",
         )
     )
-    backup_args(
-        sub_parser.add_parser(
-            MetadataCommands.BACKUP.value,
-            help=BACKUP_HELP,
-        )
-    )
-    restore_args(
-        sub_parser.add_parser(
-            MetadataCommands.RESTORE.value,
-            help=RESTORE_HELP,
-        )
-    )
     webhook_args(
         sub_parser.add_parser(
             MetadataCommands.WEBHOOK.value,
@@ -321,37 +161,6 @@ def metadata(args=None):
     if metadata_workflow in RUN_PATH_METHODS:
         RUN_PATH_METHODS[metadata_workflow](path)
 
-    if metadata_workflow == MetadataCommands.BACKUP.value:
-        run_backup(
-            common_backup_obj_instance=BackupRestoreArgs(
-                host=contains_args.get("host"),
-                user=contains_args.get("user"),
-                password=contains_args.get("password"),
-                database=contains_args.get("database"),
-                port=contains_args.get("port"),
-                options=contains_args.get("options"),
-                arguments=contains_args.get("arguments"),
-                schema=contains_args.get("schema"),
-            ),
-            output=contains_args.get("output"),
-            filename=contains_args.get("filename"),
-            upload_destination_type=contains_args.get("upload_destination_type"),
-            upload=contains_args.get("upload"),
-        )
-    if metadata_workflow == MetadataCommands.RESTORE.value:
-        run_restore(
-            common_restore_obj_instance=BackupRestoreArgs(
-                host=contains_args.get("host"),
-                user=contains_args.get("user"),
-                password=contains_args.get("password"),
-                database=contains_args.get("database"),
-                port=contains_args.get("port"),
-                options=contains_args.get("options"),
-                arguments=contains_args.get("arguments"),
-                schema=contains_args.get("schema"),
-            ),
-            sql_file=contains_args.get("input"),
-        )
     if metadata_workflow == MetadataCommands.WEBHOOK.value:
 
         class WebhookHandler(BaseHTTPRequestHandler):
