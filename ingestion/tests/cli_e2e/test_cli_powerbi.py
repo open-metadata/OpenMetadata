@@ -53,25 +53,25 @@ class PowerBICliTest(CliCommonDashboard.TestSuite):
         return []
 
     def expected_datamodels(self) -> int:
-        return 12
+        return 16
 
     def expected_dashboards_and_charts(self) -> int:
-        return 83
+        return 89
 
     def expected_lineage(self) -> int:
         return 44
 
     def expected_datamodel_lineage(self) -> int:
-        return 26
+        return 33
 
     def expected_tags(self) -> int:
         return 0
 
     def expected_filtered_mix(self) -> int:
-        return 22
+        return 24
 
     def expected_filtered_sink_mix(self) -> int:
-        return 42
+        return 53
 
     def expected_dashboards_and_charts_after_patch(self) -> int:
         return 0
