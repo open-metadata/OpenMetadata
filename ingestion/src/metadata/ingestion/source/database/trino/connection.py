@@ -18,6 +18,7 @@ from urllib.parse import quote_plus
 from requests import Session
 from sqlalchemy.engine import Engine
 
+from metadata.clients.azure_client import AzureClient
 from metadata.generated.schema.entity.automations.workflow import (
     Workflow as AutomationWorkflow,
 )
@@ -98,6 +99,18 @@ def get_connection(connection: TrinoConnection) -> Engine:
         connection.connectionArguments.__root__["verify"] = {
             "verify": connection.verify
         }
+    if hasattr(connection.authType, "azureConfig"):
+        azure_client = AzureClient(connection.authType.azureConfig).create_client()
+        if not connection.authType.azureConfig.scopes:
+            raise ValueError(
+                "Azure Scopes are missing, please refer https://learn.microsoft.com/en-gb/azure/mysql/flexible-server/how-to-azure-ad#2---retrieve-microsoft-entra-access-token and fetch the resource associated with it, for e.g. https://ossrdbms-aad.database.windows.net/.default"
+            )
+        access_token_obj = azure_client.get_token(
+            *connection.authType.azureConfig.scopes.split(",")
+        )
+        if not connection.connectionOptions:
+            connection.connectionOptions = init_empty_connection_options()
+        connection.connectionOptions.__root__["access_token"] = access_token_obj.token
     return create_generic_db_connection(
         connection=connection,
         get_connection_url_fn=get_connection_url,
