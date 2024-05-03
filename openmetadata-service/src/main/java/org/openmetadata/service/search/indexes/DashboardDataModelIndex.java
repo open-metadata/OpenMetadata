@@ -15,15 +15,17 @@ import org.openmetadata.service.search.ParseTags;
 import org.openmetadata.service.search.SearchIndexUtils;
 import org.openmetadata.service.search.models.FlattenColumn;
 import org.openmetadata.service.search.models.SearchSuggest;
-import org.openmetadata.service.util.JsonUtils;
 
 public record DashboardDataModelIndex(DashboardDataModel dashboardDataModel)
     implements ColumnIndex {
-  private static final List<String> excludeFields = List.of("changeDescription");
 
-  public Map<String, Object> buildESDoc() {
-    Map<String, Object> doc = JsonUtils.getMap(dashboardDataModel);
-    SearchIndexUtils.removeNonIndexableFields(doc, excludeFields);
+  @Override
+  public Object getEntity() {
+    return dashboardDataModel;
+  }
+
+  @Override
+  public Map<String, Object> buildSearchIndexDocInternal(Map<String, Object> doc) {
     List<SearchSuggest> suggest = new ArrayList<>();
     List<SearchSuggest> columnSuggest = new ArrayList<>();
     suggest.add(SearchSuggest.builder().input(dashboardDataModel.getName()).weight(10).build());
@@ -34,7 +36,6 @@ public record DashboardDataModelIndex(DashboardDataModel dashboardDataModel)
             .build());
     Set<List<TagLabel>> tagsWithChildren = new HashSet<>();
     List<String> columnsWithChildrenName = new ArrayList<>();
-    SearchIndexUtils.removeNonIndexableFields(doc, excludeFields);
     if (dashboardDataModel.getColumns() != null) {
       List<FlattenColumn> cols = new ArrayList<>();
       parseColumns(dashboardDataModel.getColumns(), cols, null);

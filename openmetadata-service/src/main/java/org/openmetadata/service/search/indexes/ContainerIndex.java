@@ -15,19 +15,21 @@ import org.openmetadata.service.search.ParseTags;
 import org.openmetadata.service.search.SearchIndexUtils;
 import org.openmetadata.service.search.models.FlattenColumn;
 import org.openmetadata.service.search.models.SearchSuggest;
-import org.openmetadata.service.util.JsonUtils;
 
 public record ContainerIndex(Container container) implements ColumnIndex {
-  private static final List<String> excludeFields = List.of("changeDescription");
 
-  public Map<String, Object> buildESDoc() {
-    Map<String, Object> doc = JsonUtils.getMap(container);
+  @Override
+  public Object getEntity() {
+    return container;
+  }
+
+  @Override
+  public Map<String, Object> buildSearchIndexDocInternal(Map<String, Object> doc) {
     List<SearchSuggest> suggest = new ArrayList<>();
     List<SearchSuggest> columnSuggest = new ArrayList<>();
     List<SearchSuggest> serviceSuggest = new ArrayList<>();
     Set<List<TagLabel>> tagsWithChildren = new HashSet<>();
     List<String> columnsWithChildrenName = new ArrayList<>();
-    SearchIndexUtils.removeNonIndexableFields(doc, excludeFields);
     suggest.add(SearchSuggest.builder().input(container.getFullyQualifiedName()).weight(5).build());
     suggest.add(SearchSuggest.builder().input(container.getName()).weight(10).build());
     if (container.getDataModel() != null && container.getDataModel().getColumns() != null) {

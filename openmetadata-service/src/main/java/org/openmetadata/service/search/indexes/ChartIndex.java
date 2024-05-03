@@ -8,14 +8,11 @@ import org.openmetadata.schema.entity.data.Chart;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.search.SearchIndexUtils;
 import org.openmetadata.service.search.models.SearchSuggest;
-import org.openmetadata.service.util.JsonUtils;
 
 public record ChartIndex(Chart chart) implements SearchIndex {
-  private static final List<String> excludeFields = List.of("changeDescription");
 
-  public Map<String, Object> buildESDoc() {
-    Map<String, Object> doc = JsonUtils.getMap(chart);
-    SearchIndexUtils.removeNonIndexableFields(doc, excludeFields);
+  @Override
+  public Map<String, Object> buildSearchIndexDocInternal(Map<String, Object> doc) {
     List<SearchSuggest> suggest = new ArrayList<>();
     suggest.add(SearchSuggest.builder().input(chart.getName()).weight(10).build());
     suggest.add(SearchSuggest.builder().input(chart.getFullyQualifiedName()).weight(5).build());
@@ -34,5 +31,10 @@ public record ChartIndex(Chart chart) implements SearchIndex {
             ? 0
             : chart.getVotes().getUpVotes() - chart.getVotes().getDownVotes());
     return doc;
+  }
+
+  @Override
+  public Object getEntity() {
+    return chart;
   }
 }

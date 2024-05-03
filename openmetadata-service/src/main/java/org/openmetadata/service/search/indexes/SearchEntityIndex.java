@@ -8,15 +8,17 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.search.ParseTags;
 import org.openmetadata.service.search.SearchIndexUtils;
 import org.openmetadata.service.search.models.SearchSuggest;
-import org.openmetadata.service.util.JsonUtils;
 
 public record SearchEntityIndex(org.openmetadata.schema.entity.data.SearchIndex searchIndex)
     implements SearchIndex {
-  private static final List<String> excludeFields = List.of("changeDescription");
 
-  public Map<String, Object> buildESDoc() {
-    Map<String, Object> doc = JsonUtils.getMap(searchIndex);
-    SearchIndexUtils.removeNonIndexableFields(doc, excludeFields);
+  @Override
+  public Object getEntity() {
+    return searchIndex;
+  }
+
+  @Override
+  public Map<String, Object> buildSearchIndexDocInternal(Map<String, Object> doc) {
     List<SearchSuggest> suggest = new ArrayList<>();
     suggest.add(SearchSuggest.builder().input(searchIndex.getName()).weight(5).build());
     suggest.add(

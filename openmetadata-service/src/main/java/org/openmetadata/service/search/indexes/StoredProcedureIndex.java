@@ -9,14 +9,16 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.search.ParseTags;
 import org.openmetadata.service.search.SearchIndexUtils;
 import org.openmetadata.service.search.models.SearchSuggest;
-import org.openmetadata.service.util.JsonUtils;
 
 public record StoredProcedureIndex(StoredProcedure storedProcedure) implements SearchIndex {
-  private static final List<String> excludeFields = List.of("changeDescription");
 
-  public Map<String, Object> buildESDoc() {
-    Map<String, Object> doc = JsonUtils.getMap(storedProcedure);
-    SearchIndexUtils.removeNonIndexableFields(doc, excludeFields);
+  @Override
+  public Object getEntity() {
+    return storedProcedure;
+  }
+
+  @Override
+  public Map<String, Object> buildSearchIndexDocInternal(Map<String, Object> doc) {
     List<SearchSuggest> suggest = new ArrayList<>();
     suggest.add(
         SearchSuggest.builder().input(storedProcedure.getFullyQualifiedName()).weight(5).build());

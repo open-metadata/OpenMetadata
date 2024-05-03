@@ -3,22 +3,22 @@ package org.openmetadata.service.search.indexes;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.UUID;
-import lombok.SneakyThrows;
 import org.openmetadata.schema.tests.TestCase;
 import org.openmetadata.schema.tests.TestSuite;
-import org.openmetadata.schema.type.EntityReference;
-import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.search.SearchIndexUtils;
 import org.openmetadata.service.search.models.SearchSuggest;
 import org.openmetadata.service.util.JsonUtils;
 
 public record TestCaseIndex(TestCase testCase) implements SearchIndex {
-  private static final List<String> excludeFields = List.of("changeDescription");
 
-  @SneakyThrows
-  public Map<String, Object> buildESDoc() {
+  @Override
+  public Object getEntity() {
+    return testCase;
+  }
+
+  @Override
+  public Map<String, Object> buildSearchIndexDocInternal(Map<String, Object> esDoc) {
     List<TestSuite> testSuiteArray = new ArrayList<>();
     if (testCase.getTestSuites() != null) {
       for (TestSuite suite : testCase.getTestSuites()) {
@@ -28,7 +28,7 @@ public record TestCaseIndex(TestCase testCase) implements SearchIndex {
     }
     testCase.setTestSuites(testSuiteArray);
     Map<String, Object> doc = JsonUtils.getMap(testCase);
-    SearchIndexUtils.removeNonIndexableFields(doc, excludeFields);
+    SearchIndexUtils.removeNonIndexableFields(doc, DEFAULT_EXCLUDED_FIELDS);
     List<SearchSuggest> suggest = new ArrayList<>();
     suggest.add(SearchSuggest.builder().input(testCase.getFullyQualifiedName()).weight(5).build());
     suggest.add(SearchSuggest.builder().input(testCase.getName()).weight(10).build());
@@ -42,31 +42,6 @@ public record TestCaseIndex(TestCase testCase) implements SearchIndex {
     doc.put("owner", getEntityWithDisplayName(testCase.getOwner()));
     doc.put("followers", SearchIndexUtils.parseFollowers(testCase.getFollowers()));
     return doc;
-  }
-
-  public Map<String, Object> buildESDocForCreate() {
-    EntityReference testSuiteEntityReference = testCase.getTestSuite();
-    TestSuite testSuite = getTestSuite(testSuiteEntityReference.getId());
-    List<TestSuite> testSuiteArray = new ArrayList<>();
-    testSuiteArray.add(testSuite);
-    Map<String, Object> doc = JsonUtils.getMap(testCase);
-    SearchIndexUtils.removeNonIndexableFields(doc, excludeFields);
-    doc.put("testSuites", testSuiteArray);
-    return doc;
-  }
-
-  private TestSuite getTestSuite(UUID testSuiteId) {
-    TestSuite testSuite = Entity.getEntity(Entity.TEST_SUITE, testSuiteId, "", Include.ALL);
-    return new TestSuite()
-        .withId(testSuite.getId())
-        .withName(testSuite.getName())
-        .withDisplayName(testSuite.getDisplayName())
-        .withDescription(testSuite.getDescription())
-        .withFullyQualifiedName(testSuite.getFullyQualifiedName())
-        .withDeleted(testSuite.getDeleted())
-        .withHref(testSuite.getHref())
-        .withExecutable(testSuite.getExecutable())
-        .withChangeDescription(null);
   }
 
   public static Map<String, Float> getFields() {

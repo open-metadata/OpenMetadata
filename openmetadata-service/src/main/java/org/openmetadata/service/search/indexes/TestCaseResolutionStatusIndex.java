@@ -8,7 +8,12 @@ import org.openmetadata.service.util.JsonUtils;
 public record TestCaseResolutionStatusIndex(TestCaseResolutionStatus testCaseResolutionStatus)
     implements SearchIndex {
   @Override
-  public Map<String, Object> buildESDoc() {
+  public Object getEntity() {
+    return testCaseResolutionStatus;
+  }
+
+  @Override
+  public Map<String, Object> buildSearchIndexDocInternal(Map<String, Object> doc) {
     return JsonUtils.getMap(testCaseResolutionStatus);
   }
 

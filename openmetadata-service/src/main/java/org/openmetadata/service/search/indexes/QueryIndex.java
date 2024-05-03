@@ -12,24 +12,25 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.search.ParseTags;
 import org.openmetadata.service.search.SearchIndexUtils;
 import org.openmetadata.service.search.models.SearchSuggest;
-import org.openmetadata.service.util.JsonUtils;
 
 public class QueryIndex implements SearchIndex {
-  final List<String> excludeTopicFields = List.of("changeDescription");
   final Query query;
 
   public QueryIndex(Query query) {
     this.query = query;
   }
 
-  public Map<String, Object> buildESDoc() {
-    Map<String, Object> doc = JsonUtils.getMap(query);
+  @Override
+  public Object getEntity() {
+    return query;
+  }
+
+  @Override
+  public Map<String, Object> buildSearchIndexDocInternal(Map<String, Object> doc) {
     List<SearchSuggest> suggest = new ArrayList<>();
     if (query.getDisplayName() != null) {
       suggest.add(SearchSuggest.builder().input(query.getName()).weight(10).build());
     }
-    SearchIndexUtils.removeNonIndexableFields(doc, excludeTopicFields);
-
     ParseTags parseTags = new ParseTags(Entity.getEntityTags(Entity.QUERY, query));
     doc.put("displayName", query.getDisplayName() != null ? query.getDisplayName() : "");
     doc.put("tags", parseTags.getTags());

@@ -9,20 +9,22 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.search.ParseTags;
 import org.openmetadata.service.search.SearchIndexUtils;
 import org.openmetadata.service.search.models.SearchSuggest;
-import org.openmetadata.service.util.JsonUtils;
 
 public class MlModelIndex implements SearchIndex {
   final MlModel mlModel;
-  final List<String> excludeFields = List.of("changeDescription");
 
   public MlModelIndex(MlModel mlModel) {
     this.mlModel = mlModel;
   }
 
-  public Map<String, Object> buildESDoc() {
-    Map<String, Object> doc = JsonUtils.getMap(mlModel);
+  @Override
+  public Object getEntity() {
+    return mlModel;
+  }
+
+  @Override
+  public Map<String, Object> buildSearchIndexDocInternal(Map<String, Object> doc) {
     List<SearchSuggest> suggest = new ArrayList<>();
-    SearchIndexUtils.removeNonIndexableFields(doc, excludeFields);
     suggest.add(SearchSuggest.builder().input(mlModel.getFullyQualifiedName()).weight(5).build());
     suggest.add(SearchSuggest.builder().input(mlModel.getName()).weight(10).build());
 

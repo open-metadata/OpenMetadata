@@ -11,6 +11,7 @@ import static org.openmetadata.service.search.EntityBuilderConstant.FULLY_QUALIF
 import static org.openmetadata.service.search.EntityBuilderConstant.NAME_KEYWORD;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -24,11 +25,33 @@ import org.openmetadata.schema.type.LineageDetails;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.CollectionDAO;
+import org.openmetadata.service.search.SearchIndexUtils;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.JsonUtils;
 
 public interface SearchIndex {
-  Map<String, Object> buildESDoc();
+  Set<String> DEFAULT_EXCLUDED_FIELDS = Set.of("changeDescription");
+
+  default Map<String, Object> buildSearchIndexDoc() {
+    Map<String, Object> esDoc = JsonUtils.getMap(getEntity());
+
+    // Remove non indexable fields
+    SearchIndexUtils.removeNonIndexableFields(esDoc, DEFAULT_EXCLUDED_FIELDS);
+
+    // Remove Entity Specific Field
+    SearchIndexUtils.removeNonIndexableFields(esDoc, getExcludedFields());
+
+    // Build Index Doc
+    return this.buildSearchIndexDocInternal(esDoc);
+  }
+
+  Object getEntity();
+
+  default Set<String> getExcludedFields() {
+    return Collections.emptySet();
+  }
+
+  Map<String, Object> buildSearchIndexDocInternal(Map<String, Object> esDoc);
 
   default Set<String> getFQNParts(String fqn, List<String> fqnSplits) {
     Set<String> fqnParts = new HashSet<>();

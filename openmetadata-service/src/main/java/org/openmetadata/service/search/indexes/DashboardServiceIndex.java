@@ -7,15 +7,16 @@ import org.openmetadata.schema.entity.services.DashboardService;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.search.SearchIndexUtils;
 import org.openmetadata.service.search.models.SearchSuggest;
-import org.openmetadata.service.util.JsonUtils;
 
 public record DashboardServiceIndex(DashboardService dashboardService) implements SearchIndex {
 
-  private static final List<String> excludeFields = List.of("changeDescription");
+  @Override
+  public Object getEntity() {
+    return dashboardService;
+  }
 
-  public Map<String, Object> buildESDoc() {
-    Map<String, Object> doc = JsonUtils.getMap(dashboardService);
-    SearchIndexUtils.removeNonIndexableFields(doc, excludeFields);
+  @Override
+  public Map<String, Object> buildSearchIndexDocInternal(Map<String, Object> doc) {
     List<SearchSuggest> suggest = new ArrayList<>();
     suggest.add(SearchSuggest.builder().input(dashboardService.getName()).weight(5).build());
     suggest.add(

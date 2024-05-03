@@ -8,19 +8,21 @@ import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.search.SearchIndexUtils;
 import org.openmetadata.service.search.models.SearchSuggest;
-import org.openmetadata.service.util.JsonUtils;
 
 public class GlossaryIndex implements SearchIndex {
   final Glossary glossary;
-  final List<String> excludeFields = List.of("changeDescription");
 
   public GlossaryIndex(Glossary glossary) {
     this.glossary = glossary;
   }
 
-  public Map<String, Object> buildESDoc() {
-    Map<String, Object> doc = JsonUtils.getMap(glossary);
-    SearchIndexUtils.removeNonIndexableFields(doc, excludeFields);
+  @Override
+  public Object getEntity() {
+    return glossary;
+  }
+
+  @Override
+  public Map<String, Object> buildSearchIndexDocInternal(Map<String, Object> doc) {
     List<SearchSuggest> suggest = new ArrayList<>();
     suggest.add(SearchSuggest.builder().input(glossary.getName()).weight(5).build());
     if (glossary.getDisplayName() != null && !glossary.getDisplayName().isEmpty()) {

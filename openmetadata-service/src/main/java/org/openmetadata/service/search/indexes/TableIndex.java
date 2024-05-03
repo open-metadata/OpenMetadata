@@ -16,19 +16,28 @@ import org.openmetadata.service.search.ParseTags;
 import org.openmetadata.service.search.SearchIndexUtils;
 import org.openmetadata.service.search.models.FlattenColumn;
 import org.openmetadata.service.search.models.SearchSuggest;
-import org.openmetadata.service.util.JsonUtils;
 
 public record TableIndex(Table table) implements ColumnIndex {
-  private static final List<String> excludeFields =
-      List.of(
+  private static final Set<String> excludeFields =
+      Set.of(
           "sampleData",
           "tableProfile",
           "joins",
-          "changeDescription",
+          "testSuite.changeDescription",
           "viewDefinition, tableProfilerConfig, profile, location, tableQueries, tests, dataModel");
 
-  public Map<String, Object> buildESDoc() {
-    Map<String, Object> doc = JsonUtils.getMap(table);
+  @Override
+  public Object getEntity() {
+    return table;
+  }
+
+  @Override
+  public Set<String> getExcludedFields() {
+    return excludeFields;
+  }
+
+  @Override
+  public Map<String, Object> buildSearchIndexDocInternal(Map<String, Object> doc) {
     List<SearchSuggest> suggest = new ArrayList<>();
     List<SearchSuggest> columnSuggest = new ArrayList<>();
     List<SearchSuggest> schemaSuggest = new ArrayList<>();
@@ -36,7 +45,6 @@ public record TableIndex(Table table) implements ColumnIndex {
     List<SearchSuggest> serviceSuggest = new ArrayList<>();
     Set<List<TagLabel>> tagsWithChildren = new HashSet<>();
     List<String> columnsWithChildrenName = new ArrayList<>();
-    SearchIndexUtils.removeNonIndexableFields(doc, excludeFields);
     if (table.getColumns() != null) {
       List<FlattenColumn> cols = new ArrayList<>();
       parseColumns(table.getColumns(), cols, null);

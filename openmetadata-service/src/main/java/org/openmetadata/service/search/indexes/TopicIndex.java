@@ -19,19 +19,27 @@ import org.openmetadata.service.search.SearchIndexUtils;
 import org.openmetadata.service.search.models.FlattenSchemaField;
 import org.openmetadata.service.search.models.SearchSuggest;
 import org.openmetadata.service.util.FullyQualifiedName;
-import org.openmetadata.service.util.JsonUtils;
 
 public class TopicIndex implements SearchIndex {
-  final List<String> excludeTopicFields =
-      List.of("sampleData", "changeDescription", "messageSchema");
+  final Set<String> excludeTopicFields = Set.of("sampleData", "messageSchema");
   final Topic topic;
 
   public TopicIndex(Topic topic) {
     this.topic = topic;
   }
 
-  public Map<String, Object> buildESDoc() {
-    Map<String, Object> doc = JsonUtils.getMap(topic);
+  @Override
+  public Object getEntity() {
+    return topic;
+  }
+
+  @Override
+  public Set<String> getExcludedFields() {
+    return excludeTopicFields;
+  }
+
+  @Override
+  public Map<String, Object> buildSearchIndexDocInternal(Map<String, Object> doc) {
     List<SearchSuggest> suggest = new ArrayList<>();
     List<SearchSuggest> fieldSuggest = new ArrayList<>();
     List<SearchSuggest> serviceSuggest = new ArrayList<>();
