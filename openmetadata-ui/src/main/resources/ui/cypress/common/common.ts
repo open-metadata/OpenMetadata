@@ -46,7 +46,7 @@ export const interceptURL = (
 // waiting for response and validating the response status code
 export const verifyResponseStatusCode = (
   alias: string,
-  responseCode: number,
+  responseCode: number | number[],
   option?: Partial<WaitOptions>,
   hasMultipleResponseCode = false
 ) => {
@@ -301,7 +301,7 @@ export const addTableFieldTags = (
 
   interceptURL('PATCH', `/api/v1/${entity}/*`, 'patchTag');
 
-  cy.get('[data-testid="saveAssociatedTag"]').click();
+  cy.get('[data-testid="saveAssociatedTag"]').scrollIntoView().click();
 
   verifyResponseStatusCode('@patchTag', 200);
 
@@ -320,15 +320,19 @@ export const removeTableFieldTags = (
 ) => {
   cy.get(
     `[data-row-key="${dataRowKey}"] [data-testid="tags-container"] [data-testid="edit-button"]`
-  ).click();
+  )
+    .scrollIntoView()
+    .click();
 
   cy.get(
     `[data-testid="selected-tag-${classificationName}.${tagName}"] [data-testid="remove-tags"]`
-  ).click();
+  )
+    .scrollIntoView()
+    .click();
 
   interceptURL('PATCH', `/api/v1/${entity}/*`, `patchTag`);
 
-  cy.get('[data-testid="saveAssociatedTag"]').click();
+  cy.get('[data-testid="saveAssociatedTag"]').scrollIntoView().click();
 
   verifyResponseStatusCode(`@patchTag`, 200);
 

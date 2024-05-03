@@ -31,7 +31,6 @@ def run_app(config_path: Path) -> None:
     :param config_path: Path to load JSON config
     """
 
-    config_dict = None
     try:
         config_dict = load_config_file(config_path)
         workflow = ApplicationWorkflow.create(config_dict)
