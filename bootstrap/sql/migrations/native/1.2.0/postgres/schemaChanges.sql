@@ -273,8 +273,9 @@ WITH CTE AS (
 DELETE FROM entity_extension_time_series WHERE temp in (SELECT temp FROM CTE WHERE RN > 1);
 ALTER TABLE entity_extension_time_series DROP COLUMN temp;
 
-ALTER TABLE entity_extension_time_series ALTER COLUMN entityFQNHash TYPE VARCHAR(768), ALTER COLUMN jsonSchema TYPE VARCHAR(256) , ALTER COLUMN extension TYPE VARCHAR(256),
-    ADD CONSTRAINT entity_extension_time_series_constraint UNIQUE (entityFQNHash, extension, timestamp);
+ALTER TABLE entity_extension_time_series ALTER COLUMN entityFQNHash TYPE VARCHAR(768), ALTER COLUMN jsonSchema TYPE VARCHAR(256) , ALTER COLUMN extension TYPE VARCHAR(256);
+ALTER TABLE entity_extension_time_series DROP CONSTRAINT IF EXISTS entity_extension_time_series_constraint;
+ALTER TABLE entity_extension_time_series ADD CONSTRAINT entity_extension_time_series_constraint UNIQUE (entityFQNHash, extension, timestamp);
 
 -- Airflow pipeline status set to millis
 UPDATE entity_extension_time_series ts
