@@ -15,7 +15,6 @@ package org.openmetadata.service.workflows.interfaces;
 
 import java.util.List;
 import java.util.Map;
-
 import org.openmetadata.service.exception.SearchIndexException;
 
 public interface Source<R> extends Stats {
@@ -30,5 +29,6 @@ public interface Source<R> extends Stats {
   int getBatchSize();
 
   String getLastFailedCursor();
+
   boolean isDone();
 }

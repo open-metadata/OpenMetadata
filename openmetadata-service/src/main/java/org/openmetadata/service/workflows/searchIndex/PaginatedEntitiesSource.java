@@ -140,5 +140,4 @@ public class PaginatedEntitiesSource implements Source<ResultList<? extends Enti
   public void updateStats(int currentSuccess, int currentFailed) {
     getUpdatedStats(stats, currentSuccess, currentFailed);
   }
-
 }

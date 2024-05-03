@@ -13,6 +13,8 @@
 
 package org.openmetadata.service.workflows.searchIndex;
 
+import static org.openmetadata.service.apps.bundles.searchIndex.SearchIndexApp.TIME_SERIES_ENTITIES;
+
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import java.util.ArrayList;
@@ -35,8 +37,6 @@ import org.openmetadata.service.search.SearchRequest;
 import org.openmetadata.service.util.JsonUtils;
 import os.org.opensearch.action.bulk.BulkItemResponse;
 import os.org.opensearch.action.bulk.BulkResponse;
-
-import static org.openmetadata.service.apps.bundles.searchIndex.SearchIndexApp.TIME_SERIES_ENTITIES;
 
 public class ReindexingUtil {
   private ReindexingUtil() {

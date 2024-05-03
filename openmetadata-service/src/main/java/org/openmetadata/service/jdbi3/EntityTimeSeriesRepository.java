@@ -131,9 +131,12 @@ public abstract class EntityTimeSeriesRepository<T extends EntityTimeSeriesInter
         : null;
   }
 
-
   public final ResultList<T> getResultList(
-      List<T> entities, String beforeCursor, String afterCursor, int total, List<EntityError> errors) {
+      List<T> entities,
+      String beforeCursor,
+      String afterCursor,
+      int total,
+      List<EntityError> errors) {
     if (errors == null) {
       return new ResultList<>(entities, beforeCursor, afterCursor, total);
     }
@@ -141,7 +144,7 @@ public abstract class EntityTimeSeriesRepository<T extends EntityTimeSeriesInter
   }
 
   public final ResultList<T> getResultList(
-          List<T> entities, String beforeCursor, String afterCursor, int total) {
+      List<T> entities, String beforeCursor, String afterCursor, int total) {
     return getResultList(entities, beforeCursor, afterCursor, total, null);
   }
 
@@ -151,7 +154,13 @@ public abstract class EntityTimeSeriesRepository<T extends EntityTimeSeriesInter
    * @return ResultList
    */
   public ResultList<T> listWithOffset(
-      String offset, ListFilter filter, int limitParam, Long startTs, Long endTs, boolean latest, boolean skipErrors) {
+      String offset,
+      ListFilter filter,
+      int limitParam,
+      Long startTs,
+      Long endTs,
+      boolean latest,
+      boolean skipErrors) {
     int total = timeSeriesDao.listCount(filter, startTs, endTs, latest);
     List<T> entityList = new ArrayList<>();
     List<EntityError> errors = null;
@@ -173,7 +182,8 @@ public abstract class EntityTimeSeriesRepository<T extends EntityTimeSeriesInter
     }
   }
 
-  public ResultList<T> listWithOffset(String offset, ListFilter filter, int limitParam, boolean skipErrors) {
+  public ResultList<T> listWithOffset(
+      String offset, ListFilter filter, int limitParam, boolean skipErrors) {
     int total = timeSeriesDao.listCount(filter);
     List<T> entityList = new ArrayList<>();
     List<EntityError> errors = null;
@@ -182,8 +192,7 @@ public abstract class EntityTimeSeriesRepository<T extends EntityTimeSeriesInter
     String afterOffset = getAfterOffset(offsetInt, limitParam, total);
     String beforeOffset = getBeforeOffset(offsetInt, limitParam);
     if (limitParam > 0) {
-      List<String> jsons =
-              timeSeriesDao.listWithOffset(filter, limitParam, offsetInt);
+      List<String> jsons = timeSeriesDao.listWithOffset(filter, limitParam, offsetInt);
       HashMap<String, List<?>> entityListMap = getEntityList(jsons, skipErrors);
       entityList = (List<T>) entityListMap.get("entityList");
       if (skipErrors) {

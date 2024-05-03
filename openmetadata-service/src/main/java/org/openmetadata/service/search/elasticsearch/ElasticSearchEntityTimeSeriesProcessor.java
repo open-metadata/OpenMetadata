@@ -9,7 +9,6 @@ import es.org.elasticsearch.xcontent.XContentType;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-
 import lombok.extern.slf4j.Slf4j;
 import org.glassfish.jersey.internal.util.ExceptionUtils;
 import org.openmetadata.common.utils.CommonUtil;
@@ -33,7 +32,8 @@ public class ElasticSearchEntityTimeSeriesProcessor
   }
 
   @Override
-  public BulkRequest process(ResultList<? extends EntityTimeSeriesInterface> input, Map<String, Object> contextData)
+  public BulkRequest process(
+      ResultList<? extends EntityTimeSeriesInterface> input, Map<String, Object> contextData)
       throws SearchIndexException {
     String entityType = (String) contextData.get(ENTITY_TYPE_KEY);
     if (CommonUtil.nullOrEmpty(entityType)) {
@@ -71,7 +71,8 @@ public class ElasticSearchEntityTimeSeriesProcessor
     return requests;
   }
 
-  private BulkRequest buildBulkRequests(String entityType, List<? extends EntityTimeSeriesInterface> entities) {
+  private BulkRequest buildBulkRequests(
+      String entityType, List<? extends EntityTimeSeriesInterface> entities) {
     BulkRequest bulkRequests = new BulkRequest();
     for (EntityTimeSeriesInterface entity : entities) {
       UpdateRequest request = getUpdateRequest(entityType, entity);
@@ -88,7 +89,8 @@ public class ElasticSearchEntityTimeSeriesProcessor
             entity.getId().toString());
     updateRequest.doc(
         JsonUtils.pojoToJson(
-                Objects.requireNonNull(Entity.buildSearchIndex(entityType, entity).buildESDoc())), XContentType.JSON);
+            Objects.requireNonNull(Entity.buildSearchIndex(entityType, entity).buildESDoc())),
+        XContentType.JSON);
     updateRequest.docAsUpsert(true);
     return updateRequest;
   }

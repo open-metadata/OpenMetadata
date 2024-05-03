@@ -12,7 +12,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.stream.Collectors;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang.exception.ExceptionUtils;
@@ -32,12 +31,12 @@ import org.openmetadata.service.apps.AbstractNativeApplication;
 import org.openmetadata.service.exception.SearchIndexException;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.search.SearchRepository;
-import org.openmetadata.service.search.elasticsearch.ElasticSearchEntityTimeSeriesProcessor;
 import org.openmetadata.service.search.elasticsearch.ElasticSearchEntitiesProcessor;
+import org.openmetadata.service.search.elasticsearch.ElasticSearchEntityTimeSeriesProcessor;
 import org.openmetadata.service.search.elasticsearch.ElasticSearchIndexSink;
 import org.openmetadata.service.search.models.IndexMapping;
-import org.openmetadata.service.search.opensearch.OpenSearchEntityTimeSeriesProcessor;
 import org.openmetadata.service.search.opensearch.OpenSearchEntitiesProcessor;
+import org.openmetadata.service.search.opensearch.OpenSearchEntityTimeSeriesProcessor;
 import org.openmetadata.service.search.opensearch.OpenSearchIndexSink;
 import org.openmetadata.service.socket.WebSocketManager;
 import org.openmetadata.service.util.JsonUtils;
@@ -231,22 +230,32 @@ public class SearchIndexApp extends AbstractNativeApplication {
       Object resultList;
       while (!stopped && !paginatedSource.isDone()) {
         try {
-          resultList =  paginatedSource.readNext(null);
+          resultList = paginatedSource.readNext(null);
           if (!TIME_SERIES_ENTITIES.contains(paginatedSource.getEntityType())) {
-            entityName = getEntityNameFromEntity((ResultList<? extends EntityInterface>) resultList, paginatedSource.getEntityType());
+            entityName =
+                getEntityNameFromEntity(
+                    (ResultList<? extends EntityInterface>) resultList,
+                    paginatedSource.getEntityType());
             contextData.put(ENTITY_NAME_LIST_KEY, entityName);
-            processEntity((ResultList<? extends EntityInterface>) resultList, contextData, paginatedSource);
+            processEntity(
+                (ResultList<? extends EntityInterface>) resultList, contextData, paginatedSource);
           } else {
-            entityName = getEntityNameFromEntityTimeSeries((ResultList<? extends EntityTimeSeriesInterface>) resultList, paginatedSource.getEntityType());
+            entityName =
+                getEntityNameFromEntityTimeSeries(
+                    (ResultList<? extends EntityTimeSeriesInterface>) resultList,
+                    paginatedSource.getEntityType());
             contextData.put(ENTITY_NAME_LIST_KEY, entityName);
-            processEntityTimeSeries((ResultList<? extends EntityTimeSeriesInterface>) resultList, contextData, paginatedSource);
+            processEntityTimeSeries(
+                (ResultList<? extends EntityTimeSeriesInterface>) resultList,
+                contextData,
+                paginatedSource);
           }
 
         } catch (SearchIndexException rx) {
           jobData.setStatus(EventPublisherJob.Status.FAILED);
           jobData.setFailure(rx.getIndexingError());
           paginatedSource.updateStats(
-                  rx.getIndexingError().getSuccessCount(), rx.getIndexingError().getFailedCount());
+              rx.getIndexingError().getSuccessCount(), rx.getIndexingError().getFailedCount());
         } finally {
           updateStats(paginatedSource.getEntityType(), paginatedSource.getStats());
           sendUpdates(jobExecutionContext);
@@ -255,61 +264,62 @@ public class SearchIndexApp extends AbstractNativeApplication {
     }
   }
 
-  private List<String> getEntityNameFromEntity(ResultList<? extends EntityInterface> resultList, String entityType)  {
+  private List<String> getEntityNameFromEntity(
+      ResultList<? extends EntityInterface> resultList, String entityType) {
     return resultList.getData().stream()
-                    .map(
-                            entity ->
-                                    String.format(
-                                            "%s %s", entityType, entity.getId())).toList();
+        .map(entity -> String.format("%s %s", entityType, entity.getId()))
+        .toList();
   }
 
-  private List<String> getEntityNameFromEntityTimeSeries(ResultList<? extends EntityTimeSeriesInterface> resultList, String entityType)  {
+  private List<String> getEntityNameFromEntityTimeSeries(
+      ResultList<? extends EntityTimeSeriesInterface> resultList, String entityType) {
     return resultList.getData().stream()
-            .map(
-                    entity ->
-                            String.format(
-                                    "%s %s", entityType, entity.getId())).toList();
+        .map(entity -> String.format("%s %s", entityType, entity.getId()))
+        .toList();
   }
 
   private void processEntity(
-          ResultList<? extends EntityInterface> resultList,
-          Map<String, Object> contextData,
-          Source paginatedSource) throws SearchIndexException {
+      ResultList<? extends EntityInterface> resultList,
+      Map<String, Object> contextData,
+      Source paginatedSource)
+      throws SearchIndexException {
     if (!resultList.getData().isEmpty()) {
       searchIndexSink.write(entityProcessor.process(resultList, contextData), contextData);
       if (!resultList.getErrors().isEmpty()) {
         throw new SearchIndexException(
-                new IndexingError()
-                        .withErrorSource(READER)
-                        .withLastFailedCursor(paginatedSource.getLastFailedCursor())
-                        .withSubmittedCount(paginatedSource.getBatchSize())
-                        .withSuccessCount(resultList.getData().size())
-                        .withFailedCount(resultList.getErrors().size())
-                        .withMessage(
-                                "Issues in Reading A Batch For Entities. Check Errors Corresponding to Entities.")
-                        .withFailedEntities(resultList.getErrors()));
+            new IndexingError()
+                .withErrorSource(READER)
+                .withLastFailedCursor(paginatedSource.getLastFailedCursor())
+                .withSubmittedCount(paginatedSource.getBatchSize())
+                .withSuccessCount(resultList.getData().size())
+                .withFailedCount(resultList.getErrors().size())
+                .withMessage(
+                    "Issues in Reading A Batch For Entities. Check Errors Corresponding to Entities.")
+                .withFailedEntities(resultList.getErrors()));
       }
       paginatedSource.updateStats(resultList.getData().size(), 0);
     }
   }
 
   private void processEntityTimeSeries(
-          ResultList<? extends EntityTimeSeriesInterface> resultList,
-          Map<String, Object> contextData,
-          Source paginatedSource) throws SearchIndexException {
+      ResultList<? extends EntityTimeSeriesInterface> resultList,
+      Map<String, Object> contextData,
+      Source paginatedSource)
+      throws SearchIndexException {
     if (!resultList.getData().isEmpty()) {
-      searchIndexSink.write(entityTimeSeriesProcessor.process(resultList, contextData), contextData);
+      searchIndexSink.write(
+          entityTimeSeriesProcessor.process(resultList, contextData), contextData);
       if (!resultList.getErrors().isEmpty()) {
         throw new SearchIndexException(
-                new IndexingError()
-                        .withErrorSource(READER)
-                        .withLastFailedCursor(paginatedSource.getLastFailedCursor())
-                        .withSubmittedCount(paginatedSource.getBatchSize())
-                        .withSuccessCount(resultList.getData().size())
-                        .withFailedCount(resultList.getErrors().size())
-                        .withMessage(
-                                "Issues in Reading A Batch For Entities. Check Errors Corresponding to Entities.")
-                        .withFailedEntities(resultList.getErrors()));
+            new IndexingError()
+                .withErrorSource(READER)
+                .withLastFailedCursor(paginatedSource.getLastFailedCursor())
+                .withSubmittedCount(paginatedSource.getBatchSize())
+                .withSuccessCount(resultList.getData().size())
+                .withFailedCount(resultList.getErrors().size())
+                .withMessage(
+                    "Issues in Reading A Batch For Entities. Check Errors Corresponding to Entities.")
+                .withFailedEntities(resultList.getErrors()));
       }
       paginatedSource.updateStats(resultList.getData().size(), 0);
     }

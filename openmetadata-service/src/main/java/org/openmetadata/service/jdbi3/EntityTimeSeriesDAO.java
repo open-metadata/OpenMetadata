@@ -116,13 +116,12 @@ public interface EntityTimeSeriesDAO {
   }
 
   @SqlQuery(
-          "SELECT json FROM <table> <cond> "
-                  + "ORDER BY timestamp DESC LIMIT :limit OFFSET :offset")
+      "SELECT json FROM <table> <cond> " + "ORDER BY timestamp DESC LIMIT :limit OFFSET :offset")
   List<String> listWithOffset(
-          @Define("table") String table,
-          @Define("cond") String cond,
-          @Bind("limit") int limit,
-          @Bind("offset") int offset);
+      @Define("table") String table,
+      @Define("cond") String cond,
+      @Bind("limit") int limit,
+      @Bind("offset") int offset);
 
   @SqlQuery(
       "SELECT json FROM <table> <cond> "
@@ -214,7 +213,6 @@ public interface EntityTimeSeriesDAO {
   default int listCount() {
     return listCount(new ListFilter(null));
   }
-
 
   @SqlQuery("SELECT count(*) FROM <table> <cond> AND timestamp BETWEEN :startTs AND :endTs")
   int listCount(
