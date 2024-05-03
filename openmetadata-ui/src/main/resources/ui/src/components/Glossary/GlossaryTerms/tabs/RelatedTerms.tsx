@@ -14,7 +14,7 @@
 import { Button, Tooltip, Typography } from 'antd';
 import { DefaultOptionType } from 'antd/lib/select';
 import { t } from 'i18next';
-import { cloneDeep, includes, isArray, isEmpty, uniqWith } from 'lodash';
+import { cloneDeep, includes, isArray, isEmpty } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useHistory } from 'react-router-dom';
 import { ReactComponent as IconTerm } from '../../../../assets/svg/book.svg';
@@ -64,7 +64,6 @@ const RelatedTerms = ({
 }: RelatedTermsProps) => {
   const history = useHistory();
   const [isIconVisible, setIsIconVisible] = useState<boolean>(true);
-  const [options, setOptions] = useState<EntityReference[]>([]);
   const [selectedOption, setSelectedOption] = useState<EntityReference[]>([]);
 
   const handleRelatedTermClick = (fqn: string) => {
@@ -78,26 +77,19 @@ const RelatedTerms = ({
       return;
     }
 
-    const newOptions = uniqWith(
-      options,
-      (arrVal, othVal) => arrVal.id === othVal.id
-    ).filter((item) =>
-      selectedData.find((data) =>
-        typeof data === 'string'
-          ? data === item.fullyQualifiedName
-          : data.value === item.fullyQualifiedName
-      )
-    );
+    const newOptions = selectedData.map((value) => value?.data);
 
     let updatedGlossaryTerm = cloneDeep(glossaryTerm);
     const oldTerms = newOptions.filter((d) =>
       includes(glossaryTerm.relatedTerms, d)
     );
     const newTerms = newOptions
-      .filter((d) => !includes(glossaryTerm.relatedTerms, d))
+      .filter(
+        (d) => !glossaryTerm.relatedTerms?.some((term) => term.id === d.id)
+      )
       .map((d) => ({
         id: d.id,
-        type: d.type,
+        type: 'glossaryTerm',
         displayName: d.displayName,
         name: d.name,
       }));
@@ -137,7 +129,6 @@ const RelatedTerms = ({
     );
 
     const results = termResult.map(getEntityReferenceFromGlossary);
-    setOptions((prev) => [...prev, ...results]);
 
     return {
       data: results.map((item) => ({
@@ -165,7 +156,6 @@ const RelatedTerms = ({
 
   useEffect(() => {
     if (glossaryTerm) {
-      setOptions(glossaryTerm.relatedTerms ?? []);
       setSelectedOption(formatOptions(glossaryTerm.relatedTerms ?? []));
     }
   }, [glossaryTerm]);
