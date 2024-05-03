@@ -273,3 +273,5 @@ SET json = JSON_INSERT(
     
 where serviceType = 'OpenLineage'
   AND JSON_EXTRACT(json, '$.connection.config.SSLCALocation') IS NOT NULL;
+  
+UPDATE table_entity SET json = JSON_REMOVE(json, '$.testSuite');  

@@ -269,3 +269,5 @@ SET json = jsonb_set(
   json#>'{connection,config,connection,sslConfig}' || jsonb_build_object('caCertificate', json#>'{connection,config,connection,SSLCALocation}')
 )
 WHERE serviceType IN ('OpenLineage') AND json#>'{connection,config,connection,SSLCALocation}' IS NOT NULL;
+
+UPDATE table_entity SET json = json - 'testSuite';
