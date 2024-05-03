@@ -60,8 +60,10 @@ def test_connection(
     """
 
     def test_buckets(connection: S3Connection, client: S3ObjectStoreClient):
-        if connection.bucketName:
-            return partial(client.s3_client.list_objects, Bucket=connection.bucketName)
+        if connection.bucketNames:
+            return partial(
+                client.s3_client.list_objects, Bucket=connection.bucketNames[0]
+            )
         return client.s3_client.list_buckets
 
     test_fn = {
