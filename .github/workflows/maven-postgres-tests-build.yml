@@ -100,9 +100,13 @@ jobs:
           sudo make install_antlr_cli
 
       - name: Build with Maven
+        uses: nick-fields/retry@v3.0.0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: mvn -Ppostgres-tests clean package -am
+        with:
+          max_attempts: ${{ github.ref == 'refs/heads/main' && 3 || 1 }}
+          command: mvn -Ppostgres-tests clean package -am
+          timeout_minutes: 120
 
       - name: Clean Up
         run: |
