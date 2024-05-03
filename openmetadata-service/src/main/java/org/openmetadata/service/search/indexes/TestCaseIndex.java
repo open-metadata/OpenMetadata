@@ -9,6 +9,7 @@ import org.openmetadata.schema.tests.TestCase;
 import org.openmetadata.schema.tests.TestDefinition;
 import org.openmetadata.schema.tests.TestPlatform;
 import org.openmetadata.schema.tests.TestSuite;
+import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.search.SearchIndexUtils;
@@ -44,6 +45,7 @@ public record TestCaseIndex(TestCase testCase) implements SearchIndex {
     doc.put("owner", getEntityWithDisplayName(testCase.getOwner()));
     doc.put("testPlatforms", getTestDefinitionPlatforms(testCase.getTestDefinition().getId()));
     doc.put("followers", SearchIndexUtils.parseFollowers(testCase.getFollowers()));
+    setParentRelationships(doc, testCase);
     return doc;
   }
 
@@ -51,6 +53,17 @@ public record TestCaseIndex(TestCase testCase) implements SearchIndex {
     TestDefinition testDefinition =
         Entity.getEntity(Entity.TEST_DEFINITION, testDefinitionId, "", Include.ALL);
     return testDefinition.getTestPlatforms();
+  }
+
+  private void setParentRelationships(Map<String, Object> doc, TestCase testCase) {
+    // denormalize the parent relationships for search
+    EntityReference testSuiteEntityReference = testCase.getTestSuite();
+    if (testSuiteEntityReference == null) {
+      return;
+    }
+    TestSuite testSuite = Entity.getEntityOrNull(testSuiteEntityReference, "", Include.ALL);
+    EntityReference entityReference = testSuite.getExecutableEntityReference();
+    TestSuiteIndex.addTestSuiteParentEntityRelations(entityReference, doc);
   }
 
   public static Map<String, Float> getFields() {
