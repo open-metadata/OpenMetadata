@@ -704,7 +704,7 @@ const deleteUser = () => {
   });
 };
 
-describe('Glossary page should work properly', { tags: 'Glossary' }, () => {
+describe('Glossary page should work properly', { tags: 'Governance' }, () => {
   before(() => {
     // Prerequisites - Create a user with data consumer role
     signupAndLogin(
