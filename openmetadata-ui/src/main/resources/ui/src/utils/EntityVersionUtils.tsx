@@ -60,7 +60,7 @@ import {
   TagLabelWithStatus,
   VersionEntityTypes,
 } from './EntityVersionUtils.interface';
-import { isValidJSONString } from './StringsUtils';
+import { getJSONFromString, isValidJSONString } from './StringsUtils';
 import { getTagsWithoutTier, getTierTags } from './TableUtils';
 
 export const getChangedEntityName = (diffObject?: EntityDiffProps) =>
@@ -204,15 +204,21 @@ export const getTextDiffCustomProperty = (
     })} **${getTextDiff(oldText, newText)}**`;
   }
 
-  const result = JSON.parse(newText).map((diff: Record<string, string>) => {
-    const objKeys = Object.keys(diff);
+  const resultArray: unknown = getJSONFromString(newText);
 
-    return `* ${t('message.custom-property-is-set-to-message', {
-      fieldName: objKeys[0],
-    })} **${getCustomPropertyValue(diff[objKeys[0]])}** \n`;
-  });
+  if (Array.isArray(resultArray)) {
+    const result = resultArray.map((diff: Record<string, string>) => {
+      const objKeys = Object.keys(diff);
 
-  return result.join('');
+      return `* ${t('message.custom-property-is-set-to-message', {
+        fieldName: objKeys[0],
+      })} **${getCustomPropertyValue(diff[objKeys[0]])}** \n`;
+    });
+
+    return result.join('');
+  }
+
+  return '';
 };
 
 export const getEntityVersionByField = (

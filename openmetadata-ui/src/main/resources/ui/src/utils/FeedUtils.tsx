@@ -676,28 +676,6 @@ export const getTestStatusLabel = (status: TestCaseStatus) => {
   return statusLabelMapping[status];
 };
 
-export const getTestNamesListMarkdown = (
-  caseInfos: {
-    status: TestCaseStatus;
-    count: number;
-    testCases: string[];
-  }[]
-) => {
-  let testNamesList = '';
-
-  caseInfos.forEach((caseInfo) => {
-    let testDetailsList = `**${getTestStatusLabel(caseInfo.status)}**: \n`;
-
-    caseInfo.testCases.forEach(
-      (testCase) => (testDetailsList += `${testCase} \n`)
-    );
-
-    testNamesList += testDetailsList;
-  });
-
-  return testNamesList;
-};
-
 export const formatTestStatusData = (
   testResultSummary: Array<EntityTestResultSummaryObject>
 ) => {
@@ -747,7 +725,6 @@ const getActionLabelFromCardStyle = (cardStyle?: CardStyle) => {
 
 export const getFeedHeaderTextFromCardStyle = (
   fieldOperation?: FieldOperation,
-  entityType?: string,
   cardStyle?: CardStyle,
   fieldName?: string
 ) => {
@@ -791,7 +768,6 @@ export const getFeedHeaderTextFromCardStyle = (
             action: i18next.t(
               `label.${fieldOperation ?? FieldOperation.Updated}-lowercase`
             ),
-            entity: entityType ? i18next.t(`label.${entityType}`) : '',
           }}
         />
       );

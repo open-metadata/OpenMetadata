@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { EntityTestResultSummaryObject } from '../../../../../generated/entity/feed/thread';
+import { Info } from '../../../../../generated/entity/feed/thread';
 
 export interface TestCaseFeedProps {
-  testResultSummary: Array<EntityTestResultSummaryObject>;
+  entitySpecificInfo?: Info;
 }

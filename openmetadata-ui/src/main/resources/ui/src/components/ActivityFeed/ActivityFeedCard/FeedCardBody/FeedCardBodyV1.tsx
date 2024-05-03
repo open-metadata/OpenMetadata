@@ -119,10 +119,6 @@ const FeedCardBodyV1 = ({
         return (
           <TestCaseFeed
             entitySpecificInfo={feed.feedInfo?.entitySpecificInfo}
-            // testResultSummary={
-            //   feed.feedInfo?.entitySpecificInfo
-            //     ?.entityTestResultSummary as EntityTestResultSummaryObject[]
-            // }
           />
         );
       }

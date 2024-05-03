@@ -39,7 +39,10 @@ import { ReactComponent as IconForeignKey } from '../assets/svg/foreign-key.svg'
 import { ReactComponent as GlossaryIcon } from '../assets/svg/glossary.svg';
 import { ReactComponent as IconDown } from '../assets/svg/ic-arrow-down.svg';
 import { ReactComponent as IconRight } from '../assets/svg/ic-arrow-right.svg';
-import { ReactComponent as TestCaseIcon } from '../assets/svg/ic-checklist.svg';
+import {
+  ReactComponent as IconTestSuite,
+  ReactComponent as TestCaseIcon,
+} from '../assets/svg/ic-checklist.svg';
 import { ReactComponent as DashboardIcon } from '../assets/svg/ic-dashboard.svg';
 import { ReactComponent as DataProductIcon } from '../assets/svg/ic-data-product.svg';
 import { ReactComponent as DatabaseIcon } from '../assets/svg/ic-database.svg';
@@ -55,7 +58,6 @@ import { ReactComponent as IconKeyLineThrough } from '../assets/svg/icon-key-lin
 import { ReactComponent as IconKey } from '../assets/svg/icon-key.svg';
 import { ReactComponent as IconNotNullLineThrough } from '../assets/svg/icon-not-null-line-through.svg';
 import { ReactComponent as IconNotNull } from '../assets/svg/icon-not-null.svg';
-import { ReactComponent as IconTestSuite } from '../assets/svg/icon-test-suite.svg';
 import { ReactComponent as IconUniqueLineThrough } from '../assets/svg/icon-unique-line-through.svg';
 import { ReactComponent as IconUnique } from '../assets/svg/icon-unique.svg';
 import { ReactComponent as TaskIcon } from '../assets/svg/task-ic.svg';
@@ -327,7 +329,7 @@ export const getEntityIcon = (indexType: string) => {
 
     case EntityType.TEST_CASE:
     case EntityType.TEST_SUITE:
-      return <IconTestSuite height={16} width={16} />;
+      return <IconTestSuite />;
 
     case SearchIndex.TABLE:
     case EntityType.TABLE:

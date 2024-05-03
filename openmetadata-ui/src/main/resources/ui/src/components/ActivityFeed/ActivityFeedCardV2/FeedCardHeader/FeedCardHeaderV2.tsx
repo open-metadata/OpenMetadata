@@ -140,7 +140,6 @@ const FeedCardHeaderV2 = ({
                 <Typography.Text className="m-r-xss">
                   {getFeedHeaderTextFromCardStyle(
                     fieldOperation,
-                    entityType,
                     cardStyle,
                     fieldName
                   )}

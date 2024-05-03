@@ -16,13 +16,13 @@ import {
 } from '../../../../generated/entity/feed/thread';
 
 export interface FeedCardBodyV1Props {
-  isPost: boolean;
   feed: Thread;
   isEditPost: boolean;
   className?: string;
   showSchedule?: boolean;
   announcement?: AnnouncementDetails;
   message: string;
+  isPost?: boolean;
   isOpenInDrawer?: boolean;
   onUpdate?: (message: string) => void;
   onEditCancel?: () => void;
