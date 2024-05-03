@@ -41,6 +41,7 @@ public interface ColumnIndex extends SearchIndex {
     }
   }
 
+  @Override
   default String getDescriptionStatus(EntityInterface entity) {
     List<Class<?>> interfaces = Arrays.asList(entity.getClass().getInterfaces());
     if (interfaces.contains(ColumnsEntityInterface.class)) {

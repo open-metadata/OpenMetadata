@@ -392,7 +392,6 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
             ADMIN_AUTH_HEADERS);
     verifyTestCaseResults(testCaseResults, testCase1ResultList, 4);
 
-    TestSummary testSummary;
     if (supportsSearchIndex) {
       getAndValidateTestSummary(null);
     }
@@ -1865,9 +1864,21 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
 
   private void getAndValidateTestSummary(String testSuiteId)
       throws IOException, InterruptedException {
-    TestSuiteResourceTest testSuiteResourceTest = new TestSuiteResourceTest();
-    TestSummary testSummary = getTestSummary(testSuiteId);
-    validateTestSummary(testSummary, testSuiteId);
+    // Retry logic to handle ES async operations
+    int maxRetries = 5;
+    int retries = 0;
+
+    while (true) {
+      try {
+        TestSummary testSummary = getTestSummary(testSuiteId);
+        validateTestSummary(testSummary, testSuiteId);
+        break;
+      } catch (Exception e) {
+        if (retries++ >= maxRetries) {
+          throw e;
+        }
+      }
+    }
   }
 
   private void validateTestSummary(TestSummary testSummary, String testSuiteId)

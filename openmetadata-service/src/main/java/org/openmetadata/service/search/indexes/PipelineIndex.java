@@ -7,18 +7,16 @@ import org.openmetadata.schema.entity.data.Pipeline;
 import org.openmetadata.schema.type.Task;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.search.ParseTags;
-import org.openmetadata.service.search.SearchIndexUtils;
 import org.openmetadata.service.search.models.SearchSuggest;
-import org.openmetadata.service.util.JsonUtils;
 
 public class PipelineIndex implements SearchIndex {
   final Pipeline pipeline;
-  final List<String> excludeFields = List.of("changeDescription");
 
   public PipelineIndex(Pipeline pipeline) {
     this.pipeline = pipeline;
   }
 
+  @Override
   public List<SearchSuggest> getSuggest() {
     List<SearchSuggest> suggest = new ArrayList<>();
     suggest.add(SearchSuggest.builder().input(pipeline.getFullyQualifiedName()).weight(5).build());
@@ -26,9 +24,12 @@ public class PipelineIndex implements SearchIndex {
     return suggest;
   }
 
-  public Map<String, Object> buildESDoc() {
-    Map<String, Object> doc = JsonUtils.getMap(pipeline);
-    SearchIndexUtils.removeNonIndexableFields(doc, excludeFields);
+  @Override
+  public Object getEntity() {
+    return pipeline;
+  }
+
+  public Map<String, Object> buildSearchIndexDocInternal(Map<String, Object> doc) {
     List<SearchSuggest> serviceSuggest = new ArrayList<>();
     List<SearchSuggest> taskSuggest = new ArrayList<>();
     serviceSuggest.add(
