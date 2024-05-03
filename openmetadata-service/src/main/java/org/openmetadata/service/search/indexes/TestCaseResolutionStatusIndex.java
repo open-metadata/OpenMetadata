@@ -11,14 +11,11 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.search.models.SearchSuggest;
-import org.openmetadata.service.util.JsonUtils;
 
 public record TestCaseResolutionStatusIndex(TestCaseResolutionStatus testCaseResolutionStatus)
     implements SearchIndex {
   @Override
-  public Map<String, Object> buildESDoc() {
-
-    Map<String, Object> doc = JsonUtils.getMap(testCaseResolutionStatus);
+  public Map<String, Object> buildSearchIndexDocInternal(Map<String, Object> doc) {
     List<SearchSuggest> suggest = new ArrayList<>();
     suggest.add(
         SearchSuggest.builder()
@@ -38,6 +35,11 @@ public record TestCaseResolutionStatusIndex(TestCaseResolutionStatus testCaseRes
     doc.put("suggest", suggest);
     setParentRelationships(doc);
     return doc;
+  }
+
+  @Override
+  public Object getEntity() {
+    return testCaseResolutionStatus;
   }
 
   private void setParentRelationships(Map<String, Object> doc) {

@@ -78,7 +78,7 @@ describe('Teams flow should work properly', { tags: 'Settings' }, () => {
       .contains(TEAM_DETAILS.name)
       .click();
 
-    cy.get('[data-testid="avatar"]').click();
+    cy.get('[data-testid="profile-avatar"]').click();
     cy.get('[data-testid="user-name"]')
       .should('exist')
       .invoke('text')
