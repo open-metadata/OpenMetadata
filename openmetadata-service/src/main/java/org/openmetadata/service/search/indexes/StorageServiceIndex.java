@@ -23,7 +23,7 @@ public record StorageServiceIndex(StorageService storageService) implements Sear
     return storageService;
   }
 
-  public Map<String, Object> buildESDocInternal(Map<String, Object> doc) {
+  public Map<String, Object> buildSearchIndexDocInternal(Map<String, Object> doc) {
     Map<String, Object> commonAttributes =
         getCommonAttributesMap(storageService, Entity.STORAGE_SERVICE);
     doc.putAll(commonAttributes);

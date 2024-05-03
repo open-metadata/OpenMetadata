@@ -32,7 +32,7 @@ public class QueryIndex implements SearchIndex {
     return query;
   }
 
-  public Map<String, Object> buildESDocInternal(Map<String, Object> doc) {
+  public Map<String, Object> buildSearchIndexDocInternal(Map<String, Object> doc) {
     ParseTags parseTags = new ParseTags(Entity.getEntityTags(Entity.QUERY, query));
     Map<String, Object> commonAttributes = getCommonAttributesMap(query, Entity.QUERY);
     doc.putAll(commonAttributes);

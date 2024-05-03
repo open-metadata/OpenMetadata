@@ -23,7 +23,7 @@ public record TestCaseIndex(TestCase testCase) implements SearchIndex {
   }
 
   @SneakyThrows
-  public Map<String, Object> buildESDocInternal(Map<String, Object> doc) {
+  public Map<String, Object> buildSearchIndexDocInternal(Map<String, Object> doc) {
     List<TestSuite> testSuiteArray = new ArrayList<>();
     if (testCase.getTestSuites() != null) {
       for (TestSuite suite : testCase.getTestSuites()) {

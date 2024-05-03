@@ -255,7 +255,7 @@ public class SearchRepository {
       try {
         IndexMapping indexMapping = entityIndexMap.get(entityType);
         SearchIndex index = searchIndexFactory.buildIndex(entityType, entity);
-        String doc = JsonUtils.pojoToJson(index.buildElasticSearchDocument());
+        String doc = JsonUtils.pojoToJson(index.buildSearchIndexDoc());
         searchClient.createEntity(indexMapping.getIndexName(clusterAlias), entityId, doc);
       } catch (Exception ie) {
         LOG.error(
@@ -283,7 +283,7 @@ public class SearchRepository {
       try {
         IndexMapping indexMapping = entityIndexMap.get(entityType);
         SearchIndex index = searchIndexFactory.buildIndex(entityType, entity);
-        String doc = JsonUtils.pojoToJson(index.buildElasticSearchDocument());
+        String doc = JsonUtils.pojoToJson(index.buildSearchIndexDoc());
         searchClient.createTimeSeriesEntity(indexMapping.getIndexName(clusterAlias), entityId, doc);
       } catch (Exception ie) {
         LOG.error(
@@ -312,7 +312,7 @@ public class SearchRepository {
           scriptTxt = getScriptWithParams(entity, doc);
         } else {
           SearchIndex elasticSearchIndex = searchIndexFactory.buildIndex(entityType, entity);
-          doc = elasticSearchIndex.buildElasticSearchDocument();
+          doc = elasticSearchIndex.buildSearchIndexDoc();
         }
         searchClient.updateEntity(
             indexMapping.getIndexName(clusterAlias), entityId, doc, scriptTxt);

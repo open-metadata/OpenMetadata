@@ -24,7 +24,7 @@ public record SearchEntityIndex(org.openmetadata.schema.entity.data.SearchIndex 
     return searchIndex;
   }
 
-  public Map<String, Object> buildESDocInternal(Map<String, Object> doc) {
+  public Map<String, Object> buildSearchIndexDocInternal(Map<String, Object> doc) {
     Map<String, Object> commonAttributes = getCommonAttributesMap(searchIndex, Entity.SEARCH_INDEX);
     doc.putAll(commonAttributes);
     ParseTags parseTags = new ParseTags(Entity.getEntityTags(Entity.SEARCH_INDEX, searchIndex));

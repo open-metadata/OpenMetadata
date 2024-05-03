@@ -29,7 +29,7 @@ public class GlossaryTermIndex implements SearchIndex {
     return glossaryTerm;
   }
 
-  public Map<String, Object> buildESDocInternal(Map<String, Object> doc) {
+  public Map<String, Object> buildSearchIndexDocInternal(Map<String, Object> doc) {
     Map<String, Object> commonAttributes =
         getCommonAttributesMap(glossaryTerm, Entity.GLOSSARY_TERM);
     doc.putAll(commonAttributes);

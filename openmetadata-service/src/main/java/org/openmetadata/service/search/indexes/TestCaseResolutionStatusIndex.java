@@ -11,14 +11,11 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.search.models.SearchSuggest;
-import org.openmetadata.service.util.JsonUtils;
 
 public record TestCaseResolutionStatusIndex(TestCaseResolutionStatus testCaseResolutionStatus)
     implements SearchIndex {
   @Override
-  public Map<String, Object> buildESDoc() {
-
-    Map<String, Object> doc = JsonUtils.getMap(testCaseResolutionStatus);
+  public Map<String, Object> buildSearchIndexDocInternal(Map<String, Object> doc) {
     List<SearchSuggest> suggest = new ArrayList<>();
     suggest.add(
         SearchSuggest.builder()
@@ -40,6 +37,11 @@ public record TestCaseResolutionStatusIndex(TestCaseResolutionStatus testCaseRes
     return doc;
   }
 
+  @Override
+  public Object getEntity() {
+    return testCaseResolutionStatus;
+  }
+
   private void setParentRelationships(Map<String, Object> doc) {
     // denormalize the parent relationships for search
     EntityReference testCaseReference = testCaseResolutionStatus.getTestCaseReference();
@@ -50,13 +52,6 @@ public record TestCaseResolutionStatusIndex(TestCaseResolutionStatus testCaseRes
     if (testSuite == null) return;
     doc.put("testSuite", testSuite.getEntityReference());
     TestSuiteIndex.addTestSuiteParentEntityRelations(testSuite.getExecutableEntityReference(), doc);
-  public Object getEntity() {
-    return testCaseResolutionStatus;
-  }
-
-  @Override
-  public Map<String, Object> buildESDocInternal(Map<String, Object> esDoc) {
-    return JsonUtils.getMap(testCaseResolutionStatus);
   }
 
   public static Map<String, Float> getFields() {

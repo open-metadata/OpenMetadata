@@ -22,7 +22,7 @@ public record DatabaseSchemaIndex(DatabaseSchema databaseSchema) implements Sear
     return databaseSchema;
   }
 
-  public Map<String, Object> buildESDocInternal(Map<String, Object> doc) {
+  public Map<String, Object> buildSearchIndexDocInternal(Map<String, Object> doc) {
     Map<String, Object> commonAttributes =
         getCommonAttributesMap(databaseSchema, Entity.DATABASE_SCHEMA);
     doc.putAll(commonAttributes);

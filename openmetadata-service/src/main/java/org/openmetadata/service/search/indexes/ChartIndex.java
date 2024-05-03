@@ -21,7 +21,7 @@ public record ChartIndex(Chart chart) implements SearchIndex {
     return chart;
   }
 
-  public Map<String, Object> buildESDocInternal(Map<String, Object> esDoc) {
+  public Map<String, Object> buildSearchIndexDocInternal(Map<String, Object> esDoc) {
     Map<String, Object> commonAttributes = getCommonAttributesMap(chart, Entity.CHART);
     esDoc.putAll(commonAttributes);
     return esDoc;

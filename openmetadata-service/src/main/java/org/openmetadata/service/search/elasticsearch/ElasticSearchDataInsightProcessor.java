@@ -86,7 +86,7 @@ public class ElasticSearchDataInsightProcessor
             indexMapping.getIndexName(Entity.getSearchRepository().getClusterAlias()),
             reportData.getId().toString());
     updateRequest.doc(
-        JsonUtils.pojoToJson(new ReportDataIndexes(reportData).buildElasticSearchDocument()),
+        JsonUtils.pojoToJson(new ReportDataIndexes(reportData).buildSearchIndexDoc()),
         XContentType.JSON);
     updateRequest.docAsUpsert(true);
     return updateRequest;

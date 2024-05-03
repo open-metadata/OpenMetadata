@@ -22,7 +22,7 @@ public record PipelineServiceIndex(PipelineService pipelineService) implements S
     return pipelineService;
   }
 
-  public Map<String, Object> buildESDocInternal(Map<String, Object> doc) {
+  public Map<String, Object> buildSearchIndexDocInternal(Map<String, Object> doc) {
     Map<String, Object> commonAttributes =
         getCommonAttributesMap(pipelineService, Entity.PIPELINE_SERVICE);
     doc.putAll(commonAttributes);

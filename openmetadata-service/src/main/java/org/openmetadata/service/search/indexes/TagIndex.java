@@ -22,7 +22,7 @@ public record TagIndex(Tag tag) implements SearchIndex {
     return tag;
   }
 
-  public Map<String, Object> buildESDocInternal(Map<String, Object> doc) {
+  public Map<String, Object> buildSearchIndexDocInternal(Map<String, Object> doc) {
     Map<String, Object> commonAttributes = getCommonAttributesMap(tag, Entity.TAG);
     doc.putAll(commonAttributes);
     if (tag.getDisabled() != null && tag.getDisabled()) {

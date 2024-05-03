@@ -45,7 +45,7 @@ public class TopicIndex implements SearchIndex {
     return excludeTopicFields;
   }
 
-  public Map<String, Object> buildESDocInternal(Map<String, Object> esDoc) {
+  public Map<String, Object> buildSearchIndexDocInternal(Map<String, Object> esDoc) {
     Map<String, Object> doc = JsonUtils.getMap(topic);
     List<SearchSuggest> fieldSuggest = new ArrayList<>();
     List<SearchSuggest> serviceSuggest = new ArrayList<>();

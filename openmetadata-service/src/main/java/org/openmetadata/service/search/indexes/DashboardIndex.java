@@ -31,7 +31,7 @@ public class DashboardIndex implements SearchIndex {
     return dashboard;
   }
 
-  public Map<String, Object> buildESDocInternal(Map<String, Object> doc) {
+  public Map<String, Object> buildSearchIndexDocInternal(Map<String, Object> doc) {
     List<SearchSuggest> serviceSuggest = new ArrayList<>();
     List<SearchSuggest> chartSuggest = new ArrayList<>();
     List<SearchSuggest> dataModelSuggest = new ArrayList<>();

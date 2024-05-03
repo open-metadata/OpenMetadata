@@ -38,7 +38,7 @@ public class IngestionPipelineIndex implements SearchIndex {
     return excludeFields;
   }
 
-  public Map<String, Object> buildESDocInternal(Map<String, Object> doc) {
+  public Map<String, Object> buildSearchIndexDocInternal(Map<String, Object> doc) {
     List<SearchSuggest> serviceSuggest = new ArrayList<>();
     serviceSuggest.add(
         SearchSuggest.builder()

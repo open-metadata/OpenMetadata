@@ -34,7 +34,7 @@ import org.openmetadata.service.util.JsonUtils;
 public interface SearchIndex {
   Set<String> DEFAULT_EXCLUDED_FIELDS = Set.of("changeDescription");
 
-  default Map<String, Object> buildElasticSearchDocument() {
+  default Map<String, Object> buildSearchIndexDoc() {
     Map<String, Object> esDoc = JsonUtils.getMap(getEntity());
 
     // Remove non indexable fields
@@ -44,7 +44,7 @@ public interface SearchIndex {
     SearchIndexUtils.removeNonIndexableFields(esDoc, getExcludedFields());
 
     // Build Index Doc
-    return this.buildESDocInternal(esDoc);
+    return this.buildSearchIndexDocInternal(esDoc);
   }
 
   Object getEntity();
@@ -53,7 +53,7 @@ public interface SearchIndex {
     return Collections.emptySet();
   }
 
-  Map<String, Object> buildESDocInternal(Map<String, Object> esDoc);
+  Map<String, Object> buildSearchIndexDocInternal(Map<String, Object> esDoc);
 
   default List<SearchSuggest> getSuggest() {
     return null;

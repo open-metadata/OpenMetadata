@@ -23,7 +23,7 @@ public record DashboardServiceIndex(DashboardService dashboardService) implement
     return dashboardService;
   }
 
-  public Map<String, Object> buildESDocInternal(Map<String, Object> doc) {
+  public Map<String, Object> buildSearchIndexDocInternal(Map<String, Object> doc) {
     Map<String, Object> commonAttributes =
         getCommonAttributesMap(dashboardService, Entity.DASHBOARD_SERVICE);
     doc.putAll(commonAttributes);

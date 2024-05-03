@@ -35,7 +35,7 @@ public class UserIndex implements SearchIndex {
     return excludeFields;
   }
 
-  public Map<String, Object> buildESDocInternal(Map<String, Object> doc) {
+  public Map<String, Object> buildSearchIndexDocInternal(Map<String, Object> doc) {
     Map<String, Object> commonAttributes = getCommonAttributesMap(user, Entity.USER);
     doc.putAll(commonAttributes);
     doc.put(

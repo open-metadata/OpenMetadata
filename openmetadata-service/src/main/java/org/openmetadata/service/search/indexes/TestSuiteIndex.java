@@ -17,7 +17,7 @@ public record TestSuiteIndex(TestSuite testSuite) implements SearchIndex {
     return testSuite;
   }
 
-  public Map<String, Object> buildESDocInternal(Map<String, Object> doc) {
+  public Map<String, Object> buildSearchIndexDocInternal(Map<String, Object> doc) {
     List<SearchSuggest> suggest = new ArrayList<>();
     suggest.add(SearchSuggest.builder().input(testSuite.getFullyQualifiedName()).weight(5).build());
     suggest.add(SearchSuggest.builder().input(testSuite.getName()).weight(10).build());

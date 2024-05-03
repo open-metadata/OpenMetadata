@@ -18,7 +18,7 @@ public record MlModelServiceIndex(MlModelService mlModelService) implements Sear
     return suggest;
   }
 
-  public Map<String, Object> buildESDocInternal(Map<String, Object> doc) {
+  public Map<String, Object> buildSearchIndexDocInternal(Map<String, Object> doc) {
     Map<String, Object> commonAttributes =
         getCommonAttributesMap(mlModelService, Entity.MLMODEL_SERVICE);
     doc.putAll(commonAttributes);

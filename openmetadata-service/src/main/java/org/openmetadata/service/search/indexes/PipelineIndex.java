@@ -29,7 +29,7 @@ public class PipelineIndex implements SearchIndex {
     return pipeline;
   }
 
-  public Map<String, Object> buildESDocInternal(Map<String, Object> doc) {
+  public Map<String, Object> buildSearchIndexDocInternal(Map<String, Object> doc) {
     List<SearchSuggest> serviceSuggest = new ArrayList<>();
     List<SearchSuggest> taskSuggest = new ArrayList<>();
     serviceSuggest.add(

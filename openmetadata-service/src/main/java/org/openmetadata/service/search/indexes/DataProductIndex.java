@@ -22,7 +22,7 @@ public record DataProductIndex(DataProduct dataProduct) implements SearchIndex {
     return dataProduct;
   }
 
-  public Map<String, Object> buildESDocInternal(Map<String, Object> doc) {
+  public Map<String, Object> buildSearchIndexDocInternal(Map<String, Object> doc) {
     Map<String, Object> commonAttributes = getCommonAttributesMap(dataProduct, Entity.DATA_PRODUCT);
     doc.putAll(commonAttributes);
     return doc;

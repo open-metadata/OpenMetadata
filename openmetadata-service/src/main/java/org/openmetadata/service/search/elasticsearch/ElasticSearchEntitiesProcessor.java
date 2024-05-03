@@ -90,7 +90,7 @@ public class ElasticSearchEntitiesProcessor
     updateRequest.doc(
         JsonUtils.pojoToJson(
             Objects.requireNonNull(Entity.buildSearchIndex(entityType, entity))
-                .buildElasticSearchDocument()),
+                .buildSearchIndexDoc()),
         XContentType.JSON);
     updateRequest.docAsUpsert(true);
     return updateRequest;

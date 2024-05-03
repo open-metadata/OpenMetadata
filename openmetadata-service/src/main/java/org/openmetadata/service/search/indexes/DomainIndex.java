@@ -22,7 +22,7 @@ public record DomainIndex(Domain domain) implements SearchIndex {
     return domain;
   }
 
-  public Map<String, Object> buildESDocInternal(Map<String, Object> doc) {
+  public Map<String, Object> buildSearchIndexDocInternal(Map<String, Object> doc) {
     Map<String, Object> commonAttributes = getCommonAttributesMap(domain, Entity.DOMAIN);
     doc.putAll(commonAttributes);
     return doc;

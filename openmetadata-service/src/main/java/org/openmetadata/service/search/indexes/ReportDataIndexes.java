@@ -11,7 +11,7 @@ public record ReportDataIndexes(ReportData reportData) implements SearchIndex {
   }
 
   @Override
-  public Map<String, Object> buildESDocInternal(Map<String, Object> esDoc) {
+  public Map<String, Object> buildSearchIndexDocInternal(Map<String, Object> esDoc) {
     Map<String, Object> doc = JsonUtils.getMap(reportData);
     doc.put("id", null);
     doc.put("timestamp", reportData.getTimestamp());

@@ -56,7 +56,7 @@ public record TableIndex(Table table) implements ColumnIndex {
     return excludeFields;
   }
 
-  public Map<String, Object> buildESDocInternal(Map<String, Object> doc) {
+  public Map<String, Object> buildSearchIndexDocInternal(Map<String, Object> doc) {
     List<SearchSuggest> columnSuggest = new ArrayList<>();
     List<SearchSuggest> schemaSuggest = new ArrayList<>();
     List<SearchSuggest> databaseSuggest = new ArrayList<>();

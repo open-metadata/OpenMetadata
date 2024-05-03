@@ -21,7 +21,7 @@ public record DatabaseIndex(Database database) implements SearchIndex {
     return database;
   }
 
-  public Map<String, Object> buildESDocInternal(Map<String, Object> doc) {
+  public Map<String, Object> buildSearchIndexDocInternal(Map<String, Object> doc) {
     Map<String, Object> commonAttributes = getCommonAttributesMap(database, Entity.DATABASE);
     doc.putAll(commonAttributes);
     return doc;

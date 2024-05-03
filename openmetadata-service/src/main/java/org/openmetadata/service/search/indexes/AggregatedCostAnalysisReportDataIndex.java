@@ -11,7 +11,7 @@ public record AggregatedCostAnalysisReportDataIndex(ReportData reportData) imple
   }
 
   @Override
-  public Map<String, Object> buildESDocInternal(Map<String, Object> esDoc) {
+  public Map<String, Object> buildSearchIndexDocInternal(Map<String, Object> esDoc) {
     esDoc.put("entityType", "aggregatedCostAnalysisReportData");
     return esDoc;
   }

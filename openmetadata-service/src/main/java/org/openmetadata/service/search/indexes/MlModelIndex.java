@@ -28,7 +28,7 @@ public class MlModelIndex implements SearchIndex {
     return mlModel;
   }
 
-  public Map<String, Object> buildESDocInternal(Map<String, Object> doc) {
+  public Map<String, Object> buildSearchIndexDocInternal(Map<String, Object> doc) {
     ParseTags parseTags = new ParseTags(Entity.getEntityTags(Entity.MLMODEL, mlModel));
     Map<String, Object> commonAttributes = getCommonAttributesMap(mlModel, Entity.MLMODEL);
     doc.putAll(commonAttributes);
