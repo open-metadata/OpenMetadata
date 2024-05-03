@@ -99,9 +99,11 @@ import EntityLink from './EntityLink';
 import { BasicEntityOverviewInfo } from './EntityUtils.interface';
 import Fqn from './Fqn';
 import {
+  getDomainDetailsPath,
   getDomainPath,
   getGlossaryPath,
   getIncidentManagerDetailPagePath,
+  getObservabilityAlertDetailsPath,
   getSettingPath,
 } from './RouterUtils';
 import { getServiceRouteFromServiceType } from './ServiceUtils';
@@ -1290,6 +1292,7 @@ export const getEntityLinkFromType = (
     case EntityType.GLOSSARY_TERM:
       return getGlossaryTermDetailsPath(fullyQualifiedName);
     case EntityType.TAG:
+    case EntityType.CLASSIFICATION:
       return getTagsDetailsPath(fullyQualifiedName);
 
     case EntityType.DATABASE_SERVICE:
@@ -1334,6 +1337,10 @@ export const getEntityLinkFromType = (
       );
     case EntityType.TEST_CASE:
       return getIncidentManagerDetailPagePath(fullyQualifiedName);
+    case EntityType.DOMAIN:
+      return getDomainDetailsPath(fullyQualifiedName);
+    case EntityType.EVENT_SUBSCRIPTION:
+      return getObservabilityAlertDetailsPath(fullyQualifiedName);
     default:
       return '';
   }

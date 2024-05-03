@@ -37,6 +37,7 @@ import { ReactComponent as IconDrag } from '../assets/svg/drag.svg';
 import { ReactComponent as IconForeignKeyLineThrough } from '../assets/svg/foreign-key-line-through.svg';
 import { ReactComponent as IconForeignKey } from '../assets/svg/foreign-key.svg';
 import { ReactComponent as GlossaryIcon } from '../assets/svg/glossary.svg';
+import { ReactComponent as AlertIcon } from '../assets/svg/ic-alert.svg';
 import { ReactComponent as IconDown } from '../assets/svg/ic-arrow-down.svg';
 import { ReactComponent as IconRight } from '../assets/svg/ic-arrow-right.svg';
 import {
@@ -61,6 +62,7 @@ import { ReactComponent as IconNotNull } from '../assets/svg/icon-not-null.svg';
 import { ReactComponent as IconUniqueLineThrough } from '../assets/svg/icon-unique-line-through.svg';
 import { ReactComponent as IconUnique } from '../assets/svg/icon-unique.svg';
 import { ReactComponent as TaskIcon } from '../assets/svg/task-ic.svg';
+
 import { SourceType } from '../components/SearchedData/SearchedData.interface';
 import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
 import { DE_ACTIVE_COLOR, TEXT_BODY_COLOR } from '../constants/constants';
@@ -291,6 +293,7 @@ export const getEntityIcon = (indexType: string) => {
 
     case SearchIndex.TAG:
     case EntityType.TAG:
+    case EntityType.CLASSIFICATION:
     case 'tagCategory':
       return <ClassificationIcon />;
     case SearchIndex.GLOSSARY:
@@ -326,6 +329,9 @@ export const getEntityIcon = (indexType: string) => {
 
     case 'task':
       return <TaskIcon />;
+
+    case EntityType.EVENT_SUBSCRIPTION:
+      return <AlertIcon />;
 
     case EntityType.TEST_CASE:
     case EntityType.TEST_SUITE:

@@ -33,6 +33,7 @@ import EntityPopOverCard from '../../../common/PopOverCard/EntityPopOverCard';
 
 import { useTranslation } from 'react-i18next';
 import { EntityType } from '../../../../enums/entity.enum';
+import { CardStyle } from '../../../../generated/entity/feed/thread';
 import entityUtilClassBase from '../../../../utils/EntityUtilClassBase';
 import { getEntityIcon } from '../../../../utils/TableUtils';
 import UserPopOverCard from '../../../common/PopOverCard/UserPopOverCard';
@@ -67,11 +68,9 @@ const FeedCardHeaderV2 = ({
     return {
       entityCheck: !isUndefined(entityFQN) && !isUndefined(entityType),
       isUserOrTeam: [EntityType.USER, EntityType.TEAM].includes(entityType),
-      showEntityLink: ![EntityType.GLOSSARY, EntityType.GLOSSARY_TERM].includes(
-        entityType
-      ),
+      showEntityLink: cardStyle !== CardStyle.EntityCreated,
     };
-  }, [entityFQN, entityType]);
+  }, [entityFQN, entityType, cardStyle]);
 
   const renderEntityLink = useMemo(() => {
     if (isUserOrTeam) {
