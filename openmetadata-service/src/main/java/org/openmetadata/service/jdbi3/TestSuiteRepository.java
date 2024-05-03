@@ -232,7 +232,7 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
         testSummary = getEntityTestCasesExecutionSummary(testCaseResultSummary);
       }
       return testSummary;
-    } catch (IOException e) {
+    } catch (Exception e) {
       LOG.error("Error reading aggregation query", e);
     }
     return null;
