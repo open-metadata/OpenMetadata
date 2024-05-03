@@ -380,35 +380,50 @@ public class ElasticSearchClient implements SearchClient {
     }
 
     if (request.getIndex().equalsIgnoreCase("glossary_term_search_index")) {
-      QueryBuilder baseQuery =
+      searchSourceBuilder.query(
           QueryBuilders.boolQuery()
-              .must(searchSourceBuilder.query()) // get user input terms
-              .must(QueryBuilders.matchQuery("status", "Approved"));
-
-      searchSourceBuilder.query(baseQuery);
+              .must(searchSourceBuilder.query())
+              .must(QueryBuilders.matchQuery("status", "Approved")));
 
       if (request.isGetHierarchy()) {
+        /*
+        Search for user input terms in name, fullyQualifiedName, displayName and glossary.fullyQualifiedName, glossary.displayName
+        */
+        QueryBuilder baseQuery =
+            QueryBuilders.boolQuery()
+                .should(QueryBuilders.matchQuery("fullyQualifiedName", request.getQuery()))
+                .should(QueryBuilders.matchQuery("name", request.getQuery()))
+                .should(QueryBuilders.matchQuery("displayName", request.getQuery()))
+                .should(QueryBuilders.matchQuery("glossary.fullyQualifiedName", request.getQuery()))
+                .should(QueryBuilders.matchQuery("glossary.displayName", request.getQuery()))
+                .must(QueryBuilders.matchQuery("status", "Approved"))
+                .minimumShouldMatch(1);
+        searchSourceBuilder.query(baseQuery);
+
         SearchResponse searchResponse =
             client.search(
                 new es.org.elasticsearch.action.search.SearchRequest(request.getIndex())
                     .source(searchSourceBuilder),
                 RequestOptions.DEFAULT);
 
-        // Build  query to get parent terms for the user input terms , to build correct hierarchy
+        // Extract parent terms from aggregation
         BoolQueryBuilder parentTermQueryBuilder = QueryBuilders.boolQuery();
-        Terms glossaryNameTerms = searchResponse.getAggregations().get("glossary.name.keyword");
-        glossaryNameTerms.getBuckets().stream()
-            .map(Terms.Bucket::getKeyAsString)
-            .forEach(
-                glossaryName ->
-                    parentTermQueryBuilder.should(
-                        QueryBuilders.prefixQuery("fullyQualifiedName", glossaryName)));
+        Terms parentTerms = searchResponse.getAggregations().get("fqnParts_agg");
 
-        // Combine the base query and parentTermQuery under OR logic
-        BoolQueryBuilder finalQueryBuilder =
-            QueryBuilders.boolQuery().should(baseQuery).should(parentTermQueryBuilder);
+        // Build  query to get parent terms for the user input terms , to build correct hierarchy
+        if (!parentTerms.getBuckets().isEmpty()) {
+          parentTerms.getBuckets().stream()
+              .map(Terms.Bucket::getKeyAsString)
+              .forEach(
+                  parentTerm ->
+                      parentTermQueryBuilder.should(
+                          QueryBuilders.matchQuery("fullyQualifiedName", parentTerm)));
 
-        searchSourceBuilder.query(finalQueryBuilder);
+          searchSourceBuilder.query(
+              parentTermQueryBuilder
+                  .minimumShouldMatch(1)
+                  .must(QueryBuilders.matchQuery("status", "Approved")));
+        }
         searchSourceBuilder.sort(SortBuilders.fieldSort("fullyQualifiedName").order(SortOrder.ASC));
       }
     }
@@ -1142,6 +1157,7 @@ public class ElasticSearchClient implements SearchClient {
         new SearchSourceBuilder().query(queryBuilder).highlighter(hb).from(from).size(size);
     searchSourceBuilder.aggregation(
         AggregationBuilders.terms("glossary.name.keyword").field("glossary.name.keyword"));
+    searchSourceBuilder.aggregation(AggregationBuilders.terms("fqnParts_agg").field("fqnParts"));
     return addAggregation(searchSourceBuilder);
   }
 
