@@ -462,7 +462,7 @@ public class ElasticSearchClient implements SearchClient {
   }
 
   @Override
-  public Response getDocWithId(String indexName, String entityId) throws IOException {
+  public Response getDocByID(String indexName, String entityId) throws IOException {
     try {
       GetRequest request = new GetRequest(indexName, entityId);
       GetResponse response = client.get(request, RequestOptions.DEFAULT);
