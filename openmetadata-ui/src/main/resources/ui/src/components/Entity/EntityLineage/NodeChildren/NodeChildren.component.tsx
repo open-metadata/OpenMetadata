@@ -89,7 +89,8 @@ const NodeChildren = ({ node, isConnectable }: NodeChildrenProps) => {
       return (
         <Collapse
           destroyInactivePanel
-          defaultActiveKey={record.fullyQualifiedName}>
+          defaultActiveKey={record.fullyQualifiedName}
+          key={record.fullyQualifiedName}>
           <Panel
             header={getEntityName(record)}
             key={record.fullyQualifiedName ?? ''}>
