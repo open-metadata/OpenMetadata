@@ -19,38 +19,18 @@ You can learn more about how the migration process works [here](/deployment/upgr
 
 {% /note %}
 
-- To run the backup and restore commands, please make sure that you are always in the latest `openmetadata-ingestion` version to have all the improvements shipped in the CLI.
-- Also, make sure you have connectivity between your database (MySQL / PostgreSQL) and the host machine where you will be running the below commands.
+Since version 1.4.0, **OpenMetadata encourages using the builtin-tools for creating logical backups of the metadata**:
 
-**1. Create a Virtual Environment and Install the Backup CLI**
+- [mysqldump](https://dev.mysql.com/doc/refman/8.0/en/mysqldump.html) for MySQL
+- [pg_dump](https://www.postgresql.org/docs/current/app-pgdump.html) for Postgres
 
-```python
-python -m venv venv
-source venv/bin/activate
-pip install openmetadata-ingestion~=1.3.0
-```
+For PROD deployment we recommend users to rely on cloud services for their databases, be it [AWS RDS](https://docs.aws.amazon.com/rds/),
+[Azure SQL](https://azure.microsoft.com/en-in/products/azure-sql/database) or [GCP Cloud SQL](https://cloud.google.com/sql/).
 
-Validate the installed metadata version with `python -m metadata --version`
-
-**2. Run the Backup**
-
-If using MySQL:
-
-```bash
-python -m metadata backup -u openmetadata_user -p openmetadata_password -H mysql -d openmetadata_db --port 3306
-```
-
-If using Postgres:
-
-```bash
-python -m metadata backup -u openmetadata_user -p openmetadata_password -H postgresql -d openmetadata_db --port 5432 -s public
-```
-
-**3. Store the backup file somewhere safe**
-
-The above command will generate a backup file with extension as `.sql`. You can copy the name from the backup command output.
-
-Make sure to store it somewhere safe in case you need to restore the data later.
+If you're a user of these services, you can leverage their backup capabilities directly:
+- [Creating a DB snapshot in AWS](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/USER_CreateSnapshot.html)
+- [Backup and restore in Azure MySQL](https://learn.microsoft.com/en-us/azure/mysql/single-server/concepts-backup)
+- [About GCP Cloud SQL backup](https://cloud.google.com/sql/docs/mysql/backup-recovery/backups)
 
 You can refer to the following guide to get more details about the backup and restore:
 
@@ -104,9 +84,6 @@ After the migration is finished, you can revert this changes.
 
 # Deprecation Notice
 
-- Check the updated [docs](/connectors/pipeline/airflow/configuring-lineage#configuring-dag-lineage) on how to configure Airflow DAG's lineage.
-  We will deprecate the dictionary annotation in the 1.4 release, since the new annotation allows you to define lineage between
-  assets other than Tables.
 
 # Breaking Changes
 

@@ -3,7 +3,7 @@ package org.openmetadata.service.search;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
+import java.util.Set;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.TagLabel;
 
@@ -15,13 +15,37 @@ public final class SearchIndexUtils {
     if (followersRef == null) {
       return Collections.emptyList();
     }
-    return followersRef.stream().map(item -> item.getId().toString()).collect(Collectors.toList());
+    return followersRef.stream().map(item -> item.getId().toString()).toList();
   }
 
-  public static void removeNonIndexableFields(Map<String, Object> doc, List<String> fields) {
+  public static void removeNonIndexableFields(Map<String, Object> doc, Set<String> fields) {
     for (String key : fields) {
-      doc.remove(key);
+      if (key.contains(".")) {
+        removeFieldByPath(doc, key);
+      } else {
+        doc.remove(key);
+      }
     }
+  }
+
+  public static void removeFieldByPath(Map<String, Object> jsonMap, String path) {
+    String[] pathElements = path.split("\\.");
+    Map<String, Object> currentMap = jsonMap;
+
+    for (int i = 0; i < pathElements.length - 1; i++) {
+      String key = pathElements[i];
+      Object value = currentMap.get(key);
+      if (value instanceof Map) {
+        currentMap = (Map<String, Object>) value;
+      } else {
+        // Path Not Found
+        return;
+      }
+    }
+
+    // Remove the field at the last path element
+    String lastKey = pathElements[pathElements.length - 1];
+    currentMap.remove(lastKey);
   }
 
   public static List<TagLabel> parseTags(List<TagLabel> tags) {

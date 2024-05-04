@@ -2226,22 +2226,25 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     List<String> fqnList = new ArrayList<>();
     // add tags to entity
     entity = patchEntity(entity.getId(), origJson, entity, ADMIN_AUTH_HEADERS);
-    waitForEsAsyncOp();
-    SearchResponse response =
-        getResponseFormSearch(
-            indexMapping.getIndexName(Entity.getSearchRepository().getClusterAlias()));
-    SearchHit[] hits = response.getHits().getHits();
-    for (SearchHit hit : hits) {
-      Map<String, Object> sourceAsMap = hit.getSourceAsMap();
-      if (sourceAsMap.get("id").toString().equals(entity.getId().toString())) {
-        @SuppressWarnings("unchecked")
-        List<Map<String, String>> listTags = (List<Map<String, String>>) sourceAsMap.get("tags");
-        listTags.forEach(tempMap -> fqnList.add(tempMap.get("tagFQN")));
+
+    // Add retry logic to handle the eventual inconsistency state of the search index as it uses
+    // async client.
+    int retries = 0;
+    while (true) {
+      try {
+        waitForEsAsyncOp();
+        SearchResponse response =
+            getResponseFormSearch(
+                indexMapping.getIndexName(Entity.getSearchRepository().getClusterAlias()));
+        validateTagAddedFromSearch(response, entity.getId(), fqnList, tagLabel.getTagFQN());
         break;
+      } catch (Exception e) {
+        if (retries++ > 5) {
+          throw e;
+        }
       }
     }
-    // check if the added tag if also added in the entity in search
-    assertTrue(fqnList.contains(tagLabel.getTagFQN()));
+
     // delete the tag
     tagResourceTest.deleteEntity(tag.getId(), false, true, ADMIN_AUTH_HEADERS);
 
@@ -3725,5 +3728,21 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
             actual.getUpdated().getAccessedByAProcess());
       }
     }
+  }
+
+  private void validateTagAddedFromSearch(
+      SearchResponse response, UUID entityId, List<String> fqnList, String tagFQN) {
+    SearchHit[] hits = response.getHits().getHits();
+    for (SearchHit hit : hits) {
+      Map<String, Object> sourceAsMap = hit.getSourceAsMap();
+      if (sourceAsMap.get("id").toString().equals(entityId.toString())) {
+        @SuppressWarnings("unchecked")
+        List<Map<String, String>> listTags = (List<Map<String, String>>) sourceAsMap.get("tags");
+        listTags.forEach(tempMap -> fqnList.add(tempMap.get("tagFQN")));
+        break;
+      }
+    }
+    // check if the added tag if also added in the entity in search
+    assertTrue(fqnList.contains(tagFQN));
   }
 }
