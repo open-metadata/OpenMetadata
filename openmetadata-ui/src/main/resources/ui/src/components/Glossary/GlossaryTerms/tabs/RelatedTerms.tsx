@@ -14,7 +14,7 @@
 import { Button, Tooltip, Typography } from 'antd';
 import { DefaultOptionType } from 'antd/lib/select';
 import { t } from 'i18next';
-import { cloneDeep, includes, isArray, isEmpty } from 'lodash';
+import { isArray, isEmpty, isUndefined } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useHistory } from 'react-router-dom';
 import { ReactComponent as IconTerm } from '../../../../assets/svg/book.svg';
@@ -29,6 +29,7 @@ import {
 import { EntityField } from '../../../../constants/Feeds.constants';
 import { NO_PERMISSION_FOR_ACTION } from '../../../../constants/HelperTextUtil';
 import { OperationPermission } from '../../../../context/PermissionProvider/PermissionProvider.interface';
+import { EntityType } from '../../../../enums/entity.enum';
 import { SearchIndex } from '../../../../enums/search.enum';
 import { GlossaryTerm } from '../../../../generated/entity/data/glossaryTerm';
 import {
@@ -38,7 +39,10 @@ import {
 import { Paging } from '../../../../generated/type/paging';
 import { searchData } from '../../../../rest/miscAPI';
 import { formatSearchGlossaryTermResponse } from '../../../../utils/APIUtils';
-import { getEntityName } from '../../../../utils/EntityUtils';
+import {
+  getEntityName,
+  getEntityReferenceFromEntity,
+} from '../../../../utils/EntityUtils';
 import {
   getChangedEntityNewValue,
   getChangedEntityOldValue,
@@ -77,25 +81,20 @@ const RelatedTerms = ({
       return;
     }
 
-    const newOptions = selectedData.map((value) => value?.data);
-
-    let updatedGlossaryTerm = cloneDeep(glossaryTerm);
-    const oldTerms = newOptions.filter((d) =>
-      includes(glossaryTerm.relatedTerms, d)
-    );
-    const newTerms = newOptions
-      .filter(
-        (d) => !glossaryTerm.relatedTerms?.some((term) => term.id === d.id)
+    const newOptions = selectedData.map((value) =>
+      getEntityReferenceFromEntity(
+        isUndefined(value.data)
+          ? glossaryTerm.relatedTerms?.find(
+              (term) => term.fullyQualifiedName === value.value
+            )
+          : value.data,
+        EntityType.GLOSSARY_TERM
       )
-      .map((d) => ({
-        id: d.id,
-        type: 'glossaryTerm',
-        displayName: d.displayName,
-        name: d.name,
-      }));
-    updatedGlossaryTerm = {
-      ...updatedGlossaryTerm,
-      relatedTerms: [...oldTerms, ...newTerms],
+    );
+
+    const updatedGlossaryTerm = {
+      ...glossaryTerm,
+      relatedTerms: newOptions,
     };
 
     await onGlossaryTermUpdate(updatedGlossaryTerm);
@@ -132,6 +131,7 @@ const RelatedTerms = ({
 
     return {
       data: results.map((item) => ({
+        data: item,
         label: item.fullyQualifiedName ?? '',
         value: item.fullyQualifiedName ?? '',
       })),

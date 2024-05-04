@@ -441,7 +441,7 @@ const updateSynonyms = (uSynonyms) => {
   });
 };
 
-const updateTags = (inTerm) => {
+const updateTags = (inTerm: boolean) => {
   // visit glossary page
   interceptURL(
     'GET',
@@ -457,8 +457,6 @@ const updateTags = (inTerm) => {
     .should('be.visible')
     .type('personal');
   cy.get('[data-testid="tag-PersonalData.Personal"]').click();
-  // to close popup
-  cy.clickOutside();
 
   cy.get('[data-testid="saveAssociatedTag"]').scrollIntoView().click();
   const container = inTerm
@@ -487,8 +485,10 @@ const updateTerms = (newTerm: string) => {
     .type(newTerm);
   verifyResponseStatusCode('@getGlossaryTerm', 200, { requestTimeout: 10000 });
   cy.get('.ant-select-dropdown').filter(':visible').contains(newTerm).click();
-  cy.get('[data-testid="saveAssociatedTag"]').scrollIntoView().click();
-  verifyResponseStatusCode('@saveGlossaryTermData', 200);
+  cy.get('[data-testid="saveAssociatedTag"]').click();
+  verifyResponseStatusCode('@saveGlossaryTermData', 200, {
+    requestTimeout: 10000,
+  });
 
   cy.get('[data-testid="related-term-container"]')
     .contains(newTerm)
