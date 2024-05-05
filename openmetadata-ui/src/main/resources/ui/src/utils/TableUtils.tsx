@@ -29,7 +29,7 @@ import {
 import { EntityTags } from 'Models';
 import React from 'react';
 import { ReactComponent as AnnouncementIcon } from '../assets/svg/announcements-black.svg';
-import { ReactComponent as IconTerm } from '../assets/svg/book.svg';
+import { ReactComponent as GlossaryTermIcon } from '../assets/svg/book.svg';
 import { ReactComponent as ClassificationIcon } from '../assets/svg/classification.svg';
 import { ReactComponent as ConversationIcon } from '../assets/svg/comment.svg';
 import { ReactComponent as IconDataModel } from '../assets/svg/data-model.svg';
@@ -196,14 +196,25 @@ export const getConstraintIcon = ({
 };
 
 export const getServiceIcon = (source: SourceType) => {
-  if (source.entityType === EntityType.GLOSSARY_TERM) {
+  if (source.entityType === EntityType.GLOSSARY) {
     return (
       <GlossaryIcon
         className="service-icon h-7"
         style={{ color: DE_ACTIVE_COLOR }}
       />
     );
-  } else if (source.entityType === EntityType.TAG) {
+  }
+  if (source.entityType === EntityType.GLOSSARY_TERM) {
+    return (
+      <GlossaryTermIcon
+        className="service-icon h-7"
+        style={{ color: DE_ACTIVE_COLOR }}
+      />
+    );
+  } else if (
+    source.entityType === EntityType.TAG ||
+    source.entityType === EntityType.CLASSIFICATION
+  ) {
     return (
       <ClassificationIcon
         className="service-icon h-7"
@@ -301,7 +312,7 @@ export const getEntityIcon = (indexType: string) => {
       return <GlossaryIcon />;
     case EntityType.GLOSSARY_TERM:
     case SearchIndex.GLOSSARY_TERM:
-      return <IconTerm />;
+      return <GlossaryTermIcon />;
     case EntityType.SEARCH_INDEX:
     case SearchIndex.SEARCH_INDEX:
     case EntityType.SEARCH_SERVICE:
