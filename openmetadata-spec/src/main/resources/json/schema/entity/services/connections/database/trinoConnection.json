@@ -46,6 +46,9 @@
         },
         {
           "$ref": "./common/jwtAuth.json"
+        },
+        {
+          "$ref": "./common/azureConfig.json"
         }
       ]
     },
