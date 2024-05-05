@@ -367,6 +367,11 @@ email:
   password: ${SMTP_SERVER_PWD:-""}
   transportationStrategy: ${SMTP_SERVER_STRATEGY:-"SMTP_TLS"}
 
+limits:
+  enable: ${LIMITS_ENABLED:-false}
+  className: ${LIMITS_CLASS_NAME:-"org.openmetadata.service.limits.DefaultLimits"}
+  limitsConfigFile: ${LIMITS_CONFIG_FILE:-""}
+
 web:
   uriPath: ${WEB_CONF_URI_PATH:-"/api"}
   hsts:
