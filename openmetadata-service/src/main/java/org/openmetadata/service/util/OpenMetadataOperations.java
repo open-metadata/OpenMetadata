@@ -254,7 +254,7 @@ public class OpenMetadataOperations implements Callable<Integer> {
       CollectionRegistry.initialize();
       ApplicationHandler.initialize(config);
       // load seed data so that repositories are initialized
-      CollectionRegistry.getInstance().loadSeedData(jdbi, config, null, null, true);
+      CollectionRegistry.getInstance().loadSeedData(jdbi, config, null, null, null, true);
       ApplicationHandler.initialize(config);
       // creates the default search index application
       AppScheduler.initialize(config, collectionDAO, searchRepository);
