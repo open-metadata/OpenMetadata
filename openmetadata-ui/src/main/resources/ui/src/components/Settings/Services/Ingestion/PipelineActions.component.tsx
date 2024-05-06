@@ -203,7 +203,7 @@ function PipelineActions({
             disabled={getIngestionPermission(record.name)}
             type="link"
             onClick={() => onPauseUnpauseClick(recordId)}>
-            {getLoadingStatus(currPauseId, record.id, t('label.unpause'))}
+            {getLoadingStatus(currPauseId, record.id, t('label.play'))}
           </Button>
         )}
         <Divider className="border-gray" type="vertical" />
