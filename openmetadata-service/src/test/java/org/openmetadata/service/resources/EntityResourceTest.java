@@ -1023,9 +1023,10 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
 
     // Check if the descriptionStatus is set to INCOMPLETE
     Map<String, Object> sourceAsMap =
-        getEntityDocumentFromSearch(
+        waitForSyncAndGetFromSearchIndex(
+            entityWithNullDescription.getUpdatedAt(),
             entityWithNullDescription.getId(),
-            entityWithNullDescription.getEntityReference().getType());
+            entityType);
     assertEquals("INCOMPLETE", sourceAsMap.get("descriptionStatus"));
 
     // Try to search entity with INCOMPLETE description
@@ -2254,6 +2255,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
       Long entityDbLastUpdate, UUID entityId, String entityType) {
     AtomicReference<Map<String, Object>> responseMap = new AtomicReference<>();
     Awaitility.await("Wait for Indexes to be updated for the Entity")
+        .ignoreExceptions()
         .pollInterval(Duration.ofMillis(2000L))
         .atMost(Duration.ofMillis(120 * 1000L)) // 60 iterations for 120 seconds
         .until(
@@ -3757,13 +3759,5 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
             actual.getUpdated().getAccessedByAProcess());
       }
     }
-  }
-
-  private void validateTagAddedFromSearch(
-      Map<String, Object> sourceAsMap, UUID entityId, List<String> fqnList, String tagFQN) {
-    List<Map<String, String>> listTags = (List<Map<String, String>>) sourceAsMap.get("tags");
-    listTags.forEach(tempMap -> fqnList.add(tempMap.get("tagFQN")));
-    // check if the added tag if also added in the entity in search
-    assertTrue(fqnList.contains(tagFQN));
   }
 }
