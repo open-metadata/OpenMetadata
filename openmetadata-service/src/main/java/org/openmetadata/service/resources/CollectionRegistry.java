@@ -246,7 +246,9 @@ public final class CollectionRegistry {
 
     // Create the resource identified by resourceClass
     try {
-      resource = clz.getDeclaredConstructor(Authorizer.class, Limits.class).newInstance(authorizer, limits);
+      resource =
+          clz.getDeclaredConstructor(Authorizer.class, Limits.class)
+              .newInstance(authorizer, limits);
     } catch (NoSuchMethodException e) {
       try {
         resource = clz.getDeclaredConstructor(Authorizer.class).newInstance(authorizer);
@@ -262,8 +264,7 @@ public final class CollectionRegistry {
                     .newInstance(jdbi, authorizer);
           } catch (NoSuchMethodException exec) {
             try {
-              resource =
-                  clz.getDeclaredConstructor(Limits.class).newInstance(limits);
+              resource = clz.getDeclaredConstructor(Limits.class).newInstance(limits);
             } catch (NoSuchMethodException excep) {
               resource = Class.forName(resourceClass).getConstructor().newInstance();
             }
