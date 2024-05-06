@@ -1,5 +1,5 @@
 /*
- *  Copyright 2023 Collate.
+ *  Copyright 2024 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -11,7 +11,9 @@
  *  limitations under the License.
  */
 
-import { TabSpecificField } from '../enums/entity.enum';
+import { PipelineStatus } from '../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 
-// eslint-disable-next-line max-len
-export const defaultFields = `${TabSpecificField.COLUMNS},${TabSpecificField.FOLLOWERS},${TabSpecificField.JOINS},${TabSpecificField.TAGS},${TabSpecificField.OWNER},${TabSpecificField.DATAMODEL},${TabSpecificField.TABLE_CONSTRAINTS},${TabSpecificField.SCHEMA_DEFINITION},${TabSpecificField.DOMAIN},${TabSpecificField.DATA_PRODUCTS},${TabSpecificField.VOTES},${TabSpecificField.EXTENSION}`;
+export interface IngestionRunDetailsModalProps {
+  pipelineStatus?: PipelineStatus;
+  handleCancel: () => void;
+}
