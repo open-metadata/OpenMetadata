@@ -1129,8 +1129,8 @@ describe('Glossary page should work properly', { tags: 'Governance' }, () => {
     );
 
     const parentTerm = CYPRESS_ASSETS_GLOSSARY_TERMS.term_1;
-    const childTerm = CYPRESS_ASSETS_GLOSSARY_TERMS.term_3;
-
+    const childTerm = CYPRESS_ASSETS_GLOSSARY_TERMS.term_2;
+    cy.get('[data-testid="expand-collapse-all-button"]').click();
     visitGlossaryTermPage(childTerm.name, childTerm.fullyQualifiedName, true);
 
     cy.get('[data-testid="manage-button"]').click();
@@ -1164,7 +1164,7 @@ describe('Glossary page should work properly', { tags: 'Governance' }, () => {
     // checking the child term is updated and displayed under the parent term
     cy.get('[data-testid="terms"] [data-testid="filter-count"]')
       .should('be.visible')
-      .contains('1')
+      .contains('2')
       .click();
 
     cy.get(`[data-testid="${childTerm.name}"]`).should('be.visible');
@@ -1173,16 +1173,14 @@ describe('Glossary page should work properly', { tags: 'Governance' }, () => {
 
     const newTermHierarchy = `${Cypress.$.escapeSelector(
       CYPRESS_ASSETS_GLOSSARY.name
-    )}.${parentTerm.name}."${childTerm.name}"`;
-
+    )}.${parentTerm.name}.${childTerm.name}`;
+    cy.get('[data-testid="expand-collapse-all-button"]').click();
     // verify the term is moved under the parent term
-    cy.get(`.ant-table-row-level-1[data-row-key='${newTermHierarchy}']`).should(
-      'be.visible'
-    );
+    cy.get(`[data-row-key='${newTermHierarchy}']`).should('be.visible');
 
     // re-dropping the term to the root level
     dragAndDropElement(
-      `${CYPRESS_ASSETS_GLOSSARY.name}.${parentTerm.name}."${childTerm.name}"`,
+      `${CYPRESS_ASSETS_GLOSSARY.name}.${parentTerm.name}.${childTerm.name}`,
       '.ant-table-thead > tr',
       true
     );
@@ -1316,8 +1314,8 @@ describe('Glossary page should work properly', { tags: 'Governance' }, () => {
       NEW_GLOSSARY_TERMS.term_2.name,
       NEW_GLOSSARY_TERMS.term_1.name
     );
-
     // verify the term is moved under the parent term
+    cy.get('[data-testid="expand-collapse-all-button"]').click();
     cy.get(
       `.ant-table-row-level-1[data-row-key="${Cypress.$.escapeSelector(
         NEW_GLOSSARY_TERMS.term_1.fullyQualifiedName
@@ -1327,7 +1325,7 @@ describe('Glossary page should work properly', { tags: 'Governance' }, () => {
 
   it('Drag and Drop should work properly for glossary term at table level', () => {
     selectActiveGlossary(NEW_GLOSSARY.name);
-
+    cy.get('[data-testid="expand-collapse-all-button"]').click();
     dragAndDropElement(
       `${NEW_GLOSSARY_TERMS.term_1.fullyQualifiedName}.${NEW_GLOSSARY_TERMS.term_2.name}`,
       '.ant-table-thead > tr',
@@ -1341,6 +1339,7 @@ describe('Glossary page should work properly', { tags: 'Governance' }, () => {
     );
 
     // verify the term is moved under the parent term
+    cy.get('[data-testid="expand-collapse-all-button"]').click();
     cy.get(
       `.ant-table-row-level-0[data-row-key="${Cypress.$.escapeSelector(
         NEW_GLOSSARY_TERMS.term_2.fullyQualifiedName
