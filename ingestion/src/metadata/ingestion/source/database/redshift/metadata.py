@@ -96,7 +96,11 @@ from metadata.utils.execution_time_tracker import (
 from metadata.utils.filters import filter_by_database
 from metadata.utils.helpers import get_start_and_end
 from metadata.utils.logger import ingestion_logger
-from metadata.utils.sqlalchemy_utils import get_all_table_comments
+from metadata.utils.sqlalchemy_utils import (
+    get_all_table_comments,
+    get_all_table_ddls,
+    get_table_ddl,
+)
 
 logger = ingestion_logger()
 
@@ -121,6 +125,9 @@ RedshiftDialect.get_table_comment = get_table_comment
 RedshiftDialect._get_all_relation_info = (  # pylint: disable=protected-access
     _get_all_relation_info
 )
+
+Inspector.get_all_table_ddls = get_all_table_ddls
+Inspector.get_table_ddl = get_table_ddl
 
 
 class RedshiftSource(

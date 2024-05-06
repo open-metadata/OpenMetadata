@@ -276,7 +276,7 @@ EXPTECTED_TABLE = Table(
     ),
     serviceType="Hive",
     location=None,
-    viewDefinition=None,
+    schemaDefinition=None,
     tags=[
         TagLabel(
             tagFQN="AtlasMetadata.atlas_table",

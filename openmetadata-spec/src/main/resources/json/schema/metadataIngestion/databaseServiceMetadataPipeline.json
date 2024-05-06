@@ -90,6 +90,12 @@
       "default": true,
       "title": "Include Stored Procedures"
     },
+    "includeDDL": {
+      "description": "Optional configuration to toggle the DDL Statements ingestion.",
+      "type": "boolean",
+      "default": true,
+      "title": "Include DDL Statements"
+    },
     "queryLogDuration": {
       "description": "Configuration to tune how far we want to look back in query logs to process Stored Procedures results.",
       "type": "integer",

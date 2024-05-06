@@ -30,7 +30,7 @@ slug: /main-concepts/metadata-standard/schemas/entity/data/table
 - **`service`**: Link to Database service this table is hosted in. Refer to *../../type/entityReference.json*.
 - **`serviceType`**: Service type this table is hosted in. Refer to *../services/databaseService.json#/definitions/databaseServiceType*.
 - **`location`**: Reference to the Location that contains this table. Refer to *../../type/entityReference.json*.
-- **`viewDefinition`**: View Definition in SQL. Applies to TableType.View only. Refer to *../../type/basic.json#/definitions/sqlQuery*.
+- **`schemaDefinition`**: Schema Definition or DDL statement of a table in SQL. Refer to *../../type/basic.json#/definitions/sqlQuery*.
 - **`tags`** *(array)*: Tags for this table. Default: `None`.
   - **Items**: Refer to *../../type/tagLabel.json*.
 - **`usageSummary`**: Latest usage information for this table. Refer to *../../type/usageDetails.json*. Default: `None`.

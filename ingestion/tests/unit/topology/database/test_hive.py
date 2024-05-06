@@ -272,7 +272,7 @@ EXPECTED_TABLE = [
             __root__="hive_source_test.sample_database.sample_schema"
         ),
         tags=None,
-        viewDefinition=None,
+        schemaDefinition=None,
         retentionPeriod=None,
         extension=None,
         sourceUrl=None,

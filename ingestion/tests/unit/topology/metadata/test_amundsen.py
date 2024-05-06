@@ -82,6 +82,7 @@ EXPECTED_SERVICE = [
                 connectionArguments=None,
                 supportsMetadataExtraction=True,
                 supportsProfiler=True,
+                supportsDDL=True,
                 supportsDBTExtraction=True,
             )
         ),

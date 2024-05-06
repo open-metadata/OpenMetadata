@@ -230,7 +230,7 @@ EXPTECTED_TABLE = [
         owner=None,
         databaseSchema="domodashboard_source_test.do_it_all_with_default_config.do_it_all_with_default_schema",
         tags=None,
-        viewDefinition=None,
+        schemaDefinition=None,
         extension=None,
     )
 ]

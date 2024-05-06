@@ -69,6 +69,7 @@ const QueryViewer = ({
         )}
         mode={{ name: CSMode.SQL }}
         options={{ readOnly: true }}
+        showCopyButton={false}
         value={sqlQuery}
       />
     </Card>

@@ -236,7 +236,7 @@ EXPECTED_TABLE = Table(
     ),
     serviceType="SAS",
     location=None,
-    viewDefinition=None,
+    schemaDefinition=None,
     usageSummary=None,
     followers=None,
     joins=None,
