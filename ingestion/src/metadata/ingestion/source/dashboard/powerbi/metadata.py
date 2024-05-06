@@ -552,6 +552,21 @@ class PowerbiSource(DashboardServiceSource):
                 )
             )
 
+    @staticmethod
+    def _get_data_model_column_fqn(
+        data_model_entity: DashboardDataModel, column: str
+    ) -> Optional[str]:
+        """
+        Get fqn of column if exist in data model entity or its child columns
+        """
+        if not data_model_entity:
+            return None
+        for tbl_column in data_model_entity.columns:
+            for child_column in tbl_column.children or []:
+                if column.lower() == child_column.name.__root__.lower():
+                    return child_column.fullyQualifiedName.__root__
+        return None
+
     def _get_table_and_datamodel_lineage(
         self,
         db_service_name: str,
@@ -576,8 +591,14 @@ class PowerbiSource(DashboardServiceSource):
             )
 
             if table_entity and datamodel_entity:
+                columns_list = [column.name for column in table.columns]
+                column_lineage = self._get_column_lineage(
+                    table_entity, datamodel_entity, columns_list
+                )
                 return self._get_add_lineage_request(
-                    to_entity=datamodel_entity, from_entity=table_entity
+                    to_entity=datamodel_entity,
+                    from_entity=table_entity,
+                    column_lineage=column_lineage,
                 )
         except Exception as exc:  # pylint: disable=broad-except
             return Either(
