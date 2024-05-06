@@ -64,7 +64,11 @@ import {
 } from '../../enums/entity.enum';
 import { CreateThread } from '../../generated/api/feed/createThread';
 import { Tag } from '../../generated/entity/classification/tag';
-import { JoinedWith, Table } from '../../generated/entity/data/table';
+import {
+  JoinedWith,
+  Table,
+  TableType,
+} from '../../generated/entity/data/table';
 import { Suggestion } from '../../generated/entity/feed/suggestion';
 import { ThreadType } from '../../generated/entity/feed/thread';
 import { TagLabel } from '../../generated/type/tagLabel';
@@ -150,6 +154,11 @@ const TableDetailsPageV1: React.FC = () => {
         FQN_SEPARATOR_CHAR
       ),
     [datasetFQN]
+  );
+
+  const isViewTableType = useMemo(
+    () => tableDetails?.tableType === TableType.View,
+    [tableDetails?.tableType]
   );
 
   const fetchTableDetails = useCallback(async () => {
@@ -730,13 +739,25 @@ const TableDetailsPageV1: React.FC = () => {
       {
         label: (
           <TabsLabel
-            id={EntityTabs.VIEW_DEFINITION}
-            name={t('label.view-definition')}
+            id={
+              isViewTableType
+                ? EntityTabs.VIEW_DEFINITION
+                : EntityTabs.SCHEMA_DEFINITION
+            }
+            name={
+              isViewTableType
+                ? t('label.view-definition')
+                : t('label.schema-definition')
+            }
           />
         ),
-        isHidden: isUndefined(tableDetails?.viewDefinition),
-        key: EntityTabs.VIEW_DEFINITION,
-        children: <QueryViewer sqlQuery={tableDetails?.viewDefinition ?? ''} />,
+        isHidden: isUndefined(tableDetails?.schemaDefinition),
+        key: isViewTableType
+          ? EntityTabs.VIEW_DEFINITION
+          : EntityTabs.SCHEMA_DEFINITION,
+        children: (
+          <QueryViewer sqlQuery={tableDetails?.schemaDefinition ?? ''} />
+        ),
       },
       {
         label: (
