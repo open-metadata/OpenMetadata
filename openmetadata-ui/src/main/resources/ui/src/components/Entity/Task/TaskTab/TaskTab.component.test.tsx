@@ -34,8 +34,8 @@ jest.mock('react-router-dom', () => ({
   useHistory: jest.fn(),
 }));
 
-jest.mock('../../../ActivityFeed/ActivityFeedCard/ActivityFeedCardV1', () => {
-  return jest.fn().mockImplementation(() => <p>ActivityFeedCardV1</p>);
+jest.mock('../../../ActivityFeed/ActivityFeedCardV2/ActivityFeedCardV2', () => {
+  return jest.fn().mockImplementation(() => <p>ActivityFeedCardV2</p>);
 });
 
 jest.mock('../../../ActivityFeed/ActivityFeedEditor/ActivityFeedEditor', () => {
@@ -68,6 +68,19 @@ jest.mock('../../../../pages/TasksPage/shared/TagsTask', () => {
 
 jest.mock('../../../common/PopOverCard/EntityPopOverCard', () => {
   return jest.fn().mockImplementation(() => <p>EntityPopOverCard</p>);
+});
+
+jest.mock(
+  '../TaskTabIncidentManagerHeader/TaskTabIncidentManagerHeader.component',
+  () => {
+    return jest
+      .fn()
+      .mockImplementation(() => <p>TaskTabIncidentManagerHeader</p>);
+  }
+);
+
+jest.mock('../../../common/RichTextEditor/RichTextEditor', () => {
+  return jest.fn().mockImplementation(() => <p>RichTextEditor</p>);
 });
 
 jest.mock('../../../../utils/CommonUtils', () => ({

@@ -240,7 +240,7 @@ EXPTECTED_TABLE = [
             __root__="local_databricks.hive_metastore.do_it_all_with_default_schema"
         ),
         tags=None,
-        viewDefinition=None,
+        schemaDefinition=None,
         extension=None,
     )
 ]

@@ -66,7 +66,7 @@ export interface ActivityFeedProviderContextType {
     isThread: boolean,
     reactionType: ReactionType,
     reactionOperation: ReactionOperation
-  ) => void;
+  ) => Promise<void>;
   testCaseResolutionStatus: TestCaseResolutionStatus[];
   updateTestCaseIncidentStatus: (status: TestCaseResolutionStatus[]) => void;
   initialAssignees: EntityReference[];

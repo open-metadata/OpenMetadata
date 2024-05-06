@@ -139,6 +139,8 @@ class EntityUtilClassBase {
           subTab
         );
       case SearchIndex.TAG:
+      case EntityType.TAG:
+      case EntityType.CLASSIFICATION:
         return getTagsDetailsPath(fullyQualifiedName);
 
       case SearchIndex.DASHBOARD_DATA_MODEL:

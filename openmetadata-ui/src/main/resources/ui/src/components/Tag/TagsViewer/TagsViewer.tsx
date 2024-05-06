@@ -137,7 +137,7 @@ const TagsViewer: FunctionComponent<TagsViewerProps> = ({
 
   return (
     <>
-      <div className="d-flex flex-wrap">
+      <div className="d-flex flex-wrap gap-2">
         {sortedTagsBySource.slice(0, sizeCap).map(getTagsElement)}
       </div>
       {displayType === DisplayType.POPOVER

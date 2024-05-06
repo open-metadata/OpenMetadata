@@ -274,7 +274,7 @@ EXPECTED_TABLE = [
             __root__='mssql_source_test.sample_database."sample.schema"'
         ),
         tags=None,
-        viewDefinition=None,
+        schemaDefinition=None,
         retentionPeriod=None,
         extension=None,
         sourceUrl=None,
