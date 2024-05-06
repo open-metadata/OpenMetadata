@@ -49,7 +49,6 @@ from metadata.ingestion.source.database.mssql.utils import (
     get_foreign_keys,
     get_pk_constraint,
     get_table_comment,
-    get_table_ddl,
     get_table_names,
     get_unique_constraints,
     get_view_definition,
@@ -69,6 +68,7 @@ from metadata.utils.sqlalchemy_utils import (
     get_all_table_comments,
     get_all_table_ddls,
     get_all_view_definitions,
+    get_table_ddl,
 )
 
 logger = ingestion_logger()

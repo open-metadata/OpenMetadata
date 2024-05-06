@@ -51,7 +51,6 @@ from metadata.ingestion.source.database.databricks.queries import (
     DATABRICKS_GET_TABLE_TAGS,
     DATABRICKS_VIEW_DEFINITIONS,
 )
-from metadata.ingestion.source.database.databricks.utils import get_table_ddl
 from metadata.ingestion.source.database.external_table_lineage_mixin import (
     ExternalTableLineageMixin,
 )
@@ -63,6 +62,7 @@ from metadata.utils.logger import ingestion_logger
 from metadata.utils.sqlalchemy_utils import (
     get_all_table_ddls,
     get_all_view_definitions,
+    get_table_ddl,
     get_view_definition_wrapper,
 )
 from metadata.utils.tag_utils import get_ometa_tag_and_classification
@@ -131,7 +131,6 @@ def get_columns(self, connection, table_name, schema=None, **kw):
     value should match what is provided in the 'source.config.database' field in the
     Databricks ingest config file.
     """
-    db_name = kw["db_name"] if "db_name" in kw else None
 
     rows = _get_column_rows(self, connection, table_name, schema)
     result = []

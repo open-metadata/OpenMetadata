@@ -58,7 +58,6 @@ from metadata.ingestion.source.database.postgres.utils import (
     get_etable_owner,
     get_foreign_keys,
     get_table_comment,
-    get_table_ddl,
     get_table_owner,
     get_view_definition,
 )
@@ -70,6 +69,7 @@ from metadata.utils.sqlalchemy_utils import (
     get_all_table_ddls,
     get_all_table_owners,
     get_all_view_definitions,
+    get_table_ddl,
 )
 from metadata.utils.tag_utils import get_ometa_tag_and_classification
 

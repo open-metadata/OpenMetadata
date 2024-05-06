@@ -24,12 +24,8 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.database.common_db_source import CommonDbSourceService
-from metadata.ingestion.source.database.mysql.utils import (
-    col_type_map,
-    get_table_ddl,
-    parse_column,
-)
-from metadata.utils.sqlalchemy_utils import get_all_table_ddls
+from metadata.ingestion.source.database.mysql.utils import col_type_map, parse_column
+from metadata.utils.sqlalchemy_utils import get_all_table_ddls, get_table_ddl
 
 ischema_names.update(col_type_map)
 

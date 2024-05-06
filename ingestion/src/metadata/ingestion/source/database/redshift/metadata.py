@@ -83,7 +83,6 @@ from metadata.ingestion.source.database.redshift.utils import (
     _get_schema_column_info,
     get_columns,
     get_table_comment,
-    get_table_ddl,
 )
 from metadata.ingestion.source.database.stored_procedures_mixin import (
     QueryByProcedure,
@@ -97,7 +96,11 @@ from metadata.utils.execution_time_tracker import (
 from metadata.utils.filters import filter_by_database
 from metadata.utils.helpers import get_start_and_end
 from metadata.utils.logger import ingestion_logger
-from metadata.utils.sqlalchemy_utils import get_all_table_comments, get_all_table_ddls
+from metadata.utils.sqlalchemy_utils import (
+    get_all_table_comments,
+    get_all_table_ddls,
+    get_table_ddl,
+)
 
 logger = ingestion_logger()
 

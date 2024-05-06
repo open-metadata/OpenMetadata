@@ -157,3 +157,15 @@ def get_table_ddl_wrapper(
     if not hasattr(self, "all_table_ddls") or self.current_db != schema:
         self.get_all_table_ddls(connection, query, schema)
     return self.all_table_ddls.get((schema, table_name), "")
+
+
+def get_table_ddl(
+    self, connection, table_name, schema=None, **kw
+):  # pylint: disable=unused-argument
+    return get_table_ddl_wrapper(
+        self,
+        connection=connection,
+        query=None,
+        table_name=table_name,
+        schema=schema,
+    )

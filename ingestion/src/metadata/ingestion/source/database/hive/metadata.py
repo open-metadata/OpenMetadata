@@ -31,7 +31,6 @@ from metadata.ingestion.source.database.hive.connection import get_metastore_con
 from metadata.ingestion.source.database.hive.utils import (
     get_columns,
     get_table_comment,
-    get_table_ddl,
     get_table_names,
     get_table_names_older_versions,
     get_view_definition,
@@ -39,7 +38,6 @@ from metadata.ingestion.source.database.hive.utils import (
     get_view_names_older_versions,
 )
 from metadata.utils.logger import ingestion_logger
-from metadata.utils.sqlalchemy_utils import get_all_table_ddls
 
 logger = ingestion_logger()
 
@@ -48,8 +46,6 @@ HiveDialect.get_table_comment = get_table_comment
 
 
 HIVE_VERSION_WITH_VIEW_SUPPORT = "2.2.0"
-Inspector.get_all_table_ddls = get_all_table_ddls
-Inspector.get_table_ddl = get_table_ddl
 
 
 class HiveSource(CommonDbSourceService):

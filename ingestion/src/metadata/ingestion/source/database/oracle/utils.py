@@ -29,7 +29,6 @@ from metadata.ingestion.source.database.oracle.queries import (
 )
 from metadata.utils.sqlalchemy_utils import (
     get_table_comment_wrapper,
-    get_table_ddl_wrapper,
     get_view_definition_wrapper,
 )
 
@@ -255,16 +254,3 @@ def get_mview_definition(self, mview_name, schema=None):
         return self.dialect.get_view_definition(
             conn, mview_name, schema, info_cache=self.info_cache
         )
-
-
-@reflection.cache
-def get_table_ddl(
-    self, connection, table_name, schema=None, **kw
-):  # pylint: disable=unused-argument
-    return get_table_ddl_wrapper(
-        self,
-        connection=connection,
-        query=None,
-        table_name=table_name,
-        schema=schema,
-    )

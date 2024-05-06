@@ -17,11 +17,10 @@ from sqlalchemy import util
 from sqlalchemy.dialects.mysql.enumerated import ENUM, SET
 from sqlalchemy.dialects.mysql.reflection import _strip_values
 from sqlalchemy.dialects.mysql.types import DATETIME, TIME, TIMESTAMP
-from sqlalchemy.engine import reflection
 from sqlalchemy.sql import sqltypes
 
 from metadata.ingestion.source.database.column_type_parser import create_sqlalchemy_type
-from metadata.utils.sqlalchemy_utils import get_display_datatype, get_table_ddl_wrapper
+from metadata.utils.sqlalchemy_utils import get_display_datatype
 
 col_type_map = {
     "bool": create_sqlalchemy_type("BOOL"),
@@ -152,16 +151,3 @@ def parse_column(self, line, state):
     }
     col_d.update(col_kw)
     state.columns.append(col_d)
-
-
-@reflection.cache
-def get_table_ddl(
-    self, connection, table_name, schema=None, **kw
-):  # pylint: disable=unused-argument
-    return get_table_ddl_wrapper(
-        self,
-        connection=connection,
-        query=None,
-        table_name=table_name,
-        schema=schema,
-    )

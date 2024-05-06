@@ -17,7 +17,6 @@ from typing import Any
 
 from pydantic import BaseModel
 from sqlalchemy import inspect
-from sqlalchemy.engine import reflection
 
 from metadata.generated.schema.entity.services.connections.database.bigQueryConnection import (
     BigQueryConnection,
@@ -33,7 +32,6 @@ from metadata.ingestion.source.database.bigquery.queries import (
 )
 from metadata.utils.bigquery_utils import get_bigquery_client
 from metadata.utils.logger import ingestion_logger
-from metadata.utils.sqlalchemy_utils import get_table_ddl_wrapper
 
 logger = ingestion_logger()
 
@@ -144,16 +142,3 @@ def get_foreign_keys(
             f"Error while fetching foreign key constraint error for table [{schema}.{table_name}]: {exc}"
         )
         return []
-
-
-@reflection.cache
-def get_table_ddl(
-    self, connection, table_name, schema=None, **kw
-):  # pylint: disable=unused-argument
-    return get_table_ddl_wrapper(
-        self,
-        connection=connection,
-        query=None,
-        table_name=table_name,
-        schema=schema,
-    )

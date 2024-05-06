@@ -34,7 +34,6 @@ from metadata.ingestion.source.database.clickhouse.utils import (
     get_mview_names_dialect,
     get_pk_constraint,
     get_table_comment,
-    get_table_ddl,
     get_unique_constraints,
     get_view_definition,
     get_view_names,
@@ -48,6 +47,7 @@ from metadata.utils.sqlalchemy_utils import (
     get_all_table_comments,
     get_all_table_ddls,
     get_all_view_definitions,
+    get_table_ddl,
 )
 
 logger = ingestion_logger()

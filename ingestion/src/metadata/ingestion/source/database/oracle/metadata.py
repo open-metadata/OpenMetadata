@@ -59,7 +59,6 @@ from metadata.ingestion.source.database.oracle.utils import (
     get_mview_names,
     get_mview_names_dialect,
     get_table_comment,
-    get_table_ddl,
     get_table_names,
     get_view_definition,
 )
@@ -74,6 +73,7 @@ from metadata.utils.sqlalchemy_utils import (
     get_all_table_comments,
     get_all_table_ddls,
     get_all_view_definitions,
+    get_table_ddl,
 )
 
 logger = ingestion_logger()
