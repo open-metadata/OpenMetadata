@@ -113,7 +113,7 @@
     },
     "name": {
       "description": "Name that identifies this test case.",
-      "$ref": "../type/basic.json#/definitions/entityName"
+      "$ref": "../type/basic.json#/definitions/testCaseEntityName"
     },
     "displayName": {
       "description": "Display Name that identifies this test case.",

@@ -905,7 +905,10 @@ export const DOMAIN_3 = {
     },
   ],
 };
-export const GLOBAL_SETTING_PERMISSIONS = {
+export const GLOBAL_SETTING_PERMISSIONS: Record<
+  string,
+  { testid: GlobalSettingOptions; isCustomProperty?: boolean }
+> = {
   metadata: {
     testid: GlobalSettingOptions.METADATA,
   },
@@ -933,7 +936,10 @@ export const GLOBAL_SETTING_PERMISSIONS = {
     testid: GlobalSettingOptions.BOTS,
   },
 };
-export const ID = {
+export const ID: Record<
+  string,
+  { testid: GlobalSettingOptions; button: string; api?: string }
+> = {
   teams: {
     testid: GlobalSettingOptions.TEAMS,
     button: 'add-team',

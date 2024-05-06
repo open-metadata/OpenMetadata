@@ -211,6 +211,5 @@ public abstract class EntityTimeSeriesRepository<T extends EntityTimeSeriesInter
       return;
     }
     timeSeriesDao.deleteById(id);
-    postDelete(entityRecord);
   }
 }

@@ -53,6 +53,56 @@ Follow the steps in the [official trino](https://trino.io/docs/current/security/
 
 $$
 
+## Azure
+
+$$section
+### Client ID $(id="clientId")
+
+To get the Client ID (also known as application ID), follow these steps:
+
+1. Log into [Microsoft Azure](https://ms.portal.azure.com/#allservices).
+2. Search for `App registrations` and select the `App registrations link`.
+3. Select the `Azure AD` app you're using for Trino.
+4. From the Overview section, copy the `Application (client) ID`.
+
+$$
+
+$$section
+### Client Secret $(id="clientSecret")
+To get the client secret, follow these steps:
+
+1. Log into [Microsoft Azure](https://ms.portal.azure.com/#allservices).
+2. Search for `App registrations` and select the `App registrations link`.
+3. Select the `Azure AD` app you're using for Trino.
+4. Under `Manage`, select `Certificates & secrets`.
+5. Under `Client secrets`, select `New client secret`.
+6. In the `Add a client secret` pop-up window, provide a description for your application secret. Choose when the application should expire, and select `Add`.
+7. From the `Client secrets` section, copy the string in the `Value` column of the newly created application secret.
+
+$$
+
+$$section
+### Tenant ID $(id="tenantId")
+
+To get the tenant ID, follow these steps:
+
+1. Log into [Microsoft Azure](https://ms.portal.azure.com/#allservices).
+2. Search for `App registrations` and select the `App registrations link`.
+3. Select the `Azure AD` app you're using for Trino.
+4. From the `Overview` section, copy the `Directory (tenant) ID`.
+$$
+
+$$section
+### Scopes $(id="Scopes")
+
+To let OM use the Trino Auth APIs using your Azure AD app, you'll need to add the scope
+1. Log into [Microsoft Azure](https://ms.portal.azure.com/#allservices).
+2. Search for `App registrations` and select the `App registrations link`.
+3. Select the `Azure AD` app you're using for Trino.
+4. From the `Expose an API` section, copy the `Application ID URI`
+5. Make sure the URI ends with `/.default` in case it does not, you can append the same manually
+$$
+
 $$section
 ### Host Port $(id="hostPort")
 This parameter specifies the host and port of the Trino instance. This should be specified as a string in the format `hostname:port`. For example, you might set the hostPort parameter to `localhost:8080`.

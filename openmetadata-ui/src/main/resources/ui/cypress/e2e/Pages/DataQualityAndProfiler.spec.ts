@@ -889,8 +889,7 @@ describe(
       });
     });
 
-    // Skipping As backend throws error for newly created test case, unSkip once backend issue is resolved from @TeddyCr
-    it.skip('Update displayName of test case', () => {
+    it('Update displayName of test case', () => {
       interceptURL(
         'GET',
         '/api/v1/dataQuality/testCases/search/list?*',
@@ -931,8 +930,7 @@ describe(
         });
     });
 
-    // Skipping As backend throws error for newly created test case, unSkip once backend issue is resolved from @TeddyCr
-    it.skip('Test case filters', () => {
+    it('Test case filters', () => {
       interceptURL(
         'GET',
         '/api/v1/dataQuality/testCases/search/list?*',
