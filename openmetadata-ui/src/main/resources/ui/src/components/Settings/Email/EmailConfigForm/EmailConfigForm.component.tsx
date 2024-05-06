@@ -49,16 +49,10 @@ function EmailConfigForm({
       validateMessages={VALIDATION_MESSAGES}
       onFinish={onSubmit}
       onFocus={onFocus}>
-      <Item
-        label={t('label.username')}
-        name="username"
-        rules={[{ required: true }]}>
+      <Item label={t('label.username')} name="username">
         <Input data-testid="username-input" id="root/username" />
       </Item>
-      <Item
-        label={t('label.password')}
-        name="password"
-        rules={[{ required: true }]}>
+      <Item label={t('label.password')} name="password">
         <Input
           data-testid="password-input"
           id="root/password"
