@@ -13,6 +13,7 @@
 
 import { Avatar } from 'antd';
 import classNames from 'classnames';
+import { parseInt } from 'lodash';
 import { ImageShape } from 'Models';
 import React, { useMemo } from 'react';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';

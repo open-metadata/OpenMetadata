@@ -70,11 +70,15 @@ const ActivityFeedDrawer: FC<ActivityFeedDrawerProps> = ({
       {isDrawerLoading ? (
         <Loader />
       ) : (
-        <Row gutter={[16, 16]} id="feed-panel">
+        <Row gutter={[0, 16]} id="feed-panel">
           <Col span={24}>
             <FeedPanelBodyV1
               isOpenInDrawer
               showThread
+              componentsVisibility={{
+                showThreadIcon: false,
+                showRepliesContainer: false,
+              }}
               feed={selectedThread as Thread}
               hidePopover={false}
             />

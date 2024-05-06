@@ -94,7 +94,7 @@ import {
   TASK_ACTION_LIST,
 } from '../../../../utils/TasksUtils';
 import { showErrorToast, showSuccessToast } from '../../../../utils/ToastUtils';
-import ActivityFeedCardV1 from '../../../ActivityFeed/ActivityFeedCard/ActivityFeedCardV1';
+import ActivityFeedCardV2 from '../../../ActivityFeed/ActivityFeedCardV2/ActivityFeedCardV2';
 import ActivityFeedEditor from '../../../ActivityFeed/ActivityFeedEditor/ActivityFeedEditor';
 import { useActivityFeedProvider } from '../../../ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
 import AssigneeList from '../../../common/AssigneeList/AssigneeList';
@@ -788,10 +788,13 @@ export const TaskTab = ({
 
         <div className="m-l-lg">
           {taskThread?.posts?.map((reply) => (
-            <ActivityFeedCardV1
+            <ActivityFeedCardV2
               isPost
+              componentsVisibility={{
+                showRepliesContainer: false,
+                showThreadIcon: false,
+              }}
               feed={taskThread}
-              hidePopover={false}
               key={reply.id}
               post={reply}
             />

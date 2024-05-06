@@ -66,6 +66,7 @@ export enum EntityType {
   ENTITY_REPORT_DATA = 'entityReportData',
   WEB_ANALYTIC_ENTITY_VIEW_REPORT_DATA = 'webAnalyticEntityViewReportData',
   WEB_ANALYTIC_USER_ACTIVITY_REPORT_DATA = 'webAnalyticUserActivityReportData',
+  EVENT_SUBSCRIPTION = 'eventsubscription',
 }
 
 export enum AssetsType {

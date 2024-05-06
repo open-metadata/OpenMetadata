@@ -36,6 +36,7 @@ import { getTagDisplay, tagRender } from '../../../utils/TagsUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import TagsV1 from '../../Tag/TagsV1/TagsV1.component';
 import Loader from '../Loader/Loader';
+import './async-select-list.less';
 import {
   AsyncSelectListProps,
   SelectOption,
@@ -286,6 +287,7 @@ const AsyncSelectList: FC<AsyncSelectListProps & SelectProps> = ({
     <Select
       autoFocus
       showSearch
+      className="async-select-list"
       data-testid="tag-selector"
       dropdownRender={dropdownRender}
       filterOption={false}

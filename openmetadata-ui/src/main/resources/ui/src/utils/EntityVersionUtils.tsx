@@ -24,6 +24,7 @@ import {
   cloneDeep,
   isEmpty,
   isEqual,
+  isObject,
   isUndefined,
   toString,
   uniqBy,
@@ -59,7 +60,7 @@ import {
   TagLabelWithStatus,
   VersionEntityTypes,
 } from './EntityVersionUtils.interface';
-import { isValidJSONString } from './StringsUtils';
+import { getJSONFromString, isValidJSONString } from './StringsUtils';
 import { getTagsWithoutTier, getTierTags } from './TableUtils';
 
 export const getChangedEntityName = (diffObject?: EntityDiffProps) =>
@@ -182,6 +183,42 @@ export const getTextDiff = (
   });
 
   return result.join('');
+};
+
+const getCustomPropertyValue = (value: unknown) => {
+  if (isObject(value)) {
+    return JSON.stringify(value);
+  }
+
+  return toString(value);
+};
+
+export const getTextDiffCustomProperty = (
+  fieldName: string,
+  oldText: string,
+  newText: string
+) => {
+  if (oldText && newText) {
+    return `* ${t('message.custom-property-is-set-to-message', {
+      fieldName,
+    })} **${getTextDiff(oldText, newText)}**`;
+  }
+
+  const resultArray: unknown = getJSONFromString(oldText ?? newText);
+
+  if (Array.isArray(resultArray)) {
+    const result = resultArray.map((diff: Record<string, string>) => {
+      const objKeys = Object.keys(diff);
+
+      return `* ${t('message.custom-property-is-set-to-message', {
+        fieldName: objKeys[0],
+      })} **${getCustomPropertyValue(diff[objKeys[0]])}** \n`;
+    });
+
+    return result.join('');
+  }
+
+  return '';
 };
 
 export const getEntityVersionByField = (

@@ -52,14 +52,18 @@ jest.mock(
 );
 
 jest.mock(
-  '../../ActivityFeed/ActivityFeedCard/FeedCardHeader/FeedCardHeaderV1',
+  '../../ActivityFeed/ActivityFeedCardV2/FeedCardHeader/FeedCardHeaderV2',
   () => {
-    return jest.fn().mockImplementation(() => <div>FeedCardHeaderV1</div>);
+    return jest.fn().mockImplementation(() => <div>FeedCardHeaderV2</div>);
   }
 );
 
 jest.mock('../../common/Loader/Loader', () =>
   jest.fn().mockReturnValue(<div>Loader</div>)
+);
+
+jest.mock('../../common/ErrorWithPlaceholder/ErrorPlaceHolder', () =>
+  jest.fn().mockReturnValue(<div>ErrorPlaceHolder</div>)
 );
 
 describe('AnnouncementsWidget', () => {
@@ -78,7 +82,7 @@ describe('AnnouncementsWidget', () => {
   it('should render empty state', () => {
     render(<AnnouncementsWidget announcements={[]} widgetKey="testKey" />);
 
-    expect(screen.getByTestId('no-data-placeholder')).toBeInTheDocument();
+    expect(screen.getByText('ErrorPlaceHolder')).toBeInTheDocument();
   });
 
   it('should render announcements', async () => {
@@ -92,7 +96,7 @@ describe('AnnouncementsWidget', () => {
     });
 
     expect(screen.getByText('FeedCardBodyV1')).toBeInTheDocument();
-    expect(screen.getByText('FeedCardHeaderV1')).toBeInTheDocument();
+    expect(screen.getByText('FeedCardHeaderV2')).toBeInTheDocument();
     expect(screen.getByText('label.announcement')).toBeInTheDocument();
   });
 });

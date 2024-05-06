@@ -12,18 +12,22 @@
  */
 
 import { RightOutlined } from '@ant-design/icons';
+import { Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { Operation } from 'fast-json-patch';
 import i18next from 'i18next';
-import { isEqual } from 'lodash';
+import { isEqual, isUndefined, lowerCase } from 'lodash';
 import React from 'react';
 import ReactDOM from 'react-dom';
 import Showdown from 'showdown';
 import TurndownService from 'turndown';
+import { ReactComponent as AddIcon } from '../assets/svg/added-icon.svg';
+import { ReactComponent as UpdatedIcon } from '../assets/svg/updated-icon.svg';
 import { MentionSuggestionsItem } from '../components/ActivityFeed/FeedEditor/FeedEditor.interface';
 import { UserTeam } from '../components/common/AssigneeList/AssigneeList.interface';
 import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
 import {
+  EntityField,
   entityLinkRegEx,
   EntityRegEx,
   entityRegex,
@@ -36,7 +40,14 @@ import {
 } from '../constants/Feeds.constants';
 import { EntityType, FqnPart, TabSpecificField } from '../enums/entity.enum';
 import { SearchIndex } from '../enums/search.enum';
-import { Thread, ThreadType } from '../generated/entity/feed/thread';
+import {
+  CardStyle,
+  EntityTestResultSummaryObject,
+  FieldOperation,
+  TestCaseStatus,
+  Thread,
+  ThreadType,
+} from '../generated/entity/feed/thread';
 import { User } from '../generated/entity/teams/user';
 import {
   deletePostById,
@@ -47,10 +58,12 @@ import {
 } from '../rest/feedsAPI';
 import { searchData } from '../rest/miscAPI';
 import {
+  formTwoDigitNumber,
   getEntityPlaceHolder,
   getPartialNameFromFQN,
   getPartialNameFromTableFQN,
   getRandomColor,
+  Transi18next,
 } from './CommonUtils';
 import { getRelativeCalendar } from './date-time/DateTimeUtils';
 import EntityLink from './EntityLink';
@@ -571,5 +584,209 @@ export const getFeedPanelHeaderText = (
     case ThreadType.Conversation:
     default:
       return i18next.t('label.conversation');
+  }
+};
+
+export const getFeedChangeFieldLabel = (fieldName?: EntityField) => {
+  const fieldNameLabelMapping = {
+    [EntityField.DESCRIPTION]: i18next.t('label.description'),
+    [EntityField.COLUMNS]: i18next.t('label.column-plural'),
+    [EntityField.SCHEMA_FIELDS]: i18next.t('label.schema-field-plural'),
+    [EntityField.TAGS]: i18next.t('label.tag-plural'),
+    [EntityField.TASKS]: i18next.t('label.task-plural'),
+    [EntityField.ML_FEATURES]: i18next.t('label.ml-feature-plural'),
+    [EntityField.SCHEMA_TEXT]: i18next.t('label.schema-text'),
+    [EntityField.OWNER]: i18next.t('label.owner'),
+    [EntityField.REVIEWERS]: i18next.t('label.reviewer-plural'),
+    [EntityField.SYNONYMS]: i18next.t('label.synonym-plural'),
+    [EntityField.RELATEDTERMS]: i18next.t('label.related-term-plural'),
+    [EntityField.REFERENCES]: i18next.t('label.reference-plural'),
+    [EntityField.EXTENSION]: i18next.t('label.extension'),
+    [EntityField.DISPLAYNAME]: i18next.t('label.display-name'),
+    [EntityField.NAME]: i18next.t('label.name'),
+    [EntityField.MESSAGE_SCHEMA]: i18next.t('label.message-schema'),
+    [EntityField.CHARTS]: i18next.t('label.chart-plural'),
+    [EntityField.DATA_MODEL]: i18next.t('label.data-model'),
+    [EntityField.CONSTRAINT]: i18next.t('label.constraint'),
+    [EntityField.TABLE_CONSTRAINTS]: i18next.t('label.table-constraint-plural'),
+    [EntityField.PARTITIONS]: i18next.t('label.partition-plural'),
+    [EntityField.REPLICATION_FACTOR]: i18next.t('label.replication-factor'),
+    [EntityField.SOURCE_URL]: i18next.t('label.source-url'),
+    [EntityField.MUTUALLY_EXCLUSIVE]: i18next.t('label.mutually-exclusive'),
+    [EntityField.EXPERTS]: i18next.t('label.expert-plural'),
+    [EntityField.FIELDS]: i18next.t('label.field-plural'),
+  };
+
+  return isUndefined(fieldName) ? '' : fieldNameLabelMapping[fieldName];
+};
+
+export const getFieldOperationIcon = (fieldOperation?: FieldOperation) => {
+  let Icon = UpdatedIcon;
+
+  switch (fieldOperation) {
+    case FieldOperation.Added:
+      Icon = AddIcon;
+
+      break;
+    case FieldOperation.Updated:
+    case FieldOperation.Deleted:
+      Icon = UpdatedIcon;
+
+      break;
+  }
+
+  return <Icon height={16} width={16} />;
+};
+
+export const getTestCaseNameListForResult = (
+  testResultSummary: Array<EntityTestResultSummaryObject>,
+  status: TestCaseStatus
+) =>
+  testResultSummary.reduce((acc, curr) => {
+    if (curr.status === status) {
+      acc.push(curr.testCaseName ?? '');
+    }
+
+    return acc;
+  }, [] as Array<string>);
+
+export const getTestCaseResultCount = (
+  count: number,
+  status: TestCaseStatus
+) => (
+  <div
+    className={`test-result-container ${lowerCase(status)}`}
+    data-testid={`test-${status}`}>
+    <Typography.Text
+      className="font-medium text-md"
+      data-testid={`test-${status}-value`}>
+      {formTwoDigitNumber(count)}
+    </Typography.Text>
+  </div>
+);
+
+export const getTestStatusLabel = (status: TestCaseStatus) => {
+  const statusLabelMapping = {
+    [TestCaseStatus.Success]: i18next.t('label.passed'),
+    [TestCaseStatus.Failed]: i18next.t('label.failed'),
+    [TestCaseStatus.Aborted]: i18next.t('label.aborted'),
+    [TestCaseStatus.Queued]: i18next.t('label.queued'),
+  };
+
+  return statusLabelMapping[status];
+};
+
+export const formatTestStatusData = (
+  testResultSummary: Array<EntityTestResultSummaryObject>
+) => {
+  const successCases = getTestCaseNameListForResult(
+    testResultSummary,
+    TestCaseStatus.Success
+  );
+  const failedCases = getTestCaseNameListForResult(
+    testResultSummary,
+    TestCaseStatus.Failed
+  );
+  const abortedCases = getTestCaseNameListForResult(
+    testResultSummary,
+    TestCaseStatus.Aborted
+  );
+
+  return {
+    success: {
+      status: TestCaseStatus.Success,
+      count: successCases.length,
+      testCases: successCases,
+    },
+    failed: {
+      status: TestCaseStatus.Failed,
+      count: failedCases.length,
+      testCases: failedCases,
+    },
+    aborted: {
+      status: TestCaseStatus.Aborted,
+      count: abortedCases.length,
+      testCases: abortedCases,
+    },
+  };
+};
+
+const getActionLabelFromCardStyle = (cardStyle?: CardStyle) => {
+  let action = i18next.t('label.added-lowercase');
+
+  if (cardStyle === CardStyle.EntityDeleted) {
+    action = i18next.t('label.deleted-lowercase');
+  } else if (cardStyle === CardStyle.EntitySoftDeleted) {
+    action = i18next.t('label.soft-deleted-lowercase');
+  }
+
+  return action;
+};
+
+export const getFeedHeaderTextFromCardStyle = (
+  fieldOperation?: FieldOperation,
+  cardStyle?: CardStyle,
+  fieldName?: string
+) => {
+  if (fieldName === 'assets') {
+    return (
+      <Transi18next
+        i18nKey="message.feed-entity-action-header"
+        renderElement={<Typography.Text className="font-bold" />}
+        values={{
+          action: getActionLabelFromCardStyle(cardStyle),
+        }}
+      />
+    );
+  }
+  switch (cardStyle) {
+    case CardStyle.CustomProperties:
+      return (
+        <Transi18next
+          i18nKey="message.feed-custom-property-header"
+          renderElement={<Typography.Text className="font-bold" />}
+        />
+      );
+    case CardStyle.TestCaseResult:
+      return (
+        <Transi18next
+          i18nKey="message.feed-test-case-header"
+          renderElement={<Typography.Text className="font-bold" />}
+        />
+      );
+    case CardStyle.Description:
+    case CardStyle.Tags:
+    case CardStyle.Owner:
+      return (
+        <Transi18next
+          i18nKey="message.feed-field-action-entity-header"
+          renderElement={<Typography.Text className="font-bold" />}
+          values={{
+            field: i18next.t(
+              `label.${cardStyle === CardStyle.Tags ? 'tag-plural' : cardStyle}`
+            ),
+            action: i18next.t(
+              `label.${fieldOperation ?? FieldOperation.Updated}-lowercase`
+            ),
+          }}
+        />
+      );
+
+    case CardStyle.EntityCreated:
+    case CardStyle.EntityDeleted:
+    case CardStyle.EntitySoftDeleted:
+      return (
+        <Transi18next
+          i18nKey="message.feed-entity-action-header"
+          renderElement={<Typography.Text className="font-bold" />}
+          values={{
+            action: getActionLabelFromCardStyle(cardStyle),
+          }}
+        />
+      );
+
+    case CardStyle.Default:
+    default:
+      return i18next.t('label.posted-on-lowercase');
   }
 };

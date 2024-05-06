@@ -57,6 +57,7 @@ import { ExplorePageTabs } from '../enums/Explore.enum';
 import { SearchIndex } from '../enums/search.enum';
 import { ServiceCategory, ServiceCategoryPlural } from '../enums/service.enum';
 import { PrimaryTableDataTypes } from '../enums/table.enum';
+import { Classification } from '../generated/entity/classification/classification';
 import { Container } from '../generated/entity/data/container';
 import { Dashboard } from '../generated/entity/data/dashboard';
 import { DashboardDataModel } from '../generated/entity/data/dashboardDataModel';
@@ -98,9 +99,11 @@ import EntityLink from './EntityLink';
 import { BasicEntityOverviewInfo } from './EntityUtils.interface';
 import Fqn from './Fqn';
 import {
+  getDomainDetailsPath,
   getDomainPath,
   getGlossaryPath,
   getIncidentManagerDetailPagePath,
+  getObservabilityAlertDetailsPath,
   getSettingPath,
 } from './RouterUtils';
 import { getServiceRouteFromServiceType } from './ServiceUtils';
@@ -1289,6 +1292,7 @@ export const getEntityLinkFromType = (
     case EntityType.GLOSSARY_TERM:
       return getGlossaryTermDetailsPath(fullyQualifiedName);
     case EntityType.TAG:
+    case EntityType.CLASSIFICATION:
       return getTagsDetailsPath(fullyQualifiedName);
 
     case EntityType.DATABASE_SERVICE:
@@ -1333,6 +1337,10 @@ export const getEntityLinkFromType = (
       );
     case EntityType.TEST_CASE:
       return getIncidentManagerDetailPagePath(fullyQualifiedName);
+    case EntityType.DOMAIN:
+      return getDomainDetailsPath(fullyQualifiedName);
+    case EntityType.EVENT_SUBSCRIPTION:
+      return getObservabilityAlertDetailsPath(fullyQualifiedName);
     default:
       return '';
   }
@@ -1527,6 +1535,14 @@ export const getEntityBreadcrumbs = (
           name: fqn,
           url: getTagsDetailsPath(entity?.fullyQualifiedName ?? ''),
         })),
+      ];
+
+    case EntityType.CLASSIFICATION:
+      return [
+        {
+          name: getEntityName(entity as Classification),
+          url: '',
+        },
       ];
 
     case EntityType.DATABASE:
@@ -1849,6 +1865,7 @@ export const getEntityNameLabel = (entityName?: string) => {
     location: t('label.location'),
     database: t('label.database'),
     query: t('label.query'),
+    THREAD: t('label.thread'),
   };
 
   return (

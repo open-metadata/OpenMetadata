@@ -20,7 +20,7 @@ import { ERROR_PLACEHOLDER_TYPE, SIZE } from '../../../enums/common.enum';
 import { Thread } from '../../../generated/entity/feed/thread';
 import { WidgetCommonProps } from '../../../pages/CustomizablePage/CustomizablePage.interface';
 import FeedCardBodyV1 from '../../ActivityFeed/ActivityFeedCard/FeedCardBody/FeedCardBodyV1';
-import FeedCardHeaderV1 from '../../ActivityFeed/ActivityFeedCard/FeedCardHeader/FeedCardHeaderV1';
+import FeedCardHeaderV2 from '../../ActivityFeed/ActivityFeedCardV2/FeedCardHeader/FeedCardHeaderV2';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../common/Loader/Loader';
 import './announcements-widget.less';
@@ -72,16 +72,19 @@ function AnnouncementsWidget({
                   className="right-panel-announcement"
                   description={
                     <>
-                      <FeedCardHeaderV1
+                      <FeedCardHeaderV2
+                        isAnnouncement
                         about={item.about}
                         className="d-inline"
                         createdBy={item.createdBy}
+                        fieldName={item.feedInfo?.fieldName}
                         timeStamp={item.threadTs}
                       />
                       <FeedCardBodyV1
                         isOpenInDrawer
                         announcement={item.announcement}
                         className="p-t-xs"
+                        feed={item}
                         isEditPost={false}
                         message={item.message}
                         showSchedule={false}

@@ -23,31 +23,34 @@
   padding: 0 8px;
 }
 
-.ant-btn-reaction,
-.ant-btn-popover-reaction {
-  height: auto;
-  padding: 0 8px;
-  font-size: 16px;
-  background-color: transparent;
+.ant-popover-feed-reactions {
+  .ant-popover-inner-content {
+    padding: 4px;
+    display: flex;
+    gap: 8px;
+  }
+
+  .ant-btn-reaction,
+  .ant-btn-popover-reaction {
+    height: auto;
+    padding: 0px 4px;
+    font-size: 16px;
+    background-color: transparent;
+  }
+
+  .ant-btn-popover-reaction:hover,
+  .ant-btn-popover-isReacted,
+  .ant-btn-popover-isReacted:hover {
+    background-color: @primary-1;
+  }
+
+  .ant-btn-reaction:hover {
+    color: @primary-color;
+    border-color: @primary-color;
+  }
 }
 
-.ant-btn-popover-reaction:hover {
-  background-color: #7147e860;
-}
-
-.ant-btn-reaction:hover {
+.ant-btn.ant-btn-reaction.ant-btn-isReacted {
   color: @primary-color;
   border-color: @primary-color;
 }
-
-.ant-btn-isReacted:hover {
-  color: @primary-color;
-  border-color: #7147e880;
-}
-
-.ant-btn-popover-isReacted,
-.ant-btn-popover-isReacted:hover {
-  background-color: #7147e860;
-}
-
-/* Reaction CSS End */
