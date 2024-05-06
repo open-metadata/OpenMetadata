@@ -790,7 +790,7 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
             .withParent(parentGlossaryTerm.getFullyQualifiedName());
     GlossaryTerm childGlossaryTerm = createEntity(create, ADMIN_AUTH_HEADERS);
     String response =
-        getResponseFormSearchWithHierarchy("glossary_term_search_index", "childGlossaryTerm");
+        getResponseFormSearchWithHierarchy("glossary_term_search_index", "*childGlossaryTerm*");
     List<EntityHierarchy__1> glossaries = JsonUtils.readObjects(response, EntityHierarchy__1.class);
     boolean isChild =
         glossaries.stream()

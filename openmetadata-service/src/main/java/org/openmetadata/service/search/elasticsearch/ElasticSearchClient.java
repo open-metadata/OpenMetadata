@@ -390,11 +390,11 @@ public class ElasticSearchClient implements SearchClient {
         */
         QueryBuilder baseQuery =
             QueryBuilders.boolQuery()
-                .should(QueryBuilders.matchQuery("fullyQualifiedName", request.getQuery()))
-                .should(QueryBuilders.matchQuery("name", request.getQuery()))
-                .should(QueryBuilders.matchQuery("displayName", request.getQuery()))
-                .should(QueryBuilders.matchQuery("glossary.fullyQualifiedName", request.getQuery()))
-                .should(QueryBuilders.matchQuery("glossary.displayName", request.getQuery()))
+                .should(QueryBuilders.wildcardQuery("fullyQualifiedName.keyword", request.getQuery()))
+                .should(QueryBuilders.wildcardQuery("name.keyword", request.getQuery()))
+                .should(QueryBuilders.wildcardQuery("displayName.keyword", request.getQuery()))
+                .should(QueryBuilders.wildcardQuery("glossary.fullyQualifiedName", request.getQuery()))
+                .should(QueryBuilders.wildcardQuery("glossary.displayName", request.getQuery()))
                 .must(QueryBuilders.matchQuery("status", "Approved"))
                 .minimumShouldMatch(1);
         searchSourceBuilder.query(baseQuery);
