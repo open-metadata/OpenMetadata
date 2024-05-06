@@ -14,7 +14,6 @@
 import {
   descriptionBox,
   interceptURL,
-  signupAndLogin,
   toastNotification,
   verifyMultipleResponseStatusCode,
   verifyResponseStatusCode,
@@ -707,13 +706,19 @@ const deleteUser = () => {
 describe('Glossary page should work properly', { tags: 'Governance' }, () => {
   before(() => {
     // Prerequisites - Create a user with data consumer role
-    signupAndLogin(
-      CREDENTIALS.email,
-      CREDENTIALS.password,
-      CREDENTIALS.firstName,
-      CREDENTIALS.lastName
-    ).then((id: string) => {
-      createdUserId = id;
+    cy.login();
+    cy.getAllLocalStorage().then((data) => {
+      const token = getToken(data);
+
+      // Create a new user
+      cy.request({
+        method: 'POST',
+        url: `/api/v1/users/signup`,
+        headers: { Authorization: `Bearer ${token}` },
+        body: CREDENTIALS,
+      }).then((response) => {
+        createdUserId = response.body.id;
+      });
     });
   });
 
@@ -1120,78 +1125,6 @@ describe('Glossary page should work properly', { tags: 'Governance' }, () => {
     });
   });
 
-  it('Change glossary term hierarchy using menu options', () => {
-    interceptURL('PATCH', '/api/v1/glossaryTerms/*', 'saveGlossaryTermData');
-    interceptURL(
-      'GET',
-      '/api/v1/glossaryTerms/name/*',
-      'fetchGlossaryTermData'
-    );
-
-    const parentTerm = CYPRESS_ASSETS_GLOSSARY_TERMS.term_1;
-    const childTerm = CYPRESS_ASSETS_GLOSSARY_TERMS.term_2;
-    cy.get('[data-testid="expand-collapse-all-button"]').click();
-    visitGlossaryTermPage(childTerm.name, childTerm.fullyQualifiedName, true);
-
-    cy.get('[data-testid="manage-button"]').click();
-    cy.get('[data-testid="change-parent-button"]').should('be.visible').click();
-    cy.get(
-      '[data-testid="change-parent-select"] > .ant-select-selector'
-    ).click();
-    cy.get(`[title="${parentTerm.name}"]`).click();
-
-    // Submit the select parent
-    cy.get('.ant-modal-footer > .ant-btn-primary').click();
-
-    verifyResponseStatusCode('@saveGlossaryTermData', 200);
-    verifyResponseStatusCode('@fetchGlossaryTermData', 200);
-
-    /**
-     * Todo: Enable this once this asset issue is resolve https://github.com/open-metadata/OpenMetadata/issues/15809
-     */
-    // cy.get('[data-testid="assets"] [data-testid="filter-count"]')
-    //   .should('be.visible')
-    //   .contains('3');
-
-    // checking the breadcrumb, if the change parent term is updated and displayed
-    cy.get('[data-testid="breadcrumb-link"]')
-      .should('be.visible')
-      .contains(`${parentTerm.name}`)
-      .click();
-
-    verifyResponseStatusCode('@fetchGlossaryTermData', 200);
-
-    // checking the child term is updated and displayed under the parent term
-    cy.get('[data-testid="terms"] [data-testid="filter-count"]')
-      .should('be.visible')
-      .contains('2')
-      .click();
-
-    cy.get(`[data-testid="${childTerm.name}"]`).should('be.visible');
-
-    goToGlossaryPage();
-
-    const newTermHierarchy = `${Cypress.$.escapeSelector(
-      CYPRESS_ASSETS_GLOSSARY.name
-    )}.${parentTerm.name}.${childTerm.name}`;
-    cy.get('[data-testid="expand-collapse-all-button"]').click();
-    // verify the term is moved under the parent term
-    cy.get(`[data-row-key='${newTermHierarchy}']`).should('be.visible');
-
-    // re-dropping the term to the root level
-    dragAndDropElement(
-      `${CYPRESS_ASSETS_GLOSSARY.name}.${parentTerm.name}.${childTerm.name}`,
-      '.ant-table-thead > tr',
-      true
-    );
-
-    confirmationDragAndDropGlossary(
-      childTerm.name,
-      CYPRESS_ASSETS_GLOSSARY.name,
-      true
-    );
-  });
-
   it('Remove asset from glossary term using asset modal', () => {
     const terms = Object.values(CYPRESS_ASSETS_GLOSSARY_TERMS);
     terms.forEach((term) => {
@@ -1300,6 +1233,78 @@ describe('Glossary page should work properly', { tags: 'Governance' }, () => {
       columnName: COLUMN_NAME_FOR_APPLY_GLOSSARY_TERM,
       termFQN: terms[0].fullyQualifiedName,
     });
+  });
+
+  it('Change glossary term hierarchy using menu options', () => {
+    interceptURL('PATCH', '/api/v1/glossaryTerms/*', 'saveGlossaryTermData');
+    interceptURL(
+      'GET',
+      '/api/v1/glossaryTerms/name/*',
+      'fetchGlossaryTermData'
+    );
+
+    const parentTerm = CYPRESS_ASSETS_GLOSSARY_TERMS.term_1;
+    const childTerm = CYPRESS_ASSETS_GLOSSARY_TERMS.term_2;
+    cy.get('[data-testid="expand-collapse-all-button"]').click();
+    visitGlossaryTermPage(childTerm.name, childTerm.fullyQualifiedName, true);
+
+    cy.get('[data-testid="manage-button"]').click();
+    cy.get('[data-testid="change-parent-button"]').should('be.visible').click();
+    cy.get(
+      '[data-testid="change-parent-select"] > .ant-select-selector'
+    ).click();
+    cy.get(`[title="${parentTerm.name}"]`).click();
+
+    // Submit the select parent
+    cy.get('.ant-modal-footer > .ant-btn-primary').click();
+
+    verifyResponseStatusCode('@saveGlossaryTermData', 200);
+    verifyResponseStatusCode('@fetchGlossaryTermData', 200);
+
+    /**
+     * Todo: Enable this once this asset issue is resolve https://github.com/open-metadata/OpenMetadata/issues/15809
+     */
+    // cy.get('[data-testid="assets"] [data-testid="filter-count"]')
+    //   .should('be.visible')
+    //   .contains('3');
+
+    // checking the breadcrumb, if the change parent term is updated and displayed
+    cy.get('[data-testid="breadcrumb-link"]')
+      .should('be.visible')
+      .contains(`${parentTerm.name}`)
+      .click();
+
+    verifyResponseStatusCode('@fetchGlossaryTermData', 200);
+
+    // checking the child term is updated and displayed under the parent term
+    cy.get('[data-testid="terms"] [data-testid="filter-count"]')
+      .should('be.visible')
+      .contains('1')
+      .click();
+
+    cy.get(`[data-testid="${childTerm.name}"]`).should('be.visible');
+
+    goToGlossaryPage();
+
+    const newTermHierarchy = `${Cypress.$.escapeSelector(
+      CYPRESS_ASSETS_GLOSSARY.name
+    )}.${parentTerm.name}.${childTerm.name}`;
+    cy.get('[data-testid="expand-collapse-all-button"]').click();
+    // verify the term is moved under the parent term
+    cy.get(`[data-row-key='${newTermHierarchy}']`).should('be.visible');
+
+    // re-dropping the term to the root level
+    dragAndDropElement(
+      `${CYPRESS_ASSETS_GLOSSARY.name}.${parentTerm.name}.${childTerm.name}`,
+      '.ant-table-thead > tr',
+      true
+    );
+
+    confirmationDragAndDropGlossary(
+      childTerm.name,
+      CYPRESS_ASSETS_GLOSSARY.name,
+      true
+    );
   });
 
   it('Drag and Drop should work properly for glossary term', () => {
