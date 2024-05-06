@@ -252,8 +252,8 @@ public final class CollectionRegistry {
     // Create the resource identified by resourceClass
     try {
       resource =
-          clz.getDeclaredConstructor(Authorizer.class, Limits.class)
-              .newInstance(authorizer, limits);
+          clz.getDeclaredConstructor(OpenMetadataApplicationConfig.class, Limits.class)
+              .newInstance(config, limits);
     } catch (NoSuchMethodException e) {
       try {
         resource = clz.getDeclaredConstructor(Authorizer.class).newInstance(authorizer);
