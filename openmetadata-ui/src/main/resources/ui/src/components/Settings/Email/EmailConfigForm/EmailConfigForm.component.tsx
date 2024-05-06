@@ -55,10 +55,7 @@ function EmailConfigForm({
         rules={[{ required: true }]}>
         <Input data-testid="username-input" id="root/username" />
       </Item>
-      <Item
-        label={t('label.password')}
-        name="password"
-        rules={[{ required: true }]}>
+      <Item label={t('label.password')} name="password">
         <Input
           data-testid="password-input"
           id="root/password"

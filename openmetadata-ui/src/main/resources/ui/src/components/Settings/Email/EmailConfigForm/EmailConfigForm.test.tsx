@@ -144,4 +144,25 @@ describe('Email Config Form Component', () => {
 
     expect(mockOnSubmit).not.toHaveBeenCalled();
   });
+
+  it('should call onSubmit if password is not filled', async () => {
+    render(
+      <EmailConfigForm
+        {...mockProps}
+        emailConfigValues={{
+          ...emailConfigValues,
+          password: '',
+        }}
+      />
+    );
+
+    await act(async () => {
+      fireEvent.click(screen.getByText('label.submit'));
+    });
+
+    expect(mockOnSubmit).toHaveBeenCalledWith({
+      ...emailConfigValues,
+      password: '',
+    });
+  });
 });
