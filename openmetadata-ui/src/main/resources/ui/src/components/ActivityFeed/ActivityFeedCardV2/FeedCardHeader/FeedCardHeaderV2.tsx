@@ -91,7 +91,7 @@ const FeedCardHeaderV2 = ({
       return (
         <EntityPopOverCard entityFQN={entityFQN} entityType={entityType}>
           <>
-            <span className="w-6 h-6 m-r-xss d-inline-flex text-xl align-middle">
+            <span className="w-5 h-5 m-r-xss d-inline-flex text-xl align-middle">
               {getEntityIcon(entityType ?? '')}
             </span>
             <Link
@@ -106,7 +106,7 @@ const FeedCardHeaderV2 = ({
     } else {
       return (
         <>
-          <span className="w-6 h-6 m-r-xss d-inline-flex text-xl align-middle">
+          <span className="w-5 h-5 m-r-xss d-inline-flex text-xl align-middle">
             {getEntityIcon(entityType ?? '')}
           </span>
           <Typography.Text className="break-all font-bold">

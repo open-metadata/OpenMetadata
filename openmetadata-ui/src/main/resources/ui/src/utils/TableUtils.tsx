@@ -61,6 +61,7 @@ import { ReactComponent as IconNotNullLineThrough } from '../assets/svg/icon-not
 import { ReactComponent as IconNotNull } from '../assets/svg/icon-not-null.svg';
 import { ReactComponent as IconUniqueLineThrough } from '../assets/svg/icon-unique-line-through.svg';
 import { ReactComponent as IconUnique } from '../assets/svg/icon-unique.svg';
+import { ReactComponent as TagIcon } from '../assets/svg/tag.svg';
 import { ReactComponent as TaskIcon } from '../assets/svg/task-ic.svg';
 
 import { SourceType } from '../components/SearchedData/SearchedData.interface';
@@ -211,12 +212,16 @@ export const getServiceIcon = (source: SourceType) => {
         style={{ color: DE_ACTIVE_COLOR }}
       />
     );
-  } else if (
-    source.entityType === EntityType.TAG ||
-    source.entityType === EntityType.CLASSIFICATION
-  ) {
+  } else if (source.entityType === EntityType.CLASSIFICATION) {
     return (
       <ClassificationIcon
+        className="service-icon h-7"
+        style={{ color: DE_ACTIVE_COLOR }}
+      />
+    );
+  } else if (source.entityType === EntityType.TAG) {
+    return (
+      <TagIcon
         className="service-icon h-7"
         style={{ color: DE_ACTIVE_COLOR }}
       />
@@ -302,11 +307,13 @@ export const getEntityIcon = (indexType: string) => {
     case EntityType.STORED_PROCEDURE:
       return <IconStoredProcedure />;
 
-    case SearchIndex.TAG:
-    case EntityType.TAG:
     case EntityType.CLASSIFICATION:
     case 'tagCategory':
       return <ClassificationIcon />;
+
+    case SearchIndex.TAG:
+    case EntityType.TAG:
+      return <TagIcon />;
     case SearchIndex.GLOSSARY:
     case EntityType.GLOSSARY:
       return <GlossaryIcon />;
