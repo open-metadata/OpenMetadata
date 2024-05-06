@@ -150,7 +150,7 @@ CREATE INDEX IF NOT EXISTS idx_pipeline_name_entity ON pipeline_entity (name);
 CREATE INDEX IF NOT EXISTS idx_pipeline_service_name_entity ON pipeline_service_entity (name);
 CREATE INDEX IF NOT EXISTS idx_name_policy_entity ON policy_entity (name);
 CREATE INDEX IF NOT EXISTS idx_name_query_entity ON query_entity (name);
-CREATE INDEX IF NOT EXISTS idx_name_report_entity ON reprot_entity (name);
+CREATE INDEX IF NOT EXISTS idx_name_report_entity ON report_entity (name);
 CREATE INDEX IF NOT EXISTS idx_name_role_entity ON role_entity (name);
 CREATE INDEX IF NOT EXISTS idx_name_storage_service_entity ON storage_service_entity (name);
 CREATE INDEX IF NOT EXISTS idx_name_table_entity ON table_entity (name);
