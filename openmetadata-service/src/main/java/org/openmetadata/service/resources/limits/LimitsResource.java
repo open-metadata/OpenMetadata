@@ -6,15 +6,14 @@ import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import org.openmetadata.schema.system.LimitsResponse;
-import org.openmetadata.service.OpenMetadataApplicationConfig;
-import org.openmetadata.service.limits.Limits;
-import org.openmetadata.service.resources.Collection;
-
 import javax.ws.rs.GET;
 import javax.ws.rs.Path;
 import javax.ws.rs.Produces;
 import javax.ws.rs.core.MediaType;
+import org.openmetadata.schema.system.LimitsResponse;
+import org.openmetadata.service.OpenMetadataApplicationConfig;
+import org.openmetadata.service.limits.Limits;
+import org.openmetadata.service.resources.Collection;
 
 @Path("/v1/limits")
 @Tag(name = "Limits", description = "APIs related to Limits configuration and settings.")
@@ -37,13 +36,13 @@ public class LimitsResource {
       operationId = "getLimitsConfiguration",
       summary = "Get Limits configuration",
       responses = {
-          @ApiResponse(
-              responseCode = "200",
-              description = "Limits configuration",
-              content =
-              @Content(
-                  mediaType = "application/json",
-                  schema = @Schema(implementation = LimitsResponse.class)))
+        @ApiResponse(
+            responseCode = "200",
+            description = "Limits configuration",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = LimitsResponse.class)))
       })
   public LimitsResponse getAuthConfig() {
     LimitsResponse limitsResponse = new LimitsResponse();
@@ -52,5 +51,4 @@ public class LimitsResource {
     }
     return limitsResponse;
   }
-
 }

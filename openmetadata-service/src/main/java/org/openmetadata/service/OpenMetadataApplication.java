@@ -531,13 +531,12 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     }
   }
 
-  private void registerLimits(
-      OpenMetadataApplicationConfig serverConfig)
+  private void registerLimits(OpenMetadataApplicationConfig serverConfig)
       throws NoSuchMethodException,
-      ClassNotFoundException,
-      IllegalAccessException,
-      InvocationTargetException,
-      InstantiationException {
+          ClassNotFoundException,
+          IllegalAccessException,
+          InvocationTargetException,
+          InstantiationException {
     LimitsConfiguration limitsConfiguration = serverConfig.getLimitsConfiguration();
     if (limitsConfiguration != null) {
       limits =
@@ -545,7 +544,7 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
               .asSubclass(Limits.class)
               .getConstructor()
               .newInstance();
-      } else {
+    } else {
       LOG.info("Limits config not set, setting DefaultLimits");
       limits = new DefaultLimits();
     }
