@@ -15,7 +15,7 @@ import { AxiosResponse } from 'axios';
 import { Operation } from 'fast-json-patch';
 import { PagingResponse } from 'Models';
 import { VotingDataProps } from '../components/Entity/Voting/voting.interface';
-import { PAGE_SIZE_MEDIUM } from '../constants/constants';
+import { ES_MAX_PAGE_SIZE, PAGE_SIZE_MEDIUM } from '../constants/constants';
 import { SearchIndex } from '../enums/search.enum';
 import { AddGlossaryToAssetsRequest } from '../generated/api/addGlossaryToAssetsRequest';
 import { CreateGlossary } from '../generated/api/data/createGlossary';
@@ -93,6 +93,44 @@ export const getGlossaryTerms = async (params: ListGlossaryTermsParams) => {
   );
 
   return response.data;
+};
+
+export const queryGlossaryTerms = async (glossaryName: string) => {
+  const apiUrl = `/search/query`;
+
+  const { data } = await APIClient.get(apiUrl, {
+    params: {
+      index: SearchIndex.GLOSSARY_TERM,
+      q: '',
+      from: 0,
+      size: ES_MAX_PAGE_SIZE,
+      deleted: false,
+      track_total_hits: true,
+      query_filter: JSON.stringify({
+        query: {
+          bool: {
+            must: [
+              {
+                bool: {
+                  should: [
+                    {
+                      term: {
+                        'glossary.name.keyword':
+                          glossaryName.toLocaleLowerCase(),
+                      },
+                    },
+                  ],
+                },
+              },
+            ],
+          },
+        },
+      }),
+      getHierarchy: true,
+    },
+  });
+
+  return data;
 };
 
 export const getGlossaryTermsById = async (id: string, params?: ListParams) => {

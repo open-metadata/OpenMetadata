@@ -21,7 +21,7 @@ import {
 } from 'antd';
 import { Key } from 'antd/lib/table/interface';
 import { AxiosError } from 'axios';
-import { debounce, isEmpty, isUndefined, pick } from 'lodash';
+import { debounce, get, isEmpty, isUndefined, pick } from 'lodash';
 import { CustomTagProps } from 'rc-select/lib/BaseSelect';
 import React, { FC, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -32,13 +32,12 @@ import { LabelType } from '../../../generated/entity/data/table';
 import { TagLabel } from '../../../generated/type/tagLabel';
 import {
   getGlossariesList,
-  getGlossaryTerms,
   ListGlossaryTermsParams,
+  queryGlossaryTerms,
   searchGlossaryTerms,
 } from '../../../rest/glossaryAPI';
 import { getEntityName } from '../../../utils/EntityUtils';
 import {
-  buildTree,
   convertGlossaryTermsToTreeOptions,
   findGlossaryTermByFqn,
 } from '../../../utils/GlossaryUtils';
@@ -121,8 +120,8 @@ const TreeAsyncSelectList: FC<Omit<AsyncSelectListProps, 'fetchOptions'>> = ({
       return tagRender(data);
     }
 
-    const { label, onClose } = data;
-    const tagLabel = getTagDisplay(label as string);
+    const { value, onClose } = data;
+    const tagLabel = getTagDisplay(value as string);
     const tag = {
       tagFQN: selectedTag?.data.fullyQualifiedName,
       ...pick(
@@ -199,19 +198,18 @@ const TreeAsyncSelectList: FC<Omit<AsyncSelectListProps, 'fetchOptions'>> = ({
     }
     setIsLoading(true);
     try {
-      const { data } = await getGlossaryTerms({
-        ...params,
-        limit: PAGE_SIZE_LARGE,
-        fields: 'children',
-      });
+      const results = await queryGlossaryTerms(params.glossary);
+
+      const activeGlossary = results[0];
 
       setGlossaries((prev) =>
         prev.map((glossary) => ({
           ...glossary,
-          children:
-            glossary.id === params?.glossary
-              ? buildTree(data)
-              : (glossary as ModifiedGlossaryTerm)['children'],
+          children: get(
+            glossary.id === activeGlossary.id ? activeGlossary : glossary,
+            'children',
+            []
+          ),
         }))
       );
     } catch (error) {
@@ -260,9 +258,9 @@ const TreeAsyncSelectList: FC<Omit<AsyncSelectListProps, 'fetchOptions'>> = ({
       dropdownRender={dropdownRender}
       dropdownStyle={{ width: 300 }}
       filterTreeNode={false}
-      loadData={({ id }) => {
+      loadData={({ id, value }) => {
         if (expandableKeys.current.includes(id)) {
-          return fetchGlossaryTerm({ glossary: id });
+          return fetchGlossaryTerm({ glossary: value as string });
         }
 
         return Promise.resolve();

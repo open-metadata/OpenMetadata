@@ -11,8 +11,10 @@
  *  limitations under the License.
  */
 
+import { Typography } from 'antd';
 import { DefaultOptionType } from 'antd/lib/select';
 import { isEmpty } from 'lodash';
+import React from 'react';
 import { StatusType } from '../components/common/StatusBadge/StatusBadge.interface';
 import { ModifiedGlossaryTerm } from '../components/Glossary/GlossaryTermTab/GlossaryTermTab.interface';
 import { ModifiedGlossary } from '../components/Glossary/useGlossary.store';
@@ -182,7 +184,11 @@ export const convertGlossaryTermsToTreeOptions = (
     return {
       id: option.id,
       value: option.fullyQualifiedName,
-      title: getEntityName(option),
+      title: (
+        <Typography.Text ellipsis style={{ color: option?.style?.color }}>
+          {getEntityName(option)}
+        </Typography.Text>
+      ),
       'data-testid': `tag-${option.fullyQualifiedName}`,
       checkable: isGlossaryTerm,
       isLeaf: isGlossaryTerm ? !hasChildren : false,
