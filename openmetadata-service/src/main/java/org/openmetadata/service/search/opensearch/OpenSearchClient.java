@@ -39,7 +39,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeMap;
-import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Stream;
 import javax.json.JsonObject;
@@ -388,11 +387,14 @@ public class OpenSearchClient implements SearchClient {
         */
         QueryBuilder baseQuery =
             QueryBuilders.boolQuery()
-                .should(QueryBuilders.matchQuery("fullyQualifiedName", request.getQuery()))
-                .should(QueryBuilders.matchQuery("name", request.getQuery()))
-                .should(QueryBuilders.matchQuery("displayName", request.getQuery()))
-                .should(QueryBuilders.matchQuery("glossary.fullyQualifiedName", request.getQuery()))
-                .should(QueryBuilders.matchQuery("glossary.displayName", request.getQuery()))
+                .should(searchSourceBuilder.query())
+                .should(QueryBuilders.matchPhraseQuery("fullyQualifiedName", request.getQuery()))
+                .should(QueryBuilders.matchPhraseQuery("name", request.getQuery()))
+                .should(QueryBuilders.matchPhraseQuery("displayName", request.getQuery()))
+                .should(
+                    QueryBuilders.matchPhraseQuery(
+                        "glossary.fullyQualifiedName", request.getQuery()))
+                .should(QueryBuilders.matchPhraseQuery("glossary.displayName", request.getQuery()))
                 .must(QueryBuilders.matchQuery("status", "Approved"))
                 .minimumShouldMatch(1);
         searchSourceBuilder.query(baseQuery);
@@ -477,20 +479,20 @@ public class OpenSearchClient implements SearchClient {
         new LinkedHashMap<>(); // rootTerms represent glossaries
 
     for (var hit : searchResponse.getHits().getHits()) {
-      Map<String, Object> hitSourceMap = new HashMap<>(JsonUtils.getMap(hit.getSourceAsMap()));
+      String jsonSource = hit.getSourceAsString();
 
-      EntityHierarchy__1 term = extractHierarchyTermFromMap(hitSourceMap);
-      Map<String, Object> glossaryInfo = (Map<String, Object>) hitSourceMap.get("glossary");
+      EntityHierarchy__1 term = JsonUtils.readValue(jsonSource, EntityHierarchy__1.class);
+      EntityHierarchy__1 glossaryInfo =
+          JsonUtils.readTree(jsonSource).path("glossary").isMissingNode()
+              ? null
+              : JsonUtils.convertValue(
+                  JsonUtils.readTree(jsonSource).path("glossary"), EntityHierarchy__1.class);
 
       if (glossaryInfo != null) {
-        EntityHierarchy__1 parentTerm = extractHierarchyTermFromMap(glossaryInfo);
-        rootTerms.putIfAbsent(parentTerm.getFullyQualifiedName(), parentTerm);
-      } else {
-        Map<String, Object> parentInfo = (Map<String, Object>) hitSourceMap.get("parent");
-        EntityHierarchy__1 parentTerm = extractHierarchyTermFromMap(parentInfo);
-        termMap.putIfAbsent(parentTerm.getFullyQualifiedName(), parentTerm);
+        rootTerms.putIfAbsent(glossaryInfo.getFullyQualifiedName(), glossaryInfo);
       }
 
+      term.setChildren(new ArrayList<>());
       termMap.putIfAbsent(term.getFullyQualifiedName(), term);
     }
 
@@ -506,6 +508,8 @@ public class OpenSearchClient implements SearchClient {
               if (parentFQN != null && termMap.containsKey(parentFQN)) {
                 EntityHierarchy__1 parentTerm = termMap.get(parentFQN);
                 List<EntityHierarchy__1> children = parentTerm.getChildren();
+                children.removeIf(
+                    child -> child.getFullyQualifiedName().equals(term.getFullyQualifiedName()));
                 children.add(term);
                 parentTerm.setChildren(children);
               } else {
@@ -517,21 +521,6 @@ public class OpenSearchClient implements SearchClient {
             });
 
     return new ArrayList<>(rootTerms.values());
-  }
-
-  private EntityHierarchy__1 extractHierarchyTermFromMap(Map<String, Object> termInfo) {
-    EntityHierarchy__1 term = new EntityHierarchy__1();
-    if (termInfo != null) {
-      term.setId(UUID.fromString(termInfo.get("id").toString()));
-      term.setName(termInfo.get("name").toString());
-      term.setDisplayName(
-          termInfo.get("displayName") != null
-              ? termInfo.get("displayName").toString()
-              : termInfo.get("name").toString());
-      term.setFullyQualifiedName(termInfo.get("fullyQualifiedName").toString());
-      term.setChildren(new ArrayList<>());
-    }
-    return term;
   }
 
   @Override
