@@ -92,6 +92,7 @@ from metadata.ingestion.source.database.snowflake.utils import (
     get_schema_columns,
     get_schema_foreign_keys,
     get_table_comment,
+    get_table_ddl,
     get_table_names,
     get_table_names_reflection,
     get_unique_constraints,
@@ -108,7 +109,7 @@ from metadata.utils import fqn
 from metadata.utils.filters import filter_by_database
 from metadata.utils.helpers import get_start_and_end
 from metadata.utils.logger import ingestion_logger
-from metadata.utils.sqlalchemy_utils import get_all_table_comments
+from metadata.utils.sqlalchemy_utils import get_all_table_comments, get_all_table_ddls
 from metadata.utils.tag_utils import get_ometa_tag_and_classification
 
 ischema_names["VARIANT"] = VARIANT
@@ -137,6 +138,8 @@ SnowflakeDialect._current_database_schema = (  # pylint: disable=protected-acces
 SnowflakeDialect.get_pk_constraint = get_pk_constraint
 SnowflakeDialect.get_foreign_keys = get_foreign_keys
 SnowflakeDialect.get_columns = get_columns
+Inspector.get_all_table_ddls = get_all_table_ddls
+Inspector.get_table_ddl = get_table_ddl
 SnowflakeDialect._get_schema_foreign_keys = get_schema_foreign_keys
 
 

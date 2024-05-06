@@ -74,11 +74,11 @@ class SqlAlchemySource(ABC):
         """
 
     @abstractmethod
-    def get_view_definition(
+    def get_schema_definition(
         self, table_type, table_name: str, schema_name: str, inspector: Inspector
     ) -> Optional[str]:
         """
-        Method to fetch view definition
+        Method to fetch schema definition
         """
 
     @abstractmethod

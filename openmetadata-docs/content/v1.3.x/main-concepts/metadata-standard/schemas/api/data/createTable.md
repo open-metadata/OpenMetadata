@@ -23,7 +23,7 @@ slug: /main-concepts/metadata-standard/schemas/api/data/createtable
 - **`databaseSchema`**: FullyQualified name of the Schema corresponding to this table. Refer to *../../type/basic.json#/definitions/fullyQualifiedEntityName*.
 - **`tags`** *(array)*: Tags for this table. Default: `None`.
   - **Items**: Refer to *../../type/tagLabel.json*.
-- **`viewDefinition`**: View Definition in SQL. Applies to TableType.View only. Refer to *../../type/basic.json#/definitions/sqlQuery*. Default: `None`.
+- **`schemaDefinition`**: Schema Definition or DDL statement of a table in SQL. Refer to *../../type/basic.json#/definitions/sqlQuery*. Default: `None`.
 - **`retentionPeriod`**: Retention period of the data in the database. Period is expressed as duration in ISO 8601 format in UTC. Example - `P23DT23H`. Refer to *../../type/basic.json#/definitions/duration*.
 - **`extension`**: Entity extension data with custom attributes added to the entity. Refer to *../../type/basic.json#/definitions/entityExtension*.
 - **`sourceUrl`**: Source URL of table. Refer to *../../type/basic.json#/definitions/sourceUrl*.
