@@ -301,12 +301,7 @@ export const getEntityIcon = (indexType: string) => {
     case SearchIndex.SEARCH_INDEX:
     case EntityType.SEARCH_SERVICE:
     case SearchIndex.SEARCH_SERVICE:
-      return (
-        <SearchOutlined
-          className="text-sm text-inherit"
-          style={{ color: DE_ACTIVE_COLOR }}
-        />
-      );
+      return <SearchOutlined className="text-sm text-inherit" />;
 
     case EntityType.DOMAIN:
     case SearchIndex.DOMAIN:
