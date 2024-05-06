@@ -272,3 +272,11 @@ SET json = JSON_INSERT(
     
 where serviceType = 'OpenLineage'
   AND JSON_EXTRACT(json, '$.connection.config.SSLCALocation') IS NOT NULL;
+
+-- Change viewDefinition to schemaDefinition
+UPDATE table_entity
+SET json = JSON_INSERT(
+    JSON_REMOVE(json, '$.viewDefinition'),
+    '$.schemaDefinition',
+    JSON_EXTRACT(json, '$.viewDefinition')
+);
