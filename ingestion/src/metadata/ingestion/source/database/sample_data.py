@@ -733,6 +733,7 @@ class SampleDataSource(
                 tableType=table["tableType"],
                 tableConstraints=table.get("tableConstraints"),
                 tags=table["tags"],
+                schemaDefinition=table.get("schemaDefinition"),
             )
 
             yield Either(right=table_and_db)
@@ -1567,9 +1568,6 @@ class SampleDataSource(
     def ingest_life_cycle(self) -> Iterable[Either[OMetaLifeCycleData]]:
         """Iterate over all the life cycle data and ingest them"""
         for table_life_cycle in self.life_cycle_data["lifeCycleData"]:
-            table = self.metadata.get_by_name(
-                entity=Table, fqn=table_life_cycle["fqn"], fields=["lifeCycle"]
-            )
             life_cycle = table_life_cycle["lifeCycle"]
             life_cycle_data = LifeCycle()
             life_cycle_data.created = AccessDetails(
