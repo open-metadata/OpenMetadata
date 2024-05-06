@@ -51,15 +51,10 @@ const FeedCardBodyV1 = ({
   const { t } = useTranslation();
   const [postMessage, setPostMessage] = useState<string>(message);
 
-  const { entityFQN, entityType } = useMemo(() => {
-    const entityFQN = getEntityFQN(feed.about) ?? '';
-    const entityType = getEntityType(feed.about) ?? '';
-
-    return { entityFQN, entityType };
-  }, [feed]);
-
-  const { cardStyle } = useMemo(() => {
+  const { entityFQN, entityType, cardStyle } = useMemo(() => {
     return {
+      entityFQN: getEntityFQN(feed.about) ?? '',
+      entityType: getEntityType(feed.about) ?? '',
       cardStyle: feed.cardStyle ?? '',
     };
   }, [feed]);

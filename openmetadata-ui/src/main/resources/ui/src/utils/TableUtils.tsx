@@ -204,8 +204,7 @@ export const getServiceIcon = (source: SourceType) => {
         style={{ color: DE_ACTIVE_COLOR }}
       />
     );
-  }
-  if (source.entityType === EntityType.GLOSSARY_TERM) {
+  } else if (source.entityType === EntityType.GLOSSARY_TERM) {
     return (
       <GlossaryTermIcon
         className="service-icon h-7"
