@@ -145,13 +145,14 @@ describe('Email Config Form Component', () => {
     expect(mockOnSubmit).not.toHaveBeenCalled();
   });
 
-  it('should call onSubmit if password is not filled', async () => {
+  it('should call onSubmit if password and username is not filled', async () => {
     render(
       <EmailConfigForm
         {...mockProps}
         emailConfigValues={{
           ...emailConfigValues,
           password: '',
+          username: '',
         }}
       />
     );
@@ -163,6 +164,7 @@ describe('Email Config Form Component', () => {
     expect(mockOnSubmit).toHaveBeenCalledWith({
       ...emailConfigValues,
       password: '',
+      username: '',
     });
   });
 });
