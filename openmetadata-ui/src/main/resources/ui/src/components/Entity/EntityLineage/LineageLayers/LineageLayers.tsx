@@ -48,7 +48,7 @@ const LineageLayers = () => {
               <div className="layer-icon">
                 {getEntityIcon(EntityType.TABLE)}
               </div>
-              <Typography.Text className="text-xs">
+              <Typography.Text className="text-xss">
                 {t('label.column')}
               </Typography.Text>
             </div>
@@ -66,8 +66,8 @@ const LineageLayers = () => {
               <div className="layer-icon">
                 <DataQualityIcon />
               </div>
-              <Typography.Text className="text-xs">
-                {t('label.data-observability')}
+              <Typography.Text className="text-xss">
+                {t('label.observability')}
               </Typography.Text>
             </div>
           </Button>
@@ -82,8 +82,8 @@ const LineageLayers = () => {
         data-testid="lineage-layer-btn"
         type="primary">
         <div className="lineage-layer-btn">
-          <Layers width={16} />
-          <Typography.Text className="text-xs">
+          <Layers width={20} />
+          <Typography.Text className="text-xss">
             {t('label.layer-plural')}
           </Typography.Text>
         </div>

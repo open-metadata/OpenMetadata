@@ -106,7 +106,7 @@ describe('LineageLayers component', () => {
     expect(popover).toBeInTheDocument();
 
     const columnButton = screen.getByText('label.column');
-    const dataObservabilityBtn = screen.getByText('label.data-observability');
+    const dataObservabilityBtn = screen.getByText('label.observability');
 
     expect(columnButton).toBeInTheDocument();
     expect(dataObservabilityBtn).toBeInTheDocument();
