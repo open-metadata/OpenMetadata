@@ -18,11 +18,13 @@ export const assignTags = (tag: string, endPoint: EntityType) => {
   interceptURL('PATCH', `/api/v1/${endPoint}/*`, 'addTags');
   cy.get(
     '[data-testid="entity-right-panel"] [data-testid="tags-container"] [data-testid="add-tag"]'
-  ).click();
+  )
+    .scrollIntoView()
+    .click();
 
   cy.get('[data-testid="tag-selector"] input').should('be.visible').type(tag);
 
-  cy.get(`[data-testid="tag-${tag}"]`).click();
+  cy.get(`[data-testid="tag-${tag}"]`).scrollIntoView().click();
 
   cy.get(
     `[data-testid="tag-selector"] [data-testid="selected-tag-${tag}"]`
@@ -32,27 +34,33 @@ export const assignTags = (tag: string, endPoint: EntityType) => {
   verifyResponseStatusCode('@addTags', 200);
   cy.get(
     `[data-testid="entity-right-panel"] [data-testid="tags-container"] [data-testid="tag-${tag}"]`
-  ).should('be.visible');
+  )
+    .scrollIntoView()
+    .should('be.visible');
 };
 
 export const updateTags = (tag: string, endPoint: EntityType) => {
   interceptURL('PATCH', `/api/v1/${endPoint}/*`, 'addTags');
   cy.get(
     '[data-testid="entity-right-panel"]  [data-testid="tags-container"] [data-testid="edit-button"]'
-  ).click();
+  )
+    .scrollIntoView()
+    .click();
 
   cy.get('[data-testid="tag-selector"] input').should('be.visible').type(tag);
 
-  cy.get(`[data-testid="tag-${tag}"]`).click();
+  cy.get(`[data-testid="tag-${tag}"]`).scrollIntoView().click();
 
-  cy.get(
-    `[data-testid="tag-selector"] [data-testid="selected-tag-${tag}"]`
-  ).should('be.visible');
+  cy.get(`[data-testid="tag-selector"] [data-testid="selected-tag-${tag}"]`)
+    .scrollIntoView()
+    .should('be.visible');
   cy.get('[data-testid="saveAssociatedTag"]').scrollIntoView().click();
   verifyResponseStatusCode('@addTags', 200);
   cy.get(
     `[data-testid="entity-right-panel"] [data-testid="tags-container"] [data-testid="tag-${tag}"]`
-  ).should('be.visible');
+  )
+    .scrollIntoView()
+    .should('be.visible');
 };
 
 export const removeTags = (
@@ -64,17 +72,21 @@ export const removeTags = (
   tags.forEach((tag) => {
     cy.get(
       '[data-testid="entity-right-panel"]  [data-testid="tags-container"] [data-testid="edit-button"]'
-    ).click();
+    )
+      .scrollIntoView()
+      .click();
 
     // Remove all added tags
-    cy.get(
-      `[data-testid="selected-tag-${tag}"] [data-testid="remove-tags"]`
-    ).click();
+    cy.get(`[data-testid="selected-tag-${tag}"] [data-testid="remove-tags"]`)
+      .scrollIntoView()
+      .click();
 
     cy.get('[data-testid="saveAssociatedTag"]').scrollIntoView().click();
     verifyResponseStatusCode('@removeTags', 200);
   });
   cy.get(
     '[data-testid="entity-right-panel"] [data-testid="tags-container"] [data-testid="add-tag"]'
-  ).should('be.visible');
+  )
+    .scrollIntoView()
+    .should('be.visible');
 };

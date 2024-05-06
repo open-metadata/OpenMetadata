@@ -12,6 +12,7 @@
  */
 
 import { t } from 'i18next';
+import { sortBy } from 'lodash';
 import {
   AsyncFetchListValues,
   AsyncFetchListValuesResult,
@@ -490,42 +491,29 @@ class AdvancedSearchClassBase {
     entitySearchIndex = [SearchIndex.TABLE]
   ): Fields {
     let configs: Fields = {};
+    const configIndexMapping: Partial<Record<SearchIndex, Fields>> = {
+      [SearchIndex.TABLE]: this.tableQueryBuilderFields,
+      [SearchIndex.PIPELINE]: this.pipelineQueryBuilderFields,
+      [SearchIndex.DASHBOARD]: this.dashboardQueryBuilderFields,
+      [SearchIndex.TOPIC]: this.topicQueryBuilderFields,
+      [SearchIndex.MLMODEL]: this.mlModelQueryBuilderFields,
+      [SearchIndex.CONTAINER]: this.containerQueryBuilderFields,
+      [SearchIndex.SEARCH_INDEX]: this.searchIndexQueryBuilderFields,
+      [SearchIndex.DASHBOARD_DATA_MODEL]: this.dataModelQueryBuilderFields,
+      [SearchIndex.ALL]: {
+        ...this.tableQueryBuilderFields,
+        ...this.pipelineQueryBuilderFields,
+        ...this.dashboardQueryBuilderFields,
+        ...this.topicQueryBuilderFields,
+        ...this.mlModelQueryBuilderFields,
+        ...this.containerQueryBuilderFields,
+        ...this.searchIndexQueryBuilderFields,
+        ...this.dataModelQueryBuilderFields,
+      },
+    };
 
     entitySearchIndex.forEach((index) => {
-      switch (index) {
-        case SearchIndex.TABLE:
-          configs = { ...configs, ...this.tableQueryBuilderFields };
-
-          break;
-        case SearchIndex.PIPELINE:
-          configs = { ...configs, ...this.pipelineQueryBuilderFields };
-
-          break;
-        case SearchIndex.DASHBOARD:
-          configs = { ...configs, ...this.dashboardQueryBuilderFields };
-
-          break;
-        case SearchIndex.TOPIC:
-          configs = { ...configs, ...this.topicQueryBuilderFields };
-
-          break;
-        case SearchIndex.MLMODEL:
-          configs = { ...configs, ...this.mlModelQueryBuilderFields };
-
-          break;
-        case SearchIndex.CONTAINER:
-          configs = { ...configs, ...this.containerQueryBuilderFields };
-
-          break;
-        case SearchIndex.SEARCH_INDEX:
-          configs = { ...configs, ...this.searchIndexQueryBuilderFields };
-
-          break;
-        case SearchIndex.DASHBOARD_DATA_MODEL:
-          configs = { ...configs, ...this.dataModelQueryBuilderFields };
-
-          break;
-      }
+      configs = { ...configs, ...(configIndexMapping[index] ?? {}) };
     });
 
     return configs;
@@ -558,11 +546,16 @@ class AdvancedSearchClassBase {
       },
     };
 
-    return {
+    const fieldsConfig = {
       ...this.getCommonConfig({ entitySearchIndex, tierOptions }),
       ...(shouldAddServiceField ? serviceQueryBuilderFields : {}),
       ...this.getEntitySpecificQueryBuilderFields(entitySearchIndex),
     };
+
+    // Sort the fields according to the label
+    const sortedFieldsConfig = sortBy(Object.entries(fieldsConfig), '1.label');
+
+    return Object.fromEntries(sortedFieldsConfig);
   };
 
   /**

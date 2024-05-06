@@ -1391,10 +1391,12 @@ public class OpenSearchClient implements SearchClient {
   }
 
   @Override
-  public void deleteEntityByFields(String indexName, List<Pair<String, String>> fieldAndValue) {
+  public void deleteEntityByFields(
+      List<String> indexName, List<Pair<String, String>> fieldAndValue) {
     if (isClientAvailable) {
       BoolQueryBuilder queryBuilder = new BoolQueryBuilder();
-      DeleteByQueryRequest deleteByQueryRequest = new DeleteByQueryRequest(indexName);
+      DeleteByQueryRequest deleteByQueryRequest =
+          new DeleteByQueryRequest(indexName.toArray(new String[indexName.size()]));
       for (Pair<String, String> p : fieldAndValue) {
         queryBuilder.must(new TermQueryBuilder(p.getKey(), p.getValue()));
       }
@@ -1416,9 +1418,10 @@ public class OpenSearchClient implements SearchClient {
 
   @Override
   public void softDeleteOrRestoreChildren(
-      String indexName, String scriptTxt, List<Pair<String, String>> fieldAndValue) {
+      List<String> indexName, String scriptTxt, List<Pair<String, String>> fieldAndValue) {
     if (isClientAvailable) {
-      UpdateByQueryRequest updateByQueryRequest = new UpdateByQueryRequest(indexName);
+      UpdateByQueryRequest updateByQueryRequest =
+          new UpdateByQueryRequest(indexName.toArray(new String[indexName.size()]));
       BoolQueryBuilder queryBuilder = new BoolQueryBuilder();
       for (Pair<String, String> p : fieldAndValue) {
         queryBuilder.must(new TermQueryBuilder(p.getKey(), p.getValue()));

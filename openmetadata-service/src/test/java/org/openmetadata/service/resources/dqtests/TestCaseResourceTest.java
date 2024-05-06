@@ -48,6 +48,8 @@ import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.TestMethodOrder;
+import org.junit.jupiter.api.parallel.Execution;
+import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.openmetadata.schema.api.data.CreateTable;
 import org.openmetadata.schema.api.feed.CloseTask;
 import org.openmetadata.schema.api.feed.ResolveTask;
@@ -392,7 +394,6 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
             ADMIN_AUTH_HEADERS);
     verifyTestCaseResults(testCaseResults, testCase1ResultList, 4);
 
-    TestSummary testSummary;
     if (supportsSearchIndex) {
       getAndValidateTestSummary(null);
     }
@@ -1865,9 +1866,21 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
 
   private void getAndValidateTestSummary(String testSuiteId)
       throws IOException, InterruptedException {
-    TestSuiteResourceTest testSuiteResourceTest = new TestSuiteResourceTest();
-    TestSummary testSummary = getTestSummary(testSuiteId);
-    validateTestSummary(testSummary, testSuiteId);
+    // Retry logic to handle ES async operations
+    int maxRetries = 5;
+    int retries = 0;
+
+    while (true) {
+      try {
+        TestSummary testSummary = getTestSummary(testSuiteId);
+        validateTestSummary(testSummary, testSuiteId);
+        break;
+      } catch (Exception e) {
+        if (retries++ >= maxRetries) {
+          throw e;
+        }
+      }
+    }
   }
 
   private void validateTestSummary(TestSummary testSummary, String testSuiteId)
@@ -2363,6 +2376,28 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
     putInspectionQuery(testCase, inspectionQuery, ADMIN_AUTH_HEADERS);
     TestCase updated = getTestCase(testCase.getFullyQualifiedName(), ADMIN_AUTH_HEADERS);
     assertEquals(updated.getInspectionQuery(), inspectionQuery);
+  }
+
+  @Test
+  @Execution(ExecutionMode.CONCURRENT)
+  protected void post_entityCreateWithInvalidName_400() {
+    // Create an entity with mandatory name field null
+    final CreateTestCase request = createRequest(null, "description", "displayName", null);
+    assertResponseContains(
+        () -> createEntity(request, ADMIN_AUTH_HEADERS), BAD_REQUEST, "[name must not be null]");
+
+    // Create an entity with mandatory name field empty
+    final CreateTestCase request1 = createRequest("", "description", "displayName", null);
+    assertResponseContains(
+        () -> createEntity(request1, ADMIN_AUTH_HEADERS),
+        BAD_REQUEST,
+        TestUtils.getEntityNameLengthError(entityClass));
+
+    // Any entity name that has EntityLink separator must fail
+    final CreateTestCase request3 =
+        createRequest("invalid::Name", "description", "displayName", null);
+    assertResponseContains(
+        () -> createEntity(request3, ADMIN_AUTH_HEADERS), BAD_REQUEST, "name must match");
   }
 
   private void putInspectionQuery(TestCase testCase, String sql, Map<String, String> authHeaders)

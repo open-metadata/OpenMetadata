@@ -8,7 +8,7 @@ name="MSSQL"
 stage="PROD"
 platform="OpenMetadata"
 availableFeatures=["Metadata", "Query Usage", "Data Profiler", "Data Quality", "dbt", "Lineage", "Column-level Lineage", "Stored Procedures"]
-unavailableFeatures=["Owners", "Tags"]
+unavailableFeatures=["Owners", "Tags", "SSIS packages"]
 / %}
 
 In this section, we provide guides and references to use the MSSQL connector.
