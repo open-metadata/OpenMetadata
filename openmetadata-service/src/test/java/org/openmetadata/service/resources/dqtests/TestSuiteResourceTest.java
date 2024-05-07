@@ -475,6 +475,7 @@ public class TestSuiteResourceTest extends EntityResourceTest<TestSuite, CreateT
   void get_execTestSuiteFromTable_200(TestInfo test) throws IOException {
     TableResourceTest tableResourceTest = new TableResourceTest();
     TestCaseResourceTest testCaseResourceTest = new TestCaseResourceTest();
+    TestSuiteResourceTest testSuiteResourceTest = new TestSuiteResourceTest();
     CreateTable tableReq =
         tableResourceTest
             .createRequest(test)
@@ -498,15 +499,25 @@ public class TestSuiteResourceTest extends EntityResourceTest<TestSuite, CreateT
       testCaseResourceTest.createAndCheckEntity(createTestCase, ADMIN_AUTH_HEADERS);
     }
 
+    Map<String, String> queryParams = new HashMap<>();
+    queryParams.put("include", Include.ALL.value());
+
     Table actualTable = tableResourceTest.getEntity(table.getId(), "testSuite", ADMIN_AUTH_HEADERS);
-    TestSuite tableTestSuite = actualTable.getTestSuite();
-    assertEquals(testSuite.getId(), tableTestSuite.getId());
+    EntityReference tableTestSuiteRef = actualTable.getTestSuite();
+    assertEquals(testSuite.getId(), tableTestSuiteRef.getId());
+    TestSuite tableTestSuite =
+        testSuiteResourceTest.getEntity(
+            tableTestSuiteRef.getId(), queryParams, "tests", ADMIN_AUTH_HEADERS);
     assertEquals(5, tableTestSuite.getTests().size());
 
     // Soft delete entity
     deleteExecutableTestSuite(tableTestSuite.getId(), true, false, ADMIN_AUTH_HEADERS);
-    actualTable = tableResourceTest.getEntity(actualTable.getId(), "testSuite", ADMIN_AUTH_HEADERS);
-    tableTestSuite = actualTable.getTestSuite();
+    actualTable =
+        tableResourceTest.getEntity(
+            actualTable.getId(), queryParams, "testSuite", ADMIN_AUTH_HEADERS);
+    tableTestSuiteRef = actualTable.getTestSuite();
+    tableTestSuite =
+        testSuiteResourceTest.getEntity(tableTestSuiteRef.getId(), "tests", ADMIN_AUTH_HEADERS);
     assertEquals(true, tableTestSuite.getDeleted());
 
     // Hard delete entity
@@ -518,6 +529,8 @@ public class TestSuiteResourceTest extends EntityResourceTest<TestSuite, CreateT
   @Test
   void get_execTestSuiteDeletedOnTableDeletion(TestInfo test) throws IOException {
     TableResourceTest tableResourceTest = new TableResourceTest();
+    TestSuiteResourceTest testSuiteResourceTest = new TestSuiteResourceTest();
+
     CreateTable tableReq =
         tableResourceTest
             .createRequest(test)
@@ -532,13 +545,18 @@ public class TestSuiteResourceTest extends EntityResourceTest<TestSuite, CreateT
     CreateTestSuite createTestSuite = createRequest(table.getFullyQualifiedName());
     TestSuite testSuite = createExecutableTestSuite(createTestSuite, ADMIN_AUTH_HEADERS);
 
+    HashMap<String, String> queryParams = new HashMap<>();
+    queryParams.put("include", Include.ALL.value());
+
     Table actualTable = tableResourceTest.getEntity(table.getId(), "testSuite", ADMIN_AUTH_HEADERS);
-    TestSuite actualTestSuite = actualTable.getTestSuite();
+    EntityReference actualTestSuiteRef = actualTable.getTestSuite();
+    TestSuite actualTestSuite =
+        testSuiteResourceTest.getEntity(
+            actualTestSuiteRef.getId(), queryParams, "tests", ADMIN_AUTH_HEADERS);
     assertEquals(actualTestSuite.getId(), testSuite.getId());
 
     tableResourceTest.deleteEntity(actualTable.getId(), true, false, ADMIN_AUTH_HEADERS);
-    HashMap<String, String> queryParams = new HashMap<>();
-    queryParams.put("include", Include.ALL.value());
+
     actualTestSuite =
         getEntityByName(testSuite.getFullyQualifiedName(), queryParams, "*", ADMIN_AUTH_HEADERS);
     assertEquals(true, actualTestSuite.getDeleted());
