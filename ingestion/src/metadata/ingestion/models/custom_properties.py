@@ -38,6 +38,8 @@ class CustomPropertyDataTypes(Enum):
     TIMEINTERVAL = "timeInterval"
     TIMESTAMP = "timestamp"
     ENUM = "enum"
+    ENTITY_REFERENCE = "entityReference"
+    ENTITY_REFERENCE_LIST = "entityReferenceList"
 
 
 class OMetaCustomProperties(BaseModel):

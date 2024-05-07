@@ -26,6 +26,7 @@ from metadata.generated.schema.api.data.createTable import CreateTableRequest
 from metadata.generated.schema.api.services.createDatabaseService import (
     CreateDatabaseServiceRequest,
 )
+from metadata.generated.schema.api.teams.createUser import CreateUserRequest
 from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
 from metadata.generated.schema.entity.data.table import Column, DataType, Table
 from metadata.generated.schema.entity.services.connections.database.common.basicAuth import (
@@ -42,17 +43,23 @@ from metadata.generated.schema.entity.services.databaseService import (
     DatabaseService,
     DatabaseServiceType,
 )
+from metadata.generated.schema.entity.teams.user import User
 from metadata.generated.schema.security.client.openMetadataJWTClientConfig import (
     OpenMetadataJWTClientConfig,
 )
 from metadata.generated.schema.type.basic import EntityExtension
 from metadata.generated.schema.type.customProperties.enumConfig import EnumConfig
-from metadata.generated.schema.type.customProperty import CustomPropertyConfig
+from metadata.generated.schema.type.customProperty import (
+    CustomPropertyConfig,
+    EntityTypes,
+)
+from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.models.custom_properties import (
     CustomPropertyDataTypes,
     OMetaCustomProperties,
 )
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.utils.constants import ENTITY_REFERENCE_TYPE_MAP
 
 
 class OMetaCustomAttributeTest(TestCase):
@@ -119,6 +126,30 @@ class OMetaCustomAttributeTest(TestCase):
         )
 
         cls.create_schema_entity = cls.metadata.create_or_update(data=create_schema)
+
+        user_one: User = cls.metadata.create_or_update(
+            data=CreateUserRequest(
+                name="custom-prop-user-one", email="custom-prop-user-one@user.com"
+            ),
+        )
+        user_two: User = cls.metadata.create_or_update(
+            data=CreateUserRequest(
+                name="custom-prop-user-two", email="custom-prop-user-two@user.com"
+            ),
+        )
+
+        cls.user_one_ref = EntityReference(
+            id=user_one.id,
+            name="custom-prop-user-one",
+            type="user",
+            fullyQualifiedName=user_one.fullyQualifiedName.__root__,
+        )
+        cls.user_two = EntityReference(
+            id=user_two.id,
+            name="custom-prop-user-two",
+            type="user",
+            fullyQualifiedName=user_two.fullyQualifiedName.__root__,
+        )
 
     @classmethod
     def tearDownClass(cls) -> None:
@@ -226,6 +257,26 @@ class OMetaCustomAttributeTest(TestCase):
             ometa_custom_property=ometa_custom_property_request
         )
 
+        # Create entity reference list custom property for a table
+        ometa_custom_property_request = OMetaCustomProperties(
+            entity_type=Table,
+            createCustomPropertyRequest=CreateCustomPropertyRequest(
+                name="DataEngineers",
+                description="Data Engineers of a table",
+                propertyType=self.metadata.get_property_type_ref(
+                    CustomPropertyDataTypes.ENTITY_REFERENCE_LIST
+                ),
+                customPropertyConfig=CustomPropertyConfig(
+                    config=EntityTypes(
+                        __root__=[ENTITY_REFERENCE_TYPE_MAP[User.__name__]]
+                    )
+                ),
+            ),
+        )
+        self.metadata.create_or_update_custom_property(
+            ometa_custom_property=ometa_custom_property_request
+        )
+
     def test_add_custom_property_table(self):
         """
         Test to add the extension/custom property to the table
@@ -239,6 +290,7 @@ class OMetaCustomAttributeTest(TestCase):
             "TableSize": "250 MB",
             "Rating": ["Good"],
             "Department": ["D1", "D2"],
+            "DataEngineers": [self.user_one_ref, self.user_two],
         }
 
         self.create_table(name="test_custom_properties", extensions=extensions)
@@ -254,6 +306,14 @@ class OMetaCustomAttributeTest(TestCase):
         self.assertEqual(res.extension.__root__["TableSize"], extensions["TableSize"])
         self.assertEqual(res.extension.__root__["Rating"], extensions["Rating"])
         self.assertEqual(res.extension.__root__["Department"], extensions["Department"])
+        self.assertEqual(
+            res.extension.__root__["DataEngineers"][0]["id"],
+            str(extensions["DataEngineers"][0].id.__root__),
+        )
+        self.assertEqual(
+            res.extension.__root__["DataEngineers"][1]["id"],
+            str(extensions["DataEngineers"][1].id.__root__),
+        )
 
     def test_add_custom_property_schema(self):
         """
