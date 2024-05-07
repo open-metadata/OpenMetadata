@@ -116,6 +116,8 @@ class ServiceUtilClassBase {
     DatabaseServiceType.QueryLog,
     DatabaseServiceType.Dbt,
     StorageServiceType.Gcs,
+    MetadataServiceType.Alation,
+    PipelineServiceType.KafkaConnect,
   ];
 
   protected updateUnsupportedServices(types: string[]) {

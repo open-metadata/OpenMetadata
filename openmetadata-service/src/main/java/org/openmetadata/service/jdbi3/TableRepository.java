@@ -28,7 +28,7 @@ import static org.openmetadata.service.Entity.DATABASE_SCHEMA;
 import static org.openmetadata.service.Entity.FIELD_OWNER;
 import static org.openmetadata.service.Entity.FIELD_TAGS;
 import static org.openmetadata.service.Entity.TABLE;
-import static org.openmetadata.service.Entity.getEntity;
+import static org.openmetadata.service.Entity.TEST_SUITE;
 import static org.openmetadata.service.Entity.populateEntityFieldTags;
 import static org.openmetadata.service.util.EntityUtil.getLocalColumnName;
 import static org.openmetadata.service.util.FullyQualifiedName.getColumnName;
@@ -64,7 +64,6 @@ import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.feed.Suggestion;
 import org.openmetadata.schema.tests.CustomMetric;
-import org.openmetadata.schema.tests.TestSuite;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.schema.type.ColumnJoin;
@@ -180,7 +179,8 @@ public class TableRepository extends EntityRepository<Table> {
         fields.contains("tableConstraints") ? table.getTableConstraints() : null);
     table.setUsageSummary(fields.contains("usageSummary") ? table.getUsageSummary() : null);
     table.setJoins(fields.contains("joins") ? table.getJoins() : null);
-    table.setViewDefinition(fields.contains("viewDefinition") ? table.getViewDefinition() : null);
+    table.setSchemaDefinition(
+        fields.contains("schemaDefinition") ? table.getSchemaDefinition() : null);
     table.setTableProfilerConfig(
         fields.contains(TABLE_PROFILER_CONFIG) ? table.getTableProfilerConfig() : null);
     table.setTestSuite(fields.contains("testSuite") ? table.getTestSuite() : null);
@@ -323,22 +323,8 @@ public class TableRepository extends EntityRepository<Table> {
         TableProfilerConfig.class);
   }
 
-  public TestSuite getTestSuite(Table table) {
-    List<CollectionDAO.EntityRelationshipRecord> entityRelationshipRecords =
-        daoCollection
-            .relationshipDAO()
-            .findTo(table.getId(), TABLE, Relationship.CONTAINS.ordinal());
-    Optional<CollectionDAO.EntityRelationshipRecord> testSuiteRelationshipRecord =
-        entityRelationshipRecords.stream()
-            .filter(
-                entityRelationshipRecord ->
-                    entityRelationshipRecord.getType().equals(Entity.TEST_SUITE))
-            .findFirst();
-    return testSuiteRelationshipRecord
-        .<TestSuite>map(
-            entityRelationshipRecord ->
-                getEntity(Entity.TEST_SUITE, entityRelationshipRecord.getId(), "*", Include.ALL))
-        .orElse(null);
+  public EntityReference getTestSuite(Table table) {
+    return getToEntityRef(table.getId(), Relationship.CONTAINS, TEST_SUITE, false);
   }
 
   @Transaction
