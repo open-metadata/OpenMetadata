@@ -3,7 +3,10 @@ package org.openmetadata.service.migration.mysql.v110;
 import static org.openmetadata.service.migration.utils.v110.MigrationUtil.dataMigrationFQNHashing;
 import static org.openmetadata.service.migration.utils.v110.MigrationUtil.testSuitesMigration;
 
+import java.util.Collections;
+import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
+import org.openmetadata.service.migration.QueryStatus;
 import org.openmetadata.service.migration.api.MigrationProcessImpl;
 import org.openmetadata.service.migration.utils.MigrationFile;
 
@@ -27,8 +30,9 @@ public class Migration extends MigrationProcessImpl {
   }
 
   @Override
-  public void runPostDDLScripts() {
-    super.runPostDDLScripts();
+  public Map<String, QueryStatus> runPostDDLScripts(boolean isForceMigration) {
+    super.runPostDDLScripts(isForceMigration);
     testSuitesMigration(collectionDAO);
+    return Collections.emptyMap();
   }
 }

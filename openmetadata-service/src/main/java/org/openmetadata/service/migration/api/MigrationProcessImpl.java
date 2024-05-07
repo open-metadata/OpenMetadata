@@ -3,12 +3,15 @@ package org.openmetadata.service.migration.api;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.util.EntityUtil.hash;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.core.Handle;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.MigrationDAO;
+import org.openmetadata.service.migration.QueryStatus;
 import org.openmetadata.service.migration.context.MigrationContext;
 import org.openmetadata.service.migration.context.MigrationOps;
 import org.openmetadata.service.migration.utils.MigrationFile;
@@ -64,15 +67,24 @@ public class MigrationProcessImpl implements MigrationProcess {
   }
 
   @Override
-  public void runSchemaChanges() {
-    performSqlExecutionAndUpdate(
-        handle, migrationDAO, migrationFile.getSchemaChanges(), migrationFile.version);
+  public Map<String, QueryStatus> runSchemaChanges(boolean isForceMigration) {
+    return performSqlExecutionAndUpdate(
+        handle,
+        migrationDAO,
+        migrationFile.getSchemaChanges(),
+        migrationFile.version,
+        isForceMigration);
   }
 
-  public static void performSqlExecutionAndUpdate(
-      Handle handle, MigrationDAO migrationDAO, List<String> queryList, String version) {
+  public static Map<String, QueryStatus> performSqlExecutionAndUpdate(
+      Handle handle,
+      MigrationDAO migrationDAO,
+      List<String> queryList,
+      String version,
+      boolean isForceMigration) {
     // These are DDL Statements and will cause an Implicit commit even if part of transaction still
     // committed inplace
+    Map<String, QueryStatus> queryStatusMap = new HashMap<>();
     if (!nullOrEmpty(queryList)) {
       for (String sql : queryList) {
         try {
@@ -81,21 +93,31 @@ public class MigrationProcessImpl implements MigrationProcess {
             handle.execute(sql);
             migrationDAO.upsertServerMigrationSQL(version, sql, hash(sql));
           }
+          queryStatusMap.put(
+              sql, new QueryStatus(QueryStatus.Status.SUCCESS, "Successfully Executed Query"));
         } catch (Exception e) {
           String message = String.format("Failed to run sql: [%s] due to [%s]", sql, e);
-          throw new RuntimeException(message, e);
+          queryStatusMap.put(sql, new QueryStatus(QueryStatus.Status.FAILURE, message));
+          if (!isForceMigration) {
+            throw new RuntimeException(message, e);
+          }
         }
       }
     }
+    return queryStatusMap;
   }
 
   @Override
   public void runDataMigration() {}
 
   @Override
-  public void runPostDDLScripts() {
-    performSqlExecutionAndUpdate(
-        handle, migrationDAO, migrationFile.getPostDDLScripts(), migrationFile.version);
+  public Map<String, QueryStatus> runPostDDLScripts(boolean isForceMigration) {
+    return performSqlExecutionAndUpdate(
+        handle,
+        migrationDAO,
+        migrationFile.getPostDDLScripts(),
+        migrationFile.version,
+        isForceMigration);
   }
 
   @Override

@@ -6,6 +6,7 @@ import java.io.File;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
@@ -16,6 +17,7 @@ import org.jdbi.v3.core.Jdbi;
 import org.json.JSONObject;
 import org.openmetadata.service.jdbi3.MigrationDAO;
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
+import org.openmetadata.service.migration.QueryStatus;
 import org.openmetadata.service.migration.context.MigrationContext;
 import org.openmetadata.service.migration.context.MigrationWorkflowContext;
 import org.openmetadata.service.migration.utils.MigrationFile;
@@ -166,7 +168,9 @@ public class MigrationWorkflow {
         for (MigrationProcess process : migrations) {
           // Initialise Migration Steps
           LOG.info(
-              "[MigrationWorkFlow] Migration Run started for Version: {}", process.getVersion());
+              "[MigrationWorkFlow] Migration Run started for Version: {}, with Force Migration : {}",
+              process.getVersion(),
+              forceMigrations);
 
           List<String> row = new ArrayList<>();
           row.add(process.getVersion());
@@ -174,14 +178,14 @@ public class MigrationWorkflow {
             // Initialize
             runStepAndAddStatus(row, () -> process.initialize(transactionHandler));
 
-            // Schema Change
-            runStepAndAddStatus(row, process::runSchemaChanges);
+            // Schema Changes
+            runSchemaChanges(row, process);
 
             // Data Migration
             runStepAndAddStatus(row, process::runDataMigration);
 
             // Post DDL Scripts
-            runStepAndAddStatus(row, process::runPostDDLScripts);
+            runPostDDLChanges(row, process);
 
             // Build Context
             context.computeMigrationContext(process);
@@ -205,6 +209,59 @@ public class MigrationWorkflow {
       }
     }
     LOG.info("[MigrationWorkflow] WorkFlow Completed");
+  }
+
+  private void runSchemaChanges(List<String> row, MigrationProcess process) {
+    try {
+      List<String> schemaChangesColumns = Arrays.asList("Query", "Query Status");
+      Map<String, QueryStatus> queryStatusMap = process.runSchemaChanges(forceMigrations);
+      List<List<String>> allSchemaChangesRows =
+          new ArrayList<>(
+              queryStatusMap.entrySet().stream()
+                  .map(
+                      entry ->
+                          Arrays.asList(
+                              entry.getKey(),
+                              String.format(
+                                  "Status : %s , Message: %s",
+                                  entry.getValue().getStatus(), entry.getValue().getMessage())))
+                  .toList());
+      LOG.info(
+          "[MigrationWorkflow] Version : {} Run Schema Changes Query Status", process.getVersion());
+      printToAsciiTable(schemaChangesColumns, allSchemaChangesRows, "No New Queries");
+      row.add(SUCCESS_MSG);
+    } catch (Exception e) {
+      row.add(FAILED_MSG + e.getMessage());
+      if (!forceMigrations) {
+        throw e;
+      }
+    }
+  }
+
+  private void runPostDDLChanges(List<String> row, MigrationProcess process) {
+    try {
+      List<String> schemaChangesColumns = Arrays.asList("Query", "Query Status");
+      Map<String, QueryStatus> queryStatusMap = process.runPostDDLScripts(forceMigrations);
+      List<List<String>> allSchemaChangesRows =
+          new ArrayList<>(
+              queryStatusMap.entrySet().stream()
+                  .map(
+                      entry ->
+                          Arrays.asList(
+                              entry.getKey(),
+                              String.format(
+                                  "Status : %s , Message: %s",
+                                  entry.getValue().getStatus(), entry.getValue().getMessage())))
+                  .toList());
+      LOG.info("[MigrationWorkflow] Version : {} Run Post DDL Query Status", process.getVersion());
+      printToAsciiTable(schemaChangesColumns, allSchemaChangesRows, "No New Queries");
+      row.add(SUCCESS_MSG);
+    } catch (Exception e) {
+      row.add(FAILED_MSG + e.getMessage());
+      if (!forceMigrations) {
+        throw e;
+      }
+    }
   }
 
   private void runStepAndAddStatus(
