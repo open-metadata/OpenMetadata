@@ -495,61 +495,65 @@ public class MigrationUtil {
    */
   @SneakyThrows
   public static void testSuitesMigration(CollectionDAO collectionDAO) {
-    // Update existing test suites as logical test suites and delete any ingestion pipeline
-    // associated with the existing test suite
-    migrateExistingTestSuitesToLogical(collectionDAO);
+    try {
+      // Update existing test suites as logical test suites and delete any ingestion pipeline
+      // associated with the existing test suite
+      migrateExistingTestSuitesToLogical(collectionDAO);
 
-    // create native test suites
-    TestSuiteRepository testSuiteRepository =
-        (TestSuiteRepository) Entity.getEntityRepository(TEST_SUITE);
-    Map<String, ArrayList<TestCase>> testCasesByTable = groupTestCasesByTable();
-    for (Entry<String, ArrayList<TestCase>> entry : testCasesByTable.entrySet()) {
-      String tableFQN = entry.getKey();
-      String nativeTestSuiteFqn = tableFQN + ".testSuite";
-      List<TestCase> testCases = entry.getValue();
-      if (testCases != null && !testCases.isEmpty()) {
-        MessageParser.EntityLink entityLink =
-            MessageParser.EntityLink.parse(testCases.stream().findFirst().get().getEntityLink());
-        TestSuite newExecutableTestSuite =
-            getTestSuite(
-                    collectionDAO,
-                    new CreateTestSuite()
-                        .withName(FullyQualifiedName.buildHash(nativeTestSuiteFqn))
-                        .withDisplayName(nativeTestSuiteFqn)
-                        .withExecutableEntityReference(entityLink.getEntityFQN()),
-                    "ingestion-bot")
-                .withExecutable(true)
-                .withFullyQualifiedName(nativeTestSuiteFqn);
-        testSuiteRepository.prepareInternal(newExecutableTestSuite, false);
-        try {
-          testSuiteRepository
-              .getDao()
-              .insert(
-                  "nameHash",
-                  newExecutableTestSuite,
-                  newExecutableTestSuite.getFullyQualifiedName());
-        } catch (Exception ex) {
-          LOG.warn(String.format("TestSuite %s exists", nativeTestSuiteFqn));
-        }
-        // add relationship between executable TestSuite with Table
-        testSuiteRepository.addRelationship(
-            newExecutableTestSuite.getExecutableEntityReference().getId(),
-            newExecutableTestSuite.getId(),
-            Entity.TABLE,
-            TEST_SUITE,
-            Relationship.CONTAINS);
-
-        // add relationship between all the testCases that are created against a table with native
-        // test suite.
-        for (TestCase testCase : testCases) {
+      // create native test suites
+      TestSuiteRepository testSuiteRepository =
+          (TestSuiteRepository) Entity.getEntityRepository(TEST_SUITE);
+      Map<String, ArrayList<TestCase>> testCasesByTable = groupTestCasesByTable();
+      for (Entry<String, ArrayList<TestCase>> entry : testCasesByTable.entrySet()) {
+        String tableFQN = entry.getKey();
+        String nativeTestSuiteFqn = tableFQN + ".testSuite";
+        List<TestCase> testCases = entry.getValue();
+        if (testCases != null && !testCases.isEmpty()) {
+          MessageParser.EntityLink entityLink =
+              MessageParser.EntityLink.parse(testCases.stream().findFirst().get().getEntityLink());
+          TestSuite newExecutableTestSuite =
+              getTestSuite(
+                      collectionDAO,
+                      new CreateTestSuite()
+                          .withName(FullyQualifiedName.buildHash(nativeTestSuiteFqn))
+                          .withDisplayName(nativeTestSuiteFqn)
+                          .withExecutableEntityReference(entityLink.getEntityFQN()),
+                      "ingestion-bot")
+                  .withExecutable(true)
+                  .withFullyQualifiedName(nativeTestSuiteFqn);
+          testSuiteRepository.prepareInternal(newExecutableTestSuite, false);
+          try {
+            testSuiteRepository
+                .getDao()
+                .insert(
+                    "nameHash",
+                    newExecutableTestSuite,
+                    newExecutableTestSuite.getFullyQualifiedName());
+          } catch (Exception ex) {
+            LOG.warn(String.format("TestSuite %s exists", nativeTestSuiteFqn));
+          }
+          // add relationship between executable TestSuite with Table
           testSuiteRepository.addRelationship(
+              newExecutableTestSuite.getExecutableEntityReference().getId(),
               newExecutableTestSuite.getId(),
-              testCase.getId(),
+              Entity.TABLE,
               TEST_SUITE,
-              TEST_CASE,
               Relationship.CONTAINS);
+
+          // add relationship between all the testCases that are created against a table with native
+          // test suite.
+          for (TestCase testCase : testCases) {
+            testSuiteRepository.addRelationship(
+                newExecutableTestSuite.getId(),
+                testCase.getId(),
+                TEST_SUITE,
+                TEST_CASE,
+                Relationship.CONTAINS);
+          }
         }
       }
+    } catch (Exception ex) {
+      LOG.error("Failed to migrate test suites", ex);
     }
   }
 
