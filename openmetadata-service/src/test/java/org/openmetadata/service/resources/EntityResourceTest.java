@@ -2195,8 +2195,6 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     Assumptions.assumeTrue(supportsSearchIndex);
     T entity = createEntity(createRequest(test), ADMIN_AUTH_HEADERS);
     EntityReference entityReference = getEntityReference(entity);
-    IndexMapping indexMapping =
-        Entity.getSearchRepository().getIndexMapping(entityReference.getType());
     String desc = "";
     String original = JsonUtils.pojoToJson(entity);
     entity.setDescription("update description");
