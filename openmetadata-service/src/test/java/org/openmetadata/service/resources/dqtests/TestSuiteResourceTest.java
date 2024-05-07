@@ -517,7 +517,8 @@ public class TestSuiteResourceTest extends EntityResourceTest<TestSuite, CreateT
             actualTable.getId(), queryParams, "testSuite", ADMIN_AUTH_HEADERS);
     tableTestSuiteRef = actualTable.getTestSuite();
     tableTestSuite =
-        testSuiteResourceTest.getEntity(tableTestSuiteRef.getId(), "tests", ADMIN_AUTH_HEADERS);
+        testSuiteResourceTest.getEntity(
+            tableTestSuiteRef.getId(), queryParams, "tests", ADMIN_AUTH_HEADERS);
     assertEquals(true, tableTestSuite.getDeleted());
 
     // Hard delete entity
