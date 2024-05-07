@@ -19,9 +19,9 @@ import ingestionFramework from '../../../assets/img/IngestionFramework.png';
 import tagCategoryImg from '../../../assets/img/TagCategory.png';
 import collateIcon from '../../../assets/svg/ic-collate.svg';
 
-export const LATEST_VERSION_ID = 24;
+export const LATEST_VERSION_ID = 25;
 
-export const COOKIE_VERSION = 'VERSION_1_3_2'; // To be changed with each release.
+export const COOKIE_VERSION = 'VERSION_1_4_0'; // To be changed with each release.
 
 // for youtube video make isImage = false and path = {video embed id}
 // embed:- youtube video => share => click on embed and take {url with id} from it
@@ -1345,6 +1345,104 @@ export const WHATS_NEW = [
 -   Fixed an issue with search indexing.
 -   Fixed the missing input field for conversation source for alerts and notifications.
 -   Filter dashboards by a project on the Explore page.`,
+    },
+  },
+  {
+    id: 25,
+    version: 'v1.4.0',
+    description: 'Released on 15th May 2024.',
+    features: [],
+    changeLogs: {
+      [`Automator ${CollateIconWithLinkMD}`]: `-  Easily maintain high-quality metadata at scale with automations. The Automator streamlines governance processes from ownership assignments to tagging, ensuring compliance and consistency.
+-   You can update the properties of your assets by filtering by service, owner, domain, or any other supported property from the advanced search.
+-   Easily see which assets have been selected by jumping to the Explore page in one click.
+-   For tables, data models, topics, and search indexes, you can apply the action to their columns or fields.
+-   We added support for the following actions: adding and removing owner, tier, domain, tags, glossary terms and descriptions, ML PII tagging, and propagation of tags and glossary terms through lineage.`,
+
+      'Bulk Upload Data Assets': `-   Bulk upload/download database, schema, and table entities from/into a CSV file for quick edition or creation.
+-   Supports an inline editor to validate/update assets before performing the upload.`,
+
+      'Data Quality Improvements': `-   The Table schema page now shows the Data Quality tests for each column.
+-   Improved filtering options for test suite and test cases.
+-   We have improved how the UI fetches the Data Quality details for improved performance.
+-   We now compute Unique and Count in the same query to avoid inconsistency due to the high frequency of data insertion.
+-   Fixed the issue with removing the test case description upon the test case display name change.
+-   Support has been added for an empty string as a missing count.`,
+
+      'Data Profiler': `-   Implemented a global profiler configuration page, allowing admin to exclude certain metric computations for specific data types.
+-   Added profiler support for Redshift complex types and DynamoDB.
+-   Fixed an issue with performing sum operations for large values in profiler ingestion.
+-   Fixed the histogram unit's issues with scientific notation.`,
+
+      'Incident Manager': `-   We now display a sample of failed rows for the latest failed test cases. Once the issue is resolved, the failed sample will be deleted. ${CollateIconWithLinkMD}
+-   Fixed the Date time filter for the Incident Manager.
+-   Notifications are sent for the tasks created by the Incident Manager.`,
+
+      'Lineage Improvements': `-   OpenMetadata already supports Column-level lineage, and now we have introduced Task-level lineage for Pipelines, Chart-level lineage for Dashboards, Feature-level lineage for ML Models, Field-level lineage for Topics, and columns for dashboard Data Models.
+-   Automated column-level lineage is now supported for Tableau, Superset, QlikCloud, and QlikSense between Data Models and Tables.
+-   The child nodes in a lineage graph are sorted in alphabetical order.
+-   Improved the log of failed-to-parse queries.
+-   Fixed an issue with automated column-level lineage overwriting the pipeline lineage and manual column lineage.
+-   Snowflake & Databricks now supports automated lineage between external tables and their origin storage container.
+-   Lineage can be exported as a CSV file.
+-   OpenMetadata spark agent now supports automated lineage between tables and their origin storage container.
+-   Fixed an issue with parsing lineage queries for Redshift.
+-   Now, we support pipeline as an edge between any two entity types.
+-   We now parse PowerBi DAX files for lineage.
+-   Support has been added for dynamic tables.`,
+
+      'Data Insights': `- Previously, the data insights reports displayed only the percentage coverage of ownership and description. Now, users can drill down to view the data assets with no owner or description.
+-   Improved the UX for data insight filters.`,
+
+      [`Cost Analysis ${CollateIconWithLinkMD}`]: `-   Lifecycle data for Cost Analysis has been implemented for BigQuery, Snowflake, and Redshift.`,
+
+      'Custom Theme': `-   Previously supported adding logo, monogram, and favicon to your OpenMetadata instance.
+-   Now, it supports customizing the theme with colors to suit your company branding.`,
+
+      [`Landing Page Widgets ${CollateIconWithLinkMD}`]: `-   A widget was added to list the pipelines that belong to a user or their team.
+-   Added a Data Quality Widget to list the summary of data quality tests belonging to a user or their team.`,
+
+      'Ingestion Performance Improvements': `-   Bigquery, Redshift, and Snowflake now support incremental metadata ingestions by scanning DML operations on the query history.
+-   Database Services now support parallelizing the metadata ingestion at each schema.`,
+
+      Connectors: `-   Now supports a new connector for [QlikCloud](https://www.qlik.com/us/products/qlik-cloud).
+-   New Kafka Connect connector ${CollateIconWithLinkMD}
+-   We now parse complex protobuf schemas for Kafka
+-   Improved model storage ingestion for Sagemaker and Mlflow.
+-   Added an option to include or exclude drafts from dashboards.
+-   Added an option to include or exclude paused pipelines in Airflow.
+-   Revamped SSL support to allow users to upload the required certificates directly in the UI.
+-   The character support has been enhanced for tag ingestion to include /.
+-   In the Oracle connector, we rolled back to use all_ tables instead of dba_.
+-   Added support for Azure auth in Trino.
+-   For QlikSense, we have added an option to disable SSL validation.`,
+
+      'Custom Properties': `-   Custom Properties now allow linking other assets in the platform, such as Tables, Dashboards, etc. To enable this, create a Custom Property as an Entity Reference or Entity Reference List.`,
+
+      Glossary: `-   The glossary term parent can now be changed from the Details page.
+-   On the data assets page, glossary terms are displayed by hierarchy.`,
+
+      'Alerts & Notification Improvements': `-   The Activity Feed provides more contextual information, removing the need to move to entity pages.
+-   Alerts give more accurate information about the entity, as well as conversations and tasks.`,
+
+      Localization: `-   Fixed localization issues in the confirmation logic for the delete function.
+-   Fixed the search index language configuration.`,
+
+      Roles: `
+-   Now, roles can be inherited from the user configuration in SSO.`,
+
+      Search: `-   You can now filter by assets without a description or an owner.
+-   Improved the match results for search results.`,
+
+      Others: `-   The description is auto-expanded when the data asset has no data and has the space to accommodate a lengthy description.
+-   User email IDs have been masked and are only visible to Admins.
+-   Users can filter Queries by owner, tag, and creation date in the UI.
+-   Added a button in the Query Editor to copy the Query.
+-   Improved Elasticsearch re-indexing.
+-   Improved the charts based on custom metrics.
+-   Improved the usage of the refresh token.
+-   Redundant scroll bars have been removed from the UI.
+-   Improved the bot role binding to provide more control over which roles are passed to the system bots.`,
     },
   },
 ];
