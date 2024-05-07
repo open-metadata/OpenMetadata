@@ -15,6 +15,8 @@ To be used by OpenMetadata class
 """
 from typing import Optional
 
+import pkg_resources
+
 from metadata.__version__ import get_client_version, get_server_version_from_string
 from metadata.generated.schema.settings.settings import Settings, SettingType
 from metadata.ingestion.models.encoders import show_secrets_encoder
@@ -72,9 +74,13 @@ class OMetaServerMixin:
             f"OpenMetadata client running with Server version [{server_version}] and Client version [{client_version}]"
         )
 
-        # Server version will be 0.13.2, vs 0.13.2.X from the client.
-        # If the server version is contained in the client version, then we're good to go
-        if server_version not in client_version:
+        server_semver = pkg_resources.parse_version(server_version)
+        client_semver = pkg_resources.parse_version(client_version)
+
+        if (
+            server_semver.major != client_semver.major
+            or server_semver.minor != client_semver.minor
+        ):
             raise VersionMismatchException(
                 f"Server version is {server_version} vs. Client version {client_version}. Both should match."
             )
