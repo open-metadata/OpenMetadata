@@ -16,6 +16,8 @@ name: Python Checkstyle
 on:
   pull_request_target:
     types: [labeled, opened, synchronize, reopened]
+    paths-ignore:
+      - "openmetadata-ui/**"
 
 permissions:
   contents: read
