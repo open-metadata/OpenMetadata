@@ -10,8 +10,7 @@ import javax.ws.rs.GET;
 import javax.ws.rs.Path;
 import javax.ws.rs.Produces;
 import javax.ws.rs.core.MediaType;
-import org.openmetadata.schema.system.LimitsResponse;
-import org.openmetadata.service.OpenMetadataApplicationConfig;
+import org.openmetadata.schema.system.LimitsConfig;
 import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
 
@@ -21,12 +20,9 @@ import org.openmetadata.service.resources.Collection;
 @Produces(MediaType.APPLICATION_JSON)
 @Collection(name = "limits")
 public class LimitsResource {
-  private OpenMetadataApplicationConfig openMetadataApplicationConfig;
+  private final Limits limits;
 
-  private Limits limits;
-
-  public void initialize(OpenMetadataApplicationConfig config, Limits limits) {
-    this.openMetadataApplicationConfig = config;
+  public LimitsResource(Limits limits) {
     this.limits = limits;
   }
 
@@ -42,13 +38,13 @@ public class LimitsResource {
             content =
                 @Content(
                     mediaType = "application/json",
-                    schema = @Schema(implementation = LimitsResponse.class)))
+                    schema = @Schema(implementation = LimitsConfig.class)))
       })
-  public LimitsResponse getAuthConfig() {
-    LimitsResponse limitsResponse = new LimitsResponse();
+  public LimitsConfig getAuthConfig() {
+    LimitsConfig limitsConfig = new LimitsConfig();
     if (limits != null) {
-      limitsResponse = limits.getLimits();
+      limitsConfig = limits.getLimitsConfig();
     }
-    return limitsResponse;
+    return limitsConfig;
   }
 }
