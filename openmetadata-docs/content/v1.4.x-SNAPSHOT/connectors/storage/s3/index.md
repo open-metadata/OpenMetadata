@@ -267,6 +267,8 @@ information in AWS CloudTrail logs to determine who took actions with a role.
 
 Find more information about [Source Identity](https://docs.aws.amazon.com/STS/latest/APIReference/API_AssumeRole.html#:~:text=Required%3A%20No-,SourceIdentity,-The%20source%20identity).
 
+- **Bucket Names (Optional)**: Provide the names of buckets that you would want to ingest, if you want to ingest metadata from all buckets or apply a filter to ingest buckets then leave this field empty.
+
 {% /extraContent %}
 
 {% partial file="/v1.4/connectors/test-connection.md" /%}
