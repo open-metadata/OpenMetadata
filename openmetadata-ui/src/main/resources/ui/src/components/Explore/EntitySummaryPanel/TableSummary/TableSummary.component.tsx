@@ -34,7 +34,7 @@ import { ExplorePageTabs } from '../../../../enums/Explore.enum';
 import { Table } from '../../../../generated/entity/data/table';
 import { TestSummary } from '../../../../generated/tests/testCase';
 import { getLatestTableProfileByFqn } from '../../../../rest/tableAPI';
-import { getTestSuiteByName } from '../../../../rest/testAPI';
+import { getTestCaseExecutionSummary } from '../../../../rest/testAPI';
 import { formTwoDigitNumber } from '../../../../utils/CommonUtils';
 import {
   getFormattedEntityData,
@@ -87,22 +87,17 @@ function TableSummary({
   const isTableDeleted = useMemo(() => tableDetails.deleted, [tableDetails]);
 
   const fetchAllTests = async () => {
-    if (tableDetails?.testSuite?.fullyQualifiedName) {
+    if (tableDetails?.testSuite?.id) {
       try {
-        const res = await getTestSuiteByName(
-          tableDetails.testSuite.fullyQualifiedName,
-          { fields: 'summary' }
+        const res = await getTestCaseExecutionSummary(
+          tableDetails.testSuite.id
         );
 
-        if (res?.summary) {
-          setTestSuiteSummary(res.summary);
-        }
+        setTestSuiteSummary(res);
       } catch (error) {
         // Error
       }
     }
-
-    return;
   };
 
   const fetchProfilerData = useCallback(async () => {
