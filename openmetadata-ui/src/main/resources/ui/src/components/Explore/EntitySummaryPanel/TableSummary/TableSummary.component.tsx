@@ -31,11 +31,10 @@ import {
 } from '../../../../context/PermissionProvider/PermissionProvider.interface';
 import { SummaryEntityType } from '../../../../enums/EntitySummary.enum';
 import { ExplorePageTabs } from '../../../../enums/Explore.enum';
-import { Table, TestSummary } from '../../../../generated/entity/data/table';
-import {
-  getLatestTableProfileByFqn,
-  getTableDetailsByFQN,
-} from '../../../../rest/tableAPI';
+import { Table } from '../../../../generated/entity/data/table';
+import { TestSummary } from '../../../../generated/tests/testCase';
+import { getLatestTableProfileByFqn } from '../../../../rest/tableAPI';
+import { getTestSuiteByName } from '../../../../rest/testAPI';
 import { formTwoDigitNumber } from '../../../../utils/CommonUtils';
 import {
   getFormattedEntityData,
@@ -88,18 +87,22 @@ function TableSummary({
   const isTableDeleted = useMemo(() => tableDetails.deleted, [tableDetails]);
 
   const fetchAllTests = async () => {
-    try {
-      const res = await getTableDetailsByFQN(
-        tableDetails.fullyQualifiedName ?? '',
-        { fields: 'testSuite' }
-      );
+    if (tableDetails?.testSuite?.fullyQualifiedName) {
+      try {
+        const res = await getTestSuiteByName(
+          tableDetails.testSuite.fullyQualifiedName,
+          { fields: 'summary' }
+        );
 
-      if (res?.testSuite?.summary) {
-        setTestSuiteSummary(res?.testSuite?.summary);
+        if (res?.summary) {
+          setTestSuiteSummary(res.summary);
+        }
+      } catch (error) {
+        // Error
       }
-    } catch (error) {
-      // Error
     }
+
+    return;
   };
 
   const fetchProfilerData = useCallback(async () => {
