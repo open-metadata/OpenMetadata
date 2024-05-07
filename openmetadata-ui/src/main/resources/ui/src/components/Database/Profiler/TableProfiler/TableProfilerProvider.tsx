@@ -59,6 +59,7 @@ export const TableProfilerProvider = ({
   children,
   permissions,
   table,
+  testCaseSummary,
 }: TableProfilerProviderProps) => {
   const { t } = useTranslation();
   const { fqn: datasetFQN } = useFqn();
@@ -272,6 +273,7 @@ export const TableProfilerProvider = ({
       dateRangeObject,
       testCasePaging,
       table,
+      testCaseSummary,
     };
   }, [
     isTestsLoading,
@@ -286,6 +288,7 @@ export const TableProfilerProvider = ({
     dateRangeObject,
     testCasePaging,
     table,
+    testCaseSummary,
   ]);
 
   return (

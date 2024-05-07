@@ -53,6 +53,7 @@ export const QualityTab = () => {
     isTableDeleted,
     testCasePaging,
     table,
+    testCaseSummary,
   } = useTableProfiler();
 
   const {
@@ -248,9 +249,7 @@ export const QualityTab = () => {
         </Row>
       </Col>
       <Col span={24}>
-        <SummaryPanel
-          testSummary={testSuite?.summary ?? INITIAL_TEST_SUMMARY}
-        />
+        <SummaryPanel testSummary={testCaseSummary ?? INITIAL_TEST_SUMMARY} />
       </Col>
       <Col span={24}>
         <Tabs items={tabs} />
