@@ -10,8 +10,7 @@ ALTER TABLE query_entity ADD COLUMN checksum varchar
 ADD UNIQUE
 (checksum);
 
-UPDATE query_entity SET json = jsonb_set(json::jsonb, '{checksum}', MD5(json->'connection'));
-
+UPDATE query_entity SET json = jsonb_set(json::jsonb, '{checksum}', MD5((json->>'checksum')::text)::jsonb);
 
 -- Restructure dbServiceNames in ingestion_pipeline_entity
 update ingestion_pipeline_entity ipe
