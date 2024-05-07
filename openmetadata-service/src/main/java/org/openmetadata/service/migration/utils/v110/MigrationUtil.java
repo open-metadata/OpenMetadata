@@ -12,6 +12,7 @@ import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.tuple.Pair;
 import org.jdbi.v3.core.Handle;
+import org.jdbi.v3.core.statement.UnableToExecuteStatementException;
 import org.openmetadata.schema.CreateEntity;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.analytics.WebAnalyticEvent;
@@ -79,6 +80,8 @@ public class MigrationUtil {
     /* Cannot create object  util class*/
   }
 
+  private static final String COLUMN_CHECK = "SELECT * FROM %s WHERE 1=0;";
+
   private static final String MYSQL_ENTITY_UPDATE =
       "UPDATE %s SET %s = :nameHashColumnValue WHERE id = :id";
   private static final String POSTGRES_ENTITY_UPDATE =
@@ -104,6 +107,7 @@ public class MigrationUtil {
   public static <T extends EntityInterface> void updateFQNHashForEntity(
       Handle handle, Class<T> clazz, EntityDAO<T> dao, int limitParam, String nameHashColumn) {
     if (Boolean.TRUE.equals(DatasourceConfig.getInstance().isMySQL())) {
+      handle.execute(String.format(COLUMN_CHECK, dao.getTableName()));
       readAndProcessEntity(
           handle,
           String.format(MYSQL_ENTITY_UPDATE, dao.getTableName(), nameHashColumn),
@@ -164,7 +168,7 @@ public class MigrationUtil {
       int limitParam,
       String nameHashColumn) {
     LOG.debug("Starting Migration for table : {}", dao.getTableName());
-    if (dao instanceof CollectionDAO.TestSuiteDAO) {
+    if (dao instanceof CollectionDAO.TestSuiteDAO || dao instanceof CollectionDAO.QueryDAO) {
       // We have to do this since this column in changed in the dao in the latest version after this
       // , and this will fail the migrations here
       nameHashColumn = "nameHash";
@@ -219,6 +223,12 @@ public class MigrationUtil {
                 ex);
           }
         }
+      } catch (UnableToExecuteStatementException ex) {
+        LOG.warn(
+            "Migration already done for table : {}, Failure Reason : {}",
+            dao.getTableName(),
+            ex.getMessage());
+        break;
       } catch (Exception ex) {
         LOG.warn("Failed to list the entities, they might already migrated ", ex);
         break;
@@ -442,25 +452,6 @@ public class MigrationUtil {
       }
     }
     LOG.debug("Ended Migration for Tag Usage");
-  }
-
-  public static void performSqlExecutionAndUpdate(
-      Handle handle, MigrationDAO migrationDAO, List<String> queryList, String version) {
-    // These are DDL Statements and will cause an Implicit commit even if part of transaction still
-    // committed inplace
-    if (!nullOrEmpty(queryList)) {
-      for (String sql : queryList) {
-        try {
-          String previouslyRanSql = migrationDAO.getSqlQuery(hash(sql), version);
-          if ((previouslyRanSql == null || previouslyRanSql.isEmpty())) {
-            handle.execute(sql);
-            migrationDAO.upsertServerMigrationSQL(version, sql, hash(sql));
-          }
-        } catch (Exception e) {
-          LOG.error(String.format("Failed to run sql %s due to %s", sql, e));
-        }
-      }
-    }
   }
 
   public static TestSuite getTestSuite(CollectionDAO dao, CreateTestSuite create, String user) {

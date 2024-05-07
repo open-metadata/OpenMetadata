@@ -3,6 +3,7 @@ package org.openmetadata.service.util;
 import static org.flywaydb.core.internal.info.MigrationInfoDumper.dumpToAsciiTable;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.Entity.FIELD_OWNER;
+import static org.openmetadata.service.util.AsciiTable.printOpenMetadataText;
 
 import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.Logger;
@@ -556,10 +557,12 @@ public class OpenMetadataOperations implements Callable<Integer> {
         new MigrationWorkflow(
             jdbi, nativeSQLScriptRootPath, connType, extensionSQLScriptRootPath, force);
     workflow.loadMigrations();
+    workflow.printMigrationInfo();
     workflow.runMigrationWorkflows();
   }
 
-  private void printToAsciiTable(List<String> columns, List<List<String>> rows, String emptyText) {
+  public static void printToAsciiTable(
+      List<String> columns, List<List<String>> rows, String emptyText) {
     LOG.info(new AsciiTable(columns, rows, true, "", emptyText).render());
   }
 
@@ -594,6 +597,7 @@ public class OpenMetadataOperations implements Callable<Integer> {
   }
 
   public static void main(String... args) {
+    LOG.info(printOpenMetadataText());
     int exitCode =
         new CommandLine(new org.openmetadata.service.util.OpenMetadataOperations()).execute(args);
     System.exit(exitCode);
