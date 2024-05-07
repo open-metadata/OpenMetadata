@@ -13,6 +13,7 @@ import traceback
 from typing import Dict, Iterable, List, Optional
 
 from sqlalchemy.dialects.mssql.base import MSDialect, ischema_names
+from sqlalchemy.engine.reflection import Inspector
 
 from metadata.generated.schema.api.data.createStoredProcedure import (
     CreateStoredProcedureRequest,
@@ -65,7 +66,9 @@ from metadata.utils.logger import ingestion_logger
 from metadata.utils.sqa_utils import update_mssql_ischema_names
 from metadata.utils.sqlalchemy_utils import (
     get_all_table_comments,
+    get_all_table_ddls,
     get_all_view_definitions,
+    get_table_ddl,
 )
 
 logger = ingestion_logger()
@@ -86,6 +89,9 @@ MSDialect.get_unique_constraints = get_unique_constraints
 MSDialect.get_foreign_keys = get_foreign_keys
 MSDialect.get_table_names = get_table_names
 MSDialect.get_view_names = get_view_names
+
+Inspector.get_all_table_ddls = get_all_table_ddls
+Inspector.get_table_ddl = get_table_ddl
 
 
 class MssqlSource(StoredProcedureMixin, CommonDbSourceService, MultiDBSource):
