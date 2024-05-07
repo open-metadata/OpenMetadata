@@ -36,9 +36,8 @@ import {
   SORT_ORDER,
 } from '../../../../enums/common.enum';
 import { EntityTabs, EntityType } from '../../../../enums/entity.enum';
-import { TestSummary } from '../../../../generated/entity/data/table';
 import { EntityReference } from '../../../../generated/entity/type';
-import { TestSuite } from '../../../../generated/tests/testCase';
+import { TestSuite, TestSummary } from '../../../../generated/tests/testCase';
 import { usePaging } from '../../../../hooks/paging/usePaging';
 import { DataQualityPageTabs } from '../../../../pages/DataQuality/DataQualityPage.interface';
 import {

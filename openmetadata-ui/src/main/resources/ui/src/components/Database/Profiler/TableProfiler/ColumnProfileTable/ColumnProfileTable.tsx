@@ -94,9 +94,10 @@ const ColumnProfileTable = () => {
     dateRangeObject,
     onDateRangeChange,
     table,
+    testCaseSummary,
   } = useTableProfiler();
   const testCaseCounts = useMemo(
-    () => table?.testSuite?.summary?.columnTestSummary ?? [],
+    () => testCaseSummary?.columnTestSummary ?? [],
     [table]
   );
   const isLoading = isTestsLoading || isProfilerDataLoading;

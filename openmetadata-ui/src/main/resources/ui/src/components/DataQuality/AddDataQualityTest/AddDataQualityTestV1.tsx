@@ -43,6 +43,7 @@ import { useFqn } from '../../../hooks/useFqn';
 import {
   createExecutableTestSuite,
   createTestCase,
+  getTestSuiteByName,
 } from '../../../rest/testAPI';
 import {
   getEntityBreadcrumbs,
@@ -133,8 +134,19 @@ const AddDataQualityTestV1: React.FC<AddDataQualityTestProps> = ({
     return response;
   };
 
+  const fetchTestSuiteByFqn = async (fqn: string) => {
+    try {
+      const response = await getTestSuiteByName(fqn);
+      setTestSuiteData(response);
+    } catch (error) {
+      setTestSuiteData(undefined);
+    }
+  };
+
   useEffect(() => {
-    setTestSuiteData(table.testSuite);
+    if (table.testSuite?.fullyQualifiedName) {
+      fetchTestSuiteByFqn(table.testSuite.fullyQualifiedName);
+    }
   }, [table.testSuite]);
 
   const handleFormSubmit = async (data: CreateTestCase) => {

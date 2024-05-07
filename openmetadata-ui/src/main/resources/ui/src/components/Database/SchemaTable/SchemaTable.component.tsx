@@ -85,17 +85,18 @@ const SchemaTable = ({
   isReadOnly = false,
   onThreadLinkSelect,
   table,
+  testCaseSummary,
 }: SchemaTableProps) => {
   const { theme } = useApplicationStore();
   const { t } = useTranslation();
   const { testCaseCounts, tableColumns, joins, tableConstraints } = useMemo(
     () => ({
-      testCaseCounts: table?.testSuite?.summary?.columnTestSummary ?? [],
+      testCaseCounts: testCaseSummary?.columnTestSummary ?? [],
       tableColumns: table?.columns ?? [],
       joins: table?.joins?.columnJoins ?? [],
       tableConstraints: table?.tableConstraints,
     }),
-    [table]
+    [table, testCaseSummary]
   );
 
   const [searchedColumns, setSearchedColumns] = useState<Column[]>([]);

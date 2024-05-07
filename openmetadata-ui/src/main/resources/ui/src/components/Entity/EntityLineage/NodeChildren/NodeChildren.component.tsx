@@ -24,7 +24,8 @@ import { Column, Table } from '../../../../generated/entity/data/table';
 import { getEntityChildrenAndLabel } from '../../../../utils/EntityLineageUtils';
 import { getEntityName } from '../../../../utils/EntityUtils';
 import { getEntityIcon } from '../../../../utils/TableUtils';
-import { getColumnContent, getTestSuiteSummary } from '../CustomNode.utils';
+import { getColumnContent } from '../CustomNode.utils';
+import TestSuiteSummaryWidget from '../TestSuiteSummaryWidget/TestSuiteSummaryWidget.component';
 import { EntityChildren, NodeChildrenProps } from './NodeChildren.interface';
 
 const NodeChildren = ({ node, isConnectable }: NodeChildrenProps) => {
@@ -163,9 +164,9 @@ const NodeChildren = ({ node, isConnectable }: NodeChildrenProps) => {
               </Button>
             )}
           </div>
-          {showDataQuality &&
-            entityType === EntityType.TABLE &&
-            getTestSuiteSummary((node as Table).testSuite)}
+          {showDataQuality && entityType === EntityType.TABLE && (
+            <TestSuiteSummaryWidget testSuite={(node as Table).testSuite} />
+          )}
         </div>
 
         {showColumns && isExpanded && (
