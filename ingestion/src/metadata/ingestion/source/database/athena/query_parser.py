@@ -43,6 +43,7 @@ ATHENA_ENABLED_WORK_GROUP_STATE = "ENABLED"
 
 QUERY_SUCCESS_STATUS = "SUCCEEDED"
 
+
 class AthenaQueryParserSource(QueryParserSource, ABC):
     """
     Athena base for Usage and Lineage
