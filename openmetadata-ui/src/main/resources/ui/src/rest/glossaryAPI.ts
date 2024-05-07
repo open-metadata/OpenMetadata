@@ -111,15 +111,8 @@ export const queryGlossaryTerms = async (glossaryName: string) => {
           bool: {
             must: [
               {
-                bool: {
-                  should: [
-                    {
-                      term: {
-                        'glossary.name.keyword':
-                          glossaryName.toLocaleLowerCase(),
-                      },
-                    },
-                  ],
+                term: {
+                  'glossary.name.keyword': glossaryName.toLocaleLowerCase(),
                 },
               },
             ],
