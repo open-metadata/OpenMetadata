@@ -13,14 +13,16 @@
 import { Layout } from 'antd';
 import classNames from 'classnames';
 import { isEmpty } from 'lodash';
-import React, { useEffect, useMemo } from 'react';
+import React, { useCallback, useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Redirect, Route, Switch } from 'react-router-dom';
 import { ROUTES } from '../../constants/constants';
+import { useLimitStore } from '../../context/LimitsProvider/useLimitsStore';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
 import { useDomainStore } from '../../hooks/useDomainStore';
 import PageNotFound from '../../pages/PageNotFound/PageNotFound';
 import SignUpPage from '../../pages/SignUp/SignUpPage';
+import { getLimitConfig } from '../../rest/limitsAPI';
 import applicationRoutesClass from '../../utils/ApplicationRoutesClassBase';
 import Appbar from '../AppBar/Appbar';
 import LeftSidebar from '../MyData/LeftSidebar/LeftSidebar.component';
@@ -35,10 +37,18 @@ const AppContainer = () => {
   const AuthenticatedRouter = applicationRoutesClass.getRouteElements();
   const ApplicationExtras = applicationsClassBase.getApplicationExtension();
   const isDirectionRTL = useMemo(() => i18n.dir() === 'rtl', [i18n]);
+  const { setConfig } = useLimitStore();
+
+  const fetchLimitConfig = useCallback(async () => {
+    const response = await getLimitConfig();
+
+    setConfig(response);
+  }, []);
 
   useEffect(() => {
     if (currentUser?.id) {
       fetchDomainList();
+      fetchLimitConfig();
     }
   }, [currentUser?.id]);
 
