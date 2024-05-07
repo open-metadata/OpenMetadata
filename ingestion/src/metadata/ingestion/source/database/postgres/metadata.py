@@ -66,8 +66,10 @@ from metadata.utils.filters import filter_by_database
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.sqlalchemy_utils import (
     get_all_table_comments,
+    get_all_table_ddls,
     get_all_table_owners,
     get_all_view_definitions,
+    get_table_ddl,
 )
 from metadata.utils.tag_utils import get_ometa_tag_and_classification
 
@@ -124,6 +126,8 @@ PGDialect.get_all_table_owners = get_all_table_owners
 PGDialect.get_table_owner = get_table_owner
 PGDialect.ischema_names = ischema_names
 
+Inspector.get_all_table_ddls = get_all_table_ddls
+Inspector.get_table_ddl = get_table_ddl
 Inspector.get_table_owner = get_etable_owner
 
 PGDialect.get_foreign_keys = get_foreign_keys

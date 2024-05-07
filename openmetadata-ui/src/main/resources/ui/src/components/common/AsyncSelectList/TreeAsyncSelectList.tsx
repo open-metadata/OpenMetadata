@@ -173,7 +173,7 @@ const TreeAsyncSelectList: FC<Omit<AsyncSelectListProps, 'fetchOptions'>> = ({
   const handleChange: TreeSelectProps['onChange'] = (values: string[]) => {
     const selectedValues = values.map((value) => {
       const initialData = findGlossaryTermByFqn(
-        glossaries as ModifiedGlossaryTerm[],
+        [...glossaries, ...searchOptions] as ModifiedGlossaryTerm[],
         value
       );
 
