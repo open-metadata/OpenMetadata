@@ -513,12 +513,12 @@ public class MigrationUtil {
               MessageParser.EntityLink.parse(testCases.stream().findFirst().get().getEntityLink());
           TestSuite newExecutableTestSuite =
               getTestSuite(
-                  collectionDAO,
-                  new CreateTestSuite()
-                      .withName(FullyQualifiedName.buildHash(nativeTestSuiteFqn))
-                      .withDisplayName(nativeTestSuiteFqn)
-                      .withExecutableEntityReference(entityLink.getEntityFQN()),
-                  "ingestion-bot")
+                      collectionDAO,
+                      new CreateTestSuite()
+                          .withName(FullyQualifiedName.buildHash(nativeTestSuiteFqn))
+                          .withDisplayName(nativeTestSuiteFqn)
+                          .withExecutableEntityReference(entityLink.getEntityFQN()),
+                      "ingestion-bot")
                   .withExecutable(true)
                   .withFullyQualifiedName(nativeTestSuiteFqn);
           testSuiteRepository.prepareInternal(newExecutableTestSuite, false);
