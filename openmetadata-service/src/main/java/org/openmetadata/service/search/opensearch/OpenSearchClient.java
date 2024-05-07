@@ -109,14 +109,12 @@ import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.workflows.searchIndex.ReindexingUtil;
 import os.org.opensearch.OpenSearchException;
 import os.org.opensearch.OpenSearchStatusException;
-import os.org.opensearch.action.ActionListener;
 import os.org.opensearch.action.admin.indices.alias.IndicesAliasesRequest;
 import os.org.opensearch.action.admin.indices.delete.DeleteIndexRequest;
 import os.org.opensearch.action.bulk.BulkItemResponse;
 import os.org.opensearch.action.bulk.BulkRequest;
 import os.org.opensearch.action.bulk.BulkResponse;
 import os.org.opensearch.action.delete.DeleteRequest;
-import os.org.opensearch.action.delete.DeleteResponse;
 import os.org.opensearch.action.get.GetRequest;
 import os.org.opensearch.action.get.GetResponse;
 import os.org.opensearch.action.search.SearchResponse;
@@ -152,7 +150,6 @@ import os.org.opensearch.index.query.TermQueryBuilder;
 import os.org.opensearch.index.query.functionscore.FunctionScoreQueryBuilder;
 import os.org.opensearch.index.query.functionscore.ScoreFunctionBuilders;
 import os.org.opensearch.index.query.functionscore.ScriptScoreFunctionBuilder;
-import os.org.opensearch.index.reindex.BulkByScrollResponse;
 import os.org.opensearch.index.reindex.DeleteByQueryRequest;
 import os.org.opensearch.index.reindex.UpdateByQueryRequest;
 import os.org.opensearch.rest.RestStatus;
@@ -1572,23 +1569,12 @@ public class OpenSearchClient implements SearchClient {
     }
   }
 
+  @SneakyThrows
   private void updateOpenSearchByQuery(UpdateByQueryRequest updateByQueryRequest) {
     if (updateByQueryRequest != null && isClientAvailable) {
       updateByQueryRequest.setRefresh(true);
       LOG.debug(SENDING_REQUEST_TO_ELASTIC_SEARCH, updateByQueryRequest);
-      ActionListener<BulkByScrollResponse> listener =
-          new ActionListener<>() {
-            @Override
-            public void onResponse(BulkByScrollResponse response) {
-              LOG.debug("Update by query succeeded: " + response.toString());
-            }
-
-            @Override
-            public void onFailure(Exception e) {
-              LOG.error("Update by query failed: " + e.getMessage());
-            }
-          };
-      client.updateByQueryAsync(updateByQueryRequest, RequestOptions.DEFAULT, listener);
+      client.updateByQuery(updateByQueryRequest, RequestOptions.DEFAULT);
     }
   }
 
@@ -1601,42 +1587,19 @@ public class OpenSearchClient implements SearchClient {
     }
   }
 
+  @SneakyThrows
   private void deleteEntityFromOpenSearch(DeleteRequest deleteRequest) {
     if (deleteRequest != null && isClientAvailable) {
       LOG.debug(SENDING_REQUEST_TO_ELASTIC_SEARCH, deleteRequest);
-      ActionListener<DeleteResponse> listener =
-          new ActionListener<>() {
-            @Override
-            public void onResponse(DeleteResponse response) {
-              LOG.debug("Delete succeeded: " + response.toString());
-            }
-
-            @Override
-            public void onFailure(Exception e) {
-              LOG.error("Delete failed: " + e.getMessage());
-            }
-          };
-      deleteRequest.setRefreshPolicy(WriteRequest.RefreshPolicy.WAIT_UNTIL);
-      client.deleteAsync(deleteRequest, RequestOptions.DEFAULT, listener);
+      client.delete(deleteRequest, RequestOptions.DEFAULT);
     }
   }
 
+  @SneakyThrows
   private void deleteEntityFromOpenSearchByQuery(DeleteByQueryRequest deleteRequest) {
     if (deleteRequest != null && isClientAvailable) {
       deleteRequest.setRefresh(true);
-      ActionListener<BulkByScrollResponse> listener =
-          new ActionListener<>() {
-            @Override
-            public void onResponse(BulkByScrollResponse response) {
-              LOG.debug("Delete by query succeeded: " + response.toString());
-            }
-
-            @Override
-            public void onFailure(Exception e) {
-              LOG.error("Delete by query failed: " + e.getMessage());
-            }
-          };
-      client.deleteByQueryAsync(deleteRequest, RequestOptions.DEFAULT, listener);
+      client.deleteByQuery(deleteRequest, RequestOptions.DEFAULT);
     }
   }
 

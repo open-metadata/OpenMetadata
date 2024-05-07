@@ -28,14 +28,12 @@ import static org.openmetadata.service.util.FullyQualifiedName.getParentFQN;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import es.org.elasticsearch.ElasticsearchStatusException;
-import es.org.elasticsearch.action.ActionListener;
 import es.org.elasticsearch.action.admin.indices.alias.IndicesAliasesRequest;
 import es.org.elasticsearch.action.admin.indices.delete.DeleteIndexRequest;
 import es.org.elasticsearch.action.bulk.BulkItemResponse;
 import es.org.elasticsearch.action.bulk.BulkRequest;
 import es.org.elasticsearch.action.bulk.BulkResponse;
 import es.org.elasticsearch.action.delete.DeleteRequest;
-import es.org.elasticsearch.action.delete.DeleteResponse;
 import es.org.elasticsearch.action.get.GetRequest;
 import es.org.elasticsearch.action.get.GetResponse;
 import es.org.elasticsearch.action.search.SearchResponse;
@@ -69,7 +67,6 @@ import es.org.elasticsearch.index.query.TermQueryBuilder;
 import es.org.elasticsearch.index.query.functionscore.FunctionScoreQueryBuilder;
 import es.org.elasticsearch.index.query.functionscore.ScoreFunctionBuilders;
 import es.org.elasticsearch.index.query.functionscore.ScriptScoreFunctionBuilder;
-import es.org.elasticsearch.index.reindex.BulkByScrollResponse;
 import es.org.elasticsearch.index.reindex.DeleteByQueryRequest;
 import es.org.elasticsearch.index.reindex.UpdateByQueryRequest;
 import es.org.elasticsearch.rest.RestStatus;
@@ -1594,23 +1591,12 @@ public class ElasticSearchClient implements SearchClient {
     }
   }
 
+  @SneakyThrows
   private void updateElasticSearchByQuery(UpdateByQueryRequest updateByQueryRequest) {
     if (updateByQueryRequest != null && isClientAvailable) {
       updateByQueryRequest.setRefresh(true);
       LOG.debug(SENDING_REQUEST_TO_ELASTIC_SEARCH, updateByQueryRequest);
-      ActionListener<BulkByScrollResponse> listener =
-          new ActionListener<>() {
-            @Override
-            public void onResponse(BulkByScrollResponse response) {
-              LOG.debug("Update by query succeeded: " + response.toString());
-            }
-
-            @Override
-            public void onFailure(Exception e) {
-              LOG.error("Update by query failed: " + e.getMessage());
-            }
-          };
-      client.updateByQueryAsync(updateByQueryRequest, RequestOptions.DEFAULT, listener);
+      client.updateByQuery(updateByQueryRequest, RequestOptions.DEFAULT);
     }
   }
 
@@ -1624,44 +1610,22 @@ public class ElasticSearchClient implements SearchClient {
     }
   }
 
+  @SneakyThrows
   private void deleteEntityFromElasticSearch(DeleteRequest deleteRequest) {
     if (deleteRequest != null && isClientAvailable) {
       deleteRequest.setRefreshPolicy(WriteRequest.RefreshPolicy.IMMEDIATE);
       LOG.debug(UpdateSearchEventsConstant.SENDING_REQUEST_TO_ELASTIC_SEARCH, deleteRequest);
-      ActionListener<DeleteResponse> listener =
-          new ActionListener<>() {
-            @Override
-            public void onResponse(DeleteResponse response) {
-              LOG.debug("Delete succeeded: " + response.toString());
-            }
-
-            @Override
-            public void onFailure(Exception e) {
-              LOG.error("Delete failed: " + e.getMessage());
-            }
-          };
       deleteRequest.setRefreshPolicy(WriteRequest.RefreshPolicy.WAIT_UNTIL);
-      client.deleteAsync(deleteRequest, RequestOptions.DEFAULT, listener);
+      client.delete(deleteRequest, RequestOptions.DEFAULT);
     }
   }
 
+  @SneakyThrows
   private void deleteEntityFromElasticSearchByQuery(DeleteByQueryRequest deleteRequest) {
     if (deleteRequest != null && isClientAvailable) {
       LOG.debug(UpdateSearchEventsConstant.SENDING_REQUEST_TO_ELASTIC_SEARCH, deleteRequest);
       deleteRequest.setRefresh(true);
-      ActionListener<BulkByScrollResponse> listener =
-          new ActionListener<>() {
-            @Override
-            public void onResponse(BulkByScrollResponse response) {
-              LOG.debug("Delete by query succeeded: " + response.toString());
-            }
-
-            @Override
-            public void onFailure(Exception e) {
-              LOG.error("Delete by query failed: " + e.getMessage());
-            }
-          };
-      client.deleteByQueryAsync(deleteRequest, RequestOptions.DEFAULT, listener);
+      client.deleteByQuery(deleteRequest, RequestOptions.DEFAULT);
     }
   }
 
