@@ -17,7 +17,6 @@ import org.openmetadata.service.search.ParseTags;
 import org.openmetadata.service.search.models.FlattenSchemaField;
 import org.openmetadata.service.search.models.SearchSuggest;
 import org.openmetadata.service.util.FullyQualifiedName;
-import org.openmetadata.service.util.JsonUtils;
 
 public class TopicIndex implements SearchIndex {
   final Set<String> excludeTopicFields = Set.of("sampleData", "messageSchema");
@@ -45,8 +44,7 @@ public class TopicIndex implements SearchIndex {
     return excludeTopicFields;
   }
 
-  public Map<String, Object> buildSearchIndexDocInternal(Map<String, Object> esDoc) {
-    Map<String, Object> doc = JsonUtils.getMap(topic);
+  public Map<String, Object> buildSearchIndexDocInternal(Map<String, Object> doc) {
     List<SearchSuggest> fieldSuggest = new ArrayList<>();
     List<SearchSuggest> serviceSuggest = new ArrayList<>();
     Set<List<TagLabel>> tagsWithChildren = new HashSet<>();

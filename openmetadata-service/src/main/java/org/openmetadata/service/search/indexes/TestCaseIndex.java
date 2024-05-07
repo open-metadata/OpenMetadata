@@ -3,6 +3,7 @@ package org.openmetadata.service.search.indexes;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import lombok.SneakyThrows;
 import org.openmetadata.schema.tests.TestCase;
@@ -16,22 +17,21 @@ import org.openmetadata.service.search.SearchIndexUtils;
 import org.openmetadata.service.search.models.SearchSuggest;
 
 public record TestCaseIndex(TestCase testCase) implements SearchIndex {
+  private static final Set<String> excludeFields = Set.of("testSuites.changeDescription");
 
   @Override
   public Object getEntity() {
     return testCase;
   }
 
+  @Override
+  public Set<String> getExcludedFields() {
+    return excludeFields;
+  }
+
   @SneakyThrows
   public Map<String, Object> buildSearchIndexDocInternal(Map<String, Object> doc) {
-    List<TestSuite> testSuiteArray = new ArrayList<>();
-    if (testCase.getTestSuites() != null) {
-      for (TestSuite suite : testCase.getTestSuites()) {
-        suite.setChangeDescription(null);
-        testSuiteArray.add(suite);
-      }
-    }
-    testCase.setTestSuites(testSuiteArray);
+    // Build Index Doc
     List<SearchSuggest> suggest = new ArrayList<>();
     suggest.add(SearchSuggest.builder().input(testCase.getFullyQualifiedName()).weight(5).build());
     suggest.add(SearchSuggest.builder().input(testCase.getName()).weight(10).build());
