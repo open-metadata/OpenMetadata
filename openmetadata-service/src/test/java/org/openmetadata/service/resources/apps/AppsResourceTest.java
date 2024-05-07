@@ -5,7 +5,6 @@ import static javax.ws.rs.core.Response.Status.OK;
 import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
 import static org.openmetadata.service.util.TestUtils.assertResponseContains;
 import static org.openmetadata.service.util.TestUtils.readResponse;
-import static org.openmetadata.service.util.TestUtils.waitForEsAsyncOp;
 
 import java.io.IOException;
 import java.util.Map;
@@ -81,8 +80,15 @@ public class AppsResourceTest extends EntityResourceTest<App, CreateApp> {
   @Test
   void post_trigger_app_200() throws HttpResponseException, InterruptedException {
     postTriggerApp("SearchIndexingApplication", ADMIN_AUTH_HEADERS);
-    waitForEsAsyncOp();
-    AppRunRecord latestRun = getLatestAppRun("SearchIndexingApplication", ADMIN_AUTH_HEADERS);
+    AppRunRecord latestRun = null;
+    while (latestRun == null) {
+      try {
+        latestRun = getLatestAppRun("SearchIndexingApplication", ADMIN_AUTH_HEADERS);
+        Thread.sleep(1000);
+      } catch (HttpResponseException ex) {
+        LOG.info("Waiting for the app to start running");
+      }
+    }
     assert latestRun.getStatus().equals(AppRunRecord.Status.RUNNING);
     TimeUnit timeout = TimeUnit.SECONDS;
     long timeoutValue = 30;

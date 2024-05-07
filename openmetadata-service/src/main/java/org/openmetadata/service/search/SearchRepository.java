@@ -687,6 +687,10 @@ public class SearchRepository {
     return searchClient.search(request);
   }
 
+  public Response getDocument(String indexName, UUID entityId) throws IOException {
+    return searchClient.getDocByID(indexName, entityId.toString());
+  }
+
   public SearchClient.SearchResultListMapper listWithOffset(
       SearchListFilter filter,
       int limit,

@@ -33,7 +33,6 @@ import static org.openmetadata.service.util.TestUtils.assertListNull;
 import static org.openmetadata.service.util.TestUtils.assertResponse;
 import static org.openmetadata.service.util.TestUtils.assertResponseContains;
 import static org.openmetadata.service.util.TestUtils.dateToTimestamp;
-import static org.openmetadata.service.util.TestUtils.waitForEsAsyncOp;
 
 import java.io.IOException;
 import java.text.ParseException;
@@ -1859,7 +1858,6 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
   }
 
   private TestSummary getTestSummary(String testSuiteId) throws IOException, InterruptedException {
-    waitForEsAsyncOp();
     TestSuiteResourceTest testSuiteResourceTest = new TestSuiteResourceTest();
     return testSuiteResourceTest.getTestSummary(ADMIN_AUTH_HEADERS, testSuiteId);
   }

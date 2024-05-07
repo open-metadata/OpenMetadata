@@ -2397,12 +2397,8 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     String query =
         "{\"size\": 100,\"query\":{\"bool\":{\"must\":[{\"term\":{\"descriptionStatus\":\"INCOMPLETE\"}}]}}}";
     request.setJsonEntity(query);
-    try {
-      waitForEsAsyncOp();
-      response = searchClient.performRequest(request);
-    } finally {
-      searchClient.close();
-    }
+    response = searchClient.performRequest(request);
+    searchClient.close();
 
     String jsonString = EntityUtils.toString(response.getEntity());
     HashMap<String, Object> map =

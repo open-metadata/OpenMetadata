@@ -37,6 +37,11 @@ public final class SearchIndexUtils {
       Object value = currentMap.get(key);
       if (value instanceof Map) {
         currentMap = (Map<String, Object>) value;
+      } else if (value instanceof List) {
+        List<Map<String, Object>> list = (List<Map<String, Object>>) value;
+        for (Map<String, Object> item : list) {
+          removeFieldByPath(item, pathElements[i + 1]);
+        }
       } else {
         // Path Not Found
         return;
