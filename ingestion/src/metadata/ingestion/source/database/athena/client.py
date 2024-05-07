@@ -74,7 +74,7 @@ class AthenaLakeFormationClient:
             return LFTags(**response)
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.warning(
+            logger.debug(
                 f"Unable to get lf tags for table resource [{table_name}] due to: {exc}"
             )
         return LFTags()

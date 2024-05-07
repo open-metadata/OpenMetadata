@@ -16,6 +16,7 @@ from typing import Iterable
 from metadata.generated.schema.type.tableQuery import TableQueries, TableQuery
 from metadata.ingestion.source.database.athena.query_parser import (
     AthenaQueryParserSource,
+    QUERY_SUCCESS_STATUS
 )
 from metadata.ingestion.source.database.usage_source import UsageSource
 from metadata.utils.logger import ingestion_logger
@@ -56,6 +57,7 @@ class AthenaUsageSource(AthenaQueryParserSource, UsageSource):
                 for query in query_list.QueryExecutions
                 if query.Status
                 and query.Query
+                and query.Status.State.upper() == QUERY_SUCCESS_STATUS
                 and query.Status.SubmissionDateTime.date() >= self.start.date()
                 and self.is_not_dbt_or_om_query(query.Query)
             ]

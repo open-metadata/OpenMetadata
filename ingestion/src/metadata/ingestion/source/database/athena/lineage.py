@@ -16,6 +16,7 @@ from typing import Iterable, Optional
 from metadata.generated.schema.type.tableQuery import TableQuery
 from metadata.ingestion.source.database.athena.query_parser import (
     AthenaQueryParserSource,
+    QUERY_SUCCESS_STATUS
 )
 from metadata.ingestion.source.database.lineage_source import LineageSource
 from metadata.utils.logger import ingestion_logger
@@ -37,6 +38,7 @@ class AthenaLineageSource(AthenaQueryParserSource, LineageSource):
                 if (
                     query.Status.SubmissionDateTime.date() >= self.start.date()
                     and self.is_not_dbt_or_om_query(query.Query)
+                    and query.Status.State.upper() == QUERY_SUCCESS_STATUS
                 ):
                     yield TableQuery(
                         query=query.Query,
