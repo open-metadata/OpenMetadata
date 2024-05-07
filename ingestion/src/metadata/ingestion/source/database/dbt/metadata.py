@@ -132,13 +132,7 @@ class DbtSource(DbtServiceSource):
         """
         By default for DBT nothing is required to be prepared
         """
-        database_service = self.metadata.get_by_name(
-            entity=DatabaseService, fqn=self.config.serviceName
-        )
-        if not database_service:
-            raise InvalidServiceException(
-                f"Service with name {self.config.serviceName} not found"
-            )
+        pass
 
     def get_dbt_owner(
         self, manifest_node: dict, catalog_node: Optional[dict]
@@ -413,7 +407,7 @@ class DbtSource(DbtServiceSource):
                     table_fqn = fqn.build(
                         self.metadata,
                         entity_type=Table,
-                        service_name=self.config.serviceName,
+                        service_name="*",
                         database_name=get_corrected_name(manifest_node.database),
                         schema_name=get_corrected_name(manifest_node.schema_),
                         table_name=model_name,
@@ -507,7 +501,7 @@ class DbtSource(DbtServiceSource):
                         parent_fqn = fqn.build(
                             self.metadata,
                             entity_type=Table,
-                            service_name=self.config.serviceName,
+                            service_name="*",
                             database_name=get_corrected_name(parent_node.database),
                             schema_name=get_corrected_name(parent_node.schema_),
                             table_name=table_name,
@@ -949,7 +943,7 @@ class DbtSource(DbtServiceSource):
                     test_case_fqn = fqn.build(
                         self.metadata,
                         entity_type=TestCase,
-                        service_name=self.config.serviceName,
+                        service_name=source_elements[0],
                         database_name=source_elements[1],
                         schema_name=source_elements[2],
                         table_name=source_elements[3],
