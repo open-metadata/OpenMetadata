@@ -280,3 +280,5 @@ SET json = JSON_INSERT(
     '$.schemaDefinition',
     JSON_EXTRACT(json, '$.viewDefinition')
 );
+
+UPDATE table_entity SET json = JSON_REMOVE(json, '$.testSuite');
