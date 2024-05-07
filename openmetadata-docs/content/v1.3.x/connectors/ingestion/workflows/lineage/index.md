@@ -9,7 +9,7 @@ Learn how to configure the Lineage workflow from the UI to ingest Lineage data f
 
 {% note %}
 
-Checkout the documentation of the connector you are using to see if it supports automated lineage workflow.
+Checkout the documentation of the connector you are using to know if it supports automated lineage workflow.
 
 {% /note %}
 
