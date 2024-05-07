@@ -276,3 +276,6 @@ SET json = jsonb_set(
         json->'viewDefinition'
     ) - 'viewDefinition'
 WHERE jsonb_exists(json::jsonb, 'viewDefinition') = true;
+
+UPDATE table_entity SET json = json - 'testSuite'; 
+
