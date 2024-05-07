@@ -10,7 +10,6 @@ import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
 import static org.openmetadata.service.util.TestUtils.INGESTION_BOT_AUTH_HEADERS;
 import static org.openmetadata.service.util.TestUtils.TEST_AUTH_HEADERS;
 import static org.openmetadata.service.util.TestUtils.TEST_USER_NAME;
-import static org.openmetadata.service.util.TestUtils.waitForEsAsyncOp;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -60,7 +59,7 @@ class ReportDataResourceTest extends OpenMetadataApplicationTest {
             .withData(entityReportData);
 
     postReportData(reportData, ADMIN_AUTH_HEADERS);
-    waitForEsAsyncOp(1500);
+
     ResultList<ReportData> reportDataList =
         getReportData(
             "2022-10-10",
@@ -108,7 +107,7 @@ class ReportDataResourceTest extends OpenMetadataApplicationTest {
             .withData(entityReportData);
 
     postReportData(reportData, INGESTION_BOT_AUTH_HEADERS);
-    waitForEsAsyncOp();
+
     ResultList<ReportData> reportDataList =
         getReportData(
             "2022-10-12",
@@ -242,7 +241,6 @@ class ReportDataResourceTest extends OpenMetadataApplicationTest {
   private void assertDocumentCountEquals(String query, String index, Integer count)
       throws IOException, InterruptedException {
     // async client will return a future which we don't have access to, hence sleep
-    waitForEsAsyncOp();
     JsonNode json = runSearchQuery(query, index);
     Integer docCount = json.get("hits").get("total").get("value").asInt();
     assertEquals(count, docCount);

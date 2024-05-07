@@ -775,7 +775,6 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
       }
       queryParams.put("include", include.value());
 
-      waitForEsAsyncOp();
       ResultList<T> allEntities = listEntitiesFromSearch(queryParams, 1000, 0, ADMIN_AUTH_HEADERS);
       int totalRecords = allEntities.getData().size();
       printEntities(allEntities);
@@ -1082,12 +1081,8 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     String query =
         "{\"size\": 100,\"query\":{\"bool\":{\"must\":[{\"term\":{\"descriptionStatus\":\"INCOMPLETE\"}}]}}}";
     request.setJsonEntity(query);
-    try {
-      waitForEsAsyncOp(1000);
-      response = searchClient.performRequest(request);
-    } finally {
-      searchClient.close();
-    }
+    response = searchClient.performRequest(request);
+    searchClient.close();
 
     String jsonString = EntityUtils.toString(response.getEntity());
     HashMap<String, Object> map =
@@ -2135,7 +2130,6 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     EntityReference entityReference = getEntityReference(entity);
     IndexMapping indexMapping =
         Entity.getSearchRepository().getIndexMapping(entityReference.getType());
-    waitForEsAsyncOp();
     SearchResponse response =
         getResponseFormSearch(
             indexMapping.getIndexName(Entity.getSearchRepository().getClusterAlias()));
@@ -2158,7 +2152,6 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     EntityReference entityReference = getEntityReference(entity);
     IndexMapping indexMapping =
         Entity.getSearchRepository().getIndexMapping(entityReference.getType());
-    waitForEsAsyncOp();
     SearchResponse response =
         getResponseFormSearch(
             indexMapping.getIndexName(Entity.getSearchRepository().getClusterAlias()));
@@ -2176,7 +2169,6 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     TestUtils.delete(target, entityClass, ADMIN_AUTH_HEADERS);
     // search again in search after deleting
 
-    waitForEsAsyncOp(1000);
     response =
         getResponseFormSearch(
             indexMapping.getIndexName(Entity.getSearchRepository().getClusterAlias()));
