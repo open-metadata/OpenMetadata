@@ -264,7 +264,7 @@ export const signupAndLogin = (
     cy.url().should('eq', `${BASE_URL}/my-data`);
 
     // Verify user profile
-    cy.get('[data-testid="avatar"]').first().trigger('mouseover').click();
+    cy.get('[data-testid="dropdown-profile"]').click();
     cy.get('[data-testid="user-name"]')
       .should('be.visible')
       .invoke('text')
