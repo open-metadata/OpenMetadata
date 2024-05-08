@@ -88,7 +88,7 @@ ALLOWED_COMMON_PATCH_FIELDS = {
     "tableConstraints": True,
     "tablePartition": True,
     "location": True,
-    "viewDefinition": True,
+    "schemaDefinition": True,
     "sampleData": True,
     "fileFormat": True,
     # Stored Procedure Fields

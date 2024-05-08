@@ -40,7 +40,7 @@ export enum CustomPropertyTypeByName {
   ENUM = 'enum',
   SQL_QUERY = 'sqlQuery',
   TIMESTAMP = 'timestamp',
-  TIME_INTERVAL = 'timeInterval',
+  // TIME_INTERVAL = 'timeInterval',
 }
 
 export interface CustomProperty {
@@ -108,11 +108,11 @@ export const getPropertyValues = (type: string) => {
         value: '1710831125922',
         newValue: '1710831125923',
       };
-    case 'timeInterval':
-      return {
-        value: '1710831125922,1710831125923',
-        newValue: '1710831125923,1710831125924',
-      };
+    // case 'timeInterval':
+    //   return {
+    //     value: '1710831125922,1710831125923',
+    //     newValue: '1710831125923,1710831125924',
+    //   };
 
     default:
       return {

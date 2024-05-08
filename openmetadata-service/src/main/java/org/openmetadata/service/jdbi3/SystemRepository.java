@@ -5,6 +5,7 @@ import static org.openmetadata.schema.type.EventType.ENTITY_DELETED;
 import static org.openmetadata.schema.type.EventType.ENTITY_UPDATED;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import javax.json.JsonPatch;
 import javax.json.JsonValue;
@@ -323,7 +324,9 @@ public class SystemRepository {
   private StepValidation getMigrationValidation(
       MigrationValidationClient migrationValidationClient) {
     List<String> currentVersions = migrationValidationClient.getCurrentVersions();
-    if (currentVersions.equals(migrationValidationClient.getExpectedMigrationList())) {
+    // Compare regardless of ordering
+    if (new HashSet<>(currentVersions)
+        .equals(new HashSet<>(migrationValidationClient.getExpectedMigrationList()))) {
       return new StepValidation()
           .withDescription(ValidationStepDescription.MIGRATION.key)
           .withPassed(Boolean.TRUE);
