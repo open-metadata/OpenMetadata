@@ -35,7 +35,6 @@ public class ValidatorUtil {
 
   public static String validateUserNameWithEmailPrefix(CSVRecord csvRecord) {
     // UserImportCsv : name(0), displayName(1), description(2), email(3), timezone(4), isAdmin(5)
-    System.out.println("csvRecord : " + csvRecord);
     String name = csvRecord.get(0);
     String email = csvRecord.get(3);
 
