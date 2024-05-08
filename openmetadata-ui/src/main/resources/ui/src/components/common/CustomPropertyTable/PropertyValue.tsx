@@ -367,18 +367,22 @@ export const PropertyValue: FC<PropertyValueProps> = ({
               initialValues={initialValues}
               layout="vertical"
               onFinish={(values: { timestamp: string }) => {
-                onInputSave(toNumber(values.timestamp));
+                onInputSave(
+                  values.timestamp
+                    ? toNumber(values.timestamp)
+                    : values.timestamp // If timestamp is cleared and set undefined
+                );
               }}>
               <Form.Item
                 name="timestamp"
                 rules={[
                   {
-                    required: true,
                     pattern: TIMESTAMP_UNIX_IN_MILLISECONDS_REGEX,
                   },
                 ]}
                 style={commonStyle}>
                 <Input
+                  allowClear
                   data-testid="timestamp-input"
                   disabled={isLoading}
                   placeholder={t('message.unix-epoch-time-in-ms', {
