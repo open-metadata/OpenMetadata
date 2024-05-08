@@ -52,6 +52,7 @@ import {
   PAGE_SIZE_BASE,
 } from '../../../constants/constants';
 import {
+  TEST_CASE_FILTERS,
   TEST_CASE_PLATFORM_OPTION,
   TEST_CASE_STATUS_OPTION,
   TEST_CASE_TYPE_OPTION,
@@ -67,6 +68,7 @@ import {
   getListTestCaseBySearch,
   ListTestCaseParamsBySearch,
 } from '../../../rest/testAPI';
+import { buildTestCaseParams } from '../../../utils/DataQuality/DataQualityUtils';
 import { getEntityName } from '../../../utils/EntityUtils';
 import { getDataQualityPagePath } from '../../../utils/RouterUtils';
 import { generateEntityLink } from '../../../utils/TableUtils';
@@ -77,22 +79,6 @@ import { PagingHandlerParams } from '../../common/NextPrevious/NextPrevious.inte
 import Searchbar from '../../common/SearchBarComponent/SearchBar.component';
 import DataQualityTab from '../../Database/Profiler/DataQualityTab/DataQualityTab';
 import { DataQualitySearchParams } from '../DataQuality.interface';
-
-const testCaseFilters = {
-  table: 'tableFqn',
-  platform: 'testPlatforms',
-  type: 'testCaseType',
-  status: 'testCaseStatus',
-  lastRun: 'lastRunRange',
-};
-
-// const testCaseFilters = {
-//   table: { formKey: 'tableFqn', name: 'table' },
-//   platform: { formKey: 'testPlatforms', name: 'platform' },
-//   type: { formKey: 'testCaseType', name: 'type' },
-//   status: { formKey: 'testCaseStatus', name: 'status' },
-//   lastRun: { formKey: 'lastRunRange', name: 'lastRun' },
-// };
 
 export const TestCases = ({ summaryPanel }: { summaryPanel: ReactNode }) => {
   const [form] = useForm();
@@ -120,8 +106,8 @@ export const TestCases = ({ summaryPanel }: { summaryPanel: ReactNode }) => {
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [filters, setFilters] = useState<ListTestCaseParamsBySearch>({});
   const [selectedFilter, setSelectedFilter] = useState<string[]>([
-    testCaseFilters.status,
-    testCaseFilters.type,
+    TEST_CASE_FILTERS.status,
+    TEST_CASE_FILTERS.type,
   ]);
 
   const {
@@ -153,37 +139,6 @@ export const TestCases = ({ summaryPanel }: { summaryPanel: ReactNode }) => {
         return updatedTestCase;
       });
     }
-  };
-
-  const buildParams = (
-    params: ListTestCaseParamsBySearch | undefined,
-    filters: string[]
-  ): ListTestCaseParamsBySearch => {
-    const hasFilter = (filter: string) => filters.includes(filter);
-
-    return {
-      ...params,
-      endTimestamp: hasFilter(testCaseFilters.lastRun)
-        ? params?.endTimestamp
-        : undefined,
-      startTimestamp: hasFilter(testCaseFilters.lastRun)
-        ? params?.startTimestamp
-        : undefined,
-      entityLink: hasFilter(testCaseFilters.table)
-        ? params?.entityLink
-        : undefined,
-      testPlatforms: hasFilter(testCaseFilters.platform)
-        ? params?.testPlatforms
-        : undefined,
-      testCaseType:
-        isEmpty(params?.testCaseType) || !hasFilter(testCaseFilters.type)
-          ? undefined
-          : params?.testCaseType,
-      testCaseStatus:
-        isEmpty(params?.testCaseStatus) || !hasFilter(testCaseFilters.status)
-          ? undefined
-          : params?.testCaseStatus,
-    };
   };
 
   const fetchTestCases = async (
@@ -245,14 +200,14 @@ export const TestCases = ({ summaryPanel }: { summaryPanel: ReactNode }) => {
       entityLink,
     };
     const updatedParams = omitBy(
-      buildParams(params, selectedFilter),
+      buildTestCaseParams(params, selectedFilter),
       isUndefined
     );
     if (!isEqual(filters, updatedParams)) {
       fetchTestCases(INITIAL_PAGING_VALUE, updatedParams);
     }
 
-    setFilters((prev) => ({ ...prev, ...updatedParams }));
+    setFilters(updatedParams);
   };
 
   const handleMenuClick = ({ key }: { key: string }) => {
@@ -262,7 +217,7 @@ export const TestCases = ({ summaryPanel }: { summaryPanel: ReactNode }) => {
           (selected) => selected !== key
         );
         const updatedFilters = omitBy(
-          buildParams(filters, updatedValue),
+          buildTestCaseParams(filters, updatedValue),
           isUndefined
         );
         form.setFieldsValue({ [key]: undefined });
@@ -279,7 +234,7 @@ export const TestCases = ({ summaryPanel }: { summaryPanel: ReactNode }) => {
   };
 
   const filterMenu: ItemType[] = useMemo(() => {
-    return entries(testCaseFilters).map(([name, filter]) => ({
+    return entries(TEST_CASE_FILTERS).map(([name, filter]) => ({
       key: filter,
       label: startCase(name),
       value: filter,
@@ -384,7 +339,7 @@ export const TestCases = ({ summaryPanel }: { summaryPanel: ReactNode }) => {
                 </Button>
               </Dropdown>
             </Form.Item>
-            {selectedFilter.includes(testCaseFilters.table) && (
+            {selectedFilter.includes(TEST_CASE_FILTERS.table) && (
               <Form.Item
                 className="m-0 w-52"
                 label={t('label.table')}
@@ -400,7 +355,7 @@ export const TestCases = ({ summaryPanel }: { summaryPanel: ReactNode }) => {
                 />
               </Form.Item>
             )}
-            {selectedFilter.includes(testCaseFilters.platform) && (
+            {selectedFilter.includes(TEST_CASE_FILTERS.platform) && (
               <Form.Item
                 className="m-0 w-min-20"
                 label={t('label.platform')}
@@ -414,7 +369,7 @@ export const TestCases = ({ summaryPanel }: { summaryPanel: ReactNode }) => {
                 />
               </Form.Item>
             )}
-            {selectedFilter.includes(testCaseFilters.type) && (
+            {selectedFilter.includes(TEST_CASE_FILTERS.type) && (
               <Form.Item
                 className="m-0 w-40"
                 label={t('label.type')}
@@ -427,7 +382,7 @@ export const TestCases = ({ summaryPanel }: { summaryPanel: ReactNode }) => {
                 />
               </Form.Item>
             )}
-            {selectedFilter.includes(testCaseFilters.status) && (
+            {selectedFilter.includes(TEST_CASE_FILTERS.status) && (
               <Form.Item
                 className="m-0 w-40"
                 label={t('label.status')}
@@ -440,7 +395,7 @@ export const TestCases = ({ summaryPanel }: { summaryPanel: ReactNode }) => {
                 />
               </Form.Item>
             )}
-            {selectedFilter.includes(testCaseFilters.lastRun) && (
+            {selectedFilter.includes(TEST_CASE_FILTERS.lastRun) && (
               <Form.Item
                 className="m-0"
                 label={t('label.last-run')}
