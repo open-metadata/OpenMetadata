@@ -127,14 +127,15 @@ const ActivityFeedCardV2 = ({
               />
             </Col>
           </Row>
-          {showActions && feed.generatedBy !== GeneratedBy.System && (
-            <ActivityFeedActions
-              feed={feed}
-              isPost={isPost}
-              post={post}
-              onEditPost={onEditPost}
-            />
-          )}
+          {showActions &&
+            (feed.generatedBy !== GeneratedBy.System || isPost) && (
+              <ActivityFeedActions
+                feed={feed}
+                isPost={isPost}
+                post={post}
+                onEditPost={onEditPost}
+              />
+            )}
         </Col>
         {showThread && postLength > 0 && (
           <Col className="feed-replies" data-testid="feed-replies" span={24}>
