@@ -407,10 +407,6 @@ export const TEST_CASE_TYPE_OPTION = [
 ];
 
 export const TEST_CASE_STATUS_OPTION = [
-  {
-    label: t('label.all'),
-    value: '',
-  },
   ...values(TestCaseStatus).map((value) => ({
     label: value,
     value: value,
