@@ -329,7 +329,6 @@ export const PropertyValue: FC<PropertyValueProps> = ({
                 name="email"
                 rules={[
                   {
-                    required: true,
                     min: 6,
                     max: 127,
                     type: 'email',
@@ -337,6 +336,7 @@ export const PropertyValue: FC<PropertyValueProps> = ({
                 ]}
                 style={commonStyle}>
                 <Input
+                  allowClear
                   data-testid="email-input"
                   disabled={isLoading}
                   placeholder="john@doe.com"
