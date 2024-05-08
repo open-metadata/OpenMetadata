@@ -37,11 +37,12 @@ const NodeChildren = ({ node, isConnectable }: NodeChildrenProps) => {
   const [filteredColumns, setFilteredColumns] = useState<EntityChildren>([]);
   const [isExpanded, setIsExpanded] = useState<boolean>(true);
 
-  const { showColumns, showDataQuality } = useMemo(() => {
+  const { showColumns, showDataObservability } = useMemo(() => {
     return {
       showColumns: activeLayer.includes(LineageLayerView.COLUMN),
-      showDataQuality: activeLayer.includes(LineageLayerView.DATA_QUALITY),
-      showPipeline: activeLayer.includes(LineageLayerView.PIPELINE),
+      showDataObservability: activeLayer.includes(
+        LineageLayerView.DATA_OBSERVARABILITY
+      ),
     };
   }, [activeLayer]);
 
@@ -89,7 +90,8 @@ const NodeChildren = ({ node, isConnectable }: NodeChildrenProps) => {
       return (
         <Collapse
           destroyInactivePanel
-          defaultActiveKey={record.fullyQualifiedName}>
+          defaultActiveKey={record.fullyQualifiedName}
+          key={record.fullyQualifiedName}>
           <Panel
             header={getEntityName(record)}
             key={record.fullyQualifiedName ?? ''}>
@@ -136,7 +138,7 @@ const NodeChildren = ({ node, isConnectable }: NodeChildrenProps) => {
     [isConnectable, tracedColumns]
   );
 
-  if (supportsColumns && (showColumns || showDataQuality)) {
+  if (supportsColumns && (showColumns || showDataObservability)) {
     return (
       <div className="column-container bg-grey-1 p-sm p-y-xs">
         <div className="d-flex justify-between items-center">
@@ -164,7 +166,7 @@ const NodeChildren = ({ node, isConnectable }: NodeChildrenProps) => {
               </Button>
             )}
           </div>
-          {showDataQuality && entityType === EntityType.TABLE && (
+          {showDataObservability && entityType === EntityType.TABLE && (
             <TestSuiteSummaryWidget testSuite={(node as Table).testSuite} />
           )}
         </div>

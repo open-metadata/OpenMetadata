@@ -46,8 +46,7 @@ export type UpstreamDownstreamData = {
 
 export enum LineageLayerView {
   COLUMN = 'COLUMN',
-  DATA_QUALITY = 'DATA_QUALITY',
-  PIPELINE = 'PIPELINE',
+  DATA_OBSERVARABILITY = 'DATA_OBSERVARABILITY',
 }
 
 export interface LineageContextType {

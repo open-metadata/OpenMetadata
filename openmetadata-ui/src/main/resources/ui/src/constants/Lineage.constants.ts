@@ -13,6 +13,7 @@
 
 import { t } from 'i18next';
 import { ElementLoadingState } from '../components/Entity/EntityLineage/EntityLineage.interface';
+import { EntityFields } from '../enums/AdvancedSearch.enum';
 import { EntityType } from '../enums/entity.enum';
 import { SearchIndex } from '../enums/search.enum';
 import { Source } from '../generated/type/entityLineage';
@@ -74,10 +75,10 @@ export const ELEMENT_DELETE_STATE = {
 };
 
 export const LINEAGE_DEFAULT_QUICK_FILTERS = [
-  'domain.displayName.keyword',
-  'owner.displayName.keyword',
-  'tags.tagFQN',
-  'columns.name.keyword',
+  EntityFields.DOMAIN,
+  EntityFields.OWNER,
+  EntityFields.TAG,
+  EntityFields.COLUMN,
 ];
 
 export const LINEAGE_SOURCE: { [key in Source]: string } = {

@@ -12,7 +12,7 @@
  */
 
 import { RightOutlined, SettingOutlined } from '@ant-design/icons';
-import { Button, Col, Dropdown, Row, Select, Space, Tooltip } from 'antd';
+import { Button, Col, Dropdown, Row, Space, Tooltip } from 'antd';
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import classNames from 'classnames';
 import React, {
@@ -24,24 +24,18 @@ import React, {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Node } from 'reactflow';
 import { ReactComponent as ExitFullScreen } from '../../../assets/svg/exit-full-screen.svg';
 import { ReactComponent as FullScreen } from '../../../assets/svg/full-screen.svg';
 import { ReactComponent as EditIconColor } from '../../../assets/svg/ic-edit-lineage-colored.svg';
 import { ReactComponent as EditIcon } from '../../../assets/svg/ic-edit-lineage.svg';
 import { ReactComponent as ExportIcon } from '../../../assets/svg/ic-export.svg';
 import { NO_PERMISSION_FOR_ACTION } from '../../../constants/HelperTextUtil';
-import {
-  LINEAGE_DEFAULT_QUICK_FILTERS,
-  ZOOM_TRANSITION_DURATION,
-} from '../../../constants/Lineage.constants';
+import { LINEAGE_DEFAULT_QUICK_FILTERS } from '../../../constants/Lineage.constants';
 import { useLineageProvider } from '../../../context/LineageProvider/LineageProvider';
 import { SearchIndex } from '../../../enums/search.enum';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { getAssetsPageQuickFilters } from '../../../utils/AdvancedSearchUtils';
-import { handleSearchFilterOption } from '../../../utils/CommonUtils';
 import { getLoadingStatusValue } from '../../../utils/EntityLineageUtils';
-import { getEntityName } from '../../../utils/EntityUtils';
 import {
   getQuickFilterQuery,
   getSelectedValuesFromQuickFilter,
@@ -51,6 +45,7 @@ import ExploreQuickFilters from '../../Explore/ExploreQuickFilters';
 import { AssetsOfEntity } from '../../Glossary/GlossaryTerms/tabs/AssetsTabs.interface';
 import { ControlProps, LineageConfig } from './EntityLineage.interface';
 import LineageConfigModal from './LineageConfigModal';
+import LineageSearchSelect from './LineageSearchSelect/LineageSearchSelect';
 
 const CustomControls: FC<ControlProps> = ({
   style,
@@ -64,17 +59,13 @@ const CustomControls: FC<ControlProps> = ({
   const { t } = useTranslation();
   const [dialogVisible, setDialogVisible] = useState<boolean>(false);
   const {
-    nodes,
     lineageConfig,
     onLineageEditClick,
-    zoomValue,
     loading,
     status,
-    reactFlowInstance,
     isEditMode,
     onLineageConfigUpdate,
     onQueryFilterUpdate,
-    onNodeClick,
     onExportClick,
   } = useLineageProvider();
   const [selectedFilter, setSelectedFilter] = useState<string[]>([]);
@@ -112,15 +103,6 @@ const CustomControls: FC<ControlProps> = ({
     setSelectedFilter(defaultFilterValues);
   }, []);
 
-  const nodeOptions = useMemo(
-    () =>
-      [...(nodes || [])].map((node) => ({
-        label: getEntityName(node.data.node),
-        value: node.id,
-      })),
-    [nodes]
-  );
-
   const editIcon = useMemo(() => {
     return (
       <span className="anticon">
@@ -139,22 +121,6 @@ const CustomControls: FC<ControlProps> = ({
       setDialogVisible(false);
     },
     [onLineageConfigUpdate, setDialogVisible]
-  );
-
-  const onOptionSelect = useCallback(
-    (value?: string) => {
-      const selectedNode = nodes.find((node: Node) => node.id === value);
-      if (selectedNode) {
-        const { position } = selectedNode;
-        onNodeClick(selectedNode);
-        // moving selected node in center
-        reactFlowInstance?.setCenter(position.x, position.y, {
-          duration: ZOOM_TRANSITION_DURATION,
-          zoom: zoomValue,
-        });
-      }
-    },
-    [onNodeClick, reactFlowInstance]
   );
 
   const handleQuickFiltersChange = (data: ExploreQuickFilterField[]) => {
@@ -211,20 +177,7 @@ const CustomControls: FC<ControlProps> = ({
         gutter={[8, 8]}
         style={style}>
         <Col flex="auto">
-          <Select
-            allowClear
-            showSearch
-            className={classNames('custom-control-search-box', {
-              'custom-control-search-box-edit-mode': isEditMode,
-            })}
-            data-testid="lineage-search"
-            filterOption={handleSearchFilterOption}
-            options={nodeOptions}
-            placeholder={t('label.search-entity', {
-              entity: t('label.lineage'),
-            })}
-            onChange={onOptionSelect}
-          />
+          <LineageSearchSelect />
           <Space className="m-l-xs" size={16}>
             <Dropdown
               menu={{

@@ -18,10 +18,14 @@
   align-items: center;
   justify-content: center;
   flex-direction: column;
-  gap: 4px;
+  gap: 2px;
 }
 
 .lineage-layers-popover {
+  &.ant-popover-placement-right {
+    padding-left: 8px;
+  }
+
   .ant-popover-arrow {
     display: none;
   }
@@ -30,6 +34,7 @@
   }
   .lineage-layer-button {
     padding: 4px 12px;
+    width: 90px;
     &.active {
       color: @primary-color;
       border-color: @primary-color;
@@ -38,8 +43,8 @@
     }
   }
   .layer-icon {
-    width: 16px;
-    height: 16px;
+    width: 20px;
+    height: 20px;
   }
 }
 

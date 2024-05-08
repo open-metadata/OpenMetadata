@@ -467,20 +467,36 @@ export const removeLineageHandler = async (data: EdgeData): Promise<void> => {
   }
 };
 
-const calculateHeight = (children: Column[]) => {
+const calculateHeightAndFlattenNode = (
+  children: Column[]
+): { totalHeight: number; flattened: Column[] } => {
   let totalHeight = 0;
+  let flattened: Column[] = [];
+
   children.forEach((child) => {
     totalHeight += 27; // Add height for the current child
+    flattened.push(child);
+
     if (child.children && child.children.length > 0) {
       totalHeight += 8; // Add child padding
-      totalHeight += calculateHeight(child.children); // Recursively add the height of sub-children
+      const childResult = calculateHeightAndFlattenNode(child.children);
+      totalHeight += childResult.totalHeight;
+      flattened = flattened.concat(childResult.flattened);
     }
   });
 
-  return totalHeight;
+  return { totalHeight, flattened };
 };
 
 export const getEntityChildrenAndLabel = (node: SourceType) => {
+  if (!node) {
+    return {
+      children: [],
+      childrenHeading: '',
+      childrenHeight: 0,
+      childrenFlatten: [],
+    };
+  }
   const entityMappings: Record<
     string,
     { data: EntityChildren; label: string }
@@ -520,12 +536,15 @@ export const getEntityChildrenAndLabel = (node: SourceType) => {
     label: '',
   };
 
-  const childrenHeight = calculateHeight(data as Column[]);
+  const { totalHeight, flattened } = calculateHeightAndFlattenNode(
+    data as Column[]
+  );
 
   return {
     children: data,
     childrenHeading: label,
-    childrenHeight: childrenHeight,
+    childrenHeight: totalHeight,
+    childrenFlatten: flattened,
   };
 };
 

@@ -277,7 +277,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
         setLoading(false);
       }
     },
-    [paginationData]
+    [paginationData, queryFilter]
   );
 
   const exportLineageData = useCallback(

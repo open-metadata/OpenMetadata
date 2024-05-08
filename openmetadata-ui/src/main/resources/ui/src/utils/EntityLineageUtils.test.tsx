@@ -15,6 +15,7 @@ import { Edge } from 'reactflow';
 import { EdgeTypeEnum } from '../components/Entity/EntityLineage/EntityLineage.interface';
 import { EdgeDetails } from '../components/Lineage/Lineage.interface';
 import { SourceType } from '../components/SearchedData/SearchedData.interface';
+import { EntityType } from '../enums/entity.enum';
 import { AddLineage } from '../generated/api/lineage/addLineage';
 import {
   MOCK_CHILD_MAP,
@@ -31,6 +32,7 @@ import {
   getColumnLineageData,
   getColumnSourceTargetHandles,
   getConnectedNodesEdges,
+  getEntityChildrenAndLabel,
   getLineageDetailsObject,
   getLineageEdge,
   getLineageEdgeForAPI,
@@ -540,6 +542,66 @@ describe('Test EntityLineageUtils utility', () => {
       expect(result.upstreamNodes).toEqual([
         { fullyQualifiedName: 'node1', type: 'table', id: '1' },
       ]);
+    });
+  });
+
+  describe('getEntityChildrenAndLabel', () => {
+    it('should return empty values for null input', () => {
+      const result = getEntityChildrenAndLabel(null as any);
+
+      expect(result).toEqual({
+        children: [],
+        childrenHeading: '',
+        childrenHeight: 0,
+        childrenFlatten: [],
+      });
+    });
+
+    it('should handle an unknown entity type correctly', () => {
+      const node = {
+        entityType: 'UNKNOWN',
+      };
+      const result = getEntityChildrenAndLabel(node as any);
+
+      expect(result).toEqual({
+        children: [],
+        childrenHeading: '',
+        childrenHeight: 0,
+        childrenFlatten: [],
+      });
+    });
+
+    it('should calculate properties for a node with no children', () => {
+      const node = {
+        entityType: EntityType.TABLE,
+        columns: [],
+      };
+      const result = getEntityChildrenAndLabel(node as any);
+
+      expect(result).toEqual({
+        children: [],
+        childrenHeading: 'label.column-plural',
+        childrenHeight: 0,
+        childrenFlatten: [],
+      });
+    });
+
+    it('should calculate properties for a node with nested children', () => {
+      const node = {
+        entityType: EntityType.CONTAINER,
+        dataModel: {
+          columns: [
+            {
+              children: [{}, { children: [{}] }],
+            },
+          ],
+        },
+      };
+      const result = getEntityChildrenAndLabel(node as any);
+
+      expect(result.childrenHeight).toBeGreaterThan(0);
+      expect(result.childrenFlatten.length).toBeGreaterThan(0);
+      expect(result.childrenHeading).toEqual('label.column-plural');
     });
   });
 });
