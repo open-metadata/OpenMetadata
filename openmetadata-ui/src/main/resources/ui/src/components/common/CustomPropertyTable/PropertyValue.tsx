@@ -94,7 +94,7 @@ export const PropertyValue: FC<PropertyValueProps> = ({
 
     const enumValue = isArrayType ? updatedValue : [updatedValue];
 
-    const propertyValue = isEnum ? enumValue : updatedValue;
+    const propertyValue = isEnum ? enumValue.filter(Boolean) : updatedValue;
 
     try {
       // Omit undefined and empty values
@@ -201,18 +201,9 @@ export const PropertyValue: FC<PropertyValueProps> = ({
               onFinish={(values: { enumValues: string | string[] }) =>
                 onInputSave(values.enumValues)
               }>
-              <Form.Item
-                name="enumValues"
-                rules={[
-                  {
-                    required: true,
-                    message: t('label.field-required', {
-                      field: t('label.enum-value-plural'),
-                    }),
-                  },
-                ]}
-                style={commonStyle}>
+              <Form.Item name="enumValues" style={commonStyle}>
                 <Select
+                  allowClear
                   data-testid="enum-select"
                   disabled={isLoading}
                   mode={isMultiSelect ? 'multiple' : undefined}
