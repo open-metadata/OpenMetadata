@@ -49,6 +49,7 @@ public class ValidatorUtil {
     } else {
       // Either name or email (or both) are null or empty, so validation cannot be performed
       // JSON schema validate method would have managed this case.
+
       return "";
     }
   }
