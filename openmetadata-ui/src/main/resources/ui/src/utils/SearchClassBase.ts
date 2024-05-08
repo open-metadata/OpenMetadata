@@ -66,7 +66,7 @@ import {
 } from './EntityUtils';
 import i18n from './i18next/LocalUtil';
 import { getServiceIcon } from './TableUtils';
-import { getTestSuiteDetailsPath } from './TestSuiteUtils';
+import { getTestSuiteDetailsPath, getTestSuiteFQN } from './TestSuiteUtils';
 
 class SearchClassBase {
   public getEntityTypeSearchIndexMapping(): Record<string, SearchIndex> {
@@ -344,16 +344,23 @@ class SearchClassBase {
     }
 
     if (entity.fullyQualifiedName && entity.entityType) {
-      return getEntityLinkFromType(
-        entity.fullyQualifiedName,
-        entity.entityType as EntityType
-      );
+      let fqn = entity.fullyQualifiedName;
+
+      if (entity.entityType === EntityType.TEST_SUITE) {
+        fqn = getTestSuiteFQN(fqn);
+      }
+
+      return getEntityLinkFromType(fqn, entity.entityType as EntityType);
     }
 
     return '';
   }
 
   public getEntityName(entity: SearchSourceAlias) {
+    if (entity.entityType === EntityType.TEST_SUITE) {
+      return getTestSuiteFQN(getEntityName(entity));
+    }
+
     return getEntityName(entity);
   }
 

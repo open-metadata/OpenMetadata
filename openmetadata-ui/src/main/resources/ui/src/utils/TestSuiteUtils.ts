@@ -30,3 +30,12 @@ export const getTestSuiteDetailsPath = ({
         EntityTabs.PROFILER
       )}?activeTab=${TableProfilerTab.DATA_QUALITY}`
     : getTestSuitePath(fullyQualifiedName);
+
+export const getTestSuiteFQN = (fqn: string) => {
+  const fqnPart = fqn.split('.');
+  if (fqnPart.length > 1) {
+    fqnPart.pop();
+  }
+
+  return fqnPart.join('.');
+};

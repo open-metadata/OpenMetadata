@@ -526,11 +526,20 @@ export const prepareFeedLink = (entityType: string, entityFQN: string) => {
 
 export const entityDisplayName = (entityType: string, entityFQN: string) => {
   let displayName;
-  if (entityType === EntityType.TABLE || entityType === EntityType.TEST_CASE) {
+  if (entityType === EntityType.TABLE) {
     displayName = getPartialNameFromTableFQN(
       entityFQN,
       [FqnPart.Database, FqnPart.Schema, FqnPart.Table],
-      '.'
+      FQN_SEPARATOR_CHAR
+    );
+  } else if (
+    entityType === EntityType.TEST_CASE ||
+    entityType === EntityType.TEST_SUITE
+  ) {
+    displayName = getPartialNameFromTableFQN(
+      entityFQN,
+      [FqnPart.TestCase],
+      FQN_SEPARATOR_CHAR
     );
   } else if (entityType === EntityType.DATABASE_SCHEMA) {
     displayName = getPartialNameFromTableFQN(entityFQN, [FqnPart.Schema]);

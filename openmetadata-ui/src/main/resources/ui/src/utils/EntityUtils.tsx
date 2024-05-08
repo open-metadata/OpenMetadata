@@ -52,7 +52,12 @@ import {
 } from '../constants/constants';
 import { GlobalSettingsMenuCategory } from '../constants/GlobalSettings.constants';
 import { ResourceEntity } from '../context/PermissionProvider/PermissionProvider.interface';
-import { AssetsType, EntityType, FqnPart } from '../enums/entity.enum';
+import {
+  AssetsType,
+  EntityTabs,
+  EntityType,
+  FqnPart,
+} from '../enums/entity.enum';
 import { ExplorePageTabs } from '../enums/Explore.enum';
 import { SearchIndex } from '../enums/search.enum';
 import { ServiceCategory, ServiceCategoryPlural } from '../enums/service.enum';
@@ -1339,6 +1344,12 @@ export const getEntityLinkFromType = (
       );
     case EntityType.TEST_CASE:
       return getIncidentManagerDetailPagePath(fullyQualifiedName);
+    case EntityType.TEST_SUITE:
+      return getEntityDetailsPath(
+        EntityType.TABLE,
+        fullyQualifiedName,
+        EntityTabs.PROFILER
+      );
     case EntityType.DOMAIN:
       return getDomainDetailsPath(fullyQualifiedName);
     case EntityType.EVENT_SUBSCRIPTION:
