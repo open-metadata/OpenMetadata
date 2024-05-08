@@ -126,10 +126,7 @@ class S3Source(StorageServiceSource):
                         # ingest all the relevant valid paths from it
                         yield from self._generate_structured_containers(
                             bucket_response=bucket_response,
-                            entries=self._manifest_entries_to_metadata_entries_by_container(
-                                container_name=bucket_name,
-                                manifest=self.global_manifest,
-                            ),
+                            entries=manifest_entries_for_current_bucket,
                             parent=parent_entity,
                         )
                         # nothing else do to for the current bucket, skipping to the next
@@ -142,23 +139,6 @@ class S3Source(StorageServiceSource):
                         entries=metadata_config.entries,
                         parent=parent_entity,
                     )
-                    for metadata_entry in metadata_config.entries:
-                        logger.info(
-                            f"Extracting metadata from path {metadata_entry.dataPath.strip(KEY_SEPARATOR)} "
-                            f"and generating structured container"
-                        )
-                        structured_container: Optional[
-                            S3ContainerDetails
-                        ] = self._generate_container_details(
-                            bucket_response=bucket_response,
-                            metadata_entry=metadata_entry,
-                            parent=EntityReference(
-                                id=self._bucket_cache[bucket_response.name].id.__root__,
-                                type="container",
-                            ),
-                        )
-                        if structured_container:
-                            yield structured_container
 
             except ValidationError as err:
                 self.status.failed(
