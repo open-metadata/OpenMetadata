@@ -48,36 +48,26 @@ const LineageLayers = () => {
               <div className="layer-icon">
                 {getEntityIcon(EntityType.TABLE)}
               </div>
-              <Typography.Text className="text-xs">
+              <Typography.Text className="text-xss">
                 {t('label.column')}
               </Typography.Text>
             </div>
           </Button>
           <Button
             className={classNames('lineage-layer-button h-15', {
-              active: activeLayer.includes(LineageLayerView.PIPELINE),
+              active: activeLayer.includes(
+                LineageLayerView.DATA_OBSERVARABILITY
+              ),
             })}
-            onClick={() => onButtonClick(LineageLayerView.PIPELINE)}>
-            <div className="lineage-layer-btn">
-              <div className="layer-icon">
-                {getEntityIcon(EntityType.PIPELINE)}
-              </div>
-              <Typography.Text className="text-xs">
-                {t('label.pipeline')}
-              </Typography.Text>
-            </div>
-          </Button>
-          <Button
-            className={classNames('lineage-layer-button h-15', {
-              active: activeLayer.includes(LineageLayerView.DATA_QUALITY),
-            })}
-            onClick={() => onButtonClick(LineageLayerView.DATA_QUALITY)}>
+            onClick={() =>
+              onButtonClick(LineageLayerView.DATA_OBSERVARABILITY)
+            }>
             <div className="lineage-layer-btn">
               <div className="layer-icon">
                 <DataQualityIcon />
               </div>
-              <Typography.Text className="text-xs">
-                {t('label.data-quality')}
+              <Typography.Text className="text-xss">
+                {t('label.observability')}
               </Typography.Text>
             </div>
           </Button>
@@ -92,8 +82,8 @@ const LineageLayers = () => {
         data-testid="lineage-layer-btn"
         type="primary">
         <div className="lineage-layer-btn">
-          <Layers width={16} />
-          <Typography.Text className="text-xs">
+          <Layers width={20} />
+          <Typography.Text className="text-xss">
             {t('label.layer-plural')}
           </Typography.Text>
         </div>
