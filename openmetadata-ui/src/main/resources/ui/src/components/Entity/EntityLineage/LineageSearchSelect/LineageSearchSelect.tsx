@@ -41,6 +41,9 @@ const LineageSearchSelect = () => {
 
     nodes.forEach((nodeObj) => {
       const { node } = nodeObj.data;
+      if (!node) {
+        return;
+      }
       const nodeOption = {
         label: (
           <Space data-testid={`option-${node.fullyQualifiedName}`} size={0}>

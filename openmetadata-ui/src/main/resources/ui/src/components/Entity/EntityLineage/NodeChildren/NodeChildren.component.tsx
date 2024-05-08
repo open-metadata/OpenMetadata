@@ -166,7 +166,7 @@ const NodeChildren = ({ node, isConnectable }: NodeChildrenProps) => {
               </Button>
             )}
           </div>
-          {showDataQuality && entityType === EntityType.TABLE && (
+          {showDataObservability && entityType === EntityType.TABLE && (
             <TestSuiteSummaryWidget testSuite={(node as Table).testSuite} />
           )}
         </div>
