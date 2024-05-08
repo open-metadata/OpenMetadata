@@ -87,14 +87,28 @@ const NodeChildren = ({ node, isConnectable }: NodeChildrenProps) => {
 
   const renderRecord = useCallback(
     (record: Column) => {
+      const isColumnTraced = tracedColumns.includes(
+        record.fullyQualifiedName ?? ''
+      );
+      const headerContent = getColumnContent(
+        record,
+        isColumnTraced,
+        isConnectable,
+        onColumnClick
+      );
+
+      if (!record.children || record.children.length === 0) {
+        return headerContent;
+      }
+
       return (
         <Collapse
           destroyInactivePanel
+          className="lineage-collapse-column"
           defaultActiveKey={record.fullyQualifiedName}
+          expandIcon={() => null}
           key={record.fullyQualifiedName}>
-          <Panel
-            header={getEntityName(record)}
-            key={record.fullyQualifiedName ?? ''}>
+          <Panel header={headerContent} key={record.fullyQualifiedName ?? ''}>
             {record?.children?.map((child) => {
               const { fullyQualifiedName, dataType } = child;
               if (['RECORD', 'STRUCT', 'ARRAY'].includes(dataType)) {
@@ -116,7 +130,7 @@ const NodeChildren = ({ node, isConnectable }: NodeChildrenProps) => {
         </Collapse>
       );
     },
-    [isConnectable, tracedColumns]
+    [isConnectable, tracedColumns, onColumnClick]
   );
 
   const renderColumnsData = useCallback(
@@ -166,9 +180,11 @@ const NodeChildren = ({ node, isConnectable }: NodeChildrenProps) => {
               </Button>
             )}
           </div>
-          {showDataObservability && entityType === EntityType.TABLE && (
-            <TestSuiteSummaryWidget testSuite={(node as Table).testSuite} />
-          )}
+          {showDataObservability &&
+            entityType === EntityType.TABLE &&
+            (node as Table).testSuite && (
+              <TestSuiteSummaryWidget testSuite={(node as Table).testSuite} />
+            )}
         </div>
 
         {showColumns && isExpanded && (
