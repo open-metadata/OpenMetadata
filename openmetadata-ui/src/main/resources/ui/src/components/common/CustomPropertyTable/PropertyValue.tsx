@@ -424,21 +424,28 @@ export const PropertyValue: FC<PropertyValueProps> = ({
               initialValues={initialValues}
               layout="vertical"
               onFinish={(values: { start: string; end: string }) => {
-                onInputSave({
-                  start: toNumber(values.start),
-                  end: toNumber(values.end),
-                });
+                onInputSave(
+                  omitBy(
+                    {
+                      start: values.start
+                        ? toNumber(values.start)
+                        : values.start,
+                      end: values.end ? toNumber(values.end) : values.end,
+                    },
+                    isUndefined
+                  ) as TimeIntervalType
+                );
               }}>
               <Form.Item
                 name="start"
                 rules={[
                   {
-                    required: true,
                     pattern: TIMESTAMP_UNIX_IN_MILLISECONDS_REGEX,
                   },
                 ]}
                 style={{ ...commonStyle, marginBottom: '16px' }}>
                 <Input
+                  allowClear
                   data-testid="start-input"
                   disabled={isLoading}
                   placeholder={t('message.unix-epoch-time-in-ms', {
@@ -450,12 +457,12 @@ export const PropertyValue: FC<PropertyValueProps> = ({
                 name="end"
                 rules={[
                   {
-                    required: true,
                     pattern: TIMESTAMP_UNIX_IN_MILLISECONDS_REGEX,
                   },
                 ]}
                 style={commonStyle}>
                 <Input
+                  allowClear
                   data-testid="end-input"
                   disabled={isLoading}
                   placeholder={t('message.unix-epoch-time-in-ms', {
