@@ -10,7 +10,8 @@
       "properties": {
         "id": {
           "description": "Unique identifier that identifies an entity instance.",
-          "$ref": "../basic.json#/definitions/uuid"
+          "type": "string",
+          "format": "uuid"
         },
         "type": {
           "description": "Entity type/class name - Examples: `database`, `table`, `metrics`, `databaseService`, `dashboardService`...",
@@ -25,8 +26,9 @@
           "type": "string"
         },
         "description": {
+          "$comment": "@om-field-type",
           "description": "Optional description of entity.",
-          "$ref": "../basic.json#/definitions/markdown"
+          "type": "string"
         },
         "displayName": {
           "description": "Display Name that identifies this entity.",
@@ -42,7 +44,8 @@
         },
         "href": {
           "description": "Link to the entity resource.",
-          "$ref": "../basic.json#/definitions/href"
+          "type": "string",
+          "format": "uri"
         }
       }
     },
@@ -56,7 +59,8 @@
           "properties": {
             "id": {
               "description": "Unique identifier that identifies an entity instance.",
-              "$ref": "../basic.json#/definitions/uuid"
+              "type": "string",
+              "format": "uuid"
             },
             "type": {
               "description": "Entity type/class name - Examples: `database`, `table`, `metrics`, `databaseService`, `dashboardService`...",
@@ -71,8 +75,9 @@
               "type": "string"
             },
             "description": {
+              "$comment": "@om-field-type",
               "description": "Optional description of entity.",
-              "$ref": "../basic.json#/definitions/markdown"
+              "type": "string"
             },
             "displayName": {
               "description": "Display Name that identifies this entity.",
@@ -88,7 +93,8 @@
             },
             "href": {
               "description": "Link to the entity resource.",
-              "$ref": "../basic.json#/definitions/href"
+              "type": "string",
+              "format": "uri"
             }
           }
         }
