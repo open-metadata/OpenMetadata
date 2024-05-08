@@ -13,6 +13,7 @@
 @import (reference) url('../../../styles/variables.less');
 
 @lineage-border: #b1b1b7;
+@lineage-collapse-header: #fafafa;
 
 .lineage-node-card {
   .ant-card-body {
@@ -62,24 +63,30 @@
   .column-container {
     min-height: 48px;
     padding: 6px 12px;
-    .ant-collapse-arrow {
-      margin-right: 0 !important;
-    }
-    .ant-collapse {
-      border-radius: 0;
-      border: 1px solid @border-color;
-      border-color: @border-color;
-    }
-    .ant-collapse-header {
-      padding: 4px 12px !important;
-      font-size: 12px;
-    }
-    .ant-collapse-content-box {
-      padding: 4px !important;
-    }
-    .ant-collapse-item {
-      border: none !important;
-      border-radius: 0;
+
+    .lineage-collapse-column {
+      .ant-collapse {
+        border-radius: 0;
+        border: 1px solid @border-color;
+        border-color: @border-color;
+      }
+      .ant-collapse-header {
+        padding: 0;
+        font-size: 12px;
+        .custom-node-column-container {
+          background-color: @lineage-collapse-header;
+        }
+        .lineage-column-node-handle {
+          background-color: @lineage-collapse-header;
+        }
+      }
+      .ant-collapse-content-box {
+        padding: 4px;
+      }
+      .ant-collapse-item {
+        border: none;
+        border-radius: 0;
+      }
     }
   }
 }
