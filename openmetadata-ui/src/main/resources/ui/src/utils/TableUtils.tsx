@@ -30,6 +30,7 @@ import { EntityTags } from 'Models';
 import React, { CSSProperties } from 'react';
 import { ReactComponent as AnnouncementIcon } from '../assets/svg/announcements-black.svg';
 import { ReactComponent as GlossaryTermIcon } from '../assets/svg/book.svg';
+import { ReactComponent as BotIcon } from '../assets/svg/bot.svg';
 import { ReactComponent as ClassificationIcon } from '../assets/svg/classification.svg';
 import { ReactComponent as ConversationIcon } from '../assets/svg/comment.svg';
 import { ReactComponent as IconDataModel } from '../assets/svg/data-model.svg';
@@ -193,34 +194,6 @@ export const getConstraintIcon = ({
   );
 };
 
-export const getServiceIcon = (source: SourceType) => {
-  const isDataAsset = [
-    EntityType.GLOSSARY,
-    EntityType.GLOSSARY_TERM,
-    EntityType.CLASSIFICATION,
-    EntityType.TAG,
-    EntityType.DATA_PRODUCT,
-    EntityType.DOMAIN,
-    EntityType.TEST_CASE,
-    EntityType.TEST_SUITE,
-    EntityType.EVENT_SUBSCRIPTION,
-  ].includes(source.entityType as EntityType);
-
-  if (isDataAsset) {
-    return getEntityIcon(source.entityType ?? '', 'service-icon h-7', {
-      color: DE_ACTIVE_COLOR,
-    });
-  } else {
-    return (
-      <img
-        alt="service-icon"
-        className="inline service-icon h-7"
-        src={serviceUtilClassBase.getServiceTypeLogo(source)}
-      />
-    );
-  }
-};
-
 export const getEntityIcon = (
   indexType: string,
   iconClass = '',
@@ -367,6 +340,11 @@ export const getEntityIcon = (
 
       break;
 
+    case EntityType.BOT:
+      Icon = BotIcon;
+
+      break;
+
     case SearchIndex.TABLE:
     case EntityType.TABLE:
     default:
@@ -376,6 +354,35 @@ export const getEntityIcon = (
   }
 
   return <Icon className={className} style={style} />;
+};
+
+export const getServiceIcon = (source: SourceType) => {
+  const isDataAsset = [
+    EntityType.GLOSSARY,
+    EntityType.GLOSSARY_TERM,
+    EntityType.CLASSIFICATION,
+    EntityType.TAG,
+    EntityType.DATA_PRODUCT,
+    EntityType.DOMAIN,
+    EntityType.TEST_CASE,
+    EntityType.TEST_SUITE,
+    EntityType.EVENT_SUBSCRIPTION,
+    EntityType.BOT,
+  ].includes(source.entityType as EntityType);
+
+  if (isDataAsset) {
+    return getEntityIcon(source.entityType ?? '', 'service-icon h-7', {
+      color: DE_ACTIVE_COLOR,
+    });
+  } else {
+    return (
+      <img
+        alt="service-icon"
+        className="inline service-icon h-7"
+        src={serviceUtilClassBase.getServiceTypeLogo(source)}
+      />
+    );
+  }
 };
 
 export const makeRow = <T extends Column | SearchIndexField>(column: T) => {

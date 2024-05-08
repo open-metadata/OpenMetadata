@@ -43,6 +43,8 @@ import {
 } from '../components/SearchedData/SearchedData.interface';
 import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
 import {
+  getBotsPagePath,
+  getBotsPath,
   getEntityDetailsPath,
   getGlossaryTermDetailsPath,
   getServiceDetailsPath,
@@ -1768,6 +1770,19 @@ export const getEntityBreadcrumbs = (
 
     case EntityType.TEST_SUITE: {
       return getBreadcrumbForTestSuite(entity as TestSuite);
+    }
+
+    case EntityType.BOT: {
+      return [
+        {
+          name: startCase(EntityType.BOT),
+          url: getBotsPagePath(),
+        },
+        {
+          name: entity.name,
+          url: getBotsPath(entity.fullyQualifiedName ?? ''),
+        },
+      ];
     }
 
     case EntityType.TOPIC:
