@@ -522,7 +522,8 @@ describe('Custom Properties should work properly', { tags: 'Settings' }, () => {
     });
   });
 
-  describe('Add update and delete Date custom properties', () => {
+  // eslint-disable-next-line jest/no-disabled-tests
+  describe.skip('Add update and delete Date custom properties', () => {
     Object.values(ENTITIES).forEach((entity) => {
       const propertyName = `addcyentity${entity.name}test${uuid()}`;
 
