@@ -2,15 +2,22 @@ package org.openmetadata.service.resources.limits;
 
 import io.swagger.v3.oas.annotations.Hidden;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import javax.ws.rs.GET;
 import javax.ws.rs.Path;
+import javax.ws.rs.PathParam;
 import javax.ws.rs.Produces;
+import javax.ws.rs.core.Context;
 import javax.ws.rs.core.MediaType;
+import javax.ws.rs.core.Response;
+import javax.ws.rs.core.SecurityContext;
+import javax.ws.rs.core.UriInfo;
 import org.openmetadata.schema.system.LimitsConfig;
+import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
 
@@ -21,9 +28,28 @@ import org.openmetadata.service.resources.Collection;
 @Collection(name = "limits")
 public class LimitsResource {
   private final Limits limits;
+  private final OpenMetadataApplicationConfig config;
 
-  public LimitsResource(Limits limits) {
+  public LimitsResource(OpenMetadataApplicationConfig config, Limits limits) {
     this.limits = limits;
+    this.config = config;
+  }
+
+  @GET
+  @Path("/features/{name}")
+  @Operation(
+      operationId = "getLimitsForaFeature",
+      summary = "Get Limits configuration for a feature",
+      responses = {
+        @ApiResponse(responseCode = "200", description = "Limits configuration for a feature")
+      })
+  public Response getLimitsForaFeature(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Name of the Feature", schema = @Schema(type = "string"))
+          @PathParam("name")
+          String name) {
+    return limits.getLimitsForaFeature(name);
   }
 
   @GET

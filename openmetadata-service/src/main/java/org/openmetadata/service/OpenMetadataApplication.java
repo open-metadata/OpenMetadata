@@ -548,7 +548,7 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
       LOG.info("Limits config not set, setting DefaultLimits");
       limits = new DefaultLimits();
     }
-    limits.init(limitsConfiguration, jdbi);
+    limits.init(serverConfig, jdbi);
   }
 
   private void registerEventFilter(
