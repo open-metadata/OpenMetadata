@@ -697,7 +697,6 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
     fieldAdded(change, "timezone", timezone);
     fieldAdded(change, "displayName", "displayName");
     fieldAdded(change, "profile", profile);
-    fieldAdded(change, "isBot", false);
     fieldAdded(change, "defaultPersona", DATA_SCIENTIST.getEntityReference());
     fieldAdded(
         change,
@@ -735,7 +734,7 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
     fieldAdded(change, "timezone", timezone1);
     fieldAdded(change, "displayName", "displayName1");
     fieldAdded(change, "profile", profile1);
-    fieldAdded(change, "isBot", true);
+    fieldUpdated(change, "isBot", false, true);
     fieldAdded(change, "defaultPersona", DATA_SCIENTIST.getEntityReference());
     fieldAdded(change, "personas", List.of(DATA_ENGINEER.getEntityReference()));
     user = patchEntityAndCheck(user, origJson, ADMIN_AUTH_HEADERS, CHANGE_CONSOLIDATED, change);
@@ -1366,7 +1365,8 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
     return new CreateUser()
         .withName(entityName)
         .withEmail(emailUser + "@open-metadata.org")
-        .withProfile(PROFILE);
+        .withProfile(PROFILE)
+        .withIsBot(false);
   }
 
   @Override
