@@ -279,3 +279,4 @@ WHERE jsonb_exists(json::jsonb, 'viewDefinition') = true;
 
 UPDATE table_entity SET json = json - 'testSuite'; 
 
+DELETE from event_subscription_entity where name = 'ActivityFeedAlert';

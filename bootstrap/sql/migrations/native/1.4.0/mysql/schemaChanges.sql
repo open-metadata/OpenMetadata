@@ -282,3 +282,5 @@ SET json = JSON_INSERT(
 );
 
 UPDATE table_entity SET json = JSON_REMOVE(json, '$.testSuite');
+
+DELETE from event_subscription_entity where name = 'ActivityFeedAlert';
