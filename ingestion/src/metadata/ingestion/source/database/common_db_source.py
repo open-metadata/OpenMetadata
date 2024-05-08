@@ -371,11 +371,10 @@ class CommonDbSourceService(
                 schema_definition = inspector.get_view_definition(
                     table_name, schema_name
                 )
-            else:
-                if hasattr(inspector, "get_table_ddl"):
-                    schema_definition = inspector.get_table_ddl(
-                        self.connection, table_name, schema_name
-                    )
+            elif hasattr(inspector, "get_table_ddl"):
+                schema_definition = inspector.get_table_ddl(
+                    self.connection, table_name, schema_name
+                )
             schema_definition = (
                 str(schema_definition) if schema_definition is not None else None
             )
