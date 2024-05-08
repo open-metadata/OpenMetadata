@@ -1,10 +1,12 @@
 package org.openmetadata.service.search.elasticsearch;
 
+import static javax.ws.rs.core.Response.Status.NOT_FOUND;
 import static javax.ws.rs.core.Response.Status.OK;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.Entity.FIELD_DESCRIPTION;
 import static org.openmetadata.service.Entity.FIELD_DISPLAY_NAME;
 import static org.openmetadata.service.Entity.FIELD_NAME;
+import static org.openmetadata.service.exception.CatalogGenericExceptionMapper.getResponse;
 import static org.openmetadata.service.search.EntityBuilderConstant.COLUMNS_NAME_KEYWORD;
 import static org.openmetadata.service.search.EntityBuilderConstant.DATA_MODEL_COLUMNS_NAME_KEYWORD;
 import static org.openmetadata.service.search.EntityBuilderConstant.DOMAIN_DISPLAY_NAME_KEYWORD;
@@ -26,19 +28,18 @@ import static org.openmetadata.service.util.FullyQualifiedName.getParentFQN;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import es.org.elasticsearch.ElasticsearchStatusException;
-import es.org.elasticsearch.action.ActionListener;
 import es.org.elasticsearch.action.admin.indices.alias.IndicesAliasesRequest;
 import es.org.elasticsearch.action.admin.indices.delete.DeleteIndexRequest;
 import es.org.elasticsearch.action.bulk.BulkItemResponse;
 import es.org.elasticsearch.action.bulk.BulkRequest;
 import es.org.elasticsearch.action.bulk.BulkResponse;
 import es.org.elasticsearch.action.delete.DeleteRequest;
-import es.org.elasticsearch.action.delete.DeleteResponse;
+import es.org.elasticsearch.action.get.GetRequest;
+import es.org.elasticsearch.action.get.GetResponse;
 import es.org.elasticsearch.action.search.SearchResponse;
 import es.org.elasticsearch.action.support.WriteRequest;
 import es.org.elasticsearch.action.support.master.AcknowledgedResponse;
 import es.org.elasticsearch.action.update.UpdateRequest;
-import es.org.elasticsearch.action.update.UpdateResponse;
 import es.org.elasticsearch.client.RequestOptions;
 import es.org.elasticsearch.client.RestClient;
 import es.org.elasticsearch.client.RestClientBuilder;
@@ -66,7 +67,6 @@ import es.org.elasticsearch.index.query.TermQueryBuilder;
 import es.org.elasticsearch.index.query.functionscore.FunctionScoreQueryBuilder;
 import es.org.elasticsearch.index.query.functionscore.ScoreFunctionBuilders;
 import es.org.elasticsearch.index.query.functionscore.ScriptScoreFunctionBuilder;
-import es.org.elasticsearch.index.reindex.BulkByScrollResponse;
 import es.org.elasticsearch.index.reindex.DeleteByQueryRequest;
 import es.org.elasticsearch.index.reindex.UpdateByQueryRequest;
 import es.org.elasticsearch.rest.RestStatus;
@@ -119,6 +119,7 @@ import java.util.stream.Stream;
 import javax.json.JsonObject;
 import javax.net.ssl.SSLContext;
 import javax.ws.rs.core.Response;
+import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.Pair;
@@ -455,6 +456,27 @@ public class ElasticSearchClient implements SearchClient {
         throw new SearchException(String.format("Search failed due to %s", e.getMessage()));
       }
     }
+  }
+
+  @Override
+  public Response getDocByID(String indexName, String entityId) throws IOException {
+    try {
+      GetRequest request = new GetRequest(indexName, entityId);
+      GetResponse response = client.get(request, RequestOptions.DEFAULT);
+
+      if (response.isExists()) {
+        return Response.status(OK).entity(response.toString()).build();
+      }
+
+    } catch (ElasticsearchStatusException e) {
+      if (e.status() == RestStatus.NOT_FOUND) {
+        throw new SearchIndexNotFoundException(
+            String.format("Failed to to find doc with id %s", entityId));
+      } else {
+        throw new SearchException(String.format("Search failed due to %s", e.getMessage()));
+      }
+    }
+    return getResponse(NOT_FOUND, "Document not found.");
   }
 
   public List<?> buildSearchHierarchy(SearchRequest request, SearchResponse searchResponse) {
@@ -1395,10 +1417,12 @@ public class ElasticSearchClient implements SearchClient {
   }
 
   @Override
-  public void deleteEntityByFields(String indexName, List<Pair<String, String>> fieldAndValue) {
+  public void deleteEntityByFields(
+      List<String> indexName, List<Pair<String, String>> fieldAndValue) {
     if (isClientAvailable) {
       BoolQueryBuilder queryBuilder = new BoolQueryBuilder();
-      DeleteByQueryRequest deleteByQueryRequest = new DeleteByQueryRequest(indexName);
+      DeleteByQueryRequest deleteByQueryRequest =
+          new DeleteByQueryRequest(indexName.toArray(new String[indexName.size()]));
       for (Pair<String, String> p : fieldAndValue) {
         queryBuilder.must(new TermQueryBuilder(p.getKey(), p.getValue()));
       }
@@ -1420,9 +1444,10 @@ public class ElasticSearchClient implements SearchClient {
 
   @Override
   public void softDeleteOrRestoreChildren(
-      String indexName, String scriptTxt, List<Pair<String, String>> fieldAndValue) {
+      List<String> indexName, String scriptTxt, List<Pair<String, String>> fieldAndValue) {
     if (isClientAvailable) {
-      UpdateByQueryRequest updateByQueryRequest = new UpdateByQueryRequest(indexName);
+      UpdateByQueryRequest updateByQueryRequest =
+          new UpdateByQueryRequest(indexName.toArray(new String[indexName.size()]));
       BoolQueryBuilder queryBuilder = new BoolQueryBuilder();
       for (Pair<String, String> p : fieldAndValue) {
         queryBuilder.must(new TermQueryBuilder(p.getKey(), p.getValue()));
@@ -1557,43 +1582,21 @@ public class ElasticSearchClient implements SearchClient {
     }
   }
 
+  @SneakyThrows
   public void updateElasticSearch(UpdateRequest updateRequest) {
     if (updateRequest != null && isClientAvailable) {
       updateRequest.setRefreshPolicy(WriteRequest.RefreshPolicy.IMMEDIATE);
       LOG.debug(UpdateSearchEventsConstant.SENDING_REQUEST_TO_ELASTIC_SEARCH, updateRequest);
-      ActionListener<UpdateResponse> listener =
-          new ActionListener<>() {
-            @Override
-            public void onResponse(UpdateResponse updateResponse) {
-              LOG.debug("Created successfully: " + updateResponse.toString());
-            }
-
-            @Override
-            public void onFailure(Exception e) {
-              LOG.error("Creation failed: " + e.getMessage());
-            }
-          };
-      client.updateAsync(updateRequest, RequestOptions.DEFAULT, listener);
+      client.update(updateRequest, RequestOptions.DEFAULT);
     }
   }
 
+  @SneakyThrows
   private void updateElasticSearchByQuery(UpdateByQueryRequest updateByQueryRequest) {
     if (updateByQueryRequest != null && isClientAvailable) {
       updateByQueryRequest.setRefresh(true);
       LOG.debug(SENDING_REQUEST_TO_ELASTIC_SEARCH, updateByQueryRequest);
-      ActionListener<BulkByScrollResponse> listener =
-          new ActionListener<>() {
-            @Override
-            public void onResponse(BulkByScrollResponse response) {
-              LOG.debug("Update by query succeeded: " + response.toString());
-            }
-
-            @Override
-            public void onFailure(Exception e) {
-              LOG.error("Update by query failed: " + e.getMessage());
-            }
-          };
-      client.updateByQueryAsync(updateByQueryRequest, RequestOptions.DEFAULT, listener);
+      client.updateByQuery(updateByQueryRequest, RequestOptions.DEFAULT);
     }
   }
 
@@ -1607,44 +1610,22 @@ public class ElasticSearchClient implements SearchClient {
     }
   }
 
+  @SneakyThrows
   private void deleteEntityFromElasticSearch(DeleteRequest deleteRequest) {
     if (deleteRequest != null && isClientAvailable) {
       deleteRequest.setRefreshPolicy(WriteRequest.RefreshPolicy.IMMEDIATE);
       LOG.debug(UpdateSearchEventsConstant.SENDING_REQUEST_TO_ELASTIC_SEARCH, deleteRequest);
-      ActionListener<DeleteResponse> listener =
-          new ActionListener<>() {
-            @Override
-            public void onResponse(DeleteResponse response) {
-              LOG.debug("Delete succeeded: " + response.toString());
-            }
-
-            @Override
-            public void onFailure(Exception e) {
-              LOG.error("Delete failed: " + e.getMessage());
-            }
-          };
       deleteRequest.setRefreshPolicy(WriteRequest.RefreshPolicy.WAIT_UNTIL);
-      client.deleteAsync(deleteRequest, RequestOptions.DEFAULT, listener);
+      client.delete(deleteRequest, RequestOptions.DEFAULT);
     }
   }
 
+  @SneakyThrows
   private void deleteEntityFromElasticSearchByQuery(DeleteByQueryRequest deleteRequest) {
     if (deleteRequest != null && isClientAvailable) {
       LOG.debug(UpdateSearchEventsConstant.SENDING_REQUEST_TO_ELASTIC_SEARCH, deleteRequest);
       deleteRequest.setRefresh(true);
-      ActionListener<BulkByScrollResponse> listener =
-          new ActionListener<>() {
-            @Override
-            public void onResponse(BulkByScrollResponse response) {
-              LOG.debug("Delete by query succeeded: " + response.toString());
-            }
-
-            @Override
-            public void onFailure(Exception e) {
-              LOG.error("Delete by query failed: " + e.getMessage());
-            }
-          };
-      client.deleteByQueryAsync(deleteRequest, RequestOptions.DEFAULT, listener);
+      client.deleteByQuery(deleteRequest, RequestOptions.DEFAULT);
     }
   }
 

@@ -31,6 +31,9 @@
       },
       "default": null
     },
+    "dataModel": {
+      "$ref": "../../entity/data/table.json#/definitions/dataModel"
+    },
     "tableConstraints": {
       "type": "array",
       "items": {
@@ -61,8 +64,8 @@
       },
       "default": null
     },
-    "viewDefinition": {
-      "description": "View Definition in SQL. Applies to TableType.View only",
+    "schemaDefinition": {
+      "description": "DDL for Tables and Views",
       "$ref": "../../type/basic.json#/definitions/sqlQuery",
       "default": null
     },

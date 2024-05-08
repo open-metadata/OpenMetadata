@@ -286,7 +286,6 @@ source:
   sourceConfig:
     config:
       type: DashboardMetadata
-      overrideOwner: True
       # dbServiceNames:
       #   - service1
       #   - service2

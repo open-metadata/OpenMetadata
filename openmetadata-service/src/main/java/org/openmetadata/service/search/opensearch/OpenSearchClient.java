@@ -1,10 +1,12 @@
 package org.openmetadata.service.search.opensearch;
 
+import static javax.ws.rs.core.Response.Status.NOT_FOUND;
 import static javax.ws.rs.core.Response.Status.OK;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.Entity.FIELD_DESCRIPTION;
 import static org.openmetadata.service.Entity.FIELD_DISPLAY_NAME;
 import static org.openmetadata.service.Entity.FIELD_NAME;
+import static org.openmetadata.service.exception.CatalogGenericExceptionMapper.getResponse;
 import static org.openmetadata.service.search.EntityBuilderConstant.COLUMNS_NAME_KEYWORD;
 import static org.openmetadata.service.search.EntityBuilderConstant.DATA_MODEL_COLUMNS_NAME_KEYWORD;
 import static org.openmetadata.service.search.EntityBuilderConstant.DOMAIN_DISPLAY_NAME_KEYWORD;
@@ -45,6 +47,7 @@ import java.util.stream.Stream;
 import javax.json.JsonObject;
 import javax.net.ssl.SSLContext;
 import javax.ws.rs.core.Response;
+import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.Pair;
@@ -104,20 +107,20 @@ import org.openmetadata.service.search.opensearch.dataInsightAggregator.OpenSear
 import org.openmetadata.service.search.opensearch.dataInsightAggregator.OpenSearchUnusedAssetsAggregator;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.workflows.searchIndex.ReindexingUtil;
+import os.org.opensearch.OpenSearchException;
 import os.org.opensearch.OpenSearchStatusException;
-import os.org.opensearch.action.ActionListener;
 import os.org.opensearch.action.admin.indices.alias.IndicesAliasesRequest;
 import os.org.opensearch.action.admin.indices.delete.DeleteIndexRequest;
 import os.org.opensearch.action.bulk.BulkItemResponse;
 import os.org.opensearch.action.bulk.BulkRequest;
 import os.org.opensearch.action.bulk.BulkResponse;
 import os.org.opensearch.action.delete.DeleteRequest;
-import os.org.opensearch.action.delete.DeleteResponse;
+import os.org.opensearch.action.get.GetRequest;
+import os.org.opensearch.action.get.GetResponse;
 import os.org.opensearch.action.search.SearchResponse;
 import os.org.opensearch.action.support.WriteRequest;
 import os.org.opensearch.action.support.master.AcknowledgedResponse;
 import os.org.opensearch.action.update.UpdateRequest;
-import os.org.opensearch.action.update.UpdateResponse;
 import os.org.opensearch.client.RequestOptions;
 import os.org.opensearch.client.RestClient;
 import os.org.opensearch.client.RestClientBuilder;
@@ -147,7 +150,6 @@ import os.org.opensearch.index.query.TermQueryBuilder;
 import os.org.opensearch.index.query.functionscore.FunctionScoreQueryBuilder;
 import os.org.opensearch.index.query.functionscore.ScoreFunctionBuilders;
 import os.org.opensearch.index.query.functionscore.ScriptScoreFunctionBuilder;
-import os.org.opensearch.index.reindex.BulkByScrollResponse;
 import os.org.opensearch.index.reindex.DeleteByQueryRequest;
 import os.org.opensearch.index.reindex.UpdateByQueryRequest;
 import os.org.opensearch.rest.RestStatus;
@@ -445,6 +447,27 @@ public class OpenSearchClient implements SearchClient {
       throw new SearchIndexNotFoundException(
           String.format("Failed to to find index %s", request.getIndex()));
     }
+  }
+
+  @Override
+  public Response getDocByID(String indexName, String entityId) throws IOException {
+    try {
+      GetRequest request = new GetRequest(indexName, entityId);
+      GetResponse response = client.get(request, RequestOptions.DEFAULT);
+
+      if (response.isExists()) {
+        return Response.status(OK).entity(response.toString()).build();
+      }
+
+    } catch (OpenSearchException e) {
+      if (e.status() == RestStatus.NOT_FOUND) {
+        throw new SearchIndexNotFoundException(
+            String.format("Failed to to find doc with id %s", entityId));
+      } else {
+        throw new SearchException(String.format("Search failed due to %s", e.getMessage()));
+      }
+    }
+    return getResponse(NOT_FOUND, "Document not found.");
   }
 
   public List<?> buildSearchHierarchy(SearchRequest request, SearchResponse searchResponse) {
@@ -969,24 +992,13 @@ public class OpenSearchClient implements SearchClient {
     return jsonResponse.getJsonObject("aggregations");
   }
 
+  @SneakyThrows
   public void updateSearch(UpdateRequest updateRequest) {
     if (updateRequest != null) {
       updateRequest.docAsUpsert(true);
       updateRequest.setRefreshPolicy(WriteRequest.RefreshPolicy.IMMEDIATE);
       LOG.debug(SENDING_REQUEST_TO_ELASTIC_SEARCH, updateRequest);
-      ActionListener<UpdateResponse> listener =
-          new ActionListener<>() {
-            @Override
-            public void onResponse(UpdateResponse updateResponse) {
-              LOG.debug("Entity Updated successfully: " + updateResponse.toString());
-            }
-
-            @Override
-            public void onFailure(Exception e) {
-              LOG.error("Entity Update failed: " + e.getMessage());
-            }
-          };
-      client.updateAsync(updateRequest, RequestOptions.DEFAULT, listener);
+      client.update(updateRequest, RequestOptions.DEFAULT);
     }
   }
 
@@ -1391,10 +1403,12 @@ public class OpenSearchClient implements SearchClient {
   }
 
   @Override
-  public void deleteEntityByFields(String indexName, List<Pair<String, String>> fieldAndValue) {
+  public void deleteEntityByFields(
+      List<String> indexName, List<Pair<String, String>> fieldAndValue) {
     if (isClientAvailable) {
       BoolQueryBuilder queryBuilder = new BoolQueryBuilder();
-      DeleteByQueryRequest deleteByQueryRequest = new DeleteByQueryRequest(indexName);
+      DeleteByQueryRequest deleteByQueryRequest =
+          new DeleteByQueryRequest(indexName.toArray(new String[indexName.size()]));
       for (Pair<String, String> p : fieldAndValue) {
         queryBuilder.must(new TermQueryBuilder(p.getKey(), p.getValue()));
       }
@@ -1416,9 +1430,10 @@ public class OpenSearchClient implements SearchClient {
 
   @Override
   public void softDeleteOrRestoreChildren(
-      String indexName, String scriptTxt, List<Pair<String, String>> fieldAndValue) {
+      List<String> indexName, String scriptTxt, List<Pair<String, String>> fieldAndValue) {
     if (isClientAvailable) {
-      UpdateByQueryRequest updateByQueryRequest = new UpdateByQueryRequest(indexName);
+      UpdateByQueryRequest updateByQueryRequest =
+          new UpdateByQueryRequest(indexName.toArray(new String[indexName.size()]));
       BoolQueryBuilder queryBuilder = new BoolQueryBuilder();
       for (Pair<String, String> p : fieldAndValue) {
         queryBuilder.must(new TermQueryBuilder(p.getKey(), p.getValue()));
@@ -1554,82 +1569,37 @@ public class OpenSearchClient implements SearchClient {
     }
   }
 
+  @SneakyThrows
   private void updateOpenSearchByQuery(UpdateByQueryRequest updateByQueryRequest) {
     if (updateByQueryRequest != null && isClientAvailable) {
       updateByQueryRequest.setRefresh(true);
       LOG.debug(SENDING_REQUEST_TO_ELASTIC_SEARCH, updateByQueryRequest);
-      ActionListener<BulkByScrollResponse> listener =
-          new ActionListener<>() {
-            @Override
-            public void onResponse(BulkByScrollResponse response) {
-              LOG.debug("Update by query succeeded: " + response.toString());
-            }
-
-            @Override
-            public void onFailure(Exception e) {
-              LOG.error("Update by query failed: " + e.getMessage());
-            }
-          };
-      client.updateByQueryAsync(updateByQueryRequest, RequestOptions.DEFAULT, listener);
+      client.updateByQuery(updateByQueryRequest, RequestOptions.DEFAULT);
     }
   }
 
+  @SneakyThrows
   public void updateOpenSearch(UpdateRequest updateRequest) {
     if (updateRequest != null && isClientAvailable) {
       updateRequest.setRefreshPolicy(WriteRequest.RefreshPolicy.IMMEDIATE);
       LOG.debug(SENDING_REQUEST_TO_ELASTIC_SEARCH, updateRequest);
-      ActionListener<UpdateResponse> listener =
-          new ActionListener<>() {
-            @Override
-            public void onResponse(UpdateResponse updateResponse) {
-              LOG.debug("Entity Updated successfully: " + updateResponse.toString());
-            }
-
-            @Override
-            public void onFailure(Exception e) {
-              LOG.error("Entity Update failed: " + e.getMessage());
-            }
-          };
-      client.updateAsync(updateRequest, RequestOptions.DEFAULT, listener);
+      client.update(updateRequest, RequestOptions.DEFAULT);
     }
   }
 
+  @SneakyThrows
   private void deleteEntityFromOpenSearch(DeleteRequest deleteRequest) {
     if (deleteRequest != null && isClientAvailable) {
       LOG.debug(SENDING_REQUEST_TO_ELASTIC_SEARCH, deleteRequest);
-      ActionListener<DeleteResponse> listener =
-          new ActionListener<>() {
-            @Override
-            public void onResponse(DeleteResponse response) {
-              LOG.debug("Delete succeeded: " + response.toString());
-            }
-
-            @Override
-            public void onFailure(Exception e) {
-              LOG.error("Delete failed: " + e.getMessage());
-            }
-          };
-      deleteRequest.setRefreshPolicy(WriteRequest.RefreshPolicy.WAIT_UNTIL);
-      client.deleteAsync(deleteRequest, RequestOptions.DEFAULT, listener);
+      client.delete(deleteRequest, RequestOptions.DEFAULT);
     }
   }
 
+  @SneakyThrows
   private void deleteEntityFromOpenSearchByQuery(DeleteByQueryRequest deleteRequest) {
     if (deleteRequest != null && isClientAvailable) {
       deleteRequest.setRefresh(true);
-      ActionListener<BulkByScrollResponse> listener =
-          new ActionListener<>() {
-            @Override
-            public void onResponse(BulkByScrollResponse response) {
-              LOG.debug("Delete by query succeeded: " + response.toString());
-            }
-
-            @Override
-            public void onFailure(Exception e) {
-              LOG.error("Delete by query failed: " + e.getMessage());
-            }
-          };
-      client.deleteByQueryAsync(deleteRequest, RequestOptions.DEFAULT, listener);
+      client.deleteByQuery(deleteRequest, RequestOptions.DEFAULT);
     }
   }
 

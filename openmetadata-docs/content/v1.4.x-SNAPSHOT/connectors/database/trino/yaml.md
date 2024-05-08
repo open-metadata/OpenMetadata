@@ -74,6 +74,32 @@ This is a sample config for Trino:
     - **password**: Password to connect to Trino.
   - **JWT Auth Config**:
     - **jwt**: JWT can be used to authenticate with trino. Follow the steps in the [official trino](https://trino.io/docs/current/security/jwt.html) documentation to setup trino with jwt.
+  - **Azure**: 
+    - **clientId**: To get the Client ID (also known as application ID), follow these steps:
+        1. Log into [Microsoft Azure](https://ms.portal.azure.com/#allservices).
+        2. Search for `App registrations` and select the `App registrations link`.
+        3. Select the `Azure AD` app you're using for Trino.
+        4. From the Overview section, copy the `Application (client) ID`.
+    - **clientSecret**: To get the client secret, follow these steps:
+        1. Log into [Microsoft Azure](https://ms.portal.azure.com/#allservices).
+        2. Search for `App registrations` and select the `App registrations link`.
+        3. Select the `Azure AD` app you're using for Trino.
+        4. Under `Manage`, select `Certificates & secrets`.
+        5. Under `Client secrets`, select `New client secret`.
+        6. In the `Add a client secret` pop-up window, provide a description for your application secret. Choose when the application should expire, and select `Add`.
+        7. From the `Client secrets` section, copy the string in the `Value` column of the newly created application secret.
+    - **tenantId**: To get the tenant ID, follow these steps:
+        1. Log into [Microsoft Azure](https://ms.portal.azure.com/#allservices).
+        2. Search for `App registrations` and select the `App registrations link`.
+        3. Select the `Azure AD` app you're using for Trino.
+        4. From the `Overview` section, copy the `Directory (tenant) ID`.
+    - **scopes**: To let OM use the Trino Auth APIs using your Azure AD app, you'll need to add the scope
+        1. Log into [Microsoft Azure](https://ms.portal.azure.com/#allservices).
+        2. Search for `App registrations` and select the `App registrations link`.
+        3. Select the `Azure AD` app you're using for Trino.
+        4. From the `Expose an API` section, copy the `Application ID URI`
+        5. Make sure the URI ends with `/.default` in case it does not, you can append the same manually
+
 
 {% /codeInfo %}
 
@@ -150,6 +176,11 @@ source:
         password: password
       # # For JWT auth
       #   jwt: jwt_token
+      #   azureConfig:
+      #     clientId: your-client-id
+      #     clientSecret: your-client-secret
+      #     tenantId: your-tenant-id
+      #     scopes: https://your-scope/.default
 ```
 ```yaml {% srNumber=4 %}
       catalog: <catalog>

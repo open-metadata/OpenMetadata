@@ -54,7 +54,6 @@ ALTER TABLE dashboard_service_entity ADD INDEX index_dashboard_service_entity_de
 ALTER TABLE dbservice_entity ADD INDEX index_dbservice_entity_deleted(nameHash, deleted);
 ALTER TABLE glossary_entity ADD INDEX index_glossary_entity_deleted(nameHash, deleted);
 ALTER TABLE installed_apps ADD INDEX index_installed_apps_deleted(nameHash, deleted);
-ALTER TABLE knowledge_center ADD INDEX index_knowledge_center_deleted(nameHash, deleted);
 ALTER TABLE kpi_entity ADD INDEX index_kpi_entity_deleted(nameHash, deleted);
 ALTER TABLE messaging_service_entity ADD INDEX index_messaging_service_entity_deleted(nameHash, deleted);
 ALTER TABLE metadata_service_entity ADD INDEX index_metadata_service_entity_deleted(nameHash, deleted);
@@ -273,3 +272,13 @@ SET json = JSON_INSERT(
     
 where serviceType = 'OpenLineage'
   AND JSON_EXTRACT(json, '$.connection.config.SSLCALocation') IS NOT NULL;
+
+-- Change viewDefinition to schemaDefinition
+UPDATE table_entity
+SET json = JSON_INSERT(
+    JSON_REMOVE(json, '$.viewDefinition'),
+    '$.schemaDefinition',
+    JSON_EXTRACT(json, '$.viewDefinition')
+);
+
+UPDATE table_entity SET json = JSON_REMOVE(json, '$.testSuite');
