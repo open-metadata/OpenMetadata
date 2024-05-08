@@ -285,17 +285,13 @@ export const PropertyValue: FC<PropertyValueProps> = ({
               layout="vertical"
               validateMessages={VALIDATION_MESSAGES}
               onFinish={(values: { time: Moment }) => {
-                onInputSave(values.time.format(format));
+                onInputSave(
+                  values.time ? values.time.format(format) : values.time // If time is cleared and set undefined
+                );
               }}>
-              <Form.Item
-                name="time"
-                rules={[
-                  {
-                    required: true,
-                  },
-                ]}
-                style={commonStyle}>
+              <Form.Item name="time" style={commonStyle}>
                 <TimePicker
+                  allowClear
                   data-testid="time-picker"
                   disabled={isLoading}
                   style={{ width: '250px' }}
