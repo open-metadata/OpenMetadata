@@ -53,7 +53,7 @@ export const CopyToClipboardButton: FunctionComponent<Props> = ({
         )
       }>
       <Button
-        className="h-8 m-l-md relative"
+        className="h-8 m-l-md relative flex-center"
         data-testid="copy-secret"
         icon={<CopyIcon data-testid="copy-icon" width="16" />}
         type="text"

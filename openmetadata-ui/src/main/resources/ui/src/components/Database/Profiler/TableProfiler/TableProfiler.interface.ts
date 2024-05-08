@@ -24,13 +24,14 @@ import {
   TableProfile,
   TableProfilerConfig,
 } from '../../../../generated/entity/data/table';
-import { TestCase } from '../../../../generated/tests/testCase';
+import { TestCase, TestSummary } from '../../../../generated/tests/testCase';
 import { UsePagingInterface } from '../../../../hooks/paging/usePaging';
 import { ListTestCaseParams } from '../../../../rest/testAPI';
 
 export interface TableProfilerProps {
   permissions: OperationPermission;
   table?: Table;
+  testCaseSummary?: TestSummary;
 }
 
 export interface TableProfilerProviderProps extends TableProfilerProps {
@@ -39,6 +40,7 @@ export interface TableProfilerProviderProps extends TableProfilerProps {
 
 export interface TableProfilerContextInterface {
   isTableDeleted?: boolean;
+  testCaseSummary?: TestSummary;
   permissions: OperationPermission;
   isTestsLoading: boolean;
   isProfilerDataLoading: boolean;
