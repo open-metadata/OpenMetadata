@@ -27,7 +27,7 @@ import {
   upperCase,
 } from 'lodash';
 import { EntityTags } from 'Models';
-import React from 'react';
+import React, { CSSProperties } from 'react';
 import { ReactComponent as AnnouncementIcon } from '../assets/svg/announcements-black.svg';
 import { ReactComponent as GlossaryTermIcon } from '../assets/svg/book.svg';
 import { ReactComponent as ClassificationIcon } from '../assets/svg/classification.svg';
@@ -40,10 +40,7 @@ import { ReactComponent as GlossaryIcon } from '../assets/svg/glossary.svg';
 import { ReactComponent as AlertIcon } from '../assets/svg/ic-alert.svg';
 import { ReactComponent as IconDown } from '../assets/svg/ic-arrow-down.svg';
 import { ReactComponent as IconRight } from '../assets/svg/ic-arrow-right.svg';
-import {
-  ReactComponent as IconTestSuite,
-  ReactComponent as TestCaseIcon,
-} from '../assets/svg/ic-checklist.svg';
+import { ReactComponent as IconTestSuite } from '../assets/svg/ic-checklist.svg';
 import { ReactComponent as DashboardIcon } from '../assets/svg/ic-dashboard.svg';
 import { ReactComponent as DataProductIcon } from '../assets/svg/ic-data-product.svg';
 import { ReactComponent as DatabaseIcon } from '../assets/svg/ic-database.svg';
@@ -197,62 +194,22 @@ export const getConstraintIcon = ({
 };
 
 export const getServiceIcon = (source: SourceType) => {
-  if (source.entityType === EntityType.GLOSSARY) {
-    return (
-      <GlossaryIcon
-        className="service-icon h-7"
-        style={{ color: DE_ACTIVE_COLOR }}
-      />
-    );
-  } else if (source.entityType === EntityType.GLOSSARY_TERM) {
-    return (
-      <GlossaryTermIcon
-        className="service-icon h-7"
-        style={{ color: DE_ACTIVE_COLOR }}
-      />
-    );
-  } else if (source.entityType === EntityType.CLASSIFICATION) {
-    return (
-      <ClassificationIcon
-        className="service-icon h-7"
-        style={{ color: DE_ACTIVE_COLOR }}
-      />
-    );
-  } else if (source.entityType === EntityType.TAG) {
-    return (
-      <TagIcon
-        className="service-icon h-7"
-        style={{ color: DE_ACTIVE_COLOR }}
-      />
-    );
-  } else if (source.entityType === EntityType.DATA_PRODUCT) {
-    return (
-      <DataProductIcon
-        className="service-icon h-7"
-        style={{ color: DE_ACTIVE_COLOR }}
-      />
-    );
-  } else if (source.entityType === EntityType.DOMAIN) {
-    return (
-      <DomainIcon
-        className="service-icon h-7"
-        style={{ color: DE_ACTIVE_COLOR }}
-      />
-    );
-  } else if (source.entityType === EntityType.TEST_CASE) {
-    return (
-      <TestCaseIcon
-        className="service-icon h-7"
-        style={{ color: DE_ACTIVE_COLOR }}
-      />
-    );
-  } else if (source.entityType === EntityType.EVENT_SUBSCRIPTION) {
-    return (
-      <AlertIcon
-        className="service-icon h-7"
-        style={{ color: DE_ACTIVE_COLOR }}
-      />
-    );
+  const isDataAsset = [
+    EntityType.GLOSSARY,
+    EntityType.GLOSSARY_TERM,
+    EntityType.CLASSIFICATION,
+    EntityType.TAG,
+    EntityType.DATA_PRODUCT,
+    EntityType.DOMAIN,
+    EntityType.TEST_CASE,
+    EntityType.TEST_SUITE,
+    EntityType.EVENT_SUBSCRIPTION,
+  ].includes(source.entityType as EntityType);
+
+  if (isDataAsset) {
+    return getEntityIcon(source.entityType ?? '', 'service-icon h-7', {
+      color: DE_ACTIVE_COLOR,
+    });
   } else {
     return (
       <img
@@ -264,103 +221,161 @@ export const getServiceIcon = (source: SourceType) => {
   }
 };
 
-export const getEntityIcon = (indexType: string) => {
+export const getEntityIcon = (
+  indexType: string,
+  iconClass = '',
+  iconStyle = {}
+) => {
+  let Icon;
+  let className = iconClass;
+  const style: CSSProperties = iconStyle;
+
   switch (indexType) {
     case SearchIndex.DATABASE:
     case EntityType.DATABASE:
-      return <DatabaseIcon />;
+      Icon = DatabaseIcon;
+
+      break;
 
     case SearchIndex.DATABASE_SCHEMA:
     case EntityType.DATABASE_SCHEMA:
-      return <SchemaIcon />;
+      Icon = SchemaIcon;
+
+      break;
 
     case SearchIndex.TOPIC:
     case EntityType.TOPIC:
     case EntityType.MESSAGING_SERVICE:
     case SearchIndex.MESSAGING_SERVICE:
-      return <TopicIcon />;
+      Icon = TopicIcon;
+
+      break;
 
     case SearchIndex.DASHBOARD:
     case EntityType.DASHBOARD:
     case EntityType.DASHBOARD_SERVICE:
     case SearchIndex.DASHBOARD_SERVICE:
-      return <DashboardIcon />;
+      Icon = DashboardIcon;
+
+      break;
 
     case SearchIndex.MLMODEL:
     case EntityType.MLMODEL:
     case EntityType.MLMODEL_SERVICE:
     case SearchIndex.ML_MODEL_SERVICE:
-      return <MlModelIcon />;
+      Icon = MlModelIcon;
+
+      break;
 
     case SearchIndex.PIPELINE:
     case EntityType.PIPELINE:
     case EntityType.PIPELINE_SERVICE:
     case SearchIndex.PIPELINE_SERVICE:
     case 'ingestionPipeline':
-      return <PipelineIcon />;
+      Icon = PipelineIcon;
+
+      break;
 
     case SearchIndex.CONTAINER:
     case EntityType.CONTAINER:
     case EntityType.STORAGE_SERVICE:
     case SearchIndex.STORAGE_SERVICE:
-      return <ContainerIcon />;
+      Icon = ContainerIcon;
+
+      break;
 
     case SearchIndex.DASHBOARD_DATA_MODEL:
     case EntityType.DASHBOARD_DATA_MODEL:
-      return <IconDataModel />;
+      Icon = IconDataModel;
+
+      break;
 
     case SearchIndex.STORED_PROCEDURE:
     case EntityType.STORED_PROCEDURE:
-      return <IconStoredProcedure />;
+      Icon = IconStoredProcedure;
+
+      break;
 
     case EntityType.CLASSIFICATION:
     case 'tagCategory':
-      return <ClassificationIcon />;
+      Icon = ClassificationIcon;
+
+      break;
 
     case SearchIndex.TAG:
     case EntityType.TAG:
-      return <TagIcon />;
+      Icon = TagIcon;
+
+      break;
+
     case SearchIndex.GLOSSARY:
     case EntityType.GLOSSARY:
-      return <GlossaryIcon />;
+      Icon = GlossaryIcon;
+
+      break;
+
     case EntityType.GLOSSARY_TERM:
     case SearchIndex.GLOSSARY_TERM:
-      return <GlossaryTermIcon />;
+      Icon = GlossaryTermIcon;
+
+      break;
+
     case EntityType.SEARCH_INDEX:
     case SearchIndex.SEARCH_INDEX:
     case EntityType.SEARCH_SERVICE:
     case SearchIndex.SEARCH_SERVICE:
-      return <SearchOutlined className="text-sm text-inherit" />;
+      Icon = SearchOutlined;
+      className = 'text-sm text-inherit';
+
+      break;
 
     case EntityType.DOMAIN:
     case SearchIndex.DOMAIN:
-      return <DomainIcon />;
+      Icon = DomainIcon;
+
+      break;
 
     case EntityType.DATA_PRODUCT:
     case SearchIndex.DATA_PRODUCT:
-      return <DataProductIcon />;
+      Icon = DataProductIcon;
+
+      break;
 
     case 'announcement':
-      return <AnnouncementIcon />;
+      Icon = AnnouncementIcon;
+
+      break;
 
     case 'conversation':
-      return <ConversationIcon />;
+      Icon = ConversationIcon;
+
+      break;
 
     case 'task':
-      return <TaskIcon />;
+      Icon = TaskIcon;
+
+      break;
 
     case EntityType.EVENT_SUBSCRIPTION:
-      return <AlertIcon />;
+      Icon = AlertIcon;
+
+      break;
 
     case EntityType.TEST_CASE:
     case EntityType.TEST_SUITE:
-      return <IconTestSuite />;
+      Icon = IconTestSuite;
+
+      break;
 
     case SearchIndex.TABLE:
     case EntityType.TABLE:
     default:
-      return <TableIcon />;
+      Icon = TableIcon;
+
+      break;
   }
+
+  return <Icon className={className} style={style} />;
 };
 
 export const makeRow = <T extends Column | SearchIndexField>(column: T) => {

@@ -84,12 +84,13 @@ import {
 } from '../generated/entity/data/table';
 import { Topic } from '../generated/entity/data/topic';
 import { DataProduct } from '../generated/entity/domains/dataProduct';
-import { TestCase } from '../generated/tests/testCase';
+import { TestCase, TestSuite } from '../generated/tests/testCase';
 import { Edge, EntityLineage } from '../generated/type/entityLineage';
 import { EntityReference } from '../generated/type/entityUsage';
 import { TagLabel } from '../generated/type/tagLabel';
 import { UsageDetails } from '../generated/type/usageDetails';
 import { Votes } from '../generated/type/votes';
+import { DataQualityPageTabs } from '../pages/DataQuality/DataQualityPage.interface';
 import {
   getOwnerValue,
   getPartialNameFromTableFQN,
@@ -99,6 +100,7 @@ import EntityLink from './EntityLink';
 import { BasicEntityOverviewInfo } from './EntityUtils.interface';
 import Fqn from './Fqn';
 import {
+  getDataQualityPagePath,
   getDomainDetailsPath,
   getDomainPath,
   getGlossaryPath,
@@ -1480,6 +1482,33 @@ export const getBreadcrumbForTestCase = (entity: TestCase) => [
   },
 ];
 
+export const getBreadcrumbForTestSuite = (entity: TestSuite) => {
+  return entity.executable
+    ? [
+        {
+          name: getEntityName(entity.executableEntityReference),
+          url: getEntityLinkFromType(
+            entity.executableEntityReference?.fullyQualifiedName ?? '',
+            EntityType.TABLE
+          ),
+        },
+        {
+          name: t('label.test-suite'),
+          url: '',
+        },
+      ]
+    : [
+        {
+          name: t('label.test-suite-plural'),
+          url: getDataQualityPagePath(DataQualityPageTabs.TEST_SUITES),
+        },
+        {
+          name: getEntityName(entity),
+          url: '',
+        },
+      ];
+};
+
 export const getEntityBreadcrumbs = (
   entity:
     | SearchedDataProps['data'][number]['_source']
@@ -1724,6 +1753,10 @@ export const getEntityBreadcrumbs = (
           ),
         },
       ];
+    }
+
+    case EntityType.TEST_SUITE: {
+      return getBreadcrumbForTestSuite(entity as TestSuite);
     }
 
     case EntityType.TOPIC:

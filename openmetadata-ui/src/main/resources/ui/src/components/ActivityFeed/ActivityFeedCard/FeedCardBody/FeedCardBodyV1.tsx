@@ -20,6 +20,7 @@ import { Link } from 'react-router-dom';
 import ActivityFeedEditor from '../../../../components/ActivityFeed/ActivityFeedEditor/ActivityFeedEditor';
 import RichTextEditorPreviewer from '../../../../components/common/RichTextEditor/RichTextEditorPreviewer';
 import { ASSET_CARD_STYLES } from '../../../../constants/Feeds.constants';
+import { EntityType } from '../../../../enums/entity.enum';
 import { CardStyle } from '../../../../generated/entity/feed/thread';
 import { formatDateTime } from '../../../../utils/date-time/DateTimeUtils';
 import entityUtilClassBase from '../../../../utils/EntityUtilClassBase';
@@ -120,6 +121,9 @@ const FeedCardBodyV1 = ({
 
       if (ASSET_CARD_STYLES.includes(cardStyle as CardStyle)) {
         const entityInfo = feed.feedInfo?.entitySpecificInfo?.entity;
+        const isExecutableTestSuite =
+          entityType === EntityType.TEST_SUITE && entityInfo.executable;
+
         const entityCard = (
           <ExploreSearchCard
             className="asset-info-card"
@@ -133,8 +137,14 @@ const FeedCardBodyV1 = ({
           entityCard
         ) : (
           <Link
-            className="no-underline"
-            to={entityUtilClassBase.getEntityLink(entityType, entityFQN)}>
+            className="no-underline text-body text-hover-body"
+            to={entityUtilClassBase.getEntityLink(
+              entityType,
+              entityFQN,
+              '',
+              '',
+              isExecutableTestSuite
+            )}>
             {entityCard}
           </Link>
         );
