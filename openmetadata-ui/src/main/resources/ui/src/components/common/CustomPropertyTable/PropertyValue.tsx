@@ -27,6 +27,7 @@ import { t } from 'i18next';
 import {
   isArray,
   isEmpty,
+  isNil,
   isUndefined,
   noop,
   omitBy,
@@ -94,7 +95,9 @@ export const PropertyValue: FC<PropertyValueProps> = ({
 
     const enumValue = isArrayType ? updatedValue : [updatedValue];
 
-    const propertyValue = isEnum ? enumValue.filter(Boolean) : updatedValue;
+    const propertyValue = isEnum
+      ? (enumValue as string[]).filter(Boolean)
+      : updatedValue;
 
     try {
       // Omit undefined and empty values
@@ -110,7 +113,12 @@ export const PropertyValue: FC<PropertyValueProps> = ({
           },
           isUndefined
         ),
-        isEmpty
+        (value) =>
+          // Check if value is empty array, empty string, null or empty object
+          (isArray(value) && isEmpty(value)) ||
+          value === '' ||
+          isNil(value) ||
+          Object.keys(value).length === 0
       );
 
       setIsLoading(true);
