@@ -24,7 +24,15 @@ import {
 } from 'antd';
 import { AxiosError } from 'axios';
 import { t } from 'i18next';
-import { isArray, isUndefined, noop, toNumber, toUpper } from 'lodash';
+import {
+  isArray,
+  isEmpty,
+  isUndefined,
+  noop,
+  omitBy,
+  toNumber,
+  toUpper,
+} from 'lodash';
 import moment, { Moment } from 'moment';
 import React, { CSSProperties, FC, Fragment, useState } from 'react';
 import { Link } from 'react-router-dom';
@@ -89,16 +97,28 @@ export const PropertyValue: FC<PropertyValueProps> = ({
     const propertyValue = isEnum ? enumValue : updatedValue;
 
     try {
-      const updatedExtension = {
-        ...(extension || {}),
-        [propertyName]: ['integer', 'number'].includes(propertyType.name ?? '')
-          ? toNumber(updatedValue || 0)
-          : propertyValue,
-      };
+      // Omit undefined and empty values
+      const updatedExtension = omitBy(
+        omitBy(
+          {
+            ...(extension ?? {}),
+            [propertyName]: ['integer', 'number'].includes(
+              propertyType.name ?? ''
+            )
+              ? toNumber(updatedValue || 0)
+              : propertyValue,
+          },
+          isUndefined
+        ),
+        isEmpty
+      );
 
       setIsLoading(true);
 
-      await onExtensionUpdate(updatedExtension);
+      await onExtensionUpdate(
+        // If updatedExtension is empty, set it to undefined
+        isEmpty(updatedExtension) ? undefined : updatedExtension
+      );
     } catch (error) {
       showErrorToast(error as AxiosError);
     } finally {
@@ -601,20 +621,13 @@ export const PropertyValue: FC<PropertyValueProps> = ({
               }) => {
                 if (isArray(values.entityReference)) {
                   onInputSave(
-                    values.entityReference.map((item) => item.reference)
+                    values.entityReference?.map((item) => item.reference)
                   );
                 } else {
-                  onInputSave(values.entityReference.reference);
+                  onInputSave(values?.entityReference?.reference);
                 }
               }}>
-              <Form.Item
-                name="entityReference"
-                rules={[
-                  {
-                    required: true,
-                  },
-                ]}
-                style={commonStyle}>
+              <Form.Item name="entityReference" style={commonStyle}>
                 <DataAssetAsyncSelectList
                   initialOptions={initialOptions}
                   mode={mode}
