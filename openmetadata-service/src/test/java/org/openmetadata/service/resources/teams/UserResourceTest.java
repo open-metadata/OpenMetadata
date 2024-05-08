@@ -24,6 +24,7 @@ import static javax.ws.rs.core.Response.Status.UNAUTHORIZED;
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
@@ -648,7 +649,7 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
   void patch_userAttributes_as_admin_200_ok(TestInfo test) throws IOException {
     // Create user without any attributes - ***Note*** isAdmin by default is false.
     User user = createEntity(createRequest(test).withProfile(null), ADMIN_AUTH_HEADERS);
-    assertListNull(user.getDisplayName(), user.getIsBot(), user.getProfile(), user.getTimezone());
+    assertListNull(user.getDisplayName(), user.getProfile(), user.getTimezone());
 
     EntityReference team1 =
         TEAM_TEST
@@ -1426,7 +1427,11 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
     assertEquals(expected.getName(), updated.getName());
     assertEquals(expected.getDisplayName(), updated.getDisplayName());
     assertEquals(expected.getTimezone(), updated.getTimezone());
-    assertEquals(expected.getIsBot(), updated.getIsBot());
+    if (expected.getIsBot() == null) {
+      assertFalse(updated.getIsBot());
+    } else {
+      assertEquals(expected.getIsBot(), updated.getIsBot());
+    }
     assertEquals(expected.getIsAdmin(), updated.getIsAdmin());
     if (expected.getDefaultPersona() != null) {
       assertEquals(expected.getDefaultPersona(), updated.getDefaultPersona());
