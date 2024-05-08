@@ -16,7 +16,7 @@
       {
         "name": "matchAnyFieldChange",
         "effect": "include",
-        "condition": "matchAnyFieldChange({'testCaseResult', 'pipelineStatus'})",
+        "condition": "matchAnyFieldChange({'testCaseResult'})",
         "prefixCondition": "OR"
       },
       {
