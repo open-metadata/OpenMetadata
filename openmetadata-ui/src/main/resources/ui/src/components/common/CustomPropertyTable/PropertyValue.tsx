@@ -738,7 +738,9 @@ export const PropertyValue: FC<PropertyValueProps> = ({
               <Button
                 className="entity-button flex-center p-0 m--ml-1"
                 icon={
-                  <div className="entity-button-icon m-r-xs">
+                  <div
+                    className="entity-button-icon m-r-xs"
+                    style={{ width: '18px', display: 'flex' }}>
                     {['user', 'team'].includes(item.type) ? (
                       <ProfilePicture
                         className="d-flex"
