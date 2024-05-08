@@ -218,7 +218,10 @@ export const PropertyValue: FC<PropertyValueProps> = ({
 
       case 'date':
       case 'dateTime': {
-        const format = toUpper(property.customPropertyConfig?.config as string);
+        // Default format is 'yyyy-mm-dd'
+        const format =
+          toUpper(property.customPropertyConfig?.config as string) ??
+          'yyyy-mm-dd';
 
         const initialValues = {
           dateTimeValue: value ? moment(value, format) : undefined,
@@ -239,20 +242,15 @@ export const PropertyValue: FC<PropertyValueProps> = ({
               initialValues={initialValues}
               layout="vertical"
               onFinish={(values: { dateTimeValue: Moment }) => {
-                onInputSave(values.dateTimeValue.format(format));
+                onInputSave(
+                  values.dateTimeValue
+                    ? values.dateTimeValue.format(format)
+                    : values.dateTimeValue // If date is cleared and set undefined
+                );
               }}>
-              <Form.Item
-                name="dateTimeValue"
-                rules={[
-                  {
-                    required: true,
-                    message: t('label.field-required', {
-                      field: propertyType.name,
-                    }),
-                  },
-                ]}
-                style={commonStyle}>
+              <Form.Item name="dateTimeValue" style={commonStyle}>
                 <DatePicker
+                  allowClear
                   data-testid="date-time-picker"
                   disabled={isLoading}
                   format={format}
