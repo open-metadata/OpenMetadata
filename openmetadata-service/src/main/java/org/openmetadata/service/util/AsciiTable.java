@@ -12,6 +12,16 @@ public record AsciiTable(
   private static final String DEFAULT_COLUMN_NAME = "(No column name)";
   private static final String DEFAULT_NO_VALUE = "-";
 
+  private static final String logo =
+      """
+                     ____                   __  ___     __            __      __      \s
+                    / __ \\____  ___  ____  /  |/  /__  / /_____ _____/ /___ _/ /_____ _
+                   / / / / __ \\/ _ \\/ __ \\/ /|_/ / _ \\/ __/ __ `/ __  / __ `/ __/ __ `/
+                  / /_/ / /_/ /  __/ / / / /  / /  __/ /_/ /_/ / /_/ / /_/ / /_/ /_/ /\s
+                  \\____/ .___/\\___/_/ /_/_/  /_/\\___/\\__/\\__,_/\\__,_/\\__,_/\\__/\\__,_/ \s
+                      /_/                                                             \s
+                      """;
+
   public AsciiTable(
       List<String> columns,
       List<List<String>> rows,
@@ -121,5 +131,9 @@ public record AsciiTable(
 
   private String trimOrPad(String str, int length) {
     return trimOrPad(str, length, ' ');
+  }
+
+  public static String printOpenMetadataText() {
+    return logo;
   }
 }

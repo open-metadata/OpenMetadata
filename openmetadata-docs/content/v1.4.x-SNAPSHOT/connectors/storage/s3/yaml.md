@@ -232,6 +232,12 @@ Find more information about [Source Identity](https://docs.aws.amazon.com/STS/la
 
 {% /codeInfo %}
 
+{% codeInfo srNumber=13 %}
+
+- **Bucket Names (Optional)**: Provide the names of buckets that you would want to ingest, if you want to ingest metadata from all buckets or apply a filter to ingest buckets then leave this field empty.
+
+{% /codeInfo %}
+
 {% /codeInfoContainer %}
 
 {% codeBlock fileName="filename.yaml" %}
@@ -269,6 +275,11 @@ source:
 ```
 ```yaml {% srNumber=8 %}
         # assumeRoleSourceIdentity: identity
+```
+```yaml {% srNumber=13 %}
+      bucketName: 
+      - s3-testing-1
+      - s3-testing-2
 ```
 ```yaml {% srNumber=11 %}
       # connectionOptions:
