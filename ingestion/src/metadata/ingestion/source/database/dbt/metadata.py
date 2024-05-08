@@ -28,7 +28,6 @@ from metadata.generated.schema.entity.data.table import (
     ModelType,
     Table,
 )
-from metadata.generated.schema.entity.services.databaseService import DatabaseService
 from metadata.generated.schema.entity.services.ingestionPipelines.status import (
     StackTraceError,
 )
