@@ -14,13 +14,7 @@
 import Icon from '@ant-design/icons/lib/components/Icon';
 import { Button, Tag } from 'antd';
 import classNames from 'classnames';
-import React, {
-  Fragment,
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-} from 'react';
+import React, { Fragment, useCallback, useMemo } from 'react';
 import { EdgeProps, getBezierPath } from 'reactflow';
 import { ReactComponent as FunctionIcon } from '../../../assets/svg/ic-function.svg';
 import { ReactComponent as IconTimesCircle } from '../../../assets/svg/ic-times-circle.svg';
@@ -61,15 +55,6 @@ export const LineageEdgeIcon = ({
   );
 };
 
-function usePrevious<T>(value: T) {
-  const ref = useRef<T>(value);
-  useEffect(() => {
-    ref.current = value;
-  }, [value]);
-
-  return ref.current;
-}
-
 export const CustomEdge = ({
   id,
   sourceX,
@@ -93,18 +78,17 @@ export const CustomEdge = ({
   } = data;
   const offset = 4;
 
+  const { fromEntity, toEntity, pipeline, pipelineEntityType } =
+    data?.edge ?? {};
+
   const {
     tracedNodes,
     tracedColumns,
     isEditMode,
-    pipelineStatus,
     activeLayer,
     onAddPipelineClick,
     onColumnEdgeRemove,
-    fetchPipelineStatus,
   } = useLineageProvider();
-
-  const prevActiveLayer = usePrevious(activeLayer);
 
   const { theme } = useApplicationStore();
 
@@ -179,19 +163,18 @@ export const CustomEdge = ({
   };
 
   const isColumnLineageAllowed =
-    !isColumnLineage &&
-    isPipelineEdgeAllowed(data.edge.fromEntity.type, data.edge.toEntity.type);
+    !isColumnLineage && isPipelineEdgeAllowed(fromEntity.type, toEntity.type);
 
   const hasLabel = useMemo(() => {
     if (isColumnLineage) {
       return false;
     }
-    if (data.edge?.pipeline) {
-      return getEntityName(data.edge?.pipeline);
+    if (pipeline) {
+      return getEntityName(pipeline);
     }
 
     return false;
-  }, [isColumnLineage, data]);
+  }, [isColumnLineage, pipeline]);
 
   const isSelectedEditMode = selected && isEditMode;
   const isSelected = selected;
@@ -210,8 +193,11 @@ export const CustomEdge = ({
   };
 
   const currentPipelineStatus = useMemo(() => {
-    const pipelineData = pipelineStatus[data.edge.pipeline?.fullyQualifiedName];
-    if (pipelineData) {
+    const isPipelineActiveNow = activeLayer.includes(
+      LineageLayerView.DATA_OBSERVARABILITY
+    );
+    const pipelineData = pipeline?.pipelineStatus;
+    if (pipelineData && isPipelineActiveNow) {
       switch (pipelineData.executionStatus) {
         case StatusType.Failed:
           return 'red';
@@ -220,11 +206,13 @@ export const CustomEdge = ({
           return 'amber';
         case StatusType.Successful:
           return 'green';
+        default:
+          return '';
       }
-    } else {
-      return '';
     }
-  }, [data, pipelineStatus]);
+
+    return '';
+  }, [pipeline, activeLayer]);
 
   const blinkingClass = useMemo(() => {
     if (isPipelineRootNode && currentPipelineStatus) {
@@ -238,8 +226,7 @@ export const CustomEdge = ({
 
   const getLineageEdgeIcon = useCallback(
     (icon: React.ReactNode, dataTestId: string, pipelineClass?: string) => {
-      const pipelineData =
-        pipelineStatus[data.edge.pipeline?.fullyQualifiedName];
+      const pipelineData = pipeline?.pipelineStatus;
 
       return (
         <LineageEdgeIcon offset={3} x={edgeCenterX} y={edgeCenterY}>
@@ -256,8 +243,8 @@ export const CustomEdge = ({
             />
           ) : (
             <EntityPopOverCard
-              entityFQN={data.edge.pipeline?.fullyQualifiedName}
-              entityType={data.edge.pipeline?.type}
+              entityFQN={pipeline?.fullyQualifiedName}
+              entityType={pipelineEntityType}
               extraInfo={
                 pipelineData && (
                   <Tag className={pipelineClass}>
@@ -280,15 +267,7 @@ export const CustomEdge = ({
         </LineageEdgeIcon>
       );
     },
-    [
-      edgeCenterX,
-      edgeCenterY,
-      rest,
-      data,
-      pipelineStatus,
-      blinkingClass,
-      isEditMode,
-    ]
+    [edgeCenterX, edgeCenterY, rest, pipeline, blinkingClass, isEditMode]
   );
 
   const getEditLineageIcon = useCallback(
@@ -334,22 +313,6 @@ export const CustomEdge = ({
       return `column-edge-${sourceHandle}-${targetHandle}`;
     }
   }, [edge, isColumnLineage, sourceHandle, targetHandle]);
-
-  useEffect(() => {
-    const wasPipelineAlreadyActive = prevActiveLayer?.includes(
-      LineageLayerView.PIPELINE
-    );
-    const isPipelineActiveNow = activeLayer.includes(LineageLayerView.PIPELINE);
-
-    if (
-      data.edge.pipeline &&
-      data.edge.pipeline.type === EntityType.PIPELINE &&
-      !wasPipelineAlreadyActive &&
-      isPipelineActiveNow
-    ) {
-      fetchPipelineStatus(data.edge.pipeline.fullyQualifiedName);
-    }
-  }, [data.edge.pipeline, activeLayer]);
 
   return (
     <Fragment>

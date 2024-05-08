@@ -29,7 +29,7 @@ import {
 import { EntityTags } from 'Models';
 import React from 'react';
 import { ReactComponent as AnnouncementIcon } from '../assets/svg/announcements-black.svg';
-import { ReactComponent as IconTerm } from '../assets/svg/book.svg';
+import { ReactComponent as GlossaryTermIcon } from '../assets/svg/book.svg';
 import { ReactComponent as ClassificationIcon } from '../assets/svg/classification.svg';
 import { ReactComponent as ConversationIcon } from '../assets/svg/comment.svg';
 import { ReactComponent as IconDataModel } from '../assets/svg/data-model.svg';
@@ -37,9 +37,13 @@ import { ReactComponent as IconDrag } from '../assets/svg/drag.svg';
 import { ReactComponent as IconForeignKeyLineThrough } from '../assets/svg/foreign-key-line-through.svg';
 import { ReactComponent as IconForeignKey } from '../assets/svg/foreign-key.svg';
 import { ReactComponent as GlossaryIcon } from '../assets/svg/glossary.svg';
+import { ReactComponent as AlertIcon } from '../assets/svg/ic-alert.svg';
 import { ReactComponent as IconDown } from '../assets/svg/ic-arrow-down.svg';
 import { ReactComponent as IconRight } from '../assets/svg/ic-arrow-right.svg';
-import { ReactComponent as TestCaseIcon } from '../assets/svg/ic-checklist.svg';
+import {
+  ReactComponent as IconTestSuite,
+  ReactComponent as TestCaseIcon,
+} from '../assets/svg/ic-checklist.svg';
 import { ReactComponent as DashboardIcon } from '../assets/svg/ic-dashboard.svg';
 import { ReactComponent as DataProductIcon } from '../assets/svg/ic-data-product.svg';
 import { ReactComponent as DatabaseIcon } from '../assets/svg/ic-database.svg';
@@ -55,10 +59,11 @@ import { ReactComponent as IconKeyLineThrough } from '../assets/svg/icon-key-lin
 import { ReactComponent as IconKey } from '../assets/svg/icon-key.svg';
 import { ReactComponent as IconNotNullLineThrough } from '../assets/svg/icon-not-null-line-through.svg';
 import { ReactComponent as IconNotNull } from '../assets/svg/icon-not-null.svg';
-import { ReactComponent as IconTestSuite } from '../assets/svg/icon-test-suite.svg';
 import { ReactComponent as IconUniqueLineThrough } from '../assets/svg/icon-unique-line-through.svg';
 import { ReactComponent as IconUnique } from '../assets/svg/icon-unique.svg';
+import { ReactComponent as TagIcon } from '../assets/svg/tag.svg';
 import { ReactComponent as TaskIcon } from '../assets/svg/task-ic.svg';
+
 import { SourceType } from '../components/SearchedData/SearchedData.interface';
 import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
 import { DE_ACTIVE_COLOR, TEXT_BODY_COLOR } from '../constants/constants';
@@ -192,16 +197,30 @@ export const getConstraintIcon = ({
 };
 
 export const getServiceIcon = (source: SourceType) => {
-  if (source.entityType === EntityType.GLOSSARY_TERM) {
+  if (source.entityType === EntityType.GLOSSARY) {
     return (
       <GlossaryIcon
         className="service-icon h-7"
         style={{ color: DE_ACTIVE_COLOR }}
       />
     );
-  } else if (source.entityType === EntityType.TAG) {
+  } else if (source.entityType === EntityType.GLOSSARY_TERM) {
+    return (
+      <GlossaryTermIcon
+        className="service-icon h-7"
+        style={{ color: DE_ACTIVE_COLOR }}
+      />
+    );
+  } else if (source.entityType === EntityType.CLASSIFICATION) {
     return (
       <ClassificationIcon
+        className="service-icon h-7"
+        style={{ color: DE_ACTIVE_COLOR }}
+      />
+    );
+  } else if (source.entityType === EntityType.TAG) {
+    return (
+      <TagIcon
         className="service-icon h-7"
         style={{ color: DE_ACTIVE_COLOR }}
       />
@@ -287,26 +306,24 @@ export const getEntityIcon = (indexType: string) => {
     case EntityType.STORED_PROCEDURE:
       return <IconStoredProcedure />;
 
-    case SearchIndex.TAG:
-    case EntityType.TAG:
+    case EntityType.CLASSIFICATION:
     case 'tagCategory':
       return <ClassificationIcon />;
+
+    case SearchIndex.TAG:
+    case EntityType.TAG:
+      return <TagIcon />;
     case SearchIndex.GLOSSARY:
     case EntityType.GLOSSARY:
       return <GlossaryIcon />;
     case EntityType.GLOSSARY_TERM:
     case SearchIndex.GLOSSARY_TERM:
-      return <IconTerm />;
+      return <GlossaryTermIcon />;
     case EntityType.SEARCH_INDEX:
     case SearchIndex.SEARCH_INDEX:
     case EntityType.SEARCH_SERVICE:
     case SearchIndex.SEARCH_SERVICE:
-      return (
-        <SearchOutlined
-          className="text-sm text-inherit"
-          style={{ color: DE_ACTIVE_COLOR }}
-        />
-      );
+      return <SearchOutlined className="text-sm text-inherit" />;
 
     case EntityType.DOMAIN:
     case SearchIndex.DOMAIN:
@@ -325,9 +342,12 @@ export const getEntityIcon = (indexType: string) => {
     case 'task':
       return <TaskIcon />;
 
+    case EntityType.EVENT_SUBSCRIPTION:
+      return <AlertIcon />;
+
     case EntityType.TEST_CASE:
     case EntityType.TEST_SUITE:
-      return <IconTestSuite height={16} width={16} />;
+      return <IconTestSuite />;
 
     case SearchIndex.TABLE:
     case EntityType.TABLE:

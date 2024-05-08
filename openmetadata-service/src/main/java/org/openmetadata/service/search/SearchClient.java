@@ -79,6 +79,8 @@ public interface SearchClient {
 
   Response search(SearchRequest request) throws IOException;
 
+  Response getDocByID(String indexName, String entityId) throws IOException;
+
   default ExecutorService getAsyncExecutor() {
     return asyncExecutor;
   }
@@ -133,12 +135,12 @@ public interface SearchClient {
 
   void deleteEntity(String indexName, String docId);
 
-  void deleteEntityByFields(String indexName, List<Pair<String, String>> fieldAndValue);
+  void deleteEntityByFields(List<String> indexName, List<Pair<String, String>> fieldAndValue);
 
   void softDeleteOrRestoreEntity(String indexName, String docId, String scriptTxt);
 
   void softDeleteOrRestoreChildren(
-      String indexName, String scriptTxt, List<Pair<String, String>> fieldAndValue);
+      List<String> indexName, String scriptTxt, List<Pair<String, String>> fieldAndValue);
 
   void updateChildren(
       String indexName,

@@ -24,7 +24,8 @@ import { Column, Table } from '../../../../generated/entity/data/table';
 import { getEntityChildrenAndLabel } from '../../../../utils/EntityLineageUtils';
 import { getEntityName } from '../../../../utils/EntityUtils';
 import { getEntityIcon } from '../../../../utils/TableUtils';
-import { getColumnContent, getTestSuiteSummary } from '../CustomNode.utils';
+import { getColumnContent } from '../CustomNode.utils';
+import TestSuiteSummaryWidget from '../TestSuiteSummaryWidget/TestSuiteSummaryWidget.component';
 import { EntityChildren, NodeChildrenProps } from './NodeChildren.interface';
 
 const NodeChildren = ({ node, isConnectable }: NodeChildrenProps) => {
@@ -36,11 +37,12 @@ const NodeChildren = ({ node, isConnectable }: NodeChildrenProps) => {
   const [filteredColumns, setFilteredColumns] = useState<EntityChildren>([]);
   const [isExpanded, setIsExpanded] = useState<boolean>(true);
 
-  const { showColumns, showDataQuality } = useMemo(() => {
+  const { showColumns, showDataObservability } = useMemo(() => {
     return {
       showColumns: activeLayer.includes(LineageLayerView.COLUMN),
-      showDataQuality: activeLayer.includes(LineageLayerView.DATA_QUALITY),
-      showPipeline: activeLayer.includes(LineageLayerView.PIPELINE),
+      showDataObservability: activeLayer.includes(
+        LineageLayerView.DATA_OBSERVARABILITY
+      ),
     };
   }, [activeLayer]);
 
@@ -88,7 +90,8 @@ const NodeChildren = ({ node, isConnectable }: NodeChildrenProps) => {
       return (
         <Collapse
           destroyInactivePanel
-          defaultActiveKey={record.fullyQualifiedName}>
+          defaultActiveKey={record.fullyQualifiedName}
+          key={record.fullyQualifiedName}>
           <Panel
             header={getEntityName(record)}
             key={record.fullyQualifiedName ?? ''}>
@@ -135,7 +138,7 @@ const NodeChildren = ({ node, isConnectable }: NodeChildrenProps) => {
     [isConnectable, tracedColumns]
   );
 
-  if (supportsColumns && (showColumns || showDataQuality)) {
+  if (supportsColumns && (showColumns || showDataObservability)) {
     return (
       <div className="column-container bg-grey-1 p-sm p-y-xs">
         <div className="d-flex justify-between items-center">
@@ -163,9 +166,9 @@ const NodeChildren = ({ node, isConnectable }: NodeChildrenProps) => {
               </Button>
             )}
           </div>
-          {showDataQuality &&
-            entityType === EntityType.TABLE &&
-            getTestSuiteSummary((node as Table).testSuite)}
+          {showDataObservability && entityType === EntityType.TABLE && (
+            <TestSuiteSummaryWidget testSuite={(node as Table).testSuite} />
+          )}
         </div>
 
         {showColumns && isExpanded && (
