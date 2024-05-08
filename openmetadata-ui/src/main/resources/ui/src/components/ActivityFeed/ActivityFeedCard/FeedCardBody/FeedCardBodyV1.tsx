@@ -134,7 +134,7 @@ const FeedCardBodyV1 = ({
         );
 
         return cardStyle === CardStyle.EntityDeleted ? (
-          entityCard
+          <div className="deleted-entity">{entityCard}</div>
         ) : (
           <Link
             className="no-underline text-body text-hover-body"
