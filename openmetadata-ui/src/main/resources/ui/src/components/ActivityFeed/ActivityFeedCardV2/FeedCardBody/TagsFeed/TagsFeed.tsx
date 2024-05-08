@@ -35,7 +35,7 @@ function TagsFeed({ feed }: Readonly<TagsFeedProps>) {
     <Row gutter={[8, 8]}>
       {!isEmpty(updatedTags) && (
         <Col span={24}>
-          <Row align="middle" gutter={[12, 12]}>
+          <Row align="middle" gutter={[12, 12]} wrap={false}>
             <Col className="h-4">
               <AddIcon height={16} width={16} />
             </Col>

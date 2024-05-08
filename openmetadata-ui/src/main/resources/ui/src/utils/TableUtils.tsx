@@ -246,6 +246,13 @@ export const getServiceIcon = (source: SourceType) => {
         style={{ color: DE_ACTIVE_COLOR }}
       />
     );
+  } else if (source.entityType === EntityType.EVENT_SUBSCRIPTION) {
+    return (
+      <AlertIcon
+        className="service-icon h-7"
+        style={{ color: DE_ACTIVE_COLOR }}
+      />
+    );
   } else {
     return (
       <img

@@ -1710,6 +1710,21 @@ export const getEntityBreadcrumbs = (
     case EntityType.TEST_CASE: {
       return getBreadcrumbForTestCase(entity as TestCase);
     }
+    case EntityType.EVENT_SUBSCRIPTION: {
+      return [
+        {
+          name: startCase(EntityType.ALERT),
+          url: ROUTES.OBSERVABILITY_ALERTS,
+        },
+        {
+          name: entity.name,
+          url: getEntityLinkFromType(
+            entity.fullyQualifiedName ?? '',
+            (entity as SourceType).entityType as EntityType
+          ),
+        },
+      ];
+    }
 
     case EntityType.TOPIC:
     case EntityType.DASHBOARD:
