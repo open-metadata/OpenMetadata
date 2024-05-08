@@ -10,7 +10,7 @@
       {
         "name": "matchAnyEventType",
         "effect": "include",
-        "condition": "matchAnyEventType({'entityCreated', 'entityDeleted', 'entitySoftDeleted'}) && !matchUpdatedBy({'ingestion-bot'}) && !matchAnySource({'user', 'ingestionPipeline'})",
+        "condition": "matchAnyEventType({'entityCreated', 'entityDeleted', 'entitySoftDeleted'}) && !matchUpdatedBy({'ingestion-bot'}) && !matchAnySource({'user', 'ingestionPipeline', 'workflow'})",
         "prefixCondition": "AND"
       },
       {
