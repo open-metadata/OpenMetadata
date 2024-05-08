@@ -12,15 +12,15 @@
  */
 
 import Icon from '@ant-design/icons/lib/components/Icon';
-import { Button, Col, Row, Typography } from 'antd';
-import classNames from 'classnames';
-import { groupBy, isEmpty } from 'lodash';
-import React, { useCallback, useMemo, useState } from 'react';
+import { Col, Row, Typography } from 'antd';
+import React, { useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as AbortedStatus } from '../../../../../assets/svg/aborted-status.svg';
 import { ReactComponent as FailedStatus } from '../../../../../assets/svg/failed-status.svg';
-import { EntityTestResultSummaryObject } from '../../../../../generated/entity/feed/thread';
+import { ReactComponent as SuccessStatus } from '../../../../../assets/svg/success-badge.svg';
+
 import { TestCaseStatus } from '../../../../../generated/tests/testCase';
+import { customFormatDateTime } from '../../../../../utils/date-time/DateTimeUtils';
 import {
   formatTestStatusData,
   getTestCaseResultCount,
@@ -30,104 +30,51 @@ import { TestCaseFeedProps } from './TestCaseFeed.interface';
 
 function TestCaseFeed({ entitySpecificInfo }: Readonly<TestCaseFeedProps>) {
   const { t } = useTranslation();
-  const [showMore, setShowMore] = useState(false);
 
   const { success, failed, aborted } = useMemo(
-    () =>
-      formatTestStatusData(
-        entitySpecificInfo?.entityTestResultSummary as EntityTestResultSummaryObject[]
-      ),
-    [entitySpecificInfo?.entityTestResultSummary]
+    () => formatTestStatusData(entitySpecificInfo?.testCaseResult ?? []),
+    [entitySpecificInfo?.testCaseResult]
   );
 
-  const handleShowMore = useCallback(() => {
-    setShowMore((prev) => !prev);
-  }, [setShowMore]);
-
-  const renderTestCaseResult = useMemo(() => {
-    const groupResult = groupBy(
-      entitySpecificInfo?.testCaseResult ?? [],
-      'testCaseStatus'
-    );
-
-    if (
-      isEmpty(groupResult[TestCaseStatus.Failed]) &&
-      isEmpty(groupResult[TestCaseStatus.Aborted])
-    ) {
-      return;
+  const getStatusIcon = useCallback((status?: string) => {
+    let icon = SuccessStatus;
+    if (status === TestCaseStatus.Failed) {
+      icon = FailedStatus;
+    } else if (status === TestCaseStatus.Aborted) {
+      icon = AbortedStatus;
     }
 
-    return (
-      <>
-        <div className={classNames({ 'h-24 overflow-hidden': !showMore })}>
-          {Object.keys(groupResult).map((key) => {
-            if (key === TestCaseStatus.Success) {
-              return;
-            }
+    return <Icon component={icon} style={{ fontSize: '16px' }} />;
+  }, []);
 
+  const renderTestCaseResult = useMemo(() => {
+    return (
+      <div className="h-24">
+        <Row className="m-t-xs" gutter={[0, 4]}>
+          {entitySpecificInfo?.testCaseResult?.slice(0, 3).map((caseResult) => {
             return (
-              <Row className="m-t-xs" gutter={[0, 4]} key={key}>
-                <Col span={24}>
-                  <Typography.Text className="font-bold">
-                    {key === TestCaseStatus.Failed ? (
-                      <Icon
-                        component={FailedStatus}
-                        style={{ fontSize: '16px' }}
-                      />
-                    ) : (
-                      <Icon
-                        component={AbortedStatus}
-                        style={{ fontSize: '16px' }}
-                      />
-                    )}{' '}
-                    {`${key} :`}
-                  </Typography.Text>
-                </Col>
-                <Col span={24}>
-                  {groupResult[key].map((caseResult) => {
-                    return (
-                      <Row
-                        gutter={[10, 0]}
-                        key={caseResult.timestamp}
-                        wrap={false}>
-                        <Col flex="300px">
-                          <div className="d-flex">
-                            <Typography.Link className="break-all whitespace-normal">
-                              {caseResult.testCaseName}
-                            </Typography.Link>
-                            <span>:</span>
-                          </div>
-                        </Col>
-                        <Col flex="auto">
-                          <Typography.Text className="break-all whitespace-normal">
-                            {caseResult.result}
-                          </Typography.Text>
-                        </Col>
-                      </Row>
-                    );
-                  })}
-                </Col>
-              </Row>
+              <Col key={caseResult.timestamp} span={24}>
+                {getStatusIcon(caseResult.testCaseStatus)}{' '}
+                <Typography.Text className="m-l-xss break-all whitespace-normal">
+                  {customFormatDateTime(caseResult.timestamp, 'MMM dd, hh:mm')}
+                </Typography.Text>
+                <span className="m-x-xss">:</span>
+                <Typography.Text className="break-all whitespace-normal">
+                  {caseResult.result}
+                </Typography.Text>
+              </Col>
             );
           })}
-        </div>
-
-        <Button
-          className="m-t-xs"
-          size="small"
-          type="link"
-          onClick={handleShowMore}>
-          {showMore ? t('label.less') : t('label.more')}
-        </Button>
-      </>
+        </Row>
+      </div>
     );
-  }, [showMore, entitySpecificInfo?.testCaseResult, handleShowMore]);
+  }, [entitySpecificInfo?.testCaseResult]);
 
   return (
     <Row gutter={[0, 12]}>
       <Col span={24}>
         <Typography.Text className="font-bold">{`${t(
-          'label.tests-summary'
+          'label.test-result-summary'
         )}:`}</Typography.Text>
       </Col>
       <Col span={24}>

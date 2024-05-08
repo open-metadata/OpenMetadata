@@ -42,13 +42,13 @@ import { EntityType, FqnPart, TabSpecificField } from '../enums/entity.enum';
 import { SearchIndex } from '../enums/search.enum';
 import {
   CardStyle,
-  EntityTestResultSummaryObject,
   FieldOperation,
   TestCaseStatus,
   Thread,
   ThreadType,
 } from '../generated/entity/feed/thread';
 import { User } from '../generated/entity/teams/user';
+import { TestCaseResult } from '../generated/tests/testCase';
 import {
   deletePostById,
   deleteThread,
@@ -648,11 +648,11 @@ export const getFieldOperationIcon = (fieldOperation?: FieldOperation) => {
 };
 
 export const getTestCaseNameListForResult = (
-  testResultSummary: Array<EntityTestResultSummaryObject>,
+  testResultSummary: Array<TestCaseResult>,
   status: TestCaseStatus
 ) =>
   testResultSummary.reduce((acc, curr) => {
-    if (curr.status === status) {
+    if (curr.testCaseStatus === status) {
       acc.push(curr.testCaseName ?? '');
     }
 
@@ -685,19 +685,18 @@ export const getTestStatusLabel = (status: TestCaseStatus) => {
   return statusLabelMapping[status];
 };
 
-export const formatTestStatusData = (
-  testResultSummary: Array<EntityTestResultSummaryObject>
-) => {
+export const formatTestStatusData = (testCaseResult: Array<TestCaseResult>) => {
+  const limitedData = testCaseResult?.slice(0, 3);
   const successCases = getTestCaseNameListForResult(
-    testResultSummary,
+    limitedData,
     TestCaseStatus.Success
   );
   const failedCases = getTestCaseNameListForResult(
-    testResultSummary,
+    limitedData,
     TestCaseStatus.Failed
   );
   const abortedCases = getTestCaseNameListForResult(
-    testResultSummary,
+    limitedData,
     TestCaseStatus.Aborted
   );
 
