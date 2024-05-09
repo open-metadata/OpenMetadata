@@ -514,7 +514,7 @@ class PowerbiSource(DashboardServiceSource):
                 datamodel_fqn = fqn.build(
                     self.metadata,
                     entity_type=DashboardDataModel,
-                    service_name=self.config.serviceName,
+                    service_name=self.context.get().dashboard_service,
                     data_model_name=dataset.id,
                 )
                 datamodel_entity = self.metadata.get_by_name(
@@ -559,13 +559,17 @@ class PowerbiSource(DashboardServiceSource):
         """
         Get fqn of column if exist in data model entity or its child columns
         """
-        if not data_model_entity:
+        try:
+            if not data_model_entity:
+                return None
+            for tbl_column in data_model_entity.columns:
+                for child_column in tbl_column.children or []:
+                    if column.lower() == child_column.name.__root__.lower():
+                        return child_column.fullyQualifiedName.__root__
             return None
-        for tbl_column in data_model_entity.columns:
-            for child_column in tbl_column.children or []:
-                if column.lower() == child_column.name.__root__.lower():
-                    return child_column.fullyQualifiedName.__root__
-        return None
+        except Exception as exc:
+            logger.debug(f"Error to get data_model_column_fqn {exc}")
+            logger.debug(traceback.format_exc())
 
     def _get_table_and_datamodel_lineage(
         self,
