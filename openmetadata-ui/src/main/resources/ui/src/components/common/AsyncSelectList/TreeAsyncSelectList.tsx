@@ -48,6 +48,7 @@ import { showErrorToast } from '../../../utils/ToastUtils';
 import { ModifiedGlossaryTerm } from '../../Glossary/GlossaryTermTab/GlossaryTermTab.interface';
 import TagsV1 from '../../Tag/TagsV1/TagsV1.component';
 import Loader from '../Loader/Loader';
+import './async-select-list.less';
 import {
   AsyncSelectListProps,
   SelectOption,
@@ -268,6 +269,7 @@ const TreeAsyncSelectList: FC<Omit<AsyncSelectListProps, 'fetchOptions'>> = ({
       showSearch
       treeCheckStrictly
       treeCheckable
+      className="async-select-list"
       data-testid="tag-selector"
       dropdownRender={dropdownRender}
       dropdownStyle={{ width: 300 }}
