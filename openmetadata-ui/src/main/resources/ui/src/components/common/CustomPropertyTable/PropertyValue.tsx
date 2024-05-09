@@ -619,7 +619,7 @@ export const PropertyValue: FC<PropertyValueProps> = ({
               }) => {
                 if (isArray(values.entityReference)) {
                   onInputSave(
-                    values.entityReference?.map((item) => item.reference)
+                    values.entityReference.map((item) => item.reference)
                   );
                 } else {
                   onInputSave(values?.entityReference?.reference);
