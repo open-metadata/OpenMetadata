@@ -1,0 +1,15 @@
+name: Get Release Docker Tag
+description: Lean action to provide the Docker Tag used on releases.
+outputs:
+  tag:
+    description: Release Docker TAG
+    value: ${{ steps.get-tag.outputs.tag }}
+runs:
+  using: composite
+  steps:
+  - name: Get Tag
+    id: get-tag
+    env:
+      RELEASE_TAG: 1.4.0-SNAPSHOT
+    shell: bash
+    run: echo "tag=$(echo $RELEASE_TAG)" >> $GITHUB_OUTPUT

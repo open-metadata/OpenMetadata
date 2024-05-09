@@ -148,22 +148,21 @@ build-ingestion-base-local:  ## Builds the ingestion DEV docker operator with th
 generate-schema-docs:  ## Generates markdown files for documenting the JSON Schemas
 	@echo "Generating Schema docs"
 # Installing "0.4.0" version for simpler formatting
-	python3 -m pip install "jsonschema2md==0.4.0" 
+	python3 -m pip install "jsonschema2md==0.4.0"
 	python3 scripts/generate_docs_schemas.py
 
-#Upgrade release automation scripts below	
+#Upgrade release automation scripts below
 .PHONY: update_all
 update_all:  ## To update all the release related files run make update_all RELEASE_VERSION=2.2.2 PY_RELEASE_VERSION=2.2.2.2
 	@echo "The release version is: $(RELEASE_VERSION)" ; \
 	echo "The python metadata release version: $(PY_RELEASE_VERSION)" ; \
 	$(MAKE) update_maven ; \
-	$(MAKE) update_github_action_paths ; \
-	$(MAKE) update_python_release_paths ; \
+	$(MAKE) update_github_action ; \
+	$(MAKE) update_pyproject_version ; \
 	$(MAKE) update_dockerfile_version ; \
-	$(MAKE) update_ingestion_dockerfile_version ; \
-
+	$(MAKE) update_dockerfile_arg ; \
 #remove comment and use the below section when want to use this sub module "update_all" independently to update github actions
-#make update_all RELEASE_VERSION=2.2.2 PY_RELEASE_VERSION=2.2.2.2
+#make update_all RELEASE_VERSION=2.2.2 PY_RELEASE_VERSION=2.2.2.2 MVN_RELEASE_VERSION=2.2.2
 
 .PHONY: update_maven
 update_maven:  ## To update the common and pom.xml maven version
@@ -173,37 +172,23 @@ update_maven:  ## To update the common and pom.xml maven version
 #make update_maven RELEASE_VERSION=2.2.2
 
 
-.PHONY: update_github_action_paths
-update_github_action_paths:  ## To update the github action ci docker files
+.PHONY: update_github_action
+update_github_action:  ## To update the github action ci docker files
 	@echo "Updating docker github action release version to $(RELEASE_VERSION)... "; \
-	file_paths="docker/docker-compose-quickstart/Dockerfile \
-	            .github/workflows/docker-openmetadata-db.yml \
-	            .github/workflows/docker-openmetadata-ingestion-base.yml \
-				.github/workflows/docker-openmetadata-ingestion-base-slim.yml \
-	            .github/workflows/docker-openmetadata-ingestion.yml \
-	            .github/workflows/docker-openmetadata-postgres.yml \
-	            .github/workflows/docker-openmetadata-server.yml"; \
-	for file_path in $$file_paths; do \
-	    python3 scripts/update_version.py 1 $$file_path -s $(RELEASE_VERSION) ; \
-	done; \
-	file_paths1="docker/docker-compose-quickstart/Dockerfile"; \
-	for file_path in $$file_paths1; do \
-	    python3 scripts/update_version.py 4 $$file_path -s $(RELEASE_VERSION) ; \
-	done
+		python3 scripts/update_version.py update_github_action -t $(RELEASE_VERSION) ; \
+#remove comment and use the below section when want to use this sub module "update_github_action" independently to update github actions
+#make update_github_action RELEASE_VERSION=2.2.2
 
-#remove comment and use the below section when want to use this sub module "update_github_action_paths" independently to update github actions
-#make update_github_action_paths RELEASE_VERSION=2.2.2
-
-.PHONY: update_python_release_paths
-update_python_release_paths:  ## To update the setup.py files
+.PHONY: update_pyproject_version
+update_pyproject_version:  ## To update the pyproject.toml files
 	file_paths="ingestion/pyproject.toml \
 				openmetadata-airflow-apis/pyproject.toml"; \
-	echo "Updating Python setup file versions to $(PY_RELEASE_VERSION)... "; \
+	echo "Updating pyproject.toml versions to $(PY_RELEASE_VERSION)... "; \
 	for file_path in $$file_paths; do \
-	    python3 scripts/update_version.py 2 $$file_path -s $(PY_RELEASE_VERSION) ; \
+	    python3 scripts/update_version.py update_pyproject_version -f $$file_path -v $(PY_RELEASE_VERSION) ; \
 	done
-# Commented section for independent usage of the module update_python_release_paths independently to update github actions
-#make update_python_release_paths PY_RELEASE_VERSION=2.2.2.2
+# Commented section for independent usage of the module update_pyproject_version independently to update github actions
+#make update_pyproject_version PY_RELEASE_VERSION=2.2.2.2
 
 .PHONY: update_dockerfile_version
 update_dockerfile_version:  ## To update the dockerfiles version
@@ -213,20 +198,21 @@ update_dockerfile_version:  ## To update the dockerfiles version
 		     docker/docker-compose-quickstart/docker-compose.yml"; \
 	echo "Updating docker github action release version to $(RELEASE_VERSION)... "; \
 	for file_path in $$file_paths; do \
-	    python3 scripts/update_version.py 3 $$file_path -s $(RELEASE_VERSION) ; \
+	    python3 scripts/update_version.py update_docker_tag -f $$file_path -t $(RELEASE_VERSION) ; \
 	done
 #remove comment and use the below section when want to use this sub module "update_dockerfile_version" independently to update github actions
 #make update_dockerfile_version RELEASE_VERSION=2.2.2
 
-.PHONY: update_ingestion_dockerfile_version
-update_ingestion_dockerfile_version:  ## To update the ingestion dockerfiles version
+.PHONY: update_dockerfile_arg
+update_dockerfile_arg:  ## To update the dockerfile RI_VERSION argument
 	@file_paths="ingestion/Dockerfile \
 	             ingestion/operators/docker/Dockerfile"; \
 	echo "Updating ingestion dockerfile release version to $(PY_RELEASE_VERSION)... "; \
 	for file_path in $$file_paths; do \
-	    python3 scripts/update_version.py 4 $$file_path -s $(PY_RELEASE_VERSION) ; \
+	    python3 scripts/update_version.py update_dockerfile_arg -a RI_VERSION -f $$file_path -v $(PY_RELEASE_VERSION) ; \
 	done
-#remove comment and use the below section when want to use this sub module "update_ingestion_dockerfile_version" independently to update github actions
-#make update_ingestion_dockerfile_version PY_RELEASE_VERSION=2.2.2.2
+	python3 scripts/update_version.py update_dockerfile_arg -a RI_VERSION -f docker/docker-compose-quickstart/Dockerfile -v $(RELEASE_VERSION)
+#remove comment and use the below section when want to use this sub module "update_dockerfile_arg" independently to update github actions
+#make update_dockerfile_arg PY_RELEASE_VERSION=2.2.2.2 RELEASE_VERSION=2.2.2
 
 #Upgrade release automation scripts above

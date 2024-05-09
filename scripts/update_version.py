@@ -1,118 +1,129 @@
 import sys
 import argparse
-import fileinput
-import os
 import re
 import logging
+import yaml
 
-# Configure the logger
 logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
 logger = logging.getLogger()
 
-# Function to update the Github workflow with search pattern as "input=" or "DOCKER_RELEASE_TAG="
-def update_github_action(file_path, release_version):
-    logger.info(f"Updating Github workflow's Docker version in {file_path} to version {release_version}\n")
-    try:
-        with open(file_path, 'r') as file:
-            content = file.read()
 
-        # Update the input pattern
-        input_pattern = r'input=\d+(\.\d+)*(\.\d+)?'
-        input_replacement = f'input={release_version}'
-        updated_content = re.sub(input_pattern, input_replacement, content)
+def update_github_action(args):
+    """Updates the get-release-docker-tag action with the 'tag' value."""
 
-        # Update the DOCKER_RELEASE_TAG pattern
-        docker_release_tag_pattern = r'DOCKER_RELEASE_TAG=\d+(\.\d+)*(\.\d+)?'
-        docker_release_tag_replacement = f'DOCKER_RELEASE_TAG={release_version}'
-        updated_content = re.sub(docker_release_tag_pattern, docker_release_tag_replacement, updated_content)
+    tag = args.tag
 
-        with open(file_path, 'w') as file:
-            file.write(updated_content)
+    file_path = ".github/actions/get-release-docker-tag/action.yml"
 
-        logger.info(f"Patterns updated to {release_version} in {file_path}")
-    except Exception as e:
-        logger.error(f"An error occurred: {e}")
+    logger.info(f"Updating Github Action {file_path} to version {tag}\n")
 
-# Function to update the Python files in ingestion with search pattern as "version="
-def update_python_files(file_path, release_version):
-    # Logic for updating Python files
-    logger.info(f"Updating version numbers in {file_path} to {release_version}\n")
-    try:
-        with open(file_path, 'r') as file:
-            content = file.read()
+    with open(file_path, "r") as f:
+        content = yaml.safe_load(f.read())
 
-        pattern = r'version\s*=\s*"([^"]+)"'
-        updated_content = re.sub(pattern, f'version = "{release_version}"', content)
+    # We want the structure to remain the same and fail if it changes.
+    # We are centralizing the release version information on this action that is used by any relevant workflow.
+    content["runs"]["steps"][0]["env"]["RELEASE_TAG"] = tag
 
-        with open(file_path, 'w') as file:
-            file.write(updated_content)
+    with open(file_path, "w") as f:
+        yaml.dump(content, f, sort_keys=False)
 
-        logger.info(f"Version numbers updated to {release_version} in {file_path}")
-    except Exception as e:
-        logger.error(f"An error occurred: {e}")
 
-# Function to update the image version in Docker compose files with search pattern where image, docker, getcollate, and openmetadata are used.
-def update_dockerfile_version(file_path, release_version):
-    # Logic for updating Docker compose version
-    try:
-        with open(file_path, 'r') as file:
-            content = file.read()
+def update_docker_tag(args):
+    """Updates the Docker Tag on docker-compose files."""
 
-        # Update image versions using regular expression
-        updated_content = re.sub(
-            r'(image: docker\.getcollate\.io/openmetadata/.*?):[\d.]+',
-            rf'\1:{release_version}',
-            content
-        )
+    file_path = args.file_path
+    tag = args.tag
 
-        with open(file_path, 'w') as file:
-            file.write(updated_content)
+    logger.info(f"Updating Docker Tag in {file_path} to {tag}\n")
 
-        logger.info(f"Updated image versions in {file_path}")
-    except Exception as e:
-        logger.error(f"An error occurred while updating {file_path}: {e}")
+    with open(file_path, "r") as f:
+        content = f.read()
 
-# Function to update the DOCKERFILE used to create the images, search pattern used as "RI_VERSION"
-def update_ingestion_version(file_path, release_version):
-    logger.info(f"Updating ingestion version in {file_path} to version {release_version}\n")
-    try:
-        with open(file_path, 'r') as file:
-            content = file.read()
+    print("A")
+    updated_content = re.sub(
+        r'(image: docker\.getcollate\.io/openmetadata/.*?):.+',
+        rf'\1:{tag}',
+        content
+    )
 
-        pattern = r'RI_VERSION="[\d\.]+"'
-        replacement = f'RI_VERSION="{release_version}"'
-        updated_content = re.sub(pattern, replacement, content)
+    with open(file_path, "w") as f:
+        f.write(updated_content)
 
-        with open(file_path, 'w') as file:
-            file.write(updated_content)
 
-        logger.info(f"RI_VERSION updated to {release_version} in {file_path}")
-    except Exception as e:
-        logger.error(f"An error occurred: {e}")
+def update_dockerfile_arg(args):
+    """Updates a Dockerfile ARG."""
+
+    arg = args.arg
+    file_path = args.file_path
+    value = args.value
+
+    logger.info(f"Updating ARG {arg} in {file_path} to {value}\n")
+
+    with open(file_path, "r") as f:
+        content = f.read()
+
+    updated_content = re.sub(
+        rf"(ARG\s+{arg}=).+",
+        rf"\1={value}",
+        content
+    )
+
+    with open(file_path, "w") as f:
+        f.write(updated_content)
+
+
+def update_pyproject_version(args):
+    """Updates pyproject version."""
+
+    file_path = args.file_path
+    version = args.version
+
+    logger.info(f"Updating {file_path} version to {version}\n")
+
+    with open(file_path, "r") as f:
+        content = f.read()
+
+    updated_content = re.sub(
+        r'version\s*=\s*"[^"]+"',
+        f'version = "{version}"',
+        content
+    )
+
+    with open(file_path, "w") as f:
+        f.write(updated_content)
+
 
 def main():
-    parser = argparse.ArgumentParser(description="Update version information in files.")
-    parser.add_argument("action_type", type=int, choices=range(1, 5), help="Type of action to perform")
-    parser.add_argument("file_path", type=str, help="Path to the file to update")
-    parser.add_argument("-s", dest="release_version", required=True, help="Release version to set")
+    parser = argparse.ArgumentParser(description="Update files for release.")
+    subparsers = parser.add_subparsers(required=True)
+
+    # Update Github Action parser
+    parser_uga = subparsers.add_parser("update_github_action")
+    parser_uga.add_argument("--tag", "-t", type=str, help="Tag to be returned by the Github Action.")
+    parser_uga.set_defaults(func=update_github_action)
+
+    # Update Docker tag
+    parser_udt = subparsers.add_parser("update_docker_tag")
+    parser_udt.add_argument("--file-path", "-f", type=str, help="Docker compose file to update.")
+    parser_udt.add_argument("--tag", "-t", type=str, help="Tag to update the file to.")
+    parser_udt.set_defaults(func=update_docker_tag)
+
+    # Update Dockerfile ARG
+    parser_uda = subparsers.add_parser("update_dockerfile_arg")
+    parser_uda.add_argument("--arg", "-a", type=str, help="Argument to update.")
+    parser_uda.add_argument("--file-path", "-f", type=str, help="Dockerfile file to update.")
+    parser_uda.add_argument("--value", "-v", type=str, help="Value to set for the argument")
+    parser_uda.set_defaults(func=update_dockerfile_arg)
+
+    # Update pyproject.toml Version
+    parser_upv = subparsers.add_parser("update_pyproject_version")
+    parser_upv.add_argument("--file-path", "-f", type=str, help="pyproject.toml file to update.")
+    parser_upv.add_argument("--version", "-v", type=str, help="Version to update to")
+    parser_upv.set_defaults(func=update_pyproject_version)
 
     args = parser.parse_args()
+    args.func(args)
 
-    action_type = args.action_type
-    file_path = args.file_path
-    release_version = args.release_version
-
-    if action_type == 1:
-        update_github_action(file_path, release_version)
-    elif action_type == 2:
-        update_python_files(file_path, release_version)
-    elif action_type == 3:
-        update_dockerfile_version(file_path, release_version)
-    elif action_type == 4:
-        update_ingestion_version(file_path, release_version)
-    else:
-        logger.error("Invalid action type")
-        sys.exit(1)
 
 if __name__ == "__main__":
     main()
