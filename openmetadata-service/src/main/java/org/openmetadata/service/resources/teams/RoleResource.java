@@ -74,7 +74,10 @@ import org.openmetadata.service.util.ResultList;
             + "team can be assigned one or multiple roles that provide privileges to a user and members of a team to perform the job function.")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
-@Collection(name = "roles", order = 1) // Load roles after PolicyResource are loaded at Order 0
+@Collection(
+    name = "roles",
+    order = 1,
+    requiredForOps = true) // Load roles after PolicyResource are loaded at Order 0
 @Slf4j
 public class RoleResource extends EntityResource<Role, RoleRepository> {
   public static final String COLLECTION_PATH = "/v1/roles/";

@@ -177,7 +177,7 @@ public class AppScheduler {
         JobBuilder.newJob(clz)
             .withIdentity(jobIdentity, APPS_JOB_GROUP)
             .usingJobData(dataMap)
-            .requestRecovery(true);
+            .requestRecovery(false);
     return jobBuilder.build();
   }
 

@@ -279,3 +279,11 @@ WHERE jsonb_exists(json::jsonb, 'viewDefinition') = true;
 
 UPDATE table_entity SET json = json - 'testSuite'; 
 
+-- Clean up QRTZ table
+delete from QRTZ_SIMPLE_TRIGGERS;
+delete from QRTZ_CRON_TRIGGERS;
+delete from QRTZ_TRIGGERS;
+delete from QRTZ_LOCKS;
+delete from QRTZ_SCHEDULER_STATE;
+delete from QRTZ_JOB_DETAILS;
+delete from QRTZ_FIRED_TRIGGERS;
