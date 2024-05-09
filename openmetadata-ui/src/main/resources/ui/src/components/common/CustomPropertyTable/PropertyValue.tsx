@@ -108,17 +108,18 @@ export const PropertyValue: FC<PropertyValueProps> = ({
             [propertyName]: ['integer', 'number'].includes(
               propertyType.name ?? ''
             )
-              ? toNumber(updatedValue || 0)
+              ? updatedValue
+                ? toNumber(updatedValue)
+                : updatedValue // If number is cleared and set undefined
               : propertyValue,
           },
           isUndefined
         ),
         (value) =>
           // Check if value is empty array, empty string, null or empty object
-          (isArray(value) && isEmpty(value)) ||
           value === '' ||
           isNil(value) ||
-          Object.keys(value).length === 0
+          (typeof value === 'object' && isEmpty(value))
       );
 
       setIsLoading(true);
