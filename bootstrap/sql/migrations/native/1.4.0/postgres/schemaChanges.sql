@@ -289,4 +289,3 @@ delete from QRTZ_JOB_DETAILS;
 delete from QRTZ_FIRED_TRIGGERS;
 
 DELETE from event_subscription_entity where name = 'ActivityFeedAlert';
-
