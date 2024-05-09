@@ -34,6 +34,6 @@ export default defineConfig({
 
       return config;
     },
-    specPattern: ['cypress/e2e/Pages/DataQualityAndProfiler.spec.ts'],
+    specPattern: ['cypress/e2e/**/*.{js,jsx,ts,tsx}'],
   },
 });

@@ -46,7 +46,6 @@ import { DATABASE_SERVICE } from '../../constants/EntityConstant';
 import { SERVICE_CATEGORIES } from '../../constants/service.constants';
 import { GlobalSettingOptions } from '../../constants/settings.constant';
 
-// const serviceName = `cypress-mysql`;
 const OWNER1 = 'Aaron Johnson';
 const OWNER2 = 'Cynthia Meyer';
 const { testCase1, testCase2, filterTable, filterTableTestCases, customTable } =
@@ -991,7 +990,7 @@ describe(
       // Test case filter by test type
       interceptURL(
         'GET',
-        `/api/v1/dataQuality/testCases/search/list?*testCaseType=column*entityLink=*${filterTable.name}*`,
+        `/api/v1/dataQuality/testCases/search/list?*testCaseType=column*`,
         'testCaseTypeByColumn'
       );
       cy.get('[data-testid="test-case-type-select-filter"]').click();
@@ -1001,7 +1000,7 @@ describe(
 
       interceptURL(
         'GET',
-        `/api/v1/dataQuality/testCases/search/list?*testCaseType=table*entityLink=*${filterTable.name}*`,
+        `/api/v1/dataQuality/testCases/search/list?*testCaseType=table*`,
         'testCaseTypeByTable'
       );
       cy.get('[data-testid="test-case-type-select-filter"]').click();
@@ -1016,7 +1015,7 @@ describe(
       // Test case filter by status
       interceptURL(
         'GET',
-        `/api/v1/dataQuality/testCases/search/list?*testCaseStatus=Success*entityLink=*${filterTable.name}*`,
+        `/api/v1/dataQuality/testCases/search/list?*testCaseStatus=Success*`,
         'testCaseStatusBySuccess'
       );
       cy.get('[data-testid="status-select-filter"]').click();
@@ -1026,7 +1025,7 @@ describe(
 
       interceptURL(
         'GET',
-        `/api/v1/dataQuality/testCases/search/list?*testCaseStatus=Failed*entityLink=*${filterTable.name}*`,
+        `/api/v1/dataQuality/testCases/search/list?*testCaseStatus=Failed*`,
         'testCaseStatusByFailed'
       );
       cy.get('[data-testid="status-select-filter"]').click();
@@ -1037,7 +1036,7 @@ describe(
       // Test case filter by platform
       interceptURL(
         'GET',
-        `/api/v1/dataQuality/testCases/search/list?*testPlatforms=DBT*entityLink=*${filterTable.name}*`,
+        `/api/v1/dataQuality/testCases/search/list?*testPlatforms=DBT*`,
         'testCasePlatformByDBT'
       );
       cy.get('[data-testid="platform-select-filter"]').click();
@@ -1052,7 +1051,7 @@ describe(
 
       interceptURL(
         'GET',
-        `/api/v1/dataQuality/testCases/search/list?*testPlatforms=OpenMetadata*entityLink=*${filterTable.name}*`,
+        `/api/v1/dataQuality/testCases/search/list?*testPlatforms=OpenMetadata*`,
         'testCasePlatformByOpenMetadata'
       );
       cy.get('[data-testid="platform-select-filter"]').click();
