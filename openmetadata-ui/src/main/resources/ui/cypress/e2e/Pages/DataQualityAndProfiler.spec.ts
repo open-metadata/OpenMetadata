@@ -40,18 +40,19 @@ import {
   NEW_COLUMN_TEST_CASE_WITH_NULL_TYPE,
   NEW_TABLE_TEST_CASE,
   NEW_TEST_SUITE,
-  TEAM_ENTITY,
 } from '../../constants/constants';
 import { EntityType, SidebarItem } from '../../constants/Entity.interface';
 import { DATABASE_SERVICE } from '../../constants/EntityConstant';
 import { SERVICE_CATEGORIES } from '../../constants/service.constants';
 import { GlobalSettingOptions } from '../../constants/settings.constant';
 
-const serviceName = `cypress-mysql`;
+// const serviceName = `cypress-mysql`;
 const OWNER1 = 'Aaron Johnson';
 const OWNER2 = 'Cynthia Meyer';
-const { testCase1, testCase2, filterTable, filterTableTestCases } =
+const { testCase1, testCase2, filterTable, filterTableTestCases, customTable } =
   DATA_QUALITY_TEST_CASE_DATA;
+const TEAM_ENTITY = customTable.name;
+const serviceName = DATABASE_SERVICE.service.name;
 const goToProfilerTab = (data?: { service: string; entityName: string }) => {
   interceptURL(
     'GET',
@@ -111,7 +112,7 @@ describe(
         createEntityTable({
           token,
           ...DATABASE_SERVICE,
-          tables: [DATABASE_SERVICE.entity, filterTable],
+          tables: [DATABASE_SERVICE.entity, filterTable, customTable],
         });
 
         prepareDataQualityTestCases(token);
@@ -143,13 +144,17 @@ describe(
     });
 
     it('Add Profiler ingestion', () => {
+      const data = {
+        entityName: 'alert_entity',
+        service: 'cypress-mysql',
+      };
       interceptURL(
         'POST',
         '/api/v1/services/ingestionPipelines/deploy/*',
         'deployIngestion'
       );
 
-      goToProfilerTab();
+      goToProfilerTab(data);
 
       cy.get('[data-testid="no-profiler-placeholder"]').should('be.visible');
       cy.clickOnLogo();
@@ -162,8 +167,8 @@ describe(
         '/api/v1/system/config/pipeline-service-client',
         'airflow'
       );
-      searchServiceFromSettingPage(serviceName);
-      cy.get(`[data-testid="service-name-${serviceName}"]`)
+      searchServiceFromSettingPage(data.service);
+      cy.get(`[data-testid="service-name-${data.service}"]`)
         .should('exist')
         .click();
       cy.get('[data-testid="tabs"]').should('exist');
@@ -204,16 +209,18 @@ describe(
     });
 
     it('Verifying profiler ingestion', () => {
-      goToProfilerTab();
+      goToProfilerTab({
+        entityName: 'alert_entity',
+        service: 'cypress-mysql',
+      });
       cy.get('[data-testid="no-profiler-placeholder"]').should('not.exist');
     });
 
     it('Add table test case', () => {
-      const term = TEAM_ENTITY;
       goToProfilerTab();
       interceptURL(
         'GET',
-        `api/v1/tables/name/${serviceName}.*.${term}?include=all`,
+        `api/v1/tables/name/${serviceName}.*.${TEAM_ENTITY}?include=all`,
         'addTableTestPage'
       );
       verifyResponseStatusCode('@systemProfile', 200);
