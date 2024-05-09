@@ -383,23 +383,15 @@ public final class SecurityUtil {
   }
 
   private static void removeOrRenewOidcCredentials(
-      HttpServletRequest request, OidcClient client, OidcCredentials credentials)
-      throws ParseException {
-    boolean profilesUpdated = false;
-    if (SecurityUtil.isCredentialsExpired(credentials)) {
-      LOG.debug("Expired credentials found, trying to renew.");
-      profilesUpdated = true;
-      if (client.getConfiguration()
-          instanceof AzureAd2OidcConfiguration azureAd2OidcConfiguration) {
-        refreshAccessTokenAzureAd2Token(azureAd2OidcConfiguration, credentials);
-      } else {
-        OidcAuthenticator authenticator = new OidcAuthenticator(client.getConfiguration(), client);
-        authenticator.refresh(credentials);
-      }
+      HttpServletRequest request, OidcClient client, OidcCredentials credentials) {
+    LOG.debug("Expired credentials found, trying to renew.");
+    if (client.getConfiguration() instanceof AzureAd2OidcConfiguration azureAd2OidcConfiguration) {
+      refreshAccessTokenAzureAd2Token(azureAd2OidcConfiguration, credentials);
+    } else {
+      OidcAuthenticator authenticator = new OidcAuthenticator(client.getConfiguration(), client);
+      authenticator.refresh(credentials);
     }
-    if (profilesUpdated) {
-      request.getSession().setAttribute(OIDC_CREDENTIAL_PROFILE, credentials);
-    }
+    request.getSession().setAttribute(OIDC_CREDENTIAL_PROFILE, credentials);
   }
 
   private static void refreshAccessTokenAzureAd2Token(
