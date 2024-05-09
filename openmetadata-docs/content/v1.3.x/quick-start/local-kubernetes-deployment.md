@@ -86,7 +86,7 @@ Run `kubectl get pods` to check whether all the pods for the dependencies are ru
 
 ```commandline
 NAME                                                       READY   STATUS     RESTARTS   AGE
-elasticsearch-0                                            1/1     Running   0          4m26s
+opensearch-0                                               1/1     Running   0          4m26s
 mysql-0                                                    1/1     Running   0          4m26s
 openmetadata-dependencies-db-migrations-5984f795bc-t46wh   1/1     Running   0          4m26s
 openmetadata-dependencies-scheduler-5b574858b6-75clt       1/1     Running   0          4m26s
@@ -104,9 +104,9 @@ Please note that the pods names above as `openmetadata-dependencies-*` are part 
 {%/note%}
 
 Helm Chart for OpenMetadata Dependencies uses the following helm charts:
-- [Bitnami MySQL](https://artifacthub.io/packages/helm/bitnami/mysql/9.7.1) (helm chart version 9.7.1)
-- [ElasticSearch](https://artifacthub.io/packages/helm/elastic/elasticsearch/7.16.3) (helm chart version 7.16.3)
-- [Airflow](https://artifacthub.io/packages/helm/airflow-helm/airflow/8.6.1) (helm chart version 8.6.1)
+- [Bitnami MySQL](https://artifacthub.io/packages/helm/bitnami/mysql/9.7.2) (helm chart version 9.7.2)
+- [OpenSearch](https://artifacthub.io/packages/helm/opensearch-project-helm-charts/opensearch/2.12.2) (helm chart version 2.12.2)
+- [Airflow](https://artifacthub.io/packages/helm/airflow-helm/airflow/8.8.0) (helm chart version 8.8.0)
 
 ### 5. Install OpenMetadata Helm Chart
 
