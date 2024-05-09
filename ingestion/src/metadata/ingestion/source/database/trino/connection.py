@@ -88,7 +88,10 @@ def get_connection_args(connection: TrinoConnection):
             connection.authType.jwt.get_secret_value()
         )
 
-    elif connection.authType == noConfigAuthenticationTypes.NoConfigAuthenticationTypes.OAUTH2:
+    elif (
+        connection.authType
+        == noConfigAuthenticationTypes.NoConfigAuthenticationTypes.OAUTH2
+    ):
         from trino.auth import OAuth2Authentication
 
         connection.connectionArguments.__root__["auth"] = OAuth2Authentication()
