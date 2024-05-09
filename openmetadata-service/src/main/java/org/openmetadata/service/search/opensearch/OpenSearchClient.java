@@ -829,7 +829,7 @@ public class OpenSearchClient implements SearchClient {
   private static ScriptScoreFunctionBuilder boostScore() {
     return ScoreFunctionBuilders.scriptFunction(
         "double score = _score;"
-            + "if (doc.containsKey('totalVotes') && doc['totalVotes'].value != null) { score = score + doc['totalVotes'].value; }"
+            + "if (doc.containsKey('totalVotes') && doc['totalVotes'].size() != 0) { score = score + doc['totalVotes'].value; }"
             + "if (doc.containsKey('usageSummary') && doc['usageSummary.weeklyStats.count'].value != null) { score = score + doc['usageSummary.weeklyStats.count'].value; }"
             + "if (doc.containsKey('tier.tagFQN') && !doc['tier.tagFQN'].empty) { if (doc['tier.tagFQN'].value == 'Tier.Tier2') { score = score + 10; }"
             + " else if (doc['tier.tagFQN'].value == 'Tier.Tier1') { score = score + 20; }}"
