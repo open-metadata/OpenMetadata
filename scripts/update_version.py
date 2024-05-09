@@ -28,6 +28,20 @@ def update_github_action(args):
         yaml.dump(content, f, sort_keys=False)
 
 
+def _update_with_regex(file_path, pattern, substitution):
+    with open(file_path, "r") as f:
+        content = f.read()
+
+    updated_content = re.sub(
+        pattern,
+        substitution,
+        content
+    )
+
+    with open(file_path, "w") as f:
+        f.write(updated_content)
+
+
 def update_docker_tag(args):
     """Updates the Docker Tag on docker-compose files."""
 
@@ -36,18 +50,11 @@ def update_docker_tag(args):
 
     logger.info(f"Updating Docker Tag in {file_path} to {tag}\n")
 
-    with open(file_path, "r") as f:
-        content = f.read()
-
-    print("A")
-    updated_content = re.sub(
+    _update_with_regex(
+        file_path,
         r'(image: docker\.getcollate\.io/openmetadata/.*?):.+',
         rf'\1:{tag}',
-        content
     )
-
-    with open(file_path, "w") as f:
-        f.write(updated_content)
 
 
 def update_dockerfile_arg(args):
@@ -59,17 +66,12 @@ def update_dockerfile_arg(args):
 
     logger.info(f"Updating ARG {arg} in {file_path} to {value}\n")
 
-    with open(file_path, "r") as f:
-        content = f.read()
-
-    updated_content = re.sub(
+    _update_with_regex(
+        file_path,
         rf"(ARG\s+{arg}=).+",
         rf"\1={value}",
-        content
-    )
 
-    with open(file_path, "w") as f:
-        f.write(updated_content)
+    )
 
 
 def update_pyproject_version(args):
@@ -80,17 +82,11 @@ def update_pyproject_version(args):
 
     logger.info(f"Updating {file_path} version to {version}\n")
 
-    with open(file_path, "r") as f:
-        content = f.read()
-
-    updated_content = re.sub(
+    _update_with_regex(
+        file_path,
         r'version\s*=\s*"[^"]+"',
         f'version = "{version}"',
-        content
     )
-
-    with open(file_path, "w") as f:
-        f.write(updated_content)
 
 
 def main():
