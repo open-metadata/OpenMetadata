@@ -193,7 +193,9 @@ export const CustomEdge = ({
   };
 
   const currentPipelineStatus = useMemo(() => {
-    const isPipelineActiveNow = activeLayer.includes(LineageLayerView.PIPELINE);
+    const isPipelineActiveNow = activeLayer.includes(
+      LineageLayerView.DATA_OBSERVARABILITY
+    );
     const pipelineData = pipeline?.pipelineStatus;
     if (pipelineData && isPipelineActiveNow) {
       switch (pipelineData.executionStatus) {

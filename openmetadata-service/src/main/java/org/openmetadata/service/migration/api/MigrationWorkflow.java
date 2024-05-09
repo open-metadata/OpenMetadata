@@ -196,12 +196,11 @@ public class MigrationWorkflow {
             updateMigrationStepInDB(process, context);
           } finally {
             allRows.add(row);
-            printToAsciiTable(columns, allRows, "Status Unavailable");
             LOG.info(
                 "[MigrationWorkFlow] Migration Run finished for Version: {}", process.getVersion());
           }
         }
-
+        printToAsciiTable(columns, allRows, "Status Unavailable");
       } catch (Exception e) {
         // Any Exception catch the error
         LOG.error("Encountered Exception in MigrationWorkflow", e);

@@ -257,6 +257,7 @@ public class LineageRepository {
   }
 
   private String processColumnLineage(HashMap lineageMap) {
+
     if (lineageMap.get("columns") != null) {
       StringBuilder str = new StringBuilder();
       Collection collection = (Collection<ColumnLineage>) lineageMap.get("columns");
@@ -268,9 +269,9 @@ public class LineageRepository {
           str.append(colLineage.get("toColumn"));
           str.append(";");
         }
-        // remove the last ;
-        return str.toString().substring(0, str.toString().length() - 1);
       }
+      // remove the last ;
+      return str.toString().substring(0, str.toString().length() - 1);
     }
     return "";
   }
