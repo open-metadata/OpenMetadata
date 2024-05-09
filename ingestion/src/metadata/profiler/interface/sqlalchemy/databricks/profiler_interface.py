@@ -45,14 +45,12 @@ class DatabricksProfilerInterface(SQAProfilerInterface):
             splitted_result = result.split(".", 2)[-1].split(".")
             result = ".".join(result.split(".", 2)[:-1])
             result += "." + "`.`".join(splitted_result)
-
         return result
-
-    HiveCompiler.visit_column = visit_column
 
     def __init__(self, service_connection_config, **kwargs):
         super().__init__(service_connection_config=service_connection_config, **kwargs)
         self.set_catalog(self.session)
+        HiveCompiler.visit_column = DatabricksProfilerInterface.visit_column
 
     def _get_struct_columns(self, columns: List[OMColumn], parent: str):
         """Get struct columns"""
