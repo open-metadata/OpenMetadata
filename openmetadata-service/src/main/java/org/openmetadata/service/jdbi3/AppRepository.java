@@ -216,6 +216,14 @@ public class AppRepository extends EntityRepository<App> {
     return JsonUtils.readValue(json, AppRunRecord.class);
   }
 
+  public AppRunRecord getLatestAppRunsAfterStartTime(UUID appId, long startTime) {
+    String json = daoCollection.appExtensionTimeSeriesDao().getLatestAppRun(appId, startTime);
+    if (json == null) {
+      throw new UnhandledServerException("No Available Application Run Records.");
+    }
+    return JsonUtils.readValue(json, AppRunRecord.class);
+  }
+
   @Override
   public EntityUpdater getUpdater(App original, App updated, Operation operation) {
     return new AppRepository.AppUpdater(original, updated, operation);

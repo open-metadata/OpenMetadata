@@ -21,6 +21,7 @@ import org.openmetadata.service.migration.QueryStatus;
 import org.openmetadata.service.migration.context.MigrationContext;
 import org.openmetadata.service.migration.context.MigrationWorkflowContext;
 import org.openmetadata.service.migration.utils.MigrationFile;
+import org.openmetadata.service.util.AsciiTable;
 
 @Slf4j
 public class MigrationWorkflow {
@@ -227,7 +228,9 @@ public class MigrationWorkflow {
                   .toList());
       LOG.info(
           "[MigrationWorkflow] Version : {} Run Schema Changes Query Status", process.getVersion());
-      printToAsciiTable(schemaChangesColumns, allSchemaChangesRows, "No New Queries");
+      LOG.debug(
+          new AsciiTable(schemaChangesColumns, allSchemaChangesRows, true, "", "No New Queries")
+              .render());
       row.add(SUCCESS_MSG);
     } catch (Exception e) {
       row.add(FAILED_MSG + e.getMessage());
@@ -253,7 +256,9 @@ public class MigrationWorkflow {
                                   entry.getValue().getStatus(), entry.getValue().getMessage())))
                   .toList());
       LOG.info("[MigrationWorkflow] Version : {} Run Post DDL Query Status", process.getVersion());
-      printToAsciiTable(schemaChangesColumns, allSchemaChangesRows, "No New Queries");
+      LOG.debug(
+          new AsciiTable(schemaChangesColumns, allSchemaChangesRows, true, "", "No New Queries")
+              .render());
       row.add(SUCCESS_MSG);
     } catch (Exception e) {
       row.add(FAILED_MSG + e.getMessage());
