@@ -49,24 +49,22 @@ function TestCaseFeed({ entitySpecificInfo }: Readonly<TestCaseFeedProps>) {
 
   const renderTestCaseResult = useMemo(() => {
     return (
-      <div className="h-24">
-        <Row className="m-t-xs" gutter={[0, 4]}>
-          {entitySpecificInfo?.testCaseResult?.slice(0, 3).map((caseResult) => {
-            return (
-              <Col key={caseResult.timestamp} span={24}>
-                {getStatusIcon(caseResult.testCaseStatus)}{' '}
-                <Typography.Text className="m-l-xss break-all whitespace-normal">
-                  {customFormatDateTime(caseResult.timestamp, 'MMM dd, hh:mm')}
-                </Typography.Text>
-                <span className="m-x-xss">:</span>
-                <Typography.Text className="break-all whitespace-normal">
-                  {caseResult.result}
-                </Typography.Text>
-              </Col>
-            );
-          })}
-        </Row>
-      </div>
+      <Row className="m-t-xs" gutter={[0, 4]}>
+        {entitySpecificInfo?.testCaseResult?.slice(0, 3).map((caseResult) => {
+          return (
+            <Col key={caseResult.timestamp} span={24}>
+              {getStatusIcon(caseResult.testCaseStatus)}{' '}
+              <Typography.Text className="m-l-xss break-all whitespace-normal">
+                {customFormatDateTime(caseResult.timestamp, 'MMM dd, hh:mm')}
+              </Typography.Text>
+              <span className="m-x-xss">:</span>
+              <Typography.Text className="break-all whitespace-normal">
+                {caseResult.result}
+              </Typography.Text>
+            </Col>
+          );
+        })}
+      </Row>
     );
   }, [entitySpecificInfo?.testCaseResult]);
 

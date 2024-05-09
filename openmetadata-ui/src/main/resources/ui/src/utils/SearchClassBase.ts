@@ -344,13 +344,10 @@ class SearchClassBase {
     }
 
     if (entity.fullyQualifiedName && entity.entityType) {
-      let fqn = entity.fullyQualifiedName;
-
-      if (entity.entityType === EntityType.TEST_SUITE) {
-        fqn = getTestSuiteFQN(fqn);
-      }
-
-      return getEntityLinkFromType(fqn, entity.entityType as EntityType);
+      return getEntityLinkFromType(
+        entity.fullyQualifiedName,
+        entity.entityType as EntityType
+      );
     }
 
     return '';

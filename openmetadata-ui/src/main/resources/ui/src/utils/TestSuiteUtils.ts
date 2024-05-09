@@ -12,8 +12,10 @@
  */
 
 import { TableProfilerTab } from '../components/Database/Profiler/ProfilerDashboard/profilerDashboard.interface';
+import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
 import { getEntityDetailsPath } from '../constants/constants';
 import { EntityTabs, EntityType } from '../enums/entity.enum';
+import Fqn from './Fqn';
 import { getTestSuitePath } from './RouterUtils';
 
 export const getTestSuiteDetailsPath = ({
@@ -31,11 +33,12 @@ export const getTestSuiteDetailsPath = ({
       )}?activeTab=${TableProfilerTab.DATA_QUALITY}`
     : getTestSuitePath(fullyQualifiedName);
 
+// get the FQN of the test suite without the TestSuite name
 export const getTestSuiteFQN = (fqn: string) => {
-  const fqnPart = fqn.split('.');
+  const fqnPart = Fqn.split(fqn);
   if (fqnPart.length > 1) {
-    fqnPart.pop();
+    fqnPart.pop(); // remove he last part of the FQN which is testSuite name
   }
 
-  return fqnPart.join('.');
+  return fqnPart.join(FQN_SEPARATOR_CHAR);
 };

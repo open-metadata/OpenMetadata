@@ -68,40 +68,7 @@ const FeedCardBodyV1 = ({
     return MarkdownToHTMLConverter.makeHtml(getFrontEndFormat(defaultMessage));
   };
 
-  const feedBody = useMemo(() => {
-    if (isEditPost) {
-      return (
-        <ActivityFeedEditor
-          focused
-          className="mb-8"
-          defaultValue={getDefaultValue(message)}
-          editAction={
-            <div className="d-flex justify-end gap-2 m-r-xss">
-              <Button
-                className="border border-primary text-primary rounded-4"
-                data-testid="cancel-button"
-                size="small"
-                onClick={onEditCancel}>
-                {t('label.cancel')}
-              </Button>
-              <Button
-                className="rounded-4"
-                data-testid="save-button"
-                disabled={!message.length}
-                size="small"
-                type="primary"
-                onClick={handleSave}>
-                {t('label.save')}
-              </Button>
-            </div>
-          }
-          editorClass="is_edit_post"
-          onSave={handleSave}
-          onTextChange={(message) => setPostMessage(message)}
-        />
-      );
-    }
-
+  const feedBodyStyleCardsRender = useMemo(() => {
     if (!isPost) {
       if (cardStyle === CardStyle.Description) {
         return <DescriptionFeed feed={feed} />;
@@ -161,7 +128,44 @@ const FeedCardBodyV1 = ({
         markdown={getFrontEndFormat(message)}
       />
     );
-  }, [isEditPost, message, postMessage, cardStyle, feed]);
+  }, [isPost, message, postMessage, cardStyle, feed, entityType, entityFQN]);
+
+  const feedBodyRender = useMemo(() => {
+    if (isEditPost) {
+      return (
+        <ActivityFeedEditor
+          focused
+          className="mb-8"
+          defaultValue={getDefaultValue(message)}
+          editAction={
+            <div className="d-flex justify-end gap-2 m-r-xss">
+              <Button
+                className="border border-primary text-primary rounded-4"
+                data-testid="cancel-button"
+                size="small"
+                onClick={onEditCancel}>
+                {t('label.cancel')}
+              </Button>
+              <Button
+                className="rounded-4"
+                data-testid="save-button"
+                disabled={!message.length}
+                size="small"
+                type="primary"
+                onClick={handleSave}>
+                {t('label.save')}
+              </Button>
+            </div>
+          }
+          editorClass="is_edit_post"
+          onSave={handleSave}
+          onTextChange={(message) => setPostMessage(message)}
+        />
+      );
+    }
+
+    return feedBodyStyleCardsRender;
+  }, [isEditPost, message, feedBodyStyleCardsRender]);
 
   return (
     <div
@@ -201,7 +205,7 @@ const FeedCardBodyV1 = ({
             </Row>
           </>
         ) : (
-          feedBody
+          feedBodyRender
         )}
       </div>
     </div>
