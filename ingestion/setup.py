@@ -81,6 +81,12 @@ COMMONS = {
         ],  # grpcio-tools already depends on grpcio. No need to add separately
         "protobuf",
     },
+    "postgres": {
+        VERSIONS["pymysql"],
+        "psycopg2-binary",
+        VERSIONS["geoalchemy2"],
+        VERSIONS["packaging"],
+    },  # Adding as Postgres SQL & GreenPlum are using common packages.
 }
 
 
@@ -184,6 +190,7 @@ plugins: Dict[str, Set[str]] = {
     },  # also requires requests-aws4auth which is in base
     "glue": {VERSIONS["boto3"]},
     "great-expectations": {VERSIONS["great-expectations"]},
+    "greenplum": {*COMMONS["postgres"]},
     "hive": {
         *COMMONS["hive"],
         "thrift>=0.13,<1",
@@ -226,12 +233,7 @@ plugins: Dict[str, Set[str]] = {
     "oracle": {"cx_Oracle>=8.3.0,<9", "oracledb~=1.2"},
     "pgspider": {"psycopg2-binary", "sqlalchemy-pgspider"},
     "pinotdb": {"pinotdb~=0.3"},
-    "postgres": {
-        VERSIONS["pymysql"],
-        "psycopg2-binary",
-        VERSIONS["geoalchemy2"],
-        VERSIONS["packaging"],
-    },
+    "postgres": {*COMMONS["postgres"]},
     "powerbi": {
         VERSIONS["msal"],
         VERSIONS["boto3"],
