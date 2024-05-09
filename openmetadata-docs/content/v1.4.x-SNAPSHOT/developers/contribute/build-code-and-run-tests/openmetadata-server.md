@@ -101,7 +101,7 @@ In that list look for "jersey-client:2.25.1"
 
 {% image src="/images/v1.4/developers/contribute/build-code-and-run-tests/intellij-jersey-dependency.png" alt="Add jersey-client dependency" caption=" " /%}
 
-Select it and click "OK".  
+Select it and click "OK". 
 
 We also need to set the folder ‘generated-resources’ in some module’s target folder as “source” folder. IntelliJ IDEA mark target folder as "excluded" by default, we could change it in the module setting. The openmetadata-spec and openmetadata-java-client modules have generated code, need to be changed.
 
