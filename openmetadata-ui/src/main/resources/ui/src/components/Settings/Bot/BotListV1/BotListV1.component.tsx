@@ -29,6 +29,7 @@ import { EntityType } from '../../../../enums/entity.enum';
 import { Bot, ProviderType } from '../../../../generated/entity/bot';
 import { Include } from '../../../../generated/type/include';
 import { Paging } from '../../../../generated/type/paging';
+import LimitWrapper from '../../../../hoc/LimitWrapper';
 import { useAuth } from '../../../../hooks/authHooks';
 import { usePaging } from '../../../../hooks/paging/usePaging';
 import { getBots } from '../../../../rest/botsAPI';
@@ -273,13 +274,15 @@ const BotListV1 = ({
           <Tooltip
             placement="topLeft"
             title={!isAdminUser && t('message.admin-only-action')}>
-            <Button
-              data-testid="add-bot"
-              disabled={!isAdminUser}
-              type="primary"
-              onClick={handleAddBotClick}>
-              {addBotLabel}
-            </Button>
+            <LimitWrapper resource="bot">
+              <Button
+                data-testid="add-bot"
+                disabled={!isAdminUser}
+                type="primary"
+                onClick={handleAddBotClick}>
+                {addBotLabel}
+              </Button>
+            </LimitWrapper>
           </Tooltip>
         </Space>
       </Col>

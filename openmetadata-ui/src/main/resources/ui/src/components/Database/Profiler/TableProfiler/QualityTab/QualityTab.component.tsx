@@ -26,6 +26,7 @@ import { INITIAL_TEST_SUMMARY } from '../../../../../constants/TestSuite.constan
 import { EntityTabs, EntityType } from '../../../../../enums/entity.enum';
 import { ProfilerDashboardType } from '../../../../../enums/table.enum';
 import { TestCaseStatus } from '../../../../../generated/tests/testCase';
+import LimitWrapper from '../../../../../hoc/LimitWrapper';
 import { useFqn } from '../../../../../hooks/useFqn';
 import { TestCaseType } from '../../../../../rest/testAPI';
 import {
@@ -231,14 +232,16 @@ export const QualityTab = () => {
                       }}
                       placement="bottomRight"
                       trigger={['click']}>
-                      <Button
-                        data-testid="profiler-add-table-test-btn"
-                        type="primary">
-                        <Space>
-                          {t('label.add-entity', { entity: t('label.test') })}
-                          <DownOutlined />
-                        </Space>
-                      </Button>
+                      <LimitWrapper resource="dataQuality">
+                        <Button
+                          data-testid="profiler-add-table-test-btn"
+                          type="primary">
+                          <Space>
+                            {t('label.add-entity', { entity: t('label.test') })}
+                            <DownOutlined />
+                          </Space>
+                        </Button>
+                      </LimitWrapper>
                     </Dropdown>
                   </Form.Item>
                 )}

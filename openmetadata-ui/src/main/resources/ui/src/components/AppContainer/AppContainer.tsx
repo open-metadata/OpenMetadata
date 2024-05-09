@@ -1,3 +1,4 @@
+/* eslint-disable i18next/no-literal-string */
 /*
  *  Copyright 2023 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
@@ -25,6 +26,8 @@ import SignUpPage from '../../pages/SignUp/SignUpPage';
 import { getLimitConfig } from '../../rest/limitsAPI';
 import applicationRoutesClass from '../../utils/ApplicationRoutesClassBase';
 import Appbar from '../AppBar/Appbar';
+
+import { LimitBanner } from '../common/LimitBanner/LimitBanner';
 import LeftSidebar from '../MyData/LeftSidebar/LeftSidebar.component';
 import applicationsClassBase from '../Settings/Applications/AppDetails/ApplicationsClassBase';
 import './app-container.less';
@@ -53,14 +56,9 @@ const AppContainer = () => {
   }, [currentUser?.id]);
 
   return (
-    <Switch>
-      <Route exact component={SignUpPage} path={ROUTES.SIGNUP}>
-        {!isEmpty(currentUser) && <Redirect to={ROUTES.HOME} />}
-      </Route>
-      {/* Do not move this route as we don't want to render the sidebar and header in 404 page */}
-      <Route exact component={PageNotFound} path={ROUTES.NOT_FOUND} />
-
-      <Layout className="app-container">
+    <Layout className="app-container">
+      <LimitBanner />
+      <Layout>
         <Sider
           className={classNames('left-sidebar-col', {
             'left-sidebar-col-rtl': isDirectionRTL,
@@ -72,15 +70,22 @@ const AppContainer = () => {
           <Header className="p-x-0">
             <Appbar />
           </Header>
-          <Layout>
-            <Content className="main-content">
-              <AuthenticatedRouter />
-              {ApplicationExtras && <ApplicationExtras />}
-            </Content>
-          </Layout>
+          <Content>
+            <Switch>
+              <Route exact component={SignUpPage} path={ROUTES.SIGNUP}>
+                {!isEmpty(currentUser) && <Redirect to={ROUTES.HOME} />}
+              </Route>
+              {/* Do not move this route as we don't want to render the sidebar and header in 404 page */}
+              <Route exact component={PageNotFound} path={ROUTES.NOT_FOUND} />
+              <Content className="main-content">
+                <AuthenticatedRouter />
+                {ApplicationExtras && <ApplicationExtras />}
+              </Content>
+            </Switch>
+          </Content>
         </Layout>
       </Layout>
-    </Switch>
+    </Layout>
   );
 };
 

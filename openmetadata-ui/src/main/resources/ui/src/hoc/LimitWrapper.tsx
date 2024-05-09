@@ -30,7 +30,7 @@ interface LimitWrapperProps {
  * @param children -- children component that need to be wrapped
  * @returns - Wrapped component
  */
-export const LimitWrapper = ({ resource, children }: LimitWrapperProps) => {
+const LimitWrapper = ({ resource, children }: LimitWrapperProps) => {
   const { resourceLimit, setResourceLimit, config } = useLimitStore();
   const [loading, setLoading] = useState(false);
 
@@ -47,7 +47,7 @@ export const LimitWrapper = ({ resource, children }: LimitWrapperProps) => {
       fetchResourceLimit();
     }
   }, [resource]);
-  const currentLimits = resourceLimit[resource]?.featureLimitStatuses[0] ?? {};
+  const currentLimits = resourceLimit[resource]?.featureLimitStatuses[0];
 
   const limitReached = currentLimits?.limitReached;
 
@@ -72,3 +72,5 @@ export const LimitWrapper = ({ resource, children }: LimitWrapperProps) => {
     children
   );
 };
+
+export default React.memo(LimitWrapper);
