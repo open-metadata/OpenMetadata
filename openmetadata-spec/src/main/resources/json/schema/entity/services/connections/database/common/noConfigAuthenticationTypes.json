@@ -6,7 +6,7 @@
     "description": "Database Authentication types not requiring config.",
     "type": "string",
     "enum": [
-      "OAUTH2"
+      "OAuth2"
     ],
-    "default": "OAUTH2"
+    "default": "OAuth2"
 }

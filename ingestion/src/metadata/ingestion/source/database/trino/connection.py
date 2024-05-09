@@ -100,7 +100,7 @@ def get_connection_args(connection: TrinoConnection):
 
     elif (
         connection.authType
-        == noConfigAuthenticationTypes.NoConfigAuthenticationTypes.OAUTH2
+        == noConfigAuthenticationTypes.NoConfigAuthenticationTypes.OAuth2
     ):
         from trino.auth import OAuth2Authentication
 
