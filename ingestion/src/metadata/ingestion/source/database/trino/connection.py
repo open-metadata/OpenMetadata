@@ -17,6 +17,7 @@ from urllib.parse import quote_plus
 
 from requests import Session
 from sqlalchemy.engine import Engine
+from trino.auth import BasicAuthentication, JWTAuthentication, OAuth2Authentication
 
 from metadata.clients.azure_client import AzureClient
 from metadata.generated.schema.entity.automations.workflow import (
@@ -30,11 +31,13 @@ from metadata.generated.schema.entity.services.connections.database.common impor
 from metadata.generated.schema.entity.services.connections.database.trinoConnection import (
     TrinoConnection,
 )
+from metadata.generated.schema.security.credentials.azureCredentials import (
+    AzureCredentials,
+)
 from metadata.ingestion.connections.builders import (
     create_generic_db_connection,
     get_connection_args_common,
     init_empty_connection_arguments,
-    init_empty_connection_options,
 )
 from metadata.ingestion.connections.secrets import connection_with_options_secrets
 from metadata.ingestion.connections.test_connections import (
@@ -83,18 +86,31 @@ def get_connection_args(connection: TrinoConnection):
         connection.connectionArguments.__root__["http_session"] = session
 
     if isinstance(connection.authType, basicAuth.BasicAuth):
-        from trino.auth import BasicAuthentication
-
         connection.connectionArguments.__root__["auth"] = BasicAuthentication(
             connection.username, connection.authType.password.get_secret_value()
         )
         connection.connectionArguments.__root__["http_scheme"] = "https"
 
     elif isinstance(connection.authType, jwtAuth.JwtAuth):
-        from trino.auth import JWTAuthentication
-
         connection.connectionArguments.__root__["auth"] = JWTAuthentication(
             connection.authType.jwt.get_secret_value()
+        )
+        connection.connectionArguments.__root__["http_scheme"] = "https"
+
+    elif isinstance(connection.authType, AzureCredentials):
+        if not connection.authType.scopes:
+            raise ValueError(
+                "Azure Scopes are missing, please refer https://learn.microsoft.com/en-gb/azure/mysql/flexible-server/how-to-azure-ad#2---retrieve-microsoft-entra-access-token and fetch the resource associated with it, for e.g. https://ossrdbms-aad.database.windows.net/.default"
+            )
+
+        azure_client = AzureClient(**connection.authType.dict()).create_client()
+
+        access_token_obj = azure_client.get_token(
+            *connection.authType.scopes.split(",")
+        )
+
+        connection.connectionArguments.__root__["auth"] = JWTAuthentication(
+            access_token_obj.token
         )
         connection.connectionArguments.__root__["http_scheme"] = "https"
 
@@ -102,8 +118,6 @@ def get_connection_args(connection: TrinoConnection):
         connection.authType
         == noConfigAuthenticationTypes.NoConfigAuthenticationTypes.OAuth2
     ):
-        from trino.auth import OAuth2Authentication
-
         connection.connectionArguments.__root__["auth"] = OAuth2Authentication()
         connection.connectionArguments.__root__["http_scheme"] = "https"
 
@@ -121,18 +135,7 @@ def get_connection(connection: TrinoConnection) -> Engine:
         connection.connectionArguments.__root__["verify"] = {
             "verify": connection.verify
         }
-    if hasattr(connection.authType, "azureConfig"):
-        azure_client = AzureClient(connection.authType.azureConfig).create_client()
-        if not connection.authType.azureConfig.scopes:
-            raise ValueError(
-                "Azure Scopes are missing, please refer https://learn.microsoft.com/en-gb/azure/mysql/flexible-server/how-to-azure-ad#2---retrieve-microsoft-entra-access-token and fetch the resource associated with it, for e.g. https://ossrdbms-aad.database.windows.net/.default"
-            )
-        access_token_obj = azure_client.get_token(
-            *connection.authType.azureConfig.scopes.split(",")
-        )
-        if not connection.connectionOptions:
-            connection.connectionOptions = init_empty_connection_options()
-        connection.connectionOptions.__root__["access_token"] = access_token_obj.token
+
     return create_generic_db_connection(
         connection=connection,
         get_connection_url_fn=get_connection_url,

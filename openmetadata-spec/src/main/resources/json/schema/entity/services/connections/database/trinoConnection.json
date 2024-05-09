@@ -48,7 +48,7 @@
           "$ref": "./common/jwtAuth.json"
         },
         {
-          "$ref": "./common/azureConfig.json"
+          "$ref": "../../../../security/credentials/azureCredentials.json"
         },
         {
           "$ref": "./common/noConfigAuthenticationTypes.json"
