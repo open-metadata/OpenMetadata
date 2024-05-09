@@ -413,8 +413,8 @@ public class ElasticSearchClient implements SearchClient {
         BoolQueryBuilder parentTermQueryBuilder = QueryBuilders.boolQuery();
         Terms parentTerms = searchResponse.getAggregations().get("fqnParts_agg");
 
-        // Build  query to get parent terms for the user input terms , to build correct hierarchy
-        if (!parentTerms.getBuckets().isEmpty()) {
+        // Build  es query to get parent terms for the user input query , to build correct hierarchy
+        if (!parentTerms.getBuckets().isEmpty() && !request.getQuery().equals("*")) {
           parentTerms.getBuckets().stream()
               .map(Terms.Bucket::getKeyAsString)
               .forEach(
@@ -1168,7 +1168,8 @@ public class ElasticSearchClient implements SearchClient {
         new SearchSourceBuilder().query(queryBuilder).highlighter(hb).from(from).size(size);
     searchSourceBuilder.aggregation(
         AggregationBuilders.terms("glossary.name.keyword").field("glossary.name.keyword"));
-    searchSourceBuilder.aggregation(AggregationBuilders.terms("fqnParts_agg").field("fqnParts"));
+    searchSourceBuilder.aggregation(
+        AggregationBuilders.terms("fqnParts_agg").field("fqnParts").size(1000));
     return addAggregation(searchSourceBuilder);
   }
 
