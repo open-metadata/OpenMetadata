@@ -498,15 +498,9 @@ export const PropertyValue: FC<PropertyValueProps> = ({
               onFinish={(values: { duration: string }) => {
                 onInputSave(values.duration);
               }}>
-              <Form.Item
-                name="duration"
-                rules={[
-                  {
-                    required: true,
-                  },
-                ]}
-                style={commonStyle}>
+              <Form.Item name="duration" style={commonStyle}>
                 <Input
+                  allowClear
                   data-testid="duration-input"
                   disabled={isLoading}
                   placeholder={t('message.duration-in-iso-format')}
