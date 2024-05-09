@@ -946,6 +946,19 @@ describe(
         `/api/v1/dataQuality/testCases/search/list?*q=*${filterTableTestCases[0]}*`,
         'searchTestCase'
       );
+      cy.get('[data-testid="advanced-filter"]').click({
+        waitForAnimations: true,
+      });
+      cy.get('[value="tableFqn"]').click({ waitForAnimations: true });
+      cy.get('[data-testid="advanced-filter"]').click({
+        waitForAnimations: true,
+      });
+      cy.get('[value="testPlatforms"]').click({ waitForAnimations: true });
+      cy.get('[data-testid="advanced-filter"]').click({
+        waitForAnimations: true,
+      });
+      cy.get('[value="lastRunRange"]').click({ waitForAnimations: true });
+
       // Test case search filter
       cy.get(
         '[data-testid="test-case-container"] [data-testid="searchbar"]'

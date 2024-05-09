@@ -417,6 +417,14 @@ export const TEST_CASE_STATUS_OPTION = [
   })),
 ];
 
+export const TEST_CASE_FILTERS = {
+  table: 'tableFqn',
+  platform: 'testPlatforms',
+  type: 'testCaseType',
+  status: 'testCaseStatus',
+  lastRun: 'lastRunRange',
+};
+
 export const TEST_CASE_PLATFORM_OPTION = values(TestPlatform).map((value) => ({
   label: value,
   value: value,
