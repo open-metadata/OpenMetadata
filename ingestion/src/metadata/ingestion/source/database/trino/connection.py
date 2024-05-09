@@ -49,6 +49,14 @@ def get_connection_url(connection: TrinoConnection) -> str:
     Prepare the connection url for trino
     """
     url = f"{connection.scheme.value}://"
+
+    # leaving username here as, even though with basic auth is used directly
+    # in BasicAuthentication class, it's often also required as a part of url.
+    # For example - it will be used by OAuth2Authentication to persist token in
+    # cache more efficiently (per user instead of per host)
+    if connection.username:
+        url += f"{quote_plus(connection.username)}@"
+
     url += f"{connection.hostPort}"
     if connection.catalog:
         url += f"/{connection.catalog}"
