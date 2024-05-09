@@ -69,6 +69,10 @@ const DataAssetAsyncSelectList: FC<DataAssetAsyncSelectListProps> = ({
         pageSize: pageSize,
         queryFilter: {},
         searchIndex: searchIndex,
+        // Filter out bots from user search
+        ...(searchIndex === SearchIndex.USER || searchIndex.includes('user')
+          ? { filters: 'isBot:false' }
+          : {}),
       });
 
       const hits = dataAssetsResponse.hits.hits;
