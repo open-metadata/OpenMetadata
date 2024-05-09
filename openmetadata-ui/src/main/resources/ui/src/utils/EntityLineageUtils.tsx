@@ -25,7 +25,7 @@ import {
   uniqWith,
   upperCase,
 } from 'lodash';
-import { LoadingState } from 'Models';
+import { EntityTags, LoadingState } from 'Models';
 import React, { MouseEvent as ReactMouseEvent } from 'react';
 import {
   Connection,
@@ -61,9 +61,11 @@ import { ExploreSearchIndex } from '../components/Explore/ExplorePage.interface'
 import {
   EdgeDetails,
   EntityLineageResponse,
+  LineageSourceType,
 } from '../components/Lineage/Lineage.interface';
 import { SourceType } from '../components/SearchedData/SearchedData.interface';
 import {
+  LINEAGE_EXPORT_HEADERS,
   NODE_HEIGHT,
   NODE_WIDTH,
   ZOOM_VALUE,
@@ -84,10 +86,12 @@ import { Column, Table } from '../generated/entity/data/table';
 import { Topic } from '../generated/entity/data/topic';
 import { ColumnLineage, LineageDetails } from '../generated/type/entityLineage';
 import { EntityReference } from '../generated/type/entityReference';
+import { TagSource } from '../generated/type/tagLabel';
 import { addLineage, deleteLineageEdge } from '../rest/miscAPI';
 import { getPartialNameFromTableFQN } from './CommonUtils';
 import { getEntityName } from './EntityUtils';
 import Fqn from './Fqn';
+import { jsonToCSV } from './StringsUtils';
 import { showErrorToast } from './ToastUtils';
 
 export const MAX_LINEAGE_LENGTH = 20;
@@ -1073,6 +1077,7 @@ export const getUpstreamDownstreamNodesEdges = (
 export const getLineageChildParents = (
   obj: EntityLineageResponse,
   nodeSet: Set<string>,
+  parsedNodes: LineageSourceType[],
   id: string,
   isParent = false,
   index = 0
@@ -1091,9 +1096,14 @@ export const getLineageChildParents = (
 
     if (node && !nodeSet.has(node.id)) {
       nodeSet.add(node.id);
+      parsedNodes.push({
+        ...(node as SourceType),
+        direction: isParent ? 'upstream' : 'downstream',
+      });
       const childNodes = getLineageChildParents(
         obj,
         nodeSet,
+        parsedNodes,
         node.id,
         isParent,
         i
@@ -1117,9 +1127,58 @@ export const removeDuplicates = (arr: EdgeDetails[] = []) => {
   return uniqWith(arr, isEqual);
 };
 
+export const getExportEntity = (entity: LineageSourceType) => {
+  const {
+    name,
+    displayName = '',
+    fullyQualifiedName = '',
+    entityType = '',
+    direction = '',
+    owner,
+    domain,
+    tier,
+    tags = [],
+  } = entity;
+
+  const classificationTags = [];
+  const glossaryTerms = [];
+
+  for (const tag of tags) {
+    if (tag.source === TagSource.Classification) {
+      classificationTags.push(tag.tagFQN);
+    } else if (tag.source === TagSource.Glossary) {
+      glossaryTerms.push(tag.tagFQN);
+    }
+  }
+
+  return {
+    name,
+    displayName,
+    fullyQualifiedName,
+    entityType,
+    direction,
+    owner: getEntityName(owner),
+    domain: domain?.fullyQualifiedName ?? '',
+    tags: classificationTags.join(', '),
+    tier: (tier as EntityTags)?.tagFQN ?? '',
+    glossaryTerms: glossaryTerms.join(', '),
+  };
+};
+
+export const getExportData = (
+  allNodes: LineageSourceType[] | EntityReference[]
+) => {
+  const exportResultData = allNodes.map((child) =>
+    getExportEntity(child as LineageSourceType)
+  );
+
+  return jsonToCSV(exportResultData, LINEAGE_EXPORT_HEADERS);
+};
+
 export const getChildMap = (obj: EntityLineageResponse, decodedFqn: string) => {
   const nodeSet = new Set<string>();
   nodeSet.add(obj.entity.id);
+  const parsedNodes: LineageSourceType[] = [];
 
   const data = getUpstreamDownstreamNodesEdges(
     obj.edges ?? [],
@@ -1134,6 +1193,7 @@ export const getChildMap = (obj: EntityLineageResponse, decodedFqn: string) => {
   const childMap: EntityReferenceChild[] = getLineageChildParents(
     newData,
     nodeSet,
+    parsedNodes,
     obj.entity.id,
     false
   );
@@ -1141,6 +1201,7 @@ export const getChildMap = (obj: EntityLineageResponse, decodedFqn: string) => {
   const parentsMap: EntityReferenceChild[] = getLineageChildParents(
     newData,
     nodeSet,
+    parsedNodes,
     obj.entity.id,
     true
   );
@@ -1151,7 +1212,10 @@ export const getChildMap = (obj: EntityLineageResponse, decodedFqn: string) => {
     parents: parentsMap,
   };
 
-  return map;
+  return {
+    map,
+    exportResult: getExportData(parsedNodes) ?? '',
+  };
 };
 
 export const flattenObj = (

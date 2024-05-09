@@ -102,3 +102,16 @@ export const LINEAGE_COLUMN_NODE_SUPPORTED = [
   EntityType.TOPIC,
   EntityType.SEARCH_INDEX,
 ];
+
+export const LINEAGE_EXPORT_HEADERS = [
+  { field: 'name', title: 'Name' },
+  { field: 'displayName', title: 'Display Name' },
+  { field: 'fullyQualifiedName', title: 'Fully Qualified Name' },
+  { field: 'entityType', title: 'Entity Type' },
+  { field: 'direction', title: 'Direction' },
+  { field: 'owner', title: 'Owner' },
+  { field: 'domain', title: 'Domain' },
+  { field: 'tags', title: 'Tags' },
+  { field: 'tier', title: 'Tier' },
+  { field: 'glossaryTerms', title: 'Glossary Terms' },
+];

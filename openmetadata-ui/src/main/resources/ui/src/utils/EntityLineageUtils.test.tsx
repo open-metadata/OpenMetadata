@@ -355,12 +355,16 @@ describe('Test EntityLineageUtils utility', () => {
   });
 
   it('getChildMap should return valid map object', () => {
-    expect(
-      getChildMap(
-        MOCK_LINEAGE_DATA_NEW,
-        's3_storage_sample.departments.media.movies'
-      )
-    ).toEqual(MOCK_CHILD_MAP);
+    const { map, exportResult } = getChildMap(
+      MOCK_LINEAGE_DATA_NEW,
+      's3_storage_sample.departments.media.movies'
+    );
+
+    expect(map).toEqual(MOCK_CHILD_MAP);
+    expect(exportResult).toEqual(
+      `Name,Display Name,Fully Qualified Name,Entity Type,Direction,Owner,Domain,Tags,Tier,Glossary Terms
+"engineering","Engineering department","s3_storage_sample.departments.engineering","container","downstream","","","","",""`
+    );
   });
 
   it('getPaginatedChildMap should return valid map object', () => {
