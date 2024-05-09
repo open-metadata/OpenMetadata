@@ -88,6 +88,7 @@ def get_connection_args(connection: TrinoConnection):
         connection.connectionArguments.__root__["auth"] = BasicAuthentication(
             connection.username, connection.authType.password.get_secret_value()
         )
+        connection.connectionArguments.__root__["http_scheme"] = "https"
 
     elif isinstance(connection.authType, jwtAuth.JwtAuth):
         from trino.auth import JWTAuthentication
@@ -95,6 +96,7 @@ def get_connection_args(connection: TrinoConnection):
         connection.connectionArguments.__root__["auth"] = JWTAuthentication(
             connection.authType.jwt.get_secret_value()
         )
+        connection.connectionArguments.__root__["http_scheme"] = "https"
 
     elif (
         connection.authType
@@ -103,6 +105,7 @@ def get_connection_args(connection: TrinoConnection):
         from trino.auth import OAuth2Authentication
 
         connection.connectionArguments.__root__["auth"] = OAuth2Authentication()
+        connection.connectionArguments.__root__["http_scheme"] = "https"
 
     return get_connection_args_common(connection)
 
