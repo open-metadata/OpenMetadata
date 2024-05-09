@@ -535,18 +535,7 @@ export const PropertyValue: FC<PropertyValueProps> = ({
               onFinish={(values: { sqlQuery: string }) => {
                 onInputSave(values.sqlQuery);
               }}>
-              <Form.Item
-                name="sqlQuery"
-                rules={[
-                  {
-                    required: true,
-                    message: t('label.field-required', {
-                      field: t('label.sql-uppercase-query'),
-                    }),
-                  },
-                ]}
-                style={commonStyle}
-                trigger="onChange">
+              <Form.Item name="sqlQuery" style={commonStyle} trigger="onChange">
                 <SchemaEditor
                   className="custom-query-editor query-editor-h-200 custom-code-mirror-theme"
                   mode={{ name: CSMode.SQL }}
