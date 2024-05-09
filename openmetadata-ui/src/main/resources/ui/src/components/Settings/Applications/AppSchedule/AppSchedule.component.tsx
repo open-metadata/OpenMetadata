@@ -21,11 +21,13 @@ import React, {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useLimitStore } from '../../../../context/LimitsProvider/useLimitsStore';
 import {
   AppScheduleClass,
   AppType,
 } from '../../../../generated/entity/applications/app';
 import { getIngestionPipelineByFqn } from '../../../../rest/ingestionPipelineAPI';
+import { getScheduleOptionsFromSchedules } from '../../../../utils/ScheduleUtils';
 import Loader from '../../../common/Loader/Loader';
 import { TestSuiteIngestionDataType } from '../../../DataQuality/AddDataQualityTest/AddDataQualityTest.interface';
 import TestSuiteScheduler from '../../../DataQuality/AddDataQualityTest/components/TestSuiteScheduler';
@@ -46,6 +48,12 @@ const AppSchedule = ({
   const [isPipelineDeployed, setIsPipelineDeployed] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaveLoading, setIsSaveLoading] = useState(false);
+  const { config } = useLimitStore();
+
+  const { pipelineSchedules } =
+    config?.limits.config.featureLimits.find(
+      (feature) => feature.name === 'application'
+    ) ?? {};
 
   const fetchPipelineDetails = useCallback(async () => {
     setIsLoading(true);
@@ -134,7 +142,7 @@ const AppSchedule = ({
       return ['Day'];
     }
 
-    return undefined;
+    return getScheduleOptionsFromSchedules(pipelineSchedules ?? []);
   }, [appData.name, appData.appType]);
 
   useEffect(() => {

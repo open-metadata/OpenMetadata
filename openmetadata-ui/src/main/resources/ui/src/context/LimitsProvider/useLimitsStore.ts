@@ -11,29 +11,61 @@
  *  limitations under the License.
  */
 import { create } from 'zustand';
-import { LimitsResponse } from '../../generated/system/limitsResponse';
 
 export interface ResourceLimit {
-  used: number;
-  assetLimits: {
-    softLimit: number;
-    hardLimit: number;
-  };
+  featureLimitStatuses: Array<{
+    configuredLimit: {
+      name: string;
+      maxVersions: number;
+      disableFields: Array<string>;
+      limits: {
+        sofLimit: number;
+        hardLimit: number;
+      };
+    };
+    limitReached: false;
+    currentCount: number;
+  }>;
 }
+
+export type LimitConfig = {
+  enable: boolean;
+  limits: {
+    config: {
+      version: string;
+      plan: string;
+      installationType: string;
+      deployment: string;
+      companyName: string;
+      domain: string;
+      instances: number;
+      featureLimits: Array<{
+        name: string;
+        maxVersions: number;
+        limits: {
+          softLimit: number;
+          hardLimit: number;
+        };
+        disableFields: Array<string>;
+        pipelineSchedules?: Array<string>;
+      }>;
+    };
+  };
+};
 
 /**
  * Store to manage the limits and resource limits
  */
 export const useLimitStore = create<{
-  config: null | LimitsResponse;
+  config: null | LimitConfig;
   resourceLimit: Record<string, ResourceLimit>;
-  setConfig: (config: LimitsResponse) => void;
+  setConfig: (config: LimitConfig) => void;
   setResourceLimit: (resource: string, limit: ResourceLimit) => void;
 }>()((set, get) => ({
   config: null,
   resourceLimit: {},
 
-  setConfig: (config: LimitsResponse) => {
+  setConfig: (config: LimitConfig) => {
     set({ config });
   },
   setResourceLimit: (resource: string, limit: ResourceLimit) => {

@@ -10,24 +10,21 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import axiosClient from '.';
-import {
-  LimitConfig,
-  ResourceLimit,
-} from '../context/LimitsProvider/useLimitsStore';
+export const getScheduleOptionsFromSchedules = (
+  scheduleOptions: string[]
+): string[] => {
+  return scheduleOptions.map((scheduleOption) => {
+    switch (scheduleOption) {
+      case 'run_once':
+        return '';
+      case 'daily':
+        return 'day';
+      case 'weekly':
+        return 'week';
+      case 'monthly':
+        return 'month';
+    }
 
-const BASE_URL = '/limits';
-
-export const getLimitConfig = async () => {
-  const response = await axiosClient.get<LimitConfig>(`${BASE_URL}/config`);
-
-  return response.data;
-};
-
-export const getLimitByResource = async (resource: string) => {
-  const response = await axiosClient.get<ResourceLimit>(
-    `${BASE_URL}/features/${resource}`
-  );
-
-  return response.data;
+    return '';
+  });
 };

@@ -47,10 +47,9 @@ export const LimitWrapper = ({ resource, children }: LimitWrapperProps) => {
       fetchResourceLimit();
     }
   }, [resource]);
-  const currentLimits = resourceLimit[resource];
+  const currentLimits = resourceLimit[resource]?.featureLimitStatuses[0] ?? {};
 
-  const limitReached =
-    currentLimits?.used >= currentLimits?.assetLimits.hardLimit;
+  const limitReached = currentLimits?.limitReached;
 
   if (!config?.enable) {
     return children;
@@ -62,7 +61,7 @@ export const LimitWrapper = ({ resource, children }: LimitWrapperProps) => {
 
   return limitReached ? (
     <Tooltip
-      title={`You have used ${currentLimits?.used} out of ${currentLimits?.assetLimits.hardLimit} limit`}>
+      title={`You have used ${currentLimits?.currentCount} out of ${currentLimits?.configuredLimit.limits.hardLimit} limit`}>
       {React.cloneElement(children, {
         disabled: true,
         onClick: noop,

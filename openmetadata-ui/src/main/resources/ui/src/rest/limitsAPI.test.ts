@@ -62,11 +62,9 @@ describe('limitsAPI -- getLimitByResource', () => {
 
       const result = await getLimitByResource(mockResource);
 
-      expect(axiosClient.get).toHaveBeenCalledWith('/limits', {
-        params: {
-          resource: mockResource,
-        },
-      });
+      expect(axiosClient.get).toHaveBeenCalledWith(
+        '/limits/features/exampleResource'
+      );
       expect(result).toEqual(mockResponse.data);
     });
 
