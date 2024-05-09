@@ -97,6 +97,8 @@ In any other connector, extracting metadata happens automatically. In this case,
 metadata from buckets, but in order to understand their internal structure we need users to provide an `openmetadata.json`
 file at the bucket root.
 
+`Supported File Formats: [ "csv",  "tsv", "avro", "parquet", "json", "json.gz", "json.zip" ]`
+
 You can learn more about this [here](/connectors/storage). Keep reading for an example on the shape of the manifest file.
 
 {% partial file="/v1.4/connectors/storage/manifest.md" /%}
@@ -232,6 +234,12 @@ Find more information about [Source Identity](https://docs.aws.amazon.com/STS/la
 
 {% /codeInfo %}
 
+{% codeInfo srNumber=13 %}
+
+- **Bucket Names (Optional)**: Provide the names of buckets that you would want to ingest, if you want to ingest metadata from all buckets or apply a filter to ingest buckets then leave this field empty.
+
+{% /codeInfo %}
+
 {% /codeInfoContainer %}
 
 {% codeBlock fileName="filename.yaml" %}
@@ -269,6 +277,11 @@ source:
 ```
 ```yaml {% srNumber=8 %}
         # assumeRoleSourceIdentity: identity
+```
+```yaml {% srNumber=13 %}
+      bucketName: 
+      - s3-testing-1
+      - s3-testing-2
 ```
 ```yaml {% srNumber=11 %}
       # connectionOptions:

@@ -1120,7 +1120,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
   }
 
   @Test
-  void put_viewDefinition_200(TestInfo test) throws IOException {
+  void put_schemaDefinition_200(TestInfo test) throws IOException {
     CreateTable createTable = createRequest(test);
     createTable.setTableType(TableType.View);
     String query =
@@ -1132,31 +1132,11 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
                     select * from spectrum.sales
                     with no schema binding;
                     """;
-    createTable.setViewDefinition(query);
+    createTable.setSchemaDefinition(query);
     Table table = createAndCheckEntity(createTable, ADMIN_AUTH_HEADERS);
-    table = getEntity(table.getId(), "viewDefinition", ADMIN_AUTH_HEADERS);
-    LOG.info("table view definition {}", table.getViewDefinition());
-    assertEquals(table.getViewDefinition(), query);
-  }
-
-  @Test
-  void put_viewDefinition_invalid_table_4xx(TestInfo test) {
-    CreateTable createTable = createRequest(test);
-    createTable.setTableType(TableType.Regular);
-    String query =
-        """
-                    sales_vw
-                    create view sales_vw as
-                    select * from public.sales
-                    union all
-                    select * from spectrum.sales
-                    with no schema binding;
-                    """;
-    createTable.setViewDefinition(query);
-    assertResponseContains(
-        () -> createAndCheckEntity(createTable, ADMIN_AUTH_HEADERS),
-        BAD_REQUEST,
-        "ViewDefinition can only be set on TableType View, SecureView or MaterializedView");
+    table = getEntity(table.getId(), "schemaDefinition", ADMIN_AUTH_HEADERS);
+    LOG.info("table view definition {}", table.getSchemaDefinition());
+    assertEquals(table.getSchemaDefinition(), query);
   }
 
   @Test
@@ -2417,12 +2397,8 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     String query =
         "{\"size\": 100,\"query\":{\"bool\":{\"must\":[{\"term\":{\"descriptionStatus\":\"INCOMPLETE\"}}]}}}";
     request.setJsonEntity(query);
-    try {
-      waitForEsAsyncOp();
-      response = searchClient.performRequest(request);
-    } finally {
-      searchClient.close();
-    }
+    response = searchClient.performRequest(request);
+    searchClient.close();
 
     String jsonString = EntityUtils.toString(response.getEntity());
     HashMap<String, Object> map =
@@ -2719,25 +2695,25 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
         table.getFollowers(),
         table.getJoins(),
         table.getSampleData(),
-        table.getViewDefinition(),
+        table.getSchemaDefinition(),
         table.getProfile(),
         table.getLocation(),
         table.getDataModel());
 
     String fields =
         "tableConstraints,usageSummary,owner,"
-            + "tags,followers,joins,sampleData,viewDefinition,profile,location,dataModel";
+            + "tags,followers,joins,sampleData,schemaDefinition,profile,location,dataModel";
     table =
         byName
             ? getEntityByName(table.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)
             : getEntity(table.getId(), fields, ADMIN_AUTH_HEADERS);
     assertListNotNull(table.getService(), table.getServiceType(), table.getColumns());
-    // Fields sampleData, viewDefinition, tableProfile, location,
+    // Fields sampleData, schemaDefinition, tableProfile, location,
     // and dataModel are not set during creation - tested elsewhere
     assertListNotNull(
         table.getTableConstraints(),
         table.getUsageSummary(),
-        table.getJoins() /*, table.getSampleData(), table.getViewDefinition(), table
+        table.getJoins() /*, table.getSampleData(), table.getSchemaDefinition(), table
             .getTableProfile(),  table.getLocation(), table.getDataModel()*/);
     assertListNotEmpty(table.getTableConstraints());
     // Checks for other owner, tags, and followers is done in the base class

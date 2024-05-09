@@ -139,7 +139,13 @@ class TestSuiteSource(Source):
                 )
             )
 
-        if table.testSuite and not table.testSuite.executable:
+        test_suite: Optional[TestSuite] = None
+        if table.testSuite:
+            test_suite = self.metadata.get_by_id(
+                entity=TestSuite, entity_id=table.testSuite.id.__root__
+            )
+
+        if test_suite and not test_suite.executable:
             yield Either(
                 left=StackTraceError(
                     name="Non-executable Test Suite",
@@ -149,7 +155,7 @@ class TestSuiteSource(Source):
             )
 
         else:
-            test_suite_cases = self._get_test_cases_from_test_suite(table.testSuite)
+            test_suite_cases = self._get_test_cases_from_test_suite(test_suite)
 
             yield Either(
                 right=TableAndTests(

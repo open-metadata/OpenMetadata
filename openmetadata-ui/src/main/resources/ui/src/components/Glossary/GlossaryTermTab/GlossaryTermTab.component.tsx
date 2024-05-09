@@ -449,6 +449,7 @@ const GlossaryTermTab = ({
         <div className="d-flex justify-end">
           <Button
             className="text-primary m-b-sm"
+            data-testid="expand-collapse-all-button"
             size="small"
             type="text"
             onClick={toggleExpandAll}>
