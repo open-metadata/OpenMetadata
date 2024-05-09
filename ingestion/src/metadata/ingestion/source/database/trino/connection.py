@@ -25,6 +25,7 @@ from metadata.generated.schema.entity.automations.workflow import (
 from metadata.generated.schema.entity.services.connections.database.common import (
     basicAuth,
     jwtAuth,
+    noConfigAuthenticationTypes,
 )
 from metadata.generated.schema.entity.services.connections.database.trinoConnection import (
     TrinoConnection,
@@ -48,26 +49,10 @@ def get_connection_url(connection: TrinoConnection) -> str:
     Prepare the connection url for trino
     """
     url = f"{connection.scheme.value}://"
-    if connection.username:
-        # we need to encode twice because trino dialect internally
-        # url decodes the username and if there is an special char in username
-        # it will fail to authenticate
-        url += f"{quote_plus(quote_plus(connection.username))}"
-        if (
-            isinstance(connection.authType, basicAuth.BasicAuth)
-            and connection.authType.password
-        ):
-            url += f":{quote_plus(connection.authType.password.get_secret_value())}"
-        url += "@"
     url += f"{connection.hostPort}"
     if connection.catalog:
         url += f"/{connection.catalog}"
-    if isinstance(connection.authType, jwtAuth.JwtAuth):
-        if not connection.connectionOptions:
-            connection.connectionOptions = init_empty_connection_options()
-        connection.connectionOptions.__root__[
-            "access_token"
-        ] = connection.authType.jwt.get_secret_value()
+
     if connection.connectionOptions is not None:
         params = "&".join(
             f"{key}={quote_plus(value)}"
@@ -80,13 +65,33 @@ def get_connection_url(connection: TrinoConnection) -> str:
 
 @connection_with_options_secrets
 def get_connection_args(connection: TrinoConnection):
+    if not connection.connectionArguments:
+        connection.connectionArguments = init_empty_connection_arguments()
+
     if connection.proxies:
         session = Session()
         session.proxies = connection.proxies
-        if not connection.connectionArguments:
-            connection.connectionArguments = init_empty_connection_arguments()
 
         connection.connectionArguments.__root__["http_session"] = session
+
+    if isinstance(connection.authType, basicAuth.BasicAuth):
+        from trino.auth import BasicAuthentication
+
+        connection.connectionArguments.__root__["auth"] = BasicAuthentication(
+            connection.username, connection.authType.password.get_secret_value()
+        )
+
+    elif isinstance(connection.authType, jwtAuth.JwtAuth):
+        from trino.auth import JWTAuthentication
+
+        connection.connectionArguments.__root__["auth"] = JWTAuthentication(
+            connection.authType.jwt.get_secret_value()
+        )
+
+    elif connection.authType == noConfigAuthenticationTypes.NoConfigAuthenticationTypes.OAUTH2:
+        from trino.auth import OAuth2Authentication
+
+        connection.connectionArguments.__root__["auth"] = OAuth2Authentication()
 
     return get_connection_args_common(connection)
 
