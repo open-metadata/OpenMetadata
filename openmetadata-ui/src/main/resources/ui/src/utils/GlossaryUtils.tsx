@@ -153,8 +153,12 @@ export const findGlossaryTermByFqn = (
   fullyQualifiedName: string
 ): GlossaryTerm | Glossary | ModifiedGlossary | null => {
   for (const item of list) {
-    if (item.fullyQualifiedName === fullyQualifiedName) {
-      return item;
+    if ((item.fullyQualifiedName ?? item.value) === fullyQualifiedName) {
+      return {
+        ...item,
+        fullyQualifiedName: item.fullyQualifiedName ?? item.data?.tagFQN,
+        ...(item.data ?? {}),
+      };
     }
     if (item.children) {
       const found = findGlossaryTermByFqn(

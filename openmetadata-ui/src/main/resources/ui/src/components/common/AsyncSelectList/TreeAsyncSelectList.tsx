@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { CloseOutlined } from '@ant-design/icons';
+import Icon from '@ant-design/icons/lib/components/Icon';
 import {
   Button,
   Form,
@@ -25,7 +26,8 @@ import { debounce, get, isEmpty, isUndefined, pick } from 'lodash';
 import { CustomTagProps } from 'rc-select/lib/BaseSelect';
 import React, { FC, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { PAGE_SIZE_LARGE } from '../../../constants/constants';
+import { ReactComponent as ArrowIcon } from '../../../assets/svg/ic-arrow-down.svg';
+import { PAGE_SIZE_LARGE, TEXT_BODY_COLOR } from '../../../constants/constants';
 import { TAG_START_WITH } from '../../../constants/Tag.constants';
 import { Glossary } from '../../../generated/entity/data/glossary';
 import { LabelType } from '../../../generated/entity/data/table';
@@ -170,10 +172,21 @@ const TreeAsyncSelectList: FC<Omit<AsyncSelectListProps, 'fetchOptions'>> = ({
     );
   };
 
-  const handleChange: TreeSelectProps['onChange'] = (values: string[]) => {
-    const selectedValues = values.map((value) => {
+  const handleChange: TreeSelectProps['onChange'] = (
+    values: {
+      disabled: boolean;
+      halfChecked: boolean;
+      label: React.ReactNode;
+      value: string;
+    }[]
+  ) => {
+    const selectedValues = values.map(({ value }) => {
       const initialData = findGlossaryTermByFqn(
-        [...glossaries, ...searchOptions] as ModifiedGlossaryTerm[],
+        [
+          ...glossaries,
+          ...searchOptions,
+          ...(initialOptions ?? []),
+        ] as ModifiedGlossaryTerm[],
         value
       );
 
@@ -253,6 +266,7 @@ const TreeAsyncSelectList: FC<Omit<AsyncSelectListProps, 'fetchOptions'>> = ({
       autoFocus
       open
       showSearch
+      treeCheckStrictly
       treeCheckable
       data-testid="tag-selector"
       dropdownRender={dropdownRender}
@@ -266,7 +280,15 @@ const TreeAsyncSelectList: FC<Omit<AsyncSelectListProps, 'fetchOptions'>> = ({
         return Promise.resolve();
       }}
       notFoundContent={isLoading ? <Loader size="small" /> : null}
+      showCheckedStrategy={TreeSelect.SHOW_ALL}
       style={{ width: '100%' }}
+      switcherIcon={
+        <Icon
+          component={ArrowIcon}
+          data-testid="expand-icon"
+          style={{ fontSize: '10px', color: TEXT_BODY_COLOR }}
+        />
+      }
       tagRender={customTagRender}
       treeData={treeData}
       treeExpandedKeys={isEmpty(searchOptions) ? undefined : expandedRowKeys}
