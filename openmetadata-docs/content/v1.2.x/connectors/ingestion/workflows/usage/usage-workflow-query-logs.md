@@ -85,7 +85,7 @@ The `serviceName` should be a service already ingested in OpenMetadata.
 First, we will need to save the YAML file. Afterward, and with all requirements installed, we can run:
 
 ```yaml
-metadata ingest -c <path-to-yaml>
+metadata usage -c <path-to-yaml>
 ```
 
 Note that from connector-to-connector, this recipe will always be the same. By updating the YAML configuration, you will be able to extract metadata from different sources.

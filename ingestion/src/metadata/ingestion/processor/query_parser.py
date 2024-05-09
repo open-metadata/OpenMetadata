@@ -17,9 +17,6 @@ import traceback
 from typing import Optional
 
 from metadata.config.common import ConfigModel
-from metadata.generated.schema.entity.services.ingestionPipelines.status import (
-    StackTraceError,
-)
 from metadata.generated.schema.type.basic import DateTime
 from metadata.generated.schema.type.queryParserData import ParsedData, QueryParserData
 from metadata.generated.schema.type.tableQuery import TableQueries, TableQuery
@@ -104,28 +101,35 @@ class QueryParserProcessor(Processor):
         return cls(config, metadata, connection_type)
 
     def _run(self, record: TableQueries) -> Optional[Either[QueryParserData]]:
-        if record and record.queries:
-            data = []
-            for table_query in record.queries:
-                try:
-                    parsed_sql = parse_sql_statement(
-                        table_query,
-                        ConnectionTypeDialectMapper.dialect_of(self.connection_type),
-                    )
-                    if parsed_sql:
-                        data.append(parsed_sql)
-                except Exception as exc:
-                    return Either(
-                        left=StackTraceError(
-                            name="Query",
-                            error=f"Error processing query [{table_query.query}]: {exc}",
-                            stackTrace=traceback.format_exc(),
-                        )
-                    )
+        if record is None or record.queries is None:
+            return None
 
-            return Either(right=QueryParserData(parsedData=data))
+        data = []
+        success_cnt = 0
+        failed_cnt = 0
+        total_cnt = len(record.queries)
 
-        return None
+        for table_query in record.queries:
+            try:
+                parsed_sql = parse_sql_statement(
+                    table_query,
+                    ConnectionTypeDialectMapper.dialect_of(self.connection_type),
+                )
+                if parsed_sql:
+                    data.append(parsed_sql)
+                success_cnt += 1
+            except Exception as exc:
+                failed_cnt += 1
+                logger.debug(traceback.format_exc())
+                logger.warning(f"Error processing query [{table_query.query}]: {exc}")
+            cur_total_cnt = success_cnt + failed_cnt
+            if cur_total_cnt % 1000 == 0 or cur_total_cnt == total_cnt:
+                logger.info(
+                    f"Total query count:{cur_total_cnt} / {total_cnt}."
+                    f" Current success count: {success_cnt}."
+                    f" Current failed count: {failed_cnt}."
+                )
+        return Either(right=QueryParserData(parsedData=data))
 
     def close(self):
         """Nothing to close"""
