@@ -27,6 +27,10 @@ const mockOnZoomHandler = jest.fn();
 const mockZoomValue = 1;
 const mockOnExportClick = jest.fn();
 
+jest.mock('./LineageSearchSelect/LineageSearchSelect', () =>
+  jest.fn().mockReturnValue(<p>LineageSearchSelect</p>)
+);
+
 jest.mock('../../Explore/ExploreQuickFilters', () =>
   jest.fn().mockReturnValue(<p>ExploreQuickFilters</p>)
 );
