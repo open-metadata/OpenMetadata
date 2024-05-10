@@ -16,6 +16,11 @@ import { interceptURL, verifyResponseStatusCode } from '../common';
 
 export const assignTags = (tag: string, endPoint: EntityType) => {
   interceptURL('PATCH', `/api/v1/${endPoint}/*`, 'addTags');
+  interceptURL(
+    'GET',
+    `/api/v1/search/query?*index=tag_search_index*`,
+    'searchTags'
+  );
   cy.get(
     '[data-testid="entity-right-panel"] [data-testid="tags-container"] [data-testid="add-tag"]'
   )
@@ -23,6 +28,7 @@ export const assignTags = (tag: string, endPoint: EntityType) => {
     .click();
 
   cy.get('[data-testid="tag-selector"] input').should('be.visible').type(tag);
+  verifyResponseStatusCode('@searchTags', 200);
 
   cy.get(`[data-testid="tag-${tag}"]`).scrollIntoView().click();
 
@@ -41,6 +47,11 @@ export const assignTags = (tag: string, endPoint: EntityType) => {
 
 export const updateTags = (tag: string, endPoint: EntityType) => {
   interceptURL('PATCH', `/api/v1/${endPoint}/*`, 'addTags');
+  interceptURL(
+    'GET',
+    `/api/v1/search/query?*index=tag_search_index*`,
+    'searchTags'
+  );
   cy.get(
     '[data-testid="entity-right-panel"]  [data-testid="tags-container"] [data-testid="edit-button"]'
   )
@@ -48,6 +59,7 @@ export const updateTags = (tag: string, endPoint: EntityType) => {
     .click();
 
   cy.get('[data-testid="tag-selector"] input').should('be.visible').type(tag);
+  verifyResponseStatusCode('@searchTags', 200);
 
   cy.get(`[data-testid="tag-${tag}"]`).scrollIntoView().click();
 
@@ -69,12 +81,18 @@ export const removeTags = (
 ) => {
   const tags = Array.isArray(inputTag) ? inputTag : [inputTag];
   interceptURL('PATCH', `/api/v1/${endPoint}/*`, 'removeTags');
+  interceptURL(
+    'GET',
+    `/api/v1/search/query?*index=tag_search_index*`,
+    'searchTags'
+  );
   tags.forEach((tag) => {
     cy.get(
       '[data-testid="entity-right-panel"]  [data-testid="tags-container"] [data-testid="edit-button"]'
     )
       .scrollIntoView()
       .click();
+    verifyResponseStatusCode('@searchTags', 200);
 
     // Remove all added tags
     cy.get(

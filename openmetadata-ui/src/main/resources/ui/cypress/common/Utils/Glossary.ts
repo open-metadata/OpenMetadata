@@ -20,6 +20,11 @@ export const assignGlossaryTerm = (
   endPoint: EntityType
 ) => {
   interceptURL('PATCH', `/api/v1/${endPoint}/*`, 'addGlossaryTerm');
+  interceptURL(
+    'GET',
+    `/api/v1/search/query?*index=glossary_term_search_index*`,
+    'searchGlossaryTerm'
+  );
   cy.get(
     '[data-testid="entity-right-panel"] [data-testid="glossary-container"] [data-testid="add-tag"]'
   ).click();
@@ -27,6 +32,7 @@ export const assignGlossaryTerm = (
   cy.get('[data-testid="tag-selector"] input')
     .should('be.visible')
     .type(glossaryTermName);
+  verifyResponseStatusCode('@searchGlossaryTerm', 200);
 
   cy.get(
     `[data-testid="tag-${glossaryTermFQN}"] .ant-select-tree-checkbox`
@@ -49,6 +55,11 @@ export const updateGlossaryTerm = (
   endPoint: EntityType
 ) => {
   interceptURL('PATCH', `/api/v1/${endPoint}/*`, 'addGlossaryTerm');
+  interceptURL(
+    'GET',
+    `/api/v1/search/query?*index=glossary_term_search_index*`,
+    'searchGlossaryTerm'
+  );
   cy.get(
     '[data-testid="entity-right-panel"]  [data-testid="glossary-container"] [data-testid="edit-button"]'
   ).click();
@@ -56,6 +67,7 @@ export const updateGlossaryTerm = (
   cy.get('[data-testid="tag-selector"] input')
     .should('be.visible')
     .type(glossaryTermName);
+  verifyResponseStatusCode('@searchGlossaryTerm', 200);
 
   cy.get(`[data-testid="tag-${glossaryTermFQN}"]`).click();
 
@@ -77,10 +89,12 @@ export const removeGlossaryTerm = (
     ? inputGlossaryTerm
     : [inputGlossaryTerm];
   interceptURL('PATCH', `/api/v1/${endPoint}/*`, 'removeTags');
+  interceptURL('GET', `/api/v1/glossaries?*`, 'fetchGlossaries');
   glossaryTerms.forEach((glossaryTerm) => {
     cy.get(
       '[data-testid="entity-right-panel"]  [data-testid="glossary-container"] [data-testid="edit-button"]'
     ).click();
+    verifyResponseStatusCode('@fetchGlossaries', 200);
 
     // Remove all added tags
     cy.get(
