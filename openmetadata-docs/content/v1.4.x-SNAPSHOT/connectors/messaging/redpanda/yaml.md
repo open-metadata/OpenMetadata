@@ -24,6 +24,8 @@ Configure and schedule Redpanda metadata and profiler workflows from the OpenMet
 
 ### Python Requirements
 
+{% partial file="/v1.4/connectors/python-requirements.md" /%}
+
 To run the Redpanda ingestion, you will need to install:
 
 ```bash

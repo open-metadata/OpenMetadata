@@ -16,6 +16,9 @@ To deploy OpenMetadata, follow the procedure to [Try OpenMetadata in Docker](/qu
 Before ingesting your tests results from Great Expectations you will need to have your table metadata ingested into OpenMetadata. Follow the instruction in the [Connectors](/connectors) section to learn more.
 
 ### Python Requirements
+
+{% partial file="/v1.4/connectors/python-requirements.md" /%}
+
 You will need to install our Great Expectations submodule
 
 ```shell

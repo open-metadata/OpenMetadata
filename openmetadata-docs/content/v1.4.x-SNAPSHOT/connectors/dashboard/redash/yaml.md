@@ -24,6 +24,8 @@ Configure and schedule Redash metadata and profiler workflows from the OpenMetad
 
 ### Python Requirements
 
+{% partial file="/v1.4/connectors/python-requirements.md" /%}
+
 To run the Redash ingestion, you will need to install:
 
 ```bash

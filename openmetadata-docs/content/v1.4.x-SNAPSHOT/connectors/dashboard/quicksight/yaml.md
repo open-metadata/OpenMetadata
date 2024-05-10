@@ -72,6 +72,8 @@ Here is how to add Permissions to an IAM user.
 
 ### Python Requirements
 
+{% partial file="/v1.4/connectors/python-requirements.md" /%}
+
 To run the QuickSight ingestion, you will need to install:
 
 ```bash

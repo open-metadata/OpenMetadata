@@ -47,6 +47,8 @@ GRANT VIEW SERVER STATE TO YourUser;
 
 ### Python Requirements
 
+{% partial file="/v1.4/connectors/python-requirements.md" /%}
+
 To run the MSSQL ingestion, you will need to install:
 
 ```bash

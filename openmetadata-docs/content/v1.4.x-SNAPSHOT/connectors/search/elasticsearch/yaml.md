@@ -28,6 +28,8 @@ We extract Elasticsearch's metadata by using its [API](https://www.elastic.co/gu
 
 ### Python Requirements
 
+{% partial file="/v1.4/connectors/python-requirements.md" /%}
+
 To run the Elasticsearch ingestion, you will need to install:
 
 ```bash

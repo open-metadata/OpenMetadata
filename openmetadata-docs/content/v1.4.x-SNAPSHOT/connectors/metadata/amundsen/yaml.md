@@ -29,6 +29,8 @@ You can find the connectors list [here](/connectors).
 
 ### Python Requirements
 
+{% partial file="/v1.4/connectors/python-requirements.md" /%}
+
 To run the Amundsen ingestion, you will need to install:
 
 ```bash
