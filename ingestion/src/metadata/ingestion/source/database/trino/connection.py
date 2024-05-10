@@ -84,7 +84,10 @@ def get_connection_args(connection: TrinoConnection):
 
     if isinstance(connection.authType, basicAuth.BasicAuth):
         connection.connectionArguments.__root__["auth"] = BasicAuthentication(
-            connection.username, connection.authType.password.get_secret_value()
+            connection.username,
+            connection.authType.password.get_secret_value()
+            if connection.authType.password
+            else None,
         )
         connection.connectionArguments.__root__["http_scheme"] = "https"
 
