@@ -2381,13 +2381,13 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     return response;
   }
 
-  public static String getResponseFormSearchWithHierarchy(String indexName)
+  public static String getResponseFormSearchWithHierarchy(String indexName, String query)
       throws HttpResponseException {
     WebTarget target =
         getResource(
             String.format(
-                "search/query?q=&index=%s&from=0&deleted=false&size=100&getHierarchy=true",
-                indexName));
+                "search/query?q=%s&index=%s&from=0&deleted=false&size=100&getHierarchy=true",
+                query, indexName));
     return TestUtils.get(target, String.class, ADMIN_AUTH_HEADERS);
   }
 

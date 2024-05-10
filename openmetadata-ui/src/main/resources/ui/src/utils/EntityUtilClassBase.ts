@@ -44,13 +44,15 @@ import {
   getSettingPath,
   getTeamsWithFqnPath,
 } from './RouterUtils';
+import { getTestSuiteDetailsPath } from './TestSuiteUtils';
 
 class EntityUtilClassBase {
   public getEntityLink(
     indexType: string,
     fullyQualifiedName: string,
     tab?: string,
-    subTab?: string
+    subTab?: string,
+    isExecutableTestSuite?: boolean
   ) {
     switch (indexType) {
       case SearchIndex.TOPIC:
@@ -167,6 +169,12 @@ class EntityUtilClassBase {
           getTableFQNFromColumnFQN(fullyQualifiedName),
           EntityTabs.PROFILER
         )}?activeTab=Data Quality`;
+
+      case EntityType.TEST_SUITE:
+        return getTestSuiteDetailsPath({
+          isExecutableTestSuite,
+          fullyQualifiedName,
+        });
 
       case EntityType.SEARCH_INDEX:
       case SearchIndex.SEARCH_INDEX:

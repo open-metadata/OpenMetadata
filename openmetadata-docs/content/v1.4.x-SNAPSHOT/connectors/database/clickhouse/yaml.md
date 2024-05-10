@@ -55,6 +55,8 @@ For the usage and lineage workflow, the user will need `SELECT` privilege. You c
 
 ### Python Requirements
 
+{% partial file="/v1.4/connectors/python-requirements.md" /%}
+
 To run the Clickhouse ingestion, you will need to install:
 
 ```bash

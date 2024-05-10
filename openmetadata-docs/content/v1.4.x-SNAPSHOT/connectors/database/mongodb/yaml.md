@@ -29,6 +29,8 @@ To fetch the metadata from MongoDB to OpenMetadata, the MongoDB user must have a
 
 ### Python Requirements
 
+{% partial file="/v1.4/connectors/python-requirements.md" /%}
+
 To run the MongoDB ingestion, you will need to install:
 
 ```bash

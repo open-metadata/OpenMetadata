@@ -27,6 +27,8 @@ Configure and schedule Druid metadata and profiler workflows from the OpenMetada
 
 ### Python Requirements
 
+{% partial file="/v1.4/connectors/python-requirements.md" /%}
+
 To run the Druid ingestion, you will need to install:
 
 ```bash

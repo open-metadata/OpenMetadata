@@ -27,6 +27,8 @@ Configure and schedule PinotDB metadata and profiler workflows from the OpenMeta
 
 ### Python Requirements
 
+{% partial file="/v1.4/connectors/python-requirements.md" /%}
+
 To run the PinotDB ingestion, you will need to install:
 
 ```bash
