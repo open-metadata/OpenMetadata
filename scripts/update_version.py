@@ -37,7 +37,7 @@ def update_dockerfile_arg(arg, file_path, value):
     regex_sub(
         file_path,
         rf"(ARG\s+{arg}=).+",
-        rf"\1={value}",
+        rf'\1"{value}"',
 
     )
 
