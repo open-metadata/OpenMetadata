@@ -2536,11 +2536,35 @@ public interface CollectionDAO {
       updateTagPrefixInternal(update);
     }
 
+    default void updateTargetFQNHashPrefix(
+        int source, String oldTargetFQNHashPrefix, String newTargetFQNHashPrefix) {
+      String update =
+          String.format(
+              "UPDATE tag_usage SET targetFQNHash = REPLACE(targetFQNHash, '%s.', '%s.') WHERE source = %s AND targetFQNHash LIKE '%s.%%'",
+              FullyQualifiedName.buildHash(oldTargetFQNHashPrefix),
+              FullyQualifiedName.buildHash(newTargetFQNHashPrefix),
+              source,
+              FullyQualifiedName.buildHash(oldTargetFQNHashPrefix));
+      updateTagPrefixInternal(update);
+    }
+
     default void rename(int source, String oldFQN, String newFQN) {
       renameInternal(source, oldFQN, newFQN, newFQN); // First rename tagFQN from oldFQN to newFQN
       updateTagPrefix(
           source, oldFQN,
           newFQN); // Rename all the tagFQN prefixes starting with the oldFQN to newFQN
+    }
+
+    default void renameByTargetFQNHash(
+        int source, String oldTargetFQNHash, String newTargetFQNHash) {
+      renameByTargetFQNHashInternal(
+          source,
+          (oldTargetFQNHash),
+          newTargetFQNHash); // First rename targetFQN from oldFQN to newFQN
+      updateTargetFQNHashPrefix(
+          source,
+          oldTargetFQNHash,
+          newTargetFQNHash); // Rename all the targetFQN prefixes starting with the oldFQN to newFQN
     }
 
     /** Rename the tagFQN */
@@ -2551,6 +2575,14 @@ public interface CollectionDAO {
         @BindFQN("oldFQNHash") String oldFQNHash,
         @Bind("newFQN") String newFQN,
         @BindFQN("newFQNHash") String newFQNHash);
+
+    /** Rename the targetFQN */
+    @SqlUpdate(
+        "Update tag_usage set targetFQNHash = :newTargetFQNHash WHERE source = :source AND targetFQNHash = :oldTargetFQNHash")
+    void renameByTargetFQNHashInternal(
+        @Bind("source") int source,
+        @BindFQN("oldTargetFQNHash") String oldTargetFQNHash,
+        @BindFQN("newTargetFQNHash") String newTargetFQNHash);
 
     @SqlUpdate("<update>")
     void updateTagPrefixInternal(@Define("update") String update);

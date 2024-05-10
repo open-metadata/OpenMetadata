@@ -99,12 +99,6 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
   private static final String UPDATE_FIELDS = "references,relatedTerms,synonyms";
   private static final String PATCH_FIELDS = "references,relatedTerms,synonyms";
 
-  /*
-    Holds the term's value prior to the latest update, may differ from the original if multiple
-    updates occur in the same session.
-  */
-  private static GlossaryTerm valueBeforeUpdate = new GlossaryTerm();
-
   public GlossaryTermRepository() {
     super(
         GlossaryTermResource.COLLECTION_PATH,
@@ -469,6 +463,59 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
     return new HashMap<>();
   }
 
+  private Map<String, EntityReference> getGlossaryTermsContainingFQNFromES(
+      String termFQN, int size) {
+    try {
+      String queryJson = String.format("fullyQualifiedName:%s*", termFQN);
+
+      SearchRequest searchRequest =
+          new SearchRequest.ElasticSearchRequestBuilder(
+                  queryJson, size, "glossary_term_search_index")
+              .from(0)
+              .fetchSource(true)
+              .trackTotalHits(false)
+              .sortFieldParam("_score")
+              .deleted(false)
+              .sortOrder("desc")
+              .includeSourceFields(new ArrayList<>())
+              .build();
+
+      // Execute the search and parse the response
+      Response response = searchRepository.search(searchRequest);
+      String json = (String) response.getEntity();
+      Set<EntityReference> fqns = new TreeSet<>(compareEntityReferenceById);
+
+      // Extract hits from the response JSON and create entity references
+      for (Iterator<JsonNode> it =
+              ((ArrayNode) JsonUtils.extractValue(json, "hits", "hits")).elements();
+          it.hasNext(); ) {
+        JsonNode jsonNode = it.next();
+        String id = JsonUtils.extractValue(jsonNode, "_source", "id");
+        String fqn = JsonUtils.extractValue(jsonNode, "_source", "fullyQualifiedName");
+        String type = JsonUtils.extractValue(jsonNode, "_source", "entityType");
+        if (!CommonUtil.nullOrEmpty(fqn) && !CommonUtil.nullOrEmpty(type)) {
+          fqns.add(
+              new EntityReference()
+                  .withId(UUID.fromString(id))
+                  .withFullyQualifiedName(fqn)
+                  .withType(type));
+        }
+      }
+
+      // Collect the results into a map by the hash of the FQN
+      return fqns.stream()
+          .collect(
+              Collectors.toMap(
+                  entityReference ->
+                      FullyQualifiedName.buildHash(entityReference.getFullyQualifiedName()),
+                  entityReference -> entityReference));
+    } catch (Exception ex) {
+      LOG.error("Error while fetching glossary terms with prefix from ES", ex);
+    }
+
+    return new HashMap<>();
+  }
+
   public BulkOperationResult bulkRemoveGlossaryToAssets(
       UUID glossaryTermId, AddGlossaryToAssetsRequest request) {
     GlossaryTerm term = this.get(null, glossaryTermId, getFields("id,tags"));
@@ -516,7 +563,6 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
   @Override
   public GlossaryTermUpdater getUpdater(
       GlossaryTerm original, GlossaryTerm updated, Operation operation) {
-    valueBeforeUpdate = original;
     return new GlossaryTermUpdater(original, updated, operation);
   }
 
@@ -539,9 +585,9 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
         closeApprovalTask(updated, "Rejected the glossary term");
       }
     }
-    if (!nullOrEmpty(valueBeforeUpdate)
-        && !valueBeforeUpdate.getFullyQualifiedName().equals(updated.getFullyQualifiedName())) {
-      updateAssetIndexesOnGlossaryTermUpdate(valueBeforeUpdate, updated);
+    if (!nullOrEmpty(original)
+        && !original.getFullyQualifiedName().equals(updated.getFullyQualifiedName())) {
+      updateAssetIndexesOnGlossaryTermUpdate(original, updated);
     }
   }
 
@@ -690,19 +736,37 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
   }
 
   private void updateAssetIndexesOnGlossaryTermUpdate(GlossaryTerm original, GlossaryTerm updated) {
-    // Update ES indexes of entity tagged with the glossary term to reflect its latest value.
+    // Update ES indexes of entity tagged with the glossary term and its children terms to reflect
+    // its latest value.
     Set<String> targetFQNHashesFromDb =
         new HashSet<>(
             daoCollection.tagUsageDAO().getTargetFQNHashForTag(updated.getFullyQualifiedName()));
 
+    List<EntityReference> childTerms =
+        super.getChildren(updated); // get new value of children terms from DB
+    for (EntityReference child : childTerms) {
+      targetFQNHashesFromDb.addAll( // for each child term find the targetFQNHashes of assets
+          daoCollection.tagUsageDAO().getTargetFQNHashForTag(child.getFullyQualifiedName()));
+    }
+
     // List of entity references tagged with the glossary term
     Map<String, EntityReference> targetFQNFromES =
         getGlossaryUsageFromES(original.getFullyQualifiedName(), targetFQNHashesFromDb.size());
+    Map<String, EntityReference> childrenTerms =
+        getGlossaryTermsContainingFQNFromES(
+            original.getFullyQualifiedName(),
+            getChildrenCount(updated)); // get old value of children term from ES
 
-    if (targetFQNHashesFromDb.size() == targetFQNFromES.size()) {
+    for (EntityReference child : childrenTerms.values()) {
+      targetFQNFromES.putAll( // List of entity references tagged with the children term
+          getGlossaryUsageFromES(child.getFullyQualifiedName(), targetFQNHashesFromDb.size()));
+      searchRepository.updateEntity(child); // update es index of child term
+    }
+
+    if (targetFQNFromES.size() == targetFQNHashesFromDb.size()) {
       for (String fqnHash : targetFQNHashesFromDb) {
         EntityReference refDetails = targetFQNFromES.get(fqnHash);
-        searchRepository.updateEntity(refDetails); // update ES index
+        searchRepository.updateEntity(refDetails); // update ES index of assets
       }
     }
   }
@@ -873,6 +937,14 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
               TagSource.GLOSSARY.ordinal(),
               original.getFullyQualifiedName(),
               updated.getFullyQualifiedName());
+
+      daoCollection
+          .tagUsageDAO()
+          .renameByTargetFQNHash(
+              TagSource.CLASSIFICATION.ordinal(),
+              original.getFullyQualifiedName(),
+              updated.getFullyQualifiedName());
+
       if (glossaryChanged) {
         updateGlossaryRelationship(original, updated);
         recordChange(
