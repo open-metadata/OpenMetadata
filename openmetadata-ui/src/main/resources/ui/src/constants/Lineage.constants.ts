@@ -50,10 +50,6 @@ export const entityData = [
     label: t('label.container-plural'),
   },
   {
-    type: SearchIndex.PIPELINE,
-    label: t('label.pipeline-plural'),
-  },
-  {
     type: SearchIndex.SEARCH_INDEX,
     label: t('label.search-index-plural'),
   },
@@ -101,4 +97,18 @@ export const LINEAGE_COLUMN_NODE_SUPPORTED = [
   EntityType.CONTAINER,
   EntityType.TOPIC,
   EntityType.SEARCH_INDEX,
+];
+
+export const LINEAGE_EXPORT_HEADERS = [
+  { field: 'name', title: 'Name' },
+  { field: 'displayName', title: 'Display Name' },
+  { field: 'fullyQualifiedName', title: 'Fully Qualified Name' },
+  { field: 'entityType', title: 'Entity Type' },
+  { field: 'direction', title: 'Direction' },
+  { field: 'owner', title: 'Owner' },
+  { field: 'domain', title: 'Domain' },
+  { field: 'tags', title: 'Tags' },
+  { field: 'tier', title: 'Tier' },
+  { field: 'glossaryTerms', title: 'Glossary Terms' },
+  { field: 'depth', title: 'Level' },
 ];

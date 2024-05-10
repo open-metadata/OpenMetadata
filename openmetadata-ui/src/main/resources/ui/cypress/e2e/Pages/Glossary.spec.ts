@@ -166,9 +166,8 @@ const createGlossary = (glossaryData) => {
 
 const checkDisplayName = (displayName) => {
   cy.get('[data-testid="entity-header-display-name"]')
+    .filter(':visible')
     .scrollIntoView()
-    .should('exist')
-    .and('be.visible')
     .within(() => {
       cy.contains(displayName);
     });

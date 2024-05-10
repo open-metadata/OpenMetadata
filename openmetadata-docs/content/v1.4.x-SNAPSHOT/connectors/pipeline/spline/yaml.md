@@ -35,6 +35,8 @@ You can refer [this](https://github.com/AbsaOSS/spline-getting-started/tree/main
 
 ### Python Requirements
 
+{% partial file="/v1.4/connectors/python-requirements.md" /%}
+
 To run the Spline ingestion, you will need to install:
 
 ```bash

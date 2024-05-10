@@ -204,7 +204,7 @@ export const getTextDiffCustomProperty = (
     })} **${getTextDiff(oldText, newText)}**`;
   }
 
-  const resultArray: unknown = getJSONFromString(oldText ?? newText);
+  const resultArray: unknown = getJSONFromString(oldText || newText);
 
   if (Array.isArray(resultArray)) {
     const result = resultArray.map((diff: Record<string, string>) => {

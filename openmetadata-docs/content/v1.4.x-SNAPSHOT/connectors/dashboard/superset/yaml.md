@@ -32,6 +32,8 @@ The ingestion also works with Superset 2.0.0 🎉
 
 ### Python Requirements
 
+{% partial file="/v1.4/connectors/python-requirements.md" /%}
+
 To run the Superset ingestion, you will need to install:
 
 ```bash
