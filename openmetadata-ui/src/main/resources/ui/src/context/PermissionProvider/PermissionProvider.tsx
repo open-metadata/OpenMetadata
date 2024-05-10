@@ -67,7 +67,7 @@ const PermissionProvider: FC<PermissionProviderProps> = ({ children }) => {
   const { currentUser } = useApplicationStore();
   const cookieStorage = new CookieStorage();
   const history = useHistory();
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
 
   const [entitiesPermission, setEntitiesPermission] =
     useState<EntityPermissionMap>({} as EntityPermissionMap);
@@ -89,7 +89,6 @@ const PermissionProvider: FC<PermissionProviderProps> = ({ children }) => {
    */
   const fetchLoggedInUserPermissions = useCallback(async () => {
     try {
-      setLoading(true);
       const response = await getLoggedInUserPermissions();
       setPermissions(getUIPermission(response.data || []));
       redirectToStoredPath();
