@@ -4,12 +4,12 @@ from typing import Tuple
 
 import requests
 from metadata.utils.logger import log_ansi_encoded_string
-from metadata.cli.docker import REQUESTS_TIMEOUT
 from requests.auth import HTTPBasicAuth
 
 
 HEADER_JSON = {"Content-Type": "application/json"}
 BASIC_AUTH = HTTPBasicAuth("admin", "admin")
+REQUESTS_TIMEOUT = 60 * 5
 
 
 def get_last_run_info() -> Tuple[str, str]:
