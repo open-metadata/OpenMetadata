@@ -75,11 +75,7 @@ import {
   LineageDetails,
 } from '../../generated/type/entityLineage';
 import { useFqn } from '../../hooks/useFqn';
-import {
-  exportLineage,
-  getLineageDataByFQN,
-  updateLineageEdge,
-} from '../../rest/lineageAPI';
+import { getLineageDataByFQN, updateLineageEdge } from '../../rest/lineageAPI';
 import {
   addLineageHandler,
   createEdges,
@@ -91,6 +87,7 @@ import {
   getChildMap,
   getClassifiedEdge,
   getConnectedNodesEdges,
+  getExportData,
   getLayoutedElements,
   getLineageEdge,
   getLineageEdgeForAPI,
@@ -178,6 +175,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
   const [childMap, setChildMap] = useState<EntityReferenceChild>();
   const [paginationData, setPaginationData] = useState({});
   const { showModal } = useEntityExportModalProvider();
+  const [exportResult, setExportResult] = useState<string>('');
 
   const initLineageChildMaps = useCallback(
     (
@@ -230,13 +228,12 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
             entityType !== EntityType.PIPELINE &&
             entityType !== EntityType.STORED_PROCEDURE
           ) {
-            const childMapObj = getChildMap(
+            const { map: childMapObj, exportResult } = getChildMap(
               { ...res, nodes: allNodes },
               decodedFqn
             );
-
+            setExportResult(exportResult);
             setChildMap(childMapObj);
-
             const { nodes: newNodes, edges: newEdges } = getPaginatedChildMap(
               {
                 ...res,
@@ -253,6 +250,8 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
               edges: [...(res.edges ?? []), ...newEdges],
             });
           } else {
+            const csv = getExportData(allNodes);
+            setExportResult(csv);
             setEntityLineage({
               ...res,
               nodes: allNodes,
@@ -281,26 +280,10 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
   );
 
   const exportLineageData = useCallback(
-    async (name: string) => {
-      try {
-        return await exportLineage(
-          name,
-          entityType,
-          lineageConfig,
-          queryFilter
-        );
-      } catch (err) {
-        showErrorToast(
-          err as AxiosError,
-          t('server.entity-fetch-error', {
-            entity: t('label.lineage-data-lowercase'),
-          })
-        );
-
-        return '';
-      }
+    async (_: string) => {
+      return exportResult;
     },
-    [entityType, lineageConfig, queryFilter]
+    [exportResult]
   );
 
   const onExportClick = useCallback(() => {
@@ -310,7 +293,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
         onExport: exportLineageData,
       });
     }
-  }, [decodedFqn]);
+  }, [decodedFqn, exportResult]);
 
   const loadChildNodesHandler = useCallback(
     async (node: SourceType, direction: EdgeTypeEnum) => {

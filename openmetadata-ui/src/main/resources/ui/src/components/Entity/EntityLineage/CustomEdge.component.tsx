@@ -243,6 +243,7 @@ export const CustomEdge = ({
             />
           ) : (
             <EntityPopOverCard
+              defaultOpen={isPipelineRootNode}
               entityFQN={pipeline?.fullyQualifiedName}
               entityType={pipelineEntityType}
               extraInfo={
@@ -267,7 +268,15 @@ export const CustomEdge = ({
         </LineageEdgeIcon>
       );
     },
-    [edgeCenterX, edgeCenterY, rest, pipeline, blinkingClass, isEditMode]
+    [
+      edgeCenterX,
+      edgeCenterY,
+      rest,
+      pipeline,
+      blinkingClass,
+      isEditMode,
+      isPipelineRootNode,
+    ]
   );
 
   const getEditLineageIcon = useCallback(

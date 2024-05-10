@@ -57,6 +57,7 @@ interface Props extends HTMLAttributes<HTMLDivElement> {
   entityType: string;
   entityFQN: string;
   extraInfo?: React.ReactNode;
+  defaultOpen?: boolean;
 }
 
 export const PopoverContent: React.FC<{
@@ -227,6 +228,7 @@ const EntityPopOverCard: FC<Props> = ({
   entityType,
   entityFQN,
   extraInfo,
+  defaultOpen = false,
 }) => {
   return (
     <Popover
@@ -238,6 +240,7 @@ const EntityPopOverCard: FC<Props> = ({
           extraInfo={extraInfo}
         />
       }
+      defaultOpen={defaultOpen}
       overlayClassName="entity-popover-card"
       trigger="hover"
       zIndex={9999}>
