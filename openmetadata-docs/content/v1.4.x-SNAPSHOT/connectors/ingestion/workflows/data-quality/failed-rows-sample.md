@@ -1,5 +1,5 @@
 ---
-title: Tests
+title: Failed Rows Sample (Collate only)
 slug: /connectors/ingestion/workflows/data-quality/failed-rows-sample
 ---
 
