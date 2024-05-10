@@ -22,6 +22,7 @@ import databricksPipelineConnection from '../jsons/connectionSchemas/connections
 import domoPipelineConnection from '../jsons/connectionSchemas/connections/pipeline/domoPipelineConnection.json';
 import fivetranConnection from '../jsons/connectionSchemas/connections/pipeline/fivetranConnection.json';
 import gluePipelineConnection from '../jsons/connectionSchemas/connections/pipeline/gluePipelineConnection.json';
+import KafkaConnectConnection from '../jsons/connectionSchemas/connections/pipeline/kafkaConnectConnection.json';
 import nifiConnection from '../jsons/connectionSchemas/connections/pipeline/nifiConnection.json';
 import openLineageConnection from '../jsons/connectionSchemas/connections/pipeline/openLineageConnection.json';
 import splineConnection from '../jsons/connectionSchemas/connections/pipeline/splineConnection.json';
@@ -43,6 +44,11 @@ export const getPipelineConfig = (type: PipelineServiceType) => {
     }
     case PipelineServiceType.GluePipeline: {
       schema = gluePipelineConnection;
+
+      break;
+    }
+    case PipelineServiceType.KafkaConnect: {
+      schema = KafkaConnectConnection;
 
       break;
     }
