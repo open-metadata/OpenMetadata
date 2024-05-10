@@ -37,6 +37,9 @@ RUN apt-get -qq update \
     unzip \
     git \
     wget --no-install-recommends \
+    vim \
+    procps \
+    telnet \
     # Accept MSSQL ODBC License
     && ACCEPT_EULA=Y apt-get install -y msodbcsql18 \
     && rm -rf /var/lib/apt/lists/*
