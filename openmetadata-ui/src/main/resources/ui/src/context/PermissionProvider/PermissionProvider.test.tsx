@@ -99,5 +99,8 @@ describe('PermissionProvider', () => {
     expect(getEntityPermissionById).not.toHaveBeenCalled();
     expect(getEntityPermissionByFqn).not.toHaveBeenCalled();
     expect(getResourcePermission).not.toHaveBeenCalled();
+
+    expect(screen.queryByText('Loader')).not.toBeInTheDocument();
+    expect(await screen.findByTestId('children')).toBeInTheDocument();
   });
 });
