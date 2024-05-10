@@ -77,11 +77,11 @@ export const removeTags = (
       .click();
 
     // Remove all added tags
-    cy.get(`[data-testid="selected-tag-${tag}"] [data-testid="remove-tags"]`)
-      .scrollIntoView()
-      .click();
+    cy.get(
+      `[data-testid="selected-tag-${tag}"] [data-testid="remove-tags"]`
+    ).click();
 
-    cy.get('[data-testid="saveAssociatedTag"]').scrollIntoView().click();
+    cy.get('[data-testid="saveAssociatedTag"]').click();
     verifyResponseStatusCode('@removeTags', 200);
   });
   cy.get(

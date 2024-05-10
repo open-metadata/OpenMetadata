@@ -53,6 +53,11 @@ export const handleIngestionRetry = (count = 0, ingestionType = 'metadata') => {
           responseTimeout: 50000,
         });
       }
+
+      cy.contains('td', `${ingestionType}`) // find the element with the text
+        .parent('tr') // find the parent 'tr'
+        .find('[data-testid="run"]')
+        .click();
     }
   };
   const checkSuccessState = () => {

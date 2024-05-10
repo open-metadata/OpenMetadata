@@ -32,9 +32,9 @@ export const assignGlossaryTerm = (
     `[data-testid="tag-${glossaryTermFQN}"] .ant-select-tree-checkbox`
   ).click();
 
-  cy.get(
-    `[data-testid="tag-selector"] [data-testid="selected-tag-${glossaryTermFQN}"]`
-  ).should('be.visible');
+  cy.get(`[data-testid="selected-tag-${glossaryTermFQN}"]`).should(
+    'be.visible'
+  );
 
   cy.get('[data-testid="saveAssociatedTag"]').scrollIntoView().click();
   verifyResponseStatusCode('@addGlossaryTerm', 200);
@@ -59,9 +59,9 @@ export const updateGlossaryTerm = (
 
   cy.get(`[data-testid="tag-${glossaryTermFQN}"]`).click();
 
-  cy.get(
-    `[data-testid="tag-selector"] [data-testid="selected-tag-${glossaryTermFQN}"]`
-  ).should('be.visible');
+  cy.get(`[data-testid="selected-tag-${glossaryTermFQN}"]`).should(
+    'be.visible'
+  );
   cy.get('[data-testid="saveAssociatedTag"]').scrollIntoView().click();
   verifyResponseStatusCode('@addGlossaryTerm', 200);
   cy.get(
