@@ -350,6 +350,47 @@ public class GlossaryResourceTest extends EntityResourceTest<Glossary, CreateGlo
   }
 
   @Test
+  void test_patch_changeParent_UpdateHierarchy(TestInfo test) throws IOException {
+    CreateGlossary create = createRequest(getEntityName(test), "", "", null);
+    Glossary glossary = createEntity(create, ADMIN_AUTH_HEADERS);
+    //
+    // These test move a glossary term to different parts of the glossary hierarchy and to different
+    // glossaries
+    //
+
+    // Create glossary with the following hierarchy
+    //    -> t1 -> t11
+    //    -> t2
+    // Create a Classification with the same name as glossary and assign it to a table
+    ClassificationResourceTest classificationResourceTest = new ClassificationResourceTest();
+    TagResourceTest tagResourceTest = new TagResourceTest();
+    CreateClassification createClassification =
+        classificationResourceTest.createRequest("SampleTags");
+    classificationResourceTest.createEntity(createClassification, ADMIN_AUTH_HEADERS);
+    Tag tag1 = tagResourceTest.createTag("tag1", "SampleTags", null);
+    Tag tag2 = tagResourceTest.createTag("tag2", "SampleTags", null);
+    GlossaryTermResourceTest glossaryTermResourceTest = new GlossaryTermResourceTest();
+    GlossaryTerm t1 = createGlossaryTerm(glossaryTermResourceTest, glossary, null, "parentTerm1");
+
+    // GlossaryTerm t11 = createGlossaryTerm(glossaryTermResourceTest, glossary, t1,
+    // "parentTerm11").withTags(toTagLabels(tag1,tag2));
+    GlossaryTerm t11 =
+        createGlossaryTermWithTags(
+            glossaryTermResourceTest, glossary, t1, "parentTerm11", toTagLabels(tag1, tag2));
+
+    GlossaryTerm originalT1 = new GlossaryTerm();
+    copyGlossaryTerm(t11, originalT1);
+
+    GlossaryTerm t2 = createGlossaryTerm(glossaryTermResourceTest, glossary, null, "parentTerm2");
+    LOG.info(" t11 == {}", t11.getTags());
+    LOG.info(" originalT1 == {}", originalT1.getTags());
+    glossaryTermResourceTest.moveGlossaryTerm(
+        glossary.getEntityReference(), t2.getEntityReference(), t11);
+
+    TestUtils.validateTags(originalT1.getTags(), t11.getTags());
+  }
+
+  @Test
   void patch_moveGlossaryTermParentToChild() {}
 
   @Test
@@ -447,7 +488,8 @@ public class GlossaryResourceTest extends EntityResourceTest<Glossary, CreateGlo
         .withParent(from.getParent())
         .withFullyQualifiedName(from.getFullyQualifiedName())
         .withChangeDescription(from.getChangeDescription())
-        .withVersion(from.getVersion());
+        .withVersion(from.getVersion())
+        .withTags(from.getTags());
   }
 
   @Override
@@ -514,6 +556,24 @@ public class GlossaryResourceTest extends EntityResourceTest<Glossary, CreateGlo
             .withGlossary(glossary.getFullyQualifiedName())
             .withParent(getFqn(parent))
             .withProvider(provider);
+    return resource.createEntity(create, ADMIN_AUTH_HEADERS);
+  }
+
+  private GlossaryTerm createGlossaryTermWithTags(
+      GlossaryTermResourceTest resource,
+      Glossary glossary,
+      GlossaryTerm parent,
+      String name,
+      List<TagLabel> tags)
+      throws HttpResponseException {
+    CreateGlossaryTerm create =
+        new CreateGlossaryTerm()
+            .withName(name)
+            .withDescription("d")
+            .withGlossary(glossary.getFullyQualifiedName())
+            .withParent(getFqn(parent))
+            .withProvider(ProviderType.USER)
+            .withTags(tags);
     return resource.createEntity(create, ADMIN_AUTH_HEADERS);
   }
 
