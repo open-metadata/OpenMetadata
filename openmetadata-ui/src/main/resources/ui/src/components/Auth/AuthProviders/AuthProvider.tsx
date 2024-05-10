@@ -21,6 +21,7 @@ import {
 import { MsalProvider } from '@azure/msal-react';
 import {
   AxiosError,
+  AxiosRequestConfig,
   AxiosRequestHeaders,
   InternalAxiosRequestConfig,
 } from 'axios';
@@ -99,6 +100,8 @@ const isEmailVerifyField = 'isEmailVerified';
 
 let requestInterceptor: number | null = null;
 let responseInterceptor: number | null = null;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+let failedLoggedInUserRequest: AxiosRequestConfig<any> | null;
 
 export const AuthProvider = ({
   childComponentType,
@@ -290,6 +293,12 @@ export const AuthProvider = ({
         // Start expiry timer on successful silent signIn
         // eslint-disable-next-line @typescript-eslint/no-use-before-define
         startTokenExpiryTimer();
+
+        // Retry the failed request after successful silent signIn
+        if (failedLoggedInUserRequest) {
+          await getLoggedInUserDetails();
+          failedLoggedInUserRequest = null;
+        }
       } else {
         // reset user details if silent signIn fails
         resetUserDetails(forceLogout);
@@ -510,6 +519,10 @@ export const AuthProvider = ({
         if (error.response) {
           const { status } = error.response;
           if (status === ClientErrors.UNAUTHORIZED) {
+            // store the failed request for retry after successful silent signIn
+            if (error.config.url === '/users/loggedInUser') {
+              failedLoggedInUserRequest = error.config;
+            }
             handleStoreProtectedRedirectPath();
             trySilentSignIn(true);
           }
