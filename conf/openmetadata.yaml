@@ -174,7 +174,7 @@ authenticationConfiguration:
   authority: ${AUTHENTICATION_AUTHORITY:-https://accounts.google.com}
   clientId: ${AUTHENTICATION_CLIENT_ID:-""}
   callbackUrl: ${AUTHENTICATION_CALLBACK_URL:-""}
-  jwtPrincipalClaims: ${AUTHENTICATION_JWT_PRINCIPAL_CLAIMS:-[email,preferred_username,sub]}
+  jwtPrincipalClaims: ${AUTHENTICATION_JWT_PRINCIPAL_CLAIMS:-[email]}
   enableSelfSignup : ${AUTHENTICATION_ENABLE_SELF_SIGNUP:-true}
   oidcConfiguration:
     id: ${OIDC_CLIENT_ID:-""}

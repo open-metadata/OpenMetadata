@@ -24,6 +24,7 @@ import java.io.Reader;
 import java.io.StringReader;
 import java.io.StringWriter;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -391,6 +392,62 @@ public abstract class EntityCsv<T extends EntityInterface> {
       importFailure(resultsPrinter, violations, csvRecord);
       return;
     }
+    if (Boolean.FALSE.equals(importResult.getDryRun())) { // If not dry run, create the entity
+      try {
+        repository.prepareInternal(entity, false);
+        PutResponse<T> response = repository.createOrUpdate(null, entity);
+        responseStatus = response.getStatus();
+      } catch (Exception ex) {
+        importFailure(resultsPrinter, ex.getMessage(), csvRecord);
+        importResult.setStatus(ApiStatus.FAILURE);
+        return;
+      }
+    } else { // Dry run don't create the entity
+      repository.setFullyQualifiedName(entity);
+      responseStatus =
+          repository.findByNameOrNull(entity.getFullyQualifiedName(), Include.NON_DELETED) == null
+              ? Response.Status.CREATED
+              : Response.Status.OK;
+      // Track the dryRun created entities, as they may be referred by other entities being created
+      // during import
+      dryRunCreatedEntities.put(entity.getFullyQualifiedName(), entity);
+    }
+
+    if (Response.Status.CREATED.equals(responseStatus)) {
+      importSuccess(resultsPrinter, csvRecord, ENTITY_CREATED);
+    } else {
+      importSuccess(resultsPrinter, csvRecord, ENTITY_UPDATED);
+    }
+  }
+
+  @Transaction
+  protected void createUserEntity(CSVPrinter resultsPrinter, CSVRecord csvRecord, T entity)
+      throws IOException {
+    entity.setId(UUID.randomUUID());
+    entity.setUpdatedBy(importedBy);
+    entity.setUpdatedAt(System.currentTimeMillis());
+    EntityRepository<T> repository = (EntityRepository<T>) Entity.getEntityRepository(entityType);
+    Response.Status responseStatus;
+
+    List<String> violationList = new ArrayList<>();
+
+    String violations = ValidatorUtil.validate(entity);
+    if (violations != null && !violations.isEmpty()) {
+      violationList.addAll(
+          Arrays.asList(violations.substring(1, violations.length() - 1).split(", ")));
+    }
+
+    String customUserNameEmailViolation = ValidatorUtil.validateUserNameWithEmailPrefix(csvRecord);
+    if (!customUserNameEmailViolation.isEmpty()) {
+      violationList.add(customUserNameEmailViolation);
+    }
+
+    if (!violationList.isEmpty()) {
+      // JSON schema based validation failed for the entity
+      importFailure(resultsPrinter, violationList.toString(), csvRecord);
+      return;
+    }
+
     if (Boolean.FALSE.equals(importResult.getDryRun())) { // If not dry run, create the entity
       try {
         repository.prepareInternal(entity, false);
