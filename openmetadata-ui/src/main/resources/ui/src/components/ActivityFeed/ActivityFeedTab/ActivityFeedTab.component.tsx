@@ -479,19 +479,21 @@ export const ActivityFeedTab = ({
                   onCancel={noop}
                 />
               </div>
-              <FeedPanelBodyV1
-                isOpenInDrawer
-                showThread
-                className="m-md"
-                componentsVisibility={{
-                  showThreadIcon: false,
-                  showRepliesContainer: false,
-                }}
-                feed={selectedThread}
-                hidePopover={false}
-                isForFeedTab={isForFeedTab}
-              />
-              <ActivityFeedEditor className="m-md" onSave={onSave} />
+
+              <div className="m-md">
+                <FeedPanelBodyV1
+                  isOpenInDrawer
+                  showThread
+                  componentsVisibility={{
+                    showThreadIcon: false,
+                    showRepliesContainer: false,
+                  }}
+                  feed={selectedThread}
+                  hidePopover={false}
+                  isForFeedTab={isForFeedTab}
+                />
+                <ActivityFeedEditor className="m-t-md" onSave={onSave} />
+              </div>
             </div>
           ) : (
             <div id="task-panel">

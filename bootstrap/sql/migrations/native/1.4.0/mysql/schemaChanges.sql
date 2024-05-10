@@ -282,3 +282,14 @@ SET json = JSON_INSERT(
 );
 
 UPDATE table_entity SET json = JSON_REMOVE(json, '$.testSuite');
+
+-- Clean up QRTZ tables
+delete from QRTZ_SIMPLE_TRIGGERS;
+delete from QRTZ_CRON_TRIGGERS;
+delete from QRTZ_TRIGGERS;
+delete from QRTZ_LOCKS;
+delete from QRTZ_SCHEDULER_STATE;
+delete from QRTZ_JOB_DETAILS;
+delete from QRTZ_FIRED_TRIGGERS;
+
+DELETE from event_subscription_entity where name = 'ActivityFeedAlert';

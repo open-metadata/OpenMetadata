@@ -180,16 +180,19 @@ public final class CollectionRegistry {
       Jdbi jdbi,
       OpenMetadataApplicationConfig config,
       Authorizer authorizer,
-      AuthenticatorHandler authenticatorHandler) {
+      AuthenticatorHandler authenticatorHandler,
+      boolean isOperations) {
     // Build list of ResourceDescriptors
     for (Map.Entry<String, CollectionDetails> e : collectionMap.entrySet()) {
       CollectionDetails details = e.getValue();
-      String resourceClass = details.resourceClass;
-      try {
-        Object resource =
-            createResource(jdbi, resourceClass, config, authorizer, authenticatorHandler);
-      } catch (Exception ex) {
-        LOG.warn("Failed to create resource for class {} {}", resourceClass, ex);
+      if (!isOperations || (isOperations && details.requiredForOps)) {
+        String resourceClass = details.resourceClass;
+        try {
+          Object resource =
+              createResource(jdbi, resourceClass, config, authorizer, authenticatorHandler);
+        } catch (Exception ex) {
+          LOG.warn("Failed to create resource for class {} {}", resourceClass, ex);
+        }
       }
     }
   }
@@ -197,6 +200,7 @@ public final class CollectionRegistry {
   /** Get collection details based on annotations in Resource classes */
   private static CollectionDetails getCollection(Class<?> cl) {
     int order = 0;
+    boolean requiredForOps = false;
     CollectionInfo collectionInfo = new CollectionInfo();
     for (Annotation a : cl.getAnnotations()) {
       if (a instanceof Path path) {
@@ -209,11 +213,12 @@ public final class CollectionRegistry {
         // Use @Collection annotation to get initialization information for the class
         collectionInfo.withName(collection.name());
         order = collection.order();
+        requiredForOps = collection.requiredForOps();
       }
     }
     CollectionDescriptor cd = new CollectionDescriptor();
     cd.setCollection(collectionInfo);
-    return new CollectionDetails(cd, cl.getCanonicalName(), order);
+    return new CollectionDetails(cd, cl.getCanonicalName(), order, requiredForOps);
   }
 
   /** Compile a list of REST collections based on Resource classes marked with {@code Collection} annotation */
@@ -295,11 +300,14 @@ public final class CollectionRegistry {
     @Getter @Setter private Object resource;
     private final CollectionDescriptor cd;
     private final int order;
+    private final boolean requiredForOps;
 
-    CollectionDetails(CollectionDescriptor cd, String resourceClass, int order) {
+    CollectionDetails(
+        CollectionDescriptor cd, String resourceClass, int order, boolean requiredForOps) {
       this.cd = cd;
       this.resourceClass = resourceClass;
       this.order = order;
+      this.requiredForOps = requiredForOps;
     }
   }
 }

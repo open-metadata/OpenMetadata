@@ -12,7 +12,12 @@
  */
 export const PROPERTY_TYPES_WITH_FORMAT = ['date', 'dateTime'];
 
-export const DISABLED_PROPERTY_TYPES = ['time', 'dateTime', 'timeInterval'];
+export const DISABLED_PROPERTY_TYPES = [
+  'time',
+  'dateTime',
+  'timeInterval',
+  'date',
+];
 
 export const PROPERTY_TYPES_WITH_ENTITY_REFERENCE = [
   'entityReference',
