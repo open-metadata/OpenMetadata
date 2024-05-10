@@ -54,6 +54,7 @@ export const PAGE_SIZE = 10;
 export const PAGE_SIZE_BASE = 15;
 export const PAGE_SIZE_MEDIUM = 25;
 export const PAGE_SIZE_LARGE = 50;
+export const ES_MAX_PAGE_SIZE = 10000;
 export const API_RES_MAX_SIZE = 100000;
 export const LIST_SIZE = 5;
 export const ADD_USER_CONTAINER_HEIGHT = 250;
