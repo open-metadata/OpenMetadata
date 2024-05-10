@@ -306,7 +306,7 @@ public class ElasticSearchClient implements SearchClient {
           "{} Deleted {}",
           indexMapping.getIndexName(clusterAlias),
           deleteIndexResponse.isAcknowledged());
-    } catch (IOException e) {
+    } catch (Exception e) {
       LOG.error("Failed to delete Elastic Search indexes due to", e);
     }
   }

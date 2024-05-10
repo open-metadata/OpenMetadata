@@ -300,7 +300,7 @@ public class OpenSearchClient implements SearchClient {
           "{} Deleted {}",
           indexMapping.getIndexName(clusterAlias),
           deleteIndexResponse.isAcknowledged());
-    } catch (IOException e) {
+    } catch (Exception e) {
       LOG.error("Failed to delete Open Search indexes due to", e);
     }
   }

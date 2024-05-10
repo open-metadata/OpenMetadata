@@ -40,6 +40,8 @@ Must also have the `s3:GetObject` permission for the location of the Iceberg tab
 It depends on where and how the Hive / Rest Catalog is setup and where the Iceberg files are stored.
 ### Python Requirements
 
+{% partial file="/v1.4/connectors/python-requirements.md" /%}
+
 To run the Iceberg ingestion, you will need to install:
 
 ```bash
