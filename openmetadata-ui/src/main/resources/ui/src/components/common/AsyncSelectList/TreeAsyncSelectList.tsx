@@ -220,7 +220,7 @@ const TreeAsyncSelectList: FC<Omit<AsyncSelectListProps, 'fetchOptions'>> = ({
         prev.map((glossary) => ({
           ...glossary,
           children: get(
-            glossary.id === activeGlossary.id ? activeGlossary : glossary,
+            glossary.id === activeGlossary?.id ? activeGlossary : glossary,
             'children',
             []
           ),
