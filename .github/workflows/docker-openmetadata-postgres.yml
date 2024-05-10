@@ -35,13 +35,12 @@ jobs:
           image: openmetadata/postgresql
           tag: ${{ inputs.tag }}
           push_latest: ${{ inputs.push_latest_tag_to_release }}
-          is_ingestion: false
 
       - name: Build and push if event is workflow_dispatch and input is checked
         uses: docker/build-push-action@v3
         with:
           context: .
           platforms: linux/amd64,linux/arm64
-          push: ${{ github.event_name == 'workflow_dispatch' }}
+          push: true
           tags: ${{ steps.prepare.outputs.tags }}
           file: ./docker/postgresql/Dockerfile_postgres

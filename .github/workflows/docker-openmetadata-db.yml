@@ -28,9 +28,6 @@ jobs:
       - name: Check out the Repo
         uses: actions/checkout@v3
 
-      - name: Set up Docker Build&Push dependencies
-        uses: ./.github/actions/setup-docker-build-and-push-dependencies
-
       - name: Prepare for Docker Build&Push
         id: prepare
         uses: ./.github/actions/prepare-for-docker-build-and-push
@@ -38,7 +35,6 @@ jobs:
           image: openmetadata/db
           tag: ${{ inputs.tag }}
           push_latest: ${{ inputs.push_latest_tag_to_release }}
-          is_ingestion: false
 
 
       - name: Build and push if event is workflow_dispatch and input is checked
@@ -46,6 +42,6 @@ jobs:
         with:
           context: .
           platforms: linux/amd64,linux/arm64
-          push: ${{ github.event_name == 'workflow_dispatch' }}
+          push: true
           tags: ${{ steps.prepare.outputs.tags }}
           file: ./docker/mysql/Dockerfile_mysql
