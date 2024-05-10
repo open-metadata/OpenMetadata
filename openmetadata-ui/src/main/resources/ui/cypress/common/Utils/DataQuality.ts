@@ -41,6 +41,14 @@ const testCase2 = {
   testSuite: testSuite.name,
 };
 const filterTable = generateRandomTable();
+const customTable = generateRandomTable(`cypress-table-${uuid()}-COLUMN`, [
+  {
+    name: `user_id`,
+    description: `cypress-column-description`,
+    dataType: 'STRING',
+    dataTypeDisplay: 'string',
+  },
+]);
 
 const filterTableFqn = `${filterTable.databaseSchema}.${filterTable.name}`;
 const filterTableTestSuite = {
@@ -57,6 +65,7 @@ export const DATA_QUALITY_TEST_CASE_DATA = {
   testCase1,
   testCase2,
   filterTable,
+  customTable,
   filterTableTestCases: testCases,
 };
 

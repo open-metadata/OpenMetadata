@@ -83,6 +83,7 @@ import {
   getTableFQNFromColumnFQN,
   sortTagsCaseInsensitive,
 } from './CommonUtils';
+import EntityLink from './EntityLink';
 import serviceUtilClassBase from './ServiceUtilClassBase';
 import { ordinalize } from './StringsUtils';
 import { TableFieldsInfoCommonEntities } from './TableUtils.interface';
@@ -410,18 +411,13 @@ export const getDataTypeString = (dataType: string): string => {
 };
 
 export const generateEntityLink = (fqn: string, includeColumn = false) => {
-  const columnLink = '<#E::table::ENTITY_FQN::columns::COLUMN>';
-  const tableLink = '<#E::table::ENTITY_FQN>';
-
   if (includeColumn) {
     const tableFqn = getTableFQNFromColumnFQN(fqn);
     const columnName = getPartialNameFromTableFQN(fqn, [FqnPart.NestedColumn]);
 
-    return columnLink
-      .replace('ENTITY_FQN', tableFqn)
-      .replace('COLUMN', columnName);
+    return EntityLink.getTableEntityLink(tableFqn, columnName);
   } else {
-    return tableLink.replace('ENTITY_FQN', fqn);
+    return EntityLink.getTableEntityLink(fqn);
   }
 };
 
