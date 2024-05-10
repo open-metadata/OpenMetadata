@@ -80,7 +80,8 @@
     },
     "isBot": {
       "description": "When true indicates a special type of user called Bot.",
-      "type": "boolean"
+      "type": "boolean",
+      "default": false
     },
     "isAdmin": {
       "description": "When true indicates user is an administrator for the system with superuser privileges.",

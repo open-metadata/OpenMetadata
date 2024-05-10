@@ -25,6 +25,8 @@ Configure and schedule KafkaConnect metadata and profiler workflows from the Ope
 
 ### Python Requirements
 
+{% partial file="/v1.4/connectors/python-requirements.md" /%}
+
 To run the KafkaConnect ingestion, you will need to install:
 
 ```bash

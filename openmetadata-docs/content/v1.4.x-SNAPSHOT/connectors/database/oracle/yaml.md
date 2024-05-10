@@ -59,6 +59,8 @@ there is no routine out of the box in Oracle to grant SELECT to a full schema.
 
 ### Python Requirements
 
+{% partial file="/v1.4/connectors/python-requirements.md" /%}
+
 To run the Oracle ingestion, you will need to install:
 
 ```bash

@@ -26,6 +26,8 @@ Configure and schedule Couchbase metadata workflows from the OpenMetadata UI:
 
 ### Python Requirements
 
+{% partial file="/v1.4/connectors/python-requirements.md" /%}
+
 To run the Couchbase ingestion, you will need to install:
 
 ```bash

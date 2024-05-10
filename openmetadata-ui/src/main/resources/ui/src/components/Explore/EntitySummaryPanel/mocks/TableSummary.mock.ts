@@ -121,4 +121,9 @@ export const mockTableEntityDetails: Table = {
     href: 'http://localhost:8585/api/v1/databases/78a58be0-26a9-4ac8-b515-067db85bbb41',
   },
   followers: [],
+  testSuite: {
+    id: 'id',
+    name: 'dim.api/client',
+    type: 'testSuite',
+  },
 };

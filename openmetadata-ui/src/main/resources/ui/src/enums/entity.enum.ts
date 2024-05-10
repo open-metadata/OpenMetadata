@@ -132,6 +132,7 @@ export enum FqnPart {
   NestedColumn,
   Topic,
   SearchIndexField,
+  TestCase,
 }
 
 export enum EntityTabs {

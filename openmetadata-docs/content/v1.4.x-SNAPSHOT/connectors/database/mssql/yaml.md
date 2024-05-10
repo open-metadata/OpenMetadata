@@ -47,16 +47,12 @@ GRANT VIEW SERVER STATE TO YourUser;
 
 ### Python Requirements
 
+{% partial file="/v1.4/connectors/python-requirements.md" /%}
+
 To run the MSSQL ingestion, you will need to install:
 
 ```bash
 pip3 install "openmetadata-ingestion[mssql]"
-```
-
-If you want to run the Usage Connector, you'll also need to install:
-
-```bash
-pip3 install "openmetadata-ingestion[mssql-usage]"
 ```
 
 ## Metadata Ingestion
@@ -152,35 +148,6 @@ This is a sample config for MSSQL:
 
 {% codeBlock fileName="filename.yaml" %}
 
-```yaml
-source:
-  type: mssql
-  serviceName: "<service name>"
-  serviceConnection:
-    config:
-      type: Mssql
-```
-```yaml {% srNumber=1 %}
-      scheme: mssql+pytds
-```
-```yaml {% srNumber=2 %}
-      username: <username>
-```
-```yaml {% srNumber=3 %}
-      password: <password>
-```
-```yaml {% srNumber=4 %}
-      hostPort: <hostPort>
-```
-```yaml {% srNumber=5 %}
-      database: <database>
-```
-```yaml {% srNumber=6 %}
-      ingestAllDatabases: false # true
-```
-```yaml {% srNumber=7 %}
-      uriString: uriString
-```
 ```yaml
 source:
   type: mssql

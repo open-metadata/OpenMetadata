@@ -54,7 +54,6 @@ ALTER TABLE dashboard_service_entity ADD INDEX index_dashboard_service_entity_de
 ALTER TABLE dbservice_entity ADD INDEX index_dbservice_entity_deleted(nameHash, deleted);
 ALTER TABLE glossary_entity ADD INDEX index_glossary_entity_deleted(nameHash, deleted);
 ALTER TABLE installed_apps ADD INDEX index_installed_apps_deleted(nameHash, deleted);
-ALTER TABLE knowledge_center ADD INDEX index_knowledge_center_deleted(nameHash, deleted);
 ALTER TABLE kpi_entity ADD INDEX index_kpi_entity_deleted(nameHash, deleted);
 ALTER TABLE messaging_service_entity ADD INDEX index_messaging_service_entity_deleted(nameHash, deleted);
 ALTER TABLE metadata_service_entity ADD INDEX index_metadata_service_entity_deleted(nameHash, deleted);
@@ -283,3 +282,14 @@ SET json = JSON_INSERT(
 );
 
 UPDATE table_entity SET json = JSON_REMOVE(json, '$.testSuite');
+
+-- Clean up QRTZ tables
+delete from QRTZ_SIMPLE_TRIGGERS;
+delete from QRTZ_CRON_TRIGGERS;
+delete from QRTZ_TRIGGERS;
+delete from QRTZ_LOCKS;
+delete from QRTZ_SCHEDULER_STATE;
+delete from QRTZ_JOB_DETAILS;
+delete from QRTZ_FIRED_TRIGGERS;
+
+DELETE from event_subscription_entity where name = 'ActivityFeedAlert';

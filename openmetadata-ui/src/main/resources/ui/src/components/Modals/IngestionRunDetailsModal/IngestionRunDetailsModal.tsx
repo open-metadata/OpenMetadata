@@ -52,6 +52,10 @@ function IngestionRunDetailsModal({
         dataIndex: 'filtered',
       },
       {
+        title: t('label.updated'),
+        dataIndex: 'updated_records',
+      },
+      {
         title: t('label.warning-plural'),
         dataIndex: 'warnings',
       },
@@ -120,7 +124,7 @@ function IngestionRunDetailsModal({
       closable={false}
       maskClosable={false}
       okButtonProps={{ style: { display: 'none' } }}
-      title={t('label.run-status-at-timestamp', {
+      title={t('message.run-status-at-timestamp', {
         status: startCase(pipelineStatus?.pipelineState),
         timestamp: formatDateTime(pipelineStatus?.timestamp),
       })}

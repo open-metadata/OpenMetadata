@@ -7,15 +7,11 @@ slug: /connectors/ingestion/workflows/lineage
 
 Learn how to configure the Lineage workflow from the UI to ingest Lineage data from your data sources.
 
-This workflow is available ONLY for the following connectors:
+{% note %}
 
-- [BigQuery](/connectors/database/bigquery)
-- [Snowflake](/connectors/database/snowflake)
-- [MSSQL](/connectors/database/mssql)
-- [Redshift](/connectors/database/redshift)
-- [Clickhouse](/connectors/database/clickhouse)
-- [Postgres](/connectors/database/postgres)
-- [Databricks](/connectors/database/databricks)
+Checkout the documentation of the connector you are using to know if it supports automated lineage workflow.
+
+{% \note %}
 
 If your database service is not yet supported, you can use this same workflow by providing a Query Log file!
 
