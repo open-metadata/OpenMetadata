@@ -773,7 +773,7 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
 
   @Test
   public void test_buildGlossaryTermNestedHierarchy(TestInfo test) throws HttpResponseException {
-
+    // Gives Nested Hierarchy for exact match of user input term
     CreateGlossaryTerm create =
         createRequest("parentGlossaryTerm", "", "", null)
             .withReviewers(null)
@@ -789,7 +789,8 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
             .withSynonyms(null)
             .withParent(parentGlossaryTerm.getFullyQualifiedName());
     GlossaryTerm childGlossaryTerm = createEntity(create, ADMIN_AUTH_HEADERS);
-    String response = getResponseFormSearchWithHierarchy("glossary_term_search_index");
+    String response =
+        getResponseFormSearchWithHierarchy("glossary_term_search_index", "*childGlossaryTerm*");
     List<EntityHierarchy__1> glossaries = JsonUtils.readObjects(response, EntityHierarchy__1.class);
     boolean isChild =
         glossaries.stream()
