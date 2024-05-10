@@ -150,8 +150,6 @@ authenticationConfiguration:
   callbackUrl: "http://localhost:8585/callback"
   jwtPrincipalClaims:
     - "email"
-    - "preferred_username"
-    - "sub"
   enableSelfSignup : true
   samlConfiguration:
     debugMode: false
