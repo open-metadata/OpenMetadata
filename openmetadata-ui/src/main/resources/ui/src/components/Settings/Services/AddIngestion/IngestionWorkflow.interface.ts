@@ -61,8 +61,11 @@ export type ScheduleIntervalProps = {
   disabledCronChange?: boolean;
   onBack: () => void;
   onDeploy: (values: WorkflowExtraConfig) => void;
+  allowEnableDebugLog?: boolean;
+  debugLogInitialValue?: boolean;
 };
 
 export interface WorkflowExtraConfig {
-  retries: number;
+  retries?: number;
+  enableDebugLog?: boolean;
 }
