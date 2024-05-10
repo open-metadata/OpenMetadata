@@ -1359,7 +1359,7 @@ export const WHATS_NEW = [
 -   For tables, data models, topics, and search indexes, you can apply the action to their columns or fields.
 -   We added support for the following actions: adding and removing owner, tier, domain, tags, glossary terms and descriptions, ML PII tagging, and propagation of tags and glossary terms through lineage.`,
 
-      'Bulk Upload Data Assets': `-   Bulk upload/download database, schema, and table entities from/into a CSV file for quick edition or creation.
+      [`Bulk Upload Data Assets  ${CollateIconWithLinkMD}`]: `-   Bulk upload/download database, schema, and table entities from/into a CSV file for quick edition or creation.
 -   Supports an inline editor to validate/update assets before performing the upload.`,
 
       'Data Quality Improvements': `-   The Table schema page now shows the Data Quality tests for each column.
@@ -1406,7 +1406,7 @@ export const WHATS_NEW = [
 -   Database Services now support parallelizing the metadata ingestion at each schema.`,
 
       Connectors: `-   Now supports a new connector for [QlikCloud](https://www.qlik.com/us/products/qlik-cloud).
--   New Kafka Connect connector ${CollateIconWithLinkMD}
+-   New Kafka Connect connector
 -   We now parse complex protobuf schemas for Kafka
 -   Improved model storage ingestion for Sagemaker and Mlflow.
 -   Added an option to include or exclude drafts from dashboards.
