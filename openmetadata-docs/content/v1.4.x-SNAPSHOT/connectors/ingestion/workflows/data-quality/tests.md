@@ -10,6 +10,9 @@ A **Test Definition** is a generic definition of a test. This Test Definition th
 
 In this section, you will learn what tests we currently support and how to configure them in the YAML/JSON config file.
 
+- [Table Tests](#table-tests)
+- [Column Tests](#column-tests)
+
 ## Table Tests
 Tests applied on top of a Table. Here is the list of all table tests:
 
