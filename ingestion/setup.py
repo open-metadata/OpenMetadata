@@ -215,6 +215,7 @@ plugins: Dict[str, Set[str]] = {
         "thrift-sasl~=0.4",
     },
     "kafka": {*COMMONS["kafka"]},
+    "kafkaconnect": {"kafka-connect-py==0.10.11"},
     "kinesis": {VERSIONS["boto3"]},
     "looker": {
         VERSIONS["looker-sdk"],
