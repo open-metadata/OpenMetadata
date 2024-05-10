@@ -103,10 +103,6 @@
       "title": "Supports Profiler",
       "$ref": "../connectionBasicType.json#/definitions/supportsProfiler"
     },
-    "supportsDDL": {
-      "title": "Supports DDL",
-      "$ref": "../connectionBasicType.json#/definitions/supportsDDL"
-    },
     "supportsQueryComment": {
       "title": "Supports Query Comment",
       "$ref": "../connectionBasicType.json#/definitions/supportsQueryComment"

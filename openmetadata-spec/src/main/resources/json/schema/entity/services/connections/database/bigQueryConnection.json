@@ -93,10 +93,6 @@
       "title": "Supports Profiler",
       "$ref": "../connectionBasicType.json#/definitions/supportsProfiler"
     },
-    "supportsDDL": {
-      "title": "Supports DDL",
-      "$ref": "../connectionBasicType.json#/definitions/supportsDDL"
-    },
     "supportsDatabase": {
       "title": "Supports Database",
       "$ref": "../connectionBasicType.json#/definitions/supportsDatabase"
