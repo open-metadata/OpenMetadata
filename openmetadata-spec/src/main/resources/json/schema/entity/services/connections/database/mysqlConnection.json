@@ -99,10 +99,6 @@
       "title": "Supports Query Comment",
       "$ref": "../connectionBasicType.json#/definitions/supportsQueryComment"
     },
-    "supportsDDL": {
-      "title": "Supports DDL",
-      "$ref": "../connectionBasicType.json#/definitions/supportsDDL"
-    },
     "sampleDataStorageConfig": {
       "title": "Storage Config for Sample Data",
       "$ref": "../connectionBasicType.json#/definitions/sampleDataStorageConfig"
