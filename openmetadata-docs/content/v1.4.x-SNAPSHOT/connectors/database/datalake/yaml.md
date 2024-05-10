@@ -57,6 +57,8 @@ permissions on the Storage Account:
 
 ### Python Requirements
 
+{% partial file="/v1.4/connectors/python-requirements.md" /%}
+
 If running OpenMetadata version greater than 0.13, you will need to install the Datalake ingestion for GCS or S3:
 
 #### S3 installation

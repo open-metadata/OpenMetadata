@@ -47,6 +47,8 @@ For more information on Dynamodb permissions visit the [AWS DynamoDB official do
 
 ### Python Requirements
 
+{% partial file="/v1.4/connectors/python-requirements.md" /%}
+
 To run the DynamoDB ingestion, you will need to install:
 
 ```bash

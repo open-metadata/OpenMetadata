@@ -52,6 +52,8 @@ Executing the profiler workflow or data quality tests, will require the user to 
 
 ### Python Requirements
 
+{% partial file="/v1.4/connectors/python-requirements.md" /%}
+
 To run the DB2 ingestion, you will need to install:
 
 ```bash

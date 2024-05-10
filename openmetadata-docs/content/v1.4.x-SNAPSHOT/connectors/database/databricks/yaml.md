@@ -33,6 +33,8 @@ Configure and schedule Databricks metadata and profiler workflows from the OpenM
 
 ### Python Requirements
 
+{% partial file="/v1.4/connectors/python-requirements.md" /%}
+
 To run the Databricks ingestion, you will need to install:
 
 ```bash
