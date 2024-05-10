@@ -99,7 +99,6 @@ const isEmailVerifyField = 'isEmailVerified';
 
 let requestInterceptor: number | null = null;
 let responseInterceptor: number | null = null;
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 let failedLoggedInUserRequest: boolean | null;
 
 export const AuthProvider = ({
