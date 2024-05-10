@@ -57,9 +57,9 @@ export const buildTree = (data: GlossaryTerm[]): GlossaryTerm[] => {
   const tree: GlossaryTerm[] = [];
   data.forEach((obj) => {
     const current = nodes[obj.fullyQualifiedName ?? ''];
-    const parent = nodes[obj.parent?.fullyQualifiedName || ''];
+    const parent = nodes[obj.parent?.fullyQualifiedName ?? ''];
 
-    if (parent && parent.children) {
+    if (parent?.children) {
       // converting glossaryTerm to EntityReference
       parent.children.push({ ...current, type: 'glossaryTerm' });
     } else {
