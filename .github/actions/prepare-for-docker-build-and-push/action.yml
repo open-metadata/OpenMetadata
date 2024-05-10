@@ -16,6 +16,12 @@ inputs:
     description: true if we are building an Ingestion image, false otherwise
     required: true
     default: "false"
+  dockerhub_username:
+    description: Dockerhub Username
+    required: true
+  dockerhub_token:
+    description: Dockerhub Token
+    required: true
 
 outputs:
   tags:
@@ -34,17 +40,17 @@ runs:
     - name: Login to DockerHub
       uses: docker/login-action@v2
       with:
-        username: ${{ secrets.DOCKERHUB_OPENMETADATA_USERNAME }}
-        password: ${{ secrets.DOCKERHUB_OPENMETADATA_TOKEN }}
+        username: ${{ inputs.dockerhub_username }}
+        password: ${{ inputs.dockerhub_token }}
 
     - name: Install Ubuntu dependencies
-      if: ${{ inputs.is_ingestion == "true" }}
+      if: inputs.is_ingestion == 'true'
       shell: bash
       run: |
         sudo apt-get install -y python3-venv
 
     - name: Install open-metadata dependencies
-      if: ${{ inputs.is_ingestion == "true" }}
+      if: inputs.is_ingestion == 'true'
       shell: bash
       run: |
         python3 -m venv env
