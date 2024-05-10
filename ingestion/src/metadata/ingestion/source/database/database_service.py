@@ -521,7 +521,9 @@ class DatabaseServiceSource(
         Method to process the table owners
         """
         try:
-            if self.source_config.includeOwners:
+            if self.source_config.includeOwners and hasattr(
+                self.inspector, "get_table_owner"
+            ):
                 owner_name = self.inspector.get_table_owner(
                     connection=self.connection,  # pylint: disable=no-member.fetchall()
                     table_name=table_name,
