@@ -337,7 +337,7 @@ export const UserProfileIcon = () => {
               onError={handleOnImageError}
             />
           ) : (
-            <ProfilePicture name={userName} width="36" />
+            <ProfilePicture name={currentUser?.name ?? ''} width="36" />
           )}
           <div className="d-flex flex-col">
             <Tooltip title={getEntityName(currentUser)}>
