@@ -224,7 +224,6 @@ export const RECENT_SEARCH_TITLE = 'Recent Search Terms';
 export const RECENT_VIEW_TITLE = 'Recent Views';
 export const MY_DATA_TITLE = 'My Data';
 export const FOLLOWING_TITLE = 'Following';
-export const TEAM_ENTITY = 'alert_entity';
 
 export const NO_SEARCHED_TERMS = 'No searched terms';
 export const DELETE_TERM = 'DELETE';
@@ -251,7 +250,7 @@ export const NEW_TABLE_TEST_CASE = {
 
 export const NEW_COLUMN_TEST_CASE = {
   name: 'id_column_value_lengths_to_be_between',
-  column: 'id',
+  column: 'user_id',
   type: 'columnValueLengthsToBeBetween',
   label: 'Column Value Lengths To Be Between',
   min: '3',
@@ -261,7 +260,7 @@ export const NEW_COLUMN_TEST_CASE = {
 
 export const NEW_COLUMN_TEST_CASE_WITH_NULL_TYPE = {
   name: 'id_column_values_to_be_not_null',
-  column: 'id',
+  column: 'user_id',
   type: 'columnValuesToBeNotNull',
   label: 'Column Values To Be Not Null',
   description: 'New table test case for columnValuesToBeNotNull',

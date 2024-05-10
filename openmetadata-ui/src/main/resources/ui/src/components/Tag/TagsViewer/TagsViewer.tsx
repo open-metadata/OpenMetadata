@@ -95,7 +95,7 @@ const TagsViewer: FunctionComponent<TagsViewerProps> = ({
 
   const popoverRenderElement = useMemo(
     () => (
-      <div data-testid="popover-element">
+      <div className="m-t-xs" data-testid="popover-element">
         {sortedTagsBySource.slice(sizeCap).length > 0 && (
           <Popover
             content={

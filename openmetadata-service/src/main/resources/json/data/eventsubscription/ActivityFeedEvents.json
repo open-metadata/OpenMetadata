@@ -10,13 +10,19 @@
       {
         "name": "matchAnyEventType",
         "effect": "include",
-        "condition": "matchAnyEventType({'entityCreated', 'entityDeleted', 'entitySoftDeleted'})",
+        "condition": "matchAnyEventType({'entityCreated', 'entityDeleted', 'entitySoftDeleted'}) && !matchUpdatedBy({'ingestion-bot'}) && !matchAnySource({'user', 'ingestionPipeline', 'workflow'})",
         "prefixCondition": "AND"
       },
       {
         "name": "matchAnyFieldChange",
         "effect": "include",
-        "condition": "matchAnyFieldChange({'description', 'domain', 'owner', 'tags', 'followers', 'extension','parameterValues', 'assets', 'testCaseResult', 'pipelineStatus'})",
+        "condition": "matchAnyFieldChange({'testCaseResult'})",
+        "prefixCondition": "OR"
+      },
+      {
+        "name": "matchAnyFieldChange",
+        "effect": "include",
+        "condition": "matchAnyFieldChange({'description', 'domain', 'owner', 'tags', 'followers', 'extension','parameterValues', 'assets'})",
         "prefixCondition": "OR"
       },
       {
