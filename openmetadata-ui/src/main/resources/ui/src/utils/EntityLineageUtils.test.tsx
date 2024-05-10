@@ -362,8 +362,8 @@ describe('Test EntityLineageUtils utility', () => {
 
     expect(map).toEqual(MOCK_CHILD_MAP);
     expect(exportResult).toEqual(
-      `Name,Display Name,Fully Qualified Name,Entity Type,Direction,Owner,Domain,Tags,Tier,Glossary Terms
-"engineering","Engineering department","s3_storage_sample.departments.engineering","container","downstream","","","","",""`
+      `Name,Display Name,Fully Qualified Name,Entity Type,Direction,Owner,Domain,Tags,Tier,Glossary Terms,Level
+"engineering","Engineering department","s3_storage_sample.departments.engineering","container","downstream","","","","","","1"`
     );
   });
 

@@ -14,6 +14,7 @@ import {
   formatJsonString,
   getDecodedFqn,
   getEncodedFqn,
+  jsonToCSV,
   replaceCallback,
 } from './StringsUtils';
 
@@ -99,5 +100,25 @@ describe('StringsUtils', () => {
 
       expect(formatJsonString(jsonString)).toStrictEqual(jsonString);
     });
+  });
+
+  it('jsonToCSV should return expected csv', () => {
+    const jsonData = [
+      { name: 'John', age: 30, city: 'New York' },
+      { name: 'Jane', age: 25, city: 'San Francisco' },
+      { name: 'Bob', age: 35, city: 'Chicago' },
+    ];
+
+    const headers = [
+      { field: 'name', title: 'Name' },
+      { field: 'age', title: 'Age' },
+      { field: 'city', title: 'City' },
+    ];
+
+    const expectedCSV = `Name,Age,City\n"John","30","New York"\n"Jane","25","San Francisco"\n"Bob","35","Chicago"`;
+
+    expect(jsonToCSV(jsonData, headers)).toEqual(expectedCSV);
+    expect(jsonToCSV(jsonData, [])).toEqual('');
+    expect(jsonToCSV([], headers)).toEqual('');
   });
 });

@@ -50,10 +50,6 @@ export const entityData = [
     label: t('label.container-plural'),
   },
   {
-    type: SearchIndex.PIPELINE,
-    label: t('label.pipeline-plural'),
-  },
-  {
     type: SearchIndex.SEARCH_INDEX,
     label: t('label.search-index-plural'),
   },
@@ -114,4 +110,5 @@ export const LINEAGE_EXPORT_HEADERS = [
   { field: 'tags', title: 'Tags' },
   { field: 'tier', title: 'Tier' },
   { field: 'glossaryTerms', title: 'Glossary Terms' },
+  { field: 'depth', title: 'Level' },
 ];

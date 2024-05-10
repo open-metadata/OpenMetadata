@@ -1080,7 +1080,8 @@ export const getLineageChildParents = (
   parsedNodes: LineageSourceType[],
   id: string,
   isParent = false,
-  index = 0
+  index = 0, // page index
+  depth = 1 // depth of lineage
 ) => {
   const edges = isParent ? obj.upstreamEdges || [] : obj.downstreamEdges || [];
   const filtered = edges.filter((edge) => {
@@ -1099,6 +1100,7 @@ export const getLineageChildParents = (
       parsedNodes.push({
         ...(node as SourceType),
         direction: isParent ? 'upstream' : 'downstream',
+        depth: depth,
       });
       const childNodes = getLineageChildParents(
         obj,
@@ -1106,7 +1108,8 @@ export const getLineageChildParents = (
         parsedNodes,
         node.id,
         isParent,
-        i
+        i,
+        depth + 1
       );
       const lineage: EntityReferenceChild = { ...node, pageIndex: index + i };
 
@@ -1138,6 +1141,7 @@ export const getExportEntity = (entity: LineageSourceType) => {
     domain,
     tier,
     tags = [],
+    depth = '',
   } = entity;
 
   const classificationTags = [];
@@ -1162,6 +1166,7 @@ export const getExportEntity = (entity: LineageSourceType) => {
     tags: classificationTags.join(', '),
     tier: (tier as EntityTags)?.tagFQN ?? '',
     glossaryTerms: glossaryTerms.join(', '),
+    depth,
   };
 };
 

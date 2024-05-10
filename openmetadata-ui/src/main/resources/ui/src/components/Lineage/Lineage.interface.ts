@@ -56,4 +56,5 @@ export interface EdgeDetails {
 
 export type LineageSourceType = Omit<SourceType, 'service'> & {
   direction: string;
+  depth: number;
 };
