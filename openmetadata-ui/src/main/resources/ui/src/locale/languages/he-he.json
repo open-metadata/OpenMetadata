@@ -1150,6 +1150,7 @@
     "test-email-connection": "Test Email Connection",
     "test-entity": "בדיקה {{entity}}",
     "test-plural": "בדיקות",
+    "test-result-summary": "Test Result Summary",
     "test-suite": "מערכת בדיקות",
     "test-suite-ingestion": "יבוא ממערכת בדיקות",
     "test-suite-lowercase": "מערכת בדיקות",

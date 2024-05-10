@@ -42,13 +42,13 @@ import { EntityType, FqnPart, TabSpecificField } from '../enums/entity.enum';
 import { SearchIndex } from '../enums/search.enum';
 import {
   CardStyle,
-  EntityTestResultSummaryObject,
   FieldOperation,
   TestCaseStatus,
   Thread,
   ThreadType,
 } from '../generated/entity/feed/thread';
 import { User } from '../generated/entity/teams/user';
+import { TestCaseResult } from '../generated/tests/testCase';
 import {
   deletePostById,
   deleteThread,
@@ -526,36 +526,55 @@ export const prepareFeedLink = (entityType: string, entityFQN: string) => {
 
 export const entityDisplayName = (entityType: string, entityFQN: string) => {
   let displayName;
-  if (entityType === EntityType.TABLE || entityType === EntityType.TEST_CASE) {
-    displayName = getPartialNameFromTableFQN(
-      entityFQN,
-      [FqnPart.Database, FqnPart.Schema, FqnPart.Table],
-      '.'
-    );
-  } else if (entityType === EntityType.DATABASE_SCHEMA) {
-    displayName = getPartialNameFromTableFQN(entityFQN, [FqnPart.Schema]);
-  } else if (
-    [
-      EntityType.DATABASE_SERVICE,
-      EntityType.DASHBOARD_SERVICE,
-      EntityType.MESSAGING_SERVICE,
-      EntityType.PIPELINE_SERVICE,
-      EntityType.MLMODEL_SERVICE,
-      EntityType.METADATA_SERVICE,
-      EntityType.STORAGE_SERVICE,
-      EntityType.SEARCH_SERVICE,
-      EntityType.TYPE,
-    ].includes(entityType as EntityType)
-  ) {
-    displayName = getPartialNameFromFQN(entityFQN, ['service']);
-  } else if (
-    [EntityType.GLOSSARY, EntityType.GLOSSARY_TERM, EntityType.DOMAIN].includes(
-      entityType as EntityType
-    )
-  ) {
-    displayName = entityFQN.split(FQN_SEPARATOR_CHAR).pop();
-  } else {
-    displayName = getPartialNameFromFQN(entityFQN, ['database']) || entityFQN;
+
+  switch (entityType) {
+    case EntityType.TABLE:
+      displayName = getPartialNameFromTableFQN(
+        entityFQN,
+        [FqnPart.Database, FqnPart.Schema, FqnPart.Table],
+        FQN_SEPARATOR_CHAR
+      );
+
+      break;
+
+    case EntityType.TEST_CASE:
+    case EntityType.TEST_SUITE:
+      displayName = getPartialNameFromTableFQN(
+        entityFQN,
+        [FqnPart.TestCase],
+        FQN_SEPARATOR_CHAR
+      );
+
+      break;
+
+    case EntityType.DATABASE_SCHEMA:
+      displayName = getPartialNameFromTableFQN(entityFQN, [FqnPart.Schema]);
+
+      break;
+
+    case EntityType.DATABASE_SERVICE:
+    case EntityType.DASHBOARD_SERVICE:
+    case EntityType.MESSAGING_SERVICE:
+    case EntityType.PIPELINE_SERVICE:
+    case EntityType.MLMODEL_SERVICE:
+    case EntityType.METADATA_SERVICE:
+    case EntityType.STORAGE_SERVICE:
+    case EntityType.SEARCH_SERVICE:
+    case EntityType.TYPE:
+      displayName = getPartialNameFromFQN(entityFQN, ['service']);
+
+      break;
+
+    case EntityType.GLOSSARY:
+    case EntityType.GLOSSARY_TERM:
+    case EntityType.DOMAIN:
+      displayName = entityFQN.split(FQN_SEPARATOR_CHAR).pop();
+
+      break;
+    default:
+      displayName = getPartialNameFromFQN(entityFQN, ['database']) || entityFQN;
+
+      break;
   }
 
   // Remove quotes if the name is wrapped in quotes
@@ -639,11 +658,11 @@ export const getFieldOperationIcon = (fieldOperation?: FieldOperation) => {
 };
 
 export const getTestCaseNameListForResult = (
-  testResultSummary: Array<EntityTestResultSummaryObject>,
+  testResultSummary: Array<TestCaseResult>,
   status: TestCaseStatus
 ) =>
   testResultSummary.reduce((acc, curr) => {
-    if (curr.status === status) {
+    if (curr.testCaseStatus === status) {
       acc.push(curr.testCaseName ?? '');
     }
 
@@ -676,19 +695,18 @@ export const getTestStatusLabel = (status: TestCaseStatus) => {
   return statusLabelMapping[status];
 };
 
-export const formatTestStatusData = (
-  testResultSummary: Array<EntityTestResultSummaryObject>
-) => {
+export const formatTestStatusData = (testCaseResult: Array<TestCaseResult>) => {
+  const limitedData = testCaseResult?.slice(0, 3);
   const successCases = getTestCaseNameListForResult(
-    testResultSummary,
+    limitedData,
     TestCaseStatus.Success
   );
   const failedCases = getTestCaseNameListForResult(
-    testResultSummary,
+    limitedData,
     TestCaseStatus.Failed
   );
   const abortedCases = getTestCaseNameListForResult(
-    testResultSummary,
+    limitedData,
     TestCaseStatus.Aborted
   );
 
