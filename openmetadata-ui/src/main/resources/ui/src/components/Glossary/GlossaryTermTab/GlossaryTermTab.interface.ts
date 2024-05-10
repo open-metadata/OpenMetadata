@@ -13,6 +13,7 @@
 
 import { OperationPermission } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { GlossaryTerm } from '../../../generated/entity/data/glossaryTerm';
+import { TagLabel } from '../../../generated/type/tagLabel';
 
 export interface GlossaryTermTabProps {
   isGlossary: boolean;
@@ -26,6 +27,8 @@ export interface GlossaryTermTabProps {
 
 export type ModifiedGlossaryTerm = Omit<GlossaryTerm, 'children'> & {
   children?: GlossaryTerm[];
+  value?: string;
+  data?: TagLabel;
 };
 
 export type MoveGlossaryTermType = {
