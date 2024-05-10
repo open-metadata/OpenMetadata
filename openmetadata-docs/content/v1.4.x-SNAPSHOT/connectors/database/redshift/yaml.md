@@ -45,12 +45,6 @@ To run the Redshift ingestion, you will need to install:
 pip3 install "openmetadata-ingestion[redshift]"
 ```
 
-If you want to run the Usage Connector, you'll also need to install:
-
-```bash
-pip3 install "openmetadata-ingestion[redshift-usage]"
-```
-
 ## Metadata Ingestion
 
 All connectors are defined as JSON Schemas.
