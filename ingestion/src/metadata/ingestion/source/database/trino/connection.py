@@ -31,9 +31,6 @@ from metadata.generated.schema.entity.services.connections.database.common impor
 from metadata.generated.schema.entity.services.connections.database.trinoConnection import (
     TrinoConnection,
 )
-from metadata.generated.schema.security.credentials.azureCredentials import (
-    AzureCredentials,
-)
 from metadata.ingestion.connections.builders import (
     create_generic_db_connection,
     get_connection_args_common,
@@ -97,16 +94,16 @@ def get_connection_args(connection: TrinoConnection):
         )
         connection.connectionArguments.__root__["http_scheme"] = "https"
 
-    elif isinstance(connection.authType, AzureCredentials):
-        if not connection.authType.scopes:
+    elif hasattr(connection.authType, "azureConfig"):
+        if not connection.authType.azureConfig.scopes:
             raise ValueError(
                 "Azure Scopes are missing, please refer https://learn.microsoft.com/en-gb/azure/mysql/flexible-server/how-to-azure-ad#2---retrieve-microsoft-entra-access-token and fetch the resource associated with it, for e.g. https://ossrdbms-aad.database.windows.net/.default"
             )
 
-        azure_client = AzureClient(**connection.authType.dict()).create_client()
+        azure_client = AzureClient(connection.authType.azureConfig).create_client()
 
         access_token_obj = azure_client.get_token(
-            *connection.authType.scopes.split(",")
+            *connection.authType.azureConfig.scopes.split(",")
         )
 
         connection.connectionArguments.__root__["auth"] = JWTAuthentication(
