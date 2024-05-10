@@ -101,11 +101,10 @@ export const glossaryDetails2 = {
   tags: [],
   mutuallyExclusive: false,
 };
-const glossaryTermDetails1Name = `CypressBankNumber-${uuid()}`;
 
 export const glossaryTermDetails1 = {
-  name: glossaryTermDetails1Name,
-  displayName: glossaryTermDetails1Name,
+  name: `CypressBankNumber-${uuid()}`,
+  displayName: 'Cypress BankNumber',
   description: 'A bank account number.',
   reviewers: [],
   relatedTerms: [],
@@ -116,11 +115,9 @@ export const glossaryTermDetails1 = {
   glossary: glossaryDetails1.name,
 };
 
-const glossaryTermDetails2Name = `CypressAddress-${uuid()}`;
-
 export const glossaryTermDetails2 = {
-  name: glossaryTermDetails2Name,
-  displayName: glossaryTermDetails2Name,
+  name: 'CypressAddress',
+  displayName: 'Cypress Address',
   description: 'Address of a Person.',
   reviewers: [],
   relatedTerms: [],
@@ -394,14 +391,14 @@ class EntityClass {
   assignGlossary() {
     assignGlossaryTerm(
       `${glossaryDetails1.name}.${glossaryTermDetails1.name}`,
-      glossaryTermDetails1.displayName,
+      glossaryTermDetails1.name,
       this.endPoint
     );
   }
   updateGlossary() {
     updateGlossaryTerm(
       `${glossaryDetails2.name}.${glossaryTermDetails2.name}`,
-      glossaryTermDetails2.displayName,
+      glossaryTermDetails2.name,
       this.endPoint
     );
   }
