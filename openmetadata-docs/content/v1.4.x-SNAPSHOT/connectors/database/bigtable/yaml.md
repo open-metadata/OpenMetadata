@@ -24,6 +24,8 @@ Configure and schedule BigTable metadata and profiler workflows from the OpenMet
 
 ### Python Requirements
 
+{% partial file="/v1.4/connectors/python-requirements.md" /%}
+
 To run the BigTable ingestion, you will need to install:
 
 ```bash

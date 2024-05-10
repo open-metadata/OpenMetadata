@@ -50,6 +50,8 @@ Following entities are supported and will be mapped to the OpenMetadata entities
 
 ### Python Requirements
 
+{% partial file="/v1.4/connectors/python-requirements.md" /%}
+
 To run the Alation ingestion, you will need to install:
 
 ```bash

@@ -27,6 +27,8 @@ Configure and schedule Unity Catalog metadata workflow from the OpenMetadata UI:
 
 ### Python Requirements
 
+{% partial file="/v1.4/connectors/python-requirements.md" /%}
+
 To run the Unity Catalog ingestion, you will need to install:
 
 ```bash

@@ -28,6 +28,8 @@ Configure and schedule SQLite metadata and profiler workflows from the OpenMetad
 
 ### Python Requirements
 
+{% partial file="/v1.4/connectors/python-requirements.md" /%}
+
 To ingest basic metadata sqlite user must have the following privileges:
   - `SELECT` Privilege on `sqlite_temp_master`
 

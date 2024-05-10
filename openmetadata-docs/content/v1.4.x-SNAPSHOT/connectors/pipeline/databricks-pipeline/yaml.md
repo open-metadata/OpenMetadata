@@ -24,6 +24,8 @@ Configure and schedule Databricks Pipeline metadata and profiler workflows from 
 
 ### Python Requirements
 
+{% partial file="/v1.4/connectors/python-requirements.md" /%}
+
 To run the Databricks Pipeline ingestion, you will need to install:
 
 ```bash

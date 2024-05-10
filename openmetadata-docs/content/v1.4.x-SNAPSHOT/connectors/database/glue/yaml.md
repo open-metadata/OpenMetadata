@@ -26,6 +26,8 @@ User must have `glue:GetDatabases` and `glue:GetTables` permissions to ingest th
 
 ### Python Requirements
 
+{% partial file="/v1.4/connectors/python-requirements.md" /%}
+
 To run the Glue ingestion, you will need to install:
 
 ```bash

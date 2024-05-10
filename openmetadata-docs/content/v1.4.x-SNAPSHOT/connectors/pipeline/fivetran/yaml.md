@@ -26,6 +26,8 @@ To access Fivetran APIs, a Fivetran account on a Standard, Enterprise, or Busine
 
 ### Python Requirements
 
+{% partial file="/v1.4/connectors/python-requirements.md" /%}
+
 To run the Fivetran ingestion, you will need to install:
 
 ```bash

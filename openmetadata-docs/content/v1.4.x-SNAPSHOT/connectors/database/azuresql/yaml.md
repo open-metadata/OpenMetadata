@@ -39,6 +39,8 @@ GRANT SELECT TO Mary;
 
 ### Python Requirements
 
+{% partial file="/v1.4/connectors/python-requirements.md" /%}
+
 To run the AzureSQL ingestion, you will need to install:
 
 ```bash

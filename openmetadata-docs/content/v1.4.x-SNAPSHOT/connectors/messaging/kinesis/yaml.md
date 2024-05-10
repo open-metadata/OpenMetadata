@@ -49,6 +49,8 @@ For more information on Kinesis permissions visit the [AWS Kinesis official docu
 
 ### Python Requirements
 
+{% partial file="/v1.4/connectors/python-requirements.md" /%}
+
 To run the Kinesis ingestion, you will need to install:
 
 ```bash

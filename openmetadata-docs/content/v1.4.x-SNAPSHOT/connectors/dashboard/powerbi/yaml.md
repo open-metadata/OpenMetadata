@@ -93,6 +93,8 @@ For reference here is a [thread](https://community.powerbi.com/t5/Service/Error-
 
 ### Python Requirements
 
+{% partial file="/v1.4/connectors/python-requirements.md" /%}
+
 To run the PowerBI ingestion, you will need to install:
 
 ```bash

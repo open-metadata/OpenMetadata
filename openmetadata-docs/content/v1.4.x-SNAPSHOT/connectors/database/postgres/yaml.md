@@ -50,6 +50,8 @@ GRANT pg_read_all_stats TO your_user;
 
 ### Python Requirements
 
+{% partial file="/v1.4/connectors/python-requirements.md" /%}
+
 To run the Postgres ingestion, you will need to install:
 
 ```bash

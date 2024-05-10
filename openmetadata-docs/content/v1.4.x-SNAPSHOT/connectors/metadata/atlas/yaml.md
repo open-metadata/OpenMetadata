@@ -28,6 +28,8 @@ For more details click [here](/connectors/metadata/atlas#1.-create-database-&-me
 
 ### Python Requirements
 
+{% partial file="/v1.4/connectors/python-requirements.md" /%}
+
 To run the Atlas ingestion, you will need to install:
 
 ```bash

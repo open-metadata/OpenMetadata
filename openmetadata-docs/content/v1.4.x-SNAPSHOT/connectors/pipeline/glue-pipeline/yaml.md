@@ -32,6 +32,8 @@ The user must have the following permissions for the ingestion to run successful
 
 ### Python Requirements
 
+{% partial file="/v1.4/connectors/python-requirements.md" /%}
+
 To run the Glue ingestion, you will need to install:
 
 ```bash

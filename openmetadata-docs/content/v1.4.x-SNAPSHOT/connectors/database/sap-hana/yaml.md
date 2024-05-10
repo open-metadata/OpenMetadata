@@ -37,6 +37,8 @@ The connector is compatible with HANA or HANA express versions since HANA SPS 2.
 
 ### Python Requirements
 
+{% partial file="/v1.4/connectors/python-requirements.md" /%}
+
 To run the SAP Hana ingestion, you will need to install:
 
 ```bash

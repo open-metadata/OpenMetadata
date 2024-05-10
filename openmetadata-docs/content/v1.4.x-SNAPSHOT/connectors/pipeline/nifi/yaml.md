@@ -24,6 +24,8 @@ Configure and schedule Nifi metadata and profiler workflows from the OpenMetadat
 
 ### Python Requirements
 
+{% partial file="/v1.4/connectors/python-requirements.md" /%}
+
 To run the Nifi ingestion, you will need to install:
 
 ```bash

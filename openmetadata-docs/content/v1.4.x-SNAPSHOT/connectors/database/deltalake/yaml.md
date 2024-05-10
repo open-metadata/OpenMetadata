@@ -28,6 +28,8 @@ for Python 3.11
 
 ### Python Requirements
 
+{% partial file="/v1.4/connectors/python-requirements.md" /%}
+
 To run the Deltalake ingestion, you will need to install:
 
 ```bash

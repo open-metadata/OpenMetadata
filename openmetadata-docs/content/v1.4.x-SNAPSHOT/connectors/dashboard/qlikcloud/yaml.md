@@ -24,6 +24,8 @@ Configure and schedule PowerBI metadata and profiler workflows from the OpenMeta
 
 ### Python Requirements
 
+{% partial file="/v1.4/connectors/python-requirements.md" /%}
+
 To run the QlikCloud ingestion, you will need to install:
 
 ```bash

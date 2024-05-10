@@ -25,6 +25,8 @@ Configure and schedule Dagster metadata and profiler workflows from the OpenMeta
 
 ### Python Requirements
 
+{% partial file="/v1.4/connectors/python-requirements.md" /%}
+
 To run the Dagster ingestion, you will need to install:
 
 ```bash

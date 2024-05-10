@@ -7,7 +7,7 @@ slug: /connectors/dashboard/superset
   name="Superset"
   stage="PROD"
   platform="OpenMetadata"
-  availableFeatures=["Dashboards", "Charts", "Lineage", "Owners", "Datamodels"]
+  availableFeatures=["Dashboards", "Charts", "Lineage", "Owners", "Datamodels", "Column Lineage"]
   unavailableFeatures=["Tags", "Projects"]
 / %}
 

@@ -7,7 +7,7 @@ slug: /connectors/dashboard/qlikcloud
   name="Qlik Cloud"
   stage="PROD"
   platform="OpenMetadata"
-  availableFeatures=["Dashboards", "Charts", "Datamodels", "Lineage"]
+  availableFeatures=["Dashboards", "Charts", "Datamodels", "Lineage", "Column Lineage"]
   unavailableFeatures=["Owners", "Tags", "Projects"]
 / %}
 

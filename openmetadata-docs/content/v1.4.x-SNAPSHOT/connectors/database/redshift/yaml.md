@@ -39,16 +39,12 @@ GRANT SELECT ON TABLE svv_table_info to test_user;
 
 ### Python Requirements
 
+{% partial file="/v1.4/connectors/python-requirements.md" /%}
+
 To run the Redshift ingestion, you will need to install:
 
 ```bash
 pip3 install "openmetadata-ingestion[redshift]"
-```
-
-If you want to run the Usage Connector, you'll also need to install:
-
-```bash
-pip3 install "openmetadata-ingestion[redshift-usage]"
 ```
 
 ## Metadata Ingestion

@@ -28,6 +28,8 @@ Configure and schedule Greenplum metadata and profiler workflows from the OpenMe
 
 ### Python Requirements
 
+{% partial file="/v1.4/connectors/python-requirements.md" /%}
+
 To run the Greenplum ingestion, you will need to install:
 
 ```bash

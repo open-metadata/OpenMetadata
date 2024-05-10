@@ -30,16 +30,12 @@ Configure and schedule BigQuery metadata and profiler workflows from the OpenMet
 
 ### Python Requirements
 
+{% partial file="/v1.4/connectors/python-requirements.md" /%}
+
 To run the BigQuery ingestion, you will need to install:
 
 ```bash
 pip3 install "openmetadata-ingestion[bigquery]"
-```
-
-If you want to run the Usage Connector, you'll also need to install:
-
-```bash
-pip3 install "openmetadata-ingestion[bigquery-usage]"
 ```
 
 ### GCP Permissions

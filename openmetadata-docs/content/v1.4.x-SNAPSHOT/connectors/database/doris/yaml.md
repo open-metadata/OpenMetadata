@@ -29,6 +29,8 @@ Metadata: Doris >= 1.2.0, Data Profiler: Doris >= 2.0.2
 
 ### Python Requirements
 
+{% partial file="/v1.4/connectors/python-requirements.md" /%}
+
 To run the Doris ingestion, you will need to install:
 
 ```bash
