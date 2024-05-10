@@ -1,34 +1,21 @@
-import sys
 import argparse
 import re
 import logging
-import yaml
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
 logger = logging.getLogger()
 
 
-def update_github_action(args):
-    """Updates the get-release-docker-tag action with the 'tag' value."""
+def get_python_version(version: str) -> str:
+    "Get Python Package formatted version"
 
-    tag = args.tag
-
-    file_path = ".github/actions/get-release-docker-tag/action.yml"
-
-    logger.info(f"Updating Github Action {file_path} to version {tag}\n")
-
-    with open(file_path, "r") as f:
-        content = yaml.safe_load(f.read())
-
-    # We want the structure to remain the same and fail if it changes.
-    # We are centralizing the release version information on this action that is used by any relevant workflow.
-    content["runs"]["steps"][0]["env"]["RELEASE_TAG"] = tag
-
-    with open(file_path, "w") as f:
-        yaml.dump(content, f, sort_keys=False)
+    if "-rc" in version:
+        version_parts = version.split("-")
+        return f"{version_parts[0]}.0{version_parts[1]}"
+    return f"{version}.0"
 
 
-def _update_with_regex(file_path, pattern, substitution):
+def regex_sub(file_path: str, pattern: str, substitution: str):
     with open(file_path, "r") as f:
         content = f.read()
 
@@ -42,6 +29,19 @@ def _update_with_regex(file_path, pattern, substitution):
         f.write(updated_content)
 
 
+def update_dockerfile_arg(arg, file_path, value):
+    """Updates a Dockerfile ARG."""
+
+    logger.info(f"Updating ARG {arg} in {file_path} to {value}\n")
+
+    regex_sub(
+        file_path,
+        rf"(ARG\s+{arg}=).+",
+        rf"\1={value}",
+
+    )
+
+
 def update_docker_tag(args):
     """Updates the Docker Tag on docker-compose files."""
 
@@ -50,27 +50,27 @@ def update_docker_tag(args):
 
     logger.info(f"Updating Docker Tag in {file_path} to {tag}\n")
 
-    _update_with_regex(
+    regex_sub(
         file_path,
         r'(image: docker\.getcollate\.io/openmetadata/.*?):.+',
         rf'\1:{tag}',
     )
 
 
-def update_dockerfile_arg(args):
-    """Updates a Dockerfile ARG."""
+def update_ri_version(args):
+    """Updates a Dockerfile RI_VERSION ARG."""
 
-    arg = args.arg
+    version = args.version
+    with_python_version = args.with_python_version
     file_path = args.file_path
-    value = args.value
 
-    logger.info(f"Updating ARG {arg} in {file_path} to {value}\n")
+    if with_python_version:
+        version = get_python_version(version)
 
-    _update_with_regex(
-        file_path,
-        rf"(ARG\s+{arg}=).+",
-        rf"\1={value}",
-
+    update_dockerfile_arg(
+        arg="RI_VERSION",
+        file_path=file_path,
+        value=version
     )
 
 
@@ -80,9 +80,12 @@ def update_pyproject_version(args):
     file_path = args.file_path
     version = args.version
 
+    version = get_python_version(version)
+
+
     logger.info(f"Updating {file_path} version to {version}\n")
 
-    _update_with_regex(
+    regex_sub(
         file_path,
         r'version\s*=\s*"[^"]+"',
         f'version = "{version}"',
@@ -93,11 +96,6 @@ def main():
     parser = argparse.ArgumentParser(description="Update files for release.")
     subparsers = parser.add_subparsers(required=True)
 
-    # Update Github Action parser
-    parser_uga = subparsers.add_parser("update_github_action")
-    parser_uga.add_argument("--tag", "-t", type=str, help="Tag to be returned by the Github Action.")
-    parser_uga.set_defaults(func=update_github_action)
-
     # Update Docker tag
     parser_udt = subparsers.add_parser("update_docker_tag")
     parser_udt.add_argument("--file-path", "-f", type=str, help="Docker compose file to update.")
@@ -105,11 +103,11 @@ def main():
     parser_udt.set_defaults(func=update_docker_tag)
 
     # Update Dockerfile ARG
-    parser_uda = subparsers.add_parser("update_dockerfile_arg")
-    parser_uda.add_argument("--arg", "-a", type=str, help="Argument to update.")
-    parser_uda.add_argument("--file-path", "-f", type=str, help="Dockerfile file to update.")
-    parser_uda.add_argument("--value", "-v", type=str, help="Value to set for the argument")
-    parser_uda.set_defaults(func=update_dockerfile_arg)
+    parser_urv = subparsers.add_parser("update_ri_version")
+    parser_urv.add_argument("--file-path", "-f", type=str, help="Dockerfile file to update.")
+    parser_urv.add_argument("--version", "-v", type=str, help="Verision to set for the argument")
+    parser_urv.add_argument("--with-python-version", action="store_true")
+    parser_urv.set_defaults(func=update_ri_version)
 
     # Update pyproject.toml Version
     parser_upv = subparsers.add_parser("update_pyproject_version")

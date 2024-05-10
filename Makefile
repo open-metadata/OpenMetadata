@@ -153,42 +153,33 @@ generate-schema-docs:  ## Generates markdown files for documenting the JSON Sche
 
 #Upgrade release automation scripts below
 .PHONY: update_all
-update_all:  ## To update all the release related files run make update_all RELEASE_VERSION=2.2.2 PY_RELEASE_VERSION=2.2.2.2
+update_all:  ## To update all the release related files run make update_all RELEASE_VERSION=2.2.2
 	@echo "The release version is: $(RELEASE_VERSION)" ; \
-	echo "The python metadata release version: $(PY_RELEASE_VERSION)" ; \
 	$(MAKE) update_maven ; \
-	$(MAKE) update_github_action ; \
 	$(MAKE) update_pyproject_version ; \
 	$(MAKE) update_dockerfile_version ; \
-	$(MAKE) update_dockerfile_arg ; \
+	$(MAKE) update_dockerfile_ri_version ; \
 #remove comment and use the below section when want to use this sub module "update_all" independently to update github actions
-#make update_all RELEASE_VERSION=2.2.2 PY_RELEASE_VERSION=2.2.2.2 MVN_RELEASE_VERSION=2.2.2
+#make update_all RELEASE_VERSION=2.2.2
 
 .PHONY: update_maven
 update_maven:  ## To update the common and pom.xml maven version
-	@echo "Updating Maven projects to version $(MVN_RELEASE_VERSION)..."; \
-	mvn versions:set -DnewVersion=$(MVN_RELEASE_VERSION)
+	@echo "Updating Maven projects to version $(RELEASE_VERSION)..."; \
+	mvn versions:set -DnewVersion=$(RELEASE_VERSION)
 #remove comment and use the below section when want to use this sub module "update_maven" independently to update github actions
 #make update_maven RELEASE_VERSION=2.2.2
 
-
-.PHONY: update_github_action
-update_github_action:  ## To update the github action ci docker files
-	@echo "Updating docker github action release version to $(RELEASE_VERSION)... "; \
-		python3 scripts/update_version.py update_github_action -t $(RELEASE_VERSION) ; \
-#remove comment and use the below section when want to use this sub module "update_github_action" independently to update github actions
-#make update_github_action RELEASE_VERSION=2.2.2
 
 .PHONY: update_pyproject_version
 update_pyproject_version:  ## To update the pyproject.toml files
 	file_paths="ingestion/pyproject.toml \
 				openmetadata-airflow-apis/pyproject.toml"; \
-	echo "Updating pyproject.toml versions to $(PY_RELEASE_VERSION)... "; \
+	echo "Updating pyproject.toml versions to $(RELEASE_VERSION)... "; \
 	for file_path in $$file_paths; do \
-	    python3 scripts/update_version.py update_pyproject_version -f $$file_path -v $(PY_RELEASE_VERSION) ; \
+	    python3 scripts/update_version.py update_pyproject_version -f $$file_path -v $(RELEASE_VERSION) ; \
 	done
 # Commented section for independent usage of the module update_pyproject_version independently to update github actions
-#make update_pyproject_version PY_RELEASE_VERSION=2.2.2.2
+#make update_pyproject_version RELEASE_VERSION=2.2.2
 
 .PHONY: update_dockerfile_version
 update_dockerfile_version:  ## To update the dockerfiles version
@@ -203,16 +194,16 @@ update_dockerfile_version:  ## To update the dockerfiles version
 #remove comment and use the below section when want to use this sub module "update_dockerfile_version" independently to update github actions
 #make update_dockerfile_version RELEASE_VERSION=2.2.2
 
-.PHONY: update_dockerfile_arg
-update_dockerfile_arg:  ## To update the dockerfile RI_VERSION argument
+.PHONY: update_dockerfile_ri_version
+update_dockerfile_ri_version:  ## To update the dockerfile RI_VERSION argument
 	@file_paths="ingestion/Dockerfile \
 	             ingestion/operators/docker/Dockerfile"; \
 	echo "Updating ingestion dockerfile release version to $(PY_RELEASE_VERSION)... "; \
 	for file_path in $$file_paths; do \
-	    python3 scripts/update_version.py update_dockerfile_arg -a RI_VERSION -f $$file_path -v $(PY_RELEASE_VERSION) ; \
+	    python3 scripts/update_version.py update_ri_version -f $$file_path -v $(RELEASE_VERSION) --with-python-version ; \
 	done
-	python3 scripts/update_version.py update_dockerfile_arg -a RI_VERSION -f docker/docker-compose-quickstart/Dockerfile -v $(RELEASE_VERSION)
-#remove comment and use the below section when want to use this sub module "update_dockerfile_arg" independently to update github actions
-#make update_dockerfile_arg PY_RELEASE_VERSION=2.2.2.2 RELEASE_VERSION=2.2.2
+	python3 scripts/update_version.py update_ri_version -f docker/docker-compose-quickstart/Dockerfile -v $(RELEASE_VERSION)
+#remove comment and use the below section when want to use this sub module "update_dockerfile_ri_version" independently to update github actions
+#make update_dockerfile_ri_version RELEASE_VERSION=2.2.2
 
 #Upgrade release automation scripts above
