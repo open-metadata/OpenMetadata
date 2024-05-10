@@ -44,13 +44,13 @@ runs:
         password: ${{ inputs.dockerhub_token }}
 
     - name: Install Ubuntu dependencies
-      if: inputs.is_ingestion == 'true'
+      if: inputs.is_ingestion == true
       shell: bash
       run: |
         sudo apt-get install -y python3-venv
 
     - name: Install open-metadata dependencies
-      if: inputs.is_ingestion == 'true'
+      if: inputs.is_ingestion == true
       shell: bash
       run: |
         python3 -m venv env
@@ -63,7 +63,7 @@ runs:
       id:  generate-tags
       shell: bash
       run: |
-          if ${{ inputs.push_latest == "true" }}; then
+          if ${{ inputs.push_latest == 'true' }}; then
               echo "tags=${{ inputs.image }}:${{ inputs.tag }},${{ inputs.image }}:latest" >> $GITHUB_OUTPUT
           else
               echo "tags=${{ inputs.image }}:${{ inputs.tag }}" >> $GITHUB_OUTPUT
