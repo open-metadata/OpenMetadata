@@ -23,6 +23,7 @@ import static org.openmetadata.service.Entity.DASHBOARD_DATA_MODEL;
 import static org.openmetadata.service.Entity.MLMODEL;
 import static org.openmetadata.service.Entity.PIPELINE;
 import static org.openmetadata.service.Entity.SEARCH_INDEX;
+import static org.openmetadata.service.Entity.STORED_PROCEDURE;
 import static org.openmetadata.service.Entity.TABLE;
 import static org.openmetadata.service.Entity.TOPIC;
 import static org.openmetadata.service.search.SearchClient.GLOBAL_SEARCH_ALIAS;
@@ -35,6 +36,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import javax.json.JsonPatch;
 import javax.ws.rs.core.Response;
@@ -75,6 +77,9 @@ import org.openmetadata.service.util.RestUtil;
 public class LineageRepository {
   private final CollectionDAO dao;
 
+  private static final Set<String> UNSUPPORTED_LINEAGE_NODE_ENTITIES =
+      Set.of(PIPELINE, STORED_PROCEDURE);
+
   private static final SearchClient searchClient = Entity.getSearchRepository().getSearchClient();
 
   public LineageRepository() {
@@ -96,12 +101,19 @@ public class LineageRepository {
 
   @Transaction
   public void addLineage(AddLineage addLineage) {
-    // Validate from entity
     EntityReference from = addLineage.getEdge().getFromEntity();
-    from = Entity.getEntityReferenceById(from.getType(), from.getId(), Include.NON_DELETED);
-
-    // Validate to entity
     EntityReference to = addLineage.getEdge().getToEntity();
+
+    // Check if these
+    if (UNSUPPORTED_LINEAGE_NODE_ENTITIES.contains(to.getType())
+        || UNSUPPORTED_LINEAGE_NODE_ENTITIES.contains(from.getType())) {
+      throw new IllegalArgumentException(
+          String.format(
+              "Unsupported Entity Type %s for lineage, It cannot be used as Node.", to.getType()));
+    }
+
+    // Validate from and to entites
+    from = Entity.getEntityReferenceById(from.getType(), from.getId(), Include.NON_DELETED);
     to = Entity.getEntityReferenceById(to.getType(), to.getId(), Include.NON_DELETED);
 
     if (addLineage.getEdge().getLineageDetails() != null
@@ -437,7 +449,7 @@ public class LineageRepository {
     }
     List<EntityRelationshipRecord> records;
     // pipeline information is not maintained
-    if (entityType.equals(Entity.PIPELINE) || entityType.equals(Entity.STORED_PROCEDURE)) {
+    if (entityType.equals(Entity.PIPELINE) || entityType.equals(STORED_PROCEDURE)) {
       records = dao.relationshipDAO().findFromPipeline(id, Relationship.UPSTREAM.ordinal());
     } else {
       records = dao.relationshipDAO().findFrom(id, entityType, Relationship.UPSTREAM.ordinal());
@@ -524,7 +536,7 @@ public class LineageRepository {
       return;
     }
     List<EntityRelationshipRecord> records;
-    if (entityType.equals(Entity.PIPELINE) || entityType.equals(Entity.STORED_PROCEDURE)) {
+    if (entityType.equals(Entity.PIPELINE) || entityType.equals(STORED_PROCEDURE)) {
       records = dao.relationshipDAO().findToPipeline(id, Relationship.UPSTREAM.ordinal());
     } else {
       records = dao.relationshipDAO().findTo(id, entityType, Relationship.UPSTREAM.ordinal());
