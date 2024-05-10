@@ -35,13 +35,13 @@ import ErrorPlaceHolder from '../../../components/common/ErrorWithPlaceholder/Er
 import { OwnerLabel } from '../../../components/common/OwnerLabel/OwnerLabel.component';
 import RichTextEditorPreviewer from '../../../components/common/RichTextEditor/RichTextEditorPreviewer';
 import StatusBadge from '../../../components/common/StatusBadge/StatusBadge.component';
-import { TABLE_CONSTANTS } from '../../../constants/Teams.constants';
 import {
   API_RES_MAX_SIZE,
   DE_ACTIVE_COLOR,
   TEXT_BODY_COLOR,
 } from '../../../constants/constants';
 import { GLOSSARIES_DOCS } from '../../../constants/docs.constants';
+import { TABLE_CONSTANTS } from '../../../constants/Teams.constants';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import {
   EntityReference,
@@ -50,20 +50,20 @@ import {
 } from '../../../generated/entity/data/glossaryTerm';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import {
-  GlossaryTermWithChildren,
   getFirstLevelGlossaryTerms,
   getGlossaryTerms,
+  GlossaryTermWithChildren,
   patchGlossaryTerm,
 } from '../../../rest/glossaryAPI';
 import { Transi18next } from '../../../utils/CommonUtils';
 import { getEntityName } from '../../../utils/EntityUtils';
 import Fqn from '../../../utils/Fqn';
 import {
-  StatusClass,
-  StatusFilters,
   buildTree,
   findExpandableKeysForArray,
   findGlossaryTermByFqn,
+  StatusClass,
+  StatusFilters,
 } from '../../../utils/GlossaryUtils';
 import { getGlossaryPath } from '../../../utils/RouterUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
