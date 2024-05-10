@@ -172,6 +172,8 @@ const PermissionProvider: FC<PermissionProviderProps> = ({ children }) => {
      */
     if (!isEmpty(currentUser)) {
       fetchLoggedInUserPermissions();
+    } else {
+      setLoading(false);
     }
     if (isEmpty(currentUser)) {
       resetPermissions();
