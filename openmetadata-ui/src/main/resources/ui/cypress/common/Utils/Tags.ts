@@ -30,7 +30,7 @@ export const assignTags = (tag: string, endPoint: EntityType) => {
     `[data-testid="tag-selector"] [data-testid="selected-tag-${tag}"]`
   ).should('be.visible');
 
-  cy.get('[data-testid="saveAssociatedTag"]').scrollIntoView().click();
+  cy.get('[data-testid="saveAssociatedTag"]').click();
   verifyResponseStatusCode('@addTags', 200);
   cy.get(
     `[data-testid="entity-right-panel"] [data-testid="tags-container"] [data-testid="tag-${tag}"]`
@@ -54,7 +54,7 @@ export const updateTags = (tag: string, endPoint: EntityType) => {
   cy.get(`[data-testid="tag-selector"] [data-testid="selected-tag-${tag}"]`)
     .scrollIntoView()
     .should('be.visible');
-  cy.get('[data-testid="saveAssociatedTag"]').scrollIntoView().click();
+  cy.get('[data-testid="saveAssociatedTag"]').click();
   verifyResponseStatusCode('@addTags', 200);
   cy.get(
     `[data-testid="entity-right-panel"] [data-testid="tags-container"] [data-testid="tag-${tag}"]`

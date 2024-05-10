@@ -36,7 +36,7 @@ export const assignGlossaryTerm = (
     'be.visible'
   );
 
-  cy.get('[data-testid="saveAssociatedTag"]').scrollIntoView().click();
+  cy.get('[data-testid="saveAssociatedTag"]').click();
   verifyResponseStatusCode('@addGlossaryTerm', 200);
   cy.get(
     `[data-testid="entity-right-panel"] [data-testid="glossary-container"] [data-testid="tag-${glossaryTermFQN}"]`
@@ -62,7 +62,7 @@ export const updateGlossaryTerm = (
   cy.get(`[data-testid="selected-tag-${glossaryTermFQN}"]`).should(
     'be.visible'
   );
-  cy.get('[data-testid="saveAssociatedTag"]').scrollIntoView().click();
+  cy.get('[data-testid="saveAssociatedTag"]').click();
   verifyResponseStatusCode('@addGlossaryTerm', 200);
   cy.get(
     `[data-testid="entity-right-panel"] [data-testid="glossary-container"] [data-testid="tag-${glossaryTermFQN}"]`
@@ -87,7 +87,7 @@ export const removeGlossaryTerm = (
       `[data-testid="selected-tag-${glossaryTerm}"] [data-testid="remove-tags"]`
     ).click();
 
-    cy.get('[data-testid="saveAssociatedTag"]').scrollIntoView().click();
+    cy.get('[data-testid="saveAssociatedTag"]').click();
     verifyResponseStatusCode('@removeTags', 200);
   });
   cy.get(
