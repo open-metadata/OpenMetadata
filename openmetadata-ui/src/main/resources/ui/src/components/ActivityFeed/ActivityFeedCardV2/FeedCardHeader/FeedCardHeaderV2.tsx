@@ -68,7 +68,10 @@ const FeedCardHeaderV2 = ({
     return {
       entityCheck: !isUndefined(entityFQN) && !isUndefined(entityType),
       isUserOrTeam: [EntityType.USER, EntityType.TEAM].includes(entityType),
-      showEntityLink: cardStyle !== CardStyle.EntityCreated,
+      showEntityLink: ![
+        CardStyle.EntityCreated,
+        CardStyle.EntityDeleted,
+      ].includes(cardStyle ?? CardStyle.EntityCreated),
     };
   }, [entityFQN, entityType, cardStyle]);
 

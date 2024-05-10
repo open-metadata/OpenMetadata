@@ -134,11 +134,10 @@ public class EventSubscriptionRepository extends EntityRepository<EventSubscript
     @Override
     public void entitySpecificUpdate() {
       recordChange("input", original.getInput(), updated.getInput(), true);
-      recordChange(
-          "filteringRules", original.getFilteringRules(), updated.getFilteringRules(), true);
       recordChange("batchSize", original.getBatchSize(), updated.getBatchSize());
-
       if (!original.getAlertType().equals(CreateEventSubscription.AlertType.ACTIVITY_FEED)) {
+        recordChange(
+            "filteringRules", original.getFilteringRules(), updated.getFilteringRules(), true);
         recordChange("enabled", original.getEnabled(), updated.getEnabled());
         recordChange("destinations", original.getDestinations(), updated.getDestinations(), true);
         recordChange("trigger", original.getTrigger(), updated.getTrigger(), true);

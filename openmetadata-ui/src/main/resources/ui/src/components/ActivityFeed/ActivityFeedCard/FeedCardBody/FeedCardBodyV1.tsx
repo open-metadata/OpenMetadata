@@ -20,6 +20,7 @@ import { Link } from 'react-router-dom';
 import ActivityFeedEditor from '../../../../components/ActivityFeed/ActivityFeedEditor/ActivityFeedEditor';
 import RichTextEditorPreviewer from '../../../../components/common/RichTextEditor/RichTextEditorPreviewer';
 import { ASSET_CARD_STYLES } from '../../../../constants/Feeds.constants';
+import { EntityType } from '../../../../enums/entity.enum';
 import { CardStyle } from '../../../../generated/entity/feed/thread';
 import { formatDateTime } from '../../../../utils/date-time/DateTimeUtils';
 import entityUtilClassBase from '../../../../utils/EntityUtilClassBase';
@@ -67,7 +68,69 @@ const FeedCardBodyV1 = ({
     return MarkdownToHTMLConverter.makeHtml(getFrontEndFormat(defaultMessage));
   };
 
-  const feedBody = useMemo(() => {
+  const feedBodyStyleCardsRender = useMemo(() => {
+    if (!isPost) {
+      if (cardStyle === CardStyle.Description) {
+        return <DescriptionFeed feed={feed} />;
+      }
+
+      if (cardStyle === CardStyle.Tags) {
+        return <TagsFeed feed={feed} />;
+      }
+
+      if (cardStyle === CardStyle.TestCaseResult) {
+        return (
+          <TestCaseFeed
+            entitySpecificInfo={feed.feedInfo?.entitySpecificInfo}
+          />
+        );
+      }
+
+      if (ASSET_CARD_STYLES.includes(cardStyle as CardStyle)) {
+        const entityInfo = feed.feedInfo?.entitySpecificInfo?.entity;
+        const isExecutableTestSuite =
+          entityType === EntityType.TEST_SUITE && entityInfo.executable;
+
+        const entityCard = (
+          <ExploreSearchCard
+            className="asset-info-card"
+            id={`tabledatacard${entityInfo.id}`}
+            showTags={false}
+            source={{ ...entityInfo, entityType }}
+          />
+        );
+
+        return cardStyle === CardStyle.EntityDeleted ? (
+          <div className="deleted-entity">{entityCard}</div>
+        ) : (
+          <Link
+            className="no-underline text-body text-hover-body"
+            to={entityUtilClassBase.getEntityLink(
+              entityType,
+              entityFQN,
+              '',
+              '',
+              isExecutableTestSuite
+            )}>
+            {entityCard}
+          </Link>
+        );
+      }
+
+      if (cardStyle === CardStyle.CustomProperties) {
+        return <CustomPropertyFeed feed={feed} />;
+      }
+    }
+
+    return (
+      <RichTextEditorPreviewer
+        className="text-wrap"
+        markdown={getFrontEndFormat(message)}
+      />
+    );
+  }, [isPost, message, postMessage, cardStyle, feed, entityType, entityFQN]);
+
+  const feedBodyRender = useMemo(() => {
     if (isEditPost) {
       return (
         <ActivityFeedEditor
@@ -101,57 +164,8 @@ const FeedCardBodyV1 = ({
       );
     }
 
-    if (!isPost) {
-      if (cardStyle === CardStyle.Description) {
-        return <DescriptionFeed feed={feed} />;
-      }
-
-      if (cardStyle === CardStyle.Tags) {
-        return <TagsFeed feed={feed} />;
-      }
-
-      if (cardStyle === CardStyle.TestCaseResult) {
-        return (
-          <TestCaseFeed
-            entitySpecificInfo={feed.feedInfo?.entitySpecificInfo}
-          />
-        );
-      }
-
-      if (ASSET_CARD_STYLES.includes(cardStyle as CardStyle)) {
-        const entityInfo = feed.feedInfo?.entitySpecificInfo?.entity;
-        const entityCard = (
-          <ExploreSearchCard
-            className="asset-info-card"
-            id={`tabledatacard${entityInfo.id}`}
-            showTags={false}
-            source={{ ...entityInfo, entityType }}
-          />
-        );
-
-        return cardStyle === CardStyle.EntityDeleted ? (
-          entityCard
-        ) : (
-          <Link
-            className="no-underline"
-            to={entityUtilClassBase.getEntityLink(entityType, entityFQN)}>
-            {entityCard}
-          </Link>
-        );
-      }
-
-      if (cardStyle === CardStyle.CustomProperties) {
-        return <CustomPropertyFeed feed={feed} />;
-      }
-    }
-
-    return (
-      <RichTextEditorPreviewer
-        className="text-wrap"
-        markdown={getFrontEndFormat(message)}
-      />
-    );
-  }, [isEditPost, message, postMessage, cardStyle, feed]);
+    return feedBodyStyleCardsRender;
+  }, [isEditPost, message, feedBodyStyleCardsRender]);
 
   return (
     <div
@@ -191,7 +205,7 @@ const FeedCardBodyV1 = ({
             </Row>
           </>
         ) : (
-          feedBody
+          feedBodyRender
         )}
       </div>
     </div>

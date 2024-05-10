@@ -1150,6 +1150,7 @@
     "test-email-connection": "Test Email Connection",
     "test-entity": "{{entity}}-Test",
     "test-plural": "Tests",
+    "test-result-summary": "Test Result Summary",
     "test-suite": "Test-Suite",
     "test-suite-ingestion": "Test-Suite-Datenübernahme",
     "test-suite-lowercase": "test-suite",

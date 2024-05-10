@@ -145,6 +145,11 @@ export const getPartialNameFromTableFQN = (
     return splitFqn.slice(2).join(FQN_SEPARATOR_CHAR);
   }
 
+  if (fqnParts.includes(FqnPart.TestCase)) {
+    // Get the last Part of the Fqn
+    return splitFqn.splice(-1).join(FQN_SEPARATOR_CHAR);
+  }
+
   const arrPartialName = [];
   if (splitFqn.length > 0) {
     if (fqnParts.includes(FqnPart.Service)) {

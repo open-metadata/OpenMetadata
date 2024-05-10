@@ -11,13 +11,13 @@
  *  limitations under the License.
  */
 
-import { Avatar, Col, Row } from 'antd';
+import { Col, Row } from 'antd';
 import classNames from 'classnames';
 import { compare } from 'fast-json-patch';
 import React, { useMemo, useState } from 'react';
 import { EntityField } from '../../../constants/Feeds.constants';
 import { GeneratedBy } from '../../../generated/entity/feed/thread';
-import { getRandomColor } from '../../../utils/CommonUtils';
+import ProfilePicture from '../../common/ProfilePicture/ProfilePicture';
 import FeedCardBodyV1 from '../ActivityFeedCard/FeedCardBody/FeedCardBodyV1';
 import { useActivityFeedProvider } from '../ActivityFeedProvider/ActivityFeedProvider';
 import ActivityFeedActions from '../Shared/ActivityFeedActions';
@@ -42,11 +42,6 @@ const ActivityFeedCardV2 = ({
   const [isEditPost, setIsEditPost] = useState<boolean>(false);
   const [showActions, setShowActions] = useState(false);
   const { updateFeed } = useActivityFeedProvider();
-
-  const { color, character, backgroundColor } = useMemo(
-    () => getRandomColor(post.from),
-    [post.from]
-  );
 
   const postLength = useMemo(
     () => feed?.posts?.length ?? 0,
@@ -85,15 +80,10 @@ const ActivityFeedCardV2 = ({
         className={classNames('feed-card-v2-sidebar', {
           'feed-card-v2-post-sidebar': isPost,
         })}>
-        <Avatar
-          icon={character}
+        <ProfilePicture
+          avatarType="outlined"
+          name={post.from}
           size={isPost ? 28 : 30}
-          style={{
-            color,
-            backgroundColor,
-            fontWeight: 500,
-            border: `0.5px solid ${color}`,
-          }}
         />
       </div>
       <Row className="w-full" gutter={[0, 10]}>
@@ -137,14 +127,15 @@ const ActivityFeedCardV2 = ({
               />
             </Col>
           </Row>
-          {showActions && feed.generatedBy !== GeneratedBy.System && (
-            <ActivityFeedActions
-              feed={feed}
-              isPost={isPost}
-              post={post}
-              onEditPost={onEditPost}
-            />
-          )}
+          {showActions &&
+            (feed.generatedBy !== GeneratedBy.System || isPost) && (
+              <ActivityFeedActions
+                feed={feed}
+                isPost={isPost}
+                post={post}
+                onEditPost={onEditPost}
+              />
+            )}
         </Col>
         {showThread && postLength > 0 && (
           <Col className="feed-replies" data-testid="feed-replies" span={24}>

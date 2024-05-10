@@ -43,6 +43,8 @@ import {
 } from '../components/SearchedData/SearchedData.interface';
 import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
 import {
+  getBotsPagePath,
+  getBotsPath,
   getEntityDetailsPath,
   getGlossaryTermDetailsPath,
   getServiceDetailsPath,
@@ -52,7 +54,12 @@ import {
 } from '../constants/constants';
 import { GlobalSettingsMenuCategory } from '../constants/GlobalSettings.constants';
 import { ResourceEntity } from '../context/PermissionProvider/PermissionProvider.interface';
-import { AssetsType, EntityType, FqnPart } from '../enums/entity.enum';
+import {
+  AssetsType,
+  EntityTabs,
+  EntityType,
+  FqnPart,
+} from '../enums/entity.enum';
 import { ExplorePageTabs } from '../enums/Explore.enum';
 import { SearchIndex } from '../enums/search.enum';
 import { ServiceCategory, ServiceCategoryPlural } from '../enums/service.enum';
@@ -84,12 +91,13 @@ import {
 } from '../generated/entity/data/table';
 import { Topic } from '../generated/entity/data/topic';
 import { DataProduct } from '../generated/entity/domains/dataProduct';
-import { TestCase } from '../generated/tests/testCase';
+import { TestCase, TestSuite } from '../generated/tests/testCase';
 import { Edge, EntityLineage } from '../generated/type/entityLineage';
 import { EntityReference } from '../generated/type/entityUsage';
 import { TagLabel } from '../generated/type/tagLabel';
 import { UsageDetails } from '../generated/type/usageDetails';
 import { Votes } from '../generated/type/votes';
+import { DataQualityPageTabs } from '../pages/DataQuality/DataQualityPage.interface';
 import {
   getOwnerValue,
   getPartialNameFromTableFQN,
@@ -99,6 +107,7 @@ import EntityLink from './EntityLink';
 import { BasicEntityOverviewInfo } from './EntityUtils.interface';
 import Fqn from './Fqn';
 import {
+  getDataQualityPagePath,
   getDomainDetailsPath,
   getDomainPath,
   getGlossaryPath,
@@ -1337,6 +1346,12 @@ export const getEntityLinkFromType = (
       );
     case EntityType.TEST_CASE:
       return getIncidentManagerDetailPagePath(fullyQualifiedName);
+    case EntityType.TEST_SUITE:
+      return getEntityDetailsPath(
+        EntityType.TABLE,
+        fullyQualifiedName,
+        EntityTabs.PROFILER
+      );
     case EntityType.DOMAIN:
       return getDomainDetailsPath(fullyQualifiedName);
     case EntityType.EVENT_SUBSCRIPTION:
@@ -1479,6 +1494,33 @@ export const getBreadcrumbForTestCase = (entity: TestCase) => [
     ),
   },
 ];
+
+export const getBreadcrumbForTestSuite = (entity: TestSuite) => {
+  return entity.executable
+    ? [
+        {
+          name: getEntityName(entity.executableEntityReference),
+          url: getEntityLinkFromType(
+            entity.executableEntityReference?.fullyQualifiedName ?? '',
+            EntityType.TABLE
+          ),
+        },
+        {
+          name: t('label.test-suite'),
+          url: '',
+        },
+      ]
+    : [
+        {
+          name: t('label.test-suite-plural'),
+          url: getDataQualityPagePath(DataQualityPageTabs.TEST_SUITES),
+        },
+        {
+          name: getEntityName(entity),
+          url: '',
+        },
+      ];
+};
 
 export const getEntityBreadcrumbs = (
   entity:
@@ -1709,6 +1751,38 @@ export const getEntityBreadcrumbs = (
 
     case EntityType.TEST_CASE: {
       return getBreadcrumbForTestCase(entity as TestCase);
+    }
+    case EntityType.EVENT_SUBSCRIPTION: {
+      return [
+        {
+          name: startCase(EntityType.ALERT),
+          url: ROUTES.OBSERVABILITY_ALERTS,
+        },
+        {
+          name: entity.name,
+          url: getEntityLinkFromType(
+            entity.fullyQualifiedName ?? '',
+            (entity as SourceType).entityType as EntityType
+          ),
+        },
+      ];
+    }
+
+    case EntityType.TEST_SUITE: {
+      return getBreadcrumbForTestSuite(entity as TestSuite);
+    }
+
+    case EntityType.BOT: {
+      return [
+        {
+          name: startCase(EntityType.BOT),
+          url: getBotsPagePath(),
+        },
+        {
+          name: entity.name,
+          url: getBotsPath(entity.fullyQualifiedName ?? ''),
+        },
+      ];
     }
 
     case EntityType.TOPIC:

@@ -11,27 +11,11 @@
  *  limitations under the License.
  */
 
-@import (reference) url('../../../../styles/variables.less');
+@import (reference) url('../../../styles/variables.less');
 
-.asset-info-card.explore-search-card {
-  background-color: @grey-5;
-  padding: 8px;
-}
-
-.deleted-entity {
-  position: relative;
-  width: 100%;
-  height: 100%;
-  opacity: 0.4;
-
-  &::after {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background-color: transparent;
-    z-index: 1;
+.feed-drawer {
+  .activity-feed-card-container.ant-btn:hover {
+    color: inherit;
+    background-color: @white;
   }
 }

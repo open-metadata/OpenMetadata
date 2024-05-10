@@ -57,6 +57,7 @@ import {
 import { EntityType } from '../enums/entity.enum';
 import { ExplorePageTabs } from '../enums/Explore.enum';
 import { SearchIndex } from '../enums/search.enum';
+import { TestSuite } from '../generated/tests/testCase';
 import { SearchSourceAlias } from '../interface/search.interface';
 import { TabsInfoData } from '../pages/ExplorePage/ExplorePage.interface';
 import {
@@ -66,6 +67,7 @@ import {
 } from './EntityUtils';
 import i18n from './i18next/LocalUtil';
 import { getServiceIcon } from './TableUtils';
+import { getTestSuiteDetailsPath, getTestSuiteFQN } from './TestSuiteUtils';
 
 class SearchClassBase {
   public getEntityTypeSearchIndexMapping(): Record<string, SearchIndex> {
@@ -335,6 +337,13 @@ class SearchClassBase {
   public getEntityLink(
     entity: SearchSourceAlias
   ): string | { pathname: string } {
+    if (entity.entityType === EntityType.TEST_SUITE) {
+      return getTestSuiteDetailsPath({
+        isExecutableTestSuite: (entity as TestSuite).executable,
+        fullyQualifiedName: entity.fullyQualifiedName ?? '',
+      });
+    }
+
     if (entity.fullyQualifiedName && entity.entityType) {
       return getEntityLinkFromType(
         entity.fullyQualifiedName,
@@ -346,6 +355,10 @@ class SearchClassBase {
   }
 
   public getEntityName(entity: SearchSourceAlias) {
+    if (entity.entityType === EntityType.TEST_SUITE) {
+      return getTestSuiteFQN(getEntityName(entity));
+    }
+
     return getEntityName(entity);
   }
 
