@@ -88,18 +88,11 @@ const NodeSuggestions: FC<EntitySuggestionProps> = ({
     }
   };
 
-  const debouncedOnSearch = useCallback((searchText: string): void => {
-    getSearchResults(searchText);
-  }, []);
-
-  const debounceOnSearch = useCallback(debounce(debouncedOnSearch, 300), [
-    debouncedOnSearch,
-  ]);
+  const debounceOnSearch = useCallback(debounce(getSearchResults, 300), []);
 
   const handleChange = (value: string): void => {
-    const searchText = value;
-    setSearchValue(searchText);
-    debounceOnSearch(searchText);
+    setSearchValue(value);
+    debounceOnSearch(value);
   };
 
   useEffect(() => {
@@ -164,7 +157,7 @@ const NodeSuggestions: FC<EntitySuggestionProps> = ({
         popupClassName="lineage-suggestion-select-menu"
         onChange={handleChange}
         onClick={(e) => e.stopPropagation()}
-        onSearch={debouncedOnSearch}
+        onSearch={handleChange}
       />
     </div>
   );

@@ -64,7 +64,15 @@ const connectEdgeBetweenNodes = (fromNode, toNode) => {
     .should('contain', 'false');
 
   cy.get('[data-testid="suggestion-node"]').click();
+
+  interceptURL(
+    'GET',
+    `/api/v1/search/query?q=*${toNode.term}*&**`,
+    'nodeQuery'
+  );
   cy.get('[data-testid="suggestion-node"] input').click().type(toNode.term);
+  verifyResponseStatusCode('@nodeQuery', 200);
+
   cy.get(`[data-testid="node-suggestion-${toNode.fqn}"]`)
     .scrollIntoView()
     .click();
