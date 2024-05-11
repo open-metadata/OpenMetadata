@@ -42,6 +42,8 @@ import {
   getApplicationDetailsPath,
   getDomainDetailsPath,
   getIncidentManagerDetailPagePath,
+  getNotificationAlertDetailsPath,
+  getObservabilityAlertDetailsPath,
   getSettingPath,
   getTeamsWithFqnPath,
 } from './RouterUtils';
@@ -53,7 +55,8 @@ class EntityUtilClassBase {
     fullyQualifiedName: string,
     tab?: string,
     subTab?: string,
-    isExecutableTestSuite?: boolean
+    isExecutableTestSuite?: boolean,
+    isObservabilityAlert?: boolean
   ) {
     switch (indexType) {
       case SearchIndex.TOPIC:
@@ -204,6 +207,11 @@ class EntityUtilClassBase {
       case EntityType.TEAM:
       case SearchIndex.TEAM:
         return getTeamsWithFqnPath(fullyQualifiedName);
+
+      case EntityType.EVENT_SUBSCRIPTION:
+        return isObservabilityAlert
+          ? getObservabilityAlertDetailsPath(fullyQualifiedName)
+          : getNotificationAlertDetailsPath(fullyQualifiedName);
 
       case SearchIndex.TABLE:
       case EntityType.TABLE:

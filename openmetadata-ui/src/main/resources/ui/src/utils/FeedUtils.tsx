@@ -36,6 +36,7 @@ import {
   hashtagRegEx,
   linkRegEx,
   mentionRegEx,
+  NON_DATA_ASSET_ENTITIES,
   teamsLinkRegEx,
 } from '../constants/Feeds.constants';
 import { EntityType, FqnPart, TabSpecificField } from '../enums/entity.enum';
@@ -802,17 +803,19 @@ export const getFeedHeaderTextFromCardStyle = (
     case CardStyle.EntityCreated:
     case CardStyle.EntityDeleted:
     case CardStyle.EntitySoftDeleted:
-      if (
-        [EntityType.TEAM, EntityType.BOT, EntityType.APPLICATION].includes(
-          entityType as EntityType
-        )
-      ) {
+      if (NON_DATA_ASSET_ENTITIES.includes(entityType as EntityType)) {
         return (
           <Transi18next
             i18nKey="message.feed-entity-action-header"
             renderElement={<Typography.Text className="font-bold" />}
             values={{
-              entity: i18next.t(`label.${entityType}-lowercase`),
+              entity: i18next.t(
+                `label.${
+                  entityType === EntityType.EVENT_SUBSCRIPTION
+                    ? 'alert'
+                    : entityType
+                }-lowercase`
+              ),
               action: getActionLabelFromCardStyle(
                 cardStyle,
                 entityType === EntityType.APPLICATION
