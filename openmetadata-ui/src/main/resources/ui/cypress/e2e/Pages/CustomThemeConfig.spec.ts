@@ -64,34 +64,17 @@ describe('Custom Theme Config', { tags: 'Settings' }, () => {
       .type(config.monogram);
 
     // theme config
-    cy.get('[data-testid="primaryColor-color-input"]')
-      .scrollIntoView()
-      .clear()
-      .type(themeConfig.primaryColor);
-
-    cy.get('[data-testid="infoColor-color-input"]')
-      .scrollIntoView()
-      .clear()
-      .type(themeConfig.infoColor);
-
-    cy.get('[data-testid="successColor-color-input"]')
-      .scrollIntoView()
-      .clear()
-      .type(themeConfig.successColor);
-
-    cy.get('[data-testid="warningColor-color-input"]')
-      .scrollIntoView()
-      .clear()
-      .type(themeConfig.warningColor);
-
-    cy.get('[data-testid="errorColor-color-input"]')
-      .scrollIntoView()
-      .clear()
-      .type(themeConfig.errorColor);
+    Object.keys(themeConfig).forEach((colorType) => {
+      cy.get(`[data-testid="${colorType}-color-input"]`)
+        .scrollIntoView()
+        .clear()
+        .type(themeConfig[colorType]);
+    });
 
     interceptURL('PUT', 'api/v1/system/settings', 'updatedConfig');
 
-    cy.get('[data-testid="save-btn"]').scrollIntoView().click();
+    // In AUT we have bot icon at right bottom corner, which can create issue in clicking save button
+    cy.get('[data-testid="save-btn"]').scrollIntoView().click({ force: true });
 
     verifyResponseStatusCode('@updatedConfig', 200);
   });

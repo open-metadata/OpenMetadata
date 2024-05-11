@@ -22,7 +22,7 @@ const assignee = 'adam.matthews2';
 const secondAssignee = 'aaron_johnson0';
 
 export type TaskDetails = {
-  assignee: string;
+  assignee?: string;
   term: string;
   displayName?: string;
   entity?: string;
