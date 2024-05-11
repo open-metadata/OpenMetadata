@@ -32,6 +32,7 @@ import { ReactComponent as AnnouncementIcon } from '../assets/svg/announcements-
 import { ReactComponent as ApplicationIcon } from '../assets/svg/application.svg';
 import { ReactComponent as GlossaryTermIcon } from '../assets/svg/book.svg';
 import { ReactComponent as BotIcon } from '../assets/svg/bot.svg';
+import { ReactComponent as ChartIcon } from '../assets/svg/chart.svg';
 import { ReactComponent as ClassificationIcon } from '../assets/svg/classification.svg';
 import { ReactComponent as ConversationIcon } from '../assets/svg/comment.svg';
 import { ReactComponent as IconDataModel } from '../assets/svg/data-model.svg';
@@ -309,6 +310,12 @@ export const getEntityIcon = (
     case EntityType.DOMAIN:
     case SearchIndex.DOMAIN:
       Icon = DomainIcon;
+
+      break;
+
+    case EntityType.CHART:
+    case SearchIndex.CHART:
+      Icon = ChartIcon;
 
       break;
 
