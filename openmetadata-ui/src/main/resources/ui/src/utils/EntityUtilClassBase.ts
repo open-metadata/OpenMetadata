@@ -25,7 +25,7 @@ import {
 } from '../constants/constants';
 import { GlobalSettingsMenuCategory } from '../constants/GlobalSettings.constants';
 import { ResourceEntity } from '../context/PermissionProvider/PermissionProvider.interface';
-import { EntityTabs, EntityType } from '../enums/entity.enum';
+import { EntityType } from '../enums/entity.enum';
 import { SearchIndex } from '../enums/search.enum';
 import ContainerPage from '../pages/ContainerPage/ContainerPage';
 import DashboardDetailsPage from '../pages/DashboardDetailsPage/DashboardDetailsPage.component';
@@ -38,9 +38,10 @@ import SearchIndexDetailsPage from '../pages/SearchIndexDetailsPage/SearchIndexD
 import StoredProcedurePage from '../pages/StoredProcedure/StoredProcedurePage';
 import TableDetailsPageV1 from '../pages/TableDetailsPageV1/TableDetailsPageV1';
 import TopicDetailsPage from '../pages/TopicDetails/TopicDetailsPage.component';
-import { getTableFQNFromColumnFQN } from './CommonUtils';
 import {
+  getApplicationDetailsPath,
   getDomainDetailsPath,
+  getIncidentManagerDetailPagePath,
   getSettingPath,
   getTeamsWithFqnPath,
 } from './RouterUtils';
@@ -164,11 +165,7 @@ class EntityUtilClassBase {
         );
 
       case EntityType.TEST_CASE:
-        return `${getEntityDetailsPath(
-          EntityType.TABLE,
-          getTableFQNFromColumnFQN(fullyQualifiedName),
-          EntityTabs.PROFILER
-        )}?activeTab=Data Quality`;
+        return getIncidentManagerDetailPagePath(fullyQualifiedName);
 
       case EntityType.TEST_SUITE:
         return getTestSuiteDetailsPath({
@@ -197,6 +194,8 @@ class EntityUtilClassBase {
           tab,
           subTab
         );
+      case EntityType.APPLICATION:
+        return getApplicationDetailsPath(fullyQualifiedName);
 
       case EntityType.USER:
       case SearchIndex.USER:

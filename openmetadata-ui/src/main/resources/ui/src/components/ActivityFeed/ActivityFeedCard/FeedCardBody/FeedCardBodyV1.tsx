@@ -25,6 +25,7 @@ import { CardStyle } from '../../../../generated/entity/feed/thread';
 import { formatDateTime } from '../../../../utils/date-time/DateTimeUtils';
 import entityUtilClassBase from '../../../../utils/EntityUtilClassBase';
 import {
+  entityDisplayName,
   getEntityFQN,
   getEntityType,
   getFrontEndFormat,
@@ -82,6 +83,7 @@ const FeedCardBodyV1 = ({
         return (
           <TestCaseFeed
             entitySpecificInfo={feed.feedInfo?.entitySpecificInfo}
+            testCaseName={entityDisplayName(entityType, entityFQN) ?? ''}
           />
         );
       }
