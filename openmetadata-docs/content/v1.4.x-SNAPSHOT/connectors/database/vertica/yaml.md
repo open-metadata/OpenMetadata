@@ -72,6 +72,8 @@ GRANT SELECT ON ALL TABLES IN SCHEMA <schema> TO openmetadata;
 
 ### Python Requirements
 
+{% partial file="/v1.4/connectors/python-requirements.md" /%}
+
 To run the Vertica ingestion, you will need to install:
 
 ```bash

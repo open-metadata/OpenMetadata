@@ -26,6 +26,8 @@ Configure and schedule MariaDB metadata and profiler workflows from the OpenMeta
 
 ### Python Requirements
 
+{% partial file="/v1.4/connectors/python-requirements.md" /%}
+
 To run the MariaDB ingestion, you will need to install:
 
 ```bash

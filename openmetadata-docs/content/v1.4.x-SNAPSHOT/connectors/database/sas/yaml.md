@@ -30,6 +30,8 @@ To deploy OpenMetadata, check the Deployment guides.
 
 ### Python Requirements
 
+{% partial file="/v1.4/connectors/python-requirements.md" /%}
+
 To run the SAS ingestion, you will need to install:
 
 ```bash

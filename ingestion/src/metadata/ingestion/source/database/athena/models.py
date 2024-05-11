@@ -23,7 +23,7 @@ class QueryExecutionIdsResponse(BaseModel):
 
 
 class Status(BaseModel):
-    State: Optional[str]
+    State: Optional[str] = "FAILED"  # Default value
     SubmissionDateTime: Optional[datetime]
 
 

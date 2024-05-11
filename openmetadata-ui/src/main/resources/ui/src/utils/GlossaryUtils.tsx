@@ -11,8 +11,10 @@
  *  limitations under the License.
  */
 
+import { Typography } from 'antd';
 import { DefaultOptionType } from 'antd/lib/select';
 import { isEmpty } from 'lodash';
+import React from 'react';
 import { StatusType } from '../components/common/StatusBadge/StatusBadge.interface';
 import { ModifiedGlossaryTerm } from '../components/Glossary/GlossaryTermTab/GlossaryTermTab.interface';
 import { ModifiedGlossary } from '../components/Glossary/useGlossary.store';
@@ -55,9 +57,9 @@ export const buildTree = (data: GlossaryTerm[]): GlossaryTerm[] => {
   const tree: GlossaryTerm[] = [];
   data.forEach((obj) => {
     const current = nodes[obj.fullyQualifiedName ?? ''];
-    const parent = nodes[obj.parent?.fullyQualifiedName || ''];
+    const parent = nodes[obj.parent?.fullyQualifiedName ?? ''];
 
-    if (parent && parent.children) {
+    if (parent?.children) {
       // converting glossaryTerm to EntityReference
       parent.children.push({ ...current, type: 'glossaryTerm' });
     } else {
@@ -151,8 +153,12 @@ export const findGlossaryTermByFqn = (
   fullyQualifiedName: string
 ): GlossaryTerm | Glossary | ModifiedGlossary | null => {
   for (const item of list) {
-    if (item.fullyQualifiedName === fullyQualifiedName) {
-      return item;
+    if ((item.fullyQualifiedName ?? item.value) === fullyQualifiedName) {
+      return {
+        ...item,
+        fullyQualifiedName: item.fullyQualifiedName ?? item.data?.tagFQN,
+        ...(item.data ?? {}),
+      };
     }
     if (item.children) {
       const found = findGlossaryTermByFqn(
@@ -182,7 +188,11 @@ export const convertGlossaryTermsToTreeOptions = (
     return {
       id: option.id,
       value: option.fullyQualifiedName,
-      title: getEntityName(option),
+      title: (
+        <Typography.Text ellipsis style={{ color: option?.style?.color }}>
+          {getEntityName(option)}
+        </Typography.Text>
+      ),
       'data-testid': `tag-${option.fullyQualifiedName}`,
       checkable: isGlossaryTerm,
       isLeaf: isGlossaryTerm ? !hasChildren : false,

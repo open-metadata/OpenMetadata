@@ -193,7 +193,9 @@ export const CustomEdge = ({
   };
 
   const currentPipelineStatus = useMemo(() => {
-    const isPipelineActiveNow = activeLayer.includes(LineageLayerView.PIPELINE);
+    const isPipelineActiveNow = activeLayer.includes(
+      LineageLayerView.DATA_OBSERVARABILITY
+    );
     const pipelineData = pipeline?.pipelineStatus;
     if (pipelineData && isPipelineActiveNow) {
       switch (pipelineData.executionStatus) {
@@ -241,6 +243,7 @@ export const CustomEdge = ({
             />
           ) : (
             <EntityPopOverCard
+              defaultOpen={isPipelineRootNode}
               entityFQN={pipeline?.fullyQualifiedName}
               entityType={pipelineEntityType}
               extraInfo={
@@ -265,7 +268,15 @@ export const CustomEdge = ({
         </LineageEdgeIcon>
       );
     },
-    [edgeCenterX, edgeCenterY, rest, pipeline, blinkingClass, isEditMode]
+    [
+      edgeCenterX,
+      edgeCenterY,
+      rest,
+      pipeline,
+      blinkingClass,
+      isEditMode,
+      isPipelineRootNode,
+    ]
   );
 
   const getEditLineageIcon = useCallback(

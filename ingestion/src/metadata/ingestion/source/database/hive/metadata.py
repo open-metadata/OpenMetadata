@@ -108,7 +108,9 @@ class HiveSource(CommonDbSourceService):
         try:
             schema_definition = inspector.get_view_definition(table_name, schema_name)
             schema_definition = (
-                str(schema_definition) if schema_definition is not None else None
+                str(schema_definition).strip()
+                if schema_definition is not None
+                else None
             )
             return schema_definition
 

@@ -11,7 +11,11 @@
  *  limitations under the License.
  */
 
+import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
+import { EntityType, FqnPart } from '../enums/entity.enum';
+import { getPartialNameFromTableFQN } from './CommonUtils';
 import {
+  entityDisplayName,
   getBackendFormat,
   getEntityField,
   getEntityFQN,
@@ -85,9 +89,13 @@ jest.mock('./FeedUtils', () => ({
   getEntityField: jest.fn().mockReturnValue('entityField'),
   getEntityFQN: jest.fn().mockReturnValue('123'),
   getEntityType: jest.fn().mockReturnValue('entityType'),
-  getEntityPlaceHolder: jest.fn().mockReturnValue('entityPlaceHolder'),
   buildMentionLink: jest.fn().mockReturnValue('buildMentionLink'),
   getEntityBreadcrumbs: jest.fn().mockReturnValue('entityBreadcrumbs'),
+}));
+
+jest.mock('./CommonUtils', () => ({
+  getPartialNameFromTableFQN: jest.fn(),
+  getEntityPlaceHolder: jest.fn().mockReturnValue('entityPlaceHolder'),
 }));
 
 describe('Feed Utils', () => {
@@ -113,7 +121,7 @@ describe('Feed Utils', () => {
       {
         displayName: 'Table 1',
         id: '1',
-        value: '@Table1',
+        value: 'entityPlaceHolder',
         link: 'http://localhost/undefined/Table1',
         name: 'Table1',
         type: 'team',
@@ -139,5 +147,18 @@ describe('Feed Utils', () => {
     const expectedResult = `<#E::user::\"admin.test\"|<#E::user::%22admin.test%22|[@admin.test](http://localhost:3000/users/%22admin.test%22)>> test`;
 
     expect(result).toStrictEqual(expectedResult);
+  });
+
+  // entityDisplayName
+  it('should call getPartialNameFromTableFQN when entity type is TestSuite', () => {
+    const fqn = 'test.testSuite';
+
+    entityDisplayName(EntityType.TEST_SUITE, fqn);
+
+    expect(getPartialNameFromTableFQN).toHaveBeenCalledWith(
+      fqn,
+      [FqnPart.TestCase],
+      FQN_SEPARATOR_CHAR
+    );
   });
 });
