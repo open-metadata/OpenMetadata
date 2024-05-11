@@ -730,11 +730,18 @@ export const formatTestStatusData = (
   };
 };
 
-const getActionLabelFromCardStyle = (cardStyle?: CardStyle) => {
-  let action = i18next.t('label.added-lowercase');
+const getActionLabelFromCardStyle = (
+  cardStyle?: CardStyle,
+  isApplication?: boolean
+) => {
+  let action = isApplication
+    ? i18next.t('label.installed-lowercase')
+    : i18next.t('label.added-lowercase');
 
   if (cardStyle === CardStyle.EntityDeleted) {
-    action = i18next.t('label.deleted-lowercase');
+    action = isApplication
+      ? i18next.t('label.uninstalled-lowercase')
+      : i18next.t('label.deleted-lowercase');
   } else if (cardStyle === CardStyle.EntitySoftDeleted) {
     action = i18next.t('label.soft-deleted-lowercase');
   }
@@ -745,12 +752,13 @@ const getActionLabelFromCardStyle = (cardStyle?: CardStyle) => {
 export const getFeedHeaderTextFromCardStyle = (
   fieldOperation?: FieldOperation,
   cardStyle?: CardStyle,
-  fieldName?: string
+  fieldName?: string,
+  entityType?: EntityType
 ) => {
   if (fieldName === 'assets') {
     return (
       <Transi18next
-        i18nKey="message.feed-entity-action-header"
+        i18nKey="message.feed-asset-action-header"
         renderElement={<Typography.Text className="font-bold" />}
         values={{
           action: getActionLabelFromCardStyle(cardStyle),
@@ -794,9 +802,29 @@ export const getFeedHeaderTextFromCardStyle = (
     case CardStyle.EntityCreated:
     case CardStyle.EntityDeleted:
     case CardStyle.EntitySoftDeleted:
+      if (
+        [EntityType.TEAM, EntityType.BOT, EntityType.APPLICATION].includes(
+          entityType as EntityType
+        )
+      ) {
+        return (
+          <Transi18next
+            i18nKey="message.feed-entity-action-header"
+            renderElement={<Typography.Text className="font-bold" />}
+            values={{
+              entity: i18next.t(`label.${entityType}-lowercase`),
+              action: getActionLabelFromCardStyle(
+                cardStyle,
+                entityType === EntityType.APPLICATION
+              ),
+            }}
+          />
+        );
+      }
+
       return (
         <Transi18next
-          i18nKey="message.feed-entity-action-header"
+          i18nKey="message.feed-asset-action-header"
           renderElement={<Typography.Text className="font-bold" />}
           values={{
             action: getActionLabelFromCardStyle(cardStyle),

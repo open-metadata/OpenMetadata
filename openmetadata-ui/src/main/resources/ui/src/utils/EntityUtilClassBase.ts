@@ -39,6 +39,7 @@ import StoredProcedurePage from '../pages/StoredProcedure/StoredProcedurePage';
 import TableDetailsPageV1 from '../pages/TableDetailsPageV1/TableDetailsPageV1';
 import TopicDetailsPage from '../pages/TopicDetails/TopicDetailsPage.component';
 import {
+  getApplicationDetailsPath,
   getDomainDetailsPath,
   getIncidentManagerDetailPagePath,
   getSettingPath,
@@ -193,6 +194,8 @@ class EntityUtilClassBase {
           tab,
           subTab
         );
+      case EntityType.APPLICATION:
+        return getApplicationDetailsPath(fullyQualifiedName);
 
       case EntityType.USER:
       case SearchIndex.USER:

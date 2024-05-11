@@ -91,6 +91,7 @@ import {
 } from '../generated/entity/data/table';
 import { Topic } from '../generated/entity/data/topic';
 import { DataProduct } from '../generated/entity/domains/dataProduct';
+import { Team } from '../generated/entity/teams/team';
 import { TestCase, TestSuite } from '../generated/tests/testCase';
 import { Edge, EntityLineage } from '../generated/type/entityLineage';
 import { EntityReference } from '../generated/type/entityUsage';
@@ -107,6 +108,7 @@ import EntityLink from './EntityLink';
 import { BasicEntityOverviewInfo } from './EntityUtils.interface';
 import Fqn from './Fqn';
 import {
+  getApplicationDetailsPath,
   getDataQualityPagePath,
   getDomainDetailsPath,
   getDomainPath,
@@ -114,6 +116,7 @@ import {
   getIncidentManagerDetailPagePath,
   getObservabilityAlertDetailsPath,
   getSettingPath,
+  getTeamsWithFqnPath,
 } from './RouterUtils';
 import { getServiceRouteFromServiceType } from './ServiceUtils';
 import { stringToHTML } from './StringsUtils';
@@ -1344,6 +1347,12 @@ export const getEntityLinkFromType = (
         fullyQualifiedName,
         ServiceCategory.METADATA_SERVICES
       );
+    case EntityType.BOT:
+      return getBotsPath(fullyQualifiedName);
+    case EntityType.TEAM:
+      return getTeamsWithFqnPath(fullyQualifiedName);
+    case EntityType.APPLICATION:
+      return getApplicationDetailsPath(fullyQualifiedName);
     case EntityType.TEST_CASE:
       return getIncidentManagerDetailPagePath(fullyQualifiedName);
     case EntityType.TEST_SUITE:
@@ -1781,6 +1790,34 @@ export const getEntityBreadcrumbs = (
         {
           name: entity.name,
           url: getBotsPath(entity.fullyQualifiedName ?? ''),
+        },
+      ];
+    }
+
+    case EntityType.TEAM: {
+      return [
+        {
+          name: getEntityName((entity as Team).parents?.[0]),
+          url: getTeamsWithFqnPath(
+            (entity as Team).parents?.[0].fullyQualifiedName ?? ''
+          ),
+        },
+        {
+          name: getEntityName(entity),
+          url: getTeamsWithFqnPath(entity.fullyQualifiedName ?? ''),
+        },
+      ];
+    }
+
+    case EntityType.APPLICATION: {
+      return [
+        {
+          name: i18next.t('label.application-plural'),
+          url: getSettingPath(GlobalSettingsMenuCategory.APPLICATIONS),
+        },
+        {
+          name: getEntityName(entity),
+          url: getApplicationDetailsPath(entity.fullyQualifiedName ?? ''),
         },
       ];
     }
