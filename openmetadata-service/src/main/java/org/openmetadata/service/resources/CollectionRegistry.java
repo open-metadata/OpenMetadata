@@ -256,7 +256,6 @@ public final class CollectionRegistry {
               .newInstance(config, limits);
     } catch (NoSuchMethodException e) {
       try {
-        resource =
             clz.getDeclaredConstructor(Authorizer.class, Limits.class)
                 .newInstance(authorizer, limits);
       } catch (NoSuchMethodException ex) {
