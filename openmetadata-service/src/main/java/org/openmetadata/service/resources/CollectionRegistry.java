@@ -179,14 +179,14 @@ public final class CollectionRegistry {
       Authorizer authorizer,
       AuthenticatorHandler authenticatorHandler,
       Limits limits,
-	  boolean isOperations) {
+      boolean isOperations) {
     // Build list of ResourceDescriptors
     for (Map.Entry<String, CollectionDetails> e : collectionMap.entrySet()) {
       CollectionDetails details = e.getValue();
       if (!isOperations || (isOperations && details.requiredForOps)) {
         String resourceClass = details.resourceClass;
         try {
-              createResource(jdbi, resourceClass, config, authorizer, authenticatorHandler, limits);
+          createResource(jdbi, resourceClass, config, authorizer, authenticatorHandler, limits);
         } catch (Exception ex) {
           LOG.warn("Failed to create resource for class {} {}", resourceClass, ex);
         }
@@ -256,6 +256,7 @@ public final class CollectionRegistry {
               .newInstance(config, limits);
     } catch (NoSuchMethodException e) {
       try {
+        resource =
             clz.getDeclaredConstructor(Authorizer.class, Limits.class)
                 .newInstance(authorizer, limits);
       } catch (NoSuchMethodException ex) {
