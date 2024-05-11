@@ -85,6 +85,7 @@ const testCase = {
 
 let organizationTeam = {} as OrganizationTeamType;
 let userId = '';
+let teamId = '';
 
 const viewPermissions = [
   {
@@ -130,8 +131,8 @@ const createViewBasicRoleViaREST = ({ token }) => {
     url: `/api/v1/policies`,
     headers: { Authorization: `Bearer ${token}` },
     body: policy,
-  }).then((response) => {
-    policy.id = response.body.id;
+  }).then((policyResponse) => {
+    policy.id = policyResponse.body.id;
     cy.request({
       method: 'POST',
       url: `/api/v1/roles`,
@@ -155,21 +156,49 @@ const createViewBasicRoleViaREST = ({ token }) => {
           body: [
             {
               op: 'replace',
-              path: '/policies/0',
-              value: {
-                id: response.body.id,
-                type: 'policy',
-              },
+              path: '/policies',
+              value: [
+                {
+                  id: policyResponse.body.id,
+                  type: 'policy',
+                },
+              ],
             },
             {
               op: 'replace',
-              path: '/defaultRoles/0',
-              value: {
-                id: roleResponse.body.id,
-                type: 'role',
-              },
+              path: '/defaultRoles',
+              value: [
+                {
+                  id: roleResponse.body.id,
+                  type: 'role',
+                },
+              ],
             },
           ],
+        });
+
+        cy.request({
+          method: 'POST',
+          url: `/api/v1/users/signup`,
+          headers: { Authorization: `Bearer ${token}` },
+          body: USER_DETAILS,
+        }).then((userResponse) => {
+          userId = userResponse.body.id;
+          cy.request({
+            method: 'POST',
+            url: `/api/v1/teams`,
+            headers: { Authorization: `Bearer ${token}` },
+            body: {
+              name: `teamBasic-${uuid()}`,
+              description: 'teamBasic',
+              teamType: 'Group',
+              defaultRoles: [roleResponse.body.id],
+              policies: [policyResponse.body.id],
+              users: [userResponse.body.id],
+            },
+          }).then((teamResponse) => {
+            teamId = teamResponse.body.id;
+          });
         });
       });
     });
@@ -183,14 +212,7 @@ const preRequisite = () => {
     createViewBasicRoleViaREST({
       token,
     });
-    cy.request({
-      method: 'POST',
-      url: `/api/v1/users/signup`,
-      headers: { Authorization: `Bearer ${token}` },
-      body: USER_DETAILS,
-    }).then((response) => {
-      userId = response.body.id;
-    });
+
     createEntityTableViaREST({
       token,
       ...DATABASE_SERVICE,
@@ -260,21 +282,15 @@ const cleanUp = () => {
       },
       body: [
         {
-          op: 'add',
-          path: '/policies/0',
-          value: {
-            id: organizationTeam.policies[0].id,
-            type: 'policy',
-          },
+          op: 'replace',
+          path: '/policies',
+          value: organizationTeam.policies,
         },
 
         {
           op: 'add',
-          path: '/defaultRoles/0',
-          value: {
-            id: organizationTeam.defaultRoles[0].id,
-            type: 'role',
-          },
+          path: '/defaultRoles',
+          value: organizationTeam.defaultRoles,
         },
       ],
     });
@@ -282,6 +298,12 @@ const cleanUp = () => {
     cy.request({
       method: 'DELETE',
       url: `/api/v1/users/${userId}?hardDelete=true&recursive=false`,
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    // Delete created team
+    cy.request({
+      method: 'DELETE',
+      url: `/api/v1/teams/${teamId}?hardDelete=true&recursive=false`,
       headers: { Authorization: `Bearer ${token}` },
     });
   });

@@ -422,10 +422,7 @@ export const deleteEntity = (
     cy.get('[role="dialog"]').should('be.visible');
   });
 
-  cy.get('[data-testid="delete-modal"] .ant-modal-title').should(
-    'contain',
-    displayName
-  );
+  cy.get('.ant-modal-title').should('contain', displayName);
 
   cy.get('[data-testid="confirmation-text-input"]').type(DELETE_TERM);
 

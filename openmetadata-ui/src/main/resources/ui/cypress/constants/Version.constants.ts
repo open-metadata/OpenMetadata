@@ -1083,6 +1083,7 @@ export const NEW_CLASSIFICATION_FOR_VERSION_TEST = {
   name: NEW_CLASSIFICATION_FOR_VERSION_TEST_NAME,
   displayName: NEW_CLASSIFICATION_FOR_VERSION_TEST_NAME,
   provider: 'system',
+  mutuallyExclusive: true,
   description: ``,
 };
 
@@ -1091,11 +1092,6 @@ export const NEW_CLASSIFICATION_PATCH_PAYLOAD = [
     op: 'add',
     path: '/description',
     value: COMMON_UPDATED_DESCRIPTION,
-  },
-  {
-    op: 'replace',
-    path: '/mutuallyExclusive',
-    value: true,
   },
 ];
 
