@@ -92,12 +92,17 @@ import {
 import { Topic } from '../generated/entity/data/topic';
 import { DataProduct } from '../generated/entity/domains/dataProduct';
 import { Team } from '../generated/entity/teams/team';
+import {
+  AlertType,
+  EventSubscription,
+} from '../generated/events/eventSubscription';
 import { TestCase, TestSuite } from '../generated/tests/testCase';
 import { Edge, EntityLineage } from '../generated/type/entityLineage';
 import { EntityReference } from '../generated/type/entityUsage';
 import { TagLabel } from '../generated/type/tagLabel';
 import { UsageDetails } from '../generated/type/usageDetails';
 import { Votes } from '../generated/type/votes';
+import { SearchSourceAlias } from '../interface/search.interface';
 import { DataQualityPageTabs } from '../pages/DataQuality/DataQualityPage.interface';
 import {
   getOwnerValue,
@@ -114,6 +119,7 @@ import {
   getDomainPath,
   getGlossaryPath,
   getIncidentManagerDetailPagePath,
+  getNotificationAlertDetailsPath,
   getObservabilityAlertDetailsPath,
   getSettingPath,
   getTeamsWithFqnPath,
@@ -1284,7 +1290,8 @@ export const getEntityReferenceListFromEntities = <
 
 export const getEntityLinkFromType = (
   fullyQualifiedName: string,
-  entityType: EntityType
+  entityType: EntityType,
+  entity?: SearchSourceAlias
 ) => {
   switch (entityType) {
     case EntityType.TABLE:
@@ -1364,7 +1371,10 @@ export const getEntityLinkFromType = (
     case EntityType.DOMAIN:
       return getDomainDetailsPath(fullyQualifiedName);
     case EntityType.EVENT_SUBSCRIPTION:
-      return getObservabilityAlertDetailsPath(fullyQualifiedName);
+      return (entity as EventSubscription)?.alertType ===
+        AlertType.Observability
+        ? getObservabilityAlertDetailsPath(fullyQualifiedName)
+        : getNotificationAlertDetailsPath(fullyQualifiedName);
     default:
       return '';
   }
@@ -1765,13 +1775,17 @@ export const getEntityBreadcrumbs = (
       return [
         {
           name: startCase(EntityType.ALERT),
-          url: ROUTES.OBSERVABILITY_ALERTS,
+          url:
+            (entity as EventSubscription).alertType === AlertType.Observability
+              ? ROUTES.OBSERVABILITY_ALERTS
+              : ROUTES.NOTIFICATION_ALERTS,
         },
         {
           name: entity.name,
           url: getEntityLinkFromType(
             entity.fullyQualifiedName ?? '',
-            (entity as SourceType).entityType as EntityType
+            (entity as SourceType).entityType as EntityType,
+            entity as SearchSourceAlias
           ),
         },
       ];
