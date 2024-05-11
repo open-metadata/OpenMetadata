@@ -12,7 +12,7 @@ import org.apache.commons.csv.CSVRecord;
 public class ValidatorUtil {
   public static final Validator VALIDATOR;
   public static final String NAME_EMAIL_VOILATION =
-      "Name should be equal to the email prefix (before `@`).";
+      "Name should be equal to the email prefix (before `@`)";
 
   static {
     ValidatorFactory factory = Validation.buildDefaultValidatorFactory();
