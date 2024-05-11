@@ -72,6 +72,7 @@ import org.openmetadata.service.jdbi3.AppRepository;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.IngestionPipelineRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
+import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.search.SearchRepository;
@@ -162,8 +163,8 @@ public class AppResource extends EntityResource<App, AppRepository> {
     }
   }
 
-  public AppResource(Authorizer authorizer) {
-    super(Entity.APPLICATION, authorizer);
+  public AppResource(Authorizer authorizer, Limits limits) {
+    super(Entity.APPLICATION, authorizer, limits);
   }
 
   public static class AppList extends ResultList<App> {

@@ -256,22 +256,29 @@ public final class CollectionRegistry {
               .newInstance(config, limits);
     } catch (NoSuchMethodException e) {
       try {
-        resource = clz.getDeclaredConstructor(Authorizer.class).newInstance(authorizer);
+        resource =
+            clz.getDeclaredConstructor(Authorizer.class, Limits.class)
+                .newInstance(authorizer, limits);
       } catch (NoSuchMethodException ex) {
         try {
-          resource =
-              clz.getDeclaredConstructor(Authorizer.class, AuthenticatorHandler.class)
-                  .newInstance(authorizer, authHandler);
+          resource = clz.getDeclaredConstructor(Authorizer.class).newInstance(authorizer);
         } catch (NoSuchMethodException exe) {
           try {
             resource =
-                clz.getDeclaredConstructor(Jdbi.class, Authorizer.class)
-                    .newInstance(jdbi, authorizer);
+                clz.getDeclaredConstructor(
+                        Authorizer.class, Limits.class, AuthenticatorHandler.class)
+                    .newInstance(authorizer, limits, authHandler);
           } catch (NoSuchMethodException exec) {
             try {
-              resource = clz.getDeclaredConstructor(Limits.class).newInstance(limits);
-            } catch (NoSuchMethodException excep) {
-              resource = Class.forName(resourceClass).getConstructor().newInstance();
+              resource =
+                  clz.getDeclaredConstructor(Jdbi.class, Authorizer.class)
+                      .newInstance(jdbi, authorizer);
+            } catch (NoSuchMethodException execp) {
+              try {
+                resource = clz.getDeclaredConstructor(Limits.class).newInstance(limits);
+              } catch (NoSuchMethodException except) {
+                resource = Class.forName(resourceClass).getConstructor().newInstance();
+              }
             }
           }
         }

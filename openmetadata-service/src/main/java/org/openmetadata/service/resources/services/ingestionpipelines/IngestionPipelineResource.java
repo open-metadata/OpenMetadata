@@ -71,6 +71,7 @@ import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.clients.pipeline.PipelineServiceClientFactory;
 import org.openmetadata.service.jdbi3.IngestionPipelineRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
+import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.secrets.SecretsManager;
@@ -107,8 +108,8 @@ public class IngestionPipelineResource
     return ingestionPipeline;
   }
 
-  public IngestionPipelineResource(Authorizer authorizer) {
-    super(Entity.INGESTION_PIPELINE, authorizer);
+  public IngestionPipelineResource(Authorizer authorizer, Limits limits) {
+    super(Entity.INGESTION_PIPELINE, authorizer, limits);
   }
 
   @Override

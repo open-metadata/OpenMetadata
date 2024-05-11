@@ -70,6 +70,7 @@ import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.TableRepository;
+import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
@@ -101,8 +102,8 @@ public class TableResource extends EntityResource<Table, TableRepository> {
     return table;
   }
 
-  public TableResource(Authorizer authorizer) {
-    super(Entity.TABLE, authorizer);
+  public TableResource(Authorizer authorizer, Limits limits) {
+    super(Entity.TABLE, authorizer, limits);
   }
 
   @Override

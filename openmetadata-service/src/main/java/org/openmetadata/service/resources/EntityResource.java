@@ -31,6 +31,7 @@ import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
+import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.search.SearchListFilter;
 import org.openmetadata.service.search.SearchSortFilter;
 import org.openmetadata.service.security.Authorizer;
@@ -53,14 +54,16 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
   protected final Set<String> allowedFields;
   @Getter protected final K repository;
   protected final Authorizer authorizer;
+  protected final Limits limits;
   protected final Map<String, MetadataOperation> fieldsToViewOperations = new HashMap<>();
 
-  protected EntityResource(String entityType, Authorizer authorizer) {
+  protected EntityResource(String entityType, Authorizer authorizer, Limits limits) {
     this.entityType = entityType;
     this.repository = (K) Entity.getEntityRepository(entityType);
     this.entityClass = (Class<T>) Entity.getEntityClassFromType(entityType);
     allowedFields = repository.getAllowedFields();
     this.authorizer = authorizer;
+    this.limits = limits;
     addViewOperation(
         "owner,followers,votes,tags,extension,domain,dataProducts,experts", VIEW_BASIC);
     Entity.registerResourcePermissions(entityType, getEntitySpecificOperations());
@@ -259,6 +262,7 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
     OperationContext operationContext = new OperationContext(entityType, CREATE);
     CreateResourceContext<T> createResourceContext =
         new CreateResourceContext<>(entityType, entity);
+    limits.enforceLimits(securityContext, operationContext, createResourceContext);
     authorizer.authorize(securityContext, operationContext, createResourceContext);
     entity = addHref(uriInfo, repository.create(uriInfo, entity));
     return Response.created(entity.getHref()).entity(entity).build();
@@ -274,6 +278,7 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
     if (operation == CREATE) {
       CreateResourceContext<T> createResourceContext =
           new CreateResourceContext<>(entityType, entity);
+      limits.enforceLimits(securityContext, operationContext, createResourceContext);
       authorizer.authorize(securityContext, operationContext, createResourceContext);
       entity = addHref(uriInfo, repository.create(uriInfo, entity));
       return new PutResponse<>(Response.Status.CREATED, entity, ENTITY_CREATED).toResponse();

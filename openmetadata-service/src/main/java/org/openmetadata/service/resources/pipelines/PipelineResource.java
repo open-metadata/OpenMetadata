@@ -59,6 +59,7 @@ import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.PipelineRepository;
+import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.resources.dqtests.TestCaseResource;
@@ -86,8 +87,8 @@ public class PipelineResource extends EntityResource<Pipeline, PipelineRepositor
     return pipeline;
   }
 
-  public PipelineResource(Authorizer authorizer) {
-    super(Entity.PIPELINE, authorizer);
+  public PipelineResource(Authorizer authorizer, Limits limits) {
+    super(Entity.PIPELINE, authorizer, limits);
   }
 
   @Override
