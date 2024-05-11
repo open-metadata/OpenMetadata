@@ -29,8 +29,10 @@ import {
 import { EntityTags } from 'Models';
 import React, { CSSProperties } from 'react';
 import { ReactComponent as AnnouncementIcon } from '../assets/svg/announcements-black.svg';
+import { ReactComponent as ApplicationIcon } from '../assets/svg/application.svg';
 import { ReactComponent as GlossaryTermIcon } from '../assets/svg/book.svg';
 import { ReactComponent as BotIcon } from '../assets/svg/bot.svg';
+import { ReactComponent as ChartIcon } from '../assets/svg/chart.svg';
 import { ReactComponent as ClassificationIcon } from '../assets/svg/classification.svg';
 import { ReactComponent as ConversationIcon } from '../assets/svg/comment.svg';
 import { ReactComponent as IconDataModel } from '../assets/svg/data-model.svg';
@@ -61,8 +63,10 @@ import { ReactComponent as IconUniqueLineThrough } from '../assets/svg/icon-uniq
 import { ReactComponent as IconUnique } from '../assets/svg/icon-unique.svg';
 import { ReactComponent as TagIcon } from '../assets/svg/tag.svg';
 import { ReactComponent as TaskIcon } from '../assets/svg/task-ic.svg';
+import { ReactComponent as TeamIcon } from '../assets/svg/teams.svg';
 
 import { SourceType } from '../components/SearchedData/SearchedData.interface';
+import { NON_SERVICE_TYPE_ASSETS } from '../constants/Assets.constants';
 import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
 import { DE_ACTIVE_COLOR, TEXT_BODY_COLOR } from '../constants/constants';
 import { EntityType, FqnPart } from '../enums/entity.enum';
@@ -309,6 +313,12 @@ export const getEntityIcon = (
 
       break;
 
+    case EntityType.CHART:
+    case SearchIndex.CHART:
+      Icon = ChartIcon;
+
+      break;
+
     case EntityType.DATA_PRODUCT:
     case SearchIndex.DATA_PRODUCT:
       Icon = DataProductIcon;
@@ -346,6 +356,16 @@ export const getEntityIcon = (
 
       break;
 
+    case EntityType.TEAM:
+      Icon = TeamIcon;
+
+      break;
+
+    case EntityType.APPLICATION:
+      Icon = ApplicationIcon;
+
+      break;
+
     case SearchIndex.TABLE:
     case EntityType.TABLE:
     default:
@@ -358,21 +378,12 @@ export const getEntityIcon = (
 };
 
 export const getServiceIcon = (source: SourceType) => {
-  const isDataAsset = [
-    EntityType.GLOSSARY,
-    EntityType.GLOSSARY_TERM,
-    EntityType.CLASSIFICATION,
-    EntityType.TAG,
-    EntityType.DATA_PRODUCT,
-    EntityType.DOMAIN,
-    EntityType.TEST_CASE,
-    EntityType.TEST_SUITE,
-    EntityType.EVENT_SUBSCRIPTION,
-    EntityType.BOT,
-  ].includes(source.entityType as EntityType);
+  const isDataAsset = NON_SERVICE_TYPE_ASSETS.includes(
+    source.entityType as EntityType
+  );
 
   if (isDataAsset) {
-    return getEntityIcon(source.entityType ?? '', 'service-icon h-7', {
+    return getEntityIcon(source.entityType ?? '', 'service-icon w-7 h-7', {
       color: DE_ACTIVE_COLOR,
     });
   } else {

@@ -66,7 +66,8 @@ public class TestCaseResultFormatter extends DefaultFieldFormatter {
     TestCaseResultFeedInfo testCaseResultFeedInfo =
         new TestCaseResultFeedInfo()
             .withTestCaseResult(testCaseResultResultList.getData())
-            .withEntityTestResultSummary(testSuiteEntity.getTestCaseResultSummary());
+            .withEntityTestResultSummary(testSuiteEntity.getTestCaseResultSummary())
+            .withParameterValues(testCaseEntity.getParameterValues());
     FeedInfo feedInfo =
         new FeedInfo()
             .withHeaderMessage(getHeaderForTestResultUpdate())

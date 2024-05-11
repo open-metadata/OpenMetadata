@@ -6,6 +6,13 @@
   "javaType": "org.openmetadata.schema.entity.feed.TestCaseResultFeedInfo",
   "type": "object",
   "properties": {
+    "parameterValues": {
+      "description": "Summary of test case execution",
+      "type": "array",
+      "items": {
+        "$ref": "../../tests/testCase.json#/definitions/testCaseParameterValue"
+      }
+    },
     "entityTestResultSummary": {
       "description": "Summary of test case execution",
       "type": "array",

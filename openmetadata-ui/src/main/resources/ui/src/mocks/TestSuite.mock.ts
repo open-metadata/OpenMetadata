@@ -12,7 +12,7 @@
  */
 
 import { Table } from '../generated/entity/data/table';
-import { TestCase } from '../generated/tests/testCase';
+import { TestCase, TestCaseStatus } from '../generated/tests/testCase';
 
 export const MOCK_TABLE_DATA = {
   data: [
@@ -892,7 +892,7 @@ export const MOCK_TABLE_COLUMN_NAME_TO_EXIST = {
 export const MOCK_TEST_CASE_RESULT = [
   {
     timestamp: 1683699927,
-    testCaseStatus: 'Success',
+    testCaseStatus: TestCaseStatus.Success,
     result: 'Found max=65 vs. the expected min=50, max=100.',
     testResultValue: [
       {
@@ -903,7 +903,7 @@ export const MOCK_TEST_CASE_RESULT = [
   },
   {
     timestamp: 1683616212,
-    testCaseStatus: 'Success',
+    testCaseStatus: TestCaseStatus.Success,
     result: 'Found max=65 vs. the expected min=50, max=100.',
     testResultValue: [
       {
@@ -914,7 +914,7 @@ export const MOCK_TEST_CASE_RESULT = [
   },
   {
     timestamp: 1683615873,
-    testCaseStatus: 'Success',
+    testCaseStatus: TestCaseStatus.Success,
     result: 'Found max=65 vs. the expected min=50, max=100.',
     testResultValue: [
       {
@@ -925,7 +925,7 @@ export const MOCK_TEST_CASE_RESULT = [
   },
   {
     timestamp: 1683613527,
-    testCaseStatus: 'Failed',
+    testCaseStatus: TestCaseStatus.Failed,
     result: 'Found max=25 vs. the expected min=50, max=100.',
     testResultValue: [
       {
@@ -936,7 +936,7 @@ export const MOCK_TEST_CASE_RESULT = [
   },
   {
     timestamp: 1683529812,
-    testCaseStatus: 'Failed',
+    testCaseStatus: TestCaseStatus.Failed,
     result: 'Found max=25 vs. the expected min=50, max=100.',
     testResultValue: [
       {
@@ -947,7 +947,7 @@ export const MOCK_TEST_CASE_RESULT = [
   },
   {
     timestamp: 1683529473,
-    testCaseStatus: 'Failed',
+    testCaseStatus: TestCaseStatus.Failed,
     result: 'Found max=25 vs. the expected min=50, max=100.',
     testResultValue: [
       {
@@ -958,7 +958,7 @@ export const MOCK_TEST_CASE_RESULT = [
   },
   {
     timestamp: 1683527127,
-    testCaseStatus: 'Success',
+    testCaseStatus: TestCaseStatus.Success,
     result: 'Found max=56 vs. the expected min=50, max=100.',
     testResultValue: [
       {
@@ -969,7 +969,7 @@ export const MOCK_TEST_CASE_RESULT = [
   },
   {
     timestamp: 1683443412,
-    testCaseStatus: 'Success',
+    testCaseStatus: TestCaseStatus.Success,
     result: 'Found max=56 vs. the expected min=50, max=100.',
     testResultValue: [
       {
@@ -980,7 +980,7 @@ export const MOCK_TEST_CASE_RESULT = [
   },
   {
     timestamp: 1683443073,
-    testCaseStatus: 'Success',
+    testCaseStatus: TestCaseStatus.Success,
     result: 'Found max=56 vs. the expected min=50, max=100.',
     testResultValue: [
       {

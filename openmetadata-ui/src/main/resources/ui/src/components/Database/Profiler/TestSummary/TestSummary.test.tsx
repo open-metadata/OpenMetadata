@@ -10,14 +10,12 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { queryByAttribute, render, screen } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import React from 'react';
 import {
   MOCK_SQL_TEST_CASE,
   MOCK_TEST_CASE,
-  MOCK_TEST_CASE_RESULT,
 } from '../../../../mocks/TestSuite.mock';
-import { getListTestCaseResults } from '../../../../rest/testAPI';
 import { getEpochMillisForPastDays } from '../../../../utils/date-time/DateTimeUtils';
 import { TestSummaryProps } from '../ProfilerDashboard/profilerDashboard.interface';
 import TestSummary from './TestSummary';
@@ -25,24 +23,22 @@ import TestSummary from './TestSummary';
 const mockProps: TestSummaryProps = {
   data: MOCK_TEST_CASE[1],
 };
-const mockHistory = {
-  push: jest.fn(),
-  goBack: jest.fn(),
-};
 
 jest.mock('../../../../rest/testAPI', () => {
   return {
     getListTestCaseResults: jest
       .fn()
-      .mockImplementation(() =>
-        Promise.resolve({ data: MOCK_TEST_CASE_RESULT })
-      ),
+      .mockImplementation(() => Promise.resolve({ data: MOCK_TEST_CASE[1] })),
   };
 });
-jest.mock('react-router-dom', () => {
+jest.mock('../../../../constants/profiler.constant', () => {
   return {
-    ...jest.requireActual('react-router-dom'),
-    useHistory: jest.fn().mockImplementation(() => mockHistory),
+    PROFILER_FILTER_RANGE: {
+      last30days: {
+        days: 30,
+        title: 'last 30 days',
+      },
+    },
   };
 });
 
@@ -51,44 +47,27 @@ jest.mock('../../../common/DatePickerMenu/DatePickerMenu.component', () => {
     .fn()
     .mockImplementation(() => <div>DatePickerMenu.component</div>);
 });
-jest.mock('../../../common/ErrorWithPlaceholder/ErrorPlaceHolder', () => {
-  return jest
-    .fn()
-    .mockImplementation(() => <div>ErrorPlaceHolder.component</div>);
-});
 jest.mock('../../../common/Loader/Loader', () => {
   return jest.fn().mockImplementation(() => <div>Loader.component</div>);
 });
-jest.mock('../../SchemaEditor/SchemaEditor', () => {
-  return jest.fn().mockImplementation(() => <div>SchemaEditor.component</div>);
+jest.mock('./TestSummaryGraph', () => {
+  return jest.fn().mockImplementation(() => <div>TestSummaryGraph</div>);
 });
 jest.mock('../../../../utils/date-time/DateTimeUtils', () => {
   return {
-    formatDateTime: jest.fn(),
-    getCurrentMillis: jest.fn(),
-    getEpochMillisForPastDays: jest.fn(),
+    getCurrentMillis: jest.fn().mockImplementation(() => 1633948800000),
+    getEpochMillisForPastDays: jest
+      .fn()
+      .mockImplementation(() => 1633948800000),
   };
 });
-
-jest.mock(
-  '../../../ActivityFeed/ActivityFeedProvider/ActivityFeedProvider',
-  () => ({
-    useActivityFeedProvider: jest.fn().mockImplementation(() => ({
-      entityThread: [],
-    })),
-  })
-);
 
 describe('TestSummary component', () => {
   it('Component should render', async () => {
     render(<TestSummary {...mockProps} />);
 
     const graphContainer = await screen.findByTestId('graph-container');
-    const graph = queryByAttribute(
-      'id',
-      graphContainer,
-      `${mockProps.data.name}_graph`
-    );
+    const graph = await screen.findByText('TestSummaryGraph');
 
     expect(
       await screen.findByTestId('test-summary-container')
@@ -97,25 +76,6 @@ describe('TestSummary component', () => {
     expect(graph).toBeInTheDocument();
     expect(
       await screen.findByText('DatePickerMenu.component')
-    ).toBeInTheDocument();
-  });
-
-  it('Show no data placeholder when there is no result, other CTA should also visible', async () => {
-    (getListTestCaseResults as jest.Mock).mockImplementationOnce(() =>
-      Promise.resolve({ data: [] })
-    );
-    render(<TestSummary {...mockProps} />);
-    const graphContainer = await screen.findByTestId('graph-container');
-    const graph = queryByAttribute(
-      'id',
-      graphContainer,
-      `${mockProps.data.name}_graph`
-    );
-
-    expect(graphContainer).toBeInTheDocument();
-    expect(graph).not.toBeInTheDocument();
-    expect(
-      await screen.findByText('ErrorPlaceHolder.component')
     ).toBeInTheDocument();
   });
 

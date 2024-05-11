@@ -11,9 +11,15 @@
  *  limitations under the License.
  */
 
-import { Info } from '../../../../../generated/entity/feed/thread';
+import {
+  TestCaseParameterValue,
+  TestCaseResult,
+} from '../../../../generated/tests/testCase';
 
-export interface TestCaseFeedProps {
-  entitySpecificInfo?: Info;
+export interface TestSummaryGraphProps {
+  testCaseParameterValue?: TestCaseParameterValue[];
   testCaseName: string;
+  testCaseResults: TestCaseResult[];
+  selectedTimeRange: string;
+  minHeight?: number;
 }
