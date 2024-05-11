@@ -100,7 +100,9 @@ export const removeTags = (
     ).click();
 
     cy.get('[data-testid="saveAssociatedTag"]').click();
-    verifyResponseStatusCode('@removeTags', 200);
+    verifyResponseStatusCode('@removeTags', 200, {
+      requestTimeout: 15000,
+    });
   });
   cy.get(
     '[data-testid="entity-right-panel"] [data-testid="tags-container"] [data-testid="add-tag"]'

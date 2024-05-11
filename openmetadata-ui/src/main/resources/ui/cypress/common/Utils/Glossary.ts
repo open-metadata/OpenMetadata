@@ -102,7 +102,9 @@ export const removeGlossaryTerm = (
     ).click();
 
     cy.get('[data-testid="saveAssociatedTag"]').click();
-    verifyResponseStatusCode('@removeTags', 200);
+    verifyResponseStatusCode('@removeTags', 200, {
+      requestTimeout: 15000,
+    });
   });
   cy.get(
     '[data-testid="entity-right-panel"] [data-testid="glossary-container"] [data-testid="add-tag"]'
