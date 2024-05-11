@@ -34,17 +34,6 @@ export default defineConfig({
 
       return config;
     },
-    specPattern: [
-      'cypress/e2e/Pages/Entity.spec.ts',
-      'cypress/e2e/Pages/Database.spec.ts',
-      'cypress/e2e/Pages/Services.spec.ts',
-      'cypress/e2e/Pages/Glossary.spec.ts',
-      'cypress/e2e/Pages/Users.spec.ts',
-      'cypress/e2e/Pages/Permission.spec.ts',
-      'cypress/e2e/Pages/DataInsightSettings.spec.ts',
-      'cypress/e2e/Pages/CustomThemeConfig.spec.ts',
-      'cypress/e2e/Pages/ClassificationVersionPage.spec.ts',
-      'cypress/e2e/Flow/Task.spec.ts',
-    ],
+    specPattern: ['cypress/e2e/**/*.{js,jsx,ts,tsx}'],
   },
 });

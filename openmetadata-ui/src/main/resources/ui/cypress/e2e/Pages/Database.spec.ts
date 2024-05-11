@@ -85,13 +85,13 @@ describe('Database hierarchy details page', { tags: 'DataAssets' }, () => {
         entity.updateDescription();
       });
 
-      it.only(`Tags assign, update & delete`, () => {
+      it(`Tags assign, update & delete`, () => {
         entity.assignTags();
         entity.updateTags();
         entity.removeTags();
       });
 
-      it.only(`GlossaryTerm assign, update & delete`, () => {
+      it(`GlossaryTerm assign, update & delete`, () => {
         entity.assignGlossary();
         entity.updateGlossary();
         entity.removeGlossary();
