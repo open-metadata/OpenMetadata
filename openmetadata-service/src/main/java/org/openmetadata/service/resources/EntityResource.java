@@ -262,7 +262,7 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
     OperationContext operationContext = new OperationContext(entityType, CREATE);
     CreateResourceContext<T> createResourceContext =
         new CreateResourceContext<>(entityType, entity);
-    limits.enforceLimits(securityContext, operationContext, createResourceContext);
+    limits.enforceLimits(securityContext, createResourceContext);
     authorizer.authorize(securityContext, operationContext, createResourceContext);
     entity = addHref(uriInfo, repository.create(uriInfo, entity));
     return Response.created(entity.getHref()).entity(entity).build();
@@ -278,7 +278,7 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
     if (operation == CREATE) {
       CreateResourceContext<T> createResourceContext =
           new CreateResourceContext<>(entityType, entity);
-      limits.enforceLimits(securityContext, operationContext, createResourceContext);
+      limits.enforceLimits(securityContext, createResourceContext);
       authorizer.authorize(securityContext, operationContext, createResourceContext);
       entity = addHref(uriInfo, repository.create(uriInfo, entity));
       return new PutResponse<>(Response.Status.CREATED, entity, ENTITY_CREATED).toResponse();

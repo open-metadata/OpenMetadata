@@ -550,6 +550,8 @@ public class UserResource extends EntityResource<User, UserRepository> {
       @Context ContainerRequestContext containerRequestContext,
       @Valid CreateUser create) {
     User user = getUser(securityContext.getUserPrincipal().getName(), create);
+    ResourceContext<?> resourceContext = getResourceContextByName(user.getFullyQualifiedName());
+    limits.enforceLimits(securityContext, resourceContext);
     if (Boolean.TRUE.equals(create.getIsAdmin())) {
       authorizer.authorizeAdmin(securityContext);
     }
