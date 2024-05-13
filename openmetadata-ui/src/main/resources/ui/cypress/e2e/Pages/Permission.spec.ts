@@ -22,6 +22,7 @@ import {
   visitEntityDetailsPage,
 } from '../../common/Utils/Entity';
 import { getToken } from '../../common/Utils/LocalStorage';
+import { validateOrgPolicy } from '../../common/Utils/Policy';
 import { EntityType } from '../../constants/Entity.interface';
 import { DATABASE_SERVICE, USER_DETAILS } from '../../constants/EntityConstant';
 import { SERVICE_CATEGORIES } from '../../constants/service.constants';
@@ -347,6 +348,12 @@ const updatePolicy = (
 describe('Permissions', { tags: 'Settings' }, () => {
   before(preRequisite);
   after(cleanUp);
+
+  it("Validate organization's role and policy", () => {
+    cy.login();
+    validateOrgPolicy();
+    cy.logout();
+  });
 
   it('ViewBasic permission', () => {
     checkPermission();

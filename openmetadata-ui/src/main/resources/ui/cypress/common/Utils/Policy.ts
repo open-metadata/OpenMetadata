@@ -10,7 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { uuid } from '../common';
+import { SidebarItem } from '../../constants/Entity.interface';
+import { interceptURL, uuid } from '../common';
 
 type RoleType = {
   name: string;
@@ -165,4 +166,22 @@ export const cleanupPolicies = ({ token }) => {
       },
     ],
   });
+};
+
+export const validateOrgPolicy = () => {
+  interceptURL(
+    'GET',
+    '/api/v1/teams/name/Organization?fields=*defaultRoles*policies*',
+    'getOrganization'
+  );
+  cy.sidebarClick(SidebarItem.SETTINGS);
+  cy.get('[data-testid="members"]').click();
+  cy.get('[data-testid="members.teams"]').click();
+  cy.wait('@getOrganization').then(({ response }) => {
+    // need logs for debugging
+    cy.log(response.body);
+  });
+  // validating role and policy
+  cy.get('[data-testid="roles"]').click();
+  cy.get('[data-testid="policies"]').click();
 };

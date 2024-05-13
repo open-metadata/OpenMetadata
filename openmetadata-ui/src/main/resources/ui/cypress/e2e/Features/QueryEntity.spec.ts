@@ -211,11 +211,6 @@ describe('Query Entity', { tags: 'DataAssets' }, () => {
   it('Verify query filter', () => {
     interceptURL(
       'GET',
-      '/api/v1/search/query?*index=user_search_index,team_search_index*',
-      'searchOwner'
-    );
-    interceptURL(
-      'GET',
       '/api/v1/search/query?*index=tag_search_index*',
       'searchTag'
     );
@@ -226,11 +221,36 @@ describe('Query Entity', { tags: 'DataAssets' }, () => {
     });
     cy.get('[data-testid="table_queries"]').click();
     verifyResponseStatusCode('@fetchQuery', 200);
+    const userName = `${user.firstName}${user.lastName}`;
+    interceptURL(
+      'GET',
+      `/api/v1/search/query?*${Cypress.$.escapeSelector(
+        userName
+      )}*index=user_search_index,team_search_index*`,
+      'searchUserName'
+    );
+    cy.log(
+      `/api/v1/search/query?*${Cypress.$.escapeSelector(
+        userName
+      )}*index=user_search_index,team_search_index*`
+    );
     queryFilters({
       filter: `${user.firstName}${user.lastName}`,
-      apiKey: '@searchOwner',
+      apiKey: '@searchUserName',
       key: 'Owner',
     });
+    interceptURL(
+      'GET',
+      `/api/v1/search/query?*${encodeURI(
+        DATA.owner
+      )}*index=user_search_index,team_search_index*`,
+      'searchOwner'
+    );
+    cy.log(
+      `/api/v1/search/query?*${encodeURI(
+        DATA.owner
+      )}*index=user_search_index,team_search_index*`
+    );
     cy.get('[data-testid="no-data-placeholder"]').should('be.visible');
     queryFilters({
       filter: DATA.owner,
