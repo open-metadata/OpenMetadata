@@ -14,7 +14,6 @@
 import Icon from '@ant-design/icons/lib/components/Icon';
 import { Button, Col, Divider, Form, Input, Row, Typography } from 'antd';
 import classNames from 'classnames';
-import jwtDecode, { JwtPayload } from 'jwt-decode';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
@@ -40,13 +39,7 @@ const SignInPage = () => {
   const [form] = Form.useForm();
 
   const history = useHistory();
-  const {
-    authConfig,
-    onLoginHandler,
-    onLogoutHandler,
-    isAuthenticated,
-    getOidcToken,
-  } = useApplicationStore();
+  const { authConfig, onLoginHandler, isAuthenticated } = useApplicationStore();
 
   const { t } = useTranslation();
 
@@ -60,25 +53,6 @@ const SignInPage = () => {
   }, [authConfig]);
 
   const { handleLogin, loginError } = useBasicAuth();
-
-  const isTokenExpired = () => {
-    const token = getOidcToken();
-    if (token) {
-      try {
-        const { exp } = jwtDecode<JwtPayload>(token);
-        if (exp) {
-          if (Date.now() < exp * 1000) {
-            // Token is valid
-            return false;
-          }
-        }
-      } catch (error) {
-        // ignore error
-      }
-    }
-
-    return true;
-  };
 
   const handleSignIn = () => {
     onLoginHandler && onLoginHandler();
@@ -151,14 +125,6 @@ const SignInPage = () => {
       />
     );
   };
-
-  // If user is neither logged in or nor security is disabled
-  // invoke logout handler to clean-up any slug storage
-  useEffect(() => {
-    if (!isAuthenticated && isTokenExpired()) {
-      onLogoutHandler();
-    }
-  }, []);
 
   useEffect(() => {
     // If the user is already logged in or if security is disabled
