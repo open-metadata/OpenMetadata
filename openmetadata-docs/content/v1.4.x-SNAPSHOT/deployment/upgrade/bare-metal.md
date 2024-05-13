@@ -71,11 +71,11 @@ directory of your current installation by running the following command:
 
 ## Step 5: Migrate the database schemas and ElasticSearch indexes
 
-The bootstrap/bootstrap_storage.sh script enables you to perform a number of operations on the OpenMetadata database (in
+The bootstrap/openmetadata-ops.sh script enables you to perform a number of operations on the OpenMetadata database (in
 MySQL) and index (in Elasticsearch).
 
 ```commandline
-./bootstrap/bootstrap_storage.sh migrate-all
+./bootstrap/openmetadata-ops.sh migrate
 ```
 
 

@@ -45,7 +45,7 @@ The event handlers are defined under [`OpenMetadata/openmetadata-service/src/mai
 ### Database
 OpenMetadata uses MySQL for the metadata catalog. The catalog code is located in the directory [`OpenMetadata/openmetadata-service/src/main/java/org/openmetadata/service/jdbi3`](https://github.com/open-metadata/OpenMetadata/tree/main/openmetadata-service/src/main/java/org/openmetadata/service/jdbi3).
 
-The database entity tables are created using the command [`OpenMetadata/bootstrap/bootstrap_storage.sh`](https://github.com/open-metadata/OpenMetadata/blob/main/bootstrap/bootstrap_storage.sh). [Flyway](https://flywaydb.org/) is used for managing the database table versions.
+The database entity tables are created using the command [`OpenMetadata/bootstrap/openmetadata-ops.sh`](https://github.com/open-metadata/OpenMetadata/blob/main/bootstrap/openmetadata-ops.sh). [Flyway](https://flywaydb.org/) is used for managing the database table versions.
 
 ### Elasticsearch
 OpenMetadata uses Elasticsearch to store the Entity change events and makes it searchable by search index. The [`OpenMetadata/openmetadata-service/src/main/java/org/openmetadata/service/elasticsearch/ElasticSearchEventPublisher.java`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-service/src/main/java/org/openmetadata/service/elasticsearch/ElasticSearchEventPublisher.java) is responsible for capturing the change events and updating Elasticsearch.
