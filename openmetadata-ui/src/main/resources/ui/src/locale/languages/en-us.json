@@ -1469,7 +1469,7 @@
     "explore-our-guide-here": "explore our guide here.",
     "export-entity-help": "Download all your {{entity}} as a CSV file, and share with your team.",
     "failed-status-for-entity-deploy": "<0>{{entity}}</0>  has been {{entityStatus}}, but failed to deploy",
-    "feed-asset-action-header": "{{action}} <0>data asset</0>",
+    "feed-asset-action-header": "{{action}}",
     "feed-custom-property-header": "updated Custom Properties on",
     "feed-entity-action-header": "{{action}} <0>{{entity}}</0>",
     "feed-field-action-entity-header": "{{action}} <0>{{field}}</0> for",

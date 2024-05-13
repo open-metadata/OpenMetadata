@@ -49,7 +49,10 @@ function TestCaseFeed({
           selectedTimeRange={PROFILER_FILTER_RANGE.last7days.title}
           testCaseName={testCaseName}
           testCaseParameterValue={entitySpecificInfo?.parameterValues}
-          testCaseResults={entitySpecificInfo?.testCaseResult ?? []}
+          testCaseResults={(entitySpecificInfo?.testCaseResult ?? []).slice(
+            0,
+            10
+          )}
         />
       </Row>
     );
