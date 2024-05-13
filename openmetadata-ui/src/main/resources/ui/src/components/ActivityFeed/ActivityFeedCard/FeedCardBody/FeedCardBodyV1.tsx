@@ -22,9 +22,14 @@ import RichTextEditorPreviewer from '../../../../components/common/RichTextEdito
 import { ASSET_CARD_STYLES } from '../../../../constants/Feeds.constants';
 import { EntityType } from '../../../../enums/entity.enum';
 import { CardStyle } from '../../../../generated/entity/feed/thread';
+import {
+  AlertType,
+  EventSubscription,
+} from '../../../../generated/events/eventSubscription';
 import { formatDateTime } from '../../../../utils/date-time/DateTimeUtils';
 import entityUtilClassBase from '../../../../utils/EntityUtilClassBase';
 import {
+  entityDisplayName,
   getEntityFQN,
   getEntityType,
   getFrontEndFormat,
@@ -82,6 +87,7 @@ const FeedCardBodyV1 = ({
         return (
           <TestCaseFeed
             entitySpecificInfo={feed.feedInfo?.entitySpecificInfo}
+            testCaseName={entityDisplayName(entityType, entityFQN) ?? ''}
           />
         );
       }
@@ -90,6 +96,10 @@ const FeedCardBodyV1 = ({
         const entityInfo = feed.feedInfo?.entitySpecificInfo?.entity;
         const isExecutableTestSuite =
           entityType === EntityType.TEST_SUITE && entityInfo.executable;
+        const isObservabilityAlert =
+          entityType === EntityType.EVENT_SUBSCRIPTION &&
+          (entityInfo as EventSubscription).alertType ===
+            AlertType.Observability;
 
         const entityCard = (
           <ExploreSearchCard
@@ -110,7 +120,8 @@ const FeedCardBodyV1 = ({
               entityFQN,
               '',
               '',
-              isExecutableTestSuite
+              isExecutableTestSuite,
+              isObservabilityAlert
             )}>
             {entityCard}
           </Link>

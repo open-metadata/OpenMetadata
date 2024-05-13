@@ -11,59 +11,46 @@
  *  limitations under the License.
  */
 
-import Icon from '@ant-design/icons/lib/components/Icon';
 import { Col, Row, Typography } from 'antd';
-import React, { useCallback, useMemo } from 'react';
+import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as AbortedStatus } from '../../../../../assets/svg/aborted-status.svg';
-import { ReactComponent as FailedStatus } from '../../../../../assets/svg/failed-status.svg';
-import { ReactComponent as SuccessStatus } from '../../../../../assets/svg/success-badge.svg';
 
-import { TestCaseStatus } from '../../../../../generated/tests/testCase';
-import { customFormatDateTime } from '../../../../../utils/date-time/DateTimeUtils';
+import { TEST_CASE_FEED_GRAPH_HEIGHT } from '../../../../../constants/constants';
+import { PROFILER_FILTER_RANGE } from '../../../../../constants/profiler.constant';
+import { EntityTestResultSummaryObject } from '../../../../../generated/entity/feed/thread';
 import {
   formatTestStatusData,
   getTestCaseResultCount,
 } from '../../../../../utils/FeedUtils';
+import { withActivityFeed } from '../../../../AppRouter/withActivityFeed';
+import TestSummaryGraph from '../../../../Database/Profiler/TestSummary/TestSummaryGraph';
 import './test-case-feed.less';
 import { TestCaseFeedProps } from './TestCaseFeed.interface';
 
-function TestCaseFeed({ entitySpecificInfo }: Readonly<TestCaseFeedProps>) {
+function TestCaseFeed({
+  entitySpecificInfo,
+  testCaseName,
+}: Readonly<TestCaseFeedProps>) {
   const { t } = useTranslation();
 
   const { success, failed, aborted } = useMemo(
-    () => formatTestStatusData(entitySpecificInfo?.testCaseResult ?? []),
-    [entitySpecificInfo?.testCaseResult]
+    () =>
+      formatTestStatusData(
+        entitySpecificInfo?.entityTestResultSummary as EntityTestResultSummaryObject[]
+      ),
+    [entitySpecificInfo?.entityTestResultSummary]
   );
-
-  const getStatusIcon = useCallback((status?: string) => {
-    let icon = SuccessStatus;
-    if (status === TestCaseStatus.Failed) {
-      icon = FailedStatus;
-    } else if (status === TestCaseStatus.Aborted) {
-      icon = AbortedStatus;
-    }
-
-    return <Icon component={icon} style={{ fontSize: '16px' }} />;
-  }, []);
 
   const renderTestCaseResult = useMemo(() => {
     return (
       <Row className="m-t-xs" gutter={[0, 4]}>
-        {entitySpecificInfo?.testCaseResult?.slice(0, 3).map((caseResult) => {
-          return (
-            <Col key={caseResult.timestamp} span={24}>
-              {getStatusIcon(caseResult.testCaseStatus)}{' '}
-              <Typography.Text className="m-l-xss break-all whitespace-normal">
-                {customFormatDateTime(caseResult.timestamp, 'MMM dd, hh:mm')}
-              </Typography.Text>
-              <span className="m-x-xss">:</span>
-              <Typography.Text className="break-all whitespace-normal">
-                {caseResult.result}
-              </Typography.Text>
-            </Col>
-          );
-        })}
+        <TestSummaryGraph
+          minHeight={TEST_CASE_FEED_GRAPH_HEIGHT}
+          selectedTimeRange={PROFILER_FILTER_RANGE.last7days.title}
+          testCaseName={testCaseName}
+          testCaseParameterValue={entitySpecificInfo?.parameterValues}
+          testCaseResults={entitySpecificInfo?.testCaseResult ?? []}
+        />
       </Row>
     );
   }, [entitySpecificInfo?.testCaseResult]);
@@ -72,7 +59,7 @@ function TestCaseFeed({ entitySpecificInfo }: Readonly<TestCaseFeedProps>) {
     <Row gutter={[0, 12]}>
       <Col span={24}>
         <Typography.Text className="font-bold">{`${t(
-          'label.test-result-summary'
+          'label.test-suite-summary'
         )}:`}</Typography.Text>
       </Col>
       <Col span={24}>
@@ -90,4 +77,4 @@ function TestCaseFeed({ entitySpecificInfo }: Readonly<TestCaseFeedProps>) {
   );
 }
 
-export default TestCaseFeed;
+export default withActivityFeed(TestCaseFeed);
