@@ -210,7 +210,6 @@ public class JwtFilter implements ContainerRequestFilter {
   @SneakyThrows
   public String validateAndReturnUsername(Map<String, Claim> claims) {
     // Get email from JWT token
-
     String jwtClaim =
         jwtPrincipalClaims.stream()
             .filter(claims::containsKey)
