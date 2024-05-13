@@ -38,6 +38,7 @@ import javax.ws.rs.core.UriInfo;
 import javax.ws.rs.ext.Provider;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang.StringUtils;
 import org.openmetadata.schema.api.security.AuthenticationConfiguration;
 import org.openmetadata.schema.api.security.AuthorizerConfiguration;
 import org.openmetadata.schema.auth.LogoutRequest;
@@ -222,8 +223,15 @@ public class JwtFilter implements ContainerRequestFilter {
                         "Invalid JWT token, none of the following claims are present "
                             + jwtPrincipalClaims));
 
-    String userName = jwtClaim.split("@")[0];
-    String domain = jwtClaim.split("@")[1];
+    String userName;
+    String domain;
+    if (jwtClaim.contains("@")) {
+      userName = jwtClaim.split("@")[0];
+      domain = jwtClaim.split("@")[1];
+    } else {
+      userName = jwtClaim;
+      domain = StringUtils.EMPTY;
+    }
 
     // validate principal domain, for users
     boolean isBot =
