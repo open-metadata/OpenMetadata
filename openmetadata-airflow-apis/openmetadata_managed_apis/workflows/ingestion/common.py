@@ -255,7 +255,9 @@ def build_dag_configs(ingestion_pipeline: IngestionPipeline) -> dict:
         "schedule_interval": ingestion_pipeline.airflowConfig.scheduleInterval,
         "tags": [
             "OpenMetadata",
+            ingestion_pipeline.displayName or ingestion_pipeline.name.__root__,
             ingestion_pipeline.pipelineType.value,
+            ingestion_pipeline.service.name,
         ],
     }
 
