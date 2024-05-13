@@ -1318,8 +1318,14 @@ describe('Glossary page should work properly', { tags: 'Governance' }, () => {
       NEW_GLOSSARY_TERMS.term_2.name,
       NEW_GLOSSARY_TERMS.term_1.name
     );
-    // verify the term is moved under the parent term
-    cy.get('[data-testid="expand-collapse-all-button"]').click();
+
+    // clicking on the expand icon to view the child term
+    cy.get(
+      `[data-row-key=${Cypress.$.escapeSelector(
+        NEW_GLOSSARY_TERMS.term_1.fullyQualifiedName
+      )}] [data-testid="expand-icon"] > svg`
+    ).click();
+
     cy.get(
       `.ant-table-row-level-1[data-row-key="${Cypress.$.escapeSelector(
         NEW_GLOSSARY_TERMS.term_1.fullyQualifiedName
