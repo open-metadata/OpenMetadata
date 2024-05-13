@@ -389,8 +389,17 @@ public interface MessageDecorator<T> {
     }
   }
 
-  private String getDateString(long epochTimestamp) {
+  static String getDateString(long epochTimestamp) {
     Instant instant = Instant.ofEpochSecond(epochTimestamp);
+    return getDateString(instant);
+  }
+
+  static String getDateStringEpochMilli(long epochTimestamp) {
+    Instant instant = Instant.ofEpochMilli(epochTimestamp);
+    return getDateString(instant);
+  }
+
+  private static String getDateString(Instant instant) {
     LocalDateTime localDateTime = LocalDateTime.ofInstant(instant, ZoneId.systemDefault());
 
     // Format LocalDateTime to a specific date and time format

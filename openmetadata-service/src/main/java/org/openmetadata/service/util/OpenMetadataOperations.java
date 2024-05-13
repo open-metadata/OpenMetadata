@@ -3,6 +3,7 @@ package org.openmetadata.service.util;
 import static org.flywaydb.core.internal.info.MigrationInfoDumper.dumpToAsciiTable;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.Entity.FIELD_OWNER;
+import static org.openmetadata.service.formatter.decorators.MessageDecorator.getDateStringEpochMilli;
 import static org.openmetadata.service.util.AsciiTable.printOpenMetadataText;
 
 import ch.qos.logback.classic.Level;
@@ -285,9 +286,10 @@ public class OpenMetadataOperations implements Callable<Integer> {
     appRepository.patch(null, originalSearchIndexApp.getId(), "admin", patch);
 
     // Trigger Application
+    long currentTime = System.currentTimeMillis();
     AppScheduler.getInstance().triggerOnDemandApplication(updatedSearchIndexApp);
 
-    int result = waitAndReturnReindexingAppStatus(updatedSearchIndexApp);
+    int result = waitAndReturnReindexingAppStatus(updatedSearchIndexApp, currentTime);
 
     // Repatch with original
     JsonPatch repatch = JsonUtils.getJsonPatch(updatedSearchIndexApp, originalSearchIndexApp);
@@ -297,34 +299,53 @@ public class OpenMetadataOperations implements Callable<Integer> {
   }
 
   @SneakyThrows
-  private int waitAndReturnReindexingAppStatus(App searchIndexApp) {
-    AppRunRecord appRunRecord;
+  private int waitAndReturnReindexingAppStatus(App searchIndexApp, long startTime) {
+    AppRunRecord appRunRecord = null;
     do {
       try {
         AppRepository appRepository =
             (AppRepository) Entity.getEntityRepository(Entity.APPLICATION);
-        appRunRecord = appRepository.getLatestAppRuns(searchIndexApp.getId());
+        appRunRecord =
+            appRepository.getLatestAppRunsAfterStartTime(searchIndexApp.getId(), startTime);
         if (isRunCompleted(appRunRecord)) {
           List<String> columns =
               new ArrayList<>(
-                  List.of("status", "startTime", "endTime", "executionTime", "success", "failure"));
+                  List.of(
+                      "jobStatus",
+                      "startTime",
+                      "endTime",
+                      "executionTime",
+                      "successContext",
+                      "failureContext"));
           List<List<String>> rows = new ArrayList<>();
+
+          String startTimeofJob =
+              nullOrEmpty(appRunRecord.getStartTime())
+                  ? "Unavailable"
+                  : getDateStringEpochMilli(appRunRecord.getStartTime());
+          String endTimeofJob =
+              nullOrEmpty(appRunRecord.getEndTime())
+                  ? "Unavailable"
+                  : getDateStringEpochMilli(appRunRecord.getEndTime());
+          String executionTime =
+              nullOrEmpty(appRunRecord.getExecutionTime())
+                  ? "Unavailable"
+                  : String.format("%d seconds", appRunRecord.getExecutionTime() / 1000);
           rows.add(
               Arrays.asList(
                   getValueOrUnavailable(appRunRecord.getStatus().value()),
-                  getValueOrUnavailable(appRunRecord.getStartTime()),
-                  getValueOrUnavailable(appRunRecord.getEndTime()),
-                  getValueOrUnavailable(appRunRecord.getExecutionTime()),
+                  getValueOrUnavailable(startTimeofJob),
+                  getValueOrUnavailable(endTimeofJob),
+                  getValueOrUnavailable(executionTime),
                   getValueOrUnavailable(appRunRecord.getSuccessContext()),
                   getValueOrUnavailable(appRunRecord.getFailureContext())));
           printToAsciiTable(columns, rows, "Failed to run Search Reindexing");
         }
-      } catch (UnhandledServerException e) {
-        LOG.info(
-            "Reindexing Status not available yet, waiting for 10 seconds to fetch the status again.");
-        appRunRecord = null;
-        Thread.sleep(10000);
+      } catch (UnhandledServerException ignored) {
       }
+      LOG.info(
+          "Reindexing Status not available yet, waiting for 10 seconds to fetch the status again.");
+      Thread.sleep(10000);
     } while (!isRunCompleted(appRunRecord));
 
     if (appRunRecord.getStatus().equals(AppRunRecord.Status.SUCCESS)
