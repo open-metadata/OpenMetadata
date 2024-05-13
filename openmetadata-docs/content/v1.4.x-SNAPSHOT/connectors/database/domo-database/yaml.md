@@ -31,6 +31,8 @@ Question related to scopes, click [here](https://developer.domo.com/portal/1845f
 
 ### Python Requirements
 
+{% partial file="/v1.4/connectors/python-requirements.md" /%}
+
 To run the DomoDatabase ingestion, you will need to install:
 
 ```bash

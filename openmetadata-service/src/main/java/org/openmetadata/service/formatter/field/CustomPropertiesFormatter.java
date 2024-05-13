@@ -1,7 +1,5 @@
 package org.openmetadata.service.formatter.field;
 
-import static org.openmetadata.service.Entity.FIELD_EXTENSION;
-
 import org.openmetadata.schema.entity.feed.CustomPropertyFeedInfo;
 import org.openmetadata.schema.entity.feed.FeedInfo;
 import org.openmetadata.schema.entity.feed.Thread;
@@ -53,7 +51,7 @@ public class CustomPropertiesFormatter extends DefaultFieldFormatter {
             .withHeaderMessage(
                 getHeaderForCustomPropertyUpdate(
                     thread.getUpdatedBy(), operation.value(), thread.getEntityUrlLink()))
-            .withFieldName(FIELD_EXTENSION)
+            .withFieldName(fieldChangeName)
             .withEntitySpecificInfo(customPropertyFeedInfo);
     populateThreadFeedInfo(
         thread, threadMessage, Thread.CardStyle.CUSTOM_PROPERTIES, operation, feedInfo);

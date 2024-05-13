@@ -59,6 +59,7 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.RoleRepository;
+import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
@@ -74,7 +75,10 @@ import org.openmetadata.service.util.ResultList;
             + "team can be assigned one or multiple roles that provide privileges to a user and members of a team to perform the job function.")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
-@Collection(name = "roles", order = 1) // Load roles after PolicyResource are loaded at Order 0
+@Collection(
+    name = "roles",
+    order = 1,
+    requiredForOps = true) // Load roles after PolicyResource are loaded at Order 0
 @Slf4j
 public class RoleResource extends EntityResource<Role, RoleRepository> {
   public static final String COLLECTION_PATH = "/v1/roles/";
@@ -89,8 +93,8 @@ public class RoleResource extends EntityResource<Role, RoleRepository> {
     return role;
   }
 
-  public RoleResource(Authorizer authorizer) {
-    super(Entity.ROLE, authorizer);
+  public RoleResource(Authorizer authorizer, Limits limits) {
+    super(Entity.ROLE, authorizer, limits);
   }
 
   @Override

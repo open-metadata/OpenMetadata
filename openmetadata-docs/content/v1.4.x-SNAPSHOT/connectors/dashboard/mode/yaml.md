@@ -26,6 +26,8 @@ OpenMetadata relies on Mode's API, which is exclusive to members of the Mode Bus
 
 ### Python Requirements
 
+{% partial file="/v1.4/connectors/python-requirements.md" /%}
+
 To run the Mode ingestion, you will need to install:
 
 ```bash

@@ -507,14 +507,16 @@ const CronEditor: FC<CronEditorProp> = (props) => {
         break;
     }
 
-    return <div data-testid="schedule-description">{retString}</div>;
+    return retString ? (
+      <div data-testid="schedule-description">{retString}</div>
+    ) : null;
   }, [state, cronPeriodString, startText, value]);
 
   return (
     <Row
       className={classNames(className, 'cron-row')}
       data-testid="cron-container"
-      gutter={[16, 0]}>
+      gutter={[16, 16]}>
       <Col data-testid="time-dropdown-container" span={12}>
         <Form.Item
           initialValue={selectedPeriod}
@@ -579,7 +581,7 @@ const CronEditor: FC<CronEditorProp> = (props) => {
           )}
         </>
       )}
-      <Col span={24}>{displayCronString}</Col>
+      {displayCronString && <Col span={24}>{displayCronString}</Col>}
 
       {isEmpty(value) && (
         <Col span={24}>

@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 // eslint-disable-next-line spaced-comment
-import { interceptURL, verifyResponseStatusCode } from '../../common/common';
 import UsersTestClass from '../../common/Entities/UserClass';
 import { visitEntityDetailsPage } from '../../common/Utils/Entity';
 import { getToken } from '../../common/Utils/LocalStorage';
@@ -20,6 +19,12 @@ import {
   generateRandomUser,
   removeOwner,
 } from '../../common/Utils/Owner';
+import {
+  DATA_CONSUMER_ROLE,
+  DATA_STEWARD_ROLE,
+  cleanupPolicies,
+  createRoleViaREST,
+} from '../../common/Utils/Policy';
 import {
   addUser,
   editRole,
@@ -30,6 +35,8 @@ import {
   updateExpiration,
   visitUserListPage,
 } from '../../common/Utils/Users';
+import { interceptURL, verifyResponseStatusCode } from '../../common/common';
+import { EntityType, SidebarItem } from '../../constants/Entity.interface';
 import {
   BASE_URL,
   DELETE_ENTITY,
@@ -37,7 +44,6 @@ import {
   ID,
   uuid,
 } from '../../constants/constants';
-import { EntityType, SidebarItem } from '../../constants/Entity.interface';
 import {
   GlobalSettingOptions,
   SETTINGS_OPTIONS_PATH,
@@ -72,6 +78,7 @@ describe('User with different Roles', { tags: 'Settings' }, () => {
     cy.login();
     cy.getAllLocalStorage().then((data) => {
       const token = getToken(data);
+      createRoleViaREST({ token });
 
       // Create a new user
       cy.request({
@@ -88,6 +95,8 @@ describe('User with different Roles', { tags: 'Settings' }, () => {
     cy.login();
     cy.getAllLocalStorage().then((data) => {
       const token = getToken(data);
+
+      cleanupPolicies({ token });
 
       // Delete created user
       cy.request({
@@ -110,7 +119,7 @@ describe('User with different Roles', { tags: 'Settings' }, () => {
   it('Create Data Consumer User', () => {
     cy.login();
     visitUserListPage();
-    addUser({ ...user, role: 'Data Consumer' });
+    addUser({ ...user, role: DATA_CONSUMER_ROLE.name });
     cy.logout();
   });
 
@@ -217,7 +226,7 @@ describe('User with different Roles', { tags: 'Settings' }, () => {
     // change role from consumer to steward
     cy.login();
     visitUserListPage();
-    editRole(user.name, 'Data Steward');
+    editRole(user.name, DATA_STEWARD_ROLE.name);
     cy.logout();
     // login to steward user
     cy.login(user.email, user.newPassword);

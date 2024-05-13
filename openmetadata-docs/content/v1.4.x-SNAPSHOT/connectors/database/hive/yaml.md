@@ -26,6 +26,8 @@ Configure and schedule Hive metadata and profiler workflows from the OpenMetadat
 
 ### Python Requirements
 
+{% partial file="/v1.4/connectors/python-requirements.md" /%}
+
 To run the Hive ingestion, you will need to install:
 
 ```bash

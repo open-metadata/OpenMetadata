@@ -431,6 +431,10 @@ export const ADVANCED_PROPERTIES = [
   'sampleDataCount',
   'threadCount',
   'timeoutSeconds',
+  'sslConfig',
+  'sslMode',
+  'schemaRegistrySSL',
+  'verify',
 ];
 
 export const PIPELINE_SERVICE_PLATFORM = 'Airflow';

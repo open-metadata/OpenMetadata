@@ -54,6 +54,7 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.Filter;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.TestCaseRepository;
+import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
@@ -97,8 +98,8 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
     return test;
   }
 
-  public TestCaseResource(Authorizer authorizer) {
-    super(Entity.TEST_CASE, authorizer);
+  public TestCaseResource(Authorizer authorizer, Limits limits) {
+    super(Entity.TEST_CASE, authorizer, limits);
   }
 
   @Override

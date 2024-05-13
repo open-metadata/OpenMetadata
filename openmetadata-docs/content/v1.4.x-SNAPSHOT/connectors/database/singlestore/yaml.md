@@ -28,6 +28,8 @@ Configure and schedule Singlestore metadata and profiler workflows from the Open
 
 ### Python Requirements
 
+{% partial file="/v1.4/connectors/python-requirements.md" /%}
+
 To run the Singlestore ingestion, you will need to install:
 
 ```bash

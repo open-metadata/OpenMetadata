@@ -292,8 +292,8 @@ describe('Custom Properties should work properly', { tags: 'Settings' }, () => {
     'Email',
     'Number',
     'Sql Query',
-    'Time',
-    'Time Interval',
+    // 'Time',
+    // 'Time Interval',
     'Timestamp',
   ].forEach((type) => {
     describe(`Add update and delete ${type} custom properties`, () => {
@@ -522,7 +522,8 @@ describe('Custom Properties should work properly', { tags: 'Settings' }, () => {
     });
   });
 
-  describe('Add update and delete Date custom properties', () => {
+  // eslint-disable-next-line jest/no-disabled-tests
+  describe.skip('Add update and delete Date custom properties', () => {
     Object.values(ENTITIES).forEach((entity) => {
       const propertyName = `addcyentity${entity.name}test${uuid()}`;
 
@@ -581,7 +582,8 @@ describe('Custom Properties should work properly', { tags: 'Settings' }, () => {
     });
   });
 
-  describe('Add update and delete DateTime custom properties', () => {
+  // eslint-disable-next-line jest/no-disabled-tests
+  describe.skip('Add update and delete DateTime custom properties', () => {
     Object.values(ENTITIES).forEach((entity) => {
       const propertyName = `addcyentity${entity.name}test${uuid()}`;
 

@@ -99,7 +99,11 @@ from metadata.utils.credentials import GOOGLE_CREDENTIALS
 from metadata.utils.filters import filter_by_database, filter_by_schema
 from metadata.utils.helpers import get_start_and_end
 from metadata.utils.logger import ingestion_logger
-from metadata.utils.sqlalchemy_utils import is_complex_type
+from metadata.utils.sqlalchemy_utils import (
+    get_all_table_ddls,
+    get_table_ddl,
+    is_complex_type,
+)
 from metadata.utils.tag_utils import get_ometa_tag_and_classification, get_tag_label
 from metadata.utils.tag_utils import get_tag_labels as fetch_tag_labels_om
 
@@ -209,6 +213,9 @@ BigQueryDialect._build_formatted_table_id = (  # pylint: disable=protected-acces
 )
 BigQueryDialect.get_pk_constraint = get_pk_constraint
 BigQueryDialect.get_foreign_keys = get_foreign_keys
+
+Inspector.get_all_table_ddls = get_all_table_ddls
+Inspector.get_table_ddl = get_table_ddl
 
 
 class BigquerySource(
@@ -601,21 +608,35 @@ class BigquerySource(
                         f"Error trying to connect to database {project_id}: {exc}"
                     )
 
-    def get_view_definition(
+    def get_schema_definition(
         self, table_type: str, table_name: str, schema_name: str, inspector: Inspector
     ) -> Optional[str]:
-        if table_type == TableType.View:
-            try:
+        """
+        Get the DDL statement or View Definition for a table
+        """
+        try:
+            if table_type == TableType.View:
                 view_definition = inspector.get_view_definition(
                     fqn._build(self.context.get().database, schema_name, table_name)
                 )
                 view_definition = (
-                    "" if view_definition is None else str(view_definition)
+                    f"CREATE VIEW {schema_name}.{table_name} AS {str(view_definition)}"
+                    if view_definition is not None
+                    else None
                 )
-            except NotImplementedError:
-                logger.warning("View definition not implemented")
-                view_definition = ""
-            return f"CREATE VIEW {schema_name}.{table_name} AS {view_definition}"
+                return view_definition
+
+            schema_definition = inspector.get_table_ddl(
+                self.connection, table_name, schema_name
+            )
+            schema_definition = (
+                str(schema_definition.strip())
+                if schema_definition is not None
+                else None
+            )
+            return schema_definition
+        except NotImplementedError:
+            logger.warning("Schema definition not implemented")
         return None
 
     def get_table_partition_details(

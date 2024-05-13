@@ -13,7 +13,7 @@
 
 import { Space } from 'antd';
 import { AxiosError } from 'axios';
-import { isEqual, isString, isUndefined, uniqWith } from 'lodash';
+import { isEqual, isUndefined, uniqWith } from 'lodash';
 import { Bucket } from 'Models';
 import Qs from 'qs';
 import React, { FC, useCallback, useEffect, useMemo, useState } from 'react';
@@ -29,7 +29,10 @@ import { getAggregateFieldOptions } from '../../rest/miscAPI';
 import { getTags } from '../../rest/tagAPI';
 import { getOptionsFromAggregationBucket } from '../../utils/AdvancedSearchUtils';
 import { getEntityName } from '../../utils/EntityUtils';
-import { getCombinedQueryFilterObject } from '../../utils/ExplorePage/ExplorePageUtils';
+import {
+  getCombinedQueryFilterObject,
+  getQuickFilterWithDeletedFlag,
+} from '../../utils/ExplorePage/ExplorePageUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import SearchDropdown from '../SearchDropdown/SearchDropdown';
 import { SearchDropdownOption } from '../SearchDropdown/SearchDropdown.interface';
@@ -49,29 +52,23 @@ const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
   const [isOptionsLoading, setIsOptionsLoading] = useState<boolean>(false);
   const [tierOptions, setTierOptions] = useState<SearchDropdownOption[]>();
   const { queryFilter } = useAdvanceSearch();
-  const parsedSearch = useMemo(
-    () =>
-      Qs.parse(
-        location.search.startsWith('?')
-          ? location.search.substring(1)
-          : location.search
-      ),
-    [location.search]
-  );
+
+  const { showDeleted, quickFilter } = useMemo(() => {
+    const parsed = Qs.parse(
+      location.search.startsWith('?')
+        ? location.search.substring(1)
+        : location.search
+    );
+
+    return {
+      showDeleted: parsed.showDeleted === 'true',
+      quickFilter: parsed.quickFilter ?? '',
+    };
+  }, [location.search]);
 
   const getAdvancedSearchQuickFilters = useCallback(() => {
-    if (!isString(parsedSearch.quickFilter)) {
-      return undefined;
-    } else {
-      try {
-        const parsedQueryFilter = JSON.parse(parsedSearch.quickFilter);
-
-        return parsedQueryFilter;
-      } catch {
-        return undefined;
-      }
-    }
-  }, [parsedSearch]);
+    return getQuickFilterWithDeletedFlag(quickFilter as string, showDeleted);
+  }, [quickFilter, showDeleted]);
 
   const updatedQuickFilters = getAdvancedSearchQuickFilters();
   const combinedQueryFilter = getCombinedQueryFilterObject(

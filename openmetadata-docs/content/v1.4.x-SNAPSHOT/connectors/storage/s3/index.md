@@ -85,6 +85,8 @@ In any other connector, extracting metadata happens automatically. In this case,
 metadata from buckets, but in order to understand their internal structure we need users to provide an `openmetadata.json`
 file at the bucket root.
 
+`Supported File Formats: [ "csv",  "tsv", "avro", "parquet", "json", "json.gz", "json.zip" ]`
+
 You can learn more about this [here](/connectors/storage). Keep reading for an example on the shape of the manifest file.
 
 {% partial file="/v1.4/connectors/storage/manifest.md" /%}
@@ -266,6 +268,8 @@ Find more information about the [Role Session Name](https://docs.aws.amazon.com/
 information in AWS CloudTrail logs to determine who took actions with a role.
 
 Find more information about [Source Identity](https://docs.aws.amazon.com/STS/latest/APIReference/API_AssumeRole.html#:~:text=Required%3A%20No-,SourceIdentity,-The%20source%20identity).
+
+- **Bucket Names (Optional)**: Provide the names of buckets that you would want to ingest, if you want to ingest metadata from all buckets or apply a filter to ingest buckets then leave this field empty.
 
 {% /extraContent %}
 

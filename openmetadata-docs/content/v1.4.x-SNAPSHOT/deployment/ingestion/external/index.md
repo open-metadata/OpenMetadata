@@ -5,7 +5,7 @@ slug: /deployment/ingestion/external
 
 # Ingestion Framework External Deployment
 
-Any tool capable of running Python code can be used to configure the metadata extraction from your sources.
+Any tool capable of running Python code can be used to configure the metadata extraction from your sources({% partial file="/v1.4/connectors/python-requirements.md" /%}).
 
 ## 1. How does the Ingestion Framework work?
 

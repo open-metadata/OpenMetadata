@@ -177,7 +177,7 @@ MOCK_TABLE = Table(
         id="c3eb265f-5445-4ad3-ba5e-797d3a3071bb", type="databaseSchema"
     ),
     tags=[],
-    viewDefinition=None,
+    schemaDefinition=None,
     retentionPeriod=None,
     extension=None,
     sourceUrl=SourceUrl(
@@ -411,7 +411,7 @@ EXPECTED_TABLE = [
                 __root__="bigquery_source_test.random-project-id.sample_schema"
             ),
             tags=[],
-            viewDefinition=None,
+            schemaDefinition=None,
             retentionPeriod=None,
             extension=None,
             sourceUrl=SourceUrl(
@@ -507,7 +507,7 @@ EXPECTED_TABLE = [
                 __root__="bigquery_source_test.random-project-id.sample_schema"
             ),
             tags=[],
-            viewDefinition=None,
+            schemaDefinition=None,
             retentionPeriod=None,
             extension=None,
             sourceUrl=SourceUrl(
@@ -651,6 +651,12 @@ class BigqueryUnitTest(TestCase):
                 lambda table_name, schema, db_name: MOCK_COLUMN_DATA[
                     i
                 ]  # pylint: disable=cell-var-from-loop
+            )
+            self.bq_source.inspector.get_table_ddl = (
+                lambda table_name, schema, db_name: None  # pylint: disable=cell-var-from-loop
+            )
+            self.bq_source.inspector.get_table_comment = (
+                lambda table_name, schema, db_name: None  # pylint: disable=cell-var-from-loop
             )
             assert EXPECTED_TABLE[i] == [
                 either.right for either in self.bq_source.yield_table(table)

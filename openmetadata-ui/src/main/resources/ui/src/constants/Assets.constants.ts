@@ -144,3 +144,18 @@ export const ASSET_MENU_KEYS = [
   EntityType.SEARCH_INDEX,
   EntityType.GOVERN,
 ];
+
+export const NON_SERVICE_TYPE_ASSETS = [
+  EntityType.GLOSSARY,
+  EntityType.GLOSSARY_TERM,
+  EntityType.CLASSIFICATION,
+  EntityType.TAG,
+  EntityType.DATA_PRODUCT,
+  EntityType.DOMAIN,
+  EntityType.TEST_CASE,
+  EntityType.TEST_SUITE,
+  EntityType.EVENT_SUBSCRIPTION,
+  EntityType.BOT,
+  EntityType.TEAM,
+  EntityType.APPLICATION,
+];

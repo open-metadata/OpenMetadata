@@ -123,6 +123,7 @@ import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.TokenRepository;
 import org.openmetadata.service.jdbi3.UserRepository;
 import org.openmetadata.service.jdbi3.UserRepository.UserCsv;
+import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.secrets.SecretsManager;
@@ -157,7 +158,8 @@ import org.openmetadata.service.util.TokenUtil;
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(
     name = "users",
-    order = 3) // Initialize user resource before bot resource (at default order 9)
+    order = 3,
+    requiredForOps = true) // Initialize user resource before bot resource (at default order 9)
 public class UserResource extends EntityResource<User, UserRepository> {
   public static final String COLLECTION_PATH = "v1/users/";
   public static final String USER_PROTECTED_FIELDS = "authenticationMechanism";
@@ -181,8 +183,9 @@ public class UserResource extends EntityResource<User, UserRepository> {
     return user;
   }
 
-  public UserResource(Authorizer authorizer, AuthenticatorHandler authenticatorHandler) {
-    super(Entity.USER, authorizer);
+  public UserResource(
+      Authorizer authorizer, Limits limits, AuthenticatorHandler authenticatorHandler) {
+    super(Entity.USER, authorizer, limits);
     jwtTokenGenerator = JWTTokenGenerator.getInstance();
     allowedFields.remove(USER_PROTECTED_FIELDS);
     tokenRepository = Entity.getTokenRepository();
@@ -547,6 +550,8 @@ public class UserResource extends EntityResource<User, UserRepository> {
       @Context ContainerRequestContext containerRequestContext,
       @Valid CreateUser create) {
     User user = getUser(securityContext.getUserPrincipal().getName(), create);
+    ResourceContext<?> resourceContext = getResourceContextByName(user.getFullyQualifiedName());
+    limits.enforceLimits(securityContext, resourceContext);
     if (Boolean.TRUE.equals(create.getIsAdmin())) {
       authorizer.authorizeAdmin(securityContext);
     }
