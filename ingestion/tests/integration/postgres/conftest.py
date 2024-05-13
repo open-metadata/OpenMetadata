@@ -1,4 +1,5 @@
 import os
+import tarfile
 import zipfile
 from subprocess import CalledProcessError
 
@@ -7,13 +8,14 @@ from testcontainers.postgres import PostgresContainer
 
 
 @pytest.fixture(scope="session")
-def postgres_container(tmp_path_factory):
-    data_dir = tmp_path_factory.mktemp("data")
+def postgres_container(tmp_path_factory, request):
+    data_dir = tmp_path_factory.mktemp(request.node.name)
     dvd_rental_zip = os.path.join(os.path.dirname(__file__), "data", "dvdrental.zip")
     zipfile.ZipFile(dvd_rental_zip, "r").extractall(str(data_dir))
+    with tarfile.open(data_dir / "dvdrental_data.tar", "w") as tar:
+        tar.add(data_dir / "dvdrental.tar", arcname="dvdrental.tar")
 
     container = PostgresContainer("postgres:15", dbname="dvdrental")
-    container.volumes = {str(data_dir): {"bind": "/data"}}
     container._command = [
         "-c",
         "shared_preload_libraries=pg_stat_statements",
@@ -25,6 +27,8 @@ def postgres_container(tmp_path_factory):
 
     with container as container:
         docker_container = container.get_wrapped_container()
+        docker_container.exec_run(["mkdir", "/data"])
+        docker_container.put_archive("/data/", open(data_dir / "dvdrental_data.tar", "rb"))
         for query in (
             "CREATE USER postgres SUPERUSER;",
             "CREATE EXTENSION pg_stat_statements;",
