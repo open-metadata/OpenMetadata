@@ -21,6 +21,12 @@ import {
   removeOwner,
 } from '../../common/Utils/Owner';
 import {
+  cleanupPolicies,
+  createRoleViaREST,
+  DATA_CONSUMER_ROLE,
+  DATA_STEWARD_ROLE,
+} from '../../common/Utils/Policy';
+import {
   addUser,
   editRole,
   generateToken,
@@ -72,6 +78,7 @@ describe('User with different Roles', { tags: 'Settings' }, () => {
     cy.login();
     cy.getAllLocalStorage().then((data) => {
       const token = getToken(data);
+      createRoleViaREST({ token });
 
       // Create a new user
       cy.request({
@@ -88,6 +95,8 @@ describe('User with different Roles', { tags: 'Settings' }, () => {
     cy.login();
     cy.getAllLocalStorage().then((data) => {
       const token = getToken(data);
+
+      cleanupPolicies({ token });
 
       // Delete created user
       cy.request({
@@ -110,7 +119,7 @@ describe('User with different Roles', { tags: 'Settings' }, () => {
   it('Create Data Consumer User', () => {
     cy.login();
     visitUserListPage();
-    addUser({ ...user, role: 'Data Consumer' });
+    addUser({ ...user, role: DATA_CONSUMER_ROLE.name });
     cy.logout();
   });
 
@@ -217,7 +226,7 @@ describe('User with different Roles', { tags: 'Settings' }, () => {
     // change role from consumer to steward
     cy.login();
     visitUserListPage();
-    editRole(user.name, 'Data Steward');
+    editRole(user.name, DATA_STEWARD_ROLE.name);
     cy.logout();
     // login to steward user
     cy.login(user.email, user.newPassword);

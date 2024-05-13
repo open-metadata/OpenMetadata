@@ -29,6 +29,8 @@ For more information on enabling the Tableau Metadata APIs follow the link [here
 
 ### Python Requirements
 
+{% partial file="/v1.4/connectors/python-requirements.md" /%}
+
 To run the Tableau ingestion, you will need to install:
 
 ```bash

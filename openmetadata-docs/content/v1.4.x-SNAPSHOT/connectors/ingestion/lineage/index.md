@@ -67,21 +67,17 @@ Note that if a Model is not materialized, its data won't be ingested.
 
 #### How to run?
 
-The main difference here is between those sources that provide internal access to query logs and those that do not. For
-services such as:
-
-- [BigQuery](/connectors/database/bigquery)
-- [Snowflake](/connectors/database/snowflake)
-- [MSSQL](/connectors/database/mssql)
-- [Redshift](/connectors/database/redshift)
-- [Clickhouse](/connectors/database/clickhouse)
-- [Postgres](/connectors/database/postgres)
-- [Databricks](/connectors/database/databricks)
-- [Oracle](/connectors/database/oracle)
+The main difference here is between those sources that provide internal access to query logs and those that do not. For services such as [BigQuery](/connectors/database/bigquery), [Snowflake](/connectors/database/snowflake) etc.
 
 There are specific workflows (Usage & Lineage) that will use the query log information. An alternative for sources not
 listed here is to run the workflow by providing the Query Logs that you have previously exported and then running
 the [workflow](/connectors/ingestion/workflows/usage/usage-workflow-query-logs).
+
+{% note %}
+
+Checkout the documentation of the connector you are using to know if it supports lineage & usage.
+
+{% \note %}
 
 #### Process
 

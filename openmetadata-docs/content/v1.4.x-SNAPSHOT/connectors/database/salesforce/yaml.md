@@ -31,6 +31,8 @@ Following are the permissions you will require to fetch the metadata from Salesf
 
 ### Python Requirements
 
+{% partial file="/v1.4/connectors/python-requirements.md" /%}
+
 To run the Salesforce ingestion, you will need to install:
 
 ```bash

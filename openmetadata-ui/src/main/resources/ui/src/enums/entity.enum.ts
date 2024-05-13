@@ -67,6 +67,7 @@ export enum EntityType {
   WEB_ANALYTIC_ENTITY_VIEW_REPORT_DATA = 'webAnalyticEntityViewReportData',
   WEB_ANALYTIC_USER_ACTIVITY_REPORT_DATA = 'webAnalyticUserActivityReportData',
   TEST_CASE_RESOLUTION_STATUS = 'test_case_resolution_status_search_index',
+  EVENT_SUBSCRIPTION = 'eventsubscription',
 }
 
 export enum AssetsType {
@@ -116,6 +117,7 @@ export enum TabSpecificField {
   SCHEDULE_INTERVAL = 'scheduleInterval',
   TESTSUITE = 'testSuite',
   VIEW_DEFINITION = 'viewDefinition',
+  SCHEMA_DEFINITION = 'schemaDefinition',
   FIELDS = 'fields',
   VOTES = 'votes',
   DOMAIN = 'domain',
@@ -131,6 +133,7 @@ export enum FqnPart {
   NestedColumn,
   Topic,
   SearchIndexField,
+  TestCase,
 }
 
 export enum EntityTabs {
@@ -142,6 +145,7 @@ export enum EntityTabs {
   LINEAGE = 'lineage',
   DBT = 'dbt',
   VIEW_DEFINITION = 'view_definition',
+  SCHEMA_DEFINITION = 'schema_definition',
   CUSTOM_PROPERTIES = 'custom_properties',
   MODEL = 'model',
   FEATURES = 'features',

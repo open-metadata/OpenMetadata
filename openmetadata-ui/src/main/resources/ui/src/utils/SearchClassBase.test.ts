@@ -27,6 +27,12 @@ import {
 import { EntityType } from '../enums/entity.enum';
 import { SearchIndex } from '../enums/search.enum';
 import { SearchClassBase } from './SearchClassBase';
+import { getTestSuiteDetailsPath, getTestSuiteFQN } from './TestSuiteUtils';
+
+jest.mock('./TestSuiteUtils', () => ({
+  getTestSuiteDetailsPath: jest.fn(),
+  getTestSuiteFQN: jest.fn(),
+}));
 
 describe('SearchClassBase', () => {
   let searchClassBase: SearchClassBase;
@@ -187,5 +193,47 @@ describe('SearchClassBase', () => {
     const dropdownItem = searchClassBase.getDropDownItems(SearchIndex.DOMAIN);
 
     expect(dropdownItem).toEqual([]);
+  });
+
+  // getEntityName
+  it('should call getTestSuiteFQN if entity type is TestSuite', () => {
+    searchClassBase.getEntityName({
+      name: 'test.testSuite',
+      displayName: 'Test.testSuite',
+      entityType: EntityType.TEST_SUITE,
+    });
+
+    expect(getTestSuiteFQN).toHaveBeenCalled();
+  });
+
+  it('should not call getTestSuiteFQN if entity type is not TestSuite', () => {
+    searchClassBase.getEntityName({
+      name: 'table',
+      displayName: 'Table',
+      entityType: EntityType.TABLE,
+    });
+
+    expect(getTestSuiteFQN).not.toHaveBeenCalled();
+  });
+
+  // getEntityLink
+  it('should call getTestSuiteDetailsPath if entity type is TestSuite', () => {
+    searchClassBase.getEntityLink({
+      fullyQualifiedName: 'test.testSuite',
+      entityType: EntityType.TEST_SUITE,
+      name: 'test',
+    });
+
+    expect(getTestSuiteDetailsPath).toHaveBeenCalled();
+  });
+
+  it('should call not getTestSuiteDetailsPath if entity type is not TestSuite', () => {
+    searchClassBase.getEntityLink({
+      fullyQualifiedName: 'test.testSuite',
+      entityType: EntityType.TABLE,
+      name: 'test',
+    });
+
+    expect(getTestSuiteDetailsPath).not.toHaveBeenCalled();
   });
 });

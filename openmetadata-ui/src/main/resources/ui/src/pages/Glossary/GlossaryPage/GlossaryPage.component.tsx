@@ -187,7 +187,7 @@ const GlossaryPage = () => {
         jsonPatch
       );
 
-      updateActiveGlossary(response);
+      updateActiveGlossary({ ...updatedData, ...response });
 
       if (activeGlossary?.name !== updatedData.name) {
         history.push(getGlossaryPath(response.fullyQualifiedName));

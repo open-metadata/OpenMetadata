@@ -37,14 +37,19 @@ public interface SearchIndex {
   default Map<String, Object> buildSearchIndexDoc() {
     Map<String, Object> esDoc = JsonUtils.getMap(getEntity());
 
+    // Non Indexable Fields
+    removeNonIndexableFields(esDoc);
+
+    // Build Index Doc
+    return this.buildSearchIndexDocInternal(esDoc);
+  }
+
+  default void removeNonIndexableFields(Map<String, Object> esDoc) {
     // Remove non indexable fields
     SearchIndexUtils.removeNonIndexableFields(esDoc, DEFAULT_EXCLUDED_FIELDS);
 
     // Remove Entity Specific Field
     SearchIndexUtils.removeNonIndexableFields(esDoc, getExcludedFields());
-
-    // Build Index Doc
-    return this.buildSearchIndexDocInternal(esDoc);
   }
 
   Object getEntity();

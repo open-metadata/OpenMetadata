@@ -220,7 +220,7 @@ class DeltaLakeUnitTest(TestCase):
             columns=expected_columns,
             tableConstraints=None,
             databaseSchema=MOCK_DATABASE_SCHEMA.fullyQualifiedName,
-            viewDefinition=None,
+            schemaDefinition=None,
         )
 
         self.assertEqual(table_request, expected_table_request)

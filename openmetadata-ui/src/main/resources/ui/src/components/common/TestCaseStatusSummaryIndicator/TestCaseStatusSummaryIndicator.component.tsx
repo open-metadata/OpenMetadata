@@ -10,21 +10,49 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Space, Typography } from 'antd';
-import { omit } from 'lodash';
-import React from 'react';
-import { NO_DATA_PLACEHOLDER } from '../../../constants/constants';
+import { Space, Tooltip, Typography } from 'antd';
+import { omit, startCase } from 'lodash';
+import Qs from 'qs';
+import React, { useMemo } from 'react';
+import { Link } from 'react-router-dom';
+import {
+  getEntityDetailsPath,
+  NO_DATA_PLACEHOLDER,
+} from '../../../constants/constants';
+import { EntityTabs, EntityType } from '../../../enums/entity.enum';
+import { useFqn } from '../../../hooks/useFqn';
+import { TableProfilerTab } from '../../Database/Profiler/ProfilerDashboard/profilerDashboard.interface';
 import TestIndicator from '../TestIndicator/TestIndicator';
 import { TestCaseStatusSummaryIndicatorProps } from './TestCaseStatusSummaryIndicator.interface';
 
 const TestCaseStatusSummaryIndicator = ({
   testCaseStatusCounts,
 }: TestCaseStatusSummaryIndicatorProps) => {
+  const { fqn } = useFqn();
+
+  const redirectPath = useMemo(
+    () => ({
+      pathname: getEntityDetailsPath(
+        EntityType.TABLE,
+        fqn,
+        EntityTabs.PROFILER
+      ),
+      search: Qs.stringify({
+        activeTab: TableProfilerTab.DATA_QUALITY,
+      }),
+    }),
+    [fqn]
+  );
+
   return testCaseStatusCounts ? (
     <Space size={16}>
       {Object.entries(omit(testCaseStatusCounts, ['entityLink', 'total'])).map(
         (test) => (
-          <TestIndicator key={test[0]} type={test[0]} value={test[1]} />
+          <Tooltip key={test[0]} title={startCase(test[0])}>
+            <Link data-testid={test[0]} to={redirectPath}>
+              <TestIndicator type={test[0]} value={test[1]} />
+            </Link>
+          </Tooltip>
         )
       )}
     </Space>

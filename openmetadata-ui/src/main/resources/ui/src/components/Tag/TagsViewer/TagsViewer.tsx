@@ -95,7 +95,7 @@ const TagsViewer: FunctionComponent<TagsViewerProps> = ({
 
   const popoverRenderElement = useMemo(
     () => (
-      <div data-testid="popover-element">
+      <div className="m-t-xs" data-testid="popover-element">
         {sortedTagsBySource.slice(sizeCap).length > 0 && (
           <Popover
             content={
@@ -137,7 +137,7 @@ const TagsViewer: FunctionComponent<TagsViewerProps> = ({
 
   return (
     <>
-      <div className="d-flex flex-wrap">
+      <div className="d-flex flex-wrap gap-2">
         {sortedTagsBySource.slice(0, sizeCap).map(getTagsElement)}
       </div>
       {displayType === DisplayType.POPOVER

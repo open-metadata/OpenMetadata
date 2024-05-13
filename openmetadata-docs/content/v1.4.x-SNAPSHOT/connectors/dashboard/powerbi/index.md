@@ -7,7 +7,7 @@ slug: /connectors/dashboard/powerbi
   name="PowerBI"
   stage="PROD"
   platform="OpenMetadata"
-  availableFeatures=["Dashboards", "Charts", "Datamodels", "Projects", "Lineage"]
+  availableFeatures=["Dashboards", "Charts", "Datamodels", "Projects", "Lineage", "Column Lineage"]
   unavailableFeatures=["Owners", "Tags"]
 / %}
 

@@ -50,6 +50,7 @@ export type EntityTypeSearchIndex = Exclude<
   | EntityType.GOVERN
   | EntityType.CUSTOM_METRIC
   | EntityType.ALL
+  | EntityType.EVENT_SUBSCRIPTION
 >;
 
 export type EntityStats = Record<EntityTypeSearchIndex, TotalRecords>;
