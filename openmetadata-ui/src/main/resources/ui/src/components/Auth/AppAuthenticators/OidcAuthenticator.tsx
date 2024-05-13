@@ -72,6 +72,7 @@ const OidcAuthenticator = forwardRef<AuthenticatorRef, Props>(
       currentUser,
       newUser,
       setOidcToken,
+      isApplicationLoading,
     } = useApplicationStore();
     const history = useHistory();
     const userManager = useMemo(
@@ -171,7 +172,8 @@ const OidcAuthenticator = forwardRef<AuthenticatorRef, Props>(
             <AppWithAuth />
           )}
         </Switch>
-        {isSigningIn && <Loader fullScreen />}
+        {/* show loader when application is loading and user is signing in*/}
+        {isApplicationLoading && isSigningIn && <Loader fullScreen />}
       </>
     );
   }

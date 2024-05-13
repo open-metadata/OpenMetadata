@@ -18,6 +18,7 @@ import { useAnalytics } from 'use-analytics';
 import { CustomEventTypes } from '../../generated/analytics/webAnalyticEventData';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
 import AppContainer from '../AppContainer/AppContainer';
+import Loader from '../common/Loader/Loader';
 import { UnAuthenticatedAppRouter } from './UnAuthenticatedAppRouter';
 
 const AppRouter = () => {
@@ -26,7 +27,7 @@ const AppRouter = () => {
   // web analytics instance
   const analytics = useAnalytics();
 
-  const { isAuthenticated } = useApplicationStore();
+  const { isAuthenticated, isApplicationLoading } = useApplicationStore();
 
   useEffect(() => {
     const { pathname } = location;
@@ -63,6 +64,17 @@ const AppRouter = () => {
 
     return () => targetNode.removeEventListener('click', handleClickEvent);
   }, [handleClickEvent]);
+
+  /**
+   * isApplicationLoading is true when the application is loading in AuthProvider
+   * and is false when the application is loaded.
+   * If the application is loading, show the loader.
+   * If the user is authenticated, show the AppContainer.
+   * If the user is not authenticated, show the UnAuthenticatedAppRouter.
+   * */
+  if (isApplicationLoading) {
+    return <Loader fullScreen />;
+  }
 
   return isAuthenticated ? <AppContainer /> : <UnAuthenticatedAppRouter />;
 };

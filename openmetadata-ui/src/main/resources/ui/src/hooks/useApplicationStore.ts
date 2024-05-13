@@ -31,6 +31,7 @@ export const OM_SESSION_KEY = 'om-session';
 export const useApplicationStore = create<ApplicationStore>()(
   persist(
     (set, get) => ({
+      isApplicationLoading: false,
       theme: getThemeConfig(),
       applicationConfig: {
         customTheme: getThemeConfig(),
@@ -79,6 +80,10 @@ export const useApplicationStore = create<ApplicationStore>()(
       },
       setIsSigningIn: (signingIn: boolean) => {
         set({ isSigningIn: signingIn });
+      },
+
+      setApplicationLoading: (loading: boolean) => {
+        set({ isApplicationLoading: loading });
       },
 
       onLoginHandler: () => {
