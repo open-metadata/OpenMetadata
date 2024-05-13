@@ -5,6 +5,7 @@ import static org.openmetadata.schema.type.Include.ALL;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import lombok.Getter;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
@@ -171,7 +172,7 @@ public abstract class EntityTimeSeriesRepository<T extends EntityTimeSeriesInter
     if (limitParam > 0) {
       List<String> jsons =
           timeSeriesDao.listWithOffset(filter, limitParam, offsetInt, startTs, endTs, latest);
-      HashMap<String, List<?>> entityListMap = getEntityList(jsons, skipErrors);
+      Map<String, List<?>> entityListMap = getEntityList(jsons, skipErrors);
       entityList = (List<T>) entityListMap.get("entityList");
       if (skipErrors) {
         errors = (List<EntityError>) entityListMap.get("errors");
@@ -193,7 +194,7 @@ public abstract class EntityTimeSeriesRepository<T extends EntityTimeSeriesInter
     String beforeOffset = getBeforeOffset(offsetInt, limitParam);
     if (limitParam > 0) {
       List<String> jsons = timeSeriesDao.listWithOffset(filter, limitParam, offsetInt);
-      HashMap<String, List<?>> entityListMap = getEntityList(jsons, skipErrors);
+      Map<String, List<?>> entityListMap = getEntityList(jsons, skipErrors);
       entityList = (List<T>) entityListMap.get("entityList");
       if (skipErrors) {
         errors = (List<EntityError>) entityListMap.get("errors");
@@ -263,11 +264,11 @@ public abstract class EntityTimeSeriesRepository<T extends EntityTimeSeriesInter
     return offset != null ? Integer.parseInt(RestUtil.decodeCursor(offset)) : 0;
   }
 
-  private HashMap<String, List<?>> getEntityList(List<String> jsons, boolean skipErrors) {
+  private Map<String, List<?>> getEntityList(List<String> jsons, boolean skipErrors) {
     List<T> entityList = new ArrayList<>();
     List<EntityError> errors = new ArrayList<>();
 
-    HashMap<String, List<?>> resultList = new HashMap<>();
+    Map<String, List<?>> resultList = new HashMap<>();
 
     for (String json : jsons) {
       try {
