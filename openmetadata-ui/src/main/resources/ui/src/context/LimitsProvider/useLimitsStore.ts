@@ -19,7 +19,7 @@ export interface ResourceLimit {
       maxVersions: number;
       disableFields: Array<string>;
       limits: {
-        sofLimit: number;
+        softLimit: number;
         hardLimit: number;
       };
     };
@@ -59,11 +59,19 @@ export type LimitConfig = {
 export const useLimitStore = create<{
   config: null | LimitConfig;
   resourceLimit: Record<string, ResourceLimit>;
+  bannerDetails: {
+    header: string;
+    subheader: string;
+  } | null;
   setConfig: (config: LimitConfig) => void;
   setResourceLimit: (resource: string, limit: ResourceLimit) => void;
+  setBannerDetails: (
+    details: { header: string; subheader: string } | null
+  ) => void;
 }>()((set, get) => ({
   config: null,
   resourceLimit: {},
+  bannerDetails: null,
 
   setConfig: (config: LimitConfig) => {
     set({ config });
@@ -72,5 +80,8 @@ export const useLimitStore = create<{
     const { resourceLimit } = get();
 
     set({ resourceLimit: { ...resourceLimit, [resource]: limit } });
+  },
+  setBannerDetails: (details: { header: string; subheader: string } | null) => {
+    set({ bannerDetails: details });
   },
 }));

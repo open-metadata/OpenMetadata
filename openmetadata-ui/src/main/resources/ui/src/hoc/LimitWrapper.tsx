@@ -51,7 +51,8 @@ const LimitWrapper = ({ resource, children }: LimitWrapperProps) => {
 
   const limitReached = currentLimits?.limitReached;
 
-  if (!config?.enable) {
+  // If limit configuration is disabled or current count is -1, then return the children
+  if (!config?.enable || currentLimits?.currentCount === -1) {
     return children;
   }
 

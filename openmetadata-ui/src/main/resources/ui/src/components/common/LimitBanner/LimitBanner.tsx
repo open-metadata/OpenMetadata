@@ -14,15 +14,20 @@
 import Icon from '@ant-design/icons';
 import { Button } from 'antd';
 import { Header } from 'antd/lib/layout/layout';
+
 import React from 'react';
+import { Link } from 'react-router-dom';
+import { useLimitStore } from '../../../context/LimitsProvider/useLimitsStore';
 import { ReactComponent as CloseIcon } from './../../../assets/svg/close.svg';
 import { ReactComponent as ExternalLinkIcon } from './../../../assets/svg/external-links.svg';
 import { ReactComponent as WarningIcon } from './../../../assets/svg/ic-warning-2.svg';
 import './limit-banner.less';
 
 export const LimitBanner = () => {
+  const { bannerDetails, setBannerDetails } = useLimitStore();
+
   return (
-    <Header hidden className="pricing-banner">
+    <Header className="pricing-banner" hidden={!bannerDetails}>
       <div className="d-flex ">
         <Icon
           className="self-center"
@@ -30,30 +35,31 @@ export const LimitBanner = () => {
           style={{ fontSize: '24px', color: '#FFAB2A' }}
         />
         <div className="p-l-sm">
-          <p className="pricing-header">
-            You’ve used 75% of your Marketing Contacts tier.
-          </p>
-          <p className="pricing-subheader">
-            If you exceed 22,000 marketing contact you will be upgraded to the
-            next contact tier and billed for the additional cost immediately.
-          </p>
+          <p className="pricing-header">{bannerDetails?.header}</p>
+          <p className="pricing-subheader">{bannerDetails?.subheader}</p>
         </div>
         <div className="m-l-sm d-flex items-end gap-2">
-          <Button size="small" type="primary">
-            View Pricing{' '}
-            <Icon component={ExternalLinkIcon} style={{ fontSize: '14px' }} />
-          </Button>
-          <Button size="small" type="default">
+          <Link to="/usage">
+            <Button size="small" type="primary">
+              View Usage{' '}
+              <Icon component={ExternalLinkIcon} style={{ fontSize: '14px' }} />
+            </Button>
+          </Link>
+          <Button
+            href="https://www.getcollate.io/"
+            size="small"
+            target="_blank"
+            type="default">
             Learn More{' '}
             <Icon component={ExternalLinkIcon} style={{ fontSize: '14px' }} />
           </Button>
         </div>
       </div>
-      {/* <CloseIcon handleCancel={() => setSoftLimitReached(false)} /> */}
       <Icon
-        className="close-btn p-0"
+        className="close-btn p-0 cursor-pointer"
         component={CloseIcon}
-        style={{ color: '#546E7A' }}
+        style={{ color: '#546E7A', fontSize: '16px' }}
+        onClick={() => setBannerDetails(null)}
       />
     </Header>
   );

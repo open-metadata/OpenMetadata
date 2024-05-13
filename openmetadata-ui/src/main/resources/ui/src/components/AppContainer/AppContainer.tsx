@@ -40,7 +40,7 @@ const AppContainer = () => {
   const AuthenticatedRouter = applicationRoutesClass.getRouteElements();
   const ApplicationExtras = applicationsClassBase.getApplicationExtension();
   const isDirectionRTL = useMemo(() => i18n.dir() === 'rtl', [i18n]);
-  const { setConfig } = useLimitStore();
+  const { setConfig, bannerDetails } = useLimitStore();
 
   const fetchLimitConfig = useCallback(async () => {
     const response = await getLimitConfig();
@@ -56,9 +56,12 @@ const AppContainer = () => {
   }, [currentUser?.id]);
 
   return (
-    <Layout className="app-container">
+    <Layout>
       <LimitBanner />
-      <Layout>
+      <Layout
+        className={classNames('app-container', {
+          ['extra-banner']: Boolean(bannerDetails),
+        })}>
         <Sider
           className={classNames('left-sidebar-col', {
             'left-sidebar-col-rtl': isDirectionRTL,
