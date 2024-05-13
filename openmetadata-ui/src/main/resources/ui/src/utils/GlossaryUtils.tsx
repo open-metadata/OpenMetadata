@@ -148,17 +148,23 @@ export const getGlossaryBreadcrumbs = (fqn: string) => {
   return breadcrumbList;
 };
 
+// This function finds and gives you the glossary term you're looking for.
+// You can then use this term or update its information in the Glossary or Term with it's reference created
+// Reference will only be created if withReference is true
 export const findGlossaryTermByFqn = (
   list: ModifiedGlossaryTerm[],
-  fullyQualifiedName: string
+  fullyQualifiedName: string,
+  withReference = true
 ): GlossaryTerm | Glossary | ModifiedGlossary | null => {
   for (const item of list) {
     if ((item.fullyQualifiedName ?? item.value) === fullyQualifiedName) {
-      return {
-        ...item,
-        fullyQualifiedName: item.fullyQualifiedName ?? item.data?.tagFQN,
-        ...(item.data ?? {}),
-      };
+      return withReference
+        ? item
+        : {
+            ...item,
+            fullyQualifiedName: item.fullyQualifiedName ?? item.data?.tagFQN,
+            ...(item.data ?? {}),
+          };
     }
     if (item.children) {
       const found = findGlossaryTermByFqn(
