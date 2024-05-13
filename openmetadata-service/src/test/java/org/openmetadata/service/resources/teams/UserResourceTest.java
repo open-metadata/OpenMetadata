@@ -1098,10 +1098,7 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
     CsvImportResult result = importCsv(team.getName(), csv, false);
     assertSummary(result, ApiStatus.FAILURE, 2, 1, 1);
     String[] expectedRows = {
-      resultsHeader,
-      getFailedRecord(
-          record,
-          "[name must match \"^((?!::).)*$\", Name should be equal to the email prefix (before `@`)]")
+      resultsHeader, getFailedRecord(record, "[name must match \"^((?!::).)*$\"]")
     };
 
     assertRows(result, expectedRows);

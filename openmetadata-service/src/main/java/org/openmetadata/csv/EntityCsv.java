@@ -437,9 +437,17 @@ public abstract class EntityCsv<T extends EntityInterface> {
           Arrays.asList(violations.substring(1, violations.length() - 1).split(", ")));
     }
 
-    String customUserNameEmailViolation = ValidatorUtil.validateUserNameWithEmailPrefix(csvRecord);
-    if (!customUserNameEmailViolation.isEmpty()) {
-      violationList.add(customUserNameEmailViolation);
+    String userNameEmailViolation = "";
+
+    if (violations == null || violations.isEmpty()) {
+      userNameEmailViolation = ValidatorUtil.validateUserNameWithEmailPrefix(csvRecord);
+    } else if (!violations.contains("name must match \"^((?!::).)*$\"")
+        && !violations.contains("email must be a well-formed email address")) {
+      userNameEmailViolation = ValidatorUtil.validateUserNameWithEmailPrefix(csvRecord);
+    }
+
+    if (!userNameEmailViolation.isEmpty()) {
+      violationList.add(userNameEmailViolation);
     }
 
     if (!violationList.isEmpty()) {
