@@ -825,15 +825,7 @@ export const getFeedHeaderTextFromCardStyle = (
         );
       }
 
-      return (
-        <Transi18next
-          i18nKey="message.feed-asset-action-header"
-          renderElement={<Typography.Text className="font-bold" />}
-          values={{
-            action: getActionLabelFromCardStyle(cardStyle),
-          }}
-        />
-      );
+      return getActionLabelFromCardStyle(cardStyle);
 
     case CardStyle.Default:
     default:
