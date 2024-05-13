@@ -41,7 +41,10 @@ def get_connection_url(connection: Union[AzureSQLConnection, MssqlConnection]) -
     Build the connection URL
     """
 
-    if connection.authenticationMode:
+    if (
+        hasattr(connection.authenticationMode, "authentication")
+        and connection.authenticationMode.authentication is not None
+    ):
         connection_string = f"Driver={connection.driver};Server={connection.hostPort};Database={connection.database};"
         connection_string += f"Uid={connection.username};"
         if (
