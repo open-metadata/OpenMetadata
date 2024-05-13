@@ -134,7 +134,13 @@ export interface TestSuiteSearchSource extends SearchSourceBase, TestSuite {}
 
 export interface TestCaseResolutionStatusSearchSource
   extends SearchSourceBase,
-    TestCaseResolutionStatus {}
+    TestCaseResolutionStatus {
+  name: string;
+  displayName: string;
+  fullyQualifiedName: string;
+  serviceType: string;
+  description: string;
+}
 
 export interface IngestionPipelineSearchSource
   extends SearchSourceBase,
@@ -224,7 +230,6 @@ export type SearchIndexSearchSourceMapping = {
   [SearchIndex.DATA_PRODUCT]: DataProductSearchSource;
   [SearchIndex.TEST_SUITE]: TestSuiteSearchSource;
   [SearchIndex.INGESTION_PIPELINE]: IngestionPipelineSearchSource;
-  [SearchIndex.TEST_CASE_RESOLUTION_STATUS]: TestCaseResolutionStatusSearchSource;
 };
 
 export type SearchRequest<
