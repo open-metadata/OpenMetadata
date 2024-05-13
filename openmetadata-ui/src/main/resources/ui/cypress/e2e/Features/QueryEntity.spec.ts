@@ -209,11 +209,6 @@ describe('Query Entity', { tags: 'DataAssets' }, () => {
   });
 
   it('Verify query filter', () => {
-    interceptURL(
-      'GET',
-      '/api/v1/search/query?*index=tag_search_index*',
-      'searchTag'
-    );
     visitEntityDetailsPage({
       term: DATA.term,
       serviceName: DATA.serviceName,
@@ -224,15 +219,10 @@ describe('Query Entity', { tags: 'DataAssets' }, () => {
     const userName = `${user.firstName}${user.lastName}`;
     interceptURL(
       'GET',
-      `/api/v1/search/query?*${Cypress.$.escapeSelector(
+      `/api/v1/search/query?*${encodeURI(
         userName
       )}*index=user_search_index,team_search_index*`,
       'searchUserName'
-    );
-    cy.log(
-      `/api/v1/search/query?*${Cypress.$.escapeSelector(
-        userName
-      )}*index=user_search_index,team_search_index*`
     );
     queryFilters({
       filter: `${user.firstName}${user.lastName}`,
@@ -246,27 +236,32 @@ describe('Query Entity', { tags: 'DataAssets' }, () => {
       )}*index=user_search_index,team_search_index*`,
       'searchOwner'
     );
-    cy.log(
-      `/api/v1/search/query?*${encodeURI(
-        DATA.owner
-      )}*index=user_search_index,team_search_index*`
-    );
     cy.get('[data-testid="no-data-placeholder"]').should('be.visible');
     queryFilters({
       filter: DATA.owner,
       apiKey: '@searchOwner',
       key: 'Owner',
     });
+    interceptURL(
+      'GET',
+      '/api/v1/search/query?*None*index=tag_search_index*',
+      'noneTagSearch'
+    );
     cy.get('[data-testid="query-card"]').should('have.length.above', 0);
     queryFilters({
       filter: 'None',
-      apiKey: '@searchTag',
+      apiKey: '@noneTagSearch',
       key: 'Tag',
     });
+    interceptURL(
+      'GET',
+      `/api/v1/search/query?*${DATA.tag}*index=tag_search_index*`,
+      'personalTagSearch'
+    );
     cy.get('[data-testid="no-data-placeholder"]').should('be.visible');
     queryFilters({
       filter: DATA.tag,
-      apiKey: '@searchTag',
+      apiKey: '@personalTagSearch',
       key: 'Tag',
     });
     cy.get('[data-testid="query-card"]').should('have.length.above', 0);
