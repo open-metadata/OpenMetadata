@@ -354,7 +354,7 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
             ) : (
               <Table
                 bordered
-                className={className}
+                className={classNames('align-table-filter-left', className)}
                 columns={columns}
                 data-testid="topic-schema-fields-table"
                 dataSource={messageSchema?.schemaFields}

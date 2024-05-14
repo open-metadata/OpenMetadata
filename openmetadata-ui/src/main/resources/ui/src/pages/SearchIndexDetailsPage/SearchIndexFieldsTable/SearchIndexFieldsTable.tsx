@@ -13,12 +13,20 @@
 
 import { Tooltip, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
-import { cloneDeep, isEmpty, isUndefined, toLower } from 'lodash';
-import { EntityTags } from 'Models';
+import {
+  cloneDeep,
+  groupBy,
+  isEmpty,
+  isUndefined,
+  toLower,
+  uniqBy,
+} from 'lodash';
+import { EntityTags, TagFilterOptions } from 'Models';
 import React, { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import FilterTablePlaceHolder from '../../../components/common/ErrorWithPlaceholder/FilterTablePlaceHolder';
 import Table from '../../../components/common/Table/Table';
+import { ColumnFilter } from '../../../components/Database/ColumnFilter/ColumnFilter.component';
 import TableDescription from '../../../components/Database/TableDescription/TableDescription.component';
 import TableTags from '../../../components/Database/TableTags/TableTags.component';
 import { ModalWithMarkdownEditor } from '../../../components/Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
@@ -30,6 +38,10 @@ import { TagSource } from '../../../generated/type/schema';
 import { TagLabel } from '../../../generated/type/tagLabel';
 import { getEntityName } from '../../../utils/EntityUtils';
 import { makeData } from '../../../utils/SearchIndexUtils';
+import {
+  getAllTags,
+  searchTagInData,
+} from '../../../utils/TableTags/TableTags.utils';
 import {
   updateFieldDescription,
   updateFieldTags,
@@ -57,6 +69,15 @@ const SearchIndexFieldsTable = ({
   }>();
 
   const data = React.useMemo(() => makeData(searchedFields), [searchedFields]);
+
+  const tagFilter = useMemo(() => {
+    const tags = getAllTags(data ?? []);
+
+    return groupBy(uniqBy(tags, 'value'), (tag) => tag.source) as Record<
+      TagSource,
+      TagFilterOptions[]
+    >;
+  }, [data]);
 
   const handleEditField = useCallback(
     (field: SearchIndexField, index: number) => {
@@ -202,6 +223,9 @@ const SearchIndexFieldsTable = ({
         key: 'tags',
         accessor: 'tags',
         width: 250,
+        filters: tagFilter.Classification,
+        filterDropdown: ColumnFilter,
+        onFilter: searchTagInData,
         render: (tags: TagLabel[], record: SearchIndexField, index: number) => (
           <TableTags<SearchIndexField>
             entityFqn={entityFqn}
@@ -220,9 +244,12 @@ const SearchIndexFieldsTable = ({
       {
         title: t('label.glossary-term-plural'),
         dataIndex: 'tags',
-        key: 'tags',
+        key: 'glossary',
         accessor: 'tags',
         width: 250,
+        filters: tagFilter.Glossary,
+        filterDropdown: ColumnFilter,
+        onFilter: searchTagInData,
         render: (tags: TagLabel[], record: SearchIndexField, index: number) => (
           <TableTags<SearchIndexField>
             entityFqn={entityFqn}
@@ -249,6 +276,7 @@ const SearchIndexFieldsTable = ({
       renderDescription,
       handleTagSelection,
       onThreadLinkSelect,
+      tagFilter,
     ]
   );
 
@@ -256,7 +284,7 @@ const SearchIndexFieldsTable = ({
     <>
       <Table
         bordered
-        className="m-b-sm"
+        className="m-b-sm align-table-filter-left"
         columns={fields}
         data-testid="search-index-fields-table"
         dataSource={data}

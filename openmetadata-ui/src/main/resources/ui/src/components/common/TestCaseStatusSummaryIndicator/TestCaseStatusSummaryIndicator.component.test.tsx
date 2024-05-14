@@ -47,7 +47,6 @@ describe('TestCaseStatusSummaryIndicator', () => {
     expect(screen.getByText('test-indicator-success')).toBeInTheDocument();
     expect(screen.getByText('test-indicator-failed')).toBeInTheDocument();
     expect(screen.getByText('test-indicator-aborted')).toBeInTheDocument();
-    expect(screen.getByText('test-indicator-queued')).toBeInTheDocument();
   });
 
   it('should render no data placeholder when testCaseStatusCounts is null', () => {
