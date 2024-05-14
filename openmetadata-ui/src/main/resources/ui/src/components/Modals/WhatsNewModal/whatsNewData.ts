@@ -1353,6 +1353,13 @@ export const WHATS_NEW = [
     description: 'Released on 21st May 2024.',
     features: [
       {
+        title: 'Automator',
+        description:
+          'We have introduced Automator to easily maintain high-quality metadata at scale. The Automator streamlines governance processes from ownership assignments to tagging, ensuring compliance and consistency. We have added support for the following actions: adding and removing owner, tier, domain, tags, glossary terms and descriptions, ML PII tagging, and propagation of tags and glossary terms through lineage.',
+        isImage: false,
+        path: 'https://www.youtube.com/embed/i2K492g7g8I',
+      },
+      {
         title: 'Bulk Upload Data Assets',
         description:
           'We have added support for bulk uploading data assets. Users can bulk upload database, schema, and table entities from a CSV file for quick edition or creation. The inline editor helps to validate and update the data assets before importing. Save time by bulk uploading data assets.',
