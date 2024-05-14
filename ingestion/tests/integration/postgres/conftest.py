@@ -8,8 +8,8 @@ from testcontainers.postgres import PostgresContainer
 
 
 @pytest.fixture(scope="session")
-def postgres_container(tmp_path_factory, request):
-    data_dir = tmp_path_factory.mktemp(request.node.name)
+def postgres_container(tmp_path_factory):
+    data_dir = tmp_path_factory.mktemp("data")
     dvd_rental_zip = os.path.join(os.path.dirname(__file__), "data", "dvdrental.zip")
     zipfile.ZipFile(dvd_rental_zip, "r").extractall(str(data_dir))
     with tarfile.open(data_dir / "dvdrental_data.tar", "w") as tar:
