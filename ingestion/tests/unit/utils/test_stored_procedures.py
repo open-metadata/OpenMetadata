@@ -91,8 +91,6 @@ class StoredProceduresTests(TestCase):
             "procedure_name",
         )
 
-        
-
         self.assertIsNone(
             get_procedure_name_from_call(
                 query_text="something very random",
