@@ -76,6 +76,7 @@ import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
+import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.ResultList;
 
@@ -927,8 +928,13 @@ public class TableResource extends EntityResource<Table, TableRepository> {
           Long endTs) {
     OperationContext operationContext =
         new OperationContext(entityType, MetadataOperation.VIEW_DATA_PROFILE);
-    authorizer.authorize(securityContext, operationContext, getResourceContextByName(fqn));
-    return repository.getColumnProfiles(fqn, startTs, endTs);
+    String tableFqn =
+        FullyQualifiedName.getTableFQN(
+            fqn); // get table fqn for the resource context (vs column fqn)
+    ResourceContext<?> resourceContext = getResourceContextByName(tableFqn);
+    authorizer.authorize(securityContext, operationContext, resourceContext);
+    boolean authorizePII = authorizer.authorizePII(securityContext, resourceContext.getOwner());
+    return repository.getColumnProfiles(fqn, startTs, endTs, authorizePII);
   }
 
   @GET

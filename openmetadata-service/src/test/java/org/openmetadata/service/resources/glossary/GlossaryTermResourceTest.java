@@ -436,6 +436,31 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
     GlossaryTerm g2t4Updated = patchEntity(g2t4.getId(), json2, g2t4, authHeaders(USER1.getName()));
     assertEquals(Status.REJECTED, g2t4Updated.getStatus());
     assertApprovalTask(g2t4, TaskStatus.Closed); // The Request Approval task is closed
+
+    // Creating a glossary term g2t5 should be in `Draft` mode (because glossary has reviewers)
+    // adding a new reviewer should add the person as assignee to the task
+
+    GlossaryTerm g2t5 = createTerm(glossary2, null, "g2t5");
+    assertEquals(Status.DRAFT, g2t5.getStatus());
+    assertApprovalTask(g2t5, TaskStatus.Open); // A Request Approval task is opened
+
+    String origJson = JsonUtils.pojoToJson(g2t5);
+
+    // Add reviewer DATA_CONSUMER  in PATCH request
+    g2t5.withReviewers(List.of(DATA_CONSUMER_REF, USER1_REF, USER2_REF));
+
+    ChangeDescription change = getChangeDescription(g2t5, MINOR_UPDATE);
+    fieldAdded(change, "reviewers", List.of(DATA_CONSUMER_REF));
+    g2t5 = patchEntityUsingFqnAndCheck(g2t5, origJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
+
+    Thread approvalTask1 =
+        assertApprovalTask(g2t5, TaskStatus.Open); // A Request Approval task is opened
+
+    // adding the reviewer should add the person as assignee to the task
+    assertTrue(
+        approvalTask1.getTask().getAssignees().stream()
+            .anyMatch(assignee -> assignee.getId().equals(DATA_CONSUMER_REF.getId())),
+        "The list of assignees does not contain the expected ID: " + DATA_CONSUMER_REF.getId());
   }
 
   @Test
