@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 // eslint-disable-next-line spaced-comment
+import { interceptURL, verifyResponseStatusCode } from '../../common/common';
 import UsersTestClass from '../../common/Entities/UserClass';
 import { visitEntityDetailsPage } from '../../common/Utils/Entity';
 import { getToken } from '../../common/Utils/LocalStorage';
@@ -20,10 +21,10 @@ import {
   removeOwner,
 } from '../../common/Utils/Owner';
 import {
-  DATA_CONSUMER_ROLE,
-  DATA_STEWARD_ROLE,
   cleanupPolicies,
   createRoleViaREST,
+  DATA_CONSUMER_ROLE,
+  DATA_STEWARD_ROLE,
 } from '../../common/Utils/Policy';
 import {
   addUser,
@@ -35,8 +36,6 @@ import {
   updateExpiration,
   visitUserListPage,
 } from '../../common/Utils/Users';
-import { interceptURL, verifyResponseStatusCode } from '../../common/common';
-import { EntityType, SidebarItem } from '../../constants/Entity.interface';
 import {
   BASE_URL,
   DELETE_ENTITY,
@@ -44,6 +43,7 @@ import {
   ID,
   uuid,
 } from '../../constants/constants';
+import { EntityType, SidebarItem } from '../../constants/Entity.interface';
 import {
   GlobalSettingOptions,
   SETTINGS_OPTIONS_PATH,
