@@ -395,7 +395,7 @@ const SchemaTable = ({
         key: 'dataTypeDisplay',
         accessor: 'dataTypeDisplay',
         ellipsis: true,
-        width: 180,
+        width: 150,
         render: renderDataTypeDisplay,
       },
       {
@@ -403,7 +403,7 @@ const SchemaTable = ({
         dataIndex: 'description',
         key: 'description',
         accessor: 'description',
-        width: 320,
+        width: 300,
         render: renderDescription,
       },
       {
@@ -411,7 +411,7 @@ const SchemaTable = ({
         dataIndex: 'tags',
         key: 'tags',
         accessor: 'tags',
-        width: 250,
+        width: 230,
         filterIcon: (filtered: boolean) => (
           <FilterOutlined
             data-testid="tag-filter"
@@ -443,7 +443,7 @@ const SchemaTable = ({
         dataIndex: 'tags',
         key: 'glossary',
         accessor: 'tags',
-        width: 250,
+        width: 230,
         filterIcon: (filtered) => (
           <FilterOutlined
             data-testid="glossary-filter"
@@ -471,10 +471,10 @@ const SchemaTable = ({
         onFilter: searchTagInData,
       },
       {
-        title: t('label.data-quality-test-plural'),
+        title: t('label.data-quality'),
         dataIndex: 'dataQualityTest',
         key: 'dataQualityTest',
-        width: 170,
+        width: 120,
         render: (_, record) => {
           const testCounts = testCaseCounts.find((column) => {
             return isEqual(
@@ -530,7 +530,7 @@ const SchemaTable = ({
     <>
       <Table
         bordered
-        className="m-b-sm"
+        className="m-b-sm align-table-filter-left"
         columns={columns}
         data-testid="entity-table"
         dataSource={data}
