@@ -97,7 +97,7 @@ const TreeAsyncSelectList: FC<Omit<AsyncSelectListProps, 'fetchOptions'>> = ({
         <Button
           className="update-btn"
           data-testid="saveAssociatedTag"
-          disabled={isEmpty(selectedTagsRef.current)}
+          disabled={isEmpty(glossaries)}
           htmlType="submit"
           loading={isSubmitLoading}
           size="small"
