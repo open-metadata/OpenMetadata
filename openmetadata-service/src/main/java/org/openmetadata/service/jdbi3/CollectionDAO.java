@@ -3760,8 +3760,24 @@ public interface CollectionDAO {
     List<String> listAppRunRecord(
         @Bind("appId") String appId, @Bind("limit") int limit, @Bind("offset") int offset);
 
+    @SqlQuery(
+        "SELECT json FROM apps_extension_time_series where appId = :appId AND timestamp > :startTime ORDER BY timestamp DESC LIMIT :limit OFFSET :offset")
+    List<String> listAppRunRecordAfterTime(
+        @Bind("appId") String appId,
+        @Bind("limit") int limit,
+        @Bind("offset") int offset,
+        @Bind("startTime") long startTime);
+
     default String getLatestAppRun(UUID appId) {
       List<String> result = listAppRunRecord(appId.toString(), 1, 0);
+      if (!nullOrEmpty(result)) {
+        return result.get(0);
+      }
+      return null;
+    }
+
+    default String getLatestAppRun(UUID appId, long startTime) {
+      List<String> result = listAppRunRecordAfterTime(appId.toString(), 1, 0, startTime);
       if (!nullOrEmpty(result)) {
         return result.get(0);
       }
