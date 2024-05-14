@@ -4,7 +4,6 @@ import static org.openmetadata.schema.type.EventType.ENTITY_CREATED;
 import static org.openmetadata.schema.type.EventType.ENTITY_DELETED;
 import static org.openmetadata.schema.type.EventType.ENTITY_UPDATED;
 
-import java.net.URI;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -253,7 +252,8 @@ public class SystemRepository {
 
     validation.setDatabase(getDatabaseValidation(applicationConfig));
     validation.setSearchInstance(getSearchValidation(applicationConfig));
-    validation.setPipelineServiceClient(getPipelineServiceClientValidation(applicationConfig, pipelineServiceClient));
+    validation.setPipelineServiceClient(
+        getPipelineServiceClientValidation(applicationConfig, pipelineServiceClient));
     validation.setJwks(getJWKsValidation(applicationConfig, jwtFilter));
     validation.setMigrations(getMigrationValidation(migrationValidationClient));
 
@@ -263,11 +263,11 @@ public class SystemRepository {
   private StepValidation getDatabaseValidation(OpenMetadataApplicationConfig applicationConfig) {
     try {
       dao.testConnection();
-      URI dbUrl = URI.create(applicationConfig.getDataSourceFactory().getUrl());
       return new StepValidation()
           .withDescription(ValidationStepDescription.DATABASE.key)
           .withPassed(Boolean.TRUE)
-          .withMessage(String.format("Connected to %s", dbUrl.getHost()));
+          .withMessage(
+              String.format("Connected to %s", applicationConfig.getDataSourceFactory().getUrl()));
     } catch (Exception exc) {
       return new StepValidation()
           .withDescription(ValidationStepDescription.DATABASE.key)
@@ -283,7 +283,9 @@ public class SystemRepository {
       return new StepValidation()
           .withDescription(ValidationStepDescription.SEARCH.key)
           .withPassed(Boolean.TRUE)
-          .withMessage(String.format("Connected to %s", applicationConfig.getElasticSearchConfiguration().getHost()));
+          .withMessage(
+              String.format(
+                  "Connected to %s", applicationConfig.getElasticSearchConfiguration().getHost()));
     } else {
       return new StepValidation()
           .withDescription(ValidationStepDescription.SEARCH.key)
@@ -300,7 +302,11 @@ public class SystemRepository {
       return new StepValidation()
           .withDescription(ValidationStepDescription.PIPELINE_SERVICE_CLIENT.key)
           .withPassed(Boolean.TRUE)
-          .withMessage(String.format("%s is available at %s", pipelineServiceClient.getPlatform(), applicationConfig.getPipelineServiceClientConfiguration().getApiEndpoint()));
+          .withMessage(
+              String.format(
+                  "%s is available at %s",
+                  pipelineServiceClient.getPlatform(),
+                  applicationConfig.getPipelineServiceClientConfiguration().getApiEndpoint()));
     } else {
       return new StepValidation()
           .withDescription(ValidationStepDescription.PIPELINE_SERVICE_CLIENT.key)
