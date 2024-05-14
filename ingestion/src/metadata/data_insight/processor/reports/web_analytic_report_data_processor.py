@@ -18,6 +18,7 @@ from __future__ import annotations
 import re
 from collections import namedtuple
 from typing import Generator, Iterable, Optional
+
 from pydantic import ValidationError
 
 from metadata.data_insight.processor.reports.data_processor import DataProcessor
