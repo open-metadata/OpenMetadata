@@ -53,7 +53,6 @@ import org.openmetadata.service.apps.ApplicationHandler;
 import org.openmetadata.service.apps.scheduler.AppScheduler;
 import org.openmetadata.service.clients.pipeline.PipelineServiceClientFactory;
 import org.openmetadata.service.exception.EntityNotFoundException;
-import org.openmetadata.service.exception.UnhandledServerException;
 import org.openmetadata.service.fernet.Fernet;
 import org.openmetadata.service.jdbi3.AppRepository;
 import org.openmetadata.service.jdbi3.CollectionDAO;
@@ -341,7 +340,7 @@ public class OpenMetadataOperations implements Callable<Integer> {
                   getValueOrUnavailable(appRunRecord.getFailureContext())));
           printToAsciiTable(columns, rows, "Failed to run Search Reindexing");
         }
-      } catch (UnhandledServerException ignored) {
+      } catch (Exception ignored) {
       }
       LOG.info(
           "Reindexing Status not available yet, waiting for 10 seconds to fetch the status again.");
