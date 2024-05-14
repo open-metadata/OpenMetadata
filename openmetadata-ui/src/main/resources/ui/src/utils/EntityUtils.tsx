@@ -1381,6 +1381,10 @@ export const getEntityLinkFromType = (
         AlertType.Observability
         ? getObservabilityAlertDetailsPath(fullyQualifiedName)
         : getNotificationAlertDetailsPath(fullyQualifiedName);
+    case EntityType.ROLE:
+      return getRoleWithFqnPath(fullyQualifiedName);
+    case EntityType.POLICY:
+      return getPolicyWithFqnPath(fullyQualifiedName);
     case EntityType.PERSONA:
       return getPersonaDetailsPath(fullyQualifiedName);
     default:

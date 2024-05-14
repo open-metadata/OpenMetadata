@@ -44,6 +44,9 @@ import {
   getIncidentManagerDetailPagePath,
   getNotificationAlertDetailsPath,
   getObservabilityAlertDetailsPath,
+  getPersonaDetailsPath,
+  getPolicyWithFqnPath,
+  getRoleWithFqnPath,
   getSettingPath,
   getTeamsWithFqnPath,
 } from './RouterUtils';
@@ -212,6 +215,15 @@ class EntityUtilClassBase {
         return isObservabilityAlert
           ? getObservabilityAlertDetailsPath(fullyQualifiedName)
           : getNotificationAlertDetailsPath(fullyQualifiedName);
+
+      case EntityType.ROLE:
+        return getRoleWithFqnPath(fullyQualifiedName);
+
+      case EntityType.POLICY:
+        return getPolicyWithFqnPath(fullyQualifiedName);
+
+      case EntityType.PERSONA:
+        return getPersonaDetailsPath(fullyQualifiedName);
 
       case SearchIndex.TABLE:
       case EntityType.TABLE:

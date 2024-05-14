@@ -17,7 +17,7 @@ import { AxiosError } from 'axios';
 import { Operation } from 'fast-json-patch';
 import i18next from 'i18next';
 import { isEqual, isUndefined, lowerCase } from 'lodash';
-import React from 'react';
+import React, { ReactNode } from 'react';
 import ReactDOM from 'react-dom';
 import Showdown from 'showdown';
 import TurndownService from 'turndown';
@@ -735,7 +735,7 @@ const getActionLabelFromCardStyle = (
   cardStyle?: CardStyle,
   isApplication?: boolean
 ) => {
-  let action: string | JSX.Element = isApplication
+  let action: ReactNode = isApplication
     ? i18next.t('label.installed-lowercase')
     : i18next.t('label.added-lowercase');
 
