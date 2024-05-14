@@ -347,7 +347,8 @@ class SearchClassBase {
     if (entity.fullyQualifiedName && entity.entityType) {
       return getEntityLinkFromType(
         entity.fullyQualifiedName,
-        entity.entityType as EntityType
+        entity.entityType as EntityType,
+        entity
       );
     }
 

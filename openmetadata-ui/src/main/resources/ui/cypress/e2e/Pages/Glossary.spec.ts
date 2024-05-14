@@ -1244,6 +1244,7 @@ describe('Glossary page should work properly', { tags: 'Governance' }, () => {
 
     const parentTerm = CYPRESS_ASSETS_GLOSSARY_TERMS.term_1;
     const childTerm = CYPRESS_ASSETS_GLOSSARY_TERMS.term_2;
+    selectActiveGlossary(CYPRESS_ASSETS_GLOSSARY.name);
     cy.get('[data-testid="expand-collapse-all-button"]').click();
     visitGlossaryTermPage(childTerm.name, childTerm.fullyQualifiedName, true);
 
@@ -1260,9 +1261,7 @@ describe('Glossary page should work properly', { tags: 'Governance' }, () => {
     verifyResponseStatusCode('@saveGlossaryTermData', 200);
     verifyResponseStatusCode('@fetchGlossaryTermData', 200);
 
-    /**
-     * Todo: Enable this once this asset issue is resolve https://github.com/open-metadata/OpenMetadata/issues/15809
-     */
+    // Todo: Need to fix this @Ashish8689
     // cy.get('[data-testid="assets"] [data-testid="filter-count"]')
     //   .should('be.visible')
     //   .contains('3');
@@ -1288,6 +1287,7 @@ describe('Glossary page should work properly', { tags: 'Governance' }, () => {
     const newTermHierarchy = `${Cypress.$.escapeSelector(
       CYPRESS_ASSETS_GLOSSARY.name
     )}.${parentTerm.name}.${childTerm.name}`;
+    selectActiveGlossary(CYPRESS_ASSETS_GLOSSARY.name);
     cy.get('[data-testid="expand-collapse-all-button"]').click();
     // verify the term is moved under the parent term
     cy.get(`[data-row-key='${newTermHierarchy}']`).should('be.visible');
@@ -1318,8 +1318,14 @@ describe('Glossary page should work properly', { tags: 'Governance' }, () => {
       NEW_GLOSSARY_TERMS.term_2.name,
       NEW_GLOSSARY_TERMS.term_1.name
     );
-    // verify the term is moved under the parent term
-    cy.get('[data-testid="expand-collapse-all-button"]').click();
+
+    // clicking on the expand icon to view the child term
+    cy.get(
+      `[data-row-key=${Cypress.$.escapeSelector(
+        NEW_GLOSSARY_TERMS.term_1.fullyQualifiedName
+      )}] [data-testid="expand-icon"] > svg`
+    ).click();
+
     cy.get(
       `.ant-table-row-level-1[data-row-key="${Cypress.$.escapeSelector(
         NEW_GLOSSARY_TERMS.term_1.fullyQualifiedName
