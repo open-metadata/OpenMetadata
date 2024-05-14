@@ -50,7 +50,6 @@ export const verifyResponseStatusCode = (
   option?: Partial<WaitOptions>,
   hasMultipleResponseCode = false
 ) => {
-  cy.log(alias);
   if (hasMultipleResponseCode) {
     return cy
       .wait(alias, option)

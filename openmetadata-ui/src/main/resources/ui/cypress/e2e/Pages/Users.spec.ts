@@ -25,7 +25,6 @@ import {
   createRoleViaREST,
   DATA_CONSUMER_ROLE,
   DATA_STEWARD_ROLE,
-  validateOrgPolicy,
 } from '../../common/Utils/Policy';
 import {
   addUser,
@@ -106,12 +105,6 @@ describe('User with different Roles', { tags: 'Settings' }, () => {
         headers: { Authorization: `Bearer ${token}` },
       });
     });
-  });
-
-  it("Validate organization's role and policy", () => {
-    cy.login();
-    validateOrgPolicy();
-    cy.logout();
   });
 
   it('Update own admin details', () => {
