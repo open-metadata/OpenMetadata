@@ -1351,8 +1351,57 @@ export const WHATS_NEW = [
     id: 25,
     version: 'v1.4.0',
     description: 'Released on 15th May 2024.',
-    features: [],
+    features: [
+      {
+        title: 'Column Lineage Search',
+        description:
+          'In the OpenMetadata 1.4 Release, you can search lineage by column names. You can accurately trace the upstream and downstream nodes by column. OpenMetadata helps you to easily trace and visualize how data is transformed and where it is used in your organization.',
+        isImage: false,
+        path: 'https://www.youtube.com/embed/KZdVb8DiHJs',
+      },
+      {
+        title: 'Custom Properties',
+        description:
+          'OpenMetadata has been empowering users to enrich the data assets by extending their attributes with custom properties. Custom Properties now allow linking other assets in the platform, such as Tables, Dashboards, etc. To enable this, create a Custom Property as an Entity Reference or Entity Reference List.',
+        isImage: false,
+        path: 'https://www.youtube.com/embed/lZoSeKkErBk',
+      },
+      {
+        title: 'Custom Theme',
+        description:
+          "OpenMetadata previously supported uploading your company logo, monogram, and favicon to customize the platform's appearance according to your brand identity. Now, you can take it a step further by customizing the theme with colors that perfectly align with your company's branding.",
+        isImage: false,
+        path: 'https://www.youtube.com/embed/-NiU1flBHs0',
+      },
+      {
+        title: 'Data Quality Filter',
+        description:
+          'In the OpenMetadata 1.4 Release, the data quality filters have been improved. Now you have additional filtering options for test suites and test cases.',
+        isImage: false,
+        path: 'https://www.youtube.com/embed/UNOHvBMVcYM',
+      },
+    ],
     changeLogs: {
+      ['Backward Incompatible Changes']: `     
+Tooling:
+-   Metadata Backup/Recovery is deprecated. No further support will be provided.
+-   Users are advised to use database native tools to backup and store it in their object store for recovery.
+-   bootstrap/bootstrap_storage.sh has been deprecated in favor of bootstrap/openmetadata-ops.sh
+
+UI:
+
+-   Activity has been improved. New update specific cards display critical information such as data quality test case updates, description, tag update or removal.
+-   For Lineage, the Expand All button has been removed. A new Layers button is introduced at the bottom left corner. With the Layers button, you can add Column Level Lineage or Data Observability details to your Lineage view.
+-   View Definition is now renamed to Schema Definition.
+-   Adding Glossary Term view is improved. Now we show glossary terms hierarchically enabling a better understanding of how the terms are setup while adding it to a table or dashboard.
+-   Classification, Users can set classification to be mutually exclusive only at the creation time. Once created you cannot change it back to mutually non-exclusive or vice-versa. This is to prevent conflicts of adding multiple tags that belong to same classification and later turning the mutually exclusive flag back to true.
+
+API:
+
+-   Table Schema's ViewDefinition is now renamed to SchemaDefinition to capture Tables' Create Schema.
+-   Bulk Import API now creates entities if they are not present during the import.
+-   Table's TestSuite is migrated to EntityReference. Previously it used to store entire payload of TestSuite.
+`,
       [`Automator ${CollateIconWithLinkMD}`]: `-  Easily maintain high-quality metadata at scale with automations. The Automator streamlines governance processes from ownership assignments to tagging, ensuring compliance and consistency.
 -   You can update the properties of your assets by filtering by service, owner, domain, or any other supported property from the advanced search.
 -   Easily see which assets have been selected by jumping to the Explore page in one click.
@@ -1399,8 +1448,7 @@ export const WHATS_NEW = [
       'Custom Theme': `-   Previously supported adding logo, monogram, and favicon to your OpenMetadata instance.
 -   Now, it supports customizing the theme with colors to suit your company branding.`,
 
-      [`Landing Page Widgets ${CollateIconWithLinkMD}`]: `-   A widget was added to list the pipelines that belong to a user or their team.
--   Added a Data Quality Widget to list the summary of data quality tests belonging to a user or their team.`,
+      [`Landing Page Widgets ${CollateIconWithLinkMD}`]: `-  Added a Data Quality Widget to list the summary of data quality tests belonging to a user or their team.`,
 
       'Ingestion Performance Improvements': `-   Bigquery, Redshift, and Snowflake now support incremental metadata ingestions by scanning DML operations on the query history.
 -   Database Services now support parallelizing the metadata ingestion at each schema.`,
