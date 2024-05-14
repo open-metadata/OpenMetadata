@@ -183,7 +183,7 @@ const OidcAuthenticator = forwardRef<AuthenticatorRef, Props>(
           )}
         </Switch>
 
-        {/* show loader when application is loading and user is signing in*/}
+        {/* show loader when application is loading and user is signing up*/}
         {isApplicationLoading && isSigningUp && <Loader fullScreen />}
       </>
     );
