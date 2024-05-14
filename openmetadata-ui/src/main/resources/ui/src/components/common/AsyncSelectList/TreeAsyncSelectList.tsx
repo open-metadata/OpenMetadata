@@ -188,7 +188,8 @@ const TreeAsyncSelectList: FC<Omit<AsyncSelectListProps, 'fetchOptions'>> = ({
           ...searchOptions,
           ...(initialOptions ?? []),
         ] as ModifiedGlossaryTerm[],
-        value
+        value,
+        false
       );
 
       return initialData
