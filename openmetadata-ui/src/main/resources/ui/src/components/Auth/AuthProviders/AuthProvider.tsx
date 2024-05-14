@@ -109,7 +109,7 @@ export const AuthProvider = ({
     setHelperFunctionsRef,
     setCurrentUser,
     updateNewUser: setNewUserProfile,
-    setIsAuthenticated: setIsUserAuthenticated,
+    setIsAuthenticated,
     authConfig,
     setAuthConfig,
     setAuthorizerConfig,
@@ -152,7 +152,7 @@ export const AuthProvider = ({
     clearTimeout(timeoutId);
 
     authenticatorRef.current?.invokeLogout();
-    setIsUserAuthenticated(false);
+    setIsAuthenticated(false);
 
     // reset the user details on logout
     setCurrentUser({} as User);
@@ -192,7 +192,7 @@ export const AuthProvider = ({
   const resetUserDetails = (forceLogout = false) => {
     setCurrentUser({} as User);
     removeOidcToken();
-    setIsUserAuthenticated(false);
+    setIsAuthenticated(false);
     setApplicationLoading(false);
     clearTimeout(timeoutId);
     if (forceLogout) {
@@ -209,7 +209,7 @@ export const AuthProvider = ({
       const res = await getLoggedInUser({ fields: userAPIQueryFields });
       if (res) {
         setCurrentUser(res);
-        setIsUserAuthenticated(true);
+        setIsAuthenticated(true);
       } else {
         resetUserDetails();
       }
@@ -359,14 +359,14 @@ export const AuthProvider = ({
 
   const handleFailedLogin = () => {
     setIsSigningUp(false);
-    setIsUserAuthenticated(false);
+    setIsAuthenticated(false);
     setApplicationLoading(false);
     history.push(ROUTES.SIGNIN);
   };
 
   const handleSuccessfulLogin = async (user: OidcUser) => {
     setApplicationLoading(true);
-    setIsUserAuthenticated(true);
+    setIsAuthenticated(true);
     const fields =
       authConfig?.provider === AuthProviderEnum.Basic
         ? userAPIQueryFields + ',' + isEmailVerifyField
