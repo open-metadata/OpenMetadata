@@ -1,5 +1,6 @@
 package org.openmetadata.service.migration.api;
 
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.util.OpenMetadataOperations.printToAsciiTable;
 
 import java.io.File;
@@ -34,6 +35,7 @@ public class MigrationWorkflow {
   private final MigrationDAO migrationDAO;
   private final Jdbi jdbi;
   private final boolean forceMigrations;
+  List<String> executedMigrations;
   private Optional<String> currentMaxMigrationVersion;
 
   public MigrationWorkflow(
@@ -103,16 +105,23 @@ public class MigrationWorkflow {
         .toList();
   }
 
+  /**
+   * We define a version to be an extension if it contains a `-` in the version string
+   * For example, native OSS migrations are `x.y.z`, while Collate migrations come from
+   * the extension path and are noted as `x.y.z-collate`
+   */
+  public Boolean isExtension(String version) {
+    return version.contains("-");
+  }
+
   private List<MigrationProcess> filterAndGetMigrationsToRun(
       List<MigrationFile> availableMigrations) {
     LOG.debug("Filtering Server Migrations");
-    currentMaxMigrationVersion = migrationDAO.getMaxServerMigrationVersion();
+    executedMigrations = migrationDAO.getMigrationVersions();
+    currentMaxMigrationVersion = executedMigrations.stream().max(String::compareTo);
     List<MigrationFile> applyMigrations;
-    if (currentMaxMigrationVersion.isPresent() && !forceMigrations) {
-      applyMigrations =
-          availableMigrations.stream()
-              .filter(migration -> migration.biggerThan(currentMaxMigrationVersion.get()))
-              .toList();
+    if (!nullOrEmpty(executedMigrations) && !forceMigrations) {
+      applyMigrations = getMigrationsToApply(executedMigrations, availableMigrations);
     } else {
       applyMigrations = availableMigrations;
     }
@@ -130,6 +139,39 @@ public class MigrationWorkflow {
       LOG.error("Failed to list and add migrations to run due to ", e);
     }
     return processes;
+  }
+
+  public List<MigrationFile> getMigrationsToApply(
+      List<String> executedMigrations, List<MigrationFile> availableMigrations) {
+    List<MigrationFile> migrationsToApply = new ArrayList<>();
+    List<MigrationFile> nativeMigrationsToApply =
+        getModeMigrationsToApply(executedMigrations, availableMigrations, false);
+    List<MigrationFile> extensionMigrationsToApply =
+        getModeMigrationsToApply(executedMigrations, availableMigrations, true);
+
+    migrationsToApply.addAll(nativeMigrationsToApply);
+    migrationsToApply.addAll(extensionMigrationsToApply);
+    return migrationsToApply;
+  }
+
+  private List<MigrationFile> getModeMigrationsToApply(
+      List<String> executedMigrations,
+      List<MigrationFile> availableMigrations,
+      Boolean isExtension) {
+    Optional<String> currentMaxVersion =
+        executedMigrations.stream()
+            .filter(version -> isExtension.equals(isExtension(version)))
+            .max(String::compareTo);
+    Stream<MigrationFile> availableMigrationsStream =
+        availableMigrations.stream()
+            .filter(migration -> isExtension.equals(isExtension(migration.version)));
+
+    if (currentMaxVersion.isPresent()) {
+      return availableMigrationsStream
+          .filter(migration -> migration.biggerThan(currentMaxVersion.get()))
+          .toList();
+    }
+    return availableMigrationsStream.toList();
   }
 
   public void printMigrationInfo() {
