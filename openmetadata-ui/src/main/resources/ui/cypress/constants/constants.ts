@@ -384,33 +384,35 @@ export const CYPRESS_ASSETS_GLOSSARY_TERMS = {
   },
 };
 
+const assetTermsUUId = uuid();
+
 export const CYPRESS_ASSETS_GLOSSARY_TERMS_1 = {
   term_1: {
-    name: 'Term1',
+    name: `Term1_${assetTermsUUId}`,
     description: 'term1 desc',
-    fullyQualifiedName: `${cypressAssetsGlossary1Name}.Term1`,
+    fullyQualifiedName: `${cypressAssetsGlossary1Name}.Term1_${assetTermsUUId}`,
     synonyms: 'buy,collect,acquire',
     assets: COMMON_ASSETS,
   },
   term_2: {
-    name: 'Term2',
+    name: `Term2_${assetTermsUUId}`,
     description: 'term2 desc',
     synonyms: 'give,disposal,deal',
-    fullyQualifiedName: `${cypressAssetsGlossary1Name}.Term2`,
+    fullyQualifiedName: `${cypressAssetsGlossary1Name}.Term2_${assetTermsUUId}`,
     assets: COMMON_ASSETS,
   },
   term_3: {
-    name: 'Term3',
+    name: `Term3_${assetTermsUUId}`,
     synonyms: 'tea,coffee,water',
     description: 'term3 desc',
-    fullyQualifiedName: `${cypressAssetsGlossary1Name}.Term3`,
+    fullyQualifiedName: `${cypressAssetsGlossary1Name}.Term3_${assetTermsUUId}`,
     assets: COMMON_ASSETS,
   },
   term_4: {
-    name: 'Term4',
+    name: `Term4_${assetTermsUUId}`,
     description: 'term4 desc',
     synonyms: 'milk,biscuit,water',
-    fullyQualifiedName: `${cypressAssetsGlossary1Name}.Term4`,
+    fullyQualifiedName: `${cypressAssetsGlossary1Name}.Term4_${assetTermsUUId}`,
     assets: COMMON_ASSETS,
   },
 };

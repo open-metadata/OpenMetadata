@@ -26,6 +26,12 @@ import {
 } from './common';
 import { visitEntityDetailsPage } from './Utils/Entity';
 
+const selectDomain = (domainObj) => {
+  cy.get('[data-testid="domain-left-panel"]')
+    .find(`li[data-menu-id$='${domainObj.fullyQualifiedName}']`)
+    .click();
+};
+
 export const validateDomainForm = () => {
   // error messages
   cy.get('#name_help')
@@ -97,14 +103,14 @@ const updateOwner = (newOwner) => {
 };
 
 const goToAssetsTab = (domainObj) => {
-  cy.get('[data-testid="domain-left-panel"]').contains(domainObj.name).click();
+  selectDomain(domainObj);
   checkDisplayName(domainObj.name);
   cy.get('[data-testid="assets"]').should('be.visible').click();
   cy.get('.ant-tabs-tab-active').contains('Assets').should('be.visible');
 };
 
 const goToDataProductsTab = (domainObj) => {
-  cy.get('[data-testid="domain-left-panel"]').contains(domainObj.name).click();
+  selectDomain(domainObj);
   checkDisplayName(domainObj.name);
   cy.get('[data-testid="data_products"]').click();
   cy.get('.ant-tabs-tab-active').contains('Data Products').should('be.visible');
@@ -309,7 +315,7 @@ export const deleteDomain = (domainObj) => {
 };
 
 export const verifyDomain = (domainObj) => {
-  cy.get('[data-testid="domain-left-panel"]').contains(domainObj.name).click();
+  selectDomain(domainObj);
   checkDisplayName(domainObj.name);
 
   cy.get('[data-testid="viewer-container"]')
@@ -332,7 +338,7 @@ export const verifyDomain = (domainObj) => {
 };
 
 export const updateDomainDetails = (domainObj) => {
-  cy.get('[data-testid="domain-left-panel"]').contains(domainObj.name).click();
+  selectDomain(domainObj);
   checkDisplayName(domainObj.name);
 
   // Update description
@@ -343,7 +349,7 @@ export const updateDomainDetails = (domainObj) => {
 };
 
 export const createDataProducts = (dataProduct, domainObj) => {
-  cy.get('[data-testid="domain-left-panel"]').contains(domainObj.name).click();
+  selectDomain(domainObj);
   checkDisplayName(domainObj.name);
 
   cy.get('[data-testid="domain-details-add-button"]').click();
@@ -369,7 +375,7 @@ export const createDataProducts = (dataProduct, domainObj) => {
 
 export const renameDomain = (domainObj) => {
   interceptURL('PATCH', `/api/v1/domains/*`, 'patchName&DisplayName');
-  cy.get('[data-testid="domain-left-panel"]').contains(domainObj.name).click();
+  selectDomain(domainObj);
   checkDisplayName(domainObj.name);
 
   cy.get('[data-testid="manage-button"]').click();
