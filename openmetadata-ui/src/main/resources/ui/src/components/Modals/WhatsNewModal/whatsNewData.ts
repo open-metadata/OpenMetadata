@@ -1350,7 +1350,7 @@ export const WHATS_NEW = [
   {
     id: 25,
     version: 'v1.4.0',
-    description: 'Released on 15th May 2024.',
+    description: 'Released on 21st May 2024.',
     features: [
       {
         title: 'Column Lineage Search',
