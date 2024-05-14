@@ -228,7 +228,13 @@
   width: 180px;
 
   .ant-select {
-    width: 100% !important;
+    min-width: 100% !important;
+  }
+  .ant-select-multiple {
+    .ant-select-selection-item-content {
+      text-overflow: ellipsis;
+      max-width: 200px;
+    }
   }
 }
 
@@ -248,6 +254,13 @@
   min-width: 180px;
   .ant-select,
   .widget--widget {
-    width: 100% !important;
+    min-width: 100% !important;
+  }
+
+  .ant-select-multiple {
+    .ant-select-selection-item-content {
+      text-overflow: ellipsis;
+      max-width: 200px;
+    }
   }
 }
