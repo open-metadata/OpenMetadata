@@ -133,7 +133,7 @@ class WebAnalyticEntityViewReportDataProcessor(DataProcessor):
                     )
                 except ValidationError as exc:
                     entity = None
-                    logger.warning("%s Entity failed to be parsed" % entity_obj.fqn)
+                    logger.warning("%s Entity failed to be parsed", entity_obj.fqn)
                     logger.debug(exc)
 
                 if not entity:
