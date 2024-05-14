@@ -2484,15 +2484,38 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
             createRequest(test, 1).withOwner(USER_TEAM21.getEntityReference()), ADMIN_AUTH_HEADERS);
     putTableProfile(table, table1, ADMIN_AUTH_HEADERS);
 
+    Column c3 = table.getColumns().stream().filter(c -> c.getName().equals(C3)).findFirst().get();
+
     // Owner can read the column profile of C3
     Table tableWithProfileFromOwner =
         getLatestTableProfile(table.getFullyQualifiedName(), authHeaders(USER_TEAM21.getName()));
     assertNotNull(tableWithProfileFromOwner.getColumns().get(2).getProfile());
+    ResultList<ColumnProfile> columnProfiles =
+        getColumnProfiles(
+            c3.getFullyQualifiedName(),
+            TestUtils.dateToTimestamp("2021-09-01"),
+            TestUtils.dateToTimestamp("2021-09-30"),
+            authHeaders(USER_TEAM21.getName()));
+    for (ColumnProfile columnProfile : columnProfiles.getData()) {
+      assertNotNull(columnProfile.getMax());
+      assertNotNull(columnProfile.getMin());
+    }
 
     // Non owners cannot read the column profile of C3
     Table tableWithProfileFromNotOwner =
         getLatestTableProfile(table.getFullyQualifiedName(), authHeaders(USER1_REF.getName()));
     assertNull(tableWithProfileFromNotOwner.getColumns().get(2).getProfile());
+    ResultList<ColumnProfile> maskedColumnProfiles =
+        getColumnProfiles(
+            c3.getFullyQualifiedName(),
+            TestUtils.dateToTimestamp("2021-09-01"),
+            TestUtils.dateToTimestamp("2021-09-30"),
+            authHeaders(USER1_REF.getName()));
+    for (ColumnProfile columnProfile : maskedColumnProfiles.getData()) {
+      assertNull(columnProfile.getMax());
+      assertNull(columnProfile.getMin());
+    }
+    assertEquals(maskedColumnProfiles.getData().size(), columnProfiles.getData().size());
   }
 
   @Test
