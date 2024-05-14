@@ -28,7 +28,9 @@ def postgres_container(tmp_path_factory, request):
     with container as container:
         docker_container = container.get_wrapped_container()
         docker_container.exec_run(["mkdir", "/data"])
-        docker_container.put_archive("/data/", open(data_dir / "dvdrental_data.tar", "rb"))
+        docker_container.put_archive(
+            "/data/", open(data_dir / "dvdrental_data.tar", "rb")
+        )
         for query in (
             "CREATE USER postgres SUPERUSER;",
             "CREATE EXTENSION pg_stat_statements;",
