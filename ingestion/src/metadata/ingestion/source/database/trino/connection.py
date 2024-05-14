@@ -49,7 +49,7 @@ def get_connection_url(connection: TrinoConnection) -> str:
     """
     url = f"{connection.scheme.value}://"
     if connection.username:
-        url += f"{quote_plus(connection.username)}"
+        url += f"{quote_plus(quote_plus(connection.username))}"
         if (
             isinstance(connection.authType, basicAuth.BasicAuth)
             and connection.authType.password
