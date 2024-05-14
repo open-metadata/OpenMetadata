@@ -113,7 +113,7 @@ export const AuthProvider = ({
     authConfig,
     setAuthConfig,
     setAuthorizerConfig,
-    setIsSigningIn,
+    setIsSigningUp,
     setJwtPrincipalClaims,
     removeRefreshToken,
     removeOidcToken,
@@ -358,7 +358,7 @@ export const AuthProvider = ({
   }, [timeoutId]);
 
   const handleFailedLogin = () => {
-    setIsSigningIn(false);
+    setIsSigningUp(false);
     setIsUserAuthenticated(false);
     setApplicationLoading(false);
     history.push(ROUTES.SIGNIN);
@@ -390,7 +390,7 @@ export const AuthProvider = ({
       if (err && err.response && err.response.status === 404) {
         setNewUserProfile(user.profile);
         setCurrentUser({} as User);
-        setIsSigningIn(true);
+        setIsSigningUp(true);
         history.push(ROUTES.SIGNUP);
       } else {
         // eslint-disable-next-line no-console

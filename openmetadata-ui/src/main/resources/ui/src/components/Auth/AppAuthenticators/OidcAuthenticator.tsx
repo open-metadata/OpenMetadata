@@ -65,8 +65,8 @@ const OidcAuthenticator = forwardRef<AuthenticatorRef, Props>(
   ) => {
     const {
       isAuthenticated,
-      isSigningIn,
-      setIsSigningIn,
+      isSigningUp,
+      setIsSigningUp,
       updateAxiosInterceptors,
       currentUser,
       newUser,
@@ -80,7 +80,7 @@ const OidcAuthenticator = forwardRef<AuthenticatorRef, Props>(
     );
 
     const login = () => {
-      setIsSigningIn(true);
+      setIsSigningUp(true);
     };
 
     const logout = () => {
@@ -117,7 +117,7 @@ const OidcAuthenticator = forwardRef<AuthenticatorRef, Props>(
            * else redirect to my data page as user is authenticated and not signing up
            */}
           <Route exact path={ROUTES.HOME}>
-            {!isAuthenticated && !isSigningIn ? (
+            {!isAuthenticated && !isSigningUp ? (
               <Redirect to={ROUTES.SIGNIN} />
             ) : (
               <Redirect to={ROUTES.MY_DATA} />
@@ -125,7 +125,7 @@ const OidcAuthenticator = forwardRef<AuthenticatorRef, Props>(
           </Route>
 
           {/* render the sign in route only if user is not signing up */}
-          {!isSigningIn ? (
+          {!isSigningUp ? (
             <Route exact component={SignInPage} path={ROUTES.SIGNIN} />
           ) : null}
 
@@ -175,7 +175,7 @@ const OidcAuthenticator = forwardRef<AuthenticatorRef, Props>(
           {isAuthenticated ? (
             <Fragment>{children}</Fragment>
           ) : // render the sign in page if user is not authenticated and not signing up
-          !isSigningIn && isEmpty(currentUser) && isEmpty(newUser) ? (
+          !isSigningUp && isEmpty(currentUser) && isEmpty(newUser) ? (
             <Redirect to={ROUTES.SIGNIN} />
           ) : (
             // render the authenticator component to handle the auth flow while user is signing in
@@ -184,7 +184,7 @@ const OidcAuthenticator = forwardRef<AuthenticatorRef, Props>(
         </Switch>
 
         {/* show loader when application is loading and user is signing in*/}
-        {isApplicationLoading && isSigningIn && <Loader fullScreen />}
+        {isApplicationLoading && isSigningUp && <Loader fullScreen />}
       </>
     );
   }

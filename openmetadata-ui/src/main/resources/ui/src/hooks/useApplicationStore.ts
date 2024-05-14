@@ -41,7 +41,7 @@ export const useApplicationStore = create<ApplicationStore>()(
       isAuthenticated: Boolean(getOidcToken()),
       authConfig: undefined,
       authorizerConfig: undefined,
-      isSigningIn: false,
+      isSigningUp: false,
       jwtPrincipalClaims: [],
       userProfilePics: {},
       cachedEntityData: {},
@@ -78,8 +78,8 @@ export const useApplicationStore = create<ApplicationStore>()(
       setIsAuthenticated: (authenticated: boolean) => {
         set({ isAuthenticated: authenticated });
       },
-      setIsSigningIn: (signingIn: boolean) => {
-        set({ isSigningIn: signingIn });
+      setIsSigningUp: (signingUp: boolean) => {
+        set({ isSigningUp: signingUp });
       },
 
       setApplicationLoading: (loading: boolean) => {
