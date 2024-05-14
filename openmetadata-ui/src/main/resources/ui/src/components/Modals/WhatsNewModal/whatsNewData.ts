@@ -1353,9 +1353,30 @@ export const WHATS_NEW = [
     description: 'Released on 21st May 2024.',
     features: [
       {
+        title: 'Bulk Upload Data Assets',
+        description:
+          'We have added support for bulk uploading data assets. Users can bulk upload database, schema, and table entities from a CSV file for quick edition or creation. The inline editor helps to validate and update the data assets before importing. Save time by bulk uploading data assets.',
+        isImage: false,
+        path: 'https://www.youtube.com/embed/CXxDdS6AifY',
+      },
+      {
+        title: 'Data Quality Widget',
+        description:
+          'A new Data Quality Widget has been added. It lists the summary of data quality tests belonging to a user or their team. Customize your Collate landing page to suit your requirements.',
+        isImage: false,
+        path: 'https://www.youtube.com/embed/Kakfa-lYGOU',
+      },
+      {
+        title: 'Lineage Layers',
+        description:
+          'The lineage view in OpenMetadata has been improved. All the nodes are expanded by default. A new ‘Layers’ button has been introduced. Users can choose to view the column level lineage. In the Data Observability View, the data quality results are displayed, such as Success, Aborted, or Failed. The pipeline status displays the last execution run.',
+        isImage: false,
+        path: 'https://www.youtube.com/embed/wtBMeLvA6Sw',
+      },
+      {
         title: 'Column Lineage Search',
         description:
-          'In the OpenMetadata 1.4 Release, you can search lineage by column names. You can accurately trace the upstream and downstream nodes by column. OpenMetadata helps you to easily trace and visualize how data is transformed and where it is used in your organization.',
+          'You can search lineage by column names. You can accurately trace the upstream and downstream nodes by column. OpenMetadata helps you to easily trace and visualize how data is transformed and where it is used in your organization.',
         isImage: false,
         path: 'https://www.youtube.com/embed/KZdVb8DiHJs',
       },
@@ -1376,7 +1397,7 @@ export const WHATS_NEW = [
       {
         title: 'Data Quality Filter',
         description:
-          'In the OpenMetadata 1.4 Release, the data quality filters have been improved. Now you have additional filtering options for test suites and test cases.',
+          'We have improved the filters for data quality. Now you have additional filtering options for test suites and test cases.',
         isImage: false,
         path: 'https://www.youtube.com/embed/UNOHvBMVcYM',
       },
@@ -1394,7 +1415,7 @@ UI:
 -   For Lineage, the Expand All button has been removed. A new Layers button is introduced at the bottom left corner. With the Layers button, you can add Column Level Lineage or Data Observability details to your Lineage view.
 -   View Definition is now renamed to Schema Definition.
 -   Adding Glossary Term view is improved. Now we show glossary terms hierarchically enabling a better understanding of how the terms are setup while adding it to a table or dashboard.
--   Classification, Users can set classification to be mutually exclusive only at the creation time. Once created you cannot change it back to mutually non-exclusive or vice-versa. This is to prevent conflicts of adding multiple tags that belong to same classification and later turning the mutually exclusive flag back to true.
+-  For Classification, users can set classification to be mutually exclusive only at the creation time. Once created, you cannot change it back to mutually non-exclusive or vice-versa. This is to prevent conflicts of adding multiple tags that belong to same classification and later turning the mutually exclusive flag back to true.
 
 API:
 
