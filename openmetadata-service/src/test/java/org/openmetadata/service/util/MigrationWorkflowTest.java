@@ -33,32 +33,43 @@ public class MigrationWorkflowTest extends OpenMetadataApplicationTest {
     omMigrationList =
         List.of(
             new MigrationFile(
-                new File("/bootstrap/sql/migrations/native/1.1.0"), null, ConnectionType.MYSQL),
+                new File("/bootstrap/sql/migrations/native/1.1.0"),
+                null,
+                ConnectionType.MYSQL,
+                false),
             new MigrationFile(
-                new File("/bootstrap/sql/migrations/native/1.2.0"), null, ConnectionType.MYSQL),
+                new File("/bootstrap/sql/migrations/native/1.2.0"),
+                null,
+                ConnectionType.MYSQL,
+                false),
             new MigrationFile(
-                new File("/bootstrap/sql/migrations/native/1.2.1"), null, ConnectionType.MYSQL));
+                new File("/bootstrap/sql/migrations/native/1.2.1"),
+                null,
+                ConnectionType.MYSQL,
+                false));
 
     collateMigrationList =
         List.of(
             new MigrationFile(
                 new File("/bootstrap-collate/sql/migrations/native/1.1.0-collate"),
                 null,
-                ConnectionType.MYSQL),
+                ConnectionType.MYSQL,
+                true),
             new MigrationFile(
                 new File("/bootstrap-collate/sql/migrations/native/1.2.2-collate"),
                 null,
-                ConnectionType.MYSQL));
+                ConnectionType.MYSQL,
+                true));
   }
 
   @Test
   void test_getMigrationFiles() {
     Mockito.doReturn(omMigrationList)
         .when(migrationWorkflow)
-        .getMigrationFilesFromPath(eq("nativePath"), any(ConnectionType.class));
+        .getMigrationFilesFromPath(eq("nativePath"), any(ConnectionType.class), eq(false));
     Mockito.doReturn(collateMigrationList)
         .when(migrationWorkflow)
-        .getMigrationFilesFromPath(eq("extensionPath"), any(ConnectionType.class));
+        .getMigrationFilesFromPath(eq("extensionPath"), any(ConnectionType.class), eq(true));
 
     List<MigrationFile> foundList =
         migrationWorkflow.getMigrationFiles("nativePath", ConnectionType.MYSQL, "extensionPath");

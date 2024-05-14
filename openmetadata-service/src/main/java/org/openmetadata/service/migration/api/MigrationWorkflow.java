@@ -75,7 +75,7 @@ public class MigrationWorkflow {
       ConnectionType connectionType,
       String extensionSQLScriptRootPath) {
     List<MigrationFile> availableOMNativeMigrations =
-        getMigrationFilesFromPath(nativeSQLScriptRootPath, connectionType);
+        getMigrationFilesFromPath(nativeSQLScriptRootPath, connectionType, false);
 
     // If we only have OM migrations, return them
     if (extensionSQLScriptRootPath == null || extensionSQLScriptRootPath.isEmpty()) {
@@ -84,7 +84,7 @@ public class MigrationWorkflow {
 
     // Otherwise, fetch the extension migrations and sort the executions
     List<MigrationFile> availableExtensionMigrations =
-        getMigrationFilesFromPath(extensionSQLScriptRootPath, connectionType);
+        getMigrationFilesFromPath(extensionSQLScriptRootPath, connectionType, true);
 
     /*
      If we create migrations version as:
@@ -98,20 +98,12 @@ public class MigrationWorkflow {
         .toList();
   }
 
-  public List<MigrationFile> getMigrationFilesFromPath(String path, ConnectionType connectionType) {
+  public List<MigrationFile> getMigrationFilesFromPath(
+      String path, ConnectionType connectionType, Boolean isExtension) {
     return Arrays.stream(Objects.requireNonNull(new File(path).listFiles(File::isDirectory)))
-        .map(dir -> new MigrationFile(dir, migrationDAO, connectionType))
+        .map(dir -> new MigrationFile(dir, migrationDAO, connectionType, isExtension))
         .sorted()
         .toList();
-  }
-
-  /**
-   * We define a version to be an extension if it contains a `-` in the version string
-   * For example, native OSS migrations are `x.y.z`, while Collate migrations come from
-   * the extension path and are noted as `x.y.z-collate`
-   */
-  public Boolean isExtension(String version) {
-    return version.contains("-");
   }
 
   private List<MigrationProcess> filterAndGetMigrationsToRun(
@@ -141,37 +133,42 @@ public class MigrationWorkflow {
     return processes;
   }
 
+  /**
+   * We'll take the max from native migrations and double-check if there's any extension migration
+   * pending to be applied
+   */
   public List<MigrationFile> getMigrationsToApply(
       List<String> executedMigrations, List<MigrationFile> availableMigrations) {
     List<MigrationFile> migrationsToApply = new ArrayList<>();
     List<MigrationFile> nativeMigrationsToApply =
-        getModeMigrationsToApply(executedMigrations, availableMigrations, false);
+        processNativeMigrations(executedMigrations, availableMigrations);
     List<MigrationFile> extensionMigrationsToApply =
-        getModeMigrationsToApply(executedMigrations, availableMigrations, true);
+        processExtensionMigrations(executedMigrations, availableMigrations);
 
     migrationsToApply.addAll(nativeMigrationsToApply);
     migrationsToApply.addAll(extensionMigrationsToApply);
     return migrationsToApply;
   }
 
-  private List<MigrationFile> getModeMigrationsToApply(
-      List<String> executedMigrations,
-      List<MigrationFile> availableMigrations,
-      Boolean isExtension) {
-    Optional<String> currentMaxVersion =
-        executedMigrations.stream()
-            .filter(version -> isExtension.equals(isExtension(version)))
-            .max(String::compareTo);
-    Stream<MigrationFile> availableMigrationsStream =
-        availableMigrations.stream()
-            .filter(migration -> isExtension.equals(isExtension(migration.version)));
-
-    if (currentMaxVersion.isPresent()) {
-      return availableMigrationsStream
-          .filter(migration -> migration.biggerThan(currentMaxVersion.get()))
+  private List<MigrationFile> processNativeMigrations(
+      List<String> executedMigrations, List<MigrationFile> availableMigrations) {
+    Stream<MigrationFile> availableNativeMigrations =
+        availableMigrations.stream().filter(migration -> !migration.isExtension);
+    Optional<String> maxMigration = executedMigrations.stream().max(String::compareTo);
+    if (maxMigration.isPresent()) {
+      return availableNativeMigrations
+          .filter(migration -> migration.biggerThan(maxMigration.get()))
           .toList();
     }
-    return availableMigrationsStream.toList();
+    return availableNativeMigrations.toList();
+  }
+
+  private List<MigrationFile> processExtensionMigrations(
+      List<String> executedMigrations, List<MigrationFile> availableMigrations) {
+    return availableMigrations.stream()
+        .filter(migration -> migration.isExtension)
+        .filter(migration -> !executedMigrations.contains(migration.version))
+        .toList();
   }
 
   public void printMigrationInfo() {
