@@ -283,6 +283,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   public static Role DATA_STEWARD_ROLE;
   public static EntityReference DATA_STEWARD_ROLE_REF;
   public static User DATA_CONSUMER;
+  public static EntityReference DATA_CONSUMER_REF;
   public static Role DATA_CONSUMER_ROLE;
   public static EntityReference DATA_CONSUMER_ROLE_REF;
   public static Role ROLE1;

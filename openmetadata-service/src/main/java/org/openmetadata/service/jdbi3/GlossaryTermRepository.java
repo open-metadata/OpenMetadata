@@ -90,6 +90,7 @@ import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.JsonUtils;
+import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.WebsocketNotificationHandler;
 
 @Slf4j
@@ -775,6 +776,33 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
   public class GlossaryTermUpdater extends EntityUpdater {
     public GlossaryTermUpdater(GlossaryTerm original, GlossaryTerm updated, Operation operation) {
       super(original, updated, operation);
+    }
+
+    @Override
+    public void updateReviewers() {
+      super.updateReviewers();
+
+      // adding the reviewer should add the person as assignee to the task
+      if (updated.getStatus() == Status.DRAFT) {
+
+        EntityLink about = new EntityLink(GLOSSARY_TERM, updated.getFullyQualifiedName());
+        FeedRepository feedRepository = Entity.getFeedRepository();
+        Thread originalTask = feedRepository.getTask(about, TaskType.RequestApproval);
+
+        if (TaskStatus.Open.equals(originalTask.getTask().getStatus())) {
+
+          Thread updatedTask = JsonUtils.deepCopy(originalTask, Thread.class);
+          updatedTask.getTask().withAssignees(updated.getReviewers());
+          JsonPatch patch = JsonUtils.getJsonPatch(originalTask, updatedTask);
+
+          RestUtil.PatchResponse<Thread> thread =
+              feedRepository.patchThread(
+                  null, originalTask.getId(), updatedTask.getUpdatedBy(), patch);
+
+          // Send WebSocket Notification
+          WebsocketNotificationHandler.handleTaskNotification(thread.entity());
+        }
+      }
     }
 
     @Transaction
