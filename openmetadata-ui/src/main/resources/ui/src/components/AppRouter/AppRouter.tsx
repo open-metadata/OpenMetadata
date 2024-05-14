@@ -13,7 +13,7 @@
 
 import { isNil } from 'lodash';
 import React, { useCallback, useEffect } from 'react';
-import { useLocation } from 'react-router-dom';
+import { Switch, useLocation } from 'react-router-dom';
 import { useAnalytics } from 'use-analytics';
 import { CustomEventTypes } from '../../generated/analytics/webAnalyticEventData';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
@@ -76,7 +76,11 @@ const AppRouter = () => {
     return <Loader fullScreen />;
   }
 
-  return isAuthenticated ? <AppContainer /> : <UnAuthenticatedAppRouter />;
+  return (
+    <Switch>
+      {isAuthenticated ? <AppContainer /> : <UnAuthenticatedAppRouter />}
+    </Switch>
+  );
 };
 
 export default AppRouter;
