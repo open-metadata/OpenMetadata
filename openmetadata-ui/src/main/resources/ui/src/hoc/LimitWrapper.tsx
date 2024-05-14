@@ -31,7 +31,8 @@ interface LimitWrapperProps {
  * @returns - Wrapped component
  */
 const LimitWrapper = ({ resource, children }: LimitWrapperProps) => {
-  const { resourceLimit, setResourceLimit, config } = useLimitStore();
+  const { resourceLimit, setResourceLimit, config, setBannerDetails } =
+    useLimitStore();
   const [loading, setLoading] = useState(false);
 
   const fetchResourceLimit = async () => {
@@ -39,6 +40,21 @@ const LimitWrapper = ({ resource, children }: LimitWrapperProps) => {
     const response = await getLimitByResource(resource);
 
     setResourceLimit(resource, response);
+
+    if (response.featureLimitStatuses[0]) {
+      const {
+        configuredLimit: { limits },
+        currentCount,
+        limitReached,
+      } = response.featureLimitStatuses[0];
+
+      limitReached &&
+        setBannerDetails({
+          header: 'Limit Reached',
+          subheader: `You have used ${currentCount} out of ${limits.hardLimit} limit`,
+        });
+    }
+
     setLoading(false);
   };
 
@@ -46,6 +62,10 @@ const LimitWrapper = ({ resource, children }: LimitWrapperProps) => {
     if (resource) {
       fetchResourceLimit();
     }
+
+    return () => {
+      setBannerDetails(null);
+    };
   }, [resource]);
   const currentLimits = resourceLimit[resource]?.featureLimitStatuses[0];
 
