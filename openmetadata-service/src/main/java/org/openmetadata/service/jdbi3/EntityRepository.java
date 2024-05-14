@@ -2461,7 +2461,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
       updated.setExperts(updatedExperts);
     }
 
-    private void updateReviewers() {
+    protected void updateReviewers() {
       if (!supportsReviewers) {
         return;
       }

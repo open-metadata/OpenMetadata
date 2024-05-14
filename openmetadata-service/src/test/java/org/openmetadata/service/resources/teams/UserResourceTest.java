@@ -170,6 +170,7 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
         createRequest("user-data-consumer", "", "", null)
             .withRoles(List.of(DATA_CONSUMER_ROLE.getId()));
     DATA_CONSUMER = createEntity(create, ADMIN_AUTH_HEADERS);
+    DATA_CONSUMER_REF = DATA_CONSUMER.getEntityReference();
 
     // USER_TEAM21 is part of TEAM21
     create = createRequest(test, 2).withTeams(List.of(TEAM21.getId()));
