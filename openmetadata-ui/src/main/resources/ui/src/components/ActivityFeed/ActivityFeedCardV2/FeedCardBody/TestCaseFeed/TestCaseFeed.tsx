@@ -58,7 +58,7 @@ function TestCaseFeed({
         />
       </Row>
     );
-  }, [entitySpecificInfo?.testCaseResult]);
+  }, [testCaseName, testCaseResult, entitySpecificInfo?.parameterValues]);
 
   return (
     <Row gutter={[0, 12]}>
