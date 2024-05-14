@@ -108,8 +108,7 @@ class WebAnalyticEntityViewReportDataProcessor(DataProcessor):
 
             entity_obj = EntityObj(split_url[0], split_url[1])
             entity_type = entity_obj.entity_type
-            pattern = quote(f"{entity_type}/{entity_obj.fqn}")
-            re_pattern = re.compile(f"(.*{pattern})")
+            re_pattern = re.compile(f"(.*{quote(f'{entity_type}/{entity_obj.fqn}')})")
 
             if (
                 entity_obj.fqn in refined_data
