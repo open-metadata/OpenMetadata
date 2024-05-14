@@ -65,7 +65,6 @@ const OidcAuthenticator = forwardRef<AuthenticatorRef, Props>(
   ) => {
     const {
       isAuthenticated,
-      setIsAuthenticated,
       isSigningIn,
       setIsSigningIn,
       updateAxiosInterceptors,
@@ -136,7 +135,6 @@ const OidcAuthenticator = forwardRef<AuthenticatorRef, Props>(
                   }}
                   onSuccess={(user) => {
                     setOidcToken(user.id_token);
-                    setIsAuthenticated(true);
                     onLoginSuccess(user as OidcUser);
                   }}
                 />
