@@ -41,6 +41,11 @@ function TestCaseFeed({
     [entitySpecificInfo?.entityTestResultSummary]
   );
 
+  const testCaseResult = useMemo(
+    () => (entitySpecificInfo?.testCaseResult ?? []).slice(0, 10),
+    [entitySpecificInfo?.testCaseResult]
+  );
+
   const renderTestCaseResult = useMemo(() => {
     return (
       <Row className="m-t-xs" gutter={[0, 4]}>
@@ -49,11 +54,11 @@ function TestCaseFeed({
           selectedTimeRange={PROFILER_FILTER_RANGE.last7days.title}
           testCaseName={testCaseName}
           testCaseParameterValue={entitySpecificInfo?.parameterValues}
-          testCaseResults={entitySpecificInfo?.testCaseResult ?? []}
+          testCaseResults={testCaseResult}
         />
       </Row>
     );
-  }, [entitySpecificInfo?.testCaseResult]);
+  }, [testCaseName, testCaseResult, entitySpecificInfo?.parameterValues]);
 
   return (
     <Row gutter={[0, 12]}>
