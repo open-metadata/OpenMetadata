@@ -171,7 +171,7 @@ class QuicksightSource(DashboardServiceSource):
         # a chart in the context of QuickSight
         # https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/quicksight.html#QuickSight.Client.describe_dashboard
         if dashboard_details.Version:
-            for chart in dashboard_details.Version.Sheets or []:
+            for chart in dashboard_details.Version.Charts or []:
                 try:
                     if filter_by_chart(
                         self.source_config.chartFilterPattern, chart.Name
@@ -185,7 +185,7 @@ class QuicksightSource(DashboardServiceSource):
                     )
                     yield Either(
                         right=CreateChartRequest(
-                            name=chart.SheetId,
+                            name=chart.ChartId,
                             displayName=chart.Name,
                             chartType=ChartType.Other.value,
                             sourceUrl=self.dashboard_url,

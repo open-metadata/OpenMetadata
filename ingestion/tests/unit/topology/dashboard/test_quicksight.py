@@ -192,7 +192,7 @@ class QuickSightUnitTest(TestCase):
     @pytest.mark.order(3)
     def test_chart(self):
         dashboard_details = DashboardDetail(**MOCK_DASHBOARD_DETAILS)
-        dashboard_details.Version.Sheets = mock_data["Version"]["Sheets"]
+        dashboard_details.Version.Charts = mock_data["Version"]["Sheets"]
         results = self.quicksight.yield_dashboard_chart(dashboard_details)
         chart_list = []
         for result in results:

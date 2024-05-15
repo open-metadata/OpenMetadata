@@ -24,7 +24,7 @@ class DataSourceResp(BaseModel):
 
 
 class VersionSheet(BaseModel):
-    SheetId: Optional[str]
+    ChartId: Optional[str] = Field(alias="SheetId")
     Name: Optional[str]
 
 
@@ -34,7 +34,7 @@ class DashboardVersion(BaseModel):
     SourceEntityArn: Optional[str]
     DataSetArns: Optional[List]
     Description: Optional[str]
-    Sheets: Optional[List[VersionSheet]]
+    Charts: Optional[List[VersionSheet]] = Field(alias="Sheets")
 
 
 class DashboardDetail(BaseModel):
