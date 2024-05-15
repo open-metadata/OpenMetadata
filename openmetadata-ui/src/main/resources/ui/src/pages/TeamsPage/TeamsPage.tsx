@@ -13,7 +13,7 @@
 
 import { AxiosError } from 'axios';
 import { compare, Operation } from 'fast-json-patch';
-import { cloneDeep, isEmpty, isUndefined } from 'lodash';
+import { cloneDeep, filter, isEmpty, isUndefined } from 'lodash';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
@@ -29,6 +29,7 @@ import {
   ResourceEntity,
 } from '../../context/PermissionProvider/PermissionProvider.interface';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
+import { EntityType } from '../../enums/entity.enum';
 import { SearchIndex } from '../../enums/search.enum';
 import { CreateTeam, TeamType } from '../../generated/api/teams/createTeam';
 import { EntityReference } from '../../generated/entity/data/table';
@@ -44,6 +45,7 @@ import {
   patchTeamDetail,
 } from '../../rest/teamsAPI';
 import { updateUserDetail } from '../../rest/userAPI';
+import { getEntityReferenceFromEntity } from '../../utils/EntityUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import { getTeamsWithFqnPath } from '../../utils/RouterUtils';
 import { getDecodedFqn } from '../../utils/StringsUtils';
@@ -323,40 +325,36 @@ const TeamsPage = () => {
     }
   };
 
-  const handleJoinTeamClick = (id: string, data: Operation[]) => {
-    updateUserDetail(id, data)
-      .then((res) => {
-        if (res) {
-          updateCurrentUser(res);
-
-          setSelectedTeam((prev) => ({ ...prev, ...res }));
-          showSuccessToast(t('server.join-team-success'), 2000);
-        } else {
-          throw t('server.join-team-error');
-        }
-      })
-      .catch((err: AxiosError) => {
-        showErrorToast(err, t('server.join-team-error'));
-      });
+  const handleJoinTeamClick = async (id: string, data: Operation[]) => {
+    try {
+      const response = await updateUserDetail(id, data);
+      const currentUser = getEntityReferenceFromEntity(
+        response,
+        EntityType.USER
+      );
+      setSelectedTeam((prev) => ({
+        ...prev,
+        users: prev.users ? [currentUser, ...prev.users] : [currentUser],
+      }));
+      updateCurrentUser(response);
+      showSuccessToast(t('server.join-team-success'), 2000);
+    } catch (error) {
+      showErrorToast(error as AxiosError, t('server.join-team-error'));
+    }
   };
 
-  const handleLeaveTeamClick = (id: string, data: Operation[]) => {
-    return new Promise<void>((resolve) => {
-      updateUserDetail(id, data)
-        .then((res) => {
-          if (res) {
-            updateCurrentUser(res);
-            setSelectedTeam((prev) => ({ ...prev, ...res }));
-            showSuccessToast(t('server.leave-team-success'), 2000);
-            resolve();
-          } else {
-            throw t('server.leave-team-error');
-          }
-        })
-        .catch((err: AxiosError) => {
-          showErrorToast(err, t('server.leave-team-error'));
-        });
-    });
+  const handleLeaveTeamClick = async (id: string, data: Operation[]) => {
+    try {
+      const response = await updateUserDetail(id, data);
+      updateCurrentUser(response);
+      setSelectedTeam((prev) => ({
+        ...prev,
+        users: filter(prev.users, (user) => user.id !== response.id),
+      }));
+      showSuccessToast(t('server.leave-team-success'), 2000);
+    } catch (error) {
+      showErrorToast(error as AxiosError, t('server.leave-team-error'));
+    }
   };
 
   /**
