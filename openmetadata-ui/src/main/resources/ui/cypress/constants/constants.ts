@@ -888,8 +888,8 @@ export const DOMAIN_3 = {
           fullyQualifiedName: 'sample_superset.forecast_sales_performance',
         },
         {
-          name: 'eta_predictions',
-          fullyQualifiedName: 'mlflow_svc.eta_predictions',
+          name: 'fact_sale',
+          fullyQualifiedName: 'sample_data.ecommerce_db.shopify.fact_sale',
         },
         {
           name: 'operations_view',
@@ -904,8 +904,8 @@ export const DOMAIN_3 = {
       fullyQualifiedName: 'sample_superset.forecast_sales_performance',
     },
     {
-      name: 'eta_predictions',
-      fullyQualifiedName: 'mlflow_svc.eta_predictions',
+      name: 'fact_sale',
+      fullyQualifiedName: 'sample_data.ecommerce_db.shopify.fact_sale',
     },
     {
       name: 'operations_view',
