@@ -178,36 +178,30 @@ const AsyncSelectList: FC<AsyncSelectListProps & SelectProps> = ({
     }
   };
 
-  const dropdownRender = useMemo(
-    () => (menu: React.ReactElement) =>
-      (
-        <>
-          {menu}
-          {hasContentLoading ? <Loader size="small" /> : null}
-          {onCancel && (
-            <Space
-              className="p-sm p-b-xss p-l-xs custom-dropdown-render"
-              size={8}>
-              <Button
-                className="update-btn"
-                data-testid="saveAssociatedTag"
-                htmlType="submit"
-                loading={isSubmitLoading}
-                size="small"
-                onClick={() => form.submit()}>
-                {t('label.update')}
-              </Button>
-              <Button
-                data-testid="cancelAssociatedTag"
-                size="small"
-                onClick={onCancel}>
-                {t('label.cancel')}
-              </Button>
-            </Space>
-          )}
-        </>
-      ),
-    [hasContentLoading, onCancel, isSubmitLoading, form]
+  const dropdownRender = (menu: React.ReactElement) => (
+    <>
+      {menu}
+      {hasContentLoading ? <Loader size="small" /> : null}
+      {onCancel && (
+        <Space className="p-sm p-b-xss p-l-xs custom-dropdown-render" size={8}>
+          <Button
+            className="update-btn"
+            data-testid="saveAssociatedTag"
+            htmlType="submit"
+            loading={isSubmitLoading}
+            size="small"
+            onClick={() => form.submit()}>
+            {t('label.update')}
+          </Button>
+          <Button
+            data-testid="cancelAssociatedTag"
+            size="small"
+            onClick={onCancel}>
+            {t('label.cancel')}
+          </Button>
+        </Space>
+      )}
+    </>
   );
 
   const customTagRender = (data: CustomTagProps) => {
