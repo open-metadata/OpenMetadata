@@ -134,9 +134,14 @@ const TableDetailsPageV1: React.FC = () => {
   );
   const [testCaseSummary, setTestCaseSummary] = useState<TestSummary>();
 
-  const extraDropdownContent = entityUtilClassBase.getManageExtraOptions(
-    EntityType.TABLE,
-    datasetFQN
+  const extraDropdownContent = useMemo(
+    () =>
+      entityUtilClassBase.getManageExtraOptions(
+        EntityType.TABLE,
+        datasetFQN,
+        tablePermissions
+      ),
+    [tablePermissions, datasetFQN]
   );
 
   const { viewUsagePermission, viewTestCasePermission } = useMemo(
