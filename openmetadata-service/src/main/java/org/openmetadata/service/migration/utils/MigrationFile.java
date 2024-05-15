@@ -22,6 +22,7 @@ public class MigrationFile implements Comparable<MigrationFile> {
   public final String version;
   public final ConnectionType connectionType;
   public final File dir;
+  public final Boolean isExtension;
   public final String dbPackageName;
 
   private final MigrationDAO migrationDAO;
@@ -30,8 +31,10 @@ public class MigrationFile implements Comparable<MigrationFile> {
   public static final String DEFAULT_MIGRATION_PROCESS_CLASS =
       "org.openmetadata.service.migration.api.MigrationProcessImpl";
 
-  public MigrationFile(File dir, MigrationDAO migrationDAO, ConnectionType connectionType) {
+  public MigrationFile(
+      File dir, MigrationDAO migrationDAO, ConnectionType connectionType, Boolean isExtension) {
     this.dir = dir;
+    this.isExtension = isExtension;
     this.version = dir.getName();
     this.connectionType = connectionType;
     this.migrationDAO = migrationDAO;
