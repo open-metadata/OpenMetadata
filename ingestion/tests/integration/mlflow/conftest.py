@@ -28,6 +28,9 @@ from dataclasses import dataclass
 from typing import Optional
 
 import pytest
+from testcontainers.core.container import DockerContainer
+from testcontainers.core.docker_client import DockerClient
+
 from ..containers import (
     MinioContainerConfigs,
     MySqlContainerConfigs,
@@ -35,8 +38,6 @@ from ..containers import (
     get_minio_container,
     get_mysql_container,
 )
-from testcontainers.core.container import DockerContainer
-from testcontainers.core.docker_client import DockerClient
 
 
 @dataclass
