@@ -13,6 +13,7 @@
 
 package org.openmetadata.service.jdbi3;
 
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.csv.CsvUtil.addField;
 import static org.openmetadata.csv.CsvUtil.addGlossaryTerms;
 import static org.openmetadata.csv.CsvUtil.addOwner;
@@ -298,7 +299,7 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
           .withTags(tagLabels)
           .withRetentionPeriod(csvRecord.get(7))
           .withSourceUrl(csvRecord.get(8))
-          .withColumns(new ArrayList<>())
+          .withColumns(nullOrEmpty(table.getColumns()) ? new ArrayList<>() : table.getColumns())
           .withDomain(getEntityReference(printer, csvRecord, 9, Entity.DOMAIN));
 
       if (processRecord) {
