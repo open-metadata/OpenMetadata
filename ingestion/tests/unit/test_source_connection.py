@@ -407,7 +407,7 @@ class SourceConnectionTest(TestCase):
         assert expected_url == get_connection_url(trino_conn_obj)
 
         # Passing @ in username and password
-        expected_url = "trino://username%40444:pass%40111@localhost:443/catalog"
+        expected_url = "trino://username%2540444:pass%40111@localhost:443/catalog"
         trino_conn_obj = TrinoConnection(
             scheme=TrinoScheme.trino,
             hostPort="localhost:443",
