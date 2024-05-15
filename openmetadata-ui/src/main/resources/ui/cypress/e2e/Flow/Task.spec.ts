@@ -356,10 +356,17 @@ describe('Task flow should work', { tags: 'DataAssets' }, () => {
       entity: ENTITY_TABLE.entity,
     });
 
+    interceptURL(
+      'GET',
+      '/api/v1/feed?entityLink=*type=Conversation*',
+      'entityFeed'
+    );
+    interceptURL('GET', '/api/v1/feed?entityLink=*type=Task*', 'taskFeed');
     cy.get('[data-testid="activity_feed"]').click();
-    interceptURL('GET', '/api/v1/feed?entityLink=*&type=Task*', 'entityFeed');
-    cy.get('[data-menu-id*="tasks"]').click();
     verifyResponseStatusCode('@entityFeed', 200);
+
+    cy.get('[data-menu-id*="tasks"]').click();
+    verifyResponseStatusCode('@taskFeed', 200);
 
     // verify the task details
     verifyTaskDetails(/#(\d+) Request to update description for/, USER_NAME);
