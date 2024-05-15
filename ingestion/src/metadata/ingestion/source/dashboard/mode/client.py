@@ -75,7 +75,7 @@ class ModeApiClient:
             dict
         """
         all_reports = []
-        response_collections = self.client.get(f"/{workspace_name}/{COLLECTIONS}?filter=all")
+        response_collections = self.client.get(f"/{workspace_name}/{COLLECTIONS}?filter=custom")
         collections = response_collections[EMBEDDED]["spaces"]
         for collection in collections:
             response_reports = self.get_all_reports_for_collection(
