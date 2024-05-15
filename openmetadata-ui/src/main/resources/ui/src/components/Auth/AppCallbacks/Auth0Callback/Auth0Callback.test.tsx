@@ -42,7 +42,6 @@ Object.defineProperty(window, 'localStorage', {
 });
 
 const mockUseAuth0 = useAuth0 as jest.Mock;
-const mockSetIsAuthenticated = jest.fn();
 const mockHandleSuccessfulLogin = jest.fn();
 
 jest.mock('@auth0/auth0-react', () => ({
@@ -53,7 +52,6 @@ jest.mock('../../../../hooks/useApplicationStore', () => {
   return {
     useApplicationStore: jest.fn(() => ({
       authConfig: {},
-      setIsAuthenticated: mockSetIsAuthenticated,
       handleSuccessfulLogin: mockHandleSuccessfulLogin,
       setOidcToken: jest.fn(),
     })),
@@ -108,8 +106,6 @@ describe('Test Auth0Callback component', () => {
     // eslint-disable-next-line no-undef
     await new Promise(process.nextTick);
 
-    expect(mockSetIsAuthenticated).toHaveBeenCalledTimes(1);
-    expect(mockSetIsAuthenticated).toHaveBeenCalledWith(true);
     expect(mockHandleSuccessfulLogin).toHaveBeenCalledTimes(1);
     expect(mockHandleSuccessfulLogin).toHaveBeenCalledWith({
       id_token: 'raw_id_token',

@@ -38,6 +38,7 @@ import org.apache.http.impl.client.BasicCredentialsProvider;
 import org.flywaydb.core.Flyway;
 import org.glassfish.jersey.client.ClientConfig;
 import org.glassfish.jersey.client.ClientProperties;
+import org.glassfish.jersey.jetty.connector.JettyClientProperties;
 import org.glassfish.jersey.jetty.connector.JettyConnectorProvider;
 import org.jdbi.v3.core.Jdbi;
 import org.jdbi.v3.sqlobject.SqlObjectPlugin;
@@ -92,7 +93,6 @@ public abstract class OpenMetadataApplicationTest {
 
   private static String HOST;
   private static String PORT;
-
   private static Client client;
 
   static {
@@ -216,6 +216,7 @@ public abstract class OpenMetadataApplicationTest {
     config.property(ClientProperties.CONNECT_TIMEOUT, 0);
     config.property(ClientProperties.READ_TIMEOUT, 0);
     config.property(ClientProperties.SUPPRESS_HTTP_COMPLIANCE_VALIDATION, true);
+    config.property(JettyClientProperties.SYNC_LISTENER_RESPONSE_MAX_SIZE, 10 * 1024 * 1024);
     client = ClientBuilder.newClient(config);
   }
 

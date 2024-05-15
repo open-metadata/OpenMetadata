@@ -77,10 +77,12 @@ from pydantic import BaseModel
 
 from metadata.generated.schema.entity.data.table import Table
 from metadata.ingestion.ometa.models import T
+from metadata.utils.constants import ENTITY_REFERENCE_CLASS_MAP
 from metadata.utils.deprecation import deprecated
 from metadata.utils.importer import import_from_module
 
 logger = logging.getLogger("airflow.task")
+XLET_KEYS = {"entity", "fqn", "key"}
 
 
 class XLetsMode(Enum):
@@ -213,7 +215,7 @@ def dictionary_lineage_annotation(xlet: dict) -> Dict[str, List[OMEntity]]:
     """
     Handle OM specific inlet/outlet information. E.g.,
 
-    ```
+    ```python
     BashOperator(
         task_id="print_date",
         bash_command="date",
@@ -224,12 +226,63 @@ def dictionary_lineage_annotation(xlet: dict) -> Dict[str, List[OMEntity]]:
         },
     )
     ```
+
+    The Serialized DAG for the old lineage style will look like:
+    ```
+    "inlets": [
+          {
+            "__var": {
+              "tables": [
+                "sample_data.ecommerce_db.shopify.raw_order"
+              ]
+            },
+            "__type": "dict"
+          }
+        ],
+    ```
+    With the new lineage style where we annotate tasks' lineage as:
+    ```python
+    BashOperator(
+        task_id="print_date",
+        bash_command="date",
+        inlets=[
+            {"entity": "container", "fqn": "s3_storage_sample.departments", "key": "test"},
+        ],
+    )
+    ```,
+    the Serialized DAG looks like
+    ```
+    "inlets": [
+          {
+            "__var": {
+              "fqn": "s3_storage_sample.departments",
+              "key": "test",
+              "entity": "container"
+            },
+            "__type": "dict"
+          }
+        ],
+    ```
+    To validate if we are on the first on latter case, we can try to parse the available dict to an OMEntity.
     """
     xlet_dict = xlet
     # This is how the Serialized DAG is giving us the info from _inlets & _outlets
     if isinstance(xlet_dict, dict) and xlet_dict.get("__var"):
         xlet_dict = xlet_dict["__var"]
 
+    # Check if we can properly build the OMEntity class
+    if XLET_KEYS.issubset(xlet_dict.keys()):
+        return {
+            xlet_dict["key"]: [
+                OMEntity(
+                    entity=ENTITY_REFERENCE_CLASS_MAP[xlet_dict["entity"]],
+                    fqn=xlet_dict["fqn"],
+                    key=xlet_dict["key"],
+                )
+            ]
+        }
+
+    # Otherwise, fall to the old lineage style
     return {
         key: [
             # We will convert the old dict lineage method into Tables
