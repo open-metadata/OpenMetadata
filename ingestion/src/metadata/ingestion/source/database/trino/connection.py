@@ -49,7 +49,10 @@ def get_connection_url(connection: TrinoConnection) -> str:
     """
     url = f"{connection.scheme.value}://"
     if connection.username:
-        url += f"{quote_plus(connection.username)}"
+        # we need to encode twice because trino dialect internally
+        # url decodes the username and if there is an special char in username
+        # it will fail to authenticate
+        url += f"{quote_plus(quote_plus(connection.username))}"
         if (
             isinstance(connection.authType, basicAuth.BasicAuth)
             and connection.authType.password
