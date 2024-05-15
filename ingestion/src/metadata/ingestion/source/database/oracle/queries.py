@@ -97,7 +97,7 @@ WITH SP_HISTORY AS (SELECT
     TO_TIMESTAMP(LAST_LOAD_TIME, 'YYYY-MM-DD HH24:MI:SS') + NUMTODSINTERVAL(ELAPSED_TIME / 1000, 'SECOND') AS end_time,
     PARSING_SCHEMA_NAME as user_name
   FROM gv$sql
-  WHERE UPPER(sql_text) LIKE 'CALL%%'
+  WHERE UPPER(sql_text) LIKE '%%CALL%%' or UPPER(sql_text) LIKE '%%BEGIN%%'
   AND TO_TIMESTAMP(FIRST_LOAD_TIME, 'YYYY-MM-DD HH24:MI:SS') >= TO_TIMESTAMP('{start_date}', 'YYYY-MM-DD HH24:MI:SS')
  ),
  Q_HISTORY AS (SELECT
@@ -114,7 +114,7 @@ WITH SP_HISTORY AS (SELECT
       PARSING_SCHEMA_NAME AS SCHEMA_NAME,
       NULL AS DATABASE_NAME
     FROM gv$sql
-    WHERE UPPER(sql_text) NOT LIKE '%CALL%'
+    WHERE UPPER(sql_text) NOT LIKE '%%CALL%%' AND UPPER(sql_text) NOT LIKE '%%BEGIN%%'
       AND SQL_FULLTEXT NOT LIKE '/* {{"app": "OpenMetadata", %%}} */%%'
       AND SQL_FULLTEXT NOT LIKE '/* {{"app": "dbt", %%}} */%%'
       AND TO_TIMESTAMP(FIRST_LOAD_TIME, 'YYYY-MM-DD HH24:MI:SS') 
@@ -135,6 +135,7 @@ JOIN Q_HISTORY Q
   ON Q.start_time between SP.start_time and SP.end_time
   AND Q.end_time between SP.start_time and SP.end_time
   AND Q.user_name = SP.user_name
+  AND Q.QUERY_TYPE <> 'SELECT'
 ORDER BY PROCEDURE_START_TIME DESC
 """
 )
