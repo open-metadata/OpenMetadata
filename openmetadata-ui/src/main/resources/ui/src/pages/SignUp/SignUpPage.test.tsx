@@ -33,7 +33,7 @@ jest.mock('react-router-dom', () => ({
 
 jest.mock('../../hooks/useApplicationStore', () => ({
   useApplicationStore: jest.fn(() => ({
-    setIsSigningIn: jest.fn(),
+    setIsSigningUp: jest.fn(),
     newUser: {
       name: '',
       email: '',

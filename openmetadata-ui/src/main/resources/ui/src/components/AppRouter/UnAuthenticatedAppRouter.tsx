@@ -42,7 +42,7 @@ const BasicSignupPage = withSuspenseFallback(
 );
 
 export const UnAuthenticatedAppRouter = () => {
-  const { authConfig, isSigningIn } = useApplicationStore();
+  const { authConfig, isSigningUp } = useApplicationStore();
 
   const isBasicAuthProvider =
     authConfig &&
@@ -78,7 +78,7 @@ export const UnAuthenticatedAppRouter = () => {
         component={SamlCallback}
         path={[ROUTES.SAML_CALLBACK, ROUTES.AUTH_CALLBACK]}
       />
-      {!isSigningIn && (
+      {!isSigningUp && (
         <Route exact path={ROUTES.HOME}>
           <Redirect to={ROUTES.SIGNIN} />
         </Route>

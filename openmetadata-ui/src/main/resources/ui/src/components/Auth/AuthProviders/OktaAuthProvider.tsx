@@ -31,8 +31,7 @@ export const OktaAuthProvider: FunctionComponent<Props> = ({
   children,
   onLoginSuccess,
 }: Props) => {
-  const { authConfig, setIsAuthenticated, setOidcToken } =
-    useApplicationStore();
+  const { authConfig, setOidcToken } = useApplicationStore();
   const { clientId, issuer, redirectUri, scopes, pkce } =
     authConfig as OktaAuthOptions;
 
@@ -63,7 +62,6 @@ export const OktaAuthProvider: FunctionComponent<Props> = ({
     _oktaAuth
       .getUser()
       .then((info) => {
-        setIsAuthenticated(true);
         const user = {
           id_token: idToken,
           scope: scopes,

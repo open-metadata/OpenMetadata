@@ -20,13 +20,11 @@ import { OidcUser } from '../../AuthProviders/AuthProvider.interface';
 
 const Auth0Callback: VFC = () => {
   const { isAuthenticated, user, getIdTokenClaims, error } = useAuth0();
-  const { setIsAuthenticated, handleSuccessfulLogin, setOidcToken } =
-    useApplicationStore();
+  const { handleSuccessfulLogin, setOidcToken } = useApplicationStore();
   if (isAuthenticated) {
     getIdTokenClaims()
       .then((token) => {
         setOidcToken(token?.__raw || '');
-        setIsAuthenticated(true);
         const oidcUser: OidcUser = {
           id_token: token?.__raw || '',
           scope: '',
