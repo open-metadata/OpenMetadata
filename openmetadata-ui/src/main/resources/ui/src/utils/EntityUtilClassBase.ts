@@ -24,7 +24,10 @@ import {
   getUserPath,
 } from '../constants/constants';
 import { GlobalSettingsMenuCategory } from '../constants/GlobalSettings.constants';
-import { ResourceEntity } from '../context/PermissionProvider/PermissionProvider.interface';
+import {
+  OperationPermission,
+  ResourceEntity,
+} from '../context/PermissionProvider/PermissionProvider.interface';
 import { EntityType } from '../enums/entity.enum';
 import { SearchIndex } from '../enums/search.enum';
 import ContainerPage from '../pages/ContainerPage/ContainerPage';
@@ -309,7 +312,8 @@ class EntityUtilClassBase {
 
   public getManageExtraOptions(
     _entityType?: EntityType,
-    _fqn?: string
+    _fqn?: string,
+    _permission?: OperationPermission
   ): ItemType[] {
     return [];
   }
