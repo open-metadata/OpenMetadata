@@ -245,7 +245,10 @@ class StorageServiceSource(TopologyRunnerMixin, Source, ABC):
         """
         Return a prefix if we have structure data to read
         """
-        result = f"{metadata_entry.dataPath.strip(KEY_SEPARATOR)}"
+        # Adding the ending separator so that we only read files from the right directory, for example:
+        # if we have files in `transactions/*` and `transactions_old/*`, only passing the prefix as
+        # `transactions` would list files for both directories. We need the prefix to be `transactions/`.
+        result = f"{metadata_entry.dataPath.strip(KEY_SEPARATOR)}{KEY_SEPARATOR}"
         if not metadata_entry.structureFormat:
             logger.warning(f"Ignoring un-structured metadata entry {result}")
             return None
