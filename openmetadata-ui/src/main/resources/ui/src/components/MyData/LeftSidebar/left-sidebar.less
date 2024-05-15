@@ -27,7 +27,11 @@
     border-top: 0;
     background: @white;
     transition: 0.3s ease-in-out;
-    overflow: hidden;
+    overflow: scroll;
+    scrollbar-width: none;
+    &::-webkit-scrollbar {
+      display: none;
+    }
 
     //  sub menu dropdown will be closed by default
     .ant-menu-sub {

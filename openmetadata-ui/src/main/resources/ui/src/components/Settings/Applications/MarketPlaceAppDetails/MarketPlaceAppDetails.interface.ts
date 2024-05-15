@@ -15,6 +15,6 @@ export enum ApplicationTabs {
   FEATURES = 'features',
   PERMISSIONS = 'permissions',
   SCHEDULE = 'schedule',
-  HISTORY = 'history',
+  RECENT_RUNS = 'recent-runs',
   CONFIGURATION = 'configuration',
 }

@@ -116,10 +116,15 @@ function PipelineActions({
     }
   };
 
-  const handleConfirmDelete = (id: string, name: string) => {
+  const handleConfirmDelete = (
+    id: string,
+    name: string,
+    displayName?: string
+  ) => {
     handleDeleteSelection({
       id,
       name,
+      displayName,
       state: '',
     });
     handleIsConfirmationModalOpen(true);
@@ -221,7 +226,9 @@ function PipelineActions({
           data-testid="delete"
           disabled={!ingestionPipelinesPermission?.[record.name]?.Delete}
           type="link"
-          onClick={() => handleConfirmDelete(recordId, record.name)}>
+          onClick={() =>
+            handleConfirmDelete(recordId, record.name, record.displayName)
+          }>
           {getDeleteButton()}
         </Button>
         <Divider className="border-gray" type="vertical" />

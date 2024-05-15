@@ -382,11 +382,11 @@ const AppDetails = () => {
             {
               label: (
                 <TabsLabel
-                  id={ApplicationTabs.HISTORY}
-                  name={t('label.history')}
+                  id={ApplicationTabs.RECENT_RUNS}
+                  name={t('label.recent-run-plural')}
                 />
               ),
-              key: ApplicationTabs.HISTORY,
+              key: ApplicationTabs.RECENT_RUNS,
               children: (
                 <div className="p-lg">
                   <AppRunsHistory appData={appData} />

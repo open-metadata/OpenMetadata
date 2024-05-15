@@ -22,7 +22,6 @@ import {
   formatTestStatusData,
   getTestCaseResultCount,
 } from '../../../../../utils/FeedUtils';
-import { withActivityFeed } from '../../../../AppRouter/withActivityFeed';
 import TestSummaryGraph from '../../../../Database/Profiler/TestSummary/TestSummaryGraph';
 import './test-case-feed.less';
 import { TestCaseFeedProps } from './TestCaseFeed.interface';
@@ -82,4 +81,4 @@ function TestCaseFeed({
   );
 }
 
-export default withActivityFeed(TestCaseFeed);
+export default TestCaseFeed;
