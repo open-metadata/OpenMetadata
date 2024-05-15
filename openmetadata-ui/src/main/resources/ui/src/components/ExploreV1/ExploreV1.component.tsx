@@ -40,10 +40,12 @@ import AppliedFilterText from '../../components/Explore/AppliedFilterText/Applie
 import EntitySummaryPanel from '../../components/Explore/EntitySummaryPanel/EntitySummaryPanel.component';
 import ExploreQuickFilters from '../../components/Explore/ExploreQuickFilters';
 import SortingDropDown from '../../components/Explore/SortingDropDown';
+import { NULL_OPTION_KEY } from '../../constants/AdvancedSearch.constants';
 import {
   SEARCH_INDEXING_APPLICATION,
   TAG_FQN_KEY,
 } from '../../constants/explore.constants';
+import { EntityFields } from '../../enums/AdvancedSearch.enum';
 import { ERROR_PLACEHOLDER_TYPE, SORT_ORDER } from '../../enums/common.enum';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
 import {
@@ -53,7 +55,7 @@ import {
 import { getDropDownItems } from '../../utils/AdvancedSearchUtils';
 import { Transi18next } from '../../utils/CommonUtils';
 import { highlightEntityNameAndDescription } from '../../utils/EntityUtils';
-import { getSelectedValuesFromQuickFilter } from '../../utils/Explore.utils';
+import { getAllSelectedValuesFromQuickFilter } from '../../utils/Explore.utils';
 import { getApplicationDetailsPath } from '../../utils/RouterUtils';
 import searchClassBase from '../../utils/SearchClassBase';
 import Loader from '../common/Loader/Loader';
@@ -187,31 +189,40 @@ const ExploreV1: React.FC<ExploreProps> = ({
 
   const handleQuickFiltersChange = (data: ExploreQuickFilterField[]) => {
     const must = [] as Array<QueryFieldInterface>;
+    const mustNot = [] as Array<QueryFieldInterface>;
 
     // Mapping the selected advanced search quick filter dropdown values
     // to form a queryFilter to pass as a search parameter
     data.forEach((filter) => {
       if (!isEmpty(filter.value)) {
         const should = [] as Array<QueryFieldValueInterface>;
-        if (filter.value) {
-          filter.value.forEach((filterValue) => {
-            const term = {} as QueryFieldValueInterface['term'];
+        filter.value?.forEach((filterValue) => {
+          const term = {} as QueryFieldValueInterface['term'];
+          term[filter.key] = filterValue.key;
 
-            term[filter.key] = filterValue.key;
-
+          if (filterValue.key === NULL_OPTION_KEY) {
+            mustNot.push({ exists: { field: filter.key } });
+          } else {
             should.push({ term });
-          });
-        }
+          }
+        });
 
-        must.push({ bool: { should } });
+        if (should.length > 0) {
+          must.push({ bool: { should } });
+        }
       }
     });
 
     onChangeAdvancedSearchQuickFilters(
-      isEmpty(must)
+      isEmpty(must) && isEmpty(mustNot)
         ? undefined
         : {
-            query: { bool: { must } },
+            query: {
+              bool: {
+                must,
+                must_not: mustNot,
+              },
+            },
           }
     );
   };
@@ -251,14 +262,15 @@ const ExploreV1: React.FC<ExploreProps> = ({
       key: string;
     }> = getDropDownItems(activeTabKey);
 
+    const selectedValuesFromQuickFilter = getAllSelectedValuesFromQuickFilter(
+      dropdownItems,
+      quickFilters
+    );
+
     setSelectedQuickFilters(
       dropdownItems.map((item) => ({
         ...item,
-        value: getSelectedValuesFromQuickFilter(
-          item,
-          dropdownItems,
-          quickFilters
-        ),
+        value: selectedValuesFromQuickFilter?.[item.label] ?? [],
       }))
     );
   }, [activeTabKey, quickFilters]);
@@ -317,6 +329,12 @@ const ExploreV1: React.FC<ExploreProps> = ({
                       <ExploreQuickFilters
                         aggregations={aggregations}
                         fields={selectedQuickFilters}
+                        fieldsWithNullValues={[
+                          EntityFields.OWNER,
+                          EntityFields.DOMAIN,
+                          EntityFields.TIER,
+                          EntityFields.TAG,
+                        ]}
                         index={activeTabKey}
                         showDeleted={showDeleted}
                         onAdvanceSearch={() => toggleModal(true)}

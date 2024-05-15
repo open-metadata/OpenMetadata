@@ -18,6 +18,7 @@ import {
   SearchHitCounts,
 } from '../components/Explore/ExplorePage.interface';
 import { SearchDropdownOption } from '../components/SearchDropdown/SearchDropdown.interface';
+import { NULL_OPTION_KEY } from '../constants/AdvancedSearch.constants';
 import { Aggregations } from '../interface/search.interface';
 import {
   QueryFieldInterface,
@@ -36,34 +37,35 @@ import {
 export const getParseValueFromLocation = (
   filters: Array<QueryFieldValueInterface>,
   dataLookUp: SearchDropdownOption[]
-) =>
-  filters.reduce((acc, filter) => {
+): Record<string, SearchDropdownOption[]> => {
+  const dataLookupMap = new Map(
+    dataLookUp.map((option) => [option.key, option])
+  );
+  const result: Record<string, SearchDropdownOption[]> = {};
+
+  for (const filter of filters) {
     const key = Object.keys(filter.term)[0];
     const value = filter.term[key];
-    const dataCategory = dataLookUp.find(
-      (data) => data.key === key
-    ) as SearchDropdownOption;
+    const dataCategory = dataLookupMap.get(key);
 
-    if (!dataCategory) {
-      return acc;
+    if (dataCategory) {
+      result[dataCategory.label] = result[dataCategory.label] || [];
+      result[dataCategory.label].push({
+        key: value,
+        label: value,
+      });
     }
+  }
 
-    if (!acc[dataCategory.label]) {
-      acc[dataCategory.label] = [];
-    }
-    acc[dataCategory?.label].push({
-      key: value,
-      label: value,
-    });
-
-    return acc;
-  }, {} as Record<string, SearchDropdownOption[]>);
+  return result;
+};
 
 /**
  * It takes queryFilter object as input and returns a parsed array of search dropdown options with selected values
  * @param item - SearchDropdownOption
  * @param dropdownItems - SearchDropdownOption[]
  * @param queryFilter - QueryFilterInterface
+ * @deprecated will be removed
  */
 export const getSelectedValuesFromQuickFilter = (
   item: SearchDropdownOption,
@@ -95,6 +97,46 @@ export const getSelectedValuesFromQuickFilter = (
   }
 
   return EMPTY_DATA;
+};
+
+export const getAllSelectedValuesFromQuickFilter = (
+  dropdownItems: SearchDropdownOption[],
+  queryFilter?: QueryFilterInterface
+) => {
+  if (!queryFilter) {
+    return null;
+  }
+
+  const mustFilters: Array<QueryFieldValueInterface> = get(
+    queryFilter,
+    'query.bool.must',
+    []
+  ).flatMap((item) => item.bool?.should || []);
+
+  const mustNotFields = get(queryFilter, 'query.bool.must_not', []).flatMap(
+    (item) => item.exists?.field || []
+  );
+
+  const combinedData: Record<string, SearchDropdownOption[]> = {};
+
+  dropdownItems.forEach((item) => {
+    const data = getParseValueFromLocation(mustFilters, [item]);
+    const labelText = `No ${item.label}`;
+    const mustNotData: SearchDropdownOption[] = mustNotFields
+      .filter((mItem: string) => mItem === item.key)
+      .map((_: string) => ({
+        key: NULL_OPTION_KEY,
+        label: labelText,
+      }));
+
+    combinedData[item.label] = data[item.label] || [];
+
+    mustNotData.forEach((mustNotItem: SearchDropdownOption) => {
+      combinedData[item.label].push(mustNotItem);
+    });
+  });
+
+  return combinedData;
 };
 
 export const findActiveSearchIndex = (

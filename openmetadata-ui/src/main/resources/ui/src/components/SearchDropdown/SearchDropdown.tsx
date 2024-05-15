@@ -14,6 +14,7 @@
 import {
   Button,
   Card,
+  Checkbox,
   Col,
   Divider,
   Dropdown,
@@ -37,6 +38,7 @@ import React, {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as DropDown } from '../../assets/svg/drop-down.svg';
+import { NULL_OPTION_KEY } from '../../constants/AdvancedSearch.constants';
 import {
   generateSearchDropdownLabel,
   getSearchDropdownLabels,
@@ -65,14 +67,18 @@ const SearchDropdown: FC<SearchDropdownProps> = ({
   index,
   independent = false,
   hideCounts = false,
+  hasNullOption = false,
 }) => {
   const tabsInfo = searchClassBase.getTabsInfo();
   const { t } = useTranslation();
 
   const [isDropDownOpen, setIsDropDownOpen] = useState<boolean>(false);
   const [searchText, setSearchText] = useState('');
-  const [selectedOptions, setSelectedOptions] =
-    useState<SearchDropdownOption[]>(selectedKeys);
+  const [selectedOptions, setSelectedOptions] = useState<
+    SearchDropdownOption[]
+  >([]);
+  const [nullOptionSelected, setNullOptionSelected] = useState<boolean>(false);
+  const nullLabelText = `No ${label}`;
 
   // derive menu props from options and selected keys
   const menuOptions: MenuProps['items'] = useMemo(() => {
@@ -165,7 +171,14 @@ const SearchDropdown: FC<SearchDropdownProps> = ({
   // Handle update button click
   const handleUpdate = () => {
     // call on change with updated value
-    onChange(selectedOptions, searchKey);
+    if (nullOptionSelected) {
+      onChange(
+        [{ key: 'OM_NULL_FIELD', label: 'OM_NULL_FIELD' }, ...selectedOptions],
+        searchKey
+      );
+    } else {
+      onChange(selectedOptions, searchKey);
+    }
     handleDropdownClose();
   };
 
@@ -175,8 +188,14 @@ const SearchDropdown: FC<SearchDropdownProps> = ({
   );
 
   useEffect(() => {
-    setSelectedOptions(selectedKeys);
-  }, [isDropDownOpen, selectedKeys, options]);
+    const isNullOptionSelected = selectedKeys.some(
+      (item) => item.key === NULL_OPTION_KEY
+    );
+    setNullOptionSelected(isNullOptionSelected);
+    setSelectedOptions(
+      selectedKeys.filter((item) => item.key !== NULL_OPTION_KEY)
+    );
+  }, [isDropDownOpen, selectedKeys]);
 
   const getDropdownBody = useCallback(
     (menuNode: ReactNode) => {
@@ -248,6 +267,21 @@ const SearchDropdown: FC<SearchDropdownProps> = ({
           <Divider
             className={classNames(showClearAllBtn ? 'm-y-0' : 'm-t-xs m-b-0')}
           />
+          {hasNullOption && (
+            <>
+              <div className="d-flex items-center m-x-sm m-y-xs gap-2">
+                <Checkbox
+                  checked={nullOptionSelected}
+                  data-testid="no-option-checkbox"
+                  onChange={(e) => setNullOptionSelected(e.target.checked)}>
+                  {nullLabelText}
+                </Checkbox>
+              </div>
+
+              <Divider className="m-y-0" />
+            </>
+          )}
+
           {getDropdownBody(menuNode)}
           <Space className="p-sm p-t-xss">
             <Button
@@ -272,6 +306,7 @@ const SearchDropdown: FC<SearchDropdownProps> = ({
       label,
       debouncedOnSearch,
       showClearAllBtn,
+      nullOptionSelected,
       handleClear,
       getDropdownBody,
       handleUpdate,

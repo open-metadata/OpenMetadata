@@ -16,7 +16,12 @@ import { SORT_ORDER } from '../../enums/common.enum';
 
 export interface QueryFieldValueInterface {
   term: Record<string, string>;
+  exists?: ExistsType;
 }
+
+export type ExistsType = {
+  field: string;
+};
 
 export interface QueryFieldInterface {
   bool: {
