@@ -36,8 +36,6 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 )
 from metadata.workflow.metadata import MetadataWorkflow
 
-from ..integration_base import int_admin_ometa
-
 MODEL_HYPERPARAMS = {
     "alpha": {"name": "alpha", "value": "0.5", "description": None},
     "l1_ratio": {"name": "l1_ratio", "value": "1.0", "description": None},
@@ -117,11 +115,6 @@ def create_data(mlflow_environment):
             )
         else:
             mlflow.sklearn.log_model(lr, "model")
-
-
-@pytest.fixture(scope="module")
-def metadata():
-    return int_admin_ometa()
 
 
 @pytest.fixture(scope="module")
