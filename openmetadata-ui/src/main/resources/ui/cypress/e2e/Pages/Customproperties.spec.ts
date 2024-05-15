@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { lowerCase } from 'lodash';
+import { lowerCase, omit } from 'lodash';
 import {
   descriptionBox,
   interceptURL,
@@ -702,7 +702,7 @@ describe('Custom Properties should work properly', { tags: 'Settings' }, () => {
 
       cy.sidebarClick(SidebarItem.GLOSSARY);
 
-      createGlossary(NEW_GLOSSARY);
+      createGlossary(omit(NEW_GLOSSARY, ['reviewer']));
       createGlossaryTerm(
         NEW_GLOSSARY_TERMS.term_1,
         NEW_GLOSSARY,
