@@ -49,6 +49,7 @@ import { ReactComponent as DataProductIcon } from '../assets/svg/ic-data-product
 import { ReactComponent as DatabaseIcon } from '../assets/svg/ic-database.svg';
 import { ReactComponent as DomainIcon } from '../assets/svg/ic-domain.svg';
 import { ReactComponent as MlModelIcon } from '../assets/svg/ic-ml-model.svg';
+import { ReactComponent as PersonaIcon } from '../assets/svg/ic-personas.svg';
 import { ReactComponent as PipelineIcon } from '../assets/svg/ic-pipeline.svg';
 import { ReactComponent as SchemaIcon } from '../assets/svg/ic-schema.svg';
 import { ReactComponent as ContainerIcon } from '../assets/svg/ic-storage.svg';
@@ -59,8 +60,10 @@ import { ReactComponent as IconKeyLineThrough } from '../assets/svg/icon-key-lin
 import { ReactComponent as IconKey } from '../assets/svg/icon-key.svg';
 import { ReactComponent as IconNotNullLineThrough } from '../assets/svg/icon-not-null-line-through.svg';
 import { ReactComponent as IconNotNull } from '../assets/svg/icon-not-null.svg';
+import { ReactComponent as RoleIcon } from '../assets/svg/icon-role-grey.svg';
 import { ReactComponent as IconUniqueLineThrough } from '../assets/svg/icon-unique-line-through.svg';
 import { ReactComponent as IconUnique } from '../assets/svg/icon-unique.svg';
+import { ReactComponent as PolicyIcon } from '../assets/svg/policies.svg';
 import { ReactComponent as TagIcon } from '../assets/svg/tag.svg';
 import { ReactComponent as TaskIcon } from '../assets/svg/task-ic.svg';
 import { ReactComponent as TeamIcon } from '../assets/svg/teams.svg';
@@ -363,6 +366,21 @@ export const getEntityIcon = (
 
     case EntityType.APPLICATION:
       Icon = ApplicationIcon;
+
+      break;
+
+    case EntityType.PERSONA:
+      Icon = PersonaIcon;
+
+      break;
+
+    case EntityType.ROLE:
+      Icon = RoleIcon;
+
+      break;
+
+    case EntityType.POLICY:
+      Icon = PolicyIcon;
 
       break;
 

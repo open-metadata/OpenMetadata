@@ -52,7 +52,10 @@ import {
   NO_DATA,
   ROUTES,
 } from '../constants/constants';
-import { GlobalSettingsMenuCategory } from '../constants/GlobalSettings.constants';
+import {
+  GlobalSettingOptions,
+  GlobalSettingsMenuCategory,
+} from '../constants/GlobalSettings.constants';
 import { ResourceEntity } from '../context/PermissionProvider/PermissionProvider.interface';
 import {
   AssetsType,
@@ -121,6 +124,9 @@ import {
   getIncidentManagerDetailPagePath,
   getNotificationAlertDetailsPath,
   getObservabilityAlertDetailsPath,
+  getPersonaDetailsPath,
+  getPolicyWithFqnPath,
+  getRoleWithFqnPath,
   getSettingPath,
   getTeamsWithFqnPath,
 } from './RouterUtils';
@@ -1375,6 +1381,12 @@ export const getEntityLinkFromType = (
         AlertType.Observability
         ? getObservabilityAlertDetailsPath(fullyQualifiedName)
         : getNotificationAlertDetailsPath(fullyQualifiedName);
+    case EntityType.ROLE:
+      return getRoleWithFqnPath(fullyQualifiedName);
+    case EntityType.POLICY:
+      return getPolicyWithFqnPath(fullyQualifiedName);
+    case EntityType.PERSONA:
+      return getPersonaDetailsPath(fullyQualifiedName);
     default:
       return '';
   }
@@ -1832,6 +1844,54 @@ export const getEntityBreadcrumbs = (
         {
           name: getEntityName(entity),
           url: getApplicationDetailsPath(entity.fullyQualifiedName ?? ''),
+        },
+      ];
+    }
+
+    case EntityType.PERSONA: {
+      return [
+        {
+          name: i18next.t('label.persona-plural'),
+          url: getSettingPath(
+            GlobalSettingsMenuCategory.MEMBERS,
+            GlobalSettingOptions.PERSONA
+          ),
+        },
+        {
+          name: getEntityName(entity),
+          url: getPersonaDetailsPath(entity.fullyQualifiedName ?? ''),
+        },
+      ];
+    }
+
+    case EntityType.ROLE: {
+      return [
+        {
+          name: i18next.t('label.role-plural'),
+          url: getSettingPath(
+            GlobalSettingsMenuCategory.ACCESS,
+            GlobalSettingOptions.ROLES
+          ),
+        },
+        {
+          name: getEntityName(entity),
+          url: getRoleWithFqnPath(entity.fullyQualifiedName ?? ''),
+        },
+      ];
+    }
+
+    case EntityType.POLICY: {
+      return [
+        {
+          name: i18next.t('label.policy-plural'),
+          url: getSettingPath(
+            GlobalSettingsMenuCategory.ACCESS,
+            GlobalSettingOptions.POLICIES
+          ),
+        },
+        {
+          name: getEntityName(entity),
+          url: getPolicyWithFqnPath(entity.fullyQualifiedName ?? ''),
         },
       ];
     }

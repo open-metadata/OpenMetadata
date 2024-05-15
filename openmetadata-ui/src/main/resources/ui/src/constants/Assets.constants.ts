@@ -158,4 +158,7 @@ export const NON_SERVICE_TYPE_ASSETS = [
   EntityType.BOT,
   EntityType.TEAM,
   EntityType.APPLICATION,
+  EntityType.PERSONA,
+  EntityType.ROLE,
+  EntityType.POLICY,
 ];
