@@ -24,7 +24,14 @@ import {
 import { AxiosError } from 'axios';
 import { debounce, isEmpty, isUndefined, pick } from 'lodash';
 import { CustomTagProps } from 'rc-select/lib/BaseSelect';
-import React, { FC, useCallback, useMemo, useRef, useState } from 'react';
+import React, {
+  FC,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
 import { TAG_START_WITH } from '../../../constants/Tag.constants';
@@ -171,30 +178,36 @@ const AsyncSelectList: FC<AsyncSelectListProps & SelectProps> = ({
     }
   };
 
-  const dropdownRender = (menu: React.ReactElement) => (
-    <>
-      {menu}
-      {hasContentLoading ? <Loader size="small" /> : null}
-      {onCancel && (
-        <Space className="p-sm p-b-xss p-l-xs custom-dropdown-render" size={8}>
-          <Button
-            className="update-btn"
-            data-testid="saveAssociatedTag"
-            htmlType="submit"
-            loading={isSubmitLoading}
-            size="small"
-            onClick={() => form.submit()}>
-            {t('label.update')}
-          </Button>
-          <Button
-            data-testid="cancelAssociatedTag"
-            size="small"
-            onClick={onCancel}>
-            {t('label.cancel')}
-          </Button>
-        </Space>
-      )}
-    </>
+  const dropdownRender = useMemo(
+    () => (menu: React.ReactElement) =>
+      (
+        <>
+          {menu}
+          {hasContentLoading ? <Loader size="small" /> : null}
+          {onCancel && (
+            <Space
+              className="p-sm p-b-xss p-l-xs custom-dropdown-render"
+              size={8}>
+              <Button
+                className="update-btn"
+                data-testid="saveAssociatedTag"
+                htmlType="submit"
+                loading={isSubmitLoading}
+                size="small"
+                onClick={() => form.submit()}>
+                {t('label.update')}
+              </Button>
+              <Button
+                data-testid="cancelAssociatedTag"
+                size="small"
+                onClick={onCancel}>
+                {t('label.cancel')}
+              </Button>
+            </Space>
+          )}
+        </>
+      ),
+    [hasContentLoading, onCancel, isSubmitLoading, form]
   );
 
   const customTagRender = (data: CustomTagProps) => {
@@ -283,6 +296,10 @@ const AsyncSelectList: FC<AsyncSelectListProps & SelectProps> = ({
     onChange?.(selectedValues);
   };
 
+  useEffect(() => {
+    loadOptions('');
+  }, []);
+
   return (
     <Select
       autoFocus
@@ -297,7 +314,6 @@ const AsyncSelectList: FC<AsyncSelectListProps & SelectProps> = ({
       style={{ width: '100%' }}
       tagRender={customTagRender}
       onChange={handleChange}
-      onFocus={() => loadOptions('')}
       onInputKeyDown={(event) => {
         if (event.key === 'Backspace') {
           return event.stopPropagation();
