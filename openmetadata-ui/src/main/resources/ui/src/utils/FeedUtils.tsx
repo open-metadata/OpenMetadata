@@ -17,7 +17,7 @@ import { AxiosError } from 'axios';
 import { Operation } from 'fast-json-patch';
 import i18next from 'i18next';
 import { isEqual, isUndefined, lowerCase } from 'lodash';
-import React from 'react';
+import React, { ReactNode } from 'react';
 import ReactDOM from 'react-dom';
 import Showdown from 'showdown';
 import TurndownService from 'turndown';
@@ -735,14 +735,18 @@ const getActionLabelFromCardStyle = (
   cardStyle?: CardStyle,
   isApplication?: boolean
 ) => {
-  let action = isApplication
+  let action: ReactNode = isApplication
     ? i18next.t('label.installed-lowercase')
     : i18next.t('label.added-lowercase');
 
   if (cardStyle === CardStyle.EntityDeleted) {
-    action = isApplication
-      ? i18next.t('label.uninstalled-lowercase')
-      : i18next.t('label.deleted-lowercase');
+    action = (
+      <Typography.Text className="text-danger">
+        {isApplication
+          ? i18next.t('label.uninstalled-lowercase')
+          : i18next.t('label.deleted-lowercase')}
+      </Typography.Text>
+    );
   } else if (cardStyle === CardStyle.EntitySoftDeleted) {
     action = i18next.t('label.soft-deleted-lowercase');
   }
@@ -804,7 +808,12 @@ export const getFeedHeaderTextFromCardStyle = (
     case CardStyle.EntityDeleted:
     case CardStyle.EntitySoftDeleted:
       if (NON_DATA_ASSET_ENTITIES.includes(entityType as EntityType)) {
-        return (
+        return entityType === EntityType.APPLICATION ? (
+          <Typography.Text>
+            {getActionLabelFromCardStyle(cardStyle, true)}{' '}
+            {i18next.t('label.app-lowercase')}
+          </Typography.Text>
+        ) : (
           <Transi18next
             i18nKey="message.feed-entity-action-header"
             renderElement={<Typography.Text className="font-bold" />}
@@ -816,24 +825,13 @@ export const getFeedHeaderTextFromCardStyle = (
                     : entityType
                 }-lowercase`
               ),
-              action: getActionLabelFromCardStyle(
-                cardStyle,
-                entityType === EntityType.APPLICATION
-              ),
+              action: getActionLabelFromCardStyle(cardStyle),
             }}
           />
         );
       }
 
-      return (
-        <Transi18next
-          i18nKey="message.feed-asset-action-header"
-          renderElement={<Typography.Text className="font-bold" />}
-          values={{
-            action: getActionLabelFromCardStyle(cardStyle),
-          }}
-        />
-      );
+      return getActionLabelFromCardStyle(cardStyle);
 
     case CardStyle.Default:
     default:
