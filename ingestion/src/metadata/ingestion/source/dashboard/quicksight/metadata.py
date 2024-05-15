@@ -11,7 +11,7 @@
 """QuickSight source module"""
 
 import traceback
-from typing import Any, Iterable, List, Optional
+from typing import Iterable, List, Optional
 
 from pydantic import ValidationError
 
@@ -123,20 +123,20 @@ class QuicksightSource(DashboardServiceSource):
         ]
         return dashboards
 
-    def get_dashboard_name(self, dashboard: dict) -> str:
+    def get_dashboard_name(self, dashboard: DashboardDetail) -> str:
         """
         Get Dashboard Name
         """
         return dashboard.Name
 
-    def get_dashboard_details(self, dashboard: dict) -> dict:
+    def get_dashboard_details(self, dashboard: dict) -> DashboardDetail:
         """
         Get Dashboard Details
         """
         return DashboardDetail(**dashboard)
 
     def yield_dashboard(
-        self, dashboard_details: dict
+        self, dashboard_details: DashboardDetail
     ) -> Iterable[Either[CreateDashboardRequest]]:
         """
         Method to Get Dashboard Entity
@@ -164,20 +164,19 @@ class QuicksightSource(DashboardServiceSource):
         self.register_record(dashboard_request=dashboard_request)
 
     def yield_dashboard_chart(
-        self, dashboard_details: Any
+        self, dashboard_details: DashboardDetail
     ) -> Iterable[Either[CreateChartRequest]]:
         """Get chart method"""
         # Each dashboard is guaranteed to have at least one sheet, which represents
         # a chart in the context of QuickSight
         # https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/quicksight.html#QuickSight.Client.describe_dashboard
         if dashboard_details.Version:
-            charts = dashboard_details.Version.Sheets
-            for chart in charts or []:
+            for chart in dashboard_details.Version.Sheets or []:
                 try:
                     if filter_by_chart(
-                        self.source_config.chartFilterPattern, chart["Name"]
+                        self.source_config.chartFilterPattern, chart.Name
                     ):
-                        self.status.filter(chart["Name"], "Chart Pattern not allowed")
+                        self.status.filter(chart.Name, "Chart Pattern not allowed")
                         continue
 
                     self.dashboard_url = (
@@ -186,8 +185,8 @@ class QuicksightSource(DashboardServiceSource):
                     )
                     yield Either(
                         right=CreateChartRequest(
-                            name=chart["SheetId"],
-                            displayName=chart["Name"],
+                            name=chart.SheetId,
+                            displayName=chart.Name,
                             chartType=ChartType.Other.value,
                             sourceUrl=self.dashboard_url,
                             service=self.context.get().dashboard_service,
@@ -203,7 +202,7 @@ class QuicksightSource(DashboardServiceSource):
                     )
 
     def yield_dashboard_lineage_details(  # pylint: disable=too-many-locals
-        self, dashboard_details: dict, db_service_name: str
+        self, dashboard_details: DashboardDetail, db_service_name: str
     ) -> Iterable[Either[AddLineageRequest]]:
         """
         Get lineage between dashboard and data sources
