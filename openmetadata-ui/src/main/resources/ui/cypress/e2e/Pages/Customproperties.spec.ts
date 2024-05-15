@@ -706,7 +706,7 @@ describe('Custom Properties should work properly', { tags: 'Settings' }, () => {
       createGlossaryTerm(
         NEW_GLOSSARY_TERMS.term_1,
         NEW_GLOSSARY,
-        'Draft',
+        'Approved',
         true
       );
 
