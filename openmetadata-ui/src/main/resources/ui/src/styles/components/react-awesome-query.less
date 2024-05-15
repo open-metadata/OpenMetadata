@@ -13,6 +13,11 @@
 
 @import url('../variables.less');
 
+.selectTextOverflow() {
+  text-overflow: ellipsis;
+  max-width: 200px;
+}
+
 .query-builder-container {
   &.query-builder {
     margin: 0;
@@ -228,12 +233,12 @@
   width: 180px;
 
   .ant-select {
-    min-width: 100% !important;
+    min-width: 100% !important; // override the inline min-width style of the select provided by antd
+    max-width: 100%;
   }
   .ant-select-multiple {
     .ant-select-selection-item-content {
-      text-overflow: ellipsis;
-      max-width: 200px;
+      .selectTextOverflow();
     }
   }
 }
@@ -259,8 +264,7 @@
 
   .ant-select-multiple {
     .ant-select-selection-item-content {
-      text-overflow: ellipsis;
-      max-width: 200px;
+      .selectTextOverflow();
     }
   }
 }
