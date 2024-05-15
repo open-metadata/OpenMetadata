@@ -188,6 +188,11 @@ export const MOCK_APPLICATION_ENTITY_STATS = {
     failedRecords: 0,
     successRecords: 4,
   },
+  [EntityType.TEST_CASE_RESOLUTION_STATUS]: {
+    totalRecords: 4,
+    failedRecords: 0,
+    successRecords: 4,
+  },
 };
 
 export const MOCK_APPLICATION_ENTITY_STATS_DATA = [
@@ -397,6 +402,12 @@ export const MOCK_APPLICATION_ENTITY_STATS_DATA = [
   },
   {
     name: EntityType.WEB_ANALYTIC_USER_ACTIVITY_REPORT_DATA,
+    totalRecords: 4,
+    failedRecords: 0,
+    successRecords: 4,
+  },
+  {
+    name: EntityType.TEST_CASE_RESOLUTION_STATUS,
     totalRecords: 4,
     failedRecords: 0,
     successRecords: 4,

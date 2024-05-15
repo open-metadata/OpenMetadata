@@ -13,7 +13,7 @@
 
 import { uuid } from '../../constants/constants';
 import { CustomPropertySupportedEntityList } from '../../constants/CustomProperty.constant';
-import { ENTITY_PATH, EntityType } from '../../constants/Entity.interface';
+import { EntityType, ENTITY_PATH } from '../../constants/Entity.interface';
 import {
   createAnnouncement as createAnnouncementUtil,
   createInactiveAnnouncement as createInactiveAnnouncementUtil,
