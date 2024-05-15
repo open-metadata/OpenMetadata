@@ -172,7 +172,7 @@ class QuicksightSource(DashboardServiceSource):
         # https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/quicksight.html#QuickSight.Client.describe_dashboard
         if dashboard_details.Version:
             charts = dashboard_details.Version.Sheets
-            for chart in charts:
+            for chart in charts or []:
                 try:
                     if filter_by_chart(
                         self.source_config.chartFilterPattern, chart["Name"]
@@ -218,15 +218,18 @@ class QuicksightSource(DashboardServiceSource):
             )
             dataset_ids = {
                 dataset["DataSetId"]
-                for dataset in data_set_summary_list
+                for dataset in data_set_summary_list or []
                 if dataset.get("Arn") in dashboard_details.Version.DataSetArns
             }
 
-            for dataset_id in dataset_ids:
-                for data_source in list(
-                    self.client.describe_data_set(
-                        AwsAccountId=self.aws_account_id, DataSetId=dataset_id
-                    )["DataSet"]["PhysicalTableMap"].values()
+            for dataset_id in dataset_ids or []:
+                for data_source in (
+                    list(
+                        self.client.describe_data_set(
+                            AwsAccountId=self.aws_account_id, DataSetId=dataset_id
+                        )["DataSet"]["PhysicalTableMap"].values()
+                    )
+                    or []
                 ):
                     try:
                         if not data_source.get("RelationalTable"):
@@ -262,11 +265,11 @@ class QuicksightSource(DashboardServiceSource):
 
                     data_source_ids = [
                         data_source_arn["DataSourceId"]
-                        for data_source_arn in data_source_summary_list
+                        for data_source_arn in data_source_summary_list or []
                         if data_source_arn["Arn"] in data_source_resp.datasource_arn
                     ]
 
-                    for data_source_id in data_source_ids:
+                    for data_source_id in data_source_ids or []:
                         data_source_resp = DescribeDataSourceResponse(
                             **self.client.describe_data_source(
                                 AwsAccountId=self.aws_account_id,
@@ -275,7 +278,7 @@ class QuicksightSource(DashboardServiceSource):
                         ).DataSource
                         if data_source_resp and data_source_resp.DataSourceParameters:
                             data_source_dict = data_source_resp.DataSourceParameters
-                            for db in data_source_dict.keys():
+                            for db in data_source_dict.keys() or []:
                                 from_fqn = fqn.build(
                                     self.metadata,
                                     entity_type=Table,
