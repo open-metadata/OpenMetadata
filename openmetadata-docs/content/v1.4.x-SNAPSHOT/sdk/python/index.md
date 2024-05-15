@@ -106,6 +106,7 @@ from metadata.generated.schema.entity.data.mlmodel import (
 model = CreateMlModelRequest(
     name="test-model-properties",
     algorithm="algo",
+    service="demo-ml-service",
     mlFeatures=[
         MlFeature(
             name="age",
@@ -377,6 +378,8 @@ user = metadata.create_or_update(
 Update our instance  of `create_table` to add the `owner` field (we need to use the `Create` class as we'll run a `PUT`), and update the Entity:
 
 ```python
+from metadata.generated.schema.type.entityReference import EntityReference
+
 create_table.owner = EntityReference(id=user.id, type="user")
 updated_table_entity = metadata.create_or_update(create_table)
 
