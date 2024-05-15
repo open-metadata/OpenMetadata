@@ -271,11 +271,6 @@ const createGlossaryTerm = (term, glossary, status, isMutually = false) => {
     cy.get(`[data-testid="${NEW_GLOSSARY_TERMS.term_1.name}"]`)
       .scrollIntoView()
       .click();
-
-    cy.get('[data-testid="glossary-reviewer-name"]')
-      .scrollIntoView()
-      .contains(CREDENTIALS.displayName)
-      .should('be.visible');
   }
 };
 
@@ -702,7 +697,10 @@ describe('Custom Properties should work properly', { tags: 'Settings' }, () => {
 
       cy.sidebarClick(SidebarItem.GLOSSARY);
 
-      createGlossary(omit(NEW_GLOSSARY, ['reviewer']));
+      createGlossary({
+        ...omit(NEW_GLOSSARY, ['reviewer']),
+        addReviewer: false,
+      });
       createGlossaryTerm(
         NEW_GLOSSARY_TERMS.term_1,
         NEW_GLOSSARY,
