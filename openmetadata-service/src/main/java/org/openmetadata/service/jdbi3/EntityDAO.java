@@ -33,6 +33,7 @@ import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.locator.ConnectionAwareSqlQuery;
 import org.openmetadata.service.jdbi3.locator.ConnectionAwareSqlUpdate;
+import org.openmetadata.service.resources.databases.DatasourceConfig;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.jdbi.BindFQN;
@@ -43,6 +44,18 @@ public interface EntityDAO<T extends EntityInterface> {
 
   /** Methods that need to be overridden by interfaces extending this */
   String getTableName();
+
+  default String getPaginationColumnPrefix() {
+    return "name";
+  }
+
+  static String getPaginationQuery() {
+    if (Boolean.TRUE.equals(DatasourceConfig.getInstance().isMySQL())) {
+      return "JSON_EXTRACT(json, '$.fullyQualifiedName')";
+    } else {
+      return "json->>'fullyQualifiedName'";
+    }
+  }
 
   Class<T> getEntityClass();
 
@@ -296,9 +309,10 @@ public interface EntityDAO<T extends EntityInterface> {
       @Bind("limit") int limit,
       @Bind("before") String before);
 
-  @SqlQuery("SELECT json FROM <table> <cond> AND name > :after ORDER BY name LIMIT :limit")
-  List<String> listAfter(
+  @SqlQuery("SELECT json FROM <table> <cond> AND <name> > :after ORDER BY <name> LIMIT :limit")
+  List<String> listAfterPagination(
       @Define("table") String table,
+      @Define("name") String name,
       @Define("cond") String cond,
       @Bind("limit") int limit,
       @Bind("after") String after);
@@ -313,13 +327,6 @@ public interface EntityDAO<T extends EntityInterface> {
       @Define("table") String table,
       @Define("nameHashColumn") String nameHashColumnName,
       @Bind("limit") int limit);
-
-  @SqlQuery("SELECT json FROM <table> <cond> AND ORDER BY name LIMIT :limit OFFSET :offset")
-  List<String> listAfter(
-      @Define("table") String table,
-      @Define("cond") String cond,
-      @Bind("limit") int limit,
-      @Bind("offset") int offset);
 
   @SqlQuery("SELECT EXISTS (SELECT * FROM <table> WHERE id = :id)")
   boolean exists(@Define("table") String table, @BindUUID("id") UUID id);
@@ -435,7 +442,8 @@ public interface EntityDAO<T extends EntityInterface> {
   default List<String> listAfter(ListFilter filter, int limit, String after) {
     // Quoted name is stored in fullyQualifiedName column and not in the name column
     after = FullyQualifiedName.unquoteName(after);
-    return listAfter(getTableName(), filter.getCondition(), limit, after);
+    return listAfterPagination(
+        getTableName(), getPaginationColumnPrefix(), filter.getCondition(), limit, after);
   }
 
   default List<String> listAfterWithOffset(int limit, int offset) {
@@ -446,10 +454,6 @@ public interface EntityDAO<T extends EntityInterface> {
   default List<String> migrationListAfterWithOffset(int limit, String nameHashColumn) {
     // No ordering
     return migrationListAfterWithOffset(getTableName(), nameHashColumn, limit);
-  }
-
-  default List<String> listAfter(ListFilter filter, int limit, int offset) {
-    return listAfter(getTableName(), filter.getCondition(), limit, offset);
   }
 
   default void exists(UUID id) {
