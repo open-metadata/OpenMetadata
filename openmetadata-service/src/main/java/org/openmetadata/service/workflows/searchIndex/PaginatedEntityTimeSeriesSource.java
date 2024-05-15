@@ -1,16 +1,3 @@
-/*
- *  Copyright 2022 Collate
- *  Licensed under the Apache License, Version 2.0 (the "License");
- *  you may not use this file except in compliance with the License.
- *  You may obtain a copy of the License at
- *  http://www.apache.org/licenses/LICENSE-2.0
- *  Unless required by applicable law or agreed to in writing, software
- *  distributed under the License is distributed on an "AS IS" BASIS,
- *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- *  See the License for the specific language governing permissions and
- *  limitations under the License.
- */
-
 package org.openmetadata.service.workflows.searchIndex;
 
 import static org.openmetadata.schema.system.IndexingError.ErrorSource.READER;
@@ -23,20 +10,20 @@ import lombok.Getter;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 import org.glassfish.jersey.internal.util.ExceptionUtils;
-import org.openmetadata.schema.EntityInterface;
+import org.openmetadata.schema.EntityTimeSeriesInterface;
 import org.openmetadata.schema.system.IndexingError;
 import org.openmetadata.schema.system.StepStats;
-import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.SearchIndexException;
-import org.openmetadata.service.jdbi3.EntityRepository;
+import org.openmetadata.service.jdbi3.EntityTimeSeriesRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.ResultList;
 import org.openmetadata.service.workflows.interfaces.Source;
 
 @Slf4j
-public class PaginatedEntitiesSource implements Source<ResultList<? extends EntityInterface>> {
+public class PaginatedEntityTimeSeriesSource
+    implements Source<ResultList<? extends EntityTimeSeriesInterface>> {
   @Getter private final int batchSize;
   @Getter private final String entityType;
   @Getter private final List<String> fields;
@@ -46,20 +33,20 @@ public class PaginatedEntitiesSource implements Source<ResultList<? extends Enti
   @Setter private String cursor = RestUtil.encodeCursor("0");
   @Getter private boolean isDone = false;
 
-  public PaginatedEntitiesSource(String entityType, int batchSize, List<String> fields) {
+  public PaginatedEntityTimeSeriesSource(String entityType, int batchSize, List<String> fields) {
     this.entityType = entityType;
     this.batchSize = batchSize;
     this.fields = fields;
     this.stats
-        .withTotalRecords(Entity.getEntityRepository(entityType).getDao().listTotalCount())
+        .withTotalRecords(getEntityTimeSeriesRepository().getTimeSeriesDao().listCount(getFilter()))
         .withSuccessRecords(0)
         .withFailedRecords(0);
   }
 
   @Override
-  public ResultList<? extends EntityInterface> readNext(Map<String, Object> contextData)
+  public ResultList<? extends EntityTimeSeriesInterface> readNext(Map<String, Object> contextData)
       throws SearchIndexException {
-    ResultList<? extends EntityInterface> data = null;
+    ResultList<? extends EntityTimeSeriesInterface> data = null;
     if (!isDone) {
       data = read(cursor);
       cursor = data.getPaging().getAfter();
@@ -70,18 +57,15 @@ public class PaginatedEntitiesSource implements Source<ResultList<? extends Enti
     return data;
   }
 
-  private ResultList<? extends EntityInterface> read(String cursor) throws SearchIndexException {
-    LOG.debug("[PaginatedEntitiesSource] Fetching a Batch of Size: {} ", batchSize);
-    EntityRepository<?> entityRepository = Entity.getEntityRepository(entityType);
-    ResultList<? extends EntityInterface> result;
+  private ResultList<? extends EntityTimeSeriesInterface> read(String cursor)
+      throws SearchIndexException {
+    LOG.debug("[PaginatedEntityTimeSeriesSource] Fetching a Batch of Size: {} ", batchSize);
+    EntityTimeSeriesRepository<? extends EntityTimeSeriesInterface> repository =
+        getEntityTimeSeriesRepository();
+    ResultList<? extends EntityTimeSeriesInterface> result;
+    ListFilter filter = getFilter();
     try {
-      result =
-          entityRepository.listAfterWithSkipFailure(
-              null,
-              Entity.getFields(entityType, fields),
-              new ListFilter(Include.ALL),
-              batchSize,
-              cursor);
+      result = repository.listWithOffset(cursor, filter, batchSize, true);
       if (!result.getErrors().isEmpty()) {
         lastFailedCursor = this.cursor;
         if (result.getPaging().getAfter() == null) {
@@ -89,14 +73,11 @@ public class PaginatedEntitiesSource implements Source<ResultList<? extends Enti
         } else {
           this.cursor = result.getPaging().getAfter();
         }
-        // updateStats(result.getData().size(), result.getErrors().size());
         return result;
       }
-
       LOG.debug(
           "[PaginatedEntitiesSource] Batch Stats :- %n Submitted : {} Success: {} Failed: {}",
           batchSize, result.getData().size(), result.getErrors().size());
-      // updateStats(result.getData().size(), result.getErrors().size());
     } catch (Exception e) {
       lastFailedCursor = this.cursor;
       int remainingRecords =
@@ -139,5 +120,22 @@ public class PaginatedEntitiesSource implements Source<ResultList<? extends Enti
   @Override
   public void updateStats(int currentSuccess, int currentFailed) {
     getUpdatedStats(stats, currentSuccess, currentFailed);
+  }
+
+  private ListFilter getFilter() {
+    ListFilter filter = new ListFilter(null);
+    if (ReindexingUtil.isDataInsightIndex(entityType)) {
+      filter.addQueryParam("entityFQNHash", entityType);
+    }
+    return filter;
+  }
+
+  private EntityTimeSeriesRepository<? extends EntityTimeSeriesInterface>
+      getEntityTimeSeriesRepository() {
+    if (ReindexingUtil.isDataInsightIndex(entityType)) {
+      return Entity.getEntityTimeSeriesRepository(Entity.ENTITY_REPORT_DATA);
+    } else {
+      return Entity.getEntityTimeSeriesRepository(entityType);
+    }
   }
 }
