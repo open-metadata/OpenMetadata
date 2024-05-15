@@ -485,7 +485,12 @@ export const editCreatedProperty = (propertyName: string, type?: string) => {
 
   cy.get('button[type="submit"]').scrollIntoView().click();
 
-  cy.wait('@checkPatchForDescription', { timeout: 15000 });
+  /**
+   * @link https://docs.cypress.io/guides/references/configuration#Timeouts
+   * default responseTimeout is 30000ms which is not enough for the patch request
+   * so we need to increase the responseTimeout to 50000ms
+   */
+  cy.wait('@checkPatchForDescription', { responseTimeout: 50000 });
 
   cy.get('.ant-modal-wrap').should('not.exist');
 
