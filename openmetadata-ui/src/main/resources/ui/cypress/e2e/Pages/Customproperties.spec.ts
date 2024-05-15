@@ -724,7 +724,7 @@ describe('Custom Properties should work properly', { tags: 'Settings' }, () => {
         term: NEW_GLOSSARY_TERMS.term_1.name,
         serviceName: NEW_GLOSSARY_TERMS.term_1.fullyQualifiedName,
         entity: 'glossaryTerms' as EntityType,
-        dataTestId: 'Cypress Glossary-CypressPurchase',
+        dataTestId: `${NEW_GLOSSARY.name}-${NEW_GLOSSARY_TERMS.term_1.name}`,
       });
 
       // set custom property value
