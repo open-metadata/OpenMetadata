@@ -28,7 +28,7 @@ from dataclasses import dataclass
 from typing import Optional
 
 import pytest
-from integration.containers import (
+from ..containers import (
     MinioContainerConfigs,
     MySqlContainerConfigs,
     get_docker_network,
