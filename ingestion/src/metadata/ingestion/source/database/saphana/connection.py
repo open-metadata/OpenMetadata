@@ -21,10 +21,14 @@ from sqlalchemy.engine import Engine
 from metadata.generated.schema.entity.automations.workflow import (
     Workflow as AutomationWorkflow,
 )
+from metadata.generated.schema.entity.services.connections.database.sapHana.sapHanaHDBConnection import (
+    SapHanaHDBConnection,
+)
+from metadata.generated.schema.entity.services.connections.database.sapHana.sapHanaSQLConnection import (
+    SapHanaSQLConnection,
+)
 from metadata.generated.schema.entity.services.connections.database.sapHanaConnection import (
-    HdbUserStoreConnection,
     SapHanaConnection,
-    SqlConnection,
 )
 from metadata.ingestion.connections.builders import (
     create_generic_db_connection,
@@ -46,7 +50,7 @@ def get_database_connection_url(connection: SapHanaConnection) -> str:
 
     conn = connection.connection
 
-    if not isinstance(conn, SqlConnection):
+    if not isinstance(conn, SapHanaSQLConnection):
         raise ValueError("Database Connection requires the SQL connection details")
 
     url = (
@@ -75,7 +79,7 @@ def get_hdb_connection_url(connection: SapHanaConnection) -> str:
     Build the SQLConnection URL for the database connection
     """
 
-    if not isinstance(connection.connection, HdbUserStoreConnection):
+    if not isinstance(connection.connection, SapHanaHDBConnection):
         raise ValueError("Database Connection requires the SQL connection details")
 
     return f"{connection.scheme.value}://userkey={connection.connection.userKey}"
@@ -86,14 +90,14 @@ def get_connection(connection: SapHanaConnection) -> Engine:
     Create connection
     """
 
-    if isinstance(connection.connection, SqlConnection):
+    if isinstance(connection.connection, SapHanaSQLConnection):
         return create_generic_db_connection(
             connection=connection,
             get_connection_url_fn=get_database_connection_url,
             get_connection_args_fn=get_connection_args_common,
         )
 
-    if isinstance(connection.connection, HdbUserStoreConnection):
+    if isinstance(connection.connection, SapHanaHDBConnection):
         return create_generic_db_connection(
             connection=connection,
             get_connection_url_fn=get_hdb_connection_url,
@@ -128,7 +132,7 @@ def _build_test_fn_dict(
                 inspector_fn(schema)
                 break
 
-    if isinstance(service_connection.connection, SqlConnection):
+    if isinstance(service_connection.connection, SapHanaSQLConnection):
         return {
             "CheckAccess": partial(test_connection_engine_step, engine),
             "GetSchemas": partial(execute_inspector_func, engine, "get_schema_names"),
@@ -136,7 +140,7 @@ def _build_test_fn_dict(
             "GetViews": partial(custom_executor, engine, "get_view_names"),
         }
 
-    if isinstance(service_connection.connection, HdbUserStoreConnection):
+    if isinstance(service_connection.connection, SapHanaHDBConnection):
         return {
             "CheckAccess": partial(test_connection_engine_step, engine),
             "GetSchemas": partial(execute_inspector_func, engine, "get_schema_names"),
