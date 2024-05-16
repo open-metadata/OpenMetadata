@@ -24,7 +24,7 @@ import { DATABASE_SERVICE } from '../../constants/EntityConstant';
 const TABLE_NAME = DATABASE_SERVICE.entity.name;
 
 const testSuite = {
-  name: `testSuite-${uuid()}`,
+  name: `${DATABASE_SERVICE.entity.databaseSchema}.${DATABASE_SERVICE.entity.name}.testSuite`,
   executableEntityReference: `${DATABASE_SERVICE.entity.databaseSchema}.${DATABASE_SERVICE.entity.name}`,
 };
 

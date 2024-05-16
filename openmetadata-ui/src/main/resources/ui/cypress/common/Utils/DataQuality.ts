@@ -20,7 +20,7 @@ import { visitEntityDetailsPage } from './Entity';
 const tableFqn = `${DATABASE_SERVICE.entity.databaseSchema}.${DATABASE_SERVICE.entity.name}`;
 
 const testSuite = {
-  name: `testSuite-${uuid()}`,
+  name: `${tableFqn}.testSuite`,
   executableEntityReference: tableFqn,
 };
 const testCase1 = {
