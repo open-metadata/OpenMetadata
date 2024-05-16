@@ -1433,15 +1433,13 @@ Tooling:
 -   bootstrap/bootstrap_storage.sh has been deprecated in favor of bootstrap/openmetadata-ops.sh
 
 UI:
-
 -   Activity has been improved. New update specific cards display critical information such as data quality test case updates, description, tag update or removal.
 -   For Lineage, the Expand All button has been removed. A new Layers button is introduced at the bottom left corner. With the Layers button, you can add Column Level Lineage or Data Observability details to your Lineage view.
--   View Definition is now renamed to Schema Definition.
+-   View Definition is now renamed as Schema Definition.
 -   Adding Glossary Term view is improved. Now we show glossary terms hierarchically enabling a better understanding of how the terms are setup while adding it to a table or dashboard.
--  For Classification, users can set classification to be mutually exclusive only at the creation time. Once created, you cannot change it back to mutually non-exclusive or vice-versa. This is to prevent conflicts of adding multiple tags that belong to same classification and later turning the mutually exclusive flag back to true.
+-  For Classification, users can set classification to be mutually exclusive only **at the time of creation**. Once created, you cannot change it back to mutually non-exclusive or vice-versa. This is to prevent conflicts of adding multiple tags that belong to same classification and later turning the mutually exclusive flag back to true.
 
 API:
-
 -   Table Schema's ViewDefinition is now renamed to SchemaDefinition to capture Tables' Create Schema.
 -   Bulk Import API now creates entities if they are not present during the import.
 -   Table's TestSuite is migrated to EntityReference. Previously it used to store entire payload of TestSuite.
