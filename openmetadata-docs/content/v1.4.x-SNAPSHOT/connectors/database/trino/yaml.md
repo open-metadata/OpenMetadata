@@ -207,6 +207,7 @@ source:
 ```yaml {% srNumber=9 %}
       # connectionArguments:
       #   key: value
+      #   http_scheme: http  # required when connecting over HTTP
 ```
 
 {% partial file="/v1.4/connectors/yaml/database/source-config.md" /%}
