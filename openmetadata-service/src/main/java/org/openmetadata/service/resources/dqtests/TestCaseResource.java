@@ -16,6 +16,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import java.io.IOException;
 import java.util.List;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import javax.json.JsonPatch;
 import javax.validation.Valid;
 import javax.validation.constraints.Max;
@@ -385,7 +386,8 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
         User user = (User) Entity.getEntityByName(Entity.USER, owner, "teams", ALL);
         owners.append(user.getId().toString());
         if (!nullOrEmpty(user.getTeams())) {
-          user.getTeams().forEach(team -> owners.append(",").append(team.getId()));
+            owners.append(",")
+                .append(user.getTeams().stream().map(t -> t.getId().toString()).collect(Collectors.joining(",")));
         }
       } catch (Exception e) {
         // If the owner is not a user, then we'll try to get team
