@@ -117,7 +117,11 @@ const SingleColumnProfile: FC<SingleColumnProfileProps> = ({
   }, [columnProfilerData]);
 
   useEffect(() => {
-    fetchColumnProfilerData(activeColumnFqn, dateRangeObject);
+    if (activeColumnFqn) {
+      fetchColumnProfilerData(activeColumnFqn, dateRangeObject);
+    } else {
+      setIsLoading(false);
+    }
   }, [activeColumnFqn, dateRangeObject]);
 
   return (

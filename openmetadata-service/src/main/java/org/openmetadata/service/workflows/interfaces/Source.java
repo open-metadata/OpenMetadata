@@ -23,4 +23,12 @@ public interface Source<R> extends Stats {
   List<String> getReaderErrors();
 
   void reset();
+
+  String getEntityType();
+
+  int getBatchSize();
+
+  String getLastFailedCursor();
+
+  boolean isDone();
 }
