@@ -250,21 +250,24 @@ public class SystemRepository {
       JwtFilter jwtFilter) {
     ValidationResponse validation = new ValidationResponse();
 
-    validation.setDatabase(getDatabaseValidation());
-    validation.setSearchInstance(getSearchValidation());
-    validation.setPipelineServiceClient(getPipelineServiceClientValidation(pipelineServiceClient));
+    validation.setDatabase(getDatabaseValidation(applicationConfig));
+    validation.setSearchInstance(getSearchValidation(applicationConfig));
+    validation.setPipelineServiceClient(
+        getPipelineServiceClientValidation(applicationConfig, pipelineServiceClient));
     validation.setJwks(getJWKsValidation(applicationConfig, jwtFilter));
     validation.setMigrations(getMigrationValidation(migrationValidationClient));
 
     return validation;
   }
 
-  private StepValidation getDatabaseValidation() {
+  private StepValidation getDatabaseValidation(OpenMetadataApplicationConfig applicationConfig) {
     try {
       dao.testConnection();
       return new StepValidation()
           .withDescription(ValidationStepDescription.DATABASE.key)
-          .withPassed(Boolean.TRUE);
+          .withPassed(Boolean.TRUE)
+          .withMessage(
+              String.format("Connected to %s", applicationConfig.getDataSourceFactory().getUrl()));
     } catch (Exception exc) {
       return new StepValidation()
           .withDescription(ValidationStepDescription.DATABASE.key)
@@ -273,13 +276,16 @@ public class SystemRepository {
     }
   }
 
-  private StepValidation getSearchValidation() {
+  private StepValidation getSearchValidation(OpenMetadataApplicationConfig applicationConfig) {
     SearchRepository searchRepository = Entity.getSearchRepository();
     if (Boolean.TRUE.equals(searchRepository.getSearchClient().isClientAvailable())
         && searchRepository.getSearchClient().indexExists(INDEX_NAME)) {
       return new StepValidation()
           .withDescription(ValidationStepDescription.SEARCH.key)
-          .withPassed(Boolean.TRUE);
+          .withPassed(Boolean.TRUE)
+          .withMessage(
+              String.format(
+                  "Connected to %s", applicationConfig.getElasticSearchConfiguration().getHost()));
     } else {
       return new StepValidation()
           .withDescription(ValidationStepDescription.SEARCH.key)
@@ -289,12 +295,18 @@ public class SystemRepository {
   }
 
   private StepValidation getPipelineServiceClientValidation(
+      OpenMetadataApplicationConfig applicationConfig,
       PipelineServiceClient pipelineServiceClient) {
     PipelineServiceClientResponse pipelineResponse = pipelineServiceClient.getServiceStatus();
     if (pipelineResponse.getCode() == 200) {
       return new StepValidation()
           .withDescription(ValidationStepDescription.PIPELINE_SERVICE_CLIENT.key)
-          .withPassed(Boolean.TRUE);
+          .withPassed(Boolean.TRUE)
+          .withMessage(
+              String.format(
+                  "%s is available at %s",
+                  pipelineServiceClient.getPlatform(),
+                  applicationConfig.getPipelineServiceClientConfiguration().getApiEndpoint()));
     } else {
       return new StepValidation()
           .withDescription(ValidationStepDescription.PIPELINE_SERVICE_CLIENT.key)
@@ -312,7 +324,8 @@ public class SystemRepository {
           openMetadataServerConnection.getSecurityConfig().getJwtToken());
       return new StepValidation()
           .withDescription(ValidationStepDescription.JWT_TOKEN.key)
-          .withPassed(Boolean.TRUE);
+          .withPassed(Boolean.TRUE)
+          .withMessage("Ingestion Bot token has been validated");
     } catch (Exception e) {
       return new StepValidation()
           .withDescription(ValidationStepDescription.JWT_TOKEN.key)
@@ -329,7 +342,8 @@ public class SystemRepository {
         .equals(new HashSet<>(migrationValidationClient.getExpectedMigrationList()))) {
       return new StepValidation()
           .withDescription(ValidationStepDescription.MIGRATION.key)
-          .withPassed(Boolean.TRUE);
+          .withPassed(Boolean.TRUE)
+          .withMessage(String.format("Executed migrations: %s", currentVersions));
     }
     List<String> missingVersions =
         new ArrayList<>(migrationValidationClient.getExpectedMigrationList());

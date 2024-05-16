@@ -128,7 +128,9 @@ const ConnectionStepCard = ({
           )}
         </Space>
       </div>
-      {(isMandatoryStepsFailing || isNonMandatoryStepsFailing) && (
+      {(isMandatoryStepsFailing ||
+        isNonMandatoryStepsFailing ||
+        testConnectionStepResult?.message) && (
         <div className="connection-step-card-content">
           <Typography.Text className="text-body">
             {testConnectionStepResult?.message}
