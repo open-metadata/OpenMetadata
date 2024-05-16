@@ -251,6 +251,7 @@ const ContainerDataModel: FC<ContainerDataModelProps> = ({
     <>
       <Table
         bordered
+        className="align-table-filter-left"
         columns={columns}
         data-testid="container-data-model-table"
         dataSource={dataModel?.columns}

@@ -42,6 +42,7 @@ import { SearchService } from '../generated/entity/services/searchService';
 import { Team } from '../generated/entity/teams/team';
 import { User } from '../generated/entity/teams/user';
 import { TestCase } from '../generated/tests/testCase';
+import { TestCaseResolutionStatus } from '../generated/tests/testCaseResolutionStatus';
 import { TestSuite } from '../generated/tests/testSuite';
 import { TagLabel } from '../generated/type/tagLabel';
 import { AggregatedCostAnalysisReportDataSearchSource } from './data-insight.interface';
@@ -130,6 +131,16 @@ export interface TestCaseSearchSource
   testSuites: TestSuite[];
 } // extends EntityInterface
 export interface TestSuiteSearchSource extends SearchSourceBase, TestSuite {}
+
+export interface TestCaseResolutionStatusSearchSource
+  extends SearchSourceBase,
+    TestCaseResolutionStatus {
+  name: string;
+  displayName: string;
+  fullyQualifiedName: string;
+  serviceType: string;
+  description: string;
+}
 
 export interface IngestionPipelineSearchSource
   extends SearchSourceBase,
