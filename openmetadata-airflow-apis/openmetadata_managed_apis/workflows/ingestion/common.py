@@ -15,7 +15,7 @@ import json
 import uuid
 from datetime import datetime, timedelta
 from functools import partial
-from typing import Callable, Union
+from typing import Callable, Optional, Union
 
 import airflow
 from airflow import DAG
@@ -226,12 +226,14 @@ def build_workflow_config_property(
     )
 
 
-def clean_name_tag(tag: str) -> str:
+def clean_name_tag(tag: str) -> Optional[str]:
     """
     Clean the tag to be used in Airflow
     :param tag: tag to be cleaned
     :return: cleaned tag
     """
+    if not tag:
+        return None
     try:
         return fqn.split(tag)[-1][:100]
     except Exception as exc:
