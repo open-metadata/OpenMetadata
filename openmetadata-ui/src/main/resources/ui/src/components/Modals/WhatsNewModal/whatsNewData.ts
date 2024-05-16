@@ -1357,7 +1357,7 @@ export const WHATS_NEW = [
         description:
           'We have introduced Automator to easily maintain high-quality metadata at scale. The Automator streamlines governance processes from ownership assignments to tagging, ensuring compliance and consistency. We have added support for the following actions: adding and removing owner, tier, domain, tags, glossary terms and descriptions, ML PII tagging, and propagation of tags and glossary terms through lineage.',
         isImage: false,
-        path: 'https://www.youtube.com/embed/i2K492g7g8I',
+        path: 'https://www.youtube.com/embed/zdh4yzHw4w0',
       },
       {
         title: 'Bulk Upload Data Assets',
@@ -1402,7 +1402,7 @@ export const WHATS_NEW = [
         path: 'https://www.youtube.com/embed/-NiU1flBHs0',
       },
       {
-        title: 'Data Quality Filter',
+        title: 'Data Quality Filters',
         description:
           'We have improved the filters for data quality. Now you have additional filtering options for test suites and test cases.',
         isImage: false,
