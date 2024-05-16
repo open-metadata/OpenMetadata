@@ -321,7 +321,6 @@ def set_testcontainers():
     return superset_container, postgres_container
 
 
-@pytest.skipif(os.getenv("CI"), reason="TODO: skip this until test is fixed")
 class SupersetUnitTest(TestCase):
     """
     Validate how we work with Superset metadata
@@ -486,7 +485,7 @@ class SupersetUnitTest(TestCase):
     def test_dashboard_name(self):
         dashboard_name = self.superset_api.get_dashboard_name(MOCK_DASHBOARD)
         self.assertEqual(dashboard_name, MOCK_DASHBOARD.dashboard_title)
-
+    
     def test_yield_dashboard(self):
         # TEST API SOURCE
         dashboard = next(self.superset_api.yield_dashboard(MOCK_DASHBOARD)).right
@@ -506,6 +505,7 @@ class SupersetUnitTest(TestCase):
         EXPECTED_DASH.owner = dashboard.owner
         self.assertEqual(dashboard, EXPECTED_DASH)
 
+    @pytest.mark.skipif(os.getenv("CI"), reason="TODO: skip this until test is fixed")
     def test_yield_dashboard_chart(self):
         # TEST API SOURCE
         self.superset_api.prepare()
