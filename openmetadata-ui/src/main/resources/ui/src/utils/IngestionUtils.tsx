@@ -38,6 +38,7 @@ import { ERROR_PLACEHOLDER_TYPE } from '../enums/common.enum';
 import { ELASTIC_SEARCH_RE_INDEX_PAGE_TABS } from '../enums/ElasticSearch.enum';
 import { FormSubmitType } from '../enums/form.enum';
 import { PipelineType } from '../generated/api/services/ingestionPipelines/createIngestionPipeline';
+import { UIThemePreference } from '../generated/configuration/uiThemePreference';
 import { HiveMetastoreConnection as Connection } from '../generated/entity/services/databaseService';
 import {
   IngestionPipeline,
@@ -201,6 +202,7 @@ export const getIngestionTypes = (
 
 const getPipelineExtraInfo = (
   isPlatFormDisabled: boolean,
+  theme: UIThemePreference['customTheme'],
   pipelineType?: PipelineType
 ) => {
   switch (pipelineType) {
@@ -214,7 +216,7 @@ const getPipelineExtraInfo = (
                 <a
                   href={DATA_INSIGHTS_PIPELINE_DOCS}
                   rel="noreferrer"
-                  style={{ color: '#1890ff' }}
+                  style={{ color: theme.primaryColor }}
                   target="_blank"
                 />
               }
@@ -235,7 +237,7 @@ const getPipelineExtraInfo = (
                 <a
                   href={ELASTIC_SEARCH_RE_INDEX_PIPELINE_DOCS}
                   rel="noreferrer"
-                  style={{ color: '#1890ff' }}
+                  style={{ color: theme.primaryColor }}
                   target="_blank"
                 />
               }
@@ -263,7 +265,7 @@ const getPipelineExtraInfo = (
                     : WORKFLOWS_METADATA_DOCS
                 }
                 rel="noreferrer"
-                style={{ color: '#1890ff' }}
+                style={{ color: theme.primaryColor }}
                 target="_blank"
               />
             }
@@ -286,12 +288,13 @@ export const getErrorPlaceHolder = (
   isRequiredDetailsAvailable: boolean,
   ingestionDataLength: number,
   isPlatFormDisabled: boolean,
+  theme: UIThemePreference['customTheme'],
   pipelineType?: PipelineType
 ) => {
   if (isRequiredDetailsAvailable && ingestionDataLength === 0) {
     return (
       <ErrorPlaceHolder className="p-y-lg" type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
-        {getPipelineExtraInfo(isPlatFormDisabled, pipelineType)}
+        {getPipelineExtraInfo(isPlatFormDisabled, theme, pipelineType)}
       </ErrorPlaceHolder>
     );
   }

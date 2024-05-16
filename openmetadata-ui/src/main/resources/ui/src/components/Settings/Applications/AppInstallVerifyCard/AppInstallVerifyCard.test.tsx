@@ -28,6 +28,9 @@ jest.mock('../../../../utils/EntityUtils', () => ({
 jest.mock('../../../../hooks/useApplicationStore', () => ({
   useApplicationStore: jest.fn(() => ({
     currentUser: mockUserData,
+    theme: {
+      primaryColor: '#00ff00',
+    },
   })),
 }));
 

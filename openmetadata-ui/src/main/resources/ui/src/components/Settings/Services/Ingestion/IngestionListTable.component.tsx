@@ -20,6 +20,7 @@ import { DISABLED, NO_DATA_PLACEHOLDER } from '../../../../constants/constants';
 import { IngestionPipeline } from '../../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { usePaging } from '../../../../hooks/paging/usePaging';
 import { useAirflowStatus } from '../../../../hooks/useAirflowStatus';
+import { useApplicationStore } from '../../../../hooks/useApplicationStore';
 import { getEntityName } from '../../../../utils/EntityUtils';
 import { getErrorPlaceHolder } from '../../../../utils/IngestionUtils';
 import NextPrevious from '../../../common/NextPrevious/NextPrevious';
@@ -51,6 +52,7 @@ function IngestionListTable({
 }: IngestionListTableProps) {
   const { t } = useTranslation();
   const { isFetchingStatus, platform } = useAirflowStatus();
+  const { theme } = useApplicationStore();
 
   const {
     currentPage,
@@ -204,6 +206,7 @@ function IngestionListTable({
             isRequiredDetailsAvailable,
             ingestionData.length,
             isPlatFormDisabled,
+            theme,
             pipelineType
           ),
         }}
