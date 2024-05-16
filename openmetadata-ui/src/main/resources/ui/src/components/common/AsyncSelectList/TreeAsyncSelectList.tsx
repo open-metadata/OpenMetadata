@@ -181,7 +181,13 @@ const TreeAsyncSelectList: FC<Omit<AsyncSelectListProps, 'fetchOptions'>> = ({
       value: string;
     }[]
   ) => {
+    const lastSelectedMap = new Map(
+      selectedTagsRef.current.map((tag) => [tag.value, tag])
+    );
     const selectedValues = values.map(({ value }) => {
+      if (lastSelectedMap.has(value)) {
+        return lastSelectedMap.get(value) as SelectOption;
+      }
       const initialData = findGlossaryTermByFqn(
         [
           ...glossaries,

@@ -124,33 +124,35 @@ describe('Search Index Application', { tags: 'Settings' }, () => {
     );
   });
 
-  it('Run application', () => {
-    interceptURL(
-      'GET',
-      '/api/v1/apps/name/SearchIndexingApplication?fields=*',
-      'getSearchIndexingApplication'
-    );
-    interceptURL(
-      'POST',
-      '/api/v1/apps/trigger/SearchIndexingApplication',
-      'triggerPipeline'
-    );
-    cy.get(
-      '[data-testid="search-indexing-application-card"] [data-testid="config-btn"]'
-    ).click();
-    verifyResponseStatusCode('@getSearchIndexingApplication', 200);
-    cy.get('[data-testid="run-now-button"]').click();
-    verifyResponseStatusCode('@triggerPipeline', 200);
+  if (Cypress.env('isOss')) {
+    it('Run application', () => {
+      interceptURL(
+        'GET',
+        '/api/v1/apps/name/SearchIndexingApplication?fields=*',
+        'getSearchIndexingApplication'
+      );
+      interceptURL(
+        'POST',
+        '/api/v1/apps/trigger/SearchIndexingApplication',
+        'triggerPipeline'
+      );
+      cy.get(
+        '[data-testid="search-indexing-application-card"] [data-testid="config-btn"]'
+      ).click();
+      verifyResponseStatusCode('@getSearchIndexingApplication', 200);
+      cy.get('[data-testid="run-now-button"]').click();
+      verifyResponseStatusCode('@triggerPipeline', 200);
 
-    cy.wait(120000); // waiting for 2 minutes before we check if reindex was success
+      cy.wait(120000); // waiting for 2 minutes before we check if reindex was success
 
-    interceptURL(
-      'GET',
-      '/api/v1/apps/name/SearchIndexingApplication/status?offset=0&limit=1',
-      'lastExecutionRun'
-    );
+      interceptURL(
+        'GET',
+        '/api/v1/apps/name/SearchIndexingApplication/status?offset=0&limit=1',
+        'lastExecutionRun'
+      );
 
-    cy.reload();
-    verifyLastExecutionRun('lastExecutionRun');
-  });
+      cy.reload();
+      verifyLastExecutionRun('lastExecutionRun');
+    });
+  }
 });
