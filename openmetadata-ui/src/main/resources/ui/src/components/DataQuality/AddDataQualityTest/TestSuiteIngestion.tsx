@@ -46,6 +46,7 @@ import {
   Transi18next,
 } from '../../../utils/CommonUtils';
 import { getIngestionName } from '../../../utils/ServiceUtils';
+import { generateUUID } from '../../../utils/StringsUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import SuccessScreen from '../../common/SuccessScreen/SuccessScreen';
 import DeployIngestionLoaderModal from '../../Modals/DeployIngestionLoaderModal/DeployIngestionLoaderModal';
@@ -146,7 +147,8 @@ const TestSuiteIngestion: React.FC<TestSuiteIngestionProps> = ({
           ? undefined
           : data.repeatFrequency,
       },
-      name: updatedName,
+      displayName: updatedName,
+      name: generateUUID(),
       loggerLevel: data.enableDebugLog ? LogLevels.Debug : LogLevels.Info,
       pipelineType: PipelineType.TestSuite,
       service: {
