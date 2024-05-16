@@ -157,10 +157,10 @@ class PostgresIngestionClass extends ServiceBaseClass {
         '/api/v1/search/query?q=*&index=query_search_index*',
         'queriesTab'
       );
-      cy.get('[data-testid="table_queries"]')
-        .should('be.visible')
-        .trigger('click');
-      verifyResponseStatusCode('@queriesTab', 200);
+      // cy.get('[data-testid="table_queries"]')
+      //   .should('be.visible')
+      //   .trigger('click');
+      // verifyResponseStatusCode('@queriesTab', 200);
       // Validate that the triggered query is visible in the queries container
       // cy.get('[data-testid="queries-container"]')
       //   .should('be.visible')

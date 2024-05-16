@@ -126,7 +126,7 @@ describe('Data Insight Report Application', { tags: 'Settings' }, () => {
     verifyResponseStatusCode('@triggerPipeline', 200);
 
     // check the logs in the history table
-    cy.get('[data-testid="history"]').click();
+    cy.get('[data-testid="recent-runs"]').click();
 
     logButton();
   });
