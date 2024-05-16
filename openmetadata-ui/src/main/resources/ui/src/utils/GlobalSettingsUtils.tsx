@@ -284,7 +284,7 @@ export const getGlobalSettingsMenuWithPermission = (
           icon: LoginIcon,
         },
         {
-          label: i18next.t('label.om-status'),
+          label: i18next.t('label.health-check'),
           description: i18next.t(
             'message.page-sub-header-for-om-health-configuration'
           ),

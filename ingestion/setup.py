@@ -110,7 +110,6 @@ base_requirements = {
     "PyYAML~=6.0",
     "requests>=2.23",
     "requests-aws4auth~=1.1",  # Only depends on requests as external package. Leaving as base.
-    "setuptools~=66.0.0",
     "sqlalchemy>=1.4.0,<2",
     "collate-sqllineage~=1.3.0",
     "tabulate==0.9.0",
@@ -322,6 +321,8 @@ test = {
     "testcontainers==3.7.1;python_version<'3.9'",
     "testcontainers==4.4.0;python_version>='3.9'",
     "minio==7.2.5",
+    *plugins["mlflow"],
+    *plugins["datalake-s3"],
 }
 
 e2e_test = {
