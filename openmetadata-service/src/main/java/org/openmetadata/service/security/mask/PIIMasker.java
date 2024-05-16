@@ -3,6 +3,7 @@ package org.openmetadata.service.security.mask;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.service.jdbi3.TopicRepository.getAllFieldTags;
 
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -20,6 +21,7 @@ import org.openmetadata.schema.entity.data.Topic;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.tests.TestCase;
 import org.openmetadata.schema.type.Column;
+import org.openmetadata.schema.type.ColumnProfile;
 import org.openmetadata.schema.type.Field;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.TableData;
@@ -30,6 +32,7 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.ColumnUtil;
 import org.openmetadata.service.resources.feeds.MessageParser;
 import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.ResultList;
 
 public class PIIMasker {
@@ -135,6 +138,22 @@ public class PIIMasker {
       }
     }
     return table;
+  }
+
+  public static List<ColumnProfile> getColumnProfile(
+      String fqn, List<ColumnProfile> columnProfiles) {
+    Table table =
+        Entity.getEntityByName(
+            Entity.TABLE, FullyQualifiedName.getTableFQN(fqn), "columns,tags", Include.ALL);
+    Column column =
+        table.getColumns().stream()
+            .filter(c -> c.getFullyQualifiedName().equals(fqn))
+            .findFirst()
+            .orElse(null);
+    if (column != null && hasPiiSensitiveTag(column)) {
+      return Collections.nCopies(columnProfiles.size(), new ColumnProfile());
+    }
+    return columnProfiles;
   }
 
   private static TestCase getTestCase(Column column, TestCase testCase) {

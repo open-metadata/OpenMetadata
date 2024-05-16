@@ -36,7 +36,8 @@
       "domain",
       "storedProcedure",
       "storageService",
-      "dataProduct"
+      "dataProduct",
+      "testCaseResolutionStatus"
     ],
     "recreateIndex": true,
     "batchSize": "100",

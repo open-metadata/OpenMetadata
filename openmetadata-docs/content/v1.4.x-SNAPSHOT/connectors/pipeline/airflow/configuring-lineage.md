@@ -23,9 +23,10 @@ the relationship.
 
 {% note %}
 
-This lineage configuration method is available for OpenMetadata release 1.2.3 or higher.
-
 We support lineage for the following entities: `Table`, `Container`, `Dashboard`, `DashboardDataModel`, `Pipeline`, `Topic`, `SearchIndex` and `MlModel`.
+
+Moreover, note that this example requires the `openmetadata-ingestion` package to be installed. If you are planning to
+ingest the Airflow metadata (and lineage) externally and don't want to install it, please refer to the next section.
 
 {% /note %}
 
@@ -109,6 +110,74 @@ Table X (node) -> DAG (edge) -> Table Y (node)
 
 It does not matter in which task of the DAG these inlet/outlet information is specified. During the ingestion process we
 group all these details at the DAG level.
+
+## Configuring Lineage without the `openmetadata-ingestion` package
+
+We can apply the same example as above but describing the lineage in dictionaries instead, in order to not require
+the `openmetadata-ingestion` package to be installed in the environment.
+
+```python
+from datetime import timedelta
+
+from airflow import DAG
+from airflow.operators.dummy import DummyOperator
+from airflow.utils.dates import days_ago
+
+default_args = {
+    'owner': 'airflow',
+    'depends_on_past': False,
+    'email': ['airflow@example.com'],
+    'email_on_failure': False,
+    'email_on_retry': False,
+    'retries': 1,
+    'retry_delay': timedelta(seconds=1),
+}
+
+
+with DAG(
+    "test-lineage",
+    default_args=default_args,
+    description="An example DAG which runs a lineage test",
+    start_date=days_ago(1),
+    is_paused_upon_creation=False,
+    catchup=False,
+) as dag:
+    
+
+    t0 = DummyOperator(
+        task_id='task0',
+        inlets=[
+            {"entity": "container", "fqn": "Container A", "key": "group_A"},
+            {"entity": "table", "fqn": "Table X", "key": "group_B"},
+        ]
+    )
+    
+    t1 = DummyOperator(
+        task_id='task10',
+        outlets=[
+            {"entity": "table", "fqn": "Table B", "key": "group_A"},
+            {"entity": "table", "fqn": "Table Y", "key": "group_B"},
+        ]
+    )
+
+    t0 >> t1
+```
+
+We are passing inlets and outlets as a list of dictionaries, that lets us specify:
+1. The type of the asset we are using: Table, Container,... following the list below.
+2. The FQN of the asset, which is the unique name of each asset in OpenMetadata, e.g., `serviceName.databaseName.schemaName.tableName`.
+3. The key to group the lineage if needed.
+
+The `entity` key needs to be informed as follows for each of the entity types:
+
+- Table: `table`
+- Container: `container`
+- Dashboard: `dashboard`
+- Dashboard Data Model: `dashboardDataModel`
+- Pipeline: `pipeline`
+- Topic: `topic`
+- SearchIndex: `searchIndex`
+- MlModel: `mlmodel`
 
 
 ## Configuring Lineage between Tables

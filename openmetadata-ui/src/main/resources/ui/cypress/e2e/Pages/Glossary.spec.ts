@@ -83,7 +83,7 @@ const visitGlossaryTermPage = (
   cy.get('.ant-tabs .glossary-overview-tab').should('be.visible').click();
 };
 
-const createGlossary = (glossaryData) => {
+const createGlossary = (glossaryData, bValidateForm) => {
   // Intercept API calls
   interceptURL('POST', '/api/v1/glossaries', 'createGlossary');
   interceptURL(
@@ -106,7 +106,9 @@ const createGlossary = (glossaryData) => {
     .should('be.visible')
     .click();
 
-  validateForm();
+  if (bValidateForm) {
+    validateForm();
+  }
 
   cy.get('[data-testid="name"]')
     .scrollIntoView()
@@ -206,7 +208,11 @@ const validateForm = () => {
   cy.get('#name_help').should('be.visible').contains(NAME_VALIDATION_ERROR);
 };
 
-const fillGlossaryTermDetails = (term, glossary, isMutually = false) => {
+const fillGlossaryTermDetails = (
+  term,
+  isMutually = false,
+  validateCreateForm = true
+) => {
   cy.get('[data-testid="add-new-tag-button-header"]').click();
 
   cy.contains('Add Glossary Term').should('be.visible');
@@ -217,7 +223,9 @@ const fillGlossaryTermDetails = (term, glossary, isMutually = false) => {
     .should('be.visible')
     .click();
 
-  validateForm();
+  if (validateCreateForm) {
+    validateForm();
+  }
 
   cy.get('[data-testid="name"]')
     .scrollIntoView()
@@ -321,8 +329,14 @@ const removeAssetsFromGlossaryTerm = (glossaryTerm, glossary) => {
   });
 };
 
-const createGlossaryTerm = (term, glossary, status, isMutually = false) => {
-  fillGlossaryTermDetails(term, glossary, isMutually);
+const createGlossaryTerm = (
+  term,
+  glossary,
+  status,
+  isMutually = false,
+  validateCreateForm = true
+) => {
+  fillGlossaryTermDetails(term, isMutually, validateCreateForm);
 
   interceptURL('POST', '/api/v1/glossaryTerms', 'createGlossaryTerms');
   cy.get('[data-testid="save-glossary-term"]')
@@ -733,8 +747,8 @@ describe('Glossary page should work properly', { tags: 'Governance' }, () => {
   });
 
   it('Create new glossary flow should work properly', () => {
-    createGlossary(NEW_GLOSSARY);
-    createGlossary(NEW_GLOSSARY_1);
+    createGlossary(NEW_GLOSSARY, true);
+    createGlossary(NEW_GLOSSARY_1, false);
   });
 
   it('Assign Owner', () => {
@@ -752,7 +766,7 @@ describe('Glossary page should work properly', { tags: 'Governance' }, () => {
       .click();
 
     checkDisplayName(NEW_GLOSSARY.name);
-    addOwner('Aaron Johnson', GLOSSARY_OWNER_LINK_TEST_ID);
+    addOwner('Alex Pollard', GLOSSARY_OWNER_LINK_TEST_ID);
   });
 
   it('Remove Owner', () => {
@@ -761,7 +775,7 @@ describe('Glossary page should work properly', { tags: 'Governance' }, () => {
       .click();
 
     checkDisplayName(NEW_GLOSSARY.name);
-    removeOwner('Aaron Johnson', GLOSSARY_OWNER_LINK_TEST_ID);
+    removeOwner('Alex Pollard', GLOSSARY_OWNER_LINK_TEST_ID);
   });
 
   it('Verify and Remove Tags from Glossary', () => {
@@ -827,8 +841,8 @@ describe('Glossary page should work properly', { tags: 'Governance' }, () => {
   it('Create glossary term should work properly', () => {
     const terms = Object.values(NEW_GLOSSARY_TERMS);
     selectActiveGlossary(NEW_GLOSSARY.name);
-    terms.forEach((term) =>
-      createGlossaryTerm(term, NEW_GLOSSARY, 'Draft', true)
+    terms.forEach((term, index) =>
+      createGlossaryTerm(term, NEW_GLOSSARY, 'Draft', true, index === 0)
     );
 
     // Glossary term for Product glossary
@@ -836,7 +850,7 @@ describe('Glossary page should work properly', { tags: 'Governance' }, () => {
 
     const ProductTerms = Object.values(NEW_GLOSSARY_1_TERMS);
     ProductTerms.forEach((term) =>
-      createGlossaryTerm(term, NEW_GLOSSARY_1, 'Approved', false)
+      createGlossaryTerm(term, NEW_GLOSSARY_1, 'Approved', false, false)
     );
   });
 
@@ -1112,11 +1126,11 @@ describe('Glossary page should work properly', { tags: 'Governance' }, () => {
   });
 
   it('Add asset to glossary term using asset modal', () => {
-    createGlossary(CYPRESS_ASSETS_GLOSSARY);
+    createGlossary(CYPRESS_ASSETS_GLOSSARY, false);
     const terms = Object.values(CYPRESS_ASSETS_GLOSSARY_TERMS);
     selectActiveGlossary(CYPRESS_ASSETS_GLOSSARY.name);
     terms.forEach((term) =>
-      createGlossaryTerm(term, CYPRESS_ASSETS_GLOSSARY, 'Approved', true)
+      createGlossaryTerm(term, CYPRESS_ASSETS_GLOSSARY, 'Approved', true, false)
     );
 
     terms.forEach((term) => {
@@ -1202,12 +1216,18 @@ describe('Glossary page should work properly', { tags: 'Governance' }, () => {
   });
 
   it('Tags and entity summary columns should be sorted based on current Term Page', () => {
-    createGlossary(CYPRESS_ASSETS_GLOSSARY_1);
+    createGlossary(CYPRESS_ASSETS_GLOSSARY_1, false);
     selectActiveGlossary(CYPRESS_ASSETS_GLOSSARY_1.name);
 
     const terms = Object.values(CYPRESS_ASSETS_GLOSSARY_TERMS_1);
     terms.forEach((term) =>
-      createGlossaryTerm(term, CYPRESS_ASSETS_GLOSSARY_1, 'Approved', true)
+      createGlossaryTerm(
+        term,
+        CYPRESS_ASSETS_GLOSSARY_1,
+        'Approved',
+        true,
+        false
+      )
     );
 
     const entityTable = SEARCH_ENTITY_TABLE.table_1;
