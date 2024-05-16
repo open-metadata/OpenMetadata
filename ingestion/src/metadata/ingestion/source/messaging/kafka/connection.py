@@ -97,6 +97,7 @@ def get_connection(
     if connection.schemaRegistryURL:
         schema_registry_config["url"] = connection.schemaRegistryURL
         schema_registry_client = SchemaRegistryClient(schema_registry_config)
+        consumer_config["bootstrap.servers"] = connection.bootstrapServers
         if "group.id" not in consumer_config:
             consumer_config["group.id"] = "openmetadata-consumer"
         if "auto.offset.reset" not in consumer_config:
