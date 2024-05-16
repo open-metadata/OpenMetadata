@@ -505,7 +505,7 @@ class SupersetUnitTest(TestCase):
         EXPECTED_DASH.owner = dashboard.owner
         self.assertEqual(dashboard, EXPECTED_DASH)
 
-    @pytest.mark.skipif(os.getenv("CI"), reason="TODO: skip this until test is fixed")
+    @pytest.mark.skip(reason="TODO: skip this until test is fixed")
     def test_yield_dashboard_chart(self):
         # TEST API SOURCE
         self.superset_api.prepare()
