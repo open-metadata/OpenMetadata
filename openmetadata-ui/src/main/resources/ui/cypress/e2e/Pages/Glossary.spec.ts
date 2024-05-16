@@ -766,7 +766,7 @@ describe('Glossary page should work properly', { tags: 'Governance' }, () => {
       .click();
 
     checkDisplayName(NEW_GLOSSARY.name);
-    addOwner('Aaron Johnson', GLOSSARY_OWNER_LINK_TEST_ID);
+    addOwner('Alex Pollard', GLOSSARY_OWNER_LINK_TEST_ID);
   });
 
   it('Remove Owner', () => {
@@ -775,7 +775,7 @@ describe('Glossary page should work properly', { tags: 'Governance' }, () => {
       .click();
 
     checkDisplayName(NEW_GLOSSARY.name);
-    removeOwner('Aaron Johnson', GLOSSARY_OWNER_LINK_TEST_ID);
+    removeOwner('Alex Pollard', GLOSSARY_OWNER_LINK_TEST_ID);
   });
 
   it('Verify and Remove Tags from Glossary', () => {
