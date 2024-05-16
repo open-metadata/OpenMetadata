@@ -84,7 +84,7 @@ def get_connection(
             consumer_config["security.protocol"] = connection.securityProtocol.value
 
     if connection.basicAuthUserInfo:
-        consumer_config[
+        schema_registry_config[
             "basic.auth.user.info"
         ] = connection.basicAuthUserInfo.get_secret_value()
 
@@ -97,7 +97,6 @@ def get_connection(
     if connection.schemaRegistryURL:
         schema_registry_config["url"] = connection.schemaRegistryURL
         schema_registry_client = SchemaRegistryClient(schema_registry_config)
-
         if "group.id" not in consumer_config:
             consumer_config["group.id"] = "openmetadata-consumer"
         if "auto.offset.reset" not in consumer_config:
