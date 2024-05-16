@@ -386,8 +386,12 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
         User user = (User) Entity.getEntityByName(Entity.USER, owner, "teams", ALL);
         owners.append(user.getId().toString());
         if (!nullOrEmpty(user.getTeams())) {
-            owners.append(",")
-                .append(user.getTeams().stream().map(t -> t.getId().toString()).collect(Collectors.joining(",")));
+          owners
+              .append(",")
+              .append(
+                  user.getTeams().stream()
+                      .map(t -> t.getId().toString())
+                      .collect(Collectors.joining(",")));
         }
       } catch (Exception e) {
         // If the owner is not a user, then we'll try to get team
