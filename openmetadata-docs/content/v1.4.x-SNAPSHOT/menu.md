@@ -868,6 +868,8 @@ site_menu:
     url: /connectors/ingestion/lineage
   - category: Connectors / Ingestion / Lineage / Edit Data Lineage Manually
     url: /connectors/ingestion/lineage/edit-lineage-manually
+  - category: Connectors / Ingestion / Lineage / Export Lineage
+    url: /connectors/ingestion/lineage/export-lineage
   - category: Connectors / Ingestion / Lineage / Spark Lineage
     url: /connectors/ingestion/lineage/spark-lineage
   - category: Connectors / Ingestion / Versioning
