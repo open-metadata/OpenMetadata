@@ -485,7 +485,7 @@ class SupersetUnitTest(TestCase):
     def test_dashboard_name(self):
         dashboard_name = self.superset_api.get_dashboard_name(MOCK_DASHBOARD)
         self.assertEqual(dashboard_name, MOCK_DASHBOARD.dashboard_title)
-    
+
     def test_yield_dashboard(self):
         # TEST API SOURCE
         dashboard = next(self.superset_api.yield_dashboard(MOCK_DASHBOARD)).right
