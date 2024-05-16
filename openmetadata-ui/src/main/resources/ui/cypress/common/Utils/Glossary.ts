@@ -95,12 +95,12 @@ export const removeGlossaryTerm = (
       '[data-testid="entity-right-panel"]  [data-testid="glossary-container"] [data-testid="edit-button"]'
     ).click();
 
+    verifyResponseStatusCode('@fetchGlossaries', 200);
+
     // Remove all added tags
     cy.get(
       `[data-testid="selected-tag-${glossaryTerm}"] [data-testid="remove-tags"]`
     ).click();
-
-    verifyResponseStatusCode('@fetchGlossaries', 200);
 
     cy.get('[data-testid="saveAssociatedTag"]').click();
     verifyResponseStatusCode('@removeTags', 200, {

@@ -93,11 +93,12 @@ export const removeTags = (
       .scrollIntoView()
       .click();
 
+    verifyResponseStatusCode('@searchTags', 200);
+
     // Remove all added tags
     cy.get(
       `[data-testid="selected-tag-${tag}"] [data-testid="remove-tags"]`
     ).click();
-    verifyResponseStatusCode('@searchTags', 200);
 
     cy.get('[data-testid="saveAssociatedTag"]').click();
     verifyResponseStatusCode('@removeTags', 200, {
