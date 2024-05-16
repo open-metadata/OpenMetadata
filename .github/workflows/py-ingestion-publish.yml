@@ -35,7 +35,7 @@ jobs:
           python3 -m venv env
           source env/bin/activate
           sudo make install_antlr_cli
-          make install_dev generate install
+          make install_dev generate
           cd ingestion; \
             python -m build; \
             twine check dist/*; \
