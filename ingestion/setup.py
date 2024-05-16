@@ -321,6 +321,8 @@ test = {
     "testcontainers==3.7.1;python_version<'3.9'",
     "testcontainers==4.4.0;python_version>='3.9'",
     "minio==7.2.5",
+    *plugins["mlflow"],
+    *plugins["datalake-s3"],
 }
 
 e2e_test = {

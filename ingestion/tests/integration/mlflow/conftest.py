@@ -1,3 +1,13 @@
+#  Copyright 2021 Collate
+#  Licensed under the Apache License, Version 2.0 (the "License");
+#  you may not use this file except in compliance with the License.
+#  You may obtain a copy of the License at
+#  http://www.apache.org/licenses/LICENSE-2.0
+#  Unless required by applicable law or agreed to in writing, software
+#  distributed under the License is distributed on an "AS IS" BASIS,
+#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#  See the License for the specific language governing permissions and
+#  limitations under the License.
 """
 Environment fixtures to be able to test the MLFlow Ingestion Pipeline.
 
@@ -14,57 +24,20 @@ The following steps are taken:
 6. Needed configurations are yielded back to the test.
 """
 import io
-import sys
-from dataclasses import asdict, dataclass
+from dataclasses import dataclass
 from typing import Optional
 
 import pytest
 from testcontainers.core.container import DockerContainer
 from testcontainers.core.docker_client import DockerClient
-from testcontainers.mysql import MySqlContainer
 
-# HACK: This test is only possible for Python3.9 or higher.
-# This allows pytest to parse the file even on lower verions.
-if sys.version_info >= (3, 9):
-    from testcontainers.core.network import Network
-    from testcontainers.minio import MinioContainer
-else:
-    from unittest.mock import MagicMock
-
-    Network = MagicMock()
-    MinioContainer = MagicMock()
-
-# ------------------------------------------------------------
-# Container Configurations
-# ------------------------------------------------------------
-@dataclass
-class MySqlContainerConfigs:
-    """MySQL Configurations"""
-
-    image: str = "mysql:8"
-    username: str = "mlflow"
-    password: str = "password"
-    dbname: str = "experiments"
-    port: int = 3306
-    container_name: str = "mlflow-db"
-    exposed_port: Optional[int] = None
-
-    def with_exposed_port(self, container):
-        self.exposed_port = container.get_exposed_port(self.port)
-
-
-@dataclass
-class MinioContainerConfigs:
-    """MinIO Configurations"""
-
-    access_key: str = "minio"
-    secret_key: str = "password"
-    port: int = 9000
-    container_name: str = "mlflow-artifact"
-    exposed_port: Optional[int] = None
-
-    def with_exposed_port(self, container):
-        self.exposed_port = container.get_exposed_port(self.port)
+from ..containers import (
+    MinioContainerConfigs,
+    MySqlContainerConfigs,
+    get_docker_network,
+    get_minio_container,
+    get_mysql_container,
+)
 
 
 @dataclass
@@ -84,8 +57,13 @@ class MlflowTestConfiguration:
     """Responsible to hold all the configurations used by the test"""
 
     def __init__(self):
-        self.mysql_configs = MySqlContainerConfigs()
-        self.minio_configs = MinioContainerConfigs()
+        self.mysql_configs = MySqlContainerConfigs(
+            username="mlflow",
+            password="password",
+            dbname="experiments",
+            container_name="mlflow-db",
+        )
+        self.minio_configs = MinioContainerConfigs(container_name="mlflow-artifact")
         self.mlflow_configs = MlflowContainerConfigs()
 
 
@@ -96,7 +74,7 @@ class MlflowTestConfiguration:
 def mlflow_environment():
     config = MlflowTestConfiguration()
 
-    docker_network = get_docker_network()
+    docker_network = get_docker_network(name="docker_mlflow_test_nw")
 
     minio_container = get_minio_container(config.minio_configs)
     mysql_container = get_mysql_container(config.mysql_configs)
@@ -118,15 +96,6 @@ def mlflow_environment():
             yield config
 
 
-# ------------------------------------------------------------
-# Utility functions
-# ------------------------------------------------------------
-def get_docker_network(name: str = "docker_mlflow_test_nw"):
-    network = Network()
-    network.name = name
-    return network
-
-
 def build_and_get_mlflow_container(mlflow_config: MlflowContainerConfigs):
     docker_client = DockerClient()
 
@@ -145,32 +114,5 @@ def build_and_get_mlflow_container(mlflow_config: MlflowContainerConfigs):
     container.with_command(
         f"mlflow server --backend-store-uri {mlflow_config.backend_uri} --default-artifact-root s3://{mlflow_config.artifact_bucket} --host 0.0.0.0 --port {mlflow_config.port}"
     )
-
-    return container
-
-
-def get_mysql_container(mysql_config: MySqlContainerConfigs):
-
-    container = MySqlContainer(
-        **{
-            k: v
-            for k, v in asdict(mysql_config).items()
-            if k not in ["exposed_port", "container_name"]
-        }
-    )
-    container.with_name(mysql_config.container_name)
-
-    return container
-
-
-def get_minio_container(minio_config: MinioContainerConfigs):
-    container = MinioContainer(
-        **{
-            k: v
-            for k, v in asdict(minio_config).items()
-            if k not in ["exposed_port", "container_name"]
-        }
-    )
-    container.with_name(minio_config.container_name)
 
     return container
