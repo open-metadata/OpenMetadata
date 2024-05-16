@@ -1,5 +1,7 @@
 package org.openmetadata.service.resources.events;
 
+import static javax.ws.rs.core.Response.Status.CONFLICT;
+import static javax.ws.rs.core.Response.Status.NOT_FOUND;
 import static org.hibernate.validator.internal.util.Contracts.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
@@ -11,6 +13,7 @@ import static org.openmetadata.schema.entity.events.SubscriptionStatus.Status.FA
 import static org.openmetadata.service.util.EntityUtil.fieldUpdated;
 import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
 import static org.openmetadata.service.util.TestUtils.UpdateType.MINOR_UPDATE;
+import static org.openmetadata.service.util.TestUtils.assertResponse;
 
 import java.io.IOException;
 import java.net.URI;
@@ -73,17 +76,22 @@ public class EventSubscriptionResourceTest
   void post_alertActionWithEnabledStateChange(TestInfo test) throws IOException {
     String webhookName = getEntityName(test);
     LOG.info("creating webhook in disabled state");
+
     String uri = "http://localhost:" + APP.getLocalPort() + "/api/v1/test/webhook/" + webhookName;
-    // Create a Disabled Generic Webhook
+
+    // Create a disabled generic webhook.
     CreateEventSubscription genericWebhookActionRequest =
         createRequest(webhookName).withEnabled(false).withDestinations(getWebhook(uri));
     EventSubscription alert = createAndCheckEntity(genericWebhookActionRequest, ADMIN_AUTH_HEADERS);
-    // For the DISABLED Publisher are not available, so it will have no status
+
+    // For the DISABLED Publisher are not available, so it will have no status(DISABLED)
     SubscriptionStatus status = getStatus(alert.getId(), Response.Status.OK.getStatusCode());
     assertEquals(DISABLED, status.getStatus());
+
     WebhookCallbackResource.EventDetails details =
         webhookCallbackResource.getEventDetails(webhookName);
     assertNull(details);
+
     //
     // Now enable the webhook
     //
@@ -177,7 +185,7 @@ public class EventSubscriptionResourceTest
             MINOR_UPDATE,
             change);
 
-    // Wait for webhook to be marked as failed
+    // Wait for webhook to be marked as active
     waitForAllEventToComplete(alert.getId());
     Awaitility.await()
         .pollInterval(Duration.ofMillis(100L))
@@ -716,5 +724,171 @@ public class EventSubscriptionResourceTest
         webhookCallbackResource.getEventDetails(endpoint);
     return new AtomicBoolean(
         details != null && details.getEvents() != null && details.getEvents().size() <= 0);
+  }
+
+  @Test
+  public void post_createAndValidateEventSubscription(TestInfo test) throws IOException {
+    String webhookName = getEntityName(test);
+    String uri = "http://localhost:" + APP.getLocalPort() + "/api/v1/test/webhook/" + webhookName;
+
+    CreateEventSubscription enabledWebhookRequest =
+        new CreateEventSubscription()
+            .withName(webhookName)
+            .withResources(List.of("all"))
+            .withDestinations(getWebhook(uri))
+            .withEnabled(true)
+            .withBatchSize(10)
+            .withRetries(0)
+            .withPollInterval(1)
+            .withAlertType(CreateEventSubscription.AlertType.NOTIFICATION);
+
+    EventSubscription alert = createEntity(enabledWebhookRequest, ADMIN_AUTH_HEADERS);
+
+    assertNotNull(alert, "Webhook creation failed");
+
+    Awaitility.await()
+        .pollInterval(Duration.ofMillis(100L))
+        .atMost(Duration.ofMillis(100 * 100L))
+        .untilTrue(testExpectedStatus(alert.getId(), ACTIVE));
+
+    SubscriptionStatus status = getStatus(alert.getId(), Response.Status.OK.getStatusCode());
+    assertEquals(SubscriptionStatus.Status.ACTIVE, status.getStatus());
+
+    waitForAllEventToComplete(alert.getId());
+    Awaitility.await()
+        .pollInterval(Duration.ofMillis(100L))
+        .atMost(Duration.ofMillis(100 * 100L))
+        .untilTrue(testExpectedStatus(alert.getId(), ACTIVE));
+
+    validateCreatedEntity(alert, enabledWebhookRequest, ADMIN_AUTH_HEADERS);
+  }
+
+  @Test
+  public void post_duplicateAlertsAreNotAllowed(TestInfo test) throws IOException {
+    String webhookName = getEntityName(test);
+    String uri = "http://localhost:" + APP.getLocalPort() + "/api/v1/test/webhook/" + webhookName;
+
+    CreateEventSubscription genericWebhookRequest =
+        new CreateEventSubscription()
+            .withName(webhookName)
+            .withResources(List.of("all"))
+            .withDestinations(getWebhook(uri))
+            .withEnabled(true)
+            .withBatchSize(10)
+            .withRetries(0)
+            .withPollInterval(1)
+            .withAlertType(CreateEventSubscription.AlertType.NOTIFICATION);
+
+    EventSubscription alert = createAndCheckEntity(genericWebhookRequest, ADMIN_AUTH_HEADERS);
+
+    assertNotNull(alert, "Webhook creation failed");
+
+    Awaitility.await()
+        .pollInterval(Duration.ofMillis(100L))
+        .atMost(Duration.ofMillis(100 * 100L))
+        .untilTrue(testExpectedStatus(alert.getId(), ACTIVE));
+
+    SubscriptionStatus status1 = getStatus(alert.getId(), Response.Status.OK.getStatusCode());
+    assertEquals(SubscriptionStatus.Status.ACTIVE, status1.getStatus());
+
+    assertResponse(
+        () -> createAndCheckEntity(genericWebhookRequest, ADMIN_AUTH_HEADERS),
+        CONFLICT,
+        "Entity already exists");
+  }
+
+  @Test
+  public void delete_eventSubscription(TestInfo test) throws IOException {
+    CreateEventSubscription webhookRequest =
+        new CreateEventSubscription()
+            .withName(getEntityName(test))
+            .withResources(List.of("all"))
+            .withEnabled(true)
+            .withBatchSize(10)
+            .withRetries(0)
+            .withPollInterval(1)
+            .withAlertType(CreateEventSubscription.AlertType.NOTIFICATION);
+
+    EventSubscription alert = createAndCheckEntity(webhookRequest, ADMIN_AUTH_HEADERS);
+    deleteEntity(alert.getId(), ADMIN_AUTH_HEADERS);
+  }
+
+  @Test
+  public void get_testFetchEventSubscription(TestInfo test) throws IOException {
+    String webhookName = getEntityName(test);
+    CreateEventSubscription genericWebhookRequest = createRequest(webhookName);
+    EventSubscription alert = createAndCheckEntity(genericWebhookRequest, ADMIN_AUTH_HEADERS);
+    assertNotNull(alert, "Webhook creation failed");
+
+    waitForAllEventToComplete(alert.getId());
+    Awaitility.await()
+        .pollInterval(Duration.ofMillis(100L))
+        .atMost(Duration.ofMillis(100 * 100L))
+        .untilTrue(testExpectedStatus(alert.getId(), ACTIVE));
+
+    // Fetch the alert by ID and assert its properties
+    EventSubscription fetchedAlertById = getAndAssertAlert(alert.getId(), alert);
+
+    // Fetch the alert by fully qualified name and assert its properties
+    EventSubscription fetchedAlertByName =
+        getAndAssertAlertByName(alert.getFullyQualifiedName(), alert);
+  }
+
+  private EventSubscription getAndAssertAlert(UUID id, EventSubscription expectedAlert)
+      throws HttpResponseException {
+    EventSubscription fetchedAlert = getEntity(id, ADMIN_AUTH_HEADERS);
+    assertAlertEquals(expectedAlert, fetchedAlert);
+    return fetchedAlert;
+  }
+
+  private EventSubscription getAndAssertAlertByName(
+      String fullyQualifiedName, EventSubscription expectedAlert) throws HttpResponseException {
+    EventSubscription fetchedAlert = getEntityByName(fullyQualifiedName, ADMIN_AUTH_HEADERS);
+    assertAlertEquals(expectedAlert, fetchedAlert);
+    return fetchedAlert;
+  }
+
+  private void assertAlertEquals(EventSubscription expected, EventSubscription actual) {
+    assertNotNull(actual);
+    assertEquals(expected.getId(), actual.getId());
+    assertEquals(expected.getName(), actual.getName());
+    assertEquals(expected.getFullyQualifiedName(), actual.getFullyQualifiedName());
+  }
+
+  @Test
+  void get_checkSubscriptionStatusById(TestInfo test) throws IOException {
+    String webhookName = getEntityName(test);
+    String uri =
+        "http://localhost:" + APP.getLocalPort() + "/api/v1/test/webhook/" + test.getDisplayName();
+
+    List<SubscriptionDestination> genericWebhook = getWebhook(uri);
+    CreateEventSubscription genericWebhookActionRequest =
+        createRequest(webhookName)
+            .withEnabled(true)
+            .withDestinations(genericWebhook)
+            .withRetries(0);
+
+    EventSubscription alert = createAndCheckEntity(genericWebhookActionRequest, ADMIN_AUTH_HEADERS);
+    assertNotNull(alert, "Webhook creation failed");
+
+    Awaitility.await()
+        .pollInterval(Duration.ofMillis(100L))
+        .atMost(Duration.ofMillis(100 * 100L))
+        .untilTrue(testExpectedStatus(alert.getId(), ACTIVE));
+
+    SubscriptionStatus status = getStatus(alert.getId(), Response.Status.OK.getStatusCode());
+    assertEquals(SubscriptionStatus.Status.ACTIVE, status.getStatus());
+  }
+
+  @Test
+  public void get_fetchEventSubscription_ByInvalidId_returns404() {
+    UUID wrongAlertId =
+        new UUID(System.currentTimeMillis(), UUID.randomUUID().getMostSignificantBits());
+
+    // Assert that the status code is 404 (Not Found)
+    assertResponse(
+        () -> getEntity(wrongAlertId, ADMIN_AUTH_HEADERS),
+        NOT_FOUND,
+        String.format("eventsubscription instance for %s not found", wrongAlertId));
   }
 }
