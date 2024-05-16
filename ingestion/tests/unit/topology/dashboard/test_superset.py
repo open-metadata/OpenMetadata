@@ -302,7 +302,7 @@ def set_testcontainers():
         postgres_container.start()
         setup_sample_data(postgres_container)
         # superset testcontainer
-        superset_container = DockerContainer(image="apache/superset")
+        superset_container = DockerContainer(image="apache/superset:3.1.2")
         superset_container.with_env("SUPERSET_SECRET_KEY", "&3brfbcf192T!)$sabqbie")
         superset_container.with_env("WTF_CSRF_ENABLED", False)
 
