@@ -272,7 +272,7 @@ def build_dag_configs(ingestion_pipeline: IngestionPipeline) -> dict:
             clean_name_tag(ingestion_pipeline.displayName)
             or clean_name_tag(ingestion_pipeline.name.__root__),
             ingestion_pipeline.pipelineType.value,
-            ingestion_pipeline.service.name,
+            clean_name_tag(ingestion_pipeline.service.name),
         ],
     }
 
