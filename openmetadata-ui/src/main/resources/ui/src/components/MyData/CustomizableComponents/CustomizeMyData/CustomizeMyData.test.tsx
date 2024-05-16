@@ -82,9 +82,12 @@ jest.mock('../../../PageLayoutV1/PageLayoutV1', () => {
 });
 
 jest.mock('../../../../hooks/useApplicationStore', () => ({
-  useApplicationStore: jest
-    .fn()
-    .mockImplementation(() => ({ currentUser: mockUserData })),
+  useApplicationStore: jest.fn().mockImplementation(() => ({
+    currentUser: mockUserData,
+    theme: {
+      primaryColor: '#00ff00',
+    },
+  })),
 }));
 
 jest.mock('../../../../rest/feedsAPI', () => ({
