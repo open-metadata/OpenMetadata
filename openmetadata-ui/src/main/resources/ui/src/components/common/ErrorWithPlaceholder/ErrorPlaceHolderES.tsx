@@ -30,6 +30,7 @@ import {
   ELASTICSEARCH_ERROR_PLACEHOLDER_TYPE,
   ERROR_PLACEHOLDER_TYPE,
 } from '../../../enums/common.enum';
+import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { useDomainStore } from '../../../hooks/useDomainStore';
 import { Transi18next } from '../../../utils/CommonUtils';
 import i18n from '../../../utils/i18next/LocalUtil';
@@ -74,6 +75,7 @@ const ErrorPlaceHolderES = ({ type, errorMessage, query }: Props) => {
   const { t } = useTranslation();
   const history = useHistory();
   const { activeDomain } = useDomainStore();
+  const { theme } = useApplicationStore();
 
   const isQuery = useMemo(
     () =>
@@ -117,7 +119,7 @@ const ErrorPlaceHolderES = ({ type, errorMessage, query }: Props) => {
                   <a
                     href={DATA_DISCOVERY_DOCS}
                     rel="noreferrer"
-                    style={{ color: '#1890ff' }}
+                    style={{ color: theme.primaryColor }}
                     target="_blank"
                   />
                 }
