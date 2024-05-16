@@ -15,7 +15,9 @@
 
 import entitySpclCharImg from '../../../assets/img/EntitySplChar.png';
 import sqlLineageImg from '../../../assets/img/ImprovedSQLLineage.png';
+import incidentManagerSampleData from '../../../assets/img/incidentManagerSampleData.png';
 import ingestionFramework from '../../../assets/img/IngestionFramework.png';
+import profilerConfigPage from '../../../assets/img/profilerConfigPage.png';
 import tagCategoryImg from '../../../assets/img/TagCategory.png';
 import collateIcon from '../../../assets/svg/ic-collate.svg';
 
@@ -1407,6 +1409,20 @@ export const WHATS_NEW = [
           'We have improved the filters for data quality. Now you have additional filtering options for test suites and test cases.',
         isImage: false,
         path: 'https://www.youtube.com/embed/UNOHvBMVcYM',
+      },
+      {
+        title: 'Data Profiler',
+        description:
+          'A global profiler configuration page has been implemented for the data profiler. This allows Admins to exclude certain metric computations for specific data types. Navigate to Settings > Preferences > Profiler Configuration to define the metrics to compute based on column data types.',
+        isImage: true,
+        path: profilerConfigPage,
+      },
+      {
+        title: 'Incident Manager',
+        description:
+          'Based on the latest failed test cases, a sample of failed rows will be displayed in the Incident Manager. Users can quickly verify the cause of failure based on this sample data. The failed sample data will be deleted once the issue is resolved. This is a Collate only feature.',
+        isImage: true,
+        path: incidentManagerSampleData,
       },
     ],
     changeLogs: {
