@@ -35,6 +35,7 @@ from metadata.generated.schema.type.basic import FullyQualifiedEntityName
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.source.dashboard.quicksight.metadata import QuicksightSource
+from metadata.ingestion.source.dashboard.quicksight.models import DashboardDetail
 
 mock_file_path = (
     Path(__file__).parent.parent.parent / "resources/datasets/quicksight_dataset.json"
@@ -171,7 +172,9 @@ class QuickSightUnitTest(TestCase):
     @pytest.mark.order(1)
     def test_dashboard(self):
         dashboard_list = []
-        results = self.quicksight.yield_dashboard(MOCK_DASHBOARD_DETAILS)
+        results = self.quicksight.yield_dashboard(
+            DashboardDetail(**MOCK_DASHBOARD_DETAILS)
+        )
         for result in results:
             if isinstance(result, Either) and result.right:
                 dashboard_list.append(result.right)
@@ -180,14 +183,16 @@ class QuickSightUnitTest(TestCase):
     @pytest.mark.order(2)
     def test_dashboard_name(self):
         assert (
-            self.quicksight.get_dashboard_name(MOCK_DASHBOARD_DETAILS)
+            self.quicksight.get_dashboard_name(
+                DashboardDetail(**MOCK_DASHBOARD_DETAILS)
+            )
             == mock_data["Name"]
         )
 
     @pytest.mark.order(3)
     def test_chart(self):
-        dashboard_details = MOCK_DASHBOARD_DETAILS
-        dashboard_details["Version"]["Sheets"] = mock_data["Version"]["Sheets"]
+        dashboard_details = DashboardDetail(**MOCK_DASHBOARD_DETAILS)
+        dashboard_details.Version.Charts = mock_data["Version"]["Sheets"]
         results = self.quicksight.yield_dashboard_chart(dashboard_details)
         chart_list = []
         for result in results:
