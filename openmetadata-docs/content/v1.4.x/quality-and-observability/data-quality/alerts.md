@@ -1,6 +1,6 @@
 ---
 title: Alerts
-slug: /quality-and-observability/profiler/ingestion/alerts
+slug: /quality-and-observability/data-quality/alerts
 ---
 
 # Alerts

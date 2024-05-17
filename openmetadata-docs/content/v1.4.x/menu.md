@@ -888,7 +888,7 @@ site_menu:
   - category: Quality & Observability / Profiler / External Workflow
     url: /quality-and-observability/profiler/external-workflow
   - category: Quality & Observability / Profiler / Auto PII Tagging
-    url: /quality-and-observability/profiler/ingestion/auto-pii-tagging
+    url: /quality-and-observability/profiler/auto-pii-tagging
   - category: Quality & Observability / Data Quality
     url: /quality-and-observability/data-quality
   - category: Quality & Observability / Data Quality / Tests
@@ -897,6 +897,8 @@ site_menu:
     url: /quality-and-observability/data-quality/custom-tests
   - category: Quality & Observability / Data Quality / Incident Manager
     url: /quality-and-observability/data-quality/incident-manager
+  - category: Quality & Observability / Data Quality / Alerts
+    url: /quality-and-observability/data-quality/alerts
   - category: Quality & Observability / Data Quality / Root Cause Analysis
     url: /quality-and-observability/data-quality/root-cause-analysis
     isCollateOnly: true

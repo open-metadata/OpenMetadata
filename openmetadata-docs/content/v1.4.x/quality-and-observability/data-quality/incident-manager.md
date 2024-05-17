@@ -5,7 +5,7 @@ slug: /quality-and-observability/data-quality/incident-manager
 
 # Incident Manager
 
-## Openning and Triagging Incidents
+## Opening and Triagging Incidents
  In v1.1.0 we introduce the ability for user to manage and triagge incidents linked to failures. When a test case fail, it will automatically open a new incident and mark it as new. if enough information is available, OpenMetadata will automatically assign a severity to the incident - note that you can override this severity. It indicates that a new failure has happened.
 
 {% image

@@ -158,39 +158,3 @@ In the top panel, click on the white background `Data Quality` button. This will
   alt="Test suite results table"
   caption="Test suite results table"
  /%}
-
- ## Test Case Resolution Workflow
- In v1.1.0 we introduce the ability for user to flag the resolution status of failed test cases. When a test case fail, it will automatically be marked as new. It indicates that a new failure has happened.
-
-{% image
-  src="/images/v1.4/features/ingestion/workflows/data-quality/resolution-workflow-new.png"
-  alt="Test suite results table"
-  caption="Test suite results table"
- /%}
-
-The next step for a user is to mark the new failure as `ack` (acknowledged) signifying to users that someone is looking into test failure resolution. When hovering over the resolution status user will be able to see the time (UTC) and the user who acknowledge the failure
-
-{% image
-  src="/images/v1.4/features/ingestion/workflows/data-quality/resolution-workflow-ack-form.png"
-  alt="Test suite results table"
-  caption="Test suite results table"
- /%}
-{% image
-  src="/images/v1.4/features/ingestion/workflows/data-quality/resolution-workflow-ack.png"
-  alt="Test suite results table"
-  caption="Test suite results table"
- /%}
-
- Then the user is able to mark a test as `resolved`. We made it mandatory for users to 1) select a reason and 2) add a comment when resolving failed test so that knowledge can be maintain inside the platform.
-
-{% image
-  src="/images/v1.4/features/ingestion/workflows/data-quality/resolution-workflow-resolved-form.png"
-  alt="Test suite results table"
-  caption="Test suite results table"
- /%}
-
-{% image
-  src="/images/v1.4/features/ingestion/workflows/data-quality/resolution-workflow-resolved.png"
-  alt="Test suite results table"
-  caption="Test suite results table"
- /%}
