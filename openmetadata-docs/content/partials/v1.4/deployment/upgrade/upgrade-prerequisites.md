@@ -82,22 +82,33 @@ during the migration after bumping this value, you can increase them further.
 
 After the migration is finished, you can revert this changes.
 
-# Deprecation Notice
-
-
-# Breaking Changes
+# Backward Incompatible Changes
 
 ## 1.4.0
 
-### Metadata Docker CLI
+### Tooling
 
-For the past releases, we have been updating the documentation to point users to directly run the docker quickstart
-with the docker compose files in the release page ([docs](quick-start/local-docker-deployment)).
+- **Metadata Docker CLI**: For the past releases, we have been updating the documentation to point users to directly run the docker quickstart
+  with the docker compose files in the release page ([docs](quick-start/local-docker-deployment)). In this release, we're completely removing the support for `metadata docker`.
+- **Metadata Backup & Restore**: On the `metadata` CLI, we are deprecating the `backup` and `restore` commands, since users can now completely
+  rely on native database tools both for MySQL and PostgreSQL. Check the [docs](/deployment/backup-restore-metadata)
+  for more information
+- **bootstrap_storage.sh**: `bootstrap/bootstrap_storage.sh` now deprecated in favor of `bootstrap/openmetadata-ops.sh`, please refer to help docs of the new tool for any changes.
 
-In this release, we're completely removing the support for `metadata docker`.
+### UI
 
-### Metadata Backup & Restore
+- **Activity Feed**: Activity is Improved, new Update specific cards will be showing critical information such as data quality test case updates, description, tag update or removal
+- **Lineage**: The `Expand All` button is removed. Instead, the new `Layers` button has been introduced to the bottom left corner. 
+  Please use Layers to add Column Level Lineage or Data Observability details to your Lineage view.
+- **View Definition**: View Definition is now renamed to Schema Definition
+- **Glossary**: Adding a Glossary Term view has improved. Now, we show glossary terms hierarchically,
+  enabling a better understanding how the terms are set up while adding it to a table or dashboard.
+- **Classifications**: Users can set a classification to be mutually exclusive **only** at the creation time. 
+  Once created, you cannot change it back to non-mutually exclusive or vice-versa. 
+  This is to prevent conflicts of adding multiple tags that belong to same classification and later turning the mutually exclusive flag back to true.
 
-On the `metadata` CLI, we are deprecating the `backup` and `restore` commands, since users can now completely
-rely on native database tools both for MySQL and PostgreSQL. Check the [docs](/deployment/backup-restore-metadata)
-for more information
+### API
+
+- **View Definition**: Table Schema's `ViewDefinition` is now renamed to `SchemaDefinition` to capture Tables' Create Schema.
+- **Bulk Import**: Bulk Import API now creates entities if they are not present during the import.
+- **Test Suites**: Table's `TestSuite` is migrated to an `EntityReference`. Previously it used to store entire payload of `TestSuite`.
