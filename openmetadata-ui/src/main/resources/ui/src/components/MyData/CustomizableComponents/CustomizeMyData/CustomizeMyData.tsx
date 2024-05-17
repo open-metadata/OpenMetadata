@@ -65,7 +65,7 @@ function CustomizeMyData({
   handleSaveCurrentPageLayout,
 }: Readonly<CustomizeMyDataProps>) {
   const { t } = useTranslation();
-  const { currentUser } = useApplicationStore();
+  const { currentUser, theme } = useApplicationStore();
   const history = useHistory();
   const { fqn: decodedPersonaFQN } = useFqn();
   const [layout, setLayout] = useState<Array<WidgetConfig>>(
@@ -264,7 +264,7 @@ function CustomizeMyData({
                   i18nKey="message.customize-landing-page-header"
                   renderElement={
                     <Link
-                      style={{ color: '#1890ff', fontSize: '16px' }}
+                      style={{ color: theme.primaryColor, fontSize: '16px' }}
                       to={getPersonaDetailsPath(decodedPersonaFQN)}
                     />
                   }
