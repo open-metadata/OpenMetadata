@@ -11,26 +11,26 @@
  *  limitations under the License.
  */
 
-import Icon from '@ant-design/icons/lib/components/Icon';
-import { Button, Col, Row, Typography } from 'antd';
-import classNames from 'classnames';
-import { groupBy, isEmpty } from 'lodash';
-import React, { useCallback, useMemo, useState } from 'react';
+import { Col, Row, Typography } from 'antd';
+import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as AbortedStatus } from '../../../../../assets/svg/aborted-status.svg';
-import { ReactComponent as FailedStatus } from '../../../../../assets/svg/failed-status.svg';
+
+import { TEST_CASE_FEED_GRAPH_HEIGHT } from '../../../../../constants/constants';
+import { PROFILER_FILTER_RANGE } from '../../../../../constants/profiler.constant';
 import { EntityTestResultSummaryObject } from '../../../../../generated/entity/feed/thread';
-import { TestCaseStatus } from '../../../../../generated/tests/testCase';
 import {
   formatTestStatusData,
   getTestCaseResultCount,
 } from '../../../../../utils/FeedUtils';
+import TestSummaryGraph from '../../../../Database/Profiler/TestSummary/TestSummaryGraph';
 import './test-case-feed.less';
 import { TestCaseFeedProps } from './TestCaseFeed.interface';
 
-function TestCaseFeed({ entitySpecificInfo }: Readonly<TestCaseFeedProps>) {
+function TestCaseFeed({
+  entitySpecificInfo,
+  testCaseName,
+}: Readonly<TestCaseFeedProps>) {
   const { t } = useTranslation();
-  const [showMore, setShowMore] = useState(false);
 
   const { success, failed, aborted } = useMemo(
     () =>
@@ -40,94 +40,30 @@ function TestCaseFeed({ entitySpecificInfo }: Readonly<TestCaseFeedProps>) {
     [entitySpecificInfo?.entityTestResultSummary]
   );
 
-  const handleShowMore = useCallback(() => {
-    setShowMore((prev) => !prev);
-  }, [setShowMore]);
+  const testCaseResult = useMemo(
+    () => (entitySpecificInfo?.testCaseResult ?? []).slice(0, 10),
+    [entitySpecificInfo?.testCaseResult]
+  );
 
   const renderTestCaseResult = useMemo(() => {
-    const groupResult = groupBy(
-      entitySpecificInfo?.testCaseResult ?? [],
-      'testCaseStatus'
-    );
-
-    if (
-      isEmpty(groupResult[TestCaseStatus.Failed]) &&
-      isEmpty(groupResult[TestCaseStatus.Aborted])
-    ) {
-      return;
-    }
-
     return (
-      <>
-        <div className={classNames({ 'h-24 overflow-hidden': !showMore })}>
-          {Object.keys(groupResult).map((key) => {
-            if (key === TestCaseStatus.Success) {
-              return;
-            }
-
-            return (
-              <Row className="m-t-xs" gutter={[0, 4]} key={key}>
-                <Col span={24}>
-                  <Typography.Text className="font-bold">
-                    {key === TestCaseStatus.Failed ? (
-                      <Icon
-                        component={FailedStatus}
-                        style={{ fontSize: '16px' }}
-                      />
-                    ) : (
-                      <Icon
-                        component={AbortedStatus}
-                        style={{ fontSize: '16px' }}
-                      />
-                    )}{' '}
-                    {`${key} :`}
-                  </Typography.Text>
-                </Col>
-                <Col span={24}>
-                  {groupResult[key].map((caseResult) => {
-                    return (
-                      <Row
-                        gutter={[10, 0]}
-                        key={caseResult.timestamp}
-                        wrap={false}>
-                        <Col flex="300px">
-                          <div className="d-flex">
-                            <Typography.Link className="break-all whitespace-normal">
-                              {caseResult.testCaseName}
-                            </Typography.Link>
-                            <span>:</span>
-                          </div>
-                        </Col>
-                        <Col flex="auto">
-                          <Typography.Text className="break-all whitespace-normal">
-                            {caseResult.result}
-                          </Typography.Text>
-                        </Col>
-                      </Row>
-                    );
-                  })}
-                </Col>
-              </Row>
-            );
-          })}
-        </div>
-
-        <Button
-          className="m-t-xs"
-          size="small"
-          type="link"
-          onClick={handleShowMore}>
-          {showMore ? t('label.less') : t('label.more')}
-        </Button>
-      </>
+      <Row className="m-t-xs" gutter={[0, 4]}>
+        <TestSummaryGraph
+          minHeight={TEST_CASE_FEED_GRAPH_HEIGHT}
+          selectedTimeRange={PROFILER_FILTER_RANGE.last7days.title}
+          testCaseName={testCaseName}
+          testCaseParameterValue={entitySpecificInfo?.parameterValues}
+          testCaseResults={testCaseResult}
+        />
+      </Row>
     );
-  }, [showMore, entitySpecificInfo?.testCaseResult, handleShowMore]);
+  }, [testCaseName, testCaseResult, entitySpecificInfo?.parameterValues]);
 
   return (
     <Row gutter={[0, 12]}>
       <Col span={24}>
         <Typography.Text className="font-bold">{`${t(
-          'label.tests-summary'
+          'label.test-suite-summary'
         )}:`}</Typography.Text>
       </Col>
       <Col span={24}>

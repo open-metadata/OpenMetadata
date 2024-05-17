@@ -15,4 +15,5 @@ import { Info } from '../../../../../generated/entity/feed/thread';
 
 export interface TestCaseFeedProps {
   entitySpecificInfo?: Info;
+  testCaseName: string;
 }

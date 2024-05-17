@@ -125,7 +125,6 @@ const Emoji: FC<EmojiProps> = ({
         {element}
         <span className="text-xs m-l-xs self-center" data-testid="emoji-count">
           {reactionList.length.toLocaleString('en-US', {
-            minimumIntegerDigits: 2,
             useGrouping: false,
           })}
         </span>

@@ -15,7 +15,7 @@ import json
 import uuid
 from datetime import datetime, timedelta
 from functools import partial
-from typing import Callable, Union
+from typing import Callable, Optional, Union
 
 import airflow
 from airflow import DAG
@@ -36,6 +36,7 @@ from metadata.generated.schema.metadataIngestion.application import (
 )
 from metadata.ingestion.models.encoders import show_secrets_encoder
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.utils import fqn
 from metadata.workflow.workflow_output_handler import print_status
 
 # pylint: disable=ungrouped-imports
@@ -225,6 +226,21 @@ def build_workflow_config_property(
     )
 
 
+def clean_name_tag(tag: str) -> Optional[str]:
+    """
+    Clean the tag to be used in Airflow.
+    Airflow supports 100 characters. We'll keep just 90
+    since we add prefixes on the tags
+    """
+    if not tag:
+        return None
+    try:
+        return fqn.split(tag)[-1][:90]
+    except Exception as exc:
+        logger.warning("Error cleaning tag: %s", exc)
+        return tag[:90]
+
+
 def build_dag_configs(ingestion_pipeline: IngestionPipeline) -> dict:
     """
     Prepare kwargs to send to DAG
@@ -255,7 +271,10 @@ def build_dag_configs(ingestion_pipeline: IngestionPipeline) -> dict:
         "schedule_interval": ingestion_pipeline.airflowConfig.scheduleInterval,
         "tags": [
             "OpenMetadata",
-            ingestion_pipeline.pipelineType.value,
+            clean_name_tag(ingestion_pipeline.displayName)
+            or clean_name_tag(ingestion_pipeline.name.__root__),
+            f"type:{ingestion_pipeline.pipelineType.value}",
+            f"service:{clean_name_tag(ingestion_pipeline.service.name)}",
         ],
     }
 

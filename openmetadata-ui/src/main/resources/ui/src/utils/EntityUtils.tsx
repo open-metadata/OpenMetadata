@@ -43,6 +43,8 @@ import {
 } from '../components/SearchedData/SearchedData.interface';
 import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
 import {
+  getBotsPagePath,
+  getBotsPath,
   getEntityDetailsPath,
   getGlossaryTermDetailsPath,
   getServiceDetailsPath,
@@ -50,9 +52,17 @@ import {
   NO_DATA,
   ROUTES,
 } from '../constants/constants';
-import { GlobalSettingsMenuCategory } from '../constants/GlobalSettings.constants';
+import {
+  GlobalSettingOptions,
+  GlobalSettingsMenuCategory,
+} from '../constants/GlobalSettings.constants';
 import { ResourceEntity } from '../context/PermissionProvider/PermissionProvider.interface';
-import { AssetsType, EntityType, FqnPart } from '../enums/entity.enum';
+import {
+  AssetsType,
+  EntityTabs,
+  EntityType,
+  FqnPart,
+} from '../enums/entity.enum';
 import { ExplorePageTabs } from '../enums/Explore.enum';
 import { SearchIndex } from '../enums/search.enum';
 import { ServiceCategory, ServiceCategoryPlural } from '../enums/service.enum';
@@ -84,12 +94,19 @@ import {
 } from '../generated/entity/data/table';
 import { Topic } from '../generated/entity/data/topic';
 import { DataProduct } from '../generated/entity/domains/dataProduct';
-import { TestCase } from '../generated/tests/testCase';
+import { Team } from '../generated/entity/teams/team';
+import {
+  AlertType,
+  EventSubscription,
+} from '../generated/events/eventSubscription';
+import { TestCase, TestSuite } from '../generated/tests/testCase';
 import { Edge, EntityLineage } from '../generated/type/entityLineage';
 import { EntityReference } from '../generated/type/entityUsage';
 import { TagLabel } from '../generated/type/tagLabel';
 import { UsageDetails } from '../generated/type/usageDetails';
 import { Votes } from '../generated/type/votes';
+import { SearchSourceAlias } from '../interface/search.interface';
+import { DataQualityPageTabs } from '../pages/DataQuality/DataQualityPage.interface';
 import {
   getOwnerValue,
   getPartialNameFromTableFQN,
@@ -99,12 +116,19 @@ import EntityLink from './EntityLink';
 import { BasicEntityOverviewInfo } from './EntityUtils.interface';
 import Fqn from './Fqn';
 import {
+  getApplicationDetailsPath,
+  getDataQualityPagePath,
   getDomainDetailsPath,
   getDomainPath,
   getGlossaryPath,
   getIncidentManagerDetailPagePath,
+  getNotificationAlertDetailsPath,
   getObservabilityAlertDetailsPath,
+  getPersonaDetailsPath,
+  getPolicyWithFqnPath,
+  getRoleWithFqnPath,
   getSettingPath,
+  getTeamsWithFqnPath,
 } from './RouterUtils';
 import { getServiceRouteFromServiceType } from './ServiceUtils';
 import { stringToHTML } from './StringsUtils';
@@ -1272,7 +1296,8 @@ export const getEntityReferenceListFromEntities = <
 
 export const getEntityLinkFromType = (
   fullyQualifiedName: string,
-  entityType: EntityType
+  entityType: EntityType,
+  entity?: SearchSourceAlias
 ) => {
   switch (entityType) {
     case EntityType.TABLE:
@@ -1335,12 +1360,33 @@ export const getEntityLinkFromType = (
         fullyQualifiedName,
         ServiceCategory.METADATA_SERVICES
       );
+    case EntityType.BOT:
+      return getBotsPath(fullyQualifiedName);
+    case EntityType.TEAM:
+      return getTeamsWithFqnPath(fullyQualifiedName);
+    case EntityType.APPLICATION:
+      return getApplicationDetailsPath(fullyQualifiedName);
     case EntityType.TEST_CASE:
       return getIncidentManagerDetailPagePath(fullyQualifiedName);
+    case EntityType.TEST_SUITE:
+      return getEntityDetailsPath(
+        EntityType.TABLE,
+        fullyQualifiedName,
+        EntityTabs.PROFILER
+      );
     case EntityType.DOMAIN:
       return getDomainDetailsPath(fullyQualifiedName);
     case EntityType.EVENT_SUBSCRIPTION:
-      return getObservabilityAlertDetailsPath(fullyQualifiedName);
+      return (entity as EventSubscription)?.alertType ===
+        AlertType.Observability
+        ? getObservabilityAlertDetailsPath(fullyQualifiedName)
+        : getNotificationAlertDetailsPath(fullyQualifiedName);
+    case EntityType.ROLE:
+      return getRoleWithFqnPath(fullyQualifiedName);
+    case EntityType.POLICY:
+      return getPolicyWithFqnPath(fullyQualifiedName);
+    case EntityType.PERSONA:
+      return getPersonaDetailsPath(fullyQualifiedName);
     default:
       return '';
   }
@@ -1479,6 +1525,33 @@ export const getBreadcrumbForTestCase = (entity: TestCase) => [
     ),
   },
 ];
+
+export const getBreadcrumbForTestSuite = (entity: TestSuite) => {
+  return entity.executable
+    ? [
+        {
+          name: getEntityName(entity.executableEntityReference),
+          url: getEntityLinkFromType(
+            entity.executableEntityReference?.fullyQualifiedName ?? '',
+            EntityType.TABLE
+          ),
+        },
+        {
+          name: t('label.test-suite'),
+          url: '',
+        },
+      ]
+    : [
+        {
+          name: t('label.test-suite-plural'),
+          url: getDataQualityPagePath(DataQualityPageTabs.TEST_SUITES),
+        },
+        {
+          name: getEntityName(entity),
+          url: '',
+        },
+      ];
+};
 
 export const getEntityBreadcrumbs = (
   entity:
@@ -1709,6 +1782,118 @@ export const getEntityBreadcrumbs = (
 
     case EntityType.TEST_CASE: {
       return getBreadcrumbForTestCase(entity as TestCase);
+    }
+    case EntityType.EVENT_SUBSCRIPTION: {
+      return [
+        {
+          name: startCase(EntityType.ALERT),
+          url:
+            (entity as EventSubscription).alertType === AlertType.Observability
+              ? ROUTES.OBSERVABILITY_ALERTS
+              : ROUTES.NOTIFICATION_ALERTS,
+        },
+        {
+          name: entity.name,
+          url: getEntityLinkFromType(
+            entity.fullyQualifiedName ?? '',
+            (entity as SourceType).entityType as EntityType,
+            entity as SearchSourceAlias
+          ),
+        },
+      ];
+    }
+
+    case EntityType.TEST_SUITE: {
+      return getBreadcrumbForTestSuite(entity as TestSuite);
+    }
+
+    case EntityType.BOT: {
+      return [
+        {
+          name: startCase(EntityType.BOT),
+          url: getBotsPagePath(),
+        },
+        {
+          name: entity.name,
+          url: getBotsPath(entity.fullyQualifiedName ?? ''),
+        },
+      ];
+    }
+
+    case EntityType.TEAM: {
+      return [
+        {
+          name: getEntityName((entity as Team).parents?.[0]),
+          url: getTeamsWithFqnPath(
+            (entity as Team).parents?.[0].fullyQualifiedName ?? ''
+          ),
+        },
+        {
+          name: getEntityName(entity),
+          url: getTeamsWithFqnPath(entity.fullyQualifiedName ?? ''),
+        },
+      ];
+    }
+
+    case EntityType.APPLICATION: {
+      return [
+        {
+          name: i18next.t('label.application-plural'),
+          url: getSettingPath(GlobalSettingsMenuCategory.APPLICATIONS),
+        },
+        {
+          name: getEntityName(entity),
+          url: getApplicationDetailsPath(entity.fullyQualifiedName ?? ''),
+        },
+      ];
+    }
+
+    case EntityType.PERSONA: {
+      return [
+        {
+          name: i18next.t('label.persona-plural'),
+          url: getSettingPath(
+            GlobalSettingsMenuCategory.MEMBERS,
+            GlobalSettingOptions.PERSONA
+          ),
+        },
+        {
+          name: getEntityName(entity),
+          url: getPersonaDetailsPath(entity.fullyQualifiedName ?? ''),
+        },
+      ];
+    }
+
+    case EntityType.ROLE: {
+      return [
+        {
+          name: i18next.t('label.role-plural'),
+          url: getSettingPath(
+            GlobalSettingsMenuCategory.ACCESS,
+            GlobalSettingOptions.ROLES
+          ),
+        },
+        {
+          name: getEntityName(entity),
+          url: getRoleWithFqnPath(entity.fullyQualifiedName ?? ''),
+        },
+      ];
+    }
+
+    case EntityType.POLICY: {
+      return [
+        {
+          name: i18next.t('label.policy-plural'),
+          url: getSettingPath(
+            GlobalSettingsMenuCategory.ACCESS,
+            GlobalSettingOptions.POLICIES
+          ),
+        },
+        {
+          name: getEntityName(entity),
+          url: getPolicyWithFqnPath(entity.fullyQualifiedName ?? ''),
+        },
+      ];
     }
 
     case EntityType.TOPIC:

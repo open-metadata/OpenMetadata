@@ -283,6 +283,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   public static Role DATA_STEWARD_ROLE;
   public static EntityReference DATA_STEWARD_ROLE_REF;
   public static User DATA_CONSUMER;
+  public static EntityReference DATA_CONSUMER_REF;
   public static Role DATA_CONSUMER_ROLE;
   public static EntityReference DATA_CONSUMER_ROLE_REF;
   public static Role ROLE1;
@@ -379,7 +380,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   // Run webhook related tests randomly. This will ensure these tests are not run for every entity
   // evey time junit tests are run to save time. But over the course of development of a release,
   // when tests are run enough times, the webhook tests are run for all the entities.
-  public boolean runWebhookTests = new Random().nextBoolean();
+  public boolean runWebhookTests = true;
 
   protected boolean supportsSearchIndex = false;
 
@@ -2381,13 +2382,13 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     return response;
   }
 
-  public static String getResponseFormSearchWithHierarchy(String indexName)
+  public static String getResponseFormSearchWithHierarchy(String indexName, String query)
       throws HttpResponseException {
     WebTarget target =
         getResource(
             String.format(
-                "search/query?q=&index=%s&from=0&deleted=false&size=100&getHierarchy=true",
-                indexName));
+                "search/query?q=%s&index=%s&from=0&deleted=false&size=100&getHierarchy=true",
+                query, indexName));
     return TestUtils.get(target, String.class, ADMIN_AUTH_HEADERS);
   }
 

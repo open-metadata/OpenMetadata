@@ -24,8 +24,11 @@ import {
   getUserPath,
 } from '../constants/constants';
 import { GlobalSettingsMenuCategory } from '../constants/GlobalSettings.constants';
-import { ResourceEntity } from '../context/PermissionProvider/PermissionProvider.interface';
-import { EntityTabs, EntityType } from '../enums/entity.enum';
+import {
+  OperationPermission,
+  ResourceEntity,
+} from '../context/PermissionProvider/PermissionProvider.interface';
+import { EntityType } from '../enums/entity.enum';
 import { SearchIndex } from '../enums/search.enum';
 import ContainerPage from '../pages/ContainerPage/ContainerPage';
 import DashboardDetailsPage from '../pages/DashboardDetailsPage/DashboardDetailsPage.component';
@@ -38,19 +41,28 @@ import SearchIndexDetailsPage from '../pages/SearchIndexDetailsPage/SearchIndexD
 import StoredProcedurePage from '../pages/StoredProcedure/StoredProcedurePage';
 import TableDetailsPageV1 from '../pages/TableDetailsPageV1/TableDetailsPageV1';
 import TopicDetailsPage from '../pages/TopicDetails/TopicDetailsPage.component';
-import { getTableFQNFromColumnFQN } from './CommonUtils';
 import {
+  getApplicationDetailsPath,
   getDomainDetailsPath,
+  getIncidentManagerDetailPagePath,
+  getNotificationAlertDetailsPath,
+  getObservabilityAlertDetailsPath,
+  getPersonaDetailsPath,
+  getPolicyWithFqnPath,
+  getRoleWithFqnPath,
   getSettingPath,
   getTeamsWithFqnPath,
 } from './RouterUtils';
+import { getTestSuiteDetailsPath } from './TestSuiteUtils';
 
 class EntityUtilClassBase {
   public getEntityLink(
     indexType: string,
     fullyQualifiedName: string,
     tab?: string,
-    subTab?: string
+    subTab?: string,
+    isExecutableTestSuite?: boolean,
+    isObservabilityAlert?: boolean
   ) {
     switch (indexType) {
       case SearchIndex.TOPIC:
@@ -162,11 +174,13 @@ class EntityUtilClassBase {
         );
 
       case EntityType.TEST_CASE:
-        return `${getEntityDetailsPath(
-          EntityType.TABLE,
-          getTableFQNFromColumnFQN(fullyQualifiedName),
-          EntityTabs.PROFILER
-        )}?activeTab=Data Quality`;
+        return getIncidentManagerDetailPagePath(fullyQualifiedName);
+
+      case EntityType.TEST_SUITE:
+        return getTestSuiteDetailsPath({
+          isExecutableTestSuite,
+          fullyQualifiedName,
+        });
 
       case EntityType.SEARCH_INDEX:
       case SearchIndex.SEARCH_INDEX:
@@ -189,6 +203,8 @@ class EntityUtilClassBase {
           tab,
           subTab
         );
+      case EntityType.APPLICATION:
+        return getApplicationDetailsPath(fullyQualifiedName);
 
       case EntityType.USER:
       case SearchIndex.USER:
@@ -197,6 +213,20 @@ class EntityUtilClassBase {
       case EntityType.TEAM:
       case SearchIndex.TEAM:
         return getTeamsWithFqnPath(fullyQualifiedName);
+
+      case EntityType.EVENT_SUBSCRIPTION:
+        return isObservabilityAlert
+          ? getObservabilityAlertDetailsPath(fullyQualifiedName)
+          : getNotificationAlertDetailsPath(fullyQualifiedName);
+
+      case EntityType.ROLE:
+        return getRoleWithFqnPath(fullyQualifiedName);
+
+      case EntityType.POLICY:
+        return getPolicyWithFqnPath(fullyQualifiedName);
+
+      case EntityType.PERSONA:
+        return getPersonaDetailsPath(fullyQualifiedName);
 
       case SearchIndex.TABLE:
       case EntityType.TABLE:
@@ -294,7 +324,8 @@ class EntityUtilClassBase {
 
   public getManageExtraOptions(
     _entityType?: EntityType,
-    _fqn?: string
+    _fqn?: string,
+    _permission?: OperationPermission
   ): ItemType[] {
     return [];
   }

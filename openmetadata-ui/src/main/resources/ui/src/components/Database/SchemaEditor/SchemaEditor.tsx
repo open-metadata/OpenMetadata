@@ -66,7 +66,7 @@ const SchemaEditor = ({
   const [internalValue, setInternalValue] = useState<string>(
     getSchemaEditorValue(value)
   );
-  const { onCopyToClipBoard } = useClipboard(internalValue);
+  const { onCopyToClipBoard, hasCopied } = useClipboard(internalValue);
 
   const handleEditorInputBeforeChange = (
     _editor: Editor,
@@ -95,7 +95,10 @@ const SchemaEditor = ({
       data-testid="code-mirror-container">
       {showCopyButton && (
         <div className="query-editor-button">
-          <Tooltip title={t('message.copy-to-clipboard')}>
+          <Tooltip
+            title={
+              hasCopied ? t('label.copied') : t('message.copy-to-clipboard')
+            }>
             <Button
               className="flex-center bg-white"
               data-testid="query-copy-button"

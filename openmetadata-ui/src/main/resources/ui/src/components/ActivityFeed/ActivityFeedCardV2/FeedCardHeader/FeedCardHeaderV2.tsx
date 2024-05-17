@@ -32,6 +32,7 @@ import {
 import EntityPopOverCard from '../../../common/PopOverCard/EntityPopOverCard';
 
 import { useTranslation } from 'react-i18next';
+import { ASSET_CARD_STYLES } from '../../../../constants/Feeds.constants';
 import { EntityType } from '../../../../enums/entity.enum';
 import { CardStyle } from '../../../../generated/entity/feed/thread';
 import entityUtilClassBase from '../../../../utils/EntityUtilClassBase';
@@ -68,12 +69,15 @@ const FeedCardHeaderV2 = ({
     return {
       entityCheck: !isUndefined(entityFQN) && !isUndefined(entityType),
       isUserOrTeam: [EntityType.USER, EntityType.TEAM].includes(entityType),
-      showEntityLink: cardStyle !== CardStyle.EntityCreated,
+      showEntityLink: ![
+        CardStyle.EntityCreated,
+        CardStyle.EntityDeleted,
+      ].includes(cardStyle ?? CardStyle.EntityCreated),
     };
   }, [entityFQN, entityType, cardStyle]);
 
   const renderEntityLink = useMemo(() => {
-    if (isUserOrTeam) {
+    if (isUserOrTeam && !ASSET_CARD_STYLES.includes(cardStyle as CardStyle)) {
       return (
         <UserPopOverCard
           showUserName
@@ -115,7 +119,7 @@ const FeedCardHeaderV2 = ({
         </>
       );
     }
-  }, [entityType, entityFQN, showEntityLink, isUserOrTeam]);
+  }, [cardStyle, entityType, entityFQN, showEntityLink, isUserOrTeam]);
 
   return (
     <div className={classNames('feed-card-header-v2', className)}>
@@ -140,7 +144,8 @@ const FeedCardHeaderV2 = ({
                   {getFeedHeaderTextFromCardStyle(
                     fieldOperation,
                     cardStyle,
-                    fieldName
+                    fieldName,
+                    entityType
                   )}
                 </Typography.Text>
                 {fieldName === 'assets' && (

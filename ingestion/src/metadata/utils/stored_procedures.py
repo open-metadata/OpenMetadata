@@ -19,7 +19,7 @@ from metadata.utils.logger import utils_logger
 
 logger = utils_logger()
 
-NAME_PATTERN = r"(?<=call)(.*)(?=\()"
+NAME_PATTERN = r"(?<=call)(.*)(?=\()|(?<=begin)(.*)(?=\()|(?<=begin)(.*)(?=;\s*end)"
 
 
 def get_procedure_name_from_call(

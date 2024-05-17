@@ -1,5 +1,6 @@
 package org.openmetadata.service.migration.api;
 
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.util.OpenMetadataOperations.printToAsciiTable;
 
 import java.io.File;
@@ -21,6 +22,7 @@ import org.openmetadata.service.migration.QueryStatus;
 import org.openmetadata.service.migration.context.MigrationContext;
 import org.openmetadata.service.migration.context.MigrationWorkflowContext;
 import org.openmetadata.service.migration.utils.MigrationFile;
+import org.openmetadata.service.util.AsciiTable;
 
 @Slf4j
 public class MigrationWorkflow {
@@ -33,6 +35,7 @@ public class MigrationWorkflow {
   private final MigrationDAO migrationDAO;
   private final Jdbi jdbi;
   private final boolean forceMigrations;
+  List<String> executedMigrations;
   private Optional<String> currentMaxMigrationVersion;
 
   public MigrationWorkflow(
@@ -72,7 +75,7 @@ public class MigrationWorkflow {
       ConnectionType connectionType,
       String extensionSQLScriptRootPath) {
     List<MigrationFile> availableOMNativeMigrations =
-        getMigrationFilesFromPath(nativeSQLScriptRootPath, connectionType);
+        getMigrationFilesFromPath(nativeSQLScriptRootPath, connectionType, false);
 
     // If we only have OM migrations, return them
     if (extensionSQLScriptRootPath == null || extensionSQLScriptRootPath.isEmpty()) {
@@ -81,7 +84,7 @@ public class MigrationWorkflow {
 
     // Otherwise, fetch the extension migrations and sort the executions
     List<MigrationFile> availableExtensionMigrations =
-        getMigrationFilesFromPath(extensionSQLScriptRootPath, connectionType);
+        getMigrationFilesFromPath(extensionSQLScriptRootPath, connectionType, true);
 
     /*
      If we create migrations version as:
@@ -95,9 +98,10 @@ public class MigrationWorkflow {
         .toList();
   }
 
-  public List<MigrationFile> getMigrationFilesFromPath(String path, ConnectionType connectionType) {
+  public List<MigrationFile> getMigrationFilesFromPath(
+      String path, ConnectionType connectionType, Boolean isExtension) {
     return Arrays.stream(Objects.requireNonNull(new File(path).listFiles(File::isDirectory)))
-        .map(dir -> new MigrationFile(dir, migrationDAO, connectionType))
+        .map(dir -> new MigrationFile(dir, migrationDAO, connectionType, isExtension))
         .sorted()
         .toList();
   }
@@ -105,13 +109,11 @@ public class MigrationWorkflow {
   private List<MigrationProcess> filterAndGetMigrationsToRun(
       List<MigrationFile> availableMigrations) {
     LOG.debug("Filtering Server Migrations");
-    currentMaxMigrationVersion = migrationDAO.getMaxServerMigrationVersion();
+    executedMigrations = migrationDAO.getMigrationVersions();
+    currentMaxMigrationVersion = executedMigrations.stream().max(String::compareTo);
     List<MigrationFile> applyMigrations;
-    if (currentMaxMigrationVersion.isPresent() && !forceMigrations) {
-      applyMigrations =
-          availableMigrations.stream()
-              .filter(migration -> migration.biggerThan(currentMaxMigrationVersion.get()))
-              .toList();
+    if (!nullOrEmpty(executedMigrations) && !forceMigrations) {
+      applyMigrations = getMigrationsToApply(executedMigrations, availableMigrations);
     } else {
       applyMigrations = availableMigrations;
     }
@@ -129,6 +131,44 @@ public class MigrationWorkflow {
       LOG.error("Failed to list and add migrations to run due to ", e);
     }
     return processes;
+  }
+
+  /**
+   * We'll take the max from native migrations and double-check if there's any extension migration
+   * pending to be applied
+   */
+  public List<MigrationFile> getMigrationsToApply(
+      List<String> executedMigrations, List<MigrationFile> availableMigrations) {
+    List<MigrationFile> migrationsToApply = new ArrayList<>();
+    List<MigrationFile> nativeMigrationsToApply =
+        processNativeMigrations(executedMigrations, availableMigrations);
+    List<MigrationFile> extensionMigrationsToApply =
+        processExtensionMigrations(executedMigrations, availableMigrations);
+
+    migrationsToApply.addAll(nativeMigrationsToApply);
+    migrationsToApply.addAll(extensionMigrationsToApply);
+    return migrationsToApply;
+  }
+
+  private List<MigrationFile> processNativeMigrations(
+      List<String> executedMigrations, List<MigrationFile> availableMigrations) {
+    Stream<MigrationFile> availableNativeMigrations =
+        availableMigrations.stream().filter(migration -> !migration.isExtension);
+    Optional<String> maxMigration = executedMigrations.stream().max(String::compareTo);
+    if (maxMigration.isPresent()) {
+      return availableNativeMigrations
+          .filter(migration -> migration.biggerThan(maxMigration.get()))
+          .toList();
+    }
+    return availableNativeMigrations.toList();
+  }
+
+  private List<MigrationFile> processExtensionMigrations(
+      List<String> executedMigrations, List<MigrationFile> availableMigrations) {
+    return availableMigrations.stream()
+        .filter(migration -> migration.isExtension)
+        .filter(migration -> !executedMigrations.contains(migration.version))
+        .toList();
   }
 
   public void printMigrationInfo() {
@@ -227,7 +267,9 @@ public class MigrationWorkflow {
                   .toList());
       LOG.info(
           "[MigrationWorkflow] Version : {} Run Schema Changes Query Status", process.getVersion());
-      printToAsciiTable(schemaChangesColumns, allSchemaChangesRows, "No New Queries");
+      LOG.debug(
+          new AsciiTable(schemaChangesColumns, allSchemaChangesRows, true, "", "No New Queries")
+              .render());
       row.add(SUCCESS_MSG);
     } catch (Exception e) {
       row.add(FAILED_MSG + e.getMessage());
@@ -253,7 +295,9 @@ public class MigrationWorkflow {
                                   entry.getValue().getStatus(), entry.getValue().getMessage())))
                   .toList());
       LOG.info("[MigrationWorkflow] Version : {} Run Post DDL Query Status", process.getVersion());
-      printToAsciiTable(schemaChangesColumns, allSchemaChangesRows, "No New Queries");
+      LOG.debug(
+          new AsciiTable(schemaChangesColumns, allSchemaChangesRows, true, "", "No New Queries")
+              .render());
       row.add(SUCCESS_MSG);
     } catch (Exception e) {
       row.add(FAILED_MSG + e.getMessage());

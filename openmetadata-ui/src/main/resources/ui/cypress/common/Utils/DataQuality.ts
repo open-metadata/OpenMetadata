@@ -41,6 +41,14 @@ const testCase2 = {
   testSuite: testSuite.name,
 };
 const filterTable = generateRandomTable();
+const customTable = generateRandomTable(`cypress-table-${uuid()}-COLUMN`, [
+  {
+    name: `user_id`,
+    description: `cypress-column-description`,
+    dataType: 'STRING',
+    dataTypeDisplay: 'string',
+  },
+]);
 
 const filterTableFqn = `${filterTable.databaseSchema}.${filterTable.name}`;
 const filterTableTestSuite = {
@@ -57,9 +65,10 @@ export const DATA_QUALITY_TEST_CASE_DATA = {
   testCase1,
   testCase2,
   filterTable,
+  customTable,
   filterTableTestCases: testCases,
 };
-
+// it will run 6 time with given wait time -> [20000, 10000, 5000, 2500, 1250, 625]
 const verifyPipelineSuccessStatus = (time = 20000) => {
   const newTime = time / 2;
   interceptURL('GET', '/api/v1/tables/name/*?*testSuite*', 'testSuite');
@@ -75,7 +84,7 @@ const verifyPipelineSuccessStatus = (time = 20000) => {
   verifyResponseStatusCode('@pipelineStatus', 200);
   cy.get('[data-testid="pipeline-status"]').then(($el) => {
     const text = $el.text();
-    if (text !== 'Success' && text !== 'Failed' && newTime > 0) {
+    if (text !== 'Success' && text !== 'Failed' && newTime > 500) {
       verifyPipelineSuccessStatus(newTime);
     } else {
       cy.get('[data-testid="pipeline-status"]').should('contain', 'Success');

@@ -17,7 +17,7 @@ import { AxiosError } from 'axios';
 import { Operation } from 'fast-json-patch';
 import i18next from 'i18next';
 import { isEqual, isUndefined, lowerCase } from 'lodash';
-import React from 'react';
+import React, { ReactNode } from 'react';
 import ReactDOM from 'react-dom';
 import Showdown from 'showdown';
 import TurndownService from 'turndown';
@@ -36,6 +36,7 @@ import {
   hashtagRegEx,
   linkRegEx,
   mentionRegEx,
+  NON_DATA_ASSET_ENTITIES,
   teamsLinkRegEx,
 } from '../constants/Feeds.constants';
 import { EntityType, FqnPart, TabSpecificField } from '../enums/entity.enum';
@@ -526,36 +527,55 @@ export const prepareFeedLink = (entityType: string, entityFQN: string) => {
 
 export const entityDisplayName = (entityType: string, entityFQN: string) => {
   let displayName;
-  if (entityType === EntityType.TABLE || entityType === EntityType.TEST_CASE) {
-    displayName = getPartialNameFromTableFQN(
-      entityFQN,
-      [FqnPart.Database, FqnPart.Schema, FqnPart.Table],
-      '.'
-    );
-  } else if (entityType === EntityType.DATABASE_SCHEMA) {
-    displayName = getPartialNameFromTableFQN(entityFQN, [FqnPart.Schema]);
-  } else if (
-    [
-      EntityType.DATABASE_SERVICE,
-      EntityType.DASHBOARD_SERVICE,
-      EntityType.MESSAGING_SERVICE,
-      EntityType.PIPELINE_SERVICE,
-      EntityType.MLMODEL_SERVICE,
-      EntityType.METADATA_SERVICE,
-      EntityType.STORAGE_SERVICE,
-      EntityType.SEARCH_SERVICE,
-      EntityType.TYPE,
-    ].includes(entityType as EntityType)
-  ) {
-    displayName = getPartialNameFromFQN(entityFQN, ['service']);
-  } else if (
-    [EntityType.GLOSSARY, EntityType.GLOSSARY_TERM, EntityType.DOMAIN].includes(
-      entityType as EntityType
-    )
-  ) {
-    displayName = entityFQN.split(FQN_SEPARATOR_CHAR).pop();
-  } else {
-    displayName = getPartialNameFromFQN(entityFQN, ['database']) || entityFQN;
+
+  switch (entityType) {
+    case EntityType.TABLE:
+      displayName = getPartialNameFromTableFQN(
+        entityFQN,
+        [FqnPart.Database, FqnPart.Schema, FqnPart.Table],
+        FQN_SEPARATOR_CHAR
+      );
+
+      break;
+
+    case EntityType.TEST_CASE:
+    case EntityType.TEST_SUITE:
+      displayName = getPartialNameFromTableFQN(
+        entityFQN,
+        [FqnPart.TestCase],
+        FQN_SEPARATOR_CHAR
+      );
+
+      break;
+
+    case EntityType.DATABASE_SCHEMA:
+      displayName = getPartialNameFromTableFQN(entityFQN, [FqnPart.Schema]);
+
+      break;
+
+    case EntityType.DATABASE_SERVICE:
+    case EntityType.DASHBOARD_SERVICE:
+    case EntityType.MESSAGING_SERVICE:
+    case EntityType.PIPELINE_SERVICE:
+    case EntityType.MLMODEL_SERVICE:
+    case EntityType.METADATA_SERVICE:
+    case EntityType.STORAGE_SERVICE:
+    case EntityType.SEARCH_SERVICE:
+    case EntityType.TYPE:
+      displayName = getPartialNameFromFQN(entityFQN, ['service']);
+
+      break;
+
+    case EntityType.GLOSSARY:
+    case EntityType.GLOSSARY_TERM:
+    case EntityType.DOMAIN:
+      displayName = entityFQN.split(FQN_SEPARATOR_CHAR).pop();
+
+      break;
+    default:
+      displayName = getPartialNameFromFQN(entityFQN, ['database']) || entityFQN;
+
+      break;
   }
 
   // Remove quotes if the name is wrapped in quotes
@@ -711,11 +731,22 @@ export const formatTestStatusData = (
   };
 };
 
-const getActionLabelFromCardStyle = (cardStyle?: CardStyle) => {
-  let action = i18next.t('label.added-lowercase');
+const getActionLabelFromCardStyle = (
+  cardStyle?: CardStyle,
+  isApplication?: boolean
+) => {
+  let action: ReactNode = isApplication
+    ? i18next.t('label.installed-lowercase')
+    : i18next.t('label.added-lowercase');
 
   if (cardStyle === CardStyle.EntityDeleted) {
-    action = i18next.t('label.deleted-lowercase');
+    action = (
+      <Typography.Text className="text-danger">
+        {isApplication
+          ? i18next.t('label.uninstalled-lowercase')
+          : i18next.t('label.deleted-lowercase')}
+      </Typography.Text>
+    );
   } else if (cardStyle === CardStyle.EntitySoftDeleted) {
     action = i18next.t('label.soft-deleted-lowercase');
   }
@@ -726,12 +757,13 @@ const getActionLabelFromCardStyle = (cardStyle?: CardStyle) => {
 export const getFeedHeaderTextFromCardStyle = (
   fieldOperation?: FieldOperation,
   cardStyle?: CardStyle,
-  fieldName?: string
+  fieldName?: string,
+  entityType?: EntityType
 ) => {
   if (fieldName === 'assets') {
     return (
       <Transi18next
-        i18nKey="message.feed-entity-action-header"
+        i18nKey="message.feed-asset-action-header"
         renderElement={<Typography.Text className="font-bold" />}
         values={{
           action: getActionLabelFromCardStyle(cardStyle),
@@ -775,15 +807,31 @@ export const getFeedHeaderTextFromCardStyle = (
     case CardStyle.EntityCreated:
     case CardStyle.EntityDeleted:
     case CardStyle.EntitySoftDeleted:
-      return (
-        <Transi18next
-          i18nKey="message.feed-entity-action-header"
-          renderElement={<Typography.Text className="font-bold" />}
-          values={{
-            action: getActionLabelFromCardStyle(cardStyle),
-          }}
-        />
-      );
+      if (NON_DATA_ASSET_ENTITIES.includes(entityType as EntityType)) {
+        return entityType === EntityType.APPLICATION ? (
+          <Typography.Text>
+            {getActionLabelFromCardStyle(cardStyle, true)}{' '}
+            {i18next.t('label.app-lowercase')}
+          </Typography.Text>
+        ) : (
+          <Transi18next
+            i18nKey="message.feed-entity-action-header"
+            renderElement={<Typography.Text className="font-bold" />}
+            values={{
+              entity: i18next.t(
+                `label.${
+                  entityType === EntityType.EVENT_SUBSCRIPTION
+                    ? 'alert'
+                    : entityType
+                }-lowercase`
+              ),
+              action: getActionLabelFromCardStyle(cardStyle),
+            }}
+          />
+        );
+      }
+
+      return getActionLabelFromCardStyle(cardStyle);
 
     case CardStyle.Default:
     default:
