@@ -11,8 +11,8 @@ public class SearchSortFilter {
 
   public SearchSortFilter(
       String sortField, String sortType, String sortNestedPath, String sortNestedMode) {
-    this.sortField = sortField;
-    this.sortType = sortType;
+    this.sortField = sortField == null ? "name.keyword" : sortField;
+    this.sortType = sortType == null ? "asc" : sortType;
     this.sortNestedPath = sortNestedPath;
     this.sortNestedMode = sortNestedMode;
   }
