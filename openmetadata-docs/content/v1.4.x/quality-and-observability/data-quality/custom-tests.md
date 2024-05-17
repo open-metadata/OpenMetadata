@@ -1,6 +1,6 @@
 ---
 title: Custom Tests
-slug: /connectors/ingestion/workflows/data-quality/custom-tests
+slug: /quality-and-observability/data-quality/custom-tests
 ---
 
 
