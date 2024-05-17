@@ -78,14 +78,14 @@ Following entities are supported and will be mapped to the OpenMetadata entities
 **hostPort**: Host and port of the Alation instance.
 
 **authType**: Following authentication types are supported:
-1. Basic Authentication:
+1. **Basic Authentication**:
 We'll use the user credentials to generate the access token required to authenticate Alation APIs
-- username: Username of the user.
-- password: Password of the user.
+- **username**: Username of the user.
+- **password**: Password of the user.
 
-2. Access Token Authentication:
+2. **Access Token Authentication**:
 The access token created using the steps mentioned [here](https://developer.alation.com/dev/docs/authentication-into-alation-apis#create-via-ui) can directly be entered. We'll use that directly to authenticate the Alation APIs
-- accessToken: Generated access token
+- **accessToken**: Generated access token
 
 #### For Alation backend database Connection:
 

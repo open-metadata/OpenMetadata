@@ -17,11 +17,3 @@ caption="Configure Metadata Ingestion Page" /%}
 {% /stepVisualInfo %}
 
 {% /step %}
-
-{% extraContent parentTagName="stepsContainer" %}
-
-#### Metadata Ingestion Options
-
-- **Enable Debug Log (toggle)**: Set the Enable Debug Log toggle to set the default log level to debug.
-
-{% /extraContent %}
