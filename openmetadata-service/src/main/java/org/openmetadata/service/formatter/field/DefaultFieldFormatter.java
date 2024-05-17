@@ -16,6 +16,7 @@ package org.openmetadata.service.formatter.field;
 import static java.lang.String.format;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.Entity.FIELD_DISPLAY_NAME;
+import static org.openmetadata.service.Entity.FIELD_EXTENSION;
 import static org.openmetadata.service.Entity.FIELD_NAME;
 import static org.openmetadata.service.formatter.util.FormatterUtil.getEntityLinkForFieldName;
 
@@ -37,8 +38,8 @@ import org.openmetadata.service.util.JsonUtils;
 
 public class DefaultFieldFormatter implements FieldFormatter {
   protected final Thread thread;
-  protected final String fieldChangeName;
-  protected final FieldChange fieldChange;
+  protected String fieldChangeName;
+  protected FieldChange fieldChange;
   protected final String fieldOldValue;
   protected final String fieldNewValue;
   protected final MessageDecorator<?> messageDecorator;
@@ -198,7 +199,11 @@ public class DefaultFieldFormatter implements FieldFormatter {
     if (arrayFieldValue != null) {
       updatedField = format("%s.%s", arrayFieldName, arrayFieldValue);
     } else if (arrayFieldName != null) {
-      updatedField = format("%s.%s", fieldChangeName, arrayFieldName);
+      if (arrayFieldName.equals(FIELD_EXTENSION)) {
+        return arrayFieldName;
+      } else {
+        updatedField = format("%s.%s", fieldChangeName, arrayFieldName);
+      }
     }
     return updatedField;
   }

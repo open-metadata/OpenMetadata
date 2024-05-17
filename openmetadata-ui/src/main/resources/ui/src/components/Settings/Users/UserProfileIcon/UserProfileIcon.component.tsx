@@ -40,7 +40,7 @@ import {
   getImageWithResolutionAndFallback,
   ImageQuality,
 } from '../../../../utils/ProfilerUtils';
-import Avatar from '../../../common/AvatarComponent/Avatar';
+import ProfilePicture from '../../../common/ProfilePicture/ProfilePicture';
 import './user-profile-icon.less';
 
 type ListMenuItemProps = {
@@ -337,7 +337,7 @@ export const UserProfileIcon = () => {
               onError={handleOnImageError}
             />
           ) : (
-            <Avatar name={userName} type="circle" width="36" />
+            <ProfilePicture name={currentUser?.name ?? ''} width="36" />
           )}
           <div className="d-flex flex-col">
             <Tooltip title={getEntityName(currentUser)}>

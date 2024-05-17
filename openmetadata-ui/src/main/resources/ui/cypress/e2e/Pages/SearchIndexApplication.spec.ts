@@ -25,6 +25,19 @@ const visitSearchApplicationPage = () => {
   verifyResponseStatusCode('@getSearchIndexingApplication', 200);
 };
 
+const verifyLastExecutionRun = (interceptedUrlLabel: string) => {
+  cy.wait(`@${interceptedUrlLabel}`).then((interception) => {
+    expect(interception.response.statusCode).to.eq(200);
+
+    // Validate the last execution run response
+    const responseData = interception.response.body;
+    if (responseData.data.length > 0) {
+      expect(responseData.data).to.have.length(1);
+      expect(responseData.data[0].status).to.equal('success');
+    }
+  });
+};
+
 describe('Search Index Application', { tags: 'Settings' }, () => {
   beforeEach(() => {
     cy.login();
@@ -34,6 +47,16 @@ describe('Search Index Application', { tags: 'Settings' }, () => {
     cy.settingClick(GlobalSettingOptions.APPLICATIONS);
 
     verifyResponseStatusCode('@getApplications', 200);
+  });
+
+  it('Verify last execution run', () => {
+    interceptURL(
+      'GET',
+      '/api/v1/apps/name/SearchIndexingApplication/status?offset=0&limit=1',
+      'lastExecutionRun'
+    );
+    visitSearchApplicationPage();
+    verifyLastExecutionRun('lastExecutionRun');
   });
 
   it('Edit application', () => {
@@ -101,22 +124,35 @@ describe('Search Index Application', { tags: 'Settings' }, () => {
     );
   });
 
-  it('Run application', () => {
-    interceptURL(
-      'GET',
-      '/api/v1/apps/name/SearchIndexingApplication?fields=*',
-      'getSearchIndexingApplication'
-    );
-    interceptURL(
-      'POST',
-      '/api/v1/apps/trigger/SearchIndexingApplication',
-      'triggerPipeline'
-    );
-    cy.get(
-      '[data-testid="search-indexing-application-card"] [data-testid="config-btn"]'
-    ).click();
-    verifyResponseStatusCode('@getSearchIndexingApplication', 200);
-    cy.get('[data-testid="run-now-button"]').click();
-    verifyResponseStatusCode('@triggerPipeline', 200);
-  });
+  if (Cypress.env('isOss')) {
+    it('Run application', () => {
+      interceptURL(
+        'GET',
+        '/api/v1/apps/name/SearchIndexingApplication?fields=*',
+        'getSearchIndexingApplication'
+      );
+      interceptURL(
+        'POST',
+        '/api/v1/apps/trigger/SearchIndexingApplication',
+        'triggerPipeline'
+      );
+      cy.get(
+        '[data-testid="search-indexing-application-card"] [data-testid="config-btn"]'
+      ).click();
+      verifyResponseStatusCode('@getSearchIndexingApplication', 200);
+      cy.get('[data-testid="run-now-button"]').click();
+      verifyResponseStatusCode('@triggerPipeline', 200);
+
+      cy.wait(120000); // waiting for 2 minutes before we check if reindex was success
+
+      interceptURL(
+        'GET',
+        '/api/v1/apps/name/SearchIndexingApplication/status?offset=0&limit=1',
+        'lastExecutionRun'
+      );
+
+      cy.reload();
+      verifyLastExecutionRun('lastExecutionRun');
+    });
+  }
 });

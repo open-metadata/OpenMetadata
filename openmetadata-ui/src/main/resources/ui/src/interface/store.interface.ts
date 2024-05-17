@@ -42,6 +42,8 @@ export interface ApplicationStore
   extends IAuthContext,
     LogoConfiguration,
     LoginConfiguration {
+  isApplicationLoading: boolean;
+  setApplicationLoading: (loading: boolean) => void;
   userProfilePics: Record<string, User>;
   cachedEntityData: Record<string, EntityUnion>;
   selectedPersona: EntityReference;

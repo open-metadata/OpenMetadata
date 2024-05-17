@@ -148,7 +148,7 @@ describe(
       interceptURL('GET', `/api/v1/glossaries?fields=*`, 'getGlossaryDetails');
       interceptURL(
         'GET',
-        '/api/v1/glossaryTerms?glossary=*',
+        '/api/v1/glossaryTerms?directChildrenOf=*',
         'getGlossaryTerms'
       );
       visitGlossaryPage();
@@ -216,7 +216,10 @@ describe(
       cy.get('[data-testid="version-button"]').contains('0.2');
 
       addOwner(data.user.displayName, GLOSSARY_OWNER_LINK_TEST_ID);
-
+      // Adding manual wait as the backend is now performing batch operations,
+      // which causes a delay in reflecting changes
+      cy.wait(1000);
+      cy.reload();
       interceptURL('GET', `/api/v1/glossaries/*/versions`, 'getVersionsList');
       interceptURL(
         'GET',
@@ -243,6 +246,11 @@ describe(
       removeOwner(data.user.displayName, GLOSSARY_OWNER_LINK_TEST_ID);
 
       addReviewer(data.reviewer.displayName, 'glossaries');
+
+      // Adding manual wait as the backend is now performing batch operations,
+      // which causes a delay in reflecting changes
+      cy.wait(1000);
+      cy.reload();
 
       interceptURL(
         'GET',
@@ -279,12 +287,12 @@ describe(
       );
       interceptURL(
         'GET',
-        `/api/v1/glossaryTerms?parent=*&limit=*&fields=*`,
+        `/api/v1/glossaryTerms?directChildrenOf=*&fields=*&limit=*`,
         'getGlossaryTermParents'
       );
       interceptURL(
         'GET',
-        `/api/v1/glossaryTerms?parent=*&limit=*`,
+        `/api/v1/glossaryTerms?directChildrenOf=*&limit=*`,
         'getChildGlossaryTerms'
       );
 
@@ -335,12 +343,12 @@ describe(
       );
       interceptURL(
         'GET',
-        `/api/v1/glossaryTerms?parent=*&limit=*&fields=*`,
+        `/api/v1/glossaryTerms?directChildrenOf=*&fields=*&limit=*`,
         'getGlossaryTermParents'
       );
       interceptURL(
         'GET',
-        `/api/v1/glossaryTerms?parent=*&limit=*`,
+        `/api/v1/glossaryTerms?directChildrenOf=*&limit=*`,
         'getChildGlossaryTerms'
       );
 

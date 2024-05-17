@@ -41,7 +41,6 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
-import java.util.concurrent.TimeUnit;
 import javax.json.JsonObject;
 import javax.json.JsonPatch;
 import javax.validation.constraints.Size;
@@ -656,17 +655,6 @@ public final class TestUtils {
     if (expected == null) return;
     assertEquals(expected.getIconURL(), actual.getIconURL());
     assertEquals(expected.getColor(), actual.getColor());
-  }
-
-  public static void waitForEsAsyncOp() throws InterruptedException {
-    waitForEsAsyncOp(1000);
-  }
-
-  public static void waitForEsAsyncOp(Integer milliseconds) throws InterruptedException {
-    // Wait for the async operation to complete. We cannot use
-    // Awaitility here as the test method thread is not
-    // the owner of the async operation
-    TimeUnit.MILLISECONDS.sleep(milliseconds);
   }
 
   public static void assertEventually(String name, CheckedRunnable runnable) {

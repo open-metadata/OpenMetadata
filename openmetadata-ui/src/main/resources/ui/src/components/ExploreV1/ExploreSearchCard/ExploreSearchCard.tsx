@@ -216,7 +216,7 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
                 {entityIcon}
 
                 <Link
-                  className="no-underline line-height-22"
+                  className="no-underline line-height-22 w-full"
                   data-testid="entity-link"
                   target={searchClassBase.getSearchEntityLinkTarget(
                     source,
@@ -224,7 +224,7 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
                   )}
                   to={searchClassBase.getEntityLink(source)}>
                   <Typography.Text
-                    className="text-lg font-medium text-link-color break-word"
+                    className="text-lg font-medium text-link-color break-word whitespace-normal"
                     data-testid="entity-header-display-name">
                     {stringToHTML(searchClassBase.getEntityName(source))}
                   </Typography.Text>

@@ -11,6 +11,9 @@
  *  limitations under the License.
  */
 
+import { EntityType } from '../enums/entity.enum';
+import { CardStyle } from '../generated/entity/feed/thread';
+
 export const EntityRegExPattern = /<#E::([^<>]+?)::([^<>]+?)(?:::([^<>]+?))?>/;
 
 export const EntityRegEx = new RegExp(EntityRegExPattern);
@@ -90,3 +93,16 @@ export const ANNOUNCEMENT_BG = '#FFFDF8';
 export const ANNOUNCEMENT_BORDER = '#FFC143';
 export const TASK_BORDER = '#C6B5F6';
 export const GLOBAL_BORDER = '#dde3ea';
+
+export const ASSET_CARD_STYLES = [
+  CardStyle.EntityCreated,
+  CardStyle.EntitySoftDeleted,
+  CardStyle.EntityDeleted,
+];
+
+export const NON_DATA_ASSET_ENTITIES = [
+  EntityType.TEAM,
+  EntityType.BOT,
+  EntityType.APPLICATION,
+  EntityType.EVENT_SUBSCRIPTION,
+];

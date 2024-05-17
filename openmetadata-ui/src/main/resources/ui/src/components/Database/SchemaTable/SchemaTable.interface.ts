@@ -14,6 +14,7 @@
 import { ReactNode } from 'react';
 import { ThreadType } from '../../../generated/api/feed/createThread';
 import { Column, Table } from '../../../generated/entity/data/table';
+import { TestSummary } from '../../../generated/tests/testCase';
 
 export interface SchemaTableProps {
   hasDescriptionEditAccess: boolean;
@@ -23,6 +24,7 @@ export interface SchemaTableProps {
   onUpdate: (columns: Column[]) => Promise<void>;
   onThreadLinkSelect: (value: string, threadType?: ThreadType) => void;
   table?: Table;
+  testCaseSummary?: TestSummary;
 }
 
 export type TableCellRendered<T, K extends keyof T> = (

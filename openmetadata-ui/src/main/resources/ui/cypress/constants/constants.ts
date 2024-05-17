@@ -224,7 +224,6 @@ export const RECENT_SEARCH_TITLE = 'Recent Search Terms';
 export const RECENT_VIEW_TITLE = 'Recent Views';
 export const MY_DATA_TITLE = 'My Data';
 export const FOLLOWING_TITLE = 'Following';
-export const TEAM_ENTITY = 'alert_entity';
 
 export const NO_SEARCHED_TERMS = 'No searched terms';
 export const DELETE_TERM = 'DELETE';
@@ -251,7 +250,7 @@ export const NEW_TABLE_TEST_CASE = {
 
 export const NEW_COLUMN_TEST_CASE = {
   name: 'id_column_value_lengths_to_be_between',
-  column: 'id',
+  column: 'user_id',
   type: 'columnValueLengthsToBeBetween',
   label: 'Column Value Lengths To Be Between',
   min: '3',
@@ -261,7 +260,7 @@ export const NEW_COLUMN_TEST_CASE = {
 
 export const NEW_COLUMN_TEST_CASE_WITH_NULL_TYPE = {
   name: 'id_column_values_to_be_not_null',
-  column: 'id',
+  column: 'user_id',
   type: 'columnValuesToBeNotNull',
   label: 'Column Values To Be Not Null',
   description: 'New table test case for columnValuesToBeNotNull',
@@ -306,32 +305,39 @@ export const NEW_TAG = {
   color: '#FF5733',
   icon: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAF8AAACFCAMAAAAKN9SOAAAAA1BMVEXmGSCqexgYAAAAI0lEQVRoge3BMQEAAADCoPVPbQwfoAAAAAAAAAAAAAAAAHgaMeAAAUWJHZ4AAAAASUVORK5CYII=',
 };
+const cypressGlossaryName = `Cypress Glossary ${uuid()}`;
 
 export const NEW_GLOSSARY = {
-  name: 'Cypress Glossary',
+  name: cypressGlossaryName,
   description: 'This is the Cypress Glossary',
   reviewer: 'Aaron Johnson',
   addReviewer: true,
   tag: 'PersonalData.Personal',
   isMutually: true,
 };
+
+const cypressProductGlossaryName = `Cypress Product%Glossary ${uuid()}`;
+
 export const NEW_GLOSSARY_1 = {
-  name: 'Cypress Product%Glossary',
+  name: cypressProductGlossaryName,
   description: 'This is the Product glossary with percentage',
   reviewer: 'Brandy Miller',
   addReviewer: false,
 };
+const cypressAssetsGlossaryName = `Cypress Assets Glossary ${uuid()}`;
 
 export const CYPRESS_ASSETS_GLOSSARY = {
-  name: 'Cypress Assets Glossary',
+  name: cypressAssetsGlossaryName,
   description: 'This is the Assets Cypress Glossary',
   reviewer: '',
   addReviewer: false,
   tag: 'PII.None',
 };
 
+const cypressAssetsGlossary1Name = `Cypress Assets Glossary 1 ${uuid()}`;
+
 export const CYPRESS_ASSETS_GLOSSARY_1 = {
-  name: 'Cypress Assets Glossary 1',
+  name: cypressAssetsGlossary1Name,
   description: 'Cypress Assets Glossary 1 desc',
   reviewer: '',
   addReviewer: false,
@@ -355,56 +361,58 @@ const COMMON_ASSETS = [
 
 export const CYPRESS_ASSETS_GLOSSARY_TERMS = {
   term_1: {
-    name: 'Cypress%PercentTerm',
+    name: `Cypress%PercentTerm`,
     description: 'This is the Cypress PercentTerm',
     synonyms: 'buy,collect,acquire',
-    fullyQualifiedName: 'Cypress Assets Glossary.Cypress%PercentTerm',
+    fullyQualifiedName: `${cypressAssetsGlossaryName}.Cypress%PercentTerm`,
     assets: COMMON_ASSETS,
   },
   term_2: {
     name: 'Cypress Space GTerm',
     description: 'This is the Cypress Sales',
     synonyms: 'give,disposal,deal',
-    fullyQualifiedName: 'Cypress Assets Glossary.Cypress Space GTerm',
+    fullyQualifiedName: `${cypressAssetsGlossaryName}.Cypress Space GTerm`,
     assets: COMMON_ASSETS,
   },
   term_3: {
     name: 'Cypress.Dot.GTerm',
     description: 'This is the Cypress with space',
     synonyms: 'tea,coffee,water',
-    fullyQualifiedName: 'Cypress Assets Glossary."Cypress.Dot.GTerm"',
-    displayFqn: 'Cypress Assets Glossary.&quot;Cypress.Dot.GTerm&quot;',
+    fullyQualifiedName: `${cypressAssetsGlossaryName}."Cypress.Dot.GTerm"`,
+    displayFqn: `${cypressAssetsGlossaryName}.&quot;Cypress.Dot.GTerm&quot;`,
     assets: COMMON_ASSETS,
   },
 };
 
+const assetTermsUUId = uuid();
+
 export const CYPRESS_ASSETS_GLOSSARY_TERMS_1 = {
   term_1: {
-    name: 'Term1',
+    name: `Term1_${assetTermsUUId}`,
     description: 'term1 desc',
-    fullyQualifiedName: 'Cypress Assets Glossary 1.Term1',
+    fullyQualifiedName: `${cypressAssetsGlossary1Name}.Term1_${assetTermsUUId}`,
     synonyms: 'buy,collect,acquire',
     assets: COMMON_ASSETS,
   },
   term_2: {
-    name: 'Term2',
+    name: `Term2_${assetTermsUUId}`,
     description: 'term2 desc',
     synonyms: 'give,disposal,deal',
-    fullyQualifiedName: 'Cypress Assets Glossary 1.Term2',
+    fullyQualifiedName: `${cypressAssetsGlossary1Name}.Term2_${assetTermsUUId}`,
     assets: COMMON_ASSETS,
   },
   term_3: {
-    name: 'Term3',
+    name: `Term3_${assetTermsUUId}`,
     synonyms: 'tea,coffee,water',
     description: 'term3 desc',
-    fullyQualifiedName: 'Cypress Assets Glossary 1.Term3',
+    fullyQualifiedName: `${cypressAssetsGlossary1Name}.Term3_${assetTermsUUId}`,
     assets: COMMON_ASSETS,
   },
   term_4: {
-    name: 'Term4',
+    name: `Term4_${assetTermsUUId}`,
     description: 'term4 desc',
     synonyms: 'milk,biscuit,water',
-    fullyQualifiedName: 'Cypress Assets Glossary 1.Term4',
+    fullyQualifiedName: `${cypressAssetsGlossary1Name}.Term4_${assetTermsUUId}`,
     assets: COMMON_ASSETS,
   },
 };
@@ -414,19 +422,19 @@ export const NEW_GLOSSARY_TERMS = {
     name: 'CypressPurchase',
     description: 'This is the Cypress Purchase',
     synonyms: 'buy,collect,acquire',
-    fullyQualifiedName: 'Cypress Glossary.CypressPurchase',
+    fullyQualifiedName: `${cypressGlossaryName}.CypressPurchase`,
   },
   term_2: {
     name: 'CypressSales',
     description: 'This is the Cypress Sales',
     synonyms: 'give,disposal,deal',
-    fullyQualifiedName: 'Cypress Glossary.CypressSales',
+    fullyQualifiedName: `${cypressGlossaryName}.CypressSales`,
   },
   term_3: {
     name: 'Cypress Space',
     description: 'This is the Cypress with space',
     synonyms: 'tea,coffee,water',
-    fullyQualifiedName: 'Cypress Glossary.Cypress Space',
+    fullyQualifiedName: `${cypressGlossaryName}.Cypress Space`,
     assets: COMMON_ASSETS,
   },
 };
@@ -438,7 +446,7 @@ export const GLOSSARY_TERM_WITH_DETAILS = {
   relatedTerms: 'CypressSales',
   reviewer: 'Colin Ho',
   inheritedReviewer: 'Aaron Johnson',
-  fullyQualifiedName: 'Cypress Glossary.Accounts',
+  fullyQualifiedName: `${cypressGlossaryName}.Accounts`,
 };
 
 export const NEW_GLOSSARY_1_TERMS = {
@@ -446,7 +454,7 @@ export const NEW_GLOSSARY_1_TERMS = {
     name: 'Features%Term',
     description: 'This is the Features',
     synonyms: 'data,collect,time',
-    fullyQualifiedName: 'Cypress Product%Glossary.Features%Term',
+    fullyQualifiedName: `${cypressProductGlossaryName}.Features%Term`,
     color: '#FF5733',
     icon: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAF8AAACFCAMAAAAKN9SOAAAAA1BMVEXmGSCqexgYAAAAI0lEQVRoge3BMQEAAADCoPVPbQwfoAAAAAAAAAAAAAAAAHgaMeAAAUWJHZ4AAAAASUVORK5CYII=',
   },
@@ -454,7 +462,7 @@ export const NEW_GLOSSARY_1_TERMS = {
     name: 'Uses',
     description: 'This is the Uses',
     synonyms: 'home,business,adventure',
-    fullyQualifiedName: 'Cypress Product%Glossary.Uses',
+    fullyQualifiedName: `${cypressProductGlossaryName}.Uses`,
     color: '#50C878',
     icon: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAKEAAAB5CAMAAABm4rHGAAAAA1BMVEUA7gBnh+O4AAAAKUlEQVR4nO3BAQEAAACCIP+vbkhAAQAAAAAAAAAAAAAAAAAAAAAAAL8GTJIAAVDbVToAAAAASUVORK5CYII=',
   },
@@ -880,8 +888,8 @@ export const DOMAIN_3 = {
           fullyQualifiedName: 'sample_superset.forecast_sales_performance',
         },
         {
-          name: 'eta_predictions',
-          fullyQualifiedName: 'mlflow_svc.eta_predictions',
+          name: 'fact_sale',
+          fullyQualifiedName: 'sample_data.ecommerce_db.shopify.fact_sale',
         },
         {
           name: 'operations_view',
@@ -896,8 +904,8 @@ export const DOMAIN_3 = {
       fullyQualifiedName: 'sample_superset.forecast_sales_performance',
     },
     {
-      name: 'eta_predictions',
-      fullyQualifiedName: 'mlflow_svc.eta_predictions',
+      name: 'fact_sale',
+      fullyQualifiedName: 'sample_data.ecommerce_db.shopify.fact_sale',
     },
     {
       name: 'operations_view',
@@ -905,7 +913,10 @@ export const DOMAIN_3 = {
     },
   ],
 };
-export const GLOBAL_SETTING_PERMISSIONS = {
+export const GLOBAL_SETTING_PERMISSIONS: Record<
+  string,
+  { testid: GlobalSettingOptions; isCustomProperty?: boolean }
+> = {
   metadata: {
     testid: GlobalSettingOptions.METADATA,
   },
@@ -933,7 +944,10 @@ export const GLOBAL_SETTING_PERMISSIONS = {
     testid: GlobalSettingOptions.BOTS,
   },
 };
-export const ID = {
+export const ID: Record<
+  string,
+  { testid: GlobalSettingOptions; button: string; api?: string }
+> = {
   teams: {
     testid: GlobalSettingOptions.TEAMS,
     button: 'add-team',

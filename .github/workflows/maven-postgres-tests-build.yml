@@ -31,7 +31,6 @@ on:
     types: [labeled, opened, synchronize, reopened]
     paths:
       - "openmetadata-service/**"
-      - "openmetadata-ui/**"
       - "openmetadata-spec/src/main/resources/json/schema/**"
       - "openmetadata-dist/**"
       - "openmetadata-clients/**"
@@ -103,8 +102,6 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: mvn -Ppostgres-tests clean package -am
-        with:
-          max_attempts: ${{ github.ref == 'refs/heads/main' && 3 || 1 }}
 
       - name: Clean Up
         run: |

@@ -13,7 +13,7 @@ This approach has been last tested against:
 - Composer version 2.5.4
 - Airflow version 2.6.3
 
-It also requires the ingestion package to be at least `openmetadata-ingestion==1.3.0.1`.
+It also requires the ingestion package to be at least `openmetadata-ingestion==1.3.3.0`.
 
 ## Using the Python Operator
 

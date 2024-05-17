@@ -83,7 +83,7 @@ import org.openmetadata.service.util.UserUtil;
             + "It performs this task as a special user in the system.")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
-@Collection(name = "bots", order = 4) // initialize after user resource
+@Collection(name = "bots", order = 4, requiredForOps = true) // initialize after user resource
 public class BotResource extends EntityResource<Bot, BotRepository> {
   public static final String COLLECTION_PATH = "/v1/bots/";
 
@@ -350,6 +350,35 @@ public class BotResource extends EntityResource<Bot, BotRepository> {
                       }))
           JsonPatch patch) {
     return patchInternal(uriInfo, securityContext, id, patch);
+  }
+
+  @PATCH
+  @Path("/name/{fqn}")
+  @Operation(
+      operationId = "patchBot",
+      summary = "Update a bot by name.",
+      description = "Update an existing bot using JsonPatch.",
+      externalDocs =
+          @ExternalDocumentation(
+              description = "JsonPatch RFC",
+              url = "https://tools.ietf.org/html/rfc6902"))
+  @Consumes(MediaType.APPLICATION_JSON_PATCH_JSON)
+  public Response patch(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Name of the bot", schema = @Schema(type = "string"))
+          @PathParam("fqn")
+          String fqn,
+      @RequestBody(
+              description = "JsonPatch with array of operations",
+              content =
+                  @Content(
+                      mediaType = MediaType.APPLICATION_JSON_PATCH_JSON,
+                      examples = {
+                        @ExampleObject("[{op:remove, path:/a},{op:add, path: /b, value: val}]")
+                      }))
+          JsonPatch patch) {
+    return patchInternal(uriInfo, securityContext, fqn, patch);
   }
 
   @DELETE

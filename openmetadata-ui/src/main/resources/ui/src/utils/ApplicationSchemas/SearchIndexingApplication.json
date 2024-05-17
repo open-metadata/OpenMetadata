@@ -51,7 +51,8 @@
           "webAnalyticUserActivityReportData",
           "domain",
           "storedProcedure",
-          "dataProduct"
+          "dataProduct",
+          "testCaseResolutionStatus"
         ]
       },
       "default": [
@@ -89,7 +90,8 @@
         "domain",
         "storedProcedure",
         "dataProduct",
-        "ingestionPipeline"
+        "ingestionPipeline",
+        "testCaseResolutionStatus"
       ],
       "uniqueItems": true
     },

@@ -59,7 +59,7 @@ You will need to provide the driver to the ingestion image, and pass the Class p
 
 #### JDBC Driver Class Path ($id="jdbcDriverClassPath")
 
-Class path to JDBC driver required for the JDBC connection. The value will be used in the Spark Configuration under `sparks.driver.extraClassPath`.
+Class path to JDBC driver required for the JDBC connection. The value will be used in the Spark Configuration under `spark.driver.extraClassPath`.
 
 $$
 

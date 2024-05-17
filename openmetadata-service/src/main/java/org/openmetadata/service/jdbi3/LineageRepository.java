@@ -21,6 +21,7 @@ import static org.openmetadata.service.Entity.CONTAINER;
 import static org.openmetadata.service.Entity.DASHBOARD;
 import static org.openmetadata.service.Entity.DASHBOARD_DATA_MODEL;
 import static org.openmetadata.service.Entity.MLMODEL;
+import static org.openmetadata.service.Entity.PIPELINE;
 import static org.openmetadata.service.Entity.SEARCH_INDEX;
 import static org.openmetadata.service.Entity.TABLE;
 import static org.openmetadata.service.Entity.TOPIC;
@@ -140,38 +141,32 @@ public class LineageRepository {
         Entity.getSearchRepository().getIndexMapping(toEntity.getType());
     String destinationIndexName =
         destinationIndexMapping.getIndexName(Entity.getSearchRepository().getClusterAlias());
-    Map<String, Object> relationshipDetails = new HashMap<>();
+    Map<String, Object> relationshipDetails =
+        buildRelationshipDetailsMap(fromEntity, toEntity, lineageDetails);
     Pair<String, String> from = new ImmutablePair<>("_id", fromEntity.getId().toString());
     Pair<String, String> to = new ImmutablePair<>("_id", toEntity.getId().toString());
-    processLineageData(fromEntity, toEntity, lineageDetails, relationshipDetails);
     searchClient.updateLineage(sourceIndexName, from, relationshipDetails);
     searchClient.updateLineage(destinationIndexName, to, relationshipDetails);
   }
 
-  private void processLineageData(
-      EntityReference fromEntity,
-      EntityReference toEntity,
-      LineageDetails lineageDetails,
-      Map<String, Object> relationshipDetails) {
-    Map<String, Object> fromDetails = new HashMap<>();
-    Map<String, Object> toDetails = new HashMap<>();
-    fromDetails.put("id", fromEntity.getId().toString());
-    fromDetails.put("type", fromEntity.getType());
-    fromDetails.put("fqn", fromEntity.getFullyQualifiedName());
-    toDetails.put("id", toEntity.getId().toString());
-    toDetails.put("type", toEntity.getType());
-    toDetails.put("fqn", toEntity.getFullyQualifiedName());
+  public static Map<String, Object> buildEntityRefMap(EntityReference entityRef) {
+    Map<String, Object> details = new HashMap<>();
+    details.put("id", entityRef.getId().toString());
+    details.put("type", entityRef.getType());
+    details.put("fqn", entityRef.getFullyQualifiedName());
+    return details;
+  }
+
+  public static Map<String, Object> buildRelationshipDetailsMap(
+      EntityReference fromEntity, EntityReference toEntity, LineageDetails lineageDetails) {
+    Map<String, Object> relationshipDetails = new HashMap<>();
     relationshipDetails.put(
         "doc_id", fromEntity.getId().toString() + "-" + toEntity.getId().toString());
-    relationshipDetails.put("fromEntity", fromDetails);
-    relationshipDetails.put("toEntity", toDetails);
+    relationshipDetails.put("fromEntity", buildEntityRefMap(fromEntity));
+    relationshipDetails.put("toEntity", buildEntityRefMap(toEntity));
     if (lineageDetails != null) {
-      relationshipDetails.put(
-          "pipeline",
-          JsonUtils.getMap(
-              CommonUtil.nullOrEmpty(lineageDetails.getPipeline())
-                  ? null
-                  : lineageDetails.getPipeline()));
+      // Add Pipeline Details
+      addPipelineDetails(relationshipDetails, lineageDetails.getPipeline());
       relationshipDetails.put(
           "description",
           CommonUtil.nullOrEmpty(lineageDetails.getDescription())
@@ -192,6 +187,25 @@ public class LineageRepository {
       relationshipDetails.put(
           "source",
           CommonUtil.nullOrEmpty(lineageDetails.getSource()) ? null : lineageDetails.getSource());
+    }
+    return relationshipDetails;
+  }
+
+  public static void addPipelineDetails(
+      Map<String, Object> relationshipDetails, EntityReference pipelineRef) {
+    if (CommonUtil.nullOrEmpty(pipelineRef)) {
+      relationshipDetails.put(PIPELINE, JsonUtils.getMap(null));
+    } else {
+      Map<String, Object> pipelineMap;
+      if (pipelineRef.getType().equals(PIPELINE)) {
+        pipelineMap =
+            JsonUtils.getMap(
+                Entity.getEntity(pipelineRef, "pipelineStatus,tags,owner", Include.ALL));
+      } else {
+        pipelineMap = JsonUtils.getMap(Entity.getEntity(pipelineRef, "tags,owner", Include.ALL));
+      }
+      relationshipDetails.put("pipelineEntityType", pipelineRef.getType());
+      relationshipDetails.put(PIPELINE, pipelineMap);
     }
   }
 
@@ -220,13 +234,13 @@ public class LineageRepository {
       boolean deleted,
       String entityType)
       throws IOException {
-    CsvDocumentation DOCUMENTATION = getCsvDocumentation("lineage");
-    List<CsvHeader> HEADERS = DOCUMENTATION.getHeaders();
-    Map lineageMap =
+    CsvDocumentation documentation = getCsvDocumentation("lineage");
+    List<CsvHeader> headers = documentation.getHeaders();
+    Map<String, Object> lineageMap =
         Entity.getSearchRepository()
             .searchLineageForExport(
                 fqn, upstreamDepth, downstreamDepth, queryFilter, deleted, entityType);
-    CsvFile csvFile = new CsvFile().withHeaders(HEADERS);
+    CsvFile csvFile = new CsvFile().withHeaders(headers);
 
     addRecords(csvFile, lineageMap);
     return CsvUtil.formatCsv(csvFile);
@@ -243,6 +257,7 @@ public class LineageRepository {
   }
 
   private String processColumnLineage(HashMap lineageMap) {
+
     if (lineageMap.get("columns") != null) {
       StringBuilder str = new StringBuilder();
       Collection collection = (Collection<ColumnLineage>) lineageMap.get("columns");
@@ -254,14 +269,14 @@ public class LineageRepository {
           str.append(colLineage.get("toColumn"));
           str.append(";");
         }
-        // remove the last ;
-        return str.toString().substring(0, str.toString().length() - 1);
       }
+      // remove the last ;
+      return str.toString().substring(0, str.toString().length() - 1);
     }
     return "";
   }
 
-  protected void addRecords(CsvFile csvFile, Map lineageMap) {
+  protected void addRecords(CsvFile csvFile, Map<String, Object> lineageMap) {
     if (lineageMap.get("edges") != null && lineageMap.get("edges") instanceof Collection<?>) {
       Collection collection = (Collection<HashMap>) lineageMap.get("edges");
       HashSet<HashMap> edges = new HashSet<HashMap>(collection);

@@ -19,6 +19,7 @@ import { WORKFLOWS_METADATA_DOCS } from '../../../constants/docs.constants';
 import { EntityType } from '../../../enums/entity.enum';
 import { SearchIndexSampleData } from '../../../generated/entity/data/searchIndex';
 import { TopicSampleData } from '../../../generated/entity/data/topic';
+import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { getSampleDataBySearchIndexId } from '../../../rest/SearchIndexAPI';
 import { getSampleDataByTopicId } from '../../../rest/topicsAPI';
 import { Transi18next } from '../../../utils/CommonUtils';
@@ -31,6 +32,7 @@ const SampleDataWithMessages: FC<{
   entityType: EntityType;
 }> = ({ entityId, entityType }) => {
   const { t } = useTranslation();
+  const { theme } = useApplicationStore();
   const [data, setData] = useState<TopicSampleData | SearchIndexSampleData>();
   const [loading, setLoading] = useState(false);
 
@@ -67,7 +69,7 @@ const SampleDataWithMessages: FC<{
                 <a
                   href={WORKFLOWS_METADATA_DOCS}
                   rel="noreferrer"
-                  style={{ color: '#1890ff' }}
+                  style={{ color: theme.primaryColor }}
                   target="_blank"
                 />
               }

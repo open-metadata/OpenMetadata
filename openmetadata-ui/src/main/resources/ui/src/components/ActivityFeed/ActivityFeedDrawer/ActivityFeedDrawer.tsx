@@ -22,6 +22,7 @@ import ActivityFeedEditor from '../ActivityFeedEditor/ActivityFeedEditor';
 import FeedPanelBodyV1 from '../ActivityFeedPanel/FeedPanelBodyV1';
 import FeedPanelHeader from '../ActivityFeedPanel/FeedPanelHeader';
 import { useActivityFeedProvider } from '../ActivityFeedProvider/ActivityFeedProvider';
+import './activity-feed-drawer.less';
 
 interface ActivityFeedDrawerProps {
   open?: boolean;
@@ -70,11 +71,15 @@ const ActivityFeedDrawer: FC<ActivityFeedDrawerProps> = ({
       {isDrawerLoading ? (
         <Loader />
       ) : (
-        <Row gutter={[16, 16]} id="feed-panel">
+        <Row gutter={[0, 16]} id="feed-panel">
           <Col span={24}>
             <FeedPanelBodyV1
               isOpenInDrawer
               showThread
+              componentsVisibility={{
+                showThreadIcon: false,
+                showRepliesContainer: false,
+              }}
               feed={selectedThread as Thread}
               hidePopover={false}
             />

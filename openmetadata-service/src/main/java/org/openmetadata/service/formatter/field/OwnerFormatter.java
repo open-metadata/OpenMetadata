@@ -19,8 +19,10 @@ import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.entity.feed.FeedInfo;
 import org.openmetadata.schema.entity.feed.OwnerFeedInfo;
 import org.openmetadata.schema.entity.feed.Thread;
+import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.service.formatter.decorators.MessageDecorator;
+import org.openmetadata.service.util.JsonUtils;
 
 public class OwnerFormatter extends DefaultFieldFormatter {
   private static final String HEADER_MESSAGE = "%s %s the owner for %s %s";
@@ -78,7 +80,11 @@ public class OwnerFormatter extends DefaultFieldFormatter {
 
   private void populateOwnerFeedInfo(Thread.FieldOperation operation, String threadMessage) {
     OwnerFeedInfo ownerFeedInfo =
-        new OwnerFeedInfo().withPreviousOwner(fieldOldValue).withUpdatedOwner(fieldNewValue);
+        new OwnerFeedInfo()
+            .withPreviousOwner(
+                JsonUtils.readOrConvertValue(fieldChange.getOldValue(), EntityReference.class))
+            .withUpdatedOwner(
+                JsonUtils.readOrConvertValue(fieldChange.getNewValue(), EntityReference.class));
     FeedInfo feedInfo =
         new FeedInfo()
             .withHeaderMessage(getHeaderForOwnerUpdate(operation.value()))

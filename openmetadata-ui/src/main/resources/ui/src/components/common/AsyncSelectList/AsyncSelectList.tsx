@@ -24,7 +24,14 @@ import {
 import { AxiosError } from 'axios';
 import { debounce, isEmpty, isUndefined, pick } from 'lodash';
 import { CustomTagProps } from 'rc-select/lib/BaseSelect';
-import React, { FC, useCallback, useMemo, useRef, useState } from 'react';
+import React, {
+  FC,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
 import { TAG_START_WITH } from '../../../constants/Tag.constants';
@@ -36,6 +43,7 @@ import { getTagDisplay, tagRender } from '../../../utils/TagsUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import TagsV1 from '../../Tag/TagsV1/TagsV1.component';
 import Loader from '../Loader/Loader';
+import './async-select-list.less';
 import {
   AsyncSelectListProps,
   SelectOption,
@@ -282,10 +290,15 @@ const AsyncSelectList: FC<AsyncSelectListProps & SelectProps> = ({
     onChange?.(selectedValues);
   };
 
+  useEffect(() => {
+    loadOptions('');
+  }, []);
+
   return (
     <Select
       autoFocus
       showSearch
+      className="async-select-list"
       data-testid="tag-selector"
       dropdownRender={dropdownRender}
       filterOption={false}
@@ -295,7 +308,6 @@ const AsyncSelectList: FC<AsyncSelectListProps & SelectProps> = ({
       style={{ width: '100%' }}
       tagRender={customTagRender}
       onChange={handleChange}
-      onFocus={() => loadOptions('')}
       onInputKeyDown={(event) => {
         if (event.key === 'Backspace') {
           return event.stopPropagation();
