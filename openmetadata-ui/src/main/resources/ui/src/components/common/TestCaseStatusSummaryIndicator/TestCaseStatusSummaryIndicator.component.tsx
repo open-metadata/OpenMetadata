@@ -46,15 +46,15 @@ const TestCaseStatusSummaryIndicator = ({
 
   return testCaseStatusCounts ? (
     <Space size={16}>
-      {Object.entries(omit(testCaseStatusCounts, ['entityLink', 'total'])).map(
-        (test) => (
-          <Tooltip key={test[0]} title={startCase(test[0])}>
-            <Link data-testid={test[0]} to={redirectPath}>
-              <TestIndicator type={test[0]} value={test[1]} />
-            </Link>
-          </Tooltip>
-        )
-      )}
+      {Object.entries(
+        omit(testCaseStatusCounts, ['entityLink', 'total', 'queued'])
+      ).map((test) => (
+        <Tooltip key={test[0]} title={startCase(test[0])}>
+          <Link data-testid={test[0]} to={redirectPath}>
+            <TestIndicator type={test[0]} value={test[1]} />
+          </Link>
+        </Tooltip>
+      ))}
     </Space>
   ) : (
     <Typography.Text data-testid="no-data-placeholder">

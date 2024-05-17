@@ -44,7 +44,9 @@ describe(
       cy.get('[data-testid="cron-type"]').click();
       cy.get('.rc-virtual-list [title="Day"]').click();
       cy.get('[data-testid="hour-options"]').click();
-      cy.get('[title="06"]').click();
+      cy.get('.ant-select-dropdown [title="06"]').click();
+      cy.get('[data-testid="minute-options"]').click();
+      cy.get('.ant-select-dropdown [title="00"]').click();
       cy.get('.ant-modal-body [data-testid="deploy-button"]').click();
       verifyResponseStatusCode('@updateApplication', 200);
       cy.get('[data-testid="cron-string"]').should('contain', 'At 06:00 AM');

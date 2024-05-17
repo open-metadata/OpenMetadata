@@ -634,6 +634,7 @@ const DashboardDetails = ({
                 ) : (
                   <Table
                     bordered
+                    className="align-table-filter-left"
                     columns={tableColumn}
                     data-testid="charts-table"
                     dataSource={charts}

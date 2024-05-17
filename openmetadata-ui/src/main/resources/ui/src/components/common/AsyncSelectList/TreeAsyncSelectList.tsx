@@ -73,6 +73,7 @@ const TreeAsyncSelectList: FC<Omit<AsyncSelectListProps, 'fetchOptions'>> = ({
   const form = Form.useFormInstance();
 
   const fetchGlossaryListInternal = async () => {
+    setIsLoading(true);
     try {
       const { data } = await getGlossariesList({
         limit: PAGE_SIZE_LARGE,
@@ -91,11 +92,12 @@ const TreeAsyncSelectList: FC<Omit<AsyncSelectListProps, 'fetchOptions'>> = ({
 
   const dropdownRender = (menu: React.ReactElement) => (
     <>
-      {menu}
+      {isLoading ? <Loader size="small" /> : menu}
       <Space className="p-sm p-b-xss p-l-xs custom-dropdown-render" size={8}>
         <Button
           className="update-btn"
           data-testid="saveAssociatedTag"
+          disabled={isEmpty(glossaries)}
           htmlType="submit"
           loading={isSubmitLoading}
           size="small"
@@ -181,7 +183,13 @@ const TreeAsyncSelectList: FC<Omit<AsyncSelectListProps, 'fetchOptions'>> = ({
       value: string;
     }[]
   ) => {
+    const lastSelectedMap = new Map(
+      selectedTagsRef.current.map((tag) => [tag.value, tag])
+    );
     const selectedValues = values.map(({ value }) => {
+      if (lastSelectedMap.has(value)) {
+        return lastSelectedMap.get(value) as SelectOption;
+      }
       const initialData = findGlossaryTermByFqn(
         [
           ...glossaries,
@@ -211,7 +219,6 @@ const TreeAsyncSelectList: FC<Omit<AsyncSelectListProps, 'fetchOptions'>> = ({
     if (!params?.glossary) {
       return;
     }
-    setIsLoading(true);
     try {
       const results = await queryGlossaryTerms(params.glossary);
 
@@ -229,8 +236,6 @@ const TreeAsyncSelectList: FC<Omit<AsyncSelectListProps, 'fetchOptions'>> = ({
       );
     } catch (error) {
       showErrorToast(error as AxiosError);
-    } finally {
-      setIsLoading(false);
     }
   };
 
@@ -282,7 +287,6 @@ const TreeAsyncSelectList: FC<Omit<AsyncSelectListProps, 'fetchOptions'>> = ({
 
         return Promise.resolve();
       }}
-      notFoundContent={isLoading ? <Loader size="small" /> : null}
       showCheckedStrategy={TreeSelect.SHOW_ALL}
       style={{ width: '100%' }}
       switcherIcon={

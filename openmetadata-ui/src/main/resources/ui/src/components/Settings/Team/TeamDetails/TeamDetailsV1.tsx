@@ -291,25 +291,29 @@ const TeamDetailsV1 = ({
     }
   };
 
-  const joinTeam = useCallback(() => {
-    if (currentUser && currentTeam) {
-      const newTeams = cloneDeep(currentUser.teams ?? []);
-      newTeams.push({
-        id: currentTeam.id,
-        type: OwnerType.TEAM,
-        name: currentTeam.name,
-      });
+  const joinTeam: React.MouseEventHandler<HTMLElement> = useCallback(
+    (event) => {
+      event.stopPropagation();
+      if (currentUser && currentTeam) {
+        const newTeams = cloneDeep(currentUser.teams ?? []);
+        newTeams.push({
+          id: currentTeam.id,
+          type: OwnerType.TEAM,
+          name: currentTeam.name,
+        });
 
-      const updatedData: User = {
-        ...currentUser,
-        teams: newTeams,
-      };
+        const updatedData: User = {
+          ...currentUser,
+          teams: newTeams,
+        };
 
-      const options = compare(currentUser, updatedData);
+        const options = compare(currentUser, updatedData);
 
-      handleJoinTeamClick(currentUser.id, options);
-    }
-  }, [currentUser, currentTeam, handleJoinTeamClick]);
+        handleJoinTeamClick(currentUser.id, options);
+      }
+    },
+    [currentUser, currentTeam, handleJoinTeamClick]
+  );
 
   const leaveTeam = async () => {
     if (currentUser && currentTeam) {

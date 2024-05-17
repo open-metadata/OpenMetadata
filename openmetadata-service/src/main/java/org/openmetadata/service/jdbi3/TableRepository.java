@@ -477,7 +477,8 @@ public class TableRepository extends EntityRepository<Table> {
         tableProfiles, startTs.toString(), endTs.toString(), tableProfiles.size());
   }
 
-  public ResultList<ColumnProfile> getColumnProfiles(String fqn, Long startTs, Long endTs) {
+  public ResultList<ColumnProfile> getColumnProfiles(
+      String fqn, Long startTs, Long endTs, boolean authorizePII) {
     List<ColumnProfile> columnProfiles;
     columnProfiles =
         JsonUtils.readObjects(
@@ -490,8 +491,15 @@ public class TableRepository extends EntityRepository<Table> {
                     endTs,
                     EntityTimeSeriesDAO.OrderBy.DESC),
             ColumnProfile.class);
-    return new ResultList<>(
-        columnProfiles, startTs.toString(), endTs.toString(), columnProfiles.size());
+    ResultList<ColumnProfile> columnProfileResultList =
+        new ResultList<>(
+            columnProfiles, startTs.toString(), endTs.toString(), columnProfiles.size());
+    if (!authorizePII) {
+      // Mask the PII data
+      columnProfileResultList.setData(
+          PIIMasker.getColumnProfile(fqn, columnProfileResultList.getData()));
+    }
+    return columnProfileResultList;
   }
 
   public ResultList<SystemProfile> getSystemProfiles(String fqn, Long startTs, Long endTs) {

@@ -25,7 +25,7 @@ export const GenericAuthenticator = forwardRef(
   ({ children }: { children: ReactNode }, ref) => {
     const {
       setIsAuthenticated,
-      setIsSigningIn,
+      setIsSigningUp,
       removeOidcToken,
       setOidcToken,
     } = useApplicationStore();
@@ -33,7 +33,7 @@ export const GenericAuthenticator = forwardRef(
 
     const handleLogin = () => {
       setIsAuthenticated(false);
-      setIsSigningIn(true);
+      setIsSigningUp(true);
       window.location.assign('api/v1/auth/login');
     };
 
