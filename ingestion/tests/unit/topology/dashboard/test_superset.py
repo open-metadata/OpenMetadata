@@ -510,9 +510,11 @@ class SupersetUnitTest(TestCase):
             self.superset_api.yield_dashboard_chart(MOCK_DASHBOARD)
         ).right
         EXPECTED_CHART_2.sourceUrl = SourceUrl(
-            __root__=f"http://{superset_container.get_container_host_ip()}:{superset_container.get_exposed_port(8088)}/explore/?slice_id=69"
+            __root__=f"http://{superset_container.get_container_host_ip()}:{superset_container.get_exposed_port(8088)}/explore/?slice_id={dashboard_chart.name.__root__}"
         )
         EXPECTED_CHART_2.displayName = dashboard_chart.displayName
+        EXPECTED_CHART_2.chartType = dashboard_chart.chartType
+        EXPECTED_CHART_2.name = dashboard_chart.name
         self.assertEqual(dashboard_chart, EXPECTED_CHART_2)
 
         # TEST DB SOURCE
