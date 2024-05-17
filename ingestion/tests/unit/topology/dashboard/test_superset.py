@@ -13,12 +13,10 @@ Test superset source
 """
 
 import json
-import os
 import uuid
 from pathlib import Path
 from unittest import TestCase
 
-import pytest
 import sqlalchemy
 from testcontainers.core.generic import DockerContainer
 from testcontainers.postgres import PostgresContainer
@@ -505,7 +503,6 @@ class SupersetUnitTest(TestCase):
         EXPECTED_DASH.owner = dashboard.owner
         self.assertEqual(dashboard, EXPECTED_DASH)
 
-    @pytest.mark.skip(reason="TODO: skip this until test is fixed")
     def test_yield_dashboard_chart(self):
         # TEST API SOURCE
         self.superset_api.prepare()
