@@ -35,5 +35,8 @@ export default defineConfig({
       return config;
     },
     specPattern: ['cypress/e2e/**/*.{js,jsx,ts,tsx}'],
+    env: {
+      isOss: true,
+    },
   },
 });
