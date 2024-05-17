@@ -1,6 +1,6 @@
 ---
 title: External Storage for Sample Data
-slug: /connectors/ingestion/workflows/profiler/external-sample-data
+slug: /quality-and-observability/profiler/external-sample-data
 ---
 
 # External Storage for Sample Data

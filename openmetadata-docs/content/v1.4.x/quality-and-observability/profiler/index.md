@@ -1,6 +1,6 @@
 ---
 title: Profiler Workflow
-slug: /connectors/ingestion/workflows/profiler
+slug: /quality-and-observability/profiler
 ---
 
 # Profiler Workflow
@@ -10,7 +10,7 @@ Learn how to configure and run the Profiler Workflow to extract Profiler data an
 
 {% note %}
 
-During data profiling for Datalake Profiling, we drop NaN (Not a Number) values from the DataFrame using the dropna() method. However, we make an exception for null values, which are retained. This ensures that our computations are accurate while handling missing data
+For Datalake Profiling, we drop NaN (Not a Number) values from the DataFrame using the dropna() method to allow metric computation. However, we make an exception for null values, which are retained. This ensures that our computations are accurate while handling missing data
 
 {% /note %}
 
@@ -27,7 +27,7 @@ This Pipeline will be in charge of feeding the Profiler tab of the Table Entity,
 
 
 {% image
-  src="/images/v1.4/features/ingestion/workflows/profiler/profiler-summary-colomn.png"
+  src="/images/v1.4/features/ingestion/workflows/profiler/profiler-summary-column.png"
   alt="Column profile summary page"
   caption="Column profile summary page"
  /%}
@@ -55,41 +55,59 @@ Here you can enter the Profiler Ingestion details.
 
 
 #### Profiler Options
-**Name**
+**Name**  
 Define the name of the Profiler Workflow. While we only support a single workflow for the Metadata and Usage ingestion, users can define different schedules and filters for Profiler workflows.
 
 As profiling is a costly task, this enables a fine-grained approach to profiling and running tests by specifying different filters for each pipeline.
 
-**Database filter pattern (Optional)**
+**Database filter pattern (Optional)**  
 regex expression to filter databases.
 
-**Schema filter pattern (Optional)**
+**Schema filter pattern (Optional)**  
 regex expression to filter schemas.
 
-**Table filter pattern (Optional)**
+**Table filter pattern (Optional)**  
 regex expression to filter tables.
 
-**Profile Sample (Optional)**
+**Profile Sample (Optional)**  
 Set the sample to be use by the profiler for the specific table.
 - `Percentage`: Value must be between 0 and 100 exclusive (0 < percentage < 100). This will sample the table based on a percentage
 - `Row Count`: The table will be sampled based on a number of rows (i.e. `1,000`, `2,000`), etc.
 
 ⚠️ This option is currently not support for Druid. Sampling leverage `RANDOM` functions in most database (some have specific sampling functions) and Druid provides neither of these option. We recommend using the partitioning or sample query option if you need to limit the amount of data scanned.
 
-**Auto PII Tagging (Optional)**
-Configuration to automatically tag columns that might contain sensitive information.
+**Enable Debug Log**  
+Set the Enable Debug Log toggle to set the logging level of the process to debug. You can check these logs in the Ingestion tab of the service and dig deeper into any errors you might find.
 
-- **Confidence (Optional)**
+**Include Views**  
+If activated the profiler will compute metric for view entity types. Note that it can have a negative impact on the profiler performance.
+
+**Use FQN For Filtering Views**  
+Set this flag when you want to apply the filters on Fully Qualified Names (e.g service_name.db_name.schema_name.table_name) instead of applying them to the raw name of the asset (e.g table_name).
+This Flag is useful in scenarios when you have different schemas with same name in multiple databases, or tables with same name in different schemas, and you want to filter out only one of them.
+
+**Generate Sample Data**  
+Whether the profiler should ingest sample data
+
+**Compute Metrics**  
+Set the Compute Metrics toggle off to not perform any metric computation during the profiler ingestion workflow. Used in combination with Ingest Sample Data toggle on allows you to only ingest sample data.
+
+**Process Pii Sensitive (Optional)**  
+Configuration to automatically tag columns that might contain sensitive information. PII data will be infered from the column name. If `Generate Sample Data` is toggled on OpenMetadata will leverage machine learning to infer which column may contain PII sensitive data.
+
+**Advanced Configuration**  
+
+**PII Inference Confidence LevelConfidence (Optional)**  
 If `Auto PII Tagging` is enable, this confidence level will determine the threshold to use for OpenMetadata's NLP model to consider a column as containing PII data.
 
-**Thread Count (Optional)**
+**Sample Data Rows Count**  
+Set the number of rows to ingest when Ingest Sample Data toggle is on. Defaults to 50.
+
+**Thread Count (Optional)**  
 Number of thread to use when computing metrics for the profiler. For Snowflake users we recommend setting it to 1. There is a known issue with one of the dependency (`snowflake-connector-python`) affecting projects with certain environments. 
 
-**Timeout in Seconds (Optional)**
+**Timeout in Seconds (Optional)**  
 This will set the duration a profiling job against a table should wait before interrupting its execution and moving on to profiling the next table. It is important to note that the profiler will wait for the hanging query to terminiate before killing the execution. If there is a risk for your profiling job to hang, it is important to also set a query/connection timeout on your database engine. The default value for the profiler timeout is 12-hours.
-
-**Ingest Sample Data**
-Whether the profiler should ingest sample data
 
 ### 3. Schedule and Deploy
 After clicking Next, you will be redirected to the Scheduling form. This will be the same as the Metadata and Usage Ingestions. Select your desired schedule and click on Deploy to find the usage pipeline being added to the Service Ingestions.
@@ -151,6 +169,34 @@ Once you have picked the `Interval Type` you will need to define the configurati
 `INTEGER-RANGE`
 - `Start Range`: the start of the range (inclusive)
 - `End Range`: the end of the range (inclusive)
+
+### 5. Updating Profiler setting at the platform level
+The behavior of the profiler can be configured at the platform level. Navigating to `Settings > Preferences > Profiler Configuration` you will find settings to adjust the behavior of the profiler.
+
+{% image
+  src="/images/v1.4/features/ingestion/workflows/profiler/profiler-global-configuration.png"
+  alt="table profile global settings"
+  caption="table profile global settings"
+ /%}
+
+**Disabling All Metric Computation for a Data Type**
+Select the data type you want to disable all metric for. Then toggle disable on. When running the profiler all metric computation will be skipped for the data type.
+
+{% image
+  src="/images/v1.4/features/ingestion/workflows/profiler/disable-metric-computation.png"
+  alt="table profile global settings"
+  caption="table profile global settings"
+ /%}
+
+**Disabling Specific Metric Computation for a Data Type**
+Select the data type you want to disable a metric for. Then in the `Metric Type` section select the metric you to compute (or unselect the ones you don't want to compute). When running the profiler the unselected metric will not be computed.
+
+{% image
+  src="/images/v1.4/features/ingestion/workflows/profiler/disable-specific-metric-computation.png"
+  alt="table profile global settings"
+  caption="table profile global settings"
+ /%}
+
 
 ## YAML Configuration
 

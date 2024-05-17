@@ -1,6 +1,6 @@
 ---
 title: Metrics
-slug: /connectors/ingestion/workflows/profiler/metrics
+slug: /quality-and-observability/profiler/metrics
 ---
 
 # Metrics
@@ -159,6 +159,9 @@ OpenMetadata uses system tables to compute system metrics. You can find the requ
 OpenMetadata uses the `QUERY_HISTORY_BY_WAREHOUSE` view of the `INFORMATION_SCHEMA` to collect metrics about DML operations. To collect information about the `RESULT_SCAN` command alongside the QUERY ID will be passed to the `RESULT_SCAN` function to get the number of rows affected by the operation. You need to make sure the user running the profiler workflow has access to this view and this function.
 
 OpenMetadata will look at the past 24-hours to fetch the operations that were performed against a table. 
+
+**Important**  
+For snowflake system, the system will parse the DDL query and attempt to match `database`, `schema`, and `table` name to entities in OpenMetadata. If the DDL query does not include all 3 elements we will not be able to ingest this metric.
 
 ### Redshift
 OpenMetadata uses `stl_insert`, `stl_delete`, `svv_table_info`, and `stl_querytext` to fetch DML operations as well as the number of rows affected by these operations. You need to make sure the user running the profiler workflow has access to these views and tables.
