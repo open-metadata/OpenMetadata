@@ -1,6 +1,6 @@
 ---
 title: External Profiler Workflow
-slug: /connectors/ingestion/workflows/profiler/external-workflow
+slug: /quality-and-observability/profiler/external-workflow
 ---
 
 # External Profiler Workflow

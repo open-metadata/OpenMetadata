@@ -1,6 +1,6 @@
 ---
 title: Data Quality
-slug: /connectors/ingestion/workflows/data-quality
+slug: /quality-and-observability/data-quality
 ---
 
 # Data Quality
@@ -36,7 +36,7 @@ This section will show you how to configure and run Data Quality pipelines with 
 
 ## Main Concepts
 ### Test Suite
-Test Suites are logical container allowing you to group related Test Cases together from different tables. 
+Test Suites are logical container allowing you to group related Test Cases together from different tables. This is a great approach to group test case alerts and reduce alerting overload.
 
 ### Test Definition
 Test Definitions are generic tests definition elements specific to a test such as:
@@ -52,7 +52,7 @@ Tests cases are actual test that will be ran and executed against your entity. T
 **Note:** you will need to make sure you have the right permission in OpenMetadata to create a test.
 
 ## Step 1: Creating a Test Case
-Navigate to the entity you want to add a test (we currently support quality test only for database entity). Go to `Profiler & Data Quality` tab. From there, click on the `Add Test` button in the upper right corner and select the type of test you want to implement
+Navigate to the entity you want to add a test to (we currently support quality test only for database entity). Go to `Profiler & Data Quality` tab. From there, click on the `Add Test` button in the upper right corner and select the type of test you want to implement
 
 {% image
   src="/images/v1.4/features/ingestion/workflows/data-quality/add-test-case.png"
@@ -61,7 +61,7 @@ Navigate to the entity you want to add a test (we currently support quality test
  /%}
 
 ## Step 2: Select the Test Definition
-Select the type of test you want to run and set the parameters (if any) for your test case. If you have select a `column` test, you will need to select which column you want to execute your test against. Give it a name and then submit it.
+Select the type of test you want to run and set the parameters (if any) for your test case. If you have selected a `column` test, you will need to select which column you want to execute your test against. Give it a name and then submit it.
 
 **Note:** if you have a profiler workflow running, you will be able to visualize some context around your column or table data.
 
@@ -87,7 +87,7 @@ If it is the first test you are creating for this entity, you'll need to set an 
  /%}
 
 ## Adding Test Suites Through the UI
-Test Suites are logical container allowing you to group related Test Cases together from different tables. 
+Test Suites are logical container allowing you to group related Test Cases together from different tables. This is a great way to group related test cases together and set a single alert for test case failure.   
 **Note:** you will need to make sure you have the right permission in OpenMetadata to create a test.
 
 ### Step 1: Creating a Test Suite

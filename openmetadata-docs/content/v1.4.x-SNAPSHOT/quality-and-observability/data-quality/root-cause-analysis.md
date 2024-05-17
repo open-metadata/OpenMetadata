@@ -1,13 +1,13 @@
 ---
-title: Failed Rows Sample (Collate only)
-slug: /connectors/ingestion/workflows/data-quality/failed-rows-sample
+title: Root Cause Analysis
+slug: /quality-and-observability/data-quality/root-cause-analysis
 ---
 
-# Failed Rows Sample (Collate Only)
+# Root Cause Analysis
 
-Some tests will produce a failed sample upon failure. This allows the platform users to
-understand the nature of the failure and take corrective actions. The failed sample will
-be a subset of the rows that failed the test.
+## Failed Rows Sample
+
+Some tests will produce a failed sample upon failure. This allows the platform users to understand the nature of the failure and take corrective actions. The failed sample will be a subset of the rows that failed the test.
 
 The sample will be collected when the option `computePassedFailedRowCount` is set.
 
@@ -20,6 +20,14 @@ The sample will be collected when the option `computePassedFailedRowCount` is se
 - [Column Values to Be Not In Set](/connectors/ingestion/workflows/data-quality/tests#column-values-to-be-not-in-set)
 - [Column Values to Be Between](/connectors/ingestion/workflows/data-quality/tests#column-values-to-be-between)
 - [Column Values Lengths to Be Between](/connectors/ingestion/workflows/data-quality/tests#column-values-lengths-to-be-between)
+
+## Deleting Sample Rows
+If you wish to delete sample rows, you can do so by clicking on the three dots above the table of sample rows. This will open a window with the `Delete` option. Note that failed sample rows will automatically be deleted upon test success.
+
+{% image 
+src="/images/v1.4/connectors/ingestion/workflows/data-quality/data-quality/sample-row-failure-deletion.png"
+alt="set compute row count"
+/%}
 
 ## Example
 
