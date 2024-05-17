@@ -783,8 +783,9 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
       super.updateReviewers();
 
       // adding the reviewer should add the person as assignee to the task
-      if (updated.getStatus() == Status.DRAFT) {
-
+      if ((!nullOrEmpty(updated.getReviewers())
+              && !original.getReviewers().equals(updated.getReviewers()))
+          && updated.getStatus() == Status.DRAFT) {
         EntityLink about = new EntityLink(GLOSSARY_TERM, updated.getFullyQualifiedName());
         FeedRepository feedRepository = Entity.getFeedRepository();
         Thread originalTask = feedRepository.getTask(about, TaskType.RequestApproval);
