@@ -2062,11 +2062,6 @@ public interface CollectionDAO {
     }
 
     @Override
-    default String getPaginationColumnPrefix() {
-      return EntityDAO.getPaginationQuery();
-    }
-
-    @Override
     default Class<GlossaryTerm> getEntityClass() {
       return GlossaryTerm.class;
     }
@@ -2124,6 +2119,7 @@ public interface CollectionDAO {
                 condition);
       }
 
+      return listAfter(getTableName(), condition, limit, after);
       return listAfterPagination(
           getTableName(), getPaginationColumnPrefix(), condition, limit, after);
       return listAfter(getTableName(), filter.getQueryParams(), condition, limit, after);
@@ -2612,11 +2608,6 @@ public interface CollectionDAO {
     @Override
     default String getNameHashColumn() {
       return "fqnHash";
-    }
-
-    @Override
-    default String getPaginationColumnPrefix() {
-      return EntityDAO.getPaginationQuery();
     }
 
     @Override

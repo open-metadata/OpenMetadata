@@ -35,7 +35,6 @@ import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.locator.ConnectionAwareSqlQuery;
 import org.openmetadata.service.jdbi3.locator.ConnectionAwareSqlUpdate;
-import org.openmetadata.service.resources.databases.DatasourceConfig;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.jdbi.BindFQN;
@@ -47,18 +46,6 @@ public interface EntityDAO<T extends EntityInterface> {
 
   /** Methods that need to be overridden by interfaces extending this */
   String getTableName();
-
-  default String getPaginationColumnPrefix() {
-    return "name";
-  }
-
-  static String getPaginationQuery() {
-    if (Boolean.TRUE.equals(DatasourceConfig.getInstance().isMySQL())) {
-      return "JSON_EXTRACT(json, '$.fullyQualifiedName')";
-    } else {
-      return "json->>'fullyQualifiedName'";
-    }
-  }
 
   Class<T> getEntityClass();
 
@@ -300,16 +287,32 @@ public interface EntityDAO<T extends EntityInterface> {
       @Bind("after") String after,
       @Define("groupBy") String groupBy);
 
-  @SqlQuery(
-      "SELECT json FROM ("
-          + "SELECT name, json FROM <table> <cond> AND "
-          + "name < :before "
-          + // Pagination by entity fullyQualifiedName or name (when entity does not have fqn)
-          "ORDER BY name DESC "
-          + // Pagination ordering by entity fullyQualifiedName or name (when entity does not have
-          // fqn)
-          "LIMIT :limit"
-          + ") last_rows_subquery ORDER BY name")
+  @ConnectionAwareSqlQuery(
+      value =
+          "SELECT json FROM ("
+              + "SELECT name, json FROM <table> <cond> AND "
+              + "JSON_EXTRACT(json, '$.fullyQualifiedName') < :before "
+              + // Pagination by entity fullyQualifiedName or name (when entity does not have fqn)
+              "ORDER BY JSON_EXTRACT(json, '$.fullyQualifiedName') DESC "
+              + // Pagination ordering by entity fullyQualifiedName or name (when entity does not
+              // have
+              // fqn)
+              "LIMIT :limit"
+              + ") last_rows_subquery ORDER BY JSON_EXTRACT(json, '$.fullyQualifiedName')",
+      connectionType = MYSQL)
+  @ConnectionAwareSqlQuery(
+      value =
+          "SELECT json FROM ("
+              + "SELECT name, json FROM <table> <cond> AND "
+              + "json->>'fullyQualifiedName' < :before "
+              + // Pagination by entity fullyQualifiedName or name (when entity does not have fqn)
+              "ORDER BY json->>'fullyQualifiedName' DESC "
+              + // Pagination ordering by entity fullyQualifiedName or name (when entity does not
+              // have
+              // fqn)
+              "LIMIT :limit"
+              + ") last_rows_subquery ORDER BY json->>'fullyQualifiedName'",
+      connectionType = POSTGRES)
   List<String> listBefore(
       @Define("table") String table,
       @BindMap Map<String, ?> params,
@@ -317,8 +320,15 @@ public interface EntityDAO<T extends EntityInterface> {
       @Bind("limit") int limit,
       @Bind("before") String before);
 
-  @SqlQuery("SELECT json FROM <table> <cond> AND <name> > :after ORDER BY <name> LIMIT :limit")
-  List<String> listAfterPagination(
+  @ConnectionAwareSqlQuery(
+      value =
+          "SELECT json FROM <table> <cond> AND JSON_EXTRACT(json, '$.fullyQualifiedName') > :after ORDER BY JSON_EXTRACT(json, '$.fullyQualifiedName') LIMIT :limit",
+      connectionType = MYSQL)
+  @ConnectionAwareSqlQuery(
+      value =
+          "SELECT json FROM <table> <cond> AND json->>'fullyQualifiedName' > :after ORDER BY json->>'fullyQualifiedName' LIMIT :limit",
+      connectionType = POSTGRES)
+  List<String> listAfter(
       @Define("table") String table,
       @Define("name") String name,
       @BindMap Map<String, ?> params,
@@ -461,8 +471,7 @@ public interface EntityDAO<T extends EntityInterface> {
   default List<String> listAfter(ListFilter filter, int limit, String after) {
     // Quoted name is stored in fullyQualifiedName column and not in the name column
     after = FullyQualifiedName.unquoteName(after);
-    return listAfterPagination(
-        getTableName(), getPaginationColumnPrefix(), filter.getCondition(), limit, after);
+    return listAfter(getTableName(), filter.getCondition(), limit, after);
     return listAfter(getTableName(), filter.getQueryParams(), filter.getCondition(), limit, after);
   }
 
