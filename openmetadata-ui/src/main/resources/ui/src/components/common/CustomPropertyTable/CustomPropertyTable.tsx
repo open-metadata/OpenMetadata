@@ -216,7 +216,7 @@ export const CustomPropertyTable = <T extends ExtentionEntitiesKeys>({
     if (typePermission?.ViewAll || typePermission?.ViewBasic) {
       fetchTypeDetail();
     }
-  }, [typePermission, entityDetails?.extension]);
+  }, [typePermission]);
 
   useEffect(() => {
     fetchResourcePermission(entityType);
