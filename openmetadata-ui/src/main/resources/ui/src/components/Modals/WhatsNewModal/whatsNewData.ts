@@ -1509,6 +1509,12 @@ API:
 
       'Custom Properties': `-   Custom Properties now allow linking other assets in the platform, such as Tables, Dashboards, etc. To enable this, create a Custom Property as an Entity Reference or Entity Reference List.`,
 
+      'Health Check': `-   Introduced the OpenMetadata Status page to do a Health Check on the setup information.
+
+-   Helps identify missing or outdated credential information for ingestion pipeline, SSO, migration, and related issues.
+
+-   Validates JWT authentication tokens for ingestion bots.`,
+
       Glossary: `-   The glossary term parent can now be changed from the Details page.
 -   On the data assets page, glossary terms are displayed by hierarchy.`,
 
