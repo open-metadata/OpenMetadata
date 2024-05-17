@@ -162,6 +162,7 @@ public abstract class OpenMetadataApplicationTest {
     ELASTIC_SEARCH_CONTAINER.withPassword("password");
     ELASTIC_SEARCH_CONTAINER.withEnv("discovery.type", "single-node");
     ELASTIC_SEARCH_CONTAINER.withEnv("xpack.security.enabled", "false");
+    ELASTIC_SEARCH_CONTAINER.withEnv("ES_JAVA_OPTS", "-Xms1g -Xmx1g");
     ELASTIC_SEARCH_CONTAINER.withReuse(false);
     ELASTIC_SEARCH_CONTAINER.withStartupAttempts(3);
     ELASTIC_SEARCH_CONTAINER.setWaitStrategy(
