@@ -423,7 +423,7 @@ describe(
 
             // Check if option is selected
             cy.get(
-              `[title="${filter.inputValue}"] .ant-select-item-option-state`
+              `[data-testid="${filter.inputSelector}"] [title="${filter.inputValue}"]`
             ).should('exist');
 
             if (filter.exclude) {
