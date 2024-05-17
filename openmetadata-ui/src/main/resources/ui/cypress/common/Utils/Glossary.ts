@@ -106,6 +106,9 @@ export const removeGlossaryTerm = (
       cy.get('[data-testid="saveAssociatedTag"]')
         .scrollIntoView()
         .should('be.enabled');
+      // Adding manual wait to eliminate flakiness 
+      // Remove manual wait and wait for elements instead
+      cy.wait(100);
       cy.get('[data-testid="saveAssociatedTag"]').click();
       verifyResponseStatusCode('@removeTags', 200);
     });
