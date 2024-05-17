@@ -18,6 +18,7 @@ import org.apache.commons.lang.exception.ExceptionUtils;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.EntityTimeSeriesInterface;
+import org.openmetadata.schema.analytics.ReportData;
 import org.openmetadata.schema.entity.app.App;
 import org.openmetadata.schema.entity.app.AppRunRecord;
 import org.openmetadata.schema.entity.app.FailureContext;
@@ -91,9 +92,10 @@ public class SearchIndexApp extends AbstractNativeApplication {
           "testCaseResolutionStatus");
   public static final Set<String> TIME_SERIES_ENTITIES =
       Set.of(
-          "entityReportData",
-          "webAnalyticEntityViewReportData",
-          "webAnalyticUserActivityReportData",
+          ReportData.ReportDataType.ENTITY_REPORT_DATA.value(),
+          ReportData.ReportDataType.RAW_COST_ANALYSIS_REPORT_DATA.value(),
+          ReportData.ReportDataType.WEB_ANALYTIC_USER_ACTIVITY_REPORT_DATA.value(),
+          ReportData.ReportDataType.WEB_ANALYTIC_ENTITY_VIEW_REPORT_DATA.value(),
           "testCaseResolutionStatus");
   private final List<Source> paginatedSources = new ArrayList<>();
   private Processor entityProcessor;
