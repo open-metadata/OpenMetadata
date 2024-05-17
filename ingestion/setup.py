@@ -114,6 +114,7 @@ base_requirements = {
     "collate-sqllineage~=1.3.0",
     "tabulate==0.9.0",
     "typing-inspect",
+    "packaging",  # For version parsing
 }
 
 

@@ -16,7 +16,7 @@ import os
 import re
 import sys
 
-import pkg_resources
+from packaging.version import parse
 
 try:
     from importlib.metadata import version
@@ -91,8 +91,8 @@ def get_major_minor_version() -> str:
 
 def match_versions(version1: str, version2: str) -> bool:
     """Check if both versions match in minor and major"""
-    server_semver = pkg_resources.parse_version(version1)
-    client_semver = pkg_resources.parse_version(version2)
+    server_semver = parse(version1)
+    client_semver = parse(version2)
 
     return (
         server_semver.major == client_semver.major
