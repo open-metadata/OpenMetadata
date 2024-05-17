@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import exp = require('constants');
 import { EntityType } from '../../constants/Entity.interface';
 import { interceptURL, verifyResponseStatusCode } from '../common';
 
@@ -94,16 +95,19 @@ export const removeGlossaryTerm = (
     cy.get(
       '[data-testid="entity-right-panel"]  [data-testid="glossary-container"] [data-testid="edit-button"]'
     ).click();
+    cy.wait('@fetchGlossaries').then(({ response }) => {
+      expect(response.statusCode).to.eq(200);
 
-    // Remove all added tags
-    cy.get(
-      `[data-testid="selected-tag-${glossaryTerm}"] [data-testid="remove-tags"]`
-    ).click();
-    verifyResponseStatusCode('@fetchGlossaries', 200);
-    cy.get('[data-testid="saveAssociatedTag"]').should('be.enabled');
-    cy.get('[data-testid="saveAssociatedTag"]').click();
-    verifyResponseStatusCode('@removeTags', 200, {
-      requestTimeout: 15000,
+      // Remove all added tags
+      cy.get(
+        `[data-testid="selected-tag-${glossaryTerm}"] [data-testid="remove-tags"]`
+      ).click();
+
+      cy.get('[data-testid="saveAssociatedTag"]')
+        .scrollIntoView()
+        .should('be.enabled');
+      cy.get('[data-testid="saveAssociatedTag"]').click();
+      verifyResponseStatusCode('@removeTags', 200);
     });
   });
   cy.get(

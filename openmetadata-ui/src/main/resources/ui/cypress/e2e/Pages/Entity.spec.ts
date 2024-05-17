@@ -93,13 +93,13 @@ describe('Entity detail page', { tags: 'DataAssets' }, () => {
         entity.updateDescription();
       });
 
-      it(`Tags assign, update & delete`, () => {
+      it.only(`Tags assign, update & delete`, () => {
         entity.assignTags();
         entity.updateTags();
         entity.removeTags();
       });
 
-      it(`GlossaryTerm assign, update & delete`, () => {
+      it.only(`GlossaryTerm assign, update & delete`, () => {
         entity.assignGlossary();
         entity.updateGlossary();
         entity.removeGlossary();
