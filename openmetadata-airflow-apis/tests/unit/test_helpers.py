@@ -31,4 +31,4 @@ def test_clean_tag():
     assert clean_name_tag("hello") == "hello"
     assert clean_name_tag("hello(world)") == "hello(world)"
     assert clean_name_tag("service.pipeline") == "pipeline"
-    assert clean_name_tag(f"service.{'a' * 200}") == "a" * 100
+    assert clean_name_tag(f"service.{'a' * 200}") == "a" * 90
