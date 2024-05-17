@@ -27,7 +27,6 @@ import static org.openmetadata.service.search.opensearch.OpenSearchEntitiesProce
 import static org.openmetadata.service.util.FullyQualifiedName.getParentFQN;
 
 import com.fasterxml.jackson.databind.JsonNode;
-
 import java.io.IOException;
 import java.text.ParseException;
 import java.util.ArrayList;
