@@ -10,9 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
 import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
 import { EntityType, FqnPart } from '../enums/entity.enum';
+import { CardStyle, FieldOperation } from '../generated/entity/feed/thread';
 import { getPartialNameFromTableFQN } from './CommonUtils';
 import {
   entityDisplayName,
@@ -20,6 +20,7 @@ import {
   getEntityField,
   getEntityFQN,
   getEntityType,
+  getFeedHeaderTextFromCardStyle,
   suggestions,
 } from './FeedUtils';
 
@@ -160,5 +161,116 @@ describe('Feed Utils', () => {
       [FqnPart.TestCase],
       FQN_SEPARATOR_CHAR
     );
+  });
+});
+
+describe('getFeedHeaderTextFromCardStyle', () => {
+  it('should return element for created application', () => {
+    const result = getFeedHeaderTextFromCardStyle(
+      FieldOperation.Added,
+      CardStyle.EntityCreated,
+      undefined,
+      EntityType.APPLICATION
+    );
+
+    const stringResult = JSON.stringify(result);
+
+    expect(stringResult).toContain('label.installed-lowercase');
+    expect(stringResult).toContain('label.app-lowercase');
+  });
+
+  it('should return element for deleted application', () => {
+    const result = getFeedHeaderTextFromCardStyle(
+      FieldOperation.Deleted,
+      CardStyle.EntityDeleted,
+      undefined,
+      EntityType.APPLICATION
+    );
+
+    const stringResult = JSON.stringify(result);
+
+    expect(stringResult).toContain('label.uninstalled-lowercase');
+    expect(stringResult).toContain('label.app-lowercase');
+  });
+
+  it('should return element for created team', () => {
+    const result = getFeedHeaderTextFromCardStyle(
+      FieldOperation.Added,
+      CardStyle.EntityCreated,
+      undefined,
+      EntityType.TEAM
+    );
+
+    const stringResult = JSON.stringify(result);
+
+    expect(stringResult).toContain('label.added-lowercase');
+  });
+
+  it('should return element for soft deleted team', () => {
+    const result = getFeedHeaderTextFromCardStyle(
+      FieldOperation.Deleted,
+      CardStyle.EntitySoftDeleted,
+      undefined,
+      EntityType.TEAM
+    );
+
+    const stringResult = JSON.stringify(result);
+
+    expect(stringResult).toContain('label.soft-deleted-lowercase');
+  });
+
+  it('should return element for deleted team', () => {
+    const result = getFeedHeaderTextFromCardStyle(
+      FieldOperation.Deleted,
+      CardStyle.EntityDeleted,
+      undefined,
+      EntityType.TEAM
+    );
+
+    const stringResult = JSON.stringify(result);
+
+    expect(stringResult).toContain('label.deleted-lowercase');
+    expect(stringResult).toContain('text-danger');
+  });
+
+  it('should return element for created CustomProperties', () => {
+    const result = getFeedHeaderTextFromCardStyle(
+      FieldOperation.Added,
+      CardStyle.CustomProperties,
+      undefined,
+      EntityType.TABLE
+    );
+
+    const stringResult = JSON.stringify(result);
+
+    expect(stringResult).toContain('message.feed-custom-property-header');
+  });
+
+  it('should return element element for created testCaseResult', () => {
+    const result = getFeedHeaderTextFromCardStyle(
+      FieldOperation.Added,
+      CardStyle.TestCaseResult,
+      undefined,
+      EntityType.TEST_CASE
+    );
+
+    const stringResult = JSON.stringify(result);
+
+    expect(stringResult).toContain('message.feed-test-case-header');
+  });
+
+  it('should return element for updated description', () => {
+    const result = getFeedHeaderTextFromCardStyle(
+      FieldOperation.Updated,
+      CardStyle.Description,
+      undefined,
+      EntityType.TABLE
+    );
+
+    const stringResult = JSON.stringify(result);
+
+    expect(stringResult).toContain('message.feed-field-action-entity-header');
+    expect(stringResult).toContain('label.description');
+    expect(stringResult).toContain('label.updated-lowercase');
   });
 });
