@@ -34,11 +34,7 @@ export default defineConfig({
 
       return config;
     },
-    specPattern: [
-      'cypress/e2e/Pages/Database.spec.ts',
-      'cypress/e2e/Pages/Entity.spec.ts',
-      'cypress/e2e/Pages/Services.spec.ts',
-    ],
+    specPattern: ['cypress/e2e/**/*.{js,jsx,ts,tsx}'],
     env: {
       isOss: true,
     },
