@@ -196,11 +196,11 @@ EXPECTED_CHART = CreateChartRequest(
     service=EXPECTED_DASH_SERVICE.fullyQualifiedName,
 )
 EXPECTED_CHART_2 = CreateChartRequest(
-    name=EntityName(__root__="78"),
+    name=EntityName(__root__="69"),
     displayName="Unicode Cloud",
     description=None,
     chartType=ChartType.Other.value,
-    sourceUrl=SourceUrl(__root__="http://localhost:54510/explore/?slice_id=78"),
+    sourceUrl=SourceUrl(__root__="http://localhost:54510/explore/?slice_id=69"),
     tags=None,
     owner=None,
     service=FullyQualifiedEntityName(__root__="test_supserset"),
@@ -471,7 +471,7 @@ class SupersetUnitTest(TestCase):
         result = self.superset_api._get_charts_of_dashboard(  # pylint: disable=protected-access
             MOCK_DASHBOARD
         )
-        self.assertEqual(result, [78])
+        self.assertEqual(result, [69])
 
     def test_fetch_chart_db(self):
         """
@@ -510,7 +510,7 @@ class SupersetUnitTest(TestCase):
             self.superset_api.yield_dashboard_chart(MOCK_DASHBOARD)
         ).right
         EXPECTED_CHART_2.sourceUrl = SourceUrl(
-            __root__=f"http://{superset_container.get_container_host_ip()}:{superset_container.get_exposed_port(8088)}/explore/?slice_id=78"
+            __root__=f"http://{superset_container.get_container_host_ip()}:{superset_container.get_exposed_port(8088)}/explore/?slice_id=69"
         )
         EXPECTED_CHART_2.displayName = dashboard_chart.displayName
         self.assertEqual(dashboard_chart, EXPECTED_CHART_2)
