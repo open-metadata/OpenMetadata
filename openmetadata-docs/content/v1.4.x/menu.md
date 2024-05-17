@@ -255,6 +255,8 @@ site_menu:
     url: /how-to-guides/guide-for-data-users/glossary
   - category: How-to Guides / Guide for Data Users / How to Create a Custom Property for a Data Asset
     url: /how-to-guides/guide-for-data-users/custom
+  - category: How-to Guides / Guide for Data Users / How to Customize OpenMetadata
+    url: /how-to-guides/guide-for-data-users/theme  
   - category: How-to Guides / Guide for Data Users / Overview of Announcements
     url: /how-to-guides/guide-for-data-users/announcements
   - category: How-to Guides / Guide for Data Users / How to Create an Announcement
