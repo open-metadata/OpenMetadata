@@ -106,7 +106,9 @@ public class SearchListFilter extends Filter<SearchListFilter> {
   private String getOwnerCondition() {
     String owner = getQueryParam("owner");
     if (!nullOrEmpty(owner)) {
-      return String.format("{\"term\": {\"owner.id\": \"%s\"}}", owner);
+      String ownerList =
+          Arrays.stream(owner.split(",")).collect(Collectors.joining("\", \"", "\"", "\""));
+      return String.format("{\"terms\": {\"owner.id\": [%s]}}", ownerList);
     }
     return "";
   }

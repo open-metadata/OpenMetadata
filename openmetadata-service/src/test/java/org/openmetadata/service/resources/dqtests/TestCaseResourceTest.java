@@ -742,8 +742,11 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
               .withParameterValues(
                   List.of(
                       new TestCaseParameterValue().withValue("20").withName("missingCountValue")));
-      if (i % 2 == 0) {
-        // create 3 test cases with USER1_REF as owner
+      if (i == 2) {
+        // create 1 test cases with USER21_TEAM as owner
+        create.withOwner(TEAM21.getEntityReference());
+      } else if (i % 2 == 0) {
+        // create 2 test cases with USER1_REF as owner
         create.withOwner(USER2_REF);
       }
       TestCase testCase = createEntity(create, ADMIN_AUTH_HEADERS);
@@ -798,7 +801,15 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
     queryParams.clear();
     queryParams.put("owner", USER2_REF.getName());
     allEntities = listEntitiesFromSearch(queryParams, testCasesNum, 0, ADMIN_AUTH_HEADERS);
-    assertEquals(3, allEntities.getData().size()); // we have 3 test cases with USER2_REF as owner
+    assertEquals(2, allEntities.getData().size()); // we have 2 test cases with USER2_REF as owner
+
+    queryParams.put("owner", USER_TEAM21.getName());
+    allEntities = listEntitiesFromSearch(queryParams, testCasesNum, 0, ADMIN_AUTH_HEADERS);
+    assertEquals(
+        1,
+        allEntities
+            .getData()
+            .size()); // we have 1 test cases with TEAM21 as owner which USER_21 is part of
   }
 
   public void putTestCaseResult(String fqn, TestCaseResult data, Map<String, String> authHeaders)
