@@ -2,7 +2,7 @@
 
 ### Reindex
 
-{% partial file="/v1.2/deployment/reindex.md" /%}
+{% partial file="/v1.4/deployment/reindex.md" /%}
 
 Since this is required after the upgrade, we want to reindex `All` the entities.
 
