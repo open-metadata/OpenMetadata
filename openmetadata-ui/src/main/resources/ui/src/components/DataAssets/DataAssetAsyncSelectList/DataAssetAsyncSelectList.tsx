@@ -144,7 +144,9 @@ const DataAssetAsyncSelectList: FC<DataAssetAsyncSelectListProps> = ({
               type="circle"
               width="24"
             />
-            <span className="m-l-xs">{getEntityName(option)}</span>
+            <span className="m-l-xs" data-testid={getEntityName(option)}>
+              {getEntityName(option)}
+            </span>
           </Space>
         );
       } else {
