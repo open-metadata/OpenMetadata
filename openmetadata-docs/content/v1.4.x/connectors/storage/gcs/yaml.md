@@ -119,7 +119,7 @@ source:
 
 {% /codeInfo %}
 
-{% partial file="/v1.4/connectors/yaml/database/source-config-def.md" /%}
+{% partial file="/v1.4/connectors/yaml/storage/source-config-def.md" /%}
 
 {% partial file="/v1.4/connectors/yaml/ingestion-sink-def.md" /%}
 
