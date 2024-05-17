@@ -273,7 +273,7 @@ const TeamsPage = () => {
       if (res) {
         fetchTeamBasicDetails(selectedTeam.name, true);
         handleAddTeam(false);
-        await loadAdvancedDetails();
+        loadAdvancedDetails();
       }
     } catch (error) {
       if (
@@ -462,18 +462,20 @@ const TeamsPage = () => {
 
   const init = useCallback(async () => {
     setIsPageLoading(true);
-    let perms = DEFAULT_ENTITY_PERMISSION;
     try {
-      perms = await getEntityPermissionByFqn(ResourceEntity.TEAM, fqn);
-      await fetchTeamBasicDetails(fqn, true);
-      setEntityPermissions(perms);
+      const teamPermissions = await getEntityPermissionByFqn(
+        ResourceEntity.TEAM,
+        fqn
+      );
+      setEntityPermissions(teamPermissions);
+      if (teamPermissions.ViewAll || teamPermissions.ViewBasic) {
+        await fetchTeamBasicDetails(fqn, true);
+        loadAdvancedDetails();
+      }
     } catch (error) {
       showErrorToast(error as AxiosError);
     } finally {
       setIsPageLoading(false);
-      if (perms.ViewAll || perms.ViewBasic) {
-        loadAdvancedDetails();
-      }
     }
   }, [fqn]);
 
