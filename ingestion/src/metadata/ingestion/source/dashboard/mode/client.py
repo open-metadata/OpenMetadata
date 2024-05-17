@@ -67,15 +67,22 @@ class ModeApiClient:
         )
         self.client = REST(client_config)
 
-    def fetch_all_reports(self, workspace_name: str) -> Optional[list]:
+    def fetch_all_reports(self, workspace_name: str, filter: Optional[str] = None) -> Optional[list]:
         """Method to fetch all reports for Mode
         Args:
-            workspace_name:
+            workspace_name: Name of Mode's workspace
+            filter: Filter parameter for Mode Collections. Allowed values are 'custom', 'all', or None.
         Returns:
             dict
         """
+        if filter not in [None, 'custom', 'all']:
+            raise ValueError("Unsupported value for 'filter'. Allowed values are 'custom', 'all', or None.")
+        
         all_reports = []
-        response_collections = self.client.get(f"/{workspace_name}/{COLLECTIONS}?filter=custom")
+        filter_param = '' 
+        if filter is not None:
+            filter_param = f'?filter={filter}'
+        response_collections = self.client.get(f"/{workspace_name}/{COLLECTIONS}{filter_param}")
         collections = response_collections[EMBEDDED]["spaces"]
         for collection in collections:
             response_reports = self.get_all_reports_for_collection(
