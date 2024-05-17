@@ -49,7 +49,7 @@ Cypress.Commands.add('goToHomePage', (doNotNavigate) => {
   interceptURL('GET', '/api/v1/users/loggedInUser?fields=*', 'userProfile');
   !doNotNavigate && cy.visit('/');
 
-  verifyResponseStatusCode('@userProfile', 200, { timeout: 10000 });
+  verifyResponseStatusCode('@userProfile', 200, { requestTimeout: 10000 });
 });
 
 Cypress.Commands.add('clickOnLogo', () => {

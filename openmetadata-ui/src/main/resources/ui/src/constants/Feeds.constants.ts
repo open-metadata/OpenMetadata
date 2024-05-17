@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import { EntityType } from '../enums/entity.enum';
 import { CardStyle } from '../generated/entity/feed/thread';
 
 export const EntityRegExPattern = /<#E::([^<>]+?)::([^<>]+?)(?:::([^<>]+?))?>/;
@@ -98,11 +97,4 @@ export const ASSET_CARD_STYLES = [
   CardStyle.EntityCreated,
   CardStyle.EntitySoftDeleted,
   CardStyle.EntityDeleted,
-];
-
-export const NON_DATA_ASSET_ENTITIES = [
-  EntityType.TEAM,
-  EntityType.BOT,
-  EntityType.APPLICATION,
-  EntityType.EVENT_SUBSCRIPTION,
 ];
