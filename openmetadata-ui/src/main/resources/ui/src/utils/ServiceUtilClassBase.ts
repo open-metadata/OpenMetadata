@@ -117,6 +117,7 @@ class ServiceUtilClassBase {
     DatabaseServiceType.QueryLog,
     DatabaseServiceType.Dbt,
     StorageServiceType.Gcs,
+    MetadataServiceType.Alation,
   ];
 
   protected updateUnsupportedServices(types: string[]) {
@@ -332,6 +333,9 @@ class ServiceUtilClassBase {
 
       case PipelineServiceType.GluePipeline:
         return GLUE;
+
+      case PipelineServiceType.KafkaConnect:
+        return KAFKA;
 
       case PipelineServiceType.Spark:
         return SPARK;

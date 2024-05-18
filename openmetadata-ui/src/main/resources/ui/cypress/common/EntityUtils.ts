@@ -23,6 +23,13 @@ import {
 } from '../constants/EntityConstant';
 import { uuid } from './common';
 
+type ColumnType = {
+  name: string;
+  description: string;
+  dataType: string;
+  dataTypeDisplay: string;
+};
+
 /**
  * create full hierarchy of database service (service > database > schema > tables)
  */
@@ -137,15 +144,19 @@ export const hardDeleteService = ({ serviceFqn, token, serviceType }) => {
   });
 };
 
-export const generateRandomTable = () => {
+export const generateRandomTable = (
+  tableName?: string,
+  columns?: ColumnType[]
+) => {
   const id = uuid();
-  const name = `cypress-table-${id}`;
+  const name = tableName ?? `cypress-table-${id}`;
 
   const table = {
     name,
     description: `cypress-table-description-${id}`,
     displayName: name,
     columns: [
+      ...(columns ?? []),
       {
         name: `cypress-column-${id}`,
         description: `cypress-column-description-${id}`,

@@ -45,6 +45,7 @@ const ErrorFallback: React.FC<FallbackProps> = ({
 
   return (
     <Result
+      className="error-boundary-result"
       extra={
         <Button
           className="ant-btn-primary-custom"
@@ -53,7 +54,7 @@ const ErrorFallback: React.FC<FallbackProps> = ({
           {isChunkLoadError ? t('label.refresh') : t('label.home')}
         </Button>
       }
-      icon={<OmUpgradeIcon width={512} />}
+      icon={<OmUpgradeIcon />}
       subTitle={message}
       title={title}
     />

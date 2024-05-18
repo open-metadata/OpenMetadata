@@ -1,0 +1,44 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/applications/configuration/external/automator/addDescriptionAction.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "AddDescriptionAction",
+  "description": "Apply Tags to the selected assets.",
+  "type": "object",
+  "definitions": {
+    "addDescriptionActionType": {
+      "description": "Add Description Action Type.",
+      "type": "string",
+      "enum": ["AddDescriptionAction"],
+      "default": "AddDescriptionAction"
+    }
+  },
+  "properties": {
+    "type": {
+      "title": "Application Type",
+      "description": "Application Type",
+      "$ref": "#/definitions/addDescriptionActionType",
+      "default": "AddDescriptionAction"
+    },
+    "description": {
+      "description": "Description to apply",
+      "type": "string"
+    },
+    "applyToChildren": {
+      "title": "Apply to Children",
+      "description": "Apply the description to the children of the selected assets that match the criteria. E.g., columns, tasks, topic fields,...",
+      "type": "array",
+      "items": {
+        "$ref": "../../../../../type/basic.json#/definitions/entityName"
+      },
+      "default": null
+    },
+    "overwriteMetadata": {
+      "title": "Overwrite Metadata",
+      "description": "Update the description even if they are already defined in the asset. By default, we'll only add the descriptions to assets without the description set.",
+      "type": "boolean",
+      "default": false
+    }
+  },
+  "required": ["type", "description"],
+  "additionalProperties": false
+}

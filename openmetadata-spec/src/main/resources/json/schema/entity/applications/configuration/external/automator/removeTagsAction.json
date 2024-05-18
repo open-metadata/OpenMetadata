@@ -1,0 +1,41 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/applications/configuration/external/automator/removeTagsAction.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "RemoveTagsAction",
+  "description": "Remove Tags Action Type",
+  "type": "object",
+  "definitions": {
+    "removeTagsActionType": {
+      "description": "Remove Tags Action Type.",
+      "type": "string",
+      "enum": ["RemoveTagsAction"],
+      "default": "RemoveTagsAction"
+    }
+  },
+  "properties": {
+    "type": {
+      "title": "Application Type",
+      "description": "Application Type",
+      "$ref": "#/definitions/removeTagsActionType",
+      "default": "AddTagsAction"
+    },
+    "tags": {
+      "description": "Tags to remove",
+      "type": "array",
+      "items": {
+        "$ref": "../../../../../type/tagLabel.json"
+      }
+    },
+    "applyToChildren": {
+      "title": "Apply to Children",
+      "description": "Remove tags from all the children of the selected assets. E.g., columns, tasks, topic fields,...",
+      "type": "array",
+      "items": {
+        "$ref": "../../../../../type/basic.json#/definitions/entityName"
+      },
+      "default": null
+    }
+  },
+  "required": ["type", "tags"],
+  "additionalProperties": false
+}

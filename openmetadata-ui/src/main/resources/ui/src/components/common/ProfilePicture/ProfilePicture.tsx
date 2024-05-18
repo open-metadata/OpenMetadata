@@ -11,16 +11,17 @@
  *  limitations under the License.
  */
 
+import { Avatar } from 'antd';
 import classNames from 'classnames';
+import { parseInt } from 'lodash';
 import { ImageShape } from 'Models';
 import React, { useMemo } from 'react';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../../context/PermissionProvider/PermissionProvider.interface';
-import { EntityReference, User } from '../../../generated/entity/teams/user';
+import { User } from '../../../generated/entity/teams/user';
 import { useUserProfile } from '../../../hooks/user-profile/useUserProfile';
-import { getEntityName } from '../../../utils/EntityUtils';
+import { getRandomColor } from '../../../utils/CommonUtils';
 import { userPermissions } from '../../../utils/PermissionsUtils';
-import Avatar from '../AvatarComponent/Avatar';
 import Loader from '../Loader/Loader';
 
 type UserData = Pick<User, 'name' | 'displayName'>;
@@ -28,25 +29,28 @@ type UserData = Pick<User, 'name' | 'displayName'>;
 interface Props extends UserData {
   width?: string;
   type?: ImageShape;
-  textClass?: string;
   className?: string;
   height?: string;
-  profileImgClasses?: string;
   isTeam?: boolean;
+  size?: number | 'small' | 'default' | 'large';
+  avatarType?: 'solid' | 'outlined';
 }
 
 const ProfilePicture = ({
   name,
   displayName,
   className = '',
-  textClass = '',
   type = 'circle',
   width = '36',
   height,
-  profileImgClasses,
   isTeam = false,
+  size,
+  avatarType = 'solid',
 }: Props) => {
   const { permissions } = usePermissionProvider();
+  const { color, character, backgroundColor } = getRandomColor(
+    displayName ?? name
+  );
 
   const viewUserPermission = useMemo(() => {
     return userPermissions.hasViewPermissions(ResourceEntity.USER, permissions);
@@ -61,12 +65,17 @@ const ProfilePicture = ({
   const getAvatarByName = () => {
     return (
       <Avatar
-        className={className}
-        height={height}
-        name={getEntityName({ name, displayName } as EntityReference)}
-        textClass={textClass}
-        type={type}
-        width={width}
+        className={classNames('flex-center', className)}
+        data-testid="profile-avatar"
+        icon={character}
+        shape={type}
+        size={size ?? parseInt(width)}
+        style={{
+          color: avatarType === 'solid' ? 'default' : color,
+          backgroundColor: avatarType === 'solid' ? color : backgroundColor,
+          fontWeight: avatarType === 'solid' ? 400 : 500,
+          border: `0.5px solid ${avatarType === 'solid' ? 'default' : color}`,
+        }}
       />
     );
   };
@@ -97,17 +106,13 @@ const ProfilePicture = ({
   };
 
   return profileURL ? (
-    <div
-      className={classNames('profile-image', type, className)}
-      style={{ height: `${height || width}px`, width: `${width}px` }}>
-      <img
-        alt="user"
-        className={profileImgClasses}
-        data-testid="profile-image"
-        referrerPolicy="no-referrer"
-        src={profileURL}
-      />
-    </div>
+    <Avatar
+      className={className}
+      data-testid="profile-image"
+      shape={type}
+      size={size ?? parseInt(width)}
+      src={profileURL}
+    />
   ) : (
     getAvatarElement()
   );

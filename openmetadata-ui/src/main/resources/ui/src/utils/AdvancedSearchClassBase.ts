@@ -12,6 +12,7 @@
  */
 
 import { t } from 'i18next';
+import { sortBy } from 'lodash';
 import {
   AsyncFetchListValues,
   AsyncFetchListValuesResult,
@@ -104,6 +105,180 @@ class AdvancedSearchClassBase {
         asyncFetch: this.autocomplete({
           searchIndex: SearchIndex.TABLE,
           entityField: EntityFields.COLUMN,
+        }),
+        useAsyncSearch: true,
+      },
+    },
+  };
+
+  /**
+   * Fields specific to pipelines
+   */
+  pipelineQueryBuilderFields: Fields = {
+    'tasks.displayName.keyword': {
+      label: t('label.task'),
+      type: 'select',
+      mainWidgetProps: this.mainWidgetProps,
+      fieldSettings: {
+        asyncFetch: this.autocomplete({
+          searchIndex: SearchIndex.PIPELINE,
+          entityField: EntityFields.TASK,
+        }),
+        useAsyncSearch: true,
+      },
+    },
+  };
+
+  /**
+   * Fields specific to topics
+   */
+  topicQueryBuilderFields: Fields = {
+    'messageSchema.schemaFields.name.keyword': {
+      label: t('label.schema-field'),
+      type: 'select',
+      mainWidgetProps: this.mainWidgetProps,
+      fieldSettings: {
+        asyncFetch: this.autocomplete({
+          searchIndex: SearchIndex.TOPIC,
+          entityField: EntityFields.SCHEMA_FIELD,
+        }),
+        useAsyncSearch: true,
+      },
+    },
+  };
+
+  /**
+   * Fields specific to dashboard
+   */
+  dashboardQueryBuilderFields: Fields = {
+    'dataModels.displayName.keyword': {
+      label: t('label.data-model'),
+      type: 'select',
+      mainWidgetProps: this.mainWidgetProps,
+      fieldSettings: {
+        asyncFetch: this.autocomplete({
+          searchIndex: SearchIndex.DASHBOARD,
+          entityField: EntityFields.DATA_MODEL,
+        }),
+        useAsyncSearch: true,
+      },
+    },
+    'charts.displayName.keyword': {
+      label: t('label.chart'),
+      type: 'select',
+      mainWidgetProps: this.mainWidgetProps,
+      fieldSettings: {
+        asyncFetch: this.autocomplete({
+          searchIndex: SearchIndex.DASHBOARD,
+          entityField: EntityFields.CHART,
+        }),
+        useAsyncSearch: true,
+      },
+    },
+    'project.keyword': {
+      label: t('label.project'),
+      type: 'select',
+      mainWidgetProps: this.mainWidgetProps,
+      fieldSettings: {
+        asyncFetch: this.autocomplete({
+          searchIndex: SearchIndex.DASHBOARD,
+          entityField: EntityFields.PROJECT,
+        }),
+        useAsyncSearch: true,
+      },
+    },
+  };
+
+  /**
+   * Fields specific to ML models
+   */
+  mlModelQueryBuilderFields: Fields = {
+    'mlFeatures.name': {
+      label: t('label.feature'),
+      type: 'select',
+      mainWidgetProps: this.mainWidgetProps,
+      fieldSettings: {
+        asyncFetch: this.autocomplete({
+          searchIndex: SearchIndex.MLMODEL,
+          entityField: EntityFields.FEATURE,
+        }),
+        useAsyncSearch: true,
+      },
+    },
+  };
+
+  /**
+   * Fields specific to containers
+   */
+  containerQueryBuilderFields: Fields = {
+    'dataModel.columns.name.keyword': {
+      label: t('label.container-column'),
+      type: 'select',
+      mainWidgetProps: this.mainWidgetProps,
+      fieldSettings: {
+        asyncFetch: this.autocomplete({
+          searchIndex: SearchIndex.CONTAINER,
+          entityField: EntityFields.CONTAINER_COLUMN,
+        }),
+        useAsyncSearch: true,
+      },
+    },
+  };
+
+  /**
+   * Fields specific to search indexes
+   */
+  searchIndexQueryBuilderFields: Fields = {
+    'fields.name.keyword': {
+      label: t('label.field'),
+      type: 'select',
+      mainWidgetProps: this.mainWidgetProps,
+      fieldSettings: {
+        asyncFetch: this.autocomplete({
+          searchIndex: SearchIndex.SEARCH_INDEX,
+          entityField: EntityFields.FIELD,
+        }),
+        useAsyncSearch: true,
+      },
+    },
+  };
+
+  /**
+   * Fields specific to dashboard data models
+   */
+  dataModelQueryBuilderFields: Fields = {
+    dataModelType: {
+      label: t('label.data-model-type'),
+      type: 'select',
+      mainWidgetProps: this.mainWidgetProps,
+      fieldSettings: {
+        asyncFetch: this.autocomplete({
+          searchIndex: SearchIndex.DASHBOARD_DATA_MODEL,
+          entityField: EntityFields.DATA_MODEL_TYPE,
+        }),
+        useAsyncSearch: true,
+      },
+    },
+    'columns.name.keyword': {
+      label: t('label.data-model-column'),
+      type: 'select',
+      mainWidgetProps: this.mainWidgetProps,
+      fieldSettings: {
+        asyncFetch: this.autocomplete({
+          searchIndex: SearchIndex.DASHBOARD_DATA_MODEL,
+          entityField: EntityFields.COLUMN,
+        }),
+        useAsyncSearch: true,
+      },
+    },
+    'project.keyword': {
+      label: t('label.project'),
+      type: 'select',
+      mainWidgetProps: this.mainWidgetProps,
+      fieldSettings: {
+        asyncFetch: this.autocomplete({
+          searchIndex: SearchIndex.DASHBOARD_DATA_MODEL,
+          entityField: EntityFields.PROJECT,
         }),
         useAsyncSearch: true,
       },
@@ -206,19 +381,16 @@ class AdvancedSearchClassBase {
     };
   };
 
-  /**
-   * Common fields that exit for all searchable entities
-   */
-  public getQueryBuilderFields = ({
-    entitySearchIndex = [SearchIndex.TABLE],
-    tierOptions = Promise.resolve([]),
-    shouldAddServiceField = true,
-  }: {
+  public getCommonConfig(args: {
     entitySearchIndex?: Array<SearchIndex>;
     tierOptions?: Promise<AsyncFetchListValues>;
-    shouldAddServiceField?: boolean;
-  }) => {
-    const commonQueryBuilderFields: Fields = {
+  }): Fields {
+    const {
+      entitySearchIndex = [SearchIndex.TABLE],
+      tierOptions = Promise.resolve([]),
+    } = args;
+
+    return {
       deleted: {
         label: t('label.deleted'),
         type: 'boolean',
@@ -233,7 +405,35 @@ class AdvancedSearchClassBase {
         fieldSettings: {
           asyncFetch: this.autocomplete({
             searchIndex: [SearchIndex.USER, SearchIndex.TEAM],
-            entityField: EntityFields.OWNER,
+            entityField: EntityFields.DISPLAY_NAME_KEYWORD,
+          }),
+          useAsyncSearch: true,
+        },
+      },
+
+      'domain.displayName.keyword': {
+        label: t('label.domain'),
+        type: 'select',
+        mainWidgetProps: this.mainWidgetProps,
+
+        fieldSettings: {
+          asyncFetch: this.autocomplete({
+            searchIndex: entitySearchIndex,
+            entityField: EntityFields.DOMAIN,
+          }),
+          useAsyncSearch: true,
+        },
+      },
+
+      serviceType: {
+        label: t('label.service-type'),
+        type: 'select',
+        mainWidgetProps: this.mainWidgetProps,
+
+        fieldSettings: {
+          asyncFetch: this.autocomplete({
+            searchIndex: entitySearchIndex,
+            entityField: EntityFields.SERVICE_TYPE,
           }),
           useAsyncSearch: true,
         },
@@ -282,7 +482,55 @@ class AdvancedSearchClassBase {
         },
       },
     };
+  }
 
+  /**
+   * Get entity specific fields for the query builder
+   */
+  public getEntitySpecificQueryBuilderFields(
+    entitySearchIndex = [SearchIndex.TABLE]
+  ): Fields {
+    let configs: Fields = {};
+    const configIndexMapping: Partial<Record<SearchIndex, Fields>> = {
+      [SearchIndex.TABLE]: this.tableQueryBuilderFields,
+      [SearchIndex.PIPELINE]: this.pipelineQueryBuilderFields,
+      [SearchIndex.DASHBOARD]: this.dashboardQueryBuilderFields,
+      [SearchIndex.TOPIC]: this.topicQueryBuilderFields,
+      [SearchIndex.MLMODEL]: this.mlModelQueryBuilderFields,
+      [SearchIndex.CONTAINER]: this.containerQueryBuilderFields,
+      [SearchIndex.SEARCH_INDEX]: this.searchIndexQueryBuilderFields,
+      [SearchIndex.DASHBOARD_DATA_MODEL]: this.dataModelQueryBuilderFields,
+      [SearchIndex.ALL]: {
+        ...this.tableQueryBuilderFields,
+        ...this.pipelineQueryBuilderFields,
+        ...this.dashboardQueryBuilderFields,
+        ...this.topicQueryBuilderFields,
+        ...this.mlModelQueryBuilderFields,
+        ...this.containerQueryBuilderFields,
+        ...this.searchIndexQueryBuilderFields,
+        ...this.dataModelQueryBuilderFields,
+      },
+    };
+
+    entitySearchIndex.forEach((index) => {
+      configs = { ...configs, ...(configIndexMapping[index] ?? {}) };
+    });
+
+    return configs;
+  }
+
+  /**
+   * Common fields that exit for all searchable entities
+   */
+  public getQueryBuilderFields = ({
+    entitySearchIndex = [SearchIndex.TABLE],
+    tierOptions = Promise.resolve([]),
+    shouldAddServiceField = true,
+  }: {
+    entitySearchIndex?: Array<SearchIndex>;
+    tierOptions?: Promise<AsyncFetchListValues>;
+    shouldAddServiceField?: boolean;
+  }) => {
     const serviceQueryBuilderFields: Fields = {
       'service.displayName.keyword': {
         label: t('label.service'),
@@ -298,13 +546,16 @@ class AdvancedSearchClassBase {
       },
     };
 
-    return {
-      ...commonQueryBuilderFields,
+    const fieldsConfig = {
+      ...this.getCommonConfig({ entitySearchIndex, tierOptions }),
       ...(shouldAddServiceField ? serviceQueryBuilderFields : {}),
-      ...(entitySearchIndex.includes(SearchIndex.TABLE)
-        ? this.tableQueryBuilderFields
-        : {}),
+      ...this.getEntitySpecificQueryBuilderFields(entitySearchIndex),
     };
+
+    // Sort the fields according to the label
+    const sortedFieldsConfig = sortBy(Object.entries(fieldsConfig), '1.label');
+
+    return Object.fromEntries(sortedFieldsConfig);
   };
 
   /**

@@ -16,6 +16,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import java.io.IOException;
 import java.util.List;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import javax.json.JsonPatch;
 import javax.validation.Valid;
 import javax.validation.constraints.Max;
@@ -42,6 +43,7 @@ import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.data.RestoreEntity;
 import org.openmetadata.schema.api.tests.CreateLogicalTestCases;
 import org.openmetadata.schema.api.tests.CreateTestCase;
+import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.tests.TestCase;
 import org.openmetadata.schema.tests.TestSuite;
 import org.openmetadata.schema.tests.type.TestCaseResult;
@@ -86,7 +88,8 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
   public static final String COLLECTION_PATH = "/v1/dataQuality/testCases";
 
   static final String FIELDS = "owner,testSuite,testDefinition,testSuites,incidentId,domain";
-  static final String SEARCH_FIELDS_EXCLUDE = "testPlatforms";
+  static final String SEARCH_FIELDS_EXCLUDE =
+      "testPlatforms,table,database,databaseSchema,service,testSuite";
 
   @Override
   public TestCase addHref(UriInfo uriInfo, TestCase test) {
@@ -378,13 +381,24 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
     searchListFilter.addQueryParam("domain", domain);
     if (!nullOrEmpty(owner)) {
       EntityInterface entity;
+      StringBuffer owners = new StringBuffer();
       try {
-        entity = Entity.getEntityByName(Entity.USER, owner, "", ALL);
+        User user = (User) Entity.getEntityByName(Entity.USER, owner, "teams", ALL);
+        owners.append(user.getId().toString());
+        if (!nullOrEmpty(user.getTeams())) {
+          owners
+              .append(",")
+              .append(
+                  user.getTeams().stream()
+                      .map(t -> t.getId().toString())
+                      .collect(Collectors.joining(",")));
+        }
       } catch (Exception e) {
-        // If the owner is not a user, then we'll try to geta team
+        // If the owner is not a user, then we'll try to get team
         entity = Entity.getEntityByName(Entity.TEAM, owner, "", ALL);
+        owners.append(entity.getId().toString());
       }
-      searchListFilter.addQueryParam("owner", entity.getId().toString());
+      searchListFilter.addQueryParam("owner", owners.toString());
     }
 
     if (startTimestamp != null) {

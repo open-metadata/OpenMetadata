@@ -106,20 +106,12 @@ describe('TestCases component', () => {
     expect(
       await screen.findByText('DataQualityTab.component')
     ).toBeInTheDocument();
-    expect(
-      await screen.findByTestId('table-select-filter')
-    ).toBeInTheDocument();
-    expect(
-      await screen.findByTestId('last-run-range-picker')
-    ).toBeInTheDocument();
+    expect(await screen.findByTestId('advanced-filter')).toBeInTheDocument();
     expect(
       await screen.findByTestId('status-select-filter')
     ).toBeInTheDocument();
     expect(
       await screen.findByTestId('test-case-type-select-filter')
-    ).toBeInTheDocument();
-    expect(
-      await screen.findByTestId('platform-select-filter')
     ).toBeInTheDocument();
   });
 
@@ -135,7 +127,6 @@ describe('TestCases component', () => {
       offset: 0,
       q: undefined,
       testCaseStatus: undefined,
-      testCaseType: 'all',
       sortField: 'testCaseResult.timestamp',
       sortType: 'desc',
     });
@@ -154,7 +145,6 @@ describe('TestCases component', () => {
       offset: 0,
       q: '*sale*',
       testCaseStatus: undefined,
-      testCaseType: 'all',
       sortField: 'testCaseResult.timestamp',
       sortType: 'desc',
     });

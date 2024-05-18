@@ -82,6 +82,12 @@ COMMONS = {
         ],  # grpcio-tools already depends on grpcio. No need to add separately
         "protobuf",
     },
+    "postgres": {
+        VERSIONS["pymysql"],
+        "psycopg2-binary",
+        VERSIONS["geoalchemy2"],
+        VERSIONS["packaging"],
+    },  # Adding as Postgres SQL & GreenPlum are using common packages.
 }
 
 
@@ -105,11 +111,11 @@ base_requirements = {
     "PyYAML~=6.0",
     "requests>=2.23",
     "requests-aws4auth~=1.1",  # Only depends on requests as external package. Leaving as base.
-    "setuptools~=66.0.0",
     "sqlalchemy>=1.4.0,<2",
-    "collate-sqllineage~=1.3.0",
+    "collate-sqllineage~=1.4.0",
     "tabulate==0.9.0",
     "typing-inspect",
+    "packaging",  # For version parsing
 }
 
 
@@ -185,6 +191,7 @@ plugins: Dict[str, Set[str]] = {
     },  # also requires requests-aws4auth which is in base
     "glue": {VERSIONS["boto3"]},
     "great-expectations": {VERSIONS["great-expectations"]},
+    "greenplum": {*COMMONS["postgres"]},
     "hive": {
         *COMMONS["hive"],
         "thrift>=0.13,<1",
@@ -209,6 +216,7 @@ plugins: Dict[str, Set[str]] = {
         "thrift-sasl~=0.4",
     },
     "kafka": {*COMMONS["kafka"]},
+    "kafkaconnect": {"kafka-connect-py==0.10.11"},
     "kinesis": {VERSIONS["boto3"]},
     "ldap-users": {"ldap3==2.9.1"},
     "looker": {
@@ -229,13 +237,14 @@ plugins: Dict[str, Set[str]] = {
     "oracle": {"cx_Oracle>=8.3.0,<9", "oracledb~=1.2"},
     "pgspider": {"psycopg2-binary", "sqlalchemy-pgspider"},
     "pinotdb": {"pinotdb~=0.3"},
-    "postgres": {
-        VERSIONS["pymysql"],
-        "psycopg2-binary",
-        VERSIONS["geoalchemy2"],
-        VERSIONS["packaging"],
+    "postgres": {*COMMONS["postgres"]},
+    "powerbi": {
+        VERSIONS["msal"],
+        VERSIONS["boto3"],
+        VERSIONS["google-cloud-storage"],
+        VERSIONS["azure-storage-blob"],
+        VERSIONS["azure-identity"],
     },
-    "powerbi": {VERSIONS["msal"]},
     "qliksense": {"websocket-client~=1.6.1"},
     "presto": {*COMMONS["hive"]},
     "pymssql": {"pymssql~=2.2.0"},
@@ -317,6 +326,8 @@ test = {
     "testcontainers==3.7.1;python_version<'3.9'",
     "testcontainers==4.4.0;python_version>='3.9'",
     "minio==7.2.5",
+    *plugins["mlflow"],
+    *plugins["datalake-s3"],
 }
 
 e2e_test = {

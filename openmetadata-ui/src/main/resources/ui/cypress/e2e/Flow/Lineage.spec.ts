@@ -38,7 +38,7 @@ const dragConnection = (sourceId, targetId, isColumnLineage = false) => {
 };
 
 const performZoomOut = () => {
-  for (let i = 0; i < 7; i++) {
+  for (let i = 0; i < 12; i++) {
     cy.get('.react-flow__controls-zoomout').click({ force: true });
   }
 };
@@ -64,7 +64,15 @@ const connectEdgeBetweenNodes = (fromNode, toNode) => {
     .should('contain', 'false');
 
   cy.get('[data-testid="suggestion-node"]').click();
+
+  interceptURL(
+    'GET',
+    `/api/v1/search/query?q=*${toNode.term}*&**`,
+    'nodeQuery'
+  );
   cy.get('[data-testid="suggestion-node"] input').click().type(toNode.term);
+  verifyResponseStatusCode('@nodeQuery', 200);
+
   cy.get(`[data-testid="node-suggestion-${toNode.fqn}"]`)
     .scrollIntoView()
     .click();
@@ -227,6 +235,7 @@ describe('Lineage verification', { tags: 'DataAssets' }, () => {
 
   LINEAGE_ITEMS.forEach((entity, index) => {
     it(`Lineage Add Node for entity ${entity.entityType}`, () => {
+      interceptURL('GET', '/api/v1/lineage', 'lineageApi');
       visitEntityDetailsPage({
         term: entity.term,
         serviceName: entity.serviceName,
@@ -247,6 +256,8 @@ describe('Lineage verification', { tags: 'DataAssets' }, () => {
 
       cy.get('[data-testid="edit-lineage"]').click();
       cy.reload();
+
+      verifyResponseStatusCode('@lineageApi', 200);
 
       performZoomOut();
 

@@ -309,12 +309,18 @@ public class AirflowRESTClient extends PipelineServiceClient {
       if (e.getMessage() != null) {
         exceptionMsg = String.format("Failed to get Airflow status due to [%s].", e.getMessage());
       } else {
-        exceptionMsg = "Failed to connect to Airflow.";
+        exceptionMsg =
+            String.format(
+                "Failed to connect to Airflow due to %s. Is the host available at %s?",
+                e.getCause().toString(), serviceURL.toString());
       }
       return buildUnhealthyStatus(String.format("%s %s", exceptionMsg, DOCS_LINK));
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
-      return buildUnhealthyStatus(String.format("Failed to connect to Airflow. %s", DOCS_LINK));
+      return buildUnhealthyStatus(
+          String.format(
+              "Failed to connect to Airflow due to %s. Is the host available at %s? %s.",
+              e.getMessage(), serviceURL.toString(), DOCS_LINK));
     }
   }
 

@@ -3,11 +3,14 @@ package org.openmetadata.service.jdbi3;
 import static org.openmetadata.schema.type.Include.ALL;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import lombok.Getter;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.schema.EntityTimeSeriesInterface;
+import org.openmetadata.schema.system.EntityError;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.service.Entity;
@@ -130,8 +133,20 @@ public abstract class EntityTimeSeriesRepository<T extends EntityTimeSeriesInter
   }
 
   public final ResultList<T> getResultList(
+      List<T> entities,
+      String beforeCursor,
+      String afterCursor,
+      int total,
+      List<EntityError> errors) {
+    if (errors == null) {
+      return new ResultList<>(entities, beforeCursor, afterCursor, total);
+    }
+    return new ResultList<>(entities, errors, beforeCursor, afterCursor, total);
+  }
+
+  public final ResultList<T> getResultList(
       List<T> entities, String beforeCursor, String afterCursor, int total) {
-    return new ResultList<>(entities, beforeCursor, afterCursor, total);
+    return getResultList(entities, beforeCursor, afterCursor, total, null);
   }
 
   /**
@@ -139,36 +154,52 @@ public abstract class EntityTimeSeriesRepository<T extends EntityTimeSeriesInter
    *
    * @return ResultList
    */
-  protected ResultList<T> listWithOffset(
-      String offset, ListFilter filter, int limitParam, Long startTs, Long endTs, boolean latest) {
+  public ResultList<T> listWithOffset(
+      String offset,
+      ListFilter filter,
+      int limitParam,
+      Long startTs,
+      Long endTs,
+      boolean latest,
+      boolean skipErrors) {
     int total = timeSeriesDao.listCount(filter, startTs, endTs, latest);
     List<T> entityList = new ArrayList<>();
-
-    int offsetInt = offset != null ? Integer.parseInt(RestUtil.decodeCursor(offset)) : 0;
-    int afterOffsetInt = offsetInt + limitParam;
-    int beforeOffsetInt = offsetInt - limitParam;
-
-    // If offset is negative, then set it to 0 if you pass offset 4 and limit 10, then the previous
-    // page will be at offset 0
-    if (beforeOffsetInt < 0) beforeOffsetInt = 0;
-
-    // if offsetInt is 0 (i.e. either no offset or offset is 0), then set it to null as there is no
-    // previous page
-    String beforeOffset = (offsetInt == 0) ? null : String.valueOf(beforeOffsetInt);
-
-    // If afterOffset is greater than total, then set it to null to indicate end of list
-    String afterOffset = afterOffsetInt >= total ? null : String.valueOf(afterOffsetInt);
+    List<EntityError> errors = null;
+    int offsetInt = getOffset(offset);
+    String afterOffset = getAfterOffset(offsetInt, limitParam, total);
+    String beforeOffset = getBeforeOffset(offsetInt, limitParam);
 
     if (limitParam > 0) {
       List<String> jsons =
           timeSeriesDao.listWithOffset(filter, limitParam, offsetInt, startTs, endTs, latest);
-
-      for (String json : jsons) {
-        T recordEntity = JsonUtils.readValue(json, entityClass);
-        setInheritedFields(recordEntity);
-        entityList.add(recordEntity);
+      Map<String, List<?>> entityListMap = getEntityList(jsons, skipErrors);
+      entityList = (List<T>) entityListMap.get("entityList");
+      if (skipErrors) {
+        errors = (List<EntityError>) entityListMap.get("errors");
       }
-      return getResultList(entityList, beforeOffset, afterOffset, total);
+      return getResultList(entityList, beforeOffset, afterOffset, total, errors);
+    } else {
+      return getResultList(entityList, null, null, total);
+    }
+  }
+
+  public ResultList<T> listWithOffset(
+      String offset, ListFilter filter, int limitParam, boolean skipErrors) {
+    int total = timeSeriesDao.listCount(filter);
+    List<T> entityList = new ArrayList<>();
+    List<EntityError> errors = null;
+
+    int offsetInt = getOffset(offset);
+    String afterOffset = getAfterOffset(offsetInt, limitParam, total);
+    String beforeOffset = getBeforeOffset(offsetInt, limitParam);
+    if (limitParam > 0) {
+      List<String> jsons = timeSeriesDao.listWithOffset(filter, limitParam, offsetInt);
+      Map<String, List<?>> entityListMap = getEntityList(jsons, skipErrors);
+      entityList = (List<T>) entityListMap.get("entityList");
+      if (skipErrors) {
+        errors = (List<EntityError>) entityListMap.get("errors");
+      }
+      return getResultList(entityList, beforeOffset, afterOffset, total, errors);
     } else {
       return getResultList(entityList, null, null, total);
     }
@@ -176,7 +207,7 @@ public abstract class EntityTimeSeriesRepository<T extends EntityTimeSeriesInter
 
   public ResultList<T> list(
       String offset, Long startTs, Long endTs, int limitParam, ListFilter filter, boolean latest) {
-    return listWithOffset(offset, filter, limitParam, startTs, endTs, latest);
+    return listWithOffset(offset, filter, limitParam, startTs, endTs, latest, false);
   }
 
   public T getLatestRecord(String recordFQN) {
@@ -211,6 +242,48 @@ public abstract class EntityTimeSeriesRepository<T extends EntityTimeSeriesInter
       return;
     }
     timeSeriesDao.deleteById(id);
-    postDelete(entityRecord);
+  }
+
+  private String getAfterOffset(int offsetInt, int limit, int total) {
+    int afterOffset = offsetInt + limit;
+    // If afterOffset is greater than total, then set it to null to indicate end of list
+    return afterOffset >= total ? null : String.valueOf(afterOffset);
+  }
+
+  private String getBeforeOffset(int offsetInt, int limit) {
+    int beforeOffsetInt = offsetInt - limit;
+    // If offset is negative, then set it to 0 if you pass offset 4 and limit 10, then the previous
+    // page will be at offset 0
+    if (beforeOffsetInt < 0) beforeOffsetInt = 0;
+    // if offsetInt is 0 (i.e. either no offset or offset is 0), then set it to null as there is no
+    // previous page
+    return (offsetInt == 0) ? null : String.valueOf(beforeOffsetInt);
+  }
+
+  private int getOffset(String offset) {
+    return offset != null ? Integer.parseInt(RestUtil.decodeCursor(offset)) : 0;
+  }
+
+  private Map<String, List<?>> getEntityList(List<String> jsons, boolean skipErrors) {
+    List<T> entityList = new ArrayList<>();
+    List<EntityError> errors = new ArrayList<>();
+
+    Map<String, List<?>> resultList = new HashMap<>();
+
+    for (String json : jsons) {
+      try {
+        T recordEntity = JsonUtils.readValue(json, entityClass);
+        setInheritedFields(recordEntity);
+        entityList.add(recordEntity);
+      } catch (Exception e) {
+        if (!skipErrors) {
+          throw e;
+        }
+        errors.add(new EntityError().withMessage(e.getMessage()));
+      }
+    }
+    resultList.put("entityList", entityList);
+    resultList.put("errors", errors);
+    return resultList;
   }
 }

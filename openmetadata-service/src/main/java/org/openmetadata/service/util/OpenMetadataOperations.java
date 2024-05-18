@@ -3,6 +3,8 @@ package org.openmetadata.service.util;
 import static org.flywaydb.core.internal.info.MigrationInfoDumper.dumpToAsciiTable;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.Entity.FIELD_OWNER;
+import static org.openmetadata.service.formatter.decorators.MessageDecorator.getDateStringEpochMilli;
+import static org.openmetadata.service.util.AsciiTable.printOpenMetadataText;
 
 import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.Logger;
@@ -21,14 +23,13 @@ import java.io.File;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Scanner;
 import java.util.Set;
-import java.util.UUID;
 import java.util.concurrent.Callable;
+import javax.json.JsonPatch;
 import javax.validation.Validator;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
@@ -41,9 +42,6 @@ import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.ServiceEntityInterface;
 import org.openmetadata.schema.entity.app.App;
 import org.openmetadata.schema.entity.app.AppRunRecord;
-import org.openmetadata.schema.entity.app.AppSchedule;
-import org.openmetadata.schema.entity.app.ScheduleTimeline;
-import org.openmetadata.schema.entity.app.ScheduledExecutionContext;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
 import org.openmetadata.schema.services.connections.metadata.OpenMetadataConnection;
 import org.openmetadata.schema.system.EventPublisherJob;
@@ -55,7 +53,6 @@ import org.openmetadata.service.apps.ApplicationHandler;
 import org.openmetadata.service.apps.scheduler.AppScheduler;
 import org.openmetadata.service.clients.pipeline.PipelineServiceClientFactory;
 import org.openmetadata.service.exception.EntityNotFoundException;
-import org.openmetadata.service.exception.UnhandledServerException;
 import org.openmetadata.service.fernet.Fernet;
 import org.openmetadata.service.jdbi3.AppRepository;
 import org.openmetadata.service.jdbi3.CollectionDAO;
@@ -257,82 +254,98 @@ public class OpenMetadataOperations implements Callable<Integer> {
       CollectionRegistry.initialize();
       ApplicationHandler.initialize(config);
       // load seed data so that repositories are initialized
-      CollectionRegistry.getInstance().loadSeedData(jdbi, config, null, null);
+      CollectionRegistry.getInstance().loadSeedData(jdbi, config, null, null, true);
       ApplicationHandler.initialize(config);
       // creates the default search index application
       AppScheduler.initialize(config, collectionDAO, searchRepository);
 
       String appName = "SearchIndexingApplication";
-
-      App searchIndexApp = getSearchIndexingApp(appName, batchSize, recreateIndexes);
-      AppScheduler.getInstance().triggerOnDemandApplication(searchIndexApp);
-      return waitAndReturnReindexingAppStatus(searchIndexApp);
+      return executeSearchReindexApp(appName, batchSize, recreateIndexes);
     } catch (Exception e) {
       LOG.error("Failed to reindex due to ", e);
       return 1;
     }
   }
 
-  private App getSearchIndexingApp(String appName, int batchSize, boolean recreateIndexes) {
-    try {
-      AppRepository appRepository = (AppRepository) Entity.getEntityRepository(Entity.APPLICATION);
-      App searchApp =
-          appRepository.getByName(null, "SearchIndexingApplication", appRepository.getFields("id"));
-      return searchApp;
-    } catch (EntityNotFoundException ex) {
-      return new App()
-          .withId(UUID.randomUUID())
-          .withName(appName)
-          .withFullyQualifiedName(appName)
-          .withClassName("org.openmetadata.service.apps.bundles.searchIndex.SearchIndexApp")
-          .withAppSchedule(new AppSchedule().withScheduleTimeline(ScheduleTimeline.DAILY))
-          .withAppConfiguration(
-              new EventPublisherJob()
-                  .withEntities(new HashSet<>(List.of("all")))
-                  .withRecreateIndex(recreateIndexes)
-                  .withBatchSize(batchSize)
-                  .withSearchIndexMappingLanguage(
-                      config.getElasticSearchConfiguration().getSearchIndexMappingLanguage()))
-          .withRuntime(new ScheduledExecutionContext().withEnabled(true));
-    }
+  private int executeSearchReindexApp(String appName, int batchSize, boolean recreateIndexes) {
+    AppRepository appRepository = (AppRepository) Entity.getEntityRepository(Entity.APPLICATION);
+    App originalSearchIndexApp =
+        appRepository.getByName(null, appName, appRepository.getFields("id"));
+
+    EventPublisherJob storedJob =
+        JsonUtils.convertValue(
+            originalSearchIndexApp.getAppConfiguration(), EventPublisherJob.class);
+
+    // Update the search index app with the new batch size and recreate index flag
+    App updatedSearchIndexApp = JsonUtils.deepCopy(originalSearchIndexApp, App.class);
+    updatedSearchIndexApp.withAppConfiguration(
+        storedJob.withRecreateIndex(recreateIndexes).withBatchSize(batchSize));
+    JsonPatch patch = JsonUtils.getJsonPatch(originalSearchIndexApp, updatedSearchIndexApp);
+
+    appRepository.patch(null, originalSearchIndexApp.getId(), "admin", patch);
+
+    // Trigger Application
+    long currentTime = System.currentTimeMillis();
+    AppScheduler.getInstance().triggerOnDemandApplication(updatedSearchIndexApp);
+
+    int result = waitAndReturnReindexingAppStatus(updatedSearchIndexApp, currentTime);
+
+    // Repatch with original
+    JsonPatch repatch = JsonUtils.getJsonPatch(updatedSearchIndexApp, originalSearchIndexApp);
+    appRepository.patch(null, originalSearchIndexApp.getId(), "admin", repatch);
+
+    return result;
   }
 
   @SneakyThrows
-  private int waitAndReturnReindexingAppStatus(App searchIndexApp) {
-    AppRunRecord appRunRecord;
+  private int waitAndReturnReindexingAppStatus(App searchIndexApp, long startTime) {
+    AppRunRecord appRunRecord = null;
     do {
       try {
         AppRepository appRepository =
             (AppRepository) Entity.getEntityRepository(Entity.APPLICATION);
-        appRunRecord = appRepository.getLatestAppRuns(searchIndexApp.getId());
-        if (appRunRecord != null) {
+        appRunRecord =
+            appRepository.getLatestAppRunsAfterStartTime(searchIndexApp.getId(), startTime);
+        if (isRunCompleted(appRunRecord)) {
           List<String> columns =
               new ArrayList<>(
-                  List.of("status", "startTime", "endTime", "executionTime", "success", "failure"));
+                  List.of(
+                      "jobStatus",
+                      "startTime",
+                      "endTime",
+                      "executionTime",
+                      "successContext",
+                      "failureContext"));
           List<List<String>> rows = new ArrayList<>();
+
+          String startTimeofJob =
+              nullOrEmpty(appRunRecord.getStartTime())
+                  ? "Unavailable"
+                  : getDateStringEpochMilli(appRunRecord.getStartTime());
+          String endTimeofJob =
+              nullOrEmpty(appRunRecord.getEndTime())
+                  ? "Unavailable"
+                  : getDateStringEpochMilli(appRunRecord.getEndTime());
+          String executionTime =
+              nullOrEmpty(appRunRecord.getExecutionTime())
+                  ? "Unavailable"
+                  : String.format("%d seconds", appRunRecord.getExecutionTime() / 1000);
           rows.add(
               Arrays.asList(
-                  appRunRecord.getStatus().value(),
-                  appRunRecord.getStartTime().toString(),
-                  appRunRecord.getEndTime().toString(),
-                  appRunRecord.getExecutionTime().toString(),
-                  nullOrEmpty(appRunRecord.getSuccessContext())
-                      ? "Unavailable"
-                      : JsonUtils.pojoToJson(appRunRecord.getSuccessContext()),
-                  nullOrEmpty(appRunRecord.getFailureContext())
-                      ? "Unavailable"
-                      : JsonUtils.pojoToJson(appRunRecord.getFailureContext())));
+                  getValueOrUnavailable(appRunRecord.getStatus().value()),
+                  getValueOrUnavailable(startTimeofJob),
+                  getValueOrUnavailable(endTimeofJob),
+                  getValueOrUnavailable(executionTime),
+                  getValueOrUnavailable(appRunRecord.getSuccessContext()),
+                  getValueOrUnavailable(appRunRecord.getFailureContext())));
           printToAsciiTable(columns, rows, "Failed to run Search Reindexing");
         }
-      } catch (UnhandledServerException e) {
-        LOG.info(
-            "Reindexing Status not available yet, waiting for 10 seconds to fetch the status again.");
-        appRunRecord = null;
-        Thread.sleep(10000);
+      } catch (Exception ignored) {
       }
-    } while (appRunRecord == null
-        && (appRunRecord.getStatus().equals(AppRunRecord.Status.SUCCESS)
-            || appRunRecord.getStatus().equals(AppRunRecord.Status.FAILED)));
+      LOG.info(
+          "Reindexing Status not available yet, waiting for 10 seconds to fetch the status again.");
+      Thread.sleep(10000);
+    } while (!isRunCompleted(appRunRecord));
 
     if (appRunRecord.getStatus().equals(AppRunRecord.Status.SUCCESS)
         || appRunRecord.getStatus().equals(AppRunRecord.Status.COMPLETED)) {
@@ -341,6 +354,19 @@ public class OpenMetadataOperations implements Callable<Integer> {
     }
     LOG.error("Reindexing completed in Failure.");
     return 1;
+  }
+
+  public String getValueOrUnavailable(Object obj) {
+    return nullOrEmpty(obj) ? "Unavailable" : JsonUtils.pojoToJson(obj);
+  }
+
+  boolean isRunCompleted(AppRunRecord appRunRecord) {
+    if (appRunRecord == null) {
+      return false;
+    }
+
+    return appRunRecord.getStatus().equals(AppRunRecord.Status.SUCCESS)
+        || appRunRecord.getStatus().equals(AppRunRecord.Status.FAILED);
   }
 
   @Command(name = "deploy-pipelines", description = "Deploy all the service pipelines.")
@@ -556,10 +582,12 @@ public class OpenMetadataOperations implements Callable<Integer> {
         new MigrationWorkflow(
             jdbi, nativeSQLScriptRootPath, connType, extensionSQLScriptRootPath, force);
     workflow.loadMigrations();
+    workflow.printMigrationInfo();
     workflow.runMigrationWorkflows();
   }
 
-  private void printToAsciiTable(List<String> columns, List<List<String>> rows, String emptyText) {
+  public static void printToAsciiTable(
+      List<String> columns, List<List<String>> rows, String emptyText) {
     LOG.info(new AsciiTable(columns, rows, true, "", emptyText).render());
   }
 
@@ -594,6 +622,7 @@ public class OpenMetadataOperations implements Callable<Integer> {
   }
 
   public static void main(String... args) {
+    LOG.info(printOpenMetadataText());
     int exitCode =
         new CommandLine(new org.openmetadata.service.util.OpenMetadataOperations()).execute(args);
     System.exit(exitCode);

@@ -69,20 +69,13 @@ import {
   EntityType,
 } from '../../enums/entity.enum';
 import { AddLineage } from '../../generated/api/lineage/addLineage';
-import { PipelineStatus } from '../../generated/entity/data/pipeline';
 import {
   ColumnLineage,
   EntityReference,
   LineageDetails,
 } from '../../generated/type/entityLineage';
 import { useFqn } from '../../hooks/useFqn';
-import {
-  exportLineage,
-  getLineageDataByFQN,
-  updateLineageEdge,
-} from '../../rest/lineageAPI';
-import { getPipelineStatus } from '../../rest/pipelineAPI';
-import { getEpochMillisForPastDays } from '../../utils/date-time/DateTimeUtils';
+import { getLineageDataByFQN, updateLineageEdge } from '../../rest/lineageAPI';
 import {
   addLineageHandler,
   createEdges,
@@ -94,6 +87,7 @@ import {
   getChildMap,
   getClassifiedEdge,
   getConnectedNodesEdges,
+  getExportData,
   getLayoutedElements,
   getLineageEdge,
   getLineageEdgeForAPI,
@@ -106,6 +100,7 @@ import {
   onLoad,
   removeLineageHandler,
 } from '../../utils/EntityLineageUtils';
+import { getEntityReferenceFromEntity } from '../../utils/EntityUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import { useTourProvider } from '../TourProvider/TourProvider';
 import {
@@ -172,9 +167,6 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
     nodesPerLayer: 50,
   });
   const [queryFilter, setQueryFilter] = useState<string>('');
-  const [pipelineStatus, setPipelineStatus] = useState<
-    Record<string, PipelineStatus>
-  >({});
   const [entityType, setEntityType] = useState('');
   const queryParams = new URLSearchParams(location.search);
   const isFullScreen = queryParams.get('fullscreen') === 'true';
@@ -183,6 +175,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
   const [childMap, setChildMap] = useState<EntityReferenceChild>();
   const [paginationData, setPaginationData] = useState({});
   const { showModal } = useEntityExportModalProvider();
+  const [exportResult, setExportResult] = useState<string>('');
 
   const initLineageChildMaps = useCallback(
     (
@@ -235,13 +228,12 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
             entityType !== EntityType.PIPELINE &&
             entityType !== EntityType.STORED_PROCEDURE
           ) {
-            const childMapObj = getChildMap(
+            const { map: childMapObj, exportResult } = getChildMap(
               { ...res, nodes: allNodes },
               decodedFqn
             );
-
+            setExportResult(exportResult);
             setChildMap(childMapObj);
-
             const { nodes: newNodes, edges: newEdges } = getPaginatedChildMap(
               {
                 ...res,
@@ -258,6 +250,8 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
               edges: [...(res.edges ?? []), ...newEdges],
             });
           } else {
+            const csv = getExportData(allNodes);
+            setExportResult(csv);
             setEntityLineage({
               ...res,
               nodes: allNodes,
@@ -282,30 +276,14 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
         setLoading(false);
       }
     },
-    [paginationData]
+    [paginationData, queryFilter]
   );
 
   const exportLineageData = useCallback(
-    async (name: string) => {
-      try {
-        return await exportLineage(
-          name,
-          entityType,
-          lineageConfig,
-          queryFilter
-        );
-      } catch (err) {
-        showErrorToast(
-          err as AxiosError,
-          t('server.entity-fetch-error', {
-            entity: t('label.lineage-data-lowercase'),
-          })
-        );
-
-        return '';
-      }
+    async (_: string) => {
+      return exportResult;
     },
-    [entityType, lineageConfig, queryFilter]
+    [exportResult]
   );
 
   const onExportClick = useCallback(() => {
@@ -315,7 +293,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
         onExport: exportLineageData,
       });
     }
-  }, [decodedFqn]);
+  }, [decodedFqn, exportResult]);
 
   const loadChildNodesHandler = useCallback(
     async (node: SourceType, direction: EdgeTypeEnum) => {
@@ -363,26 +341,6 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
     },
     [nodes, edges, lineageConfig, entityLineage, setEntityLineage, queryFilter]
   );
-
-  const fetchPipelineStatus = useCallback(async (pipelineFQN: string) => {
-    try {
-      const currentTime = Date.now();
-      // past 1 day
-      const startDay = getEpochMillisForPastDays(1);
-      const response = await getPipelineStatus(pipelineFQN, {
-        startTs: startDay,
-        endTs: currentTime,
-      });
-      setPipelineStatus((prev) => {
-        return {
-          ...prev,
-          [pipelineFQN]: response.data[0],
-        };
-      });
-    } catch (error) {
-      // do not show toast error
-    }
-  }, []);
 
   const handleLineageTracing = useCallback(
     (selectedNode: Node) => {
@@ -837,7 +795,12 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
           updatedColumns = getUpdatedColumnsFromEdge(params, currentEdge);
 
           const lineageDetails: LineageDetails = {
-            pipeline: currentEdge.pipeline,
+            pipeline: currentEdge.pipeline
+              ? getEntityReferenceFromEntity(
+                  currentEdge.pipeline,
+                  currentEdge.pipelineEntityType ?? EntityType.PIPELINE
+                )
+              : undefined,
             columnsLineage: [],
             description: currentEdge?.description ?? '',
             sqlQuery: currentEdge?.sqlQuery,
@@ -871,7 +834,10 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
             setEntityLineage((pre) => {
               const newData = {
                 ...pre,
-                nodes: uniqWith([pre.entity, ...allNodes], isEqual),
+                nodes: uniqWith(
+                  [...(pre.entity ? [pre.entity] : []), ...allNodes],
+                  isEqual
+                ),
                 edges: uniqWith(allEdges, isEqual),
               };
 
@@ -963,6 +929,9 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
 
         if (pipelineData) {
           existingEdge.pipeline = pipelineData;
+          existingEdge.pipelineEntityType = pipelineData.type as
+            | EntityType.PIPELINE
+            | EntityType.STORED_PROCEDURE;
         }
       }
 
@@ -1101,9 +1070,13 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
   const redrawLineage = useCallback(
     (lineageData: EntityLineageResponse) => {
       const allNodes = uniqWith(
-        [...(lineageData.nodes ?? []), lineageData.entity],
+        [
+          ...(lineageData.nodes ?? []),
+          ...(lineageData.entity ? [lineageData.entity] : []),
+        ],
         isEqual
       );
+
       const updatedNodes = createNodes(
         allNodes,
         lineageData.edges ?? [],
@@ -1183,6 +1156,20 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
     }
   }, [isEditMode, deletePressed, backspacePressed, activeNode, selectedEdge]);
 
+  useEffect(() => {
+    const { node, edge } = getLayoutedElements(
+      {
+        node: nodes,
+        edge: edges,
+      },
+      EntityLineageDirection.LEFT_RIGHT,
+      activeLayer.includes(LineageLayerView.COLUMN)
+    );
+
+    setNodes(node);
+    setEdges(edge);
+  }, [activeLayer]);
+
   const activityFeedContextValues = useMemo(() => {
     return {
       isDrawerOpen,
@@ -1201,7 +1188,6 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
       tracedNodes,
       tracedColumns,
       expandAllColumns,
-      pipelineStatus,
       upstreamDownstreamData,
       init,
       activeLayer,
@@ -1220,7 +1206,6 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
       toggleColumnView,
       loadChildNodesHandler,
       fetchLineageData,
-      fetchPipelineStatus,
       removeNodeHandler,
       onNodeClick,
       onEdgeClick,
@@ -1248,7 +1233,6 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
     tracedNodes,
     tracedColumns,
     expandAllColumns,
-    pipelineStatus,
     upstreamDownstreamData,
     init,
     activeLayer,
@@ -1266,7 +1250,6 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
     updateEntityType,
     loadChildNodesHandler,
     fetchLineageData,
-    fetchPipelineStatus,
     toggleColumnView,
     removeNodeHandler,
     onNodeClick,

@@ -31,7 +31,6 @@ import {
 } from '../../components/Lineage/Lineage.interface';
 import { SourceType } from '../../components/SearchedData/SearchedData.interface';
 import { EntityType } from '../../enums/entity.enum';
-import { PipelineStatus } from '../../generated/entity/data/pipeline';
 import { EntityReference } from '../../generated/entity/type';
 
 export interface LineageProviderProps {
@@ -47,8 +46,7 @@ export type UpstreamDownstreamData = {
 
 export enum LineageLayerView {
   COLUMN = 'COLUMN',
-  DATA_QUALITY = 'DATA_QUALITY',
-  PIPELINE = 'PIPELINE',
+  DATA_OBSERVARABILITY = 'DATA_OBSERVARABILITY',
 }
 
 export interface LineageContextType {
@@ -70,7 +68,6 @@ export interface LineageContextType {
   upstreamDownstreamData: UpstreamDownstreamData;
   selectedColumn: string;
   expandAllColumns: boolean;
-  pipelineStatus: Record<string, PipelineStatus>;
   activeLayer: LineageLayerView[];
   onInitReactFlow: (reactFlowInstance: ReactFlowInstance) => void;
   onPaneClick: () => void;
@@ -97,7 +94,6 @@ export interface LineageContextType {
     lineageConfig: LineageConfig
   ) => void;
   onExportClick: () => void;
-  fetchPipelineStatus: (pipelineFqn: string) => void;
   removeNodeHandler: (node: Node | NodeProps) => void;
   onColumnEdgeRemove: () => void;
   onAddPipelineClick: () => void;

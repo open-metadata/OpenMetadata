@@ -31,12 +31,15 @@ from metadata.ingestion.source.database.snowflake.models import (
 )
 from metadata.ingestion.source.database.snowflake.queries import (
     SNOWFLAKE_GET_COMMENTS,
+    SNOWFLAKE_GET_DYNAMIC_TABLE_NAMES,
     SNOWFLAKE_GET_EXTERNAL_TABLE_NAMES,
     SNOWFLAKE_GET_MVIEW_NAMES,
     SNOWFLAKE_GET_SCHEMA_COLUMNS,
+    SNOWFLAKE_GET_TABLE_DDL,
     SNOWFLAKE_GET_TRANSIENT_NAMES,
     SNOWFLAKE_GET_VIEW_NAMES,
     SNOWFLAKE_GET_WITHOUT_TRANSIENT_TABLE_NAMES,
+    SNOWFLAKE_INCREMENTAL_GET_DYNAMIC_TABLE_NAMES,
     SNOWFLAKE_INCREMENTAL_GET_EXTERNAL_TABLE_NAMES,
     SNOWFLAKE_INCREMENTAL_GET_MVIEW_NAMES,
     SNOWFLAKE_INCREMENTAL_GET_TRANSIENT_NAMES,
@@ -58,11 +61,13 @@ TABLE_QUERY_MAPS = {
         "default": SNOWFLAKE_GET_WITHOUT_TRANSIENT_TABLE_NAMES,
         "transient_tables": SNOWFLAKE_GET_TRANSIENT_NAMES,
         "external_tables": SNOWFLAKE_GET_EXTERNAL_TABLE_NAMES,
+        "dynamic_tables": SNOWFLAKE_GET_DYNAMIC_TABLE_NAMES,
     },
     "incremental": {
         "default": SNOWFLAKE_INCREMENTAL_GET_WITHOUT_TRANSIENT_TABLE_NAMES,
         "transient_tables": SNOWFLAKE_INCREMENTAL_GET_TRANSIENT_NAMES,
         "external_tables": SNOWFLAKE_INCREMENTAL_GET_EXTERNAL_TABLE_NAMES,
+        "dynamic_tables": SNOWFLAKE_INCREMENTAL_GET_DYNAMIC_TABLE_NAMES,
     },
 }
 
@@ -168,6 +173,9 @@ def get_table_names(self, connection, schema: str, **kw):
 
     if kw.get("external_tables"):
         query = queries["external_tables"]
+
+    if kw.get("dynamic_tables"):
+        query = queries["dynamic_tables"]
 
     cursor = connection.execute(query.format(**parameters))
     result = SnowflakeTableList(
@@ -469,3 +477,22 @@ def get_columns(self, connection, table_name, schema=None, **kw):
     if normalized_table_name not in schema_columns:
         raise sa_exc.NoSuchTableError()
     return schema_columns[normalized_table_name]
+
+
+@reflection.cache
+def get_table_ddl(
+    self, connection, table_name, schema=None, **kw
+):  # pylint: disable=unused-argument
+    """
+    Gets the Table DDL
+    """
+    schema = schema or self.default_schema_name
+    table_name = f"{schema}.{table_name}" if schema else table_name
+    cursor = connection.execute(SNOWFLAKE_GET_TABLE_DDL.format(table_name=table_name))
+    try:
+        result = cursor.fetchone()
+        if result:
+            return result[0]
+    except Exception:
+        pass
+    return None

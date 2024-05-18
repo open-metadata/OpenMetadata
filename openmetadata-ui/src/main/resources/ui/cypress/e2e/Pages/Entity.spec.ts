@@ -105,12 +105,16 @@ describe('Entity detail page', { tags: 'DataAssets' }, () => {
         entity.removeGlossary();
       });
 
-      it(`Annoucement create & delete`, () => {
+      it(`Announcement create & delete`, () => {
         entity.createAnnouncement();
+        /**
+         * Todo: Fix the flakiness issue with the Activity feed changes and enable this test
+         */
+        // entity.replyAnnouncement();
         entity.removeAnnouncement();
       });
 
-      it(`Inactive annoucement create & delete`, () => {
+      it(`Inactive Announcement create & delete`, () => {
         entity.createInactiveAnnouncement();
         entity.removeInactiveAnnouncement();
       });
