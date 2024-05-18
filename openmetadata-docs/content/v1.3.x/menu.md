@@ -713,7 +713,7 @@ site_menu:
     url: /connectors/pipeline/kafkaconnect/yaml
   - category: Connectors / Pipeline / Databricks Pipeline
     url: /connectors/pipeline/databricks-pipeline
-  - category: Connectors / Pipeline / Databricks Pipeline / Run Externally
+  - category: Connectors / Pipeline / Data  bricks Pipeline / Run Externally
     url: /connectors/pipeline/databricks-pipeline/yaml
   - category: Connectors / Pipeline / Domo Pipeline
     url: /connectors/pipeline/domo-pipeline
@@ -733,6 +733,8 @@ site_menu:
     url: /connectors/pipeline/nifi/yaml
   - category: Connectors / Pipeline / Nifi / Troubleshooting
     url: /connectors/pipeline/nifi/troubleshooting
+  - category: Connectors / Pipeline / Openlineage
+    url: /connectors/pipeline/Openlineage
   - category: Connectors / Pipeline / Spline
     url: /connectors/pipeline/spline
   - category: Connectors / Pipeline / Spline / Run Externally
