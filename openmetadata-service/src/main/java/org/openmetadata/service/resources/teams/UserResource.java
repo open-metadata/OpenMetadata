@@ -1286,7 +1286,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
     User user =
         repository.getByName(
             null, userName, getFields("roles,email,isBot"), Include.NON_DELETED, false);
-    if (Boolean.FALSE.equals(user.getIsBot())) {
+    if (user.getIsBot() == null || Boolean.FALSE.equals(user.getIsBot())) {
       // Create Personal Access Token
       JWTAuthMechanism authMechanism =
           JWTTokenGenerator.getInstance()

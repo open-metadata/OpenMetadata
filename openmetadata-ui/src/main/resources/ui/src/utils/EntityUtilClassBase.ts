@@ -24,7 +24,10 @@ import {
   getUserPath,
 } from '../constants/constants';
 import { GlobalSettingsMenuCategory } from '../constants/GlobalSettings.constants';
-import { ResourceEntity } from '../context/PermissionProvider/PermissionProvider.interface';
+import {
+  OperationPermission,
+  ResourceEntity,
+} from '../context/PermissionProvider/PermissionProvider.interface';
 import { EntityType } from '../enums/entity.enum';
 import { SearchIndex } from '../enums/search.enum';
 import ContainerPage from '../pages/ContainerPage/ContainerPage';
@@ -44,6 +47,9 @@ import {
   getIncidentManagerDetailPagePath,
   getNotificationAlertDetailsPath,
   getObservabilityAlertDetailsPath,
+  getPersonaDetailsPath,
+  getPolicyWithFqnPath,
+  getRoleWithFqnPath,
   getSettingPath,
   getTeamsWithFqnPath,
 } from './RouterUtils';
@@ -213,6 +219,15 @@ class EntityUtilClassBase {
           ? getObservabilityAlertDetailsPath(fullyQualifiedName)
           : getNotificationAlertDetailsPath(fullyQualifiedName);
 
+      case EntityType.ROLE:
+        return getRoleWithFqnPath(fullyQualifiedName);
+
+      case EntityType.POLICY:
+        return getPolicyWithFqnPath(fullyQualifiedName);
+
+      case EntityType.PERSONA:
+        return getPersonaDetailsPath(fullyQualifiedName);
+
       case SearchIndex.TABLE:
       case EntityType.TABLE:
       default:
@@ -309,7 +324,8 @@ class EntityUtilClassBase {
 
   public getManageExtraOptions(
     _entityType?: EntityType,
-    _fqn?: string
+    _fqn?: string,
+    _permission?: OperationPermission
   ): ItemType[] {
     return [];
   }
