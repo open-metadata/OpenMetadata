@@ -8,6 +8,7 @@
 {% connectorInfoCard name="Fivetran" stage="PROD" href="/connectors/pipeline/fivetran" platform="OpenMetadata" / %}
 {% connectorInfoCard name="Glue" stage="PROD" href="/connectors/pipeline/glue-pipeline" platform="OpenMetadata" / %}
 {% connectorInfoCard name="KafkaConnect" stage="PROD" href="/connectors/pipeline/kafkaconnect" platform="OpenMetadata" / %}
+{% connectorInfoCard name="OpenLineage" stage="PROD" href="/connectors/pipeline/openlineage" platform="OpenMetadata" / %}
 {% connectorInfoCard name="NiFi" stage="PROD" href="/connectors/pipeline/nifi" platform="OpenMetadata" / %}
 {% connectorInfoCard name="Spline" stage="BETA" href="/connectors/pipeline/spline" platform="OpenMetadata" / %}
 

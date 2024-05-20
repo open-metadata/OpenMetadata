@@ -62,7 +62,7 @@ const SampleDataTable = ({
   permissions,
 }: SampleDataProps) => {
   const { isTourPage } = useTourProvider();
-  const { currentUser } = useApplicationStore();
+  const { currentUser, theme } = useApplicationStore();
 
   const [sampleData, setSampleData] = useState<SampleData>();
   const [isLoading, setIsLoading] = useState(true);
@@ -201,7 +201,7 @@ const SampleDataTable = ({
               <a
                 href={WORKFLOWS_PROFILER_DOCS}
                 rel="noreferrer"
-                style={{ color: '#1890ff' }}
+                style={{ color: theme.primaryColor }}
                 target="_blank"
               />
             }
