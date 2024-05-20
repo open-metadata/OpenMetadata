@@ -48,6 +48,8 @@ const ScheduleInterval = ({
         required: false,
         props: {
           'data-testid': 'enable-debug-log',
+        },
+        formItemProps: {
           initialValue: debugLogInitialValue,
         },
         id: 'root/enableDebugLog',
