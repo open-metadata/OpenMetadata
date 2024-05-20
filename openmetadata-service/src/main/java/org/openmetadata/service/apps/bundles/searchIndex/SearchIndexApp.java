@@ -96,6 +96,7 @@ public class SearchIndexApp extends AbstractNativeApplication {
           ReportData.ReportDataType.RAW_COST_ANALYSIS_REPORT_DATA.value(),
           ReportData.ReportDataType.WEB_ANALYTIC_USER_ACTIVITY_REPORT_DATA.value(),
           ReportData.ReportDataType.WEB_ANALYTIC_ENTITY_VIEW_REPORT_DATA.value(),
+          ReportData.ReportDataType.AGGREGATED_COST_ANALYSIS_REPORT_DATA.value(),
           "testCaseResolutionStatus");
   private final List<Source> paginatedSources = new ArrayList<>();
   private Processor entityProcessor;
