@@ -14,7 +14,7 @@
 import { AxiosError } from 'axios';
 import { compare, Operation } from 'fast-json-patch';
 import { cloneDeep, filter, isEmpty, isUndefined } from 'lodash';
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
 
@@ -57,7 +57,6 @@ const TeamsPage = () => {
   const { t } = useTranslation();
   const { getEntityPermissionByFqn } = usePermissionProvider();
   const { fqn } = useFqn();
-  const [currentFqn, setCurrentFqn] = useState<string>('');
   const [childTeams, setChildTeams] = useState<Team[]>([]);
   const [selectedTeam, setSelectedTeam] = useState<Team>({} as Team);
 
@@ -90,21 +89,6 @@ const TeamsPage = () => {
     () => entityPermissions.ViewAll || entityPermissions.ViewBasic,
     [entityPermissions]
   );
-
-  const fetchPermissions = async (entityFqn: string) => {
-    setIsPageLoading(true);
-    try {
-      const perms = await getEntityPermissionByFqn(
-        ResourceEntity.TEAM,
-        entityFqn
-      );
-      setEntityPermissions(perms);
-    } catch (error) {
-      showErrorToast(error as AxiosError);
-    } finally {
-      setIsPageLoading(false);
-    }
-  };
 
   const descriptionHandler = (value: boolean) => {
     setIsDescriptionEditable(value);
@@ -265,6 +249,11 @@ const TeamsPage = () => {
     }
   };
 
+  const loadAdvancedDetails = useCallback(() => {
+    fetchTeamAdvancedDetails(fqn);
+    fetchAllTeamsBasicDetails(fqn);
+  }, [fqn]);
+
   /**
    * Take Team data as input and create the team
    * @param data - Team Data
@@ -284,6 +273,7 @@ const TeamsPage = () => {
       if (res) {
         fetchTeamBasicDetails(selectedTeam.name, true);
         handleAddTeam(false);
+        loadAdvancedDetails();
       }
     } catch (error) {
       if (
@@ -470,25 +460,28 @@ const TeamsPage = () => {
     setShowDeletedTeam((pre) => !pre);
   };
 
-  useEffect(() => {
-    if (hasViewPermission && currentFqn !== fqn) {
-      if (fqn) {
-        fetchTeamBasicDetails(fqn, true);
+  const init = useCallback(async () => {
+    setIsPageLoading(true);
+    try {
+      const teamPermissions = await getEntityPermissionByFqn(
+        ResourceEntity.TEAM,
+        fqn
+      );
+      setEntityPermissions(teamPermissions);
+      if (teamPermissions.ViewAll || teamPermissions.ViewBasic) {
+        await fetchTeamBasicDetails(fqn, true);
+        loadAdvancedDetails();
       }
-      setCurrentFqn(fqn);
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    } finally {
+      setIsPageLoading(false);
     }
-  }, [entityPermissions, fqn]);
-
-  useEffect(() => {
-    fetchPermissions(fqn);
   }, [fqn]);
 
   useEffect(() => {
-    if (!isPageLoading && hasViewPermission && fqn) {
-      fetchTeamAdvancedDetails(fqn);
-      fetchAllTeamsBasicDetails(fqn);
-    }
-  }, [isPageLoading, entityPermissions, fqn]);
+    init();
+  }, [fqn]);
 
   useEffect(() => {
     if (isFetchAllTeamAdvancedDetails && fqn) {

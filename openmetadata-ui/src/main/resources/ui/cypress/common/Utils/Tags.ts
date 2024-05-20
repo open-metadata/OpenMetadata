@@ -99,7 +99,10 @@ export const removeTags = (
     cy.get(
       `[data-testid="selected-tag-${tag}"] [data-testid="remove-tags"]`
     ).click();
-
+    cy.get('[data-testid="saveAssociatedTag"]').should('be.enabled');
+    // Adding manual wait to eliminate flakiness 
+    // Remove manual wait and wait for elements instead
+    cy.wait(100);
     cy.get('[data-testid="saveAssociatedTag"]').click();
     verifyResponseStatusCode('@removeTags', 200, {
       requestTimeout: 15000,

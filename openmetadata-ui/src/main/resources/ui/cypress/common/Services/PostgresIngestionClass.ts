@@ -12,6 +12,7 @@
  */
 import { SERVICE_TYPE } from '../../constants/constants';
 import { EntityType } from '../../constants/Entity.interface';
+import { POSTGRES } from '../../constants/service.constants';
 import {
   checkServiceFieldSectionHighlighting,
   interceptURL,
@@ -29,7 +30,12 @@ class PostgresIngestionClass extends ServiceBaseClass {
   queryLogFilePath: string;
 
   constructor() {
-    super(Services.Database, 'cypress-Postgres', 'Postgres', 'order_items');
+    super(
+      Services.Database,
+      POSTGRES.serviceName,
+      POSTGRES.serviceType,
+      POSTGRES.tableName
+    );
 
     this.filterPattern = 'sales';
     this.queryLogFilePath =
