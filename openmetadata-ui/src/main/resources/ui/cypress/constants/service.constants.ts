@@ -33,6 +33,12 @@ export const REDSHIFT = {
   description: `This is Redshift-ct-test-${uniqueID} description`,
 };
 
+export const POSTGRES = {
+  serviceType: 'Postgres',
+  serviceName: `cy-postgres-test-${uniqueID}`,
+  tableName: 'order_items',
+};
+
 export const MYSQL = {
   serviceType: 'Mysql',
   serviceName: `mysql-ct-test-${uniqueID}`,
