@@ -27,8 +27,6 @@ import static org.openmetadata.service.search.opensearch.OpenSearchEntitiesProce
 import static org.openmetadata.service.util.FullyQualifiedName.getParentFQN;
 
 import com.fasterxml.jackson.databind.JsonNode;
-import es.org.elasticsearch.index.IndexNotFoundException;
-import es.org.elasticsearch.search.aggregations.bucket.terms.Terms;
 import java.io.IOException;
 import java.text.ParseException;
 import java.util.ArrayList;
@@ -136,6 +134,7 @@ import os.org.opensearch.common.xcontent.LoggingDeprecationHandler;
 import os.org.opensearch.common.xcontent.NamedXContentRegistry;
 import os.org.opensearch.common.xcontent.XContentParser;
 import os.org.opensearch.common.xcontent.XContentType;
+import os.org.opensearch.index.IndexNotFoundException;
 import os.org.opensearch.index.query.BoolQueryBuilder;
 import os.org.opensearch.index.query.MatchQueryBuilder;
 import os.org.opensearch.index.query.MultiMatchQueryBuilder;
@@ -163,6 +162,7 @@ import os.org.opensearch.search.aggregations.BucketOrder;
 import os.org.opensearch.search.aggregations.bucket.histogram.DateHistogramAggregationBuilder;
 import os.org.opensearch.search.aggregations.bucket.histogram.DateHistogramInterval;
 import os.org.opensearch.search.aggregations.bucket.terms.IncludeExclude;
+import os.org.opensearch.search.aggregations.bucket.terms.Terms;
 import os.org.opensearch.search.aggregations.bucket.terms.TermsAggregationBuilder;
 import os.org.opensearch.search.aggregations.metrics.MaxAggregationBuilder;
 import os.org.opensearch.search.aggregations.metrics.SumAggregationBuilder;
