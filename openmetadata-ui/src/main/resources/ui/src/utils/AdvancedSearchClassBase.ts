@@ -475,6 +475,7 @@ class AdvancedSearchClassBase {
         mainWidgetProps: this.mainWidgetProps,
         valueSources: ['value'],
         fieldSettings: {
+          allowCustomValues: true,
           listValues: {
             INCOMPLETE: 'Incomplete',
             COMPLETE: 'Complete',
