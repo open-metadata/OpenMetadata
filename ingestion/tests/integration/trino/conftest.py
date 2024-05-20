@@ -3,6 +3,7 @@ import random
 
 import docker
 import pytest
+import testcontainers.core.network
 from sqlalchemy import create_engine
 from tenacity import retry, stop_after_delay, wait_fixed
 from testcontainers.core.container import DockerContainer
@@ -33,7 +34,7 @@ class TrinoContainer(DbContainer):
         super()._connect()
         engine = create_engine(self.get_connection_url())
         try:
-            retry(wait=wait_fixed(1), stop=stop_after_delay(60))(engine.execute)(
+            retry(wait=wait_fixed(1), stop=stop_after_delay(120))(engine.execute)(
                 "select system.runtime.nodes.node_id from system.runtime.nodes"
             ).fetchall()
         finally:
@@ -96,48 +97,61 @@ class HiveMetaStoreContainer(DockerContainer):
 
 
 @pytest.fixture(scope="module")
-def trino_container(hive_metastore_container, minio_container):
-    with TrinoContainer(image="trinodb/trino:418").with_env(
-        "HIVE_METASTORE_URI",
-        f"thrift://host.docker.internal:{hive_metastore_container.get_exposed_port(hive_metastore_container.port)}/",
-    ).with_env(
-        "MINIO_ENDPOINT",
-        f"http://host.docker.internal:{minio_container.get_exposed_port(minio_container.port)}",
-    ) as trino:
+def docker_network():
+    with testcontainers.core.network.Network() as network:
+        yield network
+
+
+@pytest.fixture(scope="module")
+def trino_container(hive_metastore_container, minio_container, docker_network):
+    with (
+        TrinoContainer(image="trinodb/trino:418")
+        .with_network(docker_network)
+        .with_env(
+            "HIVE_METASTORE_URI",
+            f"thrift://metastore:{hive_metastore_container.port}",
+        )
+        .with_env(
+            "MINIO_ENDPOINT",
+            f"http://minio:{minio_container.port}",
+        ) as trino
+    ):
         yield trino
 
 
 @pytest.fixture(scope="module")
-def mysql_container():
+def mysql_container(docker_network):
     with MySqlContainer(
         "mariadb:10.6.16", username="admin", password="admin", dbname="metastore_db"
-    ) as mysql:
+    ).with_network(docker_network).with_network_aliases("mariadb") as mysql:
         yield mysql
 
 
 @pytest.fixture(scope="module")
-def hive_metastore_container(mysql_container, minio_container):
+def hive_metastore_container(mysql_container, minio_container, docker_network):
     with (
         HiveMetaStoreContainer("bitsondatadev/hive-metastore:latest")
-        .with_env("METASTORE_DB_HOSTNAME", "host.docker.internal")
-        .with_env(
-            "METASTORE_DB_PORT", mysql_container.get_exposed_port(mysql_container.port)
-        )
+        .with_network(docker_network)
+        .with_network_aliases("metastore")
+        .with_env("METASTORE_DB_HOSTNAME", mysql_container.get_wrapped_container().name)
+        .with_env("METASTORE_DB_PORT", str(mysql_container.port))
         .with_env(
             "JDBC_CONNECTION_URL",
-            f"jdbc:mysql://host.docker.internal:{mysql_container.get_exposed_port(mysql_container.port)}/{mysql_container.dbname}",
+            f"jdbc:mysql://mariadb:{mysql_container.port}/{mysql_container.dbname}",
         )
         .with_env(
             "MINIO_ENDPOINT",
-            f"http://host.docker.internal:{minio_container.get_exposed_port(minio_container.port)}",
+            f"http://minio:{minio_container.port}",
         ) as hive
     ):
         yield hive
 
 
 @pytest.fixture(scope="module")
-def minio_container():
-    with MinioContainer() as minio:
+def minio_container(docker_network):
+    with MinioContainer().with_network(docker_network).with_network_aliases(
+        "minio"
+    ) as minio:
         client = minio.get_client()
         client.make_bucket("hive-warehouse")
         yield minio

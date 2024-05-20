@@ -1,12 +1,12 @@
 <configuration>
-    <property>
+    <property><value>org.apache.hadoop.hive.metastore.events.EventCleanerTask,org.apache.hadoop.hive.metastore.MaterializationsCacheCleanerTask</value>
         <name>metastore.thrift.uris</name>
-        <value>thrift://hive-metastore:9083</value>
+        <value>thrift://metastore:9083</value>
         <description>Thrift URI for the remote metastore. Used by metastore client to connect to remote metastore.</description>
     </property>
     <property>
         <name>metastore.task.threads.always</name>
-        <value>org.apache.hadoop.hive.metastore.events.EventCleanerTask,org.apache.hadoop.hive.metastore.MaterializationsCacheCleanerTask</value>
+        <value>org.apache.hadoop.hive.metastore.events.EventCleanerTask</value>
     </property>
     <property>
         <name>metastore.expression.proxy</name>
