@@ -1,23 +1,9 @@
-import logging
 import sys
 
 import pytest
 
-from metadata.generated.schema.api.services.createDatabaseService import (
-    CreateDatabaseServiceRequest,
-)
 from metadata.generated.schema.entity.data.table import Table
-from metadata.generated.schema.entity.services.connections.database.common.basicAuth import (
-    BasicAuth,
-)
-from metadata.generated.schema.entity.services.connections.database.postgresConnection import (
-    PostgresConnection,
-)
-from metadata.generated.schema.entity.services.databaseService import (
-    DatabaseConnection,
-    DatabaseService,
-    DatabaseServiceType,
-)
+from metadata.generated.schema.entity.services.databaseService import DatabaseService
 from metadata.generated.schema.metadataIngestion.databaseServiceProfilerPipeline import (
     DatabaseServiceProfilerPipeline,
 )
@@ -42,63 +28,8 @@ from metadata.workflow.metadata import MetadataWorkflow
 from metadata.workflow.profiler import ProfilerWorkflow
 from metadata.workflow.usage import UsageWorkflow
 
-from ..integration_base import int_admin_ometa
-
 if not sys.version_info >= (3, 9):
     pytest.skip("requires python 3.9+", allow_module_level=True)
-
-
-@pytest.fixture(autouse=True)
-def config_logging():
-    logging.getLogger("sqlfluff").setLevel(logging.CRITICAL)
-
-
-@pytest.fixture(scope="module")
-def metadata():
-    return int_admin_ometa()
-
-
-@pytest.fixture(scope="module")
-def db_service(metadata, postgres_container):
-    service = CreateDatabaseServiceRequest(
-        name="docker_test_db",
-        serviceType=DatabaseServiceType.Postgres,
-        connection=DatabaseConnection(
-            config=PostgresConnection(
-                username=postgres_container.username,
-                authType=BasicAuth(password=postgres_container.password),
-                hostPort="localhost:"
-                + postgres_container.get_exposed_port(postgres_container.port),
-                database="dvdrental",
-            )
-        ),
-    )
-    service_entity = metadata.create_or_update(data=service)
-    service_entity.connection.config.authType.password = postgres_container.password
-    yield service_entity
-    metadata.delete(
-        DatabaseService, service_entity.id, recursive=True, hard_delete=True
-    )
-
-
-@pytest.fixture(scope="module")
-def ingest_metadata(db_service, metadata: OpenMetadata):
-    workflow_config = OpenMetadataWorkflowConfig(
-        source=Source(
-            type=db_service.connection.config.type.value.lower(),
-            serviceName=db_service.fullyQualifiedName.__root__,
-            serviceConnection=db_service.connection,
-            sourceConfig=SourceConfig(config={}),
-        ),
-        sink=Sink(
-            type="metadata-rest",
-            config={},
-        ),
-        workflowConfig=WorkflowConfig(openMetadataServerConfig=metadata.config),
-    )
-    metadata_ingestion = MetadataWorkflow.create(workflow_config)
-    metadata_ingestion.execute()
-    return
 
 
 @pytest.fixture(scope="module")
