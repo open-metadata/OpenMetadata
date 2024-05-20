@@ -472,13 +472,18 @@ class AdvancedSearchClassBase {
       descriptionStatus: {
         label: t('label.description'),
         type: 'select',
+        operators: [
+          'select_equals',
+          'select_not_equals',
+          'is_null',
+          'is_not_null',
+        ],
         mainWidgetProps: this.mainWidgetProps,
         valueSources: ['value'],
         fieldSettings: {
-          allowCustomValues: true,
           listValues: {
-            INCOMPLETE: 'Incomplete',
-            COMPLETE: 'Complete',
+            INCOMPLETE: t('label.incomplete'),
+            COMPLETE: t('label.complete'),
           },
         },
       },
