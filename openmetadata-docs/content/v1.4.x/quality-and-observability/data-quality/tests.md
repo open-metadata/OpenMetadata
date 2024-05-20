@@ -1,6 +1,6 @@
 ---
 title: Tests
-slug: /connectors/ingestion/workflows/data-quality/tests
+slug: /quality-and-observability/data-quality/tests
 ---
 
 # Test

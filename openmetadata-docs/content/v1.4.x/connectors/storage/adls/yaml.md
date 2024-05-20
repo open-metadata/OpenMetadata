@@ -150,15 +150,12 @@ source:
 ```
 ```yaml {% srNumber=1 %}
         clientId: client-id
-          
 ```
 ```yaml {% srNumber=2 %}
         clientSecret: client-secret
-         
 ```
 ```yaml {% srNumber=3 %}
         tenantId: tenant-id
-          
 ```
 ```yaml {% srNumber=4 %}
         accountName: account-name

@@ -30,12 +30,12 @@ Metadata: Doris >= 1.2.0, Data Profiler: Doris >= 2.0.2
 ## Metadata Ingestion
 
 {% partial
-file="/v1.2/connectors/metadata-ingestion-ui.md"
+file="/v1.4/connectors/metadata-ingestion-ui.md"
 variables={
 connector: "Doris",
-selectServicePath: "/images/v1.2/connectors/doris/select-service.png",
-addNewServicePath: "/images/v1.2/connectors/doris/add-new-service.png",
-serviceConnectionPath: "/images/v1.2/connectors/doris/service-connection.png",
+selectServicePath: "/images/v1.4/connectors/doris/select-service.png",
+addNewServicePath: "/images/v1.4/connectors/doris/add-new-service.png",
+serviceConnectionPath: "/images/v1.4/connectors/doris/service-connection.png",
 }
 /%}
 
@@ -53,18 +53,18 @@ serviceConnectionPath: "/images/v1.2/connectors/doris/service-connection.png",
 - **sslCert**: Provide the path to ssl client certificate file (ssl_cert).
 - **sslKey**: Provide the path to ssl client certificate file (ssl_key).
 
-{% partial file="/v1.2/connectors/database/advanced-configuration.md" /%}
+{% partial file="/v1.4/connectors/database/advanced-configuration.md" /%}
 
 {% /extraContent %}
 
-{% partial file="/v1.2/connectors/test-connection.md" /%}
+{% partial file="/v1.4/connectors/test-connection.md" /%}
 
-{% partial file="/v1.2/connectors/database/configure-ingestion.md" /%}
+{% partial file="/v1.4/connectors/database/configure-ingestion.md" /%}
 
-{% partial file="/v1.2/connectors/ingestion-schedule-and-deploy.md" /%}
+{% partial file="/v1.4/connectors/ingestion-schedule-and-deploy.md" /%}
 
 {% /stepsContainer %}
 
-{% partial file="/v1.2/connectors/troubleshooting.md" /%}
+{% partial file="/v1.4/connectors/troubleshooting.md" /%}
 
-{% partial file="/v1.2/connectors/database/related.md" /%}
+{% partial file="/v1.4/connectors/database/related.md" /%}

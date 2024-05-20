@@ -1,6 +1,6 @@
 ---
 title: Auto PII Tagging
-slug: /connectors/ingestion/auto_tagging
+slug: /quality-and-observability/profiler/auto-pii-tagging
 ---
 
 # Auto PII Tagging
