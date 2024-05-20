@@ -419,7 +419,7 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
     return result;
   }
 
-  private Map<String, EntityReference> getGlossaryUsageFromES(String glossaryFqn, int size) {
+  protected Map<String, EntityReference> getGlossaryUsageFromES(String glossaryFqn, int size) {
     try {
       String key = "_source";
       SearchRequest searchRequest =
@@ -464,15 +464,18 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
     return new HashMap<>();
   }
 
-  private Map<String, EntityReference> getGlossaryTermsContainingFQNFromES(
+  protected Map<String, EntityReference> getGlossaryTermsContainingFQNFromES(
       String termFQN, int size) {
     try {
-      String queryJson = String.format("fullyQualifiedName:%s*", termFQN);
+      String queryFilter =
+          String.format(
+              "{\"query\":{\"bool\":{\"must\":[{\"wildcard\":{\"fullyQualifiedName\":\"%s.*\"}}]}}}",
+              termFQN);
 
       SearchRequest searchRequest =
-          new SearchRequest.ElasticSearchRequestBuilder(
-                  queryJson, size, "glossary_term_search_index")
+          new SearchRequest.ElasticSearchRequestBuilder("*", size, "all")
               .from(0)
+              .queryFilter(queryFilter)
               .fetchSource(true)
               .trackTotalHits(false)
               .sortFieldParam("_score")
@@ -743,11 +746,14 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
         new HashSet<>(
             daoCollection.tagUsageDAO().getTargetFQNHashForTag(updated.getFullyQualifiedName()));
 
-    List<EntityReference> childTerms =
-        super.getChildren(updated); // get new value of children terms from DB
-    for (EntityReference child : childTerms) {
+    List<String> childTerms =
+        daoCollection
+            .glossaryTermDAO()
+            .getNestedChildrenByFQN(
+                updated.getFullyQualifiedName()); // get new value of children terms from DB
+    for (String child : childTerms) {
       targetFQNHashesFromDb.addAll( // for each child term find the targetFQNHashes of assets
-          daoCollection.tagUsageDAO().getTargetFQNHashForTag(child.getFullyQualifiedName()));
+          daoCollection.tagUsageDAO().getTargetFQNHashForTag(child));
     }
 
     // List of entity references tagged with the glossary term
@@ -756,19 +762,17 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
     Map<String, EntityReference> childrenTerms =
         getGlossaryTermsContainingFQNFromES(
             original.getFullyQualifiedName(),
-            getChildrenCount(updated)); // get old value of children term from ES
+            childTerms.size()); // get old value of children term from ES
+
+    searchRepository
+        .getSearchClient()
+        .reindexAcrossIndices("tags.tagFQN", original.getEntityReference());
 
     for (EntityReference child : childrenTerms.values()) {
       targetFQNFromES.putAll( // List of entity references tagged with the children term
           getGlossaryUsageFromES(child.getFullyQualifiedName(), targetFQNHashesFromDb.size()));
       searchRepository.updateEntity(child); // update es index of child term
-    }
-
-    if (targetFQNFromES.size() == targetFQNHashesFromDb.size()) {
-      for (String fqnHash : targetFQNHashesFromDb) {
-        EntityReference refDetails = targetFQNFromES.get(fqnHash);
-        searchRepository.updateEntity(refDetails); // update ES index of assets
-      }
+      searchRepository.getSearchClient().reindexAcrossIndices("tags.tagFQN", child);
     }
   }
 
@@ -940,6 +944,13 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
                 updated.getFullyQualifiedName());
         recordChange("name", original.getName(), updated.getName());
         invalidateTerm(original.getId());
+        // update tags
+        daoCollection
+            .tagUsageDAO()
+            .renameByTargetFQNHash(
+                TagSource.CLASSIFICATION.ordinal(),
+                original.getFullyQualifiedName(),
+                updated.getFullyQualifiedName());
       }
     }
 
@@ -967,6 +978,7 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
               original.getFullyQualifiedName(),
               updated.getFullyQualifiedName());
 
+      // update tags
       daoCollection
           .tagUsageDAO()
           .renameByTargetFQNHash(
