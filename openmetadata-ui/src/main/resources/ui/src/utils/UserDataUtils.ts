@@ -15,12 +15,24 @@ import { isEqual } from 'lodash';
 import { OidcUser } from '../components/Auth/AuthProviders/AuthProvider.interface';
 import { WILD_CARD_CHAR } from '../constants/char.constants';
 import { SettledStatus } from '../enums/Axios.enum';
+import { EntityType } from '../enums/entity.enum';
 import { SearchIndex } from '../enums/search.enum';
-import { SearchResponse } from '../interface/search.interface';
+import {
+  SearchHitBody,
+  SearchResponse,
+  TeamSearchSource,
+  UserSearchSource,
+} from '../interface/search.interface';
 import { getSearchedTeams, getSearchedUsers } from '../rest/miscAPI';
 import { User } from './../generated/entity/teams/user';
-import { formatTeamsResponse, formatUsersResponse } from './APIUtils';
+import {
+  formatTeamsResponse,
+  formatUsersResponse,
+  getTeamResponse,
+  getUserResponse,
+} from './APIUtils';
 import { getImages } from './CommonUtils';
+import { getEntityReferenceFromEntity } from './EntityUtils';
 import {
   getImageWithResolutionAndFallback,
   ImageQuality,
@@ -123,4 +135,30 @@ export const getUserWithImage = (user: User) => {
   }
 
   return user;
+};
+
+type TeamHitBody = SearchHitBody<
+  SearchIndex.TEAM,
+  Pick<TeamSearchSource, keyof TeamSearchSource>
+>;
+
+type UserHitBody = SearchHitBody<
+  SearchIndex.USER,
+  Pick<UserSearchSource, keyof UserSearchSource>
+>;
+
+export const getUserTeamEntityRefListFromSourceData = (
+  data: (TeamHitBody | UserHitBody)[]
+) => {
+  return data.map((entity) => {
+    if (entity._source.entityType === EntityType.TEAM) {
+      const teamEntity = getTeamResponse(entity as TeamHitBody);
+
+      return getEntityReferenceFromEntity(teamEntity, EntityType.TEAM);
+    } else {
+      const userEntity = getUserResponse(entity as UserHitBody);
+
+      return getEntityReferenceFromEntity(userEntity, EntityType.USER);
+    }
+  });
 };
