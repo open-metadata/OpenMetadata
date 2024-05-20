@@ -175,7 +175,6 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
   const [childMap, setChildMap] = useState<EntityReferenceChild>();
   const [paginationData, setPaginationData] = useState({});
   const { showModal } = useEntityExportModalProvider();
-  const [exportResult, setExportResult] = useState<string>('');
 
   const initLineageChildMaps = useCallback(
     (
@@ -228,11 +227,10 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
             entityType !== EntityType.PIPELINE &&
             entityType !== EntityType.STORED_PROCEDURE
           ) {
-            const { map: childMapObj, exportResult } = getChildMap(
+            const { map: childMapObj } = getChildMap(
               { ...res, nodes: allNodes },
               decodedFqn
             );
-            setExportResult(exportResult);
             setChildMap(childMapObj);
             const { nodes: newNodes, edges: newEdges } = getPaginatedChildMap(
               {
@@ -250,8 +248,6 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
               edges: [...(res.edges ?? []), ...newEdges],
             });
           } else {
-            const csv = getExportData(allNodes);
-            setExportResult(csv);
             setEntityLineage({
               ...res,
               nodes: allNodes,
@@ -281,9 +277,20 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
 
   const exportLineageData = useCallback(
     async (_: string) => {
+      if (
+        entityType === EntityType.PIPELINE ||
+        entityType === EntityType.STORED_PROCEDURE
+      ) {
+        // Since pipeline is an edge, we cannot create a tree, hence we take the nodes from the lineage response
+        // to get the export data.
+        return getExportData(entityLineage.nodes ?? []);
+      }
+
+      const { exportResult } = getChildMap(entityLineage, decodedFqn);
+
       return exportResult;
     },
-    [exportResult]
+    [entityType, decodedFqn, entityLineage]
   );
 
   const onExportClick = useCallback(() => {
@@ -293,7 +300,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
         onExport: exportLineageData,
       });
     }
-  }, [decodedFqn, exportResult]);
+  }, [entityType, decodedFqn, entityLineage]);
 
   const loadChildNodesHandler = useCallback(
     async (node: SourceType, direction: EdgeTypeEnum) => {
