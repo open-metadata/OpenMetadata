@@ -12,6 +12,7 @@
 """
 Source connection handler
 """
+import enum
 from typing import Optional
 from urllib.parse import quote_plus
 
@@ -32,7 +33,7 @@ from metadata.ingestion.ometa.ometa_api import OpenMetadata
 
 
 def get_connection_url(connection: TeradataConnection) -> str:
-    url = f'{connection.scheme}://{connection.hostPort}/'
+    url = f'{connection.scheme.value}://{connection.hostPort}/'
     url += f'?user={quote_plus(connection.username)}'
     if connection.password:
         url += f'&password={quote_plus(connection.password.get_secret_value())}'
@@ -40,7 +41,7 @@ def get_connection_url(connection: TeradataConnection) -> str:
     if connection.databaseName:
         url += f'&database={quote_plus(connection.username)}'
     # add standard options
-    params = '&'.join([f'{key}={quote_plus(getattr(connection, key, None))}'
+    params = '&'.join([f'{key}={quote_plus(str(getattr(connection, key) if not isinstance(getattr(connection, key), enum.Enum) else getattr(connection, key).value )) }'
                      for key in ['account', 'logdata', 'logmech', 'tmode']
                      if getattr(connection, key, None)])
     url = f'{url}&{params}'
@@ -48,7 +49,8 @@ def get_connection_url(connection: TeradataConnection) -> str:
     # add additional options if specified
     options = get_connection_options_dict(connection)
     if options:
-        params = "&".join(f"{key}={quote_plus(value)}" for (key, value) in options.items() if value)
+        params = "&".join(f"{key}={quote_plus(str( value if not isinstance(value, enum.Enum) else value.value  ))}"
+                          for (key, value) in options.items() if value)
         url += f"{url}&{params}"
 
     return url

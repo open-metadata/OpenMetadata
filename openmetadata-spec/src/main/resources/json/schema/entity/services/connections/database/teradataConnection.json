@@ -55,7 +55,7 @@
       "default": "TD2"
     },
     "logdata": {
-      "title": "Extra data for the chosen logon authentication method",
+      "title": "Extra data for the chosen logon authentication method (LOGDATA)",
       "description": "Specifies additional data needed by a logon mechanism, such as a secure token, Distinguished Name, or a domain/realm name. LOGDATA values are specific to each logon mechanism.",
       "type": "string"
     },
@@ -95,9 +95,6 @@
     },
     "supportsUsageExtraction": {
       "$ref": "../connectionBasicType.json#/definitions/supportsUsageExtraction"
-    },
-    "supportsDBTExtraction": {
-      "$ref": "../connectionBasicType.json#/definitions/supportsDBTExtraction"
     },
     "supportsLineageExtraction": {
       "$ref": "../connectionBasicType.json#/definitions/supportsLineageExtraction"

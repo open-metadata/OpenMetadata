@@ -27,6 +27,14 @@ from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.database.common_db_source import CommonDbSourceService
 
+from metadata.ingestion.source.database.teradata.utils import get_table_comment
+
+from metadata.utils.sqlalchemy_utils import (
+    get_all_table_comments,
+)
+
+TeradataDialect.get_table_comment = get_table_comment
+TeradataDialect.get_all_table_comments = get_all_table_comments
 
 class TeradataSource(CommonDbSourceService):
     """

@@ -13,13 +13,13 @@
         "name": "GetDatabases",
         "description": "List all the databases available to the user.",
         "errorMessage": "Failed to fetch databases, please validate if the user has enough privilege to fetch databases.",
-        "mandatory": true
+        "mandatory": false
       },
       {
         "name": "GetSchemas",
         "description": "List all the schemas available to the user.",
         "errorMessage": "Failed to fetch schemas, please validate if the user has enough privilege to fetch schemas.",
-        "mandatory": false
+        "mandatory": true
       },
       {
         "name": "GetTables",
@@ -31,7 +31,7 @@
         "name": "GetViews",
         "description": "From a given schema, list the views belonging to that schema. If no schema is specified, we'll list the tables of a random schema.",
         "errorMessage": "Failed to fetch views, please validate if the user has enough privilege to fetch views.",
-        "mandatory": false
+        "mandatory": true
       }
     ]
   }
