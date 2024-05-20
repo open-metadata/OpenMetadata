@@ -44,6 +44,10 @@ public interface EntityDAO<T extends EntityInterface> {
   /** Methods that need to be overridden by interfaces extending this */
   String getTableName();
 
+  default String getPaginationColumnPrefix() {
+    return "name";
+  }
+
   Class<T> getEntityClass();
 
   default String getNameHashColumn() {
@@ -280,48 +284,27 @@ public interface EntityDAO<T extends EntityInterface> {
       @Bind("after") String after,
       @Define("groupBy") String groupBy);
 
-  @ConnectionAwareSqlQuery(
-      value =
-          "SELECT json FROM ("
-              + "SELECT name, json FROM <table> <cond> AND "
-              + "JSON_EXTRACT(json, '$.fullyQualifiedName') < :before "
-              + // Pagination by entity fullyQualifiedName or name (when entity does not have fqn)
-              "ORDER BY JSON_EXTRACT(json, '$.fullyQualifiedName') DESC "
-              + // Pagination ordering by entity fullyQualifiedName or name (when entity does not
-              // have
-              // fqn)
-              "LIMIT :limit"
-              + ") last_rows_subquery ORDER BY JSON_EXTRACT(json, '$.fullyQualifiedName')",
-      connectionType = MYSQL)
-  @ConnectionAwareSqlQuery(
-      value =
-          "SELECT json FROM ("
-              + "SELECT name, json FROM <table> <cond> AND "
-              + "json->>'fullyQualifiedName' < :before "
-              + // Pagination by entity fullyQualifiedName or name (when entity does not have fqn)
-              "ORDER BY json->>'fullyQualifiedName' DESC "
-              + // Pagination ordering by entity fullyQualifiedName or name (when entity does not
-              // have
-              // fqn)
-              "LIMIT :limit"
-              + ") last_rows_subquery ORDER BY json->>'fullyQualifiedName'",
-      connectionType = POSTGRES)
-  List<String> listBefore(
+  @SqlQuery(
+      "SELECT json FROM ("
+          + "SELECT <name>, json FROM <table> <cond> AND "
+          + "<name> < :before "
+          + // Pagination by entity fullyQualifiedName or name (when entity does not have fqn)
+          "ORDER BY <name> DESC "
+          + // Pagination ordering by entity fullyQualifiedName or name (when entity does not have
+          // fqn)
+          "LIMIT :limit"
+          + ") last_rows_subquery ORDER BY <name>")
+  List<String> listBeforePagination(
       @Define("table") String table,
+      @Define("name") String name,
       @Define("cond") String cond,
       @Bind("limit") int limit,
       @Bind("before") String before);
 
-  @ConnectionAwareSqlQuery(
-      value =
-          "SELECT json FROM <table> <cond> AND JSON_EXTRACT(json, '$.fullyQualifiedName') > :after ORDER BY JSON_EXTRACT(json, '$.fullyQualifiedName') LIMIT :limit",
-      connectionType = MYSQL)
-  @ConnectionAwareSqlQuery(
-      value =
-          "SELECT json FROM <table> <cond> AND json->>'fullyQualifiedName' > :after ORDER BY json->>'fullyQualifiedName' LIMIT :limit",
-      connectionType = POSTGRES)
-  List<String> listAfter(
+  @SqlQuery("SELECT json FROM <table> <cond> AND <name> > :after ORDER BY <name> LIMIT :limit")
+  List<String> listAfterPagination(
       @Define("table") String table,
+      @Define("name") String name,
       @Define("cond") String cond,
       @Bind("limit") int limit,
       @Bind("after") String after);
@@ -445,13 +428,15 @@ public interface EntityDAO<T extends EntityInterface> {
   default List<String> listBefore(ListFilter filter, int limit, String before) {
     // Quoted name is stored in fullyQualifiedName column and not in the name column
     before = FullyQualifiedName.unquoteName(before);
-    return listBefore(getTableName(), filter.getCondition(), limit, before);
+    return listBeforePagination(
+        getTableName(), getPaginationColumnPrefix(), filter.getCondition(), limit, before);
   }
 
   default List<String> listAfter(ListFilter filter, int limit, String after) {
     // Quoted name is stored in fullyQualifiedName column and not in the name column
     after = FullyQualifiedName.unquoteName(after);
-    return listAfter(getTableName(), filter.getCondition(), limit, after);
+    return listAfterPagination(
+        getTableName(), getPaginationColumnPrefix(), filter.getCondition(), limit, after);
   }
 
   default List<String> listAfterWithOffset(int limit, int offset) {
