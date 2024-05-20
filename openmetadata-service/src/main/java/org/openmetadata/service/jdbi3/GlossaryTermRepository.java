@@ -100,6 +100,8 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
   private static final String UPDATE_FIELDS = "references,relatedTerms,synonyms";
   private static final String PATCH_FIELDS = "references,relatedTerms,synonyms";
 
+  private static GlossaryTerm valueBeforeUpdate = new GlossaryTerm();
+
   public GlossaryTermRepository() {
     super(
         GlossaryTermResource.COLLECTION_PATH,
@@ -567,6 +569,7 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
   @Override
   public GlossaryTermUpdater getUpdater(
       GlossaryTerm original, GlossaryTerm updated, Operation operation) {
+    valueBeforeUpdate = original;
     return new GlossaryTermUpdater(original, updated, operation);
   }
 
@@ -589,9 +592,9 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
         closeApprovalTask(updated, "Rejected the glossary term");
       }
     }
-    if (!nullOrEmpty(original)
-        && !original.getFullyQualifiedName().equals(updated.getFullyQualifiedName())) {
-      updateAssetIndexesOnGlossaryTermUpdate(original, updated);
+    if (!nullOrEmpty(valueBeforeUpdate)
+        && !valueBeforeUpdate.getFullyQualifiedName().equals(updated.getFullyQualifiedName())) {
+      updateAssetIndexesOnGlossaryTermUpdate(valueBeforeUpdate, updated);
     }
   }
 
