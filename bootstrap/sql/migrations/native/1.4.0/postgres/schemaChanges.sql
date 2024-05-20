@@ -354,3 +354,6 @@ delete from QRTZ_JOB_DETAILS;
 delete from QRTZ_FIRED_TRIGGERS;
 
 DELETE from event_subscription_entity where name = 'ActivityFeedAlert';
+
+ALTER TABLE glossary_term_entity ADD COLUMN fullyQualifiedName VARCHAR(768) GENERATED ALWAYS AS (json ->> 'fullyQualifiedName') STORED NOT NULL;
+ALTER TABLE tag ADD COLUMN fullyQualifiedName VARCHAR(768) GENERATED ALWAYS AS (json ->> 'fullyQualifiedName') STORED NOT NULL;
