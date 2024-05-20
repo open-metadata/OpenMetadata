@@ -11,21 +11,24 @@
 """
 Test helper functions
 """
-from unittest import TestCase
-
 from openmetadata_managed_apis.api.utils import clean_dag_id
+from openmetadata_managed_apis.workflows.ingestion.common import clean_name_tag
 
 
-class TestHelpers(TestCase):
+def test_clean_dag_id():
     """
-    Methods to validate helpers on REST APIs
+    To make sure airflow can parse it
     """
+    assert clean_dag_id("hello") == "hello"
+    assert clean_dag_id("hello(world)") == "hello_world_"
+    assert clean_dag_id("hello-world") == "hello-world"
+    assert clean_dag_id("%%&^++hello__") == "_hello__"
 
-    def test_clean_dag_id(self):
-        """
-        To make sure airflow can parse it
-        """
-        self.assertEqual(clean_dag_id("hello"), "hello")
-        self.assertEqual(clean_dag_id("hello(world)"), "hello_world_")
-        self.assertEqual(clean_dag_id("hello-world"), "hello-world")
-        self.assertEqual(clean_dag_id("%%&^++hello__"), "_hello__")
+
+def test_clean_tag():
+    """We can properly tag airflow DAGs"""
+
+    assert clean_name_tag("hello") == "hello"
+    assert clean_name_tag("hello(world)") == "hello(world)"
+    assert clean_name_tag("service.pipeline") == "pipeline"
+    assert clean_name_tag(f"service.{'a' * 200}") == "a" * 90

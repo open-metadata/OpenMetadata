@@ -257,8 +257,10 @@ const AppLogsViewer = ({ data }: AppLogsViewerProps) => {
 
   return (
     <>
-      {successContext?.stats && statsRender(successContext?.stats.jobStats)}
-      {failureContext?.stats && statsRender(failureContext?.stats.jobStats)}
+      {successContext?.stats?.jobStats &&
+        statsRender(successContext?.stats.jobStats)}
+      {failureContext?.stats?.jobStats &&
+        statsRender(failureContext?.stats.jobStats)}
 
       {successContext?.stats?.entityStats &&
         entityStatsRenderer(successContext.stats.entityStats)}
