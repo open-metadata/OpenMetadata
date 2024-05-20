@@ -6,6 +6,7 @@ import org.jdbi.v3.core.Jdbi;
 import org.openmetadata.schema.configuration.LimitsConfiguration;
 import org.openmetadata.schema.system.LimitsConfig;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
+import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContextInterface;
 
 public class DefaultLimits implements Limits {
@@ -22,7 +23,7 @@ public class DefaultLimits implements Limits {
 
   @Override
   public void enforceLimits(
-      SecurityContext securityContext, ResourceContextInterface resourceContext) {
+      SecurityContext securityContext, ResourceContextInterface resourceContext, OperationContext operationContext) {
     // do not enforce limits
   }
 
