@@ -324,6 +324,7 @@ test = {
     "minio==7.2.5",
     *plugins["mlflow"],
     *plugins["datalake-s3"],
+    "requests==2.30.0",
 }
 
 e2e_test = {
