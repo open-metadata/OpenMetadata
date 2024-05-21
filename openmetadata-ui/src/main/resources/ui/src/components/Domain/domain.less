@@ -50,10 +50,16 @@
   }
 }
 
-.domain-form-container .toastui-editor,
-.add-data-product-modal .toastui-editor {
-  min-height: 150px !important; // overriding inline style
-  .ProseMirror {
+.domain-form-container,
+.add-data-product-modal {
+  .toastui-editor {
+    min-height: 150px !important; // overriding inline style
+
+    .ProseMirror {
+      min-height: 150px;
+    }
+  }
+  .toastui-editor-md-preview {
     min-height: 150px;
   }
 }

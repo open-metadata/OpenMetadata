@@ -44,7 +44,10 @@
         "EditLifeCycle",
         "EditKnowledgePanel",
         "EditPage",
-        "DeleteTestCaseFailedRowsSample"
+        "DeleteTestCaseFailedRowsSample",
+        "Deploy",
+        "Trigger",
+        "Kill"
       ]
     }
   },

@@ -20,6 +20,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import lombok.Getter;
+import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 import org.glassfish.jersey.internal.util.ExceptionUtils;
 import org.openmetadata.schema.EntityInterface;
@@ -42,7 +43,7 @@ public class PaginatedEntitiesSource implements Source<ResultList<? extends Enti
   @Getter private final List<String> readerErrors = new ArrayList<>();
   @Getter private final StepStats stats = new StepStats();
   @Getter private String lastFailedCursor = null;
-  private String cursor = RestUtil.encodeCursor("0");
+  @Setter private String cursor = RestUtil.encodeCursor("0");
   @Getter private boolean isDone = false;
 
   public PaginatedEntitiesSource(String entityType, int batchSize, List<String> fields) {
@@ -138,9 +139,5 @@ public class PaginatedEntitiesSource implements Source<ResultList<? extends Enti
   @Override
   public void updateStats(int currentSuccess, int currentFailed) {
     getUpdatedStats(stats, currentSuccess, currentFailed);
-  }
-
-  public void setCursor(String cursor) {
-    this.cursor = cursor;
   }
 }

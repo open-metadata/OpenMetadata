@@ -41,7 +41,7 @@ const SignUp = () => {
   const { t } = useTranslation();
   const history = useHistory();
   const {
-    setIsSigningIn,
+    setIsSigningUp,
     jwtPrincipalClaims = [],
     authorizerConfig,
     updateCurrentUser,
@@ -67,7 +67,7 @@ const SignUp = () => {
       if (urlPathname) {
         setUrlPathnameExpiryAfterRoute(urlPathname);
       }
-      setIsSigningIn(false);
+      setIsSigningUp(false);
       history.push(ROUTES.HOME);
     } catch (error) {
       showErrorToast(

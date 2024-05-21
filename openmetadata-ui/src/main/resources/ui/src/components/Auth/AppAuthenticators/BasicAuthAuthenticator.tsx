@@ -25,6 +25,7 @@ import {
 } from '../../../rest/auth-API';
 
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
+import Loader from '../../common/Loader/Loader';
 import { useBasicAuth } from '../AuthProviders/BasicAuthProvider';
 
 interface BasicAuthenticatorInterface {
@@ -41,6 +42,7 @@ const BasicAuthenticator = forwardRef(
       getRefreshToken,
       setRefreshToken,
       setOidcToken,
+      isApplicationLoading,
     } = useApplicationStore();
 
     const handleSilentSignIn = async (): Promise<AccessTokenResponse> => {
@@ -72,6 +74,17 @@ const BasicAuthenticator = forwardRef(
         return handleSilentSignIn();
       },
     }));
+
+    /**
+     * isApplicationLoading is true when the application is loading in AuthProvider
+     * and is false when the application is loaded.
+     * If the application is loading, show the loader.
+     * If the user is authenticated, show the AppContainer.
+     * If the user is not authenticated, show the UnAuthenticatedAppRouter.
+     * */
+    if (isApplicationLoading) {
+      return <Loader fullScreen />;
+    }
 
     return <Fragment>{children}</Fragment>;
   }

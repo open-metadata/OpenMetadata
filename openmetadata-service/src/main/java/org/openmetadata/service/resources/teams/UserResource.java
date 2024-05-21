@@ -551,7 +551,8 @@ public class UserResource extends EntityResource<User, UserRepository> {
       @Valid CreateUser create) {
     User user = getUser(securityContext.getUserPrincipal().getName(), create);
     ResourceContext<?> resourceContext = getResourceContextByName(user.getFullyQualifiedName());
-    limits.enforceLimits(securityContext, resourceContext);
+    OperationContext operationContext = new OperationContext(entityType, MetadataOperation.CREATE);
+    limits.enforceLimits(securityContext, resourceContext, operationContext);
     if (Boolean.TRUE.equals(create.getIsAdmin())) {
       authorizer.authorizeAdmin(securityContext);
     }
@@ -1286,7 +1287,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
     User user =
         repository.getByName(
             null, userName, getFields("roles,email,isBot"), Include.NON_DELETED, false);
-    if (Boolean.FALSE.equals(user.getIsBot())) {
+    if (user.getIsBot() == null || Boolean.FALSE.equals(user.getIsBot())) {
       // Create Personal Access Token
       JWTAuthMechanism authMechanism =
           JWTTokenGenerator.getInstance()

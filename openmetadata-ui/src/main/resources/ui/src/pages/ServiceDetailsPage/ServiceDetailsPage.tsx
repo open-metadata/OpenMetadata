@@ -142,12 +142,6 @@ const ServiceDetailsPage: FunctionComponent = () => {
   }>();
 
   const { fqn: decodedServiceFQN } = useFqn();
-  const extraDropdownContent = entityUtilClassBase.getManageExtraOptions(
-    serviceCategory === 'databaseServices'
-      ? EntityType.DATABASE_SERVICE
-      : EntityType.ALL,
-    decodedServiceFQN
-  );
 
   const isMetadataService = useMemo(
     () => serviceCategory === ServiceCategory.METADATA_SERVICES,
@@ -194,6 +188,18 @@ const ServiceDetailsPage: FunctionComponent = () => {
   const [servicePermission, setServicePermission] =
     useState<OperationPermission>(DEFAULT_ENTITY_PERMISSION);
   const [currentPage, setCurrentPage] = useState(INITIAL_PAGING_VALUE);
+
+  const extraDropdownContent = useMemo(
+    () =>
+      entityUtilClassBase.getManageExtraOptions(
+        serviceCategory === 'databaseServices'
+          ? EntityType.DATABASE_SERVICE
+          : EntityType.ALL,
+        decodedServiceFQN,
+        servicePermission
+      ),
+    [servicePermission, decodedServiceFQN, serviceCategory]
+  );
 
   const handleShowDeleted = useCallback((value: boolean) => {
     setShowDeleted(value);

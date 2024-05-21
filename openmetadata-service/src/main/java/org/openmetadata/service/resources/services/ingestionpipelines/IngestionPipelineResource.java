@@ -79,6 +79,7 @@ import org.openmetadata.service.secrets.SecretsManagerFactory;
 import org.openmetadata.service.secrets.masker.EntityMaskerFactory;
 import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.security.policyevaluator.CreateResourceContext;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.OpenMetadataConnectionBuilder;
@@ -490,7 +491,7 @@ public class IngestionPipelineResource
   @Path("/deploy/{id}")
   @Operation(
       summary = "Deploy an ingestion pipeline run",
-      description = "Trigger a ingestion pipeline run by Id.",
+      description = "Deploy a ingestion pipeline run by Id.",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -923,6 +924,10 @@ public class IngestionPipelineResource
       UUID id, UriInfo uriInfo, SecurityContext securityContext) {
     Fields fields = getFields(FIELD_OWNER);
     IngestionPipeline ingestionPipeline = repository.get(uriInfo, id, fields);
+    CreateResourceContext<IngestionPipeline> createResourceContext =
+        new CreateResourceContext<>(entityType, ingestionPipeline);
+    OperationContext operationContext = new OperationContext(entityType, MetadataOperation.DEPLOY);
+    limits.enforceLimits(securityContext, createResourceContext, operationContext);
     decryptOrNullify(securityContext, ingestionPipeline, true);
     ServiceEntityInterface service =
         Entity.getEntity(ingestionPipeline.getService(), "", Include.NON_DELETED);
@@ -938,6 +943,10 @@ public class IngestionPipelineResource
       UUID id, UriInfo uriInfo, SecurityContext securityContext, String botName) {
     Fields fields = getFields(FIELD_OWNER);
     IngestionPipeline ingestionPipeline = repository.get(uriInfo, id, fields);
+    CreateResourceContext<IngestionPipeline> createResourceContext =
+        new CreateResourceContext<>(entityType, ingestionPipeline);
+    OperationContext operationContext = new OperationContext(entityType, MetadataOperation.TRIGGER);
+    limits.enforceLimits(securityContext, createResourceContext, operationContext);
     if (CommonUtil.nullOrEmpty(botName)) {
       // Use Default Ingestion Bot
       ingestionPipeline.setOpenMetadataServerConnection(
