@@ -56,6 +56,7 @@ class TrinoContainer(DbContainer):
             path=os.path.dirname(__file__) + "/trino",
             tag=self._built_image,
             buildargs={"BASE_IMAGE": self.image},
+            rm=True,
         )
 
 
@@ -93,6 +94,7 @@ class HiveMetaStoreContainer(DockerContainer):
             buildargs={
                 "BASE_IMAGE": self.image,
             },
+            rm=True,
         )
 
 
