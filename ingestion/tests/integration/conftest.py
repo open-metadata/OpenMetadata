@@ -1,6 +1,7 @@
 import pytest
 
 from .integration_base import int_admin_ometa
+from testcontainers.core.config import testcontainers_config
 
 
 @pytest.fixture(scope="module")
@@ -14,3 +15,8 @@ def pytest_pycollect_makeitem(collector, name, obj):
             return []
     except AttributeError:
         pass
+
+
+@pytest.fixture(scope="session", autouse=True)
+def config_testcontatiners():
+    testcontainers_config.max_tries = 10

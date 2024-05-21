@@ -116,6 +116,11 @@ def trino_container(hive_metastore_container, minio_container, docker_network):
             f"http://minio:{minio_container.port}",
         ) as trino
     ):
+        engine = create_engine(trino.get_connection_url())
+        retry(
+            stop=stop_after_delay(60),
+            wait=wait_fixed(1),
+        )(lambda: engine.execute("SHOW SCHEMAS FROM minio").fetchone())
         yield trino
 
 
