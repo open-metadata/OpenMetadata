@@ -10,7 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { isNil } from 'lodash';
 import { create } from 'zustand';
+import { getLimitByResource } from '../../rest/limitsAPI';
 
 export interface ResourceLimit {
   featureLimitStatuses: Array<{
@@ -23,7 +25,7 @@ export interface ResourceLimit {
         hardLimit: number;
       };
     };
-    limitReached: false;
+    limitReached: boolean;
     currentCount: number;
   }>;
 }
@@ -58,15 +60,26 @@ export type LimitConfig = {
  */
 export const useLimitStore = create<{
   config: null | LimitConfig;
-  resourceLimit: Record<string, ResourceLimit>;
+  resourceLimit: Record<string, ResourceLimit['featureLimitStatuses'][number]>;
   bannerDetails: {
     header: string;
     subheader: string;
+    type: 'warning' | 'danger';
   } | null;
+  getResourceLimit: (
+    resource: string
+  ) => Promise<ResourceLimit['featureLimitStatuses'][number]>;
   setConfig: (config: LimitConfig) => void;
-  setResourceLimit: (resource: string, limit: ResourceLimit) => void;
+  setResourceLimit: (
+    resource: string,
+    limit: ResourceLimit['featureLimitStatuses'][number]
+  ) => void;
   setBannerDetails: (
-    details: { header: string; subheader: string } | null
+    details: {
+      header: string;
+      subheader: string;
+      type: 'warning' | 'danger';
+    } | null
   ) => void;
 }>()((set, get) => ({
   config: null,
@@ -76,12 +89,53 @@ export const useLimitStore = create<{
   setConfig: (config: LimitConfig) => {
     set({ config });
   },
-  setResourceLimit: (resource: string, limit: ResourceLimit) => {
+  setResourceLimit: (
+    resource: string,
+    limit: ResourceLimit['featureLimitStatuses'][number]
+  ) => {
     const { resourceLimit } = get();
 
     set({ resourceLimit: { ...resourceLimit, [resource]: limit } });
   },
-  setBannerDetails: (details: { header: string; subheader: string } | null) => {
+  setBannerDetails: (
+    details: {
+      header: string;
+      subheader: string;
+      type: 'warning' | 'danger';
+    } | null
+  ) => {
     set({ bannerDetails: details });
+  },
+  getResourceLimit: async (resource: string) => {
+    const { setResourceLimit, resourceLimit, setBannerDetails } = get();
+
+    let rLimit = resourceLimit[resource];
+
+    if (isNil(rLimit)) {
+      const limit = await getLimitByResource(resource);
+
+      setResourceLimit(resource, {
+        ...limit.featureLimitStatuses[0],
+        limitReached: true,
+      });
+      rLimit = limit.featureLimitStatuses[0];
+    }
+
+    if (rLimit) {
+      const {
+        configuredLimit: { limits },
+        currentCount,
+        limitReached = true,
+      } = rLimit;
+
+      limitReached &&
+        setBannerDetails({
+          header: 'Limit Reached',
+          type: currentCount > limits.hardLimit ? 'danger' : 'warning',
+          subheader: `You have used ${currentCount} out of ${limits.hardLimit} limit`,
+        });
+    }
+
+    return rLimit;
   },
 }));

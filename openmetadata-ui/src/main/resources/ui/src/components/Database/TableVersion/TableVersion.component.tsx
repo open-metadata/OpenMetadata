@@ -266,6 +266,7 @@ const TableVersion: React.FC<TableVersionProp> = ({
 
       <EntityVersionTimeLine
         currentVersion={toString(version)}
+        entityType={EntityType.TABLE}
         versionHandler={versionHandler}
         versionList={versionList}
         onBack={backHandler}

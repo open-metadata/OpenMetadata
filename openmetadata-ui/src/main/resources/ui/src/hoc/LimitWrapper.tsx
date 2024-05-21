@@ -16,7 +16,6 @@ import classNames from 'classnames';
 import { noop } from 'lodash';
 import React, { ReactElement, useEffect, useState } from 'react';
 import { useLimitStore } from '../context/LimitsProvider/useLimitsStore';
-import { getLimitByResource } from '../rest/limitsAPI';
 
 interface LimitWrapperProps {
   children: ReactElement;
@@ -31,43 +30,26 @@ interface LimitWrapperProps {
  * @returns - Wrapped component
  */
 const LimitWrapper = ({ resource, children }: LimitWrapperProps) => {
-  const { resourceLimit, setResourceLimit, config, setBannerDetails } =
+  const { getResourceLimit, resourceLimit, config, setBannerDetails } =
     useLimitStore();
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
 
-  const fetchResourceLimit = async () => {
-    setLoading(true);
-    const response = await getLimitByResource(resource);
-
-    setResourceLimit(resource, response);
-
-    if (response.featureLimitStatuses[0]) {
-      const {
-        configuredLimit: { limits },
-        currentCount,
-        limitReached,
-      } = response.featureLimitStatuses[0];
-
-      limitReached &&
-        setBannerDetails({
-          header: 'Limit Reached',
-          subheader: `You have used ${currentCount} out of ${limits.hardLimit} limit`,
-        });
-    }
+  const initResourceLimit = async () => {
+    await getResourceLimit(resource);
 
     setLoading(false);
   };
 
   useEffect(() => {
     if (resource) {
-      fetchResourceLimit();
+      initResourceLimit();
     }
 
     return () => {
       setBannerDetails(null);
     };
   }, [resource]);
-  const currentLimits = resourceLimit[resource]?.featureLimitStatuses[0];
+  const currentLimits = resourceLimit[resource];
 
   const limitReached = currentLimits?.limitReached;
 
@@ -94,4 +76,4 @@ const LimitWrapper = ({ resource, children }: LimitWrapperProps) => {
   );
 };
 
-export default React.memo(LimitWrapper);
+export default LimitWrapper;

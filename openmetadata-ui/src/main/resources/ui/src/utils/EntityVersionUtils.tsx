@@ -36,6 +36,7 @@ import {
   ExtentionEntities,
   ExtentionEntitiesKeys,
 } from '../components/common/CustomPropertyTable/CustomPropertyTable.interface';
+import { VersionButton } from '../components/Entity/EntityVersionTimeLine/EntityVersionTimeLine';
 import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
 import { EntityField } from '../constants/Feeds.constants';
 import { EntityType } from '../enums/entity.enum';
@@ -923,3 +924,39 @@ export const getCommonDiffsFromVersionData = (
     currentVersionData.description
   ),
 });
+
+export const renderVersionButton = (
+  version: string,
+  current: string,
+  versionHandler: (version: string) => void
+) => {
+  const currV = JSON.parse(version);
+
+  const majorVersionChecks = () => {
+    return isMajorVersion(
+      parseFloat(currV?.changeDescription?.previousVersion)
+        .toFixed(1)
+        .toString(),
+      parseFloat(currV?.version).toFixed(1).toString()
+    );
+  };
+
+  return (
+    <Fragment key={currV.version}>
+      {/* {i === 0 ? (
+        <div className="timeline-content cursor-pointer">
+          <div className="timeline-wrapper">
+            <span className="timeline-line-se" />
+          </div>
+        </div>
+      ) : null} */}
+
+      <VersionButton
+        isMajorVersion={majorVersionChecks()}
+        selected={toString(currV.version) === current}
+        version={currV}
+        onVersionSelect={versionHandler}
+      />
+    </Fragment>
+  );
+};
