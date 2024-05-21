@@ -1708,7 +1708,11 @@ public abstract class EntityRepository<T extends EntityInterface> {
               CatalogExceptionMessage.invalidReviewerType(entityReference.getType()));
         }
         EntityReference ref =
-            Entity.getEntityReferenceById(entityReference.getType(), entityReference.getId(), ALL);
+            entityReference.getId() != null
+                ? Entity.getEntityReferenceById(
+                    entityReference.getType(), entityReference.getId(), ALL)
+                : Entity.getEntityReferenceByName(
+                    entityReference.getType(), entityReference.getFullyQualifiedName(), ALL);
         EntityUtil.copy(ref, entityReference);
       }
       entityReferences.sort(EntityUtil.compareEntityReference);
