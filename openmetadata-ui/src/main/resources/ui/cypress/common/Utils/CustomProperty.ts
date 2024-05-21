@@ -111,7 +111,7 @@ export const getPropertyValues = (type: string) => {
       };
     case 'entityReference':
       return {
-        value: 'Aaron Johnson',
+        value: 'Adam Matthews',
         newValue: 'Aaron Singh',
       };
 
