@@ -32,6 +32,7 @@ workflowConfig:
 
 import traceback
 from typing import Iterator
+
 from metadata.generated.schema.type.tableQuery import TableQuery
 from metadata.ingestion.source.database.lineage_source import LineageSource
 from metadata.ingestion.source.database.redshift.queries import REDSHIFT_SQL_STATEMENT
@@ -55,7 +56,6 @@ class RedshiftLineageSource(RedshiftQueryParserSource, LineageSource):
 
     sql_stmt = REDSHIFT_SQL_STATEMENT
 
-
     def yield_table_query(self) -> Iterator[TableQuery]:
         """
         Given an engine, iterate over the query results to
@@ -73,7 +73,9 @@ class RedshiftLineageSource(RedshiftQueryParserSource, LineageSource):
                     query_dict = dict(row)
                     try:
                         yield TableQuery(
-                            query=query_dict["query_text"].replace("\\n", "\n").replace("\\r", ""),
+                            query=query_dict["query_text"]
+                            .replace("\\n", "\n")
+                            .replace("\\r", ""),
                             databaseName=self.get_database_name(query_dict),
                             serviceName=self.config.serviceName,
                             databaseSchema=self.get_schema_name(query_dict),
