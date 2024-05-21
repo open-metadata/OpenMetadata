@@ -744,6 +744,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
   public final void prepareInternal(T entity, boolean update) {
     validateTags(entity);
+    validateReviewers(entity.getReviewers());
     prepare(entity, update);
     setFullyQualifiedName(entity);
     validateExtension(entity);
@@ -1701,7 +1702,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
   }
 
   public final void validateReviewers(List<EntityReference> entityReferences) {
-    if (entityReferences != null) {
+    if (!nullOrEmpty(entityReferences)) {
       for (EntityReference entityReference : entityReferences) {
         if (!entityReference.getType().equals(TEAM) && !entityReference.getType().equals(USER)) {
           throw new IllegalArgumentException(
@@ -1771,7 +1772,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
   protected List<EntityReference> getReviewers(T entity) {
     return supportsReviewers
-        ? findFrom(entity.getId(), entityType, Relationship.REVIEWS, Entity.USER)
+        ? findFrom(entity.getId(), entityType, Relationship.REVIEWS, null)
         : null;
   }
 

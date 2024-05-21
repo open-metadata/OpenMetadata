@@ -181,9 +181,6 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
     // Validate related terms
     EntityUtil.populateEntityReferences(entity.getRelatedTerms());
 
-    // Validate reviewers
-    validateReviewers(entity.getReviewers());
-
     if (!update || entity.getStatus() == null) {
       // If parentTerm or glossary has reviewers set, the glossary term can only be created in
       // `Draft` mode
@@ -226,7 +223,11 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
     }
     for (EntityReference reviewer : listOrEmpty(entity.getReviewers())) {
       addRelationship(
-          reviewer.getId(), entity.getId(), Entity.USER, GLOSSARY_TERM, Relationship.REVIEWS);
+          reviewer.getId(),
+          entity.getId(),
+          reviewer.getType(),
+          GLOSSARY_TERM,
+          Relationship.REVIEWS);
     }
   }
 

@@ -99,9 +99,7 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
   }
 
   @Override
-  public void prepare(Glossary glossary, boolean update) {
-    validateReviewers(glossary.getReviewers());
-  }
+  public void prepare(Glossary glossary, boolean update) {}
 
   @Override
   public void storeEntity(Glossary glossary, boolean update) {
@@ -116,7 +114,11 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
   public void storeRelationships(Glossary glossary) {
     for (EntityReference reviewer : listOrEmpty(glossary.getReviewers())) {
       addRelationship(
-          reviewer.getId(), glossary.getId(), Entity.USER, Entity.GLOSSARY, Relationship.REVIEWS);
+          reviewer.getId(),
+          glossary.getId(),
+          reviewer.getType(),
+          Entity.GLOSSARY,
+          Relationship.REVIEWS);
     }
   }
 
