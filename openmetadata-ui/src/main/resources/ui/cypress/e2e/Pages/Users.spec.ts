@@ -307,19 +307,19 @@ describe('User with different Roles', { tags: 'Settings' }, () => {
 
   it('Admin Soft delete user', () => {
     cy.login();
-    visitUserListPage();
+    entity.visitUserListPage();
     entity.softDeleteUser(user.name, user.updatedDisplayName);
   });
 
   it('Admin Restore soft deleted user', () => {
     cy.login();
-    visitUserListPage();
+    entity.visitUserListPage();
     entity.restoreSoftDeletedUser(user.name, user.updatedDisplayName);
   });
 
   it('Admin Permanent Delete User', () => {
     cy.login();
-    visitUserListPage();
+    entity.visitUserListPage();
     entity.permanentDeleteUser(user.name, user.updatedDisplayName);
   });
 

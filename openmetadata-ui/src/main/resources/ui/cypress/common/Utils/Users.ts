@@ -202,7 +202,7 @@ export const updateExpiration = (expiry: number | string) => {
   cy.get('[data-testid="token-expiry"]').click();
   cy.contains(`${expiry} days`).click();
   const expiryDate = customFormatDateTime(
-    getEpochMillisForFutureDays(expiry),
+    getEpochMillisForFutureDays(expiry as number),
     `ccc d'th' MMMM, yyyy`
   );
   cy.get('[data-testid="save-edit"]').click();
