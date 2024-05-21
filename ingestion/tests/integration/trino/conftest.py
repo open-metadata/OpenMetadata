@@ -145,6 +145,10 @@ def hive_metastore_container(mysql_container, minio_container, docker_network):
         ) as hive
     ):
         yield hive
+        print("STDOUT")
+        print(str(hive.get_logs()[0].decode()))
+        print("STDERR")
+        print(str(hive.get_logs()[1].decode()))
 
 
 @pytest.fixture(scope="module")
