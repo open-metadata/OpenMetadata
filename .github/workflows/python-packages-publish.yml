@@ -9,7 +9,7 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-name: Publish openmetadata-airflow-apis
+name: Publish Python Packages
 
 on:
   workflow_dispatch:
@@ -26,12 +26,27 @@ jobs:
           python-version: 3.9
       - name: Install Ubuntu related dependencies
         run: |
-          sudo apt-get install -y libsasl2-dev unixodbc-dev python3-venv
-      - name: Install and Publish PyPi packages
+          sudo apt-get update && sudo apt-get install -y libsasl2-dev unixodbc-dev python3-venv
+      - name: Install and Publish PyPi packages for OpenMetadata Ingestion
+        env:
+          TWINE_USERNAME: '${{ secrets.TWINE_OPENMETADATA_INGESTION_USERNAME }}'
+          TWINE_PASSWORD: '${{ secrets.TWINE_OPENMETADATA_INGESTION_PASSWORD }}'
+        run: |
+          python3 -m venv env
+          source env/bin/activate
+          sudo make install_antlr_cli
+          make install_dev generate
+          cd ingestion; \
+            python -m build; \
+            twine check dist/*; \
+            twine upload dist/* --verbose
+      - name: Install and Publish PyPi packages for OpenMetadata Managed (Airflow) APIs
         env:
           TWINE_USERNAME: '${{ secrets.TWINE_OPENMETADATA_AIRFLOW_MANAGED_APIS_USERNAME }}'
           TWINE_PASSWORD: '${{ secrets.TWINE_OPENMETADATA_AIRFLOW_MANAGED_APIS_PASSWORD }}'
         run: |
+          python3 -m venv env
+          source env/bin/activate
           make install_dev install_apis
           cd openmetadata-airflow-apis; \
             python -m build; \
