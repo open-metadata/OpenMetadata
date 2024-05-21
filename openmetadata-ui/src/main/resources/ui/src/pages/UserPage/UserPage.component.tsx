@@ -14,7 +14,7 @@
 import { Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
-import { isEmpty, isUndefined } from 'lodash';
+import { isEmpty, isUndefined, omitBy } from 'lodash';
 import Qs from 'qs';
 import {
   default as React,
@@ -85,8 +85,8 @@ const UserPage = () => {
     });
   };
 
-  const ErrorPlaceholder = () => {
-    return (
+  const errorPlaceholder = useMemo(
+    () => (
       <div
         className="d-flex items-center justify-center h-full"
         data-testid="error">
@@ -100,8 +100,9 @@ const UserPage = () => {
           />
         </Typography.Paragraph>
       </div>
-    );
-  };
+    ),
+    [username]
+  );
 
   const updateUserDetails = useCallback(
     async (data: Partial<User>, key: keyof User) => {
@@ -115,7 +116,7 @@ const UserPage = () => {
             ...currentUser,
             [key]: response[key],
           };
-          const newUserData = { ...userData, [key]: response[key] };
+          const newUserData: User = { ...userData, [key]: response[key] };
 
           if (key === 'defaultPersona') {
             if (isUndefined(response.defaultPersona)) {
@@ -127,7 +128,8 @@ const UserPage = () => {
           if (userData.id === currentUser?.id) {
             updateCurrentUser(newCurrentUserData as User);
           }
-          setUserData(newUserData);
+          // Omit the undefined values from the User object
+          setUserData(omitBy(newUserData, isUndefined) as User);
         } else {
           throw t('message.unexpected-error');
         }
@@ -147,7 +149,7 @@ const UserPage = () => {
   }
 
   if (isError && isEmpty(userData)) {
-    return <ErrorPlaceholder />;
+    return errorPlaceholder;
   }
 
   return (

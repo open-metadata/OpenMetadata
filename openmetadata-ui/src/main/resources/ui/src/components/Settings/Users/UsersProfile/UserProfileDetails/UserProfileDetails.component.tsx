@@ -13,6 +13,7 @@
 
 import { Button, Divider, Input, Space, Tooltip, Typography } from 'antd';
 import { AxiosError } from 'axios';
+import { isEmpty } from 'lodash';
 import React, { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as EditIcon } from '../../../../../assets/svg/edit-new.svg';
@@ -100,81 +101,84 @@ const UserProfileDetails = ({
     [userData]
   );
 
-  const onDisplayNameChange = (e: React.ChangeEvent<HTMLInputElement>) =>
-    setDisplayName(e.target.value);
+  const onDisplayNameChange = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) =>
+      setDisplayName(isEmpty(e.target.value) ? undefined : e.target.value),
+    []
+  );
 
   const handleDisplayNameSave = useCallback(async () => {
     if (displayName !== userData.displayName) {
       setIsLoading(true);
-      await updateUserDetails(
-        { displayName: displayName ?? '' },
-        'displayName'
-      );
+      await updateUserDetails({ displayName }, 'displayName');
       setIsLoading(false);
     }
     setIsDisplayNameEdit(false);
   }, [userData.displayName, displayName, updateUserDetails]);
 
-  const displayNameRenderComponent = useMemo(
-    () =>
-      isDisplayNameEdit && hasEditPermission ? (
-        <InlineEdit
-          isLoading={isLoading}
-          onCancel={() => setIsDisplayNameEdit(false)}
-          onSave={handleDisplayNameSave}>
-          <Input
-            className="w-full"
-            data-testid="displayName"
-            id="displayName"
-            name="displayName"
-            placeholder={t('label.display-name')}
-            type="text"
-            value={displayName}
-            onChange={onDisplayNameChange}
-          />
-        </InlineEdit>
-      ) : (
-        <Space align="center">
-          <Typography.Text
-            className="font-medium text-md"
-            data-testid="user-name"
-            ellipsis={{ tooltip: true }}
-            style={{ maxWidth: '400px' }}>
-            {hasEditPermission
-              ? userData.displayName ||
-                t('label.add-entity', { entity: t('label.display-name') })
-              : getEntityName(userData)}
-          </Typography.Text>
-          {hasEditPermission && (
-            <Tooltip
-              title={t('label.edit-entity', {
-                entity: t('label.display-name'),
-              })}>
-              <EditIcon
-                className="cursor-pointer align-middle"
-                color={DE_ACTIVE_COLOR}
-                data-testid="edit-displayName"
-                {...ICON_DIMENSION}
-                onClick={(e) => {
-                  // Used to stop click propagation event to parent User.component collapsible panel
-                  e.stopPropagation();
-                  setIsDisplayNameEdit(true);
-                }}
-              />
-            </Tooltip>
-          )}
-        </Space>
-      ),
-    [
-      userData,
-      displayName,
-      isDisplayNameEdit,
-      hasEditPermission,
-      getEntityName,
-      onDisplayNameChange,
-      handleDisplayNameSave,
-    ]
-  );
+  const displayNameRenderComponent = useMemo(() => {
+    const displayNamePlaceHolder = isEmpty(userData.displayName)
+      ? t('label.add-entity', { entity: t('label.display-name') })
+      : userData.displayName;
+
+    const displayNameText = hasEditPermission
+      ? displayNamePlaceHolder
+      : getEntityName(userData);
+
+    return isDisplayNameEdit && hasEditPermission ? (
+      <InlineEdit
+        isLoading={isLoading}
+        onCancel={() => setIsDisplayNameEdit(false)}
+        onSave={handleDisplayNameSave}>
+        <Input
+          className="w-full"
+          data-testid="displayName"
+          id="displayName"
+          name="displayName"
+          placeholder={t('label.display-name')}
+          type="text"
+          value={displayName}
+          onChange={onDisplayNameChange}
+        />
+      </InlineEdit>
+    ) : (
+      <Space align="center">
+        <Typography.Text
+          className="font-medium text-md"
+          data-testid="user-name"
+          ellipsis={{ tooltip: true }}
+          style={{ maxWidth: '400px' }}>
+          {displayNameText}
+        </Typography.Text>
+        {hasEditPermission && (
+          <Tooltip
+            title={t('label.edit-entity', {
+              entity: t('label.display-name'),
+            })}>
+            <EditIcon
+              className="cursor-pointer align-middle"
+              color={DE_ACTIVE_COLOR}
+              data-testid="edit-displayName"
+              {...ICON_DIMENSION}
+              onClick={(e) => {
+                // Used to stop click propagation event to parent User.component collapsible panel
+                e.stopPropagation();
+                setIsDisplayNameEdit(true);
+              }}
+            />
+          </Tooltip>
+        )}
+      </Space>
+    );
+  }, [
+    userData,
+    displayName,
+    isDisplayNameEdit,
+    hasEditPermission,
+    getEntityName,
+    onDisplayNameChange,
+    handleDisplayNameSave,
+  ]);
 
   const changePasswordRenderComponent = useMemo(
     () =>
