@@ -10,12 +10,6 @@
         "mandatory": true
       },
       {
-        "name": "GetDatabases",
-        "description": "List all the databases available to the user.",
-        "errorMessage": "Failed to fetch databases, please validate if the user has enough privilege to fetch databases.",
-        "mandatory": false
-      },
-      {
         "name": "GetSchemas",
         "description": "List all the schemas available to the user.",
         "errorMessage": "Failed to fetch schemas, please validate if the user has enough privilege to fetch schemas.",
@@ -34,6 +28,6 @@
         "mandatory": true
       }
     ]
-  }
+   }
   
   

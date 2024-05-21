@@ -31,8 +31,13 @@ from metadata.ingestion.connections.builders import (
 from metadata.ingestion.connections.test_connections import test_connection_db_common
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 
+from metadata.ingestion.source.database.teradata.queries import TERADATA_GET_DATABASE
+
 
 def get_connection_url(connection: TeradataConnection) -> str:
+    """
+    Create Teradtaa connection url
+    """
     url = f'{connection.scheme.value}://{connection.hostPort}/'
     url += f'?user={quote_plus(connection.username)}'
     if connection.password:
@@ -41,15 +46,16 @@ def get_connection_url(connection: TeradataConnection) -> str:
     if connection.databaseName:
         url += f'&database={quote_plus(connection.username)}'
     # add standard options
-    params = '&'.join([f'{key}={quote_plus(str(getattr(connection, key) if not isinstance(getattr(connection, key), enum.Enum) else getattr(connection, key).value )) }'
-                     for key in ['account', 'logdata', 'logmech', 'tmode']
-                     if getattr(connection, key, None)])
+    params = '&'.join([
+                          f'{key}={quote_plus(str(getattr(connection, key) if not isinstance(getattr(connection, key), enum.Enum) else getattr(connection, key).value))}'
+                          for key in ['account', 'logdata', 'logmech', 'tmode']
+                          if getattr(connection, key, None)])
     url = f'{url}&{params}'
 
     # add additional options if specified
     options = get_connection_options_dict(connection)
     if options:
-        params = "&".join(f"{key}={quote_plus(str( value if not isinstance(value, enum.Enum) else value.value  ))}"
+        params = "&".join(f"{key}={quote_plus(str(value if not isinstance(value, enum.Enum) else value.value))}"
                           for (key, value) in options.items() if value)
         url += f"{url}&{params}"
 
@@ -77,9 +83,14 @@ def test_connection(
     Test connection. This can be executed either as part
     of a metadata workflow or during an Automation Workflow
     """
+    queries = {
+        "GetDatabases": TERADATA_GET_DATABASE
+    }
+
     test_connection_db_common(
         metadata=metadata,
         engine=engine,
         service_connection=service_connection,
         automation_workflow=automation_workflow,
+        queries=queries,
     )

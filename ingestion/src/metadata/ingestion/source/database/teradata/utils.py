@@ -18,9 +18,7 @@ from metadata.ingestion.source.database.teradata.queries import (
 )
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.sqlalchemy_utils import (
-    get_display_datatype,
     get_table_comment_wrapper,
-    get_view_definition_wrapper,
 )
 
 logger = ingestion_logger()

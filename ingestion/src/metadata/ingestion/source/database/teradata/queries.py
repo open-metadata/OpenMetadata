@@ -26,6 +26,22 @@ TERADATA_TABLE_COMMENTS = """
     ORDER BY "schema", "table_name"
 """
 
+TERADATA_GET_STORED_PROCEDURES = """
+SELECT  T.DatabaseName AS database_schema,
+        T.TableName AS procedure_name,
+        case T.TableKind 
+           when 'P' then 'SQL'
+           when 'E' then 'EXTERNAL'
+        END as procedure_type
+FROM    DBC.TablesVX T
+WHERE T.TableKind in ('P', 'E')
+  and T.DatabaseName = '{schema_name}'
+"""
+
+TERADATA_SHOW_STORED_PROCEDURE = """
+SHOW PROCEDURE {schema_name}.{procedure_name};
+"""
+
 TERADATA_VIEW_DEFINITIONS = """
 select dbase.DatabaseNameI,
 tvm.TVMNameI,
