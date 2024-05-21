@@ -182,7 +182,7 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
     EntityUtil.populateEntityReferences(entity.getRelatedTerms());
 
     // Validate reviewers
-    validateUsers(entity.getReviewers());
+    validateReviewers(entity.getReviewers());
 
     if (!update || entity.getStatus() == null) {
       // If parentTerm or glossary has reviewers set, the glossary term can only be created in

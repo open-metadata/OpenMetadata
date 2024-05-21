@@ -100,7 +100,7 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
 
   @Override
   public void prepare(Glossary glossary, boolean update) {
-    validateUsers(glossary.getReviewers());
+    validateReviewers(glossary.getReviewers());
   }
 
   @Override

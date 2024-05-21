@@ -44,6 +44,7 @@ import static org.openmetadata.service.Entity.FIELD_REVIEWERS;
 import static org.openmetadata.service.Entity.FIELD_STYLE;
 import static org.openmetadata.service.Entity.FIELD_TAGS;
 import static org.openmetadata.service.Entity.FIELD_VOTES;
+import static org.openmetadata.service.Entity.TEAM;
 import static org.openmetadata.service.Entity.USER;
 import static org.openmetadata.service.Entity.getEntityByName;
 import static org.openmetadata.service.Entity.getEntityFields;
@@ -1693,6 +1694,21 @@ public abstract class EntityRepository<T extends EntityInterface> {
                 ? Entity.getEntityReferenceById(USER, entityReference.getId(), ALL)
                 : Entity.getEntityReferenceByName(
                     USER, entityReference.getFullyQualifiedName(), ALL);
+        EntityUtil.copy(ref, entityReference);
+      }
+      entityReferences.sort(EntityUtil.compareEntityReference);
+    }
+  }
+
+  public final void validateReviewers(List<EntityReference> entityReferences) {
+    if (entityReferences != null) {
+      for (EntityReference entityReference : entityReferences) {
+        if (!entityReference.getType().equals(TEAM) && !entityReference.getType().equals(USER)) {
+          throw new IllegalArgumentException(
+              CatalogExceptionMessage.invalidReviewerType(entityReference.getType()));
+        }
+        EntityReference ref =
+            Entity.getEntityReferenceById(entityReference.getType(), entityReference.getId(), ALL);
         EntityUtil.copy(ref, entityReference);
       }
       entityReferences.sort(EntityUtil.compareEntityReference);
