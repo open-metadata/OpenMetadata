@@ -64,11 +64,6 @@
       "description": "Host and port of the Teradata service.",
       "type": "string"
     },
-    "databaseName": {
-      "title": "Database Name",
-      "description": "Specifies the initial database to use after logon, instead of the user's default database.",
-      "type": "string"
-    },
     "tmode": {
       "title": "Transaction mode",
       "description": "Specifies the transaction mode for the connection",
