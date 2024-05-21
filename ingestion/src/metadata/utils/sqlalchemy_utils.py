@@ -148,7 +148,7 @@ def get_all_table_ddls(
             self.all_table_ddls[(table.schema, table.name)] = str(CreateTable(table))
     except Exception as exc:
         logger.debug(traceback.format_exc())
-        logger.warning(f"Failed to get table ddls for {schema_name}: {exc}")
+        logger.debug(f"Failed to get table ddls for {schema_name}: {exc}")
 
 
 def get_table_ddl_wrapper(
