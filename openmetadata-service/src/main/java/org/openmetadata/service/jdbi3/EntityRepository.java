@@ -2488,7 +2488,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
       }
       List<EntityReference> origReviewers = getEntityReferences(original.getReviewers());
       List<EntityReference> updatedReviewers = getEntityReferences(updated.getReviewers());
-      validateUsers(updatedReviewers);
+      validateReviewers(updatedReviewers);
       updateFromRelationships(
           "reviewers",
           Entity.USER,
