@@ -42,11 +42,12 @@ def config_logging():
 @contextlib.contextmanager
 def try_bind(container, container_port, host_port):
     try:
-        with container.with_bind_ports(container_port, host_port):
+        with container.with_bind_ports(container_port, host_port) as container:
             yield container
     except docker.errors.APIError:
-        logging.warning("Port %s is already in use, trying another port", port)
-        yield container
+        logging.warning("Port %s is already in use, trying another port", host_port)
+        with container.with_bind_ports(container_port, None) as container:
+            yield container
 
 
 @pytest.fixture(scope="session")
@@ -67,8 +68,9 @@ def postgres_container(tmp_path_factory):
         "pg_stat_statements.track=all",
     ]
 
-    container = try_bind(container, 5432, 5432) if not os.getenv("CI") else container
-    with container as container:
+    with try_bind(container, 5432, 5432) if not os.getenv(
+        "CI"
+    ) else container as container:
         docker_container = container.get_wrapped_container()
         docker_container.exec_run(["mkdir", "/data"])
         docker_container.put_archive(

@@ -58,6 +58,16 @@ def run_data_quality_workflow(
             config=TestSuiteProcessorConfig(
                 testCases=[
                     TestCaseDefinition(
+                        name="first_name_includes_tom_and_jerry_wo_enum",
+                        testDefinitionName="columnValuesToBeInSet",
+                        columnName="first_name",
+                        parameterValues=parameteres_from_tuples(
+                            [
+                                ("allowedValues", "['Tom', 'Jerry']"),
+                            ]
+                        ),
+                    ),
+                    TestCaseDefinition(
                         name="first_name_includes_tom_and_jerry",
                         testDefinitionName="columnValuesToBeInSet",
                         columnName="first_name",
@@ -98,8 +108,9 @@ def run_data_quality_workflow(
 @pytest.mark.parametrize(
     "test_case_name,expected_status",
     [
+        ("first_name_includes_tom_and_jerry_wo_enum", TestCaseStatus.Success),
         ("first_name_includes_tom_and_jerry", TestCaseStatus.Success),
-        ("first_name_includes_is_tom_or_jerry", TestCaseStatus.Failed),
+        ("first_name_is_tom_or_jerry", TestCaseStatus.Failed),
     ],
 )
 def test_data_quality(
