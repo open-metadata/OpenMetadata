@@ -20,6 +20,11 @@ export const checkDataInsightSuccessStatus = (
   count = 1,
   timer = BASE_WAIT_TIME
 ) => {
+  interceptURL(
+    'GET',
+    '/api/v1/apps/name/DataInsightsApplication/status?*',
+    'getAppStatus'
+  );
   cy.get('[data-testid="app-run-history-table"]')
     .find('[data-testid="pipeline-status"]')
     .first()
@@ -35,6 +40,7 @@ export const checkDataInsightSuccessStatus = (
       cy.wait(timer);
       timer *= 2;
       cy.reload();
+      verifyResponseStatusCode('@getAppStatus', 200);
       checkDataInsightSuccessStatus(++count, timer * 2);
     } else {
       if ($ingestionStatus.text() !== 'Success') {

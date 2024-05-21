@@ -40,6 +40,13 @@ Following entities are supported and will be mapped to the OpenMetadata entities
 | Columns                      | Columns                      |
 | Custom Fields                | Custom Properties            |
 | Tags                         | Tags                         |
+| BI Servers                   | Dashboard Services           |
+| Dashboard DataSource         | Dashboard DataModel          |
+| Folder                       | Dashboard                    |
+| Report                       | Chart                        |
+| Users/Groups                 | Users/Teams                  |
+| Domains/Subdomains           | Domains/Subdomains           |
+| Knowledge Articles           | Knowledge Center Articles    |
 
 {% /multiTablesWrapper %}
 
@@ -49,8 +56,6 @@ Following entities are supported and will be mapped to the OpenMetadata entities
 
 
 ### Python Requirements
-
-{% partial file="/v1.4/connectors/python-requirements.md" /%}
 
 To run the Alation ingestion, you will need to install:
 
@@ -99,6 +104,32 @@ The access token created using the steps mentioned [here](https://developer.alat
 
 {% /codeInfo %}
 
+{% codeInfo srNumber=25 %}
+
+#### For Alation backend database Connection:
+
+Alation APIs do not provide us with some of the metadata. This metadata we extract directly from the alation's backend database by query the tables directly.
+Note that this is a optional config and if it is not provided primary metadata will still be ingested.
+Below is the metadata fetched from alation database:
+`1. User and Group Relationships`
+
+Choose either postgres or mysql connection depending on the db:
+1. Postgres Connection
+- **username**: Specify the User to connect to Postgres. Make sure the user has select privileges on the tables of the alation schema.
+**password**: Password to connect to Postgres.
+**hostPort**: Enter the fully qualified hostname and port number for your Postgres deployment in the Host and Port field.
+- **database**: Initial Postgres database to connect to. Specify the name of database associated with Alation instance.
+
+1. MySQL Connection
+- **username**: Specify the User to connect to MySQL. Make sure the user has select privileges on the tables of the alation schema.
+**password**: Password to connect to MySQL.
+**hostPort**: Enter the fully qualified hostname and port number for your MySQL deployment in the Host and Port field.
+- **databaseSchema**: Initial MySQL database to connect to. Specify the name of database schema associated with Alation instance.
+
+
+
+{% /codeInfo %}
+
 {% codeInfo srNumber=14 %}
 
 **projectName**: Project Name can be anything. e.g Prod or Demo. It will be used while creating the tokens.
@@ -120,6 +151,36 @@ The access token created using the steps mentioned [here](https://developer.alat
 {% codeInfo srNumber=17 %}
 
 **includeHiddenDatasources**: Specifies if hidden datasources should be included while ingesting. By default is set to `false`.
+
+{% /codeInfo %}
+
+{% codeInfo srNumber=26 %}
+
+**ingestUsersAndGroups**: Specifies if users and groups should be included while ingesting. By default is set to `true`.
+
+{% /codeInfo %}
+
+{% codeInfo srNumber=27 %}
+
+**ingestKnowledgeArticles**: Specifies if knowledge articles should be included while ingesting. By default is set to `true`.
+
+{% /codeInfo %}
+
+{% codeInfo srNumber=28 %}
+
+**ingestDatasources**: Specifies if databases, schemas and tables should be included while ingesting. By default is set to `true`.
+
+{% /codeInfo %}
+
+{% codeInfo srNumber=29 %}
+
+**ingestDomains**: Specifies if hidden domains and subdomains should be included while ingesting. By default is set to `true`.
+
+{% /codeInfo %}
+
+{% codeInfo srNumber=30 %}
+
+**ingestDashboards**: Specifies if hidden BI sources and dashboards should be included while ingesting. By default is set to `true`.
 
 {% /codeInfo %}
 
@@ -177,6 +238,23 @@ source:
       # authType:
       #   accessToken: api_access_token
 ```
+```yaml {% srNumber=25 %}
+      connection:
+        # For Postgres DB
+        type: Postgres
+        username: myuser
+        authType:
+          password: mypassword
+        hostPort: localhost:5432
+        database: postgres
+      #   # For MySQL DB
+      #   type: Mysql
+      #   username: openmetadata_user
+      #   authType:
+      #     password: openmetadata_password
+      #   hostPort: localhost:3306
+      #   databaseSchema: openmetadata_db
+```
 ```yaml {% srNumber=14 %}
       projectName: Test
 ```
@@ -188,6 +266,21 @@ source:
 ```
 ```yaml {% srNumber=17 %}
       includeHiddenDatasources: false # true or false
+```
+```yaml {% srNumber=26 %}
+      ingestUsersAndGroups: true # true or false
+```
+```yaml {% srNumber=27 %}
+      ingestKnowledgeArticles: false # true or false
+```
+```yaml {% srNumber=28 %}
+      ingestDatasources: false # true or false
+```
+```yaml {% srNumber=29 %}
+      ingestDomains: false # true or false
+```
+```yaml {% srNumber=30 %}
+      ingestDashboards: false # true or false
 ```
 ```yaml {% srNumber=18 %}
       alationTagClassificationName: alationTags

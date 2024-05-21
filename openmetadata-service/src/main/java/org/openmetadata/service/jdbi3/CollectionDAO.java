@@ -1810,6 +1810,9 @@ public interface CollectionDAO {
 
       return listAfter(getTableName(), condition, limit, after);
     }
+
+    @SqlQuery("select fqnhash FROM glossary_term_entity where fqnhash LIKE CONCAT(:fqnhash, '.%')")
+    List<String> getNestedChildrenByFQN(@BindFQN("fqnhash") String fqnhash);
   }
 
   interface IngestionPipelineDAO extends EntityDAO<IngestionPipeline> {
@@ -2590,6 +2593,10 @@ public interface CollectionDAO {
     @SqlQuery("select targetFQNHash FROM tag_usage where tagFQNHash = :tagFQNHash")
     @RegisterRowMapper(TagLabelMapper.class)
     List<String> getTargetFQNHashForTag(@BindFQN("tagFQNHash") String tagFQNHash);
+
+    @SqlQuery("select targetFQNHash FROM tag_usage where tagFQNHash LIKE CONCAT(:tagFQNHash, '.%')")
+    @RegisterRowMapper(TagLabelMapper.class)
+    List<String> getTargetFQNHashForTagPrefix(@BindFQN("tagFQNHash") String tagFQNHash);
 
     class TagLabelMapper implements RowMapper<TagLabel> {
       @Override

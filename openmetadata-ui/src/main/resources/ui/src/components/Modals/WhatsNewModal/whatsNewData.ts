@@ -1355,9 +1355,9 @@ export const WHATS_NEW = [
     description: 'Released on 21st May 2024.',
     features: [
       {
-        title: 'Automator',
+        title: 'Automations',
         description:
-          'We have introduced Automator to easily maintain high-quality metadata at scale. The Automator streamlines governance processes from ownership assignments to tagging, ensuring compliance and consistency. We have added support for the following actions: adding and removing owner, tier, domain, tags, glossary terms and descriptions, ML PII tagging, and propagation of tags and glossary terms through lineage.',
+          'We have introduced Automations to easily maintain high-quality metadata at scale. The Automations streamline governance processes from ownership assignments to tagging, ensuring compliance and consistency. We have added support for the following actions: adding and removing owner, tier, domain, tags, glossary terms and descriptions, ML PII tagging, and propagation of tags and glossary terms through lineage.',
         isImage: false,
         path: 'https://www.youtube.com/embed/zdh4yzHw4w0',
       },
@@ -1444,7 +1444,7 @@ API:
 -   Bulk Import API now creates entities if they are not present during the import.
 -   Table's TestSuite is migrated to EntityReference. Previously it used to store entire payload of TestSuite.
 `,
-      [`Automator ${CollateIconWithLinkMD}`]: `-  Easily maintain high-quality metadata at scale with automations. The Automator streamlines governance processes from ownership assignments to tagging, ensuring compliance and consistency.
+      [`Automations ${CollateIconWithLinkMD}`]: `-  Easily maintain high-quality metadata at scale with automations. The Automations streamline governance processes from ownership assignments to tagging, ensuring compliance and consistency.
 -   You can update the properties of your assets by filtering by service, owner, domain, or any other supported property from the advanced search.
 -   Easily see which assets have been selected by jumping to the Explore page in one click.
 -   For tables, data models, topics, and search indexes, you can apply the action to their columns or fields.
@@ -1508,6 +1508,12 @@ API:
 -   For QlikSense, we have added an option to disable SSL validation.`,
 
       'Custom Properties': `-   Custom Properties now allow linking other assets in the platform, such as Tables, Dashboards, etc. To enable this, create a Custom Property as an Entity Reference or Entity Reference List.`,
+
+      'Health Check': `-   Introduced the OpenMetadata Status page to do a Health Check on the setup information.
+
+-   Helps identify missing or outdated credential information for ingestion pipeline, SSO, migration, and related issues.
+
+-   Validates JWT authentication tokens for ingestion bots.`,
 
       Glossary: `-   The glossary term parent can now be changed from the Details page.
 -   On the data assets page, glossary terms are displayed by hierarchy.`,
