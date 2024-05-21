@@ -11,7 +11,10 @@ import org.openmetadata.service.security.policyevaluator.ResourceContextInterfac
 public interface Limits {
   void init(OpenMetadataApplicationConfig serverConfig, Jdbi jdbi);
 
-  void enforceLimits(SecurityContext securityContext, ResourceContextInterface resourceContext, OperationContext operationContext);
+  void enforceLimits(
+      SecurityContext securityContext,
+      ResourceContextInterface resourceContext,
+      OperationContext operationContext);
 
   LimitsConfig getLimitsConfig();
 

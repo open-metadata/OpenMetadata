@@ -23,7 +23,9 @@ public class DefaultLimits implements Limits {
 
   @Override
   public void enforceLimits(
-      SecurityContext securityContext, ResourceContextInterface resourceContext, OperationContext operationContext) {
+      SecurityContext securityContext,
+      ResourceContextInterface resourceContext,
+      OperationContext operationContext) {
     // do not enforce limits
   }
 
