@@ -524,7 +524,14 @@ public abstract class EntityRepository<T extends EntityInterface> {
    * Find method is used for getting an entity only with core fields stored as JSON without any relational fields set
    */
   public final T find(UUID id, Include include) throws EntityNotFoundException {
+    return find(id, include, true);
+  }
+
+  public final T find(UUID id, Include include, boolean fromCache) throws EntityNotFoundException {
     try {
+      if (!fromCache) {
+        CACHE_WITH_ID.invalidate(new ImmutablePair<>(entityType, id));
+      }
       @SuppressWarnings("unchecked")
       T entity = (T) CACHE_WITH_ID.get(new ImmutablePair<>(entityType, id));
       if (include == NON_DELETED && Boolean.TRUE.equals(entity.getDeleted())
@@ -579,8 +586,15 @@ public abstract class EntityRepository<T extends EntityInterface> {
    * Find method is used for getting an entity only with core fields stored as JSON without any relational fields set
    */
   public final T findByName(String fqn, Include include) {
+    return findByName(fqn, include, true);
+  }
+
+  public final T findByName(String fqn, Include include, boolean fromCache) {
     fqn = quoteFqn ? EntityInterfaceUtil.quoteName(fqn) : fqn;
     try {
+      if (!fromCache) {
+        CACHE_WITH_NAME.invalidate(new ImmutablePair<>(entityType, fqn));
+      }
       @SuppressWarnings("unchecked")
       T entity = (T) CACHE_WITH_NAME.get(new ImmutablePair<>(entityType, fqn));
       if (include == NON_DELETED && Boolean.TRUE.equals(entity.getDeleted())
@@ -836,7 +850,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
   @Transaction
   public final PatchResponse<T> patch(UriInfo uriInfo, UUID id, String user, JsonPatch patch) {
     // Get all the fields in the original entity that can be updated during PATCH operation
-    T original = setFieldsInternal(find(id, NON_DELETED), patchFields);
+    T original = setFieldsInternal(find(id, NON_DELETED, false), patchFields);
     setInheritedFields(original, patchFields);
 
     // Apply JSON patch to the original entity to get the updated entity
@@ -865,7 +879,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
   @Transaction
   public final PatchResponse<T> patch(UriInfo uriInfo, String fqn, String user, JsonPatch patch) {
     // Get all the fields in the original entity that can be updated during PATCH operation
-    T original = setFieldsInternal(findByName(fqn, NON_DELETED), patchFields);
+    T original = setFieldsInternal(findByName(fqn, NON_DELETED, false), patchFields);
     setInheritedFields(original, patchFields);
 
     // Apply JSON patch to the original entity to get the updated entity
