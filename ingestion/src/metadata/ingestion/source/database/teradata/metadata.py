@@ -13,42 +13,41 @@
 Teradata source implementation.
 """
 import traceback
-from typing import Optional, Iterable
+from typing import Iterable, Optional
 
-from metadata.generated.schema.api.data.createStoredProcedure import CreateStoredProcedureRequest
-from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
-from metadata.generated.schema.entity.data.storedProcedure import StoredProcedureCode
-from metadata.generated.schema.entity.services.ingestionPipelines.status import StackTraceError
-from metadata.generated.schema.type.basic import EntityName
-from metadata.ingestion.api.models import Either
-from metadata.utils import fqn
-from metadata.utils.logger import ingestion_logger
 from teradatasqlalchemy.dialect import TeradataDialect
 
+from metadata.generated.schema.api.data.createStoredProcedure import (
+    CreateStoredProcedureRequest,
+)
+from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
+from metadata.generated.schema.entity.data.storedProcedure import StoredProcedureCode
 from metadata.generated.schema.entity.services.connections.database.teradataConnection import (
     TeradataConnection,
+)
+from metadata.generated.schema.entity.services.ingestionPipelines.status import (
+    StackTraceError,
 )
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
+from metadata.generated.schema.type.basic import EntityName
+from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.database.common_db_source import CommonDbSourceService
-
-from metadata.ingestion.source.database.teradata.utils import get_table_comment
-
-from metadata.utils.sqlalchemy_utils import (
-    get_all_table_comments,
-)
-
 from metadata.ingestion.source.database.teradata.models import (
-    TeradataStoredProcedure,
     STORED_PROC_LANGUAGE_MAP,
+    TeradataStoredProcedure,
 )
 from metadata.ingestion.source.database.teradata.queries import (
     TERADATA_GET_STORED_PROCEDURES,
     TERADATA_SHOW_STORED_PROCEDURE,
 )
+from metadata.ingestion.source.database.teradata.utils import get_table_comment
+from metadata.utils import fqn
+from metadata.utils.logger import ingestion_logger
+from metadata.utils.sqlalchemy_utils import get_all_table_comments
 
 logger = ingestion_logger()
 
@@ -64,7 +63,7 @@ class TeradataSource(CommonDbSourceService):
 
     @classmethod
     def create(
-            cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None
+        cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None
     ):
         config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
         connection = config.serviceConnection.__root__.config
@@ -100,7 +99,7 @@ class TeradataSource(CommonDbSourceService):
                     )
 
     def describe_procedure_definition(
-            self, stored_procedure: TeradataStoredProcedure
+        self, stored_procedure: TeradataStoredProcedure
     ) -> str:
         """
         We can only get the SP definition via SHOW PROCEDURE
@@ -114,7 +113,7 @@ class TeradataSource(CommonDbSourceService):
         return str(res.first()[0])
 
     def yield_stored_procedure(
-            self, stored_procedure: TeradataStoredProcedure
+        self, stored_procedure: TeradataStoredProcedure
     ) -> Iterable[Either[CreateStoredProcedureRequest]]:
         """Prepare the stored procedure payload"""
 
@@ -123,7 +122,9 @@ class TeradataSource(CommonDbSourceService):
                 name=EntityName(__root__=stored_procedure.procedure_name),
                 description=None,
                 storedProcedureCode=StoredProcedureCode(
-                    language=STORED_PROC_LANGUAGE_MAP.get(stored_procedure.procedure_type),
+                    language=STORED_PROC_LANGUAGE_MAP.get(
+                        stored_procedure.procedure_type
+                    ),
                     code=stored_procedure.definition,
                 ),
                 databaseSchema=fqn.build(

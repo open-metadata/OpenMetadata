@@ -13,13 +13,10 @@ Teradata SQLAlchemy Helper Methods
 """
 
 from sqlalchemy.engine import reflection
-from metadata.ingestion.source.database.teradata.queries import (
-    TERADATA_TABLE_COMMENTS,
-)
+
+from metadata.ingestion.source.database.teradata.queries import TERADATA_TABLE_COMMENTS
 from metadata.utils.logger import ingestion_logger
-from metadata.utils.sqlalchemy_utils import (
-    get_table_comment_wrapper,
-)
+from metadata.utils.sqlalchemy_utils import get_table_comment_wrapper
 
 logger = ingestion_logger()
 
