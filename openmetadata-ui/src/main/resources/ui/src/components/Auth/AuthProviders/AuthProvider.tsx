@@ -346,6 +346,8 @@ export const AuthProvider = ({
         trySilentSignIn();
       }, timeoutExpiry);
       setTimeoutId(Number(timerId));
+    } else {
+      authenticatorRef.current?.invokeLogout();
     }
   };
 
@@ -680,9 +682,10 @@ export const AuthProvider = ({
   };
 
   useEffect(() => {
-    fetchAuthConfig();
-    startTokenExpiryTimer();
-    initializeAxiosInterceptors();
+    fetchAuthConfig().then(() => {
+      startTokenExpiryTimer();
+      initializeAxiosInterceptors();
+    });
 
     setHelperFunctionsRef({
       onLoginHandler,
