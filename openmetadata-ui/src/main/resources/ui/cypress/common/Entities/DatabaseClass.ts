@@ -15,21 +15,38 @@ import { visitServiceDetailsPage } from '../../common/serviceUtils';
 import {
   createEntityTableViaREST,
   deleteEntityViaREST,
+  visitEntityDetailsPage,
 } from '../../common/Utils/Entity';
 import { EntityType } from '../../constants/Entity.interface';
-import { DATABASE_SERVICE } from '../../constants/EntityConstant';
+import {
+  DATABASE_SERVICE,
+  DATABASE_SERVICE_DETAILS,
+} from '../../constants/EntityConstant';
 import { GlobalSettingOptions } from '../../constants/settings.constant';
 import { getToken } from '../Utils/LocalStorage';
+import {
+  addOwner,
+  removeOwner,
+  updateOwner,
+  validateOwnerAndTeamCounts,
+} from '../Utils/Owner';
 import EntityClass from './EntityClass';
 
 class DatabaseClass extends EntityClass {
   databaseName: string;
+  tableName: string;
+  databaseSchemaName: string;
 
   constructor() {
     const databaseName = `cypress-database-${Date.now()}`;
+    const tableName = `cypress-table-${Date.now()}`;
+    const databaseSchemaName = `cypress-database-schema-${Date.now()}`;
+
     super(databaseName, DATABASE_SERVICE.database, EntityType.Database);
 
     this.databaseName = databaseName;
+    this.tableName = tableName;
+    this.databaseSchemaName = databaseSchemaName;
     this.name = 'Database';
   }
 
@@ -67,10 +84,44 @@ class DatabaseClass extends EntityClass {
         token,
         ...DATABASE_SERVICE,
         database: { ...DATABASE_SERVICE.database, name: this.databaseName },
-        tables: [],
-        schema: undefined,
+        tables: [
+          {
+            ...DATABASE_SERVICE.entity,
+            name: this.tableName,
+            databaseSchema: `${DATABASE_SERVICE_DETAILS.name}.${this.databaseName}.${this.databaseSchemaName}`,
+          },
+        ],
+        schema: {
+          name: this.databaseSchemaName,
+          database: `${DATABASE_SERVICE_DETAILS.name}.${this.databaseName}`,
+        },
       });
     });
+  }
+
+  // Check owner is propogated to table entity and perform update and delete owner
+  verifyOwnerPropogation(newOwnerName: string) {
+    cy.goToHomePage();
+    // Visit table entity details page
+    visitEntityDetailsPage({
+      term: this.tableName,
+      serviceName: DATABASE_SERVICE.service.name,
+      entity: EntityType.Table,
+    });
+
+    updateOwner(newOwnerName);
+    removeOwner(newOwnerName);
+    // Visit Database page again
+    this.visitEntity();
+  }
+
+  override userOwnerFlow(ownerName: string, newOwnerName: string) {
+    validateOwnerAndTeamCounts();
+    addOwner(ownerName);
+    // Verify Owner propogated to table entity
+    this.verifyOwnerPropogation('Adam Matthews');
+    updateOwner(newOwnerName);
+    removeOwner(newOwnerName);
   }
 
   // Cleanup
