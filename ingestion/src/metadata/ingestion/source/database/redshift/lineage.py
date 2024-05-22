@@ -30,11 +30,18 @@ workflowConfig:
       jwtToken: "token"
 """
 
+import traceback
+from typing import Iterator
+
+from metadata.generated.schema.type.tableQuery import TableQuery
 from metadata.ingestion.source.database.lineage_source import LineageSource
 from metadata.ingestion.source.database.redshift.queries import REDSHIFT_SQL_STATEMENT
 from metadata.ingestion.source.database.redshift.query_parser import (
     RedshiftQueryParserSource,
 )
+from metadata.utils.logger import ingestion_logger
+
+logger = ingestion_logger()
 
 
 class RedshiftLineageSource(RedshiftQueryParserSource, LineageSource):
@@ -48,3 +55,33 @@ class RedshiftLineageSource(RedshiftQueryParserSource, LineageSource):
     """
 
     sql_stmt = REDSHIFT_SQL_STATEMENT
+
+    def yield_table_query(self) -> Iterator[TableQuery]:
+        """
+        Given an engine, iterate over the query results to
+        yield a TableQuery with query parsing info
+        """
+        for engine in self.get_engine():
+            with engine.connect() as conn:
+                rows = conn.execute(
+                    self.get_sql_statement(
+                        start_time=self.start,
+                        end_time=self.end,
+                    )
+                )
+                for row in rows:
+                    query_dict = dict(row)
+                    try:
+                        yield TableQuery(
+                            query=query_dict["query_text"]
+                            .replace("\\n", "\n")
+                            .replace("\\r", ""),
+                            databaseName=self.get_database_name(query_dict),
+                            serviceName=self.config.serviceName,
+                            databaseSchema=self.get_schema_name(query_dict),
+                        )
+                    except Exception as exc:
+                        logger.debug(traceback.format_exc())
+                        logger.warning(
+                            f"Error processing query_dict {query_dict}: {exc}"
+                        )
