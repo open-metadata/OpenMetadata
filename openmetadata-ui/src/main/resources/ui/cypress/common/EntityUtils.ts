@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { isArray } from 'lodash';
 import {
   DASHBOARD_SERVICE_DETAILS,
   DATABASE_DETAILS,
@@ -68,15 +69,18 @@ export const createEntityTable = ({
   });
 
   // Create Database Schema
-  cy.request({
-    method: 'POST',
-    url: `/api/v1/databaseSchemas`,
-    headers: { Authorization: `Bearer ${token}` },
-    body: schema,
-  }).then((response) => {
-    expect(response.status).to.eq(201);
+  const schemaData = isArray(schema) ? schema : [schema];
+  schemaData.map((schema) => {
+    cy.request({
+      method: 'POST',
+      url: `/api/v1/databaseSchemas`,
+      headers: { Authorization: `Bearer ${token}` },
+      body: schema,
+    }).then((response) => {
+      expect(response.status).to.eq(201);
 
-    createdEntityIds.databaseSchemaId = response.body.id;
+      createdEntityIds.databaseSchemaId = response.body.id;
+    });
   });
 
   tables.forEach((body) => {
@@ -144,19 +148,20 @@ export const hardDeleteService = ({ serviceFqn, token, serviceType }) => {
   });
 };
 
-export const generateRandomTable = (
-  tableName?: string,
-  columns?: ColumnType[]
-) => {
+export const generateRandomTable = (data?: {
+  tableName?: string;
+  columns?: ColumnType[];
+  databaseSchema?: string;
+}) => {
   const id = uuid();
-  const name = tableName ?? `cypress-table-${id}`;
+  const name = data?.tableName ?? `cypress-table-${id}`;
 
   const table = {
     name,
     description: `cypress-table-description-${id}`,
     displayName: name,
     columns: [
-      ...(columns ?? []),
+      ...(data?.columns ?? []),
       {
         name: `cypress-column-${id}`,
         description: `cypress-column-description-${id}`,
@@ -164,7 +169,9 @@ export const generateRandomTable = (
         dataTypeDisplay: 'numeric',
       },
     ],
-    databaseSchema: `${DATABASE_SERVICE_DETAILS.name}.${DATABASE_DETAILS.name}.${SCHEMA_DETAILS.name}`,
+    databaseSchema:
+      data?.databaseSchema ??
+      `${DATABASE_SERVICE_DETAILS.name}.${DATABASE_DETAILS.name}.${SCHEMA_DETAILS.name}`,
   };
 
   return table;
