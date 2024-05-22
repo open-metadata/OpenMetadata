@@ -1,3 +1,4 @@
+import logging
 import os.path
 import random
 
@@ -122,7 +123,7 @@ def trino_container(hive_metastore_container, minio_container, docker_network):
         retry(
             stop=stop_after_delay(60),
             wait=wait_fixed(1),
-        )(lambda: engine.execute("SHOW SCHEMAS FROM minio").fetchone())()
+        )(lambda: engine.execute("SHOW SCHEMAS FROM minio!").fetchone())()
         yield trino
 
 
@@ -152,10 +153,12 @@ def hive_metastore_container(mysql_container, minio_container, docker_network):
         ) as hive
     ):
         yield hive
-        print("STDOUT")
-        print(str(hive.get_logs()[0].decode()))
-        print("STDERR")
-        print(str(hive.get_logs()[1].decode()))
+        logging.info("### STDOUT")
+        for line in str(hive.get_logs()[0].decode()).split("\n"):
+            logging.info(line)
+        logging.info("### STDERR")
+        for line in str(hive.get_logs()[1].decode()).split("\n"):
+            logging.info(line)
 
 
 @pytest.fixture(scope="module")
