@@ -81,6 +81,7 @@ const OidcAuthenticator = forwardRef<AuthenticatorRef, Props>(
 
     const login = () => {
       setIsSigningUp(true);
+      userManager.clearStaleState();
     };
 
     const logout = () => {
