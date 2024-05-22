@@ -34,7 +34,7 @@ DELETE FROM query_entity where id in (
 
 ALTER TABLE query_entity ADD CONSTRAINT unique_query_checksum UNIQUE (checksum);
 
-UPDATE query_entity SET json = JSON_INSERT(json, '$.checksum', MD5(JSON_UNQUOTE(JSON_EXTRACT(json, '$.checksum'))));
+UPDATE query_entity SET json = JSON_INSERT(json, '$.checksum', MD5(JSON_UNQUOTE(checksum)));
 
 -- Restructure dbServiceNames in ingestion_pipeline_entity
 update ingestion_pipeline_entity set json = 
