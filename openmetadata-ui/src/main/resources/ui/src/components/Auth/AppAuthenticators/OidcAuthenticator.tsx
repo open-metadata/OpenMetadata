@@ -80,6 +80,9 @@ const OidcAuthenticator = forwardRef<AuthenticatorRef, Props>(
     );
 
     const login = () => {
+      // Clear any stale state in the user manager before starting the sign in flow
+      // eslint-disable-next-line max-len
+      // This is necessary to avoid any issues with the user manager stale state(s) that may have been left over from a previous session
       userManager.clearStaleState();
       setIsSigningUp(true);
     };
