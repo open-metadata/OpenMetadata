@@ -265,7 +265,7 @@ const DashboardDetails = ({
     async (newOwner?: Dashboard['owner']) => {
       const updatedDashboard = {
         ...dashboardDetails,
-        owner: newOwner ? { ...owner, ...newOwner } : undefined,
+        owner: newOwner,
       };
       await onDashboardUpdate(updatedDashboard, 'owner');
     },
