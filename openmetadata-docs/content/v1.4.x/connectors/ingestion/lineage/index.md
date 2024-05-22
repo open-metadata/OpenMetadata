@@ -65,6 +65,10 @@ to identify the graph nodes as OpenMetadata Entities.
 
 Note that if a Model is not materialized, its data won't be ingested.
 
+### Cross Project Lineage
+
+We support cross-project lineage, but the data must be ingested within a single service. This means you need to perform lineage ingestion for just one service while including multiple projects.
+
 #### How to run?
 
 The main difference here is between those sources that provide internal access to query logs and those that do not. For services such as [BigQuery](/connectors/database/bigquery), [Snowflake](/connectors/database/snowflake) etc.
