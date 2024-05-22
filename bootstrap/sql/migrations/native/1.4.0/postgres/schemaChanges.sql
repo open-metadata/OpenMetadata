@@ -10,8 +10,7 @@ WHERE serviceType = 'MongoDB';
 -- 3. Add checksum with unique constraint
 ALTER TABLE query_entity ADD COLUMN checksum varchar
 (32) GENERATED ALWAYS AS
-(json ->> 'checksum') STORED NOT NULL,
-(checksum);
+(json ->> 'checksum') STORED NOT NULL;
 
 with duplicated as (
   select
