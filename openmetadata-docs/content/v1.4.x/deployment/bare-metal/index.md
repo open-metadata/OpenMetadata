@@ -111,7 +111,7 @@ Note that if there's any data in that database, this command will drop it!
 {%/note%}
 
 ```commandline
-./bootstrap/bootstrap_storage.sh drop-create-all
+./bootstrap/openmetadata-ops.sh drop-create
 ```
 
 ## 5. Start OpenMetadata
