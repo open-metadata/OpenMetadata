@@ -99,6 +99,11 @@ class HiveMetaStoreContainer(DockerContainer):
         )
 
 
+@pytest.fixture(scope="session")
+def capmanager(request):
+    yield request.config.pluginmanager.getplugin("capturemanager")
+
+
 @pytest.fixture(scope="module")
 def docker_network():
     with testcontainers.core.network.Network() as network:
@@ -123,7 +128,7 @@ def trino_container(hive_metastore_container, minio_container, docker_network):
         retry(
             stop=stop_after_delay(60),
             wait=wait_fixed(1),
-        )(lambda: engine.execute("SHOW SCHEMAS FROM minio!").fetchone())()
+        )(lambda: engine.execute("SHOW SCHEMAS FROM minio").fetchone())()
         yield trino
 
 
@@ -136,7 +141,9 @@ def mysql_container(docker_network):
 
 
 @pytest.fixture(scope="module")
-def hive_metastore_container(mysql_container, minio_container, docker_network):
+def hive_metastore_container(
+    mysql_container, minio_container, docker_network, capmanager
+):
     with (
         HiveMetaStoreContainer("bitsondatadev/hive-metastore:latest")
         .with_network(docker_network)
@@ -153,12 +160,13 @@ def hive_metastore_container(mysql_container, minio_container, docker_network):
         ) as hive
     ):
         yield hive
-        logging.info("### STDOUT")
-        for line in str(hive.get_logs()[0].decode()).split("\n"):
-            logging.info(line)
-        logging.info("### STDERR")
-        for line in str(hive.get_logs()[1].decode()).split("\n"):
-            logging.info(line)
+        with capmanager.global_and_fixture_disabled():
+            logging.info("### STDOUT")
+            for line in str(hive.get_logs()[0].decode()).split("\n"):
+                logging.info(line)
+            logging.info("### STDERR")
+            for line in str(hive.get_logs()[1].decode()).split("\n"):
+                logging.info(line)
 
 
 @pytest.fixture(scope="module")

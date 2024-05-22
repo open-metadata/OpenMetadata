@@ -19,4 +19,4 @@ def pytest_pycollect_makeitem(collector, name, obj):
 
 @pytest.fixture(scope="session", autouse=True)
 def config_testcontatiners():
-    testcontainers_config.max_tries = 5
+    testcontainers_config.max_tries = 10
