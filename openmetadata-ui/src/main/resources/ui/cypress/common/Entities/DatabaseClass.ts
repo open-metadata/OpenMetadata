@@ -120,7 +120,7 @@ class DatabaseClass extends EntityClass {
     validateOwnerAndTeamCounts();
     addOwner(ownerName);
     // Verify Owner propogated to table entity
-    this.verifyOwnerPropogation('Adam Matthews');
+    this.verifyOwnerPropogation('Alex Pollard');
     updateOwner(newOwnerName);
     removeOwner(newOwnerName);
   }
