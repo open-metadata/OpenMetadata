@@ -3351,7 +3351,10 @@ public interface CollectionDAO {
         "SELECT json FROM change_event ce where ce.offset > :offset ORDER BY ce.eventTime ASC LIMIT :limit")
     List<String> list(@Bind("limit") long limit, @Bind("offset") long offset);
 
-    @SqlQuery("SELECT MAX(offset) FROM change_event")
+    @ConnectionAwareSqlQuery(value = "SELECT MAX(offset) FROM change_event", connectionType = MYSQL)
+    @ConnectionAwareSqlQuery(
+        value = "SELECT MAX(\"offset\") FROM change_event",
+        connectionType = POSTGRES)
     long getLatestOffset();
   }
 
