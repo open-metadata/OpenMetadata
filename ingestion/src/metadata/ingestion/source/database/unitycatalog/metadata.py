@@ -267,17 +267,21 @@ class UnitycatalogSource(
                     )
                     continue
                 table_type: TableType = TableType.Regular
-                if table.table_type.value.lower() == TableType.View.value.lower():
-                    table_type: TableType = TableType.View
-                if table.table_type.value.lower() == TableType.External.value.lower():
-                    table_type: TableType = TableType.External
+                if table.table_type:
+                    if table.table_type.value.lower() == TableType.View.value.lower():
+                        table_type: TableType = TableType.View
+                    elif (
+                        table.table_type.value.lower()
+                        == TableType.External.value.lower()
+                    ):
+                        table_type: TableType = TableType.External
                 self.context.get().table_data = table
                 yield table_name, table_type
             except Exception as exc:
                 self.status.failed(
                     StackTraceError(
-                        name=table.Name,
-                        error=f"Unexpected exception to get table [{table.Name}]: {exc}",
+                        name=table.name,
+                        error=f"Unexpected exception to get table [{table.name}]: {exc}",
                         stackTrace=traceback.format_exc(),
                     )
                 )
