@@ -48,10 +48,7 @@ import {
 import { EntityFields } from '../../enums/AdvancedSearch.enum';
 import { ERROR_PLACEHOLDER_TYPE, SORT_ORDER } from '../../enums/common.enum';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
-import {
-  QueryFieldInterface,
-  QueryFieldValueInterface,
-} from '../../pages/ExplorePage/ExplorePage.interface';
+import { QueryFieldInterface } from '../../pages/ExplorePage/ExplorePage.interface';
 import { getDropDownItems } from '../../utils/AdvancedSearchUtils';
 import { Transi18next } from '../../utils/CommonUtils';
 import { highlightEntityNameAndDescription } from '../../utils/EntityUtils';
@@ -189,19 +186,23 @@ const ExploreV1: React.FC<ExploreProps> = ({
 
   const handleQuickFiltersChange = (data: ExploreQuickFilterField[]) => {
     const must = [] as Array<QueryFieldInterface>;
-    const mustNot = [] as Array<QueryFieldInterface>;
 
     // Mapping the selected advanced search quick filter dropdown values
     // to form a queryFilter to pass as a search parameter
     data.forEach((filter) => {
       if (!isEmpty(filter.value)) {
-        const should = [] as Array<QueryFieldValueInterface>;
+        const should = [] as Array<QueryFieldInterface>;
         filter.value?.forEach((filterValue) => {
-          const term = {} as QueryFieldValueInterface['term'];
-          term[filter.key] = filterValue.key;
+          const term = {
+            [filter.key]: filterValue.key,
+          };
 
           if (filterValue.key === NULL_OPTION_KEY) {
-            mustNot.push({ exists: { field: filter.key } });
+            should.push({
+              bool: {
+                must_not: [{ exists: { field: filter.key } }],
+              },
+            });
           } else {
             should.push({ term });
           }
@@ -214,13 +215,12 @@ const ExploreV1: React.FC<ExploreProps> = ({
     });
 
     onChangeAdvancedSearchQuickFilters(
-      isEmpty(must) && isEmpty(mustNot)
+      isEmpty(must)
         ? undefined
         : {
             query: {
               bool: {
                 must,
-                must_not: mustNot,
               },
             },
           }

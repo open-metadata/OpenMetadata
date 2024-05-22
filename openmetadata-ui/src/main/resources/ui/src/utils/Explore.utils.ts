@@ -22,7 +22,6 @@ import { NULL_OPTION_KEY } from '../constants/AdvancedSearch.constants';
 import { Aggregations } from '../interface/search.interface';
 import {
   QueryFieldInterface,
-  QueryFieldValueInterface,
   QueryFilterInterface,
   TabsInfoData,
 } from '../pages/ExplorePage/ExplorePage.interface';
@@ -30,12 +29,12 @@ import {
 /**
  * It takes an array of filters and a data lookup and returns a new object with the filters grouped by
  * their label
- * @param filters - Array<QueryFieldValueInterface>
+ * @param filters - Array<QueryFieldInterface>
  * @param {SearchDropdownOption[]} dataLookUp - This is an array of objects that contains the
  * key and label for each filter.
  */
 export const getParseValueFromLocation = (
-  filters: Array<QueryFieldValueInterface>,
+  filters: Array<QueryFieldInterface>,
   dataLookUp: SearchDropdownOption[]
 ): Record<string, SearchDropdownOption[]> => {
   const dataLookupMap = new Map(
@@ -75,7 +74,7 @@ export const getSelectedValuesFromQuickFilter = (
   const EMPTY_DATA: ExploreQuickFilterField['value'] = [];
 
   if (queryFilter) {
-    const filters: Array<QueryFieldValueInterface> = [];
+    const filters: Array<QueryFieldInterface> = [];
 
     const mustField: QueryFieldInterface[] = get(
       queryFilter,
@@ -107,14 +106,14 @@ export const getAllSelectedValuesFromQuickFilter = (
     return null;
   }
 
-  const mustFilters: Array<QueryFieldValueInterface> = get(
+  const mustFilters: Array<QueryFieldInterface> = get(
     queryFilter,
     'query.bool.must',
     []
-  ).flatMap((item) => item.bool?.should || []);
+  ).flatMap((item: QueryFieldInterface) => item.bool?.should || []);
 
   const mustNotFields = get(queryFilter, 'query.bool.must_not', []).flatMap(
-    (item) => item.exists?.field || []
+    (item: QueryFieldInterface) => item.exists?.field || []
   );
 
   const combinedData: Record<string, SearchDropdownOption[]> = {};
@@ -168,7 +167,7 @@ export const getQuickFilterQuery = (data: ExploreQuickFilterField[]) => {
   const must: QueryFieldInterface[] = [];
   data.forEach((filter) => {
     if (!isEmpty(filter.value)) {
-      const should: QueryFieldValueInterface[] = [];
+      const should: QueryFieldInterface[] = [];
       if (filter.value) {
         filter.value.forEach((filterValue) => {
           const term: Record<string, string> = {};
@@ -190,4 +189,17 @@ export const getQuickFilterQuery = (data: ExploreQuickFilterField[]) => {
       };
 
   return quickFilterQuery;
+};
+
+export const extractTermKeys = (objects: QueryFieldInterface[]): string[] => {
+  const termKeys: string[] = [];
+
+  objects.forEach((obj: QueryFieldInterface) => {
+    if (obj.term) {
+      const keys = Object.keys(obj.term);
+      termKeys.push(...keys);
+    }
+  });
+
+  return termKeys;
 };
