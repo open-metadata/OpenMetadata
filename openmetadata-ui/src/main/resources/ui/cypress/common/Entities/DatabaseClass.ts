@@ -110,6 +110,7 @@ class DatabaseClass extends EntityClass {
     });
 
     updateOwner(newOwnerName);
+    cy.reload();
     removeOwner(newOwnerName);
     // Visit Database page again
     this.visitEntity();
