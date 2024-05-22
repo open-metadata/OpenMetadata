@@ -684,6 +684,7 @@ export const AuthProvider = ({
 
   useEffect(() => {
     fetchAuthConfig().then(() => {
+      // we are accessing the authenticatorRef.current here to ensure that the ref is set
       startTokenExpiryTimer();
     });
     initializeAxiosInterceptors();
