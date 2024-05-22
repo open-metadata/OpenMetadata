@@ -80,6 +80,11 @@ const OidcAuthenticator = forwardRef<AuthenticatorRef, Props>(
     );
 
     const login = () => {
+      // Clear any stale state in the user manager before starting the sign in flow
+      // Remove the existing user configuration for the user who is different from the user trying to log in
+      userManager.clearStaleState();
+      // Remove the existing user configuration for the same user who is trying to log
+      userManager.removeUser();
       setIsSigningUp(true);
     };
 
