@@ -3,6 +3,16 @@ UPDATE dbservice_entity
 SET json = JSON_INSERT(json, '$.connection.config.supportsProfiler', TRUE)
 WHERE serviceType = 'MongoDB';
 
+with duplicated as (
+  select
+    id,
+    ROW_NUMBER() OVER (PARTITION BY json ->> '$.checksum' ORDER BY id) AS rn
+  FROM query_entity
+)
+DELETE FROM query_entity where id in (
+  select id from duplicated where rn > 1
+);
+
 ALTER TABLE query_entity ADD COLUMN checksum VARCHAR
 (32) GENERATED ALWAYS AS
 (json ->> '$.checksum') NOT NULL UNIQUE;
