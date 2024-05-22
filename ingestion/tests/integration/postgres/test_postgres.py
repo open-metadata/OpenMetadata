@@ -42,8 +42,6 @@ from metadata.workflow.metadata import MetadataWorkflow
 from metadata.workflow.profiler import ProfilerWorkflow
 from metadata.workflow.usage import UsageWorkflow
 
-from ..integration_base import int_admin_ometa
-
 if not sys.version_info >= (3, 9):
     pytest.skip("requires python 3.9+", allow_module_level=True)
 
@@ -51,11 +49,6 @@ if not sys.version_info >= (3, 9):
 @pytest.fixture(autouse=True)
 def config_logging():
     logging.getLogger("sqlfluff").setLevel(logging.CRITICAL)
-
-
-@pytest.fixture(scope="module")
-def metadata():
-    return int_admin_ometa()
 
 
 @pytest.fixture(scope="module")

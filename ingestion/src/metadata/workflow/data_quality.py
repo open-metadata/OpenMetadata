@@ -39,6 +39,8 @@ class TestSuiteWorkflow(IngestionWorkflow):
     this workflow. No need to do anything here if this does not pass
     """
 
+    __test__ = False
+
     def set_steps(self):
         self.source = TestSuiteSource.create(self.config.dict(), self.metadata)
 
