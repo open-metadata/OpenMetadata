@@ -3351,7 +3351,7 @@ public interface CollectionDAO {
         "SELECT json FROM change_event ce where ce.offset > :offset ORDER BY ce.eventTime ASC LIMIT :limit")
     List<String> list(@Bind("limit") long limit, @Bind("offset") long offset);
 
-    @SqlQuery("SELECT count(*) FROM change_event")
+    @SqlQuery("SELECT MAX(offset) FROM change_event")
     long getLatestOffset();
   }
 
