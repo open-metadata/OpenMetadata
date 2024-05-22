@@ -346,9 +346,6 @@ export const AuthProvider = ({
         trySilentSignIn();
       }, timeoutExpiry);
       setTimeoutId(Number(timerId));
-    } else {
-      // reset user details if token is expired or token is not present
-      authenticatorRef.current?.invokeLogout();
     }
   };
 
@@ -683,10 +680,8 @@ export const AuthProvider = ({
   };
 
   useEffect(() => {
-    fetchAuthConfig().then(() => {
-      // we are accessing the authenticatorRef.current here to ensure that the ref is set
-      startTokenExpiryTimer();
-    });
+    fetchAuthConfig();
+    startTokenExpiryTimer();
     initializeAxiosInterceptors();
 
     setHelperFunctionsRef({
