@@ -185,12 +185,7 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
     async (newOwner?: Mlmodel['owner']) => {
       const updatedMlModelDetails = {
         ...mlModelDetail,
-        owner: newOwner
-          ? {
-              ...mlModelDetail.owner,
-              ...newOwner,
-            }
-          : undefined,
+        owner: newOwner,
       };
       await settingsUpdateHandler(updatedMlModelDetails);
     },

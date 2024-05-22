@@ -322,7 +322,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
       try {
         const updatedData = {
           ...databaseSchema,
-          owner: owner ? { ...databaseSchema?.owner, ...owner } : undefined,
+          owner: owner,
         };
 
         const response = await saveUpdatedDatabaseSchemaData(
