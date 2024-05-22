@@ -710,18 +710,30 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
     List<TestCase> testCases = new ArrayList<>();
 
     for (int i = 0; i < tablesNum; i++) {
-      CreateTable tableReq =
-          tableResourceTest
-              .createRequest(testInfo, i)
-              .withDatabaseSchema(DATABASE_SCHEMA.getFullyQualifiedName())
-              .withColumns(
-                  List.of(
-                      new Column()
-                          .withName(C1)
-                          .withDisplayName("c1")
-                          .withDataType(ColumnDataType.VARCHAR)
-                          .withDataLength(10)))
-              .withOwner(USER1_REF);
+      CreateTable tableReq;
+      // Add entity FQN with same prefix to validate listing
+      // with AllTest=true returns all columns and table test for the
+      // specific entityFQN (and does not include tests from the other entityFQN
+      // witgh the same prefix
+      if (i == 0) {
+        tableReq = tableResourceTest.createRequest("test_getSimplelistFromSearch");
+        tableReq.getName();
+      } else if (i == 1) {
+        tableReq = tableResourceTest.createRequest("test_getSimplelistFromSearch_a");
+        tableReq.getName();
+      } else {
+        tableReq = tableResourceTest.createRequest(testInfo, i);
+      }
+      tableReq
+          .withDatabaseSchema(DATABASE_SCHEMA.getFullyQualifiedName())
+          .withColumns(
+              List.of(
+                  new Column()
+                      .withName(C1)
+                      .withDisplayName("c1")
+                      .withDataType(ColumnDataType.VARCHAR)
+                      .withDataLength(10)))
+          .withOwner(USER1_REF);
       Table table = tableResourceTest.createEntity(tableReq, ADMIN_AUTH_HEADERS);
       tables.add(table);
       CreateTestSuite createTestSuite =
@@ -764,11 +776,11 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
     ResultList<TestCase> allEntities =
         listEntitiesFromSearch(queryParams, testCasesNum, 0, ADMIN_AUTH_HEADERS);
     assertEquals(testCasesNum, allEntities.getData().size());
-    queryParams.put("q", "test_getSimplelistFromSearcha");
+    queryParams.put("q", "test_getSimplelistFromSearchc");
     allEntities = listEntitiesFromSearch(queryParams, testCasesNum, 0, ADMIN_AUTH_HEADERS);
     assertEquals(1, allEntities.getData().size());
     org.assertj.core.api.Assertions.assertThat(allEntities.getData().get(0).getName())
-        .contains("test_getSimplelistFromSearcha");
+        .contains("test_getSimplelistFromSearchc");
 
     queryParams.clear();
     queryParams.put("entityLink", testCaseForEL.getEntityLink());

@@ -137,7 +137,9 @@ describe('DataQualityTab test', () => {
 
     expect(testName).toBeInTheDocument();
     expect(tableLink).toBeInTheDocument();
-    expect(tableLink.textContent).toEqual('dim_address');
+    expect(tableLink.textContent).toEqual(
+      'sample_data.ecommerce_db.shopify.dim_address'
+    );
     expect(columnName).toBeInTheDocument();
     expect(editButton).toBeInTheDocument();
     expect(deleteButton).toBeInTheDocument();

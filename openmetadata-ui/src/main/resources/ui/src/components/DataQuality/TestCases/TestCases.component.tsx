@@ -20,6 +20,7 @@ import {
   Row,
   Select,
   Space,
+  Typography,
 } from 'antd';
 import { useForm } from 'antd/lib/form/Form';
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
@@ -254,10 +255,24 @@ export const TestCases = ({ summaryPanel }: { summaryPanel: ReactNode }) => {
         includeFields: ['name', 'fullyQualifiedName', 'displayName'],
       });
 
-      const options = response.hits.hits.map((hit) => ({
-        label: getEntityName(hit._source),
-        value: hit._source.fullyQualifiedName,
-      }));
+      const options = response.hits.hits.map((hit) => {
+        return {
+          label: (
+            <Space
+              data-testid={hit._source.fullyQualifiedName}
+              direction="vertical"
+              size={0}>
+              <Typography.Text className="text-xs text-grey-muted">
+                {hit._source.fullyQualifiedName}
+              </Typography.Text>
+              <Typography.Text className="text-sm">
+                {getEntityName(hit._source)}
+              </Typography.Text>
+            </Space>
+          ),
+          value: hit._source.fullyQualifiedName,
+        };
+      });
       setTableOptions(options);
     } catch (error) {
       setTableOptions([]);
@@ -341,7 +356,7 @@ export const TestCases = ({ summaryPanel }: { summaryPanel: ReactNode }) => {
             </Form.Item>
             {selectedFilter.includes(TEST_CASE_FILTERS.table) && (
               <Form.Item
-                className="m-0 w-52"
+                className="m-0 w-80"
                 label={t('label.table')}
                 name="tableFqn">
                 <Select

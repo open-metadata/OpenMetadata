@@ -90,7 +90,8 @@ public class SearchListFilter extends Filter<SearchListFilter> {
   private String getIncludeCondition() {
     String domain = getQueryParam("domain");
     if (!nullOrEmpty(domain)) {
-      return String.format("{\"term\": {\"domain.fullyQualifiedName\": \"%s\"}}", domain);
+      return String.format(
+          "{\"term\": {\"domain.fullyQualifiedName\": \"%s\"}}", escapeDoubleQuotes(domain));
     }
     return "";
   }
@@ -142,7 +143,10 @@ public class SearchListFilter extends Filter<SearchListFilter> {
       conditions.add(
           includeAllTests
               ? String.format(
-                  "{\"prefix\": {\"entityFQN\": \"%s\"}}", escapeDoubleQuotes(entityFQN))
+                  "{\"bool\":{\"should\": ["
+                      + "{\"prefix\": {\"entityFQN\": \"%s%s\"}},"
+                      + "{\"term\": {\"entityFQN\": \"%s\"}}]}}",
+                  escapeDoubleQuotes(entityFQN), Entity.SEPARATOR, escapeDoubleQuotes(entityFQN))
               : String.format(
                   "{\"term\": {\"entityFQN\": \"%s\"}}", escapeDoubleQuotes(entityFQN)));
     }
