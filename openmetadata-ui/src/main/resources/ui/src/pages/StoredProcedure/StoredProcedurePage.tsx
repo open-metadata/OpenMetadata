@@ -325,12 +325,7 @@ const StoredProcedurePage = () => {
       }
       const updatedEntityDetails = {
         ...storedProcedure,
-        owner: newOwner
-          ? {
-              ...owner,
-              ...newOwner,
-            }
-          : undefined,
+        owner: newOwner,
       };
       await handleStoreProcedureUpdate(updatedEntityDetails, 'owner');
     },

@@ -209,12 +209,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
     async (newOwner?: Topic['owner']) => {
       const updatedTopicDetails = {
         ...topicDetails,
-        owner: newOwner
-          ? {
-              ...owner,
-              ...newOwner,
-            }
-          : undefined,
+        owner: newOwner,
       };
       await onTopicUpdate(updatedTopicDetails, 'owner');
     },

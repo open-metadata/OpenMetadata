@@ -287,12 +287,7 @@ function SearchIndexDetailsPage() {
       }
       const updatedSearchIndexDetails = {
         ...searchIndexDetails,
-        owner: newOwner
-          ? {
-              ...owner,
-              ...newOwner,
-            }
-          : undefined,
+        owner: newOwner,
       };
       await onSearchIndexUpdate(updatedSearchIndexDetails, 'owner');
     },
