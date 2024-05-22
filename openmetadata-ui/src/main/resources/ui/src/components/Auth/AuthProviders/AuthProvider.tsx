@@ -685,8 +685,8 @@ export const AuthProvider = ({
   useEffect(() => {
     fetchAuthConfig().then(() => {
       startTokenExpiryTimer();
-      initializeAxiosInterceptors();
     });
+    initializeAxiosInterceptors();
 
     setHelperFunctionsRef({
       onLoginHandler,
