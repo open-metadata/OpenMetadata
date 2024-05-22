@@ -148,7 +148,7 @@ def hive_metastore_container(
         HiveMetaStoreContainer("bitsondatadev/hive-metastore:latest")
         .with_network(docker_network)
         .with_network_aliases("metastore")
-        .with_env("METASTORE_DB_HOSTNAME", mysql_container.get_wrapped_container().name)
+        .with_env("METASTORE_DB_HOSTNAME", "mariadb")
         .with_env("METASTORE_DB_PORT", str(mysql_container.port))
         .with_env(
             "JDBC_CONNECTION_URL",
