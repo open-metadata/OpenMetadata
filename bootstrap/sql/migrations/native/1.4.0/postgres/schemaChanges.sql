@@ -8,10 +8,15 @@ WHERE serviceType = 'MongoDB';
 -- 1. Remove duplicate queries from entity_relationship
 -- 2. Remove duplicate queries from query_entity
 -- 3. Add checksum with unique constraint
+ALTER TABLE query_entity ADD COLUMN checksum varchar
+(32) GENERATED ALWAYS AS
+(json ->> 'checksum') STORED NOT NULL,
+(checksum);
+
 with duplicated as (
   select
     id,
-    ROW_NUMBER() OVER (PARTITION BY json ->> 'checksum' ORDER BY id) AS rn
+    ROW_NUMBER() OVER (PARTITION BY checksum ORDER BY id) AS rn
   FROM query_entity
 )
 DELETE FROM entity_relationship
@@ -22,18 +27,14 @@ DELETE FROM entity_relationship
 with duplicated as (
   select
     id,
-    ROW_NUMBER() OVER (PARTITION BY json ->> 'checksum' ORDER BY id) AS rn
+    ROW_NUMBER() OVER (PARTITION BY checksum ORDER BY id) AS rn
   FROM query_entity
 )
 DELETE FROM query_entity where id in (
   select id from duplicated where rn > 1
 );
 
-ALTER TABLE query_entity ADD COLUMN checksum varchar
-(32) GENERATED ALWAYS AS
-(json ->> 'checksum') STORED NOT NULL,
-ADD UNIQUE
-(checksum);
+ALTER TABLE query_entity ADD CONSTRAINT unique_query_checksum UNIQUE (checksum);
 
 UPDATE query_entity SET json = jsonb_set(json::jsonb, '{checksum}', to_jsonb(MD5(json->>'checksum')));
 
