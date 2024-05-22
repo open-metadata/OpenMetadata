@@ -4,6 +4,9 @@ import pytest
 
 from .integration_base import int_admin_ometa
 
+if not sys.version_info >= (3, 9):
+    collect_ignore = ["trino"]
+
 
 @pytest.fixture(scope="module")
 def metadata():

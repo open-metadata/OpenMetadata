@@ -1,5 +1,3 @@
-import sys
-
 import pytest
 
 from metadata.generated.schema.api.services.createDatabaseService import (
@@ -23,9 +21,6 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 )
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.workflow.metadata import MetadataWorkflow
-
-if not sys.version_info >= (3, 9):
-    pytest.skip("requires python 3.9+", allow_module_level=True)
 
 
 @pytest.fixture(scope="module")
