@@ -638,6 +638,8 @@ site_menu:
     url: /connectors/dashboard/powerbi
   - category: Connectors / Dashboard / PowerBI / Run Externally
     url: /connectors/dashboard/powerbi/yaml
+  - category: Connectors / Dashboard / PowerBI / Lineage from pbit files
+    url: /connectors/dashboard/powerbi/powerbi-pbit-lineage
   - category: Connectors / Dashboard / Qlik Sense
     url: /connectors/dashboard/qliksense
   - category: Connectors / Dashboard / Qlik Sense / Run Externally
