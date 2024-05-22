@@ -3,6 +3,8 @@ title: Lineage from pbit files
 slug: /connectors/dashboard/powerbi/powerbi-pbit-lineage
 ---
 
+# Lineage from pbit files
+
 In this section, we provide guides and references to get the lineage between `DataSource Tables <-> PowerBI Datasets <-> PowerBI Reports`.
 
 ## Follow the below steps to generate the lineage
@@ -26,7 +28,7 @@ Use any one of the below sources to store the .pbit files and configure these so
 ### Run from UI
 Select the source for the .pbit files from UI and add the connection for it
 {% image
-  src="images/v1.4/connectors/powerbi/pbit-file-source.png"
+  src="/images/v1.4/connectors/powerbi/pbit-file-source.png"
   alt="pbit-file-sources"
   caption="pbit file sources"
  /%}
@@ -35,7 +37,7 @@ Select the source for the .pbit files from UI and add the connection for it
 
 Choose one of the configs for local, azure, s3 and gcs by modifying `pbitFilesSource` from below yaml and run the connector by following steps [here](/connectors/dashboard/powerbi/yaml).
 
-yaml```
+```yaml
 source:
   type: powerbi
   serviceName: local_powerbi
