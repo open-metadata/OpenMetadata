@@ -54,7 +54,6 @@ import org.openmetadata.schema.tests.TestSuite;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.FieldChange;
-import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.UsageDetails;
 import org.openmetadata.service.Entity;
@@ -359,10 +358,6 @@ public class SearchRepository {
             || entityType.equalsIgnoreCase(Entity.STORAGE_SERVICE)
             || entityType.equalsIgnoreCase(Entity.SEARCH_SERVICE)) {
           parentMatch = new ImmutablePair<>("service.id", entityId);
-        } else if (entityType.equalsIgnoreCase(Entity.TABLE)) {
-          EntityInterface entity =
-              Entity.getEntity(entityType, UUID.fromString(entityId), "", Include.ALL);
-          parentMatch = new ImmutablePair<>("entityFQN", entity.getFullyQualifiedName());
         } else {
           parentMatch = new ImmutablePair<>(entityType + ".id", entityId);
         }
