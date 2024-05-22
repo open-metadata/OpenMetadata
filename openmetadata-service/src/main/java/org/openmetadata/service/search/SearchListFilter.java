@@ -142,7 +142,10 @@ public class SearchListFilter extends Filter<SearchListFilter> {
       conditions.add(
           includeAllTests
               ? String.format(
-                  "{\"prefix\": {\"entityFQN\": \"%s\"}}", escapeDoubleQuotes(entityFQN))
+                  "{\"bool\":{\"should\": ["
+                      + "{\"prefix\": {\"entityFQN\": \"%s%s\"}},"
+                      + "{\"term\": {\"entityFQN\": \"%s\"}}]}}",
+                  escapeDoubleQuotes(entityFQN), Entity.SEPARATOR, escapeDoubleQuotes(entityFQN))
               : String.format(
                   "{\"term\": {\"entityFQN\": \"%s\"}}", escapeDoubleQuotes(entityFQN)));
     }
