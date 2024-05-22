@@ -43,8 +43,6 @@ def get_connection_url(connection: TeradataConnection) -> str:
     if connection.password:
         url += f"&password={quote_plus(connection.password.get_secret_value())}"
 
-    if connection.databaseName:
-        url += f"&database={quote_plus(connection.username)}"
     # add standard options
     params = "&".join(
         [
