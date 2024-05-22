@@ -90,7 +90,8 @@ public class SearchListFilter extends Filter<SearchListFilter> {
   private String getIncludeCondition() {
     String domain = getQueryParam("domain");
     if (!nullOrEmpty(domain)) {
-      return String.format("{\"term\": {\"domain.fullyQualifiedName\": \"%s\"}}", domain);
+      return String.format(
+          "{\"term\": {\"domain.fullyQualifiedName\": \"%s\"}}", escapeDoubleQuotes(domain));
     }
     return "";
   }
