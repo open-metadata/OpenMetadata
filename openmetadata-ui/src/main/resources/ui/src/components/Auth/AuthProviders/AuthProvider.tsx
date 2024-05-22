@@ -347,6 +347,7 @@ export const AuthProvider = ({
       }, timeoutExpiry);
       setTimeoutId(Number(timerId));
     } else {
+      // reset user details if token is expired or token is not present
       authenticatorRef.current?.invokeLogout();
     }
   };
