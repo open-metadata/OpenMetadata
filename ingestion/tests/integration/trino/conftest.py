@@ -130,9 +130,7 @@ def mysql_container(docker_network):
 
 
 @pytest.fixture(scope="module")
-def hive_metastore_container(
-    mysql_container, minio_container, docker_network, capmanager
-):
+def hive_metastore_container(mysql_container, minio_container, docker_network):
     with (
         HiveMetaStoreContainer("bitsondatadev/hive-metastore:latest")
         .with_network(docker_network)
