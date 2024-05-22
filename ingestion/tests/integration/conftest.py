@@ -1,5 +1,6 @@
+import sys
+
 import pytest
-from testcontainers.core.config import testcontainers_config
 
 from .integration_base import int_admin_ometa
 
@@ -17,6 +18,8 @@ def pytest_pycollect_makeitem(collector, name, obj):
         pass
 
 
-@pytest.fixture(scope="session", autouse=True)
+@pytest.fixture(scope="session", autouse=sys.version_info >= (3, 9))
 def config_testcontatiners():
+    from testcontainers.core.config import testcontainers_config
+
     testcontainers_config.max_tries = 10

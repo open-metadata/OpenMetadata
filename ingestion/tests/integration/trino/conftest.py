@@ -1,4 +1,3 @@
-import logging
 import os.path
 import random
 
@@ -99,11 +98,6 @@ class HiveMetaStoreContainer(DockerContainer):
         )
 
 
-@pytest.fixture(scope="session")
-def capmanager(request):
-    yield request.config.pluginmanager.getplugin("capturemanager")
-
-
 @pytest.fixture(scope="module")
 def docker_network():
     with testcontainers.core.network.Network() as network:
@@ -124,11 +118,6 @@ def trino_container(hive_metastore_container, minio_container, docker_network):
             f"http://minio:{minio_container.port}",
         ) as trino
     ):
-        engine = create_engine(trino.get_connection_url())
-        retry(
-            stop=stop_after_delay(60),
-            wait=wait_fixed(1),
-        )(lambda: engine.execute("SHOW SCHEMAS FROM minio").fetchone())()
         yield trino
 
 
@@ -160,13 +149,6 @@ def hive_metastore_container(
         ) as hive
     ):
         yield hive
-        with capmanager.global_and_fixture_disabled():
-            logging.info("### STDOUT")
-            for line in str(hive.get_logs()[0].decode()).split("\n"):
-                logging.info(line)
-            logging.info("### STDERR")
-            for line in str(hive.get_logs()[1].decode()).split("\n"):
-                logging.info(line)
 
 
 @pytest.fixture(scope="module")
