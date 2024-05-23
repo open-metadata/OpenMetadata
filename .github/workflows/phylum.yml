@@ -10,10 +10,6 @@ jobs:
       contents: read
       pull-requests: write
     runs-on: ubuntu-latest
-    container:
-      image: docker://ghcr.io/phylum-dev/phylum-ci:slim
-      env:
-        GITHUB_TOKEN: ${{ github.token }}
     steps:
       - name: Checkout the repo
         uses: actions/checkout@v4
@@ -23,6 +19,7 @@ jobs:
       - name: Analyze dependencies
         uses: phylum-dev/phylum-analyze-pr-action@v2
         with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
           phylum_token: ${{ secrets.PHYLUM_TOKEN }}
           cmd: |
             phylum-ci -vv \
