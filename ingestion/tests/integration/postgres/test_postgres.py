@@ -32,6 +32,54 @@ if not sys.version_info >= (3, 9):
     pytest.skip("requires python 3.9+", allow_module_level=True)
 
 
+@pytest.fixture(autouse=True)
+def config_logging():
+    logging.getLogger("sqlfluff").setLevel(logging.CRITICAL)
+
+
+@pytest.fixture(scope="module")
+def db_service(metadata, postgres_container):
+    service = CreateDatabaseServiceRequest(
+        name="docker_test_db",
+        serviceType=DatabaseServiceType.Postgres,
+        connection=DatabaseConnection(
+            config=PostgresConnection(
+                username=postgres_container.username,
+                authType=BasicAuth(password=postgres_container.password),
+                hostPort="localhost:"
+                + postgres_container.get_exposed_port(postgres_container.port),
+                database="dvdrental",
+            )
+        ),
+    )
+    service_entity = metadata.create_or_update(data=service)
+    service_entity.connection.config.authType.password = postgres_container.password
+    yield service_entity
+    metadata.delete(
+        DatabaseService, service_entity.id, recursive=True, hard_delete=True
+    )
+
+
+@pytest.fixture(scope="module")
+def ingest_metadata(db_service, metadata: OpenMetadata):
+    workflow_config = OpenMetadataWorkflowConfig(
+        source=Source(
+            type=db_service.connection.config.type.value.lower(),
+            serviceName=db_service.fullyQualifiedName.__root__,
+            serviceConnection=db_service.connection,
+            sourceConfig=SourceConfig(config={}),
+        ),
+        sink=Sink(
+            type="metadata-rest",
+            config={},
+        ),
+        workflowConfig=WorkflowConfig(openMetadataServerConfig=metadata.config),
+    )
+    metadata_ingestion = MetadataWorkflow.create(workflow_config)
+    metadata_ingestion.execute()
+    return
+
+
 @pytest.fixture(scope="module")
 def ingest_lineage(db_service, ingest_metadata, metadata: OpenMetadata):
     workflow_config = OpenMetadataWorkflowConfig(
