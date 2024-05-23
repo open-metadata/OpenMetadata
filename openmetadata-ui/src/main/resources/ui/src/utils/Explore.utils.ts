@@ -72,44 +72,10 @@ export const getParseValueFromLocation = (
 
 /**
  * It takes queryFilter object as input and returns a parsed array of search dropdown options with selected values
- * @param item - SearchDropdownOption
  * @param dropdownItems - SearchDropdownOption[]
  * @param queryFilter - QueryFilterInterface
- * @deprecated will be removed
  */
 export const getSelectedValuesFromQuickFilter = (
-  item: SearchDropdownOption,
-  dropdownItems: SearchDropdownOption[],
-  queryFilter?: QueryFilterInterface
-) => {
-  const EMPTY_DATA: ExploreQuickFilterField['value'] = [];
-
-  if (queryFilter) {
-    const filters: Array<QueryFieldInterface> = [];
-
-    const mustField: QueryFieldInterface[] = get(
-      queryFilter,
-      'query.bool.must',
-      []
-    );
-
-    mustField.forEach((item) => {
-      const filterValues = item?.bool?.should as QueryFieldInterface[];
-
-      if (filterValues) {
-        filters.push(...filterValues);
-      }
-    });
-
-    const data = getParseValueFromLocation(filters, dropdownItems);
-
-    return data[item.label] ? data[item.label] : [];
-  }
-
-  return EMPTY_DATA;
-};
-
-export const getAllSelectedValuesFromQuickFilter = (
   dropdownItems: SearchDropdownOption[],
   queryFilter?: QueryFilterInterface
 ) => {

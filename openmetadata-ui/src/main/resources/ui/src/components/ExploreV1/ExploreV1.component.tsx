@@ -52,7 +52,7 @@ import { QueryFieldInterface } from '../../pages/ExplorePage/ExplorePage.interfa
 import { getDropDownItems } from '../../utils/AdvancedSearchUtils';
 import { Transi18next } from '../../utils/CommonUtils';
 import { highlightEntityNameAndDescription } from '../../utils/EntityUtils';
-import { getAllSelectedValuesFromQuickFilter } from '../../utils/Explore.utils';
+import { getSelectedValuesFromQuickFilter } from '../../utils/Explore.utils';
 import { getApplicationDetailsPath } from '../../utils/RouterUtils';
 import searchClassBase from '../../utils/SearchClassBase';
 import Loader from '../common/Loader/Loader';
@@ -262,7 +262,7 @@ const ExploreV1: React.FC<ExploreProps> = ({
       key: string;
     }> = getDropDownItems(activeTabKey);
 
-    const selectedValuesFromQuickFilter = getAllSelectedValuesFromQuickFilter(
+    const selectedValuesFromQuickFilter = getSelectedValuesFromQuickFilter(
       dropdownItems,
       quickFilters
     );
