@@ -13,7 +13,6 @@ jobs:
       image: docker://ghcr.io/phylum-dev/phylum-ci:slim
       env:
         GITHUB_TOKEN: ${{ github.token }}
-        PHYLUM_API_KEY: ${{ secrets.PHYLUM_TOKEN }}
     steps:
       - name: Checkout the repo
         uses: actions/checkout@v4
@@ -21,7 +20,10 @@ jobs:
           ref: ${{ github.event.pull_request.head.sha }}
           fetch-depth: 0
       - name: Analyze dependencies
-        run: |
+        uses: phylum-dev/phylum-analyze-pr-action@v2
+        with:
+          phylum_token: ${{ secrets.PHYLUM_TOKEN }}
+          cmd: |
             phylum-ci -vv \
             --depfile ingestion/setup.py \
             --depfile ingestion/pyproject.toml
