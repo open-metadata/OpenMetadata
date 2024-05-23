@@ -14,7 +14,6 @@ import {
   customFormatDateTime,
   getEpochMillisForFutureDays,
 } from '../../../src/utils/date-time/DateTimeUtils';
-import { GlobalSettingOptions } from '../../constants/settings.constant';
 import {
   descriptionBox,
   interceptURL,
@@ -165,10 +164,6 @@ export const permanentDeleteUser = (username: string, displayName: string) => {
   verifyResponseStatusCode('@searchUser', 200);
 
   cy.get('[data-testid="search-error-placeholder"]').should('be.exist');
-};
-export const visitUserListPage = () => {
-  interceptURL('GET', '/api/v1/users?*', 'getUsers');
-  cy.settingClick(GlobalSettingOptions.USERS);
 };
 
 export const generateToken = () => {
