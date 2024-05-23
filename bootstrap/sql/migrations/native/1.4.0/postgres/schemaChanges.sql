@@ -4,13 +4,38 @@ SET json = jsonb_set(json::jsonb, '{connection,config,supportsProfiler}', 'true'
 ::jsonb)
 WHERE serviceType = 'MongoDB';
 
+-- Queries should be unique:
+-- 1. Remove duplicate queries from entity_relationship
+-- 2. Remove duplicate queries from query_entity
+-- 3. Add checksum with unique constraint
 ALTER TABLE query_entity ADD COLUMN checksum varchar
 (32) GENERATED ALWAYS AS
-(json ->> 'checksum') STORED NOT NULL,
-ADD UNIQUE
-(checksum);
+(json ->> 'checksum') STORED NOT NULL;
 
-UPDATE query_entity SET json = jsonb_set(json::jsonb, '{checksum}', MD5((json->>'checksum')::text)::jsonb);
+with duplicated as (
+  select
+    id,
+    ROW_NUMBER() OVER (PARTITION BY checksum ORDER BY id) AS rn
+  FROM query_entity
+)
+DELETE FROM entity_relationship
+  where toEntity = 'query' and toId in (
+  select id from duplicated where rn > 1
+);
+
+with duplicated as (
+  select
+    id,
+    ROW_NUMBER() OVER (PARTITION BY checksum ORDER BY id) AS rn
+  FROM query_entity
+)
+DELETE FROM query_entity where id in (
+  select id from duplicated where rn > 1
+);
+
+ALTER TABLE query_entity ADD CONSTRAINT unique_query_checksum UNIQUE (checksum);
+
+UPDATE query_entity SET json = jsonb_set(json::jsonb, '{checksum}', to_jsonb(MD5(checksum)));
 
 -- Restructure dbServiceNames in ingestion_pipeline_entity
 update ingestion_pipeline_entity ipe
