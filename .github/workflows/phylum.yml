@@ -22,6 +22,7 @@ jobs:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           phylum_token: ${{ secrets.PHYLUM_TOKEN }}
           cmd: |
-            phylum-ci -vvv \
+            phylum-ci -vv \
             --depfile ingestion/setup.py \
             --depfile ingestion/pyproject.toml
+            --depfile openmetadata-service/pom.xml
