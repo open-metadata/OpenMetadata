@@ -48,7 +48,7 @@ export const getParseValueFromLocation = (
     let customLabel = false;
     if (filter.term) {
       key = Object.keys(filter.term)[0];
-      value = filter.term[key];
+      value = filter.term[key] as string;
     } else {
       key =
         (filter?.bool?.must_not as QueryFieldInterface)?.exists?.field ?? '';
