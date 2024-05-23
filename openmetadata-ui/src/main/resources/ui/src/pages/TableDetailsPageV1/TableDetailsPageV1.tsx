@@ -406,12 +406,7 @@ const TableDetailsPageV1: React.FC = () => {
       }
       const updatedTableDetails = {
         ...tableDetails,
-        owner: newOwner
-          ? {
-              ...owner,
-              ...newOwner,
-            }
-          : undefined,
+        owner: newOwner,
       };
       await onTableUpdate(updatedTableDetails, 'owner');
     },
