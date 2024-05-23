@@ -20,7 +20,6 @@ from collections import namedtuple
 from typing import Generator, Iterable, Optional
 
 from pydantic import ValidationError
-from requests.utils import quote, unquote
 
 from metadata.data_insight.processor.reports.data_processor import DataProcessor
 from metadata.generated.schema.analytics.reportData import ReportData, ReportDataType
@@ -109,7 +108,9 @@ class WebAnalyticEntityViewReportDataProcessor(DataProcessor):
 
             entity_obj = EntityObj(split_url[0], split_url[1])
             entity_type = entity_obj.entity_type
-            re_pattern = re.compile((f"(.*{re.escape(entity_type)}/{re.escape(entity_obj.fqn)})"))
+            re_pattern = re.compile(
+                (f"(.*{re.escape(entity_type)}/{re.escape(entity_obj.fqn)})")
+            )
 
             if (
                 entity_obj.fqn in refined_data
