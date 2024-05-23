@@ -225,6 +225,7 @@ SET json = jsonb_set(
 WHERE serviceType IN (LOWER('qliksense')) AND json#>'{connection,config,certificates,clientKeyCertificateData}' IS NOT NULL;
 
 
+UPDATE dashboard_service_entity SET json = json #-'{connection,config,connection,stagingDir}' WHERE serviceType IN (LOWER('qliksense')) AND json#>'{connection,config,certificates,stagingDir}' IS NOT NULL;
 
 UPDATE dashboard_service_entity
 SET json = jsonb_set(
