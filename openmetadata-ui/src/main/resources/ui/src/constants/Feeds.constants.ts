@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import { EntityType } from '../enums/entity.enum';
 import { CardStyle } from '../generated/entity/feed/thread';
 
 export const EntityRegExPattern = /<#E::([^<>]+?)::([^<>]+?)(?:::([^<>]+?))?>/;
@@ -39,7 +38,7 @@ export const confirmStateInitialValue = {
   isThread: false,
 };
 
-export const MENTION_ALLOWED_CHARS = /^[A-Za-z0-9_.]*$/;
+export const MENTION_ALLOWED_CHARS = /^[A-Za-z0-9_.-]*$/;
 export const MENTION_DENOTATION_CHARS = ['@', '#'];
 
 export const TOOLBAR_ITEMS = [
@@ -98,11 +97,4 @@ export const ASSET_CARD_STYLES = [
   CardStyle.EntityCreated,
   CardStyle.EntitySoftDeleted,
   CardStyle.EntityDeleted,
-];
-
-export const NON_DATA_ASSET_ENTITIES = [
-  EntityType.TEAM,
-  EntityType.BOT,
-  EntityType.APPLICATION,
-  EntityType.EVENT_SUBSCRIPTION,
 ];

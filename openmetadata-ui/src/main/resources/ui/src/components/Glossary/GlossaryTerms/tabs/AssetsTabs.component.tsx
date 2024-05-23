@@ -56,6 +56,7 @@ import { GlossaryTerm } from '../../../../generated/entity/data/glossaryTerm';
 import { DataProduct } from '../../../../generated/entity/domains/dataProduct';
 import { Domain } from '../../../../generated/entity/domains/domain';
 import { usePaging } from '../../../../hooks/paging/usePaging';
+import { useApplicationStore } from '../../../../hooks/useApplicationStore';
 import { useFqn } from '../../../../hooks/useFqn';
 import { Aggregations } from '../../../../interface/search.interface';
 import {
@@ -124,6 +125,7 @@ const AssetsTabs = forwardRef(
     }: AssetsTabsProps,
     ref
   ) => {
+    const { theme } = useApplicationStore();
     const [itemCount, setItemCount] = useState<Record<EntityType, number>>(
       {} as Record<EntityType, number>
     );
@@ -504,7 +506,7 @@ const AssetsTabs = forwardRef(
                   <a
                     href={GLOSSARIES_DOCS}
                     rel="noreferrer"
-                    style={{ color: '#1890ff' }}
+                    style={{ color: theme.primaryColor }}
                     target="_blank"
                   />
                 }

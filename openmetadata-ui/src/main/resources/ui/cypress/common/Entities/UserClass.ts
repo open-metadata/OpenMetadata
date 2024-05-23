@@ -71,8 +71,16 @@ class UsersTestClass {
     cy.get(
       ':nth-child(3) > [data-testid="glossary-container"] > [data-testid="entity-tags"] > .m-t-xss > .ant-tag'
     ).should('be.exist');
-    // check edit tier permission
-    cy.get('[data-testid="manage-button"]').should('not.be.exist');
+    if (Cypress.env('isOss')) {
+      cy.get('[data-testid="manage-button"]').should('not.be.exist');
+    } else {
+      cy.get('[data-testid="manage-button"]').should('be.visible');
+      cy.get('[data-testid="manage-button"]').click();
+      cy.get('[data-testid="export-button"]').should('be.visible');
+      cy.get('[data-testid="import-button"]').should('not.be.exist');
+      cy.get('[data-testid="announcement-button"]').should('not.be.exist');
+      cy.get('[data-testid="delete-button"]').should('not.be.exist');
+    }
     cy.get('[data-testid="lineage"] > .ant-space-item').click();
     cy.get('[data-testid="edit-lineage"]').should('be.disabled');
   }

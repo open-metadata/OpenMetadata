@@ -109,16 +109,18 @@ export const AuthProvider = ({
     setHelperFunctionsRef,
     setCurrentUser,
     updateNewUser: setNewUserProfile,
-    setIsAuthenticated: setIsUserAuthenticated,
+    setIsAuthenticated,
     authConfig,
     setAuthConfig,
     setAuthorizerConfig,
-    setIsSigningIn,
+    setIsSigningUp,
     setJwtPrincipalClaims,
     removeRefreshToken,
     removeOidcToken,
     getOidcToken,
     getRefreshToken,
+    isApplicationLoading,
+    setApplicationLoading,
   } = useApplicationStore();
   const { activeDomain } = useDomainStore();
 
@@ -127,7 +129,6 @@ export const AuthProvider = ({
   const { t } = useTranslation();
 
   const [timeoutId, setTimeoutId] = useState<number>();
-  const [loading, setLoading] = useState(false);
   const [msalInstance, setMsalInstance] = useState<IPublicClientApplication>();
 
   const authenticatorRef = useRef<AuthenticatorRef>(null);
@@ -140,7 +141,7 @@ export const AuthProvider = ({
   const clientType = authConfig?.clientType ?? ClientType.Public;
 
   const onLoginHandler = () => {
-    setLoading(true);
+    setApplicationLoading(true);
 
     authenticatorRef.current?.invokeLogin();
 
@@ -151,7 +152,7 @@ export const AuthProvider = ({
     clearTimeout(timeoutId);
 
     authenticatorRef.current?.invokeLogout();
-    setIsUserAuthenticated(false);
+    setIsAuthenticated(false);
 
     // reset the user details on logout
     setCurrentUser({} as User);
@@ -162,7 +163,7 @@ export const AuthProvider = ({
     // remove the refresh token on logout
     removeRefreshToken();
 
-    setLoading(false);
+    setApplicationLoading(false);
   }, [timeoutId]);
 
   const onRenewIdTokenHandler = () => {
@@ -191,8 +192,8 @@ export const AuthProvider = ({
   const resetUserDetails = (forceLogout = false) => {
     setCurrentUser({} as User);
     removeOidcToken();
-    setIsUserAuthenticated(false);
-    setLoading(false);
+    setIsAuthenticated(false);
+    setApplicationLoading(false);
     clearTimeout(timeoutId);
     if (forceLogout) {
       onLogoutHandler();
@@ -203,12 +204,12 @@ export const AuthProvider = ({
   };
 
   const getLoggedInUserDetails = async () => {
-    setLoading(true);
+    setApplicationLoading(true);
     try {
       const res = await getLoggedInUser({ fields: userAPIQueryFields });
       if (res) {
         setCurrentUser(res);
-        setIsUserAuthenticated(true);
+        setIsAuthenticated(true);
       } else {
         resetUserDetails();
       }
@@ -224,7 +225,7 @@ export const AuthProvider = ({
         );
       }
     } finally {
-      setLoading(false);
+      setApplicationLoading(false);
     }
   };
 
@@ -357,15 +358,15 @@ export const AuthProvider = ({
   }, [timeoutId]);
 
   const handleFailedLogin = () => {
-    setIsSigningIn(false);
-    setIsUserAuthenticated(false);
-    setLoading(false);
+    setIsSigningUp(false);
+    setIsAuthenticated(false);
+    setApplicationLoading(false);
     history.push(ROUTES.SIGNIN);
   };
 
   const handleSuccessfulLogin = async (user: OidcUser) => {
-    setLoading(true);
-    setIsUserAuthenticated(true);
+    setApplicationLoading(true);
+    setIsAuthenticated(true);
     const fields =
       authConfig?.provider === AuthProviderEnum.Basic
         ? userAPIQueryFields + ',' + isEmailVerifyField
@@ -389,7 +390,7 @@ export const AuthProvider = ({
       if (err && err.response && err.response.status === 404) {
         setNewUserProfile(user.profile);
         setCurrentUser({} as User);
-        setIsSigningIn(true);
+        setIsSigningUp(true);
         history.push(ROUTES.SIGNUP);
       } else {
         // eslint-disable-next-line no-console
@@ -397,7 +398,7 @@ export const AuthProvider = ({
         history.push(ROUTES.SIGNIN);
       }
     } finally {
-      setLoading(false);
+      setApplicationLoading(false);
     }
   };
 
@@ -548,7 +549,7 @@ export const AuthProvider = ({
           updateAuthInstance(configJson);
           if (!getOidcToken()) {
             handleStoreProtectedRedirectPath();
-            setLoading(false);
+            setApplicationLoading(false);
           } else {
             if (location.pathname !== ROUTES.AUTH_CALLBACK) {
               getLoggedInUserDetails();
@@ -556,7 +557,7 @@ export const AuthProvider = ({
           }
         } else {
           // provider is either null or not supported
-          setLoading(false);
+          setApplicationLoading(false);
           showErrorToast(
             t('message.configured-sso-provider-is-not-supported', {
               provider: authConfig?.provider,
@@ -564,11 +565,11 @@ export const AuthProvider = ({
           );
         }
       } else {
-        setLoading(false);
+        setApplicationLoading(false);
         showErrorToast(t('message.auth-configuration-missing'));
       }
     } catch (error) {
-      setLoading(false);
+      setApplicationLoading(false);
       showErrorToast(
         error as AxiosError,
         t('server.entity-fetch-error', {
@@ -580,7 +581,11 @@ export const AuthProvider = ({
 
   const getProtectedApp = () => {
     // Show loader if application in loading state
-    const childElement = loading ? <Loader fullScreen /> : children;
+    const childElement = isApplicationLoading ? (
+      <Loader fullScreen />
+    ) : (
+      children
+    );
 
     if (clientType === ClientType.Confidential) {
       return (
@@ -691,11 +696,11 @@ export const AuthProvider = ({
     return cleanup;
   }, []);
 
-  const isLoading =
+  const isConfigLoading =
     !authConfig ||
     (authConfig.provider === AuthProviderEnum.Azure && !msalInstance);
 
-  return <>{isLoading ? <Loader fullScreen /> : getProtectedApp()}</>;
+  return <>{isConfigLoading ? <Loader fullScreen /> : getProtectedApp()}</>;
 };
 
 export default AuthProvider;

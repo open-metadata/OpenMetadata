@@ -346,7 +346,7 @@ class StorageUnitTest(TestCase):
             partitionColumns=[Column(name="date", dataType=DataType.DATE)],
         )
         self.assertEqual(
-            "transactions",
+            "transactions/",
             self.object_store_source._get_sample_file_prefix(
                 metadata_entry=input_metadata
             ),
@@ -367,7 +367,7 @@ class StorageUnitTest(TestCase):
             isPartitioned=False,
         )
         self.assertEqual(
-            "transactions",
+            "transactions/",
             self.object_store_source._get_sample_file_prefix(
                 metadata_entry=input_metadata
             ),

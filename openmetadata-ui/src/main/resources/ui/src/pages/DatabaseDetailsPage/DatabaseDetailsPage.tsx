@@ -123,11 +123,6 @@ const DatabaseDetails: FunctionComponent = () => {
   const [updateProfilerSetting, setUpdateProfilerSetting] =
     useState<boolean>(false);
 
-  const extraDropdownContent = entityUtilClassBase.getManageExtraOptions(
-    EntityType.DATABASE,
-    decodedDatabaseFQN
-  );
-
   const history = useHistory();
   const isMounting = useRef(true);
 
@@ -142,6 +137,15 @@ const DatabaseDetails: FunctionComponent = () => {
   const [databasePermission, setDatabasePermission] =
     useState<OperationPermission>(DEFAULT_ENTITY_PERMISSION);
 
+  const extraDropdownContent = useMemo(
+    () =>
+      entityUtilClassBase.getManageExtraOptions(
+        EntityType.DATABASE,
+        decodedDatabaseFQN,
+        databasePermission
+      ),
+    [decodedDatabaseFQN, databasePermission]
+  );
   const fetchDatabasePermission = async () => {
     setIsLoading(true);
     try {
@@ -299,7 +303,7 @@ const DatabaseDetails: FunctionComponent = () => {
     async (owner: Database['owner']) => {
       const updatedData = {
         ...database,
-        owner: owner ? { ...database?.owner, ...owner } : undefined,
+        owner: owner,
       };
 
       await settingsUpdateHandler(updatedData as Database);

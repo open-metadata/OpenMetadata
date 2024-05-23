@@ -131,9 +131,14 @@ const DatabaseSchemaPage: FunctionComponent = () => {
   const [updateProfilerSetting, setUpdateProfilerSetting] =
     useState<boolean>(false);
 
-  const extraDropdownContent = entityUtilClassBase.getManageExtraOptions(
-    EntityType.DATABASE_SCHEMA,
-    decodedDatabaseSchemaFQN
+  const extraDropdownContent = useMemo(
+    () =>
+      entityUtilClassBase.getManageExtraOptions(
+        EntityType.DATABASE_SCHEMA,
+        decodedDatabaseSchemaFQN,
+        databaseSchemaPermission
+      ),
+    [databaseSchemaPermission, decodedDatabaseSchemaFQN]
   );
 
   const handleShowDeletedTables = (value: boolean) => {
@@ -317,7 +322,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
       try {
         const updatedData = {
           ...databaseSchema,
-          owner: owner ? { ...databaseSchema?.owner, ...owner } : undefined,
+          owner: owner,
         };
 
         const response = await saveUpdatedDatabaseSchemaData(

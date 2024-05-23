@@ -176,10 +176,17 @@
   overflow-y: auto;
 }
 
-.glossary-richtext-editor .toastui-editor,
-.edit-glossary-modal .toastui-editor {
-  min-height: 150px !important; // overriding inline style
-  .ProseMirror {
+.glossary-richtext-editor,
+.edit-glossary-modal {
+  .toastui-editor {
+    min-height: 150px !important; // overriding inline style
+
+    .ProseMirror {
+      min-height: 150px;
+    }
+  }
+
+  .toastui-editor-md-preview {
     min-height: 150px;
   }
 }
