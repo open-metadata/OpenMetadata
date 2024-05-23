@@ -23,7 +23,7 @@ export type TabsInfoData = {
   icon: React.ReactNode;
 };
 
-export type FieldValue = string | boolean | null | any;
+export type FieldValue = string | boolean | null | number;
 
 export interface EsTermQuery {
   value: FieldValue;

@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 import { ExploreQuickFilterField } from '../components/Explore/ExplorePage.interface';
-import { getQuickFilterQuery } from './Explore.utils';
+import { QueryFieldInterface } from '../pages/ExplorePage/ExplorePage.interface';
+import { extractTermKeys, getQuickFilterQuery } from './Explore.utils';
 
 describe('Explore Utils', () => {
   it('should return undefined if data is empty', () => {
@@ -67,5 +68,37 @@ describe('Explore Utils', () => {
     };
 
     expect(result).toEqual(expectedQuery);
+  });
+
+  describe('extractTermKeys', () => {
+    it('should return an empty array if objects is empty', () => {
+      const objects: QueryFieldInterface[] = [];
+      const result = extractTermKeys(objects);
+
+      expect(result).toEqual([]);
+    });
+
+    it('should return an array of term keys', () => {
+      const objects = [
+        {
+          bool: {
+            must_not: {
+              exists: {
+                field: 'owner.displayName.keyword',
+              },
+            },
+          },
+        },
+        {
+          term: {
+            'owner.displayName.keyword': 'accounting',
+          },
+        },
+      ];
+      const result = extractTermKeys(objects);
+      const expectedKeys = ['owner.displayName.keyword'];
+
+      expect(result).toEqual(expectedKeys);
+    });
   });
 });

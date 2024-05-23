@@ -173,7 +173,7 @@ const SearchDropdown: FC<SearchDropdownProps> = ({
     // call on change with updated value
     if (nullOptionSelected) {
       onChange(
-        [{ key: NULL_OPTION_KEY, label: 'NO OWNER' }, ...selectedOptions],
+        [{ key: NULL_OPTION_KEY, label: nullLabelText }, ...selectedOptions],
         searchKey
       );
     } else {
