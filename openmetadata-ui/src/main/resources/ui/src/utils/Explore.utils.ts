@@ -43,15 +43,26 @@ export const getParseValueFromLocation = (
   const result: Record<string, SearchDropdownOption[]> = {};
 
   for (const filter of filters) {
-    const key = Object.keys(filter.term)[0];
-    const value = filter.term[key];
+    let key = '';
+    let value = '';
+    let customLabel = false;
+    if (filter.term) {
+      key = Object.keys(filter.term)[0];
+      value = filter.term[key];
+    } else {
+      key =
+        (filter?.bool?.must_not as QueryFieldInterface)?.exists?.field ?? '';
+      value = NULL_OPTION_KEY;
+      customLabel = true;
+    }
+
     const dataCategory = dataLookupMap.get(key);
 
     if (dataCategory) {
       result[dataCategory.label] = result[dataCategory.label] || [];
       result[dataCategory.label].push({
         key: value,
-        label: value,
+        label: !customLabel ? value : `No ${dataCategory.label}`,
       });
     }
   }
@@ -83,7 +94,7 @@ export const getSelectedValuesFromQuickFilter = (
     );
 
     mustField.forEach((item) => {
-      const filterValues = item?.bool?.should;
+      const filterValues = item?.bool?.should as QueryFieldInterface[];
 
       if (filterValues) {
         filters.push(...filterValues);
@@ -111,28 +122,11 @@ export const getAllSelectedValuesFromQuickFilter = (
     'query.bool.must',
     []
   ).flatMap((item: QueryFieldInterface) => item.bool?.should || []);
-
-  const mustNotFields = get(queryFilter, 'query.bool.must_not', []).flatMap(
-    (item: QueryFieldInterface) => item.exists?.field || []
-  );
-
   const combinedData: Record<string, SearchDropdownOption[]> = {};
 
   dropdownItems.forEach((item) => {
     const data = getParseValueFromLocation(mustFilters, [item]);
-    const labelText = `No ${item.label}`;
-    const mustNotData: SearchDropdownOption[] = mustNotFields
-      .filter((mItem: string) => mItem === item.key)
-      .map((_: string) => ({
-        key: NULL_OPTION_KEY,
-        label: labelText,
-      }));
-
     combinedData[item.label] = data[item.label] || [];
-
-    mustNotData.forEach((mustNotItem: SearchDropdownOption) => {
-      combinedData[item.label].push(mustNotItem);
-    });
   });
 
   return combinedData;

@@ -200,7 +200,7 @@ const ExploreV1: React.FC<ExploreProps> = ({
           if (filterValue.key === NULL_OPTION_KEY) {
             should.push({
               bool: {
-                must_not: [{ exists: { field: filter.key } }],
+                must_not: { exists: { field: filter.key } },
               },
             });
           } else {
