@@ -20,7 +20,7 @@ jobs:
         uses: phylum-dev/phylum-analyze-pr-action@v2
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          phylum_token: "abcdefg1234567"
+          phylum_token: ${{ secrets.PHYLUM_TOKEN }}
           cmd: |
             phylum-ci -vvv \
             --depfile ingestion/setup.py \
