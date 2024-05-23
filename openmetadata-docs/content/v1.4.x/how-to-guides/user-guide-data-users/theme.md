@@ -6,7 +6,6 @@ slug: /how-to-guides/guide-for-data-users/theme
 # How to Customize OpenMetadata
 
 Personalize your Open Metadata experience to reflect your company’s unique identity. Follow these simple steps:
-Supported types:
 
 1. Navigate to **Settings** > **Preferences**.
 2. Click on **Theme**.

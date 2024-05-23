@@ -638,6 +638,8 @@ site_menu:
     url: /connectors/dashboard/powerbi
   - category: Connectors / Dashboard / PowerBI / Run Externally
     url: /connectors/dashboard/powerbi/yaml
+  - category: Connectors / Dashboard / PowerBI / Lineage from pbit files
+    url: /connectors/dashboard/powerbi/powerbi-pbit-lineage
   - category: Connectors / Dashboard / Qlik Sense
     url: /connectors/dashboard/qliksense
   - category: Connectors / Dashboard / Qlik Sense / Run Externally
@@ -736,6 +738,8 @@ site_menu:
     url: /connectors/pipeline/nifi/yaml
   - category: Connectors / Pipeline / Nifi / Troubleshooting
     url: /connectors/pipeline/nifi/troubleshooting
+  - category: Connectors / Pipeline / Openlineage
+    url: /connectors/pipeline/openlineage
   - category: Connectors / Pipeline / Spline
     url: /connectors/pipeline/spline
   - category: Connectors / Pipeline / Spline / Run Externally
@@ -850,22 +854,6 @@ site_menu:
     url: /connectors/ingestion/workflows/dbt/setup-multiple-dbt-projects
   - category: Connectors / Ingestion / Workflows / dbt / dbt troubleshooting
     url: /connectors/ingestion/workflows/dbt/dbt-troubleshooting
-  - category: Connectors / Ingestion / Workflows / Profiler
-    url: /connectors/ingestion/workflows/profiler
-  - category: Connectors / Ingestion / Workflows / Profiler / Metrics
-    url: /connectors/ingestion/workflows/profiler/metrics
-  - category: Connectors / Ingestion / Workflows / Profiler / Sample Data
-    url: /connectors/ingestion/workflows/profiler/external-sample-data
-  - category: Connectors / Ingestion / Workflows / Profiler / External Workflow
-    url: /connectors/ingestion/workflows/profiler/external-workflow
-  - category: Connectors / Ingestion / Workflows / Data Quality
-    url: /connectors/ingestion/workflows/data-quality
-  - category: Connectors / Ingestion / Workflows / Data Quality / Tests
-    url: /connectors/ingestion/workflows/data-quality/tests
-  - category: Connectors / Ingestion / Workflows / Data Quality / Custom Tests
-    url: /connectors/ingestion/workflows/data-quality/custom-tests
-  - category: Connectors / Ingestion / Workflows / Data Quality / Failed Rows Sample (Collate Only) 
-    url: /connectors/ingestion/workflows/data-quality/failed-rows-sample
   - category: Connectors / Ingestion / Lineage
     url: /connectors/ingestion/lineage
   - category: Connectors / Ingestion / Lineage / Edit Data Lineage Manually
@@ -890,6 +878,37 @@ site_menu:
     url: /connectors/ingestion/deployment
   - category: Connectors / Ingestion / Best Practices
     url: /connectors/ingestion/best-practices
+
+
+  - category: Quality & Observability
+    url: /quality-and-observability
+    color: violet-70
+    icon: openmetadata
+
+  - category: Quality & Observability / Profiler
+    url: /quality-and-observability/profiler
+  - category: Quality & Observability / Profiler / Metrics
+    url: /quality-and-observability/profiler/metrics
+  - category: Quality & Observability / Profiler / Sample Data
+    url: /quality-and-observability/profiler/external-sample-data
+  - category: Quality & Observability / Profiler / External Workflow
+    url: /quality-and-observability/profiler/external-workflow
+  - category: Quality & Observability / Profiler / Auto PII Tagging
+    url: /quality-and-observability/profiler/auto-pii-tagging
+  - category: Quality & Observability / Data Quality
+    url: /quality-and-observability/data-quality
+  - category: Quality & Observability / Data Quality / Tests
+    url: /quality-and-observability/data-quality/tests
+  - category: Quality & Observability / Data Quality / Custom Tests
+    url: /quality-and-observability/data-quality/custom-tests
+  - category: Quality & Observability / Data Quality / Incident Manager
+    url: /quality-and-observability/data-quality/incident-manager
+  - category: Quality & Observability / Data Quality / Alerts
+    url: /quality-and-observability/data-quality/alerts
+  - category: Quality & Observability / Data Quality / Root Cause Analysis
+    url: /quality-and-observability/data-quality/root-cause-analysis
+    isCollateOnly: true
+
 
   - category: Main Concepts
     url: /main-concepts

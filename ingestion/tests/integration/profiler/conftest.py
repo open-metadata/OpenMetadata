@@ -17,17 +17,10 @@ from metadata.generated.schema.entity.services.databaseService import (
 )
 from metadata.generated.schema.security.credentials.awsCredentials import AWSCredentials
 
-from ...integration.integration_base import int_admin_ometa
-
 if TYPE_CHECKING:
     from mypy_boto3_dynamodb.client import DynamoDBClient
 else:
     DynamoDBClient = None
-
-
-@pytest.fixture(scope="session")
-def metadata():
-    return int_admin_ometa()
 
 
 @pytest.fixture(scope="session")
