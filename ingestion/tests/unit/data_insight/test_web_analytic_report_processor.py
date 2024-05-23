@@ -42,8 +42,8 @@ WEB_ANALYTIC_EVENTS = [
         timestamp=1667475458757,
         eventType=WebAnalyticEventType.PageView.value,
         eventData=PageViewData(
-            fullUrl="http://localhost:8585/table/sample_data.ecommerce_db.shopify.dim_address",
-            url="/table/sample_data.ecommerce_db.shopify.dim_address",
+            fullUrl="http://localhost:8585/table/sample_data.ecommerce_db.shopify.dim(address)",
+            url="/table/sample_data.ecommerce_db.shopify.dim(address)",
             hostname="localhost",
             language="en-US",
             screenSize="2140x1273",
@@ -58,8 +58,8 @@ WEB_ANALYTIC_EVENTS = [
         timestamp=1667475458757,
         eventType=WebAnalyticEventType.PageView.value,
         eventData=PageViewData(
-            fullUrl="http://localhost:8585/table/sample_data.ecommerce_db.shopify.dim_address",
-            url="/table/sample_data.ecommerce_db.shopify.dim_address",
+            fullUrl="http://localhost:8585/table/sample_data.ecommerce_db.shopify.dim(address)",
+            url="/table/sample_data.ecommerce_db.shopify.dim(address)",
             hostname="localhost",
             language="en-US",
             screenSize="2140x1273",
@@ -111,7 +111,7 @@ class WebAnalyticEntityViewReportDataProcessorTest(unittest.TestCase):
 
         assert (
             web_analytic_entity_report_data[
-                "sample_data.ecommerce_db.shopify.dim_address"
+                "sample_data.ecommerce_db.shopify.dim(address)"
             ].views
             == 2
         )

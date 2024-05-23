@@ -89,8 +89,9 @@ class User(Base):
     signedup = Column(DateTime)
 
 
+# with weird characters of fqn
 class NewUser(Base):
-    __tablename__ = "new_users"
+    __tablename__ = "new/users"
     id = Column(Integer, primary_key=True)
     name = Column(String(256))
     fullname = Column(String(256))
@@ -303,7 +304,7 @@ class ProfilerWorkflowTest(TestCase):
             {
                 "type": "Profiler",
                 "profileSample": 50,
-                "tableFilterPattern": {"includes": ["new_users"]},
+                "tableFilterPattern": {"includes": ["new/users"]},
             }
         )
         workflow_config["processor"] = {"type": "orm-profiler", "config": {}}
@@ -315,12 +316,18 @@ class ProfilerWorkflowTest(TestCase):
 
         table = self.metadata.get_by_name(
             entity=Table,
-            fqn="test_sqlite.main.main.new_users",
+            fqn="test_sqlite.main.main.new/users",
             fields=["tableProfilerConfig"],
         )
         # setting sampleProfile from config has been temporarly removed
         # up until we split tests and profiling
         assert table.tableProfilerConfig is None
+
+        profile = self.metadata.get_latest_table_profile(
+            table.fullyQualifiedName
+        ).profile
+
+        assert profile is not None
 
     def test_workflow_datetime_partition(self):
         """test workflow with partition"""
