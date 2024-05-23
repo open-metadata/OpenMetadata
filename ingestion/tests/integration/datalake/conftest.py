@@ -174,6 +174,7 @@ def setup_s3(request) -> None:
         key.delete()
     bucket.delete()
 
+
 @pytest.fixture(scope="class")
 def run_ingestion(metadata):
     ingestion_workflow = MetadataWorkflow.create(INGESTION_CONFIG)
