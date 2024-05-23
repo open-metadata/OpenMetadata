@@ -3,15 +3,15 @@ on:
     pull_request_target:
         types: [labeled, opened, synchronize, reopened]
         paths:
-        - "ingestion/**"
-        - "openmetadata-service/**"
-        - "openmetadata-ui/**"
+            - "ingestion/**"
+            - "openmetadata-service/**"
+            - "openmetadata-ui/**"
     pull_request:
         types: [labeled, opened, synchronize, reopened]
         paths:
-        - "ingestion/**"
-        - "openmetadata-service/**"
-        - "openmetadata-ui/**"
+            - "ingestion/**"
+            - "openmetadata-service/**"
+            - "openmetadata-ui/**"
 jobs:
   analyze_deps:
     name: Analyze dependencies with Phylum
