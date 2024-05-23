@@ -125,7 +125,7 @@ source:
       #   key: value
 ```
 ```yaml {% srNumber=6 %}
-      database: custom_database_name
+      databaseName: custom_database_name
 ```
 
 {% partial file="/v1.4/connectors/yaml/database/source-config.md" /%}

@@ -8,6 +8,7 @@ import static org.openmetadata.service.util.AsciiTable.printOpenMetadataText;
 
 import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.Logger;
+import com.codahale.metrics.NoopMetricRegistry;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.gson.Gson;
 import com.google.gson.JsonElement;
@@ -276,10 +277,15 @@ public class OpenMetadataOperations implements Callable<Integer> {
         JsonUtils.convertValue(
             originalSearchIndexApp.getAppConfiguration(), EventPublisherJob.class);
 
+    EventPublisherJob updatedJob = JsonUtils.deepCopy(storedJob, EventPublisherJob.class);
+    updatedJob
+        .withBatchSize(batchSize)
+        .withRecreateIndex(recreateIndexes)
+        .withEntities(Set.of("all"));
+
     // Update the search index app with the new batch size and recreate index flag
     App updatedSearchIndexApp = JsonUtils.deepCopy(originalSearchIndexApp, App.class);
-    updatedSearchIndexApp.withAppConfiguration(
-        storedJob.withRecreateIndex(recreateIndexes).withBatchSize(batchSize));
+    updatedSearchIndexApp.withAppConfiguration(updatedJob);
     JsonPatch patch = JsonUtils.getJsonPatch(originalSearchIndexApp, updatedSearchIndexApp);
 
     appRepository.patch(null, originalSearchIndexApp.getId(), "admin", patch);
@@ -322,7 +328,7 @@ public class OpenMetadataOperations implements Callable<Integer> {
               nullOrEmpty(appRunRecord.getStartTime())
                   ? "Unavailable"
                   : getDateStringEpochMilli(appRunRecord.getStartTime());
-          String endTimeofJob =
+          String endTimeOfJob =
               nullOrEmpty(appRunRecord.getEndTime())
                   ? "Unavailable"
                   : getDateStringEpochMilli(appRunRecord.getEndTime());
@@ -334,7 +340,7 @@ public class OpenMetadataOperations implements Callable<Integer> {
               Arrays.asList(
                   getValueOrUnavailable(appRunRecord.getStatus().value()),
                   getValueOrUnavailable(startTimeofJob),
-                  getValueOrUnavailable(endTimeofJob),
+                  getValueOrUnavailable(endTimeOfJob),
                   getValueOrUnavailable(executionTime),
                   getValueOrUnavailable(appRunRecord.getSuccessContext()),
                   getValueOrUnavailable(appRunRecord.getFailureContext())));
@@ -365,8 +371,7 @@ public class OpenMetadataOperations implements Callable<Integer> {
       return false;
     }
 
-    return appRunRecord.getStatus().equals(AppRunRecord.Status.SUCCESS)
-        || appRunRecord.getStatus().equals(AppRunRecord.Status.FAILED);
+    return !nullOrEmpty(appRunRecord.getExecutionTime());
   }
 
   @Command(name = "deploy-pipelines", description = "Deploy all the service pipelines.")
@@ -537,7 +542,7 @@ public class OpenMetadataOperations implements Callable<Integer> {
             .load();
     nativeSQLScriptRootPath = config.getMigrationConfiguration().getNativePath();
     extensionSQLScriptRootPath = config.getMigrationConfiguration().getExtensionPath();
-    jdbi = Jdbi.create(jdbcUrl, user, password);
+    jdbi = Jdbi.create(dataSourceFactory.build(new NoopMetricRegistry(), "open-metadata-ops"));
     jdbi.installPlugin(new SqlObjectPlugin());
     jdbi.getConfig(SqlObjects.class)
         .setSqlLocator(
