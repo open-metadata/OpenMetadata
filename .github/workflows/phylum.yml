@@ -5,6 +5,7 @@ on:
 jobs:
   analyze_deps:
     name: Analyze dependencies with Phylum
+    environment: test
     permissions:
       contents: read
       pull-requests: write
@@ -12,7 +13,7 @@ jobs:
     container:
       image: docker://ghcr.io/phylum-dev/phylum-ci:slim
       env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        GITHUB_TOKEN: ${{ github.token }}
     steps:
       - name: Checkout the repo
         uses: actions/checkout@v4
