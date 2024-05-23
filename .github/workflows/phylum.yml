@@ -21,10 +21,7 @@ jobs:
           ref: ${{ github.event.pull_request.head.sha }}
           fetch-depth: 0
       - name: Analyze dependencies
-        uses: phylum-dev/phylum-analyze-pr-action@v2
-        with:
-          phylum_token: ${{ secrets.PHYLUM_TOKEN }}
-          cmd: |
-            echo $PHYLUM_API_KEY && phylum-ci -vv \
+        run: |
+            phylum-ci -vv \
             --depfile ingestion/setup.py \
             --depfile ingestion/pyproject.toml
