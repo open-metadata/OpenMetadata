@@ -109,7 +109,7 @@ class WebAnalyticEntityViewReportDataProcessor(DataProcessor):
             entity_obj = EntityObj(split_url[0], split_url[1])
             entity_type = entity_obj.entity_type
             re_pattern = re.compile(
-                (f"(.*{re.escape(entity_type)}/{re.escape(entity_obj.fqn)})")
+                f"(.*{re.escape(entity_type)}/{re.escape(entity_obj.fqn)})"
             )
 
             if (
