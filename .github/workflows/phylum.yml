@@ -1,14 +1,13 @@
 name: Phylum Analyze
 on:
     workflow_dispatch:
-    push:
-        branches:
-        - main
-        - '0.[0-9]+.[0-9]+'
-        paths-ignore:
-        - 'openmetadata-docs/**'
-        - 'openmetadata-docs-v1/**'
     pull_request_target:
+        types: [labeled, opened, synchronize, reopened]
+        paths:
+        - "ingestion/**"
+        - "openmetadata-service/**"
+        - "openmetadata-ui/**"
+    pull_request:
         types: [labeled, opened, synchronize, reopened]
         paths:
         - "ingestion/**"
