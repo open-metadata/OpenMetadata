@@ -14,6 +14,7 @@
 package org.openmetadata.service.security;
 
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
+import static org.openmetadata.service.security.jwt.JWTTokenGenerator.ROLES_CLAIM;
 import static org.openmetadata.service.security.jwt.JWTTokenGenerator.TOKEN_TYPE;
 
 import com.auth0.jwk.Jwk;
@@ -59,6 +60,7 @@ public class JwtFilter implements ContainerRequestFilter {
   private String principalDomain;
   private boolean enforcePrincipalDomain;
   private AuthProvider providerType;
+  private boolean useRolesFromProvider = false;
 
   private static final List<String> DEFAULT_PUBLIC_KEY_URLS =
       Arrays.asList(
@@ -68,7 +70,7 @@ public class JwtFilter implements ContainerRequestFilter {
       List.of(
           "v1/system/config/jwks",
           "v1/system/config/authorizer",
-          "v1/system/config/customLogoConfiguration",
+          "v1/system/config/customUiThemePreference",
           "v1/system/config/auth",
           "v1/users/signup",
           "v1/system/version",
@@ -104,6 +106,7 @@ public class JwtFilter implements ContainerRequestFilter {
     this.jwkProvider = new MultiUrlJwkProvider(publicKeyUrlsBuilder.build());
     this.principalDomain = authorizerConfiguration.getPrincipalDomain();
     this.enforcePrincipalDomain = authorizerConfiguration.getEnforcePrincipalDomain();
+    this.useRolesFromProvider = authorizerConfiguration.getUseRolesFromProvider();
   }
 
   @VisibleForTesting
@@ -144,8 +147,19 @@ public class JwtFilter implements ContainerRequestFilter {
 
     String userName = validateAndReturnUsername(claims);
 
+    Set<String> userRoles = new HashSet<>();
+    boolean isBot =
+        claims.containsKey(BOT_CLAIM) && Boolean.TRUE.equals(claims.get(BOT_CLAIM).asBoolean());
+    // Re-sync user roles from token
+    if (useRolesFromProvider && !isBot && claims.containsKey(ROLES_CLAIM)) {
+      List<String> roles = claims.get(ROLES_CLAIM).asList(String.class);
+      if (!nullOrEmpty(roles)) {
+        userRoles = new HashSet<>(claims.get(ROLES_CLAIM).asList(String.class));
+      }
+    }
+
     // validate bot token
-    if (claims.containsKey(BOT_CLAIM) && Boolean.TRUE.equals(claims.get(BOT_CLAIM).asBoolean())) {
+    if (isBot) {
       validateBotToken(tokenFromHeader, userName);
     }
 
@@ -159,7 +173,8 @@ public class JwtFilter implements ContainerRequestFilter {
     CatalogPrincipal catalogPrincipal = new CatalogPrincipal(userName);
     String scheme = requestContext.getUriInfo().getRequestUri().getScheme();
     CatalogSecurityContext catalogSecurityContext =
-        new CatalogSecurityContext(catalogPrincipal, scheme, SecurityContext.DIGEST_AUTH);
+        new CatalogSecurityContext(
+            catalogPrincipal, scheme, SecurityContext.DIGEST_AUTH, userRoles);
     LOG.debug("SecurityContext {}", catalogSecurityContext);
     requestContext.setSecurityContext(catalogSecurityContext);
   }

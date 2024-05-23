@@ -71,7 +71,9 @@ from metadata.utils.helpers import get_start_and_end
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.sqlalchemy_utils import (
     get_all_table_comments,
+    get_all_table_ddls,
     get_all_view_definitions,
+    get_table_ddl,
 )
 
 logger = ingestion_logger()
@@ -95,6 +97,9 @@ OracleDialect.get_table_names = get_table_names
 Inspector.get_mview_names = get_mview_names
 Inspector.get_mview_definition = get_mview_definition
 OracleDialect.get_mview_names = get_mview_names_dialect
+
+Inspector.get_all_table_ddls = get_all_table_ddls
+Inspector.get_table_ddl = get_table_ddl
 
 
 class OracleSource(StoredProcedureMixin, CommonDbSourceService):
@@ -138,27 +143,38 @@ class OracleSource(StoredProcedureMixin, CommonDbSourceService):
 
         return regular_tables + material_tables
 
-    def get_view_definition(
+    def get_schema_definition(
         self, table_type: str, table_name: str, schema_name: str, inspector: Inspector
     ) -> Optional[str]:
-        if table_type not in {TableType.View, TableType.MaterializedView}:
-            return None
-
-        definition_fn = inspector.get_view_definition
-        if table_type == TableType.MaterializedView:
-            definition_fn = inspector.get_mview_definition
-
+        """
+        Get the DDL statement or View Definition for a table
+        """
         try:
-            view_definition = definition_fn(table_name, schema_name)
-            view_definition = "" if view_definition is None else str(view_definition)
-            return view_definition
+            if table_type not in {TableType.View, TableType.MaterializedView}:
+                schema_definition = inspector.get_table_ddl(
+                    self.connection, table_name, schema_name
+                )
+
+            else:
+                definition_fn = inspector.get_view_definition
+                if table_type == TableType.MaterializedView:
+                    definition_fn = inspector.get_mview_definition
+
+                schema_definition = definition_fn(table_name, schema_name)
+
+            schema_definition = (
+                str(schema_definition.strip())
+                if schema_definition is not None
+                else None
+            )
+            return schema_definition
 
         except NotImplementedError:
-            logger.warning("View definition not implemented")
+            logger.warning("Schema definition not implemented")
 
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.warning(f"Failed to fetch view definition for {table_name}: {exc}")
+            logger.warning(f"Failed to fetch Schema definition for {table_name}: {exc}")
         return None
 
     def process_result(self, data: FetchProcedureList):

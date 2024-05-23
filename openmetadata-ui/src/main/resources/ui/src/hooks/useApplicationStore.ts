@@ -14,10 +14,9 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { AuthenticationConfigurationWithScope } from '../components/Auth/AuthProviders/AuthProvider.interface';
 import { EntityUnion } from '../components/Explore/ExplorePage.interface';
-import { DEFAULT_THEME } from '../constants/Appearance.constants';
 import { AuthenticationConfiguration } from '../generated/configuration/authenticationConfiguration';
 import { AuthorizerConfiguration } from '../generated/configuration/authorizerConfiguration';
-import { LogoConfiguration } from '../generated/configuration/logoConfiguration';
+import { UIThemePreference } from '../generated/configuration/uiThemePreference';
 import { User } from '../generated/entity/teams/user';
 import { EntityReference } from '../generated/entity/type';
 import {
@@ -25,34 +24,30 @@ import {
   HelperFunctions,
 } from '../interface/store.interface';
 import { getOidcToken } from '../utils/LocalStorageUtils';
+import { getThemeConfig } from '../utils/ThemeUtils';
 
 export const OM_SESSION_KEY = 'om-session';
 
 export const useApplicationStore = create<ApplicationStore>()(
   persist(
     (set, get) => ({
-      applicationConfig: {} as LogoConfiguration,
+      isApplicationLoading: false,
+      theme: getThemeConfig(),
+      applicationConfig: {
+        customTheme: getThemeConfig(),
+      } as UIThemePreference,
       currentUser: undefined,
       newUser: undefined,
       isAuthenticated: Boolean(getOidcToken()),
       authConfig: undefined,
       authorizerConfig: undefined,
-      isSigningIn: false,
+      isSigningUp: false,
       jwtPrincipalClaims: [],
       userProfilePics: {},
       cachedEntityData: {},
-      urlPathName: '',
       selectedPersona: {} as EntityReference,
       oidcIdToken: '',
       refreshTokenKey: '',
-      loading: false,
-      theme: { ...DEFAULT_THEME },
-      setTheme: (theme: ApplicationStore['theme']) => {
-        set({ theme });
-      },
-      resetTheme: () => {
-        set({ theme: { ...DEFAULT_THEME } });
-      },
       searchCriteria: '',
 
       setHelperFunctionsRef: (helperFunctions: HelperFunctions) => {
@@ -63,14 +58,9 @@ export const useApplicationStore = create<ApplicationStore>()(
         set({ selectedPersona: persona });
       },
 
-      setApplicationConfig: (config: LogoConfiguration) => {
-        set({ applicationConfig: config });
+      setApplicationConfig: (config: UIThemePreference) => {
+        set({ applicationConfig: config, theme: config.customTheme });
       },
-
-      setUrlPathName: (urlPathName: string) => {
-        set({ urlPathName });
-      },
-
       setCurrentUser: (user) => {
         set({ currentUser: user });
       },
@@ -88,11 +78,12 @@ export const useApplicationStore = create<ApplicationStore>()(
       setIsAuthenticated: (authenticated: boolean) => {
         set({ isAuthenticated: authenticated });
       },
-      setIsSigningIn: (signingIn: boolean) => {
-        set({ isSigningIn: signingIn });
+      setIsSigningUp: (signingUp: boolean) => {
+        set({ isSigningUp: signingUp });
       },
-      setLoadingIndicator: (loading: boolean) => {
-        set({ loading });
+
+      setApplicationLoading: (loading: boolean) => {
+        set({ isApplicationLoading: loading });
       },
 
       onLoginHandler: () => {
@@ -110,6 +101,11 @@ export const useApplicationStore = create<ApplicationStore>()(
       },
       updateAxiosInterceptors: () => {
         // This is a placeholder function that will be replaced by the actual function
+      },
+      trySilentSignIn: (forceLogout?: boolean) => {
+        if (forceLogout) {
+          // This is a placeholder function that will be replaced by the actual function
+        }
       },
       updateCurrentUser: (user) => {
         set({ currentUser: user });

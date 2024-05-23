@@ -50,9 +50,7 @@ public class EventSubscriptionRepository extends EntityRepository<EventSubscript
 
   @Override
   public void setFields(EventSubscription entity, Fields fields) {
-    if (fields.contains("statusDetails")
-        && !entity.getAlertType().equals(CreateEventSubscription.AlertType.ACTIVITY_FEED)
-        && !entity.getDestinations().isEmpty()) {
+    if (fields.contains("statusDetails") && !entity.getDestinations().isEmpty()) {
       List<SubscriptionDestination> destinations = new ArrayList<>();
       entity
           .getDestinations()
@@ -135,13 +133,15 @@ public class EventSubscriptionRepository extends EntityRepository<EventSubscript
 
     @Override
     public void entitySpecificUpdate() {
-      recordChange("enabled", original.getEnabled(), updated.getEnabled());
-      recordChange("batchSize", original.getBatchSize(), updated.getBatchSize());
       recordChange("input", original.getInput(), updated.getInput(), true);
-      recordChange(
-          "filteringRules", original.getFilteringRules(), updated.getFilteringRules(), true);
-      recordChange("destinations", original.getDestinations(), updated.getDestinations(), true);
-      recordChange("trigger", original.getTrigger(), updated.getTrigger(), true);
+      recordChange("batchSize", original.getBatchSize(), updated.getBatchSize());
+      if (!original.getAlertType().equals(CreateEventSubscription.AlertType.ACTIVITY_FEED)) {
+        recordChange(
+            "filteringRules", original.getFilteringRules(), updated.getFilteringRules(), true);
+        recordChange("enabled", original.getEnabled(), updated.getEnabled());
+        recordChange("destinations", original.getDestinations(), updated.getDestinations(), true);
+        recordChange("trigger", original.getTrigger(), updated.getTrigger(), true);
+      }
     }
   }
 }

@@ -47,7 +47,6 @@ export const EXPLORE_PAGE_TABS: Record<
     | EntityType.StorageService
     | EntityType.PipelineService
     | EntityType.Database
-    | EntityType.DatabaseSchema
     | EntityType.GlossaryTerm
     | EntityType.Domain
     | EntityType.MetadataService
@@ -55,6 +54,7 @@ export const EXPLORE_PAGE_TABS: Record<
   >,
   string
 > = {
+  [EntityType.DatabaseSchema]: 'database schemas',
   [EntityType.Dashboard]: 'dashboards',
   [EntityType.DataModel]: 'dashboard data models',
   [EntityType.Pipeline]: 'pipelines',
@@ -64,7 +64,7 @@ export const EXPLORE_PAGE_TABS: Record<
   [EntityType.SearchIndex]: 'search indexes',
   [EntityType.Table]: 'tables',
   [EntityType.StoreProcedure]: 'stored procedures',
-  [EntityType.Glossary]: 'glossaries',
+  [EntityType.Glossary]: 'glossary terms',
 } as const;
 
 export const SEARCH_INDEX: Record<

@@ -26,9 +26,11 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import java.io.IOException;
 import java.util.List;
+import java.util.UUID;
 import javax.ws.rs.DefaultValue;
 import javax.ws.rs.GET;
 import javax.ws.rs.Path;
+import javax.ws.rs.PathParam;
 import javax.ws.rs.Produces;
 import javax.ws.rs.QueryParam;
 import javax.ws.rs.core.Context;
@@ -150,7 +152,13 @@ public class SearchResource {
               description =
                   "Get only selected fields of the document body for each hit. Empty value will return all fields")
           @QueryParam("include_source_fields")
-          List<String> includeSourceFields)
+          List<String> includeSourceFields,
+      @Parameter(
+              description =
+                  "Fetch search results in hierarchical order of children elements. By default hierarchy is not fetched.")
+          @DefaultValue("false")
+          @QueryParam("getHierarchy")
+          boolean getHierarchy)
       throws IOException {
 
     if (nullOrEmpty(query)) {
@@ -169,8 +177,34 @@ public class SearchResource {
             .deleted(deleted)
             .sortOrder(sortOrder)
             .includeSourceFields(includeSourceFields)
+            .getHierarchy(getHierarchy)
             .build();
     return searchRepository.search(request);
+  }
+
+  @GET
+  @Path("/get/{index}/doc/{id}")
+  @Operation(
+      operationId = "searchEntityInEsIndexWithId",
+      summary = "Search entities in ES index with Id",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "search response",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = SearchResponse.class)))
+      })
+  public Response searchEntityInEsIndexWithId(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "document Id", schema = @Schema(type = "UUID")) @PathParam("id")
+          UUID id,
+      @Parameter(description = "Index Name", schema = @Schema(type = "string")) @PathParam("index")
+          String indexName)
+      throws IOException {
+    return searchRepository.getDocument(indexName, id);
   }
 
   @GET

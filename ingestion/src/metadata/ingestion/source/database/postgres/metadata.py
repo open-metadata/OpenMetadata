@@ -15,6 +15,7 @@ import traceback
 from collections import namedtuple
 from typing import Iterable, Optional, Tuple
 
+from sqlalchemy import String as SqlAlchemyString
 from sqlalchemy import sql
 from sqlalchemy.dialects.postgresql.base import PGDialect, ischema_names
 from sqlalchemy.engine import Inspector
@@ -55,6 +56,7 @@ from metadata.ingestion.source.database.postgres.utils import (
     get_column_info,
     get_columns,
     get_etable_owner,
+    get_foreign_keys,
     get_table_comment,
     get_table_owner,
     get_view_definition,
@@ -64,8 +66,10 @@ from metadata.utils.filters import filter_by_database
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.sqlalchemy_utils import (
     get_all_table_comments,
+    get_all_table_ddls,
     get_all_table_owners,
     get_all_view_definitions,
+    get_table_ddl,
 )
 from metadata.utils.tag_utils import get_ometa_tag_and_classification
 
@@ -96,6 +100,7 @@ ischema_names.update(
         "point": POINT,
         "polygon": POLYGON,
         "box": create_sqlalchemy_type("BOX"),
+        "bpchar": SqlAlchemyString,
         "circle": create_sqlalchemy_type("CIRCLE"),
         "line": create_sqlalchemy_type("LINE"),
         "lseg": create_sqlalchemy_type("LSEG"),
@@ -104,6 +109,7 @@ ischema_names.update(
         "pg_snapshot": create_sqlalchemy_type("PG_SNAPSHOT"),
         "tsquery": create_sqlalchemy_type("TSQUERY"),
         "txid_snapshot": create_sqlalchemy_type("TXID_SNAPSHOT"),
+        "xid": SqlAlchemyString,
         "xml": create_sqlalchemy_type("XML"),
     }
 )
@@ -120,7 +126,11 @@ PGDialect.get_all_table_owners = get_all_table_owners
 PGDialect.get_table_owner = get_table_owner
 PGDialect.ischema_names = ischema_names
 
+Inspector.get_all_table_ddls = get_all_table_ddls
+Inspector.get_table_ddl = get_table_ddl
 Inspector.get_table_owner = get_etable_owner
+
+PGDialect.get_foreign_keys = get_foreign_keys
 
 
 class PostgresSource(CommonDbSourceService, MultiDBSource):
@@ -184,9 +194,11 @@ class PostgresSource(CommonDbSourceService, MultiDBSource):
 
                 if filter_by_database(
                     self.source_config.databaseFilterPattern,
-                    database_fqn
-                    if self.source_config.useFqnForFiltering
-                    else new_database,
+                    (
+                        database_fqn
+                        if self.source_config.useFqnForFiltering
+                        else new_database
+                    ),
                 ):
                     self.status.filter(database_fqn, "Database Filtered Out")
                     continue

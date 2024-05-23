@@ -78,7 +78,7 @@ class OMetaUserMixin:
             query_string = self.email_search_query_es(entity=entity).format(
                 email=email, from_=from_count, size=size
             )
-            return self._get_entity_from_es(
+            return self.get_entity_from_es(
                 entity=entity, query_string=query_string, fields=fields
             )
 
@@ -105,7 +105,7 @@ class OMetaUserMixin:
             query_string = self.name_search_query_es(entity=entity).format(
                 name=name, from_=from_count, size=size
             )
-            return self._get_entity_from_es(
+            return self.get_entity_from_es(
                 entity=entity, query_string=query_string, fields=fields
             )
 
@@ -127,7 +127,10 @@ class OMetaUserMixin:
         )
         if maybe_user:
             return EntityReference(
-                id=maybe_user.id.__root__, type=ENTITY_REFERENCE_TYPE_MAP[User.__name__]
+                id=maybe_user.id.__root__,
+                type=ENTITY_REFERENCE_TYPE_MAP[User.__name__],
+                name=maybe_user.name.__root__,
+                displayName=maybe_user.displayName,
             )
 
         maybe_team = self._search_by_email(
@@ -135,7 +138,10 @@ class OMetaUserMixin:
         )
         if maybe_team:
             return EntityReference(
-                id=maybe_team.id.__root__, type=ENTITY_REFERENCE_TYPE_MAP[Team.__name__]
+                id=maybe_team.id.__root__,
+                type=ENTITY_REFERENCE_TYPE_MAP[Team.__name__],
+                name=maybe_team.name.__root__,
+                displayName=maybe_team.displayName,
             )
 
         return None
@@ -156,7 +162,10 @@ class OMetaUserMixin:
         )
         if maybe_user:
             return EntityReference(
-                id=maybe_user.id.__root__, type=ENTITY_REFERENCE_TYPE_MAP[User.__name__]
+                id=maybe_user.id.__root__,
+                type=ENTITY_REFERENCE_TYPE_MAP[User.__name__],
+                name=maybe_user.name.__root__,
+                displayName=maybe_user.displayName,
             )
 
         maybe_team = self._search_by_name(
@@ -164,7 +173,10 @@ class OMetaUserMixin:
         )
         if maybe_team:
             return EntityReference(
-                id=maybe_team.id.__root__, type=ENTITY_REFERENCE_TYPE_MAP[Team.__name__]
+                id=maybe_team.id.__root__,
+                type=ENTITY_REFERENCE_TYPE_MAP[Team.__name__],
+                name=maybe_team.name.__root__,
+                displayName=maybe_team.displayName,
             )
 
         return None

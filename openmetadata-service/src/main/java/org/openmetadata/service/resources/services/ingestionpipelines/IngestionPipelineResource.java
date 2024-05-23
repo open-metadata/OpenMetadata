@@ -171,6 +171,11 @@ public class IngestionPipelineResource
               schema = @Schema(type = "string", example = "messagingService"))
           @QueryParam("serviceType")
           String serviceType,
+      @Parameter(
+              description = "Filter Ingestion Pipelines by the type of the application",
+              schema = @Schema(type = "string", example = "Automator"))
+          @QueryParam("applicationType")
+          String applicationType,
       @Parameter(description = "Limit the number ingestion returned. (1 to 1000000, default = 10)")
           @DefaultValue("10")
           @Min(0)
@@ -198,7 +203,8 @@ public class IngestionPipelineResource
             .addQueryParam("service", serviceParam)
             .addQueryParam("pipelineType", pipelineType)
             .addQueryParam("serviceType", serviceType)
-            .addQueryParam("testSuite", testSuiteParam);
+            .addQueryParam("testSuite", testSuiteParam)
+            .addQueryParam("applicationType", applicationType);
     ResultList<IngestionPipeline> ingestionPipelines =
         super.listInternal(
             uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
@@ -415,6 +421,37 @@ public class IngestionPipelineResource
                       }))
           JsonPatch patch) {
     Response response = patchInternal(uriInfo, securityContext, id, patch);
+    decryptOrNullify(securityContext, (IngestionPipeline) response.getEntity(), false);
+    return response;
+  }
+
+  @PATCH
+  @Path("/name/{fqn}")
+  @Operation(
+      operationId = "patchIngestionPipeline",
+      summary = "Update an ingestion pipeline using name.",
+      description = "Update an existing ingestion pipeline using JsonPatch.",
+      externalDocs =
+          @ExternalDocumentation(
+              description = "JsonPatch RFC",
+              url = "https://tools.ietf.org/html/rfc6902"))
+  @Consumes(MediaType.APPLICATION_JSON_PATCH_JSON)
+  public Response updateDescription(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Name of the ingestion pipeline", schema = @Schema(type = "string"))
+          @PathParam("fqn")
+          String fqn,
+      @RequestBody(
+              description = "JsonPatch with array of operations",
+              content =
+                  @Content(
+                      mediaType = MediaType.APPLICATION_JSON_PATCH_JSON,
+                      examples = {
+                        @ExampleObject("[{op:remove, path:/a},{op:add, path: /b, value: val}]")
+                      }))
+          JsonPatch patch) {
+    Response response = patchInternal(uriInfo, securityContext, fqn, patch);
     decryptOrNullify(securityContext, (IngestionPipeline) response.getEntity(), false);
     return response;
   }

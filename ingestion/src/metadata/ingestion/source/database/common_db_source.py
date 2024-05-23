@@ -14,7 +14,7 @@ Generic source to build SQL connectors.
 import traceback
 from abc import ABC
 from copy import deepcopy
-from typing import Any, Iterable, List, Optional, Tuple, Union
+from typing import Any, Iterable, List, Optional, Tuple, Union, cast
 
 from pydantic import BaseModel
 from sqlalchemy.engine import Connection
@@ -52,7 +52,6 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 )
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.connections.session import create_and_bind_thread_safe_session
-from metadata.ingestion.lineage.sql_lineage import get_column_fqn
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.connections import get_connection
@@ -69,6 +68,7 @@ from metadata.utils.execution_time_tracker import (
 )
 from metadata.utils.filters import filter_by_table
 from metadata.utils.logger import ingestion_logger
+from metadata.utils.ssl_manager import SSLManager, check_ssl_and_init
 
 logger = ingestion_logger()
 
@@ -105,6 +105,13 @@ class CommonDbSourceService(
 
         # It will be one of the Unions. We don't know the specific type here.
         self.service_connection = self.config.serviceConnection.__root__.config
+
+        self.ssl_manager = None
+        self.ssl_manager: SSLManager = check_ssl_and_init(self.service_connection)
+        if self.ssl_manager:
+            self.service_connection = self.ssl_manager.setup_ssl(
+                self.service_connection
+            )
 
         self.engine: Engine = get_connection(self.service_connection)
         self.session = create_and_bind_thread_safe_session(self.engine)
@@ -304,9 +311,11 @@ class CommonDbSourceService(
                     )
                     if filter_by_table(
                         self.source_config.tableFilterPattern,
-                        table_fqn
-                        if self.source_config.useFqnForFiltering
-                        else table_name,
+                        (
+                            table_fqn
+                            if self.source_config.useFqnForFiltering
+                            else table_name
+                        ),
                     ):
                         self.status.filter(
                             table_fqn,
@@ -331,9 +340,11 @@ class CommonDbSourceService(
 
                     if filter_by_table(
                         self.source_config.tableFilterPattern,
-                        view_fqn
-                        if self.source_config.useFqnForFiltering
-                        else view_name,
+                        (
+                            view_fqn
+                            if self.source_config.useFqnForFiltering
+                            else view_name
+                        ),
                     ):
                         self.status.filter(
                             view_fqn,
@@ -348,26 +359,35 @@ class CommonDbSourceService(
             logger.debug(traceback.format_exc())
 
     @calculate_execution_time()
-    def get_view_definition(
+    def get_schema_definition(
         self, table_type: str, table_name: str, schema_name: str, inspector: Inspector
     ) -> Optional[str]:
-        if table_type in (TableType.View, TableType.MaterializedView):
-            try:
-                view_definition = inspector.get_view_definition(table_name, schema_name)
-                view_definition = (
-                    "" if view_definition is None else str(view_definition)
+        """
+        Get the DDL statement or View Definition for a table
+        """
+        try:
+            schema_definition = None
+            if table_type in (TableType.View, TableType.MaterializedView):
+                schema_definition = inspector.get_view_definition(
+                    table_name, schema_name
                 )
-                return view_definition
-
-            except NotImplementedError:
-                logger.warning("View definition not implemented")
-
-            except Exception as exc:
-                logger.debug(traceback.format_exc())
-                logger.warning(
-                    f"Failed to fetch view definition for {table_name}: {exc}"
+            elif hasattr(inspector, "get_table_ddl"):
+                schema_definition = inspector.get_table_ddl(
+                    self.connection, table_name, schema_name
                 )
-            return None
+            schema_definition = (
+                str(schema_definition).strip()
+                if schema_definition is not None
+                else None
+            )
+            return schema_definition
+
+        except NotImplementedError:
+            logger.warning("Schema definition not implemented")
+
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.warning(f"Failed to fetch schema definition for {table_name}: {exc}")
         return None
 
     def is_partition(  # pylint: disable=unused-argument
@@ -438,7 +458,7 @@ class CommonDbSourceService(
                 inspector=self.inspector,
             )
 
-            view_definition = self.get_view_definition(
+            schema_definition = self.get_schema_definition(
                 table_type=table_type,
                 table_name=table_name,
                 schema_name=schema_name,
@@ -457,7 +477,7 @@ class CommonDbSourceService(
                 ),
                 columns=columns,
                 tableConstraints=table_constraints,
-                viewDefinition=view_definition,
+                schemaDefinition=schema_definition,
                 databaseSchema=fqn.build(
                     metadata=self.metadata,
                     entity_type=DatabaseSchema,
@@ -490,13 +510,13 @@ class CommonDbSourceService(
             self.register_record(table_request=table_request)
 
             # Flag view as visited
-            if table_type == TableType.View or view_definition:
+            if table_type == TableType.View or schema_definition:
                 table_view = TableView.parse_obj(
                     {
                         "table_name": table_name,
                         "schema_name": schema_name,
                         "db_name": self.context.get().database,
-                        "view_definition": view_definition,
+                        "view_definition": schema_definition,
                     }
                 )
                 self.context.get_global().table_views.append(table_view)
@@ -528,21 +548,27 @@ class CommonDbSourceService(
         Search the referred table for foreign constraints
         and get referred column fqn
         """
+        supports_database = hasattr(self.service_connection, "supportsDatabase")
 
         foreign_constraints = []
         for column in foreign_columns:
             referred_column_fqns = []
-            referred_table = fqn.search_table_from_es(
+            if supports_database:
+                database_name = column.get("referred_database")
+            else:
+                database_name = self.context.get().database
+            referred_table_fqn = fqn.build(
                 metadata=self.metadata,
+                entity_type=Table,
                 table_name=column.get("referred_table"),
                 schema_name=column.get("referred_schema"),
-                database_name=None,
+                database_name=database_name,
                 service_name=self.context.get().database_service,
             )
-            if referred_table:
+            if referred_table_fqn:
                 for referred_column in column.get("referred_columns"):
-                    col_fqn = get_column_fqn(
-                        table_entity=referred_table, column=referred_column
+                    col_fqn = fqn._build(
+                        referred_table_fqn, referred_column, quote=False
                     )
                     if col_fqn:
                         referred_column_fqns.append(col_fqn)
@@ -601,6 +627,9 @@ class CommonDbSourceService(
             self.connection.close()
         for connection in self._connection_map.values():
             connection.close()
+        if hasattr(self, "ssl_manager") and self.ssl_manager:
+            self.ssl_manager = cast(SSLManager, self.ssl_manager)
+            self.ssl_manager.cleanup_temp_files()
         self.engine.dispose()
 
     def fetch_table_tags(

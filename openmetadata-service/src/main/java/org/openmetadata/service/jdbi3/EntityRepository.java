@@ -21,6 +21,7 @@ import static org.openmetadata.schema.type.EventType.ENTITY_FIELDS_CHANGED;
 import static org.openmetadata.schema.type.EventType.ENTITY_NO_CHANGE;
 import static org.openmetadata.schema.type.EventType.ENTITY_RESTORED;
 import static org.openmetadata.schema.type.EventType.ENTITY_SOFT_DELETED;
+import static org.openmetadata.schema.type.EventType.ENTITY_UPDATED;
 import static org.openmetadata.schema.type.Include.ALL;
 import static org.openmetadata.schema.type.Include.DELETED;
 import static org.openmetadata.schema.type.Include.NON_DELETED;
@@ -120,6 +121,7 @@ import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EventType;
+import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.LifeCycle;
 import org.openmetadata.schema.type.ProviderType;
@@ -325,7 +327,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
    * operations. It is also used during PUT and PATCH operations to set up fields that can be updated.
    */
   protected abstract void clearFields(T entity, Fields fields);
-  ;
 
   /**
    * This method is used for validating an entity to be created during POST, PUT, and PATCH operations and prepare the
@@ -455,16 +456,16 @@ public abstract class EntityRepository<T extends EntityInterface> {
   public final void initializeEntity(T entity) {
     T existingEntity = findByNameOrNull(entity.getFullyQualifiedName(), ALL);
     if (existingEntity != null) {
-      LOG.info("{} {} is already initialized", entityType, entity.getFullyQualifiedName());
+      LOG.debug("{} {} is already initialized", entityType, entity.getFullyQualifiedName());
       return;
     }
 
-    LOG.info("{} {} is not initialized", entityType, entity.getFullyQualifiedName());
+    LOG.debug("{} {} is not initialized", entityType, entity.getFullyQualifiedName());
     entity.setUpdatedBy(ADMIN_USER_NAME);
     entity.setUpdatedAt(System.currentTimeMillis());
     entity.setId(UUID.randomUUID());
     create(null, entity);
-    LOG.info("Created a new {} {}", entityType, entity.getFullyQualifiedName());
+    LOG.debug("Created a new {} {}", entityType, entity.getFullyQualifiedName());
   }
 
   public final T copy(T entity, CreateEntity request, String updatedBy) {
@@ -858,6 +859,35 @@ public abstract class EntityRepository<T extends EntityInterface> {
     return new PatchResponse<>(Status.OK, withHref(uriInfo, updated), change);
   }
 
+  /**
+   * PATCH using fully qualified name
+   */
+  @Transaction
+  public final PatchResponse<T> patch(UriInfo uriInfo, String fqn, String user, JsonPatch patch) {
+    // Get all the fields in the original entity that can be updated during PATCH operation
+    T original = setFieldsInternal(findByName(fqn, NON_DELETED), patchFields);
+    setInheritedFields(original, patchFields);
+
+    // Apply JSON patch to the original entity to get the updated entity
+    T updated = JsonUtils.applyPatch(original, patch, entityClass);
+    updated.setUpdatedBy(user);
+    updated.setUpdatedAt(System.currentTimeMillis());
+
+    prepareInternal(updated, true);
+    populateOwner(updated.getOwner());
+    restorePatchAttributes(original, updated);
+
+    // Update the attributes and relationships of an entity
+    EntityUpdater entityUpdater = getUpdater(original, updated, Operation.PATCH);
+    entityUpdater.update();
+    EventType change = ENTITY_NO_CHANGE;
+    if (entityUpdater.fieldsChanged()) {
+      change = EventType.ENTITY_UPDATED;
+      setInheritedFields(original, patchFields); // Restore inherited fields after a change
+    }
+    return new PatchResponse<>(Status.OK, withHref(uriInfo, updated), change);
+  }
+
   @Transaction
   public final PutResponse<T> addFollower(String updatedBy, UUID entityId, UUID userId) {
     T entity = find(entityId, NON_DELETED);
@@ -1080,7 +1110,13 @@ public abstract class EntityRepository<T extends EntityInterface> {
       throw new IllegalArgumentException(CatalogExceptionMessage.entityIsNotEmpty(entityType));
     }
     // Delete all the contained entities
-    for (EntityRelationshipRecord entityRelationshipRecord : childrenRecords) {
+    deleteChildren(childrenRecords, hardDelete, updatedBy);
+  }
+
+  @Transaction
+  protected void deleteChildren(
+      List<EntityRelationshipRecord> children, boolean hardDelete, String updatedBy) {
+    for (EntityRelationshipRecord entityRelationshipRecord : children) {
       LOG.info(
           "Recursively {} deleting {} {}",
           hardDelete ? "hard" : "soft",
@@ -1580,7 +1616,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
         : null;
   }
 
-  public final void ensureSingleRelationship(
+  public static void ensureSingleRelationship(
       String entityType,
       UUID id,
       List<EntityRelationshipRecord> relations,
@@ -1837,7 +1873,48 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
 
     result.withSuccessRequest(success);
+
+    // Create a Change Event on successful addition/removal of assets
+    if (result.getStatus().equals(ApiStatus.SUCCESS)) {
+      EntityInterface entityInterface = Entity.getEntity(fromEntity, entityId, "id", ALL);
+      ChangeDescription change =
+          addBulkAddRemoveChangeDescription(
+              entityInterface.getVersion(), isAdd, request.getAssets(), null);
+      ChangeEvent changeEvent =
+          getChangeEvent(entityInterface, change, fromEntity, entityInterface.getVersion());
+      Entity.getCollectionDAO().changeEventDAO().insert(JsonUtils.pojoToJson(changeEvent));
+    }
+
     return result;
+  }
+
+  private ChangeDescription addBulkAddRemoveChangeDescription(
+      Double version, boolean isAdd, Object newValue, Object oldValue) {
+    FieldChange fieldChange =
+        new FieldChange().withName("assets").withNewValue(newValue).withOldValue(oldValue);
+    ChangeDescription change = new ChangeDescription().withPreviousVersion(version);
+    if (isAdd) {
+      change.getFieldsAdded().add(fieldChange);
+    } else {
+      change.getFieldsDeleted().add(fieldChange);
+    }
+    return change;
+  }
+
+  private ChangeEvent getChangeEvent(
+      EntityInterface updated, ChangeDescription change, String entityType, Double prevVersion) {
+    return new ChangeEvent()
+        .withId(UUID.randomUUID())
+        .withEntity(updated)
+        .withChangeDescription(change)
+        .withEventType(ENTITY_UPDATED)
+        .withEntityType(entityType)
+        .withEntityId(updated.getId())
+        .withEntityFullyQualifiedName(updated.getFullyQualifiedName())
+        .withUserName(updated.getUpdatedBy())
+        .withTimestamp(System.currentTimeMillis())
+        .withCurrentVersion(updated.getVersion())
+        .withPreviousVersion(prevVersion);
   }
 
   /** Remove owner relationship for a given entity */
@@ -2384,7 +2461,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
       updated.setExperts(updatedExperts);
     }
 
-    private void updateReviewers() {
+    protected void updateReviewers() {
       if (!supportsReviewers) {
         return;
       }
@@ -2466,7 +2543,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
       } else if (fieldsChanged()) {
         newVersion = nextVersion(oldVersion);
       }
-      LOG.info(
+      LOG.debug(
           "{} {}->{} - Fields added {}, updated {}, deleted {}",
           original.getId(),
           oldVersion,

@@ -14,10 +14,9 @@
 import {
   BrowserCacheLocation,
   Configuration,
-  IPublicClientApplication,
   PopupRequest,
-  PublicClientApplication,
 } from '@azure/msal-browser';
+import { CookieStorage } from 'cookie-storage';
 import jwtDecode, { JwtPayload } from 'jwt-decode';
 import { first, isNil } from 'lodash';
 import { WebStorageStateStore } from 'oidc-client';
@@ -25,7 +24,7 @@ import {
   AuthenticationConfigurationWithScope,
   UserProfile,
 } from '../components/Auth/AuthProviders/AuthProvider.interface';
-import { ROUTES } from '../constants/constants';
+import { REDIRECT_PATHNAME, ROUTES } from '../constants/constants';
 import { EMAIL_REG_EX } from '../constants/regex.constants';
 import {
   AuthenticationConfiguration,
@@ -34,7 +33,7 @@ import {
 import { AuthProvider } from '../generated/settings/settings';
 import { isDev } from './EnvironmentUtils';
 
-export let msalInstance: IPublicClientApplication;
+const cookieStorage = new CookieStorage();
 
 // 25s for server auth approch
 export const EXPIRY_THRESHOLD_MILLES = 25 * 1000;
@@ -214,10 +213,6 @@ export const getAuthConfig = (
   return config as AuthenticationConfigurationWithScope;
 };
 
-export const setMsalInstance = (configs: Configuration) => {
-  msalInstance = new PublicClientApplication(configs);
-};
-
 // Add here scopes for id token to be used at MS Identity Platform endpoints.
 export const msalLoginRequest: PopupRequest = {
   scopes: ['openid', 'profile', 'email', 'offline_access'],
@@ -281,6 +276,7 @@ export const isProtectedRoute = (pathname: string) => {
       ROUTES.ACCOUNT_ACTIVATION,
       ROUTES.HOME,
       ROUTES.AUTH_CALLBACK,
+      ROUTES.NOT_FOUND,
     ].indexOf(pathname) === -1
   );
 };
@@ -291,10 +287,6 @@ export const isTourRoute = (pathname: string) => {
 
 export const getUrlPathnameExpiry = () => {
   return new Date(Date.now() + 60 * 60 * 1000);
-};
-
-export const getUrlPathnameExpiryAfterRoute = () => {
-  return new Date(Date.now() + 1000);
 };
 
 /**
@@ -345,4 +337,12 @@ export const extractDetailsFromToken = (
 
     timeoutExpiry: 0,
   };
+};
+
+export const setUrlPathnameExpiryAfterRoute = (pathname: string) => {
+  cookieStorage.setItem(REDIRECT_PATHNAME, pathname, {
+    // 1 second expiry
+    expires: new Date(Date.now() + 1000),
+    path: '/',
+  });
 };

@@ -179,7 +179,6 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
               width: 150,
               render: (entityLink: string) => {
                 const tableFqn = getEntityFQN(entityLink);
-                const name = getNameFromFQN(tableFqn);
 
                 return (
                   <Link
@@ -195,7 +194,7 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
                       }),
                     }}
                     onClick={(e) => e.stopPropagation()}>
-                    {name}
+                    {tableFqn}
                   </Link>
                 );
               },
@@ -485,6 +484,7 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
           />
         ) : (
           <DeleteWidgetModal
+            isRecursiveDelete
             afterDeleteAction={afterDeleteAction}
             allowSoftDelete={false}
             entityId={selectedTestCase?.data?.id ?? ''}

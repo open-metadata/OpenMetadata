@@ -131,9 +131,14 @@ const DatabaseSchemaPage: FunctionComponent = () => {
   const [updateProfilerSetting, setUpdateProfilerSetting] =
     useState<boolean>(false);
 
-  const extraDropdownContent = entityUtilClassBase.getManageExtraOptions(
-    EntityType.DATABASE_SCHEMA,
-    decodedDatabaseSchemaFQN
+  const extraDropdownContent = useMemo(
+    () =>
+      entityUtilClassBase.getManageExtraOptions(
+        EntityType.DATABASE_SCHEMA,
+        decodedDatabaseSchemaFQN,
+        databaseSchemaPermission
+      ),
+    [databaseSchemaPermission, decodedDatabaseSchemaFQN]
   );
 
   const handleShowDeletedTables = (value: boolean) => {
@@ -317,7 +322,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
       try {
         const updatedData = {
           ...databaseSchema,
-          owner: owner ? { ...databaseSchema?.owner, ...owner } : undefined,
+          owner: owner,
         };
 
         const response = await saveUpdatedDatabaseSchemaData(
@@ -595,16 +600,18 @@ const DatabaseSchemaPage: FunctionComponent = () => {
             className="entity-tag-right-panel-container"
             data-testid="entity-right-panel"
             flex="320px">
-            <EntityRightPanel
+            <EntityRightPanel<EntityType.DATABASE_SCHEMA>
               customProperties={databaseSchema}
               dataProducts={databaseSchema?.dataProducts ?? []}
               domain={databaseSchema?.domain}
+              editCustomAttributePermission={editCustomAttributePermission}
               editTagPermission={editTagsPermission}
               entityFQN={decodedDatabaseSchemaFQN}
               entityId={databaseSchema?.id ?? ''}
               entityType={EntityType.DATABASE_SCHEMA}
               selectedTags={tags}
               viewAllPermission={viewAllPermission}
+              onExtensionUpdate={handleExtensionUpdate}
               onTagSelectionChange={handleTagSelection}
               onThreadLinkSelect={onThreadLinkSelect}
             />

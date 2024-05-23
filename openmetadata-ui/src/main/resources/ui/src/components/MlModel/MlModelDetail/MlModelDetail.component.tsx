@@ -185,12 +185,7 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
     async (newOwner?: Mlmodel['owner']) => {
       const updatedMlModelDetails = {
         ...mlModelDetail,
-        owner: newOwner
-          ? {
-              ...mlModelDetail.owner,
-              ...newOwner,
-            }
-          : undefined,
+        owner: newOwner,
       };
       await settingsUpdateHandler(updatedMlModelDetails);
     },
@@ -427,16 +422,18 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
               className="entity-tag-right-panel-container"
               data-testid="entity-right-panel"
               flex="320px">
-              <EntityRightPanel
+              <EntityRightPanel<EntityType.MLMODEL>
                 customProperties={mlModelDetail}
                 dataProducts={mlModelDetail?.dataProducts ?? []}
                 domain={mlModelDetail?.domain}
+                editCustomAttributePermission={editCustomAttributePermission}
                 editTagPermission={editTagsPermission}
                 entityFQN={decodedMlModelFqn}
                 entityId={mlModelDetail.id}
                 entityType={EntityType.MLMODEL}
                 selectedTags={mlModelTags}
                 viewAllPermission={viewAllPermission}
+                onExtensionUpdate={onExtensionUpdate}
                 onTagSelectionChange={handleTagSelection}
                 onThreadLinkSelect={handleThreadLinkSelect}
               />

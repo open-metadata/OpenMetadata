@@ -117,7 +117,8 @@ a[href].link-text-grey,
   border: none;
   height: auto;
   color: initial;
-  overflow: none;
+  overflow: initial;
+  text-align: inherit;
   background: initial;
   touch-action: none;
 
@@ -146,6 +147,9 @@ a[href].link-text-grey,
 }
 .text-right {
   text-align: right;
+}
+.text-wrap {
+  text-wrap: wrap;
 }
 
 .text-underline {
@@ -283,6 +287,9 @@ a[href].link-text-grey,
 }
 .bg-grey-4 {
   background-color: @grey-4;
+}
+.bg-grey-5 {
+  background-color: @grey-5;
 }
 
 .bg-grey-1-hover:hover {
@@ -480,6 +487,7 @@ a[href].link-text-grey,
 // breadcrumb
 
 .breadcrumb-item {
+  max-width: 100%;
   font-size: 12px;
   .link-title {
     font-size: inherit !important;
@@ -770,4 +778,12 @@ a[href].link-text-grey,
       }
     }
   }
+}
+
+.error-boundary-result {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  flex-direction: column;
+  height: 100%;
 }

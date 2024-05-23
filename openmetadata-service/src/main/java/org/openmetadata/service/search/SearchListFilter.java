@@ -26,6 +26,7 @@ public class SearchListFilter extends Filter<SearchListFilter> {
     ArrayList<String> conditions = new ArrayList<>();
     conditions.add(getIncludeCondition());
     conditions.add(getDomainCondition());
+    conditions.add(getOwnerCondition());
 
     if (entityType != null) {
       conditions.add(entityType.equals(Entity.TEST_CASE) ? getTestCaseCondition() : null);
@@ -89,7 +90,8 @@ public class SearchListFilter extends Filter<SearchListFilter> {
   private String getIncludeCondition() {
     String domain = getQueryParam("domain");
     if (!nullOrEmpty(domain)) {
-      return String.format("{\"term\": {\"domain.fullyQualifiedName\": \"%s\"}}", domain);
+      return String.format(
+          "{\"term\": {\"domain.fullyQualifiedName\": \"%s\"}}", escapeDoubleQuotes(domain));
     }
     return "";
   }
@@ -100,6 +102,16 @@ public class SearchListFilter extends Filter<SearchListFilter> {
       deleted = String.format("{\"term\": {\"deleted\": \"%s\"}}", include == Include.DELETED);
     }
     return deleted;
+  }
+
+  private String getOwnerCondition() {
+    String owner = getQueryParam("owner");
+    if (!nullOrEmpty(owner)) {
+      String ownerList =
+          Arrays.stream(owner.split(",")).collect(Collectors.joining("\", \"", "\"", "\""));
+      return String.format("{\"terms\": {\"owner.id\": [%s]}}", ownerList);
+    }
+    return "";
   }
 
   private String buildQueryFilter(String conditionFilter, String sourceFilter) {
@@ -131,7 +143,10 @@ public class SearchListFilter extends Filter<SearchListFilter> {
       conditions.add(
           includeAllTests
               ? String.format(
-                  "{\"prefix\": {\"entityFQN\": \"%s\"}}", escapeDoubleQuotes(entityFQN))
+                  "{\"bool\":{\"should\": ["
+                      + "{\"prefix\": {\"entityFQN\": \"%s%s\"}},"
+                      + "{\"term\": {\"entityFQN\": \"%s\"}}]}}",
+                  escapeDoubleQuotes(entityFQN), Entity.SEPARATOR, escapeDoubleQuotes(entityFQN))
               : String.format(
                   "{\"term\": {\"entityFQN\": \"%s\"}}", escapeDoubleQuotes(entityFQN)));
     }
@@ -176,7 +191,6 @@ public class SearchListFilter extends Filter<SearchListFilter> {
 
     String testSuiteType = getQueryParam("testSuiteType");
     String fullyQualifiedName = getQueryParam("fullyQualifiedName");
-    String owner = getQueryParam("owner");
     Boolean includeEmptyTestSuites = Boolean.parseBoolean(getQueryParam("includeEmptyTestSuites"));
 
     if (testSuiteType != null) {
@@ -196,10 +210,6 @@ public class SearchListFilter extends Filter<SearchListFilter> {
           String.format(
               "{\"term\": {\"fullyQualifiedName\": \"%s\"}}",
               escapeDoubleQuotes(fullyQualifiedName)));
-    }
-
-    if (owner != null) {
-      conditions.add(String.format("{\"term\": {\"owner.id\": \"%s\"}}", owner));
     }
 
     return addCondition(conditions);

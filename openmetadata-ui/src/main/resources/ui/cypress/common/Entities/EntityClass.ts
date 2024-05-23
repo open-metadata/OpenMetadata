@@ -17,7 +17,8 @@ import { EntityType, ENTITY_PATH } from '../../constants/Entity.interface';
 import {
   createAnnouncement as createAnnouncementUtil,
   createInactiveAnnouncement as createInactiveAnnouncementUtil,
-  deleteAnnoucement,
+  deleteAnnouncement,
+  replyAnnouncementUtil,
 } from '../Utils/Annoucement';
 import {
   createCustomPropertyForEntity,
@@ -42,7 +43,7 @@ import {
 import {
   assignGlossaryTerm,
   removeGlossaryTerm,
-  udpateGlossaryTerm,
+  updateGlossaryTerm,
 } from '../Utils/Glossary';
 import { getToken } from '../Utils/LocalStorage';
 import {
@@ -54,7 +55,7 @@ import {
   updateTeamAsOwner,
   validateOwnerAndTeamCounts,
 } from '../Utils/Owner';
-import { assignTags, removeTags, udpateTags } from '../Utils/Tags';
+import { assignTags, removeTags, updateTags } from '../Utils/Tags';
 import { addTier, removeTier, updateTier } from '../Utils/Tier';
 import { downVoteEntity, upVoteEntity } from '../Utils/Voting';
 
@@ -62,7 +63,7 @@ const description =
   // eslint-disable-next-line max-len
   'Lorem ipsum dolor sit amet, consectetur adipiscing elit. Phasellus varius quam eu mi ullamcorper, in porttitor magna mollis. Duis a tellus aliquet nunc commodo bibendum. Donec euismod maximus porttitor. Aenean quis lacus ultrices, tincidunt erat ac, dapibus felis.';
 
-const domainDetails1 = {
+export const domainDetails1 = {
   name: `cypress-domain-${uuid()}`,
   displayName: `Cypress%Domain.${uuid()}`,
   description: 'Cypress domain description',
@@ -71,7 +72,7 @@ const domainDetails1 = {
   style: {},
 };
 
-const domainDetails2 = {
+export const domainDetails2 = {
   name: `cypress-domain-${uuid()}`,
   displayName: `Cypress%Domain.${uuid()}`,
   description: 'Cypress domain description',
@@ -80,7 +81,7 @@ const domainDetails2 = {
   style: {},
 };
 
-const glossaryDetails1 = {
+export const glossaryDetails1 = {
   name: `Cypress%General ${uuid()}`,
   displayName: `Cypress % General ${uuid()}`,
   description:
@@ -90,7 +91,7 @@ const glossaryDetails1 = {
   mutuallyExclusive: false,
 };
 
-const glossaryDetails2 = {
+export const glossaryDetails2 = {
   name: `Cypress%Person ${uuid()}`,
   displayName: `Cypress % Person ${uuid()}`,
   description:
@@ -101,7 +102,7 @@ const glossaryDetails2 = {
   mutuallyExclusive: false,
 };
 
-const glossaryTermDetails1 = {
+export const glossaryTermDetails1 = {
   name: `CypressBankNumber-${uuid()}`,
   displayName: 'Cypress BankNumber',
   description: 'A bank account number.',
@@ -114,7 +115,7 @@ const glossaryTermDetails1 = {
   glossary: glossaryDetails1.name,
 };
 
-const glossaryTermDetails2 = {
+export const glossaryTermDetails2 = {
   name: 'CypressAddress',
   displayName: 'Cypress Address',
   description: 'Address of a Person.',
@@ -379,7 +380,7 @@ class EntityClass {
     assignTags('PersonalData.Personal', this.endPoint);
   }
   updateTags() {
-    udpateTags('PII.None', this.endPoint);
+    updateTags('PII.None', this.endPoint);
   }
   removeTags() {
     removeTags(['PersonalData.Personal', 'PII.None'], this.endPoint);
@@ -395,7 +396,7 @@ class EntityClass {
     );
   }
   updateGlossary() {
-    udpateGlossaryTerm(
+    updateGlossaryTerm(
       `${glossaryDetails2.name}.${glossaryTermDetails2.name}`,
       glossaryTermDetails2.name,
       this.endPoint
@@ -449,26 +450,30 @@ class EntityClass {
 
   createAnnouncement() {
     createAnnouncementUtil({
-      title: 'Cypress annocement',
-      description: 'Cypress annocement description',
+      title: 'Cypress announcement',
+      description: 'Cypress announcement description',
     });
   }
 
+  replyAnnouncement() {
+    replyAnnouncementUtil();
+  }
+
   removeAnnouncement() {
-    deleteAnnoucement();
+    deleteAnnouncement();
   }
 
   // Inactive Announcement
 
   createInactiveAnnouncement() {
     createInactiveAnnouncementUtil({
-      title: 'Inactive Cypress annocement',
-      description: 'Inactive Cypress annocement description',
+      title: 'Inactive Cypress announcement',
+      description: 'Inactive Cypress announcement description',
     });
   }
 
   removeInactiveAnnouncement() {
-    deleteAnnoucement();
+    deleteAnnouncement();
   }
 
   followUnfollowEntity() {

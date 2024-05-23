@@ -14,6 +14,124 @@ version. To see what's coming in next releases, please check our [Roadmap](/rele
 
 {% partial file="/v1.3/releases/latest.md" /%}
 
+# 1.3.3 Release 🎉
+
+{% note noteType="Tip" %}
+**2024, April 19th**
+{% /note %}
+
+- Fix Application installation
+- Fix JWT Filter validation against personal token
+- Add Databricks SSL python dependencies
+- Fix postgres app migrations
+- Improve App UI preview
+
+**Full Changelog**: [link](https://github.com/open-metadata/OpenMetadata/compare/1.3.2-release...1.3.3-release)
+
+# 1.3.2 Release
+
+{% inlineCalloutContainer %}
+{% inlineCallout
+color="violet-70"
+icon="celebration"
+bold="Upgrade OpenMetadata"
+href="/deployment/upgrade" %}
+Learn how to upgrade your OpenMetadata instance to 1.3.3!
+{% /inlineCallout %}
+{% /inlineCalloutContainer %}
+
+You can find the GitHub release [here](https://github.com/open-metadata/OpenMetadata/releases/tag/1.3.2-release).
+
+## MetaPilot (Collate)
+- New MetaPilot application shipped in preview mode. Try it out in the [Sandbox](https://sandbox.open-metadata.org/)!
+- Get automatically generated descriptions with GenAI. Now it’s easier than ever to document your data assets.
+- Chat with the MetaPilot and get SQL queries to help you extract relevant information from your data assets.
+- Let the MetaPilot help you understand and improve the queries used on your tables.
+
+## Authentication Flow
+- Added generic support for OIDC Authentication. This is SSO provider-agnostic.
+- You can now integrate Confidential Clients to manage the server authentication.
+- Now, the session renewal happens automatically in the backend.
+
+## Data Quality
+- Pagination support was added for the Data Quality tab for data assets.
+- Fixed an issue with execution summary timeout issue for the data quality test.
+
+## Connectors
+- New Bigtable connector.
+- Now, users can configure the external sample data storage path.
+- Added lineage support for Snowflake materialized view and masking policies.
+- Fixed session invalidation on Databricks during long-running queries.
+- Fixed Ingestion Pipeline list for services with the same name.
+- Fixed an issue with ingesting lineage when data models are ingested from Tableau.
+- Fixed metrics computations for empty tables.
+- Improve PATCH generation for array fields.
+
+## Other Changes
+- Avoid creating duplicated queries.
+- Speed up the server start time by moving the Secrets Manager Migration to the migration container.
+- Fixed the issue with the date filter for the Incident Manager.
+- Fixed the issue with the Team filter for Data Insights.
+- Fixed an issue with Azure SSO related to the MSAL version.
+- Fixed an issue with search indexing.
+- Fixed the missing input field for conversation source for alerts and notifications.
+- Filter dashboards by a project on the Explore page.
+---
+
+**Full Changelog**: [link](https://github.com/open-metadata/OpenMetadata/compare/1.3.1-release...1.3.2-release)
+
+# 1.3.1 Release 🎉
+
+{% note noteType="Tip" %} 
+**2024, February 29th**
+
+You can find the GitHub release [here](https://github.com/open-metadata/OpenMetadata/releases/tag/1.3.1-release).
+{% /note %}
+
+
+## Knowledge Center (Collate)
+- Supports drag and drop for the hierarchy of knowledge articles.
+- Enhanced the layout and loading experience of the knowledge page.
+
+## Lineage
+- When adding a new node in Lineage, the Display Name is supported in search.
+- Fixed the issues with displaying lineage from Metabase.
+
+## Glossary
+- Improved the automation of performance tests for Glossary.
+- Performance improvements to display a large Glossary.
+
+## Data Insights
+- Data Insights report has been improved.
+- The cost Analysis report has been optimized.
+
+## Notifications
+- The format for Slack notifications has been improved.
+
+## Custom Properties
+- Added enum type support for custom properties.
+
+## Connectors
+- Now BigQuery connector supports Primary, Foreign, and Unique Constraints. It fetches the column description for views.
+- Captures the SQL query that powers a Tableau DataModel.
+- Azure Key Vault is supported as a Secrets Manager.
+- Fixed an issue with ingestion from Sagemaker, Oracle, LDAP, DB2, dbt, Kafka, Metabase, and Databricks.
+- Fixed Looker projects and optional project filter patterns.
+- Fixed issues with ingestion pipelines.
+- Fixed an issue with the service display name after ingestion.
+
+## Other Changes
+- The functionality for mutually exclusive tags has been disabled.
+- PodGC set up for Argo workflows to delete the pods from the Kubernetes environment on a successful run of the pods.
+- Fixed the issue with the display of the personal access token.
+- Fixed the mentions in comments for Announcements.
+- Fixed the issue with setting a Group as a Domain Owner.
+- Fixed the issue with the tooltip in the data quality graph.
+- Fixed an issue about notifying the Reviewer of a Glossary Term.
+- Fixed the issues with testing the email settings.
+- Fixed an issue with adding tags.
+
+
 # 1.3.0 Release
 
 {% note noteType="Tip" %} 

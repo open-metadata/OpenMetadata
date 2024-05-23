@@ -325,12 +325,7 @@ const StoredProcedurePage = () => {
       }
       const updatedEntityDetails = {
         ...storedProcedure,
-        owner: newOwner
-          ? {
-              ...owner,
-              ...newOwner,
-            }
-          : undefined,
+        owner: newOwner,
       };
       await handleStoreProcedureUpdate(updatedEntityDetails, 'owner');
     },
@@ -578,16 +573,18 @@ const StoredProcedurePage = () => {
               className="entity-tag-right-panel-container"
               data-testid="entity-right-panel"
               flex="320px">
-              <EntityRightPanel
+              <EntityRightPanel<EntityType.STORED_PROCEDURE>
                 customProperties={storedProcedure}
                 dataProducts={storedProcedure?.dataProducts ?? []}
                 domain={storedProcedure?.domain}
+                editCustomAttributePermission={editCustomAttributePermission}
                 editTagPermission={editTagsPermission}
                 entityFQN={decodedStoredProcedureFQN}
                 entityId={storedProcedure?.id ?? ''}
                 entityType={EntityType.STORED_PROCEDURE}
                 selectedTags={tags}
                 viewAllPermission={viewAllPermission}
+                onExtensionUpdate={onExtensionUpdate}
                 onTagSelectionChange={handleTagSelection}
                 onThreadLinkSelect={onThreadLinkSelect}
               />

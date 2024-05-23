@@ -66,6 +66,9 @@ import static org.openmetadata.service.util.TestUtils.UpdateType.MINOR_UPDATE;
 import static org.openmetadata.service.util.TestUtils.UpdateType.NO_CHANGE;
 import static org.openmetadata.service.util.TestUtils.UpdateType.REVERT;
 
+import es.org.elasticsearch.client.Request;
+import es.org.elasticsearch.client.Response;
+import es.org.elasticsearch.client.RestClient;
 import java.io.IOException;
 import java.text.ParseException;
 import java.util.ArrayList;
@@ -73,6 +76,7 @@ import java.util.Arrays;
 import java.util.Comparator;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -83,12 +87,15 @@ import javax.ws.rs.core.Response.Status;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.http.client.HttpResponseException;
+import org.apache.http.util.EntityUtils;
 import org.junit.jupiter.api.MethodOrderer;
 import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.TestInstance;
 import org.junit.jupiter.api.TestMethodOrder;
+import org.junit.jupiter.api.parallel.Execution;
+import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.openmetadata.csv.EntityCsv;
 import org.openmetadata.schema.api.VoteRequest;
 import org.openmetadata.schema.api.data.CreateDatabase;
@@ -152,6 +159,7 @@ import org.openmetadata.service.resources.services.DatabaseServiceResourceTest;
 import org.openmetadata.service.resources.tags.ClassificationResourceTest;
 import org.openmetadata.service.resources.tags.TagResourceTest;
 import org.openmetadata.service.resources.teams.UserResourceTest;
+import org.openmetadata.service.search.models.IndexMapping;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.JsonUtils;
@@ -1112,7 +1120,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
   }
 
   @Test
-  void put_viewDefinition_200(TestInfo test) throws IOException {
+  void put_schemaDefinition_200(TestInfo test) throws IOException {
     CreateTable createTable = createRequest(test);
     createTable.setTableType(TableType.View);
     String query =
@@ -1124,31 +1132,11 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
                     select * from spectrum.sales
                     with no schema binding;
                     """;
-    createTable.setViewDefinition(query);
+    createTable.setSchemaDefinition(query);
     Table table = createAndCheckEntity(createTable, ADMIN_AUTH_HEADERS);
-    table = getEntity(table.getId(), "viewDefinition", ADMIN_AUTH_HEADERS);
-    LOG.info("table view definition {}", table.getViewDefinition());
-    assertEquals(table.getViewDefinition(), query);
-  }
-
-  @Test
-  void put_viewDefinition_invalid_table_4xx(TestInfo test) {
-    CreateTable createTable = createRequest(test);
-    createTable.setTableType(TableType.Regular);
-    String query =
-        """
-                    sales_vw
-                    create view sales_vw as
-                    select * from public.sales
-                    union all
-                    select * from spectrum.sales
-                    with no schema binding;
-                    """;
-    createTable.setViewDefinition(query);
-    assertResponseContains(
-        () -> createAndCheckEntity(createTable, ADMIN_AUTH_HEADERS),
-        BAD_REQUEST,
-        "ViewDefinition can only be set on TableType View, SecureView or MaterializedView");
+    table = getEntity(table.getId(), "schemaDefinition", ADMIN_AUTH_HEADERS);
+    LOG.info("table view definition {}", table.getSchemaDefinition());
+    assertEquals(table.getSchemaDefinition(), query);
   }
 
   @Test
@@ -1941,6 +1929,193 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
   }
 
   @Test
+  void patch_usingFqn_tableAttributes_200_ok(TestInfo test) throws IOException {
+    // Create table without tableType, and tableConstraints
+    Table table = createEntity(createRequest(test).withTableConstraints(null), ADMIN_AUTH_HEADERS);
+
+    List<TableConstraint> tableConstraints =
+        List.of(
+            new TableConstraint()
+                .withConstraintType(ConstraintType.UNIQUE)
+                .withColumns(List.of(C1)));
+
+    // Add tableType, tableConstraints
+    String originalJson = JsonUtils.pojoToJson(table);
+    ChangeDescription change = getChangeDescription(table, MINOR_UPDATE);
+    table.withTableType(TableType.Regular).withTableConstraints(tableConstraints);
+    fieldAdded(change, "tableType", TableType.Regular);
+    fieldAdded(change, "tableConstraints", tableConstraints);
+    table =
+        patchEntityUsingFqnAndCheck(table, originalJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
+
+    // Replace tableType, tableConstraints
+    // Changes from this PATCH is consolidated with the previous changes
+    List<TableConstraint> tableConstraints1 =
+        List.of(
+            new TableConstraint()
+                .withConstraintType(ConstraintType.UNIQUE)
+                .withColumns(List.of(C2)));
+    originalJson = JsonUtils.pojoToJson(table);
+    change = getChangeDescription(table, CHANGE_CONSOLIDATED);
+    table.withTableType(TableType.External).withTableConstraints(tableConstraints1);
+    fieldAdded(change, "tableType", TableType.External);
+    fieldAdded(change, "tableConstraints", tableConstraints1);
+    table =
+        patchEntityUsingFqnAndCheck(
+            table, originalJson, ADMIN_AUTH_HEADERS, CHANGE_CONSOLIDATED, change);
+
+    // Remove tableType, tableConstraints
+    // Changes from this PATCH is consolidated with the previous changes resulting in no change
+    originalJson = JsonUtils.pojoToJson(table);
+    table.withTableType(null).withTableConstraints(null);
+    patchEntityUsingFqnAndCheck(table, originalJson, ADMIN_AUTH_HEADERS, REVERT, null);
+
+    // add retention period
+    originalJson = JsonUtils.pojoToJson(table);
+    table.withRetentionPeriod("10D");
+    change = getChangeDescription(table, CHANGE_CONSOLIDATED);
+    fieldAdded(change, "retentionPeriod", "10D");
+    patchEntityUsingFqnAndCheck(
+        table, originalJson, ADMIN_AUTH_HEADERS, CHANGE_CONSOLIDATED, change);
+  }
+
+  @Test
+  void patch_usingFqn_tableColumns_200_ok(TestInfo test) throws IOException {
+    // Create table with the following columns
+    List<Column> columns = new ArrayList<>();
+    columns.add(getColumn(C1, INT, USER_ADDRESS_TAG_LABEL).withDescription(null));
+    columns.add(getColumn(C2, BIGINT, USER_ADDRESS_TAG_LABEL));
+    columns.add(getColumn(C3, FLOAT, GLOSSARY1_TERM1_LABEL));
+
+    Table table = createEntity(createRequest(test).withColumns(columns), ADMIN_AUTH_HEADERS);
+
+    // Update the column tags and description with PATCH
+    ChangeDescription change = getChangeDescription(table, MAJOR_UPDATE);
+    columns
+        .get(0)
+        .withDescription("new0") // Set new description
+        .withTags(List.of(USER_ADDRESS_TAG_LABEL, GLOSSARY1_TERM1_LABEL));
+    fieldAdded(change, build("columns", C1, "description"), "new0");
+    fieldAdded(change, build("columns", C1, "tags"), List.of(GLOSSARY1_TERM1_LABEL));
+    columns
+        .get(1)
+        .withDescription("new1") // Change description
+        .withTags(List.of(USER_ADDRESS_TAG_LABEL)); // No change in tags
+    fieldUpdated(change, build("columns", C2, "description"), C2, "new1");
+
+    columns.get(2).withTags(new ArrayList<>()).withPrecision(10).withScale(3); // Remove tag
+    fieldDeleted(change, build("columns", C3, "tags"), List.of(GLOSSARY1_TERM1_LABEL));
+    fieldAdded(change, build("columns", C3, "precision"), 10);
+    fieldAdded(change, build("columns", C3, "scale"), 3);
+
+    String originalJson = JsonUtils.pojoToJson(table);
+    table.setColumns(columns);
+    table =
+        patchEntityUsingFqnAndCheck(table, originalJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
+    assertColumns(columns, table.getColumns());
+
+    // Now reduce the precision and make sure it is a backward incompatible change
+    // Changes from this PATCH is consolidated with the previous changes
+    change = getChangeDescription(table, CHANGE_CONSOLIDATED);
+    fieldAdded(change, build("columns", C1, "description"), "new0");
+    fieldAdded(change, build("columns", C1, "tags"), List.of(GLOSSARY1_TERM1_LABEL));
+    fieldUpdated(change, build("columns", C2, "description"), C2, "new1");
+    fieldDeleted(change, build("columns", C3, "tags"), List.of(GLOSSARY1_TERM1_LABEL));
+    fieldAdded(change, build("columns", C3, "precision"), 7); // Change in this patch
+    fieldAdded(change, build("columns", C3, "scale"), 3);
+    originalJson = JsonUtils.pojoToJson(table);
+    columns = table.getColumns();
+    columns
+        .get(2)
+        .withPrecision(7)
+        .withScale(3); // Precision change from 10 to 7. Scale remains the same
+    table.setColumns(columns);
+    table =
+        patchEntityUsingFqnAndCheck(
+            table, originalJson, ADMIN_AUTH_HEADERS, CHANGE_CONSOLIDATED, change);
+    assertColumns(columns, table.getColumns());
+
+    // Now reduce the scale and make sure it is a backward incompatible change
+    // Changes from this PATCH is consolidated with the previous changes
+    change = getChangeDescription(table, CHANGE_CONSOLIDATED);
+    fieldAdded(change, build("columns", C1, "description"), "new0");
+    fieldAdded(change, build("columns", C1, "tags"), List.of(GLOSSARY1_TERM1_LABEL));
+    fieldUpdated(change, build("columns", C2, "description"), C2, "new1");
+    fieldDeleted(change, build("columns", C3, "tags"), List.of(GLOSSARY1_TERM1_LABEL));
+    fieldAdded(change, build("columns", C3, "precision"), 7);
+    fieldAdded(change, build("columns", C3, "scale"), 1); // Change in this patch
+    originalJson = JsonUtils.pojoToJson(table);
+    columns = table.getColumns();
+    columns
+        .get(2)
+        .withPrecision(7)
+        .withScale(1); // Scale change from 10 to 7. Scale remains the same
+    table.setColumns(columns);
+    table =
+        patchEntityUsingFqnAndCheck(
+            table, originalJson, ADMIN_AUTH_HEADERS, CHANGE_CONSOLIDATED, change);
+    assertColumns(columns, table.getColumns());
+  }
+
+  @Test
+  void patch_usingFqn_tableColumnsTags_200_ok(TestInfo test) throws IOException {
+    Column c1 = getColumn(C1, INT, null);
+    CreateTable create = createRequest(test).withColumns(List.of(c1));
+    Table table = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
+
+    // Add a primary tag and derived tag both. The tag list must include derived tags only once.
+    String json = JsonUtils.pojoToJson(table);
+    table
+        .getColumns()
+        .get(0)
+        .withTags(
+            List.of(
+                GLOSSARY1_TERM1_LABEL,
+                PERSONAL_DATA_TAG_LABEL,
+                USER_ADDRESS_TAG_LABEL,
+                PII_SENSITIVE_TAG_LABEL));
+    Table updatedTable =
+        patchEntityUsingFqn(table.getFullyQualifiedName(), json, table, ADMIN_AUTH_HEADERS);
+
+    // Ensure only 4 tag labels are found - Manual tags PersonalData.Personal, User.Address,
+    // glossaryTerm1 and a derived tag PII.Sensitive from glossary term1
+    List<TagLabel> updateTags = updatedTable.getColumns().get(0).getTags();
+    assertEquals(4, updateTags.size());
+
+    TagLabel glossaryTerm1 =
+        updateTags.stream()
+            .filter(t -> tagLabelMatch.test(t, GLOSSARY1_TERM1_LABEL))
+            .findAny()
+            .orElse(null);
+    assertNotNull(glossaryTerm1);
+    assertEquals(LabelType.MANUAL, glossaryTerm1.getLabelType());
+
+    TagLabel userAddress =
+        updateTags.stream()
+            .filter(t -> tagLabelMatch.test(t, USER_ADDRESS_TAG_LABEL))
+            .findAny()
+            .orElse(null);
+    assertNotNull(userAddress);
+    assertEquals(LabelType.MANUAL, userAddress.getLabelType());
+
+    TagLabel personData =
+        updateTags.stream()
+            .filter(t -> tagLabelMatch.test(t, PERSONAL_DATA_TAG_LABEL))
+            .findAny()
+            .orElse(null);
+    assertNotNull(personData);
+    assertEquals(LabelType.MANUAL, personData.getLabelType());
+
+    TagLabel piiSensitive =
+        updateTags.stream()
+            .filter(t -> tagLabelMatch.test(t, PII_SENSITIVE_TAG_LABEL))
+            .findAny()
+            .orElse(null);
+    assertNotNull(piiSensitive);
+    assertEquals(LabelType.MANUAL, piiSensitive.getLabelType());
+  }
+
+  @Test
   void test_mutuallyExclusiveTags(TestInfo testInfo) {
     // Apply mutually exclusive tags to a table
     CreateTable create =
@@ -2156,6 +2331,113 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
   }
 
   @Test
+  @Execution(ExecutionMode.CONCURRENT)
+  void get_entityWithoutDescriptionFromSearch(TestInfo test)
+      throws InterruptedException, IOException {
+    // Create Database
+    CreateDatabase createDatabase = dbTest.createRequest(getEntityName(test));
+    Database database = dbTest.createEntity(createDatabase, ADMIN_AUTH_HEADERS);
+    // Create Database Schema
+    CreateDatabaseSchema createDatabaseSchema =
+        schemaTest.createRequest(test).withDatabase(database.getFullyQualifiedName());
+    DatabaseSchema schema =
+        schemaTest
+            .createEntity(createDatabaseSchema, ADMIN_AUTH_HEADERS)
+            .withDatabase(database.getEntityReference());
+    schema = schemaTest.getEntity(schema.getId(), "", ADMIN_AUTH_HEADERS);
+    // Create Column without description
+    Column columnWithNullDescription =
+        new Column().withName("column").withDataType(INT).withDescription(null);
+    // Create Column with empty description
+    Column columnWithEmptyDescription =
+        new Column().withName("column").withDataType(INT).withDescription("");
+    // Create Column with description
+    Column columnWithDescription =
+        new Column().withName("column").withDataType(INT).withDescription("FooBar");
+    // Create an entity without column description
+    CreateTable createWithNullColumnDescription =
+        createRequest(test, 1)
+            .withDatabaseSchema(schema.getFullyQualifiedName())
+            .withDescription("description")
+            .withColumns(listOf(columnWithNullDescription))
+            .withTableConstraints(null);
+    Table entityWithNullColumnDescription =
+        createEntity(createWithNullColumnDescription, ADMIN_AUTH_HEADERS);
+    // Create an entity with empty column description
+    CreateTable createWithEmptyColumnDescription =
+        createRequest(test, 2)
+            .withDatabaseSchema(schema.getFullyQualifiedName())
+            .withDescription("description")
+            .withColumns(listOf(columnWithEmptyDescription))
+            .withTableConstraints(null);
+    Table entityWithEmptyDescription =
+        createEntity(createWithEmptyColumnDescription, ADMIN_AUTH_HEADERS);
+    // Create an entity with null description but with column description
+    CreateTable createWithNullDescription =
+        createRequest(test, 3)
+            .withDatabaseSchema(schema.getFullyQualifiedName())
+            .withDescription(null)
+            .withColumns(listOf(columnWithDescription))
+            .withTableConstraints(null);
+    Table entityWithNullDescription = createEntity(createWithNullDescription, ADMIN_AUTH_HEADERS);
+    // Create an entity with description complete
+    CreateTable createWithDescription =
+        createRequest(test, 4)
+            .withDatabaseSchema(schema.getFullyQualifiedName())
+            .withDescription("description")
+            .withColumns(listOf(columnWithDescription))
+            .withTableConstraints(null);
+    Table entityWithDescription = createEntity(createWithDescription, ADMIN_AUTH_HEADERS);
+
+    // Search for entities without description
+    RestClient searchClient = getSearchClient();
+    IndexMapping index = Entity.getSearchRepository().getIndexMapping(TABLE);
+    Response response;
+    Request request = new Request("GET", String.format("%s/_search", index.getIndexName(null)));
+    String query =
+        "{\"size\": 100,\"query\":{\"bool\":{\"must\":[{\"term\":{\"descriptionStatus\":\"INCOMPLETE\"}}]}}}";
+    request.setJsonEntity(query);
+    response = searchClient.performRequest(request);
+    searchClient.close();
+
+    String jsonString = EntityUtils.toString(response.getEntity());
+    HashMap<String, Object> map =
+        (HashMap<String, Object>) JsonUtils.readOrConvertValue(jsonString, HashMap.class);
+    LinkedHashMap<String, Object> hits = (LinkedHashMap<String, Object>) map.get("hits");
+    ArrayList<LinkedHashMap<String, Object>> hitsList =
+        (ArrayList<LinkedHashMap<String, Object>>) hits.get("hits");
+
+    assertTrue(
+        hitsList.stream()
+            .noneMatch(
+                hit ->
+                    ((LinkedHashMap<String, Object>) hit.get("_source"))
+                        .get("name")
+                        .equals(createWithDescription.getName())));
+    assertTrue(
+        hitsList.stream()
+            .anyMatch(
+                hit ->
+                    ((LinkedHashMap<String, Object>) hit.get("_source"))
+                        .get("name")
+                        .equals(createWithNullDescription.getName())));
+    assertTrue(
+        hitsList.stream()
+            .anyMatch(
+                hit ->
+                    ((LinkedHashMap<String, Object>) hit.get("_source"))
+                        .get("name")
+                        .equals(createWithEmptyColumnDescription.getName())));
+    assertTrue(
+        hitsList.stream()
+            .anyMatch(
+                hit ->
+                    ((LinkedHashMap<String, Object>) hit.get("_source"))
+                        .get("name")
+                        .equals(createWithNullColumnDescription.getName())));
+  }
+
+  @Test
   void test_sensitivePIISampleData(TestInfo test) throws IOException {
     // Create table with owner and a column tagged with PII.Sensitive
     Table table =
@@ -2202,15 +2484,38 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
             createRequest(test, 1).withOwner(USER_TEAM21.getEntityReference()), ADMIN_AUTH_HEADERS);
     putTableProfile(table, table1, ADMIN_AUTH_HEADERS);
 
+    Column c3 = table.getColumns().stream().filter(c -> c.getName().equals(C3)).findFirst().get();
+
     // Owner can read the column profile of C3
     Table tableWithProfileFromOwner =
         getLatestTableProfile(table.getFullyQualifiedName(), authHeaders(USER_TEAM21.getName()));
     assertNotNull(tableWithProfileFromOwner.getColumns().get(2).getProfile());
+    ResultList<ColumnProfile> columnProfiles =
+        getColumnProfiles(
+            c3.getFullyQualifiedName(),
+            TestUtils.dateToTimestamp("2021-09-01"),
+            TestUtils.dateToTimestamp("2021-09-30"),
+            authHeaders(USER_TEAM21.getName()));
+    for (ColumnProfile columnProfile : columnProfiles.getData()) {
+      assertNotNull(columnProfile.getMax());
+      assertNotNull(columnProfile.getMin());
+    }
 
     // Non owners cannot read the column profile of C3
     Table tableWithProfileFromNotOwner =
         getLatestTableProfile(table.getFullyQualifiedName(), authHeaders(USER1_REF.getName()));
     assertNull(tableWithProfileFromNotOwner.getColumns().get(2).getProfile());
+    ResultList<ColumnProfile> maskedColumnProfiles =
+        getColumnProfiles(
+            c3.getFullyQualifiedName(),
+            TestUtils.dateToTimestamp("2021-09-01"),
+            TestUtils.dateToTimestamp("2021-09-30"),
+            authHeaders(USER1_REF.getName()));
+    for (ColumnProfile columnProfile : maskedColumnProfiles.getData()) {
+      assertNull(columnProfile.getMax());
+      assertNull(columnProfile.getMin());
+    }
+    assertEquals(maskedColumnProfiles.getData().size(), columnProfiles.getData().size());
   }
 
   @Test
@@ -2413,25 +2718,25 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
         table.getFollowers(),
         table.getJoins(),
         table.getSampleData(),
-        table.getViewDefinition(),
+        table.getSchemaDefinition(),
         table.getProfile(),
         table.getLocation(),
         table.getDataModel());
 
     String fields =
         "tableConstraints,usageSummary,owner,"
-            + "tags,followers,joins,sampleData,viewDefinition,profile,location,dataModel";
+            + "tags,followers,joins,sampleData,schemaDefinition,profile,location,dataModel";
     table =
         byName
             ? getEntityByName(table.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)
             : getEntity(table.getId(), fields, ADMIN_AUTH_HEADERS);
     assertListNotNull(table.getService(), table.getServiceType(), table.getColumns());
-    // Fields sampleData, viewDefinition, tableProfile, location,
+    // Fields sampleData, schemaDefinition, tableProfile, location,
     // and dataModel are not set during creation - tested elsewhere
     assertListNotNull(
         table.getTableConstraints(),
         table.getUsageSummary(),
-        table.getJoins() /*, table.getSampleData(), table.getViewDefinition(), table
+        table.getJoins() /*, table.getSampleData(), table.getSchemaDefinition(), table
             .getTableProfile(),  table.getLocation(), table.getDataModel()*/);
     assertListNotEmpty(table.getTableConstraints());
     // Checks for other owner, tags, and followers is done in the base class

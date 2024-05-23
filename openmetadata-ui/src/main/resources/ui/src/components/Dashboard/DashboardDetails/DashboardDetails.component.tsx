@@ -265,7 +265,7 @@ const DashboardDetails = ({
     async (newOwner?: Dashboard['owner']) => {
       const updatedDashboard = {
         ...dashboardDetails,
-        owner: newOwner ? { ...owner, ...newOwner } : undefined,
+        owner: newOwner,
       };
       await onDashboardUpdate(updatedDashboard, 'owner');
     },
@@ -504,7 +504,9 @@ const DashboardDetails = ({
         filterIcon: (filtered) => (
           <FilterOutlined
             data-testid="tag-filter"
-            style={{ color: filtered ? theme.primaryColor : undefined }}
+            style={{
+              color: filtered ? theme.primaryColor : undefined,
+            }}
           />
         ),
         render: (tags: TagLabel[], record: ChartType, index: number) => {
@@ -536,7 +538,9 @@ const DashboardDetails = ({
         filterIcon: (filtered) => (
           <FilterOutlined
             data-testid="glossary-filter"
-            style={{ color: filtered ? theme.primaryColor : undefined }}
+            style={{
+              color: filtered ? theme.primaryColor : undefined,
+            }}
           />
         ),
         render: (tags: TagLabel[], record: ChartType, index: number) => (
@@ -630,6 +634,7 @@ const DashboardDetails = ({
                 ) : (
                   <Table
                     bordered
+                    className="align-table-filter-left"
                     columns={tableColumn}
                     data-testid="charts-table"
                     dataSource={charts}
@@ -645,16 +650,18 @@ const DashboardDetails = ({
               className="entity-tag-right-panel-container"
               data-testid="entity-right-panel"
               flex="320px">
-              <EntityRightPanel
+              <EntityRightPanel<EntityType.DASHBOARD>
                 customProperties={dashboardDetails}
                 dataProducts={dashboardDetails?.dataProducts ?? []}
                 domain={dashboardDetails?.domain}
+                editCustomAttributePermission={editCustomAttributePermission}
                 editTagPermission={editTagsPermission}
                 entityFQN={decodedDashboardFQN}
                 entityId={dashboardDetails.id}
                 entityType={EntityType.DASHBOARD}
                 selectedTags={dashboardTags}
                 viewAllPermission={viewAllPermission}
+                onExtensionUpdate={onExtensionUpdate}
                 onTagSelectionChange={handleTagSelection}
                 onThreadLinkSelect={onThreadLinkSelect}
               />

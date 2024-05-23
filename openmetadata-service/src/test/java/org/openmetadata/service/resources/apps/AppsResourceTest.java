@@ -80,8 +80,15 @@ public class AppsResourceTest extends EntityResourceTest<App, CreateApp> {
   @Test
   void post_trigger_app_200() throws HttpResponseException, InterruptedException {
     postTriggerApp("SearchIndexingApplication", ADMIN_AUTH_HEADERS);
-    TimeUnit.MILLISECONDS.sleep(200);
-    AppRunRecord latestRun = getLatestAppRun("SearchIndexingApplication", ADMIN_AUTH_HEADERS);
+    AppRunRecord latestRun = null;
+    while (latestRun == null) {
+      try {
+        latestRun = getLatestAppRun("SearchIndexingApplication", ADMIN_AUTH_HEADERS);
+        Thread.sleep(1000);
+      } catch (HttpResponseException ex) {
+        LOG.info("Waiting for the app to start running");
+      }
+    }
     assert latestRun.getStatus().equals(AppRunRecord.Status.RUNNING);
     TimeUnit timeout = TimeUnit.SECONDS;
     long timeoutValue = 30;

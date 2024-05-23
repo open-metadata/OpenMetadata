@@ -43,7 +43,7 @@ const BrandImage: FC<BrandImageProps> = ({
 
   const { applicationConfig } = useApplicationStore();
   const { customLogoUrlPath = '', customMonogramUrlPath = '' } =
-    applicationConfig ?? {};
+    applicationConfig?.customLogoConfig ?? {};
 
   const logoSource = isMonoGram
     ? customMonogramUrlPath || MonoGram

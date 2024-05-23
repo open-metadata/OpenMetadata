@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Col, Input, Select, Switch, Tooltip } from 'antd';
+import { Checkbox, Col, Input, Select, Switch, Tooltip } from 'antd';
 import Form, { RuleObject } from 'antd/lib/form';
 import { AxiosError } from 'axios';
 import i18next, { t } from 'i18next';
@@ -46,9 +46,10 @@ import { TestCaseStatus } from '../../generated/tests/testCase';
 import { EventType } from '../../generated/type/changeEvent';
 import TeamAndUserSelectItem from '../../pages/AddObservabilityPage/DestinationFormItem/TeamAndUserSelectItem/TeamAndUserSelectItem';
 import { searchData } from '../../rest/miscAPI';
-import { getEntityName } from '../EntityUtils';
+import { getEntityName, getEntityNameLabel } from '../EntityUtils';
 import { getConfigFieldFromDestinationType } from '../ObservabilityUtils';
 import searchClassBase from '../SearchClassBase';
+import { getEntityIcon } from '../TableUtils';
 import { showErrorToast, showSuccessToast } from '../ToastUtils';
 
 export const getAlertsActionTypeIcon = (type?: SubscriptionType) => {
@@ -154,16 +155,18 @@ export const getDisplayNameForEntities = (entity: string) => {
 export const EDIT_LINK_PATH = `/settings/notifications/edit-alert`;
 export const EDIT_DATA_INSIGHT_REPORT_PATH = `/settings/notifications/edit-data-insight-report`;
 
-const searchEntity = async ({
+export const searchEntity = async ({
   searchText,
   searchIndex,
   filters,
   showDisplayNameAsLabel = true,
+  setSourceAsValue = false,
 }: {
   searchText: string;
   searchIndex: SearchIndex | SearchIndex[];
   filters?: string;
   showDisplayNameAsLabel?: boolean;
+  setSourceAsValue?: boolean;
 }) => {
   try {
     const response = await searchData(
@@ -175,6 +178,8 @@ const searchEntity = async ({
       '',
       searchIndex
     );
+    const searchIndexEntityTypeMapping =
+      searchClassBase.getSearchIndexEntityTypeMapping();
 
     return uniqBy(
       response.data.hits.hits.map((d) => {
@@ -186,9 +191,16 @@ const searchEntity = async ({
           ? getEntityName(d._source)
           : d._source.fullyQualifiedName ?? '';
 
+        const value = setSourceAsValue
+          ? JSON.stringify({
+              ...d._source,
+              type: searchIndexEntityTypeMapping[d._index],
+            })
+          : d._source.fullyQualifiedName ?? '';
+
         return {
           label: displayName,
-          value: d._source.fullyQualifiedName ?? '',
+          value,
         };
       }),
       'label'
@@ -865,3 +877,23 @@ export const getFilteredDestinationOptions = (
 
   return filteredOptions;
 };
+
+export const getSourceOptionsFromResourceList = (
+  resources: Array<string>,
+  showCheckbox?: boolean,
+  selectedResource?: string[]
+) =>
+  resources.map((resource) => ({
+    label: (
+      <div
+        className="d-flex items-center gap-2"
+        data-testid={`${resource}-option`}>
+        {showCheckbox && (
+          <Checkbox checked={selectedResource?.includes(resource)} />
+        )}
+        <div className="d-flex h-4 w-4">{getEntityIcon(resource ?? '')}</div>
+        <span>{getEntityNameLabel(resource ?? '')}</span>
+      </div>
+    ),
+    value: resource ?? '',
+  }));

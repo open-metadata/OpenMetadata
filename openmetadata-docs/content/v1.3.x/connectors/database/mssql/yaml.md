@@ -8,7 +8,7 @@ name="MSSQL"
 stage="PROD"
 platform="OpenMetadata"
 availableFeatures=["Metadata", "Query Usage", "Data Profiler", "Data Quality", "dbt", "Lineage", "Column-level Lineage", "Stored Procedures"]
-unavailableFeatures=["Owners", "Tags"]
+unavailableFeatures=["Owners", "Tags", "SSIS packages"]
 / %}
 
 In this section, we provide guides and references to use the MSSQL connector.
@@ -152,35 +152,6 @@ This is a sample config for MSSQL:
 
 {% codeBlock fileName="filename.yaml" %}
 
-```yaml
-source:
-  type: mssql
-  serviceName: "<service name>"
-  serviceConnection:
-    config:
-      type: Mssql
-```
-```yaml {% srNumber=1 %}
-      scheme: mssql+pytds
-```
-```yaml {% srNumber=2 %}
-      username: <username>
-```
-```yaml {% srNumber=3 %}
-      password: <password>
-```
-```yaml {% srNumber=4 %}
-      hostPort: <hostPort>
-```
-```yaml {% srNumber=5 %}
-      database: <database>
-```
-```yaml {% srNumber=6 %}
-      ingestAllDatabases: false # true
-```
-```yaml {% srNumber=7 %}
-      uriString: uriString
-```
 ```yaml
 source:
   type: mssql

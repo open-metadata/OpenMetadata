@@ -4,7 +4,6 @@
   "title": "Thread",
   "description": "This schema defines the Thread entity. A Thread is a collection of posts made by the users. The first post that starts a thread is **about** a data asset **from** a user. Other users can respond to this post by creating new posts in the thread. Note that bot users can also interact with a thread. A post can contains links that mention Users or other Data Assets.",
   "type": "object",
-
   "definitions": {
     "taskType": {
       "javaType": "org.openmetadata.schema.type.TaskType",
@@ -83,8 +82,8 @@
           "type": "string"
         },
         "testCaseResolutionStatusId": {
-            "description": "The test case resolution status id for which the task is created.",
-            "$ref": "../../type/basic.json#/definitions/uuid"
+          "description": "The test case resolution status id for which the task is created.",
+          "$ref": "../../type/basic.json#/definitions/uuid"
         }
       },
       "required": ["id", "assignees", "type"],
@@ -211,6 +210,85 @@
     "entityId": {
       "description": "Entity Id of the entity in `about` that the thread belongs to.",
       "$ref": "../../type/basic.json#/definitions/uuid"
+    },
+    "entityType": {
+      "description": "Entity Type the thread is about.",
+      "type": "string"
+    },
+    "entityUrlLink": {
+      "description": "Link to the entity in `about` that the thread belongs to.",
+      "type": "string"
+    },
+    "generatedBy": {
+      "description": "User or team that generated the thread.",
+      "type": "string",
+      "enum": ["user", "system"],
+      "default": "user"
+    },
+    "cardStyle": {
+      "description": "Card style for the thread.",
+      "type": "string",
+      "enum": [
+        "default",
+        "logicalTestCaseAdded",
+        "entityCreated",
+        "entityDeleted",
+        "entitySoftDeleted",
+        "description",
+        "tags",
+        "owner",
+        "testCaseResult",
+        "customProperties",
+        "assets",
+        "domain"
+      ],
+      "default": "default"
+    },
+    "fieldOperation": {
+      "description": "Operation on thread, whether the field was added, or updated or deleted.",
+      "type": "string",
+      "enum": ["added", "updated", "deleted", "none"],
+      "default": "updated"
+    },
+    "feedInfo": {
+      "description": "Entity Id of the entity in `about` that the thread belongs to.",
+      "type": "object",
+      "properties": {
+        "headerMessage": {
+          "description": "Header message for the feed.",
+          "type": "string"
+        },
+        "fieldName": {
+          "description": "Field Name message for the feed.",
+          "type": "string"
+        },
+        "entitySpecificInfo": {
+          "oneOf": [
+            {
+              "$ref": "./assets.json"
+            },
+            {
+              "$ref": "./customProperty.json"
+            },
+            {
+              "$ref": "./description.json"
+            },
+            {
+              "$ref": "./domain.json"
+            },
+            {
+              "$ref": "./entityInfo.json"
+            },
+            {
+              "$ref": "./tag.json"
+            },
+            {
+              "$ref": "./testCaseResult.json"
+            }
+          ]
+        }
+      },
+      "additionalProperties": false
     },
     "addressedTo": {
       "description": "User or team this thread is addressed to in format <#E::{entities}::{entityName}::{field}::{fieldValue}.",

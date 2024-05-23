@@ -54,7 +54,6 @@ import org.openmetadata.schema.tests.TestSuite;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.FieldChange;
-import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.UsageDetails;
 import org.openmetadata.service.Entity;
@@ -255,7 +254,7 @@ public class SearchRepository {
       try {
         IndexMapping indexMapping = entityIndexMap.get(entityType);
         SearchIndex index = searchIndexFactory.buildIndex(entityType, entity);
-        String doc = JsonUtils.pojoToJson(index.buildESDoc());
+        String doc = JsonUtils.pojoToJson(index.buildSearchIndexDoc());
         searchClient.createEntity(indexMapping.getIndexName(clusterAlias), entityId, doc);
       } catch (Exception ie) {
         LOG.error(
@@ -283,7 +282,7 @@ public class SearchRepository {
       try {
         IndexMapping indexMapping = entityIndexMap.get(entityType);
         SearchIndex index = searchIndexFactory.buildIndex(entityType, entity);
-        String doc = JsonUtils.pojoToJson(index.buildESDoc());
+        String doc = JsonUtils.pojoToJson(index.buildSearchIndexDoc());
         searchClient.createTimeSeriesEntity(indexMapping.getIndexName(clusterAlias), entityId, doc);
       } catch (Exception ie) {
         LOG.error(
@@ -312,7 +311,7 @@ public class SearchRepository {
           scriptTxt = getScriptWithParams(entity, doc);
         } else {
           SearchIndex elasticSearchIndex = searchIndexFactory.buildIndex(entityType, entity);
-          doc = elasticSearchIndex.buildESDoc();
+          doc = elasticSearchIndex.buildSearchIndexDoc();
         }
         searchClient.updateEntity(
             indexMapping.getIndexName(clusterAlias), entityId, doc, scriptTxt);
@@ -359,10 +358,6 @@ public class SearchRepository {
             || entityType.equalsIgnoreCase(Entity.STORAGE_SERVICE)
             || entityType.equalsIgnoreCase(Entity.SEARCH_SERVICE)) {
           parentMatch = new ImmutablePair<>("service.id", entityId);
-        } else if (entityType.equalsIgnoreCase(Entity.TABLE)) {
-          EntityInterface entity =
-              Entity.getEntity(entityType, UUID.fromString(entityId), "", Include.ALL);
-          parentMatch = new ImmutablePair<>("entityFQN", entity.getFullyQualifiedName());
         } else {
           parentMatch = new ImmutablePair<>(entityType + ".id", entityId);
         }
@@ -502,6 +497,26 @@ public class SearchRepository {
     }
   }
 
+  public void deleteTimeSeriesEntityById(EntityTimeSeriesInterface entity) {
+    if (entity != null) {
+      String entityId = entity.getId().toString();
+      String entityType = entity.getEntityReference().getType();
+      IndexMapping indexMapping = entityIndexMap.get(entityType);
+      try {
+        searchClient.deleteEntity(indexMapping.getIndexName(clusterAlias), entityId);
+      } catch (Exception ie) {
+        LOG.error(
+            String.format(
+                "Issue in Deleting the search document for entityID [%s] and entityType [%s]. Reason[%s], Cause[%s], Stack [%s]",
+                entityId,
+                entityType,
+                ie.getMessage(),
+                ie.getCause(),
+                ExceptionUtils.getStackTrace(ie)));
+      }
+    }
+  }
+
   public void softDeleteOrRestoreEntity(EntityInterface entity, boolean delete) {
     if (entity != null) {
       String entityId = entity.getId().toString();
@@ -511,7 +526,7 @@ public class SearchRepository {
       try {
         searchClient.softDeleteOrRestoreEntity(
             indexMapping.getIndexName(clusterAlias), entityId, scriptTxt);
-        softDeleteOrRestoredChildren(entity, indexMapping, delete);
+        softDeleteOrRestoredChildren(entity.getEntityReference(), indexMapping, delete);
       } catch (Exception ie) {
         LOG.error(
             String.format(
@@ -537,7 +552,7 @@ public class SearchRepository {
         // we are doing below because we want to delete the data products with domain when domain is
         // deleted
         searchClient.deleteEntityByFields(
-            indexMapping.getAlias(clusterAlias),
+            indexMapping.getChildAliases(clusterAlias),
             List.of(new ImmutablePair<>(entityType + ".id", docId)));
       }
       case Entity.TAG, Entity.GLOSSARY_TERM -> searchClient.updateChildren(
@@ -550,11 +565,11 @@ public class SearchRepository {
         TestSuite testSuite = (TestSuite) entity;
         if (Boolean.TRUE.equals(testSuite.getExecutable())) {
           searchClient.deleteEntityByFields(
-              indexMapping.getAlias(clusterAlias),
-              List.of(new ImmutablePair<>("testSuites.id", docId)));
+              indexMapping.getChildAliases(clusterAlias),
+              List.of(new ImmutablePair<>("testSuite.id", docId)));
         } else {
           searchClient.updateChildren(
-              indexMapping.getAlias(clusterAlias),
+              indexMapping.getChildAliases(clusterAlias),
               new ImmutablePair<>("testSuites.id", testSuite.getId().toString()),
               new ImmutablePair<>(REMOVE_TEST_SUITE_CHILDREN_SCRIPT, null));
         }
@@ -565,18 +580,23 @@ public class SearchRepository {
           Entity.PIPELINE_SERVICE,
           Entity.MLMODEL_SERVICE,
           Entity.STORAGE_SERVICE,
-          Entity.SEARCH_SERVICE -> searchClient.deleteEntityByFields(
-          indexMapping.getAlias(clusterAlias), List.of(new ImmutablePair<>("service.id", docId)));
-      default -> searchClient.deleteEntityByFields(
-          indexMapping.getAlias(clusterAlias),
-          List.of(new ImmutablePair<>(entityType + ".id", docId)));
+          Entity.SEARCH_SERVICE -> {
+        searchClient.deleteEntityByFields(
+            indexMapping.getChildAliases(clusterAlias),
+            List.of(new ImmutablePair<>("service.id", docId)));
+      }
+      default -> {
+        searchClient.deleteEntityByFields(
+            indexMapping.getChildAliases(clusterAlias),
+            List.of(new ImmutablePair<>(entityType + ".id", docId)));
+      }
     }
   }
 
   public void softDeleteOrRestoredChildren(
-      EntityInterface entity, IndexMapping indexMapping, boolean delete) {
-    String docId = entity.getId().toString();
-    String entityType = entity.getEntityReference().getType();
+      EntityReference entityReference, IndexMapping indexMapping, boolean delete) {
+    String docId = entityReference.getId().toString();
+    String entityType = entityReference.getType();
     String scriptTxt = String.format(SOFT_DELETE_RESTORE_SCRIPT, delete);
     switch (entityType) {
       case Entity.DASHBOARD_SERVICE,
@@ -586,11 +606,11 @@ public class SearchRepository {
           Entity.MLMODEL_SERVICE,
           Entity.STORAGE_SERVICE,
           Entity.SEARCH_SERVICE -> searchClient.softDeleteOrRestoreChildren(
-          indexMapping.getAlias(clusterAlias),
+          indexMapping.getChildAliases(clusterAlias),
           scriptTxt,
           List.of(new ImmutablePair<>("service.id", docId)));
       default -> searchClient.softDeleteOrRestoreChildren(
-          indexMapping.getAlias(clusterAlias),
+          indexMapping.getChildAliases(clusterAlias),
           scriptTxt,
           List.of(new ImmutablePair<>(entityType + ".id", docId)));
     }
@@ -648,12 +668,22 @@ public class SearchRepository {
         fieldAddParams.put(fieldChange.getName(), doc.get("votes"));
         scriptTxt.append("ctx._source.votes = params.votes;");
       }
+      if (fieldChange.getName().equalsIgnoreCase("pipelineStatus")) {
+        scriptTxt.append(
+            "if (ctx._source.containsKey('pipelineStatus')) { ctx._source.pipelineStatus = params.newPipelineStatus; } else { ctx._source['pipelineStatus'] = params.newPipelineStatus;}");
+        Map<String, Object> doc = JsonUtils.getMap(entity);
+        fieldAddParams.put("newPipelineStatus", doc.get("pipelineStatus"));
+      }
     }
     return scriptTxt.toString();
   }
 
   public Response search(SearchRequest request) throws IOException {
     return searchClient.search(request);
+  }
+
+  public Response getDocument(String indexName, UUID entityId) throws IOException {
+    return searchClient.getDocByID(indexName, entityId.toString());
   }
 
   public SearchClient.SearchResultListMapper listWithOffset(
@@ -687,6 +717,18 @@ public class SearchRepository {
       String entityType)
       throws IOException {
     return searchClient.searchLineage(
+        fqn, upstreamDepth, downstreamDepth, queryFilter, deleted, entityType);
+  }
+
+  public Map<String, Object> searchLineageForExport(
+      String fqn,
+      int upstreamDepth,
+      int downstreamDepth,
+      String queryFilter,
+      boolean deleted,
+      String entityType)
+      throws IOException {
+    return searchClient.searchLineageInternal(
         fqn, upstreamDepth, downstreamDepth, queryFilter, deleted, entityType);
   }
 

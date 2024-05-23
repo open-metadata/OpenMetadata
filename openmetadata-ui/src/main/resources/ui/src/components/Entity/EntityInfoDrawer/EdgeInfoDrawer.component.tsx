@@ -26,7 +26,10 @@ import { CSMode } from '../../../enums/codemirror.enum';
 import { EntityType } from '../../../enums/entity.enum';
 import { Source } from '../../../generated/type/entityLineage';
 import { getNameFromFQN } from '../../../utils/CommonUtils';
-import { getLineageDetailsObject } from '../../../utils/EntityLineageUtils';
+import {
+  getColumnSourceTargetHandles,
+  getLineageDetailsObject,
+} from '../../../utils/EntityLineageUtils';
 import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
 import { getEntityName } from '../../../utils/EntityUtils';
 import Loader from '../../common/Loader/Loader';
@@ -60,7 +63,10 @@ const EdgeInfoDrawer = ({
   }, [edge]);
 
   const getEdgeInfo = () => {
-    const { source, target, data, sourceHandle, targetHandle } = edge;
+    const { source, target, data } = edge;
+    const { sourceHandle, targetHandle } = getColumnSourceTargetHandles(edge);
+    const { pipeline, pipelineEntityType } = data?.edge ?? {};
+
     let sourceData: Node | undefined, targetData: Node | undefined;
     nodes.forEach((node) => {
       if (source === node.id) {
@@ -70,16 +76,23 @@ const EdgeInfoDrawer = ({
       }
     });
 
+    const {
+      entityType: sourceEntityType = '',
+      fullyQualifiedName: sourceFqn = '',
+    } = sourceData?.data?.node ?? {};
+
+    const {
+      entityType: targetEntityType = '',
+      fullyQualifiedName: targetFqn = '',
+    } = targetData?.data?.node ?? {};
+
     setEdgeData({
       sourceData: {
         key: t('label.source'),
         value: sourceData && getEntityName(sourceData?.data?.node),
         link:
           sourceData &&
-          entityUtilClassBase.getEntityLink(
-            data.sourceType,
-            sourceData.data.node.fullyQualifiedName
-          ),
+          entityUtilClassBase.getEntityLink(sourceEntityType, sourceFqn),
       },
       sourceColumn: {
         key: t('label.source-column'),
@@ -90,10 +103,7 @@ const EdgeInfoDrawer = ({
         value: targetData ? getEntityName(targetData?.data?.node) : undefined,
         link:
           targetData &&
-          entityUtilClassBase.getEntityLink(
-            data.targetData,
-            targetData.data.node.fullyQualifiedName
-          ),
+          entityUtilClassBase.getEntityLink(targetEntityType, targetFqn),
       },
       targetColumn: {
         key: t('label.target-column'),
@@ -101,14 +111,12 @@ const EdgeInfoDrawer = ({
       },
       pipeline: {
         key: t('label.edge'),
-        value: data?.edge?.pipeline
-          ? getEntityName(data?.edge?.pipeline)
-          : undefined,
+        value: pipeline ? getEntityName(pipeline) : undefined,
         link:
-          data?.edge?.pipeline &&
+          pipeline &&
           entityUtilClassBase.getEntityLink(
-            data?.edge?.pipeline.type,
-            data?.edge?.pipeline.fullyQualifiedName
+            pipelineEntityType,
+            pipeline.fullyQualifiedName
           ),
       },
       functionInfo: {

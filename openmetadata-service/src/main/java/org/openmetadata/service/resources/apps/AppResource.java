@@ -114,11 +114,20 @@ public class AppResource extends EntityResource<App, AppRepository> {
       searchRepository = new SearchRepository(config.getElasticSearchConfiguration());
       AppScheduler.initialize(config, dao, searchRepository);
 
-      // Get Create App Requests
+      // Initialize Default Apps
       List<CreateApp> createAppsReq =
           getEntitiesFromSeedData(
               APPLICATION, String.format(".*json/data/%s/.*\\.json$", entityType), CreateApp.class);
-      for (CreateApp createApp : createAppsReq) {
+      loadDefaultApplications(createAppsReq);
+    } catch (Exception ex) {
+      LOG.error("Failed in Create App Requests", ex);
+    }
+  }
+
+  private void loadDefaultApplications(List<CreateApp> defaultAppCreateRequests) {
+    // Get Create App Requests
+    for (CreateApp createApp : defaultAppCreateRequests) {
+      try {
         AppMarketPlaceDefinition definition =
             repository
                 .getMarketPlace()
@@ -139,9 +148,9 @@ public class AppResource extends EntityResource<App, AppRepository> {
           ApplicationHandler.getInstance()
               .installApplication(app, Entity.getCollectionDAO(), searchRepository);
         }
+      } catch (Exception ex) {
+        LOG.error("Failed in Creation/Initialization of Application : {}", createApp.getName(), ex);
       }
-    } catch (Exception ex) {
-      LOG.error("Failed in Create App Requests", ex);
     }
   }
 
@@ -588,6 +597,50 @@ public class AppResource extends EntityResource<App, AppRepository> {
     }
     AppScheduler.getInstance().deleteScheduledApplication(app);
     Response response = patchInternal(uriInfo, securityContext, id, patch);
+    App updatedApp = (App) response.getEntity();
+    if (app.getScheduleType().equals(ScheduleType.Scheduled)) {
+      ApplicationHandler.getInstance()
+          .installApplication(updatedApp, Entity.getCollectionDAO(), searchRepository);
+    }
+    // We don't want to store this information
+    unsetAppRuntimeProperties(updatedApp);
+    return response;
+  }
+
+  @PATCH
+  @Path("/name/{fqn}")
+  @Operation(
+      operationId = "patchApplication",
+      summary = "Updates a App by name.",
+      description = "Update an existing App using JsonPatch.",
+      externalDocs =
+          @ExternalDocumentation(
+              description = "JsonPatch RFC",
+              url = "https://tools.ietf.org/html/rfc6902"))
+  @Consumes(MediaType.APPLICATION_JSON_PATCH_JSON)
+  public Response patchApplication(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Name of the App", schema = @Schema(type = "string"))
+          @PathParam("fqn")
+          String fqn,
+      @RequestBody(
+              description = "JsonPatch with array of operations",
+              content =
+                  @Content(
+                      mediaType = MediaType.APPLICATION_JSON_PATCH_JSON,
+                      examples = {
+                        @ExampleObject("[{op:remove, path:/a},{op:add, path: /b, value: val}]")
+                      }))
+          JsonPatch patch)
+      throws SchedulerException {
+    App app = repository.getByName(null, fqn, repository.getFields("bot,pipelines"));
+    if (app.getSystem()) {
+      throw new IllegalArgumentException(
+          CatalogExceptionMessage.systemEntityModifyNotAllowed(app.getName(), "SystemApp"));
+    }
+    AppScheduler.getInstance().deleteScheduledApplication(app);
+    Response response = patchInternal(uriInfo, securityContext, fqn, patch);
     App updatedApp = (App) response.getEntity();
     if (app.getScheduleType().equals(ScheduleType.Scheduled)) {
       ApplicationHandler.getInstance()

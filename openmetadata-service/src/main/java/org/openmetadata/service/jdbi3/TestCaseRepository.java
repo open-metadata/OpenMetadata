@@ -27,6 +27,7 @@ import java.util.UUID;
 import javax.json.JsonPatch;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.UriInfo;
+import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.feed.CloseTask;
@@ -36,6 +37,7 @@ import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.tests.ResultSummary;
 import org.openmetadata.schema.tests.TestCase;
 import org.openmetadata.schema.tests.TestCaseParameter;
+import org.openmetadata.schema.tests.TestCaseParameterValidationRule;
 import org.openmetadata.schema.tests.TestCaseParameterValue;
 import org.openmetadata.schema.tests.TestDefinition;
 import org.openmetadata.schema.tests.TestSuite;
@@ -54,6 +56,7 @@ import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.TableData;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.TaskType;
+import org.openmetadata.schema.type.TestCaseParameterValidationRuleType;
 import org.openmetadata.schema.utils.EntityInterfaceUtil;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
@@ -65,6 +68,7 @@ import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.ResultList;
 
+@Slf4j
 public class TestCaseRepository extends EntityRepository<TestCase> {
   private static final String TEST_SUITE_FIELD = "testSuite";
   private static final String TEST_CASE_RESULT_FIELD = "testCaseResult";
@@ -225,6 +229,7 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
           throw new IllegalArgumentException(
               "Required parameter " + parameter.getName() + " is not passed in parameterValues");
         }
+        validateParameterRule(parameter, values);
       }
     }
   }
@@ -270,9 +275,6 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
       }
     }
 
-    // If we delete the test case, we need to clean up the resolution ts
-    daoCollection.testCaseResolutionStatusTimeSeriesDao().delete(test.getFullyQualifiedName());
-
     deleteTestCaseFailedRowsSample(test.getId());
   }
 
@@ -293,6 +295,7 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
     TestCase testCase = findByName(fqn, Include.NON_DELETED);
     ArrayList<String> fields = new ArrayList<>();
     fields.add("testDefinition");
+    fields.add("owner");
     fields.add(TEST_SUITE_FIELD);
 
     // set the test case resolution status reference if test failed, by either
@@ -366,11 +369,32 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
             .withUpdatedAt(System.currentTimeMillis())
             .withTestCaseReference(testCase.getEntityReference());
 
+    testCaseResolutionStatusRepository.createNewRecord(status, testCase.getFullyQualifiedName());
     TestCaseResolutionStatus incident =
-        testCaseResolutionStatusRepository.createNewRecord(
-            status, testCase.getFullyQualifiedName());
+        testCaseResolutionStatusRepository.getLatestRecord(testCase.getFullyQualifiedName());
 
     return incident.getStateId();
+  }
+
+  @Transaction
+  @Override
+  protected void deleteChildren(
+      List<CollectionDAO.EntityRelationshipRecord> children, boolean hardDelete, String updatedBy) {
+    if (hardDelete) {
+      for (CollectionDAO.EntityRelationshipRecord entityRelationshipRecord : children) {
+        LOG.info(
+            "Recursively {} deleting {} {}",
+            hardDelete ? "hard" : "soft",
+            entityRelationshipRecord.getType(),
+            entityRelationshipRecord.getId());
+        TestCaseResolutionStatusRepository testCaseResolutionStatusRepository =
+            (TestCaseResolutionStatusRepository)
+                Entity.getEntityTimeSeriesRepository(Entity.TEST_CASE_RESOLUTION_STATUS);
+        for (CollectionDAO.EntityRelationshipRecord child : children) {
+          testCaseResolutionStatusRepository.deleteById(child.getId(), hardDelete);
+        }
+      }
+    }
   }
 
   public RestUtil.PutResponse<TestCaseResult> deleteTestCaseResult(
@@ -655,13 +679,16 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
     deleteRelationship(testSuiteId, TEST_SUITE, testCaseId, TEST_CASE, Relationship.CONTAINS);
     // remove test case from logical test suite summary and update test suite
     removeTestCaseFromTestSuiteResultSummary(testSuiteId, testCase.getFullyQualifiedName());
-    EntityReference entityReference =
-        Entity.getEntityReferenceById(TEST_SUITE, testSuiteId, Include.ALL);
-    testCase.setTestSuite(entityReference);
+    TestCase updatedTestCase = Entity.getEntity(Entity.TEST_CASE, testCaseId, "*", Include.ALL);
+    postUpdate(testCase, updatedTestCase);
+    testCase.setTestSuite(updatedTestCase.getTestSuite());
+    testCase.setTestSuites(updatedTestCase.getTestSuites());
     return new RestUtil.DeleteResponse<>(testCase, ENTITY_DELETED);
   }
 
-  /** Remove test case from test suite summary and update test suite */
+  /**
+   * Remove test case from test suite summary and update test suite
+   */
   @Transaction
   private void removeTestCaseFromTestSuiteResultSummary(UUID testSuiteId, String testCaseFqn) {
     TestSuite testSuite = Entity.getEntity(TEST_SUITE, testSuiteId, "*", Include.ALL, false);
@@ -678,77 +705,6 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
   @Override
   public EntityUpdater getUpdater(TestCase original, TestCase updated, Operation operation) {
     return new TestUpdater(original, updated, operation);
-  }
-
-  @Override
-  public ResultList<TestCase> listAfter(
-      UriInfo uriInfo, Fields fields, ListFilter filter, int limitParam, String after) {
-    if (!Boolean.parseBoolean(filter.getQueryParam("orderByLastExecutionDate"))) {
-      return super.listAfter(uriInfo, fields, filter, limitParam, after);
-    }
-    int total = dao.listCount(filter);
-    List<TestCase> testCases = new ArrayList<>();
-    if (limitParam > 0) {
-      // forward scrolling, if after == null then first page is being asked
-      String decodedAfter = after == null ? "0" : RestUtil.decodeCursor(after);
-      Integer rankAfter = Integer.parseInt(decodedAfter);
-      List<CollectionDAO.TestCaseDAO.TestCaseRecord> testCaseRecords =
-          daoCollection.testCaseDAO().listAfterTsOrder(filter, limitParam + 1, rankAfter);
-
-      for (CollectionDAO.TestCaseDAO.TestCaseRecord testCaseRecord : testCaseRecords) {
-        TestCase entity =
-            setFieldsInternal(
-                JsonUtils.readValue(testCaseRecord.getJson(), TestCase.class), fields);
-        clearFieldsInternal(entity, fields);
-        testCases.add(withHref(uriInfo, entity));
-      }
-
-      String beforeCursor;
-      String afterCursor = null;
-      beforeCursor = after == null ? null : testCaseRecords.get(0).getRank().toString();
-      if (testCaseRecords.size()
-          > limitParam) { // If extra result exists, then next page exists - return after cursor
-        testCases.remove(limitParam);
-        testCaseRecords.remove(limitParam);
-        afterCursor = testCaseRecords.get(limitParam - 1).getRank().toString();
-      }
-      return getResultList(testCases, beforeCursor, afterCursor, total);
-    } else {
-      // limit == 0 , return total count of entity.
-      return getResultList(testCases, null, null, total);
-    }
-  }
-
-  @Override
-  public ResultList<TestCase> listBefore(
-      UriInfo uriInfo, Fields fields, ListFilter filter, int limitParam, String before) {
-    if (!Boolean.parseBoolean(filter.getQueryParam("orderByLastExecutionDate"))) {
-      return super.listBefore(uriInfo, fields, filter, limitParam, before);
-    }
-    // Reverse scrolling - Get one extra result used for computing before cursor
-    Integer rankBefore = Integer.parseInt(RestUtil.decodeCursor(before));
-    List<CollectionDAO.TestCaseDAO.TestCaseRecord> testCaseRecords =
-        daoCollection.testCaseDAO().listBeforeTsOrder(filter, limitParam + 1, rankBefore);
-
-    List<TestCase> testCases = new ArrayList<>();
-    for (CollectionDAO.TestCaseDAO.TestCaseRecord testCaseRecord : testCaseRecords) {
-      TestCase entity =
-          setFieldsInternal(JsonUtils.readValue(testCaseRecord.getJson(), TestCase.class), fields);
-      clearFieldsInternal(entity, fields);
-      testCases.add(withHref(uriInfo, entity));
-    }
-    int total = dao.listCount(filter);
-
-    String beforeCursor = null;
-    String afterCursor;
-    if (testCases.size()
-        > limitParam) { // If extra result exists, then previous page exists - return before cursor
-      testCaseRecords.remove(0);
-      testCases.remove(0);
-      beforeCursor = testCaseRecords.get(0).getRank().toString();
-    }
-    afterCursor = testCaseRecords.get(testCases.size() - 1).getRank().toString();
-    return getResultList(testCases, beforeCursor, afterCursor, total);
   }
 
   @Override
@@ -789,8 +745,21 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
     return testCase.withFailedRowsSample(tableData);
   }
 
-  public void deleteTestCaseFailedRowsSample(UUID id) {
+  @Transaction
+  public TestCase addInspectionQuery(UriInfo uri, UUID testCaseId, String sql) {
+    TestCase original = get(uri, testCaseId, getFields(PATCH_FIELDS));
+    TestCase updated =
+        JsonUtils.readValue(JsonUtils.pojoToJson(original), TestCase.class)
+            .withInspectionQuery(sql);
+    EntityUpdater entityUpdater = getUpdater(original, updated, Operation.PATCH);
+    entityUpdater.update();
+    return updated;
+  }
+
+  @Transaction
+  public RestUtil.DeleteResponse<TableData> deleteTestCaseFailedRowsSample(UUID id) {
     daoCollection.entityExtensionDAO().delete(id, FAILED_ROWS_SAMPLE_EXTENSION);
+    return new RestUtil.DeleteResponse<>(null, ENTITY_DELETED);
   }
 
   public static class TestCaseFailureResolutionTaskWorkflow extends FeedRepository.TaskWorkflow {
@@ -806,7 +775,9 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
       this.dataQualityDataTimeSeriesDao = Entity.getCollectionDAO().dataQualityDataTimeSeriesDao();
     }
 
-    /** If the task is resolved, we'll resolve the Incident with the given reason */
+    /**
+     * If the task is resolved, we'll resolve the Incident with the given reason
+     */
     @Override
     @Transaction
     public TestCase performTask(String userName, ResolveTask resolveTask) {
@@ -836,12 +807,16 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
               .withTestCaseReference(latestTestCaseResolutionStatus.getTestCaseReference())
               .withUpdatedBy(user.getEntityReference());
 
+      EntityReference testCaseReference = testCaseResolutionStatus.getTestCaseReference();
+      testCaseResolutionStatus.setTestCaseReference(null);
       Entity.getCollectionDAO()
           .testCaseResolutionStatusTimeSeriesDao()
           .insert(
-              testCaseResolutionStatus.getTestCaseReference().getFullyQualifiedName(),
+              testCaseReference.getFullyQualifiedName(),
               Entity.TEST_CASE_RESOLUTION_STATUS,
               JsonUtils.pojoToJson(testCaseResolutionStatus));
+      testCaseResolutionStatus.setTestCaseReference(testCaseReference);
+      testCaseResolutionStatusRepository.storeRelationship(testCaseResolutionStatus);
       testCaseResolutionStatusRepository.postCreate(testCaseResolutionStatus);
 
       // Return the TestCase with the StateId to avoid any unnecessary PATCH when resolving the task
@@ -891,12 +866,16 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
               .withTestCaseReference(latestTestCaseResolutionStatus.getTestCaseReference())
               .withUpdatedBy(user.getEntityReference());
 
+      EntityReference testCaseReference = testCaseResolutionStatus.getTestCaseReference();
+      testCaseResolutionStatus.setTestCaseReference(null);
       Entity.getCollectionDAO()
           .testCaseResolutionStatusTimeSeriesDao()
           .insert(
-              testCaseResolutionStatus.getTestCaseReference().getFullyQualifiedName(),
+              testCaseReference.getFullyQualifiedName(),
               Entity.TEST_CASE_RESOLUTION_STATUS,
               JsonUtils.pojoToJson(testCaseResolutionStatus));
+      testCaseResolutionStatus.setTestCaseReference(testCaseReference);
+      testCaseResolutionStatusRepository.storeRelationship(testCaseResolutionStatus);
       testCaseResolutionStatusRepository.postCreate(testCaseResolutionStatus);
     }
   }
@@ -940,6 +919,7 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
           TEST_CASE,
           updated.getId());
       recordChange("parameterValues", original.getParameterValues(), updated.getParameterValues());
+      recordChange("inspectionQuery", original.getInspectionQuery(), updated.getInspectionQuery());
       recordChange(
           "computePassedFailedRowCount",
           original.getComputePassedFailedRowCount(),
@@ -985,5 +965,88 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
     EntityRepository<TestSuite>.EntityUpdater testSuiteUpdater =
         testSuiteRepository.getUpdater(original, testSuite, Operation.PUT);
     testSuiteUpdater.update();
+  }
+
+  private void validateParameterRule(TestCaseParameter parameter, Map<String, Object> values) {
+    if (parameter.getValidationRule() != null) {
+      TestCaseParameterValidationRule testCaseParameterValidationRule =
+          parameter.getValidationRule();
+      String parameterFieldToValidateAgainst =
+          testCaseParameterValidationRule.getParameterField(); // parameter name to validate against
+      Object valueToValidateAgainst =
+          values.get(parameterFieldToValidateAgainst); // value to validate against
+      Object valueToValidate = values.get(parameter.getName()); // value to validate
+
+      if (valueToValidateAgainst != null && valueToValidate != null) {
+        // we only validate if the value to validate are not null
+        compareValue(
+            valueToValidate.toString(),
+            valueToValidateAgainst.toString(),
+            testCaseParameterValidationRule.getRule());
+      }
+    }
+  }
+
+  private void compareValue(
+      String valueToValidate,
+      String valueToValidateAgainst,
+      TestCaseParameterValidationRuleType validationRule) {
+    Double valueToValidateDouble = parseStringToDouble(valueToValidate);
+    Double valueToValidateAgainstDouble = parseStringToDouble(valueToValidateAgainst);
+    if (valueToValidateDouble != null && valueToValidateAgainstDouble != null) {
+      compareAndValidateParameterRule(
+          validationRule, valueToValidateDouble, valueToValidateAgainstDouble);
+    } else {
+      LOG.warn(
+          "One of the 2 values to compare is not a number. Cannot compare values {} and {}. Skipping parameter validation",
+          valueToValidate,
+          valueToValidateAgainst);
+    }
+  }
+
+  private Double parseStringToDouble(String value) {
+    try {
+      return Double.parseDouble(value);
+    } catch (NumberFormatException e) {
+      LOG.warn("Failed to parse value {} to double", value, e);
+      return null;
+    }
+  }
+
+  private void compareAndValidateParameterRule(
+      TestCaseParameterValidationRuleType validationRule,
+      Double valueToValidate,
+      Double valueToValidateAgainst) {
+    String message = "Value %s %s %s";
+    switch (validationRule) {
+      case GREATER_THAN_OR_EQUALS -> {
+        if (valueToValidate < valueToValidateAgainst) {
+          throw new IllegalArgumentException(
+              String.format(
+                  message, valueToValidate, " is not greater than ", valueToValidateAgainst));
+        }
+      }
+      case LESS_THAN_OR_EQUALS -> {
+        if (valueToValidate > valueToValidateAgainst) {
+          throw new IllegalArgumentException(
+              String.format(
+                  message, valueToValidate, " is not less than ", valueToValidateAgainst));
+        }
+      }
+      case EQUALS -> {
+        // we'll compare the values with a tolerance of 0.0001 as we are dealing with double values
+        if (Math.abs(valueToValidate - valueToValidateAgainst) > 0.0001) {
+          throw new IllegalArgumentException(
+              String.format(message, valueToValidate, " is not equal to ", valueToValidateAgainst));
+        }
+      }
+      case NOT_EQUALS -> {
+        // we'll compare the values with a tolerance of 0.0001 as we are dealing with double values
+        if ((Math.abs(valueToValidate - valueToValidateAgainst) < 0.0001)) {
+          throw new IllegalArgumentException(
+              String.format(message, valueToValidate, " is equal to ", valueToValidateAgainst));
+        }
+      }
+    }
   }
 }

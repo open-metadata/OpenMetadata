@@ -217,6 +217,7 @@ public final class Entity {
   //
   // Reserved names in OpenMetadata
   //
+  public static final String ADMIN_ROLE = "Admin";
   public static final String ADMIN_USER_NAME = "admin";
   public static final String ORGANIZATION_NAME = "Organization";
   public static final String ORGANIZATION_POLICY_NAME = "OrganizationPolicy";
@@ -371,6 +372,12 @@ public final class Entity {
     return ref.getId() != null
         ? getEntity(ref.getType(), ref.getId(), fields, include)
         : getEntityByName(ref.getType(), ref.getFullyQualifiedName(), fields, include);
+  }
+
+  public static <T> T getEntityOrNull(
+      EntityReference entityReference, String field, Include include) {
+    if (entityReference == null) return null;
+    return Entity.getEntity(entityReference, field, include);
   }
 
   public static <T> T getEntity(EntityLink link, String fields, Include include) {

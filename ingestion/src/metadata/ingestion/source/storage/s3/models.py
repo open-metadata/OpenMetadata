@@ -33,8 +33,8 @@ class S3BucketResponse(BaseModel):
         extra = Extra.forbid
 
     name: str = Field(..., description="Bucket name", alias="Name")
-    creation_date: datetime = Field(
-        ...,
+    creation_date: Optional[datetime] = Field(
+        None,
         description="Timestamp of Bucket creation in ISO format",
         alias="CreationDate",
     )
@@ -67,8 +67,8 @@ class S3ContainerDetails(BaseModel):
         ...,
         description="Data Model of the container",
     )
-    creation_date: str = Field(
-        ...,
+    creation_date: Optional[str] = Field(
+        None,
         description="Timestamp of Bucket creation in ISO format",
     )
     parent: Optional[EntityReference] = Field(

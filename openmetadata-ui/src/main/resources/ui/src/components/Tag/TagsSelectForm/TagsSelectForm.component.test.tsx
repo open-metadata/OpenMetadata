@@ -13,8 +13,17 @@
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import React from 'react';
 import { TagSource } from '../../../generated/type/tagLabel';
+import AsyncSelectList from '../../common/AsyncSelectList/AsyncSelectList';
 import { SelectOption } from '../../common/AsyncSelectList/AsyncSelectList.interface';
+import TreeAsyncSelectList from '../../common/AsyncSelectList/TreeAsyncSelectList';
 import TagSelectForm from './TagsSelectForm.component';
+
+jest.mock('../../common/AsyncSelectList/AsyncSelectList', () => {
+  return jest.fn().mockReturnValue(<div>AsyncSelectList</div>);
+});
+jest.mock('../../common/AsyncSelectList/TreeAsyncSelectList', () => {
+  return jest.fn().mockReturnValue(<div>TreeAsyncSelectList</div>);
+});
 
 describe('TagSelectForm', () => {
   const fetchApi = jest.fn();
@@ -23,9 +32,10 @@ describe('TagSelectForm', () => {
   const onSubmit = jest.fn();
   const onCancel = jest.fn();
   const tagData: SelectOption[] = [];
-  const tagType = TagSource.Classification;
+  let tagType = TagSource.Classification;
 
   beforeEach(() => {
+    tagType = TagSource.Classification;
     render(
       <TagSelectForm
         defaultValue={defaultValue}
@@ -39,46 +49,61 @@ describe('TagSelectForm', () => {
     );
   });
 
-  it('should render the form with cancel and save buttons', () => {
-    expect(screen.getByTestId('cancelAssociatedTag')).toBeInTheDocument();
-    expect(screen.getByTestId('saveAssociatedTag')).toBeInTheDocument();
+  it('should render AsyncSelectList', async () => {
+    expect(screen.getByText('AsyncSelectList')).toBeInTheDocument();
   });
 
-  it('should call onCancel when cancel button is clicked', () => {
-    const cancelButton = screen.getByTestId('cancelAssociatedTag');
-    fireEvent.click(cancelButton);
+  it('should render TreeAsyncSelectList', async () => {
+    tagType = TagSource.Glossary;
 
-    expect(onCancel).toHaveBeenCalled();
+    render(
+      <TagSelectForm
+        defaultValue={defaultValue}
+        fetchApi={fetchApi}
+        placeholder={placeholder}
+        tagData={tagData}
+        tagType={tagType}
+        onCancel={onCancel}
+        onSubmit={onSubmit}
+      />
+    );
+
+    expect(screen.getByText('TreeAsyncSelectList')).toBeInTheDocument();
   });
 
-  it('should disable save button when isSubmitLoading is true', async () => {
-    const saveButton = screen.getByTestId('saveAssociatedTag');
+  it('should pass isSubmitLoading for saving form for tagType Glossary', async () => {
+    tagType = TagSource.Glossary;
 
-    expect(saveButton).not.toBeDisabled();
+    render(
+      <TagSelectForm
+        defaultValue={defaultValue}
+        fetchApi={fetchApi}
+        placeholder={placeholder}
+        tagData={tagData}
+        tagType={tagType}
+        onCancel={onCancel}
+        onSubmit={onSubmit}
+      />
+    );
 
-    act(() => {
-      render(
-        <TagSelectForm
-          defaultValue={defaultValue}
-          fetchApi={fetchApi}
-          placeholder={placeholder}
-          tagData={tagData}
-          tagType={tagType}
-          onCancel={onCancel}
-          onSubmit={onSubmit}
-        />
-      );
-    });
-    act(() => {
-      fireEvent.click(saveButton);
+    await act(async () => {
+      fireEvent.submit((await screen.findAllByTestId('tag-form'))[1]);
     });
 
-    const elements = await screen.findAllByTestId('saveAssociatedTag');
+    expect(TreeAsyncSelectList).toHaveBeenCalledWith(
+      expect.objectContaining({ isSubmitLoading: true }),
+      {}
+    );
+  });
 
-    const lastElement = elements.pop();
+  it('should pass isSubmitLoading for saving form', async () => {
+    await act(async () => {
+      fireEvent.submit(await screen.findByTestId('tag-form'));
+    });
 
-    jest.runAllTimers();
-
-    expect(lastElement).not.toBeDisabled();
+    expect(AsyncSelectList).toHaveBeenCalledWith(
+      expect.objectContaining({ isSubmitLoading: true }),
+      {}
+    );
   });
 });

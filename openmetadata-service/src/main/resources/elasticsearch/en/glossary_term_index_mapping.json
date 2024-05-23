@@ -413,6 +413,12 @@
       },
       "votes" : {
         "type": "object"
+      },
+      "descriptionStatus": {
+        "type": "keyword"
+      },
+      "childrenCount": {
+        "type": "integer"
       }
     }
   }

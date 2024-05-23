@@ -1,10 +1,12 @@
 package org.openmetadata.service.search.elasticsearch;
 
+import static javax.ws.rs.core.Response.Status.NOT_FOUND;
 import static javax.ws.rs.core.Response.Status.OK;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.Entity.FIELD_DESCRIPTION;
 import static org.openmetadata.service.Entity.FIELD_DISPLAY_NAME;
 import static org.openmetadata.service.Entity.FIELD_NAME;
+import static org.openmetadata.service.exception.CatalogGenericExceptionMapper.getResponse;
 import static org.openmetadata.service.search.EntityBuilderConstant.COLUMNS_NAME_KEYWORD;
 import static org.openmetadata.service.search.EntityBuilderConstant.DATA_MODEL_COLUMNS_NAME_KEYWORD;
 import static org.openmetadata.service.search.EntityBuilderConstant.DOMAIN_DISPLAY_NAME_KEYWORD;
@@ -21,22 +23,23 @@ import static org.openmetadata.service.search.EntityBuilderConstant.PRE_TAG;
 import static org.openmetadata.service.search.EntityBuilderConstant.SCHEMA_FIELD_NAMES;
 import static org.openmetadata.service.search.EntityBuilderConstant.UNIFIED;
 import static org.openmetadata.service.search.UpdateSearchEventsConstant.SENDING_REQUEST_TO_ELASTIC_SEARCH;
+import static org.openmetadata.service.search.elasticsearch.ElasticSearchEntitiesProcessor.getUpdateRequest;
+import static org.openmetadata.service.util.FullyQualifiedName.getParentFQN;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import es.org.elasticsearch.ElasticsearchStatusException;
-import es.org.elasticsearch.action.ActionListener;
 import es.org.elasticsearch.action.admin.indices.alias.IndicesAliasesRequest;
 import es.org.elasticsearch.action.admin.indices.delete.DeleteIndexRequest;
 import es.org.elasticsearch.action.bulk.BulkItemResponse;
 import es.org.elasticsearch.action.bulk.BulkRequest;
 import es.org.elasticsearch.action.bulk.BulkResponse;
 import es.org.elasticsearch.action.delete.DeleteRequest;
-import es.org.elasticsearch.action.delete.DeleteResponse;
+import es.org.elasticsearch.action.get.GetRequest;
+import es.org.elasticsearch.action.get.GetResponse;
 import es.org.elasticsearch.action.search.SearchResponse;
 import es.org.elasticsearch.action.support.WriteRequest;
 import es.org.elasticsearch.action.support.master.AcknowledgedResponse;
 import es.org.elasticsearch.action.update.UpdateRequest;
-import es.org.elasticsearch.action.update.UpdateResponse;
 import es.org.elasticsearch.client.RequestOptions;
 import es.org.elasticsearch.client.RestClient;
 import es.org.elasticsearch.client.RestClientBuilder;
@@ -64,7 +67,6 @@ import es.org.elasticsearch.index.query.TermQueryBuilder;
 import es.org.elasticsearch.index.query.functionscore.FunctionScoreQueryBuilder;
 import es.org.elasticsearch.index.query.functionscore.ScoreFunctionBuilders;
 import es.org.elasticsearch.index.query.functionscore.ScriptScoreFunctionBuilder;
-import es.org.elasticsearch.index.reindex.BulkByScrollResponse;
 import es.org.elasticsearch.index.reindex.DeleteByQueryRequest;
 import es.org.elasticsearch.index.reindex.UpdateByQueryRequest;
 import es.org.elasticsearch.rest.RestStatus;
@@ -79,6 +81,7 @@ import es.org.elasticsearch.search.aggregations.BucketOrder;
 import es.org.elasticsearch.search.aggregations.bucket.histogram.DateHistogramAggregationBuilder;
 import es.org.elasticsearch.search.aggregations.bucket.histogram.DateHistogramInterval;
 import es.org.elasticsearch.search.aggregations.bucket.terms.IncludeExclude;
+import es.org.elasticsearch.search.aggregations.bucket.terms.Terms;
 import es.org.elasticsearch.search.aggregations.bucket.terms.TermsAggregationBuilder;
 import es.org.elasticsearch.search.aggregations.metrics.MaxAggregationBuilder;
 import es.org.elasticsearch.search.aggregations.metrics.SumAggregationBuilder;
@@ -105,6 +108,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -114,6 +118,7 @@ import java.util.stream.Stream;
 import javax.json.JsonObject;
 import javax.net.ssl.SSLContext;
 import javax.ws.rs.core.Response;
+import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.Pair;
@@ -125,7 +130,10 @@ import org.apache.http.impl.client.BasicCredentialsProvider;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.DataInsightInterface;
 import org.openmetadata.schema.dataInsight.DataInsightChartResult;
+import org.openmetadata.schema.entity.data.EntityHierarchy__1;
 import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration;
+import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.Include;
 import org.openmetadata.sdk.exception.SearchException;
 import org.openmetadata.sdk.exception.SearchIndexNotFoundException;
 import org.openmetadata.service.Entity;
@@ -170,6 +178,7 @@ import org.openmetadata.service.search.indexes.TopicIndex;
 import org.openmetadata.service.search.indexes.UserIndex;
 import org.openmetadata.service.search.models.IndexMapping;
 import org.openmetadata.service.util.JsonUtils;
+import org.openmetadata.service.workflows.searchIndex.ReindexingUtil;
 
 @Slf4j
 // Not tagged with Repository annotation as it is programmatically initialized
@@ -297,7 +306,7 @@ public class ElasticSearchClient implements SearchClient {
           "{} Deleted {}",
           indexMapping.getIndexName(clusterAlias),
           deleteIndexResponse.isAcknowledged());
-    } catch (IOException e) {
+    } catch (Exception e) {
       LOG.error("Failed to delete Elastic Search indexes due to", e);
     }
   }
@@ -345,7 +354,7 @@ public class ElasticSearchClient implements SearchClient {
           QueryBuilders.boolQuery()
               .must(searchSourceBuilder.query())
               .must(QueryBuilders.existsQuery("deleted"))
-              .must(QueryBuilders.termQuery("deleted", request.deleted())));
+              .must(QueryBuilders.termQuery("deleted", request.isDeleted())));
       boolQueryBuilder.should(
           QueryBuilders.boolQuery()
               .must(searchSourceBuilder.query())
@@ -362,10 +371,10 @@ public class ElasticSearchClient implements SearchClient {
       searchSourceBuilder.query(
           QueryBuilders.boolQuery()
               .must(searchSourceBuilder.query())
-              .must(QueryBuilders.termQuery("deleted", request.deleted())));
+              .must(QueryBuilders.termQuery("deleted", request.isDeleted())));
     }
 
-    if (!nullOrEmpty(request.getSortFieldParam())) {
+    if (!nullOrEmpty(request.getSortFieldParam()) && !request.isGetHierarchy()) {
       searchSourceBuilder.sort(
           request.getSortFieldParam(), SortOrder.fromString(request.getSortOrder()));
     }
@@ -375,6 +384,51 @@ public class ElasticSearchClient implements SearchClient {
           QueryBuilders.boolQuery()
               .must(searchSourceBuilder.query())
               .must(QueryBuilders.matchQuery("status", "Approved")));
+
+      if (request.isGetHierarchy()) {
+        /*
+        Search for user input terms in name, fullyQualifiedName, displayName and glossary.fullyQualifiedName, glossary.displayName
+        */
+        QueryBuilder baseQuery =
+            QueryBuilders.boolQuery()
+                .should(searchSourceBuilder.query())
+                .should(QueryBuilders.matchPhraseQuery("fullyQualifiedName", request.getQuery()))
+                .should(QueryBuilders.matchPhraseQuery("name", request.getQuery()))
+                .should(QueryBuilders.matchPhraseQuery("displayName", request.getQuery()))
+                .should(
+                    QueryBuilders.matchPhraseQuery(
+                        "glossary.fullyQualifiedName", request.getQuery()))
+                .should(QueryBuilders.matchPhraseQuery("glossary.displayName", request.getQuery()))
+                .must(QueryBuilders.matchQuery("status", "Approved"))
+                .minimumShouldMatch(1);
+        searchSourceBuilder.query(baseQuery);
+
+        SearchResponse searchResponse =
+            client.search(
+                new es.org.elasticsearch.action.search.SearchRequest(request.getIndex())
+                    .source(searchSourceBuilder),
+                RequestOptions.DEFAULT);
+
+        // Extract parent terms from aggregation
+        BoolQueryBuilder parentTermQueryBuilder = QueryBuilders.boolQuery();
+        Terms parentTerms = searchResponse.getAggregations().get("fqnParts_agg");
+
+        // Build  es query to get parent terms for the user input query , to build correct hierarchy
+        if (!parentTerms.getBuckets().isEmpty() && !request.getQuery().equals("*")) {
+          parentTerms.getBuckets().stream()
+              .map(Terms.Bucket::getKeyAsString)
+              .forEach(
+                  parentTerm ->
+                      parentTermQueryBuilder.should(
+                          QueryBuilders.matchQuery("fullyQualifiedName", parentTerm)));
+
+          searchSourceBuilder.query(
+              parentTermQueryBuilder
+                  .minimumShouldMatch(1)
+                  .must(QueryBuilders.matchQuery("status", "Approved")));
+        }
+        searchSourceBuilder.sort(SortBuilders.fieldSort("fullyQualifiedName").order(SortOrder.ASC));
+      }
     }
 
     /* for performance reasons ElasticSearch doesn't provide accurate hits
@@ -384,11 +438,11 @@ public class ElasticSearchClient implements SearchClient {
     https://github.com/elastic/elasticsearch/issues/33028 */
     searchSourceBuilder.fetchSource(
         new FetchSourceContext(
-            request.fetchSource(),
+            request.isFetchSource(),
             request.getIncludeSourceFields().toArray(String[]::new),
             new String[] {}));
 
-    if (request.trackTotalHits()) {
+    if (request.isTrackTotalHits()) {
       searchSourceBuilder.trackTotalHits(true);
     } else {
       searchSourceBuilder.trackTotalHitsUpTo(MAX_RESULT_HITS);
@@ -396,14 +450,21 @@ public class ElasticSearchClient implements SearchClient {
 
     searchSourceBuilder.timeout(new TimeValue(30, TimeUnit.SECONDS));
     try {
-      String response =
-          client
-              .search(
-                  new es.org.elasticsearch.action.search.SearchRequest(request.getIndex())
-                      .source(searchSourceBuilder),
-                  RequestOptions.DEFAULT)
-              .toString();
-      return Response.status(OK).entity(response).build();
+
+      SearchResponse searchResponse =
+          client.search(
+              new es.org.elasticsearch.action.search.SearchRequest(request.getIndex())
+                  .source(searchSourceBuilder),
+              RequestOptions.DEFAULT);
+
+      if (!request.isGetHierarchy()) {
+        return Response.status(OK).entity(searchResponse.toString()).build();
+      } else {
+        // Build the nested hierarchy from elastic search response
+        List<?> response = buildSearchHierarchy(request, searchResponse);
+        return Response.status(OK).entity(response).build();
+      }
+
     } catch (ElasticsearchStatusException e) {
       if (e.status() == RestStatus.NOT_FOUND) {
         throw new SearchIndexNotFoundException(
@@ -412,6 +473,86 @@ public class ElasticSearchClient implements SearchClient {
         throw new SearchException(String.format("Search failed due to %s", e.getMessage()));
       }
     }
+  }
+
+  @Override
+  public Response getDocByID(String indexName, String entityId) throws IOException {
+    try {
+      GetRequest request = new GetRequest(indexName, entityId);
+      GetResponse response = client.get(request, RequestOptions.DEFAULT);
+
+      if (response.isExists()) {
+        return Response.status(OK).entity(response.toString()).build();
+      }
+
+    } catch (ElasticsearchStatusException e) {
+      if (e.status() == RestStatus.NOT_FOUND) {
+        throw new SearchIndexNotFoundException(
+            String.format("Failed to to find doc with id %s", entityId));
+      } else {
+        throw new SearchException(String.format("Search failed due to %s", e.getMessage()));
+      }
+    }
+    return getResponse(NOT_FOUND, "Document not found.");
+  }
+
+  public List<?> buildSearchHierarchy(SearchRequest request, SearchResponse searchResponse) {
+    List<?> response = new ArrayList<>();
+    if (request.getIndex().equalsIgnoreCase("glossary_term_search_index")) {
+      response = buildGlossaryTermSearchHierarchy(searchResponse);
+    }
+    return response;
+  }
+
+  public List<EntityHierarchy__1> buildGlossaryTermSearchHierarchy(SearchResponse searchResponse) {
+    Map<String, EntityHierarchy__1> termMap =
+        new LinkedHashMap<>(); // termMap represent glossary terms
+    Map<String, EntityHierarchy__1> rootTerms =
+        new LinkedHashMap<>(); // rootTerms represent glossaries
+
+    for (var hit : searchResponse.getHits().getHits()) {
+      String jsonSource = hit.getSourceAsString();
+
+      EntityHierarchy__1 term = JsonUtils.readValue(jsonSource, EntityHierarchy__1.class);
+      EntityHierarchy__1 glossaryInfo =
+          JsonUtils.readTree(jsonSource).path("glossary").isMissingNode()
+              ? null
+              : JsonUtils.convertValue(
+                  JsonUtils.readTree(jsonSource).path("glossary"), EntityHierarchy__1.class);
+
+      if (glossaryInfo != null) {
+        rootTerms.putIfAbsent(glossaryInfo.getFullyQualifiedName(), glossaryInfo);
+      }
+
+      term.setChildren(new ArrayList<>());
+      termMap.putIfAbsent(term.getFullyQualifiedName(), term);
+    }
+
+    termMap.putAll(rootTerms);
+
+    termMap
+        .values()
+        .forEach(
+            term -> {
+              String parentFQN = getParentFQN(term.getFullyQualifiedName());
+              String termFQN = term.getFullyQualifiedName();
+
+              if (parentFQN != null && termMap.containsKey(parentFQN)) {
+                EntityHierarchy__1 parentTerm = termMap.get(parentFQN);
+                List<EntityHierarchy__1> children = parentTerm.getChildren();
+                children.removeIf(
+                    child -> child.getFullyQualifiedName().equals(term.getFullyQualifiedName()));
+                children.add(term);
+                parentTerm.setChildren(children);
+              } else {
+                if (rootTerms.containsKey(termFQN)) {
+                  EntityHierarchy__1 rootTerm = rootTerms.get(termFQN);
+                  rootTerm.setChildren(term.getChildren());
+                }
+              }
+            });
+
+    return new ArrayList<>(rootTerms.values());
   }
 
   @Override
@@ -484,7 +625,7 @@ public class ElasticSearchClient implements SearchClient {
   }
 
   @Override
-  public Response searchLineage(
+  public Map<String, Object> searchLineageInternal(
       String fqn,
       int upstreamDepth,
       int downstreamDepth,
@@ -518,6 +659,21 @@ public class ElasticSearchClient implements SearchClient {
         fqn, upstreamDepth, edges, nodes, queryFilter, "lineage.toEntity.fqn.keyword", deleted);
     responseMap.put("edges", edges);
     responseMap.put("nodes", nodes);
+    return responseMap;
+  }
+
+  @Override
+  public Response searchLineage(
+      String fqn,
+      int upstreamDepth,
+      int downstreamDepth,
+      String queryFilter,
+      boolean deleted,
+      String entityType)
+      throws IOException {
+    Map<String, Object> responseMap =
+        searchLineageInternal(
+            fqn, upstreamDepth, downstreamDepth, queryFilter, deleted, entityType);
     return Response.status(OK).entity(responseMap).build();
   }
 
@@ -586,7 +742,7 @@ public class ElasticSearchClient implements SearchClient {
     }
   }
 
-  private Response searchPipelineLineage(
+  private Map<String, Object> searchPipelineLineage(
       String fqn,
       int upstreamDepth,
       int downstreamDepth,
@@ -596,7 +752,6 @@ public class ElasticSearchClient implements SearchClient {
       throws IOException {
     Set<Map<String, Object>> edges = new HashSet<>();
     Set<Map<String, Object>> nodes = new HashSet<>();
-    responseMap.put("entity", null);
     es.org.elasticsearch.action.search.SearchRequest searchRequest =
         new es.org.elasticsearch.action.search.SearchRequest(GLOBAL_SEARCH_ALIAS);
     SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
@@ -656,9 +811,25 @@ public class ElasticSearchClient implements SearchClient {
         }
       }
     }
+    // TODO: Fix this , this is hack
+    if (edges.isEmpty()) {
+      es.org.elasticsearch.action.search.SearchRequest searchRequestForEntity =
+          new es.org.elasticsearch.action.search.SearchRequest(GLOBAL_SEARCH_ALIAS);
+      SearchSourceBuilder searchSourceBuilderForEntity = new SearchSourceBuilder();
+      searchSourceBuilderForEntity.query(
+          QueryBuilders.boolQuery().must(QueryBuilders.termQuery("fullyQualifiedName", fqn)));
+      searchRequestForEntity.source(searchSourceBuilderForEntity.size(1000));
+      SearchResponse searchResponseForEntity =
+          client.search(searchRequestForEntity, RequestOptions.DEFAULT);
+      for (var hit : searchResponseForEntity.getHits().getHits()) {
+        HashMap<String, Object> tempMap = new HashMap<>(JsonUtils.getMap(hit.getSourceAsMap()));
+        tempMap.keySet().removeAll(FIELDS_TO_REMOVE);
+        responseMap.put("entity", tempMap);
+      }
+    }
     responseMap.put("edges", edges);
     responseMap.put("nodes", nodes);
-    return Response.status(OK).entity(responseMap).build();
+    return responseMap;
   }
 
   @Override
@@ -729,7 +900,8 @@ public class ElasticSearchClient implements SearchClient {
     List<AggregationBuilder> aggregationBuilders = new ArrayList<>();
     for (String key : aggregations.keySet()) {
       JsonObject aggregation = aggregations.getJsonObject(key);
-      for (String aggregationType : aggregation.keySet()) {
+      Set<String> keySet = aggregation.keySet();
+      for (String aggregationType : keySet) {
         switch (aggregationType) {
           case "terms":
             JsonObject termAggregation = aggregation.getJsonObject(aggregationType);
@@ -750,6 +922,21 @@ public class ElasticSearchClient implements SearchClient {
               nestedAggregationBuilder.subAggregation(nestedAggregationBuilder1);
             }
             aggregationBuilders.add(nestedAggregationBuilder);
+            break;
+          case "aggs":
+            // Sub aggregation logic
+            if (!keySet.contains("nested")) {
+              JsonObject subAggregation = aggregation.getJsonObject("aggs");
+              if (!nullOrEmpty(aggregationBuilders)) {
+                AggregationBuilder aggregationBuilder =
+                    aggregationBuilders.get(aggregationBuilders.size() - 1);
+                List<AggregationBuilder> subAggregationBuilders = buildAggregation(subAggregation);
+                for (AggregationBuilder subAggregationBuilder : subAggregationBuilders) {
+                  aggregationBuilder.subAggregation(subAggregationBuilder);
+                }
+              }
+              break;
+            }
             break;
           default:
             break;
@@ -840,7 +1027,7 @@ public class ElasticSearchClient implements SearchClient {
               "deleted",
               Collections.singletonList(
                   CategoryQueryContext.builder()
-                      .setCategory(String.valueOf(request.deleted()))
+                      .setCategory(String.valueOf(request.isDeleted()))
                       .build())));
     }
     SuggestBuilder suggestBuilder = new SuggestBuilder();
@@ -850,7 +1037,7 @@ public class ElasticSearchClient implements SearchClient {
         .timeout(new TimeValue(30, TimeUnit.SECONDS))
         .fetchSource(
             new FetchSourceContext(
-                request.fetchSource(),
+                request.isFetchSource(),
                 request.getIncludeSourceFields().toArray(String[]::new),
                 new String[] {}));
     es.org.elasticsearch.action.search.SearchRequest searchRequest =
@@ -981,6 +1168,8 @@ public class ElasticSearchClient implements SearchClient {
         new SearchSourceBuilder().query(queryBuilder).highlighter(hb).from(from).size(size);
     searchSourceBuilder.aggregation(
         AggregationBuilders.terms("glossary.name.keyword").field("glossary.name.keyword"));
+    searchSourceBuilder.aggregation(
+        AggregationBuilders.terms("fqnParts_agg").field("fqnParts").size(1000));
     return addAggregation(searchSourceBuilder);
   }
 
@@ -1161,10 +1350,6 @@ public class ElasticSearchClient implements SearchClient {
                 .field(OWNER_DISPLAY_NAME_KEYWORD)
                 .size(MAX_AGGREGATE_SIZE))
         .aggregation(
-            AggregationBuilders.terms("owner.displayName")
-                .field("owner.displayName")
-                .size(MAX_AGGREGATE_SIZE))
-        .aggregation(
             AggregationBuilders.terms(DOMAIN_DISPLAY_NAME_KEYWORD)
                 .field(DOMAIN_DISPLAY_NAME_KEYWORD)
                 .size(MAX_AGGREGATE_SIZE))
@@ -1234,10 +1419,12 @@ public class ElasticSearchClient implements SearchClient {
   }
 
   @Override
-  public void deleteEntityByFields(String indexName, List<Pair<String, String>> fieldAndValue) {
+  public void deleteEntityByFields(
+      List<String> indexName, List<Pair<String, String>> fieldAndValue) {
     if (isClientAvailable) {
       BoolQueryBuilder queryBuilder = new BoolQueryBuilder();
-      DeleteByQueryRequest deleteByQueryRequest = new DeleteByQueryRequest(indexName);
+      DeleteByQueryRequest deleteByQueryRequest =
+          new DeleteByQueryRequest(indexName.toArray(new String[indexName.size()]));
       for (Pair<String, String> p : fieldAndValue) {
         queryBuilder.must(new TermQueryBuilder(p.getKey(), p.getValue()));
       }
@@ -1259,9 +1446,10 @@ public class ElasticSearchClient implements SearchClient {
 
   @Override
   public void softDeleteOrRestoreChildren(
-      String indexName, String scriptTxt, List<Pair<String, String>> fieldAndValue) {
+      List<String> indexName, String scriptTxt, List<Pair<String, String>> fieldAndValue) {
     if (isClientAvailable) {
-      UpdateByQueryRequest updateByQueryRequest = new UpdateByQueryRequest(indexName);
+      UpdateByQueryRequest updateByQueryRequest =
+          new UpdateByQueryRequest(indexName.toArray(new String[indexName.size()]));
       BoolQueryBuilder queryBuilder = new BoolQueryBuilder();
       for (Pair<String, String> p : fieldAndValue) {
         queryBuilder.must(new TermQueryBuilder(p.getKey(), p.getValue()));
@@ -1285,6 +1473,54 @@ public class ElasticSearchClient implements SearchClient {
       updateRequest.scriptedUpsert(true);
       updateRequest.script(script);
       updateElasticSearch(updateRequest);
+    }
+  }
+
+  @Override
+  public void reindexAcrossIndices(String matchingKey, EntityReference sourceRef) {
+    if (isClientAvailable) {
+      getAsyncExecutor()
+          .submit(
+              () -> {
+                try {
+                  // Initialize the 'from' parameter to 0
+                  int from = 0;
+                  boolean hasMoreResults = true;
+
+                  while (hasMoreResults) {
+                    List<EntityReference> entities =
+                        ReindexingUtil.findReferenceInElasticSearchAcrossAllIndexes(
+                            matchingKey, sourceRef.getFullyQualifiedName(), from);
+
+                    // Async Re-index the entities which matched
+                    processEntitiesForReindex(entities);
+
+                    // Update from
+                    from += entities.size();
+                    hasMoreResults = !entities.isEmpty();
+                  }
+                } catch (Exception ex) {
+                  LOG.error("Reindexing Across Entities Failed", ex);
+                }
+              });
+    }
+  }
+
+  private void processEntitiesForReindex(List<EntityReference> references) throws IOException {
+    if (!references.isEmpty()) {
+      // Process entities for reindex
+      BulkRequest bulkRequests = new BulkRequest();
+      // Build Bulk request
+      for (EntityReference entityRef : references) {
+        // Reindex entity
+        UpdateRequest request =
+            getUpdateRequest(entityRef.getType(), Entity.getEntity(entityRef, "*", Include.ALL));
+        bulkRequests.add(request);
+      }
+
+      if (isClientAvailable) {
+        client.bulk(bulkRequests, RequestOptions.DEFAULT);
+      }
     }
   }
 
@@ -1348,43 +1584,21 @@ public class ElasticSearchClient implements SearchClient {
     }
   }
 
+  @SneakyThrows
   public void updateElasticSearch(UpdateRequest updateRequest) {
     if (updateRequest != null && isClientAvailable) {
       updateRequest.setRefreshPolicy(WriteRequest.RefreshPolicy.IMMEDIATE);
       LOG.debug(UpdateSearchEventsConstant.SENDING_REQUEST_TO_ELASTIC_SEARCH, updateRequest);
-      ActionListener<UpdateResponse> listener =
-          new ActionListener<>() {
-            @Override
-            public void onResponse(UpdateResponse updateResponse) {
-              LOG.debug("Created successfully: " + updateResponse.toString());
-            }
-
-            @Override
-            public void onFailure(Exception e) {
-              LOG.error("Creation failed: " + e.getMessage());
-            }
-          };
-      client.updateAsync(updateRequest, RequestOptions.DEFAULT, listener);
+      client.update(updateRequest, RequestOptions.DEFAULT);
     }
   }
 
+  @SneakyThrows
   private void updateElasticSearchByQuery(UpdateByQueryRequest updateByQueryRequest) {
     if (updateByQueryRequest != null && isClientAvailable) {
       updateByQueryRequest.setRefresh(true);
       LOG.debug(SENDING_REQUEST_TO_ELASTIC_SEARCH, updateByQueryRequest);
-      ActionListener<BulkByScrollResponse> listener =
-          new ActionListener<>() {
-            @Override
-            public void onResponse(BulkByScrollResponse response) {
-              LOG.debug("Update by query succeeded: " + response.toString());
-            }
-
-            @Override
-            public void onFailure(Exception e) {
-              LOG.error("Update by query failed: " + e.getMessage());
-            }
-          };
-      client.updateByQueryAsync(updateByQueryRequest, RequestOptions.DEFAULT, listener);
+      client.updateByQuery(updateByQueryRequest, RequestOptions.DEFAULT);
     }
   }
 
@@ -1398,44 +1612,22 @@ public class ElasticSearchClient implements SearchClient {
     }
   }
 
+  @SneakyThrows
   private void deleteEntityFromElasticSearch(DeleteRequest deleteRequest) {
     if (deleteRequest != null && isClientAvailable) {
       deleteRequest.setRefreshPolicy(WriteRequest.RefreshPolicy.IMMEDIATE);
       LOG.debug(UpdateSearchEventsConstant.SENDING_REQUEST_TO_ELASTIC_SEARCH, deleteRequest);
-      ActionListener<DeleteResponse> listener =
-          new ActionListener<>() {
-            @Override
-            public void onResponse(DeleteResponse response) {
-              LOG.debug("Delete succeeded: " + response.toString());
-            }
-
-            @Override
-            public void onFailure(Exception e) {
-              LOG.error("Delete failed: " + e.getMessage());
-            }
-          };
       deleteRequest.setRefreshPolicy(WriteRequest.RefreshPolicy.WAIT_UNTIL);
-      client.deleteAsync(deleteRequest, RequestOptions.DEFAULT, listener);
+      client.delete(deleteRequest, RequestOptions.DEFAULT);
     }
   }
 
+  @SneakyThrows
   private void deleteEntityFromElasticSearchByQuery(DeleteByQueryRequest deleteRequest) {
     if (deleteRequest != null && isClientAvailable) {
       LOG.debug(UpdateSearchEventsConstant.SENDING_REQUEST_TO_ELASTIC_SEARCH, deleteRequest);
       deleteRequest.setRefresh(true);
-      ActionListener<BulkByScrollResponse> listener =
-          new ActionListener<>() {
-            @Override
-            public void onResponse(BulkByScrollResponse response) {
-              LOG.debug("Delete by query succeeded: " + response.toString());
-            }
-
-            @Override
-            public void onFailure(Exception e) {
-              LOG.error("Delete by query failed: " + e.getMessage());
-            }
-          };
-      client.deleteByQueryAsync(deleteRequest, RequestOptions.DEFAULT, listener);
+      client.deleteByQuery(deleteRequest, RequestOptions.DEFAULT);
     }
   }
 

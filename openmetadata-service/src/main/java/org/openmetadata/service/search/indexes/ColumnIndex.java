@@ -1,9 +1,13 @@
 package org.openmetadata.service.search.indexes;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
 import java.util.function.Predicate;
+import org.openmetadata.common.utils.CommonUtil;
+import org.openmetadata.schema.ColumnsEntityInterface;
+import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.service.search.models.FlattenColumn;
@@ -35,5 +39,18 @@ public interface ColumnIndex extends SearchIndex {
         parseColumns(col.getChildren(), flattenColumns, col.getName());
       }
     }
+  }
+
+  @Override
+  default String getDescriptionStatus(EntityInterface entity) {
+    List<Class<?>> interfaces = Arrays.asList(entity.getClass().getInterfaces());
+    if (interfaces.contains(ColumnsEntityInterface.class)) {
+      for (Column col : ((ColumnsEntityInterface) entity).getColumns()) {
+        if (CommonUtil.nullOrEmpty(col.getDescription())) {
+          return "INCOMPLETE";
+        }
+      }
+    }
+    return CommonUtil.nullOrEmpty(entity.getDescription()) ? "INCOMPLETE" : "COMPLETE";
   }
 }

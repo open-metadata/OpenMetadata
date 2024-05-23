@@ -1,10 +1,14 @@
 package org.openmetadata.service.search;
 
 import java.util.List;
+import lombok.Getter;
+import lombok.Setter;
 
+@Getter
+@Setter
 public class SearchRequest {
   private final String query;
-  private final int from;
+  private int from;
   private final int size;
   private final String queryFilter;
   private final String postFilter;
@@ -16,6 +20,7 @@ public class SearchRequest {
   private final String fieldName;
   private final String sortOrder;
   private final List<String> includeSourceFields;
+  private final boolean getHierarchy;
 
   public SearchRequest(ElasticSearchRequestBuilder builder) {
     this.query = builder.query;
@@ -31,60 +36,7 @@ public class SearchRequest {
     this.sortOrder = builder.sortOrder;
     this.includeSourceFields = builder.includeSourceFields;
     this.fieldName = builder.fieldName;
-  }
-
-  // Getters for the attributes
-
-  public String getQuery() {
-    return query;
-  }
-
-  public int getFrom() {
-    return from;
-  }
-
-  public int getSize() {
-    return size;
-  }
-
-  public String getQueryFilter() {
-    return queryFilter;
-  }
-
-  public String getPostFilter() {
-    return postFilter;
-  }
-
-  public boolean fetchSource() {
-    return fetchSource;
-  }
-
-  public boolean trackTotalHits() {
-    return trackTotalHits;
-  }
-
-  public String getSortFieldParam() {
-    return sortFieldParam;
-  }
-
-  public boolean deleted() {
-    return deleted;
-  }
-
-  public String getIndex() {
-    return index;
-  }
-
-  public String getFieldName() {
-    return fieldName;
-  }
-
-  public String getSortOrder() {
-    return sortOrder;
-  }
-
-  public List<String> getIncludeSourceFields() {
-    return includeSourceFields;
+    this.getHierarchy = builder.getHierarchy;
   }
 
   // Builder class for ElasticSearchRequest
@@ -103,6 +55,7 @@ public class SearchRequest {
     private boolean deleted;
     private String sortOrder;
     private List<String> includeSourceFields;
+    private boolean getHierarchy;
 
     public ElasticSearchRequestBuilder(String query, int size, String index) {
       this.query = query;
@@ -157,6 +110,11 @@ public class SearchRequest {
 
     public ElasticSearchRequestBuilder fieldName(String fieldName) {
       this.fieldName = fieldName;
+      return this;
+    }
+
+    public ElasticSearchRequestBuilder getHierarchy(boolean getHierarchy) {
+      this.getHierarchy = getHierarchy;
       return this;
     }
 

@@ -39,6 +39,7 @@ from metadata.profiler.metrics.static.stddev import StdDev
 from metadata.profiler.metrics.static.sum import Sum
 from metadata.profiler.orm.functions.table_metric_computer import TableMetricComputer
 from metadata.profiler.orm.registry import Dialects
+from metadata.profiler.processor.metric_filter import MetricFilter
 from metadata.profiler.processor.runner import QueryRunner
 from metadata.utils.constants import SAMPLE_DATA_DEFAULT_COUNT
 from metadata.utils.custom_thread_pool import CustomThreadPoolExecutor
@@ -189,6 +190,7 @@ class SQAProfilerInterface(ProfilerInterface, SQAInterfaceMixin):
                 runner=runner,
                 metrics=metrics,
                 conn_config=self.service_connection_config,
+                entity=self.table_entity,
             )
             row = table_metric_computer.compute()
             if row:
@@ -479,7 +481,7 @@ class SQAProfilerInterface(ProfilerInterface, SQAInterfaceMixin):
                     self.compute_metrics_in_thread,
                     metric_func,
                 )
-                for metric_func in metric_funcs
+                for metric_func in MetricFilter.filter_empty_metrics(metric_funcs)
             ]
 
             for future in futures:

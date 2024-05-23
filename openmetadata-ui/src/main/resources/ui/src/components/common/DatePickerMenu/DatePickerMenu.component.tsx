@@ -37,7 +37,7 @@ import './date-picker-menu.less';
 interface DatePickerMenuProps {
   defaultDateRange?: Partial<DateRangeObject>;
   showSelectedCustomRange?: boolean;
-  handleDateRangeChange: (value: DateRangeObject, days?: number) => void;
+  handleDateRangeChange?: (value: DateRangeObject, days?: number) => void;
   options?: DateFilterType;
   allowCustomRange?: boolean;
   handleSelectedTimeRange?: (value: string) => void;
@@ -109,7 +109,7 @@ const DatePickerMenu = ({
       setSelectedTimeRange(selectedRangeLabel);
       setSelectedTimeRangeKey('customRange');
       setIsMenuOpen(false);
-      handleDateRangeChange(
+      handleDateRangeChange?.(
         {
           startTs,
           endTs,
@@ -137,7 +137,7 @@ const DatePickerMenu = ({
     setSelectedTimeRangeKey(key);
     setIsMenuOpen(false);
 
-    handleDateRangeChange(
+    handleDateRangeChange?.(
       { startTs, endTs, key, title: filterRange.title },
       selectedNumberOfDays
     );

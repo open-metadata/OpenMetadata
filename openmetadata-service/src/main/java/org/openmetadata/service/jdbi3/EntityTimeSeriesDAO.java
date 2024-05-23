@@ -116,6 +116,14 @@ public interface EntityTimeSeriesDAO {
   }
 
   @SqlQuery(
+      "SELECT json FROM <table> <cond> " + "ORDER BY timestamp DESC LIMIT :limit OFFSET :offset")
+  List<String> listWithOffset(
+      @Define("table") String table,
+      @Define("cond") String cond,
+      @Bind("limit") int limit,
+      @Bind("offset") int offset);
+
+  @SqlQuery(
       "SELECT json FROM <table> <cond> "
           + "AND timestamp BETWEEN :startTs AND :endTs "
           + "ORDER BY timestamp DESC LIMIT :limit OFFSET :offset")
@@ -158,6 +166,10 @@ public interface EntityTimeSeriesDAO {
             getTimeSeriesTableName(), filter.getCondition(), limit, offset, startTs, endTs);
   }
 
+  default List<String> listWithOffset(ListFilter filter, int limit, int offset) {
+    return listWithOffset(getTimeSeriesTableName(), filter.getCondition(), limit, offset);
+  }
+
   @ConnectionAwareSqlUpdate(
       value =
           "UPDATE <table> set json = :json where entityFQNHash=:entityFQNHash and extension=:extension and timestamp=:timestamp and json -> '$.operation' = :operation",
@@ -198,6 +210,10 @@ public interface EntityTimeSeriesDAO {
     return listCount(getTimeSeriesTableName(), filter.getCondition());
   }
 
+  default int listCount() {
+    return listCount(new ListFilter(null));
+  }
+
   @SqlQuery("SELECT count(*) FROM <table> <cond> AND timestamp BETWEEN :startTs AND :endTs")
   int listCount(
       @Define("table") String table,
@@ -233,6 +249,13 @@ public interface EntityTimeSeriesDAO {
 
   default String getById(UUID id) {
     return getById(getTimeSeriesTableName(), id.toString());
+  }
+
+  @SqlUpdate(value = "DELETE from <table> WHERE id = :id")
+  void deleteById(@Define("table") String table, @Bind("id") String id);
+
+  default void deleteById(UUID id) {
+    deleteById(getTimeSeriesTableName(), id.toString());
   }
 
   /** @deprecated */

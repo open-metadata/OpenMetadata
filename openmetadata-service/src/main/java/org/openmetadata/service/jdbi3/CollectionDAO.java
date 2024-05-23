@@ -51,11 +51,12 @@ import org.jdbi.v3.sqlobject.customizer.BindMap;
 import org.jdbi.v3.sqlobject.customizer.Define;
 import org.jdbi.v3.sqlobject.statement.SqlQuery;
 import org.jdbi.v3.sqlobject.statement.SqlUpdate;
-import org.openmetadata.api.configuration.LogoConfiguration;
+import org.openmetadata.api.configuration.UiThemePreference;
 import org.openmetadata.schema.TokenInterface;
 import org.openmetadata.schema.analytics.ReportData;
 import org.openmetadata.schema.analytics.WebAnalyticEvent;
 import org.openmetadata.schema.api.configuration.LoginConfiguration;
+import org.openmetadata.schema.api.configuration.profiler.ProfilerConfiguration;
 import org.openmetadata.schema.auth.EmailVerificationToken;
 import org.openmetadata.schema.auth.PasswordResetToken;
 import org.openmetadata.schema.auth.PersonalAccessToken;
@@ -863,6 +864,15 @@ public interface CollectionDAO {
         "SELECT count(*) FROM entity_relationship WHERE fromEntity = :fromEntity AND toEntity = :toEntity")
     int findIfAnyRelationExist(
         @Bind("fromEntity") String fromEntity, @Bind("toEntity") String toEntity);
+
+    @SqlQuery(
+        "SELECT json FROM entity_relationship WHERE fromId = :fromId "
+            + " AND toId = :toId "
+            + " AND relation = :relation ")
+    String getRelation(
+        @BindUUID("fromId") UUID fromId,
+        @BindUUID("toId") UUID toId,
+        @Bind("relation") int relation);
 
     //
     // Delete Operations
@@ -1755,6 +1765,54 @@ public interface CollectionDAO {
     default String getNameHashColumn() {
       return "fqnHash";
     }
+
+    @Override
+    default int listCount(ListFilter filter) {
+      String condition = filter.getCondition();
+      String directChildrenOf = filter.getQueryParam("directChildrenOf");
+
+      if (!nullOrEmpty(directChildrenOf)) {
+        condition =
+            String.format(
+                " %s AND fqnHash = CONCAT('%s', '.', MD5(CASE WHEN name LIKE '%%.%%' THEN CONCAT('\"', name, '\"') ELSE name END))  ",
+                condition, FullyQualifiedName.buildHash(directChildrenOf));
+      }
+
+      return listCount(getTableName(), getNameHashColumn(), condition);
+    }
+
+    @Override
+    default List<String> listBefore(ListFilter filter, int limit, String before) {
+      String condition = filter.getCondition();
+      String directChildrenOf = filter.getQueryParam("directChildrenOf");
+
+      if (!nullOrEmpty(directChildrenOf)) {
+        condition =
+            String.format(
+                " %s AND fqnHash = CONCAT('%s', '.', MD5(CASE WHEN name LIKE '%%.%%' THEN CONCAT('\"', name, '\"') ELSE name END))  ",
+                condition, FullyQualifiedName.buildHash(directChildrenOf));
+      }
+
+      return listBefore(getTableName(), condition, limit, before);
+    }
+
+    @Override
+    default List<String> listAfter(ListFilter filter, int limit, String after) {
+      String condition = filter.getCondition();
+      String directChildrenOf = filter.getQueryParam("directChildrenOf");
+
+      if (!nullOrEmpty(directChildrenOf)) {
+        condition =
+            String.format(
+                " %s AND fqnHash = CONCAT('%s', '.', MD5(CASE WHEN name LIKE '%%.%%' THEN CONCAT('\"', name, '\"') ELSE name END))  ",
+                condition, FullyQualifiedName.buildHash(directChildrenOf));
+      }
+
+      return listAfter(getTableName(), condition, limit, after);
+    }
+
+    @SqlQuery("select fqnhash FROM glossary_term_entity where fqnhash LIKE CONCAT(:fqnhash, '.%')")
+    List<String> getNestedChildrenByFQN(@BindFQN("fqnhash") String fqnhash);
   }
 
   interface IngestionPipelineDAO extends EntityDAO<IngestionPipeline> {
@@ -1782,6 +1840,12 @@ public interface CollectionDAO {
         String pipelineTypeCondition =
             String.format(" and %s", filter.getPipelineTypeCondition(null));
         condition += pipelineTypeCondition;
+      }
+
+      if (filter.getQueryParam("applicationType") != null) {
+        String applicationTypeCondition =
+            String.format(" and %s", filter.getApplicationTypeCondition());
+        condition += applicationTypeCondition;
       }
 
       if (filter.getQueryParam("service") != null) {
@@ -1813,6 +1877,12 @@ public interface CollectionDAO {
         String pipelineTypeCondition =
             String.format(" and %s", filter.getPipelineTypeCondition(null));
         condition += pipelineTypeCondition;
+      }
+
+      if (filter.getQueryParam("applicationType") != null) {
+        String applicationTypeCondition =
+            String.format(" and %s", filter.getApplicationTypeCondition());
+        condition += applicationTypeCondition;
       }
 
       if (filter.getQueryParam("service") != null) {
@@ -1847,6 +1917,12 @@ public interface CollectionDAO {
         String pipelineTypeCondition =
             String.format(" and %s", filter.getPipelineTypeCondition(null));
         condition += pipelineTypeCondition;
+      }
+
+      if (filter.getQueryParam("applicationType") != null) {
+        String applicationTypeCondition =
+            String.format(" and %s", filter.getApplicationTypeCondition());
+        condition += applicationTypeCondition;
       }
 
       if (filter.getQueryParam("service") != null) {
@@ -2463,11 +2539,35 @@ public interface CollectionDAO {
       updateTagPrefixInternal(update);
     }
 
+    default void updateTargetFQNHashPrefix(
+        int source, String oldTargetFQNHashPrefix, String newTargetFQNHashPrefix) {
+      String update =
+          String.format(
+              "UPDATE tag_usage SET targetFQNHash = REPLACE(targetFQNHash, '%s.', '%s.') WHERE source = %s AND targetFQNHash LIKE '%s.%%'",
+              FullyQualifiedName.buildHash(oldTargetFQNHashPrefix),
+              FullyQualifiedName.buildHash(newTargetFQNHashPrefix),
+              source,
+              FullyQualifiedName.buildHash(oldTargetFQNHashPrefix));
+      updateTagPrefixInternal(update);
+    }
+
     default void rename(int source, String oldFQN, String newFQN) {
       renameInternal(source, oldFQN, newFQN, newFQN); // First rename tagFQN from oldFQN to newFQN
       updateTagPrefix(
           source, oldFQN,
           newFQN); // Rename all the tagFQN prefixes starting with the oldFQN to newFQN
+    }
+
+    default void renameByTargetFQNHash(
+        int source, String oldTargetFQNHash, String newTargetFQNHash) {
+      renameByTargetFQNHashInternal(
+          source,
+          (oldTargetFQNHash),
+          newTargetFQNHash); // First rename targetFQN from oldFQN to newFQN
+      updateTargetFQNHashPrefix(
+          source,
+          oldTargetFQNHash,
+          newTargetFQNHash); // Rename all the targetFQN prefixes starting with the oldFQN to newFQN
     }
 
     /** Rename the tagFQN */
@@ -2479,12 +2579,24 @@ public interface CollectionDAO {
         @Bind("newFQN") String newFQN,
         @BindFQN("newFQNHash") String newFQNHash);
 
+    /** Rename the targetFQN */
+    @SqlUpdate(
+        "Update tag_usage set targetFQNHash = :newTargetFQNHash WHERE source = :source AND targetFQNHash = :oldTargetFQNHash")
+    void renameByTargetFQNHashInternal(
+        @Bind("source") int source,
+        @BindFQN("oldTargetFQNHash") String oldTargetFQNHash,
+        @BindFQN("newTargetFQNHash") String newTargetFQNHash);
+
     @SqlUpdate("<update>")
     void updateTagPrefixInternal(@Define("update") String update);
 
     @SqlQuery("select targetFQNHash FROM tag_usage where tagFQNHash = :tagFQNHash")
     @RegisterRowMapper(TagLabelMapper.class)
     List<String> getTargetFQNHashForTag(@BindFQN("tagFQNHash") String tagFQNHash);
+
+    @SqlQuery("select targetFQNHash FROM tag_usage where tagFQNHash LIKE CONCAT(:tagFQNHash, '.%')")
+    @RegisterRowMapper(TagLabelMapper.class)
+    List<String> getTargetFQNHashForTagPrefix(@BindFQN("tagFQNHash") String tagFQNHash);
 
     class TagLabelMapper implements RowMapper<TagLabel> {
       @Override
@@ -3239,7 +3351,10 @@ public interface CollectionDAO {
         "SELECT json FROM change_event ce where ce.offset > :offset ORDER BY ce.eventTime ASC LIMIT :limit")
     List<String> list(@Bind("limit") long limit, @Bind("offset") long offset);
 
-    @SqlQuery("SELECT count(*) FROM change_event")
+    @ConnectionAwareSqlQuery(value = "SELECT MAX(offset) FROM change_event", connectionType = MYSQL)
+    @ConnectionAwareSqlQuery(
+        value = "SELECT MAX(\"offset\") FROM change_event",
+        connectionType = POSTGRES)
     long getLatestOffset();
   }
 
@@ -3560,14 +3675,6 @@ public interface CollectionDAO {
       return "fqnHash";
     }
 
-    default List<TestCaseRecord> listBeforeTsOrder(ListFilter filter, int limit, Integer before) {
-      return listBeforeTsOrdered(getTableName(), filter.getCondition(), limit, before);
-    }
-
-    default List<TestCaseRecord> listAfterTsOrder(ListFilter filter, int limit, Integer after) {
-      return listAfterTsOrdered(getTableName(), filter.getCondition(), limit, after);
-    }
-
     default int countOfTestCases(List<UUID> testCaseIds) {
       return countOfTestCases(getTableName(), testCaseIds.stream().map(Object::toString).toList());
     }
@@ -3575,52 +3682,6 @@ public interface CollectionDAO {
     @SqlQuery("SELECT count(*) FROM <table> WHERE id IN (<testCaseIds>)")
     int countOfTestCases(
         @Define("table") String table, @BindList("testCaseIds") List<String> testCaseIds);
-
-    @ConnectionAwareSqlQuery(
-        value =
-            "SELECT * FROM (SELECT json, ranked FROM "
-                + "(SELECT id, json, deleted, ROW_NUMBER() OVER(ORDER BY (json ->> '$.testCaseResult.timestamp') DESC) AS ranked FROM <table> <cond>) executionTimeSorted "
-                + "WHERE ranked < :before "
-                + "ORDER BY ranked DESC "
-                + "LIMIT :limit) rankedBefore ORDER BY ranked",
-        connectionType = MYSQL)
-    @ConnectionAwareSqlQuery(
-        value =
-            "SELECT * FROM (SELECT json, ranked FROM "
-                + "(SELECT id, json, deleted, ROW_NUMBER() OVER(ORDER BY (json -> 'testCaseResult'->>'timestamp') DESC NULLS LAST) AS ranked FROM <table> <cond>) executionTimeSorted "
-                + "WHERE ranked < :before "
-                + "ORDER BY ranked DESC "
-                + "LIMIT :limit) rankedBefore ORDER BY ranked",
-        connectionType = POSTGRES)
-    @RegisterRowMapper(TestCaseRecordMapper.class)
-    List<TestCaseRecord> listBeforeTsOrdered(
-        @Define("table") String table,
-        @Define("cond") String cond,
-        @Bind("limit") int limit,
-        @Bind("before") int before);
-
-    @ConnectionAwareSqlQuery(
-        value =
-            "SELECT json, ranked FROM "
-                + "(SELECT id, json, deleted, ROW_NUMBER() OVER(ORDER BY (json ->> '$.testCaseResult.timestamp') DESC ) AS ranked FROM <table> "
-                + "<cond>) executionTimeSorted "
-                + "WHERE ranked > :after "
-                + "LIMIT :limit",
-        connectionType = MYSQL)
-    @ConnectionAwareSqlQuery(
-        value =
-            "SELECT json, ranked FROM "
-                + "(SELECT id, json, deleted, ROW_NUMBER() OVER(ORDER BY (json->'testCaseResult'->>'timestamp') DESC NULLS LAST) AS ranked FROM <table> "
-                + "<cond>) executionTimeSorted "
-                + "WHERE ranked > :after "
-                + "LIMIT :limit",
-        connectionType = POSTGRES)
-    @RegisterRowMapper(TestCaseRecordMapper.class)
-    List<TestCaseRecord> listAfterTsOrdered(
-        @Define("table") String table,
-        @Define("cond") String cond,
-        @Bind("limit") int limit,
-        @Bind("after") int after);
 
     class TestCaseRecord {
       @Getter String json;
@@ -3709,8 +3770,24 @@ public interface CollectionDAO {
     List<String> listAppRunRecord(
         @Bind("appId") String appId, @Bind("limit") int limit, @Bind("offset") int offset);
 
+    @SqlQuery(
+        "SELECT json FROM apps_extension_time_series where appId = :appId AND timestamp > :startTime ORDER BY timestamp DESC LIMIT :limit OFFSET :offset")
+    List<String> listAppRunRecordAfterTime(
+        @Bind("appId") String appId,
+        @Bind("limit") int limit,
+        @Bind("offset") int offset,
+        @Bind("startTime") long startTime);
+
     default String getLatestAppRun(UUID appId) {
       List<String> result = listAppRunRecord(appId.toString(), 1, 0);
+      if (!nullOrEmpty(result)) {
+        return result.get(0);
+      }
+      return null;
+    }
+
+    default String getLatestAppRun(UUID appId, long startTime) {
+      List<String> result = listAppRunRecordAfterTime(appId.toString(), 1, 0, startTime);
       if (!nullOrEmpty(result)) {
         return result.get(0);
       }
@@ -3988,11 +4065,12 @@ public interface CollectionDAO {
       Object value =
           switch (configType) {
             case EMAIL_CONFIGURATION -> JsonUtils.readValue(json, SmtpSettings.class);
-            case CUSTOM_LOGO_CONFIGURATION -> JsonUtils.readValue(json, LogoConfiguration.class);
+            case CUSTOM_UI_THEME_PREFERENCE -> JsonUtils.readValue(json, UiThemePreference.class);
             case LOGIN_CONFIGURATION -> JsonUtils.readValue(json, LoginConfiguration.class);
             case SLACK_APP_CONFIGURATION -> JsonUtils.readValue(json, String.class);
             case SLACK_BOT, SLACK_INSTALLER -> JsonUtils.readValue(
                 json, new TypeReference<HashMap<String, Object>>() {});
+            case PROFILER_CONFIGURATION -> JsonUtils.readValue(json, ProfilerConfiguration.class);
             default -> throw new IllegalArgumentException("Invalid Settings Type " + configType);
           };
       settings.setConfigValue(value);

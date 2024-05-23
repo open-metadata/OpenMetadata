@@ -31,13 +31,13 @@ import {
   getLoggedInUserPermissions,
   getResourcePermission,
 } from '../../rest/permissionAPI';
-import { getUrlPathnameExpiryAfterRoute } from '../../utils/AuthProvider.util';
 import {
   getOperationPermissions,
   getUIPermission,
 } from '../../utils/PermissionsUtils';
 
 import { useApplicationStore } from '../../hooks/useApplicationStore';
+import { setUrlPathnameExpiryAfterRoute } from '../../utils/AuthProvider.util';
 import {
   EntityPermissionMap,
   PermissionContextType,
@@ -67,7 +67,7 @@ const PermissionProvider: FC<PermissionProviderProps> = ({ children }) => {
   const { currentUser } = useApplicationStore();
   const cookieStorage = new CookieStorage();
   const history = useHistory();
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
 
   const [entitiesPermission, setEntitiesPermission] =
     useState<EntityPermissionMap>({} as EntityPermissionMap);
@@ -79,10 +79,7 @@ const PermissionProvider: FC<PermissionProviderProps> = ({ children }) => {
   const redirectToStoredPath = useCallback(() => {
     const urlPathname = cookieStorage.getItem(REDIRECT_PATHNAME);
     if (urlPathname) {
-      cookieStorage.setItem(REDIRECT_PATHNAME, urlPathname, {
-        expires: getUrlPathnameExpiryAfterRoute(),
-        path: '/',
-      });
+      setUrlPathnameExpiryAfterRoute(urlPathname);
       history.push(urlPathname);
     }
   }, [history]);
@@ -92,7 +89,6 @@ const PermissionProvider: FC<PermissionProviderProps> = ({ children }) => {
    */
   const fetchLoggedInUserPermissions = useCallback(async () => {
     try {
-      setLoading(true);
       const response = await getLoggedInUserPermissions();
       setPermissions(getUIPermission(response.data || []));
       redirectToStoredPath();
@@ -176,6 +172,8 @@ const PermissionProvider: FC<PermissionProviderProps> = ({ children }) => {
      */
     if (!isEmpty(currentUser)) {
       fetchLoggedInUserPermissions();
+    } else {
+      setLoading(false);
     }
     if (isEmpty(currentUser)) {
       resetPermissions();

@@ -24,12 +24,14 @@ import {
   visitClassificationPage,
 } from '../../common/TagUtils';
 import { visitEntityDetailsPage } from '../../common/Utils/Entity';
+import { assignTags, removeTags } from '../../common/Utils/Tags';
 import {
   DELETE_TERM,
   NEW_CLASSIFICATION,
   NEW_TAG,
   SEARCH_ENTITY_TABLE,
 } from '../../constants/constants';
+import { EntityType } from '../../constants/Entity.interface';
 
 const permanentDeleteModal = (entity) => {
   cy.get('[data-testid="delete-confirmation-modal"]')
@@ -171,7 +173,7 @@ describe('Classification Page', { tags: 'Governance' }, () => {
     cy.get(descriptionBox).should('be.visible').type(NEW_TAG.description);
 
     cy.get('[data-testid="icon-url"]').scrollIntoView().type(NEW_TAG.icon);
-    cy.get('[data-testid="root/color-color-input"]')
+    cy.get('[data-testid="tags_color-color-input"]')
       .scrollIntoView()
       .type(NEW_TAG.color);
 
@@ -208,7 +210,7 @@ describe('Classification Page', { tags: 'Governance' }, () => {
     interceptURL('PATCH', '/api/v1/databaseSchemas/*', 'addTags');
 
     const entity = SEARCH_ENTITY_TABLE.table_3;
-    const tag = 'Sensitive';
+    const tag = 'PII.Sensitive';
 
     visitEntityDetailsPage({
       term: entity.term,
@@ -224,42 +226,9 @@ describe('Classification Page', { tags: 'Governance' }, () => {
     verifyResponseStatusCode('@databaseSchemasPage', 200);
     verifyResponseStatusCode('@permissions', 200);
 
-    cy.get('[data-testid="tags-container"] [data-testid="add-tag"]')
-      .should('be.visible')
-      .click();
+    assignTags(tag, EntityType.DatabaseSchema);
 
-    cy.get('[data-testid="tag-selector"] input').should('be.visible').type(tag);
-
-    cy.get('.ant-select-item-option-content')
-      .contains(tag)
-      .should('be.visible')
-      .click();
-
-    // to close popup
-    cy.clickOutside();
-
-    cy.get('[data-testid="tag-selector"] > .ant-select-selector').contains(tag);
-    cy.get('[data-testid="saveAssociatedTag"]').scrollIntoView().click();
-    verifyResponseStatusCode('@addTags', 200);
-    cy.get('[data-testid="tags-container"]')
-      .scrollIntoView()
-      .should('be.visible')
-      .contains(tag);
-
-    cy.get('[data-testid="tags-container"] [data-testid="edit-button"]')
-      .should('exist')
-      .click();
-
-    // Remove all added tags
-    cy.get('[data-testid="remove-tags"]').eq(0).should('be.visible').click();
-
-    interceptURL('PATCH', '/api/v1/databaseSchemas/*', 'removeTags');
-    cy.get('[data-testid="saveAssociatedTag"]').scrollIntoView().click();
-    verifyResponseStatusCode('@removeTags', 200);
-
-    cy.get('[data-testid="tags-container"] [data-testid="add-tag"]').should(
-      'be.visible'
-    );
+    removeTags(tag, EntityType.DatabaseSchema);
   });
 
   it('Assign tag using Task & Suggestion flow to DatabaseSchema', () => {

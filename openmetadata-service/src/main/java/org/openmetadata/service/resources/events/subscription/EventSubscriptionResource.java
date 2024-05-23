@@ -15,7 +15,6 @@ package org.openmetadata.service.resources.events.subscription;
 
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
-import static org.openmetadata.schema.api.events.CreateEventSubscription.AlertType.ACTIVITY_FEED;
 import static org.openmetadata.schema.api.events.CreateEventSubscription.AlertType.NOTIFICATION;
 import static org.openmetadata.service.events.subscription.AlertUtil.validateAndBuildFilteringConditions;
 
@@ -139,9 +138,7 @@ public class EventSubscriptionResource
       List<EventSubscription> eventSubList =
           JsonUtils.readObjects(listAllEventsSubscriptions, EventSubscription.class);
       for (EventSubscription subscription : eventSubList) {
-        if (subscription.getAlertType() != ACTIVITY_FEED) {
-          EventSubscriptionScheduler.getInstance().addSubscriptionPublisher(subscription);
-        }
+        EventSubscriptionScheduler.getInstance().addSubscriptionPublisher(subscription);
       }
     } catch (Exception ex) {
       // Starting application should not fail
@@ -347,6 +344,38 @@ public class EventSubscriptionResource
                       }))
           JsonPatch patch) {
     Response response = patchInternal(uriInfo, securityContext, id, patch);
+    EventSubscriptionScheduler.getInstance()
+        .updateEventSubscription((EventSubscription) response.getEntity());
+    return response;
+  }
+
+  @PATCH
+  @Path("/name/{fqn}")
+  @Operation(
+      operationId = "patchEventSubscription",
+      summary = "Update an Event Subscriptions by name.",
+      description = "Update an existing Event Subscriptions using JsonPatch.",
+      externalDocs =
+          @ExternalDocumentation(
+              description = "JsonPatch RFC",
+              url = "https://tools.ietf.org/html/rfc6902"))
+  @Consumes(MediaType.APPLICATION_JSON_PATCH_JSON)
+  public Response patchEventSubscription(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Name of the event Subscription", schema = @Schema(type = "string"))
+          @PathParam("fqn")
+          String fqn,
+      @RequestBody(
+              description = "JsonPatch with array of operations",
+              content =
+                  @Content(
+                      mediaType = MediaType.APPLICATION_JSON_PATCH_JSON,
+                      examples = {
+                        @ExampleObject("[{op:remove, path:/a},{op:add, path: /b, value: val}]")
+                      }))
+          JsonPatch patch) {
+    Response response = patchInternal(uriInfo, securityContext, fqn, patch);
     EventSubscriptionScheduler.getInstance()
         .updateEventSubscription((EventSubscription) response.getEntity());
     return response;

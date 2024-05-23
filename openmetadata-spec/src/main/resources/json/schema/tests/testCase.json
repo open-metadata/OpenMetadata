@@ -30,7 +30,7 @@
     },
     "name": {
       "description": "Name that identifies this test case.",
-      "$ref": "../type/basic.json#/definitions/entityName"
+      "$ref": "../type/basic.json#/definitions/testCaseEntityName"
     },
     "displayName": {
       "description": "Display Name that identifies this test.",
@@ -114,6 +114,10 @@
     "failedRowsSample": {
       "description": "Sample of failed rows for this test case.",
       "$ref": "../entity/data/table.json#/definitions/tableData"
+    },
+    "inspectionQuery": {
+      "description": "SQL query to retrieve the failed rows for this test case.",
+      "$ref": "../type/basic.json#/definitions/sqlQuery"
     },
     "domain" : {
       "description": "Domain the test case belongs to. When not set, the test case inherits the domain from the table it belongs to.",

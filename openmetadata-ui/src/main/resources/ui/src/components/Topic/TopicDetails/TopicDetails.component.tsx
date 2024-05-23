@@ -209,12 +209,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
     async (newOwner?: Topic['owner']) => {
       const updatedTopicDetails = {
         ...topicDetails,
-        owner: newOwner
-          ? {
-              ...owner,
-              ...newOwner,
-            }
-          : undefined,
+        owner: newOwner,
       };
       await onTopicUpdate(updatedTopicDetails, 'owner');
     },
@@ -340,16 +335,18 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
               className="entity-tag-right-panel-container"
               data-testid="entity-right-panel"
               flex="320px">
-              <EntityRightPanel
+              <EntityRightPanel<EntityType.TOPIC>
                 customProperties={topicDetails}
                 dataProducts={topicDetails?.dataProducts ?? []}
                 domain={topicDetails?.domain}
+                editCustomAttributePermission={editCustomAttributePermission}
                 editTagPermission={editTagsPermission}
                 entityFQN={decodedTopicFQN}
                 entityId={topicDetails.id}
                 entityType={EntityType.TOPIC}
                 selectedTags={topicTags}
                 viewAllPermission={viewAllPermission}
+                onExtensionUpdate={onExtensionUpdate}
                 onTagSelectionChange={handleTagSelection}
                 onThreadLinkSelect={onThreadLinkSelect}
               />

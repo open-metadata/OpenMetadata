@@ -225,7 +225,7 @@ const PipelineDetails = ({
     async (newOwner?: Pipeline['owner']) => {
       const updatedPipelineDetails = {
         ...pipelineDetails,
-        owner: newOwner ? { ...owner, ...newOwner } : undefined,
+        owner: newOwner,
       };
       await settingsUpdateHandler(updatedPipelineDetails);
     },
@@ -439,7 +439,9 @@ const PipelineDetails = ({
         filterIcon: (filtered) => (
           <FilterOutlined
             data-testid="tag-filter"
-            style={{ color: filtered ? theme.primaryColor : undefined }}
+            style={{
+              color: filtered ? theme.primaryColor : undefined,
+            }}
           />
         ),
         render: (owner) => <OwnerLabel hasPermission={false} owner={owner} />,
@@ -453,7 +455,9 @@ const PipelineDetails = ({
         filterIcon: (filtered) => (
           <FilterOutlined
             data-testid="tag-filter"
-            style={{ color: filtered ? theme.primaryColor : undefined }}
+            style={{
+              color: filtered ? theme.primaryColor : undefined,
+            }}
           />
         ),
         render: (tags, record, index) => (
@@ -483,7 +487,9 @@ const PipelineDetails = ({
         filterIcon: (filtered) => (
           <FilterOutlined
             data-testid="glossary-filter"
-            style={{ color: filtered ? theme.primaryColor : undefined }}
+            style={{
+              color: filtered ? theme.primaryColor : undefined,
+            }}
           />
         ),
         filters: tagFilter.Glossary,
@@ -619,6 +625,7 @@ const PipelineDetails = ({
                   {activeTab === PIPELINE_TASK_TABS.LIST_VIEW ? (
                     <Table
                       bordered
+                      className="align-table-filter-left"
                       columns={taskColumns}
                       data-testid="task-table"
                       dataSource={tasksInternal}
@@ -637,16 +644,18 @@ const PipelineDetails = ({
               className="entity-tag-right-panel-container"
               data-testid="entity-right-panel"
               flex="320px">
-              <EntityRightPanel
+              <EntityRightPanel<EntityType.PIPELINE>
                 customProperties={pipelineDetails}
                 dataProducts={pipelineDetails?.dataProducts ?? []}
                 domain={pipelineDetails?.domain}
+                editCustomAttributePermission={editCustomAttributePermission}
                 editTagPermission={editTagsPermission}
                 entityFQN={pipelineFQN}
                 entityId={pipelineDetails.id}
                 entityType={EntityType.PIPELINE}
                 selectedTags={tags}
                 viewAllPermission={viewAllPermission}
+                onExtensionUpdate={onExtensionUpdate}
                 onTagSelectionChange={handleTagSelection}
                 onThreadLinkSelect={onThreadLinkSelect}
               />

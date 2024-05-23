@@ -12,6 +12,7 @@
  */
 
 export interface IngestionPipelineLogByIdInterface {
+  application_task?: string;
   ingestion_task?: string;
   profiler_task?: string;
   usage_task?: string;

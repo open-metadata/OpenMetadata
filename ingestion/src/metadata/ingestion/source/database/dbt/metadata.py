@@ -21,13 +21,13 @@ from metadata.generated.schema.api.tests.createTestDefinition import (
     CreateTestDefinitionRequest,
 )
 from metadata.generated.schema.entity.classification.tag import Tag
+from metadata.generated.schema.entity.data.glossaryTerm import GlossaryTerm
 from metadata.generated.schema.entity.data.table import (
     Column,
     DataModel,
     ModelType,
     Table,
 )
-from metadata.generated.schema.entity.services.databaseService import DatabaseService
 from metadata.generated.schema.entity.services.ingestionPipelines.status import (
     StackTraceError,
 )
@@ -83,6 +83,7 @@ from metadata.ingestion.source.database.dbt.dbt_utils import (
     get_dbt_model_name,
     get_dbt_raw_query,
 )
+from metadata.ingestion.source.database.dbt.models import DbtMeta
 from metadata.utils import fqn
 from metadata.utils.elasticsearch import get_entity_from_es_result
 from metadata.utils.logger import ingestion_logger
@@ -130,13 +131,7 @@ class DbtSource(DbtServiceSource):
         """
         By default for DBT nothing is required to be prepared
         """
-        database_service = self.metadata.get_by_name(
-            entity=DatabaseService, fqn=self.config.serviceName
-        )
-        if not database_service:
-            raise InvalidServiceException(
-                f"Service with name {self.config.serviceName} not found"
-            )
+        pass
 
     def get_dbt_owner(
         self, manifest_node: dict, catalog_node: Optional[dict]
@@ -389,13 +384,18 @@ class DbtSource(DbtServiceSource):
                     if dbt_objects.dbt_catalog:
                         catalog_node = catalog_entities.get(key)
 
-                    dbt_table_tags_list = None
+                    dbt_table_tags_list = []
                     if manifest_node.tags:
                         dbt_table_tags_list = get_tag_labels(
                             metadata=self.metadata,
                             tags=manifest_node.tags,
                             classification_name=self.tag_classification_name,
                             include_tags=self.source_config.includeTags,
+                        )
+
+                    if manifest_node.meta:
+                        dbt_table_tags_list.extend(
+                            self.process_dbt_meta(manifest_node.meta) or []
                         )
 
                     dbt_compiled_query = get_dbt_compiled_query(manifest_node)
@@ -406,7 +406,7 @@ class DbtSource(DbtServiceSource):
                     table_fqn = fqn.build(
                         self.metadata,
                         entity_type=Table,
-                        service_name=self.config.serviceName,
+                        service_name="*",
                         database_name=get_corrected_name(manifest_node.database),
                         schema_name=get_corrected_name(manifest_node.schema_),
                         table_name=model_name,
@@ -445,7 +445,7 @@ class DbtSource(DbtServiceSource):
                                     manifest_node=manifest_node,
                                     catalog_node=catalog_node,
                                 ),
-                                tags=dbt_table_tags_list,
+                                tags=dbt_table_tags_list or None,
                             ),
                         )
                         yield Either(right=data_model_link)
@@ -500,7 +500,7 @@ class DbtSource(DbtServiceSource):
                         parent_fqn = fqn.build(
                             self.metadata,
                             entity_type=Table,
-                            service_name=self.config.serviceName,
+                            service_name="*",
                             database_name=get_corrected_name(parent_node.database),
                             schema_name=get_corrected_name(parent_node.schema_),
                             table_name=table_name,
@@ -548,12 +548,41 @@ class DbtSource(DbtServiceSource):
                 if catalog_column and catalog_column.comment:
                     column_description = catalog_column.comment
 
+                dbt_column_tag_list = []
+                dbt_column_tag_list.extend(
+                    get_tag_labels(
+                        metadata=self.metadata,
+                        tags=manifest_column.tags,
+                        classification_name=self.tag_classification_name,
+                        include_tags=self.source_config.includeTags,
+                    )
+                    or []
+                )
+
+                if manifest_column.meta:
+                    dbt_column_meta = DbtMeta(**manifest_column.meta)
+                    logger.debug(f"Processing DBT column glossary: {key}")
+                    if (
+                        dbt_column_meta.openmetadata
+                        and dbt_column_meta.openmetadata.glossary
+                    ):
+                        dbt_column_tag_list.extend(
+                            get_tag_labels(
+                                metadata=self.metadata,
+                                tags=dbt_column_meta.openmetadata.glossary,
+                                include_tags=self.source_config.includeTags,
+                                tag_type=GlossaryTerm,
+                            )
+                            or []
+                        )
+
                 columns.append(
                     Column(
                         name=column_name,
-                        description=manifest_column.description
-                        if manifest_column.description
-                        else column_description,
+                        # If the catalog description is present, use it, else use the manifest description
+                        description=column_description
+                        if column_description
+                        else manifest_column.description,
                         dataType=ColumnTypeParser.get_column_type(
                             catalog_column.type
                             if catalog_column
@@ -563,12 +592,7 @@ class DbtSource(DbtServiceSource):
                         ordinalPosition=catalog_column.index
                         if catalog_column
                         else None,
-                        tags=get_tag_labels(
-                            metadata=self.metadata,
-                            tags=manifest_column.tags,
-                            classification_name=self.tag_classification_name,
-                            include_tags=self.source_config.includeTags,
-                        ),
+                        tags=dbt_column_tag_list or None,
                     )
                 )
                 logger.debug(f"Successfully processed DBT column: {key}")
@@ -673,6 +697,42 @@ class DbtSource(DbtServiceSource):
                     stackTrace=traceback.format_exc(),
                 )
             )
+
+    def process_dbt_meta(self, manifest_meta):
+        """
+        Method to process DBT meta for Tags and GlossaryTerms
+        """
+        dbt_table_tags_list = []
+        try:
+            dbt_meta_info = DbtMeta(**manifest_meta)
+            if dbt_meta_info.openmetadata and dbt_meta_info.openmetadata.glossary:
+                dbt_table_tags_list.extend(
+                    get_tag_labels(
+                        metadata=self.metadata,
+                        tags=dbt_meta_info.openmetadata.glossary,
+                        include_tags=self.source_config.includeTags,
+                        tag_type=GlossaryTerm,
+                    )
+                    or []
+                )
+
+            if dbt_meta_info.openmetadata and dbt_meta_info.openmetadata.tier:
+                tier_fqn = dbt_meta_info.openmetadata.tier
+                dbt_table_tags_list.extend(
+                    get_tag_labels(
+                        metadata=self.metadata,
+                        tags=[tier_fqn.split(fqn.FQN_SEPARATOR)[-1]],
+                        classification_name=tier_fqn.split(fqn.FQN_SEPARATOR)[0],
+                        include_tags=self.source_config.includeTags,
+                    )
+                    or []
+                )
+
+        except Exception as exc:  # pylint: disable=broad-except
+            logger.debug(traceback.format_exc())
+            logger.warning(f"Failed to process meta dbt Tags and GlossaryTerms: {exc}")
+
+        return dbt_table_tags_list or []
 
     def process_dbt_descriptions(self, data_model_link: DataModelLink):
         """
@@ -882,7 +942,7 @@ class DbtSource(DbtServiceSource):
                     test_case_fqn = fqn.build(
                         self.metadata,
                         entity_type=TestCase,
-                        service_name=self.config.serviceName,
+                        service_name=source_elements[0],
                         database_name=source_elements[1],
                         schema_name=source_elements[2],
                         table_name=source_elements[3],

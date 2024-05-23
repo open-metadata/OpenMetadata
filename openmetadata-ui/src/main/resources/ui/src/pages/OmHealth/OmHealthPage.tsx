@@ -37,7 +37,7 @@ const OmHealthPage = () => {
     () =>
       getSettingPageEntityBreadCrumb(
         GlobalSettingsMenuCategory.PREFERENCES,
-        t('label.om-status')
+        t('label.health-check')
       ),
     []
   );
@@ -62,7 +62,7 @@ const OmHealthPage = () => {
   }
 
   return (
-    <PageLayoutV1 pageTitle={t('label.om-status')}>
+    <PageLayoutV1 pageTitle={t('label.health-check')}>
       <Row className="page-container" gutter={[0, 16]}>
         <Col span={24}>
           <TitleBreadcrumb titleLinks={breadcrumbs} />
@@ -85,7 +85,7 @@ const OmHealthPage = () => {
             validationStatus,
             (validation, key) =>
               validation && (
-                <Col key={key} span={24}>
+                <Col data-testid={key} key={key} span={24}>
                   <ConnectionStepCard
                     isTestingConnection={false}
                     testConnectionStep={{
@@ -97,8 +97,12 @@ const OmHealthPage = () => {
                       name: startCase(key),
                       passed: Boolean(validation.passed),
                       mandatory: true,
-                      message: validation.description,
-                      errorLog: validation.message,
+                      message: validation.passed
+                        ? validation.message
+                        : validation.description,
+                      ...(!validation.passed
+                        ? { errorLog: validation.message }
+                        : {}),
                     }}
                   />
                 </Col>

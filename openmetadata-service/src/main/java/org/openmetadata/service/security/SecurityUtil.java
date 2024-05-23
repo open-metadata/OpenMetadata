@@ -327,7 +327,8 @@ public final class SecurityUtil {
       HttpServletResponse response,
       OidcCredentials credentials,
       String serverUrl,
-      List<String> claimsOrder)
+      List<String> claimsOrder,
+      String defaultDomain)
       throws ParseException, IOException {
     JWT jwt = credentials.getIdToken();
     Map<String, Object> claims = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
@@ -344,13 +345,13 @@ public final class SecurityUtil {
                         "Invalid JWT token, none of the following claims are present "
                             + claimsOrder));
 
-    String email = (String) jwt.getJWTClaimsSet().getClaim("email");
     String userName;
     if (preferredJwtClaim.contains("@")) {
       userName = preferredJwtClaim.split("@")[0];
     } else {
       userName = preferredJwtClaim;
     }
+    String email = String.format("%s@%s", userName, defaultDomain);
 
     String url =
         String.format(
@@ -382,23 +383,15 @@ public final class SecurityUtil {
   }
 
   private static void removeOrRenewOidcCredentials(
-      HttpServletRequest request, OidcClient client, OidcCredentials credentials)
-      throws ParseException {
-    boolean profilesUpdated = false;
-    if (SecurityUtil.isCredentialsExpired(credentials)) {
-      LOG.debug("Expired credentials found, trying to renew.");
-      profilesUpdated = true;
-      if (client.getConfiguration()
-          instanceof AzureAd2OidcConfiguration azureAd2OidcConfiguration) {
-        refreshAccessTokenAzureAd2Token(azureAd2OidcConfiguration, credentials);
-      } else {
-        OidcAuthenticator authenticator = new OidcAuthenticator(client.getConfiguration(), client);
-        authenticator.refresh(credentials);
-      }
+      HttpServletRequest request, OidcClient client, OidcCredentials credentials) {
+    LOG.debug("Expired credentials found, trying to renew.");
+    if (client.getConfiguration() instanceof AzureAd2OidcConfiguration azureAd2OidcConfiguration) {
+      refreshAccessTokenAzureAd2Token(azureAd2OidcConfiguration, credentials);
+    } else {
+      OidcAuthenticator authenticator = new OidcAuthenticator(client.getConfiguration(), client);
+      authenticator.refresh(credentials);
     }
-    if (profilesUpdated) {
-      request.getSession().setAttribute(OIDC_CREDENTIAL_PROFILE, credentials);
-    }
+    request.getSession().setAttribute(OIDC_CREDENTIAL_PROFILE, credentials);
   }
 
   private static void refreshAccessTokenAzureAd2Token(

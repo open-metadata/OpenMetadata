@@ -24,6 +24,8 @@ from metadata.generated.schema.entity.data.searchIndex import SearchIndex
 from metadata.generated.schema.entity.data.storedProcedure import StoredProcedure
 from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.data.topic import Topic
+from metadata.generated.schema.entity.domains.dataProduct import DataProduct
+from metadata.generated.schema.entity.domains.domain import Domain
 from metadata.generated.schema.entity.services.dashboardService import DashboardService
 from metadata.generated.schema.entity.services.databaseService import DatabaseService
 from metadata.generated.schema.entity.services.messagingService import MessagingService
@@ -70,31 +72,37 @@ NO_ACCESS_TOKEN = "no_token"
 
 SAMPLE_DATA_DEFAULT_COUNT = 50
 
-# Mainly used for lineage
-ENTITY_REFERENCE_TYPE_MAP = {
+ENTITY_REFERENCE_CLASS_MAP = {
     # Service Entities
-    DatabaseService.__name__: "databaseService",
-    MessagingService.__name__: "messagingService",
-    DashboardService.__name__: "dashboardService",
-    PipelineService.__name__: "pipelineService",
-    StorageService.__name__: "storageService",
-    MlModelService.__name__: "mlmodelService",
-    MetadataService.__name__: "metadataService",
-    SearchService.__name__: "searchService",
+    "databaseService": DatabaseService,
+    "messagingService": MessagingService,
+    "dashboardService": DashboardService,
+    "pipelineService": PipelineService,
+    "storageService": StorageService,
+    "mlmodelService": MlModelService,
+    "metadataService": MetadataService,
+    "searchService": SearchService,
     # Data Asset Entities
-    Table.__name__: "table",
-    StoredProcedure.__name__: "storedProcedure",
-    Database.__name__: "database",
-    DatabaseSchema.__name__: "databaseSchema",
-    Dashboard.__name__: "dashboard",
-    DashboardDataModel.__name__: "dashboardDataModel",
-    Pipeline.__name__: "pipeline",
-    Chart.__name__: "chart",
-    Topic.__name__: "topic",
-    SearchIndex.__name__: "searchIndex",
-    MlModel.__name__: "mlmodel",
-    Container.__name__: "container",
+    "table": Table,
+    "storedProcedure": StoredProcedure,
+    "database": Database,
+    "databaseSchema": DatabaseSchema,
+    "dashboard": Dashboard,
+    "dashboardDataModel": DashboardDataModel,
+    "pipeline": Pipeline,
+    "chart": Chart,
+    "topic": Topic,
+    "searchIndex": SearchIndex,
+    "mlmodel": MlModel,
+    "container": Container,
     # User Entities
-    User.__name__: "user",
-    Team.__name__: "team",
+    "user": User,
+    "team": Team,
+    # Domain
+    "domain": Domain,
+    "dataProduct": DataProduct,
+}
+
+ENTITY_REFERENCE_TYPE_MAP = {
+    value.__name__: key for key, value in ENTITY_REFERENCE_CLASS_MAP.items()
 }

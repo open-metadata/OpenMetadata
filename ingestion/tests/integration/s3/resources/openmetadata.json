@@ -1,0 +1,49 @@
+{
+    "entries":[
+        {
+            "dataPath": "transactions",
+            "structureFormat": "csv",
+            "isPartitioned": false
+        },
+        {
+            "dataPath": "transactions_separator",
+            "structureFormat": "csv",
+            "isPartitioned": false,
+            "separator": ";"
+        },
+        {
+            "dataPath": "cities",
+            "structureFormat": "parquet",
+            "isPartitioned": true
+        },
+        {
+            "dataPath": "cities_multiple",
+            "structureFormat": "parquet",
+            "isPartitioned": true,
+            "partitionColumns": [
+                {
+                    "name": "Year",
+                    "dataType": "DATE",
+                    "dataTypeDisplay": "date (year)"
+                },
+                {
+                    "name": "State",
+                    "dataType": "STRING"
+                }
+            ]
+        },
+        {
+            "dataPath": "cities_multiple_simple",
+            "structureFormat": "parquet",
+            "isPartitioned": true,
+            "partitionColumns": [
+                {
+                    "name": "State",
+                    "dataType": "STRING"
+                }
+            ]
+        }
+    ]
+}
+
+

@@ -24,6 +24,7 @@ import static javax.ws.rs.core.Response.Status.UNAUTHORIZED;
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
@@ -130,6 +131,7 @@ import org.openmetadata.service.resources.bots.BotResourceTest;
 import org.openmetadata.service.resources.databases.TableResourceTest;
 import org.openmetadata.service.resources.teams.UserResource.UserList;
 import org.openmetadata.service.security.AuthenticationException;
+import org.openmetadata.service.security.mask.PIIMasker;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.PasswordUtil;
@@ -168,6 +170,7 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
         createRequest("user-data-consumer", "", "", null)
             .withRoles(List.of(DATA_CONSUMER_ROLE.getId()));
     DATA_CONSUMER = createEntity(create, ADMIN_AUTH_HEADERS);
+    DATA_CONSUMER_REF = DATA_CONSUMER.getEntityReference();
 
     // USER_TEAM21 is part of TEAM21
     create = createRequest(test, 2).withTeams(List.of(TEAM21.getId()));
@@ -632,7 +635,7 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
                 .withName("testUser1")
                 .withDisplayName("displayName")
                 .withEmail("testUser1@email.com"),
-            authHeaders("test1@email.com"));
+            ADMIN_AUTH_HEADERS);
     String userJson = JsonUtils.pojoToJson(user);
     List<EntityReference> teams = user.getTeams();
     teams.add(team1);
@@ -647,7 +650,7 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
   void patch_userAttributes_as_admin_200_ok(TestInfo test) throws IOException {
     // Create user without any attributes - ***Note*** isAdmin by default is false.
     User user = createEntity(createRequest(test).withProfile(null), ADMIN_AUTH_HEADERS);
-    assertListNull(user.getDisplayName(), user.getIsBot(), user.getProfile(), user.getTimezone());
+    assertListNull(user.getDisplayName(), user.getProfile(), user.getTimezone());
 
     EntityReference team1 =
         TEAM_TEST
@@ -695,7 +698,6 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
     fieldAdded(change, "timezone", timezone);
     fieldAdded(change, "displayName", "displayName");
     fieldAdded(change, "profile", profile);
-    fieldAdded(change, "isBot", false);
     fieldAdded(change, "defaultPersona", DATA_SCIENTIST.getEntityReference());
     fieldAdded(
         change,
@@ -733,7 +735,7 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
     fieldAdded(change, "timezone", timezone1);
     fieldAdded(change, "displayName", "displayName1");
     fieldAdded(change, "profile", profile1);
-    fieldAdded(change, "isBot", true);
+    fieldUpdated(change, "isBot", false, true);
     fieldAdded(change, "defaultPersona", DATA_SCIENTIST.getEntityReference());
     fieldAdded(change, "personas", List.of(DATA_ENGINEER.getEntityReference()));
     user = patchEntityAndCheck(user, origJson, ADMIN_AUTH_HEADERS, CHANGE_CONSOLIDATED, change);
@@ -1299,6 +1301,17 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
     assertDomainInheritance(create, DOMAIN.getEntityReference());
   }
 
+  @Test
+  void test_maskEmail() throws HttpResponseException {
+    // Admins can check the mail
+    User user = getEntityByName(USER1.getName(), ADMIN_AUTH_HEADERS);
+    assertEquals(USER1.getEmail(), user.getEmail());
+
+    // non-admins cannot see the mail
+    User noEmailUser = getEntityByName(USER1.getName(), authHeaders(USER2.getName()));
+    assertEquals(PIIMasker.MASKED_MAIL, noEmailUser.getEmail());
+  }
+
   private DecodedJWT decodedJWT(String token) {
     DecodedJWT jwt;
     try {
@@ -1353,7 +1366,8 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
     return new CreateUser()
         .withName(entityName)
         .withEmail(emailUser + "@open-metadata.org")
-        .withProfile(PROFILE);
+        .withProfile(PROFILE)
+        .withIsBot(false);
   }
 
   @Override
@@ -1414,7 +1428,11 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
     assertEquals(expected.getName(), updated.getName());
     assertEquals(expected.getDisplayName(), updated.getDisplayName());
     assertEquals(expected.getTimezone(), updated.getTimezone());
-    assertEquals(expected.getIsBot(), updated.getIsBot());
+    if (expected.getIsBot() == null) {
+      assertFalse(updated.getIsBot());
+    } else {
+      assertEquals(expected.getIsBot(), updated.getIsBot());
+    }
     assertEquals(expected.getIsAdmin(), updated.getIsAdmin());
     if (expected.getDefaultPersona() != null) {
       assertEquals(expected.getDefaultPersona(), updated.getDefaultPersona());

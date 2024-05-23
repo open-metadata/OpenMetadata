@@ -19,16 +19,13 @@ import SchemaTable from '../SchemaTable/SchemaTable.component';
 import { Props } from './SchemaTab.interfaces';
 
 const SchemaTab: FunctionComponent<Props> = ({
-  columns,
-  joins,
+  table,
   onUpdate,
-  columnName,
   hasDescriptionEditAccess,
   hasTagEditAccess,
   onThreadLinkSelect,
   isReadOnly = false,
-  entityFqn,
-  tableConstraints,
+  testCaseSummary,
 }: Props) => {
   const [searchText, setSearchText] = useState('');
 
@@ -42,7 +39,7 @@ const SchemaTab: FunctionComponent<Props> = ({
         <div className="w-1/2">
           <Searchbar
             removeMargin
-            placeholder={`${t('message.find-in-table')}`}
+            placeholder={t('message.find-in-table')}
             searchValue={searchText}
             typingInterval={500}
             onSearch={handleSearchAction}
@@ -50,15 +47,12 @@ const SchemaTab: FunctionComponent<Props> = ({
         </div>
       </div>
       <SchemaTable
-        columnName={columnName}
-        entityFqn={entityFqn}
         hasDescriptionEditAccess={hasDescriptionEditAccess}
         hasTagEditAccess={hasTagEditAccess}
         isReadOnly={isReadOnly}
-        joins={joins}
         searchText={lowerCase(searchText)}
-        tableColumns={columns}
-        tableConstraints={tableConstraints}
+        table={table}
+        testCaseSummary={testCaseSummary}
         onThreadLinkSelect={onThreadLinkSelect}
         onUpdate={onUpdate}
       />

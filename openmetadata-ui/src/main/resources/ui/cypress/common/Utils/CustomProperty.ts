@@ -40,7 +40,8 @@ export enum CustomPropertyTypeByName {
   ENUM = 'enum',
   SQL_QUERY = 'sqlQuery',
   TIMESTAMP = 'timestamp',
-  TIME_INTERVAL = 'timeInterval',
+  ENTITY_REFERENCE = 'entityReference',
+  ENTITY_REFERENCE_LIST = 'entityReferenceList',
 }
 
 export interface CustomProperty {
@@ -108,10 +109,16 @@ export const getPropertyValues = (type: string) => {
         value: '1710831125922',
         newValue: '1710831125923',
       };
-    case 'timeInterval':
+    case 'entityReference':
       return {
-        value: '1710831125922,1710831125923',
-        newValue: '1710831125923,1710831125924',
+        value: 'Adam Matthews',
+        newValue: 'Aaron Singh',
+      };
+
+    case 'entityReferenceList':
+      return {
+        value: 'Aaron Johnson,Organization',
+        newValue: 'Aaron Warren',
       };
 
     default:
@@ -164,7 +171,7 @@ export const setValueForProperty = (
     .scrollIntoView()
     .as('editbutton');
 
-  cy.get('@editbutton').click();
+  cy.get('@editbutton').should('be.visible').click();
 
   interceptURL('PATCH', `/api/v1/*/*`, 'patchEntity');
   // Checking for value text box or markdown box
@@ -172,6 +179,7 @@ export const setValueForProperty = (
   switch (propertyType) {
     case 'markdown':
       cy.get('.toastui-editor-md-container > .toastui-editor > .ProseMirror')
+        .should('be.visible')
         .clear()
         .type(value);
       cy.get('[data-testid="save"]').click();
@@ -179,13 +187,19 @@ export const setValueForProperty = (
       break;
 
     case 'email':
-      cy.get('[data-testid="email-input"]').clear().type(value);
+      cy.get('[data-testid="email-input"]')
+        .should('be.visible')
+        .clear()
+        .type(value);
       cy.get('[data-testid="inline-save-btn"]').click();
 
       break;
 
     case 'duration':
-      cy.get('[data-testid="duration-input"]').clear().type(value);
+      cy.get('[data-testid="duration-input"]')
+        .should('be.visible')
+        .clear()
+        .type(value);
       cy.get('[data-testid="inline-save-btn"]').click();
 
       break;
@@ -204,15 +218,24 @@ export const setValueForProperty = (
       break;
 
     case 'timestamp':
-      cy.get('[data-testid="timestamp-input"]').clear().type(value);
+      cy.get('[data-testid="timestamp-input"]')
+        .should('be.visible')
+        .clear()
+        .type(value);
       cy.get('[data-testid="inline-save-btn"]').click();
 
       break;
 
     case 'timeInterval': {
       const [startValue, endValue] = value.split(',');
-      cy.get('[data-testid="start-input"]').clear().type(startValue);
-      cy.get('[data-testid="end-input"]').clear().type(endValue);
+      cy.get('[data-testid="start-input"]')
+        .should('be.visible')
+        .clear()
+        .type(startValue);
+      cy.get('[data-testid="end-input"]')
+        .should('be.visible')
+        .clear()
+        .type(endValue);
       cy.get('[data-testid="inline-save-btn"]').click();
 
       break;
@@ -221,10 +244,27 @@ export const setValueForProperty = (
     case 'string':
     case 'integer':
     case 'number':
-      cy.get('[data-testid="value-input"]').clear().type(value);
+      cy.get('[data-testid="value-input"]')
+        .should('be.visible')
+        .clear()
+        .type(value);
       cy.get('[data-testid="inline-save-btn"]').click();
 
       break;
+
+    case 'entityReference':
+    case 'entityReferenceList': {
+      const refValues = value.split(',');
+
+      refValues.forEach((val) => {
+        cy.get('#entityReference').clear().type(`${val}`);
+        cy.get(`[data-testid="${val}"]`).click();
+      });
+
+      cy.get('[data-testid="inline-save-btn"]').click();
+
+      break;
+    }
 
     default:
       break;
@@ -240,6 +280,10 @@ export const setValueForProperty = (
     cy.get('[data-testid="time-interval-value"]').should('contain', endValue);
   } else if (propertyType === 'sqlQuery') {
     cy.get('.CodeMirror-scroll').should('contain', value);
+  } else if (
+    ['entityReference', 'entityReferenceList'].includes(propertyType)
+  ) {
+    // do nothing
   } else {
     cy.get(`[data-row-key="${propertyName}"]`).should(
       'contain',
@@ -268,6 +312,10 @@ export const validateValueForProperty = (
     cy.get('[data-testid="time-interval-value"]').should('contain', endValue);
   } else if (propertyType === 'sqlQuery') {
     cy.get('.CodeMirror-scroll').should('contain', value);
+  } else if (
+    ['entityReference', 'entityReferenceList'].includes(propertyType)
+  ) {
+    // do nothing
   } else {
     cy.get(`[data-row-key="${propertyName}"]`).should(
       'contain',
@@ -293,7 +341,7 @@ export const verifyCustomPropertyRows = () => {
   ).scrollIntoView();
   cy.get(
     '[data-testid="entity-right-panel"] [data-testid="custom-properties-table"] tbody tr'
-  ).should('have.length', 5);
+  ).should('have.length', 6);
 };
 
 export const deleteCustomProperties = (
@@ -466,7 +514,12 @@ export const editCreatedProperty = (propertyName: string, type?: string) => {
 
   cy.get('button[type="submit"]').scrollIntoView().click();
 
-  cy.wait('@checkPatchForDescription', { timeout: 15000 });
+  /**
+   * @link https://docs.cypress.io/guides/references/configuration#Timeouts
+   * default responseTimeout is 30000ms which is not enough for the patch request
+   * so we need to increase the responseTimeout to 50000ms
+   */
+  cy.wait('@checkPatchForDescription', { responseTimeout: 50000 });
 
   cy.get('.ant-modal-wrap').should('not.exist');
 
@@ -547,6 +600,15 @@ export const createCustomPropertyForEntity = (prop: string) => {
                               multiSelect: true,
                               values: ['small', 'medium', 'large'],
                             },
+                          },
+                        }
+                      : {}),
+                    ...(['entityReference', 'entityReferenceList'].includes(
+                      item.name
+                    )
+                      ? {
+                          customPropertyConfig: {
+                            config: ['user', 'team'],
                           },
                         }
                       : {}),
