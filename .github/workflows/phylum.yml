@@ -25,4 +25,5 @@ jobs:
             phylum-ci -vv \
             --depfile ingestion/setup.py \
             --depfile ingestion/pyproject.toml \
-            --depfile openmetadata-service/pom.xml
+            --depfile openmetadata-service/pom.xml \
+            --depfile openmetadata-ui/src/main/resources/ui/yarn.lock
