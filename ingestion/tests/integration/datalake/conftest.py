@@ -168,7 +168,11 @@ def setup_s3(request) -> None:
         key = os.path.relpath(path, resources_dir)
         request.cls.s3_keys.append(key)
         request.cls.s3_client.upload_file(Filename=path, Bucket=BUCKET_NAME, Key=key)
-
+    yield
+    bucket = s3.Bucket(BUCKET_NAME)
+    for key in bucket.objects.all():
+        key.delete()
+    bucket.delete()
 
 @pytest.fixture(scope="class")
 def run_ingestion(metadata):
