@@ -109,7 +109,7 @@ class WebAnalyticEntityViewReportDataProcessor(DataProcessor):
 
             entity_obj = EntityObj(split_url[0], split_url[1])
             entity_type = entity_obj.entity_type
-            re_pattern = re.compile(f"(.*{quote(f'{entity_type}/{entity_obj.fqn}')})")
+            re_pattern = re.compile((f"(.*{re.escape(entity_type)}/{re.escape(entity_obj.fqn)})"))
 
             if (
                 entity_obj.fqn in refined_data
@@ -118,11 +118,9 @@ class WebAnalyticEntityViewReportDataProcessor(DataProcessor):
                 # if we've seen the entity previously but were not able to get
                 # the URL we'll try again from the new event.
                 try:
-                    entity_href = unquote(
-                        re.search(
-                            re_pattern, quote(event.eventData.fullUrl.__root__)
-                        ).group(1)
-                    )
+                    entity_href = re.search(
+                        re_pattern, event.eventData.fullUrl.__root__
+                    ).group(1)
                     refined_data[entity_obj.fqn]["entityHref"] = entity_href
                 except IndexError:
                     logger.debug(f"Could not find entity Href for {entity_obj.fqn}")
@@ -173,11 +171,9 @@ class WebAnalyticEntityViewReportDataProcessor(DataProcessor):
                     )
 
                 try:
-                    entity_href = unquote(
-                        re.search(
-                            re_pattern, quote(event.eventData.fullUrl.__root__)
-                        ).group(1)
-                    )
+                    entity_href = re.search(
+                        re_pattern, event.eventData.fullUrl.__root__
+                    ).group(1)
                 except IndexError:
                     entity_href = None
 
