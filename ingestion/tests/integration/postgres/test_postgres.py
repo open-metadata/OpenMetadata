@@ -1,5 +1,4 @@
 import sys
-from urllib.error import HTTPError
 
 import pytest
 
@@ -246,7 +245,10 @@ def run_usage_workflow(db_service, metadata):
     workflow.raise_from_status()
 
 
-@pytest.mark.xfail(reason="'metadata.ingestion.lineage.sql_lineage.search_cache' get corrupted. see issue #")
+@pytest.mark.xfail(
+    reason="'metadata.ingestion.lineage.sql_lineage.search_cache' gets corrupted with invalid data."
+    " See issue https://github.com/open-metadata/OpenMetadata/issues/16408"
+)
 def test_ingest_delete_usage(db_service, ingest_lineage, metadata):
     workflow_config = {
         "source": {
