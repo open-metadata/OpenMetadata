@@ -1,5 +1,6 @@
 package org.openmetadata.service.security.auth;
 
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.NOT_IMPLEMENTED_METHOD;
 import static org.openmetadata.service.util.UserUtil.getRoleListFromUser;
 
@@ -106,7 +107,7 @@ public interface AuthenticatorHandler {
             .generateJWTToken(
                 storedUser.getName(),
                 getRoleListFromUser(storedUser),
-                storedUser.getIsAdmin(),
+                !nullOrEmpty(storedUser.getIsAdmin()) && storedUser.getIsAdmin(),
                 storedUser.getEmail(),
                 expireInSeconds,
                 false,
