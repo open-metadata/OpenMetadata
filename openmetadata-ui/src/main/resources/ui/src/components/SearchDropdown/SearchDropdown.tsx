@@ -272,6 +272,7 @@ const SearchDropdown: FC<SearchDropdownProps> = ({
               <div className="d-flex items-center m-x-sm m-y-xs gap-2">
                 <Checkbox
                   checked={nullOptionSelected}
+                  className="d-flex flex-1"
                   data-testid="no-option-checkbox"
                   onChange={(e) => setNullOptionSelected(e.target.checked)}>
                   {nullLabelText}

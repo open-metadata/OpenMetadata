@@ -11,12 +11,19 @@
  *  limitations under the License.
  */
 
-import { searchAndClickOnOption } from '../../common/advancedSearchQuickFilters';
+import {
+  searchAndClickOnOption,
+  selectNullOption,
+} from '../../common/advancedSearchQuickFilters';
 import { interceptURL, verifyResponseStatusCode } from '../../common/common';
 import { goToAdvanceSearch } from '../../common/Utils/AdvancedSearch';
 import { visitEntityDetailsPage } from '../../common/Utils/Entity';
 import { addOwner, removeOwner } from '../../common/Utils/Owner';
-import { QUICK_FILTERS_BY_ASSETS } from '../../constants/advancedSearchQuickFilters.constants';
+import {
+  FilterItem,
+  QUICK_FILTERS_BY_ASSETS,
+  SUPPORTED_EMPTY_FILTER_FIELDS,
+} from '../../constants/advancedSearchQuickFilters.constants';
 import { SEARCH_ENTITY_TABLE } from '../../constants/constants';
 import { SidebarItem } from '../../constants/Entity.interface';
 const ownerName = 'Aaron Johnson';
@@ -75,8 +82,8 @@ describe(
       cy.get(`[data-testid="${asset.tab}"]`).scrollIntoView().click();
 
       asset.filters
-        .filter((item) => item.select)
-        .map((filter) => {
+        .filter((item: FilterItem) => item.select)
+        .map((filter: FilterItem) => {
           cy.get(`[data-testid="search-dropdown-${filter.label}"]`).click();
           searchAndClickOnOption(asset, filter, true);
 
@@ -91,6 +98,47 @@ describe(
           cy.get('[data-testid="update-btn"]').click();
 
           verifyResponseStatusCode('@querySearchAPI', 200);
+        });
+    });
+
+    it('should search for empty or null filters', () => {
+      const initialQuery = encodeURI(JSON.stringify({ query: { bool: {} } }));
+      // Table
+      interceptURL(
+        'GET',
+        `/api/v1/search/query?*index=table_search_index&*query_filter=${initialQuery}&*`,
+        'initialQueryAPI'
+      );
+
+      const asset = QUICK_FILTERS_BY_ASSETS[0];
+      cy.sidebarClick(SidebarItem.EXPLORE);
+      verifyResponseStatusCode('@initialQueryAPI', 200);
+      cy.get(`[data-testid="${asset.tab}"]`).scrollIntoView().click();
+      asset.filters
+        .filter((item) => SUPPORTED_EMPTY_FILTER_FIELDS.includes(item.key))
+        .map((filter) => {
+          selectNullOption(asset, filter);
+        });
+    });
+
+    it('should search for multiple values alongwith null filters', () => {
+      const initialQuery = encodeURI(JSON.stringify({ query: { bool: {} } }));
+      // Table
+      interceptURL(
+        'GET',
+        `/api/v1/search/query?*index=table_search_index&*query_filter=${initialQuery}&*`,
+        'initialQueryAPI'
+      );
+
+      const asset = QUICK_FILTERS_BY_ASSETS[0];
+      cy.sidebarClick(SidebarItem.EXPLORE);
+      verifyResponseStatusCode('@initialQueryAPI', 200);
+      cy.get(`[data-testid="${asset.tab}"]`).scrollIntoView().click();
+      // Checking Owner with multiple values
+      asset.filters
+        .filter((item) => item.key === 'owner.displayName.keyword')
+        .map((filter: FilterItem) => {
+          selectNullOption(asset, filter, filter?.selectOption1);
         });
     });
   }

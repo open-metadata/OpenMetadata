@@ -43,9 +43,9 @@ import SortingDropDown from '../../components/Explore/SortingDropDown';
 import { NULL_OPTION_KEY } from '../../constants/AdvancedSearch.constants';
 import {
   SEARCH_INDEXING_APPLICATION,
+  SUPPORTED_EMPTY_FILTER_FIELDS,
   TAG_FQN_KEY,
 } from '../../constants/explore.constants';
-import { EntityFields } from '../../enums/AdvancedSearch.enum';
 import { ERROR_PLACEHOLDER_TYPE, SORT_ORDER } from '../../enums/common.enum';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
 import { QueryFieldInterface } from '../../pages/ExplorePage/ExplorePage.interface';
@@ -329,12 +329,7 @@ const ExploreV1: React.FC<ExploreProps> = ({
                       <ExploreQuickFilters
                         aggregations={aggregations}
                         fields={selectedQuickFilters}
-                        fieldsWithNullValues={[
-                          EntityFields.OWNER,
-                          EntityFields.DOMAIN,
-                          EntityFields.TIER,
-                          EntityFields.TAG,
-                        ]}
+                        fieldsWithNullValues={SUPPORTED_EMPTY_FILTER_FIELDS}
                         index={activeTabKey}
                         showDeleted={showDeleted}
                         onAdvanceSearch={() => toggleModal(true)}

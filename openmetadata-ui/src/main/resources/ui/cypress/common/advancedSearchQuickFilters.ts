@@ -36,6 +36,62 @@ export const searchAndClickOnOption = (asset, filter, checkedAfterClick) => {
   );
 };
 
+export const selectNullOption = (asset, filter, existingValue?: any) => {
+  const queryFilter = JSON.stringify({
+    query: {
+      bool: {
+        must: [
+          {
+            bool: {
+              should: [
+                {
+                  bool: {
+                    must_not: {
+                      exists: { field: `${filter.key}` },
+                    },
+                  },
+                },
+                ...(existingValue
+                  ? [
+                      {
+                        term: {
+                          [filter.key]: Cypress._.toLower(existingValue),
+                        },
+                      },
+                    ]
+                  : []),
+              ],
+            },
+          },
+        ],
+      },
+    },
+  });
+
+  const querySearchURL = `api/v1/search/query?*index=${asset.searchIndex}*`;
+  const alias = `querySearchAPI${filter.label}`;
+  cy.get(`[data-testid="search-dropdown-${filter.label}"]`)
+    .scrollIntoView()
+    .click();
+
+  cy.get(`[data-testid="no-option-checkbox"]`).click();
+
+  if (existingValue) {
+    searchAndClickOnOption(asset, filter, true);
+  }
+
+  interceptURL('GET', querySearchURL, alias);
+  cy.get('[data-testid="update-btn"]').click();
+
+  cy.wait(`@${alias}`).then((xhr) => {
+    const actualQueryFilter = xhr.request.query['query_filter'] as string;
+
+    expect(actualQueryFilter).to.deep.equal(queryFilter);
+  });
+
+  cy.get(`[data-testid="clear-filters"]`).scrollIntoView().click();
+};
+
 export const checkCheckboxStatus = (boxId, isChecked) => {
   cy.get(`[data-testid="${boxId}"]`)
     .should('exist')
