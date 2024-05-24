@@ -305,6 +305,54 @@ describe('TestDetailsPageV1 component', () => {
     expect(screen.queryByText('label.view-definition')).not.toBeInTheDocument();
   });
 
+  it('TableDetailsPageV1 should dbt tab for rawSql, when sql is empty', async () => {
+    (usePermissionProvider as jest.Mock).mockImplementationOnce(() => ({
+      getEntityPermissionByFqn: jest.fn().mockImplementationOnce(() => ({
+        ViewBasic: true,
+      })),
+    }));
+
+    (getTableDetailsByFQN as jest.Mock).mockImplementationOnce(() =>
+      Promise.resolve({
+        name: 'test',
+        id: '123',
+        tableFqn: 'fqn',
+        dataModel: { sql: '', rawSql: 'rawSql' },
+      })
+    );
+
+    await act(async () => {
+      render(<TableDetailsPageV1 />);
+    });
+
+    expect(await screen.findByText('label.dbt-lowercase')).toBeInTheDocument();
+    expect(screen.queryByText('label.view-definition')).not.toBeInTheDocument();
+  });
+
+  it('TableDetailsPageV1 should dbt tab for rawSql, when there is no sql available', async () => {
+    (usePermissionProvider as jest.Mock).mockImplementationOnce(() => ({
+      getEntityPermissionByFqn: jest.fn().mockImplementationOnce(() => ({
+        ViewBasic: true,
+      })),
+    }));
+
+    (getTableDetailsByFQN as jest.Mock).mockImplementationOnce(() =>
+      Promise.resolve({
+        name: 'test',
+        id: '123',
+        tableFqn: 'fqn',
+        dataModel: { rawSql: 'rawSql' },
+      })
+    );
+
+    await act(async () => {
+      render(<TableDetailsPageV1 />);
+    });
+
+    expect(await screen.findByText('label.dbt-lowercase')).toBeInTheDocument();
+    expect(screen.queryByText('label.view-definition')).not.toBeInTheDocument();
+  });
+
   it('TableDetailsPageV1 should render schema definition tab table type is not view', async () => {
     (usePermissionProvider as jest.Mock).mockImplementationOnce(() => ({
       getEntityPermissionByFqn: jest.fn().mockImplementationOnce(() => ({
@@ -325,6 +373,7 @@ describe('TestDetailsPageV1 component', () => {
     });
 
     expect(screen.getByText('label.schema-definition')).toBeInTheDocument();
+    expect(screen.queryByText('label.dbt-lowercase')).not.toBeInTheDocument();
   });
 
   it('TableDetailsPageV1 should render view definition tab if table type is view', async () => {
