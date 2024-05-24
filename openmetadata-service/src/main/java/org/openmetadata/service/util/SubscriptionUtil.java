@@ -57,6 +57,7 @@ import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.UserRepository;
 import org.openmetadata.service.resources.feeds.MessageParser;
+import org.openmetadata.service.security.SecurityUtil;
 
 @Slf4j
 public class SubscriptionUtil {
@@ -367,9 +368,14 @@ public class SubscriptionUtil {
       ChangeEvent event) {
     List<Invocation.Builder> targets = new ArrayList<>();
     for (String url : getTargetsForAlert(action, category, type, event)) {
-      targets.add(client.target(url).request());
+      targets.add(appendHeadersToTarget(client, url));
     }
     return targets;
+  }
+
+  public static Invocation.Builder appendHeadersToTarget(Client client, String uri) {
+    Map<String, String> authHeaders = SecurityUtil.authHeaders("admin@open-metadata.org");
+    return SecurityUtil.addHeaders(client.target(uri), authHeaders);
   }
 
   public static void postWebhookMessage(

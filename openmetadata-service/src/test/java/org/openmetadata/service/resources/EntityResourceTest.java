@@ -454,9 +454,18 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
 
     if (runWebhookTests) {
       webhookCallbackResource.clearEvents();
+      slackCallbackResource.clearEvents();
+      teamsCallbackResource.clearEvents();
+
       EventSubscriptionResourceTest alertResourceTest = new EventSubscriptionResourceTest();
       alertResourceTest.startWebhookSubscription();
       alertResourceTest.startWebhookEntitySubscriptions(entityType);
+
+      alertResourceTest.startSlackSubscription();
+      alertResourceTest.startSlackEntitySubscriptions(entityType);
+
+      alertResourceTest.startMSTeamsSubscription();
+      alertResourceTest.startMSTeamsEntitySubscription(entityType);
     }
   }
 
@@ -466,6 +475,12 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
       EventSubscriptionResourceTest alertResourceTest = new EventSubscriptionResourceTest();
       alertResourceTest.validateWebhookEvents();
       alertResourceTest.validateWebhookEntityEvents(entityType);
+
+      alertResourceTest.validateSlackEvents();
+      alertResourceTest.validateSlackEntityEvents(entityType);
+
+      alertResourceTest.validateMSTeamsEvents();
+      alertResourceTest.validateMSTeamsEntityEvents(entityType);
     }
     delete_recursiveTest();
   }
@@ -3105,6 +3120,21 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
       throws HttpResponseException {
     WebTarget target = getResource(id).path("/versions");
     return TestUtils.get(target, EntityHistory.class, authHeaders);
+  }
+
+  protected ResultList<ChangeEvent> getChangeEvents(
+      String entityCreated,
+      String entityUpdated,
+      String entityRestored,
+      String entityDeleted,
+      Map<String, String> authHeaders)
+      throws HttpResponseException {
+    WebTarget target = getResource("events");
+    target = entityCreated == null ? target : target.queryParam("entityCreated", entityCreated);
+    target = entityUpdated == null ? target : target.queryParam("entityUpdated", entityUpdated);
+    target = entityUpdated == null ? target : target.queryParam("entityRestored", entityRestored);
+    target = entityDeleted == null ? target : target.queryParam("entityDeleted", entityDeleted);
+    return TestUtils.get(target, EventList.class, authHeaders);
   }
 
   protected ResultList<ChangeEvent> getChangeEvents(
