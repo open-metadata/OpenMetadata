@@ -26,7 +26,7 @@ VERSIONS = {
     "geoalchemy2": "GeoAlchemy2~=0.12",
     "google-cloud-storage": "google-cloud-storage==1.43.0",
     "gcsfs": "gcsfs~=2022.11",
-    "great-expectations": "great-expectations~=0.18.0",
+    "great-expectations": "great-expectations>=0.18.0,<0.18.14",
     "grpc-tools": "grpcio-tools>=1.47.2",
     "msal": "msal~=1.2",
     "neo4j": "neo4j~=5.3.0",
@@ -108,7 +108,7 @@ base_requirements = {
     VERSIONS["pymysql"],
     "python-dateutil>=2.8.1",
     "PyYAML~=6.0",
-    "requests>=2.23, <2.32",
+    "requests>=2.23",
     "requests-aws4auth~=1.1",  # Only depends on requests as external package. Leaving as base.
     "sqlalchemy>=1.4.0,<2",
     "collate-sqllineage~=1.4.0",
@@ -324,6 +324,7 @@ test = {
     "minio==7.2.5",
     *plugins["mlflow"],
     *plugins["datalake-s3"],
+    "requests==2.31.0",
 }
 
 e2e_test = {

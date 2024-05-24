@@ -195,7 +195,7 @@ const EditTestCaseModal: React.FC<EditTestCaseModalProps> = ({
       );
       form.setFieldsValue({
         name: testCase?.name,
-        testDefinition: testCase?.testDefinition?.name,
+        testDefinition: testCaseDetails?.testDefinition?.name,
         displayName: testCase?.displayName,
         params: getParamsValue(definition),
         table: getNameFromFQN(tableFqn),

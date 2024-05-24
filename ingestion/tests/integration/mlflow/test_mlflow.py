@@ -47,8 +47,6 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 )
 from metadata.workflow.metadata import MetadataWorkflow
 
-from ..integration_base import int_admin_ometa
-
 MODEL_HYPERPARAMS = {
     "alpha": {"name": "alpha", "value": "0.5", "description": None},
     "l1_ratio": {"name": "l1_ratio", "value": "1.0", "description": None},
@@ -80,7 +78,7 @@ def create_data(mlflow_environment):
     np.random.seed(40)
 
     # Read the wine-quality csv file from the URL
-    csv_url = "http://archive.ics.uci.edu/ml/machine-learning-databases/wine-quality/winequality-red.csv"
+    csv_url = "https://raw.githubusercontent.com/open-metadata/openmetadata-demo/main/resources/winequality-red.csv"
     data = pd.read_csv(csv_url, sep=";")
 
     # Split the data into training and test sets. (0.75, 0.25) split.
@@ -128,11 +126,6 @@ def create_data(mlflow_environment):
             )
         else:
             mlflow.sklearn.log_model(lr, "model")
-
-
-@pytest.fixture(scope="module")
-def metadata():
-    return int_admin_ometa()
 
 
 @pytest.fixture(scope="module")
