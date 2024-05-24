@@ -85,7 +85,8 @@
     },
     "isAdmin": {
       "description": "When true indicates user is an administrator for the system with superuser privileges.",
-      "type": "boolean"
+      "type": "boolean",
+      "default": false
     },
     "authenticationMechanism": {
       "$ref": "#/definitions/authenticationMechanism"
