@@ -12,7 +12,7 @@
  *  limitations under the License.
  */
 
-import { Alert, Button, Col, Divider, Drawer, Row, Typography } from 'antd';
+import { Button, Col, Divider, Drawer, Row, Typography } from 'antd';
 import classNames from 'classnames';
 import { isEmpty, toString } from 'lodash';
 import React, { forwardRef, useEffect, useMemo } from 'react';
@@ -30,6 +30,7 @@ import {
 } from '../../../utils/EntityVersionUtils';
 import UserPopOverCard from '../../common/PopOverCard/UserPopOverCard';
 import CloseIcon from '../../Modals/CloseIcon.component';
+import './entity-version-timeline.less';
 import {
   EntityVersionButtonProps,
   EntityVersionTimelineProps,
@@ -143,36 +144,38 @@ const EntityVersionTimeLine: React.FC<EntityVersionTimelineProps> = ({
     const hiddenVersions = versionList.versions?.slice(maxVersions) ?? [];
 
     return (
-      <div className="relative">
+      <div className="relative h-full">
+        {versions.length && (
+          <div className="timeline-content cursor-pointer">
+            <div className="timeline-wrapper">
+              <span className="timeline-line-se" />
+            </div>
+          </div>
+        )}
+
         {versions?.map((v) => {
           return renderVersionButton(v, currentVersion, versionHandler);
         })}
         {hiddenVersions?.length && (
-          <div className="relative">
-            {hiddenVersions.map((v) =>
-              renderVersionButton(v, currentVersion, versionHandler)
-            )}
-            <div
-              style={{
-                position: 'absolute',
-                height: '100%',
-                width: '100%',
-                left: 0,
-                bottom: 0,
-              }}>
-              <Alert
-                showIcon
-                action={
-                  <Button danger size="small">
-                    Upgrade Now
-                  </Button>
-                }
-                description=""
-                message="Limit reached"
-                type="info"
-              />
+          <>
+            <div className="version-hidden">
+              {hiddenVersions.map((v) =>
+                renderVersionButton(v, currentVersion, versionHandler)
+              )}
             </div>
-          </div>
+            <div className="version-pricing-reached">
+              <Typography.Title className="font-medium" level={4}>
+                {`UNLOCK ALL ${versionList.versions?.length} VERSIONS`}
+              </Typography.Title>
+              <Typography.Text className="text-grey-muted font-normal">
+                Upgrade to paid plan for access to all of your version history.
+              </Typography.Text>
+
+              <Button block type="primary">
+                SEE UPGRADE OPTIONS
+              </Button>
+            </div>
+          </>
         )}
       </div>
     );

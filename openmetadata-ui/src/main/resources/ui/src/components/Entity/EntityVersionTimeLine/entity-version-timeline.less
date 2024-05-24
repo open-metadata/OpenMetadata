@@ -1,5 +1,5 @@
 /*
- *  Copyright 2023 Collate.
+ *  Copyright 2024 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -10,25 +10,34 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
-@import (reference) url('../../styles/variables.less');
-
-.page-not-found-container {
-  position: relative;
-  height: calc(100vh - 64px);
-
-  .not-found-text-image {
+.versions-list-container {
+  .version-pricing-reached {
+    background: #f3f7fd;
+    border: 1px solid #349dea;
+    border-radius: 10px;
+    text-align: center;
+    padding: 24px;
     position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
+    bottom: 0;
+    box-sizing: border-box;
+
+    button {
+      margin-top: 30px;
+    }
   }
 
-  .text-column {
-    background-color: @background-color;
-  }
+  .version-hidden {
+    mask-image: linear-gradient(
+      to bottom,
+      rgba(0, 0, 0, 0.9),
+      rgba(0, 0, 0, 0)
+    );
+    filter: blur(2px);
 
-  .image-column {
-    background-color: @body-bg-color;
+    .timeline-content {
+      pointer-events: none;
+      cursor: not-allowed;
+      user-select: none;
+    }
   }
 }

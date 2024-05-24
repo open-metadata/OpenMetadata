@@ -928,7 +928,8 @@ export const getCommonDiffsFromVersionData = (
 export const renderVersionButton = (
   version: string,
   current: string,
-  versionHandler: (version: string) => void
+  versionHandler: (version: string) => void,
+  className?: string
 ) => {
   const currV = JSON.parse(version);
 
@@ -943,15 +944,8 @@ export const renderVersionButton = (
 
   return (
     <Fragment key={currV.version}>
-      {/* {i === 0 ? (
-        <div className="timeline-content cursor-pointer">
-          <div className="timeline-wrapper">
-            <span className="timeline-line-se" />
-          </div>
-        </div>
-      ) : null} */}
-
       <VersionButton
+        className={className}
         isMajorVersion={majorVersionChecks()}
         selected={toString(currV.version) === current}
         version={currV}
