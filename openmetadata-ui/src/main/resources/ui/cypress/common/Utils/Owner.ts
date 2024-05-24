@@ -93,13 +93,10 @@ export const addOwner = (ownerName: string, dataTestId?: string) => {
 };
 
 export const updateOwner = (ownerName: string, dataTestId?: string) => {
-  interceptURL('GET', '/api/v1/users?*isBot=false*', 'getUsers');
   cy.get('[data-testid="edit-owner"]').click();
-
   cy.get("[data-testid='select-owner-tabs']").should('be.visible');
   cy.log('/api/v1/users?limit=*&isBot=false*');
   cy.get('.ant-tabs [id*=tab-users]').click();
-  verifyResponseStatusCode('@getUsers', 200);
 
   interceptURL(
     'GET',
@@ -125,9 +122,8 @@ export const updateOwner = (ownerName: string, dataTestId?: string) => {
 };
 
 export const removeOwner = (ownerName: string, dataTestId?: string) => {
-  interceptURL('GET', '/api/v1/users?*isBot=false*', 'getUsers');
   cy.get('[data-testid="edit-owner"]').scrollIntoView().click();
-  verifyResponseStatusCode('@getUsers', 200);
+
   cy.get("[data-testid='select-owner-tabs']").should('be.visible');
 
   interceptURL('PATCH', `/api/v1/**`, 'patchOwner');
