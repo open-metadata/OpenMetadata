@@ -30,6 +30,7 @@ from metadata.generated.schema.metadataIngestion.workflow import (
     SourceConfig,
     WorkflowConfig,
 )
+from metadata.ingestion.lineage.sql_lineage import search_cache
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.workflow.metadata import MetadataWorkflow
 
@@ -143,5 +144,6 @@ def ingest_metadata(db_service, metadata: OpenMetadata):
         workflowConfig=WorkflowConfig(openMetadataServerConfig=metadata.config),
     )
     metadata_ingestion = MetadataWorkflow.create(workflow_config)
+    search_cache.clear()
     metadata_ingestion.execute()
     metadata_ingestion.raise_from_status()

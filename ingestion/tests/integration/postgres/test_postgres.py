@@ -35,6 +35,7 @@ from metadata.generated.schema.metadataIngestion.workflow import (
     SourceConfig,
     WorkflowConfig,
 )
+from metadata.ingestion.lineage.sql_lineage import search_cache
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.profiler.api.models import ProfilerProcessorConfig
 from metadata.workflow.metadata import MetadataWorkflow
@@ -130,6 +131,7 @@ def run_profiler_workflow(ingest_metadata, db_service, metadata):
         ),
     )
     metadata_ingestion = ProfilerWorkflow.create(workflow_config.dict())
+    search_cache.clear()
     metadata_ingestion.execute()
     return
 
@@ -165,6 +167,7 @@ def ingest_query_usage(ingest_metadata, db_service, metadata):
         },
     }
     workflow = UsageWorkflow.create(workflow_config)
+    search_cache.clear()
     workflow.execute()
     workflow.raise_from_status()
     return
