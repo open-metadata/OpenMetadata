@@ -27,6 +27,7 @@ export interface ResourceLimit {
     };
     limitReached: boolean;
     currentCount: number;
+    name: string;
   }>;
 }
 
@@ -44,6 +45,7 @@ export type LimitConfig = {
       featureLimits: Array<{
         name: string;
         maxVersions: number;
+        versionHistory: number;
         limits: {
           softLimit: number;
           hardLimit: number;
