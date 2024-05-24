@@ -868,6 +868,16 @@ describe(
 
       verifyResponseStatusCode('@testCaseDefinition', 200);
       cy.get('#tableTestForm_displayName').type('Table test case display name');
+      cy.get('#tableTestForm_table').should(
+        'have.value',
+        DATABASE_SERVICE.entity.name
+      );
+      cy.get('#tableTestForm_column').should('have.value', 'email');
+      cy.get('#tableTestForm_name').should('have.value', testCase2.name);
+      cy.get('#tableTestForm_testDefinition').should(
+        'have.value',
+        testCase2.testDefinition
+      );
       cy.get('.ant-modal-footer').contains('Submit').click();
       cy.wait('@updateTestCase').then((interception) => {
         const { body } = interception.request;
