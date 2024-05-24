@@ -12,6 +12,7 @@
  */
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import React from 'react';
+import LimitWrapper from '../../../../../hoc/LimitWrapper';
 import { MOCK_TABLE } from '../../../../../mocks/TableData.mock';
 import { useTableProfiler } from '../TableProfilerProvider';
 import { QualityTab } from './QualityTab.component';
@@ -101,6 +102,15 @@ jest.mock('../../DataQualityTab/DataQualityTab', () => {
   return jest
     .fn()
     .mockImplementation(() => <div>DataQualityTab.component</div>);
+});
+
+jest.mock('../../../../../hoc/LimitWrapper', () => {
+  return jest.fn().mockImplementation(({ children }) => (
+    <div>
+      <p>LimitWrapper</p>
+      {children}
+    </div>
+  ));
 });
 
 describe('QualityTab', () => {
@@ -228,5 +238,18 @@ describe('QualityTab', () => {
     expect(await screen.findByText('label.total-entity')).toBeInTheDocument();
     expect(await screen.findByText('label.success')).toBeInTheDocument();
     expect(await screen.findByText('label.aborted')).toBeInTheDocument();
+  });
+
+  it('should call limitWrapper', async () => {
+    await act(async () => {
+      render(<QualityTab />);
+      fireEvent.click(await screen.findByTestId('profiler-add-table-test-btn'));
+    });
+
+    expect(LimitWrapper).toHaveBeenCalledWith(
+      expect.objectContaining({ resource: 'dataQuality' }),
+      {}
+    );
+    expect(await screen.findByText('LimitWrapper')).toBeInTheDocument();
   });
 });

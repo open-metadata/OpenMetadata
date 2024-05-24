@@ -265,6 +265,7 @@ const BotListV1 = ({
           <Space align="end" size={5}>
             <Switch
               checked={showDeleted}
+              data-testid="switch-deleted"
               id="switch-deleted"
               onClick={handleShowDeleted}
             />
