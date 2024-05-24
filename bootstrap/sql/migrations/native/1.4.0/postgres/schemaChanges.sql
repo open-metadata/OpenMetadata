@@ -141,6 +141,8 @@ SET json = jsonb_set(
 )
 WHERE serviceType IN ('Mysql', 'Doris') AND json#>'{connection,config,sslKey}' IS NOT NULL;
 
+
+
 UPDATE dbservice_entity
 SET json = jsonb_set(
   json #-'{connection,config,metastoreConnection,sslCert}',
@@ -188,6 +190,44 @@ SET json = jsonb_set(
   jsonb_build_object('caCertificate', json#>'{connection,config,connection,sslConfig,certificatePath}')
 )
 WHERE serviceType IN ('Superset') AND json#>'{connection,config,connection,type}' = '"Postgres"' AND json#>'{connection,config,connection,sslConfig,certificatePath}' IS NOT NULL;
+
+
+UPDATE pipeline_service_entity
+SET json = jsonb_set(
+  json #-'{connection,config,connection,sslConfig,certificatePath}',
+  '{connection,config,connection,sslConfig}',
+  jsonb_build_object('caCertificate', json#>'{connection,config,connection,sslConfig,certificatePath}')
+)
+WHERE serviceType IN ('Airflow') AND json#>'{connection,config,connection,type}' = '"Postgres"' AND json#>'{connection,config,connection,sslConfig,certificatePath}' IS NOT NULL;
+
+UPDATE dashboard_service_entity
+SET json = jsonb_set(
+  json #-'{connection,config,certificates,rootCertificateData}',
+  '{connection,config,certificates,sslConfig}',
+  jsonb_build_object('caCertificate', json#>'{connection,config,certificates,rootCertificateData}')
+)
+WHERE serviceType IN ('QlikSense') AND json#>'{connection,config,certificates,rootCertificateData}' IS NOT NULL;
+
+UPDATE dashboard_service_entity
+SET json = jsonb_set(
+  json #-'{connection,config,certificates,clientCertificateData}',
+  '{connection,config,certificates,sslConfig}',
+  json#>'{connection,config,certificates,sslConfig}' || jsonb_build_object('sslCertificate', json#>'{connection,config,certificates,clientCertificateData}')
+)
+WHERE serviceType IN ('QlikSense') AND json#>'{connection,config,certificates,clientCertificateData}' IS NOT NULL;
+
+UPDATE dashboard_service_entity
+SET json = jsonb_set(
+  json #-'{connection,config,certificates,clientKeyCertificateData}',
+  '{connection,config,certificates,sslConfig}',
+  json#>'{connection,config,certificates,sslConfig}' || jsonb_build_object('sslKey', json#>'{connection,config,certificates,clientKeyCertificateData}')
+)
+WHERE serviceType IN ('QlikSense') AND json#>'{connection,config,certificates,clientKeyCertificateData}' IS NOT NULL;
+
+
+update dashboard_service_entity 
+set json = json #-'{connection,config,certificates,stagingDir}'
+WHERE serviceType IN ('QlikSense') AND json#>'{connection,config,certificates,stagingDir}' IS NOT NULL;
 
 UPDATE dashboard_service_entity
 SET json = jsonb_set(
