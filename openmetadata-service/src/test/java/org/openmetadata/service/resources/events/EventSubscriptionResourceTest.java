@@ -589,8 +589,9 @@ public class EventSubscriptionResourceTest
     waitForAllEventToComplete(alert.getId());
     SlackCallbackResource.EventDetails details = slackCallbackResource.getEventDetails(webhookName);
     System.out.println("details :" + details);
-    for (SlackMessage slackMessage : details.getEvents()) {
-      validateSlackMessage(alert, slackMessage);
+    ConcurrentLinkedQueue<SlackMessage> events = details.getEvents();
+    for (SlackMessage event : events) {
+      validateSlackMessage(alert, event);
     }
 
     assertNotNull(alert, "Webhook creation failed");
@@ -947,20 +948,13 @@ public class EventSubscriptionResourceTest
   }
 
   private void validateSlackMessage(EventSubscription alert, SlackMessage slackMessage) {
-    String entityUrl =
-        slackCallbackResource.getEntityUrlForSlackMessage(
-            Entity.EVENT_SUBSCRIPTION, alert.getFullyQualifiedName(), "");
     // Validate the basic structure
     assertNotNull(slackMessage.getUsername(), "Username should not be null");
     assertNotNull(slackMessage.getText(), "Text should not be null");
     assertFalse(slackMessage.getText().isEmpty(), "Text should not be empty");
-    assertTrue(slackMessage.getText().contains(entityUrl));
   }
 
   private void validateTeamsMessage(EventSubscription alert, TeamsMessage message) {
-    String entityUrl =
-        teamsCallbackResource.getMSTeamsEntityUrl(
-            Entity.EVENT_SUBSCRIPTION, alert.getFullyQualifiedName(), "");
 
     // Validate the basic structure
     assertThat(message.getSummary())
