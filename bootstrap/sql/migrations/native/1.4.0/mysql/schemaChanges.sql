@@ -277,7 +277,14 @@ where serviceType = 'Airflow'
   AND JSON_EXTRACT(json, '$.connection.config.connection.type') = 'Mysql'
   AND JSON_EXTRACT(json, '$.connection.config.connection.sslCA') IS NOT NULL;
 
-
+UPDATE pipeline_service_entity
+SET json = JSON_INSERT(
+JSON_REMOVE(json, '$.connection.config.connection.sslConfig.certificatePath'), 
+'$.connection.config.connection.sslConfig.caCertificate', 
+JSON_EXTRACT(json, '$.connection.config.connection.sslConfig.certificatePath'))
+where serviceType = 'Airflow'
+  AND JSON_EXTRACT(json, '$.connection.config.connection.type') = 'Postgres'
+  AND JSON_EXTRACT(json, '$.connection.config.connection.sslConfig.certificatePath') IS NOT NULL;
 
 UPDATE pipeline_service_entity  
 SET json = JSON_INSERT(
