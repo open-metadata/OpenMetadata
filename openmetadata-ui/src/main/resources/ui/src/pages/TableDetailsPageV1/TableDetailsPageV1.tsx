@@ -15,7 +15,7 @@ import { Col, Row, Space, Tabs, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { compare } from 'fast-json-patch';
-import { isEmpty, isEqual, isUndefined } from 'lodash';
+import { get, isEmpty, isEqual, isUndefined } from 'lodash';
 import { EntityTags } from 'Models';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -408,12 +408,7 @@ const TableDetailsPageV1: React.FC = () => {
       }
       const updatedTableDetails = {
         ...tableDetails,
-        owner: newOwner
-          ? {
-              ...owner,
-              ...newOwner,
-            }
-          : undefined,
+        owner: newOwner,
       };
       await onTableUpdate(updatedTableDetails, 'owner');
     },
@@ -740,15 +735,14 @@ const TableDetailsPageV1: React.FC = () => {
           <TabsLabel id={EntityTabs.DBT} name={t('label.dbt-lowercase')} />
         ),
         isHidden: !(
-          tableDetails?.dataModel?.sql ?? tableDetails?.dataModel?.rawSql
+          tableDetails?.dataModel?.sql || tableDetails?.dataModel?.rawSql
         ),
         key: EntityTabs.DBT,
         children: (
           <QueryViewer
             sqlQuery={
-              tableDetails?.dataModel?.sql ??
-              tableDetails?.dataModel?.rawSql ??
-              ''
+              get(tableDetails, 'dataModel.sql', '') ||
+              get(tableDetails, 'dataModel.rawSql', '')
             }
             title={
               <Space className="p-y-xss">
