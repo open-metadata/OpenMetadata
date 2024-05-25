@@ -156,7 +156,7 @@ const EntityVersionTimeLine: React.FC<EntityVersionTimelineProps> = ({
         {versions?.map((v) => {
           return renderVersionButton(v, currentVersion, versionHandler);
         })}
-        {hiddenVersions?.length && (
+        {hiddenVersions?.length ? (
           <>
             <div className="version-hidden">
               {hiddenVersions.map((v) =>
@@ -176,7 +176,7 @@ const EntityVersionTimeLine: React.FC<EntityVersionTimelineProps> = ({
               </Button>
             </div>
           </>
-        )}
+        ) : null}
       </div>
     );
   }, [versionList, currentVersion, versionHandler]);

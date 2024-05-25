@@ -199,6 +199,7 @@ const DataModelVersion: FC<DataModelVersionProp> = ({
 
         <EntityVersionTimeLine
           currentVersion={version}
+          entityType={EntityType.DASHBOARD_DATA_MODEL}
           versionHandler={versionHandler}
           versionList={versionList}
           onBack={backHandler}
