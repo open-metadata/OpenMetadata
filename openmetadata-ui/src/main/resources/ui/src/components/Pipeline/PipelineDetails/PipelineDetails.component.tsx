@@ -225,7 +225,7 @@ const PipelineDetails = ({
     async (newOwner?: Pipeline['owner']) => {
       const updatedPipelineDetails = {
         ...pipelineDetails,
-        owner: newOwner ? { ...owner, ...newOwner } : undefined,
+        owner: newOwner,
       };
       await settingsUpdateHandler(updatedPipelineDetails);
     },

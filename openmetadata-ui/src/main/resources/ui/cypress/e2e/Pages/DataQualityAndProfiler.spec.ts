@@ -25,6 +25,7 @@ import {
   DATA_QUALITY_TEST_CASE_DATA,
   prepareDataQualityTestCases,
 } from '../../common/Utils/DataQuality';
+import { addDomainToEntity } from '../../common/Utils/Domain';
 import { visitEntityDetailsPage } from '../../common/Utils/Entity';
 import {
   handleIngestionRetry,
@@ -48,8 +49,16 @@ import { GlobalSettingOptions } from '../../constants/settings.constant';
 
 const OWNER1 = 'Aaron Johnson';
 const OWNER2 = 'Cynthia Meyer';
-const { testCase1, testCase2, filterTable, filterTableTestCases, customTable } =
-  DATA_QUALITY_TEST_CASE_DATA;
+const {
+  testCase1,
+  testCase2,
+  filterTable,
+  filterTable2,
+  filterTableTestCases,
+  filterTable2TestCases,
+  customTable,
+  domainDetail,
+} = DATA_QUALITY_TEST_CASE_DATA;
 const TEAM_ENTITY = customTable.name;
 const serviceName = DATABASE_SERVICE.service.name;
 const goToProfilerTab = (data?: { service: string; entityName: string }) => {
@@ -111,7 +120,12 @@ describe(
         createEntityTable({
           token,
           ...DATABASE_SERVICE,
-          tables: [DATABASE_SERVICE.entity, filterTable, customTable],
+          tables: [
+            DATABASE_SERVICE.entity,
+            filterTable,
+            filterTable2,
+            customTable,
+          ],
         });
 
         prepareDataQualityTestCases(token);
@@ -854,6 +868,16 @@ describe(
 
       verifyResponseStatusCode('@testCaseDefinition', 200);
       cy.get('#tableTestForm_displayName').type('Table test case display name');
+      cy.get('#tableTestForm_table').should(
+        'have.value',
+        DATABASE_SERVICE.entity.name
+      );
+      cy.get('#tableTestForm_column').should('have.value', 'email');
+      cy.get('#tableTestForm_name').should('have.value', testCase2.name);
+      cy.get('#tableTestForm_testDefinition').should(
+        'have.value',
+        testCase2.testDefinition
+      );
       cy.get('.ant-modal-footer').contains('Submit').click();
       cy.wait('@updateTestCase').then((interception) => {
         const { body } = interception.request;
@@ -982,10 +1006,25 @@ describe(
         `/api/v1/dataQuality/testCases/search/list?*entityLink=*${filterTable.name}*`,
         'searchTestCaseByTable'
       );
+      interceptURL(
+        'GET',
+        `/api/v1/search/query?q=*index=table_search_index*`,
+        'searchTable'
+      );
       cy.get('#tableFqn').scrollIntoView().type(filterTable.name);
-      selectOptionFromDropdown(filterTable.name);
+      verifyResponseStatusCode('@searchTable', 200);
+      cy.get('.ant-select-dropdown')
+        .not('.ant-select-dropdown-hidden')
+        .find(
+          `[data-testid="${filterTable.databaseSchema}.${filterTable.name}"]`
+        )
+        .click({ force: true });
       verifyResponseStatusCode('@searchTestCaseByTable', 200);
       verifyFilterTestCase();
+
+      filterTable2TestCases.map((testCase) => {
+        cy.get(`[data-testid="${testCase}"]`).should('not.exist');
+      });
 
       // Test case filter by test type
       interceptURL(
@@ -1058,6 +1097,49 @@ describe(
       selectOptionFromDropdown('OpenMetadata');
       verifyResponseStatusCode('@testCasePlatformByOpenMetadata', 200);
       cy.clickOutside();
+      verifyFilterTestCase();
+    });
+
+    it('Filter with domain', () => {
+      visitEntityDetailsPage({
+        term: filterTable.name,
+        serviceName: serviceName,
+        entity: EntityType.Table,
+      });
+
+      addDomainToEntity(domainDetail.name);
+
+      interceptURL(
+        'GET',
+        '/api/v1/dataQuality/testCases/search/list?*',
+        'getTestCase'
+      );
+      cy.get('[data-testid="domain-dropdown"]').click();
+      cy.get(`li[data-menu-id*='${domainDetail.name}']`).click();
+      cy.sidebarClick(SidebarItem.DATA_QUALITY);
+
+      cy.get('[data-testid="by-test-cases"]').click();
+      verifyResponseStatusCode('@getTestCase', 200);
+
+      cy.get('[data-testid="advanced-filter"]').click({
+        waitForAnimations: true,
+      });
+      cy.get('[value="tableFqn"]').click({ waitForAnimations: true });
+
+      // Test case filter by table name
+      interceptURL(
+        'GET',
+        `/api/v1/dataQuality/testCases/search/list?*entityLink=*${filterTable.name}*`,
+        'searchTestCaseByTable'
+      );
+      cy.get('#tableFqn').scrollIntoView().type(filterTable.name);
+      cy.get('.ant-select-dropdown')
+        .not('.ant-select-dropdown-hidden')
+        .find(
+          `[data-testid="${filterTable.databaseSchema}.${filterTable.name}"]`
+        )
+        .click({ force: true });
+      verifyResponseStatusCode('@searchTestCaseByTable', 200);
       verifyFilterTestCase();
     });
 
