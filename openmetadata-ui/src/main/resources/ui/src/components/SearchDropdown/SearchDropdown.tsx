@@ -192,10 +192,13 @@ const SearchDropdown: FC<SearchDropdownProps> = ({
       (item) => item.key === NULL_OPTION_KEY
     );
     setNullOptionSelected(isNullOptionSelected);
+  }, [isDropDownOpen]);
+
+  useEffect(() => {
     setSelectedOptions(
       selectedKeys.filter((item) => item.key !== NULL_OPTION_KEY)
     );
-  }, [isDropDownOpen, selectedKeys]);
+  }, [selectedKeys]);
 
   const getDropdownBody = useCallback(
     (menuNode: ReactNode) => {
@@ -306,6 +309,7 @@ const SearchDropdown: FC<SearchDropdownProps> = ({
     [
       label,
       debouncedOnSearch,
+      hasNullOption,
       showClearAllBtn,
       nullOptionSelected,
       handleClear,

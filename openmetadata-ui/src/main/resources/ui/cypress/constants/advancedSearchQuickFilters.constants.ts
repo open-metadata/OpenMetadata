@@ -29,6 +29,8 @@ export const COMMON_DROPDOWN_ITEMS = [
   {
     label: 'Domain',
     key: 'domain.displayName.keyword',
+    selectOption1: 'Cypress Domain QfTest',
+    selectOptionTestId1: 'Cypress Domain QfTest',
   },
   {
     label: 'Owner',
@@ -57,6 +59,8 @@ export const COMMON_DROPDOWN_ITEMS = [
   {
     label: 'Tier',
     key: 'tier.tagFQN',
+    selectOption1: 'Tier1',
+    selectOptionTestId1: 'Tier.Tier1',
   },
   {
     label: 'Service Type',

@@ -23,17 +23,17 @@ export const searchAndClickOnOption = (asset, filter, checkedAfterClick) => {
 
   cy.get('[data-testid="search-input"]').clear().type(filter.selectOption1);
 
-  verifyResponseStatusCode('@aggregateAPI', 200);
+  let testId = Cypress._.toLower(filter.selectOptionTestId1);
 
-  cy.get(`[data-testid="${Cypress._.toLower(filter.selectOptionTestId1)}"]`)
-    .should('exist')
-    .and('be.visible')
-    .click();
+  // Filtering for tiers is done on client side, so no API call will be triggered
+  if (filter.key !== 'tier.tagFQN') {
+    verifyResponseStatusCode('@aggregateAPI', 200);
+  } else {
+    testId = filter.selectOptionTestId1;
+  }
 
-  checkCheckboxStatus(
-    `${Cypress._.toLower(filter.selectOptionTestId1)}-checkbox`,
-    checkedAfterClick
-  );
+  cy.get(`[data-testid="${testId}"]`).should('exist').and('be.visible').click();
+  checkCheckboxStatus(`${testId}-checkbox`, checkedAfterClick);
 };
 
 export const selectNullOption = (asset, filter, existingValue?: any) => {
@@ -55,7 +55,10 @@ export const selectNullOption = (asset, filter, existingValue?: any) => {
                   ? [
                       {
                         term: {
-                          [filter.key]: Cypress._.toLower(existingValue),
+                          [filter.key]:
+                            filter.key === 'tier.tagFQN'
+                              ? existingValue
+                              : Cypress._.toLower(existingValue),
                         },
                       },
                     ]

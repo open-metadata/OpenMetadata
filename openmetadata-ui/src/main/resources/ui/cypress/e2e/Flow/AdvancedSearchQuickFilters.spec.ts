@@ -17,16 +17,75 @@ import {
 } from '../../common/advancedSearchQuickFilters';
 import { interceptURL, verifyResponseStatusCode } from '../../common/common';
 import { goToAdvanceSearch } from '../../common/Utils/AdvancedSearch';
-import { visitEntityDetailsPage } from '../../common/Utils/Entity';
+import { addDomainToEntity } from '../../common/Utils/Domain';
+import {
+  createEntityViaREST,
+  deleteEntityViaREST,
+  visitEntityDetailsPage,
+} from '../../common/Utils/Entity';
+import { getToken } from '../../common/Utils/LocalStorage';
 import { addOwner, removeOwner } from '../../common/Utils/Owner';
+import { assignTags, removeTags } from '../../common/Utils/Tags';
+import { addTier, removeTier } from '../../common/Utils/Tier';
 import {
   FilterItem,
   QUICK_FILTERS_BY_ASSETS,
   SUPPORTED_EMPTY_FILTER_FIELDS,
 } from '../../constants/advancedSearchQuickFilters.constants';
-import { SEARCH_ENTITY_TABLE } from '../../constants/constants';
-import { SidebarItem } from '../../constants/Entity.interface';
+import { SEARCH_ENTITY_TABLE, uuid } from '../../constants/constants';
+import { EntityType, SidebarItem } from '../../constants/Entity.interface';
 const ownerName = 'Aaron Johnson';
+
+const domainDetails = {
+  name: `cypress-domain-${uuid()}`,
+  displayName: `Cypress Domain QfTest`,
+  description: 'Cypress domain description',
+  domainType: 'Aggregate',
+  experts: [],
+  style: {},
+};
+
+const preRequisitesForTests = () => {
+  cy.getAllLocalStorage().then((data) => {
+    const token = getToken(data);
+
+    createEntityViaREST({
+      body: domainDetails,
+      endPoint: EntityType.Domain,
+      token,
+    });
+
+    visitEntityDetailsPage({
+      term: SEARCH_ENTITY_TABLE.table_1.term,
+      entity: SEARCH_ENTITY_TABLE.table_1.entity,
+      serviceName: SEARCH_ENTITY_TABLE.table_1.serviceName,
+    });
+    addDomainToEntity(domainDetails.displayName);
+    addOwner(ownerName);
+    assignTags('PersonalData.Personal', EntityType.Table);
+    addTier('Tier1');
+  });
+};
+
+const postRequisitesForTests = () => {
+  cy.getAllLocalStorage().then((data) => {
+    const token = getToken(data);
+    // Domain 1 to test
+    deleteEntityViaREST({
+      entityName: domainDetails.name,
+      endPoint: EntityType.Domain,
+      token,
+    });
+    visitEntityDetailsPage({
+      term: SEARCH_ENTITY_TABLE.table_1.term,
+      entity: SEARCH_ENTITY_TABLE.table_1.entity,
+      serviceName: SEARCH_ENTITY_TABLE.table_1.serviceName,
+    });
+    removeOwner(ownerName);
+    removeTags('PersonalData.Personal', EntityType.Table);
+    removeTier();
+  });
+};
 
 describe(
   `Advanced search quick filters should work properly for assets`,
@@ -34,25 +93,12 @@ describe(
   () => {
     before(() => {
       cy.login();
-
-      visitEntityDetailsPage({
-        term: SEARCH_ENTITY_TABLE.table_1.term,
-        entity: SEARCH_ENTITY_TABLE.table_1.entity,
-        serviceName: SEARCH_ENTITY_TABLE.table_1.serviceName,
-      });
-
-      addOwner(ownerName);
+      preRequisitesForTests();
     });
 
     after(() => {
       cy.login();
-      visitEntityDetailsPage({
-        term: SEARCH_ENTITY_TABLE.table_1.term,
-        entity: SEARCH_ENTITY_TABLE.table_1.entity,
-        serviceName: SEARCH_ENTITY_TABLE.table_1.serviceName,
-      });
-
-      removeOwner(ownerName);
+      postRequisitesForTests();
     });
 
     beforeEach(() => {
@@ -136,9 +182,9 @@ describe(
       cy.get(`[data-testid="${asset.tab}"]`).scrollIntoView().click();
       // Checking Owner with multiple values
       asset.filters
-        .filter((item) => item.key === 'owner.displayName.keyword')
+        .filter((item) => SUPPORTED_EMPTY_FILTER_FIELDS.includes(item.key))
         .map((filter: FilterItem) => {
-          selectNullOption(asset, filter, filter?.selectOption1);
+          selectNullOption(asset, filter, filter?.selectOptionTestId1);
         });
     });
   }
