@@ -42,6 +42,7 @@ import './bot-details.less';
 import { BotsDetailProps } from './BotDetails.interfaces';
 
 import { ReactComponent as IconBotProfile } from '../../../../assets/svg/bot-profile.svg';
+import { useLimitStore } from '../../../../context/LimitsProvider/useLimitsStore';
 import { EntityType } from '../../../../enums/entity.enum';
 import DescriptionV1 from '../../../common/EntityDescription/DescriptionV1';
 import AccessTokenCard from '../../Users/AccessTokenCard/AccessTokenCard.component';
@@ -59,6 +60,9 @@ const BotDetails: FC<BotsDetailProps> = ({
   const [isDescriptionEdit, setIsDescriptionEdit] = useState(false);
   const [selectedRoles, setSelectedRoles] = useState<Array<string>>([]);
   const [roles, setRoles] = useState<Array<Role>>([]);
+  const { getResourceLimit } = useLimitStore();
+
+  const [disableFields, setDisableFields] = useState<string[]>([]);
 
   const { t } = useTranslation();
 
@@ -75,6 +79,12 @@ const BotDetails: FC<BotsDetailProps> = ({
     () => botPermission.EditDescription,
     [botPermission]
   );
+
+  const initLimits = async () => {
+    const limits = await getResourceLimit('bot', false);
+
+    setDisableFields(limits.configuredLimit.disabledFields);
+  };
 
   const fetchRoles = async () => {
     try {
@@ -110,6 +120,10 @@ const BotDetails: FC<BotsDetailProps> = ({
     }
     setSelectedRoles(defaultRoles);
   };
+
+  useEffect(() => {
+    initLimits();
+  }, []);
 
   const fetchLeftPanel = () => {
     return (
@@ -257,6 +271,7 @@ const BotDetails: FC<BotsDetailProps> = ({
           isBot
           botData={botData}
           botUserData={botUserData}
+          disabled={disableFields.includes('token')}
           revokeTokenHandlerBot={revokeTokenHandler}
         />
       </div>

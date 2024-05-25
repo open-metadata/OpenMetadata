@@ -32,7 +32,7 @@ export const LimitBanner = () => {
       className={classNames('pricing-banner', {
         errored: bannerDetails?.type === 'danger',
       })}
-      hidden={false}>
+      hidden={!bannerDetails}>
       <div className="d-flex ">
         <Icon
           className="self-center"

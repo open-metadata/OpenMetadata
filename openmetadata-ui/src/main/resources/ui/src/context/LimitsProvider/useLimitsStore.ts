@@ -20,6 +20,7 @@ export interface ResourceLimit {
       name: string;
       maxVersions: number;
       disableFields: Array<string>;
+      disabledFields: Array<string>;
       limits: {
         softLimit: number;
         hardLimit: number;
@@ -69,7 +70,8 @@ export const useLimitStore = create<{
     type: 'warning' | 'danger';
   } | null;
   getResourceLimit: (
-    resource: string
+    resource: string,
+    showBanner?: boolean
   ) => Promise<ResourceLimit['featureLimitStatuses'][number]>;
   setConfig: (config: LimitConfig) => void;
   setResourceLimit: (
@@ -108,7 +110,7 @@ export const useLimitStore = create<{
   ) => {
     set({ bannerDetails: details });
   },
-  getResourceLimit: async (resource: string) => {
+  getResourceLimit: async (resource: string, showBanner = true) => {
     const { setResourceLimit, resourceLimit, setBannerDetails } = get();
 
     let rLimit = resourceLimit[resource];
@@ -116,10 +118,7 @@ export const useLimitStore = create<{
     if (isNil(rLimit)) {
       const limit = await getLimitByResource(resource);
 
-      setResourceLimit(resource, {
-        ...limit.featureLimitStatuses[0],
-        limitReached: true,
-      });
+      setResourceLimit(resource, limit.featureLimitStatuses[0]);
       rLimit = limit.featureLimitStatuses[0];
     }
 
@@ -127,10 +126,11 @@ export const useLimitStore = create<{
       const {
         configuredLimit: { limits },
         currentCount,
-        limitReached = true,
+        limitReached,
       } = rLimit;
 
       limitReached &&
+        showBanner &&
         setBannerDetails({
           header: 'Limit Reached',
           type: currentCount > limits.hardLimit ? 'danger' : 'warning',

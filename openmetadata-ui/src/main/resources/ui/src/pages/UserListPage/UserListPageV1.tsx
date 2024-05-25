@@ -425,7 +425,7 @@ const UserListPageV1 = () => {
             </span>
 
             {isAdminUser && (
-              <LimitWrapper resource="users">
+              <LimitWrapper resource="user">
                 <Button
                   data-testid="add-user"
                   type="primary"

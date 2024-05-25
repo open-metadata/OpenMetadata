@@ -297,7 +297,7 @@ export const getEntityIcon = (
       break;
   }
 
-  return <Icon className={className} style={style} />;
+  return Icon ? <Icon className={className} style={style} /> : <></>;
 };
 
 export const getServiceIcon = (source: SourceType) => {
