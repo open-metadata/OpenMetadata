@@ -588,7 +588,6 @@ public class EventSubscriptionResourceTest
     EventSubscription alert = createEntity(enabledWebhookRequest, ADMIN_AUTH_HEADERS);
     waitForAllEventToComplete(alert.getId());
     SlackCallbackResource.EventDetails details = slackCallbackResource.getEventDetails(webhookName);
-    System.out.println("details :" + details);
     ConcurrentLinkedQueue<SlackMessage> events = details.getEvents();
     for (SlackMessage event : events) {
       validateSlackMessage(alert, event);
@@ -783,7 +782,6 @@ public class EventSubscriptionResourceTest
         .atMost(Duration.ofMillis(100 * 100L))
         .untilTrue(testExpectedStatus(alert.getId(), ACTIVE));
 
-    System.out.println("teams : " + details);
     assertNotNull(alert, "Webhook creation failed");
     ConcurrentLinkedQueue<TeamsMessage> events = details.getEvents();
     for (TeamsMessage teamsMessage : events) {
@@ -952,10 +950,28 @@ public class EventSubscriptionResourceTest
     assertNotNull(slackMessage.getUsername(), "Username should not be null");
     assertNotNull(slackMessage.getText(), "Text should not be null");
     assertFalse(slackMessage.getText().isEmpty(), "Text should not be empty");
+
+    // Validate the formatting of the text
+    String expectedTextFormat = buildExpectedTextFormatSlack(alert); // Get the expected format
+
+    // Check if the actual text matches the expected format
+    String actualText = slackMessage.getText();
+    assertEquals(
+        actualText, expectedTextFormat, "Slack message text does not match expected format");
+  }
+
+  private String buildExpectedTextFormatSlack(EventSubscription alert) {
+    String updatedBy = alert.getUpdatedBy();
+    return String.format(
+        "%s posted on " + Entity.EVENT_SUBSCRIPTION + " %s", updatedBy, getEntityUrlSlack(alert));
+  }
+
+  private String getEntityUrlSlack(EventSubscription alert) {
+    return slackCallbackResource.getEntityUrl(
+        Entity.EVENT_SUBSCRIPTION, alert.getFullyQualifiedName(), "");
   }
 
   private void validateTeamsMessage(EventSubscription alert, TeamsMessage message) {
-
     // Validate the basic structure
     assertThat(message.getSummary())
         .isNotNull()
@@ -972,6 +988,13 @@ public class EventSubscriptionResourceTest
         .isEqualTo("http://schema.org/extensions")
         .describedAs("Invalid context in Teams message");
 
+    TeamsMessage.Section firstSection = message.getSections().get(0);
+    // Validate Activity
+    String expectedTitle = buildExpectedActivityTitleTextFormatMSTeams(alert);
+    String actualTitle = firstSection.getActivityTitle();
+    assertEquals(
+        expectedTitle, actualTitle, "Teams message activity title does not match expected format");
+
     // Validate sections
     assertNotNull(message.getSections(), "Sections should not be null");
     assertFalse(message.getSections().isEmpty(), "Sections should not be empty");
@@ -983,6 +1006,17 @@ public class EventSubscriptionResourceTest
       assertNotNull(section.getActivityText(), "Activity text should not be null");
       assertFalse(section.getActivityText().isEmpty(), "Activity text should not be empty");
     }
+  }
+
+  private String buildExpectedActivityTitleTextFormatMSTeams(EventSubscription alert) {
+    String updatedBy = alert.getUpdatedBy();
+    return String.format(
+        "%s posted on %s [\"%s\"](/%s)",
+        updatedBy, Entity.EVENT_SUBSCRIPTION, alert.getName(), getEntityUrlMSTeams());
+  }
+
+  private String getEntityUrlMSTeams() {
+    return teamsCallbackResource.getEntityUrlMSTeams();
   }
 
   private EventSubscription getAndAssertAlert(UUID id, EventSubscription expectedAlert)

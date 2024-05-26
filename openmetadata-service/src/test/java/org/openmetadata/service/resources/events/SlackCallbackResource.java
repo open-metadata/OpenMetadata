@@ -1,5 +1,8 @@
 package org.openmetadata.service.resources.events;
 
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
+import static org.openmetadata.service.util.EmailUtil.getSmtpSettings;
+
 import javax.ws.rs.Consumes;
 import javax.ws.rs.Path;
 import javax.ws.rs.Produces;
@@ -16,5 +19,15 @@ public class SlackCallbackResource extends BaseCallbackResource<SlackMessage> {
   @Override
   protected String getTestName() {
     return "slackTest";
+  }
+
+  public String getEntityUrl(String prefix, String fqn, String additionalParams) {
+    return String.format(
+        "<%s/%s/%s%s|%s>",
+        getSmtpSettings().getOpenMetadataUrl(),
+        prefix,
+        fqn.trim().replaceAll(" ", "%20"),
+        nullOrEmpty(additionalParams) ? "" : String.format("/%s", additionalParams),
+        fqn.trim());
   }
 }
