@@ -84,7 +84,7 @@
                   "type": "object",
                   "javaType": "org.openmetadata.schema.security.ssl.ValidateSSLClientConfig",
                   "properties": {
-                    "certificatePath": {
+                    "caCertificate": {
                       "title": "Certificate Path",
                       "description": "CA certificate path. E.g., /path/to/public.cert. Will be used if Verify SSL is set to `validate`.",
                       "type": "string"
@@ -264,7 +264,7 @@
                   "type": "object",
                   "javaType": "org.openmetadata.schema.security.ssl.ValidateSSLClientConfig",
                   "properties": {
-                    "certificatePath": {
+                    "caCertificate": {
                       "description": "CA certificate path. E.g., /path/to/public.cert. Will be used if Verify SSL is set to `validate`.",
                       "type": "string"
                     }
