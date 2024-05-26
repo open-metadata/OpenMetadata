@@ -66,19 +66,15 @@ const BotDetails: FC<BotsDetailProps> = ({
 
   const { t } = useTranslation();
 
-  const editAllPermission = useMemo(
-    () => botPermission.EditAll,
-    [botPermission]
-  );
-  const displayNamePermission = useMemo(
-    () => botPermission.EditDisplayName,
-    [botPermission]
-  );
-
-  const descriptionPermission = useMemo(
-    () => botPermission.EditDescription,
-    [botPermission]
-  );
+  const { editAllPermission, displayNamePermission, descriptionPermission } =
+    useMemo(
+      () => ({
+        editAllPermission: botPermission.EditAll,
+        displayNamePermission: botPermission.EditDisplayName,
+        descriptionPermission: botPermission.EditDescription,
+      }),
+      [botPermission]
+    );
 
   const initLimits = async () => {
     const limits = await getResourceLimit('bot', false);
@@ -120,10 +116,6 @@ const BotDetails: FC<BotsDetailProps> = ({
     }
     setSelectedRoles(defaultRoles);
   };
-
-  useEffect(() => {
-    initLimits();
-  }, []);
 
   const fetchLeftPanel = () => {
     return (
@@ -233,6 +225,7 @@ const BotDetails: FC<BotsDetailProps> = ({
 
   useEffect(() => {
     fetchRoles();
+    initLimits();
   }, []);
 
   useEffect(() => {
