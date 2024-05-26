@@ -170,6 +170,19 @@ describe('QualityTab', () => {
     ).toBeInTheDocument();
   });
 
+  it('should call limitWrapper', async () => {
+    await act(async () => {
+      render(<QualityTab />);
+      fireEvent.click(await screen.findByTestId('profiler-add-table-test-btn'));
+    });
+
+    expect(LimitWrapper).toHaveBeenCalledWith(
+      expect.objectContaining({ resource: 'dataQuality' }),
+      {}
+    );
+    expect(await screen.findByText('LimitWrapper')).toBeInTheDocument();
+  });
+
   it('should not render the Add button if editTest is false', async () => {
     (useTableProfiler as jest.Mock).mockReturnValue({
       ...mockUseTableProfiler,
@@ -214,10 +227,10 @@ describe('QualityTab', () => {
     });
 
     expect(
-      await screen.getByRole('tab', { name: 'label.test-case-plural' })
+      await screen.findByRole('tab', { name: 'label.test-case-plural' })
     ).toHaveAttribute('aria-selected', 'true');
     expect(
-      await screen.getByRole('tab', { name: 'label.pipeline' })
+      await screen.findByRole('tab', { name: 'label.pipeline' })
     ).toHaveAttribute('aria-selected', 'false');
   });
 
@@ -238,18 +251,5 @@ describe('QualityTab', () => {
     expect(await screen.findByText('label.total-entity')).toBeInTheDocument();
     expect(await screen.findByText('label.success')).toBeInTheDocument();
     expect(await screen.findByText('label.aborted')).toBeInTheDocument();
-  });
-
-  it('should call limitWrapper', async () => {
-    await act(async () => {
-      render(<QualityTab />);
-      fireEvent.click(await screen.findByTestId('profiler-add-table-test-btn'));
-    });
-
-    expect(LimitWrapper).toHaveBeenCalledWith(
-      expect.objectContaining({ resource: 'dataQuality' }),
-      {}
-    );
-    expect(await screen.findByText('LimitWrapper')).toBeInTheDocument();
   });
 });
