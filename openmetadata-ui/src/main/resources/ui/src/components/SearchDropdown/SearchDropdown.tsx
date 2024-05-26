@@ -198,7 +198,7 @@ const SearchDropdown: FC<SearchDropdownProps> = ({
     setSelectedOptions(
       selectedKeys.filter((item) => item.key !== NULL_OPTION_KEY)
     );
-  }, [selectedKeys]);
+  }, [isDropDownOpen, selectedKeys]);
 
   const getDropdownBody = useCallback(
     (menuNode: ReactNode) => {

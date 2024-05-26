@@ -14,19 +14,17 @@
 import { interceptURL, verifyResponseStatusCode } from './common';
 
 export const searchAndClickOnOption = (asset, filter, checkedAfterClick) => {
-  // Search for filter
-  interceptURL(
-    'GET',
-    `/api/v1/search/aggregate?index=${asset.searchIndex}&field=${filter.key}**`,
-    'aggregateAPI'
-  );
-
-  cy.get('[data-testid="search-input"]').clear().type(filter.selectOption1);
-
   let testId = Cypress._.toLower(filter.selectOptionTestId1);
-
   // Filtering for tiers is done on client side, so no API call will be triggered
   if (filter.key !== 'tier.tagFQN') {
+    // Search for filter
+    interceptURL(
+      'GET',
+      `/api/v1/search/aggregate?index=${asset.searchIndex}&field=${filter.key}**`,
+      'aggregateAPI'
+    );
+
+    cy.get('[data-testid="search-input"]').clear().type(filter.selectOption1);
     verifyResponseStatusCode('@aggregateAPI', 200);
   } else {
     testId = filter.selectOptionTestId1;
