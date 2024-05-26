@@ -66,7 +66,7 @@ class OpenMetadataHook(BaseHook):
         extra = conn.extra_dejson if conn.get_extra() else {}
         verify_ssl = extra.get("verifySSL") or self.default_verify_ssl
         ssl_config = (
-            ValidateSslClientConfig(certificatePath=extra["sslConfig"])
+            ValidateSslClientConfig(caCertificate=extra["sslConfig"])
             if extra.get("sslConfig")
             else self.default_ssl_config
         )
