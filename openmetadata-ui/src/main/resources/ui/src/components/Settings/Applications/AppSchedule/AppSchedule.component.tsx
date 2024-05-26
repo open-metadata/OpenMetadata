@@ -26,9 +26,9 @@ import {
   AppType,
 } from '../../../../generated/entity/applications/app';
 import { getIngestionPipelineByFqn } from '../../../../rest/ingestionPipelineAPI';
-import Loader from '../../../common/Loader/Loader';
 import { TestSuiteIngestionDataType } from '../../../DataQuality/AddDataQualityTest/AddDataQualityTest.interface';
 import TestSuiteScheduler from '../../../DataQuality/AddDataQualityTest/components/TestSuiteScheduler';
+import Loader from '../../../common/Loader/Loader';
 import AppRunsHistory from '../AppRunsHistory/AppRunsHistory.component';
 import { AppRunsHistoryRef } from '../AppRunsHistory/AppRunsHistory.interface';
 import { AppScheduleProps } from './AppScheduleProps.interface';
@@ -155,7 +155,9 @@ const AppSchedule = ({
                 <Typography.Text className="right-panel-label">
                   {t('label.schedule-type')}
                 </Typography.Text>
-                <Typography.Text className="font-medium">
+                <Typography.Text
+                  className="font-medium"
+                  data-testid="schedule-type">
                   {(appData.appSchedule as AppScheduleClass).scheduleTimeline ??
                     ''}
                 </Typography.Text>

@@ -11,9 +11,10 @@
  *  limitations under the License.
  */
 import { SidebarItem } from '../constants/Entity.interface';
-import { interceptURL, RETRY_TIMES, verifyResponseStatusCode } from './common';
+import { interceptURL, verifyResponseStatusCode } from './common';
 
 const BASE_WAIT_TIME = 4000;
+const RETRY_TIMES = 3;
 let isSuccessStatus = false;
 
 export const checkDataInsightSuccessStatus = (

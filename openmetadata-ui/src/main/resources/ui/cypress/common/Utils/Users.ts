@@ -14,7 +14,6 @@ import {
   customFormatDateTime,
   getEpochMillisForFutureDays,
 } from '../../../src/utils/date-time/DateTimeUtils';
-import { GlobalSettingOptions } from '../../constants/settings.constant';
 import {
   descriptionBox,
   interceptURL,
@@ -166,10 +165,6 @@ export const permanentDeleteUser = (username: string, displayName: string) => {
 
   cy.get('[data-testid="search-error-placeholder"]').should('be.exist');
 };
-export const visitUserListPage = () => {
-  interceptURL('GET', '/api/v1/users?*', 'getUsers');
-  cy.settingClick(GlobalSettingOptions.USERS);
-};
 
 export const generateToken = () => {
   cy.get('[data-testid="no-token"]').should('be.visible');
@@ -202,7 +197,7 @@ export const updateExpiration = (expiry: number | string) => {
   cy.get('[data-testid="token-expiry"]').click();
   cy.contains(`${expiry} days`).click();
   const expiryDate = customFormatDateTime(
-    getEpochMillisForFutureDays(expiry),
+    getEpochMillisForFutureDays(expiry as number),
     `ccc d'th' MMMM, yyyy`
   );
   cy.get('[data-testid="save-edit"]').click();
