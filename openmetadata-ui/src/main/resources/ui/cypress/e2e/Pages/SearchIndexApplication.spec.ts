@@ -64,12 +64,10 @@ describe('Search Index Application', { tags: 'Settings' }, () => {
     visitSearchApplicationPage();
     cy.get('[data-testid="edit-button"]').click();
     cy.get('[data-testid="cron-type"]').click();
-    cy.get('.rc-virtual-list [title="Day"]').click();
-    cy.get('[data-testid="hour-options"]').click();
-    cy.get('[title="01"]').click();
+    cy.get('.rc-virtual-list [title="None"]').click();
     cy.get('.ant-modal-body [data-testid="deploy-button"]').click();
     verifyResponseStatusCode('@updateApplication', 200);
-    cy.get('[data-testid="cron-string"]').should('contain', 'At 01:00 AM');
+    cy.get('[data-testid="schedule-type"]').should('contain', 'None');
 
     cy.get('[data-testid="configuration"]').click();
 
@@ -113,8 +111,8 @@ describe('Search Index Application', { tags: 'Settings' }, () => {
     cy.get('[data-testid="save-button"]').scrollIntoView().click();
     cy.get('[data-testid="submit-btn"]').scrollIntoView().click();
     cy.get('[data-testid="cron-type"]').click();
-    cy.get('.rc-virtual-list [title="Day"]').click();
-    cy.get('[data-testid="cron-type"]').should('contain', 'Day');
+    cy.get('.rc-virtual-list [title="None"]').click();
+    cy.get('[data-testid="cron-type"]').should('contain', 'None');
     cy.get('[data-testid="deploy-button"]').click();
     verifyResponseStatusCode('@installApplication', 201);
     verifyResponseStatusCode('@getApplications', 200);

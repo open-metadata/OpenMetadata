@@ -425,7 +425,7 @@ describe(
         .scrollIntoView()
         .should('be.visible');
 
-      cy.get('[data-testid="version-button"]').click();
+      cy.get('[data-testid="version-button"]').scrollIntoView().click();
 
       verifyResponseStatusCode('@getGlossaryTermParents', 200);
       verifyResponseStatusCode('@getChildGlossaryTerms', 200);
