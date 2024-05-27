@@ -18,6 +18,7 @@ import io.dropwizard.Configuration;
 import io.dropwizard.db.DataSourceFactory;
 import io.dropwizard.health.conf.HealthConfiguration;
 import io.federecio.dropwizard.swagger.SwaggerBundleConfiguration;
+import java.util.LinkedHashMap;
 import javax.validation.Valid;
 import javax.validation.constraints.NotNull;
 import lombok.Getter;
@@ -65,6 +66,20 @@ public class OpenMetadataApplicationConfig extends Configuration {
 
   @JsonProperty("pipelineServiceClientConfiguration")
   private PipelineServiceClientConfiguration pipelineServiceClientConfiguration;
+
+  private static final String CERTIFICATE_PATH = "certificatePath";
+
+  public PipelineServiceClientConfiguration getPipelineServiceClientConfiguration() {
+
+    LinkedHashMap<String, String> temporarySSLConfig =
+        (LinkedHashMap<String, String>) pipelineServiceClientConfiguration.getSslConfig();
+    if (temporarySSLConfig != null && temporarySSLConfig.containsKey(CERTIFICATE_PATH)) {
+      temporarySSLConfig.put("caCertificate", temporarySSLConfig.get(CERTIFICATE_PATH));
+      temporarySSLConfig.remove(CERTIFICATE_PATH);
+    }
+    pipelineServiceClientConfiguration.setSslConfig(temporarySSLConfig);
+    return pipelineServiceClientConfiguration;
+  }
 
   @JsonProperty("migrationConfiguration")
   @NotNull
