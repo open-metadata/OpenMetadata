@@ -71,8 +71,9 @@ const Severity = ({ severity, onSubmit }: SeverityProps) => {
               entity: t('label.severity'),
             })}>
             <Button
-              data-testid="edit-severity-icon"
+              data-testid="edit-severity-icon p-0"
               icon={<EditIcon {...ICON_DIMENSION} color={DE_ACTIVE_COLOR} />}
+              size="small"
               type="text"
               onClick={onEditSeverity}
             />
