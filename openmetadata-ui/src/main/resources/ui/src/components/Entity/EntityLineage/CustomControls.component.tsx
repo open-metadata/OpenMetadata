@@ -36,10 +36,7 @@ import { SearchIndex } from '../../../enums/search.enum';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { getAssetsPageQuickFilters } from '../../../utils/AdvancedSearchUtils';
 import { getLoadingStatusValue } from '../../../utils/EntityLineageUtils';
-import {
-  getQuickFilterQuery,
-  getSelectedValuesFromQuickFilter,
-} from '../../../utils/Explore.utils';
+import { getQuickFilterQuery } from '../../../utils/Explore.utils';
 import { ExploreQuickFilterField } from '../../Explore/ExplorePage.interface';
 import ExploreQuickFilters from '../../Explore/ExploreQuickFilters';
 import { AssetsOfEntity } from '../../Glossary/GlossaryTerms/tabs/AssetsTabs.interface';
@@ -92,7 +89,7 @@ const CustomControls: FC<ControlProps> = ({
     setFilters(
       dropdownItems.map((item) => ({
         ...item,
-        value: getSelectedValuesFromQuickFilter(item, dropdownItems),
+        value: [],
       }))
     );
 
