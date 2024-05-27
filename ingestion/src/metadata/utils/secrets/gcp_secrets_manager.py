@@ -50,11 +50,8 @@ def _() -> Optional["GCPCredentials"]:
     )
 
     # https://google-auth.readthedocs.io/en/master/reference/google.auth.html#google.auth.default
-    _, project_id = auth.default()
-    if project_id:
-        return GCPCredentials(project_id=project_id)
-
-    return None
+    credentials, _ = auth.default()
+    return GCPCredentials(gcpConfig=credentials)
 
 
 class GCPSecretsManager(ExternalSecretsManager, ABC):
@@ -71,7 +68,8 @@ class GCPSecretsManager(ExternalSecretsManager, ABC):
         client = secretmanager.SecretManagerServiceClient()
 
         # Build the resource name of the secret version.
-        name = f"projects/{self.project_id}/secrets/{name}/versions/{FIXED_VERSION_ID}"
+        _, project_id = auth.default()
+        name = f"projects/{project_id}/secrets/{name}/versions/{FIXED_VERSION_ID}"
 
         # Access the secret version.
         response = client.access_secret_version(request={"name": name})

@@ -94,6 +94,7 @@ base_requirements = {
     "cryptography>=42.0.0",
     "email-validator>=1.0.3",  # For the pydantic generated models for Email
     "google-cloud-secret-manager",
+    "google-crc32c",
     "importlib-metadata>=4.13.0",  # From airflow constraints
     "Jinja2>=2.11.3",
     "jsonpatch<2.0, >=1.24",
