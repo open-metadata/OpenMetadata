@@ -32,25 +32,17 @@ import {
   QUICK_FILTERS_BY_ASSETS,
   SUPPORTED_EMPTY_FILTER_FIELDS,
 } from '../../constants/advancedSearchQuickFilters.constants';
-import { SEARCH_ENTITY_TABLE, uuid } from '../../constants/constants';
+import { SEARCH_ENTITY_TABLE } from '../../constants/constants';
 import { EntityType, SidebarItem } from '../../constants/Entity.interface';
+import { DOMAIN_QUICK_FILTERS_DETAILS } from '../../constants/EntityConstant';
 const ownerName = 'Aaron Johnson';
-
-const domainDetails = {
-  name: `cypress-domain-${uuid()}`,
-  displayName: `Cypress Domain QfTest`,
-  description: 'Cypress domain description',
-  domainType: 'Aggregate',
-  experts: [],
-  style: {},
-};
 
 const preRequisitesForTests = () => {
   cy.getAllLocalStorage().then((data) => {
     const token = getToken(data);
 
     createEntityViaREST({
-      body: domainDetails,
+      body: DOMAIN_QUICK_FILTERS_DETAILS,
       endPoint: EntityType.Domain,
       token,
     });
@@ -60,7 +52,7 @@ const preRequisitesForTests = () => {
       entity: SEARCH_ENTITY_TABLE.table_1.entity,
       serviceName: SEARCH_ENTITY_TABLE.table_1.serviceName,
     });
-    addDomainToEntity(domainDetails.displayName);
+    addDomainToEntity(DOMAIN_QUICK_FILTERS_DETAILS.displayName);
     addOwner(ownerName);
     assignTags('PersonalData.Personal', EntityType.Table);
     addTier('Tier1');
@@ -72,7 +64,7 @@ const postRequisitesForTests = () => {
     const token = getToken(data);
     // Domain 1 to test
     deleteEntityViaREST({
-      entityName: domainDetails.name,
+      entityName: DOMAIN_QUICK_FILTERS_DETAILS.name,
       endPoint: EntityType.Domain,
       token,
     });

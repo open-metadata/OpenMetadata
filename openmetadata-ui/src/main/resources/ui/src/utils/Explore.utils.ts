@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { t } from 'i18next';
 import { get, isEmpty } from 'lodash';
 import {
   ExploreQuickFilterField,
@@ -62,7 +63,11 @@ export const getParseValueFromLocation = (
       result[dataCategory.label] = result[dataCategory.label] || [];
       result[dataCategory.label].push({
         key: value,
-        label: !customLabel ? value : `No ${dataCategory.label}`,
+        label: !customLabel
+          ? value
+          : t('label.no-entity', {
+              entity: dataCategory.label,
+            }),
       });
     }
   }

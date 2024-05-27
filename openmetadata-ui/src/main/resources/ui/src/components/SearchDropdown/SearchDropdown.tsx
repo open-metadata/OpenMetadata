@@ -78,7 +78,9 @@ const SearchDropdown: FC<SearchDropdownProps> = ({
     SearchDropdownOption[]
   >([]);
   const [nullOptionSelected, setNullOptionSelected] = useState<boolean>(false);
-  const nullLabelText = `No ${label}`;
+  const nullLabelText = t('label.no-entity', {
+    entity: label,
+  });
 
   // derive menu props from options and selected keys
   const menuOptions: MenuProps['items'] = useMemo(() => {
