@@ -170,7 +170,7 @@ const TotalDataAssetsWidget = ({
                   <CartesianGrid strokeDasharray="3 3" />
                   <XAxis dataKey="timestamp" />
                   <YAxis tickFormatter={(value) => axisTickFormatter(value)} />
-                  <Tooltip position={{ y: -160 }} />
+                  <Tooltip />
                   {entities.map((entity, i) => (
                     <Area
                       dataKey={entity}
