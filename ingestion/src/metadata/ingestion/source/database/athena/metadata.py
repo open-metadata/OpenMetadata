@@ -44,6 +44,7 @@ from metadata.ingestion.models.ometa_classification import OMetaTagAndClassifica
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source import sqa_types
 from metadata.ingestion.source.database.athena.client import AthenaLakeFormationClient
+from metadata.ingestion.source.database.athena.utils import get_table_ddl
 from metadata.ingestion.source.database.column_type_parser import ColumnTypeParser
 from metadata.ingestion.source.database.common_db_source import (
     CommonDbSourceService,
@@ -228,6 +229,7 @@ def get_view_definition(self, connection, view_name, schema=None, **kw):
 AthenaDialect._get_column_type = _get_column_type  # pylint: disable=protected-access
 AthenaDialect.get_columns = get_columns
 AthenaDialect.get_view_definition = get_view_definition
+Inspector.get_table_ddl = get_table_ddl
 
 
 class AthenaSource(CommonDbSourceService):
