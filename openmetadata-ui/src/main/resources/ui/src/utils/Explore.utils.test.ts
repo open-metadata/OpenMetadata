@@ -112,7 +112,7 @@ describe('Explore Utils', () => {
       Owner: [
         {
           key: 'OM_NULL_FIELD',
-          label: 'No Owner',
+          label: 'label.no-entity',
         },
         {
           key: 'accounting',
