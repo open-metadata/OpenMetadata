@@ -4,13 +4,38 @@ SET json = jsonb_set(json::jsonb, '{connection,config,supportsProfiler}', 'true'
 ::jsonb)
 WHERE serviceType = 'MongoDB';
 
+-- Queries should be unique:
+-- 1. Remove duplicate queries from entity_relationship
+-- 2. Remove duplicate queries from query_entity
+-- 3. Add checksum with unique constraint
 ALTER TABLE query_entity ADD COLUMN checksum varchar
 (32) GENERATED ALWAYS AS
-(json ->> 'checksum') STORED NOT NULL,
-ADD UNIQUE
-(checksum);
+(json ->> 'checksum') STORED NOT NULL;
 
-UPDATE query_entity SET json = jsonb_set(json::jsonb, '{checksum}', MD5((json->>'checksum')::text)::jsonb);
+with duplicated as (
+  select
+    id,
+    ROW_NUMBER() OVER (PARTITION BY checksum ORDER BY id) AS rn
+  FROM query_entity
+)
+DELETE FROM entity_relationship
+  where toEntity = 'query' and toId in (
+  select id from duplicated where rn > 1
+);
+
+with duplicated as (
+  select
+    id,
+    ROW_NUMBER() OVER (PARTITION BY checksum ORDER BY id) AS rn
+  FROM query_entity
+)
+DELETE FROM query_entity where id in (
+  select id from duplicated where rn > 1
+);
+
+ALTER TABLE query_entity ADD CONSTRAINT unique_query_checksum UNIQUE (checksum);
+
+UPDATE query_entity SET json = jsonb_set(json::jsonb, '{checksum}', to_jsonb(MD5(checksum)));
 
 -- Restructure dbServiceNames in ingestion_pipeline_entity
 update ingestion_pipeline_entity ipe
@@ -116,6 +141,8 @@ SET json = jsonb_set(
 )
 WHERE serviceType IN ('Mysql', 'Doris') AND json#>'{connection,config,sslKey}' IS NOT NULL;
 
+
+
 UPDATE dbservice_entity
 SET json = jsonb_set(
   json #-'{connection,config,metastoreConnection,sslCert}',
@@ -163,6 +190,44 @@ SET json = jsonb_set(
   jsonb_build_object('caCertificate', json#>'{connection,config,connection,sslConfig,certificatePath}')
 )
 WHERE serviceType IN ('Superset') AND json#>'{connection,config,connection,type}' = '"Postgres"' AND json#>'{connection,config,connection,sslConfig,certificatePath}' IS NOT NULL;
+
+
+UPDATE pipeline_service_entity
+SET json = jsonb_set(
+  json #-'{connection,config,connection,sslConfig,certificatePath}',
+  '{connection,config,connection,sslConfig}',
+  jsonb_build_object('caCertificate', json#>'{connection,config,connection,sslConfig,certificatePath}')
+)
+WHERE serviceType IN ('Airflow') AND json#>'{connection,config,connection,type}' = '"Postgres"' AND json#>'{connection,config,connection,sslConfig,certificatePath}' IS NOT NULL;
+
+UPDATE dashboard_service_entity
+SET json = jsonb_set(
+  json #-'{connection,config,certificates,rootCertificateData}',
+  '{connection,config,certificates,sslConfig}',
+  jsonb_build_object('caCertificate', json#>'{connection,config,certificates,rootCertificateData}')
+)
+WHERE serviceType IN ('QlikSense') AND json#>'{connection,config,certificates,rootCertificateData}' IS NOT NULL;
+
+UPDATE dashboard_service_entity
+SET json = jsonb_set(
+  json #-'{connection,config,certificates,clientCertificateData}',
+  '{connection,config,certificates,sslConfig}',
+  json#>'{connection,config,certificates,sslConfig}' || jsonb_build_object('sslCertificate', json#>'{connection,config,certificates,clientCertificateData}')
+)
+WHERE serviceType IN ('QlikSense') AND json#>'{connection,config,certificates,clientCertificateData}' IS NOT NULL;
+
+UPDATE dashboard_service_entity
+SET json = jsonb_set(
+  json #-'{connection,config,certificates,clientKeyCertificateData}',
+  '{connection,config,certificates,sslConfig}',
+  json#>'{connection,config,certificates,sslConfig}' || jsonb_build_object('sslKey', json#>'{connection,config,certificates,clientKeyCertificateData}')
+)
+WHERE serviceType IN ('QlikSense') AND json#>'{connection,config,certificates,clientKeyCertificateData}' IS NOT NULL;
+
+
+update dashboard_service_entity 
+set json = json #-'{connection,config,certificates,stagingDir}'
+WHERE serviceType IN ('QlikSense') AND json#>'{connection,config,certificates,stagingDir}' IS NOT NULL;
 
 UPDATE dashboard_service_entity
 SET json = jsonb_set(

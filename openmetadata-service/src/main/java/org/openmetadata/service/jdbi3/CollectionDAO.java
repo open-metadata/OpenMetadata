@@ -1810,6 +1810,9 @@ public interface CollectionDAO {
 
       return listAfter(getTableName(), condition, limit, after);
     }
+
+    @SqlQuery("select fqnhash FROM glossary_term_entity where fqnhash LIKE CONCAT(:fqnhash, '.%')")
+    List<String> getNestedChildrenByFQN(@BindFQN("fqnhash") String fqnhash);
   }
 
   interface IngestionPipelineDAO extends EntityDAO<IngestionPipeline> {
@@ -2591,6 +2594,10 @@ public interface CollectionDAO {
     @RegisterRowMapper(TagLabelMapper.class)
     List<String> getTargetFQNHashForTag(@BindFQN("tagFQNHash") String tagFQNHash);
 
+    @SqlQuery("select targetFQNHash FROM tag_usage where tagFQNHash LIKE CONCAT(:tagFQNHash, '.%')")
+    @RegisterRowMapper(TagLabelMapper.class)
+    List<String> getTargetFQNHashForTagPrefix(@BindFQN("tagFQNHash") String tagFQNHash);
+
     class TagLabelMapper implements RowMapper<TagLabel> {
       @Override
       public TagLabel map(ResultSet r, StatementContext ctx) throws SQLException {
@@ -3344,7 +3351,10 @@ public interface CollectionDAO {
         "SELECT json FROM change_event ce where ce.offset > :offset ORDER BY ce.eventTime ASC LIMIT :limit")
     List<String> list(@Bind("limit") long limit, @Bind("offset") long offset);
 
-    @SqlQuery("SELECT count(*) FROM change_event")
+    @ConnectionAwareSqlQuery(value = "SELECT MAX(offset) FROM change_event", connectionType = MYSQL)
+    @ConnectionAwareSqlQuery(
+        value = "SELECT MAX(\"offset\") FROM change_event",
+        connectionType = POSTGRES)
     long getLatestOffset();
   }
 

@@ -297,7 +297,10 @@ const GlossaryTermsV1 = ({
   ]);
 
   useEffect(() => {
-    fetchGlossaryTermAssets();
+    // Adding manual wait for ES to update assets when glossary term is renamed
+    setTimeout(() => {
+      fetchGlossaryTermAssets();
+    }, 500);
     getEntityFeedCount();
   }, [glossaryFqn]);
 

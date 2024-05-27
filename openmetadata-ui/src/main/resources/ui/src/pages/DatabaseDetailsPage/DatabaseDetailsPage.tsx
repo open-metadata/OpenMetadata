@@ -303,7 +303,7 @@ const DatabaseDetails: FunctionComponent = () => {
     async (owner: Database['owner']) => {
       const updatedData = {
         ...database,
-        owner: owner ? { ...database?.owner, ...owner } : undefined,
+        owner: owner,
       };
 
       await settingsUpdateHandler(updatedData as Database);
