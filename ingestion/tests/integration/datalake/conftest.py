@@ -128,7 +128,7 @@ DATA_QUALITY_CONFIG = {
 }
 
 
-@pytest.fixture(scope="session", autouse=True)
+@pytest.fixture(scope="module", autouse=True)
 def aws():
     with mock_s3():
         yield boto3.client("s3", region_name="us-east-1")
