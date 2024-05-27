@@ -34,7 +34,6 @@ import {
   revokeToken,
   updateDetails,
   updateExpiration,
-  visitUserListPage,
 } from '../../common/Utils/Users';
 import {
   BASE_URL,
@@ -46,8 +45,8 @@ import {
 import { EntityType, SidebarItem } from '../../constants/Entity.interface';
 import {
   GlobalSettingOptions,
-  SETTINGS_OPTIONS_PATH,
   SETTING_CUSTOM_PROPERTIES_PATH,
+  SETTINGS_OPTIONS_PATH,
 } from '../../constants/settings.constant';
 
 const entity = new UsersTestClass();
@@ -118,7 +117,7 @@ describe('User with different Roles', { tags: 'Settings' }, () => {
 
   it('Create Data Consumer User', () => {
     cy.login();
-    visitUserListPage();
+    entity.visitUserListPage();
     addUser({ ...user, role: DATA_CONSUMER_ROLE.name });
     cy.logout();
   });
@@ -145,7 +144,7 @@ describe('User with different Roles', { tags: 'Settings' }, () => {
 
   it(`Update token expiration`, () => {
     cy.login(user.email, user.newPassword);
-    visitUserListPage();
+    entity.visitUserListPage();
     Object.values(expirationTime).forEach((expiry) => {
       updateExpiration(expiry);
     });
@@ -225,7 +224,7 @@ describe('User with different Roles', { tags: 'Settings' }, () => {
   it('Update Data Steward details', () => {
     // change role from consumer to steward
     cy.login();
-    visitUserListPage();
+    entity.visitUserListPage();
     editRole(user.name, DATA_STEWARD_ROLE.name);
     cy.logout();
     // login to steward user
@@ -243,7 +242,7 @@ describe('User with different Roles', { tags: 'Settings' }, () => {
 
   it('Token generation & revocation for Data Steward', () => {
     cy.login(user.email, user.newStewardPassword);
-    visitUserListPage();
+    entity.visitUserListPage();
     cy.get('[data-testid="dropdown-profile"]').click({ force: true });
     cy.get('[data-testid="user-name"] > .ant-typography').click({
       force: true,
@@ -255,7 +254,7 @@ describe('User with different Roles', { tags: 'Settings' }, () => {
 
   it(`Update token expiration for Data Steward`, () => {
     cy.login(user.email, user.newStewardPassword);
-    visitUserListPage();
+    entity.visitUserListPage();
     Object.values(expirationTime).forEach((expiry) => {
       updateExpiration(expiry);
     });
@@ -307,19 +306,19 @@ describe('User with different Roles', { tags: 'Settings' }, () => {
 
   it('Admin Soft delete user', () => {
     cy.login();
-    visitUserListPage();
+    entity.visitUserListPage();
     entity.softDeleteUser(user.name, user.updatedDisplayName);
   });
 
   it('Admin Restore soft deleted user', () => {
     cy.login();
-    visitUserListPage();
+    entity.visitUserListPage();
     entity.restoreSoftDeletedUser(user.name, user.updatedDisplayName);
   });
 
   it('Admin Permanent Delete User', () => {
     cy.login();
-    visitUserListPage();
+    entity.visitUserListPage();
     entity.permanentDeleteUser(user.name, user.updatedDisplayName);
   });
 
