@@ -1,3 +1,4 @@
+import os
 from abc import ABC
 from typing import Optional
 
@@ -24,7 +25,18 @@ secrets_manager_client_loader = enum_register()
 
 # pylint: disable=import-outside-toplevel
 @secrets_manager_client_loader.add(SecretsManagerClientLoader.noop.value)
-def _() -> None:
+def _() -> Optional["GCPCredentials"]:
+    from metadata.generated.schema.security.credentials.gcpCredentials import (
+        GCPCredentials,
+        gcpValues,
+    )
+
+    _, project_id = auth.default()
+    if project_id:
+        config = gcpValues.GcpCredentialsValues(projectId=project_id)
+        credentials = GCPCredentials(gcpConfig=config)
+        return credentials
+
     return None
 
 
@@ -33,11 +45,13 @@ def _() -> Optional["GCPCredentials"]:
     from airflow.configuration import conf
     from metadata.generated.schema.security.credentials.gcpCredentials import (
         GCPCredentials,
+        gcpValues,
     )
 
     project_id = conf.get(SECRET_MANAGER_AIRFLOW_CONF, "project_id", fallback=None)
     if project_id:
-        credentials = GCPCredentials(project_id=project_id)
+        config = gcpValues.GcpCredentialsValues(projectId=project_id)
+        credentials = GCPCredentials(gcpConfig=config)
         return credentials
 
     return None
@@ -47,11 +61,17 @@ def _() -> Optional["GCPCredentials"]:
 def _() -> Optional["GCPCredentials"]:
     from metadata.generated.schema.security.credentials.gcpCredentials import (
         GCPCredentials,
+        gcpValues,
     )
 
     # https://google-auth.readthedocs.io/en/master/reference/google.auth.html#google.auth.default
-    credentials, _ = auth.default()
-    return GCPCredentials(gcpConfig=credentials)
+    project_id = os.getenv("GOOGLE_CLOUD_PROJECT")
+    if project_id:
+        config = gcpValues.GcpCredentialsValues(projectId=project_id)
+        credentials = GCPCredentials(gcpConfig=config)
+        return credentials
+
+    return None
 
 
 class GCPSecretsManager(ExternalSecretsManager, ABC):
@@ -68,7 +88,8 @@ class GCPSecretsManager(ExternalSecretsManager, ABC):
         client = secretmanager.SecretManagerServiceClient()
 
         # Build the resource name of the secret version.
-        _, project_id = auth.default()
+
+        project_id = self.credentials.gcpConfig.projectId.__root__
         name = f"projects/{project_id}/secrets/{name}/versions/{FIXED_VERSION_ID}"
 
         # Access the secret version.
