@@ -12,6 +12,7 @@
  */
 
 import { SortingField } from '../components/Explore/SortingDropDown';
+import { EntityFields } from '../enums/AdvancedSearch.enum';
 import { SORT_ORDER } from '../enums/common.enum';
 import i18n from '../utils/i18next/LocalUtil';
 
@@ -25,6 +26,13 @@ export const TAG_FQN_KEY = 'tags.tagFQN';
 export const initialFilterQS = 'initialFilter';
 export const searchFilterQS = 'searchFilter';
 export const MAX_RESULT_HITS = 10000;
+
+export const SUPPORTED_EMPTY_FILTER_FIELDS = [
+  EntityFields.OWNER,
+  EntityFields.DOMAIN,
+  EntityFields.TIER,
+  EntityFields.TAG,
+];
 
 // as it is used only in unit tests it's not needed for translation
 export const tableSortingFields: SortingField[] = [

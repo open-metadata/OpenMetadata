@@ -11,7 +11,12 @@
  *  limitations under the License.
  */
 import { ExploreQuickFilterField } from '../components/Explore/ExplorePage.interface';
-import { getQuickFilterQuery } from './Explore.utils';
+import { QueryFieldInterface } from '../pages/ExplorePage/ExplorePage.interface';
+import {
+  extractTermKeys,
+  getQuickFilterQuery,
+  getSelectedValuesFromQuickFilter,
+} from './Explore.utils';
 
 describe('Explore Utils', () => {
   it('should return undefined if data is empty', () => {
@@ -67,5 +72,102 @@ describe('Explore Utils', () => {
     };
 
     expect(result).toEqual(expectedQuery);
+  });
+
+  describe('extractTermKeys', () => {
+    it('should return an empty array if objects is empty', () => {
+      const objects: QueryFieldInterface[] = [];
+      const result = extractTermKeys(objects);
+
+      expect(result).toEqual([]);
+    });
+
+    it('should return an array of term keys', () => {
+      const objects = [
+        {
+          bool: {
+            must_not: {
+              exists: {
+                field: 'owner.displayName.keyword',
+              },
+            },
+          },
+        },
+        {
+          term: {
+            'owner.displayName.keyword': 'accounting',
+          },
+        },
+      ];
+      const result = extractTermKeys(objects);
+      const expectedKeys = ['owner.displayName.keyword'];
+
+      expect(result).toEqual(expectedKeys);
+    });
+  });
+
+  it('getSelectedValuesFromQuickFilter should return correct result', () => {
+    const selectedFilters = {
+      Domain: [],
+      Owner: [
+        {
+          key: 'OM_NULL_FIELD',
+          label: 'label.no-entity',
+        },
+        {
+          key: 'accounting',
+          label: 'accounting',
+        },
+      ],
+      Tag: [],
+    };
+
+    const dropdownData = [
+      {
+        label: 'Domain',
+        key: 'domain.displayName.keyword',
+      },
+      {
+        label: 'Owner',
+        key: 'owner.displayName.keyword',
+      },
+      {
+        label: 'Tag',
+        key: 'tags.tagFQN',
+      },
+    ];
+
+    const queryFilter = {
+      query: {
+        bool: {
+          must: [
+            {
+              bool: {
+                should: [
+                  {
+                    bool: {
+                      must_not: {
+                        exists: {
+                          field: 'owner.displayName.keyword',
+                        },
+                      },
+                    },
+                  },
+                  {
+                    term: {
+                      'owner.displayName.keyword': 'accounting',
+                    },
+                  },
+                ],
+              },
+            },
+          ],
+        },
+      },
+    };
+
+    expect(getSelectedValuesFromQuickFilter(dropdownData, queryFilter)).toEqual(
+      selectedFilters
+    );
   });
 });

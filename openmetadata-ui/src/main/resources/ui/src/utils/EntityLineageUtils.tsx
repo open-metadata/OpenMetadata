@@ -715,6 +715,7 @@ export const createEdges = (
   entityFqn: string
 ) => {
   const lineageEdgesV1: Edge[] = [];
+  const edgeIds = new Set<string>();
 
   edges.forEach((edge) => {
     const sourceType = nodes.find((n) => edge.fromEntity.id === n.id);
@@ -731,48 +732,56 @@ export const createEdges = (
           e.fromColumns.forEach((fromColumn) => {
             const encodedFromColumn = encodeLineageHandles(fromColumn);
             const encodedToColumn = encodeLineageHandles(toColumn);
+            const edgeId = `column-${encodedFromColumn}-${encodedToColumn}-edge-${edge.fromEntity.id}-${edge.toEntity.id}`;
 
-            lineageEdgesV1.push({
-              id: `column-${encodedFromColumn}-${encodedToColumn}-edge-${edge.fromEntity.id}-${edge.toEntity.id}`,
-              source: edge.fromEntity.id,
-              target: edge.toEntity.id,
-              targetHandle: encodedToColumn,
-              sourceHandle: encodedFromColumn,
-              style: { strokeWidth: '2px' },
-              type: 'buttonedge',
-              markerEnd: {
-                type: MarkerType.ArrowClosed,
-              },
-              data: {
-                edge,
-                isColumnLineage: true,
+            if (!edgeIds.has(edgeId)) {
+              edgeIds.add(edgeId);
+              lineageEdgesV1.push({
+                id: edgeId,
+                source: edge.fromEntity.id,
+                target: edge.toEntity.id,
                 targetHandle: encodedToColumn,
                 sourceHandle: encodedFromColumn,
-              },
-            });
+                style: { strokeWidth: '2px' },
+                type: 'buttonedge',
+                markerEnd: {
+                  type: MarkerType.ArrowClosed,
+                },
+                data: {
+                  edge,
+                  isColumnLineage: true,
+                  targetHandle: encodedToColumn,
+                  sourceHandle: encodedFromColumn,
+                },
+              });
+            }
           });
         }
       });
     }
 
-    lineageEdgesV1.push({
-      id: `edge-${edge.fromEntity.id}-${edge.toEntity.id}`,
-      source: `${edge.fromEntity.id}`,
-      target: `${edge.toEntity.id}`,
-      type: 'buttonedge',
-      animated: !isNil(edge.pipeline),
-      style: { strokeWidth: '2px' },
-      markerEnd: {
-        type: MarkerType.ArrowClosed,
-      },
-      data: {
-        edge,
-        isColumnLineage: false,
-        isPipelineRootNode: !isNil(edge.pipeline)
-          ? entityFqn === edge.pipeline?.fullyQualifiedName
-          : false,
-      },
-    });
+    const edgeId = `edge-${edge.fromEntity.id}-${edge.toEntity.id}`;
+    if (!edgeIds.has(edgeId)) {
+      edgeIds.add(edgeId);
+      lineageEdgesV1.push({
+        id: edgeId,
+        source: `${edge.fromEntity.id}`,
+        target: `${edge.toEntity.id}`,
+        type: 'buttonedge',
+        animated: !isNil(edge.pipeline),
+        style: { strokeWidth: '2px' },
+        markerEnd: {
+          type: MarkerType.ArrowClosed,
+        },
+        data: {
+          edge,
+          isColumnLineage: false,
+          isPipelineRootNode: !isNil(edge.pipeline)
+            ? entityFqn === edge.pipeline?.fullyQualifiedName
+            : false,
+        },
+      });
+    }
   });
 
   return lineageEdgesV1;
