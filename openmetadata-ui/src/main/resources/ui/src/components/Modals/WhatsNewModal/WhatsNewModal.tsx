@@ -110,19 +110,19 @@ const WhatsNewModal: FunctionComponent<WhatsNewModalProps> = ({
         </Col>
         <Col className="overflow-y-auto" span={21}>
           <div className="p-t-md px-10 ">
-            <div className="flex justify-between items-center p-b-sm">
+            <div className="flex justify-between items-center p-b-sm gap-1">
               <div>
                 <p className="text-base font-medium">{activeData.version}</p>
                 <p className="text-grey-muted text-xs">
                   {activeData.description}
                 </p>
+                {activeData?.note && (
+                  <p className="m-t-xs font-medium">{activeData.note}</p>
+                )}
               </div>
               <div>
                 {activeData.features.length > 0 && (
-                  <div
-                    className={classNames('whats-new-modal-button-container', {
-                      'w-60': activeData.features.length > 0,
-                    })}>
+                  <div className="whats-new-modal-button-container">
                     <Button.Group>
                       <Button
                         data-testid="WhatsNewModalFeatures"
