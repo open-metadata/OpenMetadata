@@ -398,7 +398,7 @@ describe('Search DropDown Component', () => {
     // onChange should be called with previous selected keys and current selected keys
     expect(mockOnChange).toHaveBeenCalledWith(
       [
-        { key: 'OM_NULL_FIELD', label: 'No Owner' },
+        { key: 'OM_NULL_FIELD', label: 'label.no-entity' },
         { key: 'User 1', label: 'User 1' },
       ],
       'owner.displayName'
