@@ -1,0 +1,45 @@
+name: Create Release Branches
+on:
+  workflow_dispatch:
+    inputs:
+      release_branch_name:
+        description: "Github Release Branch Name"
+        required: true
+      base_branch_name:
+        description: "Base Branch for Release Branch"
+        required: true
+        default: "main"
+permissions:
+  contents: write
+jobs:
+  create-release-branch:
+    name: Create Release Branch ${{ inputs.release_branch_name }}
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout Repo
+      uses: actions/checkout@v4
+      with:
+        ref: ${{ inputs.base_branch_name }}
+    - name: Set up JDK 17
+      uses: actions/setup-java@v3
+      with:
+        java-version: 17
+        distribution: 'temurin'
+    - name: Install antlr cli
+      run: |
+        sudo make install_antlr_cli
+    - name: Setup jq
+      run: |
+        sudo apt-get update
+        sudo apt-get install jq
+    - name: Update application versions
+      run: |
+        make update_all RELEASE_VERSION=${{ inputs.release_branch_name }}
+    - name: Commit changes to ${{ inputs.release_branch_name }} branch
+      uses: EndBug/add-and-commit@v9
+      with:
+        author_name: ${{ github.actor }}
+        author_email: ${{ github.actor_id }}+${{ github.actor }}@users.noreply.github.com
+        message: 'chore(release): Prepare Branch for `${{ inputs.release_branch_name }}`'
+        add: '.'
+        new_branch: ${{ inputs.release_branch_name }}
