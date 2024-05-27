@@ -292,7 +292,7 @@ export const getEntityIcon = (
       break;
 
     default:
-      Icon = entityIconMapping[indexType];
+      Icon = entityIconMapping[indexType] || TableIcon;
 
       break;
   }
