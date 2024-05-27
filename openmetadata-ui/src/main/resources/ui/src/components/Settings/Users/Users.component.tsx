@@ -92,7 +92,7 @@ const Users = ({ userData, queryFilters, updateUserDetails }: Props) => {
   const initLimits = async () => {
     const limits = await getResourceLimit('user', false);
 
-    setDisableFields(limits.configuredLimit.disabledFields);
+    setDisableFields(limits.configuredLimit.disabledFields ?? []);
   };
 
   const activeTabHandler = (activeKey: string) => {

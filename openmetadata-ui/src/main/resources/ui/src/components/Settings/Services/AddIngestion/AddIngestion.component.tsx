@@ -72,7 +72,7 @@ const AddIngestion = ({
 
   const { pipelineSchedules } =
     limitConfig?.limits.config.featureLimits.find(
-      (limit) => limit.name === 'pipelineSchedules'
+      (limit) => limit.name === 'ingestionPipeline'
     ) ?? {};
 
   const periodOptions = getScheduleOptionsFromSchedules(

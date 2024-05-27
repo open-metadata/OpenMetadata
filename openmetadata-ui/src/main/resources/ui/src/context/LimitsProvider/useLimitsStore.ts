@@ -18,9 +18,9 @@ export interface ResourceLimit {
   featureLimitStatuses: Array<{
     configuredLimit: {
       name: string;
-      maxVersions: number;
-      disableFields: Array<string>;
-      disabledFields: Array<string>;
+      maxVersions?: number;
+      disableFields?: Array<string>;
+      disabledFields?: Array<string>;
       limits: {
         softLimit: number;
         hardLimit: number;

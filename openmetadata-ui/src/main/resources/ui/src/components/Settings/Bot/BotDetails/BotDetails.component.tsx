@@ -79,7 +79,7 @@ const BotDetails: FC<BotsDetailProps> = ({
   const initLimits = async () => {
     const limits = await getResourceLimit('bot', false);
 
-    setDisableFields(limits.configuredLimit.disabledFields);
+    setDisableFields(limits.configuredLimit.disabledFields ?? []);
   };
 
   const fetchRoles = async () => {
