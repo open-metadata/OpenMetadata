@@ -227,13 +227,13 @@ export const QualityTab = () => {
 
                 {editTest && !isTableDeleted && (
                   <Form.Item noStyle>
-                    <Dropdown
-                      menu={{
-                        items: addButtonContent,
-                      }}
-                      placement="bottomRight"
-                      trigger={['click']}>
-                      <LimitWrapper resource="dataQuality">
+                    <LimitWrapper resource="dataQuality">
+                      <Dropdown
+                        menu={{
+                          items: addButtonContent,
+                        }}
+                        placement="bottomRight"
+                        trigger={['click']}>
                         <Button
                           data-testid="profiler-add-table-test-btn"
                           type="primary">
@@ -242,8 +242,8 @@ export const QualityTab = () => {
                             <DownOutlined />
                           </Space>
                         </Button>
-                      </LimitWrapper>
-                    </Dropdown>
+                      </Dropdown>
+                    </LimitWrapper>
                   </Form.Item>
                 )}
               </Space>
