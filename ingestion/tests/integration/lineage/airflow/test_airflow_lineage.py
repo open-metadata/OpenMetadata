@@ -163,7 +163,7 @@ class AirflowLineageTest(TestCase):
         service_id = str(
             cls.metadata.get_by_name(
                 entity=DatabaseService, fqn="test-service-table-lineage"
-            ).id.__root__
+            ).id.root
         )
 
         cls.metadata.delete(
@@ -178,7 +178,7 @@ class AirflowLineageTest(TestCase):
         pipeline_service_id = str(
             cls.metadata.get_by_name(
                 entity=PipelineService, fqn=PIPELINE_SERVICE_NAME
-            ).id.__root__
+            ).id.root
         )
 
         cls.metadata.delete(
@@ -269,7 +269,7 @@ class AirflowLineageTest(TestCase):
             expected_task_names, {"print_date", "sleep", "templated", "lineage_op"}
         )
 
-        self.assertEqual(pipeline.description.__root__, "A simple tutorial DAG")
+        self.assertEqual(pipeline.description.root, "A simple tutorial DAG")
 
         # Validate status
         self.assertEqual(
@@ -302,7 +302,7 @@ class AirflowLineageTest(TestCase):
             self.assertEqual(len(lineage.get("downstreamEdges")), 1)
             self.assertEqual(
                 lineage["downstreamEdges"][0]["toEntity"],
-                str(self.table_outlet.id.__root__),
+                str(self.table_outlet.id.root),
             )
             self.assertEqual(
                 lineage["downstreamEdges"][0]["lineageDetails"]["pipeline"][

@@ -208,7 +208,7 @@ class SupersetDBSource(SupersetSourceMixin):
                     chart_json.sqlalchemy_uri, db_service_entity
                 ),
                 schema_name=chart_json.table_schema,
-                service_name=db_service_entity.name.__root__,
+                service_name=db_service_entity.name.root,
             )
             return dataset_fqn
         except Exception as err:

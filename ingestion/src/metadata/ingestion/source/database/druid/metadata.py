@@ -32,7 +32,7 @@ class DruidSource(CommonDbSourceService):
     ):
         """Create class instance"""
         config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
-        connection: DruidConnection = config.serviceConnection.__root__.config
+        connection: DruidConnection = config.serviceConnection.root.config
         if not isinstance(connection, DruidConnection):
             raise InvalidSourceException(
                 f"Expected DruidConnection, but got {connection}"

@@ -34,7 +34,7 @@ def test_s3_ingestion(metadata, ingest_s3_storage, service_name):
         entity=Container, fqn=f"{service_name}.test-bucket", fields=["*"]
     )
     # The bucket has children and no dataModel
-    assert 5 == len(bucket.children.__root__)
+    assert 5 == len(bucket.children.root)
     assert not bucket.dataModel
 
     # We can validate the children

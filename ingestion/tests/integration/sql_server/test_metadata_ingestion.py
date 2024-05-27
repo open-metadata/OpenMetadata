@@ -67,7 +67,7 @@ def ingest_metadata(db_service, metadata: OpenMetadata):
     workflow_config = OpenMetadataWorkflowConfig(
         source=Source(
             type=db_service.connection.config.type.value.lower(),
-            serviceName=db_service.fullyQualifiedName.__root__,
+            serviceName=db_service.fullyQualifiedName.root,
             sourceConfig=SourceConfig(config={}),
             serviceConnection=db_service.connection,
         ),
@@ -88,7 +88,7 @@ def ingest_metadata(db_service, metadata: OpenMetadata):
 def db_fqn(db_service: DatabaseService):
     return ".".join(
         [
-            db_service.fullyQualifiedName.__root__,
+            db_service.fullyQualifiedName.root,
             db_service.connection.config.database,
         ]
     )
@@ -101,8 +101,8 @@ def test_pass(
 ):
     table: Table = metadata.get_by_name(Table, f"{db_fqn}.HumanResources.Department")
     assert table is not None
-    assert table.columns[0].name.__root__ == "DepartmentID"
+    assert table.columns[0].name.root == "DepartmentID"
     assert table.columns[0].constraint == Constraint.PRIMARY_KEY
-    assert table.columns[1].name.__root__ == "Name"
-    assert table.columns[2].name.__root__ == "GroupName"
-    assert table.columns[3].name.__root__ == "ModifiedDate"
+    assert table.columns[1].name.root == "Name"
+    assert table.columns[2].name.root == "GroupName"
+    assert table.columns[3].name.root == "ModifiedDate"

@@ -79,7 +79,7 @@ class AirbyteSource(PipelineServiceSource):
         cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None
     ):
         config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
-        connection: AirbyteConnection = config.serviceConnection.__root__.config
+        connection: AirbyteConnection = config.serviceConnection.root.config
         if not isinstance(connection, AirbyteConnection):
             raise InvalidSourceException(
                 f"Expected AirbyteConnection, but got {connection}"
@@ -245,9 +245,7 @@ class AirbyteSource(PipelineServiceSource):
             )
 
             lineage_details = LineageDetails(
-                pipeline=EntityReference(
-                    id=pipeline_entity.id.__root__, type="pipeline"
-                ),
+                pipeline=EntityReference(id=pipeline_entity.id.root, type="pipeline"),
                 source=LineageSource.PipelineLineage,
             )
 

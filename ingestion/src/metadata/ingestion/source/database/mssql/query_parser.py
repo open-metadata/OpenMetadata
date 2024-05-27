@@ -38,7 +38,7 @@ class MssqlQueryParserSource(QueryParserSource, ABC):
     ):
         """Create class instance"""
         config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
-        connection: MssqlConnection = config.serviceConnection.__root__.config
+        connection: MssqlConnection = config.serviceConnection.root.config
         if not isinstance(connection, MssqlConnection):
             raise InvalidSourceException(
                 f"Expected MssqlConnection, but got {connection}"

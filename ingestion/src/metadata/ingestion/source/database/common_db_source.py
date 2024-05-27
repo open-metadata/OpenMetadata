@@ -104,7 +104,7 @@ class CommonDbSourceService(
         self.metadata = metadata
 
         # It will be one of the Unions. We don't know the specific type here.
-        self.service_connection = self.config.serviceConnection.__root__.config
+        self.service_connection = self.config.serviceConnection.root.config
 
         self.ssl_manager = None
         self.ssl_manager: SSLManager = check_ssl_and_init(self.service_connection)

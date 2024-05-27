@@ -138,7 +138,7 @@ class DatalakeTestE2E(TestCase):
 
         entities = resp.entities
         self.assertEqual(len(entities), 3)
-        names = [entity.name.__root__ for entity in entities]
+        names = [entity.name.root for entity in entities]
         self.assertListEqual(
             sorted(["names.json", "new_users.parquet", "users.csv"]), sorted(names)
         )

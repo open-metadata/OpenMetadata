@@ -381,7 +381,7 @@ class DataInsightWorkflowTests(unittest.TestCase):
         """teardown class"""
         self.metadata.delete(
             entity=Kpi,
-            entity_id=str(self.kpi.id.__root__),
+            entity_id=str(self.kpi.id.root),
             hard_delete=True,
             recursive=True,
         )

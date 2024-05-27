@@ -71,7 +71,7 @@ class MetabaseSource(DashboardServiceSource):
         cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None
     ):
         config = WorkflowSource.parse_obj(config_dict)
-        connection: MetabaseConnection = config.serviceConnection.__root__.config
+        connection: MetabaseConnection = config.serviceConnection.root.config
         if not isinstance(connection, MetabaseConnection):
             raise InvalidSourceException(
                 f"Expected MetabaseConnection, but got {connection}"

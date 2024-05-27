@@ -67,7 +67,7 @@ class QliksenseSource(DashboardServiceSource):
         cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None
     ):
         config = WorkflowSource.parse_obj(config_dict)
-        connection: QlikSenseConnection = config.serviceConnection.__root__.config
+        connection: QlikSenseConnection = config.serviceConnection.root.config
         if not isinstance(connection, QlikSenseConnection):
             raise InvalidSourceException(
                 f"Expected QlikSenseConnection, but got {connection}"
@@ -282,7 +282,7 @@ class QliksenseSource(DashboardServiceSource):
                 table_fqn = fqn.build(
                     self.metadata,
                     entity_type=Table,
-                    service_name=db_service_entity.name.__root__,
+                    service_name=db_service_entity.name.root,
                     schema_name=schema_name,
                     table_name=datamodel.tableName,
                     database_name=database_name,

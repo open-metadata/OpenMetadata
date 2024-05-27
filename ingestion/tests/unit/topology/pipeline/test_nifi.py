@@ -142,7 +142,7 @@ EXPECTED_CREATED_PIPELINES = CreatePipelineRequest(
 MOCK_PIPELINE_SERVICE = PipelineService(
     id="85811038-099a-11ed-861d-0242ac120002",
     name="nifi_source",
-    fullyQualifiedName=FullyQualifiedEntityName(__root__="nifi_source"),
+    fullyQualifiedName=FullyQualifiedEntityName(root="nifi_source"),
     connection=PipelineConnection(),
     serviceType=PipelineServiceType.Nifi,
 )
@@ -207,10 +207,10 @@ class NifiUnitTest(TestCase):
             mock_nifi_config["source"],
             config.workflowConfig.openMetadataServerConfig,
         )
-        self.nifi.context.get().__dict__["pipeline"] = MOCK_PIPELINE.name.__root__
+        self.nifi.context.get().__dict__["pipeline"] = MOCK_PIPELINE.name.root
         self.nifi.context.get().__dict__[
             "pipeline_service"
-        ] = MOCK_PIPELINE_SERVICE.name.__root__
+        ] = MOCK_PIPELINE_SERVICE.name.root
 
     def test_pipeline_name(self):
         assert (

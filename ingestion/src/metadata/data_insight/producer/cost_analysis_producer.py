@@ -46,9 +46,9 @@ class CostAnalysisProducer(ProducerInterface):
     ) -> bool:
         return (
             hasattr(database_service.connection.config, "supportsUsageExtraction")
-            and database_service.connection.config.supportsUsageExtraction.__root__
+            and database_service.connection.config.supportsUsageExtraction.root
             and hasattr(database_service.connection.config, "supportsProfiler")
-            and database_service.connection.config.supportsProfiler.__root__
+            and database_service.connection.config.supportsProfiler.root
         )
 
     def _check_life_cycle_and_size_data(

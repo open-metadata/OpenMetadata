@@ -32,7 +32,7 @@ VERSIONS = {
     "neo4j": "neo4j~=5.3.0",
     "pandas": "pandas~=2.0.0",
     "pyarrow": "pyarrow~=14.0",
-    "pydantic": "pydantic~=1.10",
+    "pydantic": "pydantic~=2.0",
     "pydomo": "pydomo~=0.3",
     "pymysql": "pymysql>=1.0.2",
     "pyodbc": "pyodbc>=4.0.35,<5",
@@ -43,7 +43,7 @@ VERSIONS = {
     "sqlalchemy-databricks": "sqlalchemy-databricks~=0.1",
     "databricks-sdk": "databricks-sdk>=0.18.0,<0.20.0",
     "trino": "trino[sqlalchemy]",
-    "spacy": "spacy==3.5.0",
+    "spacy": "spacy~=3.7",
     "looker-sdk": "looker-sdk>=22.20.0",
     "lkml": "lkml~=1.3",
     "tableau": "tableau-api-lib~=0.1",
@@ -98,7 +98,7 @@ base_requirements = {
     "cached-property==1.5.2",  # LineageParser
     "chardet==4.0.0",  # Used in the profiler
     "cryptography>=42.0.0",
-    "email-validator>=1.0.3",  # For the pydantic generated models for Email
+    "email-validator>=2.0",  # For the pydantic generated models for Email
     "importlib-metadata>=4.13.0",  # From airflow constraints
     "Jinja2>=2.11.3",
     "jsonpatch<2.0, >=1.24",
@@ -275,7 +275,7 @@ plugins: Dict[str, Set[str]] = {
 
 dev = {
     "black==22.3.0",
-    "datamodel-code-generator==0.24.2",
+    "datamodel-code-generator==0.25.6",
     "boto3-stubs[essential]",
     "isort",
     "pre-commit",
@@ -324,6 +324,7 @@ test = {
     "minio==7.2.5",
     *plugins["mlflow"],
     *plugins["datalake-s3"],
+    *plugins["pii-processor"],
     "requests==2.31.0",
 }
 

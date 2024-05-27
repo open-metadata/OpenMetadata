@@ -76,7 +76,7 @@ class GluepipelineSource(PipelineServiceSource):
         cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None
     ):
         config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
-        connection: GluePipelineConnection = config.serviceConnection.__root__.config
+        connection: GluePipelineConnection = config.serviceConnection.root.config
         if not isinstance(connection, GluePipelineConnection):
             raise InvalidSourceException(
                 f"Expected GlueConnection, but got {connection}"

@@ -51,7 +51,7 @@ class CouchbaseSource(CommonNoSQLSource):
         cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None
     ):
         config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
-        connection: CouchbaseConnection = config.serviceConnection.__root__.config
+        connection: CouchbaseConnection = config.serviceConnection.root.config
         if not isinstance(connection, CouchbaseConnection):
             raise InvalidSourceException(
                 f"Expected CouchbaseConnection, but got {connection}"

@@ -120,7 +120,7 @@ class BulkLkmlParser(metaclass=Singleton):
         """
         if isinstance(self.reader, ApiReader):
             return (
-                f"Parser at [{self.reader.credentials.repositoryOwner.__root__}/"
-                f"{self.reader.credentials.repositoryName.__root__}]"
+                f"Parser at [{self.reader.credentials.repositoryOwner.root}/"
+                f"{self.reader.credentials.repositoryName.root}]"
             )
         return f"Parser at [{self.reader}]"

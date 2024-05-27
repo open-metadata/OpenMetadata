@@ -100,7 +100,7 @@ class TableUsageStage(Stage):
         if username:
             user = self.metadata.get_by_name(entity=User, fqn=username)
             if user:
-                return [user.fullyQualifiedName.__root__], [username]
+                return [user.fullyQualifiedName.root], [username]
             return None, [username]
         return None, None
 

@@ -90,7 +90,7 @@ class OMetaMlModelMixin(OMetaLineageMixin):
                 )
             )
 
-        mlmodel_lineage = self.get_lineage_by_id(MlModel, str(model.id.__root__))
+        mlmodel_lineage = self.get_lineage_by_id(MlModel, str(model.id.root))
 
         return mlmodel_lineage
 

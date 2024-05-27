@@ -65,7 +65,7 @@ class DomodashboardSource(DashboardServiceSource):
         cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None
     ):
         config = WorkflowSource.parse_obj(config_dict)
-        connection: DomoDashboardConnection = config.serviceConnection.__root__.config
+        connection: DomoDashboardConnection = config.serviceConnection.root.config
         if not isinstance(connection, DomoDashboardConnection):
             raise InvalidSourceException(
                 f"Expected DomoDashboardConnection, but got {connection}"

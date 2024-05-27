@@ -46,7 +46,7 @@ class ApiReader(Reader, ABC):
         """
         if self._auth_headers is None and self.credentials.token:
             self._auth_headers = {
-                "Authorization": f"Bearer {self.credentials.token.__root__.get_secret_value()}"
+                "Authorization": f"Bearer {self.credentials.token.root.get_secret_value()}"
             }
 
         return self._auth_headers

@@ -227,14 +227,14 @@ class TestLkmlParser(TestCase):
         cols = get_columns_from_model(explore)
         expected_cols = [
             Column(
-                name=ColumnName(__root__="dim1"),
+                name=ColumnName(root="dim1"),
                 displayName="Dim 1 Label",
                 dataType=DataType.BOOLEAN,
                 dataTypeDisplay="yesno",
                 description=None,
             ),
             Column(
-                name=ColumnName(__root__="dim2"),
+                name=ColumnName(root="dim2"),
                 displayName="Dim 2 Label Short",
                 dataType=DataType.ARRAY,
                 arrayDataType=DataType.UNKNOWN,
@@ -242,7 +242,7 @@ class TestLkmlParser(TestCase):
                 description="something",
             ),
             Column(
-                name=ColumnName(__root__="measure1"),
+                name=ColumnName(root="measure1"),
                 displayName=None,
                 dataType=DataType.STRING,
                 dataTypeDisplay="duration_day",
@@ -267,12 +267,12 @@ class TestLkmlParser(TestCase):
         cols = get_columns_from_model(view)
         expected_cols = [
             Column(
-                name=ColumnName(__root__="name"),
+                name=ColumnName(root="name"),
                 dataType=DataType.STRING,
                 dataTypeDisplay="string",
             ),
             Column(
-                name=ColumnName(__root__="age"),
+                name=ColumnName(root="age"),
                 dataType=DataType.NUMBER,
                 dataTypeDisplay="int",
             ),

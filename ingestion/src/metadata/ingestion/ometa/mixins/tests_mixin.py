@@ -45,7 +45,6 @@ from metadata.generated.schema.tests.testDefinition import (
 )
 from metadata.generated.schema.tests.testSuite import TestSuite
 from metadata.generated.schema.type.entityReference import EntityReference
-from metadata.ingestion.models.encoders import show_secrets_encoder
 from metadata.ingestion.ometa.client import REST
 from metadata.ingestion.ometa.utils import model_str
 from metadata.utils.logger import ometa_logger
@@ -229,8 +228,8 @@ class OMetaTestsMixin:
             return table_entity.testSuite
 
         create_test_suite = CreateTestSuiteRequest(
-            name=f"{table_entity.fullyQualifiedName.__root__}.TestSuite",
-            executableEntityReference=table_entity.fullyQualifiedName.__root__,
+            name=f"{table_entity.fullyQualifiedName.root}.TestSuite",
+            executableEntityReference=table_entity.fullyQualifiedName.root,
         )  # type: ignore
         test_suite = self.create_or_update_executable_test_suite(create_test_suite)
         return test_suite
@@ -277,7 +276,7 @@ class OMetaTestsMixin:
         entity = data.__class__
         entity_class = self.get_entity_from_create(entity)
         path = self.get_suffix(entity) + "/executable"
-        resp = self.client.put(path, data=data.json(encoder=show_secrets_encoder))
+        resp = self.client.put(path, data=data.model_dump_json())
 
         return entity_class.parse_obj(resp)
 
@@ -307,7 +306,7 @@ class OMetaTestsMixin:
             data (CreateLogicalTestCases): logical test cases
         """
         path = self.get_suffix(TestCase) + "/logicalTestCases"
-        self.client.put(path, data=data.json(encoder=show_secrets_encoder))
+        self.client.put(path, data=data.model_dump_json())
 
     def create_test_case_resolution(
         self, data: CreateTestCaseResolutionStatus
@@ -321,7 +320,7 @@ class OMetaTestsMixin:
             TestCaseResolutionStatus
         """
         path = self.get_suffix(TestCase) + "/testCaseIncidentStatus"
-        response = self.client.post(path, data=data.json(encoder=show_secrets_encoder))
+        response = self.client.post(path, data=data.model_dump_json())
 
         return TestCaseResolutionStatus(**response)
 
@@ -337,13 +336,13 @@ class OMetaTestsMixin:
         resp = None
         try:
             resp = self.client.put(
-                f"{self.get_suffix(TestCase)}/{test_case.id.__root__}/failedRowsSample",
+                f"{self.get_suffix(TestCase)}/{test_case.id.root}/failedRowsSample",
                 data=failed_rows.json(),
             )
         except Exception as exc:
             logger.debug(traceback.format_exc())
             logger.warning(
-                f"Error trying to PUT sample data for {test_case.fullyQualifiedName.__root__}: {exc}"
+                f"Error trying to PUT sample data for {test_case.fullyQualifiedName.root}: {exc}"
             )
 
         if resp:
@@ -352,13 +351,13 @@ class OMetaTestsMixin:
             except UnicodeError as err:
                 logger.debug(traceback.format_exc())
                 logger.warning(
-                    f"Unicode Error parsing the sample data response from {test_case.fullyQualifiedName.__root__}: "
+                    f"Unicode Error parsing the sample data response from {test_case.fullyQualifiedName.root}: "
                     f"{err}"
                 )
             except Exception as exc:
                 logger.debug(traceback.format_exc())
                 logger.warning(
-                    f"Error trying to parse sample data results from {test_case.fullyQualifiedName.__root__}: {exc}"
+                    f"Error trying to parse sample data results from {test_case.fullyQualifiedName.root}: {exc}"
                 )
 
         return None
@@ -373,7 +372,7 @@ class OMetaTestsMixin:
         :param inspection_query: SQL query to inspect the failed rows
         """
         resp = self.client.put(
-            f"{self.get_suffix(TestCase)}/{test_case.id.__root__}/inspectionQuery",
+            f"{self.get_suffix(TestCase)}/{test_case.id.root}/inspectionQuery",
             data=inspection_query,
         )
         return TestCase(**resp)

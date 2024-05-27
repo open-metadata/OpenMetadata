@@ -62,9 +62,7 @@ class QuicksightSource(DashboardServiceSource):
         super().__init__(config, metadata)
         self.aws_account_id = self.service_connection.awsAccountId
         self.dashboard_url = None
-        self.aws_region = (
-            self.config.serviceConnection.__root__.config.awsConfig.awsRegion
-        )
+        self.aws_region = self.config.serviceConnection.root.config.awsConfig.awsRegion
         self.default_args = {
             "AwsAccountId": self.aws_account_id,
             "MaxResults": QUICKSIGHT_MAX_RESULTS,
@@ -75,7 +73,7 @@ class QuicksightSource(DashboardServiceSource):
         cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None
     ):
         config = WorkflowSource.parse_obj(config_dict)
-        connection: QuickSightConnection = config.serviceConnection.__root__.config
+        connection: QuickSightConnection = config.serviceConnection.root.config
         if not isinstance(connection, QuickSightConnection):
             raise InvalidSourceException(
                 f"Expected QuickSightConnection, but got {connection}"

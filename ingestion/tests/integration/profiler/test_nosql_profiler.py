@@ -156,9 +156,7 @@ class NoSQLProfiler(TestCase):
     @classmethod
     def delete_service(cls):
         service_id = str(
-            cls.metadata.get_by_name(
-                entity=DatabaseService, fqn=SERVICE_NAME
-            ).id.__root__
+            cls.metadata.get_by_name(entity=DatabaseService, fqn=SERVICE_NAME).id.root
         )
         cls.metadata.delete(
             entity=DatabaseService,
@@ -246,7 +244,7 @@ class NoSQLProfiler(TestCase):
             Table, f"{SERVICE_NAME}.default.{TEST_DATABASE}.{TEST_COLLECTION}"
         )
         sample_data = self.metadata.get_sample_data(table)
-        assert [c.__root__ for c in sample_data.sampleData.columns] == [
+        assert [c.root for c in sample_data.sampleData.columns] == [
             "_id",
             "name",
             "age",
@@ -326,9 +324,9 @@ class NoSQLProfiler(TestCase):
             Table, f"{SERVICE_NAME}.default.{TEST_DATABASE}.{TEST_COLLECTION}"
         )
         sample_data = self.metadata.get_sample_data(table)
-        age_column_index = [
-            col.__root__ for col in sample_data.sampleData.columns
-        ].index("age")
+        age_column_index = [col.root for col in sample_data.sampleData.columns].index(
+            "age"
+        )
         assert all(
             [r[age_column_index] == query_age for r in sample_data.sampleData.rows]
         )

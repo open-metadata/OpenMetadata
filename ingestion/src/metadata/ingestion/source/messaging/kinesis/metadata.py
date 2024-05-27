@@ -76,7 +76,7 @@ class KinesisSource(MessagingServiceSource):
         cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None
     ):
         config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
-        connection: KinesisConnection = config.serviceConnection.__root__.config
+        connection: KinesisConnection = config.serviceConnection.root.config
         if not isinstance(connection, KinesisConnection):
             raise InvalidSourceException(
                 f"Expected KinesisConnection, but got {connection}"

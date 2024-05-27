@@ -61,7 +61,7 @@ class QlikcloudSource(QliksenseSource):
         cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None
     ):
         config = WorkflowSource.parse_obj(config_dict)
-        connection: QlikCloudConnection = config.serviceConnection.__root__.config
+        connection: QlikCloudConnection = config.serviceConnection.root.config
         if not isinstance(connection, QlikCloudConnection):
             raise InvalidSourceException(
                 f"Expected QlikCloudConnection, but got {connection}"
@@ -160,7 +160,7 @@ class QlikcloudSource(QliksenseSource):
                 table_fqn = fqn.build(
                     self.metadata,
                     entity_type=Table,
-                    service_name=db_service_entity.name.__root__,
+                    service_name=db_service_entity.name.root,
                     schema_name=schema_name,
                     table_name=data_model_entity.displayName,
                     database_name=database_name,

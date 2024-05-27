@@ -60,7 +60,7 @@ class ElasticsearchSource(SearchServiceSource):
         cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None
     ):
         config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
-        connection: ElasticsearchConnection = config.serviceConnection.__root__.config
+        connection: ElasticsearchConnection = config.serviceConnection.root.config
         if not isinstance(connection, ElasticsearchConnection):
             raise InvalidSourceException(
                 f"Expected ElasticsearchConnection, but got {connection}"

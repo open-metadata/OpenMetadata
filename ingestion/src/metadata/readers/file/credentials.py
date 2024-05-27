@@ -27,7 +27,7 @@ def update_repository_name(
     return the updated credentials
     """
     updated = original.copy(deep=True)
-    updated.repositoryName = RepositoryName(__root__=name)
+    updated.repositoryName = RepositoryName(root=name)
 
     return updated
 
@@ -47,16 +47,16 @@ def get_credentials_from_url(
     up information, which would still not happen since we work with a single
     token which cannot have permissions on different owners.
     """
-    if original.repositoryOwner.__root__ not in url:
+    if original.repositoryOwner.root not in url:
         logger.warning(
-            f"Default repository owner [{original.repositoryOwner.__root__}] not found in [{url}]."
+            f"Default repository owner [{original.repositoryOwner.root}] not found in [{url}]."
             " We'll use the default reader credentials."
         )
         return original
 
     # Your typical URL is git@bitbucket.org:owner/repo.git
     # or git@github.com:owner/repo.git
-    url_repository = url.split(original.repositoryOwner.__root__ + "/")[-1]
+    url_repository = url.split(original.repositoryOwner.root + "/")[-1]
     repo_name = url_repository.replace(".git", "")
 
     return update_repository_name(original=original, name=repo_name)

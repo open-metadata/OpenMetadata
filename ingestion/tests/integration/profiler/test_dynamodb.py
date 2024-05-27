@@ -25,7 +25,7 @@ def ingest_metadata(
     workflow_config = OpenMetadataWorkflowConfig(
         source=Source(
             type=db_service.serviceType.name.lower(),
-            serviceName=db_service.fullyQualifiedName.__root__,
+            serviceName=db_service.fullyQualifiedName.root,
             sourceConfig=SourceConfig(config={}),
             serviceConnection=db_service.connection,
         ),
@@ -45,7 +45,7 @@ def ingest_metadata(
 def db_fqn(db_service: DatabaseService):
     return ".".join(
         [
-            db_service.fullyQualifiedName.__root__,
+            db_service.fullyQualifiedName.root,
             "default",
             "default",
         ]
@@ -56,7 +56,7 @@ def test_sample_data(db_service, db_fqn, metadata):
     workflow_config = {
         "source": {
             "type": db_service.serviceType.name.lower(),
-            "serviceName": db_service.fullyQualifiedName.__root__,
+            "serviceName": db_service.fullyQualifiedName.root,
             "sourceConfig": {
                 "config": {
                     "type": ProfilerConfigType.Profiler.value,

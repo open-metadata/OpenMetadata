@@ -61,7 +61,7 @@ class AthenaQueryParserSource(QueryParserSource, ABC):
     ):
         """Create class instance"""
         config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
-        connection: AthenaConnection = config.serviceConnection.__root__.config
+        connection: AthenaConnection = config.serviceConnection.root.config
         if not isinstance(connection, AthenaConnection):
             raise InvalidSourceException(
                 f"Expected AthenaConnection, but got {connection}"

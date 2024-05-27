@@ -116,7 +116,7 @@ class OMetaTestSuiteTest(TestCase):
             "sample_data.ecommerce_db.shopify.dim_address.TestSuite"
         )
         assert (
-            test_suite.name.__root__
+            test_suite.name.root
             == "sample_data.ecommerce_db.shopify.dim_address.TestSuite"
         )
         assert isinstance(test_suite, TestSuite)
@@ -126,7 +126,7 @@ class OMetaTestSuiteTest(TestCase):
         test_definition = self.metadata.get_or_create_test_definition(
             "testDefinitionForIntegration"
         )
-        assert test_definition.name.__root__ == "testDefinitionForIntegration"
+        assert test_definition.name.root == "testDefinitionForIntegration"
         assert isinstance(test_definition, TestDefinition)
 
     def test_get_or_create_test_case(self):
@@ -134,7 +134,7 @@ class OMetaTestSuiteTest(TestCase):
         test_case = self.metadata.get_or_create_test_case(
             "sample_data.ecommerce_db.shopify.dim_address.testCaseForIntegration"
         )
-        assert test_case.name.__root__ == "testCaseForIntegration"
+        assert test_case.name.root == "testCaseForIntegration"
         assert isinstance(test_case, OMetaTestCase)
 
     def test_create_test_case(self):
@@ -150,11 +150,11 @@ class OMetaTestSuiteTest(TestCase):
 
         test_case = self.metadata.get_or_create_test_case(
             test_case_fqn,
-            test_suite_fqn=self.test_suite.fullyQualifiedName.__root__,
+            test_suite_fqn=self.test_suite.fullyQualifiedName.root,
             test_definition_fqn="columnValuesToMatchRegex",
             entity_link="<#E::table::sample_data.ecommerce_db.shopify.dim_address::columns::last_name>",
         )
-        assert test_case.name.__root__ == "aNonExistingTestCase"
+        assert test_case.name.root == "aNonExistingTestCase"
         assert isinstance(test_case, OMetaTestCase)
 
     def test_get_test_case_results(self):

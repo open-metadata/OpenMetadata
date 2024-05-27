@@ -97,7 +97,7 @@ class TableauSource(DashboardServiceSource):
         pipeline_name: Optional[str] = None,
     ):
         config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
-        connection: TableauConnection = config.serviceConnection.__root__.config
+        connection: TableauConnection = config.serviceConnection.root.config
         if not isinstance(connection, TableauConnection):
             raise InvalidSourceException(
                 f"Expected TableauConnection, but got {connection}"
@@ -223,7 +223,7 @@ class TableauSource(DashboardServiceSource):
         """
         try:
             dashboard_url = (
-                f"{clean_uri(str(self.config.serviceConnection.__root__.config.hostPort))}"
+                f"{clean_uri(str(self.config.serviceConnection.root.config.hostPort))}"
                 f"/#{urlparse(dashboard_details.webpageUrl).fragment}/views"
             )
             dashboard_request = CreateDashboardRequest(
@@ -281,8 +281,8 @@ class TableauSource(DashboardServiceSource):
             return None
         for tbl_column in data_model_entity.columns:
             for child_column in tbl_column.children or []:
-                if column.lower() == child_column.name.__root__.lower():
-                    return child_column.fullyQualifiedName.__root__
+                if column.lower() == child_column.name.root.lower():
+                    return child_column.fullyQualifiedName.root
         return None
 
     def _get_column_lineage(
@@ -450,7 +450,7 @@ class TableauSource(DashboardServiceSource):
             table_fqn = fqn.build(
                 self.metadata,
                 entity_type=Table,
-                service_name=db_service_entity.name.__root__,
+                service_name=db_service_entity.name.root,
                 schema_name=schema_name,
                 table_name=table_name,
                 database_name=database_name,

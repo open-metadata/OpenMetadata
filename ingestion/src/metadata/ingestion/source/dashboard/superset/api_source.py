@@ -183,7 +183,7 @@ class SupersetAPISource(SupersetSourceMixin):
                         table_name=datasource_json.result.table_name,
                         schema_name=datasource_json.result.table_schema,
                         database_name=database_name,
-                        service_name=db_service_entity.name.__root__,
+                        service_name=db_service_entity.name.root,
                     )
                 return dataset_fqn
         except Exception as err:

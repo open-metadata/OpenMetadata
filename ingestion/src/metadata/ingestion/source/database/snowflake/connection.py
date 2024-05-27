@@ -125,10 +125,10 @@ def get_connection(connection: SnowflakeConnection) -> Engine:
             encryption_algorithm=serialization.NoEncryption(),
         )
 
-        connection.connectionArguments.__root__["private_key"] = pkb
+        connection.connectionArguments.root["private_key"] = pkb
 
     if connection.clientSessionKeepAlive:
-        connection.connectionArguments.__root__[
+        connection.connectionArguments.root[
             "client_session_keep_alive"
         ] = connection.clientSessionKeepAlive
 

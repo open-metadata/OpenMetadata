@@ -56,7 +56,7 @@ def get_inspector_details(
     kwargs = {}
     if isinstance(service_connection.credentials.gcpConfig, GcpCredentialsValues):
         service_connection.credentials.gcpConfig.projectId = SingleProjectId(
-            __root__=database_name
+            root=database_name
         )
         if service_connection.credentials.gcpImpersonateServiceAccount:
             kwargs[

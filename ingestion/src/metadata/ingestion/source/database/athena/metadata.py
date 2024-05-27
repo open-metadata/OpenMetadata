@@ -241,7 +241,7 @@ class AthenaSource(CommonDbSourceService):
         cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None
     ):
         config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
-        connection: AthenaConnection = config.serviceConnection.__root__.config
+        connection: AthenaConnection = config.serviceConnection.root.config
         if not isinstance(connection, AthenaConnection):
             raise InvalidSourceException(
                 f"Expected AthenaConnection, but got {connection}"

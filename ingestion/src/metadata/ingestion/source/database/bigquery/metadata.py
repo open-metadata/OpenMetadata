@@ -260,7 +260,7 @@ class BigquerySource(
         cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None
     ):
         config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
-        connection: BigQueryConnection = config.serviceConnection.__root__.config
+        connection: BigQueryConnection = config.serviceConnection.root.config
         if not isinstance(connection, BigQueryConnection):
             raise InvalidSourceException(
                 f"Expected BigQueryConnection, but got {connection}"
@@ -777,7 +777,7 @@ class BigquerySource(
 
         try:
             stored_procedure_request = CreateStoredProcedureRequest(
-                name=EntityName(__root__=stored_procedure.name),
+                name=EntityName(root=stored_procedure.name),
                 storedProcedureCode=StoredProcedureCode(
                     language=STORED_PROC_LANGUAGE_MAP.get(
                         stored_procedure.language or "SQL",
@@ -792,7 +792,7 @@ class BigquerySource(
                     schema_name=self.context.get().database_schema,
                 ),
                 sourceUrl=SourceUrl(
-                    __root__=self.get_stored_procedure_url(
+                    root=self.get_stored_procedure_url(
                         database_name=self.context.get().database,
                         schema_name=self.context.get().database_schema,
                         # Follow the same building strategy as tables

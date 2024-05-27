@@ -46,7 +46,7 @@ class SinglestoreSource(CommonDbSourceService):
         cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None
     ):
         config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
-        connection: SingleStoreConnection = config.serviceConnection.__root__.config
+        connection: SingleStoreConnection = config.serviceConnection.root.config
         if not isinstance(connection, SingleStoreConnection):
             raise InvalidSourceException(
                 f"Expected SingleStoreConnection, but got {connection}"

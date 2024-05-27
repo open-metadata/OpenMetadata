@@ -69,13 +69,13 @@ class OMetaTableMixin:
         resp = None
         try:
             resp = self.client.put(
-                f"{self.get_suffix(Table)}/{table.id.__root__}/sampleData",
+                f"{self.get_suffix(Table)}/{table.id.root}/sampleData",
                 data=sample_data.json(),
             )
         except Exception as exc:
             logger.debug(traceback.format_exc())
             logger.warning(
-                f"Error trying to PUT sample data for {table.fullyQualifiedName.__root__}: {exc}"
+                f"Error trying to PUT sample data for {table.fullyQualifiedName.root}: {exc}"
             )
 
         if resp:
@@ -84,12 +84,12 @@ class OMetaTableMixin:
             except UnicodeError as err:
                 logger.debug(traceback.format_exc())
                 logger.warning(
-                    f"Unicode Error parsing the sample data response from {table.fullyQualifiedName.__root__}: {err}"
+                    f"Unicode Error parsing the sample data response from {table.fullyQualifiedName.root}: {err}"
                 )
             except Exception as exc:
                 logger.debug(traceback.format_exc())
                 logger.warning(
-                    f"Error trying to parse sample data results from {table.fullyQualifiedName.__root__}: {exc}"
+                    f"Error trying to parse sample data results from {table.fullyQualifiedName.root}: {exc}"
                 )
 
         return None
@@ -103,12 +103,12 @@ class OMetaTableMixin:
         resp = None
         try:
             resp = self.client.get(
-                f"{self.get_suffix(Table)}/{table.id.__root__}/sampleData",
+                f"{self.get_suffix(Table)}/{table.id.root}/sampleData",
             )
         except Exception as exc:
             logger.debug(traceback.format_exc())
             logger.warning(
-                f"Error trying to GET sample data for {table.fullyQualifiedName.__root__}: {exc}"
+                f"Error trying to GET sample data for {table.fullyQualifiedName.root}: {exc}"
             )
 
         if resp:
@@ -117,12 +117,12 @@ class OMetaTableMixin:
             except UnicodeError as err:
                 logger.debug(traceback.format_exc())
                 logger.warning(
-                    f"Unicode Error parsing the sample data response from {table.fullyQualifiedName.__root__}: {err}"
+                    f"Unicode Error parsing the sample data response from {table.fullyQualifiedName.root}: {err}"
                 )
             except Exception as exc:
                 logger.debug(traceback.format_exc())
                 logger.warning(
-                    f"Error trying to parse sample data results from {table.fullyQualifiedName.__root__}: {exc}"
+                    f"Error trying to parse sample data results from {table.fullyQualifiedName.root}: {exc}"
                 )
 
         return None
@@ -137,7 +137,7 @@ class OMetaTableMixin:
         :param table_profile: Profile data to add
         """
         resp = self.client.put(
-            f"{self.get_suffix(Table)}/{table.id.__root__}/tableProfile",
+            f"{self.get_suffix(Table)}/{table.id.root}/tableProfile",
             data=profile_request.json(),
         )
         return Table(**resp)
@@ -150,7 +150,7 @@ class OMetaTableMixin:
         :param data_model: Model to add
         """
         resp = self.client.put(
-            f"{self.get_suffix(Table)}/{table.id.__root__}/dataModel",
+            f"{self.get_suffix(Table)}/{table.id.root}/dataModel",
             data=data_model.json(),
         )
         return Table(**resp)
@@ -165,7 +165,7 @@ class OMetaTableMixin:
         :param table_usage_request: Usage data to add
         """
         resp = self.client.post(
-            f"/usage/table/{table.id.__root__}", data=table_usage_request.json()
+            f"/usage/table/{table.id.root}", data=table_usage_request.json()
         )
         logger.debug("published table usage %s", resp)
 
@@ -181,7 +181,7 @@ class OMetaTableMixin:
 
         logger.info("table join request %s", table_join_request.json())
         resp = self.client.put(
-            f"{self.get_suffix(Table)}/{table.id.__root__}/joins",
+            f"{self.get_suffix(Table)}/{table.id.root}/joins",
             data=table_join_request.json(),
         )
         logger.debug("published frequently joined with %s", resp)

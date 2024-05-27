@@ -59,7 +59,7 @@ class MlflowSource(MlModelServiceSource):
         cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None
     ):
         config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
-        connection: MlflowConnection = config.serviceConnection.__root__.config
+        connection: MlflowConnection = config.serviceConnection.root.config
         if not isinstance(connection, MlflowConnection):
             raise InvalidSourceException(
                 f"Expected MlFlowConnection, but got {connection}"

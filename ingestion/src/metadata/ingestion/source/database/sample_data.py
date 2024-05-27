@@ -192,11 +192,11 @@ class SampleDataSource(
     def __init__(self, config: WorkflowSource, metadata: OpenMetadata):
         super().__init__()
         self.config = config
-        self.service_connection = config.serviceConnection.__root__.config
+        self.service_connection = config.serviceConnection.root.config
         self.metadata = metadata
         self.list_policies = []
 
-        sample_data_folder = self.service_connection.connectionOptions.__root__.get(
+        sample_data_folder = self.service_connection.connectionOptions.root.get(
             "sampleDataFolder"
         )
         if not sample_data_folder:
@@ -543,7 +543,7 @@ class SampleDataSource(
     ):
         """Create class instance"""
         config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
-        connection: CustomDatabaseConnection = config.serviceConnection.__root__.config
+        connection: CustomDatabaseConnection = config.serviceConnection.root.config
         if not isinstance(connection, CustomDatabaseConnection):
             raise InvalidSourceException(
                 f"Expected CustomDatabaseConnection, but got {connection}"
@@ -621,8 +621,8 @@ class SampleDataSource(
         database_entity = fqn.build(
             self.metadata,
             entity_type=Database,
-            service_name=self.glue_database_service.fullyQualifiedName.__root__,
-            database_name=db.name.__root__,
+            service_name=self.glue_database_service.fullyQualifiedName.root,
+            database_name=db.name.root,
         )
 
         database_object = self.metadata.get_by_name(
@@ -638,9 +638,9 @@ class SampleDataSource(
         database_schema_entity = fqn.build(
             self.metadata,
             entity_type=DatabaseSchema,
-            service_name=self.glue_database_service.fullyQualifiedName.__root__,
-            database_name=db.name.__root__,
-            schema_name=schema.name.__root__,
+            service_name=self.glue_database_service.fullyQualifiedName.root,
+            database_name=db.name.root,
+            schema_name=schema.name.root,
         )
 
         database_schema_object = self.metadata.get_by_name(
@@ -661,7 +661,7 @@ class SampleDataSource(
         database_schema_entity = fqn.build(
             self.metadata,
             entity_type=DatabaseSchema,
-            service_name=self.database_service.fullyQualifiedName.__root__,
+            service_name=self.database_service.fullyQualifiedName.root,
             database_name=self.database["name"],
             schema_name=self.database_schema["name"],
         )
@@ -687,15 +687,15 @@ class SampleDataSource(
         db = CreateDatabaseRequest(
             name=self.database["name"],
             description=self.database["description"],
-            service=self.database_service.fullyQualifiedName.__root__,
+            service=self.database_service.fullyQualifiedName.root,
         )
         yield Either(right=db)
 
         database_entity = fqn.build(
             self.metadata,
             entity_type=Database,
-            service_name=self.database_service.name.__root__,
-            database_name=db.name.__root__,
+            service_name=self.database_service.name.root,
+            database_name=db.name.root,
         )
 
         database_object = self.metadata.get_by_name(
@@ -712,9 +712,9 @@ class SampleDataSource(
         database_schema_entity = fqn.build(
             self.metadata,
             entity_type=DatabaseSchema,
-            service_name=self.database_service.name.__root__,
-            database_name=db.name.__root__,
-            schema_name=schema.name.__root__,
+            service_name=self.database_service.name.root,
+            database_name=db.name.root,
+            schema_name=schema.name.root,
         )
 
         database_schema_object = self.metadata.get_by_name(
@@ -742,10 +742,10 @@ class SampleDataSource(
                 table_fqn = fqn.build(
                     self.metadata,
                     entity_type=Table,
-                    service_name=self.database_service.name.__root__,
-                    database_name=db.name.__root__,
-                    schema_name=schema.name.__root__,
-                    table_name=table_and_db.name.__root__,
+                    service_name=self.database_service.name.root,
+                    database_name=db.name.root,
+                    schema_name=schema.name.root,
+                    table_name=table_and_db.name.root,
                 )
 
                 table_entity = self.metadata.get_by_name(entity=Table, fqn=table_fqn)
@@ -762,7 +762,7 @@ class SampleDataSource(
                 for custom_metric in table["customMetrics"]:
                     self.metadata.create_or_update_custom_metric(
                         CreateCustomMetricRequest(**custom_metric),
-                        table_entity.id.__root__,
+                        table_entity.id.root,
                     )
 
             for column in table.get("columns"):
@@ -770,7 +770,7 @@ class SampleDataSource(
                     for custom_metric in column["customMetrics"]:
                         self.metadata.create_or_update_custom_metric(
                             CreateCustomMetricRequest(**custom_metric),
-                            table_entity.id.__root__,
+                            table_entity.id.root,
                         )
 
     def ingest_stored_procedures(self) -> Iterable[Either[Entity]]:
@@ -779,15 +779,15 @@ class SampleDataSource(
         db = CreateDatabaseRequest(
             name=self.database["name"],
             description=self.database["description"],
-            service=self.database_service.fullyQualifiedName.__root__,
+            service=self.database_service.fullyQualifiedName.root,
         )
         yield Either(right=db)
 
         database_entity = fqn.build(
             self.metadata,
             entity_type=Database,
-            service_name=self.database_service.name.__root__,
-            database_name=db.name.__root__,
+            service_name=self.database_service.name.root,
+            database_name=db.name.root,
         )
 
         database_object = self.metadata.get_by_name(
@@ -804,9 +804,9 @@ class SampleDataSource(
         database_schema_entity = fqn.build(
             self.metadata,
             entity_type=DatabaseSchema,
-            service_name=self.database_service.name.__root__,
-            database_name=db.name.__root__,
-            schema_name=schema.name.__root__,
+            service_name=self.database_service.name.root,
+            database_name=db.name.root,
+            schema_name=schema.name.root,
         )
 
         database_schema_object = self.metadata.get_by_name(
@@ -843,13 +843,11 @@ class SampleDataSource(
             yield Either(
                 right=AddLineageRequest(
                     edge=EntitiesEdge(
-                        fromEntity=EntityReference(
-                            id=from_table.id.__root__, type="table"
-                        ),
-                        toEntity=EntityReference(id=to_table.id.__root__, type="table"),
+                        fromEntity=EntityReference(id=from_table.id.root, type="table"),
+                        toEntity=EntityReference(id=to_table.id.root, type="table"),
                         lineageDetails=LineageDetails(
                             pipeline=EntityReference(
-                                id=stored_procedure_entity.id.__root__,
+                                id=stored_procedure_entity.id.root,
                                 type="storedProcedure",
                             )
                         ),
@@ -897,7 +895,7 @@ class SampleDataSource(
                 topic_fqn = fqn.build(
                     self.metadata,
                     entity_type=Topic,
-                    service_name=self.kafka_service.name.__root__,
+                    service_name=self.kafka_service.name.root,
                     topic_name=topic["name"],
                 )
 
@@ -998,10 +996,10 @@ class SampleDataSource(
             right=AddLineageRequest(
                 edge=EntitiesEdge(
                     fromEntity=EntityReference(
-                        id=orders_view.id.__root__, type="dashboardDataModel"
+                        id=orders_view.id.root, type="dashboardDataModel"
                     ),
                     toEntity=EntityReference(
-                        id=orders_explore.id.__root__, type="dashboardDataModel"
+                        id=orders_explore.id.root, type="dashboardDataModel"
                     ),
                 )
             )
@@ -1011,10 +1009,10 @@ class SampleDataSource(
             right=AddLineageRequest(
                 edge=EntitiesEdge(
                     fromEntity=EntityReference(
-                        id=operations_view.id.__root__, type="dashboardDataModel"
+                        id=operations_view.id.root, type="dashboardDataModel"
                     ),
                     toEntity=EntityReference(
-                        id=orders_explore.id.__root__, type="dashboardDataModel"
+                        id=orders_explore.id.root, type="dashboardDataModel"
                     ),
                 )
             )
@@ -1024,10 +1022,10 @@ class SampleDataSource(
             right=AddLineageRequest(
                 edge=EntitiesEdge(
                     fromEntity=EntityReference(
-                        id=orders_explore.id.__root__, type="dashboardDataModel"
+                        id=orders_explore.id.root, type="dashboardDataModel"
                     ),
                     toEntity=EntityReference(
-                        id=orders_dashboard.id.__root__, type="dashboard"
+                        id=orders_dashboard.id.root, type="dashboard"
                     ),
                 )
             )
@@ -1184,7 +1182,7 @@ class SampleDataSource(
                     displayName=model["displayName"],
                     description=model["description"],
                     algorithm=model["algorithm"],
-                    dashboard=dashboard.fullyQualifiedName.__root__,
+                    dashboard=dashboard.fullyQualifiedName.root,
                     mlStore=MlStore(
                         storage=model["mlStore"]["storage"],
                         imageRepository=model["mlStore"]["imageRepository"],
@@ -1257,7 +1255,7 @@ class SampleDataSource(
                     parent_container: Container = (
                         self.metadata.get_by_name(
                             entity=Container,
-                            fqn=self.storage_service.fullyQualifiedName.__root__
+                            fqn=self.storage_service.fullyQualifiedName.root
                             + FQN_SEPARATOR
                             + FQN_SEPARATOR.join(parent_container_fqns),
                         )
@@ -1431,7 +1429,7 @@ class SampleDataSource(
                         description=test_case["description"],
                         testDefinition=test_case["testDefinitionName"],
                         entityLink=test_case["entityLink"],
-                        testSuite=suite.fullyQualifiedName.__root__,
+                        testSuite=suite.fullyQualifiedName.root,
                         parameterValues=[
                             TestCaseParameterValue(**param_values)
                             for param_values in test_case["parameterValues"]
@@ -1467,10 +1465,10 @@ class SampleDataSource(
                             )
                             create_test_case_resolution.testCaseResolutionStatusDetails = Assigned(
                                 assignee=EntityReference(
-                                    id=user.id.__root__,
+                                    id=user.id.root,
                                     type="user",
-                                    name=user.name.__root__,
-                                    fullyQualifiedName=user.fullyQualifiedName.__root__,
+                                    name=user.name.root,
+                                    fullyQualifiedName=user.fullyQualifiedName.root,
                                 )
                             )
                         if resolution["testCaseResolutionStatusType"] == "Resolved":
@@ -1479,10 +1477,10 @@ class SampleDataSource(
                             )
                             create_test_case_resolution.testCaseResolutionStatusDetails = Resolved(
                                 resolvedBy=EntityReference(
-                                    id=user.id.__root__,
+                                    id=user.id.root,
                                     type="user",
-                                    name=user.name.__root__,
-                                    fullyQualifiedName=user.fullyQualifiedName.__root__,
+                                    name=user.name.root,
+                                    fullyQualifiedName=user.fullyQualifiedName.root,
                                 ),
                                 testCaseFailureReason=random.choice(
                                     list(TestCaseFailureReasonType)
@@ -1519,7 +1517,7 @@ class SampleDataSource(
                                 for res_value in result["testResultValues"]
                             ],
                         ),
-                        test_case_name=case.fullyQualifiedName.__root__,
+                        test_case_name=case.fullyQualifiedName.root,
                     )
                     yield Either(right=test_case_result_req)
             if test_case_results.get("failedRowsSample"):
@@ -1555,7 +1553,7 @@ class SampleDataSource(
                         id=report_datum["id"],
                         reportDataType=report_datum["reportDataType"],
                         timestamp=Timestamp(
-                            __root__=int(
+                            root=int(
                                 (datetime.now() - timedelta(days=i)).timestamp() * 1000
                             )
                         ),

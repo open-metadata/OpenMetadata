@@ -129,7 +129,7 @@ class OMetaTableTest(TestCase):
         data=CreateUserRequest(name="random-user", email="random@user.com"),
     )
     owner = EntityReference(
-        id=user.id, type="user", fullyQualifiedName=user.fullyQualifiedName.__root__
+        id=user.id, type="user", fullyQualifiedName=user.fullyQualifiedName.root
     )
 
     service = CreateDatabaseServiceRequest(
@@ -194,7 +194,7 @@ class OMetaTableTest(TestCase):
         service_id = str(
             cls.metadata.get_by_name(
                 entity=DatabaseService, fqn="test-service-table"
-            ).id.__root__
+            ).id.root
         )
 
         cls.metadata.delete(
@@ -231,7 +231,7 @@ class OMetaTableTest(TestCase):
         # Same ID, updated owner
         self.assertEqual(
             res.databaseSchema.fullyQualifiedName,
-            updated_entity.databaseSchema.__root__,
+            updated_entity.databaseSchema.root,
         )
         self.assertEqual(res_create.id, res.id)
         self.assertEqual(res.owner.id, self.user.id)
@@ -264,7 +264,7 @@ class OMetaTableTest(TestCase):
             entity=Table, fqn=self.entity.fullyQualifiedName
         )
         # Then fetch by ID
-        res = self.metadata.get_by_id(entity=Table, entity_id=str(res_name.id.__root__))
+        res = self.metadata.get_by_id(entity=Table, entity_id=str(res_name.id.root))
 
         self.assertEqual(res_name.id, res.id)
 
@@ -289,7 +289,7 @@ class OMetaTableTest(TestCase):
         """
         fake_create = deepcopy(self.create)
         for i in range(0, 10):
-            fake_create.name = self.create.name.__root__ + str(i)
+            fake_create.name = self.create.name.root + str(i)
             self.metadata.create_or_update(data=fake_create)
 
         all_entities = self.metadata.list_all_entities(
@@ -314,7 +314,7 @@ class OMetaTableTest(TestCase):
         res_id = self.metadata.get_by_id(entity=Table, entity_id=res_name.id)
 
         # Delete
-        self.metadata.delete(entity=Table, entity_id=str(res_id.id.__root__))
+        self.metadata.delete(entity=Table, entity_id=str(res_id.id.root))
 
         # Then we should not find it
         res = self.metadata.list_entities(entity=Table)
@@ -404,7 +404,7 @@ class OMetaTableTest(TestCase):
         assert table.profile == table_profile
 
         res_column_profile = next(
-            (col.profile for col in table.columns if col.name.__root__ == "id")
+            (col.profile for col in table.columns if col.name.root == "id")
         )
         assert res_column_profile == column_profile[0]
 
@@ -473,12 +473,8 @@ class OMetaTableTest(TestCase):
         )
 
         self.metadata.publish_frequently_joined_with(res, joins)
-        self.metadata.delete(
-            entity=Table, entity_id=str(column_join_table_res.id.__root__)
-        )
-        self.metadata.delete(
-            entity=Table, entity_id=str(direct_join_table_res.id.__root__)
-        )
+        self.metadata.delete(entity=Table, entity_id=str(column_join_table_res.id.root))
+        self.metadata.delete(entity=Table, entity_id=str(direct_join_table_res.id.root))
 
     def test_table_queries(self):
         """
@@ -492,8 +488,8 @@ class OMetaTableTest(TestCase):
         )
 
         query_no_user = CreateQueryRequest(
-            query=SqlQuery(__root__="select * from first_awesome"),
-            service=FullyQualifiedEntityName(__root__=self.service.name.__root__),
+            query=SqlQuery(root="select * from first_awesome"),
+            service=FullyQualifiedEntityName(root=self.service.name.root),
         )
 
         self.metadata.ingest_entity_queries_data(entity=res, queries=[query_no_user])
@@ -509,7 +505,7 @@ class OMetaTableTest(TestCase):
         query_with_user = CreateQueryRequest(
             query="select * from second_awesome",
             users=[self.owner.fullyQualifiedName],
-            service=FullyQualifiedEntityName(__root__=self.service.name.__root__),
+            service=FullyQualifiedEntityName(root=self.service.name.root),
         )
 
         self.metadata.ingest_entity_queries_data(entity=res, queries=[query_with_user])
@@ -541,7 +537,7 @@ class OMetaTableTest(TestCase):
         )
 
         res = self.metadata.get_list_entity_versions(
-            entity=Table, entity_id=res_name.id.__root__
+            entity=Table, entity_id=res_name.id.root
         )
         assert res
 
@@ -556,11 +552,11 @@ class OMetaTableTest(TestCase):
             entity=Table, fqn=self.entity.fullyQualifiedName
         )
         res = self.metadata.get_entity_version(
-            entity=Table, entity_id=res_name.id.__root__, version=0.1
+            entity=Table, entity_id=res_name.id.root, version=0.1
         )
 
         # check we get the correct version requested and the correct entity ID
-        assert res.version.__root__ == 0.1
+        assert res.version.root == 0.1
         assert res.id == res_name.id
 
     def test_get_entity_ref(self):

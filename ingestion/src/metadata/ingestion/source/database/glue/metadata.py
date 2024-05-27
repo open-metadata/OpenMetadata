@@ -74,7 +74,7 @@ class GlueSource(DatabaseServiceSource):
             self.config.sourceConfig.config
         )
         self.metadata = metadata
-        self.service_connection = self.config.serviceConnection.__root__.config
+        self.service_connection = self.config.serviceConnection.root.config
         self.glue = get_connection(self.service_connection)
 
         self.connection_obj = self.glue
@@ -85,7 +85,7 @@ class GlueSource(DatabaseServiceSource):
         cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None
     ):
         config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
-        connection: GlueConnection = config.serviceConnection.__root__.config
+        connection: GlueConnection = config.serviceConnection.root.config
         if not isinstance(connection, GlueConnection):
             raise InvalidSourceException(
                 f"Expected GlueConnection, but got {connection}"

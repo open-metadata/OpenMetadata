@@ -181,7 +181,7 @@ class LookerSource(DashboardServiceSource):
         pipeline_name: Optional[str] = None,
     ) -> "LookerSource":
         config = WorkflowSource.parse_obj(config_dict)
-        connection: LookerConnection = config.serviceConnection.__root__.config
+        connection: LookerConnection = config.serviceConnection.root.config
         if not isinstance(connection, LookerConnection):
             raise InvalidSourceException(
                 f"Expected LookerConnection, but got {connection}"
@@ -198,8 +198,10 @@ class LookerSource(DashboardServiceSource):
             ]
         ]
     ) -> "LookMLRepo":
-        repo_name = f"{credentials.repositoryOwner.__root__}/{credentials.repositoryName.__root__}"
-        repo_path = f"{REPO_TMP_LOCAL_PATH}/{credentials.repositoryName.__root__}"
+        repo_name = (
+            f"{credentials.repositoryOwner.root}/{credentials.repositoryName.root}"
+        )
+        repo_path = f"{REPO_TMP_LOCAL_PATH}/{credentials.repositoryName.root}"
         _clone_repo(
             repo_name,
             repo_path,
@@ -419,7 +421,7 @@ class LookerSource(DashboardServiceSource):
                 # Maybe use the project_name as key too?
                 # Save the explores for when we create the lineage with the dashboards and views
                 self._explores_cache[
-                    explore_datamodel.name.__root__
+                    explore_datamodel.name.root
                 ] = self.context.get().dataModel  # This is the newly created explore
 
                 # We can get VIEWs from the JOINs to know the dependencies
@@ -774,11 +776,11 @@ class LookerSource(DashboardServiceSource):
                         right=AddLineageRequest(
                             edge=EntitiesEdge(
                                 fromEntity=EntityReference(
-                                    id=cached_explore.id.__root__,
+                                    id=cached_explore.id.root,
                                     type="dashboardDataModel",
                                 ),
                                 toEntity=EntityReference(
-                                    id=dashboard_entity.id.__root__,
+                                    id=dashboard_entity.id.root,
                                     type="dashboard",
                                 ),
                                 lineageDetails=LineageDetails(
@@ -833,15 +835,10 @@ class LookerSource(DashboardServiceSource):
             )
 
             if from_entity:
-                if from_entity.id.__root__ not in self._added_lineage:
-                    self._added_lineage[from_entity.id.__root__] = []
-                if (
-                    to_entity.id.__root__
-                    not in self._added_lineage[from_entity.id.__root__]
-                ):
-                    self._added_lineage[from_entity.id.__root__].append(
-                        to_entity.id.__root__
-                    )
+                if from_entity.id.root not in self._added_lineage:
+                    self._added_lineage[from_entity.id.root] = []
+                if to_entity.id.root not in self._added_lineage[from_entity.id.root]:
+                    self._added_lineage[from_entity.id.root].append(to_entity.id.root)
                     return self._get_add_lineage_request(
                         to_entity=to_entity, from_entity=from_entity
                     )
@@ -968,7 +965,7 @@ class LookerSource(DashboardServiceSource):
 
             if not dashboard.usageSummary:
                 logger.info(
-                    f"Yielding fresh usage for {dashboard.fullyQualifiedName.__root__}"
+                    f"Yielding fresh usage for {dashboard.fullyQualifiedName.root}"
                 )
                 yield Either(
                     right=DashboardUsage(
@@ -978,7 +975,7 @@ class LookerSource(DashboardServiceSource):
                 )
 
             elif (
-                str(dashboard.usageSummary.date.__root__) != self.today
+                str(dashboard.usageSummary.date.root) != self.today
                 or not dashboard.usageSummary.dailyStats.count
             ):
                 latest_usage = dashboard.usageSummary.dailyStats.count
@@ -990,7 +987,7 @@ class LookerSource(DashboardServiceSource):
                     )
 
                 logger.info(
-                    f"Yielding new usage for {dashboard.fullyQualifiedName.__root__}"
+                    f"Yielding new usage for {dashboard.fullyQualifiedName.root}"
                 )
                 yield Either(
                     right=DashboardUsage(
@@ -1006,7 +1003,7 @@ class LookerSource(DashboardServiceSource):
                     f"Latest usage {dashboard.usageSummary} vs. today {self.today}. Nothing to compute."
                 )
                 logger.info(
-                    f"Usage already informed for {dashboard.fullyQualifiedName.__root__}"
+                    f"Usage already informed for {dashboard.fullyQualifiedName.root}"
                 )
 
         except Exception as exc:

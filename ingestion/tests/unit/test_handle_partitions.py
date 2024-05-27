@@ -125,7 +125,7 @@ class BigqueryUnitTest(TestCase):
         )
         self.bigquery_source.context.get().__dict__[
             "database"
-        ] = MOCK_DATABASE.fullyQualifiedName.__root__
+        ] = MOCK_DATABASE.fullyQualifiedName.root
         self.bigquery_source.client = client
         self.inspector = types.SimpleNamespace()
 

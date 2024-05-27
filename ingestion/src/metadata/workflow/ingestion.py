@@ -185,7 +185,7 @@ class IngestionWorkflow(BaseWorkflow, ABC):
                 )
                 if service:
                     self.config.source.serviceConnection = ServiceConnection(
-                        __root__=service.connection
+                        root=service.connection
                     )
                 else:
                     raise InvalidWorkflowJSONException(
@@ -205,9 +205,7 @@ class IngestionWorkflow(BaseWorkflow, ABC):
 
     def validate(self):
         try:
-            if (
-                not self.config.source.serviceConnection.__root__.config.supportsProfiler
-            ):
+            if not self.config.source.serviceConnection.root.config.supportsProfiler:
                 raise AttributeError()
         except AttributeError:
             if ProfilerProcessorConfig.parse_obj(

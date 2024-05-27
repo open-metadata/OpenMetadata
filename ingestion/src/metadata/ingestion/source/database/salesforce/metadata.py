@@ -75,7 +75,7 @@ class SalesforceSource(DatabaseServiceSource):
             self.config.sourceConfig.config
         )
         self.metadata = metadata
-        self.service_connection = self.config.serviceConnection.__root__.config
+        self.service_connection = self.config.serviceConnection.root.config
         self.client = get_connection(self.service_connection)
         self.table_constraints = None
         self.database_source_state = set()
@@ -85,7 +85,7 @@ class SalesforceSource(DatabaseServiceSource):
         cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None
     ):
         config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
-        connection: SalesforceConnection = config.serviceConnection.__root__.config
+        connection: SalesforceConnection = config.serviceConnection.root.config
         if not isinstance(connection, SalesforceConnection):
             raise InvalidSourceException(
                 f"Expected SalesforceConnection, but got {connection}"

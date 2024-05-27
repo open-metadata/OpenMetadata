@@ -77,7 +77,7 @@ class SupersetSourceMixin(DashboardServiceSource):
         pipeline_name: Optional[str] = None,
     ):
         config = WorkflowSource.parse_obj(config_dict)
-        connection: SupersetConnection = config.serviceConnection.__root__.config
+        connection: SupersetConnection = config.serviceConnection.root.config
         if not isinstance(connection, SupersetConnection):
             raise InvalidSourceException(
                 f"Expected SupersetConnection, but got {connection}"

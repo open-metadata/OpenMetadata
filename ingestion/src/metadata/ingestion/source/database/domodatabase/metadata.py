@@ -77,7 +77,7 @@ class DomodatabaseSource(DatabaseServiceSource):
             self.config.sourceConfig.config
         )
         self.metadata = metadata
-        self.service_connection = self.config.serviceConnection.__root__.config
+        self.service_connection = self.config.serviceConnection.root.config
         self.domo_client = get_connection(self.service_connection)
         self.connection_obj = self.domo_client
         self.test_connection()
@@ -90,7 +90,7 @@ class DomodatabaseSource(DatabaseServiceSource):
         pipeline_name: Optional[str] = None,
     ):
         config = WorkflowSource.parse_obj(config_dict)
-        connection: DomoDatabaseConnection = config.serviceConnection.__root__.config
+        connection: DomoDatabaseConnection = config.serviceConnection.root.config
         if not isinstance(connection, DomoDatabaseConnection):
             raise InvalidSourceException(
                 f"Expected DomoDatabaseConnection, but got {connection}"

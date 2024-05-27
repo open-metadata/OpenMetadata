@@ -475,7 +475,7 @@ class DbtUnitTest(TestCase):
             manifest_node=manifest_node, catalog_node=None
         )
         self.assertEqual(
-            "70064aef-f085-4658-a11a-b5f46568e980", result.id.__root__.__str__()
+            "70064aef-f085-4658-a11a-b5f46568e980", result.id.root.__str__()
         )
 
     def execute_test(self, mock_manifest, expected_records, expected_data_models):
@@ -517,7 +517,7 @@ class DbtUnitTest(TestCase):
         for data_model_link in yield_data_models:
             if isinstance(data_model_link, Either) and data_model_link.right:
                 self.assertIn(
-                    data_model_link.right.table_entity.fullyQualifiedName.__root__,
+                    data_model_link.right.table_entity.fullyQualifiedName.root,
                     EXPECTED_DATA_MODEL_FQNS,
                 )
                 data_model_list.append(data_model_link.right.datamodel)

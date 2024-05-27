@@ -93,7 +93,7 @@ EXPECTED_CREATED_PIPELINES = [
                 endDate=None,
                 tags=None,
                 sourceUrl=SourceUrl(
-                    __root__="http://lolhost:3000/locations/project_fully_featured/jobs/story_recommender_job/s3__recommender__recommender_model"
+                    root="http://lolhost:3000/locations/project_fully_featured/jobs/story_recommender_job/s3__recommender__recommender_model"
                 ),
             ),
             Task(
@@ -108,7 +108,7 @@ EXPECTED_CREATED_PIPELINES = [
                 endDate=None,
                 tags=None,
                 sourceUrl=SourceUrl(
-                    __root__="http://lolhost:3000/locations/project_fully_featured/jobs/story_recommender_job/s3__recommender__user_story_matrix"
+                    root="http://lolhost:3000/locations/project_fully_featured/jobs/story_recommender_job/s3__recommender__user_story_matrix"
                 ),
             ),
             Task(
@@ -123,7 +123,7 @@ EXPECTED_CREATED_PIPELINES = [
                 endDate=None,
                 tags=None,
                 sourceUrl=SourceUrl(
-                    __root__="http://lolhost:3000/locations/project_fully_featured/jobs/story_recommender_job/snowflake__recommender__comment_stories"
+                    root="http://lolhost:3000/locations/project_fully_featured/jobs/story_recommender_job/snowflake__recommender__comment_stories"
                 ),
             ),
             Task(
@@ -141,7 +141,7 @@ EXPECTED_CREATED_PIPELINES = [
                 endDate=None,
                 tags=None,
                 sourceUrl=SourceUrl(
-                    __root__="http://lolhost:3000/locations/project_fully_featured/jobs/story_recommender_job/snowflake__recommender__component_top_stories"
+                    root="http://lolhost:3000/locations/project_fully_featured/jobs/story_recommender_job/snowflake__recommender__component_top_stories"
                 ),
             ),
             Task(
@@ -159,7 +159,7 @@ EXPECTED_CREATED_PIPELINES = [
                 endDate=None,
                 tags=None,
                 sourceUrl=SourceUrl(
-                    __root__="http://lolhost:3000/locations/project_fully_featured/jobs/story_recommender_job/snowflake__recommender__user_top_recommended_stories"
+                    root="http://lolhost:3000/locations/project_fully_featured/jobs/story_recommender_job/snowflake__recommender__user_top_recommended_stories"
                 ),
             ),
         ],
@@ -177,7 +177,7 @@ EXPECTED_CREATED_PIPELINES = [
         service="dagster_source_test",
         extension=None,
         sourceUrl=SourceUrl(
-            __root__="http://lolhost:3000/locations/project_fully_featured/jobs/story_recommender_job/"
+            root="http://lolhost:3000/locations/project_fully_featured/jobs/story_recommender_job/"
         ),
     ),
 ]
@@ -229,7 +229,7 @@ EXPECTED_PIPELINE_STATUS = [
 MOCK_PIPELINE_SERVICE = PipelineService(
     id="86ff3c40-7c51-4ff5-9727-738cead28d9a",
     name="dagster_source_test",
-    fullyQualifiedName=FullyQualifiedEntityName(__root__="dagster_source_test"),
+    fullyQualifiedName=FullyQualifiedEntityName(root="dagster_source_test"),
     connection=PipelineConnection(),
     serviceType=PipelineServiceType.Dagster,
 )
@@ -274,10 +274,10 @@ class DagsterUnitTest(TestCase):
             mock_dagster_config["source"],
             config.workflowConfig.openMetadataServerConfig,
         )
-        self.dagster.context.get().__dict__["pipeline"] = MOCK_PIPELINE.name.__root__
+        self.dagster.context.get().__dict__["pipeline"] = MOCK_PIPELINE.name.root
         self.dagster.context.get().__dict__[
             "pipeline_service"
-        ] = MOCK_PIPELINE_SERVICE.name.__root__
+        ] = MOCK_PIPELINE_SERVICE.name.root
         self.dagster.context.get().__dict__["repository_name"] = "hacker_new_repository"
         self.dagster.context.get().__dict__[
             "repository_location"

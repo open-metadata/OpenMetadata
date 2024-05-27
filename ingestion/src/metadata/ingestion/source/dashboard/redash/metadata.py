@@ -75,7 +75,7 @@ class RedashSource(DashboardServiceSource):
         pipeline_name: Optional[str] = None,
     ):
         config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
-        connection: RedashConnection = config.serviceConnection.__root__.config
+        connection: RedashConnection = config.serviceConnection.root.config
         if not isinstance(connection, RedashConnection):
             raise InvalidSourceException(
                 f"Expected RedashConnection, but got {connection}"

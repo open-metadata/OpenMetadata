@@ -107,7 +107,7 @@ class WebAnalyticEntityViewReportDataProcessorTest(unittest.TestCase):
 
         for datum in processor.yield_refined_data():
             assert isinstance(datum.data, WebAnalyticEntityViewReportData)
-            web_analytic_entity_report_data[datum.data.entityFqn.__root__] = datum.data
+            web_analytic_entity_report_data[datum.data.entityFqn.root] = datum.data
 
         assert (
             web_analytic_entity_report_data[

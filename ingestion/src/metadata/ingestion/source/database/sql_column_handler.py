@@ -273,7 +273,7 @@ class SqlColumnHandlerMixin:
                     col_data_length = 1 if col_data_length is None else col_data_length
                     om_column = Column(
                         name=ColumnName(
-                            __root__=column["name"]
+                            root=column["name"]
                             # Passing whitespace if column name is an empty string
                             # since pydantic doesn't accept empty string
                             if column["name"]

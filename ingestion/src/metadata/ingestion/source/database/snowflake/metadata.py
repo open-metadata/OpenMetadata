@@ -187,7 +187,7 @@ class SnowflakeSource(
         cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None
     ):
         config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
-        connection: SnowflakeConnection = config.serviceConnection.__root__.config
+        connection: SnowflakeConnection = config.serviceConnection.root.config
         if not isinstance(connection, SnowflakeConnection):
             raise InvalidSourceException(
                 f"Expected SnowflakeConnection, but got {connection}"
@@ -285,7 +285,7 @@ class SnowflakeSource(
             yield row[1]
 
     def get_database_names(self) -> Iterable[str]:
-        configured_db = self.config.serviceConnection.__root__.config.database
+        configured_db = self.config.serviceConnection.root.config.database
         if configured_db:
             self.set_inspector(configured_db)
             self.set_session_query_tag()
@@ -661,7 +661,7 @@ class SnowflakeSource(
 
         try:
             stored_procedure_request = CreateStoredProcedureRequest(
-                name=EntityName(__root__=stored_procedure.name),
+                name=EntityName(root=stored_procedure.name),
                 description=stored_procedure.comment,
                 storedProcedureCode=StoredProcedureCode(
                     language=STORED_PROC_LANGUAGE_MAP.get(stored_procedure.language),
@@ -675,7 +675,7 @@ class SnowflakeSource(
                     schema_name=self.context.get().database_schema,
                 ),
                 sourceUrl=SourceUrl(
-                    __root__=self._get_source_url_root(
+                    root=self._get_source_url_root(
                         database_name=self.context.get().database,
                         schema_name=self.context.get().database_schema,
                     )

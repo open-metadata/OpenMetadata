@@ -55,7 +55,7 @@ class MstrSource(DashboardServiceSource):
         pipeline_name: Optional[str] = None,
     ):
         config = WorkflowSource.parse_obj(config_dict)
-        connection: MstrConnection = config.serviceConnection.__root__.config
+        connection: MstrConnection = config.serviceConnection.root.config
         if not isinstance(connection, MstrConnection):
             raise InvalidSourceException(
                 f"Expected MstrConnection, but got {connection}"

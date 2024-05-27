@@ -100,7 +100,7 @@ class DeltalakeSource(DatabaseServiceSource):
             self.config.sourceConfig.config
         )
         self.metadata = metadata
-        self.service_connection = self.config.serviceConnection.__root__.config
+        self.service_connection = self.config.serviceConnection.root.config
         self.spark = get_connection(self.service_connection)
 
         self.table_type_map = {
@@ -121,7 +121,7 @@ class DeltalakeSource(DatabaseServiceSource):
         cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None
     ):
         config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
-        connection: DeltaLakeConnection = config.serviceConnection.__root__.config
+        connection: DeltaLakeConnection = config.serviceConnection.root.config
         if not isinstance(connection, DeltaLakeConnection):
             raise InvalidSourceException(
                 f"Expected DeltaLakeConnection, but got {connection}"

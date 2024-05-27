@@ -219,7 +219,7 @@ class OpenMetadataValidationAction(ValidationAction):
                 entity=Table, fields=["testSuite"]
             ).entities
             if f"{database}.{schema_name}.{table_name}"
-            in entity.fullyQualifiedName.__root__
+            in entity.fullyQualifiedName.root
         ]
 
         if len(table_entity) > 1:
@@ -248,14 +248,14 @@ class OpenMetadataValidationAction(ValidationAction):
 
         if table_entity.testSuite:
             test_suite = self.ometa_conn.get_by_name(
-                TestSuite, table_entity.testSuite.fullyQualifiedName.__root__
+                TestSuite, table_entity.testSuite.fullyQualifiedName.root
             )
             test_suite = cast(TestSuite, test_suite)
             return test_suite
 
         create_test_suite = CreateTestSuiteRequest(
-            name=f"{table_entity.fullyQualifiedName.__root__}.TestSuite",
-            executableEntityReference=table_entity.fullyQualifiedName.__root__,
+            name=f"{table_entity.fullyQualifiedName.root}.TestSuite",
+            executableEntityReference=table_entity.fullyQualifiedName.root,
         )  # type: ignore
         test_suite = self.ometa_conn.create_or_update_executable_test_suite(
             create_test_suite
@@ -403,7 +403,7 @@ class OpenMetadataValidationAction(ValidationAction):
             )
 
             test_case_fqn = self._build_test_case_fqn(
-                table_entity.fullyQualifiedName.__root__,
+                table_entity.fullyQualifiedName.root,
                 result,
             )
 
@@ -411,11 +411,11 @@ class OpenMetadataValidationAction(ValidationAction):
                 test_case_fqn,
                 entity_link=get_entity_link(
                     Table,
-                    fqn=table_entity.fullyQualifiedName.__root__,
+                    fqn=table_entity.fullyQualifiedName.root,
                     column_name=fqn.split_test_case_fqn(test_case_fqn).column,
                 ),
-                test_suite_fqn=test_suite.fullyQualifiedName.__root__,
-                test_definition_fqn=test_definition.fullyQualifiedName.__root__,
+                test_suite_fqn=test_suite.fullyQualifiedName.root,
+                test_definition_fqn=test_definition.fullyQualifiedName.root,
                 test_case_parameter_values=self._get_test_case_params_value(result),
             )
 
@@ -427,11 +427,11 @@ class OpenMetadataValidationAction(ValidationAction):
                     else TestCaseStatus.Failed,
                     testResultValue=self._get_test_result_value(result),
                 ),  # type: ignore
-                test_case_fqn=test_case.fullyQualifiedName.__root__,
+                test_case_fqn=test_case.fullyQualifiedName.root,
             )
 
             logger.debug(
-                f"Test case result for {test_case.fullyQualifiedName.__root__} successfully ingested"
+                f"Test case result for {test_case.fullyQualifiedName.root} successfully ingested"
             )
 
         except Exception as exc:

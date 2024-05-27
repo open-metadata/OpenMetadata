@@ -125,7 +125,7 @@ class GreenplumSource(CommonDbSourceService, MultiDBSource):
         pipeline_name: Optional[str] = None,
     ):
         config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
-        connection: GreenplumConnection = config.serviceConnection.__root__.config
+        connection: GreenplumConnection = config.serviceConnection.root.config
         if not isinstance(connection, GreenplumConnection):
             raise InvalidSourceException(
                 f"Expected GreenplumConnection, but got {connection}"
@@ -160,8 +160,8 @@ class GreenplumSource(CommonDbSourceService, MultiDBSource):
         yield from self._execute_database_query(GREENPLUM_GET_DB_NAMES)
 
     def get_database_names(self) -> Iterable[str]:
-        if not self.config.serviceConnection.__root__.config.ingestAllDatabases:
-            configured_db = self.config.serviceConnection.__root__.config.database
+        if not self.config.serviceConnection.root.config.ingestAllDatabases:
+            configured_db = self.config.serviceConnection.root.config.database
             self.set_inspector(database_name=configured_db)
             yield configured_db
         else:

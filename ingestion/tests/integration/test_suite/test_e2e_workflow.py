@@ -221,7 +221,7 @@ class TestE2EWorkflow(unittest.TestCase):
         service_db_id = str(
             cls.metadata.get_by_name(
                 entity=DatabaseService, fqn="test_suite_service_test"
-            ).id.__root__
+            ).id.root
         )
 
         cls.metadata.delete(

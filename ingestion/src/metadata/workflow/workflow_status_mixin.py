@@ -63,7 +63,7 @@ class WorkflowStatusMixin:
         """
         if not self._run_id:
             if self.config.pipelineRunId:
-                self._run_id = str(self.config.pipelineRunId.__root__)
+                self._run_id = str(self.config.pipelineRunId.root)
             else:
                 self._run_id = str(uuid.uuid4())
 
@@ -91,7 +91,7 @@ class WorkflowStatusMixin:
             # if we don't have a related Ingestion Pipeline FQN, no status is set.
             if self.config.ingestionPipelineFQN and self.ingestion_pipeline:
                 pipeline_status = self.metadata.get_pipeline_status(
-                    self.ingestion_pipeline.fullyQualifiedName.__root__, self.run_id
+                    self.ingestion_pipeline.fullyQualifiedName.root, self.run_id
                 )
                 if not pipeline_status:
                     # We need to crete the status
@@ -105,7 +105,7 @@ class WorkflowStatusMixin:
                     ingestion_status if ingestion_status else pipeline_status.status
                 )
                 self.metadata.create_or_update_pipeline_status(
-                    self.ingestion_pipeline.fullyQualifiedName.__root__, pipeline_status
+                    self.ingestion_pipeline.fullyQualifiedName.root, pipeline_status
                 )
         except Exception as err:
             logger.debug(traceback.format_exc())
@@ -139,7 +139,7 @@ class WorkflowStatusMixin:
         """
 
         return IngestionStatus(
-            __root__=[
+            root=[
                 StepSummary.parse_obj(Summary.from_step(step).dict())
                 for step in self.workflow_steps()
             ]

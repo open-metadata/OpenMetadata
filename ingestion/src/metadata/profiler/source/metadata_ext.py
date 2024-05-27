@@ -79,7 +79,7 @@ class OpenMetadataSourceExt(OpenMetadataSource):
         self.test_connection()
 
         # Init and type the source config
-        self.service_connection = self.config.source.serviceConnection.__root__.config
+        self.service_connection = self.config.source.serviceConnection.root.config
         self.source_config: DatabaseServiceProfilerPipeline = cast(
             DatabaseServiceProfilerPipeline, self.config.source.sourceConfig.config
         )  # Used to satisfy type checked
@@ -253,7 +253,7 @@ class OpenMetadataSourceExt(OpenMetadataSource):
                     self.metadata,
                     entity_type=Database,
                     service_name=self.config.source.serviceName,
-                    database_name=database.name.__root__,
+                    database_name=database.name.root,
                 ),
             },  # type: ignore
         )

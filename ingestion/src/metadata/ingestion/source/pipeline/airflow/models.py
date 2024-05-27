@@ -49,7 +49,7 @@ class AirflowTask(BaseModel):
 
 
 class TaskList(BaseModel):
-    __root__: List[AirflowTask]
+    root: List[AirflowTask]
 
 
 class Dag(BaseModel):

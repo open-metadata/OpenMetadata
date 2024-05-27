@@ -80,7 +80,7 @@ def _(config: GCSConfig):
     ):
         gcs_config: GCSConfig = deepcopy(config)
         gcs_config.securityConfig.gcpConfig.projectId = SingleProjectId.parse_obj(
-            gcs_config.securityConfig.gcpConfig.projectId.__root__[0]
+            gcs_config.securityConfig.gcpConfig.projectId.root[0]
         )
     set_google_credentials(gcp_credentials=gcs_config.securityConfig)
     gcs_client = storage.Client()

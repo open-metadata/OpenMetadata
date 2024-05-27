@@ -41,7 +41,7 @@ class OMetaQueryMixin:
         return str(result.hexdigest())
 
     def _get_or_create_query(self, query: CreateQueryRequest) -> Optional[Query]:
-        query_hash = self._get_query_hash(query=query.query.__root__)
+        query_hash = self._get_query_hash(query=query.query.root)
         query_entity = self.get_by_name(entity=Query, fqn=query_hash)
         if query_entity is None:
             resp = self.client.put(self.get_suffix(Query), data=query.json())
@@ -63,7 +63,7 @@ class OMetaQueryMixin:
                 query = self._get_or_create_query(create_query)
                 if query:
                     # Add Query Usage
-                    table_ref = EntityReference(id=entity.id.__root__, type="table")
+                    table_ref = EntityReference(id=entity.id.root, type="table")
                     # convert object to json array string
                     table_ref_json = "[" + table_ref.json() + "]"
                     self.client.put(

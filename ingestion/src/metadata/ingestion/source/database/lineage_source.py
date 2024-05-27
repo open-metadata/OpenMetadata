@@ -143,12 +143,12 @@ class LineageSource(QueryParserSource, ABC):
                     if lineage_request.right:
                         yield Either(
                             right=CreateQueryRequest(
-                                query=SqlQuery(__root__=table_query.query),
+                                query=SqlQuery(root=table_query.query),
                                 query_type=table_query.query_type,
                                 duration=table_query.duration,
                                 processedLineage=True,
                                 service=FullyQualifiedEntityName(
-                                    __root__=self.config.serviceName
+                                    root=self.config.serviceName
                                 ),
                             )
                         )

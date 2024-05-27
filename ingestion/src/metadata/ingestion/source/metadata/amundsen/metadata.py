@@ -117,7 +117,7 @@ class AmundsenSource(Source):
         self.database_schema_object = None
         self.database_object = None
         self.metadata = metadata
-        self.service_connection = self.config.serviceConnection.__root__.config
+        self.service_connection = self.config.serviceConnection.root.config
         self.client = get_connection(self.service_connection)
         self.connection_obj = self.client
         self.database_service_map = {
@@ -131,7 +131,7 @@ class AmundsenSource(Source):
     ):
         """Create class instance"""
         config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
-        connection: AmundsenConnection = config.serviceConnection.__root__.config
+        connection: AmundsenConnection = config.serviceConnection.root.config
         if not isinstance(connection, AmundsenConnection):
             raise InvalidSourceException(
                 f"Expected AmundsenConnection, but got {connection}"
@@ -244,7 +244,7 @@ class AmundsenSource(Source):
                 name=table_name
                 if hasattr(service_entity.connection.config, "supportsDatabase")
                 else "default",
-                service=service_entity.fullyQualifiedName.__root__,
+                service=service_entity.fullyQualifiedName.root,
             )
             yield Either(right=database_request)
             database_fqn = fqn.build(
@@ -277,8 +277,8 @@ class AmundsenSource(Source):
                 self.metadata,
                 entity_type=DatabaseSchema,
                 service_name=table["database"],
-                database_name=self.database_object.name.__root__,
-                schema_name=database_schema_request.name.__root__,
+                database_name=self.database_object.name.root,
+                schema_name=database_schema_request.name.root,
             )
 
             self.database_schema_object = self.metadata.get_by_name(
@@ -392,7 +392,7 @@ class AmundsenSource(Source):
                 charts=get_chart_entities_from_id(
                     chart_ids=dashboard["chart_ids"],
                     metadata=self.metadata,
-                    service_name=self.dashboard_service.name.__root__,
+                    service_name=self.dashboard_service.name.root,
                 ),
                 service=self.dashboard_service.fullyQualifiedName,
             )

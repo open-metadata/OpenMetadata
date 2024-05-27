@@ -63,7 +63,7 @@ class DomopipelineSource(PipelineServiceSource):
         cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None
     ):
         config = WorkflowSource.parse_obj(config_dict)
-        connection: DomoPipelineConnection = config.serviceConnection.__root__.config
+        connection: DomoPipelineConnection = config.serviceConnection.root.config
         if not isinstance(connection, DomoPipelineConnection):
             raise InvalidSourceException(
                 f"Expected DomoPipelineConnection, but got {connection}"

@@ -124,7 +124,7 @@ class SearchServiceSource(TopologyRunnerMixin, Source, ABC):
         self.source_config: SearchServiceMetadataPipeline = (
             self.config.sourceConfig.config
         )
-        self.service_connection = self.config.serviceConnection.__root__.config
+        self.service_connection = self.config.serviceConnection.root.config
         self.connection = get_connection(self.service_connection)
 
         # Flag the connection for the test connection
@@ -205,8 +205,8 @@ class SearchServiceSource(TopologyRunnerMixin, Source, ABC):
         index_fqn = fqn.build(
             self.metadata,
             entity_type=SearchIndex,
-            service_name=search_index_request.service.__root__,
-            search_index_name=search_index_request.name.__root__,
+            service_name=search_index_request.service.root,
+            search_index_name=search_index_request.name.root,
         )
 
         self.index_source_state.add(index_fqn)

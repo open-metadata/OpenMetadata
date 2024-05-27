@@ -54,7 +54,7 @@ class LightdashSource(DashboardServiceSource):
         cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None
     ):
         config = WorkflowSource.parse_obj(config_dict)
-        connection: LightdashConnection = config.serviceConnection.__root__.config
+        connection: LightdashConnection = config.serviceConnection.root.config
         if not isinstance(connection, LightdashConnection):
             raise InvalidSourceException(
                 f"Expected LightdashConnection, but got {connection}"

@@ -127,7 +127,7 @@ class PipelineServiceSource(TopologyRunnerMixin, Source, ABC):
         super().__init__()
         self.config = config
         self.metadata = metadata
-        self.service_connection = self.config.serviceConnection.__root__.config
+        self.service_connection = self.config.serviceConnection.root.config
         self.source_config: PipelineServiceMetadataPipeline = (
             self.config.sourceConfig.config
         )
@@ -214,8 +214,8 @@ class PipelineServiceSource(TopologyRunnerMixin, Source, ABC):
         pipeline_fqn = fqn.build(
             self.metadata,
             entity_type=Pipeline,
-            service_name=pipeline_request.service.__root__,
-            pipeline_name=pipeline_request.name.__root__,
+            service_name=pipeline_request.service.root,
+            pipeline_name=pipeline_request.name.root,
         )
 
         self.pipeline_source_state.add(pipeline_fqn)

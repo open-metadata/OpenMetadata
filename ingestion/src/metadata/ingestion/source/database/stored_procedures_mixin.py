@@ -181,11 +181,11 @@ class StoredProcedureMixin(ABC):
 
         yield Either(
             right=CreateQueryRequest(
-                query=SqlQuery(__root__=query_by_procedure.query_text),
+                query=SqlQuery(root=query_by_procedure.query_text),
                 query_type=query_by_procedure.query_type,
                 duration=query_by_procedure.query_duration,
                 queryDate=Timestamp(
-                    __root__=convert_timestamp_to_milliseconds(
+                    root=convert_timestamp_to_milliseconds(
                         int(query_by_procedure.query_start_time.timestamp())
                     )
                 ),
@@ -216,7 +216,7 @@ class StoredProcedureMixin(ABC):
                 if procedure:
                     logger.debug(f"Processing Lineage for [{procedure.name}]")
                     for query_by_procedure in (
-                        queries_dict.get(procedure.name.__root__.lower()) or []
+                        queries_dict.get(procedure.name.root.lower()) or []
                     ):
                         yield from self.yield_procedure_lineage(
                             query_by_procedure=query_by_procedure, procedure=procedure

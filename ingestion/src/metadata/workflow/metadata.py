@@ -49,7 +49,7 @@ class MetadataWorkflow(IngestionWorkflow):
 
         source_class = (
             import_from_module(
-                self.config.source.serviceConnection.__root__.config.sourcePythonClass
+                self.config.source.serviceConnection.root.config.sourcePythonClass
             )
             if source_type.startswith("custom")
             else import_source_class(
@@ -58,7 +58,7 @@ class MetadataWorkflow(IngestionWorkflow):
         )
 
         pipeline_name = (
-            self.ingestion_pipeline.fullyQualifiedName.__root__
+            self.ingestion_pipeline.fullyQualifiedName.root
             if self.ingestion_pipeline
             else None
         )

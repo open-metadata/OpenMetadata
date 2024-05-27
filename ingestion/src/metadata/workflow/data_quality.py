@@ -68,7 +68,7 @@ class TestSuiteWorkflow(IngestionWorkflow):
             and not self.metadata.config.forceEntityOverwriting
         ):
             fully_qualified_name = (
-                self.config.source.sourceConfig.config.entityFullyQualifiedName.__root__
+                self.config.source.sourceConfig.config.entityFullyQualifiedName.root
             )
             try:
                 service_name = fqn.split(fully_qualified_name)[0]
@@ -89,7 +89,7 @@ class TestSuiteWorkflow(IngestionWorkflow):
                     )
 
                 self.config.source.serviceConnection = ServiceConnection(
-                    __root__=service.connection
+                    root=service.connection
                 )
 
             except Exception as exc:

@@ -73,7 +73,7 @@ class CommonNoSQLSource(DatabaseServiceSource, ABC):
             self.config.sourceConfig.config
         )
         self.metadata = metadata
-        self.service_connection = self.config.serviceConnection.__root__.config
+        self.service_connection = self.config.serviceConnection.root.config
         self.connection_obj = get_connection(self.service_connection)
         self.test_connection()
 

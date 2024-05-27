@@ -85,7 +85,7 @@ class NifiSource(PipelineServiceSource):
         cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None
     ):
         config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
-        connection: NifiConnection = config.serviceConnection.__root__.config
+        connection: NifiConnection = config.serviceConnection.root.config
         if not isinstance(connection, NifiConnection):
             raise InvalidSourceException(
                 f"Expected NifiConnection, but got {connection}"

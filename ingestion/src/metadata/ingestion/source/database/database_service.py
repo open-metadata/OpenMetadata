@@ -387,11 +387,11 @@ class DatabaseServiceSource(
 
         tag_labels = []
         for tag_and_category in self.context.get().tags or []:
-            if tag_and_category.fqn and tag_and_category.fqn.__root__ == entity_fqn:
+            if tag_and_category.fqn and tag_and_category.fqn.root == entity_fqn:
                 tag_label = get_tag_label(
                     metadata=self.metadata,
-                    tag_name=tag_and_category.tag_request.name.__root__,
-                    classification_name=tag_and_category.classification_request.name.__root__,
+                    tag_name=tag_and_category.tag_request.name.root,
+                    classification_name=tag_and_category.classification_request.name.root,
                 )
                 if tag_label:
                     tag_labels.append(tag_label)
@@ -472,7 +472,7 @@ class DatabaseServiceSource(
             service_name=self.context.get().database_service,
             database_name=self.context.get().database,
             schema_name=self.context.get().database_schema,
-            table_name=table_request.name.__root__,
+            table_name=table_request.name.root,
             skip_es_search=True,
         )
 
@@ -490,7 +490,7 @@ class DatabaseServiceSource(
             service_name=self.context.get().database_service,
             database_name=self.context.get().database,
             schema_name=self.context.get().database_schema,
-            procedure_name=stored_proc_request.name.__root__,
+            procedure_name=stored_proc_request.name.root,
         )
 
         self.stored_procedure_source_state.add(table_fqn)

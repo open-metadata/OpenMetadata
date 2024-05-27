@@ -39,8 +39,8 @@ USER = User(
     name="aaron_johnson0",
     fullyQualifiedName="aaron_johnson0",
     teams=EntityReferenceList(
-        __root__=[
-            EntityReference(id=TEAM.id.__root__, type="team", name="sales")  # type: ignore
+        root=[
+            EntityReference(id=TEAM.id.root, type="team", name="sales")  # type: ignore
         ]
     ),
 )  # type: ignore
@@ -54,7 +54,7 @@ class EntityReportProcessorTest(unittest.TestCase):
             name="my_chart",
             service=EntityReference(id=uuid.uuid4(), type="dashboad"),  # type: ignore
             owner=EntityReference(
-                id=TEAM.id.__root__, type="team", name="marketing"
+                id=TEAM.id.root, type="team", name="marketing"
             ),  # type: ignore
         )  # type: ignore
 
@@ -68,9 +68,7 @@ class EntityReportProcessorTest(unittest.TestCase):
         mocked_ometa.get_by_name.return_value = USER
         owner = processor._get_team(self.chart.owner)
         assert owner == "marketing"
-        self.chart.owner = EntityReference(
-            id=USER.id.__root__, type="user"
-        )  # type: ignore
+        self.chart.owner = EntityReference(id=USER.id.root, type="user")  # type: ignore
         owner = processor._get_team(self.chart.owner)
         assert owner == "sales"
         self.chart.owner = None

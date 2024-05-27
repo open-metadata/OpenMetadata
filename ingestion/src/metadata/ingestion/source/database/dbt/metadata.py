@@ -609,9 +609,7 @@ class DbtSource(DbtServiceSource):
         Method to process DBT lineage from upstream nodes
         """
         to_entity: Table = data_model_link.table_entity
-        logger.debug(
-            f"Processing DBT lineage for: {to_entity.fullyQualifiedName.__root__}"
-        )
+        logger.debug(f"Processing DBT lineage for: {to_entity.fullyQualifiedName.root}")
 
         for upstream_node in data_model_link.datamodel.upstream:
             try:
@@ -629,11 +627,11 @@ class DbtSource(DbtServiceSource):
                         right=AddLineageRequest(
                             edge=EntitiesEdge(
                                 fromEntity=EntityReference(
-                                    id=from_entity.id.__root__,
+                                    id=from_entity.id.root,
                                     type="table",
                                 ),
                                 toEntity=EntityReference(
-                                    id=to_entity.id.__root__,
+                                    id=to_entity.id.root,
                                     type="table",
                                 ),
                                 lineageDetails=LineageDetails(
@@ -657,21 +655,17 @@ class DbtSource(DbtServiceSource):
         """
         to_entity: Table = data_model_link.table_entity
         logger.debug(
-            f"Processing DBT Query lineage for: {to_entity.fullyQualifiedName.__root__}"
+            f"Processing DBT Query lineage for: {to_entity.fullyQualifiedName.root}"
         )
 
         try:
-            source_elements = fqn.split(to_entity.fullyQualifiedName.__root__)
+            source_elements = fqn.split(to_entity.fullyQualifiedName.root)
             # remove service name from fqn to make it parseable in format db.schema.table
             query_fqn = fqn._build(  # pylint: disable=protected-access
                 *source_elements[-3:]
             )
-            query = (
-                f"create table {query_fqn} as {data_model_link.datamodel.sql.__root__}"
-            )
-            connection_type = str(
-                self.config.serviceConnection.__root__.config.type.value
-            )
+            query = f"create table {query_fqn} as {data_model_link.datamodel.sql.root}"
+            connection_type = str(self.config.serviceConnection.root.config.type.value)
             dialect = ConnectionTypeDialectMapper.dialect_of(connection_type)
             lineages = get_lineage_by_query(
                 self.metadata,
@@ -689,9 +683,9 @@ class DbtSource(DbtServiceSource):
         except Exception as exc:  # pylint: disable=broad-except
             yield Either(
                 left=StackTraceError(
-                    name=data_model_link.datamodel.sql.__root__,
+                    name=data_model_link.datamodel.sql.root,
                     error=(
-                        f"Failed to parse the query {data_model_link.datamodel.sql.__root__}"
+                        f"Failed to parse the query {data_model_link.datamodel.sql.root}"
                         f" to capture lineage: {exc}"
                     ),
                     stackTrace=traceback.format_exc(),
@@ -740,12 +734,12 @@ class DbtSource(DbtServiceSource):
         """
         table_entity: Table = data_model_link.table_entity
         logger.debug(
-            f"Processing DBT Descriptions for: {table_entity.fullyQualifiedName.__root__}"
+            f"Processing DBT Descriptions for: {table_entity.fullyQualifiedName.root}"
         )
         if table_entity:
             try:
                 service_name, database_name, schema_name, table_name = fqn.split(
-                    table_entity.fullyQualifiedName.__root__
+                    table_entity.fullyQualifiedName.root
                 )
                 data_model = data_model_link.datamodel
                 force_override = False
@@ -760,7 +754,7 @@ class DbtSource(DbtServiceSource):
                     self.metadata.patch_description(
                         entity=Table,
                         source=table_entity,
-                        description=data_model.description.__root__,
+                        description=data_model.description.root,
                         force=force_override,
                     )
 
@@ -777,7 +771,7 @@ class DbtSource(DbtServiceSource):
                                     database_name=database_name,
                                     schema_name=schema_name,
                                     table_name=table_name,
-                                    column_name=column.name.__root__,
+                                    column_name=column.name.root,
                                 ),
                                 description=column.description,
                             )
@@ -790,7 +784,7 @@ class DbtSource(DbtServiceSource):
             except Exception as exc:  # pylint: disable=broad-except
                 logger.debug(traceback.format_exc())
                 logger.warning(
-                    f"Failed to parse the node {table_entity.fullyQualifiedName.__root__} "
+                    f"Failed to parse the node {table_entity.fullyQualifiedName.root} "
                     f"to update dbt description: {exc}"
                 )
 
@@ -859,7 +853,7 @@ class DbtSource(DbtServiceSource):
                             name=manifest_node.name,
                             description=manifest_node.description,
                             testDefinition=FullyQualifiedEntityName(
-                                __root__=manifest_node.name
+                                root=manifest_node.name
                             ),
                             entityLink=entity_link_str,
                             testSuite=test_suite.fullyQualifiedName,

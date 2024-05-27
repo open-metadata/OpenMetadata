@@ -112,7 +112,7 @@ class ClickhouseSource(CommonDbSourceService):
         cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None
     ):
         config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
-        connection: ClickhouseConnection = config.serviceConnection.__root__.config
+        connection: ClickhouseConnection = config.serviceConnection.root.config
         if not isinstance(connection, ClickhouseConnection):
             raise InvalidSourceException(
                 f"Expected ClickhouseConnection, but got {connection}"

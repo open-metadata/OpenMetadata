@@ -60,7 +60,7 @@ class SplineSource(PipelineServiceSource):
         cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None
     ):
         config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
-        connection: SplineConnection = config.serviceConnection.__root__.config
+        connection: SplineConnection = config.serviceConnection.root.config
         if not isinstance(connection, SplineConnection):
             raise InvalidSourceException(
                 f"Expected SplineConnection, but got {connection}"
@@ -235,7 +235,7 @@ class SplineSource(PipelineServiceSource):
                             edge=EntitiesEdge(
                                 lineageDetails=LineageDetails(
                                     pipeline=EntityReference(
-                                        id=pipeline_entity.id.__root__,
+                                        id=pipeline_entity.id.root,
                                         type="pipeline",
                                     ),
                                     columnsLineage=[

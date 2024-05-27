@@ -82,7 +82,7 @@ class ProfilerTest(TestCase):
         name="user",
         columns=[
             EntityColumn(
-                name=ColumnName(__root__="id"),
+                name=ColumnName(root="id"),
                 dataType=DataType.INT,
                 customMetrics=[
                     CustomMetric(
@@ -262,7 +262,7 @@ class ProfilerTest(TestCase):
         for metric in metrics:
             if metric.metrics:
                 if isinstance(metric.metrics[0], CustomMetric):
-                    assert metric.metrics[0].name.__root__ == "custom_metric"
+                    assert metric.metrics[0].name.root == "custom_metric"
                 else:
                     assert metric.metrics[0].name() == "firstQuartile"
 
@@ -328,7 +328,7 @@ class ProfilerTest(TestCase):
                     if not isinstance(m, CustomMetric)
                 )
                 assert all(
-                    custom_metric_filter.count(m.name.__root__)
+                    custom_metric_filter.count(m.name.root)
                     for m in metric.metrics
                     if isinstance(m, CustomMetric)
                 )

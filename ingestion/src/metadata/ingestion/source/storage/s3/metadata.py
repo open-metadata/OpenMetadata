@@ -87,7 +87,7 @@ class S3Source(StorageServiceSource):
         cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None
     ):
         config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
-        connection: S3Connection = config.serviceConnection.__root__.config
+        connection: S3Connection = config.serviceConnection.root.config
         if not isinstance(connection, S3Connection):
             raise InvalidSourceException(f"Expected S3Connection, but got {connection}")
         return cls(config, metadata)
@@ -113,7 +113,7 @@ class S3Source(StorageServiceSource):
                 )
                 self._bucket_cache[bucket_name] = container_entity
                 parent_entity: EntityReference = EntityReference(
-                    id=self._bucket_cache[bucket_name].id.__root__, type="container"
+                    id=self._bucket_cache[bucket_name].id.root, type="container"
                 )
                 if self.global_manifest:
                     manifest_entries_for_current_bucket = (

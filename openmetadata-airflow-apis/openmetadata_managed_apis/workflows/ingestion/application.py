@@ -75,17 +75,17 @@ def build_application_workflow_config(
         sourcePythonClass=application_pipeline_conf.sourcePythonClass,
         # We pass the generic class and let each app cast the actual object
         appConfig=AppConfig(
-            __root__=application_pipeline_conf.appConfig.__root__,
+            root=application_pipeline_conf.appConfig.root,
         )
         if application_pipeline_conf.appConfig
         else None,
         appPrivateConfig=PrivateConfig(
-            __root__=application_pipeline_conf.appPrivateConfig.__root__
+            root=application_pipeline_conf.appPrivateConfig.root
         )
         if application_pipeline_conf.appPrivateConfig
         else None,
         workflowConfig=build_workflow_config_property(ingestion_pipeline),
-        ingestionPipelineFQN=ingestion_pipeline.fullyQualifiedName.__root__,
+        ingestionPipelineFQN=ingestion_pipeline.fullyQualifiedName.root,
     )
 
     return application_workflow_config

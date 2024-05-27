@@ -111,7 +111,7 @@ class MlModelServiceSource(TopologyRunnerMixin, Source, ABC):
         super().__init__()
         self.config = config
         self.metadata = metadata
-        self.service_connection = self.config.serviceConnection.__root__.config
+        self.service_connection = self.config.serviceConnection.root.config
         self.source_config: MlModelServiceMetadataPipeline = (
             self.config.sourceConfig.config
         )
@@ -190,8 +190,8 @@ class MlModelServiceSource(TopologyRunnerMixin, Source, ABC):
         mlmodel_fqn = fqn.build(
             self.metadata,
             entity_type=MlModel,
-            service_name=mlmodel_request.service.__root__,
-            mlmodel_name=mlmodel_request.name.__root__,
+            service_name=mlmodel_request.service.root,
+            mlmodel_name=mlmodel_request.name.root,
         )
 
         self.mlmodel_source_state.add(mlmodel_fqn)

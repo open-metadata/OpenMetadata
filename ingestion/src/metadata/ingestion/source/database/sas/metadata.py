@@ -101,7 +101,7 @@ class SasSource(
         self.source_config: DatabaseServiceMetadataPipeline = (
             self.config.sourceConfig.config
         )
-        self.service_connection = self.config.serviceConnection.__root__.config
+        self.service_connection = self.config.serviceConnection.root.config
 
         self.sas_client = get_connection(self.service_connection)
         self.connection_obj = self.sas_client
@@ -130,7 +130,7 @@ class SasSource(
     ):
         logger.info(f"running create {config_dict}")
         config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
-        connection: SASConnection = config.serviceConnection.__root__.config
+        connection: SASConnection = config.serviceConnection.root.config
         if not isinstance(connection, SASConnection):
             raise InvalidSourceException(
                 f"Expected SASConnection, but got {connection}"
@@ -466,8 +466,8 @@ class SasSource(
             # if the table entity already exists, we don't need to create it again
             # only update it when either the sourceUrl or analysisTimeStamp changed
             if not table_entity or (
-                table_url != table_entity.sourceUrl.__root__
-                or table_entity.extension.__root__.get("analysisTimeStamp")
+                table_url != table_entity.sourceUrl.root
+                or table_entity.extension.root.get("analysisTimeStamp")
                 != table_extension.get("analysisTimeStamp")
             ):
                 # create the columns of the table
@@ -530,10 +530,10 @@ class SasSource(
                 )
                 # update the description
                 logger.debug(
-                    f"Updating description for {table_entity.id.__root__} with {table_description}"
+                    f"Updating description for {table_entity.id.root} with {table_description}"
                 )
                 self.metadata.client.patch(
-                    path=f"/tables/{table_entity.id.__root__}",
+                    path=f"/tables/{table_entity.id.root}",
                     data=json.dumps(
                         [
                             {
@@ -547,10 +547,10 @@ class SasSource(
 
                 # update the custom properties
                 logger.debug(
-                    f"Updating custom properties for {table_entity.id.__root__} with {extension_attributes}"
+                    f"Updating custom properties for {table_entity.id.root} with {extension_attributes}"
                 )
                 self.metadata.client.patch(
-                    path=f"/tables/{table_entity.id.__root__}",
+                    path=f"/tables/{table_entity.id.root}",
                     data=json.dumps(
                         [
                             {
@@ -597,7 +597,7 @@ class SasSource(
                     columnProfile=col_profile_list,
                 )
                 self.metadata.client.put(
-                    path=f"{self.metadata.get_suffix(Table)}/{table_entity.id.__root__}/tableProfile",
+                    path=f"{self.metadata.get_suffix(Table)}/{table_entity.id.root}/tableProfile",
                     data=table_profile_request.json(),
                 )
 
@@ -733,10 +733,8 @@ class SasSource(
         return Either(
             right=AddLineageRequest(
                 edge=EntitiesEdge(
-                    fromEntity=EntityReference(
-                        id=from_entity.id.__root__, type=from_type
-                    ),
-                    toEntity=EntityReference(id=to_entity.id.__root__, type=in_type),
+                    fromEntity=EntityReference(id=from_entity.id.root, type=from_type),
+                    toEntity=EntityReference(id=to_entity.id.root, type=in_type),
                 )
             )
         )

@@ -94,7 +94,7 @@ class UnitycatalogSource(
         self.context.get_global().table_views = []
         self.metadata = metadata
         self.service_connection: UnityCatalogConnection = (
-            self.config.serviceConnection.__root__.config
+            self.config.serviceConnection.root.config
         )
         self.external_location_map = {}
         self.client = get_connection(self.service_connection)
@@ -115,7 +115,7 @@ class UnitycatalogSource(
         cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None
     ):
         config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
-        connection: UnityCatalogConnection = config.serviceConnection.__root__.config
+        connection: UnityCatalogConnection = config.serviceConnection.root.config
         if not isinstance(connection, UnityCatalogConnection):
             raise InvalidSourceException(
                 f"Expected UnityCatalogConnection, but got {connection}"

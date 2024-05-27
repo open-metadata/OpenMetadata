@@ -71,7 +71,7 @@ class FivetranSource(PipelineServiceSource):
         cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None
     ):
         config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
-        connection: FivetranConnection = config.serviceConnection.__root__.config
+        connection: FivetranConnection = config.serviceConnection.root.config
         if not isinstance(connection, FivetranConnection):
             raise InvalidSourceException(
                 f"Expected FivetranConnection, but got {connection}"
@@ -173,7 +173,7 @@ class FivetranSource(PipelineServiceSource):
                 )
                 lineage_details = LineageDetails(
                     pipeline=EntityReference(
-                        id=pipeline_entity.id.__root__, type="pipeline"
+                        id=pipeline_entity.id.root, type="pipeline"
                     ),
                     source=LineageSource.PipelineLineage,
                 )

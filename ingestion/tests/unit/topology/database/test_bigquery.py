@@ -78,7 +78,7 @@ mock_bq_config = {
 mock_credentials_path_bq_config = mock_bq_config
 mock_credentials_path_bq_config["source"]["serviceConnection"]["config"]["credentials"][
     "gcpConfig"
-]["__root__"] = "credentials.json"
+]["root"] = "credentials.json"
 
 
 MOCK_DB_NAME = "random-project-id"
@@ -106,7 +106,7 @@ MOCK_DATABASE_SCHEMA = DatabaseSchema(
 
 MOCK_TABLE = Table(
     id="c3eb265f-5445-4ad3-ba5e-797d3a3071bb",
-    name=EntityName(__root__="customers"),
+    name=EntityName(root="customers"),
     displayName=None,
     description=None,
     tableType="Regular",
@@ -181,7 +181,7 @@ MOCK_TABLE = Table(
     retentionPeriod=None,
     extension=None,
     sourceUrl=SourceUrl(
-        __root__="https://console.cloud.google.com/bigquery?project=random-project-id&ws=!1m5!1m4!4m3!1srandom-project-id!2ssample_schema!3scustomers"
+        root="https://console.cloud.google.com/bigquery?project=random-project-id&ws=!1m5!1m4!4m3!1srandom-project-id!2ssample_schema!3scustomers"
     ),
     domain=None,
     dataProducts=None,
@@ -192,18 +192,18 @@ MOCK_TABLE = Table(
 
 EXPECTED_DATABASE = [
     CreateDatabaseRequest(
-        name=EntityName(__root__="random-project-id"),
+        name=EntityName(root="random-project-id"),
         displayName=None,
         description=None,
         tags=[],
         owner=None,
-        service=FullyQualifiedEntityName(__root__="bigquery_source_test"),
+        service=FullyQualifiedEntityName(root="bigquery_source_test"),
         dataProducts=None,
         default=False,
         retentionPeriod=None,
         extension=None,
         sourceUrl=SourceUrl(
-            __root__="https://console.cloud.google.com/bigquery?project=random-project-id"
+            root="https://console.cloud.google.com/bigquery?project=random-project-id"
         ),
         domain=None,
         lifeCycle=None,
@@ -212,19 +212,19 @@ EXPECTED_DATABASE = [
 ]
 EXPTECTED_DATABASE_SCHEMA = [
     CreateDatabaseSchemaRequest(
-        name=EntityName(__root__="sample_schema"),
+        name=EntityName(root="sample_schema"),
         displayName=None,
         description="",
         owner=None,
         database=FullyQualifiedEntityName(
-            __root__="bigquery_source_test.random-project-id"
+            root="bigquery_source_test.random-project-id"
         ),
         dataProducts=None,
         tags=None,
         retentionPeriod=None,
         extension=None,
         sourceUrl=SourceUrl(
-            __root__="https://console.cloud.google.com/bigquery?project=random-project-id&ws=!1m4!1m3!3m2!1srandom-project-id!2ssample_schema"
+            root="https://console.cloud.google.com/bigquery?project=random-project-id&ws=!1m4!1m3!3m2!1srandom-project-id!2ssample_schema"
         ),
         domain=None,
         lifeCycle=None,
@@ -340,7 +340,7 @@ MOCK_FK_CONSTRAINT = {
 EXPECTED_TABLE = [
     [
         CreateTableRequest(
-            name=EntityName(__root__="customers"),
+            name=EntityName(root="customers"),
             displayName=None,
             description=None,
             tableType="Regular",
@@ -408,14 +408,14 @@ EXPECTED_TABLE = [
             tableProfilerConfig=None,
             owner=None,
             databaseSchema=FullyQualifiedEntityName(
-                __root__="bigquery_source_test.random-project-id.sample_schema"
+                root="bigquery_source_test.random-project-id.sample_schema"
             ),
             tags=[],
             schemaDefinition=None,
             retentionPeriod=None,
             extension=None,
             sourceUrl=SourceUrl(
-                __root__="https://console.cloud.google.com/bigquery?project=random-project-id&ws=!1m5!1m4!4m3!1srandom-project-id!2ssample_schema!3scustomers"
+                root="https://console.cloud.google.com/bigquery?project=random-project-id&ws=!1m5!1m4!4m3!1srandom-project-id!2ssample_schema!3scustomers"
             ),
             domain=None,
             dataProducts=None,
@@ -426,7 +426,7 @@ EXPECTED_TABLE = [
     ],
     [
         CreateTableRequest(
-            name=EntityName(__root__="orders"),
+            name=EntityName(root="orders"),
             displayName=None,
             description=None,
             tableType="Regular",
@@ -495,7 +495,7 @@ EXPECTED_TABLE = [
                     columns=["customer_id"],
                     referredColumns=[
                         FullyQualifiedEntityName(
-                            __root__="bigquery_source_test.random-project-id.sample_schema.customers.customer_id"
+                            root="bigquery_source_test.random-project-id.sample_schema.customers.customer_id"
                         )
                     ],
                 )
@@ -504,14 +504,14 @@ EXPECTED_TABLE = [
             tableProfilerConfig=None,
             owner=None,
             databaseSchema=FullyQualifiedEntityName(
-                __root__="bigquery_source_test.random-project-id.sample_schema"
+                root="bigquery_source_test.random-project-id.sample_schema"
             ),
             tags=[],
             schemaDefinition=None,
             retentionPeriod=None,
             extension=None,
             sourceUrl=SourceUrl(
-                __root__="https://console.cloud.google.com/bigquery?project=random-project-id&ws=!1m5!1m4!4m3!1srandom-project-id!2ssample_schema!3sorders"
+                root="https://console.cloud.google.com/bigquery?project=random-project-id&ws=!1m5!1m4!4m3!1srandom-project-id!2ssample_schema!3sorders"
             ),
             domain=None,
             dataProducts=None,
@@ -531,7 +531,7 @@ MOCK_TABLE_CONSTRAINT = [
             columns=["customer_id"],
             referredColumns=[
                 FullyQualifiedEntityName(
-                    __root__="bigquery_source_test.random-project-id.sample_schema.customers.customer_id"
+                    root="bigquery_source_test.random-project-id.sample_schema.customers.customer_id"
                 )
             ],
         )
@@ -568,7 +568,7 @@ class BigqueryUnitTest(TestCase):
         self.bq_source = BigquerySource.create(mock_bq_config["source"], self.metadata)
         self.bq_source.context.get().__dict__[
             "database_service"
-        ] = MOCK_DATABASE_SERVICE.name.__root__
+        ] = MOCK_DATABASE_SERVICE.name.root
         self.thread_id = self.bq_source.context.get_current_thread_id()
         self.bq_source._inspector_map[self.thread_id] = types.SimpleNamespace()
         self.bq_source._inspector_map[
@@ -608,7 +608,7 @@ class BigqueryUnitTest(TestCase):
         assert EXPTECTED_DATABASE_SCHEMA == [
             either.right
             for either in self.bq_source.yield_database_schema(
-                schema_name=MOCK_DATABASE_SCHEMA.name.__root__
+                schema_name=MOCK_DATABASE_SCHEMA.name.root
             )
         ]
 
@@ -633,7 +633,7 @@ class BigqueryUnitTest(TestCase):
         self.bq_source.context.get().__dict__["database"] = MOCK_DB_NAME
         self.bq_source.context.get().__dict__[
             "database_schema"
-        ] = MOCK_DATABASE_SCHEMA.name.__root__
+        ] = MOCK_DATABASE_SCHEMA.name.root
 
         for i, table in enumerate(MOCK_TABLE_NAMES):
             _get_foreign_constraints.return_value = MOCK_TABLE_CONSTRAINT[i]

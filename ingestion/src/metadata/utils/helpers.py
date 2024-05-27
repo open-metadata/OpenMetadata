@@ -206,7 +206,7 @@ def find_column_in_table(
         return first.lower() == second.lower()
 
     return next(
-        (col for col in table.columns if equals(col.name.__root__, column_name)), None
+        (col for col in table.columns if equals(col.name.root, column_name)), None
     )
 
 
@@ -244,7 +244,7 @@ def find_column_in_table_with_index(
         (
             (col_index, col)
             for col_index, col in enumerate(table.columns)
-            if str(col.name.__root__).lower() == column_name.lower()
+            if str(col.name.root).lower() == column_name.lower()
         ),
         (None, None),
     )
@@ -325,11 +325,7 @@ def get_entity_tier_from_tags(tags: list[TagLabel]) -> Optional[str]:
     if not tags:
         return None
     return next(
-        (
-            tag.tagFQN.__root__
-            for tag in tags
-            if tag.tagFQN.__root__.lower().startswith("tier")
-        ),
+        (tag.tagFQN.root for tag in tags if tag.tagFQN.root.lower().startswith("tier")),
         None,
     )
 

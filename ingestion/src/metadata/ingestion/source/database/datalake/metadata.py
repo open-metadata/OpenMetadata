@@ -103,7 +103,7 @@ class DatalakeSource(DatabaseServiceSource):
             self.config.sourceConfig.config
         )
         self.metadata = metadata
-        self.service_connection = self.config.serviceConnection.__root__.config
+        self.service_connection = self.config.serviceConnection.root.config
         self.temp_credentials_file_path = []
         self.connection = get_connection(self.service_connection)
         if GOOGLE_CREDENTIALS in os.environ:
@@ -121,7 +121,7 @@ class DatalakeSource(DatabaseServiceSource):
         cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None
     ):
         config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
-        connection: DatalakeConnection = config.serviceConnection.__root__.config
+        connection: DatalakeConnection = config.serviceConnection.root.config
         if not isinstance(connection, DatalakeConnection):
             raise InvalidSourceException(
                 f"Expected DatalakeConnection, but got {connection}"
@@ -139,7 +139,7 @@ class DatalakeSource(DatabaseServiceSource):
         """
         if isinstance(self.config_source, GCSConfig):
             project_id_list = (
-                self.service_connection.configSource.securityConfig.gcpConfig.projectId.__root__
+                self.service_connection.configSource.securityConfig.gcpConfig.projectId.root
             )
             if not isinstance(
                 project_id_list,

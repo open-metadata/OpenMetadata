@@ -117,7 +117,7 @@ class AirflowSource(PipelineServiceSource):
         cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None
     ) -> "AirflowSource":
         config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
-        connection: AirflowConnection = config.serviceConnection.__root__.config
+        connection: AirflowConnection = config.serviceConnection.root.config
         if not isinstance(connection, AirflowConnection):
             raise InvalidSourceException(
                 f"Expected AirflowConnection, but got {connection}"
@@ -149,7 +149,7 @@ class AirflowSource(PipelineServiceSource):
             )
             .filter(DagRun.dag_id == dag_id)
             .order_by(DagRun.execution_date.desc())
-            .limit(self.config.serviceConnection.__root__.config.numberOfStatus)
+            .limit(self.config.serviceConnection.root.config.numberOfStatus)
             .all()
         )
 
@@ -497,7 +497,7 @@ class AirflowSource(PipelineServiceSource):
 
         lineage_details = LineageDetails(
             pipeline=EntityReference(
-                id=pipeline_entity.id.__root__,
+                id=pipeline_entity.id.root,
                 type=ENTITY_REFERENCE_TYPE_MAP[Pipeline.__name__],
             ),
             source=LineageSource.PipelineLineage,
@@ -538,12 +538,12 @@ class AirflowSource(PipelineServiceSource):
                         else:
                             logger.warning(
                                 f"Could not find [{to_xlet.entity.__name__}] [{to_xlet.fqn}] from "
-                                f"[{pipeline_entity.fullyQualifiedName.__root__}] outlets"
+                                f"[{pipeline_entity.fullyQualifiedName.root}] outlets"
                             )
                 else:
                     logger.warning(
                         f"Could not find [{from_xlet.entity.__name__}] [{from_xlet.fqn}] from "
-                        f"[{pipeline_entity.fullyQualifiedName.__root__}] inlets"
+                        f"[{pipeline_entity.fullyQualifiedName.root}] inlets"
                     )
 
     def close(self):

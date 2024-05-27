@@ -43,7 +43,7 @@ class ClickhouseQueryParserSource(QueryParserSource, ABC):
         cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None
     ):
         config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
-        connection: ClickhouseConnection = config.serviceConnection.__root__.config
+        connection: ClickhouseConnection = config.serviceConnection.root.config
         if not isinstance(connection, ClickhouseConnection):
             raise InvalidSourceException(
                 f"Expected ClickhouseConnection, but got {connection}"
@@ -91,9 +91,9 @@ class ClickhouseQueryParserSource(QueryParserSource, ABC):
         schema_name_list = []
 
         for database in databases:
-            database_name_list.append(database.name.__root__)
+            database_name_list.append(database.name.root)
             if self.schema_field and database.databaseSchemas:
-                for schema in database.databaseSchemas.__root__:
+                for schema in database.databaseSchemas.root:
                     schema_name_list.append(schema.name)
 
         if self.schema_field and schema_name_list:

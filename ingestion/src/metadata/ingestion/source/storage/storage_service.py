@@ -125,7 +125,7 @@ class StorageServiceSource(TopologyRunnerMixin, Source, ABC):
         super().__init__()
         self.config = config
         self.metadata = metadata
-        self.service_connection = self.config.serviceConnection.__root__.config
+        self.service_connection = self.config.serviceConnection.root.config
         self.source_config: StorageServiceMetadataPipeline = (
             self.config.sourceConfig.config
         )
@@ -184,7 +184,7 @@ class StorageServiceSource(TopologyRunnerMixin, Source, ABC):
         parent_container = (
             self.metadata.get_by_id(
                 entity=Container, entity_id=container_request.parent.id
-            ).fullyQualifiedName.__root__
+            ).fullyQualifiedName.root
             if container_request.parent
             else None
         )
@@ -193,7 +193,7 @@ class StorageServiceSource(TopologyRunnerMixin, Source, ABC):
             entity_type=Container,
             service_name=self.context.get().objectstore_service,
             parent_container=parent_container,
-            container_name=container_request.name.__root__,
+            container_name=container_request.name.root,
         )
 
         self.container_source_state.add(container_fqn)

@@ -79,7 +79,7 @@ def ingest_metadata(db_service, metadata: OpenMetadata):
     workflow_config = OpenMetadataWorkflowConfig(
         source=Source(
             type=db_service.connection.config.type.value.lower(),
-            serviceName=db_service.fullyQualifiedName.__root__,
+            serviceName=db_service.fullyQualifiedName.root,
             serviceConnection=db_service.connection,
             sourceConfig=SourceConfig(config={}),
         ),
@@ -99,7 +99,7 @@ def ingest_lineage(db_service, ingest_metadata, metadata: OpenMetadata):
     workflow_config = OpenMetadataWorkflowConfig(
         source=Source(
             type="postgres-lineage",
-            serviceName=db_service.fullyQualifiedName.__root__,
+            serviceName=db_service.fullyQualifiedName.root,
             serviceConnection=db_service.connection,
             sourceConfig=SourceConfig(config=DatabaseServiceQueryLineagePipeline()),
         ),
@@ -119,7 +119,7 @@ def run_profiler_workflow(ingest_metadata, db_service, metadata):
     workflow_config = OpenMetadataWorkflowConfig(
         source=Source(
             type=db_service.connection.config.type.value.lower(),
-            serviceName=db_service.fullyQualifiedName.__root__,
+            serviceName=db_service.fullyQualifiedName.root,
             serviceConnection=db_service.connection,
             sourceConfig=SourceConfig(config=DatabaseServiceProfilerPipeline()),
         ),
@@ -145,7 +145,7 @@ def ingest_query_usage(ingest_metadata, db_service, metadata):
     workflow_config = {
         "source": {
             "type": "postgres-usage",
-            "serviceName": db_service.fullyQualifiedName.__root__,
+            "serviceName": db_service.fullyQualifiedName.root,
             "serviceConnection": db_service.connection.dict(),
             "sourceConfig": {
                 "config": {"type": DatabaseUsageConfigType.DatabaseUsage.value}
@@ -180,7 +180,7 @@ def ingest_query_usage(ingest_metadata, db_service, metadata):
 def db_fqn(db_service: DatabaseService):
     return ".".join(
         [
-            db_service.fullyQualifiedName.__root__,
+            db_service.fullyQualifiedName.root,
             db_service.connection.config.database,
         ]
     )

@@ -125,7 +125,7 @@ class OMetaRolePolicyMixin(OMetaPatchMixinBase):
                     if previous is None
                     else PatchOperation.REPLACE,
                     PatchField.PATH: path.format(rule_index=rule_index),
-                    PatchField.VALUE: str(current.__root__),
+                    PatchField.VALUE: str(current.root),
                 }
             ]
         return data
@@ -158,10 +158,10 @@ class OMetaRolePolicyMixin(OMetaPatchMixinBase):
         if not instance:
             return None
 
-        policy_index: int = len(instance.policies.__root__) - 1
+        policy_index: int = len(instance.policies.root) - 1
         data: List
         if operation is PatchOperation.REMOVE:
-            if len(instance.policies.__root__) == 1:
+            if len(instance.policies.root) == 1:
                 logger.error(
                     f"The Role with id [{model_str(entity_id)}] has only one (1)"
                     f" policy. Unable to remove."
@@ -177,7 +177,7 @@ class OMetaRolePolicyMixin(OMetaPatchMixinBase):
 
             index: int = 0
             is_policy_found: bool = False
-            for policy in instance.policies.__root__:
+            for policy in instance.policies.root:
                 if model_str(policy.id) == model_str(policy_id):
                     is_policy_found = True
                     continue
@@ -187,7 +187,7 @@ class OMetaRolePolicyMixin(OMetaPatchMixinBase):
                         PatchField.PATH: PatchPath.POLICIES_DESCRIPTION.format(
                             index=index
                         ),
-                        PatchField.VALUE: model_str(policy.description.__root__),
+                        PatchField.VALUE: model_str(policy.description.root),
                     }
                 )
                 data.append(
@@ -294,7 +294,7 @@ class OMetaRolePolicyMixin(OMetaPatchMixinBase):
         if not instance:
             return None
 
-        rule_index: int = len(instance.rules.__root__) - 1
+        rule_index: int = len(instance.rules.root) - 1
         data: List[Dict]
         if operation == PatchOperation.ADD:
             data = [
@@ -303,7 +303,7 @@ class OMetaRolePolicyMixin(OMetaPatchMixinBase):
                     PatchField.PATH: PatchPath.RULES.format(rule_index=rule_index + 1),
                     PatchField.VALUE: {
                         PatchValue.NAME: rule.name,
-                        PatchValue.CONDITION: rule.condition.__root__,
+                        PatchValue.CONDITION: rule.condition.root,
                         PatchValue.EFFECT: rule.effect.name,
                         PatchValue.OPERATIONS: [
                             operation.name for operation in rule.operations
@@ -314,12 +314,12 @@ class OMetaRolePolicyMixin(OMetaPatchMixinBase):
             ]
             if rule.description is not None:
                 data[0][PatchField.VALUE][PatchValue.DESCRIPTION] = str(
-                    rule.description.__root__
+                    rule.description.root
                 )
 
             if rule.fullyQualifiedName is not None:
                 data[0][PatchField.VALUE][PatchValue.FQN] = str(
-                    rule.fullyQualifiedName.__root__
+                    rule.fullyQualifiedName.root
                 )
 
         else:
@@ -334,8 +334,8 @@ class OMetaRolePolicyMixin(OMetaPatchMixinBase):
                 }
             ]
 
-            for rule_index in range(len(instance.rules.__root__) - 1, -1, -1):
-                current_rule: Rule = instance.rules.__root__[rule_index]
+            for rule_index in range(len(instance.rules.root) - 1, -1, -1):
+                current_rule: Rule = instance.rules.root[rule_index]
                 if current_rule.name == rule.name:
                     break
 
@@ -345,7 +345,7 @@ class OMetaRolePolicyMixin(OMetaPatchMixinBase):
                     )
                     return None
 
-                previous_rule: Rule = instance.rules.__root__[rule_index - 1]
+                previous_rule: Rule = instance.rules.root[rule_index - 1]
                 # Condition
                 data.append(
                     {
@@ -353,7 +353,7 @@ class OMetaRolePolicyMixin(OMetaPatchMixinBase):
                         PatchField.PATH: PatchPath.RULES_CONDITION.format(
                             rule_index=rule_index - 1
                         ),
-                        PatchField.VALUE: current_rule.condition.__root__,
+                        PatchField.VALUE: current_rule.condition.root,
                     }
                 )
                 # Description - Optional

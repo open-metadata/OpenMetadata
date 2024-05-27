@@ -58,7 +58,7 @@ from metadata.utils import fqn
 
 MOCK_DASHBOARD_SERVICE = DashboardService(
     id="c3eb265f-5445-4ad3-ba5e-797d3a3071bb",
-    fullyQualifiedName=FullyQualifiedEntityName(__root__="mock_metabase"),
+    fullyQualifiedName=FullyQualifiedEntityName(root="mock_metabase"),
     name="mock_metabase",
     connection=DashboardConnection(),
     serviceType=DashboardServiceType.Metabase,
@@ -66,7 +66,7 @@ MOCK_DASHBOARD_SERVICE = DashboardService(
 
 MOCK_DATABASE_SERVICE = DatabaseService(
     id="c3eb265f-5445-4ad3-ba5e-797d3a3071bb",
-    fullyQualifiedName=FullyQualifiedEntityName(__root__="mock_mysql"),
+    fullyQualifiedName=FullyQualifiedEntityName(root="mock_mysql"),
     name="mock_mysql",
     connection=DatabaseConnection(),
     serviceType=DatabaseServiceType.Mysql,
@@ -181,7 +181,7 @@ EXPECTED_DASHBOARD = [
         description="SAMPLE DESCRIPTION",
         sourceUrl="http://metabase.com/dashboard/1-test-db",
         charts=[],
-        service=FullyQualifiedEntityName(__root__="mock_metabase"),
+        service=FullyQualifiedEntityName(root="mock_metabase"),
         project="Test Collection",
     )
 ]
@@ -195,7 +195,7 @@ EXPECTED_CHARTS = [
         sourceUrl="http://metabase.com/question/1-chart1",
         tags=None,
         owner=None,
-        service=FullyQualifiedEntityName(__root__="mock_metabase"),
+        service=FullyQualifiedEntityName(root="mock_metabase"),
     ),
     CreateChartRequest(
         name="2",
@@ -205,7 +205,7 @@ EXPECTED_CHARTS = [
         sourceUrl="http://metabase.com/question/2-chart2",
         tags=None,
         owner=None,
-        service=FullyQualifiedEntityName(__root__="mock_metabase"),
+        service=FullyQualifiedEntityName(root="mock_metabase"),
     ),
     CreateChartRequest(
         name="3",
@@ -215,7 +215,7 @@ EXPECTED_CHARTS = [
         sourceUrl="http://metabase.com/question/3-chart3",
         tags=None,
         owner=None,
-        service=FullyQualifiedEntityName(__root__="mock_metabase"),
+        service=FullyQualifiedEntityName(root="mock_metabase"),
     ),
 ]
 
@@ -242,7 +242,7 @@ class MetabaseUnitTest(TestCase):
         self.metabase.client = SimpleNamespace()
         self.metabase.context.get().__dict__[
             "dashboard_service"
-        ] = MOCK_DASHBOARD_SERVICE.fullyQualifiedName.__root__
+        ] = MOCK_DASHBOARD_SERVICE.fullyQualifiedName.root
         self.metabase.context.get().__dict__["project_name"] = "Test Collection"
 
     def test_dashboard_name(self):

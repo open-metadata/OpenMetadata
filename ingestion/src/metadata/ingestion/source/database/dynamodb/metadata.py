@@ -50,7 +50,7 @@ class DynamodbSource(CommonNoSQLSource):
         cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None
     ):
         config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
-        connection: DynamoDBConnection = config.serviceConnection.__root__.config
+        connection: DynamoDBConnection = config.serviceConnection.root.config
         if not isinstance(connection, DynamoDBConnection):
             raise InvalidSourceException(
                 f"Expected DynamoDBConnection, but got {connection}"

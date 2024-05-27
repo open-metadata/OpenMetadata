@@ -62,7 +62,7 @@ def _get_object_key(
         service_name=table.service.name,
         database_name=table.database.name,
         database_schema_name=table.databaseSchema.name,
-        table_name=table.name.__root__,
+        table_name=table.name.root,
     )
     if not overwrite_data:
         file_name = file_name.replace(
@@ -87,7 +87,7 @@ def upload_sample_data(data: TableData, profiler_interface: ProfilerInterface) -
         deserialized_data = json.loads(data.json())
         df = pd.DataFrame(
             data=deserialized_data.get("rows", []),
-            columns=[i.__root__ for i in data.columns],
+            columns=[i.root for i in data.columns],
         )
         pq_buffer = BytesIO()
         df.to_parquet(pq_buffer)

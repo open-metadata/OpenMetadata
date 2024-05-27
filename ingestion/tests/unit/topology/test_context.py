@@ -127,11 +127,11 @@ class TopologyContextTest(TestCase):
             fqn=None,
             classification_request=CreateClassificationRequest(
                 name="my_classification",
-                description=Markdown(__root__="something"),
+                description=Markdown(root="something"),
             ),
             tag_request=CreateTagRequest(
                 name="my_tag",
-                description=Markdown(__root__="something"),
+                description=Markdown(root="something"),
             ),
         )
 
@@ -146,11 +146,9 @@ class TopologyContextTest(TestCase):
         context.update_context_name(
             stage=TABLE_STAGE,
             right=CreateTableRequest(
-                name=EntityName(__root__="table"),
-                databaseSchema=FullyQualifiedEntityName(__root__="schema"),
-                columns=[
-                    Column(name=ColumnName(__root__="id"), dataType=DataType.BIGINT)
-                ],
+                name=EntityName(root="table"),
+                databaseSchema=FullyQualifiedEntityName(root="schema"),
+                columns=[Column(name=ColumnName(root="id"), dataType=DataType.BIGINT)],
             ),
         )
 
@@ -162,8 +160,8 @@ class TopologyContextTest(TestCase):
         context.update_context_name(
             stage=PROCEDURES_STAGE,
             right=CreateStoredProcedureRequest(
-                name=EntityName(__root__="stored_proc"),
-                databaseSchema=FullyQualifiedEntityName(__root__="schema"),
+                name=EntityName(root="stored_proc"),
+                databaseSchema=FullyQualifiedEntityName(root="schema"),
                 storedProcedureCode=StoredProcedureCode(
                     language=Language.SQL,
                     code="SELECT * FROM AWESOME",

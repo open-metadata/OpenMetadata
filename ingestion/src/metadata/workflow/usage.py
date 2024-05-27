@@ -53,7 +53,7 @@ class UsageWorkflow(IngestionWorkflow):
 
         source_class = (
             import_from_module(
-                self.config.source.serviceConnection.__root__.config.sourcePythonClass
+                self.config.source.serviceConnection.root.config.sourcePythonClass
             )
             if source_type.startswith("custom")
             else import_source_class(
@@ -77,7 +77,7 @@ class UsageWorkflow(IngestionWorkflow):
             processor_config,
             self.metadata,
             connection_type=str(
-                self.config.source.serviceConnection.__root__.config.type.value
+                self.config.source.serviceConnection.root.config.type.value
             ),
         )
         logger.debug(f"Processor Type: {processor_type}, {processor_class} configured")

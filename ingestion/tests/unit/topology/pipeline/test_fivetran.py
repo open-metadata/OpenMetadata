@@ -81,16 +81,16 @@ EXPECTED_CREATED_PIPELINES = CreatePipelineRequest(
             displayName="test <> postgres_rds",
         )
     ],
-    service=FullyQualifiedEntityName(__root__="fivetran_source"),
+    service=FullyQualifiedEntityName(root="fivetran_source"),
     sourceUrl=SourceUrl(
-        __root__="https://fivetran.com/dashboard/connectors/aiding_pointless/status?groupId=wackiness_remote&service=postgres_rds"
+        root="https://fivetran.com/dashboard/connectors/aiding_pointless/status?groupId=wackiness_remote&service=postgres_rds"
     ),
 )
 
 MOCK_PIPELINE_SERVICE = PipelineService(
     id="85811038-099a-11ed-861d-0242ac120002",
     name="fivetran_source",
-    fullyQualifiedName=FullyQualifiedEntityName(__root__="fivetran_source"),
+    fullyQualifiedName=FullyQualifiedEntityName(root="fivetran_source"),
     connection=PipelineConnection(),
     serviceType=PipelineServiceType.Fivetran,
 )
@@ -125,10 +125,10 @@ class FivetranUnitTest(TestCase):
             mock_fivetran_config["source"],
             config.workflowConfig.openMetadataServerConfig,
         )
-        self.fivetran.context.get().__dict__["pipeline"] = MOCK_PIPELINE.name.__root__
+        self.fivetran.context.get().__dict__["pipeline"] = MOCK_PIPELINE.name.root
         self.fivetran.context.get().__dict__[
             "pipeline_service"
-        ] = MOCK_PIPELINE_SERVICE.name.__root__
+        ] = MOCK_PIPELINE_SERVICE.name.root
         self.client = fivetran_client.return_value
         self.client.list_groups.return_value = [mock_data.get("group")]
         self.client.list_group_connectors.return_value = [mock_data.get("source")]

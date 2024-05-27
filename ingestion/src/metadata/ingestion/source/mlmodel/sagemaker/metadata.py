@@ -71,7 +71,7 @@ class SagemakerSource(MlModelServiceSource):
         cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None
     ):
         config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
-        connection: SageMakerConnection = config.serviceConnection.__root__.config
+        connection: SageMakerConnection = config.serviceConnection.root.config
         if not isinstance(connection, SageMakerConnection):
             raise InvalidSourceException(
                 f"Expected SageMakerConnection, but got {connection}"

@@ -218,7 +218,7 @@ class Profiler(Generic[TMetric]):
                     return
 
         raise RuntimeError(
-            f"No profile data computed for {self.profiler_interface.table_entity.fullyQualifiedName.__root__}"
+            f"No profile data computed for {self.profiler_interface.table_entity.fullyQualifiedName.root}"
         )
 
     def get_custom_metrics(
@@ -240,7 +240,7 @@ class Profiler(Generic[TMetric]):
             (
                 clmn
                 for clmn in self.profiler_interface.table_entity.columns
-                if clmn.name.__root__ == column_name
+                if clmn.name.root == column_name
             ),
             None,
         )
@@ -486,7 +486,7 @@ class Profiler(Generic[TMetric]):
 
         if self.source_config.computeMetrics:
             logger.debug(
-                f"Computing profile metrics for {self.profiler_interface.table_entity.fullyQualifiedName.__root__}..."
+                f"Computing profile metrics for {self.profiler_interface.table_entity.fullyQualifiedName.root}..."
             )
             self.compute_metrics()
 
@@ -517,7 +517,7 @@ class Profiler(Generic[TMetric]):
         try:
             logger.debug(
                 "Fetching sample data for "
-                f"{self.profiler_interface.table_entity.fullyQualifiedName.__root__}..."  # type: ignore
+                f"{self.profiler_interface.table_entity.fullyQualifiedName.root}..."  # type: ignore
             )
             table_data = self.profiler_interface.fetch_sample_data(
                 self.table, self.columns
@@ -568,14 +568,12 @@ class Profiler(Generic[TMetric]):
                     **self.column_results.get(
                         col.name
                         if not isinstance(col.name, ColumnName)
-                        else col.name.__root__
+                        else col.name.root
                     )
                 )
                 for col in self.columns
                 if self.column_results.get(
-                    col.name
-                    if not isinstance(col.name, ColumnName)
-                    else col.name.__root__
+                    col.name if not isinstance(col.name, ColumnName) else col.name.root
                 )
             ]
 

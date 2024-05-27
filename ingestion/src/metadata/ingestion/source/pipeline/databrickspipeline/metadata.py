@@ -73,9 +73,7 @@ class DatabrickspipelineSource(PipelineServiceSource):
     ):
         """Create class instance"""
         config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
-        connection: DatabricksPipelineConnection = (
-            config.serviceConnection.__root__.config
-        )
+        connection: DatabricksPipelineConnection = config.serviceConnection.root.config
         if not isinstance(connection, DatabricksPipelineConnection):
             raise InvalidSourceException(
                 f"Expected DatabricksPipelineConnection, but got {connection}"

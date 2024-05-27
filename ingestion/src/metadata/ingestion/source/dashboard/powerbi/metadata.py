@@ -206,7 +206,7 @@ class PowerbiSource(DashboardServiceSource):
         cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None
     ):
         config = WorkflowSource.parse_obj(config_dict)
-        connection: PowerBIConnection = config.serviceConnection.__root__.config
+        connection: PowerBIConnection = config.serviceConnection.root.config
         if not isinstance(connection, PowerBIConnection):
             raise InvalidSourceException(
                 f"Expected PowerBIConnection, but got {connection}"
@@ -564,8 +564,8 @@ class PowerbiSource(DashboardServiceSource):
                 return None
             for tbl_column in data_model_entity.columns:
                 for child_column in tbl_column.children or []:
-                    if column.lower() == child_column.name.__root__.lower():
-                        return child_column.fullyQualifiedName.__root__
+                    if column.lower() == child_column.name.root.lower():
+                        return child_column.fullyQualifiedName.root
             return None
         except Exception as exc:
             logger.debug(f"Error to get data_model_column_fqn {exc}")

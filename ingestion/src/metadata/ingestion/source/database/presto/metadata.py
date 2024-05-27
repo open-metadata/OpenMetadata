@@ -122,7 +122,7 @@ class PrestoSource(CommonDbSourceService):
         cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None
     ):
         config = WorkflowSource.parse_obj(config_dict)
-        connection: PrestoConnection = config.serviceConnection.__root__.config
+        connection: PrestoConnection = config.serviceConnection.root.config
         if not isinstance(connection, PrestoConnection):
             raise InvalidSourceException(
                 f"Expected PrestoConnection, but got {connection}"

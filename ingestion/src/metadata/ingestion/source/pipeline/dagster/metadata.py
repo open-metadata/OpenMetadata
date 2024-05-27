@@ -72,7 +72,7 @@ class DagsterSource(PipelineServiceSource):
         cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None
     ):
         config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
-        connection: DagsterConnection = config.serviceConnection.__root__.config
+        connection: DagsterConnection = config.serviceConnection.root.config
         if not isinstance(connection, DagsterConnection):
             raise InvalidSourceException(
                 f"Expected DagsterConnection, but got {connection}"

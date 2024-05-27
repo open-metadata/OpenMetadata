@@ -141,7 +141,7 @@ class TopologyContext(BaseModel):
         extra = Extra.allow
 
     def __repr__(self):
-        ctx = {key: value.name.__root__ for key, value in self.__dict__.items()}
+        ctx = {key: value.name.root for key, value in self.__dict__.items()}
         return f"TopologyContext({ctx})"
 
     @classmethod
@@ -247,7 +247,7 @@ class TopologyContext(BaseModel):
             service_name=self.__dict__["database_service"],
             database_name=self.__dict__["database"],
             schema_name=self.__dict__["database_schema"],
-            procedure_name=right.name.__root__,
+            procedure_name=right.name.root,
         )
 
 

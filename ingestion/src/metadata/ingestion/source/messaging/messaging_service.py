@@ -128,7 +128,7 @@ class MessagingServiceSource(TopologyRunnerMixin, Source, ABC):
         self.source_config: MessagingServiceMetadataPipeline = (
             self.config.sourceConfig.config
         )
-        self.service_connection = self.config.serviceConnection.__root__.config
+        self.service_connection = self.config.serviceConnection.root.config
         self.connection = get_connection(self.service_connection)
 
         # Flag the connection for the test connection
@@ -213,8 +213,8 @@ class MessagingServiceSource(TopologyRunnerMixin, Source, ABC):
         topic_fqn = fqn.build(
             self.metadata,
             entity_type=Topic,
-            service_name=topic_request.service.__root__,
-            topic_name=topic_request.name.__root__,
+            service_name=topic_request.service.root,
+            topic_name=topic_request.name.root,
         )
 
         self.topic_source_state.add(topic_fqn)

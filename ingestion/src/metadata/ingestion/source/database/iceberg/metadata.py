@@ -75,7 +75,7 @@ class IcebergSource(DatabaseServiceSource):
             self.config.sourceConfig.config
         )
         self.metadata = metadata
-        self.service_connection = self.config.serviceConnection.__root__.config
+        self.service_connection = self.config.serviceConnection.root.config
         self.iceberg = get_connection(self.service_connection)
 
         self.connection_obj = self.iceberg
@@ -86,7 +86,7 @@ class IcebergSource(DatabaseServiceSource):
         cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None
     ):
         config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
-        connection: IcebergConnection = config.serviceConnection.__root__.config
+        connection: IcebergConnection = config.serviceConnection.root.config
         if not isinstance(connection, IcebergConnection):
             raise InvalidSourceException(
                 f"Expected GlueConnection, but got {connection}"

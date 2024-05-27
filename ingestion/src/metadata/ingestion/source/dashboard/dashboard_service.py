@@ -211,7 +211,7 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
         super().__init__()
         self.config = config
         self.metadata = metadata
-        self.service_connection = self.config.serviceConnection.__root__.config
+        self.service_connection = self.config.serviceConnection.root.config
         self.source_config: DashboardServiceMetadataPipeline = (
             self.config.sourceConfig.config
         )
@@ -432,8 +432,8 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
         dashboard_fqn = fqn.build(
             self.metadata,
             entity_type=Dashboard,
-            service_name=dashboard_request.service.__root__,
-            dashboard_name=dashboard_request.name.__root__,
+            service_name=dashboard_request.service.root,
+            dashboard_name=dashboard_request.name.root,
         )
 
         self.dashboard_source_state.add(dashboard_fqn)
@@ -447,8 +447,8 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
         datamodel_fqn = fqn.build(
             self.metadata,
             entity_type=DashboardDataModel,
-            service_name=datamodel_request.service.__root__,
-            data_model_name=datamodel_request.name.__root__,
+            service_name=datamodel_request.service.root,
+            data_model_name=datamodel_request.name.root,
         )
 
         self.datamodel_source_state.add(datamodel_fqn)
@@ -464,11 +464,11 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
                 right=AddLineageRequest(
                     edge=EntitiesEdge(
                         fromEntity=EntityReference(
-                            id=from_entity.id.__root__,
+                            id=from_entity.id.root,
                             type=LINEAGE_MAP[type(from_entity)],
                         ),
                         toEntity=EntityReference(
-                            id=to_entity.id.__root__,
+                            id=to_entity.id.root,
                             type=LINEAGE_MAP[type(to_entity)],
                         ),
                         lineageDetails=LineageDetails(
@@ -492,7 +492,7 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
             return None
         for tbl_column in data_model_entity.columns:
             if tbl_column.displayName.lower() == column.lower():
-                return tbl_column.fullyQualifiedName.__root__
+                return tbl_column.fullyQualifiedName.root
         return None
 
     def get_dashboard(self) -> Any:
@@ -609,7 +609,7 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
                 if chart_entity:
                     charts_entity_ref_list.append(
                         EntityReference(
-                            id=chart_entity.id.__root__,
+                            id=chart_entity.id.root,
                             type=LINEAGE_MAP[type(chart_entity)],
                         )
                     )
@@ -624,7 +624,7 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
                 if datamodel_entity:
                     datamodel_entity_ref_list.append(
                         EntityReference(
-                            id=datamodel_entity.id.__root__,
+                            id=datamodel_entity.id.root,
                             type=LINEAGE_MAP[type(datamodel_entity)],
                         )
                     )

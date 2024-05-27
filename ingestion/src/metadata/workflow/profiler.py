@@ -61,7 +61,7 @@ class ProfilerWorkflow(IngestionWorkflow):
         self.steps = (profiler_processor, pii_processor, sink)
 
     def test_connection(self):
-        service_config = self.config.source.serviceConnection.__root__.config
+        service_config = self.config.source.serviceConnection.root.config
         conn = get_connection(service_config)
 
         test_connection_fn = get_test_connection_fn(service_config)

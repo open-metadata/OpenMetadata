@@ -21,21 +21,21 @@ def update_connection_opts_args(connection):
     if (
         hasattr(connection, "connectionOptions")
         and connection.connectionOptions
-        and connection.connectionOptions.__root__
+        and connection.connectionOptions.root
     ):
-        for key, value in connection.connectionOptions.__root__.items():
+        for key, value in connection.connectionOptions.root.items():
             if isinstance(value, str):
-                connection.connectionOptions.__root__[key] = CustomSecretStr(
+                connection.connectionOptions.root[key] = CustomSecretStr(
                     value
                 ).get_secret_value()
     if (
         hasattr(connection, "connectionArguments")
         and connection.connectionArguments
-        and connection.connectionArguments.__root__
+        and connection.connectionArguments.root
     ):
-        for key, value in connection.connectionArguments.__root__.items():
+        for key, value in connection.connectionArguments.root.items():
             if isinstance(value, str):
-                connection.connectionArguments.__root__[key] = CustomSecretStr(
+                connection.connectionArguments.root[key] = CustomSecretStr(
                     value
                 ).get_secret_value()
 

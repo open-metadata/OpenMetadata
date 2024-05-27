@@ -55,7 +55,7 @@ class ModeSource(DashboardServiceSource):
         metadata: OpenMetadata,
     ):
         super().__init__(config, metadata)
-        self.workspace_name = config.serviceConnection.__root__.config.workspaceName
+        self.workspace_name = config.serviceConnection.root.config.workspaceName
         self.data_sources = self.client.get_all_data_sources(self.workspace_name)
 
     @classmethod
@@ -63,7 +63,7 @@ class ModeSource(DashboardServiceSource):
         cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None
     ):
         config = WorkflowSource.parse_obj(config_dict)
-        connection: ModeConnection = config.serviceConnection.__root__.config
+        connection: ModeConnection = config.serviceConnection.root.config
         if not isinstance(connection, ModeConnection):
             raise InvalidSourceException(
                 f"Expected ModeConnection, but got {connection}"

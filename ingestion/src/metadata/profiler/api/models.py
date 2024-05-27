@@ -118,7 +118,7 @@ class ProfilerResponse(ConfigModel):
 
     def __str__(self):
         """Return the table name being processed"""
-        return f"Table [{self.table.name.__root__}]"
+        return f"Table [{self.table.name.root}]"
 
 
 class ThreadPoolMetrics(ConfigModel):

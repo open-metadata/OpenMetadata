@@ -233,8 +233,8 @@ def test_get_snowflake_system_queries_from_es():
 
     db_service = DatabaseService(
         id=uuid.uuid4(),
-        name=EntityName(__root__="service"),
-        fullyQualifiedName=FullyQualifiedEntityName(__root__="service"),
+        name=EntityName(root="service"),
+        fullyQualifiedName=FullyQualifiedEntityName(root="service"),
         serviceType=DatabaseServiceType.CustomDatabase,
     )
 

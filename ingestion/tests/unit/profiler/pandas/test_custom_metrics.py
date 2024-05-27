@@ -71,31 +71,31 @@ class MetricsTest(TestCase):
         databaseSchema=EntityReference(id=uuid4(), type="databaseSchema", name="name"),
         columns=[
             EntityColumn(
-                name=ColumnName(__root__="id"),
+                name=ColumnName(root="id"),
                 dataType=DataType.INT,
             ),
             EntityColumn(
-                name=ColumnName(__root__="first_name"),
+                name=ColumnName(root="first_name"),
                 dataType=DataType.STRING,
             ),
             EntityColumn(
-                name=ColumnName(__root__="last_name"),
+                name=ColumnName(root="last_name"),
                 dataType=DataType.STRING,
             ),
             EntityColumn(
-                name=ColumnName(__root__="city"),
+                name=ColumnName(root="city"),
                 dataType=DataType.STRING,
             ),
             EntityColumn(
-                name=ColumnName(__root__="country"),
+                name=ColumnName(root="country"),
                 dataType=DataType.STRING,
             ),
             EntityColumn(
-                name=ColumnName(__root__="birthdate"),
+                name=ColumnName(root="birthdate"),
                 dataType=DataType.DATE,
             ),
             EntityColumn(
-                name=ColumnName(__root__="age"),
+                name=ColumnName(root="age"),
                 dataType=DataType.INT,
             ),
         ],
@@ -166,31 +166,31 @@ class MetricsTest(TestCase):
             ),
             columns=[
                 EntityColumn(
-                    name=ColumnName(__root__="id"),
+                    name=ColumnName(root="id"),
                     dataType=DataType.INT,
                 ),
                 EntityColumn(
-                    name=ColumnName(__root__="first_name"),
+                    name=ColumnName(root="first_name"),
                     dataType=DataType.STRING,
                 ),
                 EntityColumn(
-                    name=ColumnName(__root__="last_name"),
+                    name=ColumnName(root="last_name"),
                     dataType=DataType.STRING,
                 ),
                 EntityColumn(
-                    name=ColumnName(__root__="city"),
+                    name=ColumnName(root="city"),
                     dataType=DataType.STRING,
                 ),
                 EntityColumn(
-                    name=ColumnName(__root__="country"),
+                    name=ColumnName(root="country"),
                     dataType=DataType.STRING,
                 ),
                 EntityColumn(
-                    name=ColumnName(__root__="birthdate"),
+                    name=ColumnName(root="birthdate"),
                     dataType=DataType.DATE,
                 ),
                 EntityColumn(
-                    name=ColumnName(__root__="age"),
+                    name=ColumnName(root="age"),
                     dataType=DataType.INT,
                 ),
             ],
@@ -241,7 +241,7 @@ class MetricsTest(TestCase):
             ),
             columns=[
                 EntityColumn(
-                    name=ColumnName(__root__="id"),
+                    name=ColumnName(root="id"),
                     dataType=DataType.INT,
                     customMetrics=[
                         CustomMetric(

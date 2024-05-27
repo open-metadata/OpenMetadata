@@ -21,7 +21,6 @@ from metadata.__version__ import (
     match_versions,
 )
 from metadata.generated.schema.settings.settings import Settings, SettingType
-from metadata.ingestion.models.encoders import show_secrets_encoder
 from metadata.ingestion.ometa.client import REST
 from metadata.ingestion.ometa.routes import ROUTES
 from metadata.utils.logger import ometa_logger
@@ -91,7 +90,7 @@ class OMetaServerMixin:
         Returns:
             Settings
         """
-        data = settings.json(encoder=show_secrets_encoder)
+        data = settings.model_dump_json()
         response = self.client.put(ROUTES.get(Settings.__name__), data)
         return Settings.parse_obj(response)
 

@@ -31,12 +31,18 @@ from metadata.generated.schema.entity.services.connections.metadata.openMetadata
     OpenMetadataConnection,
 )
 from metadata.generated.schema.entity.teams.user import User
-from metadata.generated.schema.entity.type import EntityName
 from metadata.generated.schema.security.client.openMetadataJWTClientConfig import (
     OpenMetadataJWTClientConfig,
 )
 from metadata.generated.schema.type import basic
+from metadata.generated.schema.type.basic import (
+    Email,
+    EntityName,
+    FullyQualifiedEntityName,
+    Markdown,
+)
 from metadata.generated.schema.type.entityReference import EntityReference
+from metadata.generated.schema.type.entityReferenceList import EntityReferenceList
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.ometa.utils import model_str
 from metadata.utils import fqn
@@ -99,65 +105,76 @@ class OMetaGlossaryTest(TestCase):
 
         cls.user_1 = cls.metadata.create_or_update(
             data=CreateUserRequest(
-                name="test.user.1", email="test.user.1@getcollate.io"
+                name=EntityName(root="test.user.1"),
+                email=Email(root="test.user.1@getcollate.io"),
             ),
         )
 
         cls.user_2 = cls.metadata.create_or_update(
             data=CreateUserRequest(
-                name="test.user.2", email="test.user.2@getcollate.io"
+                name=EntityName(root="test.user.2"),
+                email=Email(root="test.user.2@getcollate.io"),
             ),
         )
 
         cls.user_3 = cls.metadata.create_or_update(
             data=CreateUserRequest(
-                name="test.user.3", email="test.user.3@getcollate.io"
+                name=EntityName(root="test.user.3"),
+                email=Email(root="test.user.3@getcollate.io"),
             ),
         )
 
         cls.check_es_index()
 
         cls.create_glossary = CreateGlossaryRequest(
-            name="test-glossary",
+            name=EntityName(root="test-glossary"),
             displayName="test-glossary",
-            description="Description of test glossary",
+            description=Markdown(root="Description of test glossary"),
             owner=EntityReference(
-                id=model_str(cls.user_1.id),
+                id=cls.user_1.id,
                 type="user",
             ),
         )
 
         cls.create_glossary_term_1 = CreateGlossaryTermRequest(
-            glossary=cls.create_glossary.name,
-            name="GT1",
+            glossary=FullyQualifiedEntityName(root=cls.create_glossary.name.root),
+            name=EntityName(root="GT1"),
             displayName="Glossary Term 1",
-            description="Test glossary term 1",
+            description=Markdown(root="Test glossary term 1"),
             owner=EntityReference(
-                id=model_str(cls.user_1.id),
+                id=cls.user_1.id,
                 type="user",
             ),
         )
 
         cls.create_glossary_term_2 = CreateGlossaryTermRequest(
-            glossary=cls.create_glossary.name,
-            name="GT2",
+            glossary=FullyQualifiedEntityName(root=cls.create_glossary.name.root),
+            name=EntityName(root="GT2"),
             displayName="Glossary Term 2",
-            description="Test glossary term 2",
-            synonyms=["GT2S1", "GT2S2", "GT2S3"],
+            description=Markdown(root="Test glossary term 2"),
+            synonyms=[
+                EntityName(root="GT2S1"),
+                EntityName(root="GT2S2"),
+                EntityName(root="GT2S3"),
+            ],
             owner=EntityReference(
-                id=model_str(cls.user_1.id),
+                id=cls.user_1.id,
                 type="user",
             ),
         )
 
         cls.create_glossary_term_3 = CreateGlossaryTermRequest(
-            glossary=cls.create_glossary.name,
-            name="GT3",
+            glossary=FullyQualifiedEntityName(root=cls.create_glossary.name.root),
+            name=EntityName(root="GT3"),
             displayName="Glossary Term 3",
-            description="Test glossary term 3",
-            synonyms=["GT3S1", "GT3S2", "GT3S3"],
+            description=Markdown(root="Test glossary term 3"),
+            synonyms=[
+                EntityName(root="GT2S1"),
+                EntityName(root="GT2S2"),
+                EntityName(root="GT2S3"),
+            ],
             owner=EntityReference(
-                id=model_str(cls.user_1.id),
+                id=cls.user_1.id,
                 type="user",
             ),
         )
@@ -246,8 +263,8 @@ class OMetaGlossaryTest(TestCase):
         self.assertIsNotNone(res)
         self.assertEqual(self.create_glossary_term_1.name, res.name)
         self.assertEqual(
-            f"{self.create_glossary.name.__root__}.{res.name.__root__}",
-            res.fullyQualifiedName.__root__,
+            f"{self.create_glossary.name.root}.{res.name.root}",
+            res.fullyQualifiedName.root,
         )
 
         # Create with parent
@@ -360,11 +377,11 @@ class OMetaGlossaryTest(TestCase):
 
         # Add related term
         dest_glossary_term_1 = deepcopy(self.glossary_term_1)
-        dest_glossary_term_1.relatedTerms = []
+        dest_glossary_term_1.relatedTerms = None
         if dest_glossary_term_1.relatedTerms is not None:
-            dest_glossary_term_1.relatedTerms = []
-        dest_glossary_term_1.relatedTerms.append(
-            EntityReference(id=self.glossary_term_2.id, type="glossaryTerm")
+            dest_glossary_term_1.relatedTerms = None
+        dest_glossary_term_1.relatedTerms = EntityReferenceList(
+            root=[EntityReference(id=self.glossary_term_2.id, type="glossaryTerm")]
         )
         res: GlossaryTerm = self.metadata.patch(
             entity=GlossaryTerm,
@@ -372,8 +389,8 @@ class OMetaGlossaryTest(TestCase):
             destination=dest_glossary_term_1,
         )
         self.assertIsNotNone(res)
-        self.assertEqual(1, len(res.relatedTerms.__root__))
-        self.assertEqual(self.glossary_term_2.id, res.relatedTerms.__root__[0].id)
+        self.assertEqual(1, len(res.relatedTerms.root))
+        self.assertEqual(self.glossary_term_2.id, res.relatedTerms.root[0].id)
 
     def test_patch_reviewer(self):
         """
@@ -429,7 +446,7 @@ class OMetaGlossaryTest(TestCase):
 
         # Add GlossaryTerm Reviewer
         dest_glossary_term_1 = deepcopy(self.glossary_term_1)
-        dest_glossary_term_1.reviewers.__root__.append(
+        dest_glossary_term_1.reviewers.root.append(
             EntityReference(id=self.user_1.id, type="user")
         )
         res_glossary_term: GlossaryTerm = self.metadata.patch(
@@ -439,17 +456,17 @@ class OMetaGlossaryTest(TestCase):
         )
 
         self.assertIsNotNone(res_glossary_term)
-        self.assertEqual(1, len(res_glossary_term.reviewers.__root__))
-        self.assertEqual(self.user_1.id, res_glossary_term.reviewers.__root__[0].id)
+        self.assertEqual(1, len(res_glossary_term.reviewers.root))
+        self.assertEqual(self.user_1.id, res_glossary_term.reviewers.root[0].id)
         dest_glossary_term_1 = deepcopy(res_glossary_term)
-        dest_glossary_term_1.reviewers.__root__.pop(0)
+        dest_glossary_term_1.reviewers.root.pop(0)
         res_glossary_term = self.metadata.patch(
             entity=GlossaryTerm,
             source=res_glossary_term,
             destination=dest_glossary_term_1,
         )
         self.assertIsNotNone(res_glossary_term)
-        self.assertEqual(0, len(res_glossary_term.reviewers.__root__))
+        self.assertEqual(0, len(res_glossary_term.reviewers.root))
 
     def test_patch_glossary_term_synonyms(self):
         """
@@ -468,7 +485,7 @@ class OMetaGlossaryTest(TestCase):
 
         if dest_glossary_term_1.synonyms is None:
             dest_glossary_term_1.synonyms = []
-        dest_glossary_term_1.synonyms.append(EntityName(__root__="GT1S1"))
+        dest_glossary_term_1.synonyms.append(EntityName(root="GT1S1"))
 
         # Add GlossaryTerm synonym
         res: GlossaryTerm = self.metadata.patch(
@@ -493,9 +510,9 @@ class OMetaGlossaryTest(TestCase):
         self.assertIsNotNone(res)
         self.assertEqual(0, len(res.synonyms))
         dest_glossary_term_1 = deepcopy(res)
-        dest_glossary_term_1.synonyms.append(EntityName(__root__="GT1S1"))
-        dest_glossary_term_1.synonyms.append(EntityName(__root__="GT1S2"))
-        dest_glossary_term_1.synonyms.append(EntityName(__root__="GT1S3"))
+        dest_glossary_term_1.synonyms.append(EntityName(root="GT1S1"))
+        dest_glossary_term_1.synonyms.append(EntityName(root="GT1S2"))
+        dest_glossary_term_1.synonyms.append(EntityName(root="GT1S3"))
 
         res: GlossaryTerm = self.metadata.patch(
             entity=GlossaryTerm,
@@ -547,8 +564,8 @@ class OMetaGlossaryTest(TestCase):
         res: GlossaryTerm = self.metadata.get_by_name(
             entity=GlossaryTerm,
             fqn=fqn._build(
-                self.create_glossary.name.__root__,
-                self.create_glossary_term_1.name.__root__,
+                self.create_glossary.name.root,
+                self.create_glossary_term_1.name.root,
             ),
         )
 
