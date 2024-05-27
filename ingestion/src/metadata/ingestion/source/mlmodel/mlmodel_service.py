@@ -97,7 +97,7 @@ class MlModelServiceSource(TopologyRunnerMixin, Source, ABC):
     source_config: MlModelServiceMetadataPipeline
     config: WorkflowSource
     # Big union of types we want to fetch dynamically
-    service_connection: MlModelConnection.__fields__["config"].type_
+    service_connection: MlModelConnection.__fields__["config"].annotation
 
     topology = MlModelServiceTopology()
     context = TopologyContextManager(topology)

@@ -19,7 +19,7 @@ from metadata.generated.schema.api.tests.createTestCase import CreateTestCaseReq
 from metadata.generated.schema.api.tests.createTestDefinition import (
     CreateTestDefinitionRequest,
 )
-from metadata.generated.schema.api.tests.createTestSuite import CreateTestSuiteRequest
+from metadata.generated.schema.api.tests.createTestSuite import CreateTestSuiteRequest, TestSuiteEntityName
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
 )
@@ -40,6 +40,8 @@ from metadata.generated.schema.tests.testDefinition import (
     TestPlatform,
 )
 from metadata.generated.schema.tests.testSuite import TestSuite
+from metadata.generated.schema.type.basic import EntityName, Markdown, TestCaseEntityName, FullyQualifiedEntityName, \
+    EntityLink
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.utils.helpers import datetime_to_ts
 from metadata.utils.time_utils import (
@@ -69,8 +71,8 @@ class OMetaTestSuiteTest(TestCase):
 
     test_definition = metadata.create_or_update(
         CreateTestDefinitionRequest(
-            name="testDefinitionForIntegration",
-            description="this is a test definition for integration tests",
+            name=TestCaseEntityName(root="testDefinitionForIntegration"),
+            description=Markdown(root="this is a test definition for integration tests"),
             entityType=EntityType.TABLE,
             testPlatforms=[TestPlatform.GreatExpectations],
             parameterDefinition=[TestCaseParameterDefinition(name="foo")],
@@ -83,16 +85,16 @@ class OMetaTestSuiteTest(TestCase):
 
         cls.test_suite: TestSuite = cls.metadata.create_or_update_executable_test_suite(
             CreateTestSuiteRequest(
-                name="sample_data.ecommerce_db.shopify.dim_address.TestSuite",
-                description="This is a test suite for the integration tests",
-                executableEntityReference="sample_data.ecommerce_db.shopify.dim_address",
+                name=TestSuiteEntityName(root="sample_data.ecommerce_db.shopify.dim_address.TestSuite"),
+                description=Markdown(root="This is a test suite for the integration tests"),
+                executableEntityReference=FullyQualifiedEntityName(root="sample_data.ecommerce_db.shopify.dim_address"),
             )
         )
 
         cls.metadata.create_or_update(
             CreateTestCaseRequest(
-                name="testCaseForIntegration",
-                entityLink="<#E::table::sample_data.ecommerce_db.shopify.dim_address>",
+                name=TestCaseEntityName("testCaseForIntegration"),
+                entityLink=EntityLink("<#E::table::sample_data.ecommerce_db.shopify.dim_address>"),
                 testSuite=cls.test_suite.fullyQualifiedName,
                 testDefinition=cls.test_definition.fullyQualifiedName,
                 parameterValues=[TestCaseParameterValue(name="foo", value=10)],

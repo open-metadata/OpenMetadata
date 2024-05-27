@@ -47,7 +47,7 @@ from metadata.generated.schema.entity.data.table import (
     TableData,
     TableJoins,
     TableProfile,
-    TableProfilerConfig,
+    TableProfilerConfig, DmlOperationType, ColumnName,
 )
 from metadata.generated.schema.entity.services.connections.database.common.basicAuth import (
     BasicAuth,
@@ -61,7 +61,7 @@ from metadata.generated.schema.entity.services.databaseService import (
     DatabaseServiceType,
 )
 from metadata.generated.schema.entity.teams.user import User
-from metadata.generated.schema.type.basic import FullyQualifiedEntityName, SqlQuery
+from metadata.generated.schema.type.basic import FullyQualifiedEntityName, SqlQuery, Timestamp, EntityName, Date
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.type.usageRequest import UsageRequest
 from metadata.ingestion.ometa.client import REST
@@ -289,7 +289,7 @@ class OMetaTableTest(TestCase):
         """
         fake_create = deepcopy(self.create)
         for i in range(0, 10):
-            fake_create.name = self.create.name.root + str(i)
+            fake_create.name = EntityName(root=self.create.name.root + str(i))
             self.metadata.create_or_update(data=fake_create)
 
         all_entities = self.metadata.list_all_entities(
@@ -361,7 +361,7 @@ class OMetaTableTest(TestCase):
         )
 
         table_profile = TableProfile(
-            timestamp=datetime.now().timestamp(),
+            timestamp=Timestamp(root=int(datetime.now().timestamp())),
             columnCount=1.0,
             rowCount=3.0,
         )
@@ -375,19 +375,19 @@ class OMetaTableTest(TestCase):
                 mean=1.5,
                 sum=2,
                 stddev=None,
-                timestamp=datetime.now(tz=timezone.utc).timestamp(),
+                timestamp=Timestamp(root=int(datetime.now(tz=timezone.utc).timestamp())),
             )
         ]
 
         system_profile = [
             SystemProfile(
-                timestamp=datetime.now(tz=timezone.utc).timestamp(),
-                operation="INSERT",
+                timestamp=Timestamp(root=int(datetime.now(tz=timezone.utc).timestamp())),
+                operation=DmlOperationType.INSERT,
                 rowsAffected=11,
             ),
             SystemProfile(
-                timestamp=datetime.now(tz=timezone.utc).timestamp() + 1,
-                operation="UPDATE",
+                timestamp=Timestamp(root=int(datetime.now(tz=timezone.utc).timestamp()) + 1),
+                operation=DmlOperationType.UPDATE,
                 rowsAffected=110,
             ),
         ]
@@ -437,34 +437,38 @@ class OMetaTableTest(TestCase):
         )
 
         column_join_table_req = CreateTableRequest(
-            name="another-test",
+            name=EntityName(root="another-test"),
             databaseSchema=self.create_schema_entity.fullyQualifiedName,
-            columns=[Column(name="another_id", dataType=DataType.BIGINT)],
+            columns=[Column(name=ColumnName(root="another_id"), dataType=DataType.BIGINT)],
         )
         column_join_table_res = self.metadata.create_or_update(column_join_table_req)
 
         direct_join_table_req = CreateTableRequest(
-            name="direct-join-test",
+            name=EntityName(root="direct-join-test"),
             databaseSchema=self.create_schema_entity.fullyQualifiedName,
             columns=[],
         )
         direct_join_table_res = self.metadata.create_or_update(direct_join_table_req)
 
         joins = TableJoins(
-            startDate=datetime.now(),
+            startDate=Date(root=datetime.today().date()),
             dayCount=1,
             directTableJoins=[
                 JoinedWith(
-                    fullyQualifiedName="test-service-table.test-db.test-schema.direct-join-test",
+                    fullyQualifiedName=FullyQualifiedEntityName(
+                        root="test-service-table.test-db.test-schema.direct-join-test"
+                    ),
                     joinCount=2,
                 )
             ],
             columnJoins=[
                 ColumnJoins(
-                    columnName="id",
+                    columnName=ColumnName(root="id"),
                     joinedWith=[
                         JoinedWith(
-                            fullyQualifiedName="test-service-table.test-db.test-schema.another-test.another_id",
+                            fullyQualifiedName=FullyQualifiedEntityName(
+                                root="test-service-table.test-db.test-schema.another-test.another_id"
+                            ),
                             joinCount=2,
                         )
                     ],

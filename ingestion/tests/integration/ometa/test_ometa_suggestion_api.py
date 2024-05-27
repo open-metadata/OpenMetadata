@@ -26,7 +26,7 @@ from metadata.generated.schema.type.tagLabel import (
     LabelType,
     State,
     TagLabel,
-    TagSource,
+    TagSource, TagFQN,
 )
 from metadata.utils.entity_link import get_entity_link
 
@@ -117,7 +117,7 @@ class OMetaSuggestionTest(TestCase):
         suggestion_request = CreateSuggestionRequest(
             tagLabels=[
                 TagLabel(
-                    tagFQN="PII.Sensitive",
+                    tagFQN=TagFQN(root="PII.Sensitive"),
                     labelType=LabelType.Automated,
                     state=State.Suggested.value,
                     source=TagSource.Classification,
@@ -186,8 +186,8 @@ class OMetaSuggestionTest(TestCase):
 
         # Suggestions only support POST (not PUT)
         res: Suggestion = self.metadata.create(suggestion_request)
-        self.assertEqual(res.description, "something")
+        self.assertEqual(res.root.description, "something")
 
-        res.description = "new"
+        res.root.description = "new"
         new = self.metadata.update_suggestion(res)
-        self.assertEqual(new.description, "new")
+        self.assertEqual(new.root.description, "new")

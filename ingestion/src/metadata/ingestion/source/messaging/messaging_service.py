@@ -111,7 +111,7 @@ class MessagingServiceSource(TopologyRunnerMixin, Source, ABC):
     source_config: MessagingServiceMetadataPipeline
     config: WorkflowSource
     # Big union of types we want to fetch dynamically
-    service_connection: MessagingConnection.__fields__["config"].type_
+    service_connection: MessagingConnection.__fields__["config"].annotation
 
     topology = MessagingServiceTopology()
     context = TopologyContextManager(topology)

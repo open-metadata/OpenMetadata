@@ -212,7 +212,7 @@ class DatabaseServiceSource(
     database_source_state: Set = set()
     stored_procedure_source_state: Set = set()
     # Big union of types we want to fetch dynamically
-    service_connection: DatabaseConnection.__fields__["config"].type_
+    service_connection: DatabaseConnection.__fields__["config"].annotation
 
     # When processing the database, the source will update the inspector if needed
     inspector: Inspector

@@ -25,7 +25,7 @@ from metadata.generated.schema.entity.policies.accessControl.resourceDescriptor 
     Operation,
 )
 from metadata.generated.schema.entity.policies.accessControl.rule import Effect, Rule
-from metadata.generated.schema.entity.policies.policy import Policy
+from metadata.generated.schema.entity.policies.policy import Policy, Rules
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
 )
@@ -35,15 +35,17 @@ from metadata.generated.schema.entity.teams.user import User
 from metadata.generated.schema.security.client.openMetadataJWTClientConfig import (
     OpenMetadataJWTClientConfig,
 )
+from metadata.generated.schema.type.basic import Expression, Markdown, FullyQualifiedEntityName, Uuid, EntityName
 from metadata.generated.schema.type.entityReference import EntityReference
+from metadata.generated.schema.type.entityReferenceList import EntityReferenceList
 from metadata.ingestion.ometa.mixins.patch_mixin_utils import PatchOperation
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.ometa.utils import model_str
 
 # Conditions
-CONDITION_IS_OWNER: str = "isOwner()"
-CONDITION_IS_NOT_OWNER: str = "!isOwner"
-CONDITION_NO_OWNER_IS_OWNER: str = "noOwner() || isOwner()"
+CONDITION_IS_OWNER = Expression(root="isOwner()")
+CONDITION_IS_NOT_OWNER = Expression(root="!isOwner")
+CONDITION_NO_OWNER_IS_OWNER = Expression(root="noOwner() || isOwner()")
 
 # Resources
 RESOURCE_BOT: str = "Bot"
@@ -89,7 +91,7 @@ class OMetaRolePolicyTest(TestCase):
 
         cls.rule_1: Rule = Rule(
             name="rule-1",
-            description="Description of rule-1",
+            description=Markdown(root="Description of rule-1"),
             resources=[
                 RESOURCE_TABLE,
             ],
@@ -103,8 +105,8 @@ class OMetaRolePolicyTest(TestCase):
 
         cls.rule_2: Rule = Rule(
             name="rule-2",
-            description="Description of rule-2",
-            fullyQualifiedName="test-policy-1.rule-2",
+            description=Markdown(root="Description of rule-2"),
+            fullyQualifiedName=FullyQualifiedEntityName(root="test-policy-1.rule-2"),
             resources=[
                 RESOURCE_BOT,
                 RESOURCE_PIPELINE,
@@ -119,7 +121,7 @@ class OMetaRolePolicyTest(TestCase):
 
         cls.rule_3: Rule = Rule(
             name="rule-3",
-            fullyQualifiedName="test-policy-1.rule-3",
+            fullyQualifiedName=FullyQualifiedEntityName(root="test-policy-1.rule-3"),
             resources=[
                 RESOURCE_TABLE,
             ],
@@ -132,57 +134,57 @@ class OMetaRolePolicyTest(TestCase):
         )
 
         cls.policy_entity = Policy(
-            id=uuid.uuid4(),
-            name="test-policy-1",
-            fullyQualifiedName="test-policy-1",
-            description="Description of test policy 1",
-            rules=[
+            id=Uuid(root=uuid.uuid4()),
+            name=EntityName(root="test-policy-1"),
+            fullyQualifiedName=EntityName(root="test-policy-1"),
+            description=Markdown(root="Description of test policy 1"),
+            rules=Rules(root=[
                 cls.rule_1,
                 cls.rule_2,
-            ],
+            ]),
         )
 
         cls.create_policy = CreatePolicyRequest(
-            name="test-policy-1",
-            description="Description of test policy 1",
-            rules=[
+            name=EntityName(root="test-policy-1"),
+            description=Markdown(root="Description of test policy 1"),
+            rules=Rules(root=[
                 cls.rule_1,
                 cls.rule_2,
-            ],
+            ]),
         )
 
         cls.role_policy_1 = cls.metadata.create_or_update(
             CreatePolicyRequest(
-                name="test-role-policy-1",
-                description="Description of test role policy 1",
-                rules=[
+                name=EntityName(root="test-role-policy-1"),
+                description=Markdown(root="Description of test role policy 1"),
+                rules=Rules(root=[
                     cls.rule_1,
                     cls.rule_2,
-                ],
+                ]),
             )
         )
 
         cls.role_policy_2 = cls.metadata.create_or_update(
             data=CreatePolicyRequest(
-                name="test-role-policy-2",
-                description="Description of test role policy 2",
-                rules=[
+                name=EntityName(root="test-role-policy-2"),
+                description=Markdown(root="Description of test role policy 2"),
+                rules=Rules(root=[
                     cls.rule_1,
-                ],
+                ]),
             )
         )
 
         cls.role_entity = Role(
-            id=uuid.uuid4(),
-            name="test-role",
-            fullyQualifiedName="test-role",
-            policies=[
-                EntityReference(id=model_str(cls.role_policy_1.id), type="policy"),
-            ],
+            id=Uuid(root=uuid.uuid4()),
+            name=EntityName(root="test-role"),
+            fullyQualifiedName=FullyQualifiedEntityName(root="test-role"),
+            policies=EntityReferenceList(root=[
+                EntityReference(id=cls.role_policy_1.id, type="policy"),
+            ]),
         )
 
         cls.create_role = CreateRoleRequest(
-            name="test-role",
+            name=EntityName(root="test-role"),
             policies=[
                 cls.role_policy_1.name,
             ],
@@ -285,7 +287,7 @@ class OMetaRolePolicyTest(TestCase):
         """
         fake_create = deepcopy(self.create_policy)
         for i in range(0, 10):
-            fake_create.name = model_str(self.create_policy.name) + str(i)
+            fake_create.name = EntityName(root=self.create_policy.name.root + str(i))
             self.metadata.create_or_update(data=fake_create)
 
         all_entities = self.metadata.list_all_entities(
@@ -504,7 +506,7 @@ class OMetaRolePolicyTest(TestCase):
         """
         fake_create = deepcopy(self.create_role)
         for i in range(0, 10):
-            fake_create.name = f"{model_str(self.create_role.name.root)}-{str(i)}"
+            fake_create.name = EntityName(root=self.create_role.name.root + str(i))
             self.metadata.create_or_update(data=fake_create)
 
         all_entities = self.metadata.list_all_entities(
