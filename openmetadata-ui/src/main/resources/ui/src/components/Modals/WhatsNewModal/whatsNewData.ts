@@ -1544,7 +1544,8 @@ API:
   {
     id: 26,
     version: 'v1.4.1',
-    description: 'Released on 27th May 2024.',
+    description: `Released on 27th May 2024.`,
+    note: "In 1.4.1, we provide migration fixes on top of the 1.4.0 release. Don't miss out the release highlights!",
     features: [
       {
         title: 'Automations',
