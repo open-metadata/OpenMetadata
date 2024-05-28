@@ -631,7 +631,8 @@ const getNodeType = (
 export const createNodes = (
   nodesData: EntityReference[],
   edgesData: EdgeDetails[],
-  entityFqn: string
+  entityFqn: string,
+  isExpanded = false
 ) => {
   const uniqueNodesData = removeDuplicateNodes(nodesData).sort((a, b) =>
     getEntityName(a).localeCompare(getEntityName(b))
@@ -651,7 +652,7 @@ export const createNodes = (
   // Add nodes to the graph
   uniqueNodesData.forEach((node) => {
     const { childrenHeight } = getEntityChildrenAndLabel(node as SourceType);
-    const nodeHeight = childrenHeight + 220;
+    const nodeHeight = isExpanded ? childrenHeight + 220 : NODE_HEIGHT;
     graph.setNode(node.id, { width: NODE_WIDTH, height: nodeHeight });
   });
 
