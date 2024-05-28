@@ -68,6 +68,7 @@ import {
   LINEAGE_EXPORT_HEADERS,
   NODE_HEIGHT,
   NODE_WIDTH,
+  ZOOM_TRANSITION_DURATION,
   ZOOM_VALUE,
 } from '../constants/Lineage.constants';
 import {
@@ -120,6 +121,22 @@ export const onLoad = (reactFlowInstance: ReactFlowInstance) => {
   reactFlowInstance.fitView();
   reactFlowInstance.zoomTo(ZOOM_VALUE);
 };
+
+export const centerNodePosition = (
+  node: Node,
+  reactFlowInstance?: ReactFlowInstance
+) => {
+  const { position, width } = node;
+  reactFlowInstance?.setCenter(
+    position.x + (width ?? 1 / 2),
+    position.y + NODE_HEIGHT / 2,
+    {
+      zoom: ZOOM_VALUE,
+      duration: ZOOM_TRANSITION_DURATION,
+    }
+  );
+};
+
 /* eslint-disable-next-line */
 export const onNodeMouseEnter = (_event: ReactMouseEvent, _node: Node) => {
   return;

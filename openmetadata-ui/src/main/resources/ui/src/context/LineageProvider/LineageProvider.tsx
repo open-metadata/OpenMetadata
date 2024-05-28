@@ -59,7 +59,6 @@ import {
 import { SourceType } from '../../components/SearchedData/SearchedData.interface';
 import {
   ELEMENT_DELETE_STATE,
-  ZOOM_TRANSITION_DURATION,
   ZOOM_VALUE,
 } from '../../constants/Lineage.constants';
 import { mockDatasetData } from '../../constants/mockTourData.constants';
@@ -78,6 +77,7 @@ import { useFqn } from '../../hooks/useFqn';
 import { getLineageDataByFQN, updateLineageEdge } from '../../rest/lineageAPI';
 import {
   addLineageHandler,
+  centerNodePosition,
   createEdges,
   createNewEdge,
   createNodes,
@@ -97,7 +97,6 @@ import {
   getPaginatedChildMap,
   getUpdatedColumnsFromEdge,
   getUpstreamDownstreamNodesEdges,
-  onLoad,
   removeLineageHandler,
 } from '../../utils/EntityLineageUtils';
 import { getEntityReferenceFromEntity } from '../../utils/EntityUtils';
@@ -1021,12 +1020,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
   );
 
   const selectNode = (node: Node) => {
-    const { position } = node;
-    // moving selected node in center
-    reactFlowInstance?.setCenter(position.x, position.y, {
-      duration: ZOOM_TRANSITION_DURATION,
-      zoom: zoomValue,
-    });
+    centerNodePosition(node, reactFlowInstance);
   };
 
   const repositionLayout = useCallback(
@@ -1046,11 +1040,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
 
       const rootNode = node.find((n) => n.data.isRootNode);
       if (rootNode) {
-        const { position } = rootNode;
-        reactFlowInstance?.setCenter(position.x, position.y, {
-          zoom: ZOOM_VALUE,
-          duration: ZOOM_TRANSITION_DURATION,
-        });
+        centerNodePosition(rootNode, reactFlowInstance);
         if (activateNode) {
           onNodeClick(rootNode);
         }
@@ -1155,7 +1145,6 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
 
   useEffect(() => {
     if (reactFlowInstance?.viewportInitialized) {
-      onLoad(reactFlowInstance);
       repositionLayout(true); // Activate the root node
     }
   }, [reactFlowInstance?.viewportInitialized]);
