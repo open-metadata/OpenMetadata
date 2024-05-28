@@ -148,7 +148,7 @@ def get_all_table_ddls(
             self.all_table_ddls[(table.schema, table.name)] = str(CreateTable(table))
     except Exception as exc:
         logger.debug(traceback.format_exc())
-        logger.warning(f"Failed to get table ddls for {schema_name}: {exc}")
+        logger.debug(f"Failed to get table ddls for {schema_name}: {exc}")
 
 
 def get_table_ddl_wrapper(
@@ -156,7 +156,7 @@ def get_table_ddl_wrapper(
 ):  # pylint: disable=unused-argument
     if not hasattr(self, "all_table_ddls") or self.current_db != schema:
         self.get_all_table_ddls(connection, query, schema)
-    return self.all_table_ddls.get((schema, table_name), "")
+    return self.all_table_ddls.get((schema, table_name))
 
 
 def get_table_ddl(

@@ -26,7 +26,7 @@ VERSIONS = {
     "geoalchemy2": "GeoAlchemy2~=0.12",
     "google-cloud-storage": "google-cloud-storage==1.43.0",
     "gcsfs": "gcsfs~=2022.11",
-    "great-expectations": "great-expectations~=0.18.0",
+    "great-expectations": "great-expectations>=0.18.0,<0.18.14",
     "grpc-tools": "grpcio-tools>=1.47.2",
     "msal": "msal~=1.2",
     "neo4j": "neo4j~=5.3.0",
@@ -54,6 +54,7 @@ VERSIONS = {
     "elasticsearch8": "elasticsearch8~=8.9.0",
     "giturlparse": "giturlparse",
     "validators": "validators~=0.22.0",
+    "teradata": "teradatasqlalchemy>=20.0.0.0",
 }
 
 COMMONS = {
@@ -264,6 +265,7 @@ plugins: Dict[str, Set[str]] = {
     "snowflake": {VERSIONS["snowflake"]},
     "superset": {},  # uses requests
     "tableau": {VERSIONS["tableau"], VERSIONS["validators"], VERSIONS["packaging"]},
+    "teradata": {VERSIONS["teradata"]},
     "trino": {VERSIONS["trino"]},
     "vertica": {"sqlalchemy-vertica[vertica-python]>=0.0.5"},
     "pii-processor": {
@@ -324,6 +326,7 @@ test = {
     "minio==7.2.5",
     *plugins["mlflow"],
     *plugins["datalake-s3"],
+    "requests==2.31.0",
 }
 
 e2e_test = {

@@ -37,7 +37,7 @@ Configure the dbt Workflow from the CLI.
 | dbt Owner                   | {% icon iconName="check" /%}              |
 | dbt Descriptions            | {% icon iconName="check" /%}              |
 | dbt Tests                   | {% icon iconName="check" /%}              |
-| Supported dbt Core Versions | `v1.2` `v1.3` `v1.4` `v1.5` `v1.6` `v1.7`|
+| Supported dbt Core Versions | `v1.2` `v1.3` `v1.4` `v1.5` `v1.6` `v1.7` `v1.8`|
 
 {% /multiTablesWrapper %}
 

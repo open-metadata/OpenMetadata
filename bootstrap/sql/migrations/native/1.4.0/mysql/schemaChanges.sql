@@ -3,11 +3,38 @@ UPDATE dbservice_entity
 SET json = JSON_INSERT(json, '$.connection.config.supportsProfiler', TRUE)
 WHERE serviceType = 'MongoDB';
 
+-- Queries should be unique:
+-- 1. Remove duplicate queries from entity_relationship
+-- 2. Remove duplicate queries from query_entity
+-- 3. Add checksum with unique constraint
 ALTER TABLE query_entity ADD COLUMN checksum VARCHAR
 (32) GENERATED ALWAYS AS
-(json ->> '$.checksum') NOT NULL UNIQUE;
+(json ->> '$.checksum') NOT NULL;
 
-UPDATE query_entity SET json = JSON_INSERT(json, '$.checksum', MD5(JSON_UNQUOTE(JSON_EXTRACT(json, '$.checksum'))));
+with duplicated as (
+  select
+    id,
+    ROW_NUMBER() OVER (PARTITION BY checksum ORDER BY id) AS rn
+  FROM query_entity
+)
+DELETE FROM entity_relationship
+  where toEntity = 'query' and toId in (
+  select id from duplicated where rn > 1
+);
+
+with duplicated as (
+  select
+    id,
+    ROW_NUMBER() OVER (PARTITION BY checksum ORDER BY id) AS rn
+  FROM query_entity
+)
+DELETE FROM query_entity where id in (
+  select id from duplicated where rn > 1
+);
+
+ALTER TABLE query_entity ADD CONSTRAINT unique_query_checksum UNIQUE (checksum);
+
+UPDATE query_entity SET json = JSON_INSERT(json, '$.checksum', MD5(JSON_UNQUOTE(checksum)));
 
 -- Restructure dbServiceNames in ingestion_pipeline_entity
 update ingestion_pipeline_entity set json = 
@@ -250,7 +277,14 @@ where serviceType = 'Airflow'
   AND JSON_EXTRACT(json, '$.connection.config.connection.type') = 'Mysql'
   AND JSON_EXTRACT(json, '$.connection.config.connection.sslCA') IS NOT NULL;
 
-
+UPDATE pipeline_service_entity
+SET json = JSON_INSERT(
+JSON_REMOVE(json, '$.connection.config.connection.sslConfig.certificatePath'), 
+'$.connection.config.connection.sslConfig.caCertificate', 
+JSON_EXTRACT(json, '$.connection.config.connection.sslConfig.certificatePath'))
+where serviceType = 'Airflow'
+  AND JSON_EXTRACT(json, '$.connection.config.connection.type') = 'Postgres'
+  AND JSON_EXTRACT(json, '$.connection.config.connection.sslConfig.certificatePath') IS NOT NULL;
 
 UPDATE pipeline_service_entity  
 SET json = JSON_INSERT(

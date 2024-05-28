@@ -463,3 +463,23 @@ export const TEAM_CREATION_DETAILS = {
   name: `0%team-name-${uuid()}`,
   teamType: 'Group',
 };
+
+export const GLOSSARY_DETAILS = {
+  name: `0%glossary-${uuid()}`,
+  description: 'glossary description',
+};
+
+export const GLOSSARY_TERM_DETAILS = {
+  name: `0%glossary-term-${uuid()}`,
+  glossary: GLOSSARY_DETAILS.name,
+  description: 'glossary term description',
+};
+
+export const DOMAIN_QUICK_FILTERS_DETAILS = {
+  name: `cypress-domain-${uuid()}`,
+  displayName: `Cypress Domain QfTest`,
+  description: 'Cypress domain description',
+  domainType: 'Aggregate',
+  experts: [],
+  style: {},
+};

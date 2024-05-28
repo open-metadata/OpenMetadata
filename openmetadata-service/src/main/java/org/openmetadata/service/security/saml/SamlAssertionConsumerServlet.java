@@ -13,6 +13,7 @@
 
 package org.openmetadata.service.security.saml;
 
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.util.UserUtil.getRoleListFromUser;
 
 import com.onelogin.saml2.Auth;
@@ -90,7 +91,7 @@ public class SamlAssertionConsumerServlet extends HttpServlet {
                 .generateJWTToken(
                     username,
                     getRoleListFromUser(user),
-                    user.getIsAdmin(),
+                    !nullOrEmpty(user.getIsAdmin()) && user.getIsAdmin(),
                     email,
                     SamlSettingsHolder.getInstance().getTokenValidity(),
                     false,

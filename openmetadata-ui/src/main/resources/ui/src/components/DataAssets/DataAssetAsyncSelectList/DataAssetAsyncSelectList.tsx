@@ -67,12 +67,11 @@ const DataAssetAsyncSelectList: FC<DataAssetAsyncSelectListProps> = ({
         query: searchQueryParam ? `*${searchQueryParam}*` : '*',
         pageNumber: page,
         pageSize: pageSize,
-        queryFilter: {},
         searchIndex: searchIndex,
         // Filter out bots from user search
-        ...(searchIndex === SearchIndex.USER || searchIndex.includes('user')
-          ? { filters: 'isBot:false' }
-          : {}),
+        queryFilter: {
+          query: { bool: { must_not: [{ match: { isBot: true } }] } },
+        },
       });
 
       const hits = dataAssetsResponse.hits.hits;
@@ -132,8 +131,9 @@ const DataAssetAsyncSelectList: FC<DataAssetAsyncSelectListProps> = ({
       let label;
       if (
         searchIndex === SearchIndex.USER ||
-        searchIndex.includes('user') ||
-        searchIndex.includes('team')
+        searchIndex === SearchIndex.TEAM ||
+        reference.type === EntityType.USER ||
+        reference.type === EntityType.TEAM
       ) {
         label = (
           <Space>
@@ -144,7 +144,9 @@ const DataAssetAsyncSelectList: FC<DataAssetAsyncSelectListProps> = ({
               type="circle"
               width="24"
             />
-            <span className="m-l-xs">{getEntityName(option)}</span>
+            <span className="m-l-xs" data-testid={getEntityName(option)}>
+              {getEntityName(option)}
+            </span>
           </Space>
         );
       } else {

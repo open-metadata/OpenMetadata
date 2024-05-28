@@ -262,11 +262,15 @@ describe('DataAssetAsyncSelectList', () => {
     expect(screen.getByText('Test')).toBeInTheDocument();
   });
 
-  it('searchQuery should be called with filter isBot:false when search index is user', async () => {
+  it('searchQuery should be called with queryFilter', async () => {
     const mockSearchQuery = searchQuery as jest.Mock;
     mockSearchQuery.mockImplementationOnce((params) => {
       expect(params).toEqual(
-        expect.objectContaining({ filters: 'isBot:false' })
+        expect.objectContaining({
+          queryFilter: {
+            query: { bool: { must_not: [{ match: { isBot: true } }] } },
+          },
+        })
       );
 
       return Promise.resolve(mockUserData.data);
@@ -277,52 +281,6 @@ describe('DataAssetAsyncSelectList', () => {
         mode="multiple"
         searchIndex={SearchIndex.USER}
       />
-    );
-
-    await act(async () => {
-      toggleOpen(container);
-    });
-
-    expect(searchQuery).toHaveBeenCalledTimes(1);
-  });
-
-  it('searchQuery should be called with filter isBot:false when search index includes user', async () => {
-    const indexes = ['user', 'team', 'user_search_index'].join(
-      ','
-    ) as SearchIndex;
-    const mockSearchQuery = searchQuery as jest.Mock;
-    mockSearchQuery.mockImplementationOnce((params) => {
-      expect(params).toEqual(
-        expect.objectContaining({ filters: 'isBot:false' })
-      );
-
-      return Promise.resolve(mockUserData.data);
-    });
-
-    const { container } = render(
-      <DataAssetAsyncSelectList mode="multiple" searchIndex={indexes} />
-    );
-
-    await act(async () => {
-      toggleOpen(container);
-    });
-
-    expect(searchQuery).toHaveBeenCalledTimes(1);
-  });
-
-  it("searchQuery should not be called with filter isBot:false when search index doesn't include user", async () => {
-    const indexes = ['team', 'glossary'].join(',') as SearchIndex;
-    const mockSearchQuery = searchQuery as jest.Mock;
-    mockSearchQuery.mockImplementationOnce((params) => {
-      expect(params).not.toEqual(
-        expect.objectContaining({ filters: 'isBot:false' })
-      );
-
-      return Promise.resolve(mockUserData.data);
-    });
-
-    const { container } = render(
-      <DataAssetAsyncSelectList mode="multiple" searchIndex={indexes} />
     );
 
     await act(async () => {

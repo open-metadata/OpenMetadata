@@ -415,7 +415,7 @@ describe(
         .scrollIntoView()
         .should('be.visible');
 
-      cy.get('[data-testid="version-button"]').contains('0.2').click();
+      cy.get('[data-testid="version-button"]').scrollIntoView().click();
 
       verifyResponseStatusCode('@getGlossaryTermParents', 200);
       verifyResponseStatusCode('@getChildGlossaryTerms', 200);
