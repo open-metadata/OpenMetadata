@@ -14,5 +14,5 @@ workflowConfig:
     ## If SSL, fill the following
     # verifySSL: validate  # or ignore
     # sslConfig:
-    #   caCertificate: /local/path/to/certificate
+    #   certificatePath: /local/path/to/certificate
 ```
