@@ -54,7 +54,8 @@
         "Doris",
         "UnityCatalog",
         "SAS",
-        "Iceberg"
+        "Iceberg",
+        "Teradata"
       ],
       "javaEnums": [
         {
@@ -176,6 +177,9 @@
         },
         {
           "name": "Iceberg"
+        },
+        {
+          "name": "Teradata"
         }
       ]
     },
@@ -302,6 +306,9 @@
             },
             {
               "$ref": "./connections/database/icebergConnection.json"
+            },
+            {
+              "$ref": "./connections/database/teradataConnection.json"
             }
           ]
         }
