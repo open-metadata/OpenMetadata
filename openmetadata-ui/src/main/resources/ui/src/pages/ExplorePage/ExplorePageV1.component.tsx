@@ -50,14 +50,16 @@ import { useApplicationStore } from '../../hooks/useApplicationStore';
 import { Aggregations, SearchResponse } from '../../interface/search.interface';
 import { searchQuery } from '../../rest/searchAPI';
 import { getCountBadge } from '../../utils/CommonUtils';
-import { findActiveSearchIndex } from '../../utils/Explore.utils';
+import {
+  extractTermKeys,
+  findActiveSearchIndex,
+} from '../../utils/Explore.utils';
 import { getCombinedQueryFilterObject } from '../../utils/ExplorePage/ExplorePageUtils';
 import searchClassBase from '../../utils/SearchClassBase';
 import { escapeESReservedCharacters } from '../../utils/StringsUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import {
   QueryFieldInterface,
-  QueryFieldValueInterface,
   QueryFilterInterface,
 } from './ExplorePage.interface';
 
@@ -157,17 +159,19 @@ const ExplorePageV1: FunctionComponent = () => {
 
     // Getting the filters that can be common for all the Entities
     const must = mustField.filter((filterCategory: QueryFieldInterface) => {
-      const shouldField: QueryFieldValueInterface[] = get(
+      const shouldField: QueryFieldInterface[] = get(
         filterCategory,
         'bool.should',
         []
       );
 
+      const terms = extractTermKeys(shouldField);
+
       // check if the filter category is present in the common filters array
       const isCommonFieldPresent =
         !isEmpty(shouldField) &&
-        COMMON_FILTERS_FOR_DIFFERENT_TABS.find(
-          (value) => value === Object.keys(shouldField[0].term)[0]
+        COMMON_FILTERS_FOR_DIFFERENT_TABS.find((value) =>
+          terms.includes(value)
         );
 
       return isCommonFieldPresent;
