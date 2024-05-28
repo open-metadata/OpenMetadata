@@ -13,10 +13,12 @@
 
 import { isNil } from 'lodash';
 import React, { useCallback, useEffect } from 'react';
-import { Switch, useLocation } from 'react-router-dom';
+import { Route, Switch, useLocation } from 'react-router-dom';
 import { useAnalytics } from 'use-analytics';
+import { ROUTES } from '../../constants/constants';
 import { CustomEventTypes } from '../../generated/analytics/webAnalyticEventData';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
+import PageNotFound from '../../pages/PageNotFound/PageNotFound';
 import AppContainer from '../AppContainer/AppContainer';
 import Loader from '../common/Loader/Loader';
 import { UnAuthenticatedAppRouter } from './UnAuthenticatedAppRouter';
@@ -78,6 +80,7 @@ const AppRouter = () => {
 
   return (
     <Switch>
+      <Route exact component={PageNotFound} path={ROUTES.NOT_FOUND} />
       {isAuthenticated ? <AppContainer /> : <UnAuthenticatedAppRouter />}
     </Switch>
   );

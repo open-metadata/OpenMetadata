@@ -12,7 +12,7 @@
  *  limitations under the License.
  */
 
-import { Button, Col, Divider, Drawer, Row, Typography } from 'antd';
+import { Button, Col, Divider, Drawer, Row, Tooltip, Typography } from 'antd';
 import classNames from 'classnames';
 import { isEmpty, toString } from 'lodash';
 import React, { forwardRef, useEffect, useMemo } from 'react';
@@ -158,21 +158,27 @@ const EntityVersionTimeLine: React.FC<EntityVersionTimelineProps> = ({
         })}
         {hiddenVersions?.length ? (
           <>
-            <div className="version-hidden">
-              {hiddenVersions.map((v) =>
-                renderVersionButton(v, currentVersion, versionHandler)
-              )}
-            </div>
+            <Tooltip title={`+${hiddenVersions.length} more versions`}>
+              <div className="version-hidden">
+                {hiddenVersions.map((v) =>
+                  renderVersionButton(v, currentVersion, versionHandler)
+                )}
+              </div>
+            </Tooltip>
             <div className="version-pricing-reached">
               <Typography.Title className="font-medium" level={4}>
-                {`UNLOCK ALL ${versionList.versions?.length} VERSIONS`}
+                Unlock all of your version history
               </Typography.Title>
               <Typography.Text className="text-grey-muted font-normal">
                 Upgrade to paid plan for access to all of your version history.
               </Typography.Text>
 
-              <Button block type="primary">
-                SEE UPGRADE OPTIONS
+              <Button
+                block
+                className="m-t-lg"
+                href="https://www.getcollate.io/pricing"
+                type="primary">
+                See Upgrade Options
               </Button>
             </div>
           </>

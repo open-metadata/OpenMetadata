@@ -12,16 +12,13 @@
  */
 /* eslint-disable i18next/no-literal-string */
 import Icon from '@ant-design/icons';
-import { Button } from 'antd';
 import { Header } from 'antd/lib/layout/layout';
+import classNames from 'classnames';
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { useLimitStore } from '../../../context/LimitsProvider/useLimitsStore';
 import { ReactComponent as CloseIcon } from './../../../assets/svg/close.svg';
-import { ReactComponent as ExternalLinkIcon } from './../../../assets/svg/external-links.svg';
 import { ReactComponent as WarningIcon } from './../../../assets/svg/ic-warning-2.svg';
-
-import classNames from 'classnames';
 import './limit-banner.less';
 
 export const LimitBanner = () => {
@@ -36,36 +33,29 @@ export const LimitBanner = () => {
       <div className="d-flex ">
         <Icon
           className="self-center"
-          component={
-            bannerDetails?.type === 'danger' ? WarningIcon : WarningIcon
-          }
-          style={{ fontSize: '24px', color: '#FFAB2A' }}
+          component={WarningIcon}
+          style={{ fontSize: '24px' }}
         />
         <div className="p-l-sm">
           <p className="pricing-header">{bannerDetails?.header}</p>
-          <p className="pricing-subheader">{bannerDetails?.subheader}</p>
-        </div>
-        <div className="m-l-sm d-flex items-end gap-2">
-          <Link to="/usage">
-            <Button size="small" type="primary">
-              View Usage{' '}
-              <Icon component={ExternalLinkIcon} style={{ fontSize: '14px' }} />
-            </Button>
-          </Link>
-          <Button
-            href="https://www.getcollate.io/"
-            size="small"
-            target="_blank"
-            type="default">
-            Learn More{' '}
-            <Icon component={ExternalLinkIcon} style={{ fontSize: '14px' }} />
-          </Button>
+          <p className="pricing-subheader">
+            {bannerDetails?.subheader}{' '}
+            {bannerDetails?.softLimitExceed && (
+              <>
+                Check your <Link to="/usage">usage here</Link> or{' '}
+              </>
+            )}
+            <a href="www.getcollate.io/pricing" target="_blank">
+              learn more
+            </a>{' '}
+            about pricing
+          </p>
         </div>
       </div>
       <Icon
         className="close-btn p-0 cursor-pointer"
         component={CloseIcon}
-        style={{ color: '#546E7A', fontSize: '16px' }}
+        style={{ color: '#546E7A', fontSize: '14px' }}
         onClick={() => setBannerDetails(null)}
       />
     </Header>

@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { isNil } from 'lodash';
+import { capitalize, isNil } from 'lodash';
 import { create } from 'zustand';
 import { getLimitByResource } from '../../rest/limitsAPI';
 
@@ -58,17 +58,21 @@ export type LimitConfig = {
   };
 };
 
+export type BannerDetails = {
+  header: string;
+  subheader: string;
+  type: 'warning' | 'danger';
+  softLimitExceed?: boolean;
+  hardLimitExceed?: boolean;
+};
+
 /**
  * Store to manage the limits and resource limits
  */
 export const useLimitStore = create<{
   config: null | LimitConfig;
   resourceLimit: Record<string, ResourceLimit['featureLimitStatuses'][number]>;
-  bannerDetails: {
-    header: string;
-    subheader: string;
-    type: 'warning' | 'danger';
-  } | null;
+  bannerDetails: BannerDetails | null;
   getResourceLimit: (
     resource: string,
     showBanner?: boolean
@@ -78,13 +82,7 @@ export const useLimitStore = create<{
     resource: string,
     limit: ResourceLimit['featureLimitStatuses'][number]
   ) => void;
-  setBannerDetails: (
-    details: {
-      header: string;
-      subheader: string;
-      type: 'warning' | 'danger';
-    } | null
-  ) => void;
+  setBannerDetails: (details: BannerDetails | null) => void;
 }>()((set, get) => ({
   config: null,
   resourceLimit: {},
@@ -101,13 +99,7 @@ export const useLimitStore = create<{
 
     set({ resourceLimit: { ...resourceLimit, [resource]: limit } });
   },
-  setBannerDetails: (
-    details: {
-      header: string;
-      subheader: string;
-      type: 'warning' | 'danger';
-    } | null
-  ) => {
+  setBannerDetails: (details: BannerDetails | null) => {
     set({ bannerDetails: details });
   },
   getResourceLimit: async (resource: string, showBanner = true) => {
@@ -129,12 +121,21 @@ export const useLimitStore = create<{
         limitReached,
       } = rLimit;
 
+      const softLimitExceed = currentCount >= limits.softLimit;
+      const hardLimitExceed = currentCount >= limits.hardLimit;
+
       limitReached &&
         showBanner &&
         setBannerDetails({
-          header: 'Limit Reached',
-          type: currentCount > limits.hardLimit ? 'danger' : 'warning',
-          subheader: `You have used ${currentCount} out of ${limits.hardLimit} limit`,
+          header: `You have reached ${
+            softLimitExceed ? '75%' : '100%'
+          } of Free Tier Limit in OpenMetadata. `,
+          type: hardLimitExceed ? 'danger' : 'warning',
+          subheader: `You have used ${currentCount} out of ${
+            limits.hardLimit
+          } limit for resource ${capitalize(resource)}`,
+          softLimitExceed,
+          hardLimitExceed,
         });
     }
 
