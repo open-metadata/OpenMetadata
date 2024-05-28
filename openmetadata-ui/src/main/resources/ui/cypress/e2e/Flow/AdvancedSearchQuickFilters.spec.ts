@@ -11,15 +11,73 @@
  *  limitations under the License.
  */
 
-import { searchAndClickOnOption } from '../../common/advancedSearchQuickFilters';
+import {
+  searchAndClickOnOption,
+  selectNullOption,
+} from '../../common/advancedSearchQuickFilters';
 import { interceptURL, verifyResponseStatusCode } from '../../common/common';
 import { goToAdvanceSearch } from '../../common/Utils/AdvancedSearch';
-import { visitEntityDetailsPage } from '../../common/Utils/Entity';
+import { addDomainToEntity } from '../../common/Utils/Domain';
+import {
+  createEntityViaREST,
+  deleteEntityViaREST,
+  visitEntityDetailsPage,
+} from '../../common/Utils/Entity';
+import { getToken } from '../../common/Utils/LocalStorage';
 import { addOwner, removeOwner } from '../../common/Utils/Owner';
-import { QUICK_FILTERS_BY_ASSETS } from '../../constants/advancedSearchQuickFilters.constants';
+import { assignTags, removeTags } from '../../common/Utils/Tags';
+import { addTier, removeTier } from '../../common/Utils/Tier';
+import {
+  FilterItem,
+  QUICK_FILTERS_BY_ASSETS,
+  SUPPORTED_EMPTY_FILTER_FIELDS,
+} from '../../constants/advancedSearchQuickFilters.constants';
 import { SEARCH_ENTITY_TABLE } from '../../constants/constants';
-import { SidebarItem } from '../../constants/Entity.interface';
+import { EntityType, SidebarItem } from '../../constants/Entity.interface';
+import { DOMAIN_QUICK_FILTERS_DETAILS } from '../../constants/EntityConstant';
 const ownerName = 'Aaron Johnson';
+
+const preRequisitesForTests = () => {
+  cy.getAllLocalStorage().then((data) => {
+    const token = getToken(data);
+
+    createEntityViaREST({
+      body: DOMAIN_QUICK_FILTERS_DETAILS,
+      endPoint: EntityType.Domain,
+      token,
+    });
+
+    visitEntityDetailsPage({
+      term: SEARCH_ENTITY_TABLE.table_1.term,
+      entity: SEARCH_ENTITY_TABLE.table_1.entity,
+      serviceName: SEARCH_ENTITY_TABLE.table_1.serviceName,
+    });
+    addDomainToEntity(DOMAIN_QUICK_FILTERS_DETAILS.displayName);
+    addOwner(ownerName);
+    assignTags('PersonalData.Personal', EntityType.Table);
+    addTier('Tier1');
+  });
+};
+
+const postRequisitesForTests = () => {
+  cy.getAllLocalStorage().then((data) => {
+    const token = getToken(data);
+    // Domain 1 to test
+    deleteEntityViaREST({
+      entityName: DOMAIN_QUICK_FILTERS_DETAILS.name,
+      endPoint: EntityType.Domain,
+      token,
+    });
+    visitEntityDetailsPage({
+      term: SEARCH_ENTITY_TABLE.table_1.term,
+      entity: SEARCH_ENTITY_TABLE.table_1.entity,
+      serviceName: SEARCH_ENTITY_TABLE.table_1.serviceName,
+    });
+    removeOwner(ownerName);
+    removeTags('PersonalData.Personal', EntityType.Table);
+    removeTier();
+  });
+};
 
 describe(
   `Advanced search quick filters should work properly for assets`,
@@ -27,25 +85,12 @@ describe(
   () => {
     before(() => {
       cy.login();
-
-      visitEntityDetailsPage({
-        term: SEARCH_ENTITY_TABLE.table_1.term,
-        entity: SEARCH_ENTITY_TABLE.table_1.entity,
-        serviceName: SEARCH_ENTITY_TABLE.table_1.serviceName,
-      });
-
-      addOwner(ownerName);
+      preRequisitesForTests();
     });
 
     after(() => {
       cy.login();
-      visitEntityDetailsPage({
-        term: SEARCH_ENTITY_TABLE.table_1.term,
-        entity: SEARCH_ENTITY_TABLE.table_1.entity,
-        serviceName: SEARCH_ENTITY_TABLE.table_1.serviceName,
-      });
-
-      removeOwner(ownerName);
+      postRequisitesForTests();
     });
 
     beforeEach(() => {
@@ -75,8 +120,8 @@ describe(
       cy.get(`[data-testid="${asset.tab}"]`).scrollIntoView().click();
 
       asset.filters
-        .filter((item) => item.select)
-        .map((filter) => {
+        .filter((item: FilterItem) => item.select)
+        .map((filter: FilterItem) => {
           cy.get(`[data-testid="search-dropdown-${filter.label}"]`).click();
           searchAndClickOnOption(asset, filter, true);
 
@@ -91,6 +136,47 @@ describe(
           cy.get('[data-testid="update-btn"]').click();
 
           verifyResponseStatusCode('@querySearchAPI', 200);
+        });
+    });
+
+    it('should search for empty or null filters', () => {
+      const initialQuery = encodeURI(JSON.stringify({ query: { bool: {} } }));
+      // Table
+      interceptURL(
+        'GET',
+        `/api/v1/search/query?*index=table_search_index&*query_filter=${initialQuery}&*`,
+        'initialQueryAPI'
+      );
+
+      const asset = QUICK_FILTERS_BY_ASSETS[0];
+      cy.sidebarClick(SidebarItem.EXPLORE);
+      verifyResponseStatusCode('@initialQueryAPI', 200);
+      cy.get(`[data-testid="${asset.tab}"]`).scrollIntoView().click();
+      asset.filters
+        .filter((item) => SUPPORTED_EMPTY_FILTER_FIELDS.includes(item.key))
+        .map((filter) => {
+          selectNullOption(asset, filter);
+        });
+    });
+
+    it('should search for multiple values alongwith null filters', () => {
+      const initialQuery = encodeURI(JSON.stringify({ query: { bool: {} } }));
+      // Table
+      interceptURL(
+        'GET',
+        `/api/v1/search/query?*index=table_search_index&*query_filter=${initialQuery}&*`,
+        'initialQueryAPI'
+      );
+
+      const asset = QUICK_FILTERS_BY_ASSETS[0];
+      cy.sidebarClick(SidebarItem.EXPLORE);
+      verifyResponseStatusCode('@initialQueryAPI', 200);
+      cy.get(`[data-testid="${asset.tab}"]`).scrollIntoView().click();
+      // Checking Owner with multiple values
+      asset.filters
+        .filter((item) => SUPPORTED_EMPTY_FILTER_FIELDS.includes(item.key))
+        .map((filter: FilterItem) => {
+          selectNullOption(asset, filter, filter?.selectOptionTestId1);
         });
     });
   }

@@ -23,6 +23,7 @@ import {
   OWNER_QUICK_FILTER_DEFAULT_OPTIONS_KEY,
 } from '../../constants/AdvancedSearch.constants';
 import { TIER_FQN_KEY } from '../../constants/explore.constants';
+import { EntityFields } from '../../enums/AdvancedSearch.enum';
 import { SearchIndex } from '../../enums/search.enum';
 import { QueryFilterInterface } from '../../pages/ExplorePage/ExplorePage.interface';
 import { getAggregateFieldOptions } from '../../rest/miscAPI';
@@ -46,6 +47,7 @@ const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
   aggregations,
   independent = false,
   onFieldValueSelect,
+  fieldsWithNullValues = [],
 }) => {
   const location = useLocation();
   const [options, setOptions] = useState<SearchDropdownOption[]>();
@@ -81,7 +83,6 @@ const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
     key: string
   ) => {
     let buckets: Bucket[] = [];
-
     if (aggregations?.[key] && key !== TIER_FQN_KEY) {
       buckets = aggregations[key].buckets;
     } else {
@@ -182,6 +183,9 @@ const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
   return (
     <Space wrap className="explore-quick-filters-container" size={[4, 0]}>
       {fields.map((field) => {
+        const hasNullOption = fieldsWithNullValues.includes(
+          field.key as EntityFields
+        );
         const selectedKeys =
           field.key === TIER_FQN_KEY && options?.length
             ? field.value?.map((value) => {
@@ -195,6 +199,7 @@ const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
           <SearchDropdown
             highlight
             fixedOrderOptions={field.key === TIER_FQN_KEY}
+            hasNullOption={hasNullOption}
             independent={independent}
             index={index as ExploreSearchIndex}
             isSuggestionsLoading={isOptionsLoading}

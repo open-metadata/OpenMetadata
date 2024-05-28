@@ -1,8 +1,17 @@
-# 1.3.3 Release 🎉
+# 1.3.4 Release 🎉
 
 {% note noteType="Tip" %}
-**2024, April 19th**
+**2024, May 7th**
 {% /note %}
+
+- Fixes reindex issues related to the `changeDescription` payload of some entities
+- Adds Cypress tests to validate reindex app execution
+
+**Full Changelog**: [link](https://github.com/open-metadata/OpenMetadata/compare/1.3.3-release...1.3.4-release)
+
+See below all the amazing features the community shipped in the 1.3 release!
+
+# 1.3.3 Release
 
 - Fix Application installation
 - Fix JWT Filter validation against personal token
@@ -11,8 +20,6 @@
 - Improve App UI preview
 
 **Full Changelog**: [link](https://github.com/open-metadata/OpenMetadata/compare/1.3.2-release...1.3.3-release)
-
-See below all the amazing features the community shipped in the 1.3 release!
 
 # 1.3.2 Release
 
