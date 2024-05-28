@@ -12,6 +12,7 @@ from metadata.generated.schema.entity.services.connections.database.mssqlConnect
     MssqlScheme,
 )
 from metadata.generated.schema.entity.services.databaseService import DatabaseService
+from metadata.ingestion.lineage.sql_lineage import search_cache
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.workflow.metadata import MetadataWorkflow
 
@@ -186,6 +187,7 @@ def run_lineage_workflow(
         },
     }
     metadata_ingestion = MetadataWorkflow.create(workflow_config)
+    search_cache.clear()
     metadata_ingestion.execute()
     metadata_ingestion.raise_from_status()
     metadata_ingestion.stop()
