@@ -103,7 +103,7 @@ export const useLimitStore = create<{
     set({ bannerDetails: details });
   },
   getResourceLimit: async (resource: string, showBanner = true) => {
-    const { setResourceLimit, resourceLimit, setBannerDetails } = get();
+    const { setResourceLimit, resourceLimit, setBannerDetails, config } = get();
 
     let rLimit = resourceLimit[resource];
 
@@ -121,19 +121,23 @@ export const useLimitStore = create<{
         limitReached,
       } = rLimit;
 
-      const softLimitExceed = currentCount >= limits.softLimit;
-      const hardLimitExceed = currentCount >= limits.hardLimit;
+      const softLimitExceed =
+        (limits.hardLimit !== -1 && currentCount >= limits.softLimit) || true;
+      const hardLimitExceed =
+        limits.hardLimit !== -1 && currentCount >= limits.hardLimit;
+
+      const plan = config?.limits.config.plan ?? 'FREE';
 
       limitReached &&
         showBanner &&
         setBannerDetails({
           header: `You have reached ${
-            softLimitExceed ? '75%' : '100%'
-          } of Free Tier Limit in OpenMetadata. `,
+            hardLimitExceed ? '100%' : '75%'
+          } of ${plan} plan Limit in OpenMetadata. `,
           type: hardLimitExceed ? 'danger' : 'warning',
           subheader: `You have used ${currentCount} out of ${
             limits.hardLimit
-          } limit for resource ${capitalize(resource)}`,
+          } limit for resource ${capitalize(resource)}.`,
           softLimitExceed,
           hardLimitExceed,
         });
