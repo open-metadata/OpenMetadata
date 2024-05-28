@@ -106,7 +106,9 @@ def parse_array_fields(
 
 
 def _parse_union_children(
-    parent: Optional[Schema], union_field: UnionSchema, cls: Type[BaseModel] = FieldModel
+    parent: Optional[Schema],
+    union_field: UnionSchema,
+    cls: Type[BaseModel] = FieldModel,
 ) -> Tuple[str, Optional[Union[FieldModel, Column]]]:
     non_null_schema = [
         (i, schema)

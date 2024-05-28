@@ -24,7 +24,6 @@ from typing import List, Optional, Union
 
 import grpc_tools.protoc
 from pydantic import BaseModel
-from pydantic import BaseModel
 
 from metadata.generated.schema.entity.data.table import Column, DataType
 from metadata.generated.schema.type.schema import DataTypeTopic, FieldModel

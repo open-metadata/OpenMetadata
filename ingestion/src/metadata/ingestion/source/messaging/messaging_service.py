@@ -15,7 +15,8 @@ Base class for ingesting messaging services
 from abc import ABC, abstractmethod
 from typing import Any, Iterable, List, Optional, Set
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
+from typing_extensions import Annotated
 
 from metadata.generated.schema.api.data.createTopic import CreateTopicRequest
 from metadata.generated.schema.entity.data.topic import Topic, TopicSampleData
@@ -67,7 +68,9 @@ class MessagingServiceTopology(ServiceTopology):
     data that has been produced by any parent node.
     """
 
-    root = TopologyNode(
+    root: Annotated[
+        TopologyNode, Field(description="Root node for the topology")
+    ] = TopologyNode(
         producer="get_services",
         stages=[
             NodeStage(
@@ -82,7 +85,9 @@ class MessagingServiceTopology(ServiceTopology):
         children=["topic"],
         post_process=["mark_topics_as_deleted"],
     )
-    topic = TopologyNode(
+    topic: Annotated[
+        TopologyNode, Field(description="Topic Processing Node")
+    ] = TopologyNode(
         producer="get_topic",
         stages=[
             NodeStage(

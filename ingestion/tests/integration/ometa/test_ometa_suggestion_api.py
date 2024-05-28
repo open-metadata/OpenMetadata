@@ -25,8 +25,9 @@ from metadata.generated.schema.type.basic import EntityLink
 from metadata.generated.schema.type.tagLabel import (
     LabelType,
     State,
+    TagFQN,
     TagLabel,
-    TagSource, TagFQN,
+    TagSource,
 )
 from metadata.utils.entity_link import get_entity_link
 

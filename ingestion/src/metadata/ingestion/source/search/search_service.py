@@ -14,6 +14,9 @@ Base class for ingesting search index services
 from abc import ABC, abstractmethod
 from typing import Any, Iterable, List, Optional, Set
 
+from pydantic import Field
+from typing_extensions import Annotated
+
 from metadata.generated.schema.api.data.createSearchIndex import (
     CreateSearchIndexRequest,
 )
@@ -63,7 +66,9 @@ class SearchServiceTopology(ServiceTopology):
     data that has been produced by any parent node.
     """
 
-    root = TopologyNode(
+    root: Annotated[
+        TopologyNode, Field(description="Root node for the topology")
+    ] = TopologyNode(
         producer="get_services",
         stages=[
             NodeStage(
@@ -78,7 +83,9 @@ class SearchServiceTopology(ServiceTopology):
         children=["search_index"],
         post_process=["mark_search_indexes_as_deleted"],
     )
-    search_index = TopologyNode(
+    search_index: Annotated[
+        TopologyNode, Field(description="Search Index Processing Node")
+    ] = TopologyNode(
         producer="get_search_index",
         stages=[
             NodeStage(

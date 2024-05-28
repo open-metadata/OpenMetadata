@@ -16,7 +16,7 @@ import threading
 from functools import singledispatchmethod
 from typing import Any, Dict, Generic, List, Optional, Type, TypeVar
 
-from pydantic import BaseModel, Extra, Field, create_model
+from pydantic import BaseModel, ConfigDict, Extra, Field, create_model
 
 from metadata.generated.schema.api.data.createStoredProcedure import (
     CreateStoredProcedureRequest,
@@ -128,8 +128,7 @@ class ServiceTopology(BaseModel):
     Bounds all service topologies
     """
 
-    class Config:
-        extra = Extra.allow
+    model_config = ConfigDict(extra="allow")
 
 
 class TopologyContext(BaseModel):
@@ -137,8 +136,7 @@ class TopologyContext(BaseModel):
     Bounds all topology contexts
     """
 
-    class Config:
-        extra = Extra.allow
+    model_config = ConfigDict(extra="allow")
 
     def __repr__(self):
         ctx = {key: value.name.root for key, value in self.__dict__.items()}

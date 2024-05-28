@@ -39,15 +39,17 @@ from metadata.generated.schema.entity.data.query import Query
 from metadata.generated.schema.entity.data.table import (
     Column,
     ColumnJoins,
+    ColumnName,
     ColumnProfile,
     DataType,
+    DmlOperationType,
     JoinedWith,
     SystemProfile,
     Table,
     TableData,
     TableJoins,
     TableProfile,
-    TableProfilerConfig, DmlOperationType, ColumnName,
+    TableProfilerConfig,
 )
 from metadata.generated.schema.entity.services.connections.database.common.basicAuth import (
     BasicAuth,
@@ -61,7 +63,13 @@ from metadata.generated.schema.entity.services.databaseService import (
     DatabaseServiceType,
 )
 from metadata.generated.schema.entity.teams.user import User
-from metadata.generated.schema.type.basic import FullyQualifiedEntityName, SqlQuery, Timestamp, EntityName, Date
+from metadata.generated.schema.type.basic import (
+    Date,
+    EntityName,
+    FullyQualifiedEntityName,
+    SqlQuery,
+    Timestamp,
+)
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.type.usageRequest import UsageRequest
 from metadata.ingestion.ometa.client import REST
@@ -375,18 +383,24 @@ class OMetaTableTest(TestCase):
                 mean=1.5,
                 sum=2,
                 stddev=None,
-                timestamp=Timestamp(root=int(datetime.now(tz=timezone.utc).timestamp())),
+                timestamp=Timestamp(
+                    root=int(datetime.now(tz=timezone.utc).timestamp())
+                ),
             )
         ]
 
         system_profile = [
             SystemProfile(
-                timestamp=Timestamp(root=int(datetime.now(tz=timezone.utc).timestamp())),
+                timestamp=Timestamp(
+                    root=int(datetime.now(tz=timezone.utc).timestamp())
+                ),
                 operation=DmlOperationType.INSERT,
                 rowsAffected=11,
             ),
             SystemProfile(
-                timestamp=Timestamp(root=int(datetime.now(tz=timezone.utc).timestamp()) + 1),
+                timestamp=Timestamp(
+                    root=int(datetime.now(tz=timezone.utc).timestamp()) + 1
+                ),
                 operation=DmlOperationType.UPDATE,
                 rowsAffected=110,
             ),
@@ -439,7 +453,9 @@ class OMetaTableTest(TestCase):
         column_join_table_req = CreateTableRequest(
             name=EntityName(root="another-test"),
             databaseSchema=self.create_schema_entity.fullyQualifiedName,
-            columns=[Column(name=ColumnName(root="another_id"), dataType=DataType.BIGINT)],
+            columns=[
+                Column(name=ColumnName(root="another_id"), dataType=DataType.BIGINT)
+            ],
         )
         column_join_table_res = self.metadata.create_or_update(column_join_table_req)
 

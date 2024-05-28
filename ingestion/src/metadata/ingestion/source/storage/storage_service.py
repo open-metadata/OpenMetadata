@@ -14,6 +14,9 @@ Base class for ingesting Object Storage services
 from abc import ABC, abstractmethod
 from typing import Any, Iterable, List, Optional, Set
 
+from pydantic import Field
+from typing_extensions import Annotated
+
 from metadata.generated.schema.api.data.createContainer import CreateContainerRequest
 from metadata.generated.schema.entity.data.container import Container
 from metadata.generated.schema.entity.services.storageService import (
@@ -68,7 +71,14 @@ OPENMETADATA_TEMPLATE_FILE_NAME = "openmetadata.json"
 
 
 class StorageServiceTopology(ServiceTopology):
-    root = TopologyNode(
+    """
+    Defines the hierarchy in Messaging Services.
+    service -> container -> container -> container...
+    """
+
+    root: Annotated[
+        TopologyNode, Field(description="Root node for the topology")
+    ] = TopologyNode(
         producer="get_services",
         stages=[
             NodeStage(
@@ -84,7 +94,9 @@ class StorageServiceTopology(ServiceTopology):
         post_process=["mark_containers_as_deleted"],
     )
 
-    container = TopologyNode(
+    container: Annotated[
+        TopologyNode, Field(description="Container Processing Node")
+    ] = TopologyNode(
         producer="get_containers",
         stages=[
             NodeStage(

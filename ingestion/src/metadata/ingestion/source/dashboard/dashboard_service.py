@@ -15,7 +15,8 @@ import traceback
 from abc import ABC, abstractmethod
 from typing import Any, Iterable, List, Optional, Set, Union
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
+from typing_extensions import Annotated
 
 from metadata.generated.schema.api.data.createChart import CreateChartRequest
 from metadata.generated.schema.api.data.createDashboard import CreateDashboardRequest
@@ -96,7 +97,9 @@ class DashboardServiceTopology(ServiceTopology):
     data that has been produced by any parent node.
     """
 
-    root = TopologyNode(
+    root: Annotated[
+        TopologyNode, Field(description="Root node for the topology")
+    ] = TopologyNode(
         producer="get_services",
         stages=[
             NodeStage(
@@ -122,7 +125,9 @@ class DashboardServiceTopology(ServiceTopology):
     # handles them as independent entities.
     # When configuring a new source, we will either implement
     # the yield_bulk_datamodel or yield_datamodel functions.
-    bulk_data_model = TopologyNode(
+    bulk_data_model: Annotated[
+        TopologyNode, Field(description="Write data models in bulk")
+    ] = TopologyNode(
         producer="list_datamodels",
         stages=[
             NodeStage(
@@ -134,7 +139,9 @@ class DashboardServiceTopology(ServiceTopology):
             )
         ],
     )
-    dashboard = TopologyNode(
+    dashboard: Annotated[
+        TopologyNode, Field(description="Process dashboards")
+    ] = TopologyNode(
         producer="get_dashboard",
         stages=[
             NodeStage(

@@ -14,6 +14,9 @@ Base class for ingesting database services
 from abc import ABC, abstractmethod
 from typing import Any, Iterable, List, Optional, Set
 
+from pydantic import Field
+from typing_extensions import Annotated
+
 from metadata.generated.schema.api.data.createPipeline import CreatePipelineRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.entity.data.pipeline import Pipeline
@@ -57,7 +60,9 @@ class PipelineServiceTopology(ServiceTopology):
     data that has been produced by any parent node.
     """
 
-    root = TopologyNode(
+    root: Annotated[
+        TopologyNode, Field(description="Root node for the topology")
+    ] = TopologyNode(
         producer="get_services",
         stages=[
             NodeStage(
@@ -72,7 +77,9 @@ class PipelineServiceTopology(ServiceTopology):
         children=["pipeline"],
         post_process=["mark_pipelines_as_deleted"],
     )
-    pipeline = TopologyNode(
+    pipeline: Annotated[
+        TopologyNode, Field(description="Processing Pipelines Node")
+    ] = TopologyNode(
         producer="get_pipeline",
         stages=[
             NodeStage(

@@ -14,6 +14,9 @@ Base class for ingesting mlmodel services
 from abc import ABC, abstractmethod
 from typing import Any, Iterable, List, Optional, Set
 
+from pydantic import Field
+from typing_extensions import Annotated
+
 from metadata.generated.schema.api.data.createMlModel import CreateMlModelRequest
 from metadata.generated.schema.entity.data.mlmodel import (
     MlFeature,
@@ -59,7 +62,9 @@ class MlModelServiceTopology(ServiceTopology):
     data that has been produced by any parent node.
     """
 
-    root = TopologyNode(
+    root: Annotated[
+        TopologyNode, Field(description="Root node for the topology")
+    ] = TopologyNode(
         producer="get_services",
         stages=[
             NodeStage(
@@ -74,7 +79,9 @@ class MlModelServiceTopology(ServiceTopology):
         children=["mlmodel"],
         post_process=["mark_mlmodels_as_deleted"],
     )
-    mlmodel = TopologyNode(
+    mlmodel: Annotated[
+        TopologyNode, Field(description="ML Model Processing Node")
+    ] = TopologyNode(
         producer="get_mlmodels",
         stages=[
             NodeStage(

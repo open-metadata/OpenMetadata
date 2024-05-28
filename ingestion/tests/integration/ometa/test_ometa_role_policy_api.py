@@ -35,7 +35,13 @@ from metadata.generated.schema.entity.teams.user import User
 from metadata.generated.schema.security.client.openMetadataJWTClientConfig import (
     OpenMetadataJWTClientConfig,
 )
-from metadata.generated.schema.type.basic import Expression, Markdown, FullyQualifiedEntityName, Uuid, EntityName
+from metadata.generated.schema.type.basic import (
+    EntityName,
+    Expression,
+    FullyQualifiedEntityName,
+    Markdown,
+    Uuid,
+)
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.type.entityReferenceList import EntityReferenceList
 from metadata.ingestion.ometa.mixins.patch_mixin_utils import PatchOperation
@@ -138,29 +144,35 @@ class OMetaRolePolicyTest(TestCase):
             name=EntityName(root="test-policy-1"),
             fullyQualifiedName=EntityName(root="test-policy-1"),
             description=Markdown(root="Description of test policy 1"),
-            rules=Rules(root=[
-                cls.rule_1,
-                cls.rule_2,
-            ]),
+            rules=Rules(
+                root=[
+                    cls.rule_1,
+                    cls.rule_2,
+                ]
+            ),
         )
 
         cls.create_policy = CreatePolicyRequest(
             name=EntityName(root="test-policy-1"),
             description=Markdown(root="Description of test policy 1"),
-            rules=Rules(root=[
-                cls.rule_1,
-                cls.rule_2,
-            ]),
+            rules=Rules(
+                root=[
+                    cls.rule_1,
+                    cls.rule_2,
+                ]
+            ),
         )
 
         cls.role_policy_1 = cls.metadata.create_or_update(
             CreatePolicyRequest(
                 name=EntityName(root="test-role-policy-1"),
                 description=Markdown(root="Description of test role policy 1"),
-                rules=Rules(root=[
-                    cls.rule_1,
-                    cls.rule_2,
-                ]),
+                rules=Rules(
+                    root=[
+                        cls.rule_1,
+                        cls.rule_2,
+                    ]
+                ),
             )
         )
 
@@ -168,9 +180,11 @@ class OMetaRolePolicyTest(TestCase):
             data=CreatePolicyRequest(
                 name=EntityName(root="test-role-policy-2"),
                 description=Markdown(root="Description of test role policy 2"),
-                rules=Rules(root=[
-                    cls.rule_1,
-                ]),
+                rules=Rules(
+                    root=[
+                        cls.rule_1,
+                    ]
+                ),
             )
         )
 
@@ -178,9 +192,11 @@ class OMetaRolePolicyTest(TestCase):
             id=Uuid(root=uuid.uuid4()),
             name=EntityName(root="test-role"),
             fullyQualifiedName=FullyQualifiedEntityName(root="test-role"),
-            policies=EntityReferenceList(root=[
-                EntityReference(id=cls.role_policy_1.id, type="policy"),
-            ]),
+            policies=EntityReferenceList(
+                root=[
+                    EntityReference(id=cls.role_policy_1.id, type="policy"),
+                ]
+            ),
         )
 
         cls.create_role = CreateRoleRequest(

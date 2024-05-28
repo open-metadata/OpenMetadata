@@ -24,7 +24,6 @@ from pydantic import BaseModel, PlainSerializer
 from pydantic.types import SecretStr
 from typing_extensions import Annotated
 
-
 logger = logging.getLogger("metadata")
 
 SECRET = "secret:"
@@ -83,4 +82,6 @@ def ignore_type_decoder(type_: Any) -> None:
     """Given a type_, add a custom decoder to the BaseModel
     to ignore any decoding errors for that type_."""
     # We don't import the constants from the constants module to avoid circular imports
-    BaseModel.model_config[JSON_ENCODERS][type_] = {lambda v: v.decode("utf-8", "ignore")}
+    BaseModel.model_config[JSON_ENCODERS][type_] = {
+        lambda v: v.decode("utf-8", "ignore")
+    }
