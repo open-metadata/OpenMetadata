@@ -1029,29 +1029,35 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
     });
   };
 
-  const repositionLayout = useCallback(() => {
-    const isColView = activeLayer.includes(LineageLayerView.COLUMN);
-    const { node, edge } = getLayoutedElements(
-      {
-        node: nodes,
-        edge: edges,
-      },
-      EntityLineageDirection.LEFT_RIGHT,
-      isColView
-    );
+  const repositionLayout = useCallback(
+    (activateNode = false) => {
+      const isColView = activeLayer.includes(LineageLayerView.COLUMN);
+      const { node, edge } = getLayoutedElements(
+        {
+          node: nodes,
+          edge: edges,
+        },
+        EntityLineageDirection.LEFT_RIGHT,
+        isColView
+      );
 
-    setNodes(node);
-    setEdges(edge);
+      setNodes(node);
+      setEdges(edge);
 
-    const rootNode = node.find((n) => n.data.isRootNode);
-    if (rootNode) {
-      const { position } = rootNode;
-      reactFlowInstance?.setCenter(position.x, position.y, {
-        zoom: ZOOM_VALUE,
-        duration: ZOOM_TRANSITION_DURATION,
-      });
-    }
-  }, [reactFlowInstance, activeLayer, nodes, edges]);
+      const rootNode = node.find((n) => n.data.isRootNode);
+      if (rootNode) {
+        const { position } = rootNode;
+        reactFlowInstance?.setCenter(position.x, position.y, {
+          zoom: ZOOM_VALUE,
+          duration: ZOOM_TRANSITION_DURATION,
+        });
+        if (activateNode) {
+          onNodeClick(rootNode);
+        }
+      }
+    },
+    [reactFlowInstance, activeLayer, nodes, edges, onNodeClick]
+  );
 
   const redrawLineage = useCallback(
     (lineageData: EntityLineageResponse) => {
@@ -1150,7 +1156,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
   useEffect(() => {
     if (reactFlowInstance?.viewportInitialized) {
       onLoad(reactFlowInstance);
-      repositionLayout();
+      repositionLayout(true); // Activate the root node
     }
   }, [reactFlowInstance?.viewportInitialized]);
 
