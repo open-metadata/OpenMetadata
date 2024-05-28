@@ -63,6 +63,10 @@ describe('Database hierarchy details page', { tags: 'DataAssets' }, () => {
         entity.visitEntity();
       });
 
+      afterEach(() => {
+        cy.logout();
+      });
+
       it(`Domain assign, update & delete`, () => {
         entity.assignDomain();
         entity.updateDomain();
