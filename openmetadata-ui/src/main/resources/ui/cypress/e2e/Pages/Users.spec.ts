@@ -16,35 +16,37 @@ import UsersTestClass from '../../common/Entities/UserClass';
 import { visitEntityDetailsPage } from '../../common/Utils/Entity';
 import { getToken } from '../../common/Utils/LocalStorage';
 import {
-    addOwner,
-    generateRandomUser,
-    removeOwner
+  addOwner,
+  generateRandomUser,
+  removeOwner,
 } from '../../common/Utils/Owner';
 import {
-    cleanupPolicies,
-    createRoleViaREST,
-    DATA_CONSUMER_ROLE,
-    DATA_STEWARD_ROLE
+  cleanupPolicies,
+  createRoleViaREST,
+  DATA_CONSUMER_ROLE,
+  DATA_STEWARD_ROLE,
 } from '../../common/Utils/Policy';
 import {
-    addUser,
-    editRole,
-    generateToken,
-    resetPassword,
-    revokeToken,
-    updateDetails,
-    updateExpiration
+  addUser,
+  editRole,
+  generateToken,
+  resetPassword,
+  revokeToken,
+  updateDetails,
+  updateExpiration,
 } from '../../common/Utils/Users';
 import {
-    BASE_URL,
-    DELETE_ENTITY,
-    GLOBAL_SETTING_PERMISSIONS,
-    ID,
-    uuid
+  BASE_URL,
+  DELETE_ENTITY,
+  GLOBAL_SETTING_PERMISSIONS,
+  ID,
+  uuid,
 } from '../../constants/constants';
 import { EntityType, SidebarItem } from '../../constants/Entity.interface';
 import {
-    GlobalSettingOptions, SETTINGS_OPTIONS_PATH, SETTING_CUSTOM_PROPERTIES_PATH
+  GlobalSettingOptions,
+  SETTING_CUSTOM_PROPERTIES_PATH,
+  SETTINGS_OPTIONS_PATH,
 } from '../../constants/settings.constant';
 
 const entity = new UsersTestClass();
