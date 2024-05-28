@@ -215,20 +215,10 @@ On this connector we can see two different definitions:
       "description": "Database Schema of the data source. This is optional parameter, if you would like to restrict the metadata reading to a single schema. When left blank, OpenMetadata Ingestion attempts to scan all the schemas.",
       "type": "string"
     },
-    "sslCA": {
-      "title": "SSL CA",
-      "description": "Provide the path to ssl ca file",
-      "type": "string"
-    },
-    "sslCert": {
-      "title": "SSL Client Certificate File",
-      "description": "Provide the path to ssl client certificate file (ssl_cert)",
-      "type": "string"
-    },
-    "sslKey": {
-      "title": "SSL Client Key File",
-      "description": "Provide the path to ssl client certificate file (ssl_key)",
-      "type": "string"
+    "sslConfig": {
+      "title": "SSL",
+      "description": "SSL Configuration details.",
+      "$ref": "../../../../security/ssl/verifySSLConfig.json#/definitions/sslConfig"
     },
     "connectionOptions": {
       "title": "Connection Options",

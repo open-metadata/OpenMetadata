@@ -115,7 +115,9 @@ from metadata.generated.schema.entity.services.connections.pipeline.openLineageC
     SecurityProtocol as KafkaSecurityProtocol,
     ConsumerOffsets
 )
-
+from metadata.generated.schema.security.ssl.validateSSLClientConfig import (
+    ValidateSslClientConfig,
+)
 
 openlineage_service_request = CreatePipelineServiceRequest(
     name='openlineage-service',
@@ -131,9 +133,77 @@ openlineage_service_request = CreatePipelineServiceRequest(
             sessionTimeout=60,
             securityProtocol=KafkaSecurityProtocol.SSL,
             # below ssl confing in optional and used only when securityProtocol=KafkaSecurityProtocol.SSL
-            SSLCertificateLocation='/path/to/kafka/certs/Certificate.pem',
-            SSLKeyLocation='/path/to/kafka/certs/Key.pem',
-            SSLCALocation='/path/to/kafka/certs/RootCA.pem',
+            sslConfig=ValidateSslClientConfig(
+                sslCertificate='/path/to/kafka/certs/Certificate.pem',
+                sslKey='/path/to/kafka/certs/Key.pem',
+                caCertificate='/path/to/kafka/certs/RootCA.pem'
+                )
+        )
+    ),
+)
+
+metadata.create_or_update(openlineage_service_request)
+
+
+```
+###### 1. Preparing the Client
+
+```python
+from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
+    OpenMetadataConnection,
+)
+from metadata.generated.schema.security.client.openMetadataJWTClientConfig import (
+    OpenMetadataJWTClientConfig,
+)
+from metadata.ingestion.ometa.ometa_api import OpenMetadata
+
+server_config = OpenMetadataConnection(
+    hostPort="http://localhost:8585/api",
+    authProvider="openmetadata",
+    securityConfig=OpenMetadataJWTClientConfig(
+        jwtToken="<token>"
+    ),
+)
+metadata = OpenMetadata(server_config)
+
+assert metadata.health_check()  # Will fail if we cannot reach the server
+```
+###### 2. Creating the OpenLineage Pipeline service
+```python
+
+from metadata.generated.schema.api.services.createPipelineService import  CreatePipelineServiceRequest
+from metadata.generated.schema.entity.services.pipelineService import (
+    PipelineServiceType,
+    PipelineConnection,
+)
+from metadata.generated.schema.entity.services.connections.pipeline.openLineageConnection import (
+    OpenLineageConnection,
+    SecurityProtocol as KafkaSecurityProtocol,
+    ConsumerOffsets
+)
+from metadata.generated.schema.security.ssl.validateSSLClientConfig import (
+    ValidateSslClientConfig,
+)
+
+openlineage_service_request = CreatePipelineServiceRequest(
+    name='openlineage-service',
+    displayName='OpenLineage Service',
+    serviceType=PipelineServiceType.OpenLineage,
+    connection=PipelineConnection(
+        config=OpenLineageConnection(
+            brokersUrl='broker1:9092,broker2:9092',
+            topicName='openlineage-events',
+            consumerGroupName='openmetadata-consumer',
+            consumerOffsets=ConsumerOffsets.earliest,
+            poolTimeout=3.0,
+            sessionTimeout=60,
+            securityProtocol=KafkaSecurityProtocol.SSL,
+            # below ssl confing in optional and used only when securityProtocol=KafkaSecurityProtocol.SSL
+            sslConfig=ValidateSslClientConfig(
+                sslCertificate='/path/to/kafka/certs/Certificate.pem',
+                sslKey='/path/to/kafka/certs/Key.pem',
+                caCertificate='/path/to/kafka/certs/RootCA.pem'
+                )
         )
     ),
 )
@@ -193,71 +263,11 @@ openlineage_service_request = CreatePipelineServiceRequest(
             sessionTimeout=60,
             securityProtocol=KafkaSecurityProtocol.SSL,
             # below ssl confing in optional and used only when securityProtocol=KafkaSecurityProtocol.SSL
-            SSLCertificateLocation='/path/to/kafka/certs/Certificate.pem',
-            SSLKeyLocation='/path/to/kafka/certs/Key.pem',
-            SSLCALocation='/path/to/kafka/certs/RootCA.pem',
-        )
-    ),
-)
-
-metadata.create_or_update(openlineage_service_request)
-
-
-```
-###### 1. Preparing the Client
-
-```python
-from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
-    OpenMetadataConnection,
-)
-from metadata.generated.schema.security.client.openMetadataJWTClientConfig import (
-    OpenMetadataJWTClientConfig,
-)
-from metadata.ingestion.ometa.ometa_api import OpenMetadata
-
-server_config = OpenMetadataConnection(
-    hostPort="http://localhost:8585/api",
-    authProvider="openmetadata",
-    securityConfig=OpenMetadataJWTClientConfig(
-        jwtToken="<token>"
-    ),
-)
-metadata = OpenMetadata(server_config)
-
-assert metadata.health_check()  # Will fail if we cannot reach the server
-```
-###### 2. Creating the OpenLineage Pipeline service
-```python
-
-from metadata.generated.schema.api.services.createPipelineService import  CreatePipelineServiceRequest
-from metadata.generated.schema.entity.services.pipelineService import (
-    PipelineServiceType,
-    PipelineConnection,
-)
-from metadata.generated.schema.entity.services.connections.pipeline.openLineageConnection import (
-    OpenLineageConnection,
-    SecurityProtocol as KafkaSecurityProtocol,
-    ConsumerOffsets
-)
-
-
-openlineage_service_request = CreatePipelineServiceRequest(
-    name='openlineage-service',
-    displayName='OpenLineage Service',
-    serviceType=PipelineServiceType.OpenLineage,
-    connection=PipelineConnection(
-        config=OpenLineageConnection(
-            brokersUrl='broker1:9092,broker2:9092',
-            topicName='openlineage-events',
-            consumerGroupName='openmetadata-consumer',
-            consumerOffsets=ConsumerOffsets.earliest,
-            poolTimeout=3.0,
-            sessionTimeout=60,
-            securityProtocol=KafkaSecurityProtocol.SSL,
-            # below ssl confing in optional and used only when securityProtocol=KafkaSecurityProtocol.SSL
-            SSLCertificateLocation='/path/to/kafka/certs/Certificate.pem',
-            SSLKeyLocation='/path/to/kafka/certs/Key.pem',
-            SSLCALocation='/path/to/kafka/certs/RootCA.pem',
+            sslConfig=ValidateSslClientConfig(
+                sslCertificate='/path/to/kafka/certs/Certificate.pem',
+                sslKey='/path/to/kafka/certs/Key.pem',
+                caCertificate='/path/to/kafka/certs/RootCA.pem'
+                )
         )
     ),
 )

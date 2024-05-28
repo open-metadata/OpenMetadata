@@ -130,6 +130,25 @@ This is a sample config for Redshift:
 
 {% /codeInfoContainer %}
 
+
+{% codeInfo srNumber=9 %}
+
+The sslConfig and sslMode are used to configure the SSL (Secure Sockets Layer) connection between your application and the Redshift server. Redshift will require only rootCertificate i.e caCertificate.
+
+**caCertificate**: This is the path to the CA (Certificate Authority) certificate file. This file is used to verify the server’s certificate.
+
+**sslMode**: This field controls whether a secure SSL/TLS connection will be negotiated with the server. There are several modes you can choose:
+
+disable: No SSL/TLS encryption will be used; the data sent over the network is not encrypted.
+allow: The driver will try to negotiate a non-SSL connection but if the server insists on SSL, it will switch to SSL.
+prefer (the default): The driver will try to negotiate an SSL connection but if the server does not support SSL, it will switch to a non-SSL connection.
+require: The driver will try to negotiate an SSL connection. If the server does not support SSL, the driver will not fall back to a non-SSL connection.
+verify-ca: The driver will negotiate an SSL connection and verify that the server certificate is issued by a trusted certificate authority (CA).
+verify-full: The driver will negotiate an SSL connection, verify that the server certificate is issued by a trusted CA and check that the server host name matches the one in the certificate.
+
+
+{% /codeInfo %}
+
 {% codeBlock fileName="filename.yaml" %}
 
 ```yaml
@@ -154,6 +173,11 @@ source:
 ```
 ```yaml {% srNumber=5 %}
       # ingestAllDatabases: true
+```
+```yaml {% srNumber=9 %}
+      # sslConfig:
+            # caCertificate: "path/to/ca/certificate"
+      # sslMode: disable #allow prefer require verify-ca verify-full
 ```
 ```yaml {% srNumber=6 %}
       # connectionOptions:
