@@ -55,6 +55,7 @@ VERSIONS = {
     "elasticsearch8": "elasticsearch8~=8.9.0",
     "giturlparse": "giturlparse",
     "validators": "validators~=0.22.0",
+    "teradata": "teradatasqlalchemy>=20.0.0.0",
 }
 
 COMMONS = {
@@ -266,6 +267,7 @@ plugins: Dict[str, Set[str]] = {
     "snowflake": {VERSIONS["snowflake"]},
     "superset": {},  # uses requests
     "tableau": {VERSIONS["tableau"], VERSIONS["validators"], VERSIONS["packaging"]},
+    "teradata": {VERSIONS["teradata"]},
     "trino": {VERSIONS["trino"]},
     "vertica": {"sqlalchemy-vertica[vertica-python]>=0.0.5"},
     "pii-processor": {
