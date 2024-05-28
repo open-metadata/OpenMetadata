@@ -1,6 +1,7 @@
 import sys
 
 import pytest
+
 from metadata.generated.schema.entity.data.table import Constraint, Table
 
 if not sys.version_info >= (3, 9):

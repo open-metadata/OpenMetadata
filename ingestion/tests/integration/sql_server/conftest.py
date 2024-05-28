@@ -3,19 +3,17 @@ import os
 import shutil
 
 import pytest
-from sqlalchemy import create_engine, text
-
 from helpers.docker import try_bind
 from helpers.markers import xfail_param
+from sqlalchemy import create_engine, text
+from testcontainers.mssql import SqlServerContainer
+
 from metadata.generated.schema.entity.services.connections.database.mssqlConnection import (
     MssqlScheme,
 )
 from metadata.generated.schema.entity.services.databaseService import DatabaseService
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.workflow.metadata import MetadataWorkflow
-from testcontainers.mssql import SqlServerContainer
-
-from metadata.cli.lineage import LineageWorkflow
 
 
 @pytest.fixture(scope="session", autouse=True)
@@ -82,7 +80,13 @@ GO
 
 @pytest.fixture(
     scope="module",
-    params=["english", xfail_param("german", "failes due to date format handling")],
+    params=[
+        "english",
+        xfail_param(
+            "german",
+            "failes due to date format handling (https://github.com/open-metadata/OpenMetadata/issues/16434)",
+        ),
+    ],
 )
 def mssql_server_config(mssql_container, request):
     language = request.param
@@ -99,7 +103,10 @@ def mssql_server_config(mssql_container, request):
     scope="module",
     params=[
         MssqlScheme.mssql_pytds,
-        xfail_param(MssqlScheme.mssql_pyodbc, "fails with mssql (https://github.com/open-metadata/OpenMetadata/issues/16434)"),
+        xfail_param(
+            MssqlScheme.mssql_pyodbc,
+            "sql server fails with pyodbc (https://github.com/open-metadata/OpenMetadata/issues/16435)",
+        ),
     ],
 )
 def ingest_metadata(
