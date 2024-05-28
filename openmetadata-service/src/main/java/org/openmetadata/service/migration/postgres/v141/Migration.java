@@ -14,6 +14,6 @@ public class Migration extends MigrationProcessImpl {
   @Override
   @SneakyThrows
   public void runDataMigration() {
-    migrateAnnouncementsTimeFormat(handle);
+    migrateAnnouncementsTimeFormat(handle, true);
   }
 }

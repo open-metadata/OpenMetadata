@@ -14,7 +14,7 @@ import org.openmetadata.service.util.JsonUtils;
 public class MigrationUtil {
   private static final long MAX_SECONDS_TIMESTAMP = 2147483647L;
 
-  public static void migrateAnnouncementsTimeFormat(Handle handle) {
+  public static void migrateAnnouncementsTimeFormat(Handle handle, boolean postgresDbFlag) {
     // Fetch all threads of type Announcement from the database
     List<Thread> threads = fetchAnnouncementThreads(handle);
 
@@ -54,13 +54,18 @@ public class MigrationUtil {
 
           // If we made any updates, persist the changes back to the database
           if (updated) {
-            updateThread(handle, thread);
+            if (postgresDbFlag) {
+              updateThreadPostgres(handle, thread);
+            } else {
+              updateThreadMySql(handle, thread);
+            }
           }
         });
   }
 
   private static List<Thread> fetchAnnouncementThreads(Handle handle) {
     String query = "SELECT json FROM thread_entity WHERE type = 'Announcement'";
+
     return handle
         .createQuery(query)
         .map((rs, ctx) -> JsonUtils.readValue(rs.getString("json"), Thread.class))
@@ -71,8 +76,17 @@ public class MigrationUtil {
     return timestamp != null && timestamp <= MAX_SECONDS_TIMESTAMP;
   }
 
-  private static void updateThread(Handle handle, Thread thread) {
+  private static void updateThreadMySql(Handle handle, Thread thread) {
     String updateQuery = "UPDATE thread_entity SET json = :json WHERE id = :id";
+    handle
+        .createUpdate(updateQuery)
+        .bind("json", JsonUtils.pojoToJson(thread))
+        .bind("id", thread.getId().toString())
+        .execute();
+  }
+
+  private static void updateThreadPostgres(Handle handle, Thread thread) {
+    String updateQuery = "UPDATE thread_entity SET json = CAST(:json AS jsonb) WHERE id = :id";
     handle
         .createUpdate(updateQuery)
         .bind("json", JsonUtils.pojoToJson(thread))
