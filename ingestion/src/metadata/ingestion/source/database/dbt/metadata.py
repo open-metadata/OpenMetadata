@@ -339,12 +339,15 @@ class DbtSource(DbtServiceSource):
                 )
             for key, manifest_node in manifest_entities.items():
                 try:
-                    resource_type = getattr(manifest_node.resource_type, "value", manifest_node.resource_type)
+                    resource_type = getattr(
+                        manifest_node.resource_type,
+                        "value",
+                        manifest_node.resource_type,
+                    )
                     # If the run_results file is passed then only DBT tests will be processed
                     if (
                         dbt_objects.dbt_run_results
-                        and resource_type
-                        == SkipResourceTypeEnum.TEST.value
+                        and resource_type == SkipResourceTypeEnum.TEST.value
                     ):
                         # Test nodes will be processed further in the topology
                         self.add_dbt_tests(
@@ -361,9 +364,7 @@ class DbtSource(DbtServiceSource):
                         continue
 
                     # Skip the analysis and test nodes
-                    if resource_type in [
-                        item.value for item in SkipResourceTypeEnum
-                    ]:
+                    if resource_type in [item.value for item in SkipResourceTypeEnum]:
                         logger.debug(f"Skipping DBT node: {key}.")
                         continue
 
