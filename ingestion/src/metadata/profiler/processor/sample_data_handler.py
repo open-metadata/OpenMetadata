@@ -17,14 +17,13 @@ from datetime import datetime
 from functools import singledispatch
 from io import BytesIO
 
-from pydantic.json import ENCODERS_BY_TYPE
-
 from metadata.clients.aws_client import AWSClient
 from metadata.generated.schema.entity.data.table import Table, TableData
 from metadata.generated.schema.entity.services.connections.connectionBasicType import (
     DataStorageConfig,
 )
 from metadata.generated.schema.security.credentials.awsCredentials import AWSCredentials
+from metadata.ingestion.models.custom_pydantic import ignore_type_decoder
 from metadata.profiler.interface.profiler_interface import ProfilerInterface
 from metadata.utils.helpers import clean_uri
 from metadata.utils.logger import profiler_logger
@@ -83,7 +82,8 @@ def upload_sample_data(data: TableData, profiler_interface: ProfilerInterface) -
         sample_storage_config: DataStorageConfig = profiler_interface.storage_config
         if not sample_storage_config:
             return
-        ENCODERS_BY_TYPE[bytes] = lambda v: v.decode("utf-8", "ignore")
+        # Ignore any decoding error for byte data
+        ignore_type_decoder(bytes)
         deserialized_data = json.loads(data.json())
         df = pd.DataFrame(
             data=deserialized_data.get("rows", []),
