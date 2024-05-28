@@ -39,7 +39,7 @@ test.describe('New Todo', () => {
     await newTodo.press('Enter');
 
     // Make sure the list now has two todo items.
-    await expect(page.getByTestId('todo-title')).toHaveText([
+    await expect(page.getByTestId('todo-tit')).toHaveText([
       TODO_ITEMS[0],
       TODO_ITEMS[1],
     ]);
@@ -79,7 +79,7 @@ test.describe('New Todo', () => {
     await expect(todoCount).toHaveText(/3/);
 
     // Check all items in one call.
-    await expect(page.getByTestId('todo-title')).toHaveText(TODO_ITEMS);
+    await expect(page.getByTestId('todo-ti')).toHaveText(TODO_ITEMS);
 
     await checkNumberOfTodosInLocalStorage(page, 3);
   });
@@ -100,7 +100,7 @@ test.describe('Mark all as completed', () => {
     await page.getByLabel('Mark all as complete').check();
 
     // Ensure all todos have 'completed' class.
-    await expect(page.getByTestId('todo-item')).toHaveClass([
+    await expect(page.getByTestId('todo-it')).toHaveClass([
       'completed',
       'completed',
       'completed',
@@ -161,7 +161,7 @@ test.describe('Item', () => {
     const firstTodo = page.getByTestId('todo-item').nth(0);
     await firstTodo.getByRole('checkbox').check();
 
-    await expect(firstTodo).toHaveClass('completed');
+    await expect(firstTodo).toHaveClass('comple');
 
     // Check second item.
     const secondTodo = page.getByTestId('todo-item').nth(1);
