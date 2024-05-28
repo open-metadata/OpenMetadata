@@ -1,4 +1,3 @@
-import logging
 import sys
 
 import pytest
@@ -36,6 +35,8 @@ from metadata.generated.schema.metadataIngestion.workflow import (
     SourceConfig,
     WorkflowConfig,
 )
+from metadata.ingestion.lineage.sql_lineage import search_cache
+from metadata.ingestion.ometa.client import APIError
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.profiler.api.models import ProfilerProcessorConfig
 from metadata.workflow.metadata import MetadataWorkflow
@@ -44,11 +45,6 @@ from metadata.workflow.usage import UsageWorkflow
 
 if not sys.version_info >= (3, 9):
     pytest.skip("requires python 3.9+", allow_module_level=True)
-
-
-@pytest.fixture(autouse=True)
-def config_logging():
-    logging.getLogger("sqlfluff").setLevel(logging.CRITICAL)
 
 
 @pytest.fixture(scope="module")
@@ -69,9 +65,15 @@ def db_service(metadata, postgres_container):
     service_entity = metadata.create_or_update(data=service)
     service_entity.connection.config.authType.password = postgres_container.password
     yield service_entity
-    metadata.delete(
-        DatabaseService, service_entity.id, recursive=True, hard_delete=True
-    )
+    try:
+        metadata.delete(
+            DatabaseService, service_entity.id, recursive=True, hard_delete=True
+        )
+    except APIError as error:
+        if error.status_code == 404:
+            pass
+        else:
+            raise
 
 
 @pytest.fixture(scope="module")
@@ -136,6 +138,7 @@ def run_profiler_workflow(ingest_metadata, db_service, metadata):
         ),
     )
     metadata_ingestion = ProfilerWorkflow.create(workflow_config.dict())
+    search_cache.clear()
     metadata_ingestion.execute()
     return
 
@@ -171,6 +174,7 @@ def ingest_query_usage(ingest_metadata, db_service, metadata):
         },
     }
     workflow = UsageWorkflow.create(workflow_config)
+    search_cache.clear()
     workflow.execute()
     workflow.raise_from_status()
     return
@@ -204,3 +208,96 @@ def test_profiler(run_profiler_workflow):
 
 def test_lineage(ingest_lineage):
     pass
+
+
+def run_usage_workflow(db_service, metadata):
+    workflow_config = {
+        "source": {
+            "type": "postgres-usage",
+            "serviceName": db_service.fullyQualifiedName.__root__,
+            "serviceConnection": db_service.connection.dict(),
+            "sourceConfig": {
+                "config": {"type": DatabaseUsageConfigType.DatabaseUsage.value}
+            },
+        },
+        "processor": {"type": "query-parser", "config": {}},
+        "stage": {
+            "type": "table-usage",
+            "config": {
+                "filename": "/tmp/postgres_usage",
+            },
+        },
+        "bulkSink": {
+            "type": "metadata-usage",
+            "config": {
+                "filename": "/tmp/postgres_usage",
+            },
+        },
+        "sink": {"type": "metadata-rest", "config": {}},
+        "workflowConfig": {
+            "loggerLevel": "DEBUG",
+            "openMetadataServerConfig": metadata.config.dict(),
+        },
+    }
+    workflow = UsageWorkflow.create(workflow_config)
+    search_cache.clear()
+    workflow.execute()
+    workflow.raise_from_status()
+
+
+@pytest.mark.xfail(
+    reason="'metadata.ingestion.lineage.sql_lineage.search_cache' gets corrupted with invalid data."
+    " See issue https://github.com/open-metadata/OpenMetadata/issues/16408"
+)
+def test_usage_delete_usage(db_service, ingest_lineage, metadata):
+    workflow_config = {
+        "source": {
+            "type": "postgres-usage",
+            "serviceName": db_service.fullyQualifiedName.__root__,
+            "serviceConnection": db_service.connection.dict(),
+            "sourceConfig": {
+                "config": {"type": DatabaseUsageConfigType.DatabaseUsage.value}
+            },
+        },
+        "processor": {"type": "query-parser", "config": {}},
+        "stage": {
+            "type": "table-usage",
+            "config": {
+                "filename": "/tmp/postgres_usage",
+            },
+        },
+        "bulkSink": {
+            "type": "metadata-usage",
+            "config": {
+                "filename": "/tmp/postgres_usage",
+            },
+        },
+        "sink": {"type": "metadata-rest", "config": {}},
+        "workflowConfig": {
+            "loggerLevel": "DEBUG",
+            "openMetadataServerConfig": metadata.config.dict(),
+        },
+    }
+    workflow = UsageWorkflow.create(workflow_config)
+    search_cache.clear()
+    workflow.execute()
+    workflow.raise_from_status()
+    run_usage_workflow(db_service, metadata)
+    metadata.delete(DatabaseService, db_service.id, hard_delete=True, recursive=True)
+    workflow_config = OpenMetadataWorkflowConfig(
+        source=Source(
+            type=db_service.connection.config.type.value.lower(),
+            serviceName=db_service.fullyQualifiedName.__root__,
+            serviceConnection=db_service.connection,
+            sourceConfig=SourceConfig(config={}),
+        ),
+        sink=Sink(
+            type="metadata-rest",
+            config={},
+        ),
+        workflowConfig=WorkflowConfig(openMetadataServerConfig=metadata.config),
+    )
+    metadata_ingestion = MetadataWorkflow.create(workflow_config)
+    metadata_ingestion.execute()
+    metadata_ingestion.raise_from_status()
+    run_usage_workflow(db_service, metadata)
