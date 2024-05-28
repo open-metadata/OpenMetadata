@@ -3,8 +3,8 @@ import os
 import shutil
 
 import pytest
-from helpers.docker import try_bind
-from helpers.markers import xfail_param
+from docker_utils import try_bind
+from markers import xfail_param
 from sqlalchemy import create_engine, text
 from testcontainers.mssql import SqlServerContainer
 
