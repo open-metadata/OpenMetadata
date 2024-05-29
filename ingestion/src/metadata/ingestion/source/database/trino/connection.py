@@ -12,6 +12,7 @@
 """
 Source connection handler
 """
+from copy import deepcopy
 from typing import Optional
 from urllib.parse import quote_plus
 
@@ -128,16 +129,20 @@ def get_connection(connection: TrinoConnection) -> Engine:
     """
     Create connection
     """
-    if connection.verify:
-        connection.connectionArguments = (
-            connection.connectionArguments or init_empty_connection_arguments()
+    # here we are creating a copy of connection, because we need to dynamically
+    # add auth params to connectionArguments, which we do no intend to store
+    # in original connection object and in OpenMetadata database
+    connection_copy = deepcopy(connection)
+    if connection_copy.verify:
+        connection_copy.connectionArguments = (
+            connection_copy.connectionArguments or init_empty_connection_arguments()
         )
-        connection.connectionArguments.__root__["verify"] = {
-            "verify": connection.verify
+        connection_copy.connectionArguments.__root__["verify"] = {
+            "verify": connection_copy.verify
         }
 
     return create_generic_db_connection(
-        connection=connection,
+        connection=connection_copy,
         get_connection_url_fn=get_connection_url,
         get_connection_args_fn=get_connection_args,
     )
