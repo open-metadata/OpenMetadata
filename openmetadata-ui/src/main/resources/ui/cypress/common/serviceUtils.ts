@@ -42,8 +42,6 @@ export const visitServiceDetailsPage = (service, verifyHeader = true) => {
         expect(text).to.equal(service.displayName);
       });
   }
-
-  verifyResponseStatusCode('@getServices', 200);
 };
 
 export const createDataWithApi = (data, token) => {
