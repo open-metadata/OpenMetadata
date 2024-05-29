@@ -393,7 +393,7 @@
         "type": "text"
       },
       "status": {
-        "type": "text"
+        "type": "keyword"
       },
       "entityType": {
         "type": "keyword"

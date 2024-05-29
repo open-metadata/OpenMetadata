@@ -350,7 +350,7 @@
         "type": "text"
       },
       "status": {
-        "type": "text"
+        "type": "keyword"
       },
       "suggest": {
         "type": "completion",
