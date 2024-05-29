@@ -16,6 +16,7 @@ from copy import deepcopy
 from typing import Dict, Iterable, List, Optional, Tuple
 
 from pyathena.sqlalchemy.base import AthenaDialect
+from pyathena.sqlalchemy.util import _HashableDict
 from sqlalchemy import types
 from sqlalchemy.engine import reflection
 from sqlalchemy.engine.reflection import Inspector
@@ -48,6 +49,9 @@ from metadata.ingestion.source.database.column_type_parser import ColumnTypePars
 from metadata.ingestion.source.database.common_db_source import (
     CommonDbSourceService,
     TableNameAndType,
+)
+from metadata.ingestion.source.database.external_table_lineage_mixin import (
+    ExternalTableLineageMixin,
 )
 from metadata.utils import fqn
 from metadata.utils.logger import ingestion_logger
@@ -229,14 +233,31 @@ def get_view_definition(self, connection, view_name, schema=None, **kw):
     return None
 
 
+@reflection.cache
+def get_table_options(
+    self, connection: "Connection", table_name: str, schema: Optional[str] = None, **kw
+):
+    metadata = self._get_table(connection, table_name, schema=schema, **kw)
+    # TODO The metadata retrieved from the API does not seem to include bucketing information.
+    return {
+        "awsathena_location": metadata.location,
+        "awsathena_compression": metadata.compression,
+        "awsathena_row_format": metadata.row_format,
+        "awsathena_file_format": metadata.file_format,
+        "awsathena_serdeproperties": _HashableDict(metadata.serde_properties),
+        "awsathena_tblproperties": _HashableDict(metadata.table_properties),
+    }
+
+
 AthenaDialect._get_column_type = _get_column_type  # pylint: disable=protected-access
 AthenaDialect.get_columns = get_columns
 AthenaDialect.get_view_definition = get_view_definition
+AthenaDialect.get_table_options = get_table_options
 Inspector.get_all_table_ddls = get_all_table_ddls
 Inspector.get_table_ddl = get_table_ddl
 
 
-class AthenaSource(CommonDbSourceService):
+class AthenaSource(ExternalTableLineageMixin, CommonDbSourceService):
     """
     Implements the necessary methods to extract
     Database metadata from Athena Source
@@ -263,6 +284,7 @@ class AthenaSource(CommonDbSourceService):
         self.athena_lake_formation_client = AthenaLakeFormationClient(
             connection=self.service_connection
         )
+        self.external_location_map = {}
 
     def query_table_names_and_types(
         self, schema_name: str
@@ -401,3 +423,23 @@ class AthenaSource(CommonDbSourceService):
                         stackTrace=traceback.format_exc(),
                     )
                 )
+
+    def get_table_description(
+        self, schema_name: str, table_name: str, inspector: Inspector
+    ) -> str:
+        description = None
+        try:
+            table_info: dict = inspector.get_table_comment(table_name, schema_name)
+            table_option = inspector.get_table_options(table_name, schema_name)
+            self.external_location_map[
+                (self.context.get().database, schema_name, table_name)
+            ] = table_option.get("awsathena_location")
+        # Catch any exception without breaking the ingestion
+        except Exception as exc:  # pylint: disable=broad-except
+            logger.debug(traceback.format_exc())
+            logger.warning(
+                f"Table description error for table [{schema_name}.{table_name}]: {exc}"
+            )
+        else:
+            description = table_info.get("text")
+        return description
