@@ -64,15 +64,12 @@ describe('Entity detail page', { tags: 'DataAssets' }, () => {
         cy.login();
 
         entity.cleanup();
+        cy.logout();
       });
 
       beforeEach(() => {
         cy.login();
         entity.visitEntity();
-      });
-
-      afterEach(() => {
-        cy.logout();
       });
 
       it(`Domain assign, update & delete`, () => {
