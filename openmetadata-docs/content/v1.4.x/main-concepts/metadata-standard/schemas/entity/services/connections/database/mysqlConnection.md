@@ -16,9 +16,7 @@ slug: /main-concepts/metadata-standard/schemas/entity/services/connections/datab
 - **`hostPort`** *(string)*: Host and port of the MySQL service.
 - **`databaseName`** *(string)*: Optional name to give to the database in OpenMetadata. If left blank, we will use default as the database name.
 - **`databaseSchema`** *(string)*: Database Schema of the data source. This is optional parameter, if you would like to restrict the metadata reading to a single schema. When left blank, OpenMetadata Ingestion attempts to scan all the schemas.
-- **`sslCA`** *(string)*: Provide the path to ssl ca file.
-- **`sslCert`** *(string)*: Provide the path to ssl client certificate file (ssl_cert).
-- **`sslKey`** *(string)*: Provide the path to ssl client certificate file (ssl_key).
+- **`sslConfig`** *(string)*: Provide the config for SSL.
 - **`connectionOptions`**: Refer to *../connectionBasicType.json#/definitions/connectionOptions*.
 - **`connectionArguments`**: Refer to *../connectionBasicType.json#/definitions/connectionArguments*.
 - **`supportsMetadataExtraction`**: Refer to *../connectionBasicType.json#/definitions/supportsMetadataExtraction*.

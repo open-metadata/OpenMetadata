@@ -84,6 +84,7 @@ import {
   SQLITE,
   SUPERSET,
   TABLEAU,
+  TERADATA,
   TOPIC_DEFAULT,
   TRINO,
   UNITYCATALOG,
@@ -379,6 +380,9 @@ class ServiceUtilClassBase {
 
       case SearchServiceType.OpenSearch:
         return OPEN_SEARCH;
+
+      case DatabaseServiceType.Teradata:
+        return TERADATA;
 
       default: {
         let logo;

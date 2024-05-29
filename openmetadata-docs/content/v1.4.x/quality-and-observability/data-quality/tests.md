@@ -660,10 +660,12 @@ Validate values form a set are present in a column.
 
 **Behavior**
 
-| Condition      | Status |
-| ----------- | ----------- |
-|1 or more values from `allowedValues` is found in the column|Success ✅|
-|0 value from `allowedValues` is found in the column|Failed ❌|
+| Condition                                                                                | Status    |
+|------------------------------------------------------------------------------------------|-----------|
+| `matchEnum` is `false` and 1 or more values from `allowedValues` is found in the column  | Success ✅ |
+| `matchEnum` is `true` and all columns have a value from `allowedValues`                  | Success ✅ |
+| `matchEnum` is `false` 0 value from `allowedValues` is found in the column               | Failed ❌  |
+| `matchEnum` is `true` and 1 or more columns does not have a vluae from `allowedValues`   | Failed ❌  |
 
 **YAML Config**
 
@@ -673,8 +675,34 @@ Validate values form a set are present in a column.
   columnName: columnName
   computePassedFailedRowCount: <true or false>
   parameterValues:
-      - name: allowedValues
-        value: ["forbidden1", "forbidden2"]
+    - name: allowedValues
+      value: '["forbidden1", "forbidden2"]'
+    - name: matchEnum
+      value: ""  # or true  
+```
+
+**JSON Config**
+
+```json
+{
+    "name": "myTestName",
+    "description": "test description",
+    "columnName": "columnName",
+    "testDefinitionName": "columnValuesToBeInSet",
+    "parameterValues": [
+        {
+            "name": "allowedValues",
+            "value": [
+                "forbidden1",
+                "forbidden2"
+            ]
+        },
+        {
+            "name": "matchEnum",
+            "value": "" 
+        }
+    ]
+}
 ```
 
 **JSON Config**
