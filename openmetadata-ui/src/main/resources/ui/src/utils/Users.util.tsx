@@ -13,13 +13,16 @@
 
 import { Popover, Skeleton, Space, Tag } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
+import { AxiosError } from 'axios';
 import { t } from 'i18next';
 import { isEmpty, isUndefined, uniqueId } from 'lodash';
 import React from 'react';
 import { Link } from 'react-router-dom';
 import UserPopOverCard from '../components/common/PopOverCard/UserPopOverCard';
+import { ERROR_MESSAGE } from '../constants/constants';
 import { MASKED_EMAIL } from '../constants/User.constants';
 import { EntityReference, User } from '../generated/entity/teams/user';
+import { getIsErrorMatch } from './CommonUtils';
 import { getEntityName } from './EntityUtils';
 import { LIST_CAP } from './PermissionsUtils';
 import { getRoleWithFqnPath, getTeamsWithFqnPath } from './RouterUtils';
@@ -149,4 +152,31 @@ export const commonUserDetailColumns = (
 
 export const isMaskedEmail = (email: string) => {
   return email === MASKED_EMAIL;
+};
+
+export const getUserCreationErrorMessage = ({
+  error,
+  entity,
+  entityLowercase,
+  entityName,
+}: {
+  error?: AxiosError;
+  entity: string;
+  entityLowercase?: string;
+  entityName?: string;
+}) => {
+  if (error) {
+    if (getIsErrorMatch(error, ERROR_MESSAGE.alreadyExist)) {
+      return t('server.email-already-exist', {
+        entity: entityLowercase ?? '',
+        name: entityName ?? '',
+      });
+    }
+
+    if (error.response?.status === 429) {
+      return t('server.entity-limit-reached', { entity });
+    }
+  }
+
+  return t('server.create-entity-error', { entity });
 };

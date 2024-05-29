@@ -1849,6 +1849,7 @@
     "entity-fetch-error": "Error al recuperar {{entity}}",
     "entity-fetch-version-error": "Error al recuperar {{entity}} versiones {{version}}",
     "entity-follow-error": "Error al seguir {{entity}}",
+    "entity-limit-reached": "{{entity}} limit reached",
     "entity-removing-error": "Error al eliminar {{entity}}",
     "entity-unfollow-error": "Error al dejar de seguir {{entity}}",
     "entity-updating-error": "Error al actualizar {{entity}}",

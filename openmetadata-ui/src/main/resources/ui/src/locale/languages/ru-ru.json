@@ -1849,6 +1849,7 @@
     "entity-fetch-error": "Ошибка при получении {{entity}}",
     "entity-fetch-version-error": "Ошибка при получении {{entity}} версий {{version}}",
     "entity-follow-error": "Ошибка при подписке на {{entity}}",
+    "entity-limit-reached": "{{entity}} limit reached",
     "entity-removing-error": "Ошибка при удалении {{entity}}.",
     "entity-unfollow-error": "Ошибка при отмене подписки на {{entity}}",
     "entity-updating-error": "Ошибка при обновлении {{entity}}",
