@@ -45,7 +45,7 @@ export const LimitBanner = () => {
                 Check your <Link to="/usage">usage here</Link> or{' '}
               </>
             )}
-            <a href="www.getcollate.io/pricing" target="_blank">
+            <a href="/pricing" target="_blank">
               learn more
             </a>{' '}
             about pricing
