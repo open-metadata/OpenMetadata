@@ -93,15 +93,15 @@ class UsageSource(QueryParserSource, ABC):
                 f"Scanning query logs for {(self.start + timedelta(days=days)).date()} - "
                 f"{(self.start + timedelta(days=days + 1)).date()}"
             )
+            query = None
             try:
+                query = self.get_sql_statement(
+                    start_time=self.start + timedelta(days=days),
+                    end_time=self.start + timedelta(days=days + 1),
+                )
                 for engine in self.get_engine():
                     with engine.connect() as conn:
-                        rows = conn.execute(
-                            self.get_sql_statement(
-                                start_time=self.start + timedelta(days=days),
-                                end_time=self.start + timedelta(days=days + 1),
-                            )
-                        )
+                        rows = conn.execute(query)
                         queries = []
                         for row in rows:
                             row = dict(row)
@@ -133,6 +133,10 @@ class UsageSource(QueryParserSource, ABC):
                                 )
                     yield TableQueries(queries=queries)
             except Exception as exc:
+                if query:
+                    logger.debug(
+                        f"###### USAGE QUERY #######\n{query}\n##########################"
+                    )
                 logger.debug(traceback.format_exc())
                 logger.error(f"Source usage processing error: {exc}")
 
