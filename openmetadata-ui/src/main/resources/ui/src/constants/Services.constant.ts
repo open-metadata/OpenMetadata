@@ -94,6 +94,7 @@ import openSearch from '../assets/svg/open-search.svg';
 import pipelineDefault from '../assets/svg/pipeline.svg';
 import plus from '../assets/svg/plus.svg';
 import mlflow from '../assets/svg/service-icon-mlflow.svg';
+import teradata from '../assets/svg/teradata.svg';
 import topicDefault from '../assets/svg/topic.svg';
 import { EntityType } from '../enums/entity.enum';
 import { ServiceCategory } from '../enums/service.enum';
@@ -201,6 +202,7 @@ export const OPEN_SEARCH = openSearch;
 export const PLUS = plus;
 export const NOSERVICE = noService;
 export const ICEBERGE = iceberge;
+export const TERADATA = teradata;
 export const excludedService = [
   MlModelServiceType.Sklearn,
   MetadataServiceType.MetadataES,
@@ -396,6 +398,7 @@ export const BETA_SERVICES = [
   DatabaseServiceType.Couchbase,
   DatabaseServiceType.Greenplum,
   DatabaseServiceType.Iceberg,
+  DatabaseServiceType.Teradata,
 ];
 
 export const TEST_CONNECTION_INITIAL_MESSAGE = i18n.t(
