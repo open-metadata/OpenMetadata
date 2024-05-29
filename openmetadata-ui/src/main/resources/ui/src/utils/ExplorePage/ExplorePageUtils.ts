@@ -11,7 +11,14 @@
  *  limitations under the License.
  */
 
-import { isEmpty, isEqual, isString, isUndefined, uniqWith } from 'lodash';
+import {
+  isArray,
+  isEmpty,
+  isEqual,
+  isString,
+  isUndefined,
+  uniqWith,
+} from 'lodash';
 import { QueryFilterFieldsEnum } from '../../enums/Explore.enum';
 import {
   QueryFieldInterface,
@@ -43,7 +50,8 @@ export const getCombinedFields = (
 
   filtersArray.forEach((filtersObj) => {
     if (!isUndefined(filtersObj)) {
-      combinedFiltersArray.push(...getQueryFiltersArray(field, filtersObj));
+      const data = getQueryFiltersArray(field, filtersObj);
+      combinedFiltersArray.push(...(isArray(data) ? data : [data]));
     }
   });
 

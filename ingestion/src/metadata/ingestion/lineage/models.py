@@ -64,6 +64,9 @@ from metadata.generated.schema.entity.services.connections.database.snowflakeCon
 from metadata.generated.schema.entity.services.connections.database.sqliteConnection import (
     SQLiteType,
 )
+from metadata.generated.schema.entity.services.connections.database.teradataConnection import (
+    TeradataType,
+)
 from metadata.utils.singleton import Singleton
 
 
@@ -112,6 +115,7 @@ MAP_CONNECTION_TYPE_DIALECT: Dict[str, Dialect] = {
     str(SQLiteType.SQLite.value): Dialect.SQLITE,
     str(MssqlType.Mssql.value): Dialect.TSQL,
     str(AzureSQLType.AzureSQL.value): Dialect.TSQL,
+    str(TeradataType.Teradata.value): Dialect.TERADATA,
 }
 
 
