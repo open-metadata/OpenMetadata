@@ -24,7 +24,7 @@ import { getEntityIcon } from '../../../../utils/TableUtils';
 import './lineage-layers.less';
 
 const LineageLayers = () => {
-  const { activeLayer, onUpdateLayerView } = useLineageProvider();
+  const { activeLayer, onUpdateLayerView, isEditMode } = useLineageProvider();
 
   const onButtonClick = (value: LineageLayerView) => {
     const index = activeLayer.indexOf(value);
@@ -43,6 +43,7 @@ const LineageLayers = () => {
             className={classNames('lineage-layer-button h-15', {
               active: activeLayer.includes(LineageLayerView.COLUMN),
             })}
+            data-testid="lineage-layer-column-btn"
             onClick={() => onButtonClick(LineageLayerView.COLUMN)}>
             <div className="lineage-layer-btn">
               <div className="layer-icon">
@@ -59,6 +60,7 @@ const LineageLayers = () => {
                 LineageLayerView.DATA_OBSERVARABILITY
               ),
             })}
+            data-testid="lineage-layer-observability-btn"
             onClick={() =>
               onButtonClick(LineageLayerView.DATA_OBSERVARABILITY)
             }>
@@ -78,7 +80,9 @@ const LineageLayers = () => {
       trigger="click">
       <Button
         ghost
-        className="layers-btn h-15"
+        className={classNames('layers-btn h-15', {
+          'layers-btn-edit-mode': isEditMode,
+        })}
         data-testid="lineage-layer-btn"
         type="primary">
         <div className="lineage-layer-btn">

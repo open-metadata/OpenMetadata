@@ -20,7 +20,6 @@ import CustomControlsComponent from './CustomControls.component';
 const mockOnOptionSelect = jest.fn();
 const mockOnLineageConfigUpdate = jest.fn();
 const mockOnEditLineageClick = jest.fn();
-const mockOnExpandColumnClick = jest.fn();
 const mockHandleFullScreenViewClick = jest.fn();
 const mockOnExitFullScreenViewClick = jest.fn();
 const mockOnZoomHandler = jest.fn();
@@ -50,7 +49,6 @@ jest.mock('reactflow', () => ({
 
 jest.mock('../../../context/LineageProvider/LineageProvider', () => ({
   useLineageProvider: jest.fn().mockImplementation(() => ({
-    toggleColumnView: mockOnExpandColumnClick,
     onLineageEditClick: mockOnEditLineageClick,
     onExportClick: mockOnExportClick,
     activeLayer: [LineageLayerView.COLUMN],
