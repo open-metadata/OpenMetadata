@@ -1,4 +1,4 @@
--- Fix hangiong partition migration
+-- Fix hanging partition migration
 -- in 1.4.x `tablePartition.intervalType` should not exists
 UPDATE table_entity
 SET json = JSON_REMOVE(json, '$.tablePartition')
