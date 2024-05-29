@@ -56,6 +56,7 @@ describe('Database hierarchy details page', { tags: 'DataAssets' }, () => {
         cy.login();
 
         entity.cleanup();
+        cy.logout();
       });
 
       beforeEach(() => {

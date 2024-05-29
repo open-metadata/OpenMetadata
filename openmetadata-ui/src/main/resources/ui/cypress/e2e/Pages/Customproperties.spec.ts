@@ -79,6 +79,10 @@ describe('Custom Properties should work properly', { tags: 'Settings' }, () => {
     cy.login();
   });
 
+  afterEach(() => {
+    cy.logout();
+  });
+
   [
     'Integer',
     'String',

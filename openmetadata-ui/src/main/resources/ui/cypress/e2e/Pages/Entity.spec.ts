@@ -64,6 +64,7 @@ describe('Entity detail page', { tags: 'DataAssets' }, () => {
         cy.login();
 
         entity.cleanup();
+        cy.logout();
       });
 
       beforeEach(() => {
