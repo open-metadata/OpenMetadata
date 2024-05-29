@@ -15,12 +15,13 @@ This classes are used in the generated module, which should have NO
 dependencies against any other metadata package. This class should
 be self-sufficient with only pydantic at import time.
 """
-from __future__ import annotations
-
+import json
 import logging
-from typing import Any
+from typing import Any, Literal
 
-from pydantic import BaseModel, PlainSerializer
+from pydantic import BaseModel as PydanticBaseModel
+from pydantic import PlainSerializer
+from pydantic.main import IncEx
 from pydantic.types import SecretStr
 from typing_extensions import Annotated
 
@@ -28,6 +29,54 @@ logger = logging.getLogger("metadata")
 
 SECRET = "secret:"
 JSON_ENCODERS = "json_encoders"
+
+
+class BaseModel(PydanticBaseModel):
+    """
+    Base model for OpenMetadata generated models.
+    Specified as `--base-class BASE_CLASS` in the generator.
+    """
+
+    def model_dump_json(
+        self,
+        *,
+        indent: int | None = None,
+        include: IncEx = None,
+        exclude: IncEx = None,
+        context: dict[str, Any] | None = None,
+        by_alias: bool = False,
+        exclude_unset: bool = True,
+        exclude_defaults: bool = True,
+        exclude_none: bool = True,
+        round_trip: bool = False,
+        warnings: bool | Literal["none", "warn", "error"] = True,
+        serialize_as_any: bool = False,
+    ) -> str:
+        """
+        This is needed due to https://github.com/pydantic/pydantic/issues/8825
+
+        We also tried the suggested `serialize` method but it did not
+        work well with nested models.
+
+        This solution is covered in the `test_pydantic_v2` test comparing the
+        dump results from V1 vs. V2.
+        """
+        return json.dumps(
+            self.model_dump(
+                mode="json",
+                include=include,
+                exclude=exclude,
+                context=context,
+                by_alias=by_alias,
+                exclude_unset=exclude_unset,
+                exclude_none=exclude_none,
+                exclude_defaults=exclude_defaults,
+                round_trip=round_trip,
+                warnings=warnings,
+                serialize_as_any=serialize_as_any,
+            ),
+            ensure_ascii=True,
+        )
 
 
 class _CustomSecretStr(SecretStr):

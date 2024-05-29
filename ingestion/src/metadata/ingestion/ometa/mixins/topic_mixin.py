@@ -41,6 +41,6 @@ class OMetaTopicMixin:
         """
         resp = self.client.put(
             f"{self.get_suffix(Topic)}/{topic.id.root}/sampleData",
-            data=sample_data.json(),
+            data=sample_data.model_dump_json(),
         )
         return TopicSampleData(**resp["sampleData"])

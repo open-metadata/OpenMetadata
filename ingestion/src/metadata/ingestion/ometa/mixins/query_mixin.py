@@ -44,7 +44,7 @@ class OMetaQueryMixin:
         query_hash = self._get_query_hash(query=query.query.root)
         query_entity = self.get_by_name(entity=Query, fqn=query_hash)
         if query_entity is None:
-            resp = self.client.put(self.get_suffix(Query), data=query.json())
+            resp = self.client.put(self.get_suffix(Query), data=query.model_dump_json())
             if resp and resp.get("id"):
                 query_entity = Query(**resp)
         return query_entity
@@ -65,7 +65,7 @@ class OMetaQueryMixin:
                     # Add Query Usage
                     table_ref = EntityReference(id=entity.id.root, type="table")
                     # convert object to json array string
-                    table_ref_json = "[" + table_ref.json() + "]"
+                    table_ref_json = "[" + table_ref.model_dump_json() + "]"
                     self.client.put(
                         f"{self.get_suffix(Query)}/{model_str(query.id)}/usage",
                         data=table_ref_json,

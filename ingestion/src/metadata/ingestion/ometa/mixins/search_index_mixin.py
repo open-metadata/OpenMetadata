@@ -48,7 +48,7 @@ class OMetaSearchIndexMixin:
         try:
             resp = self.client.put(
                 f"{self.get_suffix(SearchIndex)}/{search_index.id.root}/sampleData",
-                data=sample_data.json(),
+                data=sample_data.model_dump_json(),
             )
         except Exception as exc:
             logger.debug(traceback.format_exc())

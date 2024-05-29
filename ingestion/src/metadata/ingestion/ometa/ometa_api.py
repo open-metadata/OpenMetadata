@@ -266,7 +266,7 @@ class OpenMetadata(
         resp = fn(self.get_suffix(entity), data=data.model_dump_json())
         if not resp:
             raise EmptyPayloadException(
-                f"Got an empty response when trying to PUT to {self.get_suffix(entity)}, {data.json()}"
+                f"Got an empty response when trying to PUT to {self.get_suffix(entity)}, {data.model_dump_json()}"
             )
         return entity_class(**resp)
 

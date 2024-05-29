@@ -104,7 +104,7 @@ from metadata.generated.schema.tests.basic import TestCaseResult, TestResultValu
 from metadata.generated.schema.tests.resolved import Resolved, TestCaseFailureReasonType
 from metadata.generated.schema.tests.testCase import TestCase, TestCaseParameterValue
 from metadata.generated.schema.tests.testSuite import TestSuite
-from metadata.generated.schema.type.basic import Timestamp
+from metadata.generated.schema.type.basic import FullyQualifiedEntityName, Timestamp
 from metadata.generated.schema.type.entityLineage import EntitiesEdge, LineageDetails
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.type.lifeCycle import AccessDetails, LifeCycle
@@ -687,7 +687,9 @@ class SampleDataSource(
         db = CreateDatabaseRequest(
             name=self.database["name"],
             description=self.database["description"],
-            service=self.database_service.fullyQualifiedName.root,
+            service=FullyQualifiedEntityName(
+                root=self.database_service.fullyQualifiedName.root
+            ),
         )
         yield Either(right=db)
 
@@ -779,7 +781,9 @@ class SampleDataSource(
         db = CreateDatabaseRequest(
             name=self.database["name"],
             description=self.database["description"],
-            service=self.database_service.fullyQualifiedName.root,
+            service=FullyQualifiedEntityName(
+                root=self.database_service.fullyQualifiedName.root
+            ),
         )
         yield Either(right=db)
 

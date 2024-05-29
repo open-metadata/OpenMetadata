@@ -70,7 +70,7 @@ class OMetaTableMixin:
         try:
             resp = self.client.put(
                 f"{self.get_suffix(Table)}/{table.id.root}/sampleData",
-                data=sample_data.json(),
+                data=sample_data.model_dump_json(),
             )
         except Exception as exc:
             logger.debug(traceback.format_exc())
@@ -138,7 +138,7 @@ class OMetaTableMixin:
         """
         resp = self.client.put(
             f"{self.get_suffix(Table)}/{table.id.root}/tableProfile",
-            data=profile_request.json(),
+            data=profile_request.model_dump_json(),
         )
         return Table(**resp)
 
@@ -151,7 +151,7 @@ class OMetaTableMixin:
         """
         resp = self.client.put(
             f"{self.get_suffix(Table)}/{table.id.root}/dataModel",
-            data=data_model.json(),
+            data=data_model.model_dump_json(),
         )
         return Table(**resp)
 
@@ -165,7 +165,7 @@ class OMetaTableMixin:
         :param table_usage_request: Usage data to add
         """
         resp = self.client.post(
-            f"/usage/table/{table.id.root}", data=table_usage_request.json()
+            f"/usage/table/{table.id.root}", data=table_usage_request.model_dump_json()
         )
         logger.debug("published table usage %s", resp)
 
@@ -179,10 +179,10 @@ class OMetaTableMixin:
         :param table_join_request: Join data to add
         """
 
-        logger.info("table join request %s", table_join_request.json())
+        logger.info("table join request %s", table_join_request.model_dump_json())
         resp = self.client.put(
             f"{self.get_suffix(Table)}/{table.id.root}/joins",
-            data=table_join_request.json(),
+            data=table_join_request.model_dump_json(),
         )
         logger.debug("published frequently joined with %s", resp)
 
@@ -203,7 +203,7 @@ class OMetaTableMixin:
         """
         resp = self.client.put(
             f"{self.get_suffix(Table)}/{model_str(table_id)}/tableProfilerConfig",
-            data=table_profiler_config.json(),
+            data=table_profiler_config.model_dump_json(),
         )
         return Table(**resp)
 
@@ -303,6 +303,6 @@ class OMetaTableMixin:
         """
         resp = self.client.put(
             f"{self.get_suffix(Table)}/{table_id}/customMetric",
-            data=custom_metric.json(),
+            data=custom_metric.model_dump_json(),
         )
         return Table(**resp)

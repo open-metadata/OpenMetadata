@@ -42,6 +42,6 @@ class OMetaDashboardMixin:
         """
         resp = self.client.put(
             f"/usage/dashboard/{dashboard.id.root}",
-            data=dashboard_usage_request.json(),
+            data=dashboard_usage_request.model_dump_json(),
         )
         logger.debug("Published dashboard usage %s", resp)

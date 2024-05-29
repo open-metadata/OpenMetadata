@@ -35,7 +35,7 @@ class OMetaSuggestionsMixin:
         """
         resp = self.client.put(
             f"{self.get_suffix(Suggestion)}/{str(suggestion.root.id.root)}",
-            data=suggestion.json(),
+            data=suggestion.model_dump_json(),
         )
 
         return Suggestion(**resp)

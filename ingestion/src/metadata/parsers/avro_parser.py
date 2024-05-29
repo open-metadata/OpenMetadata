@@ -14,7 +14,7 @@ Utils module to parse the avro schema
 """
 
 import traceback
-from typing import List, Optional, Tuple, Union
+from typing import List, Optional, Tuple, Type, Union
 
 import avro.schema as avroschema
 from avro.schema import ArraySchema, RecordSchema, Schema, UnionSchema

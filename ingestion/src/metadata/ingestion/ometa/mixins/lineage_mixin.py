@@ -131,14 +131,16 @@ class OMetaLineageMixin(Generic[T]):
                         patch_op_success = True
 
             if patch_op_success is False:
-                self.client.put(self.get_suffix(AddLineageRequest), data=data.json())
+                self.client.put(
+                    self.get_suffix(AddLineageRequest), data=data.model_dump_json()
+                )
 
         except APIError as err:
             logger.debug(traceback.format_exc())
             logger.error(
                 "Error %s trying to PUT lineage for %s: %s",
                 err.status_code,
-                data.json(),
+                data.model_dump_json(),
                 str(err),
             )
             raise err

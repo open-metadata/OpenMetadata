@@ -77,7 +77,7 @@ class OMetaTestsMixin:
         """
         resp = self.client.put(
             f"{self.get_suffix(TestCase)}/{quote(test_case_fqn,safe='')}/testCaseResult",
-            test_results.json(),
+            test_results.model_dump_json(),
         )
 
         return resp
@@ -337,7 +337,7 @@ class OMetaTestsMixin:
         try:
             resp = self.client.put(
                 f"{self.get_suffix(TestCase)}/{test_case.id.root}/failedRowsSample",
-                data=failed_rows.json(),
+                data=failed_rows.model_dump_json(),
             )
         except Exception as exc:
             logger.debug(traceback.format_exc())

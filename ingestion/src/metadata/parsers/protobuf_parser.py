@@ -20,7 +20,7 @@ import sys
 import traceback
 from enum import Enum
 from pathlib import Path
-from typing import List, Optional, Union
+from typing import List, Optional, Type, Union
 
 import grpc_tools.protoc
 from pydantic import BaseModel
