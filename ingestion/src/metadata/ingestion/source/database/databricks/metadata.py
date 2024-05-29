@@ -61,7 +61,6 @@ from metadata.utils.constants import DEFAULT_DATABASE
 from metadata.utils.filters import filter_by_database
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.sqlalchemy_utils import (
-    get_all_table_ddls,
     get_all_view_definitions,
     get_view_definition_wrapper,
 )
@@ -272,7 +271,6 @@ DatabricksDialect.get_schema_names = get_schema_names
 DatabricksDialect.get_view_definition = get_view_definition
 DatabricksDialect.get_all_view_definitions = get_all_view_definitions
 reflection.Inspector.get_schema_names = get_schema_names_reflection
-reflection.Inspector.get_all_table_ddls = get_all_table_ddls
 reflection.Inspector.get_table_ddl = get_table_ddl
 
 
