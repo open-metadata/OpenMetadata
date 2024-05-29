@@ -330,6 +330,7 @@ test = {
     *plugins["datalake-s3"],
     *plugins["pii-processor"],
     "requests==2.31.0",
+    "collate-data-diff[mysql]==0.11.2",
 }
 
 e2e_test = {
@@ -340,6 +341,26 @@ e2e_test = {
 
 extended_testing = {
     "Faker",  # For Sample Data Generation
+}
+
+data_diff_extras = {"data-diff-all": {"collate-data-diff[all-dbs]"}} | {
+    f"data-diff-{driver}": {f"collate-data-diff[{driver}]"}
+    # data-diff uses different drivers out-of-the-box than OpenMetadata
+    # the exrtas are described here:
+    # https://github.com/open-metadata/collate-data-diff/blob/main/pyproject.toml#L68
+    for driver in [
+        "mysql",
+        "postgresql",
+        "redshift",
+        "snowflake",
+        "presto",
+        "oracle",
+        "mssql",
+        "trino",
+        "clickhouse",
+        "vertica",
+        "duckdb",
+    ]
 }
 
 
@@ -370,5 +391,6 @@ setup(
         "slim": filter_requirements(
             {"airflow", "db2", "great-expectations", "deltalake", "sklearn"}
         ),
+        **data_diff_extras,
     },
 )

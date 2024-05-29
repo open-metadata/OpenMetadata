@@ -1,3 +1,4 @@
+import logging
 import sys
 
 import pytest
@@ -6,6 +7,12 @@ from .integration_base import int_admin_ometa
 
 if not sys.version_info >= (3, 9):
     collect_ignore = ["trino"]
+
+
+@pytest.fixture(scope="session", autouse=True)
+def configure_logging():
+    logging.getLogger("sqlfluff").setLevel(logging.CRITICAL)
+    logging.getLogger("pytds").setLevel(logging.CRITICAL)
 
 
 @pytest.fixture(scope="module")

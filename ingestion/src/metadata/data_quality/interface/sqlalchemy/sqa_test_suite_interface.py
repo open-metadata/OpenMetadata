@@ -21,11 +21,10 @@ from sqlalchemy.orm import DeclarativeMeta
 from sqlalchemy.orm.util import AliasedClass
 
 from metadata.data_quality.interface.test_suite_interface import TestSuiteInterface
-from metadata.data_quality.validations.validator import Validator
 from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.services.databaseService import DatabaseConnection
 from metadata.generated.schema.tests.basic import TestCaseResult
-from metadata.generated.schema.tests.testCase import TestCase
+from metadata.generated.schema.tests.testCase import TestCase, TestCaseParameterValue
 from metadata.generated.schema.tests.testDefinition import TestDefinition
 from metadata.ingestion.connections.session import create_and_bind_session
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
@@ -166,13 +165,27 @@ class SQATestSuiteInterface(SQAInterfaceMixin, TestSuiteInterface):
                 test_case.testDefinition.fullyQualifiedName,
             )
 
+            runtime_parameter_setter = TestHandler.runtime_parameter_setter
+            if runtime_parameter_setter:
+                setter = runtime_parameter_setter(
+                    self.ometa_client,
+                    self.service_connection_config,
+                    self.table_entity,
+                    self.sampler,
+                )
+                runtime_params = setter.get_parameters(test_case)
+                test_case.parameterValues.append(
+                    TestCaseParameterValue(
+                        name="runtimeParams", value=runtime_params.json()
+                    )
+                )
+
             test_handler = TestHandler(
                 self.runner,
                 test_case=test_case,
                 execution_date=int(datetime.now(tz=timezone.utc).timestamp() * 1000),
             )
-
-            return Validator(validator_obj=test_handler).validate()
+            return test_handler.run_validation()
         except Exception as err:
             logger.error(
                 f"Error executing {test_case.testDefinition.fullyQualifiedName} - {err}"

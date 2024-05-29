@@ -14,7 +14,7 @@ Interfaces with database for all database engine
 supporting sqlalchemy abstraction layer
 """
 from datetime import datetime, timezone
-from typing import Optional
+from typing import Optional, Type
 
 from metadata.data_quality.interface.test_suite_interface import TestSuiteInterface
 from metadata.data_quality.validations.validator import Validator
@@ -83,7 +83,7 @@ class PandasTestSuiteInterface(TestSuiteInterface, PandasInterfaceMixin):
         """
 
         try:
-            TestHandler = import_test_case_class(  # pylint: disable=invalid-name
+            TestHandler: Type[BaseValidator] = import_test_case_class(  # pylint: disable=invalid-name
                 self.ometa_client.get_by_id(
                     TestDefinition, test_case.testDefinition.id
                 ).entityType.value,
@@ -97,7 +97,7 @@ class PandasTestSuiteInterface(TestSuiteInterface, PandasInterfaceMixin):
                 execution_date=int(datetime.now(tz=timezone.utc).timestamp() * 1000),
             )
 
-            return Validator(validator_obj=test_handler).validate()
+            return test_handler.run_validation()
         except Exception as err:
             logger.error(
                 f"Error executing {test_case.testDefinition.fullyQualifiedName} - {err}"
