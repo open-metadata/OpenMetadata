@@ -97,6 +97,7 @@ import {
   getPaginatedChildMap,
   getUpdatedColumnsFromEdge,
   getUpstreamDownstreamNodesEdges,
+  onLoad,
   removeLineageHandler,
 } from '../../utils/EntityLineageUtils';
 import { getEntityReferenceFromEntity } from '../../utils/EntityUtils';
@@ -1039,11 +1040,18 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
       setEdges(edge);
 
       const rootNode = node.find((n) => n.data.isRootNode);
-      if (rootNode) {
-        centerNodePosition(rootNode, reactFlowInstance);
-        if (activateNode) {
-          onNodeClick(rootNode);
+      if (!rootNode) {
+        if (activateNode && reactFlowInstance) {
+          onLoad(reactFlowInstance); // Call fitview in case of pipeline
         }
+
+        return;
+      }
+
+      // Center the root node in the view
+      centerNodePosition(rootNode, reactFlowInstance);
+      if (activateNode) {
+        onNodeClick(rootNode);
       }
     },
     [reactFlowInstance, activeLayer, nodes, edges, onNodeClick]
@@ -1081,11 +1089,11 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
       );
       setUpstreamDownstreamData(data);
 
-      if (activeNode) {
+      if (activeNode && !isEditMode) {
         selectNode(activeNode);
       }
     },
-    [decodedFqn, activeNode, activeLayer]
+    [decodedFqn, activeNode, activeLayer, isEditMode]
   );
 
   useEffect(() => {
