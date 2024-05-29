@@ -296,7 +296,9 @@ If you are not familiar with Docker Volumes with Docker Compose Services, Please
 
 For example, we would like to provide custom JWT Configuration Keys to be served to OpenMetadata Application. This requires the OpenMetadata Containers to have docker volumes sharing the private and public keys. Let's assume you have the keys available in `jwtkeys` directory in the same directory where your `docker-compose` file is available in the host machine.
 
-We add the volumes section to mount the keys onto the docker containers create with docker compose as follows -
+In scenarios where you need to provide a custom `openmetadata.yaml` configuration file to the OpenMetadata application, you can do so by mounting the file as a volume in the Docker container. This is especially useful for configurations that cannot be controlled through environment variables.
+
+We add the volumes section to mount the keys or `openmetadata.yaml` onto the docker containers create with docker compose as follows -
 
 ```yaml
 services:
@@ -304,6 +306,7 @@ services:
         ...
         volumes:
             - ./jwtkeys:/etc/openmetadata/jwtkeys
+            - ./openmetadata.yaml:/opt/openmetadata/conf/openmetadata.yaml
         ...
 ```
 
@@ -318,6 +321,8 @@ RSA_PUBLIC_KEY_FILE_PATH="/etc/openmetadata/jwtkeys/public_key.der"
 RSA_PRIVATE_KEY_FILE_PATH="/etc/openmetadata/jwtkeys/private_key.der"
 ...
 ```
+
+ Ensure that the default environment variables are set appropriately to complement the settings in your `openmetadata.yaml`.
 
 Once the changes are updated, if there are any containers running remove them first using `docker compose down` command and then recreate the containers once again by below command
 
