@@ -15,6 +15,7 @@ import {
   LimitConfig,
   ResourceLimit,
 } from '../context/LimitsProvider/useLimitsStore';
+import { ResourceLimitsParams } from './limitsAPI.interface';
 
 const BASE_URL = '/limits';
 
@@ -24,9 +25,13 @@ export const getLimitConfig = async () => {
   return response.data;
 };
 
-export const getLimitByResource = async (resource: string) => {
+export const getLimitByResource = async (
+  resource: string,
+  params: ResourceLimitsParams
+) => {
   const response = await axiosClient.get<ResourceLimit>(
-    `${BASE_URL}/features/${resource}`
+    `${BASE_URL}/features/${resource}`,
+    { params }
   );
 
   return response.data;
