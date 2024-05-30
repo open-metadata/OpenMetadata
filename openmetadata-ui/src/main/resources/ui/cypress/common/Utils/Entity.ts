@@ -460,7 +460,7 @@ export const deleteEntity = (
       'getDatabaseSchemas'
     );
 
-    cy.get('[data-testid="breadcrumb-link"]').last().click({ force: true });
+    cy.get('[data-testid="breadcrumb-link"]:last-child').click({ force: true });
     verifyResponseStatusCode('@getDatabaseSchemas', 200);
 
     cy.get('[data-testid="show-deleted"]')
