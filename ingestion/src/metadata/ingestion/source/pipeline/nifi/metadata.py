@@ -25,6 +25,11 @@ from metadata.generated.schema.entity.services.connections.pipeline.nifiConnecti
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
+from metadata.generated.schema.type.basic import (
+    EntityName,
+    FullyQualifiedEntityName,
+    SourceUrl,
+)
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.models.pipeline_status import OMetaPipelineStatus
@@ -115,7 +120,9 @@ class NifiSource(PipelineServiceSource):
                 Task(
                     name=processor.id_,
                     displayName=processor.name,
-                    sourceUrl=f"{clean_uri(self.service_connection.hostPort)}{processor.uri}",
+                    sourceUrl=SourceUrl(
+                        f"{clean_uri(self.service_connection.hostPort)}{processor.uri}"
+                    ),
                     taskType=processor.type_,
                     downstreamTasks=self._get_downstream_tasks_from(
                         source_id=processor.id_,
@@ -140,11 +147,13 @@ class NifiSource(PipelineServiceSource):
         :return: Create Pipeline request with tasks
         """
         pipeline_request = CreatePipelineRequest(
-            name=pipeline_details.id_,
+            name=EntityName(pipeline_details.id_),
             displayName=pipeline_details.name,
-            sourceUrl=f"{clean_uri(self.service_connection.hostPort)}{pipeline_details.uri}",
+            sourceUrl=SourceUrl(
+                f"{clean_uri(self.service_connection.hostPort)}{pipeline_details.uri}"
+            ),
             tasks=self._get_tasks_from_details(pipeline_details),
-            service=self.context.get().pipeline_service,
+            service=FullyQualifiedEntityName(self.context.get().pipeline_service),
         )
         yield Either(right=pipeline_request)
         self.register_record(pipeline_request=pipeline_request)

@@ -30,6 +30,12 @@ from metadata.generated.schema.entity.services.ingestionPipelines.status import 
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
+from metadata.generated.schema.type.basic import (
+    EntityName,
+    FullyQualifiedEntityName,
+    Markdown,
+    SourceUrl,
+)
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
@@ -140,18 +146,20 @@ class QuicksightSource(DashboardServiceSource):
         Method to Get Dashboard Entity
         """
         dashboard_request = CreateDashboardRequest(
-            name=dashboard_details.DashboardId,
-            sourceUrl=self.dashboard_url,
+            name=EntityName(dashboard_details.DashboardId),
+            sourceUrl=SourceUrl(self.dashboard_url),
             displayName=dashboard_details.Name,
-            description=dashboard_details.Version.Description
+            description=Markdown(dashboard_details.Version.Description)
             if dashboard_details.Version
             else None,
             charts=[
-                fqn.build(
-                    self.metadata,
-                    entity_type=Chart,
-                    service_name=self.context.get().dashboard_service,
-                    chart_name=chart,
+                FullyQualifiedEntityName(
+                    fqn.build(
+                        self.metadata,
+                        entity_type=Chart,
+                        service_name=self.context.get().dashboard_service,
+                        chart_name=chart,
+                    )
                 )
                 for chart in self.context.get().charts or []
             ],
@@ -183,11 +191,13 @@ class QuicksightSource(DashboardServiceSource):
                     )
                     yield Either(
                         right=CreateChartRequest(
-                            name=chart.ChartId,
+                            name=EntityName(chart.ChartId),
                             displayName=chart.Name,
                             chartType=ChartType.Other.value,
-                            sourceUrl=self.dashboard_url,
-                            service=self.context.get().dashboard_service,
+                            sourceUrl=SourceUrl(self.dashboard_url),
+                            service=FullyQualifiedEntityName(
+                                self.context.get().dashboard_service
+                            ),
                         )
                     )
                 except Exception as exc:

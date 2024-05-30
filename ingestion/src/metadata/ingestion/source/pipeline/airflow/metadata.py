@@ -43,6 +43,13 @@ from metadata.generated.schema.entity.services.ingestionPipelines.status import 
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
+from metadata.generated.schema.type.basic import (
+    EntityName,
+    FullyQualifiedEntityName,
+    Markdown,
+    SourceUrl,
+    Timestamp,
+)
 from metadata.generated.schema.type.entityLineage import EntitiesEdge, LineageDetails
 from metadata.generated.schema.type.entityLineage import Source as LineageSource
 from metadata.generated.schema.type.entityReference import EntityReference
@@ -252,12 +259,13 @@ class AirflowSource(PipelineServiceSource):
                         if task.task_id in self.context.get().task_names
                     ]
 
+                    timestamp = datetime_to_ts(dag_run.execution_date)
                     pipeline_status = PipelineStatus(
                         taskStatus=task_statuses,
                         executionStatus=STATUS_MAP.get(
                             dag_run.state, StatusType.Pending.value
                         ),
-                        timestamp=datetime_to_ts(dag_run.execution_date),
+                        timestamp=Timestamp(timestamp) if timestamp else None,
                     )
                     pipeline_fqn = fqn.build(
                         metadata=self.metadata,
@@ -376,7 +384,7 @@ class AirflowSource(PipelineServiceSource):
             Task(
                 name=task.task_id,
                 description=task.doc_md,
-                sourceUrl=(
+                sourceUrl=SourceUrl(
                     f"{clean_uri(host_port)}/taskinstance/list/"
                     f"?flt1_dag_id_equals={dag.dag_id}&_flt_3_task_id={task.task_id}"
                 ),
@@ -422,9 +430,11 @@ class AirflowSource(PipelineServiceSource):
             source_url = f"{clean_uri(self.service_connection.hostPort)}/dags/{pipeline_details.dag_id}/grid"
 
             pipeline_request = CreatePipelineRequest(
-                name=pipeline_details.dag_id,
-                description=pipeline_details.description,
-                sourceUrl=source_url,
+                name=EntityName(pipeline_details.dag_id),
+                description=Markdown(pipeline_details.description)
+                if pipeline_details.description
+                else None,
+                sourceUrl=SourceUrl(source_url),
                 concurrency=pipeline_details.max_active_runs,
                 pipelineLocation=pipeline_details.fileloc,
                 startDate=pipeline_details.start_date.isoformat()
@@ -433,7 +443,7 @@ class AirflowSource(PipelineServiceSource):
                 tasks=self.get_tasks_from_dag(
                     pipeline_details, self.service_connection.hostPort
                 ),
-                service=self.context.get().pipeline_service,
+                service=FullyQualifiedEntityName(self.context.get().pipeline_service),
                 owner=self.get_owner(pipeline_details.owner),
                 scheduleInterval=pipeline_details.schedule_interval,
             )

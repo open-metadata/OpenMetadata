@@ -28,6 +28,11 @@ from metadata.generated.schema.entity.services.databaseService import DatabaseSe
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
+from metadata.generated.schema.type.basic import (
+    EntityName,
+    FullyQualifiedEntityName,
+    SourceUrl,
+)
 from metadata.generated.schema.type.entityLineage import EntitiesEdge, LineageDetails
 from metadata.generated.schema.type.entityLineage import Source as LineageSource
 from metadata.generated.schema.type.entityReference import EntityReference
@@ -96,10 +101,10 @@ class FivetranSource(PipelineServiceSource):
         :return: Create Pipeline request with tasks
         """
         pipeline_request = CreatePipelineRequest(
-            name=pipeline_details.pipeline_name,
+            name=EntityName(pipeline_details.pipeline_name),
             displayName=pipeline_details.pipeline_display_name,
             tasks=self.get_connections_jobs(pipeline_details),
-            service=self.context.get().pipeline_service,
+            service=FullyQualifiedEntityName(self.context.get().pipeline_service),
             sourceUrl=self.get_source_url(
                 connector_id=pipeline_details.source.get("id"),
                 group_id=pipeline_details.group.get("id"),
@@ -208,10 +213,10 @@ class FivetranSource(PipelineServiceSource):
         connector_id: Optional[str],
         group_id: Optional[str],
         source_name: Optional[str],
-    ) -> Optional[str]:
+    ) -> Optional[SourceUrl]:
         try:
             if connector_id and group_id and source_name:
-                return (
+                return SourceUrl(
                     f"https://fivetran.com/dashboard/connectors/{connector_id}/status"
                     f"?groupId={group_id}&service={source_name}"
                 )

@@ -335,7 +335,6 @@ class AtlasSource(Source):
                 col_guid = col["guid"]
                 col_ref_entity = referred_entities[col_guid]
                 column = col_ref_entity["attributes"]
-                col_data_length = "1"
                 om_column = Column(
                     name=column["name"],
                     description=column.get("comment", None),
@@ -343,7 +342,7 @@ class AtlasSource(Source):
                         column["dataType"].upper()
                     ),
                     dataTypeDisplay=column["dataType"],
-                    dataLength=col_data_length,
+                    dataLength=1,
                     ordinalPosition=ordinal_pos,
                 )
                 om_cols.append(om_column)

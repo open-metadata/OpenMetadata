@@ -33,6 +33,12 @@ from metadata.generated.schema.entity.services.ingestionPipelines.status import 
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
+from metadata.generated.schema.type.basic import (
+    EntityName,
+    FullyQualifiedEntityName,
+    Markdown,
+    SourceUrl,
+)
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.dashboard.superset.mixin import SupersetSourceMixin
@@ -116,19 +122,23 @@ class SupersetDBSource(SupersetSourceMixin):
         """Method to Get Dashboard Entity"""
         try:
             dashboard_request = CreateDashboardRequest(
-                name=dashboard_details.id,
+                name=EntityName(dashboard_details.id),
                 displayName=dashboard_details.dashboard_title,
-                sourceUrl=f"{clean_uri(self.service_connection.hostPort)}/superset/dashboard/{dashboard_details.id}/",
+                sourceUrl=SourceUrl(
+                    f"{clean_uri(self.service_connection.hostPort)}/superset/dashboard/{dashboard_details.id}/"
+                ),
                 charts=[
-                    fqn.build(
-                        self.metadata,
-                        entity_type=Chart,
-                        service_name=self.context.get().dashboard_service,
-                        chart_name=chart,
+                    FullyQualifiedEntityName(
+                        fqn.build(
+                            self.metadata,
+                            entity_type=Chart,
+                            service_name=self.context.get().dashboard_service,
+                            chart_name=chart,
+                        )
                     )
                     for chart in self.context.get().charts or []
                 ],
-                service=self.context.get().dashboard_service,
+                service=FullyQualifiedEntityName(self.context.get().dashboard_service),
                 owner=self.get_owner_ref(dashboard_details=dashboard_details),
             )
             yield Either(right=dashboard_request)
@@ -136,7 +146,7 @@ class SupersetDBSource(SupersetSourceMixin):
         except Exception as exc:
             yield Either(
                 left=StackTraceError(
-                    name=dashboard_details.id,
+                    name=str(dashboard_details.id),
                     error=(
                         f"Error yielding Dashboard [{dashboard_details.id} "
                         f"- {dashboard_details.dashboard_title}]: {exc}"
@@ -170,11 +180,15 @@ class SupersetDBSource(SupersetSourceMixin):
 
                     continue
                 chart = CreateChartRequest(
-                    name=chart_json.id,
+                    name=EntityName(chart_json.id),
                     displayName=chart_json.slice_name,
-                    description=chart_json.description,
+                    description=Markdown(chart_json.description)
+                    if chart_json.description
+                    else None,
                     chartType=get_standard_chart_type(chart_json.viz_type),
-                    sourceUrl=f"{clean_uri(self.service_connection.hostPort)}/explore/?slice_id={chart_json.id}",
+                    sourceUrl=SourceUrl(
+                        f"{clean_uri(self.service_connection.hostPort)}/explore/?slice_id={chart_json.id}"
+                    ),
                     service=self.context.get().dashboard_service,
                 )
                 yield Either(right=chart)
@@ -238,9 +252,11 @@ class SupersetDBSource(SupersetSourceMixin):
                 col_names = self.get_column_list(chart_json.table_name)
                 try:
                     data_model_request = CreateDashboardDataModelRequest(
-                        name=chart_json.datasource_id,
+                        name=EntityName(chart_json.datasource_id),
                         displayName=chart_json.table_name,
-                        service=self.context.get().dashboard_service,
+                        service=FullyQualifiedEntityName(
+                            self.context.get().dashboard_service
+                        ),
                         columns=self.get_column_info(col_names),
                         dataModelType=DataModelType.SupersetDataModel.value,
                     )

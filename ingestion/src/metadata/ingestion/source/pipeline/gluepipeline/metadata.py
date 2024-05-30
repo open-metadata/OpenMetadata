@@ -34,6 +34,12 @@ from metadata.generated.schema.entity.services.ingestionPipelines.status import 
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
+from metadata.generated.schema.type.basic import (
+    EntityName,
+    FullyQualifiedEntityName,
+    SourceUrl,
+    Timestamp,
+)
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.models.pipeline_status import OMetaPipelineStatus
@@ -95,17 +101,17 @@ class GluepipelineSource(PipelineServiceSource):
         self, pipeline_details: Any
     ) -> Iterable[Either[CreatePipelineRequest]]:
         """Method to Get Pipeline Entity"""
-        source_url = (
+        source_url = SourceUrl(
             f"https://{self.service_connection.awsConfig.awsRegion}.console.aws.amazon.com/glue/home?"
             f"region={self.service_connection.awsConfig.awsRegion}#/v2/etl-configuration/"
             f"workflows/view/{pipeline_details[NAME]}"
         )
         self.job_name_list = set()
         pipeline_request = CreatePipelineRequest(
-            name=pipeline_details[NAME],
+            name=EntityName(pipeline_details[NAME]),
             displayName=pipeline_details[NAME],
             tasks=self.get_tasks(pipeline_details),
-            service=self.context.get().pipeline_service,
+            service=FullyQualifiedEntityName(self.context.get().pipeline_service),
             sourceUrl=source_url,
         )
         yield Either(right=pipeline_request)
@@ -154,18 +160,24 @@ class GluepipelineSource(PipelineServiceSource):
                             executionStatus=STATUS_MAP.get(
                                 attempt["JobRunState"].lower(), StatusType.Pending
                             ).value,
-                            startTime=convert_timestamp_to_milliseconds(
-                                attempt["StartedOn"].timestamp()
+                            startTime=Timestamp(
+                                convert_timestamp_to_milliseconds(
+                                    attempt["StartedOn"].timestamp()
+                                )
                             ),
-                            endTime=convert_timestamp_to_milliseconds(
-                                attempt["CompletedOn"].timestamp()
+                            endTime=Timestamp(
+                                convert_timestamp_to_milliseconds(
+                                    attempt["CompletedOn"].timestamp()
+                                )
                             ),
                         )
                     )
                     pipeline_status = PipelineStatus(
                         taskStatus=task_status,
-                        timestamp=convert_timestamp_to_milliseconds(
-                            attempt["StartedOn"].timestamp()
+                        timestamp=Timestamp(
+                            convert_timestamp_to_milliseconds(
+                                attempt["StartedOn"].timestamp()
+                            )
                         ),
                         executionStatus=STATUS_MAP.get(
                             attempt["JobRunState"].lower(), StatusType.Pending

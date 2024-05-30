@@ -36,6 +36,7 @@ from metadata.generated.schema.entity.services.ingestionPipelines.status import 
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
+from metadata.generated.schema.type.basic import EntityName, SourceUrl
 from metadata.generated.schema.type.entityLineage import EntitiesEdge, LineageDetails
 from metadata.generated.schema.type.entityLineage import Source as LineageSource
 from metadata.generated.schema.type.entityReference import EntityReference
@@ -87,10 +88,10 @@ class KafkaconnectSource(PipelineServiceSource):
         Method to Get Pipeline Entity
         """
         try:
-            connection_url = f"{clean_uri(self.service_connection.hostPort)}"
+            connection_url = SourceUrl(f"{clean_uri(self.service_connection.hostPort)}")
 
             pipeline_request = CreatePipelineRequest(
-                name=pipeline_details.name,
+                name=EntityName(pipeline_details.name),
                 sourceUrl=connection_url,
                 tasks=[
                     Task(

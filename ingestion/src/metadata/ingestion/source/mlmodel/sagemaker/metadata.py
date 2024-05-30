@@ -30,7 +30,18 @@ from metadata.generated.schema.entity.services.ingestionPipelines.status import 
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
-from metadata.generated.schema.type.tagLabel import TagLabel
+from metadata.generated.schema.type.basic import (
+    EntityName,
+    FullyQualifiedEntityName,
+    Markdown,
+)
+from metadata.generated.schema.type.tagLabel import (
+    LabelType,
+    State,
+    TagFQN,
+    TagLabel,
+    TagSource,
+)
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
@@ -135,10 +146,10 @@ class SagemakerSource(MlModelServiceSource):
         """
         try:
             mlmodel_request = CreateMlModelRequest(
-                name=model.name,
+                name=EntityName(model.name),
                 algorithm=self._get_algorithm(),  # Setting this to a constant
                 mlStore=self._get_ml_store(model.name),
-                service=self.context.get().mlmodel_service,
+                service=FullyQualifiedEntityName(self.context.get().mlmodel_service),
             )
             yield Either(right=mlmodel_request)
             self.register_record(mlmodel_request=mlmodel_request)
@@ -178,17 +189,18 @@ class SagemakerSource(MlModelServiceSource):
 
     def _get_tags(self, model_arn: str) -> Optional[List[TagLabel]]:
         try:
-            tags = self.sagemaker.list_tags(ResourceArn=model_arn)["Tags"]
-            return [
-                TagLabel(
-                    tagFQN=tag["Key"],
-                    description=tag["Value"],
-                    source="Classification",
-                    labelType="Propagated",
-                    state="Confirmed",
-                )
-                for tag in tags
-            ]
+            tags = self.sagemaker.list_tags(ResourceArn=model_arn).get("Tags")
+            if tags:
+                return [
+                    TagLabel(
+                        tagFQN=TagFQN(tag["Key"]),
+                        description=Markdown(tag["Value"]),
+                        source=TagSource.Classification,
+                        labelType=LabelType.Automated,
+                        state=State.Confirmed,
+                    )
+                    for tag in tags
+                ]
         except ValidationError as err:
             logger.debug(traceback.format_exc())
             logger.warning(

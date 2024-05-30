@@ -27,6 +27,11 @@ from metadata.generated.schema.entity.services.databaseService import DatabaseSe
 from metadata.generated.schema.entity.services.ingestionPipelines.status import (
     StackTraceError,
 )
+from metadata.generated.schema.type.basic import (
+    EntityName,
+    FullyQualifiedEntityName,
+    SourceUrl,
+)
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.source.dashboard.superset.mixin import SupersetSourceMixin
 from metadata.ingestion.source.dashboard.superset.models import (
@@ -92,19 +97,23 @@ class SupersetAPISource(SupersetSourceMixin):
         """
         try:
             dashboard_request = CreateDashboardRequest(
-                name=dashboard_details.id,
+                name=EntityName(dashboard_details.id),
                 displayName=dashboard_details.dashboard_title,
-                sourceUrl=f"{clean_uri(self.service_connection.hostPort)}{dashboard_details.url}",
+                sourceUrl=SourceUrl(
+                    f"{clean_uri(self.service_connection.hostPort)}{dashboard_details.url}"
+                ),
                 charts=[
-                    fqn.build(
-                        self.metadata,
-                        entity_type=Chart,
-                        service_name=self.context.get().dashboard_service,
-                        chart_name=chart,
+                    FullyQualifiedEntityName(
+                        fqn.build(
+                            self.metadata,
+                            entity_type=Chart,
+                            service_name=self.context.get().dashboard_service,
+                            chart_name=chart,
+                        )
                     )
                     for chart in self.context.get().charts or []
                 ],
-                service=self.context.get().dashboard_service,
+                service=FullyQualifiedEntityName(self.context.get().dashboard_service),
                 owner=self.get_owner_ref(dashboard_details=dashboard_details),
             )
             yield Either(right=dashboard_request)
@@ -140,11 +149,15 @@ class SupersetAPISource(SupersetSourceMixin):
                     )
                     continue
                 chart = CreateChartRequest(
-                    name=chart_json.id,
+                    name=EntityName(chart_json.id),
                     displayName=chart_json.slice_name,
-                    description=chart_json.description,
+                    description=Markdown(chart_json.description)
+                    if chart_json.description
+                    else None,
                     chartType=get_standard_chart_type(chart_json.viz_type),
-                    sourceUrl=f"{clean_uri(self.service_connection.hostPort)}{chart_json.url}",
+                    sourceUrl=SourceUrl(
+                        f"{clean_uri(self.service_connection.hostPort)}{chart_json.url}"
+                    ),
                     service=self.context.get().dashboard_service,
                 )
                 yield Either(right=chart)
@@ -218,9 +231,11 @@ class SupersetAPISource(SupersetSourceMixin):
                             "Data model filtered out.",
                         )
                     data_model_request = CreateDashboardDataModelRequest(
-                        name=datasource_json.id,
+                        name=EntityName(datasource_json.id),
                         displayName=datasource_json.result.table_name,
-                        service=self.context.get().dashboard_service,
+                        service=FullyQualifiedEntityName(
+                            self.context.get().dashboard_service
+                        ),
                         columns=self.get_column_info(datasource_json.result.columns),
                         dataModelType=DataModelType.SupersetDataModel.value,
                     )

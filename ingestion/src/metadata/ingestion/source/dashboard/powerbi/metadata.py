@@ -41,6 +41,12 @@ from metadata.generated.schema.entity.services.ingestionPipelines.status import 
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
+from metadata.generated.schema.type.basic import (
+    EntityName,
+    FullyQualifiedEntityName,
+    Markdown,
+    SourceUrl,
+)
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
@@ -328,10 +334,12 @@ class PowerbiSource(DashboardServiceSource):
         """
         try:
             data_model_request = CreateDashboardDataModelRequest(
-                name=dataset.id,
+                name=EntityName(dataset.id),
                 displayName=dataset.name,
-                description=dataset.description,
-                service=self.context.get().dashboard_service,
+                description=Markdown(dataset.description)
+                if dataset.description
+                else None,
+                service=FullyQualifiedEntityName(self.context.get().dashboard_service),
                 dataModelType=DataModelType.PowerBIDataModel.value,
                 serviceType=DashboardServiceType.PowerBI.value,
                 columns=self._get_column_info(dataset),
@@ -404,33 +412,41 @@ class PowerbiSource(DashboardServiceSource):
         try:
             if isinstance(dashboard_details, PowerBIDashboard):
                 dashboard_request = CreateDashboardRequest(
-                    name=dashboard_details.id,
-                    sourceUrl=self._get_dashboard_url(
-                        workspace_id=self.context.get().workspace.id,
-                        dashboard_id=dashboard_details.id,
+                    name=EntityName(dashboard_details.id),
+                    sourceUrl=SourceUrl(
+                        self._get_dashboard_url(
+                            workspace_id=self.context.get().workspace.id,
+                            dashboard_id=dashboard_details.id,
+                        )
                     ),
                     project=self.get_project_name(dashboard_details=dashboard_details),
                     displayName=dashboard_details.displayName,
                     dashboardType=DashboardType.Dashboard,
                     charts=[
-                        fqn.build(
-                            self.metadata,
-                            entity_type=Chart,
-                            service_name=self.context.get().dashboard_service,
-                            chart_name=chart,
+                        FullyQualifiedEntityName(
+                            fqn.build(
+                                self.metadata,
+                                entity_type=Chart,
+                                service_name=self.context.get().dashboard_service,
+                                chart_name=chart,
+                            )
                         )
                         for chart in self.context.get().charts or []
                     ],
-                    service=self.context.get().dashboard_service,
+                    service=FullyQualifiedEntityName(
+                        self.context.get().dashboard_service
+                    ),
                     owner=self.get_owner_ref(dashboard_details=dashboard_details),
                 )
             else:
                 dashboard_request = CreateDashboardRequest(
-                    name=dashboard_details.id,
+                    name=EntityName(dashboard_details.id),
                     dashboardType=DashboardType.Report,
-                    sourceUrl=self._get_report_url(
-                        workspace_id=self.context.get().workspace.id,
-                        dashboard_id=dashboard_details.id,
+                    sourceUrl=SourceUrl(
+                        self._get_report_url(
+                            workspace_id=self.context.get().workspace.id,
+                            dashboard_id=dashboard_details.id,
+                        )
                     ),
                     project=self.get_project_name(dashboard_details=dashboard_details),
                     displayName=dashboard_details.name,
@@ -576,7 +592,7 @@ class PowerbiSource(DashboardServiceSource):
         db_service_name: str,
         table: PowerBiTable,
         datamodel_entity: DashboardDataModel,
-    ) -> Optional[Iterable[Either[AddLineageRequest]]]:
+    ) -> Optional[Either[AddLineageRequest]]:
         """
         Method to create lineage between table and datamodels
         """
@@ -728,15 +744,19 @@ class PowerbiSource(DashboardServiceSource):
                         continue
                     yield Either(
                         right=CreateChartRequest(
-                            name=chart.id,
+                            name=EntityName(chart.id),
                             displayName=chart_display_name,
                             chartType=ChartType.Other.value,
-                            sourceUrl=self._get_chart_url(
-                                report_id=chart.reportId,
-                                workspace_id=self.context.get().workspace.id,
-                                dashboard_id=dashboard_details.id,
+                            sourceUrl=SourceUrl(
+                                self._get_chart_url(
+                                    report_id=chart.reportId,
+                                    workspace_id=self.context.get().workspace.id,
+                                    dashboard_id=dashboard_details.id,
+                                )
                             ),
-                            service=self.context.get().dashboard_service,
+                            service=FullyQualifiedEntityName(
+                                self.context.get().dashboard_service
+                            ),
                         )
                     )
                 except Exception as exc:

@@ -41,6 +41,7 @@ from metadata.generated.schema.metadataIngestion.dashboardServiceMetadataPipelin
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
+from metadata.generated.schema.type.basic import Uuid
 from metadata.generated.schema.type.entityLineage import (
     ColumnLineage,
     EntitiesEdge,
@@ -471,11 +472,11 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
                 right=AddLineageRequest(
                     edge=EntitiesEdge(
                         fromEntity=EntityReference(
-                            id=from_entity.id.root,
+                            id=Uuid(from_entity.id.root),
                             type=LINEAGE_MAP[type(from_entity)],
                         ),
                         toEntity=EntityReference(
-                            id=to_entity.id.root,
+                            id=Uuid(to_entity.id.root),
                             type=LINEAGE_MAP[type(to_entity)],
                         ),
                         lineageDetails=LineageDetails(

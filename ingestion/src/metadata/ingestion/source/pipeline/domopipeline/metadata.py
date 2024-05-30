@@ -33,6 +33,13 @@ from metadata.generated.schema.entity.services.ingestionPipelines.status import 
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
+from metadata.generated.schema.type.basic import (
+    EntityName,
+    FullyQualifiedEntityName,
+    Markdown,
+    SourceUrl,
+    Timestamp,
+)
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.models.pipeline_status import OMetaPipelineStatus
@@ -92,11 +99,13 @@ class DomopipelineSource(PipelineServiceSource):
             )
 
             pipeline_request = CreatePipelineRequest(
-                name=pipeline_name,
+                name=EntityName(pipeline_name),
                 displayName=pipeline_details.get("name"),
-                description=pipeline_details.get("description", ""),
+                description=Markdown(pipeline_details["description"])
+                if pipeline_details.get("description")
+                else None,
                 tasks=[task],
-                service=self.context.get().pipeline_service,
+                service=FullyQualifiedEntityName(self.context.get().pipeline_service),
                 startDate=pipeline_details.get("created"),
                 sourceUrl=source_url,
             )
@@ -136,12 +145,12 @@ class DomopipelineSource(PipelineServiceSource):
         try:
             for run in runs or []:
                 start_time = (
-                    convert_timestamp_to_milliseconds(run["beginTime"])
+                    Timestamp(convert_timestamp_to_milliseconds(run["beginTime"]))
                     if run.get("beginTime")
                     else None
                 )
                 end_time = (
-                    convert_timestamp_to_milliseconds(run["endTime"])
+                    Timestamp(convert_timestamp_to_milliseconds(run["endTime"]))
                     if run.get("endTime")
                     else None
                 )
@@ -187,9 +196,9 @@ class DomopipelineSource(PipelineServiceSource):
     def get_source_url(
         self,
         pipeline_id: str,
-    ) -> Optional[str]:
+    ) -> Optional[SourceUrl]:
         try:
-            return (
+            return SourceUrl(
                 f"{clean_uri(self.service_connection.instanceDomain)}/datacenter/dataflows/"
                 f"{pipeline_id}/details#history"
             )

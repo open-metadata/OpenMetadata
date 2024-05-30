@@ -51,6 +51,7 @@ from metadata.generated.schema.entity.teams.user import User
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
+from metadata.generated.schema.type.basic import FullyQualifiedEntityName
 from metadata.ingestion.api.common import Entity
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException, Source
@@ -214,7 +215,9 @@ class AmundsenSource(Source):
                         name=table_entity.name,
                         tableType=table_entity.tableType,
                         description=table_entity.description,
-                        databaseSchema=table_entity.databaseSchema.fullyQualifiedName,
+                        databaseSchema=FullyQualifiedEntityName(
+                            table_entity.databaseSchema.fullyQualifiedName
+                        ),
                         tags=table_entity.tags,
                         columns=table_entity.columns,
                         owner=user_entity_ref,
@@ -244,7 +247,7 @@ class AmundsenSource(Source):
                 name=table_name
                 if hasattr(service_entity.connection.config, "supportsDatabase")
                 else "default",
-                service=service_entity.fullyQualifiedName.root,
+                service=service_entity.fullyQualifiedName,
             )
             yield Either(right=database_request)
             database_fqn = fqn.build(
