@@ -39,6 +39,7 @@ import {
   getClassificationByName,
   getTags,
 } from '../rest/tagAPI';
+import { getQueryFilterToIncludeApprovedTerm } from './GlossaryUtils';
 import { getTagsWithoutTier } from './TableUtils';
 
 export const getClassifications = async (
@@ -269,7 +270,7 @@ export const fetchGlossaryList = async (
     query: searchQueryParam ? `*${searchQueryParam}*` : '*',
     pageNumber: page,
     pageSize: 10,
-    queryFilter: {},
+    queryFilter: getQueryFilterToIncludeApprovedTerm(),
     searchIndex: SearchIndex.GLOSSARY_TERM,
   });
 

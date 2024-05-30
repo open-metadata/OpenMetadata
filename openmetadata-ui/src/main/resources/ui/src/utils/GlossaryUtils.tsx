@@ -22,25 +22,9 @@ import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
 import { EntityType } from '../enums/entity.enum';
 import { Glossary } from '../generated/entity/data/glossary';
 import { GlossaryTerm, Status } from '../generated/entity/data/glossaryTerm';
-import { EntityReference } from '../generated/type/entityReference';
 import { getEntityName } from './EntityUtils';
 import Fqn from './Fqn';
 import { getGlossaryPath } from './RouterUtils';
-
-export const getEntityReferenceFromGlossary = (
-  glossary: Glossary
-): EntityReference => {
-  return {
-    deleted: glossary.deleted,
-    href: glossary.href,
-    fullyQualifiedName: glossary.fullyQualifiedName ?? '',
-    id: glossary.id,
-    type: 'glossaryTerm',
-    description: glossary.description,
-    displayName: glossary.displayName,
-    name: glossary.name,
-  };
-};
 
 export const buildTree = (data: GlossaryTerm[]): GlossaryTerm[] => {
   const nodes: Record<string, GlossaryTerm> = {};
@@ -110,6 +94,22 @@ export const getQueryFilterToExcludeTerm = (fqn: string) => ({
     },
   },
 });
+
+export const getQueryFilterToIncludeApprovedTerm = () => {
+  return {
+    query: {
+      bool: {
+        must: [
+          {
+            term: {
+              status: Status.Approved,
+            },
+          },
+        ],
+      },
+    },
+  };
+};
 
 export const StatusClass = {
   [Status.Approved]: StatusType.Success,

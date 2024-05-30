@@ -11,4 +11,28 @@
  *  limitations under the License.
  */
 
+import { uuid } from './constants';
+
 export const GLOSSARY_OWNER_LINK_TEST_ID = 'glossary-right-panel-owner-link';
+
+export const GLOSSARY_DETAILS1 = {
+  name: `Cypress%QFTEST ${uuid()}`,
+  displayName: `Cypress % QFTEST ${uuid()}`,
+  description: 'Test Glossary',
+  reviewers: [],
+  tags: [],
+  mutuallyExclusive: false,
+};
+
+export const GLOSSARY_TERM_DETAILS1 = {
+  name: `CypressQFTEST_TERM-${uuid()}`,
+  displayName: 'Cypress QFTEST_TERM',
+  description: 'Quick filter test.',
+  reviewers: [],
+  relatedTerms: [],
+  synonyms: [],
+  mutuallyExclusive: false,
+  tags: [],
+  style: {},
+  glossary: GLOSSARY_DETAILS1.name,
+};

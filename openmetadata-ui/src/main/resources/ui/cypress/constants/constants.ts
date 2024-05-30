@@ -423,12 +423,14 @@ export const NEW_GLOSSARY_TERMS = {
     description: 'This is the Cypress Purchase',
     synonyms: 'buy,collect,acquire',
     fullyQualifiedName: `${cypressGlossaryName}.CypressPurchase`,
+    owner: 'Aaron Johnson',
   },
   term_2: {
     name: 'CypressSales',
     description: 'This is the Cypress Sales',
     synonyms: 'give,disposal,deal',
     fullyQualifiedName: `${cypressGlossaryName}.CypressSales`,
+    owner: 'Aaron Johnson',
   },
   term_3: {
     name: 'Cypress Space',
@@ -436,6 +438,7 @@ export const NEW_GLOSSARY_TERMS = {
     synonyms: 'tea,coffee,water',
     fullyQualifiedName: `${cypressGlossaryName}.Cypress Space`,
     assets: COMMON_ASSETS,
+    owner: 'admin',
   },
 };
 export const GLOSSARY_TERM_WITH_DETAILS = {

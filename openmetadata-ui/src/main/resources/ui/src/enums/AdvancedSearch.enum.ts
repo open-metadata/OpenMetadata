@@ -58,4 +58,5 @@ export enum EntityFields {
   COLUMN = 'columns.name.keyword',
   CHART = 'charts.displayName.keyword',
   TASK = 'tasks.displayName.keyword',
+  GLOSSARY_TERM_STATUS = 'status',
 }

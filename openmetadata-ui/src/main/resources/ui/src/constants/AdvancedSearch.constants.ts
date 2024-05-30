@@ -143,6 +143,10 @@ export const GLOSSARY_DROPDOWN_ITEMS = [
     label: t('label.glossary-plural'),
     key: EntityFields.GLOSSARY,
   },
+  {
+    label: t('label.status'),
+    key: EntityFields.GLOSSARY_TERM_STATUS,
+  },
 ];
 
 export const TAG_DROPDOWN_ITEMS = [
