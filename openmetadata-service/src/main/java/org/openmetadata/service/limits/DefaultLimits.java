@@ -40,4 +40,7 @@ public class DefaultLimits implements Limits {
   public Response getLimitsForaFeature(String name, boolean cache) {
     return Response.ok().build();
   }
+
+  @Override
+  public void invalidateCache(String entityType) {}
 }
