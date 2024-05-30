@@ -199,15 +199,18 @@ const addPipelineBetweenNodes = (
   }
 };
 
-const expandCols = (nodeFqn, hasShowMore) => {
-  cy.get(
-    `[data-testid="lineage-node-${nodeFqn}"] [data-testid="expand-cols-btn"]`
-  ).click({ force: true });
-  if (hasShowMore) {
-    cy.get(
-      `[data-testid="lineage-node-${nodeFqn}"] [data-testid="show-more-cols-btn"]`
-    ).click({ force: true });
-  }
+const activateColumnLayer = () => {
+  cy.get('[data-testid="lineage-layer-btn"]').click();
+  cy.get('[data-testid="lineage-layer-column-btn"]').click();
+};
+
+const verifyColumnLayerInactive = () => {
+  cy.get('[data-testid="lineage-layer-btn"]').click(); // Open Layer popover
+  cy.get('[data-testid="lineage-layer-column-btn"]').should(
+    'not.have.class',
+    'active'
+  );
+  cy.get('[data-testid="lineage-layer-btn"]').click(); // Close Layer popover
 };
 
 const addColumnLineage = (fromNode, toNode, exitEditMode = true) => {
@@ -243,6 +246,7 @@ describe('Lineage verification', { tags: 'DataAssets' }, () => {
       });
 
       cy.get('[data-testid="lineage"]').click();
+      verifyColumnLayerInactive();
       cy.get('[data-testid="edit-lineage"]').click();
 
       performZoomOut();
@@ -329,6 +333,7 @@ describe('Lineage verification', { tags: 'DataAssets' }, () => {
       const targetEntity = LINEAGE_ITEMS[i];
       if (targetEntity.columns.length > 0) {
         addPipelineBetweenNodes(sourceEntity, targetEntity);
+        activateColumnLayer();
         // Add column lineage
         addColumnLineage(sourceEntity, targetEntity);
         cy.get('[data-testid="edit-lineage"]').click();

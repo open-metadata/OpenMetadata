@@ -25,6 +25,9 @@ class LRUCache:
         self._cache = OrderedDict()
         self.capacity = capacity
 
+    def clear(self):
+        self._cache = OrderedDict()
+
     def get(self, key):
         """
         Returns the value associated to `key` if it exists,
