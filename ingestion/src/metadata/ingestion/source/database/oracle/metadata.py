@@ -150,24 +150,25 @@ class OracleSource(StoredProcedureMixin, CommonDbSourceService):
         Get the DDL statement or View Definition for a table
         """
         try:
-            if table_type not in {TableType.View, TableType.MaterializedView}:
-                schema_definition = inspector.get_table_ddl(
-                    self.connection, table_name, schema_name
+            if self.source_config.includeDDL:
+                if table_type not in {TableType.View, TableType.MaterializedView}:
+                    schema_definition = inspector.get_table_ddl(
+                        self.connection, table_name, schema_name
+                    )
+
+                else:
+                    definition_fn = inspector.get_view_definition
+                    if table_type == TableType.MaterializedView:
+                        definition_fn = inspector.get_mview_definition
+
+                    schema_definition = definition_fn(table_name, schema_name)
+
+                schema_definition = (
+                    str(schema_definition.strip())
+                    if schema_definition is not None
+                    else None
                 )
-
-            else:
-                definition_fn = inspector.get_view_definition
-                if table_type == TableType.MaterializedView:
-                    definition_fn = inspector.get_mview_definition
-
-                schema_definition = definition_fn(table_name, schema_name)
-
-            schema_definition = (
-                str(schema_definition.strip())
-                if schema_definition is not None
-                else None
-            )
-            return schema_definition
+                return schema_definition
 
         except NotImplementedError:
             logger.warning("Schema definition not implemented")
