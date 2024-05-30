@@ -261,6 +261,8 @@ overrides:
         - off
       jest/no-done-callback:
         - off
+      jest/no-standalone-expect:
+        - off
 
   # i18next rule is not required for js, jsx, json and test file
   - files:
