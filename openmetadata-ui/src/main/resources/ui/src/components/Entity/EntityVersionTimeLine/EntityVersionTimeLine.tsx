@@ -173,11 +173,7 @@ const EntityVersionTimeLine: React.FC<EntityVersionTimelineProps> = ({
                 Upgrade to paid plan for access to all of your version history.
               </Typography.Text>
 
-              <Button
-                block
-                className="m-t-lg"
-                href="https://www.getcollate.io/pricing"
-                type="primary">
+              <Button block className="m-t-lg" href="/plans" type="primary">
                 See Upgrade Options
               </Button>
             </div>
