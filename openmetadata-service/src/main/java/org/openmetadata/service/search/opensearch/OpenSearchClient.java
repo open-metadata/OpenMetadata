@@ -378,10 +378,7 @@ public class OpenSearchClient implements SearchClient {
     }
 
     if (request.getIndex().equalsIgnoreCase("glossary_term_search_index")) {
-      searchSourceBuilder.query(
-          QueryBuilders.boolQuery()
-              .must(searchSourceBuilder.query())
-              .must(QueryBuilders.matchQuery("status", "Approved")));
+      searchSourceBuilder.query(QueryBuilders.boolQuery().must(searchSourceBuilder.query()));
 
       if (request.isGetHierarchy()) {
         /*
@@ -1169,6 +1166,7 @@ public class OpenSearchClient implements SearchClient {
         AggregationBuilders.terms("glossary.name.keyword").field("glossary.name.keyword"));
     searchSourceBuilder.aggregation(
         AggregationBuilders.terms("fqnParts_agg").field("fqnParts").size(1000));
+    searchSourceBuilder.aggregation(AggregationBuilders.terms("status").field("status"));
     return addAggregation(searchSourceBuilder);
   }
 
