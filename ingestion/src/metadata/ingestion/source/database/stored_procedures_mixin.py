@@ -64,7 +64,7 @@ class QueryByProcedure(BaseModel):
     query_user_name: Optional[str] = Field(None, alias="QUERY_USER_NAME")
 
     class Config:
-        allow_population_by_field_name = True
+        populate_by_name = True
 
 
 class StoredProcedureMixin(ABC):

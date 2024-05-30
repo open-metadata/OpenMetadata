@@ -50,6 +50,12 @@ from metadata.generated.schema.metadataIngestion.databaseServiceMetadataPipeline
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
+from metadata.generated.schema.type.basic import (
+    EntityName,
+    FullyQualifiedEntityName,
+    Markdown,
+    SourceUrl,
+)
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.connections.session import create_and_bind_thread_safe_session
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
@@ -182,12 +188,25 @@ class CommonDbSourceService(
         Prepare a database request and pass it to the sink
         """
 
+        description = (
+            Markdown(root=db_description)
+            if (db_description := self.get_database_description(database_name))
+            else None
+        )
+        source_url = (
+            SourceUrl(root=source_url)
+            if (source_url := self.get_source_url(database_name=database_name))
+            else None
+        )
+
         yield Either(
             right=CreateDatabaseRequest(
-                name=database_name,
-                service=self.context.get().database_service,
-                description=self.get_database_description(database_name),
-                sourceUrl=self.get_source_url(database_name=database_name),
+                name=EntityName(root=database_name),
+                service=FullyQualifiedEntityName(
+                    root=self.context.get().database_service
+                ),
+                description=description,
+                sourceUrl=source_url,
                 tags=self.get_database_tag_labels(database_name=database_name),
             )
         )

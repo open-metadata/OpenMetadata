@@ -45,7 +45,7 @@ class AirflowTask(BaseModel):
 
     # Allow picking up data from key `inlets` and `_inlets`
     class Config:
-        allow_population_by_field_name = True
+        populate_by_name = True
 
 
 class TaskList(BaseModel):

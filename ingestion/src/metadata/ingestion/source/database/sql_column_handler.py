@@ -291,8 +291,9 @@ class SqlColumnHandlerMixin:
                         ordinalPosition=column.get("ordinalPosition"),
                     )
                     if precision:
-                        om_column.precision = precision[0]
-                        om_column.scale = precision[1]
+                        # Precision and scale must be integer values
+                        om_column.precision = int(precision[0])
+                        om_column.scale = int(precision[1])
 
                 else:
                     col_obj = self._process_complex_col_type(
