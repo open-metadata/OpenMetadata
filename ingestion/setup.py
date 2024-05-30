@@ -234,7 +234,7 @@ plugins: Dict[str, Set[str]] = {
     "openlineage": {*COMMONS["kafka"]},
     "oracle": {"cx_Oracle>=8.3.0,<9", "oracledb~=1.2"},
     "pgspider": {"psycopg2-binary", "sqlalchemy-pgspider"},
-    "pinotdb": {"pinotdb~=0.3"},
+    "pinotdb": {"pinotdb~=5.0"},
     "postgres": {*COMMONS["postgres"]},
     "powerbi": {
         VERSIONS["msal"],
@@ -256,7 +256,7 @@ plugins: Dict[str, Set[str]] = {
         VERSIONS["geoalchemy2"],
     },
     "sagemaker": {VERSIONS["boto3"]},
-    "salesforce": {"simple_salesforce==1.11.4"},
+    "salesforce": {"simple_salesforce~=1.11"},
     "sample-data": {VERSIONS["avro"], VERSIONS["grpc-tools"]},
     "sap-hana": {"hdbcli", "sqlalchemy-hana"},
     "sas": {},
@@ -297,7 +297,7 @@ test = {
     "coverage",
     # Install GE because it's not in the `all` plugin
     VERSIONS["great-expectations"],
-    "moto==4.0.8",
+    "moto~=5.0",
     "pytest==7.0.0",
     "pytest-cov",
     "pytest-order",

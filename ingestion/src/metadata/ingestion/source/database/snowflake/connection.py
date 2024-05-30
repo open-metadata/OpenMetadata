@@ -54,7 +54,7 @@ logger = ingestion_logger()
 class SnowflakeEngineWrapper(BaseModel):
     service_connection: SnowflakeConnection
     engine: Any
-    database_name: Optional[str]
+    database_name: Optional[str] = None
 
 
 def get_connection_url(connection: SnowflakeConnection) -> str:

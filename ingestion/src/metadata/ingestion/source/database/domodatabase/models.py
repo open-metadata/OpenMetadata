@@ -34,7 +34,7 @@ class User(DomoDatabaseBaseModel):
 class SchemaColumn(BaseModel):
     type: str
     name: str
-    description: Optional[str]
+    description: Optional[str] = None
 
 
 class Schema(BaseModel):

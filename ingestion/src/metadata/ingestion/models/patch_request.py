@@ -36,7 +36,7 @@ class PatchedEntity(BaseModel):
     Store the new entity after patch request
     """
 
-    new_entity: Optional[Entity]
+    new_entity: Optional[Entity] = None
 
 
 ALLOWED_COLUMN_FIELDS = {

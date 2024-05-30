@@ -31,8 +31,8 @@ logger = cli_logger()
 
 
 class LineageWorkflow(BaseModel):
-    filePath: Optional[str]
-    query: Optional[str]
+    filePath: Optional[str] = None
+    query: Optional[str] = None
     checkPatch: Optional[bool] = True
     serviceName: str
     workflowConfig: WorkflowConfig

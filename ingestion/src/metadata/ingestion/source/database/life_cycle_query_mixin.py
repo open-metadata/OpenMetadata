@@ -46,7 +46,7 @@ class LifeCycleQueryByTable(BaseModel):
     """
 
     table_name: str = Field(..., alias="TABLE_NAME")
-    created_at: Optional[datetime] = Field(..., alias="CREATED_AT")
+    created_at: Optional[datetime] = Field(None, alias="CREATED_AT")
 
     class Config:
         populate_by_name = True

@@ -59,7 +59,7 @@ def test_connection(
     from couchbase.cluster import Cluster
 
     class SchemaHolder(BaseModel):
-        database: Optional[str]
+        database: Optional[str] = None
 
     holder = SchemaHolder()
 

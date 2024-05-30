@@ -191,8 +191,8 @@ class DatalakeSource(DatabaseServiceSource):
             database_name = self.client.project
         yield Either(
             right=CreateDatabaseRequest(
-                name=database_name,
-                service=self.context.get().database_service,
+                name=EntityName(database_name),
+                service=FullyQualifiedEntityName(self.context.get().database_service),
             )
         )
 

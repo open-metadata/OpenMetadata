@@ -78,7 +78,7 @@ class DomoChartMetadataDetails(BaseModel):
     class Config:
         extra = Extra.allow
 
-    chartType: Optional[str]
+    chartType: Optional[str] = None
 
 
 class DomoChartDetails(DomoBaseModel):

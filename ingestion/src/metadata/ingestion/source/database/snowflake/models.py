@@ -35,7 +35,7 @@ class SnowflakeStoredProcedure(BaseModel):
     """Snowflake stored procedure list query results"""
 
     name: str = Field(..., alias="NAME")
-    owner: Optional[str] = Field(..., alias="OWNER")
+    owner: Optional[str] = Field(None, alias="OWNER")
     language: str = Field(..., alias="LANGUAGE")
     definition: str = Field(None, alias="DEFINITION")
     signature: Optional[str] = Field(
@@ -82,7 +82,7 @@ class SnowflakeTable(BaseModel):
     """
 
     name: str
-    deleted: Optional[datetime]
+    deleted: Optional[datetime] = None
 
 
 class SnowflakeTableList(BaseModel):

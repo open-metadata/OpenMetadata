@@ -47,7 +47,7 @@ class AWSAssumeRoleException(Exception):
 class AWSAssumeRoleCredentialWrapper(BaseModel):
     accessKeyId: str
     secretAccessKey: CustomSecretStr
-    sessionToken: Optional[str]
+    sessionToken: Optional[str] = None
 
 
 class AWSClient:

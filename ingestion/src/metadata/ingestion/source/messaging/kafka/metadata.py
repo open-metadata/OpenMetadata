@@ -28,9 +28,7 @@ from metadata.utils.ssl_manager import SSLManager
 class KafkaSource(CommonBrokerSource):
     def __init__(self, config: WorkflowSource, metadata: OpenMetadata):
         self.ssl_manager = None
-        service_connection = cast(
-            KafkaConnection, config.serviceConnection.root.config
-        )
+        service_connection = cast(KafkaConnection, config.serviceConnection.root.config)
         if service_connection.schemaRegistrySSL:
 
             self.ssl_manager = SSLManager(

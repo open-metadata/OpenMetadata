@@ -65,8 +65,8 @@ class SplitTestCaseFqn(BaseModel):
     database: str
     schema_: str = Field(alias="schema")
     table: str
-    column: Optional[str]
-    test_case: Optional[str]
+    column: Optional[str] = None
+    test_case: Optional[str] = None
 
 
 def split(str_: str) -> List[str]:

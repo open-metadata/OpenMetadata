@@ -25,7 +25,7 @@ class TestDatalake:
     s3_client = None
 
     @pytest.fixture(autouse=True)
-    def set_metdata(self, metadata):
+    def set_metadata(self, metadata):
         self.metadata = metadata
 
     @pytest.mark.order(10000)

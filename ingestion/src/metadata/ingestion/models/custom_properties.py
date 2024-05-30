@@ -54,12 +54,12 @@ class CustomPropertyType(BaseModel):
 
     id: basic.Uuid
     name: basic.EntityName
-    displayName: Optional[str]
-    fullyQualifiedName: Optional[basic.FullyQualifiedEntityName]
+    displayName: Optional[str] = None
+    fullyQualifiedName: Optional[basic.FullyQualifiedEntityName] = None
     description: Optional[basic.Markdown]
-    category: Optional[str]
-    nameSpace: Optional[str]
-    version: Optional[entityHistory.EntityVersion]
-    updatedAt: Optional[basic.Timestamp]
-    updatedBy: Optional[str]
-    href: Optional[basic.Href]
+    category: Optional[str] = None
+    nameSpace: Optional[str] = None
+    version: Optional[entityHistory.EntityVersion] = None
+    updatedAt: Optional[basic.Timestamp] = None
+    updatedBy: Optional[str] = None
+    href: Optional[basic.Href] = None
