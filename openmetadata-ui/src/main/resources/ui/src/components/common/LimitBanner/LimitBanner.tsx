@@ -45,7 +45,7 @@ export const LimitBanner = () => {
                 Check your <Link to="/usage">usage here</Link> or{' '}
               </>
             )}
-            <a href="/plans" target="_blank">
+            <a href="/settings/billing/plans" target="_blank">
               learn more
             </a>{' '}
             about pricing
