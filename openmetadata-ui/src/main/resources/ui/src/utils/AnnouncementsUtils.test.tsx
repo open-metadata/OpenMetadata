@@ -15,16 +15,16 @@ import { isActiveAnnouncement } from './AnnouncementsUtils';
 describe('Test isActiveAnnouncement utility', () => {
   jest.useFakeTimers('modern').setSystemTime(new Date('2024-02-05'));
 
-  it('should return false for active', () => {
+  it('should return true for active announcement', () => {
     const result = isActiveAnnouncement(
-      new Date('moment().format()').getTime(),
+      new Date('2024-02-03').getTime(),
       new Date('2024-02-10').getTime()
     );
 
     expect(result).toBe(true);
   });
 
-  it('should return true for inActive', () => {
+  it('should return false for inActive announcements', () => {
     const result = isActiveAnnouncement(
       new Date('2024-02-01').getTime(),
       new Date('2024-02-04').getTime()
