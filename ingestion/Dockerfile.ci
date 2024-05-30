@@ -1,6 +1,6 @@
 FROM mysql:8.3 as mysql
 
-FROM apache/airflow:2.7.3-python3.10
+FROM apache/airflow:2.9.1-python3.10
 USER root
 RUN curl -sS https://packages.microsoft.com/keys/microsoft.asc | apt-key add -
 RUN curl -sS https://packages.microsoft.com/config/debian/11/prod.list > /etc/apt/sources.list.d/mssql-release.list
