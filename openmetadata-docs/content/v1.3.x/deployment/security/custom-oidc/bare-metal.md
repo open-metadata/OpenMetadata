@@ -41,3 +41,19 @@ authorizerConfiguration:
 ```
 
 {% partial file="/v1.3/deployment/configure-ingestion.md" /%}
+
+### Troubleshooting
+
+* If you are seeing the below trace in the logs, you need to add the discovery URL
+
+```
+org.pac4j.core.exception.TechnicalException: You must define either the discovery URL or directly the provider metadata
+```
+
+To resolve the error regarding the discovery URL, you need to set the `AUTHENTICATION_DISCOVERY_URI` in your configuration. This URI is used to discover the OpenID Connect provider's configuration.
+
+* If you are using a confidential type to start the server
+
+When using a confidential type to start the server, it is necessary to provide all the details in the `docker-compose` file at the time of starting the server. For more information, refer to the [here](https://github.com/open-metadata/OpenMetadata/blob/main/conf/openmetadata.yaml#L179C3-L190C59).
+
+Alternatively, the client type can be set to "public", which does not require a secret key.
