@@ -102,9 +102,9 @@ class KafkaSourceSSLTest(TestCase):
                         "type": "Kafka",
                         "bootstrapServers": "localhost:9092",
                         "schemaRegistrySSL": {
-                            "caCertificate": "path/to/ca.crt",
-                            "sslKey": "path/to/key.key",
-                            "sslCertificate": "path/to/cert.crt",
+                            "caCertificate": "caCertificateData",
+                            "sslKey": "sslKeyData",
+                            "sslCertificate": "sslCertificateData",
                         },
                     },
                 },
@@ -116,13 +116,13 @@ class KafkaSourceSSLTest(TestCase):
         self.assertIsNotNone(kafka_source_with_ssl.ssl_manager)
         self.assertEqual(
             kafka_source_with_ssl.service_connection.schemaRegistrySSL.__root__.caCertificate.get_secret_value(),
-            "path/to/ca.crt",
+            "caCertificateData",
         )
         self.assertEqual(
             kafka_source_with_ssl.service_connection.schemaRegistrySSL.__root__.sslKey.get_secret_value(),
-            "path/to/key.key",
+            "sslKeyData",
         )
         self.assertEqual(
             kafka_source_with_ssl.service_connection.schemaRegistrySSL.__root__.sslCertificate.get_secret_value(),
-            "path/to/cert.crt",
+            "sslCertificateData",
         )
