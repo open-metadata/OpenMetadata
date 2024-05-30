@@ -7,10 +7,12 @@ import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import javax.ws.rs.DefaultValue;
 import javax.ws.rs.GET;
 import javax.ws.rs.Path;
 import javax.ws.rs.PathParam;
 import javax.ws.rs.Produces;
+import javax.ws.rs.QueryParam;
 import javax.ws.rs.core.Context;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
@@ -48,8 +50,14 @@ public class LimitsResource {
       @Context SecurityContext securityContext,
       @Parameter(description = "Name of the Feature", schema = @Schema(type = "string"))
           @PathParam("name")
-          String name) {
-    return limits.getLimitsForaFeature(name);
+          String name,
+      @Parameter(
+              description = "Use Cache to retrieve the values.",
+              schema = @Schema(type = "boolean", example = "true"))
+          @QueryParam("cache")
+          @DefaultValue("true")
+          boolean cache) {
+    return limits.getLimitsForaFeature(name, cache);
   }
 
   @GET

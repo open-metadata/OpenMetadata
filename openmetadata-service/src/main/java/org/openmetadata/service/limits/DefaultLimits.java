@@ -23,7 +23,9 @@ public class DefaultLimits implements Limits {
 
   @Override
   public void enforceLimits(
-      SecurityContext securityContext, ResourceContextInterface resourceContext, OperationContext operationContext) {
+      SecurityContext securityContext,
+      ResourceContextInterface resourceContext,
+      OperationContext operationContext) {
     // do not enforce limits
   }
 
@@ -35,7 +37,7 @@ public class DefaultLimits implements Limits {
   }
 
   @Override
-  public Response getLimitsForaFeature(String name) {
+  public Response getLimitsForaFeature(String name, boolean cache) {
     return Response.ok().build();
   }
 }
