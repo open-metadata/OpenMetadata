@@ -1,5 +1,5 @@
 /*
- *  Copyright 2023 Collate.
+ *  Copyright 2024 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -14,11 +14,20 @@ import { PopoverProps } from 'antd';
 import { ReactNode } from 'react';
 import { EntityReference } from '../../../generated/entity/teams/user';
 
-export interface UserSelectDropdownProps {
-  hasPermission: boolean;
-  owner?: EntityReference;
-  onUpdate: (updatedUser?: EntityReference) => void | Promise<void>;
-  children?: ReactNode;
-  popoverProps?: PopoverProps;
-  multiple?: boolean;
-}
+export type UserTeamSelectableListV1Props =
+  | {
+      hasPermission: boolean;
+      selectedUsers: EntityReference[];
+      children?: ReactNode;
+      popoverProps?: PopoverProps;
+      filterCurrentUser?: boolean;
+    } & (
+      | {
+          multiSelect?: true;
+          onUpdate: (updatedUsers: EntityReference[]) => Promise<void>;
+        }
+      | {
+          multiSelect: false;
+          onUpdate: (updatedUsers: EntityReference) => Promise<void>;
+        }
+    );

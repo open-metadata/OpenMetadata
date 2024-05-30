@@ -333,7 +333,7 @@ export const getFirstLevelGlossaryTerms = async (parentFQN: string) => {
   >(apiUrl, {
     params: {
       directChildrenOf: parentFQN,
-      fields: 'childrenCount,owner',
+      fields: 'childrenCount, owner',
       limit: 100000,
     },
   });

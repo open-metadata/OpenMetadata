@@ -16,7 +16,6 @@ import { cloneDeep, includes, isEmpty, isEqual } from 'lodash';
 import React, { ReactNode, useCallback, useMemo } from 'react';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
 import { ReactComponent as PlusIcon } from '../../../assets/svg/plus-primary.svg';
-import { UserSelectableList } from '../../../components/common/UserSelectableList/UserSelectableList.component';
 import { UserTeamSelectableList } from '../../../components/common/UserTeamSelectableList/UserTeamSelectableList.component';
 import {
   DE_ACTIVE_COLOR,
@@ -46,6 +45,7 @@ import { ExtentionEntitiesKeys } from '../../common/CustomPropertyTable/CustomPr
 import { DomainLabel } from '../../common/DomainLabel/DomainLabel.component';
 import UserPopOverCard from '../../common/PopOverCard/UserPopOverCard';
 import TagButton from '../../common/TagButton/TagButton.component';
+import { UserTeamSelectableListV2 } from '../../common/UserTeamSelectableListV2/UserTeamSelectableListV2.component';
 import TagsContainerV2 from '../../Tag/TagsContainerV2/TagsContainerV2';
 import { DisplayType } from '../../Tag/TagsViewer/TagsViewer.interface';
 import GlossaryReviewers from './GlossaryReviewers';
@@ -276,10 +276,11 @@ const GlossaryDetailsRightPanel = ({
           {hasEditReviewerAccess &&
             selectedData.reviewers &&
             selectedData.reviewers.length > 0 && (
-              <UserSelectableList
+              <UserTeamSelectableListV2
                 hasPermission={hasEditReviewerAccess}
+                multiple={{ user: true, team: false }}
+                owner={selectedData.reviewers ?? []}
                 popoverProps={{ placement: 'topLeft' }}
-                selectedUsers={selectedData.reviewers ?? []}
                 onUpdate={handleReviewerSave}>
                 <Tooltip
                   title={t('label.edit-entity', {
@@ -293,7 +294,7 @@ const GlossaryDetailsRightPanel = ({
                     type="text"
                   />
                 </Tooltip>
-              </UserSelectableList>
+              </UserTeamSelectableListV2>
             )}
         </div>
         <div>
@@ -303,10 +304,11 @@ const GlossaryDetailsRightPanel = ({
             isVersionView={isVersionView}
           />
           {hasEditReviewerAccess && noReviewersSelected && (
-            <UserSelectableList
+            <UserTeamSelectableListV2
               hasPermission={hasEditReviewerAccess}
+              multiple={{ user: true, team: false }}
+              owner={selectedData.reviewers ?? []}
               popoverProps={{ placement: 'topLeft' }}
-              selectedUsers={selectedData.reviewers ?? []}
               onUpdate={handleReviewerSave}>
               <TagButton
                 className="text-primary cursor-pointer"
@@ -314,7 +316,7 @@ const GlossaryDetailsRightPanel = ({
                 label={t('label.add')}
                 tooltip=""
               />
-            </UserSelectableList>
+            </UserTeamSelectableListV2>
           )}
         </div>
       </Col>
