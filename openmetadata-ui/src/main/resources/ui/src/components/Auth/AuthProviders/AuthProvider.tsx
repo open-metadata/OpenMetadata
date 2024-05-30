@@ -278,9 +278,11 @@ export const AuthProvider = ({
    * if it's not succeed then it will proceed for logout
    */
   const trySilentSignIn = async (forceLogout?: boolean) => {
-    const pathName = location.pathname;
+    const pathName = window.location.pathname;
     // Do not try silent sign in for SignIn or SignUp route
-    if ([ROUTES.SIGNIN, ROUTES.SIGNUP].includes(pathName)) {
+    if (
+      [ROUTES.SIGNIN, ROUTES.SIGNUP, ROUTES.SILENT_CALLBACK].includes(pathName)
+    ) {
       return;
     }
 
