@@ -20,12 +20,12 @@ from setuptools import setup
 # Add here versions required for multiple plugins
 VERSIONS = {
     "airflow": "apache-airflow==2.9.1",
-    "adlfs": "adlfs~=2022.11",
+    "adlfs": "adlfs>=2023.1.0",
     "avro": "avro>=1.11.3,<1.12",
     "boto3": "boto3>=1.20,<2.0",  # No need to add botocore separately. It's a dep from boto3
     "geoalchemy2": "GeoAlchemy2~=0.12",
     "google-cloud-storage": "google-cloud-storage==1.43.0",
-    "gcsfs": "gcsfs~=2022.11",
+    "gcsfs": "gcsfs>=2023.1.0",
     "great-expectations": "great-expectations>=0.18.0,<0.18.14",
     "grpc-tools": "grpcio-tools>=1.47.2",
     "msal": "msal~=1.2",
@@ -125,7 +125,7 @@ plugins: Dict[str, Set[str]] = {
         "attrs",
     },  # Same as ingestion container. For development.
     "amundsen": {VERSIONS["neo4j"]},
-    "athena": {"pyathena==3.0.8"},
+    "athena": {"pyathena~=3.0"},
     "atlas": {},
     "azuresql": {VERSIONS["pyodbc"]},
     "azure-sso": {VERSIONS["msal"]},
@@ -165,7 +165,7 @@ plugins: Dict[str, Set[str]] = {
     "datalake-azure": {
         VERSIONS["azure-storage-blob"],
         VERSIONS["azure-identity"],
-        VERSIONS["adlfs"],  # Python 3.7 does only support up to 2022.2.0
+        VERSIONS["adlfs"],
         *COMMONS["datalake"],
     },
     "datalake-gcs": {
@@ -178,7 +178,7 @@ plugins: Dict[str, Set[str]] = {
         # https://github.com/fsspec/s3fs/blob/9bf99f763edaf7026318e150c4bd3a8d18bb3a00/requirements.txt#L1
         # however, the latest version of `s3fs` conflicts its `aiobotocore` dep with `boto3`'s dep on `botocore`.
         # Leaving this marked to the automatic resolution to speed up installation.
-        "s3fs==0.4.2",
+        "s3fs>=2023.1.0",
         *COMMONS["datalake"],
     },
     "deltalake": {"delta-spark<=2.3.0"},
