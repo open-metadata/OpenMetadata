@@ -171,7 +171,7 @@ export const setValueForProperty = (
     .scrollIntoView()
     .as('editbutton');
 
-  cy.get('@editbutton').should('be.visible').click();
+  cy.get('@editbutton').should('be.visible').click({ force: true });
 
   interceptURL('PATCH', `/api/v1/*/*`, 'patchEntity');
   // Checking for value text box or markdown box
@@ -257,7 +257,13 @@ export const setValueForProperty = (
       const refValues = value.split(',');
 
       refValues.forEach((val) => {
+        interceptURL(
+          'GET',
+          `/api/v1/search/query?q=*${encodeURIComponent(val)}*`,
+          'searchEntityReference'
+        );
         cy.get('#entityReference').clear().type(`${val}`);
+        cy.wait('@searchEntityReference');
         cy.get(`[data-testid="${val}"]`).click();
       });
 

@@ -474,3 +474,12 @@ export const GLOSSARY_TERM_DETAILS = {
   glossary: GLOSSARY_DETAILS.name,
   description: 'glossary term description',
 };
+
+export const DOMAIN_QUICK_FILTERS_DETAILS = {
+  name: `cypress-domain-${uuid()}`,
+  displayName: `Cypress Domain QfTest`,
+  description: 'Cypress domain description',
+  domainType: 'Aggregate',
+  experts: [],
+  style: {},
+};

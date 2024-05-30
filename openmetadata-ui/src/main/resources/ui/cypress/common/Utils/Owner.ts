@@ -65,12 +65,12 @@ export const validateOwnerAndTeamCounts = () => {
 };
 
 export const addOwner = (ownerName: string, dataTestId?: string) => {
+  interceptURL('GET', '/api/v1/users?*isBot=false*', 'getUsers');
   cy.get('[data-testid="edit-owner"]').click();
 
   cy.get("[data-testid='select-owner-tabs']").should('be.visible');
-  cy.log('/api/v1/users?limit=*&isBot=false*');
   cy.get('.ant-tabs [id*=tab-users]').click();
-
+  verifyResponseStatusCode('@getUsers', 200);
   interceptURL(
     'GET',
     `api/v1/search/query?q=*&index=user_search_index*`,
@@ -94,7 +94,6 @@ export const addOwner = (ownerName: string, dataTestId?: string) => {
 
 export const updateOwner = (ownerName: string, dataTestId?: string) => {
   cy.get('[data-testid="edit-owner"]').click();
-
   cy.get("[data-testid='select-owner-tabs']").should('be.visible');
   cy.log('/api/v1/users?limit=*&isBot=false*');
   cy.get('.ant-tabs [id*=tab-users]').click();
@@ -129,11 +128,9 @@ export const removeOwner = (ownerName: string, dataTestId?: string) => {
 
   interceptURL('PATCH', `/api/v1/**`, 'patchOwner');
 
-  cy.get('[data-testid="select-owner-tabs"]').should('be.visible');
-
   cy.get(
     '[data-testid="select-owner-tabs"] [data-testid="remove-owner"]'
-  ).scrollIntoView({ offset: { top: -100, left: 0 } });
+  ).should('be.visible');
 
   cy.get(
     '[data-testid="select-owner-tabs"] [data-testid="remove-owner"]'
