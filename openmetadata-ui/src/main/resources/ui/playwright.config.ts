@@ -37,13 +37,6 @@ export default defineConfig({
   reporter: [
     ['list'],
     ['html', { outputFolder: './playwright/output/playwright-report' }],
-    [
-      '@estruyf/github-actions-reporter',
-      {
-        useDetails: true,
-        showError: true,
-      },
-    ],
   ],
   /* Shared settings for all the projects below. See https://playwright.dev/docs/api/class-testoptions. */
   use: {
