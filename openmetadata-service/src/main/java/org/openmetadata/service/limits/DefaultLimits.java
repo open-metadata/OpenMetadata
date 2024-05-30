@@ -37,7 +37,7 @@ public class DefaultLimits implements Limits {
   }
 
   @Override
-  public Response getLimitsForaFeature(String name) {
+  public Response getLimitsForaFeature(String name, boolean cache) {
     return Response.ok().build();
   }
 }
