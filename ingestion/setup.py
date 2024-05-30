@@ -201,7 +201,7 @@ plugins: Dict[str, Set[str]] = {
         "impyla~=0.18.0",
     },
     "iceberg": {
-        "pyiceberg<1",
+        "pyiceberg~=0.6",
         # Forcing the version of a few packages so it plays nicely with other requirements.
         VERSIONS["pydantic"],
         VERSIONS["adlfs"],
