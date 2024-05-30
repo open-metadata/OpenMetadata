@@ -472,6 +472,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
   public final T copy(T entity, CreateEntity request, String updatedBy) {
     EntityReference owner = validateOwner(request.getOwner());
     EntityReference domain = validateDomain(request.getDomain());
+    validateReviewers(request.getReviewers());
     entity.setId(UUID.randomUUID());
     entity.setName(request.getName());
     entity.setDisplayName(request.getDisplayName());
@@ -484,6 +485,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     entity.setExtension(request.getExtension());
     entity.setUpdatedBy(updatedBy);
     entity.setUpdatedAt(System.currentTimeMillis());
+    entity.setReviewers(request.getReviewers());
     return entity;
   }
 
@@ -744,7 +746,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
   public final void prepareInternal(T entity, boolean update) {
     validateTags(entity);
-    validateReviewers(entity.getReviewers());
     prepare(entity, update);
     setFullyQualifiedName(entity);
     validateExtension(entity);
@@ -1701,22 +1702,40 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
   }
 
+  private boolean validateIfAllRefsAreEntityType(List<EntityReference> list, String entityType) {
+    return list.stream().allMatch(obj -> obj.getType().equals(entityType));
+  }
+
   public final void validateReviewers(List<EntityReference> entityReferences) {
     if (!nullOrEmpty(entityReferences)) {
-      for (EntityReference entityReference : entityReferences) {
-        if (!entityReference.getType().equals(TEAM) && !entityReference.getType().equals(USER)) {
-          throw new IllegalArgumentException(
-              CatalogExceptionMessage.invalidReviewerType(entityReference.getType()));
+      boolean areAllTeam = validateIfAllRefsAreEntityType(entityReferences, TEAM);
+      boolean areAllUsers = validateIfAllRefsAreEntityType(entityReferences, USER);
+      if (areAllTeam) {
+        // If all are team then only one team is allowed
+        if (entityReferences.size() > 1) {
+          throw new IllegalArgumentException("Only one team can be assigned as reviewer.");
+        } else {
+          EntityReference ref =
+              entityReferences.get(0).getId() != null
+                  ? Entity.getEntityReferenceById(TEAM, entityReferences.get(0).getId(), ALL)
+                  : Entity.getEntityReferenceByName(
+                      TEAM, entityReferences.get(0).getFullyQualifiedName(), ALL);
+          EntityUtil.copy(ref, entityReferences.get(0));
         }
-        EntityReference ref =
-            entityReference.getId() != null
-                ? Entity.getEntityReferenceById(
-                    entityReference.getType(), entityReference.getId(), ALL)
-                : Entity.getEntityReferenceByName(
-                    entityReference.getType(), entityReference.getFullyQualifiedName(), ALL);
-        EntityUtil.copy(ref, entityReference);
+      } else if (areAllUsers) {
+        for (EntityReference entityReference : entityReferences) {
+          EntityReference ref =
+              entityReference.getId() != null
+                  ? Entity.getEntityReferenceById(USER, entityReference.getId(), ALL)
+                  : Entity.getEntityReferenceByName(
+                      USER, entityReference.getFullyQualifiedName(), ALL);
+          EntityUtil.copy(ref, entityReference);
+        }
+        entityReferences.sort(EntityUtil.compareEntityReference);
+      } else {
+        throw new IllegalArgumentException(
+            "Invalid Reviewer Type. Only one team or multiple users can be assigned as reviewer.");
       }
-      entityReferences.sort(EntityUtil.compareEntityReference);
     }
   }
 

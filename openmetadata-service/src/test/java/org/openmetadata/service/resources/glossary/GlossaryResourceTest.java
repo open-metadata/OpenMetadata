@@ -31,7 +31,6 @@ import static org.openmetadata.schema.type.ProviderType.SYSTEM;
 import static org.openmetadata.service.util.EntityUtil.fieldAdded;
 import static org.openmetadata.service.util.EntityUtil.fieldUpdated;
 import static org.openmetadata.service.util.EntityUtil.getFqn;
-import static org.openmetadata.service.util.EntityUtil.getFqns;
 import static org.openmetadata.service.util.EntityUtil.toTagLabels;
 import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
 import static org.openmetadata.service.util.TestUtils.UpdateType.CHANGE_CONSOLIDATED;
@@ -111,7 +110,7 @@ public class GlossaryResourceTest extends EntityResourceTest<Glossary, CreateGlo
             .withRelatedTerms(null)
             .withGlossary(GLOSSARY1.getName())
             .withTags(List.of(PII_SENSITIVE_TAG_LABEL, PERSONAL_DATA_TAG_LABEL))
-            .withReviewers(getFqns(GLOSSARY1.getReviewers()));
+            .withReviewers(GLOSSARY1.getReviewers());
     GLOSSARY1_TERM1 = glossaryTermResourceTest.createEntity(createGlossaryTerm, ADMIN_AUTH_HEADERS);
     GLOSSARY1_TERM1_LABEL = EntityUtil.toTagLabel(GLOSSARY1_TERM1);
     validateTagLabel(GLOSSARY1_TERM1_LABEL);
@@ -121,7 +120,7 @@ public class GlossaryResourceTest extends EntityResourceTest<Glossary, CreateGlo
             .createRequest("g2t1", "", "", null)
             .withRelatedTerms(List.of(GLOSSARY1_TERM1.getFullyQualifiedName()))
             .withGlossary(GLOSSARY2.getName())
-            .withReviewers(getFqns(GLOSSARY1.getReviewers()));
+            .withReviewers(GLOSSARY1.getReviewers());
     GLOSSARY2_TERM1 = glossaryTermResourceTest.createEntity(createGlossaryTerm, ADMIN_AUTH_HEADERS);
     GLOSSARY2_TERM1_LABEL = EntityUtil.toTagLabel(GLOSSARY2_TERM1);
     validateTagLabel(GLOSSARY2_TERM1_LABEL);
