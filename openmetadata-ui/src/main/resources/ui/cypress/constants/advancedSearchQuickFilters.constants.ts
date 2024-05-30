@@ -137,6 +137,10 @@ export const GLOSSARY_DROPDOWN_ITEMS = [
     label: 'Glossaries',
     key: 'glossary.name.keyword',
   },
+  {
+    label: 'Status',
+    key: 'status',
+  },
 ];
 
 export const TAG_DROPDOWN_ITEMS = [
