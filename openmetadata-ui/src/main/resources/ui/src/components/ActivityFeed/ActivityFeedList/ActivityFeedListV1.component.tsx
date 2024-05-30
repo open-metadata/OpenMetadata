@@ -25,6 +25,7 @@ interface ActivityFeedListV1Props {
   feedList: Thread[];
   isLoading: boolean;
   showThread?: boolean;
+  selectedThread?: Thread;
   onFeedClick?: (feed: Thread) => void;
   activeFeedId?: string;
   hidePopover: boolean;
@@ -44,6 +45,7 @@ const ActivityFeedListV1 = ({
     showThreadIcon: true,
     showRepliesContainer: true,
   },
+  selectedThread,
   onFeedClick,
   activeFeedId,
   hidePopover = false,
@@ -59,7 +61,7 @@ const ActivityFeedListV1 = ({
 
   useEffect(() => {
     if (onFeedClick) {
-      onFeedClick(entityThread[0]);
+      onFeedClick(selectedThread ?? entityThread[0]);
     }
   }, [entityThread, onFeedClick]);
 
