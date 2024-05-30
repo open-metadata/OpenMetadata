@@ -40,11 +40,6 @@ jobs:
     runs-on: ubuntu-latest
     environment: test
     steps:
-      - name: Set Playwright Project Environment variable
-        id: playwright-project-id
-        run: |
-          echo "CYPRESS_PROJECT_ID=${{ secrets.CYPRESS_PR_PROJECT_ID }}" >> $GITHUB_OUTPUT
-          echo "CYPRESS_RECORD_KEY=${{ secrets.CYPRESS_PR_RECORD_KEY }}" >> $GITHUB_OUTPUT
       - name: Free Disk Space (Ubuntu)
         uses: jlumbroso/free-disk-space@main
         with:
@@ -185,7 +180,7 @@ jobs:
         with:
           name: playwright-report
           path: openmetadata-ui/src/main/resources/ui/playwright/output/playwright-report
-          retention-days: 30
+          retention-days: 5
 
       - name: Clean Up
         run: |
