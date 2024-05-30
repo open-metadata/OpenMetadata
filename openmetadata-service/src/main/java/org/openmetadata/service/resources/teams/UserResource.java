@@ -635,8 +635,10 @@ public class UserResource extends EntityResource<User, UserRepository> {
     repository.prepareInternal(user, true);
     User existingUser = repository.findByNameOrNull(user.getFullyQualifiedName(), ALL);
     if (existingUser == null) {
-     limits.enforceLimits(securityContext, getResourceContextByName(user.getFullyQualifiedName()),
-         new OperationContext(entityType, MetadataOperation.CREATE));
+      limits.enforceLimits(
+          securityContext,
+          getResourceContextByName(user.getFullyQualifiedName()),
+          new OperationContext(entityType, MetadataOperation.CREATE));
     }
     ResourceContext<?> resourceContext = getResourceContextByName(user.getFullyQualifiedName());
     if (Boolean.TRUE.equals(create.getIsAdmin()) || Boolean.TRUE.equals(create.getIsBot())) {
