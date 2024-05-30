@@ -11,7 +11,7 @@
 """
 Kafka source ingestion
 """
-from typing import Optional
+from typing import Optional, cast
 
 from metadata.generated.schema.entity.services.connections.messaging.kafkaConnection import (
     KafkaConnection,
@@ -28,7 +28,7 @@ from metadata.utils.ssl_manager import SSLManager
 class KafkaSource(CommonBrokerSource):
     def __init__(self, config: WorkflowSource, metadata: OpenMetadata):
         self.ssl_manager = None
-        service_connection = config.serviceConnection.__root__.config
+        service_connection = cast(KafkaConnection, config.serviceConnection.__root__.config)
         if service_connection.schemaRegistrySSL:
 
             self.ssl_manager = SSLManager(
@@ -37,7 +37,7 @@ class KafkaSource(CommonBrokerSource):
                 cert=service_connection.schemaRegistrySSL.__root__.sslCertificate,
             )
             service_connection = self.ssl_manager.setup_ssl(
-                config.serviceConnection.__root__.config.sslConfig
+                config.serviceConnection.__root__.config
             )
         super().__init__(config, metadata)
 
