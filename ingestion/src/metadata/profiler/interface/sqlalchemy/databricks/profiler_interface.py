@@ -58,7 +58,7 @@ class DatabricksProfilerInterface(SQAProfilerInterface):
         columns_list = []
         for idx, col in enumerate(columns):
             if col.dataType != DataType.STRUCT:
-                col.name = ColumnName(root=f"{parent}.{col.name.root}")
+                col.name = ColumnName(f"{parent}.{col.name.root}")
                 col = build_orm_col(idx, col, DatabaseServiceType.Databricks)
                 col._set_parent(  # pylint: disable=protected-access
                     self.table.__table__

@@ -185,7 +185,7 @@ class IngestionWorkflow(BaseWorkflow, ABC):
                 )
                 if service:
                     self.config.source.serviceConnection = ServiceConnection(
-                        root=service.connection
+                        service.connection
                     )
                 else:
                     raise InvalidWorkflowJSONException(

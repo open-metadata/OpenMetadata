@@ -55,7 +55,7 @@ class BigQueryProfilerSource(ProfilerSource):
                 config_copy.credentials.gcpConfig.projectId, MultipleProjectId
             ):
                 config_copy.credentials.gcpConfig.projectId = SingleProjectId(
-                    root=database.name.root
+                    database.name.root
                 )
 
         return config_copy

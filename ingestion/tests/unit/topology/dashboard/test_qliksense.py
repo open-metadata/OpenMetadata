@@ -44,7 +44,7 @@ from metadata.ingestion.source.dashboard.qliksense.models import (
 MOCK_DASHBOARD_SERVICE = DashboardService(
     id="c3eb265f-5445-4ad3-ba5e-797d3a3071bb",
     name="qliksense_source_test",
-    fullyQualifiedName=FullyQualifiedEntityName(root="qliksense_source_test"),
+    fullyQualifiedName=FullyQualifiedEntityName("qliksense_source_test"),
     connection=DashboardConnection(),
     serviceType=DashboardServiceType.QlikSense,
 )

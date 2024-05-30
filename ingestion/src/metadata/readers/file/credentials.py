@@ -27,7 +27,7 @@ def update_repository_name(
     return the updated credentials
     """
     updated = original.copy(deep=True)
-    updated.repositoryName = RepositoryName(root=name)
+    updated.repositoryName = RepositoryName(name)
 
     return updated
 

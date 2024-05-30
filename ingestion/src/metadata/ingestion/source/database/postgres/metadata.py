@@ -36,6 +36,7 @@ from metadata.generated.schema.entity.services.ingestionPipelines.status import 
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
+from metadata.generated.schema.type.basic import FullyQualifiedEntityName
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
@@ -253,8 +254,10 @@ class PostgresSource(CommonDbSourceService, MultiDBSource):
                 row = list(res)
                 fqn_elements = [name for name in row[2:] if name]
                 yield from get_ometa_tag_and_classification(
-                    tag_fqn=fqn._build(  # pylint: disable=protected-access
-                        self.context.get().database_service, *fqn_elements
+                    tag_fqn=FullyQualifiedEntityName(
+                        fqn._build(  # pylint: disable=protected-access
+                            self.context.get().database_service, *fqn_elements
+                        )
                     ),
                     tags=[row[1]],
                     classification_name=self.service_connection.classificationName,

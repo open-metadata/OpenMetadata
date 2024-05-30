@@ -26,6 +26,7 @@ from metadata.generated.schema.entity.services.databaseService import (
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
+from metadata.generated.schema.type.basic import DateTime
 from metadata.generated.schema.type.tableQuery import TableQueries, TableQuery
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
@@ -89,7 +90,7 @@ class SampleUsageSource(UsageSource):
                     userName="",
                     startTime="",
                     endTime="",
-                    analysisDate=self.analysis_date,
+                    analysisDate=DateTime(self.analysis_date),
                     aborted=False,
                     databaseName="ecommerce_db",
                     serviceName=self.config.serviceName,

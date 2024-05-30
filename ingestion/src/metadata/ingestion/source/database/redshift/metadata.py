@@ -396,7 +396,7 @@ class RedshiftSource(
 
         try:
             stored_procedure_request = CreateStoredProcedureRequest(
-                name=EntityName(root=stored_procedure.name),
+                name=EntityName(stored_procedure.name),
                 storedProcedureCode=StoredProcedureCode(
                     language=Language.SQL,
                     code=stored_procedure.definition,

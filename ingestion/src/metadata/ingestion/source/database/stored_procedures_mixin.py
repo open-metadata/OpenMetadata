@@ -181,7 +181,7 @@ class StoredProcedureMixin(ABC):
 
         yield Either(
             right=CreateQueryRequest(
-                query=SqlQuery(root=query_by_procedure.query_text),
+                query=SqlQuery(query_by_procedure.query_text),
                 query_type=query_by_procedure.query_type,
                 duration=query_by_procedure.query_duration,
                 queryDate=Timestamp(
@@ -210,7 +210,7 @@ class StoredProcedureMixin(ABC):
             queries_dict = self.get_stored_procedure_queries_dict()
             # Then for each procedure, iterate over all its queries
             for procedure_fqn in self.context.get().stored_procedures:
-                procedure = self.metadata.get_by_name(
+                procedure: StoredProcedure = self.metadata.get_by_name(
                     entity=StoredProcedure, fqn=procedure_fqn
                 )
                 if procedure:

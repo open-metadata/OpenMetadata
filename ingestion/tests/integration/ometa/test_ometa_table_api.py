@@ -297,7 +297,7 @@ class OMetaTableTest(TestCase):
         """
         fake_create = deepcopy(self.create)
         for i in range(0, 10):
-            fake_create.name = EntityName(root=self.create.name.root + str(i))
+            fake_create.name = EntityName(self.create.name.root + str(i))
             self.metadata.create_or_update(data=fake_create)
 
         all_entities = self.metadata.list_all_entities(
@@ -369,7 +369,7 @@ class OMetaTableTest(TestCase):
         )
 
         table_profile = TableProfile(
-            timestamp=Timestamp(root=int(datetime.now().timestamp())),
+            timestamp=Timestamp(int(datetime.now().timestamp())),
             columnCount=1.0,
             rowCount=3.0,
         )
@@ -451,16 +451,14 @@ class OMetaTableTest(TestCase):
         )
 
         column_join_table_req = CreateTableRequest(
-            name=EntityName(root="another-test"),
+            name=EntityName("another-test"),
             databaseSchema=self.create_schema_entity.fullyQualifiedName,
-            columns=[
-                Column(name=ColumnName(root="another_id"), dataType=DataType.BIGINT)
-            ],
+            columns=[Column(name=ColumnName("another_id"), dataType=DataType.BIGINT)],
         )
         column_join_table_res = self.metadata.create_or_update(column_join_table_req)
 
         direct_join_table_req = CreateTableRequest(
-            name=EntityName(root="direct-join-test"),
+            name=EntityName("direct-join-test"),
             databaseSchema=self.create_schema_entity.fullyQualifiedName,
             columns=[],
         )
@@ -472,18 +470,18 @@ class OMetaTableTest(TestCase):
             directTableJoins=[
                 JoinedWith(
                     fullyQualifiedName=FullyQualifiedEntityName(
-                        root="test-service-table.test-db.test-schema.direct-join-test"
+                        "test-service-table.test-db.test-schema.direct-join-test"
                     ),
                     joinCount=2,
                 )
             ],
             columnJoins=[
                 ColumnJoins(
-                    columnName=ColumnName(root="id"),
+                    columnName=ColumnName("id"),
                     joinedWith=[
                         JoinedWith(
                             fullyQualifiedName=FullyQualifiedEntityName(
-                                root="test-service-table.test-db.test-schema.another-test.another_id"
+                                "test-service-table.test-db.test-schema.another-test.another_id"
                             ),
                             joinCount=2,
                         )
@@ -508,8 +506,8 @@ class OMetaTableTest(TestCase):
         )
 
         query_no_user = CreateQueryRequest(
-            query=SqlQuery(root="select * from first_awesome"),
-            service=FullyQualifiedEntityName(root=self.service.name.root),
+            query=SqlQuery("select * from first_awesome"),
+            service=FullyQualifiedEntityName(self.service.name.root),
         )
 
         self.metadata.ingest_entity_queries_data(entity=res, queries=[query_no_user])
@@ -525,7 +523,7 @@ class OMetaTableTest(TestCase):
         query_with_user = CreateQueryRequest(
             query="select * from second_awesome",
             users=[self.owner.fullyQualifiedName],
-            service=FullyQualifiedEntityName(root=self.service.name.root),
+            service=FullyQualifiedEntityName(self.service.name.root),
         )
 
         self.metadata.ingest_entity_queries_data(entity=res, queries=[query_with_user])

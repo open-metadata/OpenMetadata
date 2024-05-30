@@ -33,6 +33,12 @@ from metadata.generated.schema.entity.services.ingestionPipelines.status import 
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
+from metadata.generated.schema.type.basic import (
+    EntityName,
+    FullyQualifiedEntityName,
+    Markdown,
+    SourceUrl,
+)
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.lineage.models import ConnectionTypeDialectMapper
@@ -142,17 +148,21 @@ class MetabaseSource(DashboardServiceSource):
                 f"{replace_special_with(raw=dashboard_details.name.lower(), replacement='-')}"
             )
             dashboard_request = CreateDashboardRequest(
-                name=dashboard_details.id,
-                sourceUrl=dashboard_url,
+                name=EntityName(dashboard_details.id),
+                sourceUrl=SourceUrl(dashboard_url),
                 displayName=dashboard_details.name,
-                description=dashboard_details.description,
+                description=Markdown(dashboard_details.description)
+                if dashboard_details.description
+                else None,
                 project=self.context.get().project_name,
                 charts=[
-                    fqn.build(
-                        self.metadata,
-                        entity_type=Chart,
-                        service_name=self.context.get().dashboard_service,
-                        chart_name=chart,
+                    FullyQualifiedEntityName(
+                        fqn.build(
+                            self.metadata,
+                            entity_type=Chart,
+                            service_name=self.context.get().dashboard_service,
+                            chart_name=chart,
+                        )
                     )
                     for chart in self.context.get().charts or []
                 ],
@@ -197,11 +207,11 @@ class MetabaseSource(DashboardServiceSource):
                     continue
                 yield Either(
                     right=CreateChartRequest(
-                        name=chart_details.id,
+                        name=EntityName(chart_details.id),
                         displayName=chart_details.name,
                         description=chart_details.description,
                         chartType=get_standard_chart_type(chart_details.display).value,
-                        sourceUrl=chart_url,
+                        sourceUrl=SourceUrl(chart_url),
                         service=self.context.get().dashboard_service,
                     )
                 )

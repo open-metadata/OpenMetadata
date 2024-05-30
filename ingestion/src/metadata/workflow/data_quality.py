@@ -89,7 +89,7 @@ class TestSuiteWorkflow(IngestionWorkflow):
                     )
 
                 self.config.source.serviceConnection = ServiceConnection(
-                    root=service.connection
+                    service.connection
                 )
 
             except Exception as exc:

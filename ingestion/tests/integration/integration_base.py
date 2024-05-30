@@ -188,7 +188,7 @@ def int_admin_ometa(url: str = "http://localhost:8585/api") -> OpenMetadata:
 
 def generate_name() -> EntityName:
     """Generate a random for the asset"""
-    return EntityName(root=str(uuid.uuid4()))
+    return EntityName(str(uuid.uuid4()))
 
 
 create_service_registry = class_register()
@@ -357,8 +357,8 @@ def get_create_test_definition(
     if not description:
         description = generate_name().root
     return CreateTestDefinitionRequest(
-        name=TestCaseEntityName(root=name),
-        description=Markdown(root=description),
+        name=TestCaseEntityName(name),
+        description=Markdown(description),
         entityType=entity_type,
         testPlatforms=[TestPlatform.GreatExpectations],
         parameterDefinition=parameter_definition,
@@ -375,11 +375,9 @@ def get_create_test_suite(
     if not description:
         description = generate_name().root
     return CreateTestSuiteRequest(
-        name=TestSuiteEntityName(root=name),
-        description=Markdown(root=description),
-        executableEntityReference=FullyQualifiedEntityName(
-            root=executable_entity_reference
-        ),
+        name=TestSuiteEntityName(name),
+        description=Markdown(description),
+        executableEntityReference=FullyQualifiedEntityName(executable_entity_reference),
     )
 
 
@@ -393,8 +391,8 @@ def get_create_test_case(
     if not name:
         name = generate_name().root
     return CreateTestCaseRequest(
-        name=TestCaseEntityName(root=name),
-        entityLink=EntityLink(root=entity_link),
+        name=TestCaseEntityName(name),
+        entityLink=EntityLink(entity_link),
         testSuite=test_suite,
         testDefinition=test_definition,
         parameterValues=parameter_values,

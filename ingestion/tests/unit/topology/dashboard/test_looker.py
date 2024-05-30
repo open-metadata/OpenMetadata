@@ -119,7 +119,7 @@ MOCK_USER = User(email="user@mail.com")
 MOCK_DASHBOARD_SERVICE = DashboardService(
     id="c3eb265f-5445-4ad3-ba5e-797d3a3071bb",
     name="quicksight_source_test",
-    fullyQualifiedName=FullyQualifiedEntityName(root="looker_source_test"),
+    fullyQualifiedName=FullyQualifiedEntityName("looker_source_test"),
     connection=DashboardConnection(),
     serviceType=DashboardServiceType.Looker,
 )

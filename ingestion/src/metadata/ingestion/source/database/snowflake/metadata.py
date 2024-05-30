@@ -44,7 +44,11 @@ from metadata.generated.schema.entity.services.ingestionPipelines.status import 
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
-from metadata.generated.schema.type.basic import EntityName, SourceUrl
+from metadata.generated.schema.type.basic import (
+    EntityName,
+    FullyQualifiedEntityName,
+    SourceUrl,
+)
 from metadata.ingestion.api.delete import delete_entity_by_name
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
@@ -433,8 +437,10 @@ class SnowflakeSource(
                 row = list(res)
                 fqn_elements = [name for name in row[2:] if name]
                 yield from get_ometa_tag_and_classification(
-                    tag_fqn=fqn._build(  # pylint: disable=protected-access
-                        self.context.get().database_service, *fqn_elements
+                    tag_fqn=FullyQualifiedEntityName(
+                        fqn._build(  # pylint: disable=protected-access
+                            self.context.get().database_service, *fqn_elements
+                        )
                     ),
                     tags=[row[1]],
                     classification_name=row[0],
@@ -661,7 +667,7 @@ class SnowflakeSource(
 
         try:
             stored_procedure_request = CreateStoredProcedureRequest(
-                name=EntityName(root=stored_procedure.name),
+                name=EntityName(stored_procedure.name),
                 description=stored_procedure.comment,
                 storedProcedureCode=StoredProcedureCode(
                     language=STORED_PROC_LANGUAGE_MAP.get(stored_procedure.language),
@@ -675,7 +681,7 @@ class SnowflakeSource(
                     schema_name=self.context.get().database_schema,
                 ),
                 sourceUrl=SourceUrl(
-                    root=self._get_source_url_root(
+                    self._get_source_url_root(
                         database_name=self.context.get().database,
                         schema_name=self.context.get().database_schema,
                     )

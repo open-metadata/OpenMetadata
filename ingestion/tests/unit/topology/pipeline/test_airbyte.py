@@ -127,13 +127,13 @@ EXPECTED_CREATED_PIPELINES = CreatePipelineRequest(
             sourceUrl=f"{MOCK_CONNECTION_URI_PATH}/status",
         )
     ],
-    service=FullyQualifiedEntityName(root="airbyte_source"),
+    service=FullyQualifiedEntityName("airbyte_source"),
 )
 
 MOCK_PIPELINE_SERVICE = PipelineService(
     id="85811038-099a-11ed-861d-0242ac120002",
     name="airbyte_source",
-    fullyQualifiedName=FullyQualifiedEntityName(root="airbyte_source"),
+    fullyQualifiedName=FullyQualifiedEntityName("airbyte_source"),
     connection=PipelineConnection(),
     serviceType=PipelineServiceType.Airbyte,
 )

@@ -688,7 +688,7 @@ class SampleDataSource(
             name=self.database["name"],
             description=self.database["description"],
             service=FullyQualifiedEntityName(
-                root=self.database_service.fullyQualifiedName.root
+                self.database_service.fullyQualifiedName.root
             ),
         )
         yield Either(right=db)
@@ -782,7 +782,7 @@ class SampleDataSource(
             name=self.database["name"],
             description=self.database["description"],
             service=FullyQualifiedEntityName(
-                root=self.database_service.fullyQualifiedName.root
+                self.database_service.fullyQualifiedName.root
             ),
         )
         yield Either(right=db)

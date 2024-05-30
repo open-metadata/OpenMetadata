@@ -81,16 +81,16 @@ EXPECTED_CREATED_PIPELINES = CreatePipelineRequest(
             displayName="test <> postgres_rds",
         )
     ],
-    service=FullyQualifiedEntityName(root="fivetran_source"),
+    service=FullyQualifiedEntityName("fivetran_source"),
     sourceUrl=SourceUrl(
-        root="https://fivetran.com/dashboard/connectors/aiding_pointless/status?groupId=wackiness_remote&service=postgres_rds"
+        "https://fivetran.com/dashboard/connectors/aiding_pointless/status?groupId=wackiness_remote&service=postgres_rds"
     ),
 )
 
 MOCK_PIPELINE_SERVICE = PipelineService(
     id="85811038-099a-11ed-861d-0242ac120002",
     name="fivetran_source",
-    fullyQualifiedName=FullyQualifiedEntityName(root="fivetran_source"),
+    fullyQualifiedName=FullyQualifiedEntityName("fivetran_source"),
     connection=PipelineConnection(),
     serviceType=PipelineServiceType.Fivetran,
 )

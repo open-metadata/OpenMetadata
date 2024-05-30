@@ -70,7 +70,7 @@ class MetricsTest(TestCase):
         name="user",
         columns=[
             EntityColumn(
-                name=ColumnName(root="id"),
+                name=ColumnName("id"),
                 dataType=DataType.INT,
             )
         ],
@@ -874,7 +874,7 @@ class MetricsTest(TestCase):
             name="user",
             columns=[
                 EntityColumn(
-                    name=ColumnName(root="id"),
+                    name=ColumnName("id"),
                     dataType=DataType.INT,
                 )
             ],
@@ -921,7 +921,7 @@ class MetricsTest(TestCase):
             name="user",
             columns=[
                 EntityColumn(
-                    name=ColumnName(root="id"),
+                    name=ColumnName("id"),
                     dataType=DataType.INT,
                     customMetrics=[
                         CustomMetric(

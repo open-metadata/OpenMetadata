@@ -75,8 +75,8 @@ class CouchbaseSource(CommonNoSQLSource):
         Method to get list of schema names available within NoSQL db
         need to be overridden by sources
         """
+        database_name = self.context.get().database
         try:
-            database_name = self.context.get().database
             bucket = self.couchbase.bucket(database_name)
             collection_manager = bucket.collections()
             self.context.get().scope_dict = {

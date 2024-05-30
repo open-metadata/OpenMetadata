@@ -49,6 +49,7 @@ from metadata.generated.schema.metadataIngestion.databaseServiceMetadataPipeline
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
+from metadata.generated.schema.type.basic import EntityName, FullyQualifiedEntityName
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
@@ -220,12 +221,14 @@ class UnitycatalogSource(
         """
         yield Either(
             right=CreateDatabaseSchemaRequest(
-                name=schema_name,
-                database=fqn.build(
-                    metadata=self.metadata,
-                    entity_type=Database,
-                    service_name=self.context.get().database_service,
-                    database_name=self.context.get().database,
+                name=EntityName(schema_name),
+                database=FullyQualifiedEntityName(
+                    fqn.build(
+                        metadata=self.metadata,
+                        entity_type=Database,
+                        service_name=self.context.get().database_service,
+                        database_name=self.context.get().database,
+                    )
                 ),
             )
         )
@@ -287,7 +290,7 @@ class UnitycatalogSource(
                 )
 
     def yield_table(
-        self, table_name_and_type: Tuple[str, str]
+        self, table_name_and_type: Tuple[str, TableType]
     ) -> Iterable[Either[CreateTableRequest]]:
         """
         From topology.
@@ -301,9 +304,8 @@ class UnitycatalogSource(
             self.external_location_map[
                 (db_name, schema_name, table_name)
             ] = table.storage_location
-        table_constraints = None
         try:
-            columns = self.get_columns(table.columns)
+            columns = list(self.get_columns(table.columns))
             (
                 primary_constraints,
                 foreign_constraints,
@@ -314,17 +316,19 @@ class UnitycatalogSource(
             )
 
             table_request = CreateTableRequest(
-                name=table_name,
+                name=EntityName(table_name),
                 tableType=table_type,
                 description=table.comment,
                 columns=columns,
                 tableConstraints=table_constraints,
-                databaseSchema=fqn.build(
-                    metadata=self.metadata,
-                    entity_type=DatabaseSchema,
-                    service_name=self.context.get().database_service,
-                    database_name=self.context.get().database,
-                    schema_name=schema_name,
+                databaseSchema=FullyQualifiedEntityName(
+                    fqn.build(
+                        metadata=self.metadata,
+                        entity_type=DatabaseSchema,
+                        service_name=self.context.get().database_service,
+                        database_name=self.context.get().database,
+                        schema_name=schema_name,
+                    )
                 ),
             )
             yield Either(right=table_request)
@@ -403,7 +407,7 @@ class UnitycatalogSource(
                 for parent_column in column.parent_columns:
                     col_fqn = fqn._build(referred_table_fqn, parent_column, quote=False)
                     if col_fqn:
-                        referred_column_fqns.append(col_fqn)
+                        referred_column_fqns.append(FullyQualifiedEntityName(col_fqn))
             else:
                 continue
 

@@ -183,7 +183,7 @@ class MssqlSource(StoredProcedureMixin, CommonDbSourceService, MultiDBSource):
 
         try:
             stored_procedure_request = CreateStoredProcedureRequest(
-                name=EntityName(root=stored_procedure.name),
+                name=EntityName(stored_procedure.name),
                 description=None,
                 storedProcedureCode=StoredProcedureCode(
                     language=STORED_PROC_LANGUAGE_MAP.get(stored_procedure.language),

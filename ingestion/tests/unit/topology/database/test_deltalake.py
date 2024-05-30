@@ -176,7 +176,7 @@ class DeltaLakeUnitTest(TestCase):
         ).right
         expected_database_request = CreateDatabaseRequest(
             name="default",
-            service=FullyQualifiedEntityName(root="delta"),
+            service=FullyQualifiedEntityName("delta"),
         )
 
         self.assertEqual(database_request, expected_database_request)

@@ -101,43 +101,43 @@ class ProfilerTest(TestCase):
         fileFormat="csv",
         columns=[
             EntityColumn(
-                name=ColumnName(root="name"),
+                name=ColumnName("name"),
                 dataType=DataType.STRING,
             ),
             EntityColumn(
-                name=ColumnName(root="fullname"),
+                name=ColumnName("fullname"),
                 dataType=DataType.STRING,
             ),
             EntityColumn(
-                name=ColumnName(root="nickname"),
+                name=ColumnName("nickname"),
                 dataType=DataType.STRING,
             ),
             EntityColumn(
-                name=ColumnName(root="comments"),
+                name=ColumnName("comments"),
                 dataType=DataType.STRING,
             ),
             EntityColumn(
-                name=ColumnName(root="age"),
+                name=ColumnName("age"),
                 dataType=DataType.INT,
             ),
             EntityColumn(
-                name=ColumnName(root="dob"),
+                name=ColumnName("dob"),
                 dataType=DataType.DATETIME,
             ),
             EntityColumn(
-                name=ColumnName(root="tob"),
+                name=ColumnName("tob"),
                 dataType=DataType.DATE,
             ),
             EntityColumn(
-                name=ColumnName(root="doe"),
+                name=ColumnName("doe"),
                 dataType=DataType.DATE,
             ),
             EntityColumn(
-                name=ColumnName(root="json"),
+                name=ColumnName("json"),
                 dataType=DataType.JSON,
             ),
             EntityColumn(
-                name=ColumnName(root="array"),
+                name=ColumnName("array"),
                 dataType=DataType.ARRAY,
             ),
         ],

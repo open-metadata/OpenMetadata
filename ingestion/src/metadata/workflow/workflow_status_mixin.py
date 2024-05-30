@@ -139,7 +139,7 @@ class WorkflowStatusMixin:
         """
 
         return IngestionStatus(
-            root=[
+            [
                 StepSummary.parse_obj(Summary.from_step(step).dict())
                 for step in self.workflow_steps()
             ]

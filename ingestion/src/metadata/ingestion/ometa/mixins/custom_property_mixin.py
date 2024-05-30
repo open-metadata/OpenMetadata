@@ -75,6 +75,4 @@ class OMetaCustomPropertyMixin:
         Get the PropertyType for custom properties
         """
         custom_property_type = self.get_custom_property_type(data_type=data_type)
-        return PropertyType(
-            root=EntityReference(id=custom_property_type.id, type="type")
-        )
+        return PropertyType(EntityReference(id=custom_property_type.id, type="type"))

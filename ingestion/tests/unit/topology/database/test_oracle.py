@@ -111,12 +111,12 @@ MOCK_STORED_PROCEDURE = OracleStoredProcedure(
 
 EXPECTED_DATABASE = [
     CreateDatabaseRequest(
-        name=EntityName(root="sample_database"),
+        name=EntityName("sample_database"),
         displayName=None,
         description=None,
         tags=None,
         owner=None,
-        service=FullyQualifiedEntityName(root="oracle_source_test"),
+        service=FullyQualifiedEntityName("oracle_source_test"),
         dataProducts=None,
         default=False,
         retentionPeriod=None,
@@ -130,11 +130,11 @@ EXPECTED_DATABASE = [
 
 EXPECTED_DATABASE_SCHEMA = [
     CreateDatabaseSchemaRequest(
-        name=EntityName(root="sample_schema"),
+        name=EntityName("sample_schema"),
         displayName=None,
         description=None,
         owner=None,
-        database=FullyQualifiedEntityName(root="oracle_source_test.sample_database"),
+        database=FullyQualifiedEntityName("oracle_source_test.sample_database"),
         dataProducts=None,
         tags=None,
         retentionPeriod=None,
@@ -148,14 +148,14 @@ EXPECTED_DATABASE_SCHEMA = [
 
 EXPECTED_STORED_PROCEDURE = [
     CreateStoredProcedureRequest(
-        name=EntityName(root="sample_procedure"),
+        name=EntityName("sample_procedure"),
         displayName=None,
         description=None,
         owner=None,
         tags=None,
         storedProcedureCode=StoredProcedureCode(language="SQL", code="SAMPLE_SQL_TEXT"),
         databaseSchema=FullyQualifiedEntityName(
-            root="oracle_source_test.sample_database.sample_schema"
+            "oracle_source_test.sample_database.sample_schema"
         ),
         extension=None,
         dataProducts=None,

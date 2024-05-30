@@ -170,13 +170,13 @@ class TestHelpers(TestCase):
             Suggestion(
                 id=uuid.uuid4(),
                 type=SuggestionType.SuggestDescription,
-                entityLink=EntityLink(root="<#E::table::tableFQN>"),
+                entityLink=EntityLink("<#E::table::tableFQN>"),
                 description="something",
             ),
             Suggestion(
                 id=uuid.uuid4(),
                 type=SuggestionType.SuggestDescription,
-                entityLink=EntityLink(root="<#E::table::tableFQN::columns::col>"),
+                entityLink=EntityLink("<#E::table::tableFQN::columns::col>"),
                 description="something",
             ),
         ]
@@ -200,13 +200,13 @@ class TestHelpers(TestCase):
         suggestion_table = find_suggestion(
             suggestions=suggestions,
             suggestion_type=SuggestionType.SuggestDescription,
-            entity_link=EntityLink(root="<#E::table::tableFQN>"),
+            entity_link=EntityLink("<#E::table::tableFQN>"),
         )
         self.assertEqual(suggestion_table, suggestions[0])
 
         suggestion_col = find_suggestion(
             suggestions=suggestions,
             suggestion_type=SuggestionType.SuggestDescription,
-            entity_link=EntityLink(root="<#E::table::tableFQN::columns::col>"),
+            entity_link=EntityLink("<#E::table::tableFQN::columns::col>"),
         )
         self.assertEqual(suggestion_col, suggestions[1])

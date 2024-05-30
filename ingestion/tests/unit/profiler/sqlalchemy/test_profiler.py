@@ -82,7 +82,7 @@ class ProfilerTest(TestCase):
         name="user",
         columns=[
             EntityColumn(
-                name=ColumnName(root="id"),
+                name=ColumnName("id"),
                 dataType=DataType.INT,
                 customMetrics=[
                     CustomMetric(

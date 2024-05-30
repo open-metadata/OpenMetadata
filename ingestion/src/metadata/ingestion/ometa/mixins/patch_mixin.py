@@ -198,7 +198,7 @@ class OMetaPatchMixin(OMetaPatchMixinBase):
 
         # https://docs.pydantic.dev/latest/usage/exporting_models/#modelcopy
         destination = source.copy(deep=True)
-        destination.description = Markdown(root=description)
+        destination.description = Markdown(description)
 
         return self.patch(entity=entity, source=source, destination=destination)
 
@@ -253,7 +253,7 @@ class OMetaPatchMixin(OMetaPatchMixinBase):
 
         destination = source.copy(deep=True)
 
-        destination.entityLink = EntityLink(root=entity_link)
+        destination.entityLink = EntityLink(entity_link)
         if test_case_parameter_values:
             destination.parameterValues = test_case_parameter_values
         if compute_passed_failed_row_count != source.computePassedFailedRowCount:
@@ -438,7 +438,7 @@ class OMetaPatchMixin(OMetaPatchMixinBase):
             table=table,
             column_descriptions=[
                 ColumnDescription(
-                    column_fqn=column_fqn, description=Markdown(root=description)
+                    column_fqn=column_fqn, description=Markdown(description)
                 )
             ],
             force=force,

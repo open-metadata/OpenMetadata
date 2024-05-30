@@ -71,7 +71,7 @@ MOCK_PIPELINE_URL = f"{MOCK_SPLINE_UI_URL}/app/events/overview/{PIPELINE_ID}"
 MOCK_PIPELINE_SERVICE = PipelineService(
     id="85811038-099a-11ed-861d-0242ac120002",
     name="openlineage_source",
-    fullyQualifiedName=FullyQualifiedEntityName(root="openlineage_source"),
+    fullyQualifiedName=FullyQualifiedEntityName("openlineage_source"),
     connection=PipelineConnection(),
     serviceType=PipelineServiceType.Airflow,
 )

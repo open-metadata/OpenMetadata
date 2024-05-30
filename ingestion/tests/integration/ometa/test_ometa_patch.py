@@ -63,14 +63,14 @@ from ..integration_base import (
 )
 
 PII_TAG_LABEL = TagLabel(
-    tagFQN=TagFQN(root="PII.Sensitive"),
+    tagFQN=TagFQN("PII.Sensitive"),
     labelType=LabelType.Automated,
     state=State.Suggested.value,
     source=TagSource.Classification,
 )
 
 TIER_TAG_LABEL = TagLabel(
-    tagFQN=TagFQN(root="Tier.Tier2"),
+    tagFQN=TagFQN("Tier.Tier2"),
     labelType=LabelType.Automated,
     state=State.Suggested.value,
     source=TagSource.Classification,
@@ -247,10 +247,10 @@ class OMetaTableTest(TestCase):
 
         # Test adding a new column to the table
         new_patched_table.columns.append(
-            Column(name=ColumnName(root="new_column"), dataType=DataType.BIGINT),
+            Column(name=ColumnName("new_column"), dataType=DataType.BIGINT),
         )
         # Test if table and column descriptions are getting patched
-        new_patched_table.description = Markdown(root="This should get patched")
+        new_patched_table.description = Markdown("This should get patched")
         new_patched_table.columns[0].description = Markdown(
             root="This column description should get patched"
         )
@@ -283,7 +283,7 @@ class OMetaTableTest(TestCase):
         new_patched_table = patched_table.copy(deep=True)
 
         # Descriptions should not override already present descriptions
-        new_patched_table.description = Markdown(root="This should NOT get patched")
+        new_patched_table.description = Markdown("This should NOT get patched")
         new_patched_table.columns[0].description = Markdown(
             root="This column description should NOT get patched"
         )

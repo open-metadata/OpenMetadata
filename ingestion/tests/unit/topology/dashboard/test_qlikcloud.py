@@ -72,7 +72,7 @@ mock_qlikcloud_config = {
 MOCK_DASHBOARD_SERVICE = DashboardService(
     id="c3eb265f-5445-4ad3-ba5e-797d3a3071bb",
     name="qlikcloud_source_test",
-    fullyQualifiedName=FullyQualifiedEntityName(root="qlikcloud_source_test"),
+    fullyQualifiedName=FullyQualifiedEntityName("qlikcloud_source_test"),
     connection=DashboardConnection(),
     serviceType=DashboardServiceType.QlikCloud,
 )

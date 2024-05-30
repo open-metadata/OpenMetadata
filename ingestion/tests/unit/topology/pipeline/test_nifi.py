@@ -142,7 +142,7 @@ EXPECTED_CREATED_PIPELINES = CreatePipelineRequest(
 MOCK_PIPELINE_SERVICE = PipelineService(
     id="85811038-099a-11ed-861d-0242ac120002",
     name="nifi_source",
-    fullyQualifiedName=FullyQualifiedEntityName(root="nifi_source"),
+    fullyQualifiedName=FullyQualifiedEntityName("nifi_source"),
     connection=PipelineConnection(),
     serviceType=PipelineServiceType.Nifi,
 )

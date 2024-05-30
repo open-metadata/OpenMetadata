@@ -68,13 +68,13 @@ from metadata.profiler.api.models import ProfilerResponse
 
 table_data = TableData(
     columns=[
-        ColumnName(root="customer_id"),
-        ColumnName(root="first_name"),
-        ColumnName(root="last_name"),
-        ColumnName(root="first_order"),
+        ColumnName("customer_id"),
+        ColumnName("first_name"),
+        ColumnName("last_name"),
+        ColumnName("first_order"),
         # Apply a random name to force the NER scanner execution here
-        ColumnName(root="random"),
-        ColumnName(root="number_of_orders"),
+        ColumnName("random"),
+        ColumnName("number_of_orders"),
     ],
     rows=[
         [
@@ -120,7 +120,7 @@ EXPECTED_COLUMN_TAGS = [
     ColumnTag(
         column_fqn="test-service-table-patch.test-db.test-schema.customers.first_name",
         tag_label=TagLabel(
-            tagFQN=TagFQN(root="PII.Sensitive"),
+            tagFQN=TagFQN("PII.Sensitive"),
             source="Classification",
             labelType="Automated",
             state="Suggested",
@@ -129,7 +129,7 @@ EXPECTED_COLUMN_TAGS = [
     ColumnTag(
         column_fqn="test-service-table-patch.test-db.test-schema.customers.first_order",
         tag_label=TagLabel(
-            tagFQN=TagFQN(root="PII.NonSensitive"),
+            tagFQN=TagFQN("PII.NonSensitive"),
             source="Classification",
             labelType="Automated",
             state="Suggested",
@@ -138,7 +138,7 @@ EXPECTED_COLUMN_TAGS = [
     ColumnTag(
         column_fqn="test-service-table-patch.test-db.test-schema.customers.random",
         tag_label=TagLabel(
-            tagFQN=TagFQN(root="PII.Sensitive"),
+            tagFQN=TagFQN("PII.Sensitive"),
             source="Classification",
             labelType="Automated",
             state="Suggested",

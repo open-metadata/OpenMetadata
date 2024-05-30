@@ -265,7 +265,7 @@ class DatabaseServiceSource(
         """
 
     @abstractmethod
-    def get_tables_name_and_type(self) -> Optional[Iterable[Tuple[str, str]]]:
+    def get_tables_name_and_type(self) -> Optional[Iterable[Tuple[str, TableType]]]:
         """
         Prepares the table name to be sent to stage.
         Filtering happens here.

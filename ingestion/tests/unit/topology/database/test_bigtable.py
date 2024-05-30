@@ -157,7 +157,7 @@ MOCK_CREATE_TABLE = CreateTableRequest(
     ],
     databaseSchema="local_bigtable.my-gcp-project.my_instance",
     sourceUrl=SourceUrl(
-        root="https://console.cloud.google.com/bigtable/instances/my_instance/tables/random_table/overview?project=my-gcp-project"
+        "https://console.cloud.google.com/bigtable/instances/my_instance/tables/random_table/overview?project=my-gcp-project"
     ),
 )
 

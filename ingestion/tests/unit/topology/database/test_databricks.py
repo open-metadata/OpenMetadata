@@ -237,7 +237,7 @@ EXPTECTED_TABLE = [
         tableProfilerConfig=None,
         owner=None,
         databaseSchema=FullyQualifiedEntityName(
-            root="local_databricks.hive_metastore.do_it_all_with_default_schema"
+            "local_databricks.hive_metastore.do_it_all_with_default_schema"
         ),
         tags=None,
         schemaDefinition=None,

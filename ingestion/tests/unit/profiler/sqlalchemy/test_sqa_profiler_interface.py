@@ -69,7 +69,7 @@ class SQAInterfaceTest(TestCase):
             name="user",
             columns=[
                 EntityColumn(
-                    name=ColumnName(root="id"),
+                    name=ColumnName("id"),
                     dataType=DataType.INT,
                 )
             ],
@@ -107,7 +107,7 @@ class SQAInterfaceTestMultiThread(TestCase):
         name="user",
         columns=[
             EntityColumn(
-                name=ColumnName(root="id"),
+                name=ColumnName("id"),
                 dataType=DataType.INT,
             )
         ],

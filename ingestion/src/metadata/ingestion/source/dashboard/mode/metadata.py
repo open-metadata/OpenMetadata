@@ -29,6 +29,12 @@ from metadata.generated.schema.entity.services.ingestionPipelines.status import 
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
+from metadata.generated.schema.type.basic import (
+    EntityName,
+    FullyQualifiedEntityName,
+    Markdown,
+    SourceUrl,
+)
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.lineage.parser import LineageParser
@@ -97,16 +103,20 @@ class ModeSource(DashboardServiceSource):
         dashboard_path = dashboard_details[client.LINKS][client.SHARE][client.HREF]
         dashboard_url = f"{clean_uri(self.service_connection.hostPort)}{dashboard_path}"
         dashboard_request = CreateDashboardRequest(
-            name=dashboard_details.get(client.TOKEN),
-            sourceUrl=dashboard_url,
+            name=EntityName(dashboard_details.get(client.TOKEN)),
+            sourceUrl=SourceUrl(dashboard_url),
             displayName=dashboard_details.get(client.NAME),
-            description=dashboard_details.get(client.DESCRIPTION),
+            description=Markdown(dashboard_details.get(client.DESCRIPTION))
+            if dashboard_details.get(client.DESCRIPTION)
+            else None,
             charts=[
-                fqn.build(
-                    self.metadata,
-                    entity_type=Chart,
-                    service_name=self.context.get().dashboard_service,
-                    chart_name=chart,
+                FullyQualifiedEntityName(
+                    fqn.build(
+                        self.metadata,
+                        entity_type=Chart,
+                        service_name=self.context.get().dashboard_service,
+                        chart_name=chart,
+                    )
                 )
                 for chart in self.context.get().charts or []
             ],
@@ -201,10 +211,10 @@ class ModeSource(DashboardServiceSource):
                     )
                     yield Either(
                         right=CreateChartRequest(
-                            name=chart.get(client.TOKEN),
+                            name=EntityName(chart.get(client.TOKEN)),
                             displayName=chart_name,
                             chartType=ChartType.Other,
-                            sourceUrl=chart_url,
+                            sourceUrl=SourceUrl(chart_url),
                             service=self.context.get().dashboard_service,
                         )
                     )

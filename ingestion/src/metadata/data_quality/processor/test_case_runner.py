@@ -194,10 +194,10 @@ class TestCaseRunner(Processor):
                         description=test_case_to_create.description,
                         displayName=test_case_to_create.displayName,
                         testDefinition=FullyQualifiedEntityName(
-                            root=test_case_to_create.testDefinitionName
+                            test_case_to_create.testDefinitionName
                         ),
                         entityLink=EntityLink(
-                            root=entity_link.get_entity_link(
+                            entity_link.get_entity_link(
                                 Table,
                                 fqn=table_fqn,
                                 column_name=test_case_to_create.columnName,

@@ -28,7 +28,12 @@ from metadata.generated.schema.api.data.createTable import CreateTableRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
-from metadata.generated.schema.entity.data.table import Column, Table, TableType
+from metadata.generated.schema.entity.data.table import (
+    Column,
+    ColumnName,
+    Table,
+    TableType,
+)
 from metadata.generated.schema.entity.services.connections.database.domoDatabaseConnection import (
     DomoDatabaseConnection,
 )
@@ -41,6 +46,7 @@ from metadata.generated.schema.metadataIngestion.databaseServiceMetadataPipeline
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
+from metadata.generated.schema.type.basic import EntityName, FullyQualifiedEntityName
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
@@ -106,7 +112,7 @@ class DomodatabaseSource(DatabaseServiceSource):
     ) -> Iterable[Either[CreateDatabaseRequest]]:
         yield Either(
             right=CreateDatabaseRequest(
-                name=database_name,
+                name=EntityName(database_name),
                 service=self.context.get().database_service,
             )
         )
@@ -120,12 +126,14 @@ class DomodatabaseSource(DatabaseServiceSource):
     ) -> Iterable[Either[CreateDatabaseSchemaRequest]]:
         yield Either(
             right=CreateDatabaseSchemaRequest(
-                name=schema_name,
-                database=fqn.build(
-                    metadata=self.metadata,
-                    entity_type=Database,
-                    service_name=self.context.get().database_service,
-                    database_name=self.context.get().database,
+                name=EntityName(schema_name),
+                database=FullyQualifiedEntityName(
+                    fqn.build(
+                        metadata=self.metadata,
+                        entity_type=Database,
+                        service_name=self.context.get().database_service,
+                        database_name=self.context.get().database,
+                    )
                 ),
             )
         )
@@ -177,7 +185,7 @@ class DomodatabaseSource(DatabaseServiceSource):
         return None
 
     def yield_table(
-        self, table_name_and_type: Tuple[str, str]
+        self, table_name_and_type: Tuple[str, TableType]
     ) -> Iterable[Either[CreateTableRequest]]:
         table_id, table_type = table_name_and_type
         try:
@@ -189,19 +197,21 @@ class DomodatabaseSource(DatabaseServiceSource):
                 else []
             )
             table_request = CreateTableRequest(
-                name=table_object.name,
+                name=EntityName(table_object.name),
                 displayName=table_object.name,
                 tableType=table_type,
                 description=table_object.description,
                 columns=columns,
                 owner=self.get_owners(owner=table_object.owner),
                 tableConstraints=table_constraints,
-                databaseSchema=fqn.build(
-                    metadata=self.metadata,
-                    entity_type=DatabaseSchema,
-                    service_name=self.context.get().database_service,
-                    database_name=self.context.get().database,
-                    schema_name=self.context.get().database_schema,
+                databaseSchema=FullyQualifiedEntityName(
+                    fqn.build(
+                        metadata=self.metadata,
+                        entity_type=DatabaseSchema,
+                        service_name=self.context.get().database_service,
+                        database_name=self.context.get().database,
+                        schema_name=self.context.get().database_schema,
+                    )
                 ),
                 sourceUrl=self.get_source_url(
                     table_name=table_id,
@@ -224,7 +234,7 @@ class DomodatabaseSource(DatabaseServiceSource):
         for column in table_object:
             columns.append(
                 Column(
-                    name=column.name,
+                    name=ColumnName(column.name),
                     description=column.description,
                     dataType=column.type,
                     ordinalPosition=row_order,

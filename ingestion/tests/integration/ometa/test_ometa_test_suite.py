@@ -78,7 +78,7 @@ class OMetaTestSuiteTest(TestCase):
 
     test_definition = metadata.create_or_update(
         CreateTestDefinitionRequest(
-            name=TestCaseEntityName(root="testDefinitionForIntegration"),
+            name=TestCaseEntityName("testDefinitionForIntegration"),
             description=Markdown(
                 root="this is a test definition for integration tests"
             ),
@@ -101,7 +101,7 @@ class OMetaTestSuiteTest(TestCase):
                     root="This is a test suite for the integration tests"
                 ),
                 executableEntityReference=FullyQualifiedEntityName(
-                    root="sample_data.ecommerce_db.shopify.dim_address"
+                    "sample_data.ecommerce_db.shopify.dim_address"
                 ),
             )
         )

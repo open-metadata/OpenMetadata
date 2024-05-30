@@ -39,6 +39,7 @@ from metadata.generated.schema.metadataIngestion.databaseServiceMetadataPipeline
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
+from metadata.generated.schema.type.basic import EntityName, FullyQualifiedEntityName
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
@@ -209,12 +210,14 @@ class GlueSource(DatabaseServiceSource):
         """
         yield Either(
             right=CreateDatabaseSchemaRequest(
-                name=schema_name,
-                database=fqn.build(
-                    metadata=self.metadata,
-                    entity_type=Database,
-                    service_name=self.context.get().database_service,
-                    database_name=self.context.get().database,
+                name=EntityName(schema_name),
+                database=FullyQualifiedEntityName(
+                    fqn.build(
+                        metadata=self.metadata,
+                        entity_type=Database,
+                        service_name=self.context.get().database_service,
+                        database_name=self.context.get().database,
+                    )
                 ),
                 sourceUrl=self.get_source_url(
                     database_name=self.context.get().database,
@@ -283,7 +286,7 @@ class GlueSource(DatabaseServiceSource):
                     )
 
     def yield_table(
-        self, table_name_and_type: Tuple[str, str]
+        self, table_name_and_type: Tuple[str, TableType]
     ) -> Iterable[Either[CreateTableRequest]]:
         """
         From topology.
@@ -296,17 +299,19 @@ class GlueSource(DatabaseServiceSource):
             columns = self.get_columns(table.StorageDescriptor)
 
             table_request = CreateTableRequest(
-                name=table_name,
+                name=EntityName(table_name),
                 tableType=table_type,
                 description=table.Description,
-                columns=columns,
+                columns=list(columns),
                 tableConstraints=table_constraints,
-                databaseSchema=fqn.build(
-                    metadata=self.metadata,
-                    entity_type=DatabaseSchema,
-                    service_name=self.context.get().database_service,
-                    database_name=self.context.get().database,
-                    schema_name=self.context.get().database_schema,
+                databaseSchema=FullyQualifiedEntityName(
+                    fqn.build(
+                        metadata=self.metadata,
+                        entity_type=DatabaseSchema,
+                        service_name=self.context.get().database_service,
+                        database_name=self.context.get().database,
+                        schema_name=self.context.get().database_schema,
+                    )
                 ),
                 sourceUrl=self.get_source_url(
                     table_name=table_name,

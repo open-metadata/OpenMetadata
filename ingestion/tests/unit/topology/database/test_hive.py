@@ -145,12 +145,12 @@ MOCK_COLUMN_VALUE = [
 
 EXPECTED_DATABASE = [
     CreateDatabaseRequest(
-        name=EntityName(root="sample_database"),
+        name=EntityName("sample_database"),
         displayName=None,
         description=None,
         tags=None,
         owner=None,
-        service=FullyQualifiedEntityName(root="hive_source_test"),
+        service=FullyQualifiedEntityName("hive_source_test"),
         dataProducts=None,
         default=False,
         retentionPeriod=None,
@@ -164,11 +164,11 @@ EXPECTED_DATABASE = [
 
 EXPECTED_DATABASE_SCHEMA = [
     CreateDatabaseSchemaRequest(
-        name=EntityName(root="sample_schema"),
+        name=EntityName("sample_schema"),
         displayName=None,
         description=None,
         owner=None,
-        database=FullyQualifiedEntityName(root="hive_source_test.sample_database"),
+        database=FullyQualifiedEntityName("hive_source_test.sample_database"),
         dataProducts=None,
         tags=None,
         retentionPeriod=None,
@@ -182,13 +182,13 @@ EXPECTED_DATABASE_SCHEMA = [
 
 EXPECTED_TABLE = [
     CreateTableRequest(
-        name=EntityName(root="sample_table"),
+        name=EntityName("sample_table"),
         displayName=None,
         description=None,
         tableType=TableType.Regular.name,
         columns=[
             Column(
-                name=ColumnName(root="sample_col_1"),
+                name=ColumnName("sample_col_1"),
                 displayName=None,
                 dataType=DataType.VARCHAR.name,
                 arrayDataType=None,
@@ -207,7 +207,7 @@ EXPECTED_TABLE = [
                 customMetrics=None,
             ),
             Column(
-                name=ColumnName(root="sample_col_2"),
+                name=ColumnName("sample_col_2"),
                 displayName=None,
                 dataType=DataType.INT.name,
                 arrayDataType=None,
@@ -226,7 +226,7 @@ EXPECTED_TABLE = [
                 customMetrics=None,
             ),
             Column(
-                name=ColumnName(root="sample_col_3"),
+                name=ColumnName("sample_col_3"),
                 displayName=None,
                 dataType=DataType.VARCHAR.name,
                 arrayDataType=None,
@@ -245,7 +245,7 @@ EXPECTED_TABLE = [
                 customMetrics=None,
             ),
             Column(
-                name=ColumnName(root="sample_col_4"),
+                name=ColumnName("sample_col_4"),
                 displayName=None,
                 dataType=DataType.VARCHAR.name,
                 arrayDataType=None,
@@ -269,7 +269,7 @@ EXPECTED_TABLE = [
         tableProfilerConfig=None,
         owner=None,
         databaseSchema=FullyQualifiedEntityName(
-            root="hive_source_test.sample_database.sample_schema"
+            "hive_source_test.sample_database.sample_schema"
         ),
         tags=None,
         schemaDefinition=None,

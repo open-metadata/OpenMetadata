@@ -28,7 +28,7 @@ from metadata.ingestion.source.dashboard.tableau.models import (
 
 MOCK_DASHBOARD_SERVICE = DashboardService(
     id="c3eb265f-5445-4ad3-ba5e-797d3a3071bb",
-    fullyQualifiedName=FullyQualifiedEntityName(root="tableau_source_test"),
+    fullyQualifiedName=FullyQualifiedEntityName("tableau_source_test"),
     name="tableau_source_test",
     connection=DashboardConnection(),
     serviceType=DashboardServiceType.Tableau,
@@ -119,7 +119,7 @@ EXPECTED_DASHBOARD = [
         charts=[],
         tags=[],
         owner=None,
-        service=FullyQualifiedEntityName(root="tableau_source_test"),
+        service=FullyQualifiedEntityName("tableau_source_test"),
         extension=None,
     )
 ]
@@ -133,7 +133,7 @@ EXPECTED_CHARTS = [
         sourceUrl="http://tableauHost.com/#/site/tableauSiteUrl/views/Regional/Obesity",
         tags=None,
         owner=None,
-        service=FullyQualifiedEntityName(root="tableau_source_test"),
+        service=FullyQualifiedEntityName("tableau_source_test"),
     ),
     CreateChartRequest(
         name="106ff64d-537b-4534-8140-5d08c586e077",
@@ -143,7 +143,7 @@ EXPECTED_CHARTS = [
         sourceUrl="http://tableauHost.com/#/site/tableauSiteUrl/views/Regional/College",
         tags=None,
         owner=None,
-        service=FullyQualifiedEntityName(root="tableau_source_test"),
+        service=FullyQualifiedEntityName("tableau_source_test"),
     ),
     CreateChartRequest(
         name="c1493abc-9057-4bdf-9061-c6d2908e4eaa",
@@ -153,7 +153,7 @@ EXPECTED_CHARTS = [
         sourceUrl="http://tableauHost.com/#/site/tableauSiteUrl/views/Regional/GlobalTemperatures",
         tags=None,
         owner=None,
-        service=FullyQualifiedEntityName(root="tableau_source_test"),
+        service=FullyQualifiedEntityName("tableau_source_test"),
     ),
 ]
 

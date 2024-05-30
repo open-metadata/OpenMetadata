@@ -106,7 +106,7 @@ MOCK_DATABASE_SCHEMA = DatabaseSchema(
 
 MOCK_TABLE = Table(
     id="c3eb265f-5445-4ad3-ba5e-797d3a3071bb",
-    name=EntityName(root="customers"),
+    name=EntityName("customers"),
     displayName=None,
     description=None,
     tableType="Regular",
@@ -181,7 +181,7 @@ MOCK_TABLE = Table(
     retentionPeriod=None,
     extension=None,
     sourceUrl=SourceUrl(
-        root="https://console.cloud.google.com/bigquery?project=random-project-id&ws=!1m5!1m4!4m3!1srandom-project-id!2ssample_schema!3scustomers"
+        "https://console.cloud.google.com/bigquery?project=random-project-id&ws=!1m5!1m4!4m3!1srandom-project-id!2ssample_schema!3scustomers"
     ),
     domain=None,
     dataProducts=None,
@@ -192,18 +192,18 @@ MOCK_TABLE = Table(
 
 EXPECTED_DATABASE = [
     CreateDatabaseRequest(
-        name=EntityName(root="random-project-id"),
+        name=EntityName("random-project-id"),
         displayName=None,
         description=None,
         tags=[],
         owner=None,
-        service=FullyQualifiedEntityName(root="bigquery_source_test"),
+        service=FullyQualifiedEntityName("bigquery_source_test"),
         dataProducts=None,
         default=False,
         retentionPeriod=None,
         extension=None,
         sourceUrl=SourceUrl(
-            root="https://console.cloud.google.com/bigquery?project=random-project-id"
+            "https://console.cloud.google.com/bigquery?project=random-project-id"
         ),
         domain=None,
         lifeCycle=None,
@@ -212,19 +212,17 @@ EXPECTED_DATABASE = [
 ]
 EXPTECTED_DATABASE_SCHEMA = [
     CreateDatabaseSchemaRequest(
-        name=EntityName(root="sample_schema"),
+        name=EntityName("sample_schema"),
         displayName=None,
         description="",
         owner=None,
-        database=FullyQualifiedEntityName(
-            root="bigquery_source_test.random-project-id"
-        ),
+        database=FullyQualifiedEntityName("bigquery_source_test.random-project-id"),
         dataProducts=None,
         tags=None,
         retentionPeriod=None,
         extension=None,
         sourceUrl=SourceUrl(
-            root="https://console.cloud.google.com/bigquery?project=random-project-id&ws=!1m4!1m3!3m2!1srandom-project-id!2ssample_schema"
+            "https://console.cloud.google.com/bigquery?project=random-project-id&ws=!1m4!1m3!3m2!1srandom-project-id!2ssample_schema"
         ),
         domain=None,
         lifeCycle=None,
@@ -340,7 +338,7 @@ MOCK_FK_CONSTRAINT = {
 EXPECTED_TABLE = [
     [
         CreateTableRequest(
-            name=EntityName(root="customers"),
+            name=EntityName("customers"),
             displayName=None,
             description=None,
             tableType="Regular",
@@ -415,7 +413,7 @@ EXPECTED_TABLE = [
             retentionPeriod=None,
             extension=None,
             sourceUrl=SourceUrl(
-                root="https://console.cloud.google.com/bigquery?project=random-project-id&ws=!1m5!1m4!4m3!1srandom-project-id!2ssample_schema!3scustomers"
+                "https://console.cloud.google.com/bigquery?project=random-project-id&ws=!1m5!1m4!4m3!1srandom-project-id!2ssample_schema!3scustomers"
             ),
             domain=None,
             dataProducts=None,
@@ -426,7 +424,7 @@ EXPECTED_TABLE = [
     ],
     [
         CreateTableRequest(
-            name=EntityName(root="orders"),
+            name=EntityName("orders"),
             displayName=None,
             description=None,
             tableType="Regular",
@@ -511,7 +509,7 @@ EXPECTED_TABLE = [
             retentionPeriod=None,
             extension=None,
             sourceUrl=SourceUrl(
-                root="https://console.cloud.google.com/bigquery?project=random-project-id&ws=!1m5!1m4!4m3!1srandom-project-id!2ssample_schema!3sorders"
+                "https://console.cloud.google.com/bigquery?project=random-project-id&ws=!1m5!1m4!4m3!1srandom-project-id!2ssample_schema!3sorders"
             ),
             domain=None,
             dataProducts=None,
@@ -531,7 +529,7 @@ MOCK_TABLE_CONSTRAINT = [
             columns=["customer_id"],
             referredColumns=[
                 FullyQualifiedEntityName(
-                    root="bigquery_source_test.random-project-id.sample_schema.customers.customer_id"
+                    "bigquery_source_test.random-project-id.sample_schema.customers.customer_id"
                 )
             ],
         )

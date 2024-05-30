@@ -73,6 +73,13 @@ from metadata.generated.schema.security.credentials.bitbucketCredentials import 
 from metadata.generated.schema.security.credentials.githubCredentials import (
     GitHubCredentials,
 )
+from metadata.generated.schema.type.basic import (
+    EntityName,
+    FullyQualifiedEntityName,
+    Markdown,
+    SourceUrl,
+    Uuid,
+)
 from metadata.generated.schema.type.entityLineage import EntitiesEdge, LineageDetails
 from metadata.generated.schema.type.entityLineage import Source as LineageSource
 from metadata.generated.schema.type.entityReference import EntityReference
@@ -400,9 +407,11 @@ class LookerSource(DashboardServiceSource):
                 self.status.filter(datamodel_name, "Data model filtered out.")
             else:
                 explore_datamodel = CreateDashboardDataModelRequest(
-                    name=datamodel_name,
+                    name=EntityName(datamodel_name),
                     displayName=model.name,
-                    description=model.description,
+                    description=Markdown(model.description)
+                    if model.description
+                    else None,
                     service=self.context.get().dashboard_service,
                     dataModelType=DataModelType.LookMlExplore.value,
                     serviceType=DashboardServiceType.Looker.value,
@@ -498,9 +507,13 @@ class LookerSource(DashboardServiceSource):
 
             if view:
                 data_model_request = CreateDashboardDataModelRequest(
-                    name=build_datamodel_name(explore.model_name, view.name),
+                    name=EntityName(
+                        build_datamodel_name(explore.model_name, view.name)
+                    ),
                     displayName=view.name,
-                    description=view.description,
+                    description=Markdown(view.description)
+                    if view.description
+                    else None,
                     service=self.context.get().dashboard_service,
                     dataModelType=DataModelType.LookMlView.value,
                     serviceType=DashboardServiceType.Looker.value,
@@ -656,22 +669,28 @@ class LookerSource(DashboardServiceSource):
         Method to Get Dashboard Entity
         """
         dashboard_request = CreateDashboardRequest(
-            name=clean_dashboard_name(dashboard_details.id),
+            name=EntityName(clean_dashboard_name(dashboard_details.id)),
             displayName=dashboard_details.title,
-            description=dashboard_details.description or None,
+            description=Markdown(dashboard_details.description)
+            if dashboard_details.description
+            else None,
             charts=[
-                fqn.build(
-                    self.metadata,
-                    entity_type=Chart,
-                    service_name=self.context.get().dashboard_service,
-                    chart_name=chart,
+                FullyQualifiedEntityName(
+                    fqn.build(
+                        self.metadata,
+                        entity_type=Chart,
+                        service_name=self.context.get().dashboard_service,
+                        chart_name=chart,
+                    )
                 )
                 for chart in self.context.get().charts or []
             ],
             # Dashboards are created from the UI directly. They are not linked to a project
             # like LookML assets, but rather just organised in folders.
             project=self.get_project_name(dashboard_details),
-            sourceUrl=f"{clean_uri(self.service_connection.hostPort)}/dashboards/{dashboard_details.id}",
+            sourceUrl=SourceUrl(
+                f"{clean_uri(self.service_connection.hostPort)}/dashboards/{dashboard_details.id}"
+            ),
             service=self.context.get().dashboard_service,
             owner=self.get_owner_ref(dashboard_details=dashboard_details),
         )
@@ -776,11 +795,11 @@ class LookerSource(DashboardServiceSource):
                         right=AddLineageRequest(
                             edge=EntitiesEdge(
                                 fromEntity=EntityReference(
-                                    id=cached_explore.id.root,
+                                    id=Uuid(cached_explore.id.root),
                                     type="dashboardDataModel",
                                 ),
                                 toEntity=EntityReference(
-                                    id=dashboard_entity.id.root,
+                                    id=Uuid(dashboard_entity.id.root),
                                     type="dashboard",
                                 ),
                                 lineageDetails=LineageDetails(
@@ -864,15 +883,18 @@ class LookerSource(DashboardServiceSource):
                     logger.debug(f"Found chart {chart} without id. Skipping.")
                     continue
 
+                description = self.build_chart_description(chart)
                 yield Either(
                     right=CreateChartRequest(
-                        name=chart.id,
+                        name=EntityName(chart.id),
                         displayName=chart.title or chart.id,
-                        description=self.build_chart_description(chart) or None,
+                        description=Markdown(description) if description else None,
                         chartType=get_standard_chart_type(chart.type).value,
-                        sourceUrl=chart.query.share_url
+                        sourceUrl=SourceUrl(chart.query.share_url)
                         if chart.query is not None
-                        else f"{clean_uri(self.service_connection.hostPort)}/merge?mid={chart.merge_result_id}",
+                        else SourceUrl(
+                            f"{clean_uri(self.service_connection.hostPort)}/merge?mid={chart.merge_result_id}"
+                        ),
                         service=self.context.get().dashboard_service,
                     )
                 )

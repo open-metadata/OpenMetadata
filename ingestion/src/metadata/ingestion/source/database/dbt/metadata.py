@@ -45,7 +45,12 @@ from metadata.generated.schema.tests.testDefinition import (
     TestDefinition,
     TestPlatform,
 )
-from metadata.generated.schema.type.basic import FullyQualifiedEntityName
+from metadata.generated.schema.type.basic import (
+    FullyQualifiedEntityName,
+    SqlQuery,
+    Timestamp,
+    Uuid,
+)
 from metadata.generated.schema.type.entityLineage import EntitiesEdge, LineageDetails
 from metadata.generated.schema.type.entityLineage import Source as LineageSource
 from metadata.generated.schema.type.entityReference import EntityReference
@@ -184,6 +189,7 @@ class DbtSource(DbtServiceSource):
                 **dbt_files.dbt_manifest[DbtCommonEnum.NODES.value],
                 **dbt_files.dbt_manifest[DbtCommonEnum.SOURCES.value],
             }
+            catalog_entities = None
             if dbt_files.dbt_catalog:
                 catalog_entities = {
                     **dbt_files.dbt_catalog[DbtCommonEnum.NODES.value],
@@ -208,7 +214,7 @@ class DbtSource(DbtServiceSource):
                     )
 
                 # Validate the catalog file if it is passed
-                if dbt_files.dbt_catalog:
+                if catalog_entities:
                     catalog_node = catalog_entities.get(key)
                     if catalog_node and "columns" in catalog_node:
                         self.check_columns(catalog_node=catalog_node)
@@ -322,6 +328,7 @@ class DbtSource(DbtServiceSource):
                 **dbt_objects.dbt_manifest.sources,
                 **dbt_objects.dbt_manifest.nodes,
             }
+            catalog_entities = None
             if dbt_objects.dbt_catalog:
                 catalog_entities = {
                     **dbt_objects.dbt_catalog.sources,
@@ -381,7 +388,7 @@ class DbtSource(DbtServiceSource):
                     logger.debug(f"Processing DBT node: {model_name}")
 
                     catalog_node = None
-                    if dbt_objects.dbt_catalog:
+                    if catalog_entities:
                         catalog_node = catalog_entities.get(key)
 
                     dbt_table_tags_list = []
@@ -433,8 +440,12 @@ class DbtSource(DbtServiceSource):
                                 if manifest_node.description
                                 else None,
                                 path=get_data_model_path(manifest_node=manifest_node),
-                                rawSql=dbt_raw_query if dbt_raw_query else "",
-                                sql=dbt_compiled_query if dbt_compiled_query else "",
+                                rawSql=SqlQuery(dbt_raw_query)
+                                if dbt_raw_query
+                                else None,
+                                sql=SqlQuery(dbt_compiled_query)
+                                if dbt_compiled_query
+                                else None,
                                 columns=self.parse_data_model_columns(
                                     manifest_node, catalog_node
                                 ),
@@ -627,11 +638,11 @@ class DbtSource(DbtServiceSource):
                         right=AddLineageRequest(
                             edge=EntitiesEdge(
                                 fromEntity=EntityReference(
-                                    id=from_entity.id.root,
+                                    id=Uuid(from_entity.id.root),
                                     type="table",
                                 ),
                                 toEntity=EntityReference(
-                                    id=to_entity.id.root,
+                                    id=Uuid(to_entity.id.root),
                                     type="table",
                                 ),
                                 lineageDetails=LineageDetails(
@@ -852,9 +863,7 @@ class DbtSource(DbtServiceSource):
                         right=CreateTestCaseRequest(
                             name=manifest_node.name,
                             description=manifest_node.description,
-                            testDefinition=FullyQualifiedEntityName(
-                                root=manifest_node.name
-                            ),
+                            testDefinition=FullyQualifiedEntityName(manifest_node.name),
                             entityLink=entity_link_str,
                             testSuite=test_suite.fullyQualifiedName,
                             parameterValues=create_test_case_parameter_values(dbt_test),
@@ -916,8 +925,8 @@ class DbtSource(DbtServiceSource):
 
                 # Create the test case result object
                 test_case_result = TestCaseResult(
-                    timestamp=convert_timestamp_to_milliseconds(
-                        dbt_timestamp.timestamp()
+                    timestamp=Timestamp(
+                        convert_timestamp_to_milliseconds(dbt_timestamp.timestamp())
                     ),
                     testCaseStatus=test_case_status,
                     testResultValue=[

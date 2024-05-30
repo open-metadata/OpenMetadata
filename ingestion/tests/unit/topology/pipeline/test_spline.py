@@ -90,13 +90,13 @@ EXPECTED_CREATED_PIPELINES = CreatePipelineRequest(
             sourceUrl=MOCK_PIPELINE_URL,
         )
     ],
-    service=FullyQualifiedEntityName(root="spline_source"),
+    service=FullyQualifiedEntityName("spline_source"),
 )
 
 MOCK_PIPELINE_SERVICE = PipelineService(
     id="85811038-099a-11ed-861d-0242ac120002",
     name="spline_source",
-    fullyQualifiedName=FullyQualifiedEntityName(root="spline_source"),
+    fullyQualifiedName=FullyQualifiedEntityName("spline_source"),
     connection=PipelineConnection(),
     serviceType=PipelineServiceType.Airbyte,
 )

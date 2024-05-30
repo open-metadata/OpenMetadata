@@ -84,7 +84,7 @@ MOCK_DASHBOARD_DB = FetchDashboard(**mock_data["dashboard-db"])
 
 EXPECTED_DASH_SERVICE = DashboardService(
     id="c3eb265f-5445-4ad3-ba5e-797d3a3071bb",
-    fullyQualifiedName=FullyQualifiedEntityName(root="test_supserset"),
+    fullyQualifiedName=FullyQualifiedEntityName("test_supserset"),
     name="test_supserset",
     connection=DashboardConnection(),
     serviceType=DashboardServiceType.Superset,
@@ -93,7 +93,7 @@ EXPECTED_USER = EntityReference(id="81af89aa-1bab-41aa-a567-5e68f78acdc0", type=
 
 MOCK_DB_MYSQL_SERVICE_1 = DatabaseService(
     id="c3eb265f-5445-4ad3-ba5e-797d3a307122",
-    fullyQualifiedName=FullyQualifiedEntityName(root="test_mysql"),
+    fullyQualifiedName=FullyQualifiedEntityName("test_mysql"),
     name="test_mysql",
     connection=DatabaseConnection(
         config=MysqlConnection(
@@ -107,7 +107,7 @@ MOCK_DB_MYSQL_SERVICE_1 = DatabaseService(
 
 MOCK_DB_MYSQL_SERVICE_2 = DatabaseService(
     id="c3eb265f-5445-4ad3-ba5e-797d3a307122",
-    fullyQualifiedName=FullyQualifiedEntityName(root="test_mysql"),
+    fullyQualifiedName=FullyQualifiedEntityName("test_mysql"),
     name="test_mysql",
     connection=DatabaseConnection(
         config=MysqlConnection(
@@ -132,7 +132,7 @@ MOCK_DASHBOARD_INPUT = {
 
 MOCK_DB_POSTGRES_SERVICE = DatabaseService(
     id="c3eb265f-5445-4ad3-ba5e-797d3a307122",
-    fullyQualifiedName=FullyQualifiedEntityName(root="test_postgres"),
+    fullyQualifiedName=FullyQualifiedEntityName("test_postgres"),
     name="test_postgres",
     connection=DatabaseConnection(
         config=PostgresConnection(
@@ -149,7 +149,7 @@ EXPECTED_CHART_ENTITY = [
     Chart(
         id=uuid.uuid4(),
         name=37,
-        fullyQualifiedName=FullyQualifiedEntityName(root="test_supserset.37"),
+        fullyQualifiedName=FullyQualifiedEntityName("test_supserset.37"),
         service=EntityReference(
             id="c3eb265f-5445-4ad3-ba5e-797d3a3071bb", type="dashboardService"
         ),
@@ -167,17 +167,17 @@ EXPECTED_DASH = CreateDashboardRequest(
 
 
 EXPECTED_API_DASHBOARD = CreateDashboardRequest(
-    name=EntityName(root="10"),
+    name=EntityName("10"),
     displayName="Unicode Test",
     description=None,
     dashboardType=DashboardType.Dashboard.value,
-    sourceUrl=SourceUrl(root="http://localhost:54510/superset/dashboard/unicode-test/"),
+    sourceUrl=SourceUrl("http://localhost:54510/superset/dashboard/unicode-test/"),
     project=None,
     charts=[],
     dataModels=None,
     tags=None,
     owner=None,
-    service=FullyQualifiedEntityName(root="test_supserset"),
+    service=FullyQualifiedEntityName("test_supserset"),
     extension=None,
     domain=None,
     dataProducts=None,
@@ -194,14 +194,14 @@ EXPECTED_CHART = CreateChartRequest(
     service=EXPECTED_DASH_SERVICE.fullyQualifiedName,
 )
 EXPECTED_CHART_2 = CreateChartRequest(
-    name=EntityName(root="69"),
+    name=EntityName("69"),
     displayName="Unicode Cloud",
     description=None,
     chartType=ChartType.Other.value,
-    sourceUrl=SourceUrl(root="http://localhost:54510/explore/?slice_id=69"),
+    sourceUrl=SourceUrl("http://localhost:54510/explore/?slice_id=69"),
     tags=None,
     owner=None,
-    service=FullyQualifiedEntityName(root="test_supserset"),
+    service=FullyQualifiedEntityName("test_supserset"),
     domain=None,
     dataProducts=None,
     lifeCycle=None,
@@ -486,7 +486,7 @@ class SupersetUnitTest(TestCase):
         # TEST API SOURCE
         dashboard = next(self.superset_api.yield_dashboard(MOCK_DASHBOARD)).right
         EXPECTED_API_DASHBOARD.sourceUrl = SourceUrl(
-            root=f"http://{superset_container.get_container_host_ip()}:{superset_container.get_exposed_port(8088)}{MOCK_DASHBOARD.url}"
+            f"http://{superset_container.get_container_host_ip()}:{superset_container.get_exposed_port(8088)}{MOCK_DASHBOARD.url}"
         )
         self.assertEqual(dashboard, EXPECTED_API_DASHBOARD)
 
@@ -496,7 +496,7 @@ class SupersetUnitTest(TestCase):
         ]
         dashboard = next(self.superset_db.yield_dashboard(MOCK_DASHBOARD_DB)).right
         EXPECTED_DASH.sourceUrl = SourceUrl(
-            root=f"http://{superset_container.get_container_host_ip()}:{superset_container.get_exposed_port(8088)}/superset/dashboard/14/"
+            f"http://{superset_container.get_container_host_ip()}:{superset_container.get_exposed_port(8088)}/superset/dashboard/14/"
         )
         EXPECTED_DASH.owner = dashboard.owner
         self.assertEqual(dashboard, EXPECTED_DASH)
@@ -508,7 +508,7 @@ class SupersetUnitTest(TestCase):
             self.superset_api.yield_dashboard_chart(MOCK_DASHBOARD)
         ).right
         EXPECTED_CHART_2.sourceUrl = SourceUrl(
-            root=f"http://{superset_container.get_container_host_ip()}:{superset_container.get_exposed_port(8088)}/explore/?slice_id={dashboard_chart.name.root}"
+            f"http://{superset_container.get_container_host_ip()}:{superset_container.get_exposed_port(8088)}/explore/?slice_id={dashboard_chart.name.root}"
         )
         EXPECTED_CHART_2.displayName = dashboard_chart.displayName
         EXPECTED_CHART_2.chartType = dashboard_chart.chartType
@@ -521,7 +521,7 @@ class SupersetUnitTest(TestCase):
             self.superset_db.yield_dashboard_chart(MOCK_DASHBOARD_DB)
         ).right
         EXPECTED_CHART.sourceUrl = SourceUrl(
-            root=f"http://{superset_container.get_container_host_ip()}:{superset_container.get_exposed_port(8088)}/explore/?slice_id=1"
+            f"http://{superset_container.get_container_host_ip()}:{superset_container.get_exposed_port(8088)}/explore/?slice_id=1"
         )
         self.assertEqual(dashboard_charts, EXPECTED_CHART)
 

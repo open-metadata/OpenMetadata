@@ -232,7 +232,7 @@ class TestAirflowOps(TestCase):
             id=uuid.uuid4(),
             pipelineType=PipelineType.metadata,
             name="my_new_dag",
-            description=Markdown(root="A test DAG"),
+            description=Markdown("A test DAG"),
             fullyQualifiedName="test-service-ops.my_new_dag",
             sourceConfig=SourceConfig(config=DatabaseServiceMetadataPipeline()),
             openMetadataServerConnection=self.conn,

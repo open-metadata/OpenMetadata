@@ -158,14 +158,14 @@ class OMetaESTest(TestCase):
         cls.checksum = fqn.get_query_checksum(query_str)
         # Create queries for the given service
         query = CreateQueryRequest(
-            query=SqlQuery(root=query_str),
+            query=SqlQuery(query_str),
             service=cls.service_entity.fullyQualifiedName,
             processedLineage=True,  # Only 1 with processed lineage
         )
         cls.metadata.create_or_update(query)
 
         query2 = CreateQueryRequest(
-            query=SqlQuery(root=str(uuid.uuid4())),
+            query=SqlQuery(str(uuid.uuid4())),
             service=cls.service_entity.fullyQualifiedName,
         )
         cls.metadata.create_or_update(query2)
@@ -176,7 +176,7 @@ class OMetaESTest(TestCase):
         )
 
         another_query = CreateQueryRequest(
-            query=SqlQuery(root=str(uuid.uuid4())),
+            query=SqlQuery(str(uuid.uuid4())),
             service=cls.another_service_entity.fullyQualifiedName,
             processedLineage=True,
         )

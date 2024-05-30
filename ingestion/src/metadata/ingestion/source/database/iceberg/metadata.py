@@ -42,6 +42,7 @@ from metadata.generated.schema.metadataIngestion.databaseServiceMetadataPipeline
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
+from metadata.generated.schema.type.basic import EntityName, FullyQualifiedEntityName
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
@@ -158,12 +159,14 @@ class IcebergSource(DatabaseServiceSource):
         """
         yield Either(
             right=CreateDatabaseSchemaRequest(
-                name=schema_name,
-                database=fqn.build(
-                    metadata=self.metadata,
-                    entity_type=Database,
-                    service_name=self.context.get().database_service,
-                    database_name=self.context.get().database,
+                name=EntityName(schema_name),
+                database=FullyQualifiedEntityName(
+                    fqn.build(
+                        metadata=self.metadata,
+                        entity_type=Database,
+                        service_name=self.context.get().database_service,
+                        database_name=self.context.get().database,
+                    )
                 ),
             )
         )
@@ -254,18 +257,20 @@ class IcebergSource(DatabaseServiceSource):
                 table_name, table_type, owner, iceberg_table
             )
             table_request = CreateTableRequest(
-                name=table.name,
+                name=EntityName(table.name),
                 tableType=table.tableType,
                 description=table.description,
                 owner=table.owner,
                 columns=table.columns,
                 tablePartition=table.tablePartition,
-                databaseSchema=fqn.build(
-                    metadata=self.metadata,
-                    entity_type=DatabaseSchema,
-                    service_name=self.context.get().database_service,
-                    database_name=self.context.get().database,
-                    schema_name=self.context.get().database_schema,
+                databaseSchema=FullyQualifiedEntityName(
+                    fqn.build(
+                        metadata=self.metadata,
+                        entity_type=DatabaseSchema,
+                        service_name=self.context.get().database_service,
+                        database_name=self.context.get().database,
+                        schema_name=self.context.get().database_schema,
+                    )
                 ),
             )
             yield Either(right=table_request)

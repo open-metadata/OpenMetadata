@@ -45,7 +45,7 @@ with open(mock_file_path, encoding="UTF-8") as file:
 
 MOCK_DASHBOARD_SERVICE = DashboardService(
     id="c3eb265f-5445-4ad3-ba5e-797d3a3071bb",
-    fullyQualifiedName=FullyQualifiedEntityName(root="domodashboard_source_test"),
+    fullyQualifiedName=FullyQualifiedEntityName("domodashboard_source_test"),
     name="domodashboard_source_test",
     connection=DashboardConnection(),
     serviceType=DashboardServiceType.DomoDashboard,
@@ -102,7 +102,7 @@ EXPECTED_DASHBOARD = CreateDashboardRequest(
     charts=[],
     tags=None,
     owner=None,
-    service=FullyQualifiedEntityName(root="domodashboard_source_test"),
+    service=FullyQualifiedEntityName("domodashboard_source_test"),
     extension=None,
 )
 
@@ -118,7 +118,7 @@ EXPECTED_CHARTS = [
         sourceUrl="https://domain.domo.com/page/552315335/kpis/details/1982511286",
         tags=None,
         owner=None,
-        service=FullyQualifiedEntityName(root="domodashboard_source_test"),
+        service=FullyQualifiedEntityName("domodashboard_source_test"),
     ),
     CreateChartRequest(
         name="781210736",
@@ -131,7 +131,7 @@ EXPECTED_CHARTS = [
         sourceUrl="https://domain.domo.com/page/552315335/kpis/details/781210736",
         tags=None,
         owner=None,
-        service=FullyQualifiedEntityName(root="domodashboard_source_test"),
+        service=FullyQualifiedEntityName("domodashboard_source_test"),
     ),
 ]
 

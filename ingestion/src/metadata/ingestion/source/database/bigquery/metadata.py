@@ -51,7 +51,11 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 from metadata.generated.schema.security.credentials.gcpValues import (
     GcpCredentialsValues,
 )
-from metadata.generated.schema.type.basic import EntityName, SourceUrl
+from metadata.generated.schema.type.basic import (
+    EntityName,
+    FullyQualifiedEntityName,
+    SourceUrl,
+)
 from metadata.generated.schema.type.tagLabel import TagLabel
 from metadata.ingestion.api.delete import delete_entity_by_name
 from metadata.ingestion.api.models import Either
@@ -355,11 +359,7 @@ class BigquerySource(
     def yield_tag(
         self, schema_name: str
     ) -> Iterable[Either[OMetaTagAndClassification]]:
-        """
-        Build tag context
-        :param _:
-        :return:
-        """
+        """Build tag context"""
         try:
             # Fetching labels on the databaseSchema ( dataset ) level
             dataset_obj = self.client.get_dataset(schema_name)
@@ -484,12 +484,14 @@ class BigquerySource(
         """
 
         database_schema_request_obj = CreateDatabaseSchemaRequest(
-            name=schema_name,
-            database=fqn.build(
-                metadata=self.metadata,
-                entity_type=Database,
-                service_name=self.context.get().database_service,
-                database_name=self.context.get().database,
+            name=EntityName(schema_name),
+            database=FullyQualifiedEntityName(
+                fqn.build(
+                    metadata=self.metadata,
+                    entity_type=Database,
+                    service_name=self.context.get().database_service,
+                    database_name=self.context.get().database,
+                )
             ),
             description=self.get_schema_description(schema_name),
             sourceUrl=self.get_source_url(
@@ -777,7 +779,7 @@ class BigquerySource(
 
         try:
             stored_procedure_request = CreateStoredProcedureRequest(
-                name=EntityName(root=stored_procedure.name),
+                name=EntityName(stored_procedure.name),
                 storedProcedureCode=StoredProcedureCode(
                     language=STORED_PROC_LANGUAGE_MAP.get(
                         stored_procedure.language or "SQL",
@@ -792,7 +794,7 @@ class BigquerySource(
                     schema_name=self.context.get().database_schema,
                 ),
                 sourceUrl=SourceUrl(
-                    root=self.get_stored_procedure_url(
+                    self.get_stored_procedure_url(
                         database_name=self.context.get().database,
                         schema_name=self.context.get().database_schema,
                         # Follow the same building strategy as tables

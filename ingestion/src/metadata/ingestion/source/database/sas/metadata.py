@@ -65,6 +65,7 @@ from metadata.generated.schema.metadataIngestion.databaseServiceMetadataPipeline
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
+from metadata.generated.schema.type.basic import EntityName
 from metadata.generated.schema.type.entityLineage import EntitiesEdge
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.common import Entity
@@ -693,7 +694,7 @@ class SasSource(
                 left=StackTraceError(
                     name=dashboard_service_name,
                     error=f"Unexpected exception to create dashboard service for [{dashboard_service_name}]: {exc}",
-                    stack_trace=traceback.format_exc(),
+                    stackTrace=traceback.format_exc(),
                 )
             )
 
@@ -785,7 +786,7 @@ class SasSource(
                 left=StackTraceError(
                     name=report_name,
                     error=f"Unexpected exception to create report [{report['id']}]: {exc}",
-                    stack_trace=traceback.format_exc(),
+                    stackTrace=traceback.format_exc(),
                 )
             )
 
@@ -842,7 +843,7 @@ class SasSource(
                 left=StackTraceError(
                     name=data_flow_id,
                     error=f"Unexpected exception to create data flow [{data_flow_id}]: {exc}",
-                    stack_trace=traceback.format_exc(),
+                    stackTrace=traceback.format_exc(),
                 )
             )
 
@@ -855,7 +856,7 @@ class SasSource(
     ) -> Iterable[Either[CreateDatabaseRequest]]:
         yield Either(
             right=CreateDatabaseRequest(
-                name=database_name,
+                name=EntityName(database_name),
                 service=self.context.get().database_service,
             )
         )

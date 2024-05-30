@@ -66,27 +66,27 @@ class SampleTest(TestCase):
         name="user",
         columns=[
             EntityColumn(
-                name=ColumnName(root="id"),
+                name=ColumnName("id"),
                 dataType=DataType.INT,
             ),
             EntityColumn(
-                name=ColumnName(root="name"),
+                name=ColumnName("name"),
                 dataType=DataType.STRING,
             ),
             EntityColumn(
-                name=ColumnName(root="fullname"),
+                name=ColumnName("fullname"),
                 dataType=DataType.STRING,
             ),
             EntityColumn(
-                name=ColumnName(root="nickname"),
+                name=ColumnName("nickname"),
                 dataType=DataType.STRING,
             ),
             EntityColumn(
-                name=ColumnName(root="comments"),
+                name=ColumnName("comments"),
                 dataType=DataType.STRING,
             ),
             EntityColumn(
-                name=ColumnName(root="age"),
+                name=ColumnName("age"),
                 dataType=DataType.INT,
             ),
         ],

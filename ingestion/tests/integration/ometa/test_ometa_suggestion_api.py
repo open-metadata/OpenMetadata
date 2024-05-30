@@ -118,7 +118,7 @@ class OMetaSuggestionTest(TestCase):
         suggestion_request = CreateSuggestionRequest(
             tagLabels=[
                 TagLabel(
-                    tagFQN=TagFQN(root="PII.Sensitive"),
+                    tagFQN=TagFQN("PII.Sensitive"),
                     labelType=LabelType.Automated,
                     state=State.Suggested.value,
                     source=TagSource.Classification,
