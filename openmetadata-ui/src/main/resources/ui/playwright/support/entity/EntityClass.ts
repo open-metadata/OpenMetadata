@@ -54,9 +54,9 @@ export class EntityClass {
     owner2: string,
     type: 'Teams' | 'Users' = 'Users'
   ) {
-    await addOwner(page, owner1, type);
-    await updateOwner(page, owner2, type);
-    await removeOwner(page);
+    await addOwner(page, owner1, type, 'data-assets-header');
+    await updateOwner(page, owner2, type, 'data-assets-header');
+    await removeOwner(page, 'data-assets-header');
   }
 
   async tier(page: Page, tier1: string, tier2: string) {

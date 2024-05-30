@@ -28,7 +28,8 @@ export const visitEntityPage = async (data: {
 export const addOwner = async (
   page: Page,
   owner: string,
-  type: 'Teams' | 'Users' = 'Users'
+  type: 'Teams' | 'Users' = 'Users',
+  dataTestId?: string
 ) => {
   await page.getByTestId('edit-owner').click();
   await page.getByRole('tab', { name: type }).click();
@@ -41,13 +42,16 @@ export const addOwner = async (
   );
   await page.getByRole('listitem', { name: owner }).click();
 
-  await expect(page.getByTestId('owner-link')).toContainText(owner);
+  await expect(page.getByTestId(dataTestId ?? 'owner-link')).toContainText(
+    owner
+  );
 };
 
 export const updateOwner = async (
   page: Page,
   owner: string,
-  type: 'Teams' | 'Users' = 'Users'
+  type: 'Teams' | 'Users' = 'Users',
+  dataTestId?: string
 ) => {
   await page.getByTestId('edit-owner').click();
   await page.getByRole('tab', { name: type }).click();
@@ -60,17 +64,21 @@ export const updateOwner = async (
   );
   await page.getByRole('listitem', { name: owner }).click();
 
-  await expect(page.getByTestId('owner-link')).toContainText(owner);
+  await expect(page.getByTestId(dataTestId ?? 'owner-link')).toContainText(
+    owner
+  );
 };
 
-export const removeOwner = async (page: Page) => {
+export const removeOwner = async (page: Page, dataTestId?: string) => {
   await page.getByTestId('edit-owner').click();
 
   await expect(page.getByTestId('remove-owner').locator('svg')).toBeVisible();
 
   await page.getByTestId('remove-owner').locator('svg').click();
 
-  await expect(page.getByTestId('owner-link')).toContainText('No Owner');
+  await expect(page.getByTestId(dataTestId ?? 'owner-link')).toContainText(
+    'No Owner'
+  );
 };
 
 export const assignTier = async (page: Page, tier: string) => {

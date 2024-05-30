@@ -11,11 +11,25 @@
  *  limitations under the License.
  */
 import { APIRequestContext, Page, request, test } from '@playwright/test';
+import { ContainerClass } from '../../support/entity/ContainerClass';
 import { DashboardClass } from '../../support/entity/DashboardClass';
+import { DashboardDataModelClass } from '../../support/entity/DashboardDataModelClass';
 import { EntityDataClass } from '../../support/entity/EntityDataClass';
+import { MlModelClass } from '../../support/entity/MlModelClass';
+import { PipelineClass } from '../../support/entity/PipelineClass';
+import { SearchIndexClass } from '../../support/entity/SearchIndexClass';
+import { TopicClass } from '../../support/entity/TopicClass';
 import { Admin } from '../../support/user/Admin';
 
-const entities = [new DashboardClass()];
+const entities = [
+  new DashboardClass(),
+  new PipelineClass(),
+  new TopicClass(),
+  new MlModelClass(),
+  new ContainerClass(),
+  new SearchIndexClass(),
+  new DashboardDataModelClass(),
+] as const;
 
 test.describe.configure({ mode: 'serial' });
 
