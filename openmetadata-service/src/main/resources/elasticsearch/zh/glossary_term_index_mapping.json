@@ -342,7 +342,8 @@
             "type": "keyword"
           },
           "state": {
-            "type": "keyword"
+            "type": "keyword",
+            "normalizer": "lowercase_normalizer"
           }
         }
       },
