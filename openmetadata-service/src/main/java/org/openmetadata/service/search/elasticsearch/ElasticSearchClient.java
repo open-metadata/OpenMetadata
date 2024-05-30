@@ -1167,8 +1167,7 @@ public class ElasticSearchClient implements SearchClient {
         AggregationBuilders.terms("glossary.name.keyword").field("glossary.name.keyword"));
     searchSourceBuilder.aggregation(
         AggregationBuilders.terms("fqnParts_agg").field("fqnParts").size(1000));
-    searchSourceBuilder.aggregation(
-        AggregationBuilders.terms("status").field("status"));
+    searchSourceBuilder.aggregation(AggregationBuilders.terms("status").field("status"));
     return addAggregation(searchSourceBuilder);
   }
 
