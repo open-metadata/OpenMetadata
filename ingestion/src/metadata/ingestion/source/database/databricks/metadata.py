@@ -43,6 +43,7 @@ from metadata.ingestion.source.connections import get_connection
 from metadata.ingestion.source.database.column_type_parser import create_sqlalchemy_type
 from metadata.ingestion.source.database.common_db_source import CommonDbSourceService
 from metadata.ingestion.source.database.databricks.queries import (
+    DATABRICKS_DDL,
     DATABRICKS_GET_CATALOGS,
     DATABRICKS_GET_CATALOGS_TAGS,
     DATABRICKS_GET_COLUMN_TAGS,
@@ -60,9 +61,7 @@ from metadata.utils.constants import DEFAULT_DATABASE
 from metadata.utils.filters import filter_by_database
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.sqlalchemy_utils import (
-    get_all_table_ddls,
     get_all_view_definitions,
-    get_table_ddl,
     get_view_definition_wrapper,
 )
 from metadata.utils.tag_utils import get_ometa_tag_and_classification
@@ -246,6 +245,25 @@ def get_view_definition(
     return None
 
 
+@reflection.cache
+def get_table_ddl(
+    self, connection, table_name, schema=None, **kw
+):  # pylint: disable=unused-argument
+    """
+    Gets the Table DDL
+    """
+    schema = schema or self.default_schema_name
+    table_name = f"{schema}.{table_name}" if schema else table_name
+    cursor = connection.execute(DATABRICKS_DDL.format(table_name=table_name))
+    try:
+        result = cursor.fetchone()
+        if result:
+            return result[0]
+    except Exception:
+        pass
+    return None
+
+
 DatabricksDialect.get_table_comment = get_table_comment
 DatabricksDialect.get_view_names = get_view_names
 DatabricksDialect.get_columns = get_columns
@@ -253,7 +271,6 @@ DatabricksDialect.get_schema_names = get_schema_names
 DatabricksDialect.get_view_definition = get_view_definition
 DatabricksDialect.get_all_view_definitions = get_all_view_definitions
 reflection.Inspector.get_schema_names = get_schema_names_reflection
-reflection.Inspector.get_all_table_ddls = get_all_table_ddls
 reflection.Inspector.get_table_ddl = get_table_ddl
 
 

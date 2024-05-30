@@ -54,3 +54,5 @@ DATABRICKS_GET_COLUMN_TAGS = textwrap.dedent(
     FROM {database_name}.information_schema.column_tags 
     """
 )
+
+DATABRICKS_DDL = "SHOW CREATE TABLE {table_name}"
