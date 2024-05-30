@@ -156,6 +156,9 @@ const Lineage = ({
               deleteKeyCode={null}
               edgeTypes={customEdges}
               edges={edges}
+              fitViewOptions={{
+                padding: 48,
+              }}
               maxZoom={MAX_ZOOM_VALUE}
               minZoom={MIN_ZOOM_VALUE}
               nodeTypes={nodeTypes}
