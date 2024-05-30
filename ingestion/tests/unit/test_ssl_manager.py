@@ -83,9 +83,7 @@ class KafkaSourceSSLTest(TestCase):
             OpenMetadataConnection(
                 hostPort="http://localhost:8585/api",
                 authProvider="openmetadata",
-                securityConfig=OpenMetadataJWTClientConfig(
-                    jwtToken="token"
-                ),
+                securityConfig=OpenMetadataJWTClientConfig(jwtToken="token"),
             )
         )
         kafka_source = KafkaSource(config, metadata)
