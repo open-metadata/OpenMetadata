@@ -363,6 +363,12 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
       @Parameter(description = "owner filter to use in list", schema = @Schema(type = "string"))
           @QueryParam("owner")
           String owner,
+      @Parameter(description = "tags filter to use in list", schema = @Schema(type = "string"))
+          @QueryParam("tags")
+          String tags,
+      @Parameter(description = "service filter to use in list", schema = @Schema(type = "string"))
+          @QueryParam("serviceName")
+          String serviceName,
       @Parameter(
               description = "search query term to use in list",
               schema = @Schema(type = "string"))
@@ -385,6 +391,8 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
     searchListFilter.addQueryParam("excludeFields", SEARCH_FIELDS_EXCLUDE);
     searchListFilter.addQueryParam("includeFields", includeFields);
     searchListFilter.addQueryParam("domain", domain);
+    searchListFilter.addQueryParam("tags", tags);
+    searchListFilter.addQueryParam("serviceName", serviceName);
     if (!nullOrEmpty(owner)) {
       EntityInterface entity;
       StringBuffer owners = new StringBuffer();

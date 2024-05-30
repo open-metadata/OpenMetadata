@@ -717,10 +717,10 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
       // witgh the same prefix
       if (i == 0) {
         tableReq = tableResourceTest.createRequest("test_getSimplelistFromSearch");
-        tableReq.getName();
+        tableReq.setTags(List.of(PERSONAL_DATA_TAG_LABEL));
       } else if (i == 1) {
         tableReq = tableResourceTest.createRequest("test_getSimplelistFromSearch_a");
-        tableReq.getName();
+        tableReq.setTags(List.of(PII_SENSITIVE_TAG_LABEL));
       } else {
         tableReq = tableResourceTest.createRequest(testInfo, i);
       }
@@ -823,10 +823,24 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
             .getData()
             .size()); // we have 1 test cases with TEAM21 as owner which USER_21 is part of
 
+    queryParams.clear();
+    queryParams.put(
+        "tags",
+        String.format(
+            "%s,%s", PII_SENSITIVE_TAG_LABEL.getTagFQN(), PERSONAL_DATA_TAG_LABEL.getTagFQN()));
+    allEntities = listEntitiesFromSearch(queryParams, testCasesNum, 0, ADMIN_AUTH_HEADERS);
+    assertEquals(2, allEntities.getData().size());
+
+    queryParams.clear();
+    String serviceName = tables.get(0).getService().getName();
+    queryParams.put("serviceName", serviceName);
+    allEntities = listEntitiesFromSearch(queryParams, testCasesNum, 0, ADMIN_AUTH_HEADERS);
+    assertTrue(
+        allEntities.getData().stream().allMatch(tc -> tc.getEntityLink().contains(serviceName)));
+
     // Test return only requested fields
     queryParams.put("includeFields", "id,name,entityLink");
     allEntities = listEntitiesFromSearch(queryParams, testCasesNum, 0, ADMIN_AUTH_HEADERS);
-    assertEquals(1, allEntities.getData().size());
     TestCase testCase = allEntities.getData().get(0);
     assertNull(testCase.getDescription());
     assertNull(testCase.getTestSuite());
