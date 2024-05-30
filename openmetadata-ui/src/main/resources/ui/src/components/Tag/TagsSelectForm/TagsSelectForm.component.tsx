@@ -48,7 +48,7 @@ const TagSelectForm = ({
       name="tagsForm"
       onFinish={handleSave}>
       <Form.Item noStyle name="tags">
-        {tagType === TagSource.Classification ? (
+        {tagType === TagSource.Classification && fetchApi ? (
           <AsyncSelectList
             open
             fetchOptions={fetchApi}
