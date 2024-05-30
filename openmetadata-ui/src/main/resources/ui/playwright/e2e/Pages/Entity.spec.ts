@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { APIRequestContext, Page, request, test } from '@playwright/test';
-import { DashboardClass } from '../../support/entity/dashboard/DashboardClass';
+import { DashboardClass } from '../../support/entity/DashboardClass';
 import { EntityDataClass } from '../../support/entity/EntityDataClass';
 import { Admin } from '../../support/user/Admin';
 

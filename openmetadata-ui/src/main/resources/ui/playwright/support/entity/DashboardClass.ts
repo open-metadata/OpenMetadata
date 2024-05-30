@@ -11,9 +11,9 @@
  *  limitations under the License.
  */
 import { APIRequestContext, Page } from '@playwright/test';
-import { uuid } from '../../../utils/common';
-import { visitEntityPage } from '../../../utils/entityUtils';
-import { EntityClass } from '../EntityClass';
+import { uuid } from '../../utils/common';
+import { visitEntityPage } from '../../utils/entityUtils';
+import { EntityClass } from './EntityClass';
 
 export class DashboardClass extends EntityClass {
   service = {
