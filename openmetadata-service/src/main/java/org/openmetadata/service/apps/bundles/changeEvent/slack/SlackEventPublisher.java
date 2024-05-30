@@ -14,6 +14,7 @@
 package org.openmetadata.service.apps.bundles.changeEvent.slack;
 
 import static org.openmetadata.schema.entity.events.SubscriptionDestination.SubscriptionType.SLACK;
+import static org.openmetadata.service.util.SubscriptionUtil.appendHeadersToTarget;
 import static org.openmetadata.service.util.SubscriptionUtil.getClient;
 import static org.openmetadata.service.util.SubscriptionUtil.getTargetsForWebhookAlert;
 import static org.openmetadata.service.util.SubscriptionUtil.postWebhookMessage;
@@ -34,6 +35,7 @@ import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.formatter.decorators.MessageDecorator;
 import org.openmetadata.service.formatter.decorators.SlackMessageDecorator;
 import org.openmetadata.service.util.JsonUtils;
+import org.openmetadata.service.util.RestUtil;
 
 @Slf4j
 public class SlackEventPublisher implements Destination<ChangeEvent> {
@@ -55,7 +57,7 @@ public class SlackEventPublisher implements Destination<ChangeEvent> {
       if (webhook != null && webhook.getEndpoint() != null) {
         String slackWebhookURL = webhook.getEndpoint().toString();
         if (!CommonUtil.nullOrEmpty(slackWebhookURL)) {
-          target = client.target(slackWebhookURL).request();
+          target = appendHeadersToTarget(client, slackWebhookURL);
         }
       }
     } else {
@@ -74,7 +76,16 @@ public class SlackEventPublisher implements Destination<ChangeEvent> {
         targets.add(target);
       }
       for (Invocation.Builder actionTarget : targets) {
-        postWebhookMessage(this, actionTarget, slackMessage);
+        if (webhook.getSecretKey() != null && !webhook.getSecretKey().isEmpty()) {
+          String hmac =
+              "sha256="
+                  + CommonUtil.calculateHMAC(
+                      webhook.getSecretKey(), JsonUtils.pojoToJson(slackMessage));
+          postWebhookMessage(
+              this, actionTarget.header(RestUtil.SIGNATURE_HEADER, hmac), slackMessage);
+        } else {
+          postWebhookMessage(this, actionTarget, slackMessage);
+        }
       }
     } catch (Exception e) {
       String message =
