@@ -87,7 +87,7 @@ export const getSettingPageEntityBreadCrumb = (
       url: ROUTES.SETTINGS,
     },
     {
-      name: categoryObject.name,
+      name: categoryObject?.name ?? '',
       url: entityName ? getSettingPath(categoryObject.url) : '',
       activeTitle: !entityName,
     },
