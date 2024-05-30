@@ -366,6 +366,9 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
       @Parameter(description = "tags filter to use in list", schema = @Schema(type = "string"))
           @QueryParam("tags")
           String tags,
+      @Parameter(description = "tier filter to use in list", schema = @Schema(type = "string"))
+          @QueryParam("tier")
+          String tier,
       @Parameter(description = "service filter to use in list", schema = @Schema(type = "string"))
           @QueryParam("serviceName")
           String serviceName,
@@ -392,6 +395,7 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
     searchListFilter.addQueryParam("includeFields", includeFields);
     searchListFilter.addQueryParam("domain", domain);
     searchListFilter.addQueryParam("tags", tags);
+    searchListFilter.addQueryParam("tier", tier);
     searchListFilter.addQueryParam("serviceName", serviceName);
     if (!nullOrEmpty(owner)) {
       EntityInterface entity;

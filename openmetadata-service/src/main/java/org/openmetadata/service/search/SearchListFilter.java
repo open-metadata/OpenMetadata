@@ -139,6 +139,7 @@ public class SearchListFilter extends Filter<SearchListFilter> {
     String startTimestamp = getQueryParam("startTimestamp");
     String endTimestamp = getQueryParam("endTimestamp");
     String tags = getQueryParam("tags");
+    String tier = getQueryParam("tier");
     String serviceName = getQueryParam("serviceName");
 
     if (tags != null) {
@@ -150,6 +151,13 @@ public class SearchListFilter extends Filter<SearchListFilter> {
           String.format(
               "{\"nested\":{\"path\":\"tags\",\"query\":{\"terms\":{\"tags.tagFQN\":[%s]}}}}",
               tagsList));
+    }
+
+    if (tier != null) {
+      conditions.add(
+          String.format(
+              "{\"nested\":{\"path\":\"tags\",\"query\":{\"terms\":{\"tags.tagFQN\":[%s]}}}}",
+              escapeDoubleQuotes(tier)));
     }
 
     if (serviceName != null) {
