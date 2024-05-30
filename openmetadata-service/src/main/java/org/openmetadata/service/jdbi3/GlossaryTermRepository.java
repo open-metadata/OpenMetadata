@@ -221,14 +221,6 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
           Relationship.RELATED_TO,
           true);
     }
-    for (EntityReference reviewer : listOrEmpty(entity.getReviewers())) {
-      addRelationship(
-          reviewer.getId(),
-          entity.getId(),
-          reviewer.getType(),
-          GLOSSARY_TERM,
-          Relationship.REVIEWS);
-    }
   }
 
   @Override

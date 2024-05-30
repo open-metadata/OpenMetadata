@@ -16,7 +16,6 @@
 
 package org.openmetadata.service.jdbi3;
 
-import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.csv.CsvUtil.FIELD_SEPARATOR;
 import static org.openmetadata.csv.CsvUtil.addEntityReference;
@@ -112,14 +111,7 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
 
   @Override
   public void storeRelationships(Glossary glossary) {
-    for (EntityReference reviewer : listOrEmpty(glossary.getReviewers())) {
-      addRelationship(
-          reviewer.getId(),
-          glossary.getId(),
-          reviewer.getType(),
-          Entity.GLOSSARY,
-          Relationship.REVIEWS);
-    }
+    // Nothing to do
   }
 
   private Integer getUsageCount(Glossary glossary) {

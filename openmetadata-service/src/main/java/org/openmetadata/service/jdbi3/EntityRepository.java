@@ -757,6 +757,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     applyTags(entity);
     storeDomain(entity, entity.getDomain());
     storeDataProducts(entity, entity.getDataProducts());
+    storeReviewers(entity, entity.getReviewers());
     storeRelationships(entity);
   }
 
@@ -1864,6 +1865,17 @@ public abstract class EntityRepository<T extends EntityInterface> {
           entityType,
           entity.getId());
       addRelationship(domain.getId(), entity.getId(), Entity.DOMAIN, entityType, Relationship.HAS);
+    }
+  }
+
+  @Transaction
+  protected void storeReviewers(T entity, List<EntityReference> reviewers) {
+    if (supportsReviewers) {
+      // Add relationship user/team --- reviews ---> entity
+      for (EntityReference reviewer : listOrEmpty(reviewers)) {
+        addRelationship(
+            reviewer.getId(), entity.getId(), reviewer.getType(), entityType, Relationship.REVIEWS);
+      }
     }
   }
 
