@@ -393,7 +393,8 @@
         "type": "text"
       },
       "status": {
-        "type": "text"
+        "type": "keyword",
+        "normalizer": "lowercase_normalizer"
       },
       "entityType": {
         "type": "keyword"
