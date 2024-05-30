@@ -279,7 +279,7 @@ export const TestSuites = ({ summaryPanel }: { summaryPanel: ReactNode }) => {
                   />
                 </Form.Item>
                 <Form.Item
-                  className="m-0 w-52"
+                  className="m-0"
                   label={t('label.owner')}
                   name="owner">
                   <UserTeamSelectableList

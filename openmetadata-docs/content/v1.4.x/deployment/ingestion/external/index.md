@@ -137,7 +137,7 @@ Follow the [docs](/deployment/secrets-manager) to configure the secret retrieval
 
 If you have added SSL to the [OpenMetadata server](/deployment/security/enable-ssl), then you will need to handle
 the certificates when running the ingestion too. You can either set `verifySSL` to `ignore`, or have it as `validate`,
-which will require you to set the `sslConfig.certificatePath` with a local path where your ingestion runs that points
+which will require you to set the `sslConfig.caCertificate` with a local path where your ingestion runs that points
 to the server certificate file.
 
 Find more information on how to troubleshoot SSL issues [here](/deployment/security/enable-ssl/ssl-troubleshooting).
@@ -158,7 +158,7 @@ workflowConfig:
     ## If SSL, fill the following
     # verifySSL: validate  # or ignore
     # sslConfig:
-    #   certificatePath: /local/path/to/certificate
+    #   caCertificate: /local/path/to/certificate
 ```
 
 ## 3. (Optional) Ingestion Pipeline

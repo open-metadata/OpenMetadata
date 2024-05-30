@@ -552,7 +552,7 @@ class CommonDbSourceService(
             self.register_record(table_request=table_request)
 
             # Flag view as visited
-            if table_type == TableType.View or schema_definition:
+            if table_type == TableType.View and schema_definition:
                 table_view = TableView(
                     table_name=table_name,
                     schema_name=schema_name,
