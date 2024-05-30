@@ -18,8 +18,10 @@ import {
 } from '../../utils/domainUtils';
 import {
   addOwner,
+  assignGlossaryTerm,
   assignTag,
   assignTier,
+  removeGlossaryTerm,
   removeOwner,
   removeTag,
   removeTier,
@@ -27,6 +29,7 @@ import {
   updateOwner,
 } from '../../utils/entityUtils';
 import { Domain } from '../domain/Domain';
+import { GlossaryTerm } from '../glossary/GlossaryTerm';
 
 export class EntityClass {
   type: string;
@@ -78,6 +81,22 @@ export class EntityClass {
     await page
       .getByTestId('entity-right-panel')
       .getByTestId('tags-container')
+      .getByTestId('Add')
+      .isVisible();
+  }
+
+  async glossaryTerm(
+    page: Page,
+    glossaryTerm1: GlossaryTerm['responseData'],
+    glossaryTerm2: GlossaryTerm['responseData']
+  ) {
+    await assignGlossaryTerm(page, glossaryTerm1);
+    await assignGlossaryTerm(page, glossaryTerm2, 'Edit');
+    await removeGlossaryTerm(page, [glossaryTerm1, glossaryTerm2]);
+
+    await page
+      .getByTestId('entity-right-panel')
+      .getByTestId('glossary-container')
       .getByTestId('Add')
       .isVisible();
   }

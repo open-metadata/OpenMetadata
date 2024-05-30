@@ -151,3 +151,64 @@ export const removeTag = async (page: Page, tags: string[]) => {
     ).not.toBeVisible();
   }
 };
+
+type GlossaryTermOption = {
+  displayName: string;
+  name: string;
+  fullyQualifiedName: string;
+};
+
+export const assignGlossaryTerm = async (
+  page: Page,
+  glossaryTerm: GlossaryTermOption,
+  action: 'Add' | 'Edit' = 'Add'
+) => {
+  await page
+    .getByTestId('entity-right-panel')
+    .getByTestId('glossary-container')
+    .getByTestId(action === 'Add' ? 'add-tag' : 'edit-button')
+    .click();
+
+  await page.locator('#tagsForm_tags').fill(glossaryTerm.displayName);
+  await page.waitForResponse(
+    `/api/v1/search/query?q=*${encodeURIComponent(glossaryTerm.displayName)}*`
+  );
+  await page.getByTestId(`tag-${glossaryTerm.fullyQualifiedName}`).click();
+  await page.getByTestId('saveAssociatedTag').click();
+
+  await expect(
+    page
+      .getByTestId('entity-right-panel')
+      .getByTestId('glossary-container')
+      .getByTestId(`tag-${glossaryTerm.fullyQualifiedName}`)
+  ).toBeVisible();
+};
+
+export const removeGlossaryTerm = async (
+  page: Page,
+  glossaryTerms: GlossaryTermOption[]
+) => {
+  for (const tag of glossaryTerms) {
+    await page
+      .getByTestId('entity-right-panel')
+      .getByTestId('glossary-container')
+      .getByTestId('edit-button')
+      .click();
+
+    await page
+      .getByTestId('glossary-container')
+      .getByTestId(new RegExp(tag.name))
+      .getByTestId('remove-tags')
+      .locator('svg')
+      .click();
+
+    await page.getByTestId('saveAssociatedTag').click();
+
+    expect(
+      page
+        .getByTestId('entity-right-panel')
+        .getByTestId('glossary-container')
+        .getByTestId(`tag-${tag.fullyQualifiedName}`)
+    ).not.toBeVisible();
+  }
+};

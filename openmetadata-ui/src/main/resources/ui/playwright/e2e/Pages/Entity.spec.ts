@@ -61,8 +61,8 @@ test.describe('Entity detail page', () => {
       test('Domain Add, Update and Remove', async () => {
         await entity.domain(
           page,
-          EntityDataClass.domain1.data,
-          EntityDataClass.domain2.data
+          EntityDataClass.domain1.responseData,
+          EntityDataClass.domain2.responseData
         );
       });
 
@@ -88,6 +88,14 @@ test.describe('Entity detail page', () => {
 
       test('Tag Add, Update and Remove', async () => {
         await entity.tag(page, 'PersonalData.Personal', 'PII.None');
+      });
+
+      test('Glossary Term Add, Update and Remove', async () => {
+        await entity.glossaryTerm(
+          page,
+          EntityDataClass.glossaryTerm1.responseData,
+          EntityDataClass.glossaryTerm2.responseData
+        );
       });
 
       test.afterAll(async () => {
