@@ -87,7 +87,7 @@ import org.openmetadata.service.util.ResultList;
 public class TestCaseResource extends EntityResource<TestCase, TestCaseRepository> {
   public static final String COLLECTION_PATH = "/v1/dataQuality/testCases";
 
-  static final String FIELDS = "owner,testSuite,testDefinition,testSuites,incidentId,domain";
+  static final String FIELDS = "owner,testSuite,testDefinition,testSuites,incidentId,domain,tags";
   static final String SEARCH_FIELDS_EXCLUDE =
       "testPlatforms,table,database,databaseSchema,service,testSuite";
 
@@ -352,6 +352,11 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
           @QueryParam("sortType")
           @DefaultValue("desc")
           String sortType,
+      @Parameter(
+              description = "Return only required fields in the response",
+              schema = @Schema(type = "string"))
+          @QueryParam("includeFields")
+          String includeFields,
       @Parameter(description = "domain filter to use in list", schema = @Schema(type = "string"))
           @QueryParam("domain")
           String domain,
@@ -378,6 +383,7 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
     searchListFilter.addQueryParam("testPlatforms", testPlatforms);
     searchListFilter.addQueryParam("q", q);
     searchListFilter.addQueryParam("excludeFields", SEARCH_FIELDS_EXCLUDE);
+    searchListFilter.addQueryParam("includeFields", includeFields);
     searchListFilter.addQueryParam("domain", domain);
     if (!nullOrEmpty(owner)) {
       EntityInterface entity;

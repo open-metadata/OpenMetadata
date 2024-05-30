@@ -8,6 +8,7 @@ import static org.openmetadata.schema.type.EventType.ENTITY_NO_CHANGE;
 import static org.openmetadata.schema.type.EventType.ENTITY_UPDATED;
 import static org.openmetadata.schema.type.EventType.LOGICAL_TEST_CASE_ADDED;
 import static org.openmetadata.schema.type.Include.ALL;
+import static org.openmetadata.service.Entity.FIELD_TAGS;
 import static org.openmetadata.service.Entity.TEST_CASE;
 import static org.openmetadata.service.Entity.TEST_DEFINITION;
 import static org.openmetadata.service.Entity.TEST_SUITE;
@@ -109,9 +110,26 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
   @Override
   public void setInheritedFields(TestCase testCase, Fields fields) {
     EntityLink entityLink = EntityLink.parse(testCase.getEntityLink());
-    Table table = Entity.getEntity(entityLink, "owner,domain", ALL);
+    Table table = Entity.getEntity(entityLink, "owner,domain,tags,columns", ALL);
     inheritOwner(testCase, fields, table);
     inheritDomain(testCase, fields, table);
+    inheritTags(testCase, fields, table);
+  }
+
+  private void inheritTags(TestCase testCase, Fields fields, Table table) {
+    if (fields.contains(FIELD_TAGS)) {
+      List<TagLabel> tags = new ArrayList<>();
+      EntityLink entityLink = EntityLink.parse(testCase.getEntityLink());
+      tags.addAll(table.getTags());
+      if (entityLink.getFieldName() != null && entityLink.getFieldName().equals("columns")) {
+        // if we have a column test case get the columns tags as well
+        table.getColumns().stream()
+            .filter(column -> column.getName().equals(entityLink.getArrayFieldName()))
+            .findFirst()
+            .ifPresent(column -> tags.addAll(column.getTags()));
+      }
+      testCase.setTags(tags);
+    }
   }
 
   @Override
