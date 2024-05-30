@@ -1732,11 +1732,11 @@ public abstract class EntityRepository<T extends EntityInterface> {
                       USER, entityReference.getFullyQualifiedName(), ALL);
           EntityUtil.copy(ref, entityReference);
         }
-        entityReferences.sort(EntityUtil.compareEntityReference);
       } else {
         throw new IllegalArgumentException(
             "Invalid Reviewer Type. Only one team or multiple users can be assigned as reviewer.");
       }
+      entityReferences.sort(EntityUtil.compareEntityReference);
     }
   }
 
