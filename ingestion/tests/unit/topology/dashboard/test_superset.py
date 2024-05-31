@@ -148,7 +148,7 @@ MOCK_DB_POSTGRES_SERVICE = DatabaseService(
 EXPECTED_CHART_ENTITY = [
     Chart(
         id=uuid.uuid4(),
-        name=37,
+        name="37",
         fullyQualifiedName=FullyQualifiedEntityName("test_supserset.37"),
         service=EntityReference(
             id="c3eb265f-5445-4ad3-ba5e-797d3a3071bb", type="dashboardService"
@@ -157,7 +157,7 @@ EXPECTED_CHART_ENTITY = [
 ]
 
 EXPECTED_DASH = CreateDashboardRequest(
-    name=14,
+    name="14",
     displayName="My DASH",
     sourceUrl="https://my-superset.com/superset/dashboard/14/",
     charts=[chart.fullyQualifiedName for chart in EXPECTED_CHART_ENTITY],
@@ -186,7 +186,7 @@ EXPECTED_API_DASHBOARD = CreateDashboardRequest(
 )
 
 EXPECTED_CHART = CreateChartRequest(
-    name=1,
+    name="1",
     displayName="Rural",
     description="desc",
     chartType=ChartType.Other.value,

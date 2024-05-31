@@ -151,7 +151,7 @@ class OMetaMlModelMixin(OMetaLineageMixin):
             mlHyperParameters=[
                 MlHyperParameter(
                     name=key,
-                    value=value,
+                    value=str(value),
                 )
                 for key, value in model.get_params().items()
             ],

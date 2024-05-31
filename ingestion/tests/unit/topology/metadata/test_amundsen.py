@@ -93,11 +93,6 @@ EXPECTED_SERVICE = [
         href=Href(
             AnyUrl(
                 "http://localhost:8585/api/v1/services/databaseServices/05f98ea5-1a30-480c-9bfc-55d1eabc45c7",
-                scheme="http",
-                host="localhost",
-                host_type="int_domain",
-                port="8585",
-                path="/api/v1/services/databaseServices/05f98ea5-1a30-480c-9bfc-55d1eabc45c7",
             )
         ),
         changeDescription=None,
@@ -129,11 +124,6 @@ EXPECTED_SERVICE = [
         href=Href(
             AnyUrl(
                 "http://localhost:8585/api/v1/services/databaseServices/e856d239-4e74-4a7d-844b-d61c3e73b81d",
-                scheme="http",
-                host="localhost",
-                host_type="int_domain",
-                port="8585",
-                path="/api/v1/services/databaseServices/e856d239-4e74-4a7d-844b-d61c3e73b81d",
             )
         ),
         changeDescription=None,
@@ -163,11 +153,6 @@ EXPECTED_SERVICE = [
         href=Href(
             AnyUrl(
                 "http://localhost:8585/api/v1/services/databaseServices/836ff98d-a241-4d06-832d-745f96ac88fc",
-                scheme="http",
-                host="localhost",
-                host_type="int_domain",
-                port="8585",
-                path="/api/v1/services/databaseServices/836ff98d-a241-4d06-832d-745f96ac88fc",
             )
         ),
         changeDescription=None,

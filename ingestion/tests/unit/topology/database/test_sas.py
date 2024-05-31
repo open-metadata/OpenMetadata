@@ -126,11 +126,6 @@ EXPECTED_TABLE = Table(
     href=Href(
         root=AnyUrl(
             "http://localhost:8585/api/v1/tables/124d078d-dcf2-43a8-b59e-33bc7953f680",
-            scheme="http",
-            host="localhost",
-            host_type="int_domain",
-            port="8585",
-            path="/api/v1/tables/0063116c-577c-0f44-8116-3924506c8f4a",
         )
     ),
     tableType="Regular",
@@ -188,11 +183,6 @@ EXPECTED_TABLE = Table(
         href=Href(
             AnyUrl(
                 "http://localhost:8585/api/v1/databaseSchemas/4cf6ee7e-9d24-4153-9318-82aa1167259b",
-                scheme="http",
-                host="localhost",
-                host_type="int_domain",
-                port="8585",
-                path="/api/v1/databaseSchemas/4cf6ee7e-9d24-4153-9318-82aa1167259b",
             )
         ),
     ),
@@ -207,11 +197,6 @@ EXPECTED_TABLE = Table(
         href=Href(
             AnyUrl(
                 "http://localhost:8585/api/v1/databases/367f53b5-d6c2-44be-bf5d-a0a1dc98a9dd",
-                scheme="http",
-                host="localhost",
-                host_type="int_domain",
-                port="8585",
-                path="/api/v1/databases/367f53b5-d6c2-44be-bf5d-a0a1dc98a9dd",
             )
         ),
     ),
@@ -226,11 +211,6 @@ EXPECTED_TABLE = Table(
         href=Href(
             AnyUrl(
                 "http://localhost:8585/api/v1/services/databaseServices/f2ab0e7a-5224-4acb-a189-74158851733f",
-                scheme="http",
-                host="localhost",
-                host_type="int_domain",
-                port="8585",
-                path="/api/v1/services/databaseServices/f2ab0e7a-5224-4acb-a189-74158851733f",
             )
         ),
     ),

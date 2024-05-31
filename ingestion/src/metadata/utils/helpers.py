@@ -25,6 +25,7 @@ from pathlib import Path
 from typing import Any, Dict, Iterable, List, Optional, Tuple, Union
 
 import sqlparse
+from pydantic_core import Url
 from sqlparse.sql import Statement
 
 from metadata.generated.schema.entity.data.chart import ChartType
@@ -222,7 +223,7 @@ def find_suggestion(
         (
             sugg
             for sugg in suggestions
-            if sugg.type == suggestion_type and sugg.entityLink == entity_link
+            if sugg.root.type == suggestion_type and sugg.root.entityLink == entity_link
         ),
         None,
     )
@@ -347,12 +348,15 @@ def format_large_string_numbers(number: Union[float, int]) -> str:
     return f"{number / constant_k**magnitude:.3f}{units[magnitude]}"
 
 
-def clean_uri(uri: str) -> str:
+def clean_uri(uri: Union[str, Url]) -> str:
     """
     if uri is like http://localhost:9000/
     then remove the end / and
     make it http://localhost:9000
     """
+    # force a string of the given Uri if needed
+    if isinstance(uri, Url):
+        uri = str(uri)
     return uri[:-1] if uri.endswith("/") else uri
 
 

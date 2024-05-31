@@ -13,7 +13,7 @@ Test Credentials helper module
 """
 from unittest import TestCase
 
-from pydantic import SecretStr
+from pydantic import SecretStr, AnyUrl
 
 from metadata.generated.schema.security.credentials.gcpExternalAccount import (
     GcpExternalAccount,
@@ -61,7 +61,7 @@ VEhPQF0i0tUU7Fl071hcYaiQoZx4nIjN+NG6p5QKbl6k
             privateKey=private_key,
             clientEmail="email@mail.com",
             clientId="client_id",
-            clientX509CertUrl="http://localhost:1234",
+            clientX509CertUrl=AnyUrl("http://localhost:1234"),
         )
 
         expected_dict = {
@@ -74,10 +74,8 @@ VEhPQF0i0tUU7Fl071hcYaiQoZx4nIjN+NG6p5QKbl6k
             "auth_uri": "https://accounts.google.com/o/oauth2/auth",
             "token_uri": "https://oauth2.googleapis.com/token",
             "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
-            "client_x509_cert_url": "http://localhost:1234",
+            "client_x509_cert_url": "http://localhost:1234/",
         }
-
-        build_google_credentials_dict(gcp_values)
 
         self.assertEqual(expected_dict, build_google_credentials_dict(gcp_values))
 

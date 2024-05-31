@@ -24,7 +24,7 @@ from unittest import TestCase
 
 import boto3
 import botocore
-from moto import mock_s3
+from moto import mock_aws
 
 from metadata.generated.schema.entity.data.table import ColumnProfile, Table
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
@@ -78,7 +78,7 @@ INGESTION_CONFIG = {
 }
 
 
-@mock_s3
+@mock_aws
 class DatalakeProfilerTestE2E(TestCase):
     """datalake profiler E2E test"""
 

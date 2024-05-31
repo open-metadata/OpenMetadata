@@ -21,7 +21,7 @@ from uuid import uuid4
 import boto3
 import botocore
 import pandas as pd
-from moto import mock_s3
+from moto import mock_aws
 
 from metadata.generated.schema.entity.data.table import Column as EntityColumn
 from metadata.generated.schema.entity.data.table import ColumnName, DataType, Table
@@ -42,7 +42,7 @@ from metadata.profiler.processor.core import Profiler
 BUCKET_NAME = "MyBucket"
 
 
-@mock_s3
+@mock_aws
 class MetricsTest(TestCase):
     """
     Run checks on different metrics

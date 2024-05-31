@@ -35,10 +35,10 @@ from metadata.ingestion.source.database.iceberg.helper import (
 class IcebergTable(BaseModel):
     name: str
     tableType: TableType
-    description: Optional[str]
+    description: Optional[str] = None
     owner: Optional[EntityReference]
     columns: List[Column] = []
-    tablePartition: Optional[TablePartition]
+    tablePartition: Optional[TablePartition] = None
 
     @classmethod
     def from_pyiceberg(

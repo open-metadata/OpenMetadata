@@ -150,7 +150,7 @@ class QuicksightSource(DashboardServiceSource):
             sourceUrl=SourceUrl(self.dashboard_url),
             displayName=dashboard_details.Name,
             description=Markdown(dashboard_details.Version.Description)
-            if dashboard_details.Version
+            if dashboard_details.Version and dashboard_details.Version.Description
             else None,
             charts=[
                 FullyQualifiedEntityName(

@@ -121,8 +121,8 @@ class IncrementalConfigCreatorTest(TestCase):
         """Returns IncrementalConfig(enabled=False) when self._get_last_success_timestamp() returns None."""
 
         pipeline_runs = [
-            PipelineStatus(runId=1, pipelineState=PipelineState.failed),
-            PipelineStatus(runId=2, pipelineState=PipelineState.failed),
+            PipelineStatus(runId="1", pipelineState=PipelineState.failed),
+            PipelineStatus(runId="2", pipelineState=PipelineState.failed),
         ]
 
         with patch.object(

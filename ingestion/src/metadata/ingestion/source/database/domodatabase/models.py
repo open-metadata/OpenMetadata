@@ -51,4 +51,4 @@ class OutputDataset(DomoDatabaseBaseModel):
     columns: int
     schemas: Optional[Schema] = Field(alias="schema")
     owner: Owner
-    description: Optional[str]
+    description: Optional[str] = None

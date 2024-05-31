@@ -130,7 +130,7 @@ MOCK_CHARTS = [
     DashCard(
         card=MetabaseChart(
             description="Test Chart",
-            table_id=1,
+            table_id="1",
             database_id=1,
             name="chart1",
             id="1",
@@ -141,7 +141,7 @@ MOCK_CHARTS = [
     DashCard(
         card=MetabaseChart(
             description="Test Chart",
-            table_id=1,
+            table_id="1",
             database_id=1,
             name="chart2",
             id="2",
@@ -235,7 +235,7 @@ class MetabaseUnitTest(TestCase):
         get_connection.return_value = False
         test_connection.return_value = False
         self.config = OpenMetadataWorkflowConfig.parse_obj(mock_config)
-        self.metabase = MetabaseSource.create(
+        self.metabase: MetabaseSource = MetabaseSource.create(
             mock_config["source"],
             OpenMetadata(self.config.workflowConfig.openMetadataServerConfig),
         )

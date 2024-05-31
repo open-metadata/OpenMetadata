@@ -75,8 +75,8 @@ MOCK_DATABASE = Database(
 
 
 class MockTable(BaseModel):
-    time_partitioning: Optional[TimePartitioning]
-    range_partitioning: Optional[RangePartitioning]
+    time_partitioning: Optional[TimePartitioning] = None
+    range_partitioning: Optional[RangePartitioning] = None
 
     class Config:
         arbitrary_types_allowed = True

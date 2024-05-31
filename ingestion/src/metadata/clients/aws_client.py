@@ -148,7 +148,7 @@ class AWSClient:
             session = self.create_session()
             if self.config.endPointURL is not None:
                 return session.client(
-                    service_name=service_name, endpoint_url=self.config.endPointURL
+                    service_name=service_name, endpoint_url=str(self.config.endPointURL)
                 )
             return session.client(service_name=service_name)
 

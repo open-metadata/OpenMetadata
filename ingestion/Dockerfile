@@ -32,8 +32,8 @@ RUN apt-get -qq update \
     postgresql \
     postgresql-contrib \
     tdsodbc \
-    unixodbc \
-    unixodbc-dev \
+    unixodbc=2.3.11-2+deb12u1 \
+    unixodbc-dev=2.3.11-2+deb12u1 \
     unzip \
     git \
     wget --no-install-recommends \

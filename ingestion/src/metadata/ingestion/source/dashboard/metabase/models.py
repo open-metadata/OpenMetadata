@@ -79,7 +79,7 @@ class MetabaseDashboardDetails(BaseModel):
     description: Optional[str] = None
     dashcards: List[DashCard]
     name: Optional[str] = None
-    id: int
+    id: str
     collection_id: Optional[str] = None
 
 
