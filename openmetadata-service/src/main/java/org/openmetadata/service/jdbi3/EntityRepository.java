@@ -1676,9 +1676,13 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
   public final void deleteTo(
       UUID toId, String toEntityType, Relationship relationship, String fromEntityType) {
-    daoCollection
-        .relationshipDAO()
-        .deleteTo(toId, toEntityType, relationship.ordinal(), fromEntityType);
+    if (fromEntityType == null) {
+      daoCollection.relationshipDAO().deleteTo(toId, toEntityType, relationship.ordinal());
+    } else {
+      daoCollection
+          .relationshipDAO()
+          .deleteTo(toId, toEntityType, relationship.ordinal(), fromEntityType);
+    }
   }
 
   public final void deleteFrom(
@@ -1708,6 +1712,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
   }
 
   public final void validateReviewers(List<EntityReference> entityReferences) {
+    List<EntityReference> reviewers = new ArrayList<>();
     if (!nullOrEmpty(entityReferences)) {
       boolean areAllTeam = validateIfAllRefsAreEntityType(entityReferences, TEAM);
       boolean areAllUsers = validateIfAllRefsAreEntityType(entityReferences, USER);
@@ -2520,9 +2525,11 @@ public abstract class EntityRepository<T extends EntityInterface> {
       List<EntityReference> origReviewers = getEntityReferences(original.getReviewers());
       List<EntityReference> updatedReviewers = getEntityReferences(updated.getReviewers());
       validateReviewers(updatedReviewers);
+      // Either all users or team which is one team at a time, assuming all ref to have same type,
+      // validateReviewer checks it
       updateFromRelationships(
           "reviewers",
-          Entity.USER,
+          null,
           origReviewers,
           updatedReviewers,
           Relationship.REVIEWS,
@@ -2798,7 +2805,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
       // Add relationships from updated
       for (EntityReference ref : updatedFromRefs) {
-        addRelationship(ref.getId(), toId, fromEntityType, toEntityType, relationshipType);
+        addRelationship(ref.getId(), toId, ref.getType(), toEntityType, relationshipType);
       }
       updatedFromRefs.sort(EntityUtil.compareEntityReference);
       originFromRefs.sort(EntityUtil.compareEntityReference);
