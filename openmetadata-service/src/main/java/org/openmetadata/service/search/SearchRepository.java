@@ -589,8 +589,7 @@ public class SearchRepository {
         List<String> indexNames = indexMapping.getChildAliases(clusterAlias);
         if (!indexNames.isEmpty()) {
           searchClient.deleteEntityByFields(
-              indexMapping.getChildAliases(clusterAlias),
-              List.of(new ImmutablePair<>(entityType + ".id", docId)));
+              indexNames, List.of(new ImmutablePair<>(entityType + ".id", docId)));
         }
       }
     }
