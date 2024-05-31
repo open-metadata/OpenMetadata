@@ -271,7 +271,7 @@ export const TestCases = ({ summaryPanel }: { summaryPanel: ReactNode }) => {
                 <Typography.Text className="text-sm">{label}</Typography.Text>
               </Space>
             ),
-            value: label,
+            value: value,
           };
         });
 
