@@ -39,7 +39,10 @@
     "cypress:filter": "CYPRESS_BASE_URL=http://localhost:8585 cypress run --config-file=cypress.config.ts --env grepTags='Lineage',grepFilterSpecs=true",
     "cypress:run:record": "cypress run --config-file=cypress.config.ts --record --parallel",
     "i18n": "sync-i18n --files '**/locale/languages/*.json' --primary en-us --space 2 --fn",
-    "check-i18n": "npm run i18n -- --check"
+    "check-i18n": "npm run i18n -- --check",
+    "playwright:run": "playwright test",
+    "playwright:open": "playwright test --ui",
+    "playwright:codegen": "playwright codegen"
   },
   "dependencies": {
     "@analytics/session-utils": "^0.1.17",
@@ -48,6 +51,7 @@
     "@auth0/auth0-react": "^1.9.0",
     "@azure/msal-browser": "^3.10.0",
     "@azure/msal-react": "^2.0.12",
+    "@dagrejs/dagre": "^1.1.2",
     "@deuex-solutions/react-tour": "^1.2.6",
     "@fontsource/poppins": "^5.0.0",
     "@fontsource/source-code-pro": "^5.0.0",
@@ -72,7 +76,6 @@
     "@tiptap/suggestion": "^2.3.0",
     "@toast-ui/react-editor": "^3.1.8",
     "@types/turndown": "^5.0.4",
-    "@dagrejs/dagre": "^1.1.2",
     "analytics": "^0.8.1",
     "antd": "4.24.0",
     "antlr4": "4.9.2",
@@ -151,6 +154,7 @@
     "@babel/preset-env": "^7.11.0",
     "@babel/preset-react": "^7.10.4",
     "@cypress/grep": "^4.0.1",
+    "@playwright/test": "^1.44.1",
     "@svgr/webpack": "^6.5.0",
     "@testing-library/jest-dom": "^5.11.8",
     "@testing-library/react": "^9.3.2",
