@@ -28,6 +28,7 @@ import {
   generateRandomUser,
   removeOwner,
 } from '../../common/Utils/Owner';
+import { GLOSSARY_DROPDOWN_ITEMS } from '../../constants/advancedSearchQuickFilters.constants';
 import {
   COLUMN_NAME_FOR_APPLY_GLOSSARY_TERM,
   CYPRESS_ASSETS_GLOSSARY,
@@ -51,6 +52,27 @@ const CREDENTIALS = generateRandomUser();
 const userName = `${CREDENTIALS.firstName}${CREDENTIALS.lastName}`;
 
 let createdUserId = '';
+
+const selectOwner = (ownerName: string, dataTestId?: string) => {
+  interceptURL('GET', '/api/v1/users?*isBot=false*', 'getUsers');
+  cy.get('[data-testid="add-owner"]').scrollIntoView().click();
+  cy.get("[data-testid='select-owner-tabs']").should('be.visible');
+  cy.get('.ant-tabs [id*=tab-users]').click();
+  verifyResponseStatusCode('@getUsers', 200);
+  interceptURL(
+    'GET',
+    `api/v1/search/query?q=*&index=user_search_index*`,
+    'searchOwner'
+  );
+
+  cy.get('[data-testid="owner-select-users-search-bar"]').type(ownerName);
+  verifyResponseStatusCode('@searchOwner', 200);
+  cy.get(`.ant-popover [title="${ownerName}"]`).click();
+  cy.get(`[data-testid=${dataTestId ?? 'owner-link'}]`).should(
+    'contain',
+    ownerName
+  );
+};
 
 const visitGlossaryTermPage = (
   termName: string,
@@ -175,6 +197,17 @@ const checkDisplayName = (displayName) => {
     });
 };
 
+const verifyGlossaryTermDataInTable = (term, status: string) => {
+  const escapedName = Cypress.$.escapeSelector(term.fullyQualifiedName);
+  const selector = `[data-row-key=${escapedName}]`;
+  cy.get(selector).scrollIntoView().should('be.visible');
+  cy.get(`${selector} [data-testid="${escapedName}-status"]`).contains(status);
+  // If empty owner, the creator is the owner
+  cy.get(`${selector} [data-testid="owner-link"]`).contains(
+    term.owner ?? 'admin'
+  );
+};
+
 const checkAssetsCount = (assetsCount) => {
   cy.get('[data-testid="assets"] [data-testid="filter-count"]')
     .scrollIntoView()
@@ -267,6 +300,10 @@ const fillGlossaryTermDetails = (
     cy.get('[data-testid="color-color-input"]')
       .scrollIntoView()
       .type(term.color);
+  }
+
+  if (term.owner) {
+    selectOwner(term.owner, 'owner-container');
   }
 };
 
@@ -566,7 +603,6 @@ const downVoting = (api: string) => {
 
   cy.wait(api).then(({ request, response }) => {
     expect(request.body.updatedVoteType).to.equal('votedDown');
-
     expect(response.statusCode).to.equal(200);
   });
 
@@ -582,7 +618,6 @@ const initialVoting = (api: string) => {
 
   cy.wait(api).then(({ request, response }) => {
     expect(request.body.updatedVoteType).to.equal('unVoted');
-
     expect(response.statusCode).to.equal(200);
   });
 
@@ -597,9 +632,7 @@ const voteGlossary = (isGlossary?: boolean) => {
     interceptURL('PUT', '/api/v1/glossaryTerms/*/vote', 'voteGlossaryTerm');
   }
   upVoting(isGlossary ? '@voteGlossary' : '@voteGlossaryTerm');
-
   downVoting(isGlossary ? '@voteGlossary' : '@voteGlossaryTerm');
-
   initialVoting(isGlossary ? '@voteGlossary' : '@voteGlossaryTerm');
 };
 
@@ -714,6 +747,29 @@ const deleteUser = () => {
       expect(response.status).to.eq(200);
     });
   });
+};
+
+const verifyStatusFilterInExplore = (statusField: string) => {
+  const fieldName = Cypress._.toLower(statusField);
+  const glossaryTermStatusFilter = GLOSSARY_DROPDOWN_ITEMS.find(
+    (item) => item.key === 'status'
+  );
+
+  cy.sidebarClick(SidebarItem.EXPLORE);
+  cy.get(`[data-testid="glossary terms-tab"]`).scrollIntoView().click();
+  cy.get(`[data-testid="search-dropdown-${glossaryTermStatusFilter.label}"]`)
+    .scrollIntoView()
+    .click();
+  cy.get(`[data-testid=${fieldName}]`)
+    .should('exist')
+    .and('be.visible')
+    .click();
+
+  const querySearchURL = `/api/v1/search/query?*index=glossary_term_search_index*query_filter=*should*${glossaryTermStatusFilter.key}*${fieldName}*`;
+
+  interceptURL('GET', querySearchURL, 'querySearchAPI');
+  cy.get('[data-testid="update-btn"]').click();
+  verifyResponseStatusCode('@querySearchAPI', 200);
 };
 
 describe('Glossary page should work properly', { tags: 'Governance' }, () => {
@@ -841,17 +897,21 @@ describe('Glossary page should work properly', { tags: 'Governance' }, () => {
   it('Create glossary term should work properly', () => {
     const terms = Object.values(NEW_GLOSSARY_TERMS);
     selectActiveGlossary(NEW_GLOSSARY.name);
-    terms.forEach((term, index) =>
-      createGlossaryTerm(term, NEW_GLOSSARY, 'Draft', true, index === 0)
-    );
+    terms.forEach((term, index) => {
+      createGlossaryTerm(term, NEW_GLOSSARY, 'Draft', true, index === 0);
+      verifyGlossaryTermDataInTable(term, 'Draft');
+    });
 
     // Glossary term for Product glossary
     selectActiveGlossary(NEW_GLOSSARY_1.name);
 
     const ProductTerms = Object.values(NEW_GLOSSARY_1_TERMS);
-    ProductTerms.forEach((term) =>
-      createGlossaryTerm(term, NEW_GLOSSARY_1, 'Approved', false, false)
-    );
+    ProductTerms.forEach((term) => {
+      createGlossaryTerm(term, NEW_GLOSSARY_1, 'Approved', false, false);
+      verifyGlossaryTermDataInTable(term, 'Approved');
+    });
+    verifyStatusFilterInExplore('Approved');
+    verifyStatusFilterInExplore('Draft');
   });
 
   it('Approval Workflow for Glossary Term', () => {
