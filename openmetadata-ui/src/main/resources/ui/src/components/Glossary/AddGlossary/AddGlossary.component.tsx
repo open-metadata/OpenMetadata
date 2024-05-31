@@ -14,7 +14,6 @@
 import { PlusOutlined } from '@ant-design/icons';
 import { Button, Form, Space, Typography } from 'antd';
 import { FormProps, useForm } from 'antd/lib/form/Form';
-import { toString } from 'lodash';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { ENTITY_NAME_REGEX } from '../../../constants/regex.constants';
@@ -76,9 +75,7 @@ const AddGlossary = ({
       name: name.trim(),
       displayName: displayName?.trim(),
       description: description,
-      reviewers: reviewers
-        .map((d: EntityReference) => toString(d.fullyQualifiedName))
-        .filter(Boolean),
+      reviewers: reviewers.filter(Boolean),
       owner: selectedOwner,
       tags: tags || [],
       mutuallyExclusive: Boolean(mutuallyExclusive),

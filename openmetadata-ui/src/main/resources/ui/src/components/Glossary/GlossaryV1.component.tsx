@@ -257,9 +257,6 @@ const GlossaryV1 = ({
     try {
       await addGlossaryTerm({
         ...formData,
-        reviewers: formData.reviewers.map(
-          (item) => item.fullyQualifiedName || ''
-        ),
         glossary:
           activeGlossaryTerm?.glossary?.name ||
           (selectedData.fullyQualifiedName ?? ''),
