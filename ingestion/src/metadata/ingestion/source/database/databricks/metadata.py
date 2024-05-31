@@ -136,7 +136,11 @@ def get_columns(self, connection, table_name, schema=None, **kw):
     result = []
     for col_name, col_type, _comment in rows:
         # Handle both oss hive and Databricks' hive partition header, respectively
-        if col_name in ("# Partition Information", "# Partitioning"):
+        if col_name in (
+            "# Partition Information",
+            "# Partitioning",
+            "# Clustering Information",
+        ):
             break
         # Take out the more detailed type information
         # e.g. 'map<ixnt,int>' -> 'map'
