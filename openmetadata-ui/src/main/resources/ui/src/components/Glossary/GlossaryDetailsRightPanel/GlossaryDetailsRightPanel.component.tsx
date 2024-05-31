@@ -45,7 +45,6 @@ import { ExtentionEntitiesKeys } from '../../common/CustomPropertyTable/CustomPr
 import { DomainLabel } from '../../common/DomainLabel/DomainLabel.component';
 import UserPopOverCard from '../../common/PopOverCard/UserPopOverCard';
 import TagButton from '../../common/TagButton/TagButton.component';
-import { UserTeamSelectableListV2 } from '../../common/UserTeamSelectableListV2/UserTeamSelectableListV2.component';
 import TagsContainerV2 from '../../Tag/TagsContainerV2/TagsContainerV2';
 import { DisplayType } from '../../Tag/TagsViewer/TagsViewer.interface';
 import GlossaryReviewers from './GlossaryReviewers';
@@ -96,13 +95,20 @@ const GlossaryDetailsRightPanel = ({
     }
   };
 
-  const handleReviewerSave = async (data: Array<EntityReference>) => {
-    if (!isEqual(data, selectedData.reviewers)) {
+  const handleReviewerSave = async (
+    data?: EntityReference | EntityReference[]
+  ) => {
+    if (!data) {
+      return;
+    }
+
+    const reviewers = Array.isArray(data) ? data : [data];
+    if (!isEqual(reviewers, selectedData.reviewers)) {
       let updatedGlossary = cloneDeep(selectedData);
-      const oldReviewer = data.filter((d) =>
+      const oldReviewer = reviewers.filter((d) =>
         includes(selectedData.reviewers, d)
       );
-      const newReviewer = data
+      const newReviewer = reviewers
         .filter((d) => !includes(selectedData.reviewers, d))
         .map((d) => ({ id: d.id, type: d.type }));
       updatedGlossary = {
@@ -113,7 +119,7 @@ const GlossaryDetailsRightPanel = ({
     }
   };
 
-  const handleUpdatedOwner = async (newOwner: Glossary['owner']) => {
+  const handleUpdatedOwner = async (newOwner?: EntityReference) => {
     const updatedData = {
       ...selectedData,
       owner: newOwner,
@@ -227,7 +233,9 @@ const GlossaryDetailsRightPanel = ({
               <UserTeamSelectableList
                 hasPermission={permissions.EditOwner || permissions.EditAll}
                 owner={selectedData.owner}
-                onUpdate={handleUpdatedOwner}>
+                onUpdate={(updatedUser) =>
+                  handleUpdatedOwner(updatedUser as EntityReference)
+                }>
                 <Tooltip
                   title={t('label.edit-entity', {
                     entity: t('label.owner'),
@@ -250,7 +258,9 @@ const GlossaryDetailsRightPanel = ({
           <UserTeamSelectableList
             hasPermission={permissions.EditOwner || permissions.EditAll}
             owner={selectedData.owner}
-            onUpdate={handleUpdatedOwner}>
+            onUpdate={(updatedUser) =>
+              handleUpdatedOwner(updatedUser as EntityReference)
+            }>
             <TagButton
               className="text-primary cursor-pointer"
               dataTestId="edit-owner"
@@ -276,8 +286,11 @@ const GlossaryDetailsRightPanel = ({
           {hasEditReviewerAccess &&
             selectedData.reviewers &&
             selectedData.reviewers.length > 0 && (
-              <UserTeamSelectableListV2
+              <UserTeamSelectableList
+                previewSelected
                 hasPermission={hasEditReviewerAccess}
+                label={t('label.reviewer-plural')}
+                listHeight={180}
                 multiple={{ user: true, team: false }}
                 owner={selectedData.reviewers ?? []}
                 popoverProps={{ placement: 'topLeft' }}
@@ -294,7 +307,7 @@ const GlossaryDetailsRightPanel = ({
                     type="text"
                   />
                 </Tooltip>
-              </UserTeamSelectableListV2>
+              </UserTeamSelectableList>
             )}
         </div>
         <div>
@@ -304,8 +317,11 @@ const GlossaryDetailsRightPanel = ({
             isVersionView={isVersionView}
           />
           {hasEditReviewerAccess && noReviewersSelected && (
-            <UserTeamSelectableListV2
+            <UserTeamSelectableList
+              previewSelected
               hasPermission={hasEditReviewerAccess}
+              label={t('label.reviewer-plural')}
+              listHeight={180}
               multiple={{ user: true, team: false }}
               owner={selectedData.reviewers ?? []}
               popoverProps={{ placement: 'topLeft' }}
@@ -316,7 +332,7 @@ const GlossaryDetailsRightPanel = ({
                 label={t('label.add')}
                 tooltip=""
               />
-            </UserTeamSelectableListV2>
+            </UserTeamSelectableList>
           )}
         </div>
       </Col>
