@@ -13,10 +13,11 @@
  */
 import { Button, Col, Form, Input, Row, Skeleton, Typography } from 'antd';
 import { useForm } from 'antd/lib/form/Form';
-import { isEmpty } from 'lodash';
+import { isEmpty, isUndefined } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
+import InlineAlert from '../../components/common/InlineAlert/InlineAlert';
 import Loader from '../../components/common/Loader/Loader';
 import ResizablePanels from '../../components/common/ResizablePanels/ResizablePanels';
 import RichTextEditor from '../../components/common/RichTextEditor/RichTextEditor';
@@ -32,6 +33,7 @@ import {
   SubscriptionCategory,
 } from '../../generated/events/eventSubscription';
 import { FilterResourceDescriptor } from '../../generated/events/filterResourceDescriptor';
+import { useApplicationStore } from '../../hooks/useApplicationStore';
 import { useFqn } from '../../hooks/useFqn';
 import {
   createNotificationAlert,
@@ -55,6 +57,7 @@ const AddNotificationPage = () => {
   const [form] = useForm<EventSubscription>();
   const history = useHistory();
   const { fqn } = useFqn();
+  const { setInlineAlertDetails, inlineAlertDetails } = useApplicationStore();
 
   const [loadingCount, setLoadingCount] = useState(0);
   const [entityFunctions, setEntityFunctions] = useState<
@@ -153,6 +156,7 @@ const AddNotificationPage = () => {
           afterSaveAction: () => {
             history.push(getNotificationAlertDetailsPath(data.name));
           },
+          setInlineAlertDetails,
         });
       } catch {
         // Error handling done in "handleAlertSave"
@@ -274,6 +278,13 @@ const AddNotificationPage = () => {
                       <Col span={24}>
                         <DestinationFormItem />
                       </Col>
+
+                      {!isUndefined(inlineAlertDetails) && (
+                        <Col span={24}>
+                          <InlineAlert {...inlineAlertDetails} />
+                        </Col>
+                      )}
+
                       <Col flex="auto" />
                       <Col flex="300px" pull="right">
                         <Button

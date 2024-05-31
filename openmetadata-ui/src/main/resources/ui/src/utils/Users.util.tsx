@@ -19,6 +19,7 @@ import { isEmpty, isUndefined, uniqueId } from 'lodash';
 import React from 'react';
 import { Link } from 'react-router-dom';
 import UserPopOverCard from '../components/common/PopOverCard/UserPopOverCard';
+import { HTTP_STATUS_CODE } from '../constants/Auth.constants';
 import { ERROR_MESSAGE } from '../constants/constants';
 import { MASKED_EMAIL } from '../constants/User.constants';
 import { EntityReference, User } from '../generated/entity/teams/user';
@@ -173,7 +174,7 @@ export const getUserCreationErrorMessage = ({
       });
     }
 
-    if (error.response?.status === 429) {
+    if (error.response?.status === HTTP_STATUS_CODE.LIMIT_REACHED) {
       return t('server.entity-limit-reached', { entity });
     }
   }

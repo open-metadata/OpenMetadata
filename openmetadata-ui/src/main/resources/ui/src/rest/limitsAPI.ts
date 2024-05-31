@@ -27,7 +27,7 @@ export const getLimitConfig = async () => {
 
 export const getLimitByResource = async (
   resource: string,
-  params: ResourceLimitsParams
+  params?: ResourceLimitsParams
 ) => {
   const response = await axiosClient.get<ResourceLimit>(
     `${BASE_URL}/features/${resource}`,
