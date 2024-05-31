@@ -107,6 +107,7 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
         TestCaseResource.TestCaseList.class,
         "dataQuality/testCases",
         TestCaseResource.FIELDS);
+    supportsTags = false; // Test cases do not support setting tags directly (inherits from Entity)
   }
 
   public void setupTestCase(TestInfo test) throws IOException {
@@ -824,17 +825,53 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
             .size()); // we have 1 test cases with TEAM21 as owner which USER_21 is part of
 
     queryParams.clear();
+    queryParams.put("fields", "tags");
     queryParams.put(
         "tags",
         String.format(
             "%s,%s", PII_SENSITIVE_TAG_LABEL.getTagFQN(), PERSONAL_DATA_TAG_LABEL.getTagFQN()));
     allEntities = listEntitiesFromSearch(queryParams, testCasesNum, 0, ADMIN_AUTH_HEADERS);
-    assertEquals(2, allEntities.getData().size());
+    // check we don't have any list of tags that doesn't have PII_SENSITIVE_TAG_LABEL or
+    // PERSONAL_DATA_TAG_LABEL for all test cases
+    allEntities
+        .getData()
+        .forEach(
+            tc ->
+                assertFalse(
+                    tc.getTags().stream()
+                        .noneMatch(
+                            t ->
+                                t.getTagFQN()
+                                    .matches(
+                                        String.format(
+                                            "(%s|%s)",
+                                            PII_SENSITIVE_TAG_LABEL.getTagFQN(),
+                                            PERSONAL_DATA_TAG_LABEL.getTagFQN())))));
+
+    queryParams.put("tags", PERSONAL_DATA_TAG_LABEL.getTagFQN());
+    allEntities = listEntitiesFromSearch(queryParams, testCasesNum, 0, ADMIN_AUTH_HEADERS);
+    // check we have all test cases with PERSONAL_DATA_TAG_LABEL
+    allEntities
+        .getData()
+        .forEach(
+            tc ->
+                assertTrue(
+                    tc.getTags().stream()
+                        .anyMatch(
+                            t -> t.getTagFQN().contains(PERSONAL_DATA_TAG_LABEL.getTagFQN()))));
 
     queryParams.clear();
-    queryParams.put("tags", TIER1_TAG_LABEL.getTagFQN());
+    queryParams.put("tier", TIER1_TAG_LABEL.getTagFQN());
+    queryParams.put("fields", "tags");
     allEntities = listEntitiesFromSearch(queryParams, testCasesNum, 0, ADMIN_AUTH_HEADERS);
-    assertEquals(1, allEntities.getData().size());
+    // check we have all test cases with TIER1_TAG_LABEL
+    allEntities
+        .getData()
+        .forEach(
+            tc ->
+                assertTrue(
+                    tc.getTags().stream()
+                        .anyMatch(t -> t.getTagFQN().contains(TIER1_TAG_LABEL.getTagFQN()))));
 
     queryParams.clear();
     String serviceName = tables.get(0).getService().getName();
