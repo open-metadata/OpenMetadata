@@ -245,6 +245,25 @@ overrides:
       jest/valid-describe:
         - off
 
+  # Explicit assertions not required in most Playwright tests
+  - files:
+      - playwright/**
+    rules:
+      jest/expect-expect:
+        - off
+      jest/valid-expect-in-promise:
+        - off
+      jest/valid-expect:
+        - off
+      jest/valid-describe:
+        - off
+      jest/consistent-test-it:
+        - off
+      jest/no-done-callback:
+        - off
+      jest/no-standalone-expect:
+        - off
+
   # i18next rule is not required for js, jsx, json and test file
   - files:
       - src/**/*.{js,jsx,json}
