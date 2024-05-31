@@ -92,4 +92,4 @@ RUN pip install psycopg2 mysqlclient==2.1.1
 # Make required folders for openmetadata-airflow-apis
 RUN mkdir -p /opt/airflow/dag_generated_configs
 # This is required as it's responsible to create airflow.cfg file
-RUN airflow db init && rm -f /opt/airflow/airflow.db
+RUN airflow db migrate && rm -f /opt/airflow/airflow.db

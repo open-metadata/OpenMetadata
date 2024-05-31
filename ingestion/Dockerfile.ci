@@ -106,4 +106,4 @@ RUN mkdir -p /opt/airflow/dag_generated_configs
 
 EXPOSE 8080
 # This is required as it's responsible to create airflow.cfg file
-RUN airflow db init && rm -f /opt/airflow/airflow.db
+RUN airflow db migrate && rm -f /opt/airflow/airflow.db
