@@ -615,27 +615,26 @@ class BigquerySource(
         Get the DDL statement or View Definition for a table
         """
         try:
-            if self.source_config.includeDDL:
-                if table_type == TableType.View:
-                    view_definition = inspector.get_view_definition(
-                        fqn._build(self.context.get().database, schema_name, table_name)
-                    )
-                    view_definition = (
-                        f"CREATE VIEW {schema_name}.{table_name} AS {str(view_definition)}"
-                        if view_definition is not None
-                        else None
-                    )
-                    return view_definition
-
-                schema_definition = inspector.get_table_ddl(
-                    self.connection, table_name, schema_name
+            if table_type == TableType.View:
+                view_definition = inspector.get_view_definition(
+                    fqn._build(self.context.get().database, schema_name, table_name)
                 )
-                schema_definition = (
-                    str(schema_definition).strip()
-                    if schema_definition is not None
+                view_definition = (
+                    f"CREATE VIEW {schema_name}.{table_name} AS {str(view_definition)}"
+                    if view_definition is not None
                     else None
                 )
-                return schema_definition
+                return view_definition
+
+            schema_definition = inspector.get_table_ddl(
+                self.connection, table_name, schema_name
+            )
+            schema_definition = (
+                str(schema_definition).strip()
+                if schema_definition is not None
+                else None
+            )
+            return schema_definition
         except NotImplementedError:
             logger.warning("Schema definition not implemented")
         return None

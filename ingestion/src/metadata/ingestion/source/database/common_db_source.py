@@ -366,22 +366,21 @@ class CommonDbSourceService(
         Get the DDL statement or View Definition for a table
         """
         try:
-            if self.source_config.includeDDL:
-                schema_definition = None
-                if table_type in (TableType.View, TableType.MaterializedView):
-                    schema_definition = inspector.get_view_definition(
-                        table_name, schema_name
-                    )
-                elif hasattr(inspector, "get_table_ddl"):
-                    schema_definition = inspector.get_table_ddl(
-                        self.connection, table_name, schema_name
-                    )
-                schema_definition = (
-                    str(schema_definition).strip()
-                    if schema_definition is not None
-                    else None
+            schema_definition = None
+            if table_type in (TableType.View, TableType.MaterializedView):
+                schema_definition = inspector.get_view_definition(
+                    table_name, schema_name
                 )
-                return schema_definition
+            elif hasattr(inspector, "get_table_ddl"):
+                schema_definition = inspector.get_table_ddl(
+                    self.connection, table_name, schema_name
+                )
+            schema_definition = (
+                str(schema_definition).strip()
+                if schema_definition is not None
+                else None
+            )
+            return schema_definition
 
         except NotImplementedError:
             logger.warning("Schema definition not implemented")
@@ -459,12 +458,17 @@ class CommonDbSourceService(
                 inspector=self.inspector,
             )
 
-            schema_definition = self.get_schema_definition(
-                table_type=table_type,
-                table_name=table_name,
-                schema_name=schema_name,
-                inspector=self.inspector,
+            schema_definition = (
+                self.get_schema_definition(
+                    table_type=table_type,
+                    table_name=table_name,
+                    schema_name=schema_name,
+                    inspector=self.inspector,
+                )
+                if self.source_config.includeDDL
+                else None
             )
+
             table_constraints = self.update_table_constraints(
                 table_constraints, foreign_columns
             )

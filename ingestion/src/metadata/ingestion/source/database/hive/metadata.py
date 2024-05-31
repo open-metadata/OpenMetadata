@@ -106,16 +106,13 @@ class HiveSource(CommonDbSourceService):
         Get the DDL statement or View Definition for a table
         """
         try:
-            if self.source_config.includeDDL:
-                schema_definition = inspector.get_view_definition(
-                    table_name, schema_name
-                )
-                schema_definition = (
-                    str(schema_definition).strip()
-                    if schema_definition is not None
-                    else None
-                )
-                return schema_definition
+            schema_definition = inspector.get_view_definition(table_name, schema_name)
+            schema_definition = (
+                str(schema_definition).strip()
+                if schema_definition is not None
+                else None
+            )
+            return schema_definition
 
         except NotImplementedError:
             logger.warning("Schema definition not implemented")

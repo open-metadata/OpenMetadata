@@ -153,20 +153,22 @@ class ClickhouseSource(CommonDbSourceService):
         Get the DDL statement or View Definition for a table
         """
         try:
-            if self.source_config.includeDDL:
-                if table_type in {TableType.View, TableType.MaterializedView}:
-                    definition_fn = inspector.get_view_definition
-                    schema_definition = definition_fn(table_name, schema_name)
-                else:
-                    schema_definition = inspector.get_table_ddl(
-                        self.connection, table_name, schema_name
-                    )
-                schema_definition = (
+            if table_type in {TableType.View, TableType.MaterializedView}:
+                definition_fn = inspector.get_view_definition
+                schema_definition = definition_fn(table_name, schema_name)
+                return (
                     str(schema_definition).strip()
                     if schema_definition is not None
                     else None
                 )
-                return schema_definition
+            schema_definition = inspector.get_table_ddl(
+                self.connection, table_name, schema_name
+            )
+            return (
+                str(schema_definition).strip()
+                if schema_definition is not None
+                else None
+            )
 
         except NotImplementedError:
             logger.warning("Schema definition not implemented")
