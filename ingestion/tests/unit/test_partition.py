@@ -31,8 +31,8 @@ from metadata.utils.partition import get_partition_details
 
 
 class MockTable(BaseModel):
-    tablePartition: Optional[TablePartition]
-    tableProfilerConfig: Optional[TableProfilerConfig]
+    tablePartition: Optional[TablePartition] = None
+    tableProfilerConfig: Optional[TableProfilerConfig] = None
     serviceType: DatabaseServiceType = DatabaseServiceType.BigQuery
 
     class Config:
@@ -40,8 +40,8 @@ class MockTable(BaseModel):
 
 
 class MockRedshiftTable(BaseModel):
-    tablePartition: Optional[TablePartition]
-    tableProfilerConfig: Optional[TableProfilerConfig]
+    tablePartition: Optional[TablePartition] = None
+    tableProfilerConfig: Optional[TableProfilerConfig] = None
     serviceType: DatabaseServiceType = DatabaseServiceType.Redshift
 
     class Config:
@@ -49,8 +49,8 @@ class MockRedshiftTable(BaseModel):
 
 
 class MockAthenaTable(BaseModel):
-    tablePartition: Optional[TablePartition]
-    tableProfilerConfig: Optional[TableProfilerConfig]
+    tablePartition: Optional[TablePartition] = None
+    tableProfilerConfig: Optional[TableProfilerConfig] = None
     serviceType: DatabaseServiceType = DatabaseServiceType.Athena
 
     class Config:

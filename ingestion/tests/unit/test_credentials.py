@@ -13,7 +13,7 @@ Test Credentials helper module
 """
 from unittest import TestCase
 
-from pydantic import SecretStr, AnyUrl
+from pydantic import AnyUrl, SecretStr
 
 from metadata.generated.schema.security.credentials.gcpExternalAccount import (
     GcpExternalAccount,

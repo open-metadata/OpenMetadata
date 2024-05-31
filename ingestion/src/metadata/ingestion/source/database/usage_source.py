@@ -14,7 +14,7 @@ Usage Source Module
 import csv
 import traceback
 from abc import ABC
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Iterable
 
 from metadata.generated.schema.type.basic import DateTime
@@ -44,13 +44,19 @@ class UsageSource(QueryParserSource, ABC):
             ) as fin:
                 for record in csv.DictReader(fin):
                     query_dict = dict(record)
-                    analysis_date = (
-                        datetime.utcnow()
-                        if not query_dict.get("start_time")
-                        else datetime.strptime(
+
+                    # Prepare the timezone aware analysis date
+                    if query_dict.get("start_time"):
+                        # We allow reading the start_time without timezone for simplicity for users
+                        timestamp = datetime.strptime(
                             query_dict.get("start_time"), "%Y-%m-%d %H:%M:%S.%f"
+                        ).timestamp()
+                        analysis_date = datetime.fromtimestamp(
+                            timestamp, tz=timezone.utc
                         )
-                    )
+                    else:
+                        analysis_date = datetime.now(tz=timezone.utc)
+
                     query_list.append(
                         TableQuery(
                             query=query_dict["query_text"],
@@ -58,7 +64,7 @@ class UsageSource(QueryParserSource, ABC):
                             startTime=query_dict.get("start_time", ""),
                             endTime=query_dict.get("end_time", ""),
                             duration=query_dict.get("duration"),
-                            analysisDate=analysis_date,
+                            analysisDate=DateTime(analysis_date),
                             aborted=self.get_aborted_status(query_dict),
                             databaseName=self.get_database_name(query_dict),
                             serviceName=self.config.serviceName,

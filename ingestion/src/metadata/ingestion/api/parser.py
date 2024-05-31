@@ -261,7 +261,7 @@ def _parse_validation_err(validation_error: ValidationError) -> str:
         if len(err.get("loc")) == 1
         else f"Extra parameter in {err.get('loc')}"
         for err in validation_error.errors()
-        if err.get("type") == "value_error.extra"
+        if err.get("type") == "extra_forbidden"
     ]
 
     extra_fields = [
@@ -269,7 +269,7 @@ def _parse_validation_err(validation_error: ValidationError) -> str:
         if len(err.get("loc")) == 1
         else f"Missing parameter in {err.get('loc')}"
         for err in validation_error.errors()
-        if err.get("type") == "value_error.missing"
+        if err.get("type") == "missing"
     ]
 
     invalid_fields = [
@@ -277,7 +277,7 @@ def _parse_validation_err(validation_error: ValidationError) -> str:
         if len(err.get("loc")) == 1
         else f"Invalid parameter value for {err.get('loc')}"
         for err in validation_error.errors()
-        if err.get("type") not in ("value_error.missing", "value_error.extra")
+        if err.get("type") not in ("missing", "extra")
     ]
 
     return "\t - " + "\n\t - ".join(missing_fields + extra_fields + invalid_fields)
@@ -447,11 +447,7 @@ def parse_workflow_config_gracefully(
         except (ValidationError, InvalidWorkflowException) as scoped_error:
             if isinstance(scoped_error, ValidationError):
                 # Let's catch validations of internal Workflow models, not the Workflow itself
-                object_error = (
-                    scoped_error.model.__name__
-                    if scoped_error.model is not None
-                    else "workflow"
-                )
+                object_error = scoped_error.title or "workflow"
                 raise ParsingConfigurationError(
                     f"We encountered an error parsing the configuration of your {object_error}.\n"
                     "You might need to review your config based on the original cause of this failure:\n"

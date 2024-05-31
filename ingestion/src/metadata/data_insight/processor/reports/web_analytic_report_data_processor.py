@@ -273,7 +273,7 @@ class WebAnalyticUserActivityReportDataProcessor(DataProcessor):
 
         return {
             "totalSessions": total_sessions,
-            "totalSessionDuration": total_session_duration_seconds,
+            "totalSessionDuration": int(total_session_duration_seconds),
         }
 
     def _get_user_details(self, user_id: str) -> dict:
@@ -303,7 +303,7 @@ class WebAnalyticUserActivityReportDataProcessor(DataProcessor):
         }
 
     def _refine_user_event(self) -> Generator[dict, WebAnalyticEventData, None]:
-        """Corountine to process user event from web analytic event
+        """Coroutine to process user event from web analytic event
 
         Yields:
             Generator[dict, WebAnalyticEventData, None]: _description_

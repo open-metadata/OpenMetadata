@@ -39,6 +39,7 @@ from metadata.generated.schema.entity.data.table import (
 from metadata.generated.schema.entity.services.connections.database.datalakeConnection import (
     DatalakeConnection,
 )
+from metadata.generated.schema.type.basic import Timestamp
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.source import sqa_types
 from metadata.profiler.interface.pandas.profiler_interface import (
@@ -279,7 +280,7 @@ class ProfilerTest(TestCase):
         profiler._check_profile_and_handle(
             CreateTableProfileRequest(
                 tableProfile=TableProfile(
-                    timestamp=datetime.now().timestamp(), columnCount=10
+                    timestamp=Timestamp(int(datetime.now().timestamp())), columnCount=10
                 )
             )
         )
@@ -288,7 +289,8 @@ class ProfilerTest(TestCase):
             profiler._check_profile_and_handle(
                 CreateTableProfileRequest(
                     tableProfile=TableProfile(
-                        timestamp=datetime.now().timestamp(), profileSample=100
+                        timestamp=Timestamp(int(datetime.now().timestamp())),
+                        profileSample=100,
                     )
                 )
             )

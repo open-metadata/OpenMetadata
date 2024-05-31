@@ -35,6 +35,7 @@ from metadata.generated.schema.entity.data.table import (
 from metadata.generated.schema.entity.services.connections.database.datalakeConnection import (
     DatalakeConnection,
 )
+from metadata.generated.schema.type.basic import Timestamp
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.profiler.api.models import ThreadPoolMetrics
 from metadata.profiler.interface.pandas.profiler_interface import (
@@ -253,7 +254,7 @@ class PandasInterfaceTest(TestCase):
         table_profile = TableProfile(
             columnCount=profile_results["table"].get("columnCount"),
             rowCount=profile_results["table"].get(RowCount.name()),
-            timestamp=datetime.now(tz=timezone.utc).timestamp(),
+            timestamp=Timestamp(int(datetime.now(tz=timezone.utc).timestamp())),
         )
 
         profile_request = CreateTableProfileRequest(

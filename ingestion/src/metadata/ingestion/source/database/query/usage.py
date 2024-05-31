@@ -24,7 +24,7 @@ from metadata.ingestion.source.database.usage_source import UsageSource
 class QueryLogUsageSource(UsageSource):
     def __init__(self, config: WorkflowSource, metadata: OpenMetadata):
         super().__init__(config, metadata)
-        self.analysis_date = datetime.today().strftime("%Y-%m-%d %H:%M:%S")
+        self.analysis_date = datetime.utcnow().date().strftime("%Y-%m-%d %H:%M:%S")
 
     @classmethod
     def create(

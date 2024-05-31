@@ -14,7 +14,8 @@ Validate entity data processor class
 """
 
 import unittest
-from unittest.mock import MagicMock, patch
+import uuid
+from unittest.mock import patch
 from uuid import UUID
 
 from metadata.data_insight.processor.reports.data_processor import DataProcessor
@@ -35,6 +36,12 @@ from metadata.generated.schema.analytics.webAnalyticEventData import (
 from metadata.generated.schema.analytics.webAnalyticEventType.pageViewEvent import (
     PageViewData,
 )
+from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
+    OpenMetadataConnection,
+)
+from metadata.generated.schema.entity.teams.user import User
+from metadata.generated.schema.type.basic import Email, EntityName, Uuid
+from metadata.ingestion.ometa.ometa_api import OpenMetadata
 
 WEB_ANALYTIC_EVENTS = [
     WebAnalyticEventData(
@@ -87,16 +94,36 @@ WEB_ANALYTIC_EVENTS = [
     ),
 ]
 
+OMETA = OpenMetadata(
+    OpenMetadataConnection.model_validate(
+        {
+            "hostPort": "http://localhost:8585/api",
+            "authProvider": "openmetadata",
+            "securityConfig": {"jwtToken": "token"},
+            "enableVersionValidation": "false",
+        }
+    )
+)
+
 USER_DETAILS = {"name": "aaron_johnson0", "team": "sales"}
+MOCK_OWNER = User(
+    id=Uuid(uuid.uuid4()),
+    name=EntityName("aaron_johnson0"),
+    email=Email("aaron_johnson0@test.com"),
+)
 
 
 class WebAnalyticEntityViewReportDataProcessorTest(unittest.TestCase):
-    @patch("metadata.ingestion.ometa.ometa_api.OpenMetadata", return_value=MagicMock())
+    @patch.object(
+        OpenMetadata,
+        "get_by_name",
+        return_value=MOCK_OWNER,
+    )
     def test_refine(self, mocked_ometa):
-        """Check fecth owner returns the expected value"""
+        """Check fetch owner returns the expected value"""
         web_analytic_entity_report_data = {}
         processor = DataProcessor.create(
-            ReportDataType.webAnalyticEntityViewReportData.value, mocked_ometa
+            ReportDataType.webAnalyticEntityViewReportData.value, OMETA
         )
         processor._pre_hook_fn()
         for event in WEB_ANALYTIC_EVENTS:
@@ -118,16 +145,15 @@ class WebAnalyticEntityViewReportDataProcessorTest(unittest.TestCase):
 
 
 class WebAnalyticUserActivityReportDataProcessorTest(unittest.TestCase):
-    @patch("metadata.ingestion.ometa.ometa_api.OpenMetadata", return_value=MagicMock())
     @patch.object(
         WebAnalyticUserActivityReportDataProcessor,
         "_get_user_details",
         return_value=USER_DETAILS,
     )
-    def test_refine(self, mocked_ometa, mocked_user_details):
-        """Check fecth owner returns the expected value"""
+    def test_refine(self, mocked_user_details):
+        """Check fetch owner returns the expected value"""
         processor = DataProcessor.create(
-            ReportDataType.webAnalyticUserActivityReportData.value, mocked_ometa
+            ReportDataType.webAnalyticUserActivityReportData.value, OMETA
         )
         processor._pre_hook_fn()
         for event in WEB_ANALYTIC_EVENTS:
