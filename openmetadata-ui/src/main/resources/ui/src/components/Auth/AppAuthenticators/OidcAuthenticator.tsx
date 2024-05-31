@@ -75,7 +75,7 @@ const OidcAuthenticator = forwardRef<AuthenticatorRef, Props>(
     } = useApplicationStore();
     const history = useHistory();
     const userManager = useMemo(
-      () => makeUserManager(userConfig),
+      () => makeUserManager({ ...userConfig, silentRequestTimeout: 20000 }),
       [userConfig]
     );
 
