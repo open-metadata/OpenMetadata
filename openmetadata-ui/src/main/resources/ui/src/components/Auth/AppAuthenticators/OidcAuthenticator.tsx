@@ -75,7 +75,7 @@ const OidcAuthenticator = forwardRef<AuthenticatorRef, Props>(
     } = useApplicationStore();
     const history = useHistory();
     const userManager = useMemo(
-      () => makeUserManager(userConfig),
+      () => makeUserManager({ ...userConfig, silentRequestTimeout: 20000 }),
       [userConfig]
     );
 
@@ -176,16 +176,19 @@ const OidcAuthenticator = forwardRef<AuthenticatorRef, Props>(
             )}
           />
 
-          {/* render the children only if user is authenticated */}
-          {isAuthenticated ? (
-            <Fragment>{children}</Fragment>
-          ) : // render the sign in page if user is not authenticated and not signing up
-          !isSigningUp && isEmpty(currentUser) && isEmpty(newUser) ? (
-            <Redirect to={ROUTES.SIGNIN} />
-          ) : (
-            // render the authenticator component to handle the auth flow while user is signing in
-            <AppWithAuth />
-          )}
+          {!window.location.pathname.includes(ROUTES.SILENT_CALLBACK) &&
+            // render the children only if user is authenticated
+            (isAuthenticated ? (
+              !window.location.pathname.includes(ROUTES.SILENT_CALLBACK) && (
+                <Fragment>{children}</Fragment>
+              )
+            ) : // render the sign in page if user is not authenticated and not signing up
+            !isSigningUp && isEmpty(currentUser) && isEmpty(newUser) ? (
+              <Redirect to={ROUTES.SIGNIN} />
+            ) : (
+              // render the authenticator component to handle the auth flow while user is signing in
+              <AppWithAuth />
+            ))}
         </Switch>
 
         {/* show loader when application is loading and user is signing up*/}
