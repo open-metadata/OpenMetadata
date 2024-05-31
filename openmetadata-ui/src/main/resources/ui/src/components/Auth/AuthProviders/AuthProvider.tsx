@@ -305,14 +305,6 @@ export const AuthProvider = ({
         resetUserDetails(forceLogout);
       }
     } catch (error) {
-      const err = error as AxiosError;
-      if (err.message.includes('Frame window timed out')) {
-        // Start expiry timer if silent signIn is timed out
-        // eslint-disable-next-line @typescript-eslint/no-use-before-define
-        startTokenExpiryTimer();
-
-        return;
-      }
       // reset user details if silent signIn fails
       resetUserDetails(forceLogout);
     }
