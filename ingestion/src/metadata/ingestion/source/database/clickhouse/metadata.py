@@ -162,7 +162,7 @@ class ClickhouseSource(CommonDbSourceService):
                         self.connection, table_name, schema_name
                     )
                 schema_definition = (
-                    str(schema_definition.strip())
+                    str(schema_definition).strip()
                     if schema_definition is not None
                     else None
                 )
