@@ -32,7 +32,8 @@ import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.JsonUtils;
 
 public interface SearchIndex {
-  Set<String> DEFAULT_EXCLUDED_FIELDS = Set.of("changeDescription");
+  Set<String> DEFAULT_EXCLUDED_FIELDS =
+      Set.of("changeDescription", "lineage.pipeline.changeDescription");
 
   default Map<String, Object> buildSearchIndexDoc() {
     Map<String, Object> esDoc = JsonUtils.getMap(getEntity());
