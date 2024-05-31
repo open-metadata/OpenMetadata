@@ -20,12 +20,7 @@ import { DataProduct } from '../generated/entity/domains/dataProduct';
 import { Domain } from '../generated/entity/domains/domain';
 import { Team } from '../generated/entity/teams/team';
 import { User } from '../generated/entity/teams/user';
-import {
-  SearchHitBody,
-  SearchResponse,
-  TeamSearchSource,
-  UserSearchSource,
-} from '../interface/search.interface';
+import { SearchResponse } from '../interface/search.interface';
 
 export type SearchEntityHits = SearchResponse<
   | SearchIndex.DATA_PRODUCT
@@ -99,52 +94,38 @@ export const formatDataResponse = (
   return formattedData;
 };
 
-export const getUserResponse = (
-  d: SearchHitBody<
-    SearchIndex.USER,
-    Pick<UserSearchSource, keyof UserSearchSource>
-  >
-) => {
-  return {
-    name: d._source.name,
-    displayName: d._source.displayName,
-    fullyQualifiedName: d._source.fullyQualifiedName,
-    email: d._source.email,
-    type: d._source.entityType,
-    id: d._source.id,
-    teams: d._source.teams,
-    roles: d._source.roles,
-    href: d._source.href,
-  };
-};
-
-export const getTeamResponse = (
-  d: SearchHitBody<
-    SearchIndex.TEAM,
-    Pick<TeamSearchSource, keyof TeamSearchSource>
-  >
-) => {
-  return {
-    name: d._source.name,
-    displayName: d._source.displayName,
-    type: d._source.entityType,
-    id: d._source.id,
-    isJoinable: d._source.isJoinable,
-    teamType: d._source.teamType,
-    href: d._source.href,
-  };
-};
-
 export const formatUsersResponse = (
   hits: SearchResponse<SearchIndex.USER>['hits']['hits']
 ): User[] => {
-  return hits.map((d) => getUserResponse(d));
+  return hits.map((d) => {
+    return {
+      name: d._source.name,
+      displayName: d._source.displayName,
+      fullyQualifiedName: d._source.fullyQualifiedName,
+      email: d._source.email,
+      type: d._source.entityType,
+      id: d._source.id,
+      teams: d._source.teams,
+      roles: d._source.roles,
+      href: d._source.href,
+    };
+  });
 };
 
 export const formatTeamsResponse = (
   hits: SearchResponse<SearchIndex.TEAM>['hits']['hits']
 ): Team[] => {
-  return hits.map((d) => getTeamResponse(d));
+  return hits.map((d) => {
+    return {
+      name: d._source.name,
+      displayName: d._source.displayName,
+      type: d._source.entityType,
+      id: d._source.id,
+      isJoinable: d._source.isJoinable,
+      teamType: d._source.teamType,
+      href: d._source.href,
+    };
+  });
 };
 
 export const formatDomainsResponse = (
