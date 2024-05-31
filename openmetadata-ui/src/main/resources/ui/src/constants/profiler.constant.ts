@@ -423,6 +423,8 @@ export const TEST_CASE_FILTERS = {
   type: 'testCaseType',
   status: 'testCaseStatus',
   lastRun: 'lastRunRange',
+  tier: 'tier',
+  tags: 'tags',
 };
 
 export const TEST_CASE_PLATFORM_OPTION = values(TestPlatform).map((value) => ({

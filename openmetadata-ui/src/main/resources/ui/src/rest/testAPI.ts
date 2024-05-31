@@ -74,6 +74,8 @@ export type ListTestCaseParamsBySearch = ListTestCaseParams & {
   testPlatforms?: TestPlatform[];
   offset?: number;
   owner?: string;
+  tags?: string;
+  tier?: string;
 };
 
 export type ListTestDefinitionsParams = ListParams & {

@@ -39,5 +39,7 @@ export const buildTestCaseParams = (
     ...filterParams('testPlatforms', TEST_CASE_FILTERS.platform),
     ...filterParams('testCaseType', TEST_CASE_FILTERS.type),
     ...filterParams('testCaseStatus', TEST_CASE_FILTERS.status),
+    ...filterParams('tags', TEST_CASE_FILTERS.tags),
+    ...filterParams('tier', TEST_CASE_FILTERS.tier),
   };
 };
