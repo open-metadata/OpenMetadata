@@ -12,9 +12,10 @@
 Databricks usage module
 """
 import traceback
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Iterable
 
+from metadata.generated.schema.type.basic import DateTime
 from metadata.generated.schema.type.tableQuery import TableQueries, TableQuery
 from metadata.ingestion.source.database.databricks.query_parser import (
     DatabricksQueryParserSource,
@@ -48,7 +49,7 @@ class DatabricksUsageSource(DatabricksQueryParserSource, UsageSource):
                             userName=row.get("user_name"),
                             startTime=row.get("query_start_time_ms"),
                             endTime=row.get("execution_end_time_ms"),
-                            analysisDate=datetime.now(),
+                            analysisDate=DateTime(datetime.now(tz=timezone.utc)),
                             serviceName=self.config.serviceName,
                             duration=row.get("duration")
                             if row.get("duration")

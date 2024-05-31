@@ -4,7 +4,8 @@ RUN curl -sS https://packages.microsoft.com/keys/microsoft.asc | apt-key add -
 RUN curl -sS https://packages.microsoft.com/config/debian/11/prod.list > /etc/apt/sources.list.d/mssql-release.list
 
 # Install Dependencies (listed in alphabetical order)
-RUN apt-get -qq update \
+RUN dpkg --configure -a \
+    && apt-get -qq update \
     && apt-get -qq install -y \
     alien \
     build-essential \

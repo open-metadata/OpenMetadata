@@ -64,10 +64,10 @@ class DomoDashboardDetails(DomoBaseModel):
     Response from Domo API
     """
 
-    cardIds: Optional[List[int]]
-    collectionIds: Optional[List[int]]
-    description: Optional[str]
-    owners: Optional[List[DomoOwner]]
+    cardIds: Optional[List[int]] = None
+    collectionIds: Optional[List[int]] = None
+    description: Optional[str] = None
+    owners: Optional[List[DomoOwner]] = None
 
 
 class DomoChartMetadataDetails(BaseModel):
@@ -87,7 +87,7 @@ class DomoChartDetails(DomoBaseModel):
     """
 
     metadata: DomoChartMetadataDetails
-    description: Optional[str]
+    description: Optional[str] = None
 
 
 class DomoClient:

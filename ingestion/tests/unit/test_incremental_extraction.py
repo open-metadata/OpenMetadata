@@ -23,6 +23,7 @@ from metadata.generated.schema.entity.services.ingestionPipelines.ingestionPipel
 from metadata.generated.schema.metadataIngestion.databaseServiceMetadataPipeline import (
     Incremental,
 )
+from metadata.generated.schema.type.basic import Timestamp
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.database.incremental_metadata_extraction import (
     MILLISECONDS_IN_ONE_DAY,
@@ -36,10 +37,12 @@ INCREMENTAL_CONFIG_ENABLED = {
     "input": {
         "incremental_config": Incremental(enabled=True, safetyMarginDays=1),
         "pipeline_runs": [
-            PipelineStatus(runId=1, pipelineState=PipelineState.failed),
+            PipelineStatus(runId="1", pipelineState=PipelineState.failed),
             PipelineStatus(
-                runId=2,
-                startDate=int(datetime.timestamp(datetime(2024, 1, 1)) * 1000),
+                runId="2",
+                startDate=Timestamp(
+                    int(datetime.timestamp(datetime(2024, 1, 1)) * 1000)
+                ),
                 pipelineState=PipelineState.success,
             ),
         ],

@@ -9,10 +9,11 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 """Test pydantic v2 models serialize data as pydantic v1"""
-from datetime import datetime
+from datetime import datetime, timezone
 
 from pydantic.v1 import BaseModel as BaseModelV1
 
+from metadata.generated.schema.type.basic import DateTime
 from metadata.ingestion.models.custom_pydantic import BaseModel
 
 
@@ -71,3 +72,9 @@ def test_nested_dump():
     json_v2 = model_v2.model_dump_json()
 
     assert json_v1 == json_v2
+
+
+def test_tz_aware_date():
+    """Validate how we can create "aware" datetime objects"""
+
+    DateTime(datetime.now(tz=timezone.utc))

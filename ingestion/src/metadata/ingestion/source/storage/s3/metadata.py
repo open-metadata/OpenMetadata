@@ -12,7 +12,7 @@
 import json
 import secrets
 import traceback
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from enum import Enum
 from typing import Dict, Iterable, List, Optional
 
@@ -305,9 +305,9 @@ class S3Source(StorageServiceSource):
                         },
                     },
                 ],
-                StartTime=datetime.now() - timedelta(days=2),
+                StartTime=datetime.now(tz=timezone.utc) - timedelta(days=2),
                 # metrics generated daily, ensure there is at least 1 entry
-                EndTime=datetime.now(),
+                EndTime=datetime.now(tz=timezone.utc),
                 ScanBy="TimestampDescending",
             )
             if raw_result["MetricDataResults"]:

@@ -13,7 +13,7 @@ Add methods to the workflows for updating the IngestionPipeline status
 """
 import traceback
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional, Tuple
 
 from metadata.config.common import WorkflowExecutionError
@@ -98,7 +98,9 @@ class WorkflowStatusMixin:
                     pipeline_status = self._new_pipeline_status(state)
                 else:
                     # if workflow is ended then update the end date in status
-                    pipeline_status.endDate = datetime.now().timestamp() * 1000
+                    pipeline_status.endDate = (
+                        datetime.now(tz=timezone.utc).timestamp() * 1000
+                    )
                     pipeline_status.pipelineState = state
 
                 pipeline_status.status = (

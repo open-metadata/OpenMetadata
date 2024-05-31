@@ -109,11 +109,6 @@ EXPECTED_DATA_MODELS = [
             deleted=None,
             href=AnyUrl(
                 "http://localhost:8585/api/v1/users/cb2a92f5-e935-4ad7-911c-654280046538",
-                scheme="http",
-                host="localhost",
-                host_type="int_domain",
-                port="8585",
-                path="/api/v1/users/cb2a92f5-e935-4ad7-911c-654280046538",
             ),
         ),
         tags=[
@@ -177,11 +172,6 @@ EXPECTED_DATA_MODEL_NULL_DB = [
             deleted=None,
             href=AnyUrl(
                 "http://localhost:8585/api/v1/users/cb2a92f5-e935-4ad7-911c-654280046538",
-                scheme="http",
-                host="localhost",
-                host_type="int_domain",
-                port="8585",
-                path="/api/v1/users/cb2a92f5-e935-4ad7-911c-654280046538",
             ),
         ),
         tags=None,
@@ -208,11 +198,6 @@ MOCK_OWNER = EntityReference(
     deleted=None,
     href=AnyUrl(
         "http://localhost:8585/api/v1/users/cb2a92f5-e935-4ad7-911c-654280046538",
-        scheme="http",
-        host="localhost",
-        host_type="int_domain",
-        port="8585",
-        path="/api/v1/users/cb2a92f5-e935-4ad7-911c-654280046538",
     ),
 )
 

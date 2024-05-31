@@ -1341,21 +1341,26 @@ class SampleDataSource(
                             createDateTime=profile.get("createDateTime"),
                             sizeInByte=profile.get("sizeInByte"),
                             customMetrics=profile.get("customMetrics"),
-                            timestamp=int(
-                                (
-                                    datetime.now(tz=timezone.utc) - timedelta(days=days)
-                                ).timestamp()
-                                * 1000
-                            ),
-                        ),
-                        columnProfile=[
-                            ColumnProfile(
-                                timestamp=int(
+                            timestamp=Timestamp(
+                                int(
                                     (
                                         datetime.now(tz=timezone.utc)
                                         - timedelta(days=days)
                                     ).timestamp()
                                     * 1000
+                                )
+                            ),
+                        ),
+                        columnProfile=[
+                            ColumnProfile(
+                                timestamp=Timestamp(
+                                    int(
+                                        (
+                                            datetime.now(tz=timezone.utc)
+                                            - timedelta(days=days)
+                                        ).timestamp()
+                                        * 1000
+                                    )
                                 ),
                                 **col_profile,
                             )
@@ -1363,14 +1368,16 @@ class SampleDataSource(
                         ],
                         systemProfile=[
                             SystemProfile(
-                                timestamp=int(
-                                    (
-                                        datetime.now(tz=timezone.utc)
-                                        - timedelta(
-                                            days=days, hours=random.randint(0, 24)
-                                        )
-                                    ).timestamp()
-                                    * 1000
+                                timestamp=Timestamp(
+                                    int(
+                                        (
+                                            datetime.now(tz=timezone.utc)
+                                            - timedelta(
+                                                days=days, hours=random.randint(0, 24)
+                                            )
+                                        ).timestamp()
+                                        * 1000
+                                    )
                                 ),
                                 **system_profile,
                             )
@@ -1510,9 +1517,14 @@ class SampleDataSource(
                 for days, result in enumerate(test_case_results["results"]):
                     test_case_result_req = OMetaTestCaseResultsSample(
                         test_case_results=TestCaseResult(
-                            timestamp=int(
-                                (datetime.now() - timedelta(days=days)).timestamp()
-                                * 1000
+                            timestamp=Timestamp(
+                                int(
+                                    (
+                                        datetime.now(tz=timezone.utc)
+                                        - timedelta(days=days)
+                                    ).timestamp()
+                                    * 1000
+                                )
                             ),
                             testCaseStatus=result["testCaseStatus"],
                             result=result["result"],
@@ -1558,7 +1570,10 @@ class SampleDataSource(
                         reportDataType=report_datum["reportDataType"],
                         timestamp=Timestamp(
                             root=int(
-                                (datetime.now() - timedelta(days=i)).timestamp() * 1000
+                                (
+                                    datetime.now(tz=timezone.utc) - timedelta(days=i)
+                                ).timestamp()
+                                * 1000
                             )
                         ),
                         data=report_datum["data"],
@@ -1573,39 +1588,45 @@ class SampleDataSource(
             life_cycle = table_life_cycle["lifeCycle"]
             life_cycle_data = LifeCycle()
             life_cycle_data.created = AccessDetails(
-                timestamp=convert_timestamp_to_milliseconds(
-                    int(
-                        (
-                            datetime.now()
-                            - timedelta(days=life_cycle["created"]["days"])
-                        ).timestamp()
-                    )
-                ),
-                accessedByAProcess=life_cycle["created"].get("accessedByAProcess"),
+                timestamp=Timestamp(
+                    convert_timestamp_to_milliseconds(
+                        int(
+                            (
+                                datetime.now(tz=timezone.utc)
+                                - timedelta(days=life_cycle["created"]["days"])
+                            ).timestamp()
+                        )
+                    ),
+                    accessedByAProcess=life_cycle["created"].get("accessedByAProcess"),
+                )
             )
 
             life_cycle_data.updated = AccessDetails(
-                timestamp=convert_timestamp_to_milliseconds(
-                    int(
-                        (
-                            datetime.now()
-                            - timedelta(days=life_cycle["updated"]["days"])
-                        ).timestamp()
-                    )
-                ),
-                accessedByAProcess=life_cycle["updated"].get("accessedByAProcess"),
+                timestamp=Timestamp(
+                    convert_timestamp_to_milliseconds(
+                        int(
+                            (
+                                datetime.now(tz=timezone.utc)
+                                - timedelta(days=life_cycle["updated"]["days"])
+                            ).timestamp()
+                        )
+                    ),
+                    accessedByAProcess=life_cycle["updated"].get("accessedByAProcess"),
+                )
             )
 
             life_cycle_data.accessed = AccessDetails(
-                timestamp=convert_timestamp_to_milliseconds(
-                    int(
-                        (
-                            datetime.now()
-                            - timedelta(days=life_cycle["accessed"]["days"])
-                        ).timestamp()
-                    )
-                ),
-                accessedByAProcess=life_cycle["accessed"].get("accessedByAProcess"),
+                timestamp=Timestamp(
+                    convert_timestamp_to_milliseconds(
+                        int(
+                            (
+                                datetime.now(tz=timezone.utc)
+                                - timedelta(days=life_cycle["accessed"]["days"])
+                            ).timestamp()
+                        )
+                    ),
+                    accessedByAProcess=life_cycle["accessed"].get("accessedByAProcess"),
+                )
             )
 
             if life_cycle["created"].get("accessedBy"):

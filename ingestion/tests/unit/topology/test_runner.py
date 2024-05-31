@@ -16,7 +16,8 @@ from typing import List, Optional
 from unittest import TestCase
 from unittest.mock import patch
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
+from typing_extensions import Annotated
 
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.topology_runner import TopologyRunnerMixin
@@ -46,7 +47,9 @@ class MockTable(BaseModel):
 
 
 class MockTopology(ServiceTopology):
-    root = TopologyNode(
+    root: Annotated[
+        TopologyNode, Field(description="Root node for the topology")
+    ] = TopologyNode(
         producer="get_schemas",
         stages=[
             NodeStage(
@@ -58,7 +61,7 @@ class MockTopology(ServiceTopology):
         children=["tables"],
         post_process=["yield_hello"],
     )
-    tables = TopologyNode(
+    tables: Annotated[TopologyNode, Field(description="Ingest tables")] = TopologyNode(
         producer="get_tables",
         stages=[
             NodeStage(

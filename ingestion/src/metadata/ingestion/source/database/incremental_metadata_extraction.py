@@ -70,7 +70,7 @@ class IncrementalConfigCreator:
 
     def _calculate_pipeline_status_parameters(self) -> Tuple[int, int]:
         """Calculate the needed 'start' and 'end' parameters based on the 'lookbackDays'."""
-        now = datetime.now()
+        now = datetime.now(tz=timezone.utc)
 
         # We multiply the value by 1000 because our backend uses epoch_milliseconds instead of epoch_seconds.
         start = int(

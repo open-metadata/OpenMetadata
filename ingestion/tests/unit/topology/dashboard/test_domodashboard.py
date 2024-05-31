@@ -87,7 +87,7 @@ mock_domopipeline_config = {
 }
 
 MOCK_DASHBOARD = DomoDashboardDetails(
-    id=552315335,
+    id="552315335",
     name="New Dashboard",
     cardIds=["1982511286", "781210736"],
     collection_ids=[],

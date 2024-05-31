@@ -12,7 +12,7 @@
 KafkaConnect source to extract metadata from OM UI
 """
 import traceback
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Iterable, Optional
 
 from metadata.generated.schema.api.data.createPipeline import CreatePipelineRequest
@@ -36,7 +36,7 @@ from metadata.generated.schema.entity.services.ingestionPipelines.status import 
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
-from metadata.generated.schema.type.basic import EntityName, SourceUrl
+from metadata.generated.schema.type.basic import EntityName, SourceUrl, Timestamp
 from metadata.generated.schema.type.entityLineage import EntitiesEdge, LineageDetails
 from metadata.generated.schema.type.entityLineage import Source as LineageSource
 from metadata.generated.schema.type.entityReference import EntityReference
@@ -291,7 +291,7 @@ class KafkaconnectSource(PipelineServiceSource):
                     pipeline_details.status, StatusType.Pending
                 ),
                 taskStatus=task_status,
-                timestamp=datetime_to_ts(datetime.now())
+                timestamp=Timestamp(datetime_to_ts(datetime.now(tz=timezone.utc)))
                 # Kafka connect doesn't provide any details with exec time
             )
 

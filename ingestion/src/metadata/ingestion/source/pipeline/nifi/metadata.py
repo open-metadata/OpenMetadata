@@ -51,7 +51,7 @@ class NifiProcessor(BaseModel):
     """
 
     id_: str
-    name: Optional[str]
+    name: Optional[str] = None
     type_: str
     uri: str
 
@@ -73,7 +73,7 @@ class NifiPipelineDetails(BaseModel):
     """
 
     id_: str
-    name: Optional[str]
+    name: Optional[str] = None
     uri: str
     processors: List[NifiProcessor]
     connections: List[NifiProcessorConnections]

@@ -21,10 +21,10 @@ class MetabaseDashboard(BaseModel):
     Metabase dashboard model
     """
 
-    description: Optional[str]
+    description: Optional[str] = None
     name: str
     id: int
-    collection_id: Optional[str]
+    collection_id: Optional[str] = None
 
 
 class MetabaseCollection(BaseModel):
@@ -37,20 +37,20 @@ class MetabaseCollection(BaseModel):
 
 
 class MetabaseDashboardList(BaseModel):
-    data: Optional[List[MetabaseDashboard]]
+    data: Optional[List[MetabaseDashboard]] = None
 
 
 class MetabaseCollectionList(BaseModel):
-    collections: Optional[List[MetabaseCollection]]
+    collections: Optional[List[MetabaseCollection]] = None
 
 
 class Native(BaseModel):
-    query: Optional[str]
+    query: Optional[str] = None
 
 
 class DatasetQuery(BaseModel):
-    type: Optional[str]
-    native: Optional[Native]
+    type: Optional[str] = None
+    native: Optional[Native] = None
 
 
 class MetabaseChart(BaseModel):
@@ -58,13 +58,13 @@ class MetabaseChart(BaseModel):
     Metabase card model
     """
 
-    description: Optional[str]
-    table_id: Optional[str]
-    database_id: Optional[int]
-    name: Optional[str]
-    dataset_query: Optional[DatasetQuery]
-    id: Optional[int]
-    display: Optional[str]
+    description: Optional[str] = None
+    table_id: Optional[str] = None
+    database_id: Optional[int] = None
+    name: Optional[str] = None
+    dataset_query: Optional[DatasetQuery] = None
+    id: Optional[int] = None
+    display: Optional[str] = None
 
 
 class DashCard(BaseModel):
@@ -76,15 +76,15 @@ class MetabaseDashboardDetails(BaseModel):
     Metabase dashboard details model
     """
 
-    description: Optional[str]
+    description: Optional[str] = None
     dashcards: List[DashCard]
-    name: Optional[str]
+    name: Optional[str] = None
     id: int
-    collection_id: Optional[str]
+    collection_id: Optional[str] = None
 
 
 class MetabaseDatabaseDetails(BaseModel):
-    db: Optional[str]
+    db: Optional[str] = None
 
 
 class MetabaseDatabase(BaseModel):
@@ -92,12 +92,12 @@ class MetabaseDatabase(BaseModel):
     Metabase database model
     """
 
-    details: Optional[MetabaseDatabaseDetails]
+    details: Optional[MetabaseDatabaseDetails] = None
 
 
 class MetabaseTable(BaseModel):
-    table_schema: Optional[str] = Field(..., alias="schema")
-    db: Optional[MetabaseDatabase]
-    name: Optional[str]
-    id: Optional[int]
-    display_name: Optional[str]
+    table_schema: Optional[str] = Field(None, alias="schema")
+    db: Optional[MetabaseDatabase] = None
+    name: Optional[str] = None
+    id: Optional[int] = None
+    display_name: Optional[str] = None

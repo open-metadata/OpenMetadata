@@ -32,6 +32,8 @@ from great_expectations.core.expectation_validation_result import (
 from great_expectations.data_asset.data_asset import DataAsset
 from great_expectations.data_context.data_context import DataContext
 
+from metadata.generated.schema.type.basic import Timestamp
+
 try:
     from great_expectations.data_context.types.resource_identifiers import (
         GeCloudIdentifier,  # type: ignore
@@ -421,7 +423,9 @@ class OpenMetadataValidationAction(ValidationAction):
 
             self.ometa_conn.add_test_case_results(
                 test_results=TestCaseResult(
-                    timestamp=int(datetime.now(timezone.utc).timestamp() * 1000),
+                    timestamp=Timestamp(
+                        int(datetime.now(tz=timezone.utc).timestamp() * 1000)
+                    ),
                     testCaseStatus=TestCaseStatus.Success
                     if result["success"]
                     else TestCaseStatus.Failed,

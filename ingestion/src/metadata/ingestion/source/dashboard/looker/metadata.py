@@ -22,7 +22,7 @@ Notes:
 import copy
 import os
 import traceback
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Dict, Iterable, List, Optional, Sequence, Set, Type, Union, cast
 
@@ -168,7 +168,7 @@ class LookerSource(DashboardServiceSource):
         metadata: OpenMetadata,
     ):
         super().__init__(config, metadata)
-        self.today = datetime.now().strftime("%Y-%m-%d")
+        self.today = datetime.now(tz=timezone.utc).strftime("%Y-%m-%d")
 
         self._explores_cache = {}
         self._repo_credentials: Optional[ReadersCredentials] = None

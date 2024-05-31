@@ -13,7 +13,7 @@ Profiler Processor Step
 """
 import json
 import traceback
-from datetime import datetime
+from datetime import datetime, timezone
 from functools import singledispatch
 from io import BytesIO
 
@@ -65,7 +65,7 @@ def _get_object_key(
     )
     if not overwrite_data:
         file_name = file_name.replace(
-            ".parquet", f"_{datetime.now().strftime('%Y_%m_%d')}.parquet"
+            ".parquet", f"_{datetime.now(tz=timezone.utc).strftime('%Y_%m_%d')}.parquet"
         )
     if prefix:
         return f"{clean_uri(prefix)}/{file_name}"
