@@ -10,16 +10,17 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Page } from '@playwright/test';
-import { User } from './User';
-import { DEFAULT_ADMIN_USER } from './user.constant';
+import { test as setup } from '@playwright/test';
+import { AdminClass } from '../support/user/AdminClass';
+const adminFile = 'playwright/.auth/admin.json';
 
-export class Admin extends User {
-  async login(
-    page: Page,
-    userName = DEFAULT_ADMIN_USER.userName,
-    password = DEFAULT_ADMIN_USER.password
-  ) {
-    await super.login(page, userName, password);
-  }
-}
+setup('authenticate as admin', async ({ page }) => {
+  const admin = new AdminClass();
+
+  // login with admin user
+  await admin.login(page);
+  await page.waitForURL('**/my-data');
+
+  // End of authentication steps.
+  await page.context().storageState({ path: adminFile });
+});

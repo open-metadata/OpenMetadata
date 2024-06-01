@@ -149,7 +149,11 @@ export const removeTag = async (page: Page, tags: string[]) => {
       .locator('svg')
       .click();
 
+    const patchRequest = page.waitForRequest(
+      (request) => request.method() === 'PATCH'
+    );
     await page.getByTestId('saveAssociatedTag').click();
+    await patchRequest;
 
     expect(
       page
@@ -210,7 +214,11 @@ export const removeGlossaryTerm = async (
       .locator('svg')
       .click();
 
+    const patchRequest = page.waitForRequest(
+      (request) => request.method() === 'PATCH'
+    );
     await page.getByTestId('saveAssociatedTag').click();
+    await patchRequest;
 
     expect(
       page
