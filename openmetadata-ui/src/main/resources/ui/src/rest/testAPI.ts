@@ -76,6 +76,7 @@ export type ListTestCaseParamsBySearch = ListTestCaseParams & {
   owner?: string;
   tags?: string;
   tier?: string;
+  serviceName?: string;
 };
 
 export type ListTestDefinitionsParams = ListParams & {

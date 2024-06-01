@@ -96,6 +96,7 @@ export const TestCases = ({ summaryPanel }: { summaryPanel: ReactNode }) => {
   const [isOptionsLoading, setIsOptionsLoading] = useState(false);
   const [tagOptions, setTagOptions] = useState<DefaultOptionType[]>([]);
   const [tierOptions, setTierOptions] = useState<DefaultOptionType[]>([]);
+  const [serviceOptions, setServiceOptions] = useState<DefaultOptionType[]>([]);
 
   const params = useMemo(() => {
     const search = location.search;
@@ -321,6 +322,44 @@ export const TestCases = ({ summaryPanel }: { summaryPanel: ReactNode }) => {
     }
   };
 
+  const fetchServiceOptions = async (search = WILD_CARD_CHAR) => {
+    setIsOptionsLoading(true);
+    try {
+      const response = await searchQuery({
+        query: `*${search}*`,
+        pageNumber: 1,
+        pageSize: PAGE_SIZE_BASE,
+        searchIndex: SearchIndex.DATABASE_SERVICE,
+        fetchSource: true,
+        includeFields: ['name', 'fullyQualifiedName', 'displayName'],
+      });
+
+      const options = response.hits.hits.map((hit) => {
+        return {
+          label: (
+            <Space
+              data-testid={hit._source.fullyQualifiedName}
+              direction="vertical"
+              size={0}>
+              <Typography.Text className="text-xs text-grey-muted">
+                {hit._source.fullyQualifiedName}
+              </Typography.Text>
+              <Typography.Text className="text-sm">
+                {getEntityName(hit._source)}
+              </Typography.Text>
+            </Space>
+          ),
+          value: hit._source.fullyQualifiedName,
+        };
+      });
+      setServiceOptions(options);
+    } catch (error) {
+      setServiceOptions([]);
+    } finally {
+      setIsOptionsLoading(false);
+    }
+  };
+
   const handleMenuClick = ({ key }: { key: string }) => {
     setSelectedFilter((prevSelected) => {
       if (prevSelected.includes(key)) {
@@ -347,6 +386,7 @@ export const TestCases = ({ summaryPanel }: { summaryPanel: ReactNode }) => {
     key === TEST_CASE_FILTERS.tier && fetchTierOptions();
     key === TEST_CASE_FILTERS.tags && fetchTagOptions();
     key === TEST_CASE_FILTERS.table && fetchTableData();
+    key === TEST_CASE_FILTERS.service && fetchServiceOptions();
   };
 
   const filterMenu: ItemType[] = useMemo(() => {
@@ -365,6 +405,11 @@ export const TestCases = ({ summaryPanel }: { summaryPanel: ReactNode }) => {
   const debounceFetchTagOptions = useCallback(debounce(fetchTagOptions, 1000), [
     fetchTagOptions,
   ]);
+
+  const debounceFetchServiceOptions = useCallback(
+    debounce(fetchServiceOptions, 1000),
+    [fetchServiceOptions]
+  );
 
   useEffect(() => {
     if (testCasePermission?.ViewAll || testCasePermission?.ViewBasic) {
@@ -524,6 +569,22 @@ export const TestCases = ({ summaryPanel }: { summaryPanel: ReactNode }) => {
                   data-testid="tier-select-filter"
                   options={tierOptions}
                   placeholder={t('label.tier')}
+                />
+              </Form.Item>
+            )}
+            {selectedFilter.includes(TEST_CASE_FILTERS.service) && (
+              <Form.Item
+                className="m-0 w-80"
+                label={t('label.service')}
+                name="serviceName">
+                <Select
+                  allowClear
+                  showSearch
+                  data-testid="service-select-filter"
+                  loading={isOptionsLoading}
+                  options={serviceOptions}
+                  placeholder={t('label.service')}
+                  onSearch={debounceFetchServiceOptions}
                 />
               </Form.Item>
             )}

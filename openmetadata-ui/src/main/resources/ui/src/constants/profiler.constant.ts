@@ -425,6 +425,7 @@ export const TEST_CASE_FILTERS = {
   lastRun: 'lastRunRange',
   tier: 'tier',
   tags: 'tags',
+  service: 'serviceName',
 };
 
 export const TEST_CASE_PLATFORM_OPTION = values(TestPlatform).map((value) => ({

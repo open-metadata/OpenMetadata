@@ -41,5 +41,6 @@ export const buildTestCaseParams = (
     ...filterParams('testCaseStatus', TEST_CASE_FILTERS.status),
     ...filterParams('tags', TEST_CASE_FILTERS.tags),
     ...filterParams('tier', TEST_CASE_FILTERS.tier),
+    ...filterParams('serviceName', TEST_CASE_FILTERS.service),
   };
 };
