@@ -139,24 +139,30 @@ const EntityVersionTimeLine: React.FC<EntityVersionTimelineProps> = ({
     resourceLimit[entityType ?? ''] ?? {};
 
   const versions = useMemo(() => {
-    const versions = versionList.versions?.slice(0, maxVersions) ?? [];
+    const maxAllowed = maxVersions ?? -1;
+    let versions = versionList.versions ?? [];
 
-    const hiddenVersions = versionList.versions?.slice(maxVersions) ?? [];
+    let hiddenVersions = [];
+
+    if (maxAllowed > 0) {
+      versions = versionList.versions?.slice(0, maxAllowed) ?? [];
+      hiddenVersions = versionList.versions?.slice(maxAllowed) ?? [];
+    }
 
     return (
       <div className="relative h-full">
-        {versions.length && (
+        {versions.length ? (
           <div className="timeline-content cursor-pointer">
             <div className="timeline-wrapper">
               <span className="timeline-line-se" />
             </div>
           </div>
-        )}
+        ) : null}
 
         {versions?.map((v) => {
           return renderVersionButton(v, currentVersion, versionHandler);
         })}
-        {hiddenVersions?.length ? (
+        {hiddenVersions?.length > 0 ? (
           <>
             <Tooltip title={`+${hiddenVersions.length} more versions`}>
               <div className="version-hidden">

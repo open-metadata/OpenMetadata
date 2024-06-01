@@ -77,10 +77,9 @@ const AppContainer = () => {
               <Route exact component={SignUpPage} path={ROUTES.SIGNUP}>
                 {!isEmpty(currentUser) && <Redirect to={ROUTES.HOME} />}
               </Route>
-              <Content className="main-content">
-                <AuthenticatedRouter />
-                {ApplicationExtras && <ApplicationExtras />}
-              </Content>
+
+              <AuthenticatedRouter />
+              {ApplicationExtras && <ApplicationExtras />}
             </Switch>
           </Content>
         </Layout>
