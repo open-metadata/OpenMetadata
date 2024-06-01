@@ -320,6 +320,9 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
     DeleteResponse<T> response =
         repository.delete(securityContext.getUserPrincipal().getName(), id, recursive, hardDelete);
     repository.deleteFromSearch(response.entity(), response.changeType());
+    if (hardDelete) {
+      limits.invalidateCache(entityType);
+    }
     addHref(uriInfo, response.entity());
     return response.toResponse();
   }

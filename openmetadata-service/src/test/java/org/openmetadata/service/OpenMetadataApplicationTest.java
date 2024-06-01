@@ -54,6 +54,8 @@ import org.openmetadata.service.fernet.Fernet;
 import org.openmetadata.service.jdbi3.locator.ConnectionAwareAnnotationSqlLocator;
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
 import org.openmetadata.service.resources.CollectionRegistry;
+import org.openmetadata.service.resources.events.MSTeamsCallbackResource;
+import org.openmetadata.service.resources.events.SlackCallbackResource;
 import org.openmetadata.service.resources.events.WebhookCallbackResource;
 import org.openmetadata.service.search.SearchRepository;
 import org.testcontainers.containers.JdbcDatabaseContainer;
@@ -77,8 +79,13 @@ public abstract class OpenMetadataApplicationTest {
   public static final ElasticSearchConfiguration.SearchType ELASTIC_SEARCH_TYPE =
       ElasticSearchConfiguration.SearchType.ELASTICSEARCH;
   public static DropwizardAppExtension<OpenMetadataApplicationConfig> APP;
+
   protected static final WebhookCallbackResource webhookCallbackResource =
       new WebhookCallbackResource();
+  protected static final SlackCallbackResource slackCallbackResource = new SlackCallbackResource();
+  protected static final MSTeamsCallbackResource teamsCallbackResource =
+      new MSTeamsCallbackResource();
+
   public static final String FERNET_KEY_1 = "ihZpp5gmmDvVsgoOG6OVivKWwC9vd5JQ";
   public static Jdbi jdbi;
   private static ElasticsearchContainer ELASTIC_SEARCH_CONTAINER;
@@ -97,6 +104,9 @@ public abstract class OpenMetadataApplicationTest {
 
   static {
     CollectionRegistry.addTestResource(webhookCallbackResource);
+    CollectionRegistry.addTestResource(slackCallbackResource);
+    CollectionRegistry.addTestResource(teamsCallbackResource);
+
     Fernet.getInstance().setFernetKey(FERNET_KEY_1);
   }
 

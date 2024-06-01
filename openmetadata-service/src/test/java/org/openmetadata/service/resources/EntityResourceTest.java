@@ -381,6 +381,8 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   // evey time junit tests are run to save time. But over the course of development of a release,
   // when tests are run enough times, the webhook tests are run for all the entities.
   public boolean runWebhookTests = new Random().nextBoolean();
+  public boolean runSlackTests = new Random().nextBoolean();
+  public boolean runMSTeamsTests = new Random().nextBoolean();
 
   protected boolean supportsSearchIndex = false;
 
@@ -458,14 +460,41 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
       alertResourceTest.startWebhookSubscription();
       alertResourceTest.startWebhookEntitySubscriptions(entityType);
     }
+
+    if (runSlackTests) {
+      EventSubscriptionResourceTest alertResourceTest = new EventSubscriptionResourceTest();
+      slackCallbackResource.clearEvents();
+      alertResourceTest.startSlackSubscription();
+      alertResourceTest.startSlackEntitySubscriptions(entityType);
+    }
+
+    if (runMSTeamsTests) {
+      EventSubscriptionResourceTest alertResourceTest = new EventSubscriptionResourceTest();
+      teamsCallbackResource.clearEvents();
+      alertResourceTest.startMSTeamsSubscription();
+      alertResourceTest.startMSTeamsEntitySubscription(entityType);
+    }
   }
 
   @AfterAll
   public void afterAllTests() throws Exception {
+
     if (runWebhookTests) {
       EventSubscriptionResourceTest alertResourceTest = new EventSubscriptionResourceTest();
       alertResourceTest.validateWebhookEvents();
       alertResourceTest.validateWebhookEntityEvents(entityType);
+    }
+
+    if (runSlackTests) {
+      EventSubscriptionResourceTest alertResourceTest = new EventSubscriptionResourceTest();
+      alertResourceTest.validateSlackEvents();
+      alertResourceTest.validateSlackEntityEvents(entityType);
+    }
+
+    if (runMSTeamsTests) {
+      EventSubscriptionResourceTest alertResourceTest = new EventSubscriptionResourceTest();
+      alertResourceTest.validateMSTeamsEvents();
+      alertResourceTest.validateMSTeamsEntityEvents(entityType);
     }
     delete_recursiveTest();
   }
@@ -2933,7 +2962,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
       ChangeDescription expectedChangeDescription,
       Map<String, String> authHeaders)
       throws IOException {
-    if (!runWebhookTests) {
+    if (!runWebhookTests && !runSlackTests && !runMSTeamsTests) {
       return;
     }
     validateChangeEvents(
@@ -3077,7 +3106,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
       EventType expectedEventType,
       Double expectedVersion,
       Map<String, String> authHeaders) {
-    if (!runWebhookTests) {
+    if (!runWebhookTests && !runSlackTests && !runMSTeamsTests) {
       return;
     }
     String updatedBy = SecurityUtil.getPrincipalName(authHeaders);
@@ -3105,6 +3134,21 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
       throws HttpResponseException {
     WebTarget target = getResource(id).path("/versions");
     return TestUtils.get(target, EntityHistory.class, authHeaders);
+  }
+
+  protected ResultList<ChangeEvent> getChangeEvents(
+      String entityCreated,
+      String entityUpdated,
+      String entityRestored,
+      String entityDeleted,
+      Map<String, String> authHeaders)
+      throws HttpResponseException {
+    WebTarget target = getResource("events");
+    target = entityCreated == null ? target : target.queryParam("entityCreated", entityCreated);
+    target = entityUpdated == null ? target : target.queryParam("entityUpdated", entityUpdated);
+    target = entityUpdated == null ? target : target.queryParam("entityRestored", entityRestored);
+    target = entityDeleted == null ? target : target.queryParam("entityDeleted", entityDeleted);
+    return TestUtils.get(target, EventList.class, authHeaders);
   }
 
   protected ResultList<ChangeEvent> getChangeEvents(

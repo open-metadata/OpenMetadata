@@ -18,5 +18,7 @@ public interface Limits {
 
   LimitsConfig getLimitsConfig();
 
-  Response getLimitsForaFeature(String name, boolean cache);
+  Response getLimitsForaFeature(String entityType, boolean cache);
+
+  void invalidateCache(String entityType);
 }

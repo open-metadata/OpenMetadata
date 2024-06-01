@@ -39,9 +39,11 @@ class PostgresUsageSource(PostgresQueryParserSource, UsageSource):
         """
         Process Query
         """
+        query = None
         try:
+            query = self.get_sql_statement()
             with get_connection(self.service_connection).connect() as conn:
-                rows = conn.execute(self.get_sql_statement())
+                rows = conn.execute(query)
                 queries = []
                 for row in rows:
                     row = dict(row)
@@ -64,5 +66,9 @@ class PostgresUsageSource(PostgresQueryParserSource, UsageSource):
             if queries:
                 yield TableQueries(queries=queries)
         except Exception as err:
+            if query:
+                logger.debug(
+                    f"###### USAGE QUERY #######\n{query}\n##########################"
+                )
             logger.error(f"Source usage processing error - {err}")
             logger.debug(traceback.format_exc())
