@@ -10,6 +10,47 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { Browser, Page, request } from '@playwright/test';
 import { randomUUID } from 'crypto';
 
 export const uuid = () => randomUUID().split('-')[0];
+
+export const getToken = async (page: Page) => {
+  return page.evaluate(
+    () =>
+      JSON.parse(localStorage.getItem('om-session') ?? '{}')?.state
+        ?.oidcIdToken ?? ''
+  );
+};
+
+export const getAuthContext = async (token: string) => {
+  return await request.newContext({
+    extraHTTPHeaders: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+};
+
+export const redirectToHomePage = async (page: Page) => {
+  await page.goto('/');
+  await page.waitForURL('**/my-data');
+};
+
+export const createNewPage = async (browser: Browser) => {
+  // create a new page
+  const page = await browser.newPage();
+  await redirectToHomePage(page);
+
+  // get the token from localStorage
+  const token = await getToken(page);
+
+  // create a new context with the token
+  const apiContext = await getAuthContext(token);
+
+  const afterAction = async () => {
+    await apiContext.dispose();
+    await page.close();
+  };
+
+  return { page, apiContext, afterAction };
+};

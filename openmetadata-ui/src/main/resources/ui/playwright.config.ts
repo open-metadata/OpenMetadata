@@ -32,11 +32,18 @@ export default defineConfig({
   /* Retry on CI only */
   retries: process.env.CI ? 2 : 0,
   /* Opt out of parallel tests on CI. */
-  workers: process.env.CI ? 1 : undefined,
+  workers: process.env.CI ? 2 : undefined,
   /* Reporter to use. See https://playwright.dev/docs/test-reporters */
   reporter: [
     ['list'],
     ['html', { outputFolder: './playwright/output/playwright-report' }],
+    [
+      '@estruyf/github-actions-reporter',
+      {
+        useDetails: true,
+        showError: true,
+      },
+    ],
   ],
   /* Shared settings for all the projects below. See https://playwright.dev/docs/api/class-testoptions. */
   use: {
@@ -49,9 +56,16 @@ export default defineConfig({
 
   /* Configure projects for major browsers */
   projects: [
+    // Admin authentication setup doc: https://playwright.dev/docs/auth#multiple-signed-in-roles
+    {
+      name: 'setup',
+      testMatch: '**/*.setup.ts',
+    },
     {
       name: 'chromium',
       use: { ...devices['Desktop Chrome'] },
+      // Added admin setup as a dependency. This will authorize the page with an admin user before running the test. doc: https://playwright.dev/docs/auth#multiple-signed-in-roles
+      dependencies: ['setup'],
     },
   ],
 

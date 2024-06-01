@@ -11,18 +11,15 @@
  *  limitations under the License.
  */
 import { Page } from '@playwright/test';
+import { DEFAULT_ADMIN_USER } from './user.constant';
+import { UserClass } from './UserClass';
 
-export class User {
-  async login(page: Page, userName: string, password: string) {
-    await page.goto('/');
-    await page.fill('input[id="email"]', userName);
-    await page.locator('#email').press('Tab');
-    await page.fill('input[id="password"]', password);
-    await page.getByTestId('login').click();
-  }
-
-  async logout(page: Page) {
-    await page.getByTestId('app-bar-item-logout').click();
-    await page.getByTestId('confirm-logout').click();
+export class AdminClass extends UserClass {
+  async login(
+    page: Page,
+    userName = DEFAULT_ADMIN_USER.userName,
+    password = DEFAULT_ADMIN_USER.password
+  ) {
+    await super.login(page, userName, password);
   }
 }

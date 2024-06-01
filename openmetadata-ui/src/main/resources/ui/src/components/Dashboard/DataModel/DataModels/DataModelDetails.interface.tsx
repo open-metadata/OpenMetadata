@@ -28,7 +28,7 @@ export interface DataModelDetailsProps {
   fetchDataModel: () => void;
   createThread: (data: CreateThread) => Promise<void>;
   handleFollowDataModel: () => Promise<void>;
-  handleUpdateTags: (selectedTags?: EntityTags[]) => void;
+  handleUpdateTags: (selectedTags?: EntityTags[]) => Promise<void>;
   handleUpdateOwner: (owner?: EntityReference) => Promise<void>;
   handleUpdateTier: (tier?: Tag) => Promise<void>;
   handleUpdateDescription: (value: string) => Promise<void>;

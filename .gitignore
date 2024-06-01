@@ -88,6 +88,7 @@ openmetadata-ui/src/main/resources/ui/cypress/fixtures
 openmetadata-ui/src/main/resources/ui/playwright/output/
 openmetadata-ui/src/main/resources/ui/playwright/e2e/.cache/
 openmetadata-ui/src/main/resources/ui/playwright/.env
+openmetadata-ui/src/main/resources/ui/playwright/.auth
 
 #UI - Dereferenced Schemas
 openmetadata-ui/src/main/resources/ui/src/jsons/connectionSchemas

@@ -14,6 +14,8 @@ import { APIRequestContext } from '@playwright/test';
 import { Domain } from '../domain/Domain';
 import { Glossary } from '../glossary/Glossary';
 import { GlossaryTerm } from '../glossary/GlossaryTerm';
+import { TeamClass } from '../team/TeamClass';
+import { UserClass } from '../user/UserClass';
 
 export class EntityDataClass {
   static readonly domain1 = new Domain();
@@ -22,6 +24,10 @@ export class EntityDataClass {
   static readonly glossary2 = new Glossary();
   static readonly glossaryTerm1 = new GlossaryTerm(this.glossary1.data.name);
   static readonly glossaryTerm2 = new GlossaryTerm(this.glossary2.data.name);
+  static readonly user1 = new UserClass();
+  static readonly user2 = new UserClass();
+  static readonly team1 = new TeamClass();
+  static readonly team2 = new TeamClass();
 
   static async preRequisitesForTests(apiContext: APIRequestContext) {
     // Add pre-requisites for tests
@@ -31,6 +37,10 @@ export class EntityDataClass {
     await this.glossary2.create(apiContext);
     await this.glossaryTerm1.create(apiContext);
     await this.glossaryTerm2.create(apiContext);
+    await this.user1.create(apiContext);
+    await this.user2.create(apiContext);
+    await this.team1.create(apiContext);
+    await this.team2.create(apiContext);
   }
 
   static async postRequisitesForTests(apiContext: APIRequestContext) {
@@ -40,5 +50,9 @@ export class EntityDataClass {
     // deleting glossary will also delete the glossary terms
     await this.glossary1.delete(apiContext);
     await this.glossary2.delete(apiContext);
+    await this.user1.delete(apiContext);
+    await this.user2.delete(apiContext);
+    await this.team1.delete(apiContext);
+    await this.team2.delete(apiContext);
   }
 }
