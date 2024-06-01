@@ -9,6 +9,10 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
+###
+# How to use this compose yaml file.
+# You have to prepare the credential json file for the service account which can access the GCP secret manager and set the path of the json file into the GOOGLE_APPLICATION_CREDENTIALS variable.
+
 version: "3.9"
 volumes:
   ingestion-volume-dag-airflow:
@@ -277,6 +281,7 @@ services:
       - local_app_net
 
   openmetadata-server:
+    # HACK: This is hack for M1 mac or later to avoid aborting JVM by the Google Secret Manager library.
     platform: linux/amd64
     build:
       context: ../../.
