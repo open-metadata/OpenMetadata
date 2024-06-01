@@ -522,7 +522,6 @@ export const TestCases = ({ summaryPanel }: { summaryPanel: ReactNode }) => {
                 <Select
                   allowClear
                   data-testid="tier-select-filter"
-                  mode="multiple"
                   options={tierOptions}
                   placeholder={t('label.tier')}
                 />
