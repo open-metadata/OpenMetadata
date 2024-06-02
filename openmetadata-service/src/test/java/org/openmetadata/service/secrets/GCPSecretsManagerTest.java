@@ -1,6 +1,10 @@
 package org.openmetadata.service.secrets;
 
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.mockStatic;
+
 import com.google.cloud.secretmanager.v1.SecretManagerServiceClient;
+import java.util.List;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -10,11 +14,6 @@ import org.openmetadata.schema.security.secrets.Parameters;
 import org.openmetadata.schema.security.secrets.SecretsManagerConfiguration;
 import org.openmetadata.schema.security.secrets.SecretsManagerProvider;
 import org.openmetadata.service.fernet.Fernet;
-
-import java.util.List;
-
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.mockStatic;
 
 @ExtendWith(MockitoExtension.class)
 public class GCPSecretsManagerTest extends ExternalSecretsManagerTest {
@@ -31,7 +30,9 @@ public class GCPSecretsManagerTest extends ExternalSecretsManagerTest {
     setUpSpecific(config);
 
     mocked = mockStatic(SecretManagerServiceClient.class);
-    mocked.when(SecretManagerServiceClient::create).thenReturn(mock(SecretManagerServiceClient.class));
+    mocked
+        .when(SecretManagerServiceClient::create)
+        .thenReturn(mock(SecretManagerServiceClient.class));
   }
 
   @AfterEach
@@ -43,7 +44,11 @@ public class GCPSecretsManagerTest extends ExternalSecretsManagerTest {
   void setUpSpecific(SecretsManagerConfiguration config) {
     this.secretsManager =
         GCPSecretsManager.getInstance(
-            new SecretsManager.SecretsConfig("openmetadata", "prefix", List.of("key:value", "key2:value2"), config.getParameters()));
+            new SecretsManager.SecretsConfig(
+                "openmetadata",
+                "prefix",
+                List.of("key:value", "key2:value2"),
+                config.getParameters()));
   }
 
   @Override

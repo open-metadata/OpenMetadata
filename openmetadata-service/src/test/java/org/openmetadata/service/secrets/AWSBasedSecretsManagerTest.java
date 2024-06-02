@@ -12,6 +12,9 @@
  */
 package org.openmetadata.service.secrets;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -28,9 +31,6 @@ import org.openmetadata.schema.security.secrets.SecretsManagerConfiguration;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.fernet.Fernet;
 import org.openmetadata.service.util.JsonUtils;
-
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotEquals;
 
 @ExtendWith(MockitoExtension.class)
 public abstract class AWSBasedSecretsManagerTest extends ExternalSecretsManagerTest {

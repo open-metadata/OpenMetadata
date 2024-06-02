@@ -1,5 +1,7 @@
 package org.openmetadata.service.secrets;
 
+import static org.openmetadata.schema.security.secrets.SecretsManagerProvider.GCP;
+
 import com.google.cloud.secretmanager.v1.AccessSecretVersionResponse;
 import com.google.cloud.secretmanager.v1.ProjectName;
 import com.google.cloud.secretmanager.v1.Replication;
@@ -9,15 +11,12 @@ import com.google.cloud.secretmanager.v1.SecretName;
 import com.google.cloud.secretmanager.v1.SecretPayload;
 import com.google.cloud.secretmanager.v1.SecretVersionName;
 import com.google.protobuf.ByteString;
-import org.openmetadata.service.exception.SecretsManagerException;
-import org.openmetadata.service.exception.SecretsManagerUpdateException;
-
 import java.io.IOException;
 import java.util.regex.Pattern;
 import java.util.zip.CRC32C;
 import java.util.zip.Checksum;
-
-import static org.openmetadata.schema.security.secrets.SecretsManagerProvider.GCP;
+import org.openmetadata.service.exception.SecretsManagerException;
+import org.openmetadata.service.exception.SecretsManagerUpdateException;
 
 public class GCPSecretsManager extends ExternalSecretsManager {
   private static final String FIXED_VERSION_ID = "latest";
@@ -28,7 +27,9 @@ public class GCPSecretsManager extends ExternalSecretsManager {
   private GCPSecretsManager(SecretsConfig secretsConfig) {
     super(GCP, secretsConfig, 100);
 
-    this.projectId = (String) secretsConfig.parameters().getAdditionalProperties().getOrDefault(PROJECT_ID_NAME, "");
+    this.projectId =
+        (String)
+            secretsConfig.parameters().getAdditionalProperties().getOrDefault(PROJECT_ID_NAME, "");
   }
 
   /**
@@ -39,7 +40,7 @@ public class GCPSecretsManager extends ExternalSecretsManager {
   protected SecretsIdConfig builSecretsIdConfig() {
     return new SecretsIdConfig("_", Boolean.FALSE, "", Pattern.compile("[^A-Za-z0-9_]"));
   }
-  
+
   @Override
   void storeSecret(String secretId, String secretValue) {
     try (SecretManagerServiceClient client = SecretManagerServiceClient.create()) {
@@ -87,7 +88,8 @@ public class GCPSecretsManager extends ExternalSecretsManager {
   @Override
   String getSecret(String secretId) {
     try (SecretManagerServiceClient client = SecretManagerServiceClient.create()) {
-      SecretVersionName secretVersionName = SecretVersionName.of(this.projectId, secretId, FIXED_VERSION_ID);
+      SecretVersionName secretVersionName =
+          SecretVersionName.of(this.projectId, secretId, FIXED_VERSION_ID);
 
       // Access the secret version.
       AccessSecretVersionResponse response = client.accessSecretVersion(secretVersionName);

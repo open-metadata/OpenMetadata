@@ -1,3 +1,7 @@
+"""
+Secrets manager implementation using GCP Secret Manager
+"""
+
 import os
 from abc import ABC
 from typing import Optional
@@ -5,6 +9,7 @@ from typing import Optional
 import google_crc32c
 from google import auth
 from google.cloud import secretmanager
+
 from metadata.generated.schema.security.secrets.secretsManagerClientLoader import (
     SecretsManagerClientLoader,
 )
@@ -43,6 +48,7 @@ def _() -> Optional["GCPCredentials"]:
 @secrets_manager_client_loader.add(SecretsManagerClientLoader.airflow.value)
 def _() -> Optional["GCPCredentials"]:
     from airflow.configuration import conf
+
     from metadata.generated.schema.security.credentials.gcpCredentials import (
         GCPCredentials,
         gcpValues,
@@ -75,10 +81,14 @@ def _() -> Optional["GCPCredentials"]:
 
 
 class GCPSecretsManager(ExternalSecretsManager, ABC):
+    """
+    Secrets Manager Implementation Class
+    """
+
     def __init__(self, loader: SecretsManagerClientLoader):
         super().__init__(SecretsManagerProvider.gcp, loader=loader)
 
-    def get_string_value(self, name: str) -> str:
+    def get_string_value(self, secret_id: str) -> str:
         """
         Access the payload for the given secret version if one exists. The version
         can be a version number as a string (e.g. "5") or an alias (e.g. "latest").
@@ -90,10 +100,12 @@ class GCPSecretsManager(ExternalSecretsManager, ABC):
         # Build the resource name of the secret version.
 
         project_id = self.credentials.gcpConfig.projectId.__root__
-        name = f"projects/{project_id}/secrets/{name}/versions/{FIXED_VERSION_ID}"
+        secret_id = (
+            f"projects/{project_id}/secrets/{secret_id}/versions/{FIXED_VERSION_ID}"
+        )
 
         # Access the secret version.
-        response = client.access_secret_version(request={"name": name})
+        response = client.access_secret_version(request={"name": secret_id})
 
         # Verify payload checksum.
         crc32c = google_crc32c.Checksum()

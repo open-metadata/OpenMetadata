@@ -1,5 +1,10 @@
 package org.openmetadata.service.secrets;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.openmetadata.schema.api.services.CreateDatabaseService.DatabaseServiceType.Mysql;
+
+import java.util.Map;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.api.services.DatabaseConnection;
@@ -17,12 +22,6 @@ import org.openmetadata.schema.services.connections.database.common.basicAuth;
 import org.openmetadata.schema.services.connections.metadata.OpenMetadataConnection;
 import org.openmetadata.service.exception.InvalidServiceConnectionException;
 import org.openmetadata.service.util.JsonUtils;
-
-import java.util.Map;
-
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotEquals;
-import static org.openmetadata.schema.api.services.CreateDatabaseService.DatabaseServiceType.Mysql;
 
 public abstract class ExternalSecretsManagerTest {
   protected ExternalSecretsManager secretsManager;
@@ -162,9 +161,9 @@ public abstract class ExternalSecretsManagerTest {
   private String getPassword(Workflow workflow) {
     return JsonUtils.convertValue(
             ((MysqlConnection)
-                ((DatabaseConnection)
-                    ((TestServiceConnectionRequest) workflow.getRequest()).getConnection())
-                    .getConfig())
+                    ((DatabaseConnection)
+                            ((TestServiceConnectionRequest) workflow.getRequest()).getConnection())
+                        .getConfig())
                 .getAuthType(),
             basicAuth.class)
         .getPassword();

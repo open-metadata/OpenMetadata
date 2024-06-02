@@ -23,8 +23,8 @@ from metadata.generated.schema.security.secrets.secretsManagerProvider import (
 from metadata.utils.secrets.aws_secrets_manager import AWSSecretsManager
 from metadata.utils.secrets.aws_ssm_secrets_manager import AWSSSMSecretsManager
 from metadata.utils.secrets.azure_kv_secrets_manager import AzureKVSecretsManager
-from metadata.utils.secrets.gcp_secrets_manager import GCPSecretsManager
 from metadata.utils.secrets.db_secrets_manager import DBSecretsManager
+from metadata.utils.secrets.gcp_secrets_manager import GCPSecretsManager
 from metadata.utils.secrets.secrets_manager import SecretsManager
 from metadata.utils.singleton import Singleton
 
@@ -94,9 +94,7 @@ class SecretsManagerFactory(metaclass=Singleton):
             SecretsManagerProvider.managed_azure_kv,
         ):
             return AzureKVSecretsManager(secrets_manager_loader)
-        if secrets_manager_provider in (
-            SecretsManagerProvider.gcp,
-        ):
+        if secrets_manager_provider in (SecretsManagerProvider.gcp,):
             return GCPSecretsManager(secrets_manager_loader)
         raise NotImplementedError(f"[{secrets_manager_provider}] is not implemented.")
 
