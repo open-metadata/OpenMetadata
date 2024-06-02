@@ -74,6 +74,7 @@ export const createAnnouncement = (announcement) => {
     'contain',
     announcement.title
   );
+  cy.goToHomePage();
 };
 
 export const deleteAnnouncement = () => {
@@ -111,6 +112,12 @@ export const replyAnnouncementUtil = () => {
   );
   interceptURL('GET', '/api/v1/feed/*', 'allAnnouncementFeed');
   interceptURL('POST', '/api/v1/feed/*/posts', 'addAnnouncementReply');
+
+  cy.get(
+    '.announcement-container .announcement-container-list [data-testid="entity-link"]'
+  )
+    .first()
+    .click();
 
   cy.get('[data-testid="announcement-card"]').click();
 
