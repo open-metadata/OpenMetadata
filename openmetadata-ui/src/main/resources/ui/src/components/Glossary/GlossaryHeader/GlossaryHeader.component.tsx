@@ -11,16 +11,7 @@
  *  limitations under the License.
  */
 import Icon, { DownOutlined } from '@ant-design/icons';
-import {
-  Button,
-  Col,
-  Divider,
-  Dropdown,
-  Row,
-  Space,
-  Tooltip,
-  Typography,
-} from 'antd';
+import { Button, Col, Dropdown, Row, Space, Tooltip, Typography } from 'antd';
 import ButtonGroup from 'antd/lib/button/button-group';
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import { AxiosError } from 'axios';
@@ -41,7 +32,6 @@ import { ReactComponent as VersionIcon } from '../../../assets/svg/ic-version.sv
 import { ReactComponent as IconDropdown } from '../../../assets/svg/menu.svg';
 import { ReactComponent as StyleIcon } from '../../../assets/svg/style.svg';
 import { ManageButtonItemLabel } from '../../../components/common/ManageButtonContentItem/ManageButtonContentItem.component';
-import StatusBadge from '../../../components/common/StatusBadge/StatusBadge.component';
 import { useEntityExportModalProvider } from '../../../components/Entity/EntityExportModalProvider/EntityExportModalProvider.component';
 import { EntityHeader } from '../../../components/Entity/EntityHeader/EntityHeader.component';
 import EntityDeleteModal from '../../../components/Modals/EntityDeleteModal/EntityDeleteModal';
@@ -67,7 +57,6 @@ import {
 import { getEntityDeleteMessage } from '../../../utils/CommonUtils';
 import { getEntityVoteStatus } from '../../../utils/EntityUtils';
 import Fqn from '../../../utils/Fqn';
-import { StatusClass } from '../../../utils/GlossaryUtils';
 import {
   getGlossaryPath,
   getGlossaryPathWithAction,
@@ -79,6 +68,7 @@ import { TitleBreadcrumbProps } from '../../common/TitleBreadcrumb/TitleBreadcru
 import Voting from '../../Entity/Voting/Voting.component';
 import ChangeParentHierarchy from '../../Modals/ChangeParentHierarchy/ChangeParentHierarchy.component';
 import StyleModal from '../../Modals/StyleModal/StyleModal.component';
+import { GlossaryStatusBadge } from '../GlossaryStatusBadge/GlossaryStatusBadge.component';
 import { GlossaryHeaderProps } from './GlossaryHeader.interface';
 
 const GlossaryHeader = ({
@@ -439,15 +429,7 @@ const GlossaryHeader = ({
       const entityStatus =
         (selectedData as GlossaryTerm).status ?? Status.Approved;
 
-      return (
-        <Space>
-          <Divider className="m-x-xs h-6" type="vertical" />
-          <StatusBadge
-            label={entityStatus}
-            status={StatusClass[entityStatus]}
-          />
-        </Space>
-      );
+      return <GlossaryStatusBadge status={entityStatus} />;
     }
 
     return null;

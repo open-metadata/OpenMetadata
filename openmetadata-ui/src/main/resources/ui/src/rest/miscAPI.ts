@@ -220,19 +220,6 @@ export const getSearchedTeams = (
   );
 };
 
-export const getSearchedUsersAndTeams = async (
-  queryString: string,
-  from: number,
-  size = 10
-) => {
-  const response = await searchData(queryString, from, size, '', '', '', [
-    SearchIndex.USER,
-    SearchIndex.TEAM,
-  ]);
-
-  return response.data;
-};
-
 export const deleteEntity = async (
   entityType: string,
   entityId: string,

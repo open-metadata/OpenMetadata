@@ -586,9 +586,11 @@ public class SearchRepository {
             List.of(new ImmutablePair<>("service.id", docId)));
       }
       default -> {
-        searchClient.deleteEntityByFields(
-            indexMapping.getChildAliases(clusterAlias),
-            List.of(new ImmutablePair<>(entityType + ".id", docId)));
+        List<String> indexNames = indexMapping.getChildAliases(clusterAlias);
+        if (!indexNames.isEmpty()) {
+          searchClient.deleteEntityByFields(
+              indexNames, List.of(new ImmutablePair<>(entityType + ".id", docId)));
+        }
       }
     }
   }
