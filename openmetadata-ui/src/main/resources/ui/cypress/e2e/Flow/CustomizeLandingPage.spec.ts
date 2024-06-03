@@ -28,9 +28,7 @@ describe('Customize Landing Page Flow', { tags: 'Settings' }, () => {
   const testData = {};
   before(() => {
     cy.login();
-    cy.getAllLocalStorage().then((data) => {
-      const token = getToken(data);
-
+    getToken().then((token) => {
       // Fetch logged in user details to get user id
       cy.request({
         method: 'GET',
@@ -85,9 +83,7 @@ describe('Customize Landing Page Flow', { tags: 'Settings' }, () => {
 
   after(() => {
     cy.login();
-    cy.getAllLocalStorage().then((data) => {
-      const token = getToken(data);
-
+    getToken().then((token) => {
       // Delete created user
       cy.request({
         method: 'DELETE',

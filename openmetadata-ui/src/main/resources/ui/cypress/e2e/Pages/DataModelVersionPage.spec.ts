@@ -44,8 +44,7 @@ describe(
 
     before(() => {
       cy.login();
-      cy.getAllLocalStorage().then((responseData) => {
-        const token = getToken(responseData);
+      getToken().then((token) => {
         cy.request({
           method: 'POST',
           url: `/api/v1/services/dashboardServices`,
@@ -86,9 +85,7 @@ describe(
 
     after(() => {
       cy.login();
-      cy.getAllLocalStorage().then((responseData) => {
-        const token = getToken(responseData);
-
+      getToken().then((token) => {
         // Delete created user
         cy.request({
           method: 'DELETE',

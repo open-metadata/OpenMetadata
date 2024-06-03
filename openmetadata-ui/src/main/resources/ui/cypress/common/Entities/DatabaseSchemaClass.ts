@@ -72,9 +72,7 @@ class DatabaseSchemaClass extends EntityClass {
   createEntity() {
     // Handle creation here
 
-    cy.getAllLocalStorage().then((data) => {
-      const token = getToken(data);
-
+    getToken().then((token) => {
       createEntityTableViaREST({
         token,
         ...DATABASE_SERVICE,
@@ -90,8 +88,7 @@ class DatabaseSchemaClass extends EntityClass {
   // Cleanup
   override cleanup() {
     super.cleanup();
-    cy.getAllLocalStorage().then((data) => {
-      const token = getToken(data);
+    getToken().then((token) => {
       deleteEntityViaREST({
         token,
         endPoint: EntityType.DatabaseService,

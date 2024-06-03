@@ -45,9 +45,7 @@ class DatabaseServiceClass extends EntityClass {
   createEntity() {
     // Handle creation here
 
-    cy.getAllLocalStorage().then((data) => {
-      const token = getToken(data);
-
+    getToken().then((token) => {
       createEntityTableViaREST({
         ...DATABASE_SERVICE,
         service: { ...DATABASE_SERVICE.service, name: this.databaseName },

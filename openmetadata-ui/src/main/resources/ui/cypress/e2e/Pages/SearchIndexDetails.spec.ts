@@ -83,9 +83,7 @@ describe(
 
     before(() => {
       cy.login();
-      cy.getAllLocalStorage().then((storageData) => {
-        const token = getToken(storageData);
-
+      getToken().then((token) => {
         // Create search index entity
         createSingleLevelEntity({
           token,
@@ -109,9 +107,7 @@ describe(
     after(() => {
       cy.login();
 
-      cy.getAllLocalStorage().then((storageData) => {
-        const token = getToken(storageData);
-
+      getToken().then((token) => {
         // Delete search index
         hardDeleteService({
           token,
@@ -168,9 +164,7 @@ describe('SearchIndexDetails page should work properly for data steward role', (
 
   before(() => {
     cy.login();
-    cy.getAllLocalStorage().then((storageData) => {
-      const token = getToken(storageData);
-
+    getToken().then((token) => {
       // Create search index entity
       createSingleLevelEntity({
         token,
@@ -235,9 +229,7 @@ describe('SearchIndexDetails page should work properly for data steward role', (
   after(() => {
     cy.login();
 
-    cy.getAllLocalStorage().then((storageData) => {
-      const token = getToken(storageData);
-
+    getToken().then((token) => {
       // Delete created user
       cy.request({
         method: 'DELETE',
@@ -325,9 +317,7 @@ describe('SearchIndexDetails page should work properly for data steward role', (
 describe('SearchIndexDetails page should work properly for admin role', () => {
   before(() => {
     cy.login();
-    cy.getAllLocalStorage().then((storageData) => {
-      const token = getToken(storageData);
-
+    getToken().then((token) => {
       // Create search index entity
       createSingleLevelEntity({
         token,
@@ -339,9 +329,7 @@ describe('SearchIndexDetails page should work properly for admin role', () => {
   after(() => {
     cy.login();
 
-    cy.getAllLocalStorage().then((storageData) => {
-      const token = getToken(storageData);
-
+    getToken().then((token) => {
       // Delete search index
       hardDeleteService({
         token,

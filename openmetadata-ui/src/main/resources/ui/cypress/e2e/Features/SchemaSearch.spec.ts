@@ -26,8 +26,7 @@ describe('Schema search', { tags: 'DataAssets' }, () => {
   });
 
   it('Prerequisite', () => {
-    cy.getAllLocalStorage().then((data) => {
-      const token = getToken(data);
+    getToken().then((token) => {
       cy.request({
         method: 'POST',
         url: `/api/v1/services/databaseServices`,
@@ -134,8 +133,7 @@ describe('Schema search', { tags: 'DataAssets' }, () => {
   });
 
   it('Cleanup', () => {
-    cy.getAllLocalStorage().then((data) => {
-      const token = getToken(data);
+    getToken().then((token) => {
       cy.request({
         method: 'DELETE',
         url: `/api/v1/services/databaseServices/${serviceId}?hardDelete=true&recursive=true`,

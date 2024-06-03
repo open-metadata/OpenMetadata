@@ -49,9 +49,7 @@ class StorageServiceClass extends EntityClass {
   createEntity() {
     // Handle creation here
 
-    cy.getAllLocalStorage().then((data) => {
-      const token = getToken(data);
-
+    getToken().then((token) => {
       createSingleLevelEntity({
         ...STORAGE_SERVICE,
         service: {

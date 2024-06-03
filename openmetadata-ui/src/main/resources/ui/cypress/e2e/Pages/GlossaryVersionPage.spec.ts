@@ -58,8 +58,7 @@ describe(
 
     before(() => {
       cy.login();
-      cy.getAllLocalStorage().then((storageData) => {
-        const token = getToken(storageData);
+      getToken().then((token) => {
         // Create a new user
         cy.request({
           method: 'POST',
@@ -156,9 +155,7 @@ describe(
 
     after(() => {
       cy.login();
-      cy.getAllLocalStorage().then((storageData) => {
-        const token = getToken(storageData);
-
+      getToken().then((token) => {
         // Delete created user
         cy.request({
           method: 'DELETE',

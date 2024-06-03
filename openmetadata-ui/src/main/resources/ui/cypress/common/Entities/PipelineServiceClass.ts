@@ -49,9 +49,7 @@ class PipelineServiceClass extends EntityClass {
   createEntity() {
     // Handle creation here
 
-    cy.getAllLocalStorage().then((data) => {
-      const token = getToken(data);
-
+    getToken().then((token) => {
       createSingleLevelEntity({
         ...PIPELINE_SERVICE,
         service: {

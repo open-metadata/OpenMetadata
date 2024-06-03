@@ -76,9 +76,7 @@ const queryFilters = ({
 describe('Query Entity', { tags: 'DataAssets' }, () => {
   before(() => {
     cy.login();
-    cy.getAllLocalStorage().then((data) => {
-      const token = getToken(data);
-
+    getToken().then((token) => {
       createEntityTable({
         token,
         ...DATABASE_SERVICE,
@@ -101,9 +99,7 @@ describe('Query Entity', { tags: 'DataAssets' }, () => {
 
   after(() => {
     cy.login();
-    cy.getAllLocalStorage().then((data) => {
-      const token = getToken(data);
-
+    getToken().then((token) => {
       hardDeleteService({
         token,
         serviceFqn: DATABASE_SERVICE.service.name,

@@ -10,13 +10,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-export const getToken = (data: Cypress.StorageByOrigin) => {
-  try {
-    return (
+
+export const getToken = () => {
+  return cy.getAllSessionStorage().then((data) => {
+    const token =
       JSON.parse((Object.values(data)[0]['om-session'] as string) ?? '{}')
-        ?.state?.oidcIdToken ?? ''
-    );
-  } catch (error) {
-    return '';
-  }
+        ?.state?.oidcIdToken ?? '';
+
+    return token;
+  });
 };

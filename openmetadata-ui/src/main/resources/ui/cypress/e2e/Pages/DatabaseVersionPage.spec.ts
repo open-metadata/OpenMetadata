@@ -45,18 +45,14 @@ describe(
 
     before(() => {
       cy.login();
-      cy.getAllLocalStorage().then((responseData) => {
-        const token = getToken(responseData);
-
+      getToken().then((token) => {
         databaseVersionPrerequisites(token, data);
       });
     });
 
     after(() => {
       cy.login();
-      cy.getAllLocalStorage().then((responseData) => {
-        const token = getToken(responseData);
-
+      getToken().then((token) => {
         commonTestCleanup(token, data);
       });
     });

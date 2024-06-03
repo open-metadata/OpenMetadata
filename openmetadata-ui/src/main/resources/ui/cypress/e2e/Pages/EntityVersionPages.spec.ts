@@ -36,9 +36,7 @@ describe('Version page tests for data assets', { tags: 'DataAssets' }, () => {
   };
   before(() => {
     cy.login();
-    cy.getAllLocalStorage().then((responseData) => {
-      const token = getToken(responseData);
-
+    getToken().then((token) => {
       // Create user
       cy.request({
         method: 'POST',
@@ -62,9 +60,7 @@ describe('Version page tests for data assets', { tags: 'DataAssets' }, () => {
 
   after(() => {
     cy.login();
-    cy.getAllLocalStorage().then((responseData) => {
-      const token = getToken(responseData);
-
+    getToken().then((token) => {
       // Delete created user
       cy.request({
         method: 'DELETE',
@@ -90,8 +86,7 @@ describe('Version page tests for data assets', { tags: 'DataAssets' }, () => {
 
         before(() => {
           cy.login();
-          cy.getAllLocalStorage().then((responseData) => {
-            const token = getToken(responseData);
+          getToken().then((token) => {
             cy.request({
               method: 'PUT',
               url: `/api/v1/${entityDetails.entity}`,
@@ -363,8 +358,7 @@ describe('Version page tests for data assets', { tags: 'DataAssets' }, () => {
         });
 
         after(() => {
-          cy.getAllLocalStorage().then((data) => {
-            const token = getToken(data);
+          getToken().then((token) => {
             cy.request({
               method: 'DELETE',
               url: `/api/v1/${entityDetails.entity}/${entityId}`,

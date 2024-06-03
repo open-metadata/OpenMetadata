@@ -40,9 +40,7 @@ const RECENTLY_VIEW_ENTITIES = [
 describe('Recently viwed data assets', { tags: 'DataAssets' }, () => {
   before(() => {
     cy.login();
-    cy.getAllLocalStorage().then((data) => {
-      const token = getToken(data);
-
+    getToken().then((token) => {
       createEntityTable({
         token,
         ...DATABASE_SERVICE,
@@ -68,9 +66,7 @@ describe('Recently viwed data assets', { tags: 'DataAssets' }, () => {
 
   after(() => {
     cy.login();
-    cy.getAllLocalStorage().then((data) => {
-      const token = getToken(data);
-
+    getToken().then((token) => {
       hardDeleteService({
         token,
         serviceFqn: DATABASE_SERVICE.service.name,

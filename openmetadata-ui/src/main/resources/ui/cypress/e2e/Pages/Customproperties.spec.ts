@@ -781,8 +781,8 @@ describe('Custom Properties should work properly', { tags: 'Settings' }, () => {
     before(() => {
       cy.login();
 
-      cy.getAllLocalStorage().then((data) => {
-        token = getToken(data);
+      getToken().then((tokenData) => {
+        token = tokenData;
         createEntityTableViaREST({
           token,
           ...DATABASE_SERVICE,

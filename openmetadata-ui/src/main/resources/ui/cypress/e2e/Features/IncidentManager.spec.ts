@@ -108,9 +108,7 @@ describe('Incident Manager', { tags: 'Observability' }, () => {
   before(() => {
     cy.login();
 
-    cy.getAllLocalStorage().then((data) => {
-      const token = getToken(data);
-
+    getToken().then((token) => {
       createEntityTableViaREST({
         token,
         ...DATABASE_SERVICE,
@@ -180,8 +178,7 @@ describe('Incident Manager', { tags: 'Observability' }, () => {
   after(() => {
     cy.login();
 
-    cy.getAllLocalStorage().then((data) => {
-      const token = getToken(data);
+    getToken().then((token) => {
       deleteEntityViaREST({
         token,
         endPoint: EntityType.DatabaseService,

@@ -207,8 +207,7 @@ const createViewBasicRoleViaREST = ({ token }) => {
 
 const preRequisite = () => {
   cy.login();
-  cy.getAllLocalStorage().then((data) => {
-    const token = getToken(data);
+  getToken().then((token) => {
     createViewBasicRoleViaREST({
       token,
     });
@@ -255,8 +254,7 @@ const preRequisite = () => {
 
 const cleanUp = () => {
   cy.login();
-  cy.getAllLocalStorage().then((data) => {
-    const token = getToken(data);
+  getToken().then((token) => {
     hardDeleteService({
       token,
       serviceFqn: DATABASE_SERVICE.service.name,
@@ -328,8 +326,7 @@ const updatePolicy = (
   patch: { op: string; path: string; value: unknown }[]
 ) => {
   cy.login();
-  cy.getAllLocalStorage().then((data) => {
-    const token = getToken(data);
+  getToken().then((token) => {
     cy.request({
       method: 'PATCH',
       url: `/api/v1/policies/${policy.id}`,

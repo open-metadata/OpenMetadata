@@ -114,9 +114,7 @@ describe(
     const mySql = new MysqlIngestionClass();
     before(() => {
       cy.login();
-      cy.getAllLocalStorage().then((data) => {
-        const token = getToken(data);
-
+      getToken().then((token) => {
         createEntityTable({
           token,
           ...DATABASE_SERVICE,
@@ -134,8 +132,7 @@ describe(
 
     after(() => {
       cy.login();
-      cy.getAllLocalStorage().then((data) => {
-        const token = getToken(data);
+      getToken().then((token) => {
         hardDeleteService({
           token,
           serviceFqn: DATABASE_SERVICE.service.name,

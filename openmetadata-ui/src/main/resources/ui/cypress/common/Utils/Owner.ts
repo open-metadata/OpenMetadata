@@ -28,9 +28,7 @@ export const generateRandomUser = () => {
 };
 
 export const validateOwnerAndTeamCounts = () => {
-  cy.getAllLocalStorage().then((data) => {
-    const token = getToken(data);
-
+  getToken().then((token) => {
     cy.request({
       method: 'GET',
       url: userURL,

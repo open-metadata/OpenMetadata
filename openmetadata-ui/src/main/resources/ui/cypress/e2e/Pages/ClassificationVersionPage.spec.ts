@@ -46,9 +46,7 @@ describe(
     });
 
     it('Prerequisites for classification version page tests', () => {
-      cy.getAllLocalStorage().then((data) => {
-        const token = getToken(data);
-
+      getToken().then((token) => {
         cy.request({
           method: 'PUT',
           url: `/api/v1/classifications`,
