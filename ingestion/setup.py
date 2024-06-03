@@ -278,7 +278,7 @@ plugins: Dict[str, Set[str]] = {
 dev = {
     "black==22.3.0",
     "datamodel-code-generator==0.25.6",
-    "boto3-stubs[essentials]",
+    "boto3-stubs",
     "mypy-boto3-glue",
     "isort",
     "pre-commit",
@@ -294,7 +294,7 @@ dev = {
 test = {
     # Install Airflow as it's not part of `all` plugin
     VERSIONS["airflow"],
-    "boto3-stubs[essentials]",
+    "boto3-stubs",
     "mypy-boto3-glue",
     "coverage",
     # Install GE because it's not in the `all` plugin
