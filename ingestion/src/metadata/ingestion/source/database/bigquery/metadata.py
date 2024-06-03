@@ -263,7 +263,7 @@ class BigquerySource(
     def create(
         cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None
     ):
-        config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
+        config: WorkflowSource = WorkflowSource.model_validate(config_dict)
         connection: BigQueryConnection = config.serviceConnection.root.config
         if not isinstance(connection, BigQueryConnection):
             raise InvalidSourceException(
@@ -769,7 +769,7 @@ class BigquerySource(
                 )
             ).all()
             for row in results:
-                stored_procedure = BigQueryStoredProcedure.parse_obj(dict(row))
+                stored_procedure = BigQueryStoredProcedure.model_validate(dict(row))
                 yield stored_procedure
 
     def yield_stored_procedure(

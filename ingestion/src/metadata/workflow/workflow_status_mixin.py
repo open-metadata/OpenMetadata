@@ -142,7 +142,7 @@ class WorkflowStatusMixin:
 
         return IngestionStatus(
             [
-                StepSummary.parse_obj(Summary.from_step(step).dict())
+                StepSummary.model_validate(Summary.from_step(step).model_dump())
                 for step in self.workflow_steps()
             ]
         )

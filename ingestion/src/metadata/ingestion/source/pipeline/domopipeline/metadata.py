@@ -69,7 +69,7 @@ class DomopipelineSource(PipelineServiceSource):
     def create(
         cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None
     ):
-        config = WorkflowSource.parse_obj(config_dict)
+        config = WorkflowSource.model_validate(config_dict)
         connection: DomoPipelineConnection = config.serviceConnection.root.config
         if not isinstance(connection, DomoPipelineConnection):
             raise InvalidSourceException(
@@ -135,7 +135,7 @@ class DomopipelineSource(PipelineServiceSource):
         """Lineage not implemented"""
 
     def yield_pipeline_status(self, pipeline_details) -> Iterable[OMetaPipelineStatus]:
-        pipeline_id = pipeline_details.get("id")
+        pipeline_id = str(pipeline_details.get("id"))
         if not pipeline_id:
             logger.debug(
                 f"Could not extract ID from {pipeline_details} while getting status."
@@ -187,7 +187,7 @@ class DomopipelineSource(PipelineServiceSource):
         except Exception as err:
             yield Either(
                 left=StackTraceError(
-                    name=pipeline_fqn,
+                    name=pipeline_details.get("id"),
                     error=f"Error extracting status for {pipeline_id} - {err}",
                     stackTrace=traceback.format_exc(),
                 )

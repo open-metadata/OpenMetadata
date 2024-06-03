@@ -695,9 +695,28 @@ class IcebergUnitTest(TestCase):
                 {
                     "location": "foo",
                     "last_column_id": 1,
-                    "format_version": 1,
-                    "schema": {},
+                    "format_version": 2,
+                    "schemas": [
+                        Schema(
+                            fields=tuple(
+                                MOCK_COLUMN_MAP[field]["iceberg"]
+                                for field in MOCK_COLUMN_MAP.keys()
+                            )
+                        )
+                    ],
                     "partition_spec": [],
+                    "partition_specs": [
+                        {
+                            "fields": (
+                                PartitionField(
+                                    source_id=1,
+                                    field_id=1000,
+                                    transform=IdentityTransform(),
+                                    name="boolean",
+                                ),
+                            )
+                        }
+                    ],
                     "properties": {"owner": "myself"},
                 }
             ),
@@ -728,9 +747,28 @@ class IcebergUnitTest(TestCase):
                 {
                     "location": "foo",
                     "last_column_id": 1,
-                    "format_version": 1,
-                    "schema": {},
+                    "format_version": 2,
+                    "schemas": [
+                        Schema(
+                            fields=tuple(
+                                MOCK_COLUMN_MAP[field]["iceberg"]
+                                for field in MOCK_COLUMN_MAP.keys()
+                            )
+                        )
+                    ],
                     "partition_spec": [],
+                    "partition_specs": [
+                        {
+                            "fields": (
+                                PartitionField(
+                                    source_id=1,
+                                    field_id=1000,
+                                    transform=IdentityTransform(),
+                                    name="boolean",
+                                ),
+                            )
+                        }
+                    ],
                     "properties": {},
                 }
             ),

@@ -291,7 +291,7 @@ def _unsafe_parse_config(config: dict, cls: Type[T], message: str) -> None:
     logger.debug(f"Parsing message: [{message}]")
     # Parse the service connection dictionary with the scoped class
     try:
-        cls.parse_obj(config)
+        cls.model_validate(config)
     except ValidationError as err:
         logger.debug(
             f"The supported properties for {cls.__name__} are {list(cls.__fields__.keys())}"
@@ -309,10 +309,10 @@ def _unsafe_parse_dbt_config(config: dict, cls: Type[T], message: str) -> None:
         # Parse the oneOf config types of dbt to check
         dbt_config_type = config["dbtConfigSource"]["dbtConfigType"]
         dbt_config_class = DBT_CONFIG_TYPE_MAP.get(dbt_config_type)
-        dbt_config_class.parse_obj(config["dbtConfigSource"])
+        dbt_config_class.model_validate(config["dbtConfigSource"])
 
         # Parse the entire dbtPipeline object
-        cls.parse_obj(config)
+        cls.model_validate(config)
     except ValidationError as err:
         logger.debug(
             f"The supported properties for {cls.__name__} are {list(cls.__fields__.keys())}"
@@ -437,13 +437,13 @@ def parse_workflow_config_gracefully(
     """
 
     try:
-        workflow_config = OpenMetadataWorkflowConfig.parse_obj(config_dict)
+        workflow_config = OpenMetadataWorkflowConfig.model_validate(config_dict)
         return workflow_config
 
     except ValidationError as original_error:
         try:
             parse_workflow_source(config_dict)
-            WorkflowConfig.parse_obj(config_dict["workflowConfig"])
+            WorkflowConfig.model_validate(config_dict["workflowConfig"])
         except (ValidationError, InvalidWorkflowException) as scoped_error:
             if isinstance(scoped_error, ValidationError):
                 # Let's catch validations of internal Workflow models, not the Workflow itself
@@ -479,7 +479,7 @@ def parse_ingestion_pipeline_config_gracefully(
     """
 
     try:
-        ingestion_pipeline = IngestionPipeline.parse_obj(config_dict)
+        ingestion_pipeline = IngestionPipeline.model_validate(config_dict)
         return ingestion_pipeline
 
     except ValidationError:
@@ -514,7 +514,7 @@ def parse_automation_workflow_gracefully(
     """
 
     try:
-        automation_workflow = AutomationWorkflow.parse_obj(config_dict)
+        automation_workflow = AutomationWorkflow.model_validate(config_dict)
         return automation_workflow
 
     except ValidationError:

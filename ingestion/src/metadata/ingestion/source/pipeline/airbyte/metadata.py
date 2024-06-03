@@ -84,7 +84,7 @@ class AirbyteSource(PipelineServiceSource):
     def create(
         cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None
     ):
-        config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
+        config: WorkflowSource = WorkflowSource.model_validate(config_dict)
         connection: AirbyteConnection = config.serviceConnection.root.config
         if not isinstance(connection, AirbyteConnection):
             raise InvalidSourceException(
@@ -138,7 +138,7 @@ class AirbyteSource(PipelineServiceSource):
 
         # Airbyte does not offer specific attempt link, just at pipeline level
         log_link = (
-            f"{self.service_connection.hostPort}/workspaces/{pipeline_details.workspace.get('workspaceId')}"
+            f"{self.service_connection.hostPort}workspaces/{pipeline_details.workspace.get('workspaceId')}"
             f"/connections/{pipeline_details.connection.get('connectionId')}/status"
         )
 

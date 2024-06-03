@@ -259,7 +259,7 @@ class OMetaTestsMixin:
         )
 
         if resp:
-            return [TestCaseResult.parse_obj(entity) for entity in resp["data"]]
+            return [TestCaseResult.model_validate(entity) for entity in resp["data"]]
         return None
 
     def create_or_update_executable_test_suite(
@@ -278,7 +278,7 @@ class OMetaTestsMixin:
         path = self.get_suffix(entity) + "/executable"
         resp = self.client.put(path, data=data.model_dump_json())
 
-        return entity_class.parse_obj(resp)
+        return entity_class.model_validate(resp)
 
     def delete_executable_test_suite(
         self,

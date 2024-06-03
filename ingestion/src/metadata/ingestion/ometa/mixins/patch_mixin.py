@@ -493,7 +493,7 @@ class OMetaPatchMixin(OMetaPatchMixinBase):
         """
         result_data: Dict = {
             PatchField.PATH: PatchPath.RESPONSE,
-            PatchField.VALUE: test_connection_result.dict(),
+            PatchField.VALUE: test_connection_result.model_dump(),
             PatchField.OPERATION: PatchOperation.ADD,
         }
 

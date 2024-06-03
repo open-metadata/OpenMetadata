@@ -163,7 +163,7 @@ class EntityReportDataProcessor(DataProcessor):
             yield ReportData(
                 timestamp=self.timestamp,
                 reportDataType=ReportDataType.entityReportData.value,
-                data=EntityReportData.parse_obj(data),
+                data=EntityReportData.model_validate(data),
             )  # type: ignore
 
     def refine(self, entity: Type[T]) -> None:

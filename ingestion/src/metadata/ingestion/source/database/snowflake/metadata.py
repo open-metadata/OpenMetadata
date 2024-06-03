@@ -190,7 +190,7 @@ class SnowflakeSource(
     def create(
         cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None
     ):
-        config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
+        config: WorkflowSource = WorkflowSource.model_validate(config_dict)
         connection: SnowflakeConnection = config.serviceConnection.root.config
         if not isinstance(connection, SnowflakeConnection):
             raise InvalidSourceException(
@@ -629,7 +629,7 @@ class SnowflakeSource(
                 )
             ).all()
             for row in results:
-                stored_procedure = SnowflakeStoredProcedure.parse_obj(dict(row))
+                stored_procedure = SnowflakeStoredProcedure.model_validate(dict(row))
                 if stored_procedure.definition is None:
                     logger.debug(
                         f"Missing ownership permissions on procedure {stored_procedure.name}."

@@ -123,7 +123,7 @@ class MetadataRestSink(Sink):  # pylint: disable=too-many-public-methods
         metadata: OpenMetadata,
         pipeline_name: Optional[str] = None,
     ):
-        config = MetadataRestSinkConfig.parse_obj(config_dict)
+        config = MetadataRestSinkConfig.model_validate(config_dict)
         return cls(config, metadata)
 
     @property
@@ -324,7 +324,7 @@ class MetadataRestSink(Sink):  # pylint: disable=too-many-public-methods
             team_ids = None
 
         # Update user data with the new Role and Team IDs
-        user_profile = record.user.dict(exclude_unset=True)
+        user_profile = record.user.model_dump(exclude_unset=True)
         user_profile["roles"] = role_ids
         user_profile["teams"] = team_ids
         metadata_user = CreateUserRequest(**user_profile)

@@ -124,7 +124,7 @@ class GreenplumSource(CommonDbSourceService, MultiDBSource):
         metadata: OpenMetadataConnection,
         pipeline_name: Optional[str] = None,
     ):
-        config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
+        config: WorkflowSource = WorkflowSource.model_validate(config_dict)
         connection: GreenplumConnection = config.serviceConnection.root.config
         if not isinstance(connection, GreenplumConnection):
             raise InvalidSourceException(

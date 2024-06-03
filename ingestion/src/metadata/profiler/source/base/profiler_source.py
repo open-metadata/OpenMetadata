@@ -65,8 +65,8 @@ class ProfilerSource(ProfilerSourceInterface):
         self.source_config = cast(
             DatabaseServiceProfilerPipeline, self.source_config
         )  # satisfy type checker
-        self.profiler_config = ProfilerProcessorConfig.parse_obj(
-            config.processor.dict().get("config")
+        self.profiler_config = ProfilerProcessorConfig.model_validate(
+            config.processor.model_dump().get("config")
         )
         self.ometa_client = ometa_client
         self.profiler_interface_type: str = self._get_profiler_interface_type(config)

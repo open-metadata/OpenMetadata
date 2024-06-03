@@ -76,7 +76,7 @@ class UnitycatalogLineageSource(Source):
         cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None
     ):
         """Create class instance"""
-        config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
+        config: WorkflowSource = WorkflowSource.model_validate(config_dict)
         connection: UnityCatalogConnection = config.serviceConnection.root.config
         if not isinstance(connection, UnityCatalogConnection):
             raise InvalidSourceException(

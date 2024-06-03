@@ -64,7 +64,7 @@ class MetadataWorkflow(IngestionWorkflow):
         )
 
         source: Source = source_class.create(
-            self.config.source.dict(), self.metadata, pipeline_name
+            self.config.source.model_dump(), self.metadata, pipeline_name
         )
         logger.debug(f"Source type:{source_type},{source_class} configured")
         source.prepare()
@@ -75,7 +75,7 @@ class MetadataWorkflow(IngestionWorkflow):
     def _get_sink(self) -> Sink:
         sink_type = self.config.sink.type
         sink_class = import_sink_class(sink_type=sink_type)
-        sink_config = self.config.sink.dict().get("config", {})
+        sink_config = self.config.sink.model_dump().get("config", {})
         sink: Sink = sink_class.create(sink_config, self.metadata)
         logger.debug(f"Sink type:{self.config.sink.type}, {sink_class} configured")
 

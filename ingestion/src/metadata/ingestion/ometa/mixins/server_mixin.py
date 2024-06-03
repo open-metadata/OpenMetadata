@@ -92,7 +92,7 @@ class OMetaServerMixin:
         """
         data = settings.model_dump_json()
         response = self.client.put(ROUTES.get(Settings.__name__), data)
-        return Settings.parse_obj(response)
+        return Settings.model_validate(response)
 
     def get_settings_by_name(self, setting_type: SettingType) -> Optional[Settings]:
         """Get setting by name
@@ -105,7 +105,7 @@ class OMetaServerMixin:
         )
         if not response:
             return None
-        return Settings.parse_obj(response)
+        return Settings.model_validate(response)
 
     def get_profiler_config_settings(self) -> Optional[Settings]:
         """Get profiler config setting
@@ -116,4 +116,4 @@ class OMetaServerMixin:
         response = self.client.get("/system/settings/profilerConfiguration")
         if not response:
             return None
-        return Settings.parse_obj(response)
+        return Settings.model_validate(response)

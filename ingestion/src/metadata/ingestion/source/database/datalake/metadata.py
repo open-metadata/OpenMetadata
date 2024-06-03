@@ -121,7 +121,7 @@ class DatalakeSource(DatabaseServiceSource):
     def create(
         cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None
     ):
-        config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
+        config: WorkflowSource = WorkflowSource.model_validate(config_dict)
         connection: DatalakeConnection = config.serviceConnection.root.config
         if not isinstance(connection, DatalakeConnection):
             raise InvalidSourceException(
@@ -343,7 +343,7 @@ class DatalakeSource(DatabaseServiceSource):
                 verbose=False,
             )
             content = json.loads(metadata_config_response)
-            metadata_entry = StorageContainerConfig.parse_obj(content)
+            metadata_entry = StorageContainerConfig.model_validate(content)
         except ReadException:
             metadata_entry = None
         if self.source_config.includeTables:

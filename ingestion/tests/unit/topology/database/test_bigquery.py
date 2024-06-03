@@ -15,6 +15,7 @@ bigquery unit tests
 
 # pylint: disable=line-too-long
 import types
+from copy import deepcopy
 from typing import Dict
 from unittest import TestCase
 from unittest.mock import Mock, patch
@@ -50,6 +51,7 @@ from metadata.generated.schema.type.basic import (
     SourceUrl,
 )
 from metadata.generated.schema.type.entityReference import EntityReference
+from metadata.ingestion.api.parser import parse_workflow_config_gracefully
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.database.bigquery.lineage import BigqueryLineageSource
 from metadata.ingestion.source.database.bigquery.metadata import BigquerySource
@@ -59,7 +61,24 @@ mock_bq_config = {
         "type": "bigquery",
         "serviceName": "local_bigquery",
         "serviceConnection": {
-            "config": {"type": "BigQuery", "credentials": {"gcpConfig": {}}}
+            "config": {
+                "type": "BigQuery",
+                "credentials": {
+                    "gcpConfig": {
+                        "type": "service_account",
+                        "projectId": "my-gcp-project",
+                        "privateKeyId": "private_key_id",
+                        # this is a valid key that was generated on a local machine and is not used for any real project
+                        "privateKey": "-----BEGIN RSA PRIVATE KEY-----\nMIIEpQIBAAKCAQEAw3vHG9fDIkcYB0xi2Mv4fS2gUzKR9ZRrcVNeKkqGFTT71AVB\nOzgIqYVe8b2aWODuNye6sipcrqTqOt05Esj+sxhk5McM9bE2RlxXC5QH/Bp9zxMP\n/Yksv9Ov7fdDt/loUk7sTXvI+7LDJfmRYU6MtVjyyLs7KpQIB2xBWEToU1xZY+v0\ndRC1NA+YWc+FjXbAiFAf9d4gXkYO8VmU5meixVh4C8nsjokEXk0T/HEItpZCxadk\ndZ7LKUE/HDmWCO2oNG6sCf4ET2crjSdYIfXuREopX1aQwnk7KbI4/YIdlRz1I369\nAz3+Hxlf9lLJVH3+itN4GXrR9yWWKWKDnwDPbQIDAQABAoIBAQC3X5QuTR7SN8iV\niBUtc2D84+ECSmza5shG/UJW/6N5n0Mf53ICgBS4GNEwiYCRISa0/ILIgK6CcVb7\nsuvH8F3kWNzEMui4TO0x4YsR5GH9HkioCCS224frxkLBQnL20HIIy9ok8Rpe6Zjg\nNZUnp4yczPyqSeA9l7FUbTt69uDM2Cx61m8REOpFukpnYLyZGbmNPYmikEO+rq9r\nwNID5dkSeVuQYo4MQdRavOGFUWvUYXzkEQ0A6vPyraVBfolESX8WaLNVjic7nIa3\nujdSNojnJqGJ3gslntcmN1d4JOfydc4bja4/NdNlcOHpWDGLzY1QnaDe0Koxn8sx\nLT9MVD2NAoGBAPy7r726bKVGWcwqTzUuq1OWh5c9CAc4N2zWBBldSJyUdllUq52L\nWTyva6GRoRzCcYa/dKLLSM/k4eLf9tpxeIIfTOMsvzGtbAdm257ndMXNvfYpxCfU\nK/gUFfAUGHZ3MucTHRY6DTkJg763Sf6PubA2fqv3HhVZDK/1HGDtHlTPAoGBAMYC\npdV7O7lAyXS/d9X4PQZ4BM+P8MbXEdGBbPPlzJ2YIb53TEmYfSj3z41u9+BNnhGP\n4uzUyAR/E4sxrA2+Ll1lPSCn+KY14WWiVGfWmC5j1ftdpkbrXstLN8NpNYzrKZwx\njdR0ZkwvZ8B5+kJ1hK96giwWS+SJxJR3TohcQ18DAoGAJSfmv2r//BBqtURnHrd8\nwq43wvlbC8ytAVg5hA0d1r9Q4vM6w8+vz+cuWLOTTyobDKdrG1/tlXrd5r/sh9L0\n15SIdkGm3kPTxQbPNP5sQYRs8BrV1tEvoao6S3B45DnEBwrdVN42AXOvpcNGoqE4\nuHpahyeuiY7s+ZV8lZdmxSsCgYEAolr5bpmk1rjwdfGoaKEqKGuwRiBX5DHkQkxE\n8Zayt2VOBcX7nzyRI05NuEIMrLX3rZ61CktN1aH8fF02He6aRaoE/Qm9L0tujM8V\nNi8WiLMDeR/Ifs3u4/HAv1E8v1byv0dCa7klR8J257McJ/ID4X4pzcxaXgE4ViOd\nGOHNu9ECgYEApq1zkZthEQymTUxs+lSFcubQpaXyf5ZC61cJewpWkqGDtSC+8DxE\nF/jydybWuoNHXymnvY6QywxuIooivbuib6AlgpEJeybmnWlDOZklFOD0abNZ+aNO\ndUk7XVGffCakXQ0jp1kmZA4lGsYK1h5dEU5DgXqu4UYJ88Vttax2W+Y=\n-----END RSA PRIVATE KEY-----\n",
+                        "clientEmail": "gcpuser@project_id.iam.gserviceaccount.com",
+                        "clientId": "client_id",
+                        "authUri": "https://accounts.google.com/o/oauth2/auth",
+                        "tokenUri": "https://oauth2.googleapis.com/token",
+                        "authProviderX509CertUrl": "https://www.googleapis.com/oauth2/v1/certs",
+                        "clientX509CertUrl": "https://www.googleapis.com/oauth2/v1/certs",
+                    }
+                },
+            },
         },
         "sourceConfig": {"config": {"type": "DatabaseMetadata", "includeTags": False}},
     },
@@ -68,18 +87,10 @@ mock_bq_config = {
         "openMetadataServerConfig": {
             "hostPort": "http://localhost:8585/api",
             "authProvider": "openmetadata",
-            "securityConfig": {
-                "jwtToken": "eyJraWQiOiJHYjM4OWEtOWY3Ni1nZGpzLWE5MmotMDI0MmJrOTQzNTYiLCJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9.eyJzdWIiOiJhZG1pbiIsImlzQm90IjpmYWxzZSwiaXNzIjoib3Blbi1tZXRhZGF0YS5vcmciLCJpYXQiOjE2NjM5Mzg0NjIsImVtYWlsIjoiYWRtaW5Ab3Blbm1ldGFkYXRhLm9yZyJ9.tS8um_5DKu7HgzGBzS1VTA5uUjKWOCU0B_j08WXBiEC0mr0zNREkqVfwFDD-d24HlNEbrqioLsBuFRiwIWKc1m_ZlVQbG7P36RUxhuv2vbSp80FKyNM-Tj93FDzq91jsyNmsQhyNv_fNr3TXfzzSPjHt8Go0FMMP66weoKMgW2PbXlhVKwEuXUHyakLLzewm9UMeQaEiRzhiTMU3UkLXcKbYEJJvfNFcLwSl9W8JCO_l0Yj3ud-qt_nQYEZwqW6u5nfdQllN133iikV4fM5QZsMCnm8Rq1mvLR0y9bmJiD7fwM1tmJ791TUWqmKaTnP49U493VanKpUAfzIiOiIbhg"
-            },
+            "securityConfig": {"jwtToken": "jwt"},
         }
     },
 }
-
-mock_credentials_path_bq_config = mock_bq_config
-mock_credentials_path_bq_config["source"]["serviceConnection"]["config"]["credentials"][
-    "gcpConfig"
-]["root"] = "credentials.json"
-
 
 MOCK_DB_NAME = "random-project-id"
 MOCK_SCHEMA_NAME = "test_omd"
@@ -557,9 +568,9 @@ class BigqueryUnitTest(TestCase):
         get_connection.return_value = Mock()
         test_connection.return_value = False
         set_project_id.return_value = "random-project-id"
-        self.config = OpenMetadataWorkflowConfig.parse_obj(mock_bq_config)
+        self.config = parse_workflow_config_gracefully(mock_bq_config)
         self.metadata = OpenMetadata(
-            OpenMetadataConnection.parse_obj(
+            OpenMetadataConnection.model_validate(
                 mock_bq_config["workflowConfig"]["openMetadataServerConfig"]
             )
         )
@@ -680,6 +691,11 @@ class BigqueryLineageSourceTest(TestCase):
         get_connection,  # pylint: disable=unused-argument
     ) -> None:
         super().__init__(methodName)
+
+        mock_credentials_path_bq_config = deepcopy(mock_bq_config)
+        mock_credentials_path_bq_config["source"]["serviceConnection"]["config"][
+            "credentials"
+        ]["gcpConfig"] = "credentials.json"
 
         self.config = OpenMetadataWorkflowConfig.parse_obj(
             mock_credentials_path_bq_config

@@ -70,7 +70,7 @@ class DomodashboardSource(DashboardServiceSource):
     def create(
         cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None
     ):
-        config = WorkflowSource.parse_obj(config_dict)
+        config = WorkflowSource.model_validate(config_dict)
         connection: DomoDashboardConnection = config.serviceConnection.root.config
         if not isinstance(connection, DomoDashboardConnection):
             raise InvalidSourceException(

@@ -294,7 +294,7 @@ dev = {
 test = {
     # Install Airflow as it's not part of `all` plugin
     VERSIONS["airflow"],
-    "boto3-stubs[boto3]",
+    "boto3-stubs[essentials]",
     "mypy-boto3-glue",
     "coverage",
     # Install GE because it's not in the `all` plugin

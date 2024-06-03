@@ -131,7 +131,7 @@ class AmundsenSource(Source):
         cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None
     ):
         """Create class instance"""
-        config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
+        config: WorkflowSource = WorkflowSource.model_validate(config_dict)
         connection: AmundsenConnection = config.serviceConnection.root.config
         if not isinstance(connection, AmundsenConnection):
             raise InvalidSourceException(
@@ -371,7 +371,7 @@ class AmundsenSource(Source):
     ) -> Iterable[Either[CreateDashboardRequest]]:
         service_name = dashboard["cluster"]
         SUPERSET_DEFAULT_CONFIG["serviceName"] = service_name
-        config = WorkflowSource.parse_obj(SUPERSET_DEFAULT_CONFIG)
+        config = WorkflowSource.model_validate(SUPERSET_DEFAULT_CONFIG)
         create_service_entity = self.metadata.get_create_service_from_source(
             entity=DashboardService, config=config
         )

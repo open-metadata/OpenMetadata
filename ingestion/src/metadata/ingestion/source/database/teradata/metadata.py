@@ -65,7 +65,7 @@ class TeradataSource(CommonDbSourceService):
     def create(
         cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None
     ):
-        config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
+        config: WorkflowSource = WorkflowSource.model_validate(config_dict)
         connection = config.serviceConnection.__root__.config
         if not isinstance(connection, TeradataConnection):
             raise InvalidSourceException(
@@ -83,7 +83,7 @@ class TeradataSource(CommonDbSourceService):
             ).all()
             for row in results:
                 try:
-                    stored_procedure = TeradataStoredProcedure.parse_obj(dict(row))
+                    stored_procedure = TeradataStoredProcedure.model_validate(dict(row))
                     stored_procedure.definition = self.describe_procedure_definition(
                         stored_procedure
                     )

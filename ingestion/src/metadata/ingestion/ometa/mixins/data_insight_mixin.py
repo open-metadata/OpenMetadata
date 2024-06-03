@@ -131,7 +131,7 @@ class DataInsightMixin:
             request_params,
         )
 
-        return DataInsightChartResult.parse_obj(resp)
+        return DataInsightChartResult.model_validate(resp)
 
     def get_kpi_result(self, fqn: str, start_ts, end_ts) -> list[KpiResult]:
         """Given FQN return KPI results
@@ -152,7 +152,7 @@ class DataInsightMixin:
     def create_kpi(self, create: CreateKpiRequest) -> Kpi:
         resp = self.client.post("/kpi", create.model_dump_json())
 
-        return Kpi.parse_obj(resp)
+        return Kpi.model_validate(resp)
 
     def get_web_analytic_events(
         self, event_type: WebAnalyticEventType, start_ts: int, end_ts: int

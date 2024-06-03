@@ -208,8 +208,8 @@ class IngestionWorkflow(BaseWorkflow, ABC):
             if not self.config.source.serviceConnection.root.config.supportsProfiler:
                 raise AttributeError()
         except AttributeError:
-            if ProfilerProcessorConfig.parse_obj(
-                self.config.processor.dict().get("config")
+            if ProfilerProcessorConfig.model_validate(
+                self.config.processor.model_dump().get("config")
             ).ignoreValidation:
                 logger.debug(
                     f"Profiler is not supported for the service connection: {self.config.source.serviceConnection}"

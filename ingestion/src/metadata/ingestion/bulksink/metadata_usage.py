@@ -99,7 +99,7 @@ class MetadataUsageBulkSink(BulkSink):
         metadata: OpenMetadata,
         pipeline_name: Optional[str] = None,
     ):
-        config = MetadataUsageSinkConfig.parse_obj(config_dict)
+        config = MetadataUsageSinkConfig.model_validate(config_dict)
         return cls(config, metadata)
 
     def __populate_table_usage_map(

@@ -208,7 +208,7 @@ class WebAnalyticEntityViewReportDataProcessor(DataProcessor):
             yield ReportData(
                 timestamp=self.timestamp,
                 reportDataType=ReportDataType.webAnalyticEntityViewReportData.value,
-                data=WebAnalyticEntityViewReportData.parse_obj(
+                data=WebAnalyticEntityViewReportData.model_validate(
                     self._refined_data[data]
                 ),
             )  # type: ignore
@@ -373,7 +373,7 @@ class WebAnalyticUserActivityReportDataProcessor(DataProcessor):
             yield ReportData(
                 timestamp=self.timestamp,
                 reportDataType=ReportDataType.webAnalyticUserActivityReportData.value,
-                data=WebAnalyticUserActivityReportData.parse_obj(
+                data=WebAnalyticUserActivityReportData.model_validate(
                     self._refined_data[user_id]
                 ),
             )  # type: ignore

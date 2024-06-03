@@ -542,7 +542,7 @@ class SampleDataSource(
         cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None
     ):
         """Create class instance"""
-        config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
+        config: WorkflowSource = WorkflowSource.model_validate(config_dict)
         connection: CustomDatabaseConnection = config.serviceConnection.root.config
         if not isinstance(connection, CustomDatabaseConnection):
             raise InvalidSourceException(
@@ -1529,7 +1529,7 @@ class SampleDataSource(
                             testCaseStatus=result["testCaseStatus"],
                             result=result["result"],
                             testResultValue=[
-                                TestResultValue.parse_obj(res_value)
+                                TestResultValue.model_validate(res_value)
                                 for res_value in result["testResultValues"]
                             ],
                         ),

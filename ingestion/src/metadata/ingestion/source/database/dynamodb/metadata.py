@@ -49,7 +49,7 @@ class DynamodbSource(CommonNoSQLSource):
     def create(
         cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None
     ):
-        config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
+        config: WorkflowSource = WorkflowSource.model_validate(config_dict)
         connection: DynamoDBConnection = config.serviceConnection.root.config
         if not isinstance(connection, DynamoDBConnection):
             raise InvalidSourceException(
@@ -93,7 +93,7 @@ class DynamodbSource(CommonNoSQLSource):
             while not done:
                 if start_key:
                     scan_kwargs["ExclusiveStartKey"] = start_key
-                response = TableResponse.parse_obj(table.scan(**scan_kwargs))
+                response = TableResponse.model_validate(table.scan(**scan_kwargs))
                 attributes.extend(response.Items)
                 start_key = response.LastEvaluatedKey
                 done = start_key is None or len(attributes) >= SAMPLE_SIZE

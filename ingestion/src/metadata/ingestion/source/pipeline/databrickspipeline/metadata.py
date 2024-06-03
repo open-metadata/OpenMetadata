@@ -78,7 +78,7 @@ class DatabrickspipelineSource(PipelineServiceSource):
         cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None
     ):
         """Create class instance"""
-        config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
+        config: WorkflowSource = WorkflowSource.model_validate(config_dict)
         connection: DatabricksPipelineConnection = config.serviceConnection.root.config
         if not isinstance(connection, DatabricksPipelineConnection):
             raise InvalidSourceException(
@@ -100,9 +100,9 @@ class DatabrickspipelineSource(PipelineServiceSource):
         self.context.get().job_id_list = []
         try:
 
-            description = (pipeline_details["settings"].get("name"),)
+            description = pipeline_details["settings"].get("name")
             pipeline_request = CreatePipelineRequest(
-                name=EntityName(pipeline_details["job_id"]),
+                name=EntityName(str(pipeline_details["job_id"])),
                 displayName=pipeline_details["settings"].get("name"),
                 description=Markdown(description) if description else None,
                 tasks=self.get_tasks(pipeline_details),

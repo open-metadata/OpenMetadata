@@ -187,7 +187,7 @@ class LookerSource(DashboardServiceSource):
         metadata: OpenMetadata,
         pipeline_name: Optional[str] = None,
     ) -> "LookerSource":
-        config = WorkflowSource.parse_obj(config_dict)
+        config = WorkflowSource.model_validate(config_dict)
         connection: LookerConnection = config.serviceConnection.root.config
         if not isinstance(connection, LookerConnection):
             raise InvalidSourceException(
@@ -232,7 +232,7 @@ class LookerSource(DashboardServiceSource):
         if not os.path.isfile(file_path):
             return None
         with open(file_path, "r", encoding="utf-8") as fle:
-            manifest = LookMLManifest.parse_obj(lkml.load(fle))
+            manifest = LookMLManifest.model_validate(lkml.load(fle))
             if manifest and manifest.remote_dependency:
                 remote_name = manifest.remote_dependency["name"]
                 remote_git_url = manifest.remote_dependency["url"]

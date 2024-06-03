@@ -115,7 +115,7 @@ class UnitycatalogSource(
     def create(
         cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None
     ):
-        config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
+        config: WorkflowSource = WorkflowSource.model_validate(config_dict)
         connection: UnityCatalogConnection = config.serviceConnection.root.config
         if not isinstance(connection, UnityCatalogConnection):
             raise InvalidSourceException(
@@ -497,7 +497,7 @@ class UnitycatalogSource(
             parsed_column = Column(**parsed_string)
             self.add_complex_datatype_descriptions(
                 column=parsed_column,
-                column_json=ColumnJson.parse_obj(json.loads(column.type_json)),
+                column_json=ColumnJson.model_validate(json.loads(column.type_json)),
             )
             yield parsed_column
 

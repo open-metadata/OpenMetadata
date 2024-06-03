@@ -96,7 +96,7 @@ class QueryParserProcessor(Processor):
         pipeline_name: Optional[str] = None,
         **kwargs,
     ):
-        config = ConfigModel.parse_obj(config_dict)
+        config = ConfigModel.model_validate(config_dict)
         connection_type = kwargs.pop("connection_type", "")
         return cls(config, metadata, connection_type)
 

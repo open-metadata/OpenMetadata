@@ -157,7 +157,7 @@ class DorisSource(CommonDbSourceService):
     def create(
         cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None
     ):
-        config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
+        config: WorkflowSource = WorkflowSource.model_validate(config_dict)
         if config.serviceConnection is None:
             raise InvalidSourceException("Missing service connection")
         connection = cast(DorisConnection, config.serviceConnection.root.config)

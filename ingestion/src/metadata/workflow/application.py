@@ -74,7 +74,7 @@ class AppRunner(Step, ABC):
         metadata: OpenMetadata,
         pipeline_name: Optional[str] = None,
     ) -> "Step":
-        config = OpenMetadataApplicationConfig.parse_obj(config_dict)
+        config = OpenMetadataApplicationConfig.model_validate(config_dict)
         return cls(config=config, metadata=metadata)
 
 
@@ -87,7 +87,7 @@ class ApplicationWorkflow(BaseWorkflow, ABC):
     def __init__(self, config_dict: dict):
         self.runner = None  # Will be passed in post-init
         # TODO: Create a parse_gracefully method
-        self.config = OpenMetadataApplicationConfig.parse_obj(config_dict)
+        self.config = OpenMetadataApplicationConfig.model_validate(config_dict)
 
         # Applications are associated to the OpenMetadata Service
         self.service_type: ServiceType = ServiceType.Metadata

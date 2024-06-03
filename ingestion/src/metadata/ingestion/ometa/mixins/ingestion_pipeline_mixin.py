@@ -104,7 +104,9 @@ class OMetaIngestionPipelineMixin:
         )
 
         if resp:
-            return [PipelineStatus.parse_obj(status) for status in resp.get("data")]
+            return [
+                PipelineStatus.model_validate(status) for status in resp.get("data")
+            ]
         return None
 
     def get_ingestion_pipeline_by_name(

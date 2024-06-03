@@ -115,7 +115,7 @@ class LkmlParser:
         Processing of a single path
         """
         file = self._read_file(path)
-        lkml_file = LkmlFile.parse_obj(lkml.load(file))
+        lkml_file = LkmlFile.model_validate(lkml.load(file))
         self.parsed_files[path] = file
 
         # Cache everything

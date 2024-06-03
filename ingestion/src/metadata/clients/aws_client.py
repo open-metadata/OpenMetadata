@@ -59,7 +59,7 @@ class AWSClient:
         self.config = (
             config
             if isinstance(config, AWSCredentials)
-            else (AWSCredentials.parse_obj(config) if config else config)
+            else (AWSCredentials.model_validate(config) if config else config)
         )
 
     @staticmethod

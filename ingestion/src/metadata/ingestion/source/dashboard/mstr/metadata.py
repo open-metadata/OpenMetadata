@@ -59,7 +59,7 @@ class MstrSource(DashboardServiceSource):
         metadata: OpenMetadata,
         pipeline_name: Optional[str] = None,
     ):
-        config = WorkflowSource.parse_obj(config_dict)
+        config = WorkflowSource.model_validate(config_dict)
         connection: MstrConnection = config.serviceConnection.root.config
         if not isinstance(connection, MstrConnection):
             raise InvalidSourceException(

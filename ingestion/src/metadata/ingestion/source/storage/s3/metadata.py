@@ -91,7 +91,7 @@ class S3Source(StorageServiceSource):
     def create(
         cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None
     ):
-        config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
+        config: WorkflowSource = WorkflowSource.model_validate(config_dict)
         connection: S3Connection = config.serviceConnection.root.config
         if not isinstance(connection, S3Connection):
             raise InvalidSourceException(f"Expected S3Connection, but got {connection}")
@@ -270,7 +270,7 @@ class S3Source(StorageServiceSource):
                 ):
                     self.status.filter(bucket["Name"], "Bucket Filtered Out")
                 else:
-                    results.append(S3BucketResponse.parse_obj(bucket))
+                    results.append(S3BucketResponse.model_validate(bucket))
         except Exception as err:
             logger.debug(traceback.format_exc())
             logger.error(f"Failed to fetch buckets list - {err}")
@@ -455,7 +455,7 @@ class S3Source(StorageServiceSource):
                 verbose=False,
             )
             content = json.loads(response_object)
-            metadata_config = StorageContainerConfig.parse_obj(content)
+            metadata_config = StorageContainerConfig.model_validate(content)
             return metadata_config
         except ReadException:
             logger.warning(

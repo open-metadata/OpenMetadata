@@ -91,7 +91,7 @@ class OpenMetadataSourceExt(OpenMetadataSource):
         database_source_config = DatabaseServiceMetadataPipeline()
         new_config = deepcopy(self.config.source)
         new_config.sourceConfig.config = database_source_config
-        self.source = source_class.create(new_config.dict(), self.metadata)
+        self.source = source_class.create(new_config.model_dump(), self.metadata)
         self.engine = None
         self.inspector = None
         self._connection = None

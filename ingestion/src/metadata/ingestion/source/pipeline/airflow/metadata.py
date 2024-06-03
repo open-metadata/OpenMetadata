@@ -123,7 +123,7 @@ class AirflowSource(PipelineServiceSource):
     def create(
         cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None
     ) -> "AirflowSource":
-        config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
+        config: WorkflowSource = WorkflowSource.model_validate(config_dict)
         connection: AirflowConnection = config.serviceConnection.root.config
         if not isinstance(connection, AirflowConnection):
             raise InvalidSourceException(
@@ -323,7 +323,7 @@ class AirflowSource(PipelineServiceSource):
                 dag = AirflowDagDetails(
                     dag_id=serialized_dag[0],
                     fileloc=serialized_dag[2],
-                    data=AirflowDag.parse_obj(serialized_dag[1]),
+                    data=AirflowDag.model_validate(serialized_dag[1]),
                     max_active_runs=data.get("max_active_runs", None),
                     description=data.get("_description", None),
                     start_date=data.get("start_date", None),

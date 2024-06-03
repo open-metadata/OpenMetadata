@@ -60,8 +60,8 @@ class TestCaseRunner(Processor):
         self.metadata = metadata
 
         self.processor_config: TestSuiteProcessorConfig = (
-            TestSuiteProcessorConfig.parse_obj(
-                self.config.processor.dict().get("config")
+            TestSuiteProcessorConfig.model_validate(
+                self.config.processor.model_dump().get("config")
             )
         )
 

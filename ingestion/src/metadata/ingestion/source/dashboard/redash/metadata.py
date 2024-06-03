@@ -80,7 +80,7 @@ class RedashSource(DashboardServiceSource):
         metadata: OpenMetadata,
         pipeline_name: Optional[str] = None,
     ):
-        config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
+        config: WorkflowSource = WorkflowSource.model_validate(config_dict)
         connection: RedashConnection = config.serviceConnection.root.config
         if not isinstance(connection, RedashConnection):
             raise InvalidSourceException(

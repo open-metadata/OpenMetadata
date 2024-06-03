@@ -107,7 +107,7 @@ class StoredProcedureMixin(ABC):
 
         for row in results:
             try:
-                query_by_procedure = QueryByProcedure.parse_obj(dict(row))
+                query_by_procedure = QueryByProcedure.model_validate(dict(row))
                 procedure_name = (
                     query_by_procedure.procedure_name
                     or get_procedure_name_from_call(

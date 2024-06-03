@@ -43,8 +43,8 @@ class ProfilerProcessor(Processor):
         super().__init__()
 
         self.config = config
-        self.profiler_config = ProfilerProcessorConfig.parse_obj(
-            self.config.processor.dict().get("config")
+        self.profiler_config = ProfilerProcessorConfig.model_validate(
+            self.config.processor.model_dump().get("config")
         )
         self.source_config: DatabaseServiceProfilerPipeline = cast(
             DatabaseServiceProfilerPipeline, self.config.source.sourceConfig.config

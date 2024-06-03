@@ -76,7 +76,7 @@ class TableUsageStage(Stage):
         metadata: OpenMetadata,
         pipeline_name: Optional[str] = None,
     ):
-        config = TableStageConfig.parse_obj(config_dict)
+        config = TableStageConfig.model_validate(config_dict)
         return cls(config, metadata)
 
     def init_location(self) -> None:

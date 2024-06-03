@@ -105,7 +105,7 @@ class MssqlSource(StoredProcedureMixin, CommonDbSourceService, MultiDBSource):
         cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None
     ):
         """Create class instance"""
-        config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
+        config: WorkflowSource = WorkflowSource.model_validate(config_dict)
         connection: MssqlConnection = config.serviceConnection.root.config
         if not isinstance(connection, MssqlConnection):
             raise InvalidSourceException(
@@ -164,7 +164,7 @@ class MssqlSource(StoredProcedureMixin, CommonDbSourceService, MultiDBSource):
             ).all()
             for row in results:
                 try:
-                    stored_procedure = MssqlStoredProcedure.parse_obj(dict(row))
+                    stored_procedure = MssqlStoredProcedure.model_validate(dict(row))
                     yield stored_procedure
                 except Exception as exc:
                     logger.error()
