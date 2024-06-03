@@ -48,9 +48,7 @@ const table2 = DATABASE_SERVICE.entity;
 describe.skip('Activity feed', () => {
   before(() => {
     cy.login();
-    cy.getAllLocalStorage().then((data) => {
-      const token = getToken(data);
-
+    getToken().then((token) => {
       createEntityTable({
         token,
         ...DATABASE_SERVICE,
@@ -61,9 +59,7 @@ describe.skip('Activity feed', () => {
 
   after(() => {
     cy.login();
-    cy.getAllLocalStorage().then((data) => {
-      const token = getToken(data);
-
+    getToken().then((token) => {
       hardDeleteService({
         token,
         serviceFqn: DATABASE_SERVICE.service.name,

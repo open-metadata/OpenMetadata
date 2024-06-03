@@ -703,9 +703,7 @@ const checkSummaryListItemSorting = ({ termFQN, columnName }) => {
 };
 
 const deleteUser = () => {
-  cy.getAllLocalStorage().then((storageData) => {
-    const token = getToken(storageData);
-
+  getToken().then((token) => {
     cy.request({
       method: 'DELETE',
       url: `/api/v1/users/${createdUserId}?hardDelete=true&recursive=false`,
@@ -720,9 +718,7 @@ describe('Glossary page should work properly', { tags: 'Governance' }, () => {
   before(() => {
     // Prerequisites - Create a user with data consumer role
     cy.login();
-    cy.getAllLocalStorage().then((data) => {
-      const token = getToken(data);
-
+    getToken().then((token) => {
       // Create a new user
       cy.request({
         method: 'POST',

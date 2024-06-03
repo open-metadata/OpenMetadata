@@ -45,9 +45,7 @@ class DashboardServiceClass extends EntityClass {
   createEntity() {
     // Handle creation here
 
-    cy.getAllLocalStorage().then((data) => {
-      const token = getToken(data);
-
+    getToken().then((token) => {
       createSingleLevelEntity({
         ...DASHBOARD_SERVICE,
         service: { ...DASHBOARD_SERVICE.service, name: this.dashboardName },

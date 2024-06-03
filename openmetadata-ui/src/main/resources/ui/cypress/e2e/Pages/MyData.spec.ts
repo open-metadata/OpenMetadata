@@ -132,8 +132,7 @@ const updateOwnerAndVerify = ({ url, body, type, entityName, newOwner }) => {
     '/api/v1/feed?type=Conversation&filterType=OWNER_OR_FOLLOWS&userId=*',
     'feedData'
   );
-  cy.getAllLocalStorage().then((data) => {
-    const token = getToken(data);
+  getToken().then((token) => {
     cy.request({
       method: 'PATCH',
       url,
@@ -165,8 +164,7 @@ const updateOwnerAndVerify = ({ url, body, type, entityName, newOwner }) => {
 
 const prepareData = () => {
   cy.login();
-  cy.getAllLocalStorage().then((data) => {
-    const token = getToken(data);
+  getToken().then((token) => {
     SINGLE_LEVEL_SERVICE.forEach((data) => {
       createSingleLevelEntity({
         token,
@@ -266,8 +264,7 @@ const prepareData = () => {
 
 const cleanUp = () => {
   cy.login();
-  cy.getAllLocalStorage().then((data) => {
-    const token = getToken(data);
+  getToken().then((token) => {
     hardDeleteService({
       token,
       serviceFqn: DATABASE_SERVICE.service.name,

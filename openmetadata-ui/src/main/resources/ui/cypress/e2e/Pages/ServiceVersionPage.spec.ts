@@ -66,8 +66,7 @@ describe(
 
     before(() => {
       cy.login();
-      cy.getAllLocalStorage().then((responseData) => {
-        const token = getToken(responseData);
+      getToken().then((token) => {
         cy.request({
           method: 'PUT',
           url: `/api/v1/domains`,
@@ -91,8 +90,7 @@ describe(
 
     after(() => {
       cy.login();
-      cy.getAllLocalStorage().then((responseData) => {
-        const token = getToken(responseData);
+      getToken().then((token) => {
         cy.request({
           method: 'DELETE',
           url: `/api/v1/domains/name/${DOMAIN_CREATION_DETAILS.name}`,
@@ -122,8 +120,7 @@ describe(
 
           before(() => {
             cy.login();
-            cy.getAllLocalStorage().then((responseData) => {
-              const token = getToken(responseData);
+            getToken().then((token) => {
               cy.request({
                 method: 'POST',
                 url: `/api/v1/services/${serviceCategory}`,
@@ -163,9 +160,7 @@ describe(
 
           after(() => {
             cy.login();
-            cy.getAllLocalStorage().then((data) => {
-              const token = getToken(data);
-
+            getToken().then((token) => {
               hardDeleteService({
                 token,
                 serviceFqn: serviceName,

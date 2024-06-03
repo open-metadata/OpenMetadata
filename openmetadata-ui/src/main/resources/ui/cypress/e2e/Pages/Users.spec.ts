@@ -76,8 +76,7 @@ const user = {
 describe('User with different Roles', { tags: 'Settings' }, () => {
   before(() => {
     cy.login();
-    cy.getAllLocalStorage().then((data) => {
-      const token = getToken(data);
+    getToken().then((token) => {
       createRoleViaREST({ token });
 
       // Create a new user
@@ -93,9 +92,7 @@ describe('User with different Roles', { tags: 'Settings' }, () => {
   });
   after(() => {
     cy.login();
-    cy.getAllLocalStorage().then((data) => {
-      const token = getToken(data);
-
+    getToken().then((token) => {
       cleanupPolicies({ token });
 
       // Delete created user

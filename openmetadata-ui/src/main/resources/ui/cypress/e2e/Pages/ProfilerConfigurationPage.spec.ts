@@ -38,9 +38,7 @@ let userId = '';
 describe('ProfilerConfigurationPage', () => {
   before(() => {
     cy.login();
-    cy.getAllLocalStorage().then((data) => {
-      const token = getToken(data);
-
+    getToken().then((token) => {
       // Create a new user
       cy.request({
         method: 'POST',
@@ -55,9 +53,7 @@ describe('ProfilerConfigurationPage', () => {
 
   after(() => {
     cy.login();
-    cy.getAllLocalStorage().then((data) => {
-      const token = getToken(data);
-
+    getToken().then((token) => {
       // Delete created user
       cy.request({
         method: 'DELETE',

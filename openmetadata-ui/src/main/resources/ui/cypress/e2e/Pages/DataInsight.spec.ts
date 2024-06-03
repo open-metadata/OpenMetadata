@@ -47,9 +47,7 @@ const deleteKpiRequest = () => {
   cy.wait('@getKpi').then(({ response }) => {
     const data = response.body.data;
     if (data.length > 0) {
-      cy.getAllLocalStorage().then((storageData) => {
-        const token = getToken(storageData);
-
+      getToken().then((token) => {
         data.forEach((element) => {
           cy.request({
             method: 'DELETE',

@@ -49,9 +49,7 @@ class MlModelServiceClass extends EntityClass {
   createEntity() {
     // Handle creation here
 
-    cy.getAllLocalStorage().then((data) => {
-      const token = getToken(data);
-
+    getToken().then((token) => {
       createSingleLevelEntity({
         ...ML_MODEL_SERVICE,
         service: { ...ML_MODEL_SERVICE.service, name: this.mlModelServiceName },

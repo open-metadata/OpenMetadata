@@ -43,9 +43,7 @@ const logButton = () => {
 describe('Data Insight Report Application', { tags: 'Settings' }, () => {
   before(() => {
     cy.login();
-    cy.getAllLocalStorage().then((data) => {
-      const token = getToken(data);
-
+    getToken().then((token) => {
       checkAndDeleteApp({
         token,
         applicationName: 'DataInsightsReportApplication',

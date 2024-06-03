@@ -156,9 +156,7 @@ class EntityClass {
 
   async setToken() {
     await new Promise<void>((res) =>
-      cy.getAllLocalStorage().then((data) => {
-        const token = getToken(data);
-
+      getToken().then((token) => {
         this.token = token;
         res();
       })
@@ -185,9 +183,7 @@ class EntityClass {
   }
 
   static preRequisitesForTests() {
-    cy.getAllLocalStorage().then((data) => {
-      const token = getToken(data);
-
+    getToken().then((token) => {
       // assign DevOps team to user
 
       //   cy.get('[data-testid="dropdown-profile"]').click();
@@ -243,8 +239,7 @@ class EntityClass {
   cleanup() {
     // Delete custom property only for supported entities
     if (CustomPropertySupportedEntityList.includes(this.endPoint)) {
-      cy.getAllLocalStorage().then((data) => {
-        const token = getToken(data);
+      getToken().then((token) => {
         cy.request({
           method: 'GET',
           url: `/api/v1/metadata/types/name/${ENTITY_PATH[this.endPoint]}`,
@@ -257,9 +252,7 @@ class EntityClass {
   }
 
   static postRequisitesForTests() {
-    cy.getAllLocalStorage().then((data) => {
-      const token = getToken(data);
-
+    getToken().then((token) => {
       // Remove devops as team
       //   cy.get('[data-testid="dropdown-profile"]').click();
       //   cy.get('[data-testid="user-name"]').click();

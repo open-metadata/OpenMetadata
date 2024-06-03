@@ -26,8 +26,7 @@ describe('Login flow should work properly', { tags: 'Settings' }, () => {
   after(() => {
     cy.login();
 
-    cy.getAllLocalStorage().then((data) => {
-      const token = getToken(data);
+    getToken().then((token) => {
       cy.request({
         method: 'DELETE',
         url: `/api/v1/users/${userId}?hardDelete=true&recursive=false`,

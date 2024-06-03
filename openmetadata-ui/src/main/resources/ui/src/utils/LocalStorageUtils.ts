@@ -14,7 +14,7 @@ import { OM_SESSION_KEY } from '../hooks/useApplicationStore';
 
 export const getOidcToken = (): string => {
   return (
-    JSON.parse(localStorage.getItem(OM_SESSION_KEY) ?? '{}')?.state
+    JSON.parse(sessionStorage.getItem(OM_SESSION_KEY) ?? '{}')?.state
       ?.oidcIdToken ?? ''
   );
 };

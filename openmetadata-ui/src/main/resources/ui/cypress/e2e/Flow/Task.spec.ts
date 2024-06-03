@@ -86,9 +86,7 @@ describe('Task flow should work', { tags: 'DataAssets' }, () => {
 
   before(() => {
     cy.login();
-    cy.getAllLocalStorage().then((storageData) => {
-      const token = getToken(storageData);
-
+    getToken().then((token) => {
       createEntityTable({
         token,
         ...DATABASE_SERVICE,
@@ -150,9 +148,7 @@ describe('Task flow should work', { tags: 'DataAssets' }, () => {
 
   after(() => {
     cy.login();
-    cy.getAllLocalStorage().then((storageData) => {
-      const token = getToken(storageData);
-
+    getToken().then((token) => {
       hardDeleteService({
         token,
         serviceFqn: ENTITY_TABLE.serviceName,

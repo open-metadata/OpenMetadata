@@ -45,9 +45,7 @@ describe('Persona operations', { tags: 'Settings' }, () => {
   const userSearchText = `${USER_DETAILS.firstName}${USER_DETAILS.lastName}`;
   before(() => {
     cy.login();
-    cy.getAllLocalStorage().then((data) => {
-      const token = getToken(data);
-
+    getToken().then((token) => {
       // Create a new user
       cy.request({
         method: 'POST',
@@ -62,9 +60,7 @@ describe('Persona operations', { tags: 'Settings' }, () => {
 
   after(() => {
     cy.login();
-    cy.getAllLocalStorage().then((data) => {
-      const token = getToken(data);
-
+    getToken().then((token) => {
       // Delete created user
       cy.request({
         method: 'DELETE',

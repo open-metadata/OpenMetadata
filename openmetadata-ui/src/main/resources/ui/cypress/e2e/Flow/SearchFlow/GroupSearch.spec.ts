@@ -36,17 +36,14 @@ describe('Group search', () => {
 
   before(() => {
     cy.login();
-    cy.getAllLocalStorage().then((data) => {
-      const token = getToken(data);
+    getToken().then((token) => {
       advanceSearchPreRequests(testData, token);
     });
   });
 
   after(() => {
     cy.login();
-    cy.getAllLocalStorage().then((data) => {
-      const token = getToken(data);
-
+    getToken().then((token) => {
       advancedSearchFlowCleanup(token);
     });
     Cypress.session.clearAllSavedSessions();

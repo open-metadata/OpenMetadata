@@ -44,9 +44,7 @@ class DashboardClass extends EntityClass {
   createEntity() {
     // Handle creation here
 
-    cy.getAllLocalStorage().then((data) => {
-      const token = getToken(data);
-
+    getToken().then((token) => {
       createSingleLevelEntity({
         token,
         ...DASHBOARD_SERVICE,
@@ -64,8 +62,7 @@ class DashboardClass extends EntityClass {
   // Cleanup
   override cleanup() {
     super.cleanup();
-    cy.getAllLocalStorage().then((data) => {
-      const token = getToken(data);
+    getToken().then((token) => {
       deleteEntityViaREST({
         token,
         endPoint: EntityType.DashboardService,

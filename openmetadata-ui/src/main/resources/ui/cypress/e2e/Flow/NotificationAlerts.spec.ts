@@ -74,9 +74,7 @@ describe(
 
     before(() => {
       cy.login();
-      cy.getAllLocalStorage().then((storageData) => {
-        const token = getToken(storageData);
-
+      getToken().then((token) => {
         // Create a dashboard
         createSingleLevelEntity({
           token,
@@ -107,9 +105,7 @@ describe(
 
     after(() => {
       cy.login();
-      cy.getAllLocalStorage().then((storageData) => {
-        const token = getToken(storageData);
-
+      getToken().then((token) => {
         hardDeleteService({
           token,
           serviceFqn: DASHBOARD_SERVICE.service.name,

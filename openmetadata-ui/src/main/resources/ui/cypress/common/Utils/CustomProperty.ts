@@ -554,9 +554,7 @@ export const deleteCreatedProperty = (propertyName: string) => {
 };
 
 export const createCustomPropertyForEntity = (prop: string) => {
-  return cy.getAllLocalStorage().then((data) => {
-    const token = getToken(data);
-
+  return getToken().then((token) => {
     // fetch the available property types
     return cy
       .request({

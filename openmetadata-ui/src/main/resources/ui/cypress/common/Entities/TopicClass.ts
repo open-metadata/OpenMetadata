@@ -41,9 +41,7 @@ class TopicClass extends EntityClass {
   createEntity() {
     // Handle creation here
 
-    cy.getAllLocalStorage().then((data) => {
-      const token = getToken(data);
-
+    getToken().then((token) => {
       createSingleLevelEntity({
         ...MESSAGING_SERVICE,
         entity: { ...MESSAGING_SERVICE.entity, name: this.entityName },

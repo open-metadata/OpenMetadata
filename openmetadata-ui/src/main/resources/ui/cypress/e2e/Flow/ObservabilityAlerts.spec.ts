@@ -78,9 +78,7 @@ describe(
 
     before(() => {
       cy.login();
-      cy.getAllLocalStorage().then((storageData) => {
-        const token = getToken(storageData);
-
+      getToken().then((token) => {
         // Create a table
         createEntityTable({
           token,
@@ -185,9 +183,7 @@ describe(
 
     after(() => {
       cy.login();
-      cy.getAllLocalStorage().then((storageData) => {
-        const token = getToken(storageData);
-
+      getToken().then((token) => {
         // Delete created services
         hardDeleteService({
           token,
