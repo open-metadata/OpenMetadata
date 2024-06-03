@@ -17,6 +17,8 @@ you will be able to get back to the previous version without any loss.
 
 You can learn more about how the migration process works [here](/deployment/upgrade/how-does-it-work).
 
+**During the upgrade, please note that the backup is only for safety and should not be used to restore data to a higher version**.
+
 {% /note %}
 
 - To run the backup and restore commands, please make sure that you are always in the latest `openmetadata-ingestion` version to have all the improvements shipped in the CLI.
