@@ -89,6 +89,16 @@ entities.forEach((entity) => {
       );
     });
 
+    test(`UpVote & DownVote entity`, async ({ page }) => {
+      await entity.upVote(page);
+      await entity.downVote(page);
+    });
+
+    test(`Follow & Un-follow entity`, async ({ page }) => {
+      const entityName = entity.entityResponseData?.['displayName'];
+      await entity.followUnfollowEntity(page, entityName);
+    });
+
     test.afterAll('Cleanup', async ({ browser }) => {
       const { apiContext, afterAction } = await createNewPage(browser);
       await entity.delete(apiContext);
