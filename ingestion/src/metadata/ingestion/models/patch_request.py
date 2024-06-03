@@ -135,9 +135,13 @@ ALLOWED_COMMON_PATCH_FIELDS = {
     "numberOfObjects": True,
     "size": True,
     "fileFormats": True,
+    # Page Entity Fields
+    "relatedEntities": True,
+    "pageType": True,
+    "page": True,
 }
 
-RESTRICT_UPDATE_LIST = ["description", "tags", "owner"]
+RESTRICT_UPDATE_LIST = ["description", "tags", "owner", "relatedArticles", "authors"]
 
 ARRAY_ENTITY_FIELDS = ["columns", "tasks", "fields"]
 
