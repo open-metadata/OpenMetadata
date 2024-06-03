@@ -12,6 +12,7 @@
  */
 import { act, render, screen } from '@testing-library/react';
 import React from 'react';
+import { BrowserRouter } from 'react-router-dom';
 import { LabelType, State, TagSource } from '../../generated/type/tagLabel';
 import TagsInput from './TagsInput.component';
 
@@ -39,12 +40,14 @@ describe('TagsInput', () => {
   it('should render TagsInput along with tagsViewer in version view', async () => {
     await act(async () => {
       render(
-        <TagsInput
-          isVersionView
-          editable={false}
-          tags={tags}
-          onTagsUpdate={mockOnTagsUpdate}
-        />
+        <BrowserRouter>
+          <TagsInput
+            isVersionView
+            editable={false}
+            tags={tags}
+            onTagsUpdate={mockOnTagsUpdate}
+          />
+        </BrowserRouter>
       );
     });
 
@@ -59,11 +62,13 @@ describe('TagsInput', () => {
   it('should render tags container when not in in version view', async () => {
     await act(async () => {
       render(
-        <TagsInput
-          editable={false}
-          tags={tags}
-          onTagsUpdate={mockOnTagsUpdate}
-        />
+        <BrowserRouter>
+          <TagsInput
+            editable={false}
+            tags={tags}
+            onTagsUpdate={mockOnTagsUpdate}
+          />
+        </BrowserRouter>
       );
     });
 
@@ -79,7 +84,9 @@ describe('TagsInput', () => {
   it('should render edit button when no editable', async () => {
     await act(async () => {
       render(
-        <TagsInput editable tags={tags} onTagsUpdate={mockOnTagsUpdate} />
+        <BrowserRouter>
+          <TagsInput editable tags={tags} onTagsUpdate={mockOnTagsUpdate} />
+        </BrowserRouter>
       );
     });
 
@@ -89,11 +96,13 @@ describe('TagsInput', () => {
   it('should not render edit button when no editable', async () => {
     await act(async () => {
       render(
-        <TagsInput
-          editable={false}
-          tags={tags}
-          onTagsUpdate={mockOnTagsUpdate}
-        />
+        <BrowserRouter>
+          <TagsInput
+            editable={false}
+            tags={tags}
+            onTagsUpdate={mockOnTagsUpdate}
+          />
+        </BrowserRouter>
       );
     });
 
@@ -103,7 +112,13 @@ describe('TagsInput', () => {
   it('should not render tags if tags is empty', async () => {
     await act(async () => {
       render(
-        <TagsInput editable={false} tags={[]} onTagsUpdate={mockOnTagsUpdate} />
+        <BrowserRouter>
+          <TagsInput
+            editable={false}
+            tags={[]}
+            onTagsUpdate={mockOnTagsUpdate}
+          />
+        </BrowserRouter>
       );
 
       expect(await screen.findByTestId('tags-container')).toBeInTheDocument();
@@ -114,7 +129,11 @@ describe('TagsInput', () => {
 
   it('should render add tags if tags is empty and has permission', async () => {
     await act(async () => {
-      render(<TagsInput editable tags={[]} onTagsUpdate={mockOnTagsUpdate} />);
+      render(
+        <BrowserRouter>
+          <TagsInput editable tags={[]} onTagsUpdate={mockOnTagsUpdate} />
+        </BrowserRouter>
+      );
 
       expect(await screen.findByTestId('entity-tags')).toBeInTheDocument();
       expect(await screen.findByTestId('add-tag')).toBeInTheDocument();

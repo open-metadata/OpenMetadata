@@ -13,7 +13,7 @@
 
 import { act, render, screen } from '@testing-library/react';
 import React from 'react';
-import { MemoryRouter } from 'react-router-dom';
+import { BrowserRouter, MemoryRouter } from 'react-router-dom';
 import {
   LabelType,
   State,
@@ -33,7 +33,9 @@ describe('SearchIndexSummary component tests', () => {
   it('Component should render properly, when loaded in the Explore page.', async () => {
     await act(async () => {
       render(
-        <SearchIndexSummary entityDetails={mockSearchIndexEntityDetails} />
+        <BrowserRouter>
+          <SearchIndexSummary entityDetails={mockSearchIndexEntityDetails} />
+        </BrowserRouter>
       );
     });
 
@@ -101,21 +103,23 @@ describe('SearchIndexSummary component tests', () => {
   it('Tier should be displayed in tags section on explore page', async () => {
     await act(async () => {
       render(
-        <SearchIndexSummary
-          entityDetails={{
-            ...mockSearchIndexEntityDetails,
-            tags: [
-              {
-                name: 'Tier1',
-                tagFQN: 'Tier.Tier1',
-                labelType: LabelType.Manual,
-                description: '',
-                source: TagSource.Classification,
-                state: State.Confirmed,
-              },
-            ],
-          }}
-        />
+        <BrowserRouter>
+          <SearchIndexSummary
+            entityDetails={{
+              ...mockSearchIndexEntityDetails,
+              tags: [
+                {
+                  name: 'Tier1',
+                  tagFQN: 'Tier.Tier1',
+                  labelType: LabelType.Manual,
+                  description: '',
+                  source: TagSource.Classification,
+                  state: State.Confirmed,
+                },
+              ],
+            }}
+          />
+        </BrowserRouter>
       );
     });
 

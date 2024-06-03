@@ -133,28 +133,32 @@ const TagsV1 = ({
 
   const tagChip = useMemo(
     () => (
-      <Link className="no-underline" to={redirectLink}>
-        <Tag
-          className={classNames(
-            className,
-            {
-              'tag-highlight': Boolean(
-                (tag as HighlightedTagLabel).isHighlighted
-              ),
-            },
-            'tag-chip tag-chip-content',
-            size
-          )}
-          data-testid="tags"
-          style={
-            color
-              ? { backgroundColor: reduceColorOpacity(color, 0.05) }
-              : undefined
-          }
-          {...tagProps}>
+      <Tag
+        className={classNames(
+          className,
+          {
+            'tag-highlight': Boolean(
+              (tag as HighlightedTagLabel).isHighlighted
+            ),
+          },
+          'tag-chip tag-chip-content',
+          size
+        )}
+        data-testid="tags"
+        style={
+          color
+            ? { backgroundColor: reduceColorOpacity(color, 0.05) }
+            : undefined
+        }
+        {...tagProps}>
+        {/* Wrap only content to avoid redirect on closeable icons  */}
+        <Link
+          className="no-underline h-full"
+          data-testid="tag-redirect-link"
+          to={redirectLink}>
           {tagContent}
-        </Tag>
-      </Link>
+        </Link>
+      </Tag>
     ),
     [color, tagContent, redirectLink]
   );

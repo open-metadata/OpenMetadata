@@ -73,7 +73,7 @@ describe('Test tags Component', () => {
         }}
       />
     );
-    const tag = getByTestId(container, 'tags');
+    const tag = getByTestId(container, 'tag-redirect-link');
 
     fireEvent.click(tag);
 
@@ -93,7 +93,7 @@ describe('Test tags Component', () => {
         }}
       />
     );
-    const tag = getByTestId(container, 'tags');
+    const tag = getByTestId(container, 'tag-redirect-link');
 
     fireEvent.click(tag);
 
