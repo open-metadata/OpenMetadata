@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
+import { createJSONStorage, persist } from 'zustand/middleware';
 import { AuthenticationConfigurationWithScope } from '../components/Auth/AuthProviders/AuthProvider.interface';
 import { EntityUnion } from '../components/Explore/ExplorePage.interface';
 import { AuthenticationConfiguration } from '../generated/configuration/authenticationConfiguration';
@@ -160,6 +160,7 @@ export const useApplicationStore = create<ApplicationStore>()(
         oidcIdToken: state.oidcIdToken,
         refreshTokenKey: state.refreshTokenKey,
       }),
+      storage: createJSONStorage(() => sessionStorage),
     }
   )
 );
