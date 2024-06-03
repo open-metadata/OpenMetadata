@@ -72,7 +72,7 @@ const FeedCardHeaderV2 = ({
       showEntityLink: ![
         CardStyle.EntityCreated,
         CardStyle.EntityDeleted,
-      ].includes(cardStyle ?? CardStyle.EntityCreated),
+      ].includes(cardStyle ?? CardStyle.Default),
     };
   }, [entityFQN, entityType, cardStyle]);
 

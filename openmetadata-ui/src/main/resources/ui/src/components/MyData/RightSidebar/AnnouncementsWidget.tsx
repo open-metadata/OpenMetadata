@@ -110,7 +110,9 @@ function AnnouncementsWidget({
   }, [isAnnouncementLoading, announcements]);
 
   return (
-    <div className="announcement-container card-widget h-full">
+    <div
+      className="announcement-container card-widget h-full"
+      data-testid="announcement-container">
       <Row justify="space-between">
         <Col>
           <Typography.Paragraph className="font-medium m-b-sm">
