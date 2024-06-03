@@ -1589,22 +1589,22 @@ class SampleDataSource(
             life_cycle_data = LifeCycle()
             life_cycle_data.created = AccessDetails(
                 timestamp=Timestamp(
-                    convert_timestamp_to_milliseconds(
-                        int(
+                    int(
+                        convert_timestamp_to_milliseconds(
                             (
                                 datetime.now(tz=timezone.utc)
                                 - timedelta(days=life_cycle["created"]["days"])
                             ).timestamp()
                         )
-                    ),
-                    accessedByAProcess=life_cycle["created"].get("accessedByAProcess"),
-                )
+                    )
+                ),
+                accessedByAProcess=life_cycle["created"].get("accessedByAProcess"),
             )
 
             life_cycle_data.updated = AccessDetails(
                 timestamp=Timestamp(
-                    convert_timestamp_to_milliseconds(
-                        int(
+                    int(
+                        convert_timestamp_to_milliseconds(
                             (
                                 datetime.now(tz=timezone.utc)
                                 - timedelta(days=life_cycle["updated"]["days"])
@@ -1617,8 +1617,8 @@ class SampleDataSource(
 
             life_cycle_data.accessed = AccessDetails(
                 timestamp=Timestamp(
-                    convert_timestamp_to_milliseconds(
-                        int(
+                    int(
+                        convert_timestamp_to_milliseconds(
                             (
                                 datetime.now(tz=timezone.utc)
                                 - timedelta(days=life_cycle["accessed"]["days"])

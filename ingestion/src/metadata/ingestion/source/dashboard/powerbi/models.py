@@ -15,6 +15,7 @@ from datetime import datetime
 from typing import List, Optional
 
 from pydantic import BaseModel, Field
+from typing_extensions import Annotated
 
 
 class Tile(BaseModel):
@@ -208,7 +209,9 @@ class ConnectionFile(BaseModel):
     PowerBi Connection File Model
     """
 
-    RemoteArtifacts: Optional[List[RemoteArtifacts]] = None
+    RemoteArtifacts: Annotated[
+        Optional[List[RemoteArtifacts]], Field(None, description="Remote Artifacts")
+    ]
 
 
 class DataModelSchema(BaseModel):

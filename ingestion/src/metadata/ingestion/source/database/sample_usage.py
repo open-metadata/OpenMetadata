@@ -13,7 +13,7 @@ Sample Usage source ingestion
 """
 import csv
 import json
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Dict, Iterable, Optional
 
 from metadata.generated.schema.entity.services.connections.database.customDatabaseConnection import (
@@ -47,7 +47,7 @@ class SampleUsageSource(UsageSource):
 
     def __init__(self, config: WorkflowSource, metadata: OpenMetadata):
         super().__init__(config, metadata, False)
-        self.analysis_date = datetime.utcnow()
+        self.analysis_date = DateTime(datetime.now(tz=timezone.utc))
 
         sample_data_folder = self.service_connection.connectionOptions.root.get(
             "sampleDataFolder"
@@ -87,10 +87,7 @@ class SampleUsageSource(UsageSource):
             queries=[
                 TableQuery(
                     query=row["query"],
-                    userName="",
-                    startTime="",
-                    endTime="",
-                    analysisDate=DateTime(self.analysis_date),
+                    analysisDate=self.analysis_date,
                     aborted=False,
                     databaseName="ecommerce_db",
                     serviceName=self.config.serviceName,

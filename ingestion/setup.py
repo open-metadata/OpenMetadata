@@ -178,7 +178,7 @@ plugins: Dict[str, Set[str]] = {
         # https://github.com/fsspec/s3fs/blob/9bf99f763edaf7026318e150c4bd3a8d18bb3a00/requirements.txt#L1
         # however, the latest version of `s3fs` conflicts its `aiobotocore` dep with `boto3`'s dep on `botocore`.
         # Leaving this marked to the automatic resolution to speed up installation.
-        "s3fs>=2023.1.0",
+        "s3fs",
         *COMMONS["datalake"],
     },
     "deltalake": {"delta-spark<=2.3.0"},
