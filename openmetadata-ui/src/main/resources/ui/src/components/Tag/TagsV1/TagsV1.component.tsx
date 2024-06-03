@@ -12,8 +12,8 @@
  */
 import { Tag, Tooltip, Typography } from 'antd';
 import classNames from 'classnames';
-import React, { useCallback, useMemo } from 'react';
-import { useHistory } from 'react-router-dom';
+import React, { useMemo } from 'react';
+import { Link } from 'react-router-dom';
 import { ReactComponent as IconTerm } from '../../../assets/svg/book.svg';
 import { ReactComponent as PlusIcon } from '../../../assets/svg/plus-primary.svg';
 import { ReactComponent as IconTag } from '../../../assets/svg/tag.svg';
@@ -40,7 +40,6 @@ const TagsV1 = ({
   tagType,
   size,
 }: TagsV1Props) => {
-  const history = useHistory();
   const color = useMemo(
     () => (isVersionPage ? undefined : tag.style?.color),
     [tag]
@@ -87,11 +86,11 @@ const TagsV1 = ({
     [showOnlyName, tag.tagFQN]
   );
 
-  const redirectLink = useCallback(
+  const redirectLink = useMemo(
     () =>
       (tagType ?? tag.source) === TagSource.Glossary
-        ? history.push(getGlossaryPath(tag.tagFQN))
-        : history.push(getTagPath(Fqn.split(tag.tagFQN)[0])),
+        ? getGlossaryPath(tag.tagFQN)
+        : getTagPath(Fqn.split(tag.tagFQN)[0]),
     [tagType, tag.source, tag.tagFQN]
   );
 
@@ -134,35 +133,36 @@ const TagsV1 = ({
 
   const tagChip = useMemo(
     () => (
-      <Tag
-        className={classNames(
-          className,
-          {
-            'tag-highlight': Boolean(
-              (tag as HighlightedTagLabel).isHighlighted
-            ),
-          },
-          'tag-chip tag-chip-content',
-          size
-        )}
-        data-testid="tags"
-        style={
-          color
-            ? { backgroundColor: reduceColorOpacity(color, 0.05) }
-            : undefined
-        }
-        onClick={redirectLink}
-        {...tagProps}>
-        {tagContent}
-      </Tag>
+      <Link className="no-underline" to={redirectLink}>
+        <Tag
+          className={classNames(
+            className,
+            {
+              'tag-highlight': Boolean(
+                (tag as HighlightedTagLabel).isHighlighted
+              ),
+            },
+            'tag-chip tag-chip-content',
+            size
+          )}
+          data-testid="tags"
+          style={
+            color
+              ? { backgroundColor: reduceColorOpacity(color, 0.05) }
+              : undefined
+          }
+          {...tagProps}>
+          {tagContent}
+        </Tag>
+      </Link>
     ),
-    [color, tagContent, className]
+    [color, tagContent, redirectLink]
   );
 
   const addTagChip = useMemo(
     () => (
       <Tag
-        className={classNames('tag-chip tag-chip-add-button')}
+        className="tag-chip tag-chip-add-button"
         icon={<PlusIcon height={16} name="plus" width={16} />}>
         <Typography.Paragraph
           className="m-0 text-xs font-medium text-primary"
@@ -181,7 +181,7 @@ const TagsV1 = ({
   return (
     <Tooltip
       className="cursor-pointer"
-      mouseEnterDelay={1.5}
+      mouseEnterDelay={0.5}
       placement="bottomLeft"
       title={tooltipOverride ?? getTagTooltip(tag.tagFQN, tag.description)}
       trigger="hover">
