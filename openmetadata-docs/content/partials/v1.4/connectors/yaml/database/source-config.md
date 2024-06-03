@@ -5,6 +5,11 @@
       markDeletedTables: true
       includeTables: true
       includeViews: true
+      # threads: 4
+      # incremental:
+      #   enabled: true
+      #   lookbackDays: 7
+      #   safetyMarginDays: 1
       # includeTags: true
       # databaseFilterPattern:
       #   includes:
