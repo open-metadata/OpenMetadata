@@ -21,21 +21,37 @@ import {
   assignGlossaryTerm,
   assignTag,
   assignTier,
+  downVote,
+  followEntity,
   removeGlossaryTerm,
   removeOwner,
   removeTag,
   removeTier,
+  unFollowEntity,
   updateDescription,
   updateOwner,
+  upVote,
+  validateFollowedEntityToWidget,
 } from '../../utils/entityUtils';
 import { Domain } from '../domain/Domain';
 import { GlossaryTerm } from '../glossary/GlossaryTerm';
+import { EntityTypeEndpoint } from './Entity.interface';
 
 export class EntityClass {
   type: string;
+  endpoint: EntityTypeEndpoint;
+
+  constructor(endpoint: EntityTypeEndpoint) {
+    this.endpoint = endpoint;
+  }
 
   public getType() {
     return this.type;
+  }
+
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  async visitEntityPage(_: Page) {
+    // Override for entity visit
   }
 
   async domain(
@@ -99,5 +115,21 @@ export class EntityClass {
       .getByTestId('glossary-container')
       .getByTestId('Add')
       .isVisible();
+  }
+
+  async upVote(page: Page) {
+    await upVote(page, this.endpoint);
+  }
+
+  async downVote(page: Page) {
+    await downVote(page, this.endpoint);
+  }
+
+  async followUnfollowEntity(page: Page, entity: string) {
+    await followEntity(page, this.endpoint);
+    await validateFollowedEntityToWidget(page, entity, true);
+    await this.visitEntityPage(page);
+    await unFollowEntity(page, this.endpoint);
+    await validateFollowedEntityToWidget(page, entity, false);
   }
 }
