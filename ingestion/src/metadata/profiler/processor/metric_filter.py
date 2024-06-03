@@ -229,7 +229,7 @@ class MetricFilter:
         metric_names = next(
             (
                 include_columns.metrics
-                for include_columns in columns_config
+                for include_columns in columns_config or []
                 if include_columns.columnName == column.name
             ),
             None,
