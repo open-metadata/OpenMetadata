@@ -73,12 +73,13 @@ export const UserTeamSelectableList = ({
       if (Array.isArray(owner)) {
         return owner?.[0]?.type ?? 'teams';
       } else {
-        return owner.type;
+        return owner.type === EntityType.USER ? 'users' : 'teams';
       }
     }
 
     return 'teams';
   }, [owner]);
+
   const isMultiUser = multiple.user;
   const isMultiTeam = multiple.team;
 
@@ -92,7 +93,13 @@ export const UserTeamSelectableList = ({
   }, [selectedUsers]);
 
   const reset = () => {
-    setSelectedUsers(isArray(owner) ? owner : owner ? [owner] : []);
+    let selectedUsers: EntityReference[] = [];
+    if (isArray(owner)) {
+      selectedUsers = owner;
+    } else if (owner) {
+      selectedUsers = [owner];
+    }
+    setSelectedUsers(selectedUsers);
   };
 
   const fetchUserOptions = async (searchText: string, after?: string) => {
@@ -177,20 +184,22 @@ export const UserTeamSelectableList = ({
       (activeTab === 'teams' && isMultiTeam) ||
       (activeTab === 'users' && isMultiUser);
 
-    await onUpdate(
-      isEmpty(updateItems)
-        ? undefined
-        : isMulti
-        ? updateItems
-        : {
-            id: updateItems[0].id,
-            type: activeTab === 'teams' ? EntityType.TEAM : EntityType.USER,
-            name: updateItems[0].name,
-            fullyQualifiedName: updateItems[0].fullyQualifiedName,
-            displayName: updateItems[0].displayName,
-          }
-    );
+    let updateData;
+    if (isEmpty(updateItems)) {
+      updateData = undefined;
+    } else if (isMulti) {
+      updateData = updateItems;
+    } else {
+      updateData = {
+        id: updateItems[0].id,
+        type: activeTab === 'teams' ? EntityType.TEAM : EntityType.USER,
+        name: updateItems[0].name,
+        fullyQualifiedName: updateItems[0].fullyQualifiedName,
+        displayName: updateItems[0].displayName,
+      };
+    }
 
+    await onUpdate(updateData);
     setPopupVisible(false);
   };
 
