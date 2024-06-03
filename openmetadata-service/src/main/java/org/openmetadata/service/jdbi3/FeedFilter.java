@@ -31,7 +31,7 @@ public class FeedFilter {
       condition1 = String.format("type = '%s'", threadType.value());
       if (ThreadType.Announcement.equals(threadType) && activeAnnouncement != null) {
         // Add activeAnnouncement filter
-        long now = System.currentTimeMillis() / 1000; // epoch time in seconds
+        long now = System.currentTimeMillis(); // epoch time in milliseconds
         String condition2 =
             activeAnnouncement
                 ? String.format("%s BETWEEN announcementStart AND announcementEnd", now)

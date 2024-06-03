@@ -35,8 +35,14 @@ export const ANNOUNCEMENT_ENTITIES = [
   EntityType.SEARCH_SERVICE,
 ];
 
+/* 
+    @param startTime: number  -> Milliseconds
+    @param endTime: number -> Milliseconds
+    @returns boolean
+    
+*/
 export const isActiveAnnouncement = (startTime: number, endTime: number) => {
-  const currentTime = Date.now() / 1000;
+  const currentTime = Date.now();
 
   return currentTime > startTime && currentTime < endTime;
 };

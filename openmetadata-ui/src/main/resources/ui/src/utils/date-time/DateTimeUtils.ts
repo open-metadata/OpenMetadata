@@ -28,18 +28,6 @@ export const formatDateTime = (date?: number) => {
 };
 
 /**
- * @param date EPOCH seconds
- * @returns Formatted date for valid input. Format: MMM DD, YYYY, HH:MM AM/PM
- */
-export const formatDateTimeFromSeconds = (date?: number) => {
-  if (isNil(date)) {
-    return '';
-  }
-
-  return formatDateTime(date * 1000);
-};
-
-/**
  * @param date EPOCH millis
  * @returns Formatted date for valid input. Format: MMM DD, YYYY
  */

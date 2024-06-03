@@ -36,6 +36,8 @@ import static org.openmetadata.service.jdbi3.UserRepository.TEAMS_FIELD;
 import static org.openmetadata.service.util.EntityUtil.compareEntityReference;
 
 import io.jsonwebtoken.lang.Collections;
+import java.time.LocalDateTime;
+import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
@@ -112,6 +114,8 @@ public class FeedRepository {
   public static final String DELETED_USER_DISPLAY = "User was deleted";
   public static final String DELETED_TEAM_NAME = "DeletedTeam";
   public static final String DELETED_TEAM_DISPLAY = "Team was deleted";
+  private static final long MAX_SECONDS_TIMESTAMP = 2147483647L;
+
   private final CollectionDAO dao;
   private static final MessageDecorator<FeedMessage> FEED_MESSAGE_FORMATTER =
       new FeedMessageDecorator();
@@ -864,6 +868,12 @@ public class FeedRepository {
     if (startTime >= endTime) {
       throw new IllegalArgumentException(ANNOUNCEMENT_INVALID_START_TIME);
     }
+
+    // Converts start and end times to milliseconds if they are in seconds.
+    if (startTime <= MAX_SECONDS_TIMESTAMP && endTime <= MAX_SECONDS_TIMESTAMP) {
+      convertStartAndEndTimeToMilliseconds(thread);
+    }
+
     // TODO fix this - overlapping announcements should be allowed
     List<String> announcements =
         dao.feedDAO()
@@ -872,6 +882,26 @@ public class FeedRepository {
       // There is already an announcement that overlaps the new one
       throw new IllegalArgumentException(ANNOUNCEMENT_OVERLAP);
     }
+  }
+
+  private static void convertStartAndEndTimeToMilliseconds(Thread thread) {
+    Optional.ofNullable(thread.getAnnouncement())
+        .ifPresent(
+            announcement -> {
+              Optional.ofNullable(announcement.getStartTime())
+                  .ifPresent(
+                      startTime ->
+                          announcement.setStartTime(convertSecondsToMilliseconds(startTime)));
+              Optional.ofNullable(announcement.getEndTime())
+                  .ifPresent(
+                      endTime -> announcement.setEndTime(convertSecondsToMilliseconds(endTime)));
+            });
+  }
+
+  private static long convertSecondsToMilliseconds(long seconds) {
+    return LocalDateTime.ofEpochSecond(seconds, 0, ZoneOffset.UTC)
+        .toInstant(ZoneOffset.UTC)
+        .toEpochMilli();
   }
 
   private void validateAssignee(Thread thread) {

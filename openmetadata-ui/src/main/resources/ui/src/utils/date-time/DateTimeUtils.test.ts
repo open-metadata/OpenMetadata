@@ -15,7 +15,6 @@ import {
   customFormatDateTime,
   formatDate,
   formatDateTime,
-  formatDateTimeFromSeconds,
   formatDateTimeLong,
   formatTimeDurationFromSeconds,
   isValidDateFormat,
@@ -45,10 +44,6 @@ describe('DateTimeUtils tests', () => {
 
   it(`formatDate should formate date and time both`, () => {
     expect(formatDate(0)).toBe(`Jan 1, 1970`);
-  });
-
-  it(`formatDateTimeFromSeconds should formate date and time both`, () => {
-    expect(formatDateTimeFromSeconds(0)).toBe(`Jan 1, 1970, 12:00 AM`);
   });
 
   it(`formatDateShort should formate date and time both`, () => {

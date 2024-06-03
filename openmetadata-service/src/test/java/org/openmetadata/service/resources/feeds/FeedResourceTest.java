@@ -991,8 +991,9 @@ public class FeedResourceTest extends OpenMetadataApplicationTest {
             USER.getName(), about, "Announcement One", announcementDetails, USER_AUTH_HEADERS);
     String originalJson = JsonUtils.pojoToJson(thread);
 
-    long startTs = now.plusDays(6L).toEpochSecond(ZoneOffset.UTC);
-    long endTs = now.plusDays(7L).toEpochSecond(ZoneOffset.UTC);
+    long startTs = now.plusDays(6L).toInstant(ZoneOffset.UTC).toEpochMilli();
+    long endTs = now.plusDays(7L).toInstant(ZoneOffset.UTC).toEpochMilli();
+
     announcementDetails.withStartTime(startTs).withEndTime(endTs);
     Thread updated = thread.withAnnouncement(announcementDetails);
 
@@ -1045,8 +1046,8 @@ public class FeedResourceTest extends OpenMetadataApplicationTest {
 
     // create announcement with start time > end time
     announcementDetails
-        .withStartTime(now.plusDays(58L).toEpochSecond(ZoneOffset.UTC))
-        .withEndTime(now.plusDays(57L).toEpochSecond(ZoneOffset.UTC));
+        .withStartTime(now.plusDays(58L).toInstant(ZoneOffset.UTC).toEpochMilli())
+        .withEndTime(now.plusDays(57L).toInstant(ZoneOffset.UTC).toEpochMilli());
     Thread updated2 = thread2.withAnnouncement(announcementDetails);
     assertResponse(
         () -> patchThread(thread2.getId(), originalJson, updated2, USER_AUTH_HEADERS),
@@ -1055,8 +1056,8 @@ public class FeedResourceTest extends OpenMetadataApplicationTest {
 
     // create announcement with overlaps
     announcementDetails
-        .withStartTime(now.plusDays(52L).toEpochSecond(ZoneOffset.UTC))
-        .withEndTime(now.plusDays(56L).toEpochSecond(ZoneOffset.UTC));
+        .withStartTime(now.plusDays(52L).toInstant(ZoneOffset.UTC).toEpochMilli())
+        .withEndTime(now.plusDays(56L).toInstant(ZoneOffset.UTC).toEpochMilli());
     Thread updated3 = thread2.withAnnouncement(announcementDetails);
     assertResponse(
         () -> patchThread(thread2.getId(), originalJson, updated3, USER_AUTH_HEADERS),
@@ -1064,8 +1065,8 @@ public class FeedResourceTest extends OpenMetadataApplicationTest {
         ANNOUNCEMENT_OVERLAP);
 
     announcementDetails
-        .withStartTime(now.plusDays(53L).plusHours(2L).toEpochSecond(ZoneOffset.UTC))
-        .withEndTime(now.plusDays(54L).toEpochSecond(ZoneOffset.UTC));
+        .withStartTime(now.plusDays(53L).plusHours(2L).toInstant(ZoneOffset.UTC).toEpochMilli())
+        .withEndTime(now.plusDays(54L).toInstant(ZoneOffset.UTC).toEpochMilli());
     Thread updated4 = thread2.withAnnouncement(announcementDetails);
     assertResponse(
         () -> patchThread(thread2.getId(), originalJson, updated4, USER_AUTH_HEADERS),
@@ -1073,8 +1074,8 @@ public class FeedResourceTest extends OpenMetadataApplicationTest {
         ANNOUNCEMENT_OVERLAP);
 
     announcementDetails
-        .withStartTime(now.plusDays(52L).plusHours(12L).toEpochSecond(ZoneOffset.UTC))
-        .withEndTime(now.plusDays(54L).toEpochSecond(ZoneOffset.UTC));
+        .withStartTime(now.plusDays(52L).plusHours(12L).toInstant(ZoneOffset.UTC).toEpochMilli())
+        .withEndTime(now.plusDays(54L).toInstant(ZoneOffset.UTC).toEpochMilli());
     Thread updated5 = thread2.withAnnouncement(announcementDetails);
     assertResponse(
         () -> patchThread(thread2.getId(), originalJson, updated5, USER_AUTH_HEADERS),
@@ -1082,8 +1083,8 @@ public class FeedResourceTest extends OpenMetadataApplicationTest {
         ANNOUNCEMENT_OVERLAP);
 
     announcementDetails
-        .withStartTime(now.plusDays(54L).plusHours(12L).toEpochSecond(ZoneOffset.UTC))
-        .withEndTime(now.plusDays(56L).toEpochSecond(ZoneOffset.UTC));
+        .withStartTime(now.plusDays(54L).plusHours(12L).toInstant(ZoneOffset.UTC).toEpochMilli())
+        .withEndTime(now.plusDays(56L).toInstant(ZoneOffset.UTC).toEpochMilli());
     Thread updated6 = thread2.withAnnouncement(announcementDetails);
     assertResponse(
         () -> patchThread(thread2.getId(), originalJson, updated6, USER_AUTH_HEADERS),
@@ -1980,7 +1981,7 @@ public class FeedResourceTest extends OpenMetadataApplicationTest {
     LocalDateTime now = LocalDateTime.now();
     return new AnnouncementDetails()
         .withDescription(description)
-        .withStartTime(now.plusDays(start).toEpochSecond(ZoneOffset.UTC))
-        .withEndTime(now.plusDays(end).toEpochSecond(ZoneOffset.UTC));
+        .withStartTime(now.plusDays(start).toInstant(ZoneOffset.UTC).toEpochMilli())
+        .withEndTime(now.plusDays(end).toInstant(ZoneOffset.UTC).toEpochMilli());
   }
 }
