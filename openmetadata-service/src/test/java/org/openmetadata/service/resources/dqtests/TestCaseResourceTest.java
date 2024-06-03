@@ -486,6 +486,28 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
       getAndValidateTestSummary(logicalTestSuite.getId().toString());
     }
     deleteEntity(testCase1.getId(), ADMIN_AUTH_HEADERS);
+    ResultList<TestCaseResult> resultList =
+        getTestCaseResults(
+            testCase1.getFullyQualifiedName(),
+            TestUtils.dateToTimestamp("2021-10-01"),
+            TestUtils.dateToTimestamp("2021-10-30"),
+            ADMIN_AUTH_HEADERS);
+    assertNotEquals(
+        resultList.getData().size(), 0); // soft deletion should not delete existing results
+
+    if (supportsSearchIndex) {
+      getAndValidateTestSummary(testCase.getTestSuite().getId().toString());
+      getAndValidateTestSummary(logicalTestSuite.getId().toString());
+    }
+
+    deleteEntity(testCase1.getId(), true, true, ADMIN_AUTH_HEADERS); // hard delete
+    resultList =
+        getTestCaseResults(
+            testCase1.getFullyQualifiedName(),
+            TestUtils.dateToTimestamp("2021-10-01"),
+            TestUtils.dateToTimestamp("2021-10-30"),
+            ADMIN_AUTH_HEADERS);
+    assertEquals(resultList.getData().size(), 0); // hard deletion should delete existing results
 
     if (supportsSearchIndex) {
       getAndValidateTestSummary(testCase.getTestSuite().getId().toString());
@@ -1923,7 +1945,7 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
     }
     params.put("fields", "testCaseResult");
     params.put("limit", "10000");
-    params.put("include", "all");
+    params.put("include", "non-deleted");
 
     ResultList<TestCase> testCaseResultList = listEntities(params, ADMIN_AUTH_HEADERS);
     testCases = testCaseResultList.getData();

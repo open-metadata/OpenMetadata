@@ -397,6 +397,13 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
     }
   }
 
+  @Transaction
+  @Override
+  protected void cleanup(TestCase entityInterface) {
+    super.cleanup(entityInterface);
+    deleteTestCaseResults(entityInterface.getFullyQualifiedName());
+  }
+
   public RestUtil.PutResponse<TestCaseResult> deleteTestCaseResult(
       String updatedBy, String fqn, Long timestamp) {
     // Validate the request content
@@ -425,6 +432,11 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
     throw new EntityNotFoundException(
         String.format(
             "Failed to find testCase result for %s at %s", testCase.getName(), timestamp));
+  }
+
+  private void deleteTestCaseResults(String fqn) {
+    // Delete all the test case results
+    daoCollection.dataQualityDataTimeSeriesDao().deleteAll(fqn);
   }
 
   private ResultSummary getResultSummary(

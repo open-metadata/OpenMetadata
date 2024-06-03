@@ -795,6 +795,10 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
               schema = @Schema(type = "string"))
           @PathParam("fqn")
           String fqn) {
+    ResourceContextInterface resourceContext = TestCaseResourceContext.builder().name(fqn).build();
+    OperationContext operationContext =
+        new OperationContext(Entity.TABLE, MetadataOperation.EDIT_TESTS);
+    authorizer.authorize(securityContext, operationContext, resourceContext);
     return deleteByName(uriInfo, securityContext, fqn, recursive, hardDelete);
   }
 
