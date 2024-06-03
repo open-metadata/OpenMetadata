@@ -24,7 +24,7 @@ export type TagsSelectFormProps = {
   onSubmit: (option: DefaultOptionType | DefaultOptionType[]) => Promise<void>;
   onCancel: () => void;
   tagType?: TagSource;
-  fetchApi: (
+  fetchApi?: (
     search: string,
     page: number
   ) => Promise<{
