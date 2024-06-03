@@ -94,7 +94,7 @@ entities.forEach((entity) => {
       await entity.downVote(page);
     });
 
-    test(`follow unfollow entity`, async ({ page }) => {
+    test(`Follow & Un-follow entity`, async ({ page }) => {
       const entityName = entity.entityResponseData?.['displayName'];
       await entity.followUnfollowEntity(page, entityName);
     });
