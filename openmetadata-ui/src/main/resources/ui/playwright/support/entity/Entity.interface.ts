@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-export enum EntityType {
+export enum EntityTypeEndpoint {
   Table = 'tables',
   StoreProcedure = 'storedProcedures',
   Topic = 'topics',
@@ -39,5 +39,5 @@ export enum EntityType {
 export type EntityDataType = {
   entityName: string;
   entityDetails: unknown;
-  endPoint: EntityType;
+  endPoint: EntityTypeEndpoint;
 };
