@@ -45,8 +45,23 @@ export const useGlossaryStore = create<{
     set({ activeGlossary: glossary });
   },
   updateActiveGlossary: (glossary: Partial<ModifiedGlossary>) => {
-    const { activeGlossary } = get();
+    const { activeGlossary, glossaries } = get();
 
-    set({ activeGlossary: { ...activeGlossary, ...glossary } as Glossary });
+    const updatedGlossary = {
+      ...activeGlossary,
+      ...glossary,
+    } as ModifiedGlossary;
+
+    // Update the active glossary
+    set({ activeGlossary: updatedGlossary });
+
+    // Update the corresponding glossary in the glossaries list
+    const index = glossaries.findIndex(
+      (g) => g.fullyQualifiedName === updatedGlossary.fullyQualifiedName
+    );
+
+    if (index !== -1) {
+      glossaries[index] = updatedGlossary;
+    }
   },
 }));

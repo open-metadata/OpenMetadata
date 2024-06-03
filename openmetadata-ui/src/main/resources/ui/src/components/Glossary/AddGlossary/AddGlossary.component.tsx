@@ -29,8 +29,8 @@ import {
 import { getEntityName } from '../../../utils/EntityUtils';
 import { generateFormFields, getField } from '../../../utils/formUtils';
 
+import { EntityType } from '../../../enums/entity.enum';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
-import { UserTeam } from '../../common/AssigneeList/AssigneeList.interface';
 import ResizablePanels from '../../common/ResizablePanels/ResizablePanels';
 import TitleBreadcrumb from '../../common/TitleBreadcrumb/TitleBreadcrumb.component';
 import { UserTag } from '../../common/UserTag/UserTag.component';
@@ -53,19 +53,16 @@ const AddGlossary = ({
     'owner',
     form
   );
-  const reviewersList =
-    Form.useWatch<EntityReference[]>('reviewers', form) ?? [];
+  const reviewersData =
+    Form.useWatch<EntityReference | EntityReference[]>('reviewers', form) ?? [];
+
+  const reviewersList = Array.isArray(reviewersData)
+    ? reviewersData
+    : [reviewersData];
 
   const handleSave: FormProps['onFinish'] = (formData) => {
-    const {
-      name,
-      displayName,
-      description,
-      tags,
-      mutuallyExclusive,
-      reviewers = [],
-      owner,
-    } = formData;
+    const { name, displayName, description, tags, mutuallyExclusive, owner } =
+      formData;
 
     const selectedOwner = owner ?? {
       id: currentUser?.id,
@@ -75,7 +72,7 @@ const AddGlossary = ({
       name: name.trim(),
       displayName: displayName?.trim(),
       description: description,
-      reviewers: reviewers.filter(Boolean),
+      reviewers: reviewersList.filter(Boolean),
       owner: selectedOwner,
       tags: tags || [],
       mutuallyExclusive: Boolean(mutuallyExclusive),
@@ -199,7 +196,7 @@ const AddGlossary = ({
     id: 'root/reviewers',
     required: false,
     label: t('label.reviewer-plural'),
-    type: FieldTypes.USER_MULTI_SELECT,
+    type: FieldTypes.USER_TEAM_SELECT,
     props: {
       hasPermission: true,
       popoverProps: { placement: 'topLeft' },
@@ -211,6 +208,8 @@ const AddGlossary = ({
           type="primary"
         />
       ),
+      multiple: { user: true, team: false },
+      previewSelected: true,
     },
     formItemLayout: FormItemLayout.HORIZONTAL,
     formItemProps: {
@@ -241,7 +240,7 @@ const AddGlossary = ({
                     <div className="m-y-xs" data-testid="owner-container">
                       <UserTag
                         id={selectedOwner.name ?? selectedOwner.id}
-                        isTeam={selectedOwner.type === UserTeam.Team}
+                        isTeam={selectedOwner.type === EntityType.TEAM}
                         name={getEntityName(selectedOwner)}
                         size={UserTagSize.small}
                       />
@@ -258,7 +257,9 @@ const AddGlossary = ({
                       size={[8, 8]}>
                       {reviewersList.map((d, index) => (
                         <UserTag
+                          avatarType="outlined"
                           id={d.name ?? d.id}
+                          isTeam={d.type === EntityType.TEAM}
                           key={index}
                           name={getEntityName(d)}
                           size={UserTagSize.small}

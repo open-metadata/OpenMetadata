@@ -98,11 +98,7 @@ const GlossaryDetailsRightPanel = ({
   const handleReviewerSave = async (
     data?: EntityReference | EntityReference[]
   ) => {
-    if (!data) {
-      return;
-    }
-
-    const reviewers = Array.isArray(data) ? data : [data];
+    const reviewers = Array.isArray(data) ? data : data ? [data] : [];
     if (!isEqual(reviewers, selectedData.reviewers)) {
       let updatedGlossary = cloneDeep(selectedData);
       const oldReviewer = reviewers.filter((d) =>
@@ -290,7 +286,7 @@ const GlossaryDetailsRightPanel = ({
                 previewSelected
                 hasPermission={hasEditReviewerAccess}
                 label={t('label.reviewer-plural')}
-                listHeight={180}
+                listHeight={200}
                 multiple={{ user: true, team: false }}
                 owner={selectedData.reviewers ?? []}
                 popoverProps={{ placement: 'topLeft' }}
@@ -321,7 +317,7 @@ const GlossaryDetailsRightPanel = ({
               previewSelected
               hasPermission={hasEditReviewerAccess}
               label={t('label.reviewer-plural')}
-              listHeight={180}
+              listHeight={200}
               multiple={{ user: true, team: false }}
               owner={selectedData.reviewers ?? []}
               popoverProps={{ placement: 'topLeft' }}

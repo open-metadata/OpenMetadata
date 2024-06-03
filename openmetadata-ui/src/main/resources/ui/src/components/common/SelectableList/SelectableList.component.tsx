@@ -10,8 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { CheckOutlined } from '@ant-design/icons';
 import Icon from '@ant-design/icons/lib/components/Icon';
-import { Button, Checkbox, List, Space, Tooltip } from 'antd';
+import { Button, List, Space, Tooltip } from 'antd';
 import classNames from 'classnames';
 import { cloneDeep, isEmpty } from 'lodash';
 import VirtualList from 'rc-virtual-list';
@@ -290,7 +291,11 @@ export const SelectableList = ({
               })}
               extra={
                 multiSelect ? (
-                  <Checkbox checked={selectedItemsInternal.has(item.id)} />
+                  <CheckOutlined
+                    className={classNames('selectable-list-item-checkmark', {
+                      active: selectedItemsInternal.has(item.id),
+                    })}
+                  />
                 ) : (
                   selectedItemsInternal.has(item.id) && (
                     <RemoveIcon
