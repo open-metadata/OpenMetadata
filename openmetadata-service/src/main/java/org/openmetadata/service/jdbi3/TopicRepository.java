@@ -410,9 +410,9 @@ public class TopicRepository extends EntityRepository<Topic> {
         updateSchemaFields(
             "messageSchema.schemaFields",
             original.getMessageSchema() == null
-                ? null
-                : original.getMessageSchema().getSchemaFields(),
-            updated.getMessageSchema().getSchemaFields(),
+                ? new ArrayList<>()
+                : listOrEmpty(original.getMessageSchema().getSchemaFields()),
+            listOrEmpty(updated.getMessageSchema().getSchemaFields()),
             EntityUtil.schemaFieldMatch);
       }
       recordChange("topicConfig", original.getTopicConfig(), updated.getTopicConfig());
@@ -489,7 +489,10 @@ public class TopicRepository extends EntityRepository<Topic> {
         if (updated.getChildren() != null && stored.getChildren() != null) {
           String childrenFieldName = EntityUtil.getFieldName(fieldName, updated.getName());
           updateSchemaFields(
-              childrenFieldName, stored.getChildren(), updated.getChildren(), fieldMatch);
+              childrenFieldName,
+              listOrEmpty(stored.getChildren()),
+              listOrEmpty(updated.getChildren()),
+              fieldMatch);
         }
       }
 
