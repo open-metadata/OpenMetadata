@@ -63,7 +63,7 @@ MOCK_DATABASE_SCHEMA = DatabaseSchema(
     ),
 )
 
-EXPTECTED_DATABASE_SCHEMA = [
+EXPECTED_DATABASE_SCHEMA = [
     CreateDatabaseSchemaRequest(
         name="do_it_all_with_default_schema",
         displayName=None,
@@ -270,7 +270,7 @@ class DomoDatabaseUnitTest(TestCase):
     def test_yield_schema(self):
         schema_list = []
         yield_schemas = self.domodatabase.yield_database_schema(
-            schema_name=MOCK_DATABASE_SCHEMA.name
+            schema_name=MOCK_DATABASE_SCHEMA.name.root
         )
 
         for schema in yield_schemas:
@@ -278,7 +278,7 @@ class DomoDatabaseUnitTest(TestCase):
                 schema_list.append(schema)
 
         for _, (exptected, original) in enumerate(
-            zip(EXPTECTED_DATABASE_SCHEMA, schema_list)
+            zip(EXPECTED_DATABASE_SCHEMA, schema_list)
         ):
             self.assertEqual(exptected, original)
 

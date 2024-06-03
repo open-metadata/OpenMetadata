@@ -30,6 +30,7 @@ from metadata.generated.schema.entity.services.ingestionPipelines.status import 
 from metadata.generated.schema.type.basic import (
     EntityName,
     FullyQualifiedEntityName,
+    Markdown,
     SourceUrl,
 )
 from metadata.ingestion.api.models import Either
@@ -97,7 +98,7 @@ class SupersetAPISource(SupersetSourceMixin):
         """
         try:
             dashboard_request = CreateDashboardRequest(
-                name=EntityName(dashboard_details.id),
+                name=EntityName(str(dashboard_details.id)),
                 displayName=dashboard_details.dashboard_title,
                 sourceUrl=SourceUrl(
                     f"{clean_uri(self.service_connection.hostPort)}{dashboard_details.url}"
@@ -121,7 +122,7 @@ class SupersetAPISource(SupersetSourceMixin):
         except Exception as exc:  # pylint: disable=broad-except
             yield Either(
                 left=StackTraceError(
-                    name=dashboard_details.id or "Dashboard",
+                    name=str(dashboard_details.id) or "Dashboard",
                     error=f"Error creating dashboard [{dashboard_details.dashboard_title}]: {exc}",
                     stackTrace=traceback.format_exc(),
                 )
@@ -149,7 +150,7 @@ class SupersetAPISource(SupersetSourceMixin):
                     )
                     continue
                 chart = CreateChartRequest(
-                    name=EntityName(chart_json.id),
+                    name=EntityName(str(chart_json.id)),
                     displayName=chart_json.slice_name,
                     description=Markdown(chart_json.description)
                     if chart_json.description
@@ -164,7 +165,7 @@ class SupersetAPISource(SupersetSourceMixin):
             except Exception as exc:  # pylint: disable=broad-except
                 yield Either(
                     left=StackTraceError(
-                        name=chart_json.id,
+                        name=str(chart_json.id),
                         error=f"Error creating chart [{chart_json.id} - {chart_json.slice_name}]: {exc}",
                         stackTrace=traceback.format_exc(),
                     )

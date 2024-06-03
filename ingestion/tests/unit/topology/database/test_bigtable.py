@@ -240,7 +240,7 @@ class BigTableUnitTest(TestCase):
         mock_bigtable_instance,
         mock_bigtable_table,
     ):
-        self.config = OpenMetadataWorkflowConfig.parse_obj(mock_bigtable_config)
+        self.config = OpenMetadataWorkflowConfig.model_validate(mock_bigtable_config)
         self.bigtable_source = BigtableSource.create(
             mock_bigtable_config["source"],
             OpenMetadata(self.config.workflowConfig.openMetadataServerConfig),

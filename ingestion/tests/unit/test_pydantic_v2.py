@@ -11,6 +11,7 @@
 """Test pydantic v2 models serialize data as pydantic v1"""
 from datetime import datetime, timezone
 
+from pydantic import AnyUrl
 from pydantic.v1 import BaseModel as BaseModelV1
 
 from metadata.generated.schema.type.basic import DateTime
@@ -78,3 +79,9 @@ def test_tz_aware_date():
     """Validate how we can create "aware" datetime objects"""
 
     DateTime(datetime.now(tz=timezone.utc))
+
+
+def test_anyurl():
+    """It always ends with /"""
+    assert str(AnyUrl("https://example.com")) == "https://example.com/"
+    assert str(AnyUrl("https://example.com/")) == "https://example.com/"

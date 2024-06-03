@@ -21,7 +21,7 @@ from pyiceberg.catalog.hive import HiveCatalog
 from pyiceberg.partitioning import PartitionField
 from pyiceberg.schema import Schema
 from pyiceberg.table import Table as PyIcebergTable
-from pyiceberg.table.metadata import TableMetadataV1
+from pyiceberg.table.metadata import TableMetadataV2
 from pyiceberg.transforms import IdentityTransform
 from pyiceberg.types import (
     BinaryType,
@@ -57,6 +57,11 @@ from metadata.generated.schema.entity.data.table import (
     PartitionIntervalTypes,
     TablePartition,
     TableType,
+)
+from metadata.generated.schema.type.basic import (
+    EntityName,
+    FullyQualifiedEntityName,
+    Markdown,
 )
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.parser import parse_workflow_config_gracefully
@@ -686,7 +691,7 @@ class IcebergUnitTest(TestCase):
                 self.iceberg.context.get().database_schema,
                 table_name,
             ),
-            "metadata": TableMetadataV1.parse_obj(
+            "metadata": TableMetadataV2.parse_obj(
                 {
                     "location": "foo",
                     "last_column_id": 1,
@@ -719,7 +724,7 @@ class IcebergUnitTest(TestCase):
                 self.iceberg.context.get().database_schema,
                 table_name,
             ),
-            "metadata": TableMetadataV1.parse_obj(
+            "metadata": TableMetadataV2.parse_obj(
                 {
                     "location": "foo",
                     "last_column_id": 1,
@@ -751,17 +756,20 @@ class IcebergUnitTest(TestCase):
                 self.iceberg.context.get().database_schema,
                 table_name,
             ),
-            "metadata": TableMetadataV1.parse_obj(
+            "metadata": TableMetadataV2.parse_obj(
                 {
                     "location": "foo",
+                    "current-schema-id": 0,
                     "last_column_id": 1,
-                    "format_version": 1,
-                    "schema": Schema(
-                        fields=(
-                            MOCK_COLUMN_MAP[field]["iceberg"]
-                            for field in MOCK_COLUMN_MAP.keys()
+                    "format_version": 2,
+                    "schemas": [
+                        Schema(
+                            fields=tuple(
+                                MOCK_COLUMN_MAP[field]["iceberg"]
+                                for field in MOCK_COLUMN_MAP.keys()
+                            )
                         )
-                    ),
+                    ],
                     "partition_spec": [],
                     "partition_specs": [
                         {
@@ -789,9 +797,9 @@ class IcebergUnitTest(TestCase):
         self.iceberg.context.get().iceberg_table = PyIcebergTable(**iceberg_table)
 
         expected = CreateTableRequest(
-            name=table_name,
+            name=EntityName(table_name),
             tableType=table_type,
-            description="Table Description",
+            description=Markdown("Table Description"),
             owner=ref,
             columns=[
                 MOCK_COLUMN_MAP[field]["ometa"] for field in MOCK_COLUMN_MAP.keys()
@@ -805,7 +813,7 @@ class IcebergUnitTest(TestCase):
                     )
                 ]
             ),
-            databaseSchema=fq_database_schema,
+            databaseSchema=FullyQualifiedEntityName(fq_database_schema),
         )
 
         with patch.object(

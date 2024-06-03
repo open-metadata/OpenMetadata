@@ -120,7 +120,7 @@ class DomodashboardSource(DashboardServiceSource):
     ) -> Iterable[Either[CreateDashboardRequest]]:
         try:
             dashboard_url = (
-                f"{self.service_connection.instanceDomain}/page/{dashboard_details.id}"
+                f"{self.service_connection.instanceDomain}page/{dashboard_details.id}"
             )
 
             dashboard_request = CreateDashboardRequest(

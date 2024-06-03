@@ -201,7 +201,7 @@ plugins: Dict[str, Set[str]] = {
         "impyla~=0.18.0",
     },
     "iceberg": {
-        "pyiceberg~=0.6",
+        "pyiceberg>=0.5",
         # Forcing the version of a few packages so it plays nicely with other requirements.
         VERSIONS["pydantic"],
         VERSIONS["adlfs"],
@@ -278,7 +278,8 @@ plugins: Dict[str, Set[str]] = {
 dev = {
     "black==22.3.0",
     "datamodel-code-generator==0.25.6",
-    "boto3-stubs[essential]",
+    "boto3-stubs[essentials]",
+    "mypy-boto3-glue",
     "isort",
     "pre-commit",
     "pycln",
@@ -294,6 +295,7 @@ test = {
     # Install Airflow as it's not part of `all` plugin
     VERSIONS["airflow"],
     "boto3-stubs[boto3]",
+    "mypy-boto3-glue",
     "coverage",
     # Install GE because it's not in the `all` plugin
     VERSIONS["great-expectations"],

@@ -103,14 +103,10 @@ class DomoClient:
         ],
     ):
         self.config = config
-        self.config.instanceDomain = (
-            self.config.instanceDomain[:-1]
-            if self.config.instanceDomain.endswith("/")
-            else self.config.instanceDomain
-        )
         HEADERS.update({"X-DOMO-Developer-Token": self.config.accessToken})
         client_config: ClientConfig = ClientConfig(
-            base_url=self.config.instanceDomain,
+            # AnyUrl string ends with / and the domo API does not respond properly if it has 2 // at the end
+            base_url=str(self.config.instanceDomain)[:-1],
             api_version="api/",
             auth_header="Authorization",
             auth_token=lambda: ("no_token", 0),

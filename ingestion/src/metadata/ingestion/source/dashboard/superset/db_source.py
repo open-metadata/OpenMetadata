@@ -122,7 +122,7 @@ class SupersetDBSource(SupersetSourceMixin):
         """Method to Get Dashboard Entity"""
         try:
             dashboard_request = CreateDashboardRequest(
-                name=EntityName(dashboard_details.id),
+                name=EntityName(str(dashboard_details.id)),
                 displayName=dashboard_details.dashboard_title,
                 sourceUrl=SourceUrl(
                     f"{clean_uri(self.service_connection.hostPort)}/superset/dashboard/{dashboard_details.id}/"
@@ -168,7 +168,7 @@ class SupersetDBSource(SupersetSourceMixin):
         self, dashboard_details: FetchDashboard
     ) -> Iterable[Either[CreateChartRequest]]:
         """
-        Metod to fetch charts linked to dashboard
+        Method to fetch charts linked to dashboard
         """
         for chart_id in self._get_charts_of_dashboard(dashboard_details):
             try:
@@ -180,7 +180,7 @@ class SupersetDBSource(SupersetSourceMixin):
 
                     continue
                 chart = CreateChartRequest(
-                    name=EntityName(chart_json.id),
+                    name=EntityName(str(chart_json.id)),
                     displayName=chart_json.slice_name,
                     description=Markdown(chart_json.description)
                     if chart_json.description

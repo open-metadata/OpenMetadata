@@ -17,8 +17,8 @@ SAS source to extract metadata
 import copy
 import json
 import re
-import time
 import traceback
+from datetime import datetime, timezone
 from typing import Any, Iterable, Optional, Tuple, Union
 
 from requests.exceptions import HTTPError
@@ -65,7 +65,7 @@ from metadata.generated.schema.metadataIngestion.databaseServiceMetadataPipeline
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
-from metadata.generated.schema.type.basic import EntityName
+from metadata.generated.schema.type.basic import EntityName, Timestamp
 from metadata.generated.schema.type.entityLineage import EntitiesEdge
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.common import Entity
@@ -121,6 +121,8 @@ class SasSource(
 
         self.databases = None
         self.database_schemas = None
+
+        self.timestamp = Timestamp(int(datetime.now(timezone.utc).timestamp() * 1000))
 
     @classmethod
     def create(
@@ -413,8 +415,7 @@ class SasSource(
                         col_profile_dict["valuesCount"]
                         - col_profile_dict["missingCount"]
                     )
-            timestamp = time.time() - 100000
-            col_profile_dict["timestamp"] = timestamp
+            col_profile_dict["timestamp"] = self.timestamp
             col_profile_dict["name"] = parsed_string["name"]
             column_profile = ColumnProfile(**col_profile_dict)
             col_profile_list.append(column_profile)
@@ -571,30 +572,15 @@ class SasSource(
                 ):
                     return
 
-                # update table profile
-                table_profile_dict = {
-                    "timestamp": time.time() - 100000,
-                    "createDateTime": table_entity_instance["creationTimeStamp"],
-                    "rowCount": (
-                        0
-                        if "rowCount" not in table_extension
-                        else table_extension["rowCount"]
-                    ),
-                    "columnCount": (
-                        0
-                        if "columnCount" not in table_extension
-                        else table_extension["columnCount"]
-                    ),
-                    "sizeInByte": (
-                        0
-                        if "dataSize" not in extension_attributes
-                        else table_extension["dataSize"]
-                    ),
-                }
-
                 # create Profiles & Data Quality Column
                 table_profile_request = CreateTableProfileRequest(
-                    tableProfile=TableProfile(**table_profile_dict),
+                    tableProfile=TableProfile(
+                        timestamp=self.timestamp,
+                        createDateTime=table_entity_instance["creationTimeStamp"],
+                        rowCount=int(table_extension.get("rowCount", 0)),
+                        columnCount=int(table_extension.get("columnCount", 0)),
+                        sizeInByte=int(table_extension.get("dataSize", 0)),
+                    ),
                     columnProfile=col_profile_list,
                 )
                 self.metadata.client.put(
@@ -608,7 +594,7 @@ class SasSource(
                 left=StackTraceError(
                     name=table_name,
                     error=f"Unexpected exception to create table [{table_name}]: {exc}",
-                    stack_trace=traceback.format_exc(),
+                    stackTrace=traceback.format_exc(),
                 )
             )
         finally:
