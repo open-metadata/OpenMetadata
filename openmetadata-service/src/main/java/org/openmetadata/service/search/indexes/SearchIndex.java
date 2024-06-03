@@ -36,13 +36,13 @@ public interface SearchIndex {
       Set.of("changeDescription", "lineage.pipeline.changeDescription");
 
   default Map<String, Object> buildSearchIndexDoc() {
-    Map<String, Object> esDoc = JsonUtils.getMap(getEntity());
+    // Build Index Doc
+    Map<String, Object> esDoc = this.buildSearchIndexDocInternal(JsonUtils.getMap(getEntity()));
 
     // Non Indexable Fields
     removeNonIndexableFields(esDoc);
 
-    // Build Index Doc
-    return this.buildSearchIndexDocInternal(esDoc);
+    return esDoc;
   }
 
   default void removeNonIndexableFields(Map<String, Object> esDoc) {
