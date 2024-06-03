@@ -35,13 +35,13 @@ import {
 } from '../../utils/entityUtils';
 import { Domain } from '../domain/Domain';
 import { GlossaryTerm } from '../glossary/GlossaryTerm';
-import { EntityType } from './Entity.interface';
+import { EntityTypeEndpoint } from './Entity.interface';
 
 export class EntityClass {
   type: string;
-  endpoint: EntityType;
+  endpoint: EntityTypeEndpoint;
 
-  constructor(endpoint: EntityType) {
+  constructor(endpoint: EntityTypeEndpoint) {
     this.endpoint = endpoint;
   }
 

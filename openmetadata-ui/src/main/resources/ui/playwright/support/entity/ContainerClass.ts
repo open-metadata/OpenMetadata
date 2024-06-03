@@ -13,7 +13,7 @@
 import { APIRequestContext, Page } from '@playwright/test';
 import { uuid } from '../../utils/common';
 import { visitEntityPage } from '../../utils/entityUtils';
-import { EntityType } from './Entity.interface';
+import { EntityTypeEndpoint } from './Entity.interface';
 import { EntityClass } from './EntityClass';
 
 export class ContainerClass extends EntityClass {
@@ -43,7 +43,7 @@ export class ContainerClass extends EntityClass {
   entityResponseData: unknown;
 
   constructor(name?: string) {
-    super(EntityType.Container);
+    super(EntityTypeEndpoint.Container);
     this.service.name = name ?? this.service.name;
     this.type = 'Container';
   }

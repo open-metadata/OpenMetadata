@@ -13,7 +13,7 @@
 import { APIRequestContext, Page } from '@playwright/test';
 import { uuid } from '../../utils/common';
 import { visitEntityPage } from '../../utils/entityUtils';
-import { EntityType } from './Entity.interface';
+import { EntityTypeEndpoint } from './Entity.interface';
 import { EntityClass } from './EntityClass';
 
 export class PipelineClass extends EntityClass {
@@ -41,7 +41,7 @@ export class PipelineClass extends EntityClass {
   entityResponseData: unknown;
 
   constructor(name?: string) {
-    super(EntityType.Pipeline);
+    super(EntityTypeEndpoint.Pipeline);
     this.service.name = name ?? this.service.name;
     this.type = 'Pipeline';
   }
