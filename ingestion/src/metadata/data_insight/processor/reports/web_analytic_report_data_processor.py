@@ -351,8 +351,7 @@ class WebAnalyticUserActivityReportDataProcessor(DataProcessor):
 
     def fetch_data(self) -> Iterable[WebAnalyticEventData]:
         if CACHED_EVENTS:
-            for event in CACHED_EVENTS:
-                yield event
+            yield from CACHED_EVENTS
         else:
             CACHED_EVENTS.extend(
                 self.metadata.list_entities(
@@ -364,8 +363,7 @@ class WebAnalyticUserActivityReportDataProcessor(DataProcessor):
                     },
                 ).entities
             )
-            for event in CACHED_EVENTS:
-                yield event
+            yield from CACHED_EVENTS
 
     def yield_refined_data(self) -> Iterable[ReportData]:
         """Yield refined data"""

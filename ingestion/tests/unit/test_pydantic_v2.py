@@ -85,3 +85,16 @@ def test_anyurl():
     """It always ends with /"""
     assert str(AnyUrl("https://example.com")) == "https://example.com/"
     assert str(AnyUrl("https://example.com/")) == "https://example.com/"
+
+
+def test_get_secret_string():
+    """We can get the right secret from our custom CustomSecretStr"""
+    from metadata.ingestion.models.custom_pydantic import CustomSecretStr
+
+    class MyModel(BaseModel):
+        secret: CustomSecretStr
+        no_secret: str
+
+    model = MyModel(secret="secret:password", no_secret="hello")
+
+    assert model.secret.get_secret_value() == "password"

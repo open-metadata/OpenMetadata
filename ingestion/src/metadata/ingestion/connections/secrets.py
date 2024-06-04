@@ -17,6 +17,8 @@ from functools import wraps
 from metadata.ingestion.models.custom_pydantic import CustomSecretStr
 
 
+# Annotated CustomSecretStr does not like the get_secret_value()
+# pylint: disable=no-member
 def update_connection_opts_args(connection):
     if (
         hasattr(connection, "connectionOptions")

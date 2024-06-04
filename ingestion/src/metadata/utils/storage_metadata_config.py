@@ -79,7 +79,7 @@ def _(config: StorageMetadataLocalConfig) -> ManifestMetadataConfig:
             logger.debug(f"Reading [manifestFilePath] from: {config.manifestFilePath}")
             with open(config.manifestFilePath, "r", encoding="utf-8") as manifest:
                 metadata_manifest = manifest.read()
-        return ManifestMetadataConfig.model_validate(json.loads(metadata_manifest))
+            return ManifestMetadataConfig.model_validate(json.loads(metadata_manifest))
     except Exception as exc:
         logger.debug(traceback.format_exc())
         raise StorageMetadataConfigException(

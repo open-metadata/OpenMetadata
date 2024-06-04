@@ -33,8 +33,8 @@ class Status(BaseModel):
     """
 
     source_start_time: float = Field(
-        default_factory=lambda: time.time()
-    )  # pylint: disable=unnecessary-lambda
+        default_factory=lambda: time.time()  # pylint: disable=unnecessary-lambda
+    )
 
     records: Annotated[List[Any], Field(default_factory=list)]
     updated_records: Annotated[List[Any], Field(default_factory=list)]

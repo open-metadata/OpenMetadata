@@ -444,8 +444,7 @@ class OpenMetadata(
             params=params,
             skip_on_failure=skip_on_failure,
         )
-        for elem in entity_list.entities:
-            yield elem
+        yield from entity_list.entities
 
         after = entity_list.after
         while after:
@@ -457,8 +456,7 @@ class OpenMetadata(
                 after=after,
                 skip_on_failure=skip_on_failure,
             )
-            for elem in entity_list.entities:
-                yield elem
+            yield from entity_list.entities
             after = entity_list.after
 
     def list_versions(
