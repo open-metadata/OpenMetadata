@@ -1712,7 +1712,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
   }
 
   public final void validateReviewers(List<EntityReference> entityReferences) {
-    List<EntityReference> reviewers = new ArrayList<>();
     if (!nullOrEmpty(entityReferences)) {
       boolean areAllTeam = validateIfAllRefsAreEntityType(entityReferences, TEAM);
       boolean areAllUsers = validateIfAllRefsAreEntityType(entityReferences, USER);
