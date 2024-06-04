@@ -122,6 +122,11 @@
     "domain" : {
       "description": "Domain the test case belongs to. When not set, the test case inherits the domain from the table it belongs to.",
       "$ref": "../type/entityReference.json"
+    },
+    "useDynamicAssertion": {
+      "description": "If the test definition supports it, use dynamic assertion to evaluate the test case.",
+      "type": "boolean",
+      "default": false
     }
   },
   "required": ["name", "testDefinition", "entityLink", "testSuite"],

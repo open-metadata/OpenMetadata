@@ -146,6 +146,7 @@ def is_date_time(_type) -> bool:
         issubclass(_type.__class__, Date)
         or issubclass(_type.__class__, Time)
         or issubclass(_type.__class__, DateTime)
+        or issubclass(_type.__class__, CustomTimestamp)
     )
 
 
