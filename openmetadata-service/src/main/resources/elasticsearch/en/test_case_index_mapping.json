@@ -406,6 +406,27 @@
           }
         }
       },
+      "tags": {
+        "type": "nested",
+        "properties": {
+          "tagFQN": {
+            "type": "keyword"
+          },
+          "labelType": {
+            "type": "keyword"
+          },
+          "description": {
+            "type": "text",
+            "index_options": "docs"
+          },
+          "source": {
+            "type": "keyword"
+          },
+          "state": {
+            "type": "keyword"
+          }
+        }
+      },
       "version": {
         "type": "float"
       },
