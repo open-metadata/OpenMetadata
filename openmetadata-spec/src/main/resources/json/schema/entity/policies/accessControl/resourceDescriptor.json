@@ -47,7 +47,8 @@
         "DeleteTestCaseFailedRowsSample",
         "Deploy",
         "Trigger",
-        "Kill"
+        "Kill",
+        "GenerateToken"
       ]
     }
   },
