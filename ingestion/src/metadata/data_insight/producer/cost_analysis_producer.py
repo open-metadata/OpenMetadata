@@ -34,8 +34,8 @@ class CostAnalysisReportData(BaseModel):
     """
 
     entity: Entity
-    life_cycle: Optional[LifeCycle]
-    size: Optional[float]
+    life_cycle: Optional[LifeCycle] = None
+    size: Optional[float] = None
 
 
 class CostAnalysisProducer(ProducerInterface):
