@@ -108,9 +108,12 @@ const verifyFilterTestCase = () => {
 };
 const verifyFilter2TestCase = (negation = false) => {
   filterTable2TestCases.map((testCase) => {
-    cy.get(`[data-testid="${testCase}"]`)
-      .scrollIntoView()
-      .should(negation ? 'not.exist' : 'be.visible');
+    negation
+      ? cy.get(`[data-testid="${testCase}"]`).should('not.exist')
+      : cy
+          .get(`[data-testid="${testCase}"]`)
+          .scrollIntoView()
+          .should('be.visible');
   });
 };
 
@@ -1080,7 +1083,7 @@ describe(
       // Test case filter by Tier
       interceptURL(
         'GET',
-        `/api/v1/dataQuality/testCases/search/list?*tags=${'Tier.Tier2'}*`,
+        `/api/v1/dataQuality/testCases/search/list?*tier=${'Tier.Tier2'}*`,
         'getTestCaseByTier'
       );
       cy.get('#tier').click();
