@@ -89,7 +89,7 @@ class BaseColumnValuesToBeBetweenValidator(BaseTestValidator):
                 self.test_case.parameterValues,  # type: ignore
                 "minValue",
                 type_=datetime.fromtimestamp,
-                default=datetime.min.replace(tzinfo=timezone.utc),
+                default=datetime.min,
                 pre_processor=convert_timestamp,
             )
 
@@ -97,7 +97,7 @@ class BaseColumnValuesToBeBetweenValidator(BaseTestValidator):
                 self.test_case.parameterValues,  # type: ignore
                 "maxValue",
                 type_=datetime.fromtimestamp,
-                default=datetime.max.replace(tzinfo=timezone.utc),
+                default=datetime.max,
                 pre_processor=convert_timestamp,
             )
         else:
