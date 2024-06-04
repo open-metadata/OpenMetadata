@@ -12,6 +12,8 @@
  */
 import { expect, Page } from '@playwright/test';
 import { lowerCase } from 'lodash';
+import { EntityType } from '../support/entity/Entity.interface';
+import { redirectToHomePage } from './common';
 
 export const visitEntityPage = async (data: {
   page: Page;
@@ -149,7 +151,11 @@ export const removeTag = async (page: Page, tags: string[]) => {
       .locator('svg')
       .click();
 
+    const patchRequest = page.waitForRequest(
+      (request) => request.method() === 'PATCH'
+    );
     await page.getByTestId('saveAssociatedTag').click();
+    await patchRequest;
 
     expect(
       page
@@ -210,7 +216,11 @@ export const removeGlossaryTerm = async (
       .locator('svg')
       .click();
 
+    const patchRequest = page.waitForRequest(
+      (request) => request.method() === 'PATCH'
+    );
     await page.getByTestId('saveAssociatedTag').click();
+    await patchRequest;
 
     expect(
       page
@@ -218,5 +228,57 @@ export const removeGlossaryTerm = async (
         .getByTestId('glossary-container')
         .getByTestId(`tag-${tag.fullyQualifiedName}`)
     ).not.toBeVisible();
+  }
+};
+
+export const upVote = async (page: Page, endPoint: string) => {
+  await page.getByTestId('up-vote-btn').click();
+  await page.waitForResponse(`/api/v1/${endPoint}/*/vote`);
+
+  await expect(page.getByTestId('up-vote-count')).toContainText('1');
+};
+
+export const downVote = async (page: Page, endPoint: string) => {
+  await page.getByTestId('down-vote-btn').click();
+  await page.waitForResponse(`/api/v1/${endPoint}/*/vote`);
+
+  await expect(page.getByTestId('down-vote-count')).toContainText('1');
+};
+
+export const followEntity = async (page: Page, endpoint: EntityType) => {
+  const followResponse = page.waitForResponse(
+    `/api/v1/${endpoint}/*/followers`
+  );
+  await page.getByTestId('entity-follow-button').click();
+  await followResponse;
+
+  await expect(page.getByTestId('entity-follow-button')).toContainText('1');
+};
+
+export const unFollowEntity = async (page: Page, endpoint: EntityType) => {
+  const unFollowResponse = page.waitForResponse(
+    `/api/v1/${endpoint}/*/followers/*`
+  );
+  await page.getByTestId('entity-follow-button').click();
+  await unFollowResponse;
+
+  await expect(page.getByTestId('entity-follow-button')).toContainText('0');
+};
+
+export const validateFollowedEntityToWidget = async (
+  page: Page,
+  entity: string,
+  isFollowing: boolean
+) => {
+  await redirectToHomePage(page);
+
+  if (isFollowing) {
+    await page.getByTestId('following-widget').isVisible();
+
+    await page.getByTestId(`following-${entity}`).isVisible();
+  } else {
+    await page.getByTestId('following-widget').isVisible();
+
+    await expect(page.getByTestId(`following-${entity}`)).not.toBeVisible();
   }
 };
