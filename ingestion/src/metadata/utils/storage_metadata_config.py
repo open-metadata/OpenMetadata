@@ -80,6 +80,7 @@ def _(config: StorageMetadataLocalConfig) -> ManifestMetadataConfig:
             with open(config.manifestFilePath, "r", encoding="utf-8") as manifest:
                 metadata_manifest = manifest.read()
             return ManifestMetadataConfig.model_validate(json.loads(metadata_manifest))
+        raise StorageMetadataConfigException("Manifest file path not provided")
     except Exception as exc:
         logger.debug(traceback.format_exc())
         raise StorageMetadataConfigException(

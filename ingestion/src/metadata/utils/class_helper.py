@@ -62,7 +62,6 @@ from metadata.generated.schema.metadataIngestion.storageServiceMetadataPipeline 
 from metadata.generated.schema.metadataIngestion.testSuitePipeline import (
     TestSuitePipeline,
 )
-from metadata.generated.schema.metadataIngestion.workflow import SourceConfig
 
 SERVICE_TYPE_REF = {
     ServiceType.Database.value: "databaseService",
@@ -103,9 +102,7 @@ def _clean(source_type: str):
     return source_type
 
 
-def get_pipeline_type_from_source_config(
-    source_config_type: SourceConfig.__fields__["config"].annotation,
-) -> PipelineType:
+def get_pipeline_type_from_source_config(source_config_type) -> PipelineType:
     """From the YAML serviceType, get the Ingestion Pipeline Type"""
     pipeline_type = SOURCE_CONFIG_TYPE_INGESTION.get(
         source_config_type.__class__.__name__

@@ -81,7 +81,7 @@ def test_tz_aware_date():
     DateTime(datetime.now(tz=timezone.utc))
 
 
-def test_anyurl():
+def test_any_url():
     """It always ends with /"""
     assert str(AnyUrl("https://example.com")) == "https://example.com/"
     assert str(AnyUrl("https://example.com/")) == "https://example.com/"
