@@ -75,34 +75,6 @@ export const visitGlossaryPage = () => {
   verifyResponseStatusCode('@getGlossaries', 200);
 };
 
-export const addReviewer = (reviewerName, entity) => {
-  interceptURL('GET', '/api/v1/users?limit=25&isBot=false', 'getUsers');
-
-  cy.get('[data-testid="glossary-reviewer"] [data-testid="Add"]').click();
-
-  verifyResponseStatusCode('@getUsers', 200);
-
-  interceptURL(
-    'GET',
-    `api/v1/search/query?q=*${encodeURI(reviewerName)}*`,
-    'searchOwner'
-  );
-
-  cy.get('[data-testid="searchbar"]').type(reviewerName);
-
-  verifyResponseStatusCode('@searchOwner', 200);
-
-  interceptURL('PATCH', `/api/v1/${entity}/*`, 'patchOwner');
-
-  cy.get(`.ant-popover [title="${reviewerName}"]`).click();
-
-  cy.get('[data-testid="selectable-list-update-btn"]').click();
-
-  verifyResponseStatusCode('@patchOwner', 200);
-
-  cy.get('[data-testid="glossary-reviewer"]').should('contain', reviewerName);
-};
-
 export const removeReviewer = (entity) => {
   interceptURL('PATCH', `/api/v1/${entity}/*`, 'patchOwner');
 

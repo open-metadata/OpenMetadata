@@ -21,13 +21,16 @@ export type ModifiedGlossary = Glossary & {
 export const useGlossaryStore = create<{
   glossaries: Glossary[];
   activeGlossary: ModifiedGlossary;
+  glossaryChildTerms: ModifiedGlossary[];
   setGlossaries: (glossaries: Glossary[]) => void;
   setActiveGlossary: (glossary: ModifiedGlossary) => void;
   updateGlossary: (glossary: Glossary) => void;
   updateActiveGlossary: (glossary: Partial<ModifiedGlossary>) => void;
+  setGlossaryChildTerms: (glossaryChildTerms: ModifiedGlossary[]) => void;
 }>()((set, get) => ({
   glossaries: [],
   activeGlossary: {} as ModifiedGlossary,
+  glossaryChildTerms: [],
 
   setGlossaries: (glossaries: Glossary[]) => {
     set({ glossaries });
@@ -63,5 +66,8 @@ export const useGlossaryStore = create<{
     if (index !== -1) {
       glossaries[index] = updatedGlossary;
     }
+  },
+  setGlossaryChildTerms: (glossaryChildTerms: ModifiedGlossary[]) => {
+    set({ glossaryChildTerms });
   },
 }));

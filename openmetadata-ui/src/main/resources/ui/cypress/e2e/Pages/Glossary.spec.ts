@@ -503,11 +503,17 @@ describe('Glossary page should work properly', { tags: 'Governance' }, () => {
         cy.settingClick(GlobalSettingOptions.TEAMS);
         const appName = 'Applications';
 
-        interceptURL('GET', '/api/v1/teams/**', 'getTeams');
+        interceptURL('GET', `/api/v1/teams/**`, 'getTeams');
+        interceptURL(
+          'GET',
+          `/api/v1/users?fields=teams%2Croles&limit=25&team=${appName}`,
+          'teamUsers'
+        );
 
         cy.get('[data-testid="search-bar-container"]').type(appName);
         cy.get(`[data-row-key="${appName}"]`).contains(appName).click();
         verifyResponseStatusCode('@getTeams', 200);
+        verifyResponseStatusCode('@teamUsers', 200);
 
         interceptURL('GET', '/api/v1/users?*isBot=false*', 'getUsers');
         cy.get('[data-testid="add-new-user"]').click();
@@ -608,28 +614,13 @@ describe('Glossary page should work properly', { tags: 'Governance' }, () => {
     cy.login();
   });
 
-  // it('Approval Workflow for Glossary Term', () => {
-  //   cy.logout();
-
-  //   cy.login(CREDENTIALS.email, CREDENTIALS.password);
-  //   approveGlossaryTermWorkflow({
-  //     glossary: GLOSSARY_1,
-  //     glossaryTerm: GLOSSARY_1.terms[0],
-  //   });
-  //   approveGlossaryTermWorkflow({
-  //     glossary: GLOSSARY_2,
-  //     glossaryTerm: GLOSSARY_2.terms[0],
-  //   });
-  //   cy.logout();
-  //   Cypress.session.clearAllSavedSessions();
-  //   cy.login();
-  // });
-
   it('Update glossary term', () => {
     const uSynonyms = ['pick up', 'take', 'obtain'];
     const newRef = { name: 'take', url: 'https://take.com' };
     const term2 = GLOSSARY_3.terms[1].name;
     const { name, fullyQualifiedName } = GLOSSARY_1.terms[0];
+    const { name: newTermName, fullyQualifiedName: newTermFqn } =
+      GLOSSARY_1.terms[1];
 
     // visit glossary page
     interceptURL(
@@ -672,6 +663,16 @@ describe('Glossary page should work properly', { tags: 'Governance' }, () => {
 
     // updating voting for glossary term
     voteGlossary();
+
+    visitGlossaryTermPage(newTermName, newTermFqn);
+
+    // Updating Reviewer
+    addOwnerInGlossary(
+      [userName],
+      'edit-reviewer-button',
+      'glossary-reviewer-name',
+      false
+    );
   });
 
   it('User Approval Workflow for Glossary Term', () => {
@@ -680,6 +681,11 @@ describe('Glossary page should work properly', { tags: 'Governance' }, () => {
     approveGlossaryTermWorkflow({
       glossary: GLOSSARY_1,
       glossaryTerm: GLOSSARY_1.terms[0],
+    });
+
+    approveGlossaryTermWorkflow({
+      glossary: GLOSSARY_1,
+      glossaryTerm: GLOSSARY_1.terms[1],
     });
     cy.logout();
     Cypress.session.clearAllSavedSessions();
@@ -736,7 +742,6 @@ describe('Glossary page should work properly', { tags: 'Governance' }, () => {
   });
 
   it('Assets Tab should work properly', () => {
-    selectActiveGlossary(GLOSSARY_1.name);
     const glossary1 = GLOSSARY_1.name;
     const term1 = GLOSSARY_1.terms[0];
     const term2 = GLOSSARY_1.terms[1];
@@ -747,7 +752,7 @@ describe('Glossary page should work properly', { tags: 'Governance' }, () => {
 
     const entity = SEARCH_ENTITY_TABLE.table_3;
 
-    cy.get('.ant-menu-item').contains(glossary2).click();
+    selectActiveGlossary(glossary2);
 
     goToAssetsTab(term3.name, term3.fullyQualifiedName, true);
     cy.contains('Adding a new Asset is easy, just give it a spin!').should(
@@ -1099,10 +1104,6 @@ describe('Glossary page should work properly', { tags: 'Governance' }, () => {
   });
 
   it('Delete glossary term should work properly', () => {
-    selectActiveGlossary(GLOSSARY_1.name);
-    GLOSSARY_1.terms.forEach(deleteGlossaryTerm);
-
-    // Glossary term for Product glossary
     selectActiveGlossary(GLOSSARY_2.name);
     GLOSSARY_2.terms.forEach(deleteGlossaryTerm);
   });
