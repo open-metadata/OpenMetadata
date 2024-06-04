@@ -153,7 +153,7 @@ const DataModelDetails = ({
 
   const handleTagSelection = async (selectedTags: EntityTags[]) => {
     const updatedTags: TagLabel[] | undefined = createTagObject(selectedTags);
-    handleUpdateTags(updatedTags);
+    await handleUpdateTags(updatedTags);
   };
 
   const handleRestoreDataModel = async () => {
