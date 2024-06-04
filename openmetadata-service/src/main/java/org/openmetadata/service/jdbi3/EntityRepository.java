@@ -858,7 +858,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     EventType change = ENTITY_NO_CHANGE;
     if (entityUpdater.fieldsChanged()) {
       change = EventType.ENTITY_UPDATED;
-      setInheritedFields(original, patchFields); // Restore inherited fields after a change
+      setInheritedFields(updated, patchFields); // Restore inherited fields after a change
     }
     return new PatchResponse<>(Status.OK, withHref(uriInfo, updated), change);
   }
@@ -887,7 +887,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     EventType change = ENTITY_NO_CHANGE;
     if (entityUpdater.fieldsChanged()) {
       change = EventType.ENTITY_UPDATED;
-      setInheritedFields(original, patchFields); // Restore inherited fields after a change
+      setInheritedFields(updated, patchFields); // Restore inherited fields after a change
     }
     return new PatchResponse<>(Status.OK, withHref(uriInfo, updated), change);
   }
