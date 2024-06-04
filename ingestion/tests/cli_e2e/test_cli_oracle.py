@@ -82,7 +82,7 @@ SELECT * from names
 
     @staticmethod
     def expected_tables() -> int:
-        return 14
+        return 13
 
     def inserted_rows_count(self) -> int:
         # For the admin_emp table
