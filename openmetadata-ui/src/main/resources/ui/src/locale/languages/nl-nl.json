@@ -1849,6 +1849,7 @@
     "entity-fetch-error": "Fout bij het ophalen van {{entity}}",
     "entity-fetch-version-error": "Fout bij het ophalen van {{entity}}-versies {{version}}",
     "entity-follow-error": "Fout bij het volgen van {{entity}}",
+    "entity-limit-reached": "{{entity}} limit reached",
     "entity-removing-error": "Fout bij het verwijderen van {{entity}}",
     "entity-unfollow-error": "Fout bij het ontvolgen van {{entity}}",
     "entity-updating-error": "Fout bij het updaten van {{entity}}",

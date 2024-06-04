@@ -48,6 +48,7 @@ import { EntityType } from '../../enums/entity.enum';
 import { SearchIndex } from '../../enums/search.enum';
 import { User } from '../../generated/entity/teams/user';
 import { Include } from '../../generated/type/include';
+import LimitWrapper from '../../hoc/LimitWrapper';
 import { useAuth } from '../../hooks/authHooks';
 import { usePaging } from '../../hooks/paging/usePaging';
 import { searchData } from '../../rest/miscAPI';
@@ -424,12 +425,14 @@ const UserListPageV1 = () => {
             </span>
 
             {isAdminUser && (
-              <Button
-                data-testid="add-user"
-                type="primary"
-                onClick={handleAddNewUser}>
-                {t('label.add-entity', { entity: t('label.user') })}
-              </Button>
+              <LimitWrapper resource="user">
+                <Button
+                  data-testid="add-user"
+                  type="primary"
+                  onClick={handleAddNewUser}>
+                  {t('label.add-entity', { entity: t('label.user') })}
+                </Button>
+              </LimitWrapper>
             )}
           </Space>
         </Col>

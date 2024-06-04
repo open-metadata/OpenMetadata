@@ -41,6 +41,7 @@ import {
   ProviderType,
 } from '../../generated/events/eventSubscription';
 import { Paging } from '../../generated/type/paging';
+import LimitWrapper from '../../hoc/LimitWrapper';
 import { usePaging } from '../../hooks/paging/usePaging';
 import { getAlertsFromName, getAllAlerts } from '../../rest/alertsAPI';
 import { getEntityName } from '../../utils/EntityUtils';
@@ -219,15 +220,21 @@ const NotificationListPage = () => {
         <Col span={24}>
           <div className="d-flex justify-between">
             <PageHeader data={PAGE_HEADERS.NOTIFICATION} />
-            <Link
-              to={getSettingPath(
-                GlobalSettingsMenuCategory.NOTIFICATIONS,
-                GlobalSettingOptions.ADD_NOTIFICATION
-              )}>
-              <Button data-testid="create-notification" type="primary">
+            <LimitWrapper resource="notification">
+              <Button
+                data-testid="create-notification"
+                type="primary"
+                onClick={() =>
+                  history.push(
+                    getSettingPath(
+                      GlobalSettingsMenuCategory.NOTIFICATIONS,
+                      GlobalSettingOptions.ADD_NOTIFICATION
+                    )
+                  )
+                }>
                 {t('label.add-entity', { entity: t('label.alert') })}
               </Button>
-            </Link>
+            </LimitWrapper>
           </div>
         </Col>
         <Col span={24}>

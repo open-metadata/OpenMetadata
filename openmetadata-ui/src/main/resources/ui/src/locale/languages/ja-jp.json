@@ -1849,6 +1849,7 @@
     "entity-fetch-error": "{{entity}}の取得中にエラーが発生しました",
     "entity-fetch-version-error": "{{entity}} バージョン {{version}}の取得中にエラーが発生しました",
     "entity-follow-error": "Error while following {{entity}}",
+    "entity-limit-reached": "{{entity}} limit reached",
     "entity-removing-error": "Error while removing {{entity}}",
     "entity-unfollow-error": "Error while unfollowing {{entity}}",
     "entity-updating-error": "{{entity}}の更新中にエラーが発生しました",

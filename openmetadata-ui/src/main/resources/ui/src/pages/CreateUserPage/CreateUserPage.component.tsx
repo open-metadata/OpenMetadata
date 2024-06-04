@@ -20,7 +20,6 @@ import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadc
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import CreateUserComponent from '../../components/Settings/Users/CreateUser/CreateUser.component';
 import {
-  ERROR_MESSAGE,
   getBotsPagePath,
   getUsersPagePath,
   PAGE_SIZE_LARGE,
@@ -28,6 +27,7 @@ import {
 import { GlobalSettingOptions } from '../../constants/GlobalSettings.constants';
 import { CreateUser } from '../../generated/api/teams/createUser';
 import { Role } from '../../generated/entity/teams/role';
+import { useApplicationStore } from '../../hooks/useApplicationStore';
 import { createBot } from '../../rest/botsAPI';
 import { getRoles } from '../../rest/rolesAPIV1';
 import {
@@ -35,13 +35,14 @@ import {
   createUserWithPut,
   getBotByName,
 } from '../../rest/userAPI';
-import { getIsErrorMatch } from '../../utils/CommonUtils';
 import { getSettingPath } from '../../utils/RouterUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
+import { getUserCreationErrorMessage } from '../../utils/Users.util';
 
 const CreateUserPage = () => {
   const history = useHistory();
   const { t } = useTranslation();
+  const { setInlineAlertDetails } = useApplicationStore();
 
   const [roles, setRoles] = useState<Array<Role>>([]);
   const [isLoading, setIsLoading] = useState<boolean>(false);
@@ -58,18 +59,6 @@ const CreateUserPage = () => {
 
   const handleCancel = () => {
     goToUserListPage();
-  };
-
-  /**
-   * Handles error if any, while creating new user.
-   * @param error AxiosError or error message
-   * @param fallbackText fallback error message
-   */
-  const handleSaveFailure = (
-    error: AxiosError | string,
-    fallbackText?: string
-  ) => {
-    showErrorToast(error, fallbackText);
   };
 
   const checkBotInUse = async (name: string) => {
@@ -117,10 +106,17 @@ const CreateUserPage = () => {
           );
           goToUserListPage();
         } catch (error) {
-          handleSaveFailure(
-            error as AxiosError,
-            t('server.create-entity-error', { entity: t('label.bot') })
-          );
+          setInlineAlertDetails({
+            type: 'error',
+            heading: t('label.error'),
+            description: getUserCreationErrorMessage({
+              error: error as AxiosError,
+              entity: t('label.bot'),
+              entityLowercase: t('label.bot-lowercase'),
+              entityName: userData.name,
+            }),
+            onClose: () => setInlineAlertDetails(undefined),
+          });
         }
       }
     } else {
@@ -128,15 +124,17 @@ const CreateUserPage = () => {
         await createUser(userData);
         goToUserListPage();
       } catch (error) {
-        handleSaveFailure(
-          getIsErrorMatch(error as AxiosError, ERROR_MESSAGE.alreadyExist)
-            ? t('server.email-already-exist', {
-                entity: t('label.user-lowercase'),
-                name: userData.name,
-              })
-            : (error as AxiosError),
-          t('server.create-entity-error', { entity: t('label.user') })
-        );
+        setInlineAlertDetails({
+          type: 'error',
+          heading: t('label.error'),
+          description: getUserCreationErrorMessage({
+            error: error as AxiosError,
+            entity: t('label.user'),
+            entityLowercase: t('label.user-lowercase'),
+            entityName: userData.name,
+          }),
+          onClose: () => setInlineAlertDetails(undefined),
+        });
       }
     }
     setIsLoading(false);

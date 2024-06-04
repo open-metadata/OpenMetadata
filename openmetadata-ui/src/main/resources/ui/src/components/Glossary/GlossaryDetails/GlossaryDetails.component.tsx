@@ -140,7 +140,7 @@ const GlossaryDetails = ({
 
   const detailsContent = useMemo(() => {
     return (
-      <Row className="h-full p-x-md" gutter={[32, 16]}>
+      <Row className="p-x-md" gutter={[32, 16]}>
         <Col
           className="border-right p-y-md glossary-content-container"
           span={18}>

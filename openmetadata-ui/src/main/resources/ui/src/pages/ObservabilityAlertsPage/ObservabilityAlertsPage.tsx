@@ -35,6 +35,7 @@ import {
   ProviderType,
 } from '../../generated/events/eventSubscription';
 import { Paging } from '../../generated/type/paging';
+import LimitWrapper from '../../hoc/LimitWrapper';
 import { usePaging } from '../../hooks/paging/usePaging';
 import { getAllAlerts } from '../../rest/alertsAPI';
 import { getEntityName } from '../../utils/EntityUtils';
@@ -201,11 +202,14 @@ const ObservabilityAlertsPage = () => {
         <Col span={24}>
           <div className="d-flex justify-between">
             <PageHeader data={pageHeaderData} />
-            <Link to={ROUTES.ADD_OBSERVABILITY_ALERTS}>
-              <Button data-testid="create-observability" type="primary">
+            <LimitWrapper resource="alert">
+              <Button
+                data-testid="create-observability"
+                type="primary"
+                onClick={() => history.push(ROUTES.ADD_OBSERVABILITY_ALERTS)}>
                 {t('label.add-entity', { entity: t('label.alert') })}
               </Button>
-            </Link>
+            </LimitWrapper>
           </div>
         </Col>
         <Col span={24}>

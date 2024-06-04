@@ -18,6 +18,7 @@ import {
   fireEvent,
   getAllByText,
   queryByTestId,
+  queryByText,
   render,
 } from '@testing-library/react';
 import React from 'react';
@@ -84,6 +85,10 @@ jest.mock(
   }
 );
 
+jest.mock('./AddIngestionButton.component', () => {
+  return jest.fn().mockImplementation(() => <div>AddIngestionButton</div>);
+});
+
 jest.mock('./IngestionRecentRun/IngestionRecentRuns.component', () => ({
   IngestionRecentRuns: jest
     .fn()
@@ -148,9 +153,9 @@ describe('Test Ingestion page', () => {
       'ingestion-container'
     );
     const searchBox = await findByText(container, /Searchbar/i);
-    const addIngestionButton = await findByTestId(
+    const addIngestionButton = await findByText(
       container,
-      'add-new-ingestion-button'
+      'AddIngestionButton'
     );
     const ingestionTable = await findByTestId(container, 'ingestion-table');
 
@@ -287,9 +292,9 @@ describe('Test Ingestion page', () => {
     ).toBeInTheDocument();
 
     // on click of add ingestion
-    const addIngestionButton = await findByTestId(
+    const addIngestionButton = await findByText(
       container,
-      'add-new-ingestion-button'
+      'AddIngestionButton'
     );
     fireEvent.click(addIngestionButton);
   });
@@ -460,10 +465,7 @@ describe('Test Ingestion page', () => {
       }
     );
 
-    const addIngestionButton = queryByTestId(
-      container,
-      'add-new-ingestion-button'
-    );
+    const addIngestionButton = queryByText(container, 'AddIngestionButton');
 
     const loadingButton = getAllByText(container, 'ButtonSkeleton');
 
@@ -501,10 +503,7 @@ describe('Test Ingestion page', () => {
       }
     );
 
-    const addIngestionButton = queryByTestId(
-      container,
-      'add-new-ingestion-button'
-    );
+    const addIngestionButton = queryByText(container, 'AddIngestionButton');
 
     expect(addIngestionButton).not.toBeInTheDocument();
   });

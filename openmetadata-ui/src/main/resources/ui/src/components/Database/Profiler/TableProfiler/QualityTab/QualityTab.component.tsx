@@ -26,6 +26,7 @@ import { INITIAL_TEST_SUMMARY } from '../../../../../constants/TestSuite.constan
 import { EntityTabs, EntityType } from '../../../../../enums/entity.enum';
 import { ProfilerDashboardType } from '../../../../../enums/table.enum';
 import { TestCaseStatus } from '../../../../../generated/tests/testCase';
+import LimitWrapper from '../../../../../hoc/LimitWrapper';
 import { useFqn } from '../../../../../hooks/useFqn';
 import { TestCaseType } from '../../../../../rest/testAPI';
 import {
@@ -226,21 +227,23 @@ export const QualityTab = () => {
 
                 {editTest && !isTableDeleted && (
                   <Form.Item noStyle>
-                    <Dropdown
-                      menu={{
-                        items: addButtonContent,
-                      }}
-                      placement="bottomRight"
-                      trigger={['click']}>
-                      <Button
-                        data-testid="profiler-add-table-test-btn"
-                        type="primary">
-                        <Space>
-                          {t('label.add-entity', { entity: t('label.test') })}
-                          <DownOutlined />
-                        </Space>
-                      </Button>
-                    </Dropdown>
+                    <LimitWrapper resource="dataQuality">
+                      <Dropdown
+                        menu={{
+                          items: addButtonContent,
+                        }}
+                        placement="bottomRight"
+                        trigger={['click']}>
+                        <Button
+                          data-testid="profiler-add-table-test-btn"
+                          type="primary">
+                          <Space>
+                            {t('label.add-entity', { entity: t('label.test') })}
+                            <DownOutlined />
+                          </Space>
+                        </Button>
+                      </Dropdown>
+                    </LimitWrapper>
                   </Form.Item>
                 )}
               </Space>
