@@ -3836,6 +3836,10 @@ public interface CollectionDAO {
       return "data_quality_data_time_series";
     }
 
+    @SqlUpdate(
+        "DELETE FROM data_quality_data_time_series WHERE entityFQNHash = :testCaseFQNHash AND extension = 'testCase.testCaseResult'")
+    void deleteAll(@BindFQN("testCaseFQNHash") String entityFQNHash);
+
     @ConnectionAwareSqlUpdate(
         value =
             "INSERT INTO data_quality_data_time_series(entityFQNHash, extension, jsonSchema, json, incidentId) "

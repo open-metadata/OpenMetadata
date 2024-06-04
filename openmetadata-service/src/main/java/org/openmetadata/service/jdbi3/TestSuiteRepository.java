@@ -75,29 +75,40 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
 
   private static final String ENTITY_EXECUTION_SUMMARY_FILTER =
       """
-      {
-        "query": {
+  {
+      "query": {
           "bool": {
-              "should": [
+              "must": [
                   {
-                      "nested":{
-                          "path": "testSuites",
-                          "query": {
-                              "term": {
-                                  "testSuites.id": "%1$s"
+                      "bool": {
+                          "should": [
+                              {
+                                  "nested": {
+                                      "path": "testSuites",
+                                      "query": {
+                                          "term": {
+                                              "testSuites.id": "%1$s"
+                                          }
+                                      }
+                                  }
+                              },
+                              {
+                                  "term": {
+                                      "testSuite.id": "%1$s"
+                                  }
                               }
-                          }
+                          ]
                       }
                   },
                   {
                       "term": {
-                          "testSuite.id": "%1$s"
+                          "deleted": false
                       }
                   }
               ]
-            }
-        }
+          }
       }
+  }
   """;
 
   public TestSuiteRepository() {
