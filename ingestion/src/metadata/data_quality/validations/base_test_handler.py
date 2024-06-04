@@ -113,8 +113,9 @@ class BaseTestValidator(ABC):
             result=result,
             testResultValue=test_result_value,
             sampleData=None,
-            minBound=min_bound,
-            maxBound=max_bound,
+            # if users don't set the min/max bound, we'll change the inf/-inf (used for computation) to None
+            minBound=None if min_bound == float("-inf") else min_bound,
+            maxBound=None if max_bound == float("inf") else max_bound,
         )
 
         if (row_count is not None and row_count != 0) and (
