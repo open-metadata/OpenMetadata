@@ -19,7 +19,6 @@ import static org.openmetadata.schema.type.Relationship.MENTIONED_IN;
 import static org.openmetadata.service.Entity.ORGANIZATION_NAME;
 import static org.openmetadata.service.Entity.QUERY;
 import static org.openmetadata.service.jdbi3.ListFilter.escapeApostrophe;
-import static org.openmetadata.service.jdbi3.ListFilter.escapeDoubleQuotes;
 import static org.openmetadata.service.jdbi3.locator.ConnectionType.MYSQL;
 import static org.openmetadata.service.jdbi3.locator.ConnectionType.POSTGRES;
 
