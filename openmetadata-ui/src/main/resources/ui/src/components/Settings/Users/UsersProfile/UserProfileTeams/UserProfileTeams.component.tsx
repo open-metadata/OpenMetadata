@@ -20,6 +20,7 @@ import {
   DE_ACTIVE_COLOR,
   ICON_DIMENSION,
 } from '../../../../../constants/constants';
+import { EntityType } from '../../../../../enums/entity.enum';
 import { EntityReference } from '../../../../../generated/entity/type';
 import { useAuth } from '../../../../../hooks/authHooks';
 import { getNonDeletedTeams } from '../../../../../utils/CommonUtils';
@@ -55,6 +56,7 @@ const UserProfileTeams = ({
     () => (
       <Chip
         data={getNonDeletedTeams(teams ?? [])}
+        entityType={EntityType.TEAM}
         icon={<IconTeamsGrey height={20} />}
         noDataPlaceholder={t('message.no-team-found')}
       />

@@ -286,6 +286,7 @@ const UserProfileDetails = ({
         <Chip
           showNoDataPlaceholder
           data={defaultPersona ? [defaultPersona] : []}
+          entityType={EntityType.PERSONA}
           noDataPlaceholder={NO_DATA_PLACEHOLDER}
         />
 
