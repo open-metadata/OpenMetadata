@@ -114,7 +114,7 @@ class OMetaTestSuiteTest(TestCase):
                 ),
                 testSuite=cls.test_suite.fullyQualifiedName,
                 testDefinition=cls.test_definition.fullyQualifiedName,
-                parameterValues=[TestCaseParameterValue(name="foo", value=10)],
+                parameterValues=[TestCaseParameterValue(name="foo", value="10")],
             )
         )
 

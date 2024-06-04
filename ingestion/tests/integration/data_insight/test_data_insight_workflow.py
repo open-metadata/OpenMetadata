@@ -60,6 +60,7 @@ from metadata.generated.schema.entity.services.connections.metadata.openMetadata
     OpenMetadataConnection,
 )
 from metadata.generated.schema.entity.teams.user import User
+from metadata.generated.schema.type.basic import Timestamp
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.parser import ParsingConfigurationError
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
@@ -173,11 +174,14 @@ class DataInsightWorkflowTests(unittest.TestCase):
         )
 
         for event in WEB_EVENT_DATA:
-            event.timestamp = int(
-                (
-                    datetime.utcnow() - timedelta(days=1, milliseconds=randint(0, 999))
-                ).timestamp()
-                * 1000
+            event.timestamp = Timestamp(
+                int(
+                    (
+                        datetime.utcnow()
+                        - timedelta(days=1, milliseconds=randint(0, 999))
+                    ).timestamp()
+                    * 1000
+                )
             )
             self.metadata.add_web_analytic_events(event)
 
@@ -185,12 +189,14 @@ class DataInsightWorkflowTests(unittest.TestCase):
         self.metadata.add_web_analytic_events(
             WebAnalyticEventData(
                 eventId=None,
-                timestamp=int(
-                    (
-                        datetime.utcnow()
-                        - timedelta(days=1, milliseconds=randint(0, 999))
-                    ).timestamp()
-                    * 1000
+                timestamp=Timestamp(
+                    int(
+                        (
+                            datetime.utcnow()
+                            - timedelta(days=1, milliseconds=randint(0, 999))
+                        ).timestamp()
+                        * 1000
+                    )
                 ),
                 eventType=WebAnalyticEventType.PageView,
                 eventData=PageViewData(

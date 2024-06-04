@@ -35,6 +35,7 @@ from testcontainers.mongodb import MongoDbContainer
 
 from metadata.generated.schema.entity.data.table import ColumnProfile, Table
 from metadata.generated.schema.entity.services.databaseService import DatabaseService
+from metadata.generated.schema.type.basic import Timestamp
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.profiler.api.models import TableConfig
 from metadata.utils.constants import SAMPLE_DATA_DEFAULT_COUNT
@@ -206,7 +207,7 @@ class NoSQLProfiler(TestCase):
                     "columns": [
                         ColumnProfile(
                             name="age",
-                            timestamp=datetime.now().timestamp(),
+                            timestamp=Timestamp(int(datetime.now().timestamp())),
                             max=60,
                             min=20,
                         ),
@@ -289,7 +290,7 @@ class NoSQLProfiler(TestCase):
                     "columns": [
                         ColumnProfile(
                             name="age",
-                            timestamp=datetime.now().timestamp(),
+                            timestamp=Timestamp(int(datetime.now().timestamp())),
                             max=query_age,
                             min=query_age,
                         ),

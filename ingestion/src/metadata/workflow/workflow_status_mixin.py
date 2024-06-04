@@ -29,6 +29,7 @@ from metadata.generated.schema.entity.services.ingestionPipelines.status import 
 from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
 )
+from metadata.generated.schema.type.basic import Timestamp
 from metadata.ingestion.api.step import Step, Summary
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.utils.logger import ometa_logger
@@ -74,8 +75,8 @@ class WorkflowStatusMixin:
         return PipelineStatus(
             runId=self.run_id,
             pipelineState=state,
-            startDate=self._start_ts,
-            timestamp=self._start_ts,
+            startDate=Timestamp(self._start_ts),
+            timestamp=Timestamp(self._start_ts),
         )
 
     def set_ingestion_pipeline_status(
@@ -98,8 +99,8 @@ class WorkflowStatusMixin:
                     pipeline_status = self._new_pipeline_status(state)
                 else:
                     # if workflow is ended then update the end date in status
-                    pipeline_status.endDate = (
-                        datetime.now(tz=timezone.utc).timestamp() * 1000
+                    pipeline_status.endDate = Timestamp(
+                        int(datetime.now(tz=timezone.utc).timestamp() * 1000)
                     )
                     pipeline_status.pipelineState = state
 
