@@ -18,7 +18,6 @@ With the `docker compose up` setup, you can debug the progress
 by setting breakpoints in this file.
 """
 import time
-from datetime import datetime, timedelta
 from typing import Optional
 from unittest import TestCase
 
@@ -219,12 +218,7 @@ class AirflowLineageTest(TestCase):
         # 3. Trigger the DAG
         res = requests.post(
             AIRFLOW_HOST_API_ROOT + f"dags/{OM_LINEAGE_DAG_NAME}/dagRuns",
-            json={
-                # the start_date of the dag is 2021-01-01 "2019-08-24T14:15:22Z"
-                "logical_date": datetime.strftime(
-                    datetime.now() - timedelta(hours=1), "%Y-%m-%dT%H:%M:%SZ"
-                ),
-            },
+            json={},
             headers=DEFAULT_AIRFLOW_HEADERS,
         )
         if res.status_code != 200:

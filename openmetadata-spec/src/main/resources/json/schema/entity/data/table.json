@@ -532,6 +532,9 @@
             },
             {
               "$ref": "../../type/basic.json#/definitions/date"
+            },
+            {
+              "type": "string"
             }
           ]
         },
@@ -552,6 +555,9 @@
             },
             {
               "$ref": "../../type/basic.json#/definitions/date"
+            },
+            {
+              "type": "string"
             }
           ]
         },

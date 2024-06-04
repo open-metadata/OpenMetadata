@@ -133,7 +133,7 @@ def ingest_metadata(db_service, metadata: OpenMetadata):
     workflow_config = OpenMetadataWorkflowConfig(
         source=Source(
             type=db_service.connection.config.type.value.lower(),
-            serviceName=db_service.fullyQualifiedName.__root__,
+            serviceName=db_service.fullyQualifiedName.root,
             serviceConnection=db_service.connection,
             sourceConfig=SourceConfig(config={}),
         ),

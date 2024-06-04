@@ -48,7 +48,7 @@ def run_data_quality_workflow(
             sourceConfig=SourceConfig(
                 config=TestSuitePipeline(
                     type=TestSuiteConfigType.TestSuite,
-                    entityFullyQualifiedName=f"{db_service.fullyQualifiedName.__root__}.dvdrental.public.customer",
+                    entityFullyQualifiedName=f"{db_service.fullyQualifiedName.root}.dvdrental.public.customer",
                 )
             ),
             serviceConnection=db_service.connection,
@@ -120,7 +120,7 @@ def test_data_quality(
         TestCase, fields=["*"], skip_on_failure=True
     ).entities
     test_case: TestCase = next(
-        (t for t in test_cases if t.name.__root__ == test_case_name), None
+        (t for t in test_cases if t.name.root == test_case_name), None
     )
     assert test_case is not None
     assert test_case.testCaseResult.testCaseStatus == expected_status

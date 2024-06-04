@@ -40,6 +40,7 @@ from metadata.generated.schema.settings.settings import Settings
 from metadata.generated.schema.tests.customMetric import (
     CustomMetric as CustomMetricEntity,
 )
+from metadata.generated.schema.type.basic import Timestamp
 from metadata.profiler.api.models import ProfilerResponse, ThreadPoolMetrics
 from metadata.profiler.interface.profiler_interface import ProfilerInterface
 from metadata.profiler.metrics.core import (
@@ -105,7 +106,9 @@ class Profiler(Generic[TMetric]):
         self.include_columns = include_columns
         self.exclude_columns = exclude_columns
         self._metrics = metrics
-        self._profile_date = int(datetime.now(tz=timezone.utc).timestamp() * 1000)
+        self._profile_ts = Timestamp(
+            int(datetime.now(tz=timezone.utc).timestamp() * 1000)
+        )
         self.profile_sample_config = self.profiler_interface.profile_sample_config
 
         self.metric_filter = MetricFilter(
@@ -150,8 +153,8 @@ class Profiler(Generic[TMetric]):
         return self._get_included_columns()
 
     @property
-    def profile_date(self) -> datetime:
-        return self._profile_date
+    def profile_ts(self) -> Timestamp:
+        return self._profile_ts
 
     @property
     def columns(self) -> List[Column]:
@@ -578,7 +581,7 @@ class Profiler(Generic[TMetric]):
             ]
 
             table_profile = TableProfile(
-                timestamp=self.profile_date,
+                timestamp=self.profile_ts,
                 columnCount=self._table_results.get("columnCount"),
                 rowCount=self._table_results.get(RowCount.name()),
                 createDateTime=self._table_results.get("createDateTime"),

@@ -17,7 +17,7 @@ be self-sufficient with only pydantic at import time.
 """
 import json
 import logging
-from typing import Any, Literal
+from typing import Any, Dict, Literal, Optional, Union
 
 from pydantic import BaseModel as PydanticBaseModel
 from pydantic import PlainSerializer
@@ -37,19 +37,19 @@ class BaseModel(PydanticBaseModel):
     Specified as `--base-class BASE_CLASS` in the generator.
     """
 
-    def model_dump_json(
+    def model_dump_json(  # pylint: disable=too-many-arguments
         self,
         *,
-        indent: int | None = None,
+        indent: Optional[int] = None,
         include: IncEx = None,
         exclude: IncEx = None,
-        context: dict[str, Any] | None = None,
+        context: Optional[Dict[str, Any]] = None,
         by_alias: bool = False,
         exclude_unset: bool = True,
         exclude_defaults: bool = True,
         exclude_none: bool = True,
         round_trip: bool = False,
-        warnings: bool | Literal["none", "warn", "error"] = True,
+        warnings: Union[bool, Literal["none", "warn", "error"]] = True,
         serialize_as_any: bool = False,
     ) -> str:
         """

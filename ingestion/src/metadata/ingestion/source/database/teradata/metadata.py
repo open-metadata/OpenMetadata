@@ -66,7 +66,7 @@ class TeradataSource(CommonDbSourceService):
         cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None
     ):
         config: WorkflowSource = WorkflowSource.model_validate(config_dict)
-        connection = config.serviceConnection.__root__.config
+        connection = config.serviceConnection.root.config
         if not isinstance(connection, TeradataConnection):
             raise InvalidSourceException(
                 f"Expected TeradataConnection, but got {connection}"
@@ -119,7 +119,7 @@ class TeradataSource(CommonDbSourceService):
 
         try:
             stored_procedure_request = CreateStoredProcedureRequest(
-                name=EntityName(__root__=stored_procedure.procedure_name),
+                name=EntityName(stored_procedure.procedure_name),
                 description=None,
                 storedProcedureCode=StoredProcedureCode(
                     language=STORED_PROC_LANGUAGE_MAP.get(

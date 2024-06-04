@@ -214,7 +214,7 @@ def run_usage_workflow(db_service, metadata):
     workflow_config = {
         "source": {
             "type": "postgres-usage",
-            "serviceName": db_service.fullyQualifiedName.__root__,
+            "serviceName": db_service.fullyQualifiedName.root,
             "serviceConnection": db_service.connection.dict(),
             "sourceConfig": {
                 "config": {"type": DatabaseUsageConfigType.DatabaseUsage.value}
@@ -253,7 +253,7 @@ def test_usage_delete_usage(db_service, ingest_lineage, metadata):
     workflow_config = {
         "source": {
             "type": "postgres-usage",
-            "serviceName": db_service.fullyQualifiedName.__root__,
+            "serviceName": db_service.fullyQualifiedName.root,
             "serviceConnection": db_service.connection.dict(),
             "sourceConfig": {
                 "config": {"type": DatabaseUsageConfigType.DatabaseUsage.value}
@@ -287,7 +287,7 @@ def test_usage_delete_usage(db_service, ingest_lineage, metadata):
     workflow_config = OpenMetadataWorkflowConfig(
         source=Source(
             type=db_service.connection.config.type.value.lower(),
-            serviceName=db_service.fullyQualifiedName.__root__,
+            serviceName=db_service.fullyQualifiedName.root,
             serviceConnection=db_service.connection,
             sourceConfig=SourceConfig(config={}),
         ),

@@ -224,7 +224,7 @@ plugins: Dict[str, Set[str]] = {
         "gitpython~=3.1.34",
         VERSIONS["giturlparse"],
     },
-    "mlflow": {"mlflow-skinny>=2.3.0", "alembic"},
+    "mlflow": {"mlflow-skinny>=2.3.0"},
     "mongo": {VERSIONS["mongo"], VERSIONS["pandas"]},
     "couchbase": {"couchbase~=4.1"},
     "mssql": {"sqlalchemy-pytds~=0.3"},
@@ -283,7 +283,7 @@ dev = {
     "isort",
     "pre-commit",
     "pycln",
-    "pylint~=3.0.0",
+    "pylint~=3.0",
     # For publishing
     "twine",
     "build",
