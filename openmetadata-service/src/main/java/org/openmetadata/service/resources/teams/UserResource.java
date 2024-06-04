@@ -796,7 +796,10 @@ public class UserResource extends EntityResource<User, UserRepository> {
     if (!Boolean.TRUE.equals(user.getIsBot())) {
       throw new IllegalArgumentException("JWT token is only supported for bot users");
     }
-    limits.enforceLimits(securityContext, getResourceContext(), new OperationContext(entityType, MetadataOperation.GENERATE_TOKEN));
+    limits.enforceLimits(
+        securityContext,
+        getResourceContext(),
+        new OperationContext(entityType, MetadataOperation.GENERATE_TOKEN));
     decryptOrNullify(securityContext, user);
     authorizer.authorizeAdmin(securityContext);
     return user.getAuthenticationMechanism();
@@ -1212,7 +1215,10 @@ public class UserResource extends EntityResource<User, UserRepository> {
       @Parameter(description = "User Name of the User for which to get. (Default = `false`)")
           @QueryParam("username")
           String userName) {
-    limits.enforceLimits(securityContext, getResourceContext(), new OperationContext(entityType, MetadataOperation.GENERATE_TOKEN));
+    limits.enforceLimits(
+        securityContext,
+        getResourceContext(),
+        new OperationContext(entityType, MetadataOperation.GENERATE_TOKEN));
     if (userName != null) {
       authorizer.authorizeAdmin(securityContext);
     } else {
@@ -1291,7 +1297,10 @@ public class UserResource extends EntityResource<User, UserRepository> {
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Valid CreatePersonalToken tokenRequest) {
-    limits.enforceLimits(securityContext, getResourceContext(), new OperationContext(entityType, MetadataOperation.GENERATE_TOKEN));
+    limits.enforceLimits(
+        securityContext,
+        getResourceContext(),
+        new OperationContext(entityType, MetadataOperation.GENERATE_TOKEN));
     String userName = securityContext.getUserPrincipal().getName();
     User user =
         repository.getByName(
