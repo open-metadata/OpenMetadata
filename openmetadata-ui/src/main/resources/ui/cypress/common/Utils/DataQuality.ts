@@ -299,6 +299,40 @@ export const prepareDataQualityTestCases = (token: string) => {
     );
   });
 
+  cy.request({
+    method: 'PATCH',
+    url: `/api/v1/tables/name/${filterTable.databaseSchema}.${filterTable.name}`,
+    headers: {
+      Authorization: `Bearer ${token}`,
+      'Content-Type': 'application/json-patch+json',
+    },
+    body: [
+      {
+        op: 'add',
+        path: '/tags/0',
+        value: {
+          tagFQN: 'PII.None',
+          name: 'None',
+          description: 'Non PII',
+          source: 'Classification',
+          labelType: 'Manual',
+          state: 'Confirmed',
+        },
+      },
+      {
+        op: 'add',
+        path: '/tags/1',
+        value: {
+          tagFQN: 'Tier.Tier2',
+          name: 'Tier2',
+          source: 'Classification',
+          labelType: 'Manual',
+          state: 'Confirmed',
+        },
+      },
+    ],
+  });
+
   prepareDataQualityTestCasesViaREST({
     testSuite: filterTableTestSuite,
     token,
