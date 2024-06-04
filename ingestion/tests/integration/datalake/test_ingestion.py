@@ -37,13 +37,9 @@ class TestDatalake:
         )  # type: ignore
 
         entities = resp.entities
-        # Since bumping Airflow, s3fs>=2023 is not working correctly with aiobotocore (and moto).
-        # Parquet files reading fails due to https://github.com/aio-libs/aiobotocore/issues/755
-        # We can't test with the older version, and should only impact testing
-        assert len(entities) == 2
+        assert len(entities) == 3
         names = [entity.name.root for entity in entities]
-        # We are removing "new_users.parquet" until the above is fixed
-        assert sorted(["names.json", "users.csv"]) == sorted(names)
+        assert {"names.json", "new_users.parquet", "users.csv"} == set(names)
 
         for entity in entities:
             columns = entity.columns

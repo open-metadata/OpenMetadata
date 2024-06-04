@@ -247,8 +247,8 @@ class TestSuiteWorkflowTests(unittest.TestCase):
                             "name": "my_test_case",
                             "testDefinitionName": "tableColumnCountToBeBetween",
                             "parameterValues": [
-                                {"name": "minColValue", "value": 1},
-                                {"name": "maxColValue", "value": 5},
+                                {"name": "minColValue", "value": "1"},
+                                {"name": "maxColValue", "value": "5"},
                             ],
                         }
                     ]
@@ -302,16 +302,16 @@ class TestSuiteWorkflowTests(unittest.TestCase):
                             "name": "my_test_case",
                             "testDefinitionName": "tableColumnCountToBeBetween",
                             "parameterValues": [
-                                {"name": "minColValue", "value": 1},
-                                {"name": "maxColValue", "value": 5},
+                                {"name": "minColValue", "value": "1"},
+                                {"name": "maxColValue", "value": "5"},
                             ],
                         },
                         {
                             "name": "my_test_case_two",
                             "testDefinitionName": "tableColumnCountToBeBetween",
                             "parameterValues": [
-                                {"name": "minColValue", "value": 1},
-                                {"name": "maxColValue", "value": 5},
+                                {"name": "minColValue", "value": "1"},
+                                {"name": "maxColValue", "value": "5"},
                             ],
                         },
                     ],
@@ -345,8 +345,8 @@ class TestSuiteWorkflowTests(unittest.TestCase):
                             "name": "my_test_case",
                             "testDefinitionName": "tableColumnCountToBeBetween",
                             "parameterValues": [
-                                {"name": "minColValue", "value": 1},
-                                {"name": "maxColValue", "value": 5},
+                                {"name": "minColValue", "value": "1"},
+                                {"name": "maxColValue", "value": "5"},
                             ],
                         },
                         {
@@ -354,8 +354,8 @@ class TestSuiteWorkflowTests(unittest.TestCase):
                             "testDefinitionName": "columnValuesToBeBetween",
                             "columnName": "id",
                             "parameterValues": [
-                                {"name": "minValue", "value": 1},
-                                {"name": "maxValue", "value": 5},
+                                {"name": "minValue", "value": "1"},
+                                {"name": "maxValue", "value": "5"},
                             ],
                         },
                     ],

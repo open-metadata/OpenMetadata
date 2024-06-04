@@ -580,11 +580,17 @@ class Profiler(Generic[TMetric]):
                 )
             ]
 
+            raw_create_date: Optional[datetime] = self._table_results.get(
+                "createDateTime"
+            )
+            if raw_create_date:
+                raw_create_date = raw_create_date.replace(tzinfo=timezone.utc)
+
             table_profile = TableProfile(
                 timestamp=self.profile_ts,
                 columnCount=self._table_results.get("columnCount"),
                 rowCount=self._table_results.get(RowCount.name()),
-                createDateTime=self._table_results.get("createDateTime"),
+                createDateTime=raw_create_date,
                 sizeInByte=self._table_results.get("sizeInBytes"),
                 profileSample=(
                     self.profile_sample_config.profile_sample

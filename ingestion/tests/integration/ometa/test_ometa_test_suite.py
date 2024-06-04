@@ -172,6 +172,9 @@ class OMetaTestSuiteTest(TestCase):
             test_suite_fqn=self.test_suite.fullyQualifiedName.root,
             test_definition_fqn="columnValuesToMatchRegex",
             entity_link="<#E::table::sample_data.ecommerce_db.shopify.dim_address::columns::last_name>",
+            test_case_parameter_values=[
+                TestCaseParameterValue(name="regex", value=".*")
+            ],
         )
         assert test_case.name.root == "aNonExistingTestCase"
         assert isinstance(test_case, OMetaTestCase)
