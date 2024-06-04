@@ -71,13 +71,13 @@ export const UserTeamSelectableList = ({
   const ownerType = useMemo(() => {
     if (owner) {
       if (Array.isArray(owner)) {
-        return owner?.[0]?.type ?? 'teams';
+        return owner?.[0]?.type ?? EntityType.TEAM;
       } else {
-        return owner.type === EntityType.USER ? 'users' : 'teams';
+        return owner.type;
       }
     }
 
-    return 'teams';
+    return EntityType.TEAM;
   }, [owner]);
 
   const isMultiUser = multiple.user;
@@ -233,8 +233,15 @@ export const UserTeamSelectableList = ({
 
   const init = async () => {
     if (popupVisible) {
-      await Promise.all([getUserCount(), getTeamCount()]);
-      reset();
+      if (ownerType === EntityType.USER) {
+        await getTeamCount();
+        reset();
+        setActiveTab('users');
+      } else {
+        await getUserCount();
+        reset();
+        setActiveTab('teams');
+      }
     }
   };
 
@@ -257,14 +264,6 @@ export const UserTeamSelectableList = ({
   useEffect(() => {
     init();
   }, [popupVisible]);
-
-  useEffect(() => {
-    if (ownerType === EntityType.USER) {
-      setActiveTab('users');
-    } else {
-      setActiveTab('teams');
-    }
-  }, [ownerType]);
 
   return (
     <Popover

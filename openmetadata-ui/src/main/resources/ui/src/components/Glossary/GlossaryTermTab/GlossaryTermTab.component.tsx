@@ -90,7 +90,8 @@ const GlossaryTermTab = ({
   const { theme } = useApplicationStore();
   const { t } = useTranslation();
 
-  const glossaryTerms = activeGlossary?.children as ModifiedGlossaryTerm[];
+  const glossaryTerms =
+    (activeGlossary?.children as ModifiedGlossaryTerm[]) ?? [];
 
   const [movedGlossaryTerm, setMovedGlossaryTerm] =
     useState<MoveGlossaryTermType>();

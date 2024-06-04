@@ -333,7 +333,7 @@ const GlossaryDetailsRightPanel = ({
         </div>
       </Col>
       {isGlossary && (
-        <Col span="24">
+        <Col data-testid="entity-right-panel" span="24">
           <div data-testid="glossary-tags-name">
             <TagsContainerV2
               displayType={DisplayType.READ_MORE}
@@ -348,7 +348,7 @@ const GlossaryDetailsRightPanel = ({
           </div>
         </Col>
       )}
-      <Col data-testid="entity-right-panel" span="22">
+      <Col span="22">
         {!isGlossary && selectedData && (
           <CustomPropertyTable
             isRenderedInRightPanel

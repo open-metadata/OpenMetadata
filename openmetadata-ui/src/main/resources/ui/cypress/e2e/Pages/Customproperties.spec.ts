@@ -42,12 +42,11 @@ import {
   INVALID_NAMES,
   NAME_MAX_LENGTH_VALIDATION_ERROR,
   NAME_VALIDATION_ERROR,
-  NEW_GLOSSARY,
-  NEW_GLOSSARY_TERMS,
   uuid,
 } from '../../constants/constants';
 import { EntityType, SidebarItem } from '../../constants/Entity.interface';
 import { DATABASE_SERVICE } from '../../constants/EntityConstant';
+import { GLOSSARY_1 } from '../../constants/glossary.constant';
 
 const CREDENTIALS = {
   name: 'aaron_johnson0',
@@ -267,8 +266,8 @@ const createGlossaryTerm = (term, glossary, status, isMutually = false) => {
     .should('be.visible')
     .contains(status);
 
-  if (glossary.name === NEW_GLOSSARY.name) {
-    cy.get(`[data-testid="${NEW_GLOSSARY_TERMS.term_1.name}"]`)
+  if (glossary.name === GLOSSARY_1.name) {
+    cy.get(`[data-testid="${GLOSSARY_1.terms[0].name}"]`)
       .scrollIntoView()
       .click();
   }
@@ -702,15 +701,10 @@ describe('Custom Properties should work properly', { tags: 'Settings' }, () => {
       cy.sidebarClick(SidebarItem.GLOSSARY);
 
       createGlossary({
-        ...omit(NEW_GLOSSARY, ['reviewer']),
+        ...omit(GLOSSARY_1, ['reviewer']),
         addReviewer: false,
       });
-      createGlossaryTerm(
-        NEW_GLOSSARY_TERMS.term_1,
-        NEW_GLOSSARY,
-        'Approved',
-        true
-      );
+      createGlossaryTerm(GLOSSARY_1.terms[0], GLOSSARY_1, 'Approved', true);
 
       cy.settingClick(glossaryTerm.entityApiType, true);
 
@@ -725,10 +719,10 @@ describe('Custom Properties should work properly', { tags: 'Settings' }, () => {
       });
 
       visitEntityDetailsPage({
-        term: NEW_GLOSSARY_TERMS.term_1.name,
-        serviceName: NEW_GLOSSARY_TERMS.term_1.fullyQualifiedName,
+        term: GLOSSARY_1.terms[0].name,
+        serviceName: GLOSSARY_1.terms[0].fullyQualifiedName,
         entity: 'glossaryTerms' as EntityType,
-        dataTestId: `${NEW_GLOSSARY.name}-${NEW_GLOSSARY_TERMS.term_1.name}`,
+        dataTestId: `${GLOSSARY_1.name}-${GLOSSARY_1.terms[0].name}`,
       });
 
       // set custom property value
@@ -775,7 +769,7 @@ describe('Custom Properties should work properly', { tags: 'Settings' }, () => {
 
       // delete glossary and glossary term
       cy.sidebarClick(SidebarItem.GLOSSARY);
-      deleteGlossary(NEW_GLOSSARY.name);
+      deleteGlossary(GLOSSARY_1.name);
     });
   });
 
