@@ -1029,6 +1029,11 @@ describe(
       // Test case filter by service name
       interceptURL(
         'GET',
+        `/api/v1/dataQuality/testCases/search/list?*serviceName=${DATABASE_SERVICE.service.name}*`,
+        'getTestCaseByServiceName'
+      );
+      interceptURL(
+        'GET',
         `/api/v1/search/query?q=*index=database_service_search_index*`,
         'searchService'
       );
@@ -1040,7 +1045,7 @@ describe(
         .not('.ant-select-dropdown-hidden')
         .find(`[data-testid="${DATABASE_SERVICE.service.name}"]`)
         .click({ force: true });
-      verifyResponseStatusCode('@getTestCase', 200);
+      verifyResponseStatusCode('@getTestCaseByServiceName', 200);
       verifyFilterTestCase();
       verifyFilter2TestCase();
       // remove service filter
@@ -1051,14 +1056,18 @@ describe(
       verifyResponseStatusCode('@getTestCase', 200);
 
       // Test case filter by Tags
-
+      interceptURL(
+        'GET',
+        `/api/v1/dataQuality/testCases/search/list?*tags=${'PII.None'}*`,
+        'getTestCaseByTags'
+      );
       cy.get('#tags').scrollIntoView().click().type('PII.None');
       verifyResponseStatusCode('@searchTags', 200);
       cy.get('.ant-select-dropdown')
         .not('.ant-select-dropdown-hidden')
         .find(`[data-testid="${'PII.None'}"]`)
         .click({ force: true });
-      verifyResponseStatusCode('@getTestCase', 200);
+      verifyResponseStatusCode('@getTestCaseByTags', 200);
       verifyFilterTestCase();
       verifyFilter2TestCase(true);
       // remove service filter
@@ -1069,13 +1078,17 @@ describe(
       verifyResponseStatusCode('@getTestCase', 200);
 
       // Test case filter by Tier
-
+      interceptURL(
+        'GET',
+        `/api/v1/dataQuality/testCases/search/list?*tags=${'Tier.Tier2'}*`,
+        'getTestCaseByTier'
+      );
       cy.get('#tier').click();
       cy.get('.ant-select-dropdown')
         .not('.ant-select-dropdown-hidden')
         .find(`[data-testid="${'Tier.Tier2'}"]`)
         .click({ force: true });
-      verifyResponseStatusCode('@getTestCase', 200);
+      verifyResponseStatusCode('@getTestCaseByTier', 200);
       verifyFilterTestCase();
       verifyFilter2TestCase(true);
       // remove service filter
