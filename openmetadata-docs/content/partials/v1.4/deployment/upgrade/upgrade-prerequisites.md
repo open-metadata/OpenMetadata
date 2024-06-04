@@ -17,6 +17,8 @@ you will be able to get back to the previous version without any loss.
 
 You can learn more about how the migration process works [here](/deployment/upgrade/how-does-it-work).
 
+**During the upgrade, please note that the backup is only for safety and should not be used to restore data to a higher version**.
+
 {% /note %}
 
 Since version 1.4.0, **OpenMetadata encourages using the builtin-tools for creating logical backups of the metadata**:

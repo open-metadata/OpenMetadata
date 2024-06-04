@@ -279,7 +279,10 @@ const TagsContainerV2 = ({
                 <Col>
                   <Tooltip
                     title={t('label.edit-entity', {
-                      entity: t('label.tag-plural'),
+                      entity:
+                        tagType === TagSource.Classification
+                          ? t('label.tag-plural')
+                          : t('label.glossary-term'),
                     })}>
                     <EditIcon
                       className="cursor-pointer align-middle"
@@ -319,7 +322,10 @@ const TagsContainerV2 = ({
       permission && !isEmpty(tags?.[tagType]) ? (
         <Tooltip
           title={t('label.edit-entity', {
-            entity: t('label.tag-plural'),
+            entity:
+              tagType === TagSource.Classification
+                ? t('label.tag-plural')
+                : t('label.glossary-term'),
           })}>
           <Button
             className="hover-cell-icon cursor-pointer align-middle p-0"

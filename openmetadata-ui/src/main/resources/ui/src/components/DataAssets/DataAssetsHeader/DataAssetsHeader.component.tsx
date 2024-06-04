@@ -336,7 +336,7 @@ export const DataAssetsHeader = ({
 
   return (
     <>
-      <Row gutter={[8, 12]}>
+      <Row data-testid="data-assets-header" gutter={[8, 12]}>
         {/* Heading Left side */}
         <Col className="self-center" span={17}>
           <Row gutter={[16, 12]}>
