@@ -224,7 +224,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   protected final boolean supportsFollowers;
   protected final boolean supportsVotes;
   protected final boolean supportsOwner;
-  protected final boolean supportsTags;
+  protected boolean supportsTags;
   protected boolean supportsPatch = true;
   protected final boolean supportsSoftDelete;
   protected boolean supportsFieldsQueryParam = true;
