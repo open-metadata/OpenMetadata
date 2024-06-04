@@ -1784,7 +1784,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
   }
 
-  public final void inheritReviewers(T entity, Fields fields, EntityInterface parent) {
+  public void inheritReviewers(T entity, Fields fields, EntityInterface parent) {
     if (fields.contains(FIELD_REVIEWERS) && nullOrEmpty(entity.getReviewers()) && parent != null) {
       entity.setReviewers(parent.getReviewers());
       listOrEmpty(entity.getReviewers()).forEach(reviewer -> reviewer.withInherited(true));

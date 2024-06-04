@@ -348,4 +348,8 @@ public class ListFilter extends Filter<ListFilter> {
     // "_" is a wildcard and looks for any single character. Add "\\" in front of it to escape it
     return name.replaceAll("_", "\\\\_");
   }
+
+  public static String escapeDoubleQuotes(String str) {
+    return str.replace("\"", "\\\"");
+  }
 }

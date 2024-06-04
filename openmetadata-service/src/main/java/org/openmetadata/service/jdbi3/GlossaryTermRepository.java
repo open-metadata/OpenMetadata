@@ -19,6 +19,7 @@ package org.openmetadata.service.jdbi3;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.schema.type.Include.ALL;
+import static org.openmetadata.service.Entity.FIELD_REVIEWERS;
 import static org.openmetadata.service.Entity.GLOSSARY;
 import static org.openmetadata.service.Entity.GLOSSARY_TERM;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.invalidGlossaryTermMove;
@@ -138,6 +139,31 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
     inheritOwner(glossaryTerm, fields, parent);
     inheritDomain(glossaryTerm, fields, parent);
     inheritReviewers(glossaryTerm, fields, parent);
+  }
+
+  public void inheritReviewers(GlossaryTerm glossaryTerm, Fields fields, EntityInterface parent) {
+    if (fields.contains(FIELD_REVIEWERS) && parent != null) {
+      // Get the existing reviewers
+      List<EntityReference> existingReviewers = glossaryTerm.getReviewers();
+      if (existingReviewers == null) {
+        existingReviewers = new ArrayList<>();
+      }
+      // Get the parent reviewers
+      List<EntityReference> parentReviewers = parent.getReviewers();
+      if (parentReviewers == null) {
+        parentReviewers = new ArrayList<>();
+      }
+      List<EntityReference> finalReviewers = new ArrayList<>(existingReviewers);
+
+      for (EntityReference parentReviewer : parentReviewers) {
+        // If the parent reviewer is not in the existing reviewers, add them to the final list
+        if (!existingReviewers.contains(parentReviewer)) {
+          finalReviewers.add(parentReviewer);
+        }
+      }
+
+      glossaryTerm.setReviewers(finalReviewers);
+    }
   }
 
   private Integer getUsageCount(GlossaryTerm term) {
@@ -566,6 +592,12 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
     return Entity.getEntityReferenceById(GLOSSARY, UUID.fromString(id), ALL);
   }
 
+  private List<GlossaryTerm> getNestedTerms(GlossaryTerm glossaryTerm) {
+    List<String> jsons =
+        daoCollection.glossaryTermDAO().getAllTermsInternal(glossaryTerm.getFullyQualifiedName());
+    return JsonUtils.readObjects(jsons, GlossaryTerm.class);
+  }
+
   @Override
   public GlossaryTermUpdater getUpdater(
       GlossaryTerm original, GlossaryTerm updated, Operation operation) {
@@ -789,26 +821,49 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
     public void updateReviewers() {
       super.updateReviewers();
 
+      FeedRepository feedRepository = Entity.getFeedRepository();
+
       // adding the reviewer should add the person as assignee to the task
       if ((!nullOrEmpty(updated.getReviewers())
-              && !original.getReviewers().equals(updated.getReviewers()))
-          && updated.getStatus() == Status.DRAFT) {
-        EntityLink about = new EntityLink(GLOSSARY_TERM, updated.getFullyQualifiedName());
-        FeedRepository feedRepository = Entity.getFeedRepository();
-        Thread originalTask = feedRepository.getTask(about, TaskType.RequestApproval);
+          && !original.getReviewers().equals(updated.getReviewers()))) {
 
-        if (TaskStatus.Open.equals(originalTask.getTask().getStatus())) {
+        List<GlossaryTerm> childTerms = getNestedTerms(updated);
+        childTerms.add(updated);
 
-          Thread updatedTask = JsonUtils.deepCopy(originalTask, Thread.class);
-          updatedTask.getTask().withAssignees(updated.getReviewers());
-          JsonPatch patch = JsonUtils.getJsonPatch(originalTask, updatedTask);
+        for (GlossaryTerm child : childTerms) {
+          EntityLink about = new EntityLink(GLOSSARY_TERM, child.getFullyQualifiedName());
 
-          RestUtil.PatchResponse<Thread> thread =
-              feedRepository.patchThread(
-                  null, originalTask.getId(), updatedTask.getUpdatedBy(), patch);
+          if (child.getStatus() == Status.DRAFT) {
+            Thread originalTask = feedRepository.getTask(about, TaskType.RequestApproval);
 
-          // Send WebSocket Notification
-          WebsocketNotificationHandler.handleTaskNotification(thread.entity());
+            if (TaskStatus.Open.equals(originalTask.getTask().getStatus())) {
+
+              Thread updatedTask = JsonUtils.deepCopy(originalTask, Thread.class);
+              List<EntityReference> existingAssignees = getReviewers(child);
+              if (nullOrEmpty(existingAssignees)) {
+                existingAssignees = new ArrayList<>();
+              }
+
+              List<EntityReference> updatedReviewers = updated.getReviewers();
+              List<EntityReference> finalAssignees = new ArrayList<>(existingAssignees);
+
+              for (EntityReference updatedReviewer : updatedReviewers) {
+                // If the updated reviewer is not already an assignee, add them to the final list
+                if (!existingAssignees.contains(updatedReviewer)) {
+                  finalAssignees.add(updatedReviewer);
+                }
+              }
+
+              updatedTask.getTask().setAssignees(finalAssignees);
+              JsonPatch patch = JsonUtils.getJsonPatch(originalTask, updatedTask);
+              RestUtil.PatchResponse<Thread> thread =
+                  feedRepository.patchThread(
+                      null, originalTask.getId(), updatedTask.getUpdatedBy(), patch);
+
+              // Send WebSocket Notification
+              WebsocketNotificationHandler.handleTaskNotification(thread.entity());
+            }
+          }
         }
       }
     }

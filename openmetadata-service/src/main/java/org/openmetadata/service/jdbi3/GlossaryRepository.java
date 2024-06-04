@@ -37,6 +37,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
+import javax.json.JsonPatch;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.csv.CSVPrinter;
 import org.apache.commons.csv.CSVRecord;
@@ -50,12 +51,15 @@ import org.openmetadata.schema.api.data.TermReference;
 import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.entity.data.GlossaryTerm.Status;
+import org.openmetadata.schema.entity.feed.Thread;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.ProviderType;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.TagLabel.TagSource;
+import org.openmetadata.schema.type.TaskStatus;
+import org.openmetadata.schema.type.TaskType;
 import org.openmetadata.schema.type.csv.CsvDocumentation;
 import org.openmetadata.schema.type.csv.CsvFile;
 import org.openmetadata.schema.type.csv.CsvHeader;
@@ -63,9 +67,13 @@ import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.jdbi3.CollectionDAO.EntityRelationshipRecord;
+import org.openmetadata.service.resources.feeds.MessageParser;
 import org.openmetadata.service.resources.glossary.GlossaryResource;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.FullyQualifiedName;
+import org.openmetadata.service.util.JsonUtils;
+import org.openmetadata.service.util.RestUtil;
+import org.openmetadata.service.util.WebsocketNotificationHandler;
 
 @Slf4j
 public class GlossaryRepository extends EntityRepository<Glossary> {
@@ -327,11 +335,70 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
     }
   }
 
+  private List<GlossaryTerm> getAllTerms(Glossary glossary) {
+    List<String> jsons = daoCollection.glossaryTermDAO().getAllTerms(glossary.getName());
+    return JsonUtils.readObjects(jsons, GlossaryTerm.class);
+  }
+
   /** Handles entity updated from PUT and POST operation. */
   public class GlossaryUpdater extends EntityUpdater {
     public GlossaryUpdater(Glossary original, Glossary updated, Operation operation) {
       super(original, updated, operation);
       renameAllowed = true;
+    }
+
+    @Override
+    public void updateReviewers() {
+      super.updateReviewers();
+
+      FeedRepository feedRepository = Entity.getFeedRepository();
+      GlossaryTermRepository glossaryTermRepository =
+          (GlossaryTermRepository) Entity.getEntityRepository(GLOSSARY_TERM);
+      /**
+       * If the glossary is updated with new reviewers, then the reviewers should be added as
+       * assignees to the task for all the draft terms present in the glossary.
+       */
+      if ((!nullOrEmpty(updated.getReviewers())
+          && !original.getReviewers().equals(updated.getReviewers()))) {
+
+        List<GlossaryTerm> childTerms = getAllTerms(updated);
+        for (GlossaryTerm child : childTerms) {
+          MessageParser.EntityLink about =
+              new MessageParser.EntityLink(GLOSSARY_TERM, child.getFullyQualifiedName());
+
+          if (child.getStatus().equals(Status.DRAFT)) {
+            Thread originalTask = feedRepository.getTask(about, TaskType.RequestApproval);
+
+            if (TaskStatus.Open.equals(originalTask.getTask().getStatus())) {
+
+              Thread updatedTask = JsonUtils.deepCopy(originalTask, Thread.class);
+              List<EntityReference> existingAssignees = glossaryTermRepository.getReviewers(child);
+              if (nullOrEmpty(existingAssignees)) {
+                existingAssignees = new ArrayList<>();
+              }
+
+              List<EntityReference> updatedReviewers = updated.getReviewers();
+              List<EntityReference> finalAssignees = new ArrayList<>(existingAssignees);
+
+              for (EntityReference updatedReviewer : updatedReviewers) {
+                // If the updated reviewer is not already an assignee, add them to the final list
+                if (!existingAssignees.contains(updatedReviewer)) {
+                  finalAssignees.add(updatedReviewer);
+                }
+              }
+
+              updatedTask.getTask().setAssignees(finalAssignees);
+              JsonPatch patch = JsonUtils.getJsonPatch(originalTask, updatedTask);
+              RestUtil.PatchResponse<Thread> thread =
+                  feedRepository.patchThread(
+                      null, originalTask.getId(), updatedTask.getUpdatedBy(), patch);
+
+              // Send WebSocket Notification
+              WebsocketNotificationHandler.handleTaskNotification(thread.entity());
+            }
+          }
+        }
+      }
     }
 
     @Transaction

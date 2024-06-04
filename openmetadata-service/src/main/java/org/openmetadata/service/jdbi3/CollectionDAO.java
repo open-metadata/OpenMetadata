@@ -19,6 +19,7 @@ import static org.openmetadata.schema.type.Relationship.MENTIONED_IN;
 import static org.openmetadata.service.Entity.ORGANIZATION_NAME;
 import static org.openmetadata.service.Entity.QUERY;
 import static org.openmetadata.service.jdbi3.ListFilter.escapeApostrophe;
+import static org.openmetadata.service.jdbi3.ListFilter.escapeDoubleQuotes;
 import static org.openmetadata.service.jdbi3.locator.ConnectionType.MYSQL;
 import static org.openmetadata.service.jdbi3.locator.ConnectionType.POSTGRES;
 
@@ -1813,6 +1814,13 @@ public interface CollectionDAO {
 
     @SqlQuery("select fqnhash FROM glossary_term_entity where fqnhash LIKE CONCAT(:fqnhash, '.%')")
     List<String> getNestedChildrenByFQN(@BindFQN("fqnhash") String fqnhash);
+
+    default List<String> getAllTerms(String fqnPrefix) {
+      return getAllTermsInternal((FullyQualifiedName.quoteName(fqnPrefix)));
+    }
+
+    @SqlQuery("select json FROM glossary_term_entity where fqnhash  LIKE  CONCAT(:fqnhash, '.%')")
+    List<String> getAllTermsInternal(@BindFQN("fqnhash") String fqnhash);
   }
 
   interface IngestionPipelineDAO extends EntityDAO<IngestionPipeline> {
