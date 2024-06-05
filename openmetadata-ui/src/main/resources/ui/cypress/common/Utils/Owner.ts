@@ -222,35 +222,3 @@ export const removeTeamAsOwner = (teamName: string, dataTestId?: string) => {
     teamName
   );
 };
-
-export const addMultipleOwners = (
-  ownerNames: string[],
-  dataTestId?: string
-) => {
-  interceptURL('GET', '/api/v1/users?*isBot=false*', 'getUsers');
-  cy.get('[data-testid="edit-owner"]').click();
-
-  cy.get("[data-testid='select-owner-tabs']").should('be.visible');
-  cy.get('.ant-tabs [id*=tab-users]').click();
-  verifyResponseStatusCode('@getUsers', 200);
-  interceptURL(
-    'GET',
-    `api/v1/search/query?q=*&index=user_search_index*`,
-    'searchOwner'
-  );
-
-  ownerNames.forEach((ownerName) => {
-    cy.get('[data-testid="owner-select-users-search-bar"]').type(ownerName);
-    verifyResponseStatusCode('@searchOwner', 200);
-    cy.get(`.ant-popover [title="${ownerName}"]`).click();
-  });
-
-  interceptURL('PATCH', `/api/v1/**`, 'patchOwner');
-  cy.get('[data-testid="selectable-list-update-btn"]').click();
-  verifyResponseStatusCode('@patchOwner', 200);
-
-  cy.get(`[data-testid=${dataTestId ?? 'owner-link'}]`).should(
-    'contain',
-    ownerNames.join(',')
-  );
-};

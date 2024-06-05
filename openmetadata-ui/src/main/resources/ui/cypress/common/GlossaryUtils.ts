@@ -128,7 +128,8 @@ export const addOwnerInGlossary = (
   interceptURL('GET', '/api/v1/users?*isBot=false*', 'getUsers');
   cy.get(`[data-testid="${activatorBtnDataTestId}"]`).click();
   cy.get("[data-testid='select-owner-tabs']").should('be.visible');
-  cy.get('.ant-tabs [id*=tab-users]').click();
+  cy.get('.ant-tabs [id*=tab-users]').should('be.visible');
+  cy.get('.ant-tabs [id*=tab-users]').scrollIntoView().click();
   verifyResponseStatusCode('@getUsers', 200);
 
   interceptURL(

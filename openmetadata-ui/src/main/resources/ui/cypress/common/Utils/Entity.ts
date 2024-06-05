@@ -444,6 +444,7 @@ export const deleteEntity = (
   );
 
   deletedEntityCommonChecks({ entityType: endPoint, deleted: true });
+  cy.clickOutside();
 
   if (endPoint === EntityType.Table) {
     interceptURL(
