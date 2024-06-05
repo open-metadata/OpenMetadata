@@ -142,6 +142,7 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
   }
 
   public void inheritReviewers(GlossaryTerm glossaryTerm, Fields fields, EntityInterface parent) {
+    // Propagate the reviewers from the parent to child
     if (fields.contains(FIELD_REVIEWERS) && parent != null) {
       // Get the existing reviewers
       List<EntityReference> existingReviewers = glossaryTerm.getReviewers();
@@ -162,6 +163,7 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
         }
       }
 
+      finalReviewers.sort(EntityUtil.compareEntityReference);
       glossaryTerm.setReviewers(finalReviewers);
     }
   }
@@ -823,7 +825,7 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
 
       FeedRepository feedRepository = Entity.getFeedRepository();
 
-      // adding the reviewer should add the person as assignee to the task
+      // adding the reviewer should add the person/team as assignee to the task
       if ((!nullOrEmpty(updated.getReviewers())
           && !original.getReviewers().equals(updated.getReviewers()))) {
 
@@ -844,6 +846,7 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
                 existingAssignees = new ArrayList<>();
               }
 
+              // get updated reviewers of glossary term
               List<EntityReference> updatedReviewers = updated.getReviewers();
               List<EntityReference> finalAssignees = new ArrayList<>(existingAssignees);
 
@@ -854,6 +857,9 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
                 }
               }
 
+              finalAssignees.sort(EntityUtil.compareEntityReference);
+
+              // update the assignees in the Approval Task
               updatedTask.getTask().setAssignees(finalAssignees);
               JsonPatch patch = JsonUtils.getJsonPatch(originalTask, updatedTask);
               RestUtil.PatchResponse<Thread> thread =

@@ -69,6 +69,7 @@ import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.jdbi3.CollectionDAO.EntityRelationshipRecord;
 import org.openmetadata.service.resources.feeds.MessageParser;
 import org.openmetadata.service.resources.glossary.GlossaryResource;
+import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.JsonUtils;
@@ -354,10 +355,10 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
       FeedRepository feedRepository = Entity.getFeedRepository();
       GlossaryTermRepository glossaryTermRepository =
           (GlossaryTermRepository) Entity.getEntityRepository(GLOSSARY_TERM);
-      /**
-       * If the glossary is updated with new reviewers, then the reviewers should be added as
-       * assignees to the task for all the draft terms present in the glossary.
-       */
+
+      //        If the glossary is updated with new reviewers, then the reviewers should be added as
+      //        assignees to the task for all the draft terms present in the glossary.
+
       if ((!nullOrEmpty(updated.getReviewers())
           && !original.getReviewers().equals(updated.getReviewers()))) {
 
@@ -377,6 +378,7 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
                 existingAssignees = new ArrayList<>();
               }
 
+              // get updated reviewers of glossary
               List<EntityReference> updatedReviewers = updated.getReviewers();
               List<EntityReference> finalAssignees = new ArrayList<>(existingAssignees);
 
@@ -387,6 +389,9 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
                 }
               }
 
+              finalAssignees.sort(EntityUtil.compareEntityReference);
+
+              // update the assignees in the Approval Task
               updatedTask.getTask().setAssignees(finalAssignees);
               JsonPatch patch = JsonUtils.getJsonPatch(originalTask, updatedTask);
               RestUtil.PatchResponse<Thread> thread =
