@@ -66,8 +66,8 @@ test_suite_config = {
                     "name": "my_test_case",
                     "testDefinitionName": "tableColumnCountToBeBetween",
                     "parameterValues": [
-                        {"name": "minColValue", "value": 1},
-                        {"name": "maxColValue", "value": 5},
+                        {"name": "minColValue", "value": "1"},
+                        {"name": "maxColValue", "value": "5"},
                     ],
                 },
                 {
@@ -221,7 +221,7 @@ class TestE2EWorkflow(unittest.TestCase):
         service_db_id = str(
             cls.metadata.get_by_name(
                 entity=DatabaseService, fqn="test_suite_service_test"
-            ).id.__root__
+            ).id.root
         )
 
         cls.metadata.delete(

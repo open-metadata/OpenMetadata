@@ -86,4 +86,4 @@ def render_template(environment: Environment, template_file: str = "config.yml")
 
 def create_ometa_connection_obj(config: str) -> OpenMetadataConnection:
     """Create OpenMetadata connection"""
-    return OpenMetadataConnection.parse_obj(yaml.safe_load(config))
+    return OpenMetadataConnection.model_validate(yaml.safe_load(config))

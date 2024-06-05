@@ -51,7 +51,7 @@ def test_connection(
     """
 
     class SchemaHolder(BaseModel):
-        database: Optional[str]
+        database: Optional[str] = None
 
     holder = SchemaHolder()
 

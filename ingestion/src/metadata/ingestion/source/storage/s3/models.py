@@ -14,7 +14,7 @@ S3 custom pydantic models
 from datetime import datetime
 from typing import List, Optional
 
-from pydantic import BaseModel, Extra, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 from metadata.generated.schema.entity.data.container import (
     ContainerDataModel,
@@ -29,8 +29,9 @@ class S3BucketResponse(BaseModel):
     Class modelling a response received from s3_client.list_buckets operation
     """
 
-    class Config:
-        extra = Extra.forbid
+    model_config = ConfigDict(
+        extra="forbid",
+    )
 
     name: str = Field(..., description="Bucket name", alias="Name")
     creation_date: Optional[datetime] = Field(
@@ -45,8 +46,9 @@ class S3ContainerDetails(BaseModel):
     Class mapping container details used to create the container requests
     """
 
-    class Config:
-        extra = Extra.forbid
+    model_config = ConfigDict(
+        extra="forbid",
+    )
 
     name: str = Field(..., description="Bucket name")
     prefix: str = Field(..., description="Prefix for the container")

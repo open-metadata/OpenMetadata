@@ -102,7 +102,7 @@ class OMetaTopicTest(TestCase):
         service_id = str(
             cls.metadata.get_by_name(
                 entity=MessagingService, fqn="test-service-topic"
-            ).id.__root__
+            ).id.root
         )
 
         cls.metadata.delete(
@@ -137,9 +137,7 @@ class OMetaTopicTest(TestCase):
         res = self.metadata.create_or_update(data=updated_entity)
 
         # Same ID, updated algorithm
-        self.assertEqual(
-            res.service.fullyQualifiedName, updated_entity.service.__root__
-        )
+        self.assertEqual(res.service.fullyQualifiedName, updated_entity.service.root)
         self.assertEqual(res_create.id, res.id)
         self.assertEqual(res.owner.id, self.user.id)
 
@@ -198,12 +196,10 @@ class OMetaTopicTest(TestCase):
             entity=Topic, fqn=self.entity.fullyQualifiedName
         )
         # Then fetch by ID
-        res_id = self.metadata.get_by_id(
-            entity=Topic, entity_id=str(res_name.id.__root__)
-        )
+        res_id = self.metadata.get_by_id(entity=Topic, entity_id=str(res_name.id.root))
 
         # Delete
-        self.metadata.delete(entity=Topic, entity_id=str(res_id.id.__root__))
+        self.metadata.delete(entity=Topic, entity_id=str(res_id.id.root))
 
         # Then we should not find it
         res = self.metadata.list_entities(entity=Topic)
@@ -228,7 +224,7 @@ class OMetaTopicTest(TestCase):
         )
 
         res = self.metadata.get_list_entity_versions(
-            entity=Topic, entity_id=res_name.id.__root__
+            entity=Topic, entity_id=res_name.id.root
         )
         assert res
 
@@ -243,11 +239,11 @@ class OMetaTopicTest(TestCase):
             entity=Topic, fqn=self.entity.fullyQualifiedName
         )
         res = self.metadata.get_entity_version(
-            entity=Topic, entity_id=res_name.id.__root__, version=0.1
+            entity=Topic, entity_id=res_name.id.root, version=0.1
         )
 
         # check we get the correct version requested and the correct entity ID
-        assert res.version.__root__ == 0.1
+        assert res.version.root == 0.1
         assert res.id == res_name.id
 
     def test_get_entity_ref(self):

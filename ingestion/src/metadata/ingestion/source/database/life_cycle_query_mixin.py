@@ -46,10 +46,10 @@ class LifeCycleQueryByTable(BaseModel):
     """
 
     table_name: str = Field(..., alias="TABLE_NAME")
-    created_at: Optional[datetime] = Field(..., alias="CREATED_AT")
+    created_at: Optional[datetime] = Field(None, alias="CREATED_AT")
 
     class Config:
-        allow_population_by_field_name = True
+        populate_by_name = True
 
 
 class LifeCycleQueryMixin:
@@ -79,7 +79,7 @@ class LifeCycleQueryMixin:
 
         for row in results:
             try:
-                life_cycle_by_table = LifeCycleQueryByTable.parse_obj(dict(row))
+                life_cycle_by_table = LifeCycleQueryByTable.model_validate(dict(row))
                 queries_dict[life_cycle_by_table.table_name] = life_cycle_by_table
             except Exception as exc:
                 self.status.failed(

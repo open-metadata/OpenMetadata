@@ -40,6 +40,5 @@
       "description": "Service Connection.",
       "$ref": "#/definitions/serviceConnection"
     }
-  },
-  "additionalProperties": false
+  }
 }

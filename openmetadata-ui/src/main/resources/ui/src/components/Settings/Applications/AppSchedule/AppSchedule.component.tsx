@@ -26,9 +26,9 @@ import {
   AppType,
 } from '../../../../generated/entity/applications/app';
 import { getIngestionPipelineByFqn } from '../../../../rest/ingestionPipelineAPI';
+import Loader from '../../../common/Loader/Loader';
 import { TestSuiteIngestionDataType } from '../../../DataQuality/AddDataQualityTest/AddDataQualityTest.interface';
 import TestSuiteScheduler from '../../../DataQuality/AddDataQualityTest/components/TestSuiteScheduler';
-import Loader from '../../../common/Loader/Loader';
 import AppRunsHistory from '../AppRunsHistory/AppRunsHistory.component';
 import { AppRunsHistoryRef } from '../AppRunsHistory/AppRunsHistory.interface';
 import { AppScheduleProps } from './AppScheduleProps.interface';

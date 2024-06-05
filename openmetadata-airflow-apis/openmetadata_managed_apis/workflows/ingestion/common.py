@@ -185,7 +185,7 @@ def build_source(ingestion_pipeline: IngestionPipeline) -> WorkflowSource:
 
     return WorkflowSource(
         type=service.serviceType.value.lower(),
-        serviceName=service.name.__root__,
+        serviceName=service.name.root,
         serviceConnection=service.connection,
         sourceConfig=ingestion_pipeline.sourceConfig,
     )
@@ -248,14 +248,14 @@ def build_dag_configs(ingestion_pipeline: IngestionPipeline) -> dict:
     :return: dict to use as kwargs
     """
     return {
-        "dag_id": clean_dag_id(ingestion_pipeline.name.__root__),
-        "description": ingestion_pipeline.description.__root__
+        "dag_id": clean_dag_id(ingestion_pipeline.name.root),
+        "description": ingestion_pipeline.description.root
         if ingestion_pipeline.description is not None
         else None,
-        "start_date": ingestion_pipeline.airflowConfig.startDate.__root__
+        "start_date": ingestion_pipeline.airflowConfig.startDate.root
         if ingestion_pipeline.airflowConfig.startDate
         else airflow.utils.dates.days_ago(1),
-        "end_date": ingestion_pipeline.airflowConfig.endDate.__root__
+        "end_date": ingestion_pipeline.airflowConfig.endDate.root
         if ingestion_pipeline.airflowConfig.endDate
         else None,
         "concurrency": ingestion_pipeline.airflowConfig.concurrency,
@@ -272,7 +272,7 @@ def build_dag_configs(ingestion_pipeline: IngestionPipeline) -> dict:
         "tags": [
             "OpenMetadata",
             clean_name_tag(ingestion_pipeline.displayName)
-            or clean_name_tag(ingestion_pipeline.name.__root__),
+            or clean_name_tag(ingestion_pipeline.name.root),
             f"type:{ingestion_pipeline.pipelineType.value}",
             f"service:{clean_name_tag(ingestion_pipeline.service.name)}",
         ],
