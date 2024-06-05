@@ -378,7 +378,8 @@ export const replyAnnouncement = async (page: Page) => {
     '[data-testid="announcement-card"] [data-testid="main-message"]'
   );
 
-  await expect(page.locator('.ant-popover')).toBeVisible();
+  await page.waitForSelector('.ant-popover', { state: 'visible' });
+
   await expect(page.getByTestId('add-reply').locator('svg')).toBeVisible();
 
   await page.getByTestId('add-reply').locator('svg').click();
@@ -403,6 +404,7 @@ export const replyAnnouncement = async (page: Page) => {
 
   // Edit the reply message
   await page.hover('[data-testid="replies"] > [data-testid="main-message"]');
+  await page.waitForSelector('.ant-popover', { state: 'visible' });
   await page.click('[data-testid="edit-message"]');
 
   await page.fill(
@@ -427,7 +429,7 @@ export const deleteAnnouncement = async (page: Page) => {
     '[data-testid="announcement-card"] [data-testid="main-message"]'
   );
 
-  await expect(page.locator('.ant-popover')).toBeVisible();
+  await page.waitForSelector('.ant-popover', { state: 'visible' });
 
   await page.click('[data-testid="delete-message"]');
   const modalText = await page.textContent('.ant-modal-body');
