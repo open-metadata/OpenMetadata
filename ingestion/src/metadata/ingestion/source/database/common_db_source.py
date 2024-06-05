@@ -458,12 +458,17 @@ class CommonDbSourceService(
                 inspector=self.inspector,
             )
 
-            schema_definition = self.get_schema_definition(
-                table_type=table_type,
-                table_name=table_name,
-                schema_name=schema_name,
-                inspector=self.inspector,
+            schema_definition = (
+                self.get_schema_definition(
+                    table_type=table_type,
+                    table_name=table_name,
+                    schema_name=schema_name,
+                    inspector=self.inspector,
+                )
+                if self.source_config.includeDDL
+                else None
             )
+
             table_constraints = self.update_table_constraints(
                 table_constraints, foreign_columns
             )

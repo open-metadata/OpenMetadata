@@ -54,6 +54,12 @@ jest.mock('../SummaryList/SummaryList.component', () =>
     .fn()
     .mockImplementation(() => <div data-testid="SummaryList">SummaryList</div>)
 );
+
+jest.mock(
+  '../../../common/SummaryTagsDescription/SummaryTagsDescription.component',
+  () => jest.fn().mockImplementation(() => <p>SummaryTagsDescription</p>)
+);
+
 jest.mock('react-router-dom', () => ({
   ...jest.requireActual('react-router-dom'),
   useLocation: jest.fn().mockReturnValue({ pathname: '/table' }),
@@ -75,7 +81,7 @@ describe('TableSummary component tests', () => {
 
     const profilerHeader = screen.getByTestId('profiler-header');
     const schemaHeader = screen.getByTestId('schema-header');
-    const tagsHeader = screen.getByTestId('tags-header');
+    const summaryTagDescription = screen.getByText('SummaryTagsDescription');
     const typeLabel = screen.getByTestId('label.type-label');
     const queriesLabel = screen.getByTestId('label.query-plural-label');
     const columnsLabel = screen.getByTestId('label.column-plural-label');
@@ -88,7 +94,7 @@ describe('TableSummary component tests', () => {
 
     expect(profilerHeader).toBeInTheDocument();
     expect(schemaHeader).toBeInTheDocument();
-    expect(tagsHeader).toBeInTheDocument();
+    expect(summaryTagDescription).toBeInTheDocument();
     expect(typeLabel).toBeInTheDocument();
     expect(queriesLabel).toBeInTheDocument();
     expect(columnsLabel).toBeInTheDocument();
