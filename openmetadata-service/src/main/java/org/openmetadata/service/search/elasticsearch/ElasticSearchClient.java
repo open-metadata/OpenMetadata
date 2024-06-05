@@ -1949,6 +1949,15 @@ public class ElasticSearchClient implements SearchClient {
     } else {
       searchSourceBuilder.aggregation(dateHistogramAggregationBuilder);
     }
+    XContentParser filterParser =
+            XContentType.JSON
+                    .xContent()
+                    .createParser(
+                            xContentRegistry, LoggingDeprecationHandler.INSTANCE, createDIChart.getFilter());
+    QueryBuilder filter = SearchSourceBuilder.fromXContent(filterParser).query();
+    BoolQueryBuilder newQuery =
+            QueryBuilders.boolQuery().filter(filter);
+    searchSourceBuilder.query(newQuery);
     es.org.elasticsearch.action.search.SearchRequest searchRequest =
         new es.org.elasticsearch.action.search.SearchRequest(DIChartRepository.DI_SEARCH_INDEX);
     searchRequest.source(searchSourceBuilder);

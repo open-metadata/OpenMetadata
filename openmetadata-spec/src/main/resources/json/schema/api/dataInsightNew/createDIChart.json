@@ -28,7 +28,7 @@
       },
       "filter": {
         "description": "Filter value for the data insight chart.",
-        "type": "object"
+        "type": "string"
       },
       "groupBy": {
         "description": "Breakdown field for the data insight chart.",
