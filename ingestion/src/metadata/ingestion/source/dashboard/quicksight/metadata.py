@@ -129,11 +129,11 @@ class QuicksightSource(DashboardServiceSource):
         """
         return dashboard.Name
 
-    def get_dashboard_details(self, dashboard: dict) -> DashboardDetail:
+    def get_dashboard_details(self, dashboard: DashboardDetail) -> DashboardDetail:
         """
         Get Dashboard Details
         """
-        return DashboardDetail(**dashboard)
+        return dashboard
 
     def yield_dashboard(
         self, dashboard_details: DashboardDetail
