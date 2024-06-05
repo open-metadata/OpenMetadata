@@ -36,7 +36,7 @@ const announcementForm = ({ title, description, startDate, endDate }) => {
   cy.get('[id="announcement-submit"]').scrollIntoView().click();
 };
 
-export const createAnnouncement = (announcement) => {
+export const createAnnouncement = (announcement, entityName) => {
   interceptURL(
     'GET',
     '/api/v1/feed?entityLink=*type=Announcement',
@@ -75,6 +75,10 @@ export const createAnnouncement = (announcement) => {
     announcement.title
   );
   cy.goToHomePage();
+
+  cy.get('[data-testid="announcement-container"]')
+    .find(`a[href*="${encodeURIComponent(entityName)}"]`)
+    .click();
 };
 
 export const deleteAnnouncement = () => {
@@ -112,10 +116,6 @@ export const replyAnnouncementUtil = () => {
   );
   interceptURL('GET', '/api/v1/feed/*', 'allAnnouncementFeed');
   interceptURL('POST', '/api/v1/feed/*/posts', 'addAnnouncementReply');
-
-  cy.get('[data-testid="announcement-container"] [data-testid="entity-link"]')
-    .first()
-    .click();
 
   cy.get('[data-testid="announcement-card"]').click();
 
