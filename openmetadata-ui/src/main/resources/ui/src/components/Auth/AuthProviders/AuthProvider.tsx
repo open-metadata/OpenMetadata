@@ -545,6 +545,7 @@ export const AuthProvider = ({
             handleStoreProtectedRedirectPath();
             setApplicationLoading(false);
           } else {
+            // get the user details if token is present and route is not auth callback and saml callback
             if (
               ![ROUTES.AUTH_CALLBACK, ROUTES.SAML_CALLBACK].includes(
                 location.pathname
