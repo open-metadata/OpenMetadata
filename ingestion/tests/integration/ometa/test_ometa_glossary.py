@@ -449,7 +449,9 @@ class OMetaGlossaryTest(TestCase):
             destination=dest_glossary_term_1,
         )
         self.assertIsNotNone(res_glossary_term)
-        self.assertEqual(0, len(res_glossary_term.reviewers.__root__))
+
+        # inherited reviewers from glossary
+        self.assertEqual(2, len(res_glossary_term.reviewers.__root__))
 
     def test_patch_glossary_term_synonyms(self):
         """
