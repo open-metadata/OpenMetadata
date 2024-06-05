@@ -261,7 +261,6 @@ class PowerBIFileClientTests(TestCase):
 
     file_client = PowerBiFileClient(PowerBIConnection(**powerbi_connection_config))
 
-    @pytest.mark.skip(reason="TODO: skip this until test is fixed")
     def test_parsing_pbit_files(self):
         """
         Test unzipping pbit files from local and extract the datamodels and connections
