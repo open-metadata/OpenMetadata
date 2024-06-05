@@ -23,7 +23,7 @@ class QlikApp(BaseModel):
     description: Optional[str] = None
     name: Optional[str] = None
     id: str
-    app_id: Optional[str] = Field(alias="resourceId", default=None)
+    app_id: Optional[str] = Field(None, alias="resourceId")
     published: Optional[bool] = None
 
 

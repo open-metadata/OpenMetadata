@@ -46,7 +46,7 @@ class Extra(BaseModel):
 
 
 class ExecutionPlan(BaseModel):
-    id: Optional[str] = Field(..., alias="_id")
+    id: Optional[str] = Field(None, alias="_id")
     name: Optional[str] = None
     inputs: Optional[List[Inputs]] = []
     output: Optional[Output] = None

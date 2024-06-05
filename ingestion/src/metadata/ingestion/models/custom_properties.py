@@ -56,7 +56,7 @@ class CustomPropertyType(BaseModel):
     name: basic.EntityName
     displayName: Optional[str] = None
     fullyQualifiedName: Optional[basic.FullyQualifiedEntityName] = None
-    description: Optional[basic.Markdown]
+    description: Optional[basic.Markdown] = None
     category: Optional[str] = None
     nameSpace: Optional[str] = None
     version: Optional[entityHistory.EntityVersion] = None
