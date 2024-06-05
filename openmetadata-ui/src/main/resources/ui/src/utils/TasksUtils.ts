@@ -786,8 +786,13 @@ export const getTaskMessage = ({
 
 export const getTaskAssignee = (entityData: Glossary): Option[] => {
   const { owner, reviewers } = entityData;
+  let assignee: EntityReference[] = [];
 
-  const assignee = !isEmpty(reviewers) ? reviewers : owner ? [owner] : [];
+  if (!isEmpty(reviewers)) {
+    assignee = reviewers as EntityReference[];
+  } else if (owner) {
+    assignee = [owner];
+  }
 
   let defaultAssignee: Option[] = [];
   if (!isUndefined(assignee)) {

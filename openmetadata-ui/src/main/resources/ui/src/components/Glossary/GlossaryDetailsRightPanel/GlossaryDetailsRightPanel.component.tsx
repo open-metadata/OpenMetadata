@@ -98,7 +98,12 @@ const GlossaryDetailsRightPanel = ({
   const handleReviewerSave = async (
     data?: EntityReference | EntityReference[]
   ) => {
-    const reviewers = Array.isArray(data) ? data : data ? [data] : [];
+    let reviewers: EntityReference[] = [];
+    if (Array.isArray(data)) {
+      reviewers = data;
+    } else if (data) {
+      reviewers = [data];
+    }
     if (!isEqual(reviewers, selectedData.reviewers)) {
       let updatedGlossary = cloneDeep(selectedData);
       const oldReviewer = reviewers.filter((d) =>
