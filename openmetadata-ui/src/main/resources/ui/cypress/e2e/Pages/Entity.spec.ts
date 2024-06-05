@@ -106,6 +106,10 @@ describe('Entity detail page', { tags: 'DataAssets' }, () => {
         entity.removeGlossary();
       });
 
+      it(`Update displayName`, () => {
+        entity.renameEntity();
+      });
+
       it(`Announcement create & delete`, () => {
         entity.createAnnouncement();
         entity.replyAnnouncement();
@@ -144,10 +148,6 @@ describe('Entity detail page', { tags: 'DataAssets' }, () => {
           });
         });
       }
-
-      it(`Update displayName`, () => {
-        entity.renameEntity();
-      });
 
       it(`follow unfollow entity`, () => {
         entity.followUnfollowEntity();

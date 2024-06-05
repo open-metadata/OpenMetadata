@@ -36,7 +36,7 @@ const announcementForm = ({ title, description, startDate, endDate }) => {
   cy.get('[id="announcement-submit"]').scrollIntoView().click();
 };
 
-export const createAnnouncement = (announcement, entityName) => {
+export const createAnnouncement = (announcement, entityName, updatedName) => {
   interceptURL(
     'GET',
     '/api/v1/feed?entityLink=*type=Announcement',
@@ -82,7 +82,7 @@ export const createAnnouncement = (announcement, entityName) => {
 
   cy.get('[data-testid="entity-header-display-name"]').should(
     'contain',
-    entityName
+    `Cypress ${updatedName} updated`
   );
 };
 

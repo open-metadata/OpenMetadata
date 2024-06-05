@@ -454,7 +454,8 @@ class EntityClass {
         title: 'Cypress announcement',
         description: 'Cypress announcement description',
       },
-      this.entityName
+      this.entityName,
+      this.name
     );
   }
 
