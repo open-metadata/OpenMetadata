@@ -19,22 +19,30 @@ import { MlModelClass } from '../../support/entity/MlModelClass';
 import { PipelineClass } from '../../support/entity/PipelineClass';
 import { SearchIndexClass } from '../../support/entity/SearchIndexClass';
 import { TopicClass } from '../../support/entity/TopicClass';
-import { createNewPage, redirectToHomePage } from '../../utils/common';
+import {
+  createNewPage,
+  getAuthContext,
+  getToken,
+  redirectToHomePage,
+} from '../../utils/common';
 
 const entities = [
-  new DashboardClass(),
-  new PipelineClass(),
-  new TopicClass(),
-  new MlModelClass(),
-  new ContainerClass(),
-  new SearchIndexClass(),
-  new DashboardDataModelClass(),
+  DashboardClass,
+  PipelineClass,
+  TopicClass,
+  MlModelClass,
+  ContainerClass,
+  SearchIndexClass,
+  DashboardDataModelClass,
 ] as const;
 
 // use the admin user to login
 test.use({ storageState: 'playwright/.auth/admin.json' });
 
-entities.forEach((entity) => {
+entities.forEach((entityClass) => {
+  const entity = new entityClass();
+  const deleteEntity = new entityClass();
+
   test.describe(entity.getType(), () => {
     test.beforeAll('Setup pre-requests', async ({ browser }) => {
       const { apiContext, afterAction } = await createNewPage(browser);
@@ -89,6 +97,17 @@ entities.forEach((entity) => {
       );
     });
 
+    test(`Announcement create & delete`, async ({ page }) => {
+      await entity.announcement(
+        page,
+        entity.entityResponseData?.['fullyQualifiedName']
+      );
+    });
+
+    test(`Inactive Announcement create & delete`, async ({ page }) => {
+      await entity.inactiveAnnouncement(page);
+    });
+
     test(`UpVote & DownVote entity`, async ({ page }) => {
       await entity.upVote(page);
       await entity.downVote(page);
@@ -99,11 +118,43 @@ entities.forEach((entity) => {
       await entity.followUnfollowEntity(page, entityName);
     });
 
+    test(`Update displayName`, async ({ page }) => {
+      await entity.renameEntity(page, entity.entity.name);
+    });
+
     test.afterAll('Cleanup', async ({ browser }) => {
       const { apiContext, afterAction } = await createNewPage(browser);
       await entity.delete(apiContext);
       await EntityDataClass.postRequisitesForTests(apiContext);
       await afterAction();
+    });
+  });
+
+  test(`Delete ${deleteEntity.getType()}`, async ({ page }) => {
+    await redirectToHomePage(page);
+    // get the token from localStorage
+    const token = await getToken(page);
+
+    // create a new context with the token
+    const apiContext = await getAuthContext(token);
+    await deleteEntity.create(apiContext);
+    await redirectToHomePage(page);
+    await deleteEntity.visitEntityPage(page);
+
+    await test.step('Soft delete', async () => {
+      await deleteEntity.softDeleteEntity(
+        page,
+        deleteEntity.entity.name,
+        deleteEntity.entityResponseData?.['displayName']
+      );
+    });
+
+    await test.step('Hard delete', async () => {
+      await deleteEntity.hardDeleteEntity(
+        page,
+        deleteEntity.entity.name,
+        deleteEntity.entityResponseData?.['displayName']
+      );
     });
   });
 });
