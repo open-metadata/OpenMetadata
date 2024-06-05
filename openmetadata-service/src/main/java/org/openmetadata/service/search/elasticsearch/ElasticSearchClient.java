@@ -81,15 +81,22 @@ import es.org.elasticsearch.script.ScriptType;
 import es.org.elasticsearch.search.SearchHit;
 import es.org.elasticsearch.search.SearchHits;
 import es.org.elasticsearch.search.SearchModule;
+import es.org.elasticsearch.search.aggregations.Aggregation;
 import es.org.elasticsearch.search.aggregations.AggregationBuilder;
 import es.org.elasticsearch.search.aggregations.AggregationBuilders;
 import es.org.elasticsearch.search.aggregations.BucketOrder;
 import es.org.elasticsearch.search.aggregations.bucket.histogram.DateHistogramAggregationBuilder;
 import es.org.elasticsearch.search.aggregations.bucket.histogram.DateHistogramInterval;
+import es.org.elasticsearch.search.aggregations.bucket.histogram.Histogram;
+import es.org.elasticsearch.search.aggregations.bucket.histogram.LongBounds;
+import es.org.elasticsearch.search.aggregations.bucket.histogram.ParsedDateHistogram;
 import es.org.elasticsearch.search.aggregations.bucket.terms.IncludeExclude;
+import es.org.elasticsearch.search.aggregations.bucket.terms.ParsedTerms;
 import es.org.elasticsearch.search.aggregations.bucket.terms.Terms;
 import es.org.elasticsearch.search.aggregations.bucket.terms.TermsAggregationBuilder;
 import es.org.elasticsearch.search.aggregations.metrics.MaxAggregationBuilder;
+import es.org.elasticsearch.search.aggregations.metrics.ParsedSingleValueNumericMetricsAggregation;
+import es.org.elasticsearch.search.aggregations.metrics.ParsedValueCount;
 import es.org.elasticsearch.search.aggregations.metrics.SumAggregationBuilder;
 import es.org.elasticsearch.search.builder.SearchSourceBuilder;
 import es.org.elasticsearch.search.fetch.subphase.FetchSourceContext;
@@ -135,7 +142,11 @@ import org.apache.http.client.CredentialsProvider;
 import org.apache.http.impl.client.BasicCredentialsProvider;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.DataInsightInterface;
+import org.openmetadata.schema.api.dataInsightNew.CreateDIChart;
 import org.openmetadata.schema.dataInsight.DataInsightChartResult;
+import org.openmetadata.schema.dataInsightNew.DIChartResult;
+import org.openmetadata.schema.dataInsightNew.DIChartResultBucket;
+import org.openmetadata.schema.dataInsightNew.DIChartResultList;
 import org.openmetadata.schema.entity.data.EntityHierarchy__1;
 import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration;
 import org.openmetadata.schema.type.EntityReference;
@@ -144,6 +155,7 @@ import org.openmetadata.sdk.exception.SearchException;
 import org.openmetadata.sdk.exception.SearchIndexNotFoundException;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.dataInsight.DataInsightAggregatorInterface;
+import org.openmetadata.service.jdbi3.DIChartRepository;
 import org.openmetadata.service.jdbi3.DataInsightChartRepository;
 import org.openmetadata.service.search.SearchClient;
 import org.openmetadata.service.search.SearchRequest;
@@ -1893,6 +1905,109 @@ public class ElasticSearchClient implements SearchClient {
     }
 
     return searchSourceBuilder;
+  }
+
+  public DIChartResultList buildDIChart(CreateDIChart createDIChart, long start, long end)
+      throws IOException {
+
+    DateHistogramAggregationBuilder dateHistogramAggregationBuilder =
+        AggregationBuilders.dateHistogram("1")
+            .field(DIChartRepository.TIMESTAMP_FIELD)
+            .calendarInterval(DateHistogramInterval.DAY)
+            .extendedBounds(new LongBounds(start, end));
+    switch (createDIChart.getFunction()) {
+      case COUNT:
+        dateHistogramAggregationBuilder.subAggregation(
+            AggregationBuilders.count(createDIChart.getField()).field(createDIChart.getField()));
+        break;
+      case SUM:
+        dateHistogramAggregationBuilder.subAggregation(
+            AggregationBuilders.sum(createDIChart.getField()).field(createDIChart.getField()));
+        break;
+      case AVG:
+        dateHistogramAggregationBuilder.subAggregation(
+            AggregationBuilders.avg(createDIChart.getField()).field(createDIChart.getField()));
+        break;
+      case MIN:
+        dateHistogramAggregationBuilder.subAggregation(
+            AggregationBuilders.min(createDIChart.getField()).field(createDIChart.getField()));
+        break;
+      case MAX:
+        dateHistogramAggregationBuilder.subAggregation(
+            AggregationBuilders.max(createDIChart.getField()).field(createDIChart.getField()));
+        break;
+    }
+
+    SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
+
+    if (createDIChart.getGroupBy() != null) {
+      TermsAggregationBuilder termsAggregationBuilder =
+          AggregationBuilders.terms("0").field(createDIChart.getGroupBy());
+      termsAggregationBuilder.subAggregation(dateHistogramAggregationBuilder);
+      searchSourceBuilder.size(0);
+      searchSourceBuilder.aggregation(termsAggregationBuilder);
+    } else {
+      searchSourceBuilder.aggregation(dateHistogramAggregationBuilder);
+    }
+    es.org.elasticsearch.action.search.SearchRequest searchRequest =
+        new es.org.elasticsearch.action.search.SearchRequest(DIChartRepository.DI_SEARCH_INDEX);
+    searchRequest.source(searchSourceBuilder);
+
+    SearchResponse searchResponse = client.search(searchRequest, RequestOptions.DEFAULT);
+    DIChartResultList resultList = new DIChartResultList();
+    List<DIChartResultBucket> bucketList = new ArrayList<>();
+    if (createDIChart.getGroupBy() != null) {
+      for (Aggregation arg : searchResponse.getAggregations().asList()) {
+        ParsedTerms parsedTerms = (ParsedTerms) arg;
+        for (Terms.Bucket bucket : parsedTerms.getBuckets()) {
+          DIChartResultBucket diBucket = new DIChartResultBucket();
+          diBucket.setGroup(bucket.getKeyAsString());
+          diBucket.setData(processAggregations(bucket.getAggregations().asList(), createDIChart));
+          bucketList.add(diBucket);
+        }
+      }
+      resultList.setResults(bucketList);
+      return resultList;
+    }
+    List<DIChartResult> results =
+        processAggregations(searchResponse.getAggregations().asList(), createDIChart);
+    DIChartResultBucket bucket = new DIChartResultBucket();
+    bucket.setData(results);
+    bucketList.add(bucket);
+    resultList.setResults(bucketList);
+    return resultList;
+  }
+
+  private List<DIChartResult> processAggregations(
+      List<Aggregation> aggregations, CreateDIChart createDIChart) {
+    ArrayList<DIChartResult> results = new ArrayList<>();
+    for (Aggregation arg : aggregations) {
+      ParsedDateHistogram parsedDateHistogram = (ParsedDateHistogram) arg;
+      for (Histogram.Bucket bucket : parsedDateHistogram.getBuckets()) {
+        for (Aggregation sub_arg : bucket.getAggregations().asList()) {
+          if (createDIChart.getFunction().equals(CreateDIChart.Function.COUNT)) {
+            ParsedValueCount parsedValueCount = (ParsedValueCount) sub_arg;
+            DIChartResult diChartResult =
+                new DIChartResult()
+                    .withCount(parsedValueCount.getValue())
+                    .withDay(bucket.getKeyAsString());
+            results.add(diChartResult);
+          } else {
+            ParsedSingleValueNumericMetricsAggregation parsedValueCount =
+                (ParsedSingleValueNumericMetricsAggregation) sub_arg;
+            Double value =
+                parsedValueCount.value() == Double.POSITIVE_INFINITY
+                        || parsedValueCount.value() == Double.NEGATIVE_INFINITY
+                    ? null
+                    : parsedValueCount.value();
+            DIChartResult diChartResult =
+                new DIChartResult().withCount(value).withDay(bucket.getKeyAsString());
+            results.add(diChartResult);
+          }
+        }
+      }
+    }
+    return results;
   }
 
   private static AggregationBuilder buildQueryAggregation(

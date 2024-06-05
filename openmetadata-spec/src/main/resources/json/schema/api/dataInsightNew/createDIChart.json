@@ -1,0 +1,44 @@
+{
+    "$id": "https://open-metadata.org/schema/api/dataInsightNew/CreateDIChart.json",
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "title": "CreateDIChart",
+    "description": "Payload to create a data insight chart",
+    "type": "object",
+    "javaType": "org.openmetadata.schema.api.dataInsightNew.CreateDIChart",
+    "javaInterfaces": ["org.openmetadata.schema.CreateEntity"],
+    "properties": {
+      "name": {
+        "description": "Name that identifies this data insight chart.",
+        "$ref": "../../type/basic.json#/definitions/entityName"
+      },
+      "displayName": {
+        "description": "Display Name the data insight chart.",
+        "type": "string"
+      },
+      "description": {
+        "description": "Description of the data insight chart.",
+        "$ref": "../../type/basic.json#/definitions/markdown"
+      },
+      "function": {
+        "$ref": "../../dataInsightNew/diChart.json#/definitions/function"
+      },
+      "field": {
+        "description": "Filter field for the data insight chart.",
+        "type": "string"
+      },
+      "filter": {
+        "description": "Filter value for the data insight chart.",
+        "type": "object"
+      },
+      "groupBy": {
+        "description": "Breakdown field for the data insight chart.",
+        "type": "string"
+      },
+      "owner": {
+        "description": "Owner of this chart",
+        "$ref": "../../type/entityReference.json"
+      }
+    },
+    "required": ["name"],
+    "additionalProperties": false
+  }

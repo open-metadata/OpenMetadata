@@ -1,0 +1,19 @@
+{
+    "$id": "https://open-metadata.org/schema/dataInsightNew/diChartResult.json",
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "title": "DIChartResult",
+    "description": "DI Chart Result",
+    "type": "object",
+    "javaType": "org.openmetadata.schema.dataInsightNew.DIChartResult",
+    "properties": {
+        "count": {
+            "description": "Count of Result",
+            "type": "float"
+        },
+        "day": {
+            "description": "Date of Result",
+            "type": "string"
+        }
+    },
+    "additionalProperties": false
+}
