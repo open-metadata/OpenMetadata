@@ -52,7 +52,7 @@ const COMMON_ASSETS = [
   },
 ];
 
-const cypressGlossaryName = `Cypress Glossary 1`;
+const cypressGlossaryName = `Cypress Glossary ${uuid()}`;
 
 // Glossary with Multiple Users as Reviewers
 export const GLOSSARY_1 = {
@@ -95,7 +95,7 @@ export const GLOSSARY_1 = {
   ],
 };
 
-const cypressProductGlossaryName = `Cypress Product%Glossary 2`;
+const cypressProductGlossaryName = `Cypress Product%Glossary ${uuid()}`;
 
 // Glossary with Team as Reviewers
 export const GLOSSARY_2 = {
@@ -123,7 +123,7 @@ export const GLOSSARY_2 = {
   ],
 };
 
-const cypressAssetsGlossaryName = `Cypress Assets Glossary 3`;
+const cypressAssetsGlossaryName = `Cypress Assets Glossary ${uuid()}`;
 const assetTermsUUId = uuid();
 
 // Glossary with No Reviewer

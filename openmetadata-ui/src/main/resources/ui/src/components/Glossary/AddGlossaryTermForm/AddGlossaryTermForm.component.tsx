@@ -331,6 +331,7 @@ const AddGlossaryTermForm = ({
       popoverProps: { placement: 'topLeft' },
       multiple: { user: true, team: false },
       previewSelected: true,
+      label: t('label.reviewer-plural'),
       children: (
         <Button
           data-testid="add-reviewers"

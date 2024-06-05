@@ -609,6 +609,10 @@ describe('Glossary page should work properly', { tags: 'Governance' }, () => {
       glossary: GLOSSARY_2,
       glossaryTerm: GLOSSARY_2.terms[0],
     });
+    approveGlossaryTermWorkflow({
+      glossary: GLOSSARY_2,
+      glossaryTerm: GLOSSARY_2.terms[1],
+    });
     cy.logout();
     Cypress.session.clearAllSavedSessions();
     cy.login();
@@ -664,6 +668,8 @@ describe('Glossary page should work properly', { tags: 'Governance' }, () => {
     // updating voting for glossary term
     voteGlossary();
 
+    goToGlossaryPage();
+    cy.get('.ant-menu-item').contains(GLOSSARY_1.name).click();
     visitGlossaryTermPage(newTermName, newTermFqn);
 
     // Updating Reviewer
@@ -891,8 +897,8 @@ describe('Glossary page should work properly', { tags: 'Governance' }, () => {
   });
 
   it('Remove Glossary term from entity should work properly', () => {
-    const glossaryName = GLOSSARY_1.name;
-    const { name, fullyQualifiedName } = GLOSSARY_1.terms[0];
+    const glossaryName = GLOSSARY_2.name;
+    const { name, fullyQualifiedName } = GLOSSARY_2.terms[0];
     const entity = SEARCH_ENTITY_TABLE.table_3;
 
     selectActiveGlossary(glossaryName);

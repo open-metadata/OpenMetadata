@@ -229,7 +229,7 @@ export const SelectableList = ({
       dataSource={uniqueOptions}
       footer={
         multiSelect && (
-          <div className="d-flex justify-between p-x-sm">
+          <div className="d-flex justify-between">
             <Button
               className="p-0"
               color="primary"

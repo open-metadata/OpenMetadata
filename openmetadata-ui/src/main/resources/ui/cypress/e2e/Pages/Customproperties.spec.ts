@@ -521,10 +521,10 @@ describe('Custom Properties should work properly', { tags: 'Settings' }, () => {
       });
 
       visitEntityDetailsPage({
-        term: terms[0].name,
-        serviceName: terms[0].fullyQualifiedName,
+        term: glossary.terms[0].name,
+        serviceName: glossary.terms[0].fullyQualifiedName,
         entity: 'glossaryTerms' as EntityType,
-        dataTestId: `${glossary.name}-${terms[0].name}`,
+        dataTestId: `${glossary.name}-${glossary.terms[0].name}`,
       });
 
       // set custom property value

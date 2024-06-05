@@ -206,7 +206,7 @@ const GlossaryDetailsRightPanel = ({
   );
 
   return (
-    <Row gutter={[0, 40]}>
+    <Row data-testid="entity-right-panel" gutter={[0, 40]}>
       <Col span={24}>
         <DomainLabel
           showDomainHeading
@@ -333,7 +333,7 @@ const GlossaryDetailsRightPanel = ({
         </div>
       </Col>
       {isGlossary && (
-        <Col data-testid="entity-right-panel" span="24">
+        <Col span="24">
           <div data-testid="glossary-tags-name">
             <TagsContainerV2
               displayType={DisplayType.READ_MORE}

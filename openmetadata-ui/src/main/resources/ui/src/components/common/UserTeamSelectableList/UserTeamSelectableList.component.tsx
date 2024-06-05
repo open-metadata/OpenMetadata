@@ -233,13 +233,12 @@ export const UserTeamSelectableList = ({
 
   const init = async () => {
     if (popupVisible) {
+      reset();
       if (ownerType === EntityType.USER) {
         await getTeamCount();
-        reset();
         setActiveTab('users');
       } else {
         await getUserCount();
-        reset();
         setActiveTab('teams');
       }
     }

@@ -210,6 +210,7 @@ const AddGlossary = ({
       ),
       multiple: { user: true, team: false },
       previewSelected: true,
+      label: t('label.reviewer-plural'),
     },
     formItemLayout: FormItemLayout.HORIZONTAL,
     formItemProps: {
