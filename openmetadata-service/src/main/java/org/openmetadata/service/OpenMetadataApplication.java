@@ -168,11 +168,11 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     // as first step register all the repositories
     Entity.initializeRepositories(catalogConfig, jdbi);
 
-    // Init Settings Cache after repositories
-    SettingsCache.initialize(catalogConfig);
-
     // Configure the Fernet instance
     Fernet.getInstance().setFernetKey(catalogConfig);
+
+    // Init Settings Cache after repositories
+    SettingsCache.initialize(catalogConfig);
 
     initializeWebsockets(catalogConfig, environment);
 
