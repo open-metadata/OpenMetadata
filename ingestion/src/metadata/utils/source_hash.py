@@ -42,7 +42,7 @@ def generate_source_hash(
             else SOURCE_HASH_EXCLUDE_FIELDS
         )
 
-        create_request_json = create_request.json(exclude=exclude_fields)
+        create_request_json = create_request.model_dump_json(exclude=exclude_fields)
 
         json_bytes = create_request_json.encode("utf-8")
         return hashlib.md5(json_bytes).hexdigest()

@@ -201,7 +201,7 @@ class ElasticSearchUnitTest(TestCase):
         )
         self.es_source.context.get().__dict__[
             "search_service"
-        ] = MOCK_SEARCH_SERVICE.name.__root__
+        ] = MOCK_SEARCH_SERVICE.name.root
 
     def test_partition_parse_columns(self):
         actual_index = next(self.es_source.yield_search_index(MOCK_DETAILS)).right

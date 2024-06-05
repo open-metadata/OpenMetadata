@@ -202,13 +202,11 @@ class MongoDBUnitTest(TestCase):
         )
         self.mongo_source.context.get().__dict__[
             "database_service"
-        ] = MOCK_DATABASE_SERVICE.name.__root__
-        self.mongo_source.context.get().__dict__[
-            "database"
-        ] = MOCK_DATABASE.name.__root__
+        ] = MOCK_DATABASE_SERVICE.name.root
+        self.mongo_source.context.get().__dict__["database"] = MOCK_DATABASE.name.root
         self.mongo_source.context.get().__dict__[
             "database_schema"
-        ] = MOCK_DATABASE_SCHEMA.name.__root__
+        ] = MOCK_DATABASE_SCHEMA.name.root
 
     def test_database_names(self):
         assert EXPECTED_DATABASE_NAMES == list(self.mongo_source.get_database_names())

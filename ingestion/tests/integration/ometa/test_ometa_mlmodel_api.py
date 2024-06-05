@@ -134,7 +134,7 @@ class OMetaModelTest(TestCase):
         service_id = str(
             cls.metadata.get_by_name(
                 entity=MlModelService, fqn="test-model-service"
-            ).id.__root__
+            ).id.root
         )
 
         cls.metadata.delete(
@@ -243,11 +243,11 @@ class OMetaModelTest(TestCase):
         )
         # Then fetch by ID
         res_id = self.metadata.get_by_id(
-            entity=MlModel, entity_id=str(res_name.id.__root__)
+            entity=MlModel, entity_id=str(res_name.id.root)
         )
 
         # Delete
-        self.metadata.delete(entity=MlModel, entity_id=str(res_id.id.__root__))
+        self.metadata.delete(entity=MlModel, entity_id=str(res_id.id.root))
 
         # Then we should not find it
         res = self.metadata.list_entities(entity=MlModel)
@@ -368,11 +368,11 @@ class OMetaModelTest(TestCase):
         # Alternatively, we could manually send lineage via `add_mlmodel_lineage`
         # E.g., lineage = self.metadata.add_mlmodel_lineage(model=res)
         lineage = self.metadata.get_lineage_by_id(
-            entity=MlModel, entity_id=str(res.id.__root__)
+            entity=MlModel, entity_id=str(res.id.root)
         )
 
         nodes = {node["id"] for node in lineage["nodes"]}
-        assert nodes == {str(table1_entity.id.__root__), str(table2_entity.id.__root__)}
+        assert nodes == {str(table1_entity.id.root), str(table2_entity.id.root)}
 
         # If we delete the lineage, the `add_mlmodel_lineage` will take care of it too
         for edge in lineage.get("upstreamEdges") or []:
@@ -386,11 +386,11 @@ class OMetaModelTest(TestCase):
         self.metadata.add_mlmodel_lineage(model=res)
 
         lineage = self.metadata.get_lineage_by_id(
-            entity=MlModel, entity_id=str(res.id.__root__)
+            entity=MlModel, entity_id=str(res.id.root)
         )
 
         nodes = {node["id"] for node in lineage["nodes"]}
-        assert nodes == {str(table1_entity.id.__root__), str(table2_entity.id.__root__)}
+        assert nodes == {str(table1_entity.id.root), str(table2_entity.id.root)}
 
         self.metadata.delete(
             entity=DatabaseService,
@@ -411,7 +411,7 @@ class OMetaModelTest(TestCase):
         )
 
         res = self.metadata.get_list_entity_versions(
-            entity=MlModel, entity_id=res_name.id.__root__
+            entity=MlModel, entity_id=res_name.id.root
         )
         assert res
 
@@ -426,11 +426,11 @@ class OMetaModelTest(TestCase):
             entity=MlModel, fqn=self.entity.fullyQualifiedName
         )
         res = self.metadata.get_entity_version(
-            entity=MlModel, entity_id=res_name.id.__root__, version=0.1
+            entity=MlModel, entity_id=res_name.id.root, version=0.1
         )
 
         # check we get the correct version requested and the correct entity ID
-        assert res.version.__root__ == 0.1
+        assert res.version.root == 0.1
         assert res.id == res_name.id
 
     def test_get_entity_ref(self):

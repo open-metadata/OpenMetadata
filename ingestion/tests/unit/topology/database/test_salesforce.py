@@ -107,7 +107,7 @@ MOCK_DATABASE_SCHEMA = DatabaseSchema(
 
 EXPECTED_COLUMN_VALUE = [
     Column(
-        name=ColumnName(__root__="Description"),
+        name=ColumnName("Description"),
         displayName=None,
         dataType=DataType.VARCHAR,
         arrayDataType=None,
@@ -126,7 +126,7 @@ EXPECTED_COLUMN_VALUE = [
         profile=None,
     ),
     Column(
-        name=ColumnName(__root__="OwnerId"),
+        name=ColumnName("OwnerId"),
         displayName=None,
         dataType=DataType.VARCHAR,
         arrayDataType=None,
@@ -145,7 +145,7 @@ EXPECTED_COLUMN_VALUE = [
         profile=None,
     ),
     Column(
-        name=ColumnName(__root__="Phone"),
+        name=ColumnName("Phone"),
         displayName=None,
         dataType=DataType.VARCHAR,
         arrayDataType=None,
@@ -164,7 +164,7 @@ EXPECTED_COLUMN_VALUE = [
         profile=None,
     ),
     Column(
-        name=ColumnName(__root__="CreatedById"),
+        name=ColumnName("CreatedById"),
         displayName=None,
         dataType=DataType.UNKNOWN,
         arrayDataType=None,

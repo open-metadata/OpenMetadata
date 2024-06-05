@@ -139,13 +139,11 @@ class GlueUnitTest(TestCase):
         )
         self.glue_source.context.get().__dict__[
             "database_service"
-        ] = MOCK_DATABASE_SERVICE.name.__root__
-        self.glue_source.context.get().__dict__[
-            "database"
-        ] = MOCK_DATABASE.name.__root__
+        ] = MOCK_DATABASE_SERVICE.name.root
+        self.glue_source.context.get().__dict__["database"] = MOCK_DATABASE.name.root
         self.glue_source.context.get().__dict__[
             "database_schema"
-        ] = MOCK_DATABASE_SCHEMA.name.__root__
+        ] = MOCK_DATABASE_SCHEMA.name.root
         self.glue_source._get_glue_database_and_schemas = lambda: [
             DatabasePage(**mock_data.get("mock_database_paginator"))
         ]

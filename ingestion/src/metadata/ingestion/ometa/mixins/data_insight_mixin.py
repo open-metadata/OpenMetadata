@@ -44,7 +44,9 @@ class DataInsightMixin:
             record (ReportData): report data
         """
 
-        resp = self.client.post("/analytics/dataInsights/data", record.json())
+        resp = self.client.post(
+            "/analytics/dataInsights/data", record.model_dump_json()
+        )
 
         return resp
 
@@ -56,7 +58,7 @@ class DataInsightMixin:
             record (ReportData): report data
         """
 
-        resp = self.client.put(f"/kpi/{fqn}/kpiResult", record.json())
+        resp = self.client.put(f"/kpi/{fqn}/kpiResult", record.model_dump_json())
 
         return resp
 
@@ -66,7 +68,9 @@ class DataInsightMixin:
     ) -> List[WebAnalyticEventData]:
         """Get web analytic event"""
 
-        resp = self.client.put("/analytics/web/events/collect", event_data.json())
+        resp = self.client.put(
+            "/analytics/web/events/collect", event_data.model_dump_json()
+        )
 
         return resp
 
@@ -127,7 +131,7 @@ class DataInsightMixin:
             request_params,
         )
 
-        return DataInsightChartResult.parse_obj(resp)
+        return DataInsightChartResult.model_validate(resp)
 
     def get_kpi_result(self, fqn: str, start_ts, end_ts) -> list[KpiResult]:
         """Given FQN return KPI results
@@ -146,9 +150,9 @@ class DataInsightMixin:
         return [KpiResult(**data) for data in resp["data"]]
 
     def create_kpi(self, create: CreateKpiRequest) -> Kpi:
-        resp = self.client.post("/kpi", create.json())
+        resp = self.client.post("/kpi", create.model_dump_json())
 
-        return Kpi.parse_obj(resp)
+        return Kpi.model_validate(resp)
 
     def get_web_analytic_events(
         self, event_type: WebAnalyticEventType, start_ts: int, end_ts: int

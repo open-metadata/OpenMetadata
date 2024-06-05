@@ -41,6 +41,7 @@
       "default": false
     },
     "profile": {
+      "description": "Profile of the user.",
       "$ref": "../../type/profile.json",
       "default": null
     },

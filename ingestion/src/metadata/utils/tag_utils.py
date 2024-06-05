@@ -14,7 +14,7 @@ Tag utils Module
 
 import functools
 import traceback
-from typing import Iterable, List, Optional, Union
+from typing import Iterable, List, Optional, Type, Union
 
 from metadata.generated.schema.api.classification.createClassification import (
     CreateClassificationRequest,
@@ -25,10 +25,15 @@ from metadata.generated.schema.entity.data.glossaryTerm import GlossaryTerm
 from metadata.generated.schema.entity.services.ingestionPipelines.status import (
     StackTraceError,
 )
-from metadata.generated.schema.type.basic import FullyQualifiedEntityName
+from metadata.generated.schema.type.basic import (
+    EntityName,
+    FullyQualifiedEntityName,
+    Markdown,
+)
 from metadata.generated.schema.type.tagLabel import (
     LabelType,
     State,
+    TagFQN,
     TagLabel,
     TagSource,
 )
@@ -58,13 +63,17 @@ def get_ometa_tag_and_classification(
                 classification = OMetaTagAndClassification(
                     fqn=tag_fqn,
                     classification_request=CreateClassificationRequest(
-                        name=classification_name,
-                        description=classification_description,
+                        name=EntityName(classification_name),
+                        description=Markdown(classification_description)
+                        if classification_description
+                        else None,
                     ),
                     tag_request=CreateTagRequest(
-                        classification=classification_name,
-                        name=tag,
-                        description=tag_description,
+                        classification=FullyQualifiedEntityName(classification_name),
+                        name=EntityName(tag),
+                        description=Markdown(tag_description)
+                        if tag_description
+                        else None,
                     ),
                 )
                 yield Either(right=classification)
@@ -86,7 +95,7 @@ def get_tag_label(
     metadata: OpenMetadata,
     tag_name: str,
     classification_name: Optional[str],
-    tag_type: Union[Tag, GlossaryTerm] = Tag,
+    tag_type: Union[Type[Tag], Type[GlossaryTerm]] = Tag,
 ) -> Optional[TagLabel]:
     """
     Returns the tag label if the tag is created
@@ -102,7 +111,8 @@ def get_tag_label(
             )
             source = TagSource.Classification.value
 
-        if tag_type == GlossaryTerm:
+        # We either have a Tag or a Glossary
+        else:
             tag_fqn = tag_name
             source = TagSource.Glossary.value
 
@@ -110,7 +120,7 @@ def get_tag_label(
         tag = metadata.get_by_name(entity=tag_type, fqn=tag_fqn)
         if tag:
             return TagLabel(
-                tagFQN=tag_fqn,
+                tagFQN=TagFQN(tag_fqn),
                 labelType=LabelType.Automated.value,
                 state=State.Suggested.value,
                 source=source,
@@ -129,7 +139,7 @@ def get_tag_labels(
     tags: List[str],
     classification_name: Optional[str] = None,
     include_tags: bool = True,
-    tag_type: Union[Tag, GlossaryTerm] = Tag,
+    tag_type: Union[Type[Tag], Type[GlossaryTerm]] = Tag,
 ) -> Optional[List[TagLabel]]:
     """
     Method to create tag labels from the collected tags

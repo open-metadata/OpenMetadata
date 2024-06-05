@@ -241,6 +241,7 @@
       "$ref" : "../../type/entityReferenceList.json"
     },
     "votes" : {
+      "description": "Votes on the entity.",
       "$ref": "../../type/votes.json"
     },
     "lifeCycle": {

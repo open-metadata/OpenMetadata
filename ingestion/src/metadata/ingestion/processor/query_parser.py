@@ -43,7 +43,7 @@ def parse_sql_statement(record: TableQuery, dialect: Dialect) -> Optional[Parsed
 
     start_time = record.analysisDate
     if isinstance(start_time, DateTime):
-        start_date = start_time.__root__.date()
+        start_date = start_time.root.date()
         start_time = datetime.datetime.strptime(str(start_date.isoformat()), "%Y-%m-%d")
 
     start_time = convert_timestamp_to_milliseconds(int(start_time.timestamp()))
@@ -62,7 +62,7 @@ def parse_sql_statement(record: TableQuery, dialect: Dialect) -> Optional[Parsed
         query_type=record.query_type,
         exclude_usage=record.exclude_usage,
         userName=record.userName,
-        date=start_time,
+        date=str(start_time),
         serviceName=record.serviceName,
         duration=record.duration,
     )
@@ -96,7 +96,7 @@ class QueryParserProcessor(Processor):
         pipeline_name: Optional[str] = None,
         **kwargs,
     ):
-        config = ConfigModel.parse_obj(config_dict)
+        config = ConfigModel.model_validate(config_dict)
         connection_type = kwargs.pop("connection_type", "")
         return cls(config, metadata, connection_type)
 

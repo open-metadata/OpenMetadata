@@ -3,14 +3,21 @@
     config:
       type: DatabaseMetadata
       markDeletedTables: true
+      markDeletedStoredProcedures: true
       includeTables: true
       includeViews: true
+      # includeTags: true
+      # includeOwners: false
+      # includeStoredProcedures: true
+      # includeDDL: true
+      # queryLogDuration: 1
+      # queryParsingTimeoutLimit: 300
+      # useFqnForFiltering: false
       # threads: 4
       # incremental:
       #   enabled: true
       #   lookbackDays: 7
       #   safetyMarginDays: 1
-      # includeTags: true
       # databaseFilterPattern:
       #   includes:
       #     - database1

@@ -34,7 +34,7 @@ class LightdashApiClient:
     def __init__(self, config):
         self.config = config
         client_config = ClientConfig(
-            base_url=self.config.hostPort,
+            base_url=str(self.config.hostPort),
             api_version="",
             access_token=self.config.apiKey.get_secret_value(),
             auth_header="Authorization",

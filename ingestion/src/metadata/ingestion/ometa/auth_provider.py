@@ -14,7 +14,7 @@ Interface definition for an Auth provider
 import os.path
 from abc import ABCMeta, abstractmethod
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timezone
 
 from dateutil.relativedelta import relativedelta
 
@@ -85,7 +85,7 @@ class OpenMetadataAuthenticationProvider(AuthenticationProvider):
         self.config = config
         self.security_config: OpenMetadataJWTClientConfig = self.config.securityConfig
         self.jwt_token = None
-        self.expiry = datetime.now() - relativedelta(years=1)
+        self.expiry = datetime.now(tz=timezone.utc) - relativedelta(years=1)
 
     @classmethod
     def create(cls, config: OpenMetadataConnection):

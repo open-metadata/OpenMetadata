@@ -72,7 +72,7 @@ class TestSuiteSource(Source):
         """
         table: Table = self.metadata.get_by_name(
             entity=Table,
-            fqn=self.source_config.entityFullyQualifiedName.__root__,
+            fqn=self.source_config.entityFullyQualifiedName.root,
             fields=["tableProfilerConfig", "testSuite"],
         )
 
@@ -86,7 +86,7 @@ class TestSuiteSource(Source):
             test_cases = self.metadata.list_all_entities(
                 entity=TestCase,
                 fields=["testSuite", "entityLink", "testDefinition"],
-                params={"testSuiteId": test_suite.id.__root__},
+                params={"testSuiteId": test_suite.id.root},
             )
             test_cases = cast(List[TestCase], test_cases)  # satisfy type checker
 
@@ -110,7 +110,7 @@ class TestSuiteSource(Source):
             yield Either(
                 left=StackTraceError(
                     name="Missing Table",
-                    error=f"Could not retrieve table entity for {self.source_config.entityFullyQualifiedName.__root__}."
+                    error=f"Could not retrieve table entity for {self.source_config.entityFullyQualifiedName.root}."
                     " Make sure the table exists in OpenMetadata and/or the JWT Token provided is valid.",
                 )
             )
@@ -125,31 +125,31 @@ class TestSuiteSource(Source):
                 name=fqn.build(
                     None,
                     TestSuite,
-                    table_fqn=self.source_config.entityFullyQualifiedName.__root__,
+                    table_fqn=self.source_config.entityFullyQualifiedName.root,
                 ),
-                displayName=f"{self.source_config.entityFullyQualifiedName.__root__} Test Suite",
+                displayName=f"{self.source_config.entityFullyQualifiedName.root} Test Suite",
                 description="Test Suite created from YAML processor config file",
                 owner=None,
-                executableEntityReference=self.source_config.entityFullyQualifiedName.__root__,
+                executableEntityReference=self.source_config.entityFullyQualifiedName.root,
             )
             yield Either(
                 right=TableAndTests(
                     executable_test_suite=executable_test_suite,
-                    service_type=self.config.source.serviceConnection.__root__.config.type.value,
+                    service_type=self.config.source.serviceConnection.root.config.type.value,
                 )
             )
 
         test_suite: Optional[TestSuite] = None
         if table.testSuite:
             test_suite = self.metadata.get_by_id(
-                entity=TestSuite, entity_id=table.testSuite.id.__root__
+                entity=TestSuite, entity_id=table.testSuite.id.root
             )
 
         if test_suite and not test_suite.executable:
             yield Either(
                 left=StackTraceError(
                     name="Non-executable Test Suite",
-                    error=f"The table {self.source_config.entityFullyQualifiedName.__root__} "
+                    error=f"The table {self.source_config.entityFullyQualifiedName.root} "
                     "has a test suite that is not executable.",
                 )
             )
@@ -161,7 +161,7 @@ class TestSuiteSource(Source):
                 right=TableAndTests(
                     table=table,
                     test_cases=test_suite_cases,
-                    service_type=self.config.source.serviceConnection.__root__.config.type.value,
+                    service_type=self.config.source.serviceConnection.root.config.type.value,
                 )
             )
 
