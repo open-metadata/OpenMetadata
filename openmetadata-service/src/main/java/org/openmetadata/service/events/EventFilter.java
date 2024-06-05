@@ -46,13 +46,13 @@ public class EventFilter implements ContainerResponseFilter {
     registerEventHandlers(config);
   }
 
+  @SuppressWarnings("unchecked")
   private void registerEventHandlers(OpenMetadataApplicationConfig config) {
     if (nullOrEmpty(config.getEventHandlerConfiguration())) {
       Set<String> eventHandlerClassNames =
           new HashSet<>(config.getEventHandlerConfiguration().getEventHandlerClassNames());
       for (String eventHandlerClassName : eventHandlerClassNames) {
         try {
-          @SuppressWarnings("unchecked")
           EventHandler eventHandler =
               ((Class<EventHandler>) Class.forName(eventHandlerClassName))
                   .getConstructor()
