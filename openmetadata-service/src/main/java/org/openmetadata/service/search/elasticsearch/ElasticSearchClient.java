@@ -1948,12 +1948,12 @@ public class ElasticSearchClient implements SearchClient {
     } else {
       searchSourceBuilder.aggregation(dateHistogramAggregationBuilder);
     }
-    if (createDIChart.getFilter() != null){
+    if (createDIChart.getFilter() != null) {
       XContentParser filterParser =
-              XContentType.JSON
-                      .xContent()
-                      .createParser(
-                              xContentRegistry, LoggingDeprecationHandler.INSTANCE, createDIChart.getFilter());
+          XContentType.JSON
+              .xContent()
+              .createParser(
+                  xContentRegistry, LoggingDeprecationHandler.INSTANCE, createDIChart.getFilter());
       QueryBuilder filter = SearchSourceBuilder.fromXContent(filterParser).query();
       BoolQueryBuilder newQuery = QueryBuilders.boolQuery().filter(filter);
       searchSourceBuilder.query(newQuery);
@@ -1985,7 +1985,7 @@ public class ElasticSearchClient implements SearchClient {
 
   private List<DIChartResult> processAggregations(
       List<Aggregation> aggregations, CreateDIChart createDIChart, String group) {
-    ArrayList<DIChartResult> results = new ArrayList<>();
+    List<DIChartResult> results = new ArrayList<>();
     for (Aggregation arg : aggregations) {
       ParsedDateHistogram parsedDateHistogram = (ParsedDateHistogram) arg;
       for (Histogram.Bucket bucket : parsedDateHistogram.getBuckets()) {
@@ -1995,24 +1995,21 @@ public class ElasticSearchClient implements SearchClient {
             DIChartResult diChartResult =
                 new DIChartResult()
                     .withCount(parsedValueCount.getValue())
-                    .withDay(bucket.getKeyAsString());
-            if (group != null) {
-              diChartResult.setGroup(group);
-            }
+                    .withDay(bucket.getKeyAsString())
+                    .withGroup(group);
             results.add(diChartResult);
           } else {
             ParsedSingleValueNumericMetricsAggregation parsedValueCount =
                 (ParsedSingleValueNumericMetricsAggregation) sub_arg;
-            Double value =
-                parsedValueCount.value() == Double.POSITIVE_INFINITY
-                        || parsedValueCount.value() == Double.NEGATIVE_INFINITY
-                    ? null
-                    : parsedValueCount.value();
-            DIChartResult diChartResult =
-                new DIChartResult().withCount(value).withDay(bucket.getKeyAsString());
-            if (group != null) {
-              diChartResult.setGroup(group);
+            Double value = parsedValueCount.value();
+            if (Double.isInfinite(value) || Double.isNaN(value)) {
+              value = null;
             }
+            DIChartResult diChartResult =
+                new DIChartResult()
+                    .withCount(value)
+                    .withDay(bucket.getKeyAsString())
+                    .withGroup(group);
             results.add(diChartResult);
           }
         }
