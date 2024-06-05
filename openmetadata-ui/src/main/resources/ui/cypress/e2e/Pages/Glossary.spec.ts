@@ -713,10 +713,18 @@ describe('Glossary page should work properly', { tags: 'Governance' }, () => {
 
     cy.get('[data-testid="request-entity-tags"]').should('exist').click();
 
-    // check assignees for task which will be owner of the glossary term
+    // check assignees for task which will be reviewer of the glossary term
     cy.get(
       '[data-testid="select-assignee"] > .ant-select-selector > .ant-select-selection-overflow'
-    ).should('contain', GLOSSARY_1.updatedOwner);
+    ).within(() => {
+      for (const reviewer of [...GLOSSARY_1.reviewers, { name: userName }]) {
+        cy.contains(reviewer.name);
+      }
+    });
+
+    cy.get(
+      '[data-testid="select-assignee"] > .ant-select-selector > .ant-select-selection-overflow'
+    ).should('not.contain', GLOSSARY_1.updatedOwner);
 
     cy.get('[data-testid="tag-selector"]')
       .click()
@@ -733,6 +741,22 @@ describe('Glossary page should work properly', { tags: 'Governance' }, () => {
     cy.get('[data-testid="submit-tag-request"]').click();
     verifyResponseStatusCode('@taskCreated', 201);
 
+    // Reviewer should accepts the tag suggestion
+    cy.logout();
+    cy.login(CREDENTIALS.email, CREDENTIALS.password);
+
+    goToGlossaryPage();
+
+    cy.get('[data-testid="glossary-left-panel"]')
+      .contains(GLOSSARY_1.name)
+      .click();
+
+    cy.get('[data-testid="activity_feed"]').click();
+
+    cy.get('[data-testid="global-setting-left-panel"]')
+      .contains('Tasks')
+      .click();
+
     // Accept the tag suggestion which is created
     cy.get('.ant-btn-compact-first-item').contains('Accept Suggestion').click();
 
@@ -745,6 +769,128 @@ describe('Glossary page should work properly', { tags: 'Governance' }, () => {
       .click();
 
     checkDisplayName(GLOSSARY_1.name);
+
+    cy.logout();
+    Cypress.session.clearAllSavedSessions();
+    cy.login();
+  });
+
+  it('Request Tags workflow for Glossary and reviewer as Team', function () {
+    cy.get('[data-testid="glossary-left-panel"]')
+      .contains(GLOSSARY_2.name)
+      .click();
+
+    interceptURL(
+      'GET',
+      `/api/v1/search/query?q=*%20AND%20disabled:false&index=tag_search_index*`,
+      'suggestTag'
+    );
+    interceptURL('POST', '/api/v1/feed', 'taskCreated');
+    interceptURL('PUT', '/api/v1/feed/tasks/*/resolve', 'taskResolve');
+
+    cy.get('[data-testid="request-entity-tags"]').should('exist').click();
+
+    // check assignees for task which will be Owner of the glossary term which is Team
+    cy.get(
+      '[data-testid="select-assignee"] > .ant-select-selector > .ant-select-selection-overflow'
+    ).within(() => {
+      for (const reviewer of GLOSSARY_2.reviewers) {
+        cy.contains(reviewer.name);
+      }
+    });
+
+    cy.get(
+      '[data-testid="select-assignee"] > .ant-select-selector > .ant-select-selection-overflow'
+    ).should('not.contain', GLOSSARY_2.owner);
+
+    cy.get('[data-testid="tag-selector"]')
+      .click()
+      .type('{backspace}')
+      .type('{backspace}')
+      .type('Personal');
+
+    verifyResponseStatusCode('@suggestTag', 200);
+    cy.get(
+      '.ant-select-dropdown [data-testid="tag-PersonalData.Personal"]'
+    ).click();
+    cy.clickOutside();
+
+    cy.get('[data-testid="submit-tag-request"]').click();
+    verifyResponseStatusCode('@taskCreated', 201);
+
+    // Reviewer should accepts the tag suggestion which belongs to the Team
+    cy.logout();
+    cy.login(CREDENTIALS.email, CREDENTIALS.password);
+
+    goToGlossaryPage();
+
+    cy.get('[data-testid="glossary-left-panel"]')
+      .contains(GLOSSARY_2.name)
+      .click();
+
+    cy.get('[data-testid="activity_feed"]').click();
+
+    cy.get('[data-testid="global-setting-left-panel"]')
+      .contains('Tasks')
+      .click();
+
+    // Accept the tag suggestion which is created
+    cy.get('.ant-btn-compact-first-item').contains('Accept Suggestion').click();
+
+    verifyResponseStatusCode('@taskResolve', 200);
+
+    cy.reload();
+
+    cy.get('[data-testid="glossary-left-panel"]')
+      .contains(GLOSSARY_2.name)
+      .click();
+
+    checkDisplayName(GLOSSARY_2.name);
+
+    cy.logout();
+    Cypress.session.clearAllSavedSessions();
+    cy.login();
+  });
+
+  it('Request Description workflow for Glossary', function () {
+    cy.get('[data-testid="glossary-left-panel"]')
+      .contains(GLOSSARY_3.name)
+      .click();
+
+    interceptURL(
+      'GET',
+      `/api/v1/search/query?q=*%20AND%20disabled:false&index=tag_search_index*`,
+      'suggestTag'
+    );
+    interceptURL('POST', '/api/v1/feed', 'taskCreated');
+    interceptURL('PUT', '/api/v1/feed/tasks/*/resolve', 'taskResolve');
+
+    cy.get('[data-testid="request-description"]').should('exist').click();
+
+    // check assignees for task which will be owner of the glossary since it has no reviewer
+    cy.get(
+      '[data-testid="select-assignee"] > .ant-select-selector > .ant-select-selection-overflow'
+    ).should('contain', GLOSSARY_3.owner);
+
+    cy.get(descriptionBox).should('be.visible').as('description');
+    cy.get('@description').clear();
+    cy.get('@description').type(GLOSSARY_3.newDescription);
+
+    cy.get('[data-testid="submit-btn"]').click();
+    verifyResponseStatusCode('@taskCreated', 201);
+
+    // Accept the tag suggestion which is created
+    cy.get('.ant-btn-compact-first-item').contains('Accept Suggestion').click();
+
+    verifyResponseStatusCode('@taskResolve', 200);
+
+    cy.reload();
+
+    cy.get('[data-testid="glossary-left-panel"]')
+      .contains(GLOSSARY_3.name)
+      .click();
+
+    checkDisplayName(GLOSSARY_3.name);
   });
 
   it('Assets Tab should work properly', () => {

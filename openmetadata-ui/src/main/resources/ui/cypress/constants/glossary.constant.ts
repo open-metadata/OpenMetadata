@@ -132,6 +132,7 @@ export const GLOSSARY_3 = {
   description: 'This is the Product glossary with percentage',
   reviewers: [],
   owner: 'admin',
+  newDescription: 'This is the new Product glossary with percentage.',
   terms: [
     {
       name: `Term1_${assetTermsUUId}`,

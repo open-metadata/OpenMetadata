@@ -38,6 +38,7 @@ import { Chart } from '../generated/entity/data/chart';
 import { Container } from '../generated/entity/data/container';
 import { Dashboard } from '../generated/entity/data/dashboard';
 import { DashboardDataModel } from '../generated/entity/data/dashboardDataModel';
+import { Glossary } from '../generated/entity/data/glossary';
 import { MlFeature, Mlmodel } from '../generated/entity/data/mlmodel';
 import { Pipeline, Task } from '../generated/entity/data/pipeline';
 import { SearchIndex } from '../generated/entity/data/searchIndex';
@@ -562,7 +563,11 @@ export const fetchEntityDetail = (
       break;
     case EntityType.GLOSSARY:
       getGlossariesByName(entityFQN, {
-        fields: [TabSpecificField.OWNER, TabSpecificField.TAGS].join(','),
+        fields: [
+          TabSpecificField.OWNER,
+          TabSpecificField.TAGS,
+          TabSpecificField.REVIEWERS,
+        ].join(','),
       })
         .then((res) => {
           setEntityData(res);
@@ -572,7 +577,11 @@ export const fetchEntityDetail = (
       break;
     case EntityType.GLOSSARY_TERM:
       getGlossaryTermByFQN(entityFQN, {
-        fields: [TabSpecificField.OWNER, TabSpecificField.TAGS].join(','),
+        fields: [
+          TabSpecificField.OWNER,
+          TabSpecificField.TAGS,
+          TabSpecificField.REVIEWERS,
+        ].join(','),
       })
         .then((res) => {
           setEntityData(res);
@@ -773,4 +782,22 @@ export const getTaskMessage = ({
   return `${startMessage} for ${entityType} ${getEntityName(
     entityData
   )} ${entityColumnsName}`;
+};
+
+export const getTaskAssignee = (entityData: Glossary): Option[] => {
+  const { owner, reviewers } = entityData;
+
+  const assignee = !isEmpty(reviewers) ? reviewers : owner ? [owner] : [];
+
+  let defaultAssignee: Option[] = [];
+  if (!isUndefined(assignee)) {
+    defaultAssignee = assignee.map((item) => ({
+      label: getEntityName(item),
+      value: item.id || '',
+      type: item.type,
+      name: item.name,
+    }));
+  }
+
+  return defaultAssignee;
 };
