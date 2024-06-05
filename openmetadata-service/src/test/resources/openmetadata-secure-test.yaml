@@ -225,6 +225,8 @@ email:
   password: "test"
   transportationStrategy: "SMTP_TLS"
 
+fernetConfiguration:
+  fernetKey: ${FERNET_KEY:-ihZpp5gmmDvVsgoOG6OVivKWwC9vd5JQ}
 
 dataQualityConfiguration:
   severityIncidentClassifier: "org.openmetadata.service.util.incidentSeverityClassifier.LogisticRegressionIncidentSeverityClassifier"
