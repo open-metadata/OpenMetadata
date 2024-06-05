@@ -23,6 +23,7 @@ from metadata.generated.schema.metadataIngestion.workflow import (
     SourceConfig,
     WorkflowConfig,
 )
+from metadata.ingestion.models.custom_pydantic import CustomSecretStr
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.workflow.metadata import MetadataWorkflow
 
@@ -55,7 +56,9 @@ def db_service(metadata, sql_server_container, request):
         ),
     )
     service_entity = metadata.create_or_update(data=service)
-    service_entity.connection.config.password = sql_server_container.password
+    service_entity.connection.config.password = CustomSecretStr(
+        sql_server_container.password
+    )
     yield service_entity
     metadata.delete(
         DatabaseService, service_entity.id, recursive=True, hard_delete=True

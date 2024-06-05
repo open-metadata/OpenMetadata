@@ -40,11 +40,7 @@ from metadata.generated.schema.metadataIngestion.storage.containerMetadataConfig
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
-from metadata.generated.schema.type.basic import (
-    EntityName,
-    FullyQualifiedEntityName,
-    SourceUrl,
-)
+from metadata.generated.schema.type.basic import EntityName, FullyQualifiedEntityName
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
@@ -173,7 +169,7 @@ class S3Source(StorageServiceSource):
             dataModel=container_details.data_model,
             service=FullyQualifiedEntityName(self.context.get().objectstore_service),
             parent=container_details.parent,
-            sourceUrl=SourceUrl(container_details.sourceUrl),
+            sourceUrl=container_details.sourceUrl,
             fileFormats=container_details.file_formats,
             fullPath=container_details.fullPath,
         )

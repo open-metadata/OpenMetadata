@@ -31,6 +31,7 @@ from metadata.generated.schema.metadataIngestion.workflow import (
     WorkflowConfig,
 )
 from metadata.ingestion.lineage.sql_lineage import search_cache
+from metadata.ingestion.models.custom_pydantic import CustomSecretStr
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.workflow.metadata import MetadataWorkflow
 
@@ -121,7 +122,10 @@ def db_service(metadata, postgres_container):
         ),
     )
     service_entity = metadata.create_or_update(data=service)
-    service_entity.connection.config.authType.password = postgres_container.password
+    # Since we're using admin JWT (not ingestion-bot), the secret is not sent by the API
+    service_entity.connection.config.authType.password = CustomSecretStr(
+        postgres_container.password
+    )
     yield service_entity
     metadata.delete(
         DatabaseService, service_entity.id, recursive=True, hard_delete=True

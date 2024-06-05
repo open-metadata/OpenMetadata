@@ -36,9 +36,9 @@ from metadata.generated.schema.metadataIngestion.workflow import (
     WorkflowConfig,
 )
 from metadata.ingestion.lineage.sql_lineage import search_cache
+from metadata.ingestion.models.custom_pydantic import CustomSecretStr
 from metadata.ingestion.ometa.client import APIError
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.profiler.api.models import ProfilerProcessorConfig
 from metadata.workflow.metadata import MetadataWorkflow
 from metadata.workflow.profiler import ProfilerWorkflow
 from metadata.workflow.usage import UsageWorkflow
@@ -63,7 +63,9 @@ def db_service(metadata, postgres_container):
         ),
     )
     service_entity = metadata.create_or_update(data=service)
-    service_entity.connection.config.authType.password = postgres_container.password
+    service_entity.connection.config.authType.password = CustomSecretStr(
+        postgres_container.password
+    )
     yield service_entity
     try:
         metadata.delete(
@@ -127,7 +129,7 @@ def run_profiler_workflow(ingest_metadata, db_service, metadata):
         ),
         processor=Processor(
             type="orm-profiler",
-            config=ProfilerProcessorConfig(),
+            config={},
         ),
         sink=Sink(
             type="metadata-rest",

@@ -21,7 +21,7 @@ import json
 import os
 import shutil
 import traceback
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import List, Optional
 
@@ -281,8 +281,12 @@ class MetadataUsageBulkSink(BulkSink):
         """
         Method to get Table Joins
         """
+        # TODO: Clean up how we are passing dates from query parsing to here to use timestamps instead of strings
+        start_date = datetime.fromtimestamp(int(table_usage.date) / 1000).replace(
+            tzinfo=timezone.utc
+        )
         table_joins: TableJoins = TableJoins(
-            columnJoins=[], directTableJoins=[], startDate=table_usage.date
+            columnJoins=[], directTableJoins=[], startDate=start_date
         )
         column_joins_dict = {}
         for column_join in table_usage.joins:

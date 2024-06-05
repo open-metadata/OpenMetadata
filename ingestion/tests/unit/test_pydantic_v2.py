@@ -95,6 +95,9 @@ def test_get_secret_string():
         secret: CustomSecretStr
         no_secret: str
 
-    model = MyModel(secret="secret:password", no_secret="hello")
+    model = MyModel(secret="password", no_secret="hello")
 
     assert model.secret.get_secret_value() == "password"
+
+    # key is shown when serialized
+    assert model.model_dump()["secret"] == "password"

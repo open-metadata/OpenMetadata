@@ -191,7 +191,7 @@ class TableUsageStage(Stage):
         for key, value in self.table_usage.items():
             if value:
                 value.sqlQueries = self.table_queries.get(key, [])
-                data = value.json()
+                data = value.model_dump_json()
                 with open(
                     os.path.join(self.config.filename, f"{value.serviceName}_{key[1]}"),
                     "a+",

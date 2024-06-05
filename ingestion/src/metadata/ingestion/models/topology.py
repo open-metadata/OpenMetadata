@@ -16,7 +16,7 @@ import threading
 from functools import singledispatchmethod
 from typing import Any, Dict, Generic, List, Optional, Type, TypeVar
 
-from pydantic import BaseModel, ConfigDict, Extra, Field, create_model
+from pydantic import BaseModel, ConfigDict, Field, create_model
 
 from metadata.generated.schema.api.data.createStoredProcedure import (
     CreateStoredProcedureRequest,
@@ -37,8 +37,9 @@ class NodeStage(BaseModel, Generic[T]):
     source.
     """
 
-    class Config:
-        extra = Extra.forbid
+    model_config = ConfigDict(
+        extra="forbid",
+    )
 
     # Required fields to define the yielded entity type and the function processing it
     type_: Type[T] = Field(
@@ -99,8 +100,9 @@ class TopologyNode(BaseModel):
     with the updated element from the OM API.
     """
 
-    class Config:
-        extra = Extra.forbid
+    model_config = ConfigDict(
+        extra="forbid",
+    )
 
     producer: str = Field(
         ...,
