@@ -79,6 +79,11 @@ export const createAnnouncement = (announcement, entityName) => {
   cy.get('[data-testid="announcement-container"]')
     .find(`a[href*="${encodeURIComponent(entityName)}"]`)
     .click();
+
+  cy.get('[data-testid="entity-header-display-name"]').should(
+    'contain',
+    entityName
+  );
 };
 
 export const deleteAnnouncement = () => {
