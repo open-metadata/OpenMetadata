@@ -71,7 +71,7 @@ def mock_list_entities(
     mock list entities for databases
     """
     schema_list1 = EntityReferenceList(
-        __root__=[
+        root=[
             EntityReference(
                 id="73129df3-96ed-476d-a9b5-b92091264649",
                 name="test_schema_1",
@@ -91,7 +91,7 @@ def mock_list_entities(
     )
 
     schema_list2 = EntityReferenceList(
-        __root__=[
+        root=[
             EntityReference(
                 id="73129df3-96ed-476d-a9b5-b92091264649",
                 name="test_schema_4",

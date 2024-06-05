@@ -32,43 +32,43 @@ class AirflowBaseModel(BaseModel):
 
 
 class AirflowTask(BaseModel):
-    pool: Optional[str]
-    doc_md: Optional[str]
-    inlets: Optional[List[Any]] = Field(alias="_inlets")
+    pool: Optional[str] = None
+    doc_md: Optional[str] = None
+    inlets: Optional[List[Any]] = Field(None, alias="_inlets")
     task_id: str
-    outlets: Optional[List[Any]] = Field(alias="_outlets")
-    task_type: Optional[Any] = Field(alias="_task_type")
-    downstream_task_ids: Optional[List[str]]
-    start_date: Optional[datetime]
-    end_date: Optional[datetime]
-    owner: Optional[str]
+    outlets: Optional[List[Any]] = Field(None, alias="_outlets")
+    task_type: Optional[Any] = Field(None, alias="_task_type")
+    downstream_task_ids: Optional[List[str]] = None
+    start_date: Optional[datetime] = None
+    end_date: Optional[datetime] = None
+    owner: Optional[str] = None
 
     # Allow picking up data from key `inlets` and `_inlets`
     class Config:
-        allow_population_by_field_name = True
+        populate_by_name = True
 
 
 class TaskList(BaseModel):
-    __root__: List[AirflowTask]
+    root: List[AirflowTask]
 
 
 class Dag(BaseModel):
     fileloc: str
-    tags: Optional[List[str]]
-    start_date: Optional[float]
+    tags: Optional[List[str]] = None
+    start_date: Optional[float] = None
     _processor_dags_folder: str
 
 
 class AirflowDag(BaseModel):
-    dag: Optional[Dag]
+    dag: Optional[Dag] = None
 
 
 class AirflowDagDetails(AirflowBaseModel):
     fileloc: str
     data: AirflowDag
-    max_active_runs: Optional[int]
-    description: Optional[str]
-    start_date: Optional[datetime]
+    max_active_runs: Optional[int] = None
+    description: Optional[str] = None
+    start_date: Optional[datetime] = None
     tasks: List[AirflowTask]
-    owner: Optional[str]
-    schedule_interval: Optional[str]
+    owner: Optional[str] = None
+    schedule_interval: Optional[str] = None

@@ -13,7 +13,7 @@
 Source connection handler
 """
 import os
-from datetime import datetime
+from datetime import datetime, timezone
 from functools import partial
 from typing import Optional
 
@@ -59,17 +59,17 @@ def get_connection_url(connection: BigQueryConnection) -> str:
         if isinstance(  # pylint: disable=no-else-return
             connection.credentials.gcpConfig.projectId, SingleProjectId
         ):
-            if not connection.credentials.gcpConfig.projectId.__root__:
+            if not connection.credentials.gcpConfig.projectId.root:
                 return f"{connection.scheme.value}://{connection.credentials.gcpConfig.projectId or ''}"
             if (
                 not connection.credentials.gcpConfig.privateKey
-                and connection.credentials.gcpConfig.projectId.__root__
+                and connection.credentials.gcpConfig.projectId.root
             ):
-                project_id = connection.credentials.gcpConfig.projectId.__root__
+                project_id = connection.credentials.gcpConfig.projectId.root
                 os.environ["GOOGLE_CLOUD_PROJECT"] = project_id
-            return f"{connection.scheme.value}://{connection.credentials.gcpConfig.projectId.__root__}"
+            return f"{connection.scheme.value}://{connection.credentials.gcpConfig.projectId.root}"
         elif isinstance(connection.credentials.gcpConfig.projectId, MultipleProjectId):
-            for project_id in connection.credentials.gcpConfig.projectId.__root__:
+            for project_id in connection.credentials.gcpConfig.projectId.root:
                 if not connection.credentials.gcpConfig.privateKey and project_id:
                     # Setting environment variable based on project id given by user / set in ADC
                     os.environ["GOOGLE_CLOUD_PROJECT"] = project_id
@@ -145,7 +145,7 @@ def test_connection(
                 engine=engine,
                 statement=BIGQUERY_TEST_STATEMENT.format(
                     region=service_connection.usageLocation,
-                    creation_date=datetime.now().strftime("%Y-%m-%d"),
+                    creation_date=datetime.now(tz=timezone.utc).strftime("%Y-%m-%d"),
                 ),
             ),
         }

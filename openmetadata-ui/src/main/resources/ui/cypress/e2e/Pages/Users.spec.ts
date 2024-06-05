@@ -45,8 +45,8 @@ import {
 import { EntityType, SidebarItem } from '../../constants/Entity.interface';
 import {
   GlobalSettingOptions,
-  SETTING_CUSTOM_PROPERTIES_PATH,
   SETTINGS_OPTIONS_PATH,
+  SETTING_CUSTOM_PROPERTIES_PATH,
 } from '../../constants/settings.constant';
 
 const entity = new UsersTestClass();

@@ -17,8 +17,8 @@ SAS source to extract metadata
 import copy
 import json
 import re
-import time
 import traceback
+from datetime import datetime, timezone
 from typing import Any, Iterable, Optional, Tuple, Union
 
 from requests.exceptions import HTTPError
@@ -65,6 +65,7 @@ from metadata.generated.schema.metadataIngestion.databaseServiceMetadataPipeline
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
+from metadata.generated.schema.type.basic import EntityName, Timestamp
 from metadata.generated.schema.type.entityLineage import EntitiesEdge
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.common import Entity
@@ -101,7 +102,7 @@ class SasSource(
         self.source_config: DatabaseServiceMetadataPipeline = (
             self.config.sourceConfig.config
         )
-        self.service_connection = self.config.serviceConnection.__root__.config
+        self.service_connection = self.config.serviceConnection.root.config
 
         self.sas_client = get_connection(self.service_connection)
         self.connection_obj = self.sas_client
@@ -121,6 +122,8 @@ class SasSource(
         self.databases = None
         self.database_schemas = None
 
+        self.timestamp = Timestamp(int(datetime.now(timezone.utc).timestamp() * 1000))
+
     @classmethod
     def create(
         cls,
@@ -129,8 +132,8 @@ class SasSource(
         pipeline_name: Optional[str] = None,
     ):
         logger.info(f"running create {config_dict}")
-        config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
-        connection: SASConnection = config.serviceConnection.__root__.config
+        config: WorkflowSource = WorkflowSource.model_validate(config_dict)
+        connection: SASConnection = config.serviceConnection.root.config
         if not isinstance(connection, SASConnection):
             raise InvalidSourceException(
                 f"Expected SASConnection, but got {connection}"
@@ -412,8 +415,7 @@ class SasSource(
                         col_profile_dict["valuesCount"]
                         - col_profile_dict["missingCount"]
                     )
-            timestamp = time.time() - 100000
-            col_profile_dict["timestamp"] = timestamp
+            col_profile_dict["timestamp"] = self.timestamp
             col_profile_dict["name"] = parsed_string["name"]
             column_profile = ColumnProfile(**col_profile_dict)
             col_profile_list.append(column_profile)
@@ -466,8 +468,8 @@ class SasSource(
             # if the table entity already exists, we don't need to create it again
             # only update it when either the sourceUrl or analysisTimeStamp changed
             if not table_entity or (
-                table_url != table_entity.sourceUrl.__root__
-                or table_entity.extension.__root__.get("analysisTimeStamp")
+                table_url != table_entity.sourceUrl.root
+                or table_entity.extension.root.get("analysisTimeStamp")
                 != table_extension.get("analysisTimeStamp")
             ):
                 # create the columns of the table
@@ -530,10 +532,10 @@ class SasSource(
                 )
                 # update the description
                 logger.debug(
-                    f"Updating description for {table_entity.id.__root__} with {table_description}"
+                    f"Updating description for {table_entity.id.root} with {table_description}"
                 )
                 self.metadata.client.patch(
-                    path=f"/tables/{table_entity.id.__root__}",
+                    path=f"/tables/{table_entity.id.root}",
                     data=json.dumps(
                         [
                             {
@@ -547,10 +549,10 @@ class SasSource(
 
                 # update the custom properties
                 logger.debug(
-                    f"Updating custom properties for {table_entity.id.__root__} with {extension_attributes}"
+                    f"Updating custom properties for {table_entity.id.root} with {extension_attributes}"
                 )
                 self.metadata.client.patch(
-                    path=f"/tables/{table_entity.id.__root__}",
+                    path=f"/tables/{table_entity.id.root}",
                     data=json.dumps(
                         [
                             {
@@ -570,34 +572,19 @@ class SasSource(
                 ):
                     return
 
-                # update table profile
-                table_profile_dict = {
-                    "timestamp": time.time() - 100000,
-                    "createDateTime": table_entity_instance["creationTimeStamp"],
-                    "rowCount": (
-                        0
-                        if "rowCount" not in table_extension
-                        else table_extension["rowCount"]
-                    ),
-                    "columnCount": (
-                        0
-                        if "columnCount" not in table_extension
-                        else table_extension["columnCount"]
-                    ),
-                    "sizeInByte": (
-                        0
-                        if "dataSize" not in extension_attributes
-                        else table_extension["dataSize"]
-                    ),
-                }
-
                 # create Profiles & Data Quality Column
                 table_profile_request = CreateTableProfileRequest(
-                    tableProfile=TableProfile(**table_profile_dict),
+                    tableProfile=TableProfile(
+                        timestamp=self.timestamp,
+                        createDateTime=table_entity_instance["creationTimeStamp"],
+                        rowCount=int(table_extension.get("rowCount", 0)),
+                        columnCount=int(table_extension.get("columnCount", 0)),
+                        sizeInByte=int(table_extension.get("dataSize", 0)),
+                    ),
                     columnProfile=col_profile_list,
                 )
                 self.metadata.client.put(
-                    path=f"{self.metadata.get_suffix(Table)}/{table_entity.id.__root__}/tableProfile",
+                    path=f"{self.metadata.get_suffix(Table)}/{table_entity.id.root}/tableProfile",
                     data=table_profile_request.json(),
                 )
 
@@ -607,7 +594,7 @@ class SasSource(
                 left=StackTraceError(
                     name=table_name,
                     error=f"Unexpected exception to create table [{table_name}]: {exc}",
-                    stack_trace=traceback.format_exc(),
+                    stackTrace=traceback.format_exc(),
                 )
             )
         finally:
@@ -693,7 +680,7 @@ class SasSource(
                 left=StackTraceError(
                     name=dashboard_service_name,
                     error=f"Unexpected exception to create dashboard service for [{dashboard_service_name}]: {exc}",
-                    stack_trace=traceback.format_exc(),
+                    stackTrace=traceback.format_exc(),
                 )
             )
 
@@ -733,10 +720,8 @@ class SasSource(
         return Either(
             right=AddLineageRequest(
                 edge=EntitiesEdge(
-                    fromEntity=EntityReference(
-                        id=from_entity.id.__root__, type=from_type
-                    ),
-                    toEntity=EntityReference(id=to_entity.id.__root__, type=in_type),
+                    fromEntity=EntityReference(id=from_entity.id.root, type=from_type),
+                    toEntity=EntityReference(id=to_entity.id.root, type=in_type),
                 )
             )
         )
@@ -787,7 +772,7 @@ class SasSource(
                 left=StackTraceError(
                     name=report_name,
                     error=f"Unexpected exception to create report [{report['id']}]: {exc}",
-                    stack_trace=traceback.format_exc(),
+                    stackTrace=traceback.format_exc(),
                 )
             )
 
@@ -844,7 +829,7 @@ class SasSource(
                 left=StackTraceError(
                     name=data_flow_id,
                     error=f"Unexpected exception to create data flow [{data_flow_id}]: {exc}",
-                    stack_trace=traceback.format_exc(),
+                    stackTrace=traceback.format_exc(),
                 )
             )
 
@@ -857,7 +842,7 @@ class SasSource(
     ) -> Iterable[Either[CreateDatabaseRequest]]:
         yield Either(
             right=CreateDatabaseRequest(
-                name=database_name,
+                name=EntityName(database_name),
                 service=self.context.get().database_service,
             )
         )

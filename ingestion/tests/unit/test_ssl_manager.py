@@ -113,14 +113,14 @@ class KafkaSourceSSLTest(TestCase):
 
         self.assertIsNotNone(kafka_source_with_ssl.ssl_manager)
         self.assertEqual(
-            kafka_source_with_ssl.service_connection.schemaRegistrySSL.__root__.caCertificate.get_secret_value(),
+            kafka_source_with_ssl.service_connection.schemaRegistrySSL.root.caCertificate.get_secret_value(),
             "caCertificateData",
         )
         self.assertEqual(
-            kafka_source_with_ssl.service_connection.schemaRegistrySSL.__root__.sslKey.get_secret_value(),
+            kafka_source_with_ssl.service_connection.schemaRegistrySSL.root.sslKey.get_secret_value(),
             "sslKeyData",
         )
         self.assertEqual(
-            kafka_source_with_ssl.service_connection.schemaRegistrySSL.__root__.sslCertificate.get_secret_value(),
+            kafka_source_with_ssl.service_connection.schemaRegistrySSL.root.sslCertificate.get_secret_value(),
             "sslCertificateData",
         )

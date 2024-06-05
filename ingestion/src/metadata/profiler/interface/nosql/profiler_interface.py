@@ -148,9 +148,9 @@ class NoSQLProfilerInterface(ProfilerInterface):
             row = None
         if metric_func.column is not None:
             column = metric_func.column.name
-            self.status.scanned(f"{metric_func.table.name.__root__}.{column}")
+            self.status.scanned(f"{metric_func.table.name.root}.{column}")
         else:
-            self.status.scanned(metric_func.table.name.__root__)
+            self.status.scanned(metric_func.table.name.root)
             column = None
         return row, column, metric_func.metric_type.value
 
@@ -227,8 +227,7 @@ class NoSQLProfilerInterface(ProfilerInterface):
 
     def get_columns(self) -> List[Optional[SQALikeColumn]]:
         return [
-            SQALikeColumn(name=c.name.__root__, type=c.dataType)
-            for c in self.table.columns
+            SQALikeColumn(name=c.name.root, type=c.dataType) for c in self.table.columns
         ]
 
     def close(self):

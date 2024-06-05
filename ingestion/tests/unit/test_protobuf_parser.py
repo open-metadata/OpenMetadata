@@ -62,15 +62,13 @@ class ProtobufParserTests(TestCase):
     parsed_schema = protobuf_parser.parse_protobuf_schema()
 
     def test_schema_name(self):
-        self.assertEqual(self.parsed_schema[0].name.__root__, "PersonInfo")
+        self.assertEqual(self.parsed_schema[0].name.root, "PersonInfo")
 
     def test_schema_type(self):
         self.assertEqual(self.parsed_schema[0].dataType.name, "RECORD")
 
     def test_field_names(self):
-        field_names = {
-            str(field.name.__root__) for field in self.parsed_schema[0].children
-        }
+        field_names = {str(field.name.root) for field in self.parsed_schema[0].children}
         self.assertEqual(
             field_names,
             {
@@ -117,12 +115,8 @@ class ProtobufParserTests(TestCase):
             )
         )
         parsed_schema = protobuf_parser.parse_protobuf_schema()
-        self.assertEqual(parsed_schema[0].name.__root__, "Employee")
+        self.assertEqual(parsed_schema[0].name.root, "Employee")
         self.assertEqual(len(parsed_schema[0].children), 4)
-        self.assertEqual(parsed_schema[0].children[3].name.__root__, "contact")
-        self.assertEqual(
-            parsed_schema[0].children[3].children[0].name.__root__, "email"
-        )
-        self.assertEqual(
-            parsed_schema[0].children[3].children[1].name.__root__, "phone"
-        )
+        self.assertEqual(parsed_schema[0].children[3].name.root, "contact")
+        self.assertEqual(parsed_schema[0].children[3].children[0].name.root, "email")
+        self.assertEqual(parsed_schema[0].children[3].children[1].name.root, "phone")

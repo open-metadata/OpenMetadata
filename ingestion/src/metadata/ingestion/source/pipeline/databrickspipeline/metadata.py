@@ -36,6 +36,12 @@ from metadata.generated.schema.entity.services.ingestionPipelines.status import 
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
+from metadata.generated.schema.type.basic import (
+    EntityName,
+    FullyQualifiedEntityName,
+    Markdown,
+    Timestamp,
+)
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.models.pipeline_status import OMetaPipelineStatus
@@ -72,10 +78,8 @@ class DatabrickspipelineSource(PipelineServiceSource):
         cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None
     ):
         """Create class instance"""
-        config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
-        connection: DatabricksPipelineConnection = (
-            config.serviceConnection.__root__.config
-        )
+        config: WorkflowSource = WorkflowSource.model_validate(config_dict)
+        connection: DatabricksPipelineConnection = config.serviceConnection.root.config
         if not isinstance(connection, DatabricksPipelineConnection):
             raise InvalidSourceException(
                 f"Expected DatabricksPipelineConnection, but got {connection}"
@@ -95,12 +99,14 @@ class DatabrickspipelineSource(PipelineServiceSource):
         """Method to Get Pipeline Entity"""
         self.context.get().job_id_list = []
         try:
+
+            description = pipeline_details["settings"].get("name")
             pipeline_request = CreatePipelineRequest(
-                name=pipeline_details["job_id"],
+                name=EntityName(str(pipeline_details["job_id"])),
                 displayName=pipeline_details["settings"].get("name"),
-                description=pipeline_details["settings"].get("name"),
+                description=Markdown(description) if description else None,
                 tasks=self.get_tasks(pipeline_details),
-                service=self.context.get().pipeline_service,
+                service=FullyQualifiedEntityName(self.context.get().pipeline_service),
             )
             yield Either(right=pipeline_request)
             self.register_record(pipeline_request=pipeline_request)
@@ -207,19 +213,23 @@ class DatabrickspipelineSource(PipelineServiceSource):
                                     task_run["state"].get("result_state"),
                                     StatusType.Failed,
                                 ),
-                                startTime=convert_timestamp_to_milliseconds(
-                                    task_run["start_time"]
+                                startTime=Timestamp(
+                                    convert_timestamp_to_milliseconds(
+                                        task_run["start_time"]
+                                    )
                                 ),
-                                endTime=convert_timestamp_to_milliseconds(
-                                    task_run["end_time"]
+                                endTime=Timestamp(
+                                    convert_timestamp_to_milliseconds(
+                                        task_run["end_time"]
+                                    )
                                 ),
                                 logLink=task_run["run_page_url"],
                             )
                         )
                         pipeline_status = PipelineStatus(
                             taskStatus=task_status,
-                            timestamp=convert_timestamp_to_milliseconds(
-                                attempt["start_time"]
+                            timestamp=Timestamp(
+                                convert_timestamp_to_milliseconds(attempt["start_time"])
                             ),
                             executionStatus=STATUS_MAP.get(
                                 attempt["state"].get("result_state"),

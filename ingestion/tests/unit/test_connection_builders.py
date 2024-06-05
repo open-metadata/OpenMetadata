@@ -75,7 +75,7 @@ class ConnectionBuilderTest(TestCase):
         To allow easy key handling
         """
         new_args = init_empty_connection_arguments()
-        new_args.__root__["hello"] = "world"
+        new_args.root["hello"] = "world"
 
-        self.assertEqual(new_args.__root__.get("hello"), "world")
-        self.assertIsNone(new_args.__root__.get("not there"))
+        self.assertEqual(new_args.root.get("hello"), "world")
+        self.assertIsNone(new_args.root.get("not there"))

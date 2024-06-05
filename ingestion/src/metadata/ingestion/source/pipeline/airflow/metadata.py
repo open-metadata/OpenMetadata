@@ -43,6 +43,13 @@ from metadata.generated.schema.entity.services.ingestionPipelines.status import 
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
+from metadata.generated.schema.type.basic import (
+    EntityName,
+    FullyQualifiedEntityName,
+    Markdown,
+    SourceUrl,
+    Timestamp,
+)
 from metadata.generated.schema.type.entityLineage import EntitiesEdge, LineageDetails
 from metadata.generated.schema.type.entityLineage import Source as LineageSource
 from metadata.generated.schema.type.entityReference import EntityReference
@@ -116,8 +123,8 @@ class AirflowSource(PipelineServiceSource):
     def create(
         cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None
     ) -> "AirflowSource":
-        config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
-        connection: AirflowConnection = config.serviceConnection.__root__.config
+        config: WorkflowSource = WorkflowSource.model_validate(config_dict)
+        connection: AirflowConnection = config.serviceConnection.root.config
         if not isinstance(connection, AirflowConnection):
             raise InvalidSourceException(
                 f"Expected AirflowConnection, but got {connection}"
@@ -149,7 +156,7 @@ class AirflowSource(PipelineServiceSource):
             )
             .filter(DagRun.dag_id == dag_id)
             .order_by(DagRun.execution_date.desc())
-            .limit(self.config.serviceConnection.__root__.config.numberOfStatus)
+            .limit(self.config.serviceConnection.root.config.numberOfStatus)
             .all()
         )
 
@@ -252,12 +259,13 @@ class AirflowSource(PipelineServiceSource):
                         if task.task_id in self.context.get().task_names
                     ]
 
+                    timestamp = datetime_to_ts(dag_run.execution_date)
                     pipeline_status = PipelineStatus(
                         taskStatus=task_statuses,
                         executionStatus=STATUS_MAP.get(
                             dag_run.state, StatusType.Pending.value
                         ),
-                        timestamp=datetime_to_ts(dag_run.execution_date),
+                        timestamp=Timestamp(timestamp) if timestamp else None,
                     )
                     pipeline_fqn = fqn.build(
                         metadata=self.metadata,
@@ -315,7 +323,7 @@ class AirflowSource(PipelineServiceSource):
                 dag = AirflowDagDetails(
                     dag_id=serialized_dag[0],
                     fileloc=serialized_dag[2],
-                    data=AirflowDag.parse_obj(serialized_dag[1]),
+                    data=AirflowDag.model_validate(serialized_dag[1]),
                     max_active_runs=data.get("max_active_runs", None),
                     description=data.get("_description", None),
                     start_date=data.get("start_date", None),
@@ -376,7 +384,7 @@ class AirflowSource(PipelineServiceSource):
             Task(
                 name=task.task_id,
                 description=task.doc_md,
-                sourceUrl=(
+                sourceUrl=SourceUrl(
                     f"{clean_uri(host_port)}/taskinstance/list/"
                     f"?flt1_dag_id_equals={dag.dag_id}&_flt_3_task_id={task.task_id}"
                 ),
@@ -422,9 +430,11 @@ class AirflowSource(PipelineServiceSource):
             source_url = f"{clean_uri(self.service_connection.hostPort)}/dags/{pipeline_details.dag_id}/grid"
 
             pipeline_request = CreatePipelineRequest(
-                name=pipeline_details.dag_id,
-                description=pipeline_details.description,
-                sourceUrl=source_url,
+                name=EntityName(pipeline_details.dag_id),
+                description=Markdown(pipeline_details.description)
+                if pipeline_details.description
+                else None,
+                sourceUrl=SourceUrl(source_url),
                 concurrency=pipeline_details.max_active_runs,
                 pipelineLocation=pipeline_details.fileloc,
                 startDate=pipeline_details.start_date.isoformat()
@@ -433,7 +443,7 @@ class AirflowSource(PipelineServiceSource):
                 tasks=self.get_tasks_from_dag(
                     pipeline_details, self.service_connection.hostPort
                 ),
-                service=self.context.get().pipeline_service,
+                service=FullyQualifiedEntityName(self.context.get().pipeline_service),
                 owner=self.get_owner(pipeline_details.owner),
                 scheduleInterval=pipeline_details.schedule_interval,
             )
@@ -497,7 +507,7 @@ class AirflowSource(PipelineServiceSource):
 
         lineage_details = LineageDetails(
             pipeline=EntityReference(
-                id=pipeline_entity.id.__root__,
+                id=pipeline_entity.id.root,
                 type=ENTITY_REFERENCE_TYPE_MAP[Pipeline.__name__],
             ),
             source=LineageSource.PipelineLineage,
@@ -538,12 +548,12 @@ class AirflowSource(PipelineServiceSource):
                         else:
                             logger.warning(
                                 f"Could not find [{to_xlet.entity.__name__}] [{to_xlet.fqn}] from "
-                                f"[{pipeline_entity.fullyQualifiedName.__root__}] outlets"
+                                f"[{pipeline_entity.fullyQualifiedName.root}] outlets"
                             )
                 else:
                     logger.warning(
                         f"Could not find [{from_xlet.entity.__name__}] [{from_xlet.fqn}] from "
-                        f"[{pipeline_entity.fullyQualifiedName.__root__}] inlets"
+                        f"[{pipeline_entity.fullyQualifiedName.root}] inlets"
                     )
 
     def close(self):

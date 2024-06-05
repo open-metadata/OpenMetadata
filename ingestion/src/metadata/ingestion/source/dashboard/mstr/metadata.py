@@ -25,8 +25,13 @@ from metadata.generated.schema.entity.services.ingestionPipelines.status import 
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
+from metadata.generated.schema.type.basic import (
+    EntityName,
+    FullyQualifiedEntityName,
+    SourceUrl,
+)
 from metadata.ingestion.api.models import Either
-from metadata.ingestion.api.source import InvalidSourceException
+from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.dashboard.dashboard_service import DashboardServiceSource
 from metadata.ingestion.source.dashboard.mstr.models import (
@@ -54,8 +59,8 @@ class MstrSource(DashboardServiceSource):
         metadata: OpenMetadata,
         pipeline_name: Optional[str] = None,
     ):
-        config = WorkflowSource.parse_obj(config_dict)
-        connection: MstrConnection = config.serviceConnection.__root__.config
+        config = WorkflowSource.model_validate(config_dict)
+        connection: MstrConnection = config.serviceConnection.root.config
         if not isinstance(connection, MstrConnection):
             raise InvalidSourceException(
                 f"Expected MstrConnection, but got {connection}"
@@ -107,16 +112,18 @@ class MstrSource(DashboardServiceSource):
                 f"{dashboard_details.projectId}/{dashboard_details.id}"
             )
             dashboard_request = CreateDashboardRequest(
-                name=dashboard_details.id,
+                name=EntityName(dashboard_details.id),
                 displayName=dashboard_details.name,
-                sourceUrl=dashboard_url,
+                sourceUrl=SourceUrl(dashboard_url),
                 project=dashboard_details.projectName,
                 charts=[
-                    fqn.build(
-                        self.metadata,
-                        entity_type=Chart,
-                        service_name=self.context.get().dashboard_service,
-                        chart_name=chart,
+                    FullyQualifiedEntityName(
+                        fqn.build(
+                            self.metadata,
+                            entity_type=Chart,
+                            service_name=self.context.get().dashboard_service,
+                            chart_name=chart,
+                        )
                     )
                     for chart in self.context.get().charts or []
                 ],

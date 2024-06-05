@@ -14,7 +14,7 @@ Models related to lineage parsing
 from enum import Enum
 from typing import Dict, List, Optional
 
-from pydantic import BaseModel, Extra, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 from metadata.generated.schema.entity.services.connections.database.athenaConnection import (
     AthenaType,
@@ -144,11 +144,12 @@ class QueryParsingError(BaseModel):
         error (str): The error message of the failed query.
     """
 
-    class Config:
-        extra = Extra.forbid
+    model_config = ConfigDict(
+        extra="forbid",
+    )
 
     query: str = Field(..., description="query text of the failed query")
-    error: Optional[str] = Field(..., description="error message of the failed query")
+    error: Optional[str] = Field(None, description="error message of the failed query")
 
 
 class QueryParsingFailures(metaclass=Singleton):

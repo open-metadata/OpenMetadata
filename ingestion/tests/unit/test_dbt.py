@@ -109,11 +109,6 @@ EXPECTED_DATA_MODELS = [
             deleted=None,
             href=AnyUrl(
                 "http://localhost:8585/api/v1/users/cb2a92f5-e935-4ad7-911c-654280046538",
-                scheme="http",
-                host="localhost",
-                host_type="int_domain",
-                port="8585",
-                path="/api/v1/users/cb2a92f5-e935-4ad7-911c-654280046538",
             ),
         ),
         tags=[
@@ -177,11 +172,6 @@ EXPECTED_DATA_MODEL_NULL_DB = [
             deleted=None,
             href=AnyUrl(
                 "http://localhost:8585/api/v1/users/cb2a92f5-e935-4ad7-911c-654280046538",
-                scheme="http",
-                host="localhost",
-                host_type="int_domain",
-                port="8585",
-                path="/api/v1/users/cb2a92f5-e935-4ad7-911c-654280046538",
             ),
         ),
         tags=None,
@@ -208,11 +198,6 @@ MOCK_OWNER = EntityReference(
     deleted=None,
     href=AnyUrl(
         "http://localhost:8585/api/v1/users/cb2a92f5-e935-4ad7-911c-654280046538",
-        scheme="http",
-        host="localhost",
-        host_type="int_domain",
-        port="8585",
-        path="/api/v1/users/cb2a92f5-e935-4ad7-911c-654280046538",
     ),
 )
 
@@ -475,7 +460,7 @@ class DbtUnitTest(TestCase):
             manifest_node=manifest_node, catalog_node=None
         )
         self.assertEqual(
-            "70064aef-f085-4658-a11a-b5f46568e980", result.id.__root__.__str__()
+            "70064aef-f085-4658-a11a-b5f46568e980", result.id.root.__str__()
         )
 
     def execute_test(self, mock_manifest, expected_records, expected_data_models):
@@ -517,7 +502,7 @@ class DbtUnitTest(TestCase):
         for data_model_link in yield_data_models:
             if isinstance(data_model_link, Either) and data_model_link.right:
                 self.assertIn(
-                    data_model_link.right.table_entity.fullyQualifiedName.__root__,
+                    data_model_link.right.table_entity.fullyQualifiedName.root,
                     EXPECTED_DATA_MODEL_FQNS,
                 )
                 data_model_list.append(data_model_link.right.datamodel)

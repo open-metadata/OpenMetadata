@@ -105,7 +105,7 @@ def build_google_credentials_dict(
 
         return {
             "type": gcp_values.type,
-            "project_id": gcp_values.projectId.__root__,
+            "project_id": gcp_values.projectId.root,
             "private_key_id": gcp_values.privateKeyId,
             "private_key": private_key_str,
             "client_email": gcp_values.clientEmail,
@@ -134,7 +134,7 @@ def set_google_credentials(gcp_credentials: GCPCredentials) -> None:
     :param gcp_credentials: GCPCredentials
     """
     if isinstance(gcp_credentials.gcpConfig, GcpCredentialsPath):
-        os.environ[GOOGLE_CREDENTIALS] = str(gcp_credentials.gcpConfig.__root__)
+        os.environ[GOOGLE_CREDENTIALS] = str(gcp_credentials.gcpConfig.root)
         return
 
     if gcp_credentials.gcpConfig.projectId is None:

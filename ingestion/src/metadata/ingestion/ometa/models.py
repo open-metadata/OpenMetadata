@@ -17,7 +17,7 @@ from pydantic import BaseModel
 T = TypeVar("T", bound=BaseModel)
 
 
-class EntityList(Generic[T], BaseModel):
+class EntityList(BaseModel, Generic[T]):
     """
     Pydantic Entity list model
 

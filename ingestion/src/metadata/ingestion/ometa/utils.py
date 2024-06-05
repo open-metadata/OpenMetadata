@@ -68,9 +68,9 @@ def model_str(arg: Any) -> str:
     Default model stringifying method.
 
     Some elements such as FQN, EntityName, UUID
-    have the actual value under the pydantic base __root__
+    have the actual value under the pydantic base root
     """
-    if hasattr(arg, "__root__"):
-        return str(arg.__root__)
+    if hasattr(arg, "root"):
+        return str(arg.root)
 
     return str(arg)

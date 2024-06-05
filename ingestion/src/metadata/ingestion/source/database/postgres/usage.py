@@ -12,9 +12,10 @@
 Postgres usage module
 """
 import traceback
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Iterable
 
+from metadata.generated.schema.type.basic import DateTime
 from metadata.generated.schema.type.tableQuery import TableQueries, TableQuery
 from metadata.ingestion.source.connections import get_connection
 from metadata.ingestion.source.database.postgres.queries import POSTGRES_SQL_STATEMENT
@@ -52,7 +53,7 @@ class PostgresUsageSource(PostgresQueryParserSource, UsageSource):
                             TableQuery(
                                 query=row["query_text"],
                                 userName=row["usename"],
-                                analysisDate=datetime.now(),
+                                analysisDate=DateTime(datetime.now(tz=timezone.utc)),
                                 aborted=self.get_aborted_status(row),
                                 databaseName=self.get_database_name(row),
                                 serviceName=self.config.serviceName,

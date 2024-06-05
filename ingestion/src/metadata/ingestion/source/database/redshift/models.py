@@ -24,7 +24,7 @@ class RedshiftStoredProcedure(BaseModel):
     """Redshift stored procedure list query results"""
 
     name: str
-    owner: Optional[str]
+    owner: Optional[str] = None
     definition: str
 
 

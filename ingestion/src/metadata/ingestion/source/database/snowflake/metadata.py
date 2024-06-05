@@ -44,7 +44,11 @@ from metadata.generated.schema.entity.services.ingestionPipelines.status import 
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
-from metadata.generated.schema.type.basic import EntityName, SourceUrl
+from metadata.generated.schema.type.basic import (
+    EntityName,
+    FullyQualifiedEntityName,
+    SourceUrl,
+)
 from metadata.ingestion.api.delete import delete_entity_by_name
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
@@ -186,8 +190,8 @@ class SnowflakeSource(
     def create(
         cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None
     ):
-        config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
-        connection: SnowflakeConnection = config.serviceConnection.__root__.config
+        config: WorkflowSource = WorkflowSource.model_validate(config_dict)
+        connection: SnowflakeConnection = config.serviceConnection.root.config
         if not isinstance(connection, SnowflakeConnection):
             raise InvalidSourceException(
                 f"Expected SnowflakeConnection, but got {connection}"
@@ -285,7 +289,7 @@ class SnowflakeSource(
             yield row[1]
 
     def get_database_names(self) -> Iterable[str]:
-        configured_db = self.config.serviceConnection.__root__.config.database
+        configured_db = self.config.serviceConnection.root.config.database
         if configured_db:
             self.set_inspector(configured_db)
             self.set_session_query_tag()
@@ -433,8 +437,10 @@ class SnowflakeSource(
                 row = list(res)
                 fqn_elements = [name for name in row[2:] if name]
                 yield from get_ometa_tag_and_classification(
-                    tag_fqn=fqn._build(  # pylint: disable=protected-access
-                        self.context.get().database_service, *fqn_elements
+                    tag_fqn=FullyQualifiedEntityName(
+                        fqn._build(  # pylint: disable=protected-access
+                            self.context.get().database_service, *fqn_elements
+                        )
                     ),
                     tags=[row[1]],
                     classification_name=row[0],
@@ -623,7 +629,7 @@ class SnowflakeSource(
                 )
             ).all()
             for row in results:
-                stored_procedure = SnowflakeStoredProcedure.parse_obj(dict(row))
+                stored_procedure = SnowflakeStoredProcedure.model_validate(dict(row))
                 if stored_procedure.definition is None:
                     logger.debug(
                         f"Missing ownership permissions on procedure {stored_procedure.name}."
@@ -661,7 +667,7 @@ class SnowflakeSource(
 
         try:
             stored_procedure_request = CreateStoredProcedureRequest(
-                name=EntityName(__root__=stored_procedure.name),
+                name=EntityName(stored_procedure.name),
                 description=stored_procedure.comment,
                 storedProcedureCode=StoredProcedureCode(
                     language=STORED_PROC_LANGUAGE_MAP.get(stored_procedure.language),
@@ -675,7 +681,7 @@ class SnowflakeSource(
                     schema_name=self.context.get().database_schema,
                 ),
                 sourceUrl=SourceUrl(
-                    __root__=self._get_source_url_root(
+                    self._get_source_url_root(
                         database_name=self.context.get().database,
                         schema_name=self.context.get().database_schema,
                     )

@@ -195,7 +195,7 @@ class OMetaServiceTest(TestCase):
             service=EntityReference(
                 id=self.service.id,
                 type="databaseService",
-                name=self.service.name.__root__,
+                name=self.service.name.root,
             ),
         )
 
@@ -228,7 +228,7 @@ class OMetaServiceTest(TestCase):
             service=EntityReference(
                 id=self.usage_service.id,
                 type="databaseService",
-                name=self.usage_service.name.__root__,
+                name=self.usage_service.name.root,
             ),
         )
 
@@ -263,7 +263,7 @@ class OMetaServiceTest(TestCase):
             service=EntityReference(
                 id=self.usage_service.id,
                 type="databaseService",
-                name=self.usage_service.name.__root__,
+                name=self.usage_service.name.root,
             ),
         )
 
@@ -298,7 +298,7 @@ class OMetaServiceTest(TestCase):
             service=EntityReference(
                 id=self.service.id,
                 type="databaseService",
-                name=self.service.name.__root__,
+                name=self.service.name.root,
             ),
         )
 
@@ -326,7 +326,7 @@ class OMetaServiceTest(TestCase):
             sourceConfig=SourceConfig(
                 config=TestSuitePipeline(
                     type="TestSuite",
-                    entityFullyQualifiedName=self.service.name.__root__,
+                    entityFullyQualifiedName=self.service.name.root,
                 )
             ),
             openMetadataServerConnection=self.server_config,

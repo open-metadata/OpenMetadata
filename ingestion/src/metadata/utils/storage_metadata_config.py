@@ -79,7 +79,8 @@ def _(config: StorageMetadataLocalConfig) -> ManifestMetadataConfig:
             logger.debug(f"Reading [manifestFilePath] from: {config.manifestFilePath}")
             with open(config.manifestFilePath, "r", encoding="utf-8") as manifest:
                 metadata_manifest = manifest.read()
-        return ManifestMetadataConfig.parse_obj(json.loads(metadata_manifest))
+            return ManifestMetadataConfig.model_validate(json.loads(metadata_manifest))
+        raise StorageMetadataConfigException("Manifest file path not provided")
     except Exception as exc:
         logger.debug(traceback.format_exc())
         raise StorageMetadataConfigException(
@@ -98,7 +99,7 @@ def _(config: StorageMetadataHttpConfig) -> ManifestMetadataConfig:
             raise StorageMetadataConfigException(
                 "Manifest file not found in file server"
             )
-        return ManifestMetadataConfig.parse_obj(http_manifest.json())
+        return ManifestMetadataConfig.model_validate(http_manifest.json())
     except Exception as exc:
         logger.debug(traceback.format_exc())
         raise StorageMetadataConfigException(
@@ -131,7 +132,7 @@ def _(config: StorageMetadataS3Config) -> ManifestMetadataConfig:
         )
 
         manifest = reader.read(path=path, bucket_name=bucket_name)
-        return ManifestMetadataConfig.parse_obj(json.loads(manifest))
+        return ManifestMetadataConfig.model_validate(json.loads(manifest))
     except Exception as exc:
         logger.debug(traceback.format_exc())
         raise StorageMetadataConfigException(
@@ -162,7 +163,7 @@ def _(config: StorageMetadataAdlsConfig) -> ManifestMetadataConfig:
         )
 
         manifest = reader.read(path=path, bucket_name=bucket_name)
-        return ManifestMetadataConfig.parse_obj(json.loads(manifest))
+        return ManifestMetadataConfig.model_validate(json.loads(manifest))
     except Exception as exc:
         logger.debug(traceback.format_exc())
         raise StorageMetadataConfigException(
@@ -196,7 +197,7 @@ def _(config: StorageMetadataGcsConfig) -> ManifestMetadataConfig:
         )
 
         manifest = reader.read(path=path, bucket_name=bucket_name)
-        return ManifestMetadataConfig.parse_obj(json.loads(manifest))
+        return ManifestMetadataConfig.model_validate(json.loads(manifest))
     except Exception as exc:
         logger.debug(traceback.format_exc())
         raise StorageMetadataConfigException(

@@ -50,7 +50,7 @@ def ingest_metadata(db_service, metadata: OpenMetadata, create_test_data):
     workflow_config = OpenMetadataWorkflowConfig(
         source=Source(
             type=db_service.connection.config.type.value.lower(),
-            serviceName=db_service.fullyQualifiedName.__root__,
+            serviceName=db_service.fullyQualifiedName.root,
             serviceConnection=db_service.connection,
             sourceConfig=SourceConfig(config={}),
         ),
@@ -71,6 +71,6 @@ def test_ingest_metadata(ingest_metadata, db_service, metadata: OpenMetadata):
         Table, params={"databaseSchema": "docker_test_trino.minio.my_schema"}
     )
     assert (
-        next((t for t in tables.entities if t.name.__root__ == "test_table"), None)
+        next((t for t in tables.entities if t.name.root == "test_table"), None)
         is not None
     )

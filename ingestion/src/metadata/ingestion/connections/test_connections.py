@@ -13,7 +13,7 @@ Classes and methods to handle connection testing when
 creating a service
 """
 import traceback
-from datetime import datetime
+from datetime import datetime, timezone
 from functools import partial
 from typing import Callable, List, Optional
 
@@ -36,6 +36,7 @@ from metadata.generated.schema.entity.services.connections.testConnectionResult 
     TestConnectionResult,
     TestConnectionStepResult,
 )
+from metadata.generated.schema.type.basic import Timestamp
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.profiler.orm.functions.conn_test import ConnTestFn
 from metadata.utils.logger import cli_logger
@@ -146,12 +147,16 @@ def _test_connection_steps_automation_workflow(
                     # break the workflow if the step is a short circuit step
                     break
 
-            test_connection_result.lastUpdatedAt = datetime.now().timestamp()
+            test_connection_result.lastUpdatedAt = Timestamp(
+                int(datetime.now(timezone.utc).timestamp() * 1000)
+            )
             metadata.patch_automation_workflow_response(
                 automation_workflow, test_connection_result, WorkflowStatus.Running
             )
 
-        test_connection_result.lastUpdatedAt = datetime.now().timestamp()
+        test_connection_result.lastUpdatedAt = Timestamp(
+            int(datetime.now(timezone.utc).timestamp() * 1000)
+        )
 
         test_connection_result.status = (
             StatusType.Failed
@@ -169,7 +174,7 @@ def _test_connection_steps_automation_workflow(
             f"Wild error happened while testing the connection in the workflow - {err}"
         )
         logger.debug(traceback.format_exc())
-        test_connection_result.lastUpdatedAt = datetime.now().timestamp()
+        test_connection_result.lastUpdatedAt = datetime.now(tz=timezone.utc).timestamp()
         metadata.create_or_update(
             CreateWorkflowRequest(
                 name=automation_workflow.name,

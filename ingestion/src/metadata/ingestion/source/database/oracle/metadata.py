@@ -112,8 +112,8 @@ class OracleSource(StoredProcedureMixin, CommonDbSourceService):
     def create(
         cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None
     ):
-        config = WorkflowSource.parse_obj(config_dict)
-        connection: OracleConnection = config.serviceConnection.__root__.config
+        config = WorkflowSource.model_validate(config_dict)
+        connection: OracleConnection = config.serviceConnection.root.config
         if not isinstance(connection, OracleConnection):
             raise InvalidSourceException(
                 f"Expected OracleConnection, but got {connection}"
@@ -217,7 +217,7 @@ class OracleSource(StoredProcedureMixin, CommonDbSourceService):
 
         try:
             stored_procedure_request = CreateStoredProcedureRequest(
-                name=EntityName(__root__=stored_procedure.name),
+                name=EntityName(stored_procedure.name),
                 storedProcedureCode=StoredProcedureCode(
                     language=Language.SQL,
                     code=stored_procedure.definition,

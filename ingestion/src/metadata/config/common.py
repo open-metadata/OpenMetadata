@@ -33,7 +33,7 @@ class DynamicTypedConfig(ConfigModel):
     """Class definition for Dynamic Typed Config"""
 
     type: str
-    config: Optional[Any]
+    config: Optional[Any] = None
 
 
 class WorkflowExecutionError(Exception):

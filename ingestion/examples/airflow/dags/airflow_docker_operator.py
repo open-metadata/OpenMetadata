@@ -61,7 +61,7 @@ with models.DAG(
         environment={"config": config, "pipelineType": PipelineType.metadata.value},
         docker_url="unix://var/run/docker.sock",  # To allow to start Docker. Needs chmod 666 permissions
         tty=True,
-        auto_remove="True",
+        auto_remove="success",
         network_mode="host",  # To reach the OM server
         task_id="ingest",
         dag=dag,

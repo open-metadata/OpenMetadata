@@ -28,7 +28,7 @@ def mocked_ometa_object():
 
     class FQDN:
         def __init__(self):
-            self.__root__ = "database.schema.table"
+            self.root = "database.schema.table"
 
     class Entity:
         def __init__(self, _type):

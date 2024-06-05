@@ -195,9 +195,7 @@ class ProfilerWorkflowTest(TestCase):
         """
 
         service_id = str(
-            cls.metadata.get_by_name(
-                entity=DatabaseService, fqn="test_sqlite"
-            ).id.__root__
+            cls.metadata.get_by_name(entity=DatabaseService, fqn="test_sqlite").id.root
         )
 
         cls.metadata.delete(
@@ -219,7 +217,7 @@ class ProfilerWorkflowTest(TestCase):
         table_entity: Table = self.metadata.get_by_name(
             entity=Table, fqn="test_sqlite.main.main.users"
         )
-        assert table_entity.fullyQualifiedName.__root__ == "test_sqlite.main.main.users"
+        assert table_entity.fullyQualifiedName.root == "test_sqlite.main.main.users"
 
     def test_profiler_workflow(self):
         """
@@ -650,7 +648,7 @@ class ProfilerWorkflowTest(TestCase):
             profile_type=ColumnProfile,
         ).entities
 
-        latest_id_profile = max(id_profile, key=lambda o: o.timestamp.__root__)
+        latest_id_profile = max(id_profile, key=lambda o: o.timestamp.root)
 
         id_metric_ln = 0
         for metric_name, metric in latest_id_profile:
@@ -669,7 +667,7 @@ class ProfilerWorkflowTest(TestCase):
             profile_type=ColumnProfile,
         ).entities
 
-        latest_age_profile = max(age_profile, key=lambda o: o.timestamp.__root__)
+        latest_age_profile = max(age_profile, key=lambda o: o.timestamp.root)
 
         age_metric_ln = 0
         for metric_name, metric in latest_age_profile:
@@ -681,7 +679,7 @@ class ProfilerWorkflowTest(TestCase):
 
         assert age_metric_ln == len(profiler_metrics)
 
-        latest_exc_timestamp = latest_age_profile.timestamp.__root__
+        latest_exc_timestamp = latest_age_profile.timestamp.root
         fullname_profile = self.metadata.get_profile_data(
             "test_sqlite.main.main.users.fullname",
             get_beginning_of_day_timestamp_mill(),
@@ -690,11 +688,11 @@ class ProfilerWorkflowTest(TestCase):
         ).entities
 
         assert not [
-            p for p in fullname_profile if p.timestamp.__root__ == latest_exc_timestamp
+            p for p in fullname_profile if p.timestamp.root == latest_exc_timestamp
         ]
 
         sample_data = self.metadata.get_sample_data(table)
-        assert sorted([c.__root__ for c in sample_data.sampleData.columns]) == sorted(
+        assert sorted([c.root for c in sample_data.sampleData.columns]) == sorted(
             ["id", "age"]
         )
 

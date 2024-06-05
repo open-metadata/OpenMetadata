@@ -91,7 +91,7 @@ class PandasInterfaceMixin:
             config_source=service_connection_config.configSource,
             client=client,
             file_fqn=DatalakeTableSchemaWrapper(
-                key=table.name.__root__,
+                key=table.name.root,
                 bucket_name=table.databaseSchema.name,
                 file_extension=table.fileFormat,
             ),
@@ -125,4 +125,4 @@ class PandasInterfaceMixin:
                         for df in data
                     ]
             return data
-        raise TypeError(f"Couldn't fetch {table.name.__root__}")
+        raise TypeError(f"Couldn't fetch {table.name.root}")

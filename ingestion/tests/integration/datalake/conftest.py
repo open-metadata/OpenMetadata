@@ -16,7 +16,7 @@ from copy import deepcopy
 
 import boto3
 import pytest
-from moto import mock_s3
+from moto import mock_aws
 
 from metadata.generated.schema.entity.services.databaseService import DatabaseService
 from metadata.workflow.data_quality import TestSuiteWorkflow
@@ -130,7 +130,7 @@ DATA_QUALITY_CONFIG = {
 
 @pytest.fixture(scope="module", autouse=True)
 def aws():
-    with mock_s3():
+    with mock_aws():
         yield boto3.client("s3", region_name="us-east-1")
 
 
@@ -140,7 +140,7 @@ def setup_s3(request) -> None:
     boto3.DEFAULT_SESSION = None
     request.cls.s3_client = boto3.client(
         "s3",
-        region_name="us-weat-1",
+        region_name="us-west-1",
     )
     s3 = boto3.resource(
         "s3",

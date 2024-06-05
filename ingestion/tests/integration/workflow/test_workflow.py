@@ -52,7 +52,7 @@ class WorkflowTest(TestCase):
         service_id = str(
             self.metadata.get_by_name(
                 entity=DatabaseService, fqn="local_mysql_test"
-            ).id.__root__
+            ).id.root
         )
 
         self.metadata.delete(
@@ -126,8 +126,8 @@ class WorkflowTest(TestCase):
         )
 
         # We have status for the source and sink
-        self.assertEqual(len(pipeline_status.status.__root__), 2)
-        self.assertTrue(isinstance(pipeline_status.status.__root__[0], StepSummary))
+        self.assertEqual(len(pipeline_status.status.root), 2)
+        self.assertTrue(isinstance(pipeline_status.status.root[0], StepSummary))
 
         # Rerunning with a different Run ID still generates the correct status
         new_run_id = str(uuid.uuid4())
@@ -142,8 +142,8 @@ class WorkflowTest(TestCase):
         )
 
         # We have status for the source and sink
-        self.assertEqual(len(pipeline_status.status.__root__), 2)
-        self.assertTrue(isinstance(pipeline_status.status.__root__[0], StepSummary))
+        self.assertEqual(len(pipeline_status.status.root), 2)
+        self.assertTrue(isinstance(pipeline_status.status.root[0], StepSummary))
 
         self.delete_service()
 

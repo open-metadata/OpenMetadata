@@ -35,7 +35,7 @@ class TestCaseDefinition(ConfigModel):
     description: Optional[str] = None
     testDefinitionName: str
     columnName: Optional[str] = None
-    parameterValues: Optional[List[TestCaseParameterValue]]
+    parameterValues: Optional[List[TestCaseParameterValue]] = None
     computePassedFailedRowCount: Optional[bool] = False
 
 

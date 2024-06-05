@@ -20,6 +20,7 @@ from datetime import datetime, timezone
 from typing import Callable, Iterable, Optional
 
 from metadata.generated.schema.analytics.reportData import ReportData
+from metadata.generated.schema.type.basic import Timestamp
 from metadata.ingestion.api.status import Status
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 
@@ -42,7 +43,7 @@ class DataProcessor(abc.ABC):
 
     def __init__(self, metadata: OpenMetadata):
         self.metadata = metadata
-        self.timestamp = datetime.now(timezone.utc).timestamp() * 1000
+        self.timestamp = Timestamp(int(datetime.now(timezone.utc).timestamp() * 1000))
         self.processor_status = Status()
         self._refined_data = {}
         self.post_hook: Optional[Callable] = None

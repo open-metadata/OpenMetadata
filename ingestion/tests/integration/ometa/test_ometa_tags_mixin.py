@@ -96,7 +96,7 @@ class OMetaTagMixinPost(TestCase):
             entity=Classification, fqn=CLASSIFICATION_NAME
         )
 
-        self.assertEqual(classification.name.__root__, CLASSIFICATION_NAME)
+        self.assertEqual(classification.name.root, CLASSIFICATION_NAME)
 
     def test_get_primary_tag(self):
         """Test GET tag by classification"""
@@ -105,7 +105,7 @@ class OMetaTagMixinPost(TestCase):
             fqn=f"{CLASSIFICATION_NAME}.{PRIMARY_TAG_NAME}",
         )
 
-        self.assertEqual(primary_tag.name.__root__, PRIMARY_TAG_NAME)
+        self.assertEqual(primary_tag.name.root, PRIMARY_TAG_NAME)
 
     def test_get_secondary_tag(self):
         """Test GET secondary"""
@@ -114,7 +114,7 @@ class OMetaTagMixinPost(TestCase):
             fqn=f"{CLASSIFICATION_NAME}.{PRIMARY_TAG_NAME}.{SECONDARY_TAG_NAME}",
         )
 
-        self.assertEqual(secondary_tag.name.__root__, SECONDARY_TAG_NAME)
+        self.assertEqual(secondary_tag.name.root, SECONDARY_TAG_NAME)
 
     def test_list_classifications(self):
         """Test GET list categories Mixin method"""

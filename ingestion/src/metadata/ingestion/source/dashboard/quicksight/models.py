@@ -24,38 +24,38 @@ class DataSourceResp(BaseModel):
 
 
 class VersionSheet(BaseModel):
-    ChartId: Optional[str] = Field(alias="SheetId")
-    Name: Optional[str]
+    ChartId: Optional[str] = Field(None, alias="SheetId")
+    Name: Optional[str] = None
 
 
 class DashboardVersion(BaseModel):
-    Status: Optional[str]
-    Arn: Optional[str]
-    SourceEntityArn: Optional[str]
-    DataSetArns: Optional[List]
-    Description: Optional[str]
-    Charts: Optional[List[VersionSheet]] = Field(alias="Sheets")
+    Status: Optional[str] = None
+    Arn: Optional[str] = None
+    SourceEntityArn: Optional[str] = None
+    DataSetArns: Optional[List] = None
+    Description: Optional[str] = None
+    Charts: Optional[List[VersionSheet]] = Field(None, alias="Sheets")
 
 
 class DashboardDetail(BaseModel):
     DashboardId: str
-    Arn: Optional[str]
+    Arn: Optional[str] = None
     Name: str
-    Version: Optional[DashboardVersion]
+    Version: Optional[DashboardVersion] = None
 
 
 class DashboardResp(BaseModel):
     Dashboard: DashboardDetail
-    Status: Optional[int]
-    RequestId: Optional[str]
+    Status: Optional[int] = None
+    RequestId: Optional[str] = None
 
 
 class DataSource(BaseModel):
     DataSourceId: str
-    DataSourceParameters: Optional[dict]
+    DataSourceParameters: Optional[dict] = None
 
 
 class DescribeDataSourceResponse(BaseModel):
-    DataSource: Optional[DataSource]
-    RequestId: Optional[str]
-    Status: Optional[int]
+    DataSource: Optional[DataSource] = None
+    RequestId: Optional[str] = None
+    Status: Optional[int] = None

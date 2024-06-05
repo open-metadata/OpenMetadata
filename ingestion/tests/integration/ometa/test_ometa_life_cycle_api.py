@@ -76,12 +76,12 @@ class OMetaLifeCycleTest(TestCase):
     created_user_ref = EntityReference(
         id=created_user.id,
         type="user",
-        fullyQualifiedName=created_user.fullyQualifiedName.__root__,
+        fullyQualifiedName=created_user.fullyQualifiedName.root,
     )
     updated_user_ref = EntityReference(
         id=updated_user.id,
         type="user",
-        fullyQualifiedName=updated_user.fullyQualifiedName.__root__,
+        fullyQualifiedName=updated_user.fullyQualifiedName.root,
     )
 
     service = CreateDatabaseServiceRequest(
@@ -151,7 +151,7 @@ class OMetaLifeCycleTest(TestCase):
         service_id = str(
             cls.metadata.get_by_name(
                 entity=DatabaseService, fqn="test-service-lifecycle"
-            ).id.__root__
+            ).id.root
         )
 
         cls.metadata.delete(
@@ -168,7 +168,7 @@ class OMetaLifeCycleTest(TestCase):
 
         res = self.create_table(name="test_create")
 
-        self.assertEqual(res.name.__root__, "test_create")
+        self.assertEqual(res.name.root, "test_create")
         self.assertEqual(res.databaseSchema.id, self.create_schema_entity.id)
         self.assertEqual(res.owner, None)
 
@@ -198,7 +198,7 @@ class OMetaLifeCycleTest(TestCase):
 
         # test the get_by_iod api
         res_id = self.metadata.get_by_id(
-            entity=Table, entity_id=str(res.id.__root__), fields=["lifeCycle"]
+            entity=Table, entity_id=str(res.id.root), fields=["lifeCycle"]
         )
         self.assertEqual(res_id.lifeCycle, self.life_cycle)
 

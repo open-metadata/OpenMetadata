@@ -68,9 +68,7 @@ class AvroDataFrameReader(DataFrameReader):
         except (AssertionError, InvalidAvroBinaryEncoding):
             columns = parse_avro_schema(schema=avro_text, cls=Column)
             field_map = {
-                col.name.__root__: Series(
-                    PD_AVRO_FIELD_MAP.get(col.dataType.value, "str")
-                )
+                col.name.root: Series(PD_AVRO_FIELD_MAP.get(col.dataType.value, "str"))
                 for col in columns
             }
             return DatalakeColumnWrapper(

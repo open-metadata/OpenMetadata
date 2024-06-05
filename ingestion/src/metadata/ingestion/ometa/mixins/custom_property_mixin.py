@@ -57,7 +57,7 @@ class OMetaCustomPropertyMixin:
 
         resp = self.client.put(
             f"/metadata/types/{entity_schema.get('id')}",
-            data=ometa_custom_property.createCustomPropertyRequest.json(),
+            data=ometa_custom_property.createCustomPropertyRequest.model_dump_json(),
         )
         return resp
 
@@ -75,6 +75,4 @@ class OMetaCustomPropertyMixin:
         Get the PropertyType for custom properties
         """
         custom_property_type = self.get_custom_property_type(data_type=data_type)
-        return PropertyType(
-            __root__=EntityReference(id=custom_property_type.id, type="type")
-        )
+        return PropertyType(EntityReference(id=custom_property_type.id, type="type"))

@@ -75,8 +75,8 @@ MOCK_DATABASE = Database(
 
 
 class MockTable(BaseModel):
-    time_partitioning: Optional[TimePartitioning]
-    range_partitioning: Optional[RangePartitioning]
+    time_partitioning: Optional[TimePartitioning] = None
+    range_partitioning: Optional[RangePartitioning] = None
 
     class Config:
         arbitrary_types_allowed = True
@@ -125,7 +125,7 @@ class BigqueryUnitTest(TestCase):
         )
         self.bigquery_source.context.get().__dict__[
             "database"
-        ] = MOCK_DATABASE.fullyQualifiedName.__root__
+        ] = MOCK_DATABASE.fullyQualifiedName.root
         self.bigquery_source.client = client
         self.inspector = types.SimpleNamespace()
 

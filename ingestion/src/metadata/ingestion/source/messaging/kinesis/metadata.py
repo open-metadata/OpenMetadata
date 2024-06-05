@@ -27,6 +27,11 @@ from metadata.generated.schema.entity.services.ingestionPipelines.status import 
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
+from metadata.generated.schema.type.basic import (
+    EntityName,
+    FullyQualifiedEntityName,
+    SourceUrl,
+)
 from metadata.generated.schema.type.schema import Topic
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
@@ -75,8 +80,8 @@ class KinesisSource(MessagingServiceSource):
     def create(
         cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None
     ):
-        config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
-        connection: KinesisConnection = config.serviceConnection.__root__.config
+        config: WorkflowSource = WorkflowSource.model_validate(config_dict)
+        connection: KinesisConnection = config.serviceConnection.root.config
         if not isinstance(connection, KinesisConnection):
             raise InvalidSourceException(
                 f"Expected KinesisConnection, but got {connection}"
@@ -129,14 +134,14 @@ class KinesisSource(MessagingServiceSource):
             )
 
             topic = CreateTopicRequest(
-                name=topic_details.topic_name,
-                service=self.context.get().messaging_service,
+                name=EntityName(topic_details.topic_name),
+                service=FullyQualifiedEntityName(self.context.get().messaging_service),
                 partitions=len(topic_details.topic_metadata.partitions),
                 retentionTime=self._compute_retention_time(
                     topic_details.topic_metadata.summary
                 ),
                 maximumMessageSize=MAX_MESSAGE_SIZE,
-                sourceUrl=source_url,
+                sourceUrl=SourceUrl(source_url),
             )
             yield Either(right=topic)
             self.register_record(topic_request=topic)

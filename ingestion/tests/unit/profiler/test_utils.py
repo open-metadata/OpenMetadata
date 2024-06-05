@@ -50,7 +50,7 @@ from metadata.utils.profiler_utils import (
 )
 from metadata.utils.sqa_utils import is_array
 
-from .conftest import LowerRow, Row
+from .conftest import Row
 
 Base = declarative_base()
 
@@ -185,14 +185,7 @@ def test_get_snowflake_system_queries_all_dll(query, expected):
     reference https://docs.snowflake.com/en/sql-reference/sql-dml
     """
     row = Row(
-        query_id=1,
-        query_type=expected,
-        start_time=datetime.now(),
-        query_text=query,
-    )
-
-    lower_row = LowerRow(
-        query_id=1,
+        query_id="1",
         query_type=expected,
         start_time=datetime.now(),
         query_text=query,
@@ -233,8 +226,8 @@ def test_get_snowflake_system_queries_from_es():
 
     db_service = DatabaseService(
         id=uuid.uuid4(),
-        name=EntityName(__root__="service"),
-        fullyQualifiedName=FullyQualifiedEntityName(__root__="service"),
+        name=EntityName("service"),
+        fullyQualifiedName=FullyQualifiedEntityName("service"),
         serviceType=DatabaseServiceType.CustomDatabase,
     )
 
@@ -269,7 +262,7 @@ def test_get_snowflake_system_queries_from_es():
     # Returning a single table should work fine
     with patch.object(OpenMetadata, "es_search_from_fqn", return_value=[table]):
         row = Row(
-            query_id=1,
+            query_id="1",
             query_type="INSERT",
             start_time=datetime.now(),
             query_text="INSERT INTO TABLE2 (col1, col2) VALUES (1, 'a'), (2, 'b')",

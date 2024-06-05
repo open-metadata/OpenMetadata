@@ -47,13 +47,13 @@ def get_connection(connection: ClickhouseConnection) -> Engine:
         if not connection.connectionArguments:
             connection.connectionArguments = init_empty_connection_arguments()
         if connection.secure:
-            connection.connectionArguments.__root__["secure"] = connection.secure
+            connection.connectionArguments.root["secure"] = connection.secure
         if connection.keyfile:
-            connection.connectionArguments.__root__["keyfile"] = connection.keyfile
+            connection.connectionArguments.root["keyfile"] = connection.keyfile
     if connection.https:
         if not connection.connectionOptions:
             connection.connectionOptions = init_empty_connection_options()
-        connection.connectionOptions.__root__["protocol"] = HTTPS_PROTOCOL
+        connection.connectionOptions.root["protocol"] = HTTPS_PROTOCOL
 
     return create_generic_db_connection(
         connection=connection,

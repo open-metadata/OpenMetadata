@@ -50,15 +50,13 @@ class JsonSchemaParserTests(TestCase):
     parsed_schema = parse_json_schema(sample_json_schema)
 
     def test_schema_name(self):
-        self.assertEqual(self.parsed_schema[0].name.__root__, "Person")
+        self.assertEqual(self.parsed_schema[0].name.root, "Person")
 
     def test_schema_type(self):
         self.assertEqual(self.parsed_schema[0].dataType.name, "RECORD")
 
     def test_field_names(self):
-        field_names = {
-            str(field.name.__root__) for field in self.parsed_schema[0].children
-        }
+        field_names = {str(field.name.root) for field in self.parsed_schema[0].children}
         self.assertEqual(field_names, {"firstName", "lastName", "age"})
 
         # validate display names
@@ -75,7 +73,7 @@ class JsonSchemaParserTests(TestCase):
 
     def test_field_descriptions(self):
         field_descriptions = {
-            str(field.description.__root__) for field in self.parsed_schema[0].children
+            str(field.description.root) for field in self.parsed_schema[0].children
         }
         self.assertEqual(
             field_descriptions,

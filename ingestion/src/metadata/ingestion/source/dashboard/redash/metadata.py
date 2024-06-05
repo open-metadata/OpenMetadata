@@ -33,6 +33,12 @@ from metadata.generated.schema.entity.services.ingestionPipelines.status import 
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
+from metadata.generated.schema.type.basic import (
+    EntityName,
+    FullyQualifiedEntityName,
+    Markdown,
+    SourceUrl,
+)
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
@@ -74,8 +80,8 @@ class RedashSource(DashboardServiceSource):
         metadata: OpenMetadata,
         pipeline_name: Optional[str] = None,
     ):
-        config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
-        connection: RedashConnection = config.serviceConnection.__root__.config
+        config: WorkflowSource = WorkflowSource.model_validate(config_dict)
+        connection: RedashConnection = config.serviceConnection.root.config
         if not isinstance(connection, RedashConnection):
             raise InvalidSourceException(
                 f"Expected RedashConnection, but got {connection}"
@@ -152,20 +158,24 @@ class RedashSource(DashboardServiceSource):
                 dashboard_description = widgets.get("text")
 
             dashboard_request = CreateDashboardRequest(
-                name=dashboard_details["id"],
+                name=EntityName(dashboard_details["id"]),
                 displayName=dashboard_details.get("name"),
-                description=dashboard_description,
+                description=Markdown(dashboard_description)
+                if dashboard_description
+                else None,
                 charts=[
-                    fqn.build(
-                        self.metadata,
-                        entity_type=Chart,
-                        service_name=self.context.get().dashboard_service,
-                        chart_name=chart,
+                    FullyQualifiedEntityName(
+                        fqn.build(
+                            self.metadata,
+                            entity_type=Chart,
+                            service_name=self.context.get().dashboard_service,
+                            chart_name=chart,
+                        )
                     )
                     for chart in self.context.get().charts or []
                 ],
-                service=self.context.get().dashboard_service,
-                sourceUrl=self.get_dashboard_url(dashboard_details),
+                service=FullyQualifiedEntityName(self.context.get().dashboard_service),
+                sourceUrl=SourceUrl(self.get_dashboard_url(dashboard_details)),
                 tags=get_tag_labels(
                     metadata=self.metadata,
                     tags=dashboard_details.get("tags"),
@@ -264,18 +274,20 @@ class RedashSource(DashboardServiceSource):
                     continue
                 yield Either(
                     right=CreateChartRequest(
-                        name=widgets["id"],
+                        name=EntittName(widgets["id"]),
                         displayName=chart_display_name
                         if visualization and visualization["query"]
                         else "",
                         chartType=get_standard_chart_type(
                             visualization["type"] if visualization else ""
                         ),
-                        service=self.context.get().dashboard_service,
-                        sourceUrl=self.get_dashboard_url(dashboard_details),
-                        description=visualization["description"]
+                        service=FullyQualifiedEntityName(
+                            self.context.get().dashboard_service
+                        ),
+                        sourceUrl=SourceUrl(self.get_dashboard_url(dashboard_details)),
+                        description=Markdown(visualization["description"])
                         if visualization
-                        else "",
+                        else None,
                     )
                 )
             except Exception as exc:

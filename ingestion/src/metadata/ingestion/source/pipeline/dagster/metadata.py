@@ -32,6 +32,13 @@ from metadata.generated.schema.entity.services.ingestionPipelines.status import 
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
+from metadata.generated.schema.type.basic import (
+    EntityName,
+    FullyQualifiedEntityName,
+    Markdown,
+    SourceUrl,
+    Timestamp,
+)
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.step import WorkflowFatalError
 from metadata.ingestion.api.steps import InvalidSourceException
@@ -71,8 +78,8 @@ class DagsterSource(PipelineServiceSource):
     def create(
         cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None
     ):
-        config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
-        connection: DagsterConnection = config.serviceConnection.__root__.config
+        config: WorkflowSource = WorkflowSource.model_validate(config_dict)
+        connection: DagsterConnection = config.serviceConnection.root.config
         if not isinstance(connection, DagsterConnection):
             raise InvalidSourceException(
                 f"Expected DagsterConnection, but got {connection}"
@@ -124,11 +131,13 @@ class DagsterSource(PipelineServiceSource):
 
         try:
             pipeline_request = CreatePipelineRequest(
-                name=pipeline_details.id.replace(":", ""),
+                name=EntityName(pipeline_details.id.replace(":", "")),
                 displayName=pipeline_details.name,
-                description=pipeline_details.description,
+                description=Markdown(pipeline_details.description)
+                if pipeline_details.description
+                else None,
                 tasks=self._get_task_list(pipeline_name=pipeline_details.name),
-                service=self.context.get().pipeline_service,
+                service=FullyQualifiedEntityName(self.context.get().pipeline_service),
                 tags=get_tag_labels(
                     metadata=self.metadata,
                     tags=[self.context.get().repository_name],
@@ -182,7 +191,9 @@ class DagsterSource(PipelineServiceSource):
                 executionStatus=STATUS_MAP.get(
                     run.status.lower(), StatusType.Pending.value
                 ),
-                timestamp=round(convert_timestamp_to_milliseconds(run.endTime))
+                timestamp=Timestamp(
+                    round(convert_timestamp_to_milliseconds(run.endTime))
+                )
                 if run.endTime
                 else None,
             )
@@ -267,7 +278,7 @@ class DagsterSource(PipelineServiceSource):
 
     def get_source_url(
         self, pipeline_name: str, task_name: Optional[str]
-    ) -> Optional[str]:
+    ) -> Optional[SourceUrl]:
         """
         Method to get source url for pipelines and tasks for dagster
         """
@@ -278,7 +289,7 @@ class DagsterSource(PipelineServiceSource):
             )
             if task_name:
                 url = f"{url}{task_name}"
-            return url
+            return SourceUrl(url)
         except Exception as exc:
             logger.debug(traceback.format_exc())
             logger.warning(f"Error to get pipeline url: {exc}")

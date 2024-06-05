@@ -43,7 +43,7 @@ class OMetaPipelineMixin:
         """
         resp = self.client.put(
             f"{self.get_suffix(Pipeline)}/{fqn}/status",
-            data=status.json(),
+            data=status.model_dump_json(),
         )
 
         return Pipeline(**resp)

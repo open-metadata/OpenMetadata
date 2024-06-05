@@ -349,7 +349,7 @@ class SQAProfilerInterface(ProfilerInterface, SQAInterfaceMixin):
                     crs.scalar()
                 )  # raise MultipleResultsFound if more than one row is returned
                 custom_metrics.append(
-                    CustomMetricProfile(name=metric.name.__root__, value=row)
+                    CustomMetricProfile(name=metric.name.root, value=row)
                 )
 
             except Exception as exc:

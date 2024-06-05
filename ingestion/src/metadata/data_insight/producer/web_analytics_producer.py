@@ -80,5 +80,4 @@ class WebAnalyticsProducer(ProducerInterface):
         """fetch data for web analytics event"""
         events = self._get_events(None, limit, fields)
 
-        for entity in events.entities:
-            yield entity
+        yield from events.entities

@@ -113,11 +113,11 @@ class CliCommonDB:
                 for column in profile.columns:
                     expected_column_profile = next(
                         (
-                            profile.get(column.name.__root__)
+                            profile.get(column.name.root)
                             for profile in expected_profiler_time_partition_results[
                                 "column_profile"
                             ]
-                            if profile.get(column.name.__root__)
+                            if profile.get(column.name.root)
                         ),
                         None,
                     )

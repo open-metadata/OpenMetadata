@@ -45,15 +45,18 @@
       "$ref": "../type/basic.json#/definitions/markdown"
     },
     "testDefinition": {
+      "description": "Test definition that this test case is based on.",
       "$ref": "../type/entityReference.json"
     },
     "entityLink": {
+        "description": "Link to the entity that this test case is testing.",
       "$ref": "../type/basic.json#/definitions/entityLink"
     },
     "entityFQN": {
       "type": "string"
     },
     "testSuite": {
+      "description": "Test Suite that this test case belongs to.",
       "$ref": "../type/entityReference.json"
     },
     "testSuites": {

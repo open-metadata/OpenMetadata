@@ -14,7 +14,7 @@
                     "parameterValues": [
                         {
                             "name": "columnCount",
-                            "value": 10
+                            "value": "10"
                         }
                     ],
                     "resolutions": {
@@ -95,11 +95,11 @@
                     "parameterValues": [
                         {
                             "name": "minColValue",
-                            "value": 1
+                            "value": "1"
                         },
                         {
                             "name": "maxColValue",
-                            "value": 10
+                            "value": "10"
                         }
                     ],
                     "resolutions": {
@@ -169,11 +169,11 @@
                     "parameterValues": [
                         {
                             "name": "minValueForMaxInCol",
-                            "value": 50
+                            "value": "50"
                         },
                         {
                             "name": "maxValueForMaxInCol",
-                            "value": 100
+                            "value": "100"
                         }
                     ],
                     "resolutions": {
@@ -243,11 +243,11 @@
                     "parameterValues": [
                         {
                             "name": "min",
-                            "value": 90001
+                            "value": "90001"
                         },
                         {
                             "name": "max",
-                            "value": 96162
+                            "value": "96162"
                         }
                     ],
                     "resolutions": {
@@ -332,11 +332,11 @@
                     "parameterValues": [
                         {
                             "name": "min",
-                            "value": 90001
+                            "value": "90001"
                         },
                         {
                             "name": "max",
-                            "value": 96162
+                            "value": "96162"
                         }
                     ],
                     "resolutions": {}

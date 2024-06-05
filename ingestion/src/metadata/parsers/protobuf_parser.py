@@ -20,11 +20,10 @@ import sys
 import traceback
 from enum import Enum
 from pathlib import Path
-from typing import List, Optional, Union
+from typing import List, Optional, Type, Union
 
 import grpc_tools.protoc
 from pydantic import BaseModel
-from pydantic.main import ModelMetaclass
 
 from metadata.generated.schema.entity.data.table import Column, DataType
 from metadata.generated.schema.type.schema import DataTypeTopic, FieldModel
@@ -168,7 +167,7 @@ class ProtobufParser:
         return None
 
     def parse_protobuf_schema(
-        self, cls: ModelMetaclass = FieldModel
+        self, cls: Type[BaseModel] = FieldModel
     ) -> Optional[List[Union[FieldModel, Column]]]:
         """
         Method to parse the protobuf schema
@@ -202,7 +201,7 @@ class ProtobufParser:
             )
         return None
 
-    def _get_field_type(self, type_: int, cls: ModelMetaclass = FieldModel) -> str:
+    def _get_field_type(self, type_: int, cls: Type[BaseModel] = FieldModel) -> str:
         if type_ > 18:
             return DataType.UNKNOWN.value
         data_type = ProtobufDataTypes(type_).name
@@ -211,7 +210,7 @@ class ProtobufParser:
         return data_type
 
     def get_protobuf_fields(
-        self, fields, cls: ModelMetaclass = FieldModel
+        self, fields, cls: Type[BaseModel] = FieldModel
     ) -> Optional[List[Union[FieldModel, Column]]]:
         """
         Recursively convert the parsed schema into required models

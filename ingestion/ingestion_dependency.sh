@@ -33,7 +33,7 @@ export AIRFLOW__API__AUTH_BACKEND=${AIRFLOW__API__AUTH_BACKENDS:-"airflow.api.au
 # Use the default airflow env var or the one we set from OM properties
 export AIRFLOW__DATABASE__SQL_ALCHEMY_CONN=${AIRFLOW__DATABASE__SQL_ALCHEMY_CONN:-$DB_CONN}
 
-airflow db init
+airflow db migrate
 
 airflow users create \
     --username ${AIRFLOW_ADMIN_USER} \
@@ -42,9 +42,6 @@ airflow users create \
     --role Admin \
     --email spiderman@superhero.org \
     --password ${AIRFLOW_ADMIN_PASSWORD}
-
-(sleep 5; airflow db migrate)
-(sleep 5; airflow db migrate)
 
 # we need to this in case the container is restarted and the scheduler exited without tidying up its lock file
 rm -f /opt/airflow/airflow-webserver-monitor.pid

@@ -63,12 +63,12 @@ def get_connection(connection: PrestoConnection) -> Engine:
         connection.connectionArguments or init_empty_connection_arguments()
     )
     if connection.protocol:
-        connection.connectionArguments.__root__["protocol"] = connection.protocol
+        connection.connectionArguments.root["protocol"] = connection.protocol
     if connection.verify:
         connection.connectionArguments = (
             connection.connectionArguments or init_empty_connection_arguments()
         )
-        connection.connectionArguments.__root__["requests_kwargs"] = {
+        connection.connectionArguments.root["requests_kwargs"] = {
             "verify": connection.verify
         }
 

@@ -22,24 +22,24 @@ from pydantic import BaseModel
 
 class RunStepStats(BaseModel):
     runId: str
-    startTime: Optional[float]
-    endTime: Optional[float]
-    status: Optional[str]
+    startTime: Optional[float] = None
+    endTime: Optional[float] = None
+    status: Optional[str] = None
 
 
 class SolidStepStatsConnection(BaseModel):
-    nodes: Optional[List[RunStepStats]]
+    nodes: Optional[List[RunStepStats]] = None
 
 
 class TaskSolidHandle(BaseModel):
-    stepStats: Optional[SolidStepStatsConnection]
+    stepStats: Optional[SolidStepStatsConnection] = None
 
 
 class DagsterPipeline(BaseModel):
     id: str
     name: str
-    description: Optional[str]
-    solidHandle: Optional[TaskSolidHandle]
+    description: Optional[str] = None
+    solidHandle: Optional[TaskSolidHandle] = None
 
 
 class PipelineOrErrorModel(BaseModel):
@@ -55,7 +55,7 @@ class DagsterLocation(BaseModel):
 class Node(BaseModel):
     id: str
     name: str
-    location: Optional[DagsterLocation]
+    location: Optional[DagsterLocation] = None
     pipelines: List[DagsterPipeline]
 
 
@@ -73,28 +73,28 @@ class SolidName(BaseModel):
 
 
 class DependsOnSolid(BaseModel):
-    solid: Optional[SolidName]
+    solid: Optional[SolidName] = None
 
 
 class SolidInput(BaseModel):
-    dependsOn: Optional[List[DependsOnSolid]]
+    dependsOn: Optional[List[DependsOnSolid]] = None
 
 
 class Solid(BaseModel):
     name: str
-    inputs: Optional[List[SolidInput]]
+    inputs: Optional[List[SolidInput]] = None
 
 
 class SolidHandle(BaseModel):
     handleID: str
-    solid: Optional[Solid]
+    solid: Optional[Solid] = None
 
 
 class GraphOrError(BaseModel):
     id: str
     name: str
-    description: Optional[str]
-    solidHandles: Optional[List[SolidHandle]]
+    description: Optional[str] = None
+    solidHandles: Optional[List[SolidHandle]] = None
 
 
 class GraphOrErrorModel(BaseModel):

@@ -112,5 +112,5 @@ class SQAInterfaceMixin:
         return [
             column.name
             for column in self.table.__table__.columns
-            if column.name in {col.name.__root__ for col in self.table_entity.columns}
+            if column.name in {col.name.root for col in self.table_entity.columns}
         ]

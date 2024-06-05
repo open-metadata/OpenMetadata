@@ -24,7 +24,7 @@ from metadata.generated.schema.dataInsight.type.percentageOfEntitiesWithDescript
 from metadata.generated.schema.dataInsight.type.percentageOfEntitiesWithOwnerByType import (
     PercentageOfEntitiesWithOwnerByType,
 )
-from metadata.generated.schema.type.basic import FullyQualifiedEntityName
+from metadata.generated.schema.type.basic import FullyQualifiedEntityName, Timestamp
 from metadata.utils.dispatch import enum_register
 from metadata.utils.logger import profiler_interface_registry_logger
 
@@ -81,13 +81,13 @@ def percentage_of_entities_with_description_kpi_result(
             target_results.append(
                 KpiTarget(
                     name=target.name,
-                    value=value,
+                    value=str(value),
                     targetMet=value > ast.literal_eval(target.value),
                 )
             )
 
     return KpiResult(
-        timestamp=timestamp,
+        timestamp=Timestamp(timestamp),
         targetResult=target_results,
         kpiFqn=kpi_fqn,
     )
@@ -141,13 +141,13 @@ def percentage_of_entities_with_owner_kpi_result(
             target_results.append(
                 KpiTarget(
                     name=target.name,
-                    value=value,
+                    value=str(value),
                     targetMet=value > ast.literal_eval(target.value),
                 )
             )
 
     return KpiResult(
-        timestamp=timestamp,
+        timestamp=Timestamp(timestamp),
         targetResult=target_results,
         kpiFqn=kpi_fqn,
     )

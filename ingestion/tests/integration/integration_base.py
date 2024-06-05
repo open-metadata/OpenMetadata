@@ -44,7 +44,10 @@ from metadata.generated.schema.api.tests.createTestCase import CreateTestCaseReq
 from metadata.generated.schema.api.tests.createTestDefinition import (
     CreateTestDefinitionRequest,
 )
-from metadata.generated.schema.api.tests.createTestSuite import CreateTestSuiteRequest
+from metadata.generated.schema.api.tests.createTestSuite import (
+    CreateTestSuiteRequest,
+    TestSuiteEntityName,
+)
 from metadata.generated.schema.entity.data.dashboard import Dashboard
 from metadata.generated.schema.entity.data.dashboardDataModel import (
     DashboardDataModel,
@@ -86,6 +89,7 @@ from metadata.generated.schema.entity.services.pipelineService import (
     PipelineService,
     PipelineServiceType,
 )
+from metadata.generated.schema.entity.teams.team import TeamType
 from metadata.generated.schema.security.client.openMetadataJWTClientConfig import (
     OpenMetadataJWTClientConfig,
 )
@@ -94,7 +98,14 @@ from metadata.generated.schema.tests.testDefinition import (
     TestCaseParameterDefinition,
     TestPlatform,
 )
-from metadata.generated.schema.type.basic import EntityName, FullyQualifiedEntityName
+from metadata.generated.schema.type.basic import (
+    Email,
+    EntityLink,
+    EntityName,
+    FullyQualifiedEntityName,
+    Markdown,
+    TestCaseEntityName,
+)
 from metadata.ingestion.models.custom_pydantic import CustomSecretStr
 from metadata.ingestion.ometa.ometa_api import C, OpenMetadata, T
 from metadata.utils.dispatch import class_register
@@ -177,7 +188,7 @@ def int_admin_ometa(url: str = "http://localhost:8585/api") -> OpenMetadata:
 
 def generate_name() -> EntityName:
     """Generate a random for the asset"""
-    return EntityName(__root__=str(uuid.uuid4()))
+    return EntityName(str(uuid.uuid4()))
 
 
 create_service_registry = class_register()
@@ -192,7 +203,7 @@ def get_create_service(entity: Type[T], name: Optional[EntityName] = None) -> C:
         )
 
     if not name:
-        name = generate_name()
+        name = generate_name().root
 
     return func(name)
 
@@ -257,7 +268,7 @@ def get_create_entity(
         )
 
     if not name:
-        name = generate_name()
+        name = generate_name().root
 
     return func(reference, name)
 
@@ -323,16 +334,16 @@ def get_create_user_entity(
     name: Optional[EntityName] = None, email: Optional[str] = None
 ):
     if not name:
-        name = generate_name()
+        name = generate_name().root
     if not email:
-        email = f"{generate_name().__root__}@getcollate.io"
-    return CreateUserRequest(name=name, email=email)
+        email = f"{generate_name().root}@getcollate.io"
+    return CreateUserRequest(name=name, email=Email(root=email))
 
 
 def get_create_team_entity(name: Optional[EntityName] = None, users=List[str]):
     if not name:
-        name = generate_name()
-    return CreateTeamRequest(name=name, teamType="Group", users=users)
+        name = generate_name().root
+    return CreateTeamRequest(name=name, teamType=TeamType.Group, users=users)
 
 
 def get_create_test_definition(
@@ -342,12 +353,12 @@ def get_create_test_definition(
     description: Optional[str] = None,
 ):
     if not name:
-        name = generate_name()
+        name = generate_name().root
     if not description:
-        description = generate_name().__root__
+        description = generate_name().root
     return CreateTestDefinitionRequest(
-        name=name,
-        description=description,
+        name=TestCaseEntityName(name),
+        description=Markdown(description),
         entityType=entity_type,
         testPlatforms=[TestPlatform.GreatExpectations],
         parameterDefinition=parameter_definition,
@@ -360,13 +371,13 @@ def get_create_test_suite(
     description: Optional[str] = None,
 ):
     if not name:
-        name = generate_name()
+        name = generate_name().root
     if not description:
-        description = generate_name().__root__
+        description = generate_name().root
     return CreateTestSuiteRequest(
-        name=name,
-        description=description,
-        executableEntityReference=executable_entity_reference,
+        name=TestSuiteEntityName(name),
+        description=Markdown(description),
+        executableEntityReference=FullyQualifiedEntityName(executable_entity_reference),
     )
 
 
@@ -378,10 +389,10 @@ def get_create_test_case(
     name: Optional[EntityName] = None,
 ):
     if not name:
-        name = generate_name()
+        name = generate_name().root
     return CreateTestCaseRequest(
-        name=name,
-        entityLink=entity_link,
+        name=TestCaseEntityName(name),
+        entityLink=EntityLink(entity_link),
         testSuite=test_suite,
         testDefinition=test_definition,
         parameterValues=parameter_values,

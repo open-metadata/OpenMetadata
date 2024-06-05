@@ -12,7 +12,7 @@
 KafkaConnect source to extract metadata from OM UI
 """
 import traceback
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Iterable, Optional
 
 from metadata.generated.schema.api.data.createPipeline import CreatePipelineRequest
@@ -36,6 +36,7 @@ from metadata.generated.schema.entity.services.ingestionPipelines.status import 
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
+from metadata.generated.schema.type.basic import EntityName, SourceUrl, Timestamp
 from metadata.generated.schema.type.entityLineage import EntitiesEdge, LineageDetails
 from metadata.generated.schema.type.entityLineage import Source as LineageSource
 from metadata.generated.schema.type.entityReference import EntityReference
@@ -72,8 +73,8 @@ class KafkaconnectSource(PipelineServiceSource):
     def create(
         cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None
     ):
-        config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
-        connection: KafkaConnectConnection = config.serviceConnection.__root__.config
+        config: WorkflowSource = WorkflowSource.model_validate(config_dict)
+        connection: KafkaConnectConnection = config.serviceConnection.root.config
         if not isinstance(connection, KafkaConnectConnection):
             raise InvalidSourceException(
                 f"Expected KafkaConnectConnection, but got {connection}"
@@ -87,10 +88,10 @@ class KafkaconnectSource(PipelineServiceSource):
         Method to Get Pipeline Entity
         """
         try:
-            connection_url = f"{clean_uri(self.service_connection.hostPort)}"
+            connection_url = SourceUrl(f"{clean_uri(self.service_connection.hostPort)}")
 
             pipeline_request = CreatePipelineRequest(
-                name=pipeline_details.name,
+                name=EntityName(pipeline_details.name),
                 sourceUrl=connection_url,
                 tasks=[
                     Task(
@@ -193,9 +194,7 @@ class KafkaconnectSource(PipelineServiceSource):
             )
 
             lineage_details = LineageDetails(
-                pipeline=EntityReference(
-                    id=pipeline_entity.id.__root__, type="pipeline"
-                ),
+                pipeline=EntityReference(id=pipeline_entity.id.root, type="pipeline"),
                 source=LineageSource.PipelineLineage,
             )
 
@@ -292,7 +291,7 @@ class KafkaconnectSource(PipelineServiceSource):
                     pipeline_details.status, StatusType.Pending
                 ),
                 taskStatus=task_status,
-                timestamp=datetime_to_ts(datetime.now())
+                timestamp=Timestamp(datetime_to_ts(datetime.now(tz=timezone.utc)))
                 # Kafka connect doesn't provide any details with exec time
             )
 

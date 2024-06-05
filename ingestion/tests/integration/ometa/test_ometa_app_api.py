@@ -33,4 +33,4 @@ class OMetaTableTest(TestCase):
         """We can GET an app via the client"""
         app = self.metadata.get_by_name(entity=App, fqn="SearchIndexingApplication")
         self.assertIsNotNone(app)
-        self.assertEqual(app.name.__root__, "SearchIndexingApplication")
+        self.assertEqual(app.name.root, "SearchIndexingApplication")

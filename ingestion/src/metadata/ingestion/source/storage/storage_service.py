@@ -14,6 +14,9 @@ Base class for ingesting Object Storage services
 from abc import ABC, abstractmethod
 from typing import Any, Iterable, List, Optional, Set
 
+from pydantic import Field
+from typing_extensions import Annotated
+
 from metadata.generated.schema.api.data.createContainer import CreateContainerRequest
 from metadata.generated.schema.entity.data.container import Container
 from metadata.generated.schema.entity.services.storageService import (
@@ -68,7 +71,14 @@ OPENMETADATA_TEMPLATE_FILE_NAME = "openmetadata.json"
 
 
 class StorageServiceTopology(ServiceTopology):
-    root = TopologyNode(
+    """
+    Defines the hierarchy in Messaging Services.
+    service -> container -> container -> container...
+    """
+
+    root: Annotated[
+        TopologyNode, Field(description="Root node for the topology")
+    ] = TopologyNode(
         producer="get_services",
         stages=[
             NodeStage(
@@ -84,7 +94,9 @@ class StorageServiceTopology(ServiceTopology):
         post_process=["mark_containers_as_deleted"],
     )
 
-    container = TopologyNode(
+    container: Annotated[
+        TopologyNode, Field(description="Container Processing Node")
+    ] = TopologyNode(
         producer="get_containers",
         stages=[
             NodeStage(
@@ -109,7 +121,7 @@ class StorageServiceSource(TopologyRunnerMixin, Source, ABC):
     config: WorkflowSource
     metadata: OpenMetadata
     # Big union of types we want to fetch dynamically
-    service_connection: StorageConnection.__fields__["config"].type_
+    service_connection: StorageConnection.__fields__["config"].annotation
 
     topology = StorageServiceTopology()
     context = TopologyContextManager(topology)
@@ -125,7 +137,7 @@ class StorageServiceSource(TopologyRunnerMixin, Source, ABC):
         super().__init__()
         self.config = config
         self.metadata = metadata
-        self.service_connection = self.config.serviceConnection.__root__.config
+        self.service_connection = self.config.serviceConnection.root.config
         self.source_config: StorageServiceMetadataPipeline = (
             self.config.sourceConfig.config
         )
@@ -184,7 +196,7 @@ class StorageServiceSource(TopologyRunnerMixin, Source, ABC):
         parent_container = (
             self.metadata.get_by_id(
                 entity=Container, entity_id=container_request.parent.id
-            ).fullyQualifiedName.__root__
+            ).fullyQualifiedName.root
             if container_request.parent
             else None
         )
@@ -193,7 +205,7 @@ class StorageServiceSource(TopologyRunnerMixin, Source, ABC):
             entity_type=Container,
             service_name=self.context.get().objectstore_service,
             parent_container=parent_container,
-            container_name=container_request.name.__root__,
+            container_name=container_request.name.root,
         )
 
         self.container_source_state.add(container_fqn)

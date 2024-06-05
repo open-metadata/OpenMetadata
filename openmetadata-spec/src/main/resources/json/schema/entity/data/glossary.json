@@ -93,15 +93,16 @@
       "type" : "boolean",
       "default" : "false"
     },
-    "domain" : {
+    "domain": {
       "description": "Domain the Glossary belongs to.",
       "$ref": "../../type/entityReference.json"
     },
-    "dataProducts" : {
+    "dataProducts": {
       "description": "List of data products this entity is part of.",
       "$ref" : "../../type/entityReferenceList.json"
     },
-    "votes" : {
+    "votes": {
+      "description": "Votes on the entity.",
       "$ref": "../../type/votes.json"
     },
     "extension": {

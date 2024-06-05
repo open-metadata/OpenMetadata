@@ -38,7 +38,7 @@ class SplineClient:
     def __init__(self, config: SplineConnection):
         self.config = config
         client_config: ClientConfig = ClientConfig(
-            base_url=clean_uri(self.config.hostPort),
+            base_url=clean_uri(str(self.config.hostPort)),
             api_version="consumer",
             auth_header=AUTHORIZATION_HEADER,
             auth_token=lambda: (NO_ACCESS_TOKEN, 0),

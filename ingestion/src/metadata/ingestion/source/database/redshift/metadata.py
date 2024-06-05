@@ -163,8 +163,8 @@ class RedshiftSource(
     def create(
         cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None
     ):
-        config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
-        connection: RedshiftConnection = config.serviceConnection.__root__.config
+        config: WorkflowSource = WorkflowSource.model_validate(config_dict)
+        connection: RedshiftConnection = config.serviceConnection.root.config
         if not isinstance(connection, RedshiftConnection):
             raise InvalidSourceException(
                 f"Expected RedshiftConnection, but got {connection}"
@@ -282,14 +282,14 @@ class RedshiftSource(
             )
 
     def get_database_names(self) -> Iterable[str]:
-        if not self.config.serviceConnection.__root__.config.ingestAllDatabases:
+        if not self.config.serviceConnection.root.config.ingestAllDatabases:
             self.get_partition_details()
 
             self._set_incremental_table_processor(
-                self.config.serviceConnection.__root__.config.database
+                self.config.serviceConnection.root.config.database
             )
 
-            yield self.config.serviceConnection.__root__.config.database
+            yield self.config.serviceConnection.root.config.database
         else:
             for new_database in self.get_database_names_raw():
                 database_fqn = fqn.build(
@@ -385,7 +385,7 @@ class RedshiftSource(
                 )
             ).all()
             for row in results:
-                stored_procedure = RedshiftStoredProcedure.parse_obj(dict(row))
+                stored_procedure = RedshiftStoredProcedure.model_validate(dict(row))
                 yield stored_procedure
 
     @calculate_execution_time_generator()
@@ -396,7 +396,7 @@ class RedshiftSource(
 
         try:
             stored_procedure_request = CreateStoredProcedureRequest(
-                name=EntityName(__root__=stored_procedure.name),
+                name=EntityName(stored_procedure.name),
                 storedProcedureCode=StoredProcedureCode(
                     language=Language.SQL,
                     code=stored_procedure.definition,

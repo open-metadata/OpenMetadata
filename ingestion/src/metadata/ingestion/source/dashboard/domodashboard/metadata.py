@@ -38,6 +38,12 @@ from metadata.generated.schema.entity.services.ingestionPipelines.status import 
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
+from metadata.generated.schema.type.basic import (
+    EntityName,
+    FullyQualifiedEntityName,
+    Markdown,
+    SourceUrl,
+)
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
@@ -64,8 +70,8 @@ class DomodashboardSource(DashboardServiceSource):
     def create(
         cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None
     ):
-        config = WorkflowSource.parse_obj(config_dict)
-        connection: DomoDashboardConnection = config.serviceConnection.__root__.config
+        config = WorkflowSource.model_validate(config_dict)
+        connection: DomoDashboardConnection = config.serviceConnection.root.config
         if not isinstance(connection, DomoDashboardConnection):
             raise InvalidSourceException(
                 f"Expected DomoDashboardConnection, but got {connection}"
@@ -114,20 +120,24 @@ class DomodashboardSource(DashboardServiceSource):
     ) -> Iterable[Either[CreateDashboardRequest]]:
         try:
             dashboard_url = (
-                f"{self.service_connection.instanceDomain}/page/{dashboard_details.id}"
+                f"{self.service_connection.instanceDomain}page/{dashboard_details.id}"
             )
 
             dashboard_request = CreateDashboardRequest(
-                name=dashboard_details.id,
-                sourceUrl=dashboard_url,
+                name=EntityName(dashboard_details.id),
+                sourceUrl=SourceUrl(dashboard_url),
                 displayName=dashboard_details.name,
-                description=dashboard_details.description,
+                description=Markdown(dashboard_details.description)
+                if dashboard_details.description
+                else None,
                 charts=[
-                    fqn.build(
-                        self.metadata,
-                        entity_type=Chart,
-                        service_name=self.context.get().dashboard_service,
-                        chart_name=chart,
+                    FullyQualifiedEntityName(
+                        fqn.build(
+                            self.metadata,
+                            entity_type=Chart,
+                            service_name=self.context.get().dashboard_service,
+                            chart_name=chart,
+                        )
                     )
                     for chart in self.context.get().charts or []
                 ],
@@ -217,10 +227,12 @@ class DomodashboardSource(DashboardServiceSource):
                 if chart.name:
                     yield Either(
                         right=CreateChartRequest(
-                            name=chart_id,
-                            description=chart.description,
+                            name=EntityName(chart_id),
+                            description=Markdown(chart.description)
+                            if chart.description
+                            else None,
                             displayName=chart.name,
-                            sourceUrl=chart_url,
+                            sourceUrl=SourceUrl(chart_url),
                             service=self.context.get().dashboard_service,
                             chartType=get_standard_chart_type(chart.metadata.chartType),
                         )

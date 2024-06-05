@@ -21,7 +21,9 @@ class TestWorkflowParse(TestCase):
             with self.subTest(file_name=yaml_file):
                 with open(f"{package_path}/{yaml_file}", "r") as file:
                     file_content = file.read()
-                    self.assertTrue(
+                    try:
                         parse_workflow_config_gracefully(yaml.safe_load(file_content))
-                    )
-                    file.close()
+                    except Exception as exc:
+                        assert False, f"Error parsing {yaml_file}: {exc}"
+                    finally:
+                        file.close()

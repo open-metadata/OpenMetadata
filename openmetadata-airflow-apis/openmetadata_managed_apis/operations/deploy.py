@@ -63,7 +63,7 @@ class DagDeployer:
             ingestion_pipeline.openMetadataServerConnection.secretsManagerLoader,
         )
         self.ingestion_pipeline = ingestion_pipeline
-        self.dag_id = clean_dag_id(self.ingestion_pipeline.name.__root__)
+        self.dag_id = clean_dag_id(self.ingestion_pipeline.name.root)
 
     def store_airflow_pipeline_config(
         self, dag_config_file_path: Path

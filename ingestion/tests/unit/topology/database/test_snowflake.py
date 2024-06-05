@@ -74,21 +74,21 @@ SNOWFLAKE_CONFIGURATIONS = {
 
 MOCK_PIPELINE_STATUSES = [
     PipelineStatus(
-        runId=1,
+        runId="1",
         pipelineState="success",
         timestamp=10,
         startDate=10,
         endDate=20,
     ),
     PipelineStatus(
-        runId=2,
+        runId="2",
         pipelineState="success",
         timestamp=30,
         startDate=30,
         endDate=50,
     ),
     PipelineStatus(
-        runId=3,
+        runId="3",
         pipelineState="failed",
         timestamp=70,
         startDate=70,

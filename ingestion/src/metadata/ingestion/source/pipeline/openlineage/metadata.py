@@ -81,8 +81,8 @@ class OpenlineageSource(PipelineServiceSource):
         cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None
     ):
         """Create class instance"""
-        config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
-        connection: OpenLineageConnection = config.serviceConnection.__root__.config
+        config: WorkflowSource = WorkflowSource.model_validate(config_dict)
+        connection: OpenLineageConnection = config.serviceConnection.root.config
         if not isinstance(connection, OpenLineageConnection):
             raise InvalidSourceException(
                 f"Expected OpenLineageConnection, but got {connection}"
@@ -452,7 +452,7 @@ class OpenlineageSource(PipelineServiceSource):
                         ),
                         lineageDetails=LineageDetails(
                             pipeline=EntityReference(
-                                id=pipeline_entity.id.__root__,
+                                id=pipeline_entity.id.root,
                                 type="pipeline",
                             ),
                             description=f"Lineage extracted from OpenLineage job: {pipeline_details.job['name']}",

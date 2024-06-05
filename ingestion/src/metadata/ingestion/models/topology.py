@@ -16,7 +16,7 @@ import threading
 from functools import singledispatchmethod
 from typing import Any, Dict, Generic, List, Optional, Type, TypeVar
 
-from pydantic import BaseModel, Extra, Field, create_model
+from pydantic import BaseModel, ConfigDict, Field, create_model
 
 from metadata.generated.schema.api.data.createStoredProcedure import (
     CreateStoredProcedureRequest,
@@ -37,8 +37,9 @@ class NodeStage(BaseModel, Generic[T]):
     source.
     """
 
-    class Config:
-        extra = Extra.forbid
+    model_config = ConfigDict(
+        extra="forbid",
+    )
 
     # Required fields to define the yielded entity type and the function processing it
     type_: Type[T] = Field(
@@ -99,8 +100,9 @@ class TopologyNode(BaseModel):
     with the updated element from the OM API.
     """
 
-    class Config:
-        extra = Extra.forbid
+    model_config = ConfigDict(
+        extra="forbid",
+    )
 
     producer: str = Field(
         ...,
@@ -128,8 +130,7 @@ class ServiceTopology(BaseModel):
     Bounds all service topologies
     """
 
-    class Config:
-        extra = Extra.allow
+    model_config = ConfigDict(extra="allow")
 
 
 class TopologyContext(BaseModel):
@@ -137,11 +138,10 @@ class TopologyContext(BaseModel):
     Bounds all topology contexts
     """
 
-    class Config:
-        extra = Extra.allow
+    model_config = ConfigDict(extra="allow")
 
     def __repr__(self):
-        ctx = {key: value.name.__root__ for key, value in self.__dict__.items()}
+        ctx = {key: value.name.root for key, value in self.__dict__.items()}
         return f"TopologyContext({ctx})"
 
     @classmethod
@@ -247,7 +247,7 @@ class TopologyContext(BaseModel):
             service_name=self.__dict__["database_service"],
             database_name=self.__dict__["database"],
             schema_name=self.__dict__["database_schema"],
-            procedure_name=right.name.__root__,
+            procedure_name=right.name.root,
         )
 
 

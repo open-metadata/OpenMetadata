@@ -86,13 +86,13 @@ def main():
 
         pipeline_status = metadata.get_pipeline_status(
             workflow_config.ingestionPipelineFQN,
-            str(workflow_config.pipelineRunId.__root__),
+            str(workflow_config.pipelineRunId.root),
         )
 
         # Maybe the workflow was not even initialized
         if not pipeline_status:
             pipeline_status = PipelineStatus(
-                runId=str(workflow_config.pipelineRunId.__root__),
+                runId=str(workflow_config.pipelineRunId.root),
                 startDate=datetime.now().timestamp() * 1000,
                 timestamp=datetime.now().timestamp() * 1000,
             )

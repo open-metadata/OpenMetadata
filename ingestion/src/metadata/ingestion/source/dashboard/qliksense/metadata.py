@@ -38,6 +38,12 @@ from metadata.generated.schema.entity.services.ingestionPipelines.status import 
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
+from metadata.generated.schema.type.basic import (
+    EntityName,
+    FullyQualifiedEntityName,
+    Markdown,
+    SourceUrl,
+)
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
@@ -66,8 +72,8 @@ class QliksenseSource(DashboardServiceSource):
     def create(
         cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None
     ):
-        config = WorkflowSource.parse_obj(config_dict)
-        connection: QlikSenseConnection = config.serviceConnection.__root__.config
+        config = WorkflowSource.model_validate(config_dict)
+        connection: QlikSenseConnection = config.serviceConnection.root.config
         if not isinstance(connection, QlikSenseConnection):
             raise InvalidSourceException(
                 f"Expected QlikSenseConnection, but got {connection}"
@@ -126,20 +132,24 @@ class QliksenseSource(DashboardServiceSource):
                 dashboard_url = None
 
             dashboard_request = CreateDashboardRequest(
-                name=dashboard_details.qDocId,
-                sourceUrl=dashboard_url,
+                name=EntityName(dashboard_details.qDocId),
+                sourceUrl=SourceUrl(dashboard_url),
                 displayName=dashboard_details.qDocName,
-                description=dashboard_details.qMeta.description,
+                description=Markdown(dashboard_details.qMeta.description)
+                if dashboard_details.qMeta.description
+                else None,
                 charts=[
-                    fqn.build(
-                        self.metadata,
-                        entity_type=Chart,
-                        service_name=self.context.get().dashboard_service,
-                        chart_name=chart,
+                    FullyQualifiedEntityName(
+                        fqn.build(
+                            self.metadata,
+                            entity_type=Chart,
+                            service_name=self.context.get().dashboard_service,
+                            chart_name=chart,
+                        )
                     )
                     for chart in self.context.get().charts or []
                 ],
-                service=self.context.get().dashboard_service,
+                service=FullyQualifiedEntityName(self.context.get().dashboard_service),
                 owner=self.get_owner_ref(dashboard_details=dashboard_details),
             )
             yield Either(right=dashboard_request)
@@ -176,12 +186,16 @@ class QliksenseSource(DashboardServiceSource):
                     continue
                 yield Either(
                     right=CreateChartRequest(
-                        name=chart.qInfo.qId,
+                        name=EntityName(chart.qInfo.qId),
                         displayName=chart.qMeta.title,
-                        description=chart.qMeta.description,
+                        description=Markdown(chart.qMeta.description)
+                        if chart.qMeta.description
+                        else None,
                         chartType=ChartType.Other,
-                        sourceUrl=chart_url,
-                        service=self.context.get().dashboard_service,
+                        sourceUrl=SourceUrl(chart_url),
+                        service=FullyQualifiedEntityName(
+                            self.context.get().dashboard_service
+                        ),
                     )
                 )
             except Exception as exc:  # pylint: disable=broad-except
@@ -224,9 +238,11 @@ class QliksenseSource(DashboardServiceSource):
                         self.status.filter(data_model_name, "Data model filtered out.")
                         continue
                     data_model_request = CreateDashboardDataModelRequest(
-                        name=data_model.id,
+                        name=EntityName(data_model.id),
                         displayName=data_model_name,
-                        service=self.context.get().dashboard_service,
+                        service=FullyQualifiedEntityName(
+                            self.context.get().dashboard_service
+                        ),
                         dataModelType=DataModelType.QlikDataModel.value,
                         serviceType=self.service_connection.type.value,
                         columns=self.get_column_info(data_model),
@@ -282,7 +298,7 @@ class QliksenseSource(DashboardServiceSource):
                 table_fqn = fqn.build(
                     self.metadata,
                     entity_type=Table,
-                    service_name=db_service_entity.name.__root__,
+                    service_name=db_service_entity.name.root,
                     schema_name=schema_name,
                     table_name=datamodel.tableName,
                     database_name=database_name,

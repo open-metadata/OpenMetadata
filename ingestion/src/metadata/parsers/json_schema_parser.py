@@ -16,9 +16,9 @@ Utils module to parse the jsonschema
 import json
 import traceback
 from enum import Enum
-from typing import List, Optional
+from typing import List, Optional, Type
 
-from pydantic.main import ModelMetaclass
+from pydantic import BaseModel
 
 from metadata.generated.schema.type.schema import FieldModel
 from metadata.utils.logger import ingestion_logger
@@ -42,7 +42,7 @@ class JsonSchemaDataTypes(Enum):
 
 
 def parse_json_schema(
-    schema_text: str, cls: ModelMetaclass = FieldModel
+    schema_text: str, cls: Type[BaseModel] = FieldModel
 ) -> Optional[List[FieldModel]]:
     """
     Method to parse the jsonschema
@@ -67,7 +67,7 @@ def parse_json_schema(
 
 
 def get_json_schema_fields(
-    properties, cls: ModelMetaclass = FieldModel
+    properties, cls: Type[BaseModel] = FieldModel
 ) -> Optional[List[FieldModel]]:
     """
     Recursively convert the parsed schema into required models

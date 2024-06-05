@@ -172,11 +172,11 @@ def get_connection(connection: ElasticsearchConnection) -> Elasticsearch:
         ssl_context = get_ssl_context(connection.sslConfig)
 
     return Elasticsearch(
-        connection.hostPort,
+        str(connection.hostPort),
         http_auth=basic_auth,
         api_key=api_key,
         ssl_context=ssl_context,
-        **connection.connectionArguments.__root__,
+        **connection.connectionArguments.root,
     )
 
 

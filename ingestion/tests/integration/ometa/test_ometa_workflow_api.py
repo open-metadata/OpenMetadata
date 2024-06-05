@@ -128,7 +128,7 @@ class OMetaWorkflowTest(TestCase):
         Clean up
         """
 
-        id_ = str(cls.metadata.get_by_name(entity=Workflow, fqn="test").id.__root__)
+        id_ = str(cls.metadata.get_by_name(entity=Workflow, fqn="test").id.root)
 
         cls.metadata.delete(
             entity=Workflow,

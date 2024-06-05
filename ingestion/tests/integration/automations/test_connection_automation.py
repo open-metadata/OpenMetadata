@@ -113,7 +113,7 @@ class TestConnectionAutomationTest(TestCase):
 
         self.metadata.delete(
             entity=Workflow,
-            entity_id=str(automation_workflow.id.__root__),
+            entity_id=str(automation_workflow.id.root),
             hard_delete=True,
         )
 
@@ -157,6 +157,6 @@ class TestConnectionAutomationTest(TestCase):
 
         self.metadata.delete(
             entity=Workflow,
-            entity_id=str(automation_workflow.id.__root__),
+            entity_id=str(automation_workflow.id.root),
             hard_delete=True,
         )

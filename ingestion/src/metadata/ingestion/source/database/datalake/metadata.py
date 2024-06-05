@@ -57,6 +57,7 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 from metadata.generated.schema.security.credentials.gcpValues import (
     GcpCredentialsValues,
 )
+from metadata.generated.schema.type.basic import EntityName, FullyQualifiedEntityName
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
@@ -103,7 +104,7 @@ class DatalakeSource(DatabaseServiceSource):
             self.config.sourceConfig.config
         )
         self.metadata = metadata
-        self.service_connection = self.config.serviceConnection.__root__.config
+        self.service_connection = self.config.serviceConnection.root.config
         self.temp_credentials_file_path = []
         self.connection = get_connection(self.service_connection)
         if GOOGLE_CREDENTIALS in os.environ:
@@ -120,8 +121,8 @@ class DatalakeSource(DatabaseServiceSource):
     def create(
         cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None
     ):
-        config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
-        connection: DatalakeConnection = config.serviceConnection.__root__.config
+        config: WorkflowSource = WorkflowSource.model_validate(config_dict)
+        connection: DatalakeConnection = config.serviceConnection.root.config
         if not isinstance(connection, DatalakeConnection):
             raise InvalidSourceException(
                 f"Expected DatalakeConnection, but got {connection}"
@@ -139,7 +140,7 @@ class DatalakeSource(DatabaseServiceSource):
         """
         if isinstance(self.config_source, GCSConfig):
             project_id_list = (
-                self.service_connection.configSource.securityConfig.gcpConfig.projectId.__root__
+                self.service_connection.configSource.securityConfig.gcpConfig.projectId.root
             )
             if not isinstance(
                 project_id_list,
@@ -190,8 +191,8 @@ class DatalakeSource(DatabaseServiceSource):
             database_name = self.client.project
         yield Either(
             right=CreateDatabaseRequest(
-                name=database_name,
-                service=self.context.get().database_service,
+                name=EntityName(database_name),
+                service=FullyQualifiedEntityName(self.context.get().database_service),
             )
         )
 
@@ -310,12 +311,14 @@ class DatalakeSource(DatabaseServiceSource):
         """
         yield Either(
             right=CreateDatabaseSchemaRequest(
-                name=schema_name,
-                database=fqn.build(
-                    metadata=self.metadata,
-                    entity_type=Database,
-                    service_name=self.context.get().database_service,
-                    database_name=self.context.get().database,
+                name=EntityName(schema_name),
+                database=FullyQualifiedEntityName(
+                    fqn.build(
+                        metadata=self.metadata,
+                        entity_type=Database,
+                        service_name=self.context.get().database_service,
+                        database_name=self.context.get().database,
+                    )
                 ),
             )
         )
@@ -340,7 +343,7 @@ class DatalakeSource(DatabaseServiceSource):
                 verbose=False,
             )
             content = json.loads(metadata_config_response)
-            metadata_entry = StorageContainerConfig.parse_obj(content)
+            metadata_entry = StorageContainerConfig.model_validate(content)
         except ReadException:
             metadata_entry = None
         if self.source_config.includeTables:
@@ -399,7 +402,7 @@ class DatalakeSource(DatabaseServiceSource):
                     yield table_name, TableType.Regular, file_extension
 
     def yield_table(
-        self, table_name_and_type: Tuple[str, str]
+        self, table_name_and_type: Tuple[str, TableType]
     ) -> Iterable[Either[CreateTableRequest]]:
         """
         From topology.
@@ -433,12 +436,14 @@ class DatalakeSource(DatabaseServiceSource):
                     tableType=table_type,
                     columns=columns,
                     tableConstraints=table_constraints if table_constraints else None,
-                    databaseSchema=fqn.build(
-                        metadata=self.metadata,
-                        entity_type=DatabaseSchema,
-                        service_name=self.context.get().database_service,
-                        database_name=self.context.get().database,
-                        schema_name=schema_name,
+                    databaseSchema=FullyQualifiedEntityName(
+                        fqn.build(
+                            metadata=self.metadata,
+                            entity_type=DatabaseSchema,
+                            service_name=self.context.get().database_service,
+                            database_name=self.context.get().database,
+                            schema_name=schema_name,
+                        )
                     ),
                     fileFormat=table_extension.value if table_extension else None,
                 )

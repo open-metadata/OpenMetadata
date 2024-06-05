@@ -119,7 +119,7 @@ MOCK_USER = User(email="user@mail.com")
 MOCK_DASHBOARD_SERVICE = DashboardService(
     id="c3eb265f-5445-4ad3-ba5e-797d3a3071bb",
     name="quicksight_source_test",
-    fullyQualifiedName=FullyQualifiedEntityName(__root__="looker_source_test"),
+    fullyQualifiedName=FullyQualifiedEntityName("looker_source_test"),
     connection=DashboardConnection(),
     serviceType=DashboardServiceType.Looker,
 )
@@ -146,7 +146,7 @@ class LookerUnitTest(TestCase):
 
         self.looker.context.get().__dict__[
             "dashboard_service"
-        ] = MOCK_DASHBOARD_SERVICE.fullyQualifiedName.__root__
+        ] = MOCK_DASHBOARD_SERVICE.fullyQualifiedName.root
 
     def test_create(self):
         """
@@ -352,9 +352,9 @@ class LookerUnitTest(TestCase):
                 ).right,
                 AddLineageRequest(
                     edge=EntitiesEdge(
-                        fromEntity=EntityReference(id=table.id.__root__, type="table"),
+                        fromEntity=EntityReference(id=table.id.root, type="table"),
                         toEntity=EntityReference(
-                            id=to_entity.id.__root__, type="dashboard"
+                            id=to_entity.id.root, type="dashboard"
                         ),
                         lineageDetails=LineageDetails(
                             source=LineageSource.DashboardLineage

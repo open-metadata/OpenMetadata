@@ -60,8 +60,8 @@ class TestCaseRunner(Processor):
         self.metadata = metadata
 
         self.processor_config: TestSuiteProcessorConfig = (
-            TestSuiteProcessorConfig.parse_obj(
-                self.config.processor.dict().get("config")
+            TestSuiteProcessorConfig.model_validate(
+                self.config.processor.model_dump().get("config")
             )
         )
 
@@ -82,16 +82,16 @@ class TestCaseRunner(Processor):
             test_suite_fqn=fqn.build(
                 None,
                 TestSuite,
-                table_fqn=record.table.fullyQualifiedName.__root__,
+                table_fqn=record.table.fullyQualifiedName.root,
             ),
-            table_fqn=record.table.fullyQualifiedName.__root__,
+            table_fqn=record.table.fullyQualifiedName.root,
         )
 
         if not test_cases:
             return Either(
                 left=StackTraceError(
                     name="No test Cases",
-                    error=f"No tests cases found for table {record.table.fullyQualifiedName.__root__}",
+                    error=f"No tests cases found for table {record.table.fullyQualifiedName.root}",
                 )
             )
 
@@ -162,9 +162,7 @@ class TestCaseRunner(Processor):
             return test_cases
         test_cases = deepcopy(test_cases) or []
         test_case_names = (
-            {test_case.name.__root__ for test_case in test_cases}
-            if test_cases
-            else set()
+            {test_case.name.root for test_case in test_cases} if test_cases else set()
         )
 
         # we'll check the test cases defined in the CLI config file and not present in the platform
@@ -196,10 +194,10 @@ class TestCaseRunner(Processor):
                         description=test_case_to_create.description,
                         displayName=test_case_to_create.displayName,
                         testDefinition=FullyQualifiedEntityName(
-                            __root__=test_case_to_create.testDefinitionName
+                            test_case_to_create.testDefinitionName
                         ),
                         entityLink=EntityLink(
-                            __root__=entity_link.get_entity_link(
+                            entity_link.get_entity_link(
                                 Table,
                                 fqn=table_fqn,
                                 column_name=test_case_to_create.columnName,
@@ -245,11 +243,11 @@ class TestCaseRunner(Processor):
             test_case_to_update.name for test_case_to_update in test_cases_to_update
         }
         for indx, test_case in enumerate(deepcopy(test_cases)):
-            if test_case.name.__root__ in test_cases_to_update_names:
+            if test_case.name.root in test_cases_to_update_names:
                 test_case_definition = next(
                     test_case_to_update
                     for test_case_to_update in test_cases_to_update
-                    if test_case_to_update.name == test_case.name.__root__
+                    if test_case_to_update.name == test_case.name.root
                 )
                 updated_test_case = self.metadata.patch_test_case_definition(
                     test_case=test_case,
@@ -281,7 +279,7 @@ class TestCaseRunner(Processor):
             )
             if TestPlatform.OpenMetadata not in test_definition.testPlatforms:
                 logger.debug(
-                    f"Test case {test_case.name.__root__} is not an OpenMetadata test case."
+                    f"Test case {test_case.name.root} is not an OpenMetadata test case."
                 )
                 continue
             om_test_cases.append(test_case)
@@ -294,15 +292,15 @@ class TestCaseRunner(Processor):
         """Execute the test case and return the result, if any"""
         try:
             test_result = test_suite_runner.run_and_handle(test_case)
-            self.status.scanned(test_case.fullyQualifiedName.__root__)
+            self.status.scanned(test_case.fullyQualifiedName.root)
             return test_result
         except Exception as exc:
-            error = f"Could not run test case {test_case.name.__root__}: {exc}"
+            error = f"Could not run test case {test_case.name.root}: {exc}"
             logger.debug(traceback.format_exc())
             logger.error(error)
             self.status.failed(
                 StackTraceError(
-                    name=test_case.name.__root__,
+                    name=test_case.name.root,
                     error=error,
                     stackTrace=traceback.format_exc(),
                 )

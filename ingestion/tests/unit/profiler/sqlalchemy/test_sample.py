@@ -66,27 +66,27 @@ class SampleTest(TestCase):
         name="user",
         columns=[
             EntityColumn(
-                name=ColumnName(__root__="id"),
+                name=ColumnName("id"),
                 dataType=DataType.INT,
             ),
             EntityColumn(
-                name=ColumnName(__root__="name"),
+                name=ColumnName("name"),
                 dataType=DataType.STRING,
             ),
             EntityColumn(
-                name=ColumnName(__root__="fullname"),
+                name=ColumnName("fullname"),
                 dataType=DataType.STRING,
             ),
             EntityColumn(
-                name=ColumnName(__root__="nickname"),
+                name=ColumnName("nickname"),
                 dataType=DataType.STRING,
             ),
             EntityColumn(
-                name=ColumnName(__root__="comments"),
+                name=ColumnName("comments"),
                 dataType=DataType.STRING,
             ),
             EntityColumn(
-                name=ColumnName(__root__="age"),
+                name=ColumnName("age"),
                 dataType=DataType.INT,
             ),
         ],
@@ -312,7 +312,7 @@ class SampleTest(TestCase):
         assert len(sample_data.rows) == 30
 
         # Order matters, this is how we'll present the data
-        names = [str(col.__root__) for col in sample_data.columns]
+        names = [str(col.root) for col in sample_data.columns]
         assert names == ["id", "name", "fullname", "nickname", "comments", "age"]
 
     def test_sample_data_binary(self):
@@ -356,7 +356,7 @@ class SampleTest(TestCase):
         assert len(sample_data.columns) == 7
         assert len(sample_data.rows) == 10
 
-        names = [str(col.__root__) for col in sample_data.columns]
+        names = [str(col.root) for col in sample_data.columns]
         assert names == [
             "id",
             "name",
@@ -384,7 +384,7 @@ class SampleTest(TestCase):
         sample_data = sampler.fetch_sample_data()
 
         assert len(sample_data.columns) == 2
-        names = [col.__root__ for col in sample_data.columns]
+        names = [col.root for col in sample_data.columns]
         assert names == ["id", "name"]
 
     @classmethod

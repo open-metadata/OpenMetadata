@@ -234,7 +234,7 @@ class StorageUnitTest(TestCase):
                 data_model=None,
                 creation_date=bucket_response.creation_date.isoformat(),
                 sourceUrl=SourceUrl(
-                    __root__="https://s3.console.aws.amazon.com/s3/buckets/test_bucket?region=us-east-1&tab=objects"
+                    "https://s3.console.aws.amazon.com/s3/buckets/test_bucket?region=us-east-1&tab=objects"
                 ),
                 fullPath="s3://test_bucket",
             ),
@@ -250,13 +250,13 @@ class StorageUnitTest(TestCase):
         self.object_store_source._fetch_metric = lambda bucket_name, metric: 100.0
         columns: List[Column] = [
             Column(
-                name=ColumnName(__root__="transaction_id"),
+                name=ColumnName("transaction_id"),
                 dataType=DataType.INT,
                 dataTypeDisplay="INT",
                 displayName="transaction_id",
             ),
             Column(
-                name=ColumnName(__root__="transaction_value"),
+                name=ColumnName("transaction_value"),
                 dataType=DataType.INT,
                 dataTypeDisplay="INT",
                 displayName="transaction_value",
@@ -279,7 +279,7 @@ class StorageUnitTest(TestCase):
                 creation_date=datetime.datetime(2000, 1, 1).isoformat(),
                 parent=entity_ref,
                 sourceUrl=SourceUrl(
-                    __root__="https://s3.console.aws.amazon.com/s3/buckets/test_bucket?region=us-east-1&prefix=transactions/&showversions=false"
+                    "https://s3.console.aws.amazon.com/s3/buckets/test_bucket?region=us-east-1&prefix=transactions/&showversions=false"
                 ),
                 fullPath="s3://test_bucket/transactions",
             ),
@@ -317,13 +317,13 @@ class StorageUnitTest(TestCase):
             self.assertListEqual(
                 [
                     Column(
-                        name=ColumnName(__root__="transaction_id"),
+                        name=ColumnName("transaction_id"),
                         dataType=DataType.INT,
                         dataTypeDisplay="INT",
                         displayName="transaction_id",
                     ),
                     Column(
-                        name=ColumnName(__root__="transaction_value"),
+                        name=ColumnName("transaction_value"),
                         dataType=DataType.INT,
                         dataTypeDisplay="INT",
                         displayName="transaction_value",

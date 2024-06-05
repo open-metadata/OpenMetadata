@@ -100,12 +100,12 @@ def get_connection(connection: HiveConnection) -> Engine:
             in {HiveScheme.hive, HiveScheme.hive_http, HiveScheme.hive_https}
             else "auth_mechanism"
         )
-        connection.connectionArguments.__root__[auth_key] = connection.auth.value
+        connection.connectionArguments.root[auth_key] = connection.auth.value
 
     if connection.kerberosServiceName:
         if not connection.connectionArguments:
             connection.connectionArguments = init_empty_connection_arguments()
-        connection.connectionArguments.__root__[
+        connection.connectionArguments.root[
             "kerberos_service_name"
         ] = connection.kerberosServiceName
 

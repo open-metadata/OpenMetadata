@@ -170,7 +170,7 @@ def get_sink(
     from the given configs
     """
     sink_class = import_sink_class(sink_type=sink_type, from_=from_)
-    sink_config = sink_config.dict().get("config", {})
+    sink_config = sink_config.model_dump().get("config", {})
     sink: Sink = sink_class.create(sink_config, metadata_config)
     logger.debug(f"Sink type:{sink_type}, {sink_class} configured")
 

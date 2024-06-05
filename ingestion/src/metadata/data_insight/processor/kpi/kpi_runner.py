@@ -65,8 +65,8 @@ class KpiRunner:
             Kpi:
         """
 
-        start_date = entity.startDate.__root__
-        end_date = entity.endDate.__root__
+        start_date = entity.startDate.root
+        end_date = entity.endDate.root
 
         if not start_date or not end_date:
             logger.warning(
@@ -128,7 +128,7 @@ class KpiRunner:
             results = self.metadata.get_aggregated_data_insight_results(
                 start_ts=get_beginning_of_day_timestamp_mill(),
                 end_ts=get_end_of_day_timestamp_mill(),
-                data_insight_chart_nane=data_insight_chart_entity.name.__root__,
+                data_insight_chart_nane=data_insight_chart_entity.name.root,
                 data_report_index=data_insight_chart_entity.dataIndexType.value,
             )
             if results.data or tme.time() > timeout:

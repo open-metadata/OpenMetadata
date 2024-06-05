@@ -90,7 +90,7 @@ class OMetaMlModelMixin(OMetaLineageMixin):
                 )
             )
 
-        mlmodel_lineage = self.get_lineage_by_id(MlModel, str(model.id.__root__))
+        mlmodel_lineage = self.get_lineage_by_id(MlModel, str(model.id.root))
 
         return mlmodel_lineage
 
@@ -151,7 +151,7 @@ class OMetaMlModelMixin(OMetaLineageMixin):
             mlHyperParameters=[
                 MlHyperParameter(
                     name=key,
-                    value=value,
+                    value=str(value),
                 )
                 for key, value in model.get_params().items()
             ],

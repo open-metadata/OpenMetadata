@@ -237,7 +237,7 @@ class AggregatedCostAnalysisReportDataProcessor(DataProcessor):
                 days_before_timestamp = get_end_of_day_timestamp_mill(days=days)
                 if (
                     life_cycle.accessed
-                    and life_cycle.accessed.timestamp.__root__ <= days_before_timestamp
+                    and life_cycle.accessed.timestamp.root <= days_before_timestamp
                 ):
                     data[UNUSED_DATA_ASSETS][COUNT][key] += 1
                     data[UNUSED_DATA_ASSETS][SIZE][key] += size or 0

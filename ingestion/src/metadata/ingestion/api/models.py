@@ -13,7 +13,7 @@ Generic models
 """
 from typing import Generic, Optional, TypeVar
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from metadata.generated.schema.entity.services.ingestionPipelines.status import (
     StackTraceError,
@@ -25,11 +25,9 @@ T = TypeVar("T")
 
 
 class Either(BaseModel, Generic[T]):
-    """
-    Any execution should return us Either an Entity of an error for us to handle
-    - left: Optional error we encounter
-    - right: Correct instance of an Entity
-    """
+    """Any execution should return us Either an Entity of an error for us to handle"""
 
-    left: Optional[StackTraceError]
-    right: Optional[T]
+    left: Optional[StackTraceError] = Field(
+        None, description="Error encountered during execution"
+    )
+    right: Optional[T] = Field(None, description="Correct instance of an Entity")

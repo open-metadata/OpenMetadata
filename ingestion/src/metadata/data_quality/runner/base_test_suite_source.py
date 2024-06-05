@@ -71,7 +71,7 @@ class BaseTestSuiteRunner:
             DatabaseService.__config__
         """
         config_copy = deepcopy(
-            config.source.serviceConnection.__root__.config  # type: ignore
+            config.source.serviceConnection.root.config  # type: ignore
         )
         if hasattr(
             config_copy,  # type: ignore

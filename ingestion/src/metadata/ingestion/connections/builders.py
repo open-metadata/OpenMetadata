@@ -45,8 +45,8 @@ def get_connection_args_common(connection) -> Dict[str, Any]:
     """
 
     return (
-        connection.connectionArguments.__root__
-        if connection.connectionArguments and connection.connectionArguments.__root__
+        connection.connectionArguments.root
+        if connection.connectionArguments and connection.connectionArguments.root
         else {}
     )
 
@@ -90,8 +90,8 @@ def get_connection_options_dict(connection) -> Optional[Dict[str, Any]]:
     dictionary if exists
     """
     return (
-        connection.connectionOptions.__root__
-        if connection.connectionOptions and connection.connectionOptions.__root__
+        connection.connectionOptions.root
+        if connection.connectionOptions and connection.connectionOptions.root
         else None
     )
 
@@ -101,12 +101,12 @@ def init_empty_connection_arguments() -> ConnectionArguments:
     Initialize a ConnectionArguments model with an empty dictionary.
     This helps set keys without further validations.
 
-    Running `ConnectionArguments()` returns `ConnectionArguments(__root__=None)`.
+    Running `ConnectionArguments()` returns `ConnectionArguments(root=None)`.
 
-    Instead, we want `ConnectionArguments(__root__={}})` so that
-    we can pass new keys easily as `connectionArguments.__root__["key"] = "value"`
+    Instead, we want `ConnectionArguments(root={}})` so that
+    we can pass new keys easily as `connectionArguments.root["key"] = "value"`
     """
-    return ConnectionArguments(__root__={})
+    return ConnectionArguments(root={})
 
 
 def init_empty_connection_options() -> ConnectionOptions:
@@ -114,12 +114,12 @@ def init_empty_connection_options() -> ConnectionOptions:
     Initialize a ConnectionOptions model with an empty dictionary.
     This helps set keys without further validations.
 
-    Running `ConnectionOptions()` returns `ConnectionOptions(__root__=None)`.
+    Running `ConnectionOptions()` returns `ConnectionOptions(root=None)`.
 
-    Instead, we want `ConnectionOptions(__root__={}})` so that
-    we can pass new keys easily as `ConnectionOptions.__root__["key"] = "value"`
+    Instead, we want `ConnectionOptions(root={}})` so that
+    we can pass new keys easily as `ConnectionOptions.root["key"] = "value"`
     """
-    return ConnectionOptions(__root__={})
+    return ConnectionOptions(root={})
 
 
 def _add_password(url: str, connection) -> str:

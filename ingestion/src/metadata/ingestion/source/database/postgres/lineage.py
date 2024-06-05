@@ -12,13 +12,14 @@
 Postgres lineage module
 """
 import traceback
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Iterable
 
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.entity.services.connections.database.postgresConnection import (
     PostgresScheme,
 )
+from metadata.generated.schema.type.basic import DateTime
 from metadata.generated.schema.type.tableQuery import TableQuery
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.source.connections import get_connection
@@ -83,7 +84,7 @@ class PostgresLineageSource(PostgresQueryParserSource, LineageSource):
                         yield TableQuery(
                             query=row["query_text"],
                             userName=row["usename"],
-                            analysisDate=datetime.now(),
+                            analysisDate=DateTime(datetime.now(tz=timezone.utc)),
                             aborted=self.get_aborted_status(row),
                             databaseName=self.get_database_name(row),
                             serviceName=self.config.serviceName,

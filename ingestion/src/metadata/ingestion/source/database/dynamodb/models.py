@@ -22,4 +22,4 @@ class TableResponse(BaseModel):
     """
 
     Items: Optional[List[Dict]] = []
-    LastEvaluatedKey: Optional[str]
+    LastEvaluatedKey: Optional[str] = None

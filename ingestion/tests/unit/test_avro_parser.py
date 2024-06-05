@@ -542,9 +542,9 @@ class AvroParserTests(TestCase):
         """
         Test nested schema
         """
-        self.assertEqual(self.parsed_schema[0].name.__root__, "level")
+        self.assertEqual(self.parsed_schema[0].name.root, "level")
         self.assertEqual(
-            self.parsed_schema[0].description.__root__, "This is a first level record"
+            self.parsed_schema[0].description.root, "This is a first level record"
         )
         self.assertEqual(self.parsed_schema[0].dataType.name, "RECORD")
 
@@ -553,7 +553,7 @@ class AvroParserTests(TestCase):
         Test nested schema
         """
         children = self.parsed_schema[0].children
-        field_names = {str(field.name.__root__) for field in children}
+        field_names = {str(field.name.root) for field in children}
         self.assertEqual(
             field_names,
             {"uid", "somefield", "options"},
@@ -563,8 +563,7 @@ class AvroParserTests(TestCase):
         self.assertEqual(field_types, {"INT", "STRING", "ARRAY"})
 
         field_descriptions = {
-            field.description.__root__ if field.description else None
-            for field in children
+            field.description.root if field.description else None for field in children
         }
         self.assertEqual(
             field_descriptions,
@@ -582,13 +581,13 @@ class AvroParserTests(TestCase):
         level3_record = self.parsed_schema[0].children[2].children[0]
         children = level3_record.children
 
-        self.assertEqual(level3_record.name.__root__, "lvl2_record")
+        self.assertEqual(level3_record.name.root, "lvl2_record")
         self.assertEqual(
-            level3_record.description.__root__, "The field represents a level 2 record"
+            level3_record.description.root, "The field represents a level 2 record"
         )
         self.assertEqual(level3_record.dataType.name, "RECORD")
 
-        field_names = {str(field.name.__root__) for field in children}
+        field_names = {str(field.name.root) for field in children}
         self.assertEqual(
             field_names,
             {"item1_lvl2", "item2_lvl2"},
@@ -598,8 +597,7 @@ class AvroParserTests(TestCase):
         self.assertEqual(field_types, {"STRING", "ARRAY"})
 
         field_descriptions = {
-            field.description.__root__ if field.description else None
-            for field in children
+            field.description.root if field.description else None for field in children
         }
         self.assertEqual(field_descriptions, {None, "level 2 array"})
 
@@ -611,7 +609,7 @@ class AvroParserTests(TestCase):
 
         children = level3_record.children[1].children[0].children
 
-        field_names = {str(field.name.__root__) for field in children}
+        field_names = {str(field.name.root) for field in children}
 
         self.assertEqual(
             field_names,
@@ -682,24 +680,22 @@ class AvroParserTests(TestCase):
         parsed_record_schema = parse_avro_schema(RECORD_INSIDE_RECORD)
 
         # test 1st level record
-        self.assertEqual(parsed_record_schema[0].name.__root__, "OuterRecord")
+        self.assertEqual(parsed_record_schema[0].name.root, "OuterRecord")
         self.assertEqual(parsed_record_schema[0].dataType.name, "RECORD")
 
         # test 2nd level record
-        self.assertEqual(
-            parsed_record_schema[0].children[2].name.__root__, "innerRecord"
-        )
+        self.assertEqual(parsed_record_schema[0].children[2].name.root, "innerRecord")
         self.assertEqual(parsed_record_schema[0].children[2].dataType.name, "RECORD")
 
         # test fields inside 2nd level record
         self.assertEqual(
-            parsed_record_schema[0].children[2].children[0].name.__root__, "InnerRecord"
+            parsed_record_schema[0].children[2].children[0].name.root, "InnerRecord"
         )
         self.assertEqual(
             parsed_record_schema[0].children[2].children[0].dataType.name, "RECORD"
         )
         self.assertEqual(
-            parsed_record_schema[0].children[2].children[0].children[1].name.__root__,
+            parsed_record_schema[0].children[2].children[0].children[1].name.root,
             "phoneNumbers",
         )
         self.assertEqual(
@@ -717,7 +713,7 @@ class AvroParserTests(TestCase):
             .children[0]
             .children[0]
             .children[0]
-            .name.__root__,
+            .name.root,
             "RecursionIssueRecord",
         )
         self.assertEqual(
@@ -727,7 +723,7 @@ class AvroParserTests(TestCase):
             .children[0]
             .children[0]
             .children[2]
-            .name.__root__,
+            .name.root,
             "FieldCC",
         )
         self.assertEqual(
@@ -738,7 +734,7 @@ class AvroParserTests(TestCase):
             .children[0]
             .children[2]
             .children[0]
-            .name.__root__,
+            .name.root,
             "RecursionIssueRecord",
         )
         self.assertIsNone(

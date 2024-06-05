@@ -452,11 +452,13 @@ class ParquetDataFrameColumnParser:
 
             if parsed_column["dataType"] == DataType.BINARY:
                 try:
-                    data_length = type(column.type).byte_width
-                except AttributeError:
+                    # Either we an int number or -1
+                    data_length = int(type(column.type).byte_width)
+                except Exception as exc:
                     # if the byte width is not specified, we will set it to -1
                     # following pyarrow convention
                     data_length = -1
+                    logger.debug("Could not extract binary field length due to %s", exc)
                 parsed_column["dataLength"] = data_length
 
             if parsed_column["dataType"] == DataType.STRUCT:

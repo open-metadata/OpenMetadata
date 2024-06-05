@@ -64,10 +64,10 @@ class DomoDashboardDetails(DomoBaseModel):
     Response from Domo API
     """
 
-    cardIds: Optional[List[int]]
-    collectionIds: Optional[List[int]]
-    description: Optional[str]
-    owners: Optional[List[DomoOwner]]
+    cardIds: Optional[List[int]] = None
+    collectionIds: Optional[List[int]] = None
+    description: Optional[str] = None
+    owners: Optional[List[DomoOwner]] = None
 
 
 class DomoChartMetadataDetails(BaseModel):
@@ -78,7 +78,7 @@ class DomoChartMetadataDetails(BaseModel):
     class Config:
         extra = Extra.allow
 
-    chartType: Optional[str]
+    chartType: Optional[str] = None
 
 
 class DomoChartDetails(DomoBaseModel):
@@ -87,7 +87,7 @@ class DomoChartDetails(DomoBaseModel):
     """
 
     metadata: DomoChartMetadataDetails
-    description: Optional[str]
+    description: Optional[str] = None
 
 
 class DomoClient:
@@ -103,14 +103,10 @@ class DomoClient:
         ],
     ):
         self.config = config
-        self.config.instanceDomain = (
-            self.config.instanceDomain[:-1]
-            if self.config.instanceDomain.endswith("/")
-            else self.config.instanceDomain
-        )
         HEADERS.update({"X-DOMO-Developer-Token": self.config.accessToken})
         client_config: ClientConfig = ClientConfig(
-            base_url=self.config.instanceDomain,
+            # AnyUrl string ends with / and the domo API does not respond properly if it has 2 // at the end
+            base_url=str(self.config.instanceDomain)[:-1],
             api_version="api/",
             auth_header="Authorization",
             auth_token=lambda: ("no_token", 0),

@@ -24,6 +24,6 @@ from metadata.generated.schema.type.basic import FullyQualifiedEntityName
 
 
 class OMetaTagAndClassification(BaseModel):
-    fqn: Optional[FullyQualifiedEntityName]
+    fqn: Optional[FullyQualifiedEntityName] = None
     classification_request: CreateClassificationRequest
     tag_request: CreateTagRequest

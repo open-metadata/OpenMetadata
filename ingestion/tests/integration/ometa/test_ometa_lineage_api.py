@@ -144,19 +144,19 @@ class OMetaLineageTest(TestCase):
         db_service_id = str(
             cls.metadata.get_by_name(
                 entity=DatabaseService, fqn=cls.db_service_name
-            ).id.__root__
+            ).id.root
         )
 
         pipeline_service_id = str(
             cls.metadata.get_by_name(
                 entity=PipelineService, fqn=cls.pipeline_service_name
-            ).id.__root__
+            ).id.root
         )
 
         dashboard_service_id = str(
             cls.metadata.get_by_name(
                 entity=DashboardService, fqn=cls.dashboard_service_name
-            ).id.__root__
+            ).id.root
         )
 
         cls.metadata.delete(
@@ -183,8 +183,8 @@ class OMetaLineageTest(TestCase):
         We can create a Lineage and get the origin node lineage info back
         """
 
-        from_id = str(self.table1_entity.id.__root__)
-        to_id = str(self.table2_entity.id.__root__)
+        from_id = str(self.table1_entity.id.root)
+        to_id = str(self.table2_entity.id.root)
 
         res = self.metadata.add_lineage(
             data=AddLineageRequest(
@@ -225,7 +225,7 @@ class OMetaLineageTest(TestCase):
         self.assertEqual(len(res["downstreamEdges"]), 1)
         self.assertEqual(
             res["downstreamEdges"][0]["lineageDetails"]["pipeline"]["id"],
-            str(self.pipeline_entity.id.__root__),
+            str(self.pipeline_entity.id.root),
         )
 
         # Add a column to the lineage edge
@@ -238,9 +238,9 @@ class OMetaLineageTest(TestCase):
                     columnsLineage=[
                         ColumnLineage(
                             fromColumns=[
-                                f"{self.table1_entity.fullyQualifiedName.__root__}.id"
+                                f"{self.table1_entity.fullyQualifiedName.root}.id"
                             ],
-                            toColumn=f"{self.table2_entity.fullyQualifiedName.__root__}.id",
+                            toColumn=f"{self.table2_entity.fullyQualifiedName.root}.id",
                         )
                     ],
                 ),
@@ -253,7 +253,7 @@ class OMetaLineageTest(TestCase):
         self.assertEqual(len(res["downstreamEdges"]), 1)
         self.assertEqual(
             res["downstreamEdges"][0]["lineageDetails"]["pipeline"]["id"],
-            str(self.pipeline_entity.id.__root__),
+            str(self.pipeline_entity.id.root),
         )
         self.assertEqual(
             len(res["downstreamEdges"][0]["lineageDetails"]["columnsLineage"]), 1
@@ -269,9 +269,9 @@ class OMetaLineageTest(TestCase):
                     columnsLineage=[
                         ColumnLineage(
                             fromColumns=[
-                                f"{self.table1_entity.fullyQualifiedName.__root__}.name"
+                                f"{self.table1_entity.fullyQualifiedName.root}.name"
                             ],
-                            toColumn=f"{self.table2_entity.fullyQualifiedName.__root__}.name",
+                            toColumn=f"{self.table2_entity.fullyQualifiedName.root}.name",
                         )
                     ],
                 ),
@@ -284,7 +284,7 @@ class OMetaLineageTest(TestCase):
         self.assertEqual(len(res["downstreamEdges"]), 1)
         self.assertEqual(
             res["downstreamEdges"][0]["lineageDetails"]["pipeline"]["id"],
-            str(self.pipeline_entity.id.__root__),
+            str(self.pipeline_entity.id.root),
         )
         self.assertEqual(
             len(res["downstreamEdges"][0]["lineageDetails"]["columnsLineage"]), 2
@@ -293,7 +293,7 @@ class OMetaLineageTest(TestCase):
     def test_table_datamodel_lineage(self):
         """We can create and get lineage for a table to a dashboard datamodel"""
 
-        from_id = str(self.table1_entity.id.__root__)
+        from_id = str(self.table1_entity.id.root)
 
         res = self.metadata.add_lineage(
             data=AddLineageRequest(
@@ -313,9 +313,7 @@ class OMetaLineageTest(TestCase):
         # use the SDK to get the lineage
         datamodel_lineage = self.metadata.get_lineage_by_name(
             entity=DashboardDataModel,
-            fqn=self.dashboard_datamodel_entity.fullyQualifiedName.__root__,
+            fqn=self.dashboard_datamodel_entity.fullyQualifiedName.root,
         )
         entity_lineage = EntityLineage.parse_obj(datamodel_lineage)
-        self.assertEqual(
-            from_id, str(entity_lineage.upstreamEdges[0].fromEntity.__root__)
-        )
+        self.assertEqual(from_id, str(entity_lineage.upstreamEdges[0].fromEntity.root))

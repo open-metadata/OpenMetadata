@@ -13,7 +13,7 @@ Databricks lineage utils tests
 """
 
 import json
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from unittest import TestCase
 from unittest.mock import patch
@@ -21,6 +21,7 @@ from unittest.mock import patch
 from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
 )
+from metadata.generated.schema.type.basic import DateTime
 from metadata.generated.schema.type.tableQuery import TableQuery
 from metadata.ingestion.source.database.databricks.lineage import (
     DatabricksLineageSource,
@@ -37,7 +38,7 @@ EXPECTED_DATABRICKS_DETAILS = [
         userName="vijay@getcollate.io",
         startTime="1665566128192",
         endTime="1665566128329",
-        analysisDate=datetime.now(),
+        analysisDate=DateTime(datetime.now(tz=timezone.utc)),
         aborted=None,
         serviceName="local_databricks1",
         databaseSchema=None,
@@ -47,7 +48,7 @@ EXPECTED_DATABRICKS_DETAILS = [
         userName="vijay@getcollate.io",
         startTime="1665566127416",
         endTime="1665566127568",
-        analysisDate=datetime.now(),
+        analysisDate=DateTime(datetime.now(tz=timezone.utc)),
         aborted=None,
         serviceName="local_databricks1",
         databaseSchema=None,
@@ -57,7 +58,7 @@ EXPECTED_DATABRICKS_DETAILS = [
         userName="vijay@getcollate.io",
         startTime="1665566125414",
         endTime="1665566125579",
-        analysisDate=datetime.now(),
+        analysisDate=DateTime(datetime.now(tz=timezone.utc)),
         aborted=None,
         serviceName="local_databricks1",
         databaseSchema=None,
@@ -67,7 +68,7 @@ EXPECTED_DATABRICKS_DETAILS = [
         userName="vijay@getcollate.io",
         startTime="1665566124428",
         endTime="1665566124730",
-        analysisDate=datetime.now(),
+        analysisDate=DateTime(datetime.now(tz=timezone.utc)),
         aborted=None,
         serviceName="local_databricks1",
         databaseSchema=None,

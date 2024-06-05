@@ -56,8 +56,8 @@ class BitBucketReader(ApiReader):
                 self._build_url(
                     HOST,
                     UrlParts.REPOS.value,
-                    self.credentials.repositoryOwner.__root__,
-                    self.credentials.repositoryName.__root__,
+                    self.credentials.repositoryOwner.root,
+                    self.credentials.repositoryName.root,
                     UrlParts.SRC.value,
                     self.credentials.branch,
                     path,
@@ -114,8 +114,8 @@ class BitBucketReader(ApiReader):
         url = self._build_url(
             HOST,
             UrlParts.REPOS.value,
-            self.credentials.repositoryOwner.__root__,
-            self.credentials.repositoryName.__root__,
+            self.credentials.repositoryOwner.root,
+            self.credentials.repositoryName.root,
             UrlParts.SRC.value,
             self.credentials.branch,
         )

@@ -131,7 +131,7 @@ class TestAirflowLineageRuner(TestCase):
         service_id = str(
             cls.metadata.get_by_name(
                 entity=DatabaseService, fqn=DB_SERVICE_NAME
-            ).id.__root__
+            ).id.root
         )
 
         cls.metadata.delete(
@@ -146,7 +146,7 @@ class TestAirflowLineageRuner(TestCase):
         pipeline_service_id = str(
             cls.metadata.get_by_name(
                 entity=PipelineService, fqn=PIPELINE_SERVICE_NAME
-            ).id.__root__
+            ).id.root
         )
 
         cls.metadata.delete(
@@ -203,7 +203,7 @@ class TestAirflowLineageRuner(TestCase):
 
             lineage_data = self.metadata.get_lineage_by_name(
                 entity=Table,
-                fqn=self.table_outlet.fullyQualifiedName.__root__,
+                fqn=self.table_outlet.fullyQualifiedName.root,
                 up_depth=1,
                 down_depth=1,
             )
@@ -211,8 +211,8 @@ class TestAirflowLineageRuner(TestCase):
             upstream_ids = [
                 edge["fromEntity"] for edge in lineage_data["upstreamEdges"]
             ]
-            self.assertIn(str(self.table_inlet1.id.__root__), upstream_ids)
-            self.assertIn(str(self.table_inlet2.id.__root__), upstream_ids)
+            self.assertIn(str(self.table_inlet1.id.root), upstream_ids)
+            self.assertIn(str(self.table_inlet2.id.root), upstream_ids)
 
             # We can trigger again without any issues. Nothing will happen here
             with self.assertLogs(level="INFO") as log:
