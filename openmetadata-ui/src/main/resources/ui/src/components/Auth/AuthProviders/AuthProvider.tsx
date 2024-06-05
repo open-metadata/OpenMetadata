@@ -545,7 +545,11 @@ export const AuthProvider = ({
             handleStoreProtectedRedirectPath();
             setApplicationLoading(false);
           } else {
-            if (location.pathname !== ROUTES.AUTH_CALLBACK) {
+            if (
+              ![ROUTES.AUTH_CALLBACK, ROUTES.SAML_CALLBACK].includes(
+                location.pathname
+              )
+            ) {
               getLoggedInUserDetails();
             }
           }
