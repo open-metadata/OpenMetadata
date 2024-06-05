@@ -5,31 +5,12 @@
     "description": "DI Chart Result List",
     "type": "object",
     "javaType": "org.openmetadata.schema.dataInsightNew.DIChartResultList",
-    "definitions": {
-        "bucket": {
-            "type": "object",
-            "javaType": "org.openmetadata.schema.dataInsightNew.DIChartResultBucket",
-            "properties": {
-                "group": {
-                    "type": "string",
-                    "description": "Group Name of the bucket"
-                },
-                "data": {
-                    "description": "List of Results",
-                    "type": "array",
-                    "items": {
-                        "$ref": "diChartResult.json"
-                    }
-                }
-            }
-        }
-    },
     "properties": {
         "results": {
             "description": "List of Results",
             "type": "array",
             "items": {
-                "$ref": "#/definitions/bucket"
+                "$ref": "diChartResult.json"
             }
         }
     },

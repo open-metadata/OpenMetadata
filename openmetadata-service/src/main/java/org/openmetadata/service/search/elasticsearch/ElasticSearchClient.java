@@ -145,7 +145,6 @@ import org.openmetadata.schema.DataInsightInterface;
 import org.openmetadata.schema.api.dataInsightNew.CreateDIChart;
 import org.openmetadata.schema.dataInsight.DataInsightChartResult;
 import org.openmetadata.schema.dataInsightNew.DIChartResult;
-import org.openmetadata.schema.dataInsightNew.DIChartResultBucket;
 import org.openmetadata.schema.dataInsightNew.DIChartResultList;
 import org.openmetadata.schema.entity.data.EntityHierarchy__1;
 import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration;
@@ -1949,46 +1948,43 @@ public class ElasticSearchClient implements SearchClient {
     } else {
       searchSourceBuilder.aggregation(dateHistogramAggregationBuilder);
     }
-    XContentParser filterParser =
-            XContentType.JSON
-                    .xContent()
-                    .createParser(
-                            xContentRegistry, LoggingDeprecationHandler.INSTANCE, createDIChart.getFilter());
-    QueryBuilder filter = SearchSourceBuilder.fromXContent(filterParser).query();
-    BoolQueryBuilder newQuery =
-            QueryBuilders.boolQuery().filter(filter);
-    searchSourceBuilder.query(newQuery);
+    if (createDIChart.getFilter() != null){
+      XContentParser filterParser =
+              XContentType.JSON
+                      .xContent()
+                      .createParser(
+                              xContentRegistry, LoggingDeprecationHandler.INSTANCE, createDIChart.getFilter());
+      QueryBuilder filter = SearchSourceBuilder.fromXContent(filterParser).query();
+      BoolQueryBuilder newQuery = QueryBuilders.boolQuery().filter(filter);
+      searchSourceBuilder.query(newQuery);
+    }
     es.org.elasticsearch.action.search.SearchRequest searchRequest =
         new es.org.elasticsearch.action.search.SearchRequest(DIChartRepository.DI_SEARCH_INDEX);
     searchRequest.source(searchSourceBuilder);
 
     SearchResponse searchResponse = client.search(searchRequest, RequestOptions.DEFAULT);
     DIChartResultList resultList = new DIChartResultList();
-    List<DIChartResultBucket> bucketList = new ArrayList<>();
     if (createDIChart.getGroupBy() != null) {
+      List<DIChartResult> diChartResults = new ArrayList<>();
       for (Aggregation arg : searchResponse.getAggregations().asList()) {
         ParsedTerms parsedTerms = (ParsedTerms) arg;
         for (Terms.Bucket bucket : parsedTerms.getBuckets()) {
-          DIChartResultBucket diBucket = new DIChartResultBucket();
-          diBucket.setGroup(bucket.getKeyAsString());
-          diBucket.setData(processAggregations(bucket.getAggregations().asList(), createDIChart));
-          bucketList.add(diBucket);
+          diChartResults.addAll(
+              processAggregations(
+                  bucket.getAggregations().asList(), createDIChart, bucket.getKeyAsString()));
         }
       }
-      resultList.setResults(bucketList);
+      resultList.setResults(diChartResults);
       return resultList;
     }
     List<DIChartResult> results =
-        processAggregations(searchResponse.getAggregations().asList(), createDIChart);
-    DIChartResultBucket bucket = new DIChartResultBucket();
-    bucket.setData(results);
-    bucketList.add(bucket);
-    resultList.setResults(bucketList);
+        processAggregations(searchResponse.getAggregations().asList(), createDIChart, null);
+    resultList.setResults(results);
     return resultList;
   }
 
   private List<DIChartResult> processAggregations(
-      List<Aggregation> aggregations, CreateDIChart createDIChart) {
+      List<Aggregation> aggregations, CreateDIChart createDIChart, String group) {
     ArrayList<DIChartResult> results = new ArrayList<>();
     for (Aggregation arg : aggregations) {
       ParsedDateHistogram parsedDateHistogram = (ParsedDateHistogram) arg;
@@ -2000,6 +1996,9 @@ public class ElasticSearchClient implements SearchClient {
                 new DIChartResult()
                     .withCount(parsedValueCount.getValue())
                     .withDay(bucket.getKeyAsString());
+            if (group != null) {
+              diChartResult.setGroup(group);
+            }
             results.add(diChartResult);
           } else {
             ParsedSingleValueNumericMetricsAggregation parsedValueCount =
@@ -2011,6 +2010,9 @@ public class ElasticSearchClient implements SearchClient {
                     : parsedValueCount.value();
             DIChartResult diChartResult =
                 new DIChartResult().withCount(value).withDay(bucket.getKeyAsString());
+            if (group != null) {
+              diChartResult.setGroup(group);
+            }
             results.add(diChartResult);
           }
         }
