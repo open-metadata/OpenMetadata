@@ -39,9 +39,9 @@ const entities = [
 // use the admin user to login
 test.use({ storageState: 'playwright/.auth/admin.json' });
 
-entities.forEach((entityClass) => {
-  const entity = new entityClass();
-  const deleteEntity = new entityClass();
+entities.forEach((EntityClass) => {
+  const entity = new EntityClass();
+  const deleteEntity = new EntityClass();
 
   test.describe(entity.getType(), () => {
     test.beforeAll('Setup pre-requests', async ({ browser }) => {
