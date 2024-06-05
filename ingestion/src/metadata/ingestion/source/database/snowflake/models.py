@@ -41,7 +41,7 @@ class SnowflakeStoredProcedure(BaseModel):
     signature: Optional[str] = Field(
         None, alias="SIGNATURE", description="Used to build the source URL"
     )
-    comment: Optional[str] = Field(..., alias="COMMENT")
+    comment: Optional[str] = Field(None, alias="COMMENT")
 
     # Update the signature to clean it up on read
     @field_validator("signature")

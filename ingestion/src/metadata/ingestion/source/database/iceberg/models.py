@@ -36,7 +36,7 @@ class IcebergTable(BaseModel):
     name: str
     tableType: TableType
     description: Optional[str] = None
-    owner: Optional[EntityReference]
+    owner: Optional[EntityReference] = None
     columns: List[Column] = []
     tablePartition: Optional[TablePartition] = None
 
