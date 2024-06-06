@@ -125,7 +125,7 @@ This is a sample config for DomoDatabase:
 {% codeBlock fileName="filename.yaml" %}
 
 
-```yaml
+```yaml {% isCodeBlock=true %}
 source:
   type: domodatabase
   serviceName: local_DomoDatabase

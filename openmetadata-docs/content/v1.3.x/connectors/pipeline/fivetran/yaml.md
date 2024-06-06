@@ -105,7 +105,7 @@ This refers to the maximum number of records that can be returned in a single pa
 
 {% codeBlock fileName="filename.yaml" %}
 
-```yaml
+```yaml {% isCodeBlock=true %}
 source:
   type: fivetran
   serviceName: local_fivetran

@@ -59,7 +59,7 @@ Note that the location is a directory that will be cleaned at the end of the ing
 
 {% codeBlock fileName="filename.yaml" %}
 
-```yaml
+```yaml {% isCodeBlock=true %}
 source:
   type: {% $connector %}-usage
   serviceName: <service name>

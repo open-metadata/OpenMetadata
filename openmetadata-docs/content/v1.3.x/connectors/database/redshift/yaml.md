@@ -135,7 +135,7 @@ This is a sample config for Redshift:
 
 {% codeBlock fileName="filename.yaml" %}
 
-```yaml
+```yaml {% isCodeBlock=true %}
 source:
   type: redshift
   serviceName: aws_redshift

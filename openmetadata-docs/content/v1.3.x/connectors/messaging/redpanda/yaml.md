@@ -125,7 +125,7 @@ following [link](https://docs.confluent.io/5.5.1/clients/confluent-kafka-python/
 
 {% codeBlock fileName="filename.yaml" %}
 
-```yaml
+```yaml {% isCodeBlock=true %}
 source:
   type: redpanda
   serviceName: local_redpanda

@@ -82,7 +82,7 @@ This is a sample config for Dagster:
 {% codeBlock fileName="filename.yaml" %}
 
 
-```yaml
+```yaml {% isCodeBlock=true %}
 source:
   type: dagster
   serviceName: dagster_source

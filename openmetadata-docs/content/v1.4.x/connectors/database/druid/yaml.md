@@ -108,7 +108,7 @@ This is a sample config for Druid:
 
 {% codeBlock fileName="filename.yaml" %}
 
-```yaml
+```yaml {% isCodeBlock=true %}
 source:
   type: druid
   serviceName: "<service name>"

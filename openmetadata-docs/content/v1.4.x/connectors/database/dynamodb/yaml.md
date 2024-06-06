@@ -140,7 +140,7 @@ This is a sample config for DynamoDB:
 
 {% codeBlock fileName="filename.yaml" %}
 
-```yaml
+```yaml {% isCodeBlock=true %}
 source:
   type: dynamodb
   serviceName: local_dynamodb

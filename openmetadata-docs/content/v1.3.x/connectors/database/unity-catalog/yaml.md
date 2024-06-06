@@ -119,7 +119,7 @@ This is a sample config for Unity Catalog:
 
 {% codeBlock fileName="filename.yaml" %}
 
-```yaml
+```yaml {% isCodeBlock=true %}
 source:
   type: unitycatalog
   serviceName: local_unitycatalog

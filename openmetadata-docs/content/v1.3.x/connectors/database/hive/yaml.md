@@ -133,7 +133,7 @@ You can also ingest the metadata using Postgres metastore. This step is optional
 {% codeBlock fileName="filename.yaml" %}
 
 
-```yaml
+```yaml {% isCodeBlock=true %}
 source:
   type: hive
   serviceName: local_hive

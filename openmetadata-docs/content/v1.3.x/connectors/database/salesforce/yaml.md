@@ -123,7 +123,7 @@ By default, the domain `login` is used for accessing Salesforce.
 
 {% codeBlock fileName="filename.yaml" %}
 
-```yaml
+```yaml {% isCodeBlock=true %}
 source:
   type: salesforce
   serviceName: local_salesforce

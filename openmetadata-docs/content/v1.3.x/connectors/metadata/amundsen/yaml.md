@@ -105,7 +105,7 @@ To send the metadata to OpenMetadata, it needs to be specified as `type: metadat
 
 {% codeBlock fileName="filename.yaml" %}
 
-```yaml
+```yaml {% isCodeBlock=true %}
 source:
   type: Amundsen
   serviceName: local_amundsen
@@ -131,7 +131,7 @@ source:
 ```yaml {% srNumber=17 %}
       encrypted: false
 ```
-```yaml
+```yaml {% isCodeBlock=true %}
   sourceConfig:
     config:
       type: DatabaseMetadata

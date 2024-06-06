@@ -286,7 +286,7 @@ It will take care of instantiating the workflow, executing it and giving us the 
 
 {% codeBlock fileName="ingestion.py" %}
 
-```python
+```python {% isCodeBlock=true %}
 import yaml
 
 ```
@@ -391,7 +391,7 @@ It will take care of instantiating the workflow, executing it and giving us the 
 
 {% codeBlock fileName="ingestion.py" %}
 
-```python
+```python {% isCodeBlock=true %}
 import yaml
 
 ```
@@ -491,7 +491,7 @@ It will take care of instantiating the workflow, executing it and giving us the 
 
 {% codeBlock fileName="ingestion.py" %}
 
-```python
+```python {% isCodeBlock=true %}
 import yaml
 
 ```
@@ -600,7 +600,7 @@ It will take care of instantiating the workflow, executing it and giving us the 
 
 {% codeBlock fileName="ingestion.py" %}
 
-```python
+```python {% isCodeBlock=true %}
 import yaml
 
 ```
@@ -708,7 +708,7 @@ It will take care of instantiating the workflow, executing it and giving us the 
 
 {% codeBlock fileName="ingestion.py" %}
 
-```python
+```python {% isCodeBlock=true %}
 import yaml
 
 ```
