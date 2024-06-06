@@ -11,13 +11,14 @@
  *  limitations under the License.
  */
 import { APIRequestContext, Page } from '@playwright/test';
-import { uuid } from '../../utils/common';
-import { visitEntityPage } from '../../utils/entity';
-import { EntityTypeEndpoint } from './Entity.interface';
-import { EntityClass } from './EntityClass';
+import { SERVICE_TYPE } from '../../../constant/service';
+import { uuid } from '../../../utils/common';
+import { visitServiceDetailsPage } from '../../../utils/service';
+import { EntityTypeEndpoint } from '../Entity.interface';
+import { EntityClass } from '../EntityClass';
 
-export class SearchIndexClass extends EntityClass {
-  service = {
+export class SearchIndexServiceClass extends EntityClass {
+  entity = {
     name: `pw-search-service-${uuid()}`,
     serviceType: 'ElasticSearch',
     connection: {
@@ -33,67 +34,52 @@ export class SearchIndexClass extends EntityClass {
       },
     },
   };
-  entity = {
-    name: `pw.search-index%${uuid()}`,
-    displayName: `pw-search-index-${uuid()}`,
-    service: this.service.name,
-    fields: [],
-  };
 
-  serviceResponseData: unknown;
   entityResponseData: unknown;
 
   constructor(name?: string) {
-    super(EntityTypeEndpoint.SearchIndex);
-    this.service.name = name ?? this.service.name;
-    this.type = 'SearchIndex';
+    super(EntityTypeEndpoint.SearchService);
+    this.entity.name = name ?? this.entity.name;
+    this.type = 'SearchIndex Service';
   }
 
   async create(apiContext: APIRequestContext) {
     const serviceResponse = await apiContext.post(
       '/api/v1/services/searchServices',
       {
-        data: this.service,
+        data: this.entity,
       }
     );
-    const entityResponse = await apiContext.post('/api/v1/searchIndexes', {
-      data: this.entity,
-    });
 
-    this.serviceResponseData = await serviceResponse.json();
-    this.entityResponseData = await entityResponse.json();
+    const service = await serviceResponse.json();
 
-    return {
-      service: serviceResponse.body,
-      entity: entityResponse.body,
-    };
+    this.entityResponseData = service;
+
+    return service;
   }
 
-  async get() {
-    return {
-      service: this.serviceResponseData,
-      entity: this.entityResponseData,
-    };
+  get() {
+    return this.entityResponseData;
   }
 
   async visitEntityPage(page: Page) {
-    await visitEntityPage({
+    await visitServiceDetailsPage(
       page,
-      searchTerm: this.entityResponseData?.['fullyQualifiedName'],
-      dataTestId: `${this.service.name}-${this.entity.name}`,
-    });
+      {
+        name: this.entity.name,
+        type: SERVICE_TYPE.Search,
+      },
+      false
+    );
   }
 
   async delete(apiContext: APIRequestContext) {
     const serviceResponse = await apiContext.delete(
       `/api/v1/services/searchServices/name/${encodeURIComponent(
-        this.serviceResponseData?.['fullyQualifiedName']
+        this.entityResponseData?.['fullyQualifiedName']
       )}?recursive=true&hardDelete=true`
     );
 
-    return {
-      service: serviceResponse.body,
-      entity: this.entityResponseData,
-    };
+    return await serviceResponse.json();
   }
 }
