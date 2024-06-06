@@ -39,6 +39,7 @@ from metadata.generated.schema.entity.services.ingestionPipelines.status import 
     StackTraceError,
 )
 from metadata.generated.schema.entity.teams.user import User
+from metadata.generated.schema.type.basic import Timestamp
 from metadata.generated.schema.type.lifeCycle import AccessDetails, LifeCycle
 from metadata.generated.schema.type.tableUsageCount import TableColumn, TableUsageCount
 from metadata.generated.schema.type.usageRequest import UsageRequest
@@ -374,7 +375,7 @@ class MetadataUsageBulkSink(BulkSink):
                 query_type = get_query_type(create_query=create_query)
                 if query_type:
                     access_details = AccessDetails(
-                        timestamp=create_query.queryDate.root,
+                        timestamp=Timestamp(create_query.queryDate.root),
                         accessedBy=user,
                         accessedByAProcess=process_user,
                     )

@@ -697,7 +697,7 @@ class BigqueryLineageSourceTest(TestCase):
             "credentials"
         ]["gcpConfig"] = "credentials.json"
 
-        self.config = OpenMetadataWorkflowConfig.parse_obj(
+        self.config = OpenMetadataWorkflowConfig.model_validate(
             mock_credentials_path_bq_config
         )
         self.bq_query_parser = BigqueryLineageSource(

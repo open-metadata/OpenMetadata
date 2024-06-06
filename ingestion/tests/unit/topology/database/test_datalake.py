@@ -471,7 +471,7 @@ class DatalakeUnitTest(TestCase):
     def __init__(self, methodName, test_connection) -> None:
         super().__init__(methodName)
         test_connection.return_value = False
-        self.config = OpenMetadataWorkflowConfig.parse_obj(mock_datalake_config)
+        self.config = OpenMetadataWorkflowConfig.model_validate(mock_datalake_config)
         self.datalake_source = DatalakeSource.create(
             mock_datalake_config["source"],
             self.config.workflowConfig.openMetadataServerConfig,
@@ -610,7 +610,9 @@ class DatalakeGCSUnitTest(TestCase):
     def __init__(self, methodName, _, __, test_connection) -> None:
         super().__init__(methodName)
         test_connection.return_value = False
-        self.config = OpenMetadataWorkflowConfig.parse_obj(mock_datalake_gcs_config)
+        self.config = OpenMetadataWorkflowConfig.model_validate(
+            mock_datalake_gcs_config
+        )
         self.datalake_source = DatalakeSource.create(
             mock_datalake_gcs_config["source"],
             self.config.workflowConfig.openMetadataServerConfig,
@@ -632,7 +634,7 @@ class DatalakeGCSUnitTest(TestCase):
     ):
         self.datalake_source_multiple_project_id = DatalakeSource.create(
             mock_multiple_project_id["source"],
-            OpenMetadataWorkflowConfig.parse_obj(
+            OpenMetadataWorkflowConfig.model_validate(
                 mock_multiple_project_id
             ).workflowConfig.openMetadataServerConfig,
         )

@@ -111,7 +111,7 @@ class DeltaLakeUnitTest(TestCase):
     Add method validations from Deltalake ingestion
     """
 
-    config: OpenMetadataWorkflowConfig = OpenMetadataWorkflowConfig.parse_obj(
+    config: OpenMetadataWorkflowConfig = OpenMetadataWorkflowConfig.model_validate(
         MOCK_DELTA_CONFIG
     )
     delta: DeltalakeSource = DeltalakeSource.create(

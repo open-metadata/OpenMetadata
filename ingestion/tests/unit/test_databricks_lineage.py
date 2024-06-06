@@ -122,7 +122,7 @@ class DatabricksLineageTests(TestCase):
 
     def __init__(self, methodName) -> None:
         super().__init__(methodName)
-        config = OpenMetadataWorkflowConfig.parse_obj(mock_databricks_config)
+        config = OpenMetadataWorkflowConfig.model_validate(mock_databricks_config)
 
         self.databricks = DatabricksLineageSource.create(
             mock_databricks_config["source"],

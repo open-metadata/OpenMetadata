@@ -315,5 +315,5 @@ class OMetaLineageTest(TestCase):
             entity=DashboardDataModel,
             fqn=self.dashboard_datamodel_entity.fullyQualifiedName.root,
         )
-        entity_lineage = EntityLineage.parse_obj(datamodel_lineage)
+        entity_lineage = EntityLineage.model_validate(datamodel_lineage)
         self.assertEqual(from_id, str(entity_lineage.upstreamEdges[0].fromEntity.root))
