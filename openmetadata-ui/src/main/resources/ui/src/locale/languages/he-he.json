@@ -1064,7 +1064,7 @@
     "stage-file-location": "מיקום קובץ בשלב",
     "star": "כוכב",
     "star-open-metadata": "סמן את המטא-דאטה הפתוחים",
-    "star-us-on-github": "תמכו בנו ב-Github",
+    "star-us-on-github": "תמכו בנו ב-GitHub",
     "start-date-time-zone": "תאריך התחלה: ({{timeZone}})",
     "start-elasticsearch-docker": "התחל את Elasticsearch ב-Docker",
     "start-entity": "התחל {{entity}}",
