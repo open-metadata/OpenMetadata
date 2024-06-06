@@ -1064,7 +1064,7 @@
     "stage-file-location": "Localização de Arquivo de Estágio",
     "star": "Estrela",
     "star-open-metadata": "Estrelar OpenMetadata",
-    "star-us-on-github": "Estrelar no Github",
+    "star-us-on-github": "Estrelar no GitHub",
     "start-date-time-zone": "Data de Início: ({{timeZone}})",
     "start-elasticsearch-docker": "Iniciar Elasticsearch Docker",
     "start-entity": "Iniciar {{entity}}",
