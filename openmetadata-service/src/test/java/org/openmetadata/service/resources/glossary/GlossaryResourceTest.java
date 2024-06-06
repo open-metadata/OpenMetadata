@@ -459,8 +459,8 @@ public class GlossaryResourceTest extends EntityResourceTest<Glossary, CreateGlo
                 ",g2,dsp2,dsc3,h1;h3;h3,,term2;https://term2,PII.NonSensitive,%s,user;%s,%s",
                 user1, user2, "Approved"),
             String.format(
-                "importExportTest.g1,g11,dsp2,dsc11,h1;h3;h3,,,,%s,team;%s,%s",
-                user1, team11, "Draft"));
+                "importExportTest.g1,g11,dsp2,dsc11,h1;h3;h3,,,,%s;%s,team;%s,%s",
+                user1,user2, team11, "Draft"));
 
     // Update terms with change in description
     List<String> updateRecords =
@@ -472,8 +472,8 @@ public class GlossaryResourceTest extends EntityResourceTest<Glossary, CreateGlo
                 ",g2,dsp2,new-dsc3,h1;h3;h3,,term2;https://term2,PII.NonSensitive,%s,user;%s,%s",
                 user1, user2, "Approved"),
             String.format(
-                "importExportTest.g1,g11,dsp2,new-dsc11,h1;h3;h3,,,,%s,team;%s,%s",
-                user1, team11, "Draft"));
+                "importExportTest.g1,g11,dsp2,new-dsc11,h1;h3;h3,,,,%s;%s,team;%s,%s",
+                user1,user2, team11, "Draft"));
 
     // Add new row to existing rows
     List<String> newRecords =
