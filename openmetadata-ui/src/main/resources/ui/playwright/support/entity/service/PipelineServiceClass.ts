@@ -11,13 +11,14 @@
  *  limitations under the License.
  */
 import { APIRequestContext, Page } from '@playwright/test';
-import { uuid } from '../../utils/common';
-import { visitEntityPage } from '../../utils/entity';
-import { EntityTypeEndpoint } from './Entity.interface';
-import { EntityClass } from './EntityClass';
+import { SERVICE_TYPE } from '../../../constant/service';
+import { uuid } from '../../../utils/common';
+import { visitServiceDetailsPage } from '../../../utils/service';
+import { EntityTypeEndpoint } from '../Entity.interface';
+import { EntityClass } from '../EntityClass';
 
-export class PipelineClass extends EntityClass {
-  service = {
+export class PipelineServiceClass extends EntityClass {
+  entity = {
     name: `pw-pipeline-service-${uuid()}`,
     serviceType: 'Dagster',
     connection: {
@@ -30,67 +31,52 @@ export class PipelineClass extends EntityClass {
       },
     },
   };
-  entity = {
-    name: `pw.pipeline%${uuid()}`,
-    displayName: `pw-pipeline-${uuid()}`,
-    service: this.service.name,
-    tasks: [{ name: 'snowflake_task' }],
-  };
 
-  serviceResponseData: unknown;
   entityResponseData: unknown;
 
   constructor(name?: string) {
-    super(EntityTypeEndpoint.Pipeline);
-    this.service.name = name ?? this.service.name;
-    this.type = 'Pipeline';
+    super(EntityTypeEndpoint.PipelineService);
+    this.entity.name = name ?? this.entity.name;
+    this.type = 'Pipeline Service';
   }
 
   async create(apiContext: APIRequestContext) {
     const serviceResponse = await apiContext.post(
       '/api/v1/services/pipelineServices',
       {
-        data: this.service,
+        data: this.entity,
       }
     );
-    const entityResponse = await apiContext.post('/api/v1/pipelines', {
-      data: this.entity,
-    });
 
-    this.serviceResponseData = await serviceResponse.json();
-    this.entityResponseData = await entityResponse.json();
+    const service = await serviceResponse.json();
 
-    return {
-      service: serviceResponse.body,
-      entity: entityResponse.body,
-    };
+    this.entityResponseData = service;
+
+    return service;
   }
 
-  async get() {
-    return {
-      service: this.serviceResponseData,
-      entity: this.entityResponseData,
-    };
+  get() {
+    return this.entityResponseData;
   }
 
   async visitEntityPage(page: Page) {
-    await visitEntityPage({
+    await visitServiceDetailsPage(
       page,
-      searchTerm: this.entityResponseData?.['fullyQualifiedName'],
-      dataTestId: `${this.service.name}-${this.entity.name}`,
-    });
+      {
+        name: this.entity.name,
+        type: SERVICE_TYPE.Pipeline,
+      },
+      false
+    );
   }
 
   async delete(apiContext: APIRequestContext) {
     const serviceResponse = await apiContext.delete(
       `/api/v1/services/pipelineServices/name/${encodeURIComponent(
-        this.serviceResponseData?.['fullyQualifiedName']
+        this.entityResponseData?.['fullyQualifiedName']
       )}?recursive=true&hardDelete=true`
     );
 
-    return {
-      service: serviceResponse.body,
-      entity: this.entityResponseData,
-    };
+    return await serviceResponse.json();
   }
 }

@@ -21,11 +21,8 @@ import {
   ENTITIES_WITHOUT_FOLLOWING_BUTTON,
   LIST_OF_FIELDS_TO_EDIT_NOT_TO_BE_PRESENT,
   LIST_OF_FIELDS_TO_EDIT_TO_BE_DISABLED,
-} from '../constant/delete.constant';
-import {
-  EntityType,
-  EntityTypeEndpoint,
-} from '../support/entity/Entity.interface';
+} from '../constant/delete';
+import { EntityTypeEndpoint } from '../support/entity/Entity.interface';
 import { redirectToHomePage } from './common';
 
 export const visitEntityPage = async (data: {
@@ -53,12 +50,13 @@ export const addOwner = async (
   }
   await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
 
+  const ownerSearch = page.waitForResponse(
+    `/api/v1/search/query?q=*${encodeURIComponent(owner)}*`
+  );
   await page
     .getByTestId(`owner-select-${lowerCase(type)}-search-bar`)
     .fill(owner);
-  await page.waitForResponse(
-    `/api/v1/search/query?q=*${encodeURIComponent(owner)}*`
-  );
+  await ownerSearch;
   await page.getByRole('listitem', { name: owner }).click();
 
   await expect(page.getByTestId(dataTestId ?? 'owner-link')).toContainText(
@@ -262,7 +260,10 @@ export const downVote = async (page: Page, endPoint: string) => {
   await expect(page.getByTestId('down-vote-count')).toContainText('1');
 };
 
-export const followEntity = async (page: Page, endpoint: EntityType) => {
+export const followEntity = async (
+  page: Page,
+  endpoint: EntityTypeEndpoint
+) => {
   const followResponse = page.waitForResponse(
     `/api/v1/${endpoint}/*/followers`
   );
@@ -272,7 +273,10 @@ export const followEntity = async (page: Page, endpoint: EntityType) => {
   await expect(page.getByTestId('entity-follow-button')).toContainText('1');
 };
 
-export const unFollowEntity = async (page: Page, endpoint: EntityType) => {
+export const unFollowEntity = async (
+  page: Page,
+  endpoint: EntityTypeEndpoint
+) => {
   const unFollowResponse = page.waitForResponse(
     `/api/v1/${endpoint}/*/followers/*`
   );
@@ -438,8 +442,9 @@ export const deleteAnnouncement = async (page: Page) => {
     'Are you sure you want to permanently delete this message?'
   );
 
+  const getFeed = page.waitForResponse('/api/v1/feed/*');
   await page.click('[data-testid="save-button"]');
-  await page.waitForResponse('/api/v1/feed/*');
+  await getFeed;
 };
 
 export const createInactiveAnnouncement = async (
@@ -485,10 +490,9 @@ export const updateDisplayNameForEntity = async (
   await page.locator('#displayName').clear();
 
   await page.fill('#displayName', displayName);
+  const updateNameResponse = page.waitForResponse(`/api/v1/${endPoint}/*`);
   await page.click('[data-testid="save-button"]');
-
-  // For the network request verification, you can use `page.waitForResponse`:
-  await page.waitForResponse(`/api/v1/${endPoint}/*`);
+  await updateNameResponse;
 
   await expect(
     page.locator('[data-testid="entity-header-display-name"]')
@@ -538,12 +542,11 @@ export const checkForEditActions = async ({ entityType, deleted, page }) => {
 
 export const checkLineageTabActions = async (page: Page, deleted?: boolean) => {
   // Click the lineage tab
+  const lineageApi = page.waitForResponse('/api/v1/lineage/getLineage?fqn=*');
   await page.click('[data-testid="lineage"]');
 
   // Ensure the response has been received and check the status code
-  await page.waitForResponse(
-    '/api/v1/lineage/getLineage?fqn=*&upstreamDepth=3&downstreamDepth=3&query_filter=*&includeDeleted=false'
-  );
+  await lineageApi;
 
   // Check the presence or absence of the edit-lineage element based on the deleted flag
   if (deleted) {
@@ -559,24 +562,23 @@ export const checkForTableSpecificFields = async (
   page: Page,
   deleted?: boolean
 ) => {
-  const queryDataUrl = `/api/v1/search/query?q=*&index=query_search_index*`;
-  const systemProfileUrl = `/api/v1/tables/*/systemProfile*`;
+  const queryDataUrl = `/api/v1/search/query?q=*index=query_search_index*`;
 
+  const queryApi = page.waitForResponse(queryDataUrl);
   // Click the table queries tab
   await page.click('[data-testid="table_queries"]');
 
   if (!deleted) {
-    await page.waitForResponse(queryDataUrl);
-
+    await queryApi;
     // Check if the add-query button is enabled
     const addQueryButton = page.locator('[data-testid="add-query-btn"]');
 
     await expect(addQueryButton).toBeEnabled();
   } else {
     // Check for the no data placeholder message
-    const noDataPlaceholder = page.locator(
-      '[data-testid="no-data-placeholder"]'
-    );
+    const noDataPlaceholder = page
+      .getByTestId('no-queries')
+      .getByTestId('no-data-placeholder');
 
     await expect(noDataPlaceholder).toContainText(
       'Queries data is not available for deleted entities.'
@@ -585,7 +587,6 @@ export const checkForTableSpecificFields = async (
 
   // Click the profiler tab
   await page.click('[data-testid="profiler"]');
-  await page.waitForResponse(systemProfileUrl);
 
   // Check the visibility of profiler buttons based on the deleted flag
   const addTableTestButton = page.locator(
@@ -731,9 +732,9 @@ export const softDeleteEntity = async (
   await page.click('[data-testid="manage-button"]');
   await page.click('[data-testid="delete-button"]');
 
-  await page.waitForSelector('[role="dialog"]');
+  await page.waitForSelector('[role="dialog"].ant-modal');
 
-  await expect(page.locator('[role="dialog"]')).toBeVisible();
+  await expect(page.locator('[role="dialog"].ant-modal')).toBeVisible();
   await expect(page.locator('.ant-modal-title')).toContainText(displayName);
 
   await page.fill('[data-testid="confirmation-text-input"]', 'DELETE');
@@ -765,9 +766,11 @@ export const softDeleteEntity = async (
 
   if (endPoint === EntityTypeEndpoint.Table) {
     await page.click('[data-testid="breadcrumb-link"]:last-child');
-    await page.waitForResponse('/api/v1/databaseSchemas/name');
+    const deletedTableResponse = page.waitForResponse(
+      '/api/v1/tables?databaseSchema=*'
+    );
     await page.click('[data-testid="show-deleted"]');
-    await page.waitForResponse('/api/v1/tables?databaseSchema=*');
+    await deletedTableResponse;
     const tableCount = await page.locator(
       '[data-testid="table"] [data-testid="count"]'
     );
@@ -790,12 +793,12 @@ export const softDeleteEntity = async (
 export const hardDeleteEntity = async (
   page: Page,
   entityName: string,
-  endPoint: EntityType
+  endPoint: EntityTypeEndpoint
 ) => {
   await page.click('[data-testid="manage-button"]');
   await page.click('[data-testid="delete-button"]');
 
-  await expect(page.locator('[role="dialog"]')).toBeVisible();
+  await expect(page.locator('[role="dialog"].ant-modal')).toBeVisible();
 
   await expect(
     page.locator('[data-testid="delete-modal"] .ant-modal-title')
