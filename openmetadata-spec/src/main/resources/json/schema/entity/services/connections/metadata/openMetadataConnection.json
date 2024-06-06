@@ -160,7 +160,7 @@
     "limitRecords": {
       "description": "Limit the number of records for Indexing.",
       "type": "integer",
-      "default": "1000"
+      "default": 1000
     },
     "forceEntityOverwriting": {
       "description": "Force the overwriting of any entity during the ingestion.",
