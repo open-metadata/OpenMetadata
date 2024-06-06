@@ -44,7 +44,11 @@ const FeedPanelHeader: FC<FeedPanelHeaderProp> = ({
   const entityField = getEntityField(entityLink);
 
   return (
-    <header className={classNames('d-flex justify-between p-y-md', className)}>
+    <header
+      className={classNames(
+        'd-flex justify-between items-center p-y-md',
+        className
+      )}>
       <p data-testid="header-title">
         <span data-testid="header-noun">
           {noun ? noun : getFeedPanelHeaderText(threadType)}{' '}
