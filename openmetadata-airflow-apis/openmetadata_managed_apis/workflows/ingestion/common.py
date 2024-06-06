@@ -18,8 +18,6 @@ from functools import partial
 from typing import Callable, Optional, Union
 
 from airflow import DAG
-from metadata.generated.schema.type.basic import Uuid, Timestamp
-
 from openmetadata_managed_apis.api.utils import clean_dag_id
 from pydantic import ValidationError
 from requests.utils import quote
@@ -35,6 +33,7 @@ from metadata.generated.schema.entity.services.storageService import StorageServ
 from metadata.generated.schema.metadataIngestion.application import (
     OpenMetadataApplicationConfig,
 )
+from metadata.generated.schema.type.basic import Timestamp, Uuid
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.utils import fqn
 from metadata.workflow.workflow_output_handler import print_status
