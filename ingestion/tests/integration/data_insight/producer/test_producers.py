@@ -143,7 +143,7 @@ class TestWebAnalyticProducer(TestCase):
             )
             event = cls.metadata.add_web_analytic_events(create_event)
             event = WebAnalyticEventData.parse_obj(event)
-            cls.event_ids.append(event.eventId.__root__)
+            cls.event_ids.append(event.eventId.root)
 
         cls.producer = WebAnalyticsProducer(cls.metadata)
 

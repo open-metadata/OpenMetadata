@@ -1064,7 +1064,7 @@
     "stage-file-location": "Speicherort der Bühnendatei",
     "star": "Star",
     "star-open-metadata": "Star OpenMetadata",
-    "star-us-on-github": "Sterne uns auf Github",
+    "star-us-on-github": "Sterne uns auf GitHub",
     "start-date-time-zone": "Startdatum ({{timeZone}})",
     "start-elasticsearch-docker": "Elasticsearch Docker starten",
     "start-entity": "{{entity}} gestartet",

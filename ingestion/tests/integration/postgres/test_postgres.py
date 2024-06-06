@@ -36,9 +36,9 @@ from metadata.generated.schema.metadataIngestion.workflow import (
     WorkflowConfig,
 )
 from metadata.ingestion.lineage.sql_lineage import search_cache
+from metadata.ingestion.models.custom_pydantic import CustomSecretStr
 from metadata.ingestion.ometa.client import APIError
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.profiler.api.models import ProfilerProcessorConfig
 from metadata.workflow.metadata import MetadataWorkflow
 from metadata.workflow.profiler import ProfilerWorkflow
 from metadata.workflow.usage import UsageWorkflow
@@ -63,7 +63,9 @@ def db_service(metadata, postgres_container):
         ),
     )
     service_entity = metadata.create_or_update(data=service)
-    service_entity.connection.config.authType.password = postgres_container.password
+    service_entity.connection.config.authType.password = CustomSecretStr(
+        postgres_container.password
+    )
     yield service_entity
     try:
         metadata.delete(
@@ -81,7 +83,7 @@ def ingest_metadata(db_service, metadata: OpenMetadata):
     workflow_config = OpenMetadataWorkflowConfig(
         source=Source(
             type=db_service.connection.config.type.value.lower(),
-            serviceName=db_service.fullyQualifiedName.__root__,
+            serviceName=db_service.fullyQualifiedName.root,
             serviceConnection=db_service.connection,
             sourceConfig=SourceConfig(config={}),
         ),
@@ -101,7 +103,7 @@ def ingest_lineage(db_service, ingest_metadata, metadata: OpenMetadata):
     workflow_config = OpenMetadataWorkflowConfig(
         source=Source(
             type="postgres-lineage",
-            serviceName=db_service.fullyQualifiedName.__root__,
+            serviceName=db_service.fullyQualifiedName.root,
             serviceConnection=db_service.connection,
             sourceConfig=SourceConfig(config=DatabaseServiceQueryLineagePipeline()),
         ),
@@ -121,13 +123,13 @@ def run_profiler_workflow(ingest_metadata, db_service, metadata):
     workflow_config = OpenMetadataWorkflowConfig(
         source=Source(
             type=db_service.connection.config.type.value.lower(),
-            serviceName=db_service.fullyQualifiedName.__root__,
+            serviceName=db_service.fullyQualifiedName.root,
             serviceConnection=db_service.connection,
             sourceConfig=SourceConfig(config=DatabaseServiceProfilerPipeline()),
         ),
         processor=Processor(
             type="orm-profiler",
-            config=ProfilerProcessorConfig(),
+            config={},
         ),
         sink=Sink(
             type="metadata-rest",
@@ -148,7 +150,7 @@ def ingest_query_usage(ingest_metadata, db_service, metadata):
     workflow_config = {
         "source": {
             "type": "postgres-usage",
-            "serviceName": db_service.fullyQualifiedName.__root__,
+            "serviceName": db_service.fullyQualifiedName.root,
             "serviceConnection": db_service.connection.dict(),
             "sourceConfig": {
                 "config": {"type": DatabaseUsageConfigType.DatabaseUsage.value}
@@ -184,7 +186,7 @@ def ingest_query_usage(ingest_metadata, db_service, metadata):
 def db_fqn(db_service: DatabaseService):
     return ".".join(
         [
-            db_service.fullyQualifiedName.__root__,
+            db_service.fullyQualifiedName.root,
             db_service.connection.config.database,
         ]
     )
@@ -214,7 +216,7 @@ def run_usage_workflow(db_service, metadata):
     workflow_config = {
         "source": {
             "type": "postgres-usage",
-            "serviceName": db_service.fullyQualifiedName.__root__,
+            "serviceName": db_service.fullyQualifiedName.root,
             "serviceConnection": db_service.connection.dict(),
             "sourceConfig": {
                 "config": {"type": DatabaseUsageConfigType.DatabaseUsage.value}
@@ -253,7 +255,7 @@ def test_usage_delete_usage(db_service, ingest_lineage, metadata):
     workflow_config = {
         "source": {
             "type": "postgres-usage",
-            "serviceName": db_service.fullyQualifiedName.__root__,
+            "serviceName": db_service.fullyQualifiedName.root,
             "serviceConnection": db_service.connection.dict(),
             "sourceConfig": {
                 "config": {"type": DatabaseUsageConfigType.DatabaseUsage.value}
@@ -287,7 +289,7 @@ def test_usage_delete_usage(db_service, ingest_lineage, metadata):
     workflow_config = OpenMetadataWorkflowConfig(
         source=Source(
             type=db_service.connection.config.type.value.lower(),
-            serviceName=db_service.fullyQualifiedName.__root__,
+            serviceName=db_service.fullyQualifiedName.root,
             serviceConnection=db_service.connection,
             sourceConfig=SourceConfig(config={}),
         ),

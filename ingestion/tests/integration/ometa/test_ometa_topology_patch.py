@@ -155,8 +155,8 @@ class TopologyPatchTest(TestCase):
 
         service_id = str(
             cls.metadata.get_by_name(
-                entity=DatabaseService, fqn=cls.service.name.__root__
-            ).id.__root__
+                entity=DatabaseService, fqn=cls.service.name.root
+            ).id.root
         )
 
         cls.metadata.delete(
@@ -186,13 +186,13 @@ class TopologyPatchTest(TestCase):
             array_entity_fields=ARRAY_ENTITY_FIELDS,
         )
         table_entity = self.metadata.get_by_id(
-            entity=Table, entity_id=self.table_entity_one.id.__root__
+            entity=Table, entity_id=self.table_entity_one.id.root
         )
-        self.assertEqual(table_entity.columns[0].description.__root__, "test column1")
-        self.assertEqual(table_entity.columns[1].description.__root__, "test column2")
-        self.assertEqual(table_entity.columns[2].description.__root__, "test column3")
-        self.assertEqual(table_entity.columns[3].description.__root__, "test column4")
-        self.assertEqual(table_entity.columns[4].description.__root__, "test column5")
+        self.assertEqual(table_entity.columns[0].description.root, "test column1")
+        self.assertEqual(table_entity.columns[1].description.root, "test column2")
+        self.assertEqual(table_entity.columns[2].description.root, "test column3")
+        self.assertEqual(table_entity.columns[3].description.root, "test column4")
+        self.assertEqual(table_entity.columns[4].description.root, "test column5")
 
     def test_topology_patch_table_columns_with_add_del(self):
         """Check if the table columns are patched"""
@@ -218,10 +218,10 @@ class TopologyPatchTest(TestCase):
             array_entity_fields=ARRAY_ENTITY_FIELDS,
         )
         table_entity = self.metadata.get_by_id(
-            entity=Table, entity_id=self.table_entity_two.id.__root__
+            entity=Table, entity_id=self.table_entity_two.id.root
         )
-        self.assertEqual(table_entity.columns[0].description.__root__, "test column1")
-        self.assertEqual(table_entity.columns[1].description.__root__, "test column3")
-        self.assertEqual(table_entity.columns[2].description.__root__, "test column5")
-        self.assertEqual(table_entity.columns[3].description.__root__, "test column7")
-        self.assertEqual(table_entity.columns[4].description.__root__, "test column6")
+        self.assertEqual(table_entity.columns[0].description.root, "test column1")
+        self.assertEqual(table_entity.columns[1].description.root, "test column3")
+        self.assertEqual(table_entity.columns[2].description.root, "test column5")
+        self.assertEqual(table_entity.columns[3].description.root, "test column7")
+        self.assertEqual(table_entity.columns[4].description.root, "test column6")

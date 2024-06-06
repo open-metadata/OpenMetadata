@@ -66,6 +66,7 @@
       "default": false
     },
     "votes" : {
+      "description": "Votes on the entity.",
       "$ref": "../../type/votes.json"
     }
   },

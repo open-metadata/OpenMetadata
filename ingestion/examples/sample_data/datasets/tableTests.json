@@ -6,7 +6,7 @@
         "description": "Rows should always be 100 because of something",
         "testCase": {
           "config": {
-            "value": 120
+            "value": "120"
           },
           "tableTestType": "tableRowCountToEqual"
         },
@@ -21,7 +21,7 @@
         "description": "Rows should always be 100 because of something",
         "testCase": {
           "config": {
-            "value": 120
+            "value": "120"
           },
           "tableTestType": "tableRowCountToEqual"
         },
@@ -36,7 +36,7 @@
         "description": "We expect certain columns",
         "testCase": {
           "config": {
-            "value": 5
+            "value": "5"
           },
           "tableTestType": "tableColumnCountToEqual"
         },
@@ -51,8 +51,8 @@
         "description": "Rows should always be 100 because of something",
         "testCase": {
           "config": {
-            "minValue": 100,
-            "maxValue": 200
+            "minValue": "100",
+            "maxValue": "200"
           },
           "tableTestType": "tableRowCountToBeBetween"
         },
@@ -67,8 +67,8 @@
         "description": "Rows should always be 100 because of something",
         "testCase": {
           "config": {
-            "minValue": 100,
-            "maxValue": 200
+            "minValue": "100",
+            "maxValue": "200"
           },
           "tableTestType": "tableRowCountToBeBetween"
         },
@@ -86,7 +86,7 @@
         "description": "user_id should be positive",
         "testCase": {
           "config": {
-            "minValue": 0
+            "minValue": "0"
           },
           "columnTestType": "columnValuesToBeBetween"
         },
@@ -102,7 +102,7 @@
         "description": "user_id should be positive",
         "testCase": {
           "config": {
-            "minValue": 0
+            "minValue": "0"
           },
           "columnTestType": "columnValuesToBeBetween"
         },
@@ -206,7 +206,7 @@
         "description": "Some description...",
         "testCase": {
           "config": {
-            "missingCountValue": 10
+            "missingCountValue": "10"
           },
           "columnTestType": "columnValuesMissingCountToBeEqual"
         },
@@ -222,7 +222,7 @@
         "description": "Some description...",
         "testCase": {
           "config": {
-            "missingCountValue": 10
+            "missingCountValue": "10"
           },
           "columnTestType": "columnValuesMissingCountToBeEqual"
         },
@@ -238,8 +238,8 @@
         "description": "email should have a fixed length",
         "testCase": {
           "config": {
-            "minValue": 6,
-            "maxValue": 30
+            "minValue": "6",
+            "maxValue": "30"
           },
           "columnTestType": "columnValuesToBeBetween"
         },
@@ -255,8 +255,8 @@
         "description": "email should have a fixed length",
         "testCase": {
           "config": {
-            "minValue": 6,
-            "maxValue": 30
+            "minValue": "6",
+            "maxValue": "30"
           },
           "columnTestType": "columnValuesToBeBetween"
         },

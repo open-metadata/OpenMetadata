@@ -252,12 +252,10 @@ class DomoPipelineUnitTest(TestCase):
             mock_domopipeline_config["source"],
             self.config.workflowConfig.openMetadataServerConfig,
         )
-        self.domopipeline.context.get().__dict__[
-            "pipeline"
-        ] = MOCK_PIPELINE.name.__root__
+        self.domopipeline.context.get().__dict__["pipeline"] = MOCK_PIPELINE.name.root
         self.domopipeline.context.get().__dict__[
             "pipeline_service"
-        ] = MOCK_PIPELINE_SERVICE.name.__root__
+        ] = MOCK_PIPELINE_SERVICE.name.root
 
     @patch("metadata.clients.domo_client.DomoClient.get_runs")
     def test_pipeline(self, get_runs):

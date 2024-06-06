@@ -532,6 +532,9 @@
             },
             {
               "$ref": "../../type/basic.json#/definitions/date"
+            },
+            {
+              "type": "string"
             }
           ]
         },
@@ -552,6 +555,9 @@
             },
             {
               "$ref": "../../type/basic.json#/definitions/date"
+            },
+            {
+              "type": "string"
             }
           ]
         },
@@ -1079,6 +1085,7 @@
       "$ref" : "#/definitions/fileFormat"
     },
     "votes" : {
+      "description": "Votes on the entity.",
       "$ref": "../../type/votes.json"
     },
     "lifeCycle": {

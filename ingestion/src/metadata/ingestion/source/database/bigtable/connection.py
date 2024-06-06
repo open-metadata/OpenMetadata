@@ -40,9 +40,9 @@ def get_connection(connection: BigTableConnection):
     project_ids = None
     if isinstance(connection.credentials.gcpConfig, GcpCredentialsValues):
         project_ids = (
-            [connection.credentials.gcpConfig.projectId.__root__]
+            [connection.credentials.gcpConfig.projectId.root]
             if isinstance(connection.credentials.gcpConfig.projectId, SingleProjectId)
-            else connection.credentials.gcpConfig.projectId.__root__
+            else connection.credentials.gcpConfig.projectId.root
         )
     # admin=True is required to list instances and tables
     return MultiProjectClient(client_class=Client, project_ids=project_ids, admin=True)

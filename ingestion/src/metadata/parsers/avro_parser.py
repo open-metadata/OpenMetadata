@@ -14,11 +14,11 @@ Utils module to parse the avro schema
 """
 
 import traceback
-from typing import List, Optional, Tuple, Union
+from typing import List, Optional, Tuple, Type, Union
 
 import avro.schema as avroschema
 from avro.schema import ArraySchema, RecordSchema, Schema, UnionSchema
-from pydantic.main import ModelMetaclass
+from pydantic import BaseModel
 
 from metadata.generated.schema.entity.data.table import Column
 from metadata.generated.schema.type.schema import FieldModel
@@ -30,7 +30,7 @@ RECORD_DATATYPE_NAME = "RECORD"
 
 
 def _parse_array_children(
-    arr_item: Schema, cls: ModelMetaclass = FieldModel
+    arr_item: Schema, cls: Type[BaseModel] = FieldModel
 ) -> Tuple[str, Optional[Union[FieldModel, Column]]]:
     if isinstance(arr_item, ArraySchema):
         display_type, children = _parse_array_children(arr_item.items, cls=cls)
@@ -55,7 +55,7 @@ def _parse_array_children(
 
 
 def parse_array_fields(
-    field: ArraySchema, cls: ModelMetaclass = FieldModel
+    field: ArraySchema, cls: Type[BaseModel] = FieldModel
 ) -> Optional[List[Union[FieldModel, Column]]]:
     """
     Parse array field for avro schema
@@ -106,7 +106,9 @@ def parse_array_fields(
 
 
 def _parse_union_children(
-    parent: Optional[Schema], union_field: UnionSchema, cls: ModelMetaclass = FieldModel
+    parent: Optional[Schema],
+    union_field: UnionSchema,
+    cls: Type[BaseModel] = FieldModel,
 ) -> Tuple[str, Optional[Union[FieldModel, Column]]]:
     non_null_schema = [
         (i, schema)
@@ -137,7 +139,7 @@ def _parse_union_children(
     return sub_type, None
 
 
-def parse_record_fields(field: RecordSchema, cls: ModelMetaclass = FieldModel):
+def parse_record_fields(field: RecordSchema, cls: Type[BaseModel] = FieldModel):
     """
     Parse the nested record fields for avro
     """
@@ -160,7 +162,7 @@ def parse_record_fields(field: RecordSchema, cls: ModelMetaclass = FieldModel):
 def parse_union_fields(
     parent: Optional[Schema],
     union_field: Schema,
-    cls: ModelMetaclass = FieldModel,
+    cls: Type[BaseModel] = FieldModel,
 ) -> Optional[List[Union[FieldModel, Column]]]:
     """
     Parse union field for avro schema
@@ -209,7 +211,7 @@ def parse_union_fields(
 
 
 def parse_single_field(
-    field: Schema, cls: ModelMetaclass = FieldModel
+    field: Schema, cls: Type[BaseModel] = FieldModel
 ) -> Optional[List[Union[FieldModel, Column]]]:
     """
     Parse primitive field for avro schema
@@ -224,7 +226,7 @@ def parse_single_field(
 
 
 def parse_avro_schema(
-    schema: str, cls: ModelMetaclass = FieldModel
+    schema: str, cls: Type[BaseModel] = FieldModel
 ) -> Optional[List[Union[FieldModel, Column]]]:
     """
     Method to parse the avro schema
@@ -247,7 +249,7 @@ def parse_avro_schema(
 
 
 def get_avro_fields(
-    parsed_schema: Schema, cls: ModelMetaclass = FieldModel
+    parsed_schema: Schema, cls: Type[BaseModel] = FieldModel
 ) -> Optional[List[Union[FieldModel, Column]]]:
     """
     Recursively convert the parsed schema into required models
