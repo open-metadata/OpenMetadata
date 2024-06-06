@@ -10,16 +10,16 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Page } from '@playwright/test';
-import { DEFAULT_ADMIN_USER } from '../../constant/user';
-import { UserClass } from './UserClass';
+import { GlobalSettingOptions } from './settings';
 
-export class AdminClass extends UserClass {
-  async login(
-    page: Page,
-    userName = DEFAULT_ADMIN_USER.userName,
-    password = DEFAULT_ADMIN_USER.password
-  ) {
-    await super.login(page, userName, password);
-  }
-}
+export const SERVICE_TYPE = {
+  Database: GlobalSettingOptions.DATABASES,
+  Messaging: GlobalSettingOptions.MESSAGING,
+  Dashboard: GlobalSettingOptions.DASHBOARDS,
+  Pipeline: GlobalSettingOptions.PIPELINES,
+  MLModels: GlobalSettingOptions.MLMODELS,
+  Storage: GlobalSettingOptions.STORAGES,
+  Search: GlobalSettingOptions.SEARCH,
+  Metadata: GlobalSettingOptions.METADATA,
+  StoredProcedure: GlobalSettingOptions.STORED_PROCEDURES,
+};

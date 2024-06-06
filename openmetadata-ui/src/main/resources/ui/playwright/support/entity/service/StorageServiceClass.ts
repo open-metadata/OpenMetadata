@@ -11,13 +11,14 @@
  *  limitations under the License.
  */
 import { APIRequestContext, Page } from '@playwright/test';
-import { uuid } from '../../utils/common';
-import { visitEntityPage } from '../../utils/entity';
-import { EntityTypeEndpoint } from './Entity.interface';
-import { EntityClass } from './EntityClass';
+import { SERVICE_TYPE } from '../../../constant/service';
+import { uuid } from '../../../utils/common';
+import { visitServiceDetailsPage } from '../../../utils/service';
+import { EntityTypeEndpoint } from '../Entity.interface';
+import { EntityClass } from '../EntityClass';
 
-export class ContainerClass extends EntityClass {
-  service = {
+export class StorageServiceClass extends EntityClass {
+  entity = {
     name: `pw-storage-service-${uuid()}`,
     serviceType: 'S3',
     connection: {
@@ -33,66 +34,52 @@ export class ContainerClass extends EntityClass {
       },
     },
   };
-  entity = {
-    name: `pw.container%${uuid()}`,
-    displayName: `pw-container-${uuid()}`,
-    service: this.service.name,
-  };
 
-  serviceResponseData: unknown;
   entityResponseData: unknown;
 
   constructor(name?: string) {
-    super(EntityTypeEndpoint.Container);
-    this.service.name = name ?? this.service.name;
-    this.type = 'Container';
+    super(EntityTypeEndpoint.StorageService);
+    this.entity.name = name ?? this.entity.name;
+    this.type = 'Storage Service';
   }
 
   async create(apiContext: APIRequestContext) {
     const serviceResponse = await apiContext.post(
       '/api/v1/services/storageServices',
       {
-        data: this.service,
+        data: this.entity,
       }
     );
-    const entityResponse = await apiContext.post('/api/v1/containers', {
-      data: this.entity,
-    });
 
-    this.serviceResponseData = await serviceResponse.json();
-    this.entityResponseData = await entityResponse.json();
+    const service = await serviceResponse.json();
 
-    return {
-      service: serviceResponse.body,
-      entity: entityResponse.body,
-    };
+    this.entityResponseData = service;
+
+    return service;
   }
 
-  async get() {
-    return {
-      service: this.serviceResponseData,
-      entity: this.entityResponseData,
-    };
+  get() {
+    return this.entityResponseData;
   }
 
   async visitEntityPage(page: Page) {
-    await visitEntityPage({
+    await visitServiceDetailsPage(
       page,
-      searchTerm: this.entityResponseData?.['fullyQualifiedName'],
-      dataTestId: `${this.service.name}-${this.entity.name}`,
-    });
+      {
+        name: this.entity.name,
+        type: SERVICE_TYPE.Storage,
+      },
+      false
+    );
   }
 
   async delete(apiContext: APIRequestContext) {
     const serviceResponse = await apiContext.delete(
       `/api/v1/services/storageServices/name/${encodeURIComponent(
-        this.serviceResponseData?.['fullyQualifiedName']
+        this.entityResponseData?.['fullyQualifiedName']
       )}?recursive=true&hardDelete=true`
     );
 
-    return {
-      service: serviceResponse.body,
-      entity: this.entityResponseData,
-    };
+    return await serviceResponse.json();
   }
 }
