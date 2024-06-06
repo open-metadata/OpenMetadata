@@ -368,7 +368,14 @@ export const createAnnouncement = async (
 
   await page
     .getByTestId('announcement-container')
-    .locator(`a[href*="${encodeURIComponent(entityFqn)}"]`)
+    .getByTestId(`announcement-${entityFqn}`)
+    .getByTestId(`entity-link`)
+    .first()
+    .scrollIntoViewIfNeeded();
+  await page
+    .getByTestId('announcement-container')
+    .getByTestId(`announcement-${entityFqn}`)
+    .getByTestId(`entity-link`)
     .first()
     .click();
   await page.getByTestId('announcement-card').isVisible();
