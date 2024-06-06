@@ -460,7 +460,7 @@ public class GlossaryResourceTest extends EntityResourceTest<Glossary, CreateGlo
                 user1, user2, "Approved"),
             String.format(
                 "importExportTest.g1,g11,dsp2,dsc11,h1;h3;h3,,,,%s;%s,team;%s,%s",
-                user1,user2, team11, "Draft"));
+                user1, user2, team11, "Draft"));
 
     // Update terms with change in description
     List<String> updateRecords =
@@ -473,7 +473,7 @@ public class GlossaryResourceTest extends EntityResourceTest<Glossary, CreateGlo
                 user1, user2, "Approved"),
             String.format(
                 "importExportTest.g1,g11,dsp2,new-dsc11,h1;h3;h3,,,,%s;%s,team;%s,%s",
-                user1,user2, team11, "Draft"));
+                user1, user2, team11, "Draft"));
 
     // Add new row to existing rows
     List<String> newRecords =
