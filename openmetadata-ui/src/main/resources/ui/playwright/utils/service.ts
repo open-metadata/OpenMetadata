@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { expect, Page } from '@playwright/test';
-import { settingClick } from './sideBar';
+import { settingClick } from './sidebar';
 
 export const searchServiceFromSettingPage = async (
   page: Page,
