@@ -247,9 +247,7 @@ def build_dag_configs(ingestion_pipeline: IngestionPipeline) -> dict:
     """
 
     if ingestion_pipeline.airflowConfig.startDate:
-        start_date = datetime.strptime(
-            ingestion_pipeline.airflowConfig.startDate.root, "%Y-%m-%dT%H:%M:%S.%fZ"
-        ).replace(tzinfo=None)
+        start_date = ingestion_pipeline.airflowConfig.startDate.root
     else:
         start_date = datetime.now() - timedelta(days=1)
 
