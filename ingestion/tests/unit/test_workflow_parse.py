@@ -400,7 +400,7 @@ class TestWorkflowParse(TestCase):
         with self.assertRaises(ValidationError) as err:
             parse_ingestion_pipeline_config_gracefully(config_dict_ko)
         self.assertIn(
-            "2 validation errors for DatabaseServiceMetadataPipeline\ntFilterPattern\n  extra fields not permitted (type=value_error.extra)\nviewLogDuration\n  extra fields not permitted (type=value_error.extra)",
+            "2 validation errors for DatabaseServiceMetadataPipeline\nviewLogDuration\n  Extra inputs are not permitted",
             str(err.exception),
         )
 
@@ -481,7 +481,7 @@ class TestWorkflowParse(TestCase):
         with self.assertRaises(ValidationError) as err:
             parse_ingestion_pipeline_config_gracefully(config_dict_ko)
         self.assertIn(
-            "3 validation errors for PipelineServiceMetadataPipeline\nincludeViewLineage\n  extra fields not permitted (type=value_error.extra)\nmarkDeletedDbs\n  extra fields not permitted (type=value_error.extra)\npipelineFilterPatterns\n  extra fields not permitted (type=value_error.extra)",
+            "3 validation errors for PipelineServiceMetadataPipeline\nincludeViewLineage\n  Extra inputs are not permitted",
             str(err.exception),
         )
 
@@ -538,7 +538,7 @@ class TestWorkflowParse(TestCase):
                 "connection": {
                     "config": {
                         "type": "Airflow",
-                        "hostPort": "localhost:8080",
+                        "hostPort": "http:://localhost:8080",
                         "connection": {
                             "type": "Mysql",
                             "scheme": "mysql+pymysql",
@@ -570,7 +570,7 @@ class TestWorkflowParse(TestCase):
         with self.assertRaises(ValidationError) as err:
             parse_automation_workflow_gracefully(config_dict_ko)
         self.assertIn(
-            "1 validation error for AirflowConnection\nhostPort\n  invalid or missing URL scheme (type=value_error.url.scheme)",
+            "1 validation error for AirflowConnection\nhostPort\n  Input should be a valid URL",
             str(err.exception),
         )
 
@@ -614,7 +614,7 @@ class TestWorkflowParse(TestCase):
         with self.assertRaises(ValidationError) as err:
             parse_automation_workflow_gracefully(config_dict_ko_2)
         self.assertIn(
-            "3 validation errors for MysqlConnection\nusername\n  field required (type=value_error.missing)\nsupportsProfile\n  extra fields not permitted (type=value_error.extra)\nusernam\n  extra fields not permitted (type=value_error.extra)",
+            "3 validation errors for MysqlConnection\nusername\n  Field required",
             str(err.exception),
         )
 
@@ -697,7 +697,7 @@ class TestWorkflowParse(TestCase):
         with self.assertRaises(ValidationError) as err:
             parse_automation_workflow_gracefully(config_dict_ko)
         self.assertIn(
-            "1 validation error for AthenaConnection\ns3StagingDir\n  invalid or missing URL scheme (type=value_error.url.scheme)",
+            "1 validation error for AthenaConnection\ns3StagingDir\n  Input should be a valid URL",
             str(err.exception),
         )
 
@@ -816,7 +816,7 @@ class TestWorkflowParse(TestCase):
                             "dbtCloudJobId": "JOB ID",
                             "dbtCloudUrl": "https://clouddbt.com",
                         },
-                        "dbtUpdateDescription": True,
+                        "extraParameter": True,
                         "includeTags": True,
                         "dbtClassificationName": "dbtTags",
                         "databaseFilterPattern": {"includes": ["test"]},
@@ -844,6 +844,6 @@ class TestWorkflowParse(TestCase):
         with self.assertRaises(ParsingConfigurationError) as err:
             parse_workflow_config_gracefully(config_dict_dbt_pipeline_ko)
         self.assertIn(
-            "We encountered an error parsing the configuration of your DbtPipeline.\nYou might need to review your config based on the original cause of this failure:\n\t - Extra parameter 'dbtUpdateDescription'",
+            "We encountered an error parsing the configuration of your DbtPipeline.\nYou might need to review your config based on the original cause of this failure:\n\t - Extra parameter 'extraParameter'",
             str(err.exception),
         )

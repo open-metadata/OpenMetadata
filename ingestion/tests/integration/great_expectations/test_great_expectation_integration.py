@@ -159,9 +159,7 @@ class TestGreatExpectationIntegration(TestCase):
         """
 
         service_id = str(
-            cls.metadata.get_by_name(
-                entity=DatabaseService, fqn="test_sqlite"
-            ).id.__root__
+            cls.metadata.get_by_name(entity=DatabaseService, fqn="test_sqlite").id.root
         )
 
         cls.metadata.delete(

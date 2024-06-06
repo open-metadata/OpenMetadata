@@ -13,11 +13,9 @@ Profiler Processor Step
 """
 import json
 import traceback
-from datetime import datetime
+from datetime import datetime, timezone
 from functools import singledispatch
 from io import BytesIO
-
-from pydantic.json import ENCODERS_BY_TYPE
 
 from metadata.clients.aws_client import AWSClient
 from metadata.generated.schema.entity.data.table import Table, TableData
@@ -25,6 +23,7 @@ from metadata.generated.schema.entity.services.connections.connectionBasicType i
     DataStorageConfig,
 )
 from metadata.generated.schema.security.credentials.awsCredentials import AWSCredentials
+from metadata.ingestion.models.custom_pydantic import ignore_type_decoder
 from metadata.profiler.interface.profiler_interface import ProfilerInterface
 from metadata.utils.helpers import clean_uri
 from metadata.utils.logger import profiler_logger
@@ -62,11 +61,11 @@ def _get_object_key(
         service_name=table.service.name,
         database_name=table.database.name,
         database_schema_name=table.databaseSchema.name,
-        table_name=table.name.__root__,
+        table_name=table.name.root,
     )
     if not overwrite_data:
         file_name = file_name.replace(
-            ".parquet", f"_{datetime.now().strftime('%Y_%m_%d')}.parquet"
+            ".parquet", f"_{datetime.now(tz=timezone.utc).strftime('%Y_%m_%d')}.parquet"
         )
     if prefix:
         return f"{clean_uri(prefix)}/{file_name}"
@@ -83,11 +82,12 @@ def upload_sample_data(data: TableData, profiler_interface: ProfilerInterface) -
         sample_storage_config: DataStorageConfig = profiler_interface.storage_config
         if not sample_storage_config:
             return
-        ENCODERS_BY_TYPE[bytes] = lambda v: v.decode("utf-8", "ignore")
+        # Ignore any decoding error for byte data
+        ignore_type_decoder(bytes)
         deserialized_data = json.loads(data.json())
         df = pd.DataFrame(
             data=deserialized_data.get("rows", []),
-            columns=[i.__root__ for i in data.columns],
+            columns=[i.root for i in data.columns],
         )
         pq_buffer = BytesIO()
         df.to_parquet(pq_buffer)

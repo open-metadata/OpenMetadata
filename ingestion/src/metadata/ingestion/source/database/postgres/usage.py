@@ -12,9 +12,10 @@
 Postgres usage module
 """
 import traceback
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Iterable
 
+from metadata.generated.schema.type.basic import DateTime
 from metadata.generated.schema.type.tableQuery import TableQueries, TableQuery
 from metadata.ingestion.source.connections import get_connection
 from metadata.ingestion.source.database.postgres.queries import POSTGRES_SQL_STATEMENT
@@ -39,9 +40,11 @@ class PostgresUsageSource(PostgresQueryParserSource, UsageSource):
         """
         Process Query
         """
+        query = None
         try:
+            query = self.get_sql_statement()
             with get_connection(self.service_connection).connect() as conn:
-                rows = conn.execute(self.get_sql_statement())
+                rows = conn.execute(query)
                 queries = []
                 for row in rows:
                     row = dict(row)
@@ -50,7 +53,7 @@ class PostgresUsageSource(PostgresQueryParserSource, UsageSource):
                             TableQuery(
                                 query=row["query_text"],
                                 userName=row["usename"],
-                                analysisDate=datetime.now(),
+                                analysisDate=DateTime(datetime.now(tz=timezone.utc)),
                                 aborted=self.get_aborted_status(row),
                                 databaseName=self.get_database_name(row),
                                 serviceName=self.config.serviceName,
@@ -64,5 +67,9 @@ class PostgresUsageSource(PostgresQueryParserSource, UsageSource):
             if queries:
                 yield TableQueries(queries=queries)
         except Exception as err:
+            if query:
+                logger.debug(
+                    f"###### USAGE QUERY #######\n{query}\n##########################"
+                )
             logger.error(f"Source usage processing error - {err}")
             logger.debug(traceback.format_exc())

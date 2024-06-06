@@ -107,6 +107,7 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
         TestCaseResource.TestCaseList.class,
         "dataQuality/testCases",
         TestCaseResource.FIELDS);
+    supportsTags = false; // Test cases do not support setting tags directly (inherits from Entity)
   }
 
   public void setupTestCase(TestInfo test) throws IOException {
@@ -486,6 +487,28 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
       getAndValidateTestSummary(logicalTestSuite.getId().toString());
     }
     deleteEntity(testCase1.getId(), ADMIN_AUTH_HEADERS);
+    ResultList<TestCaseResult> resultList =
+        getTestCaseResults(
+            testCase1.getFullyQualifiedName(),
+            TestUtils.dateToTimestamp("2021-10-01"),
+            TestUtils.dateToTimestamp("2021-10-30"),
+            ADMIN_AUTH_HEADERS);
+    assertNotEquals(
+        resultList.getData().size(), 0); // soft deletion should not delete existing results
+
+    if (supportsSearchIndex) {
+      getAndValidateTestSummary(testCase.getTestSuite().getId().toString());
+      getAndValidateTestSummary(logicalTestSuite.getId().toString());
+    }
+
+    deleteEntity(testCase1.getId(), true, true, ADMIN_AUTH_HEADERS); // hard delete
+    resultList =
+        getTestCaseResults(
+            testCase1.getFullyQualifiedName(),
+            TestUtils.dateToTimestamp("2021-10-01"),
+            TestUtils.dateToTimestamp("2021-10-30"),
+            ADMIN_AUTH_HEADERS);
+    assertEquals(resultList.getData().size(), 0); // hard deletion should delete existing results
 
     if (supportsSearchIndex) {
       getAndValidateTestSummary(testCase.getTestSuite().getId().toString());
@@ -717,10 +740,10 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
       // witgh the same prefix
       if (i == 0) {
         tableReq = tableResourceTest.createRequest("test_getSimplelistFromSearch");
-        tableReq.getName();
+        tableReq.setTags(List.of(PERSONAL_DATA_TAG_LABEL));
       } else if (i == 1) {
         tableReq = tableResourceTest.createRequest("test_getSimplelistFromSearch_a");
-        tableReq.getName();
+        tableReq.setTags(List.of(PII_SENSITIVE_TAG_LABEL, TIER1_TAG_LABEL));
       } else {
         tableReq = tableResourceTest.createRequest(testInfo, i);
       }
@@ -822,6 +845,172 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
         allEntities
             .getData()
             .size()); // we have 1 test cases with TEAM21 as owner which USER_21 is part of
+
+    queryParams.clear();
+    queryParams.put("fields", "tags");
+    queryParams.put(
+        "tags",
+        String.format(
+            "%s,%s", PII_SENSITIVE_TAG_LABEL.getTagFQN(), PERSONAL_DATA_TAG_LABEL.getTagFQN()));
+    allEntities = listEntitiesFromSearch(queryParams, testCasesNum, 0, ADMIN_AUTH_HEADERS);
+    // check we don't have any list of tags that doesn't have PII_SENSITIVE_TAG_LABEL or
+    // PERSONAL_DATA_TAG_LABEL for all test cases
+    allEntities
+        .getData()
+        .forEach(
+            tc ->
+                assertFalse(
+                    tc.getTags().stream()
+                        .noneMatch(
+                            t ->
+                                t.getTagFQN()
+                                    .matches(
+                                        String.format(
+                                            "(%s|%s)",
+                                            PII_SENSITIVE_TAG_LABEL.getTagFQN(),
+                                            PERSONAL_DATA_TAG_LABEL.getTagFQN())))));
+
+    queryParams.put("tags", PERSONAL_DATA_TAG_LABEL.getTagFQN());
+    allEntities = listEntitiesFromSearch(queryParams, testCasesNum, 0, ADMIN_AUTH_HEADERS);
+    // check we have all test cases with PERSONAL_DATA_TAG_LABEL
+    allEntities
+        .getData()
+        .forEach(
+            tc ->
+                assertTrue(
+                    tc.getTags().stream()
+                        .anyMatch(
+                            t -> t.getTagFQN().contains(PERSONAL_DATA_TAG_LABEL.getTagFQN()))));
+
+    queryParams.clear();
+    queryParams.put("tier", TIER1_TAG_LABEL.getTagFQN());
+    queryParams.put("fields", "tags");
+    allEntities = listEntitiesFromSearch(queryParams, testCasesNum, 0, ADMIN_AUTH_HEADERS);
+    // check we have all test cases with TIER1_TAG_LABEL
+    allEntities
+        .getData()
+        .forEach(
+            tc ->
+                assertTrue(
+                    tc.getTags().stream()
+                        .anyMatch(t -> t.getTagFQN().contains(TIER1_TAG_LABEL.getTagFQN()))));
+
+    queryParams.clear();
+    String serviceName = tables.get(0).getService().getName();
+    queryParams.put("serviceName", serviceName);
+    allEntities = listEntitiesFromSearch(queryParams, testCasesNum, 0, ADMIN_AUTH_HEADERS);
+    assertTrue(
+        allEntities.getData().stream().allMatch(tc -> tc.getEntityLink().contains(serviceName)));
+
+    // Test return only requested fields
+    queryParams.put("includeFields", "id,name,entityLink");
+    allEntities = listEntitiesFromSearch(queryParams, testCasesNum, 0, ADMIN_AUTH_HEADERS);
+    TestCase testCase = allEntities.getData().get(0);
+    assertNull(testCase.getDescription());
+    assertNull(testCase.getTestSuite());
+    assertNotNull(testCase.getEntityLink());
+    assertNotNull(testCase.getName());
+    assertNotNull(testCase.getId());
+  }
+
+  @Test
+  void test_testCaseInheritedFields(TestInfo testInfo) throws HttpResponseException, IOException {
+    // Set up the test case
+    TableResourceTest tableResourceTest = new TableResourceTest();
+    TestSuiteResourceTest testSuiteResourceTest = new TestSuiteResourceTest();
+    CreateTable createTable = tableResourceTest.createRequest(testInfo);
+    createTable
+        .withDatabaseSchema(DATABASE_SCHEMA.getFullyQualifiedName())
+        .withColumns(
+            List.of(
+                new Column()
+                    .withName(C1)
+                    .withDisplayName("c1")
+                    .withDataType(ColumnDataType.VARCHAR)
+                    .withDataLength(10)
+                    .withTags(List.of(PII_SENSITIVE_TAG_LABEL))))
+        .withOwner(USER1_REF)
+        .withDomain(DOMAIN1.getFullyQualifiedName())
+        .withTags(List.of(PERSONAL_DATA_TAG_LABEL, TIER1_TAG_LABEL));
+    Table table = tableResourceTest.createEntity(createTable, ADMIN_AUTH_HEADERS);
+    CreateTestSuite createTestSuite =
+        testSuiteResourceTest.createRequest(table.getFullyQualifiedName());
+    TestSuite testSuite =
+        testSuiteResourceTest.createExecutableTestSuite(createTestSuite, ADMIN_AUTH_HEADERS);
+
+    CreateTestCase create =
+        createRequest(testInfo)
+            .withEntityLink(String.format("<#E::table::%s>", table.getFullyQualifiedName()))
+            .withTestSuite(testSuite.getFullyQualifiedName())
+            .withTestDefinition(TEST_DEFINITION2.getFullyQualifiedName());
+    createEntity(create, ADMIN_AUTH_HEADERS);
+    create =
+        createRequest(testInfo)
+            .withEntityLink(
+                String.format("<#E::table::%s::columns::%s>", table.getFullyQualifiedName(), C1))
+            .withTestSuite(testSuite.getFullyQualifiedName())
+            .withTestDefinition(TEST_DEFINITION3.getFullyQualifiedName())
+            .withParameterValues(
+                List.of(
+                    new TestCaseParameterValue().withValue("20").withName("missingCountValue")));
+    createEntity(create, ADMIN_AUTH_HEADERS);
+
+    // Run the tests assertions
+    Map<String, String> queryParams = new HashMap<>();
+    queryParams.put("entityLink", String.format("<#E::table::%s>", table.getFullyQualifiedName()));
+    queryParams.put("includeAllTests", "true");
+    queryParams.put("fields", "domain,owner,tags");
+    ResultList<TestCase> testCases = listEntitiesFromSearch(queryParams, 10, 0, ADMIN_AUTH_HEADERS);
+    assertEquals(2, testCases.getData().size());
+    for (TestCase testCase : testCases.getData()) {
+      assertEquals(table.getOwner().getId(), testCase.getOwner().getId());
+      assertEquals(table.getDomain().getId(), testCase.getDomain().getId());
+      List<TagLabel> tags = testCase.getTags();
+      HashSet<String> actualTags =
+          tags.stream().map(TagLabel::getName).collect(Collectors.toCollection(HashSet::new));
+      HashSet<String> expectedTags;
+      if (testCase.getEntityLink().contains(C1)) {
+        expectedTags =
+            new HashSet<>(
+                List.of(
+                    PERSONAL_DATA_TAG_LABEL.getName(),
+                    TIER1_TAG_LABEL.getName(),
+                    PII_SENSITIVE_TAG_LABEL.getName()));
+      } else {
+        expectedTags =
+            new HashSet<>(List.of(PERSONAL_DATA_TAG_LABEL.getName(), TIER1_TAG_LABEL.getName()));
+      }
+      assertEquals(expectedTags, actualTags);
+    }
+
+    createTable.setOwner(USER2_REF);
+    createTable.setDomain(DOMAIN.getFullyQualifiedName());
+    createTable.setTags(List.of(USER_ADDRESS_TAG_LABEL));
+    createTable.withColumns(
+        List.of(
+            new Column()
+                .withName(C1)
+                .withDisplayName("c1")
+                .withDataType(ColumnDataType.VARCHAR)
+                .withDataLength(10)
+                .withTags(List.of(PERSONAL_DATA_TAG_LABEL))));
+    table = tableResourceTest.updateEntity(createTable, OK, ADMIN_AUTH_HEADERS);
+    testCases = listEntitiesFromSearch(queryParams, 10, 0, ADMIN_AUTH_HEADERS);
+
+    for (TestCase testCase : testCases.getData()) {
+      assertEquals(table.getOwner().getId(), testCase.getOwner().getId());
+      assertEquals(table.getDomain().getId(), testCase.getDomain().getId());
+      List<TagLabel> tags = testCase.getTags();
+      HashSet<String> actualTags =
+          tags.stream().map(TagLabel::getName).collect(Collectors.toCollection(HashSet::new));
+      HashSet<String> expectedTags;
+      List<TagLabel> expectedTagsList = table.getTags();
+      if (testCase.getEntityLink().contains(C1)) {
+        expectedTagsList.addAll(table.getColumns().get(0).getTags());
+      }
+      expectedTags = new HashSet<>(expectedTagsList.stream().map(TagLabel::getName).toList());
+      assertEquals(expectedTags, actualTags);
+    }
   }
 
   public void putTestCaseResult(String fqn, TestCaseResult data, Map<String, String> authHeaders)
@@ -1923,7 +2112,7 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
     }
     params.put("fields", "testCaseResult");
     params.put("limit", "10000");
-    params.put("include", "all");
+    params.put("include", "non-deleted");
 
     ResultList<TestCase> testCaseResultList = listEntities(params, ADMIN_AUTH_HEADERS);
     testCases = testCaseResultList.getData();

@@ -137,6 +137,35 @@ const applyPipelineFromModal = (fromNode, toNode, pipelineData) => {
   verifyResponseStatusCode('@lineageApi', 200);
 };
 
+const editPipelineEdgeDescription = (
+  fromNode,
+  toNode,
+  pipelineData,
+  description
+) => {
+  cy.get(
+    `[data-testid="pipeline-label-${fromNode.fqn}-${toNode.fqn}"]`
+  ).click();
+  cy.get('.edge-info-drawer').should('be.visible');
+  cy.get('.edge-info-drawer [data-testid="Edge"] a').contains(
+    pipelineData.name
+  );
+
+  interceptURL('PUT', `/api/v1/lineage`, 'updateLineage');
+  cy.get('.edge-info-drawer [data-testid="edit-description"]').click();
+
+  cy.get('.toastui-editor-md-container > .toastui-editor > .ProseMirror')
+    .click()
+    .clear()
+    .type(description);
+
+  cy.get('[data-testid="save"]').click();
+  verifyResponseStatusCode('@updateLineage', 200);
+  cy.get(
+    '.edge-info-drawer [data-testid="asset-description-container"] [data-testid="viewer-container"]'
+  ).should('contain', description);
+};
+
 const verifyPipelineDataInDrawer = (
   fromNode,
   toNode,
@@ -199,15 +228,18 @@ const addPipelineBetweenNodes = (
   }
 };
 
-const expandCols = (nodeFqn, hasShowMore) => {
-  cy.get(
-    `[data-testid="lineage-node-${nodeFqn}"] [data-testid="expand-cols-btn"]`
-  ).click({ force: true });
-  if (hasShowMore) {
-    cy.get(
-      `[data-testid="lineage-node-${nodeFqn}"] [data-testid="show-more-cols-btn"]`
-    ).click({ force: true });
-  }
+const activateColumnLayer = () => {
+  cy.get('[data-testid="lineage-layer-btn"]').click();
+  cy.get('[data-testid="lineage-layer-column-btn"]').click();
+};
+
+const verifyColumnLayerInactive = () => {
+  cy.get('[data-testid="lineage-layer-btn"]').click(); // Open Layer popover
+  cy.get('[data-testid="lineage-layer-column-btn"]').should(
+    'not.have.class',
+    'active'
+  );
+  cy.get('[data-testid="lineage-layer-btn"]').click(); // Close Layer popover
 };
 
 const addColumnLineage = (fromNode, toNode, exitEditMode = true) => {
@@ -228,6 +260,29 @@ const addColumnLineage = (fromNode, toNode, exitEditMode = true) => {
   );
 };
 
+const removeColumnLineage = (fromNode, toNode) => {
+  interceptURL('PUT', '/api/v1/lineage', 'lineageApi');
+  cy.get(
+    `[data-testid="column-edge-${btoa(fromNode.columns[0])}-${btoa(
+      toNode.columns[0]
+    )}"]`
+  ).click({ force: true });
+  cy.get('[data-testid="delete-button"]').click({ force: true });
+  cy.get(
+    '[data-testid="delete-edge-confirmation-modal"] .ant-btn-primary'
+  ).click();
+
+  verifyResponseStatusCode('@lineageApi', 200);
+
+  cy.get('[data-testid="edit-lineage"]').click();
+
+  cy.get(
+    `[data-testid="column-edge-${btoa(fromNode.columns[0])}-${btoa(
+      toNode.columns[0]
+    )}"]`
+  ).should('not.exist');
+};
+
 describe('Lineage verification', { tags: 'DataAssets' }, () => {
   beforeEach(() => {
     cy.login();
@@ -243,6 +298,7 @@ describe('Lineage verification', { tags: 'DataAssets' }, () => {
       });
 
       cy.get('[data-testid="lineage"]').click();
+      verifyColumnLayerInactive();
       cy.get('[data-testid="edit-lineage"]').click();
 
       performZoomOut();
@@ -319,6 +375,14 @@ describe('Lineage verification', { tags: 'DataAssets' }, () => {
       PIPELINE_ITEMS[0],
       true
     );
+
+    editPipelineEdgeDescription(
+      sourceEntity,
+      targetEntity,
+      PIPELINE_ITEMS[0],
+      'Test Description'
+    );
+
     cy.get('[data-testid="edit-lineage"]').click();
     deleteNode(targetEntity);
   });
@@ -329,8 +393,13 @@ describe('Lineage verification', { tags: 'DataAssets' }, () => {
       const targetEntity = LINEAGE_ITEMS[i];
       if (targetEntity.columns.length > 0) {
         addPipelineBetweenNodes(sourceEntity, targetEntity);
+        activateColumnLayer();
         // Add column lineage
         addColumnLineage(sourceEntity, targetEntity);
+
+        cy.get('[data-testid="edit-lineage"]').click();
+        removeColumnLineage(sourceEntity, targetEntity);
+
         cy.get('[data-testid="edit-lineage"]').click();
         deleteNode(targetEntity);
         cy.goToHomePage();

@@ -64,6 +64,7 @@ describe('Entity detail page', { tags: 'DataAssets' }, () => {
         cy.login();
 
         entity.cleanup();
+        cy.logout();
       });
 
       beforeEach(() => {
@@ -105,12 +106,13 @@ describe('Entity detail page', { tags: 'DataAssets' }, () => {
         entity.removeGlossary();
       });
 
+      it(`Update displayName`, () => {
+        entity.renameEntity();
+      });
+
       it(`Announcement create & delete`, () => {
         entity.createAnnouncement();
-        /**
-         * Todo: Fix the flakiness issue with the Activity feed changes and enable this test
-         */
-        // entity.replyAnnouncement();
+        entity.replyAnnouncement();
         entity.removeAnnouncement();
       });
 
@@ -146,10 +148,6 @@ describe('Entity detail page', { tags: 'DataAssets' }, () => {
           });
         });
       }
-
-      it(`Update displayName`, () => {
-        entity.renameEntity();
-      });
 
       it(`follow unfollow entity`, () => {
         entity.followUnfollowEntity();

@@ -65,13 +65,13 @@ def get_connection_url(connection: TrinoConnection) -> str:
     if isinstance(connection.authType, jwtAuth.JwtAuth):
         if not connection.connectionOptions:
             connection.connectionOptions = init_empty_connection_options()
-        connection.connectionOptions.__root__[
+        connection.connectionOptions.root[
             "access_token"
         ] = connection.authType.jwt.get_secret_value()
     if connection.connectionOptions is not None:
         params = "&".join(
             f"{key}={quote_plus(value)}"
-            for (key, value) in connection.connectionOptions.__root__.items()
+            for (key, value) in connection.connectionOptions.root.items()
             if value
         )
         url = f"{url}?{params}"
@@ -86,7 +86,7 @@ def get_connection_args(connection: TrinoConnection):
         if not connection.connectionArguments:
             connection.connectionArguments = init_empty_connection_arguments()
 
-        connection.connectionArguments.__root__["http_session"] = session
+        connection.connectionArguments.root["http_session"] = session
 
     return get_connection_args_common(connection)
 
@@ -99,9 +99,7 @@ def get_connection(connection: TrinoConnection) -> Engine:
         connection.connectionArguments = (
             connection.connectionArguments or init_empty_connection_arguments()
         )
-        connection.connectionArguments.__root__["verify"] = {
-            "verify": connection.verify
-        }
+        connection.connectionArguments.root["verify"] = {"verify": connection.verify}
     if hasattr(connection.authType, "azureConfig"):
         azure_client = AzureClient(connection.authType.azureConfig).create_client()
         if not connection.authType.azureConfig.scopes:
@@ -113,7 +111,7 @@ def get_connection(connection: TrinoConnection) -> Engine:
         )
         if not connection.connectionOptions:
             connection.connectionOptions = init_empty_connection_options()
-        connection.connectionOptions.__root__["access_token"] = access_token_obj.token
+        connection.connectionOptions.root["access_token"] = access_token_obj.token
     return create_generic_db_connection(
         connection=connection,
         get_connection_url_fn=get_connection_url,

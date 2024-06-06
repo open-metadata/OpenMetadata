@@ -18,7 +18,6 @@ With the `docker compose up` setup, you can debug the progress
 by setting breakpoints in this file.
 """
 import time
-from datetime import datetime, timedelta
 from typing import Optional
 from unittest import TestCase
 
@@ -163,7 +162,7 @@ class AirflowLineageTest(TestCase):
         service_id = str(
             cls.metadata.get_by_name(
                 entity=DatabaseService, fqn="test-service-table-lineage"
-            ).id.__root__
+            ).id.root
         )
 
         cls.metadata.delete(
@@ -178,7 +177,7 @@ class AirflowLineageTest(TestCase):
         pipeline_service_id = str(
             cls.metadata.get_by_name(
                 entity=PipelineService, fqn=PIPELINE_SERVICE_NAME
-            ).id.__root__
+            ).id.root
         )
 
         cls.metadata.delete(
@@ -219,12 +218,7 @@ class AirflowLineageTest(TestCase):
         # 3. Trigger the DAG
         res = requests.post(
             AIRFLOW_HOST_API_ROOT + f"dags/{OM_LINEAGE_DAG_NAME}/dagRuns",
-            json={
-                # the start_date of the dag is 2021-01-01 "2019-08-24T14:15:22Z"
-                "logical_date": datetime.strftime(
-                    datetime.now() - timedelta(hours=1), "%Y-%m-%dT%H:%M:%SZ"
-                ),
-            },
+            json={},
             headers=DEFAULT_AIRFLOW_HEADERS,
         )
         if res.status_code != 200:
@@ -269,7 +263,7 @@ class AirflowLineageTest(TestCase):
             expected_task_names, {"print_date", "sleep", "templated", "lineage_op"}
         )
 
-        self.assertEqual(pipeline.description.__root__, "A simple tutorial DAG")
+        self.assertEqual(pipeline.description.root, "A simple tutorial DAG")
 
         # Validate status
         self.assertEqual(
@@ -302,7 +296,7 @@ class AirflowLineageTest(TestCase):
             self.assertEqual(len(lineage.get("downstreamEdges")), 1)
             self.assertEqual(
                 lineage["downstreamEdges"][0]["toEntity"],
-                str(self.table_outlet.id.__root__),
+                str(self.table_outlet.id.root),
             )
             self.assertEqual(
                 lineage["downstreamEdges"][0]["lineageDetails"]["pipeline"][

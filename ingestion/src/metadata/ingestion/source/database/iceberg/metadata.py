@@ -42,6 +42,7 @@ from metadata.generated.schema.metadataIngestion.databaseServiceMetadataPipeline
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
+from metadata.generated.schema.type.basic import EntityName, FullyQualifiedEntityName
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
@@ -75,7 +76,7 @@ class IcebergSource(DatabaseServiceSource):
             self.config.sourceConfig.config
         )
         self.metadata = metadata
-        self.service_connection = self.config.serviceConnection.__root__.config
+        self.service_connection = self.config.serviceConnection.root.config
         self.iceberg = get_connection(self.service_connection)
 
         self.connection_obj = self.iceberg
@@ -85,8 +86,8 @@ class IcebergSource(DatabaseServiceSource):
     def create(
         cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None
     ):
-        config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
-        connection: IcebergConnection = config.serviceConnection.__root__.config
+        config: WorkflowSource = WorkflowSource.model_validate(config_dict)
+        connection: IcebergConnection = config.serviceConnection.root.config
         if not isinstance(connection, IcebergConnection):
             raise InvalidSourceException(
                 f"Expected GlueConnection, but got {connection}"
@@ -158,12 +159,14 @@ class IcebergSource(DatabaseServiceSource):
         """
         yield Either(
             right=CreateDatabaseSchemaRequest(
-                name=schema_name,
-                database=fqn.build(
-                    metadata=self.metadata,
-                    entity_type=Database,
-                    service_name=self.context.get().database_service,
-                    database_name=self.context.get().database,
+                name=EntityName(schema_name),
+                database=FullyQualifiedEntityName(
+                    fqn.build(
+                        metadata=self.metadata,
+                        entity_type=Database,
+                        service_name=self.context.get().database_service,
+                        database_name=self.context.get().database,
+                    )
                 ),
             )
         )
@@ -254,18 +257,20 @@ class IcebergSource(DatabaseServiceSource):
                 table_name, table_type, owner, iceberg_table
             )
             table_request = CreateTableRequest(
-                name=table.name,
+                name=EntityName(table.name),
                 tableType=table.tableType,
                 description=table.description,
                 owner=table.owner,
                 columns=table.columns,
                 tablePartition=table.tablePartition,
-                databaseSchema=fqn.build(
-                    metadata=self.metadata,
-                    entity_type=DatabaseSchema,
-                    service_name=self.context.get().database_service,
-                    database_name=self.context.get().database,
-                    schema_name=self.context.get().database_schema,
+                databaseSchema=FullyQualifiedEntityName(
+                    fqn.build(
+                        metadata=self.metadata,
+                        entity_type=DatabaseSchema,
+                        service_name=self.context.get().database_service,
+                        database_name=self.context.get().database,
+                        schema_name=self.context.get().database_schema,
+                    )
                 ),
             )
             yield Either(right=table_request)

@@ -95,7 +95,7 @@ class EntityReportDataProcessor(DataProcessor):
             return None
 
         if isinstance(owner, EntityReferenceList):
-            return owner.__root__[0].name
+            return owner.root[0].name
 
         if owner.type == "team":
             return owner.name
@@ -113,7 +113,7 @@ class EntityReportDataProcessor(DataProcessor):
         teams = entity_reference.teams
 
         if teams:
-            return teams.__root__[0].name  # We'll return the first team listed
+            return teams.root[0].name  # We'll return the first team listed
 
         return None
 
@@ -136,7 +136,7 @@ class EntityReportDataProcessor(DataProcessor):
 
             return True
 
-        if entity.description and not entity.description.__root__ == "":
+        if entity.description and not entity.description.root == "":
             return True
         return False
 
@@ -163,7 +163,7 @@ class EntityReportDataProcessor(DataProcessor):
             yield ReportData(
                 timestamp=self.timestamp,
                 reportDataType=ReportDataType.entityReportData.value,
-                data=EntityReportData.parse_obj(data),
+                data=EntityReportData.model_validate(data),
             )  # type: ignore
 
     def refine(self, entity: Type[T]) -> None:
@@ -195,7 +195,7 @@ class EntityReportDataProcessor(DataProcessor):
         except Exception:
             self.processor_status.failed(
                 StackTraceError(
-                    name=entity.name.__root__,
+                    name=entity.name.root,
                     error="Error retrieving team",
                     stackTrace=traceback.format_exc(),
                 )
@@ -256,7 +256,7 @@ class EntityReportDataProcessor(DataProcessor):
                 str(team)
             ][str(entity_tier)].update(data_blob_for_entity_counter)
 
-        self.processor_status.scanned(entity.name.__root__)
+        self.processor_status.scanned(entity.name.root)
 
     def get_status(self):
         return self.processor_status
