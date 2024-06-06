@@ -182,7 +182,7 @@ the GCP credentials empty. This is why they are not marked as required.
 
 {% codeBlock fileName="filename.yaml" %}
 
-```yaml
+```yaml {% isCodeBlock=true %}
 source:
   type: bigquery
   serviceName: "<service name>"

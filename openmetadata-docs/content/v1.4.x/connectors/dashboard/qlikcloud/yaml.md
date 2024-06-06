@@ -86,7 +86,7 @@ Example: `https://<TenantURL>.qlikcloud.com`
 
 {% codeBlock fileName="filename.yaml" %}
 
-```yaml
+```yaml {% isCodeBlock=true %}
 source:
   type: qlikcloud
   serviceName: local_qlikcloud

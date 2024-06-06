@@ -152,7 +152,7 @@ This is a sample config for MSSQL:
 
 {% codeBlock fileName="filename.yaml" %}
 
-```yaml
+```yaml {% isCodeBlock=true %}
 source:
   type: mssql
   serviceName: "<service name>"
