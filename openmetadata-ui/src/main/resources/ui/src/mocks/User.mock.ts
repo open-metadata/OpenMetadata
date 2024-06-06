@@ -153,11 +153,6 @@ export const USER_TEAMS = [
 
 export const MOCK_USER_ROLE = [
   {
-    id: 'admin',
-    type: 'role',
-    name: 'Admin',
-  },
-  {
     id: '37a00e0b-383c-4451-b63f-0bad4c745abc',
     type: 'role',
     name: 'ApplicationBotRole',
@@ -229,4 +224,94 @@ export const MOCK_USER_ROLE = [
     deleted: false,
     href: 'http://localhost:8585/api/v1/roles/7082d70a-ddb2-42db-b639-3ec4c7884c52',
   },
+  {
+    id: 'admin',
+    type: 'role',
+    name: 'Admin',
+  },
 ];
+
+export const UPDATED_USER_DATA = {
+  changeDescription: {
+    fieldsAdded: [],
+    fieldsDeleted: [],
+    fieldsUpdated: [],
+    previousVersion: 3.2,
+  },
+  defaultPersona: {
+    description: 'Person-04',
+    displayName: 'Person-04',
+    fullyQualifiedName: 'Person-04',
+    href: 'http://localhost:8585/api/v1/personas/0430976d-092a-46c9-90a8-61c6091a6f38',
+    id: '0430976d-092a-46c9-90a8-61c6091a6f38',
+    name: 'Person-04',
+    type: 'persona',
+  },
+  deleted: false,
+  description: '',
+  displayName: '',
+  domain: {
+    description: 'description',
+    fullyQualifiedName: 'Engineering',
+    href: 'http://localhost:8585/api/v1/domains/303ca53b-5050-4caa-9c4e-d4fdada76a53',
+    id: '303ca53b-5050-4caa-9c4e-d4fdada76a53',
+    inherited: true,
+    name: 'Engineering',
+    type: 'domain',
+  },
+  email: 'admin@openmetadata.org',
+  fullyQualifiedName: 'admin',
+  href: 'http://localhost:8585/api/v1/users/7f196a28-c4fa-4579-b420-f828985e7861',
+  id: '7f196a28-c4fa-4579-b420-f828985e7861',
+  inheritedRoles: [
+    {
+      deleted: false,
+      description:
+        'Users with Data Consumer role use different data assets for their day to day work.',
+      displayName: 'Data Consumer',
+      fullyQualifiedName: 'DataConsumer',
+      href: 'http://localhost:8585/api/v1/roles/ed94fd7c-0974-4b87-9295-02b36c4c6bcd',
+      id: 'ed94fd7c-0974-4b87-9295-02b36c4c6bcd',
+      name: 'DataConsumer',
+      type: 'role',
+    },
+  ],
+  isAdmin: false,
+  isBot: false,
+  isEmailVerified: true,
+  name: 'admin',
+  personas: [
+    {
+      description: 'Person-04',
+      displayName: 'Person-04',
+      fullyQualifiedName: 'Person-04',
+      href: 'http://localhost:8585/api/v1/personas/0430976d-092a-46c9-90a8-61c6091a6f38',
+      id: '0430976d-092a-46c9-90a8-61c6091a6f38',
+      name: 'Person-04',
+      type: 'persona',
+    },
+  ],
+  roles: [
+    {
+      id: '7f8de4ae-8b08-431c-9911-8a355aa2976e',
+      name: 'ProfilerBotRole',
+      type: 'role',
+    },
+  ],
+  teams: [
+    {
+      deleted: false,
+      description:
+        'Organization under which all the other team hierarchy is created',
+      displayName: 'Organization',
+      fullyQualifiedName: 'Organization',
+      href: 'http://localhost:8585/api/v1/teams/9e8b7464-3f3e-4071-af05-19be142d75db',
+      id: '9e8b7464-3f3e-4071-af05-19be142d75db',
+      name: 'Organization',
+      type: 'team',
+    },
+  ],
+  updatedAt: 1698655259882,
+  updatedBy: 'admin',
+  version: 3.3,
+};

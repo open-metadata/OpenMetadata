@@ -115,12 +115,17 @@ const UserProfileDetails = ({
     setIsDisplayNameEdit(false);
   }, [userData.displayName, displayName, updateUserDetails]);
 
+  const handleCloseEditDisplayName = useCallback(() => {
+    setDisplayName(userData.displayName);
+    setIsDisplayNameEdit(false);
+  }, [userData.displayName]);
+
   const displayNameRenderComponent = useMemo(
     () =>
-      isDisplayNameEdit && hasEditPermission ? (
+      isDisplayNameEdit ? (
         <InlineEdit
           isLoading={isLoading}
-          onCancel={() => setIsDisplayNameEdit(false)}
+          onCancel={handleCloseEditDisplayName}
           onSave={handleDisplayNameSave}>
           <Input
             className="w-full"
@@ -173,6 +178,7 @@ const UserProfileDetails = ({
       getEntityName,
       onDisplayNameChange,
       handleDisplayNameSave,
+      handleCloseEditDisplayName,
     ]
   );
 
