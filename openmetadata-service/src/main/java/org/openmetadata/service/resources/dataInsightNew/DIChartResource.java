@@ -189,10 +189,30 @@ public class DIChartResource extends EntityResource<DIChart, DIChartRepository> 
           long end,
       @Valid CreateDIChart create)
       throws IOException {
-    //        DIChart diChart = getDIChart(create, securityContext.getUserPrincipal().getName());
-    //        return repository.ge
     DIChartResultList resultList = repository.getPreviewData(create, start, end);
     return Response.status(Response.Status.OK).entity(resultList).build();
+  }
+
+  @GET
+  @Path("/fields")
+  @Operation(
+      operationId = "getDIChartIndexFields",
+      summary = "Get data insight chart index fields",
+      description = "Get data insight chart index fields.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Get data insight chart index fields.",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = DataInsightChart.class))),
+        @ApiResponse(responseCode = "400", description = "Bad request")
+      })
+  public Response getDIChartIndexFields(
+      @Context UriInfo uriInfo, @Context SecurityContext securityContext) throws IOException {
+    List<String> fieldList = repository.getFields();
+    return Response.status(Response.Status.OK).entity(fieldList).build();
   }
 
   @PUT

@@ -3,6 +3,7 @@ package org.openmetadata.service.jdbi3;
 import static org.openmetadata.service.Entity.DI_CHART;
 
 import java.io.IOException;
+import java.util.List;
 import org.openmetadata.schema.api.dataInsightNew.CreateDIChart;
 import org.openmetadata.schema.dataInsightNew.DIChart;
 import org.openmetadata.schema.dataInsightNew.DIChartResultList;
@@ -49,5 +50,9 @@ public class DIChartRepository extends EntityRepository<DIChart> {
   public DIChartResultList getPreviewData(
       CreateDIChart chart, long startTimestamp, long endTimestamp) throws IOException {
     return searchClient.buildDIChart(chart, startTimestamp, endTimestamp);
+  }
+
+  public List<String> getFields() throws IOException {
+    return searchClient.fetchDIChartFields();
   }
 }

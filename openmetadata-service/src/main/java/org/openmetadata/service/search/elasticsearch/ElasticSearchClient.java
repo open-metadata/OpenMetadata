@@ -54,7 +54,10 @@ import es.org.elasticsearch.client.RestHighLevelClientBuilder;
 import es.org.elasticsearch.client.indices.CreateIndexRequest;
 import es.org.elasticsearch.client.indices.CreateIndexResponse;
 import es.org.elasticsearch.client.indices.GetIndexRequest;
+import es.org.elasticsearch.client.indices.GetMappingsRequest;
+import es.org.elasticsearch.client.indices.GetMappingsResponse;
 import es.org.elasticsearch.client.indices.PutMappingRequest;
+import es.org.elasticsearch.cluster.metadata.MappingMetadata;
 import es.org.elasticsearch.common.lucene.search.function.CombineFunction;
 import es.org.elasticsearch.common.settings.Settings;
 import es.org.elasticsearch.common.unit.Fuzziness;
@@ -1904,6 +1907,40 @@ public class ElasticSearchClient implements SearchClient {
     }
 
     return searchSourceBuilder;
+  }
+
+  @Override
+  public List<String> fetchDIChartFields() throws IOException {
+    GetMappingsRequest request =
+        new GetMappingsRequest().indices(DIChartRepository.DI_SEARCH_INDEX);
+
+    // Execute request
+    GetMappingsResponse response = client.indices().getMapping(request, RequestOptions.DEFAULT);
+
+    // Get mappings for the index
+    for (Map.Entry<String, MappingMetadata> entry : response.mappings().entrySet()) {
+      // Get fields for the index
+      Map<String, Object> indexFields = entry.getValue().sourceAsMap();
+      List<String> fields = new ArrayList<>();
+      getFieldNames((Map<String, Object>) indexFields.get("properties"), "", fields);
+      return fields;
+    }
+    return null;
+  }
+
+  void getFieldNames(Map<String, Object> fields, String prefix, List<String> fieldList) {
+    for (Map.Entry<String, Object> entry : fields.entrySet()) {
+      String fieldName = prefix + entry.getKey();
+      fieldList.add(fieldName);
+
+      if (entry.getValue() instanceof Map) {
+        Map<String, Object> subFields = (Map<String, Object>) entry.getValue();
+        if (subFields.containsKey("properties")) {
+          getFieldNames(
+              (Map<String, Object>) subFields.get("properties"), fieldName + ".", fieldList);
+        }
+      }
+    }
   }
 
   public DIChartResultList buildDIChart(CreateDIChart createDIChart, long start, long end)

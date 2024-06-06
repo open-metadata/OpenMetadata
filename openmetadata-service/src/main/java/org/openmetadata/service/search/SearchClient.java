@@ -235,8 +235,12 @@ public interface SearchClient {
     return aggregationJson.getString("key");
   }
 
-  public default DIChartResultList buildDIChart(CreateDIChart createDIChart, long start, long end)
+  default DIChartResultList buildDIChart(CreateDIChart createDIChart, long start, long end)
       throws IOException {
+    return null;
+  }
+
+  default List<String> fetchDIChartFields() throws IOException {
     return null;
   }
 }
