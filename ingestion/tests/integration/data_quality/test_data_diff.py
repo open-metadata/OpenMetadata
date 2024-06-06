@@ -9,10 +9,7 @@ from sqlalchemy.dialects import postgresql
 from sqlalchemy.engine import URL, Connection, make_url
 from sqlalchemy.sql import sqltypes
 
-from metadata.data_quality.api.models import (
-    TestCaseDefinition,
-    TestSuiteProcessorConfig,
-)
+from metadata.data_quality.api.models import TestCaseDefinition
 from metadata.generated.schema.api.services.createDatabaseService import (
     CreateDatabaseServiceRequest,
 )
