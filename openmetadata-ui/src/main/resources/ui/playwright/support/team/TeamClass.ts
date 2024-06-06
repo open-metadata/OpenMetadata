@@ -50,7 +50,7 @@ export class TeamClass {
     const data = await response.json();
     this.responseData = data;
 
-    return this.responseData;
+    return data;
   }
 
   async delete(apiContext: APIRequestContext) {
@@ -58,6 +58,6 @@ export class TeamClass {
       `/api/v1/teams/${this.responseData.id}?hardDelete=true&recursive=false`
     );
 
-    return response.body;
+    return await response.json();
   }
 }

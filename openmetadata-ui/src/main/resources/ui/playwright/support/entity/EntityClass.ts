@@ -11,11 +11,7 @@
  *  limitations under the License.
  */
 import { Page } from '@playwright/test';
-import {
-  assignDomain,
-  removeDomain,
-  updateDomain,
-} from '../../utils/domainUtils';
+import { assignDomain, removeDomain, updateDomain } from '../../utils/domain';
 import {
   addOwner,
   assignGlossaryTerm,
@@ -39,7 +35,7 @@ import {
   updateOwner,
   upVote,
   validateFollowedEntityToWidget,
-} from '../../utils/entityUtils';
+} from '../../utils/entity';
 import { Domain } from '../domain/Domain';
 import { GlossaryTerm } from '../glossary/GlossaryTerm';
 import { EntityTypeEndpoint } from './Entity.interface';
