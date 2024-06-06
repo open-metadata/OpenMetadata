@@ -164,9 +164,9 @@ export const TestSuites = ({ summaryPanel }: { summaryPanel: ReactNode }) => {
         title: `${t('label.success')} %`,
         dataIndex: 'summary',
         key: 'success',
-        render: (value: TestSummary) => {
+        render: (value: TestSuite['summary']) => {
           const percent =
-            value.total && value.success ? value.success / value.total : 0;
+            value?.total && value?.success ? value.success / value.total : 0;
 
           return (
             <ProfilerProgressWidget
