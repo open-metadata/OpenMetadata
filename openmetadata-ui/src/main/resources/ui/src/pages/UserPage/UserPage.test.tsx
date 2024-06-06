@@ -21,8 +21,9 @@ import {
 } from '@testing-library/react';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
+import Users from '../../components/Settings/Users/Users.component';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
-import { USER_DATA } from '../../mocks/User.mock';
+import { UPDATED_USER_DATA, USER_DATA } from '../../mocks/User.mock';
 import { getUserByName, updateUserDetail } from '../../rest/userAPI';
 import UserPage from './UserPage.component';
 
@@ -143,6 +144,45 @@ describe('Test the User Page', () => {
     });
 
     expect(mockUpdateCurrentUser).toHaveBeenCalled();
+  });
+
+  it('should update user isAdmin details if changes along with user', async () => {
+    (Users as jest.Mock).mockImplementationOnce(({ updateUserDetails }) => (
+      <div>
+        <button
+          onClick={() =>
+            updateUserDetails(
+              {
+                isAdmin: false,
+                roles: [
+                  {
+                    id: '7f8de4ae-8b08-431c-9911-8a355aa2976e',
+                    name: 'ProfilerBotRole',
+                    type: 'role',
+                  },
+                ],
+              },
+              'roles'
+            )
+          }>
+          UserComponentSaveButton
+        </button>
+      </div>
+    ));
+
+    (updateUserDetail as jest.Mock).mockImplementationOnce(() =>
+      Promise.resolve(UPDATED_USER_DATA)
+    );
+
+    await act(async () => {
+      render(<UserPage />, { wrapper: MemoryRouter });
+    });
+
+    await act(async () => {
+      fireEvent.click(screen.getByText('UserComponentSaveButton'));
+    });
+
+    expect(mockUpdateCurrentUser).toHaveBeenCalledWith(UPDATED_USER_DATA);
   });
 
   it('Should not call updateCurrentUser if user is not currentUser logged in', async () => {
