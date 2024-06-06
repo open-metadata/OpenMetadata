@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+
 import { Col, Row, Space, Tabs, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
@@ -29,6 +30,7 @@ import DescriptionV1 from '../../components/common/EntityDescription/Description
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../components/common/Loader/Loader';
 import QueryViewer from '../../components/common/QueryViewer/QueryViewer.component';
+import ResizablePanels from '../../components/common/ResizablePanels/ResizablePanels';
 import TabsLabel from '../../components/common/TabsLabel/TabsLabel.component';
 import { DataAssetsHeader } from '../../components/DataAssets/DataAssetsHeader/DataAssetsHeader.component';
 import TableProfiler from '../../components/Database/Profiler/TableProfiler/TableProfiler';
@@ -544,69 +546,84 @@ const TableDetailsPageV1: React.FC = () => {
         gutter={[0, 16]}
         id="schemaDetails"
         wrap={false}>
-        <Col className="p-t-sm m-l-lg tab-content-height p-r-lg" flex="auto">
-          <div className="d-flex flex-col gap-4">
-            <DescriptionV1
-              showSuggestions
-              description={tableDetails?.description}
-              entityFqn={datasetFQN}
-              entityName={entityName}
-              entityType={EntityType.TABLE}
-              hasEditAccess={editDescriptionPermission}
-              isDescriptionExpanded={isEmpty(tableDetails?.columns)}
-              isEdit={isEdit}
-              owner={tableDetails?.owner}
-              showActions={!deleted}
-              onCancel={onCancel}
-              onDescriptionEdit={onDescriptionEdit}
-              onDescriptionUpdate={onDescriptionUpdate}
-              onThreadLinkSelect={onThreadLinkSelect}
-            />
-            <SchemaTab
-              hasDescriptionEditAccess={editDescriptionPermission}
-              hasTagEditAccess={editTagsPermission}
-              isReadOnly={deleted}
-              table={tableDetails}
-              testCaseSummary={testCaseSummary}
-              onThreadLinkSelect={onThreadLinkSelect}
-              onUpdate={onColumnsUpdate}
-            />
-          </div>
-        </Col>
-        <Col
-          className="entity-tag-right-panel-container"
-          data-testid="entity-right-panel"
-          flex="320px">
-          <EntityRightPanel<EntityType.TABLE>
-            afterSlot={
-              <Space
-                className="w-full m-t-lg"
-                direction="vertical"
-                size="large">
-                <TableConstraints
-                  constraints={tableDetails?.tableConstraints}
-                />
-              </Space>
-            }
-            beforeSlot={
-              !isEmpty(joinedTables) ? (
-                <FrequentlyJoinedTables joinedTables={joinedTables} />
-              ) : null
-            }
-            customProperties={tableDetails}
-            dataProducts={tableDetails?.dataProducts ?? []}
-            domain={tableDetails?.domain}
-            editCustomAttributePermission={editCustomAttributePermission}
-            editTagPermission={editTagsPermission}
-            entityFQN={datasetFQN}
-            entityId={tableDetails?.id ?? ''}
-            entityType={EntityType.TABLE}
-            selectedTags={tableTags}
-            tablePartition={tableDetails?.tablePartition}
-            viewAllPermission={viewAllPermission}
-            onExtensionUpdate={onExtensionUpdate}
-            onTagSelectionChange={handleTagSelection}
-            onThreadLinkSelect={onThreadLinkSelect}
+        <Col className="tab-content-height" span={24}>
+          <ResizablePanels
+            applyDefaultStyle={false}
+            firstPanel={{
+              children: (
+                <div className="d-flex flex-col gap-4 p-t-sm m-l-lg p-r-lg">
+                  <DescriptionV1
+                    showSuggestions
+                    description={tableDetails?.description}
+                    entityFqn={datasetFQN}
+                    entityName={entityName}
+                    entityType={EntityType.TABLE}
+                    hasEditAccess={editDescriptionPermission}
+                    isDescriptionExpanded={isEmpty(tableDetails?.columns)}
+                    isEdit={isEdit}
+                    owner={tableDetails?.owner}
+                    showActions={!deleted}
+                    onCancel={onCancel}
+                    onDescriptionEdit={onDescriptionEdit}
+                    onDescriptionUpdate={onDescriptionUpdate}
+                    onThreadLinkSelect={onThreadLinkSelect}
+                  />
+                  <SchemaTab
+                    hasDescriptionEditAccess={editDescriptionPermission}
+                    hasTagEditAccess={editTagsPermission}
+                    isReadOnly={deleted}
+                    table={tableDetails}
+                    testCaseSummary={testCaseSummary}
+                    onThreadLinkSelect={onThreadLinkSelect}
+                    onUpdate={onColumnsUpdate}
+                  />
+                </div>
+              ),
+              minWidth: 700,
+              flex: 0.87,
+            }}
+            secondPanel={{
+              children: (
+                <div data-testid="entity-right-panel">
+                  <EntityRightPanel<EntityType.TABLE>
+                    afterSlot={
+                      <Space
+                        className="w-full m-t-lg"
+                        direction="vertical"
+                        size="large">
+                        <TableConstraints
+                          constraints={tableDetails?.tableConstraints}
+                        />
+                      </Space>
+                    }
+                    beforeSlot={
+                      !isEmpty(joinedTables) ? (
+                        <FrequentlyJoinedTables joinedTables={joinedTables} />
+                      ) : null
+                    }
+                    customProperties={tableDetails}
+                    dataProducts={tableDetails?.dataProducts ?? []}
+                    domain={tableDetails?.domain}
+                    editCustomAttributePermission={
+                      editCustomAttributePermission
+                    }
+                    editTagPermission={editTagsPermission}
+                    entityFQN={datasetFQN}
+                    entityId={tableDetails?.id ?? ''}
+                    entityType={EntityType.TABLE}
+                    selectedTags={tableTags}
+                    tablePartition={tableDetails?.tablePartition}
+                    viewAllPermission={viewAllPermission}
+                    onExtensionUpdate={onExtensionUpdate}
+                    onTagSelectionChange={handleTagSelection}
+                    onThreadLinkSelect={onThreadLinkSelect}
+                  />
+                </div>
+              ),
+              minWidth: 320,
+              flex: 0.13,
+              className: 'entity-resizable-right-panel-container',
+            }}
           />
         </Col>
       </Row>
