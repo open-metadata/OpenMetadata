@@ -221,7 +221,7 @@ NOTE: if you are using `IAM auth`, select either `allow` (recommended) or other 
 
 {% codeBlock fileName="filename.yaml" %}
 
-```yaml
+```yaml {% isCodeBlock=true %}
 source:
   type: postgres
   serviceName: local_postgres

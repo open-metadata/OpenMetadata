@@ -1010,6 +1010,7 @@
     "select-field": "בחר {{field}}",
     "select-to-search": "חפש כדי לבחור",
     "select-type": "בחר סוג",
+    "selected-entity": "Selected {{entity}}",
     "selected-lowercase": "נבחר",
     "send": "שלח",
     "send-now": "שלח כעת",

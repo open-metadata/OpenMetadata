@@ -1010,6 +1010,7 @@
     "select-field": "Sélectionner le Champ {{field}}",
     "select-to-search": "Sélectionner pour Rechercher",
     "select-type": "Type Sélectionné",
+    "selected-entity": "Selected {{entity}}",
     "selected-lowercase": "sélectionné",
     "send": "Envoyer",
     "send-now": "Envoyer Maintenant",
