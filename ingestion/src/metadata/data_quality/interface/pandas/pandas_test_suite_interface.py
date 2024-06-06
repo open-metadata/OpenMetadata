@@ -17,7 +17,6 @@ from datetime import datetime, timezone
 from typing import Optional, Type
 
 from metadata.data_quality.interface.test_suite_interface import TestSuiteInterface
-from metadata.data_quality.validations.validator import Validator
 from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.services.connections.database.datalakeConnection import (
     DatalakeConnection,
@@ -83,7 +82,9 @@ class PandasTestSuiteInterface(TestSuiteInterface, PandasInterfaceMixin):
         """
 
         try:
-            TestHandler: Type[BaseValidator] = import_test_case_class(  # pylint: disable=invalid-name
+            TestHandler: Type[
+                BaseValidator
+            ] = import_test_case_class(  # pylint: disable=invalid-name
                 self.ometa_client.get_by_id(
                     TestDefinition, test_case.testDefinition.id
                 ).entityType.value,

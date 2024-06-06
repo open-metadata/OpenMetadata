@@ -9,7 +9,11 @@ from metadata.profiler.processor.sampler.sqlalchemy.sampler import SQASampler
 
 class RuntimeParameterSetter(ABC):
     def __init__(
-        self, ometa_client: OpenMetadata, service_connection_config, table_entity: Table, sampler: SQASampler
+        self,
+        ometa_client: OpenMetadata,
+        service_connection_config,
+        table_entity: Table,
+        sampler: SQASampler,
     ):
         self.ometa_client = ometa_client
         self.service_connection_config = service_connection_config

@@ -18,7 +18,7 @@ from __future__ import annotations
 import reprlib
 from abc import ABC, abstractmethod
 from datetime import datetime
-from typing import Callable, List, Optional, TypeVar, Union, Type
+from typing import Callable, List, Optional, Type, TypeVar, Union
 
 from metadata.data_quality.validations.runtime_param_setter.param_setter import (
     RuntimeParameterSetter,

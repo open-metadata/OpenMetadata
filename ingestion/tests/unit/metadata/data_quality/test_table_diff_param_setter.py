@@ -2,15 +2,15 @@ from unittest.mock import Mock
 from uuid import uuid4
 
 import pytest
-from sqlalchemy import create_engine, MetaData, String, Column
+from sqlalchemy import Column, MetaData, String, create_engine
 from sqlalchemy.orm import declarative_base
 
 from metadata.data_quality.validations.runtime_param_setter.table_diff_params_setter import (
     TableDiffParamsSetter,
 )
 from metadata.generated.schema.entity.data.table import (
-    PartitionProfilerConfig,
     PartitionIntervalTypes,
+    PartitionProfilerConfig,
 )
 from metadata.generated.schema.tests.testCase import TestCase, TestCaseParameterValue
 from metadata.generated.schema.type.basic import EntityLink

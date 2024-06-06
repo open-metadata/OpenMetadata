@@ -1,5 +1,4 @@
 # pylint: disable=missing-module-docstring
-import logging
 import traceback
 from itertools import islice
 from typing import Optional
@@ -8,7 +7,9 @@ import data_diff
 from data_diff.diff_tables import DiffResultWrapper
 
 from metadata.data_quality.validations.base_test_handler import BaseTestValidator
-from metadata.data_quality.validations.mixins.sqa_validator_mixin import SQAValidatorMixin
+from metadata.data_quality.validations.mixins.sqa_validator_mixin import (
+    SQAValidatorMixin,
+)
 from metadata.data_quality.validations.runtime_param_setter.table_diff_params_setter import (
     TableDiffParamsSetter,
 )
@@ -17,8 +18,8 @@ from metadata.data_quality.validations.table.sqlalchemy.models import (
 )
 from metadata.generated.schema.tests.basic import (
     TestCaseResult,
-    TestResultValue,
     TestCaseStatus,
+    TestResultValue,
 )
 from metadata.utils.constants import SAMPLE_DATA_DEFAULT_COUNT
 from metadata.utils.logger import test_suite_logger

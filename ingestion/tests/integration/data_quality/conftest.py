@@ -6,12 +6,10 @@ from metadata.generated.schema.metadataIngestion.workflow import LogLevels
 from metadata.ingestion.models.custom_pydantic import CustomSecretStr
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.workflow.metadata import MetadataWorkflow
-from ..postgres.conftest import (
-    ingest_metadata as ingest_postgres,
-    db_service as postgres_service,
-    postgres_container,
-    try_bind,
-)
+
+from ..postgres.conftest import db_service as postgres_service
+from ..postgres.conftest import ingest_metadata as ingest_postgres
+from ..postgres.conftest import postgres_container, try_bind
 from ..sql_server.conftest import sql_server_container
 
 __all__ = [
@@ -67,7 +65,9 @@ def ingest_mysql_service(
     db_service: DatabaseService = metadata.get_by_name(
         DatabaseService, workflow_config["source"]["serviceName"]
     )
-    db_service.connection.config.authType.password = CustomSecretStr(mysql_container.password)
+    db_service.connection.config.authType.password = CustomSecretStr(
+        mysql_container.password
+    )
     yield db_service
     metadata.delete(DatabaseService, db_service.id, recursive=True, hard_delete=True)
 

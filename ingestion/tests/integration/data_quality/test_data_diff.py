@@ -1,83 +1,57 @@
-from unittest.mock import Mock
-from uuid import uuid4
-
 import pytest
 from pydantic import BaseModel
-from sqlalchemy import (
-    create_engine,
-    MetaData,
-    Table as SQATable,
-    Column as SQAColumn,
-    VARBINARY,
-)
+from sqlalchemy import VARBINARY
+from sqlalchemy import Column as SQAColumn
+from sqlalchemy import MetaData
+from sqlalchemy import Table as SQATable
+from sqlalchemy import create_engine
 from sqlalchemy.dialects import postgresql
-from sqlalchemy.engine import URL, make_url, Connection
-from sqlalchemy.orm import Session
+from sqlalchemy.engine import URL, Connection, make_url
 from sqlalchemy.sql import sqltypes
 
 from metadata.data_quality.api.models import (
     TestCaseDefinition,
     TestSuiteProcessorConfig,
 )
-from metadata.data_quality.validations.table.sqlalchemy.tableDiff import (
-    TableDiffValidator,
-)
-from metadata.generated.schema.api.data.createDatabase import CreateDatabaseRequest
-from metadata.generated.schema.api.data.createDatabaseSchema import (
-    CreateDatabaseSchemaRequest,
-)
-from metadata.generated.schema.api.data.createTable import CreateTableRequest
 from metadata.generated.schema.api.services.createDatabaseService import (
     CreateDatabaseServiceRequest,
 )
-from metadata.generated.schema.entity.data.table import (
-    Table,
-    DataType,
-    PartitionProfilerConfig,
-    PartitionIntervalTypes,
-    Column,
-)
+from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.services.connections.database.common.basicAuth import (
     BasicAuth,
-)
-from metadata.generated.schema.entity.services.connections.database.mysqlConnection import (
-    MysqlConnection,
 )
 from metadata.generated.schema.entity.services.connections.database.postgresConnection import (
     PostgresConnection,
 )
 from metadata.generated.schema.entity.services.databaseService import (
+    DatabaseConnection,
     DatabaseService,
     DatabaseServiceType,
-    DatabaseConnection,
 )
 from metadata.generated.schema.metadataIngestion.testSuitePipeline import (
     TestSuiteConfigType,
     TestSuitePipeline,
 )
 from metadata.generated.schema.metadataIngestion.workflow import (
+    LogLevels,
     OpenMetadataWorkflowConfig,
-    Source,
-    SourceConfig,
     Processor,
     Sink,
-    LogLevels,
+    Source,
+    SourceConfig,
     WorkflowConfig,
 )
-from metadata.generated.schema.tests.basic import TestCaseStatus, TestCaseResult
+from metadata.generated.schema.tests.basic import TestCaseResult, TestCaseStatus
 from metadata.generated.schema.tests.testCase import TestCase, TestCaseParameterValue
 from metadata.generated.schema.tests.testDefinition import (
+    EntityType,
     TestCaseParameterDefinition,
     TestDataType,
-    TestPlatform,
-    EntityType,
     TestDefinition,
+    TestPlatform,
 )
-from metadata.generated.schema.type.basic import EntityLink
-from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.models.custom_pydantic import CustomSecretStr
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.profiler.orm.converter.base import ometa_to_sqa_orm
 from metadata.workflow.data_quality import TestSuiteWorkflow
 from metadata.workflow.metadata import MetadataWorkflow
 
@@ -282,7 +256,7 @@ def test_happy_paths(
 ):
     table1 = metadata.get_by_name(
         Table,
-        f"{postgres_service.fullyQualifiedName.__root__}.dvdrental.public.customer",
+        f"{postgres_service.fullyQualifiedName.root}.dvdrental.public.customer",
         nullable=False,
     )
     table2_service_name = parameters.table2_fqn.split(".")[0]
@@ -291,7 +265,7 @@ def test_happy_paths(
         "MYSQL_SERVICE": ingest_mysql_service,
     }[table2_service_name]
     parameters.table2_fqn = parameters.table2_fqn.replace(
-        table2_service_name, table2_service.fullyQualifiedName.__root__
+        table2_service_name, table2_service.fullyQualifiedName.root
     )
     service2_password = getattr(
         table2_service.connection.config, "authType", table2_service.connection.config
@@ -336,14 +310,14 @@ def test_happy_paths(
             sourceConfig=SourceConfig(
                 config=TestSuitePipeline(
                     type=TestSuiteConfigType.TestSuite,
-                    entityFullyQualifiedName=f"{table1.fullyQualifiedName.__root__}",
+                    entityFullyQualifiedName=f"{table1.fullyQualifiedName.root}",
                 )
             ),
             serviceConnection=postgres_service.connection,
         ),
         processor=Processor(
             type="orm-test-runner",
-            config=TestSuiteProcessorConfig(testCases=[parameters.test_case_defintion]),
+            config={"testCases": [parameters.test_case_defintion]},
         ),
         sink=Sink(
             type="metadata-rest",
@@ -358,7 +332,7 @@ def test_happy_paths(
     test_suite_procesor.execute()
     test_suite_procesor.stop()
     test_case_entity: TestCase = metadata.get_or_create_test_case(
-        f"{table1.fullyQualifiedName.__root__}.{parameters.test_case_defintion.name}"
+        f"{table1.fullyQualifiedName.root}.{parameters.test_case_defintion.name}"
     )
     try:
         test_suite_procesor.raise_from_status()
@@ -453,7 +427,7 @@ def ingest_postgres_metadata(postgres_service, metadata: OpenMetadata):
     workflow_config = OpenMetadataWorkflowConfig(
         source=Source(
             type=postgres_service.connection.config.type.value.lower(),
-            serviceName=postgres_service.fullyQualifiedName.__root__,
+            serviceName=postgres_service.fullyQualifiedName.root,
             serviceConnection=postgres_service.connection,
             sourceConfig=SourceConfig(config={}),
         ),

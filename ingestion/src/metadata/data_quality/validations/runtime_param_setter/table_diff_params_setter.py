@@ -10,7 +10,7 @@ from metadata.data_quality.validations.runtime_param_setter.param_setter import 
 from metadata.data_quality.validations.table.sqlalchemy.models import (
     TableDiffRuntimeParameters,
 )
-from metadata.generated.schema.entity.data.table import Table, Constraint
+from metadata.generated.schema.entity.data.table import Constraint, Table
 from metadata.generated.schema.entity.services.databaseService import DatabaseService
 from metadata.generated.schema.tests.testCase import TestCase
 from metadata.ingestion.source.connections import get_connection
@@ -28,11 +28,11 @@ class TableDiffParamsSetter(RuntimeParameterSetter):
         key_columns = self.get_key_columns(test_case)
         return TableDiffRuntimeParameters(
             service1Url=self.get_data_diff_url(
-                str(service1.url), self.table_entity.fullyQualifiedName.__root__
+                str(service1.url), self.table_entity.fullyQualifiedName.root
             ),
             service2Url=self.get_data_diff_url(service2, table2_fqn),
             table1=self.get_data_diff_table_path(
-                self.table_entity.fullyQualifiedName.__root__
+                self.table_entity.fullyQualifiedName.root
             ),
             table2=self.get_data_diff_table_path(table2_fqn),
             keyColumns=key_columns,
@@ -44,7 +44,8 @@ class TableDiffParamsSetter(RuntimeParameterSetter):
         param_where_clause = self.get_parameter(test_case, "where", None)
         partition_where_clause = (
             None
-            if self.sampler._partition_details.enablePartitioning == False
+            if not self.sampler._partition_details
+            or self.sampler._partition_details.enablePartitioning == False
             else self.sampler.get_partitioned_query().whereclause.compile(
                 compile_kwargs={"literal_binds": True}
             )
@@ -78,8 +79,8 @@ class TableDiffParamsSetter(RuntimeParameterSetter):
         if extra_columns is None:
             extra_columns = []
             for column in self.table_entity.columns:
-                if column.name.__root__ not in key_columns:
-                    extra_columns.insert(0, column.name.__root__)
+                if column.name.root not in key_columns:
+                    extra_columns.insert(0, column.name.root)
         return extra_columns
 
     def get_key_columns(self, test_case) -> List[str]:
@@ -88,11 +89,11 @@ class TableDiffParamsSetter(RuntimeParameterSetter):
         if not key_columns:
             for column in self.table_entity.columns:
                 if column.constraint == Constraint.PRIMARY_KEY:
-                    key_columns.append(column.name.__root__)
+                    key_columns.append(column.name.root)
         if not key_columns:
             for column in self.table_entity.columns:
                 if column.constraint == Constraint.UNIQUE:
-                    key_columns.append(column.name.__root__)
+                    key_columns.append(column.name.root)
         if not key_columns:
             raise ValueError(
                 "Failed to resolve key columns for table diff.\n",
