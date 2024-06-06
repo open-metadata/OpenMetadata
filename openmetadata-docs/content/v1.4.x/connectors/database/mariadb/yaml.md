@@ -111,7 +111,7 @@ The workflow is modeled around the following
 
 {% codeBlock fileName="filename.yaml" %}
 
-```yaml
+```yaml {% isCodeBlock=true %}
 source:
   type: mariadb
   serviceName: local_mariadb

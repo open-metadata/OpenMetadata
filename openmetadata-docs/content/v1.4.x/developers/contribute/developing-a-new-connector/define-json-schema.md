@@ -134,20 +134,20 @@ On this connector we can see two different definitions:
 
 {% codeBlock fileName="mysqlConnection.json" %}
 
-```json
+```json {% isCodeBlock=true %}
 {
 ```
 ```json {% srNumber=1 %}
 "$id": "https://open-metadata.org/schema/entity/services/connections/database/mysqlConnection.json",
 ```
-```json
+```json {% isCodeBlock=true %}
   "$schema": "http://json-schema.org/draft-07/schema#",
 ```
 ```json {% srNumber=2 %}
 "title": "MysqlConnection",
 "description": "Mysql Database Connection Config",
 ```
-```json
+```json {% isCodeBlock=true %}
   "type": "object",
 ```
 ```json {% srNumber=3 %}
@@ -253,7 +253,7 @@ On this connector we can see two different definitions:
 "additionalProperties": false,
 "required": ["hostPort", "username"]
 ```
-```json
+```json {% isCodeBlock=true %}
 }
 ```
 
@@ -296,7 +296,7 @@ The file will be shortened and parts of it will be replaced with `...` for reada
 {% /codeInfoContainer %}
 
 {% codeBlock fileName="mysqlConnection.json" %}
-```json
+```json {% isCodeBlock=true %}
 {
   "$id": "https://open-metadata.org/schema/entity/services/databaseService.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
@@ -348,7 +348,7 @@ The file will be shortened and parts of it will be replaced with `...` for reada
       "additionalProperties": false
     }
 ```
-```json
+```json {% isCodeBlock=true %}
   },
   ...
 }

@@ -178,7 +178,7 @@ This is a sample config for Clickhouse:
 
 {% codeBlock fileName="filename.yaml" %}
 
-```yaml
+```yaml {% isCodeBlock=true %}
 source:
   type: clickhouse
   serviceName: local_clickhouse

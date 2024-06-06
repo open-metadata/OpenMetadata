@@ -112,7 +112,7 @@ You can checkout [this](https://cloud.google.com/iam/docs/keys-create-delete#iam
 
 {% codeBlock fileName="filename.yaml" %}
 
-```yaml
+```yaml {% isCodeBlock=true %}
 source:
   type: bigtable
   serviceName: "<service name>"

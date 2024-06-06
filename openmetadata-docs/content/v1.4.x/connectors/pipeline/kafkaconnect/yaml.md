@@ -90,7 +90,7 @@ This is a sample config for KafkaConnect:
 {% codeBlock fileName="filename.yaml" %}
 
 
-```yaml
+```yaml {% isCodeBlock=true %}
 source:
   type: kafkaconnect
   serviceName: kafka_connect_source
