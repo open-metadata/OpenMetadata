@@ -563,7 +563,7 @@ mock_datalake_gcs_config = {
                             "privateKeyId": "private_key_id",
                             "privateKey": "private_key",
                             "clientEmail": "gcpuser@project_id.iam.gserviceaccount.com",
-                            "clientId": 1234,
+                            "clientId": "1234",
                             "authUri": "https://accounts.google.com/o/oauth2/auth",
                             "tokenUri": "https://oauth2.googleapis.com/token",
                             "authProviderX509CertUrl": "https://www.googleapis.com/oauth2/v1/certs",
