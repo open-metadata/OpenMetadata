@@ -18,7 +18,7 @@ import copy
 import json
 import re
 import traceback
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any, Iterable, Optional, Tuple, Union
 
 from requests.exceptions import HTTPError
@@ -572,11 +572,17 @@ class SasSource(
                 ):
                     return
 
+                raw_create_date: Optional[datetime] = table_entity_instance.get(
+                    "creationTimeStamp"
+                )
+                if raw_create_date:
+                    raw_create_date = raw_create_date.replace(tzinfo=timezone.utc)
+
                 # create Profiles & Data Quality Column
                 table_profile_request = CreateTableProfileRequest(
                     tableProfile=TableProfile(
                         timestamp=self.timestamp,
-                        createDateTime=table_entity_instance["creationTimeStamp"],
+                        createDateTime=raw_create_date,
                         rowCount=int(table_extension.get("rowCount", 0)),
                         columnCount=int(table_extension.get("columnCount", 0)),
                         sizeInByte=int(table_extension.get("dataSize", 0)),

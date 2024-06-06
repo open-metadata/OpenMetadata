@@ -343,7 +343,7 @@ class TestWorkflowParse(TestCase):
             },
             "airflowConfig": {
                 "retries": 0,
-                "startDate": "2023-12-19 00:00:00",
+                "startDate": "2023-12-19T00:00:00.000000Z",
                 "retryDelay": 300,
                 "concurrency": 1,
                 "maxActiveRuns": 1,
@@ -428,7 +428,7 @@ class TestWorkflowParse(TestCase):
             },
             "airflowConfig": {
                 "retries": 0,
-                "startDate": "2023-12-19 00:00:00",
+                "startDate": "2023-12-19T00:00:00.000000Z",
                 "retryDelay": 300,
                 "concurrency": 1,
                 "maxActiveRuns": 1,

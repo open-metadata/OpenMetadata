@@ -17,7 +17,6 @@ from datetime import datetime, timedelta
 from functools import partial
 from typing import Callable, Optional, Union
 
-import airflow
 from airflow import DAG
 from openmetadata_managed_apis.api.utils import clean_dag_id
 from pydantic import ValidationError
@@ -246,14 +245,20 @@ def build_dag_configs(ingestion_pipeline: IngestionPipeline) -> dict:
     :param ingestion_pipeline: pipeline configs
     :return: dict to use as kwargs
     """
+
+    if ingestion_pipeline.airflowConfig.startDate:
+        start_date = datetime.strptime(
+            ingestion_pipeline.airflowConfig.startDate.root, "%Y-%m-%dT%H:%M:%S.%fZ"
+        ).replace(tzinfo=None)
+    else:
+        start_date = datetime.now() - timedelta(days=1)
+
     return {
         "dag_id": clean_dag_id(ingestion_pipeline.name.root),
         "description": ingestion_pipeline.description.root
         if ingestion_pipeline.description is not None
         else None,
-        "start_date": ingestion_pipeline.airflowConfig.startDate.root
-        if ingestion_pipeline.airflowConfig.startDate
-        else airflow.utils.dates.days_ago(1),
+        "start_date": start_date,
         "end_date": ingestion_pipeline.airflowConfig.endDate.root
         if ingestion_pipeline.airflowConfig.endDate
         else None,
