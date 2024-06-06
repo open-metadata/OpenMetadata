@@ -1930,7 +1930,13 @@ public class ElasticSearchClient implements SearchClient {
 
   void getFieldNames(Map<String, Object> fields, String prefix, List<String> fieldList) {
     for (Map.Entry<String, Object> entry : fields.entrySet()) {
-      String fieldName = prefix + entry.getKey();
+      String postfix = "";
+      String type = (String) ((Map<String, Object>) entry.getValue()).get("type");
+      if (type != null && type.equals("text")) {
+        postfix = ".keyword";
+      }
+
+      String fieldName = prefix + entry.getKey() + postfix;
       fieldList.add(fieldName);
 
       if (entry.getValue() instanceof Map) {

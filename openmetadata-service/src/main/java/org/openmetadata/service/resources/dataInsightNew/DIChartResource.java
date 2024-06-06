@@ -11,6 +11,7 @@ import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import java.io.IOException;
+import java.text.ParseException;
 import java.util.List;
 import java.util.UUID;
 import javax.json.JsonPatch;
@@ -213,6 +214,31 @@ public class DIChartResource extends EntityResource<DIChart, DIChartRepository> 
       @Context UriInfo uriInfo, @Context SecurityContext securityContext) throws IOException {
     List<String> fieldList = repository.getFields();
     return Response.status(Response.Status.OK).entity(fieldList).build();
+  }
+
+  @GET
+  @Path("/validateFormula")
+  @Operation(
+      operationId = "validate formula",
+      summary = "validate formula",
+      description = "validate formula.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Get data insight chart index fields.",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = DataInsightChart.class))),
+        @ApiResponse(responseCode = "400", description = "Bad request")
+      })
+  public Response getDIChartIndexField(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @QueryParam("formula") String formula)
+      throws ParseException {
+    repository.validateFormula(formula);
+    return Response.status(Response.Status.OK).build();
   }
 
   @PUT
