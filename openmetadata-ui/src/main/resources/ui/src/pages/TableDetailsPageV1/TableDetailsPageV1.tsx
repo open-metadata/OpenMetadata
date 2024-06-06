@@ -579,7 +579,7 @@ const TableDetailsPageV1: React.FC = () => {
                   />
                 </div>
               ),
-              minWidth: 968,
+              minWidth: 800,
               flex: 0.87,
             }}
             secondPanel={{
