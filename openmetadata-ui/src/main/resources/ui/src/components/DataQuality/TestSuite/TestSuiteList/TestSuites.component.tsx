@@ -285,7 +285,9 @@ export const TestSuites = ({ summaryPanel }: { summaryPanel: ReactNode }) => {
                   <UserTeamSelectableList
                     hasPermission
                     owner={selectedOwner}
-                    onUpdate={handleOwnerSelect}>
+                    onUpdate={(updatedUser) =>
+                      handleOwnerSelect(updatedUser as EntityReference)
+                    }>
                     <Select
                       data-testid="owner-select-filter"
                       open={false}
