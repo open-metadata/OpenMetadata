@@ -19,6 +19,7 @@ export type TaskTabProps = {
   taskThread: Thread;
   owner?: EntityReference;
   isForFeedTab?: boolean;
+  hasGlossaryReviewer?: boolean;
   onUpdateEntityDetails?: () => void;
   onAfterClose?: () => void;
 } & (

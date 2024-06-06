@@ -111,6 +111,7 @@ export const TaskTab = ({
   taskThread,
   owner,
   entityType,
+  hasGlossaryReviewer,
   ...rest
 }: TaskTabProps) => {
   const history = useHistory();
@@ -337,7 +338,7 @@ export const TaskTab = ({
   const hasEditAccess =
     isAdminUser ||
     isAssignee ||
-    isOwner ||
+    (!hasGlossaryReviewer && isOwner) ||
     (Boolean(isPartOfAssigneeTeam) && !isCreator);
 
   const onSave = (message: string) => {

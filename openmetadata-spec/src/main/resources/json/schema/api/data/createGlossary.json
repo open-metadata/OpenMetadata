@@ -22,10 +22,7 @@
     },
     "reviewers": {
       "description": "User references of the reviewers for this glossary.",
-      "type": "array",
-      "items": {
-        "$ref": "../../type/basic.json#/definitions/entityName"
-      }
+      "$ref": "../../type/entityReferenceList.json"
     },
     "owner": {
       "description": "Owner of this glossary",

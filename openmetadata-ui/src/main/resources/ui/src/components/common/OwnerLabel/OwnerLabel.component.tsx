@@ -106,7 +106,7 @@ export const OwnerLabel = ({
         <UserTeamSelectableList
           hasPermission={Boolean(hasPermission)}
           owner={owner}
-          onUpdate={onUpdate}
+          onUpdate={(updatedUser) => onUpdate(updatedUser as EntityReference)}
         />
       )}
     </div>

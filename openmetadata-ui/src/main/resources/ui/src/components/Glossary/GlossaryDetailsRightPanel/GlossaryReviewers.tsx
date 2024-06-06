@@ -70,6 +70,7 @@ function GlossaryReviewers({
       return (
         <Space className="m-r-xss" key={reviewer.id} size={4}>
           <ProfilePicture
+            avatarType="outlined"
             displayName={getEntityName(reviewer)}
             isTeam={reviewer.type === UserTeam.Team}
             name={reviewer.name ?? ''}

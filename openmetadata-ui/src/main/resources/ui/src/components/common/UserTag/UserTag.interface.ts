@@ -19,6 +19,7 @@ export interface UserTags {
   size?: UserTagSize;
   className?: string;
   isTeam?: boolean;
+  avatarType?: 'solid' | 'outlined';
 }
 
 export enum UserTagSize {

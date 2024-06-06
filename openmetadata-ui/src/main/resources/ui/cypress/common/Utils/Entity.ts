@@ -352,9 +352,6 @@ export const deletedEntityCommonChecks = ({
 
   if (isTableEntity) {
     checkLineageTabActions({ deleted });
-  }
-
-  if (isTableEntity) {
     checkForTableSpecificFields({ deleted });
   }
 
@@ -395,6 +392,7 @@ export const deletedEntityCommonChecks = ({
       '[data-testid="manage-dropdown-list-container"] [data-testid="delete-button"]'
     ).should('be.visible');
   }
+
   cy.clickOutside();
 };
 
@@ -460,7 +458,9 @@ export const deleteEntity = (
       'getDatabaseSchemas'
     );
 
-    cy.get('[data-testid="breadcrumb-link"]:last-child').click({ force: true });
+    cy.get('[data-testid="entity-page-header"] [data-testid="breadcrumb-link"]')
+      .last()
+      .click();
     verifyResponseStatusCode('@getDatabaseSchemas', 200);
 
     cy.get('[data-testid="show-deleted"]')

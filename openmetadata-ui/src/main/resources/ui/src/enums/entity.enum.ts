@@ -122,6 +122,7 @@ export enum TabSpecificField {
   VOTES = 'votes',
   DOMAIN = 'domain',
   DATA_PRODUCTS = 'dataProducts',
+  REVIEWERS = 'reviewers',
 }
 
 export enum FqnPart {

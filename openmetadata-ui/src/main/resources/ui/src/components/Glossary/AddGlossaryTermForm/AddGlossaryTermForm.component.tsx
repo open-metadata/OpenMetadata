@@ -45,8 +45,12 @@ const AddGlossaryTermForm = ({
 }: AddGlossaryTermFormProps) => {
   const { currentUser } = useApplicationStore();
   const owner = Form.useWatch<EntityReference | undefined>('owner', form);
-  const reviewersList =
-    Form.useWatch<EntityReference[]>('reviewers', form) ?? [];
+  const reviewersData =
+    Form.useWatch<EntityReference | EntityReference[]>('reviewers', form) ?? [];
+
+  const reviewersList = Array.isArray(reviewersData)
+    ? reviewersData
+    : [reviewersData];
 
   const getRelatedTermFqnList = (relatedTerms: DefaultOptionType[]): string[] =>
     relatedTerms.map((tag: DefaultOptionType) => tag.value as string);
@@ -69,7 +73,6 @@ const AddGlossaryTermForm = ({
       id: currentUser?.id ?? '',
       type: 'user',
     };
-
     const style = {
       color,
       iconURL,
@@ -321,11 +324,14 @@ const AddGlossaryTermForm = ({
     id: 'root/reviewers',
     required: false,
     label: t('label.reviewer-plural'),
-    type: FieldTypes.USER_MULTI_SELECT,
+    type: FieldTypes.USER_TEAM_SELECT,
     props: {
       hasPermission: true,
       filterCurrentUser: true,
       popoverProps: { placement: 'topLeft' },
+      multiple: { user: true, team: false },
+      previewSelected: true,
+      label: t('label.reviewer-plural'),
       children: (
         <Button
           data-testid="add-reviewers"
@@ -431,6 +437,7 @@ const AddGlossaryTermForm = ({
           {owner && (
             <div className="m-y-sm" data-testid="owner-container">
               <UserTag
+                avatarType="outlined"
                 id={owner.name ?? owner.id}
                 isTeam={owner.type === UserTeam.Team}
                 name={getEntityName(owner)}
@@ -445,7 +452,9 @@ const AddGlossaryTermForm = ({
             <Space wrap data-testid="reviewers-container" size={[8, 8]}>
               {reviewersList.map((d) => (
                 <UserTag
+                  avatarType="outlined"
                   id={d.name ?? d.id}
+                  isTeam={d.type === UserTeam.Team}
                   key={d.id}
                   name={getEntityName(d)}
                   size={UserTagSize.small}

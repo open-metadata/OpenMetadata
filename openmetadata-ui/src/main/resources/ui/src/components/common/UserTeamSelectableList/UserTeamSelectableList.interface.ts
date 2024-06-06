@@ -14,10 +14,21 @@ import { PopoverProps } from 'antd';
 import { ReactNode } from 'react';
 import { EntityReference } from '../../../generated/entity/teams/user';
 
+type MultipleUserTeam = {
+  user: boolean;
+  team: boolean;
+};
+
 export interface UserSelectDropdownProps {
   hasPermission: boolean;
-  owner?: EntityReference;
-  onUpdate: (updatedUser?: EntityReference) => void | Promise<void>;
+  owner?: EntityReference | EntityReference[];
+  onUpdate: (
+    updatedUser?: EntityReference | EntityReference[]
+  ) => void | Promise<void>;
   children?: ReactNode;
   popoverProps?: PopoverProps;
+  multiple?: MultipleUserTeam;
+  label?: string;
+  previewSelected?: boolean;
+  listHeight?: number;
 }

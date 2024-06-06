@@ -95,7 +95,7 @@ describe('Persona operations', { tags: 'Settings' }, () => {
 
     cy.get('[data-testid="searchbar"]').type(userSearchText);
 
-    cy.get(`[title="${userSearchText}"] .ant-checkbox-input`).check();
+    cy.get(`.ant-popover [title="${userSearchText}"]`).click();
     cy.get('[data-testid="selectable-list-update-btn"]')
       .scrollIntoView()
       .click();

@@ -13,6 +13,7 @@
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
+import { MOCK_TASK_ASSIGNEE } from '../../../mocks/Task.mock';
 import { postThread } from '../../../rest/feedsAPI';
 import UpdateTag from './UpdateTagPage';
 
@@ -87,6 +88,7 @@ jest.mock('../../../utils/TasksUtils', () => ({
   getColumnObject: jest.fn().mockImplementation(() => ({
     tags: mockTableData.columns[0].tags,
   })),
+  getTaskAssignee: jest.fn().mockReturnValue(MOCK_TASK_ASSIGNEE),
 }));
 jest.mock('../shared/Assignees', () =>
   jest.fn().mockImplementation(() => <div>Assignees.component</div>)
