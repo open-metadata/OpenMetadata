@@ -205,7 +205,7 @@ class OMetaServiceTest(TestCase):
         )
 
         workflow_config = build_metadata_workflow_config(ingestion_pipeline)
-        config = json.loads(workflow_config.json(encoder=show_secrets_encoder))
+        config = json.loads(workflow_config.model_dump_json())
 
         parse_workflow_config_gracefully(config)
 
@@ -240,7 +240,7 @@ class OMetaServiceTest(TestCase):
         workflow_config = build_usage_workflow_config(ingestion_pipeline)
         self.assertIn("usage", workflow_config.source.type)
 
-        config = json.loads(workflow_config.json(encoder=show_secrets_encoder))
+        config = json.loads(workflow_config.model_dump_json())
 
         parse_workflow_config_gracefully(config)
 
@@ -275,7 +275,7 @@ class OMetaServiceTest(TestCase):
         workflow_config = build_lineage_workflow_config(ingestion_pipeline)
         self.assertIn("lineage", workflow_config.source.type)
 
-        config = json.loads(workflow_config.json(encoder=show_secrets_encoder))
+        config = json.loads(workflow_config.model_dump_json())
 
         parse_workflow_config_gracefully(config)
 
@@ -308,7 +308,7 @@ class OMetaServiceTest(TestCase):
         )
 
         workflow_config = build_profiler_workflow_config(ingestion_pipeline)
-        config = json.loads(workflow_config.json(encoder=show_secrets_encoder))
+        config = json.loads(workflow_config.model_dump_json())
 
         parse_workflow_config_gracefully(config)
 
@@ -346,6 +346,6 @@ class OMetaServiceTest(TestCase):
         )
 
         workflow_config = build_test_suite_workflow_config(ingestion_pipeline)
-        config = json.loads(workflow_config.json(encoder=show_secrets_encoder))
+        config = json.loads(workflow_config.model_dump_json())
 
         parse_workflow_config_gracefully(config)
