@@ -125,8 +125,12 @@ export const addOwnerInGlossary = (
   const isMultipleOwners = Array.isArray(ownerNames);
   const owners = isMultipleOwners ? ownerNames : [ownerNames];
 
+  interceptURL('GET', '/api/v1/search/query?**', 'searchCount');
   interceptURL('GET', '/api/v1/users?*isBot=false*', 'getUsers');
+
   cy.get(`[data-testid="${activatorBtnDataTestId}"]`).click();
+  verifyResponseStatusCode('@searchCount', 200);
+
   cy.get("[data-testid='select-owner-tabs']").should('be.visible');
   cy.get('.ant-tabs [id*=tab-users]').scrollIntoView();
   cy.get('.ant-tabs [id*=tab-users]').click({
