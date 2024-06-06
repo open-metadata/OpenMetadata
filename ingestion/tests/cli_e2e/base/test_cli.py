@@ -93,7 +93,12 @@ class CliBase(ABC):
         output_clean = output_clean_ansi.sub(" ", output_clean)
         regex = r"[\w] Status:%(log)s(.*?)%(log)s.* Status: .*" % REGEX_AUX
         output_clean_regex = re.findall(regex, output_clean.strip())
-        return Status.model_validate(literal_eval(output_clean_regex[0].strip()))
+        try:
+            return Status.model_validate(literal_eval(output_clean_regex[0].strip()))
+        except Exception as exc:
+            raise RuntimeError(
+                f"Error extracting source status: {exc}. Check the output {output}"
+            )
 
     @staticmethod
     def extract_sink_status(output) -> Status:
@@ -105,7 +110,12 @@ class CliBase(ABC):
             r".*OpenMetadata Status:%(log)s(.*?)%(log)sExecution.*Summary.*" % REGEX_AUX
         )
         output_clean_regex = re.findall(regex, output_clean.strip())[0].strip()
-        return Status.model_validate(literal_eval(output_clean_regex))
+        try:
+            return Status.model_validate(literal_eval(output_clean_regex))
+        except Exception as exc:
+            raise RuntimeError(
+                f"Error extracting sink status: {exc}. Check the output {output}"
+            )
 
     @staticmethod
     def build_yaml(config_yaml: dict, test_type: E2EType, extra_args: dict):

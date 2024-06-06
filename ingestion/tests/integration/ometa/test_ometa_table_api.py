@@ -14,7 +14,7 @@ OpenMetadata high-level API Table test
 """
 import uuid
 from copy import deepcopy
-from datetime import datetime, timezone
+from datetime import datetime
 from typing import List
 from unittest import TestCase
 from unittest.mock import patch
@@ -383,24 +383,18 @@ class OMetaTableTest(TestCase):
                 mean=1.5,
                 sum=2,
                 stddev=None,
-                timestamp=Timestamp(
-                    root=int(datetime.now(tz=timezone.utc).timestamp())
-                ),
+                timestamp=Timestamp(root=int(datetime.now().timestamp())),
             )
         ]
 
         system_profile = [
             SystemProfile(
-                timestamp=Timestamp(
-                    root=int(datetime.now(tz=timezone.utc).timestamp())
-                ),
+                timestamp=Timestamp(root=int(datetime.now().timestamp())),
                 operation=DmlOperationType.INSERT,
                 rowsAffected=11,
             ),
             SystemProfile(
-                timestamp=Timestamp(
-                    root=int(datetime.now(tz=timezone.utc).timestamp()) + 1
-                ),
+                timestamp=Timestamp(root=int(datetime.now().timestamp()) + 1),
                 operation=DmlOperationType.UPDATE,
                 rowsAffected=110,
             ),

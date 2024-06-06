@@ -85,6 +85,7 @@ for file_path in UNSUPPORTED_REGEX_PATTERN_FILE_PATHS:
 # Supporting timezone aware datetime is too complex for the profiler
 DATETIME_AWARE_FILE_PATHS = [
     f"{ingestion_path}src/metadata/generated/schema/type/basic.py",
+    f"{ingestion_path}src/metadata/generated/schema/entity/data/table.py",
 ]
 
 for file_path in DATETIME_AWARE_FILE_PATHS:

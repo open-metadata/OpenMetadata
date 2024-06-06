@@ -14,6 +14,7 @@ Validate metadata ingestion workflow generation
 """
 import json
 import uuid
+from datetime import datetime
 from unittest import TestCase
 from unittest.mock import patch
 
@@ -64,6 +65,7 @@ from metadata.generated.schema.metadataIngestion.workflow import SourceConfig
 from metadata.generated.schema.security.client.openMetadataJWTClientConfig import (
     OpenMetadataJWTClientConfig,
 )
+from metadata.generated.schema.type.basic import DateTime
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.parser import parse_workflow_config_gracefully
 from metadata.ingestion.models.encoders import show_secrets_encoder
@@ -75,6 +77,11 @@ from metadata.workflow.profiler import ProfilerWorkflow
 
 def mock_set_ingestion_pipeline_status(self, state):
     return True
+
+
+START_DATE = DateTime(
+    datetime.strptime("2022-06-10T15:06:47+00:00", "%Y-%m-%d %H:%M:%S")
+)
 
 
 class OMetaServiceTest(TestCase):
@@ -190,7 +197,7 @@ class OMetaServiceTest(TestCase):
             sourceConfig=SourceConfig(config=DatabaseServiceMetadataPipeline()),
             openMetadataServerConnection=self.server_config,
             airflowConfig=AirflowConfig(
-                startDate="2022-06-10T15:06:47+00:00",
+                startDate=START_DATE,
             ),
             service=EntityReference(
                 id=self.service.id,
@@ -223,7 +230,7 @@ class OMetaServiceTest(TestCase):
             sourceConfig=SourceConfig(config=DatabaseServiceQueryUsagePipeline()),
             openMetadataServerConnection=self.server_config,
             airflowConfig=AirflowConfig(
-                startDate="2022-06-10T15:06:47+00:00",
+                startDate=START_DATE,
             ),
             service=EntityReference(
                 id=self.usage_service.id,
@@ -258,7 +265,7 @@ class OMetaServiceTest(TestCase):
             sourceConfig=SourceConfig(config=DatabaseServiceQueryLineagePipeline()),
             openMetadataServerConnection=self.server_config,
             airflowConfig=AirflowConfig(
-                startDate="2022-06-10T15:06:47+00:00",
+                startDate=START_DATE,
             ),
             service=EntityReference(
                 id=self.usage_service.id,
@@ -293,7 +300,7 @@ class OMetaServiceTest(TestCase):
             sourceConfig=SourceConfig(config=DatabaseServiceProfilerPipeline()),
             openMetadataServerConnection=self.server_config,
             airflowConfig=AirflowConfig(
-                startDate="2022-06-10T15:06:47+00:00",
+                startDate=START_DATE,
             ),
             service=EntityReference(
                 id=self.service.id,
@@ -331,7 +338,7 @@ class OMetaServiceTest(TestCase):
             ),
             openMetadataServerConnection=self.server_config,
             airflowConfig=AirflowConfig(
-                startDate="2022-06-10T15:06:47+00:00",
+                startDate=START_DATE,
             ),
             service=EntityReference(
                 id=uuid.uuid4(),

@@ -18,7 +18,7 @@ import copy
 import json
 import re
 import traceback
-from datetime import datetime, timezone
+from datetime import datetime
 from typing import Any, Iterable, Optional, Tuple, Union
 
 from requests.exceptions import HTTPError
@@ -122,7 +122,7 @@ class SasSource(
         self.databases = None
         self.database_schemas = None
 
-        self.timestamp = Timestamp(int(datetime.now(timezone.utc).timestamp() * 1000))
+        self.timestamp = Timestamp(int(datetime.now().timestamp() * 1000))
 
     @classmethod
     def create(

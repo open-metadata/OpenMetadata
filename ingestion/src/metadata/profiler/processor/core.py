@@ -15,7 +15,7 @@ Main Profile definition and queries to execute
 from __future__ import annotations
 
 import traceback
-from datetime import datetime, timezone
+from datetime import datetime
 from typing import Any, Dict, Generic, List, Optional, Set, Tuple, Type
 
 from pydantic import ValidationError
@@ -106,9 +106,7 @@ class Profiler(Generic[TMetric]):
         self.include_columns = include_columns
         self.exclude_columns = exclude_columns
         self._metrics = metrics
-        self._profile_ts = Timestamp(
-            int(datetime.now(tz=timezone.utc).timestamp() * 1000)
-        )
+        self._profile_ts = Timestamp(int(datetime.now().timestamp() * 1000))
         self.profile_sample_config = self.profiler_interface.profile_sample_config
 
         self.metric_filter = MetricFilter(
@@ -580,17 +578,11 @@ class Profiler(Generic[TMetric]):
                 )
             ]
 
-            raw_create_date: Optional[datetime] = self._table_results.get(
-                "createDateTime"
-            )
-            if raw_create_date:
-                raw_create_date = raw_create_date.replace(tzinfo=timezone.utc)
-
             table_profile = TableProfile(
                 timestamp=self.profile_ts,
                 columnCount=self._table_results.get("columnCount"),
                 rowCount=self._table_results.get(RowCount.name()),
-                createDateTime=raw_create_date,
+                createDateTime=self._table_results.get("createDateTime"),
                 sizeInByte=self._table_results.get("sizeInBytes"),
                 profileSample=(
                     self.profile_sample_config.profile_sample
