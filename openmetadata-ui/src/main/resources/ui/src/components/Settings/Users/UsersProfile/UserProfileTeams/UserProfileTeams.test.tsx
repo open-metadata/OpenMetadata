@@ -131,7 +131,14 @@ describe('Test User Profile Teams Component', () => {
     });
 
     expect(mockPropsData.updateUserDetails).toHaveBeenCalledWith(
-      { teams: [] },
+      {
+        teams: [
+          {
+            id: '9e8b7464-3f3e-4071-af05-19be142d75db',
+            type: 'team',
+          },
+        ],
+      },
       'teams'
     );
   });
