@@ -162,4 +162,12 @@ describe('Test TaskFeedCard component', () => {
 
     expect(activityFeedCard).toBeInTheDocument();
   });
+
+  it('should not render task action button to the task owner if task has reviewer', async () => {
+    render(<TaskTab {...mockProps} hasGlossaryReviewer />, {
+      wrapper: MemoryRouter,
+    });
+
+    expect(screen.getByTestId('task-cta-buttons')).toBeEmptyDOMElement();
+  });
 });

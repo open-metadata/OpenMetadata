@@ -313,6 +313,10 @@ public final class CatalogExceptionMessage {
     return String.format("The field name %s is not supported for %s task.", fieldName, type);
   }
 
+  public static String invalidReviewerType(String type) {
+    return String.format("Reviewers can only be a Team or User. Given Reviewer Type : %s", type);
+  }
+
   public static String invalidEnumValue(Class<? extends Enum<?>> enumClass) {
     String className = enumClass.getSimpleName();
     String classNameWithLowercaseFirstLetter =
