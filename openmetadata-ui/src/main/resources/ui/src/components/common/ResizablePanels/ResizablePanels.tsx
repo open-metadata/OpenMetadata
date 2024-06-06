@@ -48,7 +48,7 @@ const ResizablePanels: React.FC<ResizablePanelsProps> = ({
         }>
         <ReflexElement
           propagateDimensions
-          className={classNames(firstPanel.className, {
+          className={classNames(firstPanel.className, 'resizable-first-panel', {
             'full-width': hideSecondPanel || isRightPanelCollapsed,
           })}
           data-testid={firstPanel.className}
@@ -101,10 +101,14 @@ const ResizablePanels: React.FC<ResizablePanelsProps> = ({
 
         <ReflexElement
           propagateDimensions
-          className={classNames(secondPanel.className, {
-            hidden: hideSecondPanel,
-            'right-panel-collapsed': isRightPanelCollapsed,
-          })}
+          className={classNames(
+            secondPanel.className,
+            'resizable-second-panel',
+            {
+              hidden: hideSecondPanel,
+              'right-panel-collapsed': isRightPanelCollapsed,
+            }
+          )}
           data-testid={secondPanel.className}
           flex={isRightPanelCollapsed ? 0 : secondPanel.flex}
           minSize={isRightPanelCollapsed ? 0 : secondPanel.minWidth}

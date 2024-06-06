@@ -50,7 +50,10 @@ body.reflex-row-resize {
   position: relative;
   overflow: hidden;
   width: 100%;
-  transition: flex 0.3s ease-out;
+}
+.resizable-second-panel,
+.resizable-first-panel.full-width {
+  transition: all 0.3s ease-in-out;
 }
 
 .reflex-container.reflex-resizing > .reflex-element {
