@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { test } from '@playwright/test';
+import { ENTITIES_WITHOUT_FOLLOWING_BUTTON } from '../../constant/delete';
 import { ContainerClass } from '../../support/entity/ContainerClass';
 import { DashboardClass } from '../../support/entity/DashboardClass';
 import { DashboardDataModelClass } from '../../support/entity/DashboardDataModelClass';
@@ -18,6 +19,14 @@ import { EntityDataClass } from '../../support/entity/EntityDataClass';
 import { MlModelClass } from '../../support/entity/MlModelClass';
 import { PipelineClass } from '../../support/entity/PipelineClass';
 import { SearchIndexClass } from '../../support/entity/SearchIndexClass';
+import { DashboardServiceClass } from '../../support/entity/service/DashboardServiceClass';
+import { DatabaseServiceClass } from '../../support/entity/service/DatabaseServiceClass';
+import { MessagingServiceClass } from '../../support/entity/service/MessagingServiceClass';
+import { MlmodelServiceClass } from '../../support/entity/service/MlmodelServiceClass';
+import { PipelineServiceClass } from '../../support/entity/service/PipelineServiceClass';
+import { SearchIndexServiceClass } from '../../support/entity/service/SearchIndexServiceClass';
+import { StorageServiceClass } from '../../support/entity/service/StorageServiceClass';
+import { TableClass } from '../../support/entity/TableClass';
 import { TopicClass } from '../../support/entity/TopicClass';
 import {
   createNewPage,
@@ -27,6 +36,14 @@ import {
 } from '../../utils/common';
 
 const entities = [
+  DatabaseServiceClass,
+  DashboardServiceClass,
+  MessagingServiceClass,
+  MlmodelServiceClass,
+  PipelineServiceClass,
+  SearchIndexServiceClass,
+  StorageServiceClass,
+  TableClass,
   DashboardClass,
   PipelineClass,
   TopicClass,
@@ -42,6 +59,9 @@ test.use({ storageState: 'playwright/.auth/admin.json' });
 entities.forEach((EntityClass) => {
   const entity = new EntityClass();
   const deleteEntity = new EntityClass();
+  const allowFollowUnfollowTest = !ENTITIES_WITHOUT_FOLLOWING_BUTTON.includes(
+    entity.endpoint
+  );
 
   test.describe(entity.getType(), () => {
     test.beforeAll('Setup pre-requests', async ({ browser }) => {
@@ -108,15 +128,17 @@ entities.forEach((EntityClass) => {
       await entity.inactiveAnnouncement(page);
     });
 
-    test(`UpVote & DownVote entity`, async ({ page }) => {
-      await entity.upVote(page);
-      await entity.downVote(page);
-    });
+    if (allowFollowUnfollowTest) {
+      test(`UpVote & DownVote entity`, async ({ page }) => {
+        await entity.upVote(page);
+        await entity.downVote(page);
+      });
 
-    test(`Follow & Un-follow entity`, async ({ page }) => {
-      const entityName = entity.entityResponseData?.['displayName'];
-      await entity.followUnfollowEntity(page, entityName);
-    });
+      test(`Follow & Un-follow entity`, async ({ page }) => {
+        const entityName = entity.entityResponseData?.['displayName'];
+        await entity.followUnfollowEntity(page, entityName);
+      });
+    }
 
     test(`Update displayName`, async ({ page }) => {
       await entity.renameEntity(page, entity.entity.name);

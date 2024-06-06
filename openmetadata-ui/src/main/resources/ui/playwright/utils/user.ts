@@ -10,7 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { adjectives, nouns } from '../support/user/user.constant';
+
+import { adjectives, nouns } from '../constant/user';
 import { uuid } from './common';
 
 export const getRandomFirstName = () => {

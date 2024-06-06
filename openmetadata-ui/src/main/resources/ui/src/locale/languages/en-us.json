@@ -1065,7 +1065,7 @@
     "stage-file-location": "Stage File Location",
     "star": "Star",
     "star-open-metadata": "Star OpenMetadata",
-    "star-us-on-github": "Star us on Github",
+    "star-us-on-github": "Star us on GitHub",
     "start-date-time-zone": "Start Date: ({{timeZone}})",
     "start-elasticsearch-docker": "Start Elasticsearch Docker",
     "start-entity": "Start {{entity}}",
