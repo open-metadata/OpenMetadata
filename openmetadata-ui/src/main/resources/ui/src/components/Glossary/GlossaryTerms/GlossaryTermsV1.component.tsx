@@ -13,6 +13,7 @@
 
 import { Col, Row, Tabs } from 'antd';
 import { t } from 'i18next';
+import { isEmpty } from 'lodash';
 import React, {
   useCallback,
   useEffect,
@@ -247,6 +248,8 @@ const GlossaryTermsV1 = ({
                 <ActivityFeedTab
                   entityType={EntityType.GLOSSARY_TERM}
                   fqn={glossaryTerm.fullyQualifiedName ?? ''}
+                  hasGlossaryReviewer={!isEmpty(glossaryTerm.reviewers)}
+                  owner={glossaryTerm.owner}
                   onFeedUpdate={getEntityFeedCount}
                   onUpdateEntityDetails={refreshActiveGlossaryTerm}
                 />

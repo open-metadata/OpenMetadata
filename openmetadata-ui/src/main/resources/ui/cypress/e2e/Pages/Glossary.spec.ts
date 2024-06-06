@@ -54,7 +54,12 @@ import { GlobalSettingOptions } from '../../constants/settings.constant';
 
 const CREDENTIALS = generateRandomUser();
 const userName = `${CREDENTIALS.firstName}${CREDENTIALS.lastName}`;
+
+const CREDENTIALS_2 = generateRandomUser();
+const userName2 = `${CREDENTIALS_2.firstName}${CREDENTIALS_2.lastName}`;
+
 let createdUserId = '';
+let createdUserId_2 = '';
 
 const visitGlossaryTermPage = (
   termName: string,
@@ -456,6 +461,14 @@ const deleteUser = () => {
     }).then((response) => {
       expect(response.status).to.eq(200);
     });
+
+    cy.request({
+      method: 'DELETE',
+      url: `/api/v1/users/${createdUserId_2}?hardDelete=true&recursive=false`,
+      headers: { Authorization: `Bearer ${token}` },
+    }).then((response) => {
+      expect(response.status).to.eq(200);
+    });
   });
 };
 
@@ -532,6 +545,16 @@ describe('Glossary page should work properly', { tags: 'Governance' }, () => {
         cy.get('[data-testid="selectable-list-update-btn"]').click();
         verifyResponseStatusCode('@patchOwner', 200);
       });
+
+      // Create a new user_2
+      cy.request({
+        method: 'POST',
+        url: `/api/v1/users/signup`,
+        headers: { Authorization: `Bearer ${token}` },
+        body: CREDENTIALS_2,
+      }).then((response) => {
+        createdUserId_2 = response.body.id;
+      });
     });
   });
 
@@ -581,7 +604,7 @@ describe('Glossary page should work properly', { tags: 'Governance' }, () => {
     selectActiveGlossary(GLOSSARY_1.name);
 
     // Updating owner
-    addOwner(GLOSSARY_1.updatedOwner, GLOSSARY_OWNER_LINK_TEST_ID);
+    addOwner(userName2, GLOSSARY_OWNER_LINK_TEST_ID);
 
     // Updating Reviewer
     const reviewers = GLOSSARY_1.reviewers.map((reviewer) => reviewer.name);
@@ -724,7 +747,7 @@ describe('Glossary page should work properly', { tags: 'Governance' }, () => {
 
     cy.get(
       '[data-testid="select-assignee"] > .ant-select-selector > .ant-select-selection-overflow'
-    ).should('not.contain', GLOSSARY_1.updatedOwner);
+    ).should('not.contain', userName2);
 
     cy.get('[data-testid="tag-selector"]')
       .click()
@@ -741,7 +764,29 @@ describe('Glossary page should work properly', { tags: 'Governance' }, () => {
     cy.get('[data-testid="submit-tag-request"]').click();
     verifyResponseStatusCode('@taskCreated', 201);
 
-    // Reviewer should accepts the tag suggestion
+    // Owner should not be able to accept the tag suggestion when reviewer is assigned
+    cy.logout();
+    cy.login(CREDENTIALS_2.email, CREDENTIALS_2.password);
+
+    goToGlossaryPage();
+
+    cy.get('[data-testid="glossary-left-panel"]')
+      .contains(GLOSSARY_1.name)
+      .click();
+
+    cy.get('[data-testid="activity_feed"]').click();
+
+    cy.get('[data-testid="global-setting-left-panel"]')
+      .contains('Tasks')
+      .click();
+
+    // accept the tag suggestion button should not be present
+    cy.get('[data-testid="task-cta-buttons"]').should(
+      'not.contain',
+      'Accept Suggestion'
+    );
+
+    // Reviewer only should accepts the tag suggestion
     cy.logout();
     cy.login(CREDENTIALS.email, CREDENTIALS.password);
 
