@@ -18,6 +18,8 @@ from functools import partial
 from typing import Callable, Optional, Union
 
 from airflow import DAG
+from metadata.generated.schema.type.basic import Uuid, Timestamp
+
 from openmetadata_managed_apis.api.utils import clean_dag_id
 from pydantic import ValidationError
 from requests.utils import quote
@@ -314,7 +316,7 @@ def send_failed_status_callback(workflow_config: OpenMetadataWorkflowConfig, *_,
         pipeline_status = metadata.get_pipeline_status(
             workflow_config.ingestionPipelineFQN, str(workflow_config.pipelineRunId)
         )
-        pipeline_status.endDate = datetime.now().timestamp() * 1000
+        pipeline_status.endDate = Timestamp(int(datetime.now().timestamp() * 1000))
         pipeline_status.pipelineState = PipelineState.failed
 
         metadata.create_or_update_pipeline_status(
@@ -352,7 +354,7 @@ def build_dag(
     with DAG(**build_dag_configs(ingestion_pipeline)) as dag:
         # Initialize with random UUID4. Will be used by the callback instead of
         # generating it inside the Workflow itself.
-        workflow_config.pipelineRunId = str(uuid.uuid4())
+        workflow_config.pipelineRunId = Uuid(uuid.uuid4())
 
         CustomPythonOperator(
             task_id=task_name,
