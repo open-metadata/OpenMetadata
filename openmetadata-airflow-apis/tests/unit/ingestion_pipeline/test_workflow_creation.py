@@ -79,7 +79,7 @@ def mock_set_ingestion_pipeline_status(self, state):
     return True
 
 
-START_DATE = DateTime(datetime.strptime("2022-06-10T15:06:47", "%Y-%m-%d %H:%M:%S"))
+START_DATE = DateTime(datetime.strptime("2022-06-10T15:06:47", "%Y-%m-%dT%H:%M:%S"))
 
 
 class OMetaServiceTest(TestCase):
