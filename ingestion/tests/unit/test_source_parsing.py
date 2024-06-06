@@ -182,7 +182,7 @@ def test_bigquery():
                         "privateKeyId": "privateKeyId",
                         "privateKey": "privateKey",
                         "clientEmail": "clientEmail",
-                        "clientId": "clientId",
+                        "clientId": 1234,
                         "authUri": "https://accounts.google.com/o/oauth2/auth",
                         "tokenUri": "https://oauth2.googleapis.com/token",
                         "authProviderX509CertUrl": "https://www.googleapis.com/oauth2/v1/certs",
