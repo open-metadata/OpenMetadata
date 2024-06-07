@@ -569,6 +569,7 @@
     "ingestion-pipeline-name": "שם תהליך הטעינה",
     "ingestion-plural": "תהליכי טעינה",
     "ingestion-workflow-lowercase": "זרימת תהליך הטעינה",
+    "inherited-entity": "Inherited {{entity}}",
     "inherited-role-plural": "תפקידים מורשים",
     "insert": "הכנס",
     "insight-plural": "תובנות",
