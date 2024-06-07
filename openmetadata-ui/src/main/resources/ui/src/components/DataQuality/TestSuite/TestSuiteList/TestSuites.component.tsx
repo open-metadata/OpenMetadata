@@ -24,12 +24,12 @@ import React, {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useHistory, useLocation, useParams } from 'react-router-dom';
+import { PROGRESS_BAR_COLOR } from '../../../../constants/TestSuite.constant';
 import {
-  getEntityDetailsPath,
   INITIAL_PAGING_VALUE,
   ROUTES,
+  getEntityDetailsPath,
 } from '../../../../constants/constants';
-import { PROGRESS_BAR_COLOR } from '../../../../constants/TestSuite.constant';
 import { usePermissionProvider } from '../../../../context/PermissionProvider/PermissionProvider';
 import {
   ERROR_PLACEHOLDER_TYPE,
@@ -41,13 +41,15 @@ import { TestSuite, TestSummary } from '../../../../generated/tests/testCase';
 import { usePaging } from '../../../../hooks/paging/usePaging';
 import { DataQualityPageTabs } from '../../../../pages/DataQuality/DataQualityPage.interface';
 import {
-  getListTestSuitesBySearch,
   ListTestSuitePramsBySearch,
   TestSuiteType,
+  getListTestSuitesBySearch,
 } from '../../../../rest/testAPI';
 import { getEntityName } from '../../../../utils/EntityUtils';
 import { getTestSuitePath } from '../../../../utils/RouterUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
+import { TableProfilerTab } from '../../../Database/Profiler/ProfilerDashboard/profilerDashboard.interface';
+import ProfilerProgressWidget from '../../../Database/Profiler/TableProfiler/ProfilerProgressWidget/ProfilerProgressWidget';
 import ErrorPlaceHolder from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import FilterTablePlaceHolder from '../../../common/ErrorWithPlaceholder/FilterTablePlaceHolder';
 import NextPrevious from '../../../common/NextPrevious/NextPrevious';
@@ -56,8 +58,6 @@ import { OwnerLabel } from '../../../common/OwnerLabel/OwnerLabel.component';
 import Searchbar from '../../../common/SearchBarComponent/SearchBar.component';
 import Table from '../../../common/Table/Table';
 import { UserTeamSelectableList } from '../../../common/UserTeamSelectableList/UserTeamSelectableList.component';
-import { TableProfilerTab } from '../../../Database/Profiler/ProfilerDashboard/profilerDashboard.interface';
-import ProfilerProgressWidget from '../../../Database/Profiler/TableProfiler/ProfilerProgressWidget/ProfilerProgressWidget';
 import { DataQualitySearchParams } from '../../DataQuality.interface';
 
 export const TestSuites = ({ summaryPanel }: { summaryPanel: ReactNode }) => {
