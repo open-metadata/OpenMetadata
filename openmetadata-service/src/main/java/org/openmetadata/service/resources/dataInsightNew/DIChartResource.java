@@ -157,7 +157,7 @@ public class DIChartResource extends EntityResource<DIChart, DIChartRepository> 
     return create(uriInfo, securityContext, diChart);
   }
 
-  @GET
+  @POST
   @Path("/preview")
   @Operation(
       operationId = "createDataInsightChart",
