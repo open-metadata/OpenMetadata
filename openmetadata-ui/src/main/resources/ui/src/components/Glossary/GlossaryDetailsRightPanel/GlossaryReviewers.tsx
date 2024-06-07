@@ -125,7 +125,9 @@ function GlossaryReviewers({
     !isUndefined(glossaryData.reviewers)
   ) {
     return (
-      <div className="d-flex items-center gap-1 flex-wrap">
+      <div
+        className="d-flex items-center gap-1 flex-wrap"
+        data-testid="glossary-reviewer-name">
         {glossaryData.reviewers.map((reviewer) =>
           getReviewer(reviewer, EntityChangeOperations.NORMAL)
         )}
