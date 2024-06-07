@@ -85,9 +85,11 @@ public class PersonaResourceTest extends EntityResourceTest<Persona, CreatePerso
     // Add team to user relationships while creating a team
     UserResourceTest userResourceTest = new UserResourceTest();
     User user1 =
-        userResourceTest.createEntity(userResourceTest.createRequest(test, 1), TEST_AUTH_HEADERS);
+        userResourceTest.createEntity(
+            userResourceTest.createRequest(test, 1), USER_WITH_CREATE_HEADERS);
     User user2 =
-        userResourceTest.createEntity(userResourceTest.createRequest(test, 2), TEST_AUTH_HEADERS);
+        userResourceTest.createEntity(
+            userResourceTest.createRequest(test, 2), USER_WITH_CREATE_HEADERS);
     List<UUID> users = Arrays.asList(user1.getId(), user2.getId());
 
     CreatePersona create =

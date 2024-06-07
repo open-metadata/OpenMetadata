@@ -182,6 +182,12 @@ public final class CatalogExceptionMessage {
     return String.format("Principal: CatalogPrincipal{name='%s'} is not admin", name);
   }
 
+  public static String operationNotAllowed(String name, MetadataOperation operation) {
+    return String.format(
+        "Principal: CatalogPrincipal{name='%s'} operations [%s] not allowed",
+        name, operation.value());
+  }
+
   public static String notReviewer(String name) {
     return String.format("User '%s' is not a reviewer", name);
   }
