@@ -64,6 +64,7 @@ import org.openmetadata.service.search.SearchListFilter;
 import org.openmetadata.service.search.SearchSortFilter;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.mask.PIIMasker;
+import org.openmetadata.service.security.policyevaluator.CreateResourceContext;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContextInterface;
@@ -631,6 +632,10 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
         new OperationContext(Entity.TABLE, MetadataOperation.EDIT_TESTS);
     ResourceContextInterface resourceContext =
         TestCaseResourceContext.builder().entityLink(entityLink).build();
+    limits.enforceLimits(
+        securityContext,
+        new CreateResourceContext<>(entityType, test),
+        new OperationContext(Entity.TEST_CASE, MetadataOperation.EDIT_TESTS));
     authorizer.authorize(securityContext, operationContext, resourceContext);
     repository.isTestSuiteExecutable(create.getTestSuite());
     test = addHref(uriInfo, repository.create(uriInfo, test));
