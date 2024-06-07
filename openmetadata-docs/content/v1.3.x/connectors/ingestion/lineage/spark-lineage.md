@@ -114,7 +114,7 @@ In this job we are reading data from `employee` table and moving it to another t
 {% codeBlock fileName="pyspark.py" %}
 
 
-```py
+```py {% isCodeBlock=true %}
 from pyspark.sql import SparkSession
 
 spark = (

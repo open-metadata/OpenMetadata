@@ -172,7 +172,9 @@ class QlikSenseUnitTest(TestCase):
         ):
             super().__init__(methodName)
             # test_connection.return_value = False
-            self.config = OpenMetadataWorkflowConfig.parse_obj(mock_qliksense_config)
+            self.config = OpenMetadataWorkflowConfig.model_validate(
+                mock_qliksense_config
+            )
             self.qliksense = QliksenseSource.create(
                 mock_qliksense_config["source"],
                 OpenMetadata(self.config.workflowConfig.openMetadataServerConfig),

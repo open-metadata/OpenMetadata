@@ -120,7 +120,7 @@ class FivetranUnitTest(TestCase):
     def __init__(self, methodName, fivetran_client, test_connection) -> None:
         super().__init__(methodName)
         test_connection.return_value = False
-        config = OpenMetadataWorkflowConfig.parse_obj(mock_fivetran_config)
+        config = OpenMetadataWorkflowConfig.model_validate(mock_fivetran_config)
         self.fivetran = FivetranSource.create(
             mock_fivetran_config["source"],
             config.workflowConfig.openMetadataServerConfig,

@@ -691,7 +691,7 @@ class IcebergUnitTest(TestCase):
                 self.iceberg.context.get().database_schema,
                 table_name,
             ),
-            "metadata": TableMetadataV2.parse_obj(
+            "metadata": TableMetadataV2.model_validate(
                 {
                     "location": "foo",
                     "last_column_id": 1,
@@ -743,7 +743,7 @@ class IcebergUnitTest(TestCase):
                 self.iceberg.context.get().database_schema,
                 table_name,
             ),
-            "metadata": TableMetadataV2.parse_obj(
+            "metadata": TableMetadataV2.model_validate(
                 {
                     "location": "foo",
                     "last_column_id": 1,
@@ -794,7 +794,7 @@ class IcebergUnitTest(TestCase):
                 self.iceberg.context.get().database_schema,
                 table_name,
             ),
-            "metadata": TableMetadataV2.parse_obj(
+            "metadata": TableMetadataV2.model_validate(
                 {
                     "location": "foo",
                     "current-schema-id": 0,

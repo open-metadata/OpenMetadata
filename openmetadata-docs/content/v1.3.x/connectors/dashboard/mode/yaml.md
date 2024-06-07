@@ -106,7 +106,7 @@ Name of the mode workspace from where the metadata is to be fetched.
 
 {% codeBlock fileName="filename.yaml" %}
 
-```yaml
+```yaml {% isCodeBlock=true %}
 source:
   type: mode
   serviceName: local_mode

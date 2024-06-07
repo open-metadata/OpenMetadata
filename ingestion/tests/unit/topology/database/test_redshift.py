@@ -65,7 +65,7 @@ class RedshiftUnitTest(TestCase):
     def __init__(self, methodName, test_connection) -> None:
         super().__init__(methodName)
         test_connection.return_value = False
-        self.config = OpenMetadataWorkflowConfig.parse_obj(mock_redshift_config)
+        self.config = OpenMetadataWorkflowConfig.model_validate(mock_redshift_config)
         self.redshift_source = RedshiftSource.create(
             mock_redshift_config["source"],
             self.config.workflowConfig.openMetadataServerConfig,

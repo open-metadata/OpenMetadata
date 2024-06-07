@@ -142,7 +142,7 @@ This is a sample config for QuickSight:
 
 {% codeBlock fileName="filename.yaml" %}
 
-```yaml
+```yaml {% isCodeBlock=true %}
 source:
   type: quicksight
   serviceName: local_quicksight

@@ -14,7 +14,7 @@ Interfaces with database for all database engine
 supporting sqlalchemy abstraction layer
 """
 
-from datetime import datetime, timezone
+from datetime import datetime
 from typing import Optional, Union
 
 from sqlalchemy.orm import DeclarativeMeta
@@ -169,7 +169,7 @@ class SQATestSuiteInterface(SQAInterfaceMixin, TestSuiteInterface):
             test_handler = TestHandler(
                 self.runner,
                 test_case=test_case,
-                execution_date=int(datetime.now(tz=timezone.utc).timestamp() * 1000),
+                execution_date=int(datetime.now().timestamp() * 1000),
             )
 
             return Validator(validator_obj=test_handler).validate()
