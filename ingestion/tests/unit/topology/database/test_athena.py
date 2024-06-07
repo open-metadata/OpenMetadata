@@ -14,22 +14,46 @@ Test athena source
 
 import unittest
 from unittest.mock import patch
+from uuid import UUID
 
+from pydantic import AnyUrl
 from sqlalchemy.engine.reflection import Inspector
 
 from metadata.generated.schema.api.data.createDatabase import CreateDatabaseRequest
+from metadata.generated.schema.entity.data.container import (
+    Container,
+    ContainerDataModel,
+    FileFormat,
+)
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
-from metadata.generated.schema.entity.data.table import TableType
+from metadata.generated.schema.entity.data.table import (
+    Column,
+    ColumnName,
+    Constraint,
+    DataType,
+    Table,
+    TableType,
+)
 from metadata.generated.schema.entity.services.databaseService import (
     DatabaseConnection,
     DatabaseService,
     DatabaseServiceType,
 )
+from metadata.generated.schema.entity.services.storageService import StorageServiceType
 from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
 )
-from metadata.generated.schema.type.basic import EntityName, FullyQualifiedEntityName
+from metadata.generated.schema.type.basic import (
+    EntityName,
+    FullyQualifiedEntityName,
+    Href,
+    Markdown,
+    SourceUrl,
+    Timestamp,
+    Uuid,
+)
+from metadata.generated.schema.type.entityLineage import ColumnLineage
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.source.database.athena.metadata import AthenaSource
@@ -92,6 +116,248 @@ EXPECTED_DATABASES = [
 ]
 EXPECTED_QUERY_TABLE_NAMES_TYPES = [
     TableNameAndType(name="sample_table", type_=TableType.External)
+]
+MOCK_LOCATION_ENTITY = [
+    Container(
+        id=Uuid(__root__=UUID("9c489754-bb60-435b-b2a5-0e43100cf950")),
+        name=EntityName(__root__="dbt-testing/mayur/customers.csv"),
+        fullyQualifiedName=FullyQualifiedEntityName(
+            __root__='s3_local.awsdatalake-testing."dbt-testing/mayur/customers.csv"'
+        ),
+        displayName=None,
+        description=None,
+        version=None,
+        updatedAt=Timestamp(__root__=1717070902713),
+        updatedBy="admin",
+        href=Href(
+            __root__=AnyUrl(
+                "http://localhost:8585/api/v1/containers/9c489754-bb60-435b-b2a5-0e43100cf950",
+                scheme="http",
+                host="localhost",
+                host_type="int_domain",
+                port="8585",
+                path="/api/v1/containers/9c489754-bb60-435b-b2a5-0e43100cf950",
+            )
+        ),
+        owner=None,
+        service=EntityReference(
+            id=Uuid(__root__=UUID("dd91cca3-cc54-4776-9efa-48f845cdfb92")),
+            type="storageService",
+            name="s3_local",
+            fullyQualifiedName="s3_local",
+            description=Markdown(__root__=""),
+            displayName="s3_local",
+            deleted=False,
+            inherited=None,
+            href=Href(
+                __root__=AnyUrl(
+                    "http://localhost:8585/api/v1/services/storageServices/dd91cca3-cc54-4776-9efa-48f845cdfb92",
+                    scheme="http",
+                    host="localhost",
+                    host_type="int_domain",
+                    port="8585",
+                    path="/api/v1/services/storageServices/dd91cca3-cc54-4776-9efa-48f845cdfb92",
+                )
+            ),
+        ),
+        parent=None,
+        children=None,
+        dataModel=ContainerDataModel(
+            isPartitioned=False,
+            columns=[
+                Column(
+                    name=ColumnName(__root__="CUSTOMERID"),
+                    displayName="CUSTOMERID",
+                    dataType=DataType.INT,
+                    arrayDataType=None,
+                    dataLength=None,
+                    precision=None,
+                    scale=None,
+                    dataTypeDisplay="INT",
+                    description=None,
+                    fullyQualifiedName=FullyQualifiedEntityName(
+                        __root__='s3_local.awsdatalake-testing."dbt-testing/mayur/customers.csv".CUSTOMERID'
+                    ),
+                    tags=None,
+                    constraint=None,
+                    ordinalPosition=None,
+                    jsonSchema=None,
+                    children=None,
+                    profile=None,
+                    customMetrics=None,
+                ),
+            ],
+        ),
+        prefix="/dbt-testing/mayur/customers.csv",
+        numberOfObjects=2103.0,
+        size=652260394.0,
+        fileFormats=[FileFormat.csv],
+        serviceType=StorageServiceType.S3,
+        followers=None,
+        tags=None,
+        changeDescription=None,
+        deleted=False,
+        retentionPeriod=None,
+        extension=None,
+        sourceUrl=SourceUrl(
+            __root__="https://s3.console.aws.amazon.com/s3/buckets/awsdatalake-testing?region=us-east-2&prefix=dbt-testing/mayur/customers.csv/&showversions=false"
+        ),
+        fullPath="s3://awsdatalake-testing/dbt-testing/mayur/customers.csv",
+        domain=None,
+        dataProducts=None,
+        votes=None,
+        lifeCycle=None,
+        sourceHash="22b1c2f2e7feeaa8f37c6649e01f027d",
+    )
+]
+
+MOCK_TABLE_ENTITY = [
+    Table(
+        id=Uuid(__root__=UUID("2c040cf8-432d-4597-9517-4794d6142da3")),
+        name=EntityName(__root__="demo_data_ext_tbl3"),
+        displayName=None,
+        fullyQualifiedName=FullyQualifiedEntityName(
+            __root__="local_athena.demo.default.demo_data_ext_tbl3"
+        ),
+        description=None,
+        version=None,
+        updatedAt=Timestamp(__root__=1717071974350),
+        updatedBy="admin",
+        href=Href(
+            __root__=AnyUrl(
+                "http://localhost:8585/api/v1/tables/2c040cf8-432d-4597-9517-4794d6142da3",
+                scheme="http",
+                host="localhost",
+                host_type="int_domain",
+                port="8585",
+                path="/api/v1/tables/2c040cf8-432d-4597-9517-4794d6142da3",
+            )
+        ),
+        tableType=TableType.Regular,
+        columns=[
+            Column(
+                name=ColumnName(__root__="CUSTOMERID"),
+                displayName=None,
+                dataType=DataType.INT,
+                arrayDataType=None,
+                dataLength=1,
+                precision=None,
+                scale=None,
+                dataTypeDisplay="int",
+                description=None,
+                fullyQualifiedName=FullyQualifiedEntityName(
+                    __root__="local_athena.demo.default.demo_data_ext_tbl3.CUSTOMERID"
+                ),
+                tags=None,
+                constraint=Constraint.NULL,
+                ordinalPosition=None,
+                jsonSchema=None,
+                children=None,
+                profile=None,
+                customMetrics=None,
+            ),
+        ],
+        tableConstraints=None,
+        tablePartition=None,
+        owner=None,
+        databaseSchema=EntityReference(
+            id=Uuid(__root__=UUID("b03b0229-8a9f-497a-a675-74cb24a9be74")),
+            type="databaseSchema",
+            name="default",
+            fullyQualifiedName="local_athena.demo.default",
+            description=None,
+            displayName="default",
+            deleted=False,
+            inherited=None,
+            href=Href(
+                __root__=AnyUrl(
+                    "http://localhost:8585/api/v1/databaseSchemas/b03b0229-8a9f-497a-a675-74cb24a9be74",
+                    scheme="http",
+                    host="localhost",
+                    host_type="int_domain",
+                    port="8585",
+                    path="/api/v1/databaseSchemas/b03b0229-8a9f-497a-a675-74cb24a9be74",
+                )
+            ),
+        ),
+        database=EntityReference(
+            id=Uuid(__root__=UUID("f054c55c-34bf-4c5f-addd-5cc26c7c832a")),
+            type="database",
+            name="demo",
+            fullyQualifiedName="local_athena.demo",
+            description=None,
+            displayName="demo",
+            deleted=False,
+            inherited=None,
+            href=Href(
+                __root__=AnyUrl(
+                    "http://localhost:8585/api/v1/databases/f054c55c-34bf-4c5f-addd-5cc26c7c832a",
+                    scheme="http",
+                    host="localhost",
+                    host_type="int_domain",
+                    port="8585",
+                    path="/api/v1/databases/f054c55c-34bf-4c5f-addd-5cc26c7c832a",
+                )
+            ),
+        ),
+        service=EntityReference(
+            id=Uuid(__root__=UUID("5e98afd3-7257-4c35-a560-f4c25b0f4b97")),
+            type="databaseService",
+            name="local_athena",
+            fullyQualifiedName="local_athena",
+            description=None,
+            displayName="local_athena",
+            deleted=False,
+            inherited=None,
+            href=Href(
+                __root__=AnyUrl(
+                    "http://localhost:8585/api/v1/services/databaseServices/5e98afd3-7257-4c35-a560-f4c25b0f4b97",
+                    scheme="http",
+                    host="localhost",
+                    host_type="int_domain",
+                    port="8585",
+                    path="/api/v1/services/databaseServices/5e98afd3-7257-4c35-a560-f4c25b0f4b97",
+                )
+            ),
+        ),
+        serviceType=DatabaseServiceType.Athena,
+        location=None,
+        schemaDefinition=None,
+        tags=None,
+        usageSummary=None,
+        followers=None,
+        joins=None,
+        sampleData=None,
+        tableProfilerConfig=None,
+        customMetrics=None,
+        profile=None,
+        testSuite=None,
+        dataModel=None,
+        changeDescription=None,
+        deleted=False,
+        retentionPeriod=None,
+        extension=None,
+        sourceUrl=None,
+        domain=None,
+        dataProducts=None,
+        fileFormat=None,
+        votes=None,
+        lifeCycle=None,
+        sourceHash="824e80b1c79b0c4ae0acd99d2338e149",
+    )
+]
+EXPECTED_COLUMN_LINEAGE = [
+    ColumnLineage(
+        fromColumns=[
+            FullyQualifiedEntityName(
+                __root__='s3_local.awsdatalake-testing."dbt-testing/mayur/customers.csv".CUSTOMERID'
+            )
+        ],
+        toColumn=FullyQualifiedEntityName(
+            __root__="local_athena.demo.default.demo_data_ext_tbl3.CUSTOMERID"
+        ),
+        function=None,
+    )
 ]
 
 mock_athena_config = {
@@ -169,3 +435,10 @@ class TestAthenaService(unittest.TestCase):
             )
             == EXPECTED_DATABASES
         )
+
+    def test_column_lineage(self):
+        columns_list = [column.name.__root__ for column in MOCK_TABLE_ENTITY[0].columns]
+        column_lineage = self.athena_source._get_column_lineage(
+            MOCK_LOCATION_ENTITY[0].dataModel, MOCK_TABLE_ENTITY[0], columns_list
+        )
+        assert column_lineage == EXPECTED_COLUMN_LINEAGE
