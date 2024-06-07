@@ -51,6 +51,7 @@ import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
 import static org.openmetadata.service.util.TestUtils.INGESTION_BOT;
 import static org.openmetadata.service.util.TestUtils.TEST_AUTH_HEADERS;
 import static org.openmetadata.service.util.TestUtils.TEST_USER_NAME;
+import static org.openmetadata.service.util.TestUtils.USER_WITH_CREATE_PERMISSION_NAME;
 import static org.openmetadata.service.util.TestUtils.UpdateType.CHANGE_CONSOLIDATED;
 import static org.openmetadata.service.util.TestUtils.UpdateType.MINOR_UPDATE;
 import static org.openmetadata.service.util.TestUtils.UpdateType.REVERT;
@@ -153,6 +154,14 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
   }
 
   public void setupUsers(TestInfo test) throws HttpResponseException {
+    CreateUser createUserWithAccess =
+        new CreateUser()
+            .withName(USER_WITH_CREATE_PERMISSION_NAME)
+            .withEmail(USER_WITH_CREATE_PERMISSION_NAME + "@open-metadata.org")
+            .withProfile(PROFILE)
+            .withRoles(List.of(CREATE_ACCESS_ROLE.getId()))
+            .withIsBot(false);
+    USER_WITH_CREATE_ACCESS = createEntity(createUserWithAccess, ADMIN_AUTH_HEADERS);
     CreateUser create = createRequest(test).withRoles(List.of(DATA_CONSUMER_ROLE.getId()));
     USER1 = createEntity(create, ADMIN_AUTH_HEADERS);
     USER1_REF = USER1.getEntityReference();
