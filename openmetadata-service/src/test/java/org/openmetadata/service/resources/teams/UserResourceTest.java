@@ -41,6 +41,7 @@ import static org.openmetadata.service.Entity.USER;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.PASSWORD_INVALID_FORMAT;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.entityNotFound;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.notAdmin;
+import static org.openmetadata.service.exception.CatalogExceptionMessage.operationNotAllowed;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.permissionNotAllowed;
 import static org.openmetadata.service.resources.teams.UserResource.USER_PROTECTED_FIELDS;
 import static org.openmetadata.service.security.SecurityUtil.authHeaders;
@@ -51,6 +52,7 @@ import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
 import static org.openmetadata.service.util.TestUtils.INGESTION_BOT;
 import static org.openmetadata.service.util.TestUtils.TEST_AUTH_HEADERS;
 import static org.openmetadata.service.util.TestUtils.TEST_USER_NAME;
+import static org.openmetadata.service.util.TestUtils.USER_WITH_CREATE_HEADERS;
 import static org.openmetadata.service.util.TestUtils.USER_WITH_CREATE_PERMISSION_NAME;
 import static org.openmetadata.service.util.TestUtils.UpdateType.CHANGE_CONSOLIDATED;
 import static org.openmetadata.service.util.TestUtils.UpdateType.MINOR_UPDATE;
@@ -326,7 +328,9 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
             .withIsAdmin(true);
 
     assertResponse(
-        () -> createAndCheckEntity(create, TEST_AUTH_HEADERS), FORBIDDEN, notAdmin(TEST_USER_NAME));
+        () -> createAndCheckEntity(create, TEST_AUTH_HEADERS),
+        FORBIDDEN,
+        operationNotAllowed(TEST_USER_NAME, MetadataOperation.CREATE));
   }
 
   @Test
@@ -622,7 +626,7 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
     User user =
         createEntity(
             createRequest(test, 6).withName("test2").withEmail("test2@email.com"),
-            authHeaders("test2@email.com"));
+            USER_WITH_CREATE_HEADERS);
     String userJson = JsonUtils.pojoToJson(user);
     user.setIsAdmin(Boolean.TRUE);
     assertResponse(
@@ -880,7 +884,7 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
             .withEmail("ingestion-bot-jwt@email.com")
             .withRoles(List.of(ROLE1_REF.getId()))
             .withAuthenticationMechanism(authMechanism);
-    User user = createEntity(create, authHeaders("ingestion-bot-jwt@email.com"));
+    User user = createEntity(create, USER_WITH_CREATE_HEADERS);
     user = getEntity(user.getId(), "*", ADMIN_AUTH_HEADERS);
     assertEquals(1, user.getRoles().size());
     TestUtils.put(
@@ -931,7 +935,7 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
                 .withCreatePasswordType(CreateUser.CreatePasswordType.ADMIN_CREATE)
                 .withPassword("Test@1234")
                 .withConfirmPassword("Test@1234"),
-            authHeaders("testBasicAuth@email.com"));
+            USER_WITH_CREATE_HEADERS);
 
     // jwtAuth Response should be null always
     user = getEntity(user.getId(), ADMIN_AUTH_HEADERS);
