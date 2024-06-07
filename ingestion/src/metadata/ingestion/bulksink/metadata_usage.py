@@ -21,7 +21,7 @@ import json
 import os
 import shutil
 import traceback
-from datetime import datetime, timezone
+from datetime import datetime
 from pathlib import Path
 from typing import List, Optional
 
@@ -39,6 +39,7 @@ from metadata.generated.schema.entity.services.ingestionPipelines.status import 
     StackTraceError,
 )
 from metadata.generated.schema.entity.teams.user import User
+from metadata.generated.schema.type.basic import Timestamp
 from metadata.generated.schema.type.lifeCycle import AccessDetails, LifeCycle
 from metadata.generated.schema.type.tableUsageCount import TableColumn, TableUsageCount
 from metadata.generated.schema.type.usageRequest import UsageRequest
@@ -282,9 +283,7 @@ class MetadataUsageBulkSink(BulkSink):
         Method to get Table Joins
         """
         # TODO: Clean up how we are passing dates from query parsing to here to use timestamps instead of strings
-        start_date = datetime.fromtimestamp(int(table_usage.date) / 1000).replace(
-            tzinfo=timezone.utc
-        )
+        start_date = datetime.fromtimestamp(int(table_usage.date) / 1000)
         table_joins: TableJoins = TableJoins(
             columnJoins=[], directTableJoins=[], startDate=start_date
         )
@@ -374,7 +373,7 @@ class MetadataUsageBulkSink(BulkSink):
                 query_type = get_query_type(create_query=create_query)
                 if query_type:
                     access_details = AccessDetails(
-                        timestamp=create_query.queryDate.root,
+                        timestamp=Timestamp(create_query.queryDate.root),
                         accessedBy=user,
                         accessedByAProcess=process_user,
                     )

@@ -437,7 +437,7 @@ class SalesforceUnitTest(TestCase):
     def __init__(self, methodName, salesforce, test_connection) -> None:
         super().__init__(methodName)
         test_connection.return_value = False
-        self.config = OpenMetadataWorkflowConfig.parse_obj(mock_salesforce_config)
+        self.config = OpenMetadataWorkflowConfig.model_validate(mock_salesforce_config)
         self.salesforce_source = SalesforceSource.create(
             mock_salesforce_config["source"],
             self.config.workflowConfig.openMetadataServerConfig,

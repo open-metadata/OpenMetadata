@@ -18,7 +18,7 @@ import string
 import time
 import traceback
 from collections import namedtuple
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta
 from typing import Any, Dict, Iterable, List, Optional, Union
 
 from pydantic import ValidationError
@@ -1343,10 +1343,7 @@ class SampleDataSource(
                             customMetrics=profile.get("customMetrics"),
                             timestamp=Timestamp(
                                 int(
-                                    (
-                                        datetime.now(tz=timezone.utc)
-                                        - timedelta(days=days)
-                                    ).timestamp()
+                                    (datetime.now() - timedelta(days=days)).timestamp()
                                     * 1000
                                 )
                             ),
@@ -1356,8 +1353,7 @@ class SampleDataSource(
                                 timestamp=Timestamp(
                                     int(
                                         (
-                                            datetime.now(tz=timezone.utc)
-                                            - timedelta(days=days)
+                                            datetime.now() - timedelta(days=days)
                                         ).timestamp()
                                         * 1000
                                     )
@@ -1371,7 +1367,7 @@ class SampleDataSource(
                                 timestamp=Timestamp(
                                     int(
                                         (
-                                            datetime.now(tz=timezone.utc)
+                                            datetime.now()
                                             - timedelta(
                                                 days=days, hours=random.randint(0, 24)
                                             )
@@ -1519,10 +1515,7 @@ class SampleDataSource(
                         test_case_results=TestCaseResult(
                             timestamp=Timestamp(
                                 int(
-                                    (
-                                        datetime.now(tz=timezone.utc)
-                                        - timedelta(days=days)
-                                    ).timestamp()
+                                    (datetime.now() - timedelta(days=days)).timestamp()
                                     * 1000
                                 )
                             ),
@@ -1570,10 +1563,7 @@ class SampleDataSource(
                         reportDataType=report_datum["reportDataType"],
                         timestamp=Timestamp(
                             root=int(
-                                (
-                                    datetime.now(tz=timezone.utc) - timedelta(days=i)
-                                ).timestamp()
-                                * 1000
+                                (datetime.now() - timedelta(days=i)).timestamp() * 1000
                             )
                         ),
                         data=report_datum["data"],
@@ -1592,7 +1582,7 @@ class SampleDataSource(
                     int(
                         convert_timestamp_to_milliseconds(
                             (
-                                datetime.now(tz=timezone.utc)
+                                datetime.now()
                                 - timedelta(days=life_cycle["created"]["days"])
                             ).timestamp()
                         )
@@ -1606,7 +1596,7 @@ class SampleDataSource(
                     int(
                         convert_timestamp_to_milliseconds(
                             (
-                                datetime.now(tz=timezone.utc)
+                                datetime.now()
                                 - timedelta(days=life_cycle["updated"]["days"])
                             ).timestamp()
                         )
@@ -1620,7 +1610,7 @@ class SampleDataSource(
                     int(
                         convert_timestamp_to_milliseconds(
                             (
-                                datetime.now(tz=timezone.utc)
+                                datetime.now()
                                 - timedelta(days=life_cycle["accessed"]["days"])
                             ).timestamp()
                         )

@@ -262,7 +262,7 @@ class DatabricksUnitTest(TestCase):
         test_connection.return_value = False
         db_init_version.return_value = None
 
-        self.config = OpenMetadataWorkflowConfig.parse_obj(mock_databricks_config)
+        self.config = OpenMetadataWorkflowConfig.model_validate(mock_databricks_config)
         self.databricks_source = DatabricksSource.create(
             mock_databricks_config["source"],
             self.config.workflowConfig.openMetadataServerConfig,

@@ -239,7 +239,7 @@ class SplineUnitTest(TestCase):
     def __init__(self, methodName, test_connection) -> None:
         super().__init__(methodName)
         test_connection.return_value = False
-        config = OpenMetadataWorkflowConfig.parse_obj(mock_spline_config)
+        config = OpenMetadataWorkflowConfig.model_validate(mock_spline_config)
         self.spline = SplineSource.create(
             mock_spline_config["source"],
             config.workflowConfig.openMetadataServerConfig,

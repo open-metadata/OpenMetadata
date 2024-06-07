@@ -15,7 +15,7 @@ To be used by OpenMetadata class
 """
 
 import traceback
-from datetime import datetime, timezone
+from datetime import datetime
 from typing import List, Optional, Type, Union
 from urllib.parse import quote
 from uuid import UUID
@@ -87,7 +87,7 @@ class OMetaTestsMixin:
         test_suite_name: str,
         test_suite_description: Optional[
             str
-        ] = f"Test Suite created on {datetime.now(timezone.utc).strftime('%Y-%m-%d')}",
+        ] = f"Test Suite created on {datetime.now().strftime('%Y-%m-%d')}",
     ) -> TestSuite:
         """Get or create a TestSuite
 

@@ -252,13 +252,13 @@ class SASUnitTest(TestCase):
     def __init__(self, method_name, test_connection) -> None:
         super().__init__(method_name)
         test_connection.return_value = False
-        self.config = OpenMetadataWorkflowConfig.parse_obj(mock_sas_config)
+        self.config = OpenMetadataWorkflowConfig.model_validate(mock_sas_config)
         self.sas_source = SasSource.create(
             mock_sas_config["source"],
             OpenMetadata(self.config.workflowConfig.openMetadataServerConfig),
         )
         self.metadata = OpenMetadata(
-            OpenMetadataConnection.parse_obj(
+            OpenMetadataConnection.model_validate(
                 mock_sas_config["workflowConfig"]["openMetadataServerConfig"]
             )
         )

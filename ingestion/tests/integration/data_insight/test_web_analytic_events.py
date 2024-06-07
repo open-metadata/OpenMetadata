@@ -68,7 +68,7 @@ class WebAnalyticsEndpointsTests(unittest.TestCase):
         """Set up om client for the test class"""
 
         cls.metadata = OpenMetadata(
-            OpenMetadataConnection.parse_obj(
+            OpenMetadataConnection.model_validate(
                 data_insight_config["workflowConfig"]["openMetadataServerConfig"]
             )
         )

@@ -54,7 +54,7 @@ class TestStringMethods(unittest.TestCase):
             "metadata.mixins.pandas.pandas_mixin.fetch_dataframe",
             return_value=[resp_parquet_file],
         ):
-            config = OpenMetadataWorkflowConfig.parse_obj(mock_datalake_config)
+            config = OpenMetadataWorkflowConfig.model_validate(mock_datalake_config)
             datalake_source = DatalakeSource.create(
                 mock_datalake_config["source"],
                 config.workflowConfig.openMetadataServerConfig,
@@ -88,7 +88,7 @@ class TestStringMethods(unittest.TestCase):
             return_value=None,
         ):
             with self.assertRaises(TypeError) as context:
-                config = OpenMetadataWorkflowConfig.parse_obj(mock_datalake_config)
+                config = OpenMetadataWorkflowConfig.model_validate(mock_datalake_config)
                 datalake_source = DatalakeSource.create(
                     mock_datalake_config["source"],
                     config.workflowConfig.openMetadataServerConfig,
