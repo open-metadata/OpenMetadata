@@ -130,6 +130,8 @@ import java.util.Map;
 import java.util.Set;
 import java.util.TreeMap;
 import java.util.concurrent.TimeUnit;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.stream.Stream;
 import javax.json.JsonObject;
 import javax.net.ssl.SSLContext;
@@ -143,6 +145,7 @@ import org.apache.http.auth.AuthScope;
 import org.apache.http.auth.UsernamePasswordCredentials;
 import org.apache.http.client.CredentialsProvider;
 import org.apache.http.impl.client.BasicCredentialsProvider;
+import org.jetbrains.annotations.NotNull;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.DataInsightInterface;
 import org.openmetadata.schema.api.dataInsightNew.CreateDIChart;
@@ -1928,7 +1931,7 @@ public class ElasticSearchClient implements SearchClient {
     return null;
   }
 
-  void getFieldNames(Map<String, Object> fields, String prefix, List<String> fieldList) {
+  void getFieldNames(@NotNull Map<String, Object> fields, String prefix, List<String> fieldList) {
     for (Map.Entry<String, Object> entry : fields.entrySet()) {
       String postfix = "";
       String type = (String) ((Map<String, Object>) entry.getValue()).get("type");
@@ -1949,7 +1952,49 @@ public class ElasticSearchClient implements SearchClient {
     }
   }
 
-  public DIChartResultList buildDIChart(CreateDIChart createDIChart, long start, long end)
+  private void addSubAggregationsByFunction(CreateDIChart.Function function, String field,DateHistogramAggregationBuilder parentAggregation){
+    switch (function) {
+      case COUNT:
+        parentAggregation.subAggregation(
+                AggregationBuilders.count(field).field(field));
+        break;
+      case SUM:
+        parentAggregation.subAggregation(
+                AggregationBuilders.sum(field).field(field));
+        break;
+      case AVG:
+        parentAggregation.subAggregation(
+                AggregationBuilders.avg(field).field(field));
+        break;
+      case MIN:
+        parentAggregation.subAggregation(
+                AggregationBuilders.min(field).field(field));
+        break;
+      case MAX:
+        parentAggregation.subAggregation(
+                AggregationBuilders.max(field).field(field));
+        break;
+    }
+  }
+
+  public DIChartResultList buildDIChartByFormula(@NotNull CreateDIChart createDIChart, long start, long end)
+          throws IOException {
+    DateHistogramAggregationBuilder dateHistogramAggregationBuilder =
+        AggregationBuilders.dateHistogram("1")
+                .field(DIChartRepository.TIMESTAMP_FIELD)
+                .calendarInterval(DateHistogramInterval.DAY)
+                .extendedBounds(new LongBounds(start, end));
+    Pattern pattern = Pattern.compile(DIChartRepository.FORMULA_FUNC_REGEX);
+    Matcher matcher = pattern.matcher(createDIChart.getFormula());
+    while (matcher.find()) {
+      System.out.println("Match: " + matcher.group());
+    }
+
+    return null;
+  }
+
+
+  public DIChartResultList buildDIChart(@NotNull CreateDIChart createDIChart, long start, long end)
       throws IOException {
 
     DateHistogramAggregationBuilder dateHistogramAggregationBuilder =
@@ -1957,28 +2002,7 @@ public class ElasticSearchClient implements SearchClient {
             .field(DIChartRepository.TIMESTAMP_FIELD)
             .calendarInterval(DateHistogramInterval.DAY)
             .extendedBounds(new LongBounds(start, end));
-    switch (createDIChart.getFunction()) {
-      case COUNT:
-        dateHistogramAggregationBuilder.subAggregation(
-            AggregationBuilders.count(createDIChart.getField()).field(createDIChart.getField()));
-        break;
-      case SUM:
-        dateHistogramAggregationBuilder.subAggregation(
-            AggregationBuilders.sum(createDIChart.getField()).field(createDIChart.getField()));
-        break;
-      case AVG:
-        dateHistogramAggregationBuilder.subAggregation(
-            AggregationBuilders.avg(createDIChart.getField()).field(createDIChart.getField()));
-        break;
-      case MIN:
-        dateHistogramAggregationBuilder.subAggregation(
-            AggregationBuilders.min(createDIChart.getField()).field(createDIChart.getField()));
-        break;
-      case MAX:
-        dateHistogramAggregationBuilder.subAggregation(
-            AggregationBuilders.max(createDIChart.getField()).field(createDIChart.getField()));
-        break;
-    }
+    addSubAggregationsByFunction(createDIChart.getFunction(), createDIChart.getField(), dateHistogramAggregationBuilder);
 
     SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
 
@@ -2037,7 +2061,7 @@ public class ElasticSearchClient implements SearchClient {
             ParsedValueCount parsedValueCount = (ParsedValueCount) sub_arg;
             DIChartResult diChartResult =
                 new DIChartResult()
-                    .withCount(parsedValueCount.getValue())
+                    .withCount((double) parsedValueCount.getValue())
                     .withDay(bucket.getKeyAsString())
                     .withGroup(group);
             results.add(diChartResult);

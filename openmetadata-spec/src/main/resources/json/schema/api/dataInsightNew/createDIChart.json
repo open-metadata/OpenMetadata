@@ -30,6 +30,10 @@
         "description": "Filter value for the data insight chart.",
         "type": "string"
       },
+      "formula": {
+        "description": "Formula for the data insight chart calculation.",
+        "type": "string"
+      },
       "groupBy": {
         "description": "Breakdown field for the data insight chart.",
         "type": "string"

@@ -8,7 +8,7 @@
     "properties": {
         "count": {
             "description": "Count of Result",
-            "type": "float"
+            "type": "number"
         },
         "day": {
             "description": "Date of Result",

@@ -23,7 +23,7 @@ public class DIChartRepository extends EntityRepository<DIChart> {
 
   public static final String DI_SEARCH_INDEX = "di-data-assets";
 
-  private static final String FORMULA_FUNC_REGEX =
+  public static final String FORMULA_FUNC_REGEX =
       "\\b(count|sum|min|max|avg)+\\(k='([^']*)',?\\s*(q='([^']*)')?\\)?";
 
   private static final String NUMERIC_VALIDATION_REGEX = "[\\d\\.+-\\/\\*\\(\\)]+";
@@ -58,7 +58,10 @@ public class DIChartRepository extends EntityRepository<DIChart> {
   }
 
   public DIChartResultList getPreviewData(
-      CreateDIChart chart, long startTimestamp, long endTimestamp) throws IOException {
+      CreateDIChart chart, long startTimestamp, long endTimestamp) throws IOException, ParseException {
+    if (chart.getFormula()!=null && validateFormula(chart.getFormula())){
+      return searchClient.buildDIChartByFormula(chart, startTimestamp, endTimestamp);
+    }
     return searchClient.buildDIChart(chart, startTimestamp, endTimestamp);
   }
 

@@ -239,6 +239,10 @@ public interface SearchClient {
       throws IOException {
     return null;
   }
+  default DIChartResultList buildDIChartByFormula(CreateDIChart createDIChart, long start, long end)
+          throws IOException {
+    return null;
+  }
 
   default List<String> fetchDIChartFields() throws IOException {
     return null;
