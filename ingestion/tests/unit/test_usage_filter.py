@@ -146,7 +146,7 @@ class UsageQueryFilterTests(TestCase):
 
     @patch.object(OpenMetadata, "list_all_entities", mock_list_entities)
     def test_prepare_clickhouse(self):
-        config = OpenMetadataWorkflowConfig.parse_obj(mock_clickhouse_config)
+        config = OpenMetadataWorkflowConfig.model_validate(mock_clickhouse_config)
         clickhouse_source = ClickhouseUsageSource.create(
             mock_clickhouse_config["source"],
             OpenMetadata(config.workflowConfig.openMetadataServerConfig),

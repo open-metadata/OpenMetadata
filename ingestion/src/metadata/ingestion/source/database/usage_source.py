@@ -14,7 +14,7 @@ Usage Source Module
 import csv
 import traceback
 from abc import ABC
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta
 from typing import Iterable
 
 from metadata.generated.schema.type.basic import DateTime
@@ -45,18 +45,13 @@ class UsageSource(QueryParserSource, ABC):
                 for record in csv.DictReader(fin):
                     query_dict = dict(record)
 
-                    # Prepare the timezone aware analysis date
-                    if query_dict.get("start_time"):
-                        # We allow reading the start_time without timezone for simplicity for users
-                        timestamp = datetime.strptime(
+                    analysis_date = (
+                        datetime.utcnow()
+                        if not query_dict.get("start_time")
+                        else datetime.strptime(
                             query_dict.get("start_time"), "%Y-%m-%d %H:%M:%S.%f"
-                        ).timestamp()
-                        analysis_date = datetime.fromtimestamp(
-                            timestamp, tz=timezone.utc
                         )
-                    else:
-                        analysis_date = datetime.now(tz=timezone.utc)
-
+                    )
                     query_list.append(
                         TableQuery(
                             query=query_dict["query_text"],

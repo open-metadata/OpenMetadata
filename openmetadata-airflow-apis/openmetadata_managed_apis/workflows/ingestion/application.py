@@ -33,7 +33,6 @@ from metadata.generated.schema.metadataIngestion.application import (
 from metadata.generated.schema.metadataIngestion.applicationPipeline import (
     ApplicationPipeline,
 )
-from metadata.ingestion.models.encoders import show_secrets_encoder
 from metadata.workflow.application import ApplicationWorkflow
 from metadata.workflow.application_output_handler import print_status
 
@@ -50,7 +49,7 @@ def application_workflow(workflow_config: OpenMetadataApplicationConfig):
 
     set_operator_logger(workflow_config)
 
-    config = json.loads(workflow_config.json(encoder=show_secrets_encoder))
+    config = json.loads(workflow_config.model_dump_json())
     workflow = ApplicationWorkflow.create(config)
 
     workflow.execute()

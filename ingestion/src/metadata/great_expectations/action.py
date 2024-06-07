@@ -17,7 +17,7 @@ checkpoints actions.
 """
 import logging
 import traceback
-from datetime import datetime, timezone
+from datetime import datetime
 from typing import Dict, List, Optional, Union, cast
 
 from great_expectations.checkpoint.actions import ValidationAction
@@ -423,9 +423,7 @@ class OpenMetadataValidationAction(ValidationAction):
 
             self.ometa_conn.add_test_case_results(
                 test_results=TestCaseResult(
-                    timestamp=Timestamp(
-                        int(datetime.now(tz=timezone.utc).timestamp() * 1000)
-                    ),
+                    timestamp=Timestamp(int(datetime.now().timestamp() * 1000)),
                     testCaseStatus=TestCaseStatus.Success
                     if result["success"]
                     else TestCaseStatus.Failed,

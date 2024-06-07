@@ -269,7 +269,7 @@ class DagsterUnitTest(TestCase):
         super().__init__(methodName)
         test_connection.return_value = False
         graphql_client.return_value = False
-        config = OpenMetadataWorkflowConfig.parse_obj(mock_dagster_config)
+        config = OpenMetadataWorkflowConfig.model_validate(mock_dagster_config)
         self.dagster = DagsterSource.create(
             mock_dagster_config["source"],
             config.workflowConfig.openMetadataServerConfig,
