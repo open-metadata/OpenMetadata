@@ -230,7 +230,7 @@ class DatabricksPipelineTests(TestCase):
         super().__init__(methodName)
         log_ansi_encoded_string(message="init")
         test_connection.return_value = False
-        config = OpenMetadataWorkflowConfig.parse_obj(mock_databricks_config)
+        config = OpenMetadataWorkflowConfig.model_validate(mock_databricks_config)
 
         self.databricks = DatabrickspipelineSource.create(
             mock_databricks_config["source"],

@@ -136,7 +136,7 @@ class LookerUnitTest(TestCase):
     def __init__(self, methodName, test_connection) -> None:
         super().__init__(methodName)
         test_connection.return_value = False
-        self.config = OpenMetadataWorkflowConfig.parse_obj(MOCK_LOOKER_CONFIG)
+        self.config = OpenMetadataWorkflowConfig.model_validate(MOCK_LOOKER_CONFIG)
 
         # This already validates that the source can be initialized
         self.looker: LookerSource = LookerSource.create(

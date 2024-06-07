@@ -132,7 +132,7 @@ class GlueUnitTest(TestCase):
     def __init__(self, methodName, test_connection) -> None:
         super().__init__(methodName)
         test_connection.return_value = False
-        self.config = OpenMetadataWorkflowConfig.parse_obj(mock_glue_config)
+        self.config = OpenMetadataWorkflowConfig.model_validate(mock_glue_config)
         self.glue_source = GlueSource.create(
             mock_glue_config["source"],
             self.config.workflowConfig.openMetadataServerConfig,

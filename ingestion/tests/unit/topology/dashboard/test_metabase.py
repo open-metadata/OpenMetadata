@@ -234,7 +234,7 @@ class MetabaseUnitTest(TestCase):
         super().__init__(methodName)
         get_connection.return_value = False
         test_connection.return_value = False
-        self.config = OpenMetadataWorkflowConfig.parse_obj(mock_config)
+        self.config = OpenMetadataWorkflowConfig.model_validate(mock_config)
         self.metabase: MetabaseSource = MetabaseSource.create(
             mock_config["source"],
             OpenMetadata(self.config.workflowConfig.openMetadataServerConfig),

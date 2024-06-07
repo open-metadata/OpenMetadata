@@ -17,7 +17,7 @@ supporting sqlalchemy abstraction layer
 import traceback
 from collections import defaultdict
 from copy import deepcopy
-from datetime import datetime, timezone
+from datetime import datetime
 from typing import Dict, List, Optional
 
 from sqlalchemy import Column
@@ -403,9 +403,7 @@ class PandasProfilerInterface(ProfilerInterface, PandasInterfaceMixin):
                         profile_results["columns"][column].update(
                             {
                                 "name": column,
-                                "timestamp": int(
-                                    datetime.now(tz=timezone.utc).timestamp() * 1000
-                                ),
+                                "timestamp": int(datetime.now().timestamp() * 1000),
                                 **profile,
                             }
                         )

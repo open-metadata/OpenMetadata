@@ -143,7 +143,9 @@ class StorageUnitTest(TestCase):
     def __init__(self, method_name: str, test_connection) -> None:
         super().__init__(method_name)
         test_connection.return_value = False
-        self.config = OpenMetadataWorkflowConfig.parse_obj(MOCK_OBJECT_STORE_CONFIG)
+        self.config = OpenMetadataWorkflowConfig.model_validate(
+            MOCK_OBJECT_STORE_CONFIG
+        )
 
         # This already validates that the source can be initialized
         self.object_store_source = S3Source.create(
@@ -430,5 +432,5 @@ class StorageUnitTest(TestCase):
             verbose=False,
         )
         content = json.loads(metadata_config_response)
-        container_config = StorageContainerConfig.parse_obj(content)
+        container_config = StorageContainerConfig.model_validate(content)
         return container_config.entries

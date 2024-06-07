@@ -14,7 +14,7 @@ Test SQA Interface
 """
 
 import os
-from datetime import datetime, timezone
+from datetime import datetime
 from unittest import TestCase, mock
 from uuid import uuid4
 
@@ -254,7 +254,7 @@ class PandasInterfaceTest(TestCase):
         table_profile = TableProfile(
             columnCount=profile_results["table"].get("columnCount"),
             rowCount=profile_results["table"].get(RowCount.name()),
-            timestamp=Timestamp(int(datetime.now(tz=timezone.utc).timestamp())),
+            timestamp=Timestamp(int(datetime.now().timestamp())),
         )
 
         profile_request = CreateTableProfileRequest(

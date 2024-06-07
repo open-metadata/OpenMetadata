@@ -280,7 +280,7 @@ class PostgresUnitTest(TestCase):
     def __init__(self, methodName, test_connection) -> None:
         super().__init__(methodName)
         test_connection.return_value = False
-        self.config = OpenMetadataWorkflowConfig.parse_obj(mock_postgres_config)
+        self.config = OpenMetadataWorkflowConfig.model_validate(mock_postgres_config)
         self.postgres_source = PostgresSource.create(
             mock_postgres_config["source"],
             self.config.workflowConfig.openMetadataServerConfig,
@@ -296,7 +296,7 @@ class PostgresUnitTest(TestCase):
             "database_schema"
         ] = MOCK_DATABASE_SCHEMA.name.root
 
-        self.usage_config = OpenMetadataWorkflowConfig.parse_obj(
+        self.usage_config = OpenMetadataWorkflowConfig.model_validate(
             mock_postgres_usage_config
         )
         self.postgres_usage_source = PostgresUsageSource.create(

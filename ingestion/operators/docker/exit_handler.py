@@ -74,7 +74,7 @@ def main():
     raw_workflow_config = yaml.safe_load(config)
     raw_workflow_config["pipelineRunId"] = pipeline_run_id
 
-    workflow_config = OpenMetadataWorkflowConfig.parse_obj(raw_workflow_config)
+    workflow_config = OpenMetadataWorkflowConfig.model_validate(raw_workflow_config)
     metadata = OpenMetadata(
         config=workflow_config.workflowConfig.openMetadataServerConfig
     )

@@ -3,7 +3,7 @@ Test Domo Dashboard using the topology
 """
 
 import json
-from datetime import datetime, timezone
+from datetime import datetime
 from pathlib import Path
 from unittest import TestCase
 from unittest.mock import patch
@@ -151,7 +151,7 @@ EXPECTED_PIPELINE = [
         sourceUrl=None,
         concurrency=None,
         pipelineLocation=None,
-        startDate=datetime(2022, 10, 7, 13, 20, 16, tzinfo=timezone.utc),
+        startDate=datetime(2022, 10, 7, 13, 20, 16),
         tasks=[
             Task(
                 name="1",
@@ -247,7 +247,9 @@ class DomoPipelineUnitTest(TestCase):
         super().__init__(methodName)
         test_connection.return_value = False
         domo_client.return_value = False
-        self.config = OpenMetadataWorkflowConfig.parse_obj(mock_domopipeline_config)
+        self.config = OpenMetadataWorkflowConfig.model_validate(
+            mock_domopipeline_config
+        )
         self.domopipeline = DomopipelineSource.create(
             mock_domopipeline_config["source"],
             self.config.workflowConfig.openMetadataServerConfig,

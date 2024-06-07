@@ -101,7 +101,9 @@ class TestRedshiftSystem(TestCase):
         cls.metadata_config_dict = cls.config["workflowConfig"][
             "openMetadataServerConfig"
         ]
-        cls.metadata_config = OpenMetadataConnection.parse_obj(cls.metadata_config_dict)
+        cls.metadata_config = OpenMetadataConnection.model_validate(
+            cls.metadata_config_dict
+        )
         cls.metadata = OpenMetadata(cls.metadata_config)
 
         # run the ingestion workflow

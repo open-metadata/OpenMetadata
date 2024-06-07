@@ -81,7 +81,7 @@ class TestSuiteWorkflowTests(unittest.TestCase):
     """Main test suite integration tests definition"""
 
     metadata = OpenMetadata(
-        OpenMetadataConnection.parse_obj(
+        OpenMetadataConnection.model_validate(
             get_test_suite_config("", "")["workflowConfig"]["openMetadataServerConfig"]
         )
     )

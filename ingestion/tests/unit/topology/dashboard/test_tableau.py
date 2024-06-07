@@ -176,7 +176,7 @@ class TableauUnitTest(TestCase):
         get_connection.return_value = False
         tableau_server_connection.return_value = False
         test_connection.return_value = False
-        self.config = OpenMetadataWorkflowConfig.parse_obj(mock_tableau_config)
+        self.config = OpenMetadataWorkflowConfig.model_validate(mock_tableau_config)
         self.tableau = TableauSource.create(
             mock_tableau_config["source"],
             self.config.workflowConfig.openMetadataServerConfig,

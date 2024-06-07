@@ -13,7 +13,7 @@
 Interfaces with database for all database engine
 supporting sqlalchemy abstraction layer
 """
-from datetime import datetime, timezone
+from datetime import datetime
 from typing import Optional
 
 from metadata.data_quality.interface.test_suite_interface import TestSuiteInterface
@@ -94,7 +94,7 @@ class PandasTestSuiteInterface(TestSuiteInterface, PandasInterfaceMixin):
             test_handler = TestHandler(
                 self.dfs,
                 test_case=test_case,
-                execution_date=int(datetime.now(tz=timezone.utc).timestamp() * 1000),
+                execution_date=int(datetime.now().timestamp() * 1000),
             )
 
             return Validator(validator_obj=test_handler).validate()

@@ -183,9 +183,9 @@ class OracleUnitTest(TestCase):
     ) -> None:
         super().__init__(methodName)
         test_connection.return_value = False
-        self.config = OpenMetadataWorkflowConfig.parse_obj(mock_oracle_config)
+        self.config = OpenMetadataWorkflowConfig.model_validate(mock_oracle_config)
         self.metadata = OpenMetadata(
-            OpenMetadataConnection.parse_obj(
+            OpenMetadataConnection.model_validate(
                 mock_oracle_config["workflowConfig"]["openMetadataServerConfig"]
             )
         )

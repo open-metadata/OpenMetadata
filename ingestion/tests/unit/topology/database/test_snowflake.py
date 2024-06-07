@@ -128,7 +128,7 @@ def get_snowflake_sources():
         "metadata.ingestion.source.database.common_db_source.CommonDbSourceService.test_connection",
         return_value=False,
     ):
-        config = OpenMetadataWorkflowConfig.parse_obj(
+        config = OpenMetadataWorkflowConfig.model_validate(
             SNOWFLAKE_CONFIGURATIONS["not_incremental"]
         )
         sources["not_incremental"] = SnowflakeSource.create(
@@ -141,7 +141,7 @@ def get_snowflake_sources():
             "metadata.ingestion.source.database.incremental_metadata_extraction.IncrementalConfigCreator._get_pipeline_statuses",
             return_value=MOCK_PIPELINE_STATUSES,
         ):
-            config = OpenMetadataWorkflowConfig.parse_obj(
+            config = OpenMetadataWorkflowConfig.model_validate(
                 SNOWFLAKE_CONFIGURATIONS["incremental"]
             )
             sources["incremental"] = SnowflakeSource.create(

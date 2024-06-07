@@ -55,7 +55,7 @@ class MetabaseClient:
             if self.config.password:
                 params[PASSWORD_HEADER] = self.config.password.get_secret_value()
             self.resp = requests.post(
-                f"{self.config.hostPort}/{API_VERSION}/session/",
+                f"{self.config.hostPort}{API_VERSION}/session/",
                 data=json.dumps(params),
                 headers=SESSION_HEADERS,
                 timeout=DEFAULT_TIMEOUT,

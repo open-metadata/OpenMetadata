@@ -195,7 +195,7 @@ class MongoDBUnitTest(TestCase):
     def __init__(self, methodName, test_connection) -> None:
         super().__init__(methodName)
         test_connection.return_value = False
-        self.config = OpenMetadataWorkflowConfig.parse_obj(mock_mongo_config)
+        self.config = OpenMetadataWorkflowConfig.model_validate(mock_mongo_config)
         self.mongo_source = MongodbSource.create(
             mock_mongo_config["source"],
             OpenMetadata(self.config.workflowConfig.openMetadataServerConfig),

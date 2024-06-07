@@ -18,7 +18,7 @@ from collections import defaultdict
 from datetime import datetime
 from typing import Dict, Iterable, List, Optional, Union
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy.engine import Engine
 
 from metadata.generated.schema.api.data.createQuery import CreateQueryRequest
@@ -53,18 +53,17 @@ class QueryByProcedure(BaseModel):
 
     procedure_name: str = Field(None, alias="PROCEDURE_NAME")
     query_type: str = Field(..., alias="QUERY_TYPE")
-    query_database_name: str = Field(None, alias="QUERY_DATABASE_NAME")
-    query_schema_name: str = Field(None, alias="QUERY_SCHEMA_NAME")
+    query_database_name: Optional[str] = Field(None, alias="QUERY_DATABASE_NAME")
+    query_schema_name: Optional[str] = Field(None, alias="QUERY_SCHEMA_NAME")
     procedure_text: str = Field(..., alias="PROCEDURE_TEXT")
     procedure_start_time: datetime = Field(..., alias="PROCEDURE_START_TIME")
     procedure_end_time: datetime = Field(..., alias="PROCEDURE_END_TIME")
-    query_start_time: Optional[datetime] = Field(..., alias="QUERY_START_TIME")
+    query_start_time: Optional[datetime] = Field(None, alias="QUERY_START_TIME")
     query_duration: Optional[float] = Field(None, alias="QUERY_DURATION")
     query_text: str = Field(..., alias="QUERY_TEXT")
     query_user_name: Optional[str] = Field(None, alias="QUERY_USER_NAME")
 
-    class Config:
-        populate_by_name = True
+    model_config = ConfigDict(populate_by_name=True)
 
 
 class StoredProcedureMixin(ABC):

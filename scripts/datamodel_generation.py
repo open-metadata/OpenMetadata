@@ -81,3 +81,21 @@ for file_path in UNSUPPORTED_REGEX_PATTERN_FILE_PATHS:
     with open(file_path, "w", encoding=UTF_8) as file_:
         file_.write(content)
 
+# Until https://github.com/koxudaxi/datamodel-code-generator/issues/1996
+# Supporting timezone aware datetime is too complex for the profiler
+DATETIME_AWARE_FILE_PATHS = [
+    f"{ingestion_path}src/metadata/generated/schema/type/basic.py",
+    # f"{ingestion_path}src/metadata/generated/schema/entity/data/table.py",
+]
+
+for file_path in DATETIME_AWARE_FILE_PATHS:
+    with open(file_path, "r", encoding=UTF_8) as file_:
+        content = file_.read()
+        content = content.replace(
+            "from pydantic import AnyUrl, AwareDatetime, ConfigDict, EmailStr, Field, RootModel",
+            "from pydantic import AnyUrl, ConfigDict, EmailStr, Field, RootModel"
+        )
+        content = content.replace("from datetime import date, time", "from datetime import date, time, datetime")
+        content = content.replace("AwareDatetime", "datetime")
+    with open(file_path, "w", encoding=UTF_8) as file_:
+        file_.write(content)

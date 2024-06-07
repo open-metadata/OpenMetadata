@@ -133,7 +133,7 @@ class OpenLineageUnitTest(unittest.TestCase):
     def __init__(self, methodName, test_connection) -> None:
         super().__init__(methodName)
         test_connection.return_value = False
-        config = OpenMetadataWorkflowConfig.parse_obj(MOCK_OL_CONFIG)
+        config = OpenMetadataWorkflowConfig.model_validate(MOCK_OL_CONFIG)
         self.open_lineage_source = OpenlineageSource.create(
             MOCK_OL_CONFIG["source"],
             config.workflowConfig.openMetadataServerConfig,

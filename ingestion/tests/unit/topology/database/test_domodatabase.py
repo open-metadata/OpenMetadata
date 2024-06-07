@@ -254,7 +254,9 @@ class DomoDatabaseUnitTest(TestCase):
     ) -> None:
         super().__init__(methodName)
         test_connection.return_value = False
-        self.config = OpenMetadataWorkflowConfig.parse_obj(mock_domodatabase_config)
+        self.config = OpenMetadataWorkflowConfig.model_validate(
+            mock_domodatabase_config
+        )
         self.domodatabase = DomodatabaseSource.create(
             mock_domodatabase_config["source"],
             self.config.workflowConfig.openMetadataServerConfig,

@@ -54,7 +54,7 @@ class TestRegistryNamesMatchTestDefinition(TestCase):
     """Test the names in the registry match that of the ones in the Test Definition"""
 
     metadata = OpenMetadata(
-        OpenMetadataConnection.parse_obj(
+        OpenMetadataConnection.model_validate(
             test_suite_config["workflowConfig"]["openMetadataServerConfig"]
         )
     )

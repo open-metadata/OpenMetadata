@@ -369,7 +369,7 @@ class BigquerySource(
                         tags=[value],
                         classification_name=key,
                         tag_description="Bigquery Dataset Label",
-                        classification_description="",
+                        classification_description="BigQuery Dataset Classification",
                         include_tags=self.source_config.includeTags,
                     )
             # Fetching policy tags on the column level
@@ -389,7 +389,7 @@ class BigquerySource(
                         tags=[tag.display_name for tag in policy_tags],
                         classification_name=taxonomy.display_name,
                         tag_description="Bigquery Policy Tag",
-                        classification_description="",
+                        classification_description="BigQuery Policy Classification",
                         include_tags=self.source_config.includeTags,
                     )
         except Exception as exc:
@@ -528,7 +528,7 @@ class BigquerySource(
                     tags=[value],
                     classification_name=key,
                     tag_description="Bigquery Table Label",
-                    classification_description="",
+                    classification_description="BigQuery Table Classification",
                     include_tags=self.source_config.includeTags,
                 )
 

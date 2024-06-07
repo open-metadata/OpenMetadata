@@ -175,7 +175,7 @@ class AmundsenUnitTest(TestCase):
     def __init__(self, methodName, test_connection) -> None:
         super().__init__(methodName)
         test_connection.return_value = False
-        self.config = OpenMetadataWorkflowConfig.parse_obj(mock_amundsen_config)
+        self.config = OpenMetadataWorkflowConfig.model_validate(mock_amundsen_config)
         self.amundsen = AmundsenSource.create(
             mock_amundsen_config["source"],
             OpenMetadata(self.config.workflowConfig.openMetadataServerConfig),

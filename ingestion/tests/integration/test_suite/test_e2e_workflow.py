@@ -116,7 +116,7 @@ class TestE2EWorkflow(unittest.TestCase):
     """e2e test for the workflow"""
 
     metadata = OpenMetadata(
-        OpenMetadataConnection.parse_obj(
+        OpenMetadataConnection.model_validate(
             test_suite_config["workflowConfig"]["openMetadataServerConfig"]
         )
     )

@@ -13,7 +13,7 @@ Databricks lineage utils tests
 """
 
 import json
-from datetime import datetime, timezone
+from datetime import datetime
 from pathlib import Path
 from unittest import TestCase
 from unittest.mock import patch
@@ -38,7 +38,7 @@ EXPECTED_DATABRICKS_DETAILS = [
         userName="vijay@getcollate.io",
         startTime="1665566128192",
         endTime="1665566128329",
-        analysisDate=DateTime(datetime.now(tz=timezone.utc)),
+        analysisDate=DateTime(datetime.now()),
         aborted=None,
         serviceName="local_databricks1",
         databaseSchema=None,
@@ -48,7 +48,7 @@ EXPECTED_DATABRICKS_DETAILS = [
         userName="vijay@getcollate.io",
         startTime="1665566127416",
         endTime="1665566127568",
-        analysisDate=DateTime(datetime.now(tz=timezone.utc)),
+        analysisDate=DateTime(datetime.now()),
         aborted=None,
         serviceName="local_databricks1",
         databaseSchema=None,
@@ -58,7 +58,7 @@ EXPECTED_DATABRICKS_DETAILS = [
         userName="vijay@getcollate.io",
         startTime="1665566125414",
         endTime="1665566125579",
-        analysisDate=DateTime(datetime.now(tz=timezone.utc)),
+        analysisDate=DateTime(datetime.now()),
         aborted=None,
         serviceName="local_databricks1",
         databaseSchema=None,
@@ -68,7 +68,7 @@ EXPECTED_DATABRICKS_DETAILS = [
         userName="vijay@getcollate.io",
         startTime="1665566124428",
         endTime="1665566124730",
-        analysisDate=DateTime(datetime.now(tz=timezone.utc)),
+        analysisDate=DateTime(datetime.now()),
         aborted=None,
         serviceName="local_databricks1",
         databaseSchema=None,
@@ -122,7 +122,7 @@ class DatabricksLineageTests(TestCase):
 
     def __init__(self, methodName) -> None:
         super().__init__(methodName)
-        config = OpenMetadataWorkflowConfig.parse_obj(mock_databricks_config)
+        config = OpenMetadataWorkflowConfig.model_validate(mock_databricks_config)
 
         self.databricks = DatabricksLineageSource.create(
             mock_databricks_config["source"],

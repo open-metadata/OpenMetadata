@@ -150,7 +150,9 @@ class DomoDashboardUnitTest(TestCase):
         super().__init__(methodName)
         test_connection.return_value = False
         domo_client.return_value = False
-        self.config = OpenMetadataWorkflowConfig.parse_obj(mock_domopipeline_config)
+        self.config = OpenMetadataWorkflowConfig.model_validate(
+            mock_domopipeline_config
+        )
         self.domodashboard = DomodashboardSource.create(
             mock_domopipeline_config["source"],
             self.config.workflowConfig.openMetadataServerConfig,

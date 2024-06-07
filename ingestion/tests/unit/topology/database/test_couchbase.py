@@ -188,7 +188,7 @@ class CouchbaseUnitTest(TestCase):
         get_connection.return_value = False
         test_connection.return_value = False
 
-        self.config = OpenMetadataWorkflowConfig.parse_obj(mock_couch_config)
+        self.config = OpenMetadataWorkflowConfig.model_validate(mock_couch_config)
         self.couch_source = CouchbaseSource.create(
             mock_couch_config["source"],
             OpenMetadata(self.config.workflowConfig.openMetadataServerConfig),

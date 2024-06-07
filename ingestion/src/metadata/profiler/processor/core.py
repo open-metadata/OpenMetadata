@@ -106,9 +106,7 @@ class Profiler(Generic[TMetric]):
         self.include_columns = include_columns
         self.exclude_columns = exclude_columns
         self._metrics = metrics
-        self._profile_ts = Timestamp(
-            int(datetime.now(tz=timezone.utc).timestamp() * 1000)
-        )
+        self._profile_ts = Timestamp(int(datetime.now().timestamp() * 1000))
         self.profile_sample_config = self.profiler_interface.profile_sample_config
 
         self.metric_filter = MetricFilter(

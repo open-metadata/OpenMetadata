@@ -303,7 +303,7 @@ class MssqlUnitTest(TestCase):
     ) -> None:
         super().__init__(methodName)
         test_connection.return_value = False
-        self.config = OpenMetadataWorkflowConfig.parse_obj(mock_mssql_config)
+        self.config = OpenMetadataWorkflowConfig.model_validate(mock_mssql_config)
         self.mssql = MssqlSource.create(
             mock_mssql_config["source"],
             self.config.workflowConfig.openMetadataServerConfig,

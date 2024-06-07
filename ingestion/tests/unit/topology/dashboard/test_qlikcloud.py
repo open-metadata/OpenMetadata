@@ -160,7 +160,9 @@ class QlikCloudUnitTest(TestCase):
         with patch.object(QlikCloudClient, "get_dashboards_list", return_value=None):
             super().__init__(methodName)
             # test_connection.return_value = False
-            self.config = OpenMetadataWorkflowConfig.parse_obj(mock_qlikcloud_config)
+            self.config = OpenMetadataWorkflowConfig.model_validate(
+                mock_qlikcloud_config
+            )
             self.qlikcloud = QlikcloudSource.create(
                 mock_qlikcloud_config["source"],
                 OpenMetadata(self.config.workflowConfig.openMetadataServerConfig),

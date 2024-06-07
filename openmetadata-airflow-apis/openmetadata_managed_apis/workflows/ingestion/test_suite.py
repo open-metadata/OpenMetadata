@@ -27,7 +27,6 @@ from metadata.generated.schema.metadataIngestion.workflow import (
     Sink,
     WorkflowConfig,
 )
-from metadata.ingestion.models.encoders import show_secrets_encoder
 from metadata.workflow.data_quality import TestSuiteWorkflow
 from metadata.workflow.workflow_output_handler import print_status
 
@@ -44,7 +43,7 @@ def test_suite_workflow(workflow_config: OpenMetadataWorkflowConfig):
 
     set_operator_logger(workflow_config)
 
-    config = json.loads(workflow_config.json(encoder=show_secrets_encoder))
+    config = json.loads(workflow_config.model_dump_json())
     workflow = TestSuiteWorkflow.create(config)
 
     workflow.execute()

@@ -14,7 +14,7 @@ Base workflow definition.
 
 import uuid
 from abc import ABC, abstractmethod
-from datetime import datetime, timezone
+from datetime import datetime
 from typing import Any, Dict, List, Optional, TypeVar, Union
 
 from metadata.generated.schema.api.services.ingestionPipelines.createIngestionPipeline import (
@@ -92,7 +92,7 @@ class BaseWorkflow(ABC, WorkflowStatusMixin):
         self.service_type = service_type
         self._timer: Optional[RepeatedTimer] = None
         self._ingestion_pipeline: Optional[IngestionPipeline] = None
-        self._start_ts = datetime_to_ts(datetime.now(tz=timezone.utc))
+        self._start_ts = datetime_to_ts(datetime.now())
         self._execution_time_tracker = ExecutionTimeTracker(
             log_level == LogLevels.DEBUG
         )

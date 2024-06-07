@@ -68,7 +68,7 @@ class TestEntityProducer(TestCase):
     def setUpClass(cls):
         """test init"""
         cls.metadata = OpenMetadata(
-            OpenMetadataConnection.parse_obj(
+            OpenMetadataConnection.model_validate(
                 data_insight_config["workflowConfig"]["openMetadataServerConfig"]
             )
         )
@@ -106,7 +106,7 @@ class TestWebAnalyticProducer(TestCase):
         """test init"""
         cls.event_ids = []
         cls.metadata = OpenMetadata(
-            OpenMetadataConnection.parse_obj(
+            OpenMetadataConnection.model_validate(
                 data_insight_config["workflowConfig"]["openMetadataServerConfig"]
             )
         )
@@ -142,7 +142,7 @@ class TestWebAnalyticProducer(TestCase):
                 ),
             )
             event = cls.metadata.add_web_analytic_events(create_event)
-            event = WebAnalyticEventData.parse_obj(event)
+            event = WebAnalyticEventData.model_validate(event)
             cls.event_ids.append(event.eventId.root)
 
         cls.producer = WebAnalyticsProducer(cls.metadata)

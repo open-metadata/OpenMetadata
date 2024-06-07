@@ -403,7 +403,9 @@ class SupersetUnitTest(TestCase):
                 },
             },
         }
-        self.config = OpenMetadataWorkflowConfig.parse_obj(MOCK_SUPERSET_API_CONFIG)
+        self.config = OpenMetadataWorkflowConfig.model_validate(
+            MOCK_SUPERSET_API_CONFIG
+        )
 
         self.superset_api: SupersetSource = SupersetSource.create(
             MOCK_SUPERSET_API_CONFIG["source"],

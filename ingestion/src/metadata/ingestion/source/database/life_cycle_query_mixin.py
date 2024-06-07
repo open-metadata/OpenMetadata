@@ -27,6 +27,7 @@ from metadata.generated.schema.entity.services.ingestionPipelines.status import 
 from metadata.generated.schema.metadataIngestion.databaseServiceMetadataPipeline import (
     DatabaseServiceMetadataPipeline,
 )
+from metadata.generated.schema.type.basic import Timestamp
 from metadata.generated.schema.type.lifeCycle import AccessDetails, LifeCycle
 from metadata.ingestion.api.models import Either, Entity
 from metadata.ingestion.api.status import Status
@@ -103,8 +104,12 @@ class LifeCycleQueryMixin:
             if life_cycle_data:
                 life_cycle = LifeCycle(
                     created=AccessDetails(
-                        timestamp=convert_timestamp_to_milliseconds(
-                            life_cycle_data.created_at.timestamp()
+                        timestamp=Timestamp(
+                            int(
+                                convert_timestamp_to_milliseconds(
+                                    life_cycle_data.created_at.timestamp()
+                                )
+                            )
                         )
                     )
                 )
