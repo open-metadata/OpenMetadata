@@ -19,11 +19,10 @@ import {
   Row,
   Select,
   Space,
-  Tooltip,
   Typography,
 } from 'antd';
-import { isUndefined, values } from 'lodash';
-import React, { useEffect, useState } from 'react';
+import { groupBy, isUndefined, values } from 'lodash';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   Bar,
   BarChart,
@@ -32,6 +31,7 @@ import {
   LineChart,
   Rectangle,
   ResponsiveContainer,
+  Tooltip,
   XAxis,
   YAxis,
 } from 'recharts';
@@ -41,7 +41,11 @@ import {
   CreateDIChart,
   Function as FunctionEnum,
 } from '../../../../generated/api/dataInsightNew/createDIChart';
-import { postAggregateChartData } from '../../../../rest/dataInsightPocAPI';
+import {
+  DiChartResultList,
+  postAggregateChartData,
+} from '../../../../rest/dataInsightPocAPI';
+import { getRandomHexColor } from '../../../../utils/DataInsightUtils';
 import {
   getCurrentMillis,
   getEpochMillisForPastDays,
@@ -50,29 +54,79 @@ import { useAdvanceSearch } from '../../../Explore/AdvanceSearchProvider/Advance
 import { WidgetFormProps } from './WidgetForm.interface';
 import { INDEX_FIELDS } from './data';
 
+interface CombinedResponseItem {
+  day: string;
+  [group: string]: number | string;
+}
+
 const ChartWidgetForm = ({ onCancel }: WidgetFormProps) => {
   const [form] = Form.useForm();
   const [formState, setFormState] = useState<Record<string, string>>({
     name: 'custom-chart',
     xAxis: 'date',
     chartType: 'line',
+    // remove below line,
+    method: 'function',
+    field: 'id.keyword',
+    function: 'count',
   });
-  const [graphData, setGraphData] = useState<
-    {
-      date: string;
-      value: number;
-    }[]
-  >([]);
-  const { toggleModal, sqlQuery } = useAdvanceSearch();
+  const [graphData, setGraphData] = useState<Record<string, string | number>[]>(
+    []
+  );
+  const label = useRef<string[]>();
 
-  const getGraphData = async (data: CreateDIChart) => {
+  const { toggleModal, sqlQuery, queryFilter } = useAdvanceSearch();
+
+  function combineData(
+    data: DiChartResultList['results']
+  ): CombinedResponseItem[] {
+    const result: CombinedResponseItem[] = [];
+
+    data.forEach((item) => {
+      const existingEntry = result.find((entry) => entry.day === item.day);
+      if (existingEntry) {
+        if (existingEntry[item.group]) {
+          existingEntry[item.group] =
+            (existingEntry[item.group] as number) + item.count;
+        } else {
+          existingEntry[item.group] = item.count;
+        }
+      } else {
+        const newEntry: CombinedResponseItem = {
+          day: new Date(item.day).toLocaleDateString(),
+          [item.group]: item.count,
+        };
+        result.push(newEntry);
+      }
+    });
+
+    return result;
+  }
+
+  const getGraphData = async (data: Partial<CreateDIChart>) => {
     const params = {
-      start: getCurrentMillis(),
-      end: getEpochMillisForPastDays(7),
+      end: getCurrentMillis(),
+      start: getEpochMillisForPastDays(30),
+    };
+    const updatedData = {
+      ...data,
+      name: formState.name,
+      filter: queryFilter ? JSON.stringify(queryFilter) : undefined,
+      groupBy: formState.groupBy,
     };
     try {
-      const response = await postAggregateChartData(params, data);
-      console.log(response);
+      const response = await postAggregateChartData(params, updatedData);
+      const results = updatedData?.groupBy
+        ? combineData(response.results)
+        : response.results.map((item) => ({
+            day: new Date(item.day).toLocaleDateString(),
+            count: item.count,
+          }));
+
+      const groupedResults = groupBy(response.results, 'group');
+      label.current = Object.keys(groupedResults);
+
+      setGraphData(results);
     } catch (error) {
       //
     }
@@ -86,24 +140,19 @@ const ChartWidgetForm = ({ onCancel }: WidgetFormProps) => {
         !isUndefined(formState?.function)
       ) {
         getGraphData({
-          name: formState.name,
           field: formState.field,
           function: formState.function as CreateDIChart['function'],
-          groupBy: formState.groupBy,
         });
       } else if (
         formState.method === 'formula' &&
         !isUndefined(formState?.formula)
       ) {
-        // getGraphData({
-        //   name: formState.name,
-        //   field: formState.field,
-        //   function: formState.function as CreateDIChart['function'],
-        //   groupBy: formState.groupBy,
-        // });
+        getGraphData({
+          formula: formState.formula,
+        });
       }
     }
-  }, [formState]);
+  }, [formState, queryFilter]);
 
   return (
     <Row gutter={[16, 16]}>
@@ -165,9 +214,9 @@ const ChartWidgetForm = ({ onCancel }: WidgetFormProps) => {
           )}
 
           <Form.Item label="Group by" name="groupBy">
-            <Select placeholder="Select Group by">
+            <Select showSearch placeholder="Select Group by">
               {INDEX_FIELDS.map((field) => (
-                <Select.Option showSearch key={field} value={field}>
+                <Select.Option key={field} value={field}>
                   {field}
                 </Select.Option>
               ))}
@@ -232,12 +281,13 @@ const ChartWidgetForm = ({ onCancel }: WidgetFormProps) => {
                 />
                 <Tooltip />
                 <XAxis
-                  dataKey="date"
+                  dataKey="day"
                   label={{
                     value: formState?.xAxisLabel,
                     position: 'insideBottom',
                     offset: -10,
                   }}
+                  tickFormatter={(value) => value.split('T')[0]}
                 />
                 <YAxis
                   label={{
@@ -246,7 +296,18 @@ const ChartWidgetForm = ({ onCancel }: WidgetFormProps) => {
                     position: 'insideLeft',
                   }}
                 />
-                <Line dataKey="value" stroke="#82ca9d" type="monotone" />
+                {formState?.groupBy ? (
+                  label.current?.map((group) => (
+                    <Line
+                      dataKey={group}
+                      key={group}
+                      stroke={getRandomHexColor()}
+                      type="monotone"
+                    />
+                  ))
+                ) : (
+                  <Line dataKey="count" stroke="#82ca9d" type="monotone" />
+                )}
               </LineChart>
             </ResponsiveContainer>
           )}
@@ -269,12 +330,13 @@ const ChartWidgetForm = ({ onCancel }: WidgetFormProps) => {
                 />
                 <Tooltip />
                 <XAxis
-                  dataKey="date"
+                  dataKey="day"
                   label={{
                     value: formState?.xAxisLabel,
                     position: 'insideBottom',
                     offset: -10,
                   }}
+                  tickFormatter={(value) => value.split('T')[0]}
                 />
                 <YAxis
                   label={{
@@ -283,11 +345,24 @@ const ChartWidgetForm = ({ onCancel }: WidgetFormProps) => {
                     position: 'insideLeft',
                   }}
                 />
-                <Bar
-                  activeBar={<Rectangle fill="pink" stroke="blue" />}
-                  dataKey="value"
-                  fill="#8884d8"
-                />
+
+                {formState?.groupBy ? (
+                  label.current?.map((group) => (
+                    <Bar
+                      dataKey={group}
+                      fill={getRandomHexColor()}
+                      key={group}
+                      stackId="count"
+                      type="monotone"
+                    />
+                  ))
+                ) : (
+                  <Bar
+                    activeBar={<Rectangle fill="pink" stroke="blue" />}
+                    dataKey="count"
+                    fill="#8884d8"
+                  />
+                )}
               </BarChart>
             </ResponsiveContainer>
           )}
