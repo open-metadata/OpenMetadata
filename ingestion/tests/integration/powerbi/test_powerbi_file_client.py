@@ -97,10 +97,7 @@ class PowerBIFileClientTests(TestCase):
 
             # test the connection objects from the pbit file
             for connection in schema.connectionFile.RemoteArtifacts:
-                self.assertIn(
-                    connection.DatasetId,
-                    EXPECTED_DATASET_IDS
-                )
+                self.assertIn(connection.DatasetId, EXPECTED_DATASET_IDS)
                 self.assertIn(
                     connection.ReportId,
                     EXPECTED_REPORT_IDS,
