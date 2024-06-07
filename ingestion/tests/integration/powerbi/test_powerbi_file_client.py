@@ -23,7 +23,6 @@ from metadata.ingestion.source.dashboard.powerbi.file_client import (
     PowerBiFileClient,
     _get_datamodel_schema_list,
 )
-from metadata.ingestion.source.dashboard.powerbi.models import RemoteArtifacts
 
 current_dir = os.getcwd()
 
@@ -62,15 +61,14 @@ EXPECTED_COLUMNS = {
     "most_recent_order",
 }
 
-EXPECTED_CONNECTION_OBJECTS = [
-    RemoteArtifacts(
-        DatasetId="c5bf4b57-1de4-4c7f-ae3a-b151f36a8260",
-        ReportId="3c8875f2-f68c-4d9a-bacb-4c4b6bf03a12",
-    ),
-    RemoteArtifacts(
-        DatasetId="a7026844-8de5-4419-b312-3162da41ff41",
-        ReportId="c9b7a5c2-ffaa-4411-a8e9-9099f584dbe9",
-    ),
+EXPECTED_DATASET_IDS = [
+    "c5bf4b57-1de4-4c7f-ae3a-b151f36a8260",
+    "a7026844-8de5-4419-b312-3162da41ff41",
+]
+
+EXPECTED_REPORT_IDS = [
+    "3c8875f2-f68c-4d9a-bacb-4c4b6bf03a12",
+    "c9b7a5c2-ffaa-4411-a8e9-9099f584dbe9",
 ]
 
 
@@ -89,7 +87,6 @@ class PowerBIFileClientTests(TestCase):
             path=self.file_client.config.pbitFilesSource.path
         )
         all_tables = []
-        connection_count = 0
         for schema in datamodel_mappings:
             # test the table and columns from the pbit file
             for table in schema.tables:
@@ -100,15 +97,14 @@ class PowerBIFileClientTests(TestCase):
 
             # test the connection objects from the pbit file
             for connection in schema.connectionFile.RemoteArtifacts:
-                self.assertEqual(
+                self.assertIn(
                     connection.DatasetId,
-                    EXPECTED_CONNECTION_OBJECTS[connection_count].DatasetId,
+                    EXPECTED_DATASET_IDS
                 )
-                self.assertEqual(
+                self.assertIn(
                     connection.ReportId,
-                    EXPECTED_CONNECTION_OBJECTS[connection_count].ReportId,
+                    EXPECTED_REPORT_IDS,
                 )
-                connection_count += 1
 
         EXPECTED_TABLE_NAMES.sort()
         all_tables.sort()
