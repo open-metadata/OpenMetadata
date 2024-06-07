@@ -11,11 +11,9 @@
  *  limitations under the License.
  */
 
-import { Space } from 'antd';
 import { isEmpty, isUndefined } from 'lodash';
 import React, { useCallback } from 'react';
-import { Link } from 'react-router-dom';
-import { getUserPath, NO_DATA_PLACEHOLDER } from '../../../constants/constants';
+import { NO_DATA_PLACEHOLDER } from '../../../constants/constants';
 import { EntityField } from '../../../constants/Feeds.constants';
 import { EntityChangeOperations } from '../../../enums/VersionPage.enum';
 import { Glossary } from '../../../generated/entity/data/glossary';
@@ -32,8 +30,7 @@ import {
   getDiffByFieldName,
   getRemovedDiffElement,
 } from '../../../utils/EntityVersionUtils';
-import { UserTeam } from '../../common/AssigneeList/AssigneeList.interface';
-import ProfilePicture from '../../common/ProfilePicture/ProfilePicture';
+import { OwnerLabel } from '../../common/OwnerLabel/OwnerLabel.component';
 
 interface GlossaryReviewersProps {
   glossaryData: Glossary | GlossaryTerm;
@@ -68,18 +65,11 @@ function GlossaryReviewers({
   const getReviewer = useCallback(
     (reviewer: EntityReference, operation: EntityChangeOperations) => {
       return (
-        <Space className="m-r-xss" key={reviewer.id} size={4}>
-          <ProfilePicture
-            avatarType="outlined"
-            displayName={getEntityName(reviewer)}
-            isTeam={reviewer.type === UserTeam.Team}
-            name={reviewer.name ?? ''}
-            width="20"
-          />
-          <Link to={getUserPath(reviewer.name ?? '')}>
-            {getReviewerName(reviewer, operation)}
-          </Link>
-        </Space>
+        <OwnerLabel
+          pills
+          owner={reviewer}
+          ownerDisplayName={getReviewerName(reviewer, operation)}
+        />
       );
     },
     []
@@ -115,7 +105,7 @@ function GlossaryReviewers({
       !isEmpty(deletedReviewers)
     ) {
       return (
-        <>
+        <div className="d-flex items-center gap-1 flex-wrap">
           {unchangedReviewers.map((reviewer) =>
             getReviewer(reviewer, EntityChangeOperations.NORMAL)
           )}
@@ -125,7 +115,7 @@ function GlossaryReviewers({
           {deletedReviewers.map((reviewer) =>
             getReviewer(reviewer, EntityChangeOperations.DELETED)
           )}
-        </>
+        </div>
       );
     }
   }
@@ -135,11 +125,11 @@ function GlossaryReviewers({
     !isUndefined(glossaryData.reviewers)
   ) {
     return (
-      <Space wrap data-testid="glossary-reviewer-name" size={6}>
+      <div className="d-flex items-center gap-1 flex-wrap">
         {glossaryData.reviewers.map((reviewer) =>
           getReviewer(reviewer, EntityChangeOperations.NORMAL)
         )}
-      </Space>
+      </div>
     );
   }
 
