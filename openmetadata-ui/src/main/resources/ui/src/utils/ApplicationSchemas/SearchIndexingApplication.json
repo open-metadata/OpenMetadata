@@ -17,6 +17,7 @@
       "items": {
         "type": "string",
         "enum": [
+          "all",
           "table",
           "dashboard",
           "topic",
@@ -55,44 +56,7 @@
           "testCaseResolutionStatus"
         ]
       },
-      "default": [
-        "table",
-        "dashboard",
-        "topic",
-        "pipeline",
-        "searchIndex",
-        "user",
-        "team",
-        "glossary",
-        "glossaryTerm",
-        "mlmodel",
-        "tag",
-        "classification",
-        "query",
-        "container",
-        "database",
-        "databaseSchema",
-        "testCase",
-        "testSuite",
-        "chart",
-        "dashboardDataModel",
-        "databaseService",
-        "messagingService",
-        "dashboardService",
-        "pipelineService",
-        "mlmodelService",
-        "storageService",
-        "metadataService",
-        "searchService",
-        "entityReportData",
-        "webAnalyticEntityViewReportData",
-        "webAnalyticUserActivityReportData",
-        "domain",
-        "storedProcedure",
-        "dataProduct",
-        "ingestionPipeline",
-        "testCaseResolutionStatus"
-      ],
+      "default": ["all"],
       "uniqueItems": true
     },
     "recreateIndex": {

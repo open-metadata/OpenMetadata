@@ -72,7 +72,11 @@ describe('Search Index Application', { tags: 'Settings' }, () => {
     cy.get('[data-testid="configuration"]').click();
 
     cy.get('#root\\/batchSize').type('0');
-    cy.get('form [title="Chart"] [role="img"]').click();
+
+    cy.get('form .ant-select-multiple').click();
+    cy.get('[data-testid="select-option-table"]').click();
+    cy.clickOutside();
+
     cy.get(
       '[data-testid="select-widget"] > .ant-select-selector > .ant-select-selection-item'
     ).click();
