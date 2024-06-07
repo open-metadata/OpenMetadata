@@ -66,11 +66,10 @@ class CliBase(ABC):
     def build_config_file(
         self, test_type: E2EType = E2EType.INGEST, extra_args: dict = None
     ) -> None:
-        with open(self.config_file_path, encoding=UTF_8) as config_file:
-            config_yaml = yaml.safe_load(config_file)
-            config_yaml = self.build_yaml(config_yaml, test_type, extra_args)
-            with open(self.test_file_path, "w", encoding=UTF_8) as test_file:
-                yaml.dump(config_yaml, test_file)
+        config_yaml = load_config_file(Path(self.config_file_path))
+        config_yaml = self.build_yaml(config_yaml, test_type, extra_args)
+        with open(self.test_file_path, "w", encoding=UTF_8) as test_file:
+            yaml.dump(config_yaml, test_file)
 
     def retrieve_statuses(self, result):
         source_status: Status = self.extract_source_status(result)
