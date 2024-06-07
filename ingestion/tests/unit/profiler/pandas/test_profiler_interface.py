@@ -14,7 +14,7 @@ Test SQA Interface
 """
 
 import os
-from datetime import datetime, timezone
+from datetime import datetime
 from unittest import TestCase, mock
 from uuid import uuid4
 
@@ -35,6 +35,7 @@ from metadata.generated.schema.entity.data.table import (
 from metadata.generated.schema.entity.services.connections.database.datalakeConnection import (
     DatalakeConnection,
 )
+from metadata.generated.schema.type.basic import Timestamp
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.profiler.api.models import ThreadPoolMetrics
 from metadata.profiler.interface.pandas.profiler_interface import (
@@ -96,43 +97,43 @@ class PandasInterfaceTest(TestCase):
         fileFormat="csv",
         columns=[
             EntityColumn(
-                name=ColumnName(__root__="name"),
+                name=ColumnName("name"),
                 dataType=DataType.STRING,
             ),
             EntityColumn(
-                name=ColumnName(__root__="fullname"),
+                name=ColumnName("fullname"),
                 dataType=DataType.STRING,
             ),
             EntityColumn(
-                name=ColumnName(__root__="nickname"),
+                name=ColumnName("nickname"),
                 dataType=DataType.STRING,
             ),
             EntityColumn(
-                name=ColumnName(__root__="comments"),
+                name=ColumnName("comments"),
                 dataType=DataType.STRING,
             ),
             EntityColumn(
-                name=ColumnName(__root__="age"),
+                name=ColumnName("age"),
                 dataType=DataType.INT,
             ),
             EntityColumn(
-                name=ColumnName(__root__="dob"),
+                name=ColumnName("dob"),
                 dataType=DataType.DATETIME,
             ),
             EntityColumn(
-                name=ColumnName(__root__="tob"),
+                name=ColumnName("tob"),
                 dataType=DataType.DATE,
             ),
             EntityColumn(
-                name=ColumnName(__root__="doe"),
+                name=ColumnName("doe"),
                 dataType=DataType.DATE,
             ),
             EntityColumn(
-                name=ColumnName(__root__="json"),
+                name=ColumnName("json"),
                 dataType=DataType.JSON,
             ),
             EntityColumn(
-                name=ColumnName(__root__="array"),
+                name=ColumnName("array"),
                 dataType=DataType.ARRAY,
             ),
         ],
@@ -253,7 +254,7 @@ class PandasInterfaceTest(TestCase):
         table_profile = TableProfile(
             columnCount=profile_results["table"].get("columnCount"),
             rowCount=profile_results["table"].get(RowCount.name()),
-            timestamp=datetime.now(tz=timezone.utc).timestamp(),
+            timestamp=Timestamp(int(datetime.now().timestamp())),
         )
 
         profile_request = CreateTableProfileRequest(

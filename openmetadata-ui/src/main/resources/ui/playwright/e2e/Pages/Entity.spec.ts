@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { test } from '@playwright/test';
+import { ENTITIES_WITHOUT_FOLLOWING_BUTTON } from '../../constant/delete';
 import { ContainerClass } from '../../support/entity/ContainerClass';
 import { DashboardClass } from '../../support/entity/DashboardClass';
 import { DashboardDataModelClass } from '../../support/entity/DashboardDataModelClass';
@@ -18,23 +19,50 @@ import { EntityDataClass } from '../../support/entity/EntityDataClass';
 import { MlModelClass } from '../../support/entity/MlModelClass';
 import { PipelineClass } from '../../support/entity/PipelineClass';
 import { SearchIndexClass } from '../../support/entity/SearchIndexClass';
+import { DashboardServiceClass } from '../../support/entity/service/DashboardServiceClass';
+import { DatabaseServiceClass } from '../../support/entity/service/DatabaseServiceClass';
+import { MessagingServiceClass } from '../../support/entity/service/MessagingServiceClass';
+import { MlmodelServiceClass } from '../../support/entity/service/MlmodelServiceClass';
+import { PipelineServiceClass } from '../../support/entity/service/PipelineServiceClass';
+import { SearchIndexServiceClass } from '../../support/entity/service/SearchIndexServiceClass';
+import { StorageServiceClass } from '../../support/entity/service/StorageServiceClass';
+import { TableClass } from '../../support/entity/TableClass';
 import { TopicClass } from '../../support/entity/TopicClass';
-import { createNewPage, redirectToHomePage } from '../../utils/common';
+import {
+  createNewPage,
+  getAuthContext,
+  getToken,
+  redirectToHomePage,
+} from '../../utils/common';
 
 const entities = [
-  new DashboardClass(),
-  new PipelineClass(),
-  new TopicClass(),
-  new MlModelClass(),
-  new ContainerClass(),
-  new SearchIndexClass(),
-  new DashboardDataModelClass(),
+  DatabaseServiceClass,
+  DashboardServiceClass,
+  MessagingServiceClass,
+  MlmodelServiceClass,
+  PipelineServiceClass,
+  SearchIndexServiceClass,
+  StorageServiceClass,
+  TableClass,
+  DashboardClass,
+  PipelineClass,
+  TopicClass,
+  MlModelClass,
+  ContainerClass,
+  SearchIndexClass,
+  DashboardDataModelClass,
 ] as const;
 
 // use the admin user to login
 test.use({ storageState: 'playwright/.auth/admin.json' });
 
-entities.forEach((entity) => {
+entities.forEach((EntityClass) => {
+  const entity = new EntityClass();
+  const deleteEntity = new EntityClass();
+  const allowFollowUnfollowTest = !ENTITIES_WITHOUT_FOLLOWING_BUTTON.includes(
+    entity.endpoint
+  );
+
   test.describe(entity.getType(), () => {
     test.beforeAll('Setup pre-requests', async ({ browser }) => {
       const { apiContext, afterAction } = await createNewPage(browser);
@@ -89,14 +117,31 @@ entities.forEach((entity) => {
       );
     });
 
-    test(`UpVote & DownVote entity`, async ({ page }) => {
-      await entity.upVote(page);
-      await entity.downVote(page);
+    test(`Announcement create & delete`, async ({ page }) => {
+      await entity.announcement(
+        page,
+        entity.entityResponseData?.['fullyQualifiedName']
+      );
     });
 
-    test(`Follow & Un-follow entity`, async ({ page }) => {
-      const entityName = entity.entityResponseData?.['displayName'];
-      await entity.followUnfollowEntity(page, entityName);
+    test(`Inactive Announcement create & delete`, async ({ page }) => {
+      await entity.inactiveAnnouncement(page);
+    });
+
+    if (allowFollowUnfollowTest) {
+      test(`UpVote & DownVote entity`, async ({ page }) => {
+        await entity.upVote(page);
+        await entity.downVote(page);
+      });
+
+      test(`Follow & Un-follow entity`, async ({ page }) => {
+        const entityName = entity.entityResponseData?.['displayName'];
+        await entity.followUnfollowEntity(page, entityName);
+      });
+    }
+
+    test(`Update displayName`, async ({ page }) => {
+      await entity.renameEntity(page, entity.entity.name);
     });
 
     test.afterAll('Cleanup', async ({ browser }) => {
@@ -104,6 +149,34 @@ entities.forEach((entity) => {
       await entity.delete(apiContext);
       await EntityDataClass.postRequisitesForTests(apiContext);
       await afterAction();
+    });
+  });
+
+  test(`Delete ${deleteEntity.getType()}`, async ({ page }) => {
+    await redirectToHomePage(page);
+    // get the token from localStorage
+    const token = await getToken(page);
+
+    // create a new context with the token
+    const apiContext = await getAuthContext(token);
+    await deleteEntity.create(apiContext);
+    await redirectToHomePage(page);
+    await deleteEntity.visitEntityPage(page);
+
+    await test.step('Soft delete', async () => {
+      await deleteEntity.softDeleteEntity(
+        page,
+        deleteEntity.entity.name,
+        deleteEntity.entityResponseData?.['displayName']
+      );
+    });
+
+    await test.step('Hard delete', async () => {
+      await deleteEntity.hardDeleteEntity(
+        page,
+        deleteEntity.entity.name,
+        deleteEntity.entityResponseData?.['displayName']
+      );
     });
   });
 });

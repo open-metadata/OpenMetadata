@@ -11,28 +11,31 @@
  *  limitations under the License.
  */
 import { Page } from '@playwright/test';
-import {
-  assignDomain,
-  removeDomain,
-  updateDomain,
-} from '../../utils/domainUtils';
+import { assignDomain, removeDomain, updateDomain } from '../../utils/domain';
 import {
   addOwner,
   assignGlossaryTerm,
   assignTag,
   assignTier,
+  createAnnouncement,
+  createInactiveAnnouncement,
+  deleteAnnouncement,
   downVote,
   followEntity,
+  hardDeleteEntity,
   removeGlossaryTerm,
   removeOwner,
   removeTag,
   removeTier,
+  replyAnnouncement,
+  softDeleteEntity,
   unFollowEntity,
   updateDescription,
+  updateDisplayNameForEntity,
   updateOwner,
   upVote,
   validateFollowedEntityToWidget,
-} from '../../utils/entityUtils';
+} from '../../utils/entity';
 import { Domain } from '../domain/Domain';
 import { GlossaryTerm } from '../glossary/GlossaryTerm';
 import { EntityTypeEndpoint } from './Entity.interface';
@@ -131,5 +134,43 @@ export class EntityClass {
     await this.visitEntityPage(page);
     await unFollowEntity(page, this.endpoint);
     await validateFollowedEntityToWidget(page, entity, false);
+  }
+
+  async announcement(page: Page, entityFqn: string) {
+    await createAnnouncement(page, entityFqn, {
+      title: 'Playwright Test Announcement',
+      description: 'Playwright Test Announcement Description',
+    });
+    await replyAnnouncement(page);
+    await deleteAnnouncement(page);
+  }
+
+  async inactiveAnnouncement(page: Page) {
+    await createInactiveAnnouncement(page, {
+      title: 'Inactive Playwright announcement',
+      description: 'Inactive Playwright announcement description',
+    });
+    await deleteAnnouncement(page);
+  }
+
+  async renameEntity(page: Page, entityName: string) {
+    await updateDisplayNameForEntity(
+      page,
+      `Cypress ${entityName} updated`,
+      this.endpoint
+    );
+  }
+
+  async softDeleteEntity(page: Page, entityName: string, displayName?: string) {
+    await softDeleteEntity(
+      page,
+      entityName,
+      this.endpoint,
+      displayName ?? entityName
+    );
+  }
+
+  async hardDeleteEntity(page: Page, entityName: string, displayName?: string) {
+    await hardDeleteEntity(page, displayName ?? entityName, this.endpoint);
   }
 }

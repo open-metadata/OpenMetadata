@@ -38,7 +38,7 @@ class ColumnValueMeanToBeBetweenValidator(
             SQALikeColumn: column
         """
         return self.get_column_name(
-            self.test_case.entityLink.__root__,
+            self.test_case.entityLink.root,
             self.runner,
         )
 

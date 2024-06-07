@@ -37,8 +37,8 @@ class SaphanaSource(CommonDbSourceService):
     def create(
         cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None
     ):
-        config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
-        connection: SapHanaConnection = config.serviceConnection.__root__.config
+        config: WorkflowSource = WorkflowSource.model_validate(config_dict)
+        connection: SapHanaConnection = config.serviceConnection.root.config
         if not isinstance(connection, SapHanaConnection):
             raise InvalidSourceException(
                 f"Expected SapHanaConnection, but got {connection}"

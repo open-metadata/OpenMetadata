@@ -227,7 +227,7 @@ verify-full: The driver will negotiate an SSL connection, verify that the server
 
 {% codeBlock fileName="filename.yaml" %}
 
-```yaml
+```yaml {% isCodeBlock=true %}
 source:
   type: postgres
   serviceName: local_postgres

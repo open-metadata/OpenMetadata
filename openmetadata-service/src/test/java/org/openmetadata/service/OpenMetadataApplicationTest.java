@@ -50,7 +50,6 @@ import org.junit.jupiter.api.TestInstance;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration;
 import org.openmetadata.schema.type.IndexMappingLanguage;
-import org.openmetadata.service.fernet.Fernet;
 import org.openmetadata.service.jdbi3.locator.ConnectionAwareAnnotationSqlLocator;
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
 import org.openmetadata.service.resources.CollectionRegistry;
@@ -86,7 +85,6 @@ public abstract class OpenMetadataApplicationTest {
   protected static final MSTeamsCallbackResource teamsCallbackResource =
       new MSTeamsCallbackResource();
 
-  public static final String FERNET_KEY_1 = "ihZpp5gmmDvVsgoOG6OVivKWwC9vd5JQ";
   public static Jdbi jdbi;
   private static ElasticsearchContainer ELASTIC_SEARCH_CONTAINER;
 
@@ -106,8 +104,6 @@ public abstract class OpenMetadataApplicationTest {
     CollectionRegistry.addTestResource(webhookCallbackResource);
     CollectionRegistry.addTestResource(slackCallbackResource);
     CollectionRegistry.addTestResource(teamsCallbackResource);
-
-    Fernet.getInstance().setFernetKey(FERNET_KEY_1);
   }
 
   @BeforeAll

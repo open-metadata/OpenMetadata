@@ -139,7 +139,7 @@ Here are the step-by-step instructions for finding the account name for an Azure
 
 {% codeBlock fileName="filename.yaml" %}
 
-```yaml
+```yaml {% isCodeBlock=true %}
 source:
   type: ADLS
   serviceName: local_adls

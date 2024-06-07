@@ -31,8 +31,8 @@ logger = cli_logger()
 
 
 class LineageWorkflow(BaseModel):
-    filePath: Optional[str]
-    query: Optional[str]
+    filePath: Optional[str] = None
+    query: Optional[str] = None
     checkPatch: Optional[bool] = True
     serviceName: str
     workflowConfig: WorkflowConfig
@@ -49,7 +49,7 @@ def run_lineage(config_path: Path) -> None:
     config_dict = None
     try:
         config_dict = load_config_file(config_path)
-        workflow = LineageWorkflow.parse_obj(config_dict)
+        workflow = LineageWorkflow.model_validate(config_dict)
 
     except Exception as exc:
         logger.debug(traceback.format_exc())

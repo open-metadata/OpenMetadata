@@ -34,7 +34,7 @@ class User(DomoDatabaseBaseModel):
 class SchemaColumn(BaseModel):
     type: str
     name: str
-    description: Optional[str]
+    description: Optional[str] = None
 
 
 class Schema(BaseModel):
@@ -49,6 +49,6 @@ class Owner(DomoDatabaseBaseModel):
 class OutputDataset(DomoDatabaseBaseModel):
     rows: int
     columns: int
-    schemas: Optional[Schema] = Field(alias="schema")
+    schemas: Optional[Schema] = Field(None, alias="schema")
     owner: Owner
-    description: Optional[str]
+    description: Optional[str] = None
