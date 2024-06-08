@@ -93,7 +93,7 @@ base_requirements = {
     "chardet==4.0.0",  # Used in the profiler
     "cryptography>=42.0.0",
     "email-validator>=1.0.3",  # For the pydantic generated models for Email
-    "google-cloud-secret-manager",
+    "google-cloud-secret-manager==2.19.0",
     "google-crc32c",
     "importlib-metadata>=4.13.0",  # From airflow constraints
     "Jinja2>=2.11.3",
