@@ -43,16 +43,12 @@ export const LimitBanner = () => {
         <div className="p-l-sm">
           <p className="pricing-header">{bannerDetails?.header}</p>
           <p className="pricing-subheader">
-            {bannerDetails?.subheader}{' '}
-            {bannerDetails?.softLimitExceed && !bannerDetails.hardLimitExceed && (
-              <>
-                Check your <Link to="/usage">usage here</Link> or{' '}
-              </>
-            )}
-            <a href="/settings/billing/plans" target="_blank">
-              learn more
-            </a>{' '}
-            about pricing
+            {bannerDetails?.subheader}
+            <>
+              {' '}
+              Learn more about{' '}
+              <Link to="/settings/billing/plans">plans and pricing.</Link>
+            </>
           </p>
         </div>
       </div>

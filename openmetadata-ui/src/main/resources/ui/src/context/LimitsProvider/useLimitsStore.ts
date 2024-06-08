@@ -10,9 +10,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { capitalize, isNil } from 'lodash';
+import { isNil, startCase } from 'lodash';
 import { create } from 'zustand';
 import { getLimitByResource } from '../../rest/limitsAPI';
+
+const WARN_SUB_HEADER = "Check the usage of your plan's resource limits.";
+const ERROR_SUB_HEADER =
+  'You have used {{currentCount}} out of 5 of the Bots resource.';
 
 export interface ResourceLimit {
   featureLimitStatuses: Array<{
@@ -133,11 +137,14 @@ export const useLimitStore = create<{
         setBannerDetails({
           header: `You have reached ${
             hardLimitExceed ? '100%' : '75%'
-          } of ${plan} plan Limit in OpenMetadata. `,
+          } of your ${plan} Plan usage limit.`,
           type: hardLimitExceed ? 'danger' : 'warning',
-          subheader: `You have used ${currentCount} out of ${
-            limits.hardLimit
-          } limit for resource ${capitalize(resource)}.`,
+          subheader: hardLimitExceed
+            ? ERROR_SUB_HEADER.replace(
+                '{{currentCount}}',
+                currentCount + ''
+              ).replace('{{resource}}', startCase(resource))
+            : WARN_SUB_HEADER,
           softLimitExceed,
           hardLimitExceed,
         });
