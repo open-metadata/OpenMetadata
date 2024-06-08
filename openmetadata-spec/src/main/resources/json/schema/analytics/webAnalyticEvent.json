@@ -65,6 +65,10 @@
       "description": "Weather the event is enable (i.e. data is being collected)",
       "type": "boolean",
       "default": true
+    },
+    "domain" : {
+      "description": "Domain the table belongs to. When not set, the table inherits the domain from the database schema it belongs to.",
+      "$ref": "../type/entityReference.json"
     }
   },
   "required": ["eventType", "name"],

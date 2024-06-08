@@ -124,6 +124,10 @@
     "service": {
       "description": "Link to the service this query belongs to.",
       "$ref": "../../type/entityReference.json"
+    },
+    "domain" : {
+      "description": "Domain the table belongs to. When not set, the table inherits the domain from the database schema it belongs to.",
+      "$ref": "../../type/entityReference.json"
     }
   },
   "required": ["name", "query", "service"],

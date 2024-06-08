@@ -185,6 +185,10 @@
       "description": "When `true` indicates the test case supports row level passed/failed.",
       "type": "boolean",
       "default": false
+    },
+    "domain" : {
+      "description": "Domain the table belongs to. When not set, the table inherits the domain from the database schema it belongs to.",
+      "$ref": "../type/entityReference.json"
     }
   },
   "required": ["name", "description", "testPlatforms"],

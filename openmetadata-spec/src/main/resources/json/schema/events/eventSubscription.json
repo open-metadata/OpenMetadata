@@ -343,7 +343,10 @@
     "input": {
       "description": "Input for the Filters.",
       "$ref": "#/definitions/alertFilteringInput"
-
+    },
+    "domain" : {
+      "description": "Domain the table belongs to. When not set, the table inherits the domain from the database schema it belongs to.",
+      "$ref": "../type/entityReference.json"
     }
   },
   "required": ["id", "name", "alertType", "destinations"],

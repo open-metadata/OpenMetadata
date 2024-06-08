@@ -135,6 +135,10 @@
       "items": {
           "$ref": "#/definitions/testSuiteConnection/resultSummary"
       }
+    },
+    "domain" : {
+      "description": "Domain the table belongs to. When not set, the table inherits the domain from the database schema it belongs to.",
+      "$ref": "../type/entityReference.json"
     }
   },
   "required": ["name"],
