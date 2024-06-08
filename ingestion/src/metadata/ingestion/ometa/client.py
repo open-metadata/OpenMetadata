@@ -142,7 +142,7 @@ class REST:
             headers = {"Content-type": "application/json"}
         base_url = base_url or self._base_url
         version = api_version if api_version else self._api_version
-        url: URL = URL(base_url + version + path)
+        url: URL = URL(base_url + "/" + version + path)
         if (
             self.config.expires_in
             and datetime.datetime.utcnow().timestamp() >= self.config.expires_in
