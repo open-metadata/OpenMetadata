@@ -56,12 +56,12 @@ import { getSelectedValuesFromQuickFilter } from '../../utils/Explore.utils';
 import { getApplicationDetailsPath } from '../../utils/RouterUtils';
 import searchClassBase from '../../utils/SearchClassBase';
 import Loader from '../common/Loader/Loader';
+import ResizablePanels from '../common/ResizablePanels/ResizablePanels';
 import {
   ExploreProps,
   ExploreQuickFilterField,
   ExploreSearchIndex,
 } from '../Explore/ExplorePage.interface';
-import PageLayoutV1 from '../PageLayoutV1/PageLayoutV1';
 import SearchedData from '../SearchedData/SearchedData';
 import { SearchedDataProps } from '../SearchedData/SearchedData.interface';
 import './exploreV1.less';
@@ -417,13 +417,40 @@ const ExploreV1: React.FC<ExploreProps> = ({
                   </Row>
                 </Col>
               </Row>
-              <PageLayoutV1
-                className="p-0 explore-page-layout"
+              <ResizablePanels
+                applyDefaultStyle={false}
+                firstPanel={{
+                  children: (
+                    <Row className="p-t-md">
+                      <Col
+                        lg={{ offset: 2, span: 19 }}
+                        md={{ offset: 0, span: 24 }}>
+                        {!loading && !isElasticSearchIssue ? (
+                          <SearchedData
+                            isFilterSelected
+                            data={searchResults?.hits.hits ?? []}
+                            filter={parsedSearch}
+                            handleSummaryPanelDisplay={
+                              handleSummaryPanelDisplay
+                            }
+                            isSummaryPanelVisible={showSummaryPanel}
+                            selectedEntityId={entityDetails?.id || ''}
+                            totalValue={searchResults?.hits.total.value ?? 0}
+                            onPaginationChange={onChangePage}
+                          />
+                        ) : (
+                          <></>
+                        )}
+                        {loading ? <Loader /> : <></>}
+                      </Col>
+                    </Row>
+                  ),
+                  minWidth: 600,
+                  flex: 0.65,
+                }}
                 pageTitle={t('label.explore')}
-                rightPanel={
-                  showSummaryPanel &&
-                  entityDetails &&
-                  !loading && (
+                secondPanel={{
+                  children: showSummaryPanel && entityDetails && !loading && (
                     <EntitySummaryPanel
                       entityDetails={{ details: entityDetails }}
                       handleClosePanel={handleClosePanel}
@@ -439,31 +466,12 @@ const ExploreV1: React.FC<ExploreProps> = ({
                         ['description', 'displayName']
                       )}
                     />
-                  )
-                }
-                rightPanelWidth={400}>
-                <Row className="p-t-xs">
-                  <Col
-                    lg={{ offset: 2, span: 19 }}
-                    md={{ offset: 0, span: 24 }}>
-                    {!loading && !isElasticSearchIssue ? (
-                      <SearchedData
-                        isFilterSelected
-                        data={searchResults?.hits.hits ?? []}
-                        filter={parsedSearch}
-                        handleSummaryPanelDisplay={handleSummaryPanelDisplay}
-                        isSummaryPanelVisible={showSummaryPanel}
-                        selectedEntityId={entityDetails?.id || ''}
-                        totalValue={searchResults?.hits.total.value ?? 0}
-                        onPaginationChange={onChangePage}
-                      />
-                    ) : (
-                      <></>
-                    )}
-                    {loading ? <Loader /> : <></>}
-                  </Col>
-                </Row>
-              </PageLayoutV1>
+                  ),
+                  minWidth: 400,
+                  flex: 0.35,
+                  className: 'entity-summary-resizable-right-panel-container',
+                }}
+              />
             </Content>
           </Layout>
         )}
