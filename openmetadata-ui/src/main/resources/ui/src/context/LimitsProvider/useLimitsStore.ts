@@ -79,7 +79,8 @@ export const useLimitStore = create<{
   bannerDetails: BannerDetails | null;
   getResourceLimit: (
     resource: string,
-    showBanner?: boolean
+    showBanner?: boolean,
+    force?: boolean
   ) => Promise<ResourceLimit['featureLimitStatuses'][number]>;
   setConfig: (config: LimitConfig) => void;
   setResourceLimit: (
@@ -106,12 +107,16 @@ export const useLimitStore = create<{
   setBannerDetails: (details: BannerDetails | null) => {
     set({ bannerDetails: details });
   },
-  getResourceLimit: async (resource: string, showBanner = true) => {
+  getResourceLimit: async (
+    resource: string,
+    showBanner = true,
+    force = true
+  ) => {
     const { setResourceLimit, resourceLimit, setBannerDetails, config } = get();
 
     let rLimit = resourceLimit[resource];
 
-    if (isNil(rLimit)) {
+    if (isNil(rLimit) || force) {
       const limit = await getLimitByResource(resource);
 
       setResourceLimit(resource, limit.featureLimitStatuses[0]);
