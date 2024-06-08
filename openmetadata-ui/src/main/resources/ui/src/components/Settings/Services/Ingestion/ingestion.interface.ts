@@ -59,5 +59,6 @@ export interface IngestionProps {
 export interface SelectedRowDetails {
   id: string;
   name: string;
+  displayName?: string;
   state: string;
 }

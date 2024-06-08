@@ -55,6 +55,7 @@ import static org.openmetadata.service.util.TestUtils.UpdateType.REVERT;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import es.org.elasticsearch.action.get.GetResponse;
 import es.org.elasticsearch.action.search.SearchResponse;
 import es.org.elasticsearch.client.Request;
 import es.org.elasticsearch.client.Response;
@@ -87,6 +88,7 @@ import java.util.Random;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.BiConsumer;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
@@ -281,6 +283,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   public static Role DATA_STEWARD_ROLE;
   public static EntityReference DATA_STEWARD_ROLE_REF;
   public static User DATA_CONSUMER;
+  public static EntityReference DATA_CONSUMER_REF;
   public static Role DATA_CONSUMER_ROLE;
   public static EntityReference DATA_CONSUMER_ROLE_REF;
   public static Role ROLE1;
@@ -773,7 +776,6 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
       }
       queryParams.put("include", include.value());
 
-      waitForEsAsyncOp();
       ResultList<T> allEntities = listEntitiesFromSearch(queryParams, 1000, 0, ADMIN_AUTH_HEADERS);
       int totalRecords = allEntities.getData().size();
       printEntities(allEntities);
@@ -1019,7 +1021,15 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     K createWithNullDescription = createRequest(test, 1).withDescription(null);
     T entityWithNullDescription = createEntity(createWithNullDescription, ADMIN_AUTH_HEADERS);
 
-    // Search for entities without description
+    // Check if the descriptionStatus is set to INCOMPLETE
+    Map<String, Object> sourceAsMap =
+        waitForSyncAndGetFromSearchIndex(
+            entityWithNullDescription.getUpdatedAt(),
+            entityWithNullDescription.getId(),
+            entityType);
+    assertEquals("INCOMPLETE", sourceAsMap.get("descriptionStatus"));
+
+    // Try to search entity with INCOMPLETE description
     RestClient searchClient = getSearchClient();
     IndexMapping index = Entity.getSearchRepository().getIndexMapping(entityType);
     Response response;
@@ -1028,7 +1038,6 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
         "{\"size\": 100,\"query\":{\"bool\":{\"must\":[{\"term\":{\"descriptionStatus\":\"INCOMPLETE\"}}]}}}";
     request.setJsonEntity(query);
     try {
-      waitForEsAsyncOp(1000);
       response = searchClient.performRequest(request);
     } finally {
       searchClient.close();
@@ -1073,12 +1082,8 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     String query =
         "{\"size\": 100,\"query\":{\"bool\":{\"must\":[{\"term\":{\"descriptionStatus\":\"INCOMPLETE\"}}]}}}";
     request.setJsonEntity(query);
-    try {
-      waitForEsAsyncOp(1000);
-      response = searchClient.performRequest(request);
-    } finally {
-      searchClient.close();
-    }
+    response = searchClient.performRequest(request);
+    searchClient.close();
 
     String jsonString = EntityUtils.toString(response.getEntity());
     HashMap<String, Object> map =
@@ -2126,7 +2131,6 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     EntityReference entityReference = getEntityReference(entity);
     IndexMapping indexMapping =
         Entity.getSearchRepository().getIndexMapping(entityReference.getType());
-    waitForEsAsyncOp();
     SearchResponse response =
         getResponseFormSearch(
             indexMapping.getIndexName(Entity.getSearchRepository().getClusterAlias()));
@@ -2149,7 +2153,6 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     EntityReference entityReference = getEntityReference(entity);
     IndexMapping indexMapping =
         Entity.getSearchRepository().getIndexMapping(entityReference.getType());
-    waitForEsAsyncOp();
     SearchResponse response =
         getResponseFormSearch(
             indexMapping.getIndexName(Entity.getSearchRepository().getClusterAlias()));
@@ -2167,7 +2170,6 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     TestUtils.delete(target, entityClass, ADMIN_AUTH_HEADERS);
     // search again in search after deleting
 
-    waitForEsAsyncOp(1000);
     response =
         getResponseFormSearch(
             indexMapping.getIndexName(Entity.getSearchRepository().getClusterAlias()));
@@ -2186,25 +2188,16 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     Assumptions.assumeTrue(supportsSearchIndex);
     T entity = createEntity(createRequest(test), ADMIN_AUTH_HEADERS);
     EntityReference entityReference = getEntityReference(entity);
-    IndexMapping indexMapping =
-        Entity.getSearchRepository().getIndexMapping(entityReference.getType());
     String desc = "";
     String original = JsonUtils.pojoToJson(entity);
     entity.setDescription("update description");
     entity = patchEntity(entity.getId(), original, entity, ADMIN_AUTH_HEADERS);
-    waitForEsAsyncOp();
-    SearchResponse response =
-        getResponseFormSearch(
-            indexMapping.getIndexName(Entity.getSearchRepository().getClusterAlias()));
-    SearchHit[] hits = response.getHits().getHits();
-    for (SearchHit hit : hits) {
-      Map<String, Object> sourceAsMap = hit.getSourceAsMap();
-      if (sourceAsMap.get("id").toString().equals(entity.getId().toString())) {
-        desc = sourceAsMap.get("description").toString();
-        break;
-      }
-    }
     // check if description is updated in search as well
+    Map<String, Object> sourceAsMap =
+        waitForSyncAndGetFromSearchIndex(
+            entity.getUpdatedAt(), entity.getId(), entityReference.getType());
+    desc = sourceAsMap.get("description").toString();
+
     assertEquals(entity.getDescription(), desc);
   }
 
@@ -2223,56 +2216,70 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     TagLabel tagLabel = EntityUtil.toTagLabel(tag);
     entity.setTags(new ArrayList<>());
     entity.getTags().add(tagLabel);
-    List<String> fqnList = new ArrayList<>();
     // add tags to entity
     entity = patchEntity(entity.getId(), origJson, entity, ADMIN_AUTH_HEADERS);
-    waitForEsAsyncOp();
-    SearchResponse response =
-        getResponseFormSearch(
-            indexMapping.getIndexName(Entity.getSearchRepository().getClusterAlias()));
-    SearchHit[] hits = response.getHits().getHits();
-    for (SearchHit hit : hits) {
-      Map<String, Object> sourceAsMap = hit.getSourceAsMap();
-      if (sourceAsMap.get("id").toString().equals(entity.getId().toString())) {
-        @SuppressWarnings("unchecked")
-        List<Map<String, String>> listTags = (List<Map<String, String>>) sourceAsMap.get("tags");
-        listTags.forEach(tempMap -> fqnList.add(tempMap.get("tagFQN")));
-        break;
-      }
-    }
-    // check if the added tag if also added in the entity in search
+
+    // Add retry logic to handle the eventual inconsistency state of the search index as it uses
+    // async client.
+    Map<String, Object> sourceAsMap =
+        waitForSyncAndGetFromSearchIndex(
+            entity.getUpdatedAt(), entity.getId(), entityReference.getType());
+    List<String> fqnList =
+        ((List<Map<String, String>>) sourceAsMap.get("tags"))
+            .stream().map(tempMap -> tempMap.get("tagFQN")).toList();
     assertTrue(fqnList.contains(tagLabel.getTagFQN()));
+
     // delete the tag
     tagResourceTest.deleteEntity(tag.getId(), false, true, ADMIN_AUTH_HEADERS);
 
-    T finalEntity = entity;
-    TestUtils.assertEventually(
-        test.getDisplayName(),
-        () -> {
-          fqnList.clear();
-          SearchResponse afterDeleteResponse;
-          try {
-            afterDeleteResponse =
-                getResponseFormSearch(
-                    indexMapping.getIndexName(Entity.getSearchRepository().getClusterAlias()));
-          } catch (HttpResponseException e) {
-            throw new RuntimeException(e);
-          }
+    Map<String, Object> sourceAsMapAfterDelete =
+        waitForSyncAndGetFromSearchIndex(
+            entity.getUpdatedAt(), entity.getId(), entityReference.getType());
+    List<String> fqnListAfterDelete =
+        ((List<Map<String, String>>) sourceAsMapAfterDelete.get("tags"))
+            .stream().map(tempMap -> tempMap.get("tagFQN")).toList();
+    // check if the added tag if also added in the entity in search
+    assertFalse(fqnListAfterDelete.contains(tagLabel.getTagFQN()));
+  }
 
-          SearchHit[] hitsAfterDelete = afterDeleteResponse.getHits().getHits();
-          for (SearchHit hit : hitsAfterDelete) {
-            Map<String, Object> sourceAsMap = hit.getSourceAsMap();
-            if (sourceAsMap.get("id").toString().equals(finalEntity.getId().toString())) {
-              @SuppressWarnings("unchecked")
-              List<Map<String, String>> listTags =
-                  (List<Map<String, String>>) sourceAsMap.get("tags");
-              listTags.forEach(tempMap -> fqnList.add(tempMap.get("tagFQN")));
-              break;
-            }
-          }
-          // check if the relationships of tag are also deleted in search
-          assertFalse(fqnList.contains(tagLabel.getTagFQN()));
-        });
+  public static Map<String, Object> waitForSyncAndGetFromSearchIndex(
+      Long entityDbLastUpdate, UUID entityId, String entityType) {
+    AtomicReference<Map<String, Object>> responseMap = new AtomicReference<>();
+    Awaitility.await("Wait for Indexes to be updated for the Entity")
+        .ignoreExceptions()
+        .pollInterval(Duration.ofMillis(2000L))
+        .atMost(Duration.ofMillis(120 * 1000L)) // 60 iterations for 120 seconds
+        .until(
+            () -> {
+              responseMap.set(getEntityDocumentFromSearch(entityId, entityType));
+              Object esLastUpdateAt = responseMap.get().get("updatedAt");
+              long esLastUpdate = Long.parseLong(esLastUpdateAt.toString());
+              return esLastUpdate >= entityDbLastUpdate;
+            });
+    return responseMap.get();
+  }
+
+  public static Map<String, Object> getEntityDocumentFromSearch(UUID entityId, String entityType)
+      throws HttpResponseException {
+    IndexMapping indexMapping = Entity.getSearchRepository().getIndexMapping(entityType);
+    WebTarget target =
+        getResource(
+            String.format(
+                "search/get/%s/doc/%s",
+                indexMapping.getIndexName(Entity.getSearchRepository().getClusterAlias()),
+                entityId.toString()));
+    String result = TestUtils.get(target, String.class, ADMIN_AUTH_HEADERS);
+    GetResponse response = null;
+    try {
+      NamedXContentRegistry registry = new NamedXContentRegistry(getDefaultNamedXContents());
+      XContentParser parser =
+          JsonXContent.jsonXContent.createParser(
+              registry, DeprecationHandler.IGNORE_DEPRECATIONS, result);
+      response = GetResponse.fromXContent(parser);
+    } catch (Exception e) {
+      System.out.println("exception " + e);
+    }
+    return response.getSourceAsMap();
   }
 
   @Test
@@ -2357,13 +2364,31 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     return response;
   }
 
-  public static String getResponseFormSearchWithHierarchy(String indexName)
+  private static GetResponse getEntityFromSearchWithId(String indexName, UUID entityId)
+      throws HttpResponseException {
+    WebTarget target =
+        getResource(String.format("search/get/%s/doc/%s", indexName, entityId.toString()));
+    String result = TestUtils.get(target, String.class, ADMIN_AUTH_HEADERS);
+    GetResponse response = null;
+    try {
+      NamedXContentRegistry registry = new NamedXContentRegistry(getDefaultNamedXContents());
+      XContentParser parser =
+          JsonXContent.jsonXContent.createParser(
+              registry, DeprecationHandler.IGNORE_DEPRECATIONS, result);
+      response = GetResponse.fromXContent(parser);
+    } catch (Exception e) {
+      System.out.println("exception " + e);
+    }
+    return response;
+  }
+
+  public static String getResponseFormSearchWithHierarchy(String indexName, String query)
       throws HttpResponseException {
     WebTarget target =
         getResource(
             String.format(
-                "search/query?q=&index=%s&from=0&deleted=false&size=100&getHierarchy=true",
-                indexName));
+                "search/query?q=%s&index=%s&from=0&deleted=false&size=100&getHierarchy=true",
+                query, indexName));
     return TestUtils.get(target, String.class, ADMIN_AUTH_HEADERS);
   }
 
@@ -2509,6 +2534,20 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   public final T patchEntity(UUID id, JsonPatch patch, Map<String, String> authHeaders)
       throws HttpResponseException {
     return TestUtils.patch(getResource(id), patch, entityClass, authHeaders);
+  }
+
+  public final T patchEntityUsingFqn(
+      String fqn, String originalJson, T updated, Map<String, String> authHeaders)
+      throws HttpResponseException {
+    updated.setOwner(reduceEntityReference(updated.getOwner()));
+    String updatedEntityJson = JsonUtils.pojoToJson(updated);
+    JsonPatch patch = JsonUtils.getJsonPatch(originalJson, updatedEntityJson);
+    return patchEntityUsingFqn(fqn, patch, authHeaders);
+  }
+
+  public final T patchEntityUsingFqn(String fqn, JsonPatch patch, Map<String, String> authHeaders)
+      throws HttpResponseException {
+    return TestUtils.patch(getResourceByName(fqn), patch, entityClass, authHeaders);
   }
 
   public final T deleteAndCheckEntity(T entity, Map<String, String> authHeaders)
@@ -2746,6 +2785,46 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
 
     // Validate information returned in patch response has the updates
     T returned = patchEntity(updated.getId(), originalJson, updated, authHeaders);
+
+    validateCommonEntityFields(updated, returned, updatedBy);
+    compareEntities(updated, returned, authHeaders);
+    validateChangeDescription(returned, updateType, expectedChange);
+    validateEntityHistory(returned.getId(), updateType, expectedChange, authHeaders);
+    validateLatestVersion(returned, updateType, expectedChange, authHeaders);
+
+    // GET the entity and Validate information returned
+    T getEntity = getEntity(returned.getId(), authHeaders);
+    validateCommonEntityFields(updated, returned, updatedBy);
+    compareEntities(updated, getEntity, authHeaders);
+    validateChangeDescription(getEntity, updateType, expectedChange);
+
+    // Check if the entity change events are record
+    if (listOf(CREATED, MINOR_UPDATE, MAJOR_UPDATE).contains(updateType)) {
+      EventType expectedEventType =
+          updateType == CREATED ? EventType.ENTITY_CREATED : EventType.ENTITY_UPDATED;
+      validateChangeEvents(
+          returned, returned.getUpdatedAt(), expectedEventType, expectedChange, authHeaders);
+    }
+    return returned;
+  }
+
+  /**
+   * Helper function to generate JSON PATCH, submit PATCH API using fully qualified name and validate response.
+   */
+  protected final T patchEntityUsingFqnAndCheck(
+      T updated,
+      String originalJson,
+      Map<String, String> authHeaders,
+      UpdateType updateType,
+      ChangeDescription expectedChange)
+      throws IOException {
+
+    String updatedBy =
+        updateType == NO_CHANGE ? updated.getUpdatedBy() : getPrincipalName(authHeaders);
+
+    // Validate information returned in patch response has the updates
+    T returned =
+        patchEntityUsingFqn(updated.getFullyQualifiedName(), originalJson, updated, authHeaders);
 
     validateCommonEntityFields(updated, returned, updatedBy);
     compareEntities(updated, returned, authHeaders);

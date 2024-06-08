@@ -9,18 +9,16 @@ import java.util.Map;
 import org.openmetadata.schema.entity.data.Query;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.search.ParseTags;
-import org.openmetadata.service.search.SearchIndexUtils;
 import org.openmetadata.service.search.models.SearchSuggest;
-import org.openmetadata.service.util.JsonUtils;
 
 public class QueryIndex implements SearchIndex {
-  final List<String> excludeTopicFields = List.of("changeDescription");
   final Query query;
 
   public QueryIndex(Query query) {
     this.query = query;
   }
 
+  @Override
   public List<SearchSuggest> getSuggest() {
     List<SearchSuggest> suggest = new ArrayList<>();
     if (query.getDisplayName() != null) {
@@ -29,9 +27,12 @@ public class QueryIndex implements SearchIndex {
     return suggest;
   }
 
-  public Map<String, Object> buildESDoc() {
-    Map<String, Object> doc = JsonUtils.getMap(query);
-    SearchIndexUtils.removeNonIndexableFields(doc, excludeTopicFields);
+  @Override
+  public Object getEntity() {
+    return query;
+  }
+
+  public Map<String, Object> buildSearchIndexDocInternal(Map<String, Object> doc) {
     ParseTags parseTags = new ParseTags(Entity.getEntityTags(Entity.QUERY, query));
     Map<String, Object> commonAttributes = getCommonAttributesMap(query, Entity.QUERY);
     doc.putAll(commonAttributes);

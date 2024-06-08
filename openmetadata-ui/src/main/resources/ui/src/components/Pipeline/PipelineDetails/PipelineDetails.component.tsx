@@ -225,7 +225,7 @@ const PipelineDetails = ({
     async (newOwner?: Pipeline['owner']) => {
       const updatedPipelineDetails = {
         ...pipelineDetails,
-        owner: newOwner ? { ...owner, ...newOwner } : undefined,
+        owner: newOwner,
       };
       await settingsUpdateHandler(updatedPipelineDetails);
     },
@@ -625,6 +625,7 @@ const PipelineDetails = ({
                   {activeTab === PIPELINE_TASK_TABS.LIST_VIEW ? (
                     <Table
                       bordered
+                      className="align-table-filter-left"
                       columns={taskColumns}
                       data-testid="task-table"
                       dataSource={tasksInternal}

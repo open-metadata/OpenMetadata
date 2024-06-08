@@ -30,7 +30,8 @@ import {
 import { visitEntityDetailsPage } from '../../common/Utils/Entity';
 import { getToken } from '../../common/Utils/LocalStorage';
 import { addOwner } from '../../common/Utils/Owner';
-import { DATA_ASSETS, uuid } from '../../constants/constants';
+import { uuid } from '../../constants/constants';
+import { EntityType } from '../../constants/Entity.interface';
 import {
   DATABASE_SERVICE,
   USER_DETAILS,
@@ -41,7 +42,7 @@ import { SERVICE_CATEGORIES } from '../../constants/service.constants';
 const ENTITY_TABLE = {
   term: DATABASE_SERVICE.entity.name,
   displayName: DATABASE_SERVICE.entity.name,
-  entity: DATA_ASSETS.tables,
+  entity: EntityType.Table,
   serviceName: DATABASE_SERVICE.service.name,
   schemaName: DATABASE_SERVICE.schema.name,
   entityType: 'Table',
@@ -355,9 +356,17 @@ describe('Task flow should work', { tags: 'DataAssets' }, () => {
       entity: ENTITY_TABLE.entity,
     });
 
+    interceptURL(
+      'GET',
+      '/api/v1/feed?entityLink=*type=Conversation*',
+      'entityFeed'
+    );
+    interceptURL('GET', '/api/v1/feed?entityLink=*type=Task*', 'taskFeed');
     cy.get('[data-testid="activity_feed"]').click();
+    verifyResponseStatusCode('@entityFeed', 200);
 
     cy.get('[data-menu-id*="tasks"]').click();
+    verifyResponseStatusCode('@taskFeed', 200);
 
     // verify the task details
     verifyTaskDetails(/#(\d+) Request to update description for/, USER_NAME);

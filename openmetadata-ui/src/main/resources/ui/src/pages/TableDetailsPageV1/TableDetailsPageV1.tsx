@@ -14,7 +14,7 @@ import { Col, Row, Space, Tabs, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { compare } from 'fast-json-patch';
-import { isEmpty, isEqual, isUndefined } from 'lodash';
+import { get, isEmpty, isEqual, isUndefined } from 'lodash';
 import { EntityTags } from 'Models';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -64,9 +64,14 @@ import {
 } from '../../enums/entity.enum';
 import { CreateThread } from '../../generated/api/feed/createThread';
 import { Tag } from '../../generated/entity/classification/tag';
-import { JoinedWith, Table } from '../../generated/entity/data/table';
+import {
+  JoinedWith,
+  Table,
+  TableType,
+} from '../../generated/entity/data/table';
 import { Suggestion } from '../../generated/entity/feed/suggestion';
 import { ThreadType } from '../../generated/entity/feed/thread';
+import { TestSummary } from '../../generated/tests/testCase';
 import { TagLabel } from '../../generated/type/tagLabel';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
 import { useFqn } from '../../hooks/useFqn';
@@ -82,6 +87,7 @@ import {
   restoreTable,
   updateTablesVotes,
 } from '../../rest/tableAPI';
+import { getTestCaseExecutionSummary } from '../../rest/testAPI';
 import {
   addToRecentViewed,
   getFeedCounts,
@@ -126,10 +132,16 @@ const TableDetailsPageV1: React.FC = () => {
   const [tablePermissions, setTablePermissions] = useState<OperationPermission>(
     DEFAULT_ENTITY_PERMISSION
   );
+  const [testCaseSummary, setTestCaseSummary] = useState<TestSummary>();
 
-  const extraDropdownContent = entityUtilClassBase.getManageExtraOptions(
-    EntityType.TABLE,
-    datasetFQN
+  const extraDropdownContent = useMemo(
+    () =>
+      entityUtilClassBase.getManageExtraOptions(
+        EntityType.TABLE,
+        datasetFQN,
+        tablePermissions
+      ),
+    [tablePermissions, datasetFQN]
   );
 
   const { viewUsagePermission, viewTestCasePermission } = useMemo(
@@ -150,6 +162,11 @@ const TableDetailsPageV1: React.FC = () => {
         FQN_SEPARATOR_CHAR
       ),
     [datasetFQN]
+  );
+
+  const isViewTableType = useMemo(
+    () => tableDetails?.tableType === TableType.View,
+    [tableDetails?.tableType]
   );
 
   const fetchTableDetails = useCallback(async () => {
@@ -180,6 +197,21 @@ const TableDetailsPageV1: React.FC = () => {
       setLoading(false);
     }
   }, [tableFqn, viewUsagePermission]);
+
+  const fetchTestCaseSummary = async () => {
+    if (isUndefined(tableDetails?.testSuite?.id)) {
+      return;
+    }
+
+    try {
+      const response = await getTestCaseExecutionSummary(
+        tableDetails?.testSuite?.id
+      );
+      setTestCaseSummary(response);
+    } catch (error) {
+      setTestCaseSummary(undefined);
+    }
+  };
 
   const fetchQueryCount = async () => {
     if (!tableDetails?.id) {
@@ -374,12 +406,7 @@ const TableDetailsPageV1: React.FC = () => {
       }
       const updatedTableDetails = {
         ...tableDetails,
-        owner: newOwner
-          ? {
-              ...owner,
-              ...newOwner,
-            }
-          : undefined,
+        owner: newOwner,
       };
       await onTableUpdate(updatedTableDetails, 'owner');
     },
@@ -540,6 +567,7 @@ const TableDetailsPageV1: React.FC = () => {
               hasTagEditAccess={editTagsPermission}
               isReadOnly={deleted}
               table={tableDetails}
+              testCaseSummary={testCaseSummary}
               onThreadLinkSelect={onThreadLinkSelect}
               onUpdate={onColumnsUpdate}
             />
@@ -681,6 +709,7 @@ const TableDetailsPageV1: React.FC = () => {
             <TableProfiler
               permissions={tablePermissions}
               table={tableDetails}
+              testCaseSummary={testCaseSummary}
             />
           ),
       },
@@ -704,15 +733,14 @@ const TableDetailsPageV1: React.FC = () => {
           <TabsLabel id={EntityTabs.DBT} name={t('label.dbt-lowercase')} />
         ),
         isHidden: !(
-          tableDetails?.dataModel?.sql ?? tableDetails?.dataModel?.rawSql
+          tableDetails?.dataModel?.sql || tableDetails?.dataModel?.rawSql
         ),
         key: EntityTabs.DBT,
         children: (
           <QueryViewer
             sqlQuery={
-              tableDetails?.dataModel?.sql ??
-              tableDetails?.dataModel?.rawSql ??
-              ''
+              get(tableDetails, 'dataModel.sql', '') ||
+              get(tableDetails, 'dataModel.rawSql', '')
             }
             title={
               <Space className="p-y-xss">
@@ -730,13 +758,25 @@ const TableDetailsPageV1: React.FC = () => {
       {
         label: (
           <TabsLabel
-            id={EntityTabs.VIEW_DEFINITION}
-            name={t('label.view-definition')}
+            id={
+              isViewTableType
+                ? EntityTabs.VIEW_DEFINITION
+                : EntityTabs.SCHEMA_DEFINITION
+            }
+            name={
+              isViewTableType
+                ? t('label.view-definition')
+                : t('label.schema-definition')
+            }
           />
         ),
-        isHidden: isUndefined(tableDetails?.viewDefinition),
-        key: EntityTabs.VIEW_DEFINITION,
-        children: <QueryViewer sqlQuery={tableDetails?.viewDefinition ?? ''} />,
+        isHidden: isUndefined(tableDetails?.schemaDefinition),
+        key: isViewTableType
+          ? EntityTabs.VIEW_DEFINITION
+          : EntityTabs.SCHEMA_DEFINITION,
+        children: (
+          <QueryViewer sqlQuery={tableDetails?.schemaDefinition ?? ''} />
+        ),
       },
       {
         label: (
@@ -966,6 +1006,7 @@ const TableDetailsPageV1: React.FC = () => {
   useEffect(() => {
     if (tableDetails) {
       fetchQueryCount();
+      fetchTestCaseSummary();
     }
   }, [tableDetails?.fullyQualifiedName]);
 

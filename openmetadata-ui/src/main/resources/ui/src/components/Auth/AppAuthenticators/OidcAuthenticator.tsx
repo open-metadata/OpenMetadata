@@ -65,13 +65,13 @@ const OidcAuthenticator = forwardRef<AuthenticatorRef, Props>(
   ) => {
     const {
       isAuthenticated,
-      setIsAuthenticated,
-      isSigningIn,
-      setIsSigningIn,
+      isSigningUp,
+      setIsSigningUp,
       updateAxiosInterceptors,
       currentUser,
       newUser,
       setOidcToken,
+      isApplicationLoading,
     } = useApplicationStore();
     const history = useHistory();
     const userManager = useMemo(
@@ -80,7 +80,12 @@ const OidcAuthenticator = forwardRef<AuthenticatorRef, Props>(
     );
 
     const login = () => {
-      setIsSigningIn(true);
+      // Clear any stale state in the user manager before starting the sign in flow
+      // Remove the existing user configuration for the user who is different from the user trying to log in
+      userManager.clearStaleState();
+      // Remove the existing user configuration for the same user who is trying to log
+      userManager.removeUser();
+      setIsSigningUp(true);
     };
 
     const logout = () => {
@@ -113,16 +118,23 @@ const OidcAuthenticator = forwardRef<AuthenticatorRef, Props>(
     return (
       <>
         <Switch>
+          {/* render sign in page if user is not authenticated and not signing up
+           * else redirect to my data page as user is authenticated and not signing up
+           */}
           <Route exact path={ROUTES.HOME}>
-            {!isAuthenticated && !isSigningIn ? (
+            {!isAuthenticated && !isSigningUp ? (
               <Redirect to={ROUTES.SIGNIN} />
             ) : (
               <Redirect to={ROUTES.MY_DATA} />
             )}
           </Route>
-          {!isSigningIn ? (
+
+          {/* render the sign in route only if user is not signing up */}
+          {!isSigningUp ? (
             <Route exact component={SignInPage} path={ROUTES.SIGNIN} />
           ) : null}
+
+          {/* callback route to handle the auth flow after user has successfully provided their consent */}
           <Route
             path={ROUTES.CALLBACK}
             render={() => (
@@ -135,7 +147,6 @@ const OidcAuthenticator = forwardRef<AuthenticatorRef, Props>(
                   }}
                   onSuccess={(user) => {
                     setOidcToken(user.id_token);
-                    setIsAuthenticated(true);
                     onLoginSuccess(user as OidcUser);
                   }}
                 />
@@ -143,6 +154,7 @@ const OidcAuthenticator = forwardRef<AuthenticatorRef, Props>(
             )}
           />
 
+          {/* silent callback route to handle the silent auth flow */}
           <Route
             path={ROUTES.SILENT_CALLBACK}
             render={() => (
@@ -163,15 +175,21 @@ const OidcAuthenticator = forwardRef<AuthenticatorRef, Props>(
               </>
             )}
           />
+
+          {/* render the children only if user is authenticated */}
           {isAuthenticated ? (
             <Fragment>{children}</Fragment>
-          ) : !isSigningIn && isEmpty(currentUser) && isEmpty(newUser) ? (
+          ) : // render the sign in page if user is not authenticated and not signing up
+          !isSigningUp && isEmpty(currentUser) && isEmpty(newUser) ? (
             <Redirect to={ROUTES.SIGNIN} />
           ) : (
+            // render the authenticator component to handle the auth flow while user is signing in
             <AppWithAuth />
           )}
         </Switch>
-        {isSigningIn && <Loader fullScreen />}
+
+        {/* show loader when application is loading and user is signing up*/}
+        {isApplicationLoading && isSigningUp && <Loader fullScreen />}
       </>
     );
   }

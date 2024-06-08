@@ -50,6 +50,12 @@ Set the Include tags toggle to control whether to include tags as part of metada
 $$
 
 $$section
+### Include UnDeployed Pipelines $(id="includeUnDeployedPipelines")
+
+Set the 'Include UnDeployed Pipelines' toggle to control whether to include un-deployed pipelines as part of metadata ingestion.
+$$
+
+$$section
 ### Mark Deleted Pipelines $(id="markDeletedPipeline")
 
 Optional configuration to soft delete `pipelines` in OpenMetadata if the source `pipelines` are deleted. After deleting, all the associated entities like lineage, etc., with that `pipeline` will be deleted.

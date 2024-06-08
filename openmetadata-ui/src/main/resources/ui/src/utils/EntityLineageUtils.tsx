@@ -12,8 +12,8 @@
  */
 
 import { CheckOutlined, SearchOutlined } from '@ant-design/icons';
+import { graphlib, layout } from '@dagrejs/dagre';
 import { AxiosError } from 'axios';
-import dagre from 'dagre';
 import { t } from 'i18next';
 import {
   cloneDeep,
@@ -25,7 +25,7 @@ import {
   uniqWith,
   upperCase,
 } from 'lodash';
-import { LoadingState } from 'Models';
+import { EntityTags, LoadingState } from 'Models';
 import React, { MouseEvent as ReactMouseEvent } from 'react';
 import {
   Connection,
@@ -61,9 +61,11 @@ import { ExploreSearchIndex } from '../components/Explore/ExplorePage.interface'
 import {
   EdgeDetails,
   EntityLineageResponse,
+  LineageSourceType,
 } from '../components/Lineage/Lineage.interface';
 import { SourceType } from '../components/SearchedData/SearchedData.interface';
 import {
+  LINEAGE_EXPORT_HEADERS,
   NODE_HEIGHT,
   NODE_WIDTH,
   ZOOM_VALUE,
@@ -84,10 +86,12 @@ import { Column, Table } from '../generated/entity/data/table';
 import { Topic } from '../generated/entity/data/topic';
 import { ColumnLineage, LineageDetails } from '../generated/type/entityLineage';
 import { EntityReference } from '../generated/type/entityReference';
+import { TagSource } from '../generated/type/tagLabel';
 import { addLineage, deleteLineageEdge } from '../rest/miscAPI';
 import { getPartialNameFromTableFQN } from './CommonUtils';
 import { getEntityName } from './EntityUtils';
 import Fqn from './Fqn';
+import { jsonToCSV } from './StringsUtils';
 import { showErrorToast } from './ToastUtils';
 
 export const MAX_LINEAGE_LENGTH = 20;
@@ -142,7 +146,8 @@ export const getLayoutedElements = (
   direction = EntityLineageDirection.LEFT_RIGHT,
   isExpanded = true
 ) => {
-  const dagreGraph = new dagre.graphlib.Graph();
+  const Graph = graphlib.Graph;
+  const dagreGraph = new Graph();
   dagreGraph.setDefaultEdgeLabel(() => ({}));
   dagreGraph.setGraph({ rankdir: direction });
 
@@ -170,7 +175,7 @@ export const getLayoutedElements = (
   );
   edgesRequired.forEach((el) => dagreGraph.setEdge(el.source, el.target));
 
-  dagre.layout(dagreGraph);
+  layout(dagreGraph);
 
   const uNode = nodeData.map((el) => {
     const nodeWithPosition = dagreGraph.node(el.id);
@@ -466,20 +471,36 @@ export const removeLineageHandler = async (data: EdgeData): Promise<void> => {
   }
 };
 
-const calculateHeight = (children: Column[]) => {
+const calculateHeightAndFlattenNode = (
+  children: Column[]
+): { totalHeight: number; flattened: Column[] } => {
   let totalHeight = 0;
+  let flattened: Column[] = [];
+
   children.forEach((child) => {
     totalHeight += 27; // Add height for the current child
+    flattened.push(child);
+
     if (child.children && child.children.length > 0) {
       totalHeight += 8; // Add child padding
-      totalHeight += calculateHeight(child.children); // Recursively add the height of sub-children
+      const childResult = calculateHeightAndFlattenNode(child.children);
+      totalHeight += childResult.totalHeight;
+      flattened = flattened.concat(childResult.flattened);
     }
   });
 
-  return totalHeight;
+  return { totalHeight, flattened };
 };
 
 export const getEntityChildrenAndLabel = (node: SourceType) => {
+  if (!node) {
+    return {
+      children: [],
+      childrenHeading: '',
+      childrenHeight: 0,
+      childrenFlatten: [],
+    };
+  }
   const entityMappings: Record<
     string,
     { data: EntityChildren; label: string }
@@ -519,12 +540,15 @@ export const getEntityChildrenAndLabel = (node: SourceType) => {
     label: '',
   };
 
-  const childrenHeight = calculateHeight(data as Column[]);
+  const { totalHeight, flattened } = calculateHeightAndFlattenNode(
+    data as Column[]
+  );
 
   return {
     children: data,
     childrenHeading: label,
-    childrenHeight: childrenHeight,
+    childrenHeight: totalHeight,
+    childrenFlatten: flattened,
   };
 };
 
@@ -613,18 +637,22 @@ export const createNodes = (
     getEntityName(a).localeCompare(getEntityName(b))
   );
 
-  // Create a new dagre graph
-  const graph = new dagre.graphlib.Graph();
+  const GraphInstance = graphlib.Graph;
+  const graph = new GraphInstance();
 
   // Set an object for the graph label
-  graph.setGraph({ rankdir: EntityLineageDirection.LEFT_RIGHT });
+  graph.setGraph({
+    rankdir: EntityLineageDirection.LEFT_RIGHT,
+  });
 
   // Default to assigning a new object as a label for each new edge.
   graph.setDefaultEdgeLabel(() => ({}));
 
   // Add nodes to the graph
   uniqueNodesData.forEach((node) => {
-    graph.setNode(node.id, { width: NODE_WIDTH, height: NODE_HEIGHT });
+    const { childrenHeight } = getEntityChildrenAndLabel(node as SourceType);
+    const nodeHeight = childrenHeight + 220;
+    graph.setNode(node.id, { width: NODE_WIDTH, height: nodeHeight });
   });
 
   // Add edges to the graph (if you have edge information)
@@ -633,7 +661,7 @@ export const createNodes = (
   });
 
   // Perform the layout
-  dagre.layout(graph);
+  layout(graph);
 
   // Get the layout positions
   const layoutPositions = graph.nodes().map((nodeId) => graph.node(nodeId));
@@ -656,8 +684,8 @@ export const createNodes = (
         isRootNode: entityFqn === node.fullyQualifiedName,
       },
       position: {
-        x: position.x,
-        y: position.y,
+        x: position.x - NODE_WIDTH / 2,
+        y: position.y - position.height / 2,
       },
     };
   });
@@ -669,6 +697,7 @@ export const createEdges = (
   entityFqn: string
 ) => {
   const lineageEdgesV1: Edge[] = [];
+  const edgeIds = new Set<string>();
 
   edges.forEach((edge) => {
     const sourceType = nodes.find((n) => edge.fromEntity.id === n.id);
@@ -685,48 +714,56 @@ export const createEdges = (
           e.fromColumns.forEach((fromColumn) => {
             const encodedFromColumn = encodeLineageHandles(fromColumn);
             const encodedToColumn = encodeLineageHandles(toColumn);
+            const edgeId = `column-${encodedFromColumn}-${encodedToColumn}-edge-${edge.fromEntity.id}-${edge.toEntity.id}`;
 
-            lineageEdgesV1.push({
-              id: `column-${encodedFromColumn}-${encodedToColumn}-edge-${edge.fromEntity.id}-${edge.toEntity.id}`,
-              source: edge.fromEntity.id,
-              target: edge.toEntity.id,
-              targetHandle: encodedToColumn,
-              sourceHandle: encodedFromColumn,
-              style: { strokeWidth: '2px' },
-              type: 'buttonedge',
-              markerEnd: {
-                type: MarkerType.ArrowClosed,
-              },
-              data: {
-                edge,
-                isColumnLineage: true,
+            if (!edgeIds.has(edgeId)) {
+              edgeIds.add(edgeId);
+              lineageEdgesV1.push({
+                id: edgeId,
+                source: edge.fromEntity.id,
+                target: edge.toEntity.id,
                 targetHandle: encodedToColumn,
                 sourceHandle: encodedFromColumn,
-              },
-            });
+                style: { strokeWidth: '2px' },
+                type: 'buttonedge',
+                markerEnd: {
+                  type: MarkerType.ArrowClosed,
+                },
+                data: {
+                  edge,
+                  isColumnLineage: true,
+                  targetHandle: encodedToColumn,
+                  sourceHandle: encodedFromColumn,
+                },
+              });
+            }
           });
         }
       });
     }
 
-    lineageEdgesV1.push({
-      id: `edge-${edge.fromEntity.id}-${edge.toEntity.id}`,
-      source: `${edge.fromEntity.id}`,
-      target: `${edge.toEntity.id}`,
-      type: 'buttonedge',
-      animated: !isNil(edge.pipeline),
-      style: { strokeWidth: '2px' },
-      markerEnd: {
-        type: MarkerType.ArrowClosed,
-      },
-      data: {
-        edge,
-        isColumnLineage: false,
-        isPipelineRootNode: !isNil(edge.pipeline)
-          ? entityFqn === edge.pipeline?.fullyQualifiedName
-          : false,
-      },
-    });
+    const edgeId = `edge-${edge.fromEntity.id}-${edge.toEntity.id}`;
+    if (!edgeIds.has(edgeId)) {
+      edgeIds.add(edgeId);
+      lineageEdgesV1.push({
+        id: edgeId,
+        source: `${edge.fromEntity.id}`,
+        target: `${edge.toEntity.id}`,
+        type: 'buttonedge',
+        animated: !isNil(edge.pipeline),
+        style: { strokeWidth: '2px' },
+        markerEnd: {
+          type: MarkerType.ArrowClosed,
+        },
+        data: {
+          edge,
+          isColumnLineage: false,
+          isPipelineRootNode: !isNil(edge.pipeline)
+            ? entityFqn === edge.pipeline?.fullyQualifiedName
+            : false,
+        },
+      });
+    }
   });
 
   return lineageEdgesV1;
@@ -1049,9 +1086,11 @@ export const getUpstreamDownstreamNodesEdges = (
 export const getLineageChildParents = (
   obj: EntityLineageResponse,
   nodeSet: Set<string>,
+  parsedNodes: LineageSourceType[],
   id: string,
   isParent = false,
-  index = 0
+  index = 0, // page index
+  depth = 1 // depth of lineage
 ) => {
   const edges = isParent ? obj.upstreamEdges || [] : obj.downstreamEdges || [];
   const filtered = edges.filter((edge) => {
@@ -1067,12 +1106,19 @@ export const getLineageChildParents = (
 
     if (node && !nodeSet.has(node.id)) {
       nodeSet.add(node.id);
+      parsedNodes.push({
+        ...(node as SourceType),
+        direction: isParent ? 'upstream' : 'downstream',
+        depth: depth,
+      });
       const childNodes = getLineageChildParents(
         obj,
         nodeSet,
+        parsedNodes,
         node.id,
         isParent,
-        i
+        i,
+        depth + 1
       );
       const lineage: EntityReferenceChild = { ...node, pageIndex: index + i };
 
@@ -1093,9 +1139,60 @@ export const removeDuplicates = (arr: EdgeDetails[] = []) => {
   return uniqWith(arr, isEqual);
 };
 
+export const getExportEntity = (entity: LineageSourceType) => {
+  const {
+    name,
+    displayName = '',
+    fullyQualifiedName = '',
+    entityType = '',
+    direction = '',
+    owner,
+    domain,
+    tier,
+    tags = [],
+    depth = '',
+  } = entity;
+
+  const classificationTags = [];
+  const glossaryTerms = [];
+
+  for (const tag of tags) {
+    if (tag.source === TagSource.Classification) {
+      classificationTags.push(tag.tagFQN);
+    } else if (tag.source === TagSource.Glossary) {
+      glossaryTerms.push(tag.tagFQN);
+    }
+  }
+
+  return {
+    name,
+    displayName,
+    fullyQualifiedName,
+    entityType,
+    direction,
+    owner: getEntityName(owner),
+    domain: domain?.fullyQualifiedName ?? '',
+    tags: classificationTags.join(', '),
+    tier: (tier as EntityTags)?.tagFQN ?? '',
+    glossaryTerms: glossaryTerms.join(', '),
+    depth,
+  };
+};
+
+export const getExportData = (
+  allNodes: LineageSourceType[] | EntityReference[]
+) => {
+  const exportResultData = allNodes.map((child) =>
+    getExportEntity(child as LineageSourceType)
+  );
+
+  return jsonToCSV(exportResultData, LINEAGE_EXPORT_HEADERS);
+};
+
 export const getChildMap = (obj: EntityLineageResponse, decodedFqn: string) => {
   const nodeSet = new Set<string>();
   nodeSet.add(obj.entity.id);
+  const parsedNodes: LineageSourceType[] = [];
 
   const data = getUpstreamDownstreamNodesEdges(
     obj.edges ?? [],
@@ -1110,6 +1207,7 @@ export const getChildMap = (obj: EntityLineageResponse, decodedFqn: string) => {
   const childMap: EntityReferenceChild[] = getLineageChildParents(
     newData,
     nodeSet,
+    parsedNodes,
     obj.entity.id,
     false
   );
@@ -1117,6 +1215,7 @@ export const getChildMap = (obj: EntityLineageResponse, decodedFqn: string) => {
   const parentsMap: EntityReferenceChild[] = getLineageChildParents(
     newData,
     nodeSet,
+    parsedNodes,
     obj.entity.id,
     true
   );
@@ -1127,7 +1226,10 @@ export const getChildMap = (obj: EntityLineageResponse, decodedFqn: string) => {
     parents: parentsMap,
   };
 
-  return map;
+  return {
+    map,
+    exportResult: getExportData(parsedNodes) ?? '',
+  };
 };
 
 export const flattenObj = (

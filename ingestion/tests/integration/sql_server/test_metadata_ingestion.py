@@ -26,15 +26,8 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.workflow.metadata import MetadataWorkflow
 
-from ..integration_base import int_admin_ometa
-
 if not sys.version_info >= (3, 9):
     pytest.skip("requires python 3.9+", allow_module_level=True)
-
-
-@pytest.fixture(scope="module")
-def metadata():
-    return int_admin_ometa()
 
 
 @pytest.fixture(

@@ -1765,6 +1765,54 @@ public interface CollectionDAO {
     default String getNameHashColumn() {
       return "fqnHash";
     }
+
+    @Override
+    default int listCount(ListFilter filter) {
+      String condition = filter.getCondition();
+      String directChildrenOf = filter.getQueryParam("directChildrenOf");
+
+      if (!nullOrEmpty(directChildrenOf)) {
+        condition =
+            String.format(
+                " %s AND fqnHash = CONCAT('%s', '.', MD5(CASE WHEN name LIKE '%%.%%' THEN CONCAT('\"', name, '\"') ELSE name END))  ",
+                condition, FullyQualifiedName.buildHash(directChildrenOf));
+      }
+
+      return listCount(getTableName(), getNameHashColumn(), condition);
+    }
+
+    @Override
+    default List<String> listBefore(ListFilter filter, int limit, String before) {
+      String condition = filter.getCondition();
+      String directChildrenOf = filter.getQueryParam("directChildrenOf");
+
+      if (!nullOrEmpty(directChildrenOf)) {
+        condition =
+            String.format(
+                " %s AND fqnHash = CONCAT('%s', '.', MD5(CASE WHEN name LIKE '%%.%%' THEN CONCAT('\"', name, '\"') ELSE name END))  ",
+                condition, FullyQualifiedName.buildHash(directChildrenOf));
+      }
+
+      return listBefore(getTableName(), condition, limit, before);
+    }
+
+    @Override
+    default List<String> listAfter(ListFilter filter, int limit, String after) {
+      String condition = filter.getCondition();
+      String directChildrenOf = filter.getQueryParam("directChildrenOf");
+
+      if (!nullOrEmpty(directChildrenOf)) {
+        condition =
+            String.format(
+                " %s AND fqnHash = CONCAT('%s', '.', MD5(CASE WHEN name LIKE '%%.%%' THEN CONCAT('\"', name, '\"') ELSE name END))  ",
+                condition, FullyQualifiedName.buildHash(directChildrenOf));
+      }
+
+      return listAfter(getTableName(), condition, limit, after);
+    }
+
+    @SqlQuery("select fqnhash FROM glossary_term_entity where fqnhash LIKE CONCAT(:fqnhash, '.%')")
+    List<String> getNestedChildrenByFQN(@BindFQN("fqnhash") String fqnhash);
   }
 
   interface IngestionPipelineDAO extends EntityDAO<IngestionPipeline> {
@@ -2491,11 +2539,35 @@ public interface CollectionDAO {
       updateTagPrefixInternal(update);
     }
 
+    default void updateTargetFQNHashPrefix(
+        int source, String oldTargetFQNHashPrefix, String newTargetFQNHashPrefix) {
+      String update =
+          String.format(
+              "UPDATE tag_usage SET targetFQNHash = REPLACE(targetFQNHash, '%s.', '%s.') WHERE source = %s AND targetFQNHash LIKE '%s.%%'",
+              FullyQualifiedName.buildHash(oldTargetFQNHashPrefix),
+              FullyQualifiedName.buildHash(newTargetFQNHashPrefix),
+              source,
+              FullyQualifiedName.buildHash(oldTargetFQNHashPrefix));
+      updateTagPrefixInternal(update);
+    }
+
     default void rename(int source, String oldFQN, String newFQN) {
       renameInternal(source, oldFQN, newFQN, newFQN); // First rename tagFQN from oldFQN to newFQN
       updateTagPrefix(
           source, oldFQN,
           newFQN); // Rename all the tagFQN prefixes starting with the oldFQN to newFQN
+    }
+
+    default void renameByTargetFQNHash(
+        int source, String oldTargetFQNHash, String newTargetFQNHash) {
+      renameByTargetFQNHashInternal(
+          source,
+          (oldTargetFQNHash),
+          newTargetFQNHash); // First rename targetFQN from oldFQN to newFQN
+      updateTargetFQNHashPrefix(
+          source,
+          oldTargetFQNHash,
+          newTargetFQNHash); // Rename all the targetFQN prefixes starting with the oldFQN to newFQN
     }
 
     /** Rename the tagFQN */
@@ -2507,12 +2579,24 @@ public interface CollectionDAO {
         @Bind("newFQN") String newFQN,
         @BindFQN("newFQNHash") String newFQNHash);
 
+    /** Rename the targetFQN */
+    @SqlUpdate(
+        "Update tag_usage set targetFQNHash = :newTargetFQNHash WHERE source = :source AND targetFQNHash = :oldTargetFQNHash")
+    void renameByTargetFQNHashInternal(
+        @Bind("source") int source,
+        @BindFQN("oldTargetFQNHash") String oldTargetFQNHash,
+        @BindFQN("newTargetFQNHash") String newTargetFQNHash);
+
     @SqlUpdate("<update>")
     void updateTagPrefixInternal(@Define("update") String update);
 
     @SqlQuery("select targetFQNHash FROM tag_usage where tagFQNHash = :tagFQNHash")
     @RegisterRowMapper(TagLabelMapper.class)
     List<String> getTargetFQNHashForTag(@BindFQN("tagFQNHash") String tagFQNHash);
+
+    @SqlQuery("select targetFQNHash FROM tag_usage where tagFQNHash LIKE CONCAT(:tagFQNHash, '.%')")
+    @RegisterRowMapper(TagLabelMapper.class)
+    List<String> getTargetFQNHashForTagPrefix(@BindFQN("tagFQNHash") String tagFQNHash);
 
     class TagLabelMapper implements RowMapper<TagLabel> {
       @Override
@@ -3267,7 +3351,10 @@ public interface CollectionDAO {
         "SELECT json FROM change_event ce where ce.offset > :offset ORDER BY ce.eventTime ASC LIMIT :limit")
     List<String> list(@Bind("limit") long limit, @Bind("offset") long offset);
 
-    @SqlQuery("SELECT count(*) FROM change_event")
+    @ConnectionAwareSqlQuery(value = "SELECT MAX(offset) FROM change_event", connectionType = MYSQL)
+    @ConnectionAwareSqlQuery(
+        value = "SELECT MAX(\"offset\") FROM change_event",
+        connectionType = POSTGRES)
     long getLatestOffset();
   }
 
@@ -3683,8 +3770,24 @@ public interface CollectionDAO {
     List<String> listAppRunRecord(
         @Bind("appId") String appId, @Bind("limit") int limit, @Bind("offset") int offset);
 
+    @SqlQuery(
+        "SELECT json FROM apps_extension_time_series where appId = :appId AND timestamp > :startTime ORDER BY timestamp DESC LIMIT :limit OFFSET :offset")
+    List<String> listAppRunRecordAfterTime(
+        @Bind("appId") String appId,
+        @Bind("limit") int limit,
+        @Bind("offset") int offset,
+        @Bind("startTime") long startTime);
+
     default String getLatestAppRun(UUID appId) {
       List<String> result = listAppRunRecord(appId.toString(), 1, 0);
+      if (!nullOrEmpty(result)) {
+        return result.get(0);
+      }
+      return null;
+    }
+
+    default String getLatestAppRun(UUID appId, long startTime) {
+      List<String> result = listAppRunRecordAfterTime(appId.toString(), 1, 0, startTime);
       if (!nullOrEmpty(result)) {
         return result.get(0);
       }

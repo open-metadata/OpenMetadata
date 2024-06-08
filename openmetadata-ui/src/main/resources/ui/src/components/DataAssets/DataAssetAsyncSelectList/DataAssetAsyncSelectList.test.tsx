@@ -214,6 +214,30 @@ describe('DataAssetAsyncSelectList', () => {
     expect(screen.getByText(placeholder)).toBeInTheDocument();
   });
 
+  it("should render the default value when there's a default value and initial option", async () => {
+    const defaultValue = ['1'];
+    const initialOptions: DataAssetOption[] = [
+      {
+        displayName: 'Test',
+        label: 'Test',
+        reference: { id: '1', type: 'table' },
+        value: '1',
+      },
+    ];
+
+    await act(async () => {
+      render(
+        <DataAssetAsyncSelectList
+          defaultValue={defaultValue}
+          initialOptions={initialOptions}
+          mode="multiple"
+        />
+      );
+    });
+
+    expect(screen.getByText('Test')).toBeInTheDocument();
+  });
+
   it("should render the default value when there's a value and initial option", async () => {
     const defaultValue = ['1'];
     const initialOptions: DataAssetOption[] = [
@@ -236,5 +260,33 @@ describe('DataAssetAsyncSelectList', () => {
     });
 
     expect(screen.getByText('Test')).toBeInTheDocument();
+  });
+
+  it('searchQuery should be called with queryFilter', async () => {
+    const mockSearchQuery = searchQuery as jest.Mock;
+    mockSearchQuery.mockImplementationOnce((params) => {
+      expect(params).toEqual(
+        expect.objectContaining({
+          queryFilter: {
+            query: { bool: { must_not: [{ match: { isBot: true } }] } },
+          },
+        })
+      );
+
+      return Promise.resolve(mockUserData.data);
+    });
+
+    const { container } = render(
+      <DataAssetAsyncSelectList
+        mode="multiple"
+        searchIndex={SearchIndex.USER}
+      />
+    );
+
+    await act(async () => {
+      toggleOpen(container);
+    });
+
+    expect(searchQuery).toHaveBeenCalledTimes(1);
   });
 });

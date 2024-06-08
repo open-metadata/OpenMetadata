@@ -13,6 +13,7 @@
 
 import { t } from 'i18next';
 import { ElementLoadingState } from '../components/Entity/EntityLineage/EntityLineage.interface';
+import { EntityFields } from '../enums/AdvancedSearch.enum';
 import { EntityType } from '../enums/entity.enum';
 import { SearchIndex } from '../enums/search.enum';
 import { Source } from '../generated/type/entityLineage';
@@ -49,10 +50,6 @@ export const entityData = [
     label: t('label.container-plural'),
   },
   {
-    type: SearchIndex.PIPELINE,
-    label: t('label.pipeline-plural'),
-  },
-  {
     type: SearchIndex.SEARCH_INDEX,
     label: t('label.search-index-plural'),
   },
@@ -67,7 +64,6 @@ export const POSITION_Y = 60;
 
 export const NODE_WIDTH = 400;
 export const NODE_HEIGHT = 90;
-export const EXPANDED_NODE_HEIGHT = 350;
 
 export const ELEMENT_DELETE_STATE = {
   loading: false,
@@ -75,10 +71,10 @@ export const ELEMENT_DELETE_STATE = {
 };
 
 export const LINEAGE_DEFAULT_QUICK_FILTERS = [
-  'domain.displayName.keyword',
-  'owner.displayName.keyword',
-  'tags.tagFQN',
-  'columns.name.keyword',
+  EntityFields.DOMAIN,
+  EntityFields.OWNER,
+  EntityFields.TAG,
+  EntityFields.COLUMN,
 ];
 
 export const LINEAGE_SOURCE: { [key in Source]: string } = {
@@ -101,4 +97,18 @@ export const LINEAGE_COLUMN_NODE_SUPPORTED = [
   EntityType.CONTAINER,
   EntityType.TOPIC,
   EntityType.SEARCH_INDEX,
+];
+
+export const LINEAGE_EXPORT_HEADERS = [
+  { field: 'name', title: 'Name' },
+  { field: 'displayName', title: 'Display Name' },
+  { field: 'fullyQualifiedName', title: 'Fully Qualified Name' },
+  { field: 'entityType', title: 'Entity Type' },
+  { field: 'direction', title: 'Direction' },
+  { field: 'owner', title: 'Owner' },
+  { field: 'domain', title: 'Domain' },
+  { field: 'tags', title: 'Tags' },
+  { field: 'tier', title: 'Tier' },
+  { field: 'glossaryTerms', title: 'Glossary Terms' },
+  { field: 'depth', title: 'Level' },
 ];

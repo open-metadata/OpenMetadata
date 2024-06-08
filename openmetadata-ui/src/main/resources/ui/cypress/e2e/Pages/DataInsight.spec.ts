@@ -145,7 +145,7 @@ describe('Data Insight feature', { tags: 'Observability' }, () => {
 
     // Adding a manual wait to allow some time between deploying the pipeline and triggering it
     // eslint-disable-next-line cypress/no-unnecessary-waiting
-    cy.wait(1000);
+    cy.wait(2000);
     cy.get('[data-testid="run-now-button"]').click();
     verifyResponseStatusCode('@triggerPipeline', 200);
     cy.reload();
@@ -242,7 +242,7 @@ describe('Data Insight feature', { tags: 'Observability' }, () => {
     cy.sidebarClick(SidebarItem.DATA_INSIGHT);
     verifyResponseStatusCode('@dataInsightsChart', 200);
     cy.get('[data-menu-id*="kpi"]').click();
-    verifyResponseStatusCode('@dataInsightsChart', 200);
+    verifyResponseStatusCode('@getKpi', 200);
     cy.get('[data-testid="kpi-card"]').should('be.visible');
     cy.get(
       '[data-row-key="cypress-description-with-percentage-completed-description-fraction"]'
@@ -260,7 +260,7 @@ describe('Data Insight feature', { tags: 'Observability' }, () => {
     cy.sidebarClick(SidebarItem.DATA_INSIGHT);
     verifyResponseStatusCode('@dataInsightsChart', 200);
     cy.get('[data-menu-id*="kpi"]').click();
-    verifyResponseStatusCode('@dataInsightsChart', 200);
+    verifyResponseStatusCode('@getKpi', 200);
     KPI_DATA.map((data) => {
       cy.get(`[data-testid="edit-action-${data.displayName}"]`).click();
       verifyResponseStatusCode('@fetchKpiByName', 200);
@@ -283,7 +283,7 @@ describe('Data Insight feature', { tags: 'Observability' }, () => {
     cy.sidebarClick(SidebarItem.DATA_INSIGHT);
     verifyResponseStatusCode('@dataInsightsChart', 200);
     cy.get('[data-menu-id*="kpi"]').click();
-    verifyResponseStatusCode('@dataInsightsChart', 200);
+    verifyResponseStatusCode('@getKpi', 200);
     KPI_DATA.map((data) => {
       cy.get(`[data-testid="delete-action-${data.displayName}"]`).click();
       cy.get('[data-testid="confirmation-text-input"]').type('DELETE');

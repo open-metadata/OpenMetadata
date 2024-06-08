@@ -52,7 +52,24 @@ jest.mock('../../hooks/useApplicationStore', () => {
   };
 });
 
+jest.mock('../../components/common/Loader/Loader', () => {
+  return jest.fn().mockImplementation(() => <p>Loader</p>);
+});
+
 describe('PermissionProvider', () => {
+  it('Should render loader and call getLoggedInUserPermissions', async () => {
+    render(
+      <PermissionProvider>
+        <div data-testid="children">Children</div>
+      </PermissionProvider>
+    );
+
+    // Verify that the API methods were called
+    expect(getLoggedInUserPermissions).toHaveBeenCalled();
+
+    expect(screen.getByText('Loader')).toBeInTheDocument();
+  });
+
   it('Should render children and call apis when current user is present', async () => {
     render(
       <PermissionProvider>
@@ -82,5 +99,8 @@ describe('PermissionProvider', () => {
     expect(getEntityPermissionById).not.toHaveBeenCalled();
     expect(getEntityPermissionByFqn).not.toHaveBeenCalled();
     expect(getResourcePermission).not.toHaveBeenCalled();
+
+    expect(screen.queryByText('Loader')).not.toBeInTheDocument();
+    expect(await screen.findByTestId('children')).toBeInTheDocument();
   });
 });

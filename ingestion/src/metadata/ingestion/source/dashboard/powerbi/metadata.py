@@ -44,6 +44,7 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.ingestion.ometa.utils import model_str
 from metadata.ingestion.source.dashboard.dashboard_service import DashboardServiceSource
 from metadata.ingestion.source.dashboard.powerbi.models import (
     Dataset,
@@ -82,6 +83,7 @@ class PowerbiSource(DashboardServiceSource):
             100, self.service_connection.pagination_entity_per_page
         )
         self.workspace_data = []
+        self.datamodel_file_mappings = []
 
     def prepare(self):
         if self.service_connection.useAdminApis:
@@ -91,6 +93,10 @@ class PowerbiSource(DashboardServiceSource):
         if groups:
             self.workspace_data = self.get_filtered_workspaces(groups)
         return super().prepare()
+
+    def close(self):
+        self.metadata.close()
+        self.client.file_client.delete_tmp_files()
 
     def get_filtered_workspaces(self, groups: List[Group]) -> List[Group]:
         """
@@ -114,16 +120,16 @@ class PowerbiSource(DashboardServiceSource):
         """
         fetch all the group workspace ids
         """
-        groups = self.client.fetch_all_workspaces()
+        groups = self.client.api_client.fetch_all_workspaces()
         for group in groups:
             # add the dashboards to the groups
             group.dashboards.extend(
-                self.client.fetch_all_org_dashboards(group_id=group.id) or []
+                self.client.api_client.fetch_all_org_dashboards(group_id=group.id) or []
             )
             for dashboard in group.dashboards:
                 # add the tiles to the dashboards
                 dashboard.tiles.extend(
-                    self.client.fetch_all_org_tiles(
+                    self.client.api_client.fetch_all_org_tiles(
                         group_id=group.id, dashboard_id=dashboard.id
                     )
                     or []
@@ -131,17 +137,17 @@ class PowerbiSource(DashboardServiceSource):
 
             # add the reports to the groups
             group.reports.extend(
-                self.client.fetch_all_org_reports(group_id=group.id) or []
+                self.client.api_client.fetch_all_org_reports(group_id=group.id) or []
             )
 
             # add the datasets to the groups
             group.datasets.extend(
-                self.client.fetch_all_org_datasets(group_id=group.id) or []
+                self.client.api_client.fetch_all_org_datasets(group_id=group.id) or []
             )
             for dataset in group.datasets:
                 # add the tables to the datasets
                 dataset.tables.extend(
-                    self.client.fetch_dataset_tables(
+                    self.client.api_client.fetch_dataset_tables(
                         group_id=group.id, dataset_id=dataset.id
                     )
                     or []
@@ -153,7 +159,7 @@ class PowerbiSource(DashboardServiceSource):
         fetch all the workspace ids
         """
         groups = []
-        workspaces = self.client.fetch_all_workspaces()
+        workspaces = self.client.api_client.fetch_all_workspaces()
         if workspaces:
             workspace_id_list = [workspace.id for workspace in workspaces]
 
@@ -169,16 +175,16 @@ class PowerbiSource(DashboardServiceSource):
                 logger.info(
                     f"Scanning {count}/{len(workspace_paginated_list)} set of workspaces"
                 )
-                workspace_scan = self.client.initiate_workspace_scan(
+                workspace_scan = self.client.api_client.initiate_workspace_scan(
                     workspace_ids_chunk
                 )
 
                 # Keep polling the scan status endpoint to check if scan is succeeded
-                workspace_scan_status = self.client.wait_for_scan_complete(
+                workspace_scan_status = self.client.api_client.wait_for_scan_complete(
                     scan_id=workspace_scan.id
                 )
                 if workspace_scan_status:
-                    response = self.client.fetch_workspace_scan_result(
+                    response = self.client.api_client.fetch_workspace_scan_result(
                         scan_id=workspace_scan.id
                     )
                     groups.extend(
@@ -508,7 +514,7 @@ class PowerbiSource(DashboardServiceSource):
                 datamodel_fqn = fqn.build(
                     self.metadata,
                     entity_type=DashboardDataModel,
-                    service_name=self.config.serviceName,
+                    service_name=self.context.get().dashboard_service,
                     data_model_name=dataset.id,
                 )
                 datamodel_entity = self.metadata.get_by_name(
@@ -527,12 +533,128 @@ class PowerbiSource(DashboardServiceSource):
                         tables=dataset.tables,
                         datamodel_entity=datamodel_entity,
                     )
+
+                    # create the lineage between table and datamodel using the pbit files
+                    if self.client.file_client:
+                        yield from self.create_table_datamodel_lineage_from_files(
+                            db_service_name=db_service_name,
+                            datamodel_entity=datamodel_entity,
+                        )
         except Exception as exc:  # pylint: disable=broad-except
             yield Either(
                 left=StackTraceError(
                     name=f"{db_service_name} Report Lineage",
                     error=(
                         "Error to yield datamodel and report lineage details for DB "
+                        f"service name [{db_service_name}]: {exc}"
+                    ),
+                    stackTrace=traceback.format_exc(),
+                )
+            )
+
+    @staticmethod
+    def _get_data_model_column_fqn(
+        data_model_entity: DashboardDataModel, column: str
+    ) -> Optional[str]:
+        """
+        Get fqn of column if exist in data model entity or its child columns
+        """
+        try:
+            if not data_model_entity:
+                return None
+            for tbl_column in data_model_entity.columns:
+                for child_column in tbl_column.children or []:
+                    if column.lower() == child_column.name.__root__.lower():
+                        return child_column.fullyQualifiedName.__root__
+            return None
+        except Exception as exc:
+            logger.debug(f"Error to get data_model_column_fqn {exc}")
+            logger.debug(traceback.format_exc())
+
+    def _get_table_and_datamodel_lineage(
+        self,
+        db_service_name: str,
+        table: PowerBiTable,
+        datamodel_entity: DashboardDataModel,
+    ) -> Optional[Iterable[Either[AddLineageRequest]]]:
+        """
+        Method to create lineage between table and datamodels
+        """
+        try:
+            table_fqn = fqn.build(
+                self.metadata,
+                entity_type=Table,
+                service_name=db_service_name,
+                database_name=None,
+                schema_name=None,
+                table_name=table.name,
+            )
+            table_entity = self.metadata.get_by_name(
+                entity=Table,
+                fqn=table_fqn,
+            )
+
+            if table_entity and datamodel_entity:
+                columns_list = [column.name for column in table.columns]
+                column_lineage = self._get_column_lineage(
+                    table_entity, datamodel_entity, columns_list
+                )
+                return self._get_add_lineage_request(
+                    to_entity=datamodel_entity,
+                    from_entity=table_entity,
+                    column_lineage=column_lineage,
+                )
+        except Exception as exc:  # pylint: disable=broad-except
+            return Either(
+                left=StackTraceError(
+                    name="DataModel Lineage for pbit files",
+                    error=(
+                        "Error to yield datamodel lineage details using pbit files for"
+                        f"datamodel [{datamodel_entity.name}]: {exc}"
+                    ),
+                    stackTrace=traceback.format_exc(),
+                )
+            )
+        return None
+
+    def create_table_datamodel_lineage_from_files(
+        self,
+        db_service_name: str,
+        datamodel_entity: Optional[DashboardDataModel],
+    ) -> Iterable[Either[AddLineageRequest]]:
+        """
+        Method to create lineage between table and datamodels using pbit files
+        """
+        try:
+            # check if the datamodel_file_mappings is populated or not
+            # if not, then populate the datamodel_file_mappings and process the lineage
+            if not self.datamodel_file_mappings:
+                self.datamodel_file_mappings = (
+                    self.client.file_client.get_data_model_schema_mappings()
+                )
+
+            # search which file contains the datamodel and for the given datamodel_entity
+            datamodel_file_list = []
+            for datamodel_schema in self.datamodel_file_mappings or []:
+                for connections in (
+                    datamodel_schema.connectionFile.RemoteArtifacts or []
+                ):
+                    if connections.DatasetId == model_str(datamodel_entity.name):
+                        datamodel_file_list.append(datamodel_schema)
+
+            for datamodel_schema_file in datamodel_file_list:
+                for table in datamodel_schema_file.tables or []:
+                    yield self._get_table_and_datamodel_lineage(
+                        db_service_name=db_service_name,
+                        table=table,
+                        datamodel_entity=datamodel_entity,
+                    )
+        except Exception as exc:  # pylint: disable=broad-except
+            yield Either(
+                left=StackTraceError(
+                    name="DataModel Lineage",
+                    error=(
+                        "Error to yield datamodel lineage details for DB "
                         f"service name [{db_service_name}]: {exc}"
                     ),
                     stackTrace=traceback.format_exc(),
@@ -547,35 +669,11 @@ class PowerbiSource(DashboardServiceSource):
     ) -> Iterable[Either[CreateDashboardRequest]]:
         """Method to create lineage between table and datamodels"""
         for table in tables or []:
-            try:
-                table_fqn = fqn.build(
-                    self.metadata,
-                    entity_type=Table,
-                    service_name=db_service_name,
-                    database_name=None,
-                    schema_name=None,
-                    table_name=table.name,
-                )
-                table_entity = self.metadata.get_by_name(
-                    entity=Table,
-                    fqn=table_fqn,
-                )
-
-                if table_entity and datamodel_entity:
-                    yield self._get_add_lineage_request(
-                        to_entity=datamodel_entity, from_entity=table_entity
-                    )
-            except Exception as exc:  # pylint: disable=broad-except
-                yield Either(
-                    left=StackTraceError(
-                        name="DataModel Lineage",
-                        error=(
-                            "Error to yield datamodel lineage details for DB "
-                            f"service name [{db_service_name}]: {exc}"
-                        ),
-                        stackTrace=traceback.format_exc(),
-                    )
-                )
+            yield self._get_table_and_datamodel_lineage(
+                db_service_name=db_service_name,
+                table=table,
+                datamodel_entity=datamodel_entity,
+            )
 
     def yield_dashboard_lineage_details(
         self,

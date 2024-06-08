@@ -290,7 +290,7 @@ class OMetaTableMixin:
         Returns:
             Optional[Table]: OM table object
         """
-        return self._get(Table, f"{quote(model_str(fqn))}/tableProfile/latest")
+        return self._get(Table, f"{quote(model_str(fqn), safe='')}/tableProfile/latest")
 
     def create_or_update_custom_metric(
         self, custom_metric: CreateCustomMetricRequest, table_id: str

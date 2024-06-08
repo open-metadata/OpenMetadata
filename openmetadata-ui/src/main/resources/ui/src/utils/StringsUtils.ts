@@ -191,6 +191,7 @@ export const ES_RESERVED_CHARACTERS: Record<string, string> = {
   '+': '\\+',
   '-': '\\-',
   '=': '\\=',
+  '&': '\\&',
   '&&': '\\&&',
   '||': '\\||',
   '>': '\\>',
@@ -213,7 +214,7 @@ export const ES_RESERVED_CHARACTERS: Record<string, string> = {
 };
 
 export const escapeESReservedCharacters = (text?: string) => {
-  const reUnescapedHtml = /[+-=&&||><!(){}^"~*?:/]/g;
+  const reUnescapedHtml = /[\\[\]#+=&|><!(){}^"~*?:/-]/g;
   const reHasUnescapedHtml = RegExp(reUnescapedHtml.source);
 
   const getReplacedChar = (char: string) => {
@@ -278,4 +279,47 @@ export const generateUUID = () => {
     /[xy]/g,
     replaceCallback
   );
+};
+
+type JSONRecord = Record<string, string | number | boolean>;
+type HeaderMap = {
+  field: string;
+  title: string;
+};
+
+export const jsonToCSV = <T extends JSONRecord>(
+  jsonArray: T[],
+  headers: HeaderMap[]
+): string => {
+  if (!Array.isArray(jsonArray) || jsonArray.length === 0) {
+    return '';
+  }
+
+  // Check if headers array is empty
+  if (headers.length === 0) {
+    return '';
+  }
+
+  // Create the header row from headers mapping
+  const headerRow = headers.map((h) => h.title);
+  const csvRows: string[] = [headerRow.join(',')];
+
+  // Convert each JSON object to a CSV row
+  jsonArray.forEach((obj) => {
+    const row = headers
+      .map((header) => {
+        const value = obj[header.field];
+        const escaped =
+          typeof value === 'string'
+            ? value.replace(/"/g, '\\"')
+            : value.toString(); // handle quotes in content
+
+        return `"${escaped}"`; // wrap each field in quotes
+      })
+      .join(',');
+    csvRows.push(row);
+  });
+
+  // Combine all CSV rows and add newline character to form final CSV string
+  return csvRows.join('\n');
 };

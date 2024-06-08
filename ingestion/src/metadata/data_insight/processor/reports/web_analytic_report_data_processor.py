@@ -19,6 +19,8 @@ import re
 from collections import namedtuple
 from typing import Generator, Iterable, Optional
 
+from pydantic import ValidationError
+
 from metadata.data_insight.processor.reports.data_processor import DataProcessor
 from metadata.generated.schema.analytics.reportData import ReportData, ReportDataType
 from metadata.generated.schema.analytics.reportDataType.webAnalyticEntityViewReportData import (
@@ -106,7 +108,9 @@ class WebAnalyticEntityViewReportDataProcessor(DataProcessor):
 
             entity_obj = EntityObj(split_url[0], split_url[1])
             entity_type = entity_obj.entity_type
-            re_pattern = re.compile(f"(.*{entity_type}/{entity_obj.fqn})")
+            re_pattern = re.compile(
+                f"(.*{re.escape(entity_type)}/{re.escape(entity_obj.fqn)})"
+            )
 
             if (
                 entity_obj.fqn in refined_data
@@ -123,11 +127,16 @@ class WebAnalyticEntityViewReportDataProcessor(DataProcessor):
                     logger.debug(f"Could not find entity Href for {entity_obj.fqn}")
 
             if entity_obj.fqn not in refined_data:
-                entity = self.metadata.get_by_name(
-                    ENTITIES[entity_obj.entity_type],
-                    fqn=entity_obj.fqn,
-                    fields=["*"],
-                )
+                try:
+                    entity = self.metadata.get_by_name(
+                        ENTITIES[entity_obj.entity_type],
+                        fqn=entity_obj.fqn,
+                        fields=["*"],
+                    )
+                except ValidationError as exc:
+                    entity = None
+                    logger.warning("%s Entity failed to be parsed", entity_obj.fqn)
+                    logger.debug(exc)
 
                 if not entity:
                     # If a user visits an entity and then deletes this entity, we will try to get the entity

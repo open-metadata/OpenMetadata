@@ -3,11 +3,38 @@ UPDATE dbservice_entity
 SET json = JSON_INSERT(json, '$.connection.config.supportsProfiler', TRUE)
 WHERE serviceType = 'MongoDB';
 
+-- Queries should be unique:
+-- 1. Remove duplicate queries from entity_relationship
+-- 2. Remove duplicate queries from query_entity
+-- 3. Add checksum with unique constraint
 ALTER TABLE query_entity ADD COLUMN checksum VARCHAR
 (32) GENERATED ALWAYS AS
-(json ->> '$.checksum') NOT NULL UNIQUE;
+(json ->> '$.checksum') NOT NULL;
 
-UPDATE query_entity SET json = JSON_INSERT(json, '$.checksum', MD5(JSON_UNQUOTE(JSON_EXTRACT(json, '$.checksum'))));
+with duplicated as (
+  select
+    id,
+    ROW_NUMBER() OVER (PARTITION BY checksum ORDER BY id) AS rn
+  FROM query_entity
+)
+DELETE FROM entity_relationship
+  where toEntity = 'query' and toId in (
+  select id from duplicated where rn > 1
+);
+
+with duplicated as (
+  select
+    id,
+    ROW_NUMBER() OVER (PARTITION BY checksum ORDER BY id) AS rn
+  FROM query_entity
+)
+DELETE FROM query_entity where id in (
+  select id from duplicated where rn > 1
+);
+
+ALTER TABLE query_entity ADD CONSTRAINT unique_query_checksum UNIQUE (checksum);
+
+UPDATE query_entity SET json = JSON_INSERT(json, '$.checksum', MD5(JSON_UNQUOTE(checksum)));
 
 -- Restructure dbServiceNames in ingestion_pipeline_entity
 update ingestion_pipeline_entity set json = 
@@ -54,7 +81,6 @@ ALTER TABLE dashboard_service_entity ADD INDEX index_dashboard_service_entity_de
 ALTER TABLE dbservice_entity ADD INDEX index_dbservice_entity_deleted(nameHash, deleted);
 ALTER TABLE glossary_entity ADD INDEX index_glossary_entity_deleted(nameHash, deleted);
 ALTER TABLE installed_apps ADD INDEX index_installed_apps_deleted(nameHash, deleted);
-ALTER TABLE knowledge_center ADD INDEX index_knowledge_center_deleted(nameHash, deleted);
 ALTER TABLE kpi_entity ADD INDEX index_kpi_entity_deleted(nameHash, deleted);
 ALTER TABLE messaging_service_entity ADD INDEX index_messaging_service_entity_deleted(nameHash, deleted);
 ALTER TABLE metadata_service_entity ADD INDEX index_metadata_service_entity_deleted(nameHash, deleted);
@@ -251,7 +277,14 @@ where serviceType = 'Airflow'
   AND JSON_EXTRACT(json, '$.connection.config.connection.type') = 'Mysql'
   AND JSON_EXTRACT(json, '$.connection.config.connection.sslCA') IS NOT NULL;
 
-
+UPDATE pipeline_service_entity
+SET json = JSON_INSERT(
+JSON_REMOVE(json, '$.connection.config.connection.sslConfig.certificatePath'), 
+'$.connection.config.connection.sslConfig.caCertificate', 
+JSON_EXTRACT(json, '$.connection.config.connection.sslConfig.certificatePath'))
+where serviceType = 'Airflow'
+  AND JSON_EXTRACT(json, '$.connection.config.connection.type') = 'Postgres'
+  AND JSON_EXTRACT(json, '$.connection.config.connection.sslConfig.certificatePath') IS NOT NULL;
 
 UPDATE pipeline_service_entity  
 SET json = JSON_INSERT(
@@ -273,3 +306,24 @@ SET json = JSON_INSERT(
     
 where serviceType = 'OpenLineage'
   AND JSON_EXTRACT(json, '$.connection.config.SSLCALocation') IS NOT NULL;
+
+-- Change viewDefinition to schemaDefinition
+UPDATE table_entity
+SET json = JSON_INSERT(
+    JSON_REMOVE(json, '$.viewDefinition'),
+    '$.schemaDefinition',
+    JSON_EXTRACT(json, '$.viewDefinition')
+);
+
+UPDATE table_entity SET json = JSON_REMOVE(json, '$.testSuite');
+
+-- Clean up QRTZ tables
+delete from QRTZ_SIMPLE_TRIGGERS;
+delete from QRTZ_CRON_TRIGGERS;
+delete from QRTZ_TRIGGERS;
+delete from QRTZ_LOCKS;
+delete from QRTZ_SCHEDULER_STATE;
+delete from QRTZ_JOB_DETAILS;
+delete from QRTZ_FIRED_TRIGGERS;
+
+DELETE from event_subscription_entity where name = 'ActivityFeedAlert';

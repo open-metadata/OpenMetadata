@@ -24,6 +24,7 @@ import static javax.ws.rs.core.Response.Status.UNAUTHORIZED;
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
@@ -169,6 +170,7 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
         createRequest("user-data-consumer", "", "", null)
             .withRoles(List.of(DATA_CONSUMER_ROLE.getId()));
     DATA_CONSUMER = createEntity(create, ADMIN_AUTH_HEADERS);
+    DATA_CONSUMER_REF = DATA_CONSUMER.getEntityReference();
 
     // USER_TEAM21 is part of TEAM21
     create = createRequest(test, 2).withTeams(List.of(TEAM21.getId()));
@@ -648,7 +650,7 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
   void patch_userAttributes_as_admin_200_ok(TestInfo test) throws IOException {
     // Create user without any attributes - ***Note*** isAdmin by default is false.
     User user = createEntity(createRequest(test).withProfile(null), ADMIN_AUTH_HEADERS);
-    assertListNull(user.getDisplayName(), user.getIsBot(), user.getProfile(), user.getTimezone());
+    assertListNull(user.getDisplayName(), user.getProfile(), user.getTimezone());
 
     EntityReference team1 =
         TEAM_TEST
@@ -696,7 +698,6 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
     fieldAdded(change, "timezone", timezone);
     fieldAdded(change, "displayName", "displayName");
     fieldAdded(change, "profile", profile);
-    fieldAdded(change, "isBot", false);
     fieldAdded(change, "defaultPersona", DATA_SCIENTIST.getEntityReference());
     fieldAdded(
         change,
@@ -734,7 +735,7 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
     fieldAdded(change, "timezone", timezone1);
     fieldAdded(change, "displayName", "displayName1");
     fieldAdded(change, "profile", profile1);
-    fieldAdded(change, "isBot", true);
+    fieldUpdated(change, "isBot", false, true);
     fieldAdded(change, "defaultPersona", DATA_SCIENTIST.getEntityReference());
     fieldAdded(change, "personas", List.of(DATA_ENGINEER.getEntityReference()));
     user = patchEntityAndCheck(user, origJson, ADMIN_AUTH_HEADERS, CHANGE_CONSOLIDATED, change);
@@ -1145,29 +1146,30 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
     String user =
         "userImportExport,d,s,userImportExport@domain.com,America/Los_Angeles,true,teamImportExport,";
     String user1 =
-        "userImportExport1,,,userImportExport1@domain.com,,,teamImportExport1,DataConsumer";
-    String user11 = "userImportExport11,,,userImportExport11@domain.com,,,teamImportExport11,";
+        "userImportExport1,,,userImportExport1@domain.com,,false,teamImportExport1,DataConsumer";
+    String user11 = "userImportExport11,,,userImportExport11@domain.com,,false,teamImportExport11,";
     List<String> createRecords = listOf(user, user1, user11);
 
     // Update user descriptions
-    user = "userImportExport,displayName,,userImportExport@domain.com,,,teamImportExport,";
-    user1 = "userImportExport1,displayName1,,userImportExport1@domain.com,,,teamImportExport1,";
+    user = "userImportExport,displayName,,userImportExport@domain.com,,false,teamImportExport,";
+    user1 =
+        "userImportExport1,displayName1,,userImportExport1@domain.com,,false,teamImportExport1,";
     user11 =
-        "userImportExport11,displayName11,,userImportExport11@domain.com,,,teamImportExport11,";
+        "userImportExport11,displayName11,,userImportExport11@domain.com,,false,teamImportExport11,";
     List<String> updateRecords = listOf(user, user1, user11);
 
     // Add new users
     String user2 =
-        "userImportExport2,displayName2,,userImportExport2@domain.com,,,teamImportExport1,";
+        "userImportExport2,displayName2,,userImportExport2@domain.com,,false,teamImportExport1,";
     String user21 =
-        "userImportExport21,displayName21,,userImportExport21@domain.com,,,teamImportExport11,";
+        "userImportExport21,displayName21,,userImportExport21@domain.com,,false,teamImportExport11,";
     List<String> newRecords = listOf(user2, user21);
     testImportExport("teamImportExport", UserCsv.HEADERS, createRecords, updateRecords, newRecords);
 
     // Import to team11 a user in team1 - since team1 is not under team11 hierarchy, import should
     // fail
     String user3 =
-        "userImportExport3,displayName3,,userImportExport3@domain.com,,,teamImportExport1,";
+        "userImportExport3,displayName3,,userImportExport3@domain.com,,false,teamImportExport1,";
     csv = EntityCsvTest.createCsv(UserCsv.HEADERS, listOf(user3), null);
     result = importCsv("teamImportExport11", csv, false);
     String error =
@@ -1365,7 +1367,8 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
     return new CreateUser()
         .withName(entityName)
         .withEmail(emailUser + "@open-metadata.org")
-        .withProfile(PROFILE);
+        .withProfile(PROFILE)
+        .withIsBot(false);
   }
 
   @Override
@@ -1426,7 +1429,11 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
     assertEquals(expected.getName(), updated.getName());
     assertEquals(expected.getDisplayName(), updated.getDisplayName());
     assertEquals(expected.getTimezone(), updated.getTimezone());
-    assertEquals(expected.getIsBot(), updated.getIsBot());
+    if (expected.getIsBot() == null) {
+      assertFalse(updated.getIsBot());
+    } else {
+      assertEquals(expected.getIsBot(), updated.getIsBot());
+    }
     assertEquals(expected.getIsAdmin(), updated.getIsAdmin());
     if (expected.getDefaultPersona() != null) {
       assertEquals(expected.getDefaultPersona(), updated.getDefaultPersona());

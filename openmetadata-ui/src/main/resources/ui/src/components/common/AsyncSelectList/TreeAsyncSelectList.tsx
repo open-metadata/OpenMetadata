@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { CloseOutlined } from '@ant-design/icons';
+import Icon from '@ant-design/icons/lib/components/Icon';
 import {
   Button,
   Form,
@@ -21,32 +22,37 @@ import {
 } from 'antd';
 import { Key } from 'antd/lib/table/interface';
 import { AxiosError } from 'axios';
-import { debounce, isEmpty, isUndefined, pick } from 'lodash';
+import { debounce, get, isEmpty, isUndefined, pick } from 'lodash';
 import { CustomTagProps } from 'rc-select/lib/BaseSelect';
 import React, { FC, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { PAGE_SIZE_LARGE } from '../../../constants/constants';
+import { ReactComponent as ArrowIcon } from '../../../assets/svg/ic-arrow-down.svg';
+import { PAGE_SIZE_LARGE, TEXT_BODY_COLOR } from '../../../constants/constants';
 import { TAG_START_WITH } from '../../../constants/Tag.constants';
 import { Glossary } from '../../../generated/entity/data/glossary';
 import { LabelType } from '../../../generated/entity/data/table';
 import { TagLabel } from '../../../generated/type/tagLabel';
 import {
   getGlossariesList,
-  getGlossaryTerms,
   ListGlossaryTermsParams,
+  queryGlossaryTerms,
   searchGlossaryTerms,
 } from '../../../rest/glossaryAPI';
 import { getEntityName } from '../../../utils/EntityUtils';
 import {
-  buildTree,
   convertGlossaryTermsToTreeOptions,
   findGlossaryTermByFqn,
 } from '../../../utils/GlossaryUtils';
+import {
+  escapeESReservedCharacters,
+  getEncodedFqn,
+} from '../../../utils/StringsUtils';
 import { getTagDisplay, tagRender } from '../../../utils/TagsUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { ModifiedGlossaryTerm } from '../../Glossary/GlossaryTermTab/GlossaryTermTab.interface';
 import TagsV1 from '../../Tag/TagsV1/TagsV1.component';
 import Loader from '../Loader/Loader';
+import './async-select-list.less';
 import {
   AsyncSelectListProps,
   SelectOption,
@@ -71,6 +77,7 @@ const TreeAsyncSelectList: FC<Omit<AsyncSelectListProps, 'fetchOptions'>> = ({
   const form = Form.useFormInstance();
 
   const fetchGlossaryListInternal = async () => {
+    setIsLoading(true);
     try {
       const { data } = await getGlossariesList({
         limit: PAGE_SIZE_LARGE,
@@ -89,11 +96,12 @@ const TreeAsyncSelectList: FC<Omit<AsyncSelectListProps, 'fetchOptions'>> = ({
 
   const dropdownRender = (menu: React.ReactElement) => (
     <>
-      {menu}
+      {isLoading ? <Loader size="small" /> : menu}
       <Space className="p-sm p-b-xss p-l-xs custom-dropdown-render" size={8}>
         <Button
           className="update-btn"
           data-testid="saveAssociatedTag"
+          disabled={isEmpty(glossaries)}
           htmlType="submit"
           loading={isSubmitLoading}
           size="small"
@@ -121,8 +129,8 @@ const TreeAsyncSelectList: FC<Omit<AsyncSelectListProps, 'fetchOptions'>> = ({
       return tagRender(data);
     }
 
-    const { label, onClose } = data;
-    const tagLabel = getTagDisplay(label as string);
+    const { value, onClose } = data;
+    const tagLabel = getTagDisplay(value as string);
     const tag = {
       tagFQN: selectedTag?.data.fullyQualifiedName,
       ...pick(
@@ -171,11 +179,29 @@ const TreeAsyncSelectList: FC<Omit<AsyncSelectListProps, 'fetchOptions'>> = ({
     );
   };
 
-  const handleChange: TreeSelectProps['onChange'] = (values: string[]) => {
-    const selectedValues = values.map((value) => {
+  const handleChange: TreeSelectProps['onChange'] = (
+    values: {
+      disabled: boolean;
+      halfChecked: boolean;
+      label: React.ReactNode;
+      value: string;
+    }[]
+  ) => {
+    const lastSelectedMap = new Map(
+      selectedTagsRef.current.map((tag) => [tag.value, tag])
+    );
+    const selectedValues = values.map(({ value }) => {
+      if (lastSelectedMap.has(value)) {
+        return lastSelectedMap.get(value) as SelectOption;
+      }
       const initialData = findGlossaryTermByFqn(
-        glossaries as ModifiedGlossaryTerm[],
-        value
+        [
+          ...glossaries,
+          ...searchOptions,
+          ...(initialOptions ?? []),
+        ] as ModifiedGlossaryTerm[],
+        value,
+        false
       );
 
       return initialData
@@ -189,7 +215,7 @@ const TreeAsyncSelectList: FC<Omit<AsyncSelectListProps, 'fetchOptions'>> = ({
             label: value,
           };
     });
-    selectedTagsRef.current = selectedValues;
+    selectedTagsRef.current = selectedValues as SelectOption[];
     onChange?.(selectedValues);
   };
 
@@ -197,33 +223,30 @@ const TreeAsyncSelectList: FC<Omit<AsyncSelectListProps, 'fetchOptions'>> = ({
     if (!params?.glossary) {
       return;
     }
-    setIsLoading(true);
     try {
-      const { data } = await getGlossaryTerms({
-        ...params,
-        limit: PAGE_SIZE_LARGE,
-        fields: 'children',
-      });
+      const results = await queryGlossaryTerms(params.glossary);
+
+      const activeGlossary = results[0];
 
       setGlossaries((prev) =>
         prev.map((glossary) => ({
           ...glossary,
-          children:
-            glossary.id === params?.glossary
-              ? buildTree(data)
-              : (glossary as ModifiedGlossaryTerm)['children'],
+          children: get(
+            glossary.id === activeGlossary?.id ? activeGlossary : glossary,
+            'children',
+            []
+          ),
         }))
       );
     } catch (error) {
       showErrorToast(error as AxiosError);
-    } finally {
-      setIsLoading(false);
     }
   };
 
   const onSearch = debounce(async (value: string) => {
     if (value) {
-      const results: Glossary[] = await searchGlossaryTerms(value);
+      const encodedValue = getEncodedFqn(escapeESReservedCharacters(value));
+      const results: Glossary[] = await searchGlossaryTerms(encodedValue);
 
       setSearchOptions(results);
       setExpandedRowKeys(
@@ -255,20 +278,29 @@ const TreeAsyncSelectList: FC<Omit<AsyncSelectListProps, 'fetchOptions'>> = ({
       autoFocus
       open
       showSearch
+      treeCheckStrictly
       treeCheckable
+      className="async-select-list"
       data-testid="tag-selector"
       dropdownRender={dropdownRender}
       dropdownStyle={{ width: 300 }}
       filterTreeNode={false}
-      loadData={({ id }) => {
+      loadData={({ id, value }) => {
         if (expandableKeys.current.includes(id)) {
-          return fetchGlossaryTerm({ glossary: id });
+          return fetchGlossaryTerm({ glossary: value as string });
         }
 
         return Promise.resolve();
       }}
-      notFoundContent={isLoading ? <Loader size="small" /> : null}
+      showCheckedStrategy={TreeSelect.SHOW_ALL}
       style={{ width: '100%' }}
+      switcherIcon={
+        <Icon
+          component={ArrowIcon}
+          data-testid="expand-icon"
+          style={{ fontSize: '10px', color: TEXT_BODY_COLOR }}
+        />
+      }
       tagRender={customTagRender}
       treeData={treeData}
       treeExpandedKeys={isEmpty(searchOptions) ? undefined : expandedRowKeys}

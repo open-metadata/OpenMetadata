@@ -34,8 +34,9 @@ A standard CSV should be comma separated, and each row represented as a single l
 {% /note %}
 
 - **query_text:** This field contains the literal query that has been executed in the database. It is quite possible
-    that your query has commas `,` inside. Then, wrap each query in quotes `"<query>"` to not have any clashes
-    with the comma as a separator.- **user_name (optional):** Enter the database user name which has executed this query.
+    that your query has commas `,` inside. Then, wrap each query in quotes to not have any clashes
+    with the comma as a separator.
+- **user_name (optional):** Enter the database user name which has executed this query.
 - **start_time (optional):** Enter the query execution start time in YYYY-MM-DD HH:MM:SS format.
 - **end_time (optional):** Enter the query execution end time in YYYY-MM-DD HH:MM:SS format.
 - **aborted (optional):** This field accepts values as true or false and indicates whether the query was aborted during execution
@@ -43,6 +44,12 @@ A standard CSV should be comma separated, and each row represented as a single l
 - **schema_name (optional):** Enter the schema name to which the query is associated.
 
 Checkout a sample query log file [here](https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/examples/sample_data/glue/query_log.csv).
+
+```csv
+query_text,database_name,schema_name
+"create table sales_analysis as select id, name from sales",default,information_schema
+"insert into marketing select * from sales",default,information_schema
+```
 
 ## Usage Workflow
 In order to run a Usage Workflow we need to make sure that Metadata Ingestion Workflow for corresponding service has already been executed. We will follow the steps to create a JSON configuration able to collect the query log file and execute the usage workflow.
@@ -85,7 +92,7 @@ The `serviceName` should be a service already ingested in OpenMetadata.
 First, we will need to save the YAML file. Afterward, and with all requirements installed, we can run:
 
 ```yaml
-metadata ingest -c <path-to-yaml>
+metadata usage -c <path-to-yaml>
 ```
 
 Note that from connector-to-connector, this recipe will always be the same. By updating the YAML configuration, you will be able to extract metadata from different sources.

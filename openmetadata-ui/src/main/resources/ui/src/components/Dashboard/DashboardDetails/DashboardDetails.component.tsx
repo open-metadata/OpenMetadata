@@ -265,7 +265,7 @@ const DashboardDetails = ({
     async (newOwner?: Dashboard['owner']) => {
       const updatedDashboard = {
         ...dashboardDetails,
-        owner: newOwner ? { ...owner, ...newOwner } : undefined,
+        owner: newOwner,
       };
       await onDashboardUpdate(updatedDashboard, 'owner');
     },
@@ -634,6 +634,7 @@ const DashboardDetails = ({
                 ) : (
                   <Table
                     bordered
+                    className="align-table-filter-left"
                     columns={tableColumn}
                     data-testid="charts-table"
                     dataSource={charts}

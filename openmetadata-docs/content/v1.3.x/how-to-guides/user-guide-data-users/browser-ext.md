@@ -11,3 +11,14 @@ Once installed, pin the extension for easy accessibility. Simply click on the Op
 
 Watch the video to learn how you can access all the metadata you need, directly into your active workspace.
 {% youtube videoId="ZQckSIXAA6k" start="0:00" end="1:37" width="560px" height="315px" /%}
+
+{% note %}
+
+If you are using your own OpenMetadata instance which utilises Single Sign-On (SSO), you need to add the following URL to your SSO redirect list:
+
+`https://pakbbdhbbiclnceabdmnghamabjloofc.chromiumapp.org/auth0`
+
+\
+For more information on how to add URL to SSO redirect list, you can visit this [page](/deployment/security).
+
+{% /note %}

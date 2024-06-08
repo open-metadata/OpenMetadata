@@ -707,6 +707,10 @@ site_menu:
     url: /connectors/pipeline/dagster
   - category: Connectors / Pipeline / Dagster / Run Externally
     url: /connectors/pipeline/dagster/yaml
+  - category: Connectors / Pipeline / KafkaConnect
+    url: /connectors/pipeline/kafkaconnect
+  - category: Connectors / Pipeline / KafkaConnect / Run Externally
+    url: /connectors/pipeline/kafkaconnect/yaml
   - category: Connectors / Pipeline / Databricks Pipeline
     url: /connectors/pipeline/databricks-pipeline
   - category: Connectors / Pipeline / Databricks Pipeline / Run Externally
@@ -729,6 +733,8 @@ site_menu:
     url: /connectors/pipeline/nifi/yaml
   - category: Connectors / Pipeline / Nifi / Troubleshooting
     url: /connectors/pipeline/nifi/troubleshooting
+  - category: Connectors / Pipeline / Openlineage
+    url: /connectors/pipeline/openlineage
   - category: Connectors / Pipeline / Spline
     url: /connectors/pipeline/spline
   - category: Connectors / Pipeline / Spline / Run Externally

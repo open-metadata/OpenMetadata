@@ -1,3 +1,14 @@
+#  Copyright 2021 Collate
+#  Licensed under the Apache License, Version 2.0 (the "License");
+#  you may not use this file except in compliance with the License.
+#  You may obtain a copy of the License at
+#  http://www.apache.org/licenses/LICENSE-2.0
+#  Unless required by applicable law or agreed to in writing, software
+#  distributed under the License is distributed on an "AS IS" BASIS,
+#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#  See the License for the specific language governing permissions and
+#  limitations under the License.
+"""mlflow integration tests"""
 import os
 import sys
 from urllib.parse import urlparse
@@ -36,8 +47,6 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 )
 from metadata.workflow.metadata import MetadataWorkflow
 
-from ..integration_base import int_admin_ometa
-
 MODEL_HYPERPARAMS = {
     "alpha": {"name": "alpha", "value": "0.5", "description": None},
     "l1_ratio": {"name": "l1_ratio", "value": "1.0", "description": None},
@@ -69,7 +78,7 @@ def create_data(mlflow_environment):
     np.random.seed(40)
 
     # Read the wine-quality csv file from the URL
-    csv_url = "http://archive.ics.uci.edu/ml/machine-learning-databases/wine-quality/winequality-red.csv"
+    csv_url = "https://raw.githubusercontent.com/open-metadata/openmetadata-demo/main/resources/winequality-red.csv"
     data = pd.read_csv(csv_url, sep=";")
 
     # Split the data into training and test sets. (0.75, 0.25) split.
@@ -117,11 +126,6 @@ def create_data(mlflow_environment):
             )
         else:
             mlflow.sklearn.log_model(lr, "model")
-
-
-@pytest.fixture(scope="module")
-def metadata():
-    return int_admin_ometa()
 
 
 @pytest.fixture(scope="module")
