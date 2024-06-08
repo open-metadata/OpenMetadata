@@ -178,10 +178,10 @@ const AccessTokenCard: FC<MockProps> = ({
   }, []);
 
   useEffect(() => {
-    if (botUserData && botUserData.id) {
+    if (botUserData && botUserData.id && !disabled) {
       fetchAuthMechanismForBot();
     }
-  }, [botUserData]);
+  }, [botUserData, disabled]);
 
   const authenticationMechanismData = useMemo(() => {
     return isBot ? authenticationMechanismBot : authenticationMechanism;

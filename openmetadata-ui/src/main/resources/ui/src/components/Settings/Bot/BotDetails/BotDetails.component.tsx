@@ -60,9 +60,9 @@ const BotDetails: FC<BotsDetailProps> = ({
   const [isDescriptionEdit, setIsDescriptionEdit] = useState(false);
   const [selectedRoles, setSelectedRoles] = useState<Array<string>>([]);
   const [roles, setRoles] = useState<Array<Role>>([]);
-  const { getResourceLimit } = useLimitStore();
+  const { getResourceLimit, config } = useLimitStore();
 
-  const [disableFields, setDisableFields] = useState<string[]>([]);
+  const [disableFields, setDisableFields] = useState<string[]>(['token']);
 
   const { t } = useTranslation();
 
@@ -77,9 +77,13 @@ const BotDetails: FC<BotsDetailProps> = ({
     );
 
   const initLimits = async () => {
-    const limits = await getResourceLimit('bot', false);
+    if (!config?.enable) {
+      setDisableFields([]);
+    } else {
+      const limits = await getResourceLimit('bot', false);
 
-    setDisableFields(limits.configuredLimit.disabledFields ?? []);
+      setDisableFields(limits.configuredLimit.disabledFields ?? []);
+    }
   };
 
   const fetchRoles = async () => {
