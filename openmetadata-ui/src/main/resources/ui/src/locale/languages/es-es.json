@@ -1008,6 +1008,7 @@
     "select-field": "Seleccionar {{field}}",
     "select-to-search": "Buscar para Seleccionar",
     "select-type": "Seleccionar tipo",
+    "selected-entity": "Selected {{entity}}",
     "selected-lowercase": "seleccionado",
     "send": "Engiado",
     "send-now": "Enviar ahora",

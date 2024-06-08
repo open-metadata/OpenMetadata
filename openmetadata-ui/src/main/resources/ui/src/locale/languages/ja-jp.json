@@ -1008,6 +1008,7 @@
     "select-field": "{{field}}を選択",
     "select-to-search": "Search to Select",
     "select-type": "Select type",
+    "selected-entity": "Selected {{entity}}",
     "selected-lowercase": "選択済",
     "send": "Send",
     "send-now": "Send now",
