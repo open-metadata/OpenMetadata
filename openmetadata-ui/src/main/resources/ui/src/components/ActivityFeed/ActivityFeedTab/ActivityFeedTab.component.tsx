@@ -81,7 +81,6 @@ export const ActivityFeedTab = ({
   columns,
   entityType,
   refetchFeed,
-  hasGlossaryReviewer,
   entityFeedTotalCount,
   isForFeedTab = true,
   onUpdateFeedCount,
@@ -511,7 +510,6 @@ export const ActivityFeedTab = ({
               ) : (
                 <TaskTab
                   entityType={isUserEntity ? entityTypeTask : entityType}
-                  hasGlossaryReviewer={hasGlossaryReviewer}
                   isForFeedTab={isForFeedTab}
                   owner={owner}
                   taskThread={selectedThread}

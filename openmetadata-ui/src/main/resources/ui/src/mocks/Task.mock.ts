@@ -276,12 +276,3 @@ export const MOCK_ASSIGNEE_DATA = {
     ],
   },
 };
-
-export const MOCK_TASK_ASSIGNEE = [
-  {
-    label: 'sample_data',
-    name: 'sample_data',
-    type: 'User',
-    value: 'id1',
-  },
-];

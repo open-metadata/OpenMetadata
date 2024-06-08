@@ -19,7 +19,7 @@ import org.openmetadata.service.search.models.SearchSuggest;
 import org.openmetadata.service.util.FullyQualifiedName;
 
 public class TopicIndex implements SearchIndex {
-  final Set<String> excludeTopicFields = Set.of("sampleData");
+  final Set<String> excludeTopicFields = Set.of("sampleData", "messageSchema");
   final Topic topic;
 
   public TopicIndex(Topic topic) {

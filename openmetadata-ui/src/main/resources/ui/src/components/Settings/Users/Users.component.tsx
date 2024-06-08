@@ -370,8 +370,7 @@ const Users = ({ userData, queryFilters, updateUserDetails }: Props) => {
                         <Chip
                           showNoDataPlaceholder
                           data={userData.personas ?? []}
-                          entityType={EntityType.PERSONA}
-                          icon={<PersonaIcon height={20} />}
+                          icon={<PersonaIcon height={14} />}
                           noDataPlaceholder={t('message.no-persona-assigned')}
                         />
                       </Card>

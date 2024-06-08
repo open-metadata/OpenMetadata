@@ -33,7 +33,6 @@ import {
   TaskType,
   ThreadType,
 } from '../../../generated/api/feed/createThread';
-import { Glossary } from '../../../generated/entity/data/glossary';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { useFqn } from '../../../hooks/useFqn';
 import { postThread } from '../../../rest/feedsAPI';
@@ -41,6 +40,7 @@ import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
 import {
   ENTITY_LINK_SEPARATOR,
   getEntityFeedLink,
+  getEntityName,
 } from '../../../utils/EntityUtils';
 import {
   fetchEntityDetail,
@@ -48,7 +48,6 @@ import {
   getBreadCrumbList,
   getColumnObject,
   getEntityColumnsDetails,
-  getTaskAssignee,
   getTaskMessage,
 } from '../../../utils/TasksUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
@@ -172,9 +171,17 @@ const UpdateDescription = () => {
   }, [entityFQN, entityType]);
 
   useEffect(() => {
-    const defaultAssignee = getTaskAssignee(entityData as Glossary);
-
-    if (defaultAssignee) {
+    const owner = entityData.owner;
+    let defaultAssignee: Option[] = [];
+    if (owner) {
+      defaultAssignee = [
+        {
+          label: getEntityName(owner),
+          value: owner.id || '',
+          type: owner.type,
+          name: owner.name,
+        },
+      ];
       setAssignees(defaultAssignee);
       setOptions(defaultAssignee);
     }

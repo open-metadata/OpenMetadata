@@ -13,7 +13,7 @@
 
 import { interceptURL, verifyResponseStatusCode } from '../../common/common';
 import {
-  addOwnerInGlossary,
+  addReviewer,
   removeReviewer,
   visitGlossaryPage,
 } from '../../common/GlossaryUtils';
@@ -245,12 +245,7 @@ describe(
 
       removeOwner(data.user.displayName, GLOSSARY_OWNER_LINK_TEST_ID);
 
-      addOwnerInGlossary(
-        [data.reviewer.displayName],
-        'Add',
-        'glossary-reviewer-name',
-        false
-      );
+      addReviewer(data.reviewer.displayName, 'glossaries');
 
       // Adding manual wait as the backend is now performing batch operations,
       // which causes a delay in reflecting changes
@@ -402,12 +397,7 @@ describe(
 
       removeOwner(data.user.displayName, GLOSSARY_OWNER_LINK_TEST_ID);
 
-      addOwnerInGlossary(
-        [data.reviewer.displayName],
-        'Add',
-        'glossary-reviewer-name',
-        false
-      );
+      addReviewer(data.reviewer.displayName, 'glossaryTerms');
 
       interceptURL(
         'GET',

@@ -72,7 +72,7 @@ describe('Test EntityLineageUtils utility', () => {
           sqlQuery: 'SELECT * FROM table',
           columns: ['column1', 'column2'],
           description: 'This is a test',
-          pipeline: undefined,
+          pipeline: 'Test Pipeline',
           source: 'Test Source',
         },
       },
@@ -84,7 +84,7 @@ describe('Test EntityLineageUtils utility', () => {
       sqlQuery: 'SELECT * FROM table',
       columnsLineage: ['column1', 'column2'],
       description: 'This is a test',
-      pipeline: undefined,
+      pipeline: 'Test Pipeline',
       source: 'Test Source',
     });
 

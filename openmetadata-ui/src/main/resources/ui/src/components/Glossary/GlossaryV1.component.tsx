@@ -53,7 +53,7 @@ import GlossaryTermsV1 from './GlossaryTerms/GlossaryTermsV1.component';
 import { GlossaryV1Props } from './GlossaryV1.interfaces';
 import './glossaryV1.less';
 import ImportGlossary from './ImportGlossary/ImportGlossary';
-import { ModifiedGlossary, useGlossaryStore } from './useGlossary.store';
+import { useGlossaryStore } from './useGlossary.store';
 
 const GlossaryV1 = ({
   isGlossaryActive,
@@ -96,7 +96,7 @@ const GlossaryV1 = ({
 
   const [editMode, setEditMode] = useState(false);
 
-  const { activeGlossary, setGlossaryChildTerms } = useGlossaryStore();
+  const { activeGlossary, updateActiveGlossary } = useGlossaryStore();
 
   const { id, fullyQualifiedName } = activeGlossary ?? {};
 
@@ -125,11 +125,11 @@ const GlossaryV1 = ({
       const { data } = await getFirstLevelGlossaryTerms(
         params?.glossary ?? params?.parent ?? ''
       );
-      const children = data.map((data) =>
-        data.childrenCount ?? 0 > 0 ? { ...data, children: [] } : data
-      );
-
-      setGlossaryChildTerms(children as ModifiedGlossary[]);
+      updateActiveGlossary({
+        children: data.map((data) =>
+          data.childrenCount ?? 0 > 0 ? { ...data, children: [] } : data
+        ),
+      });
     } catch (error) {
       showErrorToast(error as AxiosError);
     } finally {
@@ -257,6 +257,9 @@ const GlossaryV1 = ({
     try {
       await addGlossaryTerm({
         ...formData,
+        reviewers: formData.reviewers.map(
+          (item) => item.fullyQualifiedName || ''
+        ),
         glossary:
           activeGlossaryTerm?.glossary?.name ||
           (selectedData.fullyQualifiedName ?? ''),

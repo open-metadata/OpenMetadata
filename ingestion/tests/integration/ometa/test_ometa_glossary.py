@@ -439,7 +439,7 @@ class OMetaGlossaryTest(TestCase):
         )
 
         self.assertIsNotNone(res_glossary_term)
-        self.assertEqual(2, len(res_glossary_term.reviewers.__root__))
+        self.assertEqual(1, len(res_glossary_term.reviewers.__root__))
         self.assertEqual(self.user_1.id, res_glossary_term.reviewers.__root__[0].id)
         dest_glossary_term_1 = deepcopy(res_glossary_term)
         dest_glossary_term_1.reviewers.__root__.pop(0)
@@ -449,7 +449,7 @@ class OMetaGlossaryTest(TestCase):
             destination=dest_glossary_term_1,
         )
         self.assertIsNotNone(res_glossary_term)
-        self.assertEqual(2, len(res_glossary_term.reviewers.__root__))
+        self.assertEqual(0, len(res_glossary_term.reviewers.__root__))
 
     def test_patch_glossary_term_synonyms(self):
         """

@@ -29,7 +29,6 @@ export const UserTag = ({
   size = UserTagSize.default,
   className,
   isTeam = false,
-  avatarType = 'solid',
 }: UserTags) => {
   if (isUndefined(id) && isUndefined(name)) {
     return null;
@@ -60,12 +59,7 @@ export const UserTag = ({
       )}
       data-testid="user-tag"
       size={8}>
-      <ProfilePicture
-        avatarType={avatarType}
-        isTeam={isTeam}
-        name={id}
-        width={toString(width[size])}
-      />
+      <ProfilePicture isTeam={isTeam} name={id} width={toString(width[size])} />
       <Typography.Text className={fontSizes[size]}>{name}</Typography.Text>
       {closable && <CloseOutlined size={width[size]} onClick={onRemove} />}
     </Space>

@@ -564,6 +564,7 @@ public class GlossaryResource extends EntityResource<Glossary, GlossaryRepositor
       GlossaryRepository repository, CreateGlossary create, String updatedBy) {
     return repository
         .copy(new Glossary(), create, updatedBy)
+        .withReviewers(getEntityReferences(Entity.USER, create.getReviewers()))
         .withProvider(create.getProvider())
         .withMutuallyExclusive(create.getMutuallyExclusive());
   }

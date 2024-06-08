@@ -217,7 +217,7 @@ const TeamsPage = () => {
     setIsPageLoading(loadPage);
     try {
       const data = await getTeamByName(name, {
-        fields: 'users,parents,profile,owner',
+        fields: 'users,parents,profile',
         include: Include.All,
       });
 

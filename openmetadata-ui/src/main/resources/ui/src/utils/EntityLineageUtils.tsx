@@ -90,7 +90,7 @@ import { EntityReference } from '../generated/type/entityReference';
 import { TagSource } from '../generated/type/tagLabel';
 import { addLineage, deleteLineageEdge } from '../rest/miscAPI';
 import { getPartialNameFromTableFQN } from './CommonUtils';
-import { getEntityName, getEntityReferenceFromEntity } from './EntityUtils';
+import { getEntityName } from './EntityUtils';
 import Fqn from './Fqn';
 import { jsonToCSV } from './StringsUtils';
 import { showErrorToast } from './ToastUtils';
@@ -792,14 +792,13 @@ export const getColumnLineageData = (
   data: Edge
 ) => {
   const columnsLineage = columnsData?.reduce((col, curr) => {
-    const sourceHandle = decodeLineageHandles(data.data?.sourceHandle);
-    const targetHandle = decodeLineageHandles(data.data?.targetHandle);
-
-    if (curr.toColumn === targetHandle) {
+    if (curr.toColumn === data.data?.targetHandle) {
       const newCol = {
         ...curr,
         fromColumns:
-          curr.fromColumns?.filter((column) => column !== sourceHandle) ?? [],
+          curr.fromColumns?.filter(
+            (column) => column !== data.data?.sourceHandle
+          ) ?? [],
       };
       if (newCol.fromColumns?.length) {
         return [...col, newCol];
@@ -872,19 +871,13 @@ export const getLineageDetailsObject = (edge: Edge): LineageDetails => {
     description = '',
     pipeline,
     source,
-    pipelineEntityType,
   } = edge.data?.edge || {};
 
   return {
     sqlQuery,
     columnsLineage: columns,
     description,
-    pipeline: pipeline
-      ? getEntityReferenceFromEntity(
-          pipeline,
-          pipelineEntityType ?? EntityType.PIPELINE
-        )
-      : undefined,
+    pipeline,
     source,
   };
 };

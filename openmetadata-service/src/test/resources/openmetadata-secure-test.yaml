@@ -215,18 +215,16 @@ pipelineServiceClientConfiguration:
 
 email:
   enableSmtpServer : false
-  emailingEntity: "openmetadata"
-  supportUrl: "http://localhost:8585"
+  emailingEntity: ""
+  supportUrl: ""
   openMetadataUrl: "http://localhost:8585"
-  senderMail: "test@openmetadata.org"
-  serverEndpoint: "test.smtp.com"
-  serverPort: "584"
-  username: "test"
-  password: "test"
+  senderMail: ""
+  serverEndpoint: ""
+  serverPort: ""
+  username: ""
+  password: ""
   transportationStrategy: "SMTP_TLS"
 
-fernetConfiguration:
-  fernetKey: ${FERNET_KEY:-ihZpp5gmmDvVsgoOG6OVivKWwC9vd5JQ}
 
 dataQualityConfiguration:
   severityIncidentClassifier: "org.openmetadata.service.util.incidentSeverityClassifier.LogisticRegressionIncidentSeverityClassifier"

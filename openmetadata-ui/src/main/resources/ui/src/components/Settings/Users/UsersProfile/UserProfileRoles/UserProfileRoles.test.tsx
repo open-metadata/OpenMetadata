@@ -11,18 +11,9 @@
  *  limitations under the License.
  */
 
-import {
-  act,
-  findByRole,
-  fireEvent,
-  render,
-  screen,
-  waitForElement,
-} from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import React from 'react';
 import { useAuth } from '../../../../../hooks/authHooks';
-import { MOCK_USER_ROLE } from '../../../../../mocks/User.mock';
 import { getRoles } from '../../../../../rest/rolesAPIV1';
 import { mockUserRole } from '../../mocks/User.mocks';
 import UserProfileRoles from './UserProfileRoles.component';
@@ -38,15 +29,11 @@ jest.mock('../../../../../hooks/authHooks', () => ({
 }));
 
 jest.mock('../../../../common/InlineEdit/InlineEdit.component', () => {
-  return jest.fn().mockImplementation(({ children, onCancel, onSave }) => (
+  return jest.fn().mockImplementation(({ onSave }) => (
     <div data-testid="inline-edit">
       <span>InlineEdit</span>
-      {children}
       <button data-testid="save" onClick={onSave}>
         save
-      </button>
-      <button data-testid="cancel" onClick={onCancel}>
-        cancel
       </button>
     </div>
   ));
@@ -159,53 +146,5 @@ describe('Test User Profile Roles Component', () => {
     expect(getRoles).toHaveBeenCalledWith('', undefined, undefined, false, 50);
 
     expect(screen.getByText('InlineEdit')).toBeInTheDocument();
-  });
-
-  it('should maintain initial state if edit is close without save', async () => {
-    (useAuth as jest.Mock).mockImplementation(() => ({
-      isAdminUser: true,
-    }));
-
-    render(
-      <UserProfileRoles
-        {...mockPropsData}
-        userRoles={MOCK_USER_ROLE.slice(0, 2)}
-      />
-    );
-
-    fireEvent.click(screen.getByTestId('edit-roles-button'));
-
-    const selectInput = await findByRole(
-      screen.getByTestId('select-user-roles'),
-      'combobox'
-    );
-
-    await act(async () => {
-      userEvent.click(selectInput);
-    });
-
-    // wait for list to render, checked with item having in the list
-    await waitForElement(() => screen.findByText('admin'));
-
-    await act(async () => {
-      userEvent.click(screen.getByText('admin'));
-    });
-
-    fireEvent.click(screen.getByTestId('cancel'));
-
-    fireEvent.click(screen.getByTestId('edit-roles-button'));
-
-    await act(async () => {
-      userEvent.click(selectInput);
-    });
-
-    expect(
-      screen.getByText('37a00e0b-383c-4451-b63f-0bad4c745abc')
-    ).toBeInTheDocument();
-    expect(
-      screen.getByText('afc5583c-e268-4f6c-a638-a876d04ebaa1')
-    ).toBeInTheDocument();
-
-    expect(screen.queryByText('admin')).not.toBeInTheDocument();
   });
 });

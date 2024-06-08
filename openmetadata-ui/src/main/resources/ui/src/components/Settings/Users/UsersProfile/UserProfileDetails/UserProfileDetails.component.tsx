@@ -115,17 +115,12 @@ const UserProfileDetails = ({
     setIsDisplayNameEdit(false);
   }, [userData.displayName, displayName, updateUserDetails]);
 
-  const handleCloseEditDisplayName = useCallback(() => {
-    setDisplayName(userData.displayName);
-    setIsDisplayNameEdit(false);
-  }, [userData.displayName]);
-
   const displayNameRenderComponent = useMemo(
     () =>
-      isDisplayNameEdit ? (
+      isDisplayNameEdit && hasEditPermission ? (
         <InlineEdit
           isLoading={isLoading}
-          onCancel={handleCloseEditDisplayName}
+          onCancel={() => setIsDisplayNameEdit(false)}
           onSave={handleDisplayNameSave}>
           <Input
             className="w-full"
@@ -178,7 +173,6 @@ const UserProfileDetails = ({
       getEntityName,
       onDisplayNameChange,
       handleDisplayNameSave,
-      handleCloseEditDisplayName,
     ]
   );
 
@@ -292,7 +286,6 @@ const UserProfileDetails = ({
         <Chip
           showNoDataPlaceholder
           data={defaultPersona ? [defaultPersona] : []}
-          entityType={EntityType.PERSONA}
           noDataPlaceholder={NO_DATA_PLACEHOLDER}
         />
 

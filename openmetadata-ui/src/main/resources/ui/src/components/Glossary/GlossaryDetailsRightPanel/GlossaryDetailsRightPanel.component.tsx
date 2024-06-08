@@ -16,6 +16,7 @@ import { cloneDeep, includes, isEmpty, isEqual } from 'lodash';
 import React, { ReactNode, useCallback, useMemo } from 'react';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
 import { ReactComponent as PlusIcon } from '../../../assets/svg/plus-primary.svg';
+import { UserSelectableList } from '../../../components/common/UserSelectableList/UserSelectableList.component';
 import { UserTeamSelectableList } from '../../../components/common/UserTeamSelectableList/UserTeamSelectableList.component';
 import {
   DE_ACTIVE_COLOR,
@@ -81,25 +82,8 @@ const GlossaryDetailsRightPanel = ({
   const hasViewAllPermission = useMemo(() => {
     return permissions.ViewAll;
   }, [permissions]);
-
-  const { assignedReviewers, hasReviewers } = useMemo(() => {
-    const inheritedReviewers: EntityReference[] = [];
-    const assignedReviewers: EntityReference[] = [];
-
-    selectedData.reviewers?.forEach((item) => {
-      if (item.inherited) {
-        inheritedReviewers.push(item);
-      } else {
-        assignedReviewers.push(item);
-      }
-    });
-
-    return {
-      inheritedReviewers,
-      assignedReviewers,
-      hasReviewers: selectedData.reviewers && selectedData.reviewers.length > 0,
-    };
-  }, [selectedData.reviewers]);
+  const noReviewersSelected =
+    selectedData.reviewers && selectedData.reviewers.length === 0;
 
   const handleTagsUpdate = async (updatedTags: TagLabel[]) => {
     if (updatedTags) {
@@ -112,22 +96,14 @@ const GlossaryDetailsRightPanel = ({
     }
   };
 
-  const handleReviewerSave = async (
-    data?: EntityReference | EntityReference[]
-  ) => {
-    let reviewers: EntityReference[] = [];
-    if (Array.isArray(data)) {
-      reviewers = data;
-    } else if (data) {
-      reviewers = [data];
-    }
-    if (!isEqual(reviewers, assignedReviewers)) {
+  const handleReviewerSave = async (data: Array<EntityReference>) => {
+    if (!isEqual(data, selectedData.reviewers)) {
       let updatedGlossary = cloneDeep(selectedData);
-      const oldReviewer = reviewers.filter((d) =>
-        includes(assignedReviewers, d)
+      const oldReviewer = data.filter((d) =>
+        includes(selectedData.reviewers, d)
       );
-      const newReviewer = reviewers
-        .filter((d) => !includes(assignedReviewers, d))
+      const newReviewer = data
+        .filter((d) => !includes(selectedData.reviewers, d))
         .map((d) => ({ id: d.id, type: d.type }));
       updatedGlossary = {
         ...updatedGlossary,
@@ -137,7 +113,7 @@ const GlossaryDetailsRightPanel = ({
     }
   };
 
-  const handleUpdatedOwner = async (newOwner?: EntityReference) => {
+  const handleUpdatedOwner = async (newOwner: Glossary['owner']) => {
     const updatedData = {
       ...selectedData,
       owner: newOwner,
@@ -228,7 +204,7 @@ const GlossaryDetailsRightPanel = ({
   );
 
   return (
-    <Row data-testid="entity-right-panel" gutter={[0, 40]}>
+    <Row gutter={[0, 40]}>
       <Col span={24}>
         <DomainLabel
           showDomainHeading
@@ -251,9 +227,7 @@ const GlossaryDetailsRightPanel = ({
               <UserTeamSelectableList
                 hasPermission={permissions.EditOwner || permissions.EditAll}
                 owner={selectedData.owner}
-                onUpdate={(updatedUser) =>
-                  handleUpdatedOwner(updatedUser as EntityReference)
-                }>
+                onUpdate={handleUpdatedOwner}>
                 <Tooltip
                   title={t('label.edit-entity', {
                     entity: t('label.owner'),
@@ -276,9 +250,7 @@ const GlossaryDetailsRightPanel = ({
           <UserTeamSelectableList
             hasPermission={permissions.EditOwner || permissions.EditAll}
             owner={selectedData.owner}
-            onUpdate={(updatedUser) =>
-              handleUpdatedOwner(updatedUser as EntityReference)
-            }>
+            onUpdate={handleUpdatedOwner}>
             <TagButton
               className="text-primary cursor-pointer"
               dataTestId="edit-owner"
@@ -290,36 +262,39 @@ const GlossaryDetailsRightPanel = ({
         )}
       </Col>
       <Col data-testid="glossary-reviewer" span="24">
-        <div className={`d-flex items-center ${hasReviewers ? 'm-b-xss' : ''}`}>
+        <div
+          className={`d-flex items-center ${
+            selectedData.reviewers && selectedData.reviewers.length > 0
+              ? 'm-b-xss'
+              : ''
+          }`}>
           <Typography.Text
             className="right-panel-label"
             data-testid="glossary-reviewer-heading-name">
             {t('label.reviewer-plural')}
           </Typography.Text>
-          {hasEditReviewerAccess && hasReviewers && (
-            <UserTeamSelectableList
-              previewSelected
-              hasPermission={hasEditReviewerAccess}
-              label={t('label.reviewer-plural')}
-              listHeight={200}
-              multiple={{ user: true, team: false }}
-              owner={assignedReviewers ?? []}
-              popoverProps={{ placement: 'topLeft' }}
-              onUpdate={handleReviewerSave}>
-              <Tooltip
-                title={t('label.edit-entity', {
-                  entity: t('label.reviewer-plural'),
-                })}>
-                <Button
-                  className="cursor-pointer flex-center m-l-xss"
-                  data-testid="edit-reviewer-button"
-                  icon={<EditIcon color={DE_ACTIVE_COLOR} width="14px" />}
-                  size="small"
-                  type="text"
-                />
-              </Tooltip>
-            </UserTeamSelectableList>
-          )}
+          {hasEditReviewerAccess &&
+            selectedData.reviewers &&
+            selectedData.reviewers.length > 0 && (
+              <UserSelectableList
+                hasPermission={hasEditReviewerAccess}
+                popoverProps={{ placement: 'topLeft' }}
+                selectedUsers={selectedData.reviewers ?? []}
+                onUpdate={handleReviewerSave}>
+                <Tooltip
+                  title={t('label.edit-entity', {
+                    entity: t('label.reviewer-plural'),
+                  })}>
+                  <Button
+                    className="cursor-pointer flex-center m-l-xss"
+                    data-testid="edit-reviewer-button"
+                    icon={<EditIcon color={DE_ACTIVE_COLOR} width="14px" />}
+                    size="small"
+                    type="text"
+                  />
+                </Tooltip>
+              </UserSelectableList>
+            )}
         </div>
         <div>
           <GlossaryReviewers
@@ -327,15 +302,11 @@ const GlossaryDetailsRightPanel = ({
             glossaryData={selectedData}
             isVersionView={isVersionView}
           />
-          {hasEditReviewerAccess && !hasReviewers && (
-            <UserTeamSelectableList
-              previewSelected
+          {hasEditReviewerAccess && noReviewersSelected && (
+            <UserSelectableList
               hasPermission={hasEditReviewerAccess}
-              label={t('label.reviewer-plural')}
-              listHeight={200}
-              multiple={{ user: true, team: false }}
-              owner={assignedReviewers ?? []}
               popoverProps={{ placement: 'topLeft' }}
+              selectedUsers={selectedData.reviewers ?? []}
               onUpdate={handleReviewerSave}>
               <TagButton
                 className="text-primary cursor-pointer"
@@ -343,7 +314,7 @@ const GlossaryDetailsRightPanel = ({
                 label={t('label.add')}
                 tooltip=""
               />
-            </UserTeamSelectableList>
+            </UserSelectableList>
           )}
         </div>
       </Col>
@@ -363,7 +334,7 @@ const GlossaryDetailsRightPanel = ({
           </div>
         </Col>
       )}
-      <Col span="22">
+      <Col data-testid="entity-right-panel" span="22">
         {!isGlossary && selectedData && (
           <CustomPropertyTable
             isRenderedInRightPanel

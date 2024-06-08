@@ -258,7 +258,6 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   public static Domain DOMAIN1;
 
   // Users
-  public static User USER_WITH_CREATE_ACCESS;
   public static User USER1;
   public static EntityReference USER1_REF;
   public static User USER2;
@@ -273,9 +272,11 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   public static Team
       TEAM2; // Team 2 has team only policy and does not allow access to users not in team hierarchy
   public static Team TEAM21; // Team under Team2
+
   public static User DATA_STEWARD;
   public static Persona DATA_ENGINEER;
   public static Persona DATA_SCIENTIST;
+
   public static Document ACTIVITY_FEED_KNOWLEDGE_PANEL;
   public static Document MY_DATA_KNOWLEDGE_PANEL;
   public static User USER_WITH_DATA_STEWARD_ROLE;
@@ -285,10 +286,9 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   public static EntityReference DATA_CONSUMER_REF;
   public static Role DATA_CONSUMER_ROLE;
   public static EntityReference DATA_CONSUMER_ROLE_REF;
-  public static Role CREATE_ACCESS_ROLE;
   public static Role ROLE1;
   public static EntityReference ROLE1_REF;
-  public static Policy CREATE_ACCESS_PERMISSION_POLICY;
+
   public static Policy POLICY1;
   public static Policy POLICY2;
   public static Policy TEAM_ONLY_POLICY;
@@ -964,8 +964,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     if (supportsFollowers) {
       UserResourceTest userResourceTest = new UserResourceTest();
       User user1 =
-          userResourceTest.createEntity(
-              userResourceTest.createRequest(test, 1), USER_WITH_CREATE_HEADERS);
+          userResourceTest.createEntity(userResourceTest.createRequest(test, 1), TEST_AUTH_HEADERS);
       addFollower(entity.getId(), user1.getId(), OK, TEST_AUTH_HEADERS);
     }
     entity = validateGetWithDifferentFields(entity, false);
@@ -1619,8 +1618,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     // Add follower to the entity
     UserResourceTest userResourceTest = new UserResourceTest();
     User user1 =
-        userResourceTest.createEntity(
-            userResourceTest.createRequest(test, 1), USER_WITH_CREATE_HEADERS);
+        userResourceTest.createEntity(userResourceTest.createRequest(test, 1), TEST_AUTH_HEADERS);
     addAndCheckFollower(entityId, user1.getId(), OK, 1, TEST_AUTH_HEADERS);
 
     // Add the same user as follower and make sure no errors are thrown
@@ -1629,8 +1627,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
 
     // Add a new follower to the entity
     User user2 =
-        userResourceTest.createEntity(
-            userResourceTest.createRequest(test, 2), USER_WITH_CREATE_HEADERS);
+        userResourceTest.createEntity(userResourceTest.createRequest(test, 2), TEST_AUTH_HEADERS);
     addAndCheckFollower(entityId, user2.getId(), OK, 2, TEST_AUTH_HEADERS);
 
     // Delete followers and make sure they are deleted
@@ -1651,8 +1648,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     // Add follower to the entity
     UserResourceTest userResourceTest = new UserResourceTest();
     User user1 =
-        userResourceTest.createEntity(
-            userResourceTest.createRequest(test, 1), USER_WITH_CREATE_HEADERS);
+        userResourceTest.createEntity(userResourceTest.createRequest(test, 1), TEST_AUTH_HEADERS);
     addAndCheckFollower(entityId, user1.getId(), OK, 1, TEST_AUTH_HEADERS);
 
     deleteEntity(entityId, ADMIN_AUTH_HEADERS);

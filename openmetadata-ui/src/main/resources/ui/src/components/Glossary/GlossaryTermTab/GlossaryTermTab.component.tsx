@@ -86,12 +86,11 @@ const GlossaryTermTab = ({
   onEditGlossaryTerm,
   className,
 }: GlossaryTermTabProps) => {
-  const { activeGlossary, glossaryChildTerms, setGlossaryChildTerms } =
-    useGlossaryStore();
+  const { activeGlossary, updateActiveGlossary } = useGlossaryStore();
   const { theme } = useApplicationStore();
   const { t } = useTranslation();
 
-  const glossaryTerms = (glossaryChildTerms as ModifiedGlossaryTerm[]) ?? [];
+  const glossaryTerms = activeGlossary?.children as ModifiedGlossaryTerm[];
 
   const [movedGlossaryTerm, setMovedGlossaryTerm] =
     useState<MoveGlossaryTermType>();
@@ -294,7 +293,7 @@ const GlossaryTermTab = ({
 
             (item as ModifiedGlossary).children = data;
 
-            setGlossaryChildTerms(terms as ModifiedGlossary[]);
+            updateActiveGlossary({ children: terms });
 
             children = data;
           }
@@ -313,7 +312,7 @@ const GlossaryTermTab = ({
         return <Loader />;
       },
     }),
-    [glossaryTerms, setGlossaryChildTerms, expandedRowKeys]
+    [glossaryTerms, updateActiveGlossary, expandedRowKeys]
   );
 
   const handleMoveRow = useCallback(
@@ -394,7 +393,9 @@ const GlossaryTermTab = ({
       limit: API_RES_MAX_SIZE,
       fields: 'children,owner,parent',
     });
-    setGlossaryChildTerms(buildTree(data) as ModifiedGlossary[]);
+    updateActiveGlossary({
+      children: buildTree(data) as ModifiedGlossary['children'],
+    });
     const keys = data.reduce((prev, curr) => {
       if (curr.children?.length) {
         prev.push(curr.fullyQualifiedName ?? '');

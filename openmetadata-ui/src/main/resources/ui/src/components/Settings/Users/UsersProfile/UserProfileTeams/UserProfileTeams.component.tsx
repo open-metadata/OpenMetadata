@@ -12,7 +12,7 @@
  */
 
 import { Card, Space, Tooltip, Typography } from 'antd';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as EditIcon } from '../../../../../assets/svg/edit-new.svg';
 import { ReactComponent as IconTeamsGrey } from '../../../../../assets/svg/teams-grey.svg';
@@ -20,7 +20,6 @@ import {
   DE_ACTIVE_COLOR,
   ICON_DIMENSION,
 } from '../../../../../constants/constants';
-import { EntityType } from '../../../../../enums/entity.enum';
 import { EntityReference } from '../../../../../generated/entity/type';
 import { useAuth } from '../../../../../hooks/authHooks';
 import { getNonDeletedTeams } from '../../../../../utils/CommonUtils';
@@ -56,7 +55,6 @@ const UserProfileTeams = ({
     () => (
       <Chip
         data={getNonDeletedTeams(teams ?? [])}
-        entityType={EntityType.TEAM}
         icon={<IconTeamsGrey height={20} />}
         noDataPlaceholder={t('message.no-team-found')}
       />
@@ -64,18 +62,9 @@ const UserProfileTeams = ({
     [teams, getNonDeletedTeams]
   );
 
-  const setUserTeams = useCallback(() => {
+  useEffect(() => {
     setSelectedTeams(getNonDeletedTeams(teams ?? []));
   }, [teams]);
-
-  const handleCloseEditTeam = useCallback(() => {
-    setIsTeamsEdit(false);
-    setUserTeams();
-  }, [setUserTeams]);
-
-  useEffect(() => {
-    setUserTeams();
-  }, [setUserTeams]);
 
   return (
     <Card
@@ -108,7 +97,7 @@ const UserProfileTeams = ({
         <InlineEdit
           direction="vertical"
           isLoading={isLoading}
-          onCancel={handleCloseEditTeam}
+          onCancel={() => setIsTeamsEdit(false)}
           onSave={handleTeamsSave}>
           <TeamsSelectable
             filterJoinable

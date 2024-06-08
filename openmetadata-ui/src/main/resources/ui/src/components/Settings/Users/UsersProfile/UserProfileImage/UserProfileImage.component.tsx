@@ -13,7 +13,6 @@
 
 import { Image } from 'antd';
 import React, { useEffect, useMemo, useState } from 'react';
-import { getEntityName } from '../../../../../utils/EntityUtils';
 import {
   getImageWithResolutionAndFallback,
   ImageQuality,
@@ -51,7 +50,7 @@ const UserProfileImage = ({ userData }: UserProfileImageProps) => {
         />
       ) : (
         <ProfilePicture
-          displayName={getEntityName(userData)}
+          displayName={userData?.displayName ?? userData.name}
           height="54"
           name={userData?.name ?? ''}
           width="54"

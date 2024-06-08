@@ -12,7 +12,6 @@
  */
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import React, { forwardRef } from 'react';
-import { MOCK_TASK_ASSIGNEE } from '../../../mocks/Task.mock';
 import { postThread } from '../../../rest/feedsAPI';
 import UpdateDescription from './UpdateDescriptionPage';
 
@@ -77,7 +76,6 @@ jest.mock('../../../utils/TasksUtils', () => ({
   getColumnObject: jest.fn().mockImplementation(() => ({
     description: mockTableData.columns[0].description,
   })),
-  getTaskAssignee: jest.fn().mockReturnValue(MOCK_TASK_ASSIGNEE),
 }));
 jest.mock('../shared/Assignees', () =>
   jest.fn().mockImplementation(() => <div>Assignees.component</div>)

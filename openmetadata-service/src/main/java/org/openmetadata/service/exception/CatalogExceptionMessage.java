@@ -182,12 +182,6 @@ public final class CatalogExceptionMessage {
     return String.format("Principal: CatalogPrincipal{name='%s'} is not admin", name);
   }
 
-  public static String operationNotAllowed(String name, MetadataOperation operation) {
-    return String.format(
-        "Principal: CatalogPrincipal{name='%s'} operations [%s] not allowed",
-        name, operation.value());
-  }
-
   public static String notReviewer(String name) {
     return String.format("User '%s' is not a reviewer", name);
   }
@@ -317,10 +311,6 @@ public final class CatalogExceptionMessage {
 
   public static String invalidFieldForTask(String fieldName, TaskType type) {
     return String.format("The field name %s is not supported for %s task.", fieldName, type);
-  }
-
-  public static String invalidReviewerType(String type) {
-    return String.format("Reviewers can only be a Team or User. Given Reviewer Type : %s", type);
   }
 
   public static String invalidEnumValue(Class<? extends Enum<?>> enumClass) {

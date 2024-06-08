@@ -13,16 +13,10 @@
 
 import { act } from '@testing-library/react';
 import { EntityType } from '../enums/entity.enum';
-import { Glossary } from '../generated/entity/data/glossary';
 import { mockTableData } from '../mocks/TableVersion.mock';
 import { MOCK_ASSIGNEE_DATA } from '../mocks/Task.mock';
 import { getUserSuggestions } from '../rest/miscAPI';
-import {
-  fetchOptions,
-  getEntityTableName,
-  getTaskAssignee,
-  getTaskMessage,
-} from './TasksUtils';
+import { fetchOptions, getEntityTableName, getTaskMessage } from './TasksUtils';
 
 jest.mock('../rest/miscAPI', () => ({
   getUserSuggestions: jest
@@ -225,71 +219,6 @@ describe('Tests for fetchOptions', () => {
         name: 'ashley_king5',
         type: 'user',
         value: '0c83a592-7ced-4156-b235-01726259a0e7',
-      },
-    ]);
-  });
-});
-
-describe('Tests for getTaskAssignee', () => {
-  it('should return empty data is no owner and reviewer', async () => {
-    const response = getTaskAssignee({} as Glossary);
-
-    expect(response).toEqual([]);
-  });
-
-  it('should return owner data if no reviewer present', async () => {
-    const response = getTaskAssignee({
-      owner: {
-        deleted: false,
-        displayName: 'David',
-        fullyQualifiedName: 'david',
-        href: 'http://localhost:8585/api/v1/users/5e08061e-4cf2-46d0-93e3-2f0cc38844db',
-        id: '5e08061e-4cf2-46d0-93e3-2f0cc38844db',
-        name: 'david',
-        type: 'user',
-      },
-    } as Glossary);
-
-    expect(response).toEqual([
-      {
-        label: 'David',
-        name: 'david',
-        type: 'user',
-        value: '5e08061e-4cf2-46d0-93e3-2f0cc38844db',
-      },
-    ]);
-  });
-
-  it('should return reviewer data if present', async () => {
-    const response = getTaskAssignee({
-      reviewers: [
-        {
-          deleted: false,
-          displayName: 'Rolex',
-          fullyQualifiedName: 'rolex',
-          href: 'http://localhost:8585/api/v1/users/aa1eee18-5468-40f8-9ddc-e73f6fb9917f',
-          id: 'aa1eee18-5468-40f8-9ddc-e73f6fb9917f',
-          name: 'rolex',
-          type: 'user',
-        },
-      ],
-      owner: {
-        deleted: false,
-        displayName: 'David',
-        fullyQualifiedName: 'david',
-        href: 'http://localhost:8585/api/v1/users/5e08061e-4cf2-46d0-93e3-2f0cc38844db',
-        id: '5e08061e-4cf2-46d0-93e3-2f0cc38844db',
-        name: 'david',
-        type: 'user',
-      },
-    } as Glossary);
-
-    expect(response).toEqual([
-      {
-        label: 'Rolex',
-        name: 'rolex',
-        type: 'user',
-        value: 'aa1eee18-5468-40f8-9ddc-e73f6fb9917f',
       },
     ]);
   });

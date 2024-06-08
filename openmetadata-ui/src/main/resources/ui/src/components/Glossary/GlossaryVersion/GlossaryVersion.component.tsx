@@ -34,7 +34,6 @@ import Loader from '../../common/Loader/Loader';
 import EntityVersionTimeLine from '../../Entity/EntityVersionTimeLine/EntityVersionTimeLine';
 import PageLayoutV1 from '../../PageLayoutV1/PageLayoutV1';
 import GlossaryV1Component from '../GlossaryV1.component';
-import { ModifiedGlossary, useGlossaryStore } from '../useGlossary.store';
 
 interface GlossaryVersionProps {
   isGlossary?: boolean;
@@ -52,7 +51,6 @@ const GlossaryVersion = ({ isGlossary = false }: GlossaryVersionProps) => {
   );
   const [selectedData, setSelectedData] = useState<Glossary | GlossaryTerm>();
   const [isVersionLoading, setIsVersionLoading] = useState<boolean>(true);
-  const { setActiveGlossary } = useGlossaryStore();
 
   const fetchVersionsInfo = async () => {
     try {
@@ -74,7 +72,6 @@ const GlossaryVersion = ({ isGlossary = false }: GlossaryVersionProps) => {
         : await getGlossaryTermsVersion(id, version);
 
       setSelectedData(res);
-      setActiveGlossary(res as ModifiedGlossary);
     } catch (error) {
       showErrorToast(error as AxiosError);
     } finally {

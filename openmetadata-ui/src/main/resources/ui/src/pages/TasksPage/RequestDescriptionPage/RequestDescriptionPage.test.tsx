@@ -12,7 +12,6 @@
  */
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import React, { forwardRef } from 'react';
-import { MOCK_TASK_ASSIGNEE } from '../../../mocks/Task.mock';
 import { postThread } from '../../../rest/feedsAPI';
 import RequestDescription from './RequestDescriptionPage';
 
@@ -55,7 +54,6 @@ jest.mock('../../../utils/TasksUtils', () => ({
   fetchOptions: jest.fn(),
   getBreadCrumbList: jest.fn().mockReturnValue([]),
   getTaskMessage: jest.fn().mockReturnValue('Task message'),
-  getTaskAssignee: jest.fn().mockReturnValue(MOCK_TASK_ASSIGNEE),
 }));
 jest.mock('../shared/Assignees', () =>
   jest.fn().mockImplementation(() => <div>Assignees.component</div>)

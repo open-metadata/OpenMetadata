@@ -104,9 +104,6 @@ public final class TestUtils {
   public static final String TEST_USER_NAME = "test";
   public static final Map<String, String> TEST_AUTH_HEADERS =
       authHeaders(TEST_USER_NAME + "@open-metadata.org");
-  public static final String USER_WITH_CREATE_PERMISSION_NAME = "testWithCreateUserPermission";
-  public static final Map<String, String> USER_WITH_CREATE_HEADERS =
-      authHeaders(USER_WITH_CREATE_PERMISSION_NAME + "@open-metadata.org");
 
   public static final UUID NON_EXISTENT_ENTITY = UUID.randomUUID();
 

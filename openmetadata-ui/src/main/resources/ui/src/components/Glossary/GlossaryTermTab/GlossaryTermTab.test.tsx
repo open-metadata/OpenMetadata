@@ -103,7 +103,6 @@ describe('Test GlossaryTermTab component', () => {
         ...mockedGlossaryTerms[0],
         children: mockedGlossaryTerms,
       },
-      glossaryChildTerms: mockedGlossaryTerms,
       updateActiveGlossary: jest.fn(),
     }));
     const { container } = render(<GlossaryTermTab {...mockProps} />, {

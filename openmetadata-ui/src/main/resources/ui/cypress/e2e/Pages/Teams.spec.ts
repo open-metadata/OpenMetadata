@@ -145,8 +145,8 @@ describe('Teams flow should work properly', { tags: 'Settings' }, () => {
       .find(`[title="${TEAM_DETAILS.username}"]`)
       .click();
     cy.get('[data-testid="selectable-list"]')
-      .find(`[title="${TEAM_DETAILS.username}"]`)
-      .should('have.class', 'active');
+      .find(`[title="${TEAM_DETAILS.username}"] input[type='checkbox']`)
+      .should('be.checked');
 
     cy.get('[data-testid="selectable-list-update-btn"]').click();
     verifyResponseStatusCode('@updateTeam', 200);

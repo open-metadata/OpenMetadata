@@ -192,9 +192,7 @@ const DocumentationTab = ({
                 <UserTeamSelectableList
                   hasPermission
                   owner={domain.owner}
-                  onUpdate={(updatedUser) =>
-                    handleUpdatedOwner(updatedUser as EntityReference)
-                  }>
+                  onUpdate={handleUpdatedOwner}>
                   <Tooltip
                     title={t('label.edit-entity', {
                       entity: t('label.owner'),
@@ -223,9 +221,7 @@ const DocumentationTab = ({
               <UserTeamSelectableList
                 hasPermission
                 owner={domain.owner}
-                onUpdate={(updatedUser) =>
-                  handleUpdatedOwner(updatedUser as EntityReference)
-                }>
+                onUpdate={handleUpdatedOwner}>
                 <TagButton
                   className="tw-text-primary cursor-pointer"
                   icon={<PlusIcon height={16} name="plus" width={16} />}

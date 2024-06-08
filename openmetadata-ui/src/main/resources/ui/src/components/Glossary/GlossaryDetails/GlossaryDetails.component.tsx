@@ -225,8 +225,6 @@ const GlossaryDetails = ({
                   entityFeedTotalCount={feedCount.totalCount}
                   entityType={EntityType.GLOSSARY}
                   fqn={glossary.fullyQualifiedName ?? ''}
-                  hasGlossaryReviewer={!isEmpty(glossary.reviewers)}
-                  owner={glossary.owner}
                   onFeedUpdate={getEntityFeedCount}
                   onUpdateEntityDetails={noop}
                 />

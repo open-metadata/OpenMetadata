@@ -31,10 +31,6 @@ public interface CreateEntity {
     return null;
   }
 
-  default List<EntityReference> getReviewers() {
-    return null;
-  }
-
   default List<TagLabel> getTags() {
     return null;
   }

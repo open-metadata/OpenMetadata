@@ -30,8 +30,21 @@ import static org.openmetadata.service.util.UserUtil.getRolesFromAuthorizationTo
 import static org.openmetadata.service.util.UserUtil.reSyncUserRolesFromToken;
 import static org.openmetadata.service.util.UserUtil.validateAndGetRolesRef;
 
+import at.favre.lib.crypto.bcrypt.BCrypt;
+import freemarker.template.TemplateException;
+import io.dropwizard.jersey.PATCH;
+import io.dropwizard.jersey.errors.ErrorMessage;
+import io.swagger.v3.oas.annotations.ExternalDocumentation;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.ArraySchema;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.ExampleObject;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.parameters.RequestBody;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import java.io.IOException;
-import java.security.AuthProvider;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.Base64;
@@ -40,7 +53,6 @@ import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
-
 import javax.json.JsonObject;
 import javax.json.JsonPatch;
 import javax.json.JsonValue;
@@ -63,7 +75,7 @@ import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
-
+import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.jetbrains.annotations.Nullable;
 import org.openmetadata.common.utils.CommonUtil;
@@ -94,11 +106,14 @@ import org.openmetadata.schema.auth.TokenType;
 import org.openmetadata.schema.email.SmtpSettings;
 import org.openmetadata.schema.entity.teams.AuthenticationMechanism;
 import org.openmetadata.schema.entity.teams.User;
+import org.openmetadata.schema.services.connections.metadata.AuthProvider;
 import org.openmetadata.schema.type.EntityHistory;
+import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.csv.CsvImportResult;
+import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.auth.JwtResponse;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
@@ -108,22 +123,31 @@ import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.TokenRepository;
 import org.openmetadata.service.jdbi3.UserRepository;
-
-import at.favre.lib.crypto.bcrypt.BCrypt;
-import freemarker.template.TemplateException;
-import io.dropwizard.jersey.PATCH;
-import io.dropwizard.jersey.errors.ErrorMessage;
-import io.swagger.v3.oas.annotations.ExternalDocumentation;
-import io.swagger.v3.oas.annotations.Operation;
-import io.swagger.v3.oas.annotations.Parameter;
-import io.swagger.v3.oas.annotations.media.ArraySchema;
-import io.swagger.v3.oas.annotations.media.Content;
-import io.swagger.v3.oas.annotations.media.ExampleObject;
-import io.swagger.v3.oas.annotations.media.Schema;
-import io.swagger.v3.oas.annotations.parameters.RequestBody;
-import io.swagger.v3.oas.annotations.responses.ApiResponse;
-import io.swagger.v3.oas.annotations.tags.Tag;
-import lombok.extern.slf4j.Slf4j;
+import org.openmetadata.service.jdbi3.UserRepository.UserCsv;
+import org.openmetadata.service.limits.Limits;
+import org.openmetadata.service.resources.Collection;
+import org.openmetadata.service.resources.EntityResource;
+import org.openmetadata.service.secrets.SecretsManager;
+import org.openmetadata.service.secrets.SecretsManagerFactory;
+import org.openmetadata.service.secrets.masker.EntityMaskerFactory;
+import org.openmetadata.service.security.AuthorizationException;
+import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.security.auth.AuthenticatorHandler;
+import org.openmetadata.service.security.auth.BotTokenCache;
+import org.openmetadata.service.security.auth.UserTokenCache;
+import org.openmetadata.service.security.jwt.JWTTokenGenerator;
+import org.openmetadata.service.security.mask.PIIMasker;
+import org.openmetadata.service.security.policyevaluator.OperationContext;
+import org.openmetadata.service.security.policyevaluator.ResourceContext;
+import org.openmetadata.service.security.saml.JwtTokenCacheManager;
+import org.openmetadata.service.util.EmailUtil;
+import org.openmetadata.service.util.EntityUtil;
+import org.openmetadata.service.util.EntityUtil.Fields;
+import org.openmetadata.service.util.JsonUtils;
+import org.openmetadata.service.util.PasswordUtil;
+import org.openmetadata.service.util.RestUtil.PutResponse;
+import org.openmetadata.service.util.ResultList;
+import org.openmetadata.service.util.TokenUtil;
 
 @Slf4j
 @Path("/v1/users")
@@ -537,37 +561,19 @@ public class UserResource extends EntityResource<User, UserRepository> {
       addAuthMechanismToBot(user, create, uriInfo);
     }
 
-    //
-    try {
-      validateAndAddUserAuthForBasic(user, create);
-    } catch (RuntimeException ex) {
-      return Response.status(CONFLICT)
-          .type(MediaType.APPLICATION_JSON_TYPE)
-          .entity(
-              new ErrorMessage(
-                  CONFLICT.getStatusCode(), CatalogExceptionMessage.ENTITY_ALREADY_EXISTS))
-          .build();
-    }
-
-    // Add the roles on user creation
-    updateUserRolesIfRequired(user, containerRequestContext);
-
-    // TODO do we need to authenticate user is creating himself?
-    Response createdUser = create(uriInfo, securityContext, user);
-
-    // Send Invite mail to user
-    sendInviteMailToUserForBasicAuth(uriInfo, user, create);
-
-    // Update response to remove auth fields
-    decryptOrNullify(securityContext, (User) createdUser.getEntity());
-    return createdUser;
-  }
-
-  private void validateAndAddUserAuthForBasic(User user, CreateUser create) {
     if (isBasicAuth()) {
-      // basic auth doesn't allow duplicate emails, since username part of the email is used as
-      // login name
-      validateEmailAlreadyExists(create.getEmail());
+      try {
+        // basic auth doesn't allow duplicate emails, since username part of the email is used as
+        // login name
+        validateEmailAlreadyExists(create.getEmail());
+      } catch (RuntimeException ex) {
+        return Response.status(CONFLICT)
+            .type(MediaType.APPLICATION_JSON_TYPE)
+            .entity(
+                new ErrorMessage(
+                    CONFLICT.getStatusCode(), CatalogExceptionMessage.ENTITY_ALREADY_EXISTS))
+            .build();
+      }
       user.setName(user.getEmail().split("@")[0]);
       if (Boolean.FALSE.equals(create.getIsBot())
           && create.getCreatePasswordType() == ADMIN_CREATE) {
@@ -575,18 +581,17 @@ public class UserResource extends EntityResource<User, UserRepository> {
       }
       // else the user will get a mail if configured smtp
     }
-  }
 
-  private void updateUserRolesIfRequired(
-      User user, ContainerRequestContext containerRequestContext) {
+    // Add the roles on user creation
     if (Boolean.TRUE.equals(authorizerConfiguration.getUseRolesFromProvider())
         && Boolean.FALSE.equals(user.getIsBot() != null && user.getIsBot())) {
       user.setRoles(
           validateAndGetRolesRef(getRolesFromAuthorizationToken(containerRequestContext)));
     }
-  }
 
-  private void sendInviteMailToUserForBasicAuth(UriInfo uriInfo, User user, CreateUser create) {
+    // TODO do we need to authenticate user is creating himself?
+
+    addHref(uriInfo, repository.create(uriInfo, user));
     if (isBasicAuth() && isEmailServiceEnabled) {
       try {
         authHandler.sendInviteMailToUser(
@@ -599,6 +604,9 @@ public class UserResource extends EntityResource<User, UserRepository> {
         LOG.error("Error in sending invite to User" + ex.getMessage());
       }
     }
+    Response response = Response.created(user.getHref()).entity(user).build();
+    decryptOrNullify(securityContext, (User) response.getEntity());
+    return response;
   }
 
   private boolean isBasicAuth() {
