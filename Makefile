@@ -39,11 +39,7 @@ yarn_start_e2e_ui:  ## Run the e2e tests locally in UI mode with Yarn
 .PHONY: yarn_start_e2e_codegen
 yarn_start_e2e_codegen:  ## generate playwright code
 	cd openmetadata-ui/src/main/resources/ui && yarn playwright:codegen
-
-.PHONY: yarn_show_e2e_report
-yarn_show_e2e_report:  ## show playwright report
-	cd openmetadata-ui/src/main/resources/ui && yarn playwright show-report playwright/output/playwright-report
-
+	
 .PHONY: py_antlr
 py_antlr:  ## Generate the Python code for parsing FQNs
 	antlr4 -Dlanguage=Python3 -o ingestion/src/metadata/generated/antlr ${PWD}/openmetadata-spec/src/main/antlr4/org/openmetadata/schema/*.g4
