@@ -17,19 +17,23 @@ import classNames from 'classnames';
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { useLimitStore } from '../../../context/LimitsProvider/useLimitsStore';
+import { useTourProvider } from '../../../context/TourProvider/TourProvider';
 import { ReactComponent as CloseIcon } from './../../../assets/svg/close.svg';
 import { ReactComponent as WarningIcon } from './../../../assets/svg/ic-warning-2.svg';
 import './limit-banner.less';
 
 export const LimitBanner = () => {
   const { bannerDetails, setBannerDetails } = useLimitStore();
+  const { isTourPage, isTourOpen } = useTourProvider();
+
+  const showBanner = bannerDetails && !(isTourOpen || isTourPage);
 
   return (
     <Header
       className={classNames('pricing-banner', {
         errored: bannerDetails?.type === 'danger',
       })}
-      hidden={!bannerDetails}>
+      hidden={!showBanner}>
       <div className="d-flex ">
         <Icon
           className="self-center"

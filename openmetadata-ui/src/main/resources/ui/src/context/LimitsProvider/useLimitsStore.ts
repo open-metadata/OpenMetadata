@@ -122,13 +122,13 @@ export const useLimitStore = create<{
       } = rLimit;
 
       const softLimitExceed =
-        (limits.hardLimit !== -1 && currentCount >= limits.softLimit) || true;
+        limits.softLimit !== -1 && currentCount >= limits.softLimit;
       const hardLimitExceed =
         limits.hardLimit !== -1 && currentCount >= limits.hardLimit;
 
       const plan = config?.limits.config.plan ?? 'FREE';
 
-      limitReached &&
+      (softLimitExceed || hardLimitExceed || limitReached) &&
         showBanner &&
         setBannerDetails({
           header: `You have reached ${

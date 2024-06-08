@@ -33,6 +33,7 @@ import { cleanWorkFlowData } from '../../../../utils/IngestionWorkflowUtils';
 import { getScheduleOptionsFromSchedules } from '../../../../utils/ScheduleUtils';
 import { getIngestionName } from '../../../../utils/ServiceUtils';
 import { generateUUID } from '../../../../utils/StringsUtils';
+import { getWeekCron } from '../../../common/CronEditor/CronEditor.constant';
 import SuccessScreen from '../../../common/SuccessScreen/SuccessScreen';
 import DeployIngestionLoaderModal from '../../../Modals/DeployIngestionLoaderModal/DeployIngestionLoaderModal';
 import IngestionStepper from '../Ingestion/IngestionStepper/IngestionStepper.component';
@@ -90,10 +91,10 @@ const AddIngestion = ({
     })
   );
 
-  const [scheduleInterval, setScheduleInterval] = useState(
-    () =>
-      data?.airflowConfig.scheduleInterval ??
-      getIngestionFrequency(pipelineType)
+  const [scheduleInterval, setScheduleInterval] = useState(() =>
+    data?.airflowConfig.scheduleInterval ?? limitConfig?.enable
+      ? getWeekCron({ hour: 0, min: 0, dow: 1 })
+      : getIngestionFrequency(pipelineType)
   );
 
   const { ingestionName, retries } = useMemo(

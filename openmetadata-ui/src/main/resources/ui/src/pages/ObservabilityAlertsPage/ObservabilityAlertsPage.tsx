@@ -202,7 +202,7 @@ const ObservabilityAlertsPage = () => {
         <Col span={24}>
           <div className="d-flex justify-between">
             <PageHeader data={pageHeaderData} />
-            <LimitWrapper resource="alert">
+            <LimitWrapper resource="eventsubscription">
               <Button
                 data-testid="create-observability"
                 type="primary"

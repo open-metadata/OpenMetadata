@@ -28,9 +28,10 @@ import {
 } from '../../../../generated/entity/applications/app';
 import { getIngestionPipelineByFqn } from '../../../../rest/ingestionPipelineAPI';
 import { getScheduleOptionsFromSchedules } from '../../../../utils/ScheduleUtils';
+import { getWeekCron } from '../../../common/CronEditor/CronEditor.constant';
+import Loader from '../../../common/Loader/Loader';
 import { TestSuiteIngestionDataType } from '../../../DataQuality/AddDataQualityTest/AddDataQualityTest.interface';
 import TestSuiteScheduler from '../../../DataQuality/AddDataQualityTest/components/TestSuiteScheduler';
-import Loader from '../../../common/Loader/Loader';
 import AppRunsHistory from '../AppRunsHistory/AppRunsHistory.component';
 import { AppRunsHistoryRef } from '../AppRunsHistory/AppRunsHistory.interface';
 import { AppScheduleProps } from './AppScheduleProps.interface';
@@ -52,7 +53,7 @@ const AppSchedule = ({
 
   const { pipelineSchedules } =
     config?.limits.config.featureLimits.find(
-      (feature) => feature.name === 'application'
+      (feature) => feature.name === 'app'
     ) ?? {};
 
   const fetchPipelineDetails = useCallback(async () => {
@@ -241,8 +242,9 @@ const AppSchedule = ({
           }}
           includePeriodOptions={initialOptions}
           initialData={{
-            repeatFrequency: (appData.appSchedule as AppScheduleClass)
-              ?.cronExpression,
+            repeatFrequency:
+              (appData.appSchedule as AppScheduleClass)?.cronExpression ??
+              getWeekCron({ hour: 0, min: 0, dow: 0 }),
           }}
           isLoading={isSaveLoading}
           onCancel={onDialogCancel}

@@ -151,7 +151,7 @@ const ApplicationPage = () => {
               />
               <span className="m-l-xs">{t('label.disabled')}</span>
             </div>
-            <LimitWrapper resource="application">
+            <LimitWrapper resource="app">
               <Button
                 data-testid="add-application"
                 type="primary"

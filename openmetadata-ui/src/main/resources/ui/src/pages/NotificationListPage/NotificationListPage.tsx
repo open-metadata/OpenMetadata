@@ -220,7 +220,7 @@ const NotificationListPage = () => {
         <Col span={24}>
           <div className="d-flex justify-between">
             <PageHeader data={PAGE_HEADERS.NOTIFICATION} />
-            <LimitWrapper resource="notification">
+            <LimitWrapper resource="eventsubscription">
               <Button
                 data-testid="create-notification"
                 type="primary"
