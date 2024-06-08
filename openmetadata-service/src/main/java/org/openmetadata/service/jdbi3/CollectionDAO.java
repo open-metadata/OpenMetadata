@@ -909,6 +909,13 @@ public interface CollectionDAO {
         @Bind("fromEntity") String fromEntity);
 
     @SqlUpdate(
+        "DELETE from entity_relationship WHERE toId = :toId AND toEntity = :toEntity AND relation = :relation")
+    void deleteTo(
+        @BindUUID("toId") UUID toId,
+        @Bind("toEntity") String toEntity,
+        @Bind("relation") int relation);
+
+    @SqlUpdate(
         "DELETE from entity_relationship WHERE (toId = :id AND toEntity = :entity) OR "
             + "(fromId = :id AND fromEntity = :entity)")
     void deleteAll(@BindUUID("id") UUID id, @Bind("entity") String entity);
@@ -3828,6 +3835,10 @@ public interface CollectionDAO {
     default String getTimeSeriesTableName() {
       return "data_quality_data_time_series";
     }
+
+    @SqlUpdate(
+        "DELETE FROM data_quality_data_time_series WHERE entityFQNHash = :testCaseFQNHash AND extension = 'testCase.testCaseResult'")
+    void deleteAll(@BindFQN("testCaseFQNHash") String entityFQNHash);
 
     @ConnectionAwareSqlUpdate(
         value =

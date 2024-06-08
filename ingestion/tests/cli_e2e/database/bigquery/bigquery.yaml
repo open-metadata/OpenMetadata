@@ -15,7 +15,7 @@ source:
           privateKeyId: $E2E_BQ_PRIVATE_KEY_ID
           privateKey: $E2E_BQ_PRIVATE_KEY
           clientEmail: $E2E_BQ_CLIENT_EMAIL
-          clientId: $E2E_BQ_CLIENT_ID
+          clientId: "$E2E_BQ_CLIENT_ID"
   sourceConfig:
     config:
       type: DatabaseMetadata

@@ -110,7 +110,7 @@ This is a sample config for Doris:
 
 {% codeBlock fileName="filename.yaml" %}
 
-```yaml
+```yaml {% isCodeBlock=true %}
 source:
   type: doris
   serviceName: <service name>

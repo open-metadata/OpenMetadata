@@ -68,6 +68,7 @@ import {
   LINEAGE_EXPORT_HEADERS,
   NODE_HEIGHT,
   NODE_WIDTH,
+  ZOOM_TRANSITION_DURATION,
   ZOOM_VALUE,
 } from '../constants/Lineage.constants';
 import {
@@ -89,7 +90,7 @@ import { EntityReference } from '../generated/type/entityReference';
 import { TagSource } from '../generated/type/tagLabel';
 import { addLineage, deleteLineageEdge } from '../rest/miscAPI';
 import { getPartialNameFromTableFQN } from './CommonUtils';
-import { getEntityName } from './EntityUtils';
+import { getEntityName, getEntityReferenceFromEntity } from './EntityUtils';
 import Fqn from './Fqn';
 import { jsonToCSV } from './StringsUtils';
 import { showErrorToast } from './ToastUtils';
@@ -120,6 +121,22 @@ export const onLoad = (reactFlowInstance: ReactFlowInstance) => {
   reactFlowInstance.fitView();
   reactFlowInstance.zoomTo(ZOOM_VALUE);
 };
+
+export const centerNodePosition = (
+  node: Node,
+  reactFlowInstance?: ReactFlowInstance
+) => {
+  const { position, width } = node;
+  reactFlowInstance?.setCenter(
+    position.x + (width ?? 1 / 2),
+    position.y + NODE_HEIGHT / 2,
+    {
+      zoom: ZOOM_VALUE,
+      duration: ZOOM_TRANSITION_DURATION,
+    }
+  );
+};
+
 /* eslint-disable-next-line */
 export const onNodeMouseEnter = (_event: ReactMouseEvent, _node: Node) => {
   return;
@@ -631,7 +648,8 @@ const getNodeType = (
 export const createNodes = (
   nodesData: EntityReference[],
   edgesData: EdgeDetails[],
-  entityFqn: string
+  entityFqn: string,
+  isExpanded = false
 ) => {
   const uniqueNodesData = removeDuplicateNodes(nodesData).sort((a, b) =>
     getEntityName(a).localeCompare(getEntityName(b))
@@ -651,7 +669,7 @@ export const createNodes = (
   // Add nodes to the graph
   uniqueNodesData.forEach((node) => {
     const { childrenHeight } = getEntityChildrenAndLabel(node as SourceType);
-    const nodeHeight = childrenHeight + 220;
+    const nodeHeight = isExpanded ? childrenHeight + 220 : NODE_HEIGHT;
     graph.setNode(node.id, { width: NODE_WIDTH, height: nodeHeight });
   });
 
@@ -774,13 +792,14 @@ export const getColumnLineageData = (
   data: Edge
 ) => {
   const columnsLineage = columnsData?.reduce((col, curr) => {
-    if (curr.toColumn === data.data?.targetHandle) {
+    const sourceHandle = decodeLineageHandles(data.data?.sourceHandle);
+    const targetHandle = decodeLineageHandles(data.data?.targetHandle);
+
+    if (curr.toColumn === targetHandle) {
       const newCol = {
         ...curr,
         fromColumns:
-          curr.fromColumns?.filter(
-            (column) => column !== data.data?.sourceHandle
-          ) ?? [],
+          curr.fromColumns?.filter((column) => column !== sourceHandle) ?? [],
       };
       if (newCol.fromColumns?.length) {
         return [...col, newCol];
@@ -853,13 +872,19 @@ export const getLineageDetailsObject = (edge: Edge): LineageDetails => {
     description = '',
     pipeline,
     source,
+    pipelineEntityType,
   } = edge.data?.edge || {};
 
   return {
     sqlQuery,
     columnsLineage: columns,
     description,
-    pipeline,
+    pipeline: pipeline
+      ? getEntityReferenceFromEntity(
+          pipeline,
+          pipelineEntityType ?? EntityType.PIPELINE
+        )
+      : undefined,
     source,
   };
 };

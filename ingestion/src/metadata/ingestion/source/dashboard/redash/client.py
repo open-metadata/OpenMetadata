@@ -28,7 +28,7 @@ class RedashApiClient:
     def __init__(self, config):
         self.config = config
         client_config = ClientConfig(
-            base_url=config.hostPort,
+            base_url=str(config.hostPort),
             api_version="",
             access_token=config.apiKey.get_secret_value(),
             auth_header="Authorization",

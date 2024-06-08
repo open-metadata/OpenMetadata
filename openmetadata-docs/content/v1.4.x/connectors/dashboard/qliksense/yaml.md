@@ -148,7 +148,7 @@ You will have to replace new lines with `\n` and the final private key that you 
 
 {% codeBlock fileName="filename.yaml" %}
 
-```yaml
+```yaml {% isCodeBlock=true %}
 source:
   type: qliksense
   serviceName: local_qliksense

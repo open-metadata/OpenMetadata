@@ -50,8 +50,8 @@ class CouchbaseSource(CommonNoSQLSource):
     def create(
         cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None
     ):
-        config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
-        connection: CouchbaseConnection = config.serviceConnection.__root__.config
+        config: WorkflowSource = WorkflowSource.model_validate(config_dict)
+        connection: CouchbaseConnection = config.serviceConnection.root.config
         if not isinstance(connection, CouchbaseConnection):
             raise InvalidSourceException(
                 f"Expected CouchbaseConnection, but got {connection}"
@@ -75,8 +75,8 @@ class CouchbaseSource(CommonNoSQLSource):
         Method to get list of schema names available within NoSQL db
         need to be overridden by sources
         """
+        database_name = self.context.get().database
         try:
-            database_name = self.context.get().database
             bucket = self.couchbase.bucket(database_name)
             collection_manager = bucket.collections()
             self.context.get().scope_dict = {

@@ -130,7 +130,7 @@ This is a sample config for Trino:
 
 {% codeBlock fileName="filename.yaml" %}
 
-```yaml
+```yaml {% isCodeBlock=true %}
 source:
   type: trino
   serviceName: <service name>

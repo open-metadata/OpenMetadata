@@ -43,6 +43,7 @@ from metadata.generated.schema.metadataIngestion.databaseServiceMetadataPipeline
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
+from metadata.generated.schema.type.basic import EntityName, FullyQualifiedEntityName
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
@@ -100,7 +101,7 @@ class DeltalakeSource(DatabaseServiceSource):
             self.config.sourceConfig.config
         )
         self.metadata = metadata
-        self.service_connection = self.config.serviceConnection.__root__.config
+        self.service_connection = self.config.serviceConnection.root.config
         self.spark = get_connection(self.service_connection)
 
         self.table_type_map = {
@@ -120,8 +121,8 @@ class DeltalakeSource(DatabaseServiceSource):
     def create(
         cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None
     ):
-        config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
-        connection: DeltaLakeConnection = config.serviceConnection.__root__.config
+        config: WorkflowSource = WorkflowSource.model_validate(config_dict)
+        connection: DeltaLakeConnection = config.serviceConnection.root.config
         if not isinstance(connection, DeltaLakeConnection):
             raise InvalidSourceException(
                 f"Expected DeltaLakeConnection, but got {connection}"
@@ -186,12 +187,14 @@ class DeltalakeSource(DatabaseServiceSource):
         """
         yield Either(
             right=CreateDatabaseSchemaRequest(
-                name=schema_name,
-                database=fqn.build(
-                    metadata=self.metadata,
-                    entity_type=Database,
-                    service_name=self.context.get().database_service,
-                    database_name=self.context.get().database,
+                name=EntityName(schema_name),
+                database=FullyQualifiedEntityName(
+                    fqn.build(
+                        metadata=self.metadata,
+                        entity_type=Database,
+                        service_name=self.context.get().database_service,
+                        database_name=self.context.get().database,
+                    )
                 ),
             )
         )
@@ -272,17 +275,19 @@ class DeltalakeSource(DatabaseServiceSource):
             )
 
             table_request = CreateTableRequest(
-                name=table_name,
+                name=EntityName(table_name),
                 tableType=table_type,
                 description=self.context.get().table_description,
                 columns=columns,
                 tableConstraints=None,
-                databaseSchema=fqn.build(
-                    metadata=self.metadata,
-                    entity_type=DatabaseSchema,
-                    service_name=self.context.get().database_service,
-                    database_name=self.context.get().database,
-                    schema_name=schema_name,
+                databaseSchema=FullyQualifiedEntityName(
+                    fqn.build(
+                        metadata=self.metadata,
+                        entity_type=DatabaseSchema,
+                        service_name=self.context.get().database_service,
+                        database_name=self.context.get().database,
+                        schema_name=schema_name,
+                    )
                 ),
                 schemaDefinition=view_definition,
             )

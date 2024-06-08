@@ -107,7 +107,7 @@ MOCK_DATABASE_SCHEMA = DatabaseSchema(
 
 EXPECTED_COLUMN_VALUE = [
     Column(
-        name=ColumnName(__root__="Description"),
+        name=ColumnName("Description"),
         displayName=None,
         dataType=DataType.VARCHAR,
         arrayDataType=None,
@@ -126,7 +126,7 @@ EXPECTED_COLUMN_VALUE = [
         profile=None,
     ),
     Column(
-        name=ColumnName(__root__="OwnerId"),
+        name=ColumnName("OwnerId"),
         displayName=None,
         dataType=DataType.VARCHAR,
         arrayDataType=None,
@@ -145,7 +145,7 @@ EXPECTED_COLUMN_VALUE = [
         profile=None,
     ),
     Column(
-        name=ColumnName(__root__="Phone"),
+        name=ColumnName("Phone"),
         displayName=None,
         dataType=DataType.VARCHAR,
         arrayDataType=None,
@@ -164,7 +164,7 @@ EXPECTED_COLUMN_VALUE = [
         profile=None,
     ),
     Column(
-        name=ColumnName(__root__="CreatedById"),
+        name=ColumnName("CreatedById"),
         displayName=None,
         dataType=DataType.UNKNOWN,
         arrayDataType=None,
@@ -437,7 +437,7 @@ class SalesforceUnitTest(TestCase):
     def __init__(self, methodName, salesforce, test_connection) -> None:
         super().__init__(methodName)
         test_connection.return_value = False
-        self.config = OpenMetadataWorkflowConfig.parse_obj(mock_salesforce_config)
+        self.config = OpenMetadataWorkflowConfig.model_validate(mock_salesforce_config)
         self.salesforce_source = SalesforceSource.create(
             mock_salesforce_config["source"],
             self.config.workflowConfig.openMetadataServerConfig,

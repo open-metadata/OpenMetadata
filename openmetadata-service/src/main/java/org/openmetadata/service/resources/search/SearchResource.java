@@ -90,14 +90,17 @@ public class SearchResource {
                       + "Pass without wildcards for exact match. <br/> "
                       + "1. For listing all tables or topics pass q=* <br/>"
                       + "2. For search tables or topics pass q=*search_term* <br/>"
-                      + "3. For searching field names such as search by column_name "
-                      + "pass q=column_names:address <br/>"
-                      + "4. For searching by tag names pass q=tags:user.email <br/>"
-                      + "5. When user selects a filter pass q=query_text AND tags:user.email "
+                      + "3. For searching field names such as search by columnNames "
+                      + "pass q=columnNames:address , for searching deleted entities, use q=deleted:true <br/> "
+                      + "4. For searching by tag names pass q=tags.tagFQN:user.email <br/>"
+                      + "5. When user selects a filter pass q=query_text AND q=tags.tagFQN:user.email "
                       + "AND platform:MYSQL <br/>"
-                      + "6. Search with multiple values of same filter q=tags:user.email "
-                      + "AND tags:user.address <br/>"
-                      + " logic operators such as AND and OR must be in uppercase ",
+                      + "6. Search with multiple values of same filter q=tags.tagFQN:user.email "
+                      + "AND tags.tagFQN:user.address <br/> "
+                      + "7. Search by service version and type q=service.type:databaseService AND version:0.1 <br/> "
+                      + "8. Search Tables with Specific Constraints q=tableConstraints.constraintType.keyword:PRIMARY_KEY AND NOT tier.tagFQN:Tier.Tier1 <br/> "
+                      + "9. Search with owners q=owner.displayName.keyword:owner_name <br/> "
+                      + "NOTE: logic operators such as AND, OR and NOT must be in uppercase ",
               required = true)
           @DefaultValue("*")
           @QueryParam("q")
@@ -155,7 +158,7 @@ public class SearchResource {
           List<String> includeSourceFields,
       @Parameter(
               description =
-                  "Fetch search results in hierarchical order of children elements. By default hierarchy is not fetched.")
+                  "Fetch search results in hierarchical order of children elements. By default hierarchy is not fetched. Currently only supported for glossary_term_search_index.")
           @DefaultValue("false")
           @QueryParam("getHierarchy")
           boolean getHierarchy)
@@ -354,14 +357,14 @@ public class SearchResource {
                       + "Pass without wildcards for exact match. <br/> "
                       + "1. For listing all tables or topics pass q=* <br/>"
                       + "2. For search tables or topics pass q=*search_term* <br/>"
-                      + "3. For searching field names such as search by column_name "
-                      + "pass q=column_names:address <br/>"
-                      + "4. For searching by tag names pass q=tags:user.email <br/>"
-                      + "5. When user selects a filter pass q=query_text AND tags:user.email "
+                      + "3. For searching field names such as search by columnNames "
+                      + "pass q=columnNames:address, for searching deleted entities, use q=deleted:true <br/>"
+                      + "4. For searching by tag names pass q=tags.tagFQN:user.email <br/>"
+                      + "5. When user selects a filter pass q=query_text AND tags.tagFQN:user.email "
                       + "AND platform:MYSQL <br/>"
-                      + "6. Search with multiple values of same filter q=tags:user.email "
-                      + "AND tags:user.address <br/>"
-                      + " logic operators such as AND and OR must be in uppercase ",
+                      + "6. Search with multiple values of same filter q=tags.tagFQN:user.email "
+                      + "AND tags.tagFQN:user.address <br/>"
+                      + "NOTE: logic operators such as AND, OR and NOT must be in uppercase ",
               required = true)
           @DefaultValue("*")
           @QueryParam("q")

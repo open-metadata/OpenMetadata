@@ -21,9 +21,9 @@ import profilerConfigPage from '../../../assets/img/profilerConfigPage.png';
 import tagCategoryImg from '../../../assets/img/TagCategory.png';
 import collateIcon from '../../../assets/svg/ic-collate.svg';
 
-export const LATEST_VERSION_ID = 26;
+export const LATEST_VERSION_ID = 27;
 
-export const COOKIE_VERSION = 'VERSION_1_4_1'; // To be changed with each release.
+export const COOKIE_VERSION = 'VERSION_1_4_2'; // To be changed with each release.
 
 // for youtube video make isImage = false and path = {video embed id}
 // embed:- youtube video => share => click on embed and take {url with id} from it
@@ -1733,6 +1733,35 @@ API:
 -   Redundant scroll bars have been removed from the UI.
 -   Improved the bot role binding to provide more control over which roles are passed to the system bots.
 -   Implemented a fix for SSL migration.`,
+    },
+  },
+  {
+    id: 27,
+    version: 'v1.4.2',
+    description: `Released on 10th June 2024.`,
+    features: [],
+    changeLogs: {
+      Enhancements: `-  In OpenMetadata, we support connecting the data assets to the knowledge articles. The knowledge articles that are pulled from the Alation connector have image URLs. We have enhanced the Alation connector to download and display the images in the Knowledge Articles.
+-   Test cases can now be filtered by Service, Tag, and Tier.`,
+      Changes: `-   One team or multiple users can be selected as reviewers for a Glossary term.,
+-   Updated the openmetadata.yaml to remove WebAnalyticsHandler.,
+-   Add appType as part of the schema in the ingestion pipeline.,
+-   We now sanitize the Activity Feed editor content.`,
+      Improvements: `-   Fixed the lineage view for tables with many columns.
+-   Fixed an issue with updating the lineage edge descriptions.
+-   Fixed an issue with Null Schema Field.
+-   Fixed the glossary term review process issues.
+-   Fixed the Kafka SSL connection arguments.
+-   Fixed an issue with dbt ingestion pipeline that was occurring due to non enum values.
+-   Fixed an issue with Announcements.
+-   Fixed redirection issues for Tags and Glossary Terms.
+-   Fixed a minor issue with filtering the Profiler.
+-   Fixed the registration Issue with Event Handlers.
+-   Fixed the sign-in issues with SAML.
+-   Fixed issues with partition migration with Redshift services.
+-   Fixed an issue with the Quicksight connector.
+-   Fixed some minor issues with the user Profile page.
+-   Fixed some issues with the Teams page.`,
     },
   },
 ];

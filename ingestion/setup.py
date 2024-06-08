@@ -19,31 +19,31 @@ from setuptools import setup
 
 # Add here versions required for multiple plugins
 VERSIONS = {
-    "airflow": "apache-airflow==2.7.3",
-    "adlfs": "adlfs~=2022.11",
+    "airflow": "apache-airflow==2.9.1",
+    "adlfs": "adlfs>=2023.1.0",
     "avro": "avro>=1.11.3,<1.12",
     "boto3": "boto3>=1.20,<2.0",  # No need to add botocore separately. It's a dep from boto3
     "geoalchemy2": "GeoAlchemy2~=0.12",
     "google-cloud-storage": "google-cloud-storage==1.43.0",
-    "gcsfs": "gcsfs~=2022.11",
+    "gcsfs": "gcsfs>=2023.1.0",
     "great-expectations": "great-expectations>=0.18.0,<0.18.14",
     "grpc-tools": "grpcio-tools>=1.47.2",
     "msal": "msal~=1.2",
     "neo4j": "neo4j~=5.3.0",
     "pandas": "pandas~=2.0.0",
-    "pyarrow": "pyarrow~=14.0",
-    "pydantic": "pydantic~=1.10",
+    "pyarrow": "pyarrow~=16.0",
+    "pydantic": "pydantic~=2.0",
     "pydomo": "pydomo~=0.3",
-    "pymysql": "pymysql>=1.0.2",
+    "pymysql": "pymysql~=1.0",
     "pyodbc": "pyodbc>=4.0.35,<5",
     "scikit-learn": "scikit-learn~=1.0",  # Python 3.7 only goes up to 1.0.2
-    "packaging": "packaging==21.3",
+    "packaging": "packaging",
     "azure-storage-blob": "azure-storage-blob~=12.14",
     "azure-identity": "azure-identity~=1.12",
     "sqlalchemy-databricks": "sqlalchemy-databricks~=0.1",
     "databricks-sdk": "databricks-sdk>=0.18.0,<0.20.0",
     "trino": "trino[sqlalchemy]",
-    "spacy": "spacy==3.5.0",
+    "spacy": "spacy~=3.7",
     "looker-sdk": "looker-sdk>=22.20.0",
     "lkml": "lkml~=1.3",
     "tableau": "tableau-api-lib~=0.1",
@@ -54,6 +54,7 @@ VERSIONS = {
     "elasticsearch8": "elasticsearch8~=8.9.0",
     "giturlparse": "giturlparse",
     "validators": "validators~=0.22.0",
+    "teradata": "teradatasqlalchemy>=20.0.0.0",
 }
 
 COMMONS = {
@@ -98,9 +99,9 @@ base_requirements = {
     "cached-property==1.5.2",  # LineageParser
     "chardet==4.0.0",  # Used in the profiler
     "cryptography>=42.0.0",
-    "email-validator>=1.0.3",  # For the pydantic generated models for Email
     "google-cloud-secret-manager==2.19.0",
     "google-crc32c",
+    "email-validator>=2.0",  # For the pydantic generated models for Email
     "importlib-metadata>=4.13.0",  # From airflow constraints
     "Jinja2>=2.11.3",
     "jsonpatch<2.0, >=1.24",
@@ -126,7 +127,7 @@ plugins: Dict[str, Set[str]] = {
         "attrs",
     },  # Same as ingestion container. For development.
     "amundsen": {VERSIONS["neo4j"]},
-    "athena": {"pyathena==3.0.8"},
+    "athena": {"pyathena~=3.0"},
     "atlas": {},
     "azuresql": {VERSIONS["pyodbc"]},
     "azure-sso": {VERSIONS["msal"]},
@@ -166,7 +167,7 @@ plugins: Dict[str, Set[str]] = {
     "datalake-azure": {
         VERSIONS["azure-storage-blob"],
         VERSIONS["azure-identity"],
-        VERSIONS["adlfs"],  # Python 3.7 does only support up to 2022.2.0
+        VERSIONS["adlfs"],
         *COMMONS["datalake"],
     },
     "datalake-gcs": {
@@ -179,7 +180,7 @@ plugins: Dict[str, Set[str]] = {
         # https://github.com/fsspec/s3fs/blob/9bf99f763edaf7026318e150c4bd3a8d18bb3a00/requirements.txt#L1
         # however, the latest version of `s3fs` conflicts its `aiobotocore` dep with `boto3`'s dep on `botocore`.
         # Leaving this marked to the automatic resolution to speed up installation.
-        "s3fs==0.4.2",
+        "s3fs",
         *COMMONS["datalake"],
     },
     "deltalake": {"delta-spark<=2.3.0"},
@@ -202,7 +203,7 @@ plugins: Dict[str, Set[str]] = {
         "impyla~=0.18.0",
     },
     "iceberg": {
-        "pyiceberg<1",
+        "pyiceberg>=0.5",
         # Forcing the version of a few packages so it plays nicely with other requirements.
         VERSIONS["pydantic"],
         VERSIONS["adlfs"],
@@ -225,7 +226,7 @@ plugins: Dict[str, Set[str]] = {
         "gitpython~=3.1.34",
         VERSIONS["giturlparse"],
     },
-    "mlflow": {"mlflow-skinny>=2.3.0", "alembic~=1.10.2"},
+    "mlflow": {"mlflow-skinny>=2.3.0"},
     "mongo": {VERSIONS["mongo"], VERSIONS["pandas"]},
     "couchbase": {"couchbase~=4.1"},
     "mssql": {"sqlalchemy-pytds~=0.3"},
@@ -235,7 +236,7 @@ plugins: Dict[str, Set[str]] = {
     "openlineage": {*COMMONS["kafka"]},
     "oracle": {"cx_Oracle>=8.3.0,<9", "oracledb~=1.2"},
     "pgspider": {"psycopg2-binary", "sqlalchemy-pgspider"},
-    "pinotdb": {"pinotdb~=0.3"},
+    "pinotdb": {"pinotdb~=5.0"},
     "postgres": {*COMMONS["postgres"]},
     "powerbi": {
         VERSIONS["msal"],
@@ -257,7 +258,7 @@ plugins: Dict[str, Set[str]] = {
         VERSIONS["geoalchemy2"],
     },
     "sagemaker": {VERSIONS["boto3"]},
-    "salesforce": {"simple_salesforce==1.11.4"},
+    "salesforce": {"simple_salesforce~=1.11"},
     "sample-data": {VERSIONS["avro"], VERSIONS["grpc-tools"]},
     "sap-hana": {"hdbcli", "sqlalchemy-hana"},
     "sas": {},
@@ -266,6 +267,7 @@ plugins: Dict[str, Set[str]] = {
     "snowflake": {VERSIONS["snowflake"]},
     "superset": {},  # uses requests
     "tableau": {VERSIONS["tableau"], VERSIONS["validators"], VERSIONS["packaging"]},
+    "teradata": {VERSIONS["teradata"]},
     "trino": {VERSIONS["trino"]},
     "vertica": {"sqlalchemy-vertica[vertica-python]>=0.0.5"},
     "pii-processor": {
@@ -277,12 +279,13 @@ plugins: Dict[str, Set[str]] = {
 
 dev = {
     "black==22.3.0",
-    "datamodel-code-generator==0.24.2",
-    "boto3-stubs[essential]",
+    "datamodel-code-generator==0.25.6",
+    "boto3-stubs",
+    "mypy-boto3-glue",
     "isort",
     "pre-commit",
     "pycln",
-    "pylint~=3.0.0",
+    "pylint~=3.0",
     # For publishing
     "twine",
     "build",
@@ -293,11 +296,12 @@ dev = {
 test = {
     # Install Airflow as it's not part of `all` plugin
     VERSIONS["airflow"],
-    "boto3-stubs[boto3]",
+    "boto3-stubs",
+    "mypy-boto3-glue",
     "coverage",
     # Install GE because it's not in the `all` plugin
     VERSIONS["great-expectations"],
-    "moto==4.0.8",
+    "moto~=5.0",
     "pytest==7.0.0",
     "pytest-cov",
     "pytest-order",
@@ -326,6 +330,7 @@ test = {
     "minio==7.2.5",
     *plugins["mlflow"],
     *plugins["datalake-s3"],
+    *plugins["pii-processor"],
     "requests==2.31.0",
 }
 

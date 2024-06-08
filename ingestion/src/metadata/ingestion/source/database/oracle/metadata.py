@@ -112,8 +112,8 @@ class OracleSource(StoredProcedureMixin, CommonDbSourceService):
     def create(
         cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None
     ):
-        config = WorkflowSource.parse_obj(config_dict)
-        connection: OracleConnection = config.serviceConnection.__root__.config
+        config = WorkflowSource.model_validate(config_dict)
+        connection: OracleConnection = config.serviceConnection.root.config
         if not isinstance(connection, OracleConnection):
             raise InvalidSourceException(
                 f"Expected OracleConnection, but got {connection}"
@@ -154,20 +154,23 @@ class OracleSource(StoredProcedureMixin, CommonDbSourceService):
                 schema_definition = inspector.get_table_ddl(
                     self.connection, table_name, schema_name
                 )
+                return (
+                    str(schema_definition).strip()
+                    if schema_definition is not None
+                    else None
+                )
 
-            else:
-                definition_fn = inspector.get_view_definition
-                if table_type == TableType.MaterializedView:
-                    definition_fn = inspector.get_mview_definition
+            definition_fn = inspector.get_view_definition
+            if table_type == TableType.MaterializedView:
+                definition_fn = inspector.get_mview_definition
 
-                schema_definition = definition_fn(table_name, schema_name)
+            schema_definition = definition_fn(table_name, schema_name)
 
-            schema_definition = (
-                str(schema_definition.strip())
+            return (
+                str(schema_definition).strip()
                 if schema_definition is not None
                 else None
             )
-            return schema_definition
 
         except NotImplementedError:
             logger.warning("Schema definition not implemented")
@@ -214,7 +217,7 @@ class OracleSource(StoredProcedureMixin, CommonDbSourceService):
 
         try:
             stored_procedure_request = CreateStoredProcedureRequest(
-                name=EntityName(__root__=stored_procedure.name),
+                name=EntityName(stored_procedure.name),
                 storedProcedureCode=StoredProcedureCode(
                     language=Language.SQL,
                     code=stored_procedure.definition,
