@@ -274,7 +274,7 @@ class RedashSource(DashboardServiceSource):
                     continue
                 yield Either(
                     right=CreateChartRequest(
-                        name=EntittName(widgets["id"]),
+                        name=EntityName(widgets["id"]),
                         displayName=chart_display_name
                         if visualization and visualization["query"]
                         else "",

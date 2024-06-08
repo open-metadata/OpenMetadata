@@ -445,9 +445,8 @@ class DbtSource(DbtServiceSource):
                                 rawSql=SqlQuery(dbt_raw_query)
                                 if dbt_raw_query
                                 else None,
-                                sql=SqlQuery(dbt_compiled_query)
-                                if dbt_compiled_query
-                                else None,
+                                # SQL Is a required param for the DataModel
+                                sql=SqlQuery(dbt_compiled_query or dbt_raw_query),
                                 columns=self.parse_data_model_columns(
                                     manifest_node, catalog_node
                                 ),

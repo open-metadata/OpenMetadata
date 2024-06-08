@@ -28,6 +28,6 @@ class LFTagsOnColumnsItem(BaseModel):
 
 
 class LFTags(BaseModel):
-    LFTagOnDatabase: Optional[List[TagItem]]
-    LFTagsOnTable: Optional[List[TagItem]]
-    LFTagsOnColumns: Optional[List[LFTagsOnColumnsItem]]
+    LFTagOnDatabase: Optional[List[TagItem]] = None
+    LFTagsOnTable: Optional[List[TagItem]] = None
+    LFTagsOnColumns: Optional[List[LFTagsOnColumnsItem]] = None
