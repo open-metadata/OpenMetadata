@@ -16,7 +16,7 @@ import { getLimitByResource } from '../../rest/limitsAPI';
 
 const WARN_SUB_HEADER = "Check the usage of your plan's resource limits.";
 const ERROR_SUB_HEADER =
-  'You have used {{currentCount}} out of 5 of the Bots resource.';
+  'You have used {{currentCount}} out of {{limit}} of the Bots resource.';
 
 export interface ResourceLimit {
   featureLimitStatuses: Array<{
@@ -145,10 +145,9 @@ export const useLimitStore = create<{
           } of your ${plan} Plan usage limit.`,
           type: hardLimitExceed ? 'danger' : 'warning',
           subheader: hardLimitExceed
-            ? ERROR_SUB_HEADER.replace(
-                '{{currentCount}}',
-                currentCount + ''
-              ).replace('{{resource}}', startCase(resource))
+            ? ERROR_SUB_HEADER.replace('{{currentCount}}', currentCount + '')
+                .replace('{{resource}}', startCase(resource))
+                .replace('{{limit}}', limits.hardLimit + '')
             : WARN_SUB_HEADER,
           softLimitExceed,
           hardLimitExceed,
