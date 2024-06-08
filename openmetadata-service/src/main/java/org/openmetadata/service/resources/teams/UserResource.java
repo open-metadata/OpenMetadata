@@ -561,19 +561,37 @@ public class UserResource extends EntityResource<User, UserRepository> {
       addAuthMechanismToBot(user, create, uriInfo);
     }
 
+    //
+    try {
+      validateAndAddUserAuthForBasic(user, create);
+    } catch (RuntimeException ex) {
+      return Response.status(CONFLICT)
+          .type(MediaType.APPLICATION_JSON_TYPE)
+          .entity(
+              new ErrorMessage(
+                  CONFLICT.getStatusCode(), CatalogExceptionMessage.ENTITY_ALREADY_EXISTS))
+          .build();
+    }
+
+    // Add the roles on user creation
+    updateUserRolesIfRequired(user, containerRequestContext);
+
+    // TODO do we need to authenticate user is creating himself?
+    Response createdUser = create(uriInfo, securityContext, user);
+
+    // Send Invite mail to user
+    sendInviteMailToUserForBasicAuth(uriInfo, user, create);
+
+    // Update response to remove auth fields
+    decryptOrNullify(securityContext, (User) createdUser.getEntity());
+    return createdUser;
+  }
+
+  private void validateAndAddUserAuthForBasic(User user, CreateUser create) {
     if (isBasicAuth()) {
-      try {
-        // basic auth doesn't allow duplicate emails, since username part of the email is used as
-        // login name
-        validateEmailAlreadyExists(create.getEmail());
-      } catch (RuntimeException ex) {
-        return Response.status(CONFLICT)
-            .type(MediaType.APPLICATION_JSON_TYPE)
-            .entity(
-                new ErrorMessage(
-                    CONFLICT.getStatusCode(), CatalogExceptionMessage.ENTITY_ALREADY_EXISTS))
-            .build();
-      }
+      // basic auth doesn't allow duplicate emails, since username part of the email is used as
+      // login name
+      validateEmailAlreadyExists(create.getEmail());
       user.setName(user.getEmail().split("@")[0]);
       if (Boolean.FALSE.equals(create.getIsBot())
           && create.getCreatePasswordType() == ADMIN_CREATE) {
@@ -581,17 +599,18 @@ public class UserResource extends EntityResource<User, UserRepository> {
       }
       // else the user will get a mail if configured smtp
     }
+  }
 
-    // Add the roles on user creation
+  private void updateUserRolesIfRequired(
+      User user, ContainerRequestContext containerRequestContext) {
     if (Boolean.TRUE.equals(authorizerConfiguration.getUseRolesFromProvider())
         && Boolean.FALSE.equals(user.getIsBot() != null && user.getIsBot())) {
       user.setRoles(
           validateAndGetRolesRef(getRolesFromAuthorizationToken(containerRequestContext)));
     }
+  }
 
-    // TODO do we need to authenticate user is creating himself?
-
-    addHref(uriInfo, repository.create(uriInfo, user));
+  private void sendInviteMailToUserForBasicAuth(UriInfo uriInfo, User user, CreateUser create) {
     if (isBasicAuth() && isEmailServiceEnabled) {
       try {
         authHandler.sendInviteMailToUser(
@@ -604,9 +623,6 @@ public class UserResource extends EntityResource<User, UserRepository> {
         LOG.error("Error in sending invite to User" + ex.getMessage());
       }
     }
-    Response response = Response.created(user.getHref()).entity(user).build();
-    decryptOrNullify(securityContext, (User) response.getEntity());
-    return response;
   }
 
   private boolean isBasicAuth() {

@@ -31,6 +31,10 @@ jest.mock('../../../../common/ProfilePicture/ProfilePicture', () => {
   return jest.fn().mockReturnValue(<p>ProfilePicture</p>);
 });
 
+jest.mock('../../../../../utils/EntityUtils', () => ({
+  getEntityName: jest.fn().mockReturnValue('getEntityName'),
+}));
+
 describe('Test User User Profile Image Component', () => {
   it('should render user profile image component', async () => {
     render(<UserProfileImage {...mockPropsData} />);

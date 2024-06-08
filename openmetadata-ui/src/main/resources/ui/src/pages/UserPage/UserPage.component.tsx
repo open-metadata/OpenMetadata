@@ -111,11 +111,21 @@ const UserPage = () => {
       try {
         const response = await updateUserDetail(userData.id, jsonPatch);
         if (response) {
+          let updatedKeyData;
+
+          if (key === 'roles') {
+            updatedKeyData = {
+              roles: response.roles,
+              isAdmin: response.isAdmin,
+            };
+          } else {
+            updatedKeyData = { [key]: response[key] };
+          }
           const newCurrentUserData = {
             ...currentUser,
-            [key]: response[key],
+            ...updatedKeyData,
           };
-          const newUserData = { ...userData, [key]: response[key] };
+          const newUserData = { ...userData, ...updatedKeyData };
 
           if (key === 'defaultPersona') {
             if (isUndefined(response.defaultPersona)) {
