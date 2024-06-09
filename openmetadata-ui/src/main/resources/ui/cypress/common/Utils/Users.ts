@@ -218,7 +218,6 @@ export const editDisplayName = (editedUserName: string) => {
   cy.get('[data-testid="displayName"]').type(editedUserName);
   interceptURL('PATCH', '/api/v1/users/*', 'updateName');
   cy.get('[data-testid="inline-save-btn"]').click();
-  cy.get('[data-testid="edit-displayName"]').scrollIntoView();
   cy.get('[data-testid="user-name"]').should('contain', editedUserName);
 };
 
