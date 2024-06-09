@@ -14,9 +14,8 @@ import { isNil, startCase } from 'lodash';
 import { create } from 'zustand';
 import { getLimitByResource } from '../../rest/limitsAPI';
 
-const WARN_SUB_HEADER = "Check the usage of your plan's resource limits.";
 const ERROR_SUB_HEADER =
-  'You have used {{currentCount}} out of {{limit}} of the Bots resource.';
+  'You have used {{currentCount}} out of {{limit}} of the {{resource}} resource.';
 
 export interface ResourceLimit {
   featureLimitStatuses: Array<{
@@ -144,11 +143,12 @@ export const useLimitStore = create<{
             hardLimitExceed ? '100%' : '75%'
           } of your ${plan} Plan usage limit.`,
           type: hardLimitExceed ? 'danger' : 'warning',
-          subheader: hardLimitExceed
-            ? ERROR_SUB_HEADER.replace('{{currentCount}}', currentCount + '')
-                .replace('{{resource}}', startCase(resource))
-                .replace('{{limit}}', limits.hardLimit + '')
-            : WARN_SUB_HEADER,
+          subheader: ERROR_SUB_HEADER.replace(
+            '{{currentCount}}',
+            currentCount + ''
+          )
+            .replace('{{resource}}', startCase(resource))
+            .replace('{{limit}}', limits.hardLimit + ''),
           softLimitExceed,
           hardLimitExceed,
         });

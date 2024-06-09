@@ -462,7 +462,7 @@ const Services = ({ serviceName }: ServicesProps) => {
                   : NO_PERMISSION_FOR_ACTION
               }>
               {addServicePermission && !isPlatFormDisabled && (
-                <LimitWrapper resource="services">
+                <LimitWrapper resource="dataAssets">
                   <Button
                     className="m-b-xs"
                     data-testid="add-service-button"
