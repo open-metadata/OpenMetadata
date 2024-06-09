@@ -36,7 +36,7 @@ const announcementForm = ({ title, description, startDate, endDate }) => {
   cy.get('[id="announcement-submit"]').scrollIntoView().click();
 };
 
-export const createAnnouncement = (announcement) => {
+export const createAnnouncement = (announcement, entityName, updatedName) => {
   interceptURL(
     'GET',
     '/api/v1/feed?entityLink=*type=Announcement',
@@ -75,6 +75,15 @@ export const createAnnouncement = (announcement) => {
     announcement.title
   );
   cy.goToHomePage();
+
+  cy.get('[data-testid="announcement-container"]')
+    .find(`a[href*="${encodeURIComponent(entityName)}"]`)
+    .click();
+
+  cy.get('[data-testid="entity-header-display-name"]').should(
+    'contain',
+    `Cypress ${updatedName} updated`
+  );
 };
 
 export const deleteAnnouncement = () => {

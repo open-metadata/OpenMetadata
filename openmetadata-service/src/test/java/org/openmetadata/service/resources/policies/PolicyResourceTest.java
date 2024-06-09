@@ -104,6 +104,8 @@ public class PolicyResourceTest extends EntityResourceTest<Policy, CreatePolicy>
   }
 
   public void setupPolicies() throws IOException {
+    CREATE_ACCESS_PERMISSION_POLICY =
+        createEntity(createAccessControlPolicyWithCreateRule(), ADMIN_AUTH_HEADERS);
     POLICY1 = createEntity(createRequest("policy1").withOwner(null), ADMIN_AUTH_HEADERS);
     POLICY2 = createEntity(createRequest("policy2").withOwner(null), ADMIN_AUTH_HEADERS);
     TEAM_ONLY_POLICY = getEntityByName("TeamOnlyPolicy", "", ADMIN_AUTH_HEADERS);
@@ -767,6 +769,19 @@ public class PolicyResourceTest extends EntityResourceTest<Policy, CreatePolicy>
         .withDescription("description")
         .withRules(rules)
         .withOwner(USER1_REF);
+  }
+
+  private CreatePolicy createAccessControlPolicyWithCreateRule() {
+    return new CreatePolicy()
+        .withName("CreatePermissionPolicy")
+        .withDescription("Create User Permission")
+        .withRules(
+            List.of(
+                new Rule()
+                    .withName("CreatePermission")
+                    .withResources(List.of(ALL_RESOURCES))
+                    .withOperations(List.of(MetadataOperation.CREATE))
+                    .withEffect(ALLOW)));
   }
 
   private void validateCondition(String expression) throws HttpResponseException {

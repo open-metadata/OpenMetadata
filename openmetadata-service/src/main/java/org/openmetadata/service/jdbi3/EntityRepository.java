@@ -44,6 +44,7 @@ import static org.openmetadata.service.Entity.FIELD_REVIEWERS;
 import static org.openmetadata.service.Entity.FIELD_STYLE;
 import static org.openmetadata.service.Entity.FIELD_TAGS;
 import static org.openmetadata.service.Entity.FIELD_VOTES;
+import static org.openmetadata.service.Entity.TEAM;
 import static org.openmetadata.service.Entity.USER;
 import static org.openmetadata.service.Entity.getEntityByName;
 import static org.openmetadata.service.Entity.getEntityFields;
@@ -471,6 +472,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
   public final T copy(T entity, CreateEntity request, String updatedBy) {
     EntityReference owner = validateOwner(request.getOwner());
     EntityReference domain = validateDomain(request.getDomain());
+    validateReviewers(request.getReviewers());
     entity.setId(UUID.randomUUID());
     entity.setName(request.getName());
     entity.setDisplayName(request.getDisplayName());
@@ -483,6 +485,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     entity.setExtension(request.getExtension());
     entity.setUpdatedBy(updatedBy);
     entity.setUpdatedAt(System.currentTimeMillis());
+    entity.setReviewers(request.getReviewers());
     return entity;
   }
 
@@ -754,6 +757,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     applyTags(entity);
     storeDomain(entity, entity.getDomain());
     storeDataProducts(entity, entity.getDataProducts());
+    storeReviewers(entity, entity.getReviewers());
     storeRelationships(entity);
   }
 
@@ -854,7 +858,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     EventType change = ENTITY_NO_CHANGE;
     if (entityUpdater.fieldsChanged()) {
       change = EventType.ENTITY_UPDATED;
-      setInheritedFields(original, patchFields); // Restore inherited fields after a change
+      setInheritedFields(updated, patchFields); // Restore inherited fields after a change
     }
     return new PatchResponse<>(Status.OK, withHref(uriInfo, updated), change);
   }
@@ -883,7 +887,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     EventType change = ENTITY_NO_CHANGE;
     if (entityUpdater.fieldsChanged()) {
       change = EventType.ENTITY_UPDATED;
-      setInheritedFields(original, patchFields); // Restore inherited fields after a change
+      setInheritedFields(updated, patchFields); // Restore inherited fields after a change
     }
     return new PatchResponse<>(Status.OK, withHref(uriInfo, updated), change);
   }
@@ -1672,9 +1676,13 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
   public final void deleteTo(
       UUID toId, String toEntityType, Relationship relationship, String fromEntityType) {
-    daoCollection
-        .relationshipDAO()
-        .deleteTo(toId, toEntityType, relationship.ordinal(), fromEntityType);
+    if (fromEntityType == null) {
+      daoCollection.relationshipDAO().deleteTo(toId, toEntityType, relationship.ordinal());
+    } else {
+      daoCollection
+          .relationshipDAO()
+          .deleteTo(toId, toEntityType, relationship.ordinal(), fromEntityType);
+    }
   }
 
   public final void deleteFrom(
@@ -1694,6 +1702,43 @@ public abstract class EntityRepository<T extends EntityInterface> {
                 : Entity.getEntityReferenceByName(
                     USER, entityReference.getFullyQualifiedName(), ALL);
         EntityUtil.copy(ref, entityReference);
+      }
+      entityReferences.sort(EntityUtil.compareEntityReference);
+    }
+  }
+
+  private boolean validateIfAllRefsAreEntityType(List<EntityReference> list, String entityType) {
+    return list.stream().allMatch(obj -> obj.getType().equals(entityType));
+  }
+
+  public final void validateReviewers(List<EntityReference> entityReferences) {
+    if (!nullOrEmpty(entityReferences)) {
+      boolean areAllTeam = validateIfAllRefsAreEntityType(entityReferences, TEAM);
+      boolean areAllUsers = validateIfAllRefsAreEntityType(entityReferences, USER);
+      if (areAllTeam) {
+        // If all are team then only one team is allowed
+        if (entityReferences.size() > 1) {
+          throw new IllegalArgumentException("Only one team can be assigned as reviewer.");
+        } else {
+          EntityReference ref =
+              entityReferences.get(0).getId() != null
+                  ? Entity.getEntityReferenceById(TEAM, entityReferences.get(0).getId(), ALL)
+                  : Entity.getEntityReferenceByName(
+                      TEAM, entityReferences.get(0).getFullyQualifiedName(), ALL);
+          EntityUtil.copy(ref, entityReferences.get(0));
+        }
+      } else if (areAllUsers) {
+        for (EntityReference entityReference : entityReferences) {
+          EntityReference ref =
+              entityReference.getId() != null
+                  ? Entity.getEntityReferenceById(USER, entityReference.getId(), ALL)
+                  : Entity.getEntityReferenceByName(
+                      USER, entityReference.getFullyQualifiedName(), ALL);
+          EntityUtil.copy(ref, entityReference);
+        }
+      } else {
+        throw new IllegalArgumentException(
+            "Invalid Reviewer Type. Only one team or multiple users can be assigned as reviewer.");
       }
       entityReferences.sort(EntityUtil.compareEntityReference);
     }
@@ -1751,7 +1796,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
   protected List<EntityReference> getReviewers(T entity) {
     return supportsReviewers
-        ? findFrom(entity.getId(), entityType, Relationship.REVIEWS, Entity.USER)
+        ? findFrom(entity.getId(), entityType, Relationship.REVIEWS, null)
         : null;
   }
 
@@ -1785,9 +1830,24 @@ public abstract class EntityRepository<T extends EntityInterface> {
   }
 
   public final void inheritReviewers(T entity, Fields fields, EntityInterface parent) {
-    if (fields.contains(FIELD_REVIEWERS) && nullOrEmpty(entity.getReviewers()) && parent != null) {
-      entity.setReviewers(parent.getReviewers());
-      listOrEmpty(entity.getReviewers()).forEach(reviewer -> reviewer.withInherited(true));
+    if (fields.contains(FIELD_REVIEWERS) && parent != null) {
+      List<EntityReference> combinedReviewers = new ArrayList<>(listOrEmpty(entity.getReviewers()));
+      // Fetch Unique Reviewers from parent as inherited
+      List<EntityReference> uniqueEntityReviewers =
+          listOrEmpty(parent.getReviewers()).stream()
+              .filter(
+                  parentReviewer ->
+                      combinedReviewers.stream()
+                          .noneMatch(
+                              entityReviewer ->
+                                  parentReviewer.getId().equals(entityReviewer.getId())
+                                      && parentReviewer.getType().equals(entityReviewer.getType())))
+              .toList();
+      uniqueEntityReviewers.forEach(reviewer -> reviewer.withInherited(true));
+
+      combinedReviewers.addAll(uniqueEntityReviewers);
+      combinedReviewers.sort(EntityUtil.compareEntityReference);
+      entity.setReviewers(combinedReviewers);
     }
   }
 
@@ -1824,6 +1884,17 @@ public abstract class EntityRepository<T extends EntityInterface> {
           entityType,
           entity.getId());
       addRelationship(domain.getId(), entity.getId(), Entity.DOMAIN, entityType, Relationship.HAS);
+    }
+  }
+
+  @Transaction
+  protected void storeReviewers(T entity, List<EntityReference> reviewers) {
+    if (supportsReviewers) {
+      // Add relationship user/team --- reviews ---> entity
+      for (EntityReference reviewer : listOrEmpty(reviewers)) {
+        addRelationship(
+            reviewer.getId(), entity.getId(), reviewer.getType(), entityType, Relationship.REVIEWS);
+      }
     }
   }
 
@@ -2467,10 +2538,12 @@ public abstract class EntityRepository<T extends EntityInterface> {
       }
       List<EntityReference> origReviewers = getEntityReferences(original.getReviewers());
       List<EntityReference> updatedReviewers = getEntityReferences(updated.getReviewers());
-      validateUsers(updatedReviewers);
+      validateReviewers(updatedReviewers);
+      // Either all users or team which is one team at a time, assuming all ref to have same type,
+      // validateReviewer checks it
       updateFromRelationships(
           "reviewers",
-          Entity.USER,
+          null,
           origReviewers,
           updatedReviewers,
           Relationship.REVIEWS,
@@ -2746,7 +2819,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
       // Add relationships from updated
       for (EntityReference ref : updatedFromRefs) {
-        addRelationship(ref.getId(), toId, fromEntityType, toEntityType, relationshipType);
+        addRelationship(ref.getId(), toId, ref.getType(), toEntityType, relationshipType);
       }
       updatedFromRefs.sort(EntityUtil.compareEntityReference);
       originFromRefs.sort(EntityUtil.compareEntityReference);

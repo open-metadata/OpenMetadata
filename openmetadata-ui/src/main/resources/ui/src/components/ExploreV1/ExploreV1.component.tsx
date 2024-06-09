@@ -12,10 +12,12 @@
  */
 
 import {
+  ExclamationCircleOutlined,
   SortAscendingOutlined,
   SortDescendingOutlined,
 } from '@ant-design/icons';
 import {
+  Alert,
   Button,
   Col,
   Layout,
@@ -45,6 +47,7 @@ import {
   TAG_FQN_KEY,
 } from '../../constants/explore.constants';
 import { ERROR_PLACEHOLDER_TYPE, SORT_ORDER } from '../../enums/common.enum';
+import { useApplicationStore } from '../../hooks/useApplicationStore';
 import { QueryFieldInterface } from '../../pages/ExplorePage/ExplorePage.interface';
 import { getDropDownItems } from '../../utils/AdvancedSearchUtils';
 import { Transi18next } from '../../utils/CommonUtils';
@@ -52,7 +55,6 @@ import { highlightEntityNameAndDescription } from '../../utils/EntityUtils';
 import { getSelectedValuesFromQuickFilter } from '../../utils/Explore.utils';
 import { getApplicationDetailsPath } from '../../utils/RouterUtils';
 import searchClassBase from '../../utils/SearchClassBase';
-import InlineAlert from '../common/InlineAlert/InlineAlert';
 import Loader from '../common/Loader/Loader';
 import {
   ExploreProps,
@@ -63,6 +65,47 @@ import PageLayoutV1 from '../PageLayoutV1/PageLayoutV1';
 import SearchedData from '../SearchedData/SearchedData';
 import { SearchedDataProps } from '../SearchedData/SearchedData.interface';
 import './exploreV1.less';
+
+const IndexNotFoundBanner = () => {
+  const { theme } = useApplicationStore();
+  const { t } = useTranslation();
+
+  return (
+    <Alert
+      closable
+      description={
+        <div className="d-flex items-start gap-3">
+          <ExclamationCircleOutlined
+            style={{
+              color: theme.errorColor,
+              fontSize: '16px',
+            }}
+          />
+          <div className="d-flex flex-col gap-2">
+            <Typography.Text className="font-semibold text-xs">
+              {t('server.indexing-error')}
+            </Typography.Text>
+            <Typography.Paragraph className="m-b-0 text-xs">
+              <Transi18next
+                i18nKey="message.configure-search-re-index"
+                renderElement={
+                  <Link
+                    className="alert-link"
+                    to={getApplicationDetailsPath(SEARCH_INDEXING_APPLICATION)}
+                  />
+                }
+                values={{
+                  settings: t('label.search-index-setting-plural'),
+                }}
+              />
+            </Typography.Paragraph>
+          </div>
+        </div>
+      }
+      type="error"
+    />
+  );
+};
 
 const ExploreV1: React.FC<ExploreProps> = ({
   aggregations,
@@ -357,26 +400,7 @@ const ExploreV1: React.FC<ExploreProps> = ({
                   </Col>
                   {isElasticSearchIssue ? (
                     <Col span={24}>
-                      <InlineAlert
-                        description={
-                          <Transi18next
-                            i18nKey="message.configure-search-re-index"
-                            renderElement={
-                              <Link
-                                className="alert-link"
-                                to={getApplicationDetailsPath(
-                                  SEARCH_INDEXING_APPLICATION
-                                )}
-                              />
-                            }
-                            values={{
-                              settings: t('label.search-index-setting-plural'),
-                            }}
-                          />
-                        }
-                        heading={t('server.indexing-error')}
-                        type="error"
-                      />
+                      <IndexNotFoundBanner />
                     </Col>
                   ) : (
                     <></>

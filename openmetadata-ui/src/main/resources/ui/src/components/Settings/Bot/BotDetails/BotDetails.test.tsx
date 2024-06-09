@@ -142,6 +142,7 @@ jest.mock('../../Users/AccessTokenCard/AccessTokenCard.component', () => {
 jest.mock('../../../../context/LimitsProvider/useLimitsStore', () => ({
   useLimitStore: jest.fn().mockImplementation(() => ({
     getResourceLimit: mockGetResourceLimit,
+    config: { enable: true },
   })),
 }));
 

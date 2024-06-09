@@ -296,7 +296,6 @@ const AsyncSelectList: FC<AsyncSelectListProps & SelectProps> = ({
 
   return (
     <Select
-      autoFocus
       showSearch
       className="async-select-list"
       data-testid="tag-selector"

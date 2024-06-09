@@ -123,6 +123,12 @@ jest.mock('../../../../hooks/useAirflowStatus', () => ({
   }),
 }));
 
+jest.mock('../../../../hoc/LimitWrapper', () => {
+  return jest
+    .fn()
+    .mockImplementation(({ children }) => <>LimitWrapper{children}</>);
+});
+
 describe('Test Ingestion page', () => {
   it('Page Should render', async () => {
     const { container } = render(

@@ -105,7 +105,7 @@ jest.mock('../../../../context/LimitsProvider/useLimitsStore', () => ({
       limits: {
         config: {
           featureLimits: [
-            { name: 'application', pipelineSchedules: ['daily', 'weekly'] },
+            { name: 'app', pipelineSchedules: ['daily', 'weekly'] },
           ],
         },
       },

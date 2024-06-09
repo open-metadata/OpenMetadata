@@ -172,13 +172,13 @@ describe('ApplicationPage', () => {
     expect(screen.getByText('ErrorPlaceHolder')).toBeInTheDocument();
   });
 
-  it('should call limitWrapper with application as resource', async () => {
+  it('should call limitWrapper with app as resource', async () => {
     await act(async () => {
       render(<ApplicationPage />);
     });
 
     expect(LimitWrapper).toHaveBeenCalledWith(
-      expect.objectContaining({ resource: 'application' }),
+      expect.objectContaining({ resource: 'app' }),
       {}
     );
   });

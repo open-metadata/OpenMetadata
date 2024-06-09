@@ -1008,6 +1008,7 @@
     "select-field": "Выбрать {{field}}",
     "select-to-search": "Поиск для выбора",
     "select-type": "Выбрать тип",
+    "selected-entity": "Selected {{entity}}",
     "selected-lowercase": "выбрано",
     "send": "Отправить",
     "send-now": "Отправить сейчас",
