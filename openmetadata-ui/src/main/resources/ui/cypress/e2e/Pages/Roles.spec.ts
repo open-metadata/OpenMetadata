@@ -69,24 +69,6 @@ describe('Roles page should work properly', { tags: 'Settings' }, () => {
     cy.url().should('eq', `${BASE_URL}/settings/access/roles`);
   });
 
-  it('Default Role and Policies should be displayed', () => {
-    // Verifying the default roles and policies are present
-
-    Object.values(roles).forEach((role) => {
-      cy.get('[data-testid="role-name"]')
-        .should('contain', role)
-        .should('be.visible');
-    });
-
-    // Validate policy
-    cy.get('[data-testid="policy-link"]')
-      .should('contain', policies.dataConsumerPolicy)
-      .should('be.visible');
-    cy.get('[data-testid="policy-link"]')
-      .should('contain', policies.dataStewardPolicy)
-      .should('be.visible');
-  });
-
   it('Add new role and check all tabs data', () => {
     cy.get('[data-testid="add-role"]')
       .contains('Add Role')

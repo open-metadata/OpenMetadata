@@ -78,6 +78,8 @@ export const createAnnouncement = (announcement, entityName, updatedName) => {
 
   cy.get('[data-testid="announcement-container"]')
     .find(`a[href*="${encodeURIComponent(entityName)}"]`)
+    .filter(':visible')
+    .first()
     .click();
 
   cy.get('[data-testid="entity-header-display-name"]').should(

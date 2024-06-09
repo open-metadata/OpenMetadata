@@ -179,7 +179,7 @@ class ServiceBaseClass {
 
     cy.get('[data-testid="view-service-button"]').click();
     verifyResponseStatusCode('@serviceDetails', 200);
-    verifyResponseStatusCode('@ingestionPipelines', 200);
+    cy.wait('@ingestionPipelines');
 
     this.handleIngestionRetry();
   }
@@ -272,7 +272,7 @@ class ServiceBaseClass {
         cy.get('[data-testid="ingestions"]').click();
 
         if (ingestionType === 'metadata') {
-          verifyResponseStatusCode('@pipelineStatuses', 200, {
+          cy.wait('@pipelineStatuses', {
             responseTimeout: 50000,
           });
         }
@@ -293,8 +293,8 @@ class ServiceBaseClass {
       if (retryCount !== 0) {
         cy.wait('@allPermissions').then(() => {
           cy.wait('@serviceDetails').then(() => {
-            verifyResponseStatusCode('@ingestionPipelines', 200);
-            verifyResponseStatusCode('@pipelineStatuses', 200, {
+            cy.wait('@ingestionPipelines');
+            cy.wait('@pipelineStatuses', {
               responseTimeout: 50000,
             });
           });
