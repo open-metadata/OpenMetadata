@@ -156,7 +156,7 @@ describe('Notification Alerts Page Tests', () => {
     expect(alertNameElement).toBeInTheDocument();
   });
 
-  it('should call LimitWrapper with resource as notifications', async () => {
+  it('should call LimitWrapper with resource as eventsubscription', async () => {
     await act(async () => {
       render(<NotificationListPage />, {
         wrapper: MemoryRouter,
@@ -164,7 +164,7 @@ describe('Notification Alerts Page Tests', () => {
     });
 
     expect(LimitWrapper).toHaveBeenCalledWith(
-      expect.objectContaining({ resource: 'notification' }),
+      expect.objectContaining({ resource: 'eventsubscription' }),
       {}
     );
   });
