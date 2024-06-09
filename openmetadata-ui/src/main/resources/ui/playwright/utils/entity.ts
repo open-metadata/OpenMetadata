@@ -44,19 +44,29 @@ export const addOwner = async (
   dataTestId?: string
 ) => {
   await page.getByTestId('edit-owner').click();
-  await page.getByRole('tab', { name: type }).click();
   if (type === 'Users') {
-    await page.waitForResponse('/api/v1/users?limit=*&isBot=false*');
+    const userListResponse = page.waitForResponse(
+      '/api/v1/users?limit=*&isBot=false*'
+    );
+    await page.getByRole('tab', { name: type }).click();
+    await userListResponse;
   }
   await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
 
-  const ownerSearch = page.waitForResponse(
-    `/api/v1/search/query?q=*${encodeURIComponent(owner)}*`
-  );
+  const ownerSearchBar = await page
+    .getByTestId(`owner-select-${lowerCase(type)}-search-bar`)
+    .isVisible();
+
+  if (!ownerSearchBar) {
+    await page.getByRole('tab', { name: type }).click();
+  }
+
   await page
     .getByTestId(`owner-select-${lowerCase(type)}-search-bar`)
     .fill(owner);
-  await ownerSearch;
+  await page.waitForResponse(
+    `/api/v1/search/query?q=*${encodeURIComponent(owner)}*`
+  );
   await page.getByRole('listitem', { name: owner }).click();
 
   await expect(page.getByTestId(dataTestId ?? 'owner-link')).toContainText(
@@ -369,15 +379,15 @@ export const createAnnouncement = async (
   await page
     .getByTestId('announcement-container')
     .getByTestId(`announcement-${entityFqn}`)
-    .getByTestId(`entity-link`)
-    .first()
+    .locator(`[data-testid="entity-link"] span`)
     .scrollIntoViewIfNeeded();
+
   await page
     .getByTestId('announcement-container')
     .getByTestId(`announcement-${entityFqn}`)
-    .getByTestId(`entity-link`)
-    .first()
+    .locator(`[data-testid="entity-link"] span`)
     .click();
+
   await page.getByTestId('announcement-card').isVisible();
 
   await expect(page.getByTestId('announcement-card')).toContainText(data.title);
