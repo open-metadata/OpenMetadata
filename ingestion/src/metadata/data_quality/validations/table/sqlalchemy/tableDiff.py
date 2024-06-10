@@ -21,7 +21,6 @@ from metadata.generated.schema.tests.basic import (
     TestCaseStatus,
     TestResultValue,
 )
-from metadata.utils.constants import SAMPLE_DATA_DEFAULT_COUNT
 from metadata.utils.logger import test_suite_logger
 
 logger = test_suite_logger()
@@ -65,10 +64,12 @@ class TableDiffValidator(BaseTestValidator, SQAValidatorMixin):
         threshold = self.get_test_case_param_value(
             self.test_case.parameterValues, "threshold", int, default=0
         )
+        table_diff_iter = self.get_table_diff()
+
         if not threshold or self.test_case.computePassedFailedRowCount:
-            stats = self.get_table_diff().get_stats_dict()
+            stats = table_diff_iter.get_stats_dict()
             if stats["total"] > 0:
-                logger.debug(f"Sample of failed rows:")
+                logger.debug("Sample of failed rows:")
                 for s in islice(self.get_table_diff(), 10):
                     logger.debug(s)
             test_case_result = self.get_test_case_result(stats["total"], threshold)
@@ -78,16 +79,14 @@ class TableDiffValidator(BaseTestValidator, SQAValidatorMixin):
             test_case_result.passedRowsPercentage = test_case_result.passedRows / count
             test_case_result.failedRowsPercentage = test_case_result.failedRows / count
             return test_case_result
-        else:
-            _iter = self.get_table_diff()
-            failed_rows_sample = list(islice(_iter, SAMPLE_DATA_DEFAULT_COUNT))
-            other_diffs = sum(1 for _ in islice(_iter, threshold))
-            return self.get_test_case_result(
-                len(failed_rows_sample) + other_diffs,
-                threshold,
-            )
+        num_dffs = sum(1 for _ in islice(table_diff_iter, threshold))
+        return self.get_test_case_result(
+            num_dffs,
+            threshold,
+        )
 
     def get_table_diff(self) -> DiffResultWrapper:
+        """Calls data_diff.diff_tables with the parameters from the test case."""
         table1 = data_diff.connect_to_table(
             self.runtime_params.service1Url, self.runtime_params.table1, self.runtime_params.keyColumns  # type: ignore
         )
@@ -101,7 +100,8 @@ class TableDiffValidator(BaseTestValidator, SQAValidatorMixin):
             "where": self.get_where(),
         }
         logger.debug(
-            "Calling table diff with parameters: table1={}, table2={}, kwargs={}".format(
+            "Calling table diff with parameters:"  # pylint: disable=consider-using-f-string
+            " table1={}, table2={}, kwargs={}".format(
                 table1.table_path,
                 table2.table_path,
                 ",".join(f"{k}={v}" for k, v in data_diff_kwargs.items()),
@@ -123,7 +123,7 @@ class TableDiffValidator(BaseTestValidator, SQAValidatorMixin):
     def _param_name(self):
         return "forbiddenRegex"
 
-    def get_test_case_result(  # pylint: disable=too-many-arguments
+    def get_test_case_result(
         self,
         num_diffs: int,
         threshold: int,

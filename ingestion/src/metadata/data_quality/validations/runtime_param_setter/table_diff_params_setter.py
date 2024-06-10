@@ -40,12 +40,13 @@ class TableDiffParamsSetter(RuntimeParameterSetter):
             whereClause=self.build_where_clause(test_case),
         )
 
+    # pylint: disable=protected-access
     def build_where_clause(self, test_case) -> Optional[str]:
         param_where_clause = self.get_parameter(test_case, "where", None)
         partition_where_clause = (
             None
             if not self.sampler._partition_details
-            or self.sampler._partition_details.enablePartitioning == False
+            or not self.sampler._partition_details.enablePartitioning
             else self.sampler.get_partitioned_query().whereclause.compile(
                 compile_kwargs={"literal_binds": True}
             )
@@ -113,7 +114,9 @@ class TableDiffParamsSetter(RuntimeParameterSetter):
         url = urlparse(service_url)
         # remove the drivername from the url becuase table-diff doesn't support it
         kwargs = {"scheme": url.scheme.split("+")[0]}
-        service, database, schema, table = fqn.split(table_fqn)
+        service, database, schema, table = fqn.split(  # pylint: disable=unused-variable
+            table_fqn
+        )
         # path needs to include the database AND schema in some of the connectors
         if kwargs["scheme"] in ["mssql"]:
             kwargs["path"] = f"/{database}/{schema}"
@@ -121,7 +124,9 @@ class TableDiffParamsSetter(RuntimeParameterSetter):
 
     @staticmethod
     def get_data_diff_table_path(table_fqn: str):
-        service, database, schema, table = fqn.split(table_fqn)
+        service, database, schema, table = fqn.split(  # pylint: disable=unused-variable
+            table_fqn
+        )
         return fqn._build(  # pylint: disable=protected-access
             "___SERVICE___", "__DATABASE__", schema, table
-        ).lstrip("___SERVICE___.__DATABASE__.")
+        ).replace("___SERVICE___.__DATABASE__.", "")
