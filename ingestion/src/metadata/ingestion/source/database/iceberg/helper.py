@@ -37,14 +37,14 @@ def namespace_to_str(namespace: tuple[str]) -> str:
     return ".".join(namespace)
 
 
-def get_table_name_as_str(table: pyiceberg.table.Table) -> str:
-    """Returns the Table Name as String from a PyIceberg Table.
+def get_table_name_as_str(table_identifier: Tuple) -> str:
+    """Returns the Table Name as String from a PyIceberg table identifier tuple.
 
     The PyIceberg table name is returned as tuple and we turn them into a String
     concatenating the items with a '.' in between.
     """
     # We are skipping the first item because it is the schema name.
-    return ".".join(table.name()[1:])
+    return ".".join(table_identifier[1:])
 
 
 def get_column_from_partition(
