@@ -90,6 +90,26 @@ COMMONS = {
     },  # Adding as Postgres SQL & GreenPlum are using common packages.
 }
 
+DATA_DIFF = {
+    driver: f"collate-data-diff[{driver}]"
+    # data-diff uses different drivers out-of-the-box than OpenMetadata
+    # the exrtas are described here:
+    # https://github.com/open-metadata/collate-data-diff/blob/main/pyproject.toml#L68
+    # install all data diffs with "pip install collate-data-diff[all-dbs]"
+    for driver in [
+        "clickhouse",
+        # "duckdb", # Not supported by OpenMetadata
+        "mssql",
+        "mysql",
+        "oracle",
+        "postgresql",
+        "presto",
+        "redshift",
+        "snowflake",
+        "trino",
+        "vertica",
+    ]
+}
 
 base_requirements = {
     "antlr4-python3-runtime==4.9.2",
@@ -118,7 +138,6 @@ base_requirements = {
     "packaging",  # For version parsing
 }
 
-
 plugins: Dict[str, Set[str]] = {
     "airflow": {
         VERSIONS["airflow"],
@@ -138,7 +157,7 @@ plugins: Dict[str, Set[str]] = {
         "sqlalchemy-bigquery>=1.2.2",
     },
     "bigtable": {"google-cloud-bigtable>=2.0.0", VERSIONS["pandas"]},
-    "clickhouse": {"clickhouse-driver~=0.2", "clickhouse-sqlalchemy~=0.2"},
+    "clickhouse": {"clickhouse-driver~=0.2", "clickhouse-sqlalchemy~=0.2", DATA_DIFF["clickhouse"]},
     "dagster": {
         VERSIONS["pymysql"],
         "psycopg2-binary",
@@ -191,7 +210,7 @@ plugins: Dict[str, Set[str]] = {
     },  # also requires requests-aws4auth which is in base
     "glue": {VERSIONS["boto3"]},
     "great-expectations": {VERSIONS["great-expectations"]},
-    "greenplum": {*COMMONS["postgres"]},
+    "greenplum": {*COMMONS["postgres"], DATA_DIFF["postgresql"]},
     "hive": {
         *COMMONS["hive"],
         "thrift>=0.13,<1",
@@ -227,15 +246,24 @@ plugins: Dict[str, Set[str]] = {
     "mlflow": {"mlflow-skinny>=2.3.0"},
     "mongo": {VERSIONS["mongo"], VERSIONS["pandas"]},
     "couchbase": {"couchbase~=4.1"},
-    "mssql": {"sqlalchemy-pytds~=0.3"},
-    "mssql-odbc": {VERSIONS["pyodbc"]},
-    "mysql": {VERSIONS["pymysql"]},
+    "mssql": {
+        "sqlalchemy-pytds~=0.3",
+        DATA_DIFF["mssql"],
+    },
+    "mssql-odbc": {
+        VERSIONS["pyodbc"],
+        DATA_DIFF["mssql"],
+    },
+    "mysql": {
+        VERSIONS["pymysql"],
+        DATA_DIFF["mysql"],
+    },
     "nifi": {},  # uses requests
     "openlineage": {*COMMONS["kafka"]},
-    "oracle": {"cx_Oracle>=8.3.0,<9", "oracledb~=1.2"},
+    "oracle": {"cx_Oracle>=8.3.0,<9", "oracledb~=1.2", DATA_DIFF["oracle"]},
     "pgspider": {"psycopg2-binary", "sqlalchemy-pgspider"},
     "pinotdb": {"pinotdb~=5.0"},
-    "postgres": {*COMMONS["postgres"]},
+    "postgres": {*COMMONS["postgres"], DATA_DIFF["postgresql"]},
     "powerbi": {
         VERSIONS["msal"],
         VERSIONS["boto3"],
@@ -244,7 +272,7 @@ plugins: Dict[str, Set[str]] = {
         VERSIONS["azure-identity"],
     },
     "qliksense": {"websocket-client~=1.6.1"},
-    "presto": {*COMMONS["hive"]},
+    "presto": {*COMMONS["hive"], DATA_DIFF["presto"]},
     "pymssql": {"pymssql~=2.2.0"},
     "quicksight": {VERSIONS["boto3"]},
     "redash": {VERSIONS["packaging"]},
@@ -254,6 +282,7 @@ plugins: Dict[str, Set[str]] = {
         VERSIONS["redshift"],
         "psycopg2-binary",
         VERSIONS["geoalchemy2"],
+        DATA_DIFF["redshift"],
     },
     "sagemaker": {VERSIONS["boto3"]},
     "salesforce": {"simple_salesforce~=1.11"},
@@ -262,12 +291,12 @@ plugins: Dict[str, Set[str]] = {
     "sas": {},
     "singlestore": {VERSIONS["pymysql"]},
     "sklearn": {VERSIONS["scikit-learn"]},
-    "snowflake": {VERSIONS["snowflake"]},
+    "snowflake": {VERSIONS["snowflake"], DATA_DIFF["snowflake"]},
     "superset": {},  # uses requests
     "tableau": {VERSIONS["tableau"], VERSIONS["validators"], VERSIONS["packaging"]},
     "teradata": {VERSIONS["teradata"]},
-    "trino": {VERSIONS["trino"]},
-    "vertica": {"sqlalchemy-vertica[vertica-python]>=0.0.5"},
+    "trino": {VERSIONS["trino"], DATA_DIFF["trino"]},
+    "vertica": {"sqlalchemy-vertica[vertica-python]>=0.0.5", DATA_DIFF["vertica"]},
     "pii-processor": {
         VERSIONS["spacy"],
         VERSIONS["pandas"],
@@ -289,7 +318,6 @@ dev = {
     "build",
     *plugins["sample-data"],
 }
-
 
 test = {
     # Install Airflow as it's not part of `all` plugin
@@ -330,7 +358,7 @@ test = {
     *plugins["datalake-s3"],
     *plugins["pii-processor"],
     "requests==2.31.0",
-    "collate-data-diff[mysql]==0.11.2",
+    f"{DATA_DIFF['mysql']}==0.11.2",
 }
 
 e2e_test = {
@@ -341,26 +369,6 @@ e2e_test = {
 
 extended_testing = {
     "Faker",  # For Sample Data Generation
-}
-
-data_diff_extras = {"data-diff-all": {"collate-data-diff[all-dbs]"}} | {
-    f"data-diff-{driver}": {f"collate-data-diff[{driver}]"}
-    # data-diff uses different drivers out-of-the-box than OpenMetadata
-    # the exrtas are described here:
-    # https://github.com/open-metadata/collate-data-diff/blob/main/pyproject.toml#L68
-    for driver in [
-        "mysql",
-        "postgresql",
-        "redshift",
-        "snowflake",
-        "presto",
-        "oracle",
-        "mssql",
-        "trino",
-        "clickhouse",
-        "vertica",
-        "duckdb",
-    ]
 }
 
 
@@ -391,6 +399,5 @@ setup(
         "slim": filter_requirements(
             {"airflow", "db2", "great-expectations", "deltalake", "sklearn"}
         ),
-        **data_diff_extras,
     },
 )

@@ -1,3 +1,14 @@
+#  Copyright 2024 Collate
+#  Licensed under the Apache License, Version 2.0 (the "License");
+#  you may not use this file except in compliance with the License.
+#  You may obtain a copy of the License at
+#  http://www.apache.org/licenses/LICENSE-2.0
+#  Unless required by applicable law or agreed to in writing, software
+#  distributed under the License is distributed on an "AS IS" BASIS,
+#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#  See the License for the specific language governing permissions and
+#  limitations under the License.
+"""Module that defines the TableDiffParamsSetter class."""
 from ast import literal_eval
 from typing import List, Optional
 from urllib.parse import urlparse
@@ -18,6 +29,10 @@ from metadata.utils import fqn
 
 
 class TableDiffParamsSetter(RuntimeParameterSetter):
+    """
+    Class that sets runtime parameters for a table diff test.
+    """
+
     def get_parameters(self, test_case) -> TableDiffRuntimeParameters:
         service1: Engine = get_connection(self.service_connection_config)
         table2_fqn = self.get_parameter(test_case, "table2")
