@@ -569,6 +569,7 @@
     "ingestion-pipeline-name": "Name der Erfassungspipeline",
     "ingestion-plural": "Erfassungen",
     "ingestion-workflow-lowercase": "erfassungsworkflow",
+    "inherited-entity": "Inherited {{entity}}",
     "inherited-role-plural": "Vererbte Rollen",
     "insert": "Einfügen",
     "insight-plural": "Erkenntnisse",
