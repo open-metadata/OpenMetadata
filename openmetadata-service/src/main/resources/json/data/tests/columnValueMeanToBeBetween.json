@@ -28,6 +28,7 @@
       }
     }
   ],
+  "supportsDynamicAssertion": true,
   "provider": "system"
 }
   

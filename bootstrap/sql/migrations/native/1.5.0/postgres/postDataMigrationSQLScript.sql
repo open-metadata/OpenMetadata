@@ -6,3 +6,19 @@ SET json = jsonb_set(json, '{parameterDefinition}', json->'parameterDefinition' 
 )
 WHERE name = 'columnValuesToBeInSet'
 AND JSONB_ARRAY_LENGTH(json->'parameterDefinition') < 2;
+
+
+-- Test Case dyanic test migration
+UPDATE test_definition
+SET json = JSONB_SET(json, '{supportsDynamicAssertion}', 'true', true)
+WHERE name IN (
+	'columnValueMaxToBeBetween',
+    'columnValueMeanToBeBetween',
+    'columnValueMedianToBeBetween',
+    'columnValueMinToBeBetween',
+    'columnValueStdDevToBeBetween',
+    'columnValuesLengthsToBeBetween',
+    'columnValuesSumToBeBetween',
+    'columnValuesToBeBetween',
+    'tableRowCountToBeBetween'
+);

@@ -65,6 +65,8 @@ class BaseColumnValueMinToBeBetweenValidator(BaseTestValidator):
             self.get_test_case_status(min_bound <= res <= max_bound),
             f"Found min={res} vs.  the expected min={min_bound}, max={max_bound}.",
             [TestResultValue(name=MIN, value=str(res))],
+            min_bound=min_bound,
+            max_bound=max_bound,
         )
 
     @abstractmethod

@@ -9,3 +9,17 @@ set json = JSON_MERGE_PRESERVE(
 WHERE name = 'columnValuesToBeInSet'
 AND JSON_LENGTH(json, '$.parameterDefinition') < 2;
 
+-- Test Case dyanic test migration
+UPDATE test_definition
+SET json = JSON_SET(json, '$.supportsDynamicAssertion', true)
+WHERE name IN (
+	'columnValueMaxToBeBetween',
+    'columnValueMeanToBeBetween',
+    'columnValueMedianToBeBetween',
+    'columnValueMinToBeBetween',
+    'columnValueStdDevToBeBetween',
+    'columnValuesLengthsToBeBetween',
+    'columnValuesSumToBeBetween',
+    'columnValuesToBeBetween',
+    'tableRowCountToBeBetween'
+);

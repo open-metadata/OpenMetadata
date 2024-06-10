@@ -83,6 +83,8 @@ class BaseColumnValueLengthsToBeBetweenValidator(BaseTestValidator):
             ],
             row_count=row_count,
             failed_rows=failed_rows,
+            min_bound=min_bound,
+            max_bound=max_bound,
         )
 
     @abstractmethod
