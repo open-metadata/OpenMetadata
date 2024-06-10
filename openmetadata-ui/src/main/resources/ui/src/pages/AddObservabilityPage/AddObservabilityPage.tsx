@@ -24,6 +24,7 @@ import RichTextEditor from '../../components/common/RichTextEditor/RichTextEdito
 import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
 import { ROUTES } from '../../constants/constants';
 import { ENTITY_NAME_REGEX } from '../../constants/regex.constants';
+import { useLimitStore } from '../../context/LimitsProvider/useLimitsStore';
 import { CreateEventSubscription } from '../../generated/events/api/createEventSubscription';
 import {
   AlertType,
@@ -64,6 +65,7 @@ function AddObservabilityPage() {
   const [saving, setSaving] = useState<boolean>(false);
 
   const isEditMode = useMemo(() => !isEmpty(fqn), [fqn]);
+  const { getResourceLimit } = useLimitStore();
 
   const fetchAlert = async () => {
     try {
@@ -146,7 +148,8 @@ function AddObservabilityPage() {
           fqn,
           createAlertAPI: createObservabilityAlert,
           updateAlertAPI: updateObservabilityAlertWithPut,
-          afterSaveAction: () => {
+          afterSaveAction: async () => {
+            !fqn && (await getResourceLimit('eventsubscription', true, true));
             history.push(getObservabilityAlertDetailsPath(data.name));
           },
           setInlineAlertDetails,

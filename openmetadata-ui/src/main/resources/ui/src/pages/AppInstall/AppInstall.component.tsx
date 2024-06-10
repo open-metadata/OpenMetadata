@@ -64,7 +64,7 @@ const AppInstall = () => {
   const [appConfiguration, setAppConfiguration] = useState();
   const [jsonSchema, setJsonSchema] = useState<RJSFSchema>();
   const UiSchema = applicationSchemaClassBase.getJSONUISchema();
-  const { config } = useLimitStore();
+  const { config, getResourceLimit } = useLimitStore();
 
   const { pipelineSchedules } =
     config?.limits.config.featureLimits.find(
@@ -148,6 +148,9 @@ const AppInstall = () => {
       await installApplication(data);
 
       showSuccessToast(t('message.app-installed-successfully'));
+
+      // Update current count when Create / Delete operation performed
+      await getResourceLimit('app', true, true);
 
       goToAppPage();
     } catch (error) {

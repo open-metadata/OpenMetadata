@@ -23,6 +23,7 @@ import {
   TEST_CASE_TYPE_OPTION,
 } from '../../../../../constants/profiler.constant';
 import { INITIAL_TEST_SUMMARY } from '../../../../../constants/TestSuite.constant';
+import { useLimitStore } from '../../../../../context/LimitsProvider/useLimitsStore';
 import { EntityTabs, EntityType } from '../../../../../enums/entity.enum';
 import { ProfilerDashboardType } from '../../../../../enums/table.enum';
 import { TestCaseStatus } from '../../../../../generated/tests/testCase';
@@ -56,6 +57,7 @@ export const QualityTab = () => {
     table,
     testCaseSummary,
   } = useTableProfiler();
+  const { getResourceLimit } = useLimitStore();
 
   const {
     currentPage,
@@ -118,7 +120,11 @@ export const QualityTab = () => {
           <Row className="p-t-md">
             <Col span={24}>
               <DataQualityTab
-                afterDeleteAction={fetchAllTests}
+                afterDeleteAction={async (...params) => {
+                  await fetchAllTests(...params); // Update current count when Create / Delete operation performed
+                  params?.length &&
+                    (await getResourceLimit('dataQuality', true, true));
+                }}
                 breadcrumbData={tableBreadcrumb}
                 isLoading={isTestsLoading}
                 showTableColumn={false}
@@ -153,6 +159,7 @@ export const QualityTab = () => {
       onTestCaseUpdate,
       testSuite,
       fetchAllTests,
+      getResourceLimit,
       tableBreadcrumb,
       testCasePaging,
     ]

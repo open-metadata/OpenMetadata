@@ -43,6 +43,7 @@ import {
 } from '../../constants/GlobalSettings.constants';
 import { ADMIN_ONLY_ACTION } from '../../constants/HelperTextUtil';
 import { PAGE_HEADERS } from '../../constants/PageHeaders.constant';
+import { useLimitStore } from '../../context/LimitsProvider/useLimitsStore';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { EntityType } from '../../enums/entity.enum';
 import { SearchIndex } from '../../enums/search.enum';
@@ -80,6 +81,7 @@ const UserListPageV1 = () => {
   const showRestore = showDeletedUser && !isDataLoading;
   const [isLoading, setIsLoading] = useState(false);
   const [searchValue, setSearchValue] = useState<string>('');
+  const { getResourceLimit } = useLimitStore();
   const {
     currentPage,
     handlePageChange,
@@ -502,7 +504,11 @@ const UserListPageV1 = () => {
         </Modal>
 
         <DeleteWidgetModal
-          afterDeleteAction={() => handleSearch('')}
+          afterDeleteAction={async () => {
+            handleSearch('');
+            // Update current count when Create / Delete operation performed
+            await getResourceLimit('user', true, true);
+          }}
           allowSoftDelete={!showDeletedUser}
           entityId={selectedUser?.id || ''}
           entityName={getEntityName(selectedUser)}

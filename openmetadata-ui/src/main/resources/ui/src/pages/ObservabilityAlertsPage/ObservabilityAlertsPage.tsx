@@ -27,6 +27,7 @@ import PageHeader from '../../components/PageHeader/PageHeader.component';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import { ROUTES } from '../../constants/constants';
 import { ALERTS_DOCS } from '../../constants/docs.constants';
+import { useLimitStore } from '../../context/LimitsProvider/useLimitsStore';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { EntityType } from '../../enums/entity.enum';
 import {
@@ -60,6 +61,7 @@ const ObservabilityAlertsPage = () => {
     showPagination,
     paging,
   } = usePaging();
+  const { getResourceLimit } = useLimitStore();
 
   const fetchAlerts = useCallback(
     async (params?: Partial<Paging>) => {
@@ -92,6 +94,7 @@ const ObservabilityAlertsPage = () => {
   const handleAlertDelete = useCallback(async () => {
     try {
       setSelectedAlert(undefined);
+      await getResourceLimit('eventsubscription', true, true);
       fetchAlerts();
     } catch (error) {
       showErrorToast(error as AxiosError);

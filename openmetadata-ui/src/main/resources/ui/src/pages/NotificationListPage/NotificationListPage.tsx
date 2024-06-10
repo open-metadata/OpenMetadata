@@ -33,6 +33,7 @@ import {
   GlobalSettingsMenuCategory,
 } from '../../constants/GlobalSettings.constants';
 import { PAGE_HEADERS } from '../../constants/PageHeaders.constant';
+import { useLimitStore } from '../../context/LimitsProvider/useLimitsStore';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { EntityType } from '../../enums/entity.enum';
 import {
@@ -68,6 +69,7 @@ const NotificationListPage = () => {
     showPagination,
     paging,
   } = usePaging();
+  const { getResourceLimit } = useLimitStore();
 
   const breadcrumbs: TitleBreadcrumbProps['titleLinks'] = useMemo(
     () =>
@@ -115,6 +117,7 @@ const NotificationListPage = () => {
   const handleAlertDelete = useCallback(async () => {
     try {
       setSelectedAlert(undefined);
+      await getResourceLimit('eventsubscription', true, true);
       fetchAlerts();
     } catch (error) {
       showErrorToast(error as AxiosError);

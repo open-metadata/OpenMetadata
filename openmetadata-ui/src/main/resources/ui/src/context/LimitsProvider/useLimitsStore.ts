@@ -109,7 +109,7 @@ export const useLimitStore = create<{
   getResourceLimit: async (
     resource: string,
     showBanner = true,
-    force = true
+    force = false
   ) => {
     const { setResourceLimit, resourceLimit, setBannerDetails, config } = get();
 

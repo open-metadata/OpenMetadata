@@ -24,6 +24,7 @@ import { getBotsPath } from '../../../../constants/constants';
 import { BOTS_DOCS } from '../../../../constants/docs.constants';
 import { GlobalSettingsMenuCategory } from '../../../../constants/GlobalSettings.constants';
 import { PAGE_HEADERS } from '../../../../constants/PageHeaders.constant';
+import { useLimitStore } from '../../../../context/LimitsProvider/useLimitsStore';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../../enums/common.enum';
 import { EntityType } from '../../../../enums/entity.enum';
 import { Bot, ProviderType } from '../../../../generated/entity/bot';
@@ -59,7 +60,7 @@ const BotListV1 = ({
   const [botUsers, setBotUsers] = useState<Bot[]>([]);
   const [selectedUser, setSelectedUser] = useState<Bot>();
   const [loading, setLoading] = useState(true);
-
+  const { getResourceLimit } = useLimitStore();
   const {
     currentPage,
     paging,
@@ -199,6 +200,7 @@ const BotListV1 = ({
    * handle after delete bot action
    */
   const handleDeleteAction = useCallback(async () => {
+    await getResourceLimit('bot', true, true);
     fetchBots(showDeleted);
   }, [selectedUser]);
 

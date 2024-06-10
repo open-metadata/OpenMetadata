@@ -25,6 +25,7 @@ import {
   PAGE_SIZE_LARGE,
 } from '../../constants/constants';
 import { GlobalSettingOptions } from '../../constants/GlobalSettings.constants';
+import { useLimitStore } from '../../context/LimitsProvider/useLimitsStore';
 import { CreateUser } from '../../generated/api/teams/createUser';
 import { Role } from '../../generated/entity/teams/role';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
@@ -43,7 +44,7 @@ const CreateUserPage = () => {
   const history = useHistory();
   const { t } = useTranslation();
   const { setInlineAlertDetails } = useApplicationStore();
-
+  const { getResourceLimit } = useLimitStore();
   const [roles, setRoles] = useState<Array<Role>>([]);
   const [isLoading, setIsLoading] = useState<boolean>(false);
 
@@ -101,6 +102,9 @@ const CreateUserPage = () => {
             displayName: userResponse.displayName,
             description: userResponse.description,
           });
+
+          // Update current count when Create / Delete operation performed
+          await getResourceLimit('bot', true, true);
           showSuccessToast(
             t('server.create-entity-success', { entity: t('label.bot') })
           );
@@ -122,6 +126,8 @@ const CreateUserPage = () => {
     } else {
       try {
         await createUser(userData);
+        // Update current count when Create / Delete operation performed
+        await getResourceLimit('user', true, true);
         goToUserListPage();
       } catch (error) {
         setInlineAlertDetails({

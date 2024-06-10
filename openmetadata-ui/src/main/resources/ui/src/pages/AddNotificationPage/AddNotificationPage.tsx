@@ -25,6 +25,7 @@ import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadc
 import { ROUTES } from '../../constants/constants';
 import { GlobalSettingsMenuCategory } from '../../constants/GlobalSettings.constants';
 import { ENTITY_NAME_REGEX } from '../../constants/regex.constants';
+import { useLimitStore } from '../../context/LimitsProvider/useLimitsStore';
 import { CreateEventSubscription } from '../../generated/events/api/createEventSubscription';
 import {
   AlertType,
@@ -58,6 +59,7 @@ const AddNotificationPage = () => {
   const history = useHistory();
   const { fqn } = useFqn();
   const { setInlineAlertDetails, inlineAlertDetails } = useApplicationStore();
+  const { getResourceLimit } = useLimitStore();
 
   const [loadingCount, setLoadingCount] = useState(0);
   const [entityFunctions, setEntityFunctions] = useState<
@@ -153,7 +155,8 @@ const AddNotificationPage = () => {
           fqn,
           createAlertAPI: createNotificationAlert,
           updateAlertAPI: updateNotificationAlertWithPut,
-          afterSaveAction: () => {
+          afterSaveAction: async () => {
+            !fqn && (await getResourceLimit('eventsubscription', true, true));
             history.push(getNotificationAlertDetailsPath(data.name));
           },
           setInlineAlertDetails,
