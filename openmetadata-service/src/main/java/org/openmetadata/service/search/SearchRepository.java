@@ -185,7 +185,9 @@ public class SearchRepository {
   }
 
   public String getIndexNameWithoutAlias(String fullIndexName) {
-    if (fullIndexName.startsWith(clusterAlias + indexNameSeparator)) {
+    if (clusterAlias != null
+        && !clusterAlias.isEmpty()
+        && fullIndexName.startsWith(clusterAlias + indexNameSeparator)) {
       return fullIndexName.substring((clusterAlias + indexNameSeparator).length());
     }
     return fullIndexName;
