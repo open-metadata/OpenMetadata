@@ -29,5 +29,6 @@
     }
   ],
   "supportsRowLevelPassedFailed": true,
+  "supportsDynamicAssertion": true,
   "provider": "system"
 }
