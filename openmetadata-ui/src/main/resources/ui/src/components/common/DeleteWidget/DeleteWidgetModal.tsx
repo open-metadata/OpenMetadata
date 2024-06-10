@@ -252,75 +252,81 @@ const DeleteWidgetModal = ({
   }, [isDeleting]);
 
   return (
-    <Modal
-      destroyOnClose
-      closable={false}
-      confirmLoading={isLoading}
-      data-testid="delete-modal"
-      footer={footer}
-      maskClosable={false}
-      okText={t('label.delete')}
-      open={visible}
-      title={`${t('label.delete')} ${entityType} "${entityName}"`}
-      onCancel={handleOnEntityDeleteCancel}>
-      <Form form={form} onFinish={onDelete ?? handleOnEntityDeleteConfirm}>
-        <Form.Item<DeleteWidgetFormFields> className="m-0" name="deleteType">
-          <Radio.Group onChange={onChange}>
-            {(deleteOptions ?? DELETE_OPTION).map(
-              (option) =>
-                option.isAllowed && (
-                  <Radio
-                    data-testid={option.type}
-                    key={option.type}
-                    value={option.type}>
-                    <Typography.Paragraph
-                      className="delete-widget-title break-all"
-                      data-testid={`${option.type}-option`}>
-                      {option.title}
-                    </Typography.Paragraph>
-                    <Typography.Paragraph className="text-grey-muted text-xs break-all">
-                      {option.description}
-                    </Typography.Paragraph>
-                  </Radio>
-                )
-            )}
-          </Radio.Group>
-        </Form.Item>
-        <div>
-          <div className="m-b-xss">
-            <Transi18next
-              i18nKey="message.type-delete-to-confirm"
-              renderElement={<strong />}
-            />
-          </div>
-
-          <Form.Item<DeleteWidgetFormFields>
-            className="m-0"
-            name="deleteTextInput"
-            rules={[
-              {
-                required: true,
-                message: t('message.please-type-text-to-confirm', {
-                  text: DELETE_CONFIRMATION_TEXT,
-                }),
-                type: 'enum',
-                enum: [DELETE_CONFIRMATION_TEXT],
-              },
-            ]}>
-            <Input
-              autoComplete="off"
-              data-testid="confirmation-text-input"
-              disabled={isLoading}
-              name="entityName"
-              placeholder={DELETE_CONFIRMATION_TEXT}
-              ref={deleteTextInputRef}
-              type="text"
-              onChange={handleOnChange}
-            />
+    // Used Button to stop click propagation event in the
+    // TeamDetailsV1 and User.component collapsible panel.
+    <Button
+      className="remove-button-default-styling"
+      onClick={(e) => e.stopPropagation()}>
+      <Modal
+        destroyOnClose
+        closable={false}
+        confirmLoading={isLoading}
+        data-testid="delete-modal"
+        footer={footer}
+        maskClosable={false}
+        okText={t('label.delete')}
+        open={visible}
+        title={`${t('label.delete')} ${entityType} "${entityName}"`}
+        onCancel={handleOnEntityDeleteCancel}>
+        <Form form={form} onFinish={onDelete ?? handleOnEntityDeleteConfirm}>
+          <Form.Item<DeleteWidgetFormFields> className="m-0" name="deleteType">
+            <Radio.Group onChange={onChange}>
+              {(deleteOptions ?? DELETE_OPTION).map(
+                (option) =>
+                  option.isAllowed && (
+                    <Radio
+                      data-testid={option.type}
+                      key={option.type}
+                      value={option.type}>
+                      <Typography.Paragraph
+                        className="delete-widget-title break-all"
+                        data-testid={`${option.type}-option`}>
+                        {option.title}
+                      </Typography.Paragraph>
+                      <Typography.Paragraph className="text-grey-muted text-xs break-all">
+                        {option.description}
+                      </Typography.Paragraph>
+                    </Radio>
+                  )
+              )}
+            </Radio.Group>
           </Form.Item>
-        </div>
-      </Form>
-    </Modal>
+          <div>
+            <div className="m-b-xss">
+              <Transi18next
+                i18nKey="message.type-delete-to-confirm"
+                renderElement={<strong />}
+              />
+            </div>
+
+            <Form.Item<DeleteWidgetFormFields>
+              className="m-0"
+              name="deleteTextInput"
+              rules={[
+                {
+                  required: true,
+                  message: t('message.please-type-text-to-confirm', {
+                    text: DELETE_CONFIRMATION_TEXT,
+                  }),
+                  type: 'enum',
+                  enum: [DELETE_CONFIRMATION_TEXT],
+                },
+              ]}>
+              <Input
+                autoComplete="off"
+                data-testid="confirmation-text-input"
+                disabled={isLoading}
+                name="entityName"
+                placeholder={DELETE_CONFIRMATION_TEXT}
+                ref={deleteTextInputRef}
+                type="text"
+                onChange={handleOnChange}
+              />
+            </Form.Item>
+          </div>
+        </Form>
+      </Modal>
+    </Button>
   );
 };
 

@@ -28,6 +28,7 @@ import { useHistory } from 'react-router-dom';
 import Loader from '../../components/common/Loader/Loader';
 import Users from '../../components/Settings/Users/Users.component';
 import { User } from '../../generated/entity/teams/user';
+import { Include } from '../../generated/type/include';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
 import { useFqn } from '../../hooks/useFqn';
 import { getUserByName, updateUserDetail } from '../../rest/userAPI';
@@ -47,6 +48,7 @@ const UserPage = () => {
     try {
       const res = await getUserByName(username, {
         fields: 'profile,roles,teams,personas,defaultPersona,domain',
+        include: Include.All,
       });
       setUserData(res);
     } catch (error) {
@@ -148,6 +150,19 @@ const UserPage = () => {
     [userData, currentUser, updateCurrentUser]
   );
 
+  const handleToggleDelete = () => {
+    setUserData((prev) => ({
+      ...prev,
+      deleted: !prev?.deleted,
+    }));
+  };
+
+  const afterDeleteAction = useCallback(
+    (isSoftDelete?: boolean) =>
+      isSoftDelete ? handleToggleDelete() : history.push('/'),
+    []
+  );
+
   useEffect(() => {
     fetchUserData();
   }, [username]);
@@ -162,6 +177,7 @@ const UserPage = () => {
 
   return (
     <Users
+      afterDeleteAction={afterDeleteAction}
       handlePaginate={handleEntityPaginate}
       queryFilters={{
         myData: myDataQueryFilter,

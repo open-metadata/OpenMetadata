@@ -50,7 +50,12 @@ import UserProfileInheritedRoles from './UsersProfile/UserProfileInheritedRoles/
 import UserProfileRoles from './UsersProfile/UserProfileRoles/UserProfileRoles.component';
 import UserProfileTeams from './UsersProfile/UserProfileTeams/UserProfileTeams.component';
 
-const Users = ({ userData, queryFilters, updateUserDetails }: Props) => {
+const Users = ({
+  afterDeleteAction,
+  userData,
+  queryFilters,
+  updateUserDetails,
+}: Props) => {
   const { tab: activeTab = UserPageTabs.ACTIVITY } =
     useParams<{ tab: UserPageTabs }>();
   const { fqn: decodedUsername } = useFqn();
@@ -72,8 +77,8 @@ const Users = ({ userData, queryFilters, updateUserDetails }: Props) => {
   );
 
   const hasEditPermission = useMemo(
-    () => isAdminUser || isLoggedInUser,
-    [isAdminUser, isLoggedInUser]
+    () => (isAdminUser || isLoggedInUser) && !userData.deleted,
+    [isAdminUser, isLoggedInUser, userData.deleted]
   );
   const fetchAssetsCount = async (query: string) => {
     try {
@@ -227,7 +232,7 @@ const Users = ({ userData, queryFilters, updateUserDetails }: Props) => {
           ]
         : []),
     ],
-    [activeTab, userData, decodedUsername, setPreviewAsset, tabDataRender]
+    [activeTab, userData.id, decodedUsername, setPreviewAsset, tabDataRender]
   );
 
   const handleDescriptionChange = useCallback(
@@ -280,11 +285,12 @@ const Users = ({ userData, queryFilters, updateUserDetails }: Props) => {
   const userProfileCollapseHeader = useMemo(
     () => (
       <UserProfileDetails
+        afterDeleteAction={afterDeleteAction}
         updateUserDetails={updateUserDetails}
         userData={userData}
       />
     ),
-    [userData, updateUserDetails]
+    [userData, afterDeleteAction, updateUserDetails]
   );
 
   useEffect(() => {
@@ -313,12 +319,14 @@ const Users = ({ userData, queryFilters, updateUserDetails }: Props) => {
                 <Row data-testid="user-profile-details">
                   <Col className="p-x-sm border-right" span={6}>
                     <UserProfileTeams
+                      isDeletedUser={userData.deleted}
                       teams={userData.teams}
                       updateUserDetails={updateUserDetails}
                     />
                   </Col>
                   <Col className="p-x-sm border-right" span={6}>
                     <UserProfileRoles
+                      isDeletedUser={userData.deleted}
                       isUserAdmin={userData.isAdmin}
                       updateUserDetails={updateUserDetails}
                       userRoles={userData.roles}
@@ -340,7 +348,9 @@ const Users = ({ userData, queryFilters, updateUserDetails }: Props) => {
                             {t('label.persona')}
                             <PersonaSelectableList
                               multiSelect
-                              hasPermission={Boolean(isAdminUser)}
+                              hasPermission={
+                                Boolean(isAdminUser) && !userData.deleted
+                              }
                               selectedPersonas={userData.personas ?? []}
                               onUpdate={handlePersonaUpdate}
                             />
