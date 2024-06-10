@@ -22,7 +22,7 @@ on:
       debug:
         description: "If Debugging the Pipeline, Slack and Sonar events won't be triggered"
         required: False
-        default: "true"
+        default: "false"
 
 permissions:
   id-token: write
