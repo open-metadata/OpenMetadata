@@ -189,6 +189,11 @@
     "domain" : {
       "description": "Domain the table belongs to. When not set, the table inherits the domain from the database schema it belongs to.",
       "$ref": "../type/entityReference.json"
+    },
+    "supportsDynamicAssertion": {
+      "description": "When `true` indicates the test case supports dynamic assertions.",
+      "type": "boolean",
+      "default": false
     }
   },
   "required": ["name", "description", "testPlatforms"],
