@@ -380,12 +380,14 @@ export const createAnnouncement = async (
     .getByTestId('announcement-container')
     .getByTestId(`announcement-${entityFqn}`)
     .locator(`[data-testid="entity-link"] span`)
+    .first()
     .scrollIntoViewIfNeeded();
 
   await page
     .getByTestId('announcement-container')
     .getByTestId(`announcement-${entityFqn}`)
     .locator(`[data-testid="entity-link"] span`)
+    .first()
     .click();
 
   await page.getByTestId('announcement-card').isVisible();
