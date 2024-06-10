@@ -93,7 +93,8 @@ const ChartWidgetForm = ({ onCancel }: WidgetFormProps) => {
         }
       } else {
         const newEntry: CombinedResponseItem = {
-          day: new Date(item.day).toLocaleDateString(),
+          day: item.day,
+          time: new Date(item.day).toLocaleDateString(),
           [item.group]: item.count,
         };
         result.push(newEntry);
@@ -119,8 +120,8 @@ const ChartWidgetForm = ({ onCancel }: WidgetFormProps) => {
       const results = updatedData?.groupBy
         ? combineData(response.results)
         : response.results.map((item) => ({
-            day: new Date(item.day).toLocaleDateString(),
-            count: item.count,
+            ...item,
+            time: new Date(item.day).toLocaleDateString(),
           }));
 
       const groupedResults = groupBy(response.results, 'group');
@@ -173,13 +174,13 @@ const ChartWidgetForm = ({ onCancel }: WidgetFormProps) => {
             <Input placeholder="Enter description of chart" />
           </Form.Item>
           <Form.Item label="Chart Type" name="chartType">
-            <Select placeholder="Select Chart Type">
+            <Select showSearch placeholder="Select Chart Type">
               <Select.Option value="line">Line</Select.Option>
               <Select.Option value="bar">Bar</Select.Option>
             </Select>
           </Form.Item>
           <Form.Item label="Method" name="method">
-            <Select placeholder="Select Method">
+            <Select showSearch placeholder="Select Method">
               <Select.Option value="function">Function</Select.Option>
               <Select.Option value="formula">Formula</Select.Option>
             </Select>
@@ -197,7 +198,7 @@ const ChartWidgetForm = ({ onCancel }: WidgetFormProps) => {
               </Form.Item>
 
               <Form.Item label="Field" name="field">
-                <Select showSearch placeholder="Select Field">
+                <Select allowClear showSearch placeholder="Select Field">
                   {INDEX_FIELDS.map((field) => (
                     <Select.Option key={field} value={field}>
                       {field}
@@ -214,7 +215,7 @@ const ChartWidgetForm = ({ onCancel }: WidgetFormProps) => {
           )}
 
           <Form.Item label="Group by" name="groupBy">
-            <Select showSearch placeholder="Select Group by">
+            <Select allowClear showSearch placeholder="Select Group by">
               {INDEX_FIELDS.map((field) => (
                 <Select.Option key={field} value={field}>
                   {field}
@@ -281,13 +282,12 @@ const ChartWidgetForm = ({ onCancel }: WidgetFormProps) => {
                 />
                 <Tooltip />
                 <XAxis
-                  dataKey="day"
+                  dataKey="time"
                   label={{
                     value: formState?.xAxisLabel,
                     position: 'insideBottom',
                     offset: -10,
                   }}
-                  tickFormatter={(value) => value.split('T')[0]}
                 />
                 <YAxis
                   label={{
@@ -330,13 +330,12 @@ const ChartWidgetForm = ({ onCancel }: WidgetFormProps) => {
                 />
                 <Tooltip />
                 <XAxis
-                  dataKey="day"
+                  dataKey="time"
                   label={{
                     value: formState?.xAxisLabel,
                     position: 'insideBottom',
                     offset: -10,
                   }}
-                  tickFormatter={(value) => value.split('T')[0]}
                 />
                 <YAxis
                   label={{
