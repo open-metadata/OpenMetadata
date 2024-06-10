@@ -415,7 +415,7 @@ export const ActivityFeedTab = ({
         applyDefaultStyle={false}
         firstPanel={{
           children: (
-            <div id="center-container">
+            <div className="tab-content-height" id="center-container">
               {isTaskActiveTab && (
                 <div className="d-flex gap-4 p-sm p-x-lg activity-feed-task">
                   <Typography.Text
@@ -479,7 +479,7 @@ export const ActivityFeedTab = ({
         }}
         secondPanel={{
           children: (
-            <div>
+            <div className="tab-content-height">
               {loader}
               {selectedThread &&
                 !loading &&
