@@ -253,7 +253,20 @@ export const UserTeamSelectableList = ({
   );
 
   const onRemove = (id: string) => {
-    setSelectedUsers((pre) => pre.filter((user) => user.id !== id));
+    setSelectedUsers((prevUsers) => {
+      const removedUser = prevUsers.find((user) => user.id === id);
+      const isTeamId = removedUser && removedUser.type === 'team';
+      const isUserId = removedUser && removedUser.type === 'user';
+
+      const updatedUsers = prevUsers.filter((user) => user.id !== id);
+
+      // Check if multi flag is false, then we should call the update function
+      if ((isTeamId && !isMultiTeam) || (isUserId && !isMultiUser)) {
+        handleUpdate(updatedUsers);
+      }
+
+      return updatedUsers;
+    });
   };
 
   const handleChange = (selectedItems: EntityReference[]) => {

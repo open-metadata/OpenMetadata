@@ -569,6 +569,7 @@
     "ingestion-pipeline-name": "Nombre del proceso de ingesta",
     "ingestion-plural": "Ingestas",
     "ingestion-workflow-lowercase": "flujo de trabajo de ingesta",
+    "inherited-entity": "Inherited {{entity}}",
     "inherited-role-plural": "Roles heredados",
     "insert": "Insertar",
     "insight-plural": "Perspectivas",

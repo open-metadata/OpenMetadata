@@ -1820,6 +1820,13 @@ public interface CollectionDAO {
 
     @SqlQuery("select fqnhash FROM glossary_term_entity where fqnhash LIKE CONCAT(:fqnhash, '.%')")
     List<String> getNestedChildrenByFQN(@BindFQN("fqnhash") String fqnhash);
+
+    default List<String> getAllTerms(String fqnPrefix) {
+      return getAllTermsInternal((FullyQualifiedName.quoteName(fqnPrefix)));
+    }
+
+    @SqlQuery("select json FROM glossary_term_entity where fqnhash  LIKE  CONCAT(:fqnhash, '.%')")
+    List<String> getAllTermsInternal(@BindFQN("fqnhash") String fqnhash);
   }
 
   interface IngestionPipelineDAO extends EntityDAO<IngestionPipeline> {

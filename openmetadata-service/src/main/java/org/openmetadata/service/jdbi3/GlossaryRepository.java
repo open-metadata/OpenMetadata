@@ -65,11 +65,14 @@ import org.openmetadata.service.jdbi3.CollectionDAO.EntityRelationshipRecord;
 import org.openmetadata.service.resources.glossary.GlossaryResource;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.FullyQualifiedName;
+import org.openmetadata.service.util.JsonUtils;
 
 @Slf4j
 public class GlossaryRepository extends EntityRepository<Glossary> {
   private static final String UPDATE_FIELDS = "";
   private static final String PATCH_FIELDS = "";
+
+  FeedRepository feedRepository = Entity.getFeedRepository();
 
   public GlossaryRepository() {
     super(
@@ -321,6 +324,12 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
     }
   }
 
+  private List<GlossaryTerm> getAllTerms(Glossary glossary) {
+    // Get all the hierarchically nested terms of the glossary
+    List<String> jsons = daoCollection.glossaryTermDAO().getAllTerms(glossary.getName());
+    return JsonUtils.readObjects(jsons, GlossaryTerm.class);
+  }
+
   /** Handles entity updated from PUT and POST operation. */
   public class GlossaryUpdater extends EntityUpdater {
     public GlossaryUpdater(Glossary original, Glossary updated, Operation operation) {
@@ -361,6 +370,25 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
                 updated.getFullyQualifiedName());
 
         updateAssetIndexesOnGlossaryUpdate(original, updated);
+      }
+    }
+
+    @Override
+    public void updateReviewers() {
+      super.updateReviewers();
+      GlossaryTermRepository repository =
+          (GlossaryTermRepository) Entity.getEntityRepository(GLOSSARY_TERM);
+
+      // adding the reviewer in glossary  should add the person as assignee to the task - for all
+      // draft terms present in glossary
+      if (!original.getReviewers().equals(updated.getReviewers())) {
+
+        List<GlossaryTerm> childTerms = getAllTerms(updated);
+        for (GlossaryTerm term : childTerms) {
+          if (term.getStatus().equals(Status.DRAFT)) {
+            repository.updateTaskWithNewReviewers(term);
+          }
+        }
       }
     }
 

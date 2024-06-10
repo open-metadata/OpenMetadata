@@ -16,7 +16,10 @@ import { isEmpty } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { BORDER_COLOR } from '../../../../constants/constants';
-import { LINEAGE_COLUMN_NODE_SUPPORTED } from '../../../../constants/Lineage.constants';
+import {
+  DATATYPES_HAVING_SUBFIELDS,
+  LINEAGE_COLUMN_NODE_SUPPORTED,
+} from '../../../../constants/Lineage.constants';
 import { useLineageProvider } from '../../../../context/LineageProvider/LineageProvider';
 import { LineageLayerView } from '../../../../context/LineageProvider/LineageProvider.interface';
 import { EntityType } from '../../../../enums/entity.enum';
@@ -111,7 +114,7 @@ const NodeChildren = ({ node, isConnectable }: NodeChildrenProps) => {
           <Panel header={headerContent} key={record.fullyQualifiedName ?? ''}>
             {record?.children?.map((child) => {
               const { fullyQualifiedName, dataType } = child;
-              if (['RECORD', 'STRUCT', 'ARRAY'].includes(dataType)) {
+              if (DATATYPES_HAVING_SUBFIELDS.includes(dataType)) {
                 return renderRecord(child);
               } else {
                 const isColumnTraced = tracedColumns.includes(
@@ -136,7 +139,7 @@ const NodeChildren = ({ node, isConnectable }: NodeChildrenProps) => {
   const renderColumnsData = useCallback(
     (column: Column) => {
       const { fullyQualifiedName, dataType } = column;
-      if (['RECORD', 'STRUCT', 'ARRAY'].includes(dataType)) {
+      if (DATATYPES_HAVING_SUBFIELDS.includes(dataType)) {
         return renderRecord(column);
       } else {
         const isColumnTraced = tracedColumns.includes(fullyQualifiedName ?? '');

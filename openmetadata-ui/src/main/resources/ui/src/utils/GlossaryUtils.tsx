@@ -194,6 +194,7 @@ export const convertGlossaryTermsToTreeOptions = (
     return {
       id: option.id,
       value: option.fullyQualifiedName,
+      name: option.name,
       title: (
         <Typography.Text ellipsis style={{ color: option?.style?.color }}>
           {getEntityName(option)}

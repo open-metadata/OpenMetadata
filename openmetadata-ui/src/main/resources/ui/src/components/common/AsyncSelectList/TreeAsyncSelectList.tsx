@@ -285,9 +285,9 @@ const TreeAsyncSelectList: FC<Omit<AsyncSelectListProps, 'fetchOptions'>> = ({
       dropdownRender={dropdownRender}
       dropdownStyle={{ width: 300 }}
       filterTreeNode={false}
-      loadData={({ id, value }) => {
+      loadData={({ id, name }) => {
         if (expandableKeys.current.includes(id)) {
-          return fetchGlossaryTerm({ glossary: value as string });
+          return fetchGlossaryTerm({ glossary: name as string });
         }
 
         return Promise.resolve();

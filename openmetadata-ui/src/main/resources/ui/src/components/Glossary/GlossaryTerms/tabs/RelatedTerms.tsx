@@ -45,6 +45,7 @@ import {
 } from '../../../../utils/EntityVersionUtils';
 import { VersionStatus } from '../../../../utils/EntityVersionUtils.interface';
 import { getGlossaryPath } from '../../../../utils/RouterUtils';
+import { SelectOption } from '../../../common/AsyncSelectList/AsyncSelectList.interface';
 import TagButton from '../../../common/TagButton/TagButton.component';
 
 interface RelatedTermsProps {
@@ -63,6 +64,18 @@ const RelatedTerms = ({
   const history = useHistory();
   const [isIconVisible, setIsIconVisible] = useState<boolean>(true);
   const [selectedOption, setSelectedOption] = useState<EntityReference[]>([]);
+
+  const initialOptions = useMemo(() => {
+    return (
+      selectedOption.map((item) => {
+        return {
+          label: getEntityName(item),
+          value: item.fullyQualifiedName,
+          data: item,
+        };
+      }) ?? []
+    );
+  }, [selectedOption]);
 
   const handleRelatedTermClick = (fqn: string) => {
     history.push(getGlossaryPath(fqn));
@@ -259,6 +272,7 @@ const RelatedTerms = ({
           placeholder={t('label.add-entity', {
             entity: t('label.related-term-plural'),
           })}
+          tagData={initialOptions as SelectOption[]}
           onCancel={handleCancel}
           onSubmit={handleRelatedTermsSave}
         />

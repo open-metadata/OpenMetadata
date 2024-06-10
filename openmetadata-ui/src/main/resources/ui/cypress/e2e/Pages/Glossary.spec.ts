@@ -716,6 +716,11 @@ describe('Glossary page should work properly', { tags: 'Governance' }, () => {
       glossary: GLOSSARY_1,
       glossaryTerm: GLOSSARY_1.terms[1],
     });
+
+    approveGlossaryTermWorkflow({
+      glossary: GLOSSARY_1,
+      glossaryTerm: GLOSSARY_1.terms[2],
+    });
     cy.logout();
     Cypress.session.clearAllSavedSessions();
     cy.login();
