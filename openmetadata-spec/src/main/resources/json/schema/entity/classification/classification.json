@@ -73,7 +73,7 @@
       "default" : "false"
     },
     "domain" : {
-      "description": "Domain the table belongs to. When not set, the table inherits the domain from the database schema it belongs to.",
+      "description": "Domain the asset belongs to. When not set, the asset inherits the domain from the parent it belongs to.",
       "$ref": "../../type/entityReference.json"
     }
   },

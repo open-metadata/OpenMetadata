@@ -46,7 +46,7 @@ slug: /main-concepts/metadata-standard/schemas/entity/data/table
 - **`retentionPeriod`**: Retention period of the data in the table. Period is expressed as duration in ISO 8601 format in UTC. Example - `P23DT23H`. When not set, the retention period is inherited from the parent database schema, if it exists. Refer to *../../type/basic.json#/definitions/duration*.
 - **`extension`**: Entity extension data with custom attributes added to the entity. Refer to *../../type/basic.json#/definitions/entityExtension*.
 - **`sourceUrl`**: Source URL of table. Refer to *../../type/basic.json#/definitions/sourceUrl*.
-- **`domain`**: Domain the table belongs to. When not set, the table inherits the domain from the database schema it belongs to. Refer to *../../type/entityReference.json*.
+- **`domain`**: Domain the asset belongs to. When not set, the asset inherits the domain from the parent it belongs to. Refer to *../../type/entityReference.json*.
 - **`dataProducts`**: List of data products this entity is part of. Refer to *../../type/entityReferenceList.json*.
 - **`fileFormat`**: File format in case of file/datalake tables. Refer to *#/definitions/fileFormat*.
 - **`votes`**: Refer to *../../type/votes.json*.
