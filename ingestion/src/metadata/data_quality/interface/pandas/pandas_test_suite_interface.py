@@ -96,7 +96,7 @@ class PandasTestSuiteInterface(TestSuiteInterface, PandasInterfaceMixin):
             test_handler = TestHandler(
                 self.dfs,
                 test_case=test_case,
-                execution_date=int(datetime.now(tz=timezone.utc).timestamp() * 1000),
+                execution_date=int(datetime.now().timestamp() * 1000),
             )
 
             return test_handler.run_validation()

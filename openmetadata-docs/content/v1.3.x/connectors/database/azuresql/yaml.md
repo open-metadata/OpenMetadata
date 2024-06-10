@@ -150,7 +150,7 @@ You can download the ODBC driver from [here](https://learn.microsoft.com/en-us/s
 
 {% codeBlock fileName="filename.yaml" %}
 
-```yaml
+```yaml {% isCodeBlock=true %}
 source:
   type: azuresql
   serviceName: local_azuresql

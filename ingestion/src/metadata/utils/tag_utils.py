@@ -49,8 +49,8 @@ logger = ingestion_logger()
 def get_ometa_tag_and_classification(
     tags: List[str],
     classification_name: str,
-    tag_description: Optional[str] = None,
-    classification_description: Optional[str] = None,
+    tag_description: str,
+    classification_description: str,
     include_tags: bool = True,
     tag_fqn: Optional[FullyQualifiedEntityName] = None,
 ) -> Iterable[Either[OMetaTagAndClassification]]:
@@ -64,9 +64,7 @@ def get_ometa_tag_and_classification(
                     fqn=tag_fqn,
                     classification_request=CreateClassificationRequest(
                         name=EntityName(classification_name),
-                        description=Markdown(classification_description)
-                        if classification_description
-                        else None,
+                        description=Markdown(classification_description),
                     ),
                     tag_request=CreateTagRequest(
                         classification=FullyQualifiedEntityName(classification_name),

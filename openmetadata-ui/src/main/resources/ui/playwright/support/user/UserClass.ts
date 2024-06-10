@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { APIRequestContext, Page } from '@playwright/test';
-import { generateRandomUsername } from '../../utils/userUtils';
+import { generateRandomUsername } from '../../utils/user';
 
 type ResponseDataType = {
   name: string;

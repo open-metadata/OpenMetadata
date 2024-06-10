@@ -194,7 +194,7 @@ class ElasticSearchUnitTest(TestCase):
     def __init__(self, methodName, test_connection) -> None:
         super().__init__(methodName)
         test_connection.return_value = False
-        self.config = OpenMetadataWorkflowConfig.parse_obj(mock_es_config)
+        self.config = OpenMetadataWorkflowConfig.model_validate(mock_es_config)
         self.es_source = ElasticsearchSource.create(
             mock_es_config["source"],
             self.config.workflowConfig.openMetadataServerConfig,

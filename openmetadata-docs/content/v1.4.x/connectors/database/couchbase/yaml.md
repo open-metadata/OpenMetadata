@@ -100,7 +100,7 @@ This is a sample config for Couchbase:
 
 {% codeBlock fileName="filename.yaml" %}
 
-```yaml
+```yaml {% isCodeBlock=true %}
 source:
   type: couchbase
   serviceName: local_couchbase

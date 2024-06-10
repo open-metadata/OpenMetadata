@@ -158,7 +158,7 @@ class RedashSource(DashboardServiceSource):
                 dashboard_description = widgets.get("text")
 
             dashboard_request = CreateDashboardRequest(
-                name=EntityName(dashboard_details["id"]),
+                name=EntityName(str(dashboard_details["id"])),
                 displayName=dashboard_details.get("name"),
                 description=Markdown(dashboard_description)
                 if dashboard_description
@@ -274,7 +274,7 @@ class RedashSource(DashboardServiceSource):
                     continue
                 yield Either(
                     right=CreateChartRequest(
-                        name=EntittName(widgets["id"]),
+                        name=EntityName(str(widgets["id"])),
                         displayName=chart_display_name
                         if visualization and visualization["query"]
                         else "",

@@ -262,7 +262,7 @@ class DbtUnitTest(TestCase):
     def __init__(self, methodName, test_connection) -> None:
         super().__init__(methodName)
         test_connection.return_value = False
-        self.config = OpenMetadataWorkflowConfig.parse_obj(mock_dbt_config)
+        self.config = OpenMetadataWorkflowConfig.model_validate(mock_dbt_config)
         self.dbt_source_obj = DbtSource.create(
             mock_dbt_config["source"],
             OpenMetadata(self.config.workflowConfig.openMetadataServerConfig),

@@ -118,7 +118,7 @@ class BigqueryUnitTest(TestCase):
         create_generic_connection.return_value = Mock()
         set_project_id.return_value = Mock()
         test_connection.return_value = False
-        self.config = OpenMetadataWorkflowConfig.parse_obj(mock_bigquery_config)
+        self.config = OpenMetadataWorkflowConfig.model_validate(mock_bigquery_config)
         self.bigquery_source = BigquerySource.create(
             mock_bigquery_config["source"],
             self.config.workflowConfig.openMetadataServerConfig,

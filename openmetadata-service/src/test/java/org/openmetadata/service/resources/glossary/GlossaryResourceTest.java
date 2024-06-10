@@ -31,7 +31,6 @@ import static org.openmetadata.schema.type.ProviderType.SYSTEM;
 import static org.openmetadata.service.util.EntityUtil.fieldAdded;
 import static org.openmetadata.service.util.EntityUtil.fieldUpdated;
 import static org.openmetadata.service.util.EntityUtil.getFqn;
-import static org.openmetadata.service.util.EntityUtil.getFqns;
 import static org.openmetadata.service.util.EntityUtil.toTagLabels;
 import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
 import static org.openmetadata.service.util.TestUtils.UpdateType.CHANGE_CONSOLIDATED;
@@ -41,10 +40,13 @@ import static org.openmetadata.service.util.TestUtils.assertResponse;
 import static org.openmetadata.service.util.TestUtils.validateTagLabel;
 
 import java.io.IOException;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 import javax.ws.rs.core.Response.Status;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
@@ -63,6 +65,7 @@ import org.openmetadata.schema.entity.classification.Tag;
 import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.entity.data.Table;
+import org.openmetadata.schema.entity.feed.Thread;
 import org.openmetadata.schema.type.ApiStatus;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.Column;
@@ -71,6 +74,7 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.ProviderType;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.TagLabel.TagSource;
+import org.openmetadata.schema.type.TaskStatus;
 import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
@@ -111,7 +115,7 @@ public class GlossaryResourceTest extends EntityResourceTest<Glossary, CreateGlo
             .withRelatedTerms(null)
             .withGlossary(GLOSSARY1.getName())
             .withTags(List.of(PII_SENSITIVE_TAG_LABEL, PERSONAL_DATA_TAG_LABEL))
-            .withReviewers(getFqns(GLOSSARY1.getReviewers()));
+            .withReviewers(GLOSSARY1.getReviewers());
     GLOSSARY1_TERM1 = glossaryTermResourceTest.createEntity(createGlossaryTerm, ADMIN_AUTH_HEADERS);
     GLOSSARY1_TERM1_LABEL = EntityUtil.toTagLabel(GLOSSARY1_TERM1);
     validateTagLabel(GLOSSARY1_TERM1_LABEL);
@@ -121,7 +125,7 @@ public class GlossaryResourceTest extends EntityResourceTest<Glossary, CreateGlo
             .createRequest("g2t1", "", "", null)
             .withRelatedTerms(List.of(GLOSSARY1_TERM1.getFullyQualifiedName()))
             .withGlossary(GLOSSARY2.getName())
-            .withReviewers(getFqns(GLOSSARY1.getReviewers()));
+            .withReviewers(GLOSSARY1.getReviewers());
     GLOSSARY2_TERM1 = glossaryTermResourceTest.createEntity(createGlossaryTerm, ADMIN_AUTH_HEADERS);
     GLOSSARY2_TERM1_LABEL = EntityUtil.toTagLabel(GLOSSARY2_TERM1);
     validateTagLabel(GLOSSARY2_TERM1_LABEL);
@@ -151,6 +155,42 @@ public class GlossaryResourceTest extends EntityResourceTest<Glossary, CreateGlo
     glossary =
         patchEntityAndCheck(glossary, origJson, ADMIN_AUTH_HEADERS, CHANGE_CONSOLIDATED, change);
 
+    // Create a glossary term and assign USER2 as a reviewer
+    GlossaryTermResourceTest glossaryTermResourceTest = new GlossaryTermResourceTest();
+    CreateGlossaryTerm createGlossaryTerm =
+        glossaryTermResourceTest
+            .createRequest("GLOSSARY_TERM1", "", "", null)
+            .withRelatedTerms(List.of(GLOSSARY1_TERM1.getFullyQualifiedName()))
+            .withGlossary(glossary.getName())
+            .withReviewers(listOf(USER2_REF));
+    GlossaryTerm GLOSSARY_TERM1 =
+        glossaryTermResourceTest.createEntity(createGlossaryTerm, ADMIN_AUTH_HEADERS);
+
+    // Verify that the term has both the glossary's reviewer and its own reviewer
+    List<EntityReference> reviewers = listOf(USER1_REF, USER2_REF);
+    reviewers.sort(Comparator.comparing(EntityReference::getName));
+    assertEquals(GLOSSARY_TERM1.getReviewers().size(), reviewers.size());
+
+    // Compare the reviewer IDs of both lists to ensure they match
+    List<UUID> glossaryTermReviewerIds =
+        GLOSSARY_TERM1.getReviewers().stream()
+            .map(EntityReference::getId)
+            .collect(Collectors.toList());
+    assertEquals(glossaryTermReviewerIds, listOf(USER1_REF.getId(), USER2_REF.getId()));
+
+    // Verify that the task assignees are the same as the term reviewers
+    Thread approvalTask =
+        glossaryTermResourceTest.assertApprovalTask(GLOSSARY_TERM1, TaskStatus.Open);
+    assertEquals(
+        GLOSSARY_TERM1.getReviewers().size(), approvalTask.getTask().getAssignees().size());
+
+    // Compare the reviewer IDs of both lists to ensure they match
+    List<UUID> taskAssigneeIds =
+        approvalTask.getTask().getAssignees().stream()
+            .map(EntityReference::getId)
+            .collect(Collectors.toList());
+    assertEquals(glossaryTermReviewerIds, taskAssigneeIds);
+
     // Remove a reviewer USER1 in PATCH request
     // Changes from this PATCH is consolidated with the previous changes
     origJson = JsonUtils.pojoToJson(glossary);
@@ -161,6 +201,47 @@ public class GlossaryResourceTest extends EntityResourceTest<Glossary, CreateGlo
             CHANGE_CONSOLIDATED); // PATCH operation update is consolidated in a user session
     fieldAdded(change, "reviewers", List.of(USER2_REF));
     patchEntityAndCheck(glossary, origJson, ADMIN_AUTH_HEADERS, CHANGE_CONSOLIDATED, change);
+
+    // Verify that USER1_REF is removed from the reviewers for the terms inside the glossary
+    GLOSSARY_TERM1 =
+        glossaryTermResourceTest.getEntity(GLOSSARY_TERM1.getId(), "reviewers", ADMIN_AUTH_HEADERS);
+    reviewers = listOf(USER2_REF);
+    reviewers.sort(Comparator.comparing(EntityReference::getName));
+    assertEquals(GLOSSARY_TERM1.getReviewers(), reviewers);
+
+    // Create a child term under GLOSSARY_TERM1 and ensure the reviewers are inherited from parent
+    // term
+    createGlossaryTerm =
+        glossaryTermResourceTest
+            .createRequest("CHILD_TERM1", "", "", null)
+            .withRelatedTerms(List.of(GLOSSARY1_TERM1.getFullyQualifiedName()))
+            .withGlossary(glossary.getName())
+            .withParent(GLOSSARY_TERM1.getFullyQualifiedName())
+            .withReviewers(listOf(DATA_CONSUMER_REF));
+    GlossaryTerm CHILD_TERM1 =
+        glossaryTermResourceTest.createEntity(createGlossaryTerm, ADMIN_AUTH_HEADERS);
+
+    reviewers = listOf(USER2_REF, DATA_CONSUMER_REF);
+    reviewers.sort(Comparator.comparing(EntityReference::getName));
+    assertEquals(CHILD_TERM1.getReviewers().size(), reviewers.size());
+
+    // Compare the reviewer IDs of both lists to ensure they match
+    List<UUID> childTermReviewerIds =
+        CHILD_TERM1.getReviewers().stream()
+            .map(EntityReference::getId)
+            .collect(Collectors.toList());
+    assertEquals(childTermReviewerIds, listOf(DATA_CONSUMER_REF.getId(), USER2_REF.getId()));
+
+    // Verify that the task assignees are the same as the child term reviewers
+    approvalTask = glossaryTermResourceTest.assertApprovalTask(CHILD_TERM1, TaskStatus.Open);
+    assertEquals(CHILD_TERM1.getReviewers().size(), approvalTask.getTask().getAssignees().size());
+
+    // Compare the reviewer IDs of both lists to ensure they match
+    taskAssigneeIds =
+        approvalTask.getTask().getAssignees().stream()
+            .map(EntityReference::getId)
+            .collect(Collectors.toList());
+    assertEquals(childTermReviewerIds, taskAssigneeIds);
   }
 
   @Test
@@ -460,8 +541,8 @@ public class GlossaryResourceTest extends EntityResourceTest<Glossary, CreateGlo
                 ",g2,dsp2,dsc3,h1;h3;h3,,term2;https://term2,PII.NonSensitive,%s,user;%s,%s",
                 user1, user2, "Approved"),
             String.format(
-                "importExportTest.g1,g11,dsp2,dsc11,h1;h3;h3,,,,%s,team;%s,%s",
-                user1, team11, "Draft"));
+                "importExportTest.g1,g11,dsp2,dsc11,h1;h3;h3,,,,%s;%s,team;%s,%s",
+                user1, user2, team11, "Draft"));
 
     // Update terms with change in description
     List<String> updateRecords =
@@ -473,8 +554,8 @@ public class GlossaryResourceTest extends EntityResourceTest<Glossary, CreateGlo
                 ",g2,dsp2,new-dsc3,h1;h3;h3,,term2;https://term2,PII.NonSensitive,%s,user;%s,%s",
                 user1, user2, "Approved"),
             String.format(
-                "importExportTest.g1,g11,dsp2,new-dsc11,h1;h3;h3,,,,%s,team;%s,%s",
-                user1, team11, "Draft"));
+                "importExportTest.g1,g11,dsp2,new-dsc11,h1;h3;h3,,,,%s;%s,team;%s,%s",
+                user1, user2, team11, "Draft"));
 
     // Add new row to existing rows
     List<String> newRecords =
