@@ -55,7 +55,9 @@ export const setValueForProperty = async (data: {
   const { page, propertyName, value, propertyType } = data;
   await page.click('[data-testid="custom_properties"]');
 
-  await expect(page.locator('tbody')).toContainText(propertyName);
+  await expect(page.getByRole('cell', { name: propertyName })).toContainText(
+    propertyName
+  );
 
   const editButton = page.locator(
     `[data-row-key="${propertyName}"] [data-testid="edit-icon"]`
@@ -95,8 +97,9 @@ export const setValueForProperty = async (data: {
 
     case 'enum':
       await page.locator('#enumValues').click();
-      await page.locator('#enumValues').type(`${value}{Enter}`);
-      await page.click('body'); // Assuming clickOutside is clicking on the body to blur
+      await page.locator('#enumValues').fill(value);
+      await page.locator('#enumValues').press('Enter');
+      await page.mouse.click(0, 0);
       await page.locator('[data-testid="inline-save-btn"]').click();
 
       break;
@@ -158,26 +161,28 @@ export const setValueForProperty = async (data: {
 
   await page.waitForResponse('/api/v1/*/*');
   if (propertyType === 'enum') {
-    await expect(page.locator('[data-testid="enum-value"]')).toContainText(
-      value
-    );
+    await expect(
+      page.getByLabel('Custom Properties').getByTestId('enum-value')
+    ).toContainText(value);
   } else if (propertyType === 'timeInterval') {
     const [startValue, endValue] = value.split(',');
 
     await expect(
-      page.locator('[data-testid="time-interval-value"]')
+      page.getByLabel('Custom Properties').getByTestId('time-interval-value')
     ).toContainText(startValue);
     await expect(
-      page.locator('[data-testid="time-interval-value"]')
+      page.getByLabel('Custom Properties').getByTestId('time-interval-value')
     ).toContainText(endValue);
   } else if (propertyType === 'sqlQuery') {
-    await expect(page.locator('.CodeMirror-scroll')).toContainText(value);
+    await expect(
+      page.getByLabel('Custom Properties').locator('.CodeMirror-scroll')
+    ).toContainText(value);
   } else if (
     !['entityReference', 'entityReferenceList'].includes(propertyType)
   ) {
-    await expect(
-      page.locator(`[data-row-key="${propertyName}"]`)
-    ).toContainText(value.replace(/\*|_/gi, ''));
+    await expect(page.getByRole('row', { name: propertyName })).toContainText(
+      value.replace(/\*|_/gi, '')
+    );
   }
 };
 
@@ -188,34 +193,31 @@ export const validateValueForProperty = async (data: {
   propertyType: string;
 }) => {
   const { page, propertyName, value, propertyType } = data;
-  await page.locator('.ant-tabs-tab').first().click();
-  await page
-    .locator(
-      '[data-testid="entity-right-panel"] [data-testid="custom-properties-table"]'
-    )
-    .scrollIntoViewIfNeeded();
+  await page.click('[data-testid="custom_properties"]');
 
   if (propertyType === 'enum') {
-    await expect(page.locator('[data-testid="enum-value"]')).toContainText(
-      value
-    );
+    await expect(
+      page.getByLabel('Custom Properties').getByTestId('enum-value')
+    ).toContainText(value);
   } else if (propertyType === 'timeInterval') {
     const [startValue, endValue] = value.split(',');
 
     await expect(
-      page.locator('[data-testid="time-interval-value"]')
+      page.getByLabel('Custom Properties').getByTestId('time-interval-value')
     ).toContainText(startValue);
     await expect(
-      page.locator('[data-testid="time-interval-value"]')
+      page.getByLabel('Custom Properties').getByTestId('time-interval-value')
     ).toContainText(endValue);
   } else if (propertyType === 'sqlQuery') {
-    await expect(page.locator('.CodeMirror-scroll')).toContainText(value);
+    await expect(
+      page.getByLabel('Custom Properties').locator('.CodeMirror-scroll')
+    ).toContainText(value);
   } else if (
     !['entityReference', 'entityReferenceList'].includes(propertyType)
   ) {
-    await expect(
-      page.locator(`[data-row-key="${propertyName}"]`)
-    ).toContainText(value.replace(/\*|_/gi, ''));
+    await expect(page.getByRole('row', { name: propertyName })).toContainText(
+      value.replace(/\*|_/gi, '')
+    );
   }
 };
 

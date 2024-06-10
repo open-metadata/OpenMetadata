@@ -127,29 +127,30 @@ entities.forEach((EntityClass) => {
 
     // Create custom property only for supported entities
     if (CustomPropertySupportedEntityList.includes(entity.endpoint)) {
-      const properties = Object.values(CustomPropertyTypeByName).join(', ');
+      const properties = Object.values(CustomPropertyTypeByName);
+      const titleText = properties.join(', ');
 
-      test(`Set & Update ${properties} Custom Property `, async ({ page }) => {
+      test(`Set & Update ${titleText} Custom Property `, async ({ page }) => {
         test.slow();
 
-        await test.step(`Set ${properties} Custom Property`, async () => {
-          Object.values(CustomPropertyTypeByName).forEach((type) => {
-            entity.setCustomProperty(
+        await test.step(`Set ${titleText} Custom Property`, async () => {
+          for (const type of properties) {
+            await entity.setCustomProperty(
               page,
               entity.customPropertyValue[type].property,
               entity.customPropertyValue[type].value
             );
-          });
+          }
         });
 
-        await test.step(`Update ${properties} Custom Property`, () => {
-          Object.values(CustomPropertyTypeByName).forEach((type) => {
-            entity.updateCustomProperty(
+        await test.step(`Update ${titleText} Custom Property`, async () => {
+          for (const type of properties) {
+            await entity.updateCustomProperty(
               page,
               entity.customPropertyValue[type].property,
               entity.customPropertyValue[type].newValue
             );
-          });
+          }
         });
       });
     }
