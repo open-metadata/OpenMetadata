@@ -184,6 +184,13 @@ public class SearchRepository {
         : name;
   }
 
+  public String getIndexNameWithoutAlias(String fullIndexName) {
+    if (fullIndexName.startsWith(clusterAlias + indexNameSeparator)) {
+      return fullIndexName.substring((clusterAlias + indexNameSeparator).length());
+    }
+    return fullIndexName;
+  }
+
   public boolean indexExists(IndexMapping indexMapping) {
     return searchClient.indexExists(indexMapping.getIndexName(clusterAlias));
   }
