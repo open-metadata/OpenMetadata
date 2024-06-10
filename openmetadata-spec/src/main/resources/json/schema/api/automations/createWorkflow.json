@@ -48,6 +48,10 @@
       "description": "Owner of this workflow.",
       "$ref": "../../type/entityReference.json",
       "default": null
+    },
+    "domain" : {
+      "description": "Fully qualified name of the domain the Table belongs to.",
+      "type": "string"
     }
   },
   "additionalProperties": false,

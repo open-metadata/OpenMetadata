@@ -44,6 +44,10 @@
     },
     "metricType": {
       "$ref": "../../../dataInsight/kpi/basic.json#/definitions/kpiTargetType"
+    },
+    "domain" : {
+      "description": "Fully qualified name of the domain the Table belongs to.",
+      "type": "string"
     }
   },
   "required": ["name", "description", "dataInsightChart", "startDate", "endDate", "targetDefinition", "metricType"],

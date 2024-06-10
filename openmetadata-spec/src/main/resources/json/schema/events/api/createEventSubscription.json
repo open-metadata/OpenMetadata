@@ -71,7 +71,10 @@
     "input": {
       "description": "Input for the Filters.",
       "$ref": "../eventSubscription.json#/definitions/alertFilteringInput"
-
+    },
+    "domain" : {
+      "description": "Fully qualified name of the domain the Table belongs to.",
+      "type": "string"
     }
   },
   "required": ["name", "alertType"],

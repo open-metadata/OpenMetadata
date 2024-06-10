@@ -34,6 +34,10 @@
     "executableEntityReference": {
       "description": "FQN of the entity the test suite is executed against. Only applicable for executable test suites.",
       "$ref": "../../type/basic.json#/definitions/fullyQualifiedEntityName"
+    },
+    "domain" : {
+      "description": "Fully qualified name of the domain the Table belongs to.",
+      "type": "string"
     }
   },
   "required": ["name"],

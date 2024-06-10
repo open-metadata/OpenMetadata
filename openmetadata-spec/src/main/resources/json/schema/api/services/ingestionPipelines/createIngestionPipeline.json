@@ -39,6 +39,10 @@
     "owner": {
       "description": "Owner of this Pipeline.",
       "$ref": "../../../type/entityReference.json"
+    },
+    "domain" : {
+      "description": "Fully qualified name of the domain the Table belongs to.",
+      "type": "string"
     }
   },
   "required": [

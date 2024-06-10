@@ -87,6 +87,14 @@
     "confirmPassword": {
       "description": "Confirm Password for User",
       "type": "string"
+    },
+    "userDomains" : {
+      "description": "Domains the User belongs to.",
+      "type": "array",
+      "items": {
+        "$ref": "../../type/basic.json#/definitions/uuid"
+      },
+      "default": null
     }
   },
   "required": ["name", "email"],
