@@ -55,6 +55,7 @@ entities.forEach((EntityClass) => {
 
       await EntityDataClass.preRequisitesForTests(apiContext);
       await entity.create(apiContext);
+      await entity.prepareForTests(apiContext);
       await afterAction();
     });
 
@@ -129,6 +130,8 @@ entities.forEach((EntityClass) => {
       const properties = Object.values(CustomPropertyTypeByName).join(', ');
 
       test(`Set & Update ${properties} Custom Property `, async ({ page }) => {
+        test.slow();
+
         await test.step(`Set ${properties} Custom Property`, async () => {
           Object.values(CustomPropertyTypeByName).forEach((type) => {
             entity.setCustomProperty(
@@ -157,6 +160,7 @@ entities.forEach((EntityClass) => {
 
     test.afterAll('Cleanup', async ({ browser }) => {
       const { apiContext, afterAction } = await createNewPage(browser);
+      await entity.cleanup(apiContext);
       await entity.delete(apiContext);
       await EntityDataClass.postRequisitesForTests(apiContext);
       await afterAction();
