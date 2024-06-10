@@ -571,6 +571,7 @@
     "ingestion-pipeline-name": "提取流水线名称",
     "ingestion-plural": "提取",
     "ingestion-workflow-lowercase": "提取工作流",
+    "inherited-entity": "Inherited {{entity}}",
     "inherited-role-plural": "继承的角色",
     "insert": "插入",
     "insight-plural": "洞察",

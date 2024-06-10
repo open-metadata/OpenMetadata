@@ -571,6 +571,7 @@
     "ingestion-pipeline-name": "インジェスチョンパイプライン名",
     "ingestion-plural": "インジェスチョン",
     "ingestion-workflow-lowercase": "インジェスチョンのワークフロー",
+    "inherited-entity": "Inherited {{entity}}",
     "inherited-role-plural": "継承されたロール",
     "insert": "挿入",
     "insight-plural": "インサイト",

@@ -571,6 +571,7 @@
     "ingestion-pipeline-name": "Имя процесса извлечения",
     "ingestion-plural": "Извлечения",
     "ingestion-workflow-lowercase": "процесс извлечения",
+    "inherited-entity": "Inherited {{entity}}",
     "inherited-role-plural": "Унаследованные роли",
     "insert": "Вставлено",
     "insight-plural": "Статистика",
