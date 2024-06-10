@@ -80,10 +80,12 @@ import org.openmetadata.schema.type.api.BulkOperationResult;
 import org.openmetadata.schema.type.api.BulkResponse;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
+import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.CollectionDAO.EntityRelationshipRecord;
 import org.openmetadata.service.jdbi3.FeedRepository.TaskWorkflow;
 import org.openmetadata.service.jdbi3.FeedRepository.ThreadContext;
 import org.openmetadata.service.resources.feeds.FeedResource;
+import org.openmetadata.service.resources.feeds.MessageParser;
 import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
 import org.openmetadata.service.resources.glossary.GlossaryTermResource;
 import org.openmetadata.service.search.SearchRequest;
@@ -103,6 +105,8 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
   private static final String PATCH_FIELDS = "references,relatedTerms,synonyms";
 
   private static GlossaryTerm valueBeforeUpdate = new GlossaryTerm();
+
+  FeedRepository feedRepository = Entity.getFeedRepository();
 
   public GlossaryTermRepository() {
     super(
@@ -786,6 +790,48 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
     }
   }
 
+  private List<GlossaryTerm> getNestedTerms(GlossaryTerm glossaryTerm) {
+    // Get all the hierarchically nested child terms of the glossary term
+    List<String> jsons =
+        daoCollection.glossaryTermDAO().getAllTermsInternal(glossaryTerm.getFullyQualifiedName());
+    return JsonUtils.readObjects(jsons, GlossaryTerm.class);
+  }
+
+  protected void updateTaskWithNewReviewers(GlossaryTerm term) {
+    try {
+
+      MessageParser.EntityLink about =
+          new MessageParser.EntityLink(GLOSSARY_TERM, term.getFullyQualifiedName());
+      Thread originalTask = feedRepository.getTask(about, TaskType.RequestApproval);
+
+      // Update assignees only for open approval tasks
+      if (TaskStatus.Open.equals(originalTask.getTask().getStatus())) {
+
+        term =
+            Entity.getEntityByName(
+                Entity.GLOSSARY_TERM,
+                term.getFullyQualifiedName(),
+                "id,fullyQualifiedName,reviewers",
+                Include.ALL);
+
+        Thread updatedTask = JsonUtils.deepCopy(originalTask, Thread.class);
+        updatedTask.getTask().withAssignees(new ArrayList<>(term.getReviewers()));
+        JsonPatch patch = JsonUtils.getJsonPatch(originalTask, updatedTask);
+        RestUtil.PatchResponse<Thread> thread =
+            feedRepository.patchThread(
+                null, originalTask.getId(), updatedTask.getUpdatedBy(), patch);
+
+        // Send WebSocket Notification
+        WebsocketNotificationHandler.handleTaskNotification(thread.entity());
+      }
+    } catch (EntityNotFoundException e) {
+      LOG.info(
+          "{} Task not found for glossary term {}",
+          TaskType.RequestApproval,
+          term.getFullyQualifiedName());
+    }
+  }
+
   /** Handles entity updated from PUT and POST operation. */
   public class GlossaryTermUpdater extends EntityUpdater {
     public GlossaryTermUpdater(GlossaryTerm original, GlossaryTerm updated, Operation operation) {
@@ -795,27 +841,16 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
     @Override
     public void updateReviewers() {
       super.updateReviewers();
-
       // adding the reviewer should add the person as assignee to the task
-      if ((!nullOrEmpty(updated.getReviewers())
-              && !original.getReviewers().equals(updated.getReviewers()))
-          && updated.getStatus() == Status.DRAFT) {
-        EntityLink about = new EntityLink(GLOSSARY_TERM, updated.getFullyQualifiedName());
-        FeedRepository feedRepository = Entity.getFeedRepository();
-        Thread originalTask = feedRepository.getTask(about, TaskType.RequestApproval);
 
-        if (TaskStatus.Open.equals(originalTask.getTask().getStatus())) {
+      if (!original.getReviewers().equals(updated.getReviewers())) {
 
-          Thread updatedTask = JsonUtils.deepCopy(originalTask, Thread.class);
-          updatedTask.getTask().withAssignees(updated.getReviewers());
-          JsonPatch patch = JsonUtils.getJsonPatch(originalTask, updatedTask);
-
-          RestUtil.PatchResponse<Thread> thread =
-              feedRepository.patchThread(
-                  null, originalTask.getId(), updatedTask.getUpdatedBy(), patch);
-
-          // Send WebSocket Notification
-          WebsocketNotificationHandler.handleTaskNotification(thread.entity());
+        List<GlossaryTerm> childTerms = getNestedTerms(updated);
+        childTerms.add(updated);
+        for (GlossaryTerm term : childTerms) {
+          if (term.getStatus().equals(Status.DRAFT)) {
+            updateTaskWithNewReviewers(term);
+          }
         }
       }
     }
