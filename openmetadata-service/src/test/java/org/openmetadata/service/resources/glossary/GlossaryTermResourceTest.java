@@ -586,7 +586,7 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
         g, t1, "t11", null, DATA_STEWARD.getEntityReference(), authHeaders(DATA_STEWARD.getName()));
   }
 
-  private Thread assertApprovalTask(GlossaryTerm term, TaskStatus expectedTaskStatus)
+  protected Thread assertApprovalTask(GlossaryTerm term, TaskStatus expectedTaskStatus)
       throws HttpResponseException {
     String entityLink =
         new EntityLink(Entity.GLOSSARY_TERM, term.getFullyQualifiedName()).getLinkString();
