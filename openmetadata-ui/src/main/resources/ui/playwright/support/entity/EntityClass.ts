@@ -11,6 +11,11 @@
  *  limitations under the License.
  */
 import { Page } from '@playwright/test';
+import {
+  CustomProperty,
+  setValueForProperty,
+  validateValueForProperty,
+} from '../../utils/customProperty';
 import { assignDomain, removeDomain, updateDomain } from '../../utils/domain';
 import {
   addOwner,
@@ -43,6 +48,11 @@ import { EntityTypeEndpoint } from './Entity.interface';
 export class EntityClass {
   type: string;
   endpoint: EntityTypeEndpoint;
+
+  customPropertyValue: Record<
+    string,
+    { value: string; newValue: string; property: CustomProperty }
+  >;
 
   constructor(endpoint: EntityTypeEndpoint) {
     this.endpoint = endpoint;
@@ -172,5 +182,43 @@ export class EntityClass {
 
   async hardDeleteEntity(page: Page, entityName: string, displayName?: string) {
     await hardDeleteEntity(page, displayName ?? entityName, this.endpoint);
+  }
+
+  async setCustomProperty(
+    page: Page,
+    propertydetails: CustomProperty,
+    value: string
+  ) {
+    await setValueForProperty({
+      page,
+      propertyName: propertydetails.name,
+      value,
+      propertyType: propertydetails.propertyType.name,
+    });
+    await validateValueForProperty({
+      page,
+      propertyName: propertydetails.name,
+      value,
+      propertyType: propertydetails.propertyType.name,
+    });
+  }
+
+  async updateCustomProperty(
+    page: Page,
+    propertydetails: CustomProperty,
+    value: string
+  ) {
+    await setValueForProperty({
+      page,
+      propertyName: propertydetails.name,
+      value,
+      propertyType: propertydetails.propertyType.name,
+    });
+    await validateValueForProperty({
+      page,
+      propertyName: propertydetails.name,
+      value,
+      propertyType: propertydetails.propertyType.name,
+    });
   }
 }

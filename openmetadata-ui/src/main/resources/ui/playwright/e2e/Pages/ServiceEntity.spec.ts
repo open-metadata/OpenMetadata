@@ -11,35 +11,33 @@
  *  limitations under the License.
  */
 import { test } from '@playwright/test';
-import { CustomPropertySupportedEntityList } from '../../constant/customProperty';
-import { ContainerClass } from '../../support/entity/ContainerClass';
-import { DashboardClass } from '../../support/entity/DashboardClass';
-import { DashboardDataModelClass } from '../../support/entity/DashboardDataModelClass';
+import { DatabaseClass } from '../../support/entity/DatabaseClass';
+import { DatabaseSchemaClass } from '../../support/entity/DatabaseSchemaClass';
 import { EntityDataClass } from '../../support/entity/EntityDataClass';
-import { MlModelClass } from '../../support/entity/MlModelClass';
-import { PipelineClass } from '../../support/entity/PipelineClass';
-import { SearchIndexClass } from '../../support/entity/SearchIndexClass';
-import { StoredProcedureClass } from '../../support/entity/StoredProcedureClass';
-import { TableClass } from '../../support/entity/TableClass';
-import { TopicClass } from '../../support/entity/TopicClass';
+import { DashboardServiceClass } from '../../support/entity/service/DashboardServiceClass';
+import { DatabaseServiceClass } from '../../support/entity/service/DatabaseServiceClass';
+import { MessagingServiceClass } from '../../support/entity/service/MessagingServiceClass';
+import { MlmodelServiceClass } from '../../support/entity/service/MlmodelServiceClass';
+import { PipelineServiceClass } from '../../support/entity/service/PipelineServiceClass';
+import { SearchIndexServiceClass } from '../../support/entity/service/SearchIndexServiceClass';
+import { StorageServiceClass } from '../../support/entity/service/StorageServiceClass';
 import {
   createNewPage,
   getAuthContext,
   getToken,
   redirectToHomePage,
 } from '../../utils/common';
-import { CustomPropertyTypeByName } from '../../utils/customProperty';
 
 const entities = [
-  TableClass,
-  StoredProcedureClass,
-  DashboardClass,
-  PipelineClass,
-  TopicClass,
-  MlModelClass,
-  ContainerClass,
-  SearchIndexClass,
-  DashboardDataModelClass,
+  DatabaseServiceClass,
+  DashboardServiceClass,
+  MessagingServiceClass,
+  MlmodelServiceClass,
+  PipelineServiceClass,
+  SearchIndexServiceClass,
+  StorageServiceClass,
+  DatabaseClass,
+  DatabaseSchemaClass,
 ] as const;
 
 // use the admin user to login
@@ -113,43 +111,6 @@ entities.forEach((EntityClass) => {
     test(`Inactive Announcement create & delete`, async ({ page }) => {
       await entity.inactiveAnnouncement(page);
     });
-
-    test(`UpVote & DownVote entity`, async ({ page }) => {
-      await entity.upVote(page);
-      await entity.downVote(page);
-    });
-
-    test(`Follow & Un-follow entity`, async ({ page }) => {
-      const entityName = entity.entityResponseData?.['displayName'];
-      await entity.followUnfollowEntity(page, entityName);
-    });
-
-    // Create custom property only for supported entities
-    if (CustomPropertySupportedEntityList.includes(entity.endpoint)) {
-      const properties = Object.values(CustomPropertyTypeByName).join(', ');
-
-      test(`Set & Update ${properties} Custom Property `, async ({ page }) => {
-        await test.step(`Set ${properties} Custom Property`, async () => {
-          Object.values(CustomPropertyTypeByName).forEach((type) => {
-            entity.setCustomProperty(
-              page,
-              entity.customPropertyValue[type].property,
-              entity.customPropertyValue[type].value
-            );
-          });
-        });
-
-        await test.step(`Update ${properties} Custom Property`, () => {
-          Object.values(CustomPropertyTypeByName).forEach((type) => {
-            entity.updateCustomProperty(
-              page,
-              entity.customPropertyValue[type].property,
-              entity.customPropertyValue[type].newValue
-            );
-          });
-        });
-      });
-    }
 
     test(`Update displayName`, async ({ page }) => {
       await entity.renameEntity(page, entity.entity.name);
