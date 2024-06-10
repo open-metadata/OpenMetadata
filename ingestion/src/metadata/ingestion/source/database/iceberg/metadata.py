@@ -181,7 +181,7 @@ class IcebergSource(DatabaseServiceSource):
         for table_identifier in self.iceberg.list_tables(namespace):
             try:
                 table = self.iceberg.load_table(table_identifier)
-                table_name = get_table_name_as_str(table)
+                table_name = get_table_name_as_str(table_identifier)
                 table_fqn = fqn.build(
                     self.metadata,
                     entity_type=Table,

@@ -38,7 +38,7 @@ def namespace_to_str(namespace: tuple[str]) -> str:
 
 
 def get_table_name_as_str(table: pyiceberg.table.Table) -> str:
-    """Returns the Table Name as Tring from a PyIceberg Table.
+    """Returns the Table Name as String from a PyIceberg Table.
 
     The PyIceberg table name is returned as tuple and we turn them into a String
     concatenating the items with a '.' in between.
@@ -94,7 +94,7 @@ def get_column_partition_type(
 def get_owner_from_table(
     table: pyiceberg.table.Table, property_key: str
 ) -> Optional[str]:
-    """Retrives the owner information from given Table Property."""
+    """Retrieves the owner information from given Table Property."""
     return table.properties.get(property_key)
 
 
