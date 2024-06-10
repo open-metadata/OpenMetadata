@@ -12,8 +12,12 @@
 Metabase Models
 """
 from typing import List, Optional
+from typing_extensions import Annotated
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, BeforeValidator
+
+
+MetabaseCollectionId = Annotated[str, BeforeValidator(lambda x: str(x))]
 
 
 class MetabaseDashboard(BaseModel):
@@ -33,15 +37,15 @@ class MetabaseCollection(BaseModel):
     """
 
     name: str
-    id: int
+    id: MetabaseCollectionId
 
 
 class MetabaseDashboardList(BaseModel):
-    data: Optional[List[MetabaseDashboard]] = None
+    data: List[MetabaseDashboard] = []
 
 
 class MetabaseCollectionList(BaseModel):
-    collections: Optional[List[MetabaseCollection]] = None
+    collections: List[MetabaseCollection] = []
 
 
 class Native(BaseModel):
