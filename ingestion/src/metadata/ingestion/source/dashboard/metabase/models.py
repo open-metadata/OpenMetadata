@@ -33,7 +33,7 @@ class MetabaseCollection(BaseModel):
     """
 
     name: str
-    id: str
+    id: int
 
 
 class MetabaseDashboardList(BaseModel):

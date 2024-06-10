@@ -148,7 +148,7 @@ class MetabaseSource(DashboardServiceSource):
                 f"{replace_special_with(raw=dashboard_details.name.lower(), replacement='-')}"
             )
             dashboard_request = CreateDashboardRequest(
-                name=EntityName(dashboard_details.id),
+                name=EntityName(str(dashboard_details.id)),
                 sourceUrl=SourceUrl(dashboard_url),
                 displayName=dashboard_details.name,
                 description=Markdown(dashboard_details.description)
