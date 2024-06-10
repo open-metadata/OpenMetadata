@@ -33,7 +33,7 @@ import org.openmetadata.service.util.JsonUtils;
 
 public interface SearchIndex {
   Set<String> DEFAULT_EXCLUDED_FIELDS =
-      Set.of("changeDescription", "lineage.pipeline.changeDescription");
+      Set.of("changeDescription", "lineage.pipeline.changeDescription", "connection");
 
   default Map<String, Object> buildSearchIndexDoc() {
     // Build Index Doc
