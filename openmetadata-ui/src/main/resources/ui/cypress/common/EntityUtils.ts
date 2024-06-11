@@ -16,6 +16,7 @@ import {
   DASHBOARD_SERVICE_DETAILS,
   DATABASE_DETAILS,
   DATABASE_SERVICE_DETAILS,
+  ES_RESERVED_CHARACTERS,
   MESSAGING_SERVICE_DETAILS,
   ML_MODEL_SERVICE_DETAILS,
   PIPELINE_SERVICE_DETAILS,
@@ -475,4 +476,17 @@ export const getUserCreationDetails = () => {
       password: 'User@OMD123',
     },
   };
+};
+
+export const escapeESReservedCharacters = (text?: string) => {
+  const reUnescapedHtml = /[\\[\]#+=&|><!(){}^"~*?:/-]/g;
+  const reHasUnescapedHtml = RegExp(reUnescapedHtml.source);
+
+  const getReplacedChar = (char: string) => {
+    return ES_RESERVED_CHARACTERS[char] ?? char;
+  };
+
+  return text && reHasUnescapedHtml.test(text)
+    ? text.replace(reUnescapedHtml, getReplacedChar)
+    : text ?? '';
 };

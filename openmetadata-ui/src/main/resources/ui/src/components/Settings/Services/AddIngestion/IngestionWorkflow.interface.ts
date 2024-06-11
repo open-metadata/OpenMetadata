@@ -54,7 +54,7 @@ export interface AddIngestionProps {
 export type ScheduleIntervalProps = {
   onChange: (newScheduleInterval: string) => void;
   status: LoadingState;
-  scheduleInterval: string;
+  scheduleInterval?: string;
   includePeriodOptions?: string[];
   submitButtonLabel: string;
   children?: ReactNode;
