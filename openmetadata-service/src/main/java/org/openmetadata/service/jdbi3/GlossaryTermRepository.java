@@ -27,6 +27,7 @@ import static org.openmetadata.service.exception.CatalogExceptionMessage.notRevi
 import static org.openmetadata.service.resources.tags.TagLabelUtil.checkMutuallyExclusive;
 import static org.openmetadata.service.resources.tags.TagLabelUtil.checkMutuallyExclusiveForParentAndSubField;
 import static org.openmetadata.service.resources.tags.TagLabelUtil.getUniqueTags;
+import static org.openmetadata.service.search.SearchClient.GLOBAL_SEARCH_ALIAS;
 import static org.openmetadata.service.util.EntityUtil.compareEntityReferenceById;
 import static org.openmetadata.service.util.EntityUtil.compareTagLabel;
 import static org.openmetadata.service.util.EntityUtil.entityReferenceMatch;
@@ -425,7 +426,9 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
       String key = "_source";
       SearchRequest searchRequest =
           new SearchRequest.ElasticSearchRequestBuilder(
-                  String.format("** AND (tags.tagFQN:\"%s\")", glossaryFqn), size, "all")
+                  String.format("** AND (tags.tagFQN:\"%s\")", glossaryFqn),
+                  size,
+                  Entity.getSearchRepository().getIndexOrAliasName(GLOBAL_SEARCH_ALIAS))
               .from(0)
               .fetchSource(true)
               .trackTotalHits(false)
@@ -474,7 +477,8 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
               termFQN);
 
       SearchRequest searchRequest =
-          new SearchRequest.ElasticSearchRequestBuilder("*", size, "all")
+          new SearchRequest.ElasticSearchRequestBuilder(
+                  "*", size, Entity.getSearchRepository().getIndexOrAliasName(GLOBAL_SEARCH_ALIAS))
               .from(0)
               .queryFilter(queryFilter)
               .fetchSource(true)

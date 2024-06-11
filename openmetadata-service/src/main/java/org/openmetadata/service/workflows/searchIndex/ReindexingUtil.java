@@ -14,6 +14,7 @@
 package org.openmetadata.service.workflows.searchIndex;
 
 import static org.openmetadata.service.apps.bundles.searchIndex.SearchIndexApp.TIME_SERIES_ENTITIES;
+import static org.openmetadata.service.search.SearchClient.GLOBAL_SEARCH_ALIAS;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ArrayNode;
@@ -130,7 +131,9 @@ public class ReindexingUtil {
     String key = "_source";
     SearchRequest searchRequest =
         new SearchRequest.ElasticSearchRequestBuilder(
-                String.format("(%s:\"%s\")", matchingKey, sourceFqn), 100, "all")
+                String.format("(%s:\"%s\")", matchingKey, sourceFqn),
+                100,
+                Entity.getSearchRepository().getIndexOrAliasName(GLOBAL_SEARCH_ALIAS))
             .from(from)
             .fetchSource(true)
             .trackTotalHits(false)

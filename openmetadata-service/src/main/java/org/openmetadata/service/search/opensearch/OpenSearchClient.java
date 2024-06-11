@@ -505,7 +505,8 @@ public class OpenSearchClient implements SearchClient {
   @Override
   public Response getDocByID(String indexName, String entityId) throws IOException {
     try {
-      GetRequest request = new GetRequest(indexName, entityId);
+      GetRequest request =
+          new GetRequest(Entity.getSearchRepository().getIndexOrAliasName(indexName), entityId);
       GetResponse response = client.get(request, RequestOptions.DEFAULT);
 
       if (response.isExists()) {
