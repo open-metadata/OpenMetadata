@@ -1085,6 +1085,22 @@ CREATE TABLE public.web_analytic_event (
 ALTER TABLE public.web_analytic_event OWNER TO openmetadata_user;
 
 --
+-- Name: openlineage_events; Type: TABLE; Schema: public; Owner: openmetadata_user
+--
+
+CREATE TABLE IF NOT EXISTS public.openlineage_events (
+    id character varying(36) GENERATED ALWAYS AS ((json ->> 'id'::text)) STORED NOT NULL,
+    eventtype  character varying(15) GENERATED ALWAYS AS ((json ->> 'eventtype'::text)) STORED NOT NULL,
+    runid character varying(36) GENERATED ALWAYS AS ((json ->> 'runid'::text)) STORED NOT NULL,
+    recieved_at timestamp without time zone DEFAULT now() NOT NULL,
+    processed_at timestamp without time zone ,
+    json jsonb NOT NULL
+);
+
+
+ALTER TABLE public.openlineage_events OWNER TO openmetadata_user;
+
+--
 -- Name: openmetadata_settings id; Type: DEFAULT; Schema: public; Owner: openmetadata_user
 --
 

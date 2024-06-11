@@ -1161,3 +1161,21 @@ CREATE TABLE `web_analytic_event` (
   UNIQUE KEY `fqnHash` (`fqnHash`),
   KEY `name_index` (`name`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+
+--
+-- Table structure for table `openlineage_events`
+--
+
+DROP TABLE IF EXISTS `openlineage_events`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `openlineage_events` (
+  `id` varchar(36) GENERATED ALWAYS AS (json_unquote(json_extract(`json`,_utf8mb4'$.id'))) VIRTUAL NOT NULL,
+  `eventtype` varchar(36) GENERATED ALWAYS AS (json_unquote(json_extract(`json`,_utf8mb4'$.eventtype'))) VIRTUAL NOT NULL,
+  `runid` varchar(36) GENERATED ALWAYS AS (json_unquote(json_extract(`json`,_utf8mb4'$.runid'))) VIRTUAL NOT NULL,
+  `recieved_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `processed_at` timestamp ,
+  `json` json NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+

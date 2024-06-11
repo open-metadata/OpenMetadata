@@ -9,9 +9,7 @@
     "OpenLineageType": {
       "description": "Service type.",
       "type": "string",
-      "enum": [
-        "OpenLineage"
-      ],
+      "enum": ["OpenLineage"],
       "default": "OpenLineage"
     }
   },
@@ -21,75 +19,27 @@
       "$ref": "#/definitions/OpenLineageType",
       "default": "OpenLineage"
     },
-    "brokersUrl": {
-      "title": "Kafka brokers list",
-      "description": "service type of the messaging source",
-      "type": "string"
-    },
-    "topicName": {
-      "title": "Topic Name",
-      "description": "topic from where Open lineage events will be pulled ",
-      "type": "string"
-    },
-    "consumerGroupName": {
-      "title": "Consumer Group",
-      "description": "consumer group name ",
-      "type": "string"
-    },
-    "consumerOffsets": {
-      "title": "Initial consumer offsets",
-      "description": "initial Kafka consumer offset",
-      "default": "earliest",
-      "type": "string",
-      "enum": [
-        "earliest",
-        "latest"
-      ],
-      "javaEnums": [
+    "openlineageConnection": {
+      "title": "Openlineage Event Source",
+      "description": "Source of OpenLineage Events: Openmetadata OpenLineage API or Kafka topic ",
+      "oneOf": [
         {
-          "name": "earliest"
+          "$ref": "openlineage/noConfigConnectionTypes.json"
         },
         {
-          "name": "latest"
+          "$ref": "openlineage/openlineageKafkaConnection.json"
         }
       ]
     },
-    "poolTimeout": {
-      "title": "Single pool call timeout",
-      "description": "max allowed wait time",
-      "type": "number",
-      "default": 1.0
-    },
-    "sessionTimeout": {
-      "title": "Broker inactive session timeout",
-      "description": "max allowed inactivity time",
-      "type": "integer",
-      "default": 30
-    },
-    "securityProtocol": {
-      "title": "Kafka security protocol",
-      "description": "Kafka security protocol config",
-      "default": "PLAINTEXT",
-      "type": "string",
-      "enum": [
-        "PLAINTEXT",
-        "SSL"
-      ],
-      "javaEnums": [
-        {
-          "name": "PLAINTEXT"
-        },
-        {
-          "name": "SSL"
-        }
-      ]
-    },
-    "sslConfig": {
-      "title": "SSL",
-      "description": "SSL Configuration details.",
-      "$ref": "../../../../security/ssl/verifySSLConfig.json#/definitions/sslConfig"
+
+    "cleanFinalizedRuns": {
+      "title": "Clean finalized OpenLineage runs",
+      "description": "Clean up OpenMetadata state by removing OpenLineage events from finalized runs",
+      "type": "boolean",
+      "default": false
     },
     "supportsMetadataExtraction": {
+      "title": "Supports Metadata Extraction",
       "$ref": "../connectionBasicType.json#/definitions/supportsMetadataExtraction"
     }
   },

@@ -5,7 +5,11 @@ Utils used by OpenlineageSource connector.
 from functools import reduce
 from typing import Dict
 
+from metadata.generated.schema.entity.data.table import DataType
 from metadata.ingestion.source.pipeline.openlineage.models import OpenLineageEvent
+from metadata.utils.logger import ometa_logger
+
+logger = ometa_logger()
 
 
 def message_to_open_lineage_event(incoming_event: Dict) -> OpenLineageEvent:
@@ -19,26 +23,24 @@ def message_to_open_lineage_event(incoming_event: Dict) -> OpenLineageEvent:
     :return: OpenLineageEvent
     """
     fields_to_verify = [
-        "run.facets.parent.job.name",
-        "run.facets.parent.job.namespace",
         "inputs",
         "outputs",
         "eventType",
         "job.name",
         "job.namespace",
     ]
-
-    for field in fields_to_verify:
-        try:
+    try:
+        for field in fields_to_verify:
             reduce(lambda x, y: x[y], field.split("."), incoming_event)
-        except KeyError:
-            raise ValueError("Event malformed!")
 
-    run_facet = incoming_event["run"]
-    inputs = incoming_event["inputs"]
-    outputs = incoming_event["outputs"]
-    event_type = incoming_event["eventType"]
-    job = incoming_event["job"]
+        run_facet = incoming_event["run"]
+        inputs = incoming_event["inputs"]
+        outputs = incoming_event["outputs"]
+        event_type = incoming_event["eventType"]
+        job = incoming_event["job"]
+
+    except KeyError:
+        raise ValueError("Event malformed!")
 
     result = OpenLineageEvent(
         run_facet=run_facet,
@@ -48,7 +50,19 @@ def message_to_open_lineage_event(incoming_event: Dict) -> OpenLineageEvent:
         outputs=outputs,
     )
 
+    logger.debug(f"Created OpenLineageEvent: {result}")
+
     return result
+
+
+def sanitize_data_type(input_data_type: str) -> DataType:
+    types = sorted([x for x in DataType], key=lambda x: -len(x.value))
+
+    for t in types:
+        if input_data_type.upper().startswith(t.value):
+            return t
+
+    return DataType.UNKNOWN
 
 
 class FQNNotFoundException(Exception):

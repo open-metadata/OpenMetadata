@@ -16,7 +16,7 @@ import json
 import traceback
 from collections import defaultdict
 from itertools import groupby, product
-from typing import Any, Dict, Iterable, List, Optional, Tuple
+from typing import Dict, Iterable, List, Optional, Tuple
 
 from metadata.generated.schema.api.data.createPipeline import CreatePipelineRequest
 from metadata.generated.schema.api.data.createTable import CreateTableRequest
@@ -45,7 +45,6 @@ from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.models.pipeline_status import OMetaPipelineStatus
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.pipeline.openlineage.models import (
-    EventType,
     LineageEdge,
     LineageNode,
     OpenLineageEvent,
@@ -54,7 +53,7 @@ from metadata.ingestion.source.pipeline.openlineage.models import (
 )
 from metadata.ingestion.source.pipeline.openlineage.utils import (
     FQNNotFoundException,
-    message_to_open_lineage_event,
+    sanitize_data_type,
 )
 from metadata.ingestion.source.pipeline.pipeline_service import PipelineServiceSource
 from metadata.utils import fqn
@@ -81,7 +80,7 @@ class OpenlineageSource(PipelineServiceSource):
         cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None
     ):
         """Create class instance"""
-        config: WorkflowSource = WorkflowSource.model_validate(config_dict)
+        config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
         connection: OpenLineageConnection = config.serviceConnection.root.config
         if not isinstance(connection, OpenLineageConnection):
             raise InvalidSourceException(
@@ -96,111 +95,6 @@ class OpenlineageSource(PipelineServiceSource):
         self.metadata.close()
 
     @classmethod
-    def _get_table_details(cls, data: Dict) -> TableDetails:
-        """
-        extracts table entity schema and name from input/output entry collected from Open Lineage.
-
-        :param data: single entry from inputs/outputs objects
-        :return: TableDetails object with schema and name
-        """
-        symlinks = data.get("facets", {}).get("symlinks", {}).get("identifiers", [])
-
-        # for some OL events name can be extracted from dataset facet but symlinks is preferred so - if present - we
-        # use it instead
-        if len(symlinks) > 0:
-            try:
-                # @todo verify if table can have multiple identifiers pointing at it
-                name = symlinks[0]["name"]
-            except (KeyError, IndexError):
-                raise ValueError(
-                    "input table name cannot be retrieved from symlinks.identifiers facet."
-                )
-        else:
-            try:
-                name = data["name"]
-            except KeyError:
-                raise ValueError(
-                    "input table name cannot be retrieved from name attribute."
-                )
-
-        name_parts = name.split(".")
-
-        if len(name_parts) < 2:
-            raise ValueError(
-                f"input table name should be of 'schema.table' format! Received: {name}"
-            )
-
-        # we take last two elements to explicitly collect schema and table names
-        # in BigQuery Open Lineage events name_parts would be list of 3 elements as first one is GCP Project ID
-        # however, concept of GCP Project ID is not represented in Open Metadata and hence - we need to skip this part
-        return TableDetails(name=name_parts[-1], schema=name_parts[-2])
-
-    def _get_table_fqn(self, table_details: TableDetails) -> Optional[str]:
-        try:
-            return self._get_table_fqn_from_om(table_details)
-        except FQNNotFoundException:
-            try:
-                schema_fqn = self._get_schema_fqn_from_om(table_details.schema)
-
-                return f"{schema_fqn}.{table_details.name}"
-            except FQNNotFoundException:
-                return None
-
-    def _get_table_fqn_from_om(self, table_details: TableDetails) -> Optional[str]:
-        """
-        Based on partial schema and table names look for matching table object in open metadata.
-        :param schema: schema name
-        :param table: table name
-        :return: fully qualified name of a Table in Open Metadata
-        """
-        result = None
-        services = self.get_db_service_names()
-        for db_service in services:
-            result = fqn.build(
-                metadata=self.metadata,
-                entity_type=Table,
-                service_name=db_service,
-                database_name=None,
-                schema_name=table_details.schema,
-                table_name=table_details.name,
-            )
-        if not result:
-            raise FQNNotFoundException(
-                f"Table FQN not found for table: {table_details} within services: {services}"
-            )
-        return result
-
-    def _get_schema_fqn_from_om(self, schema: str) -> Optional[str]:
-        """
-        Based on partial schema name look for any matching DatabaseSchema object in open metadata.
-
-        :param schema: schema name
-        :return: fully qualified name of a DatabaseSchema in Open Metadata
-        """
-        result = None
-        services = self.get_db_service_names()
-
-        for db_service in services:
-            result = fqn.build(
-                metadata=self.metadata,
-                entity_type=DatabaseSchema,
-                service_name=db_service,
-                database_name=None,
-                schema_name=schema,
-                skip_es_search=False,
-            )
-
-            if result:
-                return result
-
-        if not result:
-            raise FQNNotFoundException(
-                f"Schema FQN not found within services: {services}"
-            )
-
-        return result
-
-    @classmethod
     def _render_pipeline_name(cls, pipeline_details: OpenLineageEvent) -> str:
         """
         Renders pipeline name from parent facet of run facet. It is our expectation that every OL event contains parent
@@ -209,26 +103,21 @@ class OpenlineageSource(PipelineServiceSource):
         :param run_facet: Open Lineage run facet
         :return: pipeline name (not fully qualified name)
         """
-        run_facet = pipeline_details.run_facet
 
-        namespace = run_facet["facets"]["parent"]["job"]["namespace"]
-        name = run_facet["facets"]["parent"]["job"]["name"]
+        try:
+            namespace = pipeline_details.run_facet["facets"]["parent"]["job"][
+                "namespace"
+            ]
+            name = pipeline_details.run_facet["facets"]["parent"]["job"]["name"]
+        except KeyError:
+            namespace = pipeline_details.job["namespace"]
+            name = pipeline_details.job["name"]
 
-        return f"{namespace}-{name}"
+        result = f"{namespace}-{name}"
 
-    @classmethod
-    def _filter_event_by_type(
-        cls, event: OpenLineageEvent, event_type: EventType
-    ) -> Optional[Dict]:
-        """
-        returns event if it's of particular event_type.
-        for example - for lineage events we will be only looking for EventType.COMPLETE event type.
+        logger.debug(f"Pipeline name rendered: {result}")
 
-        :param event: Open Lineage raw event.
-        :param event_type: type of event we are looking for.
-        :return: Open Lineage event if matches event_type, otherwise None
-        """
-        return event if event.event_type == event_type else {}
+        return result
 
     @classmethod
     def _get_om_table_columns(cls, table_input: Dict) -> Optional[List]:
@@ -242,14 +131,49 @@ class OpenlineageSource(PipelineServiceSource):
 
             # @todo check if this way of passing type is ok
             columns = [
-                Column(name=f.get("name"), dataType=f.get("type").upper())
+                Column(
+                    name=f.get("name").lower(),
+                    dataType=sanitize_data_type(f.get("type")),
+                )
                 for f in fields
             ]
             return columns
         except KeyError:
             return None
 
-    def get_create_table_request(self, table: Dict) -> Optional[Either]:
+    @classmethod
+    def _get_ol_table_name(cls, table: Dict) -> str:
+        return "/".join(table[f] for f in ["namespace", "name"]).replace("//", "/")
+
+    def _build_ol_name_to_fqn_map(self, tables: List[TableDetails]):
+        result = {}
+
+        for table in tables:
+            table_fqn = table.fqn
+
+            if table_fqn:
+                result[OpenlineageSource._get_ol_table_name(table.raw)] = table_fqn
+
+        return result
+
+    @classmethod
+    def _create_output_lineage_dict(
+        cls, lineage_info: List[Tuple[str, str, str, str]]
+    ) -> Dict[str, Dict[str, List[ColumnLineage]]]:
+        result = defaultdict(lambda: defaultdict(list))  # type: ignore
+        for (output_table, input_table, output_column), group in groupby(
+            lineage_info, lambda x: x[:3]
+        ):
+            input_columns = [input_col.lower() for _, _, _, input_col in group]
+
+            result[output_table][input_table] += [
+                ColumnLineage(toColumn=output_column.lower(), fromColumns=input_columns)
+            ]
+
+        return result  # type: ignore
+
+    @classmethod
+    def _get_create_table_request(cls, table: TableDetails) -> Optional[Either]:
         """
         If certain table from Open Lineage events doesn't already exist in Open Metadata, register appropriate entity.
         This makes sense especially for output facet of OpenLineage event - as database service ingestion is a scheduled
@@ -260,98 +184,32 @@ class OpenlineageSource(PipelineServiceSource):
         :param table: single object from inputs/outputs facet
         :return: request to create the entity (if needed)
         """
-        om_table_fqn = None
-
-        try:
-            table_details = OpenlineageSource._get_table_details(table)
-        except ValueError as e:
-            return Either(
-                left=StackTraceError(
-                    name="",
-                    error=f"Failed to get partial table name: {e}",
-                    stackTrace=traceback.format_exc(),
-                )
-            )
-        try:
-            om_table_fqn = self._get_table_fqn_from_om(table_details)
-
+        if table.in_om:
             # if fqn found then it means table is already registered and we don't need to render create table request
             return None
-        except FQNNotFoundException:
-            pass
+        else:
+            columns = OpenlineageSource._get_om_table_columns(table.raw) or []
 
-        # If OM Table FQN was not found based on OL Partial Name - we need to register it.
-        if not om_table_fqn:
-            try:
-                om_schema_fqn = self._get_schema_fqn_from_om(table_details.schema)
-            except FQNNotFoundException as e:
-                return Either(
-                    left=StackTraceError(
-                        name="",
-                        error=f"Failed to get fully qualified schema name: {e}",
-                        stackTrace=traceback.format_exc(),
-                    )
-                )
+            request = CreateTableRequest(
+                name=table.name,
+                columns=columns,
+                databaseSchema=table.fqn[: table.fqn.rindex(".")],
+            )
 
-            # After finding schema fqn (based on partial schema name) we know where we can create table
-            # and we move forward with creating request.
-            if om_schema_fqn:
-                columns = OpenlineageSource._get_om_table_columns(table) or []
-
-                request = CreateTableRequest(
-                    name=table_details.name,
-                    columns=columns,
-                    databaseSchema=om_schema_fqn,
-                )
-
-                return Either(right=request)
-
-        return None
-
-    @classmethod
-    def _get_ol_table_name(cls, table: Dict) -> str:
-        return "/".join(table.get(f) for f in ["namespace", "name"]).replace("//", "/")
-
-    def _build_ol_name_to_fqn_map(self, tables: List):
-        result = {}
-
-        for table in tables:
-            table_fqn = self._get_table_fqn(OpenlineageSource._get_table_details(table))
-
-            if table_fqn:
-                result[OpenlineageSource._get_ol_table_name(table)] = table_fqn
-
-        return result
-
-    @classmethod
-    def _create_output_lineage_dict(
-        cls, lineage_info: List[Tuple[str, str, str, str]]
-    ) -> Dict[str, Dict[str, List[ColumnLineage]]]:
-        result = defaultdict(lambda: defaultdict(list))
-        for (output_table, input_table, output_column), group in groupby(
-            lineage_info, lambda x: x[:3]
-        ):
-            input_columns = [input_col for _, _, _, input_col in group]
-
-            result[output_table][input_table] += [
-                ColumnLineage(toColumn=output_column, fromColumns=input_columns)
-            ]
-
-        return result
+            return Either(right=request)
 
     def _get_column_lineage(
-        self, inputs: List, outputs: List
+        self, inputs: List[TableDetails], outputs: List[TableDetails]
     ) -> Dict[str, Dict[str, List[ColumnLineage]]]:
         _result: List = []
 
         ol_name_to_fqn_map = self._build_ol_name_to_fqn_map(inputs + outputs)
 
         for table in outputs:
-            output_table_fqn = self._get_table_fqn(
-                OpenlineageSource._get_table_details(table)
-            )
+            output_table_fqn = table.fqn
+
             for field_name, field_spec in (
-                table.get("facets", {})
+                table.raw.get("facets", {})
                 .get("columnLineage", {})
                 .get("fields", {})
                 .items()
@@ -372,11 +230,181 @@ class OpenlineageSource(PipelineServiceSource):
 
         return OpenlineageSource._create_output_lineage_dict(_result)
 
+    def _get_table_fqn_from_om(
+        self, table_name: str, schema_name: Optional[str]
+    ) -> Optional[str]:
+        """
+        Based on partial schema and table names look for matching table object in open metadata.
+        :param schema: schema name
+        :param table: table name
+        :return: fully qualified name of a Table in Open Metadata
+        """
+        result = None
+        services = self.get_db_service_names()
+        for db_service in services:
+            logger.debug(
+                f"Searching for Table FQN for schema: {schema_name} table: {table_name} within service: {db_service}"
+            )
+            result = fqn.build(
+                metadata=self.metadata,
+                entity_type=Table,
+                service_name=db_service,
+                database_name=None,
+                schema_name=schema_name,
+                table_name=table_name,
+            )
+
+            if result:
+                logger.debug(f"Table FQN Found: {result}")
+                return result
+
+        if not result:
+            raise FQNNotFoundException(
+                f"Table FQN not found for table: {table_name} within services: {services}"
+            )
+
+    def _get_schema_fqn_from_om(self, schema: str) -> Optional[str]:
+        """
+        Based on partial schema name look for any matching DatabaseSchema object in open metadata.
+
+        :param schema: schema name
+        :return: fully qualified name of a DatabaseSchema in Open Metadata
+        """
+        result = None
+        services = self.get_db_service_names()
+
+        for db_service in services:
+            logger.debug(
+                f"Searching for DatabaseSchema FQN for schema: {schema} within service: {db_service}"
+            )
+            result = fqn.build(
+                metadata=self.metadata,
+                entity_type=DatabaseSchema,
+                service_name=db_service,
+                database_name=None,
+                schema_name=schema,
+                skip_es_search=False,
+            )
+
+            if result:
+                logger.debug(f"DatabaseSchema FQN found: {result}")
+                return result
+
+        if not result:
+            raise FQNNotFoundException(
+                f"Schema FQN not found within services: {services}"
+            )
+
+        return result
+
+    def _get_table_details(self, data: Dict) -> Optional[TableDetails]:
+        """
+        extracts table entity fqn, schema and name from input/output entry collected from Open Lineage.
+
+        :param data: single entry from inputs/outputs objects
+        :return: TableDetails object with schema and name
+        """
+        candidates = [
+            {"name": data["name"], "namespace": data["namespace"]}
+        ] + data.get("facets", {}).get("symlinks", {}).get("identifiers", [])
+
+        for candidate in candidates:
+            schema_name = None
+            table_fqn = None
+            in_om = False
+
+            name_parts = candidate["name"].split(".")
+
+            if len(name_parts) == 1:
+                table_name = name_parts[0]
+            else:
+                table_name = name_parts[-1]
+                schema_name = name_parts[-2]
+
+            try:
+                table_fqn = self._get_table_fqn_from_om(table_name, schema_name)
+                if table_fqn:
+                    schema_name = table_fqn.split(".")[-2]
+                logger.info(
+                    f"Table FQN for schema: {schema_name} table: {table_name} found in OM: {table_fqn}."
+                )
+                in_om = True
+            except FQNNotFoundException:
+                logger.warn(
+                    f"Table FQN for schema: {schema_name} table: {table_name} not found in OM."
+                )
+                if schema_name:
+                    try:
+                        schema_fqn = self._get_schema_fqn_from_om(schema_name)
+                        table_fqn = f"{schema_fqn}.{table_name}"
+                        logger.info(
+                            f"Schema FQN for schema: {schema_name} found in OM: {schema_fqn}."
+                        )
+                    except FQNNotFoundException:
+                        logger.warn(
+                            f"Schema FQN for schema: {schema_name} not found in OM."
+                        )
+
+            if all([table_name, schema_name, table_fqn]):
+                return TableDetails(
+                    fqn=table_fqn,
+                    name=table_name,
+                    schema=schema_name,
+                    in_om=in_om,
+                    raw=data,
+                )
+
+        logger.warn(f"Table details for candidates: {candidates} not found.")
+        return None
+
+    def _enrich_table_details(self, event: OpenLineageEvent) -> OpenLineageEvent:
+        """
+        Find FQNs of entities listed in inputs and outputs of a raw OpenLineageEvent so they can be referenced/created
+        in OpenMetadata.
+
+        Args:
+            event:
+
+        Returns:
+
+        """
+        event.input_table_details = list(
+            filter(
+                lambda x: x is not None,
+                [self._get_table_details(i) for i in event.inputs],
+            )
+        )
+        event.output_table_details = list(
+            filter(
+                lambda x: x is not None,
+                [self._get_table_details(o) for o in event.outputs],
+            )
+        )
+
+        return event
+
+    def _enrich_event(self, event: OpenLineageEvent):
+        """
+        Enrich raw OpenLineageEvent with attributes and values related to OpenMetadata integration.
+
+        Args:
+            event: raw OpenLineageEvent
+
+        Returns: OpenLineageEvent with enriched fields.
+
+        """
+        event = self._enrich_table_details(event)
+
+        logger.debug(f"Enriched event: {event}.")
+
+        return event
+
     def yield_pipeline(
         self, pipeline_details: OpenLineageEvent
     ) -> Iterable[Either[CreatePipelineRequest]]:
         pipeline_name = self.get_pipeline_name(pipeline_details)
         try:
+            logger.info(pipeline_details)
             description = f"""```json
             {json.dumps(pipeline_details.run_facet, indent=4).strip()}```"""
             request = CreatePipelineRequest(
@@ -385,21 +413,27 @@ class OpenlineageSource(PipelineServiceSource):
                 description=description,
             )
 
+            logger.info(request)
+
             yield Either(right=request)
             self.register_record(pipeline_request=request)
-        except ValueError:
+        except Exception:
+            logger.exception("error yielding pipeline", exc_info=True)
             yield Either(
                 left=StackTraceError(
                     name=pipeline_name,
-                    message="Failed to collect metadata required for pipeline creation.",
+                    error="Failed to collect metadata required for pipeline creation.",
+                    stackTrace=traceback.format_exc(),
                 ),
-                stackTrace=traceback.format_exc(),
             )
 
     def yield_pipeline_lineage_details(
         self, pipeline_details: OpenLineageEvent
     ) -> Iterable[Either[AddLineageRequest]]:
-        inputs, outputs = pipeline_details.inputs, pipeline_details.outputs
+        inputs, outputs = (
+            pipeline_details.input_table_details,
+            pipeline_details.output_table_details,
+        )
 
         input_edges: List[LineageNode] = []
         output_edges: List[LineageNode] = []
@@ -408,20 +442,20 @@ class OpenlineageSource(PipelineServiceSource):
             tables, tables_list = spec
 
             for table in tables:
-                create_table_request = self.get_create_table_request(table)
+                create_table_request = OpenlineageSource._get_create_table_request(
+                    table
+                )
 
                 if create_table_request:
                     yield create_table_request
 
-                table_fqn = self._get_table_fqn(
-                    OpenlineageSource._get_table_details(table)
-                )
+                table_fqn = table.fqn
 
                 if table_fqn:
                     tables_list.append(
                         LineageNode(
                             fqn=TableFQN(value=table_fqn),
-                            uuid=self.metadata.get_by_name(Table, table_fqn).id,
+                            uuid=self.metadata.get_by_name(Table, table_fqn).id.root,
                         )
                     )
 
@@ -465,46 +499,25 @@ class OpenlineageSource(PipelineServiceSource):
                 )
             )
 
-    def get_pipelines_list(self) -> Optional[List[Any]]:
-        """Get List of all pipelines"""
+    def get_pipelines_list(self) -> Optional[List[OpenLineageEvent]]:
+        """
+        Get a list of all pipelines by processing OpenLineage events.
+
+        :return: A list of processed OpenLineage events.
+        :raises InvalidSourceException: If there is an error reading OpenLineage events.
+        """
         try:
-            consumer = self.client
-            session_active = True
-            empty_msg_cnt = 0
-            pool_timeout = self.service_connection.poolTimeout
-            while session_active:
-                message = consumer.poll(timeout=pool_timeout)
-                if message is None:
-                    logger.debug("no new messages")
-                    empty_msg_cnt += 1
-                    if (
-                        empty_msg_cnt * pool_timeout
-                        > self.service_connection.sessionTimeout
-                    ):
-                        # There is no new messages, timeout is passed
-                        session_active = False
-                else:
-                    logger.debug(f"new message {message.value()}")
-                    empty_msg_cnt = 0
-                    try:
-                        _result = message_to_open_lineage_event(
-                            json.loads(message.value())
-                        )
-                        result = self._filter_event_by_type(_result, EventType.COMPLETE)
-                        if result:
-                            yield result
-                    except Exception as e:
-                        logger.debug(e)
-
+            events = self.client.get_events(self.metadata)
+            for event in events:
+                yield self._enrich_event(event)
         except Exception as e:
-            traceback.print_exc()
-
-            raise InvalidSourceException(f"Failed to read from Kafka: {str(e)}")
+            logger.error(f"Failed to read OpenLineage event: {e}", exc_info=True)
+            raise InvalidSourceException(
+                f"Failed to read OpenLineage event: {e}"
+            ) from e
 
         finally:
-            # Close down consumer to commit final offsets.
-            # @todo address this
-            consumer.close()
+            self.client.close(self.metadata)
 
     def get_pipeline_name(self, pipeline_details: OpenLineageEvent) -> str:
         return OpenlineageSource._render_pipeline_name(pipeline_details)

@@ -93,6 +93,7 @@ export const LINEAGE_SOURCE: { [key in Source]: string } = {
   [Source.ViewLineage]: 'View Lineage',
   [Source.OpenLineage]: 'OpenLineage',
   [Source.ExternalTableLineage]: 'External Table Lineage',
+  [Source.OpenLineage]: 'OpenLineage Lineage',
 };
 
 export const LINEAGE_COLUMN_NODE_SUPPORTED = [

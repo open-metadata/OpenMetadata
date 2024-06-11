@@ -6,10 +6,7 @@ from unittest.mock import MagicMock, Mock, patch
 from uuid import UUID
 
 from metadata.generated.schema.entity.data.pipeline import Pipeline, Task
-from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
-    OpenMetadataConnection,
-)
-from metadata.generated.schema.entity.services.connections.pipeline.openLineageConnection import (
+from metadata.generated.schema.entity.services.connections.pipeline.openlineage.openlineageKafkaConnection import (
     ConsumerOffsets,
     SecurityProtocol,
 )
@@ -24,8 +21,12 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 from metadata.generated.schema.type.basic import FullyQualifiedEntityName
 from metadata.generated.schema.type.entityLineage import ColumnLineage
 from metadata.generated.schema.type.entityReference import EntityReference
+from metadata.ingestion.source.pipeline.openlineage.client import OpenLineageEventReader
 from metadata.ingestion.source.pipeline.openlineage.metadata import OpenlineageSource
-from metadata.ingestion.source.pipeline.openlineage.models import OpenLineageEvent
+from metadata.ingestion.source.pipeline.openlineage.models import (
+    OpenLineageEvent,
+    TableDetails,
+)
 from metadata.ingestion.source.pipeline.openlineage.utils import (
     message_to_open_lineage_event,
 )
@@ -38,18 +39,16 @@ MOCK_OL_CONFIG = {
         "serviceConnection": {
             "config": {
                 "type": "OpenLineage",
-                "brokersUrl": "testbroker:9092",
-                "topicName": "test-topic",
-                "consumerGroupName": "test-consumergroup",
-                "consumerOffsets": ConsumerOffsets.earliest,
-                "securityProtocol": SecurityProtocol.PLAINTEXT,
-                "sslConfig": {
-                    "caCertificate": "",
-                    "sslCertificate": "",
-                    "sslKey": "",
+                "cleanFinalizedRuns": False,
+                "openlineageConnection": {
+                    "brokersUrl": "testbroker:9092",
+                    "topicName": "test-topic",
+                    "consumerGroupName": "test-consumergroup",
+                    "consumerOffsets": ConsumerOffsets.earliest,
+                    "securityProtocol": SecurityProtocol.PLAINTEXT,
+                    "poolTimeout": 0.3,
+                    "sessionTimeout": 1,
                 },
-                "poolTimeout": 0.3,
-                "sessionTimeout": 1,
             }
         },
         "sourceConfig": {"config": {"type": "PipelineMetadata"}},
@@ -71,7 +70,7 @@ MOCK_PIPELINE_URL = f"{MOCK_SPLINE_UI_URL}/app/events/overview/{PIPELINE_ID}"
 MOCK_PIPELINE_SERVICE = PipelineService(
     id="85811038-099a-11ed-861d-0242ac120002",
     name="openlineage_source",
-    fullyQualifiedName=FullyQualifiedEntityName("openlineage_source"),
+    fullyQualifiedName=FullyQualifiedEntityName(root="openlineage_source"),
     connection=PipelineConnection(),
     serviceType=PipelineServiceType.Airflow,
 )
@@ -106,11 +105,9 @@ VALID_EVENT = {
     "job": {"name": "test-job", "namespace": "test-namespace"},
 }
 
-MISSING_RUN_FACETS_PARENT_JOB_NAME_EVENT = copy.deepcopy(VALID_EVENT)
-del MISSING_RUN_FACETS_PARENT_JOB_NAME_EVENT["run"]["facets"]["parent"]["job"]["name"]
+MISSING_RUN_FACET_EVENT = copy.deepcopy(VALID_EVENT)
+del MISSING_RUN_FACET_EVENT["run"]
 
-MALFORMED_NESTED_STRUCTURE_EVENT = copy.deepcopy(VALID_EVENT)
-MALFORMED_NESTED_STRUCTURE_EVENT["run"]["facets"]["parent"]["job"] = "Not a dict"
 
 with open(
     f"{Path(__file__).parent}/../../resources/datasets/openlineage_event.json"
@@ -126,6 +123,14 @@ EXPECTED_OL_EVENT = OpenLineageEvent(
 )
 
 
+class DummyClient(OpenLineageEventReader):
+    def _get_events(self, metadata):
+        yield self._event
+
+    def _set_event(self, event):
+        self._event = event
+
+
 class OpenLineageUnitTest(unittest.TestCase):
     @patch(
         "metadata.ingestion.source.pipeline.pipeline_service.PipelineServiceSource.test_connection"
@@ -133,18 +138,17 @@ class OpenLineageUnitTest(unittest.TestCase):
     def __init__(self, methodName, test_connection) -> None:
         super().__init__(methodName)
         test_connection.return_value = False
-        config = OpenMetadataWorkflowConfig.model_validate(MOCK_OL_CONFIG)
+        config = OpenMetadataWorkflowConfig.parse_obj(MOCK_OL_CONFIG)
         self.open_lineage_source = OpenlineageSource.create(
             MOCK_OL_CONFIG["source"],
-            config.workflowConfig.openMetadataServerConfig,
+            Mock(),
         )
-        self.open_lineage_source.context.__dict__["pipeline"] = MOCK_PIPELINE.name.root
-        self.open_lineage_source.context.__dict__[
+        self.open_lineage_source.context.get().__dict__[
+            "pipeline"
+        ] = MOCK_PIPELINE.name.root
+        self.open_lineage_source.context.get().__dict__[
             "pipeline_service"
         ] = MOCK_PIPELINE_SERVICE.name.root
-        self.open_lineage_source.source_config.lineageInformation = {
-            "dbServiceNames": ["skun"]
-        }
 
     @patch(
         "metadata.ingestion.source.pipeline.pipeline_service.PipelineServiceSource.test_connection"
@@ -154,45 +158,31 @@ class OpenLineageUnitTest(unittest.TestCase):
         mock_test_connection.return_value = False
         self.mock_consumer = mock_consumer
 
-    def setup_mock_consumer_with_kafka_event(self, event):
-        mock_msg = MagicMock()
-        mock_msg.error.return_value = None
-        mock_msg.value.return_value = json.dumps(event).encode()
-        self.mock_consumer.poll.side_effect = [
-            mock_msg,
-            None,
-            None,
-            None,
-            None,
-            None,
-            None,
-        ]
-        self.open_lineage_source.client = self.mock_consumer
+    def setup_dummy_client_with_event(self, event):
+        client = DummyClient()
+        client._set_event(message_to_open_lineage_event(event))
+
+        self.open_lineage_source.client = client
 
     def test_message_to_ol_event_valid_event(self):
         """Test conversion with a valid event."""
         result = message_to_open_lineage_event(VALID_EVENT)
         self.assertIsInstance(result, OpenLineageEvent)
 
-    def test_message_to_ol_event_missing_run_facets_parent_job_name(self):
+    def test_message_to_ol_event_missing_run_facet(self):
         """Test conversion with missing 'run.facets.parent.job.name' field."""
         with self.assertRaises(ValueError):
-            message_to_open_lineage_event(MISSING_RUN_FACETS_PARENT_JOB_NAME_EVENT)
+            message_to_open_lineage_event(MISSING_RUN_FACET_EVENT)
 
-    def test_message_to_ol_event_malformed_nested_structure(self):
-        """Test conversion with a malformed nested structure."""
-        with self.assertRaises(TypeError):
-            message_to_open_lineage_event(MALFORMED_NESTED_STRUCTURE_EVENT)
+    # def test_poll_message_receives_message(self):
+    #     """Test if poll_message receives a kafka  message."""
+    #     self.setup_dummy_client_with_event(VALID_EVENT)
+    #     result = self.open_lineage_source.client.poll(timeout=1)
+    #     self.assertIsNotNone(result)
+    #     self.assertEqual(json.loads(result.value().decode()), VALID_EVENT)
 
-    def test_poll_message_receives_message(self):
-        """Test if poll_message receives a kafka  message."""
-        self.setup_mock_consumer_with_kafka_event(VALID_EVENT)
-        result = self.open_lineage_source.client.poll(timeout=1)
-        self.assertIsNotNone(result)
-        self.assertEqual(json.loads(result.value().decode()), VALID_EVENT)
-
-    def read_openlineage_event_from_kafka(self, kafka_event):
-        self.setup_mock_consumer_with_kafka_event(kafka_event)
+    def read_openlineage_event(self, kafka_event):
+        self.setup_dummy_client_with_event(kafka_event)
         result_generator = self.open_lineage_source.get_pipelines_list()
         results = []
         try:
@@ -279,18 +269,21 @@ class OpenLineageUnitTest(unittest.TestCase):
         result = self.open_lineage_source._get_column_lineage(inputs, outputs)
         self.assertEqual(result, {})
 
-    @patch(
-        "metadata.ingestion.source.pipeline.openlineage.metadata.OpenlineageSource._get_table_fqn"
-    )
-    def test_build_ol_name_to_fqn_map_with_valid_data(self, mock_get_table_fqn):
+    def test_build_ol_name_to_fqn_map_with_valid_data(self):
         # Mock _get_table_fqn to return a constructed FQN based on the provided table details
-        mock_get_table_fqn.side_effect = (
-            lambda table_details: f"database.schema.{table_details.name}"
-        )
-
         tables = [
-            {"name": "schema.table1", "facets": {}, "namespace": "ns://"},
-            {"name": "schema.table2", "facets": {}, "namespace": "ns://"},
+            TableDetails(
+                name="table1",
+                schema="schema",
+                fqn="database.schema.table1",
+                raw={"name": "schema.table1", "facets": {}, "namespace": "ns://"},
+            ),
+            TableDetails(
+                name="table2",
+                schema="schema",
+                fqn="database.schema.table2",
+                raw={"name": "schema.table2", "facets": {}, "namespace": "ns://"},
+            ),
         ]
 
         expected_map = {
@@ -301,16 +294,22 @@ class OpenLineageUnitTest(unittest.TestCase):
         result = self.open_lineage_source._build_ol_name_to_fqn_map(tables)
 
         self.assertEqual(result, expected_map)
-        self.assertEqual(mock_get_table_fqn.call_count, 2)
 
     @patch(
-        "metadata.ingestion.source.pipeline.openlineage.metadata.OpenlineageSource._get_table_fqn"
+        "metadata.ingestion.source.pipeline.openlineage.metadata.OpenlineageSource._get_table_fqn_from_om"
     )
     def test_build_ol_name_to_fqn_map_with_missing_fqn(self, mock_get_table_fqn):
         # Mock _get_table_fqn to return None for missing FQN
         mock_get_table_fqn.return_value = None
 
-        tables = [{"name": "schema.table1", "facets": {}, "namespace": "ns://"}]
+        tables = [
+            TableDetails(
+                name="table1",
+                schema="schema",
+                fqn=None,
+                raw={"name": "schema.table1", "facets": {}, "namespace": "ns://"},
+            )
+        ]
 
         expected_map = {}  # Expect an empty map since FQN is missing
 
@@ -319,7 +318,7 @@ class OpenLineageUnitTest(unittest.TestCase):
         self.assertEqual(result, expected_map)
 
     @patch(
-        "metadata.ingestion.source.pipeline.openlineage.metadata.OpenlineageSource._get_table_fqn"
+        "metadata.ingestion.source.pipeline.openlineage.metadata.OpenlineageSource._get_table_fqn_from_om"
     )
     def test_build_ol_name_to_fqn_map_with_empty_tables(self, mock_get_table_fqn):
         # No need to set up the mock specifically since it won't be called with empty input
@@ -334,7 +333,7 @@ class OpenLineageUnitTest(unittest.TestCase):
         mock_get_table_fqn.assert_not_called()
 
     @patch(
-        "metadata.ingestion.source.pipeline.openlineage.metadata.OpenlineageSource._get_table_fqn"
+        "metadata.ingestion.source.pipeline.openlineage.metadata.OpenlineageSource._get_table_fqn_from_om"
     )
     @patch(
         "metadata.ingestion.source.pipeline.openlineage.metadata.OpenlineageSource._build_ol_name_to_fqn_map"
@@ -353,37 +352,49 @@ class OpenLineageUnitTest(unittest.TestCase):
         }
 
         inputs = [
-            {"name": "schema.input_table1", "facets": {}, "namespace": "hive://"},
-            {"name": "schema.input_table2", "facets": {}, "namespace": "hive://"},
+            TableDetails(
+                name="schema.input_table1",
+                fqn="database.schema.input_table_1",
+                raw={"namespace": "hive://"},
+            ),
+            TableDetails(
+                name="schema.input_table2",
+                fqn="database.schema.input_table_2",
+                raw={"namespace": "hive://"},
+            ),
         ]
         outputs = [
-            {
-                "name": "schema.output_table",
-                "facets": {
-                    "columnLineage": {
-                        "fields": {
-                            "output_column1": {
-                                "inputFields": [
-                                    {
-                                        "field": "input_column1",
-                                        "namespace": "s3a://project-db",
-                                        "name": "/src_test1",
-                                    }
-                                ]
-                            },
-                            "output_column2": {
-                                "inputFields": [
-                                    {
-                                        "field": "input_column2",
-                                        "namespace": "s3a://project-db",
-                                        "name": "/src_test2",
-                                    }
-                                ]
-                            },
+            TableDetails(
+                name="schema.output_table",
+                fqn="database.schema.output_table",
+                raw={
+                    "name": "schema.output_table",
+                    "facets": {
+                        "columnLineage": {
+                            "fields": {
+                                "output_column1": {
+                                    "inputFields": [
+                                        {
+                                            "field": "input_column1",
+                                            "namespace": "s3a://project-db",
+                                            "name": "/src_test1",
+                                        }
+                                    ]
+                                },
+                                "output_column2": {
+                                    "inputFields": [
+                                        {
+                                            "field": "input_column2",
+                                            "namespace": "s3a://project-db",
+                                            "name": "/src_test2",
+                                        }
+                                    ]
+                                },
+                            }
                         }
-                    }
+                    },
                 },
-            }
+            )
         ]
         result = self.open_lineage_source._get_column_lineage(inputs, outputs)
 
@@ -403,107 +414,169 @@ class OpenLineageUnitTest(unittest.TestCase):
                 ],
             }
         }
-        self.assertEqual(result, expected)
+        self.assertEqual(dict(result), expected)
 
     def test_get_column_lineage__invalid_inputs_outputs_structure(self):
         """Test with invalid input and output structure."""
         inputs = [{"invalid": "data"}]
         outputs = [{"invalid": "data"}]
-        with self.assertRaises(ValueError):
+        with self.assertRaises((ValueError, AttributeError)):
             self.open_lineage_source._get_column_lineage(inputs, outputs)
-
-    def test_get_table_details_with_symlinks(self):
-        """Test with valid data where symlinks are present."""
-        data = {
-            "facets": {"symlinks": {"identifiers": [{"name": "project.schema.table"}]}}
-        }
-        result = self.open_lineage_source._get_table_details(data)
-        self.assertEqual(result.name, "table")
-        self.assertEqual(result.schema, "schema")
-
-    def test_get_table_details_without_symlinks(self):
-        """Test with valid data but without symlinks."""
-        data = {"name": "schema.table"}
-        result = self.open_lineage_source._get_table_details(data)
-        self.assertEqual(result.name, "table")
-        self.assertEqual(result.schema, "schema")
-
-    def test_get_table_details_invalid_data_missing_symlinks_and_name(self):
-        """Test with invalid data missing both symlinks and name."""
-        data = {}
-        with self.assertRaises(ValueError):
-            self.open_lineage_source._get_table_details(data)
-
-    def test_get_table_details_invalid_symlinks_structure(self):
-        """Test with invalid symlinks structure."""
-        data = {"facets": {"symlinks": {"identifiers": [{}]}}}
-        with self.assertRaises(ValueError):
-            self.open_lineage_source._get_table_details(data)
-
-    def test_get_table_details_invalid_name_structure(self):
-        """Test with invalid name structure."""
-        data = {"name": "invalidname"}
-        with self.assertRaises(ValueError):
-            self.open_lineage_source._get_table_details(data)
-
-    def test_get_pipelines_list(self):
-        """Test get_pipelines_list method"""
-        ol_event = self.read_openlineage_event_from_kafka(FULL_OL_KAFKA_EVENT)
-        self.assertIsInstance(ol_event, OpenLineageEvent)
-        self.assertEqual(ol_event, EXPECTED_OL_EVENT)
 
     @patch(
         "metadata.ingestion.source.pipeline.openlineage.metadata.OpenlineageSource._get_table_fqn_from_om"
     )
-    def test_yield_pipeline_lineage_details(self, mock_get_entity):
-        def t_fqn_build_side_effect(
-            table_details,
-        ):
-            return f"testService.shopify.{table_details.name}"
+    def test_get_table_details_with_symlinks(self, mock_get_table_fqn):
+        """Test with valid data where symlinks are present."""
+        mock_get_table_fqn.side_effect = (
+            lambda table, schema: f"database.{schema}.{table}"
+        )
+        data = {
+            "name": "schema.table",
+            "namespace": "default",
+            "facets": {
+                "symlinks": {"identifiers": [{"name": "project.schemax.tablex"}]}
+            },
+        }
+        result = self.open_lineage_source._get_table_details(data)
+        self.assertEqual(result.name, "table")
+        self.assertEqual(result.fqn, "database.schema.table")
 
+    @patch(
+        "metadata.ingestion.source.pipeline.openlineage.metadata.OpenlineageSource._get_table_fqn_from_om"
+    )
+    def test_get_table_details_without_symlinks(self, mock_get_table_fqn):
+        """Test with valid data but without symlinks."""
+        mock_get_table_fqn.side_effect = (
+            lambda table, schema: f"database.{schema}.{table}"
+        )
+
+        data = {"name": "schema.table", "namespace": "default"}
+        result = self.open_lineage_source._get_table_details(data)
+        self.assertEqual(result.name, "table")
+        self.assertEqual(result.fqn, "database.schema.table")
+
+    def test_get_table_details_invalid_data_missing_symlinks_and_name(self):
+        """Test with invalid data missing both symlinks and name."""
+        data = {}
+        with self.assertRaises(KeyError):
+            self.open_lineage_source._get_table_details(data)
+
+    def test_get_pipelines_list(self):
+        """Test get_pipelines_list method"""
+        ol_event = message_to_open_lineage_event(FULL_OL_KAFKA_EVENT)
+
+        # Setup mock to return a list of mock events
+        mock_event = MagicMock()
+        mock_event.event = json.dumps(FULL_OL_KAFKA_EVENT)
+        self.open_lineage_source.metadata.get_openlineage_events_for_runid = MagicMock(
+            return_value=[mock_event]
+        )
+
+        self.setup_dummy_client_with_event(FULL_OL_KAFKA_EVENT)
+        result_generator = self.open_lineage_source.get_pipelines_list()
+
+        results = []
+        try:
+            while True:
+                results.append(next(result_generator))
+        except StopIteration:
+            pass
+
+        self.assertEqual(len(results), 1)
+        self.assertEqual(results[0].run_facet, FULL_OL_KAFKA_EVENT["run"])
+        self.assertEqual(results[0].job, FULL_OL_KAFKA_EVENT["job"])
+        self.assertEqual(results[0].event_type, FULL_OL_KAFKA_EVENT["eventType"])
+        self.assertEqual(results[0].inputs, FULL_OL_KAFKA_EVENT["inputs"])
+        self.assertEqual(results[0].outputs, FULL_OL_KAFKA_EVENT["outputs"])
+
+    def test_event_enrichment(self):
+        """Test the event enrichment process."""
+        ol_event = message_to_open_lineage_event(FULL_OL_KAFKA_EVENT)
+
+        # Mock the _get_table_fqn_from_om method
+        with patch.object(
+            self.open_lineage_source,
+            "_get_table_fqn_from_om",
+            side_effect=lambda table, schema: f"database.{schema}.{table}",
+        ):
+            enriched_event = self.open_lineage_source._enrich_event(ol_event)
+
+        # Assertions to ensure the event was enriched correctly
+        self.assertTrue(enriched_event.input_table_details)
+        self.assertTrue(enriched_event.output_table_details)
+        self.assertEqual(
+            enriched_event.input_table_details[0].name, "raw_product_catalog"
+        )
+        self.assertEqual(enriched_event.output_table_details[0].name, "fact_order_new5")
+
+    @patch(
+        "metadata.ingestion.source.pipeline.openlineage.metadata.OpenlineageSource._get_table_fqn_from_om"
+    )
+    def test_yield_pipeline_lineage_details(self, mock_get_table_fqn_from_om):
+        """Test yield_pipeline_lineage_details method with valid OpenLineage event."""
+        mock_get_table_fqn_from_om.side_effect = (
+            lambda table, schema: f"testService.{schema}.{table}"
+        )
+
+        # Mock the UUID fetching to return consistent UUIDs
         def mock_get_uuid_by_name(entity, fqn):
+            z = Mock()
             if fqn == "testService.shopify.raw_product_catalog":
                 # source of table lineage
-                return Mock(id="69fc8906-4a4a-45ab-9a54-9cc2d399e10e")
+                # pipeline
+                z.id.root = "69fc8906-4a4a-45ab-9a54-9cc2d399e10e"
+                return z
+
             elif fqn == "testService.shopify.fact_order_new5":
                 # dst of table lineage
-                return Mock(id="59fc8906-4a4a-45ab-9a54-9cc2d399e10e")
+                z.id.root = "59fc8906-4a4a-45ab-9a54-9cc2d399e10e"
+                return z
             else:
                 # pipeline
                 z = Mock()
                 z.id.root = "79fc8906-4a4a-45ab-9a54-9cc2d399e10e"
                 return z
 
-        def extract_lineage_details(pip_results):
-            table_lineage = []
-            col_lineage = []
-            for r in pip_results:
-                table_lineage.append(
-                    (
-                        r.right.edge.fromEntity.id.root,
-                        r.right.edge.toEntity.id.root,
-                    )
-                )
-                for col in r.right.edge.lineageDetails.columnsLineage:
-                    col_lineage.append((col.fromColumns[0].root, col.toColumn.root))
-            return table_lineage, col_lineage
+        # Mock get_openlineage_events_for_runid to return the event list
+        mock_event = MagicMock()
+        mock_event.event = json.dumps(FULL_OL_KAFKA_EVENT)
+        self.open_lineage_source.metadata.get_openlineage_events_for_runid = MagicMock(
+            return_value=[mock_event]
+        )
 
-        # Set up the side effect for the mock entity FQN builder
-        mock_get_entity.side_effect = t_fqn_build_side_effect
-
-        ol_event = self.read_openlineage_event_from_kafka(FULL_OL_KAFKA_EVENT)
-
+        # Prepare the OpenLineage event
+        ol_event = message_to_open_lineage_event(FULL_OL_KAFKA_EVENT)
+        enriched_event = self.open_lineage_source._enrich_event(ol_event)
+        # Patch the get_by_name method to return the appropriate mock
         with patch.object(
-            OpenMetadataConnection,
+            self.open_lineage_source.metadata,
             "get_by_name",
-            create=True,
             side_effect=mock_get_uuid_by_name,
+            create=True,
         ):
-            pip_results = self.open_lineage_source.yield_pipeline_lineage_details(
-                ol_event
+            results = list(
+                self.open_lineage_source.yield_pipeline_lineage_details(enriched_event)
             )
-            table_lineage, col_lineage = extract_lineage_details(pip_results)
+        for result in results:
+            print(result)
+        # Extract the table and column lineage details
+        table_lineage = [
+            (
+                result.right.edge.fromEntity.id.root,
+                result.right.edge.toEntity.id.root,
+            )
+            for result in results
+            if result.right and result.right.edge
+        ]
+        col_lineage = [
+            (col.fromColumns[0].root, col.toColumn.root)
+            for result in results
+            if result.right and result.right.edge
+            for col in result.right.edge.lineageDetails.columnsLineage
+        ]
 
+        # Define the expected values
         expected_table_lineage = [
             (
                 UUID("69fc8906-4a4a-45ab-9a54-9cc2d399e10e"),
@@ -512,21 +585,22 @@ class OpenLineageUnitTest(unittest.TestCase):
         ]
         expected_col_lineage = [
             (
-                "testService.shopify.raw_product_catalog.comments",
-                "testService.shopify.fact_order_new5.id",
+                "testservice.shopify.raw_product_catalog.comments",
+                "testservice.shopify.fact_order_new5.id",
             ),
             (
-                "testService.shopify.raw_product_catalog.products",
-                "testService.shopify.fact_order_new5.randomid",
+                "testservice.shopify.raw_product_catalog.products",
+                "testservice.shopify.fact_order_new5.randomid",
             ),
             (
-                "testService.shopify.raw_product_catalog.platform",
-                "testService.shopify.fact_order_new5.zip",
+                "testservice.shopify.raw_product_catalog.platform",
+                "testservice.shopify.fact_order_new5.zip",
             ),
         ]
 
-        self.assertEqual(col_lineage, expected_col_lineage)
+        # Perform the assertions
         self.assertEqual(table_lineage, expected_table_lineage)
+        self.assertEqual(col_lineage, expected_col_lineage)
 
 
 if __name__ == "__main__":

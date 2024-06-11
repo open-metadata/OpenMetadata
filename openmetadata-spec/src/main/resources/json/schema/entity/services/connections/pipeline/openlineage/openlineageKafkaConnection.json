@@ -1,0 +1,80 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/services/connections/pipeline/openlineage/openLineageKafkaConnection.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "OpenLineageKafkaConnection",
+  "description": "OpenLineage Kafka Connection Config",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.services.connections.pipeline.openlineage.OpenLineageKafkaConnection",
+  "properties": {
+    "brokersUrl": {
+      "title": "Comma separated brokers list",
+      "description": "service type of the messaging source",
+      "type": "string"
+    },
+    "topicName": {
+      "title": "Topic Name",
+      "description": "topic from where Open lineage events will be pulled ",
+      "type": "string"
+    },
+    "consumerGroupName": {
+      "title": "Consumer Group",
+      "description": "consumer group name ",
+      "type": "string",
+      "default": "dap-datacatalog"
+    },
+    "consumerOffsets": {
+      "title": "Initial consumer offsets",
+      "description": "initial Kafka consumer offset",
+      "default": "earliest",
+      "type": "string",
+      "enum": ["earliest", "latest"],
+      "javaEnums": [
+        {
+          "name": "earliest"
+        },
+        {
+          "name": "latest"
+        }
+      ]
+    },
+    "securityProtocol": {
+      "description": "Kafka security protocol config",
+      "default": "PLAINTEXT",
+      "type": "string",
+      "enum": ["PLAINTEXT", "SSL"],
+      "javaEnums": [
+        {
+          "name": "PLAINTEXT"
+        },
+        {
+          "name": "SSL"
+        }
+      ]
+    },
+    "SSLCertificateLocation": {
+      "description": "Kafka SSL certificate location",
+      "type": "string"
+    },
+    "SSLKeyLocation": {
+      "description": "Kafka SSL key location",
+      "type": "string"
+    },
+    "SSLCALocation": {
+      "description": "Kafka SSL ca location",
+      "type": "string"
+    },
+    "poolTimeout": {
+      "title": "single pool call timeout",
+      "description": "max allowed wait time",
+      "type": "number",
+      "default": 1.0
+    },
+    "sessionTimeout": {
+      "title": "broker inactive session timeout",
+      "description": "max allowed inactivity time",
+      "type": "integer",
+      "default": 30
+    }
+  },
+  "additionalProperties": false
+}

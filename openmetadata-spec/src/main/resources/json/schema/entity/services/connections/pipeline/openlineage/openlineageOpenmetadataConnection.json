@@ -1,0 +1,17 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/services/connections/pipeline/openlineage/openLineageOpenmetadataConnection.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "OpenLineageOpenmetadataConnection",
+  "description": "OpenLineage Openmetadata Connection Config",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.services.connections.pipeline.openlineage.OpenLineageOpenmetadataConnection",
+  "properties": {
+      "name": {
+      "title": "Openlineage events form openmetadata internal API",
+      "description": "Event will be pulled from openmetadata internal APIs",
+      "type": "string",
+      "default": "OpenLineageOpenmetadataConnection"
+    }
+  },
+  "additionalProperties": false
+}

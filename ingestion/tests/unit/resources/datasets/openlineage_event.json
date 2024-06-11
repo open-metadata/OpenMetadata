@@ -204,7 +204,7 @@
     "inputs": [
       {
         "namespace": "s3a://test_db-db",
-        "name": "src_table_test",
+        "name": "shopify.raw_product_catalog",
         "facets": {
           "dataSource": {
             "_producer": "https://github.com/OpenLineage/OpenLineage/tree/1.5.0/integration/spark",
@@ -248,7 +248,7 @@
     "outputs": [
       {
         "namespace": "s3a://test_db-db",
-        "name": "dst_table_test_from_src_table_df",
+        "name": "shopify.fact_order_new5",
         "facets": {
           "dataSource": {
             "_producer": "https://github.com/OpenLineage/OpenLineage/tree/1.5.0/integration/spark",
@@ -282,7 +282,7 @@
                 "inputFields": [
                   {
                     "namespace": "s3a://test_db-db",
-                    "name": "/src_table_test",
+                    "name": "/shopify.raw_product_catalog",
                     "field": "comments"
                   }
                 ]
@@ -291,7 +291,7 @@
                 "inputFields": [
                   {
                     "namespace": "s3a://test_db-db",
-                    "name": "/src_table_test",
+                    "name": "/shopify.raw_product_catalog",
                     "field": "products"
                   }
                 ]
@@ -300,7 +300,7 @@
                 "inputFields": [
                   {
                     "namespace": "s3a://test_db-db",
-                    "name": "/src_table_test",
+                    "name": "/shopify.raw_product_catalog",
                     "field": "platform"
                   }
                 ]

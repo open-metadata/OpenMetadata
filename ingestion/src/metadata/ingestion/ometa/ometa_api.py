@@ -42,6 +42,7 @@ from metadata.ingestion.ometa.mixins.ingestion_pipeline_mixin import (
     OMetaIngestionPipelineMixin,
 )
 from metadata.ingestion.ometa.mixins.mlmodel_mixin import OMetaMlModelMixin
+from metadata.ingestion.ometa.mixins.openlineage_mixin import OMetaOpenLineageEventMixin
 from metadata.ingestion.ometa.mixins.patch_mixin import OMetaPatchMixin
 from metadata.ingestion.ometa.mixins.pipeline_mixin import OMetaPipelineMixin
 from metadata.ingestion.ometa.mixins.query_mixin import OMetaQueryMixin
@@ -109,6 +110,7 @@ class OpenMetadata(
     OMetaSearchIndexMixin,
     OMetaCustomPropertyMixin,
     OMetaSuggestionsMixin,
+    OMetaOpenLineageEventMixin,
     Generic[T, C],
 ):
     """

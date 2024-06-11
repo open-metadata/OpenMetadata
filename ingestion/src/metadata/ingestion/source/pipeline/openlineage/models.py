@@ -11,14 +11,27 @@
 """
 Openlineage Source Model module
 """
-
-from dataclasses import dataclass
 from enum import Enum
-from typing import Any, Dict, List
+from typing import Dict, List, Optional
+
+from pydantic import BaseModel, Field
+
+from metadata.generated.schema.type import basic
 
 
-@dataclass
-class OpenLineageEvent:
+class TableDetails(BaseModel):
+    """
+    Table Details containing information relevant to OM operations.
+    """
+
+    _schema: str = Field(alias="schema")
+    name: str
+    fqn: Optional[str]
+    raw: Dict
+    in_om: bool = False
+
+
+class OpenLineageEvent(BaseModel):
     """
     An object containing data extracted from raw OpenLineage event. Used as a basis for all abstract methods of
     OpenlineageSource connector.
@@ -27,12 +40,14 @@ class OpenLineageEvent:
     run_facet: Dict
     job: Dict
     event_type: str
-    inputs: List[Any]
-    outputs: List[Any]
+    inputs: List[Dict]
+    outputs: List[Dict]
+
+    input_table_details: Optional[List[TableDetails]] = Field(default_factory=list)
+    output_table_details: Optional[List[TableDetails]] = Field(default_factory=list)
 
 
-@dataclass
-class TableFQN:
+class TableFQN(BaseModel):
     """
     Fully Qualified Name of a Table.
     """
@@ -40,8 +55,7 @@ class TableFQN:
     value: str
 
 
-@dataclass
-class ColumnFQN:
+class ColumnFQN(BaseModel):
     """
     Fully Qualified Name of a Column.
     """
@@ -49,19 +63,17 @@ class ColumnFQN:
     value: str
 
 
-@dataclass
-class LineageNode:
+class LineageNode(BaseModel):
     """
     A node being a part of Lineage information.
     """
 
-    uuid: str
+    uuid: basic.Uuid
     fqn: TableFQN
     node_type: str = "table"
 
 
-@dataclass
-class LineageEdge:
+class LineageEdge(BaseModel):
     """
     An object describing connection of two nodes in the Lineage information.
     """
@@ -70,19 +82,11 @@ class LineageEdge:
     to_node: LineageNode
 
 
-@dataclass
-class TableDetails:
-    """
-    Minimal table information.
-    """
-
-    schema: str
-    name: str
-
-
 class EventType(str, Enum):
     """
     List of used OpenLineage event types.
     """
 
     COMPLETE = "COMPLETE"
+    FAIL = "FAIL"
+    ABORT = "ABORT"

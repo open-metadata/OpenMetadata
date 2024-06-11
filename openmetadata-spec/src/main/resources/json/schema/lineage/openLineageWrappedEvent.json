@@ -1,0 +1,28 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://openlineage.io/spec/2-0-2/OpenLineage.json",
+  "title": "OpenLineageWrappedEvent",
+  "description": "OpenLineage Kafka Event",
+  "javaType": "org.openmetadata.schema.lineage.OpenLineageWrappedEvent",
+  "type": "object",
+  "properties": {
+    "id": {
+      "$ref": "../type/basic.json#/definitions/uuid"
+    },
+    "runid": {
+      "type": "string"
+    },
+    "eventtype": {
+      "type": "string"
+    },
+    "event": {
+      "type": "string"
+    },
+    "href": {
+      "description": "Link to the resource corresponding to this entity.",
+      "$ref": "../type/basic.json#/definitions/href"
+    }
+  },
+  "additionalProperties": true,
+  "required": ["runId", "id", "event","eventtype"]
+}
