@@ -28,6 +28,7 @@ import AnnouncementsWidget, {
 import FollowingWidget, {
   FollowingWidgetProps,
 } from '../components/MyData/RightSidebar/FollowingWidget';
+import DataAssetExploreWidget from '../components/MyData/Widgets/DataAssetsExploreWidget/DataAssetExploreWidget.component';
 import FeedsWidget from '../components/MyData/Widgets/FeedsWidget/FeedsWidget.component';
 import KPIWidget from '../components/MyData/Widgets/KPIWidget/KPIWidget.component';
 import RecentlyViewed from '../components/MyData/Widgets/RecentlyViewed/RecentlyViewed';
@@ -55,6 +56,7 @@ class CustomizePageClassBase {
     myData: 3,
     kpi: 3,
     totalAssets: 3,
+    DataAssetsExplore: 3,
   };
 
   announcementWidget: WidgetConfig = {
@@ -68,8 +70,8 @@ class CustomizePageClassBase {
 
   defaultLayout: Array<WidgetConfig> = [
     {
-      h: this.landingPageWidgetDefaultHeights.activityFeed,
-      i: LandingPageWidgetKeys.ACTIVITY_FEED,
+      h: this.landingPageWidgetDefaultHeights.DataAssetsExplore,
+      i: LandingPageWidgetKeys.DATA_ASSETS_EXPLORE,
       w: 3,
       x: 0,
       y: 0,
@@ -146,6 +148,9 @@ class CustomizePageClassBase {
     if (widgetKey.startsWith(LandingPageWidgetKeys.ACTIVITY_FEED)) {
       return FeedsWidget;
     }
+    if (widgetKey.startsWith(LandingPageWidgetKeys.DATA_ASSETS_EXPLORE)) {
+      return DataAssetExploreWidget;
+    }
     if (widgetKey.startsWith(LandingPageWidgetKeys.MY_DATA)) {
       return MyDataWidget;
     }
@@ -171,6 +176,9 @@ class CustomizePageClassBase {
   public getWidgetImageFromKey(widgetKey: string, size?: number): string {
     switch (widgetKey) {
       case LandingPageWidgetKeys.ACTIVITY_FEED: {
+        return ActivityFeedImg;
+      }
+      case LandingPageWidgetKeys.DATA_ASSETS_EXPLORE: {
         return ActivityFeedImg;
       }
       case LandingPageWidgetKeys.MY_DATA: {
@@ -209,6 +217,8 @@ class CustomizePageClassBase {
     switch (widgetName) {
       case 'ActivityFeed':
         return this.landingPageWidgetDefaultHeights.activityFeed;
+      case 'DataAssetsExplore':
+        return this.landingPageWidgetDefaultHeights.DataAssetsExplore;
       case 'Announcements':
         return this.landingPageWidgetDefaultHeights.announcements;
       case 'Following':

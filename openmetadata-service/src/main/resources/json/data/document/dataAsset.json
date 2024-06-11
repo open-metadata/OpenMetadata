@@ -1,0 +1,10 @@
+{
+    "name": "DataAsset",
+    "displayName": "DataAsset",
+    "description": "Data Asset KnowledgePanel shows all the data assets in the application",
+    "entityType": "KnowledgePanel",
+    "fullyQualifiedName": "KnowledgePanel.DataAsset",
+    "data": {
+      "gridSizes": ["large"]
+    }
+  }
