@@ -23,6 +23,7 @@ import { DomainStore } from '../interface/store.interface';
 import { getDomainList } from '../rest/domainAPI';
 import { getDomainOptions } from '../utils/DomainUtils';
 import { showErrorToast } from '../utils/ToastUtils';
+import { useApplicationStore } from './useApplicationStore';
 
 export const useDomainStore = create<DomainStore>()(
   persist(
@@ -32,17 +33,30 @@ export const useDomainStore = create<DomainStore>()(
       activeDomain: DEFAULT_DOMAIN_VALUE, // Set default value here
       domainOptions: [],
       fetchDomainList: async () => {
-        set({ domainLoading: true });
-        try {
-          const { data } = await getDomainList({ limit: PAGE_SIZE_LARGE });
+        const currentUser = useApplicationStore.getState().currentUser;
+        if (currentUser?.domain) {
           set({
-            domains: data,
-            domainOptions: getDomainOptions(data),
+            domains: [currentUser.domain],
+            domainOptions: getDomainOptions([currentUser.domain]),
+            activeDomain: currentUser.domain.fullyQualifiedName,
           });
-        } catch (error) {
-          showErrorToast(error as AxiosError);
-        } finally {
-          set({ domainLoading: false });
+        } else {
+          set({ domainLoading: true });
+          try {
+            const { data } = await getDomainList({
+              limit: PAGE_SIZE_LARGE,
+              fields: 'parent',
+            });
+
+            set({
+              domains: data,
+              domainOptions: getDomainOptions(data),
+            });
+          } catch (error) {
+            showErrorToast(error as AxiosError);
+          } finally {
+            set({ domainLoading: false });
+          }
         }
       },
       updateDomains: (domainsArr: Domain[]) => set({ domains: domainsArr }),
@@ -50,6 +64,12 @@ export const useDomainStore = create<DomainStore>()(
       updateActiveDomain: (activeDomainKey: string) => {
         set({ activeDomain: activeDomainKey });
         get().refreshDomains();
+      },
+      setDomains: (domainsArr: Domain[]) => {
+        set({
+          domains: domainsArr,
+          domainOptions: getDomainOptions(domainsArr),
+        });
       },
     }),
     {

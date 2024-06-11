@@ -67,12 +67,14 @@ import {
 import { EntityType } from '../../../enums/entity.enum';
 import { SearchIndex } from '../../../enums/search.enum';
 import { CreateDataProduct } from '../../../generated/api/domains/createDataProduct';
+import { CreateDomain } from '../../../generated/api/domains/createDomain';
 import { DataProduct } from '../../../generated/entity/domains/dataProduct';
 import { Domain } from '../../../generated/entity/domains/domain';
 import { ChangeDescription } from '../../../generated/entity/type';
 import { Style } from '../../../generated/type/tagLabel';
 import { useFqn } from '../../../hooks/useFqn';
 import { addDataProducts } from '../../../rest/dataProductAPI';
+import { addDomains } from '../../../rest/domainAPI';
 import { searchData } from '../../../rest/miscAPI';
 import { getIsErrorMatch } from '../../../utils/CommonUtils';
 import { getQueryFilterToExcludeDomainTerms } from '../../../utils/DomainUtils';
@@ -96,6 +98,7 @@ import { AssetSelectionModal } from '../../DataAssets/AssetsSelectionModal/Asset
 import { EntityDetailsObjectInterface } from '../../Explore/ExplorePage.interface';
 import StyleModal from '../../Modals/StyleModal/StyleModal.component';
 import AddDomainForm from '../AddDomainForm/AddDomainForm.component';
+import AddSubDomainModal from '../AddSubDomainModal/AddSubDomainModal.component';
 import '../domain.less';
 import { DomainFormType, DomainTabs } from '../DomainPage.interface';
 import DataProductsTab from '../DomainTabs/DataProductsTab/DataProductsTab.component';
@@ -123,6 +126,7 @@ const DomainDetailsPage = ({
   );
   const [assetModalVisible, setAssetModelVisible] = useState(false);
   const [showAddDataProductModal, setShowAddDataProductModal] = useState(false);
+  const [showAddSubDomainModal, setShowAddSubDomainModal] = useState(false);
   const [showActions, setShowActions] = useState(false);
   const [isDelete, setIsDelete] = useState<boolean>(false);
   const [isNameEditing, setIsNameEditing] = useState<boolean>(false);
@@ -131,6 +135,9 @@ const DomainDetailsPage = ({
     useState<EntityDetailsObjectInterface>();
   const [assetCount, setAssetCount] = useState<number>(0);
   const [dataProductsCount, setDataProductsCount] = useState<number>(0);
+  const encodedFqn = getEncodedFqn(
+    escapeESReservedCharacters(domain.fullyQualifiedName)
+  );
 
   const breadcrumbs = useMemo(() => {
     if (!domainFqn) {
@@ -188,11 +195,42 @@ const DomainDetailsPage = ({
       onClick: () => setAssetModelVisible(true),
     },
     {
-      label: t('label.data-product-plural'),
+      label: t('label.sub-domain-plural'),
       key: '2',
+      onClick: () => setShowAddSubDomainModal(true),
+    },
+    {
+      label: t('label.data-product-plural'),
+      key: '3',
       onClick: () => setShowAddDataProductModal(true),
     },
   ];
+
+  const addSubDomain = useCallback(async (formData: CreateDomain) => {
+    const data = {
+      ...formData,
+      parent: domain.fullyQualifiedName,
+    };
+
+    try {
+      await addDomains(data as CreateDomain);
+    } catch (error) {
+      showErrorToast(
+        getIsErrorMatch(error as AxiosError, ERROR_MESSAGE.alreadyExist)
+          ? t('server.entity-already-exist', {
+              entity: t('label.sub-domain'),
+              entityPlural: t('label.sub-domain-lowercase-plural'),
+              name: data.name,
+            })
+          : (error as AxiosError),
+        t('server.add-entity-error', {
+          entity: t('label.sub-domain-lowercase'),
+        })
+      );
+    } finally {
+      setShowAddSubDomainModal(false);
+    }
+  }, []);
 
   const addDataProduct = useCallback(
     async (formData: CreateDataProduct) => {
@@ -240,9 +278,6 @@ const DomainDetailsPage = ({
   const fetchDataProducts = async () => {
     if (!isVersionsView) {
       try {
-        const encodedFqn = getEncodedFqn(
-          escapeESReservedCharacters(domain.fullyQualifiedName)
-        );
         const res = await searchData(
           '',
           1,
@@ -263,9 +298,6 @@ const DomainDetailsPage = ({
   const fetchDomainAssets = async () => {
     if (domainFqn && !isVersionsView) {
       try {
-        const encodedFqn = getEncodedFqn(
-          escapeESReservedCharacters(domain.fullyQualifiedName)
-        );
         const res = await searchData(
           '',
           1,
@@ -720,6 +752,11 @@ const DomainDetailsPage = ({
         style={domain.style}
         onCancel={() => setIsStyleEditing(false)}
         onSubmit={onStyleSave}
+      />
+      <AddSubDomainModal
+        open={showAddSubDomainModal}
+        onCancel={() => setShowAddSubDomainModal(false)}
+        onSubmit={(data: CreateDomain) => addSubDomain(data)}
       />
     </>
   );

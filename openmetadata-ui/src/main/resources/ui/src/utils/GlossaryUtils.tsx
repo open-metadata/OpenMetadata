@@ -265,3 +265,12 @@ export const findExpandableKeysForArray = (
 
   return expandableKeys;
 };
+
+export const filterGlossaryTermsByDomain = (
+  glossaries: Glossary[],
+  domainFqn: string
+) => {
+  return glossaries.filter(
+    (glossary) => glossary?.domain?.fullyQualifiedName === domainFqn
+  );
+};

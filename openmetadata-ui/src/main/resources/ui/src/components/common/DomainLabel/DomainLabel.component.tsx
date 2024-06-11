@@ -43,12 +43,13 @@ export const DomainLabel = ({
   entityId,
   textClassName,
   showDomainHeading = false,
+  multiple = false,
 }: DomainLabelProps) => {
   const { t } = useTranslation();
   const [activeDomain, setActiveDomain] = useState<EntityReference>();
 
   const handleDomainSave = useCallback(
-    async (selectedDomain: EntityReference) => {
+    async (selectedDomain: EntityReference | EntityReference[]) => {
       const entityDetails = getEntityAPIfromSource(entityType as AssetsUnion)(
         entityFqn,
         { fields: 'domain' }
@@ -118,7 +119,8 @@ export const DomainLabel = ({
       hasPermission && (
         <DomainSelectableList
           hasPermission={Boolean(hasPermission)}
-          selectedDomain={activeDomain}
+          multiple={multiple}
+          selectedDomain={activeDomain ? [activeDomain] : []}
           onUpdate={handleDomainSave}
         />
       )
