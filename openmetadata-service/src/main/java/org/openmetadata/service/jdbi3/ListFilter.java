@@ -184,7 +184,7 @@ public class ListFilter extends Filter<ListFilter> {
           applicationType);
     }
     return String.format(
-        "(ingestion_pipeline_entity.json ->> '{sourceConfig,config,appConfig,type}' = '%s')",
+        "(ingestion_pipeline_entity.json -> 'sourceConfig' -> 'config' -> 'appConfig' ->> 'type' = '%s')",
         applicationType);
   }
 
