@@ -126,7 +126,7 @@ entities.forEach((EntityClass) => {
 
   test(`Delete ${deleteEntity.getType()}`, async ({ page }) => {
     // increase timeout as it using single test for multiple steps
-    test.slow();
+    test.slow(true);
 
     await redirectToHomePage(page);
     // get the token from localStorage
