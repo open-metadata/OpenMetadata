@@ -190,7 +190,7 @@ describe(
       verifyResponseStatusCode('@getGlossaryDetails', 200);
       verifyResponseStatusCode('@getGlossaryTerms', 200);
 
-      cy.get('[data-testid="version-button"]').contains('0.2').click();
+      cy.get('[data-testid="version-button"]').scrollIntoView().click();
 
       cy.get(`[data-testid="diff-added"]`)
         .scrollIntoView()
@@ -227,7 +227,7 @@ describe(
         'getSelectedVersionDetails'
       );
 
-      cy.get('[data-testid="version-button"]').contains('0.2').click();
+      cy.get('[data-testid="version-button"]').scrollIntoView().click();
 
       verifyResponseStatusCode('@getVersionsList', 200);
       verifyResponseStatusCode('@getSelectedVersionDetails', 200);
@@ -238,7 +238,7 @@ describe(
         .scrollIntoView()
         .should('be.visible');
 
-      cy.get('[data-testid="version-button"]').contains('0.2').click();
+      cy.get('[data-testid="version-button"]').scrollIntoView().click();
 
       verifyResponseStatusCode('@getGlossaryDetails', 200);
       verifyResponseStatusCode('@getGlossaryTerms', 200);
@@ -263,7 +263,7 @@ describe(
         'getSelectedVersionDetails'
       );
 
-      cy.get('[data-testid="version-button"]').contains('0.2').click();
+      cy.get('[data-testid="version-button"]').scrollIntoView().click();
 
       verifyResponseStatusCode('@getVersionsList', 200);
       verifyResponseStatusCode('@getSelectedVersionDetails', 200);
@@ -272,7 +272,7 @@ describe(
         .scrollIntoView()
         .should('be.visible');
 
-      cy.get('[data-testid="version-button"]').contains('0.2').click();
+      cy.get('[data-testid="version-button"]').scrollIntoView().click();
 
       verifyResponseStatusCode('@getGlossaryDetails', 200);
       verifyResponseStatusCode('@getGlossaryTerms', 200);
@@ -307,7 +307,7 @@ describe(
       verifyResponseStatusCode('@getGlossaryTermParents', 200);
       verifyResponseStatusCode('@getChildGlossaryTerms', 200);
 
-      cy.get('[data-testid="version-button"]').contains('0.2').click();
+      cy.get('[data-testid="version-button"]').scrollIntoView().click();
 
       cy.get(`[data-testid="diff-added"]`)
         .scrollIntoView()
@@ -383,7 +383,7 @@ describe(
         'getGlossaryTermDetails'
       );
 
-      cy.get('[data-testid="version-button"]').contains('0.2').click();
+      cy.get('[data-testid="version-button"]').scrollIntoView().click();
 
       verifyResponseStatusCode('@getVersionsList', 200);
       verifyResponseStatusCode('@getSelectedVersionDetails', 200);
@@ -395,7 +395,7 @@ describe(
         .scrollIntoView()
         .should('be.visible');
 
-      cy.get('[data-testid="version-button"]').contains('0.2').click();
+      cy.get('[data-testid="version-button"]').scrollIntoView().click();
 
       verifyResponseStatusCode('@getGlossaryTermParents', 200);
       verifyResponseStatusCode('@getChildGlossaryTerms', 200);
@@ -415,7 +415,7 @@ describe(
         'getSelectedVersionDetails'
       );
 
-      cy.get('[data-testid="version-button"]').contains('0.2').click();
+      cy.get('[data-testid="version-button"]').scrollIntoView().click();
 
       verifyResponseStatusCode('@getVersionsList', 200);
       verifyResponseStatusCode('@getSelectedVersionDetails', 200);

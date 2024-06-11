@@ -292,9 +292,6 @@ export const handleAdminUpdateDetails = (
   editTeams(teamName);
 
   // edit description
-  cy.wait(500);
-  cy.get('.ant-collapse-expand-icon > .anticon > svg').scrollIntoView();
-  cy.get('.ant-collapse-expand-icon > .anticon > svg').click();
   editDescription(updatedDescription);
 
   // edit roles

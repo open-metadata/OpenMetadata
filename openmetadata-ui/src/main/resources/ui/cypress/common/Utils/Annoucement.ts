@@ -75,18 +75,18 @@ export const createAnnouncement = (announcement, entityName, updatedName) => {
     announcement.title
   );
   // Todo: Need to check announcement flow on home page @Ashish8689
-  // cy.goToHomePage();
+  //   cy.goToHomePage();
 
-  // cy.get('[data-testid="announcement-container"]')
-  //   .find(`a[href*="${encodeURIComponent(entityName)}"]`)
-  //   .filter(':visible')
-  //   .first()
-  //   .click();
+  //   cy.get('[data-testid="announcement-container"]')
+  //     .find(`a[href*="${encodeURIComponent(entityName)}"]`)
+  //     .filter(':visible')
+  //     .first()
+  //     .click();
 
-  // cy.get('[data-testid="entity-header-display-name"]').should(
-  //   'contain',
-  //   `Cypress ${updatedName} updated`
-  // );
+  //   cy.get('[data-testid="entity-header-display-name"]').should(
+  //     'contain',
+  //     `Cypress ${updatedName} updated`
+  //   );
 };
 
 export const deleteAnnouncement = () => {
