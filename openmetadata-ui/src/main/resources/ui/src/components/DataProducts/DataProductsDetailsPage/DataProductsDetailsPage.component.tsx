@@ -430,6 +430,7 @@ const DataProductsDetailsPage = ({
                     minWidth: 800,
                     flex: 0.87,
                   }}
+                  hideSecondPanel={!previewAsset}
                   pageTitle={t('label.domain')}
                   secondPanel={{
                     children: previewAsset && (
