@@ -150,7 +150,7 @@ class REST:
         ):
             self.config.access_token, expiry = self._auth_token()
             if not self.config.access_token == "no_token":
-                if isinstance(expiry, datetime.datetime):
+                if isinstance(expiry, datetime):
                     self.config.expires_in = expiry.timestamp() - 120
                 else:
                     self.config.expires_in = (
