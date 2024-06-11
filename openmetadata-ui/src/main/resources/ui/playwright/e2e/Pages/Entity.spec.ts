@@ -131,6 +131,7 @@ entities.forEach((EntityClass) => {
       const titleText = properties.join(', ');
 
       test(`Set & Update ${titleText} Custom Property `, async ({ page }) => {
+        // increase timeout as it using single test for multiple steps
         test.slow(true);
 
         await test.step(`Set ${titleText} Custom Property`, async () => {
