@@ -88,6 +88,7 @@ import es.org.elasticsearch.search.aggregations.Aggregation;
 import es.org.elasticsearch.search.aggregations.AggregationBuilder;
 import es.org.elasticsearch.search.aggregations.AggregationBuilders;
 import es.org.elasticsearch.search.aggregations.BucketOrder;
+import es.org.elasticsearch.search.aggregations.bucket.filter.ParsedFilter;
 import es.org.elasticsearch.search.aggregations.bucket.histogram.DateHistogramAggregationBuilder;
 import es.org.elasticsearch.search.aggregations.bucket.histogram.DateHistogramInterval;
 import es.org.elasticsearch.search.aggregations.bucket.histogram.Histogram;
@@ -101,6 +102,7 @@ import es.org.elasticsearch.search.aggregations.metrics.MaxAggregationBuilder;
 import es.org.elasticsearch.search.aggregations.metrics.ParsedSingleValueNumericMetricsAggregation;
 import es.org.elasticsearch.search.aggregations.metrics.ParsedValueCount;
 import es.org.elasticsearch.search.aggregations.metrics.SumAggregationBuilder;
+import es.org.elasticsearch.search.aggregations.support.ValuesSourceAggregationBuilder;
 import es.org.elasticsearch.search.builder.SearchSourceBuilder;
 import es.org.elasticsearch.search.fetch.subphase.FetchSourceContext;
 import es.org.elasticsearch.search.fetch.subphase.highlight.HighlightBuilder;
@@ -152,6 +154,7 @@ import org.openmetadata.schema.api.dataInsightNew.CreateDIChart;
 import org.openmetadata.schema.dataInsight.DataInsightChartResult;
 import org.openmetadata.schema.dataInsightNew.DIChartResult;
 import org.openmetadata.schema.dataInsightNew.DIChartResultList;
+import org.openmetadata.schema.dataInsightNew.FormulaHolder;
 import org.openmetadata.schema.entity.data.EntityHierarchy__1;
 import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration;
 import org.openmetadata.schema.type.EntityReference;
@@ -200,8 +203,10 @@ import org.openmetadata.service.search.indexes.TestCaseResolutionStatusIndex;
 import org.openmetadata.service.search.indexes.TopicIndex;
 import org.openmetadata.service.search.indexes.UserIndex;
 import org.openmetadata.service.search.models.IndexMapping;
+import org.openmetadata.service.security.policyevaluator.CompiledRule;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.workflows.searchIndex.ReindexingUtil;
+import org.springframework.expression.Expression;
 
 @Slf4j
 // Not tagged with Repository annotation as it is programmatically initialized
@@ -1952,57 +1957,128 @@ public class ElasticSearchClient implements SearchClient {
     }
   }
 
-  private void addSubAggregationsByFunction(CreateDIChart.Function function, String field,DateHistogramAggregationBuilder parentAggregation){
+  private ValuesSourceAggregationBuilder getSubAggregationsByFunction(
+      CreateDIChart.Function function, String field, int index) {
     switch (function) {
       case COUNT:
-        parentAggregation.subAggregation(
-                AggregationBuilders.count(field).field(field));
-        break;
+        return AggregationBuilders.count(field + index).field(field);
       case SUM:
-        parentAggregation.subAggregation(
-                AggregationBuilders.sum(field).field(field));
-        break;
+        return AggregationBuilders.sum(field + index).field(field);
       case AVG:
-        parentAggregation.subAggregation(
-                AggregationBuilders.avg(field).field(field));
-        break;
+        return AggregationBuilders.avg(field + index).field(field);
       case MIN:
-        parentAggregation.subAggregation(
-                AggregationBuilders.min(field).field(field));
-        break;
+        return AggregationBuilders.min(field + index).field(field);
       case MAX:
-        parentAggregation.subAggregation(
-                AggregationBuilders.max(field).field(field));
-        break;
+        return AggregationBuilders.max(field + index).field(field);
     }
-  }
-
-  public DIChartResultList buildDIChartByFormula(@NotNull CreateDIChart createDIChart, long start, long end)
-          throws IOException {
-    DateHistogramAggregationBuilder dateHistogramAggregationBuilder =
-        AggregationBuilders.dateHistogram("1")
-                .field(DIChartRepository.TIMESTAMP_FIELD)
-                .calendarInterval(DateHistogramInterval.DAY)
-                .extendedBounds(new LongBounds(start, end));
-    Pattern pattern = Pattern.compile(DIChartRepository.FORMULA_FUNC_REGEX);
-    Matcher matcher = pattern.matcher(createDIChart.getFormula());
-    while (matcher.find()) {
-      System.out.println("Match: " + matcher.group());
-    }
-
     return null;
   }
 
+  public void getDateHistogramByFormula(
+      @NotNull CreateDIChart createDIChart,
+      DateHistogramAggregationBuilder dateHistogramAggregationBuilder,
+      List<FormulaHolder> formulas) {
+    Pattern pattern = Pattern.compile(DIChartRepository.FORMULA_FUNC_REGEX);
+    Matcher matcher = pattern.matcher(createDIChart.getFormula());
+    int index = 0;
+    while (matcher.find()) {
+      FormulaHolder holder = new FormulaHolder();
+      holder.setFormula(matcher.group());
+      holder.setFunction(CreateDIChart.Function.valueOf(matcher.group(1).toUpperCase()));
+      holder.setField(matcher.group(2));
+      ValuesSourceAggregationBuilder subAgg =
+          getSubAggregationsByFunction(
+              CreateDIChart.Function.valueOf(matcher.group(1).toUpperCase()),
+              matcher.group(2),
+              index);
+      if (matcher.group(4) != null) {
+        QueryBuilder queryBuilder = QueryBuilders.queryStringQuery(matcher.group(4));
+        dateHistogramAggregationBuilder.subAggregation(
+            AggregationBuilders.filter("filer" + index, queryBuilder).subAggregation(subAgg));
+        holder.setQuery(matcher.group(4));
+      } else {
+        dateHistogramAggregationBuilder.subAggregation(subAgg);
+      }
+      formulas.add(holder);
+      index++;
+    }
+  }
+
+  private List<DIChartResult> processMultiAggregations(
+      List<Aggregation> aggregations,
+      CreateDIChart createDIChart,
+      String group,
+      List<FormulaHolder> holder) {
+    List<DIChartResult> finalList = new ArrayList<>();
+
+    List<List<DIChartResult>> results = processAggregationsInternal(aggregations, group);
+    String formula = createDIChart.getFormula();
+    for (List<DIChartResult> result : results) {
+      String formulaCopy = new String(formula);
+      if (holder.size() != result.size()) {
+        continue;
+      }
+      boolean evaluate = true;
+      String day = null;
+      for (int i = 0; i < holder.size(); i++) {
+        if (result.get(i).getCount() == null) {
+          evaluate = false;
+          break;
+        }
+        day = result.get(i).getDay();
+        formulaCopy =
+            formulaCopy.replace(holder.get(i).getFormula(), result.get(i).getCount().toString());
+      }
+      if (evaluate
+          && formulaCopy.matches(DIChartRepository.NUMERIC_VALIDATION_REGEX)
+          && day != null) {
+        Expression expression = CompiledRule.parseExpression(formulaCopy);
+        expression.getValue();
+        finalList.add(
+            new DIChartResult()
+                .withCount((Double) expression.getValue())
+                .withGroup(group)
+                .withDay(day));
+      }
+    }
+    return finalList;
+  }
+
+  private void populateDateHistogram(
+      @NotNull CreateDIChart createDIChart,
+      DateHistogramAggregationBuilder dateHistogramAggregationBuilder,
+      List<FormulaHolder> formulas)
+      throws IOException {
+    if (createDIChart.getFormula() != null) {
+      getDateHistogramByFormula(createDIChart, dateHistogramAggregationBuilder, formulas);
+      return;
+    }
+
+    // process non formula date histogram
+    ValuesSourceAggregationBuilder subAgg =
+        getSubAggregationsByFunction(createDIChart.getFunction(), createDIChart.getField(), 0);
+    if (createDIChart.getFilter() != null) {
+      XContentParser filterParser =
+          XContentType.JSON
+              .xContent()
+              .createParser(
+                  xContentRegistry, LoggingDeprecationHandler.INSTANCE, createDIChart.getFilter());
+      QueryBuilder filter = SearchSourceBuilder.fromXContent(filterParser).query();
+      dateHistogramAggregationBuilder.subAggregation(
+          AggregationBuilders.filter("filer", filter).subAggregation(subAgg));
+    }
+    dateHistogramAggregationBuilder.subAggregation(subAgg);
+  }
 
   public DIChartResultList buildDIChart(@NotNull CreateDIChart createDIChart, long start, long end)
       throws IOException {
-
     DateHistogramAggregationBuilder dateHistogramAggregationBuilder =
         AggregationBuilders.dateHistogram("1")
             .field(DIChartRepository.TIMESTAMP_FIELD)
             .calendarInterval(DateHistogramInterval.DAY)
             .extendedBounds(new LongBounds(start, end));
-    addSubAggregationsByFunction(createDIChart.getFunction(), createDIChart.getField(), dateHistogramAggregationBuilder);
+    List<FormulaHolder> formulas = new ArrayList<>();
+    populateDateHistogram(createDIChart, dateHistogramAggregationBuilder, formulas);
 
     SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
 
@@ -2014,16 +2090,6 @@ public class ElasticSearchClient implements SearchClient {
       searchSourceBuilder.aggregation(termsAggregationBuilder);
     } else {
       searchSourceBuilder.aggregation(dateHistogramAggregationBuilder);
-    }
-    if (createDIChart.getFilter() != null) {
-      XContentParser filterParser =
-          XContentType.JSON
-              .xContent()
-              .createParser(
-                  xContentRegistry, LoggingDeprecationHandler.INSTANCE, createDIChart.getFilter());
-      QueryBuilder filter = SearchSourceBuilder.fromXContent(filterParser).query();
-      BoolQueryBuilder newQuery = QueryBuilders.boolQuery().filter(filter);
-      searchSourceBuilder.query(newQuery);
     }
     es.org.elasticsearch.action.search.SearchRequest searchRequest =
         new es.org.elasticsearch.action.search.SearchRequest(DIChartRepository.DI_SEARCH_INDEX);
@@ -2038,51 +2104,102 @@ public class ElasticSearchClient implements SearchClient {
         for (Terms.Bucket bucket : parsedTerms.getBuckets()) {
           diChartResults.addAll(
               processAggregations(
-                  bucket.getAggregations().asList(), createDIChart, bucket.getKeyAsString()));
+                  bucket.getAggregations().asList(),
+                  createDIChart,
+                  bucket.getKeyAsString(),
+                  formulas));
         }
       }
       resultList.setResults(diChartResults);
       return resultList;
     }
     List<DIChartResult> results =
-        processAggregations(searchResponse.getAggregations().asList(), createDIChart, null);
+        processAggregations(
+            searchResponse.getAggregations().asList(), createDIChart, null, formulas);
     resultList.setResults(results);
     return resultList;
   }
 
   private List<DIChartResult> processAggregations(
-      List<Aggregation> aggregations, CreateDIChart createDIChart, String group) {
-    List<DIChartResult> results = new ArrayList<>();
+      List<Aggregation> aggregations,
+      CreateDIChart createDIChart,
+      String group,
+      List<FormulaHolder> holder) {
+    if (createDIChart.getFormula() != null) {
+      return processMultiAggregations(aggregations, createDIChart, group, holder);
+    }
+    return processSingleAggregations(aggregations, group);
+  }
+
+  private List<DIChartResult> processSingleAggregations(
+      List<Aggregation> aggregations, String group) {
+    List<List<DIChartResult>> rawResultList = processAggregationsInternal(aggregations, group);
+    List<DIChartResult> finalResult = new ArrayList<>();
+    for (List<DIChartResult> diResultList : rawResultList) {
+      diResultList.forEach((result) -> finalResult.add(result));
+    }
+    return finalResult;
+  }
+
+  private List<List<DIChartResult>> processAggregationsInternal(
+      List<Aggregation> aggregations, String group) {
+    List<List<DIChartResult>> results = new ArrayList<>();
     for (Aggregation arg : aggregations) {
       ParsedDateHistogram parsedDateHistogram = (ParsedDateHistogram) arg;
       for (Histogram.Bucket bucket : parsedDateHistogram.getBuckets()) {
-        for (Aggregation sub_arg : bucket.getAggregations().asList()) {
-          if (createDIChart.getFunction().equals(CreateDIChart.Function.COUNT)) {
-            ParsedValueCount parsedValueCount = (ParsedValueCount) sub_arg;
-            DIChartResult diChartResult =
-                new DIChartResult()
-                    .withCount((double) parsedValueCount.getValue())
-                    .withDay(bucket.getKeyAsString())
-                    .withGroup(group);
-            results.add(diChartResult);
-          } else {
-            ParsedSingleValueNumericMetricsAggregation parsedValueCount =
-                (ParsedSingleValueNumericMetricsAggregation) sub_arg;
-            Double value = parsedValueCount.value();
-            if (Double.isInfinite(value) || Double.isNaN(value)) {
-              value = null;
-            }
-            DIChartResult diChartResult =
-                new DIChartResult()
-                    .withCount(value)
-                    .withDay(bucket.getKeyAsString())
-                    .withGroup(group);
-            results.add(diChartResult);
-          }
+        List<DIChartResult> subResults = new ArrayList<>();
+        for (Aggregation subAggr : bucket.getAggregations().asList()) {
+          addByAggregationType(subAggr, subResults, bucket.getKeyAsString(), group);
         }
+        results.add(subResults);
       }
     }
     return results;
+  }
+
+  private void addByAggregationType(
+      Aggregation subAggr, List<DIChartResult> diChartResults, String day, String group) {
+    if (subAggr instanceof ParsedValueCount)
+      addProcessedSubResult((ParsedValueCount) subAggr, diChartResults, day, group);
+    else if (subAggr instanceof ParsedSingleValueNumericMetricsAggregation)
+      addProcessedSubResult(
+          (ParsedSingleValueNumericMetricsAggregation) subAggr, diChartResults, day, group);
+    else if (subAggr instanceof ParsedFilter)
+      addProcessedSubResult((ParsedFilter) subAggr, diChartResults, day, group);
+  }
+
+  private void addProcessedSubResult(
+      ParsedValueCount aggregation, List<DIChartResult> diChartResults, String day, String group) {
+    ParsedValueCount parsedValueCount = aggregation;
+    DIChartResult diChartResult =
+        new DIChartResult()
+            .withCount((double) parsedValueCount.getValue())
+            .withDay(day)
+            .withGroup(group);
+    diChartResults.add(diChartResult);
+  }
+
+  private void addProcessedSubResult(
+      ParsedSingleValueNumericMetricsAggregation aggregation,
+      List<DIChartResult> diChartResults,
+      String day,
+      String group) {
+    ParsedSingleValueNumericMetricsAggregation parsedValueCount = aggregation;
+    Double value = parsedValueCount.value();
+    if (Double.isInfinite(value) || Double.isNaN(value)) {
+      value = null;
+    }
+    DIChartResult diChartResult =
+        new DIChartResult().withCount(value).withDay(day).withGroup(group);
+    diChartResults.add(diChartResult);
+  }
+
+  private void addProcessedSubResult(
+      ParsedFilter aggregation, List<DIChartResult> diChartResults, String day, String group) {
+    ParsedFilter parsedValueCount = aggregation;
+    for (Aggregation agg : parsedValueCount.getAggregations().asList()) {
+      addByAggregationType(agg, diChartResults, day, group);
+    }
   }
 
   private static AggregationBuilder buildQueryAggregation(

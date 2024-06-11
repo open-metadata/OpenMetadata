@@ -189,7 +189,7 @@ public class DIChartResource extends EntityResource<DIChart, DIChartRepository> 
           @QueryParam("end")
           long end,
       @Valid CreateDIChart create)
-          throws IOException, ParseException {
+      throws IOException, ParseException {
     DIChartResultList resultList = repository.getPreviewData(create, start, end);
     return Response.status(Response.Status.OK).entity(resultList).build();
   }

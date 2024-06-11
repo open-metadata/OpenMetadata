@@ -26,7 +26,7 @@ public class DIChartRepository extends EntityRepository<DIChart> {
   public static final String FORMULA_FUNC_REGEX =
       "\\b(count|sum|min|max|avg)+\\(k='([^']*)',?\\s*(q='([^']*)')?\\)?";
 
-  private static final String NUMERIC_VALIDATION_REGEX = "[\\d\\.+-\\/\\*\\(\\)]+";
+  public static final String NUMERIC_VALIDATION_REGEX = "[\\d\\.+-\\/\\*\\(\\)\s]+";
 
   public DIChartRepository() {
     super(COLLECTION_PATH, DI_CHART, DIChart.class, Entity.getCollectionDAO().diChartDAO(), "", "");
@@ -58,10 +58,8 @@ public class DIChartRepository extends EntityRepository<DIChart> {
   }
 
   public DIChartResultList getPreviewData(
-      CreateDIChart chart, long startTimestamp, long endTimestamp) throws IOException, ParseException {
-    if (chart.getFormula()!=null && validateFormula(chart.getFormula())){
-      return searchClient.buildDIChartByFormula(chart, startTimestamp, endTimestamp);
-    }
+      CreateDIChart chart, long startTimestamp, long endTimestamp)
+      throws IOException, ParseException {
     return searchClient.buildDIChart(chart, startTimestamp, endTimestamp);
   }
 
