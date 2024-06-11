@@ -71,7 +71,7 @@ class PowerBICliTest(CliCommonDashboard.TestSuite):
         return 24
 
     def expected_filtered_sink_mix(self) -> int:
-        return 53
+        return 52
 
     def expected_dashboards_and_charts_after_patch(self) -> int:
         return 0

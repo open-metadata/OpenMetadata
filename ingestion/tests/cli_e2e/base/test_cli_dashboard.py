@@ -71,7 +71,7 @@ class CliDashboardBase(TestCase):
                 {
                     "dashboards": {
                         "includes": self.get_includes_dashboards(),
-                        "excludes": self.get_excludes_charts(),
+                        "excludes": self.get_excludes_dashboards(),
                     },
                     "charts": {
                         "includes": self.get_includes_charts(),
