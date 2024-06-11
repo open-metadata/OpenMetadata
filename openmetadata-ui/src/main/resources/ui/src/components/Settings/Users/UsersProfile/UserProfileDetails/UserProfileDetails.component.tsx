@@ -345,14 +345,13 @@ const UserProfileDetails = ({
           {userDomainRender}
         </Space>
 
-        <div className="d-flex items-center">
+        <div className="d-flex items-center gap-2">
           {changePasswordRenderComponent}
 
           <ManageButton
             isRecursiveDelete
             afterDeleteAction={afterDeleteAction}
             allowSoftDelete={!userData.deleted}
-            buttonClassName="m-l-sm"
             canDelete={isAdminUser}
             deleted={userData.deleted}
             displayName={getEntityName(userData)}

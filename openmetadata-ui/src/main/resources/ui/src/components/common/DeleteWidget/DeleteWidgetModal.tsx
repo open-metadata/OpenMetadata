@@ -31,6 +31,8 @@ import React, {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
+import { EntityType } from '../../../enums/entity.enum';
+import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { deleteEntity } from '../../../rest/miscAPI';
 import { Transi18next } from '../../../utils/CommonUtils';
 import {
@@ -67,6 +69,7 @@ const DeleteWidgetModal = ({
 }: DeleteWidgetModalProps) => {
   const { t } = useTranslation();
   const [form] = Form.useForm();
+  const { currentUser, onLogoutHandler } = useApplicationStore();
   const [deleteConfirmationText, setDeleteConfirmationText] =
     useState<string>('');
   const [deletionType, setDeletionType] = useState<DeleteType>(
@@ -147,6 +150,10 @@ const DeleteWidgetModal = ({
                 entity: entityName,
               })
           );
+
+          if (entityType === EntityType.USER && entityId === currentUser?.id) {
+            return onLogoutHandler();
+          }
           if (afterDeleteAction) {
             afterDeleteAction(
               deletionType === DeleteType.SOFT_DELETE,
@@ -179,6 +186,7 @@ const DeleteWidgetModal = ({
       entityName,
       handleOnEntityDeleteCancel,
       isDeleteTextPresent,
+      currentUser?.id,
     ]
   );
 
