@@ -11,9 +11,9 @@
 """
 Python API REST wrapper and helpers
 """
-import datetime
 import time
 import traceback
+from datetime import datetime, timezone
 from typing import Callable, Dict, List, Optional, Union
 
 import requests
@@ -145,7 +145,7 @@ class REST:
         url: URL = URL(base_url + "/" + version + path)
         if (
             self.config.expires_in
-            and datetime.datetime.utcnow().timestamp() >= self.config.expires_in
+            and datetime.now(timezone.utc).timestamp() >= self.config.expires_in
             or not self.config.access_token
         ):
             self.config.access_token, expiry = self._auth_token()
@@ -154,7 +154,7 @@ class REST:
                     self.config.expires_in = expiry.timestamp() - 120
                 else:
                     self.config.expires_in = (
-                        datetime.datetime.utcnow().timestamp() + expiry - 120
+                        datetime.now(timezone.utc).timestamp() + expiry - 120
                     )
 
         headers[self.config.auth_header] = (
