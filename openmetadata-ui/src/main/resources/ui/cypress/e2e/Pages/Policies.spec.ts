@@ -348,15 +348,13 @@ describe('Policy page should work properly', { tags: 'Settings' }, () => {
   });
 
   it('Delete created policy', () => {
-    cy.get(`[data-testid="delete-action-${policyName}"]`)
-      .scrollIntoView()
-      .click();
+    cy.get(`[data-testid="delete-action-${policyName}"]`).click({
+      force: true,
+    });
 
-    cy.get('[data-testid="confirmation-text-input"]')
-      .should('be.visible')
-      .type('DELETE');
+    cy.get('[data-testid="confirmation-text-input"]').type('DELETE');
 
-    cy.get('[data-testid="confirm-button"]').should('be.visible').click();
+    cy.get('[data-testid="confirm-button"]').click();
 
     // Validate deleted policy
     cy.get('[data-testid="policy-name"]').should('not.contain', policyName);

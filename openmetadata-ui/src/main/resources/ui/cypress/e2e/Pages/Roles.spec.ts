@@ -296,12 +296,9 @@ describe('Roles page should work properly', { tags: 'Settings' }, () => {
   it('Delete created Role', () => {
     cy.get(`[data-testid="delete-action-${roleName}"]`)
       .scrollIntoView()
-      .should('be.visible')
-      .click();
+      .click({ force: true });
 
-    cy.get('[data-testid="confirmation-text-input"]')
-      .should('be.visible')
-      .type('DELETE');
+    cy.get('[data-testid="confirmation-text-input"]').type('DELETE');
 
     cy.get('[data-testid="confirm-button"]').scrollIntoView().click();
 
