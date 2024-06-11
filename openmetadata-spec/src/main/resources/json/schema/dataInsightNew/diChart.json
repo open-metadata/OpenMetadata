@@ -9,11 +9,15 @@
         "org.openmetadata.schema.EntityInterface"
     ],
     "definitions": {
-        "function":{
+        "function": {
             "description": "aggregation function for chart",
             "type": "string",
             "enum": [
-                "count", "sum", "avg", "min", "max"
+                "count",
+                "sum",
+                "avg",
+                "min",
+                "max"
             ]
         }
     },
@@ -40,6 +44,26 @@
         },
         "function": {
             "$ref": "#/definitions/function"
+        },
+        "field": {
+            "description": "Filter field for the data insight chart.",
+            "type": "string"
+        },
+        "filter": {
+            "description": "Filter value for the data insight chart.",
+            "type": "string"
+        },
+        "groupBy": {
+            "description": "Breakdown field for the data insight chart.",
+            "type": "string"
+        },
+        "xAxisLabel": {
+            "description": "X-axis label for the data insight chart.",
+            "type": "string"
+        },
+        "yAxisLabel": {
+            "description": "Y-axis label for the data insight chart.",
+            "type": "string"
         },
         "owner": {
             "description": "Owner of this chart",
