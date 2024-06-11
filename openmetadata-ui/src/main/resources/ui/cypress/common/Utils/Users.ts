@@ -218,7 +218,6 @@ export const editDisplayName = (editedUserName: string) => {
   cy.get('[data-testid="displayName"]').type(editedUserName);
   interceptURL('PATCH', '/api/v1/users/*', 'updateName');
   cy.get('[data-testid="inline-save-btn"]').click();
-  cy.get('[data-testid="edit-displayName"]').scrollIntoView();
   cy.get('[data-testid="user-name"]').should('contain', editedUserName);
 };
 
@@ -288,9 +287,6 @@ export const handleAdminUpdateDetails = (
   editTeams(teamName);
 
   // edit description
-  cy.wait(500);
-  cy.get('.ant-collapse-expand-icon > .anticon > svg').scrollIntoView();
-  cy.get('.ant-collapse-expand-icon > .anticon > svg').click();
   editDescription(updatedDescription);
 
   // edit roles

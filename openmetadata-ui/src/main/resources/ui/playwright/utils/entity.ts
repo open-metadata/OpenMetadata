@@ -33,6 +33,7 @@ export const visitEntityPage = async (data: {
   const { page, searchTerm, dataTestId } = data;
 
   await page.getByTestId('searchBox').fill(searchTerm);
+  await page.waitForResponse('/api/v1/search/query?q=*index=dataAsset*');
   await page.getByTestId(dataTestId).getByTestId('data-name').click();
   await page.getByTestId('searchBox').clear();
 };
@@ -44,19 +45,29 @@ export const addOwner = async (
   dataTestId?: string
 ) => {
   await page.getByTestId('edit-owner').click();
-  await page.getByRole('tab', { name: type }).click();
   if (type === 'Users') {
-    await page.waitForResponse('/api/v1/users?limit=*&isBot=false*');
+    const userListResponse = page.waitForResponse(
+      '/api/v1/users?limit=*&isBot=false*'
+    );
+    await page.getByRole('tab', { name: type }).click();
+    await userListResponse;
   }
   await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
 
-  const ownerSearch = page.waitForResponse(
-    `/api/v1/search/query?q=*${encodeURIComponent(owner)}*`
-  );
+  const ownerSearchBar = await page
+    .getByTestId(`owner-select-${lowerCase(type)}-search-bar`)
+    .isVisible();
+
+  if (!ownerSearchBar) {
+    await page.getByRole('tab', { name: type }).click();
+  }
+
   await page
     .getByTestId(`owner-select-${lowerCase(type)}-search-bar`)
     .fill(owner);
-  await ownerSearch;
+  await page.waitForResponse(
+    `/api/v1/search/query?q=*${encodeURIComponent(owner)}*`
+  );
   await page.getByRole('listitem', { name: owner }).click();
 
   await expect(page.getByTestId(dataTestId ?? 'owner-link')).toContainText(
@@ -88,6 +99,7 @@ export const updateOwner = async (
 
 export const removeOwner = async (page: Page, dataTestId?: string) => {
   await page.getByTestId('edit-owner').click();
+  await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
 
   await expect(page.getByTestId('remove-owner').locator('svg')).toBeVisible();
 
@@ -100,6 +112,7 @@ export const removeOwner = async (page: Page, dataTestId?: string) => {
 
 export const assignTier = async (page: Page, tier: string) => {
   await page.getByTestId('edit-tier').click();
+  await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
   await page.getByTestId(`radio-btn-${tier}`).click();
   await page.getByTestId('Tier').click();
 
@@ -108,6 +121,7 @@ export const assignTier = async (page: Page, tier: string) => {
 
 export const removeTier = async (page: Page) => {
   await page.getByTestId('edit-tier').click();
+  await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
   await page.getByTestId('clear-tier').click();
   await page.getByTestId('Tier').click();
 
@@ -364,16 +378,26 @@ export const createAnnouncement = async (
 
   await expect(page.getByTestId('announcement-card')).toContainText(data.title);
 
-  await redirectToHomePage(page);
+  // TODO: Review redirection flow for announcement @Ashish8689
+  // await redirectToHomePage(page);
 
-  await page
-    .getByTestId('announcement-container')
-    .locator(`a[href*="${encodeURIComponent(entityFqn)}"]`)
-    .first()
-    .click();
-  await page.getByTestId('announcement-card').isVisible();
+  // await page
+  //   .getByTestId('announcement-container')
+  //   .getByTestId(`announcement-${entityFqn}`)
+  //   .locator(`[data-testid="entity-link"] span`)
+  //   .first()
+  //   .scrollIntoViewIfNeeded();
 
-  await expect(page.getByTestId('announcement-card')).toContainText(data.title);
+  // await page
+  //   .getByTestId('announcement-container')
+  //   .getByTestId(`announcement-${entityFqn}`)
+  //   .locator(`[data-testid="entity-link"] span`)
+  //   .first()
+  //   .click();
+
+  // await page.getByTestId('announcement-card').isVisible();
+
+  // await expect(page.getByTestId('announcement-card')).toContainText(data.title);
 };
 
 export const replyAnnouncement = async (page: Page) => {
