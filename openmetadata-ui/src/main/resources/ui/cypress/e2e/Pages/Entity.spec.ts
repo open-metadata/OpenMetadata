@@ -18,6 +18,8 @@ import MlModelClass from '../../common/Entities/MlModelClass';
 import PipelineClass from '../../common/Entities/PipelineClass';
 import SearchIndexClass from '../../common/Entities/SearchIndexClass';
 import TopicClass from '../../common/Entities/TopicClass';
+import { updateJWTTokenExpiryTime } from '../../common/Utils/Login';
+import { JWT_EXPIRY_TIME_MAP } from '../../constants/constants';
 import { CustomPropertySupportedEntityList } from '../../constants/CustomProperty.constant';
 import DashboardClass from './../../common/Entities/DashboardClass';
 import { CustomPropertyTypeByName } from './../../common/Utils/CustomProperty';
@@ -44,12 +46,14 @@ describe('Entity detail page', { tags: 'DataAssets' }, () => {
   before(() => {
     cy.login();
 
+    updateJWTTokenExpiryTime(JWT_EXPIRY_TIME_MAP['2 hours']);
     EntityClass.preRequisitesForTests();
   });
 
   after(() => {
     cy.login();
 
+    updateJWTTokenExpiryTime(JWT_EXPIRY_TIME_MAP['1 hour']);
     EntityClass.postRequisitesForTests();
   });
   entities.forEach((entity) => {
