@@ -12,10 +12,9 @@
 Metabase Models
 """
 from typing import List, Optional
+
+from pydantic import BaseModel, BeforeValidator, Field
 from typing_extensions import Annotated
-
-from pydantic import BaseModel, Field, BeforeValidator
-
 
 MetabaseStrId = Annotated[str, BeforeValidator(lambda x: str(x))]
 
