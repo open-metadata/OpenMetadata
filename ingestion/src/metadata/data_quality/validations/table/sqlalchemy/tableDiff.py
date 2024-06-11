@@ -20,11 +20,9 @@ from metadata.data_quality.validations.base_test_handler import BaseTestValidato
 from metadata.data_quality.validations.mixins.sqa_validator_mixin import (
     SQAValidatorMixin,
 )
+from metadata.data_quality.validations.models import TableDiffRuntimeParameters
 from metadata.data_quality.validations.runtime_param_setter.table_diff_params_setter import (
     TableDiffParamsSetter,
-)
-from metadata.data_quality.validations.table.sqlalchemy.models import (
-    TableDiffRuntimeParameters,
 )
 from metadata.generated.schema.tests.basic import (
     TestCaseResult,

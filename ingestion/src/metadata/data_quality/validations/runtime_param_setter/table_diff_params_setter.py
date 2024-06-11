@@ -15,11 +15,9 @@ from urllib.parse import urlparse
 
 from sqlalchemy.engine import Engine
 
+from metadata.data_quality.validations.models import TableDiffRuntimeParameters
 from metadata.data_quality.validations.runtime_param_setter.param_setter import (
     RuntimeParameterSetter,
-)
-from metadata.data_quality.validations.table.sqlalchemy.models import (
-    TableDiffRuntimeParameters,
 )
 from metadata.generated.schema.entity.data.table import Constraint, Table
 from metadata.generated.schema.entity.services.databaseService import DatabaseService
