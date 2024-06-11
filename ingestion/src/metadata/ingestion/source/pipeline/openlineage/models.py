@@ -24,7 +24,7 @@ class TableDetails(BaseModel):
     Table Details containing information relevant to OM operations.
     """
 
-    _schema: str = Field(alias="schema")
+    schema_: str = Field(alias="schema")
     name: str
     fqn: Optional[str]
     raw: Dict

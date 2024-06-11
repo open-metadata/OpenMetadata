@@ -353,11 +353,13 @@ class OpenLineageUnitTest(unittest.TestCase):
 
         inputs = [
             TableDetails(
+                schema="dummy",
                 name="schema.input_table1",
                 fqn="database.schema.input_table_1",
                 raw={"namespace": "hive://"},
             ),
             TableDetails(
+                schema="dummy",
                 name="schema.input_table2",
                 fqn="database.schema.input_table_2",
                 raw={"namespace": "hive://"},
@@ -365,6 +367,7 @@ class OpenLineageUnitTest(unittest.TestCase):
         ]
         outputs = [
             TableDetails(
+                schema="dummy",
                 name="schema.output_table",
                 fqn="database.schema.output_table",
                 raw={
