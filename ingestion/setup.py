@@ -157,7 +157,11 @@ plugins: Dict[str, Set[str]] = {
         "sqlalchemy-bigquery>=1.2.2",
     },
     "bigtable": {"google-cloud-bigtable>=2.0.0", VERSIONS["pandas"]},
-    "clickhouse": {"clickhouse-driver~=0.2", "clickhouse-sqlalchemy~=0.2", DATA_DIFF["clickhouse"]},
+    "clickhouse": {
+        "clickhouse-driver~=0.2",
+        "clickhouse-sqlalchemy~=0.2",
+        DATA_DIFF["clickhouse"],
+    },
     "dagster": {
         VERSIONS["pymysql"],
         "psycopg2-binary",

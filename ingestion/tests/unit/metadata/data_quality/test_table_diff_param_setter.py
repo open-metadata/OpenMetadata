@@ -77,7 +77,7 @@ def test_partitioned_where_clause(input, expected):
         testDefinition=EntityReference(id=uuid4(), type="testDefinition"),
         testSuite=EntityReference(id=uuid4(), type="testSuite"),
         entityLink=EntityLink(
-            __root__="<#E::table::POSTGRES_SERVICE.dvdrental.public.customer>"
+            root="<#E::table::POSTGRES_SERVICE.dvdrental.public.customer>"
         ),
         parameterValues=[
             TestCaseParameterValue(

@@ -13,7 +13,7 @@
 Interfaces with database for all database engine
 supporting sqlalchemy abstraction layer
 """
-from datetime import datetime, timezone
+from datetime import datetime
 from typing import Optional, Type
 
 from metadata.data_quality.interface.test_suite_interface import TestSuiteInterface
