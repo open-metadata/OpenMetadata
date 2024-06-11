@@ -41,10 +41,10 @@ class BaseTestValidator(ABC):
     runtime_parameter_setter: Optional[Type[RuntimeParameterSetter]] = None
 
     def __init__(
-            self,
-            runner: QueryRunner,
-            test_case: TestCase,
-            execution_date: Union[datetime, float],
+        self,
+        runner: QueryRunner,
+        test_case: TestCase,
+        execution_date: Union[datetime, float],
     ) -> None:
         self.runner = runner
         self.test_case = test_case
@@ -60,12 +60,12 @@ class BaseTestValidator(ABC):
         raise NotImplementedError
 
     def get_test_case_param_value(
-            self,
-            test_case_param_vals: list[TestCaseParameterValue],
-            name: str,
-            type_: T,
-            default: Optional[R] = None,
-            pre_processor: Optional[Callable] = None,
+        self,
+        test_case_param_vals: list[TestCaseParameterValue],
+        name: str,
+        type_: T,
+        default: Optional[R] = None,
+        pre_processor: Optional[Callable] = None,
     ) -> Optional[Union[R, T]]:
         """Give a column and a type return the value with the appropriate type casting for the
         test case definition.
@@ -91,14 +91,16 @@ class BaseTestValidator(ABC):
         return type_(pre_processed_value)
 
     def get_test_case_result_object(  # pylint: disable=too-many-arguments
-            self,
-            execution_date: Union[datetime, float],
-            status: TestCaseStatus,
-            result: str,
-            test_result_value: List[TestResultValue],
-            row_count: Optional[int] = None,
-            failed_rows: Optional[int] = None,
-            passed_rows: Optional[int] = None,
+        self,
+        execution_date: Union[datetime, float],
+        status: TestCaseStatus,
+        result: str,
+        test_result_value: List[TestResultValue],
+        row_count: Optional[int] = None,
+        failed_rows: Optional[int] = None,
+        passed_rows: Optional[int] = None,
+        min_bound: Optional[float] = None,
+        max_bound: Optional[float] = None,
     ) -> TestCaseResult:
         """Returns a TestCaseResult object with the given args
 
@@ -116,12 +118,15 @@ class BaseTestValidator(ABC):
             result=result,
             testResultValue=test_result_value,
             sampleData=None,
+            # if users don't set the min/max bound, we'll change the inf/-inf (used for computation) to None
+            minBound=None if min_bound == float("-inf") else min_bound,
+            maxBound=None if max_bound == float("inf") else max_bound,
         )
 
         if (row_count is not None and row_count != 0) and (
-                # we'll need at least one of these to be not None to compute the other
-                (failed_rows is not None)
-                or (passed_rows is not None)
+            # we'll need at least one of these to be not None to compute the other
+            (failed_rows is not None)
+            or (passed_rows is not None)
         ):
             passed_rows = passed_rows if passed_rows is not None else (row_count - failed_rows)  # type: ignore
             failed_rows = (
@@ -154,7 +159,7 @@ class BaseTestValidator(ABC):
         """
         return TestCaseStatus.Success if condition else TestCaseStatus.Failed
 
-    def get_min_bound(self, param_name: str):
+    def get_min_bound(self, param_name: str) -> Optional[float]:
         """get min value for max value in column test case"""
         return self.get_test_case_param_value(
             self.test_case.parameterValues,  # type: ignore
@@ -163,7 +168,7 @@ class BaseTestValidator(ABC):
             default=float("-inf"),
         )
 
-    def get_max_bound(self, param_name: str):
+    def get_max_bound(self, param_name: str) -> Optional[float]:
         """get max value for max value in column test case"""
         return self.get_test_case_param_value(
             self.test_case.parameterValues,  # type: ignore
