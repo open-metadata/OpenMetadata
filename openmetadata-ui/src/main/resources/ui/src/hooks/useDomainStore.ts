@@ -43,7 +43,11 @@ export const useDomainStore = create<DomainStore>()(
         } else {
           set({ domainLoading: true });
           try {
-            const { data } = await getDomainList({ limit: PAGE_SIZE_LARGE });
+            const { data } = await getDomainList({
+              limit: PAGE_SIZE_LARGE,
+              fields: 'parent',
+            });
+
             set({
               domains: data,
               domainOptions: getDomainOptions(data),
