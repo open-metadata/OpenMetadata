@@ -29,6 +29,7 @@ import {
 } from '../../../../generated/tests/testCase';
 import {
   EntityType,
+  TestCaseParameterDefinition,
   TestDataType,
   TestDefinition,
   TestPlatform,
@@ -166,19 +167,24 @@ const TestCaseForm: React.FC<TestCaseFormProps> = ({
     description?: string;
   }): CreateTestCase => {
     const selectedDefinition = getSelectedTestDefinition();
-    const paramsValue = selectedDefinition?.parameterDefinition?.[0];
 
     const parameterValues = Object.entries(value.params || {}).map(
-      ([key, value]) => ({
-        name: key,
-        value:
-          paramsValue?.dataType === TestDataType.Array
-            ? // need to send array as string formate
-              JSON.stringify(
-                (value as { value: string }[]).map((data) => data.value)
-              )
-            : value,
-      })
+      ([key, value]) => {
+        const paramsValue = selectedDefinition?.parameterDefinition?.find(
+          (param: TestCaseParameterDefinition) => param?.name === key
+        );
+
+        return {
+          name: key,
+          value:
+            paramsValue?.dataType === TestDataType.Array
+              ? // need to send array as string formate
+                JSON.stringify(
+                  (value as { value: string }[]).map((data) => data.value)
+                )
+              : value,
+        };
+      }
     );
     const name =
       value.testName?.trim() ||
