@@ -448,6 +448,9 @@ const ExploreV1: React.FC<ExploreProps> = ({
                   minWidth: 600,
                   flex: 0.65,
                 }}
+                hideSecondPanel={
+                  !showSummaryPanel && !loading && !entityDetails
+                }
                 pageTitle={t('label.explore')}
                 secondPanel={{
                   children: showSummaryPanel && entityDetails && !loading && (
