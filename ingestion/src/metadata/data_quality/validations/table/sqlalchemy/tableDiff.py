@@ -49,24 +49,27 @@ class TableDiffValidator(BaseTestValidator, SQAValidatorMixin):
         try:
             return self._run()
         except KeyError as e:
-            return TestCaseResult(
+            result = TestCaseResult(
                 timestamp=self.execution_date,  # type: ignore
                 testCaseStatus=self.get_test_case_status(False),
                 result=f"MISMATCHED_COLUMNS: One of the tables is missing the column: '{e}'\n"
-                "Use two tables with the same schema or provide the extraColumns parameter.",
-                testResultValue=[],
+                       "Use two tables with the same schema or provide the extraColumns parameter.",
+                testResultValue=[TestResultValue(name="diffCount", value=str(0))],
             )
+            logger.error(result.result)
+            return result
         except Exception as e:
-            # TODO should I return a failed test case here?
-            logger.debug(
+            logger.error(
                 f"Unexpected error while running the table diff test: {str(e)}\n{traceback.format_exc()}"
             )
-            return TestCaseResult(
+            result = TestCaseResult(
                 timestamp=self.execution_date,  # type: ignore
                 testCaseStatus=TestCaseStatus.Failed,
                 result=f"ERROR: Unexpected error while running the table diff test: {str(e)}",
-                testResultValue=[],
+                testResultValue=[TestResultValue(name="diffCount", value=str(0))],
             )
+            logger.debug(result.result)
+            return result
 
     def _run(self) -> TestCaseResult:
         threshold = self.get_test_case_param_value(
@@ -132,9 +135,9 @@ class TableDiffValidator(BaseTestValidator, SQAValidatorMixin):
         return "forbiddenRegex"
 
     def get_test_case_result(
-        self,
-        num_diffs: int,
-        threshold: int,
+            self,
+            num_diffs: int,
+            threshold: int,
     ) -> TestCaseResult:
         return TestCaseResult(
             timestamp=self.execution_date,  # type: ignore

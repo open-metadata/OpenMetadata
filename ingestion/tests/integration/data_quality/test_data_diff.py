@@ -1,3 +1,5 @@
+import sys
+
 import pytest
 from pydantic import BaseModel
 from sqlalchemy import VARBINARY
@@ -51,6 +53,9 @@ from metadata.ingestion.models.custom_pydantic import CustomSecretStr
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.workflow.data_quality import TestSuiteWorkflow
 from metadata.workflow.metadata import MetadataWorkflow
+
+if not sys.version_info >= (3, 9):
+    pytest.skip("requires python 3.9+", allow_module_level=True)
 
 
 class TestParameters(BaseModel):
