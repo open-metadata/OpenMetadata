@@ -3,6 +3,7 @@
   "displayName": "Search Indexing",
   "appConfiguration": {
     "entities": [
+      "all",
       "table",
       "dashboard",
       "topic",

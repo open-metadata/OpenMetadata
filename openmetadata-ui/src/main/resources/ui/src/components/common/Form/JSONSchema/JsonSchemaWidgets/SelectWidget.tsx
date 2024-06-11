@@ -23,6 +23,7 @@ const SelectWidget: FC<WidgetProps> = ({
 }) => {
   return (
     <Select
+      allowClear
       autoFocus={rest.autofocus}
       className="d-block w-full"
       data-testid="select-widget"

@@ -17,6 +17,7 @@
   },
   "appConfiguration": {
     "entities": [
+      "all",
       "table",
       "dashboard",
       "topic",
