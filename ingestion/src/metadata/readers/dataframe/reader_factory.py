@@ -40,9 +40,11 @@ class SupportedTypes(Enum):
     AVRO = "avro"
     PARQUET = "parquet"
     JSON = "json"
-    JSONL = "jsonl"
     JSONGZ = "json.gz"
     JSONZIP = "json.zip"
+    JSONL = "jsonl"
+    JSONLGZ = "jsonl.gz"
+    JSONLZIP = "jsonl.zip"
 
 
 DF_READER_MAP = {
@@ -51,9 +53,11 @@ DF_READER_MAP = {
     SupportedTypes.AVRO.value: AvroDataFrameReader,
     SupportedTypes.PARQUET.value: ParquetDataFrameReader,
     SupportedTypes.JSON.value: JSONDataFrameReader,
-    SupportedTypes.JSONL.value: JSONDataFrameReader,
     SupportedTypes.JSONGZ.value: JSONDataFrameReader,
     SupportedTypes.JSONZIP.value: JSONDataFrameReader,
+    SupportedTypes.JSONL.value: JSONDataFrameReader,
+    SupportedTypes.JSONLGZ.value: JSONDataFrameReader,
+    SupportedTypes.JSONLZIP.value: JSONDataFrameReader,
 }
 
 
