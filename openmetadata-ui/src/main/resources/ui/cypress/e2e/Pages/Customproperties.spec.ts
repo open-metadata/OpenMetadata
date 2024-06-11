@@ -37,7 +37,8 @@ import {
   visitEntityDetailsPage,
 } from '../../common/Utils/Entity';
 import { getToken } from '../../common/Utils/LocalStorage';
-import { ENTITIES, uuid } from '../../constants/constants';
+import { updateJWTTokenExpiryTime } from '../../common/Utils/Login';
+import { ENTITIES, JWT_EXPIRY_TIME_MAP, uuid } from '../../constants/constants';
 import { EntityType, SidebarItem } from '../../constants/Entity.interface';
 import { DATABASE_SERVICE } from '../../constants/EntityConstant';
 import { GLOSSARY_1 } from '../../constants/glossary.constant';
@@ -75,6 +76,15 @@ const customPropertyValue = {
 };
 
 describe('Custom Properties should work properly', { tags: 'Settings' }, () => {
+  before(() => {
+    cy.login();
+    updateJWTTokenExpiryTime(JWT_EXPIRY_TIME_MAP['2 hours']);
+  });
+
+  after(() => {
+    updateJWTTokenExpiryTime(JWT_EXPIRY_TIME_MAP['1 hour']);
+  });
+
   beforeEach(() => {
     cy.login();
   });
