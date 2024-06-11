@@ -12,6 +12,7 @@
  */
 import { APIRequestContext } from '@playwright/test';
 import { uuid } from '../../utils/common';
+import { getRandomFirstName } from '../../utils/user';
 
 type ResponseDataType = {
   name: string;
@@ -25,9 +26,10 @@ type ResponseDataType = {
 };
 
 export class Glossary {
+  randomName = getRandomFirstName();
   data = {
-    name: `PW%General.${uuid()}`,
-    displayName: `PW % General ${uuid()}`,
+    name: `PW%${uuid()}.${this.randomName}`,
+    displayName: `PW % ${uuid()} ${this.randomName}`,
     description:
       'Glossary terms that describe general conceptual terms. **Note that these conceptual terms are used for automatically labeling the data.**',
     reviewers: [],
@@ -48,10 +50,10 @@ export class Glossary {
 
     this.responseData = await response.json();
 
-    return response.body;
+    return await response.json();
   }
 
-  async get() {
+  get() {
     return this.responseData;
   }
 
@@ -62,6 +64,6 @@ export class Glossary {
       )}?recursive=true&hardDelete=true`
     );
 
-    return response.body;
+    return await response.json();
   }
 }

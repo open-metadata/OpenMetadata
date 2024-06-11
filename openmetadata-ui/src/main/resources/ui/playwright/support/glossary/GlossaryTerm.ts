@@ -12,6 +12,7 @@
  */
 import { APIRequestContext } from '@playwright/test';
 import { uuid } from '../../utils/common';
+import { getRandomLastName } from '../../utils/user';
 
 type ResponseDataType = {
   name: string;
@@ -28,9 +29,10 @@ type ResponseDataType = {
 };
 
 export class GlossaryTerm {
+  randomName = getRandomLastName();
   data = {
-    name: `PW.Bank%Number-${uuid()}`,
-    displayName: `PW BankNumber ${uuid()}`,
+    name: `PW.${uuid()}%${this.randomName}`,
+    displayName: `PW ${uuid()}%${this.randomName}`,
     description: 'A bank account number.',
     mutuallyExclusive: false,
     glossary: '',
@@ -50,10 +52,10 @@ export class GlossaryTerm {
 
     this.responseData = await response.json();
 
-    return response.body;
+    return await response.json();
   }
 
-  async get() {
+  get() {
     return this.responseData;
   }
 
@@ -64,6 +66,6 @@ export class GlossaryTerm {
       )}?recursive=true&hardDelete=true`
     );
 
-    return response.body;
+    return await response.json();
   }
 }

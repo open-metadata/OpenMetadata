@@ -15,6 +15,7 @@ import { Domain } from '../support/domain/Domain';
 
 export const assignDomain = async (page: Page, domain: Domain['data']) => {
   await page.getByTestId('add-domain').click();
+  await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
   await page
     .getByTestId('selectable-list')
     .getByTestId('searchbar')
@@ -31,6 +32,7 @@ export const assignDomain = async (page: Page, domain: Domain['data']) => {
 
 export const updateDomain = async (page: Page, domain: Domain['data']) => {
   await page.getByTestId('add-domain').click();
+  await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
   await page.getByTestId('selectable-list').getByTestId('searchbar').clear();
   await page
     .getByTestId('selectable-list')
@@ -48,6 +50,7 @@ export const updateDomain = async (page: Page, domain: Domain['data']) => {
 
 export const removeDomain = async (page: Page) => {
   await page.getByTestId('add-domain').click();
+  await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
 
   await expect(page.getByTestId('remove-owner').locator('path')).toBeVisible();
 
