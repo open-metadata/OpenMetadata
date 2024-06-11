@@ -1770,7 +1770,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     return !supportsOwner ? null : getFromEntityRef(entity.getId(), Relationship.OWNS, null, false);
   }
 
-  public final EntityReference getDomain(T entity) {
+  protected EntityReference getDomain(T entity) {
     return supportsDomain
         ? getFromEntityRef(entity.getId(), Relationship.HAS, DOMAIN, false)
         : null;

@@ -16,4 +16,6 @@ public interface ResourceContextInterface {
   List<TagLabel> getTags();
 
   EntityInterface getEntity();
+
+  EntityReference getDomain();
 }
