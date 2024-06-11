@@ -154,8 +154,7 @@ export const getQueryFilterToExcludeDomainTerms = (
   return {
     query: {
       bool: {
-        must: [
-          [...(mustTerm as QueryFieldInterface[])],
+        must: mustTerm.concat([
           {
             bool: {
               must_not: [
@@ -167,7 +166,7 @@ export const getQueryFilterToExcludeDomainTerms = (
               ],
             },
           },
-        ],
+        ]),
       },
     },
   };
@@ -191,14 +190,14 @@ export const domainTypeTooltipDataRender = () => (
   </Space>
 );
 
-export const getDomainOptions = (domains: Domain[]) => {
+export const getDomainOptions = (domains: Domain[] | EntityReference[]) => {
   const domainOptions: ItemType[] = [
     {
       label: t('label.all-domain-plural'),
       key: DEFAULT_DOMAIN_VALUE,
     },
   ];
-  domains.forEach((domain: Domain) => {
+  domains.forEach((domain) => {
     domainOptions.push({
       label: getEntityName(domain),
       key: domain.fullyQualifiedName ?? '',

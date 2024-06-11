@@ -87,4 +87,5 @@ export interface DomainStore {
   updateDomains: (domainsArr: Domain[]) => void;
   refreshDomains: () => Promise<void>;
   updateActiveDomain: (activeDomainKey: string) => void;
+  setDomains: (domains: Domain[]) => void;
 }

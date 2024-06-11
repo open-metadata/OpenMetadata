@@ -37,6 +37,7 @@ import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { Glossary } from '../../../generated/entity/data/glossary';
 import { GlossaryTerm } from '../../../generated/entity/data/glossaryTerm';
 import { Operation } from '../../../generated/entity/policies/policy';
+import { useDomainStore } from '../../../hooks/useDomainStore';
 import { useFqn } from '../../../hooks/useFqn';
 import {
   deleteGlossary,
@@ -49,6 +50,7 @@ import {
   updateGlossaryVotes,
 } from '../../../rest/glossaryAPI';
 import Fqn from '../../../utils/Fqn';
+import { filterGlossaryTermsByDomain } from '../../../utils/GlossaryUtils';
 import { checkPermission } from '../../../utils/PermissionsUtils';
 import { getGlossaryPath } from '../../../utils/RouterUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
@@ -59,6 +61,7 @@ const GlossaryPage = () => {
   const { permissions } = usePermissionProvider();
   const { fqn: glossaryFqn } = useFqn();
   const history = useHistory();
+  const { activeDomain } = useDomainStore();
 
   const [isLoading, setIsLoading] = useState(true);
 
@@ -133,7 +136,8 @@ const GlossaryPage = () => {
         fields: 'owner,tags,reviewers,votes,domain',
         limit: PAGE_SIZE_LARGE,
       });
-      setGlossaries(data);
+      const filteredGlossary = filterGlossaryTermsByDomain(data, activeDomain);
+      setGlossaries(filteredGlossary);
     } catch (error) {
       showErrorToast(error as AxiosError);
     } finally {
