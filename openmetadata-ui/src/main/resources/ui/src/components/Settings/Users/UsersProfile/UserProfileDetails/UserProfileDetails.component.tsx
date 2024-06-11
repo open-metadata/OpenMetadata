@@ -102,15 +102,17 @@ const UserProfileDetails = ({
   );
 
   const onDisplayNameChange = useCallback(
-    (e: React.ChangeEvent<HTMLInputElement>) =>
-      setDisplayName(isEmpty(e.target.value) ? undefined : e.target.value),
+    (e: React.ChangeEvent<HTMLInputElement>) => setDisplayName(e.target.value),
     []
   );
 
   const handleDisplayNameSave = useCallback(async () => {
     if (displayName !== userData.displayName) {
       setIsLoading(true);
-      await updateUserDetails({ displayName }, 'displayName');
+      await updateUserDetails(
+        { displayName: isEmpty(displayName) ? undefined : displayName },
+        'displayName'
+      );
       setIsLoading(false);
     }
     setIsDisplayNameEdit(false);
