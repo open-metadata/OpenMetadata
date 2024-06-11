@@ -185,6 +185,11 @@
       "description": "When `true` indicates the test case supports row level passed/failed.",
       "type": "boolean",
       "default": false
+    },
+    "supportsDynamicAssertion": {
+      "description": "When `true` indicates the test case supports dynamic assertions.",
+      "type": "boolean",
+      "default": false
     }
   },
   "required": ["name", "description", "testPlatforms"],

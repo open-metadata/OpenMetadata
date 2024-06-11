@@ -25,6 +25,12 @@ export const MAX_ZOOM_VALUE = 2.5;
 export const ZOOM_SLIDER_STEP = 0.1;
 export const ZOOM_BUTTON_STEP = 0.25;
 export const ZOOM_TRANSITION_DURATION = 800;
+export const DATATYPES_HAVING_SUBFIELDS = [
+  'RECORD',
+  'STRUCT',
+  'ARRAY',
+  'UNION',
+];
 
 export const PIPELINE_EDGE_WIDTH = 200;
 

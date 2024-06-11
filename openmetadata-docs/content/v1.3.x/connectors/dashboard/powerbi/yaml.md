@@ -224,7 +224,7 @@ Refer to the section [here](/connectors/dashboard/powerbi#powerbi-admin-and-nona
 
 {% codeBlock fileName="filename.yaml" %}
 
-```yaml
+```yaml {% isCodeBlock=true %}
 source:
   type: powerbi
   serviceName: local_powerbi

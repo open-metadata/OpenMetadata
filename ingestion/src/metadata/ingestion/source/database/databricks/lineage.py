@@ -12,7 +12,7 @@
 Databricks lineage module
 """
 import traceback
-from datetime import datetime, timezone
+from datetime import datetime
 from typing import Iterator
 
 from metadata.generated.schema.type.basic import DateTime
@@ -44,7 +44,7 @@ class DatabricksLineageSource(DatabricksQueryParserSource, LineageSource):
                         userName=row.get("user_name"),
                         startTime=row.get("query_start_time_ms"),
                         endTime=row.get("execution_end_time_ms"),
-                        analysisDate=DateTime(datetime.now(tz=timezone.utc)),
+                        analysisDate=DateTime(datetime.now()),
                         serviceName=self.config.serviceName,
                     )
             except Exception as exc:

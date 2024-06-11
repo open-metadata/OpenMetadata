@@ -143,7 +143,7 @@ If you have a User Store configured, then:
 
 {% codeBlock fileName="filename.yaml" %}
 
-```yaml
+```yaml {% isCodeBlock=true %}
 source:
   type: sapHana
   serviceName: <service name>

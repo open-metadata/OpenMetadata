@@ -165,7 +165,7 @@ class AirbyteUnitTest(TestCase):
     def __init__(self, methodName, airbyte_client, test_connection) -> None:
         super().__init__(methodName)
         test_connection.return_value = False
-        config = OpenMetadataWorkflowConfig.parse_obj(mock_airbyte_config)
+        config = OpenMetadataWorkflowConfig.model_validate(mock_airbyte_config)
         self.airbyte = AirbyteSource.create(
             mock_airbyte_config["source"],
             config.workflowConfig.openMetadataServerConfig,

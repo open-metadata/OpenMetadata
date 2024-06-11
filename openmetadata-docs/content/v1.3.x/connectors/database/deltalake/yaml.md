@@ -140,7 +140,7 @@ You will need to provide the driver to the ingestion image, and pass the `classp
 
 {% codeBlock fileName="filename.yaml" %}
 
-```yaml
+```yaml {% isCodeBlock=true %}
 source:
   type: deltalake
   serviceName: "<service name>"

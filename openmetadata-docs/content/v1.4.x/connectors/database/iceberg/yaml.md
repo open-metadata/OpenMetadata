@@ -108,7 +108,7 @@ The workflow is modeled around the following
 
 {% codeBlock fileName="filename.yaml" %}
 
-```yaml
+```yaml {% isCodeBlock=true %}
 source:
   type: iceberg
   serviceName: glue_test
@@ -196,7 +196,7 @@ source:
 
 {% codeBlock fileName="filename.yaml" %}
 
-```yaml
+```yaml {% isCodeBlock=true %}
 source:
   type: iceberg
   serviceName: glue_test
@@ -296,7 +296,7 @@ source:
 
 {% codeBlock fileName="filename.yaml" %}
 
-```yaml
+```yaml {% isCodeBlock=true %}
 source:
   type: iceberg
   serviceName: glue_test
@@ -308,7 +308,7 @@ source:
 ```yaml {% srNumber=1 %}
         name: my_hive
 ```
-```yaml
+```yaml {% isCodeBlock=true %}
         connection:
 ```
 ```yaml {% srNumber=2 %}
@@ -443,7 +443,7 @@ Most Catalogs should have a working default warehouse location.
 
 {% codeBlock fileName="filename.yaml" %}
 
-```yaml
+```yaml {% isCodeBlock=true %}
 source:
   type: iceberg
   serviceName: glue_test
@@ -455,7 +455,7 @@ source:
 ```yaml {% srNumber=1 %}
         name: my_rest
 ```
-```yaml
+```yaml {% isCodeBlock=true %}
         connection:
 ```
 ```yaml {% srNumber=2 %}

@@ -33,6 +33,10 @@ jest.mock('../../../../common/ProfilePicture/ProfilePicture', () => {
     .mockImplementation(({ displayName }) => <p>{displayName}</p>);
 });
 
+jest.mock('../../../../../utils/EntityUtils', () => ({
+  getEntityName: jest.fn().mockReturnValue('getEntityName'),
+}));
+
 describe('Test User User Profile Image Component', () => {
   it('should render user profile image component', async () => {
     render(<UserProfileImage {...mockPropsData} />);

@@ -293,13 +293,13 @@ class AtlasUnitTest(TestCase):
     def __init__(self, methodName, test_connection) -> None:
         super().__init__(methodName)
         test_connection.return_value = False
-        self.config = OpenMetadataWorkflowConfig.parse_obj(mock_atlas_config)
+        self.config = OpenMetadataWorkflowConfig.model_validate(mock_atlas_config)
         self.atlas_source = AtlasSource.create(
             mock_atlas_config["source"],
             OpenMetadata(self.config.workflowConfig.openMetadataServerConfig),
         )
         self.metadata = OpenMetadata(
-            OpenMetadataConnection.parse_obj(
+            OpenMetadataConnection.model_validate(
                 mock_atlas_config["workflowConfig"]["openMetadataServerConfig"]
             )
         )

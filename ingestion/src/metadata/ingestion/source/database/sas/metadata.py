@@ -122,7 +122,7 @@ class SasSource(
         self.databases = None
         self.database_schemas = None
 
-        self.timestamp = Timestamp(int(datetime.now(timezone.utc).timestamp() * 1000))
+        self.timestamp = Timestamp(int(datetime.now().timestamp() * 1000))
 
     @classmethod
     def create(
@@ -572,11 +572,17 @@ class SasSource(
                 ):
                     return
 
+                raw_create_date: Optional[datetime] = table_entity_instance.get(
+                    "creationTimeStamp"
+                )
+                if raw_create_date:
+                    raw_create_date = raw_create_date.replace(tzinfo=timezone.utc)
+
                 # create Profiles & Data Quality Column
                 table_profile_request = CreateTableProfileRequest(
                     tableProfile=TableProfile(
                         timestamp=self.timestamp,
-                        createDateTime=table_entity_instance["creationTimeStamp"],
+                        createDateTime=raw_create_date,
                         rowCount=int(table_extension.get("rowCount", 0)),
                         columnCount=int(table_extension.get("columnCount", 0)),
                         sizeInByte=int(table_extension.get("dataSize", 0)),

@@ -38,7 +38,7 @@ UNICODE_REGEX_REPLACEMENT_FILE_PATHS = [
     f"{ingestion_path}src/metadata/generated/schema/type/basic.py",
 ]
 
-args = f"--custom-template-dir {directory_root}/ingestion/codegen_custom_templates --input {directory_root}openmetadata-spec/src/main/resources/json/schema --output-model-type pydantic_v2.BaseModel --use-annotated --base-class metadata.ingestion.models.custom_pydantic.BaseModel --input-file-type jsonschema --output {ingestion_path}src/metadata/generated/schema --set-default-enum-member".split(" ")
+args = f"--input {directory_root}openmetadata-spec/src/main/resources/json/schema --output-model-type pydantic_v2.BaseModel --use-annotated --base-class metadata.ingestion.models.custom_pydantic.BaseModel --input-file-type jsonschema --output {ingestion_path}src/metadata/generated/schema --set-default-enum-member".split(" ")
 
 main(args)
 
@@ -81,3 +81,20 @@ for file_path in UNSUPPORTED_REGEX_PATTERN_FILE_PATHS:
     with open(file_path, "w", encoding=UTF_8) as file_:
         file_.write(content)
 
+# Until https://github.com/koxudaxi/datamodel-code-generator/issues/1996
+# Supporting timezone aware datetime is too complex for the profiler
+DATETIME_AWARE_FILE_PATHS = [
+    f"{ingestion_path}src/metadata/generated/schema/type/basic.py",
+]
+
+for file_path in DATETIME_AWARE_FILE_PATHS:
+    with open(file_path, "r", encoding=UTF_8) as file_:
+        content = file_.read()
+        content = content.replace(
+            "from pydantic import AnyUrl, AwareDatetime, ConfigDict, EmailStr, Field, RootModel",
+            "from pydantic import AnyUrl, ConfigDict, EmailStr, Field, RootModel"
+        )
+        content = content.replace("from datetime import date, time", "from datetime import date, time, datetime")
+        content = content.replace("AwareDatetime", "datetime")
+    with open(file_path, "w", encoding=UTF_8) as file_:
+        file_.write(content)

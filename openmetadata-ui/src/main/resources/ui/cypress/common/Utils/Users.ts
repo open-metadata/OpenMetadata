@@ -218,7 +218,6 @@ export const editDisplayName = (editedUserName: string) => {
   cy.get('[data-testid="displayName"]').type(editedUserName);
   interceptURL('PATCH', '/api/v1/users/*', 'updateName');
   cy.get('[data-testid="inline-save-btn"]').click();
-  cy.get('[data-testid="edit-displayName"]').scrollIntoView();
   cy.get('[data-testid="user-name"]').should('contain', editedUserName);
 };
 
@@ -245,9 +244,9 @@ export const editTeams = (teamName: string) => {
   cy.get('[data-testid="inline-save-btn"]').click({ timeout: 10000 });
   verifyResponseStatusCode('@updateTeams', 200);
 
-  cy.get('.ant-collapse-expand-icon > .anticon > svg').click();
-  cy.get('.page-layout-v1-vertical-scroll').scrollTo(0, 0);
-  cy.get(`[data-testid="${teamName}"]`).should('be.visible');
+  cy.get(`[data-testid="${teamName}-link"]`)
+    .scrollIntoView()
+    .should('be.visible');
 };
 
 export const handleUserUpdateDetails = (
@@ -284,8 +283,7 @@ export const handleAdminUpdateDetails = (
   editDisplayName(editedUserName);
 
   // edit teams
-  cy.get('.ant-collapse-expand-icon > .anticon > svg').scrollIntoView();
-  cy.get('.ant-collapse-expand-icon > .anticon > svg').click();
+  cy.get('.ant-collapse-expand-icon > .anticon > svg').scrollIntoView().click();
   editTeams(teamName);
 
   // edit description

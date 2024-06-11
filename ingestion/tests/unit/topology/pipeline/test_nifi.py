@@ -202,7 +202,7 @@ class NifiUnitTest(TestCase):
 
         nifi_token_prop.return_value.token.return_value = "token"
 
-        config = OpenMetadataWorkflowConfig.parse_obj(mock_nifi_config)
+        config = OpenMetadataWorkflowConfig.model_validate(mock_nifi_config)
         self.nifi = NifiSource.create(
             mock_nifi_config["source"],
             config.workflowConfig.openMetadataServerConfig,

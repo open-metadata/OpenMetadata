@@ -64,12 +64,15 @@ jest.mock('../UserProfileImage/UserProfileImage.component', () => {
 });
 
 jest.mock('../../../../common/InlineEdit/InlineEdit.component', () => {
-  return jest.fn().mockImplementation(({ onSave, children }) => (
+  return jest.fn().mockImplementation(({ onSave, onCancel, children }) => (
     <div data-testid="inline-edit">
       <span>InlineEdit</span>
       {children}
       <button data-testid="display-name-save-button" onClick={onSave}>
         DisplayNameButton
+      </button>
+      <button data-testid="display-name-cancel-button" onClick={onCancel}>
+        DisplayNameCancelButton
       </button>
     </div>
   ));
@@ -223,6 +226,28 @@ describe('Test User Profile Details Component', () => {
     fireEvent.click(editButton);
 
     expect(screen.getByText('InlineEdit')).toBeInTheDocument();
+  });
+
+  it('should not render changed displayName in input if not saved', async () => {
+    render(<UserProfileDetails {...mockPropsData} />, {
+      wrapper: MemoryRouter,
+    });
+
+    fireEvent.click(screen.getByTestId('edit-displayName'));
+
+    act(() => {
+      fireEvent.change(screen.getByTestId('displayName'), {
+        target: { value: 'data-test' },
+      });
+    });
+
+    act(() => {
+      fireEvent.click(screen.getByTestId('display-name-cancel-button'));
+    });
+
+    fireEvent.click(screen.getByTestId('edit-displayName'));
+
+    expect(screen.getByTestId('displayName')).toHaveValue('');
   });
 
   it('should call updateUserDetails on click of DisplayNameButton', async () => {
