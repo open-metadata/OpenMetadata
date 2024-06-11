@@ -12,7 +12,7 @@
  */
 
 import { AxiosError } from 'axios';
-import { isEmpty } from 'lodash';
+import { isEmpty, uniqBy } from 'lodash';
 import React, {
   useCallback,
   useEffect,
@@ -146,12 +146,15 @@ const MyDataPage = () => {
       // Adding announcement widget to the layout when announcements are present
       // Since the widget wont be in the layout config of the page
       // ok
-      [
-        ...(isEmpty(announcements)
-          ? []
-          : [customizePageClassBase.announcementWidget]),
-        ...layout,
-      ].map((widget) => (
+      uniqBy(
+        [
+          ...(isEmpty(announcements)
+            ? []
+            : [customizePageClassBase.announcementWidget]),
+          ...layout,
+        ],
+        'i'
+      ).map((widget) => (
         <div data-grid={widget} key={widget.i}>
           {getWidgetFromKey({
             announcements: announcements,

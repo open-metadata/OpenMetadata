@@ -60,7 +60,7 @@ export const GLOSSARY_1 = {
   description: 'This is the Cypress Glossary',
   reviewers: [
     { name: 'Aaron Johnson', type: 'user' },
-    { name: 'Aaron Singh', type: 'user' },
+    { name: 'Andrea Reed', type: 'user' },
   ],
   tag: 'PersonalData.Personal',
   isMutually: true,
