@@ -831,3 +831,8 @@ export const ID: Record<
     api: '/api/v1/services/storageServices?*',
   },
 };
+
+export const JWT_EXPIRY_TIME_MAP = {
+  '1 hour': 3600,
+  '2 hours': 7200,
+};

@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { interceptURL } from '../common';
+import { getToken } from './LocalStorage';
 
 /**
  * Try Performing login with the given username and password.
@@ -45,4 +46,26 @@ export const performLogin = (username, password) => {
 
   cy.get('.ant-btn').contains('Login').should('be.visible').click();
   cy.wait('@loginUser');
+};
+
+export const updateJWTTokenExpiryTime = (expiryTime: number) => {
+  cy.getAllLocalStorage().then((data) => {
+    const token = getToken(data);
+
+    cy.request({
+      method: 'PUT',
+      url: `/api/v1/system/settings`,
+      headers: { Authorization: `Bearer ${token}` },
+      body: {
+        config_type: 'loginConfiguration',
+        config_value: {
+          maxLoginFailAttempts: 3,
+          accessBlockTime: 600,
+          jwtTokenExpiryTime: expiryTime,
+        },
+      },
+    }).then((response) => {
+      expect(response.status).to.eq(200);
+    });
+  });
 };
