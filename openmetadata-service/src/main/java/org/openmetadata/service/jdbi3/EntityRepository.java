@@ -2456,7 +2456,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
       storeExtension(updated);
     }
 
-    private void updateDomain() {
+    protected void updateDomain() {
       EntityReference origDomain = getEntityReference(original.getDomain());
       EntityReference updatedDomain = getEntityReference(updated.getDomain());
       if (origDomain == updatedDomain) {

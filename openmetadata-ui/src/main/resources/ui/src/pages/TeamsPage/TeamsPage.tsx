@@ -236,7 +236,7 @@ const TeamsPage = () => {
     setFetchingAdvancedDetails(true);
     try {
       const data = await getTeamByName(name, {
-        fields: 'users,defaultRoles,policies,childrenCount,domain',
+        fields: 'users,defaultRoles,policies,childrenCount,teamDomains',
         include: Include.All,
       });
 

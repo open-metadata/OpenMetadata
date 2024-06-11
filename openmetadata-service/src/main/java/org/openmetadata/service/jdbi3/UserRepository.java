@@ -76,9 +76,9 @@ public class UserRepository extends EntityRepository<User> {
   static final String TEAMS_FIELD = "teams";
   public static final String AUTH_MECHANISM_FIELD = "authenticationMechanism";
   static final String USER_PATCH_FIELDS =
-      "profile,roles,teams,authenticationMechanism,isEmailVerified,personas,defaultPersona";
+      "profile,roles,teams,authenticationMechanism,isEmailVerified,personas,defaultPersona,userDomains";
   static final String USER_UPDATE_FIELDS =
-      "profile,roles,teams,authenticationMechanism,isEmailVerified,personas,defaultPersona";
+      "profile,roles,teams,authenticationMechanism,isEmailVerified,personas,defaultPersona,userDomains";
   private volatile EntityReference organization;
 
   public UserRepository() {
@@ -119,6 +119,26 @@ public class UserRepository extends EntityRepository<User> {
   @Override
   public User getByName(UriInfo uriInfo, String name, Fields fields) {
     return super.getByName(uriInfo, EntityInterfaceUtil.quoteName(name), fields);
+  }
+
+  private List<EntityReference> getDomains(UUID teamId) {
+    // Team does not have domain. 'teamDomains' is the field for user as team can belong to multiple
+    // domains
+    return findFrom(teamId, USER, Relationship.HAS, Entity.DOMAIN);
+  }
+
+  @Override
+  protected void storeDomain(User entity, EntityReference exclude) {
+    for (EntityReference domainRef : listOrEmpty(entity.getUserDomains())) {
+      // Add relationship domain --- has ---> entity
+      LOG.info(
+          "Adding domain {} for user {}:{}",
+          domainRef.getFullyQualifiedName(),
+          entityType,
+          entity.getId());
+      addRelationship(
+          domainRef.getId(), entity.getId(), Entity.DOMAIN, entityType, Relationship.HAS);
+    }
   }
 
   public User getByEmail(UriInfo uriInfo, String email, Fields fields) {
@@ -213,6 +233,8 @@ public class UserRepository extends EntityRepository<User> {
         fields.contains("defaultPersonas") ? getDefaultPersona(user) : user.getDefaultPersona());
     user.withInheritedRoles(
         fields.contains(ROLES_FIELD) ? getInheritedRoles(user) : user.getInheritedRoles());
+    user.setUserDomains(
+        fields.contains("userDomains") ? getDomains(user.getId()) : user.getUserDomains());
   }
 
   @Override
@@ -556,6 +578,41 @@ public class UserRepository extends EntityRepository<User> {
       List<EntityReference> deleted = new ArrayList<>();
       recordListChange(
           ROLES_FIELD, origRoles, updatedRoles, added, deleted, EntityUtil.entityReferenceMatch);
+    }
+
+    protected void updateDomain() {
+      if (operation.isPut() && !nullOrEmpty(original.getDomain()) && updatedByBot()) {
+        // Revert change to non-empty domain if it is being updated by a bot
+        // This is to prevent bots from overwriting the domain. Domain need to be
+        // updated with a PATCH request
+        updated.setUserDomains(original.getUserDomains());
+        return;
+      }
+
+      List<EntityReference> origDomains =
+          EntityUtil.populateEntityReferences(original.getUserDomains());
+      List<EntityReference> updatedDomains =
+          EntityUtil.populateEntityReferences(updated.getUserDomains());
+
+      // Remove Domains for the user
+      deleteTo(original.getId(), USER, Relationship.HAS, Entity.DOMAIN);
+
+      for (EntityReference domain : updatedDomains) {
+        addRelationship(domain.getId(), original.getId(), Entity.DOMAIN, USER, Relationship.HAS);
+      }
+
+      origDomains.sort(EntityUtil.compareEntityReference);
+      updatedDomains.sort(EntityUtil.compareEntityReference);
+
+      List<EntityReference> added = new ArrayList<>();
+      List<EntityReference> deleted = new ArrayList<>();
+      recordListChange(
+          "userDomains",
+          origDomains,
+          updatedDomains,
+          added,
+          deleted,
+          EntityUtil.entityReferenceMatch);
     }
 
     private void updateTeams(User original, User updated) {

@@ -1409,7 +1409,8 @@ public class UserResource extends EntityResource<User, UserRepository> {
         .withUpdatedBy(updatedBy)
         .withUpdatedAt(System.currentTimeMillis())
         .withTeams(EntityUtil.toEntityReferences(create.getTeams(), Entity.TEAM))
-        .withRoles(EntityUtil.toEntityReferences(create.getRoles(), Entity.ROLE));
+        .withRoles(EntityUtil.toEntityReferences(create.getRoles(), Entity.ROLE))
+        .withUserDomains(EntityUtil.toEntityReferences(create.getUserDomains(), Entity.DOMAIN));
   }
 
   public void validateEmailAlreadyExists(String email) {

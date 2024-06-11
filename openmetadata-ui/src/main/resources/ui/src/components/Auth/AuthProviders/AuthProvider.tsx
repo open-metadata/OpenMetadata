@@ -93,7 +93,8 @@ interface AuthProviderProps {
 
 const cookieStorage = new CookieStorage();
 
-const userAPIQueryFields = 'profile,teams,roles,personas,defaultPersona,domain';
+const userAPIQueryFields =
+  'profile,teams,roles,personas,defaultPersona,userDomains';
 
 const isEmailVerifyField = 'isEmailVerified';
 

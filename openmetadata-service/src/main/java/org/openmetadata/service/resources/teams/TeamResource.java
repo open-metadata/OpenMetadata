@@ -660,6 +660,7 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
         .withParents(EntityUtil.toEntityReferences(ct.getParents(), Entity.TEAM))
         .withChildren(EntityUtil.toEntityReferences(ct.getChildren(), Entity.TEAM))
         .withPolicies(EntityUtil.toEntityReferences(ct.getPolicies(), Entity.POLICY))
-        .withEmail(ct.getEmail());
+        .withEmail(ct.getEmail())
+        .withTeamDomains(EntityUtil.toEntityReferences(ct.getTeamDomains(), Entity.DOMAIN));
   }
 }
