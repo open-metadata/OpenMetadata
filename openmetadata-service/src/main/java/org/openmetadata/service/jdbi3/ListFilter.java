@@ -178,14 +178,7 @@ public class ListFilter extends Filter<ListFilter> {
     if (applicationType == null) {
       return "";
     }
-    if (Boolean.TRUE.equals(DatasourceConfig.getInstance().isMySQL())) {
-      return String.format(
-          "(JSON_UNQUOTE(JSON_EXTRACT(ingestion_pipeline_entity.json, '$.sourceConfig.config.appConfig.type')) = '%s')",
-          applicationType);
-    }
-    return String.format(
-        "(ingestion_pipeline_entity.json -> 'sourceConfig' -> 'config' -> 'appConfig' ->> 'type' = '%s')",
-        applicationType);
+    return String.format("(appType = '%s')", applicationType);
   }
 
   private String getTestCaseCondition() {
@@ -279,15 +272,13 @@ public class ListFilter extends Filter<ListFilter> {
     String inCondition = getInConditionFromString(pipelineType);
     if (Boolean.TRUE.equals(DatasourceConfig.getInstance().isMySQL())) {
       return tableName == null
-          ? String.format(
-              "JSON_UNQUOTE(JSON_EXTRACT(ingestion_pipeline_entity.json, '$.pipelineType')) IN (%s)",
-              inCondition)
+          ? String.format("pipelineType IN (%s)", inCondition)
           : String.format(
               "%s.JSON_UNQUOTE(JSON_EXTRACT(ingestion_pipeline_entity.json, '$.pipelineType')) IN (%s)",
               tableName, inCondition);
     }
     return tableName == null
-        ? String.format("ingestion_pipeline_entity.json->>'pipelineType' IN (%s)", inCondition)
+        ? String.format("pipelineType IN (%s)", inCondition)
         : String.format("%s.json->>'pipelineType' IN (%s)", tableName, inCondition);
   }
 
