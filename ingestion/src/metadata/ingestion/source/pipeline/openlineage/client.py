@@ -265,8 +265,8 @@ class OpenLineageKafkaEventReader(OpenLineageEventReader):
         def process_kafka_message(raw_kafka_msg) -> None:
             """Process individual Kafka message."""
             try:
-                ol_event = json.loads(raw_kafka_msg.value())
-                event = message_to_open_lineage_event(ol_event)
+                openlineage_event = json.loads(raw_kafka_msg.value())
+                event = message_to_open_lineage_event(openlineage_event)
                 openmetadata.store_raw_openlineage_event(
                     raw_kafka_msg.value().decode("utf-8")
                 )
@@ -326,8 +326,7 @@ class OpenLineageOpenMetadataEventReader(OpenLineageEventReader):
         try:
             for event in metadata.get_unprocessed_complete_events():
                 self.processed_events.append(event)
-                olevent = message_to_open_lineage_event(json.loads(event.event))
-                yield olevent
+                yield message_to_open_lineage_event(json.loads(event.event))
 
         except json.JSONDecodeError as e:
             logger.error(
