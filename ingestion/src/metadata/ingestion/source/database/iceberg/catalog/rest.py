@@ -37,7 +37,7 @@ class IcebergRestCatalog(IcebergCatalogBase):
                 "'connection' is not an instance of 'RestCatalogConnection'"
             )
 
-        if catalog.connection.credential:
+        if catalog.connection.credential and catalog.connection.credential.clientSecret:
             client_id = catalog.connection.credential.clientId.get_secret_value()
             client_secret = (
                 catalog.connection.credential.clientSecret.get_secret_value()
