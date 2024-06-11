@@ -29,7 +29,6 @@ import {
 } from '../../../../generated/tests/testCase';
 import {
   EntityType,
-  TestCaseParameterDefinition,
   TestDataType,
   TestDefinition,
   TestPlatform,
@@ -48,6 +47,7 @@ import {
   getNameFromFQN,
   replaceAllSpacialCharWith_,
 } from '../../../../utils/CommonUtils';
+import { createTestCaseParameters } from '../../../../utils/DataQuality/DataQualityUtils';
 import { getEntityName } from '../../../../utils/EntityUtils';
 import { generateFormFields } from '../../../../utils/formUtils';
 import { generateEntityLink } from '../../../../utils/TableUtils';
@@ -168,23 +168,9 @@ const TestCaseForm: React.FC<TestCaseFormProps> = ({
   }): CreateTestCase => {
     const selectedDefinition = getSelectedTestDefinition();
 
-    const parameterValues = Object.entries(value.params || {}).map(
-      ([key, value]) => {
-        const paramsValue = selectedDefinition?.parameterDefinition?.find(
-          (param: TestCaseParameterDefinition) => param?.name === key
-        );
-
-        return {
-          name: key,
-          value:
-            paramsValue?.dataType === TestDataType.Array
-              ? // need to send array as string formate
-                JSON.stringify(
-                  (value as { value: string }[]).map((data) => data.value)
-                )
-              : value,
-        };
-      }
+    const parameterValues = createTestCaseParameters(
+      value.params,
+      selectedDefinition
     );
     const name =
       value.testName?.trim() ||
