@@ -281,9 +281,15 @@ describe('Test User Profile Details Component', () => {
 
   it('should pass displayName undefined to the updateUserDetails in case of empty string', async () => {
     await act(async () => {
-      render(<UserProfileDetails {...mockPropsData} />, {
-        wrapper: MemoryRouter,
-      });
+      render(
+        <UserProfileDetails
+          {...mockPropsData}
+          userData={{ ...mockPropsData.userData, displayName: 'Test' }}
+        />,
+        {
+          wrapper: MemoryRouter,
+        }
+      );
     });
 
     await act(async () => {
@@ -291,20 +297,6 @@ describe('Test User Profile Details Component', () => {
     });
 
     expect(screen.getByText('InlineEdit')).toBeInTheDocument();
-
-    /* Only doing 
-      fireEvent.change(screen.getByTestId('displayName'), {
-              target: {
-                value: '',
-              },
-            });
-      does not trigger the event
-    */
-    await act(async () => {
-      fireEvent.change(screen.getByTestId('displayName'), {
-        target: { value: 'd' },
-      });
-    });
 
     await act(async () => {
       fireEvent.change(screen.getByTestId('displayName'), {
