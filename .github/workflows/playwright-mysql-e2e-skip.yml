@@ -9,7 +9,7 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-# Avoid running Maven CI on each PR opened which does not modify Java or UI code
+# Avoid running Playwright on each PR opened which does not modify Java or UI code
 # https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/defining-the-mergeability-
 # of-pull-requests/troubleshooting-required-status-checks#handling-skipped-but-required-checks
 name: MySQL PR Playwright E2E Tests
@@ -22,8 +22,7 @@ on:
       - synchronize
       - reopened
       - ready_for_review
-    paths-ignore:
-      - "openmetadata-service/**"
+    paths:
       - openmetadata-docs/**
       - .github/**
       - openmetadata-dist/**
