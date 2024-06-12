@@ -15,6 +15,7 @@ Module to manage SSL certificates
 """
 import os
 import tempfile
+import traceback
 from functools import singledispatch, singledispatchmethod
 from typing import Optional, Union, cast
 
@@ -43,6 +44,10 @@ from metadata.generated.schema.entity.services.connections.messaging.kafkaConnec
 )
 from metadata.generated.schema.security.ssl import verifySSLConfig
 from metadata.ingestion.connections.builders import init_empty_connection_arguments
+from metadata.ingestion.source.connections import get_connection
+from metadata.utils.logger import utils_logger
+
+logger = utils_logger()
 
 
 class SSLManager:
@@ -179,3 +184,14 @@ def _(connection):
             else None
         )
     return None
+
+
+def get_ssl_connection(service_config):
+    try:
+        ssl_manager: SSLManager = check_ssl_and_init(service_config)
+        if ssl_manager:
+            service_config = ssl_manager.setup_ssl(service_config)
+    except Exception:
+        logger.debug("Failed to setup SSL for the connection")
+        logger.debug(traceback.format_exc())
+    return get_connection(service_config)
