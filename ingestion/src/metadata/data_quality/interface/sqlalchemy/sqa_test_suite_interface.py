@@ -17,7 +17,6 @@ supporting sqlalchemy abstraction layer
 from datetime import datetime
 from typing import Optional, Union
 
-from metadata.utils.ssl_manager import get_ssl_connection
 from sqlalchemy.orm import DeclarativeMeta
 from sqlalchemy.orm.util import AliasedClass
 
@@ -30,13 +29,13 @@ from metadata.generated.schema.tests.testCase import TestCase
 from metadata.generated.schema.tests.testDefinition import TestDefinition
 from metadata.ingestion.connections.session import create_and_bind_session
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.ingestion.source.connections import get_connection
 from metadata.mixins.sqalchemy.sqa_mixin import SQAInterfaceMixin
 from metadata.profiler.processor.runner import QueryRunner
 from metadata.profiler.processor.sampler.sqlalchemy.sampler import SQASampler
 from metadata.utils.constants import TEN_MIN
 from metadata.utils.importer import import_test_case_class
 from metadata.utils.logger import test_suite_logger
+from metadata.utils.ssl_manager import get_ssl_connection
 from metadata.utils.timeout import cls_timeout
 
 logger = test_suite_logger()
