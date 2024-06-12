@@ -41,7 +41,6 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 )
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.ingestion.source.connections import get_connection
 from metadata.profiler.source.metadata import (
     OpenMetadataSource,
     ProfilerSourceAndEntity,
@@ -52,6 +51,7 @@ from metadata.utils.class_helper import get_service_type_from_source_type
 from metadata.utils.filters import filter_by_database, filter_by_schema, filter_by_table
 from metadata.utils.importer import import_source_class
 from metadata.utils.logger import profiler_logger
+from metadata.utils.ssl_manager import get_ssl_connection
 
 logger = profiler_logger()
 
@@ -112,7 +112,7 @@ class OpenMetadataSourceExt(OpenMetadataSource):
         if database_name:
             logger.info(f"Ingesting from database: {database_name}")
             new_service_connection.database = database_name
-        self.engine = get_connection(new_service_connection)
+        self.engine = get_ssl_connection(new_service_connection)
         self.inspector = inspect(self.engine)
         self._connection = None  # Lazy init as well
 
