@@ -14,19 +14,18 @@ import { Typography } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { compare } from 'fast-json-patch';
-import { isUndefined } from 'lodash';
+import { get, isUndefined } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link } from 'react-router-dom';
 import { ReactComponent as DomainIcon } from '../../../assets/svg/ic-domain.svg';
 import { DE_ACTIVE_COLOR } from '../../../constants/constants';
+import { EntityType } from '../../../enums/entity.enum';
 import { EntityReference } from '../../../generated/entity/type';
 import {
   getAPIfromSource,
   getEntityAPIfromSource,
 } from '../../../utils/Assets/AssetsUtils';
-import { getEntityName } from '../../../utils/EntityUtils';
-import { getDomainPath } from '../../../utils/RouterUtils';
+import { renderDomainLink } from '../../../utils/DomainUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { AssetsUnion } from '../../DataAssets/AssetsSelectionModal/AssetSelectionModal.interface';
 import { DataAssetWithDomains } from '../../DataAssets/DataAssetsHeader/DataAssetsHeader.interface';
@@ -46,13 +45,20 @@ export const DomainLabel = ({
   multiple = false,
 }: DomainLabelProps) => {
   const { t } = useTranslation();
-  const [activeDomain, setActiveDomain] = useState<EntityReference>();
+  const [activeDomain, setActiveDomain] = useState<EntityReference[]>([]);
 
   const handleDomainSave = useCallback(
     async (selectedDomain: EntityReference | EntityReference[]) => {
+      const fieldData =
+        entityType === EntityType.TEAM
+          ? 'teamDomains'
+          : entityType === EntityType.USER
+          ? 'userDomains'
+          : 'domain';
+
       const entityDetails = getEntityAPIfromSource(entityType as AssetsUnion)(
         entityFqn,
-        { fields: 'domain' }
+        { fields: fieldData }
       );
 
       try {
@@ -60,14 +66,19 @@ export const DomainLabel = ({
         if (entityDetailsResponse) {
           const jsonPatch = compare(entityDetailsResponse, {
             ...entityDetailsResponse,
-            domain: selectedDomain,
+            [fieldData]: selectedDomain,
           });
 
           const api = getAPIfromSource(entityType as AssetsUnion);
           const res = await api(entityId, jsonPatch);
 
-          // update the domain details here
-          setActiveDomain(res.domain);
+          const entityDomains = get(res, fieldData, {});
+          if (Array.isArray(entityDomains)) {
+            setActiveDomain(entityDomains);
+          } else if (entityDomains) {
+            // update the domain details here
+            setActiveDomain([entityDomains]);
+          }
           !isUndefined(afterDomainUpdateAction) &&
             afterDomainUpdateAction(res as DataAssetWithDomains);
         }
@@ -80,25 +91,32 @@ export const DomainLabel = ({
   );
 
   useEffect(() => {
-    setActiveDomain(domain);
+    if (domain) {
+      if (Array.isArray(domain)) {
+        setActiveDomain(domain);
+      } else {
+        setActiveDomain([domain as EntityReference]);
+      }
+    }
   }, [domain]);
 
   const domainLink = useMemo(() => {
-    if (activeDomain || domainDisplayName) {
-      return (
-        <Link
-          className={classNames(
-            'text-primary no-underline domain-link',
-            { 'font-medium text-xs': !showDomainHeading },
+    if (
+      activeDomain &&
+      Array.isArray(activeDomain) &&
+      activeDomain.length > 0
+    ) {
+      return activeDomain.map((domain, index) => (
+        <React.Fragment key={index}>
+          {renderDomainLink(
+            domain,
+            domainDisplayName,
+            showDomainHeading,
             textClassName
           )}
-          data-testid="domain-link"
-          to={getDomainPath(activeDomain?.fullyQualifiedName)}>
-          {isUndefined(domainDisplayName)
-            ? getEntityName(activeDomain)
-            : domainDisplayName}
-        </Link>
-      );
+          {index < activeDomain.length - 1 && ', '}
+        </React.Fragment>
+      ));
     } else {
       return (
         <Typography.Text
@@ -120,7 +138,7 @@ export const DomainLabel = ({
         <DomainSelectableList
           hasPermission={Boolean(hasPermission)}
           multiple={multiple}
-          selectedDomain={activeDomain ? [activeDomain] : []}
+          selectedDomain={activeDomain}
           onUpdate={handleDomainSave}
         />
       )

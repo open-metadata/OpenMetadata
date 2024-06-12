@@ -12,9 +12,11 @@
  */
 import { Divider, Space, Typography } from 'antd';
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
+import classNames from 'classnames';
 import { t } from 'i18next';
-import { isEmpty } from 'lodash';
+import { isEmpty, isUndefined } from 'lodash';
 import React, { Fragment, ReactNode } from 'react';
+import { Link } from 'react-router-dom';
 import { OwnerLabel } from '../components/common/OwnerLabel/OwnerLabel.component';
 import {
   DEFAULT_DOMAIN_VALUE,
@@ -36,6 +38,7 @@ import {
   getDiffByFieldName,
   getDiffValue,
 } from './EntityVersionUtils';
+import { getDomainPath } from './RouterUtils';
 
 export const getOwner = (
   hasPermission: boolean,
@@ -206,3 +209,21 @@ export const getDomainOptions = (domains: Domain[] | EntityReference[]) => {
 
   return domainOptions;
 };
+
+export const renderDomainLink = (
+  domain: EntityReference,
+  domainDisplayName: ReactNode,
+  showDomainHeading: boolean,
+  textClassName?: string
+) => (
+  <Link
+    className={classNames(
+      'text-primary no-underline domain-link',
+      { 'font-medium text-xs': !showDomainHeading },
+      textClassName
+    )}
+    data-testid="domain-link"
+    to={getDomainPath(domain?.fullyQualifiedName)}>
+    {isUndefined(domainDisplayName) ? getEntityName(domain) : domainDisplayName}
+  </Link>
+);

@@ -296,7 +296,7 @@ const TeamsInfo = ({
     <Space size={0}>
       <DomainLabel
         multiple
-        domain={currentTeam.domain}
+        domain={currentTeam.teamDomains}
         entityFqn={fullyQualifiedName ?? ''}
         entityId={id ?? ''}
         entityType={EntityType.TEAM}
