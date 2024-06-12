@@ -55,6 +55,7 @@ entities.forEach((EntityClass) => {
 
       await EntityDataClass.preRequisitesForTests(apiContext);
       await entity.create(apiContext);
+      await entity.prepareForTests(apiContext);
       await afterAction();
     });
 
@@ -151,6 +152,7 @@ entities.forEach((EntityClass) => {
 
     test.afterAll('Cleanup', async ({ browser }) => {
       const { apiContext, afterAction } = await createNewPage(browser);
+      await entity.cleanup(apiContext);
       await entity.delete(apiContext);
       await EntityDataClass.postRequisitesForTests(apiContext);
       await afterAction();

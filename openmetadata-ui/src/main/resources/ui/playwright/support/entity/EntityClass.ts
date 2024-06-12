@@ -85,7 +85,9 @@ export class EntityClass {
   }
 
   async cleanup(apiContext: APIRequestContext) {
-    await this.cleanupUser(apiContext);
+    if (this.cleanupUser) {
+      await this.cleanupUser(apiContext);
+    }
     // Delete custom property only for supported entities
     if (CustomPropertySupportedEntityList.includes(this.endpoint)) {
       const entitySchemaResponse = await apiContext.get(
