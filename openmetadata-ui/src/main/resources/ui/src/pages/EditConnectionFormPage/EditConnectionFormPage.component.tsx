@@ -199,12 +199,8 @@ function EditConnectionFormPage() {
           />
         ),
         className: 'service-doc-panel',
-        minWidth: 60,
-        overlay: {
-          displayThreshold: 200,
-          header: t('label.setup-guide'),
-          rotation: 'counter-clockwise',
-        },
+        minWidth: 400,
+        flex: 0.3,
       }}
     />
   );
