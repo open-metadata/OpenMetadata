@@ -65,11 +65,13 @@ const LimitWrapper = ({ resource, children }: LimitWrapperProps) => {
   return limitReached ? (
     <Tooltip
       title={`You have used ${currentLimits?.currentCount} out of ${currentLimits?.configuredLimit.limits.hardLimit} limit`}>
-      {React.cloneElement(children, {
-        disabled: true,
-        onClick: noop,
-        classNames: classNames(children.props.className, 'disabled'),
-      })}
+      <span>
+        {React.cloneElement(children, {
+          disabled: true,
+          onClick: noop,
+          classNames: classNames(children.props.className, 'disabled'),
+        })}
+      </span>
     </Tooltip>
   ) : (
     children
