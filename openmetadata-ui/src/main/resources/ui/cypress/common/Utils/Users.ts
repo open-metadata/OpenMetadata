@@ -214,7 +214,7 @@ export const updateExpiration = (expiry: number | string) => {
 export const editDisplayName = (editedUserName: string) => {
   interceptURL(
     'GET',
-    '/api/v1/feed?type=Conversation',
+    '/api/v1/feed?*type=Conversation*',
     'ActivityFeedConversation'
   );
 
