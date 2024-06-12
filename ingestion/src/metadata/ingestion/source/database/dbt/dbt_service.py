@@ -216,8 +216,7 @@ class DbtServiceSource(TopologyRunnerMixin, Source, ABC):
         """
         Prepare the data models
         """
-        for data_model_link in self.context.get().data_model_links:
-            yield data_model_link
+        yield from self.context.get().data_model_links
 
     @abstractmethod
     def create_dbt_lineage(self, data_model_link: DataModelLink) -> AddLineageRequest:
