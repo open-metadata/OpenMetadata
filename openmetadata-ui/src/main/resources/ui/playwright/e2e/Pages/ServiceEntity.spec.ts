@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { test } from '@playwright/test';
+import { CustomPropertySupportedEntityList } from '../../constant/customProperty';
 import { DatabaseClass } from '../../support/entity/DatabaseClass';
 import { DatabaseSchemaClass } from '../../support/entity/DatabaseSchemaClass';
 import { EntityDataClass } from '../../support/entity/EntityDataClass';
@@ -27,6 +28,7 @@ import {
   getToken,
   redirectToHomePage,
 } from '../../utils/common';
+import { CustomPropertyTypeByName } from '../../utils/customProperty';
 
 const entities = [
   DatabaseServiceClass,
@@ -53,6 +55,7 @@ entities.forEach((EntityClass) => {
 
       await EntityDataClass.preRequisitesForTests(apiContext);
       await entity.create(apiContext);
+      await entity.prepareForTests(apiContext);
       await afterAction();
     });
 
@@ -112,12 +115,44 @@ entities.forEach((EntityClass) => {
       await entity.inactiveAnnouncement(page);
     });
 
+    // Create custom property only for supported entities
+    if (CustomPropertySupportedEntityList.includes(entity.endpoint)) {
+      const properties = Object.values(CustomPropertyTypeByName);
+      const titleText = properties.join(', ');
+
+      test(`Set & Update ${titleText} Custom Property `, async ({ page }) => {
+        // increase timeout as it using single test for multiple steps
+        test.slow(true);
+
+        await test.step(`Set ${titleText} Custom Property`, async () => {
+          for (const type of properties) {
+            await entity.setCustomProperty(
+              page,
+              entity.customPropertyValue[type].property,
+              entity.customPropertyValue[type].value
+            );
+          }
+        });
+
+        await test.step(`Update ${titleText} Custom Property`, async () => {
+          for (const type of properties) {
+            await entity.updateCustomProperty(
+              page,
+              entity.customPropertyValue[type].property,
+              entity.customPropertyValue[type].newValue
+            );
+          }
+        });
+      });
+    }
+
     test(`Update displayName`, async ({ page }) => {
       await entity.renameEntity(page, entity.entity.name);
     });
 
     test.afterAll('Cleanup', async ({ browser }) => {
       const { apiContext, afterAction } = await createNewPage(browser);
+      await entity.cleanup(apiContext);
       await entity.delete(apiContext);
       await EntityDataClass.postRequisitesForTests(apiContext);
       await afterAction();
