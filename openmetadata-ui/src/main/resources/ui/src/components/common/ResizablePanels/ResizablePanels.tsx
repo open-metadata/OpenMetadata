@@ -36,6 +36,7 @@ const ResizablePanels: React.FC<ResizablePanelsProps> = ({
   const handleCollapse = () => {
     setIsRightPanelCollapsed((prev) => !prev);
   };
+  const panelHeight = applyDefaultStyle ? '64px' : '4px';
 
   return (
     <>
@@ -43,9 +44,7 @@ const ResizablePanels: React.FC<ResizablePanelsProps> = ({
       <ReflexContainer
         className={classNames(className, 'bg-white resizable-panels-layout')}
         orientation={orientation}
-        style={
-          applyDefaultStyle ? { height: 'calc(100vh - 64px)' } : undefined
-        }>
+        style={{ height: `calc(100vh - ${panelHeight})` }}>
         <ReflexElement
           propagateDimensions
           className={classNames(firstPanel.className, 'resizable-first-panel', {
