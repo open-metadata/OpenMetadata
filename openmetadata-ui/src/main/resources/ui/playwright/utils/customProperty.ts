@@ -15,6 +15,7 @@ import {
   EntityTypeEndpoint,
   ENTITY_PATH,
 } from '../support/entity/Entity.interface';
+import { UserClass } from '../support/user/UserClass';
 import { uuid } from './common';
 
 export enum CustomPropertyType {
@@ -221,7 +222,10 @@ export const validateValueForProperty = async (data: {
   }
 };
 
-export const getPropertyValues = (type: string) => {
+export const getPropertyValues = (
+  type: string,
+  users: Record<string, string>
+) => {
   switch (type) {
     case 'integer':
       return {
@@ -272,14 +276,14 @@ export const getPropertyValues = (type: string) => {
       };
     case 'entityReference':
       return {
-        value: 'Adam Matthews',
-        newValue: 'Aaron Singh',
+        value: users.user1,
+        newValue: users.user2,
       };
 
     case 'entityReferenceList':
       return {
-        value: 'Aaron Johnson,Organization',
-        newValue: 'Aaron Warren',
+        value: `${users.user3},Organization`,
+        newValue: users.user4,
       };
 
     default:
@@ -315,6 +319,27 @@ export const createCustomPropertyForEntity = async (
       property: CustomProperty;
     }
   >;
+  const user1 = new UserClass();
+  const user2 = new UserClass();
+  const user3 = new UserClass();
+  const user4 = new UserClass();
+  await user1.create(apiContext);
+  await user2.create(apiContext);
+  await user3.create(apiContext);
+  await user4.create(apiContext);
+  const users = {
+    user1: user1.getUserName(),
+    user2: user2.getUserName(),
+    user3: user3.getUserName(),
+    user4: user4.getUserName(),
+  };
+
+  const cleanupUser = async (apiContext: APIRequestContext) => {
+    await user1.delete(apiContext);
+    await user2.delete(apiContext);
+    await user3.delete(apiContext);
+    await user4.delete(apiContext);
+  };
 
   for (const item of propertyList) {
     const customPropertyResponse = await apiContext.put(
@@ -357,12 +382,12 @@ export const createCustomPropertyForEntity = async (
       return {
         ...prev,
         [propertyTypeName]: {
-          ...getPropertyValues(propertyTypeName),
+          ...getPropertyValues(propertyTypeName, users),
           property: curr,
         },
       };
     }, {});
   }
 
-  return customProperties;
+  return { customProperties, cleanupUser };
 };

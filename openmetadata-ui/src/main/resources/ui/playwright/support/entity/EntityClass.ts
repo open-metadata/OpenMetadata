@@ -50,6 +50,7 @@ import { EntityTypeEndpoint, ENTITY_PATH } from './Entity.interface';
 export class EntityClass {
   type: string;
   endpoint: EntityTypeEndpoint;
+  cleanupUser: (apiContext: APIRequestContext) => Promise<void>;
 
   customPropertyValue: Record<
     string,
@@ -78,11 +79,13 @@ export class EntityClass {
         this.endpoint
       );
 
-      this.customPropertyValue = data;
+      this.customPropertyValue = data.customProperties;
+      this.cleanupUser = data.cleanupUser;
     }
   }
 
   async cleanup(apiContext: APIRequestContext) {
+    await this.cleanupUser(apiContext);
     // Delete custom property only for supported entities
     if (CustomPropertySupportedEntityList.includes(this.endpoint)) {
       const entitySchemaResponse = await apiContext.get(
