@@ -27,7 +27,6 @@ import { useTranslation } from 'react-i18next';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../components/common/Loader/Loader';
 import DataModelDetails from '../../components/Dashboard/DataModel/DataModels/DataModelDetails.component';
-import { DataModelDetailsProps } from '../../components/Dashboard/DataModel/DataModels/DataModelDetails.interface';
 import { QueryVote } from '../../components/Database/TableQueries/TableQueries.interface';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import {
@@ -127,8 +126,7 @@ const DataModelsPage = () => {
     try {
       const response = await getDataModelByFqn(dashboardDataModelFQN, {
         // eslint-disable-next-line max-len
-        // add extension field when backend is updated
-        fields: `${TabSpecificField.OWNER},${TabSpecificField.TAGS},${TabSpecificField.FOLLOWERS},${TabSpecificField.VOTES},${TabSpecificField.DOMAIN},${TabSpecificField.DATA_PRODUCTS}`,
+        fields: `${TabSpecificField.OWNER},${TabSpecificField.TAGS},${TabSpecificField.FOLLOWERS},${TabSpecificField.VOTES},${TabSpecificField.DOMAIN},${TabSpecificField.DATA_PRODUCTS},${TabSpecificField.EXTENSION}`,
         include: Include.All,
       });
       setDataModelData(response);
@@ -364,10 +362,7 @@ const DataModelsPage = () => {
       handleUpdateTags={handleUpdateTags}
       handleUpdateTier={handleUpdateTier}
       updateDataModelDetailsState={updateDataModelDetailsState}
-      onUpdateDataModel={
-        // update this when backend is updated
-        handleUpdateDataModel as unknown as DataModelDetailsProps['onUpdateDataModel']
-      }
+      onUpdateDataModel={handleUpdateDataModel}
       onUpdateVote={updateVote}
     />
   );

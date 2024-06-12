@@ -26,6 +26,7 @@ import { FEED_COUNT_INITIAL_DATA } from '../../../../constants/entity.constants'
 import LineageProvider from '../../../../context/LineageProvider/LineageProvider';
 import { CSMode } from '../../../../enums/codemirror.enum';
 import { EntityTabs, EntityType } from '../../../../enums/entity.enum';
+import { DashboardDataModel } from '../../../../generated/entity/data/dashboardDataModel';
 import { TagLabel } from '../../../../generated/type/tagLabel';
 import { useFqn } from '../../../../hooks/useFqn';
 import { FeedCounts } from '../../../../interface/feed.interface';
@@ -40,7 +41,6 @@ import { ActivityFeedTab } from '../../../ActivityFeed/ActivityFeedTab/ActivityF
 import ActivityThreadPanel from '../../../ActivityFeed/ActivityThreadPanel/ActivityThreadPanel';
 import { withActivityFeed } from '../../../AppRouter/withActivityFeed';
 import { CustomPropertyTable } from '../../../common/CustomPropertyTable/CustomPropertyTable';
-import { ExtentionEntities } from '../../../common/CustomPropertyTable/CustomPropertyTable.interface';
 import DescriptionV1 from '../../../common/EntityDescription/DescriptionV1';
 import TabsLabel from '../../../common/TabsLabel/TabsLabel.component';
 import { DataAssetsHeader } from '../../../DataAssets/DataAssetsHeader/DataAssetsHeader.component';
@@ -50,10 +50,7 @@ import Lineage from '../../../Lineage/Lineage.component';
 import { EntityName } from '../../../Modals/EntityNameModal/EntityNameModal.interface';
 import PageLayoutV1 from '../../../PageLayoutV1/PageLayoutV1';
 import { SourceType } from '../../../SearchedData/SearchedData.interface';
-import {
-  DataModelDetailsProps,
-  TempDashboardDataModel,
-} from './DataModelDetails.interface';
+import { DataModelDetailsProps } from './DataModelDetails.interface';
 import ModelTab from './ModelTab/ModelTab.component';
 
 const DataModelDetails = ({
@@ -213,12 +210,12 @@ const DataModelDetails = ({
 
     setIsEditDescription(false);
   };
-  const handelExtentionUpdate = useCallback(
-    async (schema: TempDashboardDataModel) => {
+  const handelExtensionUpdate = useCallback(
+    async (updatedDataModel: DashboardDataModel) => {
       await onUpdateDataModel(
         {
           ...dataModelData,
-          extension: schema.extension,
+          extension: updatedDataModel.extension,
         },
         'extension'
       );
@@ -384,13 +381,9 @@ const DataModelDetails = ({
         children: (
           <div className="p-md">
             <CustomPropertyTable<EntityType.DASHBOARD_DATA_MODEL>
-              className=""
-              // update this when the backend is updated
-              entityDetails={
-                dataModelData as ExtentionEntities[EntityType.DASHBOARD_DATA_MODEL]
-              }
+              entityDetails={dataModelData}
               entityType={EntityType.DASHBOARD_DATA_MODEL}
-              handleExtensionUpdate={handelExtentionUpdate}
+              handleExtensionUpdate={handelExtensionUpdate}
               hasEditAccess={dataModelPermissions.ViewAll}
               hasPermission={
                 dataModelPermissions.EditAll ||

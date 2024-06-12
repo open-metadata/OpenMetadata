@@ -39,10 +39,7 @@ export type ExtentionEntities = {
   [EntityType.GLOSSARY_TERM]: GlossaryTerm;
   [EntityType.DATABASE]: Database;
   [EntityType.DATABASE_SCHEMA]: DatabaseSchema;
-  [EntityType.DASHBOARD_DATA_MODEL]: DashboardDataModel & {
-    // remove this when the backend is updated
-    extension: Table['extension'];
-  };
+  [EntityType.DASHBOARD_DATA_MODEL]: DashboardDataModel;
 };
 
 export type ExtentionEntitiesKeys = keyof ExtentionEntities;
