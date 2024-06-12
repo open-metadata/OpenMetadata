@@ -47,9 +47,9 @@ from metadata.generated.schema.type.entityLineage import (
     EntitiesEdge,
     LineageDetails,
 )
-from metadata.generated.schema.type.entityReferenceList import EntityReferenceList
 from metadata.generated.schema.type.entityLineage import Source as LineageSource
 from metadata.generated.schema.type.entityReference import EntityReference
+from metadata.generated.schema.type.entityReferenceList import EntityReferenceList
 from metadata.generated.schema.type.usageRequest import UsageRequest
 from metadata.ingestion.api.delete import delete_entity_from_source
 from metadata.ingestion.api.models import Either, Entity
@@ -622,7 +622,9 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
                             type=LINEAGE_MAP[type(chart_entity)],
                         )
                     )
-            patch_request.new_entity.charts = EntityReferenceList(charts_entity_ref_list)
+            patch_request.new_entity.charts = EntityReferenceList(
+                charts_entity_ref_list
+            )
 
             # For patch the datamodels need to be entity ref instead of fqn
             datamodel_entity_ref_list = []
@@ -637,7 +639,9 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
                             type=LINEAGE_MAP[type(datamodel_entity)],
                         )
                     )
-            patch_request.new_entity.dataModels = EntityReferenceList(datamodel_entity_ref_list)
+            patch_request.new_entity.dataModels = EntityReferenceList(
+                datamodel_entity_ref_list
+            )
         return patch_request
 
     def _get_column_lineage(

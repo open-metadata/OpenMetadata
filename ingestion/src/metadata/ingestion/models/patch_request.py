@@ -11,9 +11,9 @@
 """
 Pydantic definition for storing entities for patching
 """
-import traceback
 import json
 import logging
+import traceback
 from typing import Dict, List, Optional, Tuple
 
 import jsonpatch
@@ -363,7 +363,9 @@ def build_patch(
             )
         else:
             patch: jsonpatch.JsonPatch = jsonpatch.make_patch(
-                json.loads(source.model_dump_json(exclude_unset=True, exclude_none=True)),
+                json.loads(
+                    source.model_dump_json(exclude_unset=True, exclude_none=True)
+                ),
                 json.loads(
                     destination.model_dump_json(exclude_unset=True, exclude_none=True)
                 ),
@@ -382,7 +384,8 @@ def build_patch(
         return patch
     except Exception:
         logger.debug(traceback.format_exc())
-        logger.warning(f"Couldn't create patch.")
+        logger.warning("Couldn't build patch for Entity.")
+        return None
 
 
 def _sort_array_entity_fields(
