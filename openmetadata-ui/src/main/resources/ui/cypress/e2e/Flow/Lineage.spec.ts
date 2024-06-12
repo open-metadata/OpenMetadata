@@ -191,6 +191,7 @@ const verifyPipelineDataInDrawer = (
       term: fromNode.term,
       serviceName: fromNode.serviceName,
       entity: fromNode.entity,
+      entityFqn: fromNode.fqn,
     });
     cy.get('[data-testid="lineage"]').click();
   } else {
@@ -208,6 +209,7 @@ const addPipelineBetweenNodes = (
     term: sourceEntity.term,
     serviceName: sourceEntity.serviceName,
     entity: sourceEntity.entity,
+    entityFqn: sourceEntity.fqn,
   });
 
   cy.get('[data-testid="lineage"]').click();
@@ -295,6 +297,7 @@ describe('Lineage verification', { tags: 'DataAssets' }, () => {
         term: entity.term,
         serviceName: entity.serviceName,
         entity: entity.entity as EntityType,
+        entityFqn: entity.fqn,
       });
 
       cy.get('[data-testid="lineage"]').click();
@@ -332,6 +335,7 @@ describe('Lineage verification', { tags: 'DataAssets' }, () => {
         term: entity.term,
         serviceName: entity.serviceName,
         entity: entity.entity as EntityType,
+        entityFqn: entity.fqn,
       });
 
       cy.get('[data-testid="lineage"]').click();
