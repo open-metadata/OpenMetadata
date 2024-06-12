@@ -30,6 +30,7 @@ from metadata.ingestion.source.connections import get_connection
 from metadata.mixins.pandas.pandas_mixin import PandasInterfaceMixin
 from metadata.utils.importer import import_test_case_class
 from metadata.utils.logger import test_suite_logger
+from metadata.utils.ssl_manager import get_ssl_connection
 
 logger = test_suite_logger()
 
@@ -62,7 +63,7 @@ class PandasTestSuiteInterface(TestSuiteInterface, PandasInterfaceMixin):
         # add partition logic to test suite
         self.dfs = self.return_ometa_dataframes_sampled(
             service_connection_config=self.service_connection_config,
-            client=get_connection(self.service_connection_config).client,
+            client=get_ssl_connection(self.service_connection_config).client,
             table=self.table_entity,
             profile_sample_config=self.table_sample_config,
         )

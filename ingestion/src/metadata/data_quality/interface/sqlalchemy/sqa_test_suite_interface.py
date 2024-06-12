@@ -17,6 +17,7 @@ supporting sqlalchemy abstraction layer
 from datetime import datetime
 from typing import Optional, Union
 
+from metadata.utils.ssl_manager import get_ssl_connection
 from sqlalchemy.orm import DeclarativeMeta
 from sqlalchemy.orm.util import AliasedClass
 
@@ -72,7 +73,7 @@ class SQATestSuiteInterface(SQAInterfaceMixin, TestSuiteInterface):
 
     def create_session(self):
         self.session = create_and_bind_session(
-            get_connection(self.service_connection_config)
+            get_ssl_connection(self.service_connection_config)
         )
 
     @property
