@@ -24,6 +24,7 @@ from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.connections import get_connection, get_test_connection_fn
 from metadata.utils.helpers import get_start_and_end
 from metadata.utils.logger import ingestion_logger
+from metadata.utils.ssl_manager import get_ssl_connection
 
 logger = ingestion_logger()
 
@@ -55,7 +56,7 @@ class QueryParserSource(Source, ABC):
         self.service_connection = self.config.serviceConnection.root.config
         self.source_config = self.config.sourceConfig.config
         self.start, self.end = get_start_and_end(self.source_config.queryLogDuration)
-        self.engine = get_connection(self.service_connection) if get_engine else None
+        self.engine = get_ssl_connection(self.service_connection) if get_engine else None
 
     @property
     def name(self) -> str:
