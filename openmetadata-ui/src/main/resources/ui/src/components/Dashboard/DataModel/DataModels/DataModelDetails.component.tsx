@@ -382,21 +382,23 @@ const DataModelDetails = ({
         ),
         key: EntityTabs.CUSTOM_PROPERTIES,
         children: (
-          <CustomPropertyTable<EntityType.DASHBOARD_DATA_MODEL>
-            className=""
-            // update this when the backend is updated
-            entityDetails={
-              dataModelData as ExtentionEntities[EntityType.DASHBOARD_DATA_MODEL]
-            }
-            entityType={EntityType.DASHBOARD_DATA_MODEL}
-            handleExtensionUpdate={handelExtentionUpdate}
-            hasEditAccess={dataModelPermissions.ViewAll}
-            hasPermission={
-              dataModelPermissions.EditAll ||
-              dataModelPermissions.EditCustomFields
-            }
-            isVersionView={false}
-          />
+          <div className="p-md">
+            <CustomPropertyTable<EntityType.DASHBOARD_DATA_MODEL>
+              className=""
+              // update this when the backend is updated
+              entityDetails={
+                dataModelData as ExtentionEntities[EntityType.DASHBOARD_DATA_MODEL]
+              }
+              entityType={EntityType.DASHBOARD_DATA_MODEL}
+              handleExtensionUpdate={handelExtentionUpdate}
+              hasEditAccess={dataModelPermissions.ViewAll}
+              hasPermission={
+                dataModelPermissions.EditAll ||
+                dataModelPermissions.EditCustomFields
+              }
+              isVersionView={false}
+            />
+          </div>
         ),
       },
     ];
