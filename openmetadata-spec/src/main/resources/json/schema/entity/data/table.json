@@ -899,8 +899,7 @@
         }
       },
       "required": [
-        "modelType",
-        "sql"
+        "modelType"
       ],
       "additionalProperties": false
     },

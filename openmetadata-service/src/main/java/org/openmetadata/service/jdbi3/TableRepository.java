@@ -612,7 +612,7 @@ public class TableRepository extends EntityRepository<Table> {
 
     if (dataModel.getSql() == null || dataModel.getSql().isBlank()) {
       if (table.getDataModel() != null
-          && (table.getDataModel().getSql() != null || !table.getDataModel().getSql().isBlank())) {
+          && (table.getDataModel().getSql() != null && !table.getDataModel().getSql().isBlank())) {
         dataModel.setSql(table.getDataModel().getSql());
       }
     }
