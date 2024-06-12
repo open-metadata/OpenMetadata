@@ -65,6 +65,10 @@
       "description": "Weather the event is enable (i.e. data is being collected)",
       "type": "boolean",
       "default": true
+    },
+    "domain" : {
+      "description": "Domain the asset belongs to. When not set, the asset inherits the domain from the parent it belongs to.",
+      "$ref": "../type/entityReference.json"
     }
   },
   "required": ["eventType", "name"],

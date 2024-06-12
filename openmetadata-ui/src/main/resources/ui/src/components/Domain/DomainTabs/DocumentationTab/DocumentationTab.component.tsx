@@ -46,6 +46,7 @@ import { checkPermission } from '../../../../utils/PermissionsUtils';
 import FormItemLabel from '../../../common/Form/FormItemLabel';
 import TagButton from '../../../common/TagButton/TagButton.component';
 import '../../domain.less';
+import SubDomainsTable from '../../SubDomainsTable/SubDomainsTable.component';
 import {
   DocumentationEntity,
   DocumentationTabProps,
@@ -66,6 +67,8 @@ const DocumentationTab = ({
     type === DocumentationEntity.DOMAIN
       ? ResourceEntity.DOMAIN
       : ResourceEntity.DATA_PRODUCT;
+
+  const isSubDomain = Boolean((domain as Domain).parent);
 
   const { editDescriptionPermission, editOwnerPermission, editAllPermission } =
     useMemo(() => {
@@ -180,6 +183,12 @@ const DocumentationTab = ({
           onDescriptionEdit={() => setIsDescriptionEditable(true)}
           onDescriptionUpdate={onDescriptionUpdate}
         />
+
+        {!isSubDomain && (
+          <div className="p-t-lg">
+            <SubDomainsTable isVersionsView={isVersionsView} />
+          </div>
+        )}
       </Col>
       <Col className="p-md" span={6}>
         <Row gutter={[0, 40]}>

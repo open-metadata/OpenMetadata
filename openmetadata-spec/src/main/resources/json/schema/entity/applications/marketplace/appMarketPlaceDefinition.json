@@ -140,6 +140,10 @@
       "type": "boolean",
       "description": "Flag to enable/disable preview for the application. If the app is in preview mode, it can't be installed.",
       "default": false
+    },
+    "domain" : {
+      "description": "Domain the asset belongs to. When not set, the asset inherits the domain from the parent it belongs to.",
+      "$ref": "../../../type/entityReference.json"
     }
   },
   "additionalProperties": false,

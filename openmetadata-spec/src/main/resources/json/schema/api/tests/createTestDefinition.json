@@ -46,6 +46,10 @@
       "items": {
         "$ref": "../../tests/testDefinition.json#/definitions/testCaseParameterDefinition"
       }
+    },
+    "domain" : {
+      "description": "Fully qualified name of the domain the Table belongs to.",
+      "type": "string"
     }
   },
   "required": ["name", "description","entityType", "testPlatforms"],

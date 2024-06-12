@@ -40,6 +40,10 @@
     "owner": {
       "description": "Owner of this chart",
       "$ref": "../../type/entityReference.json"
+    },
+    "domain" : {
+      "description": "Fully qualified name of the domain the Table belongs to.",
+      "type": "string"
     }
   },
   "required": ["name"],

@@ -906,7 +906,7 @@ public class TeamResourceTest extends EntityResourceTest<Team, CreateTeam> {
   void test_inheritDomain(TestInfo test) throws IOException, InterruptedException {
     // When domain is not set for a user term, carry it forward from the parent team
     CreateTeam createTeam =
-        createRequest(test).withDomain(DOMAIN.getFullyQualifiedName()).withTeamType(DEPARTMENT);
+        createRequest(test).withTeamDomains(List.of(DOMAIN.getId())).withTeamType(DEPARTMENT);
     Team team = createEntity(createTeam, ADMIN_AUTH_HEADERS);
 
     // Create a children team without domain and ensure it inherits domain from the parent

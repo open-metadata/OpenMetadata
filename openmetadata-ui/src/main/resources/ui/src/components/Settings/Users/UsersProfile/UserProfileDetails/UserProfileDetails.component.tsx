@@ -261,16 +261,16 @@ const UserProfileDetails = ({
           'label.domain'
         )} :`}</Typography.Text>
         <DomainLabel
-          domain={userData?.domain}
+          domain={userData?.userDomains}
           entityFqn={userData.fullyQualifiedName ?? ''}
           entityId={userData.id ?? ''}
           entityType={EntityType.USER}
-          hasPermission={false}
+          hasPermission={hasEditPermission}
           textClassName="text-sm text-grey-muted"
         />
       </div>
     ),
-    [userData.domain]
+    [userData.userDomains]
   );
 
   const handleDefaultPersonaUpdate = useCallback(

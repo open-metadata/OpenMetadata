@@ -74,6 +74,17 @@ public class ResourceContext<T extends EntityInterface> implements ResourceConte
     return resolveEntity();
   }
 
+  @Override
+  public EntityReference getDomain() {
+    resolveEntity();
+    if (entity == null) {
+      return null;
+    } else if (Entity.DOMAIN.equals(entityRepository.getEntityType())) {
+      return entity.getEntityReference(); // Domain for a domain is same as the domain
+    }
+    return entity.getDomain();
+  }
+
   private EntityInterface resolveEntity() {
     if (entity == null) {
       String fields = "";
@@ -88,6 +99,9 @@ public class ResourceContext<T extends EntityInterface> implements ResourceConte
       }
       if (entityRepository.isSupportsReviewers()) {
         fields = EntityUtil.addField(fields, Entity.FIELD_REVIEWERS);
+      }
+      if (entityRepository.isSupportsDomain()) {
+        fields = EntityUtil.addField(fields, Entity.FIELD_DOMAIN);
       }
       Fields fieldList = entityRepository.getFields(fields);
       try {

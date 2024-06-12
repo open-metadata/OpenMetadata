@@ -68,6 +68,10 @@
     "votes" : {
       "description": "Votes on the entity.",
       "$ref": "../../type/votes.json"
+    },
+    "domain" : {
+      "description": "Domain the asset belongs to. When not set, the asset inherits the domain from the parent it belongs to.",
+      "$ref": "../../type/entityReference.json"
     }
   },
   "required": ["id", "name", "service"],

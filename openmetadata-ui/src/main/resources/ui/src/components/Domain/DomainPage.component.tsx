@@ -46,22 +46,21 @@ const DomainPage = () => {
   const [isMainContentLoading, setIsMainContentLoading] = useState(true);
   const [activeDomain, setActiveDomain] = useState<Domain>();
 
-  const createDomainPermission = useMemo(
-    () => checkPermission(Operation.Create, ResourceEntity.DOMAIN, permissions),
-    [permissions]
-  );
+  const rootDomains = useMemo(() => {
+    return domains.filter((domain) => domain.parent == null);
+  }, [domains]);
 
-  const viewBasicDomainPermission = useMemo(
-    () =>
+  const [
+    createDomainPermission,
+    viewBasicDomainPermission,
+    viewAllDomainPermission,
+  ] = useMemo(() => {
+    return [
+      checkPermission(Operation.Create, ResourceEntity.DOMAIN, permissions),
       checkPermission(Operation.ViewBasic, ResourceEntity.DOMAIN, permissions),
-    [permissions]
-  );
-
-  const viewAllDomainPermission = useMemo(
-    () =>
       checkPermission(Operation.ViewAll, ResourceEntity.DOMAIN, permissions),
-    [permissions]
-  );
+    ];
+  }, [permissions]);
 
   const handleAddDomainClick = () => {
     history.push(ROUTES.ADD_DOMAIN);
@@ -75,7 +74,7 @@ const DomainPage = () => {
 
         setActiveDomain(response);
 
-        const updatedDomains = domains.map((item) => {
+        const updatedDomains = rootDomains.map((item) => {
           if (item.name === response.name) {
             return response;
           } else {
@@ -96,7 +95,7 @@ const DomainPage = () => {
   };
 
   const handleDomainDelete = (id: string) => {
-    const updatedDomains = domains.find((item) => item.id !== id);
+    const updatedDomains = rootDomains.find((item) => item.id !== id);
     const domainPath = updatedDomains
       ? getDomainPath(updatedDomains.fullyQualifiedName)
       : getDomainPath();
@@ -141,16 +140,16 @@ const DomainPage = () => {
   ]);
 
   useEffect(() => {
-    if (domainFqn && domains.length > 0) {
+    if (domainFqn && rootDomains.length > 0) {
       fetchDomainByName(domainFqn);
     }
-  }, [domainFqn, domains]);
+  }, [domainFqn, rootDomains]);
 
   useEffect(() => {
-    if (domains.length > 0 && !domainFqn && !domainLoading) {
-      history.push(getDomainPath(domains[0].fullyQualifiedName));
+    if (rootDomains.length > 0 && !domainFqn && !domainLoading) {
+      history.push(getDomainPath(rootDomains[0].fullyQualifiedName));
     }
-  }, [domains, domainFqn]);
+  }, [rootDomains, domainFqn]);
 
   if (domainLoading) {
     return <Loader />;
@@ -165,7 +164,7 @@ const DomainPage = () => {
     );
   }
 
-  if (isEmpty(domains)) {
+  if (isEmpty(rootDomains)) {
     return (
       <ErrorPlaceHolder
         buttonId="add-domain"
@@ -178,7 +177,7 @@ const DomainPage = () => {
             : ERROR_PLACEHOLDER_TYPE.CUSTOM
         }
         onClick={handleAddDomainClick}>
-        {t('message.domains-not-configured')}
+        {t('message.rootDomains-not-configured')}
       </ErrorPlaceHolder>
     );
   }
@@ -186,7 +185,7 @@ const DomainPage = () => {
   return (
     <PageLayoutV1
       className="domain-parent-page-layout"
-      leftPanel={<DomainsLeftPanel domains={domains} />}
+      leftPanel={<DomainsLeftPanel domains={rootDomains} />}
       pageTitle={t('label.domain')}>
       {domainPageRender}
     </PageLayoutV1>

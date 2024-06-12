@@ -23,6 +23,7 @@ import { DomainStore } from '../interface/store.interface';
 import { getDomainList } from '../rest/domainAPI';
 import { getDomainOptions } from '../utils/DomainUtils';
 import { showErrorToast } from '../utils/ToastUtils';
+import { useApplicationStore } from './useApplicationStore';
 
 export const useDomainStore = create<DomainStore>()(
   persist(
@@ -32,12 +33,28 @@ export const useDomainStore = create<DomainStore>()(
       activeDomain: DEFAULT_DOMAIN_VALUE, // Set default value here
       domainOptions: [],
       fetchDomainList: async () => {
+        const currentUser = useApplicationStore.getState().currentUser;
+        const userDomains = currentUser?.userDomains ?? [];
+        const userDomainFqn =
+          currentUser?.userDomains?.map((item) => item.fullyQualifiedName) ??
+          [];
         set({ domainLoading: true });
         try {
-          const { data } = await getDomainList({ limit: PAGE_SIZE_LARGE });
+          const { data } = await getDomainList({
+            limit: PAGE_SIZE_LARGE,
+            fields: 'parent',
+          });
+
+          let filteredDomains = data;
+          if (userDomains.length > 0) {
+            filteredDomains = data.filter((domain) =>
+              userDomainFqn.includes(domain.fullyQualifiedName)
+            );
+          }
+
           set({
-            domains: data,
-            domainOptions: getDomainOptions(data),
+            domains: filteredDomains,
+            domainOptions: getDomainOptions(filteredDomains),
           });
         } catch (error) {
           showErrorToast(error as AxiosError);
@@ -50,6 +67,12 @@ export const useDomainStore = create<DomainStore>()(
       updateActiveDomain: (activeDomainKey: string) => {
         set({ activeDomain: activeDomainKey });
         get().refreshDomains();
+      },
+      setDomains: (domainsArr: Domain[]) => {
+        set({
+          domains: domainsArr,
+          domainOptions: getDomainOptions(domainsArr),
+        });
       },
     }),
     {

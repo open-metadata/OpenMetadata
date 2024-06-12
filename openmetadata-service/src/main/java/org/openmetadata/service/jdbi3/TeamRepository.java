@@ -84,9 +84,9 @@ import org.openmetadata.service.util.ResultList;
 public class TeamRepository extends EntityRepository<Team> {
   static final String PARENTS_FIELD = "parents";
   static final String TEAM_UPDATE_FIELDS =
-      "profile,users,defaultRoles,parents,children,policies,teamType,email";
+      "profile,users,defaultRoles,parents,children,policies,teamType,email,teamDomains";
   static final String TEAM_PATCH_FIELDS =
-      "profile,users,defaultRoles,parents,children,policies,teamType,email";
+      "profile,users,defaultRoles,parents,children,policies,teamType,email,teamDomains";
   private static final String DEFAULT_ROLES = "defaultRoles";
   private Team organization = null;
 
@@ -116,6 +116,8 @@ public class TeamRepository extends EntityRepository<Team> {
         fields.contains("childrenCount") ? getChildrenCount(team) : team.getChildrenCount());
     team.setUserCount(
         fields.contains("userCount") ? getUserCount(team.getId()) : team.getUserCount());
+    team.setTeamDomains(
+        fields.contains("teamDomains") ? getDomains(team.getId()) : team.getTeamDomains());
   }
 
   @Override
@@ -129,6 +131,26 @@ public class TeamRepository extends EntityRepository<Team> {
     team.setPolicies(fields.contains("policies") ? team.getPolicies() : null);
     team.setChildrenCount(fields.contains("childrenCount") ? team.getChildrenCount() : null);
     team.withUserCount(fields.contains("userCount") ? team.getUserCount() : null);
+  }
+
+  private List<EntityReference> getDomains(UUID teamId) {
+    // Team does not have domain. 'teamDomains' is the field for user as team can belong to multiple
+    // domains
+    return findFrom(teamId, TEAM, Relationship.HAS, Entity.DOMAIN);
+  }
+
+  @Override
+  protected void storeDomain(Team entity, EntityReference exclude) {
+    for (EntityReference domainRef : listOrEmpty(entity.getTeamDomains())) {
+      // Add relationship domain --- has ---> entity
+      LOG.info(
+          "Adding domain {} for user {}:{}",
+          domainRef.getFullyQualifiedName(),
+          entityType,
+          entity.getId());
+      addRelationship(
+          domainRef.getId(), entity.getId(), Entity.DOMAIN, entityType, Relationship.HAS);
+    }
   }
 
   @Override
@@ -781,6 +803,41 @@ public class TeamRepository extends EntityRepository<Team> {
           origDefaultRoles,
           updatedDefaultRoles,
           false);
+    }
+
+    protected void updateDomain() {
+      if (operation.isPut() && !nullOrEmpty(original.getDomain()) && updatedByBot()) {
+        // Revert change to non-empty domain if it is being updated by a bot
+        // This is to prevent bots from overwriting the domain. Domain need to be
+        // updated with a PATCH request
+        updated.setTeamDomains(original.getTeamDomains());
+        return;
+      }
+
+      List<EntityReference> origDomains =
+          EntityUtil.populateEntityReferences(original.getTeamDomains());
+      List<EntityReference> updatedDomains =
+          EntityUtil.populateEntityReferences(updated.getTeamDomains());
+
+      // Remove Domains for the user
+      deleteTo(original.getId(), TEAM, Relationship.HAS, Entity.DOMAIN);
+
+      for (EntityReference domain : updatedDomains) {
+        addRelationship(domain.getId(), original.getId(), Entity.DOMAIN, TEAM, Relationship.HAS);
+      }
+
+      origDomains.sort(EntityUtil.compareEntityReference);
+      updatedDomains.sort(EntityUtil.compareEntityReference);
+
+      List<EntityReference> added = new ArrayList<>();
+      List<EntityReference> deleted = new ArrayList<>();
+      recordListChange(
+          "teamDomains",
+          origDomains,
+          updatedDomains,
+          added,
+          deleted,
+          EntityUtil.entityReferenceMatch);
     }
 
     private void updateParents(Team original, Team updated) {

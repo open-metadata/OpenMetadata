@@ -28,6 +28,10 @@
     },
     "data": {
       "$ref": "../../entity/docStore/document.json#/definitions/data"
+    },
+    "domain" : {
+      "description": "Fully qualified name of the domain the Table belongs to.",
+      "type": "string"
     }
   },
   "required": ["name", "fullyQualifiedName","entityType", "data"],

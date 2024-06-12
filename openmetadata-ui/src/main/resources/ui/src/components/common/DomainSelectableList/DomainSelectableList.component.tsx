@@ -57,6 +57,7 @@ const DomainSelectableList = ({
   hasPermission,
   popoverProps,
   selectedDomain,
+  multiple = false,
 }: DomainSelectableListProps) => {
   const { t } = useTranslation();
   const { theme } = useApplicationStore();
@@ -103,10 +104,14 @@ const DomainSelectableList = ({
 
   const handleUpdate = useCallback(
     async (domains: EntityReference[]) => {
-      await onUpdate(domains[0]);
+      if (multiple) {
+        await onUpdate(domains);
+      } else {
+        await onUpdate(domains[0]);
+      }
       setPopupVisible(false);
     },
-    [onUpdate]
+    [onUpdate, multiple]
   );
 
   return (
@@ -137,14 +142,14 @@ const DomainSelectableList = ({
               />
             }
             fetchOptions={fetchOptions}
-            multiSelect={false}
+            multiSelect={multiple}
             removeIconTooltipLabel={t('label.remove-entity', {
               entity: t('label.domain-lowercase'),
             })}
             searchPlaceholder={t('label.search-for-type', {
               type: t('label.domain'),
             })}
-            selectedItems={selectedDomain ? [selectedDomain] : []}
+            selectedItems={selectedDomain ?? []}
             onCancel={() => setPopupVisible(false)}
             onUpdate={handleUpdate}
           />

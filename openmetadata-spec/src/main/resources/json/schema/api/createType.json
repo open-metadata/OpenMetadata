@@ -31,6 +31,10 @@
     "schema": {
       "description": "JSON schema encoded as string. This will be used to validate the type values.",
       "$ref": "../type/basic.json#/definitions/jsonSchema"
+    },
+    "domain" : {
+      "description": "Fully qualified name of the domain the Table belongs to.",
+      "type": "string"
     }
   },
   "required": [
