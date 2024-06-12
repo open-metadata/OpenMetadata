@@ -55,7 +55,7 @@ from metadata.workflow.data_quality import TestSuiteWorkflow
 from metadata.workflow.metadata import MetadataWorkflow
 
 if not sys.version_info >= (3, 9):
-    pytest.skip("requires python 3.9+", allow_module_level=True)
+    pytest.skip("requires python 3.9+ due to incompatibility with testcontainers", allow_module_level=True)
 
 
 class TestParameters(BaseModel):
