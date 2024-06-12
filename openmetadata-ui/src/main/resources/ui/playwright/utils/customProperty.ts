@@ -319,26 +319,26 @@ export const createCustomPropertyForEntity = async (
       property: CustomProperty;
     }
   >;
-  const user1 = new UserClass();
-  const user2 = new UserClass();
-  const user3 = new UserClass();
-  const user4 = new UserClass();
-  await user1.create(apiContext);
-  await user2.create(apiContext);
-  await user3.create(apiContext);
-  await user4.create(apiContext);
-  const users = {
-    user1: user1.getUserName(),
-    user2: user2.getUserName(),
-    user3: user3.getUserName(),
-    user4: user4.getUserName(),
-  };
+  const users: UserClass[] = [];
+  // Loop to create and add 4 new users to the users array
+  for (let i = 0; i < 4; i++) {
+    const user = new UserClass();
+    await user.create(apiContext);
+    users.push(user);
+  }
 
+  // Reduce the users array to a userNames object with keys as user1, user2, etc., and values as the user's names
+  const userNames = users.reduce((acc, user, index) => {
+    acc[`user${index + 1}`] = user.getUserName();
+
+    return acc;
+  }, {});
+
+  // Define an asynchronous function to clean up (delete) all users in the users array
   const cleanupUser = async (apiContext: APIRequestContext) => {
-    await user1.delete(apiContext);
-    await user2.delete(apiContext);
-    await user3.delete(apiContext);
-    await user4.delete(apiContext);
+    for (const user of users) {
+      await user.delete(apiContext);
+    }
   };
 
   for (const item of propertyList) {
@@ -382,7 +382,7 @@ export const createCustomPropertyForEntity = async (
       return {
         ...prev,
         [propertyTypeName]: {
-          ...getPropertyValues(propertyTypeName, users),
+          ...getPropertyValues(propertyTypeName, userNames),
           property: curr,
         },
       };
