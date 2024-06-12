@@ -12,7 +12,6 @@
  */
 import { TEST_CASE_FILTERS } from '../../constants/profiler.constant';
 import {
-  TestCaseParameterDefinition,
   TestDataType,
   TestDefinition,
 } from '../../generated/tests/testDefinition';
@@ -54,20 +53,22 @@ export const createTestCaseParameters = (
   params: Record<string, string | { [key: string]: string }[]>,
   selectedDefinition?: TestDefinition
 ) => {
-  return Object.entries(params ?? {}).map(([key, value]) => {
-    const paramsValue = selectedDefinition?.parameterDefinition?.find(
-      (param: TestCaseParameterDefinition) => param?.name === key
+  return Object.entries(params).reduce((acc, [key, value]) => {
+    const paramDef = selectedDefinition?.parameterDefinition?.find(
+      (param) => param.name === key
     );
 
-    return {
-      name: key,
-      value:
-        paramsValue?.dataType === TestDataType.Array
-          ? // need to send array as string formate
-            JSON.stringify(
-              (value as { value: string }[]).map((data) => data.value)
-            )
-          : value,
-    };
-  });
+    if (paramDef?.dataType === TestDataType.Array) {
+      const arrayValues = (value as { value: string }[])
+        .map((item) => item.value)
+        .filter(Boolean);
+      if (arrayValues.length) {
+        acc.push({ name: key, value: JSON.stringify(arrayValues) });
+      }
+    } else {
+      acc.push({ name: key, value: value as string });
+    }
+
+    return acc;
+  }, [] as { name: string; value: string }[]);
 };
