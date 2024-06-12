@@ -79,6 +79,7 @@ jobs:
       with:
         python-version: ${{ matrix.py-version}}
         args: "-m no-ui"
+        ingestion_dependency: "mysql,elasticsearch,sample-data"
 
     - name: Run Python Tests
       if: ${{ matrix.py-version != '3.9' }}
