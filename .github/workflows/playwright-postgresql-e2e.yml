@@ -9,10 +9,10 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-# This workflow executes end-to-end (e2e) tests using Playwright with MySQL as the database.
+# This workflow executes end-to-end (e2e) tests using Playwright with PostgreSQL as the database.
 # For more information see: https://github.com/actions/setup-java/blob/main/docs/advanced-usage.md#apache-maven-with-a-settings-path
 
-name: MySQL PR Playwright E2E Tests
+name: Postgresql PR Playwright E2E Tests
 on:
   workflow_dispatch:
   pull_request_target:
@@ -32,11 +32,11 @@ permissions:
   contents: read
 
 concurrency:
-  group: playwright-ci-pr-mysql-${{ github.head_ref || github.run_id }}
+  group: playwright-ci-pr-postgresql-${{ github.head_ref || github.run_id }}
   cancel-in-progress: true
 
 jobs:
-  playwright-ci-mysql:
+  playwright-ci-postgresql:
     runs-on: ubuntu-latest
     environment: test
     steps:
@@ -112,7 +112,7 @@ jobs:
       - name: Start Server and Ingest Sample Data
         env:
           INGESTION_DEPENDENCY: "all"
-        run: ./docker/run_local_docker.sh -d mysql
+        run: ./docker/run_local_docker.sh -d postgresql
         timeout-minutes: 60
 
       - name: Install dependencies
