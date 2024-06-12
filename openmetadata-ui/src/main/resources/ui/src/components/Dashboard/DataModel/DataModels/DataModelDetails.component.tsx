@@ -258,14 +258,22 @@ const DataModelDetails = ({
           className="entity-tag-right-panel-container"
           data-testid="entity-right-panel"
           flex="320px">
-          <EntityRightPanel
+          <EntityRightPanel<EntityType.DASHBOARD_DATA_MODEL>
+            customProperties={dataModelData}
             dataProducts={dataModelData?.dataProducts ?? []}
             domain={dataModelData?.domain}
+            editCustomAttributePermission={
+              (dataModelPermissions.EditAll ||
+                dataModelPermissions.EditCustomFields) &&
+              !deleted
+            }
             editTagPermission={editTagsPermission}
             entityFQN={decodedDataModelFQN}
             entityId={dataModelData.id}
             entityType={EntityType.DASHBOARD_DATA_MODEL}
             selectedTags={tags}
+            viewAllPermission={dataModelPermissions.ViewAll}
+            onExtensionUpdate={handelExtensionUpdate}
             onTagSelectionChange={handleTagSelection}
             onThreadLinkSelect={onThreadLinkSelect}
           />
