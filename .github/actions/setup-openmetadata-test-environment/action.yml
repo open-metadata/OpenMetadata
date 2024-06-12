@@ -5,6 +5,10 @@ inputs:
   python-version:
     description: Python Version to install
     required: true
+  args:
+    description: Arguments to pass to run_local_docker.sh
+    required: false
+    default: "-m no-ui"
 
 runs:
   using: composite
@@ -55,4 +59,4 @@ runs:
         timeout_minutes: 60
         max_attempts: 2
         retry_on: error
-        command: ./docker/run_local_docker.sh -m no-ui
+        command: ./docker/run_local_docker.sh ${{ inputs.args }}

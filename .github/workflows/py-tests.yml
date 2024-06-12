@@ -78,6 +78,7 @@ jobs:
       uses: ./.github/actions/setup-openmetadata-test-environment
       with:
         python-version: ${{ matrix.py-version}}
+        args: "-m no-ui"
 
     - name: Run Python Tests
       if: ${{ matrix.py-version != '3.9' }}
