@@ -119,7 +119,7 @@ This is a sample config for Glue:
 
 {% codeBlock fileName="filename.yaml" %}
 
-```yaml
+```yaml {% isCodeBlock=true %}
 source:
   type: glue
   serviceName: local_glue

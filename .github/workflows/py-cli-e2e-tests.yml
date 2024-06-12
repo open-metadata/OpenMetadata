@@ -19,6 +19,10 @@ on:
         description: "E2E Tests to run"
         required: True
         default: '["bigquery", "dbt_redshift", "metabase", "mssql", "mysql", "redash", "snowflake", "tableau", "powerbi", "vertica", "python", "redshift", "quicksight", "datalake_s3", "postgres", "oracle", "athena", "bigquery_multiple_project"]'
+      debug:
+        description: "If Debugging the Pipeline, Slack and Sonar events won't be triggered"
+        required: False
+        default: "false"
 
 permissions:
   id-token: write
@@ -148,21 +152,21 @@ jobs:
         coverage report --rcfile ingestion/pyproject.toml --data-file .coverage.$E2E_TEST || true
 
     - name: Upload coverage artifact for Python tests
-      if: matrix.e2e-test == 'python' && steps.python-e2e-test.outcome == 'success'
+      if: matrix.e2e-test == 'python' && steps.python-e2e-test.outcome == 'success' && inputs.debug == 'false'
       uses: actions/upload-artifact@v3
       with:
         name: coverage-${{ matrix.e2e-test }}
         path: .coverage
 
     - name: Upload coverage artifact for CLI E2E tests
-      if: matrix.e2e-test != 'python' && steps.e2e-test.outcome == 'success'
+      if: matrix.e2e-test != 'python' && steps.e2e-test.outcome == 'success' && inputs.debug == 'false'
       uses: actions/upload-artifact@v3
       with:
         name: coverage-${{ matrix.e2e-test }}
         path: .coverage.${{ matrix.e2e-test }}
 
     - name: Upload tests artifact
-      if: steps.e2e-test.outcome == 'success' || steps.python-e2e-test.outcome == 'success'
+      if: steps.e2e-test.outcome == 'success' || steps.python-e2e-test.outcome == 'success' && inputs.debug == 'false'
       uses: actions/upload-artifact@v3
       with:
         name: tests-${{ matrix.e2e-test }}
@@ -175,7 +179,7 @@ jobs:
         sudo rm -rf ${PWD}/docker-volume
 
     - name: Slack on Failure
-      if: steps.e2e-test.outcome != 'success' && steps.python-e2e-test.outcome != 'success'
+      if: steps.e2e-test.outcome != 'success' && steps.python-e2e-test.outcome != 'success' && inputs.debug == 'false'
       uses: slackapi/slack-github-action@v1.23.0
       with:
         payload: |
@@ -194,7 +198,7 @@ jobs:
   sonar-cloud-coverage-upload:
     runs-on: ubuntu-latest
     needs: py-cli-e2e-tests
-
+    if: inputs.debug == 'false'
     steps:
 
       - name: Checkout

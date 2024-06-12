@@ -39,7 +39,7 @@ def ignore_ssl_init(_: Optional[SslConfig]) -> bool:
 
 @ssl_verification_registry.add(VerifySSL.validate.value)
 def validate_ssl_init(ssl_config: Optional[SslConfig]) -> str:
-    return ssl_config.__root__.certificatePath
+    return ssl_config.root.caCertificate.get_secret_value()
 
 
 def get_verify_ssl_fn(verify_ssl: VerifySSL) -> Callable:

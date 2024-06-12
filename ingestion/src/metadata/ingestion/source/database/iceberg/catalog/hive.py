@@ -39,7 +39,7 @@ class IcebergHiveCatalog(IcebergCatalogBase):
 
         parameters = {
             "warehouse": catalog.warehouseLocation,
-            "uri": catalog.connection.uri,
+            "uri": str(catalog.connection.uri),
         }
 
         if catalog.connection.fileSystem:

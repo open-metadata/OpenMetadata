@@ -84,11 +84,11 @@ This is a sample config for Doris:
 
 {% /codeInfo %}
 
-{% partial file="/v1.2/connectors/yaml/database/source-config-def.md" /%}
+{% partial file="/v1.3/connectors/yaml/database/source-config-def.md" /%}
 
-{% partial file="/v1.2/connectors/yaml/ingestion-sink-def.md" /%}
+{% partial file="/v1.3/connectors/yaml/ingestion-sink-def.md" /%}
 
-{% partial file="/v1.2/connectors/yaml/workflow-config-def.md" /%}
+{% partial file="/v1.3/connectors/yaml/workflow-config-def.md" /%}
 
 #### Advanced Configuration
 
@@ -110,7 +110,7 @@ This is a sample config for Doris:
 
 {% codeBlock fileName="filename.yaml" %}
 
-```yaml
+```yaml {% isCodeBlock=true %}
 source:
   type: doris
   serviceName: <service name>
@@ -140,19 +140,19 @@ source:
       #   key: value
 ```
 
-{% partial file="/v1.2/connectors/yaml/database/source-config.md" /%}
+{% partial file="/v1.3/connectors/yaml/database/source-config.md" /%}
 
-{% partial file="/v1.2/connectors/yaml/ingestion-sink.md" /%}
+{% partial file="/v1.3/connectors/yaml/ingestion-sink.md" /%}
 
-{% partial file="/v1.2/connectors/yaml/workflow-config.md" /%}
+{% partial file="/v1.3/connectors/yaml/workflow-config.md" /%}
 
 {% /codeBlock %}
 
 {% /codePreview %}
 
-{% partial file="/v1.2/connectors/yaml/ingestion-cli.md" /%}
+{% partial file="/v1.3/connectors/yaml/ingestion-cli.md" /%}
 
-{% partial file="/v1.2/connectors/yaml/data-profiler.md" variables={connector: "doris"} /%}
+{% partial file="/v1.3/connectors/yaml/data-profiler.md" variables={connector: "doris"} /%}
 
 {% partial file="/v1.3/connectors/yaml/data-quality.md" /%}
 

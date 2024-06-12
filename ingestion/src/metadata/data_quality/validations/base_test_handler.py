@@ -94,6 +94,8 @@ class BaseTestValidator(ABC):
         row_count: Optional[int] = None,
         failed_rows: Optional[int] = None,
         passed_rows: Optional[int] = None,
+        min_bound: Optional[float] = None,
+        max_bound: Optional[float] = None,
     ) -> TestCaseResult:
         """Returns a TestCaseResult object with the given args
 
@@ -111,6 +113,9 @@ class BaseTestValidator(ABC):
             result=result,
             testResultValue=test_result_value,
             sampleData=None,
+            # if users don't set the min/max bound, we'll change the inf/-inf (used for computation) to None
+            minBound=None if min_bound == float("-inf") else min_bound,
+            maxBound=None if max_bound == float("inf") else max_bound,
         )
 
         if (row_count is not None and row_count != 0) and (
@@ -149,7 +154,7 @@ class BaseTestValidator(ABC):
         """
         return TestCaseStatus.Success if condition else TestCaseStatus.Failed
 
-    def get_min_bound(self, param_name: str):
+    def get_min_bound(self, param_name: str) -> Optional[float]:
         """get min value for max value in column test case"""
         return self.get_test_case_param_value(
             self.test_case.parameterValues,  # type: ignore
@@ -158,7 +163,7 @@ class BaseTestValidator(ABC):
             default=float("-inf"),
         )
 
-    def get_max_bound(self, param_name: str):
+    def get_max_bound(self, param_name: str) -> Optional[float]:
         """get max value for max value in column test case"""
         return self.get_test_case_param_value(
             self.test_case.parameterValues,  # type: ignore

@@ -79,19 +79,19 @@ You can find further information about configuring your credentials [here](https
 
 {% /codeInfo %}
 
-{% partial file="/v1.3/connectors/yaml/dbt/dbt-prefix-def.md" /%}
+{% partial file="/v1.4/connectors/yaml/dbt/dbt-prefix-def.md" /%}
 
-{% partial file="/v1.3/connectors/yaml/dbt/source-config-def.md" /%}
+{% partial file="/v1.4/connectors/yaml/dbt/source-config-def.md" /%}
 
-{% partial file="/v1.3/connectors/yaml/ingestion-sink-def.md" /%}
+{% partial file="/v1.4/connectors/yaml/ingestion-sink-def.md" /%}
 
-{% partial file="/v1.3/connectors/yaml/workflow-config-def.md" /%}
+{% partial file="/v1.4/connectors/yaml/workflow-config-def.md" /%}
 
 {% /codeInfoContainer %}
 
 {% codeBlock fileName="dbt_s3_config.yaml" %}
 
-```yaml
+```yaml {% isCodeBlock=true %}
 source:
   type: dbt
   serviceName: service_name
@@ -115,13 +115,13 @@ source:
           awsRegion: AWS_REGION
 ```
 
-{% partial file="/v1.3/connectors/yaml/dbt/dbt-prefix.md" /%}
+{% partial file="/v1.4/connectors/yaml/dbt/dbt-prefix.md" /%}
 
-{% partial file="/v1.3/connectors/yaml/dbt/source-config.md" /%}
+{% partial file="/v1.4/connectors/yaml/dbt/source-config.md" /%}
 
-{% partial file="/v1.3/connectors/yaml/ingestion-sink.md" /%}
+{% partial file="/v1.4/connectors/yaml/ingestion-sink.md" /%}
 
-{% partial file="/v1.3/connectors/yaml/workflow-config.md" /%}
+{% partial file="/v1.4/connectors/yaml/workflow-config.md" /%}
 
 {% /codeBlock %}
 
@@ -197,19 +197,19 @@ source:
 
 {% /codeInfo %}
 
-{% partial file="/v1.3/connectors/yaml/dbt/dbt-prefix-def.md" /%}
+{% partial file="/v1.4/connectors/yaml/dbt/dbt-prefix-def.md" /%}
 
-{% partial file="/v1.3/connectors/yaml/dbt/source-config-def.md" /%}
+{% partial file="/v1.4/connectors/yaml/dbt/source-config-def.md" /%}
 
-{% partial file="/v1.3/connectors/yaml/ingestion-sink-def.md" /%}
+{% partial file="/v1.4/connectors/yaml/ingestion-sink-def.md" /%}
 
-{% partial file="/v1.3/connectors/yaml/workflow-config-def.md" /%}
+{% partial file="/v1.4/connectors/yaml/workflow-config-def.md" /%}
 
 {% /codeInfoContainer %}
 
 {% codeBlock fileName="dbt_gcs_config.yaml" %}
 
-```yaml
+```yaml {% isCodeBlock=true %}
 source:
   type: dbt
   serviceName: service_name
@@ -239,13 +239,13 @@ source:
             clientX509CertUrl: https://cert.url (URI)
 ```
 
-{% partial file="/v1.3/connectors/yaml/dbt/dbt-prefix.md" /%}
+{% partial file="/v1.4/connectors/yaml/dbt/dbt-prefix.md" /%}
 
-{% partial file="/v1.3/connectors/yaml/dbt/source-config.md" /%}
+{% partial file="/v1.4/connectors/yaml/dbt/source-config.md" /%}
 
-{% partial file="/v1.3/connectors/yaml/ingestion-sink.md" /%}
+{% partial file="/v1.4/connectors/yaml/ingestion-sink.md" /%}
 
-{% partial file="/v1.3/connectors/yaml/workflow-config.md" /%}
+{% partial file="/v1.4/connectors/yaml/workflow-config.md" /%}
 
 {% /codeBlock %}
 
@@ -305,19 +305,19 @@ Here are the step-by-step instructions for finding the account name for an Azure
 
 {% /codeInfo %}
 
-{% partial file="/v1.3/connectors/yaml/dbt/dbt-prefix-def.md" /%}
+{% partial file="/v1.4/connectors/yaml/dbt/dbt-prefix-def.md" /%}
 
-{% partial file="/v1.3/connectors/yaml/dbt/source-config-def.md" /%}
+{% partial file="/v1.4/connectors/yaml/dbt/source-config-def.md" /%}
 
-{% partial file="/v1.3/connectors/yaml/ingestion-sink-def.md" /%}
+{% partial file="/v1.4/connectors/yaml/ingestion-sink-def.md" /%}
 
-{% partial file="/v1.3/connectors/yaml/workflow-config-def.md" /%}
+{% partial file="/v1.4/connectors/yaml/workflow-config-def.md" /%}
 
 {% /codeInfoContainer %}
 
 {% codeBlock fileName="dbt_azure_config.yaml" %}
 
-```yaml
+```yaml {% isCodeBlock=true %}
 source:
   type: dbt
   serviceName: service_name
@@ -343,13 +343,13 @@ source:
           accountName: accountName
 ```
 
-{% partial file="/v1.3/connectors/yaml/dbt/dbt-prefix.md" /%}
+{% partial file="/v1.4/connectors/yaml/dbt/dbt-prefix.md" /%}
 
-{% partial file="/v1.3/connectors/yaml/dbt/source-config.md" /%}
+{% partial file="/v1.4/connectors/yaml/dbt/source-config.md" /%}
 
-{% partial file="/v1.3/connectors/yaml/ingestion-sink.md" /%}
+{% partial file="/v1.4/connectors/yaml/ingestion-sink.md" /%}
 
-{% partial file="/v1.3/connectors/yaml/workflow-config.md" /%}
+{% partial file="/v1.4/connectors/yaml/workflow-config.md" /%}
 
 {% /codeBlock %}
 
@@ -381,17 +381,17 @@ In this configuration, we will be fetching the dbt `manifest.json`, `catalog.jso
 - **dbtRunResultsFilePath**: run_results.json file path to extract dbt models tests and test results metadata. Tests from dbt will only be ingested if this file is present.
 {% /codeInfo %}
 
-{% partial file="/v1.3/connectors/yaml/dbt/source-config-def.md" /%}
+{% partial file="/v1.4/connectors/yaml/dbt/source-config-def.md" /%}
 
-{% partial file="/v1.3/connectors/yaml/ingestion-sink-def.md" /%}
+{% partial file="/v1.4/connectors/yaml/ingestion-sink-def.md" /%}
 
-{% partial file="/v1.3/connectors/yaml/workflow-config-def.md" /%}
+{% partial file="/v1.4/connectors/yaml/workflow-config-def.md" /%}
 
 {% /codeInfoContainer %}
 
 {% codeBlock fileName="dbt_local_config.yaml" %}
 
-```yaml
+```yaml {% isCodeBlock=true %}
 source:
   type: dbt
   serviceName: service_name
@@ -413,11 +413,11 @@ source:
         dbtRunResultsFilePath: path/to/run_results.json
 ```
 
-{% partial file="/v1.3/connectors/yaml/dbt/source-config.md" /%}
+{% partial file="/v1.4/connectors/yaml/dbt/source-config.md" /%}
 
-{% partial file="/v1.3/connectors/yaml/ingestion-sink.md" /%}
+{% partial file="/v1.4/connectors/yaml/ingestion-sink.md" /%}
 
-{% partial file="/v1.3/connectors/yaml/workflow-config.md" /%}
+{% partial file="/v1.4/connectors/yaml/workflow-config.md" /%}
 
 {% /codeBlock %}
 
@@ -448,17 +448,17 @@ In this configuration we will be fetching the dbt `manifest.json`, `catalog.json
 - **dbtRunResultsHttpPath**: run_results.json http path to extract dbt models tests and test results metadata. Tests from dbt will only be ingested if this file is present.
 {% /codeInfo %}
 
-{% partial file="/v1.3/connectors/yaml/dbt/source-config-def.md" /%}
+{% partial file="/v1.4/connectors/yaml/dbt/source-config-def.md" /%}
 
-{% partial file="/v1.3/connectors/yaml/ingestion-sink-def.md" /%}
+{% partial file="/v1.4/connectors/yaml/ingestion-sink-def.md" /%}
 
-{% partial file="/v1.3/connectors/yaml/workflow-config-def.md" /%}
+{% partial file="/v1.4/connectors/yaml/workflow-config-def.md" /%}
 
 {% /codeInfoContainer %}
 
 {% codeBlock fileName="dbt_file_server_config.yaml" %}
 
-```yaml
+```yaml {% isCodeBlock=true %}
 source:
   type: dbt
   serviceName: service_name
@@ -480,11 +480,11 @@ source:
         dbtRunResultsHttpPath: http://path-to-run_results.json
 ```
 
-{% partial file="/v1.3/connectors/yaml/dbt/source-config.md" /%}
+{% partial file="/v1.4/connectors/yaml/dbt/source-config.md" /%}
 
-{% partial file="/v1.3/connectors/yaml/ingestion-sink.md" /%}
+{% partial file="/v1.4/connectors/yaml/ingestion-sink.md" /%}
 
-{% partial file="/v1.3/connectors/yaml/workflow-config.md" /%}
+{% partial file="/v1.4/connectors/yaml/workflow-config.md" /%}
 
 {% /codeBlock %}
 
@@ -529,17 +529,17 @@ The value entered should be a `numeric` value.
 - **dbtCloudUrl**: URL to connect to your dbt cloud instance. E.g., `https://cloud.getdbt.com` or `https://emea.dbt.com/`.
 {% /codeInfo %}
 
-{% partial file="/v1.3/connectors/yaml/dbt/source-config-def.md" /%}
+{% partial file="/v1.4/connectors/yaml/dbt/source-config-def.md" /%}
 
-{% partial file="/v1.3/connectors/yaml/ingestion-sink-def.md" /%}
+{% partial file="/v1.4/connectors/yaml/ingestion-sink-def.md" /%}
 
-{% partial file="/v1.3/connectors/yaml/workflow-config-def.md" /%}
+{% partial file="/v1.4/connectors/yaml/workflow-config-def.md" /%}
 
 {% /codeInfoContainer %}
 
 {% codeBlock fileName="dbt_file_server_config.yaml" %}
 
-```yaml
+```yaml {% isCodeBlock=true %}
 source:
   type: dbt
   serviceName: service_name
@@ -567,11 +567,11 @@ source:
         dbtCloudUrl: https://cloud.getdbt.com
 ```
 
-{% partial file="/v1.3/connectors/yaml/dbt/source-config.md" /%}
+{% partial file="/v1.4/connectors/yaml/dbt/source-config.md" /%}
 
-{% partial file="/v1.3/connectors/yaml/ingestion-sink.md" /%}
+{% partial file="/v1.4/connectors/yaml/ingestion-sink.md" /%}
 
-{% partial file="/v1.3/connectors/yaml/workflow-config.md" /%}
+{% partial file="/v1.4/connectors/yaml/workflow-config.md" /%}
 
 {% /codeBlock %}
 

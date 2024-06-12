@@ -218,7 +218,6 @@ describe('Data Insight feature', { tags: 'Observability' }, () => {
 
   it('Verifying App analytics tab', () => {
     cy.sidebarClick(SidebarItem.DATA_INSIGHT);
-    verifyResponseStatusCode('@dataInsightsChart', 200);
     cy.get('[data-menu-id*="app-analytics"]').click();
     verifyResponseStatusCode('@dataInsightsChart', 200);
     cy.get('[data-testid="summary-card-content"]').should('be.visible');
@@ -240,9 +239,8 @@ describe('Data Insight feature', { tags: 'Observability' }, () => {
 
   it('Verifying KPI tab', () => {
     cy.sidebarClick(SidebarItem.DATA_INSIGHT);
-    verifyResponseStatusCode('@dataInsightsChart', 200);
     cy.get('[data-menu-id*="kpi"]').click();
-    verifyResponseStatusCode('@dataInsightsChart', 200);
+    verifyResponseStatusCode('@getKpi', 200);
     cy.get('[data-testid="kpi-card"]').should('be.visible');
     cy.get(
       '[data-row-key="cypress-description-with-percentage-completed-description-fraction"]'
@@ -283,7 +281,7 @@ describe('Data Insight feature', { tags: 'Observability' }, () => {
     cy.sidebarClick(SidebarItem.DATA_INSIGHT);
     verifyResponseStatusCode('@dataInsightsChart', 200);
     cy.get('[data-menu-id*="kpi"]').click();
-    verifyResponseStatusCode('@dataInsightsChart', 200);
+    verifyResponseStatusCode('@getKpi', 200);
     KPI_DATA.map((data) => {
       cy.get(`[data-testid="delete-action-${data.displayName}"]`).click();
       cy.get('[data-testid="confirmation-text-input"]').type('DELETE');

@@ -27,6 +27,7 @@ import { CustomPropertyTable } from '../../components/common/CustomPropertyTable
 import DescriptionV1 from '../../components/common/EntityDescription/DescriptionV1';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../components/common/Loader/Loader';
+import ResizablePanels from '../../components/common/ResizablePanels/ResizablePanels';
 import TabsLabel from '../../components/common/TabsLabel/TabsLabel.component';
 import { DataAssetsHeader } from '../../components/DataAssets/DataAssetsHeader/DataAssetsHeader.component';
 import SchemaEditor from '../../components/Database/SchemaEditor/SchemaEditor';
@@ -325,12 +326,7 @@ const StoredProcedurePage = () => {
       }
       const updatedEntityDetails = {
         ...storedProcedure,
-        owner: newOwner
-          ? {
-              ...owner,
-              ...newOwner,
-            }
-          : undefined,
+        owner: newOwner,
       };
       await handleStoreProcedureUpdate(updatedEntityDetails, 'owner');
     },
@@ -541,57 +537,70 @@ const StoredProcedurePage = () => {
         key: EntityTabs.CODE,
         children: (
           <Row gutter={[0, 16]} wrap={false}>
-            <Col
-              className="p-t-sm m-l-lg tab-content-height p-r-lg"
-              flex="auto">
-              <div className="d-flex flex-col gap-4">
-                <DescriptionV1
-                  description={description}
-                  entityFqn={decodedStoredProcedureFQN}
-                  entityName={entityName}
-                  entityType={EntityType.STORED_PROCEDURE}
-                  hasEditAccess={editDescriptionPermission}
-                  isDescriptionExpanded={isEmpty(code)}
-                  isEdit={isEdit}
-                  owner={owner}
-                  showActions={!deleted}
-                  onCancel={onCancel}
-                  onDescriptionEdit={onDescriptionEdit}
-                  onDescriptionUpdate={onDescriptionUpdate}
-                  onThreadLinkSelect={onThreadLinkSelect}
-                />
+            <Col className="tab-content-height" span={24}>
+              <ResizablePanels
+                applyDefaultStyle={false}
+                firstPanel={{
+                  children: (
+                    <div className="d-flex flex-col gap-4 p-t-sm m-l-lg p-r-lg">
+                      <DescriptionV1
+                        description={description}
+                        entityFqn={decodedStoredProcedureFQN}
+                        entityName={entityName}
+                        entityType={EntityType.STORED_PROCEDURE}
+                        hasEditAccess={editDescriptionPermission}
+                        isDescriptionExpanded={isEmpty(code)}
+                        isEdit={isEdit}
+                        owner={owner}
+                        showActions={!deleted}
+                        onCancel={onCancel}
+                        onDescriptionEdit={onDescriptionEdit}
+                        onDescriptionUpdate={onDescriptionUpdate}
+                        onThreadLinkSelect={onThreadLinkSelect}
+                      />
 
-                <Card className="m-b-md" data-testid="code-component">
-                  <SchemaEditor
-                    editorClass="custom-code-mirror-theme full-screen-editor-height"
-                    mode={{ name: CSMode.SQL }}
-                    options={{
-                      styleActiveLine: false,
-                      readOnly: true,
-                    }}
-                    value={code}
-                  />
-                </Card>
-              </div>
-            </Col>
-            <Col
-              className="entity-tag-right-panel-container"
-              data-testid="entity-right-panel"
-              flex="320px">
-              <EntityRightPanel<EntityType.STORED_PROCEDURE>
-                customProperties={storedProcedure}
-                dataProducts={storedProcedure?.dataProducts ?? []}
-                domain={storedProcedure?.domain}
-                editCustomAttributePermission={editCustomAttributePermission}
-                editTagPermission={editTagsPermission}
-                entityFQN={decodedStoredProcedureFQN}
-                entityId={storedProcedure?.id ?? ''}
-                entityType={EntityType.STORED_PROCEDURE}
-                selectedTags={tags}
-                viewAllPermission={viewAllPermission}
-                onExtensionUpdate={onExtensionUpdate}
-                onTagSelectionChange={handleTagSelection}
-                onThreadLinkSelect={onThreadLinkSelect}
+                      <Card className="m-b-md" data-testid="code-component">
+                        <SchemaEditor
+                          editorClass="custom-code-mirror-theme full-screen-editor-height"
+                          mode={{ name: CSMode.SQL }}
+                          options={{
+                            styleActiveLine: false,
+                            readOnly: true,
+                          }}
+                          value={code}
+                        />
+                      </Card>
+                    </div>
+                  ),
+                  minWidth: 800,
+                  flex: 0.87,
+                }}
+                secondPanel={{
+                  children: (
+                    <div data-testid="entity-right-panel">
+                      <EntityRightPanel<EntityType.STORED_PROCEDURE>
+                        customProperties={storedProcedure}
+                        dataProducts={storedProcedure?.dataProducts ?? []}
+                        domain={storedProcedure?.domain}
+                        editCustomAttributePermission={
+                          editCustomAttributePermission
+                        }
+                        editTagPermission={editTagsPermission}
+                        entityFQN={decodedStoredProcedureFQN}
+                        entityId={storedProcedure?.id ?? ''}
+                        entityType={EntityType.STORED_PROCEDURE}
+                        selectedTags={tags}
+                        viewAllPermission={viewAllPermission}
+                        onExtensionUpdate={onExtensionUpdate}
+                        onTagSelectionChange={handleTagSelection}
+                        onThreadLinkSelect={onThreadLinkSelect}
+                      />
+                    </div>
+                  ),
+                  minWidth: 320,
+                  flex: 0.13,
+                  className: 'entity-resizable-right-panel-container',
+                }}
               />
             </Col>
           </Row>

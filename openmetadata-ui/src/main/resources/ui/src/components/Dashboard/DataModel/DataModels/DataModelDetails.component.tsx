@@ -40,6 +40,7 @@ import { ActivityFeedTab } from '../../../ActivityFeed/ActivityFeedTab/ActivityF
 import ActivityThreadPanel from '../../../ActivityFeed/ActivityThreadPanel/ActivityThreadPanel';
 import { withActivityFeed } from '../../../AppRouter/withActivityFeed';
 import DescriptionV1 from '../../../common/EntityDescription/DescriptionV1';
+import ResizablePanels from '../../../common/ResizablePanels/ResizablePanels';
 import TabsLabel from '../../../common/TabsLabel/TabsLabel.component';
 import { DataAssetsHeader } from '../../../DataAssets/DataAssetsHeader/DataAssetsHeader.component';
 import SchemaEditor from '../../../Database/SchemaEditor/SchemaEditor';
@@ -153,7 +154,7 @@ const DataModelDetails = ({
 
   const handleTagSelection = async (selectedTags: EntityTags[]) => {
     const updatedTags: TagLabel[] | undefined = createTagObject(selectedTags);
-    handleUpdateTags(updatedTags);
+    await handleUpdateTags(updatedTags);
   };
 
   const handleRestoreDataModel = async () => {
@@ -212,48 +213,61 @@ const DataModelDetails = ({
   const modelComponent = useMemo(() => {
     return (
       <Row gutter={[0, 16]} wrap={false}>
-        <Col className="p-t-sm m-x-lg" flex="auto">
-          <div className="d-flex flex-col gap-4">
-            <DescriptionV1
-              description={description}
-              entityFqn={decodedDataModelFQN}
-              entityName={entityName}
-              entityType={EntityType.DASHBOARD_DATA_MODEL}
-              hasEditAccess={editDescriptionPermission}
-              isDescriptionExpanded={isEmpty(dataModelData.columns)}
-              isEdit={isEditDescription}
-              owner={owner}
-              showActions={!deleted}
-              onCancel={() => setIsEditDescription(false)}
-              onDescriptionEdit={() => setIsEditDescription(true)}
-              onDescriptionUpdate={onDescriptionUpdate}
-              onThreadLinkSelect={onThreadLinkSelect}
-            />
-            <ModelTab
-              data={dataModelData?.columns || []}
-              entityFqn={decodedDataModelFQN}
-              hasEditDescriptionPermission={editDescriptionPermission}
-              hasEditTagsPermission={editTagsPermission}
-              isReadOnly={Boolean(deleted)}
-              onThreadLinkSelect={onThreadLinkSelect}
-              onUpdate={handleColumnUpdateDataModel}
-            />
-          </div>
-        </Col>
-        <Col
-          className="entity-tag-right-panel-container"
-          data-testid="entity-right-panel"
-          flex="320px">
-          <EntityRightPanel
-            dataProducts={dataModelData?.dataProducts ?? []}
-            domain={dataModelData?.domain}
-            editTagPermission={editTagsPermission}
-            entityFQN={decodedDataModelFQN}
-            entityId={dataModelData.id}
-            entityType={EntityType.DASHBOARD_DATA_MODEL}
-            selectedTags={tags}
-            onTagSelectionChange={handleTagSelection}
-            onThreadLinkSelect={onThreadLinkSelect}
+        <Col className="tab-content-height" span={24}>
+          <ResizablePanels
+            applyDefaultStyle={false}
+            firstPanel={{
+              children: (
+                <div className="d-flex flex-col gap-4 p-t-sm m-x-lg">
+                  <DescriptionV1
+                    description={description}
+                    entityFqn={decodedDataModelFQN}
+                    entityName={entityName}
+                    entityType={EntityType.DASHBOARD_DATA_MODEL}
+                    hasEditAccess={editDescriptionPermission}
+                    isDescriptionExpanded={isEmpty(dataModelData.columns)}
+                    isEdit={isEditDescription}
+                    owner={owner}
+                    showActions={!deleted}
+                    onCancel={() => setIsEditDescription(false)}
+                    onDescriptionEdit={() => setIsEditDescription(true)}
+                    onDescriptionUpdate={onDescriptionUpdate}
+                    onThreadLinkSelect={onThreadLinkSelect}
+                  />
+                  <ModelTab
+                    data={dataModelData?.columns || []}
+                    entityFqn={decodedDataModelFQN}
+                    hasEditDescriptionPermission={editDescriptionPermission}
+                    hasEditTagsPermission={editTagsPermission}
+                    isReadOnly={Boolean(deleted)}
+                    onThreadLinkSelect={onThreadLinkSelect}
+                    onUpdate={handleColumnUpdateDataModel}
+                  />
+                </div>
+              ),
+              minWidth: 800,
+              flex: 0.87,
+            }}
+            secondPanel={{
+              children: (
+                <div data-testid="entity-right-panel">
+                  <EntityRightPanel
+                    dataProducts={dataModelData?.dataProducts ?? []}
+                    domain={dataModelData?.domain}
+                    editTagPermission={editTagsPermission}
+                    entityFQN={decodedDataModelFQN}
+                    entityId={dataModelData.id}
+                    entityType={EntityType.DASHBOARD_DATA_MODEL}
+                    selectedTags={tags}
+                    onTagSelectionChange={handleTagSelection}
+                    onThreadLinkSelect={onThreadLinkSelect}
+                  />
+                </div>
+              ),
+              minWidth: 320,
+              flex: 0.13,
+              className: 'entity-resizable-right-panel-container',
+            }}
           />
         </Col>
       </Row>

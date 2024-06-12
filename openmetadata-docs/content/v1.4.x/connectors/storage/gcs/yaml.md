@@ -119,7 +119,7 @@ source:
 
 {% /codeInfo %}
 
-{% partial file="/v1.4/connectors/yaml/database/source-config-def.md" /%}
+{% partial file="/v1.4/connectors/yaml/storage/source-config-def.md" /%}
 
 {% partial file="/v1.4/connectors/yaml/ingestion-sink-def.md" /%}
 
@@ -143,7 +143,7 @@ source:
 
 {% codeBlock fileName="filename.yaml" %}
 
-```yaml
+```yaml {% isCodeBlock=true %}
 source:
   type: gcs
   serviceName: "<service name>"

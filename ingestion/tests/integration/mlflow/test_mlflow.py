@@ -47,8 +47,6 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 )
 from metadata.workflow.metadata import MetadataWorkflow
 
-from ..integration_base import int_admin_ometa
-
 MODEL_HYPERPARAMS = {
     "alpha": {"name": "alpha", "value": "0.5", "description": None},
     "l1_ratio": {"name": "l1_ratio", "value": "1.0", "description": None},
@@ -80,7 +78,7 @@ def create_data(mlflow_environment):
     np.random.seed(40)
 
     # Read the wine-quality csv file from the URL
-    csv_url = "http://archive.ics.uci.edu/ml/machine-learning-databases/wine-quality/winequality-red.csv"
+    csv_url = "https://raw.githubusercontent.com/open-metadata/openmetadata-demo/main/resources/winequality-red.csv"
     data = pd.read_csv(csv_url, sep=";")
 
     # Split the data into training and test sets. (0.75, 0.25) split.
@@ -131,11 +129,6 @@ def create_data(mlflow_environment):
 
 
 @pytest.fixture(scope="module")
-def metadata():
-    return int_admin_ometa()
-
-
-@pytest.fixture(scope="module")
 def service(metadata, mlflow_environment):
     service = CreateMlModelServiceRequest(
         name=SERVICE_NAME,
@@ -159,7 +152,7 @@ def ingest_mlflow(metadata, service, create_data):
     workflow_config = OpenMetadataWorkflowConfig(
         source=Source(
             type=service.connection.config.type.value.lower(),
-            serviceName=service.fullyQualifiedName.__root__,
+            serviceName=service.fullyQualifiedName.root,
             serviceConnection=service.connection,
             sourceConfig=SourceConfig(config=MlModelServiceMetadataPipeline()),
         ),
@@ -190,7 +183,7 @@ def test_mlflow(ingest_mlflow, metadata):
     model = filtered_ml_models[0]
 
     # Assert name is as expected
-    assert model.name.__root__ == MODEL_NAME
+    assert model.name.root == MODEL_NAME
 
     # Assert HyperParameters are as expected
     assert len(model.mlHyperParameters) == 2

@@ -36,7 +36,7 @@ class PatchedEntity(BaseModel):
     Store the new entity after patch request
     """
 
-    new_entity: Optional[Entity]
+    new_entity: Optional[Entity] = None
 
 
 ALLOWED_COLUMN_FIELDS = {
@@ -343,14 +343,14 @@ def build_patch(
     if allowed_fields:
         patch = jsonpatch.make_patch(
             json.loads(
-                source.json(
+                source.model_dump_json(
                     exclude_unset=True,
                     exclude_none=True,
                     include=allowed_fields,
                 )
             ),
             json.loads(
-                destination.json(
+                destination.model_dump_json(
                     exclude_unset=True,
                     exclude_none=True,
                     include=allowed_fields,
@@ -359,8 +359,10 @@ def build_patch(
         )
     else:
         patch: jsonpatch.JsonPatch = jsonpatch.make_patch(
-            json.loads(source.json(exclude_unset=True, exclude_none=True)),
-            json.loads(destination.json(exclude_unset=True, exclude_none=True)),
+            json.loads(source.model_dump_json(exclude_unset=True, exclude_none=True)),
+            json.loads(
+                destination.model_dump_json(exclude_unset=True, exclude_none=True)
+            ),
         )
     if not patch:
         return None

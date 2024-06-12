@@ -237,6 +237,8 @@ site_menu:
     url: /how-to-guides/admin-guide/cli-ingestion-with-basic-auth
   - category: How-to Guides / Admin Guide / How to Add Custom Logo
     url: /how-to-guides/admin-guide/how-to-add-custom-logo
+  - category: How-to Guides / Admin Guide / Reindexing Search
+    url: /how-to-guides/admin-guide/Reindexing-Search  
 
   - category: How-to Guides / Guide for Data Users
     url: /how-to-guides/guide-for-data-users
@@ -733,6 +735,8 @@ site_menu:
     url: /connectors/pipeline/nifi/yaml
   - category: Connectors / Pipeline / Nifi / Troubleshooting
     url: /connectors/pipeline/nifi/troubleshooting
+  - category: Connectors / Pipeline / Openlineage
+    url: /connectors/pipeline/openlineage
   - category: Connectors / Pipeline / Spline
     url: /connectors/pipeline/spline
   - category: Connectors / Pipeline / Spline / Run Externally

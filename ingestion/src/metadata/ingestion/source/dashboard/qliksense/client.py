@@ -78,9 +78,9 @@ class QlikSenseClient:
             return context
 
         self.ssl_manager = SSLManager(
-            ca=self.config.certificates.sslConfig.__root__.caCertificate,
-            cert=self.config.certificates.sslConfig.__root__.sslCertificate,
-            key=self.config.certificates.sslConfig.__root__.sslKey,
+            ca=self.config.certificates.sslConfig.root.caCertificate,
+            cert=self.config.certificates.sslConfig.root.sslCertificate,
+            key=self.config.certificates.sslConfig.root.sslKey,
         )
 
         return self.ssl_manager.setup_ssl(self.config)

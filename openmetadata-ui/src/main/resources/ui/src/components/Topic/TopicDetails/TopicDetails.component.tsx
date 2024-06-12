@@ -48,6 +48,7 @@ import { CustomPropertyTable } from '../../common/CustomPropertyTable/CustomProp
 import DescriptionV1 from '../../common/EntityDescription/DescriptionV1';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import QueryViewer from '../../common/QueryViewer/QueryViewer.component';
+import ResizablePanels from '../../common/ResizablePanels/ResizablePanels';
 import TabsLabel from '../../common/TabsLabel/TabsLabel.component';
 import { DataAssetsHeader } from '../../DataAssets/DataAssetsHeader/DataAssetsHeader.component';
 import SampleDataWithMessages from '../../Database/SampleDataWithMessages/SampleDataWithMessages';
@@ -209,12 +210,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
     async (newOwner?: Topic['owner']) => {
       const updatedTopicDetails = {
         ...topicDetails,
-        owner: newOwner
-          ? {
-              ...owner,
-              ...newOwner,
-            }
-          : undefined,
+        owner: newOwner,
       };
       await onTopicUpdate(updatedTopicDetails, 'owner');
     },
@@ -306,54 +302,69 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
         key: EntityTabs.SCHEMA,
         children: (
           <Row gutter={[0, 16]} wrap={false}>
-            <Col className="p-t-sm m-x-lg" flex="auto">
-              <div className="d-flex flex-col gap-4">
-                <DescriptionV1
-                  description={topicDetails.description}
-                  entityFqn={decodedTopicFQN}
-                  entityName={entityName}
-                  entityType={EntityType.TOPIC}
-                  hasEditAccess={editDescriptionPermission}
-                  isDescriptionExpanded={isEmpty(
-                    topicDetails.messageSchema?.schemaFields
-                  )}
-                  isEdit={isEdit}
-                  owner={topicDetails.owner}
-                  showActions={!deleted}
-                  onCancel={onCancel}
-                  onDescriptionEdit={onDescriptionEdit}
-                  onDescriptionUpdate={onDescriptionUpdate}
-                  onThreadLinkSelect={onThreadLinkSelect}
-                />
-                <TopicSchemaFields
-                  entityFqn={decodedTopicFQN}
-                  hasDescriptionEditAccess={editDescriptionPermission}
-                  hasTagEditAccess={editTagsPermission}
-                  isReadOnly={Boolean(topicDetails.deleted)}
-                  messageSchema={topicDetails.messageSchema}
-                  onThreadLinkSelect={onThreadLinkSelect}
-                  onUpdate={handleSchemaFieldsUpdate}
-                />
-              </div>
-            </Col>
-            <Col
-              className="entity-tag-right-panel-container"
-              data-testid="entity-right-panel"
-              flex="320px">
-              <EntityRightPanel<EntityType.TOPIC>
-                customProperties={topicDetails}
-                dataProducts={topicDetails?.dataProducts ?? []}
-                domain={topicDetails?.domain}
-                editCustomAttributePermission={editCustomAttributePermission}
-                editTagPermission={editTagsPermission}
-                entityFQN={decodedTopicFQN}
-                entityId={topicDetails.id}
-                entityType={EntityType.TOPIC}
-                selectedTags={topicTags}
-                viewAllPermission={viewAllPermission}
-                onExtensionUpdate={onExtensionUpdate}
-                onTagSelectionChange={handleTagSelection}
-                onThreadLinkSelect={onThreadLinkSelect}
+            <Col className="tab-content-height" span={24}>
+              <ResizablePanels
+                applyDefaultStyle={false}
+                firstPanel={{
+                  children: (
+                    <div className="d-flex flex-col gap-4 p-t-sm m-x-lg">
+                      <DescriptionV1
+                        description={topicDetails.description}
+                        entityFqn={decodedTopicFQN}
+                        entityName={entityName}
+                        entityType={EntityType.TOPIC}
+                        hasEditAccess={editDescriptionPermission}
+                        isDescriptionExpanded={isEmpty(
+                          topicDetails.messageSchema?.schemaFields
+                        )}
+                        isEdit={isEdit}
+                        owner={topicDetails.owner}
+                        showActions={!deleted}
+                        onCancel={onCancel}
+                        onDescriptionEdit={onDescriptionEdit}
+                        onDescriptionUpdate={onDescriptionUpdate}
+                        onThreadLinkSelect={onThreadLinkSelect}
+                      />
+                      <TopicSchemaFields
+                        entityFqn={decodedTopicFQN}
+                        hasDescriptionEditAccess={editDescriptionPermission}
+                        hasTagEditAccess={editTagsPermission}
+                        isReadOnly={Boolean(topicDetails.deleted)}
+                        messageSchema={topicDetails.messageSchema}
+                        onThreadLinkSelect={onThreadLinkSelect}
+                        onUpdate={handleSchemaFieldsUpdate}
+                      />
+                    </div>
+                  ),
+                  minWidth: 800,
+                  flex: 0.87,
+                }}
+                secondPanel={{
+                  children: (
+                    <div data-testid="entity-right-panel">
+                      <EntityRightPanel<EntityType.TOPIC>
+                        customProperties={topicDetails}
+                        dataProducts={topicDetails?.dataProducts ?? []}
+                        domain={topicDetails?.domain}
+                        editCustomAttributePermission={
+                          editCustomAttributePermission
+                        }
+                        editTagPermission={editTagsPermission}
+                        entityFQN={decodedTopicFQN}
+                        entityId={topicDetails.id}
+                        entityType={EntityType.TOPIC}
+                        selectedTags={topicTags}
+                        viewAllPermission={viewAllPermission}
+                        onExtensionUpdate={onExtensionUpdate}
+                        onTagSelectionChange={handleTagSelection}
+                        onThreadLinkSelect={onThreadLinkSelect}
+                      />
+                    </div>
+                  ),
+                  minWidth: 320,
+                  flex: 0.13,
+                  className: 'entity-resizable-right-panel-container',
+                }}
               />
             </Col>
           </Row>

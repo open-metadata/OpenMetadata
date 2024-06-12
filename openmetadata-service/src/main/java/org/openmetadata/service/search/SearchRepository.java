@@ -54,7 +54,6 @@ import org.openmetadata.schema.tests.TestSuite;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.FieldChange;
-import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.UsageDetails;
 import org.openmetadata.service.Entity;
@@ -183,6 +182,15 @@ public class SearchRepository {
     return clusterAlias != null && !clusterAlias.isEmpty()
         ? clusterAlias + indexNameSeparator + name
         : name;
+  }
+
+  public String getIndexNameWithoutAlias(String fullIndexName) {
+    if (clusterAlias != null
+        && !clusterAlias.isEmpty()
+        && fullIndexName.startsWith(clusterAlias + indexNameSeparator)) {
+      return fullIndexName.substring((clusterAlias + indexNameSeparator).length());
+    }
+    return fullIndexName;
   }
 
   public boolean indexExists(IndexMapping indexMapping) {
@@ -359,10 +367,6 @@ public class SearchRepository {
             || entityType.equalsIgnoreCase(Entity.STORAGE_SERVICE)
             || entityType.equalsIgnoreCase(Entity.SEARCH_SERVICE)) {
           parentMatch = new ImmutablePair<>("service.id", entityId);
-        } else if (entityType.equalsIgnoreCase(Entity.TABLE)) {
-          EntityInterface entity =
-              Entity.getEntity(entityType, UUID.fromString(entityId), "", Include.ALL);
-          parentMatch = new ImmutablePair<>("entityFQN", entity.getFullyQualifiedName());
         } else {
           parentMatch = new ImmutablePair<>(entityType + ".id", entityId);
         }
@@ -591,9 +595,11 @@ public class SearchRepository {
             List.of(new ImmutablePair<>("service.id", docId)));
       }
       default -> {
-        searchClient.deleteEntityByFields(
-            indexMapping.getChildAliases(clusterAlias),
-            List.of(new ImmutablePair<>(entityType + ".id", docId)));
+        List<String> indexNames = indexMapping.getChildAliases(clusterAlias);
+        if (!indexNames.isEmpty()) {
+          searchClient.deleteEntityByFields(
+              indexNames, List.of(new ImmutablePair<>(entityType + ".id", docId)));
+        }
       }
     }
   }

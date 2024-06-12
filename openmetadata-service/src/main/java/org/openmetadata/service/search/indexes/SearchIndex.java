@@ -32,16 +32,17 @@ import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.JsonUtils;
 
 public interface SearchIndex {
-  Set<String> DEFAULT_EXCLUDED_FIELDS = Set.of("changeDescription");
+  Set<String> DEFAULT_EXCLUDED_FIELDS =
+      Set.of("changeDescription", "lineage.pipeline.changeDescription", "connection");
 
   default Map<String, Object> buildSearchIndexDoc() {
-    Map<String, Object> esDoc = JsonUtils.getMap(getEntity());
+    // Build Index Doc
+    Map<String, Object> esDoc = this.buildSearchIndexDocInternal(JsonUtils.getMap(getEntity()));
 
     // Non Indexable Fields
     removeNonIndexableFields(esDoc);
 
-    // Build Index Doc
-    return this.buildSearchIndexDocInternal(esDoc);
+    return esDoc;
   }
 
   default void removeNonIndexableFields(Map<String, Object> esDoc) {

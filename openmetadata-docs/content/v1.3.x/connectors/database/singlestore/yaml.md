@@ -108,7 +108,7 @@ This is a sample config for Singlestore:
 
 {% codeBlock fileName="filename.yaml" %}
 
-```yaml
+```yaml {% isCodeBlock=true %}
 source:
   type: singlestore
   serviceName: local_singlestore

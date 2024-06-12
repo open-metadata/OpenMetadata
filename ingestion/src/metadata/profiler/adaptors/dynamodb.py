@@ -29,12 +29,12 @@ class DynamoDB(NoSQLAdaptor):
         self.client = client
 
     def item_count(self, table: Table) -> int:
-        table = self.client.Table(table.name.__root__)
+        table = self.client.Table(table.name.root)
         return table.item_count
 
     def scan(
         self, table: Table, columns: List[Column], limit: int
     ) -> List[Dict[str, any]]:
-        table = self.client.Table(table.name.__root__)
+        table = self.client.Table(table.name.root)
         response = table.scan(Limit=limit)
         return response["Items"]

@@ -103,7 +103,7 @@ This is a sample config for MongoDB:
 
 {% codeBlock fileName="filename.yaml" %}
 
-```yaml
+```yaml {% isCodeBlock=true %}
 source:
   type: mongodb
   serviceName: local_mongodb
@@ -125,7 +125,7 @@ source:
       #   key: value
 ```
 ```yaml {% srNumber=6 %}
-      database: custom_database_name
+      databaseName: custom_database_name
 ```
 
 {% partial file="/v1.4/connectors/yaml/database/source-config.md" /%}
@@ -228,7 +228,7 @@ For a simple, local installation using our docker containers, this looks like:
 {% codeBlock fileName="filename.yaml" %}
 
 
-```yaml
+```yaml {% isCodeBlock=true %}
 source:
   type: monogodb
   serviceName: local_mongodb

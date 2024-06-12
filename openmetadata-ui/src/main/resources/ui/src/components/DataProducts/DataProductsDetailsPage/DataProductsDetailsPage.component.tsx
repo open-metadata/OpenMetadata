@@ -70,6 +70,7 @@ import {
 } from '../../../utils/StringsUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { ManageButtonItemLabel } from '../../common/ManageButtonContentItem/ManageButtonContentItem.component';
+import ResizablePanels from '../../common/ResizablePanels/ResizablePanels';
 import TabsLabel from '../../common/TabsLabel/TabsLabel.component';
 import { AssetSelectionModal } from '../../DataAssets/AssetsSelectionModal/AssetSelectionModal';
 import { DomainTabs } from '../../Domain/DomainPage.interface';
@@ -85,7 +86,6 @@ import { AssetsOfEntity } from '../../Glossary/GlossaryTerms/tabs/AssetsTabs.int
 import EntityDeleteModal from '../../Modals/EntityDeleteModal/EntityDeleteModal';
 import EntityNameModal from '../../Modals/EntityNameModal/EntityNameModal.component';
 import StyleModal from '../../Modals/StyleModal/StyleModal.component';
-import PageLayoutV1 from '../../PageLayoutV1/PageLayoutV1';
 import './data-products-details-page.less';
 import {
   DataProductsDetailsPageProps,
@@ -409,30 +409,41 @@ const DataProductsDetailsPage = ({
               ),
               key: DataProductTabs.ASSETS,
               children: (
-                <PageLayoutV1
-                  className="data-product-asset-page-layout"
+                <ResizablePanels
+                  applyDefaultStyle={false}
+                  firstPanel={{
+                    children: (
+                      <div className="p-x-md p-y-md">
+                        <AssetsTabs
+                          assetCount={assetCount}
+                          entityFqn={dataProduct.fullyQualifiedName}
+                          isSummaryPanelOpen={false}
+                          permissions={dataProductPermission}
+                          ref={assetTabRef}
+                          type={AssetsOfEntity.DATA_PRODUCT}
+                          onAddAsset={() => setAssetModelVisible(true)}
+                          onAssetClick={handleAssetClick}
+                          onRemoveAsset={handleAssetSave}
+                        />
+                      </div>
+                    ),
+                    minWidth: 800,
+                    flex: 0.87,
+                  }}
+                  hideSecondPanel={!previewAsset}
                   pageTitle={t('label.domain')}
-                  rightPanel={
-                    previewAsset && (
+                  secondPanel={{
+                    children: previewAsset && (
                       <EntitySummaryPanel
                         entityDetails={previewAsset}
                         handleClosePanel={() => setPreviewAsset(undefined)}
                       />
-                    )
-                  }
-                  rightPanelWidth={400}>
-                  <AssetsTabs
-                    assetCount={assetCount}
-                    entityFqn={dataProduct.fullyQualifiedName}
-                    isSummaryPanelOpen={false}
-                    permissions={dataProductPermission}
-                    ref={assetTabRef}
-                    type={AssetsOfEntity.DATA_PRODUCT}
-                    onAddAsset={() => setAssetModelVisible(true)}
-                    onAssetClick={handleAssetClick}
-                    onRemoveAsset={handleAssetSave}
-                  />
-                </PageLayoutV1>
+                    ),
+                    minWidth: 400,
+                    flex: 0.13,
+                    className: 'entity-summary-resizable-right-panel-container',
+                  }}
+                />
               ),
             },
           ]

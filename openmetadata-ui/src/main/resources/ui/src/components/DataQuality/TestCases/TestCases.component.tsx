@@ -20,6 +20,7 @@ import {
   Row,
   Select,
   Space,
+  Typography,
 } from 'antd';
 import { useForm } from 'antd/lib/form/Form';
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
@@ -50,6 +51,7 @@ import {
   INITIAL_PAGING_VALUE,
   PAGE_SIZE,
   PAGE_SIZE_BASE,
+  TIER_CATEGORY,
 } from '../../../constants/constants';
 import {
   TEST_CASE_FILTERS,
@@ -64,6 +66,7 @@ import { TestCase } from '../../../generated/tests/testCase';
 import { usePaging } from '../../../hooks/paging/usePaging';
 import { DataQualityPageTabs } from '../../../pages/DataQuality/DataQualityPage.interface';
 import { searchQuery } from '../../../rest/searchAPI';
+import { getTags } from '../../../rest/tagAPI';
 import {
   getListTestCaseBySearch,
   ListTestCaseParamsBySearch,
@@ -72,6 +75,7 @@ import { buildTestCaseParams } from '../../../utils/DataQuality/DataQualityUtils
 import { getEntityName } from '../../../utils/EntityUtils';
 import { getDataQualityPagePath } from '../../../utils/RouterUtils';
 import { generateEntityLink } from '../../../utils/TableUtils';
+import tagClassBase from '../../../utils/TagClassBase';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import DatePickerMenu from '../../common/DatePickerMenu/DatePickerMenu.component';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
@@ -89,7 +93,10 @@ export const TestCases = ({ summaryPanel }: { summaryPanel: ReactNode }) => {
   const { permissions } = usePermissionProvider();
   const { testCase: testCasePermission } = permissions;
   const [tableOptions, setTableOptions] = useState<DefaultOptionType[]>([]);
-  const [isTableLoading, setIsTableLoading] = useState(false);
+  const [isOptionsLoading, setIsOptionsLoading] = useState(false);
+  const [tagOptions, setTagOptions] = useState<DefaultOptionType[]>([]);
+  const [tierOptions, setTierOptions] = useState<DefaultOptionType[]>([]);
+  const [serviceOptions, setServiceOptions] = useState<DefaultOptionType[]>([]);
 
   const params = useMemo(() => {
     const search = location.search;
@@ -203,11 +210,154 @@ export const TestCases = ({ summaryPanel }: { summaryPanel: ReactNode }) => {
       buildTestCaseParams(params, selectedFilter),
       isUndefined
     );
+
     if (!isEqual(filters, updatedParams)) {
       fetchTestCases(INITIAL_PAGING_VALUE, updatedParams);
     }
 
     setFilters(updatedParams);
+  };
+
+  const fetchTierOptions = async () => {
+    try {
+      setIsOptionsLoading(true);
+      const { data } = await getTags({
+        parent: 'Tier',
+      });
+
+      const options = data.map((hit) => {
+        return {
+          label: (
+            <Space
+              data-testid={hit.fullyQualifiedName}
+              direction="vertical"
+              size={0}>
+              <Typography.Text className="text-xs text-grey-muted">
+                {hit.fullyQualifiedName}
+              </Typography.Text>
+              <Typography.Text className="text-sm">
+                {getEntityName(hit)}
+              </Typography.Text>
+            </Space>
+          ),
+          value: hit.fullyQualifiedName,
+        };
+      });
+
+      setTierOptions(options);
+    } catch (error) {
+      setTierOptions([]);
+    } finally {
+      setIsOptionsLoading(false);
+    }
+  };
+
+  const fetchTagOptions = async (search?: string) => {
+    setIsOptionsLoading(true);
+    try {
+      const { data } = await tagClassBase.getTags(search ?? '', 1);
+
+      const options = data
+        .filter(
+          ({ data: { classification } }) =>
+            classification?.name !== TIER_CATEGORY
+        )
+        .map(({ label, value }) => {
+          return {
+            label: (
+              <Space data-testid={value} direction="vertical" size={0}>
+                <Typography.Text className="text-xs text-grey-muted">
+                  {value}
+                </Typography.Text>
+                <Typography.Text className="text-sm">{label}</Typography.Text>
+              </Space>
+            ),
+            value: value,
+          };
+        });
+
+      setTagOptions(options);
+    } catch (error) {
+      setTagOptions([]);
+    } finally {
+      setIsOptionsLoading(false);
+    }
+  };
+
+  const fetchTableData = async (search = WILD_CARD_CHAR) => {
+    setIsOptionsLoading(true);
+    try {
+      const response = await searchQuery({
+        query: `*${search}*`,
+        pageNumber: 1,
+        pageSize: PAGE_SIZE_BASE,
+        searchIndex: SearchIndex.TABLE,
+        fetchSource: true,
+        includeFields: ['name', 'fullyQualifiedName', 'displayName'],
+      });
+
+      const options = response.hits.hits.map((hit) => {
+        return {
+          label: (
+            <Space
+              data-testid={hit._source.fullyQualifiedName}
+              direction="vertical"
+              size={0}>
+              <Typography.Text className="text-xs text-grey-muted">
+                {hit._source.fullyQualifiedName}
+              </Typography.Text>
+              <Typography.Text className="text-sm">
+                {getEntityName(hit._source)}
+              </Typography.Text>
+            </Space>
+          ),
+          value: hit._source.fullyQualifiedName,
+        };
+      });
+      setTableOptions(options);
+    } catch (error) {
+      setTableOptions([]);
+    } finally {
+      setIsOptionsLoading(false);
+    }
+  };
+
+  const fetchServiceOptions = async (search = WILD_CARD_CHAR) => {
+    setIsOptionsLoading(true);
+    try {
+      const response = await searchQuery({
+        query: `*${search}*`,
+        pageNumber: 1,
+        pageSize: PAGE_SIZE_BASE,
+        searchIndex: SearchIndex.DATABASE_SERVICE,
+        fetchSource: true,
+        includeFields: ['name', 'fullyQualifiedName', 'displayName'],
+      });
+
+      const options = response.hits.hits.map((hit) => {
+        return {
+          label: (
+            <Space
+              data-testid={hit._source.fullyQualifiedName}
+              direction="vertical"
+              size={0}>
+              <Typography.Text className="text-xs text-grey-muted">
+                {hit._source.fullyQualifiedName}
+              </Typography.Text>
+              <Typography.Text className="text-sm">
+                {getEntityName(hit._source)}
+              </Typography.Text>
+            </Space>
+          ),
+          value: hit._source.fullyQualifiedName,
+        };
+      });
+      setServiceOptions(options);
+    } catch (error) {
+      setServiceOptions([]);
+    } finally {
+      setIsOptionsLoading(false);
+    }
   };
 
   const handleMenuClick = ({ key }: { key: string }) => {
@@ -231,6 +381,12 @@ export const TestCases = ({ summaryPanel }: { summaryPanel: ReactNode }) => {
 
       return [...prevSelected, key];
     });
+
+    // Fetch options based on the selected filter
+    key === TEST_CASE_FILTERS.tier && fetchTierOptions();
+    key === TEST_CASE_FILTERS.tags && fetchTagOptions();
+    key === TEST_CASE_FILTERS.table && fetchTableData();
+    key === TEST_CASE_FILTERS.service && fetchServiceOptions();
   };
 
   const filterMenu: ItemType[] = useMemo(() => {
@@ -242,33 +398,18 @@ export const TestCases = ({ summaryPanel }: { summaryPanel: ReactNode }) => {
     }));
   }, [filters]);
 
-  const fetchTableData = async (search = WILD_CARD_CHAR) => {
-    setIsTableLoading(true);
-    try {
-      const response = await searchQuery({
-        query: `*${search}*`,
-        pageNumber: 1,
-        pageSize: PAGE_SIZE_BASE,
-        searchIndex: SearchIndex.TABLE,
-        fetchSource: true,
-        includeFields: ['name', 'fullyQualifiedName', 'displayName'],
-      });
-
-      const options = response.hits.hits.map((hit) => ({
-        label: getEntityName(hit._source),
-        value: hit._source.fullyQualifiedName,
-      }));
-      setTableOptions(options);
-    } catch (error) {
-      setTableOptions([]);
-    } finally {
-      setIsTableLoading(false);
-    }
-  };
-
   const debounceFetchTableData = useCallback(debounce(fetchTableData, 1000), [
     fetchTableData,
   ]);
+
+  const debounceFetchTagOptions = useCallback(debounce(fetchTagOptions, 1000), [
+    fetchTagOptions,
+  ]);
+
+  const debounceFetchServiceOptions = useCallback(
+    debounce(fetchServiceOptions, 1000),
+    [fetchServiceOptions]
+  );
 
   useEffect(() => {
     if (testCasePermission?.ViewAll || testCasePermission?.ViewBasic) {
@@ -279,10 +420,6 @@ export const TestCases = ({ summaryPanel }: { summaryPanel: ReactNode }) => {
       setIsLoading(false);
     }
   }, [tab, searchValue, testCasePermission, pageSize]);
-
-  useEffect(() => {
-    fetchTableData();
-  }, []);
 
   const pagingData = useMemo(
     () => ({
@@ -341,14 +478,14 @@ export const TestCases = ({ summaryPanel }: { summaryPanel: ReactNode }) => {
             </Form.Item>
             {selectedFilter.includes(TEST_CASE_FILTERS.table) && (
               <Form.Item
-                className="m-0 w-52"
+                className="m-0 w-80"
                 label={t('label.table')}
                 name="tableFqn">
                 <Select
                   allowClear
                   showSearch
                   data-testid="table-select-filter"
-                  loading={isTableLoading}
+                  loading={isOptionsLoading}
                   options={tableOptions}
                   placeholder={t('label.table')}
                   onSearch={debounceFetchTableData}
@@ -403,6 +540,52 @@ export const TestCases = ({ summaryPanel }: { summaryPanel: ReactNode }) => {
                 trigger="handleDateRangeChange"
                 valuePropName="defaultDateRange">
                 <DatePickerMenu showSelectedCustomRange />
+              </Form.Item>
+            )}
+            {selectedFilter.includes(TEST_CASE_FILTERS.tags) && (
+              <Form.Item
+                className="m-0 w-80"
+                label={t('label.tag-plural')}
+                name="tags">
+                <Select
+                  allowClear
+                  showSearch
+                  data-testid="tags-select-filter"
+                  loading={isOptionsLoading}
+                  mode="multiple"
+                  options={tagOptions}
+                  placeholder={t('label.tag-plural')}
+                  onSearch={debounceFetchTagOptions}
+                />
+              </Form.Item>
+            )}
+            {selectedFilter.includes(TEST_CASE_FILTERS.tier) && (
+              <Form.Item
+                className="m-0 w-40"
+                label={t('label.tier')}
+                name="tier">
+                <Select
+                  allowClear
+                  data-testid="tier-select-filter"
+                  options={tierOptions}
+                  placeholder={t('label.tier')}
+                />
+              </Form.Item>
+            )}
+            {selectedFilter.includes(TEST_CASE_FILTERS.service) && (
+              <Form.Item
+                className="m-0 w-80"
+                label={t('label.service')}
+                name="serviceName">
+                <Select
+                  allowClear
+                  showSearch
+                  data-testid="service-select-filter"
+                  loading={isOptionsLoading}
+                  options={serviceOptions}
+                  placeholder={t('label.service')}
+                  onSearch={debounceFetchServiceOptions}
+                />
               </Form.Item>
             )}
           </Space>

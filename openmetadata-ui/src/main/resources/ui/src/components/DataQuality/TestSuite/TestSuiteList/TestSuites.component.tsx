@@ -164,9 +164,9 @@ export const TestSuites = ({ summaryPanel }: { summaryPanel: ReactNode }) => {
         title: `${t('label.success')} %`,
         dataIndex: 'summary',
         key: 'success',
-        render: (value: TestSummary) => {
+        render: (value: TestSuite['summary']) => {
           const percent =
-            value.total && value.success ? value.success / value.total : 0;
+            value?.total && value?.success ? value.success / value.total : 0;
 
           return (
             <ProfilerProgressWidget
@@ -279,13 +279,15 @@ export const TestSuites = ({ summaryPanel }: { summaryPanel: ReactNode }) => {
                   />
                 </Form.Item>
                 <Form.Item
-                  className="m-0 w-52"
+                  className="m-0"
                   label={t('label.owner')}
                   name="owner">
                   <UserTeamSelectableList
                     hasPermission
                     owner={selectedOwner}
-                    onUpdate={handleOwnerSelect}>
+                    onUpdate={(updatedUser) =>
+                      handleOwnerSelect(updatedUser as EntityReference)
+                    }>
                     <Select
                       data-testid="owner-select-filter"
                       open={false}

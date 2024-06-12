@@ -134,20 +134,20 @@ On this connector we can see two different definitions:
 
 {% codeBlock fileName="mysqlConnection.json" %}
 
-```json
+```json {% isCodeBlock=true %}
 {
 ```
 ```json {% srNumber=1 %}
 "$id": "https://open-metadata.org/schema/entity/services/connections/database/mysqlConnection.json",
 ```
-```json
+```json {% isCodeBlock=true %}
   "$schema": "http://json-schema.org/draft-07/schema#",
 ```
 ```json {% srNumber=2 %}
 "title": "MysqlConnection",
 "description": "Mysql Database Connection Config",
 ```
-```json
+```json {% isCodeBlock=true %}
   "type": "object",
 ```
 ```json {% srNumber=3 %}
@@ -215,20 +215,10 @@ On this connector we can see two different definitions:
       "description": "Database Schema of the data source. This is optional parameter, if you would like to restrict the metadata reading to a single schema. When left blank, OpenMetadata Ingestion attempts to scan all the schemas.",
       "type": "string"
     },
-    "sslCA": {
-      "title": "SSL CA",
-      "description": "Provide the path to ssl ca file",
-      "type": "string"
-    },
-    "sslCert": {
-      "title": "SSL Client Certificate File",
-      "description": "Provide the path to ssl client certificate file (ssl_cert)",
-      "type": "string"
-    },
-    "sslKey": {
-      "title": "SSL Client Key File",
-      "description": "Provide the path to ssl client certificate file (ssl_key)",
-      "type": "string"
+    "sslConfig": {
+      "title": "SSL",
+      "description": "SSL Configuration details.",
+      "$ref": "../../../../security/ssl/verifySSLConfig.json#/definitions/sslConfig"
     },
     "connectionOptions": {
       "title": "Connection Options",
@@ -263,7 +253,7 @@ On this connector we can see two different definitions:
 "additionalProperties": false,
 "required": ["hostPort", "username"]
 ```
-```json
+```json {% isCodeBlock=true %}
 }
 ```
 
@@ -306,7 +296,7 @@ The file will be shortened and parts of it will be replaced with `...` for reada
 {% /codeInfoContainer %}
 
 {% codeBlock fileName="mysqlConnection.json" %}
-```json
+```json {% isCodeBlock=true %}
 {
   "$id": "https://open-metadata.org/schema/entity/services/databaseService.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
@@ -358,7 +348,7 @@ The file will be shortened and parts of it will be replaced with `...` for reada
       "additionalProperties": false
     }
 ```
-```json
+```json {% isCodeBlock=true %}
   },
   ...
 }

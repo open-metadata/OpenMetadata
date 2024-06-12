@@ -35,7 +35,6 @@ import static org.openmetadata.service.util.EntityUtil.fieldAdded;
 import static org.openmetadata.service.util.EntityUtil.fieldDeleted;
 import static org.openmetadata.service.util.EntityUtil.fieldUpdated;
 import static org.openmetadata.service.util.EntityUtil.getFqn;
-import static org.openmetadata.service.util.EntityUtil.getFqns;
 import static org.openmetadata.service.util.EntityUtil.getId;
 import static org.openmetadata.service.util.EntityUtil.toTagLabels;
 import static org.openmetadata.service.util.TestUtils.*;
@@ -345,7 +344,7 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
     createGlossary =
         glossaryTest
             .createRequest(getEntityName(test, 2))
-            .withReviewers(listOf(USER1.getFullyQualifiedName(), USER2.getFullyQualifiedName()));
+            .withReviewers(listOf(USER1.getEntityReference(), USER2.getEntityReference()));
     Glossary glossary2 = glossaryTest.createEntity(createGlossary, ADMIN_AUTH_HEADERS);
 
     // Creating a glossary term g2t1 should be in `Draft` mode (because glossary has reviewers)
@@ -587,7 +586,7 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
         g, t1, "t11", null, DATA_STEWARD.getEntityReference(), authHeaders(DATA_STEWARD.getName()));
   }
 
-  private Thread assertApprovalTask(GlossaryTerm term, TaskStatus expectedTaskStatus)
+  protected Thread assertApprovalTask(GlossaryTerm term, TaskStatus expectedTaskStatus)
       throws HttpResponseException {
     String entityLink =
         new EntityLink(Entity.GLOSSARY_TERM, term.getFullyQualifiedName()).getLinkString();
@@ -868,7 +867,7 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
             .withStyle(new Style().withColor("#FF5733").withIconURL("https://img"))
             .withParent(getFqn(parent))
             .withOwner(owner)
-            .withReviewers(getFqns(reviewers));
+            .withReviewers(reviewers);
     return createAndCheckEntity(createGlossaryTerm, createdBy);
   }
 
@@ -902,7 +901,7 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
         .withSynonyms(List.of("syn1", "syn2", "syn3"))
         .withGlossary(GLOSSARY1.getName())
         .withRelatedTerms(Arrays.asList(getFqn(GLOSSARY1_TERM1), getFqn(GLOSSARY2_TERM1)))
-        .withReviewers(List.of(USER1_REF.getFullyQualifiedName()));
+        .withReviewers(List.of(USER1_REF));
   }
 
   @Override
@@ -928,7 +927,7 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
     }
 
     assertEntityReferenceNames(request.getRelatedTerms(), entity.getRelatedTerms());
-    assertEntityReferenceNames(request.getReviewers(), entity.getReviewers());
+    assertEntityReferences(request.getReviewers(), entity.getReviewers());
 
     // Entity specific validation
     TestUtils.validateTags(request.getTags(), entity.getTags());
@@ -1152,7 +1151,7 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
   public Glossary createGlossary(
       String name, List<EntityReference> reviewers, EntityReference owner) throws IOException {
     CreateGlossary create =
-        glossaryTest.createRequest(name).withReviewers(getFqns(reviewers)).withOwner(owner);
+        glossaryTest.createRequest(name).withReviewers(reviewers).withOwner(owner);
     return glossaryTest.createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
   }
 

@@ -134,7 +134,7 @@ This is a sample config for DB2:
 
 {% codeBlock fileName="filename.yaml" %}
 
-```yaml
+```yaml {% isCodeBlock=true %}
 source:
   type: db2
   serviceName: local_db2

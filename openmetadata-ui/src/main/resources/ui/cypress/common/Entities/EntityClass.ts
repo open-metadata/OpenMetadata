@@ -449,10 +449,14 @@ class EntityClass {
   // Announcement
 
   createAnnouncement() {
-    createAnnouncementUtil({
-      title: 'Cypress announcement',
-      description: 'Cypress announcement description',
-    });
+    createAnnouncementUtil(
+      {
+        title: 'Cypress announcement',
+        description: 'Cypress announcement description',
+      },
+      this.entityName,
+      this.name
+    );
   }
 
   replyAnnouncement() {

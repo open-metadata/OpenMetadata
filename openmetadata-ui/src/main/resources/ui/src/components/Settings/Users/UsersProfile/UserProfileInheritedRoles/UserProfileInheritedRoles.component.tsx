@@ -15,6 +15,7 @@ import { Card, Typography } from 'antd';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as UserIcons } from '../../../../../assets/svg/user.svg';
+import { EntityType } from '../../../../../enums/entity.enum';
 import Chip from '../../../../common/Chip/Chip.component';
 import { UserProfileInheritedRolesProps } from './UserProfileInheritedRoles.interface';
 
@@ -37,6 +38,7 @@ const UserProfileInheritedRoles = ({
       }>
       <Chip
         data={inheritedRoles ?? []}
+        entityType={EntityType.ROLE}
         icon={<UserIcons height={20} />}
         noDataPlaceholder={t('message.no-inherited-roles-found')}
       />
