@@ -24,11 +24,22 @@ on:
         required: False
         default: "false"
 
+env:
+  DEBUG: ${{ inputs.debug || 'false' }}
+
 permissions:
   id-token: write
   contents: read
 
 jobs:
+  # Needed since env is not available on the job context: https://github.com/actions/runner/issues/2372
+  check-debug:
+    runs-on: ubuntu-latest
+    outputs:
+      DEBUG: ${{ env.DEBUG }}
+    steps:
+      - run: echo "null"
+
   py-cli-e2e-tests:
     runs-on: ubuntu-latest
     strategy:
@@ -152,21 +163,21 @@ jobs:
         coverage report --rcfile ingestion/pyproject.toml --data-file .coverage.$E2E_TEST || true
 
     - name: Upload coverage artifact for Python tests
-      if: matrix.e2e-test == 'python' && steps.python-e2e-test.outcome == 'success' && inputs.debug == 'false'
+      if: matrix.e2e-test == 'python' && steps.python-e2e-test.outcome == 'success' && env.DEBUG == 'false'
       uses: actions/upload-artifact@v3
       with:
         name: coverage-${{ matrix.e2e-test }}
         path: .coverage
 
     - name: Upload coverage artifact for CLI E2E tests
-      if: matrix.e2e-test != 'python' && steps.e2e-test.outcome == 'success' && inputs.debug == 'false'
+      if: matrix.e2e-test != 'python' && steps.e2e-test.outcome == 'success' && env.DEBUG == 'false'
       uses: actions/upload-artifact@v3
       with:
         name: coverage-${{ matrix.e2e-test }}
         path: .coverage.${{ matrix.e2e-test }}
 
     - name: Upload tests artifact
-      if: steps.e2e-test.outcome == 'success' || steps.python-e2e-test.outcome == 'success' && inputs.debug == 'false'
+      if: steps.e2e-test.outcome == 'success' || steps.python-e2e-test.outcome == 'success' && env.DEBUG == 'false'
       uses: actions/upload-artifact@v3
       with:
         name: tests-${{ matrix.e2e-test }}
@@ -179,7 +190,7 @@ jobs:
         sudo rm -rf ${PWD}/docker-volume
 
     - name: Slack on Failure
-      if: steps.e2e-test.outcome != 'success' && steps.python-e2e-test.outcome != 'success' && inputs.debug == 'false'
+      if: steps.e2e-test.outcome != 'success' && steps.python-e2e-test.outcome != 'success' && env.DEBUG == 'false'
       uses: slackapi/slack-github-action@v1.23.0
       with:
         payload: |
@@ -197,8 +208,10 @@ jobs:
 
   sonar-cloud-coverage-upload:
     runs-on: ubuntu-latest
-    needs: py-cli-e2e-tests
-    if: inputs.debug == 'false'
+    needs:
+      - py-cli-e2e-tests
+      - check-debug
+    if: needs.check-debug.outputs.DEBUG == 'false'
     steps:
 
       - name: Checkout
