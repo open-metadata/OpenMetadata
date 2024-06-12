@@ -167,11 +167,9 @@ export const removeAssets = (domainObj) => {
   interceptURL('GET', '/api/v1/domain*', 'domains');
   interceptURL('PATCH', '/api/v1/tables/*', 'patchDomain');
 
-  visitEntityDetailsPage({
-    term: entity.term,
-    serviceName: entity.serviceName,
-    entity: entity.entity,
-  });
+  cy.get('[data-testid="entity-header-display-name"]')
+    .contains(entity.term)
+    .click();
 
   cy.get('[data-testid="add-domain"]').click();
   verifyResponseStatusCode('@domains', 200);
