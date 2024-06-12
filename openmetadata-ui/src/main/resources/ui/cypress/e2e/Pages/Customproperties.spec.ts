@@ -69,6 +69,7 @@ describe('Custom Properties should work properly', { tags: 'Settings' }, () => {
   });
 
   after(() => {
+    cy.login();
     updateJWTTokenExpiryTime(JWT_EXPIRY_TIME_MAP['1 hour']);
   });
 
