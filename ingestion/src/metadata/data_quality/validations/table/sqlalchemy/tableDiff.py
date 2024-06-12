@@ -53,7 +53,7 @@ class TableDiffValidator(BaseTestValidator, SQAValidatorMixin):
                 timestamp=self.execution_date,  # type: ignore
                 testCaseStatus=self.get_test_case_status(False),
                 result=f"MISMATCHED_COLUMNS: One of the tables is missing the column: '{e}'\n"
-                       "Use two tables with the same schema or provide the extraColumns parameter.",
+                "Use two tables with the same schema or provide the extraColumns parameter.",
                 testResultValue=[TestResultValue(name="diffCount", value=str(0))],
             )
             logger.error(result.result)
@@ -135,9 +135,9 @@ class TableDiffValidator(BaseTestValidator, SQAValidatorMixin):
         return "forbiddenRegex"
 
     def get_test_case_result(
-            self,
-            num_diffs: int,
-            threshold: int,
+        self,
+        num_diffs: int,
+        threshold: int,
     ) -> TestCaseResult:
         return TestCaseResult(
             timestamp=self.execution_date,  # type: ignore
