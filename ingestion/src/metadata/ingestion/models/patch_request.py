@@ -11,7 +11,9 @@
 """
 Pydantic definition for storing entities for patching
 """
+import traceback
 import json
+import logging
 from typing import Dict, List, Optional, Tuple
 
 import jsonpatch
@@ -20,6 +22,8 @@ from pydantic import BaseModel
 from metadata.ingestion.api.models import Entity, T
 from metadata.ingestion.ometa.mixins.patch_mixin_utils import PatchOperation
 from metadata.ingestion.ometa.utils import model_str
+
+logger = logging.getLogger("metadata")
 
 
 class PatchRequest(BaseModel):
@@ -326,56 +330,59 @@ def build_patch(
     Returns
         Updated Entity
     """
+    try:
+        # remove change descriptions from entities
+        if remove_change_description:
+            source = _remove_change_description(source)
+            destination = _remove_change_description(destination)
 
-    # remove change descriptions from entities
-    if remove_change_description:
-        source = _remove_change_description(source)
-        destination = _remove_change_description(destination)
+        if array_entity_fields:
+            _sort_array_entity_fields(
+                source=source,
+                destination=destination,
+                array_entity_fields=array_entity_fields,
+            )
 
-    if array_entity_fields:
-        _sort_array_entity_fields(
-            source=source,
-            destination=destination,
-            array_entity_fields=array_entity_fields,
-        )
+        # Get the difference between source and destination
+        if allowed_fields:
+            patch = jsonpatch.make_patch(
+                json.loads(
+                    source.model_dump_json(
+                        exclude_unset=True,
+                        exclude_none=True,
+                        include=allowed_fields,
+                    )
+                ),
+                json.loads(
+                    destination.model_dump_json(
+                        exclude_unset=True,
+                        exclude_none=True,
+                        include=allowed_fields,
+                    )
+                ),
+            )
+        else:
+            patch: jsonpatch.JsonPatch = jsonpatch.make_patch(
+                json.loads(source.model_dump_json(exclude_unset=True, exclude_none=True)),
+                json.loads(
+                    destination.model_dump_json(exclude_unset=True, exclude_none=True)
+                ),
+            )
+        if not patch:
+            return None
 
-    # Get the difference between source and destination
-    if allowed_fields:
-        patch = jsonpatch.make_patch(
-            json.loads(
-                source.model_dump_json(
-                    exclude_unset=True,
-                    exclude_none=True,
-                    include=allowed_fields,
-                )
-            ),
-            json.loads(
-                destination.model_dump_json(
-                    exclude_unset=True,
-                    exclude_none=True,
-                    include=allowed_fields,
-                )
-            ),
-        )
-    else:
-        patch: jsonpatch.JsonPatch = jsonpatch.make_patch(
-            json.loads(source.model_dump_json(exclude_unset=True, exclude_none=True)),
-            json.loads(
-                destination.model_dump_json(exclude_unset=True, exclude_none=True)
-            ),
-        )
-    if not patch:
-        return None
+        # For a user editable fields like descriptions, tags we only want to support "add" operation in patch
+        # we will remove the other operations.
+        if restrict_update_fields:
+            updated_operations = JsonPatchUpdater.from_restrict_update_fields(
+                restrict_update_fields
+            ).update(patch)
+            patch.patch = updated_operations
 
-    # For a user editable fields like descriptions, tags we only want to support "add" operation in patch
-    # we will remove the other operations.
-    if restrict_update_fields:
-        updated_operations = JsonPatchUpdater.from_restrict_update_fields(
-            restrict_update_fields
-        ).update(patch)
-        patch.patch = updated_operations
-
-    return patch
+        return patch
+    except Exception:
+        logger.debug(traceback.format_exc())
+        logger.warning(f"Couldn't create patch.")
 
 
 def _sort_array_entity_fields(

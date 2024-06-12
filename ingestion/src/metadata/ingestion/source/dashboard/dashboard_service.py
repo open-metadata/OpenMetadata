@@ -637,7 +637,6 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
                             type=LINEAGE_MAP[type(datamodel_entity)],
                         )
                     )
-            patch_request.new_entity.dataModels = datamodel_entity_ref_list
             patch_request.new_entity.dataModels = EntityReferenceList(datamodel_entity_ref_list)
         return patch_request
 
