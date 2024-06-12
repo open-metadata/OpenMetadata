@@ -190,6 +190,14 @@ public class SubscriptionUtil {
       }
     }
 
+    try {
+      tempUserVar =
+          Entity.getEntityByName(USER, thread.getCreatedBy(), "profile", Include.NON_DELETED);
+      users.put(tempUserVar.getId(), tempUserVar);
+    } catch (Exception ex) {
+      LOG.warn("Thread created by unknown user: %s", thread.getCreatedBy());
+    }
+
     // Users
     receiversList.addAll(getEmailOrWebhookEndpointForUsers(users.values().stream().toList(), type));
 
@@ -235,6 +243,14 @@ public class SubscriptionUtil {
           teams.put(tempTeamVar.getId(), tempTeamVar);
         }
       }
+    }
+
+    try {
+      tempUserVar =
+          Entity.getEntityByName(USER, thread.getCreatedBy(), "profile", Include.NON_DELETED);
+      users.put(tempUserVar.getId(), tempUserVar);
+    } catch (Exception ex) {
+      LOG.warn("Thread created by unknown user: %s", thread.getCreatedBy());
     }
 
     // Users
