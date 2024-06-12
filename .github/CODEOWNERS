@@ -4,7 +4,7 @@
 /openmetadata-ui/src/main/resources/ui/ @harshach @karanh37 @chirag-madlani @Sachin-chaurasiya
 
 # Review from Backend owners for changes around Backend code
-/openmetadata-service/ @open-metadata/backend
+/openmetadata-service/ @open-metadata/backend @sushi30 @pmbrull @TeddyCr
 
 # Review from Ingestion owners for changes around Ingestion code
 /ingestion @open-metadata/ingestion
