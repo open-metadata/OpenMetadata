@@ -131,7 +131,7 @@ class DatalakeSampleTest(TestCase):
 
     @classmethod
     @mock.patch(
-        "metadata.profiler.interface.profiler_interface.get_connection",
+        "metadata.profiler.interface.profiler_interface.get_ssl_connection",
         return_value=FakeConnection,
     )
     @mock.patch(
@@ -169,7 +169,7 @@ class DatalakeSampleTest(TestCase):
         assert res < 5
 
     @mock.patch(
-        "metadata.profiler.interface.profiler_interface.get_connection",
+        "metadata.profiler.interface.profiler_interface.get_ssl_connection",
         return_value=FakeConnection,
     )
     @mock.patch(

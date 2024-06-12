@@ -15,13 +15,14 @@ from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
 )
 from metadata.ingestion.api.steps import Processor, Sink
-from metadata.ingestion.source.connections import get_connection, get_test_connection_fn
+from metadata.ingestion.source.connections import get_test_connection_fn
 from metadata.pii.processor import PIIProcessor
 from metadata.profiler.processor.processor import ProfilerProcessor
 from metadata.profiler.source.metadata import OpenMetadataSource
 from metadata.profiler.source.metadata_ext import OpenMetadataSourceExt
 from metadata.utils.importer import import_sink_class
 from metadata.utils.logger import profiler_logger
+from metadata.utils.ssl_manager import get_ssl_connection
 from metadata.workflow.ingestion import IngestionWorkflow
 
 logger = profiler_logger()
@@ -62,7 +63,7 @@ class ProfilerWorkflow(IngestionWorkflow):
 
     def test_connection(self):
         service_config = self.config.source.serviceConnection.root.config
-        conn = get_connection(service_config)
+        conn = get_ssl_connection(service_config)
 
         test_connection_fn = get_test_connection_fn(service_config)
         test_connection_fn(self.metadata, conn, service_config)
