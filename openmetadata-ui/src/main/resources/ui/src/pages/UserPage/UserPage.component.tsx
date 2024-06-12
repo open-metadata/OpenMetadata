@@ -27,6 +27,7 @@ import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
 import Loader from '../../components/common/Loader/Loader';
 import Users from '../../components/Settings/Users/Users.component';
+import { ROUTES } from '../../constants/constants';
 import { User } from '../../generated/entity/teams/user';
 import { Include } from '../../generated/type/include';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
@@ -150,17 +151,17 @@ const UserPage = () => {
     [userData, currentUser, updateCurrentUser]
   );
 
-  const handleToggleDelete = () => {
+  const handleToggleDelete = useCallback(() => {
     setUserData((prev) => ({
       ...prev,
       deleted: !prev?.deleted,
     }));
-  };
+  }, [setUserData]);
 
   const afterDeleteAction = useCallback(
     (isSoftDelete?: boolean) =>
-      isSoftDelete ? handleToggleDelete() : history.push('/'),
-    []
+      isSoftDelete ? handleToggleDelete() : history.push(ROUTES.HOME),
+    [handleToggleDelete]
   );
 
   useEffect(() => {
