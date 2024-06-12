@@ -39,6 +39,8 @@ import { useActivityFeedProvider } from '../../../ActivityFeed/ActivityFeedProvi
 import { ActivityFeedTab } from '../../../ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
 import ActivityThreadPanel from '../../../ActivityFeed/ActivityThreadPanel/ActivityThreadPanel';
 import { withActivityFeed } from '../../../AppRouter/withActivityFeed';
+import { CustomPropertyTable } from '../../../common/CustomPropertyTable/CustomPropertyTable';
+import { ExtentionEntities } from '../../../common/CustomPropertyTable/CustomPropertyTable.interface';
 import DescriptionV1 from '../../../common/EntityDescription/DescriptionV1';
 import TabsLabel from '../../../common/TabsLabel/TabsLabel.component';
 import { DataAssetsHeader } from '../../../DataAssets/DataAssetsHeader/DataAssetsHeader.component';
@@ -48,7 +50,10 @@ import Lineage from '../../../Lineage/Lineage.component';
 import { EntityName } from '../../../Modals/EntityNameModal/EntityNameModal.interface';
 import PageLayoutV1 from '../../../PageLayoutV1/PageLayoutV1';
 import { SourceType } from '../../../SearchedData/SearchedData.interface';
-import { DataModelDetailsProps } from './DataModelDetails.interface';
+import {
+  DataModelDetailsProps,
+  TempDashboardDataModel,
+} from './DataModelDetails.interface';
 import ModelTab from './ModelTab/ModelTab.component';
 
 const DataModelDetails = ({
@@ -208,6 +213,18 @@ const DataModelDetails = ({
 
     setIsEditDescription(false);
   };
+  const handelExtentionUpdate = useCallback(
+    async (schema: TempDashboardDataModel) => {
+      await onUpdateDataModel(
+        {
+          ...dataModelData,
+          extension: schema.extension,
+        },
+        'extension'
+      );
+    },
+    [onUpdateDataModel, dataModelData]
+  );
 
   const modelComponent = useMemo(() => {
     return (
@@ -354,6 +371,32 @@ const DataModelDetails = ({
               hasEditAccess={editLineagePermission}
             />
           </LineageProvider>
+        ),
+      },
+      {
+        label: (
+          <TabsLabel
+            id={EntityTabs.CUSTOM_PROPERTIES}
+            name={t('label.custom-property-plural')}
+          />
+        ),
+        key: EntityTabs.CUSTOM_PROPERTIES,
+        children: (
+          <CustomPropertyTable<EntityType.DASHBOARD_DATA_MODEL>
+            className=""
+            // update this when the backend is updated
+            entityDetails={
+              dataModelData as ExtentionEntities[EntityType.DASHBOARD_DATA_MODEL]
+            }
+            entityType={EntityType.DASHBOARD_DATA_MODEL}
+            handleExtensionUpdate={handelExtentionUpdate}
+            hasEditAccess={dataModelPermissions.ViewAll}
+            hasPermission={
+              dataModelPermissions.EditAll ||
+              dataModelPermissions.EditCustomFields
+            }
+            isVersionView={false}
+          />
         ),
       },
     ];

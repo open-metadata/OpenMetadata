@@ -16,10 +16,17 @@ import { OperationPermission } from '../../../../context/PermissionProvider/Perm
 import { CreateThread } from '../../../../generated/api/feed/createThread';
 import { Tag } from '../../../../generated/entity/classification/tag';
 import { DashboardDataModel } from '../../../../generated/entity/data/dashboardDataModel';
-import { Column } from '../../../../generated/entity/data/table';
+import { Column, Table } from '../../../../generated/entity/data/table';
 import { EntityReference } from '../../../../generated/entity/type';
 import { DataAssetWithDomains } from '../../../DataAssets/DataAssetsHeader/DataAssetsHeader.interface';
 import { QueryVote } from '../../../Database/TableQueries/TableQueries.interface';
+
+// remove this when the backend is updated
+export type TempDashboardDataModel = Partial<
+  DashboardDataModel & {
+    extension: Table['extension'];
+  }
+>;
 
 export interface DataModelDetailsProps {
   updateDataModelDetailsState?: (data: DataAssetWithDomains) => void;
@@ -35,8 +42,8 @@ export interface DataModelDetailsProps {
   handleColumnUpdateDataModel: (updatedDataModel: Column[]) => Promise<void>;
   onUpdateVote: (data: QueryVote, id: string) => Promise<void>;
   onUpdateDataModel: (
-    updatedDataModel: DashboardDataModel,
-    key: keyof DashboardDataModel
+    updatedDataModel: TempDashboardDataModel,
+    key: keyof TempDashboardDataModel
   ) => Promise<void>;
   handleToggleDelete: (version?: number) => void;
 }

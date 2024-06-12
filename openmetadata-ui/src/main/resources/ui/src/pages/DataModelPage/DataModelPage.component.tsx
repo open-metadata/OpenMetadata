@@ -27,6 +27,7 @@ import { useTranslation } from 'react-i18next';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../components/common/Loader/Loader';
 import DataModelDetails from '../../components/Dashboard/DataModel/DataModels/DataModelDetails.component';
+import { DataModelDetailsProps } from '../../components/Dashboard/DataModel/DataModels/DataModelDetails.interface';
 import { QueryVote } from '../../components/Database/TableQueries/TableQueries.interface';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import {
@@ -34,6 +35,7 @@ import {
   ResourceEntity,
 } from '../../context/PermissionProvider/PermissionProvider.interface';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
+import { TabSpecificField } from '../../enums/entity.enum';
 import { CreateThread } from '../../generated/api/feed/createThread';
 import { Tag } from '../../generated/entity/classification/tag';
 import { DashboardDataModel } from '../../generated/entity/data/dashboardDataModel';
@@ -124,7 +126,9 @@ const DataModelsPage = () => {
     setIsLoading(true);
     try {
       const response = await getDataModelByFqn(dashboardDataModelFQN, {
-        fields: 'owner,tags,followers,votes,domain,dataProducts',
+        // eslint-disable-next-line max-len
+        // add extension field when backend is updated
+        fields: `${TabSpecificField.OWNER},${TabSpecificField.TAGS},${TabSpecificField.FOLLOWERS},${TabSpecificField.VOTES},${TabSpecificField.DOMAIN},${TabSpecificField.DATA_PRODUCTS}`,
         include: Include.All,
       });
       setDataModelData(response);
@@ -360,7 +364,10 @@ const DataModelsPage = () => {
       handleUpdateTags={handleUpdateTags}
       handleUpdateTier={handleUpdateTier}
       updateDataModelDetailsState={updateDataModelDetailsState}
-      onUpdateDataModel={handleUpdateDataModel}
+      onUpdateDataModel={
+        // update this when backend is updated
+        handleUpdateDataModel as unknown as DataModelDetailsProps['onUpdateDataModel']
+      }
       onUpdateVote={updateVote}
     />
   );
