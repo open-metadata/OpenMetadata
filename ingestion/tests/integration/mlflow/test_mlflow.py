@@ -152,7 +152,7 @@ def ingest_mlflow(metadata, service, create_data):
     workflow_config = OpenMetadataWorkflowConfig(
         source=Source(
             type=service.connection.config.type.value.lower(),
-            serviceName=service.fullyQualifiedName.__root__,
+            serviceName=service.fullyQualifiedName.root,
             serviceConnection=service.connection,
             sourceConfig=SourceConfig(config=MlModelServiceMetadataPipeline()),
         ),
@@ -183,7 +183,7 @@ def test_mlflow(ingest_mlflow, metadata):
     model = filtered_ml_models[0]
 
     # Assert name is as expected
-    assert model.name.__root__ == MODEL_NAME
+    assert model.name.root == MODEL_NAME
 
     # Assert HyperParameters are as expected
     assert len(model.mlHyperParameters) == 2

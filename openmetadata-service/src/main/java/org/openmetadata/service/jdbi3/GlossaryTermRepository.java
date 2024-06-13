@@ -21,11 +21,13 @@ import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.schema.type.Include.ALL;
 import static org.openmetadata.service.Entity.GLOSSARY;
 import static org.openmetadata.service.Entity.GLOSSARY_TERM;
+import static org.openmetadata.service.Entity.TEAM;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.invalidGlossaryTermMove;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.notReviewer;
 import static org.openmetadata.service.resources.tags.TagLabelUtil.checkMutuallyExclusive;
 import static org.openmetadata.service.resources.tags.TagLabelUtil.checkMutuallyExclusiveForParentAndSubField;
 import static org.openmetadata.service.resources.tags.TagLabelUtil.getUniqueTags;
+import static org.openmetadata.service.search.SearchClient.GLOBAL_SEARCH_ALIAS;
 import static org.openmetadata.service.util.EntityUtil.compareEntityReferenceById;
 import static org.openmetadata.service.util.EntityUtil.compareTagLabel;
 import static org.openmetadata.service.util.EntityUtil.entityReferenceMatch;
@@ -63,6 +65,7 @@ import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.entity.data.GlossaryTerm.Status;
 import org.openmetadata.schema.entity.feed.Thread;
+import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.type.ApiStatus;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
@@ -78,10 +81,12 @@ import org.openmetadata.schema.type.api.BulkOperationResult;
 import org.openmetadata.schema.type.api.BulkResponse;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
+import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.CollectionDAO.EntityRelationshipRecord;
 import org.openmetadata.service.jdbi3.FeedRepository.TaskWorkflow;
 import org.openmetadata.service.jdbi3.FeedRepository.ThreadContext;
 import org.openmetadata.service.resources.feeds.FeedResource;
+import org.openmetadata.service.resources.feeds.MessageParser;
 import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
 import org.openmetadata.service.resources.glossary.GlossaryTermResource;
 import org.openmetadata.service.search.SearchRequest;
@@ -101,6 +106,8 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
   private static final String PATCH_FIELDS = "references,relatedTerms,synonyms";
 
   private static GlossaryTerm valueBeforeUpdate = new GlossaryTerm();
+
+  FeedRepository feedRepository = Entity.getFeedRepository();
 
   public GlossaryTermRepository() {
     super(
@@ -181,9 +188,6 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
     // Validate related terms
     EntityUtil.populateEntityReferences(entity.getRelatedTerms());
 
-    // Validate reviewers
-    EntityUtil.populateEntityReferences(entity.getReviewers());
-
     if (!update || entity.getStatus() == null) {
       // If parentTerm or glossary has reviewers set, the glossary term can only be created in
       // `Draft` mode
@@ -223,10 +227,6 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
           GLOSSARY_TERM,
           Relationship.RELATED_TO,
           true);
-    }
-    for (EntityReference reviewer : listOrEmpty(entity.getReviewers())) {
-      addRelationship(
-          reviewer.getId(), entity.getId(), Entity.USER, GLOSSARY_TERM, Relationship.REVIEWS);
     }
   }
 
@@ -426,7 +426,9 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
       String key = "_source";
       SearchRequest searchRequest =
           new SearchRequest.ElasticSearchRequestBuilder(
-                  String.format("** AND (tags.tagFQN:\"%s\")", glossaryFqn), size, "all")
+                  String.format("** AND (tags.tagFQN:\"%s\")", glossaryFqn),
+                  size,
+                  Entity.getSearchRepository().getIndexOrAliasName(GLOBAL_SEARCH_ALIAS))
               .from(0)
               .fetchSource(true)
               .trackTotalHits(false)
@@ -475,7 +477,8 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
               termFQN);
 
       SearchRequest searchRequest =
-          new SearchRequest.ElasticSearchRequestBuilder("*", size, "all")
+          new SearchRequest.ElasticSearchRequestBuilder(
+                  "*", size, Entity.getSearchRepository().getIndexOrAliasName(GLOBAL_SEARCH_ALIAS))
               .from(0)
               .queryFilter(queryFilter)
               .fetchSource(true)
@@ -698,8 +701,20 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
       boolean isReviewer =
           reviewers.stream()
               .anyMatch(
-                  e ->
-                      e.getName().equals(updatedBy) || e.getFullyQualifiedName().equals(updatedBy));
+                  e -> {
+                    if (e.getType().equals(TEAM)) {
+                      Team team =
+                          Entity.getEntityByName(TEAM, e.getName(), "users", Include.NON_DELETED);
+                      return team.getUsers().stream()
+                          .anyMatch(
+                              u ->
+                                  u.getName().equals(updatedBy)
+                                      || u.getFullyQualifiedName().equals(updatedBy));
+                    } else {
+                      return e.getName().equals(updatedBy)
+                          || e.getFullyQualifiedName().equals(updatedBy);
+                    }
+                  });
       if (!isReviewer) {
         throw new AuthorizationException(notReviewer(updatedBy));
       }
@@ -779,6 +794,48 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
     }
   }
 
+  private List<GlossaryTerm> getNestedTerms(GlossaryTerm glossaryTerm) {
+    // Get all the hierarchically nested child terms of the glossary term
+    List<String> jsons =
+        daoCollection.glossaryTermDAO().getAllTermsInternal(glossaryTerm.getFullyQualifiedName());
+    return JsonUtils.readObjects(jsons, GlossaryTerm.class);
+  }
+
+  protected void updateTaskWithNewReviewers(GlossaryTerm term) {
+    try {
+
+      MessageParser.EntityLink about =
+          new MessageParser.EntityLink(GLOSSARY_TERM, term.getFullyQualifiedName());
+      Thread originalTask = feedRepository.getTask(about, TaskType.RequestApproval);
+
+      // Update assignees only for open approval tasks
+      if (TaskStatus.Open.equals(originalTask.getTask().getStatus())) {
+
+        term =
+            Entity.getEntityByName(
+                Entity.GLOSSARY_TERM,
+                term.getFullyQualifiedName(),
+                "id,fullyQualifiedName,reviewers",
+                Include.ALL);
+
+        Thread updatedTask = JsonUtils.deepCopy(originalTask, Thread.class);
+        updatedTask.getTask().withAssignees(new ArrayList<>(term.getReviewers()));
+        JsonPatch patch = JsonUtils.getJsonPatch(originalTask, updatedTask);
+        RestUtil.PatchResponse<Thread> thread =
+            feedRepository.patchThread(
+                null, originalTask.getId(), updatedTask.getUpdatedBy(), patch);
+
+        // Send WebSocket Notification
+        WebsocketNotificationHandler.handleTaskNotification(thread.entity());
+      }
+    } catch (EntityNotFoundException e) {
+      LOG.info(
+          "{} Task not found for glossary term {}",
+          TaskType.RequestApproval,
+          term.getFullyQualifiedName());
+    }
+  }
+
   /** Handles entity updated from PUT and POST operation. */
   public class GlossaryTermUpdater extends EntityUpdater {
     public GlossaryTermUpdater(GlossaryTerm original, GlossaryTerm updated, Operation operation) {
@@ -788,27 +845,16 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
     @Override
     public void updateReviewers() {
       super.updateReviewers();
-
       // adding the reviewer should add the person as assignee to the task
-      if ((!nullOrEmpty(updated.getReviewers())
-              && !original.getReviewers().equals(updated.getReviewers()))
-          && updated.getStatus() == Status.DRAFT) {
-        EntityLink about = new EntityLink(GLOSSARY_TERM, updated.getFullyQualifiedName());
-        FeedRepository feedRepository = Entity.getFeedRepository();
-        Thread originalTask = feedRepository.getTask(about, TaskType.RequestApproval);
 
-        if (TaskStatus.Open.equals(originalTask.getTask().getStatus())) {
+      if (!original.getReviewers().equals(updated.getReviewers())) {
 
-          Thread updatedTask = JsonUtils.deepCopy(originalTask, Thread.class);
-          updatedTask.getTask().withAssignees(updated.getReviewers());
-          JsonPatch patch = JsonUtils.getJsonPatch(originalTask, updatedTask);
-
-          RestUtil.PatchResponse<Thread> thread =
-              feedRepository.patchThread(
-                  null, originalTask.getId(), updatedTask.getUpdatedBy(), patch);
-
-          // Send WebSocket Notification
-          WebsocketNotificationHandler.handleTaskNotification(thread.entity());
+        List<GlossaryTerm> childTerms = getNestedTerms(updated);
+        childTerms.add(updated);
+        for (GlossaryTerm term : childTerms) {
+          if (term.getStatus().equals(Status.DRAFT)) {
+            updateTaskWithNewReviewers(term);
+          }
         }
       }
     }

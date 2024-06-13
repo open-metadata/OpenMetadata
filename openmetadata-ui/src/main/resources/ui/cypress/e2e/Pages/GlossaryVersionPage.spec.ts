@@ -13,7 +13,7 @@
 
 import { interceptURL, verifyResponseStatusCode } from '../../common/common';
 import {
-  addReviewer,
+  addOwnerInGlossary,
   removeReviewer,
   visitGlossaryPage,
 } from '../../common/GlossaryUtils';
@@ -190,7 +190,7 @@ describe(
       verifyResponseStatusCode('@getGlossaryDetails', 200);
       verifyResponseStatusCode('@getGlossaryTerms', 200);
 
-      cy.get('[data-testid="version-button"]').contains('0.2').click();
+      cy.get('[data-testid="version-button"]').scrollIntoView().click();
 
       cy.get(`[data-testid="diff-added"]`)
         .scrollIntoView()
@@ -227,7 +227,7 @@ describe(
         'getSelectedVersionDetails'
       );
 
-      cy.get('[data-testid="version-button"]').contains('0.2').click();
+      cy.get('[data-testid="version-button"]').scrollIntoView().click();
 
       verifyResponseStatusCode('@getVersionsList', 200);
       verifyResponseStatusCode('@getSelectedVersionDetails', 200);
@@ -238,14 +238,19 @@ describe(
         .scrollIntoView()
         .should('be.visible');
 
-      cy.get('[data-testid="version-button"]').contains('0.2').click();
+      cy.get('[data-testid="version-button"]').scrollIntoView().click();
 
       verifyResponseStatusCode('@getGlossaryDetails', 200);
       verifyResponseStatusCode('@getGlossaryTerms', 200);
 
       removeOwner(data.user.displayName, GLOSSARY_OWNER_LINK_TEST_ID);
 
-      addReviewer(data.reviewer.displayName, 'glossaries');
+      addOwnerInGlossary(
+        [data.reviewer.displayName],
+        'Add',
+        'glossary-reviewer-name',
+        false
+      );
 
       // Adding manual wait as the backend is now performing batch operations,
       // which causes a delay in reflecting changes
@@ -258,7 +263,7 @@ describe(
         'getSelectedVersionDetails'
       );
 
-      cy.get('[data-testid="version-button"]').contains('0.2').click();
+      cy.get('[data-testid="version-button"]').scrollIntoView().click();
 
       verifyResponseStatusCode('@getVersionsList', 200);
       verifyResponseStatusCode('@getSelectedVersionDetails', 200);
@@ -267,7 +272,7 @@ describe(
         .scrollIntoView()
         .should('be.visible');
 
-      cy.get('[data-testid="version-button"]').contains('0.2').click();
+      cy.get('[data-testid="version-button"]').scrollIntoView().click();
 
       verifyResponseStatusCode('@getGlossaryDetails', 200);
       verifyResponseStatusCode('@getGlossaryTerms', 200);
@@ -302,7 +307,7 @@ describe(
       verifyResponseStatusCode('@getGlossaryTermParents', 200);
       verifyResponseStatusCode('@getChildGlossaryTerms', 200);
 
-      cy.get('[data-testid="version-button"]').contains('0.2').click();
+      cy.get('[data-testid="version-button"]').scrollIntoView().click();
 
       cy.get(`[data-testid="diff-added"]`)
         .scrollIntoView()
@@ -378,7 +383,7 @@ describe(
         'getGlossaryTermDetails'
       );
 
-      cy.get('[data-testid="version-button"]').contains('0.2').click();
+      cy.get('[data-testid="version-button"]').scrollIntoView().click();
 
       verifyResponseStatusCode('@getVersionsList', 200);
       verifyResponseStatusCode('@getSelectedVersionDetails', 200);
@@ -390,14 +395,19 @@ describe(
         .scrollIntoView()
         .should('be.visible');
 
-      cy.get('[data-testid="version-button"]').contains('0.2').click();
+      cy.get('[data-testid="version-button"]').scrollIntoView().click();
 
       verifyResponseStatusCode('@getGlossaryTermParents', 200);
       verifyResponseStatusCode('@getChildGlossaryTerms', 200);
 
       removeOwner(data.user.displayName, GLOSSARY_OWNER_LINK_TEST_ID);
 
-      addReviewer(data.reviewer.displayName, 'glossaryTerms');
+      addOwnerInGlossary(
+        [data.reviewer.displayName],
+        'Add',
+        'glossary-reviewer-name',
+        false
+      );
 
       interceptURL(
         'GET',
@@ -405,7 +415,7 @@ describe(
         'getSelectedVersionDetails'
       );
 
-      cy.get('[data-testid="version-button"]').contains('0.2').click();
+      cy.get('[data-testid="version-button"]').scrollIntoView().click();
 
       verifyResponseStatusCode('@getVersionsList', 200);
       verifyResponseStatusCode('@getSelectedVersionDetails', 200);
@@ -415,7 +425,7 @@ describe(
         .scrollIntoView()
         .should('be.visible');
 
-      cy.get('[data-testid="version-button"]').click();
+      cy.get('[data-testid="version-button"]').scrollIntoView().click();
 
       verifyResponseStatusCode('@getGlossaryTermParents', 200);
       verifyResponseStatusCode('@getChildGlossaryTerms', 200);

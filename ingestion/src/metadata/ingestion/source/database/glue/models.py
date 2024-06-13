@@ -18,7 +18,7 @@ from pydantic import BaseModel
 
 
 class GlueSchema(BaseModel):
-    CatalogId: Optional[str]
+    CatalogId: Optional[str] = None
     Name: str
 
 
@@ -27,13 +27,13 @@ class DatabasePage(BaseModel):
 
 
 class TableParameters(BaseModel):
-    table_type: Optional[str]
+    table_type: Optional[str] = None
 
 
 class Column(BaseModel):
     Type: str
     Name: str
-    Comment: Optional[str]
+    Comment: Optional[str] = None
 
 
 class StorageDetails(BaseModel):
@@ -41,10 +41,10 @@ class StorageDetails(BaseModel):
 
 
 class GlueTable(BaseModel):
-    Parameters: Optional[TableParameters]
+    Parameters: Optional[TableParameters] = None
     Name: str
-    TableType: Optional[str]
-    Description: Optional[str]
+    TableType: Optional[str] = None
+    Description: Optional[str] = None
     StorageDescriptor: Optional[StorageDetails] = StorageDetails()
     PartitionKeys: Optional[List[Column]] = []
 

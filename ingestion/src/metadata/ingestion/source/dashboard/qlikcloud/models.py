@@ -20,14 +20,14 @@ from pydantic import BaseModel, Field
 class QlikApp(BaseModel):
     """QlikCloud App model"""
 
-    description: Optional[str]
-    name: Optional[str]
+    description: Optional[str] = None
+    name: Optional[str] = None
     id: str
-    app_id: Optional[str] = Field(alias="resourceId", default=None)
-    published: Optional[bool]
+    app_id: Optional[str] = Field(None, alias="resourceId")
+    published: Optional[bool] = None
 
 
 class QlikAppList(BaseModel):
     """QlikCloud Apps List"""
 
-    apps: Optional[List[QlikApp]]
+    apps: Optional[List[QlikApp]] = None

@@ -104,7 +104,7 @@ This is a sample config for Domo-Pipeline:
 
 {% codeBlock fileName="filename.yaml" %}
 
-```yaml
+```yaml {% isCodeBlock=true %}
 source:
   type: domopipeline
   serviceName: domo-pipeline_source

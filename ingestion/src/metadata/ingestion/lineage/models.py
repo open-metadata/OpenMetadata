@@ -14,7 +14,7 @@ Models related to lineage parsing
 from enum import Enum
 from typing import Dict, List, Optional
 
-from pydantic import BaseModel, Extra, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 from metadata.generated.schema.entity.services.connections.database.athenaConnection import (
     AthenaType,
@@ -64,6 +64,9 @@ from metadata.generated.schema.entity.services.connections.database.snowflakeCon
 from metadata.generated.schema.entity.services.connections.database.sqliteConnection import (
     SQLiteType,
 )
+from metadata.generated.schema.entity.services.connections.database.teradataConnection import (
+    TeradataType,
+)
 from metadata.utils.singleton import Singleton
 
 
@@ -112,6 +115,7 @@ MAP_CONNECTION_TYPE_DIALECT: Dict[str, Dialect] = {
     str(SQLiteType.SQLite.value): Dialect.SQLITE,
     str(MssqlType.Mssql.value): Dialect.TSQL,
     str(AzureSQLType.AzureSQL.value): Dialect.TSQL,
+    str(TeradataType.Teradata.value): Dialect.TERADATA,
 }
 
 
@@ -140,11 +144,12 @@ class QueryParsingError(BaseModel):
         error (str): The error message of the failed query.
     """
 
-    class Config:
-        extra = Extra.forbid
+    model_config = ConfigDict(
+        extra="forbid",
+    )
 
     query: str = Field(..., description="query text of the failed query")
-    error: Optional[str] = Field(..., description="error message of the failed query")
+    error: Optional[str] = Field(None, description="error message of the failed query")
 
 
 class QueryParsingFailures(metaclass=Singleton):

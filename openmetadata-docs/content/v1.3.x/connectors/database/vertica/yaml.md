@@ -152,7 +152,7 @@ This is a sample config for Vertica:
 
 {% codeBlock fileName="filename.yaml" %}
 
-```yaml
+```yaml {% isCodeBlock=true %}
 source:
   type: vertica
   serviceName: local_vertica

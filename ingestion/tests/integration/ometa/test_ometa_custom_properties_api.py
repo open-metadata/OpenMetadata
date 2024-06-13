@@ -101,7 +101,7 @@ class OMetaCustomAttributeTest(TestCase):
             name=name,
             databaseSchema=self.create_schema_entity.fullyQualifiedName,
             columns=[Column(name="id", dataType=DataType.BIGINT)],
-            extension=EntityExtension(__root__=extensions),
+            extension=EntityExtension(root=extensions),
         )
         return self.metadata.create_or_update(create)
 
@@ -142,13 +142,13 @@ class OMetaCustomAttributeTest(TestCase):
             id=user_one.id,
             name="custom-prop-user-one",
             type="user",
-            fullyQualifiedName=user_one.fullyQualifiedName.__root__,
+            fullyQualifiedName=user_one.fullyQualifiedName.root,
         )
         cls.user_two = EntityReference(
             id=user_two.id,
             name="custom-prop-user-two",
             type="user",
-            fullyQualifiedName=user_two.fullyQualifiedName.__root__,
+            fullyQualifiedName=user_two.fullyQualifiedName.root,
         )
 
     @classmethod
@@ -159,7 +159,7 @@ class OMetaCustomAttributeTest(TestCase):
         service_id = str(
             cls.metadata.get_by_name(
                 entity=DatabaseService, fqn="test-service-custom-properties"
-            ).id.__root__
+            ).id.root
         )
 
         cls.metadata.delete(
@@ -267,9 +267,7 @@ class OMetaCustomAttributeTest(TestCase):
                     CustomPropertyDataTypes.ENTITY_REFERENCE_LIST
                 ),
                 customPropertyConfig=CustomPropertyConfig(
-                    config=EntityTypes(
-                        __root__=[ENTITY_REFERENCE_TYPE_MAP[User.__name__]]
-                    )
+                    config=EntityTypes(root=[ENTITY_REFERENCE_TYPE_MAP[User.__name__]])
                 ),
             ),
         )
@@ -300,19 +298,17 @@ class OMetaCustomAttributeTest(TestCase):
             fqn="test-service-custom-properties.test-db.test-schema.test_custom_properties",
             fields=["*"],
         )
+        self.assertEqual(res.extension.root["DataQuality"], extensions["DataQuality"])
+        self.assertEqual(res.extension.root["TableSize"], extensions["TableSize"])
+        self.assertEqual(res.extension.root["Rating"], extensions["Rating"])
+        self.assertEqual(res.extension.root["Department"], extensions["Department"])
         self.assertEqual(
-            res.extension.__root__["DataQuality"], extensions["DataQuality"]
-        )
-        self.assertEqual(res.extension.__root__["TableSize"], extensions["TableSize"])
-        self.assertEqual(res.extension.__root__["Rating"], extensions["Rating"])
-        self.assertEqual(res.extension.__root__["Department"], extensions["Department"])
-        self.assertEqual(
-            res.extension.__root__["DataEngineers"][0]["id"],
-            str(extensions["DataEngineers"][0].id.__root__),
+            res.extension.root["DataEngineers"][0]["id"],
+            str(extensions["DataEngineers"][0].id.root),
         )
         self.assertEqual(
-            res.extension.__root__["DataEngineers"][1]["id"],
-            str(extensions["DataEngineers"][1].id.__root__),
+            res.extension.root["DataEngineers"][1]["id"],
+            str(extensions["DataEngineers"][1].id.root),
         )
 
     def test_add_custom_property_schema(self):
@@ -328,7 +324,7 @@ class OMetaCustomAttributeTest(TestCase):
         create_schema = CreateDatabaseSchemaRequest(
             name="test-schema-custom-property",
             database=self.create_db_entity.fullyQualifiedName,
-            extension=EntityExtension(__root__=extensions),
+            extension=EntityExtension(root=extensions),
         )
         self.metadata.create_or_update(data=create_schema)
 
@@ -337,4 +333,4 @@ class OMetaCustomAttributeTest(TestCase):
             fqn="test-service-custom-properties.test-db.test-schema-custom-property",
             fields=["*"],
         )
-        self.assertEqual(res.extension.__root__["SchemaAge"], extensions["SchemaAge"])
+        self.assertEqual(res.extension.root["SchemaAge"], extensions["SchemaAge"])

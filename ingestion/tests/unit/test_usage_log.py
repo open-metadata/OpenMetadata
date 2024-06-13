@@ -120,7 +120,7 @@ class QueryLogSourceTest(TestCase):
 
     def __init__(self, methodName) -> None:
         super().__init__(methodName)
-        self.config = OpenMetadataWorkflowConfig.parse_obj(mock_query_log_config)
+        self.config = OpenMetadataWorkflowConfig.model_validate(mock_query_log_config)
         self.source = QueryLogUsageSource.create(
             mock_query_log_config["source"],
             self.config.workflowConfig.openMetadataServerConfig,

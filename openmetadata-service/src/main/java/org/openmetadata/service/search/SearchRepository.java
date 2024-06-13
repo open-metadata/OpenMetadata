@@ -184,6 +184,15 @@ public class SearchRepository {
         : name;
   }
 
+  public String getIndexNameWithoutAlias(String fullIndexName) {
+    if (clusterAlias != null
+        && !clusterAlias.isEmpty()
+        && fullIndexName.startsWith(clusterAlias + indexNameSeparator)) {
+      return fullIndexName.substring((clusterAlias + indexNameSeparator).length());
+    }
+    return fullIndexName;
+  }
+
   public boolean indexExists(IndexMapping indexMapping) {
     return searchClient.indexExists(indexMapping.getIndexName(clusterAlias));
   }
@@ -586,9 +595,11 @@ public class SearchRepository {
             List.of(new ImmutablePair<>("service.id", docId)));
       }
       default -> {
-        searchClient.deleteEntityByFields(
-            indexMapping.getChildAliases(clusterAlias),
-            List.of(new ImmutablePair<>(entityType + ".id", docId)));
+        List<String> indexNames = indexMapping.getChildAliases(clusterAlias);
+        if (!indexNames.isEmpty()) {
+          searchClient.deleteEntityByFields(
+              indexNames, List.of(new ImmutablePair<>(entityType + ".id", docId)));
+        }
       }
     }
   }

@@ -155,7 +155,9 @@ const AppSchedule = ({
                 <Typography.Text className="right-panel-label">
                   {t('label.schedule-type')}
                 </Typography.Text>
-                <Typography.Text className="font-medium">
+                <Typography.Text
+                  className="font-medium"
+                  data-testid="schedule-type">
                   {(appData.appSchedule as AppScheduleClass).scheduleTimeline ??
                     ''}
                 </Typography.Text>

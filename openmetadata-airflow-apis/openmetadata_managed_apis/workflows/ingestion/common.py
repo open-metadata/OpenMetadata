@@ -17,7 +17,6 @@ from datetime import datetime, timedelta
 from functools import partial
 from typing import Callable, Optional, Union
 
-import airflow
 from airflow import DAG
 from openmetadata_managed_apis.api.utils import clean_dag_id
 from pydantic import ValidationError
@@ -34,7 +33,7 @@ from metadata.generated.schema.entity.services.storageService import StorageServ
 from metadata.generated.schema.metadataIngestion.application import (
     OpenMetadataApplicationConfig,
 )
-from metadata.ingestion.models.encoders import show_secrets_encoder
+from metadata.generated.schema.type.basic import Timestamp, Uuid
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.utils import fqn
 from metadata.workflow.workflow_output_handler import print_status
@@ -185,7 +184,7 @@ def build_source(ingestion_pipeline: IngestionPipeline) -> WorkflowSource:
 
     return WorkflowSource(
         type=service.serviceType.value.lower(),
-        serviceName=service.name.__root__,
+        serviceName=service.name.root,
         serviceConnection=service.connection,
         sourceConfig=ingestion_pipeline.sourceConfig,
     )
@@ -203,7 +202,7 @@ def metadata_ingestion_workflow(workflow_config: OpenMetadataWorkflowConfig):
 
     set_operator_logger(workflow_config)
 
-    config = json.loads(workflow_config.json(encoder=show_secrets_encoder))
+    config = json.loads(workflow_config.model_dump_json())
     workflow = MetadataWorkflow.create(config)
 
     workflow.execute()
@@ -247,15 +246,19 @@ def build_dag_configs(ingestion_pipeline: IngestionPipeline) -> dict:
     :param ingestion_pipeline: pipeline configs
     :return: dict to use as kwargs
     """
+
+    if ingestion_pipeline.airflowConfig.startDate:
+        start_date = ingestion_pipeline.airflowConfig.startDate.root
+    else:
+        start_date = datetime.now() - timedelta(days=1)
+
     return {
-        "dag_id": clean_dag_id(ingestion_pipeline.name.__root__),
-        "description": ingestion_pipeline.description.__root__
+        "dag_id": clean_dag_id(ingestion_pipeline.name.root),
+        "description": ingestion_pipeline.description.root
         if ingestion_pipeline.description is not None
         else None,
-        "start_date": ingestion_pipeline.airflowConfig.startDate.__root__
-        if ingestion_pipeline.airflowConfig.startDate
-        else airflow.utils.dates.days_ago(1),
-        "end_date": ingestion_pipeline.airflowConfig.endDate.__root__
+        "start_date": start_date,
+        "end_date": ingestion_pipeline.airflowConfig.endDate.root
         if ingestion_pipeline.airflowConfig.endDate
         else None,
         "concurrency": ingestion_pipeline.airflowConfig.concurrency,
@@ -272,7 +275,7 @@ def build_dag_configs(ingestion_pipeline: IngestionPipeline) -> dict:
         "tags": [
             "OpenMetadata",
             clean_name_tag(ingestion_pipeline.displayName)
-            or clean_name_tag(ingestion_pipeline.name.__root__),
+            or clean_name_tag(ingestion_pipeline.name.root),
             f"type:{ingestion_pipeline.pipelineType.value}",
             f"service:{clean_name_tag(ingestion_pipeline.service.name)}",
         ],
@@ -312,7 +315,7 @@ def send_failed_status_callback(workflow_config: OpenMetadataWorkflowConfig, *_,
         pipeline_status = metadata.get_pipeline_status(
             workflow_config.ingestionPipelineFQN, str(workflow_config.pipelineRunId)
         )
-        pipeline_status.endDate = datetime.now().timestamp() * 1000
+        pipeline_status.endDate = Timestamp(int(datetime.now().timestamp() * 1000))
         pipeline_status.pipelineState = PipelineState.failed
 
         metadata.create_or_update_pipeline_status(
@@ -350,7 +353,7 @@ def build_dag(
     with DAG(**build_dag_configs(ingestion_pipeline)) as dag:
         # Initialize with random UUID4. Will be used by the callback instead of
         # generating it inside the Workflow itself.
-        workflow_config.pipelineRunId = str(uuid.uuid4())
+        workflow_config.pipelineRunId = Uuid(uuid.uuid4())
 
         CustomPythonOperator(
             task_id=task_name,

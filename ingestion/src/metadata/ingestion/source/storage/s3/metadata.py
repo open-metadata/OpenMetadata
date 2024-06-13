@@ -40,6 +40,7 @@ from metadata.generated.schema.metadataIngestion.storage.containerMetadataConfig
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
+from metadata.generated.schema.type.basic import EntityName, FullyQualifiedEntityName
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
@@ -86,8 +87,8 @@ class S3Source(StorageServiceSource):
     def create(
         cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None
     ):
-        config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
-        connection: S3Connection = config.serviceConnection.__root__.config
+        config: WorkflowSource = WorkflowSource.model_validate(config_dict)
+        connection: S3Connection = config.serviceConnection.root.config
         if not isinstance(connection, S3Connection):
             raise InvalidSourceException(f"Expected S3Connection, but got {connection}")
         return cls(config, metadata)
@@ -113,7 +114,7 @@ class S3Source(StorageServiceSource):
                 )
                 self._bucket_cache[bucket_name] = container_entity
                 parent_entity: EntityReference = EntityReference(
-                    id=self._bucket_cache[bucket_name].id.__root__, type="container"
+                    id=self._bucket_cache[bucket_name].id.root, type="container"
                 )
                 if self.global_manifest:
                     manifest_entries_for_current_bucket = (
@@ -161,12 +162,12 @@ class S3Source(StorageServiceSource):
         self, container_details: S3ContainerDetails
     ) -> Iterable[Either[CreateContainerRequest]]:
         container_request = CreateContainerRequest(
-            name=container_details.name,
+            name=EntityName(container_details.name),
             prefix=container_details.prefix,
             numberOfObjects=container_details.number_of_objects,
             size=container_details.size,
             dataModel=container_details.data_model,
-            service=self.context.get().objectstore_service,
+            service=FullyQualifiedEntityName(self.context.get().objectstore_service),
             parent=container_details.parent,
             sourceUrl=container_details.sourceUrl,
             fileFormats=container_details.file_formats,
@@ -265,7 +266,7 @@ class S3Source(StorageServiceSource):
                 ):
                     self.status.filter(bucket["Name"], "Bucket Filtered Out")
                 else:
-                    results.append(S3BucketResponse.parse_obj(bucket))
+                    results.append(S3BucketResponse.model_validate(bucket))
         except Exception as err:
             logger.debug(traceback.format_exc())
             logger.error(f"Failed to fetch buckets list - {err}")
@@ -450,7 +451,7 @@ class S3Source(StorageServiceSource):
                 verbose=False,
             )
             content = json.loads(response_object)
-            metadata_config = StorageContainerConfig.parse_obj(content)
+            metadata_config = StorageContainerConfig.model_validate(content)
             return metadata_config
         except ReadException:
             logger.warning(

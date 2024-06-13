@@ -40,7 +40,7 @@ class ColumnValueLengthsToBeBetweenValidator(
             Column: column
         """
         return self.get_column_name(
-            self.test_case.entityLink.__root__,
+            self.test_case.entityLink.root,
             inspect(self.runner.table).c,
         )
 

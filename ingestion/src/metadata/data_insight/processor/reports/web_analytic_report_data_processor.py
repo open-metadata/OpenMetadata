@@ -101,14 +101,16 @@ class WebAnalyticEntityViewReportDataProcessor(DataProcessor):
 
         while True:
             event = yield refined_data
-            split_url = [url for url in event.eventData.url.__root__.split("/") if url]  # type: ignore
+            split_url = [url for url in event.eventData.url.root.split("/") if url]  # type: ignore
 
             if not split_url or split_url[0] not in ENTITIES:
                 continue
 
             entity_obj = EntityObj(split_url[0], split_url[1])
             entity_type = entity_obj.entity_type
-            re_pattern = re.compile(f"(.*{entity_type}/{entity_obj.fqn})")
+            re_pattern = re.compile(
+                f"(.*{re.escape(entity_type)}/{re.escape(entity_obj.fqn)})"
+            )
 
             if (
                 entity_obj.fqn in refined_data
@@ -118,7 +120,7 @@ class WebAnalyticEntityViewReportDataProcessor(DataProcessor):
                 # the URL we'll try again from the new event.
                 try:
                     entity_href = re.search(
-                        re_pattern, event.eventData.fullUrl.__root__
+                        re_pattern, event.eventData.fullUrl.root
                     ).group(1)
                     refined_data[entity_obj.fqn]["entityHref"] = entity_href
                 except IndexError:
@@ -143,7 +145,7 @@ class WebAnalyticEntityViewReportDataProcessor(DataProcessor):
 
                 try:
                     tags = (
-                        [tag.tagFQN.__root__ for tag in entity.tags]
+                        [tag.tagFQN.root for tag in entity.tags]
                         if entity.tags
                         else None
                     )
@@ -157,7 +159,7 @@ class WebAnalyticEntityViewReportDataProcessor(DataProcessor):
 
                 try:
                     owner = entity.owner.name if entity.owner else None
-                    owner_id = str(entity.owner.id.__root__) if entity.owner else None
+                    owner_id = str(entity.owner.id.root) if entity.owner else None
                 except AttributeError as exc:
                     owner = None
                     owner_id = None
@@ -171,7 +173,7 @@ class WebAnalyticEntityViewReportDataProcessor(DataProcessor):
 
                 try:
                     entity_href = re.search(
-                        re_pattern, event.eventData.fullUrl.__root__
+                        re_pattern, event.eventData.fullUrl.root
                     ).group(1)
                 except IndexError:
                     entity_href = None
@@ -179,7 +181,7 @@ class WebAnalyticEntityViewReportDataProcessor(DataProcessor):
                 if (
                     owner_id is not None
                     and event.eventData is not None
-                    and owner_id == str(event.eventData.userId.__root__)
+                    and owner_id == str(event.eventData.userId.root)
                 ):  # type: ignore
                     # we won't count views if the owner is the one visiting
                     # the entity
@@ -206,7 +208,7 @@ class WebAnalyticEntityViewReportDataProcessor(DataProcessor):
             yield ReportData(
                 timestamp=self.timestamp,
                 reportDataType=ReportDataType.webAnalyticEntityViewReportData.value,
-                data=WebAnalyticEntityViewReportData.parse_obj(
+                data=WebAnalyticEntityViewReportData.model_validate(
                     self._refined_data[data]
                 ),
             )  # type: ignore
@@ -271,7 +273,7 @@ class WebAnalyticUserActivityReportDataProcessor(DataProcessor):
 
         return {
             "totalSessions": total_sessions,
-            "totalSessionDuration": total_session_duration_seconds,
+            "totalSessionDuration": int(total_session_duration_seconds),
         }
 
     def _get_user_details(self, user_id: str) -> dict:
@@ -296,12 +298,12 @@ class WebAnalyticUserActivityReportDataProcessor(DataProcessor):
 
         teams = user_entity.teams
         return {
-            "user_name": user_entity.name.__root__,
-            "team": teams.__root__[0].name if teams else None,
+            "user_name": user_entity.name.root,
+            "team": teams.root[0].name if teams else None,
         }
 
     def _refine_user_event(self) -> Generator[dict, WebAnalyticEventData, None]:
-        """Corountine to process user event from web analytic event
+        """Coroutine to process user event from web analytic event
 
         Yields:
             Generator[dict, WebAnalyticEventData, None]: _description_
@@ -311,9 +313,9 @@ class WebAnalyticUserActivityReportDataProcessor(DataProcessor):
         while True:
             event = yield self._refined_data
 
-            user_id = str(event.eventData.userId.__root__)  # type: ignore
-            session_id = str(event.eventData.sessionId.__root__)  # type: ignore
-            timestamp = event.timestamp.__root__  # type: ignore
+            user_id = str(event.eventData.userId.root)  # type: ignore
+            session_id = str(event.eventData.sessionId.root)  # type: ignore
+            timestamp = event.timestamp.root  # type: ignore
 
             if not user_details.get(user_id):
                 user_details_data = self._get_user_details(user_id)
@@ -349,8 +351,7 @@ class WebAnalyticUserActivityReportDataProcessor(DataProcessor):
 
     def fetch_data(self) -> Iterable[WebAnalyticEventData]:
         if CACHED_EVENTS:
-            for event in CACHED_EVENTS:
-                yield event
+            yield from CACHED_EVENTS
         else:
             CACHED_EVENTS.extend(
                 self.metadata.list_entities(
@@ -362,8 +363,7 @@ class WebAnalyticUserActivityReportDataProcessor(DataProcessor):
                     },
                 ).entities
             )
-            for event in CACHED_EVENTS:
-                yield event
+            yield from CACHED_EVENTS
 
     def yield_refined_data(self) -> Iterable[ReportData]:
         """Yield refined data"""
@@ -371,7 +371,7 @@ class WebAnalyticUserActivityReportDataProcessor(DataProcessor):
             yield ReportData(
                 timestamp=self.timestamp,
                 reportDataType=ReportDataType.webAnalyticUserActivityReportData.value,
-                data=WebAnalyticUserActivityReportData.parse_obj(
+                data=WebAnalyticUserActivityReportData.model_validate(
                     self._refined_data[user_id]
                 ),
             )  # type: ignore
