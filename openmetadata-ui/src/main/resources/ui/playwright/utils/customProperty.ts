@@ -15,6 +15,7 @@ import {
   EntityTypeEndpoint,
   ENTITY_PATH,
 } from '../support/entity/Entity.interface';
+import { UserClass } from '../support/user/UserClass';
 import { uuid } from './common';
 
 export enum CustomPropertyType {
@@ -221,7 +222,10 @@ export const validateValueForProperty = async (data: {
   }
 };
 
-export const getPropertyValues = (type: string) => {
+export const getPropertyValues = (
+  type: string,
+  users: Record<string, string>
+) => {
   switch (type) {
     case 'integer':
       return {
@@ -272,14 +276,14 @@ export const getPropertyValues = (type: string) => {
       };
     case 'entityReference':
       return {
-        value: 'Adam Matthews',
-        newValue: 'Aaron Singh',
+        value: users.user1,
+        newValue: users.user2,
       };
 
     case 'entityReferenceList':
       return {
-        value: 'Aaron Johnson,Organization',
-        newValue: 'Aaron Warren',
+        value: `${users.user3},Organization`,
+        newValue: users.user4,
       };
 
     default:
@@ -315,6 +319,27 @@ export const createCustomPropertyForEntity = async (
       property: CustomProperty;
     }
   >;
+  const users: UserClass[] = [];
+  // Loop to create and add 4 new users to the users array
+  for (let i = 0; i < 4; i++) {
+    const user = new UserClass();
+    await user.create(apiContext);
+    users.push(user);
+  }
+
+  // Reduce the users array to a userNames object with keys as user1, user2, etc., and values as the user's names
+  const userNames = users.reduce((acc, user, index) => {
+    acc[`user${index + 1}`] = user.getUserName();
+
+    return acc;
+  }, {});
+
+  // Define an asynchronous function to clean up (delete) all users in the users array
+  const cleanupUser = async (apiContext: APIRequestContext) => {
+    for (const user of users) {
+      await user.delete(apiContext);
+    }
+  };
 
   for (const item of propertyList) {
     const customPropertyResponse = await apiContext.put(
@@ -357,12 +382,12 @@ export const createCustomPropertyForEntity = async (
       return {
         ...prev,
         [propertyTypeName]: {
-          ...getPropertyValues(propertyTypeName),
+          ...getPropertyValues(propertyTypeName, userNames),
           property: curr,
         },
       };
     }, {});
   }
 
-  return customProperties;
+  return { customProperties, cleanupUser };
 };
