@@ -631,4 +631,10 @@ public final class EntityUtil {
       flattenEntityField(child, flattenedFields);
     }
   }
+
+  public static String getCommaSeparatedIdsFromRefs(List<EntityReference> references) {
+    return listOrEmpty(references).stream()
+        .map(item -> "'" + item.getId().toString() + "'")
+        .collect(Collectors.joining(","));
+  }
 }

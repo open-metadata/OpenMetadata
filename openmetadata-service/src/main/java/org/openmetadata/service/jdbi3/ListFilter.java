@@ -111,7 +111,7 @@ public class ListFilter extends Filter<ListFilter> {
     return domainId == null
         ? ""
         : String.format(
-            "(id in (SELECT toId FROM entity_relationship WHERE fromEntity='domain' AND fromId='%s' AND "
+            "(id in (SELECT entity_relationship.toId FROM entity_relationship WHERE entity_relationship.fromEntity='domain' AND entity_relationship.fromId IN (%s) AND "
                 + "relation=10))",
             domainId);
   }

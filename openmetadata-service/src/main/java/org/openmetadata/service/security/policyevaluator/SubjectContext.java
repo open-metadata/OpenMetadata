@@ -135,6 +135,10 @@ public record SubjectContext(User user) {
     return roles.stream().distinct().collect(Collectors.toList());
   }
 
+  public List<EntityReference> getUserDomains() {
+    return listOrEmpty(user.getUserDomains());
+  }
+
   // Iterate over all the policies of the team hierarchy the user belongs to
   public Iterator<PolicyContext> getPolicies(EntityReference resourceOwner) {
     return new UserPolicyIterator(user, resourceOwner, new ArrayList<>());

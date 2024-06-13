@@ -70,6 +70,7 @@ import es.org.elasticsearch.index.query.QueryStringQueryBuilder;
 import es.org.elasticsearch.index.query.RangeQueryBuilder;
 import es.org.elasticsearch.index.query.ScriptQueryBuilder;
 import es.org.elasticsearch.index.query.TermQueryBuilder;
+import es.org.elasticsearch.index.query.TermsQueryBuilder;
 import es.org.elasticsearch.index.query.functionscore.FunctionScoreQueryBuilder;
 import es.org.elasticsearch.index.query.functionscore.ScoreFunctionBuilders;
 import es.org.elasticsearch.index.query.functionscore.ScriptScoreFunctionBuilder;
@@ -322,6 +323,16 @@ public class ElasticSearchClient implements SearchClient {
     SearchSourceBuilder searchSourceBuilder =
         getSearchSourceBuilder(
             request.getIndex(), request.getQuery(), request.getFrom(), request.getSize());
+
+    // Add Domain filter
+    if (!nullOrEmpty(request.getDomains())) {
+      TermsQueryBuilder domainFilter =
+          QueryBuilders.termsQuery("domain.fullyQualifiedName", request.getDomains());
+      searchSourceBuilder.query(
+          QueryBuilders.boolQuery().must(searchSourceBuilder.query()).filter(domainFilter));
+    }
+
+    // Add Filter
     if (!nullOrEmpty(request.getQueryFilter()) && !request.getQueryFilter().equals("{}")) {
       try {
         XContentParser filterParser =
