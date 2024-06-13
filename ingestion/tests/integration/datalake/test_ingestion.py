@@ -37,7 +37,7 @@ class TestDatalake:
         )  # type: ignore
 
         entities = resp.entities
-        assert len(entities) == 3
+        assert len(entities) == 4
         names = [entity.name.root for entity in entities]
         assert {"names.json", "names.jsonl", "new_users.parquet", "users.csv"} == set(
             names
