@@ -39,7 +39,9 @@ class TestDatalake:
         entities = resp.entities
         assert len(entities) == 3
         names = [entity.name.root for entity in entities]
-        assert {"names.json", "names.jsonl", "new_users.parquet", "users.csv"} == set(names)
+        assert {"names.json", "names.jsonl", "new_users.parquet", "users.csv"} == set(
+            names
+        )
 
         for entity in entities:
             columns = entity.columns
