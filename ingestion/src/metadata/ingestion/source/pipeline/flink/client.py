@@ -16,6 +16,7 @@ from metadata.generated.schema.entity.services.connections.pipeline.flinkConnect
     FlinkConnection,
 )
 from metadata.ingestion.ometa.client import REST, ClientConfig
+from metadata.ingestion.source.pipeline.flink.models import FlinkPipeline
 from metadata.utils.constants import AUTHORIZATION_HEADER
 
 
@@ -38,3 +39,7 @@ class FlinkClient:
     def get_jobs(self):
         response = self.client.get(f"jobs/overview")
         return response.get("jobs", {})
+
+    def get_pipeline_info(self, pipeline_details: FlinkPipeline):
+        response = self.client.get(f"jobs/{pipeline_details.id}")
+        return response

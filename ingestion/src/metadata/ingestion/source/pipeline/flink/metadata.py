@@ -27,7 +27,7 @@ from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.models.pipeline_status import OMetaPipelineStatus
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.ingestion.source.pipeline.flink.models import FlinkPipeline
+from metadata.ingestion.source.pipeline.flink.models import FlinkPipeline, FlinkTask
 from metadata.ingestion.source.pipeline.pipeline_service import PipelineServiceSource
 from metadata.utils.logger import ingestion_logger
 
@@ -54,11 +54,17 @@ class FlinkSource(PipelineServiceSource):
 
     def get_connections_jobs(self, pipeline_details: FlinkPipeline):
         """Returns the list of tasks linked to connection"""
-        return [
-            Task(
-                name=pipeline_details.name,
+        pipeline_info = self.client.get_pipeline_info(pipeline_details)
+        tasks = pipeline_info.get("vertices", {})
+        om_tasks = []
+        for task in tasks:
+            task_obj = FlinkTask(**task)
+            om_tasks.append(
+                Task(
+                    name=f"{task_obj.name}_{task_obj.id}",
+                ),
             )
-        ]
+        return om_tasks
 
     def yield_pipeline(
         self, pipeline_details: FlinkPipeline

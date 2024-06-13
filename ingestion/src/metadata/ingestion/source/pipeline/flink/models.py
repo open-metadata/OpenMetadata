@@ -21,3 +21,13 @@ class FlinkPipeline(BaseModel):
     state: str
     name: str
     id: str = Field(alias="jid", default=None)
+
+
+class FlinkTask(BaseModel):
+    """Flink task model"""
+
+    id: str
+    name: str
+    status: str
+    start_time: str = Field(alias="start-time", default=None)
+    end_time: str = Field(alias="end-time", default=None)
