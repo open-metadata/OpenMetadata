@@ -44,6 +44,7 @@ export const addOwner = async (
   page: Page,
   owner: string,
   type: 'Teams' | 'Users' = 'Users',
+  endpoint: EntityTypeEndpoint,
   dataTestId?: string
 ) => {
   await page.getByTestId('edit-owner').click();
@@ -70,7 +71,9 @@ export const addOwner = async (
   await page.waitForResponse(
     `/api/v1/search/query?q=*${encodeURIComponent(owner)}*`
   );
+  const patchRequest = page.waitForResponse(`/api/v1/${endpoint}/*`);
   await page.getByRole('listitem', { name: owner }).click();
+  await patchRequest;
 
   await expect(page.getByTestId(dataTestId ?? 'owner-link')).toContainText(
     owner
@@ -81,6 +84,7 @@ export const updateOwner = async (
   page: Page,
   owner: string,
   type: 'Teams' | 'Users' = 'Users',
+  endpoint: EntityTypeEndpoint,
   dataTestId?: string
 ) => {
   await page.getByTestId('edit-owner').click();
@@ -92,20 +96,29 @@ export const updateOwner = async (
   await page.waitForResponse(
     `/api/v1/search/query?q=*${encodeURIComponent(owner)}*`
   );
+
+  const patchRequest = page.waitForResponse(`/api/v1/${endpoint}/*`);
   await page.getByRole('listitem', { name: owner }).click();
+  await patchRequest;
 
   await expect(page.getByTestId(dataTestId ?? 'owner-link')).toContainText(
     owner
   );
 };
 
-export const removeOwner = async (page: Page, dataTestId?: string) => {
+export const removeOwner = async (
+  page: Page,
+  endpoint: EntityTypeEndpoint,
+  dataTestId?: string
+) => {
   await page.getByTestId('edit-owner').click();
   await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
 
   await expect(page.getByTestId('remove-owner').locator('svg')).toBeVisible();
 
+  const patchRequest = page.waitForResponse(`/api/v1/${endpoint}/*`);
   await page.getByTestId('remove-owner').locator('svg').click();
+  await patchRequest;
 
   await expect(page.getByTestId(dataTestId ?? 'owner-link')).toContainText(
     'No Owner'
@@ -158,6 +171,9 @@ export const assignTag = async (
     `/api/v1/search/query?q=*${encodeURIComponent(tag)}*`
   );
   await page.getByTestId(`tag-${tag}`).click();
+
+  await expect(page.getByTestId('saveAssociatedTag')).toBeEnabled();
+
   await page.getByTestId('saveAssociatedTag').click();
 
   await expect(
@@ -185,6 +201,9 @@ export const removeTag = async (page: Page, tags: string[]) => {
     const patchRequest = page.waitForRequest(
       (request) => request.method() === 'PATCH'
     );
+
+    await expect(page.getByTestId('saveAssociatedTag')).toBeEnabled();
+
     await page.getByTestId('saveAssociatedTag').click();
     await patchRequest;
 
@@ -219,6 +238,9 @@ export const assignGlossaryTerm = async (
     `/api/v1/search/query?q=*${encodeURIComponent(glossaryTerm.displayName)}*`
   );
   await page.getByTestId(`tag-${glossaryTerm.fullyQualifiedName}`).click();
+
+  await expect(page.getByTestId('saveAssociatedTag')).toBeEnabled();
+
   await page.getByTestId('saveAssociatedTag').click();
 
   await expect(
@@ -250,6 +272,9 @@ export const removeGlossaryTerm = async (
     const patchRequest = page.waitForRequest(
       (request) => request.method() === 'PATCH'
     );
+
+    await expect(page.getByTestId('saveAssociatedTag')).toBeEnabled();
+
     await page.getByTestId('saveAssociatedTag').click();
     await patchRequest;
 
@@ -765,7 +790,12 @@ export const softDeleteEntity = async (
   await expect(page.locator('.ant-modal-title')).toContainText(displayName);
 
   await page.fill('[data-testid="confirmation-text-input"]', 'DELETE');
+  const deleteResponse = page.waitForResponse(
+    `/api/v1/${endPoint}/*?hardDelete=false&recursive=true`
+  );
   await page.click('[data-testid="confirm-button"]');
+
+  await deleteResponse;
 
   await expect(page.locator('.Toastify__toast-body')).toHaveText(
     /deleted successfully!/
@@ -800,7 +830,7 @@ export const softDeleteEntity = async (
 
     await expect(tableCount).toContainText('1');
 
-    await page.click(`[data-testid=${entityName}]`);
+    await page.click(`[data-testid="${entityName}"]`);
   }
 
   await restoreEntity(page);
@@ -813,7 +843,11 @@ export const softDeleteEntity = async (
   });
 };
 
-export const hardDeleteEntity = async (page: Page, entityName: string) => {
+export const hardDeleteEntity = async (
+  page: Page,
+  entityName: string,
+  endPoint: EntityTypeEndpoint
+) => {
   await page.click('[data-testid="manage-button"]');
   await page.click('[data-testid="delete-button"]');
 
@@ -826,7 +860,11 @@ export const hardDeleteEntity = async (page: Page, entityName: string) => {
   await page.click('[data-testid="hard-delete-option"]');
   await page.check('[data-testid="hard-delete"]');
   await page.fill('[data-testid="confirmation-text-input"]', 'DELETE');
+  const deleteResponse = page.waitForResponse(
+    `/api/v1/${endPoint}/*?hardDelete=true&recursive=true`
+  );
   await page.click('[data-testid="confirm-button"]');
+  await deleteResponse;
 
   await expect(page.locator('.Toastify__toast-body')).toHaveText(
     /deleted successfully!/

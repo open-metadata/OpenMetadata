@@ -122,9 +122,9 @@ export class EntityClass {
     owner2: string,
     type: 'Teams' | 'Users' = 'Users'
   ) {
-    await addOwner(page, owner1, type, 'data-assets-header');
-    await updateOwner(page, owner2, type, 'data-assets-header');
-    await removeOwner(page, 'data-assets-header');
+    await addOwner(page, owner1, type, this.endpoint, 'data-assets-header');
+    await updateOwner(page, owner2, type, this.endpoint, 'data-assets-header');
+    await removeOwner(page, this.endpoint, 'data-assets-header');
   }
 
   async tier(page: Page, tier1: string, tier2: string) {
@@ -220,7 +220,7 @@ export class EntityClass {
   }
 
   async hardDeleteEntity(page: Page, entityName: string, displayName?: string) {
-    await hardDeleteEntity(page, displayName ?? entityName);
+    await hardDeleteEntity(page, displayName ?? entityName, this.endpoint);
   }
 
   async setCustomProperty(

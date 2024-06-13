@@ -67,6 +67,7 @@ export const setValueForProperty = async (data: {
   await editButton.scrollIntoViewIfNeeded();
   await editButton.click({ force: true });
 
+  const patchRequest = page.waitForResponse(`/api/v1/${endpoint}/*`);
   switch (propertyType) {
     case 'markdown':
       await page
@@ -161,7 +162,7 @@ export const setValueForProperty = async (data: {
     }
   }
 
-  await page.waitForResponse(`/api/v1/${endpoint}/*`);
+  await patchRequest;
   if (propertyType === 'enum') {
     await expect(
       page.getByLabel('Custom Properties').getByTestId('enum-value')
