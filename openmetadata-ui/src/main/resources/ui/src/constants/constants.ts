@@ -522,6 +522,7 @@ export const ENTITY_PATH = {
   glossaryTerm: 'glossaryTerm',
   databases: 'database',
   databaseSchemas: 'databaseSchema',
+  dashboardDataModels: 'dashboardDataModel',
 };
 
 export const VALIDATION_MESSAGES = {

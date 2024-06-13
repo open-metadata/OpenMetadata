@@ -34,6 +34,7 @@ import {
   ResourceEntity,
 } from '../../context/PermissionProvider/PermissionProvider.interface';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
+import { TabSpecificField } from '../../enums/entity.enum';
 import { CreateThread } from '../../generated/api/feed/createThread';
 import { Tag } from '../../generated/entity/classification/tag';
 import { DashboardDataModel } from '../../generated/entity/data/dashboardDataModel';
@@ -124,7 +125,8 @@ const DataModelsPage = () => {
     setIsLoading(true);
     try {
       const response = await getDataModelByFqn(dashboardDataModelFQN, {
-        fields: 'owner,tags,followers,votes,domain,dataProducts',
+        // eslint-disable-next-line max-len
+        fields: `${TabSpecificField.OWNER},${TabSpecificField.TAGS},${TabSpecificField.FOLLOWERS},${TabSpecificField.VOTES},${TabSpecificField.DOMAIN},${TabSpecificField.DATA_PRODUCTS},${TabSpecificField.EXTENSION}`,
         include: Include.All,
       });
       setDataModelData(response);

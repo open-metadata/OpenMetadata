@@ -159,32 +159,6 @@ export const setValueForProperty = async (data: {
       break;
     }
   }
-
-  await page.waitForResponse('/api/v1/*/*');
-  if (propertyType === 'enum') {
-    await expect(
-      page.getByLabel('Custom Properties').getByTestId('enum-value')
-    ).toContainText(value);
-  } else if (propertyType === 'timeInterval') {
-    const [startValue, endValue] = value.split(',');
-
-    await expect(
-      page.getByLabel('Custom Properties').getByTestId('time-interval-value')
-    ).toContainText(startValue);
-    await expect(
-      page.getByLabel('Custom Properties').getByTestId('time-interval-value')
-    ).toContainText(endValue);
-  } else if (propertyType === 'sqlQuery') {
-    await expect(
-      page.getByLabel('Custom Properties').locator('.CodeMirror-scroll')
-    ).toContainText(value);
-  } else if (
-    !['entityReference', 'entityReferenceList'].includes(propertyType)
-  ) {
-    await expect(page.getByRole('row', { name: propertyName })).toContainText(
-      value.replace(/\*|_/gi, '')
-    );
-  }
 };
 
 export const validateValueForProperty = async (data: {

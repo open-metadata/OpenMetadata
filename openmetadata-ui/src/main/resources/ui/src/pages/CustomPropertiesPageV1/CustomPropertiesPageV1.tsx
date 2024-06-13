@@ -154,6 +154,9 @@ const CustomEntityDetailV1 = () => {
       case ENTITY_PATH.dashboards:
         return PAGE_HEADERS.DASHBOARD_CUSTOM_ATTRIBUTES;
 
+      case ENTITY_PATH.dashboardDataModels:
+        return PAGE_HEADERS.DASHBOARD_DATA_MODEL_CUSTOM_ATTRIBUTES;
+
       case ENTITY_PATH.pipelines:
         return PAGE_HEADERS.PIPELINES_CUSTOM_ATTRIBUTES;
 

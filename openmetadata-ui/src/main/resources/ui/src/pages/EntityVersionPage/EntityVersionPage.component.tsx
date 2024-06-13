@@ -593,6 +593,7 @@ const EntityVersionPage: FunctionComponent = () => {
             dataProducts={currentVersionData.dataProducts}
             deleted={currentVersionData.deleted}
             domain={domain}
+            entityPermissions={entityPermissions}
             isVersionLoading={isVersionLoading}
             owner={owner}
             slashedDataModelName={slashedEntityName}
