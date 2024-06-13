@@ -91,7 +91,7 @@ You can find further information about configuring your credentials [here](https
 
 {% codeBlock fileName="dbt_s3_config.yaml" %}
 
-```yaml
+```yaml {% isCodeBlock=true %}
 source:
   type: dbt
   serviceName: service_name
@@ -209,7 +209,7 @@ source:
 
 {% codeBlock fileName="dbt_gcs_config.yaml" %}
 
-```yaml
+```yaml {% isCodeBlock=true %}
 source:
   type: dbt
   serviceName: service_name
@@ -317,7 +317,7 @@ Here are the step-by-step instructions for finding the account name for an Azure
 
 {% codeBlock fileName="dbt_azure_config.yaml" %}
 
-```yaml
+```yaml {% isCodeBlock=true %}
 source:
   type: dbt
   serviceName: service_name
@@ -391,7 +391,7 @@ In this configuration, we will be fetching the dbt `manifest.json`, `catalog.jso
 
 {% codeBlock fileName="dbt_local_config.yaml" %}
 
-```yaml
+```yaml {% isCodeBlock=true %}
 source:
   type: dbt
   serviceName: service_name
@@ -458,7 +458,7 @@ In this configuration we will be fetching the dbt `manifest.json`, `catalog.json
 
 {% codeBlock fileName="dbt_file_server_config.yaml" %}
 
-```yaml
+```yaml {% isCodeBlock=true %}
 source:
   type: dbt
   serviceName: service_name
@@ -539,7 +539,7 @@ The value entered should be a `numeric` value.
 
 {% codeBlock fileName="dbt_file_server_config.yaml" %}
 
-```yaml
+```yaml {% isCodeBlock=true %}
 source:
   type: dbt
   serviceName: service_name

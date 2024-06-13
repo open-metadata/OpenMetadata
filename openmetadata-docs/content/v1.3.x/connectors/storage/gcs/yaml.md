@@ -143,7 +143,7 @@ source:
 
 {% codeBlock fileName="filename.yaml" %}
 
-```yaml
+```yaml {% isCodeBlock=true %}
 source:
   type: gcs
   serviceName: "<service name>"

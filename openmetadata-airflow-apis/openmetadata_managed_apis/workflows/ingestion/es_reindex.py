@@ -73,7 +73,7 @@ def build_es_reindex_workflow_config(
             loggerLevel=ingestion_pipeline.loggerLevel or LogLevels.INFO,
             openMetadataServerConfig=ingestion_pipeline.openMetadataServerConnection,
         ),
-        ingestionPipelineFQN=ingestion_pipeline.fullyQualifiedName.__root__,
+        ingestionPipelineFQN=ingestion_pipeline.fullyQualifiedName.root,
     )
 
     return workflow_config

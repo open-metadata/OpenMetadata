@@ -56,7 +56,7 @@ class QlikCloudClient:
         self.config.token = self.config.token.get_secret_value()
 
         client_config: ClientConfig = ClientConfig(
-            base_url=self.config.hostPort,
+            base_url=str(self.config.hostPort),
             api_version=API_VERSION,
             auth_header=AUTHORIZATION_HEADER,
             auth_token=lambda: (self.config.token, 0),

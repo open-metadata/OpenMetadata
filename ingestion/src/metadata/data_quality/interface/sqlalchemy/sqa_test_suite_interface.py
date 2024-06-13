@@ -14,7 +14,7 @@ Interfaces with database for all database engine
 supporting sqlalchemy abstraction layer
 """
 
-from datetime import datetime, timezone
+from datetime import datetime
 from typing import Optional, Union
 
 from sqlalchemy.orm import DeclarativeMeta
@@ -29,13 +29,13 @@ from metadata.generated.schema.tests.testCase import TestCase
 from metadata.generated.schema.tests.testDefinition import TestDefinition
 from metadata.ingestion.connections.session import create_and_bind_session
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.ingestion.source.connections import get_connection
 from metadata.mixins.sqalchemy.sqa_mixin import SQAInterfaceMixin
 from metadata.profiler.processor.runner import QueryRunner
 from metadata.profiler.processor.sampler.sqlalchemy.sampler import SQASampler
 from metadata.utils.constants import TEN_MIN
 from metadata.utils.importer import import_test_case_class
 from metadata.utils.logger import test_suite_logger
+from metadata.utils.ssl_manager import get_ssl_connection
 from metadata.utils.timeout import cls_timeout
 
 logger = test_suite_logger()
@@ -72,7 +72,7 @@ class SQATestSuiteInterface(SQAInterfaceMixin, TestSuiteInterface):
 
     def create_session(self):
         self.session = create_and_bind_session(
-            get_connection(self.service_connection_config)
+            get_ssl_connection(self.service_connection_config)
         )
 
     @property
@@ -169,7 +169,7 @@ class SQATestSuiteInterface(SQAInterfaceMixin, TestSuiteInterface):
             test_handler = TestHandler(
                 self.runner,
                 test_case=test_case,
-                execution_date=int(datetime.now(tz=timezone.utc).timestamp() * 1000),
+                execution_date=int(datetime.now().timestamp() * 1000),
             )
 
             return Validator(validator_obj=test_handler).validate()

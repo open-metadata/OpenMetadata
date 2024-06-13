@@ -18,7 +18,7 @@ from collections import defaultdict
 from datetime import datetime
 from typing import Dict, Iterable, List, Optional, Union
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy.engine import Engine
 
 from metadata.generated.schema.api.data.createQuery import CreateQueryRequest
@@ -53,18 +53,17 @@ class QueryByProcedure(BaseModel):
 
     procedure_name: str = Field(None, alias="PROCEDURE_NAME")
     query_type: str = Field(..., alias="QUERY_TYPE")
-    query_database_name: str = Field(None, alias="QUERY_DATABASE_NAME")
-    query_schema_name: str = Field(None, alias="QUERY_SCHEMA_NAME")
+    query_database_name: Optional[str] = Field(None, alias="QUERY_DATABASE_NAME")
+    query_schema_name: Optional[str] = Field(None, alias="QUERY_SCHEMA_NAME")
     procedure_text: str = Field(..., alias="PROCEDURE_TEXT")
     procedure_start_time: datetime = Field(..., alias="PROCEDURE_START_TIME")
     procedure_end_time: datetime = Field(..., alias="PROCEDURE_END_TIME")
-    query_start_time: Optional[datetime] = Field(..., alias="QUERY_START_TIME")
+    query_start_time: Optional[datetime] = Field(None, alias="QUERY_START_TIME")
     query_duration: Optional[float] = Field(None, alias="QUERY_DURATION")
     query_text: str = Field(..., alias="QUERY_TEXT")
     query_user_name: Optional[str] = Field(None, alias="QUERY_USER_NAME")
 
-    class Config:
-        allow_population_by_field_name = True
+    model_config = ConfigDict(populate_by_name=True)
 
 
 class StoredProcedureMixin(ABC):
@@ -107,7 +106,7 @@ class StoredProcedureMixin(ABC):
 
         for row in results:
             try:
-                query_by_procedure = QueryByProcedure.parse_obj(dict(row))
+                query_by_procedure = QueryByProcedure.model_validate(dict(row))
                 procedure_name = (
                     query_by_procedure.procedure_name
                     or get_procedure_name_from_call(
@@ -181,11 +180,11 @@ class StoredProcedureMixin(ABC):
 
         yield Either(
             right=CreateQueryRequest(
-                query=SqlQuery(__root__=query_by_procedure.query_text),
+                query=SqlQuery(query_by_procedure.query_text),
                 query_type=query_by_procedure.query_type,
                 duration=query_by_procedure.query_duration,
                 queryDate=Timestamp(
-                    __root__=convert_timestamp_to_milliseconds(
+                    root=convert_timestamp_to_milliseconds(
                         int(query_by_procedure.query_start_time.timestamp())
                     )
                 ),
@@ -210,13 +209,13 @@ class StoredProcedureMixin(ABC):
             queries_dict = self.get_stored_procedure_queries_dict()
             # Then for each procedure, iterate over all its queries
             for procedure_fqn in self.context.get().stored_procedures:
-                procedure = self.metadata.get_by_name(
+                procedure: StoredProcedure = self.metadata.get_by_name(
                     entity=StoredProcedure, fqn=procedure_fqn
                 )
                 if procedure:
                     logger.debug(f"Processing Lineage for [{procedure.name}]")
                     for query_by_procedure in (
-                        queries_dict.get(procedure.name.__root__.lower()) or []
+                        queries_dict.get(procedure.name.root.lower()) or []
                     ):
                         yield from self.yield_procedure_lineage(
                             query_by_procedure=query_by_procedure, procedure=procedure

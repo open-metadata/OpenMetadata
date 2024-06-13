@@ -124,8 +124,8 @@ def test_amundsen():
         "sourceConfig": {"config": {"type": "DatabaseMetadata"}},
     }
 
-    config: WorkflowSource = WorkflowSource.parse_obj(source)
-    assert isinstance(config.serviceConnection.__root__.config, AmundsenConnection)
+    config: WorkflowSource = WorkflowSource.model_validate(source)
+    assert isinstance(config.serviceConnection.root.config, AmundsenConnection)
 
 
 def test_atlas():
@@ -164,8 +164,8 @@ def test_azure_sql():
         },
     }
 
-    config: WorkflowSource = WorkflowSource.parse_obj(source)
-    assert isinstance(config.serviceConnection.__root__.config, AzureSQLConnection)
+    config: WorkflowSource = WorkflowSource.model_validate(source)
+    assert isinstance(config.serviceConnection.root.config, AzureSQLConnection)
 
 
 def test_bigquery():
@@ -182,7 +182,7 @@ def test_bigquery():
                         "privateKeyId": "privateKeyId",
                         "privateKey": "privateKey",
                         "clientEmail": "clientEmail",
-                        "clientId": "clientId",
+                        "clientId": "1234",
                         "authUri": "https://accounts.google.com/o/oauth2/auth",
                         "tokenUri": "https://oauth2.googleapis.com/token",
                         "authProviderX509CertUrl": "https://www.googleapis.com/oauth2/v1/certs",
@@ -194,8 +194,8 @@ def test_bigquery():
         "sourceConfig": {"config": {"type": "DatabaseMetadata"}},
     }
 
-    config: WorkflowSource = WorkflowSource.parse_obj(source)
-    assert isinstance(config.serviceConnection.__root__.config, BigQueryConnection)
+    config: WorkflowSource = WorkflowSource.model_validate(source)
+    assert isinstance(config.serviceConnection.root.config, BigQueryConnection)
 
 
 def test_clickhouse():
@@ -225,8 +225,8 @@ def test_clickhouse():
         },
     }
 
-    config: WorkflowSource = WorkflowSource.parse_obj(source)
-    assert isinstance(config.serviceConnection.__root__.config, ClickhouseConnection)
+    config: WorkflowSource = WorkflowSource.model_validate(source)
+    assert isinstance(config.serviceConnection.root.config, ClickhouseConnection)
 
 
 def test_databricks():
@@ -245,8 +245,8 @@ def test_databricks():
         "sourceConfig": {"config": {"type": "DatabaseMetadata"}},
     }
 
-    config: WorkflowSource = WorkflowSource.parse_obj(source)
-    assert isinstance(config.serviceConnection.__root__.config, DatabricksConnection)
+    config: WorkflowSource = WorkflowSource.model_validate(source)
+    assert isinstance(config.serviceConnection.root.config, DatabricksConnection)
 
 
 def test_db2():
@@ -265,8 +265,8 @@ def test_db2():
         "sourceConfig": {"config": {"type": "DatabaseMetadata"}},
     }
 
-    config: WorkflowSource = WorkflowSource.parse_obj(source)
-    assert isinstance(config.serviceConnection.__root__.config, Db2Connection)
+    config: WorkflowSource = WorkflowSource.model_validate(source)
+    assert isinstance(config.serviceConnection.root.config, Db2Connection)
 
 
 def test_deltalake():
@@ -284,8 +284,8 @@ def test_deltalake():
         "sourceConfig": {"config": {"type": "DatabaseMetadata"}},
     }
 
-    config: WorkflowSource = WorkflowSource.parse_obj(source)
-    assert isinstance(config.serviceConnection.__root__.config, DeltaLakeConnection)
+    config: WorkflowSource = WorkflowSource.model_validate(source)
+    assert isinstance(config.serviceConnection.root.config, DeltaLakeConnection)
 
     source = {
         "type": "deltalake",
@@ -299,8 +299,8 @@ def test_deltalake():
         "sourceConfig": {"config": {"type": "DatabaseMetadata"}},
     }
 
-    config: WorkflowSource = WorkflowSource.parse_obj(source)
-    assert isinstance(config.serviceConnection.__root__.config, DeltaLakeConnection)
+    config: WorkflowSource = WorkflowSource.model_validate(source)
+    assert isinstance(config.serviceConnection.root.config, DeltaLakeConnection)
 
     source = {
         "type": "deltalake",
@@ -314,8 +314,8 @@ def test_deltalake():
         "sourceConfig": {"config": {"type": "DatabaseMetadata"}},
     }
 
-    config: WorkflowSource = WorkflowSource.parse_obj(source)
-    assert isinstance(config.serviceConnection.__root__.config, DeltaLakeConnection)
+    config: WorkflowSource = WorkflowSource.model_validate(source)
+    assert isinstance(config.serviceConnection.root.config, DeltaLakeConnection)
 
 
 def test_druid():
@@ -346,8 +346,8 @@ def test_dynamo_db():
         },
     }
 
-    config: WorkflowSource = WorkflowSource.parse_obj(source)
-    assert isinstance(config.serviceConnection.__root__.config, DynamoDBConnection)
+    config: WorkflowSource = WorkflowSource.model_validate(source)
+    assert isinstance(config.serviceConnection.root.config, DynamoDBConnection)
 
 
 def test_glue():
@@ -368,8 +368,8 @@ def test_glue():
         "sourceConfig": {"config": {"type": "DatabaseMetadata"}},
     }
 
-    config: WorkflowSource = WorkflowSource.parse_obj(source)
-    assert isinstance(config.serviceConnection.__root__.config, GlueConnection)
+    config: WorkflowSource = WorkflowSource.model_validate(source)
+    assert isinstance(config.serviceConnection.root.config, GlueConnection)
 
 
 def test_hive():
@@ -382,8 +382,8 @@ def test_hive():
         "sourceConfig": {"config": {"type": "DatabaseMetadata"}},
     }
 
-    config: WorkflowSource = WorkflowSource.parse_obj(source)
-    assert isinstance(config.serviceConnection.__root__.config, HiveConnection)
+    config: WorkflowSource = WorkflowSource.model_validate(source)
+    assert isinstance(config.serviceConnection.root.config, HiveConnection)
 
 
 def test_impala():
@@ -396,8 +396,8 @@ def test_impala():
         "sourceConfig": {"config": {"type": "DatabaseMetadata"}},
     }
 
-    config: WorkflowSource = WorkflowSource.parse_obj(source)
-    assert isinstance(config.serviceConnection.__root__.config, ImpalaConnection)
+    config: WorkflowSource = WorkflowSource.model_validate(source)
+    assert isinstance(config.serviceConnection.root.config, ImpalaConnection)
 
 
 def test_kafka():
@@ -423,8 +423,8 @@ def test_looker():
         "sourceConfig": {"config": {}},
     }
 
-    config: WorkflowSource = WorkflowSource.parse_obj(source)
-    assert isinstance(config.serviceConnection.__root__.config, LookerConnection)
+    config: WorkflowSource = WorkflowSource.model_validate(source)
+    assert isinstance(config.serviceConnection.root.config, LookerConnection)
 
 
 def test_mariadb():
@@ -442,8 +442,8 @@ def test_mariadb():
         "sourceConfig": {"config": {"type": "DatabaseMetadata"}},
     }
 
-    config: WorkflowSource = WorkflowSource.parse_obj(source)
-    assert isinstance(config.serviceConnection.__root__.config, MariaDBConnection)
+    config: WorkflowSource = WorkflowSource.model_validate(source)
+    assert isinstance(config.serviceConnection.root.config, MariaDBConnection)
 
 
 def test_mariadb():
@@ -461,8 +461,8 @@ def test_mariadb():
         "sourceConfig": {"config": {"type": "DatabaseMetadata"}},
     }
 
-    config: WorkflowSource = WorkflowSource.parse_obj(source)
-    assert isinstance(config.serviceConnection.__root__.config, MariaDBConnection)
+    config: WorkflowSource = WorkflowSource.model_validate(source)
+    assert isinstance(config.serviceConnection.root.config, MariaDBConnection)
 
 
 def test_metabase():
@@ -482,8 +482,8 @@ def test_metabase():
         },
     }
 
-    config: WorkflowSource = WorkflowSource.parse_obj(source)
-    assert isinstance(config.serviceConnection.__root__.config, MetabaseConnection)
+    config: WorkflowSource = WorkflowSource.model_validate(source)
+    assert isinstance(config.serviceConnection.root.config, MetabaseConnection)
 
 
 def test_metadata():
@@ -510,8 +510,8 @@ def test_mssql():
         "sourceConfig": {"config": {"type": "DatabaseMetadata"}},
     }
 
-    config: WorkflowSource = WorkflowSource.parse_obj(source)
-    assert isinstance(config.serviceConnection.__root__.config, MssqlConnection)
+    config: WorkflowSource = WorkflowSource.model_validate(source)
+    assert isinstance(config.serviceConnection.root.config, MssqlConnection)
 
 
 def test_mysql():
@@ -529,8 +529,8 @@ def test_mysql():
         "sourceConfig": {"config": {"type": "DatabaseMetadata"}},
     }
 
-    config: WorkflowSource = WorkflowSource.parse_obj(source)
-    assert isinstance(config.serviceConnection.__root__.config, MysqlConnection)
+    config: WorkflowSource = WorkflowSource.model_validate(source)
+    assert isinstance(config.serviceConnection.root.config, MysqlConnection)
 
 
 def test_oracle():
@@ -549,8 +549,8 @@ def test_oracle():
         "sourceConfig": {"config": {}},
     }
 
-    config: WorkflowSource = WorkflowSource.parse_obj(source)
-    assert isinstance(config.serviceConnection.__root__.config, OracleConnection)
+    config: WorkflowSource = WorkflowSource.model_validate(source)
+    assert isinstance(config.serviceConnection.root.config, OracleConnection)
 
 
 def test_postgres():
@@ -571,8 +571,8 @@ def test_postgres():
         "sourceConfig": {"config": {"type": "DatabaseMetadata"}},
     }
 
-    config: WorkflowSource = WorkflowSource.parse_obj(source)
-    assert isinstance(config.serviceConnection.__root__.config, PostgresConnection)
+    config: WorkflowSource = WorkflowSource.model_validate(source)
+    assert isinstance(config.serviceConnection.root.config, PostgresConnection)
 
 
 def test_powerbi():
@@ -597,8 +597,8 @@ def test_powerbi():
         },
     }
 
-    config: WorkflowSource = WorkflowSource.parse_obj(source)
-    assert isinstance(config.serviceConnection.__root__.config, PowerBIConnection)
+    config: WorkflowSource = WorkflowSource.model_validate(source)
+    assert isinstance(config.serviceConnection.root.config, PowerBIConnection)
 
 
 def test_presto():
@@ -617,8 +617,8 @@ def test_presto():
         "sourceConfig": {"config": {"generateSampleData": False}},
     }
 
-    config: WorkflowSource = WorkflowSource.parse_obj(source)
-    assert isinstance(config.serviceConnection.__root__.config, PrestoConnection)
+    config: WorkflowSource = WorkflowSource.model_validate(source)
+    assert isinstance(config.serviceConnection.root.config, PrestoConnection)
 
 
 def test_redash():
@@ -638,8 +638,8 @@ def test_redash():
         },
     }
 
-    config: WorkflowSource = WorkflowSource.parse_obj(source)
-    assert isinstance(config.serviceConnection.__root__.config, RedashConnection)
+    config: WorkflowSource = WorkflowSource.model_validate(source)
+    assert isinstance(config.serviceConnection.root.config, RedashConnection)
 
 
 def test_redshift():
@@ -664,8 +664,8 @@ def test_redshift():
         },
     }
 
-    config: WorkflowSource = WorkflowSource.parse_obj(source)
-    assert isinstance(config.serviceConnection.__root__.config, RedshiftConnection)
+    config: WorkflowSource = WorkflowSource.model_validate(source)
+    assert isinstance(config.serviceConnection.root.config, RedshiftConnection)
 
 
 def test_s3():
@@ -689,8 +689,8 @@ def test_salesforce():
         "sourceConfig": {"config": {"type": "DatabaseMetadata"}},
     }
 
-    config: WorkflowSource = WorkflowSource.parse_obj(source)
-    assert isinstance(config.serviceConnection.__root__.config, SalesforceConnection)
+    config: WorkflowSource = WorkflowSource.model_validate(source)
+    assert isinstance(config.serviceConnection.root.config, SalesforceConnection)
 
 
 def test_sample_data():
@@ -707,9 +707,9 @@ def test_sample_data():
         "sourceConfig": {},
     }
 
-    config: WorkflowSource = WorkflowSource.parse_obj(source)
+    config: WorkflowSource = WorkflowSource.model_validate(source)
     assert isinstance(
-        config.serviceConnection.__root__.config,
+        config.serviceConnection.root.config,
         customDatabaseConnection.CustomDatabaseConnection,
     )
 
@@ -729,8 +729,8 @@ def test_singlestore():
         "sourceConfig": {"config": {"type": "DatabaseMetadata"}},
     }
 
-    config: WorkflowSource = WorkflowSource.parse_obj(source)
-    assert isinstance(config.serviceConnection.__root__.config, SingleStoreConnection)
+    config: WorkflowSource = WorkflowSource.model_validate(source)
+    assert isinstance(config.serviceConnection.root.config, SingleStoreConnection)
 
 
 def test_snowflake():
@@ -762,8 +762,8 @@ def test_snowflake():
         },
     }
 
-    config: WorkflowSource = WorkflowSource.parse_obj(source)
-    assert isinstance(config.serviceConnection.__root__.config, SnowflakeConnection)
+    config: WorkflowSource = WorkflowSource.model_validate(source)
+    assert isinstance(config.serviceConnection.root.config, SnowflakeConnection)
 
 
 def test_sqlite():
@@ -774,8 +774,8 @@ def test_sqlite():
         "sourceConfig": {"config": {}},
     }
 
-    config: WorkflowSource = WorkflowSource.parse_obj(source)
-    assert isinstance(config.serviceConnection.__root__.config, SQLiteConnection)
+    config: WorkflowSource = WorkflowSource.model_validate(source)
+    assert isinstance(config.serviceConnection.root.config, SQLiteConnection)
 
 
 def test_superset():
@@ -798,8 +798,8 @@ def test_superset():
         },
     }
 
-    config: WorkflowSource = WorkflowSource.parse_obj(source)
-    assert isinstance(config.serviceConnection.__root__.config, SupersetConnection)
+    config: WorkflowSource = WorkflowSource.model_validate(source)
+    assert isinstance(config.serviceConnection.root.config, SupersetConnection)
 
 
 def test_tableau():
@@ -821,8 +821,8 @@ def test_tableau():
         },
     }
 
-    config: WorkflowSource = WorkflowSource.parse_obj(source)
-    assert isinstance(config.serviceConnection.__root__.config, TableauConnection)
+    config: WorkflowSource = WorkflowSource.model_validate(source)
+    assert isinstance(config.serviceConnection.root.config, TableauConnection)
 
 
 def test_trino():
@@ -840,8 +840,8 @@ def test_trino():
         "sourceConfig": {"config": {}},
     }
 
-    config: WorkflowSource = WorkflowSource.parse_obj(source)
-    assert isinstance(config.serviceConnection.__root__.config, TrinoConnection)
+    config: WorkflowSource = WorkflowSource.model_validate(source)
+    assert isinstance(config.serviceConnection.root.config, TrinoConnection)
 
 
 def test_vertica():
@@ -860,5 +860,5 @@ def test_vertica():
         "sourceConfig": {"config": {"type": "DatabaseMetadata"}},
     }
 
-    config: WorkflowSource = WorkflowSource.parse_obj(source)
-    assert isinstance(config.serviceConnection.__root__.config, VerticaConnection)
+    config: WorkflowSource = WorkflowSource.model_validate(source)
+    assert isinstance(config.serviceConnection.root.config, VerticaConnection)

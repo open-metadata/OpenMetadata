@@ -26,7 +26,7 @@ class NoSQLSampler(SamplerInterface):
         """
         records = self._rdn_sample_from_user_query()
         columns = [
-            SQALikeColumn(name=column.name.__root__, type=column.dataType)
+            SQALikeColumn(name=column.name.root, type=column.dataType)
             for column in self.table.columns
         ]
         rows, cols = self.transpose_records(records, columns)

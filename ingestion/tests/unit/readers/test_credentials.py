@@ -44,12 +44,10 @@ class TestCreds(TestCase):
 
         updated = update_repository_name(original=original, name="new_name")
 
-        self.assertEqual(original.repositoryName.__root__, "name")
-        self.assertEqual(updated.repositoryName.__root__, "new_name")
-        self.assertEqual(
-            updated.repositoryOwner.__root__, original.repositoryOwner.__root__
-        )
-        self.assertEqual(updated.token.__root__, original.token.__root__)
+        self.assertEqual(original.repositoryName.root, "name")
+        self.assertEqual(updated.repositoryName.root, "new_name")
+        self.assertEqual(updated.repositoryOwner.root, original.repositoryOwner.root)
+        self.assertEqual(updated.token.root, original.token.root)
 
         bb_original = BitBucketCredentials(
             repositoryOwner="owner",
@@ -60,12 +58,12 @@ class TestCreds(TestCase):
 
         bb_updated = update_repository_name(original=bb_original, name="new_name")
 
-        self.assertEqual(bb_original.repositoryName.__root__, "name")
-        self.assertEqual(bb_updated.repositoryName.__root__, "new_name")
+        self.assertEqual(bb_original.repositoryName.root, "name")
+        self.assertEqual(bb_updated.repositoryName.root, "new_name")
         self.assertEqual(
-            bb_updated.repositoryOwner.__root__, bb_original.repositoryOwner.__root__
+            bb_updated.repositoryOwner.root, bb_original.repositoryOwner.root
         )
-        self.assertEqual(bb_updated.token.__root__, bb_original.token.__root__)
+        self.assertEqual(bb_updated.token.root, bb_original.token.root)
         self.assertEqual(bb_updated.branch, bb_original.branch)
 
     def test_get_credentials_from_url(self):
@@ -81,7 +79,7 @@ class TestCreds(TestCase):
         )
 
         updated = get_credentials_from_url(original=original, url=url)
-        self.assertEqual(updated.repositoryName.__root__, "repo")
+        self.assertEqual(updated.repositoryName.root, "repo")
 
         original_not_owner = GitHubCredentials(
             repositoryOwner="not_owner",
@@ -104,7 +102,7 @@ class TestCreds(TestCase):
         )
 
         bb_updated = get_credentials_from_url(original=bb_original, url=bb_url)
-        self.assertEqual(bb_updated.repositoryName.__root__, "repo")
+        self.assertEqual(bb_updated.repositoryName.root, "repo")
 
         bb_original_not_owner = BitBucketCredentials(
             repositoryOwner="not_owner",

@@ -21,13 +21,16 @@ export type ModifiedGlossary = Glossary & {
 export const useGlossaryStore = create<{
   glossaries: Glossary[];
   activeGlossary: ModifiedGlossary;
+  glossaryChildTerms: ModifiedGlossary[];
   setGlossaries: (glossaries: Glossary[]) => void;
   setActiveGlossary: (glossary: ModifiedGlossary) => void;
   updateGlossary: (glossary: Glossary) => void;
   updateActiveGlossary: (glossary: Partial<ModifiedGlossary>) => void;
+  setGlossaryChildTerms: (glossaryChildTerms: ModifiedGlossary[]) => void;
 }>()((set, get) => ({
   glossaries: [],
   activeGlossary: {} as ModifiedGlossary,
+  glossaryChildTerms: [],
 
   setGlossaries: (glossaries: Glossary[]) => {
     set({ glossaries });
@@ -45,8 +48,26 @@ export const useGlossaryStore = create<{
     set({ activeGlossary: glossary });
   },
   updateActiveGlossary: (glossary: Partial<ModifiedGlossary>) => {
-    const { activeGlossary } = get();
+    const { activeGlossary, glossaries } = get();
 
-    set({ activeGlossary: { ...activeGlossary, ...glossary } as Glossary });
+    const updatedGlossary = {
+      ...activeGlossary,
+      ...glossary,
+    } as ModifiedGlossary;
+
+    // Update the active glossary
+    set({ activeGlossary: updatedGlossary });
+
+    // Update the corresponding glossary in the glossaries list
+    const index = glossaries.findIndex(
+      (g) => g.fullyQualifiedName === updatedGlossary.fullyQualifiedName
+    );
+
+    if (index !== -1) {
+      glossaries[index] = updatedGlossary;
+    }
+  },
+  setGlossaryChildTerms: (glossaryChildTerms: ModifiedGlossary[]) => {
+    set({ glossaryChildTerms });
   },
 }));

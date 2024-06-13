@@ -278,9 +278,11 @@ export const AuthProvider = ({
    * if it's not succeed then it will proceed for logout
    */
   const trySilentSignIn = async (forceLogout?: boolean) => {
-    const pathName = location.pathname;
+    const pathName = window.location.pathname;
     // Do not try silent sign in for SignIn or SignUp route
-    if ([ROUTES.SIGNIN, ROUTES.SIGNUP].includes(pathName)) {
+    if (
+      [ROUTES.SIGNIN, ROUTES.SIGNUP, ROUTES.SILENT_CALLBACK].includes(pathName)
+    ) {
       return;
     }
 
@@ -303,14 +305,6 @@ export const AuthProvider = ({
         resetUserDetails(forceLogout);
       }
     } catch (error) {
-      const err = error as AxiosError;
-      if (err.message.includes('Frame window timed out')) {
-        // Start expiry timer if silent signIn is timed out
-        // eslint-disable-next-line @typescript-eslint/no-use-before-define
-        startTokenExpiryTimer();
-
-        return;
-      }
       // reset user details if silent signIn fails
       resetUserDetails(forceLogout);
     }
@@ -551,7 +545,12 @@ export const AuthProvider = ({
             handleStoreProtectedRedirectPath();
             setApplicationLoading(false);
           } else {
-            if (location.pathname !== ROUTES.AUTH_CALLBACK) {
+            // get the user details if token is present and route is not auth callback and saml callback
+            if (
+              ![ROUTES.AUTH_CALLBACK, ROUTES.SAML_CALLBACK].includes(
+                location.pathname
+              )
+            ) {
               getLoggedInUserDetails();
             }
           }

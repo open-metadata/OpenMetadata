@@ -110,6 +110,21 @@ Configure and schedule Greenplum metadata and profiler workflows from the OpenMe
     Find more information about [Source Identity](https://docs.aws.amazon.com/STS/latest/APIReference/API_AssumeRole.html#:~:text=Required%3A%20No-,SourceIdentity,-The%20source%20identity).
 - **Host and Port**: Enter the fully qualified hostname and port number for your Greenplum deployment in the Host and Port field.
 
+
+**SSL Modes**
+
+There are a couple of types of SSL modes that Greenplum supports which can be added to ConnectionArguments, they are as follows:
+- **disable**: SSL is disabled and the connection is not encrypted.
+- **allow**: SSL is used if the server requires it.
+- **prefer**: SSL is used if the server supports it.
+- **require**: SSL is required.
+- **verify-ca**: SSL must be used and the server certificate must be verified.
+- **verify-full**: SSL must be used. The server certificate must be verified, and the server hostname must match the hostname attribute on the certificate.
+
+**SSL Configuration**
+
+In order to integrate SSL in the Metadata Ingestion Config, the user will have to add the SSL config under sslConfig which is placed in the source.
+
 {% partial file="/v1.4/connectors/database/advanced-configuration.md" /%}
 
 {% /extraContent %}

@@ -123,7 +123,7 @@ class MetadataRestSink(Sink):  # pylint: disable=too-many-public-methods
         metadata: OpenMetadata,
         pipeline_name: Optional[str] = None,
     ):
-        config = MetadataRestSinkConfig.parse_obj(config_dict)
+        config = MetadataRestSinkConfig.model_validate(config_dict)
         return cls(config, metadata)
 
     @property
@@ -255,7 +255,7 @@ class MetadataRestSink(Sink):  # pylint: disable=too-many-public-methods
         """
         try:
             role = self.metadata.create_or_update(create_role)
-            self.role_entities[role.name] = str(role.id.__root__)
+            self.role_entities[role.name] = str(role.id.root)
             return role
         except Exception as exc:
             logger.debug(traceback.format_exc())
@@ -269,7 +269,7 @@ class MetadataRestSink(Sink):  # pylint: disable=too-many-public-methods
         """
         try:
             team = self.metadata.create_or_update(create_team)
-            self.team_entities[team.name.__root__] = str(team.id.__root__)
+            self.team_entities[team.name.root] = str(team.id.root)
             return team
         except Exception as exc:
             logger.debug(traceback.format_exc())
@@ -292,7 +292,7 @@ class MetadataRestSink(Sink):  # pylint: disable=too-many-public-methods
             for role in record.roles:
                 try:
                     role_entity = self.metadata.get_by_name(
-                        entity=Role, fqn=str(role.name.__root__)
+                        entity=Role, fqn=str(role.name.root)
                     )
                 except APIError:
                     role_entity = self._create_role(role)
@@ -307,18 +307,16 @@ class MetadataRestSink(Sink):  # pylint: disable=too-many-public-methods
             for team in record.teams:
                 try:
                     team_entity = self.metadata.get_by_name(
-                        entity=Team, fqn=str(team.name.__root__)
+                        entity=Team, fqn=str(team.name.root)
                     )
                     if not team_entity:
                         raise APIError(
-                            error={
-                                "message": f"Creating a new team {team.name.__root__}"
-                            }
+                            error={"message": f"Creating a new team {team.name.root}"}
                         )
-                    team_ids.append(team_entity.id.__root__)
+                    team_ids.append(team_entity.id.root)
                 except APIError:
                     team_entity = self._create_team(team)
-                    team_ids.append(team_entity.id.__root__)
+                    team_ids.append(team_entity.id.root)
                 except Exception as exc:
                     logger.debug(traceback.format_exc())
                     logger.warning(f"Unexpected error writing team [{team}]: {exc}")
@@ -326,7 +324,7 @@ class MetadataRestSink(Sink):  # pylint: disable=too-many-public-methods
             team_ids = None
 
         # Update user data with the new Role and Team IDs
-        user_profile = record.user.dict(exclude_unset=True)
+        user_profile = record.user.model_dump(exclude_unset=True)
         user_profile["roles"] = role_ids
         user_profile["teams"] = team_ids
         metadata_user = CreateUserRequest(**user_profile)
@@ -421,10 +419,10 @@ class MetadataRestSink(Sink):  # pylint: disable=too-many-public-methods
         """Write the test case result"""
         res = self.metadata.add_test_case_results(
             test_results=record.testCaseResult,
-            test_case_fqn=record.testCase.fullyQualifiedName.__root__,
+            test_case_fqn=record.testCase.fullyQualifiedName.root,
         )
         logger.debug(
-            f"Successfully ingested test case results for test case {record.testCase.name.__root__}"
+            f"Successfully ingested test case results for test case {record.testCase.name.root}"
         )
         return Either(right=res)
 
@@ -462,7 +460,7 @@ class MetadataRestSink(Sink):  # pylint: disable=too-many-public-methods
         """
         Use the /dataQuality/testCases endpoint to ingest sample test suite
         """
-        self.metadata.add_kpi_result(fqn=record.kpiFqn.__root__, record=record)
+        self.metadata.add_kpi_result(fqn=record.kpiFqn.root, record=record)
         return Either(left=None, right=record)
 
     @_run_dispatch.register
@@ -532,7 +530,7 @@ class MetadataRestSink(Sink):  # pylint: disable=too-many-public-methods
             profile_request=record.profile,
         )
         logger.debug(
-            f"Successfully ingested profile metrics for {record.table.fullyQualifiedName.__root__}"
+            f"Successfully ingested profile metrics for {record.table.fullyQualifiedName.root}"
         )
 
         if record.sample_data:
@@ -542,13 +540,13 @@ class MetadataRestSink(Sink):  # pylint: disable=too-many-public-methods
             if not table_data:
                 self.status.failed(
                     StackTraceError(
-                        name=table.fullyQualifiedName.__root__,
+                        name=table.fullyQualifiedName.root,
                         error="Error trying to ingest sample data for table",
                     )
                 )
             else:
                 logger.debug(
-                    f"Successfully ingested sample data for {record.table.fullyQualifiedName.__root__}"
+                    f"Successfully ingested sample data for {record.table.fullyQualifiedName.root}"
                 )
 
         if record.column_tags:
@@ -558,13 +556,13 @@ class MetadataRestSink(Sink):  # pylint: disable=too-many-public-methods
             if not patched:
                 self.status.failed(
                     StackTraceError(
-                        name=table.fullyQualifiedName.__root__,
+                        name=table.fullyQualifiedName.root,
                         error="Error patching tags for table",
                     )
                 )
             else:
                 logger.debug(
-                    f"Successfully patched tag {record.column_tags} for {record.table.fullyQualifiedName.__root__}"
+                    f"Successfully patched tag {record.column_tags} for {record.table.fullyQualifiedName.root}"
                 )
 
         return Either(right=table)
@@ -586,7 +584,7 @@ class MetadataRestSink(Sink):  # pylint: disable=too-many-public-methods
         for result in record.test_results or []:
             self.metadata.add_test_case_results(
                 test_results=result.testCaseResult,
-                test_case_fqn=result.testCase.fullyQualifiedName.__root__,
+                test_case_fqn=result.testCase.fullyQualifiedName.root,
             )
             self.status.scanned(result)
 

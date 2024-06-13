@@ -13,6 +13,8 @@
 
 import EntityClass from '../../common/Entities/EntityClass';
 import { CustomPropertyTypeByName } from '../../common/Utils/CustomProperty';
+import { updateJWTTokenExpiryTime } from '../../common/Utils/Login';
+import { JWT_EXPIRY_TIME_MAP } from '../../constants/constants';
 import DatabaseClass from './../../common/Entities/DatabaseClass';
 import DatabaseSchemaClass from './../../common/Entities/DatabaseSchemaClass';
 import StoreProcedureClass from './../../common/Entities/StoredProcedureClass';
@@ -35,12 +37,14 @@ describe('Database hierarchy details page', { tags: 'DataAssets' }, () => {
   before(() => {
     cy.login();
 
+    updateJWTTokenExpiryTime(JWT_EXPIRY_TIME_MAP['2 hours']);
     EntityClass.preRequisitesForTests();
   });
 
   after(() => {
     cy.login();
 
+    updateJWTTokenExpiryTime(JWT_EXPIRY_TIME_MAP['1 hour']);
     EntityClass.postRequisitesForTests();
   });
 
@@ -56,6 +60,7 @@ describe('Database hierarchy details page', { tags: 'DataAssets' }, () => {
         cy.login();
 
         entity.cleanup();
+        cy.logout();
       });
 
       beforeEach(() => {
@@ -103,10 +108,7 @@ describe('Database hierarchy details page', { tags: 'DataAssets' }, () => {
 
       it(`Announcement create & delete`, () => {
         entity.createAnnouncement();
-        /**
-         * Todo: Fix the flakiness issue with the Activity feed changes and enable this test
-         */
-        // entity.replyAnnouncement();
+        entity.replyAnnouncement();
         entity.removeAnnouncement();
       });
 

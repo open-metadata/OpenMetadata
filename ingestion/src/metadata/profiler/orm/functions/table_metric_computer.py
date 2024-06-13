@@ -295,7 +295,7 @@ class BigQueryTableMetricComputer(BaseTableMetricComputer):
 
         where_clause = [
             Column("project_id")
-            == self.conn_config.credentials.gcpConfig.projectId.__root__,
+            == self.conn_config.credentials.gcpConfig.projectId.root,
             Column("table_schema") == self.schema_name,
             Column("table_name") == self.table_name,
         ]
@@ -329,7 +329,7 @@ class BigQueryTableMetricComputer(BaseTableMetricComputer):
         ]
         where_clause = [
             Column("project_id")
-            == self.conn_config.credentials.gcpConfig.projectId.__root__,
+            == self.conn_config.credentials.gcpConfig.projectId.root,
             Column("dataset_id") == self.schema_name,
             Column("table_id") == self.table_name,
         ]
@@ -338,7 +338,7 @@ class BigQueryTableMetricComputer(BaseTableMetricComputer):
             columns,
             self._build_table(
                 "__TABLES__",
-                f"{self.conn_config.credentials.gcpConfig.projectId.__root__}.{self.schema_name}",
+                f"{self.conn_config.credentials.gcpConfig.projectId.root}.{self.schema_name}",
             ),
             where_clause,
         )

@@ -75,8 +75,8 @@ MOCK_DATABASE = Database(
 
 
 class MockTable(BaseModel):
-    time_partitioning: Optional[TimePartitioning]
-    range_partitioning: Optional[RangePartitioning]
+    time_partitioning: Optional[TimePartitioning] = None
+    range_partitioning: Optional[RangePartitioning] = None
 
     class Config:
         arbitrary_types_allowed = True
@@ -118,14 +118,14 @@ class BigqueryUnitTest(TestCase):
         create_generic_connection.return_value = Mock()
         set_project_id.return_value = Mock()
         test_connection.return_value = False
-        self.config = OpenMetadataWorkflowConfig.parse_obj(mock_bigquery_config)
+        self.config = OpenMetadataWorkflowConfig.model_validate(mock_bigquery_config)
         self.bigquery_source = BigquerySource.create(
             mock_bigquery_config["source"],
             self.config.workflowConfig.openMetadataServerConfig,
         )
         self.bigquery_source.context.get().__dict__[
             "database"
-        ] = MOCK_DATABASE.fullyQualifiedName.__root__
+        ] = MOCK_DATABASE.fullyQualifiedName.root
         self.bigquery_source.client = client
         self.inspector = types.SimpleNamespace()
 

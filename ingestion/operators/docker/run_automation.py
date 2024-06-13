@@ -65,7 +65,7 @@ def main():
     set_loggers_level(logging.INFO)
 
     automation_workflow_dict = yaml.safe_load(config)
-    automation_workflow = AutomationWorkflow.parse_obj(automation_workflow_dict)
+    automation_workflow = AutomationWorkflow.model_validate(automation_workflow_dict)
 
     execute(automation_workflow)
 

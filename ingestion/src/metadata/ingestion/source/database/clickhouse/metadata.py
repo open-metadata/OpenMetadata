@@ -111,8 +111,8 @@ class ClickhouseSource(CommonDbSourceService):
     def create(
         cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None
     ):
-        config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
-        connection: ClickhouseConnection = config.serviceConnection.__root__.config
+        config: WorkflowSource = WorkflowSource.model_validate(config_dict)
+        connection: ClickhouseConnection = config.serviceConnection.root.config
         if not isinstance(connection, ClickhouseConnection):
             raise InvalidSourceException(
                 f"Expected ClickhouseConnection, but got {connection}"
@@ -156,16 +156,19 @@ class ClickhouseSource(CommonDbSourceService):
             if table_type in {TableType.View, TableType.MaterializedView}:
                 definition_fn = inspector.get_view_definition
                 schema_definition = definition_fn(table_name, schema_name)
-            else:
-                schema_definition = inspector.get_table_ddl(
-                    self.connection, table_name, schema_name
+                return (
+                    str(schema_definition).strip()
+                    if schema_definition is not None
+                    else None
                 )
-            schema_definition = (
-                str(schema_definition.strip())
+            schema_definition = inspector.get_table_ddl(
+                self.connection, table_name, schema_name
+            )
+            return (
+                str(schema_definition).strip()
                 if schema_definition is not None
                 else None
             )
-            return schema_definition
 
         except NotImplementedError:
             logger.warning("Schema definition not implemented")

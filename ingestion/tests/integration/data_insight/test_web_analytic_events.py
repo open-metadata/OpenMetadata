@@ -68,7 +68,7 @@ class WebAnalyticsEndpointsTests(unittest.TestCase):
         """Set up om client for the test class"""
 
         cls.metadata = OpenMetadata(
-            OpenMetadataConnection.parse_obj(
+            OpenMetadataConnection.model_validate(
                 data_insight_config["workflowConfig"]["openMetadataServerConfig"]
             )
         )
@@ -110,7 +110,7 @@ class WebAnalyticsEndpointsTests(unittest.TestCase):
             (
                 web_event
                 for web_event in web_events
-                if web_event.eventData.userId.__root__ == user_id
+                if web_event.eventData.userId.root == user_id
             ),
             None,
         )

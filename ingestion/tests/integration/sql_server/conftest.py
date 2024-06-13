@@ -110,9 +110,7 @@ def mssql_server_config(mssql_container, request):
         ),
     ],
 )
-def ingest_metadata(
-    mssql_container, mssql_server_config, metadata: OpenMetadata, request
-):
+def ingest_metadata(mssql_container, metadata: OpenMetadata, request):
     workflow_config = {
         "source": {
             "type": "mssql",
@@ -138,7 +136,7 @@ def ingest_metadata(
         },
         "sink": {"type": "metadata-rest", "config": {}},
         "workflowConfig": {
-            "loggerLevel": "INFO",
+            "loggerLevel": "DEBUG",
             "openMetadataServerConfig": metadata.config.dict(),
         },
     }
@@ -155,12 +153,15 @@ def ingest_metadata(
 
 @pytest.fixture(scope="module")
 def run_lineage_workflow(
-    ingest_metadata: DatabaseService, mssql_container, metadata: OpenMetadata
+    mssql_server_config,
+    ingest_metadata: DatabaseService,
+    mssql_container,
+    metadata: OpenMetadata,
 ):
     workflow_config = {
         "source": {
             "type": "mssql-lineage",
-            "serviceName": ingest_metadata.fullyQualifiedName.__root__,
+            "serviceName": ingest_metadata.fullyQualifiedName.root,
             "serviceConnection": {
                 "config": {
                     "type": "Mssql",

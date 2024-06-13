@@ -101,6 +101,7 @@ def ingest_s3_storage(minio, metadata, service_name, create_data):
           type: metadata-rest
           config: {{}}
         workflowConfig:
+          loggerLevel: DEBUG
           openMetadataServerConfig:
             hostPort: http://localhost:8585/api
             authProvider: openmetadata

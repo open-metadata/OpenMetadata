@@ -13,9 +13,9 @@ def test_lineage(
     run_lineage_workflow,
     metadata,
 ):
-    service_fqn = ingest_metadata.fullyQualifiedName.__root__
+    service_fqn = ingest_metadata.fullyQualifiedName.root
     department_table = metadata.get_by_name(
         Table, f"{service_fqn}.AdventureWorks.HumanResources.Department", nullable=False
     )
-    lineage = metadata.get_lineage_by_id(Table, department_table.id.__root__)
+    lineage = metadata.get_lineage_by_id(Table, department_table.id.root)
     assert lineage is not None

@@ -81,7 +81,7 @@ class TestSuiteWorkflowTests(unittest.TestCase):
     """Main test suite integration tests definition"""
 
     metadata = OpenMetadata(
-        OpenMetadataConnection.parse_obj(
+        OpenMetadataConnection.model_validate(
             get_test_suite_config("", "")["workflowConfig"]["openMetadataServerConfig"]
         )
     )
@@ -134,17 +134,17 @@ class TestSuiteWorkflowTests(unittest.TestCase):
         cls.test_suite = cls.metadata.create_or_update_executable_test_suite(
             data=CreateTestSuiteRequest(
                 name="test-suite",
-                executableEntityReference=cls.table_with_suite.fullyQualifiedName.__root__,
+                executableEntityReference=cls.table_with_suite.fullyQualifiedName.root,
             )
         )
 
         cls.metadata.create_or_update(
             CreateTestCaseRequest(
                 name="testCaseForIntegration",
-                entityLink=f"<#E::table::{cls.table_with_suite.fullyQualifiedName.__root__}>",
+                entityLink=f"<#E::table::{cls.table_with_suite.fullyQualifiedName.root}>",
                 testSuite=cls.test_suite.fullyQualifiedName,
                 testDefinition="tableRowCountToEqual",
-                parameterValues=[TestCaseParameterValue(name="value", value=10)],
+                parameterValues=[TestCaseParameterValue(name="value", value="10")],
             )
         )
 
@@ -170,8 +170,8 @@ class TestSuiteWorkflowTests(unittest.TestCase):
         """Test workflow object is correctly instantiated"""
         TestSuiteWorkflow.create(
             get_test_suite_config(
-                service_name=self.service_entity.name.__root__,
-                table_name=self.table_with_suite.fullyQualifiedName.__root__,
+                service_name=self.service_entity.name.root,
+                table_name=self.table_with_suite.fullyQualifiedName.root,
             )
         )
 
@@ -179,8 +179,8 @@ class TestSuiteWorkflowTests(unittest.TestCase):
         """test workflow object is instantiated correctly from cli config"""
         workflow = TestSuiteWorkflow.create(
             get_test_suite_config(
-                service_name=self.service_entity.name.__root__,
-                table_name=self.table_with_suite.fullyQualifiedName.__root__,
+                service_name=self.service_entity.name.root,
+                table_name=self.table_with_suite.fullyQualifiedName.root,
             )
         )
 
@@ -201,7 +201,7 @@ class TestSuiteWorkflowTests(unittest.TestCase):
                 (
                     test
                     for test in table_and_tests.right.test_cases
-                    if test.name.__root__ == "testCaseForIntegration"
+                    if test.name.root == "testCaseForIntegration"
                 ),
                 None,
             )
@@ -212,8 +212,8 @@ class TestSuiteWorkflowTests(unittest.TestCase):
 
         workflow = TestSuiteWorkflow.create(
             get_test_suite_config(
-                service_name=self.service_entity.name.__root__,
-                table_name=self.table.fullyQualifiedName.__root__,
+                service_name=self.service_entity.name.root,
+                table_name=self.table.fullyQualifiedName.root,
             )
         )
 
@@ -226,16 +226,16 @@ class TestSuiteWorkflowTests(unittest.TestCase):
 
         self.assertIsNone(table.testSuite)
         self.assertEqual(
-            table_and_tests.right.executable_test_suite.name.__root__,
-            self.table.fullyQualifiedName.__root__ + ".testSuite",
+            table_and_tests.right.executable_test_suite.name.root,
+            self.table.fullyQualifiedName.root + ".testSuite",
         )
 
     def test_create_workflow_config_with_tests(self):
         """We'll get the tests from the workflow YAML"""
 
         _test_suite_config = get_test_suite_config(
-            service_name=self.service_entity.name.__root__,
-            table_name=self.table_with_suite.fullyQualifiedName.__root__,
+            service_name=self.service_entity.name.root,
+            table_name=self.table_with_suite.fullyQualifiedName.root,
         )
 
         processor = {
@@ -247,8 +247,8 @@ class TestSuiteWorkflowTests(unittest.TestCase):
                             "name": "my_test_case",
                             "testDefinitionName": "tableColumnCountToBeBetween",
                             "parameterValues": [
-                                {"name": "minColValue", "value": 1},
-                                {"name": "maxColValue", "value": 5},
+                                {"name": "minColValue", "value": "1"},
+                                {"name": "maxColValue", "value": "5"},
                             ],
                         }
                     ]
@@ -266,16 +266,15 @@ class TestSuiteWorkflowTests(unittest.TestCase):
 
         test_cases: List[TestCase] = workflow.steps[0].get_test_cases(
             test_cases=table_and_tests.right.test_cases,
-            test_suite_fqn=self.table_with_suite.fullyQualifiedName.__root__
-            + ".testSuite",
-            table_fqn=self.table_with_suite.fullyQualifiedName.__root__,
+            test_suite_fqn=self.table_with_suite.fullyQualifiedName.root + ".testSuite",
+            table_fqn=self.table_with_suite.fullyQualifiedName.root,
         )
 
         # 1 defined test cases + the new one in the YAML
         self.assertTrue(len(table_and_tests.right.test_cases) >= 1)
 
         new_test_case = next(
-            (test for test in test_cases if test.name.__root__ == "my_test_case"), None
+            (test for test in test_cases if test.name.root == "my_test_case"), None
         )
         self.assertIsNotNone(new_test_case)
 
@@ -290,8 +289,8 @@ class TestSuiteWorkflowTests(unittest.TestCase):
     def test_get_test_case_names_from_cli_config(self):
         """test we can get all test case names from cli config"""
         _test_suite_config = get_test_suite_config(
-            service_name=self.service_entity.name.__root__,
-            table_name=self.table_with_suite.fullyQualifiedName.__root__,
+            service_name=self.service_entity.name.root,
+            table_name=self.table_with_suite.fullyQualifiedName.root,
         )
 
         processor = {
@@ -303,16 +302,16 @@ class TestSuiteWorkflowTests(unittest.TestCase):
                             "name": "my_test_case",
                             "testDefinitionName": "tableColumnCountToBeBetween",
                             "parameterValues": [
-                                {"name": "minColValue", "value": 1},
-                                {"name": "maxColValue", "value": 5},
+                                {"name": "minColValue", "value": "1"},
+                                {"name": "maxColValue", "value": "5"},
                             ],
                         },
                         {
                             "name": "my_test_case_two",
                             "testDefinitionName": "tableColumnCountToBeBetween",
                             "parameterValues": [
-                                {"name": "minColValue", "value": 1},
-                                {"name": "maxColValue", "value": 5},
+                                {"name": "minColValue", "value": "1"},
+                                {"name": "maxColValue", "value": "5"},
                             ],
                         },
                     ],
@@ -333,8 +332,8 @@ class TestSuiteWorkflowTests(unittest.TestCase):
     def test_compare_and_create_test_cases(self):
         """Test function creates the correct test case if they don't exists"""
         _test_suite_config = get_test_suite_config(
-            service_name=self.service_entity.name.__root__,
-            table_name=self.table_with_suite.fullyQualifiedName.__root__,
+            service_name=self.service_entity.name.root,
+            table_name=self.table_with_suite.fullyQualifiedName.root,
         )
 
         processor = {
@@ -346,8 +345,8 @@ class TestSuiteWorkflowTests(unittest.TestCase):
                             "name": "my_test_case",
                             "testDefinitionName": "tableColumnCountToBeBetween",
                             "parameterValues": [
-                                {"name": "minColValue", "value": 1},
-                                {"name": "maxColValue", "value": 5},
+                                {"name": "minColValue", "value": "1"},
+                                {"name": "maxColValue", "value": "5"},
                             ],
                         },
                         {
@@ -355,8 +354,8 @@ class TestSuiteWorkflowTests(unittest.TestCase):
                             "testDefinitionName": "columnValuesToBeBetween",
                             "columnName": "id",
                             "parameterValues": [
-                                {"name": "minValue", "value": 1},
-                                {"name": "maxValue", "value": 5},
+                                {"name": "minValue", "value": "1"},
+                                {"name": "maxValue", "value": "5"},
                             ],
                         },
                     ],
@@ -369,12 +368,12 @@ class TestSuiteWorkflowTests(unittest.TestCase):
 
         assert not self.metadata.get_by_name(
             entity=TestCase,
-            fqn=f"{self.table_with_suite.fullyQualifiedName.__root__}.my_test_case",
+            fqn=f"{self.table_with_suite.fullyQualifiedName.root}.my_test_case",
         )
 
         assert not self.metadata.get_by_name(
             entity=TestCase,
-            fqn=f"{self.table_with_suite.fullyQualifiedName.__root__}.my_test_case_two",
+            fqn=f"{self.table_with_suite.fullyQualifiedName.root}.my_test_case_two",
         )
 
         table: Table = workflow.source._get_table_entity()
@@ -386,19 +385,19 @@ class TestSuiteWorkflowTests(unittest.TestCase):
         created_test_case = workflow.steps[0].compare_and_create_test_cases(
             cli_test_cases_definitions=config_test_cases_def,
             test_cases=table_and_tests.right.test_cases,
-            test_suite_fqn=f"{self.table_with_suite.fullyQualifiedName.__root__}.testSuite",
-            table_fqn=self.table_with_suite.fullyQualifiedName.__root__,
+            test_suite_fqn=f"{self.table_with_suite.fullyQualifiedName.root}.testSuite",
+            table_fqn=self.table_with_suite.fullyQualifiedName.root,
         )
 
         # clean up test
         my_test_case = self.metadata.get_by_name(
             entity=TestCase,
-            fqn=f"{self.table_with_suite.fullyQualifiedName.__root__}.my_test_case",
+            fqn=f"{self.table_with_suite.fullyQualifiedName.root}.my_test_case",
             fields=["testDefinition", "testSuite"],
         )
         my_test_case_two = self.metadata.get_by_name(
             entity=TestCase,
-            fqn=f"{self.table_with_suite.fullyQualifiedName.__root__}.id.my_test_case_two",
+            fqn=f"{self.table_with_suite.fullyQualifiedName.root}.id.my_test_case_two",
             fields=["testDefinition", "testSuite"],
         )
 
