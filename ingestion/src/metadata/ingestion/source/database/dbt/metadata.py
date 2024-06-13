@@ -401,7 +401,7 @@ class DbtSource(DbtServiceSource):
                             include_tags=self.source_config.includeTags,
                         )
 
-                    if manifest_node.meta:
+                    if manifest_node.meta and dbt_table_tags_list:
                         dbt_table_tags_list.extend(
                             self.process_dbt_meta(manifest_node.meta) or []
                         )
