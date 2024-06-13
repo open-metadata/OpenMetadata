@@ -324,7 +324,7 @@ class QliksenseSource(DashboardServiceSource):
         )
         for datamodel in self.data_models or []:
             try:
-                data_model_entity = self._get_datamodel(datamodel=datamodel.id)
+                data_model_entity = self._get_datamodel(datamodel_id=datamodel.id)
                 if data_model_entity:
                     om_table = self._get_database_table(
                         db_service_entity, datamodel=datamodel
