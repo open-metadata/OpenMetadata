@@ -394,11 +394,14 @@ class DbtSource(DbtServiceSource):
 
                     dbt_table_tags_list = []
                     if manifest_node.tags:
-                        dbt_table_tags_list = get_tag_labels(
-                            metadata=self.metadata,
-                            tags=manifest_node.tags,
-                            classification_name=self.tag_classification_name,
-                            include_tags=self.source_config.includeTags,
+                        dbt_table_tags_list = (
+                            get_tag_labels(
+                                metadata=self.metadata,
+                                tags=manifest_node.tags,
+                                classification_name=self.tag_classification_name,
+                                include_tags=self.source_config.includeTags,
+                            )
+                            or []
                         )
 
                     if manifest_node.meta:

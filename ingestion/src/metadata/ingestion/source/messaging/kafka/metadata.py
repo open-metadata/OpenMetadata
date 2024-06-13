@@ -30,7 +30,6 @@ class KafkaSource(CommonBrokerSource):
         self.ssl_manager = None
         service_connection = cast(KafkaConnection, config.serviceConnection.root.config)
         if service_connection.schemaRegistrySSL:
-
             self.ssl_manager = SSLManager(
                 ca=service_connection.schemaRegistrySSL.root.caCertificate,
                 key=service_connection.schemaRegistrySSL.root.sslKey,

@@ -47,6 +47,7 @@ from metadata.utils.logger import utils_logger
 
 logger = utils_logger()
 
+
 # Similar inner methods with mode client. That's fine.
 # pylint: disable=duplicate-code
 class PowerBiApiClient:
