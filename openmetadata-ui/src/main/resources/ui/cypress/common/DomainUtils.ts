@@ -171,12 +171,6 @@ export const removeAssets = (domainObj) => {
     .contains(entity.term)
     .click();
 
-  visitEntityDetailsPage({
-    term: entity.term,
-    serviceName: entity.serviceName,
-    entity: entity.entity,
-  });
-
   cy.get('[data-testid="add-domain"]').click();
   verifyResponseStatusCode('@domains', 200);
   cy.get('[data-testid="remove-owner"]').click();
