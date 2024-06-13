@@ -123,4 +123,4 @@ def convert_timestamp_to_milliseconds(timestamp: Union[int, float]) -> int:
     """
     if len(str(round(timestamp))) == 13:
         return timestamp
-    return timestamp * 1000
+    return round(timestamp * 1000)

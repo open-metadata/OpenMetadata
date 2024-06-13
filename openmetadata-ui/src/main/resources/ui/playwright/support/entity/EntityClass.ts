@@ -10,7 +10,14 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Page } from '@playwright/test';
+import { APIRequestContext, Page } from '@playwright/test';
+import { CustomPropertySupportedEntityList } from '../../constant/customProperty';
+import {
+  createCustomPropertyForEntity,
+  CustomProperty,
+  setValueForProperty,
+  validateValueForProperty,
+} from '../../utils/customProperty';
 import { assignDomain, removeDomain, updateDomain } from '../../utils/domain';
 import {
   addOwner,
@@ -38,11 +45,17 @@ import {
 } from '../../utils/entity';
 import { Domain } from '../domain/Domain';
 import { GlossaryTerm } from '../glossary/GlossaryTerm';
-import { EntityTypeEndpoint } from './Entity.interface';
+import { EntityTypeEndpoint, ENTITY_PATH } from './Entity.interface';
 
 export class EntityClass {
   type: string;
   endpoint: EntityTypeEndpoint;
+  cleanupUser: (apiContext: APIRequestContext) => Promise<void>;
+
+  customPropertyValue: Record<
+    string,
+    { value: string; newValue: string; property: CustomProperty }
+  >;
 
   constructor(endpoint: EntityTypeEndpoint) {
     this.endpoint = endpoint;
@@ -55,6 +68,42 @@ export class EntityClass {
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   async visitEntityPage(_: Page) {
     // Override for entity visit
+  }
+
+  // Prepare for tests
+  async prepareForTests(apiContext: APIRequestContext) {
+    // Create custom property only for supported entities
+    if (CustomPropertySupportedEntityList.includes(this.endpoint)) {
+      const data = await createCustomPropertyForEntity(
+        apiContext,
+        this.endpoint
+      );
+
+      this.customPropertyValue = data.customProperties;
+      this.cleanupUser = data.cleanupUser;
+    }
+  }
+
+  async cleanup(apiContext: APIRequestContext) {
+    // Delete custom property only for supported entities
+    if (CustomPropertySupportedEntityList.includes(this.endpoint)) {
+      await this.cleanupUser(apiContext);
+      const entitySchemaResponse = await apiContext.get(
+        `/api/v1/metadata/types/name/${ENTITY_PATH[this.endpoint]}`
+      );
+      const entitySchema = await entitySchemaResponse.json();
+      await apiContext.patch(`/api/v1/metadata/types/${entitySchema.id}`, {
+        data: [
+          {
+            op: 'remove',
+            path: '/customProperties',
+          },
+        ],
+        headers: {
+          'Content-Type': 'application/json-patch+json',
+        },
+      });
+    }
   }
 
   async domain(
@@ -172,5 +221,43 @@ export class EntityClass {
 
   async hardDeleteEntity(page: Page, entityName: string, displayName?: string) {
     await hardDeleteEntity(page, displayName ?? entityName, this.endpoint);
+  }
+
+  async setCustomProperty(
+    page: Page,
+    propertydetails: CustomProperty,
+    value: string
+  ) {
+    await setValueForProperty({
+      page,
+      propertyName: propertydetails.name,
+      value,
+      propertyType: propertydetails.propertyType.name,
+    });
+    await validateValueForProperty({
+      page,
+      propertyName: propertydetails.name,
+      value,
+      propertyType: propertydetails.propertyType.name,
+    });
+  }
+
+  async updateCustomProperty(
+    page: Page,
+    propertydetails: CustomProperty,
+    value: string
+  ) {
+    await setValueForProperty({
+      page,
+      propertyName: propertydetails.name,
+      value,
+      propertyType: propertydetails.propertyType.name,
+    });
+    await validateValueForProperty({
+      page,
+      propertyName: propertydetails.name,
+      value,
+      propertyType: propertydetails.propertyType.name,
+    });
   }
 }
