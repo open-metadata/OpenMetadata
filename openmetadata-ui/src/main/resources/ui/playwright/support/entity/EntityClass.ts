@@ -220,7 +220,7 @@ export class EntityClass {
   }
 
   async hardDeleteEntity(page: Page, entityName: string, displayName?: string) {
-    await hardDeleteEntity(page, displayName ?? entityName, this.endpoint);
+    await hardDeleteEntity(page, displayName ?? entityName);
   }
 
   async setCustomProperty(
@@ -233,6 +233,7 @@ export class EntityClass {
       propertyName: propertydetails.name,
       value,
       propertyType: propertydetails.propertyType.name,
+      endpoint: this.endpoint,
     });
     await validateValueForProperty({
       page,
@@ -252,6 +253,7 @@ export class EntityClass {
       propertyName: propertydetails.name,
       value,
       propertyType: propertydetails.propertyType.name,
+      endpoint: this.endpoint,
     });
     await validateValueForProperty({
       page,

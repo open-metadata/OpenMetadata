@@ -31,9 +31,11 @@ export const visitEntityPage = async (data: {
   dataTestId: string;
 }) => {
   const { page, searchTerm, dataTestId } = data;
-
+  const waitForSearchResponse = page.waitForResponse(
+    '/api/v1/search/query?q=*index=dataAsset*'
+  );
   await page.getByTestId('searchBox').fill(searchTerm);
-  await page.waitForResponse('/api/v1/search/query?q=*index=dataAsset*');
+  await waitForSearchResponse;
   await page.getByTestId(dataTestId).getByTestId('data-name').click();
   await page.getByTestId('searchBox').clear();
 };
@@ -765,10 +767,6 @@ export const softDeleteEntity = async (
   await page.fill('[data-testid="confirmation-text-input"]', 'DELETE');
   await page.click('[data-testid="confirm-button"]');
 
-  await page.waitForResponse(
-    `/api/v1/${endPoint}/*?hardDelete=false&recursive=true`
-  );
-
   await expect(page.locator('.Toastify__toast-body')).toHaveText(
     /deleted successfully!/
   );
@@ -815,11 +813,7 @@ export const softDeleteEntity = async (
   });
 };
 
-export const hardDeleteEntity = async (
-  page: Page,
-  entityName: string,
-  endPoint: EntityTypeEndpoint
-) => {
+export const hardDeleteEntity = async (page: Page, entityName: string) => {
   await page.click('[data-testid="manage-button"]');
   await page.click('[data-testid="delete-button"]');
 
@@ -833,9 +827,6 @@ export const hardDeleteEntity = async (
   await page.check('[data-testid="hard-delete"]');
   await page.fill('[data-testid="confirmation-text-input"]', 'DELETE');
   await page.click('[data-testid="confirm-button"]');
-  await page.waitForResponse(
-    `**/api/v1/${endPoint}/*?hardDelete=true&recursive=true`
-  );
 
   await expect(page.locator('.Toastify__toast-body')).toHaveText(
     /deleted successfully!/
