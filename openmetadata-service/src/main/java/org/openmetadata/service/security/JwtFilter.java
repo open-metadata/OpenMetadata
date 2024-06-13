@@ -246,7 +246,7 @@ public class JwtFilter implements ContainerRequestFilter {
       // We have a mapping available so we will use that
       String usernameClaim = jwtPrincipalClaimsMapping.get(USERNAME_CLAIM_KEY);
       Claim userNameClaimValue = claims.get(usernameClaim);
-      if (!userNameClaimValue.isNull() && !nullOrEmpty(userNameClaimValue.asString())) {
+      if (userNameClaimValue != null && !nullOrEmpty(userNameClaimValue.asString())) {
         return userNameClaimValue.asString();
       } else {
         throw new AuthenticationException("Invalid JWT token, 'username' claim is not present");
@@ -269,7 +269,7 @@ public class JwtFilter implements ContainerRequestFilter {
       // We have a mapping available so we will use that
       String emailClaim = jwtPrincipalClaimsMapping.get(EMAIL_CLAIM_KEY);
       Claim emailClaimValue = claims.get(emailClaim);
-      if (!emailClaimValue.isNull() && !nullOrEmpty(emailClaimValue.asString())) {
+      if (emailClaimValue != null && !nullOrEmpty(emailClaimValue.asString())) {
         String email = emailClaimValue.asString();
         if (email.contains("@")) {
           domain = email.split("@")[1];
@@ -343,7 +343,7 @@ public class JwtFilter implements ContainerRequestFilter {
         && ServiceTokenType.PERSONAL_ACCESS
             .value()
             .equals(
-                claims.get(TOKEN_TYPE).isNull()
+                claims.get(TOKEN_TYPE) != null
                     ? StringUtils.EMPTY
                     : claims.get(TOKEN_TYPE).asString())) {
       Set<String> userTokens = UserTokenCache.getToken(userName);
