@@ -74,7 +74,7 @@ class TestDatalake:
         csv_sample_data = self.metadata.get_sample_data(csv_)
         # parquet_sample_data = self.metadata.get_sample_data(parquet_)
         json_sample_data = self.metadata.get_sample_data(json_)
-        jsonl_sample_data = self.metadata.get_sample_data(json_)
+        jsonl_sample_data = self.metadata.get_sample_data(jsonl_)
 
         assert csv_sample_data.sampleData.rows
         # assert parquet_sample_data.sampleData.rows
