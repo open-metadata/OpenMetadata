@@ -56,4 +56,5 @@ export enum ENTITY_PATH {
   glossaryTerm = 'glossaryTerm',
   databases = 'database',
   databaseSchemas = 'databaseSchema',
+  'dashboard/datamodels' = 'dashboardDataModel',
 }

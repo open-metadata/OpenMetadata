@@ -380,14 +380,14 @@ describe(
       interceptURL(
         'GET',
         `/api/v1/glossaryTerms/${data.glossaryTerm2.id}`,
-        'getGlossaryTermDetails'
+        'getGlossaryTermDetailsById'
       );
 
       cy.get('[data-testid="version-button"]').scrollIntoView().click();
 
       verifyResponseStatusCode('@getVersionsList', 200);
       verifyResponseStatusCode('@getSelectedVersionDetails', 200);
-      verifyResponseStatusCode('@getGlossaryTermDetails', 200);
+      verifyResponseStatusCode('@getGlossaryTermDetailsById', 200);
 
       cy.get(
         '[data-testid="glossary-right-panel-owner-link"] [data-testid="diff-added"]'
@@ -419,7 +419,7 @@ describe(
 
       verifyResponseStatusCode('@getVersionsList', 200);
       verifyResponseStatusCode('@getSelectedVersionDetails', 200);
-      verifyResponseStatusCode('@getGlossaryTermDetails', 200);
+      verifyResponseStatusCode('@getGlossaryTermDetailsById', 200);
 
       cy.get('[data-testid="glossary-reviewer"] [data-testid="diff-added"]')
         .scrollIntoView()
