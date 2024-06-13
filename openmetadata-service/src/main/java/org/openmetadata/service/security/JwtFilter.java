@@ -245,9 +245,9 @@ public class JwtFilter implements ContainerRequestFilter {
     if (!nullOrEmpty(jwtPrincipalClaimsMapping)) {
       // We have a mapping available so we will use that
       String usernameClaim = jwtPrincipalClaimsMapping.get(USERNAME_CLAIM_KEY);
-      String userNameValue = claims.get(usernameClaim).asString();
-      if (!nullOrEmpty(userNameValue)) {
-        return userNameValue;
+      Claim userNameClaimValue = claims.get(usernameClaim);
+      if (!userNameClaimValue.isNull() && !nullOrEmpty(userNameClaimValue.asString())) {
+        return userNameClaimValue.asString();
       } else {
         throw new AuthenticationException("Invalid JWT token, 'username' claim is not present");
       }
@@ -268,13 +268,14 @@ public class JwtFilter implements ContainerRequestFilter {
     if (!nullOrEmpty(jwtPrincipalClaimsMapping)) {
       // We have a mapping available so we will use that
       String emailClaim = jwtPrincipalClaimsMapping.get(EMAIL_CLAIM_KEY);
-      String emailClaimValue = claims.get(emailClaim).asString();
-      if (!nullOrEmpty(emailClaimValue)) {
-        if (emailClaimValue.contains("@")) {
-          domain = emailClaimValue.split("@")[1];
+      Claim emailClaimValue = claims.get(emailClaim);
+      if (!emailClaimValue.isNull() && !nullOrEmpty(emailClaimValue.asString())) {
+        String email = emailClaimValue.asString();
+        if (email.contains("@")) {
+          domain = email.split("@")[1];
         }
       } else {
-        throw new AuthenticationException("Invalid JWT token, email claim is not present");
+        throw new AuthenticationException("Invalid JWT token, 'email' claim is not present");
       }
     } else {
       String jwtClaim = getFirstMatchJwtClaim(claims);
@@ -339,7 +340,12 @@ public class JwtFilter implements ContainerRequestFilter {
   private void validatePersonalAccessToken(
       Map<String, Claim> claims, String tokenFromHeader, String userName) {
     if (claims.containsKey(TOKEN_TYPE)
-        && ServiceTokenType.PERSONAL_ACCESS.value().equals(claims.get(TOKEN_TYPE).asString())) {
+        && ServiceTokenType.PERSONAL_ACCESS
+            .value()
+            .equals(
+                claims.get(TOKEN_TYPE).isNull()
+                    ? StringUtils.EMPTY
+                    : claims.get(TOKEN_TYPE).asString())) {
       Set<String> userTokens = UserTokenCache.getToken(userName);
       if (userTokens != null && userTokens.contains(tokenFromHeader)) {
         return;
