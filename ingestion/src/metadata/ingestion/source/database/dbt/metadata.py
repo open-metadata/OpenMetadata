@@ -399,9 +399,9 @@ class DbtSource(DbtServiceSource):
                             tags=manifest_node.tags,
                             classification_name=self.tag_classification_name,
                             include_tags=self.source_config.includeTags,
-                        )
+                        ) or []
 
-                    if manifest_node.meta and dbt_table_tags_list:
+                    if manifest_node.meta:
                         dbt_table_tags_list.extend(
                             self.process_dbt_meta(manifest_node.meta) or []
                         )
