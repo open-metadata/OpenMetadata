@@ -201,7 +201,6 @@ class KafkaconnectSource(PipelineServiceSource):
             dataset_entity = self.get_dataset_entity(pipeline_details=pipeline_details)
 
             for topic in pipeline_details.topics or []:
-
                 topic_fqn = fqn.build(
                     metadata=self.metadata,
                     entity_type=Topic,
