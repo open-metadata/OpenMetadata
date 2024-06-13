@@ -622,12 +622,12 @@ describe(
 
       cy.get('[data-testid="by-test-suites"]').click();
       verifyResponseStatusCode('@testSuite', 200);
-
+      interceptURL('GET', '/api/v1/users?*isBot=false*', 'getOwner');
       // owner filter
       cy.get('[data-testid="owner-select-filter"]').click();
       cy.get("[data-testid='select-owner-tabs']").should('be.visible');
       cy.get('.ant-tabs [id*=tab-users]').click();
-
+      cy.wait('@getOwner');
       interceptURL(
         'GET',
         `api/v1/search/query?q=*&index=user_search_index*`,

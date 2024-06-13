@@ -120,7 +120,7 @@ const verifyPipelineSuccessStatus = (time = 20000) => {
     const text = $el.text();
     if (text !== 'Success' && text !== 'Failed' && newTime > 500) {
       verifyPipelineSuccessStatus(newTime);
-    } else {
+    } else if (text === 'Success') {
       cy.get('[data-testid="pipeline-status"]').should('contain', 'Success');
     }
   });

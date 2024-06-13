@@ -112,7 +112,7 @@ export const getPropertyValues = (type: string) => {
     case 'entityReference':
       return {
         value: 'Adam Matthews',
-        newValue: 'Aaron Singh',
+        newValue: 'Amber Green',
       };
 
     case 'entityReferenceList':
