@@ -15,6 +15,7 @@ models from the JSON schemas and provides a typed approach to
 working with OpenMetadata entities.
 """
 import traceback
+from functools import wraps
 from typing import Dict, Generic, Iterable, List, Optional, Type, TypeVar, Union
 
 from pydantic import BaseModel
@@ -87,6 +88,20 @@ class EmptyPayloadException(Exception):
     Raise when receiving no data, even if no exception
     during the API call is received
     """
+
+
+def add_required_fields(entity: Type[T], fields: Optional[List[str]] = None):
+    if fields is not None and "*" in fields:
+        return fields
+    for field, value in entity.model_fields.items():
+        if value.is_required():
+            if fields is None:
+                fields = []
+            if not isinstance(fields, list):
+                fields = [fields]
+            if field not in fields:
+                fields.append(field)
+    return fields
 
 
 class OpenMetadata(
@@ -326,6 +341,7 @@ class OpenMetadata(
         :param path: URL suffix by FQN or ID
         :param fields: List of fields to return
         """
+        fields = add_required_fields(entity, fields)
         fields_str = "?fields=" + ",".join(fields) if fields else ""
         try:
             resp = self.client.get(f"{self.get_suffix(entity)}/{path}{fields_str}")
@@ -386,10 +402,10 @@ class OpenMetadata(
         """
         Helps us paginate over the collection
         """
-
         suffix = self.get_suffix(entity)
         url_limit = f"?limit={limit}"
         url_after = f"&after={after}" if after else ""
+        fields = add_required_fields(entity, fields)
         url_fields = f"&fields={','.join(fields)}" if fields else ""
         resp = self.client.get(
             path=f"{suffix}{url_limit}{url_after}{url_fields}", data=params

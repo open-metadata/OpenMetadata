@@ -34,6 +34,6 @@
 
     }
   },
-  "required": ["type", "entityFullyQualifiedName"],
+  "required": ["type"],
   "additionalProperties": false
 }

@@ -5,7 +5,9 @@
   "description": "Test case is a test definition to capture data quality tests against tables, columns, and other data assets.",
   "type": "object",
   "javaType": "org.openmetadata.schema.tests.TestCase",
-  "javaInterfaces": ["org.openmetadata.schema.EntityInterface"],
+  "javaInterfaces": [
+    "org.openmetadata.schema.EntityInterface"
+  ],
   "definitions": {
     "testCaseParameterValue": {
       "type": "object",
@@ -49,20 +51,16 @@
       "$ref": "../type/entityReference.json"
     },
     "entityLink": {
-        "description": "Link to the entity that this test case is testing.",
+      "description": "Link to the entity that this test case is testing.",
       "$ref": "../type/basic.json#/definitions/entityLink"
     },
     "entityFQN": {
       "type": "string"
     },
-    "testSuite": {
-      "description": "Test Suite that this test case belongs to.",
-      "$ref": "../type/entityReference.json"
-    },
     "testSuites": {
       "type": "array",
       "items": {
-        "$ref": "./testSuite.json"
+        "$ref": "../type/entityReference.json"
       }
     },
     "parameterValues": {
@@ -122,7 +120,7 @@
       "description": "SQL query to retrieve the failed rows for this test case.",
       "$ref": "../type/basic.json#/definitions/sqlQuery"
     },
-    "domain" : {
+    "domain": {
       "description": "Domain the test case belongs to. When not set, the test case inherits the domain from the table it belongs to.",
       "$ref": "../type/entityReference.json"
     },
@@ -140,6 +138,11 @@
       "default": null
     }
   },
-  "required": ["name", "testDefinition", "entityLink", "testSuite"],
+  "required": [
+    "name",
+    "testDefinition",
+    "entityLink",
+    "testSuites"
+  ],
   "additionalProperties": false
 }
