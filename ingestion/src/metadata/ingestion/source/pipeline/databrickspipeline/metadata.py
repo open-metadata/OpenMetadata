@@ -99,7 +99,6 @@ class DatabrickspipelineSource(PipelineServiceSource):
         """Method to Get Pipeline Entity"""
         self.context.get().job_id_list = []
         try:
-
             description = pipeline_details["settings"].get("name")
             pipeline_request = CreatePipelineRequest(
                 name=EntityName(str(pipeline_details["job_id"])),

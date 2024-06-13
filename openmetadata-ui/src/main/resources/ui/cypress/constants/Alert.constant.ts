@@ -182,6 +182,21 @@ export const OBSERVABILITY_CREATION_DETAILS: ObservabilityCreationDetails = {
         inputs: [
           {
             inputSelector: 'test-result-select',
+            inputValue: 'Success',
+          },
+        ],
+        exclude: false,
+      },
+      {
+        name: 'Get Test Case Status Updates belonging to a Test Suite',
+        inputs: [
+          {
+            inputSelector: 'test-suite-select',
+            inputValue: TEST_SUITE_FQN,
+            waitForAPI: true,
+          },
+          {
+            inputSelector: 'test-status-select',
             inputValue: 'Failed',
           },
         ],
@@ -230,23 +245,7 @@ export const OBSERVABILITY_CREATION_DETAILS: ObservabilityCreationDetails = {
         exclude: false,
       },
     ],
-    actions: [
-      {
-        name: 'Get Test Case Status Updates belonging to a Test Suite',
-        inputs: [
-          {
-            inputSelector: 'test-suite-select',
-            inputValue: TEST_SUITE_FQN,
-            waitForAPI: true,
-          },
-          {
-            inputSelector: 'test-status-select',
-            inputValue: 'Failed',
-          },
-        ],
-        exclude: false,
-      },
-    ],
+    actions: [],
     destinations: [
       {
         mode: 'external',
