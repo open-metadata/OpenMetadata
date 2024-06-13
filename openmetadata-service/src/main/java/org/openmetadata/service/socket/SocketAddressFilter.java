@@ -27,6 +27,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.api.security.AuthenticationConfiguration;
 import org.openmetadata.schema.api.security.AuthorizerConfiguration;
 import org.openmetadata.service.security.JwtFilter;
+import org.openmetadata.service.security.SecurityUtil;
 
 @Slf4j
 public class SocketAddressFilter implements Filter {
@@ -81,7 +82,9 @@ public class SocketAddressFilter implements Filter {
   public static void validatePrefixedTokenRequest(JwtFilter jwtFilter, String prefixedToken) {
     String token = JwtFilter.extractToken(prefixedToken);
     Map<String, Claim> claims = jwtFilter.validateJwtAndGetClaims(token);
-    String userName = jwtFilter.findUserNameFromClaims(claims);
+    String userName =
+        SecurityUtil.findUserNameFromClaims(
+            jwtFilter.getJwtPrincipalClaimsMapping(), jwtFilter.getJwtPrincipalClaims(), claims);
     jwtFilter.checkValidationsForToken(claims, token, userName);
   }
 }
