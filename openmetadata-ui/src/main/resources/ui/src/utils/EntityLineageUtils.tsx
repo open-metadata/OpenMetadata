@@ -716,6 +716,7 @@ export const createEdges = (
 ) => {
   const lineageEdgesV1: Edge[] = [];
   const edgeIds = new Set<string>();
+  const columnsHavingLineage = new Set<string>();
 
   edges.forEach((edge) => {
     const sourceType = nodes.find((n) => edge.fromEntity.id === n.id);
@@ -730,6 +731,8 @@ export const createEdges = (
         const toColumn = e.toColumn ?? '';
         if (toColumn && e.fromColumns && e.fromColumns.length > 0) {
           e.fromColumns.forEach((fromColumn) => {
+            columnsHavingLineage.add(fromColumn);
+            columnsHavingLineage.add(toColumn);
             const encodedFromColumn = encodeLineageHandles(fromColumn);
             const encodedToColumn = encodeLineageHandles(toColumn);
             const edgeId = `column-${encodedFromColumn}-${encodedToColumn}-edge-${edge.fromEntity.id}-${edge.toEntity.id}`;
@@ -784,7 +787,10 @@ export const createEdges = (
     }
   });
 
-  return lineageEdgesV1;
+  return {
+    edges: lineageEdgesV1,
+    columnsHavingLineage: Array.from(columnsHavingLineage),
+  };
 };
 
 export const getColumnLineageData = (
