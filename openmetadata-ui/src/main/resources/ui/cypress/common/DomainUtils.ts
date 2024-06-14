@@ -206,7 +206,7 @@ const updateDescription = (newDescription) => {
 };
 
 const fillForm = (formObj, type) => {
-  interceptURL('GET', '/api/v1/users?limit=25&isBot=false', 'getUsers');
+  interceptURL('GET', '/api/v1/users?*isBot=false*', 'getUsers');
   cy.get('[data-testid="name"]').scrollIntoView().clear().type(formObj.name);
 
   cy.get(descriptionBox)
@@ -230,14 +230,20 @@ const fillForm = (formObj, type) => {
   cy.get('[data-testid="owner-container"]').children().should('have.length', 1);
 
   cy.get('[data-testid="add-experts"]').scrollIntoView().click();
+  verifyResponseStatusCode('@getUsers', 200);
+  interceptURL(
+    'GET',
+    `api/v1/search/query?q=*${encodeURI(formObj.experts)}*`,
+    'searchExpert'
+  );
   cy.get('.user-select-popover [data-testid="searchbar"]').type(
     formObj.experts
   );
-  cy.get(`[title="${formObj.experts}"]`).scrollIntoView().click();
-  cy.get('[data-testid="selectable-list-update-btn"]')
-    .should('exist')
-    .and('be.visible')
+  verifyResponseStatusCode('@searchExpert', 200);
+  cy.get(`.user-select-popover [title="${formObj.experts}"]`)
+    .scrollIntoView()
     .click();
+  cy.get('[data-testid="selectable-list-update-btn"]').click();
 
   cy.get('[data-testid="delete-modal"]').should('not.exist');
   cy.get('[data-testid="experts-container"]')
