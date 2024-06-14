@@ -84,7 +84,7 @@ export const addOwner = (
     'GET',
     `api/v1/search/query?q=${encodeURIComponent(
       ownerName
-    )}&index=user_search_index*`,
+    )}*index=user_search_index*`,
     'searchOwner'
   );
 
