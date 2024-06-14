@@ -21,19 +21,16 @@ import { restoreUser } from '../../../../../rest/userAPI';
 import UserProfileDetails from './UserProfileDetails.component';
 import { UserProfileDetailsProps } from './UserProfileDetails.interface';
 
-const mockParams = {
-  fqn: 'test',
-};
-
 const mockPropsData: UserProfileDetailsProps = {
   userData: USER_DATA,
   afterDeleteAction: jest.fn(),
   updateUserDetails: jest.fn(),
 };
 
-jest.mock('react-router-dom', () => ({
-  ...jest.requireActual('react-router-dom'),
-  useParams: jest.fn().mockImplementation(() => mockParams),
+jest.mock('../../../../../hooks/useFqn', () => ({
+  useFqn: jest.fn().mockImplementation(() => ({
+    fqn: 'test',
+  })),
 }));
 
 jest.mock('../../../../../hooks/useApplicationStore', () => ({
@@ -177,6 +174,9 @@ describe('Test User Profile Details Component', () => {
 
     // manage button
     expect(screen.getByText('ManageButton')).toBeInTheDocument();
+
+    // delete badge
+    expect(screen.queryByTestId('deleted-badge')).not.toBeInTheDocument();
   });
 
   it('should not render change password button and component in case of SSO', async () => {
@@ -232,6 +232,36 @@ describe('Test User Profile Details Component', () => {
     expect(
       screen.queryByTestId('change-password-button')
     ).not.toBeInTheDocument();
+  });
+
+  it('should not render edit button in case of user deleted', async () => {
+    render(
+      <UserProfileDetails
+        {...mockPropsData}
+        userData={{ ...USER_DATA, deleted: true }}
+      />,
+      {
+        wrapper: MemoryRouter,
+      }
+    );
+
+    const editButton = screen.queryByTestId('edit-displayName');
+
+    expect(editButton).not.toBeInTheDocument();
+  });
+
+  it('should render delete badge in case of deleted user', async () => {
+    render(
+      <UserProfileDetails
+        {...mockPropsData}
+        userData={{ ...USER_DATA, deleted: true }}
+      />,
+      {
+        wrapper: MemoryRouter,
+      }
+    );
+
+    expect(screen.getByTestId('deleted-badge')).toBeInTheDocument();
   });
 
   it('should render edit display name input on click', async () => {

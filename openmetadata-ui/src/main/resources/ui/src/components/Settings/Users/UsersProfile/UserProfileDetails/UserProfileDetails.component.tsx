@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { ExclamationCircleFilled } from '@ant-design/icons';
 import { Button, Divider, Input, Space, Tooltip, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import React, { useCallback, useMemo, useState } from 'react';
@@ -335,6 +336,12 @@ const UserProfileDetails = ({
         <Space className="w-full">
           <UserProfileImage userData={userData} />
           {displayNameRenderComponent}
+          {userData.deleted && (
+            <span className="deleted-badge-button" data-testid="deleted-badge">
+              <ExclamationCircleFilled className="m-r-xss font-medium text-xs" />
+              {t('label.deleted')}
+            </span>
+          )}
           <Divider type="vertical" />
 
           {userEmailRender}

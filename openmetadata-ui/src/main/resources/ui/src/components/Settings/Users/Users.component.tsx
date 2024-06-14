@@ -316,7 +316,7 @@ const Users = ({
             key="1">
             <Row className="border-top p-y-lg" gutter={[0, 24]}>
               <Col span={24}>
-                <Row data-testid="user-profile-details">
+                <Row data-testid="user-profile-accessibility-details">
                   <Col className="p-x-sm border-right" span={6}>
                     <UserProfileTeams
                       isDeletedUser={userData.deleted}
@@ -344,7 +344,7 @@ const Users = ({
                         title={
                           <Typography.Text
                             className="right-panel-label items-center d-flex gap-2"
-                            data-testid="inherited-roles">
+                            data-testid="persona-list">
                             {t('label.persona')}
                             <PersonaSelectableList
                               multiSelect
