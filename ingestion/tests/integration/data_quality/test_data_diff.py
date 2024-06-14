@@ -42,13 +42,6 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 )
 from metadata.generated.schema.tests.basic import TestCaseResult, TestCaseStatus
 from metadata.generated.schema.tests.testCase import TestCase, TestCaseParameterValue
-from metadata.generated.schema.tests.testDefinition import (
-    EntityType,
-    TestCaseParameterDefinition,
-    TestDataType,
-    TestDefinition,
-    TestPlatform,
-)
 from metadata.ingestion.models.custom_pydantic import CustomSecretStr
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.workflow.data_quality import TestSuiteWorkflow
@@ -446,34 +439,6 @@ def ingest_postgres_metadata(postgres_service, metadata: OpenMetadata):
     metadata_ingestion.execute()
     metadata_ingestion.raise_from_status()
     return
-
-
-@pytest.fixture(scope="module")
-def create_table_diff_test_defintion(metadata):
-    test_definition = metadata.get_or_create_test_definition(
-        test_definition_fqn="tableDiff",
-        test_definition_description="A demo custom test",
-        entity_type=EntityType.TABLE,
-        test_platforms=[TestPlatform.OpenMetadata],
-        test_case_parameter_definition=[
-            TestCaseParameterDefinition(
-                name="table2FQN", dataType=TestDataType.STRING, required=True
-            ),
-            TestCaseParameterDefinition(
-                name="service2Url", dataType=TestDataType.STRING
-            ),
-            TestCaseParameterDefinition(
-                name="keyColumns", dataType=TestDataType.STRING
-            ),
-            TestCaseParameterDefinition(name="threshold", dataType=TestDataType.INT),
-            TestCaseParameterDefinition(name="updateColumn", dataType=TestDataType.INT),
-            TestCaseParameterDefinition(name="useColumns", dataType=TestDataType.INT),
-        ],
-    )
-    yield
-    metadata.delete(
-        TestDefinition, test_definition.id, recursive=True, hard_delete=True
-    )
 
 
 def add_changed_tables(connection: Connection):
