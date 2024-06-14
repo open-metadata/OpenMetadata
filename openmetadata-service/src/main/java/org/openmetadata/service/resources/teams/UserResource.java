@@ -832,7 +832,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
       JsonObject patchOpObject = patchOp.asJsonObject();
       if (patchOpObject.containsKey("path") && patchOpObject.containsKey("value")) {
         String path = patchOpObject.getString("path");
-        if (path.equals("/isAdmin") || path.equals("/isBot") || path.equals("/roles")) {
+        if (path.equals("/isAdmin") || path.equals("/isBot") || path.contains("/roles")) {
           authorizer.authorizeAdmin(securityContext);
           continue;
         }
