@@ -13,8 +13,8 @@
 import { APIRequestContext, Page } from '@playwright/test';
 import { CustomPropertySupportedEntityList } from '../../constant/customProperty';
 import {
-  createCustomPropertyForEntity,
   CustomProperty,
+  createCustomPropertyForEntity,
   setValueForProperty,
   validateValueForProperty,
 } from '../../utils/customProperty';
@@ -37,15 +37,15 @@ import {
   replyAnnouncement,
   softDeleteEntity,
   unFollowEntity,
+  upVote,
   updateDescription,
   updateDisplayNameForEntity,
   updateOwner,
-  upVote,
   validateFollowedEntityToWidget,
 } from '../../utils/entity';
 import { Domain } from '../domain/Domain';
 import { GlossaryTerm } from '../glossary/GlossaryTerm';
-import { EntityTypeEndpoint, ENTITY_PATH } from './Entity.interface';
+import { ENTITY_PATH, EntityTypeEndpoint } from './Entity.interface';
 
 export class EntityClass {
   type: string;
@@ -70,8 +70,7 @@ export class EntityClass {
     // Override for entity visit
   }
 
-  // Prepare for tests
-  async prepareForTests(apiContext: APIRequestContext) {
+  async prepareCustomProperty(apiContext: APIRequestContext) {
     // Create custom property only for supported entities
     if (CustomPropertySupportedEntityList.includes(this.endpoint)) {
       const data = await createCustomPropertyForEntity(
@@ -84,7 +83,7 @@ export class EntityClass {
     }
   }
 
-  async cleanup(apiContext: APIRequestContext) {
+  async cleanupCustomProperty(apiContext: APIRequestContext) {
     // Delete custom property only for supported entities
     if (CustomPropertySupportedEntityList.includes(this.endpoint)) {
       await this.cleanupUser(apiContext);
@@ -122,9 +121,9 @@ export class EntityClass {
     owner2: string,
     type: 'Teams' | 'Users' = 'Users'
   ) {
-    await addOwner(page, owner1, type, 'data-assets-header');
-    await updateOwner(page, owner2, type, 'data-assets-header');
-    await removeOwner(page, 'data-assets-header');
+    await addOwner(page, owner1, type, this.endpoint, 'data-assets-header');
+    await updateOwner(page, owner2, type, this.endpoint, 'data-assets-header');
+    await removeOwner(page, this.endpoint, 'data-assets-header');
   }
 
   async tier(page: Page, tier1: string, tier2: string) {
@@ -233,6 +232,7 @@ export class EntityClass {
       propertyName: propertydetails.name,
       value,
       propertyType: propertydetails.propertyType.name,
+      endpoint: this.endpoint,
     });
     await validateValueForProperty({
       page,
@@ -252,6 +252,7 @@ export class EntityClass {
       propertyName: propertydetails.name,
       value,
       propertyType: propertydetails.propertyType.name,
+      endpoint: this.endpoint,
     });
     await validateValueForProperty({
       page,

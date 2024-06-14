@@ -54,3 +54,16 @@ export const createNewPage = async (browser: Browser) => {
 
   return { page, apiContext, afterAction };
 };
+
+/**
+ * Retrieves the API context for the given page.
+ * @param page The Playwright page object.
+ * @returns An object containing the API context and a cleanup function.
+ */
+export const getApiContext = async (page: Page) => {
+  const token = await getToken(page);
+  const apiContext = await getAuthContext(token);
+  const afterAction = async () => await apiContext.dispose();
+
+  return { apiContext, afterAction };
+};
