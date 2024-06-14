@@ -360,6 +360,8 @@ test = {
     "minio==7.2.5",
     *plugins["mlflow"],
     *plugins["datalake-s3"],
+    *plugins["kafka"],
+    "kafka-python==2.0.2",
     *plugins["pii-processor"],
     "requests==2.31.0",
     f"{DATA_DIFF['mysql']}==0.11.2",

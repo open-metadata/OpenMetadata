@@ -12,7 +12,7 @@
 """
 OpenMetadata API test suite mixin test
 """
-from datetime import datetime
+from datetime import datetime, timezone
 from unittest import TestCase
 
 from metadata.generated.schema.api.tests.createTestCase import CreateTestCaseRequest
@@ -120,7 +120,7 @@ class OMetaTestSuiteTest(TestCase):
 
         cls.metadata.add_test_case_results(
             test_results=TestCaseResult(
-                timestamp=datetime_to_ts(datetime.utcnow()),
+                timestamp=datetime_to_ts(datetime.now(timezone.utc)),
                 testCaseStatus=TestCaseStatus.Success,
                 result="Test Case Success",
                 sampleData=None,
