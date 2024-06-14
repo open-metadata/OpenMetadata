@@ -92,7 +92,7 @@
       "description": "Domains the User belongs to.",
       "type": "array",
       "items": {
-        "$ref": "../../type/basic.json#/definitions/uuid"
+        "$ref": "../../type/basic.json#/definitions/entityName"
       },
       "default": null
     }

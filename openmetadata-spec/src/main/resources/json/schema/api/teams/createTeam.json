@@ -85,7 +85,7 @@
       "description": "Domains the team belongs to.",
       "type": "array",
       "items": {
-        "$ref": "../../type/basic.json#/definitions/uuid"
+        "$ref": "../../type/basic.json#/definitions/entityName"
       },
       "default": null
     }
