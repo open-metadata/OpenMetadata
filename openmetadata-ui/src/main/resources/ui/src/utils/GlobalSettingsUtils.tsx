@@ -18,6 +18,7 @@ import { ReactComponent as BotIcon } from '../assets/svg/bot-colored.svg';
 import { ReactComponent as AppearanceIcon } from '../assets/svg/custom-logo-colored.svg';
 import { ReactComponent as CustomDashboardLogoIcon } from '../assets/svg/customize-landing-page-colored.svg';
 import { ReactComponent as DashboardIcon } from '../assets/svg/dashboard-colored.svg';
+import { ReactComponent as DashboardDataModelIcon } from '../assets/svg/data-model.svg';
 import { ReactComponent as DatabaseIcon } from '../assets/svg/database-colored.svg';
 import { ReactComponent as SchemaIcon } from '../assets/svg/database-schema.svg';
 import { ReactComponent as EmailIcon } from '../assets/svg/email-colored.svg';
@@ -353,6 +354,15 @@ export const getGlobalSettingsMenuWithPermission = (
           isProtected: Boolean(isAdminUser),
           key: `${GlobalSettingsMenuCategory.CUSTOM_PROPERTIES}.${GlobalSettingOptions.DASHBOARDS}`,
           icon: DashboardIcon,
+        },
+        {
+          label: i18next.t('label.dashboard-data-model-plural'),
+          description: i18next.t('message.define-custom-property-for-entity', {
+            entity: i18next.t('label.dashboard-data-model-plural'),
+          }),
+          isProtected: Boolean(isAdminUser),
+          key: `${GlobalSettingsMenuCategory.CUSTOM_PROPERTIES}.${GlobalSettingOptions.DASHBOARD_DATA_MODEL}`,
+          icon: DashboardDataModelIcon,
         },
         {
           label: i18next.t('label.pipeline-plural'),
