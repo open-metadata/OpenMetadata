@@ -28,6 +28,7 @@ import java.util.Date;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.TreeSet;
 import java.util.UUID;
 import java.util.function.BiPredicate;
 import java.util.regex.Pattern;
@@ -636,5 +637,20 @@ public final class EntityUtil {
     return listOrEmpty(references).stream()
         .map(item -> "'" + item.getId().toString() + "'")
         .collect(Collectors.joining(","));
+  }
+
+  public static List<EntityReference> mergedInheritedEntityRefs(
+      List<EntityReference> entityRefs, List<EntityReference> parentRefs) {
+    Set<EntityReference> result = new TreeSet<>(compareEntityReferenceById);
+    result.addAll(listOrEmpty(entityRefs));
+    // Fetch Unique Reviewers from parent as inherited
+    Set<EntityReference> uniqueEntityRefFromParent =
+        listOrEmpty(parentRefs).stream()
+            .filter(parentReviewer -> !result.contains(parentReviewer))
+            .collect(Collectors.toSet());
+    uniqueEntityRefFromParent.forEach(reviewer -> reviewer.withInherited(true));
+
+    result.addAll(uniqueEntityRefFromParent);
+    return result.stream().toList();
   }
 }

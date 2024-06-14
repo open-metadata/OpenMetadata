@@ -61,6 +61,7 @@ import static org.openmetadata.service.util.EntityUtil.getColumnField;
 import static org.openmetadata.service.util.EntityUtil.getEntityReferences;
 import static org.openmetadata.service.util.EntityUtil.getExtensionField;
 import static org.openmetadata.service.util.EntityUtil.getId;
+import static org.openmetadata.service.util.EntityUtil.mergedInheritedEntityRefs;
 import static org.openmetadata.service.util.EntityUtil.nextMajorVersion;
 import static org.openmetadata.service.util.EntityUtil.nextVersion;
 import static org.openmetadata.service.util.EntityUtil.objectMatch;
@@ -1831,23 +1832,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
   public final void inheritReviewers(T entity, Fields fields, EntityInterface parent) {
     if (fields.contains(FIELD_REVIEWERS) && parent != null) {
-      List<EntityReference> combinedReviewers = new ArrayList<>(listOrEmpty(entity.getReviewers()));
-      // Fetch Unique Reviewers from parent as inherited
-      List<EntityReference> uniqueEntityReviewers =
-          listOrEmpty(parent.getReviewers()).stream()
-              .filter(
-                  parentReviewer ->
-                      combinedReviewers.stream()
-                          .noneMatch(
-                              entityReviewer ->
-                                  parentReviewer.getId().equals(entityReviewer.getId())
-                                      && parentReviewer.getType().equals(entityReviewer.getType())))
-              .toList();
-      uniqueEntityReviewers.forEach(reviewer -> reviewer.withInherited(true));
-
-      combinedReviewers.addAll(uniqueEntityReviewers);
-      combinedReviewers.sort(EntityUtil.compareEntityReference);
-      entity.setReviewers(combinedReviewers);
+      entity.setReviewers(mergedInheritedEntityRefs(entity.getReviewers(), parent.getReviewers()));
     }
   }
 

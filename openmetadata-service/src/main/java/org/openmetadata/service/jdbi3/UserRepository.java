@@ -20,7 +20,6 @@ import static org.openmetadata.csv.CsvUtil.addField;
 import static org.openmetadata.schema.type.Include.ALL;
 import static org.openmetadata.schema.type.Include.NON_DELETED;
 import static org.openmetadata.schema.utils.EntityInterfaceUtil.quoteName;
-import static org.openmetadata.service.Entity.FIELD_DOMAIN;
 import static org.openmetadata.service.Entity.ROLE;
 import static org.openmetadata.service.Entity.TEAM;
 import static org.openmetadata.service.Entity.USER;
@@ -32,6 +31,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
+import java.util.TreeSet;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import javax.ws.rs.core.UriInfo;
@@ -207,13 +207,19 @@ public class UserRepository extends EntityRepository<User> {
   public void setInheritedFields(User user, Fields fields) {
     // If user does not have domain, then inherit it from parent Team
     // TODO have default team when a user belongs to multiple teams
-    if (fields.contains(FIELD_DOMAIN) && user.getDomain() == null) {
+    if (fields.contains("userDomains")) {
+      Set<EntityReference> combinedParent = new TreeSet<>(EntityUtil.compareEntityReferenceById);
       List<EntityReference> teams =
           !fields.contains(TEAMS_FIELD) ? getTeams(user) : user.getTeams();
       if (!nullOrEmpty(teams)) {
-        Team team = Entity.getEntity(TEAM, teams.get(0).getId(), "domain", ALL);
-        inheritDomain(user, fields, team);
+        for (EntityReference team : teams) {
+          Team parent = Entity.getEntity(TEAM, team.getId(), "teamDomains", ALL);
+          combinedParent.addAll(parent.getTeamDomains());
+        }
       }
+      user.setUserDomains(
+          EntityUtil.mergedInheritedEntityRefs(
+              user.getUserDomains(), combinedParent.stream().toList()));
     }
   }
 
