@@ -587,12 +587,15 @@ public class UserResource extends EntityResource<User, UserRepository> {
       }
     }
 
-    // Send Invite mail to user
-    sendInviteMailToUserForBasicAuth(uriInfo, user, create);
+    if (createdUserRes != null) {
+      // Send Invite mail to user
+      sendInviteMailToUserForBasicAuth(uriInfo, user, create);
 
-    // Update response to remove auth fields
-    decryptOrNullify(securityContext, (User) createdUserRes.getEntity());
-    return createdUserRes;
+      // Update response to remove auth fields
+      decryptOrNullify(securityContext, (User) createdUserRes.getEntity());
+      return createdUserRes;
+    }
+    return Response.status(BAD_REQUEST).entity("User Cannot be created Successfully.").build();
   }
 
   private void validateAndAddUserAuthForBasic(User user, CreateUser create) {
