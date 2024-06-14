@@ -24,6 +24,7 @@ import { SearchIndexServiceClass } from '../../support/entity/service/SearchInde
 import { StorageServiceClass } from '../../support/entity/service/StorageServiceClass';
 import {
   createNewPage,
+  getApiContext,
   getAuthContext,
   getToken,
   redirectToHomePage,
@@ -55,7 +56,6 @@ entities.forEach((EntityClass) => {
 
       await EntityDataClass.preRequisitesForTests(apiContext);
       await entity.create(apiContext);
-      await entity.prepareForTests(apiContext);
       await afterAction();
     });
 
@@ -124,6 +124,9 @@ entities.forEach((EntityClass) => {
         // increase timeout as it using single test for multiple steps
         test.slow(true);
 
+        const { apiContext, afterAction } = await getApiContext(page);
+        await entity.prepareCustomProperty(apiContext);
+
         await test.step(`Set ${titleText} Custom Property`, async () => {
           for (const type of properties) {
             await entity.setCustomProperty(
@@ -143,6 +146,9 @@ entities.forEach((EntityClass) => {
             );
           }
         });
+
+        await entity.cleanupCustomProperty(apiContext);
+        await afterAction();
       });
     }
 
@@ -152,7 +158,6 @@ entities.forEach((EntityClass) => {
 
     test.afterAll('Cleanup', async ({ browser }) => {
       const { apiContext, afterAction } = await createNewPage(browser);
-      await entity.cleanup(apiContext);
       await entity.delete(apiContext);
       await EntityDataClass.postRequisitesForTests(apiContext);
       await afterAction();
