@@ -261,6 +261,7 @@ const UserProfileDetails = ({
           'label.domain'
         )} :`}</Typography.Text>
         <DomainLabel
+          multiple
           domain={userData?.userDomains}
           entityFqn={userData.fullyQualifiedName ?? ''}
           entityId={userData.id ?? ''}
