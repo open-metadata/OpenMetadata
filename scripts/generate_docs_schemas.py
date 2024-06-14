@@ -27,7 +27,7 @@ which is incorrect and should be removed when pasting this in.
 
 import json
 import os
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import List
 
@@ -42,7 +42,7 @@ PARSER = jsonschema2md.Parser(
     show_examples="all",
 )
 
-NOW = datetime.utcnow()
+NOW = datetime.now(timezone.utc)
 
 
 def build_new_file(file: Path) -> Path:

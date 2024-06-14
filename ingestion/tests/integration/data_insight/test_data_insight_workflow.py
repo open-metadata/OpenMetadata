@@ -19,7 +19,7 @@ import random
 import unittest
 import uuid
 from copy import deepcopy
-from datetime import datetime, time, timedelta
+from datetime import datetime, time, timedelta, timezone
 from random import randint
 from time import sleep
 
@@ -136,10 +136,10 @@ class DataInsightWorkflowTests(unittest.TestCase):
     def setUp(self) -> None:
         """Set up om client for the test class"""
         self.start_ts = int(
-            datetime.combine(datetime.utcnow(), time.min).timestamp() * 1000
+            datetime.combine(datetime.now(timezone.utc), time.min).timestamp() * 1000
         ) - random.randint(1, 999)
         self.end_ts = int(
-            datetime.combine(datetime.utcnow(), time.max).timestamp() * 1000
+            datetime.combine(datetime.now(timezone.utc), time.max).timestamp() * 1000
         ) - random.randint(1, 999)
 
         completed_description_chart = self.metadata.get_by_name(
@@ -177,7 +177,7 @@ class DataInsightWorkflowTests(unittest.TestCase):
             event.timestamp = Timestamp(
                 int(
                     (
-                        datetime.utcnow()
+                        datetime.now(timezone.utc)
                         - timedelta(days=1, milliseconds=randint(0, 999))
                     ).timestamp()
                     * 1000
@@ -192,7 +192,7 @@ class DataInsightWorkflowTests(unittest.TestCase):
                 timestamp=Timestamp(
                     int(
                         (
-                            datetime.utcnow()
+                            datetime.now(timezone.utc)
                             - timedelta(days=1, milliseconds=randint(0, 999))
                         ).timestamp()
                         * 1000
@@ -341,7 +341,7 @@ class DataInsightWorkflowTests(unittest.TestCase):
         self.metadata.add_kpi_result(
             fqn,
             KpiResult(
-                timestamp=int(datetime.utcnow().timestamp() * 1000),
+                timestamp=int(datetime.now(timezone.utc).timestamp() * 1000),
                 kpiFqn="CompletedDescription__test_write_kpi_result",
                 targetResult=[
                     KpiTarget(

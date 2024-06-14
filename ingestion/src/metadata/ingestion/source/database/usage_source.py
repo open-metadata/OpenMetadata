@@ -14,7 +14,7 @@ Usage Source Module
 import csv
 import traceback
 from abc import ABC
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Iterable
 
 from metadata.generated.schema.type.basic import DateTime
@@ -46,7 +46,7 @@ class UsageSource(QueryParserSource, ABC):
                     query_dict = dict(record)
 
                     analysis_date = (
-                        datetime.utcnow()
+                        datetime.now(timezone.utc)
                         if not query_dict.get("start_time")
                         else datetime.strptime(
                             query_dict.get("start_time"), "%Y-%m-%d %H:%M:%S.%f"

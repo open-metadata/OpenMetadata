@@ -15,7 +15,7 @@ Runner class used to check KPI status
 from __future__ import annotations
 
 import time as tme
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Iterator, Optional
 
 from metadata.data_insight.processor.kpi.run_result_registry import run_result_registry
@@ -51,7 +51,7 @@ class KpiRunner:
 
     def __init__(self, metadata: OpenMetadata) -> None:
         self.metadata = metadata
-        self.datetime = int(datetime.utcnow().timestamp() * 1000)
+        self.datetime = int(datetime.now(timezone.utc).timestamp() * 1000)
         self.processor_status = Status()
         self.kpis = self.get_active_kpis()
 

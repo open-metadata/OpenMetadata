@@ -13,7 +13,7 @@ OpenMetadata source for the data insight workflow
 """
 
 import traceback
-from datetime import datetime
+from datetime import datetime, timezone
 from types import MappingProxyType
 from typing import Dict, Iterable, Optional, Union, cast
 
@@ -73,7 +73,7 @@ class DataInsightSource(Source):
         """Instantiate source object"""
         super().__init__()
         self.metadata = metadata
-        self.date = datetime.utcnow().strftime("%Y-%m-%d")
+        self.date = datetime.now(timezone.utc).strftime("%Y-%m-%d")
         self.entities_cache = {}
 
         _processors = self._instantiate_processors()

@@ -11,7 +11,7 @@
 """
 Common Query Log Connector
 """
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional
 
 from metadata.generated.schema.metadataIngestion.workflow import (
@@ -24,7 +24,9 @@ from metadata.ingestion.source.database.usage_source import UsageSource
 class QueryLogUsageSource(UsageSource):
     def __init__(self, config: WorkflowSource, metadata: OpenMetadata):
         super().__init__(config, metadata)
-        self.analysis_date = datetime.utcnow().date().strftime("%Y-%m-%d %H:%M:%S")
+        self.analysis_date = (
+            datetime.now(timezone.utc).date().strftime("%Y-%m-%d %H:%M:%S")
+        )
 
     @classmethod
     def create(
