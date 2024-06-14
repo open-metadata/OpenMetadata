@@ -82,7 +82,9 @@ export const addOwner = (
   verifyResponseStatusCode('@getUsers', 200);
   interceptURL(
     'GET',
-    `api/v1/search/query?q=*&index=user_search_index*`,
+    `api/v1/search/query?q=${encodeURIComponent(
+      ownerName
+    )}&index=user_search_index*`,
     'searchOwner'
   );
 
