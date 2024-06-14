@@ -11,12 +11,17 @@
  *  limitations under the License.
  */
 import test from '@playwright/test';
-import UserEntityClass from '../../support/entity/UserPageClass';
+import { GlobalSettingOptions } from '../../constant/settings';
 import { UserClass } from '../../support/user/UserClass';
 import { createNewPage, redirectToHomePage } from '../../utils/common';
+import { settingClick } from '../../utils/sidebar';
+import {
+  hardDeleteUserProfilePage,
+  restoreUserProfilePage,
+  softDeleteUserProfilePage,
+} from '../../utils/user';
 
 const user = new UserClass();
-const userEntity = new UserEntityClass();
 
 // use the admin user to login
 test.use({ storageState: 'playwright/.auth/admin.json' });
@@ -37,20 +42,14 @@ test.describe('User with different Roles', () => {
   test('Admin soft & hard delete and restore user from profile page', async ({
     page,
   }) => {
-    await userEntity.visitUserListPage(page);
-    await userEntity.softDeleteUserProfilePage(
+    await settingClick(page, GlobalSettingOptions.USERS);
+    await softDeleteUserProfilePage(
       page,
       user.responseData.name,
       user.responseData.displayName
     );
 
-    await userEntity.restoreUserProfilePage(
-      page,
-      user.responseData.fullyQualifiedName
-    );
-    await userEntity.hardDeleteUserProfilePage(
-      page,
-      user.responseData.displayName
-    );
+    await restoreUserProfilePage(page, user.responseData.fullyQualifiedName);
+    await hardDeleteUserProfilePage(page, user.responseData.displayName);
   });
 });
