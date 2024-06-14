@@ -13,12 +13,6 @@
         "Datalake"
       ],
       "default": "Datalake"
-    },
-    "localConfig": {
-      "title": "Local Config",
-      "description": "Local config source where no extra information needs to be sent.",
-      "type": "object",
-      "additionalProperties": false
     }
   },
   "properties": {
@@ -33,9 +27,6 @@
       "description": "Available sources to fetch files.",
       "oneOf": [
         {
-          "$ref": "#/definitions/localConfig"
-        },
-        {
           "$ref": "datalake/azureConfig.json"
         },
         {
@@ -43,6 +34,11 @@
         },
         {
           "$ref": "datalake/s3Config.json"
+        },
+        {
+          "title": "Local Config",
+          "type": "object",
+          "additionalProperties": false
         }
       ]
     },
