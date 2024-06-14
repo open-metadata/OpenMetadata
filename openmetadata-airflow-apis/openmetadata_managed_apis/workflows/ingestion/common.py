@@ -202,7 +202,7 @@ def metadata_ingestion_workflow(workflow_config: OpenMetadataWorkflowConfig):
 
     set_operator_logger(workflow_config)
 
-    config = json.loads(workflow_config.model_dump_json())
+    config = json.loads(workflow_config.model_dump_json(exclude_defaults=False))
     workflow = MetadataWorkflow.create(config)
 
     workflow.execute()
@@ -313,7 +313,8 @@ def send_failed_status_callback(workflow_config: OpenMetadataWorkflowConfig, *_,
         )
 
         pipeline_status = metadata.get_pipeline_status(
-            workflow_config.ingestionPipelineFQN, str(workflow_config.pipelineRunId)
+            workflow_config.ingestionPipelineFQN,
+            str(workflow_config.pipelineRunId.root),
         )
         pipeline_status.endDate = Timestamp(int(datetime.now().timestamp() * 1000))
         pipeline_status.pipelineState = PipelineState.failed

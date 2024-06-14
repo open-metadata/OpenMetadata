@@ -95,7 +95,7 @@ def get_connection(
     schema_registry_client = None
     consumer_client = None
     if connection.schemaRegistryURL:
-        schema_registry_config["url"] = connection.schemaRegistryURL
+        schema_registry_config["url"] = str(connection.schemaRegistryURL)
         schema_registry_client = SchemaRegistryClient(schema_registry_config)
         consumer_config["bootstrap.servers"] = connection.bootstrapServers
         if "group.id" not in consumer_config:

@@ -33,7 +33,7 @@ from metadata.generated.schema.entity.services.ingestionPipelines.status import 
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
-from metadata.generated.schema.type.basic import EntityName
+from metadata.generated.schema.type.basic import EntityName, FullyQualifiedEntityName
 from metadata.generated.schema.type.schema import SchemaType, Topic
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.models.ometa_topic_data import OMetaTopicSampleData
