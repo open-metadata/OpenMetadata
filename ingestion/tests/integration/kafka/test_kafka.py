@@ -44,7 +44,7 @@ def produce_and_consume_kafka_message(container):
 OM_JWT = "eyJraWQiOiJHYjM4OWEtOWY3Ni1nZGpzLWE5MmotMDI0MmJrOTQzNTYiLCJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9.eyJzdWIiOiJhZG1pbiIsImlzQm90IjpmYWxzZSwiaXNzIjoib3Blbi1tZXRhZGF0YS5vcmciLCJpYXQiOjE2NjM5Mzg0NjIsImVtYWlsIjoiYWRtaW5Ab3Blbm1ldGFkYXRhLm9yZyJ9.tS8um_5DKu7HgzGBzS1VTA5uUjKWOCU0B_j08WXBiEC0mr0zNREkqVfwFDD-d24HlNEbrqioLsBuFRiwIWKc1m_ZlVQbG7P36RUxhuv2vbSp80FKyNM-Tj93FDzq91jsyNmsQhyNv_fNr3TXfzzSPjHt8Go0FMMP66weoKMgW2PbXlhVKwEuXUHyakLLzewm9UMeQaEiRzhiTMU3UkLXcKbYEJJvfNFcLwSl9W8JCO_l0Yj3ud-qt_nQYEZwqW6u5nfdQllN133iikV4fM5QZsMCnm8Rq1mvLR0y9bmJiD7fwM1tmJ791TUWqmKaTnP49U493VanKpUAfzIiOiIbhg"
 
 
-def get_ingestion_config(bootstrap_server: str):
+def get_ingestion_config(port: str):
     return {
         "source": {
             "type": "kafka",
@@ -52,7 +52,7 @@ def get_ingestion_config(bootstrap_server: str):
             "serviceConnection": {
                 "config": {
                     "type": "Kafka",
-                    "bootstrapServers": bootstrap_server,
+                    "bootstrapServers": f"localhost:{port}",
                 }
             },
             "sourceConfig": {"config": {"type": "MessagingMetadata"}},
@@ -89,9 +89,8 @@ class KafkaUnitTest(TestCase):
         cls.metadata = int_admin_ometa()
         cls.kafka_container = KafkaContainer()
         cls.kafka_container.start()
-        cls.kafka_container.get_bootstrap_server()
         cls.ingestion_config = get_ingestion_config(
-            cls.kafka_container.get_bootstrap_server()
+            cls.kafka_container.get_exposed_port(9093)
         )
         produce_and_consume_kafka_message(cls.kafka_container)
 
