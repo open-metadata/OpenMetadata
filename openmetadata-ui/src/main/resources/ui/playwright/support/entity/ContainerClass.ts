@@ -34,7 +34,7 @@ export class ContainerClass extends EntityClass {
     },
   };
   entity = {
-    name: `pw.container%${uuid()}`,
+    name: `pw-container-${uuid()}`,
     displayName: `pw-container-${uuid()}`,
     service: this.service.name,
   };

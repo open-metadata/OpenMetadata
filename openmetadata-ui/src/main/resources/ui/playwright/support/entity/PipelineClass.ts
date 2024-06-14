@@ -31,7 +31,7 @@ export class PipelineClass extends EntityClass {
     },
   };
   entity = {
-    name: `pw.pipeline%${uuid()}`,
+    name: `pw-pipeline-${uuid()}`,
     displayName: `pw-pipeline-${uuid()}`,
     service: this.service.name,
     tasks: [{ name: 'snowflake_task' }],

@@ -30,7 +30,7 @@ export class MlModelClass extends EntityClass {
     },
   };
   entity = {
-    name: `pw.mlmodel%${uuid()}`,
+    name: `pw-mlmodel-${uuid()}`,
     displayName: `pw-mlmodel-${uuid()}`,
     service: this.service.name,
     algorithm: 'Time Series',

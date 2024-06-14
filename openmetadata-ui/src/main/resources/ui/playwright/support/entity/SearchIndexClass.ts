@@ -34,7 +34,7 @@ export class SearchIndexClass extends EntityClass {
     },
   };
   entity = {
-    name: `pw.search-index%${uuid()}`,
+    name: `pw-search-index-${uuid()}`,
     displayName: `pw-search-index-${uuid()}`,
     service: this.service.name,
     fields: [],

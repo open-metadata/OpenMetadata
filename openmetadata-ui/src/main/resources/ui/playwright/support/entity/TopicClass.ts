@@ -31,7 +31,7 @@ export class TopicClass extends EntityClass {
       },
     },
   };
-  private topicName = `pw.topic%${uuid()}`;
+  private topicName = `pw-topic-${uuid()}`;
   private fqn = `${this.service.name}.${this.topicName}`;
   entity = {
     name: this.topicName,
