@@ -16,6 +16,7 @@ Here we don't need to patch, as we can just create our own metastore
 import shutil
 import sys
 import unittest
+from typing import List
 from datetime import date, datetime
 from unittest import TestCase
 
@@ -50,8 +51,10 @@ MOCK_DELTA_CONFIG = {
         "serviceConnection": {
             "config": {
                 "type": "DeltaLake",
-                "metastoreConnection": {
-                    "metastoreFilePath": METASTORE_PATH,
+                "configSource": {
+                    "connection": {
+                        "metastoreFilePath": METASTORE_PATH,
+                    }
                 },
                 "connectionArguments": {
                     "spark.sql.warehouse.dir": SPARK_SQL_WAREHOUSE,
@@ -118,7 +121,7 @@ class DeltaLakeUnitTest(TestCase):
         MOCK_DELTA_CONFIG["source"],
         OpenMetadata(config.workflowConfig.openMetadataServerConfig),
     )
-    spark = delta.spark
+    spark = delta.client._spark
 
     @classmethod
     def setUpClass(cls) -> None:
@@ -197,6 +200,7 @@ class DeltaLakeUnitTest(TestCase):
 
     def test_get_tables_name_and_type(self):
         table_names = list(self.delta.get_tables_name_and_type())
+        print(table_names)
         # We won't ingest TMP tables
         self.assertEqual(table_names, [("my_df", TableType.Regular)])
 

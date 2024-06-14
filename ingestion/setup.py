@@ -181,7 +181,9 @@ plugins: Dict[str, Set[str]] = {
         "s3fs",
         *COMMONS["datalake"],
     },
-    "deltalake": {"delta-spark<=2.3.0"},
+    "deltalake": {"delta-spark<=2.3.0", "deltalake~=0.17"},
+    "deltalake-storage": {"deltalake~=0.17"},
+    "deltalake-spark": {"delta-spark<=2.3.0"},
     "domo": {VERSIONS["pydomo"]},
     "doris": {"pydoris==1.0.2"},
     "druid": {"pydruid>=0.6.5"},
@@ -368,7 +370,7 @@ setup(
         **{plugin: list(dependencies) for (plugin, dependencies) in plugins.items()},
         "all": filter_requirements({"airflow", "db2", "great-expectations"}),
         "slim": filter_requirements(
-            {"airflow", "db2", "great-expectations", "deltalake", "sklearn"}
+            {"airflow", "db2", "great-expectations", "deltalake", "deltalake-spark", "sklearn"}
         ),
     },
 )
