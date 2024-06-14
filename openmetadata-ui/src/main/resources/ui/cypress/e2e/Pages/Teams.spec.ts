@@ -83,11 +83,12 @@ describe('Teams flow should work properly', { tags: 'Settings' }, () => {
       .should('exist')
       .invoke('text')
       .then((text) => {
-        interceptURL('GET', '/api/v1/users?limit=15', 'getUsers');
+        interceptURL('GET', '/api/v1/users?limit=*', 'getUsers');
         // Clicking on edit owner button
         cy.get('[data-testid="edit-owner"]').click();
 
         cy.get('.user-team-select-popover').contains('Users').click();
+        cy.wait('@getUsers');
         cy.get('[data-testid="owner-select-users-search-bar"]').type(text);
         cy.get('[data-testid="selectable-list"]')
           .eq(1)
