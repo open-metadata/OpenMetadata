@@ -370,7 +370,14 @@ setup(
         **{plugin: list(dependencies) for (plugin, dependencies) in plugins.items()},
         "all": filter_requirements({"airflow", "db2", "great-expectations"}),
         "slim": filter_requirements(
-            {"airflow", "db2", "great-expectations", "deltalake", "deltalake-spark", "sklearn"}
+            {
+                "airflow",
+                "db2",
+                "great-expectations",
+                "deltalake",
+                "deltalake-spark",
+                "sklearn",
+            }
         ),
     },
 )

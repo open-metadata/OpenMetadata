@@ -16,7 +16,6 @@ Here we don't need to patch, as we can just create our own metastore
 import shutil
 import sys
 import unittest
-from typing import List
 from datetime import date, datetime
 from unittest import TestCase
 

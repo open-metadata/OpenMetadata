@@ -13,26 +13,28 @@
 Datalake GCS Client
 """
 import os
-from typing import Callable, Optional, Iterable, List
-from functools import partial
 from copy import deepcopy
+from functools import partial
+from typing import Callable, Iterable, List, Optional
+
 from google.cloud import storage
+
 from metadata.generated.schema.entity.services.connections.database.datalake.gcsConfig import (
     GCSConfig,
 )
 from metadata.generated.schema.security.credentials.gcpValues import (
+    GcpCredentialsValues,
     MultipleProjectId,
     SingleProjectId,
-)
-from metadata.generated.schema.security.credentials.gcpValues import (
-    GcpCredentialsValues,
 )
 from metadata.ingestion.source.database.datalake.clients.base import DatalakeBaseClient
 from metadata.utils.credentials import GOOGLE_CREDENTIALS, set_google_credentials
 
 
 class DatalakeGcsClient(DatalakeBaseClient):
-    def __init__(self, client: storage.Client, temp_credentials_file_path_list: List[str]):
+    def __init__(
+        self, client: storage.Client, temp_credentials_file_path_list: List[str]
+    ):
         self._client = client
         self._temp_credentials_file_path_list = temp_credentials_file_path_list
 
@@ -83,11 +85,12 @@ class DatalakeGcsClient(DatalakeBaseClient):
         gcs_config = deepcopy(config)
 
         if hasattr(gcs_config.securityConfig, "gcpConfig"):
-            gcs_config.securityConfig.gcpConfig.projectId = SingleProjectId.parse_obj(database_name)
+            gcs_config.securityConfig.gcpConfig.projectId = SingleProjectId.parse_obj(
+                database_name
+            )
 
         self._client = self.get_gcs_client(gcs_config)
         self.update_temp_credentials_file_path_list()
-
 
     def get_database_schema_names(self, bucket_name: Optional[str]) -> Iterable[str]:
         if bucket_name:
@@ -105,7 +108,10 @@ class DatalakeGcsClient(DatalakeBaseClient):
     def close(self, service_connection):
         os.environ.pop("GOOGLE_CLOUD_PROJECT", "")
 
-        if isinstance(service_connection, GcpCredentialsValues) and GOOGLE_CREDENTIALS in os.environ:
+        if (
+            isinstance(service_connection, GcpCredentialsValues)
+            and GOOGLE_CREDENTIALS in os.environ
+        ):
             del os.environ[GOOGLE_CREDENTIALS]
             for temp_file_path in self._temp_credentials_file_path_list:
                 if os.path.exists(temp_file_path):

@@ -12,15 +12,18 @@
 """
 Datalake Azure Blob Client
 """
-from typing import Callable, Optional, Iterable
 from functools import partial
+from typing import Callable, Iterable, Optional
+
 from azure.storage.blob import BlobServiceClient
+
 from metadata.clients.azure_client import AzureClient
 from metadata.generated.schema.entity.services.connections.database.datalake.azureConfig import (
     AzureConfig,
 )
 from metadata.ingestion.source.database.datalake.clients.base import DatalakeBaseClient
 from metadata.utils.constants import DEFAULT_DATABASE
+
 
 class DatalakeAzureBlobClient(DatalakeBaseClient):
     def __init__(self, client: BlobServiceClient):
@@ -58,7 +61,6 @@ class DatalakeAzureBlobClient(DatalakeBaseClient):
         self._client.close()
 
     def get_test_list_buckets_fn(self, bucket_name: Optional[str]) -> Callable:
-
         def list_buckets(client: BlobServiceClient):
             conn = client.list_containers(name_starts_with="")
             list(conn)

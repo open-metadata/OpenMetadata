@@ -12,57 +12,69 @@
 """
 Source connection handler
 """
+from dataclasses import dataclass
+from functools import singledispatch
 from typing import Optional
-
 
 from metadata.generated.schema.entity.automations.workflow import (
     Workflow as AutomationWorkflow,
+)
+from metadata.generated.schema.entity.services.connections.database.datalake.s3Config import (
+    S3Config,
+)
+from metadata.generated.schema.entity.services.connections.database.deltalake.metastoreConfig import (
+    MetastoreConfig,
+)
+from metadata.generated.schema.entity.services.connections.database.deltalake.storageConfig import (
+    StorageConfig,
 )
 from metadata.generated.schema.entity.services.connections.database.deltaLakeConnection import (
     DeltaLakeConnection,
 )
 from metadata.ingestion.connections.test_connections import test_connection_steps
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from dataclasses import dataclass
-from functools import singledispatch
 
-from metadata.generated.schema.entity.services.connections.database.deltalake.metastoreConfig import MetastoreConfig
-from metadata.generated.schema.entity.services.connections.database.deltalake.storageConfig import StorageConfig
-from metadata.generated.schema.entity.services.connections.database.datalake.s3Config import S3Config
 
 @dataclass
 class DeltalakeClient:
-    def  __init__(self, client, config) -> None:
+    def __init__(self, client, config) -> None:
         self.client = client
         self.config = config
 
+
 @singledispatch
 def get_deltalake_client(connection, config):
-    """ Retrieve Deltalake Client from the config """
+    """Retrieve Deltalake Client from the config"""
     if config:
         msg = f"Config not implemented for type {type(connection)}: {connection}"
         raise NotImplementedError(msg)
 
+
 @get_deltalake_client.register
 def _(connection: MetastoreConfig, config: DeltaLakeConnection):
-    from metadata.ingestion.source.database.deltalake.clients.pyspark import DeltalakePySparkClient
+    from metadata.ingestion.source.database.deltalake.clients.pyspark import (
+        DeltalakePySparkClient,
+    )
 
     return DeltalakePySparkClient.from_config(config)
 
+
 @get_deltalake_client.register
 def _(connection: StorageConfig, config: DeltaLakeConnection):
-    from metadata.ingestion.source.database.deltalake.clients.s3 import DeltalakeS3Client
+    from metadata.ingestion.source.database.deltalake.clients.s3 import (
+        DeltalakeS3Client,
+    )
 
     if isinstance(connection.connection, S3Config):
         return DeltalakeS3Client.from_config(config)
 
 
 def get_connection(connection: DeltaLakeConnection) -> DeltalakeClient:
-   """ Create Deltalake Client """
-   return DeltalakeClient(
-       client=get_deltalake_client(connection.configSource, connection),
-       config=connection
-   )
+    """Create Deltalake Client"""
+    return DeltalakeClient(
+        client=get_deltalake_client(connection.configSource, connection),
+        config=connection,
+    )
 
 
 def test_connection(
@@ -76,8 +88,12 @@ def test_connection(
     of a metadata workflow or during an Automation Workflow
     """
     test_fn = {
-        "GetDatabases": connection.client.get_test_get_databases_fn(service_connection.configSource),
-        "GetTables": connection.client.get_test_get_tables_fn(service_connection.configSource),
+        "GetDatabases": connection.client.get_test_get_databases_fn(
+            service_connection.configSource
+        ),
+        "GetTables": connection.client.get_test_get_tables_fn(
+            service_connection.configSource
+        ),
     }
 
     test_connection_steps(

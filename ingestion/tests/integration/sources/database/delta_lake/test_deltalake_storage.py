@@ -9,20 +9,31 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 """deltalake storage integration tests"""
-import pytest
-import pandas as pd
 import deltalake
+import pandas as pd
+import pytest
 
 from metadata.generated.schema.api.services.createDatabaseService import (
-    CreateDatabaseServiceRequest
+    CreateDatabaseServiceRequest,
 )
 from metadata.generated.schema.entity.data.table import Table
-from metadata.generated.schema.security.credentials.awsCredentials import AWSCredentials
-from metadata.generated.schema.entity.services.connections.database.datalake.s3Config import S3Config
-from metadata.generated.schema.entity.services.connections.database.deltalake.storageConfig import StorageConfig
-from metadata.generated.schema.entity.services.connections.database.deltaLakeConnection import DeltaLakeConnection
-from metadata.generated.schema.entity.services.databaseService import DatabaseService, DatabaseServiceType, DatabaseConnection
-from metadata.generated.schema.metadataIngestion.databaseServiceMetadataPipeline import DatabaseServiceMetadataPipeline
+from metadata.generated.schema.entity.services.connections.database.datalake.s3Config import (
+    S3Config,
+)
+from metadata.generated.schema.entity.services.connections.database.deltalake.storageConfig import (
+    StorageConfig,
+)
+from metadata.generated.schema.entity.services.connections.database.deltaLakeConnection import (
+    DeltaLakeConnection,
+)
+from metadata.generated.schema.entity.services.databaseService import (
+    DatabaseConnection,
+    DatabaseService,
+    DatabaseServiceType,
+)
+from metadata.generated.schema.metadataIngestion.databaseServiceMetadataPipeline import (
+    DatabaseServiceMetadataPipeline,
+)
 from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
     Sink,
@@ -30,13 +41,15 @@ from metadata.generated.schema.metadataIngestion.workflow import (
     SourceConfig,
     WorkflowConfig,
 )
-from metadata.workflow.metadata import MetadataWorkflow
+from metadata.generated.schema.security.credentials.awsCredentials import AWSCredentials
 from metadata.ingestion.models.custom_pydantic import CustomSecretStr
+from metadata.workflow.metadata import MetadataWorkflow
 
 SERVICE_NAME = "docker_test_delta_storage"
 
 TABLE_NAME = "TABLE"
 WRONG_TABLE_NAME = "WRONG_TABLE"
+
 
 @pytest.fixture(scope="module")
 def create_data(deltalake_storage_environment):
@@ -44,11 +57,7 @@ def create_data(deltalake_storage_environment):
     prefix = deltalake_storage_environment.prefix
     storage_options = deltalake_storage_environment.storage_options
 
-    data = {
-        "COL0": ["A", "A"],
-        "COL1": [1, 2],
-        "COL2": [3, 4]
-    }
+    data = {"COL0": ["A", "A"], "COL1": [1, 2], "COL2": [3, 4]}
 
     df = pd.DataFrame(data=data)
 
@@ -57,13 +66,13 @@ def create_data(deltalake_storage_environment):
         data=df,
         partition_by="COL0",
         description="description",
-        storage_options=storage_options
+        storage_options=storage_options,
     )
 
     deltalake.write_deltalake(
         f"s3://{bucket}/WRONG_PREFIX/{WRONG_TABLE_NAME}/",
         data=df,
-        storage_options=storage_options
+        storage_options=storage_options,
     )
 
 
@@ -89,21 +98,21 @@ def service(metadata, deltalake_storage_environment):
                             awsAccessKeyId=access_key,
                             awsSecretAccessKey=CustomSecretStr(secret_key),
                             awsRegion=region,
-                            endPointURL=endpoint
+                            endPointURL=endpoint,
                         )
                     ),
                     bucketName=bucket,
-                    prefix=prefix
-                )
-
+                    prefix=prefix,
+                ),
             )
-        )
+        ),
     )
 
     service_entity = metadata.create_or_update(data=service)
     yield service_entity
-    metadata.delete(DatabaseService, service_entity.id, recursive=True, hard_delete=True)
-
+    metadata.delete(
+        DatabaseService, service_entity.id, recursive=True, hard_delete=True
+    )
 
 
 @pytest.fixture(scope="module")
@@ -113,10 +122,10 @@ def ingest(metadata, service, create_data):
             type=service.connection.config.type.value.lower(),
             serviceName=service.fullyQualifiedName.root,
             serviceConnection=service.connection,
-            sourceConfig=SourceConfig(config=DatabaseServiceMetadataPipeline())
+            sourceConfig=SourceConfig(config=DatabaseServiceMetadataPipeline()),
         ),
         sink=Sink(type="metadata-rest", config={}),
-        workflowConfig=WorkflowConfig(openMetadataServerConfig=metadata.config)
+        workflowConfig=WorkflowConfig(openMetadataServerConfig=metadata.config),
     )
 
     ingestion = MetadataWorkflow.create(workflow_config)
@@ -127,9 +136,7 @@ def ingest(metadata, service, create_data):
 def test_delta(ingest, metadata):
     tables = metadata.list_all_entities(entity=Table)
 
-    filtered_tables = [
-        table for table in tables if table.service.name == SERVICE_NAME
-    ]
+    filtered_tables = [table for table in tables if table.service.name == SERVICE_NAME]
 
     assert len(filtered_tables) == 1
 

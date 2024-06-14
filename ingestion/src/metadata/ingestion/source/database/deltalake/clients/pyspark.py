@@ -15,21 +15,26 @@ Deltalake PySpark Client
 import re
 import traceback
 from enum import Enum
-from typing import Callable, Optional, Iterable, List, Dict, Any
+from typing import Any, Callable, Dict, Iterable, List, Optional
+
 from pyspark.sql.utils import AnalysisException, ParseException
-from metadata.ingestion.source.database.deltalake.clients.base import DeltalakeBaseClient, TableInfo
+
+from metadata.generated.schema.entity.data.table import Column, TableType
 from metadata.generated.schema.entity.services.connections.database.deltalake.metastoreConfig import (
+    MetastoreConfig,
     MetastoreDbConnection,
 )
 from metadata.generated.schema.entity.services.connections.database.deltaLakeConnection import (
     DeltaLakeConnection,
 )
-from metadata.generated.schema.entity.services.connections.database.deltalake.metastoreConfig import MetastoreConfig
 from metadata.ingestion.connections.builders import get_connection_args_common
-from metadata.utils.logger import ingestion_logger
-from metadata.generated.schema.entity.data.table import Column, TableType
 from metadata.ingestion.source.database.column_type_parser import ColumnTypeParser
+from metadata.ingestion.source.database.deltalake.clients.base import (
+    DeltalakeBaseClient,
+    TableInfo,
+)
 from metadata.utils.constants import DEFAULT_DATABASE
+from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
 
@@ -52,18 +57,21 @@ ARRAY_CHILD_END_INDEX = -1
 
 ARRAY_DATATYPE_REPLACE_MAP = {"(": "<", ")": ">", "=": ":", "<>": ""}
 
+
 class DeltalakePySparkClient(DeltalakeBaseClient):
     def __init__(self, spark_session):
         self._spark = spark_session
 
     @classmethod
     def from_config(cls, config: DeltaLakeConnection) -> "DeltalakeBaseClient":
-        """ Returns a Deltalake Client based on the DeltalakeConfig passed. """
+        """Returns a Deltalake Client based on the DeltalakeConfig passed."""
         import pyspark
         from delta import configure_spark_with_delta_pip
 
         builder = (
-            pyspark.sql.SparkSession.builder.appName(config.configSource.appName or "OpenMetadata")
+            pyspark.sql.SparkSession.builder.appName(
+                config.configSource.appName or "OpenMetadata"
+            )
             .enableHiveSupport()
             .config("spark.sql.extensions", "io.delta.sql.DeltaSparkSessionExtension")
             .config(
@@ -128,17 +136,23 @@ class DeltalakePySparkClient(DeltalakeBaseClient):
 
         return cls(spark_session=configure_spark_with_delta_pip(builder).getOrCreate())
 
-    def get_database_names(self, service_connection: DeltaLakeConnection) -> Iterable[str]:
-        """ Returns the Database Names, based on the underlying client. """
+    def get_database_names(
+        self, service_connection: DeltaLakeConnection
+    ) -> Iterable[str]:
+        """Returns the Database Names, based on the underlying client."""
         yield service_connection.databaseName or DEFAULT_DATABASE
 
-    def get_database_schema_names(self, service_connection: DeltaLakeConnection) -> Iterable[str]:
-        """ Returns the RAW database schema names, based on the underlying client. """
+    def get_database_schema_names(
+        self, service_connection: DeltaLakeConnection
+    ) -> Iterable[str]:
+        """Returns the RAW database schema names, based on the underlying client."""
         for schema in self._spark.catalog.listDatabases():
             yield schema.name
 
-    def get_table_info(self, service_connection: DeltaLakeConnection, schema_name: str) -> Iterable[TableInfo]:
-        """ Returns the Tables name and type, based on the underlying client. """
+    def get_table_info(
+        self, service_connection: DeltaLakeConnection, schema_name: str
+    ) -> Iterable[TableInfo]:
+        """Returns the Tables name and type, based on the underlying client."""
         for table in self._spark.catalog.listTables(dbName=schema_name):
 
             if table.tableType == SparkTableType.TEMPORARY.value:
@@ -149,7 +163,7 @@ class DeltalakePySparkClient(DeltalakeBaseClient):
                 schema=schema_name,
                 name=table.name,
                 description=table.description,
-                _type=TABLE_TYPE_MAP.get(table.tableType, TableType.Regular)
+                _type=TABLE_TYPE_MAP.get(table.tableType, TableType.Regular),
             )
 
     def update_table_info(self, table_info: TableInfo) -> TableInfo:
@@ -160,7 +174,7 @@ class DeltalakePySparkClient(DeltalakeBaseClient):
             location=table_info.location,
             description=table_info.description,
             columns=self.get_columns(table_info.schema, table_info.name),
-            table_partitions=table_info.table_partitions
+            table_partitions=table_info.table_partitions,
         )
 
     def _check_col_length(self, datatype, col_raw_type):
@@ -178,11 +192,7 @@ class DeltalakePySparkClient(DeltalakeBaseClient):
         return display_data_type
 
     def _get_col_info(self, row):
-        parsed_string = (
-            ColumnTypeParser._parse_datatype_string(
-                row["data_type"]
-            )
-        )
+        parsed_string = ColumnTypeParser._parse_datatype_string(row["data_type"])
 
         if parsed_string:
             parsed_string["dataLength"] = self._check_col_length(
@@ -193,9 +203,15 @@ class DeltalakePySparkClient(DeltalakeBaseClient):
                 parsed_string["dataTypeDisplay"] = array_data_type_display
                 # Parse Primitive Datatype string
                 # if Datatype is Array(int) -> Parse int
-                parsed_string["arrayDataType"] = ColumnTypeParser._parse_primitive_datatype_String(
-                    array_data_type_display[ARRAY_CHILD_START_INDEX:ARRAY_CHILD_END_INDEX]
-                )["dataType"]
+                parsed_string[
+                    "arrayDataType"
+                ] = ColumnTypeParser._parse_primitive_datatype_String(
+                    array_data_type_display[
+                        ARRAY_CHILD_START_INDEX:ARRAY_CHILD_END_INDEX
+                    ]
+                )[
+                    "dataType"
+                ]
 
             column = Column(name=row["col_name"], **parsed_string)
         else:
@@ -203,20 +219,25 @@ class DeltalakePySparkClient(DeltalakeBaseClient):
             charlen = re.search(r"\(([\d]+)\)", row["data_type"])
             if charlen:
                 charlen = int(charlen.group(1))
-            if (col_type.upper() in {"CHAR", "VARCHAR", "VARBINARY", "BINARY"} and charlen is None):
+            if (
+                col_type.upper() in {"CHAR", "VARCHAR", "VARBINARY", "BINARY"}
+                and charlen is None
+            ):
                 charlen = 1
             column = Column(
                 name=row["col_name"],
                 description=row.get("comment"),
                 dataType=col_type,
                 dataLength=charlen,
-                displayName=row["data_type"]
+                displayName=row["data_type"],
             )
         return column
 
     def fetch_view_schema(self, view_name: str) -> Optional[Dict]:
         try:
-            describe_output = self._spark.sql(f"describe extended {view_name}").collect()
+            describe_output = self._spark.sql(
+                f"describe extended {view_name}"
+            ).collect()
         except Exception as exc:
             logger.debug(traceback.format_exc())
             logger.warning(
@@ -234,7 +255,6 @@ class DeltalakePySparkClient(DeltalakeBaseClient):
             if "# Detailed Table" in row_dict["col_name"]:
                 col_details = True
         return view_detail.get("View Text")
-
 
     def get_columns(self, schema: str, table: str) -> List[Column]:
         field_dict: Dict[str, Any] = {}
@@ -265,15 +285,15 @@ class DeltalakePySparkClient(DeltalakeBaseClient):
         return parsed_columns
 
     def close(self, service_connection: DeltaLakeConnection):
-        """ Closes the Client connection. """
+        """Closes the Client connection."""
         pass
 
     def get_test_get_databases_fn(self, config: MetastoreConfig) -> Callable:
-        """ Returns a Callable used to test the GetDatabases condition. """
+        """Returns a Callable used to test the GetDatabases condition."""
         return self._spark.catalog.listDatabases
 
     def get_test_get_tables_fn(self, config: MetastoreConfig) -> Callable:
-        """ Returns a Callable used to test the GetTables condition. """
+        """Returns a Callable used to test the GetTables condition."""
 
         def test_get_tables():
             for database in self._spark.catalog.listDatabases():

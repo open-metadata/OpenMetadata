@@ -12,7 +12,9 @@
 Environment fixtures to be able to test the DeltaLake Ingestion Pipeline.
 """
 import pytest
-from ....containers import get_minio_container, MinioContainerConfigs
+
+from ....containers import MinioContainerConfigs, get_minio_container
+
 
 class DeltaLakeStorageTestConfig:
     def __init__(self):
@@ -29,8 +31,9 @@ class DeltaLakeStorageTestConfig:
 
     def with_exposed_port(self, minio):
         self.minio_config.with_exposed_port(minio)
-        self.storage_options["AWS_ENDPOINT_URL"] = f"http://localhost:{self.minio_config.exposed_port}"
-
+        self.storage_options[
+            "AWS_ENDPOINT_URL"
+        ] = f"http://localhost:{self.minio_config.exposed_port}"
 
 
 @pytest.fixture(scope="session")

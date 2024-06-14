@@ -14,7 +14,6 @@ Deltalake source methods.
 import traceback
 from typing import Any, Iterable, Optional, Tuple, Union
 
-
 from metadata.generated.schema.api.data.createDatabase import CreateDatabaseRequest
 from metadata.generated.schema.api.data.createDatabaseSchema import (
     CreateDatabaseSchemaRequest,
@@ -27,7 +26,7 @@ from metadata.generated.schema.api.data.createTable import CreateTableRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
-from metadata.generated.schema.entity.data.table import Table, TableType, TablePartition
+from metadata.generated.schema.entity.data.table import Table, TablePartition, TableType
 from metadata.generated.schema.entity.services.connections.database.deltaLakeConnection import (
     DeltaLakeConnection,
 )
@@ -178,7 +177,9 @@ class DeltalakeSource(DatabaseServiceSource):
         :return: tables or views, depending on config
         """
         schema_name = self.context.get().database_schema
-        for table_info in self.client.get_table_info(self.service_connection, schema_name=schema_name):
+        for table_info in self.client.get_table_info(
+            self.service_connection, schema_name=schema_name
+        ):
             try:
                 table_fqn = fqn.build(
                     self.metadata,
@@ -190,7 +191,9 @@ class DeltalakeSource(DatabaseServiceSource):
                 )
                 if filter_by_table(
                     self.source_config.tableFilterPattern,
-                    table_fqn if self.source_config.useFqnForFiltering else table_info.name,
+                    table_fqn
+                    if self.source_config.useFqnForFiltering
+                    else table_info.name,
                 ):
                     self.status.filter(
                         table_fqn,
@@ -221,7 +224,9 @@ class DeltalakeSource(DatabaseServiceSource):
             except Exception as exc:
                 logger.debug(traceback.format_exc())
                 logger.warning(f"Unexpected exception for table [{table_info}]: {exc}")
-                self.status.warnings.append(f"{self.config.serviceName}.{table_info.name}")
+                self.status.warnings.append(
+                    f"{self.config.serviceName}.{table_info.name}"
+                )
 
     def yield_table(
         self, table_name_and_type: Tuple[str, TableType]
@@ -256,7 +261,9 @@ class DeltalakeSource(DatabaseServiceSource):
                     )
                 ),
                 schemaDefinition=view_definition,
-                tablePartition=TablePartition(columns=self.context.get().table_partitions)
+                tablePartition=TablePartition(
+                    columns=self.context.get().table_partitions
+                ),
             )
 
             yield Either(right=table_request)

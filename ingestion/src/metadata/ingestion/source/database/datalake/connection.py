@@ -33,7 +33,9 @@ from metadata.generated.schema.entity.services.connections.database.datalakeConn
 )
 from metadata.ingestion.connections.test_connections import test_connection_steps
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.ingestion.source.database.datalake.clients.azure_blob import DatalakeAzureBlobClient
+from metadata.ingestion.source.database.datalake.clients.azure_blob import (
+    DatalakeAzureBlobClient,
+)
 from metadata.ingestion.source.database.datalake.clients.gcs import DatalakeGcsClient
 from metadata.ingestion.source.database.datalake.clients.s3 import DatalakeS3Client
 
@@ -95,7 +97,9 @@ def test_connection(
     of a metadata workflow or during an Automation Workflow
     """
     test_fn = {
-        "ListBuckets": connection.client.get_test_list_buckets_fn(connection.config.bucketName),
+        "ListBuckets": connection.client.get_test_list_buckets_fn(
+            connection.config.bucketName
+        ),
     }
 
     test_connection_steps(

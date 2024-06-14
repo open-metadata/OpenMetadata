@@ -12,17 +12,24 @@
 """
 Deltalake Base Client
 """
-from typing import Callable, Optional, Iterable, List
 from abc import ABC, abstractmethod
+from dataclasses import dataclass
+from typing import Callable, Iterable, List, Optional
+
+from metadata.generated.schema.entity.data.table import (
+    Column,
+    PartitionColumnDetails,
+    TableType,
+)
 from metadata.generated.schema.entity.services.connections.database.deltaLakeConnection import (
     DeltaLakeConnection,
 )
-from metadata.generated.schema.entity.data.table import TableType, Column, PartitionColumnDetails
-from dataclasses import dataclass
+
 
 @dataclass
 class TableInfo:
-    """ Small Class to store TableInfo from different Clients in the same format. """
+    """Small Class to store TableInfo from different Clients in the same format."""
+
     schema: str
     name: str
     _type: TableType
@@ -33,36 +40,43 @@ class TableInfo:
 
 
 class DeltalakeBaseClient(ABC):
-
     @classmethod
     @abstractmethod
-    def from_config(cls, service_connection: DeltaLakeConnection) -> "DeltalakeBaseClient":
-        """ Returns a Deltalake Client based on the DatalakeConfig passed. """
+    def from_config(
+        cls, service_connection: DeltaLakeConnection
+    ) -> "DeltalakeBaseClient":
+        """Returns a Deltalake Client based on the DatalakeConfig passed."""
 
     @abstractmethod
-    def get_database_names(self, service_connection: DeltaLakeConnection) -> Iterable[str]:
-        """ Returns the Database Names, based on the underlying client. """
+    def get_database_names(
+        self, service_connection: DeltaLakeConnection
+    ) -> Iterable[str]:
+        """Returns the Database Names, based on the underlying client."""
 
     @abstractmethod
-    def get_database_schema_names(self, service_connection: DeltaLakeConnection) -> Iterable[str]:
-        """ Returns the RAW database schema names, based on the underlying client. """
+    def get_database_schema_names(
+        self, service_connection: DeltaLakeConnection
+    ) -> Iterable[str]:
+        """Returns the RAW database schema names, based on the underlying client."""
 
     @abstractmethod
-    def get_table_info(self, service_connection: DeltaLakeConnection, schema_name: str) -> Iterable[TableInfo]:
-        """ Returns the TableInfo, based on the underlying client. """
+    def get_table_info(
+        self, service_connection: DeltaLakeConnection, schema_name: str
+    ) -> Iterable[TableInfo]:
+        """Returns the TableInfo, based on the underlying client."""
 
     @abstractmethod
     def update_table_info(self, table_info: TableInfo) -> TableInfo:
-        """ Updates TableInfo with extra Metadata that was defered. """
+        """Updates TableInfo with extra Metadata that was defered."""
 
     @abstractmethod
     def close(self, service_connection: DeltaLakeConnection):
-        """ Closes the Client connection. """
+        """Closes the Client connection."""
 
     @abstractmethod
     def get_test_get_databases_fn(self, config) -> Callable:
-        """ Returns a Callable used to test the GetDatabases condition. """
+        """Returns a Callable used to test the GetDatabases condition."""
 
     @abstractmethod
     def get_test_get_tables_fn(self, config) -> Callable:
-        """ Returns a Callable used to test the GetTables condition. """
+        """Returns a Callable used to test the GetTables condition."""

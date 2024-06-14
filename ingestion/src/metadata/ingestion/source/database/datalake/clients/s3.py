@@ -12,15 +12,17 @@
 """
 Datalake S3 Client
 """
-from typing import Callable, Optional, Iterable
 from functools import partial
+from typing import Callable, Iterable, Optional
+
 from metadata.clients.aws_client import AWSClient
 from metadata.generated.schema.entity.services.connections.database.datalake.s3Config import (
     S3Config,
 )
 from metadata.ingestion.source.database.datalake.clients.base import DatalakeBaseClient
-from metadata.utils.s3_utils import list_s3_objects
 from metadata.utils.constants import DEFAULT_DATABASE
+from metadata.utils.s3_utils import list_s3_objects
+
 
 class DatalakeS3Client(DatalakeBaseClient):
     def __init__(self, client):
@@ -45,9 +47,7 @@ class DatalakeS3Client(DatalakeBaseClient):
                 yield bucket["Name"]
 
     def get_table_names(self, bucket_name: str, prefix: Optional[str]) -> Iterable[str]:
-        kwargs = {
-            "Bucket": bucket_name
-        }
+        kwargs = {"Bucket": bucket_name}
 
         if prefix:
             kwargs["Prefix"] = prefix if prefix.endswith("/") else f"{prefix}/"
@@ -55,7 +55,9 @@ class DatalakeS3Client(DatalakeBaseClient):
         for key in list_s3_objects(self._client, **kwargs):
             yield key["Key"]
 
-    def get_folders_prefix(self, bucket_name: str, prefix: Optional[str]) -> Iterable[str]:
+    def get_folders_prefix(
+        self, bucket_name: str, prefix: Optional[str]
+    ) -> Iterable[str]:
         for page in self._client.get_paginator("list_objects_v2").paginate(
             Bucket=bucket_name, Prefix=prefix or "", Delimiter="/"
         ):

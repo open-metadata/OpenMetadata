@@ -23,9 +23,7 @@ import org.openmetadata.service.util.JsonUtils;
 public class DeltaLakeConnectionClassConverter extends ClassConverter {
 
   private static final List<Class<?>> CONFIG_SOURCE_CLASSES =
-      List.of(
-          MetastoreConfig.class,
-          StorageConfig.class);
+      List.of(MetastoreConfig.class, StorageConfig.class);
 
   public DeltaLakeConnectionClassConverter() {
     super(DeltaLakeConnection.class);

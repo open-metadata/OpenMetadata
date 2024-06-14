@@ -13,7 +13,6 @@
 DataLake connector to fetch metadata from a files stored s3, gcs and Hdfs
 """
 import json
-import os
 import traceback
 from typing import Any, Iterable, Optional, Tuple, Union
 
@@ -97,7 +96,9 @@ class DatalakeSource(DatabaseServiceSource):
         self.config_source = self.service_connection.configSource
         self.connection_obj = self.connection
         self.test_connection()
-        self.reader = get_reader(config_source=self.config_source, client=self.client._client)
+        self.reader = get_reader(
+            config_source=self.config_source, client=self.client._client
+        )
 
     @classmethod
     def create(
@@ -136,7 +137,9 @@ class DatalakeSource(DatabaseServiceSource):
                 self.status.filter(database_fqn, "Database Filtered out")
             else:
                 try:
-                    self.client.update_client_database(self.config_source, database_name)
+                    self.client.update_client_database(
+                        self.config_source, database_name
+                    )
                     yield database_name
                 except Exception as exc:
                     logger.debug(traceback.format_exc())
@@ -165,7 +168,9 @@ class DatalakeSource(DatabaseServiceSource):
         return schema names
         """
         try:
-            for schema_name in self.client.get_database_schema_names(self.service_connection.bucketName):
+            for schema_name in self.client.get_database_schema_names(
+                self.service_connection.bucketName
+            ):
                 schema_fqn = fqn.build(
                     self.metadata,
                     entity_type=DatabaseSchema,
@@ -178,7 +183,7 @@ class DatalakeSource(DatabaseServiceSource):
                     self.config.sourceConfig.config.schemaFilterPattern,
                     schema_fqn
                     if self.config.sourceConfig.config.useFqnForFiltering
-                    else schema_name
+                    else schema_name,
                 ):
                     self.status.filter(schema_fqn, "Bucket Filtered Out")
                     continue
