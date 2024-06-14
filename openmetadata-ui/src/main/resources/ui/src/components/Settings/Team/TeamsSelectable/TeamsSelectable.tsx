@@ -55,9 +55,9 @@ const TeamsSelectable = ({
   const loadOptions = async () => {
     try {
       setIsLoading(true);
-      const res = await getTeamsHierarchy(filterJoinable);
-      setTeams(res.data);
-      showTeamsAlert && setNoTeam(isEmpty(res.data));
+      const { data } = await getTeamsHierarchy(filterJoinable);
+      setTeams(data);
+      showTeamsAlert && setNoTeam(isEmpty(data));
     } catch (error) {
       showErrorToast(error as AxiosError);
     } finally {
