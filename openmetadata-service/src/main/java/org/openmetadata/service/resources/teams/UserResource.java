@@ -576,15 +576,23 @@ public class UserResource extends EntityResource<User, UserRepository> {
     // Add the roles on user creation
     updateUserRolesIfRequired(user, containerRequestContext);
 
-    // TODO do we need to authenticate user is creating himself?
-    Response createdUser = create(uriInfo, securityContext, user);
+    Response createdUserRes = null;
+    try {
+      createdUserRes = create(uriInfo, securityContext, user);
+    } catch (EntityNotFoundException ex) {
+      if (securityContext.getUserPrincipal().getName().equals(create.getName())) {
+        // User is creating himself on signup ?! :(
+        User created = addHref(uriInfo, repository.create(uriInfo, user));
+        createdUserRes = Response.created(created.getHref()).entity(created).build();
+      }
+    }
 
     // Send Invite mail to user
     sendInviteMailToUserForBasicAuth(uriInfo, user, create);
 
     // Update response to remove auth fields
-    decryptOrNullify(securityContext, (User) createdUser.getEntity());
-    return createdUser;
+    decryptOrNullify(securityContext, (User) createdUserRes.getEntity());
+    return createdUserRes;
   }
 
   private void validateAndAddUserAuthForBasic(User user, CreateUser create) {
