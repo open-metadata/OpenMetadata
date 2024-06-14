@@ -27,6 +27,7 @@ import org.openmetadata.client.security.factory.AuthenticationProviderFactory;
 import org.openmetadata.schema.api.OpenMetadataServerVersion;
 import org.openmetadata.schema.services.connections.metadata.OpenMetadataConnection;
 import org.openmetadata.schema.utils.VersionUtils;
+import java.util.Objects;
 
 @Slf4j
 public class OpenMetadata {
@@ -61,6 +62,10 @@ public class OpenMetadata {
   }
 
   public void initClient(OpenMetadataConnection config, Feign.Builder builder) {
+    if (Objects.isNull(apiClient)) {
+      apiClient = new ApiClient();
+    }
+
     apiClient.setFeignBuilder(builder);
     AuthenticationProviderFactory factory = new AuthenticationProviderFactory();
     apiClient.addAuthorization("oauth", factory.getAuthProvider(config));
