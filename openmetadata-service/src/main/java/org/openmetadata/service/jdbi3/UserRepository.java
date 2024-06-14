@@ -590,9 +590,9 @@ public class UserRepository extends EntityRepository<User> {
       }
 
       List<EntityReference> origDomains =
-          EntityUtil.populateEntityReferences(original.getUserDomains());
+          listOrEmpty(EntityUtil.populateEntityReferences(original.getUserDomains()));
       List<EntityReference> updatedDomains =
-          EntityUtil.populateEntityReferences(updated.getUserDomains());
+          listOrEmpty(EntityUtil.populateEntityReferences(updated.getUserDomains()));
 
       // Remove Domains for the user
       deleteTo(original.getId(), USER, Relationship.HAS, Entity.DOMAIN);

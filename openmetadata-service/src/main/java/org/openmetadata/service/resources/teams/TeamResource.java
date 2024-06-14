@@ -90,7 +90,7 @@ import org.openmetadata.service.util.ResultList;
 public class TeamResource extends EntityResource<Team, TeamRepository> {
   public static final String COLLECTION_PATH = "/v1/teams/";
   static final String FIELDS =
-      "owner,profile,users,owns,defaultRoles,parents,children,policies,userCount,childrenCount,domain";
+      "owner,profile,users,owns,defaultRoles,parents,children,policies,userCount,childrenCount,teamDomains";
 
   @Override
   public Team addHref(UriInfo uriInfo, Team team) {
