@@ -21,7 +21,10 @@ import {
 import { Domain } from '../generated/entity/domains/domain';
 import { DomainStore } from '../interface/store.interface';
 import { getDomainList } from '../rest/domainAPI';
-import { getDomainOptions } from '../utils/DomainUtils';
+import {
+  getDomainOptions,
+  initializeDomainEntityRef,
+} from '../utils/DomainUtils';
 import { showErrorToast } from '../utils/ToastUtils';
 import { useApplicationStore } from './useApplicationStore';
 
@@ -31,13 +34,14 @@ export const useDomainStore = create<DomainStore>()(
       domains: [],
       domainLoading: false,
       activeDomain: DEFAULT_DOMAIN_VALUE, // Set default value here
+      activeDomainEntityRef: undefined,
       domainOptions: [],
       fetchDomainList: async () => {
         const currentUser = useApplicationStore.getState().currentUser;
-        const userDomains = currentUser?.userDomains ?? [];
+        const { isAdmin = false, userDomains = [] } = currentUser ?? {};
+        const userDomainsObj = isAdmin ? [] : userDomains;
         const userDomainFqn =
-          currentUser?.userDomains?.map((item) => item.fullyQualifiedName) ??
-          [];
+          userDomainsObj.map((item) => item.fullyQualifiedName) ?? [];
         set({ domainLoading: true });
         try {
           const { data } = await getDomainList({
@@ -65,7 +69,14 @@ export const useDomainStore = create<DomainStore>()(
       updateDomains: (domainsArr: Domain[]) => set({ domains: domainsArr }),
       refreshDomains: () => get().fetchDomainList(),
       updateActiveDomain: (activeDomainKey: string) => {
-        set({ activeDomain: activeDomainKey });
+        const activeDomainEntityRef = initializeDomainEntityRef(
+          get().domains,
+          activeDomainKey
+        );
+        set({
+          activeDomain: activeDomainKey,
+          activeDomainEntityRef,
+        });
         get().refreshDomains();
       },
       setDomains: (domainsArr: Domain[]) => {
@@ -77,7 +88,17 @@ export const useDomainStore = create<DomainStore>()(
     }),
     {
       name: DOMAIN_STORAGE_KEY,
-      partialize: (state) => ({ activeDomain: state.activeDomain }),
+      partialize: (state) => {
+        const activeDomainEntityRef = initializeDomainEntityRef(
+          state.domains,
+          state.activeDomain
+        );
+
+        return {
+          activeDomain: state.activeDomain,
+          activeDomainEntityRef,
+        };
+      },
     }
   )
 );

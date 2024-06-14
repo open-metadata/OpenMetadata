@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { Button, Popover, Tooltip, Typography } from 'antd';
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
 import { ReactComponent as DomainIcon } from '../../../assets/svg/ic-domain.svg';
@@ -62,6 +62,14 @@ const DomainSelectableList = ({
   const { t } = useTranslation();
   const { theme } = useApplicationStore();
   const [popupVisible, setPopupVisible] = useState(false);
+
+  const selectedDomainsList = useMemo(() => {
+    if (selectedDomain) {
+      return Array.isArray(selectedDomain) ? selectedDomain : [selectedDomain];
+    }
+
+    return [];
+  }, [selectedDomain]);
 
   const fetchOptions = async (searchText: string) => {
     if (searchText) {
@@ -149,7 +157,7 @@ const DomainSelectableList = ({
             searchPlaceholder={t('label.search-for-type', {
               type: t('label.domain'),
             })}
-            selectedItems={selectedDomain ?? []}
+            selectedItems={selectedDomainsList}
             onCancel={() => setPopupVisible(false)}
             onUpdate={handleUpdate}
           />

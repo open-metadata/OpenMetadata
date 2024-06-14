@@ -28,6 +28,8 @@ import React, { Fragment, ReactNode } from 'react';
 import AsyncSelectList from '../components/common/AsyncSelectList/AsyncSelectList';
 import { AsyncSelectListProps } from '../components/common/AsyncSelectList/AsyncSelectList.interface';
 import ColorPicker from '../components/common/ColorPicker/ColorPicker.component';
+import DomainSelectableList from '../components/common/DomainSelectableList/DomainSelectableList.component';
+import { DomainSelectableListProps } from '../components/common/DomainSelectableList/DomainSelectableList.interface';
 import FilterPattern from '../components/common/FilterPattern/FilterPattern';
 import { FilterPatternProps } from '../components/common/FilterPattern/filterPattern.interface';
 import FormItemLabel from '../components/common/Form/FormItemLabel';
@@ -149,6 +151,19 @@ export const getField = (field: FieldProp) => {
       fieldElement = (
         <AsyncSelectList {...(props as unknown as AsyncSelectListProps)} />
       );
+
+      break;
+    case FieldTypes.DOMAIN_SELECT:
+      {
+        const { children, ...rest } = props;
+
+        fieldElement = (
+          <DomainSelectableList
+            {...(rest as unknown as DomainSelectableListProps)}>
+            {children}
+          </DomainSelectableList>
+        );
+      }
 
       break;
     case FieldTypes.USER_TEAM_SELECT:

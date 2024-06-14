@@ -82,6 +82,7 @@ export interface DomainStore {
   domains: Domain[];
   domainLoading: boolean;
   activeDomain: string;
+  activeDomainEntityRef?: EntityReference;
   domainOptions: ItemType[];
   fetchDomainList: () => Promise<void>;
   updateDomains: (domainsArr: Domain[]) => void;

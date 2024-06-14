@@ -24,6 +24,7 @@ import {
 } from '../constants/constants';
 import { DOMAIN_TYPE_DATA } from '../constants/Domain.constants';
 import { EntityField } from '../constants/Feeds.constants';
+import { EntityType } from '../enums/entity.enum';
 import { DataProduct } from '../generated/entity/domains/dataProduct';
 import { Domain } from '../generated/entity/domains/domain';
 import { ChangeDescription, EntityReference } from '../generated/entity/type';
@@ -31,7 +32,7 @@ import {
   QueryFieldInterface,
   QueryFilterInterface,
 } from '../pages/ExplorePage/ExplorePage.interface';
-import { getEntityName } from './EntityUtils';
+import { getEntityName, getEntityReferenceFromEntity } from './EntityUtils';
 import {
   getChangedEntityNewValue,
   getChangedEntityOldValue,
@@ -227,3 +228,17 @@ export const renderDomainLink = (
     {isUndefined(domainDisplayName) ? getEntityName(domain) : domainDisplayName}
   </Link>
 );
+
+export const initializeDomainEntityRef = (
+  domains: Domain[],
+  activeDomainKey: string
+) => {
+  const domain = domains.find(
+    (item) => item.fullyQualifiedName === activeDomainKey
+  );
+  if (domain) {
+    return getEntityReferenceFromEntity(domain, EntityType.DOMAIN);
+  }
+
+  return undefined;
+};

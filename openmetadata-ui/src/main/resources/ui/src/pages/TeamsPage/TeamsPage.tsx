@@ -261,6 +261,9 @@ const TeamsPage = () => {
   const createNewTeam = async (data: Team) => {
     try {
       setIsLoading(true);
+      const teamDomains =
+        data?.teamDomains?.map((domain) => domain.fullyQualifiedName ?? '') ??
+        [];
       const teamData: CreateTeam = {
         name: data.name,
         displayName: data.displayName,
@@ -268,7 +271,9 @@ const TeamsPage = () => {
         teamType: data.teamType as TeamType,
         parents: fqn ? [selectedTeam.id] : undefined,
         email: data.email || undefined,
+        teamDomains: teamDomains,
       };
+
       const res = await createTeam(teamData);
       if (res) {
         fetchTeamBasicDetails(selectedTeam.name, true);
