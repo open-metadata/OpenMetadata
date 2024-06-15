@@ -52,11 +52,18 @@ class OMetaLineageMixin(Generic[T]):
         self, original: List[Dict[str, Any]], updated: List[Dict[str, Any]]
     ):
         temp_result = []
-        for column in original or []:
-            temp_result.append((*column.get("fromColumns", []), column.get("toColumn")))
-        for column in updated or []:
-            data = column.dict()
-            temp_result.append((*data.get("fromColumns", []), data.get("toColumn")))
+        try:
+            for column in original or []:
+                temp_result.append((*column.get("fromColumns", []), column.get("toColumn")))
+            for column in updated or []:
+                if not isinstance(column, dict):
+                    data = column.dict()
+                else:
+                    data = column
+                temp_result.append((*data.get("fromColumns", []), data.get("toColumn")))
+        except Exception as exc:
+            logger.debug(f"Error while merging column lineage: {exc}")
+            logger.debug(traceback.format_exc())
         return [
             {"fromColumns": list(col_data[:-1]), "toColumn": col_data[-1]}
             for col_data in set(temp_result)
