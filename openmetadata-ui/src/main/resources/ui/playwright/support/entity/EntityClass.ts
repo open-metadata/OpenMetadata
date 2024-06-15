@@ -13,8 +13,8 @@
 import { APIRequestContext, Page } from '@playwright/test';
 import { CustomPropertySupportedEntityList } from '../../constant/customProperty';
 import {
-  CustomProperty,
   createCustomPropertyForEntity,
+  CustomProperty,
   setValueForProperty,
   validateValueForProperty,
 } from '../../utils/customProperty';
@@ -37,15 +37,15 @@ import {
   replyAnnouncement,
   softDeleteEntity,
   unFollowEntity,
-  upVote,
   updateDescription,
   updateDisplayNameForEntity,
   updateOwner,
+  upVote,
   validateFollowedEntityToWidget,
 } from '../../utils/entity';
 import { Domain } from '../domain/Domain';
 import { GlossaryTerm } from '../glossary/GlossaryTerm';
-import { ENTITY_PATH, EntityTypeEndpoint } from './Entity.interface';
+import { EntityTypeEndpoint, ENTITY_PATH } from './Entity.interface';
 
 export class EntityClass {
   type: string;
@@ -123,7 +123,7 @@ export class EntityClass {
   ) {
     await addOwner(page, owner1, type, this.endpoint, 'data-assets-header');
     await updateOwner(page, owner2, type, this.endpoint, 'data-assets-header');
-    await removeOwner(page, this.endpoint, 'data-assets-header');
+    await removeOwner(page, this.endpoint, owner2, 'data-assets-header');
   }
 
   async tier(page: Page, tier1: string, tier2: string) {

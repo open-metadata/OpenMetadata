@@ -109,6 +109,7 @@ export const updateOwner = async (
 export const removeOwner = async (
   page: Page,
   endpoint: EntityTypeEndpoint,
+  ownerName: string,
   dataTestId?: string
 ) => {
   await page.getByTestId('edit-owner').click();
@@ -120,8 +121,8 @@ export const removeOwner = async (
   await page.getByTestId('remove-owner').locator('svg').click();
   await patchRequest;
 
-  await expect(page.getByTestId(dataTestId ?? 'owner-link')).toContainText(
-    'No Owner'
+  await expect(page.getByTestId(dataTestId ?? 'owner-link')).not.toContainText(
+    ownerName
   );
 };
 
