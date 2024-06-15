@@ -601,6 +601,10 @@ site_menu:
     url: /connectors/database/sqlite
   - category: Connectors / Database / SQLite / Run Externally
     url: /connectors/database/sqlite/yaml
+  - category: Connectors / Database / Teradata
+    url: /connectors/database/teradata
+  - category: Connectors / Database / Teradata / Run Externally
+    url: /connectors/database/teradata/yaml
   - category: Connectors / Database / Trino
     url: /connectors/database/trino
   - category: Connectors / Database / Trino / Run Externally
