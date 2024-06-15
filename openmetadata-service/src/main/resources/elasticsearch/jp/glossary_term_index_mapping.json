@@ -394,7 +394,8 @@
         "type": "text"
       },
       "status": {
-        "type": "text"
+        "type": "keyword",
+        "normalizer": "lowercase_normalizer"
       },
       "entityType": {
         "type": "keyword"
@@ -411,6 +412,9 @@
       },
       "descriptionStatus": {
         "type": "keyword"
+      },
+      "childrenCount": {
+        "type": "integer"
       }
     }
   }

@@ -314,6 +314,67 @@ public class ContainerResourceTest extends EntityResourceTest<Container, CreateC
   }
 
   @Test
+  void patch_usingFqn_ContainerFields_200(TestInfo test) throws IOException {
+    CreateContainer request =
+        createRequest(test)
+            .withDataModel(null)
+            .withPrefix(null)
+            .withFileFormats(null)
+            .withNumberOfObjects(null);
+    Container container = createAndCheckEntity(request, ADMIN_AUTH_HEADERS);
+
+    // Add dataModel, prefix, fileFormats
+    String originalJson = JsonUtils.pojoToJson(container);
+    ChangeDescription change = getChangeDescription(container, MINOR_UPDATE);
+    container
+        .withDataModel(PARTITIONED_DATA_MODEL)
+        .withPrefix("prefix1")
+        .withFileFormats(FILE_FORMATS)
+        .withSize(1.0)
+        .withNumberOfObjects(2.0);
+    fieldAdded(change, "dataModel", PARTITIONED_DATA_MODEL);
+    fieldAdded(change, "prefix", "prefix1");
+    fieldAdded(change, "fileFormats", FILE_FORMATS);
+    container =
+        patchEntityUsingFqnAndCheck(
+            container, originalJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
+    assertEquals(1.0, container.getSize());
+    assertEquals(2.0, container.getNumberOfObjects());
+
+    // Update description, chartType and chart url and verify patch
+    // Changes from this PATCH is consolidated with the previous changes
+    originalJson = JsonUtils.pojoToJson(container);
+    change = getChangeDescription(container, CHANGE_CONSOLIDATED);
+    ContainerDataModel newModel =
+        new ContainerDataModel()
+            .withIsPartitioned(false)
+            .withColumns(PARTITIONED_DATA_MODEL.getColumns());
+    List<ContainerFileFormat> newFileFormats =
+        List.of(ContainerFileFormat.Gz, ContainerFileFormat.Csv);
+    container.withPrefix("prefix2").withDataModel(newModel).withFileFormats(newFileFormats);
+
+    fieldAdded(change, "dataModel", newModel);
+    fieldAdded(change, "prefix", "prefix2");
+    fieldAdded(change, "fileFormats", newFileFormats);
+    patchEntityUsingFqnAndCheck(
+        container, originalJson, ADMIN_AUTH_HEADERS, CHANGE_CONSOLIDATED, change);
+
+    // Update the container size and number of objects
+    // Changes from this PATCH is consolidated with the previous changes
+    originalJson = JsonUtils.pojoToJson(container);
+    change = getChangeDescription(container, CHANGE_CONSOLIDATED);
+    fieldAdded(change, "dataModel", newModel);
+    fieldAdded(change, "prefix", "prefix2");
+    fieldAdded(change, "fileFormats", newFileFormats);
+    container.withSize(2.0).withNumberOfObjects(3.0);
+    container =
+        patchEntityUsingFqnAndCheck(
+            container, originalJson, ADMIN_AUTH_HEADERS, CHANGE_CONSOLIDATED, change);
+    assertEquals(2.0, container.getSize());
+    assertEquals(3.0, container.getNumberOfObjects());
+  }
+
+  @Test
   @Order(
       1) // Run this test first as other tables created in other tests will interfere with listing
   void get_ContainerListWithDifferentFields_200() throws IOException {

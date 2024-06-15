@@ -332,7 +332,7 @@ const AppDetails = () => {
               ),
               key: ApplicationTabs.CONFIGURATION,
               children: (
-                <div className="p-lg">
+                <div className="m-auto max-width-md w-9/10 p-lg p-y-0">
                   <FormBuilder
                     hideCancelButton
                     useSelectWidget
@@ -382,11 +382,11 @@ const AppDetails = () => {
             {
               label: (
                 <TabsLabel
-                  id={ApplicationTabs.HISTORY}
-                  name={t('label.history')}
+                  id={ApplicationTabs.RECENT_RUNS}
+                  name={t('label.recent-run-plural')}
                 />
               ),
-              key: ApplicationTabs.HISTORY,
+              key: ApplicationTabs.RECENT_RUNS,
               children: (
                 <div className="p-lg">
                   <AppRunsHistory appData={appData} />

@@ -19,7 +19,7 @@ import random
 import unittest
 import uuid
 from copy import deepcopy
-from datetime import datetime, time, timedelta
+from datetime import datetime, time, timedelta, timezone
 from random import randint
 from time import sleep
 
@@ -60,6 +60,7 @@ from metadata.generated.schema.entity.services.connections.metadata.openMetadata
     OpenMetadataConnection,
 )
 from metadata.generated.schema.entity.teams.user import User
+from metadata.generated.schema.type.basic import Timestamp
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.parser import ParsingConfigurationError
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
@@ -127,7 +128,7 @@ class DataInsightWorkflowTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
         cls.metadata = OpenMetadata(
-            OpenMetadataConnection.parse_obj(
+            OpenMetadataConnection.model_validate(
                 data_insight_config["workflowConfig"]["openMetadataServerConfig"]
             )
         )
@@ -135,10 +136,10 @@ class DataInsightWorkflowTests(unittest.TestCase):
     def setUp(self) -> None:
         """Set up om client for the test class"""
         self.start_ts = int(
-            datetime.combine(datetime.utcnow(), time.min).timestamp() * 1000
+            datetime.combine(datetime.now(timezone.utc), time.min).timestamp() * 1000
         ) - random.randint(1, 999)
         self.end_ts = int(
-            datetime.combine(datetime.utcnow(), time.max).timestamp() * 1000
+            datetime.combine(datetime.now(timezone.utc), time.max).timestamp() * 1000
         ) - random.randint(1, 999)
 
         completed_description_chart = self.metadata.get_by_name(
@@ -173,11 +174,14 @@ class DataInsightWorkflowTests(unittest.TestCase):
         )
 
         for event in WEB_EVENT_DATA:
-            event.timestamp = int(
-                (
-                    datetime.utcnow() - timedelta(days=1, milliseconds=randint(0, 999))
-                ).timestamp()
-                * 1000
+            event.timestamp = Timestamp(
+                int(
+                    (
+                        datetime.now(timezone.utc)
+                        - timedelta(days=1, milliseconds=randint(0, 999))
+                    ).timestamp()
+                    * 1000
+                )
             )
             self.metadata.add_web_analytic_events(event)
 
@@ -185,12 +189,14 @@ class DataInsightWorkflowTests(unittest.TestCase):
         self.metadata.add_web_analytic_events(
             WebAnalyticEventData(
                 eventId=None,
-                timestamp=int(
-                    (
-                        datetime.utcnow()
-                        - timedelta(days=1, milliseconds=randint(0, 999))
-                    ).timestamp()
-                    * 1000
+                timestamp=Timestamp(
+                    int(
+                        (
+                            datetime.now(timezone.utc)
+                            - timedelta(days=1, milliseconds=randint(0, 999))
+                        ).timestamp()
+                        * 1000
+                    )
                 ),
                 eventType=WebAnalyticEventType.PageView,
                 eventData=PageViewData(
@@ -335,7 +341,7 @@ class DataInsightWorkflowTests(unittest.TestCase):
         self.metadata.add_kpi_result(
             fqn,
             KpiResult(
-                timestamp=int(datetime.utcnow().timestamp() * 1000),
+                timestamp=int(datetime.now(timezone.utc).timestamp() * 1000),
                 kpiFqn="CompletedDescription__test_write_kpi_result",
                 targetResult=[
                     KpiTarget(
@@ -381,7 +387,7 @@ class DataInsightWorkflowTests(unittest.TestCase):
         """teardown class"""
         self.metadata.delete(
             entity=Kpi,
-            entity_id=str(self.kpi.id.__root__),
+            entity_id=str(self.kpi.id.root),
             hard_delete=True,
             recursive=True,
         )

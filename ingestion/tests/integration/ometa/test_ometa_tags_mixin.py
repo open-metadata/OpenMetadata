@@ -24,6 +24,7 @@ from metadata.ingestion.ometa.ometa_api import OpenMetadata
 CLASSIFICATION_NAME = "TestTag"
 PRIMARY_TAG_NAME = "TestPrimaryTag"
 SECONDARY_TAG_NAME = "TestSecondaryTag"
+TEST_SPECIAL_CHARS_TAG_NAME = "Test/Sepcial_Chars/Tag"
 
 
 class OMetaTagMixinPost(TestCase):
@@ -74,6 +75,20 @@ class OMetaTagMixinPost(TestCase):
             == f"{CLASSIFICATION_NAME}.{PRIMARY_TAG_NAME}.{SECONDARY_TAG_NAME}"
         )
 
+        create_special_char_tag = CreateTagRequest(
+            name=TEST_SPECIAL_CHARS_TAG_NAME,
+            classification=CLASSIFICATION_NAME,
+            description="test special char tag",
+            parent=primary_tag.fullyQualifiedName,
+        )
+
+        special_char_tag: Tag = self.metadata.create_or_update(create_special_char_tag)
+
+        assert (
+            special_char_tag.fullyQualifiedName
+            == f"{CLASSIFICATION_NAME}.{PRIMARY_TAG_NAME}.{TEST_SPECIAL_CHARS_TAG_NAME}"
+        )
+
     def test_get_classification(self):
         """Test GET primary tag"""
 
@@ -81,7 +96,7 @@ class OMetaTagMixinPost(TestCase):
             entity=Classification, fqn=CLASSIFICATION_NAME
         )
 
-        self.assertEqual(classification.name.__root__, CLASSIFICATION_NAME)
+        self.assertEqual(classification.name.root, CLASSIFICATION_NAME)
 
     def test_get_primary_tag(self):
         """Test GET tag by classification"""
@@ -90,7 +105,7 @@ class OMetaTagMixinPost(TestCase):
             fqn=f"{CLASSIFICATION_NAME}.{PRIMARY_TAG_NAME}",
         )
 
-        self.assertEqual(primary_tag.name.__root__, PRIMARY_TAG_NAME)
+        self.assertEqual(primary_tag.name.root, PRIMARY_TAG_NAME)
 
     def test_get_secondary_tag(self):
         """Test GET secondary"""
@@ -99,7 +114,7 @@ class OMetaTagMixinPost(TestCase):
             fqn=f"{CLASSIFICATION_NAME}.{PRIMARY_TAG_NAME}.{SECONDARY_TAG_NAME}",
         )
 
-        self.assertEqual(secondary_tag.name.__root__, SECONDARY_TAG_NAME)
+        self.assertEqual(secondary_tag.name.root, SECONDARY_TAG_NAME)
 
     def test_list_classifications(self):
         """Test GET list categories Mixin method"""

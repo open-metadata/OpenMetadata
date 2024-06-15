@@ -13,7 +13,6 @@
 
 @import (reference) url('../../../styles/variables.less');
 
-@lineage-sidebar-width: 110px;
 @lineage-breadcrumb-panel: 50px;
 @lineage-toolbar-height: 54px;
 
@@ -97,11 +96,7 @@
 .ant-select.custom-control-search-box-edit-mode {
   margin-left: @lineage-sidebar-width;
 }
-.custom-control-fit-screen-button {
-  border: 1px solid @border-color;
-  border-radius: 4px;
-  background-color: @body-bg-color;
-}
+
 .custom-control-zoom-slide {
   display: flex;
   column-gap: 8px;
@@ -115,13 +110,14 @@
   z-index: 1;
 }
 .load-more-node {
-  border: 3.5px dashed #1890ff;
+  border: 3.5px dashed @primary-color;
   border-radius: 18px;
   text-align: center;
-  color: #1890ff;
+  color: @primary-color;
   font-weight: 600;
+  padding: 0.5rem;
   .load-more-node-sizes {
-    color: #37352f;
+    color: @text-color;
   }
 }
 
@@ -346,4 +342,9 @@
 
 .blinking-red-border {
   animation: blink-red 1s infinite;
+}
+
+.react-flow__panel.left.bottom,
+.react-flow__panel.right.bottom {
+  bottom: 8px;
 }

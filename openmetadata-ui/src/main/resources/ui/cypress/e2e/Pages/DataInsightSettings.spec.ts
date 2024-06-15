@@ -12,6 +12,7 @@
  */
 
 import { interceptURL, verifyResponseStatusCode } from '../../common/common';
+import { checkDataInsightSuccessStatus } from '../../common/DataInsightUtils';
 import { BASE_URL } from '../../constants/constants';
 import { GlobalSettingOptions } from '../../constants/settings.constant';
 
@@ -44,10 +45,12 @@ describe(
       cy.get('[data-testid="cron-type"]').click();
       cy.get('.rc-virtual-list [title="Day"]').click();
       cy.get('[data-testid="hour-options"]').click();
-      cy.get('[title="01"]').click();
+      cy.get('.ant-select-dropdown [title="06"]').click();
+      cy.get('[data-testid="minute-options"]').click();
+      cy.get('.ant-select-dropdown [title="00"]').click();
       cy.get('.ant-modal-body [data-testid="deploy-button"]').click();
       verifyResponseStatusCode('@updateApplication', 200);
-      cy.get('[data-testid="cron-string"]').should('contain', 'At 01:00 AM');
+      cy.get('[data-testid="cron-string"]').should('contain', 'At 06:00 AM');
     });
 
     it('Uninstall application', () => {
@@ -124,10 +127,11 @@ describe(
 
       // Adding a manual wait to allow some time between deploying the pipeline and triggering it
       // eslint-disable-next-line cypress/no-unnecessary-waiting
-      cy.wait(1000);
+      cy.wait(2000);
       cy.get('[data-testid="run-now-button"]').click();
       verifyResponseStatusCode('@triggerPipeline', 200);
-
+      cy.reload();
+      checkDataInsightSuccessStatus();
       cy.get('[data-testid="logs"]').click();
       cy.url().should('eq', `${BASE_URL}/apps/DataInsightsApplication/logs`);
     });

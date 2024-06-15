@@ -54,6 +54,7 @@ export const PAGE_SIZE = 10;
 export const PAGE_SIZE_BASE = 15;
 export const PAGE_SIZE_MEDIUM = 25;
 export const PAGE_SIZE_LARGE = 50;
+export const ES_MAX_PAGE_SIZE = 10000;
 export const API_RES_MAX_SIZE = 100000;
 export const LIST_SIZE = 5;
 export const ADD_USER_CONTAINER_HEIGHT = 250;
@@ -63,6 +64,7 @@ export const DEPLOYED_PROGRESS_VAL = 100;
 export const DESCRIPTION_MAX_PREVIEW_CHARACTERS = 350;
 export const MAX_CHAR_LIMIT_ENTITY_SUMMARY = 130;
 export const SMALL_TABLE_LOADER_SIZE = 3;
+export const TEST_CASE_FEED_GRAPH_HEIGHT = 250;
 export const ONE_MINUTE_IN_MILLISECOND = 60000;
 export const TWO_MINUTE_IN_MILLISECOND = 120000;
 export const LOCALSTORAGE_RECENTLY_VIEWED = `recentlyViewedData_${COOKIE_VERSION}`;
@@ -520,6 +522,7 @@ export const ENTITY_PATH = {
   glossaryTerm: 'glossaryTerm',
   databases: 'database',
   databaseSchemas: 'databaseSchema',
+  dashboardDataModels: 'dashboardDataModel',
 };
 
 export const VALIDATION_MESSAGES = {

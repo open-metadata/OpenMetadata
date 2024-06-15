@@ -1,5 +1,6 @@
 package org.openmetadata.service.jdbi3;
 
+import static org.openmetadata.service.exception.AppException.APP_RUN_RECORD_NOT_FOUND;
 import static org.openmetadata.service.resources.teams.UserResource.getUser;
 
 import java.util.ArrayList;
@@ -19,8 +20,8 @@ import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.ProviderType;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.exception.AppException;
 import org.openmetadata.service.exception.EntityNotFoundException;
-import org.openmetadata.service.exception.UnhandledServerException;
 import org.openmetadata.service.resources.apps.AppResource;
 import org.openmetadata.service.security.jwt.JWTTokenGenerator;
 import org.openmetadata.service.util.EntityUtil;
@@ -211,7 +212,15 @@ public class AppRepository extends EntityRepository<App> {
   public AppRunRecord getLatestAppRuns(UUID appId) {
     String json = daoCollection.appExtensionTimeSeriesDao().getLatestAppRun(appId);
     if (json == null) {
-      throw new UnhandledServerException("No Available Application Run Records.");
+      throw new AppException(APP_RUN_RECORD_NOT_FOUND);
+    }
+    return JsonUtils.readValue(json, AppRunRecord.class);
+  }
+
+  public AppRunRecord getLatestAppRunsAfterStartTime(UUID appId, long startTime) {
+    String json = daoCollection.appExtensionTimeSeriesDao().getLatestAppRun(appId, startTime);
+    if (json == null) {
+      throw new AppException(APP_RUN_RECORD_NOT_FOUND);
     }
     return JsonUtils.readValue(json, AppRunRecord.class);
   }

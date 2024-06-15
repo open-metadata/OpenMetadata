@@ -3,6 +3,7 @@ package org.openmetadata.service.security.mask;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.service.jdbi3.TopicRepository.getAllFieldTags;
 
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -17,8 +18,10 @@ import org.openmetadata.schema.entity.data.Query;
 import org.openmetadata.schema.entity.data.SearchIndex;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.data.Topic;
+import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.tests.TestCase;
 import org.openmetadata.schema.type.Column;
+import org.openmetadata.schema.type.ColumnProfile;
 import org.openmetadata.schema.type.Field;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.TableData;
@@ -29,12 +32,14 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.ColumnUtil;
 import org.openmetadata.service.resources.feeds.MessageParser;
 import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.ResultList;
 
 public class PIIMasker {
   public static final String SENSITIVE_PII_TAG = "PII.Sensitive";
   public static final String MASKED_VALUE = "********";
   public static final String MASKED_NAME = "[MASKED]";
+  public static final String MASKED_MAIL = "********@masked.com";
 
   private PIIMasker() {
     /* Private constructor for Utility class */
@@ -133,6 +138,22 @@ public class PIIMasker {
       }
     }
     return table;
+  }
+
+  public static List<ColumnProfile> getColumnProfile(
+      String fqn, List<ColumnProfile> columnProfiles) {
+    Table table =
+        Entity.getEntityByName(
+            Entity.TABLE, FullyQualifiedName.getTableFQN(fqn), "columns,tags", Include.ALL);
+    Column column =
+        table.getColumns().stream()
+            .filter(c -> c.getFullyQualifiedName().equals(fqn))
+            .findFirst()
+            .orElse(null);
+    if (column != null && hasPiiSensitiveTag(column)) {
+      return Collections.nCopies(columnProfiles.size(), new ColumnProfile());
+    }
+    return columnProfiles;
   }
 
   private static TestCase getTestCase(Column column, TestCase testCase) {
@@ -263,5 +284,11 @@ public class PIIMasker {
 
   private static String flagMaskedName(String name) {
     return String.format("%s %s", name, MASKED_NAME);
+  }
+
+  public static User maskUser(Authorizer authorizer, SecurityContext securityContext, User user) {
+    if (authorizer.authorizePII(securityContext, null)) return user;
+    user.setEmail(MASKED_MAIL);
+    return user;
   }
 }

@@ -35,6 +35,7 @@ interface Props {
   entityType: string;
   entityFQN: string;
   onCancel: () => void;
+  onSave: () => void;
 }
 
 export interface CreateAnnouncement {
@@ -47,6 +48,7 @@ export interface CreateAnnouncement {
 const AddAnnouncementModal: FC<Props> = ({
   open,
   onCancel,
+  onSave,
   entityType,
   entityFQN,
 }) => {
@@ -62,8 +64,8 @@ const AddAnnouncementModal: FC<Props> = ({
     endTime,
     description,
   }: CreateAnnouncement) => {
-    const startTimeMs = startTime.unix();
-    const endTimeMs = endTime.unix();
+    const startTimeMs = startTime.valueOf();
+    const endTimeMs = endTime.valueOf();
 
     if (startTimeMs >= endTimeMs) {
       showErrorToast(t('message.announcement-invalid-start-time'));
@@ -85,7 +87,7 @@ const AddAnnouncementModal: FC<Props> = ({
         if (data) {
           showSuccessToast(t('message.announcement-created-successfully'));
         }
-        onCancel();
+        onSave();
       } catch (error) {
         showErrorToast(error as AxiosError);
       } finally {

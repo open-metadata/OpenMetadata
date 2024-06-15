@@ -44,6 +44,7 @@ import {
 } from '../../../utils/FeedUtils';
 import { LinkBlot } from '../../../utils/QuillLink/QuillLink';
 import { insertMention, insertRef } from '../../../utils/QuillUtils';
+import { getSanitizeContent } from '../../../utils/sanitize.utils';
 import { getEntityIcon } from '../../../utils/TableUtils';
 import { editorRef } from '../../common/RichTextEditor/RichTextEditor.interface';
 import './feed-editor.less';
@@ -72,7 +73,9 @@ export const FeedEditor = forwardRef<editorRef, FeedEditorProp>(
   ) => {
     const { t, i18n } = useTranslation();
     const editorRef = useRef<ReactQuill>(null);
-    const [value, setValue] = useState<string>(defaultValue ?? '');
+    const [value, setValue] = useState(() =>
+      getSanitizeContent(defaultValue ?? '')
+    );
     const [isMentionListOpen, toggleMentionList] = useState(false);
     const [isFocused, toggleFocus] = useState(false);
 
@@ -246,11 +249,14 @@ export const FeedEditor = forwardRef<editorRef, FeedEditorProp>(
 
     /**
      * Handle onChange logic and set updated value to state
-     * @param value - updated value
+     * @param updatedValue - updated value
      */
-    const handleOnChange = (value: string) => {
-      setValue(value);
-      onChangeHandler?.(value);
+    const handleOnChange = (updatedValue: string) => {
+      setValue(updatedValue);
+
+      // sanitize the content before sending it to the parent component
+      const sanitizedContent = getSanitizeContent(updatedValue);
+      onChangeHandler?.(sanitizedContent);
     };
 
     /**
@@ -260,7 +266,8 @@ export const FeedEditor = forwardRef<editorRef, FeedEditorProp>(
       getEditorValue() {
         setValue('');
 
-        return HTMLToMarkdown.turndown(value);
+        // sanitize the content before sending it to the parent component
+        return HTMLToMarkdown.turndown(getSanitizeContent(value));
       },
       clearEditorValue() {
         setValue('');

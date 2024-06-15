@@ -79,8 +79,8 @@ def _(config: GCSConfig):
         config.securityConfig.gcpConfig.projectId, MultipleProjectId
     ):
         gcs_config: GCSConfig = deepcopy(config)
-        gcs_config.securityConfig.gcpConfig.projectId = SingleProjectId.parse_obj(
-            gcs_config.securityConfig.gcpConfig.projectId.__root__[0]
+        gcs_config.securityConfig.gcpConfig.projectId = SingleProjectId.model_validate(
+            gcs_config.securityConfig.gcpConfig.projectId.root[0]
         )
     set_google_credentials(gcp_credentials=gcs_config.securityConfig)
     gcs_client = storage.Client()
@@ -100,10 +100,10 @@ def _(config: AzureConfig):
 def set_gcs_datalake_client(config: GCSConfig, project_id: str):
     gcs_config = deepcopy(config)
     if hasattr(gcs_config.securityConfig, "gcpConfig"):
-        gcs_config.securityConfig.gcpConfig.projectId = SingleProjectId.parse_obj(
+        gcs_config.securityConfig.gcpConfig.projectId = SingleProjectId.model_validate(
             project_id
         )
-    return get_datalake_client(config=gcs_config)
+    return get_datalake_client(gcs_config)
 
 
 def get_connection(connection: DatalakeConnection) -> DatalakeClient:

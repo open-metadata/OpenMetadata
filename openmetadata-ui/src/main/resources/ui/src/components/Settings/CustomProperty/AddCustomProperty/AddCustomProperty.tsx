@@ -14,7 +14,7 @@
 import { Button, Col, Form, Row } from 'antd';
 import { AxiosError } from 'axios';
 import { t } from 'i18next';
-import { isUndefined, map, omit, omitBy, startCase } from 'lodash';
+import { isUndefined, omit, omitBy, startCase } from 'lodash';
 import React, {
   FocusEvent,
   useCallback,
@@ -24,6 +24,7 @@ import React, {
 } from 'react';
 import { useHistory, useParams } from 'react-router-dom';
 import {
+  DISABLED_PROPERTY_TYPES,
   ENTITY_REFERENCE_OPTIONS,
   PROPERTY_TYPES_WITH_ENTITY_REFERENCE,
   PROPERTY_TYPES_WITH_FORMAT,
@@ -56,6 +57,8 @@ import { showErrorToast } from '../../../../utils/ToastUtils';
 import ResizablePanels from '../../../common/ResizablePanels/ResizablePanels';
 import ServiceDocPanel from '../../../common/ServiceDocPanel/ServiceDocPanel';
 import TitleBreadcrumb from '../../../common/TitleBreadcrumb/TitleBreadcrumb.component';
+
+type PropertyType = { key: string; label: string; value: string | undefined };
 
 const AddCustomProperty = () => {
   const [form] = Form.useForm();
@@ -94,11 +97,20 @@ const AddCustomProperty = () => {
   );
 
   const propertyTypeOptions = useMemo(() => {
-    return map(propertyTypes, (type) => ({
-      key: type.name,
-      label: startCase(type.displayName ?? type.name),
-      value: type.id,
-    }));
+    return propertyTypes.reduce((acc: PropertyType[], type) => {
+      if (DISABLED_PROPERTY_TYPES.includes(type.name)) {
+        return acc;
+      }
+
+      return [
+        ...acc,
+        {
+          key: type.name,
+          label: startCase(type.displayName ?? type.name),
+          value: type.id,
+        },
+      ];
+    }, []);
   }, [propertyTypes]);
 
   const { hasEnumConfig, hasFormatConfig, hasEntityReferenceConfig } =
@@ -426,12 +438,8 @@ const AddCustomProperty = () => {
       secondPanel={{
         children: secondPanelChildren,
         className: 'service-doc-panel',
-        minWidth: 60,
-        overlay: {
-          displayThreshold: 200,
-          header: t('label.setup-guide'),
-          rotation: 'counter-clockwise',
-        },
+        minWidth: 400,
+        flex: 0.3,
       }}
     />
   );

@@ -12,10 +12,15 @@
 """
 Module for sqlalchemy dialect utils
 """
-
+import traceback
 from typing import Dict, Optional, Tuple
 
 from sqlalchemy.engine import Engine, reflection
+from sqlalchemy.schema import CreateTable, MetaData
+
+from metadata.utils.logger import ingestion_logger
+
+logger = ingestion_logger()
 
 
 @reflection.cache
@@ -125,3 +130,42 @@ def convert_numpy_to_list(data):
     if isinstance(data, dict):
         return {key: convert_numpy_to_list(value) for key, value in data.items()}
     return data
+
+
+@reflection.cache
+def get_all_table_ddls(
+    self, connection, query, schema_name, **kw
+):  # pylint: disable=unused-argument
+    """
+    Method to fetch ddl of all available tables
+    """
+    try:
+        self.all_table_ddls: Dict[Tuple[str, str], str] = {}
+        self.current_db: str = schema_name
+        meta = MetaData()
+        meta.reflect(bind=connection.engine, schema=schema_name)
+        for table in meta.sorted_tables or []:
+            self.all_table_ddls[(table.schema, table.name)] = str(CreateTable(table))
+    except Exception as exc:
+        logger.debug(traceback.format_exc())
+        logger.debug(f"Failed to get table ddls for {schema_name}: {exc}")
+
+
+def get_table_ddl_wrapper(
+    self, connection, query, table_name, schema=None, **kw
+):  # pylint: disable=unused-argument
+    if not hasattr(self, "all_table_ddls") or self.current_db != schema:
+        self.get_all_table_ddls(connection, query, schema)
+    return self.all_table_ddls.get((schema, table_name))
+
+
+def get_table_ddl(
+    self, connection, table_name, schema=None, **kw
+):  # pylint: disable=unused-argument
+    return get_table_ddl_wrapper(
+        self,
+        connection=connection,
+        query=None,
+        table_name=table_name,
+        schema=schema,
+    )

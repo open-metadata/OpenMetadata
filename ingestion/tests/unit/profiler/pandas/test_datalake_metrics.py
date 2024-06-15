@@ -83,7 +83,7 @@ class DatalakeMetricsTest(TestCase):
 
     @classmethod
     @mock.patch(
-        "metadata.profiler.interface.profiler_interface.get_connection",
+        "metadata.profiler.interface.profiler_interface.get_ssl_connection",
         return_value=FakeConnection,
     )
     @mock.patch(
@@ -104,43 +104,43 @@ class DatalakeMetricsTest(TestCase):
             fileFormat="csv",
             columns=[
                 EntityColumn(
-                    name=ColumnName(__root__="name"),
+                    name=ColumnName("name"),
                     dataType=DataType.STRING,
                 ),
                 EntityColumn(
-                    name=ColumnName(__root__="fullname"),
+                    name=ColumnName("fullname"),
                     dataType=DataType.STRING,
                 ),
                 EntityColumn(
-                    name=ColumnName(__root__="nickname"),
+                    name=ColumnName("nickname"),
                     dataType=DataType.STRING,
                 ),
                 EntityColumn(
-                    name=ColumnName(__root__="comments"),
+                    name=ColumnName("comments"),
                     dataType=DataType.STRING,
                 ),
                 EntityColumn(
-                    name=ColumnName(__root__="age"),
+                    name=ColumnName("age"),
                     dataType=DataType.INT,
                 ),
                 EntityColumn(
-                    name=ColumnName(__root__="dob"),
+                    name=ColumnName("dob"),
                     dataType=DataType.DATETIME,
                 ),
                 EntityColumn(
-                    name=ColumnName(__root__="tob"),
+                    name=ColumnName("tob"),
                     dataType=DataType.TIME,
                 ),
                 EntityColumn(
-                    name=ColumnName(__root__="doe"),
+                    name=ColumnName("doe"),
                     dataType=DataType.DATE,
                 ),
                 EntityColumn(
-                    name=ColumnName(__root__="json"),
+                    name=ColumnName("json"),
                     dataType=DataType.JSON,
                 ),
                 EntityColumn(
-                    name=ColumnName(__root__="array"),
+                    name=ColumnName("array"),
                     dataType=DataType.ARRAY,
                 ),
             ],

@@ -11,9 +11,11 @@
       "type": "string"
     },
     "publisherType": {
+      "description": "Publisher Type",
       "$ref": "../system/eventPublisherJob.json#/definitions/publisherType"
     },
     "runMode": {
+      "description": "This schema publisher run modes.",
       "$ref": "../system/eventPublisherJob.json#/definitions/runMode"
     },
     "entities": {

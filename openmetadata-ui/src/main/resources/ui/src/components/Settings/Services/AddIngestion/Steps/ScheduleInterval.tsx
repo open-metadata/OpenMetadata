@@ -12,10 +12,16 @@
  */
 
 import { CheckOutlined } from '@ant-design/icons';
-import { Button, Col, Form } from 'antd';
-import React from 'react';
+import { Button, Col, Form, FormProps } from 'antd';
+import React, { useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { LOADING_STATE } from '../../../../../enums/common.enum';
+import {
+  FieldProp,
+  FieldTypes,
+  FormItemLayout,
+} from '../../../../../interface/FormUtils.interface';
+import { generateFormFields } from '../../../../../utils/formUtils';
 import CronEditor from '../../../../common/CronEditor/CronEditor';
 import { ScheduleIntervalProps } from '../IngestionWorkflow.interface';
 
@@ -29,20 +35,54 @@ const ScheduleInterval = ({
   status,
   submitButtonLabel,
   children,
+  allowEnableDebugLog = false,
+  debugLogInitialValue = false,
 }: ScheduleIntervalProps) => {
   const { t } = useTranslation();
+  const formFields: FieldProp[] = useMemo(
+    () => [
+      {
+        name: 'enableDebugLog',
+        label: t('label.enable-debug-log'),
+        type: FieldTypes.SWITCH,
+        required: false,
+        props: {
+          'data-testid': 'enable-debug-log',
+        },
+        formItemProps: {
+          initialValue: debugLogInitialValue,
+        },
+        id: 'root/enableDebugLog',
+        formItemLayout: FormItemLayout.HORIZONTAL,
+      },
+    ],
+    [debugLogInitialValue]
+  );
+
+  const handleFormSubmit: FormProps['onFinish'] = useCallback(
+    (data) => {
+      onDeploy({
+        enableDebugLog: data.enableDebugLog,
+      });
+    },
+    [onDeploy]
+  );
 
   return (
     <Form
       data-testid="schedule-intervel-container"
       layout="vertical"
-      onFinish={onDeploy}>
+      onFinish={handleFormSubmit}>
       <CronEditor
         disabledCronChange={disabledCronChange}
         includePeriodOptions={includePeriodOptions}
         value={scheduleInterval}
         onChange={onChange}
       />
+
+      {allowEnableDebugLog && (
+        <div className="mt-4">{generateFormFields(formFields)}</div>
+      )}
 
       {children}
 

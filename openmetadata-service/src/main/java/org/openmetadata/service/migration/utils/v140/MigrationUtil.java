@@ -3,6 +3,7 @@ package org.openmetadata.service.migration.utils.v140;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import java.util.UUID;
 import javax.json.Json;
 import javax.json.JsonArray;
 import javax.json.JsonArrayBuilder;
@@ -16,9 +17,12 @@ import org.json.JSONObject;
 import org.openmetadata.schema.api.services.CreateDatabaseService;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.events.EventSubscription;
+import org.openmetadata.schema.tests.type.TestCaseResolutionStatus;
 import org.openmetadata.schema.type.PartitionColumnDetails;
 import org.openmetadata.schema.type.PartitionIntervalTypes;
+import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.TablePartition;
+import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.resources.databases.DatasourceConfig;
 import org.openmetadata.service.util.JsonUtils;
@@ -33,6 +37,13 @@ public class MigrationUtil {
 
   private static final String POSTGRES_QUERY_TABLES_WITH_PARTITION =
       "SELECT json " + "FROM table_entity " + "WHERE json->'tablePartition' IS NOT NULL";
+
+  private static final String TEST_CASE_RESOLUTION_QUERY =
+      "SELECT json FROM test_case_resolution_status_time_series";
+  private static final String MYSQL_TEST_CASE_RESOLUTION_UPDATE_QUERY =
+      "UPDATE test_case_resolution_status_time_series SET json = :json WHERE id = :id";
+  private static final String POSTGRES_TEST_CASE_RESOLUTION_UPDATE_QUERY =
+      "UPDATE test_case_resolution_status_time_series SET json = :json::jsonb WHERE id = :id";
 
   private MigrationUtil() {
     /* Cannot create object  util class*/
@@ -61,6 +72,52 @@ public class MigrationUtil {
       }
     } catch (Exception ex) {
       LOG.warn("Error running the Generic to Webhook migration ", ex);
+    }
+  }
+
+  public static void migrateTestCaseResolution(Handle handle, CollectionDAO collectionDAO) {
+    try {
+      handle
+          .createQuery(TEST_CASE_RESOLUTION_QUERY)
+          .mapToMap()
+          .forEach(
+              row -> {
+                try {
+                  TestCaseResolutionStatus testCaseResolutionStatus =
+                      JsonUtils.readValue(
+                          row.get("json").toString(), TestCaseResolutionStatus.class);
+                  if (testCaseResolutionStatus.getTestCaseReference() != null) {
+                    UUID fromId = testCaseResolutionStatus.getTestCaseReference().getId();
+                    UUID toId = testCaseResolutionStatus.getId();
+                    // Store the test case <-> incident relationship
+                    collectionDAO
+                        .relationshipDAO()
+                        .insert(
+                            fromId,
+                            toId,
+                            Entity.TEST_CASE,
+                            Entity.TEST_CASE_RESOLUTION_STATUS,
+                            Relationship.PARENT_OF.ordinal(),
+                            null);
+                    // Remove the test case reference from the test case resolution status
+                    testCaseResolutionStatus.setTestCaseReference(null);
+                    String json = JsonUtils.pojoToJson(testCaseResolutionStatus);
+                    String updateQuery = MYSQL_TEST_CASE_RESOLUTION_UPDATE_QUERY;
+                    if (Boolean.FALSE.equals(DatasourceConfig.getInstance().isMySQL())) {
+                      updateQuery = POSTGRES_TEST_CASE_RESOLUTION_UPDATE_QUERY;
+                    }
+                    handle
+                        .createUpdate(updateQuery)
+                        .bind("json", json)
+                        .bind("id", toId.toString())
+                        .execute();
+                  }
+                } catch (Exception ex) {
+                  LOG.warn("Error during the test case resolution migration due to ", ex);
+                }
+              });
+    } catch (Exception ex) {
+      LOG.warn("Error running the test case resolution migration ", ex);
     }
   }
 

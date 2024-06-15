@@ -12,6 +12,7 @@
  */
 import { fireEvent, render } from '@testing-library/react';
 import React from 'react';
+import { LineageLayerView } from '../../../context/LineageProvider/LineageProvider.interface';
 import { LOADING_STATE } from '../../../enums/common.enum';
 import { MOCK_LINEAGE_DATA } from '../../../mocks/Lineage.mock';
 import CustomControlsComponent from './CustomControls.component';
@@ -19,11 +20,15 @@ import CustomControlsComponent from './CustomControls.component';
 const mockOnOptionSelect = jest.fn();
 const mockOnLineageConfigUpdate = jest.fn();
 const mockOnEditLineageClick = jest.fn();
-const mockOnExpandColumnClick = jest.fn();
 const mockHandleFullScreenViewClick = jest.fn();
 const mockOnExitFullScreenViewClick = jest.fn();
 const mockOnZoomHandler = jest.fn();
 const mockZoomValue = 1;
+const mockOnExportClick = jest.fn();
+
+jest.mock('./LineageSearchSelect/LineageSearchSelect', () =>
+  jest.fn().mockReturnValue(<p>LineageSearchSelect</p>)
+);
 
 jest.mock('../../Explore/ExploreQuickFilters', () =>
   jest.fn().mockReturnValue(<p>ExploreQuickFilters</p>)
@@ -44,8 +49,9 @@ jest.mock('reactflow', () => ({
 
 jest.mock('../../../context/LineageProvider/LineageProvider', () => ({
   useLineageProvider: jest.fn().mockImplementation(() => ({
-    toggleColumnView: mockOnExpandColumnClick,
     onLineageEditClick: mockOnEditLineageClick,
+    onExportClick: mockOnExportClick,
+    activeLayer: [LineageLayerView.COLUMN],
   })),
 }));
 
@@ -85,16 +91,6 @@ describe('CustomControls', () => {
     expect(mockOnEditLineageClick).toHaveBeenCalled();
   });
 
-  it('calls onExpandColumnClick on Expand Column button click', () => {
-    const { getByTestId } = render(
-      <CustomControlsComponent {...customProps} />
-    );
-    const expandColumnButton = getByTestId('expand-column');
-    fireEvent.click(expandColumnButton);
-
-    expect(mockOnExpandColumnClick).toHaveBeenCalled();
-  });
-
   it('calls mockHandleFullScreenViewClick on Full Screen button click', () => {
     const { getByTestId } = render(
       <CustomControlsComponent {...customProps} />
@@ -103,6 +99,16 @@ describe('CustomControls', () => {
     fireEvent.click(fullScreenButton);
 
     expect(mockHandleFullScreenViewClick).toHaveBeenCalled();
+  });
+
+  it('calls mockOnExportClick on Export click', () => {
+    const { getByTestId } = render(
+      <CustomControlsComponent {...customProps} />
+    );
+    const fullScreenButton = getByTestId('lineage-export');
+    fireEvent.click(fullScreenButton);
+
+    expect(mockOnExportClick).toHaveBeenCalled();
   });
 
   it('calls mockOnExitFullScreenViewClick on Exit Full Screen button click', () => {

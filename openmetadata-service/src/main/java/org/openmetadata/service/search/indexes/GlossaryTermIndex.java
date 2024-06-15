@@ -5,18 +5,16 @@ import java.util.List;
 import java.util.Map;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.search.SearchIndexUtils;
 import org.openmetadata.service.search.models.SearchSuggest;
-import org.openmetadata.service.util.JsonUtils;
 
 public class GlossaryTermIndex implements SearchIndex {
   final GlossaryTerm glossaryTerm;
-  final List<String> excludeFields = List.of("changeDescription");
 
   public GlossaryTermIndex(GlossaryTerm glossaryTerm) {
     this.glossaryTerm = glossaryTerm;
   }
 
+  @Override
   public List<SearchSuggest> getSuggest() {
     List<SearchSuggest> suggest = new ArrayList<>();
     suggest.add(SearchSuggest.builder().input(glossaryTerm.getName()).weight(5).build());
@@ -26,9 +24,12 @@ public class GlossaryTermIndex implements SearchIndex {
     return suggest;
   }
 
-  public Map<String, Object> buildESDoc() {
-    Map<String, Object> doc = JsonUtils.getMap(glossaryTerm);
-    SearchIndexUtils.removeNonIndexableFields(doc, excludeFields);
+  @Override
+  public Object getEntity() {
+    return glossaryTerm;
+  }
+
+  public Map<String, Object> buildSearchIndexDocInternal(Map<String, Object> doc) {
     Map<String, Object> commonAttributes =
         getCommonAttributesMap(glossaryTerm, Entity.GLOSSARY_TERM);
     doc.putAll(commonAttributes);

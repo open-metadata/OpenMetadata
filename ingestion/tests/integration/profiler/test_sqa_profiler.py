@@ -112,7 +112,7 @@ class TestSQAProfiler(TestCase):
 
         tables: List[Table] = self.metadata.list_all_entities(Table)
         for table in tables:
-            if table.name != "users":
+            if table.name.root != "users":
                 continue
             table = self.metadata.get_latest_table_profile(table.fullyQualifiedName)
             columns = table.columns
@@ -162,7 +162,7 @@ class TestSQAProfiler(TestCase):
 
         tables: List[Table] = self.metadata.list_all_entities(Table)
         for table in tables:
-            if table.name != "users":
+            if table.name.root != "users":
                 continue
             table = self.metadata.get_latest_table_profile(table.fullyQualifiedName)
             columns = table.columns

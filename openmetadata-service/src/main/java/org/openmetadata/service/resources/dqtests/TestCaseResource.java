@@ -16,6 +16,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import java.io.IOException;
 import java.util.List;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import javax.json.JsonPatch;
 import javax.validation.Valid;
 import javax.validation.constraints.Max;
@@ -42,6 +43,7 @@ import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.data.RestoreEntity;
 import org.openmetadata.schema.api.tests.CreateLogicalTestCases;
 import org.openmetadata.schema.api.tests.CreateTestCase;
+import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.tests.TestCase;
 import org.openmetadata.schema.tests.TestSuite;
 import org.openmetadata.schema.tests.type.TestCaseResult;
@@ -85,8 +87,9 @@ import org.openmetadata.service.util.ResultList;
 public class TestCaseResource extends EntityResource<TestCase, TestCaseRepository> {
   public static final String COLLECTION_PATH = "/v1/dataQuality/testCases";
 
-  static final String FIELDS = "owner,testSuite,testDefinition,testSuites,incidentId,domain";
-  static final String SEARCH_FIELDS_EXCLUDE = "testPlatforms";
+  static final String FIELDS = "owner,testSuite,testDefinition,testSuites,incidentId,domain,tags";
+  static final String SEARCH_FIELDS_EXCLUDE =
+      "testPlatforms,table,database,databaseSchema,service,testSuite";
 
   @Override
   public TestCase addHref(UriInfo uriInfo, TestCase test) {
@@ -349,12 +352,26 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
           @QueryParam("sortType")
           @DefaultValue("desc")
           String sortType,
+      @Parameter(
+              description = "Return only required fields in the response",
+              schema = @Schema(type = "string"))
+          @QueryParam("includeFields")
+          String includeFields,
       @Parameter(description = "domain filter to use in list", schema = @Schema(type = "string"))
           @QueryParam("domain")
           String domain,
       @Parameter(description = "owner filter to use in list", schema = @Schema(type = "string"))
           @QueryParam("owner")
           String owner,
+      @Parameter(description = "tags filter to use in list", schema = @Schema(type = "string"))
+          @QueryParam("tags")
+          String tags,
+      @Parameter(description = "tier filter to use in list", schema = @Schema(type = "string"))
+          @QueryParam("tier")
+          String tier,
+      @Parameter(description = "service filter to use in list", schema = @Schema(type = "string"))
+          @QueryParam("serviceName")
+          String serviceName,
       @Parameter(
               description = "search query term to use in list",
               schema = @Schema(type = "string"))
@@ -375,16 +392,31 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
     searchListFilter.addQueryParam("testPlatforms", testPlatforms);
     searchListFilter.addQueryParam("q", q);
     searchListFilter.addQueryParam("excludeFields", SEARCH_FIELDS_EXCLUDE);
+    searchListFilter.addQueryParam("includeFields", includeFields);
     searchListFilter.addQueryParam("domain", domain);
+    searchListFilter.addQueryParam("tags", tags);
+    searchListFilter.addQueryParam("tier", tier);
+    searchListFilter.addQueryParam("serviceName", serviceName);
     if (!nullOrEmpty(owner)) {
       EntityInterface entity;
+      StringBuffer owners = new StringBuffer();
       try {
-        entity = Entity.getEntityByName(Entity.USER, owner, "", ALL);
+        User user = (User) Entity.getEntityByName(Entity.USER, owner, "teams", ALL);
+        owners.append(user.getId().toString());
+        if (!nullOrEmpty(user.getTeams())) {
+          owners
+              .append(",")
+              .append(
+                  user.getTeams().stream()
+                      .map(t -> t.getId().toString())
+                      .collect(Collectors.joining(",")));
+        }
       } catch (Exception e) {
-        // If the owner is not a user, then we'll try to geta team
+        // If the owner is not a user, then we'll try to get team
         entity = Entity.getEntityByName(Entity.TEAM, owner, "", ALL);
+        owners.append(entity.getId().toString());
       }
-      searchListFilter.addQueryParam("owner", entity.getId().toString());
+      searchListFilter.addQueryParam("owner", owners.toString());
     }
 
     if (startTimestamp != null) {
@@ -737,6 +769,11 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
           @QueryParam("hardDelete")
           @DefaultValue("false")
           boolean hardDelete,
+      @Parameter(
+              description = "Recursively delete this entity and it's children. (Default `false`)")
+          @DefaultValue("false")
+          @QueryParam("recursive")
+          boolean recursive,
       @Parameter(description = "Id of the test case", schema = @Schema(type = "UUID"))
           @PathParam("id")
           UUID id) {
@@ -746,7 +783,7 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
     OperationContext operationContext =
         new OperationContext(Entity.TABLE, MetadataOperation.EDIT_TESTS);
     authorizer.authorize(securityContext, operationContext, resourceContext);
-    return delete(uriInfo, securityContext, id, false, hardDelete);
+    return delete(uriInfo, securityContext, id, recursive, hardDelete);
   }
 
   @DELETE
@@ -767,11 +804,20 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
           @DefaultValue("false")
           boolean hardDelete,
       @Parameter(
+              description = "Recursively delete this entity and it's children. (Default `false`)")
+          @DefaultValue("false")
+          @QueryParam("recursive")
+          boolean recursive,
+      @Parameter(
               description = "Fully qualified name of the test case",
               schema = @Schema(type = "string"))
           @PathParam("fqn")
           String fqn) {
-    return deleteByName(uriInfo, securityContext, fqn, false, hardDelete);
+    ResourceContextInterface resourceContext = TestCaseResourceContext.builder().name(fqn).build();
+    OperationContext operationContext =
+        new OperationContext(Entity.TABLE, MetadataOperation.EDIT_TESTS);
+    authorizer.authorize(securityContext, operationContext, resourceContext);
+    return deleteByName(uriInfo, securityContext, fqn, recursive, hardDelete);
   }
 
   @DELETE
@@ -959,7 +1005,8 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
       @Parameter(description = "Id of the test case", schema = @Schema(type = "UUID"))
           @PathParam("id")
           UUID id,
-      @Valid TableData tableData) {
+      @Valid TableData tableData,
+      @DefaultValue("true") @QueryParam("validate") boolean validate) {
     OperationContext operationContext =
         new OperationContext(entityType, MetadataOperation.EDIT_TESTS);
     authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
@@ -968,7 +1015,35 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
         || !testCase.getTestCaseResult().getTestCaseStatus().equals(TestCaseStatus.Failed)) {
       throw new IllegalArgumentException("Failed rows can only be added to a failed test case.");
     }
-    return addHref(uriInfo, repository.addFailedRowsSample(testCase, tableData));
+    return addHref(uriInfo, repository.addFailedRowsSample(testCase, tableData, validate));
+  }
+
+  @PUT
+  @Path("/{id}/inspectionQuery")
+  @Operation(
+      operationId = "addInspectionQuery",
+      summary = "Add inspection query data",
+      description = "Add an inspection query for this test case.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Successfully update the test case with an inspection query.",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = TestCase.class)))
+      })
+  public TestCase addInspectionQuery(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Id of the test case", schema = @Schema(type = "UUID"))
+          @PathParam("id")
+          UUID id,
+      @Valid String query) {
+    OperationContext operationContext =
+        new OperationContext(entityType, MetadataOperation.EDIT_TESTS);
+    authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
+    return addHref(uriInfo, repository.addInspectionQuery(uriInfo, id, query));
   }
 
   @GET

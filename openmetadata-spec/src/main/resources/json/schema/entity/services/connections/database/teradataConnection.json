@@ -1,0 +1,109 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/services/connections/database/teradataConnection.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "TeradataConnection",
+  "description": "Teradata Database Connection Config",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.services.connections.database.TeradataConnection",
+  "definitions": {
+    "teradataType": {
+      "description": "Service type.",
+      "type": "string",
+      "enum": [
+        "Teradata"
+      ],
+      "default": "Teradata"
+    },
+    "teradataScheme": {
+      "description": "SQLAlchemy driver scheme options.",
+      "type": "string",
+      "enum": [
+        "teradatasql"
+      ],
+      "default": "teradatasql"
+    }
+  },
+  "properties": {
+    "type": {
+      "title": "Service Type",
+      "description": "Service Type",
+      "$ref": "#/definitions/teradataType",
+      "default": "Teradata"
+    },
+    "scheme": {
+      "title": "Connection Scheme",
+      "description": "SQLAlchemy driver scheme options.",
+      "$ref": "#/definitions/teradataScheme",
+      "default": "teradatasql"
+    },
+    "username": {
+      "title": "Username",
+      "description": "Username to connect to Teradata. This user should have privileges to read all the metadata in Teradata.",
+      "type": "string"
+    },
+    "password": {
+      "title": "Password",
+      "description": "Password to connect to Teradata.",
+      "type": "string",
+      "format": "password"
+    },
+    "logmech": {
+      "title": "LOGMECH",
+      "description": "Specifies the logon authentication method. Possible values are TD2 (the default), JWT, LDAP, KRB5 for Kerberos, or TDNEGO",
+      "type": "string",
+      "enum": ["TD2", "JWT", "KRB5", "CUSTOM", "TDNEGO"],
+      "default": "TD2"
+    },
+    "logdata": {
+      "title": "Extra data for the chosen logon authentication method (LOGDATA)",
+      "description": "Specifies additional data needed by a logon mechanism, such as a secure token, Distinguished Name, or a domain/realm name. LOGDATA values are specific to each logon mechanism.",
+      "type": "string"
+    },
+    "hostPort": {
+      "title": "Host and Port",
+      "description": "Host and port of the Teradata service.",
+      "type": "string"
+    },
+    "tmode": {
+      "title": "Transaction mode",
+      "description": "Specifies the transaction mode for the connection",
+      "type": "string",
+      "enum": ["ANSI", "TERA", "DEFAULT"],
+      "default": "DEFAULT"
+    },
+    "account": {
+      "title": "Teradata Database account",
+      "description": "Specifies an account string to override the default account string defined for the database user. Accounts are used by the database for workload management and resource usage monitoring.",
+      "type": "string"
+    },
+    "connectionOptions": {
+      "title": "Connection Options",
+      "$ref": "../connectionBasicType.json#/definitions/connectionOptions"
+    },
+    "connectionArguments": {
+      "title": "Connection Arguments",
+      "$ref": "../connectionBasicType.json#/definitions/connectionArguments"
+    },
+    "supportsMetadataExtraction": {
+      "title": "Supports Metadata Extraction",
+      "$ref": "../connectionBasicType.json#/definitions/supportsMetadataExtraction"
+    },
+    "supportsProfiler": {
+      "title": "Supports Profiler",
+      "$ref": "../connectionBasicType.json#/definitions/supportsProfiler"
+    },
+    "supportsQueryComment": {
+      "title": "Supports Query Comment",
+      "$ref": "../connectionBasicType.json#/definitions/supportsQueryComment"
+    },
+    "sampleDataStorageConfig": {
+      "title": "Storage Config for Sample Data",
+      "$ref": "../connectionBasicType.json#/definitions/sampleDataStorageConfig"
+    }
+  },
+  "additionalProperties": false,
+  "required": [
+    "hostPort",
+    "username"
+  ]
+}

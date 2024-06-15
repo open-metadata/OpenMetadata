@@ -26,6 +26,12 @@ import {
 } from './common';
 import { visitEntityDetailsPage } from './Utils/Entity';
 
+const selectDomain = (domainObj) => {
+  cy.get('[data-testid="domain-left-panel"]')
+    .find(`li[data-menu-id$='${domainObj.fullyQualifiedName}']`)
+    .click();
+};
+
 export const validateDomainForm = () => {
   // error messages
   cy.get('#name_help')
@@ -97,14 +103,14 @@ const updateOwner = (newOwner) => {
 };
 
 const goToAssetsTab = (domainObj) => {
-  cy.get('[data-testid="domain-left-panel"]').contains(domainObj.name).click();
+  selectDomain(domainObj);
   checkDisplayName(domainObj.name);
   cy.get('[data-testid="assets"]').should('be.visible').click();
   cy.get('.ant-tabs-tab-active').contains('Assets').should('be.visible');
 };
 
 const goToDataProductsTab = (domainObj) => {
-  cy.get('[data-testid="domain-left-panel"]').contains(domainObj.name).click();
+  selectDomain(domainObj);
   checkDisplayName(domainObj.name);
   cy.get('[data-testid="data_products"]').click();
   cy.get('.ant-tabs-tab-active').contains('Data Products').should('be.visible');
@@ -165,12 +171,6 @@ export const removeAssets = (domainObj) => {
     .contains(entity.term)
     .click();
 
-  visitEntityDetailsPage({
-    term: entity.term,
-    serviceName: entity.serviceName,
-    entity: entity.entity,
-  });
-
   cy.get('[data-testid="add-domain"]').click();
   verifyResponseStatusCode('@domains', 200);
   cy.get('[data-testid="remove-owner"]').click();
@@ -200,7 +200,7 @@ const updateDescription = (newDescription) => {
 };
 
 const fillForm = (formObj, type) => {
-  interceptURL('GET', '/api/v1/users?limit=25&isBot=false', 'getUsers');
+  interceptURL('GET', '/api/v1/users?*isBot=false*', 'getUsers');
   cy.get('[data-testid="name"]').scrollIntoView().clear().type(formObj.name);
 
   cy.get(descriptionBox)
@@ -224,14 +224,20 @@ const fillForm = (formObj, type) => {
   cy.get('[data-testid="owner-container"]').children().should('have.length', 1);
 
   cy.get('[data-testid="add-experts"]').scrollIntoView().click();
+  verifyResponseStatusCode('@getUsers', 200);
+  interceptURL(
+    'GET',
+    `api/v1/search/query?q=*${encodeURI(formObj.experts)}*`,
+    'searchExpert'
+  );
   cy.get('.user-select-popover [data-testid="searchbar"]').type(
     formObj.experts
   );
-  cy.get(`[title="${formObj.experts}"]`).scrollIntoView().click();
-  cy.get('[data-testid="selectable-list-update-btn"]')
-    .should('exist')
-    .and('be.visible')
+  verifyResponseStatusCode('@searchExpert', 200);
+  cy.get(`.user-select-popover [title="${formObj.experts}"]`)
+    .scrollIntoView()
     .click();
+  cy.get('[data-testid="selectable-list-update-btn"]').click();
 
   cy.get('[data-testid="delete-modal"]').should('not.exist');
   cy.get('[data-testid="experts-container"]')
@@ -309,7 +315,7 @@ export const deleteDomain = (domainObj) => {
 };
 
 export const verifyDomain = (domainObj) => {
-  cy.get('[data-testid="domain-left-panel"]').contains(domainObj.name).click();
+  selectDomain(domainObj);
   checkDisplayName(domainObj.name);
 
   cy.get('[data-testid="viewer-container"]')
@@ -332,7 +338,7 @@ export const verifyDomain = (domainObj) => {
 };
 
 export const updateDomainDetails = (domainObj) => {
-  cy.get('[data-testid="domain-left-panel"]').contains(domainObj.name).click();
+  selectDomain(domainObj);
   checkDisplayName(domainObj.name);
 
   // Update description
@@ -343,7 +349,7 @@ export const updateDomainDetails = (domainObj) => {
 };
 
 export const createDataProducts = (dataProduct, domainObj) => {
-  cy.get('[data-testid="domain-left-panel"]').contains(domainObj.name).click();
+  selectDomain(domainObj);
   checkDisplayName(domainObj.name);
 
   cy.get('[data-testid="domain-details-add-button"]').click();
@@ -369,7 +375,7 @@ export const createDataProducts = (dataProduct, domainObj) => {
 
 export const renameDomain = (domainObj) => {
   interceptURL('PATCH', `/api/v1/domains/*`, 'patchName&DisplayName');
-  cy.get('[data-testid="domain-left-panel"]').contains(domainObj.name).click();
+  selectDomain(domainObj);
   checkDisplayName(domainObj.name);
 
   cy.get('[data-testid="manage-button"]').click();

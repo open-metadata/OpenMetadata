@@ -34,8 +34,8 @@ class OMetaSuggestionsMixin:
         Update an existing Suggestion with new fields
         """
         resp = self.client.put(
-            f"{self.get_suffix(Suggestion)}/{str(suggestion.id.__root__)}",
-            data=suggestion.json(),
+            f"{self.get_suffix(Suggestion)}/{str(suggestion.root.id.root)}",
+            data=suggestion.model_dump_json(),
         )
 
         return Suggestion(**resp)

@@ -425,7 +425,7 @@ const TestSuitePipelineTab = ({ testSuite }: Props) => {
                   <Tooltip
                     title={
                       editPermission
-                        ? t('label.unpause')
+                        ? t('label.play')
                         : t('message.no-permission-for-action')
                     }>
                     <Button
@@ -437,7 +437,7 @@ const TestSuitePipelineTab = ({ testSuite }: Props) => {
                       onClick={() =>
                         handleEnableDisableIngestion(record.id || '')
                       }>
-                      {t('label.unpause')}
+                      {t('label.play')}
                     </Button>
                   </Tooltip>
                 )}

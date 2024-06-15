@@ -29,8 +29,13 @@ jest.mock('react-router-dom', () => ({
   }),
 }));
 
-jest.mock('../../components/PageLayoutV1/PageLayoutV1', () => {
-  return jest.fn().mockImplementation(({ children }) => <div>{children}</div>);
+jest.mock('../common/ResizablePanels/ResizablePanels', () => {
+  return jest.fn().mockImplementation(({ firstPanel, secondPanel }) => (
+    <div>
+      <div>{firstPanel.children}</div>
+      <div>{secondPanel.children}</div>
+    </div>
+  ));
 });
 
 jest.mock('./ExploreSearchCard/ExploreSearchCard', () => {

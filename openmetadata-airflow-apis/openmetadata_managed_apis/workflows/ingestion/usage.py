@@ -31,7 +31,6 @@ from metadata.generated.schema.metadataIngestion.workflow import (
     Processor,
     Stage,
 )
-from metadata.ingestion.models.encoders import show_secrets_encoder
 from metadata.workflow.usage import UsageWorkflow
 from metadata.workflow.workflow_output_handler import print_status
 
@@ -48,7 +47,7 @@ def usage_workflow(workflow_config: OpenMetadataWorkflowConfig):
 
     set_operator_logger(workflow_config)
 
-    config = json.loads(workflow_config.json(encoder=show_secrets_encoder))
+    config = json.loads(workflow_config.model_dump_json())
     workflow = UsageWorkflow.create(config)
 
     workflow.execute()
@@ -83,7 +82,7 @@ def build_usage_config_from_file(
             config={"filename": filename},
         ),
         workflowConfig=build_workflow_config_property(ingestion_pipeline),
-        ingestionPipelineFQN=ingestion_pipeline.fullyQualifiedName.__root__,
+        ingestionPipelineFQN=ingestion_pipeline.fullyQualifiedName.root,
     )
 
 

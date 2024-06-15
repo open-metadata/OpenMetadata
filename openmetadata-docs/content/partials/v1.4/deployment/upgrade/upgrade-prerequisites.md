@@ -17,40 +17,22 @@ you will be able to get back to the previous version without any loss.
 
 You can learn more about how the migration process works [here](/deployment/upgrade/how-does-it-work).
 
+**During the upgrade, please note that the backup is only for safety and should not be used to restore data to a higher version**.
+
 {% /note %}
 
-- To run the backup and restore commands, please make sure that you are always in the latest `openmetadata-ingestion` version to have all the improvements shipped in the CLI.
-- Also, make sure you have connectivity between your database (MySQL / PostgreSQL) and the host machine where you will be running the below commands.
+Since version 1.4.0, **OpenMetadata encourages using the builtin-tools for creating logical backups of the metadata**:
 
-**1. Create a Virtual Environment and Install the Backup CLI**
+- [mysqldump](https://dev.mysql.com/doc/refman/8.0/en/mysqldump.html) for MySQL
+- [pg_dump](https://www.postgresql.org/docs/current/app-pgdump.html) for Postgres
 
-```python
-python -m venv venv
-source venv/bin/activate
-pip install openmetadata-ingestion~=1.3.0
-```
+For PROD deployment we recommend users to rely on cloud services for their databases, be it [AWS RDS](https://docs.aws.amazon.com/rds/),
+[Azure SQL](https://azure.microsoft.com/en-in/products/azure-sql/database) or [GCP Cloud SQL](https://cloud.google.com/sql/).
 
-Validate the installed metadata version with `python -m metadata --version`
-
-**2. Run the Backup**
-
-If using MySQL:
-
-```bash
-python -m metadata backup -u openmetadata_user -p openmetadata_password -H mysql -d openmetadata_db --port 3306
-```
-
-If using Postgres:
-
-```bash
-python -m metadata backup -u openmetadata_user -p openmetadata_password -H postgresql -d openmetadata_db --port 5432 -s public
-```
-
-**3. Store the backup file somewhere safe**
-
-The above command will generate a backup file with extension as `.sql`. You can copy the name from the backup command output.
-
-Make sure to store it somewhere safe in case you need to restore the data later.
+If you're a user of these services, you can leverage their backup capabilities directly:
+- [Creating a DB snapshot in AWS](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/USER_CreateSnapshot.html)
+- [Backup and restore in Azure MySQL](https://learn.microsoft.com/en-us/azure/mysql/single-server/concepts-backup)
+- [About GCP Cloud SQL backup](https://cloud.google.com/sql/docs/mysql/backup-recovery/backups)
 
 You can refer to the following guide to get more details about the backup and restore:
 
@@ -102,25 +84,30 @@ during the migration after bumping this value, you can increase them further.
 
 After the migration is finished, you can revert this changes.
 
-# Deprecation Notice
-
-- Check the updated [docs](/connectors/pipeline/airflow/configuring-lineage#configuring-dag-lineage) on how to configure Airflow DAG's lineage.
-  We will deprecate the dictionary annotation in the 1.4 release, since the new annotation allows you to define lineage between
-  assets other than Tables.
-
-# Breaking Changes
+# Backward Incompatible Changes
 
 ## 1.4.0
 
-### Metadata Docker CLI
+### Tooling
 
-For the past releases, we have been updating the documentation to point users to directly run the docker quickstart
-with the docker compose files in the release page ([docs](quick-start/local-docker-deployment)).
+- **Metadata Backup & Restore**: The Metadata Backup/Recovery has been deprecated, and no further support will be provided. Users are advised to use database-native tools to back up data and store it in their object store for recovery.
+  You can check the [docs](/deployment/backup-restore-metadata) for more information.
+- **Metadata Docker CLI**: For the past releases, we have been updating the documentation to point users to directly run the docker quickstart
+  with the docker compose files in the release page ([docs](quick-start/local-docker-deployment)). In this release, we're completely removing the support for `metadata docker`.
+- **bootstrap_storage.sh**: We have deprecated `bootstrap/bootstrap_storage.sh` and replaced it with `bootstrap/openmetadata-ops.sh`. The documentation has been updated accordingly.
 
-In this release, we're completely removing the support for `metadata docker`.
 
-### Metadata Backup & Restore
+### UI
 
-On the `metadata` CLI, we are deprecating the `backup` and `restore` commands, since users can now completely
-rely on native database tools both for MySQL and PostgreSQL. Check the [docs](/deployment/backup-restore-metadata)
-for more information
+- **Activity Feed**: The Activity Feed has been improved with new, updated cards that display critical information such as data quality test case updates, descriptions, tag updates, or asset removal.
+- **Lineage**: The Expand All button has been removed. A new Layers button is introduced in the bottom left corner. With the Layers button, you can add Column Level Lineage or Data Observability details to your Lineage view.
+- **View Definition**: View Definition is now renamed to Schema Definition
+- **Glossary**: Adding Glossary Term view has been improved. Now, we show glossary terms hierarchically, enabling a better understanding of how the terms are set up while labeling a table or dashboard.
+- **Classifications**: users can set it to be mutually exclusive **only** at the time of creation. Once created, you cannot change it back to mutually non-exclusive or vice versa. 
+    This is to prevent conflicts between adding multiple tags that belong to the same classification and later turning the mutually exclusive flag back to true.
+
+### API
+
+- **View Definition**: Table Schema's `ViewDefinition` is now renamed to `SchemaDefinition` to capture Tables' Create Schema.
+- **Bulk Import**: Bulk Import API now creates entities if they are not present during the import.
+- **Test Suites**: Table's `TestSuite` is migrated to an `EntityReference`. Previously it used to store entire payload of `TestSuite`.

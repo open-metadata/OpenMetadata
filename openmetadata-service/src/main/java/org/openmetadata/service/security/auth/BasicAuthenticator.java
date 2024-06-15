@@ -16,6 +16,7 @@ package org.openmetadata.service.security.auth;
 import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
 import static javax.ws.rs.core.Response.Status.INTERNAL_SERVER_ERROR;
 import static javax.ws.rs.core.Response.Status.NOT_IMPLEMENTED;
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.schema.api.teams.CreateUser.CreatePasswordType.ADMIN_CREATE;
 import static org.openmetadata.schema.auth.ChangePasswordRequest.RequestType.SELF;
 import static org.openmetadata.schema.auth.ChangePasswordRequest.RequestType.USER;
@@ -389,7 +390,7 @@ public class BasicAuthenticator implements AuthenticatorHandler {
             .generateJWTToken(
                 storedUser.getName(),
                 getRoleListFromUser(storedUser),
-                storedUser.getIsAdmin(),
+                !nullOrEmpty(storedUser.getIsAdmin()) && storedUser.getIsAdmin(),
                 storedUser.getEmail(),
                 loginConfiguration.getJwtTokenExpiryTime(),
                 false,

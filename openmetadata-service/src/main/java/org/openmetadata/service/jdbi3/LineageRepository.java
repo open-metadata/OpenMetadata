@@ -14,17 +14,25 @@
 package org.openmetadata.service.jdbi3;
 
 import static javax.ws.rs.core.Response.Status.OK;
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
+import static org.openmetadata.csv.CsvUtil.addField;
+import static org.openmetadata.csv.EntityCsv.getCsvDocumentation;
 import static org.openmetadata.service.Entity.CONTAINER;
 import static org.openmetadata.service.Entity.DASHBOARD;
 import static org.openmetadata.service.Entity.DASHBOARD_DATA_MODEL;
 import static org.openmetadata.service.Entity.MLMODEL;
+import static org.openmetadata.service.Entity.PIPELINE;
+import static org.openmetadata.service.Entity.SEARCH_INDEX;
 import static org.openmetadata.service.Entity.TABLE;
 import static org.openmetadata.service.Entity.TOPIC;
 import static org.openmetadata.service.search.SearchClient.GLOBAL_SEARCH_ALIAS;
 import static org.openmetadata.service.search.SearchClient.REMOVE_LINEAGE_SCRIPT;
 
+import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -34,11 +42,13 @@ import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.apache.commons.lang3.tuple.Pair;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.common.utils.CommonUtil;
+import org.openmetadata.csv.CsvUtil;
 import org.openmetadata.schema.api.lineage.AddLineage;
 import org.openmetadata.schema.entity.data.Container;
 import org.openmetadata.schema.entity.data.Dashboard;
 import org.openmetadata.schema.entity.data.DashboardDataModel;
 import org.openmetadata.schema.entity.data.MlModel;
+import org.openmetadata.schema.entity.data.SearchIndex;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.data.Topic;
 import org.openmetadata.schema.type.ColumnLineage;
@@ -49,6 +59,9 @@ import org.openmetadata.schema.type.EventType;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.LineageDetails;
 import org.openmetadata.schema.type.Relationship;
+import org.openmetadata.schema.type.csv.CsvDocumentation;
+import org.openmetadata.schema.type.csv.CsvFile;
+import org.openmetadata.schema.type.csv.CsvHeader;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.exception.EntityNotFoundException;
@@ -128,38 +141,32 @@ public class LineageRepository {
         Entity.getSearchRepository().getIndexMapping(toEntity.getType());
     String destinationIndexName =
         destinationIndexMapping.getIndexName(Entity.getSearchRepository().getClusterAlias());
-    Map<String, Object> relationshipDetails = new HashMap<>();
+    Map<String, Object> relationshipDetails =
+        buildRelationshipDetailsMap(fromEntity, toEntity, lineageDetails);
     Pair<String, String> from = new ImmutablePair<>("_id", fromEntity.getId().toString());
     Pair<String, String> to = new ImmutablePair<>("_id", toEntity.getId().toString());
-    processLineageData(fromEntity, toEntity, lineageDetails, relationshipDetails);
     searchClient.updateLineage(sourceIndexName, from, relationshipDetails);
     searchClient.updateLineage(destinationIndexName, to, relationshipDetails);
   }
 
-  private void processLineageData(
-      EntityReference fromEntity,
-      EntityReference toEntity,
-      LineageDetails lineageDetails,
-      Map<String, Object> relationshipDetails) {
-    Map<String, Object> fromDetails = new HashMap<>();
-    Map<String, Object> toDetails = new HashMap<>();
-    fromDetails.put("id", fromEntity.getId().toString());
-    fromDetails.put("type", fromEntity.getType());
-    fromDetails.put("fqn", fromEntity.getFullyQualifiedName());
-    toDetails.put("id", toEntity.getId().toString());
-    toDetails.put("type", toEntity.getType());
-    toDetails.put("fqn", toEntity.getFullyQualifiedName());
+  public static Map<String, Object> buildEntityRefMap(EntityReference entityRef) {
+    Map<String, Object> details = new HashMap<>();
+    details.put("id", entityRef.getId().toString());
+    details.put("type", entityRef.getType());
+    details.put("fqn", entityRef.getFullyQualifiedName());
+    return details;
+  }
+
+  public static Map<String, Object> buildRelationshipDetailsMap(
+      EntityReference fromEntity, EntityReference toEntity, LineageDetails lineageDetails) {
+    Map<String, Object> relationshipDetails = new HashMap<>();
     relationshipDetails.put(
         "doc_id", fromEntity.getId().toString() + "-" + toEntity.getId().toString());
-    relationshipDetails.put("fromEntity", fromDetails);
-    relationshipDetails.put("toEntity", toDetails);
+    relationshipDetails.put("fromEntity", buildEntityRefMap(fromEntity));
+    relationshipDetails.put("toEntity", buildEntityRefMap(toEntity));
     if (lineageDetails != null) {
-      relationshipDetails.put(
-          "pipeline",
-          JsonUtils.getMap(
-              CommonUtil.nullOrEmpty(lineageDetails.getPipeline())
-                  ? null
-                  : lineageDetails.getPipeline()));
+      // Add Pipeline Details
+      addPipelineDetails(relationshipDetails, lineageDetails.getPipeline());
       relationshipDetails.put(
           "description",
           CommonUtil.nullOrEmpty(lineageDetails.getDescription())
@@ -181,6 +188,25 @@ public class LineageRepository {
           "source",
           CommonUtil.nullOrEmpty(lineageDetails.getSource()) ? null : lineageDetails.getSource());
     }
+    return relationshipDetails;
+  }
+
+  public static void addPipelineDetails(
+      Map<String, Object> relationshipDetails, EntityReference pipelineRef) {
+    if (CommonUtil.nullOrEmpty(pipelineRef)) {
+      relationshipDetails.put(PIPELINE, JsonUtils.getMap(null));
+    } else {
+      Map<String, Object> pipelineMap;
+      if (pipelineRef.getType().equals(PIPELINE)) {
+        pipelineMap =
+            JsonUtils.getMap(
+                Entity.getEntity(pipelineRef, "pipelineStatus,tags,owner", Include.ALL));
+      } else {
+        pipelineMap = JsonUtils.getMap(Entity.getEntity(pipelineRef, "tags,owner", Include.ALL));
+      }
+      relationshipDetails.put("pipelineEntityType", pipelineRef.getType());
+      relationshipDetails.put(PIPELINE, pipelineMap);
+    }
   }
 
   private String validateLineageDetails(
@@ -200,12 +226,92 @@ public class LineageRepository {
     return JsonUtils.pojoToJson(details);
   }
 
+  public final String exportCsv(
+      String fqn,
+      int upstreamDepth,
+      int downstreamDepth,
+      String queryFilter,
+      boolean deleted,
+      String entityType)
+      throws IOException {
+    CsvDocumentation documentation = getCsvDocumentation("lineage");
+    List<CsvHeader> headers = documentation.getHeaders();
+    Map<String, Object> lineageMap =
+        Entity.getSearchRepository()
+            .searchLineageForExport(
+                fqn, upstreamDepth, downstreamDepth, queryFilter, deleted, entityType);
+    CsvFile csvFile = new CsvFile().withHeaders(headers);
+
+    addRecords(csvFile, lineageMap);
+    return CsvUtil.formatCsv(csvFile);
+  }
+
+  private String getStringOrNull(HashMap map, String key) {
+    return nullOrEmpty(map.get(key)) ? "" : map.get(key).toString();
+  }
+
+  private String getStringOrNull(HashMap map, String key, String nestedKey) {
+    return nullOrEmpty(map.get(key))
+        ? ""
+        : getStringOrNull((HashMap<String, Object>) map.get(key), nestedKey);
+  }
+
+  private String processColumnLineage(HashMap lineageMap) {
+
+    if (lineageMap.get("columns") != null) {
+      StringBuilder str = new StringBuilder();
+      Collection collection = (Collection<ColumnLineage>) lineageMap.get("columns");
+      HashSet<HashMap> hashSet = new HashSet<HashMap>(collection);
+      for (HashMap colLineage : hashSet) {
+        for (String fromColumn : (List<String>) colLineage.get("fromColumns")) {
+          str.append(fromColumn);
+          str.append(":");
+          str.append(colLineage.get("toColumn"));
+          str.append(";");
+        }
+      }
+      // remove the last ;
+      return str.toString().substring(0, str.toString().length() - 1);
+    }
+    return "";
+  }
+
+  protected void addRecords(CsvFile csvFile, Map<String, Object> lineageMap) {
+    if (lineageMap.get("edges") != null && lineageMap.get("edges") instanceof Collection<?>) {
+      Collection collection = (Collection<HashMap>) lineageMap.get("edges");
+      HashSet<HashMap> edges = new HashSet<HashMap>(collection);
+      List<List<String>> finalRecordList = csvFile.getRecords();
+      for (HashMap edge : edges) {
+        List<String> recordList = new ArrayList<>();
+        addField(recordList, getStringOrNull(edge, "fromEntity", "id"));
+        addField(recordList, getStringOrNull(edge, "fromEntity", "type"));
+        addField(recordList, getStringOrNull(edge, "fromEntity", "fqn"));
+        addField(recordList, getStringOrNull(edge, "toEntity", "id"));
+        addField(recordList, getStringOrNull(edge, "toEntity", "type"));
+        addField(recordList, getStringOrNull(edge, "toEntity", "fqn"));
+        addField(recordList, getStringOrNull(edge, "description"));
+        addField(recordList, getStringOrNull(edge, "pipeline", "id"));
+        addField(recordList, getStringOrNull(edge, "pipeline", "fullyQualifiedName"));
+        addField(recordList, processColumnLineage(edge));
+        addField(recordList, getStringOrNull(edge, "sqlQuery"));
+        addField(recordList, getStringOrNull(edge, "source"));
+        finalRecordList.add(recordList);
+      }
+      csvFile.withRecords(finalRecordList);
+    }
+  }
+
   private void validateChildren(String columnFQN, EntityReference entityReference) {
     switch (entityReference.getType()) {
       case TABLE -> {
         Table table =
             Entity.getEntity(TABLE, entityReference.getId(), "columns", Include.NON_DELETED);
         ColumnUtil.validateColumnFQN(table.getColumns(), columnFQN);
+      }
+      case SEARCH_INDEX -> {
+        SearchIndex searchIndex =
+            Entity.getEntity(SEARCH_INDEX, entityReference.getId(), "fields", Include.NON_DELETED);
+        ColumnUtil.validateSearchIndexFieldFQN(searchIndex.getFields(), columnFQN);
       }
       case TOPIC -> {
         Topic topic =

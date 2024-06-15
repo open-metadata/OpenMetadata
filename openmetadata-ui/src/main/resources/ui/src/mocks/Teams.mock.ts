@@ -22,6 +22,8 @@
  *  limitations under the License.
  */
 
+import { TeamType } from '../generated/entity/teams/team';
+
 export const MOCK_CURRENT_TEAM = {
   childrenCount: 22,
   defaultRoles: [
@@ -325,3 +327,140 @@ export const MOCK_CSV_TEAM_DATA = {
     },
   ],
 };
+
+export const MOCK_CHILD_TEAMS = [
+  {
+    id: '7df98e19-d2f5-4397-b132-553543b8a33c',
+    teamType: TeamType.BusinessUnit,
+    name: 'Engineering',
+    fullyQualifiedName: 'Engineering',
+    version: 0.1,
+    updatedAt: 1714123568397,
+    updatedBy: 'admin',
+    href: 'http://localhost:8585/api/v1/teams/7df98e19-d2f5-4397-b132-553543b8a33c',
+    parents: [
+      {
+        id: 'a0fb0583-b9b0-4fc4-8435-01acac401bca',
+        type: 'team',
+        name: 'Organization',
+        fullyQualifiedName: 'Organization',
+        description:
+          'Organization under which all the other team hierarchy is created',
+        displayName: 'Organization',
+        deleted: false,
+        href: 'http://localhost:8585/api/v1/teams/a0fb0583-b9b0-4fc4-8435-01acac401bca',
+      },
+    ],
+    childrenCount: 4,
+    userCount: 50,
+    owns: [],
+    isJoinable: true,
+    deleted: false,
+    key: 'Engineering',
+    children: [],
+  },
+  {
+    id: 'f79a6126-0fc3-4a65-9e22-3e64965833be',
+    teamType: TeamType.Department,
+    name: 'Finance',
+    fullyQualifiedName: 'Finance',
+    version: 0.1,
+    updatedAt: 1714123568722,
+    updatedBy: 'admin',
+    href: 'http://localhost:8585/api/v1/teams/f79a6126-0fc3-4a65-9e22-3e64965833be',
+    parents: [
+      {
+        id: 'a0fb0583-b9b0-4fc4-8435-01acac401bca',
+        type: 'team',
+        name: 'Organization',
+        fullyQualifiedName: 'Organization',
+        description:
+          'Organization under which all the other team hierarchy is created',
+        displayName: 'Organization',
+        deleted: false,
+        href: 'http://localhost:8585/api/v1/teams/a0fb0583-b9b0-4fc4-8435-01acac401bca',
+      },
+    ],
+    childrenCount: 3,
+    userCount: 33,
+    owns: [],
+    isJoinable: true,
+    deleted: false,
+    key: 'Finance',
+    children: [],
+  },
+  {
+    id: '7ff84954-632f-4c0c-a35d-c588e32851cf',
+    teamType: TeamType.Group,
+    name: 'Grey',
+    fullyQualifiedName: 'Grey',
+    displayName: 'drey',
+    description: '',
+    version: 0.3,
+    updatedAt: 1714130871577,
+    updatedBy: 'admin',
+    href: 'http://localhost:8585/api/v1/teams/7ff84954-632f-4c0c-a35d-c588e32851cf',
+    parents: [
+      {
+        id: 'a0fb0583-b9b0-4fc4-8435-01acac401bca',
+        type: 'team',
+        name: 'Organization',
+        fullyQualifiedName: 'Organization',
+        description:
+          'Organization under which all the other team hierarchy is created',
+        displayName: 'Organization',
+        deleted: false,
+        href: 'http://localhost:8585/api/v1/teams/a0fb0583-b9b0-4fc4-8435-01acac401bca',
+      },
+    ],
+    childrenCount: 0,
+    userCount: 0,
+    owns: [],
+    isJoinable: true,
+    changeDescription: {
+      fieldsAdded: [],
+      fieldsUpdated: [
+        {
+          name: 'deleted',
+          oldValue: false,
+          newValue: true,
+        },
+      ],
+      fieldsDeleted: [],
+      previousVersion: 0.2,
+    },
+    deleted: true,
+    key: 'Grey',
+  },
+  {
+    id: '8e2e92ee-4fee-4c2d-894d-38c144f49894',
+    teamType: TeamType.Division,
+    displayName: 'Aim_Legal',
+    name: 'Legal',
+    fullyQualifiedName: 'Legal',
+    version: 0.1,
+    updatedAt: 1714123568886,
+    updatedBy: 'admin',
+    href: 'http://localhost:8585/api/v1/teams/8e2e92ee-4fee-4c2d-894d-38c144f49894',
+    parents: [
+      {
+        id: 'a0fb0583-b9b0-4fc4-8435-01acac401bca',
+        type: 'team',
+        name: 'Organization',
+        fullyQualifiedName: 'Organization',
+        description:
+          'Organization under which all the other team hierarchy is created',
+        displayName: 'Organization',
+        deleted: false,
+        href: 'http://localhost:8585/api/v1/teams/a0fb0583-b9b0-4fc4-8435-01acac401bca',
+      },
+    ],
+    childrenCount: 2,
+    userCount: 17,
+    owns: [],
+    isJoinable: true,
+    deleted: false,
+    key: 'Legal',
+    children: [],
+  },
+];

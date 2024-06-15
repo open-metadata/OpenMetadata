@@ -19,13 +19,11 @@ on:
       push_latest_tag_to_release:
         description: "Do you want to update docker image latest tag as well ?"
         type: boolean
-  release:
-    types: [published]
 jobs:
   maven-build:
     runs-on: ubuntu-latest
     steps:
-      
+
       - name: Checkout
         uses: actions/checkout@v3
 
@@ -34,7 +32,7 @@ jobs:
         with:
           java-version: 17
           distribution: 'temurin'
-      
+
       - name: Install antlr cli
         run: |
           sudo make install_antlr_cli
@@ -55,38 +53,7 @@ jobs:
         with:
           name: openmetadata-binary
           path: /home/runner/work/OpenMetadata/OpenMetadata/openmetadata-dist/target/*.tar.gz
- 
-  release-project-event-release:
-    if: github.event_name == 'release'
-    name: Release app with release event
-    runs-on: ubuntu-latest
-    needs: maven-build
-    steps:
-      - name: Check trigger type
-        id: check_trigger
-        run: echo "DOCKER_RELEASE_TAG=1.4.0-SNAPSHOT" >> $GITHUB_OUTPUT
-        
-      - name: Download application from Artifiact
-        uses: actions/download-artifact@v2
-        with:
-          name: openmetadata-binary
 
-      - name: Get release data
-        id: get_release
-        uses: bruceadams/get-release@v1.3.2
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Upload app tar to Github Release
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.get_release.outputs.upload_url }}
-          asset_path: ./openmetadata-${{ steps.check_trigger.outputs.DOCKER_RELEASE_TAG }}.tar.gz
-          asset_name: openmetadata-${{ steps.check_trigger.outputs.DOCKER_RELEASE_TAG }}.tar.gz
-          asset_content_type: application/tar.gz
-          
   release-project-event-workflow_dispatch:
     if: github.event_name == 'workflow_dispatch'
     name: Release app with workflow_dispatch event
@@ -118,52 +85,33 @@ jobs:
 
   push_to_docker_hub:
     runs-on: ubuntu-latest
-    env:
-        DOCKER_RELEASE_TAG: ${{ github.event.inputs.DOCKER_RELEASE_TAG }}
     if: ${{ always() && contains(join(needs.*.result, ','), 'success') }}
-    needs: [release-project-event-workflow_dispatch, release-project-event-release]  
+    needs: [release-project-event-workflow_dispatch]
     steps:
-      - name: Set build arguments
-        run: |
-          echo "BUILD_DATE=$(date -u +'%Y-%m-%dT%H:%M:%SZ')" >> $GITHUB_ENV
-      - name: Check trigger type
-        id: check_trigger
-        if: ${{ env.DOCKER_RELEASE_TAG == '' }} 
-        run: echo "DOCKER_RELEASE_TAG=1.4.0-SNAPSHOT" >> $GITHUB_ENV
-
       - name: Check out the Repo
         uses: actions/checkout@v3
 
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@v2
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v2
-
-      - name: Login to DockerHub
-        uses: docker/login-action@v2
-        with:
-          username: ${{ secrets.DOCKERHUB_OPENMETADATA_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_OPENMETADATA_TOKEN }}
-
-      - name: Process Docker Tags
-        id:  input_check
+      - name: Set build arguments
         run: |
-            if ${{ github.event_name == 'release' }}; then
-                echo "tags=openmetadata/server:${{ env.DOCKER_RELEASE_TAG }},openmetadata/server:latest" >> $GITHUB_OUTPUT
-            elif ${{ github.event_name == 'workflow_dispatch' && inputs.push_latest_tag_to_release }}; then
-                echo "tags=openmetadata/server:${{ env.DOCKER_RELEASE_TAG }},openmetadata/server:latest" >> $GITHUB_OUTPUT
-            else
-                echo "tags=openmetadata/server:${{ env.DOCKER_RELEASE_TAG }}" >> $GITHUB_OUTPUT
-            fi
+          echo "BUILD_DATE=$(date -u +'%Y-%m-%dT%H:%M:%SZ')" >> $GITHUB_ENV
+
+      - name: Prepare for Docker Build&Push
+        id: prepare
+        uses: ./.github/actions/prepare-for-docker-build-and-push
+        with:
+          image: openmetadata/server
+          tag: ${{ inputs.DOCKER_RELEASE_TAG }}
+          push_latest: ${{ inputs.push_latest_tag_to_release }}
+          dockerhub_username: ${{ secrets.DOCKERHUB_OPENMETADATA_USERNAME }}
+          dockerhub_token: ${{ secrets.DOCKERHUB_OPENMETADATA_TOKEN }}
 
       - name: Build and push if event is workflow_dispatch and input is checked
         uses: docker/build-push-action@v3
         with:
           context: .
           platforms: linux/amd64,linux/arm64
-          push: ${{ github.event_name == 'release' || github.event_name == 'workflow_dispatch' }}
-          tags: ${{ steps.input_check.outputs.tags }}
+          push: true
+          tags: ${{ steps.prepare.outputs.tags }}
           file: ./docker/docker-compose-quickstart/Dockerfile
           build-args: |
             BUILD_DATE=${{ env.BUILD_DATE }}

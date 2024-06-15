@@ -654,7 +654,8 @@
                                 "(830)112-9566x8681"
                             ]
                         ]
-                    }
+                    },
+            "inspectionQuery": "SELECT * FROM ecommerce_db.shopify.dim_address\nWHERE zip NOT BETWEEN 90001 AND 96162\nLIMIT 50;"
         }
     ]
 }

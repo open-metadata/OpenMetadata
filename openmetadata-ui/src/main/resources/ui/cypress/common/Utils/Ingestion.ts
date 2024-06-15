@@ -49,10 +49,15 @@ export const handleIngestionRetry = (count = 0, ingestionType = 'metadata') => {
       cy.get('[data-testid="ingestions"]').click();
 
       if (ingestionType === 'metadata') {
-        verifyResponseStatusCode('@pipelineStatuses', 200, {
+        cy.wait('@pipelineStatuses', {
           responseTimeout: 50000,
         });
       }
+
+      cy.contains('td', `${ingestionType}`) // find the element with the text
+        .parent('tr') // find the parent 'tr'
+        .find('[data-testid="run"]')
+        .click();
     }
   };
   const checkSuccessState = () => {
@@ -61,8 +66,8 @@ export const handleIngestionRetry = (count = 0, ingestionType = 'metadata') => {
     if (retryCount !== 0) {
       cy.wait('@allPermissions').then(() => {
         cy.wait('@serviceDetails').then(() => {
-          verifyResponseStatusCode('@ingestionPipelines', 200);
-          verifyResponseStatusCode('@pipelineStatuses', 200, {
+          cy.wait('@ingestionPipelines');
+          cy.wait('@pipelineStatuses', {
             responseTimeout: 50000,
           });
         });

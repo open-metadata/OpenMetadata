@@ -431,7 +431,7 @@ public class UserRepository extends EntityRepository<User> {
               .withTeams(getTeams(printer, csvRecord, csvRecord.get(0)))
               .withRoles(getEntityReferences(printer, csvRecord, 7, ROLE));
       if (processRecord) {
-        createEntity(printer, csvRecord, user);
+        createUserEntity(printer, csvRecord, user);
       }
     }
 

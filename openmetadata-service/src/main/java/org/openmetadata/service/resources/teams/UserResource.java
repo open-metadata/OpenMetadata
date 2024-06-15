@@ -110,7 +110,6 @@ import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
-import org.openmetadata.schema.type.ProviderType;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.service.Entity;
@@ -135,6 +134,7 @@ import org.openmetadata.service.security.auth.AuthenticatorHandler;
 import org.openmetadata.service.security.auth.BotTokenCache;
 import org.openmetadata.service.security.auth.UserTokenCache;
 import org.openmetadata.service.security.jwt.JWTTokenGenerator;
+import org.openmetadata.service.security.mask.PIIMasker;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
 import org.openmetadata.service.security.saml.JwtTokenCacheManager;
@@ -146,7 +146,6 @@ import org.openmetadata.service.util.PasswordUtil;
 import org.openmetadata.service.util.RestUtil.PutResponse;
 import org.openmetadata.service.util.ResultList;
 import org.openmetadata.service.util.TokenUtil;
-import org.openmetadata.service.util.UserUtil;
 
 @Slf4j
 @Path("/v1/users")
@@ -158,7 +157,8 @@ import org.openmetadata.service.util.UserUtil;
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(
     name = "users",
-    order = 3) // Initialize user resource before bot resource (at default order 9)
+    order = 3,
+    requiredForOps = true) // Initialize user resource before bot resource (at default order 9)
 public class UserResource extends EntityResource<User, UserRepository> {
   public static final String COLLECTION_PATH = "v1/users/";
   public static final String USER_PROTECTED_FIELDS = "authenticationMechanism";
@@ -548,26 +548,52 @@ public class UserResource extends EntityResource<User, UserRepository> {
       @Context ContainerRequestContext containerRequestContext,
       @Valid CreateUser create) {
     User user = getUser(securityContext.getUserPrincipal().getName(), create);
-    if (Boolean.TRUE.equals(create.getIsAdmin())) {
-      authorizer.authorizeAdmin(securityContext);
-    }
     if (Boolean.TRUE.equals(create.getIsBot())) {
       addAuthMechanismToBot(user, create, uriInfo);
     }
 
-    if (isBasicAuth()) {
-      try {
-        // basic auth doesn't allow duplicate emails, since username part of the email is used as
-        // login name
-        validateEmailAlreadyExists(create.getEmail());
-      } catch (RuntimeException ex) {
-        return Response.status(CONFLICT)
-            .type(MediaType.APPLICATION_JSON_TYPE)
-            .entity(
-                new ErrorMessage(
-                    CONFLICT.getStatusCode(), CatalogExceptionMessage.ENTITY_ALREADY_EXISTS))
-            .build();
+    //
+    try {
+      validateAndAddUserAuthForBasic(user, create);
+    } catch (RuntimeException ex) {
+      return Response.status(CONFLICT)
+          .type(MediaType.APPLICATION_JSON_TYPE)
+          .entity(
+              new ErrorMessage(
+                  CONFLICT.getStatusCode(), CatalogExceptionMessage.ENTITY_ALREADY_EXISTS))
+          .build();
+    }
+
+    // Add the roles on user creation
+    updateUserRolesIfRequired(user, containerRequestContext);
+
+    Response createdUserRes = null;
+    try {
+      createdUserRes = create(uriInfo, securityContext, user);
+    } catch (EntityNotFoundException ex) {
+      if (securityContext.getUserPrincipal().getName().equals(create.getName())) {
+        // User is creating himself on signup ?! :(
+        User created = addHref(uriInfo, repository.create(uriInfo, user));
+        createdUserRes = Response.created(created.getHref()).entity(created).build();
       }
+    }
+
+    if (createdUserRes != null) {
+      // Send Invite mail to user
+      sendInviteMailToUserForBasicAuth(uriInfo, user, create);
+
+      // Update response to remove auth fields
+      decryptOrNullify(securityContext, (User) createdUserRes.getEntity());
+      return createdUserRes;
+    }
+    return Response.status(BAD_REQUEST).entity("User Cannot be created Successfully.").build();
+  }
+
+  private void validateAndAddUserAuthForBasic(User user, CreateUser create) {
+    if (isBasicAuth()) {
+      // basic auth doesn't allow duplicate emails, since username part of the email is used as
+      // login name
+      validateEmailAlreadyExists(create.getEmail());
       user.setName(user.getEmail().split("@")[0]);
       if (Boolean.FALSE.equals(create.getIsBot())
           && create.getCreatePasswordType() == ADMIN_CREATE) {
@@ -575,17 +601,18 @@ public class UserResource extends EntityResource<User, UserRepository> {
       }
       // else the user will get a mail if configured smtp
     }
+  }
 
-    // Add the roles on user creation
+  private void updateUserRolesIfRequired(
+      User user, ContainerRequestContext containerRequestContext) {
     if (Boolean.TRUE.equals(authorizerConfiguration.getUseRolesFromProvider())
         && Boolean.FALSE.equals(user.getIsBot() != null && user.getIsBot())) {
       user.setRoles(
           validateAndGetRolesRef(getRolesFromAuthorizationToken(containerRequestContext)));
     }
+  }
 
-    // TODO do we need to authenticate user is creating himself?
-
-    addHref(uriInfo, repository.create(uriInfo, user));
+  private void sendInviteMailToUserForBasicAuth(UriInfo uriInfo, User user, CreateUser create) {
     if (isBasicAuth() && isEmailServiceEnabled) {
       try {
         authHandler.sendInviteMailToUser(
@@ -598,9 +625,6 @@ public class UserResource extends EntityResource<User, UserRepository> {
         LOG.error("Error in sending invite to User" + ex.getMessage());
       }
     }
-    Response response = Response.created(user.getHref()).entity(user).build();
-    decryptOrNullify(securityContext, (User) response.getEntity());
-    return response;
   }
 
   private boolean isBasicAuth() {
@@ -1282,7 +1306,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
     User user =
         repository.getByName(
             null, userName, getFields("roles,email,isBot"), Include.NON_DELETED, false);
-    if (Boolean.FALSE.equals(user.getIsBot())) {
+    if (user.getIsBot() == null || Boolean.FALSE.equals(user.getIsBot())) {
       // Create Personal Access Token
       JWTAuthMechanism authMechanism =
           JWTTokenGenerator.getInstance()
@@ -1439,8 +1463,6 @@ public class UserResource extends EntityResource<User, UserRepository> {
               create.getAuthenticationMechanism(),
               original.getAuthenticationMechanism());
       user.setRoles(original.getRoles());
-    } else if (bot != null && ProviderType.SYSTEM.equals(bot.getProvider())) {
-      user.setRoles(UserUtil.getRoleForBot(botName));
     }
     // TODO remove this
     addAuthMechanismToBot(user, create, uriInfo);
@@ -1590,5 +1612,8 @@ public class UserResource extends EntityResource<User, UserRepository> {
             .maskAuthenticationMechanism(user.getName(), user.getAuthenticationMechanism());
       }
     }
+
+    // Remove mails for non-admin users
+    PIIMasker.maskUser(authorizer, securityContext, user);
   }
 }

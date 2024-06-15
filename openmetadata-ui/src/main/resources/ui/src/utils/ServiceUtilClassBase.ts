@@ -84,6 +84,7 @@ import {
   SQLITE,
   SUPERSET,
   TABLEAU,
+  TERADATA,
   TOPIC_DEFAULT,
   TRINO,
   UNITYCATALOG,
@@ -116,6 +117,7 @@ class ServiceUtilClassBase {
     DatabaseServiceType.QueryLog,
     DatabaseServiceType.Dbt,
     StorageServiceType.Gcs,
+    MetadataServiceType.Alation,
   ];
 
   protected updateUnsupportedServices(types: string[]) {
@@ -332,6 +334,9 @@ class ServiceUtilClassBase {
       case PipelineServiceType.GluePipeline:
         return GLUE;
 
+      case PipelineServiceType.KafkaConnect:
+        return KAFKA;
+
       case PipelineServiceType.Spark:
         return SPARK;
 
@@ -375,6 +380,9 @@ class ServiceUtilClassBase {
 
       case SearchServiceType.OpenSearch:
         return OPEN_SEARCH;
+
+      case DatabaseServiceType.Teradata:
+        return TERADATA;
 
       default: {
         let logo;

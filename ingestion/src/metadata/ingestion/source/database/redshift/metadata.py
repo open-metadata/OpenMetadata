@@ -96,7 +96,11 @@ from metadata.utils.execution_time_tracker import (
 from metadata.utils.filters import filter_by_database
 from metadata.utils.helpers import get_start_and_end
 from metadata.utils.logger import ingestion_logger
-from metadata.utils.sqlalchemy_utils import get_all_table_comments
+from metadata.utils.sqlalchemy_utils import (
+    get_all_table_comments,
+    get_all_table_ddls,
+    get_table_ddl,
+)
 
 logger = ingestion_logger()
 
@@ -121,6 +125,9 @@ RedshiftDialect.get_table_comment = get_table_comment
 RedshiftDialect._get_all_relation_info = (  # pylint: disable=protected-access
     _get_all_relation_info
 )
+
+Inspector.get_all_table_ddls = get_all_table_ddls
+Inspector.get_table_ddl = get_table_ddl
 
 
 class RedshiftSource(
@@ -156,8 +163,8 @@ class RedshiftSource(
     def create(
         cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None
     ):
-        config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
-        connection: RedshiftConnection = config.serviceConnection.__root__.config
+        config: WorkflowSource = WorkflowSource.model_validate(config_dict)
+        connection: RedshiftConnection = config.serviceConnection.root.config
         if not isinstance(connection, RedshiftConnection):
             raise InvalidSourceException(
                 f"Expected RedshiftConnection, but got {connection}"
@@ -275,14 +282,14 @@ class RedshiftSource(
             )
 
     def get_database_names(self) -> Iterable[str]:
-        if not self.config.serviceConnection.__root__.config.ingestAllDatabases:
+        if not self.config.serviceConnection.root.config.ingestAllDatabases:
             self.get_partition_details()
 
             self._set_incremental_table_processor(
-                self.config.serviceConnection.__root__.config.database
+                self.config.serviceConnection.root.config.database
             )
 
-            yield self.config.serviceConnection.__root__.config.database
+            yield self.config.serviceConnection.root.config.database
         else:
             for new_database in self.get_database_names_raw():
                 database_fqn = fqn.build(
@@ -378,7 +385,7 @@ class RedshiftSource(
                 )
             ).all()
             for row in results:
-                stored_procedure = RedshiftStoredProcedure.parse_obj(dict(row))
+                stored_procedure = RedshiftStoredProcedure.model_validate(dict(row))
                 yield stored_procedure
 
     @calculate_execution_time_generator()
@@ -389,7 +396,7 @@ class RedshiftSource(
 
         try:
             stored_procedure_request = CreateStoredProcedureRequest(
-                name=EntityName(__root__=stored_procedure.name),
+                name=EntityName(stored_procedure.name),
                 storedProcedureCode=StoredProcedureCode(
                     language=Language.SQL,
                     code=stored_procedure.definition,

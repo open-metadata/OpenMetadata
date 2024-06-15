@@ -312,6 +312,58 @@ public class TopicResourceTest extends EntityResourceTest<Topic, CreateTopic> {
   }
 
   @Test
+  void patch_usingFqn_topicAttributes_200_ok(TestInfo test) throws IOException {
+    List<Field> fields =
+        Arrays.asList(
+            getField("id", FieldDataType.STRING, null),
+            getField("first_name", FieldDataType.STRING, null),
+            getField("last_name", FieldDataType.STRING, null),
+            getField("email", FieldDataType.STRING, null),
+            getField("address_line_1", FieldDataType.STRING, null),
+            getField("address_line_2", FieldDataType.STRING, null),
+            getField("post_code", FieldDataType.STRING, null),
+            getField("county", FieldDataType.STRING, PERSONAL_DATA_TAG_LABEL));
+    CreateTopic createTopic =
+        createRequest(test)
+            .withOwner(USER1_REF)
+            .withMaximumMessageSize(1)
+            .withMinimumInSyncReplicas(1)
+            .withPartitions(1)
+            .withReplicationFactor(1)
+            .withRetentionTime(1.0)
+            .withRetentionSize(1.0)
+            .withMessageSchema(SCHEMA.withSchemaFields(fields))
+            .withCleanupPolicies(List.of(CleanupPolicy.COMPACT));
+
+    // Patch and update the topic
+    Topic topic = createEntity(createTopic, ADMIN_AUTH_HEADERS);
+    String origJson = JsonUtils.pojoToJson(topic);
+
+    topic
+        .withOwner(TEAM11_REF)
+        .withMinimumInSyncReplicas(2)
+        .withMaximumMessageSize(2)
+        .withPartitions(2)
+        .withReplicationFactor(2)
+        .withRetentionTime(2.0)
+        .withRetentionSize(2.0)
+        .withMessageSchema(SCHEMA.withSchemaFields(fields))
+        .withCleanupPolicies(List.of(CleanupPolicy.DELETE));
+
+    ChangeDescription change = getChangeDescription(topic, MINOR_UPDATE);
+    fieldUpdated(change, FIELD_OWNER, USER1_REF, TEAM11_REF);
+    fieldUpdated(change, "maximumMessageSize", 1, 2);
+    fieldUpdated(change, "minimumInSyncReplicas", 1, 2);
+    fieldUpdated(change, "partitions", 1, 2);
+    fieldUpdated(change, "replicationFactor", 1, 2);
+    fieldUpdated(change, "retentionTime", 1.0, 2.0);
+    fieldUpdated(change, "retentionSize", 1.0, 2.0);
+    fieldDeleted(change, "cleanupPolicies", List.of(CleanupPolicy.COMPACT));
+    fieldAdded(change, "cleanupPolicies", List.of(CleanupPolicy.DELETE));
+    patchEntityUsingFqnAndCheck(topic, origJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
+  }
+
+  @Test
   void put_topicSampleData_200(TestInfo test) throws IOException {
     Topic topic = createAndCheckEntity(createRequest(test), ADMIN_AUTH_HEADERS);
     List<String> messages =

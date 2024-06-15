@@ -326,6 +326,35 @@ public class GlossaryResource extends EntityResource<Glossary, GlossaryRepositor
     return patchInternal(uriInfo, securityContext, id, patch);
   }
 
+  @PATCH
+  @Path("/name/{fqn}")
+  @Operation(
+      operationId = "patchGlossary",
+      summary = "Update a glossary using name.",
+      description = "Update an existing glossary using JsonPatch.",
+      externalDocs =
+          @ExternalDocumentation(
+              description = "JsonPatch RFC",
+              url = "https://tools.ietf.org/html/rfc6902"))
+  @Consumes(MediaType.APPLICATION_JSON_PATCH_JSON)
+  public Response patch(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Name of the glossary", schema = @Schema(type = "string"))
+          @PathParam("fqn")
+          String fqn,
+      @RequestBody(
+              description = "JsonPatch with array of operations",
+              content =
+                  @Content(
+                      mediaType = MediaType.APPLICATION_JSON_PATCH_JSON,
+                      examples = {
+                        @ExampleObject("[{op:remove, path:/a},{op:add, path: /b, value: val}]")
+                      }))
+          JsonPatch patch) {
+    return patchInternal(uriInfo, securityContext, fqn, patch);
+  }
+
   @PUT
   @Operation(
       operationId = "createOrUpdateGlossary",
@@ -534,7 +563,6 @@ public class GlossaryResource extends EntityResource<Glossary, GlossaryRepositor
       GlossaryRepository repository, CreateGlossary create, String updatedBy) {
     return repository
         .copy(new Glossary(), create, updatedBy)
-        .withReviewers(getEntityReferences(Entity.USER, create.getReviewers()))
         .withProvider(create.getProvider())
         .withMutuallyExclusive(create.getMutuallyExclusive());
   }

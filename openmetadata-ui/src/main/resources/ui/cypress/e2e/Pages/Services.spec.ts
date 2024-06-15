@@ -38,7 +38,8 @@ const OWNER2 = 'Cynthia Meyer';
 const TEAM_OWNER_1 = 'Marketplace';
 const TEAM_OWNER_2 = 'DevOps';
 
-describe('Services detail page', { tags: 'Integration' }, () => {
+// migrated to playwrigth
+describe.skip('Services detail page', { tags: 'Integration' }, () => {
   before(() => {
     cy.login();
     EntityClass.preRequisitesForTests();
@@ -106,12 +107,13 @@ describe('Services detail page', { tags: 'Integration' }, () => {
         entity.renameEntity();
       });
 
-      it(`Annoucement create & delete`, () => {
+      it(`Announcement create & delete`, () => {
         entity.createAnnouncement();
+        entity.replyAnnouncement();
         entity.removeAnnouncement();
       });
 
-      it(`Inactive annoucement create & delete`, () => {
+      it(`Inactive Announcement create & delete`, () => {
         entity.createInactiveAnnouncement();
         entity.removeInactiveAnnouncement();
       });

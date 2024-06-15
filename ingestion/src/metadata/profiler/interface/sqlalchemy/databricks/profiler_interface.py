@@ -45,14 +45,12 @@ class DatabricksProfilerInterface(SQAProfilerInterface):
             splitted_result = result.split(".", 2)[-1].split(".")
             result = ".".join(result.split(".", 2)[:-1])
             result += "." + "`.`".join(splitted_result)
-
         return result
-
-    HiveCompiler.visit_column = visit_column
 
     def __init__(self, service_connection_config, **kwargs):
         super().__init__(service_connection_config=service_connection_config, **kwargs)
         self.set_catalog(self.session)
+        HiveCompiler.visit_column = DatabricksProfilerInterface.visit_column
 
     def _get_struct_columns(self, columns: List[OMColumn], parent: str):
         """Get struct columns"""
@@ -60,7 +58,7 @@ class DatabricksProfilerInterface(SQAProfilerInterface):
         columns_list = []
         for idx, col in enumerate(columns):
             if col.dataType != DataType.STRUCT:
-                col.name = ColumnName(__root__=f"{parent}.{col.name.__root__}")
+                col.name = ColumnName(f"{parent}.{col.name.root}")
                 col = build_orm_col(idx, col, DatabaseServiceType.Databricks)
                 col._set_parent(  # pylint: disable=protected-access
                     self.table.__table__
@@ -68,7 +66,7 @@ class DatabricksProfilerInterface(SQAProfilerInterface):
                 columns_list.append(col)
             else:
                 col = self._get_struct_columns(
-                    col.children, f"{parent}.{col.name.__root__}"
+                    col.children, f"{parent}.{col.name.root}"
                 )
                 columns_list.extend(col)
         return columns_list
@@ -79,7 +77,7 @@ class DatabricksProfilerInterface(SQAProfilerInterface):
         for idx, column in enumerate(self.table_entity.columns):
             if column.dataType == DataType.STRUCT:
                 columns.extend(
-                    self._get_struct_columns(column.children, column.name.__root__)
+                    self._get_struct_columns(column.children, column.name.root)
                 )
             else:
                 col = build_orm_col(idx, column, DatabaseServiceType.Databricks)

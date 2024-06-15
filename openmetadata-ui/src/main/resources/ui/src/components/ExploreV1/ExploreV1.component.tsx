@@ -40,16 +40,15 @@ import AppliedFilterText from '../../components/Explore/AppliedFilterText/Applie
 import EntitySummaryPanel from '../../components/Explore/EntitySummaryPanel/EntitySummaryPanel.component';
 import ExploreQuickFilters from '../../components/Explore/ExploreQuickFilters';
 import SortingDropDown from '../../components/Explore/SortingDropDown';
+import { NULL_OPTION_KEY } from '../../constants/AdvancedSearch.constants';
 import {
   SEARCH_INDEXING_APPLICATION,
+  SUPPORTED_EMPTY_FILTER_FIELDS,
   TAG_FQN_KEY,
 } from '../../constants/explore.constants';
 import { ERROR_PLACEHOLDER_TYPE, SORT_ORDER } from '../../enums/common.enum';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
-import {
-  QueryFieldInterface,
-  QueryFieldValueInterface,
-} from '../../pages/ExplorePage/ExplorePage.interface';
+import { QueryFieldInterface } from '../../pages/ExplorePage/ExplorePage.interface';
 import { getDropDownItems } from '../../utils/AdvancedSearchUtils';
 import { Transi18next } from '../../utils/CommonUtils';
 import { highlightEntityNameAndDescription } from '../../utils/EntityUtils';
@@ -57,12 +56,12 @@ import { getSelectedValuesFromQuickFilter } from '../../utils/Explore.utils';
 import { getApplicationDetailsPath } from '../../utils/RouterUtils';
 import searchClassBase from '../../utils/SearchClassBase';
 import Loader from '../common/Loader/Loader';
+import ResizablePanels from '../common/ResizablePanels/ResizablePanels';
 import {
   ExploreProps,
   ExploreQuickFilterField,
   ExploreSearchIndex,
 } from '../Explore/ExplorePage.interface';
-import PageLayoutV1 from '../PageLayoutV1/PageLayoutV1';
 import SearchedData from '../SearchedData/SearchedData';
 import { SearchedDataProps } from '../SearchedData/SearchedData.interface';
 import './exploreV1.less';
@@ -192,18 +191,26 @@ const ExploreV1: React.FC<ExploreProps> = ({
     // to form a queryFilter to pass as a search parameter
     data.forEach((filter) => {
       if (!isEmpty(filter.value)) {
-        const should = [] as Array<QueryFieldValueInterface>;
-        if (filter.value) {
-          filter.value.forEach((filterValue) => {
-            const term = {} as QueryFieldValueInterface['term'];
+        const should = [] as Array<QueryFieldInterface>;
+        filter.value?.forEach((filterValue) => {
+          const term = {
+            [filter.key]: filterValue.key,
+          };
 
-            term[filter.key] = filterValue.key;
-
+          if (filterValue.key === NULL_OPTION_KEY) {
+            should.push({
+              bool: {
+                must_not: { exists: { field: filter.key } },
+              },
+            });
+          } else {
             should.push({ term });
-          });
-        }
+          }
+        });
 
-        must.push({ bool: { should } });
+        if (should.length > 0) {
+          must.push({ bool: { should } });
+        }
       }
     });
 
@@ -211,7 +218,11 @@ const ExploreV1: React.FC<ExploreProps> = ({
       isEmpty(must)
         ? undefined
         : {
-            query: { bool: { must } },
+            query: {
+              bool: {
+                must,
+              },
+            },
           }
     );
   };
@@ -251,14 +262,15 @@ const ExploreV1: React.FC<ExploreProps> = ({
       key: string;
     }> = getDropDownItems(activeTabKey);
 
+    const selectedValuesFromQuickFilter = getSelectedValuesFromQuickFilter(
+      dropdownItems,
+      quickFilters
+    );
+
     setSelectedQuickFilters(
       dropdownItems.map((item) => ({
         ...item,
-        value: getSelectedValuesFromQuickFilter(
-          item,
-          dropdownItems,
-          quickFilters
-        ),
+        value: selectedValuesFromQuickFilter?.[item.label] ?? [],
       }))
     );
   }, [activeTabKey, quickFilters]);
@@ -317,6 +329,7 @@ const ExploreV1: React.FC<ExploreProps> = ({
                       <ExploreQuickFilters
                         aggregations={aggregations}
                         fields={selectedQuickFilters}
+                        fieldsWithNullValues={SUPPORTED_EMPTY_FILTER_FIELDS}
                         index={activeTabKey}
                         showDeleted={showDeleted}
                         onAdvanceSearch={() => toggleModal(true)}
@@ -404,13 +417,43 @@ const ExploreV1: React.FC<ExploreProps> = ({
                   </Row>
                 </Col>
               </Row>
-              <PageLayoutV1
-                className="p-0 explore-page-layout"
+              <ResizablePanels
+                applyDefaultStyle={false}
+                firstPanel={{
+                  children: (
+                    <Row className="p-t-md">
+                      <Col
+                        lg={{ offset: 2, span: 19 }}
+                        md={{ offset: 0, span: 24 }}>
+                        {!loading && !isElasticSearchIssue ? (
+                          <SearchedData
+                            isFilterSelected
+                            data={searchResults?.hits.hits ?? []}
+                            filter={parsedSearch}
+                            handleSummaryPanelDisplay={
+                              handleSummaryPanelDisplay
+                            }
+                            isSummaryPanelVisible={showSummaryPanel}
+                            selectedEntityId={entityDetails?.id || ''}
+                            totalValue={searchResults?.hits.total.value ?? 0}
+                            onPaginationChange={onChangePage}
+                          />
+                        ) : (
+                          <></>
+                        )}
+                        {loading ? <Loader /> : <></>}
+                      </Col>
+                    </Row>
+                  ),
+                  minWidth: 600,
+                  flex: 0.65,
+                }}
+                hideSecondPanel={
+                  !showSummaryPanel && !loading && !entityDetails
+                }
                 pageTitle={t('label.explore')}
-                rightPanel={
-                  showSummaryPanel &&
-                  entityDetails &&
-                  !loading && (
+                secondPanel={{
+                  children: showSummaryPanel && entityDetails && !loading && (
                     <EntitySummaryPanel
                       entityDetails={{ details: entityDetails }}
                       handleClosePanel={handleClosePanel}
@@ -426,31 +469,12 @@ const ExploreV1: React.FC<ExploreProps> = ({
                         ['description', 'displayName']
                       )}
                     />
-                  )
-                }
-                rightPanelWidth={400}>
-                <Row className="p-t-xs">
-                  <Col
-                    lg={{ offset: 2, span: 19 }}
-                    md={{ offset: 0, span: 24 }}>
-                    {!loading && !isElasticSearchIssue ? (
-                      <SearchedData
-                        isFilterSelected
-                        data={searchResults?.hits.hits ?? []}
-                        filter={parsedSearch}
-                        handleSummaryPanelDisplay={handleSummaryPanelDisplay}
-                        isSummaryPanelVisible={showSummaryPanel}
-                        selectedEntityId={entityDetails?.id || ''}
-                        totalValue={searchResults?.hits.total.value ?? 0}
-                        onPaginationChange={onChangePage}
-                      />
-                    ) : (
-                      <></>
-                    )}
-                    {loading ? <Loader /> : <></>}
-                  </Col>
-                </Row>
-              </PageLayoutV1>
+                  ),
+                  minWidth: 400,
+                  flex: 0.35,
+                  className: 'entity-summary-resizable-right-panel-container',
+                }}
+              />
             </Content>
           </Layout>
         )}

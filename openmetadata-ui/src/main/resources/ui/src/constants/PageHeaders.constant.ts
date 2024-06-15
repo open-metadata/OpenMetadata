@@ -108,6 +108,12 @@ export const PAGE_HEADERS = {
       entity: i18n.t('label.dashboard-plural'),
     }),
   },
+  DASHBOARD_DATA_MODEL_CUSTOM_ATTRIBUTES: {
+    header: i18n.t('label.dashboard-data-model-plural'),
+    subHeader: i18n.t('message.define-custom-property-for-entity', {
+      entity: i18n.t('label.dashboard-data-model-plural'),
+    }),
+  },
   PIPELINES_CUSTOM_ATTRIBUTES: {
     header: i18n.t('label.pipeline-plural'),
     subHeader: i18n.t('message.define-custom-property-for-entity', {
@@ -183,7 +189,7 @@ export const PAGE_HEADERS = {
     subHeader: i18n.t('message.page-sub-header-for-login-configuration'),
   },
   OM_HEALTH: {
-    header: i18n.t('label.om-status'),
+    header: i18n.t('label.health-check'),
     subHeader: i18n.t('message.page-sub-header-for-om-health-configuration'),
   },
   NOTIFICATION: {

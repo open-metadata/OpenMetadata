@@ -194,7 +194,7 @@ class OracleTableMetricComputer(BaseTableMetricComputer):
                     Column("object_name").label("table_name"),
                     Column("created"),
                 ],
-                self._build_table("dba_objects", None),
+                self._build_table("all_objects", None),
                 [
                     func.lower(Column("owner")) == self.schema_name.lower(),
                     func.lower(Column("object_name")) == self.table_name.lower(),
@@ -209,7 +209,7 @@ class OracleTableMetricComputer(BaseTableMetricComputer):
                     Column("table_name"),
                     Column("NUM_ROWS"),
                 ],
-                self._build_table("dba_tables", None),
+                self._build_table("all_tables", None),
                 [
                     func.lower(Column("owner")) == self.schema_name.lower(),
                     func.lower(Column("table_name")) == self.table_name.lower(),
@@ -231,6 +231,8 @@ class OracleTableMetricComputer(BaseTableMetricComputer):
         )
 
         res = self.runner._session.execute(query).first()
+        if not res:
+            return None
         if res.rowCount is None or (
             res.rowCount == 0 and self._entity.tableType == TableType.View
         ):
@@ -260,6 +262,8 @@ class ClickHouseTableMetricComputer(BaseTableMetricComputer):
         )
 
         res = self.runner._session.execute(query).first()
+        if not res:
+            return None
         if res.rowCount is None or (
             res.rowCount == 0 and self._entity.tableType == TableType.View
         ):
@@ -291,7 +295,7 @@ class BigQueryTableMetricComputer(BaseTableMetricComputer):
 
         where_clause = [
             Column("project_id")
-            == self.conn_config.credentials.gcpConfig.projectId.__root__,
+            == self.conn_config.credentials.gcpConfig.projectId.root,
             Column("table_schema") == self.schema_name,
             Column("table_name") == self.table_name,
         ]
@@ -306,6 +310,8 @@ class BigQueryTableMetricComputer(BaseTableMetricComputer):
         )
 
         res = self.runner._session.execute(query).first()
+        if not res:
+            return None
         if res.rowCount is None or (
             res.rowCount == 0 and self._entity.tableType == TableType.View
         ):
@@ -323,7 +329,7 @@ class BigQueryTableMetricComputer(BaseTableMetricComputer):
         ]
         where_clause = [
             Column("project_id")
-            == self.conn_config.credentials.gcpConfig.projectId.__root__,
+            == self.conn_config.credentials.gcpConfig.projectId.root,
             Column("dataset_id") == self.schema_name,
             Column("table_id") == self.table_name,
         ]
@@ -332,11 +338,13 @@ class BigQueryTableMetricComputer(BaseTableMetricComputer):
             columns,
             self._build_table(
                 "__TABLES__",
-                f"{self.conn_config.credentials.gcpConfig.projectId.__root__}.{self.schema_name}",
+                f"{self.conn_config.credentials.gcpConfig.projectId.root}.{self.schema_name}",
             ),
             where_clause,
         )
         res = self.runner._session.execute(query).first()
+        if not res:
+            return None
         if res.rowCount is None or (
             res.rowCount == 0 and self._entity.tableType == TableType.View
         ):
@@ -366,6 +374,8 @@ class MySQLTableMetricComputer(BaseTableMetricComputer):
         )
 
         res = self.runner._session.execute(query).first()
+        if not res:
+            return None
         if res.rowCount is None or (
             res.rowCount == 0 and self._entity.tableType == TableType.View
         ):
@@ -400,6 +410,8 @@ class RedshiftTableMetricComputer(BaseTableMetricComputer):
             columns, self._build_table("svv_table_info", "pg_catalog"), where_clause
         )
         res = self.runner._session.execute(query).first()
+        if not res:
+            return None
         if res.rowCount is None or (
             res.rowCount == 0 and self._entity.tableType == TableType.View
         ):

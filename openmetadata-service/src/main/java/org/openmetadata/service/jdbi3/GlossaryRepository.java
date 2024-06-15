@@ -16,7 +16,6 @@
 
 package org.openmetadata.service.jdbi3;
 
-import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.csv.CsvUtil.FIELD_SEPARATOR;
 import static org.openmetadata.csv.CsvUtil.addEntityReference;
@@ -31,7 +30,10 @@ import java.io.IOException;
 import java.net.URI;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
@@ -63,11 +65,14 @@ import org.openmetadata.service.jdbi3.CollectionDAO.EntityRelationshipRecord;
 import org.openmetadata.service.resources.glossary.GlossaryResource;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.FullyQualifiedName;
+import org.openmetadata.service.util.JsonUtils;
 
 @Slf4j
 public class GlossaryRepository extends EntityRepository<Glossary> {
   private static final String UPDATE_FIELDS = "";
   private static final String PATCH_FIELDS = "";
+
+  FeedRepository feedRepository = Entity.getFeedRepository();
 
   public GlossaryRepository() {
     super(
@@ -96,9 +101,7 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
   }
 
   @Override
-  public void prepare(Glossary glossary, boolean update) {
-    validateUsers(glossary.getReviewers());
-  }
+  public void prepare(Glossary glossary, boolean update) {}
 
   @Override
   public void storeEntity(Glossary glossary, boolean update) {
@@ -111,10 +114,7 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
 
   @Override
   public void storeRelationships(Glossary glossary) {
-    for (EntityReference reviewer : listOrEmpty(glossary.getReviewers())) {
-      addRelationship(
-          reviewer.getId(), glossary.getId(), Entity.USER, Entity.GLOSSARY, Relationship.REVIEWS);
-    }
+    // Nothing to do
   }
 
   private Integer getUsageCount(Glossary glossary) {
@@ -275,6 +275,61 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
     }
   }
 
+  private void updateAssetIndexesOnGlossaryUpdate(Glossary original, Glossary updated) {
+    // Update ES indexes of entity tagged with the glossary term and its children terms to reflect
+    // its latest value.
+    GlossaryTermRepository repository =
+        (GlossaryTermRepository) Entity.getEntityRepository(GLOSSARY_TERM);
+    Set<String> targetFQNHashesFromDb =
+        new HashSet<>(
+            daoCollection
+                .tagUsageDAO()
+                .getTargetFQNHashForTagPrefix(updated.getFullyQualifiedName()));
+
+    List<EntityReference> childTerms =
+        findTo(
+            updated.getId(),
+            GLOSSARY,
+            Relationship.CONTAINS,
+            GLOSSARY_TERM); // get new value of children terms from DB
+    for (EntityReference child : childTerms) {
+      targetFQNHashesFromDb.addAll( // for each child term find the targetFQNHashes of assets
+          daoCollection.tagUsageDAO().getTargetFQNHashForTag(child.getFullyQualifiedName()));
+    }
+
+    // List of entity references tagged with the glossary term
+    Map<String, EntityReference> targetFQNFromES =
+        repository.getGlossaryUsageFromES(
+            original.getFullyQualifiedName(), targetFQNHashesFromDb.size());
+    Map<String, EntityReference> childrenTerms =
+        repository.getGlossaryTermsContainingFQNFromES(
+            original.getFullyQualifiedName(),
+            getTermCount(updated)); // get old value of children term from ES
+
+    for (EntityReference child : childrenTerms.values()) {
+      targetFQNFromES.putAll( // List of entity references tagged with the children term
+          repository.getGlossaryUsageFromES(
+              child.getFullyQualifiedName(), targetFQNHashesFromDb.size()));
+      searchRepository.updateEntity(child); // update es index of child term
+    }
+
+    if (targetFQNFromES.size() == targetFQNHashesFromDb.size()) {
+      for (String fqnHash : targetFQNHashesFromDb) {
+        EntityReference refDetails = targetFQNFromES.get(fqnHash);
+
+        if (refDetails != null) {
+          searchRepository.updateEntity(refDetails); // update ES index of assets
+        }
+      }
+    }
+  }
+
+  private List<GlossaryTerm> getAllTerms(Glossary glossary) {
+    // Get all the hierarchically nested terms of the glossary
+    List<String> jsons = daoCollection.glossaryTermDAO().getAllTerms(glossary.getName());
+    return JsonUtils.readObjects(jsons, GlossaryTerm.class);
+  }
+
   /** Handles entity updated from PUT and POST operation. */
   public class GlossaryUpdater extends EntityUpdater {
     public GlossaryUpdater(Glossary original, Glossary updated, Operation operation) {
@@ -286,6 +341,8 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
     @Override
     public void entitySpecificUpdate() {
       updateName(original, updated);
+      // Mutually exclusive cannot be updated
+      updated.setMutuallyExclusive(original.getMutuallyExclusive());
     }
 
     public void updateName(Glossary original, Glossary updated) {
@@ -303,6 +360,35 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
             .updateTagPrefix(TagSource.GLOSSARY.ordinal(), original.getName(), updated.getName());
         recordChange("name", original.getName(), updated.getName());
         invalidateGlossary(original.getId());
+
+        // update tags
+        daoCollection
+            .tagUsageDAO()
+            .renameByTargetFQNHash(
+                TagSource.CLASSIFICATION.ordinal(),
+                original.getFullyQualifiedName(),
+                updated.getFullyQualifiedName());
+
+        updateAssetIndexesOnGlossaryUpdate(original, updated);
+      }
+    }
+
+    @Override
+    public void updateReviewers() {
+      super.updateReviewers();
+      GlossaryTermRepository repository =
+          (GlossaryTermRepository) Entity.getEntityRepository(GLOSSARY_TERM);
+
+      // adding the reviewer in glossary  should add the person as assignee to the task - for all
+      // draft terms present in glossary
+      if (!original.getReviewers().equals(updated.getReviewers())) {
+
+        List<GlossaryTerm> childTerms = getAllTerms(updated);
+        for (GlossaryTerm term : childTerms) {
+          if (term.getStatus().equals(Status.DRAFT)) {
+            repository.updateTaskWithNewReviewers(term);
+          }
+        }
       }
     }
 

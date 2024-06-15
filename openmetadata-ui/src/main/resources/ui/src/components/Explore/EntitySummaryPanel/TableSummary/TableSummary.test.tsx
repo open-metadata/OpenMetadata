@@ -14,11 +14,8 @@
 import { act, render, screen } from '@testing-library/react';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
-import { MOCK_TABLE } from '../../../../mocks/TableData.mock';
-import {
-  getLatestTableProfileByFqn,
-  getTableDetailsByFQN,
-} from '../../../../rest/tableAPI';
+import { getLatestTableProfileByFqn } from '../../../../rest/tableAPI';
+import { getTestCaseExecutionSummary } from '../../../../rest/testAPI';
 import { DRAWER_NAVIGATION_OPTIONS } from '../../../../utils/EntityUtils';
 import { mockTableEntityDetails } from '../mocks/TableSummary.mock';
 import TableSummary from './TableSummary.component';
@@ -43,9 +40,13 @@ jest.mock('../../../../rest/tableAPI', () => ({
   getLatestTableProfileByFqn: jest
     .fn()
     .mockImplementation(() => mockTableEntityDetails),
-  getTableDetailsByFQN: jest
-    .fn()
-    .mockImplementation(() => Promise.resolve(MOCK_TABLE)),
+}));
+jest.mock('../../../../rest/testAPI', () => ({
+  getTestCaseExecutionSummary: jest.fn().mockImplementation(() => ({
+    success: 0,
+    failed: 0,
+    aborted: 0,
+  })),
 }));
 
 jest.mock('../SummaryList/SummaryList.component', () =>
@@ -53,6 +54,12 @@ jest.mock('../SummaryList/SummaryList.component', () =>
     .fn()
     .mockImplementation(() => <div data-testid="SummaryList">SummaryList</div>)
 );
+
+jest.mock(
+  '../../../common/SummaryTagsDescription/SummaryTagsDescription.component',
+  () => jest.fn().mockImplementation(() => <p>SummaryTagsDescription</p>)
+);
+
 jest.mock('react-router-dom', () => ({
   ...jest.requireActual('react-router-dom'),
   useLocation: jest.fn().mockReturnValue({ pathname: '/table' }),
@@ -74,7 +81,7 @@ describe('TableSummary component tests', () => {
 
     const profilerHeader = screen.getByTestId('profiler-header');
     const schemaHeader = screen.getByTestId('schema-header');
-    const tagsHeader = screen.getByTestId('tags-header');
+    const summaryTagDescription = screen.getByText('SummaryTagsDescription');
     const typeLabel = screen.getByTestId('label.type-label');
     const queriesLabel = screen.getByTestId('label.query-plural-label');
     const columnsLabel = screen.getByTestId('label.column-plural-label');
@@ -87,7 +94,7 @@ describe('TableSummary component tests', () => {
 
     expect(profilerHeader).toBeInTheDocument();
     expect(schemaHeader).toBeInTheDocument();
-    expect(tagsHeader).toBeInTheDocument();
+    expect(summaryTagDescription).toBeInTheDocument();
     expect(typeLabel).toBeInTheDocument();
     expect(queriesLabel).toBeInTheDocument();
     expect(columnsLabel).toBeInTheDocument();
@@ -195,16 +202,11 @@ describe('TableSummary component tests', () => {
         profile: { rowCount: 30, timestamp: 38478857 },
       })
     );
-    (getTableDetailsByFQN as jest.Mock).mockImplementationOnce(() =>
+    (getTestCaseExecutionSummary as jest.Mock).mockImplementationOnce(() =>
       Promise.resolve({
-        ...MOCK_TABLE,
-        testSuite: {
-          summary: {
-            success: 3,
-            failed: 1,
-            aborted: 1,
-          },
-        },
+        success: 3,
+        failed: 1,
+        aborted: 1,
       })
     );
     await act(async () => {

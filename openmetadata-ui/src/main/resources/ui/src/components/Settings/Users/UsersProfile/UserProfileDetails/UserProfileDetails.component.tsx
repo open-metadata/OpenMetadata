@@ -37,6 +37,7 @@ import {
   showErrorToast,
   showSuccessToast,
 } from '../../../../../utils/ToastUtils';
+import { isMaskedEmail } from '../../../../../utils/Users.util';
 import Chip from '../../../../common/Chip/Chip.component';
 import { DomainLabel } from '../../../../common/DomainLabel/DomainLabel.component';
 import InlineEdit from '../../../../common/InlineEdit/InlineEdit.component';
@@ -114,12 +115,17 @@ const UserProfileDetails = ({
     setIsDisplayNameEdit(false);
   }, [userData.displayName, displayName, updateUserDetails]);
 
+  const handleCloseEditDisplayName = useCallback(() => {
+    setDisplayName(userData.displayName);
+    setIsDisplayNameEdit(false);
+  }, [userData.displayName]);
+
   const displayNameRenderComponent = useMemo(
     () =>
-      isDisplayNameEdit && hasEditPermission ? (
+      isDisplayNameEdit ? (
         <InlineEdit
           isLoading={isLoading}
-          onCancel={() => setIsDisplayNameEdit(false)}
+          onCancel={handleCloseEditDisplayName}
           onSave={handleDisplayNameSave}>
           <Input
             className="w-full"
@@ -172,6 +178,7 @@ const UserProfileDetails = ({
       getEntityName,
       onDisplayNameChange,
       handleDisplayNameSave,
+      handleCloseEditDisplayName,
     ]
   );
 
@@ -224,7 +231,7 @@ const UserProfileDetails = ({
 
   const userEmailRender = useMemo(
     () =>
-      userData.email && (
+      !isMaskedEmail(userData.email) && (
         <>
           <Space align="center">
             <Typography.Text
@@ -285,6 +292,7 @@ const UserProfileDetails = ({
         <Chip
           showNoDataPlaceholder
           data={defaultPersona ? [defaultPersona] : []}
+          entityType={EntityType.PERSONA}
           noDataPlaceholder={NO_DATA_PLACEHOLDER}
         />
 
@@ -318,7 +326,6 @@ const UserProfileDetails = ({
           <Divider type="vertical" />
 
           {userEmailRender}
-          <Divider type="vertical" />
 
           {defaultPersonaRender}
           <Divider type="vertical" />

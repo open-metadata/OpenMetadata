@@ -35,9 +35,10 @@ import { isDev } from './EnvironmentUtils';
 
 const cookieStorage = new CookieStorage();
 
-// 25s for server auth approch
+// 25s for server auth approach
 export const EXPIRY_THRESHOLD_MILLES = 25 * 1000;
-// 2 minutes for client auth approch
+
+// 2 minutes for client auth approach
 export const EXPIRY_THRESHOLD_MILLES_PUBLIC = 2 * 60 * 1000;
 
 export const getRedirectUri = (callbackUrl: string) => {

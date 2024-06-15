@@ -143,7 +143,9 @@ class StorageUnitTest(TestCase):
     def __init__(self, method_name: str, test_connection) -> None:
         super().__init__(method_name)
         test_connection.return_value = False
-        self.config = OpenMetadataWorkflowConfig.parse_obj(MOCK_OBJECT_STORE_CONFIG)
+        self.config = OpenMetadataWorkflowConfig.model_validate(
+            MOCK_OBJECT_STORE_CONFIG
+        )
 
         # This already validates that the source can be initialized
         self.object_store_source = S3Source.create(
@@ -234,7 +236,7 @@ class StorageUnitTest(TestCase):
                 data_model=None,
                 creation_date=bucket_response.creation_date.isoformat(),
                 sourceUrl=SourceUrl(
-                    __root__="https://s3.console.aws.amazon.com/s3/buckets/test_bucket?region=us-east-1&tab=objects"
+                    "https://s3.console.aws.amazon.com/s3/buckets/test_bucket?region=us-east-1&tab=objects"
                 ),
                 fullPath="s3://test_bucket",
             ),
@@ -250,13 +252,13 @@ class StorageUnitTest(TestCase):
         self.object_store_source._fetch_metric = lambda bucket_name, metric: 100.0
         columns: List[Column] = [
             Column(
-                name=ColumnName(__root__="transaction_id"),
+                name=ColumnName("transaction_id"),
                 dataType=DataType.INT,
                 dataTypeDisplay="INT",
                 displayName="transaction_id",
             ),
             Column(
-                name=ColumnName(__root__="transaction_value"),
+                name=ColumnName("transaction_value"),
                 dataType=DataType.INT,
                 dataTypeDisplay="INT",
                 displayName="transaction_value",
@@ -279,7 +281,7 @@ class StorageUnitTest(TestCase):
                 creation_date=datetime.datetime(2000, 1, 1).isoformat(),
                 parent=entity_ref,
                 sourceUrl=SourceUrl(
-                    __root__="https://s3.console.aws.amazon.com/s3/buckets/test_bucket?region=us-east-1&prefix=transactions/&showversions=false"
+                    "https://s3.console.aws.amazon.com/s3/buckets/test_bucket?region=us-east-1&prefix=transactions/&showversions=false"
                 ),
                 fullPath="s3://test_bucket/transactions",
             ),
@@ -317,13 +319,13 @@ class StorageUnitTest(TestCase):
             self.assertListEqual(
                 [
                     Column(
-                        name=ColumnName(__root__="transaction_id"),
+                        name=ColumnName("transaction_id"),
                         dataType=DataType.INT,
                         dataTypeDisplay="INT",
                         displayName="transaction_id",
                     ),
                     Column(
-                        name=ColumnName(__root__="transaction_value"),
+                        name=ColumnName("transaction_value"),
                         dataType=DataType.INT,
                         dataTypeDisplay="INT",
                         displayName="transaction_value",
@@ -346,7 +348,7 @@ class StorageUnitTest(TestCase):
             partitionColumns=[Column(name="date", dataType=DataType.DATE)],
         )
         self.assertEqual(
-            "transactions",
+            "transactions/",
             self.object_store_source._get_sample_file_prefix(
                 metadata_entry=input_metadata
             ),
@@ -367,7 +369,7 @@ class StorageUnitTest(TestCase):
             isPartitioned=False,
         )
         self.assertEqual(
-            "transactions",
+            "transactions/",
             self.object_store_source._get_sample_file_prefix(
                 metadata_entry=input_metadata
             ),
@@ -430,5 +432,5 @@ class StorageUnitTest(TestCase):
             verbose=False,
         )
         content = json.loads(metadata_config_response)
-        container_config = StorageContainerConfig.parse_obj(content)
+        container_config = StorageContainerConfig.model_validate(content)
         return container_config.entries

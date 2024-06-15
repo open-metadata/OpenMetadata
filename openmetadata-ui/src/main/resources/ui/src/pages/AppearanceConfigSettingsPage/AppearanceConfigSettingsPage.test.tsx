@@ -140,11 +140,20 @@ describe('Test appearance config page', () => {
     });
 
     expect(updateSettingsConfig).toHaveBeenCalledWith({
-      config_type: 'customLogoConfiguration',
+      config_type: 'customUiThemePreference',
       config_value: {
-        customLogoUrlPath: 'https://www.google.com',
-        customMonogramUrlPath: 'https://www.google.com',
-        customFaviconUrlPath: 'https://www.google.com',
+        customLogoConfig: {
+          customFaviconUrlPath: 'https://www.google.com',
+          customLogoUrlPath: 'https://www.google.com',
+          customMonogramUrlPath: 'https://www.google.com',
+        },
+        customTheme: {
+          errorColor: '#ffffff',
+          infoColor: '#ffffff',
+          primaryColor: '#ffffff',
+          successColor: '#ffffff',
+          warningColor: '#ffffff',
+        },
       },
     });
   });

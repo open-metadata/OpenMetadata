@@ -17,7 +17,8 @@ import { EntityType, ENTITY_PATH } from '../../constants/Entity.interface';
 import {
   createAnnouncement as createAnnouncementUtil,
   createInactiveAnnouncement as createInactiveAnnouncementUtil,
-  deleteAnnoucement,
+  deleteAnnouncement,
+  replyAnnouncementUtil,
 } from '../Utils/Annoucement';
 import {
   createCustomPropertyForEntity,
@@ -42,7 +43,7 @@ import {
 import {
   assignGlossaryTerm,
   removeGlossaryTerm,
-  udpateGlossaryTerm,
+  updateGlossaryTerm,
 } from '../Utils/Glossary';
 import { getToken } from '../Utils/LocalStorage';
 import {
@@ -54,7 +55,7 @@ import {
   updateTeamAsOwner,
   validateOwnerAndTeamCounts,
 } from '../Utils/Owner';
-import { assignTags, removeTags, udpateTags } from '../Utils/Tags';
+import { assignTags, removeTags, updateTags } from '../Utils/Tags';
 import { addTier, removeTier, updateTier } from '../Utils/Tier';
 import { downVoteEntity, upVoteEntity } from '../Utils/Voting';
 
@@ -379,7 +380,7 @@ class EntityClass {
     assignTags('PersonalData.Personal', this.endPoint);
   }
   updateTags() {
-    udpateTags('PII.None', this.endPoint);
+    updateTags('PII.None', this.endPoint);
   }
   removeTags() {
     removeTags(['PersonalData.Personal', 'PII.None'], this.endPoint);
@@ -395,7 +396,7 @@ class EntityClass {
     );
   }
   updateGlossary() {
-    udpateGlossaryTerm(
+    updateGlossaryTerm(
       `${glossaryDetails2.name}.${glossaryTermDetails2.name}`,
       glossaryTermDetails2.name,
       this.endPoint
@@ -448,27 +449,35 @@ class EntityClass {
   // Announcement
 
   createAnnouncement() {
-    createAnnouncementUtil({
-      title: 'Cypress annocement',
-      description: 'Cypress annocement description',
-    });
+    createAnnouncementUtil(
+      {
+        title: 'Cypress announcement',
+        description: 'Cypress announcement description',
+      },
+      this.entityName,
+      this.name
+    );
+  }
+
+  replyAnnouncement() {
+    replyAnnouncementUtil();
   }
 
   removeAnnouncement() {
-    deleteAnnoucement();
+    deleteAnnouncement();
   }
 
   // Inactive Announcement
 
   createInactiveAnnouncement() {
     createInactiveAnnouncementUtil({
-      title: 'Inactive Cypress annocement',
-      description: 'Inactive Cypress annocement description',
+      title: 'Inactive Cypress announcement',
+      description: 'Inactive Cypress announcement description',
     });
   }
 
   removeInactiveAnnouncement() {
-    deleteAnnoucement();
+    deleteAnnouncement();
   }
 
   followUnfollowEntity() {

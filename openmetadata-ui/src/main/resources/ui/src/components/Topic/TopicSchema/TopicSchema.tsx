@@ -217,7 +217,9 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
         filterIcon: (filtered) => (
           <FilterOutlined
             data-testid="tag-filter"
-            style={{ color: filtered ? theme.primaryColor : undefined }}
+            style={{
+              color: filtered ? theme.primaryColor : undefined,
+            }}
           />
         ),
         render: (tags: TagLabel[], record: Field, index: number) => (
@@ -247,7 +249,9 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
         filterIcon: (filtered) => (
           <FilterOutlined
             data-testid="glossary-filter"
-            style={{ color: filtered ? theme.primaryColor : undefined }}
+            style={{
+              color: filtered ? theme.primaryColor : undefined,
+            }}
           />
         ),
         render: (tags: TagLabel[], record: Field, index: number) => (
@@ -350,7 +354,7 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
             ) : (
               <Table
                 bordered
-                className={className}
+                className={classNames('align-table-filter-left', className)}
                 columns={columns}
                 data-testid="topic-schema-fields-table"
                 dataSource={messageSchema?.schemaFields}

@@ -14,21 +14,19 @@ import org.openmetadata.schema.type.Field;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.search.ParseTags;
-import org.openmetadata.service.search.SearchIndexUtils;
 import org.openmetadata.service.search.models.FlattenSchemaField;
 import org.openmetadata.service.search.models.SearchSuggest;
 import org.openmetadata.service.util.FullyQualifiedName;
-import org.openmetadata.service.util.JsonUtils;
 
 public class TopicIndex implements SearchIndex {
-  final List<String> excludeTopicFields =
-      List.of("sampleData", "changeDescription", "messageSchema");
+  final Set<String> excludeTopicFields = Set.of("sampleData");
   final Topic topic;
 
   public TopicIndex(Topic topic) {
     this.topic = topic;
   }
 
+  @Override
   public List<SearchSuggest> getSuggest() {
     List<SearchSuggest> suggest = new ArrayList<>();
     suggest.add(SearchSuggest.builder().input(topic.getFullyQualifiedName()).weight(5).build());
@@ -36,15 +34,23 @@ public class TopicIndex implements SearchIndex {
     return suggest;
   }
 
-  public Map<String, Object> buildESDoc() {
-    Map<String, Object> doc = JsonUtils.getMap(topic);
+  @Override
+  public Object getEntity() {
+    return topic;
+  }
+
+  @Override
+  public Set<String> getExcludedFields() {
+    return excludeTopicFields;
+  }
+
+  public Map<String, Object> buildSearchIndexDocInternal(Map<String, Object> doc) {
     List<SearchSuggest> fieldSuggest = new ArrayList<>();
     List<SearchSuggest> serviceSuggest = new ArrayList<>();
     Set<List<TagLabel>> tagsWithChildren = new HashSet<>();
     List<String> fieldsWithChildrenName = new ArrayList<>();
     serviceSuggest.add(
         SearchSuggest.builder().input(topic.getService().getName()).weight(5).build());
-    SearchIndexUtils.removeNonIndexableFields(doc, excludeTopicFields);
 
     if (topic.getMessageSchema() != null
         && topic.getMessageSchema().getSchemaFields() != null

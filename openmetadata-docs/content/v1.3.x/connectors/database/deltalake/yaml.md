@@ -108,7 +108,7 @@ You can also connect to the metastore by directly pointing to the Hive Metastore
 
 Here, we will need to inform all the common database settings (url, username, password), and the driver class name for JDBC metastore.
 
-You will need to provide the driver to the ingestion image, and pass the `classpath` which will be used in the Spark Configuration under `sparks.driver.extraClassPath`.
+You will need to provide the driver to the ingestion image, and pass the `classpath` which will be used in the Spark Configuration under `spark.driver.extraClassPath`.
 
 
 {% /codeInfo %}
@@ -140,7 +140,7 @@ You will need to provide the driver to the ingestion image, and pass the `classp
 
 {% codeBlock fileName="filename.yaml" %}
 
-```yaml
+```yaml {% isCodeBlock=true %}
 source:
   type: deltalake
   serviceName: "<service name>"

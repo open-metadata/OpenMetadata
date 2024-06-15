@@ -130,7 +130,7 @@ This is a sample config for Trino:
 
 {% codeBlock fileName="filename.yaml" %}
 
-```yaml
+```yaml {% isCodeBlock=true %}
 source:
   type: trino
   serviceName: <service name>
@@ -174,6 +174,7 @@ source:
 ```yaml {% srNumber=9 %}
       # connectionArguments:
       #   key: value
+      #   http_scheme: http  # required when connecting over HTTP
 ```
 
 {% partial file="/v1.3/connectors/yaml/database/source-config.md" /%}

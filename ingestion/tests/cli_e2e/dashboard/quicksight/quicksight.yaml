@@ -6,7 +6,7 @@ source:
       type: QuickSight
       awsConfig:
         awsRegion: $E2E_QUICKSIGHT_REGION
-      awsAccountId: $E2E_QUICKSIGHT_AWS_ACCOUNTID
+      awsAccountId: "$E2E_QUICKSIGHT_AWS_ACCOUNTID"
       identityType: IAM
   sourceConfig:
     config:

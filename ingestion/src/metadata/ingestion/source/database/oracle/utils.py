@@ -21,8 +21,8 @@ from sqlalchemy.sql import sqltypes
 
 from metadata.ingestion.source.database.oracle.queries import (
     GET_MATERIALIZED_VIEW_NAMES,
-    ORACLE_DBA_TABLE_COMMENTS,
-    ORACLE_DBA_VIEW_DEFINITIONS,
+    ORACLE_ALL_TABLE_COMMENTS,
+    ORACLE_ALL_VIEW_DEFINITIONS,
     ORACLE_GET_COLUMNS,
     ORACLE_GET_TABLE_NAMES,
     ORACLE_IDENTITY_TYPE,
@@ -48,7 +48,7 @@ def get_table_comment(
         connection,
         table_name=table_name.lower(),
         schema=schema.lower() if schema else None,
-        query=ORACLE_DBA_TABLE_COMMENTS,
+        query=ORACLE_ALL_TABLE_COMMENTS,
     )
 
 
@@ -67,7 +67,7 @@ def get_view_definition(
         connection,
         table_name=view_name.lower(),
         schema=schema.lower() if schema else None,
-        query=ORACLE_DBA_VIEW_DEFINITIONS,
+        query=ORACLE_ALL_VIEW_DEFINITIONS,
     )
 
 

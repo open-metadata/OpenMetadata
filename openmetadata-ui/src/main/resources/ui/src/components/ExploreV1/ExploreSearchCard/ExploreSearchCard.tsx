@@ -20,6 +20,10 @@ import { Link, useParams } from 'react-router-dom';
 import { useTourProvider } from '../../../context/TourProvider/TourProvider';
 import { EntityType } from '../../../enums/entity.enum';
 import { OwnerType } from '../../../enums/user.enum';
+import {
+  GlossaryTerm,
+  Status,
+} from '../../../generated/entity/data/glossaryTerm';
 import { EntityReference } from '../../../generated/entity/type';
 import {
   getEntityPlaceHolder,
@@ -32,6 +36,7 @@ import { stringToHTML } from '../../../utils/StringsUtils';
 import { getEntityIcon, getUsagePercentile } from '../../../utils/TableUtils';
 import TitleBreadcrumb from '../../common/TitleBreadcrumb/TitleBreadcrumb.component';
 import TableDataCardBody from '../../Database/TableDataCardBody/TableDataCardBody';
+import { GlossaryStatusBadge } from '../../Glossary/GlossaryStatusBadge/GlossaryStatusBadge.component';
 import './explore-search-card.less';
 import { ExploreSearchCardProps } from './ExploreSearchCard.interface';
 
@@ -170,6 +175,10 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
     }, [source, showEntityIcon, getEntityIcon]);
 
     const header = useMemo(() => {
+      const hasGlossaryTermStatus =
+        source.entityType === EntityType.GLOSSARY_TERM &&
+        (source as GlossaryTerm).status !== Status.Approved;
+
       return (
         <Row gutter={[8, 8]}>
           {showCheckboxes && (
@@ -216,7 +225,10 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
                 {entityIcon}
 
                 <Link
-                  className="no-underline line-height-22"
+                  className={classNames('no-underline line-height-22 ', {
+                    'w-full': !hasGlossaryTermStatus,
+                    'm-r-xs': hasGlossaryTermStatus,
+                  })}
                   data-testid="entity-link"
                   target={searchClassBase.getSearchEntityLinkTarget(
                     source,
@@ -224,11 +236,17 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
                   )}
                   to={searchClassBase.getEntityLink(source)}>
                   <Typography.Text
-                    className="text-lg font-medium text-link-color break-word"
+                    className="text-lg font-medium text-link-color break-word whitespace-normal"
                     data-testid="entity-header-display-name">
                     {stringToHTML(searchClassBase.getEntityName(source))}
                   </Typography.Text>
                 </Link>
+
+                {hasGlossaryTermStatus && (
+                  <GlossaryStatusBadge
+                    status={(source as GlossaryTerm).status ?? Status.Approved}
+                  />
+                )}
               </div>
             )}
           </Col>

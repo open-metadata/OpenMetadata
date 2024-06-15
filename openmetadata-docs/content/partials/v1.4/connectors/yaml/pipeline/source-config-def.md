@@ -8,6 +8,8 @@ The `sourceConfig` is defined [here](https://github.com/open-metadata/OpenMetada
 
 **includeTags**: Set the 'Include Tags' toggle to control whether to include tags as part of metadata ingestion.
 
+**includeUnDeployedPipelines**: Set the 'Include UnDeployed Pipelines' toggle to control whether to include un-deployed pipelines as part of metadata ingestion. By default it is set to `true`
+
 **markDeletedPipelines**: Set the Mark Deleted Pipelines toggle to flag pipelines as soft-deleted if they are not present anymore in the source system.
 
 **pipelineFilterPattern** and **chartFilterPattern**: Note that the `pipelineFilterPattern` and `chartFilterPattern` both support regex as include or exclude.

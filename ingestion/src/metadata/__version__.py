@@ -16,6 +16,8 @@ import os
 import re
 import sys
 
+from packaging.version import parse
+
 try:
     from importlib.metadata import version
 except ImportError:
@@ -85,3 +87,14 @@ def get_major_minor_version() -> str:
     """
     major, minor, *_ = sys.version_info
     return f"{major}.{minor}"
+
+
+def match_versions(version1: str, version2: str) -> bool:
+    """Check if both versions match in minor and major"""
+    server_semver = parse(version1)
+    client_semver = parse(version2)
+
+    return (
+        server_semver.major == client_semver.major
+        and server_semver.minor == client_semver.minor
+    )

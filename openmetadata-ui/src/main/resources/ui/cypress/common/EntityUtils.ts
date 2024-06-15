@@ -11,10 +11,12 @@
  *  limitations under the License.
  */
 
+import { isArray } from 'lodash';
 import {
   DASHBOARD_SERVICE_DETAILS,
   DATABASE_DETAILS,
   DATABASE_SERVICE_DETAILS,
+  ES_RESERVED_CHARACTERS,
   MESSAGING_SERVICE_DETAILS,
   ML_MODEL_SERVICE_DETAILS,
   PIPELINE_SERVICE_DETAILS,
@@ -22,6 +24,13 @@ import {
   STORAGE_SERVICE_DETAILS,
 } from '../constants/EntityConstant';
 import { uuid } from './common';
+
+type ColumnType = {
+  name: string;
+  description: string;
+  dataType: string;
+  dataTypeDisplay: string;
+};
 
 /**
  * create full hierarchy of database service (service > database > schema > tables)
@@ -61,15 +70,18 @@ export const createEntityTable = ({
   });
 
   // Create Database Schema
-  cy.request({
-    method: 'POST',
-    url: `/api/v1/databaseSchemas`,
-    headers: { Authorization: `Bearer ${token}` },
-    body: schema,
-  }).then((response) => {
-    expect(response.status).to.eq(201);
+  const schemaData = isArray(schema) ? schema : [schema];
+  schemaData.map((schema) => {
+    cy.request({
+      method: 'POST',
+      url: `/api/v1/databaseSchemas`,
+      headers: { Authorization: `Bearer ${token}` },
+      body: schema,
+    }).then((response) => {
+      expect(response.status).to.eq(201);
 
-    createdEntityIds.databaseSchemaId = response.body.id;
+      createdEntityIds.databaseSchemaId = response.body.id;
+    });
   });
 
   tables.forEach((body) => {
@@ -137,15 +149,20 @@ export const hardDeleteService = ({ serviceFqn, token, serviceType }) => {
   });
 };
 
-export const generateRandomTable = () => {
+export const generateRandomTable = (data?: {
+  tableName?: string;
+  columns?: ColumnType[];
+  databaseSchema?: string;
+}) => {
   const id = uuid();
-  const name = `cypress-table-${id}`;
+  const name = data?.tableName ?? `cypress-table-${id}`;
 
   const table = {
     name,
     description: `cypress-table-description-${id}`,
     displayName: name,
     columns: [
+      ...(data?.columns ?? []),
       {
         name: `cypress-column-${id}`,
         description: `cypress-column-description-${id}`,
@@ -153,7 +170,9 @@ export const generateRandomTable = () => {
         dataTypeDisplay: 'numeric',
       },
     ],
-    databaseSchema: `${DATABASE_SERVICE_DETAILS.name}.${DATABASE_DETAILS.name}.${SCHEMA_DETAILS.name}`,
+    databaseSchema:
+      data?.databaseSchema ??
+      `${DATABASE_SERVICE_DETAILS.name}.${DATABASE_DETAILS.name}.${SCHEMA_DETAILS.name}`,
   };
 
   return table;
@@ -457,4 +476,17 @@ export const getUserCreationDetails = () => {
       password: 'User@OMD123',
     },
   };
+};
+
+export const escapeESReservedCharacters = (text?: string) => {
+  const reUnescapedHtml = /[\\[\]#+=&|><!(){}^"~*?:/-]/g;
+  const reHasUnescapedHtml = RegExp(reUnescapedHtml.source);
+
+  const getReplacedChar = (char: string) => {
+    return ES_RESERVED_CHARACTERS[char] ?? char;
+  };
+
+  return text && reHasUnescapedHtml.test(text)
+    ? text.replace(reUnescapedHtml, getReplacedChar)
+    : text ?? '';
 };

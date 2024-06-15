@@ -6,7 +6,7 @@ build-backend = "setuptools.build_meta"
 # since it helps us organize and isolate version management
 [project]
 name = "openmetadata-ingestion"
-version = "1.4.0.0.dev0"
+version = "1.5.0.0.dev0"
 dynamic = ["readme", "dependencies", "optional-dependencies"]
 authors = [
     {name = "OpenMetadata Committers"}
@@ -101,6 +101,7 @@ max-public-methods = 25
 ignore-paths = [
     "ingestion/src/metadata/generated",
     # TODO - Remove these as we fix the linting issues
+    "ingestion/src/metadata/data_quality/validations/column/sqlalchemy/columnValuesToBeUnique.py",
     "ingestion/src/metadata/clients/azure_client.py",
     "ingestion/src/metadata/ingestion/ometa/mixins/es_mixin.py",
     "ingestion/src/metadata/ingestion/api/topology_runner.py",

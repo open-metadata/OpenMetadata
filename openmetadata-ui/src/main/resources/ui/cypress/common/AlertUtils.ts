@@ -53,7 +53,9 @@ export const addOwnerFilter = (
   cy.get('[data-testid="owner-name-select"]').click().type(ownerName);
   verifyResponseStatusCode('@getSearchResult', 200);
   cy.get(`[title="${ownerName}"]`).filter(':visible').scrollIntoView().click();
-  cy.get('[data-testid="owner-name-select"]').should('contain', ownerName);
+  cy.get(`[data-testid="owner-name-select"] [title="${ownerName}"]`).should(
+    'exist'
+  );
 
   if (exclude) {
     // Change filter effect
@@ -82,7 +84,9 @@ export const addEntityFQNFilter = (
   cy.get('[data-testid="fqn-list-select"]').click().type(entityFQN);
   verifyResponseStatusCode('@getSearchResult', 200);
   cy.get(`[title="${entityFQN}"]`).filter(':visible').scrollIntoView().click();
-  cy.get(`[title="${entityFQN}"] [aria-label="check"]`).should('exist');
+  cy.get(`[data-testid="fqn-list-select"] [title="${entityFQN}"]`).should(
+    'exist'
+  );
 
   if (exclude) {
     // Change filter effect
@@ -170,7 +174,9 @@ export const addDomainFilter = (
   cy.get('[data-testid="domain-select"]').click().type(domainName);
   verifyResponseStatusCode('@getSearchResult', 200);
   cy.get(`[title="${domainName}"]`).filter(':visible').scrollIntoView().click();
-  cy.get('[data-testid="domain-select"]').should('contain', domainName);
+  cy.get(`[data-testid="domain-select"] [title="${domainName}"]`).should(
+    'exist'
+  );
 
   if (exclude) {
     // Change filter effect

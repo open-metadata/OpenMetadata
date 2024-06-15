@@ -220,19 +220,6 @@ export const getSearchedTeams = (
   );
 };
 
-export const getSearchedUsersAndTeams = async (
-  queryString: string,
-  from: number,
-  size = 10
-) => {
-  const response = await searchData(queryString, from, size, '', '', '', [
-    SearchIndex.USER,
-    SearchIndex.TEAM,
-  ]);
-
-  return response.data;
-};
-
 export const deleteEntity = async (
   entityType: string,
   entityId: string,
@@ -278,7 +265,12 @@ export const getAggregateFieldOptions = (
   q: string
 ) => {
   const withWildCardValue = value ? `.*${value}.*` : '.*';
-  const params = { index, field, value: withWildCardValue, q };
+  const params = {
+    index,
+    field,
+    value: withWildCardValue,
+    q,
+  };
 
   return APIClient.get<SearchResponse<ExploreSearchIndex>>(
     `/search/aggregate`,

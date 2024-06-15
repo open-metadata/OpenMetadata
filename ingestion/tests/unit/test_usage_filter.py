@@ -71,7 +71,7 @@ def mock_list_entities(
     mock list entities for databases
     """
     schema_list1 = EntityReferenceList(
-        __root__=[
+        root=[
             EntityReference(
                 id="73129df3-96ed-476d-a9b5-b92091264649",
                 name="test_schema_1",
@@ -91,7 +91,7 @@ def mock_list_entities(
     )
 
     schema_list2 = EntityReferenceList(
-        __root__=[
+        root=[
             EntityReference(
                 id="73129df3-96ed-476d-a9b5-b92091264649",
                 name="test_schema_4",
@@ -146,7 +146,7 @@ class UsageQueryFilterTests(TestCase):
 
     @patch.object(OpenMetadata, "list_all_entities", mock_list_entities)
     def test_prepare_clickhouse(self):
-        config = OpenMetadataWorkflowConfig.parse_obj(mock_clickhouse_config)
+        config = OpenMetadataWorkflowConfig.model_validate(mock_clickhouse_config)
         clickhouse_source = ClickhouseUsageSource.create(
             mock_clickhouse_config["source"],
             OpenMetadata(config.workflowConfig.openMetadataServerConfig),

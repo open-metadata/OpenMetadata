@@ -78,16 +78,17 @@ describe('Teams flow should work properly', { tags: 'Settings' }, () => {
       .contains(TEAM_DETAILS.name)
       .click();
 
-    cy.get('[data-testid="avatar"]').click();
+    cy.get('[data-testid="profile-avatar"]').click();
     cy.get('[data-testid="user-name"]')
       .should('exist')
       .invoke('text')
       .then((text) => {
-        interceptURL('GET', '/api/v1/users?limit=15', 'getUsers');
+        interceptURL('GET', '/api/v1/users?limit=*', 'getUsers');
         // Clicking on edit owner button
         cy.get('[data-testid="edit-owner"]').click();
 
         cy.get('.user-team-select-popover').contains('Users').click();
+        cy.wait('@getUsers');
         cy.get('[data-testid="owner-select-users-search-bar"]').type(text);
         cy.get('[data-testid="selectable-list"]')
           .eq(1)
@@ -145,8 +146,8 @@ describe('Teams flow should work properly', { tags: 'Settings' }, () => {
       .find(`[title="${TEAM_DETAILS.username}"]`)
       .click();
     cy.get('[data-testid="selectable-list"]')
-      .find(`[title="${TEAM_DETAILS.username}"] input[type='checkbox']`)
-      .should('be.checked');
+      .find(`[title="${TEAM_DETAILS.username}"]`)
+      .should('have.class', 'active');
 
     cy.get('[data-testid="selectable-list-update-btn"]').click();
     verifyResponseStatusCode('@updateTeam', 200);

@@ -35,6 +35,7 @@ import { CustomPropertyTable } from '../../components/common/CustomPropertyTable
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../components/common/Loader/Loader';
 import { PagingHandlerParams } from '../../components/common/NextPrevious/NextPrevious.interface';
+import ResizablePanels from '../../components/common/ResizablePanels/ResizablePanels';
 import TabsLabel from '../../components/common/TabsLabel/TabsLabel.component';
 import { DataAssetsHeader } from '../../components/DataAssets/DataAssetsHeader/DataAssetsHeader.component';
 import ProfilerSettings from '../../components/Database/Profiler/ProfilerSettings/ProfilerSettings';
@@ -131,9 +132,14 @@ const DatabaseSchemaPage: FunctionComponent = () => {
   const [updateProfilerSetting, setUpdateProfilerSetting] =
     useState<boolean>(false);
 
-  const extraDropdownContent = entityUtilClassBase.getManageExtraOptions(
-    EntityType.DATABASE_SCHEMA,
-    decodedDatabaseSchemaFQN
+  const extraDropdownContent = useMemo(
+    () =>
+      entityUtilClassBase.getManageExtraOptions(
+        EntityType.DATABASE_SCHEMA,
+        decodedDatabaseSchemaFQN,
+        databaseSchemaPermission
+      ),
+    [databaseSchemaPermission, decodedDatabaseSchemaFQN]
   );
 
   const handleShowDeletedTables = (value: boolean) => {
@@ -317,7 +323,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
       try {
         const updatedData = {
           ...databaseSchema,
-          owner: owner ? { ...databaseSchema?.owner, ...owner } : undefined,
+          owner: owner,
         };
 
         const response = await saveUpdatedDatabaseSchemaData(
@@ -573,42 +579,59 @@ const DatabaseSchemaPage: FunctionComponent = () => {
       key: EntityTabs.TABLE,
       children: (
         <Row gutter={[0, 16]} wrap={false}>
-          <Col className="p-t-sm m-x-lg" flex="auto">
-            <SchemaTablesTab
-              currentTablesPage={currentTablesPage}
-              databaseSchemaDetails={databaseSchema}
-              description={description}
-              editDescriptionPermission={editDescriptionPermission}
-              isEdit={isEdit}
-              showDeletedTables={showDeletedTables}
-              tableData={tableData}
-              tableDataLoading={tableDataLoading}
-              tablePaginationHandler={tablePaginationHandler}
-              onCancel={onEditCancel}
-              onDescriptionEdit={onDescriptionEdit}
-              onDescriptionUpdate={onDescriptionUpdate}
-              onShowDeletedTablesChange={handleShowDeletedTables}
-              onThreadLinkSelect={onThreadLinkSelect}
-            />
-          </Col>
-          <Col
-            className="entity-tag-right-panel-container"
-            data-testid="entity-right-panel"
-            flex="320px">
-            <EntityRightPanel<EntityType.DATABASE_SCHEMA>
-              customProperties={databaseSchema}
-              dataProducts={databaseSchema?.dataProducts ?? []}
-              domain={databaseSchema?.domain}
-              editCustomAttributePermission={editCustomAttributePermission}
-              editTagPermission={editTagsPermission}
-              entityFQN={decodedDatabaseSchemaFQN}
-              entityId={databaseSchema?.id ?? ''}
-              entityType={EntityType.DATABASE_SCHEMA}
-              selectedTags={tags}
-              viewAllPermission={viewAllPermission}
-              onExtensionUpdate={handleExtensionUpdate}
-              onTagSelectionChange={handleTagSelection}
-              onThreadLinkSelect={onThreadLinkSelect}
+          <Col className="tab-content-height" span={24}>
+            <ResizablePanels
+              applyDefaultStyle={false}
+              firstPanel={{
+                children: (
+                  <div className="p-t-sm m-x-lg">
+                    <SchemaTablesTab
+                      currentTablesPage={currentTablesPage}
+                      databaseSchemaDetails={databaseSchema}
+                      description={description}
+                      editDescriptionPermission={editDescriptionPermission}
+                      isEdit={isEdit}
+                      showDeletedTables={showDeletedTables}
+                      tableData={tableData}
+                      tableDataLoading={tableDataLoading}
+                      tablePaginationHandler={tablePaginationHandler}
+                      onCancel={onEditCancel}
+                      onDescriptionEdit={onDescriptionEdit}
+                      onDescriptionUpdate={onDescriptionUpdate}
+                      onShowDeletedTablesChange={handleShowDeletedTables}
+                      onThreadLinkSelect={onThreadLinkSelect}
+                    />
+                  </div>
+                ),
+                minWidth: 800,
+                flex: 0.87,
+              }}
+              secondPanel={{
+                children: (
+                  <div data-testid="entity-right-panel">
+                    <EntityRightPanel<EntityType.DATABASE_SCHEMA>
+                      customProperties={databaseSchema}
+                      dataProducts={databaseSchema?.dataProducts ?? []}
+                      domain={databaseSchema?.domain}
+                      editCustomAttributePermission={
+                        editCustomAttributePermission
+                      }
+                      editTagPermission={editTagsPermission}
+                      entityFQN={decodedDatabaseSchemaFQN}
+                      entityId={databaseSchema?.id ?? ''}
+                      entityType={EntityType.DATABASE_SCHEMA}
+                      selectedTags={tags}
+                      viewAllPermission={viewAllPermission}
+                      onExtensionUpdate={handleExtensionUpdate}
+                      onTagSelectionChange={handleTagSelection}
+                      onThreadLinkSelect={onThreadLinkSelect}
+                    />
+                  </div>
+                ),
+                minWidth: 320,
+                flex: 0.13,
+                className: 'entity-resizable-right-panel-container',
+              }}
             />
           </Col>
         </Row>
