@@ -715,6 +715,7 @@ public class AppResource extends EntityResource<App, AppRepository> {
       throw new IllegalArgumentException(
           CatalogExceptionMessage.systemEntityDeleteNotAllowed(app.getName(), "SystemApp"));
     }
+    limits.invalidateCache(entityType);
     // Remove from Pipeline Service
     deleteApp(securityContext, app, hardDelete);
     return deleteByName(uriInfo, securityContext, name, true, hardDelete);
