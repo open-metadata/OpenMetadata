@@ -546,6 +546,7 @@ public class AppResource extends EntityResource<App, AppRepository> {
       })
   public Response create(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateApp create) {
+
     AppMarketPlaceDefinition definition =
         repository
             .getMarketPlace()
@@ -554,6 +555,10 @@ public class AppResource extends EntityResource<App, AppRepository> {
                 create.getName(),
                 new EntityUtil.Fields(repository.getMarketPlace().getAllowedFields()));
     App app = getApplication(definition, create, securityContext.getUserPrincipal().getName());
+    limits.enforceLimits(
+        securityContext,
+        getResourceContext(),
+        new OperationContext(Entity.APPLICATION, MetadataOperation.CREATE));
     if (app.getScheduleType().equals(ScheduleType.Scheduled)) {
       ApplicationHandler.getInstance()
           .installApplication(app, Entity.getCollectionDAO(), searchRepository);
