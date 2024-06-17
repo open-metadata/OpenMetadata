@@ -102,7 +102,7 @@ DATA_DIFF = {
         "mssql",
         "mysql",
         "oracle",
-        "postgresql",
+        # "postgresql", we dont use this as it installs psycopg2 which interferes with psycopg2-binary
         "presto",
         "redshift",
         "snowflake",
@@ -214,7 +214,7 @@ plugins: Dict[str, Set[str]] = {
     },  # also requires requests-aws4auth which is in base
     "glue": {VERSIONS["boto3"]},
     "great-expectations": {VERSIONS["great-expectations"]},
-    "greenplum": {*COMMONS["postgres"], DATA_DIFF["postgresql"]},
+    "greenplum": {*COMMONS["postgres"]},
     "hive": {
         *COMMONS["hive"],
         "thrift>=0.13,<1",
@@ -267,7 +267,7 @@ plugins: Dict[str, Set[str]] = {
     "oracle": {"cx_Oracle>=8.3.0,<9", "oracledb~=1.2", DATA_DIFF["oracle"]},
     "pgspider": {"psycopg2-binary", "sqlalchemy-pgspider"},
     "pinotdb": {"pinotdb~=5.0"},
-    "postgres": {*COMMONS["postgres"], DATA_DIFF["postgresql"]},
+    "postgres": {*COMMONS["postgres"]},
     "powerbi": {
         VERSIONS["msal"],
         VERSIONS["boto3"],
@@ -286,7 +286,6 @@ plugins: Dict[str, Set[str]] = {
         VERSIONS["redshift"],
         "psycopg2-binary",
         VERSIONS["geoalchemy2"],
-        DATA_DIFF["redshift"],
     },
     "sagemaker": {VERSIONS["boto3"]},
     "salesforce": {"simple_salesforce~=1.11"},
