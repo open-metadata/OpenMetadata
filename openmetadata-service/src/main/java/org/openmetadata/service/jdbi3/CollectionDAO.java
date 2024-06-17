@@ -16,6 +16,7 @@ package org.openmetadata.service.jdbi3;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.schema.type.Relationship.CONTAINS;
 import static org.openmetadata.schema.type.Relationship.MENTIONED_IN;
+import static org.openmetadata.service.Entity.GLOSSARY_TERM;
 import static org.openmetadata.service.Entity.ORGANIZATION_NAME;
 import static org.openmetadata.service.Entity.QUERY;
 import static org.openmetadata.service.jdbi3.ListFilter.escapeApostrophe;
@@ -113,6 +114,7 @@ import org.openmetadata.schema.settings.SettingsType;
 import org.openmetadata.schema.tests.TestCase;
 import org.openmetadata.schema.tests.TestDefinition;
 import org.openmetadata.schema.tests.TestSuite;
+import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EventType;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
@@ -1334,6 +1336,79 @@ public interface CollectionDAO {
         @BindList("teamNames") List<String> teamNames,
         @Bind("relation") int relation,
         @Define("condition") String condition);
+
+    @SqlQuery(
+        "SELECT json FROM thread_entity <condition> "
+            + "AND MD5(id) in (SELECT fromFQNHash FROM field_relationship WHERE "
+            + "(:fqnPrefixHash IS NULL OR toFQNHash LIKE CONCAT(:fqnPrefixHash, '.%') OR toFQNHash=:fqnPrefixHash) AND fromType='THREAD' AND "
+            + "((:toType1 IS NULL OR toType LIKE CONCAT(:toType1, '.%') OR toType=:toType1) OR "
+            + "(:toType2 IS NULL OR toType LIKE CONCAT(:toType2, '.%') OR toType=:toType2)) AND relation= :relation)"
+            + "AND (:userName IS NULL OR MD5(id) in (SELECT toFQNHash FROM field_relationship WHERE "
+            + " ((fromType='user' AND fromFQNHash= :userName) OR"
+            + " (fromType='team' AND fromFQNHash IN (<teamNames>))) AND toType='THREAD' AND relation= :filterRelation) )"
+            + "ORDER BY createdAt DESC "
+            + "LIMIT :limit")
+    List<String> listThreadsByGlossaryAndTerms(
+        @BindFQN("fqnPrefixHash") String fqnPrefixHash,
+        @Bind("toType1") String toType1,
+        @Bind("toType2") String toType2,
+        @Bind("limit") int limit,
+        @Bind("relation") int relation,
+        @BindFQN("userName") String userName,
+        @BindList("teamNames") List<String> teamNames,
+        @Bind("filterRelation") int filterRelation,
+        @Define("condition") String condition);
+
+    default List<List<String>> listCountThreadsByGlossaryAndTerms(
+        EntityLink entityLink, EntityReference reference) {
+      EntityLink glossaryTermLink =
+          new EntityLink(GLOSSARY_TERM, entityLink.getFullyQualifiedFieldValue());
+      return listCountThreadsByGlossaryAndTerms(
+          reference.getId(),
+          reference.getFullyQualifiedName(),
+          entityLink.getFullyQualifiedFieldType(),
+          glossaryTermLink.getFullyQualifiedFieldType());
+    }
+
+    @SqlQuery(
+        "SELECT entityLink, type, taskStatus, COUNT(id) count "
+            + "FROM ( "
+            + "    SELECT te.entityLink, te.type, te.taskStatus, te.id "
+            + "    FROM thread_entity te  "
+            + "    WHERE te.entityId = :entityId  "
+            + "    OR EXISTS ( "
+            + "        SELECT 1  "
+            + "        FROM field_relationship fr  "
+            + "        WHERE fr.fromFQNHash = MD5(te.id) "
+            + "        AND (:fqnPrefixHash IS NULL OR fr.toFQNHash LIKE CONCAT(:fqnPrefixHash, '.%') OR fr.toFQNHash = :fqnPrefixHash) "
+            + "        AND fr.fromType = 'THREAD' "
+            + "        AND (:toType1 IS NULL OR fr.toType LIKE CONCAT(:toType1, '.%') OR fr.toType = :toType1) "
+            + "        AND fr.relation = 3 "
+            + "    ) "
+            + "    UNION ALL "
+            + "    SELECT te.entityLink, te.type, te.taskStatus, te.id "
+            + "    FROM thread_entity te  "
+            + "    WHERE te.type = 'Task'  "
+            + "    AND (te.entityId = :entityId  "
+            + "    OR EXISTS ( "
+            + "        SELECT 1  "
+            + "        FROM field_relationship fr  "
+            + "        JOIN thread_entity te2 ON MD5(te2.id) = fr.fromFQNHash  "
+            + "        WHERE fr.fromFQNHash = MD5(te.id) "
+            + "        AND te2.type = 'Task'   "
+            + "        AND (:fqnPrefixHash IS NULL OR fr.toFQNHash LIKE CONCAT(:fqnPrefixHash, '.%') OR fr.toFQNHash = :fqnPrefixHash) "
+            + "        AND fr.fromType = 'THREAD' "
+            + "        AND (:toType2 IS NULL OR fr.toType LIKE CONCAT(:toType2, '.%') OR fr.toType = :toType2) "
+            + "        AND fr.relation = 3 "
+            + "    )) "
+            + ") AS combined_results "
+            + "GROUP BY entityLink, type, taskStatus ")
+    @RegisterRowMapper(ThreadCountFieldMapper.class)
+    List<List<String>> listCountThreadsByGlossaryAndTerms(
+        @BindUUID("entityId") UUID entityId,
+        @BindFQN("fqnPrefixHash") String fqnPrefixHash,
+        @Bind("toType1") String toType1,
+        @Bind("toType2") String toType2);
 
     @SqlQuery("select id from thread_entity where entityId = :entityId")
     List<String> findByEntityId(@Bind("entityId") String entityId);
