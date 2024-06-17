@@ -246,7 +246,9 @@ class DeltalakeSource(DatabaseServiceSource):
             )
 
             table_partitions = self.context.get().table_partitions
-            table_partition = TablePartition(columns=table_partitions) if table_partitions else None
+            table_partition = (
+                TablePartition(columns=table_partitions) if table_partitions else None
+            )
 
             table_request = CreateTableRequest(
                 name=EntityName(table_name),
@@ -264,7 +266,7 @@ class DeltalakeSource(DatabaseServiceSource):
                     )
                 ),
                 schemaDefinition=view_definition,
-                tablePartition=table_partition
+                tablePartition=table_partition,
             )
 
             yield Either(right=table_request)

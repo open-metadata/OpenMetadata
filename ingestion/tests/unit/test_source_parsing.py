@@ -338,11 +338,11 @@ def test_deltalake():
                             "awsAccessKeyId": "access_key",
                             "awsSecretAccessKey": "secret_key",
                             "awsRegion": "us-east-2",
-                            "awsSessionToken": "sessionToken"
+                            "awsSessionToken": "sessionToken",
                         }
                     },
                     "bucketName": "my-bucket",
-                    "prefix": "prefix"
+                    "prefix": "prefix",
                 }
             }
         },

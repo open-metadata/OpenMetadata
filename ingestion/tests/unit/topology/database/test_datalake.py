@@ -643,5 +643,6 @@ class DatalakeGCSUnitTest(TestCase):
     def test_gcs_schema_filer(self):
         self.datalake_source.client._client.list_buckets = lambda: MOCK_GCS_SCHEMA
         assert (
-            list(self.datalake_source.get_database_schema_names()) == EXPECTED_GCS_SCHEMA
+            list(self.datalake_source.get_database_schema_names())
+            == EXPECTED_GCS_SCHEMA
         )
