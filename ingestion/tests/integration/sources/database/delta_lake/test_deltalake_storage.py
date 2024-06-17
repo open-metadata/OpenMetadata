@@ -9,6 +9,8 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 """deltalake storage integration tests"""
+import sys
+
 import deltalake
 import pandas as pd
 import pytest
@@ -137,6 +139,10 @@ def ingest(metadata, service, create_data):
     return
 
 
+@pytest.mark.skipif(
+    sys.version_info < (3, 9),
+    reason="testcontainers exposed port not working correctly on Python3.8. receiving a MagicMock.",
+)
 def test_delta(ingest, metadata):
     tables = metadata.list_all_entities(entity=Table)
 
