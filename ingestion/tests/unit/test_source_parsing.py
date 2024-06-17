@@ -275,10 +275,12 @@ def test_deltalake():
         "serviceName": "local_deltalake",
         "serviceConnection": {
             "config": {
-                "metastoreConnection": {
-                    "metastoreDb": "jdbc:mysql://localhost:3306/demo_hive"
+                "configSource": {
+                    "connection": {
+                        "metastoreDb": "jdbc:mysql://localhost:3306/demo_hive"
+                    },
+                    "appName": "MyApp",
                 },
-                "appName": "MyApp",
             }
         },
         "sourceConfig": {"config": {"type": "DatabaseMetadata"}},
@@ -292,8 +294,12 @@ def test_deltalake():
         "serviceName": "local_deltalake",
         "serviceConnection": {
             "config": {
-                "metastoreConnection": {"metastoreHostPort": "localhost:9083"},
-                "appName": "MyApp",
+                "configSource": {
+                    "connection": {
+                        "metastoreHostPort": "localhost:9083",
+                    },
+                    "appName": "MyApp",
+                }
             }
         },
         "sourceConfig": {"config": {"type": "DatabaseMetadata"}},
@@ -307,8 +313,37 @@ def test_deltalake():
         "serviceName": "local_deltalake",
         "serviceConnection": {
             "config": {
-                "metastoreConnection": {"metastoreFilePath": "/tmp/metastore.db"},
-                "appName": "MyApp",
+                "configSource": {
+                    "connection": {
+                        "metastoreFilePath": "/tmp/metastore.db",
+                    },
+                    "appName": "MyApp",
+                }
+            }
+        },
+        "sourceConfig": {"config": {"type": "DatabaseMetadata"}},
+    }
+
+    config: WorkflowSource = WorkflowSource.model_validate(source)
+    assert isinstance(config.serviceConnection.root.config, DeltaLakeConnection)
+
+    source = {
+        "type": "deltalake",
+        "serviceName": "local_deltalake",
+        "serviceConnection": {
+            "config": {
+                "configSource": {
+                    "connection": {
+                        "securityConfig": {
+                            "awsAccessKeyId": "access_key",
+                            "awsSecretAccessKey": "secret_key",
+                            "awsRegion": "us-east-2",
+                            "awsSessionToken": "sessionToken"
+                        }
+                    },
+                    "bucketName": "my-bucket",
+                    "prefix": "prefix"
+                }
             }
         },
         "sourceConfig": {"config": {"type": "DatabaseMetadata"}},

@@ -226,4 +226,7 @@ class DeltaLakeUnitTest(TestCase):
             schemaDefinition=None,
         )
 
+        print(table_request)
+        print(expected_table_request)
+
         self.assertEqual(table_request, expected_table_request)

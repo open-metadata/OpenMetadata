@@ -46,7 +46,7 @@ class DatalakeGcsClient(DatalakeBaseClient):
             config.securityConfig.gcpConfig.projectId, MultipleProjectId
         ):
             gcs_config.securityConfig.gcpConfig.projectId = SingleProjectId.parse_obj(
-                gcs_config.securityConfig.gcpConfig.projectId.__root__[0]
+                gcs_config.securityConfig.gcpConfig.projectId.root[0]
             )
 
         if not gcs_config.securityConfig:
@@ -72,7 +72,7 @@ class DatalakeGcsClient(DatalakeBaseClient):
 
     def get_database_names(self, service_connection):
         project_id_list = (
-            service_connection.configSource.securityConfig.gcpConfig.projectId.__root__
+            service_connection.configSource.securityConfig.gcpConfig.projectId.root
         )
 
         if not isinstance(project_id_list, list):

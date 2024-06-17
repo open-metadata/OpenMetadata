@@ -53,7 +53,7 @@ mock_datalake_config = {
                         "endPointURL": "https://endpoint.com/",
                     }
                 },
-                "bucketName": "bucket name",
+                # "bucketName": "bucket name",
             }
         },
         "sourceConfig": {
@@ -484,8 +484,8 @@ class DatalakeUnitTest(TestCase):
         ] = MOCK_DATABASE_SERVICE.name.root
 
     def test_s3_schema_filer(self):
-        self.datalake_source.client.list_buckets = lambda: MOCK_S3_SCHEMA
-        assert list(self.datalake_source.fetch_s3_bucket_names()) == EXPECTED_SCHEMA
+        self.datalake_source.client._client.list_buckets = lambda: MOCK_S3_SCHEMA
+        assert list(self.datalake_source.get_database_schema_names()) == EXPECTED_SCHEMA
 
     def test_json_file_parse(self):
         """
@@ -571,8 +571,8 @@ mock_datalake_gcs_config = {
                         }
                     }
                 },
-                "bucketName": "bucket name",
-                "prefix": "prefix",
+                # "bucketName": "bucket name",
+                # "prefix": "prefix",
             }
         },
         "sourceConfig": {"config": {"type": "DatabaseMetadata"}},
@@ -632,6 +632,7 @@ class DatalakeGCSUnitTest(TestCase):
     def test_multiple_project_id_implementation(
         self, validate_private_key, storage_client, test_connection
     ):
+        print(mock_multiple_project_id)
         self.datalake_source_multiple_project_id = DatalakeSource.create(
             mock_multiple_project_id["source"],
             OpenMetadataWorkflowConfig.model_validate(
@@ -640,7 +641,7 @@ class DatalakeGCSUnitTest(TestCase):
         )
 
     def test_gcs_schema_filer(self):
-        self.datalake_source.client.list_buckets = lambda: MOCK_GCS_SCHEMA
+        self.datalake_source.client._client.list_buckets = lambda: MOCK_GCS_SCHEMA
         assert (
-            list(self.datalake_source.fetch_gcs_bucket_names()) == EXPECTED_GCS_SCHEMA
+            list(self.datalake_source.get_database_schema_names()) == EXPECTED_GCS_SCHEMA
         )
