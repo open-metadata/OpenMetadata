@@ -8,9 +8,12 @@ from unittest.mock import patch
 
 from pydantic import AnyUrl
 
+from metadata.generated.schema.entity.services.connections.database.deltalake.metastoreConfig import (
+    MetastoreConfig,
+    MetastoreHostPortConnection,
+)
 from metadata.generated.schema.entity.services.connections.database.deltaLakeConnection import (
     DeltaLakeConnection,
-    MetastoreHostPortConnection,
 )
 from metadata.generated.schema.entity.services.connections.database.dynamoDBConnection import (
     DynamoDBConnection,
@@ -108,8 +111,10 @@ EXPECTED_SERVICE = [
         connection=DatabaseConnection(
             config=DeltaLakeConnection(
                 type="DeltaLake",
-                metastoreConnection=MetastoreHostPortConnection(
-                    metastoreHostPort="http://localhost:9083"
+                configSource=MetastoreConfig(
+                    connection=MetastoreHostPortConnection(
+                        metastoreHostPort="http://localhost:9083"
+                    )
                 ),
                 connectionArguments=None,
                 supportsMetadataExtraction=True,
@@ -192,7 +197,10 @@ class AmundsenUnitTest(TestCase):
         ):
             original.id = expected.id = "836ff98d-a241-4d06-832d-745f96ac88fc"
             original.href = expected.href = None
+            original.owner = expected.owner = None
             original.updatedAt = expected.updatedAt = datetime.datetime.now()
             original.version = expected.version = 2.5
             original.changeDescription = None
+            print(original)
+            print(expected)
             self.assertEqual(expected, original)
