@@ -20,6 +20,7 @@ import feign.jackson.JacksonDecoder;
 import feign.jackson.JacksonEncoder;
 import feign.okhttp.OkHttpClient;
 import feign.slf4j.Slf4jLogger;
+import java.util.Objects;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.client.ApiClient;
 import org.openmetadata.client.api.SystemApi;
@@ -27,7 +28,6 @@ import org.openmetadata.client.security.factory.AuthenticationProviderFactory;
 import org.openmetadata.schema.api.OpenMetadataServerVersion;
 import org.openmetadata.schema.services.connections.metadata.OpenMetadataConnection;
 import org.openmetadata.schema.utils.VersionUtils;
-import java.util.Objects;
 
 @Slf4j
 public class OpenMetadata {
