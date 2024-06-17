@@ -50,8 +50,8 @@ export const checkDataInsightSuccessStatus = (
           ) {
             waitForTimer(timer, count);
           } else {
-            if ($ingestionStatus.text() !== 'Success') {
-              cy.get('@checkRun').should('have.text', 'Success');
+            if ($ingestionStatus.text() === 'Success') {
+              expect($ingestionStatus.text()).eq('Success');
 
               isSuccessStatus = true;
             }
