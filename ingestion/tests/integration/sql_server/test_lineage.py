@@ -8,7 +8,6 @@ if not sys.version_info >= (3, 9):
     pytest.skip("requires python 3.9+", allow_module_level=True)
 
 
-@pytest.mark.skip("fails for english even thoudh it should succeed")
 def test_lineage(
     ingest_metadata,
     run_lineage_workflow,
