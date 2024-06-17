@@ -364,6 +364,7 @@ test = {
     *plugins["pii-processor"],
     "requests==2.31.0",
     f"{DATA_DIFF['mysql']}==0.11.2",
+    "tenacity==8.3.0",  # tenaicty 8.4.0 has an error: https://github.com/jd/tenacity/issues/471
 }
 
 e2e_test = {
