@@ -23,6 +23,10 @@ class DatalakeBaseClient(ABC):
         """Returns a Datalake Client based on the DatalakeConfig passed."""
 
     @abstractmethod
+    def update_client_database(self, config, database_name: str):
+        """Updates the Client when changing the Database."""
+
+    @abstractmethod
     def get_database_names(self, service_connection) -> Iterable[str]:
         """Returns the Database Names, based on the underlying client."""
 

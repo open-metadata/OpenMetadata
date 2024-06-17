@@ -42,6 +42,9 @@ class DatalakeAzureBlobClient(DatalakeBaseClient):
                 f"Unknown error connecting with {config.securityConfig}: {exc}."
             )
 
+    def update_client_database(self, config, database_name):
+        pass
+
     def get_database_names(self, service_connection) -> Iterable[str]:
         yield service_connection.databaseName or DEFAULT_DATABASE
 

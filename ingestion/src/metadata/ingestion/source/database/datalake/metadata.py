@@ -374,4 +374,4 @@ class DatalakeSource(DatabaseServiceSource):
         return False
 
     def close(self):
-        self.client.close()
+        self.client.close(self.service_connection)

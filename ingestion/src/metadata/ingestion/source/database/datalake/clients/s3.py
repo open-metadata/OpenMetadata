@@ -36,6 +36,9 @@ class DatalakeS3Client(DatalakeBaseClient):
         s3_client = AWSClient(config.securityConfig).get_client(service_name="s3")
         return cls(client=s3_client)
 
+    def update_client_database(self, config, database_name: str):
+        pass
+
     def get_database_names(self, service_connection) -> Iterable[str]:
         yield service_connection.databaseName or DEFAULT_DATABASE
 
