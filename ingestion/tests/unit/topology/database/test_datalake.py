@@ -53,7 +53,7 @@ mock_datalake_config = {
                         "endPointURL": "https://endpoint.com/",
                     }
                 },
-                # "bucketName": "bucket name",
+                "bucketName": "my_bucket",
             }
         },
         "sourceConfig": {
@@ -97,7 +97,7 @@ MOCK_GCS_SCHEMA = [
 ]
 
 EXPECTED_SCHEMA = ["my_bucket"]
-EXPECTED_GCS_SCHEMA = ["test_datalake", "test_gcs", "s3_test", "my_bucket"]
+EXPECTED_GCS_SCHEMA = ["my_bucket"]
 
 
 MOCK_DATABASE_SERVICE = DatabaseService(
@@ -571,8 +571,8 @@ mock_datalake_gcs_config = {
                         }
                     }
                 },
-                # "bucketName": "bucket name",
-                # "prefix": "prefix",
+                "bucketName": "my_bucket",
+                "prefix": "prefix",
             }
         },
         "sourceConfig": {"config": {"type": "DatabaseMetadata"}},

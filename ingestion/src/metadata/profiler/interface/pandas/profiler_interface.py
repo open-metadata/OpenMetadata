@@ -137,7 +137,7 @@ class PandasProfilerInterface(ProfilerInterface, PandasInterfaceMixin):
 
         return sampler_factory_.create(
             DatalakeConnection.__name__,
-            client=self.client._client,
+            client=self.client._client,  # pylint: disable=W0212
             table=self.dfs,
             profile_sample_config=self.profile_sample_config,
             partition_details=self.partition_details,
