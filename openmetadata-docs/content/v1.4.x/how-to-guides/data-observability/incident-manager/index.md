@@ -42,3 +42,13 @@ One of the powerful features of the Incident Manager is its ability to store all
 4. **Log and Learn:** Document the root cause of each failure and use the stored information to learn and improve.
 
 By following these steps, you'll ensure that your organization effectively manages data quality issues, maintains high standards, and continuously improves its data quality processes.
+
+{%inlineCalloutContainer%}
+ {%inlineCallout
+  color="violet-70"
+  bold="How to work with Incident Manager"
+  icon="MdMenuBook"
+  href="/how-to-guides/data-observability/incident-manager/workflow"%}
+  Incident Manager Workflow
+ {%/inlineCallout%}
+{%/inlineCalloutContainer%}

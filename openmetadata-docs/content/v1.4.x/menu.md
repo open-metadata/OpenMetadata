@@ -380,11 +380,13 @@ site_menu:
   - category: How-to Guides / Data Governance / Classification / Best Practices for Classification
     url: /how-to-guides/data-governance/classification/best-practices
 
-    - category: How-to Guides / Data Observability
+  - category: How-to Guides / Data Observability
     url: /how-to-guides/data-observability
   - category: How-to Guides / Data Observability / Incident Manager
     url: /how-to-guides/data-observability/incident-manager
-    
+  - category: How-to Guides / Data Observability / Incident Manager/ How to work with Incident Manager
+    url: /how-to-guides/data-observability/incident-manager/workflow
+
   - category: Releases
     url: /releases
     color: violet-70
