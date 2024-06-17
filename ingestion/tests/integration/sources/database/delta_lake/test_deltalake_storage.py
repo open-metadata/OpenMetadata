@@ -12,6 +12,7 @@
 import deltalake
 import pandas as pd
 import pytest
+from pydantic import AnyUrl
 
 from metadata.generated.schema.api.services.createDatabaseService import (
     CreateDatabaseServiceRequest,
@@ -96,9 +97,9 @@ def service(metadata, deltalake_storage_environment):
                     connection=S3Config(
                         securityConfig=AWSCredentials(
                             awsAccessKeyId=access_key,
-                            awsSecretAccessKey=CustomSecretStr(secret_key),
+                            awsSecretAccessKey=secret_key,
                             awsRegion=region,
-                            endPointURL=endpoint,
+                            endPointURL=AnyUrl(endpoint),
                         )
                     ),
                     bucketName=bucket,
@@ -109,6 +110,9 @@ def service(metadata, deltalake_storage_environment):
     )
 
     service_entity = metadata.create_or_update(data=service)
+    service_entity.connection.config.configSource.connection.securityConfig.awsSecretAccessKey = CustomSecretStr(
+        "password"
+    )
     yield service_entity
     metadata.delete(
         DatabaseService, service_entity.id, recursive=True, hard_delete=True
