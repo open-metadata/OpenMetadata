@@ -85,3 +85,5 @@ export const TEST_CASE_STATUS: Record<
   ],
   [TestCaseResolutionStatusTypes.Resolved]: [],
 };
+
+export const TABLE_DIFF = 'tableDiff';

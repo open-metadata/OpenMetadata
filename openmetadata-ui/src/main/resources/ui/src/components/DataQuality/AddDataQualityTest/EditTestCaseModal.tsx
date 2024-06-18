@@ -19,6 +19,7 @@ import { isEmpty } from 'lodash';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ENTITY_NAME_REGEX } from '../../../constants/regex.constants';
+import { TABLE_DIFF } from '../../../constants/TestSuite.constant';
 import { Table } from '../../../generated/entity/data/table';
 import {
   TestDataType,
@@ -175,6 +176,9 @@ const EditTestCaseModal: React.FC<EditTestCaseModalProps> = ({
       const definition = await getTestDefinitionById(
         testCaseDetails.testDefinition.id || ''
       );
+      if (testCaseDetails.testDefinition?.fullyQualifiedName === TABLE_DIFF) {
+        await fetchTableDetails(tableFqn);
+      }
       form.setFieldsValue({
         name: testCase?.name,
         testDefinition: testCaseDetails?.testDefinition?.name,
