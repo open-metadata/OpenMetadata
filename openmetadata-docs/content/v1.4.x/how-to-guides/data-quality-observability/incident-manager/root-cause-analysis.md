@@ -1,6 +1,6 @@
 ---
 title: Root Cause Analysis
-slug: /quality-and-observability/data-quality/root-cause-analysis
+slug: /how-to-guides/data-quality-observability/incident-manager/root-cause-analysis
 ---
 
 # Root Cause Analysis

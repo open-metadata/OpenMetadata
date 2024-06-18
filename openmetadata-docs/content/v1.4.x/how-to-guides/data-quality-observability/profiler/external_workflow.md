@@ -1,6 +1,6 @@
 ---
 title: External Profiler Workflow
-slug: /quality-and-observability/profiler/external-workflow
+slug: /how-to-guides/data-quality-observability/profiler/external-workflow
 ---
 
 # External Profiler Workflow
@@ -23,7 +23,7 @@ You might also want to check out how to configure external sample data. You can 
 {% tile
 title="External Sample Data"
 description="Configure OpenMetadata to store sample data in an external storage such as S3"
-link="/connectors/ingestion/workflows/profiler/external-sample-data"
+link="/how-to-guides/data-quality-observability/profiler/external-sample-data"
 / %}
 {% /tilesContainer %}
 
