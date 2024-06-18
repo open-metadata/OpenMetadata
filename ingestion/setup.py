@@ -36,6 +36,7 @@ VERSIONS = {
     "pydomo": "pydomo~=0.3",
     "pymysql": "pymysql>=1.0.2",
     "pyodbc": "pyodbc>=4.0.35,<5",
+    "numpy": "numpy<2",
     "scikit-learn": "scikit-learn~=1.0",  # Python 3.7 only goes up to 1.0.2
     "packaging": "packaging==21.3",
     "azure-storage-blob": "azure-storage-blob~=12.14",
@@ -134,6 +135,7 @@ plugins: Dict[str, Set[str]] = {
         "google-cloud-datacatalog>=3.6.2",
         "google-cloud-logging",
         VERSIONS["pyarrow"],
+        VERSIONS["numpy"],
         "sqlalchemy-bigquery>=1.2.2",
     },
     "bigtable": {"google-cloud-bigtable>=2.0.0", VERSIONS["pandas"]},
