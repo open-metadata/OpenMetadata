@@ -312,7 +312,8 @@ const UserProfileDetails = ({
 
     try {
       await restoreUser(userData.id);
-      afterDeleteAction(true);
+      afterDeleteAction(true); // this will reset the user state with deleted to false value.
+
       showSuccessToast(
         t('message.entity-restored-success', { entity: t('label.user') })
       );

@@ -152,7 +152,9 @@ const DeleteWidgetModal = ({
           );
 
           if (entityType === EntityType.USER && entityId === currentUser?.id) {
-            return onLogoutHandler();
+            onLogoutHandler();
+
+            return;
           }
           if (afterDeleteAction) {
             afterDeleteAction(
