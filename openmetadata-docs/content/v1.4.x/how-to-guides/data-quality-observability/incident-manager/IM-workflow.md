@@ -1,9 +1,9 @@
 ---
-title: How to work with Incident Manager
-slug: /how-to-guides/data-observability/incident-manager/workflow
+title: How to work with the Incident Manager
+slug: /how-to-guides/data-quality-observability/incident-manager/workflow
 ---
 
-# How to Work with Incident Manager Workflow
+# How to Work with the Incident Manager Workflow
 
 ## 1. Incident Dashboard
 

@@ -1,9 +1,9 @@
 ---
-title: Data Quality
-slug: /quality-and-observability/data-quality
+title: Configure Data Quality
+slug: /how-to-guides/data-quality-observability/quality/configure
 ---
 
-# Data Quality
+# Configure Data Quality
 
 Learn how you can use OpenMetadata to define Data Quality tests and measure your data reliability.
 

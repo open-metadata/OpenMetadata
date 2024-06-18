@@ -1,9 +1,9 @@
 ---
-title: Tests
-slug: /quality-and-observability/data-quality/tests
+title: Tests - YAML Config
+slug: /how-to-guides/data-quality-observability/quality/tests-yaml
 ---
 
-# Test
+# Tests in the YAML Config
 Here you can see all the supported tests definitions and how to configure them in the YAML config file.
 
 A **Test Definition** is a generic definition of a test. This Test Definition then gets specified in a Test Case. This Test Case is where the parameter(s) of a Test Definition are specified.

@@ -17,7 +17,7 @@ version. To see what's coming in next releases, please check our [Roadmap](/rele
 # 1.4.2 Release
 
 {% note noteType="Tip" %}
-**June 10, 2024**
+**June 10th, 2024**
 {% /note %}
 
 You can find the GitHub release [here](https://github.com/open-metadata/OpenMetadata/releases/tag/1.4.2-release).
@@ -55,7 +55,7 @@ You can find the GitHub release [here](https://github.com/open-metadata/OpenMeta
 # 1.4.1 Release
 
 {% note noteType="Tip" %}
-**May 27, 2024**
+**May 27th, 2024**
 {% /note %}
 
 You can find the GitHub release [here](https://github.com/open-metadata/OpenMetadata/releases/tag/1.4.1-release).
@@ -65,7 +65,7 @@ In 1.4.1, we provide migration fixes on top of the 1.4.0 release. Do check out t
 # 1.4.0 Release 🎉
 
 {% note noteType="Tip" %} 
-**May 21, 2024**
+**May 21th, 2024**
 
 [OpenMetadata 1.4.0 Release](https://blog.open-metadata.org/openmetadata-release-1-4-0-f6fb11ec34d7)
 {% /note %}
@@ -231,7 +231,7 @@ https://www.youtube.com/watch?v=KZdVb8DiHJs - Video on Column Lineage Search
 # 1.3.4 Release
 
 {% note noteType="Tip" %}
-**May 12, 2024**
+**May 12th, 2024**
 {% /note %}
 
 - Fixes reindex issues related to the `changeDescription` payload of some entities
@@ -240,7 +240,7 @@ https://www.youtube.com/watch?v=KZdVb8DiHJs - Video on Column Lineage Search
 # 1.3.3 Release
 
 {% note noteType="Tip" %}
-**April 19, 2024**
+**April 19th, 2024**
 {% /note %}
 
 - Fix Application installation
@@ -306,7 +306,7 @@ You can find the GitHub release [here](https://github.com/open-metadata/OpenMeta
 # 1.3.1 Release
 
 {% note noteType="Tip" %}
-**February 29, 2024**
+**February 29th, 2024**
 
 You can find the GitHub release [here](https://github.com/open-metadata/OpenMetadata/releases/tag/1.3.1-release).
 {% /note %}
@@ -359,7 +359,7 @@ You can find the GitHub release [here](https://github.com/open-metadata/OpenMeta
 # 1.3.0 Release
 
 {% note noteType="Tip" %} 
-**February 5, 2024**
+**February 5th, 2024**
 
 [OpenMetadata 1.3 Release - Intuitive Lineage UI, Data Observability Alerts, Data Quality Incident Manager, Custom Metrics for Profiler, Knowledge Center Improvements, and lots more](https://blog.open-metadata.org/openmetadata-release-1-3-ac801834ee80)
 {% /note %}
@@ -483,7 +483,7 @@ You can find the GitHub release [here](https://github.com/open-metadata/OpenMeta
 # 1.2.0 Release
 
 {% note noteType="Tip" %} 
-**October 26, 2023**
+**October 26th, 2023**
 
 [OpenMetadata 1.2 Release - Domains, Data Products, Search Index, Stored Procedures, Glossary Approval Workflow, Customizable Landing Page, Applications, Knowledge Center, Cost Analysis, and lots more](https://blog.open-metadata.org/openmetadata-release-1-2-531f0e3c6d9a)
 {% /note %}
@@ -571,7 +571,7 @@ You can find the GitHub release [here](https://github.com/open-metadata/OpenMeta
 # 1.1.2 Release
 
 {% note noteType="Tip" %} 
-**August 24, 2023**
+**August 24th, 2023**
 {% /note %}
 
 ## Data Quality
@@ -604,7 +604,7 @@ You can find the GitHub release [here](https://github.com/open-metadata/OpenMeta
 # 1.1.1 Release
 
 {% note noteType="Tip" %} 
-**August 7, 2023**
+**August 7th, 2023**
 {% /note %}
 
 ## UI Improvements
@@ -641,7 +641,7 @@ You can find the GitHub release [here](https://github.com/open-metadata/OpenMeta
 # 1.1.0 Release
 
 {% note noteType="Tip" %} 
-**June 30, 2023**
+**June 30th, 2023**
 
 [OpenMetadata 1.1.0 Release - UI Overhaul, New Connectors, Improved Lineage Parsing, PII Masking, and lots more](https://blog.open-metadata.org/openmetadata-1-1-0-release-97c1fb603bcf)
 {% /note %}
@@ -693,7 +693,7 @@ You can find the GitHub release [here](https://github.com/open-metadata/OpenMeta
 # 1.0.0 Release
 
 {% note noteType="Tip" %} 
-**April 25, 2023**
+**April 25th, 2023**
 
 [OpenMetadata 1.0 Release - Improved Schemas & APIs, Ingestion Improvements, Storage Services, Dashboard Data Models, Auto PII Classification, Localization, and much more](https://blog.open-metadata.org/openmetadata-1-0-release-beb34762d916)
 {% /note %}
@@ -763,7 +763,7 @@ You can find the GitHub release [here](https://github.com/open-metadata/OpenMeta
 # 0.13.3 Release
 
 {% note noteType="Tip" %} 
-**March 30, 2023**
+**March 30th, 2023**
 {% /note %}
 
 ## Ingestion Framework
@@ -806,7 +806,7 @@ You can find the GitHub release [here](https://github.com/open-metadata/OpenMeta
 # 0.13.2 Release
 
 {% note noteType="Tip" %} 
-**January 30, 2023**
+**January 30th, 2023**
 
 [OpenMetadata 0.13.2 Release - Improved SQL Lineage, Glossary Bulk Upload, Unified Tag Category API, Mutually Exclusive Tags, Chrome Extension, and lots more](https://blog.open-metadata.org/openmetadata-0-13-2-release-e32c0de93361)
 {% /note %}
@@ -846,7 +846,7 @@ You can find the GitHub release [here](https://github.com/open-metadata/OpenMeta
 # 0.13.1 Release
 
 {% note noteType="Tip" %} 
-**December 20, 2022**
+**December 20th, 2022**
 {% /note %}
 
 ## Profiler and Data Quality
@@ -875,7 +875,7 @@ The logic for Notification Support has been improved. Users can define Alerts ba
 # 0.13.0 Release
 
 {% note noteType="Tip" %} 
-**December 8, 2022**
+**December 8th, 2022**
 
 [OpenMetadata 0.13.0 Release — Data Insights & KPIs, Lineage Traceability, Data Lake Profiler, Search Improvements, and lots more](https://blog.open-metadata.org/openmetadata-0-13-0-release-ac8ac5bd87c1)
 {% /note %}
@@ -913,7 +913,7 @@ Major enhancements have been made to how data is extracted from Kafka and Redpan
 # 0.12.3 Release
 
 {% note noteType="Tip" %} 
-**November 18, 2022**
+**November 18th, 2022**
 {% /note %}
 
 ## Bug Fixes
@@ -923,7 +923,7 @@ Major enhancements have been made to how data is extracted from Kafka and Redpan
 # 0.12.2 Release
 
 {% note noteType="Tip" %} 
-**October 20, 2022**
+**October 20th, 2022**
 {% /note %}
 
 ## Ingestion
@@ -935,7 +935,7 @@ Major enhancements have been made to how data is extracted from Kafka and Redpan
 # 0.12.1 Release
 
 {% note noteType="Tip" %} 
-**October 3, 2022**
+**October 3rd, 2022**
 {% /note %}
 
 ## Basic Authentication
@@ -967,7 +967,7 @@ Major enhancements have been made to how data is extracted from Kafka and Redpan
 # 0.12.0 Release
 
 {% note noteType="Tip" %} 
-**September 7, 2022**
+**September 7th, 2022**
 
 [OpenMetadata 0.12.0 Release](https://blog.open-metadata.org/openmetadata-0-12-0-release-1ac059700de4)
 {% /note %}
@@ -1047,7 +1047,7 @@ Manage Tab has been replaced with the manage button on the UI.
 # 0.11.0 Release
 
 {% note noteType="Tip" %} 
-**July 1, 2022**
+**July 1st, 2022**
 
 [OpenMetadata 0.11.0 Release](https://blog.open-metadata.org/openmetadata-0-11-release-8b82c85636a)
 {% /note %}
@@ -1127,7 +1127,7 @@ Manage Tab has been replaced with the manage button on the UI.
 # 0.10.1 Release
 
 {% note noteType="Tip" %} 
-**May 17, 2022**
+**May 17th, 2022**
 {% /note %}
 
 - Support for Postgres as OpenMetadata Store [#4601](https://github.com/open-metadata/OpenMetadata/issues/4601)
@@ -1139,7 +1139,7 @@ Manage Tab has been replaced with the manage button on the UI.
 # 0.10.0 Release
 
 {% note noteType="Tip" %} 
-**April 27, 2022**
+**April 27th, 2022**
 
 [OpenMetadata 0.10.0 Release](https://blog.open-metadata.org/openmetadata-0-10-0-release-82c4f5533c3f)
 {% /note %}
@@ -1210,7 +1210,7 @@ and prepares handy methods to help us test the connection to the source before c
 # 0.9.0 Release
 
 {% note noteType="Tip" %} 
-**March 10, 2022**
+**March 10th, 2022**
 
 [OpenMetadata 0.9.0 Release](https://blog.open-metadata.org/openmetadata-0-9-0-release-8e7b93ab1882)
 {% /note %}
@@ -1268,7 +1268,7 @@ and prepares handy methods to help us test the connection to the source before c
 # 0.8.0 Release
 
 {% note noteType="Tip" %} 
-**January 22, 2022**
+**January 22nd, 2022**
 
 [OpenMetadata 0.8.0 Release](https://blog.open-metadata.org/openmetadata-0-8-0-release-ca09bd2fbf54)
 {% /note %}
@@ -1292,7 +1292,7 @@ and prepares handy methods to help us test the connection to the source before c
 # 0.7.0 Release
 
 {% note noteType="Tip" %} 
-**November 17, 2021**
+**November 17th, 2021**
 
 [OpenMetadata 0.7.0 Release](https://blog.open-metadata.org/openmetadata-0-7-0-release-9f741b8d5089)
 {% /note %}
@@ -1325,7 +1325,7 @@ and prepares handy methods to help us test the connection to the source before c
 # 0.6.0 Release
 
 {% note noteType="Tip" %} 
-**November 17, 2021**
+**November 17th, 2021**
 
 [OpenMetadata 0.6.0 Release — Metadata Versioning, Events API, One-Click Ingestion, and more](https://blog.open-metadata.org/openmetadata-0-6-0-release-metadata-versioning-events-api-one-click-ingestion-and-more-4394c4f08e0b)
 {% /note %}
@@ -1350,7 +1350,7 @@ and prepares handy methods to help us test the connection to the source before c
 # 0.5.0 Release
 
 {% note noteType="Tip" %} 
-**October 19, 2021**
+**October 19th, 2021**
 
 [OpenMetadata 0.5.0 Release is here — Lineage, Pipelines, Complex Types, Data Profiler and so much more](https://blog.open-metadata.org/openmetadata-0-5-0-1144a4000644)
 {% /note %}
@@ -1378,7 +1378,7 @@ and prepares handy methods to help us test the connection to the source before c
 
 # 0.4.0 Release
 {% note noteType="Tip" %} 
-**September 20, 2021**
+**September 20th, 2021**
 
 [OpenMetadata 0.4.0 Release — Dashboards, Topics, Data Reliability](https://blog.open-metadata.org/openmetadata-0-4-0-release-dashboards-topics-data-reliability-14e8672ae0f5)
 {% /note %}

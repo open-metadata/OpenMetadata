@@ -1,9 +1,9 @@
 ---
 title: Metrics
-slug: /quality-and-observability/profiler/metrics
+slug: /how-to-guides/data-quality-observability/profiler/metrics
 ---
 
-# Metrics
+# Profiler Metrics
 
 Here you can find information about the supported metrics for the different types.
 

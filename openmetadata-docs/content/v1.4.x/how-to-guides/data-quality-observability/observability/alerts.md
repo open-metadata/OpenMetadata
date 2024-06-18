@@ -1,9 +1,9 @@
 ---
-title: Alerts
-slug: /quality-and-observability/data-quality/alerts
+title: Observability Alerts
+slug: /how-to-guides/data-quality-observability/observability/alerts
 ---
 
-# Alerts
+# Observability Alerts
 OpenMetadata provides a native way to get alerted in case of test case failure allowing you to proactively resolve data incidents
 
 ## Setting Up Alerts
@@ -46,7 +46,6 @@ Trigger section will allow you set the condition for which an alert should be tr
   alt="Alerts Menu"
   caption="Alerts Menu"
  /%}
-
 
 ### Step 4 - Select a Destination
 In the destination section you will be able to select between `internal` and `external` destination:

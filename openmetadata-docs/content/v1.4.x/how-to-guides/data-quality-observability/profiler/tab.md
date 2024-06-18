@@ -1,9 +1,9 @@
 ---
-title: Profiler and Data Quality Tab
-slug: /how-to-guides/data-quality-profiler/tab
+title: Profiler Tab
+slug: /how-to-guides/data-quality-observability/profiler/tab
 ---
 
-# Profiler and Data Quality Tab
+# Profiler Tab
 
 The Profiler & Data Quality tab is displayed only for Tables. It has three sub-tabs for **Table Profile, Column Profile, and Data Quality**. 
 
@@ -127,29 +127,3 @@ src="/images/v1.4/how-to-guides/quality/dd.png"
 alt="Column Profile: Data Distribution"
 caption="Column Profile: Data Distribution"
 /%}
-
-## Data Quality Tab
-
-Data quality tests can be run on the sample data. We can add tests at the table and column level. The Data Quality tab displays the total number of tests that were run, and also the number of tests that were successful, aborted, or failed. The list of test cases displays the details of the table or column on which the test was run.
-
-{% image
-src="/images/v1.4/how-to-guides/quality/dq1.png"
-alt="Profiler & Data Quality"
-caption="Profiler & Data Quality"
-/%}
-
-You can click on a Test Case to view further details. You can use a time filter on these reports. You can also edit these tests by clicking on the pencil icon next to each test.
-
-{% image
-src="/images/v1.4/how-to-guides/quality/dq2.png"
-alt="Details of a Test Case"
-caption="Details of a Test Case"
-/%}
-
-{%inlineCallout
-  color="violet-70"
-  bold="How to Write and Deploy No-Code Test Cases"
-  icon="MdArrowForward"
-  href="/how-to-guides/data-quality-profiler/test"%}
-  Verify your data quality with table and column level tests.
-{%/inlineCallout%}
