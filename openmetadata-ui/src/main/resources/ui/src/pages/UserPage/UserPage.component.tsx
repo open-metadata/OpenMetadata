@@ -27,7 +27,9 @@ import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
 import Loader from '../../components/common/Loader/Loader';
 import Users from '../../components/Settings/Users/Users.component';
+import { ROUTES } from '../../constants/constants';
 import { User } from '../../generated/entity/teams/user';
+import { Include } from '../../generated/type/include';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
 import { useFqn } from '../../hooks/useFqn';
 import { getUserByName, updateUserDetail } from '../../rest/userAPI';
@@ -47,6 +49,7 @@ const UserPage = () => {
     try {
       const res = await getUserByName(username, {
         fields: 'profile,roles,teams,personas,defaultPersona,domain',
+        include: Include.All,
       });
       setUserData(res);
     } catch (error) {
@@ -148,6 +151,19 @@ const UserPage = () => {
     [userData, currentUser, updateCurrentUser]
   );
 
+  const handleToggleDelete = useCallback(() => {
+    setUserData((prev) => ({
+      ...prev,
+      deleted: !prev?.deleted,
+    }));
+  }, [setUserData]);
+
+  const afterDeleteAction = useCallback(
+    (isSoftDelete?: boolean) =>
+      isSoftDelete ? handleToggleDelete() : history.push(ROUTES.HOME),
+    [handleToggleDelete]
+  );
+
   useEffect(() => {
     fetchUserData();
   }, [username]);
@@ -162,6 +178,7 @@ const UserPage = () => {
 
   return (
     <Users
+      afterDeleteAction={afterDeleteAction}
       handlePaginate={handleEntityPaginate}
       queryFilters={{
         myData: myDataQueryFilter,

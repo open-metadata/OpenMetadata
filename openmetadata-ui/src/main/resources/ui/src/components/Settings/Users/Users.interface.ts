@@ -21,6 +21,7 @@ export interface Props {
     following: string;
   };
   handlePaginate: (page: string | number) => void;
+  afterDeleteAction: (isSoftDelete?: boolean, version?: number) => void;
   updateUserDetails: (data: Partial<User>, key: keyof User) => Promise<void>;
   authenticationMechanism?: PersonalAccessToken;
 }

@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { ExclamationCircleFilled } from '@ant-design/icons';
 import { Button, Divider, Input, Space, Tooltip, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import React, { useCallback, useMemo, useState } from 'react';
@@ -32,6 +33,7 @@ import { useAuth } from '../../../../../hooks/authHooks';
 import { useApplicationStore } from '../../../../../hooks/useApplicationStore';
 import { useFqn } from '../../../../../hooks/useFqn';
 import { changePassword } from '../../../../../rest/auth-API';
+import { restoreUser } from '../../../../../rest/userAPI';
 import { getEntityName } from '../../../../../utils/EntityUtils';
 import {
   showErrorToast,
@@ -40,6 +42,7 @@ import {
 import { isMaskedEmail } from '../../../../../utils/Users.util';
 import Chip from '../../../../common/Chip/Chip.component';
 import { DomainLabel } from '../../../../common/DomainLabel/DomainLabel.component';
+import ManageButton from '../../../../common/EntityPageInfos/ManageButton/ManageButton';
 import InlineEdit from '../../../../common/InlineEdit/InlineEdit.component';
 import { PersonaSelectableList } from '../../../../MyData/Persona/PersonaSelectableList/PersonaSelectableList.component';
 import ChangePasswordForm from '../../ChangePasswordForm';
@@ -48,6 +51,7 @@ import { UserProfileDetailsProps } from './UserProfileDetails.interface';
 
 const UserProfileDetails = ({
   userData,
+  afterDeleteAction,
   updateUserDetails,
 }: UserProfileDetailsProps) => {
   const { t } = useTranslation();
@@ -59,11 +63,6 @@ const UserProfileDetails = ({
   const [isChangePassword, setIsChangePassword] = useState<boolean>(false);
   const [displayName, setDisplayName] = useState(userData.displayName);
   const [isDisplayNameEdit, setIsDisplayNameEdit] = useState(false);
-
-  const isSelfProfileView = useMemo(
-    () => userData?.id === currentUser?.id,
-    [userData, currentUser]
-  );
 
   const isAuthProviderBasic = useMemo(
     () =>
@@ -78,13 +77,8 @@ const UserProfileDetails = ({
   );
 
   const hasEditPermission = useMemo(
-    () => isAdminUser || isLoggedInUser,
-    [isAdminUser, isLoggedInUser]
-  );
-
-  const hasPersonaEditPermission = useMemo(
-    () => isAdminUser || isSelfProfileView,
-    [isAdminUser, isSelfProfileView]
+    () => (isAdminUser || isLoggedInUser) && !userData.deleted,
+    [isAdminUser, isLoggedInUser, userData.deleted]
   );
 
   const showChangePasswordComponent = useMemo(
@@ -297,7 +291,7 @@ const UserProfileDetails = ({
         />
 
         <PersonaSelectableList
-          hasPermission={hasPersonaEditPermission}
+          hasPermission={hasEditPermission}
           multiSelect={false}
           personaList={userData.personas}
           selectedPersonas={defaultPersona ? [defaultPersona] : []}
@@ -306,12 +300,32 @@ const UserProfileDetails = ({
       </Space>
     ),
     [
-      userData.personas,
-      hasPersonaEditPermission,
       defaultPersona,
+      userData.personas,
+      hasEditPermission,
       handleDefaultPersonaUpdate,
     ]
   );
+
+  const handleRestoreUser = useCallback(async () => {
+    setIsLoading(true);
+
+    try {
+      await restoreUser(userData.id);
+      afterDeleteAction(true); // this will reset the user state with deleted to false value.
+
+      showSuccessToast(
+        t('message.entity-restored-success', { entity: t('label.user') })
+      );
+    } catch (error) {
+      showErrorToast(
+        error as AxiosError,
+        t('server.entity-updating-error', { entity: t('label.user') })
+      );
+    } finally {
+      setIsLoading(false);
+    }
+  }, [userData.id]);
 
   return (
     <>
@@ -323,6 +337,12 @@ const UserProfileDetails = ({
         <Space className="w-full">
           <UserProfileImage userData={userData} />
           {displayNameRenderComponent}
+          {userData.deleted && (
+            <span className="deleted-badge-button" data-testid="deleted-badge">
+              <ExclamationCircleFilled className="m-r-xss font-medium text-xs" />
+              {t('label.deleted')}
+            </span>
+          )}
           <Divider type="vertical" />
 
           {userEmailRender}
@@ -333,7 +353,22 @@ const UserProfileDetails = ({
           {userDomainRender}
         </Space>
 
-        {changePasswordRenderComponent}
+        <div className="d-flex items-center gap-2">
+          {changePasswordRenderComponent}
+
+          <ManageButton
+            isRecursiveDelete
+            afterDeleteAction={afterDeleteAction}
+            allowSoftDelete={!userData.deleted}
+            canDelete={isAdminUser}
+            deleted={userData.deleted}
+            displayName={getEntityName(userData)}
+            entityId={userData.id}
+            entityName={userData.fullyQualifiedName ?? userData.name}
+            entityType={EntityType.USER}
+            onRestoreEntity={handleRestoreUser}
+          />
+        </div>
       </Space>
 
       {showChangePasswordComponent && (

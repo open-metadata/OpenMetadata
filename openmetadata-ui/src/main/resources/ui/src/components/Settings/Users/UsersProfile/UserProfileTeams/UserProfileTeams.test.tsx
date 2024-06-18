@@ -21,6 +21,7 @@ import { UserProfileTeamsProps } from './UserProfileTeams.interface';
 
 const mockPropsData: UserProfileTeamsProps = {
   teams: [],
+  isDeletedUser: false,
   updateUserDetails: jest.fn(),
 };
 
@@ -141,6 +142,16 @@ describe('Test User Profile Teams Component', () => {
       },
       'teams'
     );
+  });
+
+  it('should not render edit button if user is deleted', async () => {
+    render(
+      <UserProfileTeams {...mockPropsData} isDeletedUser teams={USER_TEAMS} />
+    );
+
+    expect(screen.getByTestId('user-team-card-container')).toBeInTheDocument();
+
+    expect(screen.queryByTestId('edit-teams-button')).not.toBeInTheDocument();
   });
 
   it('should not render edit button to non admin user', async () => {

@@ -31,6 +31,7 @@ import { UserProfileTeamsProps } from './UserProfileTeams.interface';
 
 const UserProfileTeams = ({
   teams,
+  isDeletedUser,
   updateUserDetails,
 }: UserProfileTeamsProps) => {
   const { t } = useTranslation();
@@ -88,7 +89,7 @@ const UserProfileTeams = ({
             {t('label.team-plural')}
           </Typography.Text>
 
-          {!isTeamsEdit && isAdminUser && (
+          {!isTeamsEdit && isAdminUser && !isDeletedUser && (
             <Tooltip
               title={t('label.edit-entity', {
                 entity: t('label.team-plural'),
