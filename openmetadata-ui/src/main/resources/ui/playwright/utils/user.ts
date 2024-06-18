@@ -88,8 +88,11 @@ export const softDeleteUserProfilePage = async (
   userName: string,
   displayName: string
 ) => {
+  const userResponse = page.waitForResponse(
+    '/api/v1/search/query?q=**&from=0&size=*&index=*'
+  );
   await page.getByTestId('searchbar').fill(userName);
-  await page.waitForResponse('/api/v1/search/query?q=**&from=0&size=*&index=*');
+  await userResponse;
   await page.getByTestId(userName).click();
 
   await page.getByTestId('user-profile-details').click();
@@ -105,9 +108,13 @@ export const softDeleteUserProfilePage = async (
   await expect(page.locator('.ant-modal-title')).toContainText(displayName);
 
   await page.fill('[data-testid="confirmation-text-input"]', 'DELETE');
+
+  const deleteResponse = page.waitForResponse(
+    '/api/v1/users/*?hardDelete=false&recursive=true'
+  );
   await page.click('[data-testid="confirm-button"]');
 
-  await page.waitForResponse(`/api/v1/users/*?hardDelete=false&recursive=true`);
+  await deleteResponse;
 
   await expect(page.locator('.Toastify__toast-body')).toHaveText(
     /deleted successfully!/
@@ -131,15 +138,16 @@ export const restoreUserProfilePage = async (page: Page, fqn: string) => {
     page.locator('[data-testid="restore-modal-body"]')
   ).toContainText(`Are you sure you want to restore ${fqn}?`);
 
+  const restoreResponse = page.waitForResponse('/api/v1/users/restore');
   await page.click('.ant-modal-footer .ant-btn-primary');
 
-  await page.waitForResponse('/api/v1/users/restore');
+  await restoreResponse;
 
-  await expect(page.locator('.Toastify__toast-body')).toHaveText(
+  await expect(page.getByRole('alert')).toHaveText(
     /User restored successfully/
   );
 
-  await page.click('.Toastify__close-button');
+  await page.getByLabel('close').click();
 
   await nonDeletedUserChecks(page);
 };
@@ -159,10 +167,13 @@ export const hardDeleteUserProfilePage = async (
   await page.click('[data-testid="hard-delete-option"]');
   await page.check('[data-testid="hard-delete"]');
   await page.fill('[data-testid="confirmation-text-input"]', 'DELETE');
-  await page.click('[data-testid="confirm-button"]');
-  await page.waitForResponse(
-    `**/api/v1/users/*?hardDelete=true&recursive=true`
+
+  const deleteResponse = page.waitForResponse(
+    '/api/v1/users/*?hardDelete=true&recursive=true'
   );
+  await page.click('[data-testid="confirm-button"]');
+
+  await deleteResponse;
 
   await expect(page.locator('.Toastify__toast-body')).toHaveText(
     /deleted successfully!/
