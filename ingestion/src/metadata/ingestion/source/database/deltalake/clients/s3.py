@@ -186,6 +186,7 @@ class DeltalakeS3Client(DeltalakeBaseClient):
         )
 
     def close(self, service_connection: DeltaLakeConnection):
+        # For the S3 Client we don't need to do anything when closing the connection
         pass
 
     def get_test_get_databases_fn(self, config: StorageConfig) -> Callable:

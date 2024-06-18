@@ -37,6 +37,7 @@ class DatalakeS3Client(DatalakeBaseClient):
         return cls(client=s3_client)
 
     def update_client_database(self, config, database_name: str):
+        # For the S3 Client we don't need to do anything when changing the database
         pass
 
     def get_database_names(self, service_connection) -> Iterable[str]:
@@ -68,6 +69,7 @@ class DatalakeS3Client(DatalakeBaseClient):
                 yield common_prefix.get("Prefix")
 
     def close(self, service_connection):
+        # For the S3 Client we don't need to do anything when closing the connection
         pass
 
     def get_test_list_buckets_fn(self, bucket_name: Optional[str]) -> Callable:

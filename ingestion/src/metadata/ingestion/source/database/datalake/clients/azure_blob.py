@@ -43,6 +43,7 @@ class DatalakeAzureBlobClient(DatalakeBaseClient):
             )
 
     def update_client_database(self, config, database_name):
+        # For the AzureBlob Client we don't need to do anything when changing the database
         pass
 
     def get_database_names(self, service_connection) -> Iterable[str]:
