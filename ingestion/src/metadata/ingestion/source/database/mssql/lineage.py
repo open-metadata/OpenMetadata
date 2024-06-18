@@ -17,6 +17,11 @@ from metadata.ingestion.source.database.mssql.query_parser import MssqlQueryPars
 
 
 class MssqlLineageSource(MssqlQueryParserSource, LineageSource):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.start = self.start.replace(tzinfo=None)
+        self.end = self.end.replace(tzinfo=None)
+
     sql_stmt = MSSQL_SQL_STATEMENT
 
     filters = """

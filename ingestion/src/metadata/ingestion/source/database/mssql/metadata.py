@@ -216,11 +216,21 @@ class MssqlSource(StoredProcedureMixin, CommonDbSourceService, MultiDBSource):
         """
         start, _ = get_start_and_end(self.source_config.queryLogDuration)
         query = MSSQL_GET_STORED_PROCEDURE_QUERIES.format(
-            start_date=start,
+            start_date=start.replace(tzinfo=None),
         )
-
-        queries_dict = self.procedure_queries_dict(
-            query=query,
-        )
+        try:
+            queries_dict = self.procedure_queries_dict(
+                query=query,
+            )
+        except Exception as ex:  # pylint: disable=broad-except
+            logger.debug(f"Error runnning query:\n{query}")
+            self.status.failed(
+                StackTraceError(
+                    name="Stored Procedure",
+                    error=f"Error trying to get stored procedure queries: {ex}",
+                    stackTrace=traceback.format_exc(),
+                )
+            )
+            return {}
 
         return queries_dict
