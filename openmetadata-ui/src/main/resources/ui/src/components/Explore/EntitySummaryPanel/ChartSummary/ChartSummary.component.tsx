@@ -11,18 +11,21 @@
  *  limitations under the License.
  */
 import { Col, Divider, Row, Typography } from 'antd';
+import { get } from 'lodash';
 import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { SummaryEntityType } from '../../../../enums/EntitySummary.enum';
 import { ExplorePageTabs } from '../../../../enums/Explore.enum';
 import { Chart } from '../../../../generated/entity/data/chart';
 import { TagLabel } from '../../../../generated/tests/testCase';
-import { getFormattedEntityData } from '../../../../utils/EntitySummaryPanelUtils';
+import {
+  getFormattedEntityData,
+  getSortedTagsWithHighlight,
+} from '../../../../utils/EntitySummaryPanelUtils';
 import {
   DRAWER_NAVIGATION_OPTIONS,
   getEntityOverview,
 } from '../../../../utils/EntityUtils';
-import SummaryPanelSkeleton from '../../../common/Skeleton/SummaryPanelSkeleton/SummaryPanelSkeleton.component';
 import SummaryTagsDescription from '../../../common/SummaryTagsDescription/SummaryTagsDescription.component';
 import { SearchedDataProps } from '../../../SearchedData/SearchedData.interface';
 import CommonEntitySummaryInfo from '../CommonEntitySummaryInfo/CommonEntitySummaryInfo';
@@ -31,16 +34,14 @@ import { BasicEntityInfo } from '../SummaryList/SummaryList.interface';
 
 interface ChartsSummaryProps {
   entityDetails: Chart;
-  componentType?: DRAWER_NAVIGATION_OPTIONS;
   tags?: TagLabel[];
-  isLoading?: boolean;
   highlights?: SearchedDataProps['data'][number]['highlight'];
 }
 
 const ChartSummary = ({
   entityDetails,
-  componentType = DRAWER_NAVIGATION_OPTIONS.explore,
   tags,
+  highlights,
 }: ChartsSummaryProps) => {
   const { t } = useTranslation();
   const entityInfo = useMemo(
@@ -57,36 +58,43 @@ const ChartSummary = ({
   );
 
   return (
-    <SummaryPanelSkeleton loading={false}>
-      <>
-        <Row className="m-md m-t-0" gutter={[0, 4]}>
-          <Col span={24}>
-            <CommonEntitySummaryInfo
-              componentType={componentType}
-              entityInfo={entityInfo}
-            />
-          </Col>
-        </Row>
-        <Divider className="m-y-xs" />
+    <>
+      <Row className="m-md m-t-0" gutter={[0, 4]}>
+        <Col span={24}>
+          <CommonEntitySummaryInfo
+            componentType={DRAWER_NAVIGATION_OPTIONS.explore}
+            entityInfo={entityInfo}
+          />
+        </Col>
+      </Row>
+      <Divider className="m-y-xs" />
 
-        <SummaryTagsDescription entityDetail={entityDetails} tags={tags} />
+      <SummaryTagsDescription
+        entityDetail={entityDetails}
+        tags={
+          tags ??
+          getSortedTagsWithHighlight(
+            entityDetails.tags,
+            get(highlights, 'tag.name')
+          )
+        }
+      />
 
-        <Divider className="m-y-xs" />
+      <Divider className="m-y-xs" />
 
-        <Row className="m-md" gutter={[0, 8]}>
-          <Col span={24}>
-            <Typography.Text
-              className="summary-panel-section-title"
-              data-testid="charts-header">
-              {t('label.dashboard-plural')}
-            </Typography.Text>
-          </Col>
-          <Col span={24}>
-            <SummaryList formattedEntityData={formattedDashboardData} />
-          </Col>
-        </Row>
-      </>
-    </SummaryPanelSkeleton>
+      <Row className="m-md" gutter={[0, 8]}>
+        <Col span={24}>
+          <Typography.Text
+            className="summary-panel-section-title"
+            data-testid="charts-header">
+            {t('label.dashboard-plural')}
+          </Typography.Text>
+        </Col>
+        <Col span={24}>
+          <SummaryList formattedEntityData={formattedDashboardData} />
+        </Col>
+      </Row>
+    </>
   );
 };
 

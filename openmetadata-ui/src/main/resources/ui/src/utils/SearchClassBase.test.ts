@@ -38,6 +38,8 @@ jest.mock('./TestSuiteUtils', () => ({
 
 jest.mock('./EntityUtils', () => ({
   getEntityLinkFromType: jest.fn(),
+  getEntityName: jest.fn(),
+  getEntityBreadcrumbs: jest.fn(),
 }));
 
 describe('SearchClassBase', () => {
