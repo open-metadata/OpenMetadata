@@ -48,6 +48,12 @@ OpenMetadata is a complete package for data teams to break down team silos, shar
     link="/how-to-guides/data-governance"
     icon="governance"
 /%}
+{% tile
+    title="Data Observability"
+    description="Ensure the health and performance of your data systems with OpenMetadata."
+    link="/how-to-guides/data-observability"
+    icon="observability"
+/%}
 {% /tilesContainer %}
 
 ## Quick Start Guides
@@ -90,5 +96,7 @@ OpenMetadata is a complete package for data teams to break down team silos, shar
 - Define your **[Glossary](/how-to-guides/data-governance/glossary)** to build a common understanding of terms within your organization.
 
 - Implement **[Data Governance](/how-to-guides/data-governance)** to maintain data integrity, security, and compliance.
+
+- Implement **[Data Observability](/how-to-guides/data-observability)** to ensure the health and performance of your data systems.
 
 {% /note %}
