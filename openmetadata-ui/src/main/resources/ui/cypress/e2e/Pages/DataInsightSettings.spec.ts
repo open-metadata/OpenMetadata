@@ -12,6 +12,7 @@
  */
 
 import { interceptURL, verifyResponseStatusCode } from '../../common/common';
+import { checkDataInsightSuccessStatus } from '../../common/DataInsightUtils';
 import { BASE_URL } from '../../constants/constants';
 import { GlobalSettingOptions } from '../../constants/settings.constant';
 
@@ -130,7 +131,7 @@ describe(
       cy.get('[data-testid="run-now-button"]').click();
       verifyResponseStatusCode('@triggerPipeline', 200);
       cy.reload();
-
+      checkDataInsightSuccessStatus();
       cy.get('[data-testid="logs"]').click();
       cy.url().should('eq', `${BASE_URL}/apps/DataInsightsApplication/logs`);
     });

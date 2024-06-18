@@ -19,7 +19,7 @@ import itertools
 import re
 import shutil
 import sys
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from math import floor, log
 from pathlib import Path
 from typing import Any, Dict, Iterable, List, Optional, Tuple, Union
@@ -123,7 +123,7 @@ def get_start_and_end(duration: int = 0):
     Method to return start and end time based on duration
     """
 
-    today = datetime.utcnow()
+    today = datetime.now(timezone.utc)
     start = (today + timedelta(0 - duration)).replace(
         hour=0, minute=0, second=0, microsecond=0
     )

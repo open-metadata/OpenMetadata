@@ -1222,9 +1222,10 @@ describe('Glossary page should work properly', { tags: 'Governance' }, () => {
 
     // checking the breadcrumb, if the change parent term is updated and displayed
     cy.get('[data-testid="breadcrumb-link"]')
-      .should('be.visible')
       .contains(`${parentTerm.name}`)
-      .click();
+      .as('breadcrumb');
+
+    cy.get('@breadcrumb').click();
 
     verifyResponseStatusCode('@fetchGlossaryTermData', 200);
 

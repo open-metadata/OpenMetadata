@@ -380,6 +380,13 @@ site_menu:
   - category: How-to Guides / Data Governance / Classification / Best Practices for Classification
     url: /how-to-guides/data-governance/classification/best-practices
 
+  - category: How-to Guides / Data Observability
+    url: /how-to-guides/data-observability
+  - category: How-to Guides / Data Observability / Incident Manager
+    url: /how-to-guides/data-observability/incident-manager
+  - category: How-to Guides / Data Observability / Incident Manager/ How to work with Incident Manager
+    url: /how-to-guides/data-observability/incident-manager/workflow
+
   - category: Releases
     url: /releases
     color: violet-70
@@ -390,6 +397,18 @@ site_menu:
     url: /releases/supported
   - category: Releases / All Releases
     url: /releases/all-releases
+  - category: Releases / All Releases / 1.4.2 Release
+    url: /releases/all-releases/#1.4.2-release
+  - category: Releases / All Releases / 1.4.1 Release
+    url: /releases/all-releases/#1.4.1-release
+  - category: Releases / All Releases / 1.4.0 Release
+    url: /releases/all-releases/#1.4.0-release
+  - category: Releases / All Releases / 1.3.4 Release
+    url: /releases/all-releases/#1.3.4-release
+  - category: Releases / All Releases / 1.3.3 Release
+    url: /releases/all-releases/#1.3.3-release
+  - category: Releases / All Releases / 1.3.2 Release
+    url: /releases/all-releases/#1.3.2-release
   - category: Releases / All Releases / 1.3.1 Release
     url: /releases/all-releases/#1.3.1-release
   - category: Releases / All Releases / 1.3.0 Release
@@ -601,6 +620,10 @@ site_menu:
     url: /connectors/database/sqlite
   - category: Connectors / Database / SQLite / Run Externally
     url: /connectors/database/sqlite/yaml
+  - category: Connectors / Database / Teradata
+    url: /connectors/database/teradata
+  - category: Connectors / Database / Teradata / Run Externally
+    url: /connectors/database/teradata/yaml
   - category: Connectors / Database / Trino
     url: /connectors/database/trino
   - category: Connectors / Database / Trino / Run Externally

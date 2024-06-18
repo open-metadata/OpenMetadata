@@ -567,15 +567,26 @@ public class UserResource extends EntityResource<User, UserRepository> {
     // Add the roles on user creation
     updateUserRolesIfRequired(user, containerRequestContext);
 
-    // TODO do we need to authenticate user is creating himself?
-    Response createdUser = create(uriInfo, securityContext, user);
+    Response createdUserRes = null;
+    try {
+      createdUserRes = create(uriInfo, securityContext, user);
+    } catch (EntityNotFoundException ex) {
+      if (securityContext.getUserPrincipal().getName().equals(create.getName())) {
+        // User is creating himself on signup ?! :(
+        User created = addHref(uriInfo, repository.create(uriInfo, user));
+        createdUserRes = Response.created(created.getHref()).entity(created).build();
+      }
+    }
 
-    // Send Invite mail to user
-    sendInviteMailToUserForBasicAuth(uriInfo, user, create);
+    if (createdUserRes != null) {
+      // Send Invite mail to user
+      sendInviteMailToUserForBasicAuth(uriInfo, user, create);
 
-    // Update response to remove auth fields
-    decryptOrNullify(securityContext, (User) createdUser.getEntity());
-    return createdUser;
+      // Update response to remove auth fields
+      decryptOrNullify(securityContext, (User) createdUserRes.getEntity());
+      return createdUserRes;
+    }
+    return Response.status(BAD_REQUEST).entity("User Cannot be created Successfully.").build();
   }
 
   private void validateAndAddUserAuthForBasic(User user, CreateUser create) {
@@ -832,7 +843,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
       JsonObject patchOpObject = patchOp.asJsonObject();
       if (patchOpObject.containsKey("path") && patchOpObject.containsKey("value")) {
         String path = patchOpObject.getString("path");
-        if (path.equals("/isAdmin") || path.equals("/isBot") || path.equals("/roles")) {
+        if (path.equals("/isAdmin") || path.equals("/isBot") || path.contains("/roles")) {
           authorizer.authorizeAdmin(securityContext);
           continue;
         }
