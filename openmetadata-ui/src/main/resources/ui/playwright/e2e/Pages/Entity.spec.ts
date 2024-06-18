@@ -24,6 +24,7 @@ import { TableClass } from '../../support/entity/TableClass';
 import { TopicClass } from '../../support/entity/TopicClass';
 import {
   createNewPage,
+  getApiContext,
   getAuthContext,
   getToken,
   redirectToHomePage,
@@ -133,8 +134,7 @@ entities.forEach((EntityClass) => {
         // increase timeout as it using single test for multiple steps
         test.slow(true);
 
-        const token = await getToken(page);
-        const apiContext = await getAuthContext(token);
+        const { apiContext, afterAction } = await getApiContext(page);
         await entity.prepareCustomProperty(apiContext);
 
         await test.step(`Set ${titleText} Custom Property`, async () => {
@@ -158,6 +158,7 @@ entities.forEach((EntityClass) => {
         });
 
         await entity.cleanupCustomProperty(apiContext);
+        await afterAction();
       });
     }
 

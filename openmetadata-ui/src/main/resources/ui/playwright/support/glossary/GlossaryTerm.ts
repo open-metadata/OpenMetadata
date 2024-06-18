@@ -10,8 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { APIRequestContext } from '@playwright/test';
+import { APIRequestContext, expect, Page } from '@playwright/test';
 import { uuid } from '../../utils/common';
+import { visitGlossaryPage } from '../../utils/glossary';
 import { getRandomLastName } from '../../utils/user';
 
 type ResponseDataType = {
@@ -23,7 +24,7 @@ type ResponseDataType = {
   synonyms: unknown[];
   mutuallyExclusive: boolean;
   tags: unknown[];
-  glossary: Record<string, unknown>;
+  glossary: Record<string, string>;
   id: string;
   fullyQualifiedName: string;
 };
@@ -45,10 +46,52 @@ export class GlossaryTerm {
     this.data.name = name ?? this.data.name;
   }
 
+  async visitPage(page: Page) {
+    await visitGlossaryPage(page, this.responseData.glossary.displayName);
+    const expandCollapseButtonText = await page
+      .locator('[data-testid="expand-collapse-all-button"]')
+      .textContent();
+    const isExpanded = expandCollapseButtonText?.includes('Expand All');
+    if (isExpanded) {
+      const glossaryTermListResponse = page.waitForResponse(
+        `/api/v1/glossaryTerms?*glossary=${this.responseData.glossary.id}*`
+      );
+      await page.click('[data-testid="expand-collapse-all-button"]');
+      await glossaryTermListResponse;
+    }
+    const glossaryTermResponse = page.waitForResponse(
+      `/api/v1/glossaryTerms/name/${encodeURIComponent(
+        this.responseData.fullyQualifiedName
+      )}?*`
+    );
+    await page.getByTestId(this.data.displayName).click();
+    await glossaryTermResponse;
+
+    await expect(page.getByTestId('entity-header-display-name')).toHaveText(
+      this.data.displayName
+    );
+  }
+
   async create(apiContext: APIRequestContext) {
     const response = await apiContext.post('/api/v1/glossaryTerms', {
       data: this.data,
     });
+
+    this.responseData = await response.json();
+
+    return await response.json();
+  }
+
+  async patch(apiContext: APIRequestContext, data: Record<string, unknown>[]) {
+    const response = await apiContext.patch(
+      `/api/v1/glossaryTerms/${this.responseData.id}`,
+      {
+        data,
+        headers: {
+          'Content-Type': 'application/json-patch+json',
+        },
+      }
+    );
 
     this.responseData = await response.json();
 
