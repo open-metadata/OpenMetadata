@@ -13,6 +13,8 @@ Gain valuable insights into your resource allocation and utilization with `Cost 
 | Connector          | Status                       |
 | :----------------- | :--------------------------- |
 | Snowflake          | {% icon iconName="check" /%} |
+| Redshift           | {% icon iconName="check" /%} |
+| BiqQuery           | {% icon iconName="check" /%} |
 
 {% /multiTablesWrapper %}
 
