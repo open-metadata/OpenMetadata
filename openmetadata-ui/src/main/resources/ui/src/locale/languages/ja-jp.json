@@ -142,6 +142,7 @@
     "chart": "チャート",
     "chart-entity": "{{entity}}のチャート",
     "chart-plural": "チャート",
+    "chart-type": "Chart type",
     "check-status": "ステータスチェック",
     "children": "Children",
     "children-lowercase": "children",

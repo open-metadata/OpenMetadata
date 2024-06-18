@@ -142,6 +142,7 @@
     "chart": "Диаграмма",
     "chart-entity": "Диаграмма {{entity}}",
     "chart-plural": "Диаграммы",
+    "chart-type": "Chart type",
     "check-status": "Проверить статус",
     "children": "Наследники",
     "children-lowercase": "наследники",
