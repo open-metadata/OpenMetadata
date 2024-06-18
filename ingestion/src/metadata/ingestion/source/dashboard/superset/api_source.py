@@ -232,7 +232,7 @@ class SupersetAPISource(SupersetSourceMixin):
                             "Data model filtered out.",
                         )
                     data_model_request = CreateDashboardDataModelRequest(
-                        name=EntityName(datasource_json.id),
+                        name=EntityName(str(datasource_json.id)),
                         displayName=datasource_json.result.table_name,
                         service=FullyQualifiedEntityName(
                             self.context.get().dashboard_service
