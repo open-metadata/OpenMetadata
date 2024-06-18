@@ -25,9 +25,9 @@ OpenMetadata is a complete package for data teams to break down team silos, shar
     icon="collaboration"
 /%}
 {% tile
-    title="Data Quality & Profiler"
-    description="Trust your data with quality tests that ensure freshness, & accuracy."
-    link="/how-to-guides/data-quality-profiler"
+    title="Data Quality and Observability"
+    description="Trust your data with quality tests & monitor the health of your data systems."
+    link="/how-to-guides/data-quality-observability"
     icon="quality"
 /%}
 {% tile
@@ -47,12 +47,6 @@ OpenMetadata is a complete package for data teams to break down team silos, shar
     description="Enhance your data platform governance using OpenMetadata."
     link="/how-to-guides/data-governance"
     icon="governance"
-/%}
-{% tile
-    title="Data Observability"
-    description="Ensure the health and performance of your data systems with OpenMetadata."
-    link="/how-to-guides/data-observability"
-    icon="observability"
 /%}
 {% /tilesContainer %}
 
@@ -97,6 +91,6 @@ OpenMetadata is a complete package for data teams to break down team silos, shar
 
 - Implement **[Data Governance](/how-to-guides/data-governance)** to maintain data integrity, security, and compliance.
 
-- Implement **[Data Observability](/how-to-guides/data-observability)** to ensure the health and performance of your data systems.
+- Implement **[Data Observability](/how-to-guides/data-quality-observability)** to ensure the health and performance of your data systems.
 
 {% /note %}

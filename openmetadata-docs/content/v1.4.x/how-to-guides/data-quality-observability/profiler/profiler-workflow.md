@@ -1,12 +1,11 @@
 ---
 title: Profiler Workflow
-slug: /quality-and-observability/profiler
+slug: /how-to-guides/data-quality-observability/profiler/workflow
 ---
 
 # Profiler Workflow
 
 Learn how to configure and run the Profiler Workflow to extract Profiler data and execute the Data Quality.
-
 
 {% note %}
 
@@ -25,14 +24,11 @@ This Pipeline will be in charge of feeding the Profiler tab of the Table Entity,
   caption="Table profile summary page"
  /%}
 
-
 {% image
   src="/images/v1.4/features/ingestion/workflows/profiler/profiler-summary-column.png"
   alt="Column profile summary page"
   caption="Column profile summary page"
  /%}
-
-
 
 ### 1. Add a Profiler Ingestion
 From the Service Page, go to the Ingestions tab to add a new ingestion and click on Add Profiler Ingestion.
@@ -43,7 +39,6 @@ From the Service Page, go to the Ingestions tab to add a new ingestion and click
   caption="Add a profiler service"
  /%}
 
-
 ### 2. Configure the Profiler Ingestion
 Here you can enter the Profiler Ingestion details.
 
@@ -52,7 +47,6 @@ Here you can enter the Profiler Ingestion details.
   alt="Set profiler configuration"
   caption="Set profiler configuration"
  /%}
-
 
 #### Profiler Options
 **Name**  

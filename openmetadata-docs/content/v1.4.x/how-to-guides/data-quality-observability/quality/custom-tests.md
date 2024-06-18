@@ -1,8 +1,7 @@
 ---
 title: Custom Tests
-slug: /quality-and-observability/data-quality/custom-tests
+slug: /how-to-guides/data-quality-observability/quality/custom-tests
 ---
-
 
 # Adding Custom Tests
 While OpenMetadata provides out of the box tests, you may want to write your test results from your own custom quality test suite or define your own data quality tests to be ran inside OpenMetadata.  This is very easy to do using the API and our Python SDK.

@@ -1,6 +1,6 @@
 ---
 title: How to Write and Deploy No-Code Test Cases
-slug: /how-to-guides/data-quality-profiler/test
+slug: /how-to-guides/data-quality-observability/quality/test
 ---
 
 # How to Write and Deploy No-Code Test Cases
@@ -142,12 +142,12 @@ alt="Resolved Status: Reason"
 caption="Resolved Status: Reason"
 /%}
 
-Users can also set up [alerts](/how-to-guides/data-quality-profiler/alerts) to be notified when a test fails.
+Users can also set up [alerts](/how-to-guides/data-quality-observability/quality/alerts) to be notified when a test fails.
 
  {%inlineCallout
   color="violet-70"
   bold="How to Set Alerts for Test Case Fails"
   icon="MdArrowForward"
-  href="/how-to-guides/data-quality-profiler/alerts"%}
+  href="/how-to-guides/data-quality-observability/quality/alerts"%}
   Get notified when a data quality test fails.
  {%/inlineCallout%}
