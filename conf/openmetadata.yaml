@@ -146,8 +146,8 @@ applications:
       parameters:
         clientId: ${SLACK_APP_CLIENT_ID:-"7199163258083.7289624672561"}
         scopes: ${SLACK_APP_SCOPES:-"channels:read,chat:write"}
-        clientSecret: ${SLACK_APP_CLIENT_SECRET:-"c81157bd76854a49f63d07a70b70f870"}
-        signingCertificate: ${SLACK_APP_SIGNING_SECRET:-"b120fa6d3d5b57dfbe51878c3f4ec9f9"}
+        clientSecret: ${SLACK_APP_CLIENT_SECRET:-""}
+        signingCertificate: ${SLACK_APP_SIGNING_SECRET:-""}
 
 
 database:
