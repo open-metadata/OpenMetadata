@@ -61,7 +61,7 @@ class RedashCliTest(CliCommonDashboard.TestSuite):
         return 3
 
     def expected_filtered_sink_mix(self) -> int:
-        return 3
+        return 4
 
     def expected_dashboards_and_charts_after_patch(self) -> int:
         return 1
