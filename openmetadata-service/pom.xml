@@ -605,6 +605,12 @@
       <version>1.13</version>
       <scope>compile</scope>
     </dependency>
+    <dependency>
+      <groupId>com.slack.api</groupId>
+      <artifactId>bolt-servlet</artifactId>
+      <version>1.39.3</version>
+      <scope>compile</scope>
+    </dependency>
   </dependencies>
 
   <profiles>

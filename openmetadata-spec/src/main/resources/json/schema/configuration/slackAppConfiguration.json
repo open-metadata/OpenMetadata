@@ -4,7 +4,7 @@
   "title": "SlackAppConfiguration",
   "description": "This schema defines the Slack App Information",
   "type": "object",
-  "javaType": "org.openmetadata.schema.api.configuration.SlackAppConfiguration",
+  "javaType": "org.openmetadata.schema.service.configuration.slackApp.SlackAppConfiguration",
   "properties": {
     "clientId": {
       "description": "Client Id of the Application",

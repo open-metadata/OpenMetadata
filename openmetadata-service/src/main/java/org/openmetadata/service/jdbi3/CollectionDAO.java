@@ -22,7 +22,6 @@ import static org.openmetadata.service.jdbi3.ListFilter.escapeApostrophe;
 import static org.openmetadata.service.jdbi3.locator.ConnectionType.MYSQL;
 import static org.openmetadata.service.jdbi3.locator.ConnectionType.POSTGRES;
 
-import com.fasterxml.jackson.core.type.TypeReference;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
@@ -4086,8 +4085,8 @@ public interface CollectionDAO {
             case CUSTOM_UI_THEME_PREFERENCE -> JsonUtils.readValue(json, UiThemePreference.class);
             case LOGIN_CONFIGURATION -> JsonUtils.readValue(json, LoginConfiguration.class);
             case SLACK_APP_CONFIGURATION -> JsonUtils.readValue(json, String.class);
-            case SLACK_BOT, SLACK_INSTALLER -> JsonUtils.readValue(
-                json, new TypeReference<HashMap<String, Object>>() {});
+            case SLACK_BOT -> JsonUtils.readValue(json, String.class);
+            case SLACK_INSTALLER -> JsonUtils.readValue(json, String.class);
             case PROFILER_CONFIGURATION -> JsonUtils.readValue(json, ProfilerConfiguration.class);
             default -> throw new IllegalArgumentException("Invalid Settings Type " + configType);
           };

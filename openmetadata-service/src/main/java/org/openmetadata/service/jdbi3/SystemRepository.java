@@ -14,9 +14,9 @@ import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.api.configuration.UiThemePreference;
-import org.openmetadata.schema.api.configuration.SlackAppConfiguration;
 import org.openmetadata.schema.email.SmtpSettings;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineServiceClientResponse;
+import org.openmetadata.schema.service.configuration.slackApp.SlackAppConfiguration;
 import org.openmetadata.schema.services.connections.metadata.OpenMetadataConnection;
 import org.openmetadata.schema.settings.Settings;
 import org.openmetadata.schema.settings.SettingsType;
@@ -195,6 +195,12 @@ public class SystemRepository {
         SlackAppConfiguration appConfiguration =
             JsonUtils.convertValue(setting.getConfigValue(), SlackAppConfiguration.class);
         setting.setConfigValue(encryptSlackAppSetting(appConfiguration));
+      } else if (setting.getConfigType() == SettingsType.SLACK_BOT) {
+        String appConfiguration = JsonUtils.convertValue(setting.getConfigValue(), String.class);
+        setting.setConfigValue(encryptSlackDefaultBotSetting(appConfiguration));
+      } else if (setting.getConfigType() == SettingsType.SLACK_INSTALLER) {
+        String appConfiguration = JsonUtils.convertValue(setting.getConfigValue(), String.class);
+        setting.setConfigValue(encryptSlackDefaultInstallerSetting(appConfiguration));
       } else if (setting.getConfigType() == SettingsType.CUSTOM_UI_THEME_PREFERENCE) {
         JsonUtils.validateJsonSchema(setting.getConfigValue(), UiThemePreference.class);
       }
@@ -209,6 +215,66 @@ public class SystemRepository {
           "FAILED_TO_UPDATE_SLACK_OR_EMAIL",
           ex.getMessage());
     }
+  }
+
+  public Settings getSlackbotConfigInternal() {
+    try {
+      Settings setting = dao.getConfigWithKey(SettingsType.SLACK_BOT.value());
+      String slackBotConfiguration =
+          SystemRepository.decryptSlackDefaultBotSetting((String) setting.getConfigValue());
+      setting.setConfigValue(slackBotConfiguration);
+      return setting;
+    } catch (Exception ex) {
+      LOG.error("Error while trying fetch EMAIL Settings " + ex.getMessage());
+    }
+    return null;
+  }
+
+  public Settings getSlackInstallerConfigInternal() {
+    try {
+      Settings setting = dao.getConfigWithKey(SettingsType.SLACK_INSTALLER.value());
+      String slackInstallerConfiguration =
+          SystemRepository.decryptSlackDefaultInstallerSetting((String) setting.getConfigValue());
+      setting.setConfigValue(slackInstallerConfiguration);
+      return setting;
+    } catch (Exception ex) {
+      LOG.error("Error while trying to fetch slack installer setting " + ex.getMessage());
+    }
+    return null;
+  }
+
+  @SneakyThrows
+  public static String encryptSlackDefaultBotSetting(String decryptedSetting) {
+    String json = JsonUtils.pojoToJson(decryptedSetting);
+    if (Fernet.getInstance().isKeyDefined()) {
+      return Fernet.getInstance().encryptIfApplies(json);
+    }
+    return json;
+  }
+
+  @SneakyThrows
+  public static String decryptSlackDefaultBotSetting(String encryptedSetting) {
+    if (Fernet.getInstance().isKeyDefined()) {
+      encryptedSetting = Fernet.getInstance().decryptIfApplies(encryptedSetting);
+    }
+    return JsonUtils.readValue(encryptedSetting, String.class);
+  }
+
+  @SneakyThrows
+  public static String encryptSlackDefaultInstallerSetting(String decryptedSetting) {
+    String json = JsonUtils.pojoToJson(decryptedSetting);
+    if (Fernet.getInstance().isKeyDefined()) {
+      return Fernet.getInstance().encryptIfApplies(json);
+    }
+    return json;
+  }
+
+  @SneakyThrows
+  public static String decryptSlackDefaultInstallerSetting(String encryptedSetting) {
+    if (Fernet.getInstance().isKeyDefined()) {
+      encryptedSetting = Fernet.getInstance().decryptIfApplies(encryptedSetting);
+    }
+    return JsonUtils.readValue(encryptedSetting, String.class);
   }
 
   public static SmtpSettings encryptEmailSetting(SmtpSettings decryptedSetting) {
