@@ -252,7 +252,7 @@ class SupersetDBSource(SupersetSourceMixin):
                 col_names = self.get_column_list(chart_json.table_name)
                 try:
                     data_model_request = CreateDashboardDataModelRequest(
-                        name=EntityName(chart_json.datasource_id),
+                        name=EntityName(str(chart_json.datasource_id)),
                         displayName=chart_json.table_name,
                         service=FullyQualifiedEntityName(
                             self.context.get().dashboard_service
