@@ -38,10 +38,6 @@ jest.mock('./RouterUtils', () => ({
   getDataQualityPagePath: jest.fn(),
 }));
 
-// jest.mock('./RouterUtils', () => ({
-//     getEntityOverview: jest.fn(),
-//   }));
-
 describe('EntityUtils unit tests', () => {
   describe('highlightEntityNameAndDescription method', () => {
     it('highlightEntityNameAndDescription method should return the entity with highlighted name and description', () => {
