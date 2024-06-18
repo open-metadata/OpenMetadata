@@ -380,6 +380,13 @@ site_menu:
   - category: How-to Guides / Data Governance / Classification / Best Practices for Classification
     url: /how-to-guides/data-governance/classification/best-practices
 
+  - category: How-to Guides / Data Observability
+    url: /how-to-guides/data-observability
+  - category: How-to Guides / Data Observability / Incident Manager
+    url: /how-to-guides/data-observability/incident-manager
+  - category: How-to Guides / Data Observability / Incident Manager/ How to work with Incident Manager
+    url: /how-to-guides/data-observability/incident-manager/workflow
+
   - category: Releases
     url: /releases
     color: violet-70
@@ -613,6 +620,10 @@ site_menu:
     url: /connectors/database/sqlite
   - category: Connectors / Database / SQLite / Run Externally
     url: /connectors/database/sqlite/yaml
+  - category: Connectors / Database / Teradata
+    url: /connectors/database/teradata
+  - category: Connectors / Database / Teradata / Run Externally
+    url: /connectors/database/teradata/yaml
   - category: Connectors / Database / Trino
     url: /connectors/database/trino
   - category: Connectors / Database / Trino / Run Externally
