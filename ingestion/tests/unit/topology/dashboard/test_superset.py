@@ -478,9 +478,7 @@ class SupersetUnitTest(TestCase):
         Mock the client and check that we get a list
         """
         self.superset_api.prepare()
-        result = self.superset_api.yield_datamodel(
-            MOCK_DASHBOARD
-        )
+        result = self.superset_api.yield_datamodel(MOCK_DASHBOARD)
         self.assertEqual(len(list(result)), 1)
 
     def test_fetch_chart_db(self):
