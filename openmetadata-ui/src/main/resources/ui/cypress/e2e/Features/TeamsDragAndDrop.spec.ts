@@ -22,7 +22,6 @@ import {
   deleteTeamPermanently,
 } from '../../common/Utils/Teams';
 import { uuid } from '../../constants/constants';
-import { SidebarItem } from '../../constants/Entity.interface';
 import { GlobalSettingOptions } from '../../constants/settings.constant';
 
 const teamNameGroup = `team-ct-test-${uuid()}`;
@@ -77,15 +76,12 @@ describe(
       interceptURL('GET', `/api/v1/permissions/team/name/*`, 'permissions');
       cy.login();
 
-      cy.sidebarClick(SidebarItem.SETTINGS);
-
       // Clicking on teams
       cy.settingClick(GlobalSettingOptions.TEAMS);
     });
 
     before(() => {
       cy.login();
-      cy.sidebarClick(SidebarItem.SETTINGS);
       // Clicking on teams
       cy.settingClick(GlobalSettingOptions.TEAMS);
 
@@ -105,8 +101,6 @@ describe(
 
     after(() => {
       cy.login();
-      cy.sidebarClick(SidebarItem.SETTINGS);
-
       // Clicking on teams
       cy.settingClick(GlobalSettingOptions.TEAMS);
 

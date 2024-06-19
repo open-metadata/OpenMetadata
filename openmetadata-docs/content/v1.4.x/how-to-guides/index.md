@@ -25,10 +25,10 @@ OpenMetadata is a complete package for data teams to break down team silos, shar
     icon="collaboration"
 /%}
 {% tile
-    title="Data Quality & Profiler"
-    description="Trust your data with quality tests that ensure freshness, & accuracy."
-    link="/how-to-guides/data-quality-profiler"
-    icon="quality"
+    title="Data Quality and Observability"
+    description="Trust your data with quality tests & monitor the health of your data systems."
+    link="/how-to-guides/data-quality-observability"
+    icon="observability"
 /%}
 {% tile
     title="Data Lineage"
@@ -90,5 +90,7 @@ OpenMetadata is a complete package for data teams to break down team silos, shar
 - Define your **[Glossary](/how-to-guides/data-governance/glossary)** to build a common understanding of terms within your organization.
 
 - Implement **[Data Governance](/how-to-guides/data-governance)** to maintain data integrity, security, and compliance.
+
+- Implement **[Data Observability](/how-to-guides/data-quality-observability)** to ensure the health and performance of your data systems.
 
 {% /note %}

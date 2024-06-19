@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { test } from '@playwright/test';
-import { ENTITIES_WITHOUT_FOLLOWING_BUTTON } from '../../constant/delete';
+import { CustomPropertySupportedEntityList } from '../../constant/customProperty';
 import { ContainerClass } from '../../support/entity/ContainerClass';
 import { DashboardClass } from '../../support/entity/DashboardClass';
 import { DashboardDataModelClass } from '../../support/entity/DashboardDataModelClass';
@@ -19,31 +19,21 @@ import { EntityDataClass } from '../../support/entity/EntityDataClass';
 import { MlModelClass } from '../../support/entity/MlModelClass';
 import { PipelineClass } from '../../support/entity/PipelineClass';
 import { SearchIndexClass } from '../../support/entity/SearchIndexClass';
-import { DashboardServiceClass } from '../../support/entity/service/DashboardServiceClass';
-import { DatabaseServiceClass } from '../../support/entity/service/DatabaseServiceClass';
-import { MessagingServiceClass } from '../../support/entity/service/MessagingServiceClass';
-import { MlmodelServiceClass } from '../../support/entity/service/MlmodelServiceClass';
-import { PipelineServiceClass } from '../../support/entity/service/PipelineServiceClass';
-import { SearchIndexServiceClass } from '../../support/entity/service/SearchIndexServiceClass';
-import { StorageServiceClass } from '../../support/entity/service/StorageServiceClass';
+import { StoredProcedureClass } from '../../support/entity/StoredProcedureClass';
 import { TableClass } from '../../support/entity/TableClass';
 import { TopicClass } from '../../support/entity/TopicClass';
 import {
   createNewPage,
+  getApiContext,
   getAuthContext,
   getToken,
   redirectToHomePage,
 } from '../../utils/common';
+import { CustomPropertyTypeByName } from '../../utils/customProperty';
 
 const entities = [
-  DatabaseServiceClass,
-  DashboardServiceClass,
-  MessagingServiceClass,
-  MlmodelServiceClass,
-  PipelineServiceClass,
-  SearchIndexServiceClass,
-  StorageServiceClass,
   TableClass,
+  StoredProcedureClass,
   DashboardClass,
   PipelineClass,
   TopicClass,
@@ -59,9 +49,6 @@ test.use({ storageState: 'playwright/.auth/admin.json' });
 entities.forEach((EntityClass) => {
   const entity = new EntityClass();
   const deleteEntity = new EntityClass();
-  const allowFollowUnfollowTest = !ENTITIES_WITHOUT_FOLLOWING_BUTTON.includes(
-    entity.endpoint
-  );
 
   test.describe(entity.getType(), () => {
     test.beforeAll('Setup pre-requests', async ({ browser }) => {
@@ -128,15 +115,50 @@ entities.forEach((EntityClass) => {
       await entity.inactiveAnnouncement(page);
     });
 
-    if (allowFollowUnfollowTest) {
-      test(`UpVote & DownVote entity`, async ({ page }) => {
-        await entity.upVote(page);
-        await entity.downVote(page);
-      });
+    test(`UpVote & DownVote entity`, async ({ page }) => {
+      await entity.upVote(page);
+      await entity.downVote(page);
+    });
 
-      test(`Follow & Un-follow entity`, async ({ page }) => {
-        const entityName = entity.entityResponseData?.['displayName'];
-        await entity.followUnfollowEntity(page, entityName);
+    test(`Follow & Un-follow entity`, async ({ page }) => {
+      const entityName = entity.entityResponseData?.['displayName'];
+      await entity.followUnfollowEntity(page, entityName);
+    });
+
+    // Create custom property only for supported entities
+    if (CustomPropertySupportedEntityList.includes(entity.endpoint)) {
+      const properties = Object.values(CustomPropertyTypeByName);
+      const titleText = properties.join(', ');
+
+      test(`Set & Update ${titleText} Custom Property `, async ({ page }) => {
+        // increase timeout as it using single test for multiple steps
+        test.slow(true);
+
+        const { apiContext, afterAction } = await getApiContext(page);
+        await entity.prepareCustomProperty(apiContext);
+
+        await test.step(`Set ${titleText} Custom Property`, async () => {
+          for (const type of properties) {
+            await entity.setCustomProperty(
+              page,
+              entity.customPropertyValue[type].property,
+              entity.customPropertyValue[type].value
+            );
+          }
+        });
+
+        await test.step(`Update ${titleText} Custom Property`, async () => {
+          for (const type of properties) {
+            await entity.updateCustomProperty(
+              page,
+              entity.customPropertyValue[type].property,
+              entity.customPropertyValue[type].newValue
+            );
+          }
+        });
+
+        await entity.cleanupCustomProperty(apiContext);
+        await afterAction();
       });
     }
 
@@ -153,6 +175,9 @@ entities.forEach((EntityClass) => {
   });
 
   test(`Delete ${deleteEntity.getType()}`, async ({ page }) => {
+    // increase timeout as it using single test for multiple steps
+    test.slow(true);
+
     await redirectToHomePage(page);
     // get the token from localStorage
     const token = await getToken(page);

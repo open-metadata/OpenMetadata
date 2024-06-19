@@ -21,9 +21,9 @@ import profilerConfigPage from '../../../assets/img/profilerConfigPage.png';
 import tagCategoryImg from '../../../assets/img/TagCategory.png';
 import collateIcon from '../../../assets/svg/ic-collate.svg';
 
-export const LATEST_VERSION_ID = 27;
+export const LATEST_VERSION_ID = 28;
 
-export const COOKIE_VERSION = 'VERSION_1_4_2'; // To be changed with each release.
+export const COOKIE_VERSION = 'VERSION_1_4_3'; // To be changed with each release.
 
 // for youtube video make isImage = false and path = {video embed id}
 // embed:- youtube video => share => click on embed and take {url with id} from it
@@ -1762,6 +1762,16 @@ API:
 -   Fixed an issue with the Quicksight connector.
 -   Fixed some minor issues with the user Profile page.
 -   Fixed some issues with the Teams page.`,
+    },
+  },
+  {
+    id: 28,
+    version: 'v1.4.3',
+    description: `Released on 15th June 2024.`,
+    features: [],
+    changeLogs: {
+      Improvements: `- Fixed User Signup Flow Issue missing authorize.
+-   Fixed vulnerabilities for azure-identity and msal4j.`,
     },
   },
 ];

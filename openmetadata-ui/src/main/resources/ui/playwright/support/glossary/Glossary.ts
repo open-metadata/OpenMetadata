@@ -10,8 +10,10 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { APIRequestContext } from '@playwright/test';
+import { APIRequestContext, expect, Page } from '@playwright/test';
 import { uuid } from '../../utils/common';
+import { visitGlossaryPage } from '../../utils/glossary';
+import { getRandomFirstName } from '../../utils/user';
 
 type ResponseDataType = {
   name: string;
@@ -25,9 +27,10 @@ type ResponseDataType = {
 };
 
 export class Glossary {
+  randomName = getRandomFirstName();
   data = {
-    name: `PW%General.${uuid()}`,
-    displayName: `PW % General ${uuid()}`,
+    name: `PW%${uuid()}.${this.randomName}`,
+    displayName: `PW % ${uuid()} ${this.randomName}`,
     description:
       'Glossary terms that describe general conceptual terms. **Note that these conceptual terms are used for automatically labeling the data.**',
     reviewers: [],
@@ -41,6 +44,14 @@ export class Glossary {
     this.data.name = name ?? this.data.name;
   }
 
+  async visitPage(page: Page) {
+    await visitGlossaryPage(page, this.data.displayName);
+
+    await expect(page.getByTestId('entity-header-display-name')).toHaveText(
+      this.data.displayName
+    );
+  }
+
   async create(apiContext: APIRequestContext) {
     const response = await apiContext.post('/api/v1/glossaries', {
       data: this.data,
@@ -48,10 +59,26 @@ export class Glossary {
 
     this.responseData = await response.json();
 
-    return response.body;
+    return await response.json();
   }
 
-  async get() {
+  async patch(apiContext: APIRequestContext, data: Record<string, unknown>[]) {
+    const response = await apiContext.patch(
+      `/api/v1/glossaries/${this.responseData.id}`,
+      {
+        data,
+        headers: {
+          'Content-Type': 'application/json-patch+json',
+        },
+      }
+    );
+
+    this.responseData = await response.json();
+
+    return await response.json();
+  }
+
+  get() {
     return this.responseData;
   }
 
@@ -62,6 +89,6 @@ export class Glossary {
       )}?recursive=true&hardDelete=true`
     );
 
-    return response.body;
+    return await response.json();
   }
 }

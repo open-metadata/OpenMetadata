@@ -279,7 +279,9 @@ public class SystemRepository {
   private StepValidation getSearchValidation(OpenMetadataApplicationConfig applicationConfig) {
     SearchRepository searchRepository = Entity.getSearchRepository();
     if (Boolean.TRUE.equals(searchRepository.getSearchClient().isClientAvailable())
-        && searchRepository.getSearchClient().indexExists(INDEX_NAME)) {
+        && searchRepository
+            .getSearchClient()
+            .indexExists(Entity.getSearchRepository().getIndexOrAliasName(INDEX_NAME))) {
       return new StepValidation()
           .withDescription(ValidationStepDescription.SEARCH.key)
           .withPassed(Boolean.TRUE)
@@ -320,7 +322,7 @@ public class SystemRepository {
     OpenMetadataConnection openMetadataServerConnection =
         new OpenMetadataConnectionBuilder(applicationConfig).build();
     try {
-      jwtFilter.validateAndReturnDecodedJwtToken(
+      jwtFilter.validateJwtAndGetClaims(
           openMetadataServerConnection.getSecurityConfig().getJwtToken());
       return new StepValidation()
           .withDescription(ValidationStepDescription.JWT_TOKEN.key)

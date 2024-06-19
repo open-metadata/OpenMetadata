@@ -13,6 +13,8 @@
 
 import EntityClass from '../../common/Entities/EntityClass';
 import { CustomPropertyTypeByName } from '../../common/Utils/CustomProperty';
+import { updateJWTTokenExpiryTime } from '../../common/Utils/Login';
+import { JWT_EXPIRY_TIME_MAP } from '../../constants/constants';
 import DatabaseClass from './../../common/Entities/DatabaseClass';
 import DatabaseSchemaClass from './../../common/Entities/DatabaseSchemaClass';
 import StoreProcedureClass from './../../common/Entities/StoredProcedureClass';
@@ -31,16 +33,19 @@ const OWNER2 = 'Cynthia Meyer';
 const TEAM_OWNER_1 = 'Marketplace';
 const TEAM_OWNER_2 = 'DevOps';
 
-describe('Database hierarchy details page', { tags: 'DataAssets' }, () => {
+// migrated to playwrigth
+describe.skip('Database hierarchy details page', { tags: 'DataAssets' }, () => {
   before(() => {
     cy.login();
 
+    updateJWTTokenExpiryTime(JWT_EXPIRY_TIME_MAP['2 hours']);
     EntityClass.preRequisitesForTests();
   });
 
   after(() => {
     cy.login();
 
+    updateJWTTokenExpiryTime(JWT_EXPIRY_TIME_MAP['1 hour']);
     EntityClass.postRequisitesForTests();
   });
 
