@@ -199,7 +199,6 @@ class DeltaLakeUnitTest(TestCase):
 
     def test_get_tables_name_and_type(self):
         table_names = list(self.delta.get_tables_name_and_type())
-        print(table_names)
         # We won't ingest TMP tables
         self.assertEqual(table_names, [("my_df", TableType.Regular)])
 
@@ -225,8 +224,5 @@ class DeltaLakeUnitTest(TestCase):
             databaseSchema=MOCK_DATABASE_SCHEMA.fullyQualifiedName,
             schemaDefinition=None,
         )
-
-        print(table_request)
-        print(expected_table_request)
 
         self.assertEqual(table_request, expected_table_request)

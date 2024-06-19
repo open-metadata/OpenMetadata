@@ -45,9 +45,10 @@ class DeltalakeClient:
 @singledispatch
 def get_deltalake_client(connection, config):
     """Retrieve Deltalake Client from the config"""
+    msg = None
     if config:
         msg = f"Config not implemented for type {type(connection)}: {connection}"
-        raise NotImplementedError(msg)
+    raise NotImplementedError(msg)
 
 
 @get_deltalake_client.register
