@@ -21,7 +21,13 @@ import { EditorContentRef } from '../../components/common/RichTextEditor/RichTex
 import { VALIDATION_MESSAGES } from '../../constants/constants';
 import { ENTITY_NAME_REGEX } from '../../constants/regex.constants';
 import { Team, TeamType } from '../../generated/entity/teams/team';
+import {
+  FieldProp,
+  FieldTypes,
+  FormItemLayout,
+} from '../../interface/FormUtils.interface';
 import { getTeams } from '../../rest/teamsAPI';
+import { getField } from '../../utils/formUtils';
 import { getTeamOptionsFromType } from '../../utils/TeamUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import { AddTeamFormType } from './AddTeamForm.interface';
@@ -65,6 +71,18 @@ const AddTeamForm: React.FC<AddTeamFormType> = ({
     }
   };
 
+  const isJoinableField: FieldProp = {
+    name: 'isJoinable',
+    label: t('label.public-team'),
+    type: FieldTypes.SWITCH,
+    required: false,
+    props: {
+      'data-testid': 'isJoinable-switch-button',
+    },
+    id: 'isJoinable-switch-button',
+    formItemLayout: FormItemLayout.HORIZONTAL,
+  };
+
   useEffect(() => {
     if (visible) {
       fetchAllTeams();
@@ -82,6 +100,7 @@ const AddTeamForm: React.FC<AddTeamFormType> = ({
         type: 'primary',
         htmlType: 'submit',
       }}
+      okText={t('label.save')}
       open={visible}
       title={t('label.add-entity', { entity: t('label.team') })}
       width={750}
@@ -90,6 +109,7 @@ const AddTeamForm: React.FC<AddTeamFormType> = ({
         id="add-team-form"
         initialValues={{
           teamType: TeamType.Group,
+          isJoinable: false,
         }}
         layout="vertical"
         name="add-team-nest-messages"
@@ -166,6 +186,7 @@ const AddTeamForm: React.FC<AddTeamFormType> = ({
             placeholder={t('message.select-team')}
           />
         </Form.Item>
+        {getField(isJoinableField)}
         <Form.Item
           label={t('label.description')}
           name="description"
