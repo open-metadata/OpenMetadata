@@ -394,3 +394,6 @@ web:
   permission-policy:
     enabled: ${WEB_CONF_PERMISSION_POLICY_ENABLED:-false}
     option: ${WEB_CONF_PERMISSION_POLICY_OPTION:-""}
+  cache-control: ${WEB_CONF_CACHE_CONTROL:-""}
+  pragma: ${WEB_CONF_PRAGMA:-""}
+  
