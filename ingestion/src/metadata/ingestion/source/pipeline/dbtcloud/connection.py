@@ -13,6 +13,7 @@
 Source connection handler
 """
 
+from functools import partial
 from typing import Optional
 
 from metadata.generated.schema.entity.automations.workflow import (
@@ -43,8 +44,12 @@ def test_connection(
     Test connection. This can be executed either as part
     of a metadata workflow or during an Automation Workflow
     """
+
+    job_id = int(service_connection.jobId) if service_connection.jobId else 0
+
     test_fn = {
         "GetJobs": client.get_jobs,
+        "GetRuns": partial(client.get_runs, job_id=job_id),
     }
 
     test_connection_steps(

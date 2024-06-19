@@ -4,21 +4,21 @@ source:
   serviceConnection:
     config:
       type: DBTCloud
-      host: https://abc123.us1.dbt.com
+      host: https://account_prefix.account_region.dbt.com 
       discoveryAPI: https://metadata.cloud.getdbt.com/graphql
-      accountId: <accountId>
-      # jobId: <jobid>
-      token: <token>
+      accountId: "numeric_account_id"
+      # jobId: "numeric_job_id"
+      token: auth_token
   sourceConfig:
     config:
       type: PipelineMetadata
       lineageInformation:
-        dbServiceNames: ["dbservice_name"]
+        dbServiceNames: ["database_service_name"]
 sink:
   type: metadata-rest
   config: {}
 workflowConfig:
-  loggerLevel: INFO # DEBUG, INFO, WARN or ERROR
+  loggerLevel: DEBUG # DEBUG, INFO, WARN or ERROR
   openMetadataServerConfig:
     hostPort: http://localhost:8585/api
     authProvider: openmetadata

@@ -37,13 +37,13 @@
       "accountId": {
         "title": "Account Id",
         "description": "ID of your DBT cloud account",
-        "type": "integer"
+        "type": "string"
       },
       "jobId": {
         "title": "Job Id",
         "description": "ID of your DBT cloud job",
-        "type": "integer",
-        "default": 0
+        "type": "string",
+        "default": null
       },
       "token": {
         "title": "Token",

@@ -125,7 +125,7 @@ class DbtcloudSource(PipelineServiceSource):
                 name=EntityName(pipeline_details.name),
                 description=Markdown(pipeline_details.description),
                 sourceUrl=SourceUrl(connection_url),
-                tasks=self._get_task_list(job_id=pipeline_details.id),
+                tasks=self._get_task_list(job_id=int(pipeline_details.id)),
                 scheduleInterval=str(pipeline_details.schedule.cron)
                 if pipeline_details.schedule
                 else None,
@@ -280,7 +280,7 @@ class DbtcloudSource(PipelineServiceSource):
                         )
                     ),
                 )
-                for task in self.client.get_runs(job_id=pipeline_details.id) or []
+                for task in self.client.get_runs(job_id=int(pipeline_details.id)) or []
             ]
 
             pipeline_status = PipelineStatus(

@@ -49,7 +49,16 @@ class DBTCloudClient:
             allow_redirects=True,
         )
 
+        graphql_client_config: ClientConfig = ClientConfig(
+            base_url=clean_uri(self.config.discoveryAPI),
+            api_version="",
+            auth_header=AUTHORIZATION_HEADER,
+            auth_token=lambda: (self.config.token, 0),
+            allow_redirects=True,
+        )
+
         self.client = REST(client_config)
+        self.graphql_client = REST(graphql_client_config)
 
     def get_jobs(self) -> Optional[List[DBTJob]]:
         """
@@ -61,8 +70,8 @@ class DBTCloudClient:
                 f"/accounts/{self.config.accountId}/jobs/{job_path}"
             )
             if result:
-                job_list = DBTJobList(**result)
-            return job_list.Jobs
+                job_list = DBTJobList(**result).Jobs
+                return job_list
         except Exception as exc:
             logger.debug(traceback.format_exc())
             logger.error(f"Unable to get job info :{exc}")
@@ -79,8 +88,8 @@ class DBTCloudClient:
                 data={"job_definition_id": job_id},
             )
             if result:
-                run_list = DBTRunList(**result)
-            return run_list.Runs
+                run_list = DBTRunList(**result).Runs
+                return run_list
         except Exception as exc:
             logger.debug(traceback.format_exc())
             logger.warning(f"Unable to get run info :{exc}")
@@ -92,21 +101,12 @@ class DBTCloudClient:
         get model details for a job in dbt cloud for lineage
         """
         try:
-            client_config: ClientConfig = ClientConfig(
-                base_url=clean_uri(self.config.discoveryAPI),
-                api_version="",
-                auth_header=AUTHORIZATION_HEADER,
-                auth_token=lambda: (self.config.token, 0),
-                allow_redirects=True,
-            )
-
-            graphql_client = REST(client_config)
             query_params = {
                 "query": DBT_QUERY,
                 "variables": {"jobId": job_id, "runId": run_id},
             }
 
-            result = graphql_client.post("", json=query_params)
+            result = self.graphql_client.post("", json=query_params)
 
             if result.get("data") and result["data"].get("job"):
                 model_list = DBTModelList(**result["data"]["job"]).models
