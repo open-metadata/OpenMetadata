@@ -78,6 +78,7 @@ source:
     config:
       type: TestSuite
       entityFullyQualifiedName: MySQL.default.openmetadata_db.tag_usage
+#     testCases: ["run_only_this_test_case"] # Optional, if not provided all tests will be executed
 
 processor:
   type: "orm-test-runner"

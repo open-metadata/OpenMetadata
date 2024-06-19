@@ -31,7 +31,14 @@
     "profileSampleType": {
       "$ref": "../entity/data/table.json#/definitions/profileSampleType",
       "title": "Profile Sample Type"
-
+    },
+    "testCases": {
+      "description": "List of test cases to be executed on the entity. If null, all test cases will be executed.",
+      "type": "array",
+      "items": {
+        "$ref": "../type/basic.json#/definitions/testCaseEntityName"
+      },
+      "default": null
     }
   },
   "required": ["type", "entityFullyQualifiedName"],
