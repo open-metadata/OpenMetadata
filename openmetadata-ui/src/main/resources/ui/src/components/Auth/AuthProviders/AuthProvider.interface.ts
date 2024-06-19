@@ -64,6 +64,7 @@ export interface IAuthContext {
   updateAxiosInterceptors: () => void;
   updateCurrentUser: (user: User) => void;
   jwtPrincipalClaims: string[];
+  jwtPrincipalClaimsMapping: string[];
 }
 
 export type AuthenticationConfigurationWithScope =

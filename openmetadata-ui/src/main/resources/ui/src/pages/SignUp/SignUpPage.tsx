@@ -43,6 +43,7 @@ const SignUp = () => {
   const {
     setIsSigningUp,
     jwtPrincipalClaims = [],
+    jwtPrincipalClaimsMapping = [],
     authorizerConfig,
     updateCurrentUser,
     newUser,
@@ -116,7 +117,8 @@ const SignUp = () => {
             ...getNameFromUserData(
               newUser as UserProfile,
               jwtPrincipalClaims,
-              authorizerConfig?.principalDomain
+              authorizerConfig?.principalDomain,
+              jwtPrincipalClaimsMapping
             ),
           }}
           layout="vertical"

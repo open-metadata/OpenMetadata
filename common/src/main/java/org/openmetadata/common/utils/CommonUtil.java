@@ -35,6 +35,7 @@ import java.util.Collections;
 import java.util.Date;
 import java.util.Enumeration;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.TimeZone;
@@ -181,6 +182,10 @@ public final class CommonUtil {
 
   public static boolean nullOrEmpty(List<?> list) {
     return list == null || list.isEmpty();
+  }
+
+  public static boolean nullOrEmpty(Map<?, ?> m) {
+    return m == null || m.isEmpty();
   }
 
   public static boolean nullOrEmpty(Object object) {

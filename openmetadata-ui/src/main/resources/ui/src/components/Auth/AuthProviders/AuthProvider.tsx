@@ -115,6 +115,7 @@ export const AuthProvider = ({
     setAuthorizerConfig,
     setIsSigningUp,
     setJwtPrincipalClaims,
+    setJwtPrincipalClaimsMapping,
     removeRefreshToken,
     removeOidcToken,
     getOidcToken,
@@ -538,6 +539,7 @@ export const AuthProvider = ({
         if (provider && Object.values(AuthProviderEnum).includes(provider)) {
           const configJson = getAuthConfig(authConfig);
           setJwtPrincipalClaims(authConfig.jwtPrincipalClaims);
+          setJwtPrincipalClaimsMapping(authConfig.jwtPrincipalClaimsMapping);
           setAuthConfig(configJson);
           setAuthorizerConfig(authorizerConfig);
           updateAuthInstance(configJson);

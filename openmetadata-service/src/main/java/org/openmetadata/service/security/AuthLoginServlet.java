@@ -1,8 +1,10 @@
 package org.openmetadata.service.security;
 
+import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.service.security.SecurityUtil.getErrorMessage;
 import static org.openmetadata.service.security.SecurityUtil.getUserCredentialsFromSession;
 import static org.openmetadata.service.security.SecurityUtil.sendRedirectWithToken;
+import static org.openmetadata.service.security.SecurityUtil.validatePrincipalClaimsMapping;
 
 import com.nimbusds.oauth2.sdk.id.State;
 import com.nimbusds.oauth2.sdk.pkce.CodeChallenge;
@@ -37,6 +39,7 @@ public class AuthLoginServlet extends HttpServlet {
   public static final String OIDC_CREDENTIAL_PROFILE = "oidcCredentialProfile";
   private final OidcClient client;
   private final List<String> claimsOrder;
+  private final Map<String, String> claimsMapping;
   private final String serverUrl;
   private final String principalDomain;
 
@@ -47,6 +50,11 @@ public class AuthLoginServlet extends HttpServlet {
     this.client = oidcClient;
     this.serverUrl = authenticationConfiguration.getOidcConfiguration().getServerUrl();
     this.claimsOrder = authenticationConfiguration.getJwtPrincipalClaims();
+    this.claimsMapping =
+        listOrEmpty(authenticationConfiguration.getJwtPrincipalClaimsMapping()).stream()
+            .map(s -> s.split(":"))
+            .collect(Collectors.toMap(s -> s[0], s -> s[1]));
+    validatePrincipalClaimsMapping(claimsMapping);
     this.principalDomain = authorizerConfiguration.getPrincipalDomain();
   }
 
@@ -57,7 +65,8 @@ public class AuthLoginServlet extends HttpServlet {
       Optional<OidcCredentials> credentials = getUserCredentialsFromSession(req, client);
       if (credentials.isPresent()) {
         LOG.debug("Auth Tokens Located from Session: {} ", req.getSession().getId());
-        sendRedirectWithToken(resp, credentials.get(), serverUrl, claimsOrder, principalDomain);
+        sendRedirectWithToken(
+            resp, credentials.get(), serverUrl, claimsMapping, claimsOrder, principalDomain);
       } else {
         LOG.debug("Performing Auth Code Flow to Idp: {} ", req.getSession().getId());
         Map<String, String> params = buildParams();

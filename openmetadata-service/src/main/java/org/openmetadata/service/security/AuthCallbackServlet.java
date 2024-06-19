@@ -1,9 +1,11 @@
 package org.openmetadata.service.security;
 
+import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.service.security.AuthLoginServlet.OIDC_CREDENTIAL_PROFILE;
 import static org.openmetadata.service.security.SecurityUtil.getClientAuthentication;
 import static org.openmetadata.service.security.SecurityUtil.getErrorMessage;
 import static org.openmetadata.service.security.SecurityUtil.sendRedirectWithToken;
+import static org.openmetadata.service.security.SecurityUtil.validatePrincipalClaimsMapping;
 
 import com.nimbusds.jose.proc.BadJOSEException;
 import com.nimbusds.jwt.JWT;
@@ -40,6 +42,7 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 import javax.servlet.annotation.WebServlet;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
@@ -58,6 +61,7 @@ public class AuthCallbackServlet extends HttpServlet {
   private final OidcClient client;
   private final ClientAuthentication clientAuthentication;
   private final List<String> claimsOrder;
+  private final Map<String, String> claimsMapping;
   private final String serverUrl;
   private final String principalDomain;
 
@@ -69,6 +73,11 @@ public class AuthCallbackServlet extends HttpServlet {
         "ServerUrl", authenticationConfiguration.getOidcConfiguration().getServerUrl());
     this.client = oidcClient;
     this.claimsOrder = authenticationConfiguration.getJwtPrincipalClaims();
+    this.claimsMapping =
+        listOrEmpty(authenticationConfiguration.getJwtPrincipalClaimsMapping()).stream()
+            .map(s -> s.split(":"))
+            .collect(Collectors.toMap(s -> s[0], s -> s[1]));
+    validatePrincipalClaimsMapping(claimsMapping);
     this.serverUrl = authenticationConfiguration.getOidcConfiguration().getServerUrl();
     this.clientAuthentication = getClientAuthentication(client.getConfiguration());
     this.principalDomain = authorizerConfiguration.getPrincipalDomain();
@@ -118,7 +127,8 @@ public class AuthCallbackServlet extends HttpServlet {
       req.getSession().setAttribute(OIDC_CREDENTIAL_PROFILE, credentials);
 
       // Redirect
-      sendRedirectWithToken(resp, credentials, serverUrl, claimsOrder, principalDomain);
+      sendRedirectWithToken(
+          resp, credentials, serverUrl, claimsMapping, claimsOrder, principalDomain);
     } catch (Exception e) {
       getErrorMessage(resp, e);
     }

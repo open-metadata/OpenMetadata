@@ -13,10 +13,15 @@
 
 package org.openmetadata.service.security;
 
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.security.AuthLoginServlet.OIDC_CREDENTIAL_PROFILE;
+import static org.openmetadata.service.security.JwtFilter.BOT_CLAIM;
+import static org.openmetadata.service.security.JwtFilter.EMAIL_CLAIM_KEY;
+import static org.openmetadata.service.security.JwtFilter.USERNAME_CLAIM_KEY;
 import static org.pac4j.core.util.CommonHelper.assertNotNull;
 import static org.pac4j.core.util.CommonHelper.isNotEmpty;
 
+import com.auth0.jwt.interfaces.Claim;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableMap.Builder;
@@ -56,6 +61,7 @@ import javax.ws.rs.client.WebTarget;
 import javax.ws.rs.core.SecurityContext;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang.StringUtils;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.security.client.OidcClientConfig;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
@@ -327,31 +333,16 @@ public final class SecurityUtil {
       HttpServletResponse response,
       OidcCredentials credentials,
       String serverUrl,
+      Map<String, String> claimsMapping,
       List<String> claimsOrder,
       String defaultDomain)
       throws ParseException, IOException {
     JWT jwt = credentials.getIdToken();
     Map<String, Object> claims = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
     claims.putAll(jwt.getJWTClaimsSet().getClaims());
-    String preferredJwtClaim =
-        claimsOrder.stream()
-            .filter(claims::containsKey)
-            .findFirst()
-            .map(claims::get)
-            .map(String.class::cast)
-            .orElseThrow(
-                () ->
-                    new AuthenticationException(
-                        "Invalid JWT token, none of the following claims are present "
-                            + claimsOrder));
 
-    String userName;
-    if (preferredJwtClaim.contains("@")) {
-      userName = preferredJwtClaim.split("@")[0];
-    } else {
-      userName = preferredJwtClaim;
-    }
-    String email = String.format("%s@%s", userName, defaultDomain);
+    String userName = findUserNameFromClaims(claimsMapping, claimsOrder, claims);
+    String email = findEmailFromClaims(claimsMapping, claimsOrder, claims, defaultDomain);
 
     String url =
         String.format(
@@ -425,5 +416,134 @@ public final class SecurityUtil {
     } finally {
       HttpUtils.closeConnection(connection);
     }
+  }
+
+  public static String findUserNameFromClaims(
+      Map<String, String> jwtPrincipalClaimsMapping,
+      List<String> jwtPrincipalClaimsOrder,
+      Map<String, ?> claims) {
+    if (!nullOrEmpty(jwtPrincipalClaimsMapping)) {
+      // We have a mapping available so we will use that
+      String usernameClaim = jwtPrincipalClaimsMapping.get(USERNAME_CLAIM_KEY);
+      String userNameClaimValue = getClaimOrObject(claims.get(usernameClaim));
+      if (!nullOrEmpty(userNameClaimValue)) {
+        return userNameClaimValue;
+      } else {
+        throw new AuthenticationException("Invalid JWT token, 'username' claim is not present");
+      }
+    } else {
+      String jwtClaim = getFirstMatchJwtClaim(jwtPrincipalClaimsOrder, claims);
+      String userName;
+      if (jwtClaim.contains("@")) {
+        userName = jwtClaim.split("@")[0];
+      } else {
+        userName = jwtClaim;
+      }
+      return userName;
+    }
+  }
+
+  public static String findEmailFromClaims(
+      Map<String, String> jwtPrincipalClaimsMapping,
+      List<String> jwtPrincipalClaimsOrder,
+      Map<String, ?> claims,
+      String defaulPrincipalClaim) {
+    if (!nullOrEmpty(jwtPrincipalClaimsMapping)) {
+      // We have a mapping available so we will use that
+      String emailClaim = jwtPrincipalClaimsMapping.get(EMAIL_CLAIM_KEY);
+      String emailClaimValue = getClaimOrObject(claims.get(emailClaim));
+      if (!nullOrEmpty(emailClaimValue) && emailClaimValue.contains("@")) {
+        return emailClaimValue;
+      } else {
+        throw new AuthenticationException(
+            String.format(
+                "Invalid JWT token, 'email' claim is not present or invalid : %s",
+                emailClaimValue));
+      }
+    } else {
+      String jwtClaim = getFirstMatchJwtClaim(jwtPrincipalClaimsOrder, claims);
+      if (jwtClaim.contains("@")) {
+        return jwtClaim;
+      } else {
+        return String.format("%s@%s", jwtClaim, defaulPrincipalClaim);
+      }
+    }
+  }
+
+  private static String getClaimOrObject(Object obj) {
+    if (obj == null) {
+      return "";
+    }
+
+    if (obj instanceof Claim c) {
+      return c.asString();
+    } else if (obj instanceof String s) {
+      return s;
+    }
+
+    return StringUtils.EMPTY;
+  }
+
+  public static String getFirstMatchJwtClaim(
+      List<String> jwtPrincipalClaimsOrder, Map<String, ?> claims) {
+    return jwtPrincipalClaimsOrder.stream()
+        .filter(claims::containsKey)
+        .findFirst()
+        .map(claims::get)
+        .map(SecurityUtil::getClaimOrObject)
+        .orElseThrow(
+            () ->
+                new AuthenticationException(
+                    "Invalid JWT token, none of the following claims are present "
+                        + jwtPrincipalClaimsOrder));
+  }
+
+  public static void validatePrincipalClaimsMapping(Map<String, String> mapping) {
+    if (!nullOrEmpty(mapping)) {
+      String username = mapping.get(USERNAME_CLAIM_KEY);
+      String email = mapping.get(EMAIL_CLAIM_KEY);
+      if (nullOrEmpty(username) || nullOrEmpty(email)) {
+        throw new IllegalArgumentException(
+            "Invalid JWT Principal Claims Mapping. Both username and email should be present");
+      }
+    }
+    // If emtpy, jwtPrincipalClaims will be used so no need to validate
+  }
+
+  public static void validateDomainEnforcement(
+      Map<String, String> jwtPrincipalClaimsMapping,
+      List<String> jwtPrincipalClaimsOrder,
+      Map<String, Claim> claims,
+      String principalDomain,
+      boolean enforcePrincipalDomain) {
+    String domain = StringUtils.EMPTY;
+    if (!nullOrEmpty(jwtPrincipalClaimsMapping)) {
+      // We have a mapping available so we will use that
+      String emailClaim = jwtPrincipalClaimsMapping.get(EMAIL_CLAIM_KEY);
+      String emailClaimValue = getClaimOrObject(claims.get(emailClaim));
+      if (!nullOrEmpty(emailClaimValue)) {
+        if (emailClaimValue.contains("@")) {
+          domain = emailClaimValue.split("@")[1];
+        }
+      } else {
+        throw new AuthenticationException("Invalid JWT token, 'email' claim is not present");
+      }
+    } else {
+      String jwtClaim = getFirstMatchJwtClaim(jwtPrincipalClaimsOrder, claims);
+      if (jwtClaim.contains("@")) {
+        domain = jwtClaim.split("@")[1];
+      }
+    }
+
+    // Validate
+    if (!isBot(claims) && (enforcePrincipalDomain && !domain.equals(principalDomain))) {
+      throw new AuthenticationException(
+          String.format(
+              "Not Authorized! Email does not match the principal domain %s", principalDomain));
+    }
+  }
+
+  public static boolean isBot(Map<String, Claim> claims) {
+    return claims.containsKey(BOT_CLAIM) && Boolean.TRUE.equals(claims.get(BOT_CLAIM).asBoolean());
   }
 }
