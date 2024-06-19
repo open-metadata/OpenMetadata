@@ -227,13 +227,9 @@ const AddRolePage = () => {
             <Typography.Text>{t('message.add-role-message')}</Typography.Text>
           </>
         ),
-        className: 'p-md service-doc-panel',
-        minWidth: 60,
-        overlay: {
-          displayThreshold: 200,
-          header: t('label.setup-guide'),
-          rotation: 'counter-clockwise',
-        },
+        className: 'p-md p-t-xl',
+        minWidth: 400,
+        flex: 0.3,
       }}
     />
   );

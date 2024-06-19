@@ -212,7 +212,14 @@ export const updateExpiration = (expiry: number | string) => {
 };
 
 export const editDisplayName = (editedUserName: string) => {
+  interceptURL(
+    'GET',
+    '/api/v1/feed?*type=Conversation*',
+    'ActivityFeedConversation'
+  );
+
   cy.get('[data-testid="edit-displayName"]').should('be.visible');
+  verifyResponseStatusCode('@ActivityFeedConversation', 200); // wait for the feed to load
   cy.get('[data-testid="edit-displayName"]').click();
   cy.get('[data-testid="displayName"]').clear();
   cy.get('[data-testid="displayName"]').type(editedUserName);

@@ -10,8 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { APIRequestContext } from '@playwright/test';
+import { APIRequestContext, expect, Page } from '@playwright/test';
 import { uuid } from '../../utils/common';
+import { visitGlossaryPage } from '../../utils/glossary';
 import { getRandomFirstName } from '../../utils/user';
 
 type ResponseDataType = {
@@ -43,10 +44,34 @@ export class Glossary {
     this.data.name = name ?? this.data.name;
   }
 
+  async visitPage(page: Page) {
+    await visitGlossaryPage(page, this.data.displayName);
+
+    await expect(page.getByTestId('entity-header-display-name')).toHaveText(
+      this.data.displayName
+    );
+  }
+
   async create(apiContext: APIRequestContext) {
     const response = await apiContext.post('/api/v1/glossaries', {
       data: this.data,
     });
+
+    this.responseData = await response.json();
+
+    return await response.json();
+  }
+
+  async patch(apiContext: APIRequestContext, data: Record<string, unknown>[]) {
+    const response = await apiContext.patch(
+      `/api/v1/glossaries/${this.responseData.id}`,
+      {
+        data,
+        headers: {
+          'Content-Type': 'application/json-patch+json',
+        },
+      }
+    );
 
     this.responseData = await response.json();
 
