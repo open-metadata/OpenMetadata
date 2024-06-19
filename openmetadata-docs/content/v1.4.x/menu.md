@@ -913,8 +913,6 @@ site_menu:
     url: /connectors/ingestion/lineage/spark-lineage
   - category: Connectors / Ingestion / Versioning
     url: /connectors/ingestion/versioning
-  - category: Connectors / Ingestion / Auto Tagging
-    url: /connectors/ingestion/auto_tagging
   - category: Connectors / Ingestion / Versioning / Change Feeds
     url: /connectors/ingestion/versioning/change-feeds
   - category: Connectors / Ingestion / Versioning / Change Events

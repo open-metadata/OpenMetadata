@@ -93,7 +93,7 @@ After the migration is finished, you can revert this changes.
 - **Metadata Backup & Restore**: The Metadata Backup/Recovery has been deprecated, and no further support will be provided. Users are advised to use database-native tools to back up data and store it in their object store for recovery.
   You can check the [docs](/deployment/backup-restore-metadata) for more information.
 - **Metadata Docker CLI**: For the past releases, we have been updating the documentation to point users to directly run the docker quickstart
-  with the docker compose files in the release page ([docs](quick-start/local-docker-deployment)). In this release, we're completely removing the support for `metadata docker`.
+  with the docker compose files in the release page ([docs](/quick-start/local-docker-deployment)). In this release, we're completely removing the support for `metadata docker`.
 - **bootstrap_storage.sh**: We have deprecated `bootstrap/bootstrap_storage.sh` and replaced it with `bootstrap/openmetadata-ops.sh`. The documentation has been updated accordingly.
 
 

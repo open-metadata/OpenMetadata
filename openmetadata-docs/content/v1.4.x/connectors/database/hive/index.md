@@ -17,8 +17,8 @@ In this section, we provide guides and references to use the Hive connector.
 Configure and schedule Hive metadata and profiler workflows from the OpenMetadata UI:
 - [Requirements](#requirements)
 - [Metadata Ingestion](#metadata-ingestion)
-- [Data Profiler](/connectors/ingestion/workflows/profiler)
-- [Data Quality](/connectors/ingestion/workflows/data-quality)
+- [Data Profiler](/how-to-guides/data-quality-observability/profiler/workflow)
+- [Data Quality](/how-to-guides/data-quality-observability/quality/configure)
 - [dbt Integration](/connectors/ingestion/workflows/dbt)
 
 {% partial file="/v1.4/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/database/hive/yaml"} /%}
@@ -30,7 +30,7 @@ Configure and schedule Hive metadata and profiler workflows from the OpenMetadat
 To extract metadata, the user used in the connection needs to be able to perform `SELECT`, `SHOW`, and `DESCRIBE` operations in the database/schema where the metadata needs to be extracted from.
 
 ### Profiler & Data Quality
-Executing the profiler workflow or data quality tests, will require the user to have `SELECT` permission on the tables/schemas where the profiler/tests will be executed. More information on the profiler workflow setup can be found [here](/connectors/ingestion/workflows/profiler) and data quality tests [here](/connectors/ingestion/workflows/data-quality).
+Executing the profiler workflow or data quality tests, will require the user to have `SELECT` permission on the tables/schemas where the profiler/tests will be executed. More information on the profiler workflow setup can be found [here](/how-to-guides/data-quality-observability/profiler/workflow) and data quality tests [here](/how-to-guides/data-quality-observability/quality/configure).
 
 ## Metadata Ingestion
 

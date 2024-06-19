@@ -70,7 +70,7 @@ To fetch the metadata from MongoDB to OpenMetadata, the MongoDB user must have a
 To deploy OpenMetadata, check the Deployment guides.
 {%/inlineCallout%}
 
-[Profiler deployment](/connectors/ingestion/workflows/profiler)
+[Profiler deployment](/how-to-guides/data-quality-observability/profiler/workflow)
 
 ### Limitations
 

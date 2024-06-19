@@ -415,8 +415,6 @@ workflowConfig:
 
 {% /codePreview %}
 
-- You can learn more about how to configure and run the Profiler Workflow to extract Profiler data and execute the Data Quality from [here](/connectors/ingestion/workflows/profiler)
-
 ### 2. Run with the CLI
 
 After saving the YAML config, we will run the command the same way we did for the metadata ingestion:

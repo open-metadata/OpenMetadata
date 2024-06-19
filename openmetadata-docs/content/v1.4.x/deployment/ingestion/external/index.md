@@ -556,7 +556,7 @@ metrics about your data and give you a high-level view of its shape, together wi
 
 This is an interesting previous step before creating Data Quality Workflows.
 
-You can find more information about this workflow [here](/connectors/ingestion/workflows/profiler).
+You can find more information about this workflow [here](/how-to-guides/data-quality-observability/profiler/workflow).
 
 {% codePreview %}
 
@@ -661,7 +661,7 @@ metrics about your data and give you a high-level view of its shape, together wi
 
 This is an interesting previous step before creating Data Quality Workflows.
 
-You can find more information about this workflow [here](/connectors/ingestion/workflows/data-quality).
+You can find more information about this workflow [here](/how-to-guides/data-quality-observability/quality/configure).
 
 {% codePreview %}
 
@@ -687,7 +687,7 @@ metadata ingestion, we can let the Ingestion Framework dynamically fetch the Ser
 If, however, you are configuring the workflow with `storeServiceConnection: false`, you'll need to explicitly
 define the `serviceConnection`.
 
-Moreover, see how we are not configuring any tests in the `processor`. You can do [that](/connectors/ingestion/workflows/data-quality#full-yaml-config-example),
+Moreover, see how we are not configuring any tests in the `processor`. You can do [that](/how-to-guides/data-quality-observability/quality/configure#full-yaml-config-example),
 but even if nothing gets defined in the YAML, we will execute all the tests configured against the table.
 
 {% note %}
