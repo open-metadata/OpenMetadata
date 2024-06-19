@@ -29,7 +29,7 @@ import AnnouncementsWidget, {
 import FollowingWidget, {
   FollowingWidgetProps,
 } from '../components/MyData/RightSidebar/FollowingWidget';
-import DataAssetExploreWidget from '../components/MyData/Widgets/DataAssetsExploreWidget/DataAssetExploreWidget.component';
+import DataAssetsWidget from '../components/MyData/Widgets/DataAssetsWidget/DataAssetsWidget.component';
 import FeedsWidget from '../components/MyData/Widgets/FeedsWidget/FeedsWidget.component';
 import KPIWidget from '../components/MyData/Widgets/KPIWidget/KPIWidget.component';
 import RecentlyViewed from '../components/MyData/Widgets/RecentlyViewed/RecentlyViewed';
@@ -158,7 +158,7 @@ class CustomizePageClassBase {
       return FeedsWidget;
     }
     if (widgetKey.startsWith(LandingPageWidgetKeys.DATA_ASSETS)) {
-      return DataAssetExploreWidget;
+      return DataAssetsWidget;
     }
     if (widgetKey.startsWith(LandingPageWidgetKeys.MY_DATA)) {
       return MyDataWidget;

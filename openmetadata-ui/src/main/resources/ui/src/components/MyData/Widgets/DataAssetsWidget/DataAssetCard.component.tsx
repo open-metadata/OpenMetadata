@@ -14,14 +14,14 @@ import { Card, Col, Row, Typography } from 'antd';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
-import { getServiceDetailsPath } from '../../../../../constants/constants';
-import { ServiceCategoryPlural } from '../../../../../enums/service.enum';
-import { Table } from '../../../../../generated/entity/data/table';
-import { ExploreSearchSource } from '../../../../../interface/search.interface';
-import { getServiceLogo } from '../../../../../utils/CommonUtils';
-import { getEntityName } from '../../../../../utils/EntityUtils';
-import RichTextEditorPreviewer from '../../../../common/RichTextEditor/RichTextEditorPreviewer';
-import '../data-asset-explore-widget.less';
+import { getServiceDetailsPath } from '../../../../constants/constants';
+import { ServiceCategoryPlural } from '../../../../enums/service.enum';
+import { Table } from '../../../../generated/entity/data/table';
+import { ExploreSearchSource } from '../../../../interface/search.interface';
+import { getServiceLogo } from '../../../../utils/CommonUtils';
+import { getEntityName } from '../../../../utils/EntityUtils';
+import RichTextEditorPreviewer from '../../../common/RichTextEditor/RichTextEditorPreviewer';
+import './data-assets-widget.less';
 interface DataAssetCardProps {
   service: ExploreSearchSource;
 }

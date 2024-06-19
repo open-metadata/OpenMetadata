@@ -25,10 +25,10 @@ import { ExploreSearchSource } from '../../../../interface/search.interface';
 import { WidgetCommonProps } from '../../../../pages/CustomizablePage/CustomizablePage.interface';
 import { searchData } from '../../../../rest/miscAPI';
 import { showErrorToast } from '../../../../utils/ToastUtils';
-import './data-asset-explore-widget.less';
-import DataAssetCard from './DataAssetCard/DataAssetCard.component';
+import './data-assets-widget.less';
+import DataAssetCard from './DataAssetCard.component';
 
-const DataAssetExploreWidget = ({
+const DataAssetsWidget = ({
   isEditView = false,
   handleRemoveWidget,
   widgetKey,
@@ -37,7 +37,7 @@ const DataAssetExploreWidget = ({
   const [loading, setLoading] = useState<boolean>(false);
   const [services, setServices] = useState<ExploreSearchSource[]>([]);
 
-  const fetchDataAsset = useCallback(async () => {
+  const fetchDataAssets = useCallback(async () => {
     setLoading(true);
     try {
       const res = await searchData(
@@ -70,12 +70,12 @@ const DataAssetExploreWidget = ({
   }, [widgetKey]);
 
   useEffect(() => {
-    fetchDataAsset();
+    fetchDataAssets();
   }, []);
 
   return (
     <Card
-      className="data-asset-explore-widget-container card-widget h-full"
+      className="data-assets-explore-widget-container card-widget h-full"
       loading={loading}>
       <Row gutter={[0, 15]}>
         <Col span={24}>
@@ -104,7 +104,7 @@ const DataAssetExploreWidget = ({
           </Row>
         </Col>
         <Col span={24}>
-          <Row className="data-asset-explore-widget-body" gutter={[10, 10]}>
+          <Row className="data-assets-explore-widget-body" gutter={[10, 10]}>
             {services.map((service) => (
               <Col key={service.id} lg={8} xl={6}>
                 <DataAssetCard service={service} />
@@ -117,4 +117,4 @@ const DataAssetExploreWidget = ({
   );
 };
 
-export default DataAssetExploreWidget;
+export default DataAssetsWidget;
