@@ -31,89 +31,97 @@ test('Table difference test case', async ({ page }) => {
   };
 
   await table1.visitEntityPage(page);
-
   await page.getByText('Profiler & Data Quality').click();
-  await page.getByTestId('profiler-add-table-test-btn').click();
-  await page.getByTestId('test-case').click();
-  await page.getByTestId('test-case-name').fill(testCase.name);
-  await page.getByTestId('test-type').click();
-  await page.getByTitle('Compare 2 tables for').click();
-  const tableSearchResponse = page.waitForResponse(
-    `/api/v1/search/query?q=*${encodeURIComponent(
-      testCase.table2
-    )}*index=table_search_index*`
-  );
-  await page.click('#tableTestForm_params_table2');
-  await page.fill(`#tableTestForm_params_table2`, testCase.table2);
-  await tableSearchResponse;
-  await page
-    .getByTitle(table2.entityResponseData?.['fullyQualifiedName'])
-    .click();
 
-  await page.fill(`#tableTestForm_params_keyColumns_0_value`, 'user_id');
-  await page.getByTitle('user_id').click();
-  await page.fill('#tableTestForm_params_threshold', testCase.threshold);
-  await page.fill('#tableTestForm_params_useColumns_0_value', 'user_id');
+  await test.step('Create', async () => {
+    await page.getByTestId('profiler-add-table-test-btn').click();
+    await page.getByTestId('test-case').click();
+    await page.getByTestId('test-case-name').fill(testCase.name);
+    await page.getByTestId('test-type').click();
+    await page.getByTitle('Compare 2 tables for').click();
+    const tableSearchResponse = page.waitForResponse(
+      `/api/v1/search/query?q=*${encodeURIComponent(
+        testCase.table2
+      )}*index=table_search_index*`
+    );
+    await page.click('#tableTestForm_params_table2');
+    await page.fill(`#tableTestForm_params_table2`, testCase.table2);
+    await tableSearchResponse;
+    await page
+      .getByTitle(table2.entityResponseData?.['fullyQualifiedName'])
+      .click();
 
-  await expect(page.getByTitle('user_id').nth(2)).toHaveClass(
-    /ant-select-item-option-disabled/
-  );
+    await page.fill(`#tableTestForm_params_keyColumns_0_value`, 'user_id');
+    await page.getByTitle('user_id').click();
+    await page.fill('#tableTestForm_params_threshold', testCase.threshold);
+    await page.fill('#tableTestForm_params_useColumns_0_value', 'user_id');
 
-  await page.locator('#tableTestForm_params_useColumns_0_value').clear();
-  await page.fill('#tableTestForm_params_useColumns_0_value', 'shop_id');
-  await page.getByTitle('shop_id').click();
+    await expect(page.getByTitle('user_id').nth(2)).toHaveClass(
+      /ant-select-item-option-disabled/
+    );
 
-  await page.fill('#tableTestForm_params_where', 'test');
-  const createTestCaseResponse = page.waitForResponse(
-    `/api/v1/dataQuality/testCases`
-  );
-  await page.getByTestId('submit-test').click();
-  await createTestCaseResponse;
-  const tableTestResponse = page.waitForResponse(
-    `/api/v1/dataQuality/testCases?fields=*`
-  );
-  await page.getByTestId('view-service-button').click();
-  await tableTestResponse;
+    await page.locator('#tableTestForm_params_useColumns_0_value').clear();
+    await page.fill('#tableTestForm_params_useColumns_0_value', 'shop_id');
+    await page.getByTitle('shop_id').click();
 
-  await expect(page.getByTestId(testCase.name).getByRole('link')).toBeVisible();
+    await page.fill('#tableTestForm_params_where', 'test');
+    const createTestCaseResponse = page.waitForResponse(
+      `/api/v1/dataQuality/testCases`
+    );
+    await page.getByTestId('submit-test').click();
+    await createTestCaseResponse;
+    const tableTestResponse = page.waitForResponse(
+      `/api/v1/dataQuality/testCases?fields=*`
+    );
+    await page.getByTestId('view-service-button').click();
+    await tableTestResponse;
+  });
 
-  await page.getByTestId(`edit-${testCase.name}`).click();
+  await test.step('Edit', async () => {
+    await expect(
+      page.getByTestId(testCase.name).getByRole('link')
+    ).toBeVisible();
 
-  await expect(page.locator('.ant-modal-title')).toHaveText(
-    `Edit ${testCase.name}`
-  );
+    await page.getByTestId(`edit-${testCase.name}`).click();
 
-  await page
-    .locator('label')
-    .filter({ hasText: 'Key Columns' })
-    .getByRole('button')
-    .click();
-  await page.fill('#tableTestForm_params_keyColumns_1_value', 'email');
-  await page.getByTitle('email', { exact: true }).click();
+    await expect(page.locator('.ant-modal-title')).toHaveText(
+      `Edit ${testCase.name}`
+    );
 
-  await page
-    .locator('label')
-    .filter({ hasText: 'Use Columns' })
-    .getByRole('button')
-    .click();
-  await page.fill('#tableTestForm_params_useColumns_1_value', 'name');
-  await page.getByTitle('name', { exact: true }).click();
-  await page.getByRole('button', { name: 'Submit' }).click();
+    await page
+      .locator('label')
+      .filter({ hasText: 'Key Columns' })
+      .getByRole('button')
+      .click();
+    await page.fill('#tableTestForm_params_keyColumns_1_value', 'email');
+    await page.getByTitle('email', { exact: true }).click();
 
-  await expect(page.getByRole('alert')).toContainText(
-    'Test case updated successfully.'
-  );
+    await page
+      .locator('label')
+      .filter({ hasText: 'Use Columns' })
+      .getByRole('button')
+      .click();
+    await page.fill('#tableTestForm_params_useColumns_1_value', 'name');
+    await page.getByTitle('name', { exact: true }).click();
+    await page.getByRole('button', { name: 'Submit' }).click();
 
-  await page.getByTestId('content-wrapper').getByLabel('close').click();
+    await expect(page.getByRole('alert')).toContainText(
+      'Test case updated successfully.'
+    );
 
-  await page.getByTestId(`delete-${testCase.name}`).click();
-  await page.fill('#deleteTextInput', 'DELETE');
+    await page.getByTestId('content-wrapper').getByLabel('close').click();
+  });
 
-  await expect(page.getByTestId('confirm-button')).toBeEnabled();
+  await test.step('Delete', async () => {
+    await page.getByTestId(`delete-${testCase.name}`).click();
+    await page.fill('#deleteTextInput', 'DELETE');
 
-  await page.getByTestId('confirm-button').click();
+    await expect(page.getByTestId('confirm-button')).toBeEnabled();
 
-  await expect(page.getByRole('alert')).toHaveText(/deleted successfully!/);
+    await page.getByTestId('confirm-button').click();
+
+    await expect(page.getByRole('alert')).toHaveText(/deleted successfully!/);
+  });
 
   await table1.delete(apiContext);
   await table2.delete(apiContext);
