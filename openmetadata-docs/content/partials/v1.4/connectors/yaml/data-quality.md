@@ -37,7 +37,7 @@ processor:
             value: 10
 ```
 
-The processor type should be set to ` "orm-test-runner"`. For accepted test definition names and parameter value names refer to the [tests page](/connectors/ingestion/workflows/data-quality/tests).
+The processor type should be set to ` "orm-test-runner"`. For accepted test definition names and parameter value names refer to the [tests page](/how-to-guides/data-quality-observability/quality/tests-yaml).
 
 {% note %}
 
@@ -78,6 +78,7 @@ source:
     config:
       type: TestSuite
       entityFullyQualifiedName: MySQL.default.openmetadata_db.tag_usage
+#     testCases: ["run_only_this_test_case"] # Optional, if not provided all tests will be executed
 
 processor:
   type: "orm-test-runner"

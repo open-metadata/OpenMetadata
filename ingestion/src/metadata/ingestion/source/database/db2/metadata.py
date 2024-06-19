@@ -12,10 +12,11 @@
 import traceback
 from typing import Optional
 
-from ibm_db_sa.base import DB2Dialect
+from ibm_db_sa.base import DB2Dialect, ischema_names
 from sqlalchemy.engine import reflection
 from sqlalchemy.engine.reflection import Inspector
 from sqlalchemy.engine.row import LegacyRow
+from sqlalchemy.sql.sqltypes import BOOLEAN
 
 from metadata.generated.schema.entity.services.connections.database.db2Connection import (
     Db2Connection,
@@ -39,6 +40,8 @@ def get_pk_constraint(
 
 
 DB2Dialect.get_pk_constraint = get_pk_constraint
+
+ischema_names.update({"BOOLEAN": BOOLEAN})
 
 
 class Db2Source(CommonDbSourceService):
