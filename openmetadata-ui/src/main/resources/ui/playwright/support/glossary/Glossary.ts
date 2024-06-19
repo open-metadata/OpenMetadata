@@ -14,6 +14,7 @@ import { APIRequestContext, expect, Page } from '@playwright/test';
 import { uuid } from '../../utils/common';
 import { visitGlossaryPage } from '../../utils/glossary';
 import { getRandomFirstName } from '../../utils/user';
+import { GlossaryTerm } from './GlossaryTerm';
 
 type ResponseDataType = {
   name: string;
@@ -26,16 +27,37 @@ type ResponseDataType = {
   fullyQualifiedName: string;
 };
 
+export type UserTeamRef = {
+  name: string;
+  type: string;
+};
+
+export type GlossaryData = {
+  name: string;
+  displayName: string;
+  description: string;
+  reviewers: UserTeamRef[];
+  tags: string[];
+  mutuallyExclusive: boolean;
+  terms: GlossaryTerm[];
+  owner: UserTeamRef | undefined;
+  fullyQualifiedName: string;
+};
+
 export class Glossary {
   randomName = getRandomFirstName();
-  data = {
+  data: GlossaryData = {
     name: `PW%${uuid()}.${this.randomName}`,
     displayName: `PW % ${uuid()} ${this.randomName}`,
     description:
-      'Glossary terms that describe general conceptual terms. **Note that these conceptual terms are used for automatically labeling the data.**',
+      'Glossary terms that describe general conceptual terms. Note that these conceptual terms are used for automatically labeling the data.',
     reviewers: [],
     tags: [],
     mutuallyExclusive: false,
+    terms: [],
+    owner: undefined,
+    // eslint-disable-next-line no-useless-escape
+    fullyQualifiedName: `\"PW%${uuid()}.${this.randomName}\"`,
   };
 
   responseData: ResponseDataType;
@@ -53,8 +75,16 @@ export class Glossary {
   }
 
   async create(apiContext: APIRequestContext) {
+    const apiData = {
+      name: this.data.name,
+      displayName: this.data.displayName,
+      description: this.data.description,
+      reviewers: this.data.reviewers,
+      tags: this.data.tags,
+      mutuallyExclusive: this.data.mutuallyExclusive,
+    };
     const response = await apiContext.post('/api/v1/glossaries', {
-      data: this.data,
+      data: apiData,
     });
 
     this.responseData = await response.json();
@@ -83,9 +113,12 @@ export class Glossary {
   }
 
   async delete(apiContext: APIRequestContext) {
+    const fqn =
+      this?.responseData?.fullyQualifiedName ?? this.data.fullyQualifiedName;
+
     const response = await apiContext.delete(
       `/api/v1/glossaries/name/${encodeURIComponent(
-        this.responseData.fullyQualifiedName
+        fqn
       )}?recursive=true&hardDelete=true`
     );
 

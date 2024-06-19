@@ -373,6 +373,7 @@ export const DataAssetsHeader = ({
                 <OwnerLabel
                   hasPermission={editOwnerPermission}
                   owner={dataAsset?.owner}
+                  pills={false}
                   onUpdate={onOwnerUpdate}
                 />
                 <Divider className="self-center" type="vertical" />

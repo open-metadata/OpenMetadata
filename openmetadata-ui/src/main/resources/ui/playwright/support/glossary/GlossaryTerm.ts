@@ -14,6 +14,7 @@ import { APIRequestContext, expect, Page } from '@playwright/test';
 import { uuid } from '../../utils/common';
 import { visitGlossaryPage } from '../../utils/glossary';
 import { getRandomLastName } from '../../utils/user';
+import { Glossary, UserTeamRef } from './Glossary';
 
 type ResponseDataType = {
   name: string;
@@ -29,21 +30,41 @@ type ResponseDataType = {
   fullyQualifiedName: string;
 };
 
+export type GlossaryTermData = {
+  name: string;
+  displayName: string;
+  description: string;
+  mutuallyExclusive: boolean;
+  glossary: string;
+  synonyms: string;
+  icon?: string;
+  color?: string;
+  owner?: UserTeamRef;
+  fullyQualifiedName: string;
+  reviewers: UserTeamRef[];
+};
+
 export class GlossaryTerm {
   randomName = getRandomLastName();
-  data = {
+  data: GlossaryTermData = {
     name: `PW.${uuid()}%${this.randomName}`,
     displayName: `PW ${uuid()}%${this.randomName}`,
     description: 'A bank account number.',
     mutuallyExclusive: false,
     glossary: '',
+    synonyms: '',
+    fullyQualifiedName: '',
+    reviewers: [],
   };
 
   responseData: ResponseDataType;
 
-  constructor(glossaryName: string, name?: string) {
-    this.data.glossary = glossaryName;
+  constructor(glossary: Glossary, name?: string) {
+    this.data.glossary = glossary.data.name;
     this.data.name = name ?? this.data.name;
+    // eslint-disable-next-line no-useless-escape
+    this.data.fullyQualifiedName = `\"${this.data.glossary}\".\"${this.data.name}\"`;
+    this.data.reviewers = glossary.data.reviewers;
   }
 
   async visitPage(page: Page) {
@@ -73,8 +94,16 @@ export class GlossaryTerm {
   }
 
   async create(apiContext: APIRequestContext) {
+    const apiData = {
+      name: this.data.name,
+      displayName: this.data.displayName,
+      description: this.data.description,
+      reviewers: this.data.reviewers,
+      mutuallyExclusive: this.data.mutuallyExclusive,
+      glossary: this.data.glossary,
+    };
     const response = await apiContext.post('/api/v1/glossaryTerms', {
-      data: this.data,
+      data: apiData,
     });
 
     this.responseData = await response.json();

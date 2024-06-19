@@ -39,7 +39,7 @@ export const OwnerLabel = ({
   hasPermission,
   ownerDisplayName,
   placeHolder,
-  pills = false,
+  pills = true,
 }: {
   owner?: EntityReference;
   className?: string;
@@ -85,7 +85,7 @@ export const OwnerLabel = ({
   return (
     <div
       className={classNames(
-        'd-flex items-center',
+        'd-inline-flex items-center',
         { 'gap-2': !pills, 'owner-pills': pills },
         { inherited: Boolean(owner?.inherited) },
         className
