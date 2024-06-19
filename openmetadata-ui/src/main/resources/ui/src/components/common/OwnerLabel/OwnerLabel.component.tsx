@@ -39,7 +39,7 @@ export const OwnerLabel = ({
   hasPermission,
   ownerDisplayName,
   placeHolder,
-  pills = true,
+  pills = false,
 }: {
   owner?: EntityReference;
   className?: string;

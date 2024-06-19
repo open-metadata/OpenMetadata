@@ -148,7 +148,9 @@ const GlossaryDetailsRightPanel = ({
   const getOwner = useCallback(
     (ownerDisplayName: string | ReactNode, owner?: EntityReference) => {
       if (owner) {
-        return <OwnerLabel owner={owner} ownerDisplayName={ownerDisplayName} />;
+        return (
+          <OwnerLabel pills owner={owner} ownerDisplayName={ownerDisplayName} />
+        );
       }
       if (!(permissions.EditOwner || permissions.EditAll)) {
         return <div>{NO_DATA_PLACEHOLDER}</div>;

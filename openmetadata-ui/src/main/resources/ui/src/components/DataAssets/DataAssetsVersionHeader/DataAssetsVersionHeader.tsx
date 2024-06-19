@@ -137,7 +137,6 @@ function DataAssetsVersionHeader({
               <OwnerLabel
                 owner={currentVersionData?.owner ?? ownerRef}
                 ownerDisplayName={ownerDisplayName}
-                pills={false}
               />
               <Divider className="self-center m-x-sm" type="vertical" />
 
