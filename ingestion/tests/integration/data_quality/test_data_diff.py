@@ -8,7 +8,7 @@ from sqlalchemy import MetaData
 from sqlalchemy import Table as SQATable
 from sqlalchemy import create_engine
 from sqlalchemy.dialects import postgresql
-from sqlalchemy.engine import URL, Connection, make_url
+from sqlalchemy.engine import Connection, make_url
 from sqlalchemy.sql import sqltypes
 
 from metadata.data_quality.api.models import TestCaseDefinition
@@ -249,7 +249,7 @@ def test_happy_paths(
     prepare_data,
     ingest_postgres_metadata,
     ingest_mysql_service,
-    metadata,
+    patched_metadata,
     parameters: TestParameters,
 ):
     table1 = metadata.get_by_name(
@@ -265,38 +265,11 @@ def test_happy_paths(
     parameters.table2_fqn = parameters.table2_fqn.replace(
         table2_service_name, table2_service.fullyQualifiedName.root
     )
-    service2_password = getattr(
-        table2_service.connection.config, "authType", table2_service.connection.config
-    ).password.get_secret_value()
     parameters.test_case_defintion.parameterValues.extend(
         [
             TestCaseParameterValue(
                 name="table2",
                 value=parameters.table2_fqn,
-            ),
-            TestCaseParameterValue(
-                # we need to build the service url explicitly bc there is currently no
-                # way to get passwords from the integration test environment
-                name="service2Url",
-                value=str(
-                    URL.create(
-                        drivername=table2_service.connection.config.scheme.value.split(
-                            "+"
-                        )[0],
-                        username=table2_service.connection.config.username,
-                        password=service2_password,
-                        host=table2_service.connection.config.hostPort.split(":")[0],
-                        port=int(
-                            table2_service.connection.config.hostPort.split(":")[1]
-                        ),
-                        database=getattr(
-                            table2_service.connection.config,
-                            "databaseSchema",
-                            None,
-                        )
-                        or table2_service.connection.config.database,
-                    )
-                ),
             ),
         ]
     )
@@ -357,23 +330,31 @@ def assert_equal_pydantic_objects(
     "parameters,expected",
     [
         pytest.param(
-            None,
-            None,
-            marks=pytest.mark.skip(
-                reason="TODO: implement test - columns with different data types"
+            TestCaseDefinition(
+                name="unsupported_dialect",
+                testDefinitionName="tableDiff",
+                computePassedFailedRowCount=True,
+                parameterValues=[
+                    TestCaseParameterValue(
+                        name="service2Url",
+                        value="mongodb://localhost:27017",
+                    ),
+                    TestCaseParameterValue(
+                        name="table2",
+                        value="POSTGRES_SERVICE.dvdrental.public.customer",
+                    ),
+                ],
             ),
+            TestCaseResult(
+                testCaseStatus=TestCaseStatus.Aborted,
+                result="Unsupported dialect in param service2Url: mongodb",
+            ),
+            id="unsupported_dialect",
         ),
         pytest.param(
             None,
             None,
             marks=pytest.mark.skip(reason="TODO: implement test - different columns"),
-        ),
-        pytest.param(
-            None,
-            None,
-            marks=pytest.mark.skip(
-                reason="TODO: implement test - table1 does not exist"
-            ),
         ),
         pytest.param(
             None,
@@ -391,8 +372,61 @@ def assert_equal_pydantic_objects(
         ),
     ],
 )
-def test_error_paths(parameters, expected):
-    pass
+def test_error_paths(
+    parameters: TestCaseDefinition,
+    expected: TestCaseResult,
+    prepare_data: None,
+    ingest_postgres_metadata,
+    ingest_mysql_service: DatabaseService,
+    postgres_service: DatabaseService,
+    patched_metadata: OpenMetadata,
+):
+    metadata = patched_metadata
+    table1 = metadata.get_by_name(
+        Table,
+        f"{postgres_service.fullyQualifiedName.root}.dvdrental.public.customer",
+        nullable=False,
+    )
+    for parameter in parameters.parameterValues:
+        if parameter.name == "table2":
+            parameter.value = parameter.value.replace(
+                "POSTGRES_SERVICE", postgres_service.fullyQualifiedName.root
+            )
+    workflow_config = OpenMetadataWorkflowConfig(
+        source=Source(
+            type=TestSuiteConfigType.TestSuite.value,
+            serviceName="MyTestSuite",
+            sourceConfig=SourceConfig(
+                config=TestSuitePipeline(
+                    type=TestSuiteConfigType.TestSuite,
+                    entityFullyQualifiedName=f"{table1.fullyQualifiedName.root}",
+                )
+            ),
+            serviceConnection=postgres_service.connection,
+        ),
+        processor=Processor(
+            type="orm-test-runner",
+            config={"testCases": [parameters]},
+        ),
+        sink=Sink(
+            type="metadata-rest",
+            config={},
+        ),
+        workflowConfig=WorkflowConfig(
+            loggerLevel=LogLevels.DEBUG, openMetadataServerConfig=metadata.config
+        ),
+    )
+    test_suite_procesor = TestSuiteWorkflow.create(workflow_config)
+    test_suite_procesor.execute()
+    test_suite_procesor.stop()
+    test_case_entity: TestCase = metadata.get_or_create_test_case(
+        f"{table1.fullyQualifiedName.root}.{parameters.name}"
+    )
+    try:
+        test_suite_procesor.raise_from_status()
+    finally:
+        metadata.delete(TestCase, test_case_entity.id, recursive=True, hard_delete=True)
+    assert_equal_pydantic_objects(expected, test_case_entity.testCaseResult)
 
 
 @pytest.fixture(scope="module")
@@ -516,3 +550,28 @@ def copy_table(source_engine, destination_engine, table_name):
             destination_connection.execute(
                 source_table.insert(), [dict(row) for row in batch]
             )
+
+
+@pytest.fixture
+def patched_metadata(metadata, postgres_service, ingest_mysql_service, monkeypatch):
+    openmetadata_get_by_name = OpenMetadata.get_by_name
+
+    def override_service_password(self, entity, fqn, *args, **kwargs):
+        result = openmetadata_get_by_name(self, entity, fqn, *args, **kwargs)
+        if entity == DatabaseService:
+            return next(
+                (
+                    service
+                    for service in [postgres_service, ingest_mysql_service]
+                    if service.fullyQualifiedName.root == fqn
+                ),
+                result,
+            )
+
+        return result
+
+    monkeypatch.setattr(
+        "metadata.ingestion.ometa.ometa_api.OpenMetadata.get_by_name",
+        override_service_password,
+    )
+    return metadata

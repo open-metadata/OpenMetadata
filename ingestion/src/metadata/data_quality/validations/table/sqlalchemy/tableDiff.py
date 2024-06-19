@@ -12,6 +12,7 @@
 import traceback
 from itertools import islice
 from typing import Optional
+from urllib.parse import urlparse
 
 import data_diff
 from data_diff.diff_tables import DiffResultWrapper
@@ -24,14 +25,36 @@ from metadata.data_quality.validations.models import TableDiffRuntimeParameters
 from metadata.data_quality.validations.runtime_param_setter.table_diff_params_setter import (
     TableDiffParamsSetter,
 )
+from metadata.generated.schema.entity.services.connections.database.sapHanaConnection import (
+    SapHanaScheme,
+)
 from metadata.generated.schema.tests.basic import (
     TestCaseResult,
     TestCaseStatus,
     TestResultValue,
 )
+from metadata.profiler.orm.registry import Dialects
 from metadata.utils.logger import test_suite_logger
 
 logger = test_suite_logger()
+
+SUPPORTED_DIALECTS = [
+    Dialects.Snowflake,
+    Dialects.BigQuery,
+    Dialects.Athena,
+    Dialects.Redshift,
+    Dialects.Postgres,
+    Dialects.MySQL,
+    Dialects.MSSQL,
+    Dialects.Oracle,
+    Dialects.Trino,
+    SapHanaScheme.hana.value,
+]
+
+
+class UnsupportedDialectError(Exception):
+    def __init__(self, param: str, dialect: str):
+        super().__init__(f"Unsupported dialect in param {param}: {dialect}")
 
 
 class TableDiffValidator(BaseTestValidator, SQAValidatorMixin):
@@ -47,16 +70,24 @@ class TableDiffValidator(BaseTestValidator, SQAValidatorMixin):
 
     def run_validation(self) -> TestCaseResult:
         try:
+            self._validate_dialects()
             return self._run()
         except KeyError as e:
             result = TestCaseResult(
                 timestamp=self.execution_date,  # type: ignore
-                testCaseStatus=self.get_test_case_status(False),
+                testCaseStatus=TestCaseStatus.Failed,
                 result=f"MISMATCHED_COLUMNS: One of the tables is missing the column: '{e}'\n"
                 "Use two tables with the same schema or provide the extraColumns parameter.",
                 testResultValue=[TestResultValue(name="diffCount", value=str(0))],
             )
             logger.error(result.result)
+            return result
+        except UnsupportedDialectError as e:
+            result = TestCaseResult(
+                timestamp=self.execution_date,  # type: ignore
+                testCaseStatus=TestCaseStatus.Aborted,
+                result=str(e),
+            )
             return result
         except Exception as e:
             logger.error(
@@ -64,9 +95,8 @@ class TableDiffValidator(BaseTestValidator, SQAValidatorMixin):
             )
             result = TestCaseResult(
                 timestamp=self.execution_date,  # type: ignore
-                testCaseStatus=TestCaseStatus.Failed,
+                testCaseStatus=TestCaseStatus.Aborted,
                 result=f"ERROR: Unexpected error while running the table diff test: {str(e)}",
-                testResultValue=[TestResultValue(name="diffCount", value=str(0))],
             )
             logger.debug(result.result)
             return result
@@ -148,3 +178,9 @@ class TableDiffValidator(BaseTestValidator, SQAValidatorMixin):
             testResultValue=[TestResultValue(name="diffCount", value=str(num_diffs))],
             validateColumns=False,
         )
+
+    def _validate_dialects(self):
+        for param in ["service1Url", "service2Url"]:
+            dialect = urlparse(getattr(self.runtime_params, param)).scheme
+            if dialect not in SUPPORTED_DIALECTS:
+                raise UnsupportedDialectError(param, dialect)
