@@ -178,12 +178,13 @@ def check_ssl_and_init(_) -> None:
 def _(connection) -> Union[SSLManager, None]:
     service_connection = cast(SalesforceConnection, connection)
     ssl: Optional[verifySSLConfig.SslConfig] = service_connection.sslConfig
-    if ssl:
-        if ssl.root.caCertificate:
-            ssl_dict: dict[str, CustomSecretStr | None] = {"ca": ssl.root.caCertificate}
-            if (ssl.root.sslCertificate) and (ssl.root.sslKey):
-                ssl_dict["cert"] = ssl.root.sslCertificate
-                ssl_dict["key"] = ssl.root.sslKey
+    if ssl and ssl.root.caCertificate:
+        ssl_dict: dict[str, Union[CustomSecretStr, None]] = {
+            "ca": ssl.root.caCertificate
+        }
+        if (ssl.root.sslCertificate) and (ssl.root.sslKey):
+            ssl_dict["cert"] = ssl.root.sslCertificate
+            ssl_dict["key"] = ssl.root.sslKey
         return SSLManager(**ssl_dict)
     return None
 
