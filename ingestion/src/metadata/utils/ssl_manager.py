@@ -19,6 +19,7 @@ import traceback
 from functools import singledispatch, singledispatchmethod
 from typing import Optional, Union, cast
 
+from metadata.ingestion.models.custom_pydantic import CustomSecretStr
 from pydantic import SecretStr
 
 from metadata.generated.schema.entity.services.connections.dashboard.qlikSenseConnection import (
@@ -138,7 +139,11 @@ class SSLManager:
             connection.connectionArguments or init_empty_connection_arguments()
         )
         session = requests.Session()
-        session.verify = self.ca_file_path
+        if self.ca_file_path:
+            session.verify = self.ca_file_path
+        if self.cert_file_path and self.key_file_path:
+            session.cert = (self.cert_file_path, self.key_file_path)
+        connection.connectionArguments.root = connection.connectionArguments.root or {} # to satisfy mypy
         connection.connectionArguments.root["session"] = session
         return connection
 
@@ -163,7 +168,7 @@ class SSLManager:
 
 
 @singledispatch
-def check_ssl_and_init(_):
+def check_ssl_and_init(_) -> None:
     return None
 
 
@@ -171,8 +176,15 @@ def check_ssl_and_init(_):
 def _(connection) -> SSLManager | None:
     service_connection = cast(SalesforceConnection, connection)
     ssl: Optional[verifySSLConfig.SslConfig] = service_connection.sslConfig
-    if ssl and (ssl.root.caCertificate):
-        return SSLManager(ca=ssl.root.caCertificate)
+    if ssl:
+        if ssl.root.caCertificate:
+            ssl_dict: dict[str, CustomSecretStr | None] = {
+                "ca": ssl.root.caCertificate
+            }
+        if (ssl.root.sslCertificate) and (ssl.root.sslKey):
+            ssl_dict["cert"] = ssl.root.sslCertificate
+            ssl_dict["key"] = ssl.root.sslKey
+        return SSLManager(**ssl_dict)
     return None
 
 
