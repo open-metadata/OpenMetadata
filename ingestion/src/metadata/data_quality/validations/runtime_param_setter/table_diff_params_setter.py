@@ -65,10 +65,8 @@ class TableDiffParamsSetter(RuntimeParameterSetter):
             )
         )
         where_clauses = [param_where_clause, partition_where_clause]
-        where_clauses = [x for x in where_clauses if x is not None]
-        where_clauses = [f"({q})" for q in where_clauses]
-        if len(where_clauses) == 0:
-            return None
+        where_clauses = [x for x in where_clauses if x]
+        where_clauses = [f"({x})" for x in where_clauses]
         return " AND ".join(where_clauses)
 
     def get_service2_url(self, service1, table2, test_case):
