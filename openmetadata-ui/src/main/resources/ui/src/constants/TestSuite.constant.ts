@@ -13,6 +13,7 @@
 
 import i18next from 'i18next';
 import { StepperStepType } from 'Models';
+import { DatabaseServiceType } from '../generated/entity/data/database';
 import { TestCaseResolutionStatusTypes } from '../generated/tests/testCaseResolutionStatus';
 import { DataQualityPageTabs } from '../pages/DataQuality/DataQualityPage.interface';
 
@@ -87,3 +88,16 @@ export const TEST_CASE_STATUS: Record<
 };
 
 export const TABLE_DIFF = 'tableDiff';
+
+export const SUPPORTED_SERVICES_FOR_TABLE_DIFF = [
+  DatabaseServiceType.Snowflake,
+  DatabaseServiceType.BigQuery,
+  DatabaseServiceType.Redshift,
+  DatabaseServiceType.Athena,
+  DatabaseServiceType.Postgres,
+  DatabaseServiceType.Mysql,
+  DatabaseServiceType.Mssql,
+  DatabaseServiceType.Oracle,
+  DatabaseServiceType.Trino,
+  DatabaseServiceType.SapHana,
+];

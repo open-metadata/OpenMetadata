@@ -21,6 +21,10 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useHistory, useParams } from 'react-router-dom';
 import { PAGE_SIZE_LARGE } from '../../../../constants/constants';
 import { ENTITY_NAME_REGEX } from '../../../../constants/regex.constants';
+import {
+  SUPPORTED_SERVICES_FOR_TABLE_DIFF,
+  TABLE_DIFF,
+} from '../../../../constants/TestSuite.constant';
 import { ProfilerDashboardType } from '../../../../enums/table.enum';
 import { CreateTestCase } from '../../../../generated/api/tests/createTestCase';
 import {
@@ -113,8 +117,17 @@ const TestCaseForm: React.FC<TestCaseFormProps> = ({
             )?.dataType
           : undefined,
       });
+      const updatedData = data.filter((definition) => {
+        if (definition.fullyQualifiedName === TABLE_DIFF) {
+          return (
+            table.serviceType &&
+            SUPPORTED_SERVICES_FOR_TABLE_DIFF.includes(table.serviceType)
+          );
+        }
 
-      setTestDefinitions(data);
+        return true;
+      });
+      setTestDefinitions(updatedData);
     } catch (error) {
       showErrorToast(error as AxiosError);
     }
