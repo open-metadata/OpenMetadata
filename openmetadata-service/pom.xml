@@ -605,6 +605,12 @@
       <version>1.13</version>
       <scope>compile</scope>
     </dependency>
+    <dependency>
+      <groupId>com.googlecode.owasp-java-html-sanitizer</groupId>
+      <artifactId>owasp-java-html-sanitizer</artifactId>
+      <version>20211018.2</version> 
+    </dependency>
+
   </dependencies>
 
   <profiles>
