@@ -585,19 +585,14 @@ export const createGlossaryTerms = async (
   page: Page,
   glossary: GlossaryData
 ) => {
-  const glossaryResponse = page.waitForResponse(
-    '/api/v1/permissions/glossary/**'
-  );
-
   const menuItem = page.getByRole('menuitem', { name: glossary.name });
-
   const isSelected = await menuItem.evaluate((element) => {
     return element.classList.contains('ant-menu-item-selected');
   });
 
   if (!isSelected) {
     await menuItem.click();
-    await glossaryResponse;
+    await page.waitForResponse('/api/v1/glossaryTerms?directChildrenOf=*');
   }
 
   const termStatus = glossary.reviewers.length > 0 ? 'Draft' : 'Approved';
