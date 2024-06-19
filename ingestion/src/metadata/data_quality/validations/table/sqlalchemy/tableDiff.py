@@ -161,7 +161,8 @@ class TableDiffValidator(BaseTestValidator, SQAValidatorMixin):
         return data_diff.diff_tables(table1, table2, **data_diff_kwargs)  # type: ignore
 
     def get_where(self) -> Optional[str]:
-        return self.runtime_params.whereClause
+        """Returns the where clause from the test case parameters or None if it is a blank string."""
+        return self.runtime_params.whereClause or None
 
     def get_runtime_params(self) -> TableDiffRuntimeParameters:
         raw = self.get_test_case_param_value(
