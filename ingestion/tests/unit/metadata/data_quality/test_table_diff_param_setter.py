@@ -44,7 +44,7 @@ def test_get_data_diff_url(input, expected):
             PartitionProfilerConfig(
                 enablePartitioning=False,
             ),
-            None,
+            "",
         ),
         (
             PartitionProfilerConfig(
