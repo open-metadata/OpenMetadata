@@ -198,7 +198,7 @@ const ParameterForm: React.FC<ParameterFormProps> = ({ definition, table }) => {
 
           return (
             <Form.List
-              initialValue={[{ value: '' }]}
+              initialValue={[{ value: undefined }]}
               key={data.name}
               name={data.name || ''}>
               {(fields, { add, remove }) => (
@@ -336,6 +336,7 @@ const ParameterForm: React.FC<ParameterFormProps> = ({ definition, table }) => {
               loading={isOptionsLoading}
               options={tableOptions}
               placeholder={t('label.table')}
+              popupClassName="no-wrap-option"
               onSearch={debounceFetchTableData}
             />
           );
