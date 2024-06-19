@@ -21,9 +21,11 @@ import { SummaryPanel } from '../../components/DataQuality/SummaryPannel/Summary
 import { TestCases } from '../../components/DataQuality/TestCases/TestCases.component';
 import { TestSuites } from '../../components/DataQuality/TestSuite/TestSuiteList/TestSuites.component';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
+import { IngestionPipelineList } from '../../components/Settings/Services/Ingestion/IngestionPipelineList/IngestionPipelineList.component';
 import { INITIAL_TEST_SUMMARY } from '../../constants/TestSuite.constant';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import { TestSummary } from '../../generated/tests/testCase';
+import { useAuth } from '../../hooks/authHooks';
 import { getTestCaseExecutionSummary } from '../../rest/testAPI';
 import { getDataQualityPagePath } from '../../utils/RouterUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
@@ -37,6 +39,7 @@ const DataQualityPage = () => {
   const [isSummaryLoading, setIsSummaryLoading] = useState(true);
   const { permissions } = usePermissionProvider();
   const { testCase: testCasePermission } = permissions;
+  const { isAdminUser } = useAuth();
 
   const summaryPanel = useMemo(
     () => <SummaryPanel isLoading={isSummaryLoading} testSummary={summary} />,
@@ -77,6 +80,20 @@ const DataQualityPage = () => {
         key: DataQualityPageTabs.TEST_SUITES,
         children: <TestSuites summaryPanel={summaryPanel} />,
       },
+      ...(isAdminUser
+        ? [
+            {
+              key: 'pipelines',
+              children: (
+                <IngestionPipelineList
+                  className="p-md"
+                  serviceName="testSuites"
+                />
+              ),
+              label: 'Pipelines',
+            },
+          ]
+        : []),
     ];
 
     return tab;
