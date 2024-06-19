@@ -128,7 +128,7 @@ class REST:
         self._auth_token_mode = self.config.auth_token_mode
         self._verify = self.config.verify
 
-    def _request(
+    def _request(  # pylint: disable=too-many-arguments
         self,
         method,
         path,
