@@ -1,7 +1,7 @@
 # 1.4.3 Release 🎉
 
 {% note noteType="Tip" %} 
-**June 15, 2024**
+**June 15th, 2024**
 {% /note %}
 
 {% inlineCalloutContainer %}
