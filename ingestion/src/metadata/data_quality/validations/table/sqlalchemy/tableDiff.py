@@ -113,12 +113,22 @@ class TableDiffValidator(BaseTestValidator, SQAValidatorMixin):
                 logger.debug("Sample of failed rows:")
                 for s in islice(self.get_table_diff(), 10):
                     logger.debug(s)
-            test_case_result = self.get_test_case_result(stats["total"], threshold)
+            test_case_result = self.get_test_case_result(
+                threshold,
+                stats["total"],
+                stats["updated"],
+                stats["exclusive_A"],
+                stats["exclusive_B"],
+            )
             count = self._compute_row_count(self.runner, None)  # type: ignore
-            test_case_result.passedRows = count - stats["total"]
+            test_case_result.passedRows = stats["unchanged"]
             test_case_result.failedRows = stats["total"]
-            test_case_result.passedRowsPercentage = test_case_result.passedRows / count
-            test_case_result.failedRowsPercentage = test_case_result.failedRows / count
+            test_case_result.passedRowsPercentage = (
+                test_case_result.passedRows / count * 100
+            )
+            test_case_result.failedRowsPercentage = (
+                test_case_result.failedRows / count * 100
+            )
             return test_case_result
         num_dffs = sum(1 for _ in islice(table_diff_iter, threshold))
         return self.get_test_case_result(
@@ -166,16 +176,28 @@ class TableDiffValidator(BaseTestValidator, SQAValidatorMixin):
 
     def get_test_case_result(
         self,
-        num_diffs: int,
         threshold: int,
+        total_diffs: int,
+        changed: Optional[int] = None,
+        removed: Optional[int] = None,
+        added: Optional[int] = None,
     ) -> TestCaseResult:
+        result_values = [
+            TestResultValue(name="diffCount", value=str(total_diffs)),
+        ]
+        if changed is not None:
+            result_values.append(TestResultValue(name="changed", value=str(changed)))
+        if removed is not None:
+            result_values.append(TestResultValue(name="removed", value=str(removed)))
+        if added is not None:
+            result_values.append(TestResultValue(name="added", value=str(added)))
         return TestCaseResult(
             timestamp=self.execution_date,  # type: ignore
             testCaseStatus=self.get_test_case_status(
-                (threshold or num_diffs) == 0 or num_diffs < threshold
+                (threshold or total_diffs) == 0 or total_diffs < threshold
             ),
-            result=f"Found {num_diffs} different rows which is more than the threshold of {threshold}",
-            testResultValue=[TestResultValue(name="diffCount", value=str(num_diffs))],
+            result=f"Found {total_diffs} different rows which is more than the threshold of {threshold}",
+            testResultValue=result_values,
             validateColumns=False,
         )
 
