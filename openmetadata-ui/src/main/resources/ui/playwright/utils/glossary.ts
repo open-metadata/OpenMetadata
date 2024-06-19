@@ -178,34 +178,24 @@ export const setupGlossaryAndTerms = async (page: Page) => {
 
 export const validateForm = async (page) => {
   // Error messages
-
-  await expect(page.locator('#name_help')).toBeVisible();
   await expect(page.locator('#name_help')).toHaveText('Name is required');
-
-  await expect(page.locator('#description_help')).toBeVisible();
   await expect(page.locator('#description_help')).toHaveText(
     'Description is required'
   );
 
   // Max length validation
-  await expect(page.locator('[data-testid="name"]')).toBeVisible();
-
   await page.locator('[data-testid="name"]').type(INVALID_NAMES.MAX_LENGTH);
 
-  await expect(page.locator('#name_help')).toBeVisible();
   await expect(page.locator('#name_help')).toHaveText(
     NAME_MAX_LENGTH_VALIDATION_ERROR
   );
 
   // With special char validation
-  await expect(page.locator('[data-testid="name"]')).toBeVisible();
-
   await page.locator('[data-testid="name"]').fill('');
   await page
     .locator('[data-testid="name"]')
     .type(INVALID_NAMES.WITH_SPECIAL_CHARS);
 
-  await expect(page.locator('#name_help')).toBeVisible();
   await expect(page.locator('#name_help')).toHaveText(NAME_VALIDATION_ERROR);
 };
 
@@ -389,7 +379,7 @@ export const verifyGlossaryDetails = async (
 
   // Owner
   const ownerText = await page.textContent(
-    `[data-testid="glossary-right-panel-owner-link"] .assignee-item`
+    `[data-testid="glossary-right-panel-owner-link"] [data-testid="owner-label"]`
   );
 
   expect(ownerText).toContain(
@@ -613,6 +603,6 @@ export const createGlossaryTerms = async (
   const termStatus = glossary.reviewers.length > 0 ? 'Draft' : 'Approved';
 
   for (const term of glossary.terms) {
-    await createGlossaryTerm(page, term.data, termStatus);
+    await createGlossaryTerm(page, term.data, termStatus, false);
   }
 };
