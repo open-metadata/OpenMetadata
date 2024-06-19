@@ -65,6 +65,13 @@
         "type": "string"
       }
     },
+    "jwtPrincipalClaimsMapping": {
+      "description": "Jwt Principal Claim Mapping",
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
     "enableSelfSignup": {
       "description": "Enable Self Sign Up",
       "type": "boolean",
