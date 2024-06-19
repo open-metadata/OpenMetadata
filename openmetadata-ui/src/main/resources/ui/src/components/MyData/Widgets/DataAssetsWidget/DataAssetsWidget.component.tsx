@@ -13,7 +13,7 @@
 import { CloseOutlined, DragOutlined } from '@ant-design/icons';
 import { Card, Col, Row, Space, Typography } from 'antd';
 import { AxiosError } from 'axios';
-import { isUndefined } from 'lodash';
+import { isEmpty, isUndefined } from 'lodash';
 import React, { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
@@ -25,6 +25,7 @@ import { ExploreSearchSource } from '../../../../interface/search.interface';
 import { WidgetCommonProps } from '../../../../pages/CustomizablePage/CustomizablePage.interface';
 import { searchData } from '../../../../rest/miscAPI';
 import { showErrorToast } from '../../../../utils/ToastUtils';
+import ErrorPlaceHolder from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import './data-assets-widget.less';
 import DataAssetCard from './DataAssetCard.component';
 
@@ -76,6 +77,7 @@ const DataAssetsWidget = ({
   return (
     <Card
       className="data-assets-explore-widget-container card-widget h-full"
+      data-testid="data-assets-widget"
       loading={loading}>
       <Row gutter={[0, 15]}>
         <Col span={24}>
@@ -90,11 +92,11 @@ const DataAssetsWidget = ({
                 <Space>
                   <DragOutlined
                     className="drag-widget-icon cursor-pointer"
-                    data-testid="drag-widget-btn"
+                    data-testid="drag-widget-button"
                     size={14}
                   />
                   <CloseOutlined
-                    data-testid="remove-widget-btn"
+                    data-testid="remove-widget-button"
                     size={14}
                     onClick={handleCloseClick}
                   />
@@ -104,13 +106,17 @@ const DataAssetsWidget = ({
           </Row>
         </Col>
         <Col span={24}>
-          <Row className="data-assets-explore-widget-body" gutter={[10, 10]}>
-            {services.map((service) => (
-              <Col key={service.id} lg={8} xl={6}>
-                <DataAssetCard service={service} />
-              </Col>
-            ))}
-          </Row>
+          {isEmpty(services) ? (
+            <ErrorPlaceHolder />
+          ) : (
+            <Row className="data-assets-explore-widget-body" gutter={[10, 10]}>
+              {services.map((service) => (
+                <Col key={service.id} lg={8} xl={6}>
+                  <DataAssetCard service={service} />
+                </Col>
+              ))}
+            </Row>
+          )}
         </Col>
       </Row>
     </Card>

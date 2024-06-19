@@ -43,7 +43,7 @@ const DataAssetCard = ({ service }: DataAssetCardProps) => {
         <div
           className="d-flex justify-center items-center"
           data-testid="service-icon">
-          {getServiceLogo((service as Table).serviceType || '', 'h-8')}
+          {getServiceLogo((service as Table).serviceType ?? '', 'h-8')}
         </div>
         <Row className="m-l-xs" gutter={[0, 6]}>
           <Col span={24}>
