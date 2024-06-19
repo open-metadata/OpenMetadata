@@ -82,18 +82,13 @@ export const OwnerLabel = ({
     );
   }, [owner, displayName, pills]);
 
-  return (
-    <div
-      className={classNames(
-        'd-inline-flex items-center',
-        { 'gap-2': !pills, 'owner-pills': pills },
-        { inherited: Boolean(owner?.inherited) },
-        className
-      )}
-      data-testid="owner-label">
-      <div className="owner-avatar-icon d-flex">{profilePicture}</div>
+  const ownerLink = useMemo(() => {
+    if (displayName) {
+      if (pills) {
+        return <>{ownerDisplayName ?? displayName}</>;
+      }
 
-      {displayName ? (
+      return (
         <Link
           className={classNames(
             'no-underline',
@@ -108,30 +103,74 @@ export const OwnerLabel = ({
           }>
           {ownerDisplayName ?? displayName}
         </Link>
-      ) : (
+      );
+    } else {
+      return (
         <Typography.Text
           className={classNames('font-medium text-xs', className)}
           data-testid="owner-link">
           {placeHolder ?? t('label.no-entity', { entity: t('label.owner') })}
         </Typography.Text>
-      )}
+      );
+    }
+  }, [displayName, owner, ownerDisplayName, placeHolder, pills, className]);
 
-      {pills && Boolean(owner?.inherited) && (
-        <Tooltip
-          title={t('label.inherited-entity', {
-            entity: t('label.user'),
-          })}>
-          <InheritIcon className="inherit-icon cursor-pointer" width={14} />
-        </Tooltip>
-      )}
+  const ownerContent = useMemo(() => {
+    return (
+      <div
+        className={classNames(
+          'd-inline-flex items-center',
+          { 'gap-2': !pills, 'owner-pills-content': pills },
+          { inherited: Boolean(owner?.inherited) },
+          className
+        )}
+        data-testid="owner-label">
+        <div className="owner-avatar-icon d-flex">{profilePicture}</div>
+        {ownerLink}
 
-      {onUpdate && (
-        <UserTeamSelectableList
-          hasPermission={Boolean(hasPermission)}
-          owner={owner}
-          onUpdate={(updatedUser) => onUpdate(updatedUser as EntityReference)}
-        />
-      )}
-    </div>
-  );
+        {pills && Boolean(owner?.inherited) && (
+          <Tooltip
+            title={t('label.inherited-entity', {
+              entity: t('label.user'),
+            })}>
+            <InheritIcon className="inherit-icon cursor-pointer" width={14} />
+          </Tooltip>
+        )}
+
+        {onUpdate && (
+          <UserTeamSelectableList
+            hasPermission={Boolean(hasPermission)}
+            owner={owner}
+            onUpdate={(updatedUser) => onUpdate(updatedUser as EntityReference)}
+          />
+        )}
+      </div>
+    );
+  }, [
+    onUpdate,
+    ownerLink,
+    hasPermission,
+    owner,
+    ownerDisplayName,
+    placeHolder,
+    pills,
+    className,
+  ]);
+
+  if (pills && displayName) {
+    return (
+      <Link
+        className="no-underline font-medium text-xs text-primary owner-link-pills"
+        data-testid="owner-link"
+        to={
+          owner?.type === OwnerType.TEAM
+            ? getTeamAndUserDetailsPath(owner?.name ?? '')
+            : getUserPath(owner?.name ?? '')
+        }>
+        {ownerContent}
+      </Link>
+    );
+  }
+
+  return ownerContent;
 };
