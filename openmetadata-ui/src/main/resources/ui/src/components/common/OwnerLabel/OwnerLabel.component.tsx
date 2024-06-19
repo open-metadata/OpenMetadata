@@ -85,7 +85,9 @@ export const OwnerLabel = ({
   const ownerLink = useMemo(() => {
     if (displayName) {
       if (pills) {
-        return <>{ownerDisplayName ?? displayName}</>;
+        return (
+          <div data-testid="owner-link">{ownerDisplayName ?? displayName}</div>
+        );
       }
 
       return (
@@ -161,7 +163,6 @@ export const OwnerLabel = ({
     return (
       <Link
         className="no-underline font-medium text-xs text-primary owner-link-pills"
-        data-testid="owner-link"
         to={
           owner?.type === OwnerType.TEAM
             ? getTeamAndUserDetailsPath(owner?.name ?? '')
