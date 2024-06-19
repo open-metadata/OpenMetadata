@@ -69,12 +69,20 @@ export const addOwner = (
   dataTestId?: string,
   verifyPatchResponse = true
 ) => {
+  interceptURL(
+    'GET',
+    '/api/v1/search/query?q=*&index=team_search_index*',
+    'getTeams'
+  );
   interceptURL('GET', '/api/v1/users?*isBot=false*', 'getUsers');
   cy.get('[data-testid="edit-owner"]')
     .scrollIntoView()
     .click({ waitForAnimations: false });
 
   cy.get("[data-testid='select-owner-tabs']").should('be.visible');
+
+  verifyResponseStatusCode('@getTeams', 200); // wait for teams to load before switching the tab
+
   cy.get('.ant-tabs [id*=tab-users]')
     .scrollIntoView()
     .click({ waitForAnimations: false });
