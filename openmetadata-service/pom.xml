@@ -608,7 +608,7 @@
     <dependency>
       <groupId>com.googlecode.owasp-java-html-sanitizer</groupId>
       <artifactId>owasp-java-html-sanitizer</artifactId>
-      <version>20211018.1</version> 
+      <version>1.1</version> 
     </dependency>
 
   </dependencies>
