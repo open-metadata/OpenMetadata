@@ -13,67 +13,42 @@
 import { Card, Col, Row, Typography } from 'antd';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory } from 'react-router-dom';
-import { getExplorePath } from '../../../../../constants/constants';
-import { ExplorePageTabs } from '../../../../../enums/Explore.enum';
-import { ServicesType } from '../../../../../interface/service.interface';
+import { Link } from 'react-router-dom';
+import { getServiceDetailsPath } from '../../../../../constants/constants';
+import { ServiceCategoryPlural } from '../../../../../enums/service.enum';
+import { Table } from '../../../../../generated/entity/data/table';
+import { ExploreSearchSource } from '../../../../../interface/search.interface';
 import { getServiceLogo } from '../../../../../utils/CommonUtils';
 import { getEntityName } from '../../../../../utils/EntityUtils';
 import RichTextEditorPreviewer from '../../../../common/RichTextEditor/RichTextEditorPreviewer';
-
+import '../data-asset-explore-widget.less';
 interface DataAssetCardProps {
-  service: ServicesType;
+  service: ExploreSearchSource;
 }
 
 const DataAssetCard = ({ service }: DataAssetCardProps) => {
-  const history = useHistory();
   const { t } = useTranslation();
 
-  const handleRedirect = () => {
-    history.push(
-      getExplorePath({
-        tab: ExplorePageTabs.TOPICS,
-        extraParameters: {
-          page: '1',
-          quickFilter: JSON.stringify({
-            query: {
-              bool: {
-                must: [
-                  {
-                    bool: {
-                      should: [
-                        {
-                          term: {
-                            'service.displayName.keyword':
-                              service.fullyQualifiedName,
-                          },
-                        },
-                      ],
-                    },
-                  },
-                ],
-              },
-            },
-          }),
-        },
-      })
-    );
-  };
-
   return (
-    <Card className="w-full" size="small" onClick={handleRedirect}>
-      <div
-        className="d-flex justify-between text-grey-muted"
-        data-testid="service-card">
+    <Link
+      className="no-underline"
+      data-testid={`data-asset-service-${service.name}`}
+      to={getServiceDetailsPath(
+        service.fullyQualifiedName ?? service.name,
+        ServiceCategoryPlural[
+          service?.entityType as keyof typeof ServiceCategoryPlural
+        ]
+      )}>
+      <Card className="service-card" data-testid="service-card" size="small">
         <div
           className="d-flex justify-center items-center"
           data-testid="service-icon">
-          {getServiceLogo(service.serviceType || '', 'h-8')}
+          {getServiceLogo((service as Table).serviceType || '', 'h-8')}
         </div>
         <Row className="m-l-xs" gutter={[0, 6]}>
           <Col span={24}>
             <Typography.Text
-              className="text-base text-grey-body font-medium truncate w-48 d-inline-block"
+              className="text-base text-grey-body font-medium truncate w-full d-inline-block"
               data-testid={`service-name-${service.name}`}
               title={getEntityName(service)}>
               {getEntityName(service)}
@@ -94,17 +69,15 @@ const DataAssetCard = ({ service }: DataAssetCardProps) => {
               )}
             </div>
           </Col>
-          <Col span={24}>
-            <div className="m-b-xss" data-testid="service-type">
-              <label className="m-b-0">{`${t('label.type')}:`}</label>
-              <span className="font-normal m-l-xss text-grey-body">
-                {service.serviceType}
-              </span>
-            </div>
+          <Col className="m-b-xss" data-testid="service-type" span={24}>
+            <label className="m-b-0">{`${t('label.type')}:`}</label>
+            <span className="font-normal m-l-xss text-grey-body">
+              {(service as Table).serviceType}
+            </span>
           </Col>
         </Row>
-      </div>
-    </Card>
+      </Card>
+    </Link>
   );
 };
 

@@ -13,8 +13,6 @@
 @import url('../../../../styles/variables.less');
 
 .data-asset-explore-widget-container {
-  overflow: hidden;
-
   .ant-card {
     height: 100%;
     border: none;
@@ -28,6 +26,14 @@
 
   .data-asset-explore-widget-body {
     height: 265px;
-    overflow: scroll;
+    overflow-x: hidden;
+    overflow-y: scroll;
+
+    .service-card {
+      .ant-card-body {
+        display: flex;
+        color: @text-grey-muted;
+      }
+    }
   }
 }
