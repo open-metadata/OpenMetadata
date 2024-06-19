@@ -19,7 +19,6 @@ import traceback
 from functools import singledispatch, singledispatchmethod
 from typing import Optional, Union, cast
 
-from metadata.ingestion.models.custom_pydantic import CustomSecretStr
 from pydantic import SecretStr
 
 from metadata.generated.schema.entity.services.connections.dashboard.qlikSenseConnection import (
@@ -48,6 +47,7 @@ from metadata.generated.schema.entity.services.connections.messaging.kafkaConnec
 )
 from metadata.generated.schema.security.ssl import verifySSLConfig
 from metadata.ingestion.connections.builders import init_empty_connection_arguments
+from metadata.ingestion.models.custom_pydantic import CustomSecretStr
 from metadata.ingestion.source.connections import get_connection
 from metadata.utils.logger import utils_logger
 
@@ -143,7 +143,9 @@ class SSLManager:
             session.verify = self.ca_file_path
         if self.cert_file_path and self.key_file_path:
             session.cert = (self.cert_file_path, self.key_file_path)
-        connection.connectionArguments.root = connection.connectionArguments.root or {} # to satisfy mypy
+        connection.connectionArguments.root = (
+            connection.connectionArguments.root or {}
+        )  # to satisfy mypy
         connection.connectionArguments.root["session"] = session
         return connection
 
@@ -173,17 +175,15 @@ def check_ssl_and_init(_) -> None:
 
 
 @check_ssl_and_init.register(cls=SalesforceConnection)
-def _(connection) -> SSLManager | None:
+def _(connection) -> Union[SSLManager, None]:
     service_connection = cast(SalesforceConnection, connection)
     ssl: Optional[verifySSLConfig.SslConfig] = service_connection.sslConfig
     if ssl:
         if ssl.root.caCertificate:
-            ssl_dict: dict[str, CustomSecretStr | None] = {
-                "ca": ssl.root.caCertificate
-            }
-        if (ssl.root.sslCertificate) and (ssl.root.sslKey):
-            ssl_dict["cert"] = ssl.root.sslCertificate
-            ssl_dict["key"] = ssl.root.sslKey
+            ssl_dict: dict[str, CustomSecretStr | None] = {"ca": ssl.root.caCertificate}
+            if (ssl.root.sslCertificate) and (ssl.root.sslKey):
+                ssl_dict["cert"] = ssl.root.sslCertificate
+                ssl_dict["key"] = ssl.root.sslKey
         return SSLManager(**ssl_dict)
     return None
 
