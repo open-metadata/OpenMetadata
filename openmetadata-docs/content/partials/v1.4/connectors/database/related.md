@@ -15,12 +15,12 @@
 {% tile
   title="Profiler Workflow"
   description="Learn more about how to configure the Data Profiler from the UI."
-  link="/connectors/ingestion/workflows/profiler" /%}
+  link="/how-to-guides/data-quality-observability/profiler/workflow" /%}
 
 {% tile
   title="Data Quality Workflow"
   description="Learn more about how to configure the Data Quality tests from the UI."
-  link="/connectors/ingestion/workflows/data-quality" /%}
+  link="/how-to-guides/data-quality-observability/quality/configure" /%}
 
 {% tile
   title="dbt Integration"

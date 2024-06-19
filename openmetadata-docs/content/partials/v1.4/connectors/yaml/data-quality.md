@@ -37,7 +37,7 @@ processor:
             value: 10
 ```
 
-The processor type should be set to ` "orm-test-runner"`. For accepted test definition names and parameter value names refer to the [tests page](/connectors/ingestion/workflows/data-quality/tests).
+The processor type should be set to ` "orm-test-runner"`. For accepted test definition names and parameter value names refer to the [tests page](/how-to-guides/data-quality-observability/quality/tests-yaml).
 
 {% note %}
 
