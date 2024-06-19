@@ -77,6 +77,35 @@ test('Table difference test case', async ({ page }) => {
 
   await expect(page.getByTestId(testCase.name).getByRole('link')).toBeVisible();
 
+  await page.getByTestId(`edit-${testCase.name}`).click();
+
+  await expect(page.locator('.ant-modal-title')).toHaveText(
+    `Edit ${testCase.name}`
+  );
+
+  await page
+    .locator('label')
+    .filter({ hasText: 'Key Columns' })
+    .getByRole('button')
+    .click();
+  await page.fill('#tableTestForm_params_keyColumns_1_value', 'email');
+  await page.getByTitle('email', { exact: true }).click();
+
+  await page
+    .locator('label')
+    .filter({ hasText: 'Use Columns' })
+    .getByRole('button')
+    .click();
+  await page.fill('#tableTestForm_params_useColumns_1_value', 'name');
+  await page.getByTitle('name', { exact: true }).click();
+  await page.getByRole('button', { name: 'Submit' }).click();
+
+  await expect(page.getByRole('alert')).toContainText(
+    'Test case updated successfully.'
+  );
+
+  await page.getByTestId('content-wrapper').getByLabel('close').click();
+
   await page.getByTestId(`delete-${testCase.name}`).click();
   await page.fill('#deleteTextInput', 'DELETE');
 
@@ -84,11 +113,7 @@ test('Table difference test case', async ({ page }) => {
 
   await page.getByTestId('confirm-button').click();
 
-  await expect(page.locator('.Toastify__toast-body')).toHaveText(
-    /deleted successfully!/
-  );
-
-  await page.click('.Toastify__close-button');
+  await expect(page.getByRole('alert')).toHaveText(/deleted successfully!/);
 
   await table1.delete(apiContext);
   await table2.delete(apiContext);

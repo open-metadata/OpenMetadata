@@ -108,4 +108,10 @@ describe('createTestCaseParameters', () => {
 
     expect(result).toEqual(expected);
   });
+
+  it('should return undefined if params not present', () => {
+    const result = createTestCaseParameters(undefined, undefined);
+
+    expect(result).toBeUndefined();
+  });
 });

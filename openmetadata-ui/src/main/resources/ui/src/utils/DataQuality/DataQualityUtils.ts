@@ -50,25 +50,27 @@ export const buildTestCaseParams = (
 };
 
 export const createTestCaseParameters = (
-  params: Record<string, string | { [key: string]: string }[]>,
+  params?: Record<string, string | { [key: string]: string }[]>,
   selectedDefinition?: TestDefinition
 ) => {
-  return Object.entries(params).reduce((acc, [key, value]) => {
-    const paramDef = selectedDefinition?.parameterDefinition?.find(
-      (param) => param.name === key
-    );
+  return params
+    ? Object.entries(params).reduce((acc, [key, value]) => {
+        const paramDef = selectedDefinition?.parameterDefinition?.find(
+          (param) => param.name === key
+        );
 
-    if (paramDef?.dataType === TestDataType.Array) {
-      const arrayValues = (value as { value: string }[])
-        .map((item) => item.value)
-        .filter(Boolean);
-      if (arrayValues.length) {
-        acc.push({ name: key, value: JSON.stringify(arrayValues) });
-      }
-    } else {
-      acc.push({ name: key, value: value as string });
-    }
+        if (paramDef?.dataType === TestDataType.Array) {
+          const arrayValues = (value as { value: string }[])
+            .map((item) => item.value)
+            .filter(Boolean);
+          if (arrayValues.length) {
+            acc.push({ name: key, value: JSON.stringify(arrayValues) });
+          }
+        } else {
+          acc.push({ name: key, value: value as string });
+        }
 
-    return acc;
-  }, [] as { name: string; value: string }[]);
+        return acc;
+      }, [] as { name: string; value: string }[])
+    : params;
 };
