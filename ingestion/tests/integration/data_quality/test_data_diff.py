@@ -252,19 +252,20 @@ def test_happy_paths(
     patched_metadata,
     parameters: TestParameters,
 ):
+    metadata = patched_metadata
     table1 = metadata.get_by_name(
         Table,
         f"{postgres_service.fullyQualifiedName.root}.dvdrental.public.customer",
         nullable=False,
     )
-    table2_service_name = parameters.table2_fqn.split(".")[0]
     table2_service = {
         "POSTGRES_SERVICE": postgres_service,
         "MYSQL_SERVICE": ingest_mysql_service,
-    }[table2_service_name]
-    parameters.table2_fqn = parameters.table2_fqn.replace(
-        table2_service_name, table2_service.fullyQualifiedName.root
-    )
+    }
+    for k, v in table2_service.items():
+        parameters.table2_fqn = parameters.table2_fqn.replace(
+            k, v.fullyQualifiedName.root
+        )
     parameters.test_case_defintion.parameterValues.extend(
         [
             TestCaseParameterValue(
@@ -284,7 +285,6 @@ def test_happy_paths(
                     entityFullyQualifiedName=f"{table1.fullyQualifiedName.root}",
                 )
             ),
-            serviceConnection=postgres_service.connection,
         ),
         processor=Processor(
             type="orm-test-runner",
@@ -556,7 +556,7 @@ def copy_table(source_engine, destination_engine, table_name):
 def patched_metadata(metadata, postgres_service, ingest_mysql_service, monkeypatch):
     openmetadata_get_by_name = OpenMetadata.get_by_name
 
-    def override_service_password(self, entity, fqn, *args, **kwargs):
+    def get_by_name_override_service_password(self, entity, fqn, *args, **kwargs):
         result = openmetadata_get_by_name(self, entity, fqn, *args, **kwargs)
         if entity == DatabaseService:
             return next(
@@ -572,6 +572,28 @@ def patched_metadata(metadata, postgres_service, ingest_mysql_service, monkeypat
 
     monkeypatch.setattr(
         "metadata.ingestion.ometa.ometa_api.OpenMetadata.get_by_name",
-        override_service_password,
+        get_by_name_override_service_password,
     )
+
+    openmetadata_get_by_id = OpenMetadata.get_by_id
+
+    def get_by_id_override_service_password(self, entity, entity_id, *args, **kwargs):
+        result = openmetadata_get_by_id(self, entity, entity_id, *args, **kwargs)
+        if entity == DatabaseService:
+            return next(
+                (
+                    service
+                    for service in [postgres_service, ingest_mysql_service]
+                    if service.id == entity_id
+                ),
+                result,
+            )
+
+        return result
+
+    monkeypatch.setattr(
+        "metadata.ingestion.ometa.ometa_api.OpenMetadata.get_by_id",
+        get_by_id_override_service_password,
+    )
+
     return metadata
