@@ -13,13 +13,10 @@
 
 package org.openmetadata.service.secrets.converter;
 
+import java.util.List;
 import org.openmetadata.schema.security.ssl.ValidateSSLClientConfig;
 import org.openmetadata.schema.services.connections.database.SalesforceConnection;
-import org.openmetadata.schema.services.connections.database.common.IamAuthConfig;
-import org.openmetadata.schema.services.connections.database.common.basicAuth;
 import org.openmetadata.service.util.JsonUtils;
-
-import java.util.List;
 
 /**
  * Converter class to get an `Salesforce` object.
