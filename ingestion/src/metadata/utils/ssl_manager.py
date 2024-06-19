@@ -39,6 +39,9 @@ from metadata.generated.schema.entity.services.connections.database.postgresConn
 from metadata.generated.schema.entity.services.connections.database.redshiftConnection import (
     RedshiftConnection,
 )
+from metadata.generated.schema.entity.services.connections.database.salesforceConnection import (
+    SalesforceConnection,
+)
 from metadata.generated.schema.entity.services.connections.messaging.kafkaConnection import (
     KafkaConnection,
 )
@@ -126,6 +129,19 @@ class SSLManager:
                 )
         return connection
 
+    @setup_ssl.register(SalesforceConnection)
+    def _(self, connection):
+        import requests  # pylint: disable=import-outside-toplevel
+
+        connection: SalesforceConnection = cast(SalesforceConnection, connection)
+        connection.connectionArguments = (
+            connection.connectionArguments or init_empty_connection_arguments()
+        )
+        session = requests.Session()
+        session.verify = self.ca_file_path
+        connection.connectionArguments.root["session"] = session
+        return connection
+
     @setup_ssl.register(QlikSenseConnection)
     def _(self, connection):
         return {
@@ -148,6 +164,15 @@ class SSLManager:
 
 @singledispatch
 def check_ssl_and_init(_):
+    return None
+
+
+@check_ssl_and_init.register(cls=SalesforceConnection)
+def _(connection) -> SSLManager | None:
+    service_connection = cast(SalesforceConnection, connection)
+    ssl: Optional[verifySSLConfig.SslConfig] = service_connection.sslConfig
+    if ssl and (ssl.root.caCertificate):
+        return SSLManager(ca=ssl.root.caCertificate)
     return None
 
 
@@ -182,6 +207,7 @@ def _(connection):
 
 def get_ssl_connection(service_config):
     try:
+        # To be cleaned up as part of https://github.com/open-metadata/OpenMetadata/issues/15913
         ssl_manager: SSLManager = check_ssl_and_init(service_config)
         if ssl_manager:
             service_config = ssl_manager.setup_ssl(service_config)
