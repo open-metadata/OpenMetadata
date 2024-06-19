@@ -37,7 +37,10 @@ import { ReactComponent as IconDelete } from '../../../../assets/svg/ic-delete.s
 import { WILD_CARD_CHAR } from '../../../../constants/char.constants';
 import { PAGE_SIZE_LARGE } from '../../../../constants/constants';
 import { SUPPORTED_PARTITION_TYPE_FOR_DATE_TIME } from '../../../../constants/profiler.constant';
-import { TABLE_DIFF } from '../../../../constants/TestSuite.constant';
+import {
+  SUPPORTED_SERVICES_FOR_TABLE_DIFF,
+  TABLE_DIFF,
+} from '../../../../constants/TestSuite.constant';
 import { CSMode } from '../../../../enums/codemirror.enum';
 import { SearchIndex } from '../../../../enums/search.enum';
 import {
@@ -308,6 +311,19 @@ const ParameterForm: React.FC<ParameterFormProps> = ({ definition, table }) => {
           pageNumber: 1,
           pageSize: PAGE_SIZE_LARGE,
           searchIndex: SearchIndex.TABLE,
+          queryFilter: {
+            query: {
+              bool: {
+                must: [
+                  {
+                    terms: {
+                      serviceType: SUPPORTED_SERVICES_FOR_TABLE_DIFF,
+                    },
+                  },
+                ],
+              },
+            },
+          },
           fetchSource: true,
           includeFields: ['name', 'fullyQualifiedName', 'displayName'],
         });
