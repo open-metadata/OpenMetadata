@@ -156,8 +156,8 @@ const TaskFeedCard = ({
 
   return (
     <Button
-      className="remove-button-default-styling"
-      onClick={(e) => e.stopPropagation()}
+      className="remove-button-default-styling w-full"
+      type="text"
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}>
       <div
