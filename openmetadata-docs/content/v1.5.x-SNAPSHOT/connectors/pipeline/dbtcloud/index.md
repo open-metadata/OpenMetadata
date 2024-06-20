@@ -35,6 +35,11 @@ OpenMetadata is integrated with DBT cloud up to version [1.8](https://docs.getdb
 
 The Ingestion framework uses [DBT Cloud APIs](https://docs.getdbt.com/dbt-cloud/api-v2#/) to connect to the dbtcloud  and fetch metadata.
 
+### DBTCloud Permissions
+
+The DBT Clous API User token or Service account token must have the permission to fetch Metadata.
+To know more about permissions required refer [here](https://docs.getdbt.com/docs/dbt-cloud-apis/service-tokens#permissions-for-service-account-tokens).
+
 ### DBTCloud Account
 
 - DBT Cloud [multi-tenant](https://docs.getdbt.com/docs/cloud/about-cloud/tenancy#multi-tenant) or [single tenant](https://docs.getdbt.com/docs/cloud/about-cloud/tenancy#single-tenant) account is required.
