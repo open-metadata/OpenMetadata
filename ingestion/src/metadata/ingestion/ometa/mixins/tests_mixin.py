@@ -325,7 +325,10 @@ class OMetaTestsMixin:
         return TestCaseResolutionStatus(**response)
 
     def ingest_failed_rows_sample(
-        self, test_case: TestCase, failed_rows: TableData
+        self,
+        test_case: TestCase,
+        failed_rows: TableData,
+        validate=True,
     ) -> Optional[TableData]:
         """
         PUT sample failed data for a test case.
@@ -335,8 +338,9 @@ class OMetaTestsMixin:
         """
         resp = None
         try:
+            params = "" if validate else "validate=false"
             resp = self.client.put(
-                f"{self.get_suffix(TestCase)}/{test_case.id.root}/failedRowsSample",
+                f"{self.get_suffix(TestCase)}/{test_case.id.root}/failedRowsSample?{params}",
                 data=failed_rows.model_dump_json(),
             )
         except Exception as exc:

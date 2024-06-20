@@ -79,6 +79,11 @@ jest.mock('react-router-dom', () => ({
   useHistory: jest.fn(),
   useParams: jest.fn().mockImplementation(() => mockParams),
 }));
+jest.mock('../../../../utils/DataQuality/DataQualityUtils', () => {
+  return {
+    createTestCaseParameters: jest.fn().mockImplementation(() => []),
+  };
+});
 jest.mock('../../../../rest/testAPI', () => ({
   getListTestCase: jest
     .fn()
