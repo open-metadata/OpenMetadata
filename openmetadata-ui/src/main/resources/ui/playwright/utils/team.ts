@@ -30,7 +30,7 @@ export const createTeam = async (page: Page, isPublic?: boolean) => {
   await page.fill('[data-testid="email"]', teamData.email);
 
   if (isPublic) {
-    await page.getByTestId('[data-testid="isJoinable-switch-button"]').click();
+    await page.getByTestId('isJoinable-switch-button').click();
   }
 
   await page
@@ -50,7 +50,10 @@ export const createTeam = async (page: Page, isPublic?: boolean) => {
 };
 
 export const hardDeleteTeam = async (page: Page) => {
-  await page.getByTestId('manage-button').click();
+  await page
+    .getByTestId('team-details-collapse')
+    .getByTestId('manage-button')
+    .click();
   await page.getByTestId('delete-button').click();
 
   await page.waitForSelector('[role="dialog"].ant-modal');

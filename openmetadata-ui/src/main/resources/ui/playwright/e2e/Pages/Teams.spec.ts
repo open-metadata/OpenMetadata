@@ -33,15 +33,42 @@ test.describe('Teams Page', () => {
 
     const publicTeam = await createTeam(page, true);
 
-    const teamName = page.locator(`[data-row-key="${publicTeam.name}"]`);
-    await teamName.scrollIntoViewIfNeeded();
-    await teamName.click();
+    await page.getByRole('link', { name: publicTeam.displayName }).click();
 
-    await page.getByTestId('manage-button').click();
+    await page
+      .getByTestId('team-details-collapse')
+      .getByTestId('manage-button')
+      .click();
 
     await expect(page.locator('button[role="switch"]')).toHaveAttribute(
       'aria-checked',
       'true'
+    );
+
+    await page.click('body'); // Equivalent to clicking outside
+
+    await hardDeleteTeam(page);
+  });
+
+  test('Create a new private team', async ({ page }) => {
+    await settingClick(page, GlobalSettingOptions.TEAMS);
+
+    await page.waitForSelector('[data-testid="add-team"]');
+
+    await page.getByTestId('add-team').click();
+
+    const publicTeam = await createTeam(page);
+
+    await page.getByRole('link', { name: publicTeam.displayName }).click();
+
+    await page
+      .getByTestId('team-details-collapse')
+      .getByTestId('manage-button')
+      .click();
+
+    await expect(page.locator('button[role="switch"]')).toHaveAttribute(
+      'aria-checked',
+      'false'
     );
 
     await page.click('body'); // Equivalent to clicking outside
