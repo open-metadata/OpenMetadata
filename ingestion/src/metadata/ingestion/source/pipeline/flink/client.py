@@ -18,6 +18,8 @@ from metadata.generated.schema.entity.services.connections.pipeline.flinkConnect
 from metadata.ingestion.ometa.client import REST, ClientConfig
 from metadata.ingestion.source.pipeline.flink.models import FlinkPipeline
 from metadata.utils.constants import AUTHORIZATION_HEADER
+from metadata.utils.helpers import clean_uri
+from metadata.utils.ssl_registry import get_verify_ssl_fn
 
 
 class FlinkClient:
@@ -27,12 +29,13 @@ class FlinkClient:
 
     def __init__(self, config: FlinkConnection):
         self.config = config
-
+        get_verify_ssl = get_verify_ssl_fn(config.verifySSL)
         client_config: ClientConfig = ClientConfig(
-            base_url=self.config.hostPort,
+            base_url=clean_uri(self.config.hostPort),
             api_version="",
             auth_header=AUTHORIZATION_HEADER,
             auth_token=lambda: ("no_token", 0),
+            verify=get_verify_ssl(config.sslConfig),
         )
         self.client = REST(client_config)
 

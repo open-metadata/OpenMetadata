@@ -11,24 +11,36 @@
 """
 Airbyte source to extract metadata
 """
+import datetime
 import traceback
 from typing import Any, Iterable, Optional
 
 from metadata.generated.schema.api.data.createPipeline import CreatePipelineRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
-from metadata.generated.schema.entity.data.pipeline import Task
+from metadata.generated.schema.entity.data.pipeline import (
+    Pipeline,
+    PipelineStatus,
+    Task,
+    TaskStatus,
+)
 from metadata.generated.schema.entity.services.connections.pipeline.flinkConnection import (
     FlinkConnection,
+)
+from metadata.generated.schema.entity.services.ingestionPipelines.status import (
+    StackTraceError,
 )
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
+from metadata.generated.schema.type.basic import Timestamp
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.models.pipeline_status import OMetaPipelineStatus
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.ingestion.source.pipeline.flink.models import FlinkPipeline, FlinkTask
+from metadata.ingestion.source.pipeline.flink.models import FlinkPipeline
 from metadata.ingestion.source.pipeline.pipeline_service import PipelineServiceSource
+from metadata.utils import fqn
+from metadata.utils.helpers import datetime_to_ts
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
@@ -45,7 +57,7 @@ class FlinkSource(PipelineServiceSource):
         cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None
     ):
         config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
-        connection: FlinkConnection = config.serviceConnection.__root__.config
+        connection: FlinkConnection = config.serviceConnection.root.config
         if not isinstance(connection, FlinkConnection):
             raise InvalidSourceException(
                 f"Expected FlinkConnection, but got {connection}"
@@ -55,13 +67,12 @@ class FlinkSource(PipelineServiceSource):
     def get_connections_jobs(self, pipeline_details: FlinkPipeline):
         """Returns the list of tasks linked to connection"""
         pipeline_info = self.client.get_pipeline_info(pipeline_details)
-        tasks = pipeline_info.get("vertices", {})
+        tasks = pipeline_info.get("vertices", [])
         om_tasks = []
         for task in tasks:
-            task_obj = FlinkTask(**task)
             om_tasks.append(
                 Task(
-                    name=f"{task_obj.name}_{task_obj.id}",
+                    name=f"{task.get('name')}_{task.get('id')}",
                 ),
             )
         return om_tasks
@@ -100,6 +111,74 @@ class FlinkSource(PipelineServiceSource):
         self, pipeline_details: FlinkPipeline
     ) -> Iterable[Either[OMetaPipelineStatus]]:
         """Method to get task & pipeline status"""
+
+    def yield_pipeline_status(
+        self, pipeline_details: FlinkPipeline
+    ) -> Iterable[Either[OMetaPipelineStatus]]:
+        """
+        Get Pipeline Status
+        """
+        try:
+            task_status = [
+                TaskStatus(
+                    name=str(task.get("id")),
+                    executionStatus=task.get("status"),
+                    startTime=Timestamp(
+                        datetime_to_ts(
+                            datetime.strptime(task.started_at, "%Y-%m-%d %H:%M:%S.%f%z")
+                            if task.started_at
+                            else datetime.now()
+                        )
+                    ),
+                    endTime=Timestamp(
+                        datetime_to_ts(
+                            datetime.strptime(
+                                task.finished_at, "%Y-%m-%d %H:%M:%S.%f%z"
+                            )
+                            if task.finished_at
+                            else datetime.now()
+                        )
+                    ),
+                )
+                for task in self.client.get_pipeline_info(pipeline_details).get(
+                    "vertices", []
+                )
+            ]
+
+            pipeline_status = PipelineStatus(
+                executionStatus=pipeline_details.state,
+                taskStatus=task_status,
+                timestamp=Timestamp(
+                    datetime_to_ts(
+                        datetime.strptime(
+                            pipeline_details.created_at, "%Y-%m-%dT%H:%M:%S.%f%z"
+                        )
+                        if pipeline_details.created_at
+                        else datetime.now()
+                    )
+                ),
+            )
+
+            pipeline_fqn = fqn.build(
+                metadata=self.metadata,
+                entity_type=Pipeline,
+                service_name=self.context.get().pipeline_service,
+                pipeline_name=self.context.get().pipeline,
+            )
+            yield Either(
+                right=OMetaPipelineStatus(
+                    pipeline_fqn=pipeline_fqn,
+                    pipeline_status=pipeline_status,
+                )
+            )
+        except Exception as exc:
+            yield Either(
+                left=StackTraceError(
+                    name=pipeline_details.name,
+                    error=f"Wild error ingesting pipeline status {pipeline_details} - {exc}",
+                    stackTrace=traceback.format_exc(),
+                )
+            )
 
     def get_source_url(self, pipeline_details: FlinkPipeline) -> Optional[str]:
         try:
