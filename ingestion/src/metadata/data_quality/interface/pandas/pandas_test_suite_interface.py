@@ -62,7 +62,7 @@ class PandasTestSuiteInterface(TestSuiteInterface, PandasInterfaceMixin):
         # add partition logic to test suite
         self.dfs = self.return_ometa_dataframes_sampled(
             service_connection_config=self.service_connection_config,
-            client=get_connection(self.service_connection_config).client,
+            client=get_connection(self.service_connection_config).client._client,
             table=self.table_entity,
             profile_sample_config=self.table_sample_config,
         )

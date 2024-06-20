@@ -1,0 +1,43 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/services/connections/database/deltalake/storageConfig.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "StorageConfig",
+  "description": "DeltaLake Storage Connection Config",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.services.connections.database.deltalake.StorageConfig",
+  "definitions": {
+    "localConfig": {
+      "title": "Local Config",
+      "description": "Local config source where no extra information needs to be sent.",
+      "type": "object",
+      "additionalProperties": false
+    }
+  },
+  "properties": {
+    "connection": {
+      "title": "DeltaLake Storage Configuration Source",
+      "description": "Available sources to fetch files.",
+      "oneOf": [
+        {
+          "$ref": "../datalake/s3Config.json"
+        }
+      ]
+    },
+    "bucketName": {
+      "title": "Bucket Name",
+      "description": "Bucket Name of the data source.",
+      "type": "string",
+      "default": ""
+    },
+    "prefix": {
+      "title": "Prefix",
+      "description": "Prefix of the data source.",
+      "type": "string",
+      "default": ""
+    }
+  },
+  "additionalProperties": false,
+  "required": [
+    "connection"
+  ]
+}

@@ -50,8 +50,10 @@ MOCK_DELTA_CONFIG = {
         "serviceConnection": {
             "config": {
                 "type": "DeltaLake",
-                "metastoreConnection": {
-                    "metastoreFilePath": METASTORE_PATH,
+                "configSource": {
+                    "connection": {
+                        "metastoreFilePath": METASTORE_PATH,
+                    }
                 },
                 "connectionArguments": {
                     "spark.sql.warehouse.dir": SPARK_SQL_WAREHOUSE,
@@ -118,7 +120,7 @@ class DeltaLakeUnitTest(TestCase):
         MOCK_DELTA_CONFIG["source"],
         OpenMetadata(config.workflowConfig.openMetadataServerConfig),
     )
-    spark = delta.spark
+    spark = delta.client._spark
 
     @classmethod
     def setUpClass(cls) -> None:
