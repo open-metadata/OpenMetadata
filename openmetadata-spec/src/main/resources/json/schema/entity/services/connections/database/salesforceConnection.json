@@ -59,6 +59,11 @@
       "type": "string",
       "default": "login"
     },
+    "sslConfig": {
+      "title": "SSL Configuration",
+      "description": "SSL Configuration details.",
+      "$ref": "../../../../security/ssl/verifySSLConfig.json#/definitions/sslConfig"
+    },
     "connectionOptions": {
       "title": "Connection Options",
       "$ref": "../connectionBasicType.json#/definitions/connectionOptions"

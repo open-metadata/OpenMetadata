@@ -53,6 +53,10 @@ These are the permissions you will require to fetch the metadata from Salesforce
 - **Salesforce Domain**: When connecting to Salesforce, you can specify the domain to use for accessing the platform. The common domains include `login` and `test`, and you can also utilize Salesforce My Domain.
 By default, the domain `login` is used for accessing Salesforce.
 
+**SSL Configuration**
+
+In order to integrate SSL in the Metadata Ingestion Config, the user will have to add the SSL config under sslConfig which is placed in the source.
+
 {% partial file="/v1.5/connectors/database/advanced-configuration.md" /%}
 
 {% /extraContent %}
