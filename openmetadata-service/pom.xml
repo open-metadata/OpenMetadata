@@ -43,7 +43,7 @@
       <artifactId>pac4j-core</artifactId>
       <version>${pac4j.version}</version>
       <exclusions>
-        <exclusion>
+        <exclusion>        
           <groupId>org.slf4j</groupId>
           <artifactId>slf4j-api</artifactId>
         </exclusion>
@@ -64,10 +64,10 @@
       <artifactId>pac4j-oidc</artifactId>
       <version>${pac4j.version}</version>
       <exclusions>
-        <exclusion>
-          <groupId>net.minidev</groupId>
-          <artifactId>json-smart</artifactId>
-        </exclusion>
+      <exclusion>
+        <groupId>net.minidev</groupId>
+        <artifactId>json-smart</artifactId>
+      </exclusion>
       </exclusions>
     </dependency>
     <dependency>
@@ -120,8 +120,8 @@
       <artifactId>mysql-connector-j</artifactId>
     </dependency>
     <dependency>
-      <groupId>org.postgresql</groupId>
-      <artifactId>postgresql</artifactId>
+        <groupId>org.postgresql</groupId>
+        <artifactId>postgresql</artifactId>
     </dependency>
     <dependency>
       <groupId>io.swagger.core.v3</groupId>
@@ -426,7 +426,7 @@
       <artifactId>json</artifactId>
       <version>20231013</version>
     </dependency>
-
+    
     <dependency>
       <groupId>com.networknt</groupId>
       <artifactId>json-schema-validator</artifactId>
@@ -608,7 +608,7 @@
     <dependency>
       <groupId>com.googlecode.owasp-java-html-sanitizer</groupId>
       <artifactId>owasp-java-html-sanitizer</artifactId>
-      <version>20211018.2</version>
+      <version>20211018.2</version> 
     </dependency>
     <dependency>
       <groupId>com.slack.api</groupId>
@@ -676,83 +676,83 @@
         </plugins>
       </build>
     </profile>
-    <profile>
-      <id>postgres-tests</id>
-      <build>
-        <plugins>
-          <plugin>
-            <groupId>org.apache.maven.plugins</groupId>
-            <artifactId>maven-surefire-plugin</artifactId>
-            <version>${maven-surefire.version}</version>
-            <configuration>
-              <reuseForks>false</reuseForks>
-              <parallel>classes</parallel>
-              <forkCount>1C</forkCount>
-              <argLine>-Xmx1G</argLine>
-              <systemPropertyVariables>
-                <jdbcContainerClassName>org.testcontainers.containers.PostgreSQLContainer</jdbcContainerClassName>
-                <jdbcContainerImage>postgres:15</jdbcContainerImage>
-                <elasticSearchContainerClassName>docker.elastic.co/elasticsearch/elasticsearch:8.10.2</elasticSearchContainerClassName>
-                <openSearchContainerClassName>opensearchproject/opensearch:2.7.0</openSearchContainerClassName>
-                <runESTestCases>false</runESTestCases>
-              </systemPropertyVariables>
-            </configuration>
-            <executions>
-              <execution>
-                <id>postgres-integration-tests</id>
-                <phase>test</phase>
-                <configuration>
-                  <includes>
-                    <include>**/*Test.java</include>
-                    <include>**/*ResourceTest.java</include>
-                  </includes>
-                </configuration>
-              </execution>
-            </executions>
-          </plugin>
-        </plugins>
-      </build>
-    </profile>
-    <profile>
-      <activation>
-        <activeByDefault>true</activeByDefault>
-      </activation>
-      <id>mysql-tests</id>
-      <build>
-        <plugins>
-          <plugin>
-            <groupId>org.apache.maven.plugins</groupId>
-            <artifactId>maven-surefire-plugin</artifactId>
-            <version>${maven-surefire.version}</version>
-            <configuration>
-              <reuseForks>false</reuseForks>
-              <parallel>classes</parallel>
-              <forkCount>1C</forkCount>
-              <argLine>-Xmx1G</argLine>
-              <systemPropertyVariables>
-                <jdbcContainerClassName>org.testcontainers.containers.MySQLContainer</jdbcContainerClassName>
-                <jdbcContainerImage>mysql:8.3.0</jdbcContainerImage>
-                <elasticSearchContainerClassName>docker.elastic.co/elasticsearch/elasticsearch:8.10.2</elasticSearchContainerClassName>
-                <openSearchContainerClassName>opensearchproject/opensearch:2.7.0</openSearchContainerClassName>
-                <runESTestCases>false</runESTestCases>
-              </systemPropertyVariables>
-            </configuration>
-            <executions>
-              <execution>
-                <id>mysql-integration-tests</id>
-                <phase>test</phase>
-                <configuration>
-                  <includes>
-                    <include>**/*Test.java</include>
-                    <include>**/*ResourceTest.java</include>
-                  </includes>
-                </configuration>
-              </execution>
-            </executions>
-          </plugin>
-        </plugins>
-      </build>
-    </profile>
+      <profile>
+        <id>postgres-tests</id>
+        <build>
+          <plugins>
+            <plugin>
+              <groupId>org.apache.maven.plugins</groupId>
+              <artifactId>maven-surefire-plugin</artifactId>
+              <version>${maven-surefire.version}</version>
+              <configuration>
+                <reuseForks>false</reuseForks>
+                <parallel>classes</parallel>
+                <forkCount>1C</forkCount>
+                <argLine>-Xmx1G</argLine>
+                <systemPropertyVariables>
+                  <jdbcContainerClassName>org.testcontainers.containers.PostgreSQLContainer</jdbcContainerClassName>
+                  <jdbcContainerImage>postgres:15</jdbcContainerImage>
+                  <elasticSearchContainerClassName>docker.elastic.co/elasticsearch/elasticsearch:8.10.2</elasticSearchContainerClassName>
+                  <openSearchContainerClassName>opensearchproject/opensearch:2.7.0</openSearchContainerClassName>
+                  <runESTestCases>false</runESTestCases>
+                </systemPropertyVariables>
+              </configuration>
+              <executions>
+                <execution>
+                  <id>postgres-integration-tests</id>
+                  <phase>test</phase>
+                  <configuration>
+                    <includes>
+                      <include>**/*Test.java</include>
+                      <include>**/*ResourceTest.java</include>
+                    </includes>
+                  </configuration>
+                </execution>
+              </executions>
+            </plugin>
+          </plugins>
+        </build>
+      </profile>
+      <profile>
+        <activation>
+          <activeByDefault>true</activeByDefault>
+        </activation>
+        <id>mysql-tests</id>
+        <build>
+          <plugins>
+            <plugin>
+              <groupId>org.apache.maven.plugins</groupId>
+              <artifactId>maven-surefire-plugin</artifactId>
+              <version>${maven-surefire.version}</version>
+              <configuration>
+                <reuseForks>false</reuseForks>
+                <parallel>classes</parallel>
+                <forkCount>1C</forkCount>
+                <argLine>-Xmx1G</argLine>
+                <systemPropertyVariables>
+                  <jdbcContainerClassName>org.testcontainers.containers.MySQLContainer</jdbcContainerClassName>
+                  <jdbcContainerImage>mysql:8.3.0</jdbcContainerImage>
+                  <elasticSearchContainerClassName>docker.elastic.co/elasticsearch/elasticsearch:8.10.2</elasticSearchContainerClassName>
+                  <openSearchContainerClassName>opensearchproject/opensearch:2.7.0</openSearchContainerClassName>
+                  <runESTestCases>false</runESTestCases>
+                </systemPropertyVariables>
+              </configuration>
+              <executions>
+                <execution>
+                  <id>mysql-integration-tests</id>
+                  <phase>test</phase>
+                  <configuration>
+                    <includes>
+                      <include>**/*Test.java</include>
+                      <include>**/*ResourceTest.java</include>
+                    </includes>
+                  </configuration>
+                </execution>
+              </executions>
+            </plugin>
+          </plugins>
+        </build>
+      </profile>
   </profiles>
   <build>
     <plugins>
