@@ -81,6 +81,7 @@ const AddTeamForm: React.FC<AddTeamFormType> = ({
     },
     id: 'isJoinable-switch-button',
     formItemLayout: FormItemLayout.HORIZONTAL,
+    helperText: t('message.access-to-collaborate'),
   };
 
   useEffect(() => {
