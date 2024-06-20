@@ -16,7 +16,11 @@ import { Glossary } from '../../support/glossary/Glossary';
 import { GlossaryTerm } from '../../support/glossary/GlossaryTerm';
 import { TeamClass } from '../../support/team/TeamClass';
 import { UserClass } from '../../support/user/UserClass';
-import { createNewPage, redirectToHomePage } from '../../utils/common';
+import {
+  createNewPage,
+  getApiContext,
+  redirectToHomePage,
+} from '../../utils/common';
 import {
   createGlossary,
   createGlossaryTerms,
@@ -63,29 +67,47 @@ test.beforeEach(async ({ page }) => {
   await redirectToHomePage(page);
 });
 
-test('Glossary', async ({ page }) => {
+test('Glossary & terms creation for reviewer as user', async ({ page }) => {
+  const { afterAction, apiContext } = await getApiContext(page);
+
   await test.step('Create Glossary', async () => {
     await sidebarClick(page, SidebarItem.GLOSSARY);
-    await createGlossary(page, glossary1.data, true);
     await createGlossary(page, glossary2.data, false);
-
-    await verifyGlossaryDetails(page, glossary1.data);
     await verifyGlossaryDetails(page, glossary2.data);
   });
 
   await test.step('Create Glossary Terms', async () => {
     await redirectToHomePage(page);
     await sidebarClick(page, SidebarItem.GLOSSARY);
-    await createGlossaryTerms(page, glossary1.data);
     await createGlossaryTerms(page, glossary2.data);
   });
+
+  await glossary1.delete(apiContext);
+  await afterAction();
+});
+
+test('Glossary & terms creation for reviewer as team', async ({ page }) => {
+  const { afterAction, apiContext } = await getApiContext(page);
+
+  await test.step('Create Glossary', async () => {
+    await sidebarClick(page, SidebarItem.GLOSSARY);
+    await createGlossary(page, glossary2.data, false);
+    await verifyGlossaryDetails(page, glossary2.data);
+  });
+
+  await test.step('Create Glossary Terms', async () => {
+    await redirectToHomePage(page);
+    await sidebarClick(page, SidebarItem.GLOSSARY);
+    await createGlossaryTerms(page, glossary2.data);
+  });
+
+  await glossary2.delete(apiContext);
+  await afterAction();
 });
 
 test.afterAll(async ({ browser }) => {
   const { afterAction, apiContext } = await createNewPage(browser);
 
-  await glossary1.delete(apiContext);
-  await glossary2.delete(apiContext);
   await user1.delete(apiContext);
   await user2.delete(apiContext);
   await team.delete(apiContext);

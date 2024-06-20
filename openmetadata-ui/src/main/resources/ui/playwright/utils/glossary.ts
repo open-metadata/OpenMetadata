@@ -540,7 +540,9 @@ export const validateGlossaryTerm = async (
 
   if (status === 'Draft') {
     await page.click('[data-testid="activity_feed"]');
-    const taskFeeds = page.waitForResponse('/api/v1/feed*');
+    const taskFeeds = page.waitForResponse(
+      '/api/v1/feed?entityLink=**&type=Task'
+    );
     await page
       .getByTestId('global-setting-left-panel')
       .getByText('Tasks')
@@ -557,7 +559,7 @@ export const validateGlossaryTerm = async (
       }),
     });
 
-    await expect(cardWithText).toHaveCount(1); // or more if you expect multiple
+    await expect(cardWithText).toHaveCount(1);
 
     await page.click('[data-testid="terms"]');
   }
@@ -591,8 +593,9 @@ export const createGlossaryTerms = async (
   });
 
   if (!isSelected) {
+    const glossaryResponse = page.waitForResponse('/api/v1/glossaryTerms*');
     await menuItem.click();
-    await page.waitForResponse('/api/v1/glossaryTerms?directChildrenOf=*');
+    await glossaryResponse;
   }
 
   const termStatus = glossary.reviewers.length > 0 ? 'Draft' : 'Approved';
