@@ -39,11 +39,15 @@ from metadata.generated.schema.entity.services.connections.database.postgresConn
 from metadata.generated.schema.entity.services.connections.database.redshiftConnection import (
     RedshiftConnection,
 )
+from metadata.generated.schema.entity.services.connections.database.salesforceConnection import (
+    SalesforceConnection,
+)
 from metadata.generated.schema.entity.services.connections.messaging.kafkaConnection import (
     KafkaConnection,
 )
 from metadata.generated.schema.security.ssl import verifySSLConfig
 from metadata.ingestion.connections.builders import init_empty_connection_arguments
+from metadata.ingestion.models.custom_pydantic import CustomSecretStr
 from metadata.ingestion.source.connections import get_connection
 from metadata.utils.logger import utils_logger
 
@@ -128,6 +132,25 @@ class SSLManager:
                 )
         return connection
 
+    @setup_ssl.register(SalesforceConnection)
+    def _(self, connection):
+        import requests  # pylint: disable=import-outside-toplevel
+
+        connection: SalesforceConnection = cast(SalesforceConnection, connection)
+        connection.connectionArguments = (
+            connection.connectionArguments or init_empty_connection_arguments()
+        )
+        session = requests.Session()
+        if self.ca_file_path:
+            session.verify = self.ca_file_path
+        if self.cert_file_path and self.key_file_path:
+            session.cert = (self.cert_file_path, self.key_file_path)
+        connection.connectionArguments.__root__ = (
+            connection.connectionArguments.__root__ or {}
+        )  # to satisfy mypy
+        connection.connectionArguments.__root__["session"] = session
+        return connection
+
     @setup_ssl.register(QlikSenseConnection)
     def _(self, connection):
         return {
@@ -149,7 +172,22 @@ class SSLManager:
 
 
 @singledispatch
-def check_ssl_and_init(_):
+def check_ssl_and_init(_) -> None:
+    return None
+
+
+@check_ssl_and_init.register(cls=SalesforceConnection)
+def _(connection) -> Union[SSLManager, None]:
+    service_connection = cast(SalesforceConnection, connection)
+    ssl: Optional[verifySSLConfig.SslConfig] = service_connection.sslConfig
+    if ssl and ssl.__root__.caCertificate:
+        ssl_dict: dict[str, Union[CustomSecretStr, None]] = {
+            "ca": ssl.__root__.caCertificate
+        }
+        if (ssl.__root__.sslCertificate) and (ssl.__root__.sslKey):
+            ssl_dict["cert"] = ssl.__root__.sslCertificate
+            ssl_dict["key"] = ssl.__root__.sslKey
+        return SSLManager(**ssl_dict)
     return None
 
 
@@ -188,6 +226,7 @@ def _(connection):
 
 def get_ssl_connection(service_config):
     try:
+        # To be cleaned up as part of https://github.com/open-metadata/OpenMetadata/issues/15913
         ssl_manager: SSLManager = check_ssl_and_init(service_config)
         if ssl_manager:
             service_config = ssl_manager.setup_ssl(service_config)
