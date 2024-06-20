@@ -67,6 +67,7 @@ public final class ClassConverterFactory {
             Map.entry(SupersetConnection.class, new SupersetConnectionClassConverter()),
             Map.entry(SSOAuthMechanism.class, new SSOAuthMechanismClassConverter()),
             Map.entry(TableauConnection.class, new TableauConnectionClassConverter()),
+            Map.entry(SalesforceConnection.class, new SalesforceConnectorClassConverter()),
             Map.entry(
                 TestServiceConnectionRequest.class,
                 new TestServiceConnectionRequestClassConverter()),
