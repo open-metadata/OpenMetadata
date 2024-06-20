@@ -4084,9 +4084,10 @@ public interface CollectionDAO {
             case EMAIL_CONFIGURATION -> JsonUtils.readValue(json, SmtpSettings.class);
             case CUSTOM_UI_THEME_PREFERENCE -> JsonUtils.readValue(json, UiThemePreference.class);
             case LOGIN_CONFIGURATION -> JsonUtils.readValue(json, LoginConfiguration.class);
-            case SLACK_APP_CONFIGURATION -> JsonUtils.readValue(json, String.class);
-            case SLACK_BOT -> JsonUtils.readValue(json, String.class);
-            case SLACK_INSTALLER -> JsonUtils.readValue(json, String.class);
+            case SLACK_APP_CONFIGURATION,
+                SLACK_BOT,
+                SLACK_INSTALLER,
+                SLACK_O_AUTH_STATE -> JsonUtils.readValue(json, String.class);
             case PROFILER_CONFIGURATION -> JsonUtils.readValue(json, ProfilerConfiguration.class);
             default -> throw new IllegalArgumentException("Invalid Settings Type " + configType);
           };

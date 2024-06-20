@@ -6,19 +6,16 @@ import com.slack.api.Slack;
 import com.slack.api.bolt.App;
 import com.slack.api.bolt.AppConfig;
 import com.slack.api.methods.SlackApiException;
-import com.slack.api.methods.request.chat.ChatPostMessageRequest;
 import com.slack.api.methods.request.conversations.ConversationsListRequest;
-import com.slack.api.methods.response.chat.ChatPostMessageResponse;
 import com.slack.api.methods.response.conversations.ConversationsListResponse;
-import com.slack.api.model.Conversation;
 import java.io.IOException;
 import java.security.SecureRandom;
 import java.util.Base64;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 import javax.ws.rs.core.Response;
-import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import okhttp3.FormBody;
 import okhttp3.OkHttpClient;
@@ -49,9 +46,7 @@ public class SlackApp extends AbstractNativeApplication {
   private static final String SLACK_TOKEN_EXCHANGE_ENDPOINT =
       "https://slack.com/api/oauth.v2.access";
   private static final String SLACK_REDIRECT_URL =
-      "https://005d-2405-201-6028-48a8-9059-c572-1956-c86a.ngrok-free.app/api/v1/slack/callback";
-
-  @Getter private static String generatedState;
+      "https://c9f1-2405-201-6028-48a8-5955-126-8634-5a5d.ngrok-free.app/api/v1/slack/callback";
 
   public SlackApp(CollectionDAO collectionDAO, SearchRepository searchRepository) {
     super(collectionDAO, searchRepository);
@@ -89,7 +84,7 @@ public class SlackApp extends AbstractNativeApplication {
     String clientId = appConfig.getClientId();
     String scopes = appConfig.getScopes();
     String state = generateRandomState();
-    generatedState = state;
+    saveTokenToSystemRepository(state, SettingsType.SLACK_O_AUTH_STATE);
 
     return SLACK_OAUTH_BASE_URL
         + "?client_id="
@@ -177,7 +172,7 @@ public class SlackApp extends AbstractNativeApplication {
     }
   }
 
-  public Map<String, List<Conversation>> listChannels() throws AppException {
+  public Map<String, Object> listChannels() throws AppException {
     try {
       HashMap<String, String> tokenMap = getSavedToken();
       if (tokenMap == null || !tokenMap.containsKey("botAccessToken")) {
@@ -191,9 +186,21 @@ public class SlackApp extends AbstractNativeApplication {
           slack.methods(accessToken).conversationsList(ConversationsListRequest.builder().build());
 
       if (response.isOk()) {
-        Map<String, List<Conversation>> channelMap = new HashMap<>();
-        channelMap.put("channels", response.getChannels());
-        return channelMap;
+        List<Map<String, String>> channels =
+            response.getChannels().stream()
+                .map(
+                    channel -> {
+                      Map<String, String> channelInfo = new HashMap<>();
+                      channelInfo.put("id", channel.getId());
+                      channelInfo.put("name", channel.getName());
+                      return channelInfo;
+                    })
+                .collect(Collectors.toList());
+
+        Map<String, Object> responseData = new HashMap<>();
+        responseData.put("channels", channels);
+
+        return responseData;
       } else {
         throw AppException.byMessage(
             "SlackApp", "listChannels", response.getError(), Response.Status.INTERNAL_SERVER_ERROR);
@@ -208,60 +215,6 @@ public class SlackApp extends AbstractNativeApplication {
       throw AppException.byMessage(
           "SlackApp",
           "listChannels",
-          "Unexpected error occurred: " + e.getMessage(),
-          Response.Status.INTERNAL_SERVER_ERROR);
-    }
-  }
-
-  public HashMap<String, Object> postMessage(String channelId, String message) throws AppException {
-    HashMap<String, String> tokenMap = getSavedToken();
-    if (tokenMap == null || !tokenMap.containsKey("botAccessToken")) {
-      throw AppException.byMessage(
-          "SlackApp", "postMessage", "Bot access token is missing", Response.Status.BAD_REQUEST);
-    }
-
-    String accessToken = tokenMap.get("botAccessToken");
-
-    try {
-      Slack slack = slackAppInstance.getSlack();
-      ChatPostMessageResponse response =
-          slack
-              .methods(accessToken)
-              .chatPostMessage(
-                  ChatPostMessageRequest.builder().channel(channelId).text(message).build());
-
-      if (!response.isOk()) {
-        String errorMessage = response.getError();
-        if ("not_in_channel".equals(errorMessage)) {
-          throw AppException.byMessage(
-              "SlackApp",
-              "postMessage",
-              "Bot is not in the channel or lacks permission to post",
-              Response.Status.FORBIDDEN);
-        } else {
-          throw AppException.byMessage(
-              "SlackApp",
-              "postMessage",
-              "Error posting message: " + response.getError(),
-              Response.Status.BAD_REQUEST);
-        }
-      }
-
-      HashMap<String, Object> postedMessage = new HashMap<>();
-      postedMessage.put("channel", response.getChannel());
-      postedMessage.put("message", response.getMessage());
-      return postedMessage;
-
-    } catch (SlackApiException | IOException e) {
-      throw AppException.byMessage(
-          "SlackApp",
-          "postMessage",
-          "Slack API error: " + e.getMessage(),
-          Response.Status.INTERNAL_SERVER_ERROR);
-    } catch (Exception e) {
-      throw AppException.byMessage(
-          "SlackApp",
-          "postMessage",
           "Unexpected error occurred: " + e.getMessage(),
           Response.Status.INTERNAL_SERVER_ERROR);
     }
@@ -293,6 +246,12 @@ public class SlackApp extends AbstractNativeApplication {
     Settings installerSettings = systemRepository.getSlackInstallerConfigInternal();
     String installerJson = JsonUtils.pojoToJson(installerSettings.getConfigValue());
     return SystemRepository.decryptSlackDefaultInstallerSetting(installerJson);
+  }
+
+  public String getSlackOAuthStateFromDb() {
+    Settings stateSetting = systemRepository.getSlackOAuthStateConfigInternal();
+    String installerJson = JsonUtils.pojoToJson(stateSetting.getConfigValue());
+    return SystemRepository.decryptSlackOAuthStateSetting(installerJson);
   }
 
   public String generateRandomState() {

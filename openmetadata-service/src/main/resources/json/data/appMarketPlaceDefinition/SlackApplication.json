@@ -3,18 +3,21 @@
   "displayName": "Slack Application",
   "description": "The Slack App enhances communication and resource sharing between Slack and OpenMetadata. This app provides the following features:\n- **Channel Listing**: Quickly and easily list all available Slack channels within OpenMetadata.\n- **Message Sending**: Send messages to Slack channels directly from OpenMetadata, streamlining communication.\n- **Resource Sharing**: Share important resources and information seamlessly between Slack and OpenMetadata.\n- **Integrated Conversations**: Facilitate direct conversations between Slack users and OpenMetadata, ensuring smooth and efficient collaboration.\n\nThis Slack App leverages your existing Slack workspace to enhance productivity and collaboration, providing a seamless integration between your communication and metadata management tools.\n",
   "features": "Connect your slack workspace with OpenMetadata.",
-  "appType": "external",
+  "appType": "internal",
   "appScreenshots": ["SlackApp.png"],
   "developer": "Collate Inc.",
   "developerUrl": "https://www.getcollate.io",
   "privacyPolicyUrl": "https://www.getcollate.io",
   "supportEmail": "support@getcollate.io",
-  "scheduleType": "Live",
+  "scheduleType": "Scheduled",
   "permission": "All",
   "className": "org.openmetadata.service.apps.bundles.slack.SlackApp",
   "runtime": {
     "enabled": "true"
   },
-  "allowConfiguration": false,
-  "appConfiguration": {}
+  "allowConfiguration": true,
+  "appConfiguration": {
+      "channelId": "",
+      "channelName": ""
+  }
 }

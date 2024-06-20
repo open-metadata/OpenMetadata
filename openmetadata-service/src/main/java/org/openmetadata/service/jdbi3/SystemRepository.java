@@ -201,6 +201,9 @@ public class SystemRepository {
       } else if (setting.getConfigType() == SettingsType.SLACK_INSTALLER) {
         String appConfiguration = JsonUtils.convertValue(setting.getConfigValue(), String.class);
         setting.setConfigValue(encryptSlackDefaultInstallerSetting(appConfiguration));
+      } else if (setting.getConfigType() == SettingsType.SLACK_O_AUTH_STATE) {
+        String slackOAuthState = JsonUtils.convertValue(setting.getConfigValue(), String.class);
+        setting.setConfigValue(encryptSlackOAuthStateSetting(slackOAuthState));
       } else if (setting.getConfigType() == SettingsType.CUSTOM_UI_THEME_PREFERENCE) {
         JsonUtils.validateJsonSchema(setting.getConfigValue(), UiThemePreference.class);
       }
@@ -243,6 +246,19 @@ public class SystemRepository {
     return null;
   }
 
+  public Settings getSlackOAuthStateConfigInternal() {
+    try {
+      Settings setting = dao.getConfigWithKey(SettingsType.SLACK_O_AUTH_STATE.value());
+      String slackInstallerConfiguration =
+          SystemRepository.decryptSlackOAuthStateSetting((String) setting.getConfigValue());
+      setting.setConfigValue(slackInstallerConfiguration);
+      return setting;
+    } catch (Exception ex) {
+      LOG.error("Error while trying to fetch slack installer setting " + ex.getMessage());
+    }
+    return null;
+  }
+
   @SneakyThrows
   public static String encryptSlackDefaultBotSetting(String decryptedSetting) {
     String json = JsonUtils.pojoToJson(decryptedSetting);
@@ -275,6 +291,23 @@ public class SystemRepository {
       encryptedSetting = Fernet.getInstance().decryptIfApplies(encryptedSetting);
     }
     return JsonUtils.readValue(encryptedSetting, String.class);
+  }
+
+  @SneakyThrows
+  public static String encryptSlackOAuthStateSetting(String decryptedState) {
+    String json = JsonUtils.pojoToJson(decryptedState);
+    if (Fernet.getInstance().isKeyDefined()) {
+      return Fernet.getInstance().encryptIfApplies(json);
+    }
+    return json;
+  }
+
+  @SneakyThrows
+  public static String decryptSlackOAuthStateSetting(String encryptedState) {
+    if (Fernet.getInstance().isKeyDefined()) {
+      encryptedState = Fernet.getInstance().decryptIfApplies(encryptedState);
+    }
+    return JsonUtils.readValue(encryptedState, String.class);
   }
 
   public static SmtpSettings encryptEmailSetting(SmtpSettings decryptedSetting) {

@@ -160,6 +160,11 @@ public class SettingsCache {
           fetchedSettings = systemRepository.getSlackInstallerConfigInternal();
           LOG.info("Loaded Slack Installer Configuration");
         }
+        case SLACK_O_AUTH_STATE -> {
+          // Only if available
+          fetchedSettings = systemRepository.getSlackOAuthStateConfigInternal();
+          LOG.info("Loaded Slack OAuth state Configuration");
+        }
         default -> {
           fetchedSettings = systemRepository.getConfigWithKey(settingsName);
           LOG.info("Loaded Setting {}", fetchedSettings.getConfigType());
