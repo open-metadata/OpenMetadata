@@ -165,9 +165,8 @@ class SQATestSuiteInterface(SQAInterfaceMixin, TestSuiteInterface):
                 test_case.testDefinition.fullyQualifiedName,
             )
 
-            runtime_parameter_setter = TestHandler.runtime_parameter_setter
-            if runtime_parameter_setter:
-                setter = runtime_parameter_setter(
+            if TestHandler.runtime_parameter_setter:
+                setter = TestHandler.runtime_parameter_setter(
                     self.ometa_client,
                     self.service_connection_config,
                     self.table_entity,

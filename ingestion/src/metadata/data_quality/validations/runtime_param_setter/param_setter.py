@@ -19,6 +19,12 @@ from metadata.profiler.processor.sampler.sqlalchemy.sampler import SQASampler
 
 
 class RuntimeParameterSetter(ABC):
+    """
+    Set runtime parameters for a test case. This can be useful for resolving parameters based on the
+    state of OpenMetadata entities.
+    You can see an example implemnentation in `TableDiffParamsSetter`.
+    """
+
     def __init__(
         self,
         ometa_client: OpenMetadata,

@@ -36,7 +36,10 @@ R = TypeVar("R")
 
 
 class BaseTestValidator(ABC):
-    """Abstract class for test case handlers"""
+    """Abstract class for test case handlers
+    The runtime_parameter_setter is run after the test case is created to set the runtime parameters.
+    This can be useful to resolve complex test parameters based on the parameters gibven by the user.
+    """
 
     runtime_parameter_setter: Optional[Type[RuntimeParameterSetter]] = None
 

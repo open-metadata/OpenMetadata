@@ -28,7 +28,15 @@ from metadata.utils import fqn
 
 class TableDiffParamsSetter(RuntimeParameterSetter):
     """
-    Class that sets runtime parameters for a table diff test.
+    Set runtime parameters for a the table diff test.
+    Sets the following variables:
+    - service1Url: The url of the first service (data diff compliant)
+    - service2Url: The url of the second service (data diff compliant)
+    - table1: The table path for the first service (only schema and table name)
+    - table2: The table path for the second service (only schema and table name)
+    - keyColumns: If not defined, construct the key columns based on primary key or unique constraint.
+    - extraColumns: If not defined, construct the extra columns as all columns except the key columns.
+    - whereClause: Exrtact where clause based on partitioning and user input
     """
 
     def get_parameters(self, test_case) -> TableDiffRuntimeParameters:
