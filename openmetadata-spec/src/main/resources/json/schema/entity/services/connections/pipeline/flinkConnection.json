@@ -28,6 +28,13 @@
         "type": "string",
         "format": "uri",
         "default": "https://api.flink.com"
+      },
+      "verifySSL": {
+        "$ref": "../../../../security/ssl/verifySSLConfig.json#/definitions/verifySSL",
+        "default": "no-ssl"
+      },
+      "sslConfig": {
+        "$ref": "../../../../security/ssl/verifySSLConfig.json#/definitions/sslConfig"
       }
     },
     "additionalProperties": false,
