@@ -123,7 +123,17 @@ const PopoverContent: FC<PopoverContentProps> = ({
       onFinish={handleEmbedImage}>
       <Row gutter={[8, 8]}>
         <Col span={24}>
-          <Form.Item name="Url" rules={[{ required: true, type: 'url' }]}>
+          <Form.Item
+            name="Url"
+            rules={[
+              {
+                required: true,
+                type: 'url',
+                message: t('label.field-required', {
+                  field: t('label.link'),
+                }),
+              },
+            ]}>
             <Input
               autoFocus
               data-testid="embed-input"
