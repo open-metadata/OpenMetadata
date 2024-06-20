@@ -35,26 +35,6 @@ const user1 = new UserClass();
 const user2 = new UserClass();
 const team = new TeamClass();
 
-const glossary1 = new Glossary();
-glossary1.data.owner = { name: 'admin', type: 'user' };
-glossary1.data.mutuallyExclusive = true;
-glossary1.data.reviewers = [{ name: user1.getUserName(), type: 'user' }];
-
-glossary1.data.terms = [
-  new GlossaryTerm(glossary1),
-  new GlossaryTerm(glossary1),
-  new GlossaryTerm(glossary1),
-];
-
-const glossary2 = new Glossary();
-glossary2.data.owner = { name: 'admin', type: 'user' };
-glossary2.data.reviewers = [{ name: team.data.displayName, type: 'team' }];
-
-glossary2.data.terms = [
-  new GlossaryTerm(glossary2),
-  new GlossaryTerm(glossary2),
-];
-
 test.beforeAll(async ({ browser }) => {
   const { afterAction, apiContext } = await createNewPage(browser);
   await user1.create(apiContext);
@@ -69,17 +49,27 @@ test.beforeEach(async ({ page }) => {
 
 test('Glossary & terms creation for reviewer as user', async ({ page }) => {
   const { afterAction, apiContext } = await getApiContext(page);
+  const glossary1 = new Glossary();
+  glossary1.data.owner = { name: 'admin', type: 'user' };
+  glossary1.data.mutuallyExclusive = true;
+  glossary1.data.reviewers = [{ name: user1.getUserName(), type: 'user' }];
+
+  glossary1.data.terms = [
+    new GlossaryTerm(glossary1),
+    new GlossaryTerm(glossary1),
+    new GlossaryTerm(glossary1),
+  ];
 
   await test.step('Create Glossary', async () => {
     await sidebarClick(page, SidebarItem.GLOSSARY);
-    await createGlossary(page, glossary2.data, false);
-    await verifyGlossaryDetails(page, glossary2.data);
+    await createGlossary(page, glossary1.data, false);
+    await verifyGlossaryDetails(page, glossary1.data);
   });
 
   await test.step('Create Glossary Terms', async () => {
     await redirectToHomePage(page);
     await sidebarClick(page, SidebarItem.GLOSSARY);
-    await createGlossaryTerms(page, glossary2.data);
+    await createGlossaryTerms(page, glossary1.data);
   });
 
   await glossary1.delete(apiContext);
@@ -88,6 +78,14 @@ test('Glossary & terms creation for reviewer as user', async ({ page }) => {
 
 test('Glossary & terms creation for reviewer as team', async ({ page }) => {
   const { afterAction, apiContext } = await getApiContext(page);
+  const glossary2 = new Glossary();
+  glossary2.data.owner = { name: 'admin', type: 'user' };
+  glossary2.data.reviewers = [{ name: team.data.displayName, type: 'team' }];
+
+  glossary2.data.terms = [
+    new GlossaryTerm(glossary2),
+    new GlossaryTerm(glossary2),
+  ];
 
   await test.step('Create Glossary', async () => {
     await sidebarClick(page, SidebarItem.GLOSSARY);

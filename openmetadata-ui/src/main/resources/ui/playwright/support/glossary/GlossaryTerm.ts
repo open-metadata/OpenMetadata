@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { APIRequestContext, expect, Page } from '@playwright/test';
+import { omit } from 'lodash';
 import { uuid } from '../../utils/common';
 import { visitGlossaryPage } from '../../utils/glossary';
 import { getRandomLastName } from '../../utils/user';
@@ -94,14 +95,11 @@ export class GlossaryTerm {
   }
 
   async create(apiContext: APIRequestContext) {
-    const apiData = {
-      name: this.data.name,
-      displayName: this.data.displayName,
-      description: this.data.description,
-      reviewers: this.data.reviewers,
-      mutuallyExclusive: this.data.mutuallyExclusive,
-      glossary: this.data.glossary,
-    };
+    const apiData = omit(this.data, [
+      'fullyQualifiedName',
+      'synonyms',
+      'reviewers',
+    ]);
     const response = await apiContext.post('/api/v1/glossaryTerms', {
       data: apiData,
     });
