@@ -8,6 +8,11 @@ source:
       password: password
       securityToken: securityToken
       sobjectName: sobjectName
+      # sslConfig:
+      #   caCertificate: |
+      #     -----BEGIN CERTIFICATE-----
+      #     sample caCertificateData  
+      #     -----END CERTIFICATE-----
       # salesforceApiVersion: 42.0
       # salesforceDomain: login
   sourceConfig:

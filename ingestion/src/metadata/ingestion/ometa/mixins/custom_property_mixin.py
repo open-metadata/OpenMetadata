@@ -82,7 +82,7 @@ class OMetaCustomPropertyMixin:
         return PropertyType(
             __root__=EntityReference(id=custom_property_type.id, type="type")
         )
-    
+
     def get_entity_custom_properties(self, entity_type: Type[T]) -> Optional[List]:
         """
         Get all the custom properties of an entity
