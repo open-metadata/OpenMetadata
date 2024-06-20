@@ -143,11 +143,11 @@ export const restoreUserProfilePage = async (page: Page, fqn: string) => {
 
   await restoreResponse;
 
-  await expect(page.getByRole('alert')).toHaveText(
+  await expect(page.getByRole('alert').first()).toHaveText(
     /User restored successfully/
   );
 
-  await page.getByLabel('close').click();
+  await page.getByLabel('close').first().click();
 
   await nonDeletedUserChecks(page);
 };
@@ -175,9 +175,9 @@ export const hardDeleteUserProfilePage = async (
 
   await deleteResponse;
 
-  await expect(page.locator('.Toastify__toast-body')).toHaveText(
+  await expect(page.getByRole('alert').first()).toHaveText(
     /deleted successfully!/
   );
 
-  await page.click('.Toastify__close-button');
+  await page.getByLabel('close').first().click();
 };
