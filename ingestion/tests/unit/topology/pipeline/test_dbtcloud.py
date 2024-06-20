@@ -385,8 +385,8 @@ mock_dbtcloud_config = {
                 "type": "DBTCloud",
                 "host": "https://abc12.us1.dbt.com",
                 "discoveryAPI": "https://metadata.cloud.getdbt.com/graphql",
-                "accountId": 70403103922125,
-                "jobId": 70403103922125,
+                "accountId": "70403103922125",
+                "jobId": "70403103922125",
                 "token": "dbt_token",
             }
         },
