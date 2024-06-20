@@ -100,7 +100,7 @@ describe('EditTestCaseModal Component', () => {
       'column_values_to_match_regex'
     );
     expect(await screen.findByLabelText('label.test-entity')).toHaveValue(
-      'columnValuesToMatchRegex'
+      'Column Values To Match Regex Pattern'
     );
   });
 

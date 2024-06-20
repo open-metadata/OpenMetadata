@@ -38,7 +38,10 @@ import {
 } from '../../../rest/testAPI';
 import { getNameFromFQN } from '../../../utils/CommonUtils';
 import { createTestCaseParameters } from '../../../utils/DataQuality/DataQualityUtils';
-import { getColumnNameFromEntityLink } from '../../../utils/EntityUtils';
+import {
+  getColumnNameFromEntityLink,
+  getEntityName,
+} from '../../../utils/EntityUtils';
 import { getEntityFQN } from '../../../utils/FeedUtils';
 import { generateFormFields } from '../../../utils/formUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
@@ -181,7 +184,7 @@ const EditTestCaseModal: React.FC<EditTestCaseModalProps> = ({
       }
       form.setFieldsValue({
         name: testCase?.name,
-        testDefinition: testCaseDetails?.testDefinition?.name,
+        testDefinition: getEntityName(testCaseDetails?.testDefinition),
         displayName: testCase?.displayName,
         params: getParamsValue(definition),
         table: getNameFromFQN(tableFqn),
