@@ -523,19 +523,12 @@ public class BasicAuthenticator implements AuthenticatorHandler {
 
   @Override
   public User lookUserInProvider(String userName) {
-    User storedUser;
+    User storedUser = null;
     try {
       if (userName.contains("@")) {
         // lookup by User Email
         storedUser =
             userRepository.getByEmail(
-                null,
-                userName,
-                new EntityUtil.Fields(
-                    Set.of(USER_PROTECTED_FIELDS, "roles"), "authenticationMechanism,roles"));
-      } else {
-        storedUser =
-            userRepository.getByName(
                 null,
                 userName,
                 new EntityUtil.Fields(
@@ -546,10 +539,15 @@ public class BasicAuthenticator implements AuthenticatorHandler {
         throw new CustomExceptionMessage(
             BAD_REQUEST, INVALID_USER_OR_PASSWORD, INVALID_USERNAME_PASSWORD);
       }
-    } catch (Exception ex) {
+    } catch (Exception ignored) {
+
+    }
+
+    if (storedUser == null) {
       throw new CustomExceptionMessage(
           BAD_REQUEST, INVALID_USER_OR_PASSWORD, INVALID_USERNAME_PASSWORD);
     }
+
     return storedUser;
   }
 }

@@ -130,8 +130,10 @@ import org.openmetadata.service.secrets.SecretsManagerFactory;
 import org.openmetadata.service.secrets.masker.EntityMaskerFactory;
 import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.security.CatalogPrincipal;
 import org.openmetadata.service.security.auth.AuthenticatorHandler;
 import org.openmetadata.service.security.auth.BotTokenCache;
+import org.openmetadata.service.security.auth.CatalogSecurityContext;
 import org.openmetadata.service.security.auth.UserTokenCache;
 import org.openmetadata.service.security.jwt.JWTTokenGenerator;
 import org.openmetadata.service.security.mask.PIIMasker;
@@ -430,15 +432,17 @@ public class UserResource extends EntityResource<User, UserRepository> {
               schema = @Schema(type = "string", example = FIELDS))
           @QueryParam("fields")
           String fieldsParam) {
+    CatalogSecurityContext catalogSecurityContext =
+        (CatalogSecurityContext) containerRequestContext.getSecurityContext();
     Fields fields = getFields(fieldsParam);
-    String currentUserName = securityContext.getUserPrincipal().getName();
-    User user = repository.getByName(uriInfo, currentUserName, fields);
+    String currentEmail = ((CatalogPrincipal) catalogSecurityContext.getUserPrincipal()).getEmail();
+    User user = repository.getByEmail(uriInfo, currentEmail, fields);
 
     // Sync the Roles from token to User
     if (Boolean.TRUE.equals(authorizerConfiguration.getUseRolesFromProvider())
         && Boolean.FALSE.equals(user.getIsBot() != null && user.getIsBot())) {
       reSyncUserRolesFromToken(
-          uriInfo, user, getRolesFromAuthorizationToken(containerRequestContext));
+          uriInfo, user, getRolesFromAuthorizationToken(catalogSecurityContext));
     }
     return addHref(uriInfo, user);
   }
@@ -463,9 +467,13 @@ public class UserResource extends EntityResource<User, UserRepository> {
         @ApiResponse(responseCode = "404", description = "User not found")
       })
   public List<EntityReference> getCurrentLoggedInUser(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext) {
-    String currentUserName = securityContext.getUserPrincipal().getName();
-    return repository.getGroupTeams(uriInfo, currentUserName);
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Context ContainerRequestContext containerRequestContext) {
+    CatalogSecurityContext catalogSecurityContext =
+        (CatalogSecurityContext) containerRequestContext.getSecurityContext();
+    String currentEmail = ((CatalogPrincipal) catalogSecurityContext.getUserPrincipal()).getEmail();
+    return repository.getGroupTeams(uriInfo, currentEmail);
   }
 
   @POST
@@ -605,10 +613,11 @@ public class UserResource extends EntityResource<User, UserRepository> {
 
   private void updateUserRolesIfRequired(
       User user, ContainerRequestContext containerRequestContext) {
+    CatalogSecurityContext catalogSecurityContext =
+        (CatalogSecurityContext) containerRequestContext.getSecurityContext();
     if (Boolean.TRUE.equals(authorizerConfiguration.getUseRolesFromProvider())
         && Boolean.FALSE.equals(user.getIsBot() != null && user.getIsBot())) {
-      user.setRoles(
-          validateAndGetRolesRef(getRolesFromAuthorizationToken(containerRequestContext)));
+      user.setRoles(validateAndGetRolesRef(getRolesFromAuthorizationToken(catalogSecurityContext)));
     }
   }
 
