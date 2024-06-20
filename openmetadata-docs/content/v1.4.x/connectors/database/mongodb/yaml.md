@@ -292,7 +292,7 @@ workflowConfig:
 
 {% /codePreview %}
 
-- You can learn more about how to configure and run the Profiler Workflow to extract Profiler data and execute the Data Quality from [here](/connectors/ingestion/workflows/profiler)
+- You can learn more about how to configure and run the Profiler Workflow to extract Profiler data and execute the Data Quality from [here](/how-to-guides/data-quality-observability/profiler/workflow)
 
 
 
