@@ -153,7 +153,7 @@ By connecting to a database service, you can ingest the databases, schemas, tabl
     /%}
 
 {% note %}
-**Note:** Once you’ve run a metadata ingestion pipeline, you can create separate pipelines to bring in [**Usage**](/connectors/ingestion/workflows/usage), [**Lineage**](/connectors/ingestion/workflows/lineage), [**dbt**](/connectors/ingestion/workflows/dbt), or to run [**Profiler**](/connectors/ingestion/workflows/profiler). To add ingestion pipelines, select the required type of ingestion and enter the required details.
+**Note:** Once you’ve run a metadata ingestion pipeline, you can create separate pipelines to bring in [**Usage**](/connectors/ingestion/workflows/usage), [**Lineage**](/connectors/ingestion/workflows/lineage), [**dbt**](/connectors/ingestion/workflows/dbt), or to run [**Profiler**](/how-to-guides/data-quality-observability/profiler/workflow). To add ingestion pipelines, select the required type of ingestion and enter the required details.
 {% /note %}
 
 {% image

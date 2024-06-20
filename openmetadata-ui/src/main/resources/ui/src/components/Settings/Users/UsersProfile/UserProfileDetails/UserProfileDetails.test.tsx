@@ -18,21 +18,20 @@ import { AuthProvider } from '../../../../../generated/settings/settings';
 import { useAuth } from '../../../../../hooks/authHooks';
 import { useApplicationStore } from '../../../../../hooks/useApplicationStore';
 import { USER_DATA } from '../../../../../mocks/User.mock';
+import { restoreUser } from '../../../../../rest/userAPI';
 import UserProfileDetails from './UserProfileDetails.component';
 import { UserProfileDetailsProps } from './UserProfileDetails.interface';
 
-const mockParams = {
-  fqn: 'test',
-};
-
 const mockPropsData: UserProfileDetailsProps = {
   userData: USER_DATA,
+  afterDeleteAction: jest.fn(),
   updateUserDetails: jest.fn(),
 };
 
-jest.mock('react-router-dom', () => ({
-  ...jest.requireActual('react-router-dom'),
-  useParams: jest.fn().mockImplementation(() => mockParams),
+jest.mock('../../../../../hooks/useFqn', () => ({
+  useFqn: jest.fn().mockImplementation(() => ({
+    fqn: 'test',
+  })),
 }));
 
 jest.mock('../../../../../hooks/useApplicationStore', () => ({
@@ -59,6 +58,10 @@ jest.mock('../../../../../utils/ToastUtils', () => ({
   showSuccessToast: jest.fn(),
 }));
 
+jest.mock('../../../../../rest/userAPI', () => ({
+  restoreUser: jest.fn().mockImplementation(() => Promise.resolve()),
+}));
+
 jest.mock('../UserProfileImage/UserProfileImage.component', () => {
   return jest.fn().mockReturnValue(<p>ProfilePicture</p>);
 });
@@ -77,6 +80,21 @@ jest.mock('../../../../common/InlineEdit/InlineEdit.component', () => {
     </div>
   ));
 });
+
+jest.mock(
+  '../../../../common/EntityPageInfos/ManageButton/ManageButton',
+  () => {
+    return jest
+      .fn()
+      .mockImplementation(({ afterDeleteAction, onRestoreEntity }) => (
+        <>
+          <span>ManageButton</span>
+          <button onClick={afterDeleteAction}>AfterDeleteActionButton</button>
+          <button onClick={onRestoreEntity}>OnRestoreEntityButton</button>
+        </>
+      ));
+  }
+);
 
 jest.mock('../../ChangePasswordForm', () => {
   return jest.fn().mockReturnValue(<p>ChangePasswordForm</p>);
@@ -152,7 +170,14 @@ describe('Test User Profile Details Component', () => {
       '/domain/Engineering'
     );
 
+    // change password button
     expect(screen.getByTestId('change-password-button')).toBeInTheDocument();
+
+    // manage button
+    expect(screen.getByText('ManageButton')).toBeInTheDocument();
+
+    // delete badge
+    expect(screen.queryByTestId('deleted-badge')).not.toBeInTheDocument();
   });
 
   it('should not render change password button and component in case of SSO', async () => {
@@ -208,6 +233,36 @@ describe('Test User Profile Details Component', () => {
     expect(
       screen.queryByTestId('change-password-button')
     ).not.toBeInTheDocument();
+  });
+
+  it('should not render edit button in case of user deleted', async () => {
+    render(
+      <UserProfileDetails
+        {...mockPropsData}
+        userData={{ ...USER_DATA, deleted: true }}
+      />,
+      {
+        wrapper: MemoryRouter,
+      }
+    );
+
+    const editButton = screen.queryByTestId('edit-displayName');
+
+    expect(editButton).not.toBeInTheDocument();
+  });
+
+  it('should render delete badge in case of deleted user', async () => {
+    render(
+      <UserProfileDetails
+        {...mockPropsData}
+        userData={{ ...USER_DATA, deleted: true }}
+      />,
+      {
+        wrapper: MemoryRouter,
+      }
+    );
+
+    expect(screen.getByTestId('deleted-badge')).toBeInTheDocument();
   });
 
   it('should render edit display name input on click', async () => {
@@ -327,5 +382,29 @@ describe('Test User Profile Details Component', () => {
       { defaultPersona: USER_DATA.defaultPersona },
       'defaultPersona'
     );
+  });
+
+  it('should trigger afterDeleteAction props from ManageButton', async () => {
+    render(<UserProfileDetails {...mockPropsData} />, {
+      wrapper: MemoryRouter,
+    });
+
+    fireEvent.click(screen.getByText('AfterDeleteActionButton'));
+
+    expect(mockPropsData.afterDeleteAction).toHaveBeenCalled();
+  });
+
+  it('should call restore API after restoreButton click from ManageButton', async () => {
+    render(<UserProfileDetails {...mockPropsData} />, {
+      wrapper: MemoryRouter,
+    });
+
+    await act(async () => {
+      fireEvent.click(screen.getByText('OnRestoreEntityButton'));
+    });
+
+    expect(restoreUser).toHaveBeenCalledWith(USER_DATA.id);
+
+    expect(mockPropsData.afterDeleteAction).toHaveBeenCalled();
   });
 });
