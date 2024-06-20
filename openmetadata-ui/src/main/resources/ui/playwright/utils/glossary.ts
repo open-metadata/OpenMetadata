@@ -299,13 +299,9 @@ export const createGlossary = async (
     }
   }
 
+  const glossaryResponse = page.waitForResponse('/api/v1/glossaries');
   await page.click('[data-testid="save-glossary"]');
-
-  await page.waitForResponse(
-    (response) =>
-      response.url().includes('/api/v1/glossaries') &&
-      response.request().method() === 'POST'
-  );
+  await glossaryResponse;
 
   await expect(page).toHaveURL(/\/glossary\//);
 
@@ -478,6 +474,48 @@ export const fillGlossaryTermDetails = async (
   }
 };
 
+const validateGlossaryTermTask = async (page: Page, term: GlossaryTermData) => {
+  await page.click('[data-testid="activity_feed"]');
+  const taskFeeds = page.waitForResponse(
+    '/api/v1/feed?entityLink=**&type=Task'
+  );
+  await page
+    .getByTestId('global-setting-left-panel')
+    .getByText('Tasks')
+    .click();
+
+  await taskFeeds;
+
+  const taskFeedCards = page.locator('[data-testid="task-feed-card"]');
+
+  // Filter to find the specific card that contains the text
+  const cardWithText = taskFeedCards.filter({
+    has: page.locator('[data-testid="entity-link"]', {
+      hasText: term.name,
+    }),
+  });
+
+  await expect(cardWithText).toHaveCount(1);
+};
+
+export const approveGlossaryTermTask = async (
+  page: Page,
+  term: GlossaryTermData
+) => {
+  await validateGlossaryTermTask(page, term);
+
+  const taskResolve = page.waitForResponse('/api/v1/feed/tasks/*/resolve');
+
+  await page.click('[data-testid="approve-task"]');
+
+  await taskResolve;
+
+  // Display toast notification
+  await expect(page.locator('.toast-notification')).toHaveText(
+    'Task resolved successfully'
+  );
+};
+
 export const validateGlossaryTerm = async (
   page: Page,
   term: GlossaryTermData,
@@ -492,28 +530,7 @@ export const validateGlossaryTerm = async (
   await expect(page.locator(statusSelector)).toContainText(status);
 
   if (status === 'Draft') {
-    await page.click('[data-testid="activity_feed"]');
-    const taskFeeds = page.waitForResponse(
-      '/api/v1/feed?entityLink=**&type=Task'
-    );
-    await page
-      .getByTestId('global-setting-left-panel')
-      .getByText('Tasks')
-      .click();
-
-    await taskFeeds;
-
-    const taskFeedCards = page.locator('[data-testid="task-feed-card"]');
-
-    // Filter to find the specific card that contains the text
-    const cardWithText = taskFeedCards.filter({
-      has: page.locator('[data-testid="entity-link"]', {
-        hasText: term.name,
-      }),
-    });
-
-    await expect(cardWithText).toHaveCount(1);
-
+    await validateGlossaryTermTask(page, term);
     await page.click('[data-testid="terms"]');
   }
 };
@@ -525,14 +542,9 @@ export const createGlossaryTerm = async (
   validateCreateForm = true
 ) => {
   await fillGlossaryTermDetails(page, term, validateCreateForm);
+  const glossaryTermResponse = page.waitForResponse('/api/v1/glossaryTerms');
   await page.click('[data-testid="save-glossary-term"]');
-  await page.waitForResponse(
-    (response) =>
-      response.url().includes('/api/v1/glossaryTerms') &&
-      response.request().method() === 'POST' &&
-      response.status() === 201
-  );
-
+  await glossaryTermResponse;
   await validateGlossaryTerm(page, term, status);
 };
 
