@@ -19,6 +19,7 @@ type ResponseDataType = {
   teamType: string;
   id?: string;
   fullyQualifiedName?: string;
+  users?: string[];
 };
 
 export class TeamClass {
@@ -32,6 +33,7 @@ export class TeamClass {
       displayName: `PW Team ${this.id}`,
       description: 'playwright team description',
       teamType: 'Group',
+      users: [],
     };
   }
 

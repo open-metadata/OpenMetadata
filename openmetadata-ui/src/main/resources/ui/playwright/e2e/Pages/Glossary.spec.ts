@@ -39,6 +39,7 @@ test.beforeAll(async ({ browser }) => {
   const { afterAction, apiContext } = await createNewPage(browser);
   await user1.create(apiContext);
   await user2.create(apiContext);
+  team.data.users = [user2.responseData.id];
   await team.create(apiContext);
   await afterAction();
 });
@@ -105,10 +106,8 @@ test('Glossary & terms creation for reviewer as team', async ({ page }) => {
 
 test.afterAll(async ({ browser }) => {
   const { afterAction, apiContext } = await createNewPage(browser);
-
+  await team.delete(apiContext);
   await user1.delete(apiContext);
   await user2.delete(apiContext);
-  await team.delete(apiContext);
-
   await afterAction();
 });

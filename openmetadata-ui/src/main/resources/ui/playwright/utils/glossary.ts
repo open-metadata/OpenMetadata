@@ -101,13 +101,12 @@ export const addMultiOwner = async (data: {
     await page.getByRole('listitem', { name: ownerName }).click();
   }
 
-  const patchResponse = page.waitForResponse(`/api/v1/${endpoint}/*`);
   if (isMultipleOwners) {
     await page.click('[data-testid="selectable-list-update-btn"]');
   }
 
   if (!isSelectableInsideForm) {
-    await patchResponse;
+    await page.waitForResponse(`/api/v1/${endpoint}/*`);
   }
 
   for (const name of owners) {
