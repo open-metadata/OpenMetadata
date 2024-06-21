@@ -160,6 +160,15 @@ export const getGlobalSettingsMenuWithPermission = (
           key: `${GlobalSettingsMenuCategory.SERVICES}.${GlobalSettingOptions.METADATA}`,
           icon: OpenMetadataIcon,
         },
+        {
+          label: i18next.t('label.data-observability'),
+          description: i18next.t(
+            'message.page-sub-header-for-data-observability'
+          ),
+          isProtected: true,
+          key: `${GlobalSettingsMenuCategory.SERVICES}.${GlobalSettingOptions.DATA_OBSERVABILITY}`,
+          icon: OpenMetadataIcon,
+        },
       ],
     },
     {
