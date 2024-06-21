@@ -25,7 +25,7 @@ from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.pipeline.flink.client import FlinkClient
 
 
-def get_connection(connection: FlinkConnection) -> FlinkConnection:
+def get_connection(connection: FlinkConnection) -> FlinkClient:
     """
     Create connection
     """

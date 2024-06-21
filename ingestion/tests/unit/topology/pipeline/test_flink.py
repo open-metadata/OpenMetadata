@@ -62,7 +62,7 @@ MOCK_PIPELINE_SERVICE = PipelineService(
 )
 
 MOCK_PIPELINE = FlinkPipeline(
-    id="2aaa012e-099a-11ed-861d-0242ac120002",
+    jid="2aaa012e-099a-11ed-861d-0242ac120002",
     name="alphabet",
     state="Completed",
     start_time=1718948457617,
