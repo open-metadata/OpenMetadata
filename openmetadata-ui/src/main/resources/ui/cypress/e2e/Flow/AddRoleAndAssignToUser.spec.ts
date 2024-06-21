@@ -17,7 +17,7 @@ import {
   uuid,
   verifyResponseStatusCode,
 } from '../../common/common';
-import { formNameFieldInput } from '../../common/Utils/Form';
+import { validateFormNameFieldInput } from '../../common/Utils/Form';
 import { BASE_URL } from '../../constants/constants';
 import { GlobalSettingOptions } from '../../constants/settings.constant';
 
@@ -45,7 +45,7 @@ describe(
       cy.get('[data-testid="inactive-link"]').should('contain', 'Add New Role');
 
       // Entering name
-      formNameFieldInput({
+      validateFormNameFieldInput({
         value: roleName,
         fieldName: 'Name',
         errorDivSelector: '#name_help',
