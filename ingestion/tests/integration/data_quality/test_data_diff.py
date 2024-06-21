@@ -11,6 +11,7 @@ from sqlalchemy.dialects import postgresql
 from sqlalchemy.engine import Connection, make_url
 from sqlalchemy.sql import sqltypes
 
+from _openmetadata_testutils.postgres.conftest import postgres_container
 from metadata.data_quality.api.models import TestCaseDefinition
 from metadata.generated.schema.api.services.createDatabaseService import (
     CreateDatabaseServiceRequest,
