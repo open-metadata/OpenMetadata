@@ -32,7 +32,12 @@ from metadata.generated.schema.entity.services.ingestionPipelines.status import 
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
-from metadata.generated.schema.type.basic import Timestamp
+from metadata.generated.schema.type.basic import (
+    EntityName,
+    FullyQualifiedEntityName,
+    SourceUrl,
+    Timestamp,
+)
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.models.pipeline_status import OMetaPipelineStatus
@@ -43,6 +48,12 @@ from metadata.utils import fqn
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
+
+TASK_STATUS_MAP = {
+    "RUNNING": StatusType.Pending,
+    "FAILED": StatusType.Failed,
+    "CANCELED": StatusType.Failed,
+}
 
 
 class FlinkSource(PipelineServiceSource):
@@ -55,7 +66,7 @@ class FlinkSource(PipelineServiceSource):
     def create(
         cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None
     ):
-        config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
+        config: WorkflowSource = WorkflowSource.model_validate(config_dict)
         connection: FlinkConnection = config.serviceConnection.root.config
         if not isinstance(connection, FlinkConnection):
             raise InvalidSourceException(
@@ -65,16 +76,13 @@ class FlinkSource(PipelineServiceSource):
 
     def get_connections_jobs(self, pipeline_details: FlinkPipeline):
         """Returns the list of tasks linked to connection"""
-        pipeline_info = self.client.get_pipeline_info(pipeline_details)
-        tasks = pipeline_info.get("vertices", [])
-        om_tasks = []
-        for task in tasks:
-            om_tasks.append(
-                Task(
-                    name=f"{task.get('name')}_{task.get('id')}",
-                ),
+        pipeline_info = self.client.get_pipeline_info(pipeline_details.id)
+        return [
+            Task(
+                name=f"{task.name}_{task.id}",
             )
-        return om_tasks
+            for task in pipeline_info.tasks
+        ]
 
     def yield_pipeline(
         self, pipeline_details: FlinkPipeline
@@ -84,19 +92,28 @@ class FlinkSource(PipelineServiceSource):
         :param pipeline_details: pipeline_details object from Flink
         :return: Create Pipeline request with tasks
         """
-        pipeline_request = CreatePipelineRequest(
-            name=pipeline_details.name,
-            service=self.context.get().pipeline_service,
-            sourceUrl=self.get_source_url(pipeline_details),
-            tasks=self.get_connections_jobs(pipeline_details),
-        )
-        yield Either(right=pipeline_request)
-        self.register_record(pipeline_request=pipeline_request)
+        try:
+            pipeline_request = CreatePipelineRequest(
+                name=EntityName(pipeline_details.name),
+                service=FullyQualifiedEntityName(self.context.get().pipeline_service),
+                sourceUrl=SourceUrl(self.get_source_url(pipeline_details)),
+                tasks=self.get_connections_jobs(pipeline_details),
+            )
+            yield Either(right=pipeline_request)
+            self.register_record(pipeline_request=pipeline_request)
+        except TypeError as err:
+            yield Either(
+                left=StackTraceError(
+                    name=pipeline_details.name,
+                    error=f"Error to yield pipeline for {pipeline_details}: {err}",
+                    stackTrace=traceback.format_exc(),
+                )
+            )
 
     def get_pipelines_list(self) -> Iterable[FlinkPipeline]:
         """Get List of all pipelines"""
-        for pipeline in self.client.get_jobs():
-            yield FlinkPipeline(**pipeline)
+        for pipeline in self.client.get_jobs().pipelines:
+            yield pipeline
 
     def get_pipeline_name(self, pipeline_details: FlinkPipeline) -> str:
         return pipeline_details.name
@@ -114,15 +131,13 @@ class FlinkSource(PipelineServiceSource):
         """
         try:
             task_status = []
-            for task in self.client.get_pipeline_info(pipeline_details).get(
-                "vertices", []
-            ):
+            for task in self.client.get_pipeline_info(pipeline_details.id).tasks:
                 task_status.append(
                     TaskStatus(
-                        name=task.get("id"),
-                        executionStatus=StatusType.Successful,
-                        startTime=Timestamp(task.get("start-time")),
-                        endTime=Timestamp(task.get("end-time")),
+                        name=f"{task.name}_{task.id}",
+                        executionStatus=TASK_STATUS_MAP.get(task.status),
+                        startTime=Timestamp(task.start_time),
+                        endTime=Timestamp(task.end_time),
                     )
                 )
 
@@ -155,11 +170,17 @@ class FlinkSource(PipelineServiceSource):
 
     def get_source_url(self, pipeline_details: FlinkPipeline) -> Optional[str]:
         try:
-            if pipeline_details.state.lower() == "finished":
-                status = "completed"
+            pipeline_status = pipeline_details.state.lower()
+            url_status = None
+            if pipeline_status == "finished" or pipeline_status == "failed":
+                url_status = "completed"
+            elif pipeline_status == "running":
+                url_status = "running"
+
+            if url_status:
+                return f"{self.client.config.hostPort}/#/job/{url_status}/{pipeline_details.id}/overview"
             else:
-                status = "running"
-            return f"{self.client.config.hostPort}/#/job/{status}/{pipeline_details.id}/overview"
+                return f"{self.client.config.hostPort}/#/overview"
         except Exception as exc:
             logger.debug(traceback.format_exc())
             logger.warning(f"Unable to get source url: {exc}")

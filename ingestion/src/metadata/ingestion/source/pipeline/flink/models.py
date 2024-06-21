@@ -12,17 +12,9 @@
 Flink Models
 """
 
+from typing import List, Optional
+
 from pydantic import BaseModel, Field
-
-
-class FlinkPipeline(BaseModel):
-    """Flink job model"""
-
-    state: str
-    name: str
-    id: str = Field(alias="jid", default=None)
-    start_time: int = Field(alias="start-time", default=None)
-    end_time: int = Field(alias="end-time", default=None)
 
 
 class FlinkTask(BaseModel):
@@ -31,5 +23,22 @@ class FlinkTask(BaseModel):
     id: str
     name: str
     status: str
-    start_time: str = Field(alias="start-time", default=None)
-    end_time: str = Field(alias="end-time", default=None)
+    start_time: Optional[int] = Field(alias="start-time", default=None)
+    end_time: Optional[int] = Field(alias="end-time", default=None)
+
+
+class FlinkPipeline(BaseModel):
+    """Flink job model"""
+
+    state: str
+    name: str
+    id: str = Field(alias="jid")
+    start_time: Optional[int] = Field(alias="start-time", default=None)
+    end_time: Optional[int] = Field(alias="end-time", default=None)
+    tasks: Optional[List[FlinkTask]] = Field(alias="vertices", default=[])
+
+
+class FlinkPipelineList(BaseModel):
+    """Flink Pipelines List"""
+
+    pipelines: Optional[List[FlinkPipeline]] = Field(alias="jobs", default=[])

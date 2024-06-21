@@ -12,11 +12,16 @@
 Client to interact with flink apis
 """
 
+from typing import List, Optional
+
 from metadata.generated.schema.entity.services.connections.pipeline.flinkConnection import (
     FlinkConnection,
 )
 from metadata.ingestion.ometa.client import REST, ClientConfig
-from metadata.ingestion.source.pipeline.flink.models import FlinkPipeline
+from metadata.ingestion.source.pipeline.flink.models import (
+    FlinkPipeline,
+    FlinkPipelineList,
+)
 from metadata.utils.constants import AUTHORIZATION_HEADER
 from metadata.utils.helpers import clean_uri
 from metadata.utils.ssl_registry import get_verify_ssl_fn
@@ -39,10 +44,10 @@ class FlinkClient:
         )
         self.client = REST(client_config)
 
-    def get_jobs(self):
+    def get_jobs(self) -> Optional[List[FlinkPipelineList]]:
         response = self.client.get(f"jobs/overview")
-        return response.get("jobs", {})
+        return FlinkPipelineList(**response)
 
-    def get_pipeline_info(self, pipeline_details: FlinkPipeline):
-        response = self.client.get(f"jobs/{pipeline_details.id}")
-        return response
+    def get_pipeline_info(self, pipeline_id: str) -> FlinkPipeline:
+        response = self.client.get(f"jobs/{pipeline_id}")
+        return FlinkPipeline(**response)
