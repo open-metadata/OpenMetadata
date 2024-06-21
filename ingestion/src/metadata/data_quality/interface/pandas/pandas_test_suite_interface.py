@@ -14,10 +14,10 @@ Interfaces with database for all database engine
 supporting sqlalchemy abstraction layer
 """
 from datetime import datetime
-from typing import Optional
+from typing import Optional, Type
 
 from metadata.data_quality.interface.test_suite_interface import TestSuiteInterface
-from metadata.data_quality.validations.validator import Validator
+from metadata.data_quality.validations.base_test_handler import BaseTestValidator
 from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.services.connections.database.datalakeConnection import (
     DatalakeConnection,
@@ -62,7 +62,7 @@ class PandasTestSuiteInterface(TestSuiteInterface, PandasInterfaceMixin):
         # add partition logic to test suite
         self.dfs = self.return_ometa_dataframes_sampled(
             service_connection_config=self.service_connection_config,
-            client=get_connection(self.service_connection_config).client,
+            client=get_connection(self.service_connection_config).client._client,
             table=self.table_entity,
             profile_sample_config=self.table_sample_config,
         )
@@ -83,7 +83,9 @@ class PandasTestSuiteInterface(TestSuiteInterface, PandasInterfaceMixin):
         """
 
         try:
-            TestHandler = import_test_case_class(  # pylint: disable=invalid-name
+            TestHandler: Type[  # pylint: disable=invalid-name
+                BaseTestValidator
+            ] = import_test_case_class(
                 self.ometa_client.get_by_id(
                     TestDefinition, test_case.testDefinition.id
                 ).entityType.value,
@@ -97,7 +99,7 @@ class PandasTestSuiteInterface(TestSuiteInterface, PandasInterfaceMixin):
                 execution_date=int(datetime.now().timestamp() * 1000),
             )
 
-            return Validator(validator_obj=test_handler).validate()
+            return test_handler.run_validation()
         except Exception as err:
             logger.error(
                 f"Error executing {test_case.testDefinition.fullyQualifiedName} - {err}"

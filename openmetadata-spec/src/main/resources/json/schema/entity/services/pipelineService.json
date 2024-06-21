@@ -29,7 +29,8 @@
         "Spline",
         "Spark",
         "OpenLineage",
-        "KafkaConnect"
+        "KafkaConnect",
+        "DBTCloud"
       ],
       "javaEnums": [
         {
@@ -70,6 +71,9 @@
         },
         {
           "name": "KafkaConnect"
+        },
+        {
+          "name": "DBTCloud"
         }
       ]
     },
@@ -122,6 +126,9 @@
             },
             {
               "$ref": "./connections/pipeline/kafkaConnectConnection.json"
+            },
+            {
+              "$ref": "./connections/pipeline/dbtCloudConnection.json"
             }
           ]
         }

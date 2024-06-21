@@ -8,19 +8,27 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
-
 """
-Test case validator object
+GraphQL Queries used during ingestion
 """
 
-from metadata.generated.schema.tests.basic import TestCaseResult
-
-
-class Validator:
-    """Test case validator object. it take test handler obkect and run validation"""
-
-    def __init__(self, validator_obj):
-        self.validator_obj = validator_obj
-
-    def validate(self) -> TestCaseResult:
-        return self.validator_obj.run_validation()
+DBT_QUERY = """
+query Query($jobId: BigInt!, $runId: BigInt) {
+  job(id: $jobId, runId: $runId) {
+    models {
+      name #destinationTable
+      alias
+      database
+      schema
+      rawSql
+      materializedType
+      parentsSources {
+        database
+        name
+        schema
+        sourceName #sourceTable
+      }
+    }
+  }
+}
+"""
