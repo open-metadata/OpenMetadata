@@ -1575,6 +1575,7 @@
     "no-config-plural": "No hay configuraciones.",
     "no-custom-properties-table": "Actualmente no hay Propiedades Personalizadas definidas para el Activo de Datos de Tabla. Para descubrir cómo agregar Propiedades Personalizadas, consulta <0>{{docs}}</0>",
     "no-data": "No hay datos",
+    "no-data-assets": "Set up connectors, and ingest metadata from diverse sources. Once you have ingested data, you can view the data assets here. To set up connectors, <0>click here</0>.",
     "no-data-available": "No hay datos disponibles.",
     "no-data-available-entity": "No hay datos disponibles en {{entity}}.",
     "no-data-available-for-selected-filter": "No se encontraron datos. Intenta cambiar los filtros.",

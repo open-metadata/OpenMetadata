@@ -1575,6 +1575,7 @@
     "no-config-plural": "אין הגדרות.",
     "no-custom-properties-table": "There are currently no Custom Properties defined for the Table Data Asset. To discover how to add Custom Properties, please refer to <0>{{docs}}</0>",
     "no-data": "אין נתונים",
+    "no-data-assets": "Set up connectors, and ingest metadata from diverse sources. Once you have ingested data, you can view the data assets here. To set up connectors, <0>click here</0>.",
     "no-data-available": "אין נתונים זמינים.",
     "no-data-available-entity": "אין נתונים זמינים ב-{{entity}}.",
     "no-data-available-for-selected-filter": "לא נמצאו נתונים. נסה לשנות את המסנן.",
