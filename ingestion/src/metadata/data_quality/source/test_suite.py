@@ -89,7 +89,10 @@ class TestSuiteSource(Source):
                 params={"testSuiteId": test_suite.id.root},
             )
             test_cases = cast(List[TestCase], test_cases)  # satisfy type checker
-
+            if self.source_config.testCases is not None:
+                test_cases = [
+                    t for t in test_cases if t.name in self.source_config.testCases
+                ]
             return test_cases
 
         return None

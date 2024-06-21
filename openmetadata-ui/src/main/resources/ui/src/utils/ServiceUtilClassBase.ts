@@ -31,6 +31,7 @@ import {
   DATABASE_DEFAULT,
   DATABRICK,
   DATALAKE,
+  DBT,
   DEFAULT_SERVICE,
   DELTALAKE,
   DOMO,
@@ -384,6 +385,9 @@ class ServiceUtilClassBase {
 
       case this.PipelineServiceTypeSmallCase.Fivetran:
         return FIVETRAN;
+
+      case this.PipelineServiceTypeSmallCase.DBTCloud:
+        return DBT;
 
       case this.PipelineServiceTypeSmallCase.GluePipeline:
         return GLUE;

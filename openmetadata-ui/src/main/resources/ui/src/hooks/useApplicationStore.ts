@@ -43,6 +43,7 @@ export const useApplicationStore = create<ApplicationStore>()(
       authorizerConfig: undefined,
       isSigningUp: false,
       jwtPrincipalClaims: [],
+      jwtPrincipalClaimsMapping: [],
       userProfilePics: {},
       cachedEntityData: {},
       selectedPersona: {} as EntityReference,
@@ -74,6 +75,11 @@ export const useApplicationStore = create<ApplicationStore>()(
         claims: AuthenticationConfiguration['jwtPrincipalClaims']
       ) => {
         set({ jwtPrincipalClaims: claims });
+      },
+      setJwtPrincipalClaimsMapping: (
+        claimMapping: AuthenticationConfiguration['jwtPrincipalClaimsMapping']
+      ) => {
+        set({ jwtPrincipalClaimsMapping: claimMapping });
       },
       setIsAuthenticated: (authenticated: boolean) => {
         set({ isAuthenticated: authenticated });
