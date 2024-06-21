@@ -37,9 +37,11 @@ class TestDatalake:
         )  # type: ignore
 
         entities = resp.entities
-        assert len(entities) == 3
+        assert len(entities) == 4
         names = [entity.name.root for entity in entities]
-        assert {"names.json", "new_users.parquet", "users.csv"} == set(names)
+        assert {"names.json", "names.jsonl", "new_users.parquet", "users.csv"} == set(
+            names
+        )
 
         for entity in entities:
             columns = entity.columns
@@ -64,10 +66,19 @@ class TestDatalake:
             fqn='datalake_for_integration_tests.default.MyBucket."names.json"',
             fields=["tableProfilerConfig"],
         )
+
+        jsonl_ = self.metadata.get_by_name(
+            entity=Table,
+            fqn='datalake_for_integration_tests.default.MyBucket."names.jsonl"',
+            fields=["tableProfilerConfig"],
+        )
+
         csv_sample_data = self.metadata.get_sample_data(csv_)
         # parquet_sample_data = self.metadata.get_sample_data(parquet_)
         json_sample_data = self.metadata.get_sample_data(json_)
+        jsonl_sample_data = self.metadata.get_sample_data(jsonl_)
 
         assert csv_sample_data.sampleData.rows
         # assert parquet_sample_data.sampleData.rows
         assert json_sample_data.sampleData.rows
+        assert jsonl_sample_data.sampleData.rows
