@@ -30,5 +30,6 @@
   ],
   "supportsRowLevelPassedFailed": true,
   "supportsDynamicAssertion": true,
-  "provider": "system"
+  "provider": "system",
+  "dimension": "Accuracy"
 }

@@ -28,5 +28,6 @@
     }
   ],
   "supportsDynamicAssertion": true,
-  "provider": "system"
+  "provider": "system",
+  "dimension": "Integrity"
 }
