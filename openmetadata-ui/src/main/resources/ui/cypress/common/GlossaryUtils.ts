@@ -14,7 +14,7 @@
 import {
   DELETE_TERM,
   INVALID_NAMES,
-  NAME_MAX_LENGTH_VALIDATION_ERROR,
+  NAME_MIN_MAX_LENGTH_VALIDATION_ERROR_1_128,
   NAME_VALIDATION_ERROR,
 } from '../constants/constants';
 import { SidebarItem } from '../constants/Entity.interface';
@@ -42,7 +42,7 @@ export const validateForm = () => {
     .type(INVALID_NAMES.MAX_LENGTH);
   cy.get('#name_help')
     .should('be.visible')
-    .contains(NAME_MAX_LENGTH_VALIDATION_ERROR);
+    .contains(NAME_MIN_MAX_LENGTH_VALIDATION_ERROR_1_128);
 
   // with special char validation
   cy.get('[data-testid="name"]')
