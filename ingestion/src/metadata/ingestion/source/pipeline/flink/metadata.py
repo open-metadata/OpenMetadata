@@ -11,7 +11,6 @@
 """
 Airbyte source to extract metadata
 """
-import datetime
 import traceback
 from typing import Any, Iterable, Optional
 
@@ -20,6 +19,7 @@ from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.entity.data.pipeline import (
     Pipeline,
     PipelineStatus,
+    StatusType,
     Task,
     TaskStatus,
 )
@@ -40,7 +40,6 @@ from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.pipeline.flink.models import FlinkPipeline
 from metadata.ingestion.source.pipeline.pipeline_service import PipelineServiceSource
 from metadata.utils import fqn
-from metadata.utils.helpers import datetime_to_ts
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
@@ -110,53 +109,27 @@ class FlinkSource(PipelineServiceSource):
     def yield_pipeline_status(
         self, pipeline_details: FlinkPipeline
     ) -> Iterable[Either[OMetaPipelineStatus]]:
-        """Method to get task & pipeline status"""
-
-    def yield_pipeline_status(
-        self, pipeline_details: FlinkPipeline
-    ) -> Iterable[Either[OMetaPipelineStatus]]:
         """
         Get Pipeline Status
         """
         try:
-            task_status = [
-                TaskStatus(
-                    name=str(task.get("id")),
-                    executionStatus=task.get("status"),
-                    startTime=Timestamp(
-                        datetime_to_ts(
-                            datetime.strptime(task.started_at, "%Y-%m-%d %H:%M:%S.%f%z")
-                            if task.started_at
-                            else datetime.now()
-                        )
-                    ),
-                    endTime=Timestamp(
-                        datetime_to_ts(
-                            datetime.strptime(
-                                task.finished_at, "%Y-%m-%d %H:%M:%S.%f%z"
-                            )
-                            if task.finished_at
-                            else datetime.now()
-                        )
-                    ),
+            task_status = []
+            for task in self.client.get_pipeline_info(pipeline_details).get(
+                "vertices", []
+            ):
+                task_status.append(
+                    TaskStatus(
+                        name=task.get("id"),
+                        executionStatus=StatusType.Successful,
+                        startTime=Timestamp(task.get("start-time")),
+                        endTime=Timestamp(task.get("end-time")),
+                    )
                 )
-                for task in self.client.get_pipeline_info(pipeline_details).get(
-                    "vertices", []
-                )
-            ]
 
             pipeline_status = PipelineStatus(
-                executionStatus=pipeline_details.state,
+                executionStatus=StatusType.Successful,
                 taskStatus=task_status,
-                timestamp=Timestamp(
-                    datetime_to_ts(
-                        datetime.strptime(
-                            pipeline_details.created_at, "%Y-%m-%dT%H:%M:%S.%f%z"
-                        )
-                        if pipeline_details.created_at
-                        else datetime.now()
-                    )
-                ),
+                timestamp=Timestamp(pipeline_details.start_time),
             )
 
             pipeline_fqn = fqn.build(
