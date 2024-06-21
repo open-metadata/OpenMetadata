@@ -714,6 +714,10 @@ site_menu:
     url: /connectors/pipeline/dagster
   - category: Connectors / Pipeline / Dagster / Run Externally
     url: /connectors/pipeline/dagster/yaml
+  - category: Connectors / Pipeline / DBTCloud
+    url: /connectors/pipeline/dbtcloud
+  - category: Connectors / Pipeline / DBTCloud / Run Externally
+    url: /connectors/pipeline/dbtcloud/yaml
   - category: Connectors / Pipeline / KafkaConnect
     url: /connectors/pipeline/kafkaconnect
   - category: Connectors / Pipeline / KafkaConnect / Run Externally
@@ -1513,6 +1517,8 @@ site_menu:
     url: /main-concepts/metadata-standard/schemas/entity/services/connections/pipeline/custompipelineconnection
   - category: Main Concepts / Metadata Standard / Schemas / Entity / Services / Connections / Pipeline / DagsterConnection
     url: /main-concepts/metadata-standard/schemas/entity/services/connections/pipeline/dagsterconnection
+  - category: Main Concepts / Metadata Standard / Schemas / Entity / Services / Connections / Pipeline / DBTCloudConnection
+    url: /main-concepts/metadata-standard/schemas/entity/services/connections/pipeline/dbtcloudconnection
   - category: Main Concepts / Metadata Standard / Schemas / Entity / Services / Connections / Pipeline / DatabricksPipelineConnection
     url: /main-concepts/metadata-standard/schemas/entity/services/connections/pipeline/databrickspipelineconnection
   - category: Main Concepts / Metadata Standard / Schemas / Entity / Services / Connections / Pipeline / DomoPipelineConnection
