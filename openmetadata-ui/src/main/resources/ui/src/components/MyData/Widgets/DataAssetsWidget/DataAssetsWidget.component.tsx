@@ -14,20 +14,21 @@ import { CloseOutlined, DragOutlined } from '@ant-design/icons';
 import { Card, Col, Row, Space, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { isEmpty, isUndefined } from 'lodash';
+import { Bucket } from 'Models';
 import React, { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import {
-  INITIAL_PAGING_VALUE,
-  PAGE_SIZE_LARGE,
-} from '../../../../constants/constants';
+import { Link } from 'react-router-dom';
+import { ReactComponent as DataAssetsIcon } from '../../../../assets/svg/data-assets-widget.svg';
+import { ROUTES } from '../../../../constants/constants';
+import { ERROR_PLACEHOLDER_TYPE, SIZE } from '../../../../enums/common.enum';
 import { SearchIndex } from '../../../../enums/search.enum';
-import { ExploreSearchSource } from '../../../../interface/search.interface';
 import { WidgetCommonProps } from '../../../../pages/CustomizablePage/CustomizablePage.interface';
 import { searchData } from '../../../../rest/miscAPI';
+import { Transi18next } from '../../../../utils/CommonUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import ErrorPlaceHolder from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import './data-assets-widget.less';
-import DataAssetCard from './DataAssetCard.component';
+import DataAssetCard from './DataAssetCard/DataAssetCard.component';
 
 const DataAssetsWidget = ({
   isEditView = false,
@@ -36,29 +37,21 @@ const DataAssetsWidget = ({
 }: WidgetCommonProps) => {
   const { t } = useTranslation();
   const [loading, setLoading] = useState<boolean>(false);
-  const [services, setServices] = useState<ExploreSearchSource[]>([]);
+  const [services, setServices] = useState<Bucket[]>([]);
 
   const fetchDataAssets = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await searchData(
-        '',
-        INITIAL_PAGING_VALUE,
-        PAGE_SIZE_LARGE,
-        '',
-        'updatedAt',
-        '',
-        [
-          SearchIndex.DATABASE_SERVICE,
-          SearchIndex.MESSAGING_SERVICE,
-          SearchIndex.DASHBOARD_SERVICE,
-          SearchIndex.PIPELINE_SERVICE,
-          SearchIndex.ML_MODEL_SERVICE,
-          SearchIndex.STORAGE_SERVICE,
-          SearchIndex.SEARCH_SERVICE,
-        ]
-      );
-      setServices(res?.data?.hits?.hits.map((hit) => hit._source));
+      const res = await searchData('', 0, 0, '', 'updatedAt', '', [
+        SearchIndex.TABLE,
+        SearchIndex.TOPIC,
+        SearchIndex.DASHBOARD,
+        SearchIndex.PIPELINE,
+        SearchIndex.MLMODEL,
+        SearchIndex.CONTAINER,
+        SearchIndex.SEARCH_INDEX,
+      ]);
+      setServices(res?.data.aggregations?.['sterms#serviceType'].buckets);
     } catch (error) {
       showErrorToast(error as AxiosError);
     } finally {
@@ -84,7 +77,7 @@ const DataAssetsWidget = ({
           <Row justify="space-between">
             <Col>
               <Typography.Text className="font-medium">
-                {t('label.service-plural')}
+                {t('label.data-asset-plural')}
               </Typography.Text>
             </Col>
             <Col>
@@ -105,13 +98,24 @@ const DataAssetsWidget = ({
             </Col>
           </Row>
         </Col>
-        <Col span={24}>
+        <Col className="data-assets-explore-widget-body" span={24}>
           {isEmpty(services) ? (
-            <ErrorPlaceHolder />
+            <ErrorPlaceHolder
+              icon={<DataAssetsIcon height={SIZE.SMALL} width={SIZE.SMALL} />}
+              type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
+              <Typography.Paragraph
+                className="tw-max-w-md"
+                style={{ marginBottom: '0' }}>
+                <Transi18next
+                  i18nKey="message.no-data-assets"
+                  renderElement={<Link to={`${ROUTES.SETTINGS}/services`} />}
+                />
+              </Typography.Paragraph>
+            </ErrorPlaceHolder>
           ) : (
-            <Row className="data-assets-explore-widget-body" gutter={[10, 10]}>
+            <Row className="data-assets-explore-widget-body" gutter={[10, 15]}>
               {services.map((service) => (
-                <Col key={service.id} lg={8} xl={6}>
+                <Col key={service.key} lg={6} xl={4}>
                   <DataAssetCard service={service} />
                 </Col>
               ))}

@@ -17,6 +17,10 @@ import { searchData } from '../../../../rest/miscAPI';
 import { MOCK_EXPLORE_SEARCH_RESULTS } from '../../../Explore/Explore.mock';
 import DataAssetsWidget from './DataAssetsWidget.component';
 
+jest.mock('../../../../constants/constants', () => ({
+  ROUTES: { EXPLORE: 'explore' },
+}));
+
 jest.mock('../../../../rest/miscAPI', () => ({
   searchData: jest.fn().mockImplementation(() => Promise.resolve()),
 }));
@@ -25,13 +29,17 @@ jest.mock('../../../../utils/ToastUtils', () => ({
   showErrorToast: jest.fn(),
 }));
 
-jest.mock('./DataAssetCard.component', () =>
+jest.mock('./DataAssetCard/DataAssetCard.component', () =>
   jest.fn().mockReturnValue(<p>DataAssetCard</p>)
 );
 
 jest.mock('../../../common/ErrorWithPlaceholder/ErrorPlaceHolder', () =>
   jest.fn().mockReturnValue(<p>ErrorPlaceHolder</p>)
 );
+
+jest.mock('../../../../utils/CommonUtils', () => ({
+  Transi18next: jest.fn().mockReturnValue('text'),
+}));
 
 const mockHandleRemoveWidget = jest.fn();
 
@@ -46,14 +54,14 @@ describe('DataAssetsWidget', () => {
   it('should fetch dataAssets initially', async () => {
     render(<DataAssetsWidget {...widgetProps} />);
 
-    expect(searchData).toHaveBeenCalledWith('', 1, 50, '', 'updatedAt', '', [
-      SearchIndex.DATABASE_SERVICE,
-      SearchIndex.MESSAGING_SERVICE,
-      SearchIndex.DASHBOARD_SERVICE,
-      SearchIndex.PIPELINE_SERVICE,
-      SearchIndex.ML_MODEL_SERVICE,
-      SearchIndex.STORAGE_SERVICE,
-      SearchIndex.SEARCH_SERVICE,
+    expect(searchData).toHaveBeenCalledWith('', 0, 0, '', 'updatedAt', '', [
+      SearchIndex.TABLE,
+      SearchIndex.TOPIC,
+      SearchIndex.DASHBOARD,
+      SearchIndex.PIPELINE,
+      SearchIndex.MLMODEL,
+      SearchIndex.CONTAINER,
+      SearchIndex.SEARCH_INDEX,
     ]);
   });
 
@@ -62,7 +70,7 @@ describe('DataAssetsWidget', () => {
       render(<DataAssetsWidget {...widgetProps} />);
 
       expect(screen.getByTestId('data-assets-widget')).toBeInTheDocument();
-      expect(screen.getByText('label.service-plural')).toBeInTheDocument();
+      expect(screen.getByText('label.data-asset-plural')).toBeInTheDocument();
       expect(screen.getByText('ErrorPlaceHolder')).toBeInTheDocument();
       expect(screen.queryByText('DataAssetCard')).not.toBeInTheDocument();
     });
@@ -97,7 +105,7 @@ describe('DataAssetsWidget', () => {
       render(<DataAssetsWidget {...widgetProps} />);
     });
 
-    expect(screen.getByText('DataAssetCard')).toBeInTheDocument();
+    expect(screen.getAllByText('DataAssetCard')).toHaveLength(10);
     expect(screen.queryByText('ErrorPlaceHolder')).not.toBeInTheDocument();
   });
 });
