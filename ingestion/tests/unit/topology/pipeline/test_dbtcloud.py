@@ -448,7 +448,7 @@ MOCK_PIPELINE_SERVICE = PipelineService(
     name="dbtcloud_pipeline_test",
     fullyQualifiedName=FullyQualifiedEntityName("dbtcloud_pipeline_test"),
     connection=PipelineConnection(),
-    serviceType=PipelineServiceType.DatabricksPipeline,
+    serviceType=PipelineServiceType.DBTCloud,
 )
 
 MOCK_PIPELINE = Pipeline(
