@@ -2,6 +2,7 @@ import sys
 
 import pytest
 
+from _testutils.postgres.conftest import postgres_container
 from metadata.generated.schema.api.services.createDatabaseService import (
     CreateDatabaseServiceRequest,
 )
