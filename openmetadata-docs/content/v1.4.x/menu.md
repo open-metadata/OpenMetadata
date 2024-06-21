@@ -508,6 +508,8 @@ site_menu:
     url: /connectors/database/bigquery/yaml
   - category: Connectors / Database / BigQuery / Roles
     url: /connectors/database/bigquery/roles
+  - category: Connectors / Database / BigQuery / Create Credentials
+    url: /connectors/database/bigquery/create-credentials
   - category: Connectors / Database / BigTable
     url: /connectors/database/bigtable
   - category: Connectors / Database / BigTable / Run Externally

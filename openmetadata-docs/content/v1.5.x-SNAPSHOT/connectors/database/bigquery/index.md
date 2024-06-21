@@ -31,6 +31,8 @@ Configure and schedule BigQuery metadata and profiler workflows from the OpenMet
 
 ## Requirements
 
+You need to create an service account in order to ingest metadata from bigquery refer [this](/connectors/database/bigquery/create-credentials) guide on how to create service account.
+
 ### Data Catalog API Permissions 
 
 - Go to [https://console.cloud.google.com/apis/library/datacatalog.googleapis.com](https://console.cloud.google.com/apis/library/datacatalog.googleapis.com)
