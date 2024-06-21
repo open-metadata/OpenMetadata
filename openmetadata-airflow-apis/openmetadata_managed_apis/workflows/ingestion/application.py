@@ -49,7 +49,7 @@ def application_workflow(workflow_config: OpenMetadataApplicationConfig):
 
     set_operator_logger(workflow_config)
 
-    config = json.loads(workflow_config.model_dump_json())
+    config = json.loads(workflow_config.model_dump_json(exclude_defaults=False))
     workflow = ApplicationWorkflow.create(config)
 
     workflow.execute()

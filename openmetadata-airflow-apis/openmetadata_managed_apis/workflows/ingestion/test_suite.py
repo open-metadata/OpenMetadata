@@ -43,7 +43,7 @@ def test_suite_workflow(workflow_config: OpenMetadataWorkflowConfig):
 
     set_operator_logger(workflow_config)
 
-    config = json.loads(workflow_config.model_dump_json())
+    config = json.loads(workflow_config.model_dump_json(exclude_defaults=False))
     workflow = TestSuiteWorkflow.create(config)
 
     workflow.execute()
