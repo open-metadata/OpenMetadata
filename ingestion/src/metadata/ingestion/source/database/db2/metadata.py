@@ -12,8 +12,7 @@
 import traceback
 from typing import Optional
 
-from ibm_db_sa.base import DB2Dialect, ischema_names
-from sqlalchemy.engine import reflection
+from ibm_db_sa.base import ischema_names
 from sqlalchemy.engine.reflection import Inspector
 from sqlalchemy.engine.row import LegacyRow
 from sqlalchemy.sql.sqltypes import BOOLEAN
@@ -31,15 +30,6 @@ from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
 
-
-@reflection.cache
-def get_pk_constraint(
-    self, bind, table_name, schema=None, **kw
-):  # pylint: disable=unused-argument
-    return {"constrained_columns": [], "name": "undefined"}
-
-
-DB2Dialect.get_pk_constraint = get_pk_constraint
 
 ischema_names.update({"BOOLEAN": BOOLEAN})
 
