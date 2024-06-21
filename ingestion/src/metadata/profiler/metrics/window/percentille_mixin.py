@@ -1,4 +1,4 @@
-"""function calls shared accross all percentile metrics"""
+"""function calls shared across all percentile metrics"""
 
 from metadata.profiler.orm.functions.median import MedianFn
 
