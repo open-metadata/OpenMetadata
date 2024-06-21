@@ -106,6 +106,10 @@ public class SlackApp extends AbstractNativeApplication {
         app.getName(), "Preview", "Contact Collate to purchase the Application");
   }
 
+  public String getRedirectUrl(boolean isStateValid) {
+    return appConfig.getCallbackRedirectURL() + (isStateValid ? SUCCESS_FRAGMENT : FAILED_FRAGMENT);
+  }
+
   public String saveTokenAndBuildRedirectUrl(String code) {
     boolean isSuccess = exchangeCodeAndSaveToken(code);
     return appConfig.getCallbackRedirectURL() + (isSuccess ? SUCCESS_FRAGMENT : FAILED_FRAGMENT);

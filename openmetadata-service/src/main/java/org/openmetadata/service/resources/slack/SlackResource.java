@@ -26,7 +26,6 @@ import org.openmetadata.service.apps.AppException;
 import org.openmetadata.service.apps.ApplicationHandler;
 import org.openmetadata.service.apps.bundles.slack.SlackApiResponse;
 import org.openmetadata.service.apps.bundles.slack.SlackApp;
-import org.openmetadata.service.apps.bundles.slack.SlackOAuthCallbackResponse;
 import org.openmetadata.service.jdbi3.AppRepository;
 import org.openmetadata.service.resources.Collection;
 
@@ -218,60 +217,30 @@ public class SlackResource {
       responses = {
         @ApiResponse(
             responseCode = "302",
-            description = "Redirecting response to the frontend URL."),
-        @ApiResponse(
-            responseCode = "400",
-            description = "Bad request due to missing or invalid state parameter.",
-            content =
-                @Content(
-                    mediaType = "application/json",
-                    schema = @Schema(implementation = SlackOAuthCallbackResponse.class))),
-        @ApiResponse(
-            responseCode = "500",
-            description = "Internal server error.",
-            content =
-                @Content(
-                    mediaType = "application/json",
-                    schema = @Schema(implementation = SlackOAuthCallbackResponse.class)))
+            description = "Redirecting response to the frontend URL.")
       })
   public Response callback(@QueryParam("code") String code, @QueryParam("state") String state) {
-    if (state == null || state.isEmpty()) {
-      return buildBadRequestResponse("State is required");
-    }
-
     initializeSlackApp();
-    String redirectUrl = null;
     try {
       if (!app.isOAuthStateValid(state)) {
-        return buildBadRequestResponse("State verification failed");
+        LOG.error("State verification failed");
+        return redirectResponse(app.getRedirectUrl(false));
       }
 
-      redirectUrl = app.saveTokenAndBuildRedirectUrl(code);
-      return Response.status(Response.Status.FOUND).location(new URI(redirectUrl)).build();
+      String redirectUrl = app.saveTokenAndBuildRedirectUrl(code);
+      return redirectResponse(redirectUrl);
     } catch (Exception e) {
       LOG.error("Error processing Slack OAuth callback", e);
-      return handleCallbackError(redirectUrl);
+      return redirectResponse(app.getRedirectUrl(false));
     }
   }
 
-  private Response handleCallbackError(String redirectUrl) {
+  private Response redirectResponse(String url) {
     try {
-      return Response.status(Response.Status.FOUND).location(new URI(redirectUrl)).build();
+      return Response.status(Response.Status.FOUND).location(new URI(url)).build();
     } catch (URISyntaxException e) {
-      LOG.error("Error building redirect URI", e);
-      return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-          .entity(
-              new SlackOAuthCallbackResponse(
-                  Response.Status.INTERNAL_SERVER_ERROR.getStatusCode(),
-                  "Error processing Slack OAuth callback"))
-          .build();
+      LOG.error("Invalid redirect URL", e);
+      return Response.serverError().build();
     }
-  }
-
-  private Response buildBadRequestResponse(String message) {
-    return Response.status(Response.Status.BAD_REQUEST)
-        .entity(
-            new SlackOAuthCallbackResponse(Response.Status.BAD_REQUEST.getStatusCode(), message))
-        .build();
   }
 }
