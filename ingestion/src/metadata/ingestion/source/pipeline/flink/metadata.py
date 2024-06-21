@@ -12,7 +12,7 @@
 Airbyte source to extract metadata
 """
 import traceback
-from typing import Any, Iterable, Optional
+from typing import Any, Iterable, List, Optional
 
 from metadata.generated.schema.api.data.createPipeline import CreatePipelineRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
@@ -74,7 +74,9 @@ class FlinkSource(PipelineServiceSource):
             )
         return cls(config, metadata)
 
-    def get_connections_jobs(self, pipeline_details: FlinkPipeline):
+    def get_connections_jobs(
+        self, pipeline_details: FlinkPipeline
+    ) -> Optional[List[Task]]:
         """Returns the list of tasks linked to connection"""
         pipeline_info = self.client.get_pipeline_info(pipeline_details.id)
         return [
@@ -179,8 +181,7 @@ class FlinkSource(PipelineServiceSource):
 
             if url_status:
                 return f"{self.client.config.hostPort}/#/job/{url_status}/{pipeline_details.id}/overview"
-            else:
-                return f"{self.client.config.hostPort}/#/overview"
+            return f"{self.client.config.hostPort}/#/overview"
         except Exception as exc:
             logger.debug(traceback.format_exc())
             logger.warning(f"Unable to get source url: {exc}")
