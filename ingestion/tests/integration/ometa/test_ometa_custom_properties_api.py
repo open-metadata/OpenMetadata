@@ -326,22 +326,29 @@ class OMetaCustomAttributeTest(TestCase):
             entity_type=Table
         )
 
-        for i, custom_property in enumerate(custom_properties):
-            self.assertEquals(
-                custom_property["name"], EXPECTED_CUSTOM_PROPERTIES[i]["name"]
-            )
-            self.assertEquals(
-                custom_property["description"],
-                EXPECTED_CUSTOM_PROPERTIES[i]["description"],
-            )
-            self.assertEquals(
-                custom_property.get("customPropertyConfig"),
-                EXPECTED_CUSTOM_PROPERTIES[i].get("customPropertyConfig"),
-            )
-            self.assertEquals(
-                custom_property["propertyType"]["name"],
-                EXPECTED_CUSTOM_PROPERTIES[i]["propertyType"]["name"],
-            )
+        actual_custom_properties = []
+        for expected_custom_property in EXPECTED_CUSTOM_PROPERTIES:
+            for custom_property in custom_properties:
+                if expected_custom_property["name"] == custom_property["name"]:
+                    actual_custom_properties.append(custom_property)
+                    self.assertEquals(
+                        custom_property["name"], expected_custom_property["name"]
+                    )
+                    self.assertEquals(
+                        custom_property["description"],
+                        expected_custom_property["description"],
+                    )
+                    self.assertEquals(
+                        custom_property.get("customPropertyConfig"),
+                        expected_custom_property.get("customPropertyConfig"),
+                    )
+                    self.assertEquals(
+                        custom_property["propertyType"]["name"],
+                        expected_custom_property["propertyType"]["name"],
+                    )
+        self.assertEquals(
+            len(actual_custom_properties), len(EXPECTED_CUSTOM_PROPERTIES)
+        )
 
     def test_add_custom_property_table(self):
         """
