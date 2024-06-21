@@ -1,6 +1,7 @@
 import pytest
 from testcontainers.mysql import MySqlContainer
 
+from _openmetadata_testutils.postgres.conftest import postgres_container, try_bind
 from metadata.generated.schema.entity.services.databaseService import DatabaseService
 from metadata.generated.schema.metadataIngestion.workflow import LogLevels
 from metadata.ingestion.models.custom_pydantic import CustomSecretStr
@@ -9,7 +10,6 @@ from metadata.workflow.metadata import MetadataWorkflow
 
 from ..postgres.conftest import db_service as postgres_service
 from ..postgres.conftest import ingest_metadata as ingest_postgres
-from ..postgres.conftest import postgres_container, try_bind
 
 __all__ = [
     "ingest_postgres",
