@@ -53,14 +53,16 @@ const AddPipeLineModal = ({
   loading,
 }: AddPipeLineModalType) => {
   const defaultPipeline = selectedEdge?.data.edge.pipeline;
-  const currentPipeline = getEntityReferenceFromEntity(
-    defaultPipeline,
-    defaultPipeline?.pipelineEntityType ?? EntityType.PIPELINE
-  );
+  const currentPipeline = defaultPipeline
+    ? getEntityReferenceFromEntity(
+        defaultPipeline,
+        defaultPipeline?.pipelineEntityType ?? EntityType.PIPELINE
+      )
+    : undefined;
   const [edgeSearchValue, setEdgeSearchValue] = useState<string>('');
-  const [edgeSelection, setEdgeSelection] = useState<EntityReference>(
-    currentPipeline ?? {}
-  );
+  const [edgeSelection, setEdgeSelection] = useState<
+    EntityReference | undefined
+  >(currentPipeline);
   const [edgeOptions, setEdgeOptions] = useState<EntityReference[]>([]);
 
   const getSearchResults = async (value = '*') => {
