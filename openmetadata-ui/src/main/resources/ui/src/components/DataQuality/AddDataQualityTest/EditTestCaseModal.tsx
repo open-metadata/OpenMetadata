@@ -19,8 +19,8 @@ import { isEmpty } from 'lodash';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ENTITY_NAME_REGEX } from '../../../constants/regex.constants';
+import { TABLE_DIFF } from '../../../constants/TestSuite.constant';
 import { Table } from '../../../generated/entity/data/table';
-import { TestCaseParameterValue } from '../../../generated/tests/testCase';
 import {
   TestDataType,
   TestDefinition,
@@ -37,7 +37,11 @@ import {
   updateTestCaseById,
 } from '../../../rest/testAPI';
 import { getNameFromFQN } from '../../../utils/CommonUtils';
-import { getColumnNameFromEntityLink } from '../../../utils/EntityUtils';
+import { createTestCaseParameters } from '../../../utils/DataQuality/DataQualityUtils';
+import {
+  getColumnNameFromEntityLink,
+  getEntityName,
+} from '../../../utils/EntityUtils';
 import { getEntityFQN } from '../../../utils/FeedUtils';
 import { generateFormFields } from '../../../utils/formUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
@@ -97,31 +101,11 @@ const EditTestCaseModal: React.FC<EditTestCaseModalProps> = ({
     return <></>;
   }, [selectedDefinition, table]);
 
-  const createTestCaseObj = (value: {
-    testName: string;
-    params: Record<string, string | { [key: string]: string }[]>;
-    testTypeId: string;
-  }) => {
-    const paramsValue = selectedDefinition?.parameterDefinition?.[0];
-
-    const parameterValues = Object.entries(value.params || {}).map(
-      ([key, value]) => ({
-        name: key,
-        value:
-          paramsValue?.dataType === TestDataType.Array
-            ? // need to send array as string formate
-              JSON.stringify(
-                (value as { value: string }[]).map((data) => data.value)
-              )
-            : value,
-      })
-    );
-
-    return parameterValues as TestCaseParameterValue[];
-  };
-
   const handleFormSubmit: FormProps['onFinish'] = async (value) => {
-    const parameterValues = createTestCaseObj(value);
+    const parameterValues = createTestCaseParameters(
+      value.params,
+      selectedDefinition
+    );
     const updatedTestCase = {
       ...testCase,
       parameterValues,
@@ -159,19 +143,21 @@ const EditTestCaseModal: React.FC<EditTestCaseModalProps> = ({
   };
 
   const getParamsValue = (selectedDefinition: TestDefinition) => {
-    return testCase?.parameterValues?.reduce(
-      (acc, curr) => ({
+    return testCase?.parameterValues?.reduce((acc, curr) => {
+      const param = selectedDefinition?.parameterDefinition?.find(
+        (definition) => definition.name === curr.name
+      );
+
+      return {
         ...acc,
         [curr.name || '']:
-          selectedDefinition?.parameterDefinition?.[0]?.dataType ===
-          TestDataType.Array
+          param?.dataType === TestDataType.Array
             ? (JSON.parse(curr.value || '[]') as string[]).map((val) => ({
                 value: val,
               }))
             : curr.value,
-      }),
-      {}
-    );
+      };
+    }, {});
   };
 
   const fetchTableDetails = async (fqn: string) => {
@@ -193,9 +179,12 @@ const EditTestCaseModal: React.FC<EditTestCaseModalProps> = ({
       const definition = await getTestDefinitionById(
         testCaseDetails.testDefinition.id || ''
       );
+      if (testCaseDetails.testDefinition?.fullyQualifiedName === TABLE_DIFF) {
+        await fetchTableDetails(tableFqn);
+      }
       form.setFieldsValue({
         name: testCase?.name,
-        testDefinition: testCaseDetails?.testDefinition?.name,
+        testDefinition: getEntityName(testCaseDetails?.testDefinition),
         displayName: testCase?.displayName,
         params: getParamsValue(definition),
         table: getNameFromFQN(tableFqn),
