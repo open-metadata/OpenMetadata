@@ -161,7 +161,9 @@ export const dragHandle = (event: ReactMouseEvent) => {
 export const getLayoutedElements = (
   elements: CustomElement,
   direction = EntityLineageDirection.LEFT_RIGHT,
-  isExpanded = true
+  isExpanded = true,
+  expandAllColumns = false,
+  columnsHavingLineage: string[] = []
 ) => {
   const Graph = graphlib.Graph;
   const dagreGraph = new Graph();
@@ -172,7 +174,11 @@ export const getLayoutedElements = (
   const nodeSet = new Set(elements.node.map((item) => item.id));
 
   const nodeData = elements.node.map((el) => {
-    const { childrenHeight } = getEntityChildrenAndLabel(el.data.node);
+    const { childrenHeight } = getEntityChildrenAndLabel(
+      el.data.node,
+      expandAllColumns,
+      columnsHavingLineage
+    );
     const nodeHeight = isExpanded ? childrenHeight + 220 : NODE_HEIGHT;
 
     dagreGraph.setNode(el.id, {
@@ -489,18 +495,29 @@ export const removeLineageHandler = async (data: EdgeData): Promise<void> => {
 };
 
 const calculateHeightAndFlattenNode = (
-  children: Column[]
+  children: Column[],
+  expandAllColumns = false,
+  columnsHavingLineage: string[] = []
 ): { totalHeight: number; flattened: Column[] } => {
   let totalHeight = 0;
   let flattened: Column[] = [];
 
   children.forEach((child) => {
-    totalHeight += 27; // Add height for the current child
+    if (
+      expandAllColumns ||
+      columnsHavingLineage.indexOf(child.fullyQualifiedName ?? '') !== -1
+    ) {
+      totalHeight += 27; // Add height for the current child
+    }
     flattened.push(child);
 
     if (child.children && child.children.length > 0) {
       totalHeight += 8; // Add child padding
-      const childResult = calculateHeightAndFlattenNode(child.children);
+      const childResult = calculateHeightAndFlattenNode(
+        child.children,
+        expandAllColumns,
+        columnsHavingLineage
+      );
       totalHeight += childResult.totalHeight;
       flattened = flattened.concat(childResult.flattened);
     }
@@ -509,7 +526,20 @@ const calculateHeightAndFlattenNode = (
   return { totalHeight, flattened };
 };
 
-export const getEntityChildrenAndLabel = (node: SourceType) => {
+/**
+ * This function returns all the columns as children as well flattened children for subfield columns.
+ * It also returns the label for the children and the total height of the children.
+ *
+ * @param {Node} selectedNode - The node for which to retrieve the downstream nodes and edges.
+ * @param {string[]} columnsHavingLineage - All nodes in the lineage.
+ * @return {{ nodes: Node[]; edges: Edge[], nodeIds: string[], edgeIds: string[] }} -
+ * An object containing the downstream nodes and edges.
+ */
+export const getEntityChildrenAndLabel = (
+  node: SourceType,
+  expandAllColumns = false,
+  columnsHavingLineage: string[] = []
+) => {
   if (!node) {
     return {
       children: [],
@@ -558,7 +588,9 @@ export const getEntityChildrenAndLabel = (node: SourceType) => {
   };
 
   const { totalHeight, flattened } = calculateHeightAndFlattenNode(
-    data as Column[]
+    data as Column[],
+    expandAllColumns,
+    columnsHavingLineage
   );
 
   return {

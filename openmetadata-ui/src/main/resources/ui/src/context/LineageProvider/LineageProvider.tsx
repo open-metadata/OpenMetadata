@@ -697,7 +697,6 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
   const toggleColumnView = useCallback(() => {
     const updatedVal = !expandAllColumns;
     setExpandAllColumns(updatedVal);
-    repositionLayout(false);
   }, [expandAllColumns, edges]);
 
   const onRemove = useCallback(async () => {
@@ -1043,7 +1042,9 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
           edge: edges,
         },
         EntityLineageDirection.LEFT_RIGHT,
-        isColView
+        isColView,
+        expandAllColumns,
+        columnsHavingLineage
       );
 
       setNodes(node);
@@ -1064,7 +1065,15 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
         onNodeClick(rootNode);
       }
     },
-    [reactFlowInstance, activeLayer, nodes, edges, onNodeClick]
+    [
+      reactFlowInstance,
+      activeLayer,
+      nodes,
+      edges,
+      onNodeClick,
+      columnsHavingLineage,
+      expandAllColumns,
+    ]
   );
 
   const redrawLineage = useCallback(
@@ -1160,7 +1169,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
 
   useEffect(() => {
     repositionLayout();
-  }, [activeLayer]);
+  }, [activeLayer, expandAllColumns]);
 
   useEffect(() => {
     if (reactFlowInstance?.viewportInitialized) {
