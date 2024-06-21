@@ -74,7 +74,9 @@ class DagDeployer:
 
         logger.info(f"Saving file to {dag_config_file_path}")
         with open(dag_config_file_path, "w") as outfile:
-            outfile.write(self.ingestion_pipeline.model_dump_json())
+            outfile.write(
+                self.ingestion_pipeline.model_dump_json(exclude_defaults=False)
+            )
 
         return {"workflow_config_file": str(dag_config_file_path)}
 

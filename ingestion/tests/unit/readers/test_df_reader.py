@@ -104,6 +104,24 @@ class TestDataFrameReader(TestCase):
             ["name", "id", "version", "Company"],
         )
 
+    def test_jsonl_reader(self):
+        key = ROOT_PATH / "employees.jsonl"
+
+        df_list = fetch_dataframe(
+            config_source=LocalConfig(),
+            client=None,
+            file_fqn=DatalakeTableSchemaWrapper(key=str(key), bucket_name="unused"),
+        )
+
+        self.assertIsNotNone(df_list)
+        self.assertTrue(len(df_list))
+
+        self.assertEqual(df_list[0].shape, (4, 4))
+        self.assertEqual(
+            list(df_list[0].columns),
+            ["name", "id", "version", "Company"],
+        )
+
     def test_avro_reader(self):
         key = ROOT_PATH / "example.avro"
 
