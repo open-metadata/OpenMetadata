@@ -1,7 +1,7 @@
 import pytest
 from testcontainers.mysql import MySqlContainer
 
-from _testutils.postgres.conftest import postgres_container, try_bind
+from _openmetadata_testutils.postgres.conftest import postgres_container, try_bind
 from metadata.generated.schema.entity.services.databaseService import DatabaseService
 from metadata.generated.schema.metadataIngestion.workflow import LogLevels
 from metadata.ingestion.models.custom_pydantic import CustomSecretStr

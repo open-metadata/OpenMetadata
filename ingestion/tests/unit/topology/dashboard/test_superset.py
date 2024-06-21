@@ -21,7 +21,7 @@ import sqlalchemy
 from testcontainers.core.generic import DockerContainer
 from testcontainers.postgres import PostgresContainer
 
-from _testutils.postgres.conftest import postgres_container
+from _openmetadata_testutils.postgres.conftest import postgres_container
 from metadata.generated.schema.api.data.createChart import CreateChartRequest
 from metadata.generated.schema.api.data.createDashboard import CreateDashboardRequest
 from metadata.generated.schema.entity.data.chart import Chart, ChartType

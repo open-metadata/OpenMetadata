@@ -30,7 +30,7 @@ namespaces = true
 
 [tool.setuptools.package-data]
 "metadata.examples" = ["workflows/*.yaml"]
-"_testutils" = ["data/**/*"]
+"_openmetadata_testutils" = ["data/**/*"]
 
 [project.scripts]
 metadata = "metadata.cmd:metadata"
