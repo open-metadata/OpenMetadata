@@ -34,19 +34,20 @@ import org.openmetadata.service.util.JsonUtils;
 
 @Slf4j
 public class SlackApp extends AbstractNativeApplication {
-  private SystemRepository systemRepository;
-  private SlackAppConfiguration appConfig;
   private App slackAppInstance;
-  private static final SecureRandom secureRandom = new SecureRandom();
-  private static final Base64.Encoder base64Encoder = Base64.getUrlEncoder();
+  private SlackAppConfiguration appConfig;
+  private SystemRepository systemRepository;
+
+  private static final SecureRandom SECURE_RANDOM = new SecureRandom();
+  private static final Base64.Encoder BASE64_ENCODER = Base64.getUrlEncoder();
 
   private static final String SLACK_OAUTH_BASE_URL = "https://slack.com/oauth/v2/authorize";
   private static final String SLACK_OAUTH_INSTALL_ENDPOINT = "/slack/install";
   private static final String SLACK_OAUTH_CALLBACK_ENDPOINT = "/api/v1/slack/callback";
   private static final String SLACK_TOKEN_EXCHANGE_ENDPOINT =
       "https://slack.com/api/oauth.v2.access";
-  private static final String SLACK_REDIRECT_URL =
-      "https://c9f1-2405-201-6028-48a8-5955-126-8634-5a5d.ngrok-free.app/api/v1/slack/callback";
+  private static final String SUCCESS_FRAGMENT = "#oauth_success";
+  private static final String FAILED_FRAGMENT = "#oauth_failed";
 
   public SlackApp(CollectionDAO collectionDAO, SearchRepository searchRepository) {
     super(collectionDAO, searchRepository);
@@ -62,7 +63,7 @@ public class SlackApp extends AbstractNativeApplication {
     initializeSlackApp(appConfig);
   }
 
-  public void initializeSlackApp(SlackAppConfiguration config) {
+  private void initializeSlackApp(SlackAppConfiguration config) {
     AppConfig appConfig = buildAppConfig(config);
     App slackApp = new App(appConfig).asOAuthApp(true);
     this.slackAppInstance = slackApp;
@@ -83,6 +84,8 @@ public class SlackApp extends AbstractNativeApplication {
   public String buildOAuthUrl() {
     String clientId = appConfig.getClientId();
     String scopes = appConfig.getScopes();
+    String callbackUrl = appConfig.getCallbackUrl();
+
     String state = generateRandomState();
     saveTokenToSystemRepository(state, SettingsType.SLACK_O_AUTH_STATE);
 
@@ -94,7 +97,7 @@ public class SlackApp extends AbstractNativeApplication {
         + "&state="
         + state
         + "&redirect_uri="
-        + SLACK_REDIRECT_URL;
+        + callbackUrl;
   }
 
   @Override
@@ -103,7 +106,12 @@ public class SlackApp extends AbstractNativeApplication {
         app.getName(), "Preview", "Contact Collate to purchase the Application");
   }
 
-  public boolean exchangeAndSaveSlackTokens(String code) {
+  public String saveTokenAndBuildRedirectUrl(String code) {
+    boolean isSuccess = exchangeCodeAndSaveToken(code);
+    return appConfig.getCallbackRedirectURL() + (isSuccess ? SUCCESS_FRAGMENT : FAILED_FRAGMENT);
+  }
+
+  private boolean exchangeCodeAndSaveToken(String code) {
     OkHttpClient client = new OkHttpClient();
     ObjectMapper objectMapper = new ObjectMapper();
 
@@ -142,7 +150,7 @@ public class SlackApp extends AbstractNativeApplication {
         .add("code", code)
         .add("client_id", appConfig.getClientId())
         .add("client_secret", appConfig.getClientSecret())
-        .add("redirect_uri", SLACK_REDIRECT_URL)
+        .add("redirect_uri", appConfig.getCallbackUrl())
         .build();
   }
 
@@ -220,7 +228,7 @@ public class SlackApp extends AbstractNativeApplication {
     }
   }
 
-  public HashMap<String, String> getSavedToken() {
+  private HashMap<String, String> getSavedToken() {
     HashMap<String, String> tokenMap = new HashMap<>();
     try {
       tokenMap.put("botAccessToken", getBotTokenFromDb());
@@ -236,27 +244,40 @@ public class SlackApp extends AbstractNativeApplication {
     return tokenMap;
   }
 
-  public String getBotTokenFromDb() {
+  private String getBotTokenFromDb() {
     Settings botSettings = systemRepository.getSlackbotConfigInternal();
     String botJson = JsonUtils.pojoToJson(botSettings.getConfigValue());
     return SystemRepository.decryptSlackDefaultBotSetting(botJson);
   }
 
-  public String getInstallerTokenFromDb() {
+  private String getInstallerTokenFromDb() {
     Settings installerSettings = systemRepository.getSlackInstallerConfigInternal();
     String installerJson = JsonUtils.pojoToJson(installerSettings.getConfigValue());
     return SystemRepository.decryptSlackDefaultInstallerSetting(installerJson);
   }
 
-  public String getSlackOAuthStateFromDb() {
+  public boolean isOAuthStateValid(String stateFromCallback) {
+    try {
+      String expectedState = getSlackOAuthStateFromDb();
+      return stateFromCallback.equals(expectedState);
+    } catch (Exception e) {
+      LOG.error("Error comparing OAuth states: {}", e.getMessage(), e);
+      return false;
+    }
+  }
+
+  private String getSlackOAuthStateFromDb() {
     Settings stateSetting = systemRepository.getSlackOAuthStateConfigInternal();
     String installerJson = JsonUtils.pojoToJson(stateSetting.getConfigValue());
     return SystemRepository.decryptSlackOAuthStateSetting(installerJson);
   }
 
-  public String generateRandomState() {
+  /**
+   * Generates a cryptographically secure random state for OAuth
+   */
+  private String generateRandomState() {
     byte[] randomBytes = new byte[24];
-    secureRandom.nextBytes(randomBytes);
-    return base64Encoder.encodeToString(randomBytes);
+    SECURE_RANDOM.nextBytes(randomBytes);
+    return BASE64_ENCODER.encodeToString(randomBytes);
   }
 }

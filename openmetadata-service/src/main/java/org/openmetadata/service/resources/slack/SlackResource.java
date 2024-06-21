@@ -6,6 +6,8 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import java.lang.reflect.InvocationTargetException;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.util.Map;
 import javax.ws.rs.Consumes;
 import javax.ws.rs.GET;
@@ -126,6 +128,42 @@ public class SlackResource {
   }
 
   @GET
+  @Path("/initiateOAuth")
+  @Operation(
+      summary = "Initiate OAuth Process",
+      description = "Initializes the OAuth process for Slack integration.",
+      responses = {
+        @ApiResponse(
+            responseCode = "302",
+            description = "Redirect to OAuth URL",
+            content = @Content(mediaType = "text/plain", schema = @Schema(type = "string"))),
+        @ApiResponse(
+            responseCode = "500",
+            description = "Internal Server Error",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = SlackApiResponse.class)))
+      })
+  public Response initiateOAuth(
+      @Context UriInfo uriInfo, @Context SecurityContext securityContext) {
+    initializeSlackApp();
+    try {
+      String oauthUrl = app.buildOAuthUrl();
+      return Response.status(Response.Status.FOUND).location(new URI(oauthUrl)).build();
+    } catch (Exception e) {
+      LOG.error("Error processing slack oauth url", e);
+      return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
+          .entity(
+              new SlackApiResponse<>(
+                  Response.Status.INTERNAL_SERVER_ERROR.getStatusCode(),
+                  "Error generating OAuth URL: " + e.getMessage(),
+                  null))
+          .build();
+    }
+  }
+
+  @GET
   @Path("/oauthUrl")
   @Produces(MediaType.APPLICATION_JSON)
   @Operation(
@@ -169,50 +207,58 @@ public class SlackResource {
     }
   }
 
-  /**
-   * Exchanges a temporary authorization code for access tokens and validating the request state.
-   */
   @GET
   @Path("/callback")
+  @Produces(MediaType.APPLICATION_JSON)
+  @Operation(
+      operationId = "slackOAuthCallback",
+      summary = "Slack OAuth Callback",
+      description =
+          "Exchanges a temporary authorization code for access tokens and validates the request state.",
+      responses = {
+        @ApiResponse(
+            responseCode = "302",
+            description = "Redirecting response to the frontend URL."),
+        @ApiResponse(
+            responseCode = "400",
+            description = "Bad request due to missing or invalid state parameter.",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = SlackOAuthCallbackResponse.class))),
+        @ApiResponse(
+            responseCode = "500",
+            description = "Internal server error.",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = SlackOAuthCallbackResponse.class)))
+      })
   public Response callback(@QueryParam("code") String code, @QueryParam("state") String state) {
     if (state == null || state.isEmpty()) {
-      return Response.status(Response.Status.BAD_REQUEST)
-          .entity(
-              new SlackOAuthCallbackResponse(
-                  Response.Status.BAD_REQUEST.getStatusCode(), "State is required"))
-          .build();
+      return buildBadRequestResponse("State is required");
     }
 
     initializeSlackApp();
+    String redirectUrl = null;
     try {
-      // Verify if the state matches the expected state
-      String expectedState = app.getSlackOAuthStateFromDb();
-      if (!state.equals(expectedState)) {
-        return Response.status(Response.Status.BAD_REQUEST)
-            .entity(
-                new SlackOAuthCallbackResponse(
-                    Response.Status.BAD_REQUEST.getStatusCode(), "State verification failed"))
-            .build();
+      if (!app.isOAuthStateValid(state)) {
+        return buildBadRequestResponse("State verification failed");
       }
 
-      boolean isSaved = app.exchangeAndSaveSlackTokens(code);
-
-      String redirectUrl = "https://open-metadata.org/";
-      if (isSaved) {
-        return Response.seeOther(java.net.URI.create(redirectUrl))
-            .entity(
-                new SlackOAuthCallbackResponse(
-                    Response.Status.OK.getStatusCode(), "OAuth2 successful"))
-            .build();
-      } else {
-        return Response.seeOther(java.net.URI.create(redirectUrl))
-            .entity(
-                new SlackOAuthCallbackResponse(
-                    Response.Status.INTERNAL_SERVER_ERROR.getStatusCode(), "OAuth2 failed"))
-            .build();
-      }
+      redirectUrl = app.saveTokenAndBuildRedirectUrl(code);
+      return Response.status(Response.Status.FOUND).location(new URI(redirectUrl)).build();
     } catch (Exception e) {
       LOG.error("Error processing Slack OAuth callback", e);
+      return handleCallbackError(redirectUrl);
+    }
+  }
+
+  private Response handleCallbackError(String redirectUrl) {
+    try {
+      return Response.status(Response.Status.FOUND).location(new URI(redirectUrl)).build();
+    } catch (URISyntaxException e) {
+      LOG.error("Error building redirect URI", e);
       return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
           .entity(
               new SlackOAuthCallbackResponse(
@@ -220,5 +266,12 @@ public class SlackResource {
                   "Error processing Slack OAuth callback"))
           .build();
     }
+  }
+
+  private Response buildBadRequestResponse(String message) {
+    return Response.status(Response.Status.BAD_REQUEST)
+        .entity(
+            new SlackOAuthCallbackResponse(Response.Status.BAD_REQUEST.getStatusCode(), message))
+        .build();
   }
 }
