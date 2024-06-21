@@ -3,7 +3,6 @@ from os import path
 
 import pytest
 
-from metadata.config.common import WorkflowExecutionError
 from metadata.generated.schema.api.services.createDatabaseService import (
     CreateDatabaseServiceRequest,
 )
