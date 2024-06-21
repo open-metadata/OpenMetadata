@@ -190,7 +190,8 @@ public class DIChartResource extends EntityResource<DIChart, DIChartRepository> 
           long end,
       @Valid CreateDIChart create)
       throws IOException, ParseException {
-    DIChartResultList resultList = repository.getPreviewData(create, start, end);
+    DIChart diChart = getDIChart(create, securityContext.getUserPrincipal().getName());
+    DIChartResultList resultList = repository.getPreviewData(diChart, start, end);
     return Response.status(Response.Status.OK).entity(resultList).build();
   }
 
@@ -535,7 +536,13 @@ public class DIChartResource extends EntityResource<DIChart, DIChartRepository> 
         .copy(new DIChart(), create, user)
         .withName(create.getName())
         .withDisplayName(create.getDisplayName())
-        .withDescription(create.getDescription());
-    //        .withEsRequest(create.getEsRequest());
+        .withDescription(create.getDescription())
+        .withyAxisLabel(create.getyAxisLabel())
+        .withxAxisLabel(create.getxAxisLabel())
+        .withGroupBy(create.getGroupBy())
+        .withFilter(create.getFilter())
+        .withFunction(create.getFunction())
+        .withOwner(create.getOwner())
+        .withField(create.getField());
   }
 }

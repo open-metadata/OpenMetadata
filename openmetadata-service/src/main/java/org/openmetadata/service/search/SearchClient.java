@@ -16,8 +16,8 @@ import javax.net.ssl.SSLContext;
 import javax.ws.rs.core.Response;
 import lombok.Getter;
 import org.apache.commons.lang3.tuple.Pair;
-import org.openmetadata.schema.api.dataInsightNew.CreateDIChart;
 import org.openmetadata.schema.dataInsight.DataInsightChartResult;
+import org.openmetadata.schema.dataInsightNew.DIChart;
 import org.openmetadata.schema.dataInsightNew.DIChartResultList;
 import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration;
 import org.openmetadata.schema.type.EntityReference;
@@ -235,8 +235,7 @@ public interface SearchClient {
     return aggregationJson.getString("key");
   }
 
-  default DIChartResultList buildDIChart(CreateDIChart createDIChart, long start, long end)
-      throws IOException {
+  default DIChartResultList buildDIChart(DIChart diChart, long start, long end) throws IOException {
     return null;
   }
 

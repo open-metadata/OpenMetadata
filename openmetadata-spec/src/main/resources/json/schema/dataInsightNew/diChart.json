@@ -53,6 +53,15 @@
             "description": "Filter value for the data insight chart.",
             "type": "string"
         },
+        "formula": {
+            "description": "Formula for the data insight chart calculation.",
+            "type": "string"
+        },
+        "isSystemChart": {
+            "description": "Flag to indicate if the chart is system generated or user created.",
+            "type": "boolean",
+            "default": false
+        },
         "groupBy": {
             "description": "Breakdown field for the data insight chart.",
             "type": "string"

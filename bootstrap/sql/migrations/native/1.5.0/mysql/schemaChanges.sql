@@ -11,5 +11,3 @@ CREATE TABLE IF NOT EXISTS di_chart_entity (
     UNIQUE(name),
     INDEX name_index (name)
 );
-
-CREATE INDEX IF NOT EXISTS name_index ON di_chart_entity(name);

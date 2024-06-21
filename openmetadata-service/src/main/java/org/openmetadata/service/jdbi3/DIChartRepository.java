@@ -7,7 +7,6 @@ import java.text.ParseException;
 import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-import org.openmetadata.schema.api.dataInsightNew.CreateDIChart;
 import org.openmetadata.schema.dataInsightNew.DIChart;
 import org.openmetadata.schema.dataInsightNew.DIChartResultList;
 import org.openmetadata.service.Entity;
@@ -57,8 +56,7 @@ public class DIChartRepository extends EntityRepository<DIChart> {
     // No relationships to store beyond what is stored in the super class
   }
 
-  public DIChartResultList getPreviewData(
-      CreateDIChart chart, long startTimestamp, long endTimestamp)
+  public DIChartResultList getPreviewData(DIChart chart, long startTimestamp, long endTimestamp)
       throws IOException, ParseException {
     return searchClient.buildDIChart(chart, startTimestamp, endTimestamp);
   }
