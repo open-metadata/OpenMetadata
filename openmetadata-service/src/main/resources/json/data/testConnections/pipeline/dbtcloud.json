@@ -1,0 +1,21 @@
+{
+    "name": "DBTCloud",
+    "displayName": "DBT Cloud Test Connection",
+    "description": "This Test Connection validates the access against the server and basic metadata extraction of pipelines.",
+    "steps": [
+        {
+            "name": "GetJobs",
+            "description":  "Validate that the API can properly reach the server.",
+            "errorMessage": "Failed to fetch Jobs info please validate the credentials or validate if user has access to fetch Jobs",
+            "shortCircuit": true,
+            "mandatory": true
+        },
+        {
+            "name": "GetRuns",
+            "description":  "Validate that the Discovery API can properly reach the server.",
+            "errorMessage": "Failed to fetch Runs info please validate the credentials or validate if user has access to fetch metadata from Discovery API",
+            "shortCircuit": false,
+            "mandatory": false
+        }
+    ]
+}
