@@ -32,7 +32,8 @@ import {
   REVIEWER_DETAILS,
 } from '../../constants/Version.constants';
 
-describe(
+// migrated to playwright
+describe.skip(
   'Glossary and glossary term version pages should work properly',
   { tags: 'Glossary' },
   () => {

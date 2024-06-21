@@ -763,12 +763,15 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
   }
 
   @Transaction
-  public TestCase addFailedRowsSample(TestCase testCase, TableData tableData) {
+  public TestCase addFailedRowsSample(
+      TestCase testCase, TableData tableData, boolean validateColumns) {
     EntityLink entityLink = EntityLink.parse(testCase.getEntityLink());
     Table table = Entity.getEntity(entityLink, "owner", ALL);
     // Validate all the columns
-    for (String columnName : tableData.getColumns()) {
-      validateColumn(table, columnName);
+    if (validateColumns) {
+      for (String columnName : tableData.getColumns()) {
+        validateColumn(table, columnName);
+      }
     }
     // Make sure each row has number values for all the columns
     for (List<Object> row : tableData.getRows()) {

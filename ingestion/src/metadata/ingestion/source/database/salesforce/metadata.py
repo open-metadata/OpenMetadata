@@ -57,6 +57,7 @@ from metadata.utils import fqn
 from metadata.utils.constants import DEFAULT_DATABASE
 from metadata.utils.filters import filter_by_table
 from metadata.utils.logger import ingestion_logger
+from metadata.utils.ssl_manager import SSLManager, check_ssl_and_init
 
 logger = ingestion_logger()
 
@@ -77,6 +78,11 @@ class SalesforceSource(DatabaseServiceSource):
         )
         self.metadata = metadata
         self.service_connection = self.config.serviceConnection.root.config
+        self.ssl_manager: SSLManager = check_ssl_and_init(self.service_connection)
+        if self.ssl_manager:
+            self.service_connection = self.ssl_manager.setup_ssl(
+                self.service_connection
+            )
         self.client = get_connection(self.service_connection)
         self.table_constraints = None
         self.database_source_state = set()
