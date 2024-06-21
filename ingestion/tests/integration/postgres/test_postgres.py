@@ -1,7 +1,9 @@
 import sys
+from os import path
 
 import pytest
 
+from metadata.config.common import WorkflowExecutionError
 from metadata.generated.schema.api.services.createDatabaseService import (
     CreateDatabaseServiceRequest,
 )
@@ -99,7 +101,7 @@ def ingest_metadata(db_service, metadata: OpenMetadata):
 
 
 @pytest.fixture(scope="module")
-def ingest_lineage(db_service, ingest_metadata, metadata: OpenMetadata):
+def ingest_postgres_lineage(db_service, ingest_metadata, metadata: OpenMetadata):
     workflow_config = OpenMetadataWorkflowConfig(
         source=Source(
             type="postgres-lineage",
@@ -111,11 +113,37 @@ def ingest_lineage(db_service, ingest_metadata, metadata: OpenMetadata):
             type="metadata-rest",
             config={},
         ),
-        workflowConfig=WorkflowConfig(openMetadataServerConfig=metadata.config),
+        workflowConfig=WorkflowConfig(
+            loggerLevel=LogLevels.DEBUG, openMetadataServerConfig=metadata.config
+        ),
     )
     metadata_ingestion = MetadataWorkflow.create(workflow_config)
     metadata_ingestion.execute()
+    metadata_ingestion.raise_from_status()
     return
+
+
+def test_ingest_bad_query_log(db_service, ingest_metadata, metadata: OpenMetadata):
+    workflow_config = {
+        "source": {
+            "type": "query-log-lineage",
+            "serviceName": db_service.fullyQualifiedName.root,
+            "sourceConfig": {
+                "config": {
+                    "type": "DatabaseLineage",
+                    "queryLogFilePath": path.dirname(__file__) + "/bad_query_log.csv",
+                }
+            },
+        },
+        "sink": {"type": "metadata-rest", "config": {}},
+        "workflowConfig": {
+            "loggerLevel": "DEBUG",
+            "openMetadataServerConfig": metadata.config.dict(),
+        },
+    }
+    metadata_ingestion = MetadataWorkflow.create(workflow_config)
+    metadata_ingestion.execute()
+    assert "Table entity not found" in metadata_ingestion.source.status.failures[0].error
 
 
 @pytest.fixture(scope="module")
@@ -208,7 +236,7 @@ def test_profiler(run_profiler_workflow):
     pass
 
 
-def test_lineage(ingest_lineage):
+def test_db_lineage(ingest_postgres_lineage):
     pass
 
 
@@ -251,7 +279,7 @@ def run_usage_workflow(db_service, metadata):
     reason="'metadata.ingestion.lineage.sql_lineage.search_cache' gets corrupted with invalid data."
     " See issue https://github.com/open-metadata/OpenMetadata/issues/16408"
 )
-def test_usage_delete_usage(db_service, ingest_lineage, metadata):
+def test_usage_delete_usage(db_service, ingest_postgres_lineage, metadata):
     workflow_config = {
         "source": {
             "type": "postgres-usage",
