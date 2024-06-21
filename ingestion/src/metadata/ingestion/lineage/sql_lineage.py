@@ -282,7 +282,7 @@ def _build_table_lineage(
     yield Either(right=lineage)
 
 
-# pylint: disable=too-many-arguments
+# pylint: disable=too-many-arguments,too-many-locals
 def _create_lineage_by_table_name(
     metadata: OpenMetadata,
     from_table: str,
