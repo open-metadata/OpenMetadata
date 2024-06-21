@@ -49,12 +49,16 @@ export const selectActiveGlossary = async (
   page: Page,
   glossaryName: string
 ) => {
-  await page
-    .getByRole('menuitem', { name: glossaryName })
-    .locator('span')
-    .click();
+  const menuItem = page.getByRole('menuitem', { name: glossaryName });
+  const isSelected = await menuItem.evaluate((element) => {
+    return element.classList.contains('ant-menu-item-selected');
+  });
 
-  await page.waitForResponse('/api/v1/glossaryTerms*');
+  if (!isSelected) {
+    const glossaryResponse = page.waitForResponse('/api/v1/glossaryTerms*');
+    await menuItem.click();
+    await glossaryResponse;
+  }
 };
 
 export const addMultiOwner = async (data: {
@@ -503,16 +507,13 @@ export const approveGlossaryTermTask = async (
   term: GlossaryTermData
 ) => {
   await validateGlossaryTermTask(page, term);
-
   const taskResolve = page.waitForResponse('/api/v1/feed/tasks/*/resolve');
-
   await page.click('[data-testid="approve-task"]');
-
   await taskResolve;
 
   // Display toast notification
-  await expect(page.locator('.toast-notification')).toHaveText(
-    'Task resolved successfully'
+  await expect(page.locator('.Toastify__toast-body')).toHaveText(
+    /Task resolved successfully/
   );
 };
 
@@ -552,16 +553,7 @@ export const createGlossaryTerms = async (
   page: Page,
   glossary: GlossaryData
 ) => {
-  const menuItem = page.getByRole('menuitem', { name: glossary.name });
-  const isSelected = await menuItem.evaluate((element) => {
-    return element.classList.contains('ant-menu-item-selected');
-  });
-
-  if (!isSelected) {
-    const glossaryResponse = page.waitForResponse('/api/v1/glossaryTerms*');
-    await menuItem.click();
-    await glossaryResponse;
-  }
+  await selectActiveGlossary(page, glossary.name);
 
   const termStatus = glossary.reviewers.length > 0 ? 'Draft' : 'Approved';
 

@@ -12,6 +12,8 @@
  */
 import { Browser, Page, request } from '@playwright/test';
 import { randomUUID } from 'crypto';
+import { AdminClass } from '../support/user/AdminClass';
+import { UserClass } from '../support/user/UserClass';
 
 export const uuid = () => randomUUID().split('-')[0];
 
@@ -81,4 +83,32 @@ export const getApiContext = async (page: Page) => {
   const afterAction = async () => await apiContext.dispose();
 
   return { apiContext, afterAction };
+};
+
+export const performAdminLogin = async (browser) => {
+  const admin = new AdminClass();
+  const page = await browser.newPage();
+  await admin.login(page);
+  await redirectToHomePage(page);
+  const token = await getToken(page);
+  const apiContext = await getAuthContext(token);
+  const afterAction = async () => {
+    await apiContext.dispose();
+    await page.close();
+  };
+
+  return { page, apiContext, afterAction };
+};
+
+export const performUserLogin = async (browser, user: UserClass) => {
+  const page = await browser.newPage();
+  await user.login(page);
+  const token = await getToken(page);
+  const apiContext = await getAuthContext(token);
+  const afterAction = async () => {
+    await apiContext.dispose();
+    await page.close();
+  };
+
+  return { page, apiContext, afterAction };
 };

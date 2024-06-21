@@ -47,9 +47,10 @@ export type GlossaryData = {
 
 export class Glossary {
   randomName = getRandomFirstName();
+  randomId = uuid();
   data: GlossaryData = {
-    name: `PW%${uuid()}.${this.randomName}`,
-    displayName: `PW % ${uuid()} ${this.randomName}`,
+    name: `PW%${this.randomId}.${this.randomName}`,
+    displayName: `PW % ${this.randomId} ${this.randomName}`,
     description:
       'Glossary terms that describe general conceptual terms. Note that these conceptual terms are used for automatically labeling the data.',
     reviewers: [],
@@ -58,7 +59,7 @@ export class Glossary {
     terms: [],
     owner: undefined,
     // eslint-disable-next-line no-useless-escape
-    fullyQualifiedName: `\"PW%${uuid()}.${this.randomName}\"`,
+    fullyQualifiedName: `\"PW%${this.randomId}.${this.randomName}\"`,
   };
 
   responseData: ResponseDataType;
