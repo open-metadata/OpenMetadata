@@ -197,14 +197,11 @@ class UsersTestClass {
     cy.get('[data-testid="inline-save-btn"]').click();
     verifyResponseStatusCode('@updateTeam', 200);
 
-    cy.get('.ant-collapse-expand-icon > .anticon > svg').click();
     cy.get('[data-testid="edit-description"]').click();
     cy.get(descriptionBox).clear();
     interceptURL('PATCH', '/api/v1/users/*', 'patchDescription');
     cy.get('[data-testid="save"]').should('be.visible').click();
     verifyResponseStatusCode('@patchDescription', 200);
-    cy.get('.ant-collapse-expand-icon > .anticon > svg').scrollIntoView();
-    cy.get('.ant-collapse-expand-icon > .anticon > svg').click();
   }
 }
 
