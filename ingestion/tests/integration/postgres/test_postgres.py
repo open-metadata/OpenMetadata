@@ -123,7 +123,7 @@ def ingest_postgres_lineage(db_service, ingest_metadata, metadata: OpenMetadata)
     return
 
 
-def test_ingest_bad_query_log(db_service, ingest_metadata, metadata: OpenMetadata):
+def test_ingest_query_log(db_service, ingest_metadata, metadata: OpenMetadata):
     workflow_config = {
         "source": {
             "type": "query-log-lineage",
@@ -143,7 +143,32 @@ def test_ingest_bad_query_log(db_service, ingest_metadata, metadata: OpenMetadat
     }
     metadata_ingestion = MetadataWorkflow.create(workflow_config)
     metadata_ingestion.execute()
-    assert "Table entity not found" in metadata_ingestion.source.status.failures[0].error
+    assert len(metadata_ingestion.source.status.failures) == 2
+    for failure in metadata_ingestion.source.status.failures:
+        assert "Table entity not found" in failure.error
+    customer_table: Table = metadata.get_by_name(
+        Table,
+        f"{db_service.fullyQualifiedName.root}.dvdrental.public.customer",
+        nullable=False,
+    )
+    actor_table: Table = metadata.get_by_name(
+        Table,
+        f"{db_service.fullyQualifiedName.root}.dvdrental.public.actor",
+        nullable=False,
+    )
+    staff_table: Table = metadata.get_by_name(
+        Table,
+        f"{db_service.fullyQualifiedName.root}.dvdrental.public.staff",
+        nullable=False,
+    )
+    edge = metadata.get_lineage_edge(
+        str(customer_table.id.root), str(actor_table.id.root)
+    )
+    assert edge is not None
+    edge = metadata.get_lineage_edge(
+        str(customer_table.id.root), str(staff_table.id.root)
+    )
+    assert edge is not None
 
 
 @pytest.fixture(scope="module")
