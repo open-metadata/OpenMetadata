@@ -1764,6 +1764,11 @@ public interface CollectionDAO {
     }
 
     @Override
+    default String getPaginationColumnPrefix() {
+      return "fullyQualifiedName";
+    }
+
+    @Override
     default Class<GlossaryTerm> getEntityClass() {
       return GlossaryTerm.class;
     }
@@ -1800,7 +1805,8 @@ public interface CollectionDAO {
                 condition, FullyQualifiedName.buildHash(directChildrenOf));
       }
 
-      return listBefore(getTableName(), condition, limit, before);
+      return listBeforePagination(
+          getTableName(), getPaginationColumnPrefix(), condition, limit, before);
     }
 
     @Override
@@ -1815,7 +1821,8 @@ public interface CollectionDAO {
                 condition, FullyQualifiedName.buildHash(directChildrenOf));
       }
 
-      return listAfter(getTableName(), condition, limit, after);
+      return listAfterPagination(
+          getTableName(), getPaginationColumnPrefix(), condition, limit, after);
     }
 
     @SqlQuery("select fqnhash FROM glossary_term_entity where fqnhash LIKE CONCAT(:fqnhash, '.%')")
@@ -2275,6 +2282,11 @@ public interface CollectionDAO {
     @Override
     default String getTableName() {
       return "tag";
+    }
+
+    @Override
+    default String getPaginationColumnPrefix() {
+      return "fullyQualifiedName";
     }
 
     @Override

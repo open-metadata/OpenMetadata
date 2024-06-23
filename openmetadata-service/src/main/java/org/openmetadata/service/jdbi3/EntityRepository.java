@@ -641,11 +641,11 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
       String beforeCursor;
       String afterCursor = null;
-      beforeCursor = after == null ? null : entities.get(0).getName();
+      beforeCursor = after == null ? null : entities.get(0).getFullyQualifiedName();
       if (entities.size()
           > limitParam) { // If extra result exists, then next page exists - return after cursor
         entities.remove(limitParam);
-        afterCursor = entities.get(limitParam - 1).getName();
+        afterCursor = entities.get(limitParam - 1).getFullyQualifiedName();
       }
       return getResultList(entities, beforeCursor, afterCursor, total);
     } else {
@@ -708,9 +708,9 @@ public abstract class EntityRepository<T extends EntityInterface> {
     if (entities.size()
         > limitParam) { // If extra result exists, then previous page exists - return before cursor
       entities.remove(0);
-      beforeCursor = entities.get(0).getName();
+      beforeCursor = entities.get(0).getFullyQualifiedName();
     }
-    afterCursor = entities.get(entities.size() - 1).getName();
+    afterCursor = entities.get(entities.size() - 1).getFullyQualifiedName();
     return getResultList(entities, beforeCursor, afterCursor, total);
   }
 
