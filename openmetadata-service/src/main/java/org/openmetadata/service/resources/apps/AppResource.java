@@ -553,14 +553,12 @@ public class AppResource extends EntityResource<App, AppRepository> {
                 create.getName(),
                 new EntityUtil.Fields(repository.getMarketPlace().getAllowedFields()));
     App app = getApplication(definition, create, securityContext.getUserPrincipal().getName());
-
     if (app.getScheduleType().equals(ScheduleType.Scheduled)) {
       ApplicationHandler.getInstance()
           .installApplication(app, Entity.getCollectionDAO(), searchRepository);
       ApplicationHandler.getInstance()
           .configureApplication(app, Entity.getCollectionDAO(), searchRepository);
     }
-
     // We don't want to store this information
     unsetAppRuntimeProperties(app);
     return create(uriInfo, securityContext, app);
