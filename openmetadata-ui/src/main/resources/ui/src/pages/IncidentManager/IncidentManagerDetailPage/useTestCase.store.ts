@@ -1,5 +1,5 @@
 /*
- *  Copyright 2023 Collate.
+ *  Copyright 2024 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -10,15 +10,22 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { create } from 'zustand';
+import { TestCase } from '../../../generated/tests/testCase';
 
-import { TestCaseResolutionStatus } from '../../generated/tests/testCaseResolutionStatus';
-
-export enum IncidentManagerTabs {
-  TEST_CASE_RESULTS = 'test-case-results',
-  SQL_QUERY = 'sql-query',
-  ISSUES = 'issues',
-}
-export interface TestCaseIncidentStatusData {
-  data: TestCaseResolutionStatus[];
+export interface UseTestCaseStoreInterface {
+  testCase: TestCase | undefined;
   isLoading: boolean;
+  setTestCase: (testCase: TestCase) => void;
+  setIsLoading: (isLoading: boolean) => void;
 }
+export const useTestCaseStore = create<UseTestCaseStoreInterface>()((set) => ({
+  testCase: undefined,
+  isLoading: false,
+  setTestCase: (testCase: TestCase) => {
+    set({ testCase });
+  },
+  setIsLoading: (isLoading: boolean) => {
+    set({ isLoading });
+  },
+}));
