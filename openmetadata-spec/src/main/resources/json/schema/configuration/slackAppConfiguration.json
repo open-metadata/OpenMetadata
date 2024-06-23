@@ -14,10 +14,6 @@
       "description": "Client Secret of the Application.",
       "type": "string"
     },
-    "signingCertificate": {
-      "description": "Signing Certificate of the Application.",
-      "type": "string"
-    },
     "scopes": {
       "description": "Scopes to Request in OAuth",
       "type": "string"
@@ -31,6 +27,6 @@
       "type": "string"
     }
   },
-  "required": ["clientId", "clientSecret", "signingCertificate"],
+  "required": ["clientId", "clientSecret"],
   "additionalProperties": false
 }
