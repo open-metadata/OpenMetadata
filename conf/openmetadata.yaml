@@ -138,17 +138,16 @@ logging:
       timeZone: UTC
       maxFileSize: 50MB
 
-
 applications:
   appsPrivateConfiguration:
     - name: SlackApplication
-      preview: ${SLACKAPPLICATION_PREVIEW:-false}
+      preview:
       parameters:
-        clientId: ${SLACK_APP_CLIENT_ID:-"7199163258083.7289624672561"}
-        scopes: ${SLACK_APP_SCOPES:-"channels:read,chat:write"}
-        clientSecret: ${SLACK_APP_CLIENT_SECRET:-""}
-        signingCertificate: ${SLACK_APP_SIGNING_SECRET:-""}
-
+        clientId:
+        scopes:
+        clientSecret:
+        callbackUrl:
+        callbackRedirectURL:
 
 database:
   # the name of the JDBC driver, mysql in our case
