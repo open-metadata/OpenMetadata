@@ -81,7 +81,7 @@ public class JwtFilter implements ContainerRequestFilter {
           "v1/users/checkEmailInUse",
           "v1/users/login",
           "v1/users/refresh",
-          "v1/slack/callback");
+          "v1/collate/apps/slack/callback");
 
   @SuppressWarnings("unused")
   private JwtFilter() {}

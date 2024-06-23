@@ -1,8 +1,6 @@
 package org.openmetadata.service.apps.bundles.slack;
 
 import com.slack.api.Slack;
-import com.slack.api.bolt.App;
-import com.slack.api.bolt.AppConfig;
 import com.slack.api.methods.SlackApiException;
 import com.slack.api.methods.request.conversations.ConversationsListRequest;
 import com.slack.api.methods.response.conversations.ConversationsListResponse;
@@ -16,7 +14,9 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
 import javax.ws.rs.core.Response;
+import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
+import org.openmetadata.schema.entity.app.App;
 import org.openmetadata.schema.service.configuration.slackApp.SlackAppConfiguration;
 import org.openmetadata.schema.settings.Settings;
 import org.openmetadata.schema.settings.SettingsType;
@@ -30,7 +30,6 @@ import org.openmetadata.service.util.JsonUtils;
 
 @Slf4j
 public class SlackApp extends AbstractNativeApplication {
-  private App slackAppInstance;
   private SlackAppConfiguration appConfig;
   private SystemRepository systemRepository;
   private final String BOT_ACCESS_TOKEN = "botAccessToken";
@@ -45,30 +44,12 @@ public class SlackApp extends AbstractNativeApplication {
   }
 
   @Override
-  public void init(org.openmetadata.schema.entity.app.App app) {
+  public void init(App app) {
     super.init(app);
     this.systemRepository = Entity.getSystemRepository();
     appConfig =
         JsonUtils.convertValue(
             this.getApp().getPrivateConfiguration(), SlackAppConfiguration.class);
-    initializeSlackApp(appConfig);
-  }
-
-  private void initializeSlackApp(SlackAppConfiguration config) {
-    AppConfig appConfig = buildAppConfig(config);
-    this.slackAppInstance = new App(appConfig).asOAuthApp(true);
-  }
-
-  private static AppConfig buildAppConfig(SlackAppConfiguration config) {
-    return AppConfig.builder()
-        .clientId(config.getClientId())
-        .clientSecret(config.getClientSecret())
-        .signingSecret(config.getSigningCertificate())
-        .scope(config.getScopes())
-        .oauthInstallPath("/slack/install")
-        .oauthRedirectUriPath("/api/v1/slack/callback")
-        .stateValidationEnabled(true)
-        .build();
   }
 
   public String saveTokenAndBuildRedirectUrl(String code) {
@@ -78,7 +59,7 @@ public class SlackApp extends AbstractNativeApplication {
 
   private boolean exchangeCodeAndSaveToken(String code) {
     try {
-      Slack slack = slackAppInstance.getSlack();
+      Slack slack = Slack.getInstance();
       OAuthV2AccessResponse oAuthV2AccessResponse =
           slack
               .methods()
@@ -126,7 +107,7 @@ public class SlackApp extends AbstractNativeApplication {
       }
       String accessToken = tokenMap.get(BOT_ACCESS_TOKEN);
 
-      Slack slack = slackAppInstance.getSlack();
+      Slack slack = Slack.getInstance();
       ConversationsListResponse response =
           slack.methods(accessToken).conversationsList(ConversationsListRequest.builder().build());
 
@@ -213,9 +194,14 @@ public class SlackApp extends AbstractNativeApplication {
   }
 
   public String buildOAuthUrl() {
+    String baseUrl = "https://slack.com/oauth/v2/authorize";
+    String clientId = appConfig.getClientId();
+    String scopes = appConfig.getScopes();
+
     String state = generateRandomState();
     saveTokenToSystemRepository(state, SettingsType.SLACK_O_AUTH_STATE);
-    return slackAppInstance.buildAuthorizeUrl(state);
+
+    return String.format("%s?client_id=%s&scope=%s&state=%s", baseUrl, clientId, scopes, state);
   }
 
   private String generateRandomState() {
@@ -236,8 +222,21 @@ public class SlackApp extends AbstractNativeApplication {
   }
 
   @Override
-  public void raisePreviewMessage(org.openmetadata.schema.entity.app.App app) {
+  public void raisePreviewMessage(App app) {
     throw AppException.byMessage(
         app.getName(), "Preview", "Contact Collate to purchase the Application");
+  }
+}
+
+@Getter
+class SlackApiResponse<T> {
+  private int statusCode;
+  private String message;
+  private T data;
+
+  public SlackApiResponse(int statusCode, String message, T data) {
+    this.statusCode = statusCode;
+    this.message = message;
+    this.data = data;
   }
 }

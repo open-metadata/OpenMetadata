@@ -1,5 +1,6 @@
-package org.openmetadata.service.resources.slack;
+package org.openmetadata.service.apps.bundles.slack;
 
+import io.swagger.v3.oas.annotations.Hidden;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -24,31 +25,31 @@ import org.openmetadata.schema.entity.app.App;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.apps.AppException;
 import org.openmetadata.service.apps.ApplicationHandler;
-import org.openmetadata.service.apps.bundles.slack.SlackApiResponse;
-import org.openmetadata.service.apps.bundles.slack.SlackApp;
 import org.openmetadata.service.jdbi3.AppRepository;
 import org.openmetadata.service.resources.Collection;
 
 @Slf4j
-@Path("/v1/slack")
+@Path("/v1/collate/apps/slack/")
 @Tag(name = "Slack App", description = "Slack App Resource.")
+@Hidden
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
-@Collection(name = "slack")
+@Collection(name = "Slack")
 public class SlackResource {
-  public static final String COLLECTION_PATH = "/v1/slack/";
+  public static final String COLLECTION_PATH = "/v1/collate/apps/slack/";
   private static final String APP_NAME = "SlackApplication";
   private static final String SLACK_APP = "Slack";
-  private SlackApp app;
+  private SlackApp slackApp;
 
   protected void initializeSlackApp() {
     try {
       AppRepository appRepo = (AppRepository) Entity.getEntityRepository(Entity.APPLICATION);
-      App slackApp = appRepo.getByName(null, APP_NAME, appRepo.getFields("*"));
-      app =
+      App slackApplication = appRepo.getByName(null, APP_NAME, appRepo.getFields("*"));
+      slackApp =
           (SlackApp)
               ApplicationHandler.getInstance()
-                  .runAppInit(slackApp, Entity.getCollectionDAO(), Entity.getSearchRepository());
+                  .runAppInit(
+                      slackApplication, Entity.getCollectionDAO(), Entity.getSearchRepository());
 
     } catch (ClassNotFoundException
         | InvocationTargetException
@@ -85,7 +86,7 @@ public class SlackResource {
       @Context UriInfo uriInfo, @Context SecurityContext securityContext) {
     initializeSlackApp();
     try {
-      String oauthUrl = app.buildOAuthUrl();
+      String oauthUrl = slackApp.buildOAuthUrl();
       return Response.status(Response.Status.FOUND).location(new URI(oauthUrl)).build();
     } catch (Exception e) {
       LOG.error("Error processing slack oauth url", e);
@@ -109,16 +110,16 @@ public class SlackResource {
   public Response callback(@QueryParam("code") String code, @QueryParam("state") String state) {
     initializeSlackApp();
     try {
-      if (!app.isOAuthStateValid(state)) {
+      if (!slackApp.isOAuthStateValid(state)) {
         LOG.error("State verification failed");
-        return redirectResponse(app.getRedirectUrl(false));
+        return redirectResponse(slackApp.getRedirectUrl(false));
       }
 
-      String redirectUrl = app.saveTokenAndBuildRedirectUrl(code);
+      String redirectUrl = slackApp.saveTokenAndBuildRedirectUrl(code);
       return redirectResponse(redirectUrl);
     } catch (Exception e) {
       LOG.error("Error processing Slack OAuth callback", e);
-      return redirectResponse(app.getRedirectUrl(false));
+      return redirectResponse(slackApp.getRedirectUrl(false));
     }
   }
 
@@ -155,7 +156,7 @@ public class SlackResource {
   public Response listChannels(@Context UriInfo uriInfo, @Context SecurityContext securityContext) {
     initializeSlackApp();
     try {
-      Map<String, Object> listedChannels = app.listChannels();
+      Map<String, Object> listedChannels = slackApp.listChannels();
       return Response.ok()
           .entity(
               new SlackApiResponse<>(
