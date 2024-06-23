@@ -382,7 +382,12 @@ export const AuthProvider = ({
       }
     } catch (error) {
       const err = error as AxiosError;
-      if (err && err.response && err.response.status === 404) {
+      if (
+        err &&
+        err.response &&
+        err.response.status === 404 &&
+        authConfig?.enableSelfSignup
+      ) {
         setNewUserProfile(user.profile);
         setCurrentUser({} as User);
         setIsSigningUp(true);
