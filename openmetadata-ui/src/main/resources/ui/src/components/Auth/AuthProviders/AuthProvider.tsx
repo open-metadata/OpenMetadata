@@ -382,12 +382,7 @@ export const AuthProvider = ({
       }
     } catch (error) {
       const err = error as AxiosError;
-      if (
-        err &&
-        err.response &&
-        err.response.status === 404 &&
-        authConfig?.enableSelfSignup
-      ) {
+      if (err?.response?.status === 404 && authConfig?.enableSelfSignup) {
         setNewUserProfile(user.profile);
         setCurrentUser({} as User);
         setIsSigningUp(true);
@@ -395,6 +390,8 @@ export const AuthProvider = ({
       } else {
         // eslint-disable-next-line no-console
         console.error(err);
+        showErrorToast(err);
+        resetUserDetails();
         history.push(ROUTES.SIGNIN);
       }
     } finally {
