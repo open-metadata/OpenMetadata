@@ -1,26 +1,22 @@
 package org.openmetadata.service.apps.bundles.slack;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.slack.api.Slack;
 import com.slack.api.bolt.App;
 import com.slack.api.bolt.AppConfig;
 import com.slack.api.methods.SlackApiException;
 import com.slack.api.methods.request.conversations.ConversationsListRequest;
 import com.slack.api.methods.response.conversations.ConversationsListResponse;
+import com.slack.api.methods.response.oauth.OAuthV2AccessResponse;
 import java.io.IOException;
 import java.security.SecureRandom;
 import java.util.Base64;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.stream.Collectors;
 import javax.ws.rs.core.Response;
 import lombok.extern.slf4j.Slf4j;
-import okhttp3.FormBody;
-import okhttp3.OkHttpClient;
-import okhttp3.Request;
-import okhttp3.RequestBody;
 import org.openmetadata.schema.service.configuration.slackApp.SlackAppConfiguration;
 import org.openmetadata.schema.settings.Settings;
 import org.openmetadata.schema.settings.SettingsType;
@@ -37,17 +33,12 @@ public class SlackApp extends AbstractNativeApplication {
   private App slackAppInstance;
   private SlackAppConfiguration appConfig;
   private SystemRepository systemRepository;
-
-  private static final SecureRandom SECURE_RANDOM = new SecureRandom();
-  private static final Base64.Encoder BASE64_ENCODER = Base64.getUrlEncoder();
-
-  private static final String SLACK_OAUTH_BASE_URL = "https://slack.com/oauth/v2/authorize";
-  private static final String SLACK_OAUTH_INSTALL_ENDPOINT = "/slack/install";
-  private static final String SLACK_OAUTH_CALLBACK_ENDPOINT = "/api/v1/slack/callback";
-  private static final String SLACK_TOKEN_EXCHANGE_ENDPOINT =
-      "https://slack.com/api/oauth.v2.access";
+  private final String BOT_ACCESS_TOKEN = "botAccessToken";
+  private final String AUTHED_USER_ACCESS_TOKEN = "installerAccessToken";
   private static final String SUCCESS_FRAGMENT = "#oauth_success";
   private static final String FAILED_FRAGMENT = "#oauth_failed";
+  private static final SecureRandom SECURE_RANDOM = new SecureRandom();
+  private static final Base64.Encoder BASE64_ENCODER = Base64.getUrlEncoder();
 
   public SlackApp(CollectionDAO collectionDAO, SearchRepository searchRepository) {
     super(collectionDAO, searchRepository);
@@ -65,8 +56,7 @@ public class SlackApp extends AbstractNativeApplication {
 
   private void initializeSlackApp(SlackAppConfiguration config) {
     AppConfig appConfig = buildAppConfig(config);
-    App slackApp = new App(appConfig).asOAuthApp(true);
-    this.slackAppInstance = slackApp;
+    this.slackAppInstance = new App(appConfig).asOAuthApp(true);
   }
 
   private static AppConfig buildAppConfig(SlackAppConfiguration config) {
@@ -75,39 +65,10 @@ public class SlackApp extends AbstractNativeApplication {
         .clientSecret(config.getClientSecret())
         .signingSecret(config.getSigningCertificate())
         .scope(config.getScopes())
-        .oauthInstallPath(SLACK_OAUTH_INSTALL_ENDPOINT)
-        .oauthRedirectUriPath(SLACK_OAUTH_CALLBACK_ENDPOINT)
+        .oauthInstallPath("/slack/install")
+        .oauthRedirectUriPath("/api/v1/slack/callback")
         .stateValidationEnabled(true)
         .build();
-  }
-
-  public String buildOAuthUrl() {
-    String clientId = appConfig.getClientId();
-    String scopes = appConfig.getScopes();
-    String callbackUrl = appConfig.getCallbackUrl();
-
-    String state = generateRandomState();
-    saveTokenToSystemRepository(state, SettingsType.SLACK_O_AUTH_STATE);
-
-    return SLACK_OAUTH_BASE_URL
-        + "?client_id="
-        + clientId
-        + "&scope="
-        + scopes
-        + "&state="
-        + state
-        + "&redirect_uri="
-        + callbackUrl;
-  }
-
-  @Override
-  public void raisePreviewMessage(org.openmetadata.schema.entity.app.App app) {
-    throw AppException.byMessage(
-        app.getName(), "Preview", "Contact Collate to purchase the Application");
-  }
-
-  public String getRedirectUrl(boolean isStateValid) {
-    return appConfig.getCallbackRedirectURL() + (isStateValid ? SUCCESS_FRAGMENT : FAILED_FRAGMENT);
   }
 
   public String saveTokenAndBuildRedirectUrl(String code) {
@@ -116,82 +77,54 @@ public class SlackApp extends AbstractNativeApplication {
   }
 
   private boolean exchangeCodeAndSaveToken(String code) {
-    OkHttpClient client = new OkHttpClient();
-    ObjectMapper objectMapper = new ObjectMapper();
-
     try {
-      RequestBody body = buildTokenExchangeRequestBody(code);
-      Request request = new Request.Builder().url(SLACK_TOKEN_EXCHANGE_ENDPOINT).post(body).build();
+      Slack slack = slackAppInstance.getSlack();
+      OAuthV2AccessResponse oAuthV2AccessResponse =
+          slack
+              .methods()
+              .oauthV2Access(
+                  r ->
+                      r.clientId(appConfig.getClientId())
+                          .clientSecret(appConfig.getClientSecret())
+                          .code(code)
+                          .redirectUri(appConfig.getCallbackUrl()));
 
-      try (okhttp3.Response slackResponse = client.newCall(request).execute()) {
-        if (!slackResponse.isSuccessful()) {
-          throw new IOException("Unexpected code " + slackResponse.code());
-        }
+      if (oAuthV2AccessResponse.isOk()) {
+        Optional.ofNullable(oAuthV2AccessResponse.getAccessToken())
+            .ifPresentOrElse(
+                token -> saveTokenToSystemRepository(token, SettingsType.SLACK_BOT),
+                () -> {
+                  LOG.warn("Received null accessToken");
+                  saveTokenToSystemRepository("", SettingsType.SLACK_BOT);
+                });
 
-        String responseBody = slackResponse.body().string();
-        JsonNode jsonNode = objectMapper.readTree(responseBody);
-        String botAccessToken = extractAccessToken(jsonNode, "access_token", "Bot access token");
-        String userAccessToken =
-            extractAccessToken(
-                jsonNode.get("authed_user"), "access_token", "Authed user access token");
-
-        saveTokenToSystemRepository(botAccessToken, SettingsType.SLACK_BOT);
-        saveTokenToSystemRepository(userAccessToken, SettingsType.SLACK_INSTALLER);
+        Optional.ofNullable(oAuthV2AccessResponse.getAuthedUser().getAccessToken())
+            .ifPresentOrElse(
+                token -> saveTokenToSystemRepository(token, SettingsType.SLACK_INSTALLER),
+                () -> {
+                  LOG.warn("Received null userAccessToken");
+                  saveTokenToSystemRepository("", SettingsType.SLACK_INSTALLER);
+                });
 
         return true;
-      } catch (IOException e) {
-        LOG.error("Error executing Slack token exchange request: {}", e.getMessage());
+      } else {
+        LOG.error("Error exchanging Slack token: {}", oAuthV2AccessResponse.getError());
         return false;
       }
-    } catch (Exception e) {
-      LOG.error("Error exchanging Slack token: {}", e.getMessage());
+    } catch (IOException | SlackApiException e) {
+      LOG.error("Error during Slack OAuth exchange: ", e);
       return false;
-    }
-  }
-
-  private RequestBody buildTokenExchangeRequestBody(String code) {
-    return new FormBody.Builder()
-        .add("code", code)
-        .add("client_id", appConfig.getClientId())
-        .add("client_secret", appConfig.getClientSecret())
-        .add("redirect_uri", appConfig.getCallbackUrl())
-        .build();
-  }
-
-  private String extractAccessToken(JsonNode node, String accessTokenField, String logMessage) {
-    String accessToken = "";
-    if (node != null && !node.isNull()) {
-      JsonNode accessTokenNode = node.get(accessTokenField);
-      if (accessTokenNode != null && !accessTokenNode.isNull()) {
-        accessToken = accessTokenNode.asText();
-      } else {
-        LOG.warn(logMessage + " not found in Slack response");
-      }
-    } else {
-      LOG.warn("JsonNode is null or empty for: " + logMessage);
-    }
-    return accessToken;
-  }
-
-  private void saveTokenToSystemRepository(String accessToken, SettingsType configType) {
-    try {
-      Settings setting = new Settings();
-      setting.setConfigType(configType);
-      setting.setConfigValue(accessToken);
-      systemRepository.createOrUpdate(setting);
-    } catch (Exception e) {
-      LOG.error("Error saving token to system repository: {}", e.getMessage());
     }
   }
 
   public Map<String, Object> listChannels() throws AppException {
     try {
       HashMap<String, String> tokenMap = getSavedToken();
-      if (tokenMap == null || !tokenMap.containsKey("botAccessToken")) {
+      if (!tokenMap.containsKey(BOT_ACCESS_TOKEN)) {
         throw AppException.byMessage(
             "SlackApp", "listChannels", "Bot access token is missing", Response.Status.BAD_REQUEST);
       }
-      String accessToken = tokenMap.get("botAccessToken");
+      String accessToken = tokenMap.get(BOT_ACCESS_TOKEN);
 
       Slack slack = slackAppInstance.getSlack();
       ConversationsListResponse response =
@@ -232,12 +165,15 @@ public class SlackApp extends AbstractNativeApplication {
     }
   }
 
+  public String getRedirectUrl(boolean isStateValid) {
+    return appConfig.getCallbackRedirectURL() + (isStateValid ? SUCCESS_FRAGMENT : FAILED_FRAGMENT);
+  }
+
   private HashMap<String, String> getSavedToken() {
     HashMap<String, String> tokenMap = new HashMap<>();
     try {
-      tokenMap.put("botAccessToken", getBotTokenFromDb());
-      tokenMap.put("installerAccessToken", getInstallerTokenFromDb());
-
+      tokenMap.put(BOT_ACCESS_TOKEN, getBotTokenFromDb());
+      tokenMap.put(AUTHED_USER_ACCESS_TOKEN, getInstallerTokenFromDb());
     } catch (Exception e) {
       throw AppException.byMessage(
           "SlackApp",
@@ -276,12 +212,32 @@ public class SlackApp extends AbstractNativeApplication {
     return SystemRepository.decryptSlackOAuthStateSetting(installerJson);
   }
 
-  /**
-   * Generates a cryptographically secure random state for OAuth
-   */
+  public String buildOAuthUrl() {
+    String state = generateRandomState();
+    saveTokenToSystemRepository(state, SettingsType.SLACK_O_AUTH_STATE);
+    return slackAppInstance.buildAuthorizeUrl(state);
+  }
+
   private String generateRandomState() {
     byte[] randomBytes = new byte[24];
     SECURE_RANDOM.nextBytes(randomBytes);
     return BASE64_ENCODER.encodeToString(randomBytes);
+  }
+
+  private void saveTokenToSystemRepository(String accessToken, SettingsType configType) {
+    try {
+      Settings setting = new Settings();
+      setting.setConfigType(configType);
+      setting.setConfigValue(accessToken);
+      systemRepository.createOrUpdate(setting);
+    } catch (Exception e) {
+      LOG.error("Error saving token to system repository: {}", e.getMessage());
+    }
+  }
+
+  @Override
+  public void raisePreviewMessage(org.openmetadata.schema.entity.app.App app) {
+    throw AppException.byMessage(
+        app.getName(), "Preview", "Contact Collate to purchase the Application");
   }
 }
