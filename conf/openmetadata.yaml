@@ -138,17 +138,6 @@ logging:
       timeZone: UTC
       maxFileSize: 50MB
 
-applications:
-  appsPrivateConfiguration:
-    - name: SlackApplication
-      preview:
-      parameters:
-        clientId:
-        scopes:
-        clientSecret:
-        callbackUrl:
-        callbackRedirectURL:
-
 database:
   # the name of the JDBC driver, mysql in our case
   driverClass: ${DB_DRIVER_CLASS:-com.mysql.cj.jdbc.Driver}
@@ -405,3 +394,14 @@ web:
   permission-policy:
     enabled: ${WEB_CONF_PERMISSION_POLICY_ENABLED:-false}
     option: ${WEB_CONF_PERMISSION_POLICY_OPTION:-""}
+
+applications:
+  appsPrivateConfiguration:
+    - name: SlackApplication
+      preview:
+      parameters:
+        clientId:
+        scopes:
+        clientSecret:
+        callbackUrl:
+        callbackRedirectURL:
