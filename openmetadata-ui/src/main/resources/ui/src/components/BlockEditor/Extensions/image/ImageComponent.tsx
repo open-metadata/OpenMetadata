@@ -130,7 +130,7 @@ const PopoverContent: FC<PopoverContentProps> = ({
                 required: true,
                 type: 'url',
                 message: t('label.field-required', {
-                  field: t('label.link'),
+                  field: t('label.url-uppercase'),
                 }),
               },
             ]}>
