@@ -28,7 +28,7 @@ OpenMetadata is a complete package for data teams to break down team silos, shar
     title="Data Quality & Profiler"
     description="Trust your data with quality tests that ensure freshness, & accuracy."
     link="/how-to-guides/data-quality-profiler"
-    icon="quality"
+    icon="observability"
 /%}
 {% tile
     title="Data Lineage"
