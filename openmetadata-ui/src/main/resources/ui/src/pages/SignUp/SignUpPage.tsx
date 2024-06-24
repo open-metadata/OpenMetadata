@@ -88,7 +88,7 @@ const SignUp = () => {
 
   const initialValues = useMemo(
     () => ({
-      displayName: newUser?.name || '',
+      displayName: newUser?.name ?? '',
       ...(clientType === ClientType.Public
         ? getNameFromUserData(
             newUser as UserProfile,
@@ -97,8 +97,8 @@ const SignUp = () => {
             jwtPrincipalClaimsMapping
           )
         : {
-            name: newUser?.name || '',
-            email: newUser?.email || '',
+            name: newUser?.name ?? '',
+            email: newUser?.email ?? '',
           }),
     }),
     [
