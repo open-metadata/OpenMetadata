@@ -43,7 +43,8 @@ import org.openmetadata.service.util.ResultList;
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "analytics")
-public class DataInsightCustomChartResource extends EntityResource<DataInsightCustomChart, DataInsightCustomChartRepository> {
+public class DataInsightCustomChartResource
+    extends EntityResource<DataInsightCustomChart, DataInsightCustomChartRepository> {
   public static final String COLLECTION_PATH = "/v1/analytics/dataInsights/custom/charts";
   static final String FIELDS = "owner";
 
@@ -97,7 +98,8 @@ public class DataInsightCustomChartResource extends EntityResource<DataInsightCu
           long end,
       @Valid CreateDataInsightCustomChart create)
       throws IOException, ParseException {
-    DataInsightCustomChart diChart = getDIChart(create, securityContext.getUserPrincipal().getName());
+    DataInsightCustomChart diChart =
+        getDIChart(create, securityContext.getUserPrincipal().getName());
     DataInsightCustomChartResultList resultList = repository.getPreviewData(diChart, start, end);
     return Response.status(Response.Status.OK).entity(resultList).build();
   }

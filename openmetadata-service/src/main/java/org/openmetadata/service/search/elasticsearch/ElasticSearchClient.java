@@ -151,8 +151,8 @@ import org.openmetadata.sdk.exception.SearchException;
 import org.openmetadata.sdk.exception.SearchIndexNotFoundException;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.dataInsight.DataInsightAggregatorInterface;
-import org.openmetadata.service.jdbi3.DataInsightCustomChartRepository;
 import org.openmetadata.service.jdbi3.DataInsightChartRepository;
+import org.openmetadata.service.jdbi3.DataInsightCustomChartRepository;
 import org.openmetadata.service.search.SearchClient;
 import org.openmetadata.service.search.SearchRequest;
 import org.openmetadata.service.search.SearchSortFilter;
@@ -1945,8 +1945,8 @@ public class ElasticSearchClient implements SearchClient {
     }
   }
 
-  public DataInsightCustomChartResultList buildDIChart(@NotNull DataInsightCustomChart diChart, long start, long end)
-      throws IOException {
+  public DataInsightCustomChartResultList buildDIChart(
+      @NotNull DataInsightCustomChart diChart, long start, long end) throws IOException {
     ElasticSearchDynamicChartAggregatorInterface aggregator =
         ElasticSearchDynamicChartAggregatorFactory.getAggregator(diChart);
     if (aggregator != null) {

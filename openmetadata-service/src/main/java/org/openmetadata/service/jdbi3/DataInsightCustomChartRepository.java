@@ -28,7 +28,13 @@ public class DataInsightCustomChartRepository extends EntityRepository<DataInsig
   public static final String NUMERIC_VALIDATION_REGEX = "[\\d\\.+-\\/\\*\\(\\)\s]+";
 
   public DataInsightCustomChartRepository() {
-    super(COLLECTION_PATH, DATA_INSIGHT_CUSTOM_CHART, DataInsightCustomChart.class, Entity.getCollectionDAO().diChartDAO(), "", "");
+    super(
+        COLLECTION_PATH,
+        DATA_INSIGHT_CUSTOM_CHART,
+        DataInsightCustomChart.class,
+        Entity.getCollectionDAO().diChartDAO(),
+        "",
+        "");
   }
 
   @Override
@@ -56,8 +62,8 @@ public class DataInsightCustomChartRepository extends EntityRepository<DataInsig
     // No relationships to store beyond what is stored in the super class
   }
 
-  public DataInsightCustomChartResultList getPreviewData(DataInsightCustomChart chart, long startTimestamp, long endTimestamp)
-      throws IOException {
+  public DataInsightCustomChartResultList getPreviewData(
+      DataInsightCustomChart chart, long startTimestamp, long endTimestamp) throws IOException {
     return searchClient.buildDIChart(chart, startTimestamp, endTimestamp);
   }
 

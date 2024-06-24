@@ -6,7 +6,8 @@ import org.openmetadata.schema.dataInsight.custom.LineChart;
 import org.openmetadata.schema.dataInsight.custom.SummaryCard;
 
 public class ElasticSearchDynamicChartAggregatorFactory {
-  public static ElasticSearchDynamicChartAggregatorInterface getAggregator(DataInsightCustomChart diChart) {
+  public static ElasticSearchDynamicChartAggregatorInterface getAggregator(
+      DataInsightCustomChart diChart) {
     if (((LinkedHashMap) diChart.getChartDetails())
         .get("type")
         .equals(LineChart.Type.LINE_CHART.value())) {

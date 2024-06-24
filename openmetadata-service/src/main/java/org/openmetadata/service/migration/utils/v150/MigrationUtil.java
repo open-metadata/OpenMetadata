@@ -88,7 +88,9 @@ public class MigrationUtil {
   private static void createChart(DataInsightCustomChart chart) {
     dataInsightCustomChartRepository.prepareInternal(chart, false);
     try {
-      dataInsightCustomChartRepository.getDao().insert("fqnHash", chart, chart.getFullyQualifiedName());
+      dataInsightCustomChartRepository
+          .getDao()
+          .insert("fqnHash", chart, chart.getFullyQualifiedName());
     } catch (Exception ex) {
       LOG.warn(ex.toString());
       LOG.warn(String.format("Chart %s exists", chart));

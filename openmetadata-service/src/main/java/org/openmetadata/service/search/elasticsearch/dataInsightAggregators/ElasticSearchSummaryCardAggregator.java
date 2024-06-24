@@ -53,13 +53,16 @@ public class ElasticSearchSummaryCardAggregator
     searchSourceBuilder.aggregation(dateHistogramAggregationBuilder);
     searchSourceBuilder.query(queryFilter);
     es.org.elasticsearch.action.search.SearchRequest searchRequest =
-        new es.org.elasticsearch.action.search.SearchRequest(DataInsightCustomChartRepository.DI_SEARCH_INDEX);
+        new es.org.elasticsearch.action.search.SearchRequest(
+            DataInsightCustomChartRepository.DI_SEARCH_INDEX);
     searchRequest.source(searchSourceBuilder);
     return searchRequest;
   }
 
   public DataInsightCustomChartResultList processSearchResponse(
-      @NotNull DataInsightCustomChart diChart, SearchResponse searchResponse, List<FormulaHolder> formulas) {
+      @NotNull DataInsightCustomChart diChart,
+      SearchResponse searchResponse,
+      List<FormulaHolder> formulas) {
     DataInsightCustomChartResultList resultList = new DataInsightCustomChartResultList();
     SummaryCard summaryCard = JsonUtils.convertValue(diChart.getChartDetails(), SummaryCard.class);
     List<DataInsightCustomChartResult> results =

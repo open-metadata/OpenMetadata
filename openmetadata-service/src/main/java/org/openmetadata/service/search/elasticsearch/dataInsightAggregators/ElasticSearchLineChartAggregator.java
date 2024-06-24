@@ -64,13 +64,16 @@ public class ElasticSearchLineChartAggregator
     }
     searchSourceBuilder.query(queryFilter);
     es.org.elasticsearch.action.search.SearchRequest searchRequest =
-        new es.org.elasticsearch.action.search.SearchRequest(DataInsightCustomChartRepository.DI_SEARCH_INDEX);
+        new es.org.elasticsearch.action.search.SearchRequest(
+            DataInsightCustomChartRepository.DI_SEARCH_INDEX);
     searchRequest.source(searchSourceBuilder);
     return searchRequest;
   }
 
   public DataInsightCustomChartResultList processSearchResponse(
-      @NotNull DataInsightCustomChart diChart, SearchResponse searchResponse, List<FormulaHolder> formulas) {
+      @NotNull DataInsightCustomChart diChart,
+      SearchResponse searchResponse,
+      List<FormulaHolder> formulas) {
     DataInsightCustomChartResultList resultList = new DataInsightCustomChartResultList();
     LineChart lineChart = JsonUtils.convertValue(diChart.getChartDetails(), LineChart.class);
     if (lineChart.getGroupBy() != null) {

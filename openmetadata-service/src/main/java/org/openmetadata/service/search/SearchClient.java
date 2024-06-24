@@ -235,7 +235,8 @@ public interface SearchClient {
     return aggregationJson.getString("key");
   }
 
-  default DataInsightCustomChartResultList buildDIChart(DataInsightCustomChart diChart, long start, long end) throws IOException {
+  default DataInsightCustomChartResultList buildDIChart(
+      DataInsightCustomChart diChart, long start, long end) throws IOException {
     return null;
   }
 
