@@ -45,7 +45,7 @@ class FlinkClient:
         self.client = REST(client_config)
 
     def get_jobs(self) -> Optional[List[FlinkPipelineList]]:
-        response = self.client.get(f"jobs/overview")
+        response = self.client.get("jobs/overview")
         return FlinkPipelineList(**response)
 
     def get_pipeline_info(self, pipeline_id: str) -> FlinkPipeline:
