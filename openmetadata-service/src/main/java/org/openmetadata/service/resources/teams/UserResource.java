@@ -170,6 +170,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
   private AuthenticationConfiguration authenticationConfiguration;
   private AuthorizerConfiguration authorizerConfiguration;
   private final AuthenticatorHandler authHandler;
+  private boolean isSelfSignUpEnabled = false;
   static final String FIELDS = "profile,roles,teams,follows,owns,domain,personas,defaultPersona";
 
   @Override
@@ -207,6 +208,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
     SmtpSettings smtpSettings = config.getSmtpSettings();
     this.isEmailServiceEnabled = smtpSettings != null && smtpSettings.getEnableSmtpServer();
     this.repository.initializeUsers(config);
+    this.isSelfSignUpEnabled = authenticationConfiguration.getEnableSelfSignup();
   }
 
   public static class UserList extends ResultList<User> {
@@ -562,7 +564,9 @@ public class UserResource extends EntityResource<User, UserRepository> {
 
     //
     try {
-      validateAndAddUserAuthForBasic(user, create);
+      // Email Validation
+      validateEmailAlreadyExists(create.getEmail());
+      addUserAuthForBasic(user, create);
     } catch (RuntimeException ex) {
       return Response.status(CONFLICT)
           .type(MediaType.APPLICATION_JSON_TYPE)
@@ -579,7 +583,8 @@ public class UserResource extends EntityResource<User, UserRepository> {
     try {
       createdUserRes = create(uriInfo, securityContext, user);
     } catch (EntityNotFoundException ex) {
-      if (securityContext.getUserPrincipal().getName().equals(create.getName())) {
+      if (isSelfSignUpEnabled
+          && securityContext.getUserPrincipal().getName().equals(create.getName())) {
         // User is creating himself on signup ?! :(
         User created = addHref(uriInfo, repository.create(uriInfo, user));
         createdUserRes = Response.created(created.getHref()).entity(created).build();
@@ -597,17 +602,13 @@ public class UserResource extends EntityResource<User, UserRepository> {
     return Response.status(BAD_REQUEST).entity("User Cannot be created Successfully.").build();
   }
 
-  private void validateAndAddUserAuthForBasic(User user, CreateUser create) {
+  private void addUserAuthForBasic(User user, CreateUser create) {
     if (isBasicAuth()) {
-      // basic auth doesn't allow duplicate emails, since username part of the email is used as
-      // login name
-      validateEmailAlreadyExists(create.getEmail());
       user.setName(user.getEmail().split("@")[0]);
       if (Boolean.FALSE.equals(create.getIsBot())
           && create.getCreatePasswordType() == ADMIN_CREATE) {
         addAuthMechanismToUser(user, create);
       }
-      // else the user will get a mail if configured smtp
     }
   }
 
