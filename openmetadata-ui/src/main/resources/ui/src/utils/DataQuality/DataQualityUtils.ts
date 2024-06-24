@@ -11,6 +11,10 @@
  *  limitations under the License.
  */
 import { TEST_CASE_FILTERS } from '../../constants/profiler.constant';
+import {
+  TestDataType,
+  TestDefinition,
+} from '../../generated/tests/testDefinition';
 import { ListTestCaseParamsBySearch } from '../../rest/testAPI';
 
 /**
@@ -43,4 +47,30 @@ export const buildTestCaseParams = (
     ...filterParams('tier', TEST_CASE_FILTERS.tier),
     ...filterParams('serviceName', TEST_CASE_FILTERS.service),
   };
+};
+
+export const createTestCaseParameters = (
+  params?: Record<string, string | { [key: string]: string }[]>,
+  selectedDefinition?: TestDefinition
+) => {
+  return params
+    ? Object.entries(params).reduce((acc, [key, value]) => {
+        const paramDef = selectedDefinition?.parameterDefinition?.find(
+          (param) => param.name === key
+        );
+
+        if (paramDef?.dataType === TestDataType.Array) {
+          const arrayValues = (value as { value: string }[])
+            .map((item) => item.value)
+            .filter(Boolean);
+          if (arrayValues.length) {
+            acc.push({ name: key, value: JSON.stringify(arrayValues) });
+          }
+        } else {
+          acc.push({ name: key, value: value as string });
+        }
+
+        return acc;
+      }, [] as { name: string; value: string }[])
+    : params;
 };
