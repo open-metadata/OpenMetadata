@@ -13,22 +13,20 @@
 @import url('../../../../styles/variables.less');
 
 .data-assets-explore-widget-container {
-  .ant-card {
-    height: 100%;
-    border: none;
-    cursor: pointer;
-    transition: 0.3s ease-in-out;
-
-    &:hover {
-      background: @grey-2;
-    }
-  }
-
   .data-assets-explore-widget-body {
     height: 265px;
     overflow-x: hidden;
 
-    .service-card {
+    .service-card.ant-card {
+      height: 100%;
+      border: none;
+      cursor: pointer;
+      transition: 0.3s ease-in-out;
+
+      &:hover {
+        background: @grey-2;
+      }
+
       .ant-card-body {
         display: flex;
         flex-direction: column;

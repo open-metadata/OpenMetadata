@@ -1575,7 +1575,7 @@
     "no-config-plural": "Nenhuma Configuração.",
     "no-custom-properties-table": "Atualmente, não há Propriedades Personalizadas definidas para o Ativo de Dados da Tabela. Para descobrir como adicionar Propriedades Personalizadas, consulte <0>{{docs}}</0>",
     "no-data": "Sem dados",
-    "no-data-assets": "Set up connectors, and ingest metadata from diverse sources. Once you have ingested data, you can view the data assets here. To set up connectors, <0>click here</0>.",
+    "no-data-assets": "Welcome to OpenMetadata! It looks like no data assets have been added yet. Check out our <0>How to Get Started</0> guide to begin.",
     "no-data-available": "Nenhum dado disponível.",
     "no-data-available-entity": "Não há dados disponíveis em {{entity}}.",
     "no-data-available-for-selected-filter": "Nenhum dado encontrado. Tente alterar os filtros.",

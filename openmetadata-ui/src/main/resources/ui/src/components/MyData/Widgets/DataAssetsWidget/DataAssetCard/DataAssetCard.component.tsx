@@ -61,7 +61,7 @@ const DataAssetCard = ({ service: { key, doc_count } }: DataAssetCardProps) => {
       to={redirectLink}>
       <Card className="service-card" data-testid="service-card" size="small">
         <div
-          className="d-flex justify-center items-center"
+          className="p-t-xs d-flex justify-center items-center"
           data-testid="service-icon">
           {getServiceLogo(capitalize(key) ?? '', 'h-8')}
         </div>
@@ -73,7 +73,7 @@ const DataAssetCard = ({ service: { key, doc_count } }: DataAssetCardProps) => {
         </Typography.Text>
 
         <Typography.Text
-          className="m-t-xs text-grey-muted font-normal"
+          className="p-t-xs p-b-xss text-grey-muted font-normal"
           data-testid={`service-count-${key}`}>
           {doc_count}
         </Typography.Text>

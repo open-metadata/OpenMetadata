@@ -1575,7 +1575,7 @@
     "no-config-plural": "Geen configuraties.",
     "no-custom-properties-table": "Er zijn momenteel geen eigen eigenschappen gedefinieerd voor de data-assettabel. Raadpleeg <0>{{docs}}</0> voor meer informatie over het toevoegen van Custom Properties.",
     "no-data": "Geen data",
-    "no-data-assets": "Set up connectors, and ingest metadata from diverse sources. Once you have ingested data, you can view the data assets here. To set up connectors, <0>click here</0>.",
+    "no-data-assets": "Welcome to OpenMetadata! It looks like no data assets have been added yet. Check out our <0>How to Get Started</0> guide to begin.",
     "no-data-available": "Geen data beschikbaar.",
     "no-data-available-entity": "Geen data beschikbaar in {{entity}}.",
     "no-data-available-for-selected-filter": "Geen data gevonden. Probeer de filters te wijzigen.",

@@ -113,7 +113,7 @@ const DataAssetsWidget = ({
               </Typography.Paragraph>
             </ErrorPlaceHolder>
           ) : (
-            <Row className="data-assets-explore-widget-body" gutter={[10, 15]}>
+            <Row gutter={[10, 15]}>
               {services.map((service) => (
                 <Col key={service.key} lg={6} xl={4}>
                   <DataAssetCard service={service} />
