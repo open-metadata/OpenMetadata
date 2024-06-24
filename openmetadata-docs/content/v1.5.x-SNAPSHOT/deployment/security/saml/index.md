@@ -84,6 +84,13 @@ To add a private key, you need to include it in the keystore and update the conf
 
 {% /note %}
 
+```yaml
+  security:
+    keyStoreFilePath: ${SAML_KEYSTORE_FILE_PATH:-"/path/to/keystore.jks"}
+    keyStoreAlias: ${SAML_KEYSTORE_ALIAS:-"myKeystoreAlias"}
+    keyStorePassword: ${SAML_KEYSTORE_PASSWORD:-"myKeystorePassword"}
+```
+
 SP Metadata XML is available at "http://localhost:8585/api/v1/saml/metadata", `localhost` needs to be updated with the correct URI.
 
 ### Security Configuration
