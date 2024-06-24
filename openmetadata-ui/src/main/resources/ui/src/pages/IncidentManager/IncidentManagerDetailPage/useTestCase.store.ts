@@ -18,14 +18,18 @@ export interface UseTestCaseStoreInterface {
   isLoading: boolean;
   setTestCase: (testCase: TestCase) => void;
   setIsLoading: (isLoading: boolean) => void;
+  reset: () => void;
 }
 export const useTestCaseStore = create<UseTestCaseStoreInterface>()((set) => ({
   testCase: undefined,
-  isLoading: false,
+  isLoading: true,
   setTestCase: (testCase: TestCase) => {
     set({ testCase });
   },
   setIsLoading: (isLoading: boolean) => {
     set({ isLoading });
+  },
+  reset: () => {
+    set({ testCase: undefined, isLoading: true });
   },
 }));

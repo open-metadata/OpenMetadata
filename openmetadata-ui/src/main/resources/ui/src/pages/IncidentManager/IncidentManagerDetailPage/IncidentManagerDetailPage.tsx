@@ -58,7 +58,8 @@ const IncidentManagerDetailPage = () => {
 
   const { fqn: testCaseFQN } = useFqn();
 
-  const { isLoading, setIsLoading, setTestCase, testCase } = useTestCaseStore();
+  const { isLoading, setIsLoading, setTestCase, testCase, reset } =
+    useTestCaseStore();
   const [feedCount, setFeedCount] = useState<FeedCounts>(
     FEED_COUNT_INITIAL_DATA
   );
@@ -201,6 +202,12 @@ const IncidentManagerDetailPage = () => {
     } else {
       setIsLoading(false);
     }
+
+    // Cleanup function for unmount
+    return () => {
+      reset();
+      testCaseClassBase.setShowSqlQueryTab(false);
+    };
   }, [testCaseFQN, hasViewPermission]);
 
   if (isLoading) {
