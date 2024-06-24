@@ -17,6 +17,7 @@ import time
 from datetime import datetime
 from unittest import TestCase
 
+from _openmetadata_testutils.ometa import int_admin_ometa
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
 from metadata.generated.schema.entity.data.table import (
@@ -59,7 +60,6 @@ from ..integration_base import (
     get_create_test_definition,
     get_create_test_suite,
     get_create_user_entity,
-    int_admin_ometa,
 )
 
 PII_TAG_LABEL = TagLabel(
