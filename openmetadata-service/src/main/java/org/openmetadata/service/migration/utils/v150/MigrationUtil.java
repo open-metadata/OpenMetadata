@@ -4,7 +4,7 @@ import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.core.Handle;
 import org.openmetadata.schema.tests.TestDefinition;
-import org.openmetadata.schema.type.TestDefinitionDimension;
+import org.openmetadata.schema.type.DataQualityDimensions;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.resources.databases.DatasourceConfig;
 import org.openmetadata.service.util.JsonUtils;
@@ -16,32 +16,32 @@ public class MigrationUtil {
         "SELECT json FROM test_definition WHERE JSON_CONTAINS(json -> '$.testPlatforms', '\"OpenMetadata\"')";
     String POSTGRES_TEST_CASE_DIMENSION_QUERY =
         "SELECT json FROM test_definition WHERE json -> 'testPlatforms' @> '\"OpenMetadata\"'";
-    Map<String, TestDefinitionDimension> fqnToDimension =
+    Map<String, DataQualityDimensions> fqnToDimension =
         Map.ofEntries(
-            Map.entry("columnValueMaxToBeBetween", TestDefinitionDimension.ACCURACY),
-            Map.entry("columnValueMeanToBeBetween", TestDefinitionDimension.ACCURACY),
-            Map.entry("columnValueMedianToBeBetween", TestDefinitionDimension.ACCURACY),
-            Map.entry("columnValueMinToBeBetween", TestDefinitionDimension.ACCURACY),
-            Map.entry("columnValueLengthsToBeBetween", TestDefinitionDimension.ACCURACY),
-            Map.entry("columnValuesSumToBeBetween", TestDefinitionDimension.ACCURACY),
-            Map.entry("columnValueStdDevToBeBetween", TestDefinitionDimension.ACCURACY),
-            Map.entry("columnValuesToBeBetween", TestDefinitionDimension.ACCURACY),
-            Map.entry("columnValuesToBeInSet", TestDefinitionDimension.VALIDITY),
-            Map.entry("columnValuesToBeNotInSet", TestDefinitionDimension.VALIDITY),
-            Map.entry("columnValuesToMatchRegex", TestDefinitionDimension.VALIDITY),
-            Map.entry("columnValuesToNotMatchRegex", TestDefinitionDimension.VALIDITY),
-            Map.entry("tableColumnCountToBeBetween", TestDefinitionDimension.INTEGRITY),
-            Map.entry("tableColumnCountToEqual", TestDefinitionDimension.INTEGRITY),
-            Map.entry("tableColumnNameToExist", TestDefinitionDimension.INTEGRITY),
-            Map.entry("tableColumnToMatchSet", TestDefinitionDimension.INTEGRITY),
-            Map.entry("tableRowCountToBeBetween", TestDefinitionDimension.INTEGRITY),
-            Map.entry("tableRowCountToEqual", TestDefinitionDimension.INTEGRITY),
-            Map.entry("tableRowInsertedCountToBeBetween", TestDefinitionDimension.INTEGRITY),
-            Map.entry("columnValuesToBeUnique", TestDefinitionDimension.UNIQUENESS),
-            Map.entry("columnValuesMissingCount", TestDefinitionDimension.COMPLETENESS),
-            Map.entry("columnValuesToBeNotNull", TestDefinitionDimension.COMPLETENESS),
-            Map.entry("tableCustomSQLQuery", TestDefinitionDimension.SQL),
-            Map.entry("tableDiff", TestDefinitionDimension.CONSISTENCY));
+            Map.entry("columnValueMaxToBeBetween", DataQualityDimensions.ACCURACY),
+            Map.entry("columnValueMeanToBeBetween", DataQualityDimensions.ACCURACY),
+            Map.entry("columnValueMedianToBeBetween", DataQualityDimensions.ACCURACY),
+            Map.entry("columnValueMinToBeBetween", DataQualityDimensions.ACCURACY),
+            Map.entry("columnValueLengthsToBeBetween", DataQualityDimensions.ACCURACY),
+            Map.entry("columnValuesSumToBeBetween", DataQualityDimensions.ACCURACY),
+            Map.entry("columnValueStdDevToBeBetween", DataQualityDimensions.ACCURACY),
+            Map.entry("columnValuesToBeBetween", DataQualityDimensions.ACCURACY),
+            Map.entry("columnValuesToBeInSet", DataQualityDimensions.VALIDITY),
+            Map.entry("columnValuesToBeNotInSet", DataQualityDimensions.VALIDITY),
+            Map.entry("columnValuesToMatchRegex", DataQualityDimensions.VALIDITY),
+            Map.entry("columnValuesToNotMatchRegex", DataQualityDimensions.VALIDITY),
+            Map.entry("tableColumnCountToBeBetween", DataQualityDimensions.INTEGRITY),
+            Map.entry("tableColumnCountToEqual", DataQualityDimensions.INTEGRITY),
+            Map.entry("tableColumnNameToExist", DataQualityDimensions.INTEGRITY),
+            Map.entry("tableColumnToMatchSet", DataQualityDimensions.INTEGRITY),
+            Map.entry("tableRowCountToBeBetween", DataQualityDimensions.INTEGRITY),
+            Map.entry("tableRowCountToEqual", DataQualityDimensions.INTEGRITY),
+            Map.entry("tableRowInsertedCountToBeBetween", DataQualityDimensions.INTEGRITY),
+            Map.entry("columnValuesToBeUnique", DataQualityDimensions.UNIQUENESS),
+            Map.entry("columnValuesMissingCount", DataQualityDimensions.COMPLETENESS),
+            Map.entry("columnValuesToBeNotNull", DataQualityDimensions.COMPLETENESS),
+            Map.entry("tableCustomSQLQuery", DataQualityDimensions.SQL),
+            Map.entry("tableDiff", DataQualityDimensions.CONSISTENCY));
 
     try {
       String query = POSTGRES_TEST_CASE_DIMENSION_QUERY;
@@ -56,7 +56,7 @@ public class MigrationUtil {
                 try {
                   TestDefinition testCaseDefinition =
                       JsonUtils.readValue(row.get("json").toString(), TestDefinition.class);
-                  TestDefinitionDimension dimension =
+                  DataQualityDimensions dimension =
                       fqnToDimension.get(testCaseDefinition.getFullyQualifiedName());
                   if (dimension == null) {
                     LOG.warn(
@@ -64,7 +64,7 @@ public class MigrationUtil {
                         testCaseDefinition.getFullyQualifiedName());
                     return;
                   }
-                  testCaseDefinition.setDimension(dimension);
+                  testCaseDefinition.setDatatQualityDimension(dimension);
                   collectionDAO.testDefinitionDAO().update(testCaseDefinition);
                 } catch (Exception e) {
                   LOG.warn("Error migrating test case dimension", e);

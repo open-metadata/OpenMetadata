@@ -105,8 +105,8 @@
         }
       }
     },
-    "testDefinitionDimension": {
-      "javaType": "org.openmetadata.schema.type.TestDefinitionDimension",
+    "dataQualityDimensions": {
+      "javaType": "org.openmetadata.schema.type.DataQualityDimensions",
       "description": "This enum defines the dimension a test case belongs to.",
       "type": "string",
       "enum": [
@@ -162,8 +162,8 @@
         "$ref": "#/definitions/testCaseParameterDefinition"
       }
     },
-    "dimension": {
-      "$ref": "#/definitions/testDefinitionDimension"
+    "datatQualityDimension": {
+      "$ref": "#/definitions/dataQualityDimensions"
     },
     "owner": {
       "description": "Owner of this TestCase definition.",
