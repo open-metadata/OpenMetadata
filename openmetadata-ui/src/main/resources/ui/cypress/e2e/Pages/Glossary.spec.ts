@@ -59,26 +59,6 @@ const CREDENTIALS_2 = generateRandomUser();
 const userName2 = `${CREDENTIALS_2.firstName}${CREDENTIALS_2.lastName}`;
 
 let createdUserId = '';
-
-const selectOwner = (ownerName: string, dataTestId?: string) => {
-  interceptURL('GET', '/api/v1/users?*isBot=false*', 'getUsers');
-  cy.get('[data-testid="add-owner"]').scrollIntoView().click();
-  cy.get("[data-testid='select-owner-tabs']").should('be.visible');
-  cy.get('.ant-tabs [id*=tab-users]').click();
-  verifyResponseStatusCode('@getUsers', 200);
-  interceptURL(
-    'GET',
-    `api/v1/search/query?q=*&index=user_search_index*`,
-    'searchOwner'
-  );
-
-  cy.get('[data-testid="owner-select-users-search-bar"]').type(ownerName);
-  verifyResponseStatusCode('@searchOwner', 200);
-  cy.get(`.ant-popover [title="${ownerName}"]`).click();
-  cy.get(`[data-testid=${dataTestId ?? 'owner-link'}]`).should(
-    'contain',
-    ownerName
-  );
 let createdUserId_2 = '';
 
 const visitGlossaryTermPage = (
@@ -1242,9 +1222,10 @@ describe('Glossary page should work properly', { tags: 'Governance' }, () => {
 
     // checking the breadcrumb, if the change parent term is updated and displayed
     cy.get('[data-testid="breadcrumb-link"]')
-      .should('be.visible')
       .contains(`${parentTerm.name}`)
-      .click();
+      .as('breadcrumb');
+
+    cy.get('@breadcrumb').click();
 
     verifyResponseStatusCode('@fetchGlossaryTermData', 200);
 

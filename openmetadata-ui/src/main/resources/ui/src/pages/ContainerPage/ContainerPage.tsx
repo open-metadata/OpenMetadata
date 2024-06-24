@@ -27,6 +27,7 @@ import { CustomPropertyTable } from '../../components/common/CustomPropertyTable
 import DescriptionV1 from '../../components/common/EntityDescription/DescriptionV1';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../components/common/Loader/Loader';
+import ResizablePanels from '../../components/common/ResizablePanels/ResizablePanels';
 import TabsLabel from '../../components/common/TabsLabel/TabsLabel.component';
 import ContainerChildren from '../../components/Container/ContainerChildren/ContainerChildren';
 import ContainerDataModel from '../../components/Container/ContainerDataModel/ContainerDataModel';
@@ -559,63 +560,78 @@ const ContainerPage = () => {
         key: isDataModelEmpty ? EntityTabs.CHILDREN : EntityTabs.SCHEMA,
         children: (
           <Row gutter={[0, 16]} wrap={false}>
-            <Col className="p-t-sm m-x-lg" flex="auto">
-              <div className="d-flex flex-col gap-4">
-                <DescriptionV1
-                  description={description}
-                  entityFqn={decodedContainerName}
-                  entityName={entityName}
-                  entityType={EntityType.CONTAINER}
-                  hasEditAccess={editDescriptionPermission}
-                  isDescriptionExpanded={isEmpty(containerChildrenData)}
-                  isEdit={isEditDescription}
-                  owner={owner}
-                  showActions={!deleted}
-                  onCancel={() => setIsEditDescription(false)}
-                  onDescriptionEdit={() => setIsEditDescription(true)}
-                  onDescriptionUpdate={handleUpdateDescription}
-                  onThreadLinkSelect={onThreadLinkSelect}
-                />
+            <Col className="tab-content-height" span={24}>
+              <ResizablePanels
+                applyDefaultStyle={false}
+                firstPanel={{
+                  children: (
+                    <div className="d-flex flex-col gap-4 p-t-sm m-x-lg">
+                      <DescriptionV1
+                        description={description}
+                        entityFqn={decodedContainerName}
+                        entityName={entityName}
+                        entityType={EntityType.CONTAINER}
+                        hasEditAccess={editDescriptionPermission}
+                        isDescriptionExpanded={isEmpty(containerChildrenData)}
+                        isEdit={isEditDescription}
+                        owner={owner}
+                        showActions={!deleted}
+                        onCancel={() => setIsEditDescription(false)}
+                        onDescriptionEdit={() => setIsEditDescription(true)}
+                        onDescriptionUpdate={handleUpdateDescription}
+                        onThreadLinkSelect={onThreadLinkSelect}
+                      />
 
-                {isDataModelEmpty ? (
-                  <ContainerChildren
-                    childrenList={containerChildrenData}
-                    fetchChildren={fetchContainerChildren}
-                    isLoading={isChildrenLoading}
-                  />
-                ) : (
-                  <ContainerDataModel
-                    dataModel={containerData?.dataModel}
-                    entityFqn={decodedContainerName}
-                    hasDescriptionEditAccess={editDescriptionPermission}
-                    hasTagEditAccess={editTagsPermission}
-                    isReadOnly={Boolean(deleted)}
-                    onThreadLinkSelect={onThreadLinkSelect}
-                    onUpdate={handleUpdateDataModel}
-                  />
-                )}
-              </div>
-            </Col>
-            <Col
-              className="entity-tag-right-panel-container"
-              data-testid="entity-right-panel"
-              flex="320px">
-              <EntityRightPanel<EntityType.CONTAINER>
-                customProperties={containerData}
-                dataProducts={containerData?.dataProducts ?? []}
-                domain={containerData?.domain}
-                editCustomAttributePermission={editCustomAttributePermission}
-                editTagPermission={
-                  editTagsPermission && !containerData?.deleted
-                }
-                entityFQN={decodedContainerName}
-                entityId={containerData?.id ?? ''}
-                entityType={EntityType.CONTAINER}
-                selectedTags={tags}
-                viewAllPermission={viewAllPermission}
-                onExtensionUpdate={handleExtensionUpdate}
-                onTagSelectionChange={handleTagSelection}
-                onThreadLinkSelect={onThreadLinkSelect}
+                      {isDataModelEmpty ? (
+                        <ContainerChildren
+                          childrenList={containerChildrenData}
+                          fetchChildren={fetchContainerChildren}
+                          isLoading={isChildrenLoading}
+                        />
+                      ) : (
+                        <ContainerDataModel
+                          dataModel={containerData?.dataModel}
+                          entityFqn={decodedContainerName}
+                          hasDescriptionEditAccess={editDescriptionPermission}
+                          hasTagEditAccess={editTagsPermission}
+                          isReadOnly={Boolean(deleted)}
+                          onThreadLinkSelect={onThreadLinkSelect}
+                          onUpdate={handleUpdateDataModel}
+                        />
+                      )}
+                    </div>
+                  ),
+                  minWidth: 800,
+                  flex: 0.87,
+                }}
+                secondPanel={{
+                  children: (
+                    <div data-testid="entity-right-panel">
+                      <EntityRightPanel<EntityType.CONTAINER>
+                        customProperties={containerData}
+                        dataProducts={containerData?.dataProducts ?? []}
+                        domain={containerData?.domain}
+                        editCustomAttributePermission={
+                          editCustomAttributePermission
+                        }
+                        editTagPermission={
+                          editTagsPermission && !containerData?.deleted
+                        }
+                        entityFQN={decodedContainerName}
+                        entityId={containerData?.id ?? ''}
+                        entityType={EntityType.CONTAINER}
+                        selectedTags={tags}
+                        viewAllPermission={viewAllPermission}
+                        onExtensionUpdate={handleExtensionUpdate}
+                        onTagSelectionChange={handleTagSelection}
+                        onThreadLinkSelect={onThreadLinkSelect}
+                      />
+                    </div>
+                  ),
+                  minWidth: 320,
+                  flex: 0.13,
+                  className: 'entity-resizable-right-panel-container',
+                }}
               />
             </Col>
           </Row>

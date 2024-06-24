@@ -53,7 +53,7 @@ class QueryParserSource(Source, ABC):
         super().__init__()
         self.config = config
         self.metadata = metadata
-        self.service_connection = self.config.serviceConnection.__root__.config
+        self.service_connection = self.config.serviceConnection.root.config
         self.source_config = self.config.sourceConfig.config
         self.start, self.end = get_start_and_end(self.source_config.queryLogDuration)
         self.engine = (

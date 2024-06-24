@@ -54,7 +54,7 @@ class ProfilerWorkflow(IngestionWorkflow):
 
     def set_steps(self):
         source_class = self._get_source_class()
-        self.source = source_class.create(self.config.dict(), self.metadata)
+        self.source = source_class.create(self.config.model_dump(), self.metadata)
 
         profiler_processor = self._get_profiler_processor()
         pii_processor = self._get_pii_processor()
@@ -62,7 +62,7 @@ class ProfilerWorkflow(IngestionWorkflow):
         self.steps = (profiler_processor, pii_processor, sink)
 
     def test_connection(self):
-        service_config = self.config.source.serviceConnection.__root__.config
+        service_config = self.config.source.serviceConnection.root.config
         conn = get_ssl_connection(service_config)
 
         test_connection_fn = get_test_connection_fn(service_config)
@@ -71,14 +71,14 @@ class ProfilerWorkflow(IngestionWorkflow):
     def _get_sink(self) -> Sink:
         sink_type = self.config.sink.type
         sink_class = import_sink_class(sink_type=sink_type)
-        sink_config = self.config.sink.dict().get("config", {})
+        sink_config = self.config.sink.model_dump().get("config", {})
         sink: Sink = sink_class.create(sink_config, self.metadata)
         logger.debug(f"Sink type:{self.config.sink.type}, {sink_class} configured")
 
         return sink
 
     def _get_profiler_processor(self) -> Processor:
-        return ProfilerProcessor.create(self.config.dict(), self.metadata)
+        return ProfilerProcessor.create(self.config.model_dump(), self.metadata)
 
     def _get_pii_processor(self) -> Processor:
-        return PIIProcessor.create(self.config.dict(), self.metadata)
+        return PIIProcessor.create(self.config.model_dump(), self.metadata)

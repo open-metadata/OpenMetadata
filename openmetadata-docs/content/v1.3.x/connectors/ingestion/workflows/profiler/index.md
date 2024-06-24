@@ -262,7 +262,7 @@ For a simple, local installation using our docker containers, this looks like:
 {% codeBlock fileName="filename.yaml" %}
 
 
-```yaml
+```yaml {% isCodeBlock=true %}
 source:
   type: <connectorType (e.g. bigquery, redshift, etc.)>
   serviceName: <serviceName (same as metadata ingestion service name)>

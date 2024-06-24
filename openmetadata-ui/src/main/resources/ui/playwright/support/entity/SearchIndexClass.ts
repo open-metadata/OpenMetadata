@@ -12,7 +12,7 @@
  */
 import { APIRequestContext, Page } from '@playwright/test';
 import { uuid } from '../../utils/common';
-import { visitEntityPage } from '../../utils/entityUtils';
+import { visitEntityPage } from '../../utils/entity';
 import { EntityTypeEndpoint } from './Entity.interface';
 import { EntityClass } from './EntityClass';
 
@@ -34,7 +34,7 @@ export class SearchIndexClass extends EntityClass {
     },
   };
   entity = {
-    name: `pw.search-index%${uuid()}`,
+    name: `pw-search-index-${uuid()}`,
     displayName: `pw-search-index-${uuid()}`,
     service: this.service.name,
     fields: [],

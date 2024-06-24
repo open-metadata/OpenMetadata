@@ -59,6 +59,7 @@ import { withActivityFeed } from '../../AppRouter/withActivityFeed';
 import { CustomPropertyTable } from '../../common/CustomPropertyTable/CustomPropertyTable';
 import DescriptionV1 from '../../common/EntityDescription/DescriptionV1';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import ResizablePanels from '../../common/ResizablePanels/ResizablePanels';
 import TabsLabel from '../../common/TabsLabel/TabsLabel.component';
 import { DataAssetsHeader } from '../../DataAssets/DataAssetsHeader/DataAssetsHeader.component';
 import { ColumnFilter } from '../../Database/ColumnFilter/ColumnFilter.component';
@@ -612,59 +613,74 @@ const DashboardDetails = ({
         key: EntityTabs.DETAILS,
         children: (
           <Row gutter={[0, 16]} wrap={false}>
-            <Col className="p-t-sm m-x-lg" flex="auto">
-              <div className="d-flex flex-col gap-4">
-                <DescriptionV1
-                  description={dashboardDetails.description}
-                  entityFqn={decodedDashboardFQN}
-                  entityName={entityName}
-                  entityType={EntityType.DASHBOARD}
-                  hasEditAccess={editDescriptionPermission}
-                  isDescriptionExpanded={isEmpty(charts)}
-                  isEdit={isEdit}
-                  owner={dashboardDetails.owner}
-                  showActions={!deleted}
-                  onCancel={onCancel}
-                  onDescriptionEdit={onDescriptionEdit}
-                  onDescriptionUpdate={onDescriptionUpdate}
-                  onThreadLinkSelect={onThreadLinkSelect}
-                />
+            <Col className="tab-content-height" span={24}>
+              <ResizablePanels
+                applyDefaultStyle={false}
+                firstPanel={{
+                  children: (
+                    <div className="d-flex flex-col gap-4 p-t-sm m-x-lg">
+                      <DescriptionV1
+                        description={dashboardDetails.description}
+                        entityFqn={decodedDashboardFQN}
+                        entityName={entityName}
+                        entityType={EntityType.DASHBOARD}
+                        hasEditAccess={editDescriptionPermission}
+                        isDescriptionExpanded={isEmpty(charts)}
+                        isEdit={isEdit}
+                        owner={dashboardDetails.owner}
+                        showActions={!deleted}
+                        onCancel={onCancel}
+                        onDescriptionEdit={onDescriptionEdit}
+                        onDescriptionUpdate={onDescriptionUpdate}
+                        onThreadLinkSelect={onThreadLinkSelect}
+                      />
 
-                {isEmpty(charts) ? (
-                  <ErrorPlaceHolder />
-                ) : (
-                  <Table
-                    bordered
-                    className="align-table-filter-left"
-                    columns={tableColumn}
-                    data-testid="charts-table"
-                    dataSource={charts}
-                    pagination={false}
-                    rowKey="id"
-                    scroll={{ x: 1200 }}
-                    size="small"
-                  />
-                )}
-              </div>
-            </Col>
-            <Col
-              className="entity-tag-right-panel-container"
-              data-testid="entity-right-panel"
-              flex="320px">
-              <EntityRightPanel<EntityType.DASHBOARD>
-                customProperties={dashboardDetails}
-                dataProducts={dashboardDetails?.dataProducts ?? []}
-                domain={dashboardDetails?.domain}
-                editCustomAttributePermission={editCustomAttributePermission}
-                editTagPermission={editTagsPermission}
-                entityFQN={decodedDashboardFQN}
-                entityId={dashboardDetails.id}
-                entityType={EntityType.DASHBOARD}
-                selectedTags={dashboardTags}
-                viewAllPermission={viewAllPermission}
-                onExtensionUpdate={onExtensionUpdate}
-                onTagSelectionChange={handleTagSelection}
-                onThreadLinkSelect={onThreadLinkSelect}
+                      {isEmpty(charts) ? (
+                        <ErrorPlaceHolder />
+                      ) : (
+                        <Table
+                          bordered
+                          className="align-table-filter-left"
+                          columns={tableColumn}
+                          data-testid="charts-table"
+                          dataSource={charts}
+                          pagination={false}
+                          rowKey="id"
+                          scroll={{ x: 1200 }}
+                          size="small"
+                        />
+                      )}
+                    </div>
+                  ),
+                  minWidth: 800,
+                  flex: 0.87,
+                }}
+                secondPanel={{
+                  children: (
+                    <div data-testid="entity-right-panel">
+                      <EntityRightPanel<EntityType.DASHBOARD>
+                        customProperties={dashboardDetails}
+                        dataProducts={dashboardDetails?.dataProducts ?? []}
+                        domain={dashboardDetails?.domain}
+                        editCustomAttributePermission={
+                          editCustomAttributePermission
+                        }
+                        editTagPermission={editTagsPermission}
+                        entityFQN={decodedDashboardFQN}
+                        entityId={dashboardDetails.id}
+                        entityType={EntityType.DASHBOARD}
+                        selectedTags={dashboardTags}
+                        viewAllPermission={viewAllPermission}
+                        onExtensionUpdate={onExtensionUpdate}
+                        onTagSelectionChange={handleTagSelection}
+                        onThreadLinkSelect={onThreadLinkSelect}
+                      />
+                    </div>
+                  ),
+                  minWidth: 320,
+                  flex: 0.13,
+                  className: 'entity-resizable-right-panel-container',
+                }}
               />
             </Col>
           </Row>

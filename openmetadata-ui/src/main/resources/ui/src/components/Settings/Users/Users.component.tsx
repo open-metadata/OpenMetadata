@@ -51,7 +51,12 @@ import UserProfileInheritedRoles from './UsersProfile/UserProfileInheritedRoles/
 import UserProfileRoles from './UsersProfile/UserProfileRoles/UserProfileRoles.component';
 import UserProfileTeams from './UsersProfile/UserProfileTeams/UserProfileTeams.component';
 
-const Users = ({ userData, queryFilters, updateUserDetails }: Props) => {
+const Users = ({
+  afterDeleteAction,
+  userData,
+  queryFilters,
+  updateUserDetails,
+}: Props) => {
   const { tab: activeTab = UserPageTabs.ACTIVITY } =
     useParams<{ tab: UserPageTabs }>();
   const { fqn: decodedUsername } = useFqn();
@@ -76,8 +81,8 @@ const Users = ({ userData, queryFilters, updateUserDetails }: Props) => {
   );
 
   const hasEditPermission = useMemo(
-    () => isAdminUser || isLoggedInUser,
-    [isAdminUser, isLoggedInUser]
+    () => (isAdminUser || isLoggedInUser) && !userData.deleted,
+    [isAdminUser, isLoggedInUser, userData.deleted]
   );
   const fetchAssetsCount = async (query: string) => {
     try {
@@ -244,7 +249,7 @@ const Users = ({ userData, queryFilters, updateUserDetails }: Props) => {
     [
       activeTab,
       userData,
-      decodedUsername,
+    [activeTab, userData.id, decodedUsername, setPreviewAsset, tabDataRender]
       setPreviewAsset,
       tabDataRender,
       disableFields,
@@ -301,11 +306,12 @@ const Users = ({ userData, queryFilters, updateUserDetails }: Props) => {
   const userProfileCollapseHeader = useMemo(
     () => (
       <UserProfileDetails
+        afterDeleteAction={afterDeleteAction}
         updateUserDetails={updateUserDetails}
         userData={userData}
       />
     ),
-    [userData, updateUserDetails]
+    [userData, afterDeleteAction, updateUserDetails]
   );
 
   useEffect(() => {
@@ -331,15 +337,17 @@ const Users = ({ userData, queryFilters, updateUserDetails }: Props) => {
             key="1">
             <Row className="border-top p-y-lg" gutter={[0, 24]}>
               <Col span={24}>
-                <Row data-testid="user-profile-details">
+                <Row data-testid="user-profile-accessibility-details">
                   <Col className="p-x-sm border-right" span={6}>
                     <UserProfileTeams
+                      isDeletedUser={userData.deleted}
                       teams={userData.teams}
                       updateUserDetails={updateUserDetails}
                     />
                   </Col>
                   <Col className="p-x-sm border-right" span={6}>
                     <UserProfileRoles
+                      isDeletedUser={userData.deleted}
                       isUserAdmin={userData.isAdmin}
                       updateUserDetails={updateUserDetails}
                       userRoles={userData.roles}
@@ -357,11 +365,13 @@ const Users = ({ userData, queryFilters, updateUserDetails }: Props) => {
                         title={
                           <Typography.Text
                             className="right-panel-label items-center d-flex gap-2"
-                            data-testid="inherited-roles">
+                            data-testid="persona-list">
                             {t('label.persona')}
                             <PersonaSelectableList
                               multiSelect
-                              hasPermission={Boolean(isAdminUser)}
+                              hasPermission={
+                                Boolean(isAdminUser) && !userData.deleted
+                              }
                               selectedPersonas={userData.personas ?? []}
                               onUpdate={handlePersonaUpdate}
                             />

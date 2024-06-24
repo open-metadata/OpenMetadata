@@ -64,6 +64,9 @@ export interface ApplicationStore
   setJwtPrincipalClaims: (
     claims: AuthenticationConfiguration['jwtPrincipalClaims']
   ) => void;
+  setJwtPrincipalClaimsMapping: (
+    claimsMapping: AuthenticationConfiguration['jwtPrincipalClaimsMapping']
+  ) => void;
   setHelperFunctionsRef: (helperFunctions: HelperFunctions) => void;
   updateUserProfilePics: (data: { id: string; user: User }) => void;
   updateCachedEntityData: (data: {

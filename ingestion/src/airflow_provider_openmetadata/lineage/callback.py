@@ -48,7 +48,7 @@ def failure_callback(context: Dict[str, str]) -> None:
         )
         pipeline: Pipeline = metadata.get_by_name(
             entity=Pipeline,
-            fqn=f"{airflow_service_entity.name.__root__}.{dag.dag_id}",
+            fqn=f"{airflow_service_entity.name.root}.{dag.dag_id}",
         )
 
         if pipeline:
@@ -60,7 +60,7 @@ def failure_callback(context: Dict[str, str]) -> None:
             )
         else:
             logging.warning(
-                f"Pipeline {airflow_service_entity.name.__root__}.{dag.dag_id} not found. Skipping status update."
+                f"Pipeline {airflow_service_entity.name.root}.{dag.dag_id} not found. Skipping status update."
             )
 
     except Exception as exc:  # pylint: disable=broad-except
@@ -90,7 +90,7 @@ def success_callback(context: Dict[str, str]) -> None:
         )
         pipeline: Pipeline = metadata.get_by_name(
             entity=Pipeline,
-            fqn=f"{airflow_service_entity.name.__root__}.{dag.dag_id}",
+            fqn=f"{airflow_service_entity.name.root}.{dag.dag_id}",
         )
 
         add_status(

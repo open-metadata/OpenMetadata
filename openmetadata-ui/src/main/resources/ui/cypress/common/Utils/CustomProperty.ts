@@ -112,7 +112,7 @@ export const getPropertyValues = (type: string) => {
     case 'entityReference':
       return {
         value: 'Adam Matthews',
-        newValue: 'Aaron Singh',
+        newValue: 'Amber Green',
       };
 
     case 'entityReferenceList':
@@ -523,9 +523,9 @@ export const editCreatedProperty = (propertyName: string, type?: string) => {
   /**
    * @link https://docs.cypress.io/guides/references/configuration#Timeouts
    * default responseTimeout is 30000ms which is not enough for the patch request
-   * so we need to increase the responseTimeout to 50000ms
+   * so we need to increase the responseTimeout to 70000ms for AUT environment in PATCH request
    */
-  cy.wait('@checkPatchForDescription', { responseTimeout: 50000 });
+  cy.wait('@checkPatchForDescription', { responseTimeout: 70000 });
 
   cy.get('.ant-modal-wrap').should('not.exist');
 

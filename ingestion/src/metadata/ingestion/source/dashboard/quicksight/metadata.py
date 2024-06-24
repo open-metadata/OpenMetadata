@@ -30,6 +30,12 @@ from metadata.generated.schema.entity.services.ingestionPipelines.status import 
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
+from metadata.generated.schema.type.basic import (
+    EntityName,
+    FullyQualifiedEntityName,
+    Markdown,
+    SourceUrl,
+)
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
@@ -62,9 +68,7 @@ class QuicksightSource(DashboardServiceSource):
         super().__init__(config, metadata)
         self.aws_account_id = self.service_connection.awsAccountId
         self.dashboard_url = None
-        self.aws_region = (
-            self.config.serviceConnection.__root__.config.awsConfig.awsRegion
-        )
+        self.aws_region = self.config.serviceConnection.root.config.awsConfig.awsRegion
         self.default_args = {
             "AwsAccountId": self.aws_account_id,
             "MaxResults": QUICKSIGHT_MAX_RESULTS,
@@ -74,8 +78,8 @@ class QuicksightSource(DashboardServiceSource):
     def create(
         cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None
     ):
-        config = WorkflowSource.parse_obj(config_dict)
-        connection: QuickSightConnection = config.serviceConnection.__root__.config
+        config = WorkflowSource.model_validate(config_dict)
+        connection: QuickSightConnection = config.serviceConnection.root.config
         if not isinstance(connection, QuickSightConnection):
             raise InvalidSourceException(
                 f"Expected QuickSightConnection, but got {connection}"
@@ -142,18 +146,20 @@ class QuicksightSource(DashboardServiceSource):
         Method to Get Dashboard Entity
         """
         dashboard_request = CreateDashboardRequest(
-            name=dashboard_details.DashboardId,
-            sourceUrl=self.dashboard_url,
+            name=EntityName(dashboard_details.DashboardId),
+            sourceUrl=SourceUrl(self.dashboard_url),
             displayName=dashboard_details.Name,
-            description=dashboard_details.Version.Description
-            if dashboard_details.Version
+            description=Markdown(dashboard_details.Version.Description)
+            if dashboard_details.Version and dashboard_details.Version.Description
             else None,
             charts=[
-                fqn.build(
-                    self.metadata,
-                    entity_type=Chart,
-                    service_name=self.context.get().dashboard_service,
-                    chart_name=chart,
+                FullyQualifiedEntityName(
+                    fqn.build(
+                        self.metadata,
+                        entity_type=Chart,
+                        service_name=self.context.get().dashboard_service,
+                        chart_name=chart,
+                    )
                 )
                 for chart in self.context.get().charts or []
             ],
@@ -185,11 +191,13 @@ class QuicksightSource(DashboardServiceSource):
                     )
                     yield Either(
                         right=CreateChartRequest(
-                            name=chart.ChartId,
+                            name=EntityName(chart.ChartId),
                             displayName=chart.Name,
                             chartType=ChartType.Other.value,
-                            sourceUrl=self.dashboard_url,
-                            service=self.context.get().dashboard_service,
+                            sourceUrl=SourceUrl(self.dashboard_url),
+                            service=FullyQualifiedEntityName(
+                                self.context.get().dashboard_service
+                            ),
                         )
                     )
                 except Exception as exc:

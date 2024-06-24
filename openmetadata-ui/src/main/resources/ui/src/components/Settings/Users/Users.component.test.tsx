@@ -15,6 +15,7 @@ import {
   findByRole,
   findByTestId,
   findByText,
+  fireEvent,
   queryByTestId,
   render,
   screen,
@@ -45,7 +46,15 @@ jest.mock('../../../rest/rolesAPIV1', () => ({
 jest.mock(
   './UsersProfile/UserProfileDetails/UserProfileDetails.component',
   () => {
-    return jest.fn().mockReturnValue(<div>UserProfileDetails</div>);
+    return jest
+      .fn()
+      .mockImplementation(({ afterDeleteAction, updateUserDetails }) => (
+        <>
+          <div>UserProfileDetails</div>
+          <button onClick={afterDeleteAction}>AfterDeleteActionButton</button>
+          <button onClick={updateUserDetails}>UpdateUserDetailsButton</button>
+        </>
+      ));
   }
 );
 
@@ -155,6 +164,7 @@ const mockProp = {
   },
   updateUserDetails: jest.fn(),
   handlePaginate: jest.fn(),
+  afterDeleteAction: jest.fn(),
 };
 
 jest.mock('../../PageLayoutV1/PageLayoutV1', () =>
@@ -192,6 +202,26 @@ describe('Test User Component', () => {
     );
 
     expect(UserProfileDetails).toBeInTheDocument();
+  });
+
+  it('should trigger afterDeleteAction from UserProfileDetails', async () => {
+    render(<Users userData={mockUserData} {...mockProp} />, {
+      wrapper: MemoryRouter,
+    });
+
+    fireEvent.click(screen.getByText('AfterDeleteActionButton'));
+
+    expect(mockProp.afterDeleteAction).toHaveBeenCalled();
+  });
+
+  it('should trigger updateUserDetails from UserProfileDetails', async () => {
+    render(<Users userData={mockUserData} {...mockProp} />, {
+      wrapper: MemoryRouter,
+    });
+
+    fireEvent.click(screen.getByText('UpdateUserDetailsButton'));
+
+    expect(mockProp.updateUserDetails).toHaveBeenCalled();
   });
 
   it('User profile should render when open collapsible header', async () => {

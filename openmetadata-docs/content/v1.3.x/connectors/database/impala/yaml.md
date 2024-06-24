@@ -113,7 +113,7 @@ This is a sample config for Hive:
 
 {% codeBlock fileName="filename.yaml" %}
 
-```yaml
+```yaml {% isCodeBlock=true %}
 source:
   type: impala
   serviceName: local_impala

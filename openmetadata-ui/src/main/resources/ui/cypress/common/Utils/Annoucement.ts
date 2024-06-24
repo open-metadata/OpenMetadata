@@ -125,10 +125,6 @@ export const replyAnnouncementUtil = () => {
   interceptURL('GET', '/api/v1/feed/*', 'allAnnouncementFeed');
   interceptURL('POST', '/api/v1/feed/*/posts', 'addAnnouncementReply');
 
-  cy.get('[data-testid="announcement-container"] [data-testid="entity-link"]')
-    .first()
-    .click();
-
   cy.get('[data-testid="announcement-card"]').click();
 
   cy.get(

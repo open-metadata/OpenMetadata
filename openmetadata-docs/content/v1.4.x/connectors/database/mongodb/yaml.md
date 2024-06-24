@@ -103,7 +103,7 @@ This is a sample config for MongoDB:
 
 {% codeBlock fileName="filename.yaml" %}
 
-```yaml
+```yaml {% isCodeBlock=true %}
 source:
   type: mongodb
   serviceName: local_mongodb
@@ -228,7 +228,7 @@ For a simple, local installation using our docker containers, this looks like:
 {% codeBlock fileName="filename.yaml" %}
 
 
-```yaml
+```yaml {% isCodeBlock=true %}
 source:
   type: monogodb
   serviceName: local_mongodb
@@ -292,7 +292,7 @@ workflowConfig:
 
 {% /codePreview %}
 
-- You can learn more about how to configure and run the Profiler Workflow to extract Profiler data and execute the Data Quality from [here](/connectors/ingestion/workflows/profiler)
+- You can learn more about how to configure and run the Profiler Workflow to extract Profiler data and execute the Data Quality from [here](/how-to-guides/data-quality-observability/profiler/workflow)
 
 
 

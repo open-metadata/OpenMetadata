@@ -30,6 +30,7 @@ from metadata.generated.schema.entity.services.connections.search.elasticSearchC
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
+from metadata.generated.schema.type.basic import EntityName, FullyQualifiedEntityName
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException, Source
 from metadata.ingestion.models.search_index_data import OMetaIndexSampleData
@@ -59,8 +60,8 @@ class ElasticsearchSource(SearchServiceSource):
     def create(
         cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None
     ):
-        config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
-        connection: ElasticsearchConnection = config.serviceConnection.__root__.config
+        config: WorkflowSource = WorkflowSource.model_validate(config_dict)
+        connection: ElasticsearchConnection = config.serviceConnection.root.config
         if not isinstance(connection, ElasticsearchConnection):
             raise InvalidSourceException(
                 f"Expected ElasticsearchConnection, but got {connection}"
@@ -93,12 +94,12 @@ class ElasticsearchSource(SearchServiceSource):
         index_name = self.get_search_index_name(search_index_details)
         if index_name:
             search_index_request = CreateSearchIndexRequest(
-                name=index_name,
+                name=EntityName(index_name),
                 displayName=index_name,
                 searchIndexSettings=search_index_details.get(index_name, {}).get(
                     "settings", {}
                 ),
-                service=self.context.get().search_service,
+                service=FullyQualifiedEntityName(self.context.get().search_service),
                 fields=parse_es_index_mapping(
                     search_index_details.get(index_name, {}).get("mappings")
                 ),

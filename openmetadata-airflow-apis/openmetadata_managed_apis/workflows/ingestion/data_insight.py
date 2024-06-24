@@ -40,7 +40,6 @@ from metadata.generated.schema.metadataIngestion.workflow import (
     SourceConfig,
     WorkflowConfig,
 )
-from metadata.ingestion.models.encoders import show_secrets_encoder
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.workflow.data_insight import DataInsightWorkflow
 from metadata.workflow.workflow_output_handler import print_status
@@ -59,7 +58,7 @@ def data_insight_workflow(workflow_config: OpenMetadataWorkflowConfig):
     """
     set_operator_logger(workflow_config)
 
-    config = json.loads(workflow_config.json(encoder=show_secrets_encoder))
+    config = json.loads(workflow_config.model_dump_json(exclude_defaults=False))
     workflow = DataInsightWorkflow.create(config)
 
     workflow.execute()
@@ -106,7 +105,7 @@ def build_data_insight_workflow_config(
             loggerLevel=ingestion_pipeline.loggerLevel or LogLevels.INFO,
             openMetadataServerConfig=ingestion_pipeline.openMetadataServerConnection,
         ),
-        ingestionPipelineFQN=ingestion_pipeline.fullyQualifiedName.__root__,
+        ingestionPipelineFQN=ingestion_pipeline.fullyQualifiedName.root,
     )
 
     return workflow_config

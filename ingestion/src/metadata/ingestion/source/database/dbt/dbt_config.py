@@ -152,7 +152,7 @@ def _(config: DbtCloudConfig):  # pylint: disable=too-many-locals
         expiry = 0
         auth_token = config.dbtCloudAuthToken.get_secret_value(), expiry
         client_config = ClientConfig(
-            base_url=config.dbtCloudUrl,
+            base_url=str(config.dbtCloudUrl),
             api_version="api/v2",
             auth_token=lambda: auth_token,
             auth_header="Authorization",
@@ -183,7 +183,8 @@ def _(config: DbtCloudConfig):  # pylint: disable=too-many-locals
             last_run = runs_data[0]
             run_id = last_run["id"]
             logger.info(
-                f"Retrieved last successful run [{run_id}] finished {last_run['finished_at_humanized']} (duration: {last_run['duration_humanized']})"
+                f"Retrieved last successful run [{str(run_id)}]: "
+                f"Finished {str(last_run['finished_at_humanized'])} (duration: {str(last_run['duration_humanized'])})"
             )
             try:
                 logger.debug("Requesting [dbt_catalog]")

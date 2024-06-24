@@ -28,6 +28,8 @@
         }
       }
     ],
-    "provider": "system"
+    "supportsDynamicAssertion": true,
+    "provider": "system",
+    "datatQualityDimension": "Accuracy"
   }
   

@@ -35,6 +35,8 @@ import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
 import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
+import org.openmetadata.schema.analytics.CustomEvent;
+import org.openmetadata.schema.analytics.PageViewData;
 import org.openmetadata.schema.analytics.WebAnalyticEvent;
 import org.openmetadata.schema.analytics.WebAnalyticEventData;
 import org.openmetadata.schema.analytics.type.WebAnalyticEventType;
@@ -52,7 +54,10 @@ import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
+import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.ResultList;
+import org.owasp.html.PolicyFactory;
+import org.owasp.html.Sanitizers;
 
 @Slf4j
 @Path("/v1/analytics/web/events")
@@ -477,7 +482,7 @@ public class WebAnalyticEventResource
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Valid WebAnalyticEventData webAnalyticEventData) {
-    return repository.addWebAnalyticEventData(webAnalyticEventData);
+    return repository.addWebAnalyticEventData(sanitizeWebAnalyticEventData(webAnalyticEventData));
   }
 
   @DELETE
@@ -555,5 +560,37 @@ public class WebAnalyticEventResource
         .withDisplayName(create.getDisplayName())
         .withDescription(create.getDescription())
         .withEventType(create.getEventType());
+  }
+
+  public static WebAnalyticEventData sanitizeWebAnalyticEventData(
+      WebAnalyticEventData webAnalyticEventDataInput) {
+    Object inputData = webAnalyticEventDataInput.getEventData();
+    if (webAnalyticEventDataInput.getEventType().equals(WebAnalyticEventType.PAGE_VIEW)) {
+      // Validate Json as Page View Data
+      PageViewData pageViewData = JsonUtils.convertValue(inputData, PageViewData.class);
+      webAnalyticEventDataInput.setEventData(pageViewData);
+    } else if (webAnalyticEventDataInput.getEventType().equals(WebAnalyticEventType.CUSTOM_EVENT)) {
+      // Validate Json as type Custom Event
+      CustomEvent customEventData = JsonUtils.convertValue(inputData, CustomEvent.class);
+      if (customEventData.getEventType().equals(CustomEvent.CustomEventTypes.CLICK)) {
+        String sanatizedValue = sanitizeInput(customEventData.getEventValue());
+        customEventData.setEventValue(sanatizedValue);
+        webAnalyticEventDataInput.setEventData(customEventData);
+      } else {
+        throw new IllegalArgumentException("Invalid event type for custom event");
+      }
+    } else {
+      throw new IllegalArgumentException("Invalid event type for Web Analytic Event Data");
+    }
+
+    return webAnalyticEventDataInput;
+  }
+
+  public static String sanitizeInput(String input) {
+    // Create a policy that allows only safe HTML
+    PolicyFactory policy = Sanitizers.FORMATTING.and(Sanitizers.LINKS);
+
+    // Sanitize the input
+    return policy.sanitize(input);
   }
 }

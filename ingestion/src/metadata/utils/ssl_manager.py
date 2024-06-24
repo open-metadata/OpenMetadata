@@ -39,11 +39,15 @@ from metadata.generated.schema.entity.services.connections.database.postgresConn
 from metadata.generated.schema.entity.services.connections.database.redshiftConnection import (
     RedshiftConnection,
 )
+from metadata.generated.schema.entity.services.connections.database.salesforceConnection import (
+    SalesforceConnection,
+)
 from metadata.generated.schema.entity.services.connections.messaging.kafkaConnection import (
     KafkaConnection,
 )
 from metadata.generated.schema.security.ssl import verifySSLConfig
 from metadata.ingestion.connections.builders import init_empty_connection_arguments
+from metadata.ingestion.models.custom_pydantic import CustomSecretStr
 from metadata.ingestion.source.connections import get_connection
 from metadata.utils.logger import utils_logger
 
@@ -92,14 +96,14 @@ class SSLManager:
         connection.connectionArguments = (
             connection.connectionArguments or init_empty_connection_arguments()
         )
-        ssl_args = connection.connectionArguments.__root__.get("ssl", {})
-        if connection.sslConfig.__root__.caCertificate:
+        ssl_args = connection.connectionArguments.root.get("ssl", {})
+        if connection.sslConfig.root.caCertificate:
             ssl_args["ssl_ca"] = self.ca_file_path
-        if connection.sslConfig.__root__.sslCertificate:
+        if connection.sslConfig.root.sslCertificate:
             ssl_args["ssl_cert"] = self.cert_file_path
-        if connection.sslConfig.__root__.sslKey:
+        if connection.sslConfig.root.sslKey:
             ssl_args["ssl_key"] = self.key_file_path
-        connection.connectionArguments.__root__["ssl"] = ssl_args
+        connection.connectionArguments.root["ssl"] = ssl_args
         return connection
 
     @setup_ssl.register(PostgresConnection)
@@ -113,19 +117,36 @@ class SSLManager:
 
         if not connection.connectionArguments:
             connection.connectionArguments = init_empty_connection_arguments()
-        connection.connectionArguments.__root__["sslmode"] = connection.sslMode.value
+        connection.connectionArguments.root["sslmode"] = connection.sslMode.value
         if connection.sslMode in (
             verifySSLConfig.SslMode.verify_ca,
             verifySSLConfig.SslMode.verify_full,
         ):
             if self.ca_file_path:
-                connection.connectionArguments.__root__[
-                    "sslrootcert"
-                ] = self.ca_file_path
+                connection.connectionArguments.root["sslrootcert"] = self.ca_file_path
             else:
                 raise ValueError(
                     "CA certificate is required for SSL mode verify-ca or verify-full"
                 )
+        return connection
+
+    @setup_ssl.register(SalesforceConnection)
+    def _(self, connection):
+        import requests  # pylint: disable=import-outside-toplevel
+
+        connection: SalesforceConnection = cast(SalesforceConnection, connection)
+        connection.connectionArguments = (
+            connection.connectionArguments or init_empty_connection_arguments()
+        )
+        session = requests.Session()
+        if self.ca_file_path:
+            session.verify = self.ca_file_path
+        if self.cert_file_path and self.key_file_path:
+            session.cert = (self.cert_file_path, self.key_file_path)
+        connection.connectionArguments.root = (
+            connection.connectionArguments.root or {}
+        )  # to satisfy mypy
+        connection.connectionArguments.root["session"] = session
         return connection
 
     @setup_ssl.register(QlikSenseConnection)
@@ -149,7 +170,22 @@ class SSLManager:
 
 
 @singledispatch
-def check_ssl_and_init(_):
+def check_ssl_and_init(_) -> None:
+    return None
+
+
+@check_ssl_and_init.register(cls=SalesforceConnection)
+def _(connection) -> Union[SSLManager, None]:
+    service_connection = cast(SalesforceConnection, connection)
+    ssl: Optional[verifySSLConfig.SslConfig] = service_connection.sslConfig
+    if ssl and ssl.root.caCertificate:
+        ssl_dict: dict[str, Union[CustomSecretStr, None]] = {
+            "ca": ssl.root.caCertificate
+        }
+        if (ssl.root.sslCertificate) and (ssl.root.sslKey):
+            ssl_dict["cert"] = ssl.root.sslCertificate
+            ssl_dict["key"] = ssl.root.sslKey
+        return SSLManager(**ssl_dict)
     return None
 
 
@@ -158,13 +194,11 @@ def check_ssl_and_init(_):
 def _(connection):
     service_connection = cast(Union[MysqlConnection, DorisConnection], connection)
     ssl: Optional[verifySSLConfig.SslConfig] = service_connection.sslConfig
-    if ssl and (
-        ssl.__root__.caCertificate or ssl.__root__.sslCertificate or ssl.__root__.sslKey
-    ):
+    if ssl and (ssl.root.caCertificate or ssl.root.sslCertificate or ssl.root.sslKey):
         return SSLManager(
-            ca=ssl.__root__.caCertificate,
-            cert=ssl.__root__.sslCertificate,
-            key=ssl.__root__.sslKey,
+            ca=ssl.root.caCertificate,
+            cert=ssl.root.sslCertificate,
+            key=ssl.root.sslKey,
         )
     return None
 
@@ -179,15 +213,14 @@ def _(connection):
     )
     if connection.sslMode:
         return SSLManager(
-            ca=connection.sslConfig.__root__.caCertificate
-            if connection.sslConfig
-            else None
+            ca=connection.sslConfig.root.caCertificate if connection.sslConfig else None
         )
     return None
 
 
 def get_ssl_connection(service_config):
     try:
+        # To be cleaned up as part of https://github.com/open-metadata/OpenMetadata/issues/15913
         ssl_manager: SSLManager = check_ssl_and_init(service_config)
         if ssl_manager:
             service_config = ssl_manager.setup_ssl(service_config)

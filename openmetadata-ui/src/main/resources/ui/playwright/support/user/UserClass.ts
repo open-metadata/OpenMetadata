@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { APIRequestContext, Page } from '@playwright/test';
-import { generateRandomUsername } from '../../utils/userUtils';
+import { generateRandomUsername } from '../../utils/user';
 
 type ResponseDataType = {
   name: string;
@@ -57,7 +57,9 @@ export class UserClass {
     await page.fill('input[id="email"]', userName);
     await page.locator('#email').press('Tab');
     await page.fill('input[id="password"]', password);
+    const loginRes = page.waitForResponse('/api/v1/users/login');
     await page.getByTestId('login').click();
+    await loginRes;
   }
 
   async logout(page: Page) {

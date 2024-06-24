@@ -247,7 +247,38 @@ h2.rotated-header {
   background-color: transparent !important;
   border-left: 1px solid @border-color;
 }
+.splitter.collapsed {
+  border-left: none;
+}
 
 .hidden {
   display: none;
+}
+
+.collapse-button {
+  position: absolute;
+  top: 8px;
+  left: -24px;
+  padding: 4px 8px;
+  z-index: 10;
+  background: white !important;
+  .collapse-icon {
+    vertical-align: middle;
+    width: 16px;
+  }
+}
+.collapse-button.collapsed {
+  position: absolute;
+  top: 8px;
+  left: auto;
+  right: -16px;
+  padding: 4px 12px;
+  .collapse-icon {
+    margin-left: 4px;
+    width: 20px;
+  }
+}
+.right-panel-collapsed {
+  flex: 0 !important;
+  padding: 0 !important;
 }

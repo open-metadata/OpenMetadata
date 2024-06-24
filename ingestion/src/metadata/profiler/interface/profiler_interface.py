@@ -117,7 +117,7 @@ class ProfilerInterface(ABC):
         except AttributeError:
             self.status.entity = None
         else:
-            self.status.entity = fqn.__root__ if fqn else None
+            self.status.entity = fqn.root if fqn else None
         self.profile_sample_config = profile_sample_config
         self.profile_query = sample_query
         self.partition_details = (
@@ -272,7 +272,7 @@ class ProfilerInterface(ABC):
         """
         for schema_config in profiler_config.schemaConfig:
             if (
-                schema_config.fullyQualifiedName.__root__
+                schema_config.fullyQualifiedName.root
                 == entity.databaseSchema.fullyQualifiedName
                 and ProfilerInterface._get_sample_storage_config(schema_config)
             ):
@@ -280,7 +280,7 @@ class ProfilerInterface(ABC):
 
         for database_config in profiler_config.databaseConfig:
             if (
-                database_config.fullyQualifiedName.__root__
+                database_config.fullyQualifiedName.root
                 == entity.database.fullyQualifiedName
                 and ProfilerInterface._get_sample_storage_config(database_config)
             ):

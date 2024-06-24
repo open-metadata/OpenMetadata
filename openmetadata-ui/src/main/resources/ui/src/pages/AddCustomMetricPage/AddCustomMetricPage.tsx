@@ -253,14 +253,9 @@ const AddCustomMetricPage = () => {
       })}
       secondPanel={{
         children: secondPanel,
-        className: 'p-md service-doc-panel',
-        minWidth: 60,
+        className: 'p-md p-t-xl',
         flex: 0.5,
-        overlay: {
-          displayThreshold: 200,
-          header: t('label.data-profiler-metrics'),
-          rotation: 'counter-clockwise',
-        },
+        minWidth: 400,
       }}
     />
   );

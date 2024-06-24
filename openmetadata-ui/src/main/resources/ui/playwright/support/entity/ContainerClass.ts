@@ -12,7 +12,7 @@
  */
 import { APIRequestContext, Page } from '@playwright/test';
 import { uuid } from '../../utils/common';
-import { visitEntityPage } from '../../utils/entityUtils';
+import { visitEntityPage } from '../../utils/entity';
 import { EntityTypeEndpoint } from './Entity.interface';
 import { EntityClass } from './EntityClass';
 
@@ -34,7 +34,7 @@ export class ContainerClass extends EntityClass {
     },
   };
   entity = {
-    name: `pw.container%${uuid()}`,
+    name: `pw-container-${uuid()}`,
     displayName: `pw-container-${uuid()}`,
     service: this.service.name,
   };

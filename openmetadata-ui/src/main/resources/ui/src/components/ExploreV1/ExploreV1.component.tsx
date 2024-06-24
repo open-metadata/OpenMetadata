@@ -56,12 +56,12 @@ import { getSelectedValuesFromQuickFilter } from '../../utils/Explore.utils';
 import { getApplicationDetailsPath } from '../../utils/RouterUtils';
 import searchClassBase from '../../utils/SearchClassBase';
 import Loader from '../common/Loader/Loader';
+import ResizablePanels from '../common/ResizablePanels/ResizablePanels';
 import {
   ExploreProps,
   ExploreQuickFilterField,
   ExploreSearchIndex,
 } from '../Explore/ExplorePage.interface';
-import PageLayoutV1 from '../PageLayoutV1/PageLayoutV1';
 import SearchedData from '../SearchedData/SearchedData';
 import { SearchedDataProps } from '../SearchedData/SearchedData.interface';
 import './exploreV1.less';
@@ -358,71 +358,115 @@ const ExploreV1: React.FC<ExploreProps> = ({
                           entity: '',
                         })}
                       </Typography.Text>
+                      <span className="sorting-dropdown-container">
+                        <SortingDropDown
+                          fieldList={tabsInfo[searchIndex].sortingFields}
+                          handleFieldDropDown={onChangeSortValue}
+                          sortField={sortValue}
+                        />
+                        <Button
+                          className="p-0"
+                          data-testid="sort-order-button"
+                          size="small"
+                          type="text"
+                          onClick={() =>
+                            onChangeSortOder(
+                              isAscSortOrder ? SORT_ORDER.DESC : SORT_ORDER.ASC
+                            )
+                          }>
+                          {isAscSortOrder ? (
+                            <SortAscendingOutlined
+                              style={{ fontSize: '14px' }}
+                              {...sortProps}
+                            />
+                          ) : (
+                            <SortDescendingOutlined
+                              style={{ fontSize: '14px' }}
+                              {...sortProps}
+                            />
+                          )}
+                        </Button>
+                      </span>
+                    </Col>
+                    {isElasticSearchIssue ? (
+                      <Col span={24}>
+                        <IndexNotFoundBanner />
+                      </Col>
+                    ) : (
+                      <></>
                     )}
-
-                    <Typography.Text
-                      className="text-primary self-center cursor-pointer"
-                      data-testid="advance-search-button"
-                      onClick={() => toggleModal(true)}>
-                      {t('label.advanced-entity', {
-                        entity: '',
+                    {sqlQuery && (
+                      <Col span={24}>
+                        <AppliedFilterText
+                          filterText={sqlQuery}
+                          onEdit={() => toggleModal(true)}
+                        />
+                      </Col>
+                    )}
+                  </Row>
+                </Col>
+              </Row>
+              <ResizablePanels
+                applyDefaultStyle={false}
+                firstPanel={{
+                  children: (
                       })}
-                    </Typography.Text>
+                    <Row className="p-t-md">
                     <span className="sorting-dropdown-container">
-                      <SortingDropDown
-                        fieldList={tabsInfo[searchIndex].sortingFields}
-                        handleFieldDropDown={onChangeSortValue}
-                        sortField={sortValue}
+                      <Col
+                        lg={{ offset: 2, span: 19 }}
+                        md={{ offset: 0, span: 24 }}>
+                        {!loading && !isElasticSearchIssue ? (
                       />
-                      <Button
-                        className="p-0"
-                        data-testid="sort-order-button"
-                        size="small"
+                          <SearchedData
+                            isFilterSelected
+                            data={searchResults?.hits.hits ?? []}
+                            filter={parsedSearch}
                         type="text"
-                        onClick={() =>
-                          onChangeSortOder(
-                            isAscSortOrder ? SORT_ORDER.DESC : SORT_ORDER.ASC
+                            handleSummaryPanelDisplay={
+                              handleSummaryPanelDisplay
+                            }
                           )
-                        }>
-                        {isAscSortOrder ? (
+                            isSummaryPanelVisible={showSummaryPanel}
+                            selectedEntityId={entityDetails?.id || ''}
                           <SortAscendingOutlined
-                            style={{ fontSize: '14px' }}
-                            {...sortProps}
+                            totalValue={searchResults?.hits.total.value ?? 0}
+                            onPaginationChange={onChangePage}
                           />
                         ) : (
-                          <SortDescendingOutlined
+                          <></>
                             style={{ fontSize: '14px' }}
                             {...sortProps}
                           />
                         )}
                       </Button>
                     </span>
-                  </Col>
+                        {loading ? <Loader /> : <></>}
                   {isElasticSearchIssue ? (
                     <Col span={24}>
-                      <IndexNotFoundBanner />
-                    </Col>
-                  ) : (
-                    <></>
-                  )}
-                  {sqlQuery && (
+                      </Col>
+                    </Row>
+                  ),
+                  minWidth: 600,
+                  flex: 0.65,
+                }}
+                hideSecondPanel={
+                  !showSummaryPanel && !loading && !entityDetails
                     <Col span={24}>
                       <AppliedFilterText
                         filterText={sqlQuery}
                         onEdit={() => toggleModal(true)}
                       />
                     </Col>
-                  )}
+                }
                 </Row>
               </Col>
             </Row>
             <PageLayoutV1
               className="p-0 explore-page-layout"
-              pageTitle={t('label.explore')}
-              rightPanel={
-                showSummaryPanel &&
-                entityDetails &&
-                !loading && (
+                pageTitle={t('label.explore')}
+                secondPanel={{
+                  children: showSummaryPanel && entityDetails && !loading && (
                   <EntitySummaryPanel
                     entityDetails={{ details: entityDetails }}
                     handleClosePanel={handleClosePanel}
@@ -454,16 +498,16 @@ const ExploreV1: React.FC<ExploreProps> = ({
                       totalValue={searchResults?.hits.total.value ?? 0}
                       onPaginationChange={onChangePage}
                     />
-                  ) : (
-                    <></>
-                  )}
-                  {loading ? <Loader /> : <></>}
-                </Col>
-              </Row>
-            </PageLayoutV1>
-          </Content>
-        </Layout>
-      )}
+                  ),
+                  minWidth: 400,
+                  flex: 0.35,
+                  className: 'entity-summary-resizable-right-panel-container',
+                }}
+              />
+            </Content>
+          </Layout>
+        )}
+      </div>
 
       {searchQueryParam && tabItems.length === 0 && !loading && (
         <Space

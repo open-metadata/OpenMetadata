@@ -319,14 +319,9 @@ const AddDataQualityTestV1: React.FC<AddDataQualityTestProps> = ({
       })}
       secondPanel={{
         children: secondPanel,
-        className: 'p-md service-doc-panel',
-        minWidth: 60,
+        className: 'p-md p-t-xl',
+        minWidth: 400,
         flex: 0.4,
-        overlay: {
-          displayThreshold: 200,
-          header: t('label.data-profiler-metrics'),
-          rotation: 'counter-clockwise',
-        },
       }}
     />
   );
