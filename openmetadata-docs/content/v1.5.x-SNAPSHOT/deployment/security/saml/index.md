@@ -82,6 +82,13 @@ Every IDP provides this information, we can download the XML Metadata and config
 
 To add a private key, you need to include it in the keystore and update the configuration details accordingly [here](https://github.com/open-metadata/OpenMetadata/blob/main/conf/openmetadata.yaml#L219).
 
+```yaml
+  security:
+    keyStoreFilePath: ${SAML_KEYSTORE_FILE_PATH:-"/path/to/keystore.jks"}
+    keyStoreAlias: ${SAML_KEYSTORE_ALIAS:-"myKeystoreAlias"}
+    keyStorePassword: ${SAML_KEYSTORE_PASSWORD:-"myKeystorePassword"}
+```
+
 {% /note %}
 
 SP Metadata XML is available at "http://localhost:8585/api/v1/saml/metadata", `localhost` needs to be updated with the correct URI.
