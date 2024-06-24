@@ -22,8 +22,8 @@ export class EntityDataClass {
   static readonly domain2 = new Domain();
   static readonly glossary1 = new Glossary();
   static readonly glossary2 = new Glossary();
-  static readonly glossaryTerm1 = new GlossaryTerm(this.glossary1.data.name);
-  static readonly glossaryTerm2 = new GlossaryTerm(this.glossary2.data.name);
+  static readonly glossaryTerm1 = new GlossaryTerm(this.glossary1);
+  static readonly glossaryTerm2 = new GlossaryTerm(this.glossary2);
   static readonly user1 = new UserClass();
   static readonly user2 = new UserClass();
   static readonly team1 = new TeamClass();

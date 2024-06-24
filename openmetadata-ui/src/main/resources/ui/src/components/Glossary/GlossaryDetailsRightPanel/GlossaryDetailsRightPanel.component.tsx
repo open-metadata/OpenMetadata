@@ -39,11 +39,10 @@ import {
   getDiffValue,
   getEntityVersionTags,
 } from '../../../utils/EntityVersionUtils';
-import { UserTeam } from '../../common/AssigneeList/AssigneeList.interface';
 import { CustomPropertyTable } from '../../common/CustomPropertyTable/CustomPropertyTable';
 import { ExtentionEntitiesKeys } from '../../common/CustomPropertyTable/CustomPropertyTable.interface';
 import { DomainLabel } from '../../common/DomainLabel/DomainLabel.component';
-import UserPopOverCard from '../../common/PopOverCard/UserPopOverCard';
+import { OwnerLabel } from '../../common/OwnerLabel/OwnerLabel.component';
 import TagButton from '../../common/TagButton/TagButton.component';
 import TagsContainerV2 from '../../Tag/TagsContainerV2/TagsContainerV2';
 import { DisplayType } from '../../Tag/TagsViewer/TagsViewer.interface';
@@ -150,12 +149,7 @@ const GlossaryDetailsRightPanel = ({
     (ownerDisplayName: string | ReactNode, owner?: EntityReference) => {
       if (owner) {
         return (
-          <UserPopOverCard
-            showUserName
-            displayName={ownerDisplayName}
-            type={owner.type as UserTeam}
-            userName={owner.name ?? ''}
-          />
+          <OwnerLabel pills owner={owner} ownerDisplayName={ownerDisplayName} />
         );
       }
       if (!(permissions.EditOwner || permissions.EditAll)) {

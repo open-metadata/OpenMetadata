@@ -88,6 +88,7 @@ const DataProductSummary = ({
           <Col span={24}>
             {entityDetails.owner ? (
               <OwnerLabel
+                pills
                 key={entityDetails.owner.fullyQualifiedName}
                 owner={entityDetails.owner}
               />
@@ -118,6 +119,7 @@ const DataProductSummary = ({
               <Space wrap size={[8, 8]}>
                 {experts.map((assignee) => (
                   <OwnerLabel
+                    pills
                     key={assignee.fullyQualifiedName}
                     owner={assignee}
                   />

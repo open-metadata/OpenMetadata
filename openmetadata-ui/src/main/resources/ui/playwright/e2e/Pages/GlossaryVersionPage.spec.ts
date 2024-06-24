@@ -96,8 +96,11 @@ test('Glossary', async ({ page }) => {
       )
     ).toBeVisible();
 
+    const glossaryRes = page.waitForResponse(
+      'api/v1/glossaryTerms?directChildrenOf=*'
+    );
     await page.click('[data-testid="version-button"]');
-    await versionPageResponse;
+    await glossaryRes;
 
     await addMultiOwner({
       page,
@@ -186,8 +189,11 @@ test('GlossaryTerm', async ({ page }) => {
       )
     ).toBeVisible();
 
+    const glossaryTermsRes = page.waitForResponse(
+      '/api/v1/glossaryTerms/name/**'
+    );
     await page.click('[data-testid="version-button"]');
-    await versionPageResponse;
+    await glossaryTermsRes;
 
     await addMultiOwner({
       page,

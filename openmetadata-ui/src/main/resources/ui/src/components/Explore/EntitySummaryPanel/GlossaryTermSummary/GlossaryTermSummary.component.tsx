@@ -86,6 +86,7 @@ function GlossaryTermSummary({
               <Space wrap size={[8, 8]}>
                 {reviewers.map((assignee) => (
                   <OwnerLabel
+                    pills
                     key={assignee.fullyQualifiedName}
                     owner={assignee}
                   />

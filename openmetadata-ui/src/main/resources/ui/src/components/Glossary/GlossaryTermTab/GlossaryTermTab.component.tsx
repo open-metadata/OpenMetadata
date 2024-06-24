@@ -165,8 +165,8 @@ const GlossaryTermTab = ({
         title: t('label.owner'),
         dataIndex: 'owner',
         key: 'owner',
-        width: '15%',
-        render: (owner: EntityReference) => <OwnerLabel owner={owner} />,
+        width: '17%',
+        render: (owner: EntityReference) => <OwnerLabel pills owner={owner} />,
       },
       {
         title: t('label.status'),
@@ -199,7 +199,7 @@ const GlossaryTermTab = ({
       data.push({
         title: t('label.action-plural'),
         key: 'new-term',
-        width: '12%',
+        width: '10%',
         render: (_, record) => {
           const status = record.status ?? Status.Approved;
           const allowAddTerm = status === Status.Approved;

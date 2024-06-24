@@ -13,9 +13,7 @@
 import { Space } from 'antd';
 import { isEmpty, isUndefined } from 'lodash';
 import React, { useCallback } from 'react';
-import { Link } from 'react-router-dom';
-import ProfilePicture from '../../../components/common/ProfilePicture/ProfilePicture';
-import { getUserPath, NO_DATA_PLACEHOLDER } from '../../../constants/constants';
+import { NO_DATA_PLACEHOLDER } from '../../../constants/constants';
 import { EntityField } from '../../../constants/Feeds.constants';
 import { EntityChangeOperations } from '../../../enums/VersionPage.enum';
 import {
@@ -30,6 +28,7 @@ import {
   getDiffByFieldName,
   getRemovedDiffElement,
 } from '../../../utils/EntityVersionUtils';
+import { OwnerLabel } from '../../common/OwnerLabel/OwnerLabel.component';
 import { DomainExpertsProps } from './DomainExperts.interface';
 
 function DomainExperts({
@@ -59,16 +58,11 @@ function DomainExperts({
   const getExpert = useCallback(
     (expert: EntityReference, operation: EntityChangeOperations) => {
       return (
-        <Space className="m-r-xss" key={expert.id} size={4}>
-          <ProfilePicture
-            displayName={getEntityName(expert)}
-            name={expert.name ?? ''}
-            width="20"
-          />
-          <Link to={getUserPath(expert.name ?? '')}>
-            {getExpertName(expert, operation)}
-          </Link>
-        </Space>
+        <OwnerLabel
+          pills
+          owner={expert}
+          ownerDisplayName={getExpertName(expert, operation)}
+        />
       );
     },
     []
