@@ -126,7 +126,9 @@
                         "name": "columnCount",
                         "value": "9"
                        }
-                    ]
+                    ],
+                    "maxBound": 10,
+                    "minBound": 1
                 },
                 {
                     "result": "Found 9 column vs. the expected range [1, 10].",
@@ -136,7 +138,9 @@
                         "name": "columnCount",
                         "value": "9"
                        }
-                    ]
+                    ],
+                    "maxBound": 10,
+                    "minBound": 7
                 },
                 {
                     "result": "Found 9 column vs. the expected range [1, 10].",
@@ -146,7 +150,9 @@
                         "name": "columnCount",
                         "value": "9"
                        }
-                    ]
+                    ],
+                    "maxBound": 10,
+                    "minBound": 1
                 },
                 {
                     "result": "columnCount should not be None for TableColumnCountToBeBetween",
@@ -156,7 +162,9 @@
                         "name": "columnCount",
                         "value": "9"
                        }
-                    ]
+                    ],
+                    "maxBound": 10,
+                    "minBound": 1
                 },
                 {
                     "result": "Found 9 column vs. the expected range [1, 10].",
@@ -166,7 +174,9 @@
                         "name": "columnCount",
                         "value": "9"
                        }
-                    ]
+                    ],
+                    "maxBound": 10,
+                    "minBound": 1
                 },
                 {
                     "result": "Found 8 column vs. the expected range [1, 10].",
@@ -176,7 +186,9 @@
                         "name": "columnCount",
                         "value": "8"
                        }
-                    ]
+                    ],
+                    "maxBound": 10,
+                    "minBound": 1
                 },
                 {
                     "result": "Found 8 column vs. the expected range [1, 10].",
@@ -186,7 +198,9 @@
                         "name": "columnCount",
                         "value": "8"
                        }
-                    ]
+                    ],
+                    "maxBound": 10,
+                    "minBound": 1
                 },
                 {
                     "result": "Found 14 column vs. the expected range [1, 10].",
@@ -196,7 +210,9 @@
                         "name": "columnCount",
                         "value": "14"
                        }
-                    ]
+                    ],
+                    "maxBound": 31,
+                    "minBound": 20
                 },
                 {
                     "result": "Found 8 column vs. the expected range [1, 10].",
@@ -206,7 +222,9 @@
                         "name": "columnCount",
                         "value": "8"
                        }
-                    ]
+                    ],
+                    "maxBound": 150,
+                    "minBound": 7
                 },
                 {
                     "result": "Found 8 column vs. the expected range [1, 10].",
@@ -216,7 +234,9 @@
                         "name": "columnCount",
                         "value": "8"
                        }
-                    ]
+                    ],
+                    "maxBound": 150,
+                    "minBound": 7
                 }
             ]
         },
@@ -231,7 +251,9 @@
                         "name": "max",
                         "value": "65"
                        }
-                    ]
+                    ],
+                    "maxBound": 100,
+                    "minBound": 50
                 },
                 {
                     "result": "Found max=25 vs. the expected min=50, max=100.",
@@ -241,7 +263,9 @@
                         "name": "max",
                         "value": "25"
                        }
-                    ]
+                    ],
+                    "maxBound": 100,
+                    "minBound": 50
                 },
                 {
                     "result": "Found max=56 vs. the expected min=50, max=100.",
@@ -261,7 +285,9 @@
                         "name": "max",
                         "value": "99"
                        }
-                    ]
+                    ],
+                    "maxBound": 100,
+                    "minBound": 50
                 },
                 {
                     "result": "Found max=190 vs. the expected min=50, max=100.",
@@ -271,7 +297,9 @@
                         "name": "max",
                         "value": "190"
                        }
-                    ]
+                    ],
+                    "maxBound": 170,
+                    "minBound": 50
                 },
                 {
                     "result": "Found max=66 vs. the expected min=50, max=100.",
@@ -281,7 +309,9 @@
                         "name": "max",
                         "value": "66"
                        }
-                    ]
+                    ],
+                    "maxBound": 100,
+                    "minBound": 10
                 },
                 {
                     "result": "Found max=76 vs. the expected min=50, max=100.",
@@ -301,7 +331,9 @@
                         "name": "max",
                         "value": "46"
                        }
-                    ]
+                    ],
+                    "maxBound": 100,
+                    "minBound": 51
                 },
                 {
                     "result": "Found max=100 vs. the expected min=50, max=100.",
@@ -311,7 +343,8 @@
                         "name": "max",
                         "value": "100"
                        }
-                    ]
+                    ],
+                    "maxBound": 100
                 },
                 {
                     "result": "We expect `max` to be informed on the profiler for ColumnValueMaxToBeBetween max=None.",
@@ -446,7 +479,9 @@
                         "name": "max",
                         "value": "None"
                        }
-                    ]
+                    ],
+                    "maxBound": 96162,
+                    "minBound": 90001
                 },
                 {
                     "result": "Found min=35005, max=92808 vs. the expected min=90001, max=96162.",
@@ -460,7 +495,9 @@
                         "name": "max",
                         "value": "92808"
                        }
-                    ]
+                    ],
+                    "maxBound": 96162,
+                    "minBound": 90001
                 },
                 {
                     "result": "Found min=90006, max=92808 vs. the expected min=90001, max=96162.",
@@ -502,7 +539,9 @@
                         "name": "max",
                         "value": "99001"
                        }
-                    ]     
+                    ],
+                    "maxBound": 96162,
+                    "minBound": 90001 
                 },
                 {
                     "result": "Found min=1001, max=2789 vs. the expected min=90001, max=96162.",
@@ -516,7 +555,9 @@
                         "name": "max",
                         "value": "2789"
                        }
-                    ]  
+                    ],
+                    "maxBound": 96162,
+                    "minBound": 90001
                 },
                 {
                     "result": "Found min=91009, max=92808 vs. the expected min=90001, max=96162.",
@@ -530,7 +571,8 @@
                         "name": "max",
                         "value": "92808"
                        }
-                    ]  
+                    ],
+                    "minBound": 90001
                 },
                 {
                     "result": "Found min=90008, max=92808 vs. the expected min=90001, max=96162.",
@@ -544,7 +586,9 @@
                         "name": "max",
                         "value": "92808"
                        }
-                    ]  
+                    ],
+                    "maxBound": 96162,
+                    "minBound": 90001
                 },
                 {
                     "result": "Found min=92000, max=92808 vs. the expected min=90001, max=96162.",
@@ -558,9 +602,10 @@
                         "name": "max",
                         "value": "92808"
                        }
-                    ]  
+                    ],
+                    "maxBound": 96162,
+                    "minBound": 90001
                 },
-
                 {
                     "result": "Found min=90001, max=96612 vs. the expected min=90001, max=96162.",
                     "testCaseStatus": "Success",
@@ -573,7 +618,9 @@
                         "name": "max",
                         "value": "96612"
                        }
-                    ] 
+                    ],
+                    "maxBound": 96162,
+                    "minBound": 90001
                 }
             ]
         },
@@ -592,7 +639,9 @@
                         "name": "max",
                         "value": "2789"
                        }
-                    ]  
+                    ],
+                    "maxBound": 96162,
+                    "minBound": 90001
                 }
             ],
             "failedRowsSample": {

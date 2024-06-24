@@ -1525,6 +1525,8 @@ class SampleDataSource(
                                 TestResultValue.model_validate(res_value)
                                 for res_value in result["testResultValues"]
                             ],
+                            minBound=result.get("minBound"),
+                            maxBound=result.get("maxBound"),
                         ),
                         test_case_name=case.fullyQualifiedName.root,
                     )

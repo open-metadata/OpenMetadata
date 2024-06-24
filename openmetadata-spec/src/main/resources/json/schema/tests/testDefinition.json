@@ -104,6 +104,20 @@
           }
         }
       }
+    },
+    "dataQualityDimensions": {
+      "javaType": "org.openmetadata.schema.type.DataQualityDimensions",
+      "description": "This enum defines the dimension a test case belongs to.",
+      "type": "string",
+      "enum": [
+        "Completeness",
+        "Accuracy",
+        "Consistency",
+        "Validity",
+        "Uniqueness",
+        "Integrity",
+        "SQL"
+      ]
     }
   },
   "properties": {
@@ -147,6 +161,9 @@
       "items": {
         "$ref": "#/definitions/testCaseParameterDefinition"
       }
+    },
+    "datatQualityDimension": {
+      "$ref": "#/definitions/dataQualityDimensions"
     },
     "owner": {
       "description": "Owner of this TestCase definition.",
