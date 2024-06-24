@@ -1,4 +1,5 @@
 import sys
+import time
 from os import path
 
 import pytest
@@ -81,6 +82,7 @@ def db_service(metadata, postgres_container):
 
 @pytest.fixture(scope="module")
 def ingest_metadata(db_service, metadata: OpenMetadata):
+    search_cache.clear()
     workflow_config = OpenMetadataWorkflowConfig(
         source=Source(
             type=db_service.connection.config.type.value.lower(),
@@ -123,6 +125,9 @@ def ingest_postgres_lineage(db_service, ingest_metadata, metadata: OpenMetadata)
 
 
 def test_ingest_query_log(db_service, ingest_metadata, metadata: OpenMetadata):
+    reindex_search(
+        metadata
+    )  # since query cache is stored in ES, we need to reindex to avoid having a stale cache
     workflow_config = {
         "source": {
             "type": "query-log-lineage",
@@ -355,3 +360,26 @@ def test_usage_delete_usage(db_service, ingest_postgres_lineage, metadata):
     metadata_ingestion.execute()
     metadata_ingestion.raise_from_status()
     run_usage_workflow(db_service, metadata)
+
+
+def reindex_search(metadata: OpenMetadata, timeout=60):
+    start = time.time()
+    status = None
+    while status is None or status == "running":
+        response = metadata.client.get(
+            "/apps/name/SearchIndexingApplication/status?offset=0&limit=1"
+        )
+        status = response["data"][0]["status"]
+        if time.time() - start > timeout:
+            raise TimeoutError("Timed out waiting for reindexing to start")
+        time.sleep(1)
+    time.sleep(1)
+    metadata.client.post("/apps/trigger/SearchIndexingApplication")
+    while status != "success":
+        response = metadata.client.get(
+            "/apps/name/SearchIndexingApplication/status?offset=0&limit=1"
+        )
+        status = response["data"][0]["status"]
+        if time.time() - start > timeout:
+            raise TimeoutError("Timed out waiting for reindexing to complete")
+        time.sleep(1)
