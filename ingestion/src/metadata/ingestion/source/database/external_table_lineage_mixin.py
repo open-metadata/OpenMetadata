@@ -71,7 +71,7 @@ class ExternalTableLineageMixin(ABC):
                     and table_entity[0]
                 ):
                     columns_list = [
-                        column.name.__root__ for column in table_entity[0].columns
+                        column.name.root for column in table_entity[0].columns
                     ]
                     columns_lineage = self._get_column_lineage(
                         location_entity[0].dataModel, table_entity[0], columns_list
@@ -108,7 +108,7 @@ class ExternalTableLineageMixin(ABC):
             return None
         for entity_column in data_model_entity.columns:
             if entity_column.displayName.lower() == column.lower():
-                return entity_column.fullyQualifiedName.__root__
+                return entity_column.fullyQualifiedName.root
         return None
 
     def _get_column_lineage(
