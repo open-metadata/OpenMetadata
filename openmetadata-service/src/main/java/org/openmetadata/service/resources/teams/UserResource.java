@@ -590,20 +590,16 @@ public class UserResource extends EntityResource<User, UserRepository> {
           User created = addHref(uriInfo, repository.create(uriInfo, user));
           createdUserRes = Response.created(created.getHref()).entity(created).build();
         } else {
-          return Response.status(FORBIDDEN)
-              .type(MediaType.APPLICATION_JSON_TYPE)
-              .entity(
-                  new ErrorMessage(
-                      FORBIDDEN.getStatusCode(), CatalogExceptionMessage.OTHER_USER_SIGN_UP))
-              .build();
+          throw new CustomExceptionMessage(
+              FORBIDDEN,
+              CatalogExceptionMessage.OTHER_USER_SIGN_UP_ERROR,
+              CatalogExceptionMessage.OTHER_USER_SIGN_UP);
         }
       } else {
-        return Response.status(FORBIDDEN)
-            .type(MediaType.APPLICATION_JSON_TYPE)
-            .entity(
-                new ErrorMessage(
-                    FORBIDDEN.getStatusCode(), CatalogExceptionMessage.SELF_SIGNUP_DISABLED))
-            .build();
+        throw new CustomExceptionMessage(
+            FORBIDDEN,
+            CatalogExceptionMessage.SELF_SIGNUP_NOT_ENABLED,
+            CatalogExceptionMessage.SELF_SIGNUP_DISABLED_MESSAGE);
       }
     }
 
