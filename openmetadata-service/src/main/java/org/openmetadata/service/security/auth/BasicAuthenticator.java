@@ -534,16 +534,11 @@ public class BasicAuthenticator implements AuthenticatorHandler {
                 new EntityUtil.Fields(
                     Set.of(USER_PROTECTED_FIELDS, "roles"), "authenticationMechanism,roles"));
       }
-
-      if (storedUser != null && Boolean.TRUE.equals(storedUser.getIsBot())) {
-        throw new CustomExceptionMessage(
-            BAD_REQUEST, INVALID_USER_OR_PASSWORD, INVALID_USERNAME_PASSWORD);
-      }
     } catch (Exception ignored) {
 
     }
 
-    if (storedUser == null) {
+    if (storedUser == null || Boolean.TRUE.equals(storedUser.getIsBot())) {
       throw new CustomExceptionMessage(
           BAD_REQUEST, INVALID_USER_OR_PASSWORD, INVALID_USERNAME_PASSWORD);
     }
