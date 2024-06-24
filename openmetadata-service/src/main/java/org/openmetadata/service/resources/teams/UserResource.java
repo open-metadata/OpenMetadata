@@ -441,6 +441,9 @@ public class UserResource extends EntityResource<User, UserRepository> {
     String currentEmail = ((CatalogPrincipal) catalogSecurityContext.getUserPrincipal()).getEmail();
     User user = repository.getByEmail(uriInfo, currentEmail, fields);
 
+    repository.validateLoggedInUserNameAndEmailMatches(
+        securityContext.getUserPrincipal().getName(), currentEmail, user);
+
     // Sync the Roles from token to User
     if (Boolean.TRUE.equals(authorizerConfiguration.getUseRolesFromProvider())
         && Boolean.FALSE.equals(user.getIsBot() != null && user.getIsBot())) {
@@ -476,7 +479,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
     CatalogSecurityContext catalogSecurityContext =
         (CatalogSecurityContext) containerRequestContext.getSecurityContext();
     String currentEmail = ((CatalogPrincipal) catalogSecurityContext.getUserPrincipal()).getEmail();
-    return repository.getGroupTeams(uriInfo, currentEmail);
+    return repository.getGroupTeams(uriInfo, catalogSecurityContext, currentEmail);
   }
 
   @POST

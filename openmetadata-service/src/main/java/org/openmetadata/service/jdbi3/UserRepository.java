@@ -34,6 +34,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
+import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.csv.CSVPrinter;
@@ -326,11 +327,20 @@ public class UserRepository extends EntityRepository<User> {
     return findTo(teamId, TEAM, Relationship.PARENT_OF, TEAM);
   }
 
-  public List<EntityReference> getGroupTeams(UriInfo uriInfo, String email) {
+  public List<EntityReference> getGroupTeams(
+      UriInfo uriInfo, SecurityContext context, String email) {
     // Cleanup
     User user = getByEmail(uriInfo, email, Fields.EMPTY_FIELDS);
+    validateLoggedInUserNameAndEmailMatches(context.getUserPrincipal().getName(), email, user);
     List<EntityReference> teams = getTeams(user);
     return getGroupTeams(teams);
+  }
+
+  public void validateLoggedInUserNameAndEmailMatches(
+      String username, String email, User storedUser) {
+    if (!(username.equals(storedUser.getName()) && email.equals(storedUser.getEmail()))) {
+      throw EntityNotFoundException.byMessage(CatalogExceptionMessage.entityNotFound(USER, email));
+    }
   }
 
   private List<EntityReference> getGroupTeams(List<EntityReference> teams) {
