@@ -28,6 +28,8 @@ import static org.openmetadata.csv.EntityCsvTest.assertSummary;
 import static org.openmetadata.csv.EntityCsvTest.createCsv;
 import static org.openmetadata.csv.EntityCsvTest.getFailedRecord;
 import static org.openmetadata.schema.type.ProviderType.SYSTEM;
+import static org.openmetadata.schema.type.TaskType.RequestDescription;
+import static org.openmetadata.service.security.SecurityUtil.authHeaders;
 import static org.openmetadata.service.util.EntityUtil.fieldAdded;
 import static org.openmetadata.service.util.EntityUtil.fieldUpdated;
 import static org.openmetadata.service.util.EntityUtil.getFqn;
@@ -82,6 +84,8 @@ import org.openmetadata.service.jdbi3.EntityRepository.EntityUpdater;
 import org.openmetadata.service.jdbi3.GlossaryRepository.GlossaryCsv;
 import org.openmetadata.service.resources.EntityResourceTest;
 import org.openmetadata.service.resources.databases.TableResourceTest;
+import org.openmetadata.service.resources.feeds.FeedResource;
+import org.openmetadata.service.resources.feeds.FeedResourceTest;
 import org.openmetadata.service.resources.tags.ClassificationResourceTest;
 import org.openmetadata.service.resources.tags.TagResourceTest;
 import org.openmetadata.service.util.EntityUtil;
@@ -91,6 +95,8 @@ import org.openmetadata.service.util.TestUtils;
 @Slf4j
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 public class GlossaryResourceTest extends EntityResourceTest<Glossary, CreateGlossary> {
+  private final FeedResourceTest feedTest = new FeedResourceTest();
+
   public GlossaryResourceTest() {
     super(
         Entity.GLOSSARY,
@@ -562,6 +568,90 @@ public class GlossaryResourceTest extends EntityResourceTest<Glossary, CreateGlo
         listOf(",g3,dsp0,dsc0,h1;h2;h3,,term0;http://term0,PII.Sensitive,,,Approved");
     testImportExport(
         glossary.getName(), GlossaryCsv.HEADERS, createRecords, updateRecords, newRecords);
+  }
+
+  @Test
+  void testGlossaryFeedTasks() throws IOException {
+    // Create a new glossary
+    CreateGlossary createGlossary =
+        createRequest("testGlossary").withReviewers(listOf(USER1_REF, USER2_REF));
+    Glossary glossary = createEntity(createGlossary, ADMIN_AUTH_HEADERS);
+    String about = String.format("<#E::%s::%s>", Entity.GLOSSARY, glossary.getFullyQualifiedName());
+
+    // Check that there are no tasks initially
+    int totalTaskCount =
+        feedTest
+            .listTasks(about, null, null, null, null, ADMIN_AUTH_HEADERS)
+            .getPaging()
+            .getTotal();
+    assertEquals(0, totalTaskCount);
+
+    // Generate tasks related to the glossary - Add update description task thread for the glossary
+    // from user1 to user2
+    feedTest.createTaskThread(
+        USER1.getName(),
+        about,
+        USER2.getEntityReference(),
+        "old",
+        "new",
+        RequestDescription,
+        authHeaders(USER1.getName()));
+
+    // Check that a task has been added
+    totalTaskCount =
+        feedTest
+            .listTasks(about, null, null, null, null, ADMIN_AUTH_HEADERS)
+            .getPaging()
+            .getTotal();
+    assertEquals(1, totalTaskCount); // task at glossary level
+
+    // Glossary term `glossaryTerm` created under glossary are in `Draft` status. Automatically a
+    // Request Approval task is created.
+    GlossaryTermResourceTest glossaryTermResourceTest = new GlossaryTermResourceTest();
+    GlossaryTerm glossaryTerm =
+        createGlossaryTerm(glossaryTermResourceTest, glossary, null, "glossaryTerm");
+
+    // Check that a task has been added for the glossary term
+    String termAbout =
+        String.format("<#E::%s::%s>", Entity.GLOSSARY_TERM, glossaryTerm.getFullyQualifiedName());
+    totalTaskCount =
+        feedTest
+            .listTasks(termAbout, null, null, null, null, ADMIN_AUTH_HEADERS)
+            .getPaging()
+            .getTotal();
+    assertEquals(1, totalTaskCount); // approval task at glossary term level
+
+    // Fetch the activity task feed for the glossary
+    FeedResource.ThreadList threads =
+        feedTest.listTasks(about, null, null, TaskStatus.Open, 100, ADMIN_AUTH_HEADERS);
+
+    // Add update description task thread for the glossary term - same task should be reflected at
+    // glossary feed
+    feedTest.createTaskThread(
+        USER1.getName(),
+        termAbout,
+        USER2.getEntityReference(),
+        "old",
+        "new",
+        RequestDescription,
+        authHeaders(USER1.getName()));
+
+    // Check that the task count has increased
+    totalTaskCount =
+        feedTest
+            .listTasks(about, null, null, null, null, ADMIN_AUTH_HEADERS)
+            .getPaging()
+            .getTotal();
+    assertEquals(3, totalTaskCount);
+
+    // Delete the glossary term and check that the task count at glossary level decreases
+    glossaryTermResourceTest.deleteAndCheckEntity(glossaryTerm, true, true, ADMIN_AUTH_HEADERS);
+    totalTaskCount =
+        feedTest
+            .listTasks(about, null, null, null, null, ADMIN_AUTH_HEADERS)
+            .getPaging()
+            .getTotal();
+    assertEquals(1, totalTaskCount);
   }
 
   private void copyGlossaryTerm(GlossaryTerm from, GlossaryTerm to) {
