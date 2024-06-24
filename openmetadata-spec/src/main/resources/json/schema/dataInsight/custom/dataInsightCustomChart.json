@@ -1,15 +1,16 @@
 {
-    "$id": "https://open-metadata.org/schema/dataInsightNew/diChart.json",
+    "$id": "https://open-metadata.org/schema/dataInsight/custom/dataInsightCustomChart.json",
     "$schema": "http://json-schema.org/draft-07/schema#",
-    "title": "DIChart",
+    "title": "Chart",
     "description": "DI Chart Entity",
     "type": "object",
-    "javaType": "org.openmetadata.schema.dataInsightNew.DIChart",
+    "javaType": "org.openmetadata.schema.dataInsight.custom.DataInsightCustomChart",
     "javaInterfaces": [
         "org.openmetadata.schema.EntityInterface"
     ],
     "definitions": {
         "function": {
+            "javaType": "org.openmetadata.schema.dataInsight.custom.Function",
             "description": "aggregation function for chart",
             "type": "string",
             "enum": [
@@ -19,16 +20,35 @@
                 "min",
                 "max"
             ]
+        },
+        "kpiDetails": {
+            "type": "object",
+            "javaType": "org.openmetadata.schema.dataInsight.custom.KPIDetails",
+            "description": "KPI details for the data insight chart.",
+            "properties": {
+                "startDate": {
+                    "description": "Start Date of KPI",
+                    "type": "string"
+                },
+                "endDate": {
+                    "description": "End Date of KPI",
+                    "type": "string"
+                },
+                "target": {
+                    "description": "Target value of KPI",
+                    "type": "number"
+                }
+            }
         }
     },
     "properties": {
         "id": {
             "description": "Unique identifier of this table instance.",
-            "$ref": "../type/basic.json#/definitions/uuid"
+            "$ref": "../../type/basic.json#/definitions/uuid"
         },
         "name": {
             "description": "Name that identifies this data insight chart.",
-            "$ref": "../type/basic.json#/definitions/entityName"
+            "$ref": "../../type/basic.json#/definitions/entityName"
         },
         "displayName": {
             "description": "Display Name the data insight chart.",
@@ -36,55 +56,38 @@
         },
         "fullyQualifiedName": {
             "description": "FullyQualifiedName same as `name`.",
-            "$ref": "../type/basic.json#/definitions/fullyQualifiedEntityName"
+            "$ref": "../../type/basic.json#/definitions/fullyQualifiedEntityName"
         },
         "description": {
             "description": "Description of the data insight chart.",
-            "$ref": "../type/basic.json#/definitions/markdown"
+            "$ref": "../../type/basic.json#/definitions/markdown"
         },
-        "function": {
-            "$ref": "#/definitions/function"
-        },
-        "field": {
-            "description": "Filter field for the data insight chart.",
-            "type": "string"
-        },
-        "filter": {
-            "description": "Filter value for the data insight chart.",
-            "type": "string"
-        },
-        "formula": {
-            "description": "Formula for the data insight chart calculation.",
-            "type": "string"
+        "chartDetails": {
+            "oneOf": [
+                {
+                    "$ref": "lineChart.json"
+                },
+                {
+                    "$ref": "summaryCard.json"
+                }
+            ]
         },
         "isSystemChart": {
             "description": "Flag to indicate if the chart is system generated or user created.",
             "type": "boolean",
             "default": false
         },
-        "groupBy": {
-            "description": "Breakdown field for the data insight chart.",
-            "type": "string"
-        },
-        "xAxisLabel": {
-            "description": "X-axis label for the data insight chart.",
-            "type": "string"
-        },
-        "yAxisLabel": {
-            "description": "Y-axis label for the data insight chart.",
-            "type": "string"
-        },
         "owner": {
             "description": "Owner of this chart",
-            "$ref": "../type/entityReference.json"
+            "$ref": "../../type/entityReference.json"
         },
         "version": {
             "description": "Metadata version of the entity.",
-            "$ref": "../type/entityHistory.json#/definitions/entityVersion"
+            "$ref": "../../type/entityHistory.json#/definitions/entityVersion"
         },
         "updatedAt": {
             "description": "Last update time corresponding to the new version of the entity in Unix epoch time milliseconds.",
-            "$ref": "../type/basic.json#/definitions/timestamp"
+            "$ref": "../../type/basic.json#/definitions/timestamp"
         },
         "updatedBy": {
             "description": "User who made the update.",
@@ -92,11 +95,11 @@
         },
         "href": {
             "description": "Link to the resource corresponding to this entity.",
-            "$ref": "../type/basic.json#/definitions/href"
+            "$ref": "../../type/basic.json#/definitions/href"
         },
         "changeDescription": {
             "description": "Change that lead to this version of the entity.",
-            "$ref": "../type/entityHistory.json#/definitions/changeDescription"
+            "$ref": "../../type/entityHistory.json#/definitions/changeDescription"
         },
         "deleted": {
             "description": "When `true` indicates the entity has been soft deleted.",
@@ -105,7 +108,8 @@
         }
     },
     "required": [
-        "name"
+        "name",
+        "chartDetails"
     ],
     "additionalProperties": false
 }

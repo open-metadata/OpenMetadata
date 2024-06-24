@@ -1,22 +1,22 @@
 package org.openmetadata.service.jdbi3;
 
-import static org.openmetadata.service.Entity.DI_CHART;
+import static org.openmetadata.service.Entity.DATA_INSIGHT_CUSTOM_CHART;
 
 import java.io.IOException;
 import java.text.ParseException;
 import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-import org.openmetadata.schema.dataInsightNew.DIChart;
-import org.openmetadata.schema.dataInsightNew.DIChartResultList;
+import org.openmetadata.schema.dataInsight.custom.DataInsightCustomChart;
+import org.openmetadata.schema.dataInsight.custom.DataInsightCustomChartResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.search.SearchClient;
 import org.openmetadata.service.security.policyevaluator.CompiledRule;
 import org.openmetadata.service.util.EntityUtil;
 import org.springframework.expression.Expression;
 
-public class DIChartRepository extends EntityRepository<DIChart> {
-  public static final String COLLECTION_PATH = "/v1/analytics/dataInsights_new/charts";
+public class DataInsightCustomChartRepository extends EntityRepository<DataInsightCustomChart> {
+  public static final String COLLECTION_PATH = "/v1/analytics/dataInsights/custom/charts";
   private static final SearchClient searchClient = Entity.getSearchRepository().getSearchClient();
   public static final String TIMESTAMP_FIELD = "@timestamp";
 
@@ -27,37 +27,37 @@ public class DIChartRepository extends EntityRepository<DIChart> {
 
   public static final String NUMERIC_VALIDATION_REGEX = "[\\d\\.+-\\/\\*\\(\\)\s]+";
 
-  public DIChartRepository() {
-    super(COLLECTION_PATH, DI_CHART, DIChart.class, Entity.getCollectionDAO().diChartDAO(), "", "");
+  public DataInsightCustomChartRepository() {
+    super(COLLECTION_PATH, DATA_INSIGHT_CUSTOM_CHART, DataInsightCustomChart.class, Entity.getCollectionDAO().diChartDAO(), "", "");
   }
 
   @Override
-  public void setFields(DIChart entity, EntityUtil.Fields fields) {
+  public void setFields(DataInsightCustomChart entity, EntityUtil.Fields fields) {
     /* Nothing to do */
   }
 
   @Override
-  public void clearFields(DIChart entity, EntityUtil.Fields fields) {
+  public void clearFields(DataInsightCustomChart entity, EntityUtil.Fields fields) {
     /* Nothing to do */
   }
 
   @Override
-  public void prepare(DIChart entity, boolean update) {
+  public void prepare(DataInsightCustomChart entity, boolean update) {
     /* Nothing to do */
   }
 
   @Override
-  public void storeEntity(DIChart entity, boolean update) {
+  public void storeEntity(DataInsightCustomChart entity, boolean update) {
     store(entity, update);
   }
 
   @Override
-  public void storeRelationships(DIChart entity) {
+  public void storeRelationships(DataInsightCustomChart entity) {
     // No relationships to store beyond what is stored in the super class
   }
 
-  public DIChartResultList getPreviewData(DIChart chart, long startTimestamp, long endTimestamp)
-      throws IOException, ParseException {
+  public DataInsightCustomChartResultList getPreviewData(DataInsightCustomChart chart, long startTimestamp, long endTimestamp)
+      throws IOException {
     return searchClient.buildDIChart(chart, startTimestamp, endTimestamp);
   }
 

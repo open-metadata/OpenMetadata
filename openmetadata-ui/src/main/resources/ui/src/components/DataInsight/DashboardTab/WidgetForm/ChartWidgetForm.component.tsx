@@ -38,9 +38,9 @@ import {
 import { ReactComponent as EditIcon } from '../../../../assets/svg/edit-new.svg';
 import { GRAPH_BACKGROUND_COLOR } from '../../../../constants/constants';
 import {
-  CreateDIChart,
+  CreateDataInsightCustomChart,
   Function as FunctionEnum,
-} from '../../../../generated/api/dataInsightNew/createDIChart';
+} from '../../../../generated/api/dataInsight/custom/createDataInsightCustomChart';
 import {
   DiChartResultList,
   postAggregateChartData,
@@ -53,6 +53,7 @@ import {
 import { useAdvanceSearch } from '../../../Explore/AdvanceSearchProvider/AdvanceSearchProvider.component';
 import { WidgetFormProps } from './WidgetForm.interface';
 import { INDEX_FIELDS } from './data';
+import { LineChart as DILineChart, Type as DIChartType } from '../../../../generated/dataInsight/custom/lineChart';
 
 interface CombinedResponseItem {
   day: string;
@@ -104,13 +105,16 @@ const ChartWidgetForm = ({ onCancel }: WidgetFormProps) => {
     return result;
   }
 
-  const getGraphData = async (data: Partial<CreateDIChart>) => {
+  const getGraphData = async (data: DILineChart) => {
     const params = {
       end: getCurrentMillis(),
       start: getEpochMillisForPastDays(30),
     };
     const updatedData = {
-      ...data,
+      chartDetails: {
+        ...data,
+        type: DIChartType.LineChart,
+      },
       name: formState.name,
       filter: queryFilter ? JSON.stringify(queryFilter) : undefined,
       groupBy: formState.groupBy,
@@ -142,7 +146,7 @@ const ChartWidgetForm = ({ onCancel }: WidgetFormProps) => {
       ) {
         getGraphData({
           field: formState.field,
-          function: formState.function as CreateDIChart['function'],
+          function: formState.function as CreateDataInsightCustomChart['chartDetails']['function'],
         });
       } else if (
         formState.method === 'formula' &&

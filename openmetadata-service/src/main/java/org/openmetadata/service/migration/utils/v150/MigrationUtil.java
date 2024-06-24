@@ -10,8 +10,10 @@ import org.openmetadata.service.resources.databases.DatasourceConfig;
 import org.openmetadata.service.util.JsonUtils;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
-import org.openmetadata.schema.dataInsightNew.DIChart;
-import org.openmetadata.service.jdbi3.DIChartRepository;
+import org.openmetadata.schema.dataInsight.custom.DataInsightCustomChart;
+import org.openmetadata.schema.dataInsight.custom.LineChart;
+import org.openmetadata.schema.dataInsight.custom.SummaryCard;
+import org.openmetadata.service.jdbi3.DataInsightCustomChartRepository;
 
 
 
@@ -81,11 +83,12 @@ public class MigrationUtil {
     }
   }
   static DIChartRepository diChartRepository;
+  static DataInsightCustomChartRepository dataInsightCustomChartRepository;
 
-  private static void createChart(DIChart chart) {
-    diChartRepository.prepareInternal(chart, false);
+  private static void createChart(DataInsightCustomChart chart) {
+    dataInsightCustomChartRepository.prepareInternal(chart, false);
     try {
-      diChartRepository.getDao().insert("fqnHash", chart, chart.getFullyQualifiedName());
+      dataInsightCustomChartRepository.getDao().insert("fqnHash", chart, chart.getFullyQualifiedName());
     } catch (Exception ex) {
       LOG.warn(ex.toString());
       LOG.warn(String.format("Chart %s exists", chart));
@@ -93,15 +96,17 @@ public class MigrationUtil {
   }
 
   public static void createSystemDICharts() {
-    diChartRepository = new DIChartRepository();
+    dataInsightCustomChartRepository = new DataInsightCustomChartRepository();
 
     // total data assets
-    DIChart totalDataAssets =
-        new DIChart()
+    DataInsightCustomChart totalDataAssets =
+        new DataInsightCustomChart()
             .withId(UUID.randomUUID())
             .withName("total_data_assets")
-            .withFormula("count(k='id.keyword')")
-            .withGroupBy("entityType.keyword")
+            .withChartDetails(
+                new LineChart()
+                    .withFormula("count(k='id.keyword')")
+                    .withGroupBy("entityType.keyword"))
             .withUpdatedAt(System.currentTimeMillis())
             .withUpdatedBy("ingestion-bot")
             .withDeleted(false)
@@ -109,12 +114,15 @@ public class MigrationUtil {
     createChart(totalDataAssets);
 
     // Percentage of Data Asset with Description
-    DIChart percentageOfDataAssetsWithDescription =
-        new DIChart()
+    DataInsightCustomChart percentageOfDataAssetsWithDescription =
+        new DataInsightCustomChart()
             .withId(UUID.randomUUID())
             .withName("percentage_of_data_asset_with_description")
-            .withFormula("(count(k='id.keyword',q='hasDescription: 1')/count(k='id.keyword'))*100")
-            .withGroupBy("entityType.keyword")
+            .withChartDetails(
+                new LineChart()
+                    .withFormula(
+                        "(count(k='id.keyword',q='hasDescription: 1')/count(k='id.keyword'))*100")
+                    .withGroupBy("entityType.keyword"))
             .withUpdatedAt(System.currentTimeMillis())
             .withUpdatedBy("ingestion-bot")
             .withDeleted(false)
@@ -122,13 +130,15 @@ public class MigrationUtil {
     createChart(percentageOfDataAssetsWithDescription);
 
     // Percentage of Data Asset with Owner
-    DIChart percentageOfDataAssetsWithOwner =
-        new DIChart()
+    DataInsightCustomChart percentageOfDataAssetsWithOwner =
+        new DataInsightCustomChart()
             .withId(UUID.randomUUID())
             .withName("percentage_of_data_asset_with_owner")
-            .withFormula(
-                "(count(k='id.keyword',q='owner.name.keyword: *')/count(k='id.keyword'))*100")
-            .withGroupBy("entityType.keyword")
+            .withChartDetails(
+                new LineChart()
+                    .withFormula(
+                        "(count(k='id.keyword',q='owner.name.keyword: *')/count(k='id.keyword'))*100")
+                    .withGroupBy("entityType.keyword"))
             .withUpdatedAt(System.currentTimeMillis())
             .withUpdatedBy("ingestion-bot")
             .withDeleted(false)
@@ -136,12 +146,15 @@ public class MigrationUtil {
     createChart(percentageOfDataAssetsWithOwner);
 
     // Percentage of Service with Description
-    DIChart percentageOfServiceWithDescription =
-        new DIChart()
+    DataInsightCustomChart percentageOfServiceWithDescription =
+        new DataInsightCustomChart()
             .withId(UUID.randomUUID())
             .withName("percentage_of_service_with_description")
-            .withFormula("(count(k='id.keyword',q='hasDescription: 1')/count(k='id.keyword'))*100")
-            .withGroupBy("service.name.keyword")
+            .withChartDetails(
+                new LineChart()
+                    .withFormula(
+                        "(count(k='id.keyword',q='hasDescription: 1')/count(k='id.keyword'))*100")
+                    .withGroupBy("service.name.keyword"))
             .withUpdatedAt(System.currentTimeMillis())
             .withUpdatedBy("ingestion-bot")
             .withDeleted(false)
@@ -149,13 +162,15 @@ public class MigrationUtil {
     createChart(percentageOfServiceWithDescription);
 
     // Percentage of Service with Owner
-    DIChart percentageOfServiceWithOwner =
-        new DIChart()
+    DataInsightCustomChart percentageOfServiceWithOwner =
+        new DataInsightCustomChart()
             .withId(UUID.randomUUID())
             .withName("percentage_of_service_with_owner")
-            .withFormula(
-                "(count(k='id.keyword',q='owner.name.keyword: *')/count(k='id.keyword'))*100")
-            .withGroupBy("service.name.keyword")
+            .withChartDetails(
+                new LineChart()
+                    .withFormula(
+                        "(count(k='id.keyword',q='owner.name.keyword: *')/count(k='id.keyword'))*100")
+                    .withGroupBy("service.name.keyword"))
             .withUpdatedAt(System.currentTimeMillis())
             .withUpdatedBy("ingestion-bot")
             .withDeleted(false)
@@ -163,17 +178,74 @@ public class MigrationUtil {
     createChart(percentageOfServiceWithOwner);
 
     // total data assets by tier
-    DIChart totalDataAssetsByTier =
-        new DIChart()
+    DataInsightCustomChart totalDataAssetsByTier =
+        new DataInsightCustomChart()
             .withId(UUID.randomUUID())
             .withName("total_data_assets_by_tier")
-            .withFormula("count(k='id.keyword')")
-            .withGroupBy("tier.keyword")
+            .withChartDetails(
+                new LineChart().withFormula("count(k='id.keyword')").withGroupBy("tier.keyword"))
             .withUpdatedAt(System.currentTimeMillis())
             .withUpdatedBy("ingestion-bot")
             .withDeleted(false)
             .withIsSystemChart(true);
     createChart(totalDataAssetsByTier);
+
+    // total data assets summary card
+    DataInsightCustomChart totalDataAssetsSummaryCard =
+        new DataInsightCustomChart()
+            .withId(UUID.randomUUID())
+            .withName("total_data_assets_summary_card")
+            .withChartDetails(new SummaryCard().withFormula("count(k='id.keyword')"))
+            .withUpdatedAt(System.currentTimeMillis())
+            .withUpdatedBy("ingestion-bot")
+            .withDeleted(false)
+            .withIsSystemChart(true);
+    createChart(totalDataAssetsSummaryCard);
+
+    // data assets with description summary card
+    DataInsightCustomChart dataAssetsWithDescriptionSummaryCard =
+        new DataInsightCustomChart()
+            .withId(UUID.randomUUID())
+            .withName("data_assets_with_description_summary_card")
+            .withChartDetails(
+                new SummaryCard()
+                    .withFormula(
+                        "(count(k='id.keyword',q='hasDescription: 1')/count(k='id.keyword'))*100"))
+            .withUpdatedAt(System.currentTimeMillis())
+            .withUpdatedBy("ingestion-bot")
+            .withDeleted(false)
+            .withIsSystemChart(true);
+    createChart(dataAssetsWithDescriptionSummaryCard);
+
+    // data assets with owner summary card
+    DataInsightCustomChart dataAssetsWithOwnerSummaryCard =
+        new DataInsightCustomChart()
+            .withId(UUID.randomUUID())
+            .withName("data_assets_with_owner_summary_card")
+            .withChartDetails(
+                new SummaryCard()
+                    .withFormula(
+                        "(count(k='id.keyword',q='owner.name.keyword: *')/count(k='id.keyword'))*100"))
+            .withUpdatedAt(System.currentTimeMillis())
+            .withUpdatedBy("ingestion-bot")
+            .withDeleted(false)
+            .withIsSystemChart(true);
+    createChart(dataAssetsWithOwnerSummaryCard);
+
+    // total data assets with tier summary card
+    DataInsightCustomChart totalDataAssetsWithTierSummaryCard =
+        new DataInsightCustomChart()
+            .withId(UUID.randomUUID())
+            .withName("total_data_assets_with_tier_summary_card")
+            .withChartDetails(
+                new SummaryCard()
+                    .withFormula(
+                        "(count(k='id.keyword',q='tier.keyword: *')/count(k='id.keyword'))*100"))
+            .withUpdatedAt(System.currentTimeMillis())
+            .withUpdatedBy("ingestion-bot")
+            .withDeleted(false)
+            .withIsSystemChart(true);
+    createChart(totalDataAssetsWithTierSummaryCard);
   }
   
 }

@@ -14,7 +14,7 @@ export const postAggregateChartData = async (
   data: CreateDIChart
 ) => {
   const response = await APIClient.post<DiChartResultList>(
-    '/analytics/dataInsights_new/charts/preview',
+    '/analytics/dataInsights/custom/charts/preview',
     data,
     { params }
   );

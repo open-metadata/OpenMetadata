@@ -17,8 +17,8 @@ import javax.ws.rs.core.Response;
 import lombok.Getter;
 import org.apache.commons.lang3.tuple.Pair;
 import org.openmetadata.schema.dataInsight.DataInsightChartResult;
-import org.openmetadata.schema.dataInsightNew.DIChart;
-import org.openmetadata.schema.dataInsightNew.DIChartResultList;
+import org.openmetadata.schema.dataInsight.custom.DataInsightCustomChart;
+import org.openmetadata.schema.dataInsight.custom.DataInsightCustomChartResultList;
 import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.service.exception.CustomExceptionMessage;
@@ -235,7 +235,7 @@ public interface SearchClient {
     return aggregationJson.getString("key");
   }
 
-  default DIChartResultList buildDIChart(DIChart diChart, long start, long end) throws IOException {
+  default DataInsightCustomChartResultList buildDIChart(DataInsightCustomChart diChart, long start, long end) throws IOException {
     return null;
   }
 

@@ -1,17 +1,17 @@
 {
-    "$id": "https://open-metadata.org/schema/dataInsightNew/formulaHolder.json",
+    "$id": "https://open-metadata.org/schema/dataInsight/custom/formulaHolder.json",
     "$schema": "http://json-schema.org/draft-07/schema#",
     "title": "formulaHolder",
     "description": "formulaHolder",
     "type": "object",
-    "javaType": "org.openmetadata.schema.dataInsightNew.FormulaHolder",
+    "javaType": "org.openmetadata.schema.dataInsight.custom.FormulaHolder",
     "properties": {
         "formula": {
             "description": "Formula",
             "type": "string"
         },
         "function": {
-            "$ref": "diChart.json#/definitions/function"
+            "$ref": "dataInsightCustomChart.json#/definitions/function"
         },
         "field": {
             "description": "Group of Result",

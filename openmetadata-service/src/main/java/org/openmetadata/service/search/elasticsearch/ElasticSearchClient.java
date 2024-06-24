@@ -140,9 +140,9 @@ import org.jetbrains.annotations.NotNull;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.DataInsightInterface;
 import org.openmetadata.schema.dataInsight.DataInsightChartResult;
-import org.openmetadata.schema.dataInsightNew.DIChart;
-import org.openmetadata.schema.dataInsightNew.DIChartResultList;
-import org.openmetadata.schema.dataInsightNew.FormulaHolder;
+import org.openmetadata.schema.dataInsight.custom.DataInsightCustomChart;
+import org.openmetadata.schema.dataInsight.custom.DataInsightCustomChartResultList;
+import org.openmetadata.schema.dataInsight.custom.FormulaHolder;
 import org.openmetadata.schema.entity.data.EntityHierarchy__1;
 import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration;
 import org.openmetadata.schema.type.EntityReference;
@@ -151,7 +151,7 @@ import org.openmetadata.sdk.exception.SearchException;
 import org.openmetadata.sdk.exception.SearchIndexNotFoundException;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.dataInsight.DataInsightAggregatorInterface;
-import org.openmetadata.service.jdbi3.DIChartRepository;
+import org.openmetadata.service.jdbi3.DataInsightCustomChartRepository;
 import org.openmetadata.service.jdbi3.DataInsightChartRepository;
 import org.openmetadata.service.search.SearchClient;
 import org.openmetadata.service.search.SearchRequest;
@@ -162,7 +162,8 @@ import org.openmetadata.service.search.elasticsearch.dataInsightAggregators.Elas
 import org.openmetadata.service.search.elasticsearch.dataInsightAggregators.ElasticSearchAggregatedUsedvsUnusedAssetsCountAggregator;
 import org.openmetadata.service.search.elasticsearch.dataInsightAggregators.ElasticSearchAggregatedUsedvsUnusedAssetsSizeAggregator;
 import org.openmetadata.service.search.elasticsearch.dataInsightAggregators.ElasticSearchDailyActiveUsersAggregator;
-import org.openmetadata.service.search.elasticsearch.dataInsightAggregators.ElasticSearchDynamicChartAggregator;
+import org.openmetadata.service.search.elasticsearch.dataInsightAggregators.ElasticSearchDynamicChartAggregatorFactory;
+import org.openmetadata.service.search.elasticsearch.dataInsightAggregators.ElasticSearchDynamicChartAggregatorInterface;
 import org.openmetadata.service.search.elasticsearch.dataInsightAggregators.ElasticSearchEntitiesDescriptionAggregator;
 import org.openmetadata.service.search.elasticsearch.dataInsightAggregators.ElasticSearchEntitiesOwnerAggregator;
 import org.openmetadata.service.search.elasticsearch.dataInsightAggregators.ElasticSearchMostActiveUsersAggregator;
@@ -1907,7 +1908,7 @@ public class ElasticSearchClient implements SearchClient {
   @Override
   public List<String> fetchDIChartFields() throws IOException {
     GetMappingsRequest request =
-        new GetMappingsRequest().indices(DIChartRepository.DI_SEARCH_INDEX);
+        new GetMappingsRequest().indices(DataInsightCustomChartRepository.DI_SEARCH_INDEX);
 
     // Execute request
     GetMappingsResponse response = client.indices().getMapping(request, RequestOptions.DEFAULT);
@@ -1944,14 +1945,18 @@ public class ElasticSearchClient implements SearchClient {
     }
   }
 
-  public DIChartResultList buildDIChart(@NotNull DIChart diChart, long start, long end)
+  public DataInsightCustomChartResultList buildDIChart(@NotNull DataInsightCustomChart diChart, long start, long end)
       throws IOException {
-    ElasticSearchDynamicChartAggregator aggregator = new ElasticSearchDynamicChartAggregator();
-    List<FormulaHolder> formulas = new ArrayList<>();
-    es.org.elasticsearch.action.search.SearchRequest searchRequest =
-        aggregator.prepareSearchRequest(diChart, start, end, formulas);
-    SearchResponse searchResponse = client.search(searchRequest, RequestOptions.DEFAULT);
-    return aggregator.processSearchResponse(diChart, searchResponse, formulas);
+    ElasticSearchDynamicChartAggregatorInterface aggregator =
+        ElasticSearchDynamicChartAggregatorFactory.getAggregator(diChart);
+    if (aggregator != null) {
+      List<FormulaHolder> formulas = new ArrayList<>();
+      es.org.elasticsearch.action.search.SearchRequest searchRequest =
+          aggregator.prepareSearchRequest(diChart, start, end, formulas);
+      SearchResponse searchResponse = client.search(searchRequest, RequestOptions.DEFAULT);
+      return aggregator.processSearchResponse(diChart, searchResponse, formulas);
+    }
+    return null;
   }
 
   private static AggregationBuilder buildQueryAggregation(
