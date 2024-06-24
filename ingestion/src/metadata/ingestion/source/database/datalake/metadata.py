@@ -59,6 +59,7 @@ from metadata.ingestion.source.storage.storage_service import (
     OPENMETADATA_TEMPLATE_FILE_NAME,
 )
 from metadata.readers.dataframe.models import DatalakeTableSchemaWrapper
+from metadata.readers.dataframe.reader_factory import SupportedTypes
 from metadata.readers.file.base import ReadException
 from metadata.readers.file.config_source_factory import get_reader
 from metadata.utils import fqn
@@ -221,7 +222,7 @@ class DatalakeSource(DatabaseServiceSource):
 
     def get_tables_name_and_type(  # pylint: disable=too-many-branches
         self,
-    ) -> Iterable[Tuple[str, TableType]]:
+    ) -> Iterable[Tuple[str, TableType, SupportedTypes]]:
         """
         Handle table and views.
 
@@ -262,7 +263,7 @@ class DatalakeSource(DatabaseServiceSource):
                 yield table_name, TableType.Regular, file_extension
 
     def yield_table(
-        self, table_name_and_type: Tuple[str, TableType]
+        self, table_name_and_type: Tuple[str, TableType, SupportedTypes]
     ) -> Iterable[Either[CreateTableRequest]]:
         """
         From topology.
