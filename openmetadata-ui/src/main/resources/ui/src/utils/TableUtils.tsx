@@ -116,10 +116,8 @@ export const getTierFromTableTags = (
 };
 
 export const getTierTags = (tags: Array<TagLabel>) => {
-  const tierTag = tags.find(
-    (item) =>
-      item.tagFQN.startsWith(`Tier${FQN_SEPARATOR_CHAR}Tier`) &&
-      !isNaN(parseInt(item.tagFQN.substring(9).trim()))
+  const tierTag = tags.find((item) =>
+    item.tagFQN.startsWith(`Tier${FQN_SEPARATOR_CHAR}`)
   );
 
   return tierTag;
@@ -129,9 +127,7 @@ export const getTagsWithoutTier = (
   tags: Array<EntityTags>
 ): Array<EntityTags> => {
   return tags.filter(
-    (item) =>
-      !item.tagFQN.startsWith(`Tier${FQN_SEPARATOR_CHAR}Tier`) ||
-      isNaN(parseInt(item.tagFQN.substring(9).trim()))
+    (item) => !item.tagFQN.startsWith(`Tier${FQN_SEPARATOR_CHAR}`)
   );
 };
 
