@@ -1,81 +1,31 @@
 {
-  "$id": "https://open-metadata.org/schema/entity/data/chart.json",
+  "$id": "https://open-metadata.org/schema/entity/data/apiCollection.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "Chart",
-  "description": "A `Chart` presents data visually. Charts can be part of `Dashboards`.",
+  "title": "APICollection",
+  "$comment": "@om-entity-type",
+  "description": "This schema defines the APICollection entity. API Collection allows user to group multiple APIs together. In OpenAPI specification its marked as a Tag.",
   "type": "object",
-  "javaType": "org.openmetadata.schema.entity.data.Chart",
+  "javaType": "org.openmetadata.schema.entity.data.APICollection",
   "javaInterfaces": ["org.openmetadata.schema.EntityInterface"],
-  "definitions": {
-    "chartType": {
-      "javaType": "org.openmetadata.schema.type.ChartType",
-      "description": "This schema defines the type used for describing different types of charts.",
-      "type": "string",
-      "enum": [
-        "Line",
-        "Table",
-        "Bar",
-        "Area",
-        "Pie",
-        "Histogram",
-        "Scatter",
-        "Text",
-        "BoxPlot",
-        "Other"
-      ],
-      "javaEnums": [
-        {
-          "name": "Line"
-        },
-        {
-          "name": "Table"
-        },
-        {
-          "name": "Bar"
-        },
-        {
-          "name": "Area"
-        },
-        {
-          "name": "Pie"
-        },
-        {
-          "name": "Histogram"
-        },
-        {
-          "name": "Scatter"
-        },
-        {
-          "name": "Text"
-        },
-        {
-          "name": "BoxPlot"
-        },
-        {
-          "name": "Other"
-        }
-      ]
-    }
-  },
   "properties": {
     "id": {
-      "description": "Unique identifier that identifies a chart instance.",
+      "description": "Unique identifier that identifies a API Collection instance.",
       "$ref": "../../type/basic.json#/definitions/uuid"
     },
     "name": {
-      "description": "Name that identifies this Chart.",
+      "description": "Name that identifies this API Collection.",
       "$ref": "../../type/basic.json#/definitions/entityName"
     },
     "displayName": {
-      "description": "Display Name that identifies this Chart. It could be title or label from the source services.",
+      "description": "Display Name that identifies this API Collection. It could be title or label from the source services.",
       "type": "string"
     },
     "fullyQualifiedName": {
-      "description": "A unique name that identifies a dashboard in the format 'ServiceName.ChartName'.",
+      "description": "A unique name that identifies a API Collection in the format 'ServiceName.ApiCollectionName'.",
       "$ref": "../../type/basic.json#/definitions/fullyQualifiedEntityName"
     },
     "description": {
-      "description": "Description of the dashboard, what it is, and how to use it.",
+      "description": "Description of the API Collection, what it is, and how to use it.",
       "$ref": "../../type/basic.json#/definitions/markdown"
     },
     "version": {
@@ -90,27 +40,31 @@
       "description": "User who made the update.",
       "type": "string"
     },
-    "chartType": {
-      "$ref": "#/definitions/chartType"
+    "endpointURL": {
+      "title": "Endpoint URL",
+      "description": "EndPoint URL for the API Collection. Capture the Root URL of the collection.",
+      "type": "string",
+      "format": "uri"
     },
-    "sourceUrl": {
-      "description": "Chart URL suffix from its service.",
-      "$ref": "../../type/basic.json#/definitions/sourceUrl"
+    "apiEndpoints": {
+      "description": "All the APIs included in this API Collection.",
+      "$ref": "../../type/entityReferenceList.json",
+      "default": null
     },
     "href": {
       "description": "Link to the resource corresponding to this entity.",
       "$ref": "../../type/basic.json#/definitions/href"
     },
     "owner": {
-      "description": "Owner of this chart.",
+      "description": "Owner of this API Collection.",
       "$ref": "../../type/entityReference.json"
     },
     "followers": {
-      "description": "Followers of this chart.",
+      "description": "Followers of this API Collection.",
       "$ref": "../../type/entityReferenceList.json"
     },
     "tags": {
-      "description": "Tags for this chart.",
+      "description": "Tags for this API Collection.",
       "type": "array",
       "items": {
         "$ref": "../../type/tagLabel.json"
@@ -118,17 +72,12 @@
       "default": null
     },
     "service": {
-      "description": "Link to service where this dashboard is hosted in.",
+      "description": "Link to service where this API Collection is hosted in.",
       "$ref": "../../type/entityReference.json"
     },
     "serviceType": {
-      "description": "Service type where this chart is hosted in.",
-      "$ref": "../services/dashboardService.json#/definitions/dashboardServiceType"
-    },
-    "usageSummary": {
-      "description": "Latest usage information for this chart.",
-      "$ref": "../../type/usageDetails.json",
-      "default": null
+      "description": "Service type where this API Collection is hosted in.",
+      "$ref": "../services/apiService.json#/definitions/apiServiceType"
     },
     "changeDescription": {
       "description": "Change that lead to this version of the entity.",
@@ -139,8 +88,12 @@
       "type": "boolean",
       "default": false
     },
-    "domain" : {
-      "description": "Domain the Chart belongs to. The Chart inherits domain from the dashboard service it belongs to.",
+    "extension": {
+      "description": "Entity extension data with custom attributes added to the entity.",
+      "$ref": "../../type/basic.json#/definitions/entityExtension"
+    },
+    "domain": {
+      "description": "Domain the API Collection belongs to. When not set, the API Collection inherits the domain from the API service it belongs to.",
       "$ref": "../../type/entityReference.json"
     },
     "dataProducts": {
@@ -162,6 +115,6 @@
       "maxLength": 32
     }
   },
-  "required": ["id", "name", "service"],
+  "required": ["id", "name", "service", "endpointURL"],
   "additionalProperties": false
 }
