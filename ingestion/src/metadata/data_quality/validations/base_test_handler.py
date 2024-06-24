@@ -179,7 +179,7 @@ class BaseTestValidator(ABC):
             float,
             default=float("inf"),
         )
-    
+
     def get_predicted_value(self) -> Optional[str]:
         """Get predicted value"""
         return None
