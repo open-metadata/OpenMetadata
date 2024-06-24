@@ -32,7 +32,7 @@ import static org.openmetadata.service.exception.CatalogExceptionMessage.INVALID
 import static org.openmetadata.service.exception.CatalogExceptionMessage.INVALID_USER_OR_PASSWORD;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.MAX_FAILED_LOGIN_ATTEMPT;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.PASSWORD_RESET_TOKEN_EXPIRED;
-import static org.openmetadata.service.exception.CatalogExceptionMessage.SELF_SIGNUP_ERROR;
+import static org.openmetadata.service.exception.CatalogExceptionMessage.SELF_SIGNUP_DISABLED_MESSAGE;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.SELF_SIGNUP_NOT_ENABLED;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.TOKEN_EXPIRED;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.TOKEN_EXPIRY_ERROR;
@@ -136,7 +136,8 @@ public class BasicAuthenticator implements AuthenticatorHandler {
       registeredUser.setAuthenticationMechanism(null);
       return registeredUser;
     } else {
-      throw new CustomExceptionMessage(NOT_IMPLEMENTED, SELF_SIGNUP_NOT_ENABLED, SELF_SIGNUP_ERROR);
+      throw new CustomExceptionMessage(
+          NOT_IMPLEMENTED, SELF_SIGNUP_NOT_ENABLED, SELF_SIGNUP_DISABLED_MESSAGE);
     }
   }
 

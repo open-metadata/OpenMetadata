@@ -45,11 +45,6 @@ public final class CatalogExceptionMessage {
 
   public static final String PASSWORD_RESET_TOKEN_EXPIRED = "PASSWORD_RESET_TOKEN_EXPIRED";
   public static final String ENTITY_ALREADY_EXISTS = "Entity already exists";
-  public static final String OTHER_USER_SIGN_UP_ERROR = "OTHER_USER_SIGN_UP_ERROR";
-  public static final String OTHER_USER_SIGN_UP =
-      "Self Signup can only create user for self. Only Admin can create other users.";
-  public static final String SELF_SIGNUP_DISABLED_MESSAGE =
-      "Self Signup is not enabled. Please contact your Admin.";
   public static final String FERNET_KEY_NULL = "Fernet key is null";
   public static final String FIELD_NOT_TOKENIZED = "Field is not tokenized";
   public static final String FIELD_ALREADY_TOKENIZED = "Field is already tokenized";
@@ -86,6 +81,12 @@ public final class CatalogExceptionMessage {
 
   public static final String SELF_SIGNUP_NOT_ENABLED = "SELF_SIGNUP_NOT_ENABLED";
   public static final String SELF_SIGNUP_ERROR = "Signup is not supported.";
+  public static final String OTHER_USER_SIGN_UP_ERROR = "OTHER_USER_SIGN_UP_ERROR";
+  public static final String OTHER_USER_SIGN_UP =
+      "Self Signup can only create user for self. Only Admin can create other users.";
+  public static final String SELF_SIGNUP_DISABLED_MESSAGE =
+      "Self Signup is not enabled. Please contact your Administrator for assistance with account creation";
+
   public static final String NOT_IMPLEMENTED_METHOD = "Method not implemented.";
 
   public static final String AUTHENTICATOR_OPERATION_NOT_SUPPORTED =
