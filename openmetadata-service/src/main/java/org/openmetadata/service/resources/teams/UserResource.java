@@ -15,6 +15,7 @@ package org.openmetadata.service.resources.teams;
 
 import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
 import static javax.ws.rs.core.Response.Status.CONFLICT;
+import static javax.ws.rs.core.Response.Status.FORBIDDEN;
 import static javax.ws.rs.core.Response.Status.OK;
 import static org.openmetadata.common.utils.CommonUtil.listOf;
 import static org.openmetadata.schema.api.teams.CreateUser.CreatePasswordType.ADMIN_CREATE;
@@ -579,15 +580,30 @@ public class UserResource extends EntityResource<User, UserRepository> {
     // Add the roles on user creation
     updateUserRolesIfRequired(user, containerRequestContext);
 
-    Response createdUserRes = null;
+    Response createdUserRes;
     try {
       createdUserRes = create(uriInfo, securityContext, user);
     } catch (EntityNotFoundException ex) {
-      if (isSelfSignUpEnabled
-          && securityContext.getUserPrincipal().getName().equals(create.getName())) {
-        // User is creating himself on signup ?! :(
-        User created = addHref(uriInfo, repository.create(uriInfo, user));
-        createdUserRes = Response.created(created.getHref()).entity(created).build();
+      if (isSelfSignUpEnabled) {
+        if (securityContext.getUserPrincipal().getName().equals(create.getName())) {
+          // User is creating himself on signup ?! :(
+          User created = addHref(uriInfo, repository.create(uriInfo, user));
+          createdUserRes = Response.created(created.getHref()).entity(created).build();
+        } else {
+          return Response.status(FORBIDDEN)
+              .type(MediaType.APPLICATION_JSON_TYPE)
+              .entity(
+                  new ErrorMessage(
+                      FORBIDDEN.getStatusCode(), CatalogExceptionMessage.OTHER_USER_SIGN_UP))
+              .build();
+        }
+      } else {
+        return Response.status(FORBIDDEN)
+            .type(MediaType.APPLICATION_JSON_TYPE)
+            .entity(
+                new ErrorMessage(
+                    FORBIDDEN.getStatusCode(), CatalogExceptionMessage.SELF_SIGNUP_DISABLED))
+            .build();
       }
     }
 

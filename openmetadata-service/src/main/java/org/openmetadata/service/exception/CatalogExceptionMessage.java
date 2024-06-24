@@ -45,6 +45,10 @@ public final class CatalogExceptionMessage {
 
   public static final String PASSWORD_RESET_TOKEN_EXPIRED = "PASSWORD_RESET_TOKEN_EXPIRED";
   public static final String ENTITY_ALREADY_EXISTS = "Entity already exists";
+  public static final String OTHER_USER_SIGN_UP =
+      "Self Signup can only create user for self. Only Admin can create other users.";
+  public static final String SELF_SIGNUP_DISABLED =
+      "Self Signup is not enabled. Please contact your Admin.";
   public static final String FERNET_KEY_NULL = "Fernet key is null";
   public static final String FIELD_NOT_TOKENIZED = "Field is not tokenized";
   public static final String FIELD_ALREADY_TOKENIZED = "Field is already tokenized";
