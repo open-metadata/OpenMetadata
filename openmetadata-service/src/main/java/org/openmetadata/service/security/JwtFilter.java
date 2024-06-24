@@ -15,6 +15,7 @@ package org.openmetadata.service.security;
 
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
+import static org.openmetadata.service.security.SecurityUtil.findEmailFromClaims;
 import static org.openmetadata.service.security.SecurityUtil.findUserNameFromClaims;
 import static org.openmetadata.service.security.SecurityUtil.isBot;
 import static org.openmetadata.service.security.SecurityUtil.validateDomainEnforcement;
@@ -151,12 +152,14 @@ public class JwtFilter implements ContainerRequestFilter {
 
     Map<String, Claim> claims = validateJwtAndGetClaims(tokenFromHeader);
     String userName = findUserNameFromClaims(jwtPrincipalClaimsMapping, jwtPrincipalClaims, claims);
+    String email =
+        findEmailFromClaims(jwtPrincipalClaimsMapping, jwtPrincipalClaims, claims, principalDomain);
 
     // Check Validations
     checkValidationsForToken(claims, tokenFromHeader, userName);
 
     // Setting Security Context
-    CatalogPrincipal catalogPrincipal = new CatalogPrincipal(userName);
+    CatalogPrincipal catalogPrincipal = new CatalogPrincipal(userName, email);
     String scheme = requestContext.getUriInfo().getRequestUri().getScheme();
     CatalogSecurityContext catalogSecurityContext =
         new CatalogSecurityContext(

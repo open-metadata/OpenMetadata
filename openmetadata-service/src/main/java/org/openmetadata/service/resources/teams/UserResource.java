@@ -15,6 +15,7 @@ package org.openmetadata.service.resources.teams;
 
 import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
 import static javax.ws.rs.core.Response.Status.CONFLICT;
+import static javax.ws.rs.core.Response.Status.FORBIDDEN;
 import static javax.ws.rs.core.Response.Status.OK;
 import static org.openmetadata.common.utils.CommonUtil.listOf;
 import static org.openmetadata.schema.api.teams.CreateUser.CreatePasswordType.ADMIN_CREATE;
@@ -130,8 +131,10 @@ import org.openmetadata.service.secrets.SecretsManagerFactory;
 import org.openmetadata.service.secrets.masker.EntityMaskerFactory;
 import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.security.CatalogPrincipal;
 import org.openmetadata.service.security.auth.AuthenticatorHandler;
 import org.openmetadata.service.security.auth.BotTokenCache;
+import org.openmetadata.service.security.auth.CatalogSecurityContext;
 import org.openmetadata.service.security.auth.UserTokenCache;
 import org.openmetadata.service.security.jwt.JWTTokenGenerator;
 import org.openmetadata.service.security.mask.PIIMasker;
@@ -168,6 +171,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
   private AuthenticationConfiguration authenticationConfiguration;
   private AuthorizerConfiguration authorizerConfiguration;
   private final AuthenticatorHandler authHandler;
+  private boolean isSelfSignUpEnabled = false;
   static final String FIELDS = "profile,roles,teams,follows,owns,domain,personas,defaultPersona";
 
   @Override
@@ -205,6 +209,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
     SmtpSettings smtpSettings = config.getSmtpSettings();
     this.isEmailServiceEnabled = smtpSettings != null && smtpSettings.getEnableSmtpServer();
     this.repository.initializeUsers(config);
+    this.isSelfSignUpEnabled = authenticationConfiguration.getEnableSelfSignup();
   }
 
   public static class UserList extends ResultList<User> {
@@ -430,15 +435,17 @@ public class UserResource extends EntityResource<User, UserRepository> {
               schema = @Schema(type = "string", example = FIELDS))
           @QueryParam("fields")
           String fieldsParam) {
+    CatalogSecurityContext catalogSecurityContext =
+        (CatalogSecurityContext) containerRequestContext.getSecurityContext();
     Fields fields = getFields(fieldsParam);
-    String currentUserName = securityContext.getUserPrincipal().getName();
-    User user = repository.getByName(uriInfo, currentUserName, fields);
+    String currentEmail = ((CatalogPrincipal) catalogSecurityContext.getUserPrincipal()).getEmail();
+    User user = repository.getByEmail(uriInfo, currentEmail, fields);
 
     // Sync the Roles from token to User
     if (Boolean.TRUE.equals(authorizerConfiguration.getUseRolesFromProvider())
         && Boolean.FALSE.equals(user.getIsBot() != null && user.getIsBot())) {
       reSyncUserRolesFromToken(
-          uriInfo, user, getRolesFromAuthorizationToken(containerRequestContext));
+          uriInfo, user, getRolesFromAuthorizationToken(catalogSecurityContext));
     }
     return addHref(uriInfo, user);
   }
@@ -463,9 +470,13 @@ public class UserResource extends EntityResource<User, UserRepository> {
         @ApiResponse(responseCode = "404", description = "User not found")
       })
   public List<EntityReference> getCurrentLoggedInUser(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext) {
-    String currentUserName = securityContext.getUserPrincipal().getName();
-    return repository.getGroupTeams(uriInfo, currentUserName);
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Context ContainerRequestContext containerRequestContext) {
+    CatalogSecurityContext catalogSecurityContext =
+        (CatalogSecurityContext) containerRequestContext.getSecurityContext();
+    String currentEmail = ((CatalogPrincipal) catalogSecurityContext.getUserPrincipal()).getEmail();
+    return repository.getGroupTeams(uriInfo, currentEmail);
   }
 
   @POST
@@ -554,7 +565,9 @@ public class UserResource extends EntityResource<User, UserRepository> {
 
     //
     try {
-      validateAndAddUserAuthForBasic(user, create);
+      // Email Validation
+      validateEmailAlreadyExists(create.getEmail());
+      addUserAuthForBasic(user, create);
     } catch (RuntimeException ex) {
       return Response.status(CONFLICT)
           .type(MediaType.APPLICATION_JSON_TYPE)
@@ -567,14 +580,26 @@ public class UserResource extends EntityResource<User, UserRepository> {
     // Add the roles on user creation
     updateUserRolesIfRequired(user, containerRequestContext);
 
-    Response createdUserRes = null;
+    Response createdUserRes;
     try {
       createdUserRes = create(uriInfo, securityContext, user);
     } catch (EntityNotFoundException ex) {
-      if (securityContext.getUserPrincipal().getName().equals(create.getName())) {
-        // User is creating himself on signup ?! :(
-        User created = addHref(uriInfo, repository.create(uriInfo, user));
-        createdUserRes = Response.created(created.getHref()).entity(created).build();
+      if (isSelfSignUpEnabled) {
+        if (securityContext.getUserPrincipal().getName().equals(create.getName())) {
+          // User is creating himself on signup ?! :(
+          User created = addHref(uriInfo, repository.create(uriInfo, user));
+          createdUserRes = Response.created(created.getHref()).entity(created).build();
+        } else {
+          throw new CustomExceptionMessage(
+              FORBIDDEN,
+              CatalogExceptionMessage.OTHER_USER_SIGN_UP_ERROR,
+              CatalogExceptionMessage.OTHER_USER_SIGN_UP);
+        }
+      } else {
+        throw new CustomExceptionMessage(
+            FORBIDDEN,
+            CatalogExceptionMessage.SELF_SIGNUP_NOT_ENABLED,
+            CatalogExceptionMessage.SELF_SIGNUP_DISABLED_MESSAGE);
       }
     }
 
@@ -589,26 +614,23 @@ public class UserResource extends EntityResource<User, UserRepository> {
     return Response.status(BAD_REQUEST).entity("User Cannot be created Successfully.").build();
   }
 
-  private void validateAndAddUserAuthForBasic(User user, CreateUser create) {
+  private void addUserAuthForBasic(User user, CreateUser create) {
     if (isBasicAuth()) {
-      // basic auth doesn't allow duplicate emails, since username part of the email is used as
-      // login name
-      validateEmailAlreadyExists(create.getEmail());
       user.setName(user.getEmail().split("@")[0]);
       if (Boolean.FALSE.equals(create.getIsBot())
           && create.getCreatePasswordType() == ADMIN_CREATE) {
         addAuthMechanismToUser(user, create);
       }
-      // else the user will get a mail if configured smtp
     }
   }
 
   private void updateUserRolesIfRequired(
       User user, ContainerRequestContext containerRequestContext) {
+    CatalogSecurityContext catalogSecurityContext =
+        (CatalogSecurityContext) containerRequestContext.getSecurityContext();
     if (Boolean.TRUE.equals(authorizerConfiguration.getUseRolesFromProvider())
         && Boolean.FALSE.equals(user.getIsBot() != null && user.getIsBot())) {
-      user.setRoles(
-          validateAndGetRolesRef(getRolesFromAuthorizationToken(containerRequestContext)));
+      user.setRoles(validateAndGetRolesRef(getRolesFromAuthorizationToken(catalogSecurityContext)));
     }
   }
 

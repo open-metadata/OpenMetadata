@@ -29,6 +29,7 @@ import BrandImage from '../../components/common/BrandImage/BrandImage';
 import Loader from '../../components/common/Loader/Loader';
 import LoginButton from '../../components/common/LoginButton/LoginButton';
 import { ROUTES, VALIDATION_MESSAGES } from '../../constants/constants';
+import { EMAIL_REG_EX } from '../../constants/regex.constants';
 import { AuthProvider } from '../../generated/settings/settings';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
 import './login.style.less';
@@ -176,22 +177,20 @@ const SignInPage = () => {
                 onFinish={handleSubmit}>
                 <Form.Item
                   data-testid="email"
-                  label={
-                    isAuthProviderLDAP
-                      ? t('label.email')
-                      : t('label.username-or-email')
-                  }
+                  label={t('label.email')}
                   name="email"
                   requiredMark={false}
-                  rules={[{ required: true }]}>
-                  <Input
-                    autoFocus
-                    placeholder={
-                      isAuthProviderLDAP
-                        ? t('label.email')
-                        : t('label.username-or-email')
-                    }
-                  />
+                  rules={[
+                    { required: true },
+                    {
+                      pattern: EMAIL_REG_EX,
+                      type: 'email',
+                      message: t('message.field-text-is-invalid', {
+                        fieldText: t('label.email'),
+                      }),
+                    },
+                  ]}>
+                  <Input autoFocus placeholder={t('label.email')} />
                 </Form.Item>
                 <Form.Item
                   data-testid="password"

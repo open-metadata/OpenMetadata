@@ -126,8 +126,13 @@ public class UserRepository extends EntityRepository<User> {
     if (userString == null) {
       throw EntityNotFoundException.byMessage(CatalogExceptionMessage.entityNotFound(USER, email));
     }
-    return withHref(
-        uriInfo, setFieldsInternal(JsonUtils.readValue(userString, User.class), fields));
+    User user = JsonUtils.readValue(userString, User.class);
+    setFieldsInternal(user, fields);
+    setInheritedFields(user, fields);
+    // Clone the entity
+    User entityClone = JsonUtils.deepCopy(user, User.class);
+    clearFieldsInternal(entityClone, fields);
+    return withHref(uriInfo, entityClone);
   }
 
   /** Ensures that the default roles are added for POST, PUT and PATCH operations. */
@@ -321,9 +326,9 @@ public class UserRepository extends EntityRepository<User> {
     return findTo(teamId, TEAM, Relationship.PARENT_OF, TEAM);
   }
 
-  public List<EntityReference> getGroupTeams(UriInfo uriInfo, String userName) {
+  public List<EntityReference> getGroupTeams(UriInfo uriInfo, String email) {
     // Cleanup
-    User user = getByName(uriInfo, userName, Fields.EMPTY_FIELDS, Include.ALL, true);
+    User user = getByEmail(uriInfo, email, Fields.EMPTY_FIELDS);
     List<EntityReference> teams = getTeams(user);
     return getGroupTeams(teams);
   }

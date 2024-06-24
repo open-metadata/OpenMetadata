@@ -24,6 +24,7 @@ import {
   ROUTES,
   VALIDATION_MESSAGES,
 } from '../../constants/constants';
+import { ClientType } from '../../generated/configuration/authenticationConfiguration';
 import { EntityReference } from '../../generated/entity/type';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
 import { createUser } from '../../rest/userAPI';
@@ -47,6 +48,7 @@ const SignUp = () => {
     authorizerConfig,
     updateCurrentUser,
     newUser,
+    authConfig,
   } = useApplicationStore();
 
   const [loading, setLoading] = useState<boolean>(false);
@@ -82,6 +84,32 @@ const SignUp = () => {
     }
   };
 
+  const clientType = authConfig?.clientType ?? ClientType.Public;
+
+  const initialValues = useMemo(
+    () => ({
+      displayName: newUser?.name ?? '',
+      ...(clientType === ClientType.Public
+        ? getNameFromUserData(
+            newUser as UserProfile,
+            jwtPrincipalClaims,
+            authorizerConfig?.principalDomain,
+            jwtPrincipalClaimsMapping
+          )
+        : {
+            name: newUser?.name ?? '',
+            email: newUser?.email ?? '',
+          }),
+    }),
+    [
+      clientType,
+      authorizerConfig?.principalDomain,
+      jwtPrincipalClaims,
+      jwtPrincipalClaimsMapping,
+      newUser,
+    ]
+  );
+
   return (
     <div className="flex-center w-full h-full">
       <Card className="p-x-md p-y-md w-500">
@@ -112,15 +140,7 @@ const SignUp = () => {
 
         <Form
           data-testid="create-user-form"
-          initialValues={{
-            displayName: newUser?.name || '',
-            ...getNameFromUserData(
-              newUser as UserProfile,
-              jwtPrincipalClaims,
-              authorizerConfig?.principalDomain,
-              jwtPrincipalClaimsMapping
-            ),
-          }}
+          initialValues={initialValues}
           layout="vertical"
           validateMessages={VALIDATION_MESSAGES}
           onFinish={handleCreateNewUser}>
