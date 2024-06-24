@@ -5,7 +5,7 @@ slug: /connectors/pipeline/flink/yaml
 
 {% connectorDetailsHeader
 name="Flink"
-stage="PROD"
+stage="BETA"
 platform="Collate"
 availableFeatures=["Pipelines", "Pipeline Status"]
 unavailableFeatures=["Owners", "Lineage", "Tags"]
