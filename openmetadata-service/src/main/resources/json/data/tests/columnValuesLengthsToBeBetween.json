@@ -31,5 +31,5 @@
   "supportsRowLevelPassedFailed": true,
   "supportsDynamicAssertion": true,
   "provider": "system",
-  "dimension": "Accuracy"
+  "datatQualityDimension": "Accuracy"
 }
