@@ -128,9 +128,6 @@ This is a sample config for Redshift:
 
 {% /codeInfo %}
 
-{% /codeInfoContainer %}
-
-
 {% codeInfo srNumber=9 %}
 
 The sslConfig and sslMode are used to configure the SSL (Secure Sockets Layer) connection between your application and the Redshift server. Redshift will require only rootCertificate i.e caCertificate.
@@ -148,6 +145,8 @@ verify-full: The driver will negotiate an SSL connection, verify that the server
 
 
 {% /codeInfo %}
+
+{% /codeInfoContainer %}
 
 {% codeBlock fileName="filename.yaml" %}
 
