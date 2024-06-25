@@ -12,20 +12,27 @@
  */
 import test, { expect } from '@playwright/test';
 import { TableClass } from '../../support/entity/TableClass';
+import { UserClass } from '../../support/user/UserClass';
 import { createNewPage, redirectToHomePage } from '../../utils/common';
 import { clickOnLogo } from '../../utils/sidebar';
-import { createDescriptionTask, createTagTask } from '../../utils/task';
+import {
+  createDescriptionTask,
+  createTagTask,
+  TaskDetails,
+} from '../../utils/task';
 
 // use the admin user to login
 test.use({ storageState: 'playwright/.auth/admin.json' });
 
 const entity = new TableClass();
+const user = new UserClass();
 
 test.describe('Activity feed', () => {
   test.beforeAll('Setup pre-requests', async ({ browser }) => {
     const { apiContext, afterAction } = await createNewPage(browser);
 
     await entity.create(apiContext);
+    await user.create(apiContext);
 
     await afterAction();
   });
@@ -38,17 +45,15 @@ test.describe('Activity feed', () => {
   test.afterAll('Cleanup', async ({ browser }) => {
     const { apiContext, afterAction } = await createNewPage(browser);
     await entity.delete(apiContext);
+    await user.delete(apiContext);
+
     await afterAction();
   });
 
   test('Assigned task should appear to task tab', async ({ page }) => {
-    const value = {
+    const value: TaskDetails = {
       term: entity.entity.name,
-      displayName: entity.entity.name,
-      entity: entity.type,
-      serviceName: entity.service.name,
-      entityType: entity.type,
-      assignee: 'admin',
+      assignee: `${user.data.firstName}.${user.data.lastName}`,
     };
 
     await page.getByTestId('request-description').click();
@@ -58,7 +63,7 @@ test.describe('Activity feed', () => {
 
     await page.getByTestId('schema').click();
 
-    page.getByTestId('request-entity-tags').click();
+    await page.getByTestId('request-entity-tags').click();
 
     // create tag task
     await createTagTask(page, { ...value, tag: 'PII.None' });
@@ -83,11 +88,8 @@ test.describe('Activity feed', () => {
 
     const tagsTask = page.getByTestId('redirect-task-button-link').first();
     const tagsTaskContent = await tagsTask.innerText();
-    const isTagTaskMatch = tagsTaskContent.match(
-      new RegExp(/\nRequest tags for\n/)
-    );
 
-    expect(isTagTaskMatch).not.toBeNull();
+    expect(tagsTaskContent).toContain('Request tags for');
 
     await tagsTask.click();
 
@@ -96,11 +98,7 @@ test.describe('Activity feed', () => {
     // Task 1 - Request Tag right panel check
     const firstTaskContent = await page.getByTestId('task-title').innerText();
 
-    const firstMatch = firstTaskContent.match(
-      new RegExp(/\nRequest tags for\n/)
-    );
-
-    expect(firstMatch).not.toBeNull();
+    expect(firstTaskContent).toContain('Request tags for');
 
     // Task 2 - Update Description right panel check
 
@@ -108,11 +106,7 @@ test.describe('Activity feed', () => {
 
     const lastTaskContent = await page.getByTestId('task-title').innerText();
 
-    const lastMatch = lastTaskContent.match(
-      new RegExp(/\nRequest to update description for\n/)
-    );
-
-    expect(lastMatch).not.toBeNull();
+    expect(lastTaskContent).toContain('Request to update description');
 
     await page.getByText('Accept Suggestion').click();
 

@@ -11,20 +11,15 @@
  *  limitations under the License.
  */
 import { expect, Page } from '@playwright/test';
+import { isUndefined } from 'lodash';
 import { descriptionBox } from './common';
 
 export type TaskDetails = {
-  assignee?: string;
   term: string;
-  displayName?: string;
-  entity?: string;
-  serviceName?: string;
-  entityType?: string;
-  schemaName?: string;
+  assignee?: string;
   tag?: string;
 };
 
-const assignee = 'adam.matthews2';
 const tag = 'PII.None';
 
 export const createDescriptionTask = async (
@@ -36,7 +31,7 @@ export const createDescriptionTask = async (
     `Update description for table ${value.term}`
   );
 
-  if (assigneeDisabled) {
+  if (isUndefined(value.assignee) || assigneeDisabled) {
     expect(
       await page
         .locator('[data-testid="select-assignee"] > .ant-select-selector')
@@ -54,19 +49,20 @@ export const createDescriptionTask = async (
     );
     await assigneeField.click();
 
-    await assigneeField.fill(value.assignee ?? assignee);
+    const userSearchResponse = page.waitForResponse(
+      `/api/v1/search/suggest?q=${value.assignee}&index=user_search_index%2Cteam_search_index`
+    );
+    await assigneeField.fill(value.assignee);
+    await userSearchResponse;
 
     // select value from dropdown
-    const dropdownValue = page.getByTestId(value.assignee ?? assignee);
+    const dropdownValue = page.getByTestId(value.assignee);
     await dropdownValue.hover();
     await dropdownValue.click();
     await page.click('body');
   }
 
-  const descriptionContainer = page.locator(descriptionBox);
-  await descriptionContainer.scrollIntoViewIfNeeded();
-  await descriptionContainer.fill('Updated description');
-
+  await page.locator(descriptionBox).fill('Updated description');
   await page.click('button[type="submit"]');
 
   await expect(page.getByRole('alert').first()).toHaveText(
@@ -85,7 +81,7 @@ export const createTagTask = async (
     `Request tags for table ${value.term}`
   );
 
-  if (assigneeDisabled) {
+  if (isUndefined(value.assignee) || assigneeDisabled) {
     expect(
       await page
         .locator('[data-testid="select-assignee"] > .ant-select-selector')
@@ -103,12 +99,17 @@ export const createTagTask = async (
       '[data-testid="select-assignee"] > .ant-select-selector #assignees'
     );
     await assigneeField.click();
-    await assigneeField.fill(value.assignee ?? assignee);
+    const userSearchResponse = page.waitForResponse(
+      `/api/v1/search/suggest?q=${value.assignee}&index=user_search_index%2Cteam_search_index`
+    );
+    await assigneeField.fill(value.assignee);
+    await userSearchResponse;
+
     // select value from dropdown
-    const dropdownValue = page.getByTestId(value.assignee ?? assignee);
+    const dropdownValue = page.getByTestId(value.assignee);
     await dropdownValue.hover();
     await dropdownValue.click();
-    await page.mouse.click(200, 200);
+    await page.mouse.click(0, 0);
   }
 
   // select tags
@@ -128,7 +129,7 @@ export const createTagTask = async (
   const dropdownValue = page.getByTestId(`tag-${value.tag ?? tag}`);
   await dropdownValue.hover();
   await dropdownValue.click();
-  await page.mouse.click(200, 200);
+  await page.mouse.click(0, 0);
 
   await page.click('button[type="submit"]');
 
