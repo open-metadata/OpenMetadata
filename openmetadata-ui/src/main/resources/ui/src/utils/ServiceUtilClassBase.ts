@@ -31,6 +31,7 @@ import {
   DATABASE_DEFAULT,
   DATABRICK,
   DATALAKE,
+  DBT,
   DEFAULT_SERVICE,
   DELTALAKE,
   DOMO,
@@ -327,6 +328,9 @@ class ServiceUtilClassBase {
 
       case PipelineServiceType.Dagster:
         return DAGSTER;
+
+      case PipelineServiceType.DBTCloud:
+        return DBT;
 
       case PipelineServiceType.Fivetran:
         return FIVETRAN;

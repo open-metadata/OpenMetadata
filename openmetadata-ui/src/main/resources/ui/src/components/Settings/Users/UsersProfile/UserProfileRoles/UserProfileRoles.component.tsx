@@ -37,6 +37,7 @@ import { UserProfileRolesProps } from './UserProfileRoles.interface';
 
 const UserProfileRoles = ({
   userRoles,
+  isDeletedUser,
   updateUserDetails,
   isUserAdmin,
 }: UserProfileRolesProps) => {
@@ -166,7 +167,7 @@ const UserProfileRoles = ({
           <Typography.Text className="right-panel-label">
             {t('label.role-plural')}
           </Typography.Text>
-          {!isRolesEdit && isAdminUser && (
+          {!isRolesEdit && isAdminUser && !isDeletedUser && (
             <Tooltip
               title={t('label.edit-entity', {
                 entity: t('label.role-plural'),

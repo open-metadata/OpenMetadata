@@ -10,8 +10,15 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import {
+  TestDataType,
+  TestDefinition,
+} from '../../generated/tests/testDefinition';
 import { ListTestCaseParamsBySearch } from '../../rest/testAPI';
-import { buildTestCaseParams } from './DataQualityUtils';
+import {
+  buildTestCaseParams,
+  createTestCaseParameters,
+} from './DataQualityUtils';
 
 jest.mock('../../constants/profiler.constant', () => ({
   TEST_CASE_FILTERS: {
@@ -49,5 +56,62 @@ describe('buildTestCaseParams', () => {
       startTimestamp: 1234567890,
       entityLink: 'table1',
     });
+  });
+});
+
+describe('createTestCaseParameters', () => {
+  const mockDefinition = {
+    parameterDefinition: [
+      { name: 'arrayParam', dataType: TestDataType.Array },
+      { name: 'stringParam', dataType: TestDataType.String },
+    ],
+  } as TestDefinition;
+
+  it('should return an empty array for empty parameters', () => {
+    const result = createTestCaseParameters({}, mockDefinition);
+
+    expect(result).toEqual([]);
+  });
+
+  it('should handle parameters not matching any definition', () => {
+    const params = { unrelatedParam: 'value' };
+    const result = createTestCaseParameters(params, mockDefinition);
+
+    expect(result).toEqual([{ name: 'unrelatedParam', value: 'value' }]);
+  });
+
+  it('should handle a mix of string and array parameters', () => {
+    const params = {
+      stringParam: 'stringValue',
+      arrayParam: [{ value: 'arrayValue1' }, { value: 'arrayValue2' }],
+    };
+    const expected = [
+      { name: 'stringParam', value: 'stringValue' },
+      {
+        name: 'arrayParam',
+        value: JSON.stringify(['arrayValue1', 'arrayValue2']),
+      },
+    ];
+    const result = createTestCaseParameters(params, mockDefinition);
+
+    expect(result).toEqual(expected);
+  });
+
+  it('should ignore array items without a value', () => {
+    const params = {
+      arrayParam: [{ value: '' }, { value: 'validValue' }],
+    };
+    const expected = [
+      { name: 'arrayParam', value: JSON.stringify(['validValue']) },
+    ];
+    const result = createTestCaseParameters(params, mockDefinition);
+
+    expect(result).toEqual(expected);
+  });
+
+  it('should return undefined if params not present', () => {
+    const result = createTestCaseParameters(undefined, undefined);
+
+    expect(result).toBeUndefined();
   });
 });
