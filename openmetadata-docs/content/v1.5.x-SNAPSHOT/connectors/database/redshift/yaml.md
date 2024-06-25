@@ -128,7 +128,6 @@ This is a sample config for Redshift:
 
 {% /codeInfo %}
 
-{% /codeInfoContainer %}
 
 
 {% codeInfo srNumber=9 %}
@@ -148,6 +147,8 @@ verify-full: The driver will negotiate an SSL connection, verify that the server
 
 
 {% /codeInfo %}
+{% /codeInfoContainer %}
+
 
 {% codeBlock fileName="filename.yaml" %}
 
