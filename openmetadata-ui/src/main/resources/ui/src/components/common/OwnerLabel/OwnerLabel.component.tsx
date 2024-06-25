@@ -84,12 +84,8 @@ export const OwnerLabel = ({
 
   const ownerLink = useMemo(() => {
     if (displayName) {
-      className={classNames(
-        'd-flex items-center',
       if (pills) {
         return (
-        className
-      )}
           <div data-testid="owner-link">{ownerDisplayName ?? displayName}</div>
         );
       }
@@ -177,13 +173,5 @@ export const OwnerLabel = ({
     );
   }
 
-      {onUpdate && (
-        <UserTeamSelectableList
-          hasPermission={Boolean(hasPermission)}
-          owner={owner}
-          onUpdate={(updatedUser) => onUpdate(updatedUser as EntityReference)}
-        />
-      )}
-    </div>
   return ownerContent;
 };

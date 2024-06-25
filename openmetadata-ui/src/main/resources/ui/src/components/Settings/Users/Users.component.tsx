@@ -248,8 +248,8 @@ const Users = ({
     ],
     [
       activeTab,
-      userData,
-    [activeTab, userData.id, decodedUsername, setPreviewAsset, tabDataRender]
+      userData.id,
+      decodedUsername,
       setPreviewAsset,
       tabDataRender,
       disableFields,

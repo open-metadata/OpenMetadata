@@ -358,115 +358,97 @@ const ExploreV1: React.FC<ExploreProps> = ({
                           entity: '',
                         })}
                       </Typography.Text>
-                      <span className="sorting-dropdown-container">
-                        <SortingDropDown
-                          fieldList={tabsInfo[searchIndex].sortingFields}
-                          handleFieldDropDown={onChangeSortValue}
-                          sortField={sortValue}
-                        />
-                        <Button
-                          className="p-0"
-                          data-testid="sort-order-button"
-                          size="small"
-                          type="text"
-                          onClick={() =>
-                            onChangeSortOder(
-                              isAscSortOrder ? SORT_ORDER.DESC : SORT_ORDER.ASC
-                            )
-                          }>
-                          {isAscSortOrder ? (
-                            <SortAscendingOutlined
-                              style={{ fontSize: '14px' }}
-                              {...sortProps}
-                            />
-                          ) : (
-                            <SortDescendingOutlined
-                              style={{ fontSize: '14px' }}
-                              {...sortProps}
-                            />
-                          )}
-                        </Button>
-                      </span>
-                    </Col>
-                    {isElasticSearchIssue ? (
-                      <Col span={24}>
-                        <IndexNotFoundBanner />
-                      </Col>
-                    ) : (
-                      <></>
                     )}
-                    {sqlQuery && (
-                      <Col span={24}>
-                        <AppliedFilterText
-                          filterText={sqlQuery}
-                          onEdit={() => toggleModal(true)}
-                        />
-                      </Col>
-                    )}
-                  </Row>
-                </Col>
-              </Row>
-              <ResizablePanels
-                applyDefaultStyle={false}
-                firstPanel={{
-                  children: (
+
+                    <Typography.Text
+                      className="text-primary self-center cursor-pointer"
+                      data-testid="advance-search-button"
+                      onClick={() => toggleModal(true)}>
+                      {t('label.advanced-entity', {
+                        entity: '',
                       })}
-                    <Row className="p-t-md">
+                    </Typography.Text>
                     <span className="sorting-dropdown-container">
-                      <Col
-                        lg={{ offset: 2, span: 19 }}
-                        md={{ offset: 0, span: 24 }}>
-                        {!loading && !isElasticSearchIssue ? (
+                      <SortingDropDown
+                        fieldList={tabsInfo[searchIndex].sortingFields}
+                        handleFieldDropDown={onChangeSortValue}
+                        sortField={sortValue}
                       />
-                          <SearchedData
-                            isFilterSelected
-                            data={searchResults?.hits.hits ?? []}
-                            filter={parsedSearch}
+                      <Button
+                        className="p-0"
+                        data-testid="sort-order-button"
+                        size="small"
                         type="text"
-                            handleSummaryPanelDisplay={
-                              handleSummaryPanelDisplay
-                            }
+                        onClick={() =>
+                          onChangeSortOder(
+                            isAscSortOrder ? SORT_ORDER.DESC : SORT_ORDER.ASC
                           )
-                            isSummaryPanelVisible={showSummaryPanel}
-                            selectedEntityId={entityDetails?.id || ''}
+                        }>
+                        {isAscSortOrder ? (
                           <SortAscendingOutlined
-                            totalValue={searchResults?.hits.total.value ?? 0}
-                            onPaginationChange={onChangePage}
+                            style={{ fontSize: '14px' }}
+                            {...sortProps}
                           />
                         ) : (
-                          <></>
+                          <SortDescendingOutlined
                             style={{ fontSize: '14px' }}
                             {...sortProps}
                           />
                         )}
                       </Button>
                     </span>
-                        {loading ? <Loader /> : <></>}
+                  </Col>
                   {isElasticSearchIssue ? (
                     <Col span={24}>
-                      </Col>
-                    </Row>
-                  ),
-                  minWidth: 600,
-                  flex: 0.65,
-                }}
-                hideSecondPanel={
-                  !showSummaryPanel && !loading && !entityDetails
+                      <IndexNotFoundBanner />
+                    </Col>
+                  ) : (
+                    <></>
+                  )}
+                  {sqlQuery && (
                     <Col span={24}>
                       <AppliedFilterText
                         filterText={sqlQuery}
                         onEdit={() => toggleModal(true)}
                       />
                     </Col>
-                }
+                  )}
                 </Row>
               </Col>
             </Row>
-            <PageLayoutV1
-              className="p-0 explore-page-layout"
-                pageTitle={t('label.explore')}
-                secondPanel={{
-                  children: showSummaryPanel && entityDetails && !loading && (
+            <ResizablePanels
+              applyDefaultStyle={false}
+              firstPanel={{
+                children: (
+                  <Row className="p-t-md">
+                    <Col
+                      lg={{ offset: 2, span: 19 }}
+                      md={{ offset: 0, span: 24 }}>
+                      {!loading && !isElasticSearchIssue ? (
+                        <SearchedData
+                          isFilterSelected
+                          data={searchResults?.hits.hits ?? []}
+                          filter={parsedSearch}
+                          handleSummaryPanelDisplay={handleSummaryPanelDisplay}
+                          isSummaryPanelVisible={showSummaryPanel}
+                          selectedEntityId={entityDetails?.id || ''}
+                          totalValue={searchResults?.hits.total.value ?? 0}
+                          onPaginationChange={onChangePage}
+                        />
+                      ) : (
+                        <></>
+                      )}
+                      {loading ? <Loader /> : <></>}
+                    </Col>
+                  </Row>
+                ),
+                minWidth: 600,
+                flex: 0.65,
+              }}
+              hideSecondPanel={!showSummaryPanel && !loading && !entityDetails}
+              pageTitle={t('label.explore')}
+              secondPanel={{
+                children: showSummaryPanel && entityDetails && !loading && (
                   <EntitySummaryPanel
                     entityDetails={{ details: entityDetails }}
                     handleClosePanel={handleClosePanel}
@@ -482,32 +464,15 @@ const ExploreV1: React.FC<ExploreProps> = ({
                       ['description', 'displayName']
                     )}
                   />
-                )
-              }
-              rightPanelWidth={400}>
-              <Row className="p-t-xs">
-                <Col lg={{ offset: 2, span: 19 }} md={{ offset: 0, span: 24 }}>
-                  {!loading && !isElasticSearchIssue ? (
-                    <SearchedData
-                      isFilterSelected
-                      data={searchResults?.hits.hits ?? []}
-                      filter={parsedSearch}
-                      handleSummaryPanelDisplay={handleSummaryPanelDisplay}
-                      isSummaryPanelVisible={showSummaryPanel}
-                      selectedEntityId={entityDetails?.id || ''}
-                      totalValue={searchResults?.hits.total.value ?? 0}
-                      onPaginationChange={onChangePage}
-                    />
-                  ),
-                  minWidth: 400,
-                  flex: 0.35,
-                  className: 'entity-summary-resizable-right-panel-container',
-                }}
-              />
-            </Content>
-          </Layout>
-        )}
-      </div>
+                ),
+                minWidth: 400,
+                flex: 0.35,
+                className: 'entity-summary-resizable-right-panel-container',
+              }}
+            />
+          </Content>
+        </Layout>
+      )}
 
       {searchQueryParam && tabItems.length === 0 && !loading && (
         <Space

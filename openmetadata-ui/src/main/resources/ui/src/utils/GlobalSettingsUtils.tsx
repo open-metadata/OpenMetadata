@@ -49,8 +49,13 @@ import {
   GlobalSettingOptions,
   GlobalSettingsMenuCategory,
 } from '../constants/GlobalSettings.constants';
+import {
+  ResourceEntity,
+  UIPermission,
+} from '../context/PermissionProvider/PermissionProvider.interface';
 import { EntityType } from '../enums/entity.enum';
 import globalSettingsClassBase from './GlobalSettingsClassBase';
+import { userPermissions } from './PermissionsUtils';
 import { getSettingPath } from './RouterUtils';
 import { getEncodedFqn } from './StringsUtils';
 

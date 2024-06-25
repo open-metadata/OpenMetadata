@@ -243,8 +243,7 @@ const AppSchedule = ({
           includePeriodOptions={initialOptions}
           initialData={{
             repeatFrequency:
-            repeatFrequency: (appData.appSchedule as AppScheduleClass)
-              ?.cronExpression,
+              (appData.appSchedule as AppScheduleClass)?.cronExpression ??
               getWeekCron({ hour: 0, min: 0, dow: 0 }),
           }}
           isLoading={isSaveLoading}
