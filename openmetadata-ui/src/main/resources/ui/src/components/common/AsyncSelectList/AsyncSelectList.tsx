@@ -39,6 +39,7 @@ import { LabelType } from '../../../generated/entity/data/table';
 import { Paging } from '../../../generated/type/paging';
 import { TagLabel } from '../../../generated/type/tagLabel';
 import Fqn from '../../../utils/Fqn';
+import { getTagsWithoutTier } from '../../../utils/TableUtils';
 import { getTagDisplay, tagRender } from '../../../utils/TagsUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import TagsV1 from '../../Tag/TagsV1/TagsV1.component';
@@ -121,8 +122,7 @@ const AsyncSelectList: FC<AsyncSelectListProps & SelectProps> = ({
   );
 
   const tagOptions = useMemo(() => {
-    const newTags = options
-      .filter((tag) => !tag.label?.startsWith(`Tier${FQN_SEPARATOR_CHAR}Tier`)) // To filter out Tier tags
+    const newTags = getTagsWithoutTier(options) // To filter out Tier tags
       .map((tag) => {
         const displayName = tag.data?.displayName;
         const parts = Fqn.split(tag.label);
