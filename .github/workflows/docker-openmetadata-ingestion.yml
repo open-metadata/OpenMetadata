@@ -37,7 +37,7 @@ jobs:
           tags: |
             type=raw,1.5.0
             type=raw,${{ inputs.DOCKER_RELEASE_TAG }}
-            type=raw,latest,enable=${{ inputs.push_latest_tag_to_release == 'true' }}
+            type=raw,latest,enable=${{ inputs.push_latest_tag_to_release }}
 
       - name: Prepare for Docker Build&Push
         id: prepare
