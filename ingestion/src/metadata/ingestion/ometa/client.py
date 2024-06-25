@@ -118,13 +118,14 @@ class ClientConfig(ConfigModel):
     ttl_cache: int = 60
 
 
+# pylint: disable=too-many-instance-attributes
 class REST:
     """
     REST client wrapper to manage requests with
     retries, auth and error handling.
     """
 
-    def __init__(self, config: ClientConfig):  # pylint: disable=too-many-arguments
+    def __init__(self, config: ClientConfig):
         self.config = config
         self._base_url: URL = URL(self.config.base_url)
         self._api_version = get_api_version(self.config.api_version)
