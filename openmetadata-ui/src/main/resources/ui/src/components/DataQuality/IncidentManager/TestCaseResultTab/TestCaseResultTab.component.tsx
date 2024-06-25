@@ -30,6 +30,7 @@ import { EntityType } from '../../../../enums/entity.enum';
 import { Operation } from '../../../../generated/entity/policies/policy';
 
 import { TestCaseParameterValue } from '../../../../generated/tests/testCase';
+import { useTestCaseStore } from '../../../../pages/IncidentManager/IncidentManagerDetailPage/useTestCase.store';
 import { updateTestCaseById } from '../../../../rest/testAPI';
 import { checkPermission } from '../../../../utils/PermissionsUtils';
 import { showErrorToast, showSuccessToast } from '../../../../utils/ToastUtils';
@@ -39,14 +40,11 @@ import SchemaEditor from '../../../Database/SchemaEditor/SchemaEditor';
 import EditTestCaseModal from '../../AddDataQualityTest/EditTestCaseModal';
 import '../incident-manager.style.less';
 import './test-case-result-tab.style.less';
-import { TestCaseResultTabProps } from './TestCaseResultTab.interface';
 import testCaseResultTabClassBase from './TestCaseResultTabClassBase';
 
-const TestCaseResultTab = ({
-  testCaseData,
-  onTestCaseUpdate,
-}: TestCaseResultTabProps) => {
+const TestCaseResultTab = () => {
   const { t } = useTranslation();
+  const { testCase: testCaseData, setTestCase } = useTestCaseStore();
   const additionalComponent =
     testCaseResultTabClassBase.getAdditionalComponents();
   const [isDescriptionEdit, setIsDescriptionEdit] = useState<boolean>(false);
@@ -95,7 +93,7 @@ const TestCaseResultTab = ({
               testCaseData.id ?? '',
               jsonPatch
             );
-            onTestCaseUpdate(res);
+            setTestCase(res);
             showSuccessToast(
               t('server.update-entity-success', {
                 entity: t('label.test-case'),
@@ -109,7 +107,7 @@ const TestCaseResultTab = ({
         }
       }
     },
-    [testCaseData, updateTestCaseById, onTestCaseUpdate]
+    [testCaseData, updateTestCaseById, setTestCase]
   );
 
   const handleCancelParameter = useCallback(
@@ -225,7 +223,7 @@ const TestCaseResultTab = ({
           testCase={testCaseData}
           visible={isParameterEdit}
           onCancel={handleCancelParameter}
-          onUpdate={onTestCaseUpdate}
+          onUpdate={setTestCase}
         />
       )}
     </Row>
