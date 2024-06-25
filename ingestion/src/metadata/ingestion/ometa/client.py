@@ -124,7 +124,7 @@ class REST:
     retries, auth and error handling.
     """
 
-    def __init__(self, config: ClientConfig):
+    def __init__(self, config: ClientConfig):  # pylint: disable=too-many-arguments
         self.config = config
         self._base_url: URL = URL(self.config.base_url)
         self._api_version = get_api_version(self.config.api_version)
@@ -254,7 +254,7 @@ class REST:
             # retry if we hit Rate Limit
             if resp.status_code in retry_codes and retry > 0:
                 raise RetryException() from http_error
-            elif resp.status_code in limit_codes:
+            if resp.status_code in limit_codes:
                 raise LimitsException() from http_error
             if "code" in resp.text:
                 error = resp.json()

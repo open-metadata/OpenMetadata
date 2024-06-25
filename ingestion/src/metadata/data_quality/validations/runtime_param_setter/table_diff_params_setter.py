@@ -133,7 +133,12 @@ class TableDiffParamsSetter(RuntimeParameterSetter):
         url = urlparse(service_url)
         # remove the drivername from the url becuase table-diff doesn't support it
         kwargs = {"scheme": url.scheme.split("+")[0]}
-        service, database, schema, table = fqn.split(  # pylint: disable=unused-variable
+        (
+            service,
+            database,
+            schema,
+            table,
+        ) = fqn.split(  # pylint: disable=unused-variable,unbalanced-tuple-unpacking
             table_fqn
         )
         # path needs to include the database AND schema in some of the connectors
@@ -143,7 +148,12 @@ class TableDiffParamsSetter(RuntimeParameterSetter):
 
     @staticmethod
     def get_data_diff_table_path(table_fqn: str):
-        service, database, schema, table = fqn.split(  # pylint: disable=unused-variable
+        (
+            service,
+            database,
+            schema,
+            table,
+        ) = fqn.split(  # pylint: disable=unused-variable, unbalanced-tuple-unpacking
             table_fqn
         )
         return fqn._build(  # pylint: disable=protected-access

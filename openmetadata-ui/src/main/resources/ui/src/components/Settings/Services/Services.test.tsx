@@ -304,7 +304,7 @@ describe('Services', () => {
     expect(await screen.findByTestId('add-service-button')).toBeInTheDocument();
 
     expect(LimitWrapper).toHaveBeenCalledWith(
-      expect.objectContaining({ resource: 'services' }),
+      expect.objectContaining({ resource: 'dataAssets' }),
       {}
     );
   });

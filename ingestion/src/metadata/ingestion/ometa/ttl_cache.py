@@ -17,6 +17,10 @@ from typing import Dict
 
 
 class TTLCache:
+    """
+    class to handle ttl cache
+    """
+
     def __init__(self, ttl: int):
         self._ttl = ttl
         # The key will be the object, and the value the created time to check the TTL
