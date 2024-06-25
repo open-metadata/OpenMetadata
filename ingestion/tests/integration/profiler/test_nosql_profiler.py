@@ -33,6 +33,7 @@ from unittest import TestCase
 from pymongo import MongoClient, database
 from testcontainers.mongodb import MongoDbContainer
 
+from _openmetadata_testutils.ometa import int_admin_ometa
 from metadata.generated.schema.entity.data.table import ColumnProfile, Table
 from metadata.generated.schema.entity.services.databaseService import DatabaseService
 from metadata.generated.schema.type.basic import Timestamp
@@ -45,8 +46,6 @@ from metadata.utils.time_utils import get_end_of_day_timestamp_mill
 from metadata.workflow.metadata import MetadataWorkflow
 from metadata.workflow.profiler import ProfilerWorkflow
 from metadata.workflow.workflow_output_handler import print_status
-
-from ..integration_base import int_admin_ometa
 
 SERVICE_NAME = Path(__file__).stem
 
