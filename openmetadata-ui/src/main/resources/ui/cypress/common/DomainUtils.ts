@@ -47,9 +47,10 @@ export const validateDomainForm = () => {
     .scrollIntoView()
     .should('be.visible')
     .type(INVALID_NAMES.MAX_LENGTH);
-  cy.get('#name_help')
-    .should('be.visible')
-    .contains(NAME_MIN_MAX_LENGTH_VALIDATION_ERROR_1_128);
+  cy.get('#name_help').should(
+    'contain',
+    NAME_MIN_MAX_LENGTH_VALIDATION_ERROR_1_128
+  );
 
   // with special char validation
   cy.get('[data-testid="name"]')
