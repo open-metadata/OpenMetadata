@@ -34,6 +34,7 @@ jobs:
         with:
           images: |
             openmetadata/ingestion
+          sep-tags: ','
           tags: |
             type=raw,1.5.0
             type=raw,${{ inputs.DOCKER_RELEASE_TAG }}
