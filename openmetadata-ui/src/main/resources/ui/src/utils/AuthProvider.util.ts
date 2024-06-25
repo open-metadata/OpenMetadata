@@ -104,6 +104,7 @@ export const getAuthConfig = (
           pkce: true,
           provider,
           clientType,
+          enableSelfSignup,
         };
       }
 
@@ -119,6 +120,7 @@ export const getAuthConfig = (
           scope: 'openid email profile',
           responseType,
           clientType,
+          enableSelfSignup,
         };
       }
 
@@ -133,6 +135,7 @@ export const getAuthConfig = (
           scope: 'openid email profile',
           responseType,
           clientType,
+          enableSelfSignup,
         };
       }
 
@@ -143,6 +146,7 @@ export const getAuthConfig = (
           samlConfiguration,
           provider,
           clientType,
+          enableSelfSignup,
         };
       }
 
@@ -157,6 +161,7 @@ export const getAuthConfig = (
           scope: 'openid email profile',
           responseType: 'code',
           clientType,
+          enableSelfSignup,
         };
       }
 
@@ -168,6 +173,7 @@ export const getAuthConfig = (
         callbackUrl: redirectUri,
         provider,
         clientType,
+        enableSelfSignup,
       };
 
       break;
@@ -205,6 +211,7 @@ export const getAuthConfig = (
           },
           provider,
           clientType,
+          enableSelfSignup,
         } as Configuration;
       }
 
