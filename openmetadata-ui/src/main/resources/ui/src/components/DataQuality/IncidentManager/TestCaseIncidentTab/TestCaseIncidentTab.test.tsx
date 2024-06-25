@@ -25,6 +25,22 @@ const mockUseActivityFeedProviderValue = {
   setActiveThread: jest.fn(),
 };
 
+jest.mock(
+  '../../../../pages/IncidentManager/IncidentManagerDetailPage/useTestCase.store',
+  () => ({
+    useTestCaseStore: jest.fn().mockImplementation(() => ({
+      testCase: {
+        owner: {
+          name: 'arron_johnson',
+          displayName: 'Arron Johnson',
+          id: '1',
+          type: 'user',
+        },
+      },
+    })),
+  })
+);
+
 jest.mock('../../../Entity/Task/TaskTab/TaskTab.component', () => {
   return {
     TaskTab: jest.fn().mockImplementation(({ onAfterClose }) => (
