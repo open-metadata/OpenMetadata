@@ -15,6 +15,9 @@ import { randomUUID } from 'crypto';
 
 export const uuid = () => randomUUID().split('-')[0];
 
+export const descriptionBox =
+  '.toastui-editor-md-container > .toastui-editor > .ProseMirror';
+
 export const getToken = async (page: Page) => {
   return page.evaluate(
     () =>
