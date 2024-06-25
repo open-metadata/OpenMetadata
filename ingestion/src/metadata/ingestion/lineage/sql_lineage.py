@@ -11,6 +11,7 @@
 """
 Helper functions to handle SQL lineage operations
 """
+import itertools
 import traceback
 from typing import Any, Iterable, List, Optional, Tuple
 
@@ -254,35 +255,34 @@ def _build_table_lineage(
     """
     Prepare the lineage request generator
     """
-    if from_entity and to_entity:
-        col_lineage = get_column_lineage(
-            to_entity=to_entity,
-            to_table_raw_name=str(to_table_raw_name),
-            from_entity=from_entity,
-            from_table_raw_name=str(from_table_raw_name),
-            column_lineage_map=column_lineage_map,
+    col_lineage = get_column_lineage(
+        to_entity=to_entity,
+        to_table_raw_name=str(to_table_raw_name),
+        from_entity=from_entity,
+        from_table_raw_name=str(from_table_raw_name),
+        column_lineage_map=column_lineage_map,
+    )
+    lineage_details = LineageDetails(sqlQuery=query, source=lineage_source)
+    if col_lineage:
+        lineage_details.columnsLineage = col_lineage
+    lineage = AddLineageRequest(
+        edge=EntitiesEdge(
+            fromEntity=EntityReference(
+                id=from_entity.id.root,
+                type="table",
+            ),
+            toEntity=EntityReference(
+                id=to_entity.id.root,
+                type="table",
+            ),
         )
-        lineage_details = LineageDetails(sqlQuery=query, source=lineage_source)
-        if col_lineage:
-            lineage_details.columnsLineage = col_lineage
-        lineage = AddLineageRequest(
-            edge=EntitiesEdge(
-                fromEntity=EntityReference(
-                    id=from_entity.id.root,
-                    type="table",
-                ),
-                toEntity=EntityReference(
-                    id=to_entity.id.root,
-                    type="table",
-                ),
-            )
-        )
-        if lineage_details:
-            lineage.edge.lineageDetails = lineage_details
-        yield Either(right=lineage)
+    )
+    if lineage_details:
+        lineage.edge.lineageDetails = lineage_details
+    yield Either(right=lineage)
 
 
-# pylint: disable=too-many-arguments
+# pylint: disable=too-many-arguments,too-many-locals
 def _create_lineage_by_table_name(
     metadata: OpenMetadata,
     from_table: str,
@@ -315,17 +315,25 @@ def _create_lineage_by_table_name(
             table_name=to_table,
         )
 
-        for from_entity in from_table_entities or []:
-            for to_entity in to_table_entities or []:
-                yield from _build_table_lineage(
-                    to_entity=to_entity,
-                    from_entity=from_entity,
-                    to_table_raw_name=to_table,
-                    from_table_raw_name=from_table,
-                    query=query,
-                    column_lineage_map=column_lineage_map,
-                    lineage_source=lineage_source,
-                )
+        for table_name, entity in (
+            (from_table, from_table_entities),
+            (to_table, to_table_entities),
+        ):
+            if entity is None:
+                raise RuntimeError(f"Table entity not found: [{table_name}]")
+
+        for from_entity, to_entity in itertools.product(
+            from_table_entities, to_table_entities
+        ):
+            yield from _build_table_lineage(
+                to_entity=to_entity,
+                from_entity=from_entity,
+                to_table_raw_name=to_table,
+                from_table_raw_name=from_table,
+                query=query,
+                column_lineage_map=column_lineage_map,
+                lineage_source=lineage_source,
+            )
 
     except Exception as exc:
         yield Either(

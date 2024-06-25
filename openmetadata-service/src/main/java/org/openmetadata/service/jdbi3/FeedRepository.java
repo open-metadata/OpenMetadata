@@ -26,8 +26,11 @@ import static org.openmetadata.schema.type.Include.NON_DELETED;
 import static org.openmetadata.schema.type.Relationship.ADDRESSED_TO;
 import static org.openmetadata.schema.type.Relationship.CREATED;
 import static org.openmetadata.schema.type.Relationship.IS_ABOUT;
+import static org.openmetadata.schema.type.Relationship.MENTIONED_IN;
 import static org.openmetadata.schema.type.Relationship.REPLIED_TO;
 import static org.openmetadata.schema.type.TaskStatus.Open;
+import static org.openmetadata.service.Entity.GLOSSARY;
+import static org.openmetadata.service.Entity.GLOSSARY_TERM;
 import static org.openmetadata.service.Entity.USER;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.ANNOUNCEMENT_INVALID_START_TIME;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.ANNOUNCEMENT_OVERLAP;
@@ -587,6 +590,30 @@ public class FeedRepository {
           });
       computeTotalTaskCount(threadCount);
       threadCounts.add(threadCount);
+    } else if (reference.getType().equals(GLOSSARY)) {
+      mentions = 0;
+      result = dao.feedDAO().listCountThreadsByGlossaryAndTerms(entityLink, reference);
+      result.forEach(
+          l -> {
+            ThreadCount threadCount = new ThreadCount().withMentionCount(mentions);
+            String eLink = l.get(0);
+            String type = l.get(1);
+            String taskStatus = l.get(2);
+            threadCount.setEntityLink(eLink);
+            int count = Integer.parseInt(l.get(3));
+            if (type.equalsIgnoreCase("Conversation")) {
+              threadCount.setConversationCount(count);
+            } else if (type.equalsIgnoreCase("Task")) {
+              if (taskStatus.equals("Open")) {
+                threadCount.setOpenTaskCount(count);
+              } else if (taskStatus.equals("Closed")) {
+                threadCount.setClosedTaskCount(count);
+              }
+            }
+            computeTotalTaskCount(threadCount);
+            threadCounts.add(threadCount);
+          });
+
     } else {
       mentions = 0;
       result =
@@ -650,6 +677,13 @@ public class FeedRepository {
         // For a user entityLink get created or replied relationships to the thread
         if (reference.getType().equals(USER)) {
           FilteredThreads filteredThreads = getThreadsByOwner(filter, reference.getId(), limit + 1);
+          threads = filteredThreads.threads();
+          total = filteredThreads.totalCount();
+        } else if (reference.getType().equals(GLOSSARY)
+            && ThreadType.Task.equals(filter.getThreadType())) {
+          // Get tasks associated with the glossary term and glossary at glossary level
+          FilteredThreads filteredThreads =
+              getThreadsForGlossary(filter, userId, limit + 1, entityLink);
           threads = filteredThreads.threads();
           total = filteredThreads.totalCount();
         } else {
@@ -1155,6 +1189,37 @@ public class FeedRepository {
     int totalCount =
         dao.feedDAO().listCountThreadsByOwner(userId, teamIds, filter.getCondition(false));
     return new FilteredThreads(threads, totalCount);
+  }
+
+  private FilteredThreads getThreadsForGlossary(
+      FeedFilter filter, UUID userId, int limit, EntityLink entityLink) {
+
+    User user = userId != null ? Entity.getEntity(USER, userId, TEAMS_FIELD, NON_DELETED) : null;
+    List<String> teamNameHash = getTeamNames(user);
+    String userName = user == null ? null : user.getFullyQualifiedName();
+    int filterRelation = -1;
+    if (userName != null && filter.getFilterType() == FilterType.MENTIONS) {
+      filterRelation = MENTIONED_IN.ordinal();
+    }
+    EntityLink glossaryTermLink =
+        new EntityLink(GLOSSARY_TERM, entityLink.getFullyQualifiedFieldValue());
+
+    List<String> jsons =
+        dao.feedDAO()
+            .listThreadsByGlossaryAndTerms(
+                entityLink.getFullyQualifiedFieldValue(),
+                entityLink.getFullyQualifiedFieldType(),
+                glossaryTermLink.getFullyQualifiedFieldType(),
+                limit + 1,
+                IS_ABOUT.ordinal(),
+                userName,
+                teamNameHash,
+                filterRelation,
+                filter.getCondition());
+
+    List<Thread> threads = JsonUtils.readObjects(jsons, Thread.class);
+
+    return new FilteredThreads(threads, jsons.size());
   }
 
   /**
