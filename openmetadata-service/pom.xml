@@ -616,7 +616,17 @@
       <version>1.39.3</version>
       <scope>compile</scope>
     </dependency>
-
+    <dependency>
+      <groupId>com.slack.api</groupId>
+      <artifactId>slack-api-client</artifactId>
+      <version>1.40.1</version>
+    </dependency>
+      <dependency>
+          <groupId>com.slack.api</groupId>
+          <artifactId>slack-api-client</artifactId>
+          <version>1.40.1</version>
+          <scope>compile</scope>
+      </dependency>
   </dependencies>
 
   <profiles>

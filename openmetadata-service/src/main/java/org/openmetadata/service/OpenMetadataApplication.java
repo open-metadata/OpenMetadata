@@ -15,6 +15,7 @@ package org.openmetadata.service;
 
 import static org.openmetadata.service.security.SecurityUtil.tryCreateOidcClient;
 
+import com.slack.api.bolt.App;
 import io.dropwizard.Application;
 import io.dropwizard.configuration.EnvironmentVariableSubstitutor;
 import io.dropwizard.configuration.SubstitutingSourceProvider;
@@ -65,8 +66,12 @@ import org.jdbi.v3.sqlobject.SqlObjects;
 import org.openmetadata.schema.api.security.AuthenticationConfiguration;
 import org.openmetadata.schema.api.security.AuthorizerConfiguration;
 import org.openmetadata.schema.api.security.ClientType;
+import org.openmetadata.schema.service.configuration.slackApp.SlackAppConfiguration;
 import org.openmetadata.schema.services.connections.metadata.AuthProvider;
 import org.openmetadata.service.apps.ApplicationHandler;
+import org.openmetadata.service.apps.bundles.slack.SlackApp;
+import org.openmetadata.service.apps.bundles.slack.SlackAppController;
+import org.openmetadata.service.apps.bundles.slack.SlackAppOAuthController;
 import org.openmetadata.service.apps.scheduler.AppScheduler;
 import org.openmetadata.service.config.OMWebBundle;
 import org.openmetadata.service.config.OMWebConfiguration;
@@ -248,6 +253,33 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
 
     // Register Auth Handlers
     registerAuthServlets(catalogConfig, environment);
+
+    // bolt
+    regsiterBoltSlackApplication(catalogConfig.getSlackAppConfig(), environment);
+  }
+
+  private void regsiterBoltSlackApplication(SlackAppConfiguration appConfig, Environment environment){
+    App slackapp = null;
+    try {
+      slackapp = SlackApp.boltSlackAppRegistration(appConfig);
+    } catch (Exception e) {
+      throw new RuntimeException(e);
+    }
+    boltSlackServletsRegistration(slackapp, environment);
+  }
+
+  private void boltSlackServletsRegistration(App slackApp, Environment environment) {
+    SlackAppOAuthController slackAppOAuthController = new SlackAppOAuthController(slackApp);
+    environment
+            .servlets()
+            .addServlet("SlackOAuthAppServlet", slackAppOAuthController)
+            .addMapping("/api/slack/install", "/api/slack/oauth_redirect");
+
+    SlackAppController slackAppController = new SlackAppController(slackApp);
+    environment
+            .servlets()
+            .addServlet("SlackAppServlet", slackAppController)
+            .addMapping("/api/slack/events");
   }
 
   private void registerAuthServlets(OpenMetadataApplicationConfig config, Environment environment) {

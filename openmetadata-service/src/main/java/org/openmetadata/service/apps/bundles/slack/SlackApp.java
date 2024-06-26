@@ -1,6 +1,8 @@
 package org.openmetadata.service.apps.bundles.slack;
 
 import com.slack.api.Slack;
+import com.slack.api.bolt.App;
+import com.slack.api.bolt.AppConfig;
 import com.slack.api.methods.SlackApiException;
 import com.slack.api.methods.request.conversations.ConversationsListRequest;
 import com.slack.api.methods.request.views.ViewsPublishRequest;
@@ -26,7 +28,6 @@ import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.codec.binary.Hex;
 import org.apache.commons.io.IOUtils;
-import org.openmetadata.schema.entity.app.App;
 import org.openmetadata.schema.service.configuration.slackApp.SlackAppConfiguration;
 import org.openmetadata.schema.settings.Settings;
 import org.openmetadata.schema.settings.SettingsType;
@@ -49,8 +50,28 @@ public class SlackApp extends AbstractNativeApplication {
     super(collectionDAO, searchRepository);
   }
 
+  public static App boltSlackAppRegistration(SlackAppConfiguration config) throws Exception {
+    System.out.println("::::: boltSlackAppRegistration :::::");
+    AppConfig appConfig =
+            AppConfig.builder()
+                    .clientId(config.getClientId())
+                    .clientSecret(config.getClientSecret())
+                    .signingSecret(config.getSigningSecret())
+                    .scope(config.getScopes())
+                    .oauthInstallPath("")
+                    .oauthRedirectUriPath(config.getCallbackUrl())
+                    .stateValidationEnabled(false)
+                    .build();
+
+    App slackApp = new App(appConfig).asOAuthApp(true);
+
+    slackApp.command("/hello", (req, ctx) -> ctx.ack(r -> r.text("Thanks!")));
+
+    return slackApp;
+  }
+
   @Override
-  public void init(App app) {
+  public void init(org.openmetadata.schema.entity.app.App app) {
     super.init(app);
     this.systemRepository = Entity.getSystemRepository();
     appConfig =
@@ -360,7 +381,7 @@ public class SlackApp extends AbstractNativeApplication {
   }
 
   @Override
-  public void raisePreviewMessage(App app) {
+  public void raisePreviewMessage(org.openmetadata.schema.entity.app.App app) {
     throw AppException.byMessage(
         app.getName(), "Preview", "Contact Collate to purchase the Application");
   }

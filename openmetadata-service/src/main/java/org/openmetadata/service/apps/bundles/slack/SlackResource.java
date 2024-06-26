@@ -15,7 +15,9 @@ import java.net.URISyntaxException;
 import java.util.Map;
 import java.util.Optional;
 import javax.ws.rs.Consumes;
+import javax.ws.rs.FormParam;
 import javax.ws.rs.GET;
+import javax.ws.rs.HeaderParam;
 import javax.ws.rs.POST;
 import javax.ws.rs.Path;
 import javax.ws.rs.Produces;
@@ -69,6 +71,33 @@ public class SlackResource {
           "The app needs to be installed before interacting with the API",
           Response.Status.INTERNAL_SERVER_ERROR);
     }
+  }
+
+  @POST
+  @Path("/command")
+  @Consumes(MediaType.APPLICATION_FORM_URLENCODED)
+  public Response handleSlashCommand(
+          @FormParam("command") String command,
+          @FormParam("text") String text,
+          @FormParam("response_url") String responseUrl,
+          @FormParam("user_id") String userId,
+          @HeaderParam("X-Slack-Signature") String slackSignature,
+          @HeaderParam("X-Slack-Request-Timestamp") String slackRequestTimestamp) {
+    String responseMessage = "Command received: " + command + " with text: " + text;
+    return Response.ok(responseMessage).build();
+  }
+
+  @GET
+  @Path("/oauthUrl")
+  public Response getOAuth() {
+    initializeSlackApp();
+    return Response.ok()
+            .entity(
+                    new SlackApiResponse<>(
+                            Response.Status.OK.getStatusCode(),
+                            "Channels retrieved successfully",
+                            slackApp.buildOAuthUrl()))
+            .build();
   }
 
   @GET
