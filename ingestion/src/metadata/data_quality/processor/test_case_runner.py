@@ -36,7 +36,11 @@ from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
 )
 from metadata.generated.schema.tests.testCase import TestCase
-from metadata.generated.schema.tests.testDefinition import TestDefinition, TestPlatform, EntityType
+from metadata.generated.schema.tests.testDefinition import (
+    EntityType,
+    TestDefinition,
+    TestPlatform,
+)
 from metadata.generated.schema.tests.testSuite import TestSuite
 from metadata.generated.schema.type.basic import EntityLink, FullyQualifiedEntityName
 from metadata.ingestion.api.models import Either
