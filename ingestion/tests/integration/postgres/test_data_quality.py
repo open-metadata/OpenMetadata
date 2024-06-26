@@ -170,4 +170,6 @@ def test_incompatible_column_type(ingest_metadata, metadata: OpenMetadata, db_se
             error="Test case incompatible_column_type of type columnValueMaxToBeBetween is not compatible with column first_name of type VARCHAR",
         )
     ], "Test case incompatible_column_type should fail"
-    assert "compatible_test" in test_suite_procesor.steps[1].get_status().records, "Test case compatible_test should pass"
+    assert (
+        "compatible_test" in test_suite_procesor.steps[1].get_status().records
+    ), "Test case compatible_test should pass"

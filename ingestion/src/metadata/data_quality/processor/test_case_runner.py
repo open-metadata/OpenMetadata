@@ -328,6 +328,17 @@ class TestCaseRunner(Processor):
     def filter_incompatible_test_cases(
         self, table: Table, test_cases: List[TestCase]
     ) -> List[TestCase]:
+        """Filter out test cases that are defined for incompatible columns. An example of this is a
+        test case that checks for a column value to be between two values, but the column is of type
+        VARCHAR and not a numeric type. Incompatible test cases will be logged as failures.
+
+        Args:
+            table: Table entity the test cases are run against
+            test_cases: List of test cases
+
+        Returns:
+            List of test cases that are compatible with the table columns
+        """
         result: List[TestCase] = []
         for tc in test_cases:
             column_name = entity_link.get_decoded_column(tc.entityLink.root)
