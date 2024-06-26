@@ -60,6 +60,7 @@ To execute metadata extraction and usage workflow successfully the user or the s
 | 11   | datacatalog.taxonomies.list   | Fetch Policy Tags       |
 | 12   | bigquery.readsessions.create  | Bigquery Usage & Lineage Workflow |
 | 13   | bigquery.readsessions.getData | Bigquery Usage & Lineage Workflow |
+| 14   | logging.operations.list       | Incremental Metadata Ingestion    |
 
 {% /multiTablesWrapper %}
 
@@ -70,9 +71,9 @@ If the user has `External Tables`, please attach relevant permissions needed for
 {% tilesContainer %}
 {% tile
 icon="manage_accounts"
-title="Create Custom GCP Role"
+title="Create Credentials"
 description="Checkout this documentation on how to create a custom role and assign it to the service account."
-link="/connectors/database/bigquery/roles"
+link="/connectors/database/bigquery/create-credentials"
   / %}
 {% /tilesContainer %}
 
