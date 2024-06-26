@@ -368,6 +368,7 @@ test = {
     *plugins["pii-processor"],
     "requests==2.31.0",
     f"{DATA_DIFF['mysql']}==0.11.2",
+    *plugins["deltalake"],
 }
 
 e2e_test = {
