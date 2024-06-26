@@ -137,9 +137,18 @@ def set_google_credentials(gcp_credentials: GCPCredentials) -> None:
         os.environ[GOOGLE_CREDENTIALS] = str(gcp_credentials.gcpConfig.root)
         return
 
-    if gcp_credentials.gcpConfig.projectId is None:
+    if (
+        isinstance(gcp_credentials.gcpConfig, GcpCredentialsValues)
+        and gcp_credentials.gcpConfig.projectId is None
+    ):
         logger.info(
             "No credentials available, using the current environment permissions authenticated via gcloud SDK."
+        )
+        return
+
+    if isinstance(gcp_credentials.gcpConfig, GcpExternalAccount):
+        logger.info(
+            "Using External account credentials to authenticate with GCP services."
         )
         return
 
