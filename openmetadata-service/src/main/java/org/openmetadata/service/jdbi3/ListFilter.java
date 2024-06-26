@@ -73,8 +73,7 @@ public class ListFilter extends Filter<ListFilter> {
   public String getIncludeCondition(String tableName) {
     String columnName = tableName == null ? "deleted" : tableName + ".deleted";
     if (include == Include.NON_DELETED || include == Include.DELETED) {
-      queryParams.put("include", include == Include.NON_DELETED ? "FALSE" : "TRUE");
-      return columnName + " =:include";
+      return columnName + String.format(" =%s", include == Include.NON_DELETED ? "FALSE" : "TRUE");
     }
     return "";
   }
