@@ -11,6 +11,5 @@
 {% connectorInfoCard name="OpenLineage" stage="PROD" href="/connectors/pipeline/openlineage" platform="OpenMetadata" / %}
 {% connectorInfoCard name="NiFi" stage="PROD" href="/connectors/pipeline/nifi" platform="OpenMetadata" / %}
 {% connectorInfoCard name="Spline" stage="BETA" href="/connectors/pipeline/spline" platform="OpenMetadata" / %}
-{% connectorInfoCard name="Flink" stage="BETA" href="/connectors/pipeline/flink" platform="OpenMetadata" / %}
 
 {% /connectorsListContainer %}
