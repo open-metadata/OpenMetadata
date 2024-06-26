@@ -96,6 +96,9 @@ class TestCaseRunner(Processor):
             )
 
         openmetadata_test_cases = self.filter_for_om_test_cases(test_cases)
+        openmetadata_test_cases = self.filter_incompatible_test_cases(
+            record.table, openmetadata_test_cases
+        )
 
         test_suite_runner = test_suite_source_factory.create(
             record.service_type.lower(),
@@ -204,9 +207,11 @@ class TestCaseRunner(Processor):
                             )
                         ),
                         testSuite=test_suite_fqn,
-                        parameterValues=list(test_case_to_create.parameterValues)
-                        if test_case_to_create.parameterValues
-                        else None,
+                        parameterValues=(
+                            list(test_case_to_create.parameterValues)
+                            if test_case_to_create.parameterValues
+                            else None
+                        ),
                         owner=None,
                         computePassedFailedRowCount=test_case_to_create.computePassedFailedRowCount,
                     )
@@ -319,3 +324,25 @@ class TestCaseRunner(Processor):
 
     def close(self) -> None:
         """Nothing to close"""
+
+    def filter_incompatible_test_cases(
+        self, table: Table, test_cases: List[TestCase]
+    ) -> List[TestCase]:
+        result: List[TestCase] = []
+        for tc in test_cases:
+            column_name = entity_link.get_decoded_column(tc.entityLink.root)
+            column = next(c for c in table.columns if c.name.root == column_name)
+            test_definition: TestDefinition = self.metadata.get_by_id(
+                TestDefinition, tc.testDefinition.id, nullable=False
+            )
+            if column.dataType not in test_definition.supportedDataTypes:
+                self.status.failed(
+                    StackTraceError(
+                        name="Incompatible Column for Test Case",
+                        error=f"Test case {tc.name.root} of type {test_definition.name.root}"
+                        f" is not compatible with column {column.name.root} of type {column.dataType.value}",
+                    )
+                )
+            else:
+                result.append(tc)
+        return result

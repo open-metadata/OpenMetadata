@@ -4,6 +4,9 @@ from typing import List
 import pytest
 
 from metadata.generated.schema.entity.services.databaseService import DatabaseService
+from metadata.generated.schema.entity.services.ingestionPipelines.status import (
+    StackTraceError,
+)
 from metadata.generated.schema.metadataIngestion.testSuitePipeline import (
     TestSuiteConfigType,
     TestSuitePipeline,
@@ -110,3 +113,61 @@ def test_data_quality(
     )
     assert test_case is not None
     assert test_case.testCaseResult.testCaseStatus == expected_status
+
+
+def test_incompatible_column_type(ingest_metadata, metadata: OpenMetadata, db_service):
+    workflow_config = {
+        "source": {
+            "type": "TestSuite",
+            "serviceName": "MyTestSuite",
+            "sourceConfig": {
+                "config": {
+                    "type": "TestSuite",
+                    "entityFullyQualifiedName": f"{db_service.fullyQualifiedName.root}.dvdrental.public.customer",
+                }
+            },
+            "serviceConnection": db_service.connection.dict(),
+        },
+        "processor": {
+            "type": "orm-test-runner",
+            "config": {
+                "testCases": [
+                    {
+                        "name": "incompatible_column_type",
+                        "testDefinitionName": "columnValueMaxToBeBetween",
+                        "columnName": "first_name",
+                        "parameterValues": [
+                            {"name": "minValueForMaxInCol", "value": "0"},
+                            {"name": "maxValueForMaxInCol", "value": "10"},
+                        ],
+                    },
+                    {
+                        "name": "compatible_test",
+                        "testDefinitionName": "columnValueMaxToBeBetween",
+                        "columnName": "customer_id",
+                        "parameterValues": [
+                            {"name": "minValueForMaxInCol", "value": "0"},
+                            {"name": "maxValueForMaxInCol", "value": "10"},
+                        ],
+                    },
+                ]
+            },
+        },
+        "sink": {
+            "type": "metadata-rest",
+            "config": {},
+        },
+        "workflowConfig": {
+            "loggerLevel": "DEBUG",
+            "openMetadataServerConfig": metadata.config.dict(),
+        },
+    }
+    test_suite_procesor = TestSuiteWorkflow.create(workflow_config)
+    test_suite_procesor.execute()
+    assert test_suite_procesor.steps[0].get_status().failures == [
+        StackTraceError(
+            name="Incompatible Column for Test Case",
+            error="Test case incompatible_column_type of type columnValueMaxToBeBetween is not compatible with column first_name of type VARCHAR",
+        )
+    ], "Test case incompatible_column_type should fail"
+    assert "compatible_test" in test_suite_procesor.steps[1].get_status().records, "Test case compatible_test should pass"
