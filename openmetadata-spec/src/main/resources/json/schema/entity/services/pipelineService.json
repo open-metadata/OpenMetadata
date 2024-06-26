@@ -21,6 +21,7 @@
         "GluePipeline",
         "Airbyte",
         "Fivetran",
+        "Flink",
         "Dagster",
         "Nifi",
         "DomoPipeline",
@@ -44,6 +45,9 @@
         },
         {
           "name": "Fivetran"
+        },
+        {
+          "name": "Flink"
         },
         {
           "name": "Dagster"
@@ -99,6 +103,9 @@
             },
             {
               "$ref": "./connections/pipeline/fivetranConnection.json"
+            },
+            {
+              "$ref": "./connections/pipeline/flinkConnection.json"
             },
             {
               "$ref": "./connections/pipeline/dagsterConnection.json"
