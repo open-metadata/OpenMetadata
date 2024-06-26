@@ -15,6 +15,7 @@ import { Col, Row, Tabs } from 'antd';
 import { capitalize, isEmpty } from 'lodash';
 import qs from 'qs';
 import React, { useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useHistory, useLocation, useParams } from 'react-router-dom';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
@@ -39,6 +40,7 @@ const ServicesPage = () => {
   const { tab } = useParams<{ tab: string }>();
   const location = useLocation();
   const history = useHistory();
+  const { t } = useTranslation();
   const { isAdminUser } = useAuth();
   const search =
     qs.parse(
@@ -73,7 +75,9 @@ const ServicesPage = () => {
     () =>
       getSettingPageEntityBreadCrumb(
         GlobalSettingsMenuCategory.SERVICES,
-        capitalize(tab)
+        tab === GlobalSettingOptions.DATA_OBSERVABILITY
+          ? t('label.data-observability')
+          : capitalize(tab)
       ),
     []
   );
