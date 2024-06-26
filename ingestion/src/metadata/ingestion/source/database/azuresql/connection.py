@@ -75,7 +75,7 @@ def get_connection_url(connection: Union[AzureSQLConnection, MssqlConnection]) -
 
     url += f"{connection.hostPort}"
     url += f"/{quote_plus(connection.database)}" if connection.database else ""
-    url += f"?driver={quote_plus(connection.driver)}"
+    url += f"?driver={quote_plus(connection.driver)}&trusted_connection=yes"
 
     options = get_connection_options_dict(connection)
     if options:
