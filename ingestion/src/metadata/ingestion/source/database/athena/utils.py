@@ -181,7 +181,6 @@ def get_table_options(
     self, connection: "Connection", table_name: str, schema: Optional[str] = None, **kw
 ):
     metadata = self._get_table(connection, table_name, schema=schema, **kw)
-    # TODO The metadata retrieved from the API does not seem to include bucketing information.
     return {
         "awsathena_location": metadata.location,
         "awsathena_compression": metadata.compression,
