@@ -156,7 +156,8 @@ const TaskFeedCard = ({
 
   return (
     <Button
-      className="remove-button-default-styling w-full"
+      block
+      className="remove-button-default-styling"
       type="text"
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}>
