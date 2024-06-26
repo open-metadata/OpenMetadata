@@ -83,11 +83,10 @@ const TestSuiteIngestion: React.FC<TestSuiteIngestionProps> = ({
   const [isLoading, setIsLoading] = useState(false);
   const { config } = useLimitStore();
 
-  const { pipelineSchedules } = config?.limits?.config.featureLimits.find(
-    (feature) => feature.name === 'dataQuality'
-  ) ?? {
-    pipelineSchedules: ['weekly'],
-  };
+  const { pipelineSchedules } =
+    config?.limits?.config.featureLimits.find(
+      (feature) => feature.name === 'dataQuality'
+    ) ?? {};
 
   const schedulerOptions = useMemo(() => {
     if (isEmpty(pipelineSchedules) || !pipelineSchedules) {

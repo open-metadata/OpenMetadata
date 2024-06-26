@@ -71,15 +71,14 @@ const AddIngestion = ({
   const { currentUser } = useApplicationStore();
   const { config: limitConfig } = useLimitStore();
 
-  const { pipelineSchedules } = limitConfig?.limits?.config.featureLimits.find(
-    (limit) => limit.name === 'ingestionPipeline'
-  ) ?? {
-    pipelineSchedules: ['run_once', 'hourly', 'daily', 'weekly', 'monthly'],
-  };
+  const { pipelineSchedules } =
+    limitConfig?.limits?.config.featureLimits.find(
+      (limit) => limit.name === 'ingestionPipeline'
+    ) ?? {};
 
-  const periodOptions = getScheduleOptionsFromSchedules(
-    pipelineSchedules ?? []
-  );
+  const periodOptions = pipelineSchedules
+    ? getScheduleOptionsFromSchedules(pipelineSchedules)
+    : undefined;
 
   // lazy initialization to initialize the data only once
   const [workflowData, setWorkflowData] = useState<IngestionWorkflowData>(
