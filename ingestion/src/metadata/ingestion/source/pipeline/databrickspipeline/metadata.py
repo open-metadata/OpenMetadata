@@ -100,7 +100,9 @@ class DatabrickspipelineSource(PipelineServiceSource):
             logger.error(f"Failed to get pipeline list due to : {exc}")
         return None
 
-    def get_pipeline_name(self, pipeline_details: DataBrickPipelineDetails) -> str:
+    def get_pipeline_name(
+        self, pipeline_details: DataBrickPipelineDetails
+    ) -> Optional[str]:
         try:
             return pipeline_details.settings.name
         except Exception as exc:
