@@ -104,10 +104,7 @@ def mssql_server_config(mssql_container, request):
     scope="module",
     params=[
         MssqlScheme.mssql_pytds,
-        xfail_param(
-            MssqlScheme.mssql_pyodbc,
-            "sql server fails with pyodbc (https://github.com/open-metadata/OpenMetadata/issues/16435)",
-        ),
+        MssqlScheme.mssql_pyodbc,
     ],
 )
 def ingest_metadata(mssql_container, metadata: OpenMetadata, request):
