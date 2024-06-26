@@ -66,10 +66,11 @@ const AppInstall = () => {
   const UiSchema = applicationSchemaClassBase.getJSONUISchema();
   const { config, getResourceLimit } = useLimitStore();
 
-  const { pipelineSchedules } =
-    config?.limits.config.featureLimits.find(
-      (feature) => feature.name === 'app'
-    ) ?? {};
+  const { pipelineSchedules } = config?.limits?.config.featureLimits.find(
+    (feature) => feature.name === 'app'
+  ) ?? {
+    pipelineSchedules: ['run_once', 'daily', 'weekly', 'monthly'],
+  };
 
   const stepperList = useMemo(
     () =>

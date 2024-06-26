@@ -17,6 +17,8 @@ export const getScheduleOptionsFromSchedules = (
     switch (scheduleOption) {
       case 'run_once':
         return '';
+      case 'hourly':
+        return 'hour';
       case 'daily':
         return 'day';
       case 'weekly':

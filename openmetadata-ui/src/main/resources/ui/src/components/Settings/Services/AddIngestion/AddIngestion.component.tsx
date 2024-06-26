@@ -71,10 +71,11 @@ const AddIngestion = ({
   const { currentUser } = useApplicationStore();
   const { config: limitConfig } = useLimitStore();
 
-  const { pipelineSchedules } =
-    limitConfig?.limits.config.featureLimits.find(
-      (limit) => limit.name === 'ingestionPipeline'
-    ) ?? {};
+  const { pipelineSchedules } = limitConfig?.limits?.config.featureLimits.find(
+    (limit) => limit.name === 'ingestionPipeline'
+  ) ?? {
+    pipelineSchedules: ['run_once', 'hourly', 'daily', 'weekly', 'monthly'],
+  };
 
   const periodOptions = getScheduleOptionsFromSchedules(
     pipelineSchedules ?? []

@@ -41,14 +41,14 @@ const LimitWrapper = ({ resource, children }: LimitWrapperProps) => {
   };
 
   useEffect(() => {
-    if (resource) {
+    if (resource && config?.enable) {
       initResourceLimit();
     }
 
     return () => {
       setBannerDetails(null);
     };
-  }, [resource]);
+  }, [resource, config?.enable]);
   const currentLimits = resourceLimit[resource];
 
   const limitReached = currentLimits?.limitReached;

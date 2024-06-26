@@ -114,6 +114,22 @@ export const useLimitStore = create<{
     const { setResourceLimit, resourceLimit, setBannerDetails, config } = get();
 
     let rLimit = resourceLimit[resource];
+    if (config?.enable === false) {
+      return {
+        name: resource,
+        limitReached: false,
+        currentCount: -1,
+        configuredLimit: {
+          name: resource,
+          maxVersions: 0,
+          disableFields: [],
+          limits: {
+            softLimit: -1,
+            hardLimit: -1,
+          },
+        },
+      } as ResourceLimit['featureLimitStatuses'][number];
+    }
 
     if (isNil(rLimit) || force) {
       const limit = await getLimitByResource(resource);
@@ -134,7 +150,7 @@ export const useLimitStore = create<{
       const hardLimitExceed =
         limits.hardLimit !== -1 && currentCount >= limits.hardLimit;
 
-      const plan = config?.limits.config.plan ?? 'FREE';
+      const plan = config?.limits?.config.plan ?? 'FREE';
 
       (softLimitExceed || hardLimitExceed || limitReached) &&
         showBanner &&

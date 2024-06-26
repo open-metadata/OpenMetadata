@@ -51,10 +51,11 @@ const AppSchedule = ({
   const [isSaveLoading, setIsSaveLoading] = useState(false);
   const { config } = useLimitStore();
 
-  const { pipelineSchedules } =
-    config?.limits.config.featureLimits.find(
-      (feature) => feature.name === 'app'
-    ) ?? {};
+  const { pipelineSchedules } = config?.limits?.config.featureLimits.find(
+    (feature) => feature.name === 'app'
+  ) ?? {
+    pipelineSchedules: ['run_once', 'daily', 'weekly', 'monthly'],
+  };
 
   const fetchPipelineDetails = useCallback(async () => {
     setIsLoading(true);
