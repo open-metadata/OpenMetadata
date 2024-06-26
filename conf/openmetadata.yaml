@@ -403,5 +403,6 @@ applications:
         clientId:
         scopes:
         clientSecret:
+        signingSecret:
         callbackUrl:
         callbackRedirectURL:

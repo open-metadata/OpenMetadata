@@ -1,5 +1,8 @@
 package org.openmetadata.service.apps.bundles.slack;
 
+import com.google.common.reflect.TypeToken;
+import com.google.gson.Gson;
+import com.google.gson.JsonSyntaxException;
 import io.swagger.v3.oas.annotations.Hidden;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -10,13 +13,17 @@ import java.lang.reflect.InvocationTargetException;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.Map;
+import java.util.Optional;
 import javax.ws.rs.Consumes;
 import javax.ws.rs.GET;
+import javax.ws.rs.POST;
 import javax.ws.rs.Path;
 import javax.ws.rs.Produces;
 import javax.ws.rs.QueryParam;
 import javax.ws.rs.core.Context;
+import javax.ws.rs.core.HttpHeaders;
 import javax.ws.rs.core.MediaType;
+import javax.ws.rs.core.MultivaluedMap;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
@@ -37,7 +44,7 @@ import org.openmetadata.service.resources.Collection;
 @Collection(name = "Slack")
 public class SlackResource {
   public static final String COLLECTION_PATH = "/v1/collate/apps/slack/";
-  private static final String APP_NAME = "SlackApplication";
+  public static final String APP_NAME = "SlackApplication";
   private static final String SLACK_APP = "Slack";
   private SlackApp slackApp;
 
@@ -94,6 +101,36 @@ public class SlackResource {
     }
   }
 
+  @POST
+  @Path("/events")
+  @Consumes(MediaType.APPLICATION_JSON)
+  public Response handleSlackEvent(String payload, @Context HttpHeaders headers) {
+    initializeSlackApp();
+
+    // Validate Slack request
+    if (!validateSlackRequest(headers, payload)) {
+      return Response.status(Response.Status.BAD_REQUEST).build();
+    }
+
+    Map<String, Object> eventPayload = null;
+    try {
+      eventPayload =
+          new Gson().fromJson(payload, new TypeToken<Map<String, Object>>() {}.getType());
+    } catch (JsonSyntaxException e) {
+      LOG.warn("Error parsing Slack payload JSON: " + e.getMessage());
+      return Response.status(Response.Status.BAD_REQUEST).build();
+    }
+
+    // Check if the event payload contains a challenge
+    if (eventPayload.containsKey("challenge")) {
+      String challenge = (String) eventPayload.get("challenge");
+      // Respond with the challenge value
+      return Response.ok(challenge).build();
+    }
+
+    return slackApp.handleEvent(eventPayload);
+  }
+
   @GET
   @Path("/callback")
   @Produces(MediaType.APPLICATION_JSON)
@@ -115,6 +152,7 @@ public class SlackResource {
         return redirectResponse(slackApp.getRedirectUrl(false));
       }
 
+      // Save token and build redirect URL
       String redirectUrl = slackApp.saveTokenAndBuildRedirectUrl(code);
       return redirectResponse(redirectUrl);
     } catch (Exception e) {
@@ -184,6 +222,30 @@ public class SlackResource {
                   null))
           .build();
     }
+  }
+
+  private boolean validateSlackRequest(HttpHeaders headers, String payload) {
+    // Retrieve headers case-insensitively
+    MultivaluedMap<String, String> requestHeaders = headers.getRequestHeaders();
+    Optional<String> slackSignature =
+        Optional.ofNullable(requestHeaders.getFirst("X-Slack-Signature"));
+    Optional<String> slackRequestTimestamp =
+        Optional.ofNullable(requestHeaders.getFirst("X-Slack-Request-Timestamp"));
+
+    if (slackSignature.isEmpty() || slackRequestTimestamp.isEmpty()) {
+      LOG.warn("Missing required headers: X-Slack-Signature or X-Slack-Request-Timestamp");
+      return false;
+    }
+
+    // Verify request signature
+    boolean isRequestValid =
+        slackApp.isRequestValid(slackSignature.get(), slackRequestTimestamp.get(), payload);
+    if (!isRequestValid) {
+      LOG.warn("Request verification failed");
+      return false;
+    }
+
+    return true;
   }
 
   private Response redirectResponse(String url) {

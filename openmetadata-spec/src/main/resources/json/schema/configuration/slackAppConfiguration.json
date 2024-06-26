@@ -14,6 +14,10 @@
       "description": "Client Secret of the Application.",
       "type": "string"
     },
+    "signingSecret": {
+      "description": "Signing Secret of the Application. Confirm that each request comes from Slack by verifying its unique signature.",
+      "type": "string"
+    },
     "scopes": {
       "description": "Scopes to Request in OAuth",
       "type": "string"
@@ -27,6 +31,6 @@
       "type": "string"
     }
   },
-  "required": ["clientId", "clientSecret"],
+  "required": ["clientId", "clientSecret","signingSecret","scopes","callbackUrl","callbackRedirectURL"],
   "additionalProperties": false
 }

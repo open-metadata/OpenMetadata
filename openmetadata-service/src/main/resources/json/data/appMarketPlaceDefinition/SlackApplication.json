@@ -1,7 +1,7 @@
 {
   "name": "SlackApplication",
   "displayName": "Slack Application",
-  "description": "The Slack App enhances communication and resource sharing between Slack and OpenMetadata. This app provides the following features:\n- **Channel Listing**: Quickly and easily list all available Slack channels within OpenMetadata.\n- **Message Sending**: Send messages to Slack channels directly from OpenMetadata, streamlining communication.\n- **Resource Sharing**: Share important resources and information seamlessly between Slack and OpenMetadata.\n- **Integrated Conversations**: Facilitate direct conversations between Slack users and OpenMetadata, ensuring smooth and efficient collaboration.\n\nThis Slack App leverages your existing Slack workspace to enhance productivity and collaboration, providing a seamless integration between your communication and metadata management tools.\n",
+  "description": "The Slack application enables you to connect your Slack workspace with OpenMetadata. With two of your most important workspaces connected, you will receive notifications from OpenMetadata directly in Slack. Here are a few benefits that the OpenMetadata-Slack integration enables:\n- **Resource Sharing**: Seamlessly share important resources and information between your Slack workspace and OpenMetadata.\n- **Integrated Conversations**: Facilitate conversations between Slack and OpenMetadata, ensuring smooth and efficient collaboration.\n\nThis Slack app leverages your existing Slack workspace to enhance productivity and collaboration, providing seamless integration between communication and metadata management.",
   "features": "Connect your slack workspace with OpenMetadata.",
   "appType": "internal",
   "appScreenshots": ["SlackApp.png"],
