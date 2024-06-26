@@ -22,6 +22,7 @@ import databricksPipelineConnection from '../jsons/connectionSchemas/connections
 import dbtCloudConnection from '../jsons/connectionSchemas/connections/pipeline/dbtCloudConnection.json';
 import domoPipelineConnection from '../jsons/connectionSchemas/connections/pipeline/domoPipelineConnection.json';
 import fivetranConnection from '../jsons/connectionSchemas/connections/pipeline/fivetranConnection.json';
+import flinkConnection from '../jsons/connectionSchemas/connections/pipeline/flinkConnection.json';
 import gluePipelineConnection from '../jsons/connectionSchemas/connections/pipeline/gluePipelineConnection.json';
 import KafkaConnectConnection from '../jsons/connectionSchemas/connections/pipeline/kafkaConnectConnection.json';
 import nifiConnection from '../jsons/connectionSchemas/connections/pipeline/nifiConnection.json';
@@ -98,7 +99,11 @@ export const getPipelineConfig = (type: PipelineServiceType) => {
 
       break;
     }
+    case PipelineServiceType.Flink: {
+      schema = flinkConnection;
 
+      break;
+    }
     default:
       break;
   }

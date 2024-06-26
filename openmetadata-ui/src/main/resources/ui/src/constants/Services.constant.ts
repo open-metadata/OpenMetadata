@@ -36,6 +36,7 @@ import doris from '../assets/img/service-icon-doris.png';
 import druid from '../assets/img/service-icon-druid.png';
 import dynamodb from '../assets/img/service-icon-dynamodb.png';
 import fivetran from '../assets/img/service-icon-fivetran.png';
+import flink from '../assets/img/service-icon-flink.png';
 import gcs from '../assets/img/service-icon-gcs.png';
 import glue from '../assets/img/service-icon-glue.png';
 import greenplum from '../assets/img/service-icon-greenplum.png';
@@ -205,6 +206,7 @@ export const PLUS = plus;
 export const NOSERVICE = noService;
 export const ICEBERGE = iceberge;
 export const TERADATA = teradata;
+export const FLINK = flink;
 export const excludedService = [
   MlModelServiceType.Sklearn,
   MetadataServiceType.MetadataES,
@@ -395,6 +397,7 @@ export const BETA_SERVICES = [
   PipelineServiceType.Spline,
   PipelineServiceType.Spark,
   PipelineServiceType.OpenLineage,
+  PipelineServiceType.Flink,
   DashboardServiceType.QlikSense,
   DashboardServiceType.QlikCloud,
   DatabaseServiceType.Couchbase,
