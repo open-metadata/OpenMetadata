@@ -463,8 +463,6 @@ site_menu:
     url: /connectors/database/bigquery
   - category: Connectors / Database / BigQuery / Run Externally
     url: /connectors/database/bigquery/yaml
-  - category: Connectors / Database / BigQuery / Roles
-    url: /connectors/database/bigquery/roles
   - category: Connectors / Database / BigQuery / Create Credentials
     url: /connectors/database/bigquery/create-credentials
   - category: Connectors / Database / BigTable
@@ -752,6 +750,10 @@ site_menu:
     url: /connectors/pipeline/spline
   - category: Connectors / Pipeline / Spline / Run Externally
     url: /connectors/pipeline/spline/yaml
+  - category: Connectors / Pipeline / Flink
+    url: /connectors/pipeline/flink
+  - category: Connectors / Pipeline / Flink / Run Externally
+    url: /connectors/pipeline/flink/yaml
 
   - category: Connectors / ML Model
     url: /connectors/ml-model
@@ -1535,6 +1537,8 @@ site_menu:
     url: /main-concepts/metadata-standard/schemas/entity/services/connections/pipeline/nificonnection
   - category: Main Concepts / Metadata Standard / Schemas / Entity / Services / Connections / Pipeline / SplineConnection
     url: /main-concepts/metadata-standard/schemas/entity/services/connections/pipeline/splineconnection
+  - category: Main Concepts / Metadata Standard / Schemas / Entity / Services / Connections / Pipeline / FlinkConnection
+    url: /main-concepts/metadata-standard/schemas/entity/services/connections/pipeline/flinkconnection
   - category: Main Concepts / Metadata Standard / Schemas / Entity / Services / Connections / Search / CustomSearchConnection
     url: /main-concepts/metadata-standard/schemas/entity/services/connections/search/customsearchconnection
   - category: Main Concepts / Metadata Standard / Schemas / Entity / Services / Connections / Search / ElasticSearchConnection
