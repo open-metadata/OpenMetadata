@@ -22,6 +22,7 @@ from metadata.generated.schema.entity.automations.workflow import (
 )
 from metadata.generated.schema.entity.services.connections.database.azureSQLConnection import (
     Authentication,
+    AuthenticationMode,
     AzureSQLConnection,
 )
 from metadata.generated.schema.entity.services.connections.database.mssqlConnection import (
@@ -42,7 +43,8 @@ def get_connection_url(connection: Union[AzureSQLConnection, MssqlConnection]) -
     """
 
     if (
-        hasattr(connection.authenticationMode, "authentication")
+        isinstance(connection, AzureSQLConnection)
+        and isinstance(connection.authenticationMode, AuthenticationMode)
         and connection.authenticationMode.authentication is not None
     ):
         connection_string = f"Driver={connection.driver};Server={connection.hostPort};Database={connection.database};"
