@@ -1,7 +1,7 @@
 {
   "name": "DataAssets",
   "displayName": "Data Assets",
-  "description": "Data Assets KnowledgePanel shows all the service present in the application",
+  "description": "Data Assets KnowledgePanel shows all the data assets present in the application",
   "entityType": "KnowledgePanel",
   "fullyQualifiedName": "KnowledgePanel.DataAssets",
   "data": {

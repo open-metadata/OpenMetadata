@@ -17,9 +17,8 @@ import { isEmpty, isUndefined } from 'lodash';
 import { Bucket } from 'Models';
 import React, { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link } from 'react-router-dom';
 import { ReactComponent as DataAssetsIcon } from '../../../../assets/svg/data-assets-widget.svg';
-import { ROUTES } from '../../../../constants/constants';
+import { HOW_TO_GUIDE_DOCS } from '../../../../constants/docs.constants';
 import { ERROR_PLACEHOLDER_TYPE, SIZE } from '../../../../enums/common.enum';
 import { SearchIndex } from '../../../../enums/search.enum';
 import { WidgetCommonProps } from '../../../../pages/CustomizablePage/CustomizablePage.interface';
@@ -108,7 +107,14 @@ const DataAssetsWidget = ({
                 style={{ marginBottom: '0' }}>
                 <Transi18next
                   i18nKey="message.no-data-assets"
-                  renderElement={<Link to={`${ROUTES.SETTINGS}/services`} />}
+                  renderElement={
+                    <a
+                      data-testid="how-to-guide-doc-link"
+                      href={HOW_TO_GUIDE_DOCS}
+                      rel="noopener noreferrer"
+                      target="_blank"
+                    />
+                  }
                 />
               </Typography.Paragraph>
             </ErrorPlaceHolder>

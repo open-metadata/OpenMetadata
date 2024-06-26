@@ -17,10 +17,6 @@ import { searchData } from '../../../../rest/miscAPI';
 import { MOCK_EXPLORE_SEARCH_RESULTS } from '../../../Explore/Explore.mock';
 import DataAssetsWidget from './DataAssetsWidget.component';
 
-jest.mock('../../../../constants/constants', () => ({
-  ROUTES: { EXPLORE: 'explore' },
-}));
-
 jest.mock('../../../../rest/miscAPI', () => ({
   searchData: jest.fn().mockImplementation(() => Promise.resolve()),
 }));
