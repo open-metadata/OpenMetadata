@@ -41,9 +41,9 @@ The ingestion framework uses flink REST APIs to connect to the instance and perf
     file="/v1.4/connectors/metadata-ingestion-ui.md" 
     variables={
         connector: "KafkaConnect", 
-        selectServicePath: "/images/v1.4/connectors/flink/select-new-service.png",
-        addNewServicePath: "/images/v1.4/connectors/flink/add-new-service.png",
-        serviceConnectionPath: "/images/v1.4/connectors/flink/service-connection.png",
+        selectServicePath: "/images/v1.4/connectors/flink/select-new-service.webp",
+        addNewServicePath: "/images/v1.4/connectors/flink/add-new-service.webp",
+        serviceConnectionPath: "/images/v1.4/connectors/flink/service-connection.webp",
     } 
 /%}
 
