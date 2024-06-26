@@ -17,6 +17,11 @@ import {
 } from '../constant/settings';
 import { SidebarItem, SIDEBAR_LIST_ITEMS } from '../constant/sidebar';
 
+export const clickOnLogo = async (page: Page) => {
+  await page.click('#openmetadata_logo > [data-testid="image"]');
+  await page.mouse.move(1280, 0); // Move mouse to top right corner
+};
+
 export const sidebarClick = async (page: Page, id: string) => {
   const items = SIDEBAR_LIST_ITEMS[id];
   if (items) {
