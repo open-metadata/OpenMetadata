@@ -15,6 +15,7 @@ from unittest import TestCase
 
 from pydantic import SecretStr
 
+from metadata.generated.schema.security.credentials.gcpCredentials import GCPCredentials
 from metadata.generated.schema.security.credentials.gcpExternalAccount import (
     GcpExternalAccount,
 )
@@ -24,7 +25,9 @@ from metadata.generated.schema.security.credentials.gcpValues import (
 from metadata.utils.credentials import (
     InvalidPrivateKeyException,
     build_google_credentials_dict,
+    set_google_credentials,
 )
+from metadata.utils.logger import Loggers
 
 
 class TestCredentials(TestCase):
@@ -107,3 +110,11 @@ VEhPQF0i0tUU7Fl071hcYaiQoZx4nIjN+NG6p5QKbl6k
         }
 
         self.assertEqual(expected_dict, build_google_credentials_dict(gcp_values))
+        with self.assertLogs(Loggers.UTILS.value, level="INFO") as log:
+            set_google_credentials(
+                GCPCredentials(gcpConfig=gcp_values, gcpImpersonateServiceAccount=None)
+            )
+            self.assertIn(
+                "Using External account credentials to authenticate with GCP services.",
+                log.output[0],
+            )
