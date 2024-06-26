@@ -94,7 +94,7 @@ EXPECTED_CUSTOM_PROPERTIES = [
         "propertyType": {"name": "enum"},
         "customPropertyConfig": {
             "config": {"values": ["Good", "Average", "Bad"]},
-            "multiSelect": True,
+            "multiSelect": False,
         },
     },
     {
