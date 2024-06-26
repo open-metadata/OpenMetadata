@@ -75,7 +75,10 @@ def get_connection_url(connection: Union[AzureSQLConnection, MssqlConnection]) -
 
     url += f"{connection.hostPort}"
     url += f"/{quote_plus(connection.database)}" if connection.database else ""
-    url += f"?driver={quote_plus(connection.driver)}&trusted_connection=yes"
+    url += f"?driver={quote_plus(connection.driver)}"
+    
+    if isinstance(connection, MssqlConnection) and connection.trustServerCertificate:
+        url += "&TrustServerCertificate=yes"
 
     options = get_connection_options_dict(connection)
     if options:

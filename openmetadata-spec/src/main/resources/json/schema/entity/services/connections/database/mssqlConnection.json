@@ -59,6 +59,11 @@
       "type": "string",
       "default": "ODBC Driver 18 for SQL Server"
     },
+    "trustServerCertificate": {
+      "title": "Trust Server Certificate",
+      "description": "Trust Server Certificate from Connection String for AzureSQL.",
+      "type": "boolean"
+    },
     "ingestAllDatabases": {
       "title": "Ingest All Databases",
       "description": "Ingest data from all databases in Mssql. You can use databaseFilterPattern on top of this.",
