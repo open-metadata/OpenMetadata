@@ -82,20 +82,6 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-maven-
 
-      - name: Get yarn cache directory path
-        if: steps.cache-output.outputs.exit-code == 0
-        id: yarn-cache-dir-path
-        run: echo "dir=$(yarn cache dir)" >> $GITHUB_OUTPUT
-
-      - uses: actions/cache@v3
-        if: steps.yarn-cache-dir-path.outputs.exit-code == 0
-        id: yarn-cache
-        with:
-          path: ${{ steps.yarn-cache-dir-path.outputs.dir }}
-          key: ${{ runner.os }}-yarn-${{ hashFiles('**/yarn.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-yarn-
-
       - name: Setup Openmetadata Test Environment
         uses: ./.github/actions/setup-openmetadata-test-environment
         with:
@@ -107,7 +93,7 @@ jobs:
         working-directory: openmetadata-ui/src/main/resources/ui/
         run: yarn --frozen-lockfile
       - name: Install Playwright Browsers
-        run: npx playwright install --with-deps
+        run: npx playwright@1.44.1 install --with-deps
       - name: Run Playwright tests
         working-directory: openmetadata-ui/src/main/resources/ui/
         run: npx playwright test
