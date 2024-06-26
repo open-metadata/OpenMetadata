@@ -790,6 +790,7 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
             "failedRowsSample",
             JsonUtils.pojoToJson(tableData));
     setFieldsInternal(testCase, Fields.EMPTY_FIELDS);
+    // deep copy the test case to avoid updating the cached entity
     testCase = JsonUtils.readValue(JsonUtils.pojoToJson(testCase), TestCase.class);
     return testCase.withFailedRowsSample(tableData);
   }
