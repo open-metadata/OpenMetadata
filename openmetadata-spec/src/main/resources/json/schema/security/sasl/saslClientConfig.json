@@ -10,16 +10,8 @@
     "saslMechanism": {
       "title": "SASL Mechanism",
       "description": "SASL security mechanism",
-      "default": "PLAIN",
-      "type": "string",
-      "enum": [
-        "PLAIN"
-      ],
-      "javaEnums": [
-        {
-          "name": "PLAIN"
-        }
-      ]
+      "$ref": "../../entity/services/connections/messaging/saslMechanismType.json",
+      "default": "PLAIN"
     },
     "saslUsername": {
       "title": "SASL Username",
