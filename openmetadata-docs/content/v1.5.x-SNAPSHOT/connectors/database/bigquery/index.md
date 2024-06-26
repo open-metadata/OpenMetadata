@@ -33,6 +33,15 @@ Configure and schedule BigQuery metadata and profiler workflows from the OpenMet
 
 You need to create an service account in order to ingest metadata from bigquery refer [this](/connectors/database/bigquery/create-credentials) guide on how to create service account.
 
+{% tilesContainer %}
+{% tile
+icon="manage_accounts"
+title="Create Custom GCP Role"
+description="Checkout this documentation on how to create a custom role and assign it to the service account."
+link="/connectors/database/bigquery/roles"
+  / %}
+{% /tilesContainer %}
+
 ### Data Catalog API Permissions 
 
 - Go to [https://console.cloud.google.com/apis/library/datacatalog.googleapis.com](https://console.cloud.google.com/apis/library/datacatalog.googleapis.com)
@@ -60,22 +69,13 @@ To execute metadata extraction and usage workflow successfully the user or the s
 | 11   | datacatalog.taxonomies.list   | Fetch Policy Tags       |
 | 12   | bigquery.readsessions.create  | Bigquery Usage & Lineage Workflow |
 | 13   | bigquery.readsessions.getData | Bigquery Usage & Lineage Workflow |
+| 14   | logging.operations.list       | Incremental Metadata Ingestion    |
 
 {% /multiTablesWrapper %}
 
 {% note %}
 If the user has `External Tables`, please attach relevant permissions needed for external tables, alongwith the above list of permissions.
 {% /note %}
-
-{% tilesContainer %}
-{% tile
-icon="manage_accounts"
-title="Create Custom GCP Role"
-description="Checkout this documentation on how to create a custom role and assign it to the service account."
-link="/connectors/database/bigquery/roles"
-  / %}
-{% /tilesContainer %}
-
 
 {% note %}
 If you are using BigQuery and have sharded tables, you might want to consider using partitioned tables instead. Partitioned tables allow you to efficiently query data by date or other criteria, without having to manage multiple tables. Partitioned tables also have lower storage and query costs than sharded tables. 
