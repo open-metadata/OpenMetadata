@@ -28,8 +28,11 @@ def metadata():
 
 def pytest_pycollect_makeitem(collector, name, obj):
     try:
-        if obj.__base__.__name__ in ("BaseModel", "Enum"):
-            return []
+        if isinstance(obj, type):
+            bases = [base.__name__ for base in obj.mro()]
+            for cls in ("BaseModel", "Enum"):
+                if cls in bases:
+                    return []
     except AttributeError:
         pass
 

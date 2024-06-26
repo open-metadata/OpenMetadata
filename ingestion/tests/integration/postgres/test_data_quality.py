@@ -22,6 +22,7 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 )
 from metadata.generated.schema.tests.basic import TestCaseStatus
 from metadata.generated.schema.tests.testCase import TestCase
+from metadata.generated.schema.tests.testSuite import TestSuite
 from metadata.generated.schema.type.basic import ComponentConfig
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.workflow.data_quality import TestSuiteWorkflow
@@ -92,6 +93,12 @@ def run_data_quality_workflow(
     test_suite_procesor = TestSuiteWorkflow.create(workflow_config)
     test_suite_procesor.execute()
     test_suite_procesor.raise_from_status()
+    yield
+    test_suite: TestSuite = metadata.get_by_name(
+        TestSuite, "MyTestSuite", nullable=True
+    )
+    if test_suite:
+        metadata.delete(TestSuite, test_suite.id, recursive=True, hard_delete=True)
 
 
 @pytest.mark.parametrize(
@@ -171,5 +178,6 @@ def test_incompatible_column_type(ingest_metadata, metadata: OpenMetadata, db_se
         )
     ], "Test case incompatible_column_type should fail"
     assert (
-        "compatible_test" in test_suite_procesor.steps[1].get_status().records
+        f"{db_service.fullyQualifiedName.root}.dvdrental.public.customer.customer_id.compatible_test"
+        in test_suite_procesor.steps[1].get_status().records
     ), "Test case compatible_test should pass"

@@ -36,7 +36,7 @@ from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
 )
 from metadata.generated.schema.tests.testCase import TestCase
-from metadata.generated.schema.tests.testDefinition import TestDefinition, TestPlatform
+from metadata.generated.schema.tests.testDefinition import TestDefinition, TestPlatform, EntityType
 from metadata.generated.schema.tests.testSuite import TestSuite
 from metadata.generated.schema.type.basic import EntityLink, FullyQualifiedEntityName
 from metadata.ingestion.api.models import Either
@@ -341,11 +341,15 @@ class TestCaseRunner(Processor):
         """
         result: List[TestCase] = []
         for tc in test_cases:
-            column_name = entity_link.get_decoded_column(tc.entityLink.root)
-            column = next(c for c in table.columns if c.name.root == column_name)
             test_definition: TestDefinition = self.metadata.get_by_id(
                 TestDefinition, tc.testDefinition.id, nullable=False
             )
+            if test_definition.entityType != EntityType.COLUMN:
+                result.append(tc)
+                continue
+            column_name = entity_link.get_decoded_column(tc.entityLink.root)
+            column = next(c for c in table.columns if c.name.root == column_name)
+
             if column.dataType not in test_definition.supportedDataTypes:
                 self.status.failed(
                     StackTraceError(
