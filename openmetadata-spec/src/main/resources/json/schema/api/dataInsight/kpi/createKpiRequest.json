@@ -35,12 +35,9 @@
       "description": "End Date for the KPIs",
       "$ref": "../../../type/basic.json#/definitions/timestamp"
     },
-    "targetDefinition": {
+    "targetValue": {
       "description": "Metrics from the chart and the target to achieve the result.",
-      "type": "array",
-      "items": {
-        "$ref": "../../../dataInsight/kpi/basic.json#/definitions/kpiTarget"
-      }
+      "type": "number"
     },
     "metricType": {
       "$ref": "../../../dataInsight/kpi/basic.json#/definitions/kpiTargetType"

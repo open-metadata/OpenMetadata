@@ -532,7 +532,7 @@ public class DataInsightsReportApp extends AbstractNativeApplication {
     if (isKpiAvailable) {
       targetKpi =
           String.format(
-              "%.2f", Double.parseDouble(validKpi.getTargetDefinition().get(0).getValue()) * 100);
+              "%.2f", validKpi.getTargetValue() * 100);
       KpiResult result = getKpiResult(validKpi.getName());
       if (result != null) {
         isTargetMet = result.getTargetResult().get(0).getTargetMet();
