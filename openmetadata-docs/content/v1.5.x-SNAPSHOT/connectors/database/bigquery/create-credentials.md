@@ -29,7 +29,7 @@ caption="Create Role" /%}
 
 
 
-Once You are on the create role page, you can edit the description & title of the role and finally you can click on add permissions to grant permissions to role.
+Once You are on the create role page, you can edit the description & title of the role and finally you can click on `add permissions` to grant permissions to role.
 
 {% image
 src="/images/v1.4/connectors/bigquery/create-role-3.png"
