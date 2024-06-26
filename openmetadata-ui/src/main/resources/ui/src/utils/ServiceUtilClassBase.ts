@@ -40,6 +40,7 @@ import {
   DYNAMODB,
   ELASTIC_SEARCH,
   FIVETRAN,
+  FLINK,
   GLUE,
   GREENPLUM,
   HIVE,
@@ -412,6 +413,9 @@ class ServiceUtilClassBase {
 
       case this.PipelineServiceTypeSmallCase.OpenLineage:
         return OPENLINEAGE;
+
+      case this.PipelineServiceTypeSmallCase.Flink:
+        return FLINK;
 
       case this.MlModelServiceTypeSmallCase.Mlflow:
         return MLFLOW;
