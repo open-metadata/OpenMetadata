@@ -95,22 +95,10 @@ MOCK_DATABASE = Database(
 MOCK_TABLE_NAME = "sample_table"
 EXPECTED_DATABASES = [
     Either(
-        left=None,
         right=CreateDatabaseRequest(
             name=EntityName("sample_db"),
-            displayName=None,
-            description=None,
-            tags=None,
-            owner=None,
             service=FullyQualifiedEntityName("sample_athena_service"),
-            dataProducts=None,
             default=False,
-            retentionPeriod=None,
-            extension=None,
-            sourceUrl=None,
-            domain=None,
-            lifeCycle=None,
-            sourceHash=None,
         ),
     )
 ]
@@ -124,9 +112,6 @@ MOCK_LOCATION_ENTITY = [
         fullyQualifiedName=FullyQualifiedEntityName(
             's3_local.awsdatalake-testing."dbt-testing/mayur/customers.csv"'
         ),
-        displayName=None,
-        description=None,
-        version=None,
         updatedAt=Timestamp(1717070902713),
         updatedBy="admin",
         href=Href(
@@ -134,7 +119,6 @@ MOCK_LOCATION_ENTITY = [
                 "http://localhost:8585/api/v1/containers/9c489754-bb60-435b-b2a5-0e43100cf950",
             )
         ),
-        owner=None,
         service=EntityReference(
             id=Uuid(UUID("dd91cca3-cc54-4776-9efa-48f845cdfb92")),
             type="storageService",
@@ -143,15 +127,12 @@ MOCK_LOCATION_ENTITY = [
             description=Markdown(""),
             displayName="s3_local",
             deleted=False,
-            inherited=None,
             href=Href(
                 root=AnyUrl(
                     "http://localhost:8585/api/v1/services/storageServices/dd91cca3-cc54-4776-9efa-48f845cdfb92",
                 )
             ),
         ),
-        parent=None,
-        children=None,
         dataModel=ContainerDataModel(
             isPartitioned=False,
             columns=[
@@ -159,22 +140,10 @@ MOCK_LOCATION_ENTITY = [
                     name=ColumnName("CUSTOMERID"),
                     displayName="CUSTOMERID",
                     dataType=DataType.INT,
-                    arrayDataType=None,
-                    dataLength=None,
-                    precision=None,
-                    scale=None,
                     dataTypeDisplay="INT",
-                    description=None,
                     fullyQualifiedName=FullyQualifiedEntityName(
                         's3_local.awsdatalake-testing."dbt-testing/mayur/customers.csv".CUSTOMERID'
                     ),
-                    tags=None,
-                    constraint=None,
-                    ordinalPosition=None,
-                    jsonSchema=None,
-                    children=None,
-                    profile=None,
-                    customMetrics=None,
                 ),
             ],
         ),
@@ -183,20 +152,11 @@ MOCK_LOCATION_ENTITY = [
         size=652260394.0,
         fileFormats=[FileFormat.csv],
         serviceType=StorageServiceType.S3,
-        followers=None,
-        tags=None,
-        changeDescription=None,
         deleted=False,
-        retentionPeriod=None,
-        extension=None,
         sourceUrl=SourceUrl(
             "https://s3.console.aws.amazon.com/s3/buckets/awsdatalake-testing?region=us-east-2&prefix=dbt-testing/mayur/customers.csv/&showversions=false"
         ),
         fullPath="s3://awsdatalake-testing/dbt-testing/mayur/customers.csv",
-        domain=None,
-        dataProducts=None,
-        votes=None,
-        lifeCycle=None,
         sourceHash="22b1c2f2e7feeaa8f37c6649e01f027d",
     )
 ]
@@ -205,12 +165,9 @@ MOCK_TABLE_ENTITY = [
     Table(
         id=Uuid(UUID("2c040cf8-432d-4597-9517-4794d6142da3")),
         name=EntityName("demo_data_ext_tbl3"),
-        displayName=None,
         fullyQualifiedName=FullyQualifiedEntityName(
             "local_athena.demo.default.demo_data_ext_tbl3"
         ),
-        description=None,
-        version=None,
         updatedAt=Timestamp(1717071974350),
         updatedBy="admin",
         href=Href(
@@ -222,38 +179,22 @@ MOCK_TABLE_ENTITY = [
         columns=[
             Column(
                 name=ColumnName("CUSTOMERID"),
-                displayName=None,
                 dataType=DataType.INT,
-                arrayDataType=None,
                 dataLength=1,
-                precision=None,
-                scale=None,
                 dataTypeDisplay="int",
-                description=None,
                 fullyQualifiedName=FullyQualifiedEntityName(
                     "local_athena.demo.default.demo_data_ext_tbl3.CUSTOMERID"
                 ),
-                tags=None,
                 constraint=Constraint.NULL,
-                ordinalPosition=None,
-                jsonSchema=None,
-                children=None,
-                profile=None,
-                customMetrics=None,
             ),
         ],
-        tableConstraints=None,
-        tablePartition=None,
-        owner=None,
         databaseSchema=EntityReference(
             id=Uuid(UUID("b03b0229-8a9f-497a-a675-74cb24a9be74")),
             type="databaseSchema",
             name="default",
             fullyQualifiedName="local_athena.demo.default",
-            description=None,
             displayName="default",
             deleted=False,
-            inherited=None,
             href=Href(
                 root=AnyUrl(
                     "http://localhost:8585/api/v1/databaseSchemas/b03b0229-8a9f-497a-a675-74cb24a9be74",
@@ -265,10 +206,8 @@ MOCK_TABLE_ENTITY = [
             type="database",
             name="demo",
             fullyQualifiedName="local_athena.demo",
-            description=None,
             displayName="demo",
             deleted=False,
-            inherited=None,
             href=Href(
                 root=AnyUrl(
                     "http://localhost:8585/api/v1/databases/f054c55c-34bf-4c5f-addd-5cc26c7c832a",
@@ -280,10 +219,8 @@ MOCK_TABLE_ENTITY = [
             type="databaseService",
             name="local_athena",
             fullyQualifiedName="local_athena",
-            description=None,
             displayName="local_athena",
             deleted=False,
-            inherited=None,
             href=Href(
                 root=AnyUrl(
                     "http://localhost:8585/api/v1/services/databaseServices/5e98afd3-7257-4c35-a560-f4c25b0f4b97",
@@ -291,28 +228,7 @@ MOCK_TABLE_ENTITY = [
             ),
         ),
         serviceType=DatabaseServiceType.Athena,
-        location=None,
-        schemaDefinition=None,
-        tags=None,
-        usageSummary=None,
-        followers=None,
-        joins=None,
-        sampleData=None,
-        tableProfilerConfig=None,
-        customMetrics=None,
-        profile=None,
-        testSuite=None,
-        dataModel=None,
-        changeDescription=None,
         deleted=False,
-        retentionPeriod=None,
-        extension=None,
-        sourceUrl=None,
-        domain=None,
-        dataProducts=None,
-        fileFormat=None,
-        votes=None,
-        lifeCycle=None,
         sourceHash="824e80b1c79b0c4ae0acd99d2338e149",
     )
 ]
@@ -326,7 +242,6 @@ EXPECTED_COLUMN_LINEAGE = [
         toColumn=FullyQualifiedEntityName(
             "local_athena.demo.default.demo_data_ext_tbl3.CUSTOMERID"
         ),
-        function=None,
     )
 ]
 

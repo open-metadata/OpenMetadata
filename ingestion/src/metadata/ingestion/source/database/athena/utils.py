@@ -177,7 +177,6 @@ def get_view_definition(self, connection, view_name, schema=None, **kw):
     return None
 
 
-# @reflection.cache
 def get_table_options(
     self, connection: "Connection", table_name: str, schema: Optional[str] = None, **kw
 ):
