@@ -57,7 +57,9 @@ export class UserClass {
     await page.fill('input[id="email"]', userName);
     await page.locator('#email').press('Tab');
     await page.fill('input[id="password"]', password);
+    const loginRes = page.waitForResponse('/api/v1/users/login');
     await page.getByTestId('login').click();
+    await loginRes;
   }
 
   async logout(page: Page) {

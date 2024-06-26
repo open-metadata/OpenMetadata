@@ -46,9 +46,10 @@ public class CatalogOpenIdAuthorizationRequestFilter implements ContainerRequest
       return;
     }
     MultivaluedMap<String, String> headers = containerRequestContext.getHeaders();
-    String principal = extractAuthorizedUserName(headers);
+    String email = extractAuthorizedEmail(headers);
+    String principal = extractAuthorizedUserName(email);
     LOG.debug("AuthorizedUserName:{}", principal);
-    CatalogPrincipal catalogPrincipal = new CatalogPrincipal(principal);
+    CatalogPrincipal catalogPrincipal = new CatalogPrincipal(principal, email);
     String scheme = containerRequestContext.getUriInfo().getRequestUri().getScheme();
     CatalogSecurityContext catalogSecurityContext =
         new CatalogSecurityContext(
@@ -62,14 +63,17 @@ public class CatalogOpenIdAuthorizationRequestFilter implements ContainerRequest
     return uriInfo.getPath().equalsIgnoreCase(HEALTH_END_POINT);
   }
 
-  protected String extractAuthorizedUserName(MultivaluedMap<String, String> headers) {
-    LOG.debug("Request Headers:{}", headers);
+  protected String extractAuthorizedUserName(String openIdEmail) {
+    String[] openIdEmailParts = openIdEmail.split("@");
+    return openIdEmailParts[0];
+  }
 
+  protected String extractAuthorizedEmail(MultivaluedMap<String, String> headers) {
+    LOG.debug("Request Headers:{}", headers);
     String openIdEmail = headers.getFirst(X_AUTH_PARAMS_EMAIL_HEADER);
     if (nullOrEmpty(openIdEmail)) {
       throw new AuthenticationException("Not authorized; User's Email is not present");
     }
-    String[] openIdEmailParts = openIdEmail.split("@");
-    return openIdEmailParts[0];
+    return openIdEmail;
   }
 }
