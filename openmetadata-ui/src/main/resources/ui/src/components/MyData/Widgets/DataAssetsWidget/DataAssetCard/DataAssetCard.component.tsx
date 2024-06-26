@@ -11,13 +11,14 @@
  *  limitations under the License.
  */
 import { Card, Typography } from 'antd';
-import { capitalize } from 'lodash';
+import { capitalize, toString } from 'lodash';
 import { Bucket } from 'Models';
 import React, { useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { getExplorePath } from '../../../../../constants/constants';
 import { getServiceLogo } from '../../../../../utils/CommonUtils';
 import serviceUtilClassBase from '../../../../../utils/ServiceUtilClassBase';
+import AppBadge from '../../../../common/Badge/Badge.component';
 import '../data-assets-widget.less';
 interface DataAssetCardProps {
   service: Bucket;
@@ -72,11 +73,10 @@ const DataAssetCard = ({ service: { key, doc_count } }: DataAssetCardProps) => {
           {capitalize(key)}
         </Typography.Text>
 
-        <Typography.Text
-          className="p-t-xs p-b-xss text-grey-muted font-normal"
-          data-testid={`service-count-${key}`}>
-          {doc_count}
-        </Typography.Text>
+        <AppBadge
+          className="data-asset-badge m-t-xs m-b-xss"
+          label={toString(doc_count)}
+        />
       </Card>
     </Link>
   );

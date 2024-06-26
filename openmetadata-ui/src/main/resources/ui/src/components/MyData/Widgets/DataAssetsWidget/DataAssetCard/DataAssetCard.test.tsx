@@ -30,6 +30,10 @@ jest.mock('../../../../../utils/ServiceUtilClassBase', () => ({
   getDataAssetsService: jest.fn().mockReturnValue('tables'),
 }));
 
+jest.mock('../../../../common/Badge/Badge.component', () => {
+  return jest.fn().mockReturnValue(<p>AppBadge</p>);
+});
+
 jest.mock('react-router-dom', () => ({
   Link: jest.fn().mockImplementation(({ children, ...rest }) => (
     <a {...rest} onClick={mockLinkButton}>
@@ -49,7 +53,7 @@ describe('DataAssetCard', () => {
 
     expect(screen.getByText('getServiceLogo')).toBeInTheDocument();
     expect(screen.getByText('Mysql')).toBeInTheDocument();
-    expect(screen.getByText('161')).toBeInTheDocument();
+    expect(screen.getByText('AppBadge')).toBeInTheDocument();
 
     expect(getExplorePath).toHaveBeenCalledWith({
       extraParameters: {
