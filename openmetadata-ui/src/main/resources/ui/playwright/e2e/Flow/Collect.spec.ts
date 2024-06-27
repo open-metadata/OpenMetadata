@@ -60,15 +60,23 @@ test.describe('Collect end point should work properly', () => {
     test(`Visit ${pageDetails.name} page should trigger collect API`, async ({
       page,
     }) => {
+      // Wait for the request and response after the click action
       const collectResponsePromise = page.waitForResponse(
         '/api/v1/analytics/web/events/collect'
       );
+
       await settingClick(page, pageDetails.menuId);
+
       const collectResponse = await collectResponsePromise;
+      const requestPayload = JSON.parse(
+        collectResponse.request().postData() ?? '{}'
+      );
       const collectJsonResponse = await collectResponse.json();
 
-      expect(collectJsonResponse).toHaveProperty('eventId');
-      expect(collectJsonResponse).toHaveProperty('eventData');
+      // omit the eventId from the response
+      delete collectJsonResponse.eventId;
+
+      expect(collectJsonResponse).toStrictEqual(requestPayload);
     });
   }
 });
