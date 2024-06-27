@@ -22,9 +22,9 @@ import Loader from '../../components/common/Loader/Loader';
 import ResizablePanels from '../../components/common/ResizablePanels/ResizablePanels';
 import RichTextEditor from '../../components/common/RichTextEditor/RichTextEditor';
 import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
-import { ROUTES } from '../../constants/constants';
-import { ENTITY_NAME_REGEX } from '../../constants/regex.constants';
 import { useLimitStore } from '../../context/LimitsProvider/useLimitsStore';
+import { ROUTES, VALIDATION_MESSAGES } from '../../constants/constants';
+import { NAME_FIELD_RULES } from '../../constants/Form.constants';
 import { CreateEventSubscription } from '../../generated/events/api/createEventSubscription';
 import {
   AlertType,
@@ -224,6 +224,7 @@ function AddObservabilityPage() {
                     ...alert,
                     resources: alert?.filteringRules?.resources,
                   }}
+                  validateMessages={VALIDATION_MESSAGES}
                   onFinish={handleSave}>
                   <Row gutter={[20, 20]}>
                     <Col span={24}>
@@ -231,13 +232,7 @@ function AddObservabilityPage() {
                         label={t('label.name')}
                         labelCol={{ span: 24 }}
                         name="name"
-                        rules={[
-                          { required: true },
-                          {
-                            pattern: ENTITY_NAME_REGEX,
-                            message: t('message.entity-name-validation'),
-                          },
-                        ]}>
+                        rules={NAME_FIELD_RULES}>
                         <Input
                           disabled={isEditMode}
                           placeholder={t('label.name')}

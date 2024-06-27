@@ -36,6 +36,7 @@ import { ReactComponent as RolesIcon } from '../assets/svg/role-colored.svg';
 import { ReactComponent as SearchIcon } from '../assets/svg/search-colored.svg';
 import { ReactComponent as AccessControlIcon } from '../assets/svg/setting-access-control.svg';
 import { ReactComponent as CustomProperties } from '../assets/svg/setting-custom-properties.svg';
+import { ReactComponent as DataObservability } from '../assets/svg/setting-data-observability.svg';
 import { ReactComponent as ManagementIcon } from '../assets/svg/setting-management.svg';
 import { ReactComponent as NotificationIcon } from '../assets/svg/setting-notification.svg';
 import { ReactComponent as ServiceIcon } from '../assets/svg/setting-services.svg';
@@ -160,6 +161,15 @@ export const getGlobalSettingsMenuWithPermission = (
           ),
           key: `${GlobalSettingsMenuCategory.SERVICES}.${GlobalSettingOptions.METADATA}`,
           icon: OpenMetadataIcon,
+        },
+        {
+          label: i18next.t('label.data-observability'),
+          description: i18next.t(
+            'message.page-sub-header-for-data-observability'
+          ),
+          isProtected: true,
+          key: `${GlobalSettingsMenuCategory.SERVICES}.${GlobalSettingOptions.DATA_OBSERVABILITY}`,
+          icon: DataObservability,
         },
       ],
     },

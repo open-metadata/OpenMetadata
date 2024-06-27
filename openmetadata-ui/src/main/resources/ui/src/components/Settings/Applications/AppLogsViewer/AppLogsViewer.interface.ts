@@ -51,6 +51,7 @@ export type EntityTypeSearchIndex = Exclude<
   | EntityType.CUSTOM_METRIC
   | EntityType.ALL
   | EntityType.EVENT_SUBSCRIPTION
+  | EntityType.LINEAGE_EDGE
 >;
 
 export type EntityStats = Record<EntityTypeSearchIndex, TotalRecords>;

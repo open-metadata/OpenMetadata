@@ -61,6 +61,7 @@ import org.eclipse.jetty.websocket.server.WebSocketUpgradeFilter;
 import org.glassfish.jersey.media.multipart.MultiPartFeature;
 import org.glassfish.jersey.server.ServerProperties;
 import org.jdbi.v3.core.Jdbi;
+import org.jdbi.v3.core.statement.SqlStatements;
 import org.jdbi.v3.sqlobject.SqlObjects;
 import org.openmetadata.schema.api.security.AuthenticationConfiguration;
 import org.openmetadata.schema.api.security.AuthorizerConfiguration;
@@ -401,6 +402,7 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     jdbiInstance
         .getConfig(SqlObjects.class)
         .setSqlLocator(new ConnectionAwareAnnotationSqlLocator(dbFactory.getDriverClass()));
+    jdbiInstance.getConfig(SqlStatements.class).setUnusedBindingAllowed(true);
 
     return jdbiInstance;
   }
