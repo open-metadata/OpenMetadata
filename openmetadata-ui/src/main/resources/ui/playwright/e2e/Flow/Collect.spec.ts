@@ -1,5 +1,5 @@
 /*
- *  Copyright 2022 Collate.
+ *  Copyright 2024 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -10,11 +10,15 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { expect, test } from '@playwright/test';
+import { SidebarItem } from '../../constant/sidebar';
+import { redirectToHomePage } from '../../utils/common';
+import { settingClick } from '../../utils/sidebar';
 
-import { interceptURL } from '../../common/common';
-import { SidebarItem } from '../../constants/Entity.interface';
+// use the admin user to login
+test.use({ storageState: 'playwright/.auth/admin.json' });
 
-describe('Collect end point should work properly', () => {
+test.describe('Collect end point should work properly', () => {
   const PAGES = {
     setting: {
       name: 'Settings',
@@ -46,25 +50,25 @@ describe('Collect end point should work properly', () => {
     },
   };
 
-  const assertCollectEndPoint = () => {
-    cy.wait('@collect').then(({ request, response }) => {
-      expect(response.body).to.have.any.key('eventId');
-
-      const modifiedResponse = Cypress._.omit(response.body, 'eventId');
-
-      expect(request.body).deep.equal(modifiedResponse);
-    });
-  };
-
-  beforeEach(() => {
-    cy.login();
-    interceptURL('PUT', '/api/v1/analytics/web/events/collect', 'collect');
+  test.beforeEach('Visit entity details page', async ({ page }) => {
+    await redirectToHomePage(page);
   });
 
-  Object.values(PAGES).map((page) => {
-    it(`Visit ${page.name} page should trigger collect API`, () => {
-      cy.sidebarClick(page.menuId);
-      assertCollectEndPoint();
+  for (const key of Object.keys(PAGES)) {
+    const pageDetails = PAGES[key];
+
+    test(`Visit ${pageDetails.name} page should trigger collect API`, async ({
+      page,
+    }) => {
+      const collectResponsePromise = page.waitForResponse(
+        '/api/v1/analytics/web/events/collect'
+      );
+      await settingClick(page, pageDetails.menuId);
+      const collectResponse = await collectResponsePromise;
+      const collectJsonResponse = await collectResponse.json();
+
+      expect(collectJsonResponse).toHaveProperty('eventId');
+      expect(collectJsonResponse).toHaveProperty('eventData');
     });
-  });
+  }
 });
