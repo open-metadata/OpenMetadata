@@ -87,6 +87,19 @@ export const getApiContext = async (page: Page) => {
   return { apiContext, afterAction };
 };
 
+export const getEntityTypeSearchIndexMapping = (entityType: string) => {
+  const entityMapping = {
+    Table: 'table_search_index',
+    Topic: 'topic_search_index',
+    Dashboard: 'dashboard_search_index',
+    MlModel: 'mlmodel_search_index',
+    Container: 'container_search_index',
+    SearchIndex: 'search_entity_search_index',
+  };
+
+  return entityMapping[entityType];
+};
+
 export const performAdminLogin = async (browser) => {
   const admin = new AdminClass();
   const page = await browser.newPage();

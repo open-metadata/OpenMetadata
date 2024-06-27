@@ -234,7 +234,7 @@ const EdgeInfoDrawer = ({
               <DescriptionV1
                 description={edgeDescription}
                 entityName="Edge"
-                entityType={EntityType.GLOSSARY}
+                entityType={EntityType.LINEAGE_EDGE}
                 hasEditAccess={hasEditAccess}
                 isEdit={isDescriptionEditable}
                 showCommentsIcon={false}

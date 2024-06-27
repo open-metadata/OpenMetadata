@@ -32,6 +32,7 @@ import { ReactComponent as ExportIcon } from '../../../assets/svg/ic-export.svg'
 import { NO_PERMISSION_FOR_ACTION } from '../../../constants/HelperTextUtil';
 import { LINEAGE_DEFAULT_QUICK_FILTERS } from '../../../constants/Lineage.constants';
 import { useLineageProvider } from '../../../context/LineageProvider/LineageProvider';
+import { LineageLayerView } from '../../../context/LineageProvider/LineageProvider.interface';
 import { SearchIndex } from '../../../enums/search.enum';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { getAssetsPageQuickFilters } from '../../../utils/AdvancedSearchUtils';
@@ -58,9 +59,12 @@ const CustomControls: FC<ControlProps> = ({
   const {
     lineageConfig,
     onLineageEditClick,
+    expandAllColumns,
     loading,
     status,
     isEditMode,
+    activeLayer,
+    toggleColumnView,
     onLineageConfigUpdate,
     onQueryFilterUpdate,
     onExportClick,
@@ -70,6 +74,9 @@ const CustomControls: FC<ControlProps> = ({
     ExploreQuickFilterField[]
   >([]);
   const [filters, setFilters] = useState<ExploreQuickFilterField[]>([]);
+  const isColumnLayerActive = useMemo(() => {
+    return activeLayer.includes(LineageLayerView.COLUMN);
+  }, [activeLayer]);
 
   const handleMenuClick = ({ key }: { key: string }) => {
     setSelectedFilter((prevSelected) => [...prevSelected, key]);
@@ -199,6 +206,19 @@ const CustomControls: FC<ControlProps> = ({
         </Col>
         <Col flex="250px">
           <Space className="justify-end w-full" size={16}>
+            {isColumnLayerActive && !isEditMode && (
+              <Button
+                ghost
+                className="expand-btn"
+                data-testid="expand-column"
+                type="primary"
+                onClick={toggleColumnView}>
+                {expandAllColumns
+                  ? t('label.collapse-all')
+                  : t('label.expand-all')}
+              </Button>
+            )}
+
             <Tooltip
               title={t('label.export-entity', {
                 entity: t('label.lineage'),

@@ -86,6 +86,7 @@ jest.mock('../../../context/LineageProvider/LineageProvider', () => ({
       upstreamEdges: [],
       downstreamEdges: [],
     },
+    columnsHavingLineage: [],
     activeLayer: [LineageLayerView.COLUMN],
     fetchPipelineStatus: jest.fn(),
     onColumnClick: onMockColumnClick,

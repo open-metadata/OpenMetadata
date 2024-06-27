@@ -285,7 +285,8 @@ const removeColumnLineage = (fromNode, toNode) => {
   ).should('not.exist');
 };
 
-describe('Lineage verification', { tags: 'DataAssets' }, () => {
+// migrated to playwright
+describe.skip('Lineage verification', { tags: 'DataAssets' }, () => {
   beforeEach(() => {
     cy.login();
   });

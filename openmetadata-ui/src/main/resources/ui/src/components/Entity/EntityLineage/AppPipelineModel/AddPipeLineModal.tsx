@@ -38,6 +38,7 @@ import './add-pipeline-modal.less';
 interface AddPipeLineModalType {
   showAddEdgeModal: boolean;
   selectedEdge?: Edge;
+  loading?: boolean;
   onModalCancel: () => void;
   onSave: (value?: EntityReference) => void;
   onRemoveEdgeClick: (evt: React.MouseEvent<HTMLButtonElement>) => void;
@@ -49,12 +50,19 @@ const AddPipeLineModal = ({
   onRemoveEdgeClick,
   onModalCancel,
   onSave,
+  loading,
 }: AddPipeLineModalType) => {
-  const currentPipeline = selectedEdge?.data.edge.pipeline;
+  const defaultPipeline = selectedEdge?.data.edge.pipeline;
+  const currentPipeline = defaultPipeline
+    ? getEntityReferenceFromEntity(
+        defaultPipeline,
+        defaultPipeline?.pipelineEntityType ?? EntityType.PIPELINE
+      )
+    : undefined;
   const [edgeSearchValue, setEdgeSearchValue] = useState<string>('');
-  const [edgeSelection, setEdgeSelection] = useState<EntityReference>(
-    currentPipeline ?? {}
-  );
+  const [edgeSelection, setEdgeSelection] = useState<
+    EntityReference | undefined
+  >(currentPipeline);
   const [edgeOptions, setEdgeOptions] = useState<EntityReference[]>([]);
 
   const getSearchResults = async (value = '*') => {
@@ -121,6 +129,7 @@ const AddPipeLineModal = ({
         <Button
           data-testid="save-button"
           key="save-btn"
+          loading={loading}
           type="primary"
           onClick={() => onSave(edgeSelection)}>
           {t('label.save')}
