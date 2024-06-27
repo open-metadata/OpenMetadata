@@ -1,7 +1,7 @@
 package org.openmetadata.service.jdbi3;
 
 import static org.openmetadata.service.exception.AppException.APP_RUN_RECORD_NOT_FOUND;
-import static org.openmetadata.service.resources.teams.UserResource.getUser;
+import static org.openmetadata.service.util.UserUtil.getUser;
 
 import java.util.ArrayList;
 import java.util.List;

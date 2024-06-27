@@ -42,6 +42,7 @@ import org.apache.commons.csv.CSVRecord;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.csv.EntityCsv;
 import org.openmetadata.schema.api.teams.CreateTeam.TeamType;
+import org.openmetadata.schema.api.teams.CreateUser;
 import org.openmetadata.schema.entity.teams.AuthenticationMechanism;
 import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.entity.teams.User;
@@ -436,13 +437,15 @@ public class UserRepository extends EntityRepository<User> {
       CSVRecord csvRecord = getNextRecord(printer, csvRecords);
       // Field 1, 2, 3, 4, 5, 6 - name, displayName, description, email, timezone, isAdmin
       User user =
-          new User()
-              .withName(csvRecord.get(0))
-              .withDisplayName(csvRecord.get(1))
-              .withDescription(csvRecord.get(2))
-              .withEmail(csvRecord.get(3))
-              .withTimezone(csvRecord.get(4))
-              .withIsAdmin(getBoolean(printer, csvRecord, 5))
+          UserUtil.getUser(
+                  importedBy,
+                  new CreateUser()
+                      .withName(csvRecord.get(0))
+                      .withDisplayName(csvRecord.get(1))
+                      .withDescription(csvRecord.get(2))
+                      .withEmail(csvRecord.get(3))
+                      .withTimezone(csvRecord.get(4))
+                      .withIsAdmin(getBoolean(printer, csvRecord, 5)))
               .withTeams(getTeams(printer, csvRecord, csvRecord.get(0)))
               .withRoles(getEntityReferences(printer, csvRecord, 7, ROLE));
       if (processRecord) {

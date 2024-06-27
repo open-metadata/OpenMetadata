@@ -27,6 +27,7 @@ import static org.openmetadata.service.jdbi3.UserRepository.AUTH_MECHANISM_FIELD
 import static org.openmetadata.service.security.jwt.JWTTokenGenerator.getExpiryDate;
 import static org.openmetadata.service.util.UserUtil.getRoleListFromUser;
 import static org.openmetadata.service.util.UserUtil.getRolesFromAuthorizationToken;
+import static org.openmetadata.service.util.UserUtil.getUser;
 import static org.openmetadata.service.util.UserUtil.reSyncUserRolesFromToken;
 import static org.openmetadata.service.util.UserUtil.validateAndGetRolesRef;
 
@@ -1426,26 +1427,6 @@ public class UserResource extends EntityResource<User, UserRepository> {
       String csv)
       throws IOException {
     return importCsvInternal(securityContext, team, csv, dryRun);
-  }
-
-  public static User getUser(String updatedBy, CreateUser create) {
-    return new User()
-        .withId(UUID.randomUUID())
-        .withName(create.getName())
-        .withFullyQualifiedName(create.getName())
-        .withEmail(create.getEmail())
-        .withDescription(create.getDescription())
-        .withDisplayName(create.getDisplayName())
-        .withIsBot(create.getIsBot())
-        .withIsAdmin(create.getIsAdmin())
-        .withProfile(create.getProfile())
-        .withPersonas(create.getPersonas())
-        .withDefaultPersona(create.getDefaultPersona())
-        .withTimezone(create.getTimezone())
-        .withUpdatedBy(updatedBy)
-        .withUpdatedAt(System.currentTimeMillis())
-        .withTeams(EntityUtil.toEntityReferences(create.getTeams(), Entity.TEAM))
-        .withRoles(EntityUtil.toEntityReferences(create.getRoles(), Entity.ROLE));
   }
 
   public void validateEmailAlreadyExists(String email) {

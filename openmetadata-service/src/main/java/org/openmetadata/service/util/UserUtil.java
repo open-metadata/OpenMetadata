@@ -32,6 +32,7 @@ import java.util.stream.Collectors;
 import javax.json.JsonPatch;
 import javax.ws.rs.core.UriInfo;
 import lombok.extern.slf4j.Slf4j;
+import org.openmetadata.schema.api.teams.CreateUser;
 import org.openmetadata.schema.auth.BasicAuthMechanism;
 import org.openmetadata.schema.auth.JWTAuthMechanism;
 import org.openmetadata.schema.auth.JWTTokenExpiry;
@@ -41,7 +42,6 @@ import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.security.client.OpenMetadataJWTClientConfig;
 import org.openmetadata.schema.services.connections.metadata.AuthProvider;
 import org.openmetadata.schema.type.EntityReference;
-import org.openmetadata.schema.utils.EntityInterfaceUtil;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.EntityRepository;
@@ -161,14 +161,8 @@ public final class UserUtil {
   }
 
   public static User user(String name, String domain, String updatedBy) {
-    return new User()
-        .withId(UUID.randomUUID())
-        .withName(name)
-        .withFullyQualifiedName(EntityInterfaceUtil.quoteName(name))
-        .withEmail(name + "@" + domain)
-        .withUpdatedBy(updatedBy)
-        .withUpdatedAt(System.currentTimeMillis())
-        .withIsBot(false);
+    return getUser(
+        updatedBy, new CreateUser().withName(name).withEmail(name + "@" + domain).withIsBot(false));
   }
 
   /**
@@ -329,5 +323,25 @@ public final class UserUtil {
     }
 
     return syncUser;
+  }
+
+  public static User getUser(String updatedBy, CreateUser create) {
+    return new User()
+        .withId(UUID.randomUUID())
+        .withName(create.getName().toLowerCase())
+        .withFullyQualifiedName(create.getName().toLowerCase())
+        .withEmail(create.getEmail().toLowerCase())
+        .withDescription(create.getDescription())
+        .withDisplayName(create.getDisplayName())
+        .withIsBot(create.getIsBot())
+        .withIsAdmin(create.getIsAdmin())
+        .withProfile(create.getProfile())
+        .withPersonas(create.getPersonas())
+        .withDefaultPersona(create.getDefaultPersona())
+        .withTimezone(create.getTimezone())
+        .withUpdatedBy(updatedBy)
+        .withUpdatedAt(System.currentTimeMillis())
+        .withTeams(EntityUtil.toEntityReferences(create.getTeams(), Entity.TEAM))
+        .withRoles(EntityUtil.toEntityReferences(create.getRoles(), Entity.ROLE));
   }
 }
