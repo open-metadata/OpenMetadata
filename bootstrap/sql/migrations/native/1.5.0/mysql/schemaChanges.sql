@@ -11,3 +11,26 @@ CREATE TABLE IF NOT EXISTS di_chart_entity (
     UNIQUE(name),
     INDEX name_index (name)
 );
+
+--- UPDATE KPI 
+
+-- Update the KPI entity to remove the targetDefinition and set the targetValue to the value of the targetDefinition
+UPDATE kpi_entity
+SET json = JSON_REMOVE(
+                    JSON_SET(json, 
+                             '$.targetValue', 
+                             CAST(JSON_UNQUOTE(JSON_EXTRACT(json, '$.targetDefinition[0].value')) AS DECIMAL) * 100 
+                            ),
+                    '$.targetDefinition'
+                )
+WHERE JSON_UNQUOTE(JSON_EXTRACT(json, '$.metricType')) = 'PERCENTAGE';
+
+UPDATE kpi_entity
+SET json = JSON_REMOVE(
+                    JSON_SET(json, 
+                             '$.targetValue', 
+                             CAST(JSON_UNQUOTE(JSON_EXTRACT(json, '$.targetDefinition[0].value')) AS DECIMAL) 
+                            ),
+                    '$.targetDefinition'
+                )
+WHERE JSON_UNQUOTE(JSON_EXTRACT(json, '$.metricType')) = 'NUMBER';
