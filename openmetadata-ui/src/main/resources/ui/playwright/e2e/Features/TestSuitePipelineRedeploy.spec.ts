@@ -12,20 +12,39 @@
  */
 import test, { expect } from '@playwright/test';
 import { GlobalSettingOptions } from '../../constant/settings';
+import { TableClass } from '../../support/entity/TableClass';
 import { createNewPage, redirectToHomePage } from '../../utils/common';
 import { settingClick } from '../../utils/sidebar';
 
 // use the admin user to login
 test.use({ storageState: 'playwright/.auth/admin.json' });
 
-test.describe('User with different Roles', () => {
+const table1 = new TableClass();
+const table2 = new TableClass();
+
+test.describe('Bulk Re-Deploy pipelines ', () => {
   test.beforeAll('Setup pre-requests', async ({ browser }) => {
-    const { afterAction } = await createNewPage(browser);
+    const { afterAction, apiContext } = await createNewPage(browser);
+
+    await table1.create(apiContext);
+    await table2.create(apiContext);
+
+    await table1.createTestSuiteAndPipelines(apiContext);
+    await table2.createTestSuiteAndPipelines(apiContext);
 
     await afterAction();
   });
 
-  test.beforeEach('Visit user list page', async ({ page }) => {
+  test.afterAll('Clean up', async ({ browser }) => {
+    const { afterAction, apiContext } = await createNewPage(browser);
+
+    await table1.delete(apiContext);
+    await table2.delete(apiContext);
+
+    await afterAction();
+  });
+
+  test.beforeEach('Visit home page', async ({ page }) => {
     await redirectToHomePage(page);
   });
 
@@ -33,15 +52,11 @@ test.describe('User with different Roles', () => {
     await settingClick(page, GlobalSettingOptions.DATA_OBSERVABILITY);
 
     await expect(
-      page.getByText(
-        'Re DeployNameTypeScheduleRecent Runsdim_address_TestSuiteTestSuite0 0 * * *--'
-      )
-    ).toBeVisible();
+      page.getByRole('button', { name: 'Re Deploy' })
+    ).not.toBeEnabled();
+    await expect(page.locator('.ant-table-container')).toBeVisible();
 
-    await page
-      .getByRole('row', { name: 'Name Type filter Schedule' })
-      .getByLabel('', { exact: true })
-      .check();
+    await page.getByRole('checkbox').first().click();
 
     await expect(page.getByRole('button', { name: 'Re Deploy' })).toBeEnabled();
 
@@ -51,4 +66,6 @@ test.describe('User with different Roles', () => {
       page.getByText('Pipelines Re Deploy Successfully')
     ).toBeVisible();
   });
+
+  // TODO: Add test to verify the re-deployed pipelines for Database, Dashboard and other entities
 });
