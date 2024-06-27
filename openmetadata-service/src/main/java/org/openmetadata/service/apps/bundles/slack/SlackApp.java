@@ -25,10 +25,10 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.io.IOUtils;
 import org.openmetadata.schema.service.configuration.slackApp.SlackAppConfiguration;
 import org.openmetadata.schema.settings.Settings;
-import org.openmetadata.schema.settings.SettingsType;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.apps.AbstractNativeApplication;
 import org.openmetadata.service.apps.AppException;
+import org.openmetadata.service.apps.bundles.slack.isteners.Listeners;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.SystemRepository;
 import org.openmetadata.service.search.SearchRepository;
@@ -47,24 +47,21 @@ public class SlackApp extends AbstractNativeApplication {
   }
 
   public static App boltSlackAppRegistration(SlackAppConfiguration config) throws Exception {
-    System.out.println("::::: boltSlackAppRegistration :::::");
     AppConfig appConfig =
         AppConfig.builder()
             .clientId(config.getClientId())
             .clientSecret(config.getClientSecret())
             .signingSecret(config.getSigningSecret())
             .scope(config.getScopes())
-            .oauthInstallPath("/slack/install")
-            .oauthRedirectUriPath(config.getCallbackUrl())
+            .oauthInstallPath("/api/slack/install")
+            .oauthRedirectUriPath("/api/slack/callback")
             .stateValidationEnabled(false)
             .build();
-
     App slackApp = new App(appConfig).asOAuthApp(true);
 
     InstallationService installationService = new SlackInstallationService();
     slackApp.service(installationService);
-
-    slackApp.command("/hello", (req, ctx) -> ctx.ack(r -> r.text("Thanks!")));
+    Listeners.register(slackApp);
     return slackApp;
   }
 
@@ -226,10 +223,7 @@ public class SlackApp extends AbstractNativeApplication {
     String clientId = appConfig.getClientId();
     String scopes = appConfig.getScopes();
 
-    String state = generateRandomState();
-    installationService.saveTokenToSystemRepository(state, SettingsType.SLACK_O_AUTH_STATE);
-
-    return String.format("%s?client_id=%s&scope=%s&state=%s", baseUrl, clientId, scopes, state);
+    return String.format("%s?client_id=%s&scope=%s", baseUrl, clientId, scopes);
   }
 
   private String generateRandomState() {

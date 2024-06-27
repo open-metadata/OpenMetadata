@@ -35,8 +35,8 @@ public class SlackInstallationService implements InstallationService {
 
   @Override
   public void saveInstallerAndBot(Installer installer) throws Exception {
-    saveTokenToSystemRepository(installer.getInstallerUserAccessToken(), SettingsType.SLACK_INSTALLER);
-    saveTokenToSystemRepository(installer.toBot().getBotAccessToken(), SettingsType.SLACK_BOT);
+    saveTokenToSystemRepository(installer, SettingsType.SLACK_INSTALLER);
+    saveTokenToSystemRepository(installer.toBot(), SettingsType.SLACK_BOT);
   }
 
   @Override
@@ -82,11 +82,11 @@ public class SlackInstallationService implements InstallationService {
     return SystemRepository.decryptSlackDefaultInstallerSetting(installerJson);
   }
 
-  void saveTokenToSystemRepository(String accessToken, SettingsType configType) {
+  void saveTokenToSystemRepository(Object entity, SettingsType configType) {
     try {
       Settings setting = new Settings();
       setting.setConfigType(configType);
-      setting.setConfigValue(accessToken);
+      setting.setConfigValue(entity);
       systemRepository.createOrUpdate(setting);
     } catch (Exception e) {
       LOG.error("Error saving token to system repository: {}", e.getMessage());
