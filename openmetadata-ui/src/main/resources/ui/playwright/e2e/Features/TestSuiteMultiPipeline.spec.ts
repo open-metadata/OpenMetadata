@@ -17,7 +17,7 @@ import { getApiContext, redirectToHomePage, uuid } from '../../utils/common';
 // use the admin user to login
 test.use({ storageState: 'playwright/.auth/admin.json' });
 
-test('MultiPipeline', async ({ page }) => {
+test('TestSuite multi pipeline support', async ({ page }) => {
   test.slow(true);
 
   await redirectToHomePage(page);

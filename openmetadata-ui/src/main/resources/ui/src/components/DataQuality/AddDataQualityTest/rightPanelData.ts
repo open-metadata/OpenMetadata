@@ -11,6 +11,8 @@
  *  limitations under the License.
  */
 
+import i18n from '../../../utils/i18next/LocalUtil';
+
 /* eslint-disable max-len */
 
 export const TEST_FORM_DATA = [
@@ -44,14 +46,18 @@ export const TEST_PAGE_FORM_DATA = [
 ];
 
 export const INGESTION_DATA = {
-  title: 'Scheduler for Tests',
-  body: 'The data quality tests can be scheduled to run at the desired frequency. The timezone is in UTC.',
+  title: i18n.t('label.schedule-for-entity', {
+    entity: i18n.t('label.test-case-plural'),
+  }),
+  body: i18n.t('message.test-case-schedule-description'),
 };
 
 export const TEST_SUITE_INGESTION_PAGE_DATA = [
   {
-    title: 'Select Test Cases',
-    body: 'Select a test case to run for a scheduled interval. If no test case is selected, all test cases will be run by default.',
+    title: i18n.t('label.select-field', {
+      field: i18n.t('label.test-case-plural'),
+    }),
+    body: i18n.t('message.select-test-case'),
   },
   INGESTION_DATA,
 ];
