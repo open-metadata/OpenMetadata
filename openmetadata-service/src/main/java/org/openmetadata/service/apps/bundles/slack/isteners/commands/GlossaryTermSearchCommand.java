@@ -19,47 +19,46 @@ import java.util.Date;
 import java.util.List;
 import java.util.stream.Collectors;
 import org.openmetadata.schema.EntityInterface;
-import org.openmetadata.schema.entity.data.Glossary;
+import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.formatter.decorators.SlackMessageDecorator;
-import org.openmetadata.service.jdbi3.GlossaryRepository;
+import org.openmetadata.service.jdbi3.GlossaryTermRepository;
 import org.openmetadata.service.util.EntityUtil;
 
-public class GlossarySearchCommand implements SlashCommandHandler {
-  protected final GlossaryRepository repository =
-      (GlossaryRepository) Entity.getEntityRepository(Entity.GLOSSARY);
-  final String FIELDS = "owner,tags,reviewers,usageCount,termCount,domain,extension";
+public class GlossaryTermSearchCommand implements SlashCommandHandler {
   SlackMessageDecorator decorator;
+  protected final GlossaryTermRepository repository =
+      (GlossaryTermRepository) Entity.getEntityRepository(Entity.GLOSSARY_TERM);
+  final String FIELDS = "children,reviewers,owner,tags,usageCount,domain,extension,childrenCount";
 
-  public GlossarySearchCommand(SlackMessageDecorator decorator) {
+  public GlossaryTermSearchCommand(SlackMessageDecorator decorator) {
     this.decorator = decorator;
   }
 
   @Override
   public Response apply(SlashCommandRequest req, SlashCommandContext ctx)
       throws IOException, SlackApiException {
-    ctx.logger.info("Search glossary responding");
-    String fqn = req.getPayload().getText().trim();
+    ctx.logger.info("Search glossary term responding");
+    String termFqn = req.getPayload().getText().trim();
 
-    ctx.logger.info("fqn : {}", fqn);
+    ctx.logger.info("fqn : {}", termFqn);
 
-    Glossary glossary;
+    GlossaryTerm glossaryTerm;
     try {
-      glossary = fetchData(fqn);
+      glossaryTerm = fetchData(termFqn);
     } catch (EntityNotFoundException e) {
-      ctx.logger.error("Glossary not found: {}", e.getMessage());
-      return ctx.ack(":warning: Glossary not found with the provided name.");
+      ctx.logger.error("GlossaryTerm not found: {}", e.getMessage());
+      return ctx.ack(":warning: GlossaryTerm not found with the provided name.");
     } catch (Exception e) {
       ctx.logger.error("Error fetching glossary data", e);
-      return ctx.ack(":x: Failed to fetch glossary data. Please try again later.");
+      return ctx.ack(":x: Failed to fetch glossary term data. Please try again later.");
     }
 
-    // Continue processing with glossary data
-    List<LayoutBlock> blocks = createMessage(glossary);
+    List<LayoutBlock> blocks = createMessage(glossaryTerm);
 
     ChatPostMessageResponse response =
         ctx.client()
@@ -72,12 +71,12 @@ public class GlossarySearchCommand implements SlashCommandHandler {
     return ctx.ack();
   }
 
-  private List<LayoutBlock> createMessage(Glossary glossary) {
+  private List<LayoutBlock> createMessage(GlossaryTerm glossaryTerm) {
     List<LayoutBlock> blocks = new ArrayList<>();
 
     // Header
     blocks.add(
-        Blocks.header(header -> header.text(BlockCompositions.plainText("Glossary Details"))));
+        Blocks.header(header -> header.text(BlockCompositions.plainText("Glossary Term Details"))));
 
     // Name and Description
     blocks.add(
@@ -85,14 +84,14 @@ public class GlossarySearchCommand implements SlashCommandHandler {
             section ->
                 section.text(
                     BlockCompositions.markdownText(
-                        "*Name:* "
-                            + glossary.getName()
+                        "*Term Name:* "
+                            + glossaryTerm.getName()
                             + "\n"
                             + "*Display Name:* "
-                            + glossary.getDisplayName()
+                            + glossaryTerm.getDisplayName()
                             + "\n"
                             + "*Description:* "
-                            + glossary.getDescription()))));
+                            + glossaryTerm.getDescription()))));
 
     // Divider
     blocks.add(Blocks.divider());
@@ -101,45 +100,47 @@ public class GlossarySearchCommand implements SlashCommandHandler {
     List<TextObject> fields = new ArrayList<>();
     fields.add(
         BlockCompositions.markdownText(
-            "*Fully Qualified Name:* " + glossary.getFullyQualifiedName()));
-    fields.add(BlockCompositions.markdownText("*Version:* " + glossary.getVersion()));
+            "*Fully Qualified Name:* " + glossaryTerm.getFullyQualifiedName()));
+    fields.add(BlockCompositions.markdownText("*Version:* " + glossaryTerm.getVersion()));
     fields.add(
         BlockCompositions.markdownText(
-            "*Updated At:* " + new Date(glossary.getUpdatedAt()).toString()));
-    fields.add(BlockCompositions.markdownText("*Updated By:* " + glossary.getUpdatedBy()));
-    fields.add(BlockCompositions.markdownText("*Provider:* " + glossary.getProvider()));
+            "*Updated At:* " + new Date(glossaryTerm.getUpdatedAt()).toString()));
+    fields.add(BlockCompositions.markdownText("*Updated By:* " + glossaryTerm.getUpdatedBy()));
+    fields.add(BlockCompositions.markdownText("*Provider:* " + glossaryTerm.getProvider()));
     fields.add(
-        BlockCompositions.markdownText("*Mutually Exclusive:* " + glossary.getMutuallyExclusive()));
-    fields.add(BlockCompositions.markdownText("*Usage Count:* " + glossary.getUsageCount()));
-    fields.add(BlockCompositions.markdownText("*Term Count:* " + glossary.getTermCount()));
+        BlockCompositions.markdownText(
+            "*Mutually Exclusive:* " + glossaryTerm.getMutuallyExclusive()));
+    fields.add(BlockCompositions.markdownText("*Usage Count:* " + glossaryTerm.getUsageCount()));
+    fields.add(
+        BlockCompositions.markdownText("*Children Count:* " + glossaryTerm.getChildrenCount()));
 
     // Owner
-    if (glossary.getOwner() != null) {
-      EntityReference owner = glossary.getOwner();
+    if (glossaryTerm.getOwner() != null) {
+      EntityReference owner = glossaryTerm.getOwner();
       fields.add(
           BlockCompositions.markdownText(
               "*Owner:* " + owner.getDisplayName() + " (" + owner.getName() + ")"));
     }
 
     // Reviewers
-    if (glossary.getReviewers() != null && !glossary.getReviewers().isEmpty()) {
+    if (glossaryTerm.getReviewers() != null && !glossaryTerm.getReviewers().isEmpty()) {
       String reviewers =
-          glossary.getReviewers().stream()
+          glossaryTerm.getReviewers().stream()
               .map(EntityReference::getDisplayName)
               .collect(Collectors.joining(", "));
       fields.add(BlockCompositions.markdownText("*Reviewers:* " + reviewers));
     }
 
     // Tags
-    if (glossary.getTags() != null && !glossary.getTags().isEmpty()) {
+    if (glossaryTerm.getTags() != null && !glossaryTerm.getTags().isEmpty()) {
       String tags =
-          glossary.getTags().stream().map(TagLabel::getName).collect(Collectors.joining(", "));
+          glossaryTerm.getTags().stream().map(TagLabel::getName).collect(Collectors.joining(", "));
       fields.add(BlockCompositions.markdownText("*Tags:* " + tags));
     }
 
     // Domain
-    if (glossary.getDomain() != null) {
-      EntityReference domain = glossary.getDomain();
+    if (glossaryTerm.getDomain() != null) {
+      EntityReference domain = glossaryTerm.getDomain();
       fields.add(
           BlockCompositions.markdownText(
               "*Domain:* " + domain.getDisplayName() + " (" + domain.getName() + ")"));
@@ -159,10 +160,12 @@ public class GlossarySearchCommand implements SlashCommandHandler {
         Blocks.context(
             context ->
                 context.elements(
-                    List.of(BlockCompositions.markdownText("Glossary provided by OpenMetadata")))));
+                    List.of(
+                        BlockCompositions.markdownText(
+                            "Glossary Term provided by OpenMetadata")))));
 
     // Button Block
-    String entityUrl = buildEntityUrl(glossary); // issue in building entityUrl.
+    String entityUrl = buildEntityUrl(glossaryTerm); // issue in building entityUrl.
     System.out.println("entityUrl :" + entityUrl);
     if (entityUrl.isEmpty()) entityUrl = "";
     blocks.add(
@@ -170,7 +173,7 @@ public class GlossarySearchCommand implements SlashCommandHandler {
             .elements(
                 List.of(
                     ButtonElement.builder()
-                        .text(PlainTextObject.builder().text("Open Glossary").build())
+                        .text(PlainTextObject.builder().text("Open Term").build())
                         .url("https://open-metadata.org/")
                         .build()))
             .build());
@@ -178,9 +181,9 @@ public class GlossarySearchCommand implements SlashCommandHandler {
     return blocks;
   }
 
-  public Glossary fetchData(String fqn) {
+  public GlossaryTerm fetchData(String fqn) {
     EntityUtil.Fields fields = getFields(FIELDS);
-    Glossary byName = repository.getByName(null, fqn, fields, Include.NON_DELETED, false);
+    GlossaryTerm byName = repository.getByName(null, fqn, fields, Include.NON_DELETED, false);
     System.out.println("byName : " + byName);
     return byName;
   }
@@ -190,6 +193,7 @@ public class GlossarySearchCommand implements SlashCommandHandler {
   }
 
   private String buildEntityUrl(EntityInterface entityInterface) {
-    return decorator.getEntityUrl(Entity.GLOSSARY, entityInterface.getFullyQualifiedName(), "");
+    return decorator.getEntityUrl(
+        Entity.GLOSSARY_TERM, entityInterface.getFullyQualifiedName(), "");
   }
 }

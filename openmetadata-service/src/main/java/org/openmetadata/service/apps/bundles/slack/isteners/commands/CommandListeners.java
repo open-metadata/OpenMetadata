@@ -10,5 +10,7 @@ public class CommandListeners implements ListenerProvider {
   @Override
   public void register(App app) {
     app.command("/search-glossary", new GlossarySearchCommand(decorator));
+    app.command("/search-term", new GlossaryTermSearchCommand(decorator));
+    app.command("/search-tag", new TagSearchCommand(decorator));
   }
 }

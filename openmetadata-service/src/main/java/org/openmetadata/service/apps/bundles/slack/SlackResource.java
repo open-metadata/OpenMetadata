@@ -11,7 +11,6 @@ import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.Map;
 import javax.ws.rs.Consumes;
-import javax.ws.rs.DELETE;
 import javax.ws.rs.GET;
 import javax.ws.rs.Path;
 import javax.ws.rs.Produces;
@@ -22,12 +21,10 @@ import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.entity.app.App;
-import org.openmetadata.schema.settings.SettingsType;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.apps.AppException;
 import org.openmetadata.service.apps.ApplicationHandler;
 import org.openmetadata.service.jdbi3.AppRepository;
-import org.openmetadata.service.jdbi3.SystemRepository;
 import org.openmetadata.service.resources.Collection;
 
 @Slf4j
@@ -64,28 +61,6 @@ public class SlackResource {
           "The app needs to be installed before interacting with the API",
           Response.Status.INTERNAL_SERVER_ERROR);
     }
-  }
-
-  @GET
-  @Path("/oauthUrl")
-  public Response getOAuth() {
-    initializeSlackApp();
-    return Response.ok()
-        .entity(
-            new SlackApiResponse<>(
-                Response.Status.OK.getStatusCode(),
-                "Channels retrieved successfully",
-                slackApp.buildOAuthUrl()))
-        .build();
-  }
-
-  @DELETE
-  @Path("/delete")
-  public void delete() {
-    SystemRepository systemRepository = Entity.getSystemRepository();
-    systemRepository.deleteSettings(SettingsType.SLACK_BOT);
-    systemRepository.deleteSettings(SettingsType.SLACK_INSTALLER);
-    systemRepository.deleteSettings(SettingsType.SLACK_O_AUTH_STATE);
   }
 
   @GET

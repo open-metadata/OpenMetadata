@@ -7,14 +7,8 @@ import com.slack.api.bolt.model.builtin.DefaultBot;
 import com.slack.api.bolt.service.InstallationService;
 import com.slack.api.methods.SlackApiException;
 import com.slack.api.methods.request.conversations.ConversationsListRequest;
-import com.slack.api.methods.request.views.ViewsPublishRequest;
 import com.slack.api.methods.response.conversations.ConversationsListResponse;
-import com.slack.api.methods.response.views.ViewsPublishResponse;
 import java.io.IOException;
-import java.io.InputStream;
-import java.nio.charset.StandardCharsets;
-import java.security.SecureRandom;
-import java.util.Base64;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -22,24 +16,17 @@ import java.util.stream.Collectors;
 import javax.ws.rs.core.Response;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.io.IOUtils;
 import org.openmetadata.schema.service.configuration.slackApp.SlackAppConfiguration;
-import org.openmetadata.schema.settings.Settings;
-import org.openmetadata.service.Entity;
 import org.openmetadata.service.apps.AbstractNativeApplication;
 import org.openmetadata.service.apps.AppException;
 import org.openmetadata.service.apps.bundles.slack.isteners.Listeners;
 import org.openmetadata.service.jdbi3.CollectionDAO;
-import org.openmetadata.service.jdbi3.SystemRepository;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.util.JsonUtils;
 
 @Slf4j
 public class SlackApp extends AbstractNativeApplication {
   private SlackAppConfiguration appConfig;
-  private SystemRepository systemRepository;
-  private static final SecureRandom SECURE_RANDOM = new SecureRandom();
-  private static final Base64.Encoder BASE64_ENCODER = Base64.getUrlEncoder();
   private final SlackInstallationService installationService = new SlackInstallationService();
 
   public SlackApp(CollectionDAO collectionDAO, SearchRepository searchRepository) {
@@ -55,7 +42,7 @@ public class SlackApp extends AbstractNativeApplication {
             .scope(config.getScopes())
             .oauthInstallPath("/api/slack/install")
             .oauthRedirectUriPath("/api/slack/callback")
-            .stateValidationEnabled(false)
+            .stateValidationEnabled(true)
             .build();
     App slackApp = new App(appConfig).asOAuthApp(true);
 
@@ -68,7 +55,6 @@ public class SlackApp extends AbstractNativeApplication {
   @Override
   public void init(org.openmetadata.schema.entity.app.App app) {
     super.init(app);
-    this.systemRepository = Entity.getSystemRepository();
     appConfig =
         JsonUtils.convertValue(
             this.getApp().getPrivateConfiguration(), SlackAppConfiguration.class);
@@ -130,106 +116,12 @@ public class SlackApp extends AbstractNativeApplication {
     }
   }
 
-  private String readJsonFromFile(String filePath) throws IOException {
-    try (InputStream inputStream = getClass().getClassLoader().getResourceAsStream(filePath)) {
-      if (inputStream == null) {
-        throw new IOException("File not found: " + filePath);
-      }
-      return IOUtils.toString(inputStream, StandardCharsets.UTF_8);
-    } catch (IOException e) {
-      throw e;
-    }
-  }
-
-  public String getRedirectUrl(boolean isStateValid) {
-    return appConfig.getCallbackRedirectURL()
-        + (isStateValid ? SlackConstants.SUCCESS_FRAGMENT : SlackConstants.FAILED_FRAGMENT);
-  }
-
-  public boolean isOAuthStateValid(String stateFromCallback) {
-    try {
-      String expectedState = getSlackOAuthStateFromDb();
-      return stateFromCallback.equals(expectedState);
-    } catch (Exception e) {
-      LOG.error("Error comparing OAuth states: {}", e.getMessage(), e);
-      return false;
-    }
-  }
-
-  private Response handleAppHomeOpened(String eventTab, String userId) {
-    try {
-      return switch (eventTab) {
-        case SlackConstants.HOME -> {
-          publishHomeTab(userId);
-          yield Response.ok().build();
-        }
-        case SlackConstants.MESSAGES -> {
-          LOG.info("message_tab_opened");
-          yield Response.ok().build();
-        }
-        case SlackConstants.ABOUT -> {
-          LOG.info("about_tab_opened");
-          yield Response.ok().build();
-        }
-        default -> throw new IllegalStateException("Unexpected value: " + eventTab);
-      };
-    } catch (IOException | SlackApiException e) {
-      LOG.error("Error publishing home tab", e);
-      return Response.serverError().build();
-    }
-  }
-
-  private void publishHomeTab(String userId) throws IOException, SlackApiException {
-    Slack slack = Slack.getInstance();
-    HashMap<String, Object> tokenMap = installationService.getSavedToken();
-    if (!tokenMap.containsKey(SlackConstants.BOT_ACCESS_TOKEN)) {
-      throw AppException.byMessage(
-          SlackConstants.SLACK_APP,
-          "publishHomeTab",
-          "Bot access token is missing",
-          Response.Status.BAD_REQUEST);
-    }
-    DefaultBot bot = (DefaultBot) tokenMap.get(SlackConstants.BOT_ACCESS_TOKEN);
-    String jsonView = readJsonFromFile(SlackConstants.HOME_VIEW_TEMPLATE);
-
-    ViewsPublishRequest request =
-        ViewsPublishRequest.builder()
-            .userId(userId)
-            .viewAsString(jsonView)
-            .token(bot.getBotAccessToken())
-            .build();
-
-    ViewsPublishResponse response = slack.methods().viewsPublish(request);
-
-    if (!response.isOk()) {
-      throw AppException.byMessage(
-          SlackConstants.SLACK_APP,
-          "viewsPublish",
-          "error publishing view :: " + response.getError(),
-          Response.Status.INTERNAL_SERVER_ERROR);
-    } else {
-      LOG.info("View published successfully: {}", response);
-    }
-  }
-
-  private String getSlackOAuthStateFromDb() {
-    Settings stateSetting = systemRepository.getSlackOAuthStateConfigInternal();
-    String installerJson = JsonUtils.pojoToJson(stateSetting.getConfigValue());
-    return SystemRepository.decryptSlackOAuthStateSetting(installerJson);
-  }
-
   public String buildOAuthUrl() {
     String baseUrl = SlackConstants.SLACK_OAUTH_URL;
     String clientId = appConfig.getClientId();
     String scopes = appConfig.getScopes();
 
     return String.format("%s?client_id=%s&scope=%s", baseUrl, clientId, scopes);
-  }
-
-  private String generateRandomState() {
-    byte[] randomBytes = new byte[24];
-    SECURE_RANDOM.nextBytes(randomBytes);
-    return BASE64_ENCODER.encodeToString(randomBytes);
   }
 
   @Override
