@@ -65,10 +65,11 @@ runs:
       id: meta
       uses: docker/metadata-action@v5
       with:
+        flavor:
+          latest=${{ inputs.push_latest }}
         images: |
           ${{ inputs.image }}
         sep-tags: ','
         tags: |
           type=raw,value=${{ inputs.release_version }},enable=${{ inputs.is_ingestion }}
           type=raw,${{ inputs.tag }}
-          type=raw,latest,enable=${{ inputs.push_latest }}
