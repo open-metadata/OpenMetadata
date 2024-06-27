@@ -1043,7 +1043,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
         },
         EntityLineageDirection.LEFT_RIGHT,
         isColView,
-        expandAllColumns,
+        isEditMode || expandAllColumns,
         columnsHavingLineage
       );
 
@@ -1073,6 +1073,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
       onNodeClick,
       columnsHavingLineage,
       expandAllColumns,
+      isEditMode,
     ]
   );
 
@@ -1169,7 +1170,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
 
   useEffect(() => {
     repositionLayout();
-  }, [activeLayer, expandAllColumns]);
+  }, [activeLayer, expandAllColumns, isEditMode]);
 
   useEffect(() => {
     if (reactFlowInstance?.viewportInitialized) {
