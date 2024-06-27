@@ -3,11 +3,13 @@ title: BigQuery
 slug: /connectors/database/bigquery/create-credentials
 ---
 
-# Create custom role in GCP
+# Create Credentials for BigQuery Ingestion
 
-This documentation will guide you on how to create a custom role in GCP with the necessary permissions to ingest BigQuery in OpenMetadata.
+This documentation provides a step-by-step guide on how to create a custom role in Google Cloud Platform (GCP) with the necessary permissions to ingest BigQuery in OpenMetadata. It covers the process of navigating to the Roles section in the GCP console, creating a role, adding permissions, and creating a service account with credentials. By following these instructions, you will be able to set up the required role and credentials to access and ingest BigQuery metadata in OpenMetadata. Let's get started!
 
-## Step 1: Navigate to Roles
+## 1. Create custom role in GCP
+
+### Step 1: Navigate to Roles
 
 Search for `Roles` in your GCP console and select the first result under `IAM & Roles` section.
 
@@ -17,17 +19,14 @@ alt="Navigate to Roles"
 caption="Navigate to Roles" /%}
 
 
-## Step 2: Create Role & Add Permissions
+### Step 2: Create Role & Add Permissions
 
 Below the search bar you should see a `Create Role` button click on that & navigate to create role page.
-
 
 {% image
 src="/images/v1.4/connectors/bigquery/create-role-2.png"
 alt="Create Role Button"
 caption="Create Role" /%}
-
-
 
 Once You are on the create role page, you can edit the description & title of the role and finally you can click on `add permissions` to grant permissions to role.
 
@@ -36,9 +35,7 @@ src="/images/v1.4/connectors/bigquery/create-role-3.png"
 alt="Create Role"
 caption="Create Role" /%}
 
-
 You can search for the required permissions in the filter box and add them accordingly. To ingest metadata from BigQuery you need to grant the following permissions to the user.
-
 
 
 | #    | GCP Permission                | Required For            |
@@ -70,12 +67,9 @@ src="/images/v1.4/connectors/bigquery/create-role-5.png"
 alt="Add Permissions"
 caption="Add Permissions" /%}
 
-# Create Service Account & Credential 
+## 2. Create Service Account
 
-This documentation will guide you on how to create a service account in GCP and create credentials to access the same.
-
-
-## Navigate to Service Accounts
+### Step 1: Navigate to Service Accounts
 
 Login to your GCP console and navigate to service accounts page.
 
@@ -85,7 +79,7 @@ alt="Navigate to Service Accounts"
 caption="Navigate to Service Accounts" /%}
 
 
-## Create Service Account & Grant Role
+### Step 2: Create Service Account & Grant Role
 
 Once you are on service account page, click on `Create Service Account` button.
 
@@ -109,7 +103,9 @@ alt="Grant Role to Service Account"
 caption="Grant Role to Service Account" /%}
 
 
-## Create Key Credentials
+## 3. Create & Download Key Credentials
+
+### Step 1: Navigate to Service Accounts
 
 On service accounts page, look for the service account that you just created, click on the three dots menu and go to manage keys
 
@@ -118,6 +114,8 @@ src="/images/v1.4/connectors/bigquery/bq-service-account-manage-keys.png"
 alt="Service Account Manage Keys"
 caption="Service Account Manage Keys" /%}
 
+
+### Step 2: Download Key Credentials
 
 Click on Add Key > New Key > Select Json and download the key.
 
