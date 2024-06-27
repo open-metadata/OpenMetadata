@@ -222,7 +222,7 @@ public class AirflowRESTClient extends PipelineServiceClient {
         response = post(toggleUrl, requestPayload.toString());
         if (response.statusCode() == 200) {
           ingestionPipeline.setEnabled(true);
-          ingestionPipeline.setEnabled(false);
+          return getResponse(200, response.body());
         } else if (response.statusCode() == 404) {
           ingestionPipeline.setDeployed(false);
           return getResponse(404, response.body());
