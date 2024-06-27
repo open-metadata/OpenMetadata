@@ -1653,6 +1653,7 @@
     "page-sub-header-for-column-profile": "Отслеживайте и анализируйте структуру столбцов с помощью профайлера",
     "page-sub-header-for-customize-landing-page": "Customize your application landing page based on user personas",
     "page-sub-header-for-dashboards": "Получайте метаданные из самых популярных сервисов информационных панелей.",
+    "page-sub-header-for-data-observability": "Ingest metadata from test suite services right from the UI.",
     "page-sub-header-for-data-quality": "Укрепляйте доверие к своим данным с помощью тестов качества и создавайте надежные информационные продукты.",
     "page-sub-header-for-databases": "Получение метаданных из самых популярных сервисов баз данных.",
     "page-sub-header-for-login-configuration": "Login configuration such as failed attempts or expiry timer.",
