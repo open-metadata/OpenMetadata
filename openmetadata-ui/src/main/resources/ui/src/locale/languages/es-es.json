@@ -1654,6 +1654,7 @@
     "page-sub-header-for-column-profile": "Monitorea y comprende la estructura de tus columnas con el perfilador",
     "page-sub-header-for-customize-landing-page": "Personaliza la página de inicio de tu aplicación basándote en las personas del usuario",
     "page-sub-header-for-dashboards": "Ingresa metadatos desde los servicios de dashboard más populares.",
+    "page-sub-header-for-data-observability": "Ingest metadata from test suite services right from the UI.",
     "page-sub-header-for-data-quality": "Construye confianza en tus datos con pruebas de calidad y crea productos de datos fiables.",
     "page-sub-header-for-databases": "Ingresa metadatos desde los servicios de base de datos más populares.",
     "page-sub-header-for-login-configuration": "Configuración de inicio de sesión como intentos fallidos o temporizador de vencimiento.",
