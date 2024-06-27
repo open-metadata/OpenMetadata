@@ -37,7 +37,7 @@ You need to create an service account in order to ingest metadata from bigquery 
 {% tile
 icon="manage_accounts"
 title="Create Credentials"
-description="Checkout this documentation on how to create a custom role and assign it to the service account."
+description="Check out this documentation on how to create a custom role and assign it to the service account."
 link="/connectors/database/bigquery/create-credentials"
   / %}
 {% /tilesContainer %}
@@ -107,7 +107,7 @@ This will help you simplify your data management and optimize your performance i
 **GCP Credentials**: 
 You can authenticate with your bigquery instance using either `GCP Credentials Path` where you can specify the file path of the service account key or you can pass the values directly by choosing the `GCP Credentials Values` from the service account key file.
 
-You can checkout [this](https://cloud.google.com/iam/docs/keys-create-delete#iam-service-account-keys-create-console) documentation on how to create the service account keys and download it.
+You can check out [this](https://cloud.google.com/iam/docs/keys-create-delete#iam-service-account-keys-create-console) documentation on how to create the service account keys and download it.
 
 **GCP Credentials Values**: Passing the raw credential values provided by BigQuery. This requires us to provide the following information, all provided by BigQuery:
 
