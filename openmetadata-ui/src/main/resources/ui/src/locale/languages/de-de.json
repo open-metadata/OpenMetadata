@@ -1653,6 +1653,7 @@
     "page-sub-header-for-column-profile": "Überwache und verstehe die Struktur deiner Spalten mit dem Profiler.",
     "page-sub-header-for-customize-landing-page": "Customize your application landing page based on user personas",
     "page-sub-header-for-dashboards": "Ingestion von Metadaten aus den beliebtesten Dashboard-Diensten.",
+    "page-sub-header-for-data-observability": "Ingest metadata from test suite services right from the UI.",
     "page-sub-header-for-data-quality": "Vertrauen in deine Daten aufbauen mit Qualitätsprüfungen und zuverlässige Datenerzeugnisse erstellen.",
     "page-sub-header-for-databases": "Ingestion von Metadaten aus den beliebtesten Datenbankdiensten.",
     "page-sub-header-for-login-configuration": "Login configuration such as failed attempts or expiry timer.",

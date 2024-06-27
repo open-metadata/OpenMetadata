@@ -1653,6 +1653,7 @@
     "page-sub-header-for-column-profile": "通过数据分析工具了解和跟踪您的数据表列结构",
     "page-sub-header-for-customize-landing-page": "Customize your application landing page based on user personas",
     "page-sub-header-for-dashboards": "从最流行的仪表板类型服务中提取元数据",
+    "page-sub-header-for-data-observability": "Ingest metadata from test suite services right from the UI.",
     "page-sub-header-for-data-quality": "通过引入数据质控测试提升数据的可信任度，构建稳健的衍生数据产品",
     "page-sub-header-for-databases": "从最流行的数据库类型服务中提取元数据",
     "page-sub-header-for-login-configuration": "Login configuration such as failed attempts or expiry timer.",

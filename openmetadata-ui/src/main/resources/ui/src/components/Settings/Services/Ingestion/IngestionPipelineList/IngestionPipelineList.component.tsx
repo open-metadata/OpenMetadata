@@ -18,6 +18,7 @@ import cronstrue from 'cronstrue';
 import { isNil, map, startCase } from 'lodash';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { EntityType } from '../../../../../enums/entity.enum';
 import { ServiceCategory } from '../../../../../enums/service.enum';
 import {
   IngestionPipeline,
@@ -48,8 +49,10 @@ import { IngestionRecentRuns } from '../IngestionRecentRun/IngestionRecentRuns.c
 
 export const IngestionPipelineList = ({
   serviceName,
+  className,
 }: {
-  serviceName: ServiceCategory;
+  serviceName: ServiceCategory | 'testSuites';
+  className?: string;
 }) => {
   const { theme } = useApplicationStore();
   const [pipelines, setPipelines] = useState<Array<IngestionPipeline>>();
@@ -192,7 +195,10 @@ export const IngestionPipelineList = ({
     try {
       const { data, paging: pagingRes } = await getIngestionPipelines({
         arrQueryFields: ['owner'],
-        serviceType: getEntityTypeFromServiceCategory(serviceName),
+        serviceType:
+          serviceName === 'testSuites'
+            ? EntityType.TEST_SUITE
+            : getEntityTypeFromServiceCategory(serviceName),
         paging,
         pipelineType,
         limit,
@@ -250,7 +256,7 @@ export const IngestionPipelineList = ({
   }
 
   return (
-    <Row gutter={[16, 16]}>
+    <Row className={className} gutter={[16, 16]}>
       <Col className="text-right" span={24}>
         <Button
           disabled={selectedPipelines?.length === 0}
