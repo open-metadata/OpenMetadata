@@ -14,9 +14,8 @@ OpenMetadata high-level API App test
 """
 from unittest import TestCase
 
+from _openmetadata_testutils.ometa import int_admin_ometa
 from metadata.generated.schema.entity.applications.app import App
-
-from ..integration_base import int_admin_ometa
 
 
 class OMetaTableTest(TestCase):

@@ -33,7 +33,8 @@ public class NoopFilter implements ContainerRequestFilter {
       AuthorizerConfiguration authorizerConfiguration) {}
 
   public void filter(ContainerRequestContext containerRequestContext) {
-    CatalogPrincipal catalogPrincipal = new CatalogPrincipal("anonymous");
+    CatalogPrincipal catalogPrincipal =
+        new CatalogPrincipal("anonymous", "anonymous@openmetadata.org");
     String scheme = containerRequestContext.getUriInfo().getRequestUri().getScheme();
     CatalogSecurityContext catalogSecurityContext =
         new CatalogSecurityContext(

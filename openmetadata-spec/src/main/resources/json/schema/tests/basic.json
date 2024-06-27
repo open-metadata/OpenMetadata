@@ -79,6 +79,10 @@
         "value": {
           "description": "test result value",
           "type": "string"
+        },
+        "predictedValue": {
+          "description": "predicted value",
+          "type": "string"
         }
       }
     },
