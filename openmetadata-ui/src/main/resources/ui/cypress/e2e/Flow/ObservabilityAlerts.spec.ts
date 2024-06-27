@@ -29,6 +29,7 @@ import {
   verifyResponseStatusCode,
 } from '../../common/common';
 import { createEntityTable, hardDeleteService } from '../../common/EntityUtils';
+import { validateFormNameFieldInput } from '../../common/Utils/Form';
 import { getToken } from '../../common/Utils/LocalStorage';
 import {
   ALERT_DESCRIPTION,
@@ -371,7 +372,11 @@ describe(
           cy.get('[data-testid="create-observability"]').click();
 
           // Enter alert name
-          cy.get('#name').type(ALERT_NAME);
+          validateFormNameFieldInput({
+            value: ALERT_NAME,
+            fieldName: 'Name',
+            errorDivSelector: '#name_help',
+          });
 
           // Enter description
           cy.get(descriptionBox).clear().type(ALERT_DESCRIPTION);

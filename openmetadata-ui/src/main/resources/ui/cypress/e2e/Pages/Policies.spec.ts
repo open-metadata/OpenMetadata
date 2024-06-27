@@ -17,6 +17,7 @@ import {
   uuid,
   verifyResponseStatusCode,
 } from '../../common/common';
+import { validateFormNameFieldInput } from '../../common/Utils/Form';
 import { BASE_URL } from '../../constants/constants';
 import { GlobalSettingOptions } from '../../constants/settings.constant';
 
@@ -58,7 +59,12 @@ const newRuledescription = `This is ${newRuleName} description`;
 const updatedRuleName = `New-Rule-test-${uuid()}-updated`;
 
 const addRule = (rulename, ruleDescription, descriptionIndex) => {
-  cy.get('[data-testid="rule-name"]').should('be.visible').type(rulename);
+  validateFormNameFieldInput({
+    value: rulename,
+    fieldName: 'Name',
+    fieldSelector: '[data-testid="rule-name"]',
+    errorDivSelector: '#ruleName_help',
+  });
   // Enter rule description
   cy.get('.toastui-editor-md-container > .toastui-editor > .ProseMirror')
     .eq(descriptionIndex)
@@ -127,6 +133,12 @@ describe('Policy page should work properly', { tags: 'Settings' }, () => {
 
     // Enter policy name
     cy.get('[data-testid="policy-name"]').should('be.visible').type(policyName);
+    validateFormNameFieldInput({
+      value: policyName,
+      fieldName: 'Name',
+      fieldSelector: '[data-testid="policy-name"]',
+      errorDivSelector: '#name_help',
+    });
 
     // Enter description
     cy.get(descriptionBox).eq(0).type(description);

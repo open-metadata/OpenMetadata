@@ -17,6 +17,7 @@ import {
   toastNotification,
   verifyResponseStatusCode,
 } from '../common';
+import { validateFormNameFieldInput } from './Form';
 
 const TEAM_TYPES = ['Department', 'Division', 'Group'];
 
@@ -179,7 +180,12 @@ export const addTeam = (
   verifyResponseStatusCode('@addTeam', 200);
 
   // Entering team details
-  cy.get('[data-testid="name"]').type(teamDetails.name);
+  validateFormNameFieldInput({
+    value: teamDetails.name,
+    fieldName: 'Name',
+    fieldSelector: '[data-testid="name"]',
+    errorDivSelector: '#add-team-nest-messages_name_help',
+  });
 
   cy.get('[data-testid="display-name"]').type(teamDetails.name);
 

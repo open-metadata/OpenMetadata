@@ -549,6 +549,9 @@ const CronEditor: FC<CronEditorProp> = (props) => {
             rules={[
               {
                 required: true,
+                message: t('label.field-required', {
+                  field: t('label.cron'),
+                }),
               },
               {
                 validator: async (_, value) => {

@@ -17,6 +17,7 @@ import {
   uuid,
   verifyResponseStatusCode,
 } from '../../common/common';
+import { validateFormNameFieldInput } from '../../common/Utils/Form';
 import { BASE_URL } from '../../constants/constants';
 import { GlobalSettingOptions } from '../../constants/settings.constant';
 
@@ -44,7 +45,11 @@ describe(
       cy.get('[data-testid="inactive-link"]').should('contain', 'Add New Role');
 
       // Entering name
-      cy.get('#name').type(roleName);
+      validateFormNameFieldInput({
+        value: roleName,
+        fieldName: 'Name',
+        errorDivSelector: '#name_help',
+      });
       // Entering descrription
       cy.get(descriptionBox).type('description');
       // Select the policies

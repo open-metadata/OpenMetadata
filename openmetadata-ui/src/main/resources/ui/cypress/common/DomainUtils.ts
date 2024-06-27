@@ -13,7 +13,7 @@
 import {
   DELETE_TERM,
   INVALID_NAMES,
-  NAME_MAX_LENGTH_VALIDATION_ERROR,
+  NAME_MIN_MAX_LENGTH_VALIDATION_ERROR_1_128,
   NAME_VALIDATION_ERROR,
   SEARCH_ENTITY_TABLE,
 } from '../constants/constants';
@@ -47,9 +47,10 @@ export const validateDomainForm = () => {
     .scrollIntoView()
     .should('be.visible')
     .type(INVALID_NAMES.MAX_LENGTH);
-  cy.get('#name_help')
-    .should('be.visible')
-    .contains(NAME_MAX_LENGTH_VALIDATION_ERROR);
+  cy.get('#name_help').should(
+    'contain',
+    NAME_MIN_MAX_LENGTH_VALIDATION_ERROR_1_128
+  );
 
   // with special char validation
   cy.get('[data-testid="name"]')

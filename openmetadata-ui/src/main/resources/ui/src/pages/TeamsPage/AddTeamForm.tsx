@@ -19,7 +19,7 @@ import { useTranslation } from 'react-i18next';
 import RichTextEditor from '../../components/common/RichTextEditor/RichTextEditor';
 import { EditorContentRef } from '../../components/common/RichTextEditor/RichTextEditor.interface';
 import { VALIDATION_MESSAGES } from '../../constants/constants';
-import { ENTITY_NAME_REGEX } from '../../constants/regex.constants';
+import { NAME_FIELD_RULES } from '../../constants/Form.constants';
 import { Team, TeamType } from '../../generated/entity/teams/team';
 import {
   FieldProp,
@@ -120,17 +120,7 @@ const AddTeamForm: React.FC<AddTeamFormType> = ({
           label={t('label.name')}
           name="name"
           rules={[
-            {
-              required: true,
-              type: 'string',
-              min: 1,
-              max: 128,
-              whitespace: true,
-            },
-            {
-              pattern: ENTITY_NAME_REGEX,
-              message: t('message.entity-name-validation'),
-            },
+            ...NAME_FIELD_RULES,
             {
               validator: (_, value) => {
                 if (

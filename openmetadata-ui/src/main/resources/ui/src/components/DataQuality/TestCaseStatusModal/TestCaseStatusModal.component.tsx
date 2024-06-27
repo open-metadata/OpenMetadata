@@ -28,6 +28,7 @@ import { getEntityReferenceFromEntity } from '../../../utils/EntityUtils';
 import { fetchOptions, generateOptions } from '../../../utils/TasksUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 
+import { VALIDATION_MESSAGES } from '../../../constants/constants';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { TestCaseStatusModalProps } from './TestCaseStatusModal.interface';
 
@@ -162,6 +163,7 @@ export const TestCaseStatusModal = ({
         id="update-status-form"
         initialValues={data}
         layout="vertical"
+        validateMessages={VALIDATION_MESSAGES}
         onFinish={handleFormSubmit}>
         <Form.Item
           label={t('label.status')}
@@ -169,9 +171,6 @@ export const TestCaseStatusModal = ({
           rules={[
             {
               required: true,
-              message: t('label.field-required', {
-                field: t('label.status'),
-              }),
             },
           ]}>
           <Select
@@ -193,9 +192,6 @@ export const TestCaseStatusModal = ({
               rules={[
                 {
                   required: true,
-                  message: t('label.field-required', {
-                    field: t('label.reason'),
-                  }),
                 },
               ]}>
               <Select
@@ -217,9 +213,6 @@ export const TestCaseStatusModal = ({
               rules={[
                 {
                   required: true,
-                  message: t('label.field-required', {
-                    field: t('label.comment'),
-                  }),
                 },
               ]}>
               <RichTextEditor
@@ -252,9 +245,6 @@ export const TestCaseStatusModal = ({
             rules={[
               {
                 required: true,
-                message: t('label.field-required', {
-                  field: t('label.assignee'),
-                }),
               },
             ]}>
             <Assignees
