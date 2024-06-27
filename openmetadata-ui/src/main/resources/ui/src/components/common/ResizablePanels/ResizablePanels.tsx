@@ -43,7 +43,6 @@ const ResizablePanels: React.FC<ResizablePanelsProps> = ({
         className={classNames(className, 'bg-white resizable-panels-layout')}
         orientation={orientation}>
         <ReflexElement
-          propagateDimensions
           className={classNames(firstPanel.className, 'resizable-first-panel', {
             'full-width': hideSecondPanel || isRightPanelCollapsed,
           })}
@@ -96,7 +95,6 @@ const ResizablePanels: React.FC<ResizablePanelsProps> = ({
         </ReflexSplitter>
 
         <ReflexElement
-          propagateDimensions
           className={classNames(
             secondPanel.className,
             'resizable-second-panel',
