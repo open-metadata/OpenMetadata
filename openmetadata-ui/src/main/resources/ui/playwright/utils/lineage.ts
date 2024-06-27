@@ -111,25 +111,21 @@ export const connectEdgeBetweenNodes = async (
   const toNodeName = get(toNode, 'entityResponseData.name');
   const toNodeFqn = get(toNode, 'entityResponseData.fullyQualifiedName');
 
-  const draggableIcon = page.locator(`[data-testid="${type}-draggable-icon"]`);
-  const lineageDetails = page.locator('[data-testid="lineage-details"]');
-  await draggableIcon.dragTo(lineageDetails);
+  await page.locator(`[data-testid="${type}-draggable-icon"]`).hover();
+  await page.mouse.down();
+  await page.locator('[data-testid="lineage-details"]').hover();
+  await page.mouse.up();
 
-  const suggestionNode = page.locator('[data-testid="suggestion-node"]');
-  await suggestionNode.dispatchEvent('click');
+  await page.locator('[data-testid="suggestion-node"]').dispatchEvent('click');
 
   const suggestionNodeInput = page.locator(
     '[data-testid="suggestion-node"] input'
   );
   await suggestionNodeInput.dispatchEvent('click');
-
   await suggestionNodeInput.fill(toNodeName);
-  // await searchRes;
-  const nodeSuggestion = page.locator(
-    `[data-testid="node-suggestion-${toNodeFqn}"]`
-  );
-
-  await nodeSuggestion.click();
+  await page
+    .locator(`[data-testid="node-suggestion-${toNodeFqn}"]`)
+    .dispatchEvent('click');
 
   await dragConnection(
     page,
