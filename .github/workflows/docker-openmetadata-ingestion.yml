@@ -44,6 +44,8 @@ jobs:
           dockerhub_token: ${{ secrets.DOCKERHUB_OPENMETADATA_TOKEN }}
 
       - name: Build and push if event is workflow_dispatch and input is checked
+        env:
+          DOCKER_BUILD_NO_SUMMARY: true
         uses: docker/build-push-action@v6
         with:
           context: .

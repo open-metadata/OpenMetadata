@@ -40,6 +40,8 @@ jobs:
 
       - name: Build and push if event is workflow_dispatch and input is checked
         uses: docker/build-push-action@v6
+        env:
+          DOCKER_BUILD_NO_SUMMARY: true
         with:
           context: .
           platforms: linux/amd64,linux/arm64
