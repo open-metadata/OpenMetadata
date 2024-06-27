@@ -21,8 +21,8 @@ import ResizablePanels from '../../../components/common/ResizablePanels/Resizabl
 import RichTextEditor from '../../../components/common/RichTextEditor/RichTextEditor';
 import TitleBreadcrumb from '../../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
 import { ERROR_MESSAGE } from '../../../constants/constants';
+import { NAME_FIELD_RULES } from '../../../constants/Form.constants';
 import { GlobalSettingOptions } from '../../../constants/GlobalSettings.constants';
-import { ENTITY_NAME_REGEX } from '../../../constants/regex.constants';
 import {
   CreatePolicy,
   Effect,
@@ -131,22 +131,7 @@ const AddPolicyPage = () => {
                 <Form.Item
                   label={`${t('label.name')}:`}
                   name="name"
-                  rules={[
-                    {
-                      required: true,
-                      max: 128,
-                      min: 1,
-                      message: `${t('message.entity-size-in-between', {
-                        entity: `${t('label.name')}`,
-                        max: '128',
-                        min: '1',
-                      })}`,
-                    },
-                    {
-                      pattern: ENTITY_NAME_REGEX,
-                      message: t('message.entity-name-validation'),
-                    },
-                  ]}>
+                  rules={NAME_FIELD_RULES}>
                   <Input
                     data-testid="policy-name"
                     placeholder={t('label.policy-name')}
