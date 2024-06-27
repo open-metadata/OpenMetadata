@@ -1,5 +1,5 @@
 /*
- *  Copyright 2023 Collate.
+ *  Copyright 2024 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -11,9 +11,28 @@
  *  limitations under the License.
  */
 
-import { TestCase } from '../../../../generated/tests/testCase';
+import { Rule } from 'antd/lib/form';
+import { t } from 'i18next';
+import { ENTITY_NAME_REGEX } from './regex.constants';
 
-export interface TestCaseResultTabProps {
-  testCaseData?: TestCase;
-  onTestCaseUpdate: (data: TestCase) => void;
-}
+export const NAME_FIELD_RULES: Rule[] = [
+  {
+    required: true,
+    message: t('label.field-required', {
+      field: t('label.name'),
+    }),
+  },
+  {
+    min: 1,
+    max: 128,
+    message: t('message.entity-size-in-between', {
+      entity: t('label.name'),
+      min: 1,
+      max: 128,
+    }),
+  },
+  {
+    pattern: ENTITY_NAME_REGEX,
+    message: t('message.entity-name-validation'),
+  },
+];

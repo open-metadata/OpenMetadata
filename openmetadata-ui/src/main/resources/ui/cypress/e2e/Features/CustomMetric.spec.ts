@@ -20,7 +20,7 @@ import { visitEntityDetailsPage } from '../../common/Utils/Entity';
 import { getToken } from '../../common/Utils/LocalStorage';
 import {
   INVALID_NAMES,
-  NAME_MAX_LENGTH_VALIDATION_ERROR,
+  NAME_MIN_MAX_LENGTH_VALIDATION_ERROR_1_128,
   NAME_VALIDATION_ERROR,
   uuid,
 } from '../../constants/constants';
@@ -53,7 +53,10 @@ const validateForm = (isColumnMetric = false) => {
 
   // max length validation
   cy.get('#name').scrollIntoView().type(INVALID_NAMES.MAX_LENGTH);
-  cy.get('#name_help').should('contain', NAME_MAX_LENGTH_VALIDATION_ERROR);
+  cy.get('#name_help').should(
+    'contain',
+    NAME_MIN_MAX_LENGTH_VALIDATION_ERROR_1_128
+  );
 
   // with special char validation
   cy.get('#name')

@@ -16,6 +16,7 @@ from unittest import TestCase
 
 from pydantic import BaseModel
 
+from _openmetadata_testutils.ometa import int_admin_ometa
 from airflow_provider_openmetadata.lineage.status import add_status, get_dag_status
 from metadata.generated.schema.entity.data.pipeline import (
     Pipeline,
@@ -29,7 +30,6 @@ from ..integration_base import (
     get_create_entity,
     get_create_service,
     get_test_dag,
-    int_admin_ometa,
 )
 
 

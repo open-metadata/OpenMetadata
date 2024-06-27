@@ -116,19 +116,18 @@ This is a sample config for Redshift:
 
 {% codeInfo srNumber=6 %}
 
-**Connection Options (Optional)**: Enter the details for any additional connection options that can be sent to Athena during the connection. These details must be added as Key-Value pairs.
+**Connection Options (Optional)**: Enter the details for any additional connection options that can be sent to database during the connection. These details must be added as Key-Value pairs.
 
 {% /codeInfo %}
 
 {% codeInfo srNumber=7 %}
 
-**Connection Arguments (Optional)**: Enter the details for any additional connection arguments such as security or protocol configs that can be sent to Athena during the connection. These details must be added as Key-Value pairs.
+**Connection Arguments (Optional)**: Enter the details for any additional connection arguments such as security or protocol configs that can be sent to database during the connection. These details must be added as Key-Value pairs.
 
 - In case you are using Single-Sign-On (SSO) for authentication, add the `authenticator` details in the Connection Arguments as a Key-Value pair as follows: `"authenticator" : "sso_login_url"`
 
 {% /codeInfo %}
 
-{% /codeInfoContainer %}
 
 
 {% codeInfo srNumber=9 %}
@@ -148,6 +147,8 @@ verify-full: The driver will negotiate an SSL connection, verify that the server
 
 
 {% /codeInfo %}
+{% /codeInfoContainer %}
+
 
 {% codeBlock fileName="filename.yaml" %}
 
