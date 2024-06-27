@@ -258,7 +258,8 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     regsiterBoltSlackApplication(catalogConfig.getSlackAppConfig(), environment);
   }
 
-  private void regsiterBoltSlackApplication(SlackAppConfiguration appConfig, Environment environment){
+  private void regsiterBoltSlackApplication(
+      SlackAppConfiguration appConfig, Environment environment) {
     App slackapp = null;
     try {
       slackapp = SlackApp.boltSlackAppRegistration(appConfig);
@@ -271,15 +272,15 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
   private void boltSlackServletsRegistration(App slackApp, Environment environment) {
     SlackAppOAuthController slackAppOAuthController = new SlackAppOAuthController(slackApp);
     environment
-            .servlets()
-            .addServlet("SlackOAuthAppServlet", slackAppOAuthController)
-            .addMapping("/api/slack/install", "/api/slack/oauth_redirect");
+        .servlets()
+        .addServlet("SlackOAuthAppServlet", slackAppOAuthController)
+        .addMapping("/api/slack/install", "/api/slack/callback");
 
     SlackAppController slackAppController = new SlackAppController(slackApp);
     environment
-            .servlets()
-            .addServlet("SlackAppServlet", slackAppController)
-            .addMapping("/api/slack/events");
+        .servlets()
+        .addServlet("SlackAppServlet", slackAppController)
+        .addMapping("/api/slack/events");
   }
 
   private void registerAuthServlets(OpenMetadataApplicationConfig config, Environment environment) {

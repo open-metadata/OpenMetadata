@@ -1,8 +1,5 @@
 package org.openmetadata.service.apps.bundles.slack;
 
-import com.google.common.reflect.TypeToken;
-import com.google.gson.Gson;
-import com.google.gson.JsonSyntaxException;
 import io.swagger.v3.oas.annotations.Hidden;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -13,28 +10,24 @@ import java.lang.reflect.InvocationTargetException;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.Map;
-import java.util.Optional;
 import javax.ws.rs.Consumes;
-import javax.ws.rs.FormParam;
+import javax.ws.rs.DELETE;
 import javax.ws.rs.GET;
-import javax.ws.rs.HeaderParam;
-import javax.ws.rs.POST;
 import javax.ws.rs.Path;
 import javax.ws.rs.Produces;
-import javax.ws.rs.QueryParam;
 import javax.ws.rs.core.Context;
-import javax.ws.rs.core.HttpHeaders;
 import javax.ws.rs.core.MediaType;
-import javax.ws.rs.core.MultivaluedMap;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.entity.app.App;
+import org.openmetadata.schema.settings.SettingsType;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.apps.AppException;
 import org.openmetadata.service.apps.ApplicationHandler;
 import org.openmetadata.service.jdbi3.AppRepository;
+import org.openmetadata.service.jdbi3.SystemRepository;
 import org.openmetadata.service.resources.Collection;
 
 @Slf4j
@@ -73,31 +66,26 @@ public class SlackResource {
     }
   }
 
-  @POST
-  @Path("/command")
-  @Consumes(MediaType.APPLICATION_FORM_URLENCODED)
-  public Response handleSlashCommand(
-          @FormParam("command") String command,
-          @FormParam("text") String text,
-          @FormParam("response_url") String responseUrl,
-          @FormParam("user_id") String userId,
-          @HeaderParam("X-Slack-Signature") String slackSignature,
-          @HeaderParam("X-Slack-Request-Timestamp") String slackRequestTimestamp) {
-    String responseMessage = "Command received: " + command + " with text: " + text;
-    return Response.ok(responseMessage).build();
-  }
-
   @GET
   @Path("/oauthUrl")
   public Response getOAuth() {
     initializeSlackApp();
     return Response.ok()
-            .entity(
-                    new SlackApiResponse<>(
-                            Response.Status.OK.getStatusCode(),
-                            "Channels retrieved successfully",
-                            slackApp.buildOAuthUrl()))
-            .build();
+        .entity(
+            new SlackApiResponse<>(
+                Response.Status.OK.getStatusCode(),
+                "Channels retrieved successfully",
+                slackApp.buildOAuthUrl()))
+        .build();
+  }
+
+  @DELETE
+  @Path("/delete")
+  public void delete() {
+    SystemRepository systemRepository = Entity.getSystemRepository();
+    systemRepository.deleteSettings(SettingsType.SLACK_BOT);
+    systemRepository.deleteSettings(SettingsType.SLACK_INSTALLER);
+    systemRepository.deleteSettings(SettingsType.SLACK_O_AUTH_STATE);
   }
 
   @GET
@@ -127,66 +115,6 @@ public class SlackResource {
     } catch (Exception e) {
       LOG.error("Error processing slack oauth url", e);
       return Response.serverError().build();
-    }
-  }
-
-  @POST
-  @Path("/events")
-  @Consumes(MediaType.APPLICATION_JSON)
-  public Response handleSlackEvent(String payload, @Context HttpHeaders headers) {
-    initializeSlackApp();
-
-    // Validate Slack request
-    if (!validateSlackRequest(headers, payload)) {
-      return Response.status(Response.Status.BAD_REQUEST).build();
-    }
-
-    Map<String, Object> eventPayload = null;
-    try {
-      eventPayload =
-          new Gson().fromJson(payload, new TypeToken<Map<String, Object>>() {}.getType());
-    } catch (JsonSyntaxException e) {
-      LOG.warn("Error parsing Slack payload JSON: " + e.getMessage());
-      return Response.status(Response.Status.BAD_REQUEST).build();
-    }
-
-    // Check if the event payload contains a challenge
-    if (eventPayload.containsKey("challenge")) {
-      String challenge = (String) eventPayload.get("challenge");
-      // Respond with the challenge value
-      return Response.ok(challenge).build();
-    }
-
-    return slackApp.handleEvent(eventPayload);
-  }
-
-  @GET
-  @Path("/callback")
-  @Produces(MediaType.APPLICATION_JSON)
-  @Operation(
-      operationId = "slackOAuthCallback",
-      summary = "Slack OAuth Callback",
-      description =
-          "Exchanges a temporary authorization code for access tokens and validates the request state.",
-      responses = {
-        @ApiResponse(
-            responseCode = "302",
-            description = "Redirecting response to the frontend URL.")
-      })
-  public Response callback(@QueryParam("code") String code, @QueryParam("state") String state) {
-    initializeSlackApp();
-    try {
-      if (!slackApp.isOAuthStateValid(state)) {
-        LOG.error("State verification failed");
-        return redirectResponse(slackApp.getRedirectUrl(false));
-      }
-
-      // Save token and build redirect URL
-      String redirectUrl = slackApp.saveTokenAndBuildRedirectUrl(code);
-      return redirectResponse(redirectUrl);
-    } catch (Exception e) {
-      LOG.error("Error processing Slack OAuth callback", e);
-      return redirectResponse(slackApp.getRedirectUrl(false));
     }
   }
 
@@ -251,30 +179,6 @@ public class SlackResource {
                   null))
           .build();
     }
-  }
-
-  private boolean validateSlackRequest(HttpHeaders headers, String payload) {
-    // Retrieve headers case-insensitively
-    MultivaluedMap<String, String> requestHeaders = headers.getRequestHeaders();
-    Optional<String> slackSignature =
-        Optional.ofNullable(requestHeaders.getFirst("X-Slack-Signature"));
-    Optional<String> slackRequestTimestamp =
-        Optional.ofNullable(requestHeaders.getFirst("X-Slack-Request-Timestamp"));
-
-    if (slackSignature.isEmpty() || slackRequestTimestamp.isEmpty()) {
-      LOG.warn("Missing required headers: X-Slack-Signature or X-Slack-Request-Timestamp");
-      return false;
-    }
-
-    // Verify request signature
-    boolean isRequestValid =
-        slackApp.isRequestValid(slackSignature.get(), slackRequestTimestamp.get(), payload);
-    if (!isRequestValid) {
-      LOG.warn("Request verification failed");
-      return false;
-    }
-
-    return true;
   }
 
   private Response redirectResponse(String url) {
