@@ -21,9 +21,9 @@ import Loader from '../../components/common/Loader/Loader';
 import ResizablePanels from '../../components/common/ResizablePanels/ResizablePanels';
 import RichTextEditor from '../../components/common/RichTextEditor/RichTextEditor';
 import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
-import { ROUTES } from '../../constants/constants';
+import { ROUTES, VALIDATION_MESSAGES } from '../../constants/constants';
+import { NAME_FIELD_RULES } from '../../constants/Form.constants';
 import { GlobalSettingsMenuCategory } from '../../constants/GlobalSettings.constants';
-import { ENTITY_NAME_REGEX } from '../../constants/regex.constants';
 import { CreateEventSubscription } from '../../generated/events/api/createEventSubscription';
 import {
   AlertType,
@@ -212,6 +212,7 @@ const AddNotificationPage = () => {
                     ...alert,
                     resources: alert?.filteringRules?.resources,
                   }}
+                  validateMessages={VALIDATION_MESSAGES}
                   onFinish={handleSave}>
                   {loadingCount > 0 ? (
                     <Skeleton title paragraph={{ rows: 8 }} />
@@ -222,13 +223,7 @@ const AddNotificationPage = () => {
                           label={t('label.name')}
                           labelCol={{ span: 24 }}
                           name="name"
-                          rules={[
-                            { required: true },
-                            {
-                              pattern: ENTITY_NAME_REGEX,
-                              message: t('message.entity-name-validation'),
-                            },
-                          ]}>
+                          rules={NAME_FIELD_RULES}>
                           <Input
                             disabled={isEditMode}
                             placeholder={t('label.name')}
