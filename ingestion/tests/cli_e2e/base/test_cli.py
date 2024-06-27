@@ -21,7 +21,6 @@ from pathlib import Path
 
 import yaml
 
-from metadata import cmd
 from metadata.config.common import load_config_file
 from metadata.ingestion.api.status import Status
 from metadata.ingestion.ometa.ometa_api import OpenMetadata

@@ -16,6 +16,7 @@ Redshift E2E tests
 from typing import List
 
 from metadata.ingestion.api.status import Status
+
 from .common.test_cli_db import CliCommonDB
 from .common_e2e_sqa_mixins import SQACommonMethods
 

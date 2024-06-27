@@ -13,7 +13,6 @@
 Test database connectors with CLI
 """
 from abc import abstractmethod
-from subprocess import CalledProcessError
 from typing import List, Optional
 from unittest import TestCase
 
