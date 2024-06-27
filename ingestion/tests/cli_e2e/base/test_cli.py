@@ -21,6 +21,7 @@ from pathlib import Path
 
 import yaml
 
+from metadata import cmd
 from metadata.config.common import load_config_file
 from metadata.ingestion.api.status import Status
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
@@ -56,6 +57,13 @@ class CliBase(ABC):
         ]
         process_status = subprocess.Popen(args, stderr=subprocess.PIPE)
         _, stderr = process_status.communicate()
+        if process_status.returncode != 0:
+            print(stderr.decode("utf-8"))
+            raise subprocess.CalledProcessError(
+                returncode=process_status.returncode,
+                cmd=args,
+                output=stderr.decode("utf-8"),
+            )
         return stderr.decode("utf-8")
 
     def retrieve_lineage(self, entity_fqn: str) -> dict:
