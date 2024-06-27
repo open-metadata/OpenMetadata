@@ -94,7 +94,7 @@ export const removeReviewer = (entity) => {
 export const deleteGlossary = (glossary) => {
   cy.get('.ant-menu-item').contains(glossary).click();
 
-  cy.get('[data-testid="manage-button"]').click();
+  cy.get('[data-testid="manage-button"]').scrollIntoView().click();
 
   cy.get('[data-testid="delete-button"]').scrollIntoView().click();
 
