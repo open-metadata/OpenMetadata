@@ -126,6 +126,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
   );
   const [activeLayer, setActiveLayer] = useState<LineageLayerView[]>([]);
   const [activeNode, setActiveNode] = useState<Node>();
+  const [expandAllColumns, setExpandAllColumns] = useState(false);
   const [selectedColumn, setSelectedColumn] = useState<string>('');
   const [showAddEdgeModal, setShowAddEdgeModal] = useState<boolean>(false);
   const [selectedEdge, setSelectedEdge] = useState<Edge>();
@@ -154,6 +155,9 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
   const [init, setInit] = useState(false);
   const [zoomValue, setZoomValue] = useState(ZOOM_VALUE);
   const [tracedNodes, setTracedNodes] = useState<string[]>([]);
+  const [columnsHavingLineage, setColumnsHavingLineage] = useState<string[]>(
+    []
+  );
   const [tracedColumns, setTracedColumns] = useState<string[]>([]);
   const [status, setStatus] = useState<LoadingState>('initial');
   const [newAddedNode, setNewAddedNode] = useState<Node>({} as Node);
@@ -690,6 +694,11 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
     setZoomValue(value);
   }, []);
 
+  const toggleColumnView = useCallback(() => {
+    const updatedVal = !expandAllColumns;
+    setExpandAllColumns(updatedVal);
+  }, [expandAllColumns, edges]);
+
   const onRemove = useCallback(async () => {
     try {
       setDeletionState({ ...ELEMENT_DELETE_STATE, loading: true });
@@ -1033,7 +1042,9 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
           edge: edges,
         },
         EntityLineageDirection.LEFT_RIGHT,
-        isColView
+        isColView,
+        isEditMode || expandAllColumns,
+        columnsHavingLineage
       );
 
       setNodes(node);
@@ -1054,7 +1065,16 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
         onNodeClick(rootNode);
       }
     },
-    [reactFlowInstance, activeLayer, nodes, edges, onNodeClick]
+    [
+      reactFlowInstance,
+      activeLayer,
+      nodes,
+      edges,
+      onNodeClick,
+      columnsHavingLineage,
+      expandAllColumns,
+      isEditMode,
+    ]
   );
 
   const redrawLineage = useCallback(
@@ -1073,13 +1093,14 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
         decodedFqn,
         activeLayer.includes(LineageLayerView.COLUMN)
       );
-      const updatedEdges = createEdges(
+      const { edges: updatedEdges, columnsHavingLineage } = createEdges(
         allNodes,
         lineageData.edges ?? [],
         decodedFqn
       );
       setNodes(updatedNodes);
       setEdges(updatedEdges);
+      setColumnsHavingLineage(columnsHavingLineage);
 
       // Get upstream downstream nodes and edges data
       const data = getUpstreamDownstreamNodesEdges(
@@ -1149,7 +1170,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
 
   useEffect(() => {
     repositionLayout();
-  }, [activeLayer]);
+  }, [activeLayer, expandAllColumns, isEditMode]);
 
   useEffect(() => {
     if (reactFlowInstance?.viewportInitialized) {
@@ -1176,6 +1197,9 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
       upstreamDownstreamData,
       init,
       activeLayer,
+      columnsHavingLineage,
+      expandAllColumns,
+      toggleColumnView,
       onInitReactFlow,
       onPaneClick,
       onConnect,
@@ -1218,6 +1242,9 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
     upstreamDownstreamData,
     init,
     activeLayer,
+    columnsHavingLineage,
+    expandAllColumns,
+    toggleColumnView,
     onInitReactFlow,
     onPaneClick,
     onConnect,
@@ -1305,6 +1332,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
         )}
         {showAddEdgeModal && (
           <AddPipeLineModal
+            loading={loading}
             selectedEdge={selectedEdge}
             showAddEdgeModal={showAddEdgeModal}
             onModalCancel={handleModalCancel}
