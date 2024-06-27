@@ -25,6 +25,7 @@ import TitleBreadcrumb from '../../../components/common/TitleBreadcrumb/TitleBre
 import ExploreSearchCard from '../../../components/ExploreV1/ExploreSearchCard/ExploreSearchCard';
 import { SearchedDataProps } from '../../../components/SearchedData/SearchedData.interface';
 import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
+import { VALIDATION_MESSAGES } from '../../../constants/constants';
 import { EntityField } from '../../../constants/Feeds.constants';
 import { TASK_SANITIZE_VALUE_REGEX } from '../../../constants/regex.constants';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
@@ -108,9 +109,9 @@ const UpdateDescription = () => {
 
   const getDescription = () => {
     if (!isEmpty(columnObject) && !isUndefined(columnObject)) {
-      return columnObject.description || '';
+      return columnObject.description ?? '';
     } else {
-      return entityData.description || '';
+      return entityData.description ?? '';
     }
   };
 
@@ -225,6 +226,7 @@ const UpdateDescription = () => {
                 data-testid="form-container"
                 form={form}
                 layout="vertical"
+                validateMessages={VALIDATION_MESSAGES}
                 onFinish={onCreateTask}>
                 <Form.Item
                   data-testid="title"
@@ -241,14 +243,7 @@ const UpdateDescription = () => {
                   data-testid="assignees"
                   label={`${t('label.assignee-plural')}:`}
                   name="assignees"
-                  rules={[
-                    {
-                      required: true,
-                      message: t('message.field-text-is-required', {
-                        fieldText: t('label.assignee-plural'),
-                      }),
-                    },
-                  ]}>
+                  rules={[{ required: true }]}>
                   <Assignees
                     options={options}
                     value={assignees}
@@ -262,14 +257,7 @@ const UpdateDescription = () => {
                     data-testid="description-tabs"
                     label={`${t('label.description')}:`}
                     name="description"
-                    rules={[
-                      {
-                        required: true,
-                        message: t('message.field-text-is-required', {
-                          fieldText: t('label.description'),
-                        }),
-                      },
-                    ]}>
+                    rules={[{ required: true }]}>
                     <DescriptionTabs
                       suggestion={currentDescription}
                       value={currentDescription}

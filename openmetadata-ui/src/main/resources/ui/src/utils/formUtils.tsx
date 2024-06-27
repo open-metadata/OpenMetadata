@@ -21,6 +21,7 @@ import {
   Switch,
   TooltipProps,
 } from 'antd';
+import { RuleObject } from 'antd/lib/form';
 import { TooltipPlacement } from 'antd/lib/tooltip';
 import classNames from 'classnames';
 import { compact, startCase } from 'lodash';
@@ -64,7 +65,12 @@ export const getField = (field: FieldProp) => {
   let internalFormItemProps: FormItemProps = {};
   let fieldElement: ReactNode = null;
   let fieldRules = [...rules];
-  if (required) {
+  // Check if required rule is already present to avoid rule duplication
+  const isRequiredRulePresent = rules.some(
+    (rule) => (rule as RuleObject).required ?? false
+  );
+
+  if (required && !isRequiredRulePresent) {
     fieldRules = [
       ...fieldRules,
       {

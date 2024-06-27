@@ -94,7 +94,7 @@ This is a sample config for MongoDB:
 
 {% codeInfo srNumber=7 %}
 
-**Connection Options (Optional)**: Enter the details for any additional connection options that can be sent to Athena during the connection. These details must be added as Key-Value pairs.
+**Connection Options (Optional)**: Enter the details for any additional connection options that can be sent to database during the connection. These details must be added as Key-Value pairs.
 
 {% /codeInfo %}
 
