@@ -48,6 +48,14 @@ export const INGESTION_DATA = {
   body: 'The data quality tests can be scheduled to run at the desired frequency. The timezone is in UTC.',
 };
 
+export const TEST_SUITE_INGESTION_PAGE_DATA = [
+  {
+    title: 'Select Test Cases',
+    body: 'Select a test case to run for a scheduled interval. If no test case is selected, all test cases will be run by default.',
+  },
+  INGESTION_DATA,
+];
+
 export const addTestSuiteRightPanel = (
   step: number,
   isSuiteCreate?: boolean,
