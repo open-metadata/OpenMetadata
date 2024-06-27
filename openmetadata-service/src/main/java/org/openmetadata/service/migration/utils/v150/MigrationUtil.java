@@ -82,7 +82,6 @@ public class MigrationUtil {
       LOG.warn("Error running the test case resolution migration ", e);
     }
   }
-  static DIChartRepository diChartRepository;
   static DataInsightCustomChartRepository dataInsightCustomChartRepository;
 
   private static void createChart(String chartName, Object chartObject) {
