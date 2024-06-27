@@ -190,6 +190,7 @@ class TestParameters(BaseModel):
                     testResultValue=[
                         TestResultValue(name="removedColumns", value="1"),
                         TestResultValue(name="addedColumns", value="0"),
+                        TestResultValue(name="changedColumns", value="0"),
                     ],
                 ),
             ),

@@ -18,7 +18,7 @@ import data_diff
 import sqlalchemy.types
 from data_diff.diff_tables import DiffResultWrapper
 from data_diff.errors import DataDiffMismatchingKeyTypesError
-from data_diff.utils import safezip
+from data_diff.utils import ArithAlphanumeric, safezip
 from sqlalchemy import Column as SAColumn
 
 from metadata.data_quality.validations.base_test_handler import BaseTestValidator
@@ -162,9 +162,12 @@ class TableDiffValidator(BaseTestValidator, SQAValidatorMixin):
             col1_type = self.get_column_type(
                 table1._schema[col1]  # pylint: disable=protected-access
             )
+            if table2._schema.get(col2) is None:  # pylint: disable=protected-access
+                continue
             col2_type = self.get_column_type(
                 table2._schema[col2]  # pylint: disable=protected-access
             )
+
             if col1_type != col2_type:
                 result.append(col1)
         return result
@@ -178,19 +181,28 @@ class TableDiffValidator(BaseTestValidator, SQAValidatorMixin):
         Args:
             column: An SQLAlchemy column object
         """
+        result = None
         try:
-            return column.python_type
+            result = column.python_type
         except AttributeError:
             pass
         try:
-            return getattr(sqlalchemy.types, type(column).__name__)().python_type
+            result = getattr(sqlalchemy.types, type(column).__name__)().python_type
         except AttributeError:
             pass
         try:
-            column = getattr(sqlalchemy.types, type(column).__name__.upper())()
+            result = getattr(
+                sqlalchemy.types, type(column).__name__.upper()
+            )().python_type
         except AttributeError:
             pass
-        return type(column).__name__
+        if result == ArithAlphanumeric:
+            result = str
+        elif result == bool:
+            result = int
+        elif result is None:
+            return type(result)
+        return result
 
     def get_table_diff(self) -> DiffResultWrapper:
         """Calls data_diff.diff_tables with the parameters from the test case."""
@@ -238,23 +250,19 @@ class TableDiffValidator(BaseTestValidator, SQAValidatorMixin):
         removed: Optional[int] = None,
         added: Optional[int] = None,
     ) -> TestCaseResult:
-        result_values = [
-            TestResultValue(name="diffCount", value=str(total_diffs)),
-        ]
-        if changed is not None:
-            result_values.append(TestResultValue(name="changed", value=str(changed)))
-        if removed is not None:
-            result_values.append(TestResultValue(name="removed", value=str(removed)))
-        if added is not None:
-            result_values.append(TestResultValue(name="added", value=str(added)))
         return TestCaseResult(
             timestamp=self.execution_date,  # type: ignore
             testCaseStatus=self.get_test_case_status(
                 (threshold or total_diffs) == 0 or total_diffs < threshold
             ),
             result=f"Found {total_diffs} different rows which is more than the threshold of {threshold}",
-            testResultValue=result_values,
             validateColumns=False,
+            testResultValue=[
+                TestResultValue(name="removedRows", value=str(removed)),
+                TestResultValue(name="addedRows", value=str(added)),
+                TestResultValue(name="changedRows", value=str(changed)),
+                TestResultValue(name="diffCount", value=str(total_diffs)),
+            ],
         )
 
     def _validate_dialects(self):
