@@ -162,6 +162,7 @@ const TestSuiteIngestionPage = () => {
                     layout="vertical">
                     <Form.Item label={t('label.name')} name="name">
                       <Input
+                        data-testid="pipeline-name"
                         placeholder={t('label.enter-entity', {
                           entity: t('label.name'),
                         })}
