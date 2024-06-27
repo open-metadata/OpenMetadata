@@ -123,6 +123,9 @@ def ingest_metadata(mssql_container, metadata: OpenMetadata, request):
                     + mssql_container.get_exposed_port(mssql_container.port),
                     "database": "AdventureWorks",
                     "ingestAllDatabases": True,
+                    "connectionOptions": {
+                        "TrustServerCertificate": "yes"
+                    },
                 }
             },
             "sourceConfig": {
