@@ -185,14 +185,15 @@ public class ListFilter extends Filter<ListFilter> {
     String type = getQueryParam("testCaseType");
 
     if (entityFQN != null) {
-      queryParams.put("escapedEntityFQN", escapeApostrophe(entityFQN));
-      if (includeAllTests) {
-        queryParams.put(
-            "escapedLikeEntityFQN", String.format("%s%s%%", escape(entityFQN), Entity.SEPARATOR));
-        conditions.add("(entityFQN LIKE :escapedLikeEntityFQN OR entityFQN = :escapedEntityFQN)");
-      } else {
-        conditions.add("entityFQN = :escapedEntityFQN");
-      }
+      // EntityLink gets validated in the resource layer
+      // EntityLink entityLinkParsed = EntityLink.parse(entityLink);
+      // filter.addQueryParam("entityFQN", entityLinkParsed.getFullyQualifiedFieldValue());
+      conditions.add(
+          includeAllTests
+              ? String.format(
+                  "(entityFQN LIKE '%s%s%%' OR entityFQN = '%s')",
+                  escape(entityFQN), Entity.SEPARATOR, escapeApostrophe(entityFQN))
+              : String.format("entityFQN = '%s'", escapeApostrophe(entityFQN)));
     }
 
     if (testSuiteId != null) {
@@ -267,16 +268,16 @@ public class ListFilter extends Filter<ListFilter> {
   private String getPipelineTypePrefixCondition(String tableName, String pipelineType) {
     pipelineType = escape(pipelineType);
     String inCondition = getInConditionFromString(pipelineType);
-    queryParams.put("pipelineTypeList", inCondition);
     if (Boolean.TRUE.equals(DatasourceConfig.getInstance().isMySQL())) {
       return tableName == null
-          ? "pipelineType IN (:pipelineTypeList)"
-          : tableName
-              + ".JSON_UNQUOTE(JSON_EXTRACT(ingestion_pipeline_entity.json, '$.pipelineType')) IN (:pipelineTypeList)";
+          ? String.format("pipelineType IN (%s)", inCondition)
+          : String.format(
+              "%s.JSON_UNQUOTE(JSON_EXTRACT(ingestion_pipeline_entity.json, '$.pipelineType')) IN (%s)",
+              tableName, inCondition);
     }
     return tableName == null
-        ? "pipelineType IN (:pipelineTypeList)"
-        : tableName + ".json->>'pipelineType' IN (:pipelineTypeList)";
+        ? String.format("pipelineType IN (%s)", inCondition)
+        : String.format("%s.json->>'pipelineType' IN (%s)", tableName, inCondition);
   }
 
   private String getInConditionFromString(String condition) {

@@ -4529,7 +4529,7 @@ public interface CollectionDAO {
         String fqnPrefixHash = FullyQualifiedName.buildHash(fqnPrefix);
         filter.queryParams.put("fqnPrefixHash", fqnPrefixHash);
         String fqnCond =
-            " AND (fqnHash LIKE CONCAT(:fqnPrefixHash, '.%') OR fqnHash=fqnPrefixHash)";
+            " AND (fqnHash LIKE CONCAT(:fqnPrefixHash, '.%') OR fqnHash=:fqnPrefixHash)";
         mysqlCondition.append(fqnCond);
         psqlCondition.append(fqnCond);
       }
@@ -4566,7 +4566,7 @@ public interface CollectionDAO {
         String fqnPrefixHash = FullyQualifiedName.buildHash(fqnPrefix);
         filter.queryParams.put("fqnPrefixHash", fqnPrefixHash);
         String fqnCond =
-            " AND (fqnHash LIKE CONCAT(:fqnPrefixHash, '.%') OR fqnHash=fqnPrefixHash)";
+            " AND (fqnHash LIKE CONCAT(:fqnPrefixHash, '.%') OR fqnHash=:fqnPrefixHash)";
         mysqlCondition.append(fqnCond);
         psqlCondition.append(fqnCond);
       }
