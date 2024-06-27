@@ -15,15 +15,22 @@ import { visitClassificationPage } from '../../utils/tag';
 import { getRandomLastName } from '../../utils/user';
 
 type ResponseDataType = {
-  name: string;
-  displayName: string;
+  style?: {
+    color: string;
+  };
   description: string;
-  reviewers: unknown[];
-  relatedTerms: unknown[];
-  synonyms: unknown[];
-  mutuallyExclusive: boolean;
-  tags: unknown[];
-  glossary: Record<string, string>;
+  displayName: string;
+  classification: {
+    id: string;
+    type: 'classification';
+    name: string;
+    fullyQualifiedName: string;
+    description: string;
+    displayName: string;
+    deleted: boolean;
+    href: string;
+  };
+  name: string;
   id: string;
   fullyQualifiedName: string;
 };
@@ -57,7 +64,10 @@ export class TagClass {
   }
 
   async visitPage(page: Page) {
-    await visitClassificationPage(page, this.responseData.glossary.displayName);
+    await visitClassificationPage(
+      page,
+      this.responseData.classification.displayName
+    );
   }
 
   async create(apiContext: APIRequestContext) {
@@ -69,22 +79,6 @@ export class TagClass {
 
     return await response.json();
   }
-
-  //   async patch(apiContext: APIRequestContext, data: Record<string, unknown>[]) {
-  //     const response = await apiContext.patch(
-  //       `/api/v1/glossaryTerms/${this.responseData.id}`,
-  //       {
-  //         data,
-  //         headers: {
-  //           'Content-Type': 'application/json-patch+json',
-  //         },
-  //       }
-  //     );
-
-  //     this.responseData = await response.json();
-
-  //     return await response.json();
-  //   }
 
   get() {
     return this.responseData;

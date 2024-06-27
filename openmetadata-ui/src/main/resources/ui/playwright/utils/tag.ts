@@ -20,8 +20,8 @@ export const visitClassificationPage = async (
   classificationName: string
 ) => {
   await redirectToHomePage(page);
-  const glossaryResponse = page.waitForResponse('/api/v1/glossaries?fields=*');
-  await sidebarClick(page, SidebarItem.GLOSSARY);
+  const glossaryResponse = page.waitForResponse('/api/v1/classifications?**');
+  await sidebarClick(page, SidebarItem.TAGS);
   await glossaryResponse;
   await page.getByRole('menuitem', { name: classificationName }).click();
 };
