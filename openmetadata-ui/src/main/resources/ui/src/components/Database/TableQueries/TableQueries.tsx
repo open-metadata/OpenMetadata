@@ -534,7 +534,6 @@ const TableQueries: FC<TableQueriesProp> = ({
     <Row className="m-b-md" gutter={8} id="tablequeries" wrap={false}>
       <Col span={24}>
         <ResizablePanels
-          applyDefaultStyle={false}
           firstPanel={{
             children: (
               <Row

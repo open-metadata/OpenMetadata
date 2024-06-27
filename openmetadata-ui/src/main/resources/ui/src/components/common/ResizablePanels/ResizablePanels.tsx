@@ -28,7 +28,6 @@ const ResizablePanels: React.FC<ResizablePanelsProps> = ({
   secondPanel,
   pageTitle,
   hideSecondPanel = false,
-  applyDefaultStyle = true,
 }) => {
   const { t } = useTranslation();
   const [isRightPanelCollapsed, setIsRightPanelCollapsed] = useState(false);
@@ -36,15 +35,13 @@ const ResizablePanels: React.FC<ResizablePanelsProps> = ({
   const handleCollapse = () => {
     setIsRightPanelCollapsed((prev) => !prev);
   };
-  const panelHeight = applyDefaultStyle ? '64px' : '4px';
 
   return (
     <>
       {pageTitle && <DocumentTitle title={pageTitle} />}
       <ReflexContainer
         className={classNames(className, 'bg-white resizable-panels-layout')}
-        orientation={orientation}
-        style={{ height: `calc(100vh - ${panelHeight})` }}>
+        orientation={orientation}>
         <ReflexElement
           propagateDimensions
           className={classNames(firstPanel.className, 'resizable-first-panel', {

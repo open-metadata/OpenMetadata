@@ -144,7 +144,6 @@ const GlossaryDetails = ({
       <Row className="h-full" gutter={[32, 0]}>
         <Col span={24}>
           <ResizablePanels
-            applyDefaultStyle={false}
             firstPanel={{
               children: (
                 <div className="p-y-md p-x-md glossary-content-container">

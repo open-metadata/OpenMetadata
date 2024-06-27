@@ -412,7 +412,6 @@ export const ActivityFeedTab = ({
       />
 
       <ResizablePanels
-        applyDefaultStyle={false}
         firstPanel={{
           children: (
             <div className="center-container" id="center-container">
@@ -475,7 +474,7 @@ export const ActivityFeedTab = ({
               />
             </div>
           ),
-          minWidth: 700,
+          minWidth: 500,
           flex: 0.5,
         }}
         hideSecondPanel={!selectedThread}

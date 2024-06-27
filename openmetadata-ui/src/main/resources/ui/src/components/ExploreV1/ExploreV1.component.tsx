@@ -418,7 +418,6 @@ const ExploreV1: React.FC<ExploreProps> = ({
                 </Col>
               </Row>
               <ResizablePanels
-                applyDefaultStyle={false}
                 firstPanel={{
                   children: (
                     <Row className="p-t-md">

@@ -561,7 +561,6 @@ const ContainerPage = () => {
           <Row gutter={[0, 16]} wrap={false}>
             <Col className="tab-content-height" span={24}>
               <ResizablePanels
-                applyDefaultStyle={false}
                 firstPanel={{
                   children: (
                     <div className="d-flex flex-col gap-4 p-t-sm m-x-lg">

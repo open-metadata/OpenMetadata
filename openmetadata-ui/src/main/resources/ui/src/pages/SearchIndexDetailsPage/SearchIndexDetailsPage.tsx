@@ -380,7 +380,6 @@ function SearchIndexDetailsPage() {
           <Row gutter={[0, 16]} id="schemaDetails" wrap={false}>
             <Col className="tab-content-height" span={24}>
               <ResizablePanels
-                applyDefaultStyle={false}
                 firstPanel={{
                   children: (
                     <div className="d-flex flex-col gap-4 p-t-sm m-l-lg p-r-lg">

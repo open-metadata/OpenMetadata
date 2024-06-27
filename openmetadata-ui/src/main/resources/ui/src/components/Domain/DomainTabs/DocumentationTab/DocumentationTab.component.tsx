@@ -171,7 +171,6 @@ const DocumentationTab = ({
     <Row>
       <Col span={24}>
         <ResizablePanels
-          applyDefaultStyle={false}
           firstPanel={{
             children: (
               <div className="border-right p-md domain-content-container">

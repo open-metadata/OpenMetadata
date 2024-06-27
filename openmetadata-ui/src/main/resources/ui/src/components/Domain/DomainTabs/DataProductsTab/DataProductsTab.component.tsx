@@ -119,7 +119,6 @@ const DataProductsTab = forwardRef(
 
     return (
       <ResizablePanels
-        applyDefaultStyle={false}
         firstPanel={{
           children: (
             <div className="p-x-md p-y-md">
