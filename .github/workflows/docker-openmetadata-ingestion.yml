@@ -13,11 +13,14 @@ name: docker-openmetadata-ingestion docker
 on:
   workflow_dispatch:
     inputs:
-      tag:
-        description: "Input tag"
+      docker_release_tag:
+        description: "Ingestion Docker Image Tag"
+        required: true
+      release_version:
+        description: "Provide the Release Version"
         required: true
       push_latest_tag_to_release:
-        description: "Do you want to update docker image latest tag as well ?"
+        description: "Mark this as latest tag as well ?"
         type: boolean
 
 jobs:
@@ -26,21 +29,24 @@ jobs:
 
     steps:
       - name: Check out the Repo
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Prepare for Docker Build&Push
         id: prepare
         uses: ./.github/actions/prepare-for-docker-build-and-push
         with:
           image: openmetadata/ingestion
-          tag: ${{ inputs.tag }}
+          tag: ${{ inputs.docker_release_tag }}
           push_latest: ${{ inputs.push_latest_tag_to_release }}
           is_ingestion: true
+          release_version: ${{ inputs.release_version }}
           dockerhub_username: ${{ secrets.DOCKERHUB_OPENMETADATA_USERNAME }}
           dockerhub_token: ${{ secrets.DOCKERHUB_OPENMETADATA_TOKEN }}
 
       - name: Build and push if event is workflow_dispatch and input is checked
-        uses: docker/build-push-action@v3
+        env:
+          DOCKER_BUILD_NO_SUMMARY: true
+        uses: docker/build-push-action@v6
         with:
           context: .
           platforms: linux/amd64,linux/arm64
