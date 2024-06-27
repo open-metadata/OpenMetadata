@@ -118,11 +118,8 @@ export const connectEdgeBetweenNodes = async (
 
   await page.locator('[data-testid="suggestion-node"]').dispatchEvent('click');
 
-  const suggestionNodeInput = page.locator(
-    '[data-testid="suggestion-node"] input'
-  );
-  await suggestionNodeInput.dispatchEvent('click');
-  await suggestionNodeInput.fill(toNodeName);
+  await page.locator('[data-testid="suggestion-node"] input').fill(toNodeName);
+
   await page
     .locator(`[data-testid="node-suggestion-${toNodeFqn}"]`)
     .dispatchEvent('click');
@@ -134,12 +131,12 @@ export const connectEdgeBetweenNodes = async (
   );
 };
 
-export const verifyNodePresent = (page: Page, node: EntityClass) => {
+export const verifyNodePresent = async (page: Page, node: EntityClass) => {
   const nodeFqn = get(node, 'entityResponseData.fullyQualifiedName');
   const name = get(node, 'entityResponseData.name');
   const lineageNode = page.locator(`[data-testid="lineage-node-${nodeFqn}"]`);
 
-  expect(lineageNode).toBeVisible();
+  await expect(lineageNode).toBeVisible();
 
   const entityHeaderName = lineageNode.locator(
     '[data-testid="entity-header-name"]'
@@ -221,7 +218,7 @@ const verifyPipelineDataInDrawer = async (
   fromNode: EntityClass,
   toNode: EntityClass,
   pipelineItem: PipelineClass,
-  bVerifyPipelineLineage: boolean
+  bVisitPipelinePageFromDrawer: boolean
 ) => {
   const fromNodeFqn = get(fromNode, 'entityResponseData.fullyQualifiedName');
   const toNodeFqn = get(toNode, 'entityResponseData.fullyQualifiedName');
@@ -236,7 +233,7 @@ const verifyPipelineDataInDrawer = async (
     .locator('.edge-info-drawer [data-testid="Edge"] a')
     .filter({ hasText: pipelineName });
 
-  if (bVerifyPipelineLineage) {
+  if (bVisitPipelinePageFromDrawer) {
     await page.locator('.edge-info-drawer [data-testid="Edge"] a').click();
     await page.click('[data-testid="lineage"]');
     await fromNode.visitEntityPage(page);
