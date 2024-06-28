@@ -9,7 +9,6 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import java.lang.reflect.InvocationTargetException;
 import java.net.URI;
-import java.net.URISyntaxException;
 import java.util.Map;
 import javax.validation.Valid;
 import javax.ws.rs.Consumes;
@@ -208,15 +207,6 @@ public class SlackResource {
                   appException.getMessage(),
                   null))
           .build();
-    }
-  }
-
-  private Response redirectResponse(String url) {
-    try {
-      return Response.status(Response.Status.FOUND).location(new URI(url)).build();
-    } catch (URISyntaxException e) {
-      LOG.error("Invalid redirect URL", e);
-      return Response.serverError().build();
     }
   }
 }

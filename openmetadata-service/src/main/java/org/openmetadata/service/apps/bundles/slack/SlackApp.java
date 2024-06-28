@@ -13,6 +13,8 @@ import com.slack.api.model.block.Blocks;
 import com.slack.api.model.block.LayoutBlock;
 import com.slack.api.model.block.composition.BlockCompositions;
 import java.io.IOException;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
@@ -47,6 +49,8 @@ public class SlackApp extends AbstractNativeApplication {
             .scope(config.getScopes())
             .oauthInstallPath("/api/slack/install")
             .oauthRedirectUriPath("/api/slack/callback")
+            .oauthCompletionUrl(config.getCallbackRedirectURL() + SlackConstants.SUCCESS_FRAGMENT)
+            .oauthCancellationUrl(config.getCallbackRedirectURL() + SlackConstants.FAILED_FRAGMENT)
             .stateValidationEnabled(true)
             .build();
     App slackApp = new App(appConfig).asOAuthApp(true);
@@ -156,6 +160,15 @@ public class SlackApp extends AbstractNativeApplication {
           "listChannels",
           "Unexpected error occurred: " + e.getMessage(),
           Response.Status.INTERNAL_SERVER_ERROR);
+    }
+  }
+
+  private Response redirectResponse(String url) {
+    try {
+      return Response.status(Response.Status.FOUND).location(new URI(url)).build();
+    } catch (URISyntaxException e) {
+      LOG.error("Invalid redirect URL", e);
+      return Response.serverError().build();
     }
   }
 
