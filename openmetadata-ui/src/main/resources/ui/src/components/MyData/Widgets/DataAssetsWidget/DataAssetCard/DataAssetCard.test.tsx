@@ -26,7 +26,9 @@ jest.mock('../../../../../constants/constants', () => ({
 
 jest.mock('../../../../../utils/CommonUtils', () => ({
   getServiceLogo: jest.fn().mockReturnValue('getServiceLogo'),
-  getServiceTypeExploreQueryFilter: jest.fn().mockReturnValue(filterQuery),
+  getServiceTypeExploreQueryFilter: jest
+    .fn()
+    .mockImplementation(() => filterQuery),
 }));
 
 jest.mock('../../../../../utils/ServiceUtilClassBase', () => ({
