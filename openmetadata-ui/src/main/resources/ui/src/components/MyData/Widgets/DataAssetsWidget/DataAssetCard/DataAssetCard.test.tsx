@@ -17,6 +17,8 @@ import { getExplorePath } from '../../../../../constants/constants';
 import DataAssetCard from './DataAssetCard.component';
 
 const mockLinkButton = jest.fn();
+const filterQuery =
+  '{"query":{"bool":{"must":[{"bool":{"should":[{"term":{"serviceType":"mysql"}}]}}]}}';
 
 jest.mock('../../../../../constants/constants', () => ({
   getExplorePath: jest.fn(),
@@ -24,9 +26,7 @@ jest.mock('../../../../../constants/constants', () => ({
 
 jest.mock('../../../../../utils/CommonUtils', () => ({
   getServiceLogo: jest.fn().mockReturnValue('getServiceLogo'),
-  getServiceTypeExploreQueryFilter: jest
-    .fn()
-    .mockReturnValue('getServiceTypeExploreQueryFilter'),
+  getServiceTypeExploreQueryFilter: jest.fn().mockReturnValue(filterQuery),
 }));
 
 jest.mock('../../../../../utils/ServiceUtilClassBase', () => ({
@@ -61,8 +61,7 @@ describe('DataAssetCard', () => {
     expect(getExplorePath).toHaveBeenCalledWith({
       extraParameters: {
         page: '1',
-        quickFilter:
-          '{"query":{"bool":{"must":[{"bool":{"should":[{"term":{"serviceType":"mysql"}}]}}]}}}',
+        quickFilter: filterQuery,
       },
       tab: 'tables',
     });
