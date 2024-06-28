@@ -180,7 +180,7 @@ source:
       #   key: value
 ```
 
-{% partial file="/v1.5/connectors/yaml/database/source-config.md" /%}
+{% partial file="/v1.5/connectors/yaml/storage/source-config.md" /%}
 
 {% partial file="/v1.5/connectors/yaml/ingestion-sink.md" /%}
 
