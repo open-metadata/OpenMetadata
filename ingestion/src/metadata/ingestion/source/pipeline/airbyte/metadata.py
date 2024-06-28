@@ -29,6 +29,7 @@ from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.services.connections.pipeline.airbyteConnection import (
     AirbyteConnection,
 )
+from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.services.databaseService import DatabaseService
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
@@ -203,19 +204,51 @@ class AirbyteSource(PipelineServiceSource):
         destination_connection = self.client.get_destination(
             pipeline_details.connection.get("destinationId")
         )
-        source_service = self.metadata.get_by_name(
-            entity=DatabaseService, fqn=source_connection.get("name")
-        )
-        destination_service = self.metadata.get_by_name(
-            entity=DatabaseService, fqn=destination_connection.get("name")
-        )
-        if not source_service or not destination_service:
+
+        # For now apps is not present in OpenMetadata
+        # source_service = self.metadata.get_by_name(
+        #     entity=DatabaseService, fqn=source_connection.get("name")
+        # )
+
+        # If destination is BigQuery, then we can use the Google ProjectID to map
+        if destination_connection.get('connectionConfiguration', {}).get('project_id'):
+            # Build FQN to search for database service
+            bq_project_id = destination_connection.get('connectionConfiguration', {}).get('project_id')
+            bq_database_found = self.metadata.es_search_from_fqn(
+                entity_type=Database,
+                fqn_search_string=f"*.{bq_project_id}",
+            )
+            if bq_database_found and len(bq_database_found) == 1:
+                destination_service = self.metadata.get_by_name(
+                    entity=DatabaseService, fqn=bq_database_found[0].service.name
+                )
+            else:
+                destination_service = None
+                logger.warning(f"BigQuery Project ID: {bq_project_id} has not been found in OpenMetadata")
+        else:
+            destination_service = self.metadata.get_by_name(
+                entity=DatabaseService, fqn=destination_connection.get("name")
+            )
+        if not destination_service:
             return
+
+        # We retrieve the pipeline entity from OMD
+        pipeline_fqn = fqn.build(
+            metadata=self.metadata,
+            entity_type=Pipeline,
+            service_name=self.context.get().pipeline_service,
+            pipeline_name=self.context.get().pipeline,
+        )
+
+        pipeline_entity = self.metadata.get_by_name(
+            entity=Pipeline, fqn=pipeline_fqn
+        )
 
         for task in (
             pipeline_details.connection.get("syncCatalog", {}).get("streams") or []
         ):
             stream = task.get("stream")
+
             from_fqn = fqn.build(
                 self.metadata,
                 Table,
@@ -225,42 +258,42 @@ class AirbyteSource(PipelineServiceSource):
                 service_name=source_connection.get("name"),
             )
 
+            from_entity = self.metadata.get_by_name(entity=Table, fqn=from_fqn)
+            from_type = "table"
+
+            # We use the pipeline itself as the source entity if source is not found
+            if not from_entity:
+                from_entity = pipeline_entity
+                from_type = "pipeline"
+
+            # We retrieve schema name from the stream
+            schema_name = stream.get("namespace")
+
+            if pipeline_details.connection.get("namespaceDefinition") == "customformat":
+                schema_name = pipeline_details.connection.get("namespaceFormat")
+
             to_fqn = fqn.build(
                 self.metadata,
                 Table,
                 table_name=stream.get("name"),
-                database_name=None,
-                schema_name=stream.get("namespace"),
-                service_name=destination_connection.get("name"),
+                database_name="*",
+                schema_name=schema_name,
+                service_name=destination_service.name.__root__,
             )
 
-            from_entity = self.metadata.get_by_name(entity=Table, fqn=from_fqn)
             to_entity = self.metadata.get_by_name(entity=Table, fqn=to_fqn)
 
-            if not from_entity and not to_entity:
+            if not from_entity or not to_entity:
                 continue
-
-            pipeline_fqn = fqn.build(
-                metadata=self.metadata,
-                entity_type=Pipeline,
-                service_name=self.context.get().pipeline_service,
-                pipeline_name=self.context.get().pipeline,
-            )
-            pipeline_entity = self.metadata.get_by_name(
-                entity=Pipeline, fqn=pipeline_fqn
-            )
-
-            lineage_details = LineageDetails(
-                pipeline=EntityReference(id=pipeline_entity.id.root, type="pipeline"),
-                source=LineageSource.PipelineLineage,
-            )
 
             yield Either(
                 right=AddLineageRequest(
                     edge=EntitiesEdge(
-                        fromEntity=EntityReference(id=from_entity.id, type="table"),
+                        fromEntity=EntityReference(id=from_entity.id, type=from_type),
                         toEntity=EntityReference(id=to_entity.id, type="table"),
-                        lineageDetails=lineage_details,
+                        lineageDetails=LineageDetails(
+                            source=LineageSource.PipelineLineage,
+                        ),
                     )
                 )
             )
