@@ -63,8 +63,3 @@ export const CALLOUT_CONTENT = {
 
 export const CALL_OUT_REGEX = /^:::([A-Za-z]*)?$/;
 export const CALL_OUT_INPUT_RULE_REGEX = /^::: $/;
-
-export const MATHEMATICS_EXTENSION_DEFAULT_OPTIONS = {
-  addInlineMath: true,
-  evaluation: false,
-};
