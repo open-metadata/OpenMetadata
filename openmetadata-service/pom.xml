@@ -621,6 +621,7 @@
       <artifactId>slack-api-client</artifactId>
       <version>1.40.1</version>
     </dependency>
+
   </dependencies>
 
   <profiles>
