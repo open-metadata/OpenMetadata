@@ -2,7 +2,7 @@
 
 ### Reindex
 
-{% partial file="/v1.4/deployment/reindex.md" /%}
+{% partial file="/v1.5/deployment/reindex.md" /%}
 
 Since this is required after the upgrade, we want to reindex `All` the entities.
 
@@ -29,7 +29,7 @@ pip install openmetadata-managed-apis==x.y.z
 
 ### Re Deploy Ingestion Pipelines
 
-{% partial file="/v1.4/deployment/redeploy.md" /%}
+{% partial file="/v1.5/deployment/redeploy.md" /%}
 
 If you are seeing broken dags select all the pipelines from all the services and re deploy the pipelines.
 
