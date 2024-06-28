@@ -53,7 +53,7 @@ export const IngestionRecentRuns: FunctionComponent<Props> = ({
   classNames,
   appRuns,
   isApplicationType,
-  pipelineIdToFetchStatus,
+  pipelineIdToFetchStatus = '',
   handlePipelineIdToFetchStatus,
 }: Props) => {
   const { t } = useTranslation();
