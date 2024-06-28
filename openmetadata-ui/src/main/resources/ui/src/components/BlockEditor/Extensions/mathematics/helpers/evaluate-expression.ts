@@ -34,7 +34,7 @@ export function evaluateExpression(
     const regex = /\\pi({})?/g;
     let changedLatex = latex.replace(regex, '{PI}').trim();
     let definesVariable = undefined;
-    const assignmentRegex = /^(.*)\s*:=\s*/;
+    const assignmentRegex = /^[\S\s]*?(?=\s*:=)\s*:=\s*/;
     const assRegexRes = assignmentRegex.exec(changedLatex);
     if (assRegexRes && assRegexRes[0]) {
       changedLatex = changedLatex.substring(assRegexRes[0].length);
