@@ -52,9 +52,9 @@ To know more about permissions required refer [here](https://docs.getdbt.com/doc
     file="/v1.5/connectors/metadata-ingestion-ui.md" 
     variables={
         connector: "DBTCloud", 
-        selectServicePath: "/images/v1.4/connectors/dbtcloud/select-service.webp",
-        addNewServicePath: "/images/v1.4/connectors/dbtcloud/add-new-service.webp",
-        serviceConnectionPath: "/images/v1.4/connectors/dbtcloud/service-connection.webp",
+        selectServicePath: "/images/v1.5/connectors/dbtcloud/select-service.webp",
+        addNewServicePath: "/images/v1.5/connectors/dbtcloud/add-new-service.webp",
+        serviceConnectionPath: "/images/v1.5/connectors/dbtcloud/service-connection.webp",
     } 
 /%}
 
@@ -92,7 +92,7 @@ Steps to retrieve and display the lineage information for a DBT Cloud service. N
 By successfully completing these steps, the lineage information for the service will be displayed.
 
 {% image
-  src="/images/v1.4/connectors/dbtcloud/lineage.webp"
+  src="/images/v1.5/connectors/dbtcloud/lineage.webp"
   alt="DBT Cloud Lineage" /%}
 
 
