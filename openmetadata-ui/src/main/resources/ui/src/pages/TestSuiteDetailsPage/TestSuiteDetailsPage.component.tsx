@@ -165,7 +165,10 @@ const TestSuiteDetailsPage = () => {
     }
   };
 
-  const handleAddTestCaseSubmit = async (testCaseIds: string[]) => {
+  const handleAddTestCaseSubmit = async (testCases: TestCase[]) => {
+    const testCaseIds = testCases.reduce((ids, curr) => {
+      return curr.id ? [...ids, curr.id] : ids;
+    }, [] as string[]);
     try {
       await addTestCaseToLogicalTestSuite({
         testCaseIds,
