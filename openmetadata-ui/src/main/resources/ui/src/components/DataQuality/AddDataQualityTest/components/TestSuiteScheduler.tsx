@@ -81,7 +81,7 @@ const TestSuiteScheduler: React.FC<TestSuiteSchedulerProps> = ({
         </Col>
         <Col span={24}>
           <Space className="w-full justify-end" size={16}>
-            <Button onClick={onCancel}>
+            <Button type="link" onClick={onCancel}>
               {buttonProps?.cancelText ?? t('label.back')}
             </Button>
             <Button
