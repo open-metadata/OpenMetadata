@@ -162,13 +162,13 @@ class TableDiffValidator(BaseTestValidator, SQAValidatorMixin):
         ).with_schema()
         result = []
         for column in table1.key_columns + table1.extra_columns:
-            col1_type = self.get_column_type(
+            col1_type = self._get_column_python_type(
                 table1._schema[column]  # pylint: disable=protected-access
             )
             # Skip columns that are not in the second table. We cover this case in get_changed_added_columns.
             if table2._schema.get(column) is None:  # pylint: disable=protected-access
                 continue
-            col2_type = self.get_column_type(
+            col2_type = self._get_column_python_type(
                 table2._schema[column]  # pylint: disable=protected-access
             )
 
@@ -177,7 +177,7 @@ class TableDiffValidator(BaseTestValidator, SQAValidatorMixin):
         return result
 
     @staticmethod
-    def get_column_type(column: SAColumn):
+    def _get_column_python_type(column: SAColumn):
         """Try to resolve the python_type of a column by cascading through different SQLAlchemy types.
         If no type is found, return the name of the column type. This is usually undesirable since it can
         be very database specific, but it is better than nothing.
