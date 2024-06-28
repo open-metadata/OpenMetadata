@@ -836,3 +836,30 @@ export const handleSearchFilterOption = (
   }
 ) => toLower(option?.label).includes(toLower(searchValue));
 // Check label while searching anything and filter that options out if found matching
+
+/**
+ * @param key service type key
+ * @returns json filter query string
+ */
+
+export const getServiceTypeExploreQueryFilter = (key: string) => {
+  return JSON.stringify({
+    query: {
+      bool: {
+        must: [
+          {
+            bool: {
+              should: [
+                {
+                  term: {
+                    serviceType: key,
+                  },
+                },
+              ],
+            },
+          },
+        ],
+      },
+    },
+  });
+};

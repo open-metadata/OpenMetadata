@@ -16,7 +16,10 @@ import { Bucket } from 'Models';
 import React, { useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { getExplorePath } from '../../../../../constants/constants';
-import { getServiceLogo } from '../../../../../utils/CommonUtils';
+import {
+  getServiceLogo,
+  getServiceTypeExploreQueryFilter,
+} from '../../../../../utils/CommonUtils';
 import serviceUtilClassBase from '../../../../../utils/ServiceUtilClassBase';
 import AppBadge from '../../../../common/Badge/Badge.component';
 import '../data-assets-widget.less';
@@ -31,25 +34,7 @@ const DataAssetCard = ({ service: { key, doc_count } }: DataAssetCardProps) => {
         tab: serviceUtilClassBase.getDataAssetsService(key),
         extraParameters: {
           page: '1',
-          quickFilter: JSON.stringify({
-            query: {
-              bool: {
-                must: [
-                  {
-                    bool: {
-                      should: [
-                        {
-                          term: {
-                            serviceType: key,
-                          },
-                        },
-                      ],
-                    },
-                  },
-                ],
-              },
-            },
-          }),
+          quickFilter: getServiceTypeExploreQueryFilter(key),
         },
       }),
     [key]
