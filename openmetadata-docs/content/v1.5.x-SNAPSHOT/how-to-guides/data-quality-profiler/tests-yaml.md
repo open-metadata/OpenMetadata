@@ -457,11 +457,11 @@ The comparison will be scoped by:
 
 **Behavior**
 
-| Condition                                                   | Status |
-|-------------------------------------------------------------| ----------- |
-| Column diff is **greater** than 0                           | Failed ❌ |
-| Number of row differences is **greater** than the threshold | Failed ❌ |
-| Column diff is **equal** to 0 and number of row differences is **less** than the threshold | Success ✅ |
+| Condition                                                                                                   | Status |
+|-------------------------------------------------------------------------------------------------------------| ----------- |
+| Column diff is **greater** than 0                                                                           | Failed ❌ |
+| Number of row differences is **greater** than the threshold                                                 | Failed ❌ |
+| Column diff is **equal** to 0 and number of row differences is **less than or equal to** the threshold | Success ✅ |
 
 **YAML Config**
 
