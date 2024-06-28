@@ -560,8 +560,11 @@ a[href].link-text-grey,
 }
 
 .reflex-container {
+  .entity-resizable-panel-container {
+    height: @entity-details-tab-height;
+    overflow-y: scroll;
+  }
   .entity-resizable-right-panel-container {
-    overflow-y: auto;
     padding: 48px 8px 0 8px;
   }
 }
@@ -591,6 +594,13 @@ a[href].link-text-grey,
 .tab-content-height {
   height: @entity-details-tab-height;
   overflow-y: scroll;
+}
+
+.tab-content-height-with-resizable-panel {
+  height: @entity-details-tab-height;
+  // this is to remove the scrollbar from the resizable panel
+  // so that inner scrollbar will work
+  overflow: hidden;
 }
 
 /* Diff style */
