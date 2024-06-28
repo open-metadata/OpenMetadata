@@ -89,11 +89,17 @@ test.describe('Custom Theme Config Page', () => {
       'rgb(136, 46, 232)'
     );
 
+    const defaultConfigResponsePromise = page.waitForResponse(
+      'api/v1/system/settings'
+    );
+
     // Click the reset button
     await page.locator('[data-testid="reset-button"]').click();
 
+    const defaultConfigResponse = await defaultConfigResponsePromise;
+
     // Verify the response status code
-    expect(updatedConfigResponse.status()).toBe(200);
+    expect(defaultConfigResponse.status()).toBe(200);
 
     // Verify the default theme color
     await expect(page.getByTestId('reset-button')).toHaveCSS(
