@@ -688,13 +688,13 @@ export const getEntityIdArray = (entities: EntityReference[]): string[] =>
 
 export const getTagValue = (tag: string | TagLabel): string | TagLabel => {
   if (isString(tag)) {
-    return tag.startsWith(`Tier${FQN_SEPARATOR_CHAR}Tier`)
+    return tag.startsWith(`Tier${FQN_SEPARATOR_CHAR}`)
       ? tag.split(FQN_SEPARATOR_CHAR)[1]
       : tag;
   } else {
     return {
       ...tag,
-      tagFQN: tag.tagFQN.startsWith(`Tier${FQN_SEPARATOR_CHAR}Tier`)
+      tagFQN: tag.tagFQN.startsWith(`Tier${FQN_SEPARATOR_CHAR}`)
         ? tag.tagFQN.split(FQN_SEPARATOR_CHAR)[1]
         : tag.tagFQN,
     };
