@@ -46,6 +46,7 @@ public class ReindexingUtil {
 
   public static final String ENTITY_TYPE_KEY = "entityType";
   public static final String ENTITY_NAME_LIST_KEY = "entityNameList";
+  public static final String TIMESTAMP_KEY = "@timestamp";
 
   public static void getUpdatedStats(StepStats stats, int currentSuccess, int currentFailed) {
     stats.setSuccessRecords(stats.getSuccessRecords() + currentSuccess);
@@ -92,30 +93,30 @@ public class ReindexingUtil {
     for (BulkItemResponse bulkItemResponse : response) {
       if (bulkItemResponse.isFailed()) {
         entityErrors.add(
-            new EntityError()
-                .withMessage(bulkItemResponse.getFailureMessage())
-                .withEntity(bulkItemResponse.getItemId()));
+                new EntityError()
+                        .withMessage(bulkItemResponse.getFailureMessage())
+                        .withEntity(bulkItemResponse.getItemId()));
       }
     }
     return entityErrors;
   }
 
   public static List<EntityError> getErrorsFromBulkResponse(
-      es.org.elasticsearch.action.bulk.BulkResponse response) {
+          es.org.elasticsearch.action.bulk.BulkResponse response) {
     List<EntityError> entityErrors = new ArrayList<>();
     for (es.org.elasticsearch.action.bulk.BulkItemResponse bulkItemResponse : response) {
       if (bulkItemResponse.isFailed()) {
         entityErrors.add(
-            new EntityError()
-                .withMessage(bulkItemResponse.getFailureMessage())
-                .withEntity(bulkItemResponse.getItemId()));
+                new EntityError()
+                        .withMessage(bulkItemResponse.getFailureMessage())
+                        .withEntity(bulkItemResponse.getItemId()));
       }
     }
     return entityErrors;
   }
 
   public static int getSuccessFromBulkResponseEs(
-      es.org.elasticsearch.action.bulk.BulkResponse response) {
+          es.org.elasticsearch.action.bulk.BulkResponse response) {
     int success = 0;
     for (es.org.elasticsearch.action.bulk.BulkItemResponse bulkItemResponse : response) {
       if (!bulkItemResponse.isFailed()) {
@@ -127,38 +128,38 @@ public class ReindexingUtil {
 
   @SneakyThrows
   public static List<EntityReference> findReferenceInElasticSearchAcrossAllIndexes(
-      String matchingKey, String sourceFqn, int from) {
+          String matchingKey, String sourceFqn, int from) {
     String key = "_source";
     SearchRequest searchRequest =
-        new SearchRequest.ElasticSearchRequestBuilder(
-                String.format("(%s:\"%s\")", matchingKey, sourceFqn),
-                100,
-                Entity.getSearchRepository().getIndexOrAliasName(GLOBAL_SEARCH_ALIAS))
-            .from(from)
-            .fetchSource(true)
-            .trackTotalHits(false)
-            .sortFieldParam("_score")
-            .deleted(false)
-            .sortOrder("desc")
-            .includeSourceFields(new ArrayList<>())
-            .build();
+            new SearchRequest.ElasticSearchRequestBuilder(
+                    String.format("(%s:\"%s\")", matchingKey, sourceFqn),
+                    100,
+                    Entity.getSearchRepository().getIndexOrAliasName(GLOBAL_SEARCH_ALIAS))
+                    .from(from)
+                    .fetchSource(true)
+                    .trackTotalHits(false)
+                    .sortFieldParam("_score")
+                    .deleted(false)
+                    .sortOrder("desc")
+                    .includeSourceFields(new ArrayList<>())
+                    .build();
     List<EntityReference> entities = new ArrayList<>();
     Response response = Entity.getSearchRepository().search(searchRequest);
     String json = (String) response.getEntity();
 
     for (Iterator<JsonNode> it =
-            ((ArrayNode) JsonUtils.extractValue(json, "hits", "hits")).elements();
-        it.hasNext(); ) {
+         ((ArrayNode) JsonUtils.extractValue(json, "hits", "hits")).elements();
+         it.hasNext(); ) {
       JsonNode jsonNode = it.next();
       String id = JsonUtils.extractValue(jsonNode, key, "id");
       String fqn = JsonUtils.extractValue(jsonNode, key, "fullyQualifiedName");
       String type = JsonUtils.extractValue(jsonNode, key, "entityType");
       if (!CommonUtil.nullOrEmpty(fqn) && !CommonUtil.nullOrEmpty(type)) {
         entities.add(
-            new EntityReference()
-                .withId(UUID.fromString(id))
-                .withFullyQualifiedName(fqn)
-                .withType(type));
+                new EntityReference()
+                        .withId(UUID.fromString(id))
+                        .withFullyQualifiedName(fqn)
+                        .withType(type));
       }
     }
 

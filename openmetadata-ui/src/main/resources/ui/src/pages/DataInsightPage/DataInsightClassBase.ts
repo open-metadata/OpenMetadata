@@ -14,6 +14,7 @@ import { ReactComponent as AppAnalyticsIcon } from '../../assets/svg/app-analyti
 import { ReactComponent as DataAssetsIcon } from '../../assets/svg/data-asset.svg';
 import { ReactComponent as KPIIcon } from '../../assets/svg/kpi.svg';
 import AppAnalyticsTab from '../../components/DataInsight/AppAnalyticsTab/AppAnalyticsTab.component';
+import DashboardTab from '../../components/DataInsight/DashboardTab/DashboardTab.component';
 import DataAssetsTab from '../../components/DataInsight/DataAssetsTab/DataAssetsTab.component';
 import { DataInsightTabs } from '../../interface/data-insight.interface';
 import { getDataInsightPathWithFqn } from '../../utils/DataInsightUtils';
@@ -30,6 +31,14 @@ type LeftSideBarType = {
 class DataInsightClassBase {
   public getLeftSideBar(): LeftSideBarType[] {
     return [
+      {
+        key: DataInsightTabs.DASHBOARD,
+        label: i18n.t('label.dashboard'),
+        icon: AppAnalyticsIcon,
+        iconProps: {
+          className: 'side-panel-icons',
+        },
+      },
       {
         key: DataInsightTabs.DATA_ASSETS,
         label: i18n.t('label.data-asset-plural'),
@@ -59,6 +68,11 @@ class DataInsightClassBase {
 
   public getDataInsightTab() {
     return [
+      {
+        key: DataInsightTabs.DASHBOARD,
+        path: getDataInsightPathWithFqn(DataInsightTabs.DASHBOARD),
+        component: DashboardTab,
+      },
       {
         key: DataInsightTabs.DATA_ASSETS,
         path: getDataInsightPathWithFqn(DataInsightTabs.DATA_ASSETS),

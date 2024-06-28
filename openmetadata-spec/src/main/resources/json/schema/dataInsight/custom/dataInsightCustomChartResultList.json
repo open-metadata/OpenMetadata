@@ -1,0 +1,21 @@
+{
+    "$id": "https://open-metadata.org/schema/dataInsight/custom/dataInsightCustomChartResultList.json",
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "title": "DataInsightCustomChartResultList",
+    "description": "Data Insight Custom Chart Result List",
+    "type": "object",
+    "javaType": "org.openmetadata.schema.dataInsight.custom.DataInsightCustomChartResultList",
+    "properties": {
+        "results": {
+            "description": "List of Results",
+            "type": "array",
+            "items": {
+                "$ref": "dataInsightCustomChartResult.json"
+            }
+        },
+        "kpiDetails": {
+            "$ref": "dataInsightCustomChart.json#/definitions/kpiDetails"
+        }
+    },
+    "additionalProperties": false
+}

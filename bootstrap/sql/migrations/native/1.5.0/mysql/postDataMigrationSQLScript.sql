@@ -43,3 +43,57 @@ SET
   )
   , '$.connection.config.appName'), '$.connection.config.metastoreConnection')
 WHERE dbse.serviceType = 'DeltaLake';
+
+
+-- KPI Migrations
+UPDATE entity_relationship
+SET    toid = (SELECT id
+               FROM   di_chart_entity
+               WHERE  NAME = 'percentage_of_data_asset_with_owner_kpi'),
+       toentity = 'dataInsightCustomChart'
+WHERE  toid = (SELECT id
+               FROM   data_insight_chart dic
+               WHERE  NAME = 'PercentageOfEntitiesWithOwnerByType')
+       AND fromId IN (SELECT id from kpi_entity WHERE JSON_EXTRACT(json, '$.metricType') = 'PERCENTAGE')
+       AND toentity = 'dataInsightChart'
+       AND fromentity = 'kpi';
+
+
+UPDATE entity_relationship
+SET    toid = (SELECT id
+               FROM   di_chart_entity
+               WHERE  NAME = 'number_of_data_asset_with_owner_kpi'),
+       toentity = 'dataInsightCustomChart'
+WHERE  toid = (SELECT id
+               FROM   data_insight_chart dic
+               WHERE  NAME = 'PercentageOfEntitiesWithOwnerByType')
+       AND fromId IN (SELECT id from kpi_entity WHERE JSON_EXTRACT(json, '$.metricType') = 'NUMBER')
+       AND toentity = 'dataInsightChart'
+       AND fromentity = 'kpi';
+
+
+UPDATE entity_relationship
+SET    toid = (SELECT id
+               FROM   di_chart_entity
+               WHERE  NAME = 'percentage_of_data_asset_with_description_kpi'),
+       toentity = 'dataInsightCustomChart'
+WHERE  toid = (SELECT id
+               FROM   data_insight_chart dic
+               WHERE  NAME = 'PercentageOfEntitiesWithDescriptionByType')
+       AND fromId IN (SELECT id from kpi_entity WHERE JSON_EXTRACT(json, '$.metricType') = 'PERCENTAGE')
+       AND toentity = 'dataInsightChart'
+       AND fromentity = 'kpi';
+
+
+UPDATE entity_relationship
+SET    toid = (SELECT id
+               FROM   di_chart_entity
+               WHERE  NAME = 'number_of_data_asset_with_description_kpi'),
+       toentity = 'dataInsightCustomChart'
+WHERE  toid = (SELECT id
+               FROM   data_insight_chart dic
+               WHERE  NAME = 'PercentageOfEntitiesWithDescriptionByType')
+       AND fromId IN (SELECT id from kpi_entity WHERE JSON_EXTRACT(json, '$.metricType') = 'NUMBER')
+       AND toentity = 'dataInsightChart'
+       AND fromentity = 'kpi';
+-- KPI MIgrations end
