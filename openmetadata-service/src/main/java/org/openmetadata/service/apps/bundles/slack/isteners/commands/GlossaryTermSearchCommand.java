@@ -166,7 +166,6 @@ public class GlossaryTermSearchCommand implements SlashCommandHandler {
 
     // Button Block
     String entityUrl = buildEntityUrl(glossaryTerm); // issue in building entityUrl.
-    System.out.println("entityUrl :" + entityUrl);
     if (entityUrl.isEmpty()) entityUrl = "";
     blocks.add(
         ActionsBlock.builder()
@@ -183,9 +182,7 @@ public class GlossaryTermSearchCommand implements SlashCommandHandler {
 
   public GlossaryTerm fetchData(String fqn) {
     EntityUtil.Fields fields = getFields(FIELDS);
-    GlossaryTerm byName = repository.getByName(null, fqn, fields, Include.NON_DELETED, false);
-    System.out.println("byName : " + byName);
-    return byName;
+    return repository.getByName(null, fqn, fields, Include.NON_DELETED, false);
   }
 
   public final EntityUtil.Fields getFields(String fields) {

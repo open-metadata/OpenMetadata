@@ -135,7 +135,6 @@ public class TagSearchCommand implements SlashCommandHandler {
 
     // Button Block
     String entityUrl = buildEntityUrl(tag); // issue in building entityUrl.
-    System.out.println("entityUrl :" + entityUrl);
     if (entityUrl.isEmpty()) entityUrl = "";
     blocks.add(
         ActionsBlock.builder()
@@ -152,9 +151,7 @@ public class TagSearchCommand implements SlashCommandHandler {
 
   public Tag fetchData(String fqn) {
     EntityUtil.Fields fields = getFields("children,usageCount");
-    Tag byName = repository.getByName(null, fqn, fields, Include.NON_DELETED, false);
-    System.out.println("byName : " + byName);
-    return byName;
+    return repository.getByName(null, fqn, fields, Include.NON_DELETED, false);
   }
 
   public final EntityUtil.Fields getFields(String fields) {

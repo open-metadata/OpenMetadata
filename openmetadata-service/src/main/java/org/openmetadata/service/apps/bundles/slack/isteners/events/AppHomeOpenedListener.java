@@ -20,6 +20,7 @@ import java.io.IOException;
 
 public class AppHomeOpenedListener implements BoltEventHandler<AppHomeOpenedEvent> {
   private final App app;
+
   public AppHomeOpenedListener(App app) {
     this.app = app;
   }
