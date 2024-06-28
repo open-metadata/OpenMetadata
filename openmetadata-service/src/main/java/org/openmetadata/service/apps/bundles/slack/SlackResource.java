@@ -1,5 +1,6 @@
 package org.openmetadata.service.apps.bundles.slack;
 
+import com.slack.api.methods.SlackApiException;
 import io.swagger.v3.oas.annotations.Hidden;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -10,8 +11,10 @@ import java.lang.reflect.InvocationTargetException;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.Map;
+import javax.validation.Valid;
 import javax.ws.rs.Consumes;
 import javax.ws.rs.GET;
+import javax.ws.rs.POST;
 import javax.ws.rs.Path;
 import javax.ws.rs.Produces;
 import javax.ws.rs.core.Context;
@@ -90,6 +93,58 @@ public class SlackResource {
     } catch (Exception e) {
       LOG.error("Error processing slack oauth url", e);
       return Response.serverError().build();
+    }
+  }
+
+  @POST
+  @Path("/shareAsset")
+  @Produces(MediaType.APPLICATION_JSON)
+  @Consumes(MediaType.APPLICATION_JSON)
+  @Operation(
+      summary = "Share asset via Slack",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Message posted successfully",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = SlackApiResponse.class))),
+        @ApiResponse(
+            responseCode = "500",
+            description = "Internal Server Error",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = SlackApiResponse.class)))
+      })
+  public Response shareAsset(@Valid SlackMessageRequest slackMessageRequest) {
+    initializeSlackApp();
+    try {
+      slackApp.shareAsset(slackMessageRequest);
+      return Response.ok()
+          .entity(
+              new SlackApiResponse<>(
+                  Response.Status.OK.getStatusCode(), "Message posted successfully", null))
+          .build();
+    } catch (SlackApiException e) {
+      LOG.error("Slack API exception", e);
+      return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
+          .entity(
+              new SlackApiResponse<>(
+                  Response.Status.INTERNAL_SERVER_ERROR.getStatusCode(),
+                  "Slack API error: : " + e.getMessage(),
+                  null))
+          .build();
+    } catch (Exception e) {
+      LOG.error("Unexpected exception", e);
+      return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
+          .entity(
+              new SlackApiResponse<>(
+                  Response.Status.INTERNAL_SERVER_ERROR.getStatusCode(),
+                  "Unexpected error occurred: " + e.getMessage(),
+                  null))
+          .build();
     }
   }
 

@@ -6,9 +6,14 @@ import com.slack.api.bolt.AppConfig;
 import com.slack.api.bolt.model.builtin.DefaultBot;
 import com.slack.api.bolt.service.InstallationService;
 import com.slack.api.methods.SlackApiException;
+import com.slack.api.methods.request.chat.ChatPostMessageRequest;
 import com.slack.api.methods.request.conversations.ConversationsListRequest;
 import com.slack.api.methods.response.conversations.ConversationsListResponse;
+import com.slack.api.model.block.Blocks;
+import com.slack.api.model.block.LayoutBlock;
+import com.slack.api.model.block.composition.BlockCompositions;
 import java.io.IOException;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -58,6 +63,44 @@ public class SlackApp extends AbstractNativeApplication {
     appConfig =
         JsonUtils.convertValue(
             this.getApp().getPrivateConfiguration(), SlackAppConfiguration.class);
+  }
+
+  public void shareAsset(SlackMessageRequest messageRequest) throws SlackApiException, IOException {
+    HashMap<String, Object> tokenMap = installationService.getSavedToken();
+    if (!tokenMap.containsKey(SlackConstants.BOT_ACCESS_TOKEN)) {
+      throw AppException.byMessage(
+          SlackConstants.SLACK_APP,
+          "sendMessage",
+          "Bot access token is missing",
+          Response.Status.BAD_REQUEST);
+    }
+
+    DefaultBot bot = (DefaultBot) tokenMap.get(SlackConstants.BOT_ACCESS_TOKEN);
+    String entityUrl = messageRequest.getEntityUrl();
+
+    List<LayoutBlock> blocks =
+        Arrays.asList(
+            Blocks.section(
+                section ->
+                    section.text(
+                        BlockCompositions.markdownText(
+                            "*"
+                                + formatFqnAsLink(messageRequest.getEntityFqn(), entityUrl)
+                                + "*\n"
+                                + messageRequest.getMessage()))));
+
+    Slack.getInstance()
+        .methods(bot.getBotAccessToken())
+        .chatPostMessage(
+            ChatPostMessageRequest.builder()
+                .channel(messageRequest.getChannel())
+                .blocks(blocks)
+                .build());
+  }
+
+  // clickable link
+  private String formatFqnAsLink(String fqn, String url) {
+    return "<" + url + "|" + fqn + ">";
   }
 
   public Map<String, Object> listChannels() throws AppException {
