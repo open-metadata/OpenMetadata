@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Browser, Page, request } from '@playwright/test';
+import { Browser, expect, Page, request } from '@playwright/test';
 import { randomUUID } from 'crypto';
 import { AdminClass } from '../support/user/AdminClass';
 import { UserClass } from '../support/user/UserClass';
@@ -126,4 +126,14 @@ export const performUserLogin = async (browser, user: UserClass) => {
   };
 
   return { page, apiContext, afterAction };
+};
+
+export const toastNotification = async (page: Page, msg: string) => {
+  await expect(page.locator('.Toastify__toast-body')).toHaveText(msg);
+
+  await page.click('.Toastify__close-button');
+};
+
+export const replaceAllSpacialCharWith_ = (text: string) => {
+  return text.replaceAll(/[&/\\#, +()$~%.'":*?<>{}]/g, '_');
 };
