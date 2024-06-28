@@ -838,11 +838,11 @@ export const handleSearchFilterOption = (
 // Check label while searching anything and filter that options out if found matching
 
 /**
- * @param key service type key
+ * @param serviceType key for quick filter
  * @returns json filter query string
  */
 
-export const getServiceTypeExploreQueryFilter = (key: string) => {
+export const getServiceTypeExploreQueryFilter = (serviceType: string) => {
   return JSON.stringify({
     query: {
       bool: {
@@ -852,7 +852,7 @@ export const getServiceTypeExploreQueryFilter = (key: string) => {
               should: [
                 {
                   term: {
-                    serviceType: key,
+                    serviceType,
                   },
                 },
               ],
