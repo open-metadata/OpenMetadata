@@ -22,6 +22,8 @@ on:
       - synchronize
       - reopened
       - ready_for_review
+    paths-ignore:
+      - 'openmetadata-docs/**'
 
 permissions:
   contents: read
