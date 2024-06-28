@@ -51,7 +51,6 @@ from metadata.generated.schema.metadataIngestion.databaseServiceProfilerPipeline
 from metadata.generated.schema.tests.customMetric import CustomMetric
 from metadata.ingestion.api.status import Status
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.ingestion.source.connections import get_connection
 from metadata.profiler.api.models import (
     DatabaseAndSchemaConfig,
     ProfilerProcessorConfig,
@@ -63,6 +62,7 @@ from metadata.profiler.metrics.registry import Metrics
 from metadata.profiler.processor.runner import QueryRunner
 from metadata.utils.constants import SAMPLE_DATA_DEFAULT_COUNT
 from metadata.utils.partition import get_partition_details
+from metadata.utils.ssl_manager import get_ssl_connection
 
 
 class ProfilerProcessorStatus(Status):
@@ -110,7 +110,7 @@ class ProfilerInterface(ABC):
         self.ometa_client = ometa_client
         self.source_config = source_config
         self.service_connection_config = service_connection_config
-        self.connection = get_connection(self.service_connection_config)
+        self.connection = get_ssl_connection(self.service_connection_config)
         self.status = ProfilerProcessorStatus()
         try:
             fqn = self.table_entity.fullyQualifiedName

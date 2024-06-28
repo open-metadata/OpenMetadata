@@ -15,10 +15,7 @@ import { Form, Modal, Select } from 'antd';
 import { AxiosError } from 'axios';
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import {
-  API_RES_MAX_SIZE,
-  VALIDATION_MESSAGES,
-} from '../../../constants/constants';
+import { API_RES_MAX_SIZE } from '../../../constants/constants';
 import { getGlossaryTerms } from '../../../rest/glossaryAPI';
 import { getEntityName } from '../../../utils/EntityUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
@@ -90,7 +87,6 @@ const ChangeParentHierarchy = ({
         form={form}
         id="change-parent-hierarchy-modal"
         layout="vertical"
-        validateMessages={VALIDATION_MESSAGES}
         onFinish={handleSubmit}>
         <Form.Item
           label={t('label.select-field', {
@@ -100,6 +96,9 @@ const ChangeParentHierarchy = ({
           rules={[
             {
               required: true,
+              message: t('label.field-required', {
+                field: t('label.parent'),
+              }),
             },
           ]}>
           <Select

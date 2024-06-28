@@ -12,9 +12,10 @@
  */
 import { APIRequestContext, expect, Page } from '@playwright/test';
 import {
-  EntityTypeEndpoint,
   ENTITY_PATH,
+  EntityTypeEndpoint,
 } from '../support/entity/Entity.interface';
+import { UserClass } from '../support/user/UserClass';
 import { uuid } from './common';
 
 export enum CustomPropertyType {
@@ -51,8 +52,9 @@ export const setValueForProperty = async (data: {
   propertyName: string;
   value: string;
   propertyType: string;
+  endpoint: EntityTypeEndpoint;
 }) => {
-  const { page, propertyName, value, propertyType } = data;
+  const { page, propertyName, value, propertyType, endpoint } = data;
   await page.click('[data-testid="custom_properties"]');
 
   await expect(page.getByRole('cell', { name: propertyName })).toContainText(
@@ -65,6 +67,7 @@ export const setValueForProperty = async (data: {
   await editButton.scrollIntoViewIfNeeded();
   await editButton.click({ force: true });
 
+  const patchRequest = page.waitForResponse(`/api/v1/${endpoint}/*`);
   switch (propertyType) {
     case 'markdown':
       await page
@@ -96,11 +99,11 @@ export const setValueForProperty = async (data: {
       break;
 
     case 'enum':
-      await page.locator('#enumValues').click();
-      await page.locator('#enumValues').fill(value);
-      await page.locator('#enumValues').press('Enter');
+      await page.click('#enumValues');
+      await page.fill('#enumValues', value);
+      await page.press('#enumValues', 'Enter');
       await page.mouse.click(0, 0);
-      await page.locator('[data-testid="inline-save-btn"]').click();
+      await page.click('[data-testid="inline-save-btn"]');
 
       break;
 
@@ -158,32 +161,7 @@ export const setValueForProperty = async (data: {
       break;
     }
   }
-
-  await page.waitForResponse('/api/v1/*/*');
-  if (propertyType === 'enum') {
-    await expect(
-      page.getByLabel('Custom Properties').getByTestId('enum-value')
-    ).toContainText(value);
-  } else if (propertyType === 'timeInterval') {
-    const [startValue, endValue] = value.split(',');
-
-    await expect(
-      page.getByLabel('Custom Properties').getByTestId('time-interval-value')
-    ).toContainText(startValue);
-    await expect(
-      page.getByLabel('Custom Properties').getByTestId('time-interval-value')
-    ).toContainText(endValue);
-  } else if (propertyType === 'sqlQuery') {
-    await expect(
-      page.getByLabel('Custom Properties').locator('.CodeMirror-scroll')
-    ).toContainText(value);
-  } else if (
-    !['entityReference', 'entityReferenceList'].includes(propertyType)
-  ) {
-    await expect(page.getByRole('row', { name: propertyName })).toContainText(
-      value.replace(/\*|_/gi, '')
-    );
-  }
+  await patchRequest;
 };
 
 export const validateValueForProperty = async (data: {
@@ -221,7 +199,10 @@ export const validateValueForProperty = async (data: {
   }
 };
 
-export const getPropertyValues = (type: string) => {
+export const getPropertyValues = (
+  type: string,
+  users: Record<string, string>
+) => {
   switch (type) {
     case 'integer':
       return {
@@ -241,8 +222,8 @@ export const getPropertyValues = (type: string) => {
 
     case 'number':
       return {
-        value: '123',
-        newValue: '456',
+        value: '1234',
+        newValue: '4567',
       };
     case 'duration':
       return {
@@ -272,14 +253,14 @@ export const getPropertyValues = (type: string) => {
       };
     case 'entityReference':
       return {
-        value: 'Adam Matthews',
-        newValue: 'Aaron Singh',
+        value: users.user1,
+        newValue: users.user2,
       };
 
     case 'entityReferenceList':
       return {
-        value: 'Aaron Johnson,Organization',
-        newValue: 'Aaron Warren',
+        value: `${users.user3},Organization`,
+        newValue: users.user4,
       };
 
     default:
@@ -315,14 +296,35 @@ export const createCustomPropertyForEntity = async (
       property: CustomProperty;
     }
   >;
+  const users: UserClass[] = [];
+  // Loop to create and add 4 new users to the users array
+  for (let i = 0; i < 4; i++) {
+    const user = new UserClass();
+    await user.create(apiContext);
+    users.push(user);
+  }
+
+  // Reduce the users array to a userNames object with keys as user1, user2, etc., and values as the user's names
+  const userNames = users.reduce((acc, user, index) => {
+    acc[`user${index + 1}`] = user.getUserName();
+
+    return acc;
+  }, {});
+
+  // Define an asynchronous function to clean up (delete) all users in the users array
+  const cleanupUser = async (apiContext: APIRequestContext) => {
+    for (const user of users) {
+      await user.delete(apiContext);
+    }
+  };
 
   for (const item of propertyList) {
     const customPropertyResponse = await apiContext.put(
       `/api/v1/metadata/types/${entitySchema.id}`,
       {
         data: {
-          name: `cyCustomProperty${uuid()}`,
-          description: `cyCustomProperty${uuid()}`,
+          name: `pwCustomProperty${uuid()}`,
+          description: `pwCustomProperty${uuid()}`,
           propertyType: {
             id: item.id ?? '',
             type: 'type',
@@ -357,12 +359,12 @@ export const createCustomPropertyForEntity = async (
       return {
         ...prev,
         [propertyTypeName]: {
-          ...getPropertyValues(propertyTypeName),
+          ...getPropertyValues(propertyTypeName, userNames),
           property: curr,
         },
       };
     }, {});
   }
 
-  return customProperties;
+  return { customProperties, cleanupUser };
 };

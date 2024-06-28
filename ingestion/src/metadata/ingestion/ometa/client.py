@@ -11,9 +11,9 @@
 """
 Python API REST wrapper and helpers
 """
-import datetime
 import time
 import traceback
+from datetime import datetime, timezone
 from typing import Callable, Dict, List, Optional, Union
 
 import requests
@@ -128,11 +128,12 @@ class REST:
         self._auth_token_mode = self.config.auth_token_mode
         self._verify = self.config.verify
 
-    def _request(
+    def _request(  # pylint: disable=too-many-arguments
         self,
         method,
         path,
         data=None,
+        json=None,
         base_url: URL = None,
         api_version: str = None,
         headers: dict = None,
@@ -145,16 +146,16 @@ class REST:
         url: URL = URL(base_url + "/" + version + path)
         if (
             self.config.expires_in
-            and datetime.datetime.utcnow().timestamp() >= self.config.expires_in
+            and datetime.now(timezone.utc).timestamp() >= self.config.expires_in
             or not self.config.access_token
         ):
             self.config.access_token, expiry = self._auth_token()
             if not self.config.access_token == "no_token":
-                if isinstance(expiry, datetime.datetime):
+                if isinstance(expiry, datetime):
                     self.config.expires_in = expiry.timestamp() - 120
                 else:
                     self.config.expires_in = (
-                        datetime.datetime.utcnow().timestamp() + expiry - 120
+                        datetime.now(timezone.utc).timestamp() + expiry - 120
                     )
 
         headers[self.config.auth_header] = (
@@ -185,6 +186,8 @@ class REST:
 
         method_key = "params" if method.upper() == "GET" else "data"
         opts[method_key] = data
+        if json:
+            opts["json"] = json
 
         total_retries = self._retry if self._retry > 0 else 0
         retry = total_retries
@@ -270,7 +273,7 @@ class REST:
         return self._request("GET", path, data)
 
     @calculate_execution_time(context="POST")
-    def post(self, path, data=None):
+    def post(self, path, data=None, json=None):
         """
         POST method
 
@@ -281,7 +284,7 @@ class REST:
         Returns:
             Response
         """
-        return self._request("POST", path, data)
+        return self._request("POST", path, data, json)
 
     @calculate_execution_time(context="PUT")
     def put(self, path, data=None):

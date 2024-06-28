@@ -744,6 +744,7 @@ export const TaskTab = ({
           {t('label.created-by')}:{' '}
         </Typography.Text>
         <OwnerLabel
+          pills
           owner={{ name: taskThread.createdBy, type: 'user', id: '' }}
         />
       </div>

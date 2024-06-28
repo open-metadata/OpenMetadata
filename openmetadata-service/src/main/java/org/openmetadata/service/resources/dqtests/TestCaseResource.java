@@ -1005,7 +1005,8 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
       @Parameter(description = "Id of the test case", schema = @Schema(type = "UUID"))
           @PathParam("id")
           UUID id,
-      @Valid TableData tableData) {
+      @Valid TableData tableData,
+      @DefaultValue("true") @QueryParam("validate") boolean validate) {
     OperationContext operationContext =
         new OperationContext(entityType, MetadataOperation.EDIT_TESTS);
     authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
@@ -1014,7 +1015,7 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
         || !testCase.getTestCaseResult().getTestCaseStatus().equals(TestCaseStatus.Failed)) {
       throw new IllegalArgumentException("Failed rows can only be added to a failed test case.");
     }
-    return addHref(uriInfo, repository.addFailedRowsSample(testCase, tableData));
+    return addHref(uriInfo, repository.addFailedRowsSample(testCase, tableData, validate));
   }
 
   @PUT

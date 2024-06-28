@@ -48,9 +48,14 @@ class User(Base):
     doe = Column(Date)  # date of employment
 
 
+class FakeClient:
+    def __init__(self):
+        self._client = None
+
+
 class FakeConnection:
-    def client(self):
-        return None
+    def __init__(self):
+        self.client = FakeClient()
 
 
 class DatalakeMetricsTest(TestCase):
@@ -83,8 +88,8 @@ class DatalakeMetricsTest(TestCase):
 
     @classmethod
     @mock.patch(
-        "metadata.profiler.interface.profiler_interface.get_connection",
-        return_value=FakeConnection,
+        "metadata.profiler.interface.profiler_interface.get_ssl_connection",
+        return_value=FakeConnection(),
     )
     @mock.patch(
         "metadata.mixins.pandas.pandas_mixin.fetch_dataframe",

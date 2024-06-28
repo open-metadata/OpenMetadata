@@ -14,7 +14,7 @@
 import { Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
-import { isEmpty, isUndefined } from 'lodash';
+import { isEmpty, isUndefined, omitBy } from 'lodash';
 import Qs from 'qs';
 import {
   default as React,
@@ -27,7 +27,9 @@ import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
 import Loader from '../../components/common/Loader/Loader';
 import Users from '../../components/Settings/Users/Users.component';
+import { ROUTES } from '../../constants/constants';
 import { User } from '../../generated/entity/teams/user';
+import { Include } from '../../generated/type/include';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
 import { useFqn } from '../../hooks/useFqn';
 import { getUserByName, updateUserDetail } from '../../rest/userAPI';
@@ -47,6 +49,7 @@ const UserPage = () => {
     try {
       const res = await getUserByName(username, {
         fields: 'profile,roles,teams,personas,defaultPersona,domain',
+        include: Include.All,
       });
       setUserData(res);
     } catch (error) {
@@ -85,8 +88,8 @@ const UserPage = () => {
     });
   };
 
-  const ErrorPlaceholder = () => {
-    return (
+  const errorPlaceholder = useMemo(
+    () => (
       <div
         className="d-flex items-center justify-center h-full"
         data-testid="error">
@@ -100,8 +103,9 @@ const UserPage = () => {
           />
         </Typography.Paragraph>
       </div>
-    );
-  };
+    ),
+    [username]
+  );
 
   const updateUserDetails = useCallback(
     async (data: Partial<User>, key: keyof User) => {
@@ -125,7 +129,7 @@ const UserPage = () => {
             ...currentUser,
             ...updatedKeyData,
           };
-          const newUserData = { ...userData, ...updatedKeyData };
+          const newUserData: User = { ...userData, ...updatedKeyData };
 
           if (key === 'defaultPersona') {
             if (isUndefined(response.defaultPersona)) {
@@ -137,7 +141,8 @@ const UserPage = () => {
           if (userData.id === currentUser?.id) {
             updateCurrentUser(newCurrentUserData as User);
           }
-          setUserData(newUserData);
+          // Omit the undefined values from the User object
+          setUserData(omitBy(newUserData, isUndefined) as User);
         } else {
           throw t('message.unexpected-error');
         }
@@ -146,6 +151,19 @@ const UserPage = () => {
       }
     },
     [userData, currentUser, updateCurrentUser]
+  );
+
+  const handleToggleDelete = useCallback(() => {
+    setUserData((prev) => ({
+      ...prev,
+      deleted: !prev?.deleted,
+    }));
+  }, [setUserData]);
+
+  const afterDeleteAction = useCallback(
+    (isSoftDelete?: boolean) =>
+      isSoftDelete ? handleToggleDelete() : history.push(ROUTES.HOME),
+    [handleToggleDelete]
   );
 
   useEffect(() => {
@@ -157,11 +175,12 @@ const UserPage = () => {
   }
 
   if (isError && isEmpty(userData)) {
-    return <ErrorPlaceholder />;
+    return errorPlaceholder;
   }
 
   return (
     <Users
+      afterDeleteAction={afterDeleteAction}
       handlePaginate={handleEntityPaginate}
       queryFilters={{
         myData: myDataQueryFilter,

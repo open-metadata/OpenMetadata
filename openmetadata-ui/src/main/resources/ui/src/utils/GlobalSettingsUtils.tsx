@@ -18,6 +18,7 @@ import { ReactComponent as BotIcon } from '../assets/svg/bot-colored.svg';
 import { ReactComponent as AppearanceIcon } from '../assets/svg/custom-logo-colored.svg';
 import { ReactComponent as CustomDashboardLogoIcon } from '../assets/svg/customize-landing-page-colored.svg';
 import { ReactComponent as DashboardIcon } from '../assets/svg/dashboard-colored.svg';
+import { ReactComponent as DashboardDataModelIcon } from '../assets/svg/data-model.svg';
 import { ReactComponent as DatabaseIcon } from '../assets/svg/database-colored.svg';
 import { ReactComponent as SchemaIcon } from '../assets/svg/database-schema.svg';
 import { ReactComponent as EmailIcon } from '../assets/svg/email-colored.svg';
@@ -35,6 +36,7 @@ import { ReactComponent as RolesIcon } from '../assets/svg/role-colored.svg';
 import { ReactComponent as SearchIcon } from '../assets/svg/search-colored.svg';
 import { ReactComponent as AccessControlIcon } from '../assets/svg/setting-access-control.svg';
 import { ReactComponent as CustomProperties } from '../assets/svg/setting-custom-properties.svg';
+import { ReactComponent as DataObservability } from '../assets/svg/setting-data-observability.svg';
 import { ReactComponent as ManagementIcon } from '../assets/svg/setting-management.svg';
 import { ReactComponent as NotificationIcon } from '../assets/svg/setting-notification.svg';
 import { ReactComponent as ServiceIcon } from '../assets/svg/setting-services.svg';
@@ -158,6 +160,15 @@ export const getGlobalSettingsMenuWithPermission = (
           ),
           key: `${GlobalSettingsMenuCategory.SERVICES}.${GlobalSettingOptions.METADATA}`,
           icon: OpenMetadataIcon,
+        },
+        {
+          label: i18next.t('label.data-observability'),
+          description: i18next.t(
+            'message.page-sub-header-for-data-observability'
+          ),
+          isProtected: true,
+          key: `${GlobalSettingsMenuCategory.SERVICES}.${GlobalSettingOptions.DATA_OBSERVABILITY}`,
+          icon: DataObservability,
         },
       ],
     },
@@ -353,6 +364,15 @@ export const getGlobalSettingsMenuWithPermission = (
           isProtected: Boolean(isAdminUser),
           key: `${GlobalSettingsMenuCategory.CUSTOM_PROPERTIES}.${GlobalSettingOptions.DASHBOARDS}`,
           icon: DashboardIcon,
+        },
+        {
+          label: i18next.t('label.dashboard-data-model-plural'),
+          description: i18next.t('message.define-custom-property-for-entity', {
+            entity: i18next.t('label.dashboard-data-model-plural'),
+          }),
+          isProtected: Boolean(isAdminUser),
+          key: `${GlobalSettingsMenuCategory.CUSTOM_PROPERTIES}.${GlobalSettingOptions.DASHBOARD_DATA_MODEL}`,
+          icon: DashboardDataModelIcon,
         },
         {
           label: i18next.t('label.pipeline-plural'),

@@ -36,6 +36,7 @@ VERSIONS = {
     "pydomo": "pydomo~=0.3",
     "pymysql": "pymysql~=1.0",
     "pyodbc": "pyodbc>=4.0.35,<5",
+    "numpy": "numpy<2",
     "scikit-learn": "scikit-learn~=1.0",  # Python 3.7 only goes up to 1.0.2
     "packaging": "packaging",
     "azure-storage-blob": "azure-storage-blob~=12.14",
@@ -90,6 +91,26 @@ COMMONS = {
     },  # Adding as Postgres SQL & GreenPlum are using common packages.
 }
 
+DATA_DIFF = {
+    driver: f"collate-data-diff[{driver}]"
+    # data-diff uses different drivers out-of-the-box than OpenMetadata
+    # the exrtas are described here:
+    # https://github.com/open-metadata/collate-data-diff/blob/main/pyproject.toml#L68
+    # install all data diffs with "pip install collate-data-diff[all-dbs]"
+    for driver in [
+        "clickhouse",
+        # "duckdb", # Not supported by OpenMetadata
+        "mssql",
+        "mysql",
+        "oracle",
+        # "postgresql", we dont use this as it installs psycopg2 which interferes with psycopg2-binary
+        "presto",
+        "redshift",
+        "snowflake",
+        "trino",
+        "vertica",
+    ]
+}
 
 base_requirements = {
     "antlr4-python3-runtime==4.9.2",
@@ -120,7 +141,6 @@ base_requirements = {
     "packaging",  # For version parsing
 }
 
-
 plugins: Dict[str, Set[str]] = {
     "airflow": {
         VERSIONS["airflow"],
@@ -137,10 +157,15 @@ plugins: Dict[str, Set[str]] = {
         "google-cloud-datacatalog>=3.6.2",
         "google-cloud-logging",
         VERSIONS["pyarrow"],
+        VERSIONS["numpy"],
         "sqlalchemy-bigquery>=1.2.2",
     },
     "bigtable": {"google-cloud-bigtable>=2.0.0", VERSIONS["pandas"]},
-    "clickhouse": {"clickhouse-driver~=0.2", "clickhouse-sqlalchemy~=0.2"},
+    "clickhouse": {
+        "clickhouse-driver~=0.2",
+        "clickhouse-sqlalchemy~=0.2",
+        DATA_DIFF["clickhouse"],
+    },
     "dagster": {
         VERSIONS["pymysql"],
         "psycopg2-binary",
@@ -183,7 +208,9 @@ plugins: Dict[str, Set[str]] = {
         "s3fs",
         *COMMONS["datalake"],
     },
-    "deltalake": {"delta-spark<=2.3.0"},
+    "deltalake": {"delta-spark<=2.3.0", "deltalake~=0.17"},
+    "deltalake-storage": {"deltalake~=0.17"},
+    "deltalake-spark": {"delta-spark<=2.3.0"},
     "domo": {VERSIONS["pydomo"]},
     "doris": {"pydoris==1.0.2"},
     "druid": {"pydruid>=0.6.5"},
@@ -229,12 +256,21 @@ plugins: Dict[str, Set[str]] = {
     "mlflow": {"mlflow-skinny>=2.3.0"},
     "mongo": {VERSIONS["mongo"], VERSIONS["pandas"]},
     "couchbase": {"couchbase~=4.1"},
-    "mssql": {"sqlalchemy-pytds~=0.3"},
-    "mssql-odbc": {VERSIONS["pyodbc"]},
-    "mysql": {VERSIONS["pymysql"]},
+    "mssql": {
+        "sqlalchemy-pytds~=0.3",
+        DATA_DIFF["mssql"],
+    },
+    "mssql-odbc": {
+        VERSIONS["pyodbc"],
+        DATA_DIFF["mssql"],
+    },
+    "mysql": {
+        VERSIONS["pymysql"],
+        DATA_DIFF["mysql"],
+    },
     "nifi": {},  # uses requests
     "openlineage": {*COMMONS["kafka"]},
-    "oracle": {"cx_Oracle>=8.3.0,<9", "oracledb~=1.2"},
+    "oracle": {"cx_Oracle>=8.3.0,<9", "oracledb~=1.2", DATA_DIFF["oracle"]},
     "pgspider": {"psycopg2-binary", "sqlalchemy-pgspider"},
     "pinotdb": {"pinotdb~=5.0"},
     "postgres": {*COMMONS["postgres"]},
@@ -246,7 +282,7 @@ plugins: Dict[str, Set[str]] = {
         VERSIONS["azure-identity"],
     },
     "qliksense": {"websocket-client~=1.6.1"},
-    "presto": {*COMMONS["hive"]},
+    "presto": {*COMMONS["hive"], DATA_DIFF["presto"]},
     "pymssql": {"pymssql~=2.2.0"},
     "quicksight": {VERSIONS["boto3"]},
     "redash": {VERSIONS["packaging"]},
@@ -264,12 +300,12 @@ plugins: Dict[str, Set[str]] = {
     "sas": {},
     "singlestore": {VERSIONS["pymysql"]},
     "sklearn": {VERSIONS["scikit-learn"]},
-    "snowflake": {VERSIONS["snowflake"]},
+    "snowflake": {VERSIONS["snowflake"], DATA_DIFF["snowflake"]},
     "superset": {},  # uses requests
     "tableau": {VERSIONS["tableau"], VERSIONS["validators"], VERSIONS["packaging"]},
     "teradata": {VERSIONS["teradata"]},
-    "trino": {VERSIONS["trino"]},
-    "vertica": {"sqlalchemy-vertica[vertica-python]>=0.0.5"},
+    "trino": {VERSIONS["trino"], DATA_DIFF["trino"]},
+    "vertica": {"sqlalchemy-vertica[vertica-python]>=0.0.5", DATA_DIFF["vertica"]},
     "pii-processor": {
         VERSIONS["spacy"],
         VERSIONS["pandas"],
@@ -291,7 +327,6 @@ dev = {
     "build",
     *plugins["sample-data"],
 }
-
 
 test = {
     # Install Airflow as it's not part of `all` plugin
@@ -330,8 +365,12 @@ test = {
     "minio==7.2.5",
     *plugins["mlflow"],
     *plugins["datalake-s3"],
+    *plugins["kafka"],
+    "kafka-python==2.0.2",
     *plugins["pii-processor"],
     "requests==2.31.0",
+    f"{DATA_DIFF['mysql']}==0.11.2",
+    *plugins["deltalake"],
 }
 
 e2e_test = {
@@ -370,7 +409,14 @@ setup(
         **{plugin: list(dependencies) for (plugin, dependencies) in plugins.items()},
         "all": filter_requirements({"airflow", "db2", "great-expectations"}),
         "slim": filter_requirements(
-            {"airflow", "db2", "great-expectations", "deltalake", "sklearn"}
+            {
+                "airflow",
+                "db2",
+                "great-expectations",
+                "deltalake",
+                "deltalake-spark",
+                "sklearn",
+            }
         ),
     },
 )

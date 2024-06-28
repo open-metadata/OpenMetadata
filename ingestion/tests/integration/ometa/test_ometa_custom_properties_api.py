@@ -61,6 +61,48 @@ from metadata.ingestion.models.custom_properties import (
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.utils.constants import ENTITY_REFERENCE_TYPE_MAP
 
+EXPECTED_CUSTOM_PROPERTIES = [
+    {
+        "name": "DataEngineers",
+        "description": "Data Engineers of a table",
+        "propertyType": {
+            "name": "entityReferenceList",
+        },
+        "customPropertyConfig": {"config": ["user"]},
+    },
+    {
+        "name": "DataQuality",
+        "description": "Quality Details of a Table",
+        "propertyType": {
+            "name": "markdown",
+        },
+    },
+    {
+        "name": "Department",
+        "description": "Department of a table",
+        "propertyType": {
+            "type": "type",
+            "name": "enum",
+        },
+        "customPropertyConfig": {
+            "config": {"values": ["D1", "D2", "D3"], "multiSelect": True}
+        },
+    },
+    {
+        "name": "Rating",
+        "description": "Rating of a table",
+        "propertyType": {"name": "enum"},
+        "customPropertyConfig": {
+            "config": {"values": ["Good", "Average", "Bad"], "multiSelect": False},
+        },
+    },
+    {
+        "name": "TableSize",
+        "description": "Size of the Table",
+        "propertyType": {"name": "string"},
+    },
+]
+
 
 class OMetaCustomAttributeTest(TestCase):
     """
@@ -273,6 +315,41 @@ class OMetaCustomAttributeTest(TestCase):
         )
         self.metadata.create_or_update_custom_property(
             ometa_custom_property=ometa_custom_property_request
+        )
+
+    def test_get_custom_property(self):
+        """
+        Test getting the custom properties for an entity
+        """
+        # create the custom properties
+        self.create_custom_property()
+
+        custom_properties = self.metadata.get_entity_custom_properties(
+            entity_type=Table
+        )
+
+        actual_custom_properties = []
+        for expected_custom_property in EXPECTED_CUSTOM_PROPERTIES:
+            for custom_property in custom_properties:
+                if expected_custom_property["name"] == custom_property["name"]:
+                    actual_custom_properties.append(custom_property)
+                    self.assertEquals(
+                        custom_property["name"], expected_custom_property["name"]
+                    )
+                    self.assertEquals(
+                        custom_property["description"],
+                        expected_custom_property["description"],
+                    )
+                    self.assertEquals(
+                        custom_property.get("customPropertyConfig"),
+                        expected_custom_property.get("customPropertyConfig"),
+                    )
+                    self.assertEquals(
+                        custom_property["propertyType"]["name"],
+                        expected_custom_property["propertyType"]["name"],
+                    )
+        self.assertEquals(
+            len(actual_custom_properties), len(EXPECTED_CUSTOM_PROPERTIES)
         )
 
     def test_add_custom_property_table(self):

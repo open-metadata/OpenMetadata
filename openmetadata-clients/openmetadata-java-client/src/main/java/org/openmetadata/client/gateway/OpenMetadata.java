@@ -20,6 +20,7 @@ import feign.jackson.JacksonDecoder;
 import feign.jackson.JacksonEncoder;
 import feign.okhttp.OkHttpClient;
 import feign.slf4j.Slf4jLogger;
+import java.util.Objects;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.client.ApiClient;
 import org.openmetadata.client.api.SystemApi;
@@ -61,6 +62,10 @@ public class OpenMetadata {
   }
 
   public void initClient(OpenMetadataConnection config, Feign.Builder builder) {
+    if (Objects.isNull(apiClient)) {
+      apiClient = new ApiClient();
+    }
+
     apiClient.setFeignBuilder(builder);
     AuthenticationProviderFactory factory = new AuthenticationProviderFactory();
     apiClient.addAuthorization("oauth", factory.getAuthProvider(config));

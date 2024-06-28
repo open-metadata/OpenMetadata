@@ -34,7 +34,7 @@ export class DashboardClass extends EntityClass {
     },
   };
   entity = {
-    name: `pw.dashboard%${uuid()}`,
+    name: `pw-dashboard-${uuid()}`,
     displayName: `pw-dashboard-${uuid()}`,
     service: this.service.name,
   };
