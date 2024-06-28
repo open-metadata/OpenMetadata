@@ -11,14 +11,14 @@
 # pylint: disable=missing-module-docstring
 import traceback
 from itertools import islice
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Tuple
 from urllib.parse import urlparse
 
 import data_diff
 import sqlalchemy.types
 from data_diff.diff_tables import DiffResultWrapper
 from data_diff.errors import DataDiffMismatchingKeyTypesError
-from data_diff.utils import ArithAlphanumeric, safezip
+from data_diff.utils import ArithAlphanumeric
 from sqlalchemy import Column as SAColumn
 
 from metadata.data_quality.validations.base_test_handler import BaseTestValidator
@@ -118,7 +118,7 @@ class TableDiffValidator(BaseTestValidator, SQAValidatorMixin):
                 logger.debug("Sample of failed rows:")
                 for s in islice(self.get_table_diff(), 10):
                     logger.debug(s)
-            test_case_result = self.get_test_case_result(
+            test_case_result = self.get_row_diff_test_case_result(
                 threshold,
                 stats["total"],
                 stats["updated"],
@@ -136,13 +136,18 @@ class TableDiffValidator(BaseTestValidator, SQAValidatorMixin):
             )
             return test_case_result
         num_dffs = sum(1 for _ in islice(table_diff_iter, threshold))
-        return self.get_test_case_result(
+        return self.get_row_diff_test_case_result(
             num_dffs,
             threshold,
         )
 
     def get_incomparable_columns(self) -> List[str]:
-        """Get the columns that have incompatible types in the two tables"""
+        """Get the columns that have types that are not comparable between the two tables. For example
+        a column that is a string in one table and an integer in the other.
+
+        Returns:
+            List[str]: A list of column names that have incomparable types
+        """
         table1 = data_diff.connect_to_table(
             self.runtime_params.table1.serviceUrl,
             self.runtime_params.table1.path,
@@ -156,20 +161,19 @@ class TableDiffValidator(BaseTestValidator, SQAValidatorMixin):
             extra_columns=self.runtime_params.extraColumns,
         ).with_schema()
         result = []
-        columns1 = table1.key_columns + table1.extra_columns
-        columns2 = table2.key_columns + table2.extra_columns
-        for col1, col2 in safezip(columns1, columns2):
+        for column in table1.key_columns + table1.extra_columns:
             col1_type = self.get_column_type(
-                table1._schema[col1]  # pylint: disable=protected-access
+                table1._schema[column]  # pylint: disable=protected-access
             )
-            if table2._schema.get(col2) is None:  # pylint: disable=protected-access
+            # Skip columns that are not in the second table. We cover this case in get_changed_added_columns.
+            if table2._schema.get(column) is None:  # pylint: disable=protected-access
                 continue
             col2_type = self.get_column_type(
-                table2._schema[col2]  # pylint: disable=protected-access
+                table2._schema[column]  # pylint: disable=protected-access
             )
 
             if col1_type != col2_type:
-                result.append(col1)
+                result.append(column)
         return result
 
     @staticmethod
@@ -242,7 +246,7 @@ class TableDiffValidator(BaseTestValidator, SQAValidatorMixin):
         runtime_params = TableDiffRuntimeParameters.parse_raw(raw)
         return runtime_params
 
-    def get_test_case_result(
+    def get_row_diff_test_case_result(
         self,
         threshold: int,
         total_diffs: int,
@@ -250,6 +254,20 @@ class TableDiffValidator(BaseTestValidator, SQAValidatorMixin):
         removed: Optional[int] = None,
         added: Optional[int] = None,
     ) -> TestCaseResult:
+        """Build a test case result for a row diff test. If the number of differences is less than the threshold,
+        the test will pass, otherwise it will fail. The result will contain the number of added, removed, and changed
+        rows, as well as the total number of differences.
+
+        Args:
+            threshold: The maximum number of differences allowed before the test fails
+            total_diffs: The total number of differences between the tables
+            changed: The number of rows that have been changed
+            removed: The number of rows that have been removed
+            added: The number of rows that have been added
+
+        Returns:
+            TestCaseResult: The result of the row diff test
+        """
         return TestCaseResult(
             timestamp=self.execution_date,  # type: ignore
             testCaseStatus=self.get_test_case_status(
@@ -275,22 +293,32 @@ class TableDiffValidator(BaseTestValidator, SQAValidatorMixin):
                 raise UnsupportedDialectError(name, dialect)
 
     def get_column_diff(self) -> Optional[TestCaseResult]:
-        column_diff = self.calculate_column_diff(
+        """Get the column diff between the two tables. If there are no differences, return None."""
+        removed, added = self.get_changed_added_columns(
             self.runtime_params.table1.columns, self.runtime_params.table2.columns
         )
         changed = self.get_incomparable_columns()
-        if column_diff["removed"] or column_diff["added"] or changed:
+        if removed or added or changed:
             return self.column_validation_result(
-                column_diff["removed"],
-                column_diff["added"],
+                removed,
+                added,
                 changed,
             )
         return None
 
     @staticmethod
-    def calculate_column_diff(
+    def get_changed_added_columns(
         left: List[Column], right: List[Column]
-    ) -> Dict[str, List[str]]:
+    ) -> Optional[Tuple[List[str], List[str]]]:
+        """Given a list of columns from two tables, return the columns that are removed and added.
+
+        Args:
+            left: List of columns from the first table
+            right: List of columns from the second table
+
+        Returns:
+            A tuple of lists containing the removed and added columns or None if there are no differences
+        """
         removed: List[str] = []
         added: List[str] = []
         right_columns_dict: Dict[str, Column] = {c.name.root: c for c in right}
@@ -301,10 +329,7 @@ class TableDiffValidator(BaseTestValidator, SQAValidatorMixin):
                 continue
             del right_columns_dict[column.name.root]
         added.extend(right_columns_dict.keys())
-        return {
-            "removed": removed,
-            "added": added,
-        }
+        return removed, added
 
     def column_validation_result(
         self, removed: List[str], added: List[str], changed: List[str]
