@@ -18,6 +18,7 @@ from pydantic import BaseModel
 
 from metadata.generated.schema.api.data.createPipeline import CreatePipelineRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
+from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.pipeline import (
     Pipeline,
     PipelineStatus,
@@ -29,7 +30,6 @@ from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.services.connections.pipeline.airbyteConnection import (
     AirbyteConnection,
 )
-from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.services.databaseService import DatabaseService
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
@@ -211,9 +211,11 @@ class AirbyteSource(PipelineServiceSource):
         # )
 
         # If destination is BigQuery, then we can use the Google ProjectID to map
-        if destination_connection.get('connectionConfiguration', {}).get('project_id'):
+        if destination_connection.get("connectionConfiguration", {}).get("project_id"):
             # Build FQN to search for database service
-            bq_project_id = destination_connection.get('connectionConfiguration', {}).get('project_id')
+            bq_project_id = destination_connection.get(
+                "connectionConfiguration", {}
+            ).get("project_id")
             bq_database_found = self.metadata.es_search_from_fqn(
                 entity_type=Database,
                 fqn_search_string=f"*.{bq_project_id}",
@@ -224,7 +226,9 @@ class AirbyteSource(PipelineServiceSource):
                 )
             else:
                 destination_service = None
-                logger.warning(f"BigQuery Project ID: {bq_project_id} has not been found in OpenMetadata")
+                logger.warning(
+                    f"BigQuery Project ID: {bq_project_id} has not been found in OpenMetadata"
+                )
         else:
             destination_service = self.metadata.get_by_name(
                 entity=DatabaseService, fqn=destination_connection.get("name")
@@ -240,9 +244,7 @@ class AirbyteSource(PipelineServiceSource):
             pipeline_name=self.context.get().pipeline,
         )
 
-        pipeline_entity = self.metadata.get_by_name(
-            entity=Pipeline, fqn=pipeline_fqn
-        )
+        pipeline_entity = self.metadata.get_by_name(entity=Pipeline, fqn=pipeline_fqn)
 
         for task in (
             pipeline_details.connection.get("syncCatalog", {}).get("streams") or []
