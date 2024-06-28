@@ -14,6 +14,12 @@ generated when setting up the account.
 
 The configuration below already uses the presets shown in the example of SAML configurations, you can change to yours.
 
+{% note %}
+
+If you are using an environment variable from an external file in our setup, and this environment variable is commented out in the `docker-compose` file, it will not be considered. To ensure it works, the commented section in the docker-compose file must be uncommented.
+
+{% /note %}
+
 ```shell
 # OpenMetadata Server IDP Configuration
 SAML_IDP_ENTITY_ID=https://mocksaml.com/api/saml/sso
@@ -49,4 +55,4 @@ SAML_KEYSTORE_PASSWORD=myKeystorePassword
 docker compose --env-file ~/openmetadata_saml.env up -d
 ```
 
-{% partial file="/v1.5/deployment/configure-ingestion.md" /%}
+{% partial file="/v1.4/deployment/configure-ingestion.md" /%}
