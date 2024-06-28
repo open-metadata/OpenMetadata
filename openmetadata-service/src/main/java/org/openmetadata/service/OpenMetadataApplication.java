@@ -255,7 +255,8 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     registerAuthServlets(catalogConfig, environment);
 
     // bolt
-    regsiterBoltSlackApplication(catalogConfig.getSlackAppConfig(), environment);
+    if (catalogConfig.getSlackAppConfig() != null)
+      regsiterBoltSlackApplication(catalogConfig.getSlackAppConfig(), environment);
   }
 
   private void regsiterBoltSlackApplication(
@@ -263,10 +264,10 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     App slackapp = null;
     try {
       slackapp = SlackApp.boltSlackAppRegistration(appConfig);
+      boltSlackServletsRegistration(slackapp, environment);
     } catch (Exception e) {
-      throw new RuntimeException(e);
+      LOG.error("Failed to register Bolt Slack app", e);
     }
-    boltSlackServletsRegistration(slackapp, environment);
   }
 
   private void boltSlackServletsRegistration(App slackApp, Environment environment) {
