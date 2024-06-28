@@ -56,6 +56,13 @@ class CliBase(ABC):
         ]
         process_status = subprocess.Popen(args, stderr=subprocess.PIPE)
         _, stderr = process_status.communicate()
+        if process_status.returncode != 0:
+            print(stderr.decode("utf-8"))
+            raise subprocess.CalledProcessError(
+                returncode=process_status.returncode,
+                cmd=args,
+                output=stderr.decode("utf-8"),
+            )
         return stderr.decode("utf-8")
 
     def retrieve_lineage(self, entity_fqn: str) -> dict:

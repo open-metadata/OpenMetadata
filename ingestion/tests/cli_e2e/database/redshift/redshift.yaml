@@ -14,6 +14,12 @@ source:
       includeTables: true
       includeViews: true
       type: DatabaseMetadata
+      schemaFilterPattern:
+        excludes:
+          - information_schema
+      tableFilterPattern:
+        excludes:
+          - "^pg_"
 sink:
   type: metadata-rest
   config: {}

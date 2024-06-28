@@ -63,6 +63,7 @@ The workflow is modeled around the following
 
 **Note:** During the metadata ingestion for redshift, the tables in which the distribution style i.e `DISTSTYLE` is not `AUTO` will be marked as partitioned tables
 
+It is recommmended to exclude the schema "information_schema" from the metadata ingestion as it contains system tables and views.
 
 ### 1. Define the YAML Config
 
