@@ -11,8 +11,7 @@ import org.openmetadata.service.search.models.SearchSuggest;
 
 public class IngestionPipelineIndex implements SearchIndex {
   final IngestionPipeline ingestionPipeline;
-  final Set<String> excludeFields =
-      Set.of("sourceConfig", "openMetadataServerConnection", "airflowConfig");
+  final Set<String> excludeFields = Set.of("sourceConfig", "openMetadataServerConnection");
 
   public IngestionPipelineIndex(IngestionPipeline ingestionPipeline) {
     this.ingestionPipeline = ingestionPipeline;

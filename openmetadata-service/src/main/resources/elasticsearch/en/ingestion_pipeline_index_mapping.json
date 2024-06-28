@@ -310,6 +310,80 @@
       },
       "descriptionStatus": {
         "type": "keyword"
+      },
+      "applicationType": {
+        "type": "keyword",
+        "normalizer": "lowercase_normalizer"
+      },
+      "airflowConfig" : {
+        "properties" : {
+          "concurrency" : {
+            "type" : "long"
+          },
+          "maxActiveRuns" : {
+            "type" : "long"
+          },
+          "pausePipeline" : {
+            "type" : "boolean"
+          },
+          "pipelineCatchup" : {
+            "type" : "boolean"
+          },
+          "pipelineTimezone" : {
+            "type" : "text",
+            "fields" : {
+              "keyword" : {
+                "type" : "keyword",
+                "ignore_above" : 256
+              }
+            }
+          },
+          "retries" : {
+            "type" : "long"
+          },
+          "retryDelay" : {
+            "type" : "long"
+          },
+          "scheduleInterval" : {
+            "type" : "text",
+            "fields" : {
+              "keyword" : {
+                "type" : "keyword",
+                "ignore_above" : 256
+              }
+            }
+          },
+          "startDate" : {
+            "type" : "date"
+          },
+          "workflowDefaultView" : {
+            "type" : "text",
+            "fields" : {
+              "keyword" : {
+                "type" : "keyword",
+                "ignore_above" : 256
+              }
+            }
+          },
+          "workflowDefaultViewOrientation" : {
+            "type" : "text",
+            "fields" : {
+              "keyword" : {
+                "type" : "keyword",
+                "ignore_above" : 256
+              }
+            }
+          },
+          "email" : {
+            "type": "text",
+            "fields": {
+              "keyword": {
+                "type": "keyword",
+                "ignore_above": 256
+              }
+            }
+          }
+        }
       }
     }
   }
