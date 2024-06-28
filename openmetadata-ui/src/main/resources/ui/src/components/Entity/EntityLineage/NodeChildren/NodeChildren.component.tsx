@@ -34,7 +34,14 @@ import { EntityChildren, NodeChildrenProps } from './NodeChildren.interface';
 const NodeChildren = ({ node, isConnectable }: NodeChildrenProps) => {
   const { t } = useTranslation();
   const { Panel } = Collapse;
-  const { tracedColumns, activeLayer, onColumnClick } = useLineageProvider();
+  const {
+    tracedColumns,
+    activeLayer,
+    onColumnClick,
+    columnsHavingLineage,
+    isEditMode,
+    expandAllColumns,
+  } = useLineageProvider();
   const { entityType } = node;
   const [searchValue, setSearchValue] = useState('');
   const [filteredColumns, setFilteredColumns] = useState<EntityChildren>([]);
@@ -82,6 +89,17 @@ const NodeChildren = ({ node, isConnectable }: NodeChildrenProps) => {
     [children]
   );
 
+  const isColumnVisible = useCallback(
+    (record: Column) => {
+      if (expandAllColumns || isEditMode) {
+        return true;
+      }
+
+      return columnsHavingLineage.includes(record.fullyQualifiedName ?? '');
+    },
+    [isEditMode, columnsHavingLineage, expandAllColumns]
+  );
+
   useEffect(() => {
     if (!isEmpty(children)) {
       setFilteredColumns(children);
@@ -101,6 +119,10 @@ const NodeChildren = ({ node, isConnectable }: NodeChildrenProps) => {
       );
 
       if (!record.children || record.children.length === 0) {
+        if (!isColumnVisible(record)) {
+          return null;
+        }
+
         return headerContent;
       }
 
@@ -121,6 +143,10 @@ const NodeChildren = ({ node, isConnectable }: NodeChildrenProps) => {
                   fullyQualifiedName ?? ''
                 );
 
+                if (!isColumnVisible(child)) {
+                  return null;
+                }
+
                 return getColumnContent(
                   child,
                   isColumnTraced,
@@ -133,7 +159,7 @@ const NodeChildren = ({ node, isConnectable }: NodeChildrenProps) => {
         </Collapse>
       );
     },
-    [isConnectable, tracedColumns, onColumnClick]
+    [isConnectable, tracedColumns, onColumnClick, isColumnVisible]
   );
 
   const renderColumnsData = useCallback(
@@ -143,6 +169,9 @@ const NodeChildren = ({ node, isConnectable }: NodeChildrenProps) => {
         return renderRecord(column);
       } else {
         const isColumnTraced = tracedColumns.includes(fullyQualifiedName ?? '');
+        if (!isColumnVisible(column)) {
+          return null;
+        }
 
         return getColumnContent(
           column,
@@ -152,7 +181,7 @@ const NodeChildren = ({ node, isConnectable }: NodeChildrenProps) => {
         );
       }
     },
-    [isConnectable, tracedColumns]
+    [isConnectable, tracedColumns, isColumnVisible]
   );
 
   if (supportsColumns && (showColumns || showDataObservability)) {

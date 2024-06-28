@@ -158,6 +158,42 @@ export class TableClass extends EntityClass {
     });
   }
 
+  async createTestSuiteAndPipelines(apiContext: APIRequestContext) {
+    if (!this.entityResponseData) {
+      return Promise.reject('Entity not created');
+    }
+
+    const testSuiteData = await apiContext
+      .post('/api/v1/dataQuality/testSuites/executable', {
+        data: {
+          name: `pw-test-suite-${uuid()}`,
+          executableEntityReference:
+            this.entityResponseData['fullyQualifiedName'],
+          description: 'Playwright test suite for table',
+        },
+      })
+      .then((res) => res.json());
+
+    await apiContext.post(`/api/v1/services/ingestionPipelines`, {
+      data: {
+        airflowConfig: {},
+        name: `${this.entityResponseData['fullyQualifiedName']}_test_suite`,
+        pipelineType: 'TestSuite',
+        service: {
+          id: testSuiteData.id,
+          type: 'testSuite',
+        },
+        sourceConfig: {
+          config: {
+            type: 'TestSuite',
+            entityFullyQualifiedName:
+              this.entityResponseData['fullyQualifiedName'],
+          },
+        },
+      },
+    });
+  }
+
   async delete(apiContext: APIRequestContext) {
     const serviceResponse = await apiContext.delete(
       `/api/v1/services/databaseServices/name/${encodeURIComponent(
