@@ -113,7 +113,7 @@ class CliDBBase(TestCase):
             """
             self.build_config_file(
                 E2EType.INGEST_DB_FILTER_SCHEMA,
-                {"excludes": self.get_includes_schemas()},
+                {"excludes": self.get_excludes_schemas()},
             )
             result = self.run_command()
             sink_status, source_status = self.retrieve_statuses(result)
@@ -296,6 +296,10 @@ class CliDBBase(TestCase):
         @abstractmethod
         def get_includes_schemas() -> List[str]:
             raise NotImplementedError()
+
+        @classmethod
+        def get_excludes_schemas(cls) -> List[str]:
+            return cls.get_includes_schemas()
 
         @staticmethod
         @abstractmethod
