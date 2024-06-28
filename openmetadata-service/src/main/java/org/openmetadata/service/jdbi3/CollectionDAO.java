@@ -1960,8 +1960,7 @@ public interface CollectionDAO {
                 "%s WHERE entity_relationship.fromEntity = :serviceType and entity_relationship.relation = :relation",
                 condition);
         bindMap.put("relation", CONTAINS.ordinal());
-        bindMap.put("serviceType", serviceType);
-        return listIngestionPipelineCount(condition, bindMap);
+        return listIngestionPipelineCount(condition, bindMap, filter.getQueryParams());
       }
       return EntityDAO.super.listCount(filter);
     }
@@ -1997,11 +1996,10 @@ public interface CollectionDAO {
                 "%s WHERE entity_relationship.fromEntity = :serviceType and entity_relationship.relation = :relation and ingestion_pipeline_entity.name > :after order by ingestion_pipeline_entity.name ASC LIMIT :limit",
                 condition);
 
-        bindMap.put("serviceType", serviceType);
         bindMap.put("relation", CONTAINS.ordinal());
         bindMap.put("after", after);
         bindMap.put("limit", limit);
-        return listAfterIngestionPipelineByserviceType(condition, bindMap);
+        return listAfterIngestionPipelineByserviceType(condition, bindMap, filter.getQueryParams());
       }
       return EntityDAO.super.listAfter(filter, limit, after);
     }
@@ -2036,27 +2034,33 @@ public interface CollectionDAO {
                 "%s WHERE entity_relationship.fromEntity = :serviceType and entity_relationship.relation = :relation and ingestion_pipeline_entity.name < :before order by ingestion_pipeline_entity.name DESC LIMIT :limit",
                 condition);
 
-        bindMap.put("serviceType", serviceType);
         bindMap.put("relation", CONTAINS.ordinal());
         bindMap.put("before", before);
         bindMap.put("limit", limit);
-        return listBeforeIngestionPipelineByserviceType(condition, bindMap);
+        return listBeforeIngestionPipelineByserviceType(
+            condition, bindMap, filter.getQueryParams());
       }
       return EntityDAO.super.listBefore(filter, limit, before);
     }
 
     @SqlQuery("SELECT ingestion_pipeline_entity.json FROM ingestion_pipeline_entity <cond>")
     List<String> listAfterIngestionPipelineByserviceType(
-        @Define("cond") String cond, @BindMap Map<String, Object> bindings);
+        @Define("cond") String cond,
+        @BindMap Map<String, Object> bindings,
+        @BindMap Map<String, String> params);
 
     @SqlQuery(
         "SELECT json FROM (SELECT ingestion_pipeline_entity.name, ingestion_pipeline_entity.json FROM ingestion_pipeline_entity <cond>) last_rows_subquery ORDER BY last_rows_subquery.name")
     List<String> listBeforeIngestionPipelineByserviceType(
-        @Define("cond") String cond, @BindMap Map<String, Object> bindings);
+        @Define("cond") String cond,
+        @BindMap Map<String, Object> bindings,
+        @BindMap Map<String, String> params);
 
     @SqlQuery("SELECT count(*) FROM ingestion_pipeline_entity <cond> ")
     int listIngestionPipelineCount(
-        @Define("cond") String cond, @BindMap Map<String, Object> bindings);
+        @Define("cond") String cond,
+        @BindMap Map<String, Object> bindings,
+        @BindMap Map<String, String> params);
   }
 
   interface PipelineServiceDAO extends EntityDAO<PipelineService> {
