@@ -30,7 +30,7 @@ public class TableSearchCommand implements SlashCommandHandler {
   SlackMessageDecorator decorator;
   protected final TableRepository repository =
       (TableRepository) Entity.getEntityRepository(Entity.TABLE);
-  final String FIELDS = "tableConstraints,owner," + "tags,followers,extension,domain,dataProducts";
+  final String FIELDS = "tableConstraints,owner,tags,followers,extension,domain,dataProducts";
 
   public TableSearchCommand(SlackMessageDecorator decorator) {
     this.decorator = decorator;
@@ -39,10 +39,7 @@ public class TableSearchCommand implements SlashCommandHandler {
   @Override
   public Response apply(SlashCommandRequest req, SlashCommandContext ctx)
       throws IOException, SlackApiException {
-    ctx.logger.info("Search glossary responding");
     String fqn = req.getPayload().getText().trim();
-
-    ctx.logger.info("fqn : {}", fqn);
 
     Table table;
     try {
@@ -173,7 +170,6 @@ public class TableSearchCommand implements SlashCommandHandler {
 
     // Button Block
     String entityUrl = buildEntityUrl(table); // issue in building entityUrl.
-    if (entityUrl.isEmpty()) entityUrl = "";
     blocks.add(
         ActionsBlock.builder()
             .elements(

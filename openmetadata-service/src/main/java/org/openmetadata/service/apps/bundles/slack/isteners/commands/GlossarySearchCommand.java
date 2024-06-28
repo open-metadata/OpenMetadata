@@ -42,10 +42,7 @@ public class GlossarySearchCommand implements SlashCommandHandler {
   @Override
   public Response apply(SlashCommandRequest req, SlashCommandContext ctx)
       throws IOException, SlackApiException {
-    ctx.logger.info("Search glossary responding");
     String fqn = req.getPayload().getText().trim();
-
-    ctx.logger.info("fqn : {}", fqn);
 
     Glossary glossary;
     try {

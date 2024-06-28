@@ -42,10 +42,7 @@ public class GlossaryTermSearchCommand implements SlashCommandHandler {
   @Override
   public Response apply(SlashCommandRequest req, SlashCommandContext ctx)
       throws IOException, SlackApiException {
-    ctx.logger.info("Search glossary term responding");
     String termFqn = req.getPayload().getText().trim();
-
-    ctx.logger.info("fqn : {}", termFqn);
 
     GlossaryTerm glossaryTerm;
     try {
@@ -166,7 +163,6 @@ public class GlossaryTermSearchCommand implements SlashCommandHandler {
 
     // Button Block
     String entityUrl = buildEntityUrl(glossaryTerm); // issue in building entityUrl.
-    if (entityUrl.isEmpty()) entityUrl = "";
     blocks.add(
         ActionsBlock.builder()
             .elements(

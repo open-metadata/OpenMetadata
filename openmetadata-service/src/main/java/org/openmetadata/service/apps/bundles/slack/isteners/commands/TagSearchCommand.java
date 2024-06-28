@@ -38,11 +38,7 @@ public class TagSearchCommand implements SlashCommandHandler {
   @Override
   public Response apply(SlashCommandRequest req, SlashCommandContext ctx)
       throws IOException, SlackApiException {
-    ctx.logger.info("Search tag responding");
     String tagFqn = req.getPayload().getText().trim();
-
-    ctx.logger.info("fqn : {}", tagFqn);
-
     Tag ternFqn;
     try {
       ternFqn = fetchData(tagFqn);
@@ -135,7 +131,6 @@ public class TagSearchCommand implements SlashCommandHandler {
 
     // Button Block
     String entityUrl = buildEntityUrl(tag); // issue in building entityUrl.
-    if (entityUrl.isEmpty()) entityUrl = "";
     blocks.add(
         ActionsBlock.builder()
             .elements(
