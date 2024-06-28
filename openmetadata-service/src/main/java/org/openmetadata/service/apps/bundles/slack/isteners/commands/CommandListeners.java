@@ -12,5 +12,6 @@ public class CommandListeners implements ListenerProvider {
     app.command("/search-glossary", new GlossarySearchCommand(decorator));
     app.command("/search-term", new GlossaryTermSearchCommand(decorator));
     app.command("/search-tag", new TagSearchCommand(decorator));
+    app.command("/search-table", new TableSearchCommand(decorator));
   }
 }
