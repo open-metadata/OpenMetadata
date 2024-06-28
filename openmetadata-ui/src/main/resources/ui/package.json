@@ -120,6 +120,7 @@
     "react-grid-layout": "^1.4.2",
     "react-helmet-async": "^1.3.0",
     "react-i18next": "^11.18.6",
+    "react-latex-next": "^3.0.0",
     "react-lazylog": "^4.5.3",
     "react-oidc": "^1.0.3",
     "react-papaparse": "^4.1.0",

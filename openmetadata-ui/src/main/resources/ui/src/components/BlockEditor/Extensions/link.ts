@@ -115,7 +115,7 @@ export const LinkExtension = TipTapLinkExtension.extend({
     return [
       ...(this.parent?.() ?? []),
       markPasteRule({
-        find: /\[(.*?)\]\((https?:\/\/[^\s)]+)\)/,
+        find: /\[(.*?)\]\((https?:\/\/[^\s)]+)\)/g,
         type: this.type,
         getAttributes: (match) => {
           const [, text, href] = match;
