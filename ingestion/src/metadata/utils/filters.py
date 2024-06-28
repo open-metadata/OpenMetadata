@@ -27,12 +27,12 @@ class InvalidPatternException(Exception):
     """
 
 
-def validate_regex(regex_list: List[str]) -> None:
+def validate_regex(regex_list: Optional[List[str]]) -> None:
     """
     Check that the given include/exclude regexes
     are well formatted
     """
-    for regex in regex_list:
+    for regex in regex_list or []:
         try:
             re.compile(regex)
         except re.error as err:
@@ -40,7 +40,7 @@ def validate_regex(regex_list: List[str]) -> None:
             raise InvalidPatternException(msg) from err
 
 
-def _filter(filter_pattern: Optional[FilterPattern], name: str) -> bool:
+def _filter(filter_pattern: Optional[FilterPattern], name: Optional[str]) -> bool:
     """
     Return True if the name needs to be filtered, False otherwise
 
@@ -58,24 +58,32 @@ def _filter(filter_pattern: Optional[FilterPattern], name: str) -> bool:
         # Filter pattern is present but not the name so we'll filter it out
         return True
 
+    validate_regex(filter_pattern.includes)
+    validate_regex(filter_pattern.excludes)
+
+    if filter_pattern.includes and filter_pattern.excludes:
+        return not any(
+            name
+            for regex in filter_pattern.includes
+            if (re.match(regex, name, re.IGNORECASE))
+        ) or any(
+            name
+            for regex in filter_pattern.excludes
+            if (re.match(regex, name, re.IGNORECASE))
+        )
+
     if filter_pattern.includes:
-        validate_regex(filter_pattern.includes)
-        return not any(  # pylint: disable=use-a-generator
-            [
-                name
-                for regex in filter_pattern.includes
-                if (re.match(regex, name, re.IGNORECASE))
-            ]
+        return not any(
+            name
+            for regex in filter_pattern.includes
+            if (re.match(regex, name, re.IGNORECASE))
         )
 
     if filter_pattern.excludes:
-        validate_regex(filter_pattern.excludes)
-        return any(  # pylint: disable=use-a-generator
-            [
-                name
-                for regex in filter_pattern.excludes
-                if (re.match(regex, name, re.IGNORECASE))
-            ]
+        return any(
+            name
+            for regex in filter_pattern.excludes
+            if (re.match(regex, name, re.IGNORECASE))
         )
 
     return False
