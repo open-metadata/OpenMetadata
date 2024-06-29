@@ -4,10 +4,13 @@ import com.slack.api.Slack;
 import com.slack.api.bolt.App;
 import com.slack.api.bolt.AppConfig;
 import com.slack.api.bolt.model.builtin.DefaultBot;
+import com.slack.api.bolt.model.builtin.DefaultInstaller;
 import com.slack.api.bolt.service.InstallationService;
 import com.slack.api.methods.SlackApiException;
 import com.slack.api.methods.request.chat.ChatPostMessageRequest;
 import com.slack.api.methods.request.conversations.ConversationsListRequest;
+import com.slack.api.methods.response.auth.AuthRevokeResponse;
+import com.slack.api.methods.response.conversations.ConversationsJoinResponse;
 import com.slack.api.methods.response.conversations.ConversationsListResponse;
 import com.slack.api.model.block.Blocks;
 import com.slack.api.model.block.LayoutBlock;
@@ -67,6 +70,44 @@ public class SlackApp extends AbstractNativeApplication {
     appConfig =
         JsonUtils.convertValue(
             this.getApp().getPrivateConfiguration(), SlackAppConfiguration.class);
+  }
+
+  public ConversationsJoinResponse joinChannel(String channelId)
+      throws SlackApiException, IOException {
+    HashMap<String, Object> tokenMap = installationService.getSavedToken();
+
+    if (!tokenMap.containsKey(SlackConstants.BOT_ACCESS_TOKEN)) {
+      throw AppException.byMessage(
+          SlackConstants.SLACK_APP,
+          "joinChannel",
+          "Bot access token is missing",
+          Response.Status.BAD_REQUEST);
+    }
+
+    DefaultBot bot = (DefaultBot) tokenMap.get(SlackConstants.BOT_ACCESS_TOKEN);
+
+    try {
+      ConversationsJoinResponse response =
+          Slack.getInstance()
+              .methods()
+              .conversationsJoin(r -> r.token(bot.getBotAccessToken()).channel(channelId));
+
+      if (!response.isOk()) {
+        throw AppException.byMessage(
+            SlackConstants.SLACK_APP,
+            "joinChannel",
+            "Failed to join channel: " + response.getError(),
+            Response.Status.INTERNAL_SERVER_ERROR);
+      }
+
+      return response;
+    } catch (SlackApiException | IOException e) {
+      LOG.error("Slack API exception while joining channel: {}", e.getMessage(), e);
+      throw e;
+    } catch (Exception e) {
+      LOG.error("Unexpected exception while joining channel: {}", e.getMessage(), e);
+      throw new IOException("Unexpected error occurred", e);
+    }
   }
 
   public void shareAsset(SlackMessageRequest messageRequest) throws SlackApiException, IOException {
@@ -163,13 +204,50 @@ public class SlackApp extends AbstractNativeApplication {
     }
   }
 
-  private Response redirectResponse(String url) {
+  boolean revokeSlackAppToken() {
     try {
-      return Response.status(Response.Status.FOUND).location(new URI(url)).build();
-    } catch (URISyntaxException e) {
-      LOG.error("Invalid redirect URL", e);
-      return Response.serverError().build();
+      HashMap<String, Object> tokenMap = installationService.getSavedToken();
+
+      if (!tokenMap.containsKey(SlackConstants.BOT_ACCESS_TOKEN)) {
+        throw AppException.byMessage(
+            SlackConstants.SLACK_APP,
+            "revokeSlackAppToken",
+            "Bot access token is missing",
+            Response.Status.BAD_REQUEST);
+      }
+
+      DefaultBot bot = (DefaultBot) tokenMap.get(SlackConstants.BOT_ACCESS_TOKEN);
+      DefaultInstaller installer =
+          (DefaultInstaller) tokenMap.get(SlackConstants.AUTHED_USER_ACCESS_TOKEN);
+
+      AuthRevokeResponse response =
+          Slack.getInstance().methods().authRevoke(r -> r.token(bot.getBotAccessToken()));
+
+      if (response.isRevoked()) {
+        installationService.deleteBot(bot);
+        installationService.deleteInstaller(installer);
+      }
+
+      return response.isRevoked();
+    } catch (AppException e) {
+      LOG.error("App exception: {}", e.getMessage());
+      return false;
+    } catch (IOException | SlackApiException e) {
+      LOG.error("Slack API exception: {}", e.getMessage(), e);
+      return false;
+    } catch (ClassCastException e) {
+      LOG.error("Type casting error: {}", e.getMessage(), e);
+      return false;
+    } catch (Exception e) {
+      LOG.error("Unexpected exception: {}", e.getMessage(), e);
+      return false;
     }
+  }
+
+  @Override
+  public void raisePreviewMessage(org.openmetadata.schema.entity.app.App app) {
+    throw AppException.byMessage(
+        app.getName(), "Preview", "Contact Collate to purchase the Application");
   }
 
   public String buildOAuthUrl() {
@@ -180,10 +258,13 @@ public class SlackApp extends AbstractNativeApplication {
     return String.format("%s?client_id=%s&scope=%s", baseUrl, clientId, scopes);
   }
 
-  @Override
-  public void raisePreviewMessage(org.openmetadata.schema.entity.app.App app) {
-    throw AppException.byMessage(
-        app.getName(), "Preview", "Contact Collate to purchase the Application");
+  private Response redirectResponse(String url) {
+    try {
+      return Response.status(Response.Status.FOUND).location(new URI(url)).build();
+    } catch (URISyntaxException e) {
+      LOG.error("Invalid redirect URL", e);
+      return Response.serverError().build();
+    }
   }
 }
 

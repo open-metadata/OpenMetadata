@@ -1,6 +1,7 @@
 package org.openmetadata.service.apps.bundles.slack;
 
 import com.slack.api.methods.SlackApiException;
+import com.slack.api.methods.response.conversations.ConversationsJoinResponse;
 import io.swagger.v3.oas.annotations.Hidden;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -11,11 +12,13 @@ import java.lang.reflect.InvocationTargetException;
 import java.net.URI;
 import java.util.Map;
 import javax.validation.Valid;
+import javax.validation.constraints.NotBlank;
 import javax.ws.rs.Consumes;
 import javax.ws.rs.GET;
 import javax.ws.rs.POST;
 import javax.ws.rs.Path;
 import javax.ws.rs.Produces;
+import javax.ws.rs.QueryParam;
 import javax.ws.rs.core.Context;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
@@ -30,12 +33,12 @@ import org.openmetadata.service.jdbi3.AppRepository;
 import org.openmetadata.service.resources.Collection;
 
 @Slf4j
+@Hidden
+@Collection(name = "Slack")
 @Path("/v1/collate/apps/slack/")
 @Tag(name = "Slack App", description = "Slack App Resource.")
-@Hidden
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
-@Collection(name = "Slack")
 public class SlackResource {
   public static final String COLLECTION_PATH = "/v1/collate/apps/slack/";
   public static final String APP_NAME = "SlackApplication";
@@ -92,6 +95,48 @@ public class SlackResource {
     } catch (Exception e) {
       LOG.error("Error processing slack oauth url", e);
       return Response.serverError().build();
+    }
+  }
+
+  @GET
+  @Path("/revoke")
+  @Produces(MediaType.APPLICATION_JSON)
+  @Operation(
+      summary = "Revoke Slack App Token",
+      description = "Revokes the Slack app token for uninstalling the app.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Token revoked successfully.",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = SlackApiResponse.class))),
+        @ApiResponse(
+            responseCode = "500",
+            description = "Failed to revoke token.",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = SlackApiResponse.class)))
+      })
+  public Response handleUninstall(String token) {
+    initializeSlackApp();
+    boolean isRevoked = slackApp.revokeSlackAppToken();
+    if (isRevoked) {
+      return Response.ok()
+          .entity(
+              new SlackApiResponse<>(
+                  Response.Status.OK.getStatusCode(), "Token revoked successfully.", true))
+          .build();
+    } else {
+      return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
+          .entity(
+              new SlackApiResponse<>(
+                  Response.Status.INTERNAL_SERVER_ERROR.getStatusCode(),
+                  "Failed to revoke token.",
+                  false))
+          .build();
     }
   }
 
@@ -205,6 +250,78 @@ public class SlackResource {
               new SlackApiResponse<>(
                   appException.getResponse().getStatusInfo().getStatusCode(),
                   appException.getMessage(),
+                  null))
+          .build();
+    }
+  }
+
+  @POST
+  @Path("/joinChannel")
+  @Produces(MediaType.APPLICATION_JSON)
+  @Consumes(MediaType.APPLICATION_JSON)
+  @Operation(
+      summary = "Join Slack Channel",
+      description = "Joins the Slack channel with the specified ID.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Channel joined successfully",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = SlackApiResponse.class))),
+        @ApiResponse(
+            responseCode = "400",
+            description = "Bad Request",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = SlackApiResponse.class))),
+        @ApiResponse(
+            responseCode = "500",
+            description = "Internal Server Error",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = SlackApiResponse.class)))
+      })
+  public Response joinChannel(@NotBlank @QueryParam("channelId") String channelId) {
+    initializeSlackApp();
+    try {
+      ConversationsJoinResponse response = slackApp.joinChannel(channelId);
+      if (response.isOk()) {
+        LOG.info("Joined channel successfully: {}", response.getChannel());
+        return Response.ok()
+            .entity(
+                new SlackApiResponse<>(
+                    Response.Status.OK.getStatusCode(),
+                    "Channel joined successfully",
+                    response.getChannel()))
+            .build();
+      } else {
+        LOG.info("Failed to join channel: {}", response.getError());
+        return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
+            .entity(
+                new SlackApiResponse<>(
+                    Response.Status.INTERNAL_SERVER_ERROR.getStatusCode(),
+                    "Unexpected error occurred",
+                    response.getError()))
+            .build();
+      }
+    } catch (SlackApiException e) {
+      return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
+          .entity(
+              new SlackApiResponse<>(
+                  Response.Status.INTERNAL_SERVER_ERROR.getStatusCode(),
+                  "Slack API error: : " + e.getMessage(),
+                  null))
+          .build();
+    } catch (Exception e) {
+      return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
+          .entity(
+              new SlackApiResponse<>(
+                  Response.Status.INTERNAL_SERVER_ERROR.getStatusCode(),
+                  "Unexpected error occurred: " + e.getMessage(),
                   null))
           .build();
     }

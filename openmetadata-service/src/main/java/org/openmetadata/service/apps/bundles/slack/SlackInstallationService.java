@@ -40,10 +40,14 @@ public class SlackInstallationService implements InstallationService {
   }
 
   @Override
-  public void deleteBot(Bot bot) throws Exception {}
+  public void deleteBot(Bot bot) throws Exception {
+    systemRepository.deleteSettings(SettingsType.SLACK_BOT);
+  }
 
   @Override
-  public void deleteInstaller(Installer installer) throws Exception {}
+  public void deleteInstaller(Installer installer) throws Exception {
+    systemRepository.deleteSettings(SettingsType.SLACK_INSTALLER);
+  }
 
   @Override
   public Bot findBot(String s, String s1) {

@@ -160,7 +160,6 @@ public class GlossarySearchCommand implements SlashCommandHandler {
 
     // Button Block
     String entityUrl = buildEntityUrl(glossary); // issue in building entityUrl.
-    if (entityUrl.isEmpty()) entityUrl = "";
     blocks.add(
         ActionsBlock.builder()
             .elements(
