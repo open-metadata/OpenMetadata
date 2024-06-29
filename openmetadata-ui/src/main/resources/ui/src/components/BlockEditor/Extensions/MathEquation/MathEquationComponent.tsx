@@ -53,7 +53,7 @@ export const MathEquationComponent: FC<NodeViewProps> = ({
               className="math-equation-input"
               defaultValue={equation}
               ref={inputRef}
-              rows={1}
+              rows={2}
             />
             <Space direction="horizontal" size={8}>
               <Button

@@ -22,7 +22,7 @@ import {
   LINK_PASTE_REGEX,
 } from '../../../constants/BlockEditor.constants';
 
-function linkInputRule(config: Parameters<typeof markInputRule>[0]) {
+const linkInputRule = (config: Parameters<typeof markInputRule>[0]) => {
   const defaultMarkInputRule = markInputRule(config);
 
   return new InputRule({
@@ -34,9 +34,9 @@ function linkInputRule(config: Parameters<typeof markInputRule>[0]) {
       tr.setMeta('preventAutolink', true);
     },
   });
-}
+};
 
-function linkPasteRule(config: Parameters<typeof markPasteRule>[0]) {
+const linkPasteRule = (config: Parameters<typeof markPasteRule>[0]) => {
   const defaultMarkPasteRule = markPasteRule(config);
 
   return new PasteRule({
@@ -48,7 +48,7 @@ function linkPasteRule(config: Parameters<typeof markPasteRule>[0]) {
       tr.setMeta('preventAutolink', true);
     },
   });
-}
+};
 
 export const LinkExtension = TipTapLinkExtension.extend({
   addAttributes() {
