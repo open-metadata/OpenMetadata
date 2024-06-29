@@ -9,7 +9,6 @@ import static org.openmetadata.service.Entity.getEntityByName;
 import java.io.IOException;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.schema.dataInsight.custom.DataInsightCustomChart;
-import org.openmetadata.schema.dataInsight.custom.DataInsightCustomChartResult;
 import org.openmetadata.schema.dataInsight.custom.DataInsightCustomChartResultList;
 import org.openmetadata.schema.dataInsight.kpi.Kpi;
 import org.openmetadata.schema.dataInsight.type.KpiResult;
@@ -21,7 +20,6 @@ import org.openmetadata.service.jdbi3.EntityTimeSeriesDAO.OrderBy;
 import org.openmetadata.service.resources.kpi.KpiResource;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.JsonUtils;
-import org.openmetadata.service.util.ResultList;
 
 public class KpiRepository extends EntityRepository<Kpi> {
   private static final String KPI_RESULT_FIELD = "kpiResult";
@@ -129,8 +127,7 @@ public class KpiRepository extends EntityRepository<Kpi> {
           original.getDataInsightChart(),
           updated.getDataInsightChart(),
           false);
-      recordChange(
-          "targetValue", original.getTargetValue(), updated.getTargetValue(), true);
+      recordChange("targetValue", original.getTargetValue(), updated.getTargetValue(), true);
       recordChange("startDate", original.getStartDate(), updated.getStartDate());
       recordChange("endDate", original.getEndDate(), updated.getEndDate());
       recordChange("metricType", original.getMetricType(), updated.getMetricType());

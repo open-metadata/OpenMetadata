@@ -1,21 +1,18 @@
 package org.openmetadata.service.migration.utils.v150;
 
 import java.util.Map;
+import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.core.Handle;
-import org.openmetadata.schema.tests.TestDefinition;
-import org.openmetadata.schema.type.DataQualityDimensions;
-import org.openmetadata.service.jdbi3.CollectionDAO;
-import org.openmetadata.service.resources.databases.DatasourceConfig;
-import org.openmetadata.service.util.JsonUtils;
-import java.util.UUID;
-
 import org.openmetadata.schema.dataInsight.custom.DataInsightCustomChart;
 import org.openmetadata.schema.dataInsight.custom.LineChart;
 import org.openmetadata.schema.dataInsight.custom.SummaryCard;
+import org.openmetadata.schema.tests.TestDefinition;
+import org.openmetadata.schema.type.DataQualityDimensions;
+import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.DataInsightSystemChartRepository;
-
-
+import org.openmetadata.service.resources.databases.DatasourceConfig;
+import org.openmetadata.service.util.JsonUtils;
 
 @Slf4j
 public class MigrationUtil {
@@ -82,6 +79,7 @@ public class MigrationUtil {
       LOG.warn("Error running the test case resolution migration ", e);
     }
   }
+
   static DataInsightSystemChartRepository dataInsightSystemChartRepository;
 
   private static void createChart(String chartName, Object chartObject) {
@@ -174,13 +172,17 @@ public class MigrationUtil {
 
     // percentage of Data Asset with Description KPI
     createChart(
-            "percentage_of_data_asset_with_description_kpi",
-            new LineChart().withFormula("(count(k='id.keyword',q='hasDescription: 1')/count(k='id.keyword'))*100"));
+        "percentage_of_data_asset_with_description_kpi",
+        new LineChart()
+            .withFormula(
+                "(count(k='id.keyword',q='hasDescription: 1')/count(k='id.keyword'))*100"));
 
     // Number of Data Asset with Owner KPI
     createChart(
-            "percentage_of_data_asset_with_owner_kpi",
-            new LineChart().withFormula("(count(k='id.keyword',q='owner.name.keyword: *')/count(k='id.keyword'))*100"));
+        "percentage_of_data_asset_with_owner_kpi",
+        new LineChart()
+            .withFormula(
+                "(count(k='id.keyword',q='owner.name.keyword: *')/count(k='id.keyword'))*100"));
 
     // number of Data Asset with Description KPI
     createChart(
@@ -192,5 +194,4 @@ public class MigrationUtil {
         "number_of_data_asset_with_owner_kpi",
         new LineChart().withFormula("count(k='id.keyword',q='owner.name.keyword: *')"));
   }
-  
 }

@@ -64,26 +64,26 @@ public class AbstractNativeApplication implements NativeApplication {
   public void install() {
     // If the app does not have any Schedule Return without scheduling
     if (app.getAppSchedule() != null
-            && app.getAppSchedule().getScheduleTimeline().equals(ScheduleTimeline.NONE)) {
+        && app.getAppSchedule().getScheduleTimeline().equals(ScheduleTimeline.NONE)) {
       return;
     }
     // TODO: Remove This. for Testing Only
     app.setAppType(AppType.Internal);
     if (app.getAppType() == AppType.Internal
-            && app.getScheduleType().equals(ScheduleType.Scheduled)) {
+        && app.getScheduleType().equals(ScheduleType.Scheduled)) {
       try {
         ApplicationHandler.getInstance().removeOldJobs(app);
         ApplicationHandler.getInstance().migrateQuartzConfig(app);
         ApplicationHandler.getInstance().fixCorruptedInstallation(app);
       } catch (SchedulerException e) {
         throw AppException.byMessage(
-                "ApplicationHandler",
-                "SchedulerError",
-                "Error while migrating application configuration: " + app.getName());
+            "ApplicationHandler",
+            "SchedulerError",
+            "Error while migrating application configuration: " + app.getName());
       }
       scheduleInternal();
     } else if (app.getAppType() == AppType.External
-            && app.getScheduleType().equals(ScheduleType.Scheduled)) {
+        && app.getScheduleType().equals(ScheduleType.Scheduled)) {
       scheduleExternal();
     }
   }
@@ -111,104 +111,104 @@ public class AbstractNativeApplication implements NativeApplication {
 
   public void scheduleExternal() {
     IngestionPipelineRepository ingestionPipelineRepository =
-            (IngestionPipelineRepository) Entity.getEntityRepository(Entity.INGESTION_PIPELINE);
+        (IngestionPipelineRepository) Entity.getEntityRepository(Entity.INGESTION_PIPELINE);
 
     try {
       bindExistingIngestionToApplication(ingestionPipelineRepository);
     } catch (EntityNotFoundException ex) {
       ApplicationConfig config =
-              JsonUtils.convertValue(this.getApp().getAppConfiguration(), ApplicationConfig.class);
+          JsonUtils.convertValue(this.getApp().getAppConfiguration(), ApplicationConfig.class);
       createAndBindIngestionPipeline(ingestionPipelineRepository, config);
     }
   }
 
   private void bindExistingIngestionToApplication(
-          IngestionPipelineRepository ingestionPipelineRepository) {
+      IngestionPipelineRepository ingestionPipelineRepository) {
     String fqn = FullyQualifiedName.add(SERVICE_NAME, this.getApp().getName());
     IngestionPipeline storedPipeline =
-            ingestionPipelineRepository.getByName(
-                    null, fqn, ingestionPipelineRepository.getFields("id"));
+        ingestionPipelineRepository.getByName(
+            null, fqn, ingestionPipelineRepository.getFields("id"));
 
     // Init Application Code for Some Initialization
     List<CollectionDAO.EntityRelationshipRecord> records =
-            collectionDAO
-                    .relationshipDAO()
-                    .findTo(
-                            this.getApp().getId(),
-                            Entity.APPLICATION,
-                            Relationship.HAS.ordinal(),
-                            Entity.INGESTION_PIPELINE);
+        collectionDAO
+            .relationshipDAO()
+            .findTo(
+                this.getApp().getId(),
+                Entity.APPLICATION,
+                Relationship.HAS.ordinal(),
+                Entity.INGESTION_PIPELINE);
 
     if (records.isEmpty()) {
       // Add Ingestion Pipeline to Application
       collectionDAO
-              .relationshipDAO()
-              .insert(
-                      this.getApp().getId(),
-                      storedPipeline.getId(),
-                      Entity.APPLICATION,
-                      Entity.INGESTION_PIPELINE,
-                      Relationship.HAS.ordinal());
+          .relationshipDAO()
+          .insert(
+              this.getApp().getId(),
+              storedPipeline.getId(),
+              Entity.APPLICATION,
+              Entity.INGESTION_PIPELINE,
+              Relationship.HAS.ordinal());
     }
   }
 
   private void createAndBindIngestionPipeline(
-          IngestionPipelineRepository ingestionPipelineRepository, ApplicationConfig config) {
+      IngestionPipelineRepository ingestionPipelineRepository, ApplicationConfig config) {
     MetadataServiceRepository serviceEntityRepository =
-            (MetadataServiceRepository) Entity.getEntityRepository(Entity.METADATA_SERVICE);
+        (MetadataServiceRepository) Entity.getEntityRepository(Entity.METADATA_SERVICE);
     EntityReference service =
-            serviceEntityRepository
-                    .getByName(null, SERVICE_NAME, serviceEntityRepository.getFields("id"))
-                    .getEntityReference();
+        serviceEntityRepository
+            .getByName(null, SERVICE_NAME, serviceEntityRepository.getFields("id"))
+            .getEntityReference();
 
     CreateIngestionPipeline createPipelineRequest =
-            new CreateIngestionPipeline()
-                    .withName(this.getApp().getName())
-                    .withDisplayName(this.getApp().getDisplayName())
-                    .withDescription(this.getApp().getDescription())
-                    .withPipelineType(PipelineType.APPLICATION)
-                    .withSourceConfig(
-                            new SourceConfig()
-                                    .withConfig(
-                                            new ApplicationPipeline()
-                                                    .withSourcePythonClass(this.getApp().getSourcePythonClass())
-                                                    .withAppConfig(config)
-                                                    .withAppPrivateConfig(this.getApp().getPrivateConfiguration())))
-                    .withAirflowConfig(
-                            new AirflowConfig()
-                                    .withScheduleInterval(this.getApp().getAppSchedule().getCronExpression()))
-                    .withService(service);
+        new CreateIngestionPipeline()
+            .withName(this.getApp().getName())
+            .withDisplayName(this.getApp().getDisplayName())
+            .withDescription(this.getApp().getDescription())
+            .withPipelineType(PipelineType.APPLICATION)
+            .withSourceConfig(
+                new SourceConfig()
+                    .withConfig(
+                        new ApplicationPipeline()
+                            .withSourcePythonClass(this.getApp().getSourcePythonClass())
+                            .withAppConfig(config)
+                            .withAppPrivateConfig(this.getApp().getPrivateConfiguration())))
+            .withAirflowConfig(
+                new AirflowConfig()
+                    .withScheduleInterval(this.getApp().getAppSchedule().getCronExpression()))
+            .withService(service);
 
     // Get Pipeline
     IngestionPipeline ingestionPipeline =
-            getIngestionPipeline(
-                    createPipelineRequest, String.format("%sBot", this.getApp().getName()), "admin")
-                    .withProvider(ProviderType.USER);
+        getIngestionPipeline(
+                createPipelineRequest, String.format("%sBot", this.getApp().getName()), "admin")
+            .withProvider(ProviderType.USER);
     ingestionPipelineRepository.setFullyQualifiedName(ingestionPipeline);
     ingestionPipelineRepository.initializeEntity(ingestionPipeline);
 
     // Add Ingestion Pipeline to Application
     collectionDAO
-            .relationshipDAO()
-            .insert(
-                    this.getApp().getId(),
-                    ingestionPipeline.getId(),
-                    Entity.APPLICATION,
-                    Entity.INGESTION_PIPELINE,
-                    Relationship.HAS.ordinal());
+        .relationshipDAO()
+        .insert(
+            this.getApp().getId(),
+            ingestionPipeline.getId(),
+            Entity.APPLICATION,
+            Entity.INGESTION_PIPELINE,
+            Relationship.HAS.ordinal());
   }
 
   protected void validateServerExecutableApp(AppRuntime context) {
     // Server apps are native
     if (!app.getAppType().equals(AppType.Internal)) {
       throw new IllegalArgumentException(
-              "Application cannot be executed internally in Server. Please check if the App supports internal Server Execution.");
+          "Application cannot be executed internally in Server. Please check if the App supports internal Server Execution.");
     }
 
     // Check OnDemand Execution is supported
     if (!(context != null && Boolean.TRUE.equals(context.getEnabled()))) {
       throw new IllegalArgumentException(
-              "Applications does not support on demand execution or the context is not Internal.");
+          "Applications does not support on demand execution or the context is not Internal.");
     }
   }
 
@@ -233,9 +233,9 @@ public class AbstractNativeApplication implements NativeApplication {
   @Override
   public void raisePreviewMessage(App app) {
     throw AppException.byMessage(
-            app.getName(),
-            "Preview",
-            "App is in Preview Mode. Enable it from the server configuration.");
+        app.getName(),
+        "Preview",
+        "App is in Preview Mode. Enable it from the server configuration.");
   }
 
   public static AppRuntime getAppRuntime(App app) {
@@ -243,27 +243,27 @@ public class AbstractNativeApplication implements NativeApplication {
   }
 
   protected IngestionPipeline getIngestionPipeline(
-          CreateIngestionPipeline create, String botName, String user) {
+      CreateIngestionPipeline create, String botName, String user) {
     IngestionPipelineRepository ingestionPipelineRepository =
-            (IngestionPipelineRepository) Entity.getEntityRepository(Entity.INGESTION_PIPELINE);
+        (IngestionPipelineRepository) Entity.getEntityRepository(Entity.INGESTION_PIPELINE);
     OpenMetadataConnection openMetadataServerConnection =
-            new OpenMetadataConnectionBuilder(
-                    ingestionPipelineRepository.getOpenMetadataApplicationConfig(), botName)
-                    .build();
+        new OpenMetadataConnectionBuilder(
+                ingestionPipelineRepository.getOpenMetadataApplicationConfig(), botName)
+            .build();
     return ingestionPipelineRepository
-            .copy(new IngestionPipeline(), create, user)
-            .withPipelineType(create.getPipelineType())
-            .withAirflowConfig(create.getAirflowConfig())
-            .withOpenMetadataServerConnection(openMetadataServerConnection)
-            .withSourceConfig(create.getSourceConfig())
-            .withLoggerLevel(create.getLoggerLevel())
-            .withService(create.getService());
+        .copy(new IngestionPipeline(), create, user)
+        .withPipelineType(create.getPipelineType())
+        .withAirflowConfig(create.getAirflowConfig())
+        .withOpenMetadataServerConnection(openMetadataServerConnection)
+        .withSourceConfig(create.getSourceConfig())
+        .withLoggerLevel(create.getLoggerLevel())
+        .withService(create.getService());
   }
 
   private OmAppJobListener getJobListener(JobExecutionContext jobExecutionContext)
-          throws SchedulerException {
+      throws SchedulerException {
     return (OmAppJobListener)
-            jobExecutionContext.getScheduler().getListenerManager().getJobListener(JOB_LISTENER_NAME);
+        jobExecutionContext.getScheduler().getListenerManager().getJobListener(JOB_LISTENER_NAME);
   }
 
   @SneakyThrows
@@ -274,7 +274,7 @@ public class AbstractNativeApplication implements NativeApplication {
 
   @SneakyThrows
   protected void pushAppStatusUpdates(
-          JobExecutionContext jobExecutionContext, AppRunRecord appRecord, boolean update) {
+      JobExecutionContext jobExecutionContext, AppRunRecord appRecord, boolean update) {
     OmAppJobListener listener = getJobListener(jobExecutionContext);
     listener.pushApplicationStatusUpdates(jobExecutionContext, appRecord, update);
   }

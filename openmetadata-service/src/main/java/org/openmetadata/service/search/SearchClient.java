@@ -40,28 +40,28 @@ public interface SearchClient {
   String DEFAULT_UPDATE_SCRIPT = "for (k in params.keySet()) { ctx._source.put(k, params.get(k)) }";
   String REMOVE_DOMAINS_CHILDREN_SCRIPT = "ctx._source.remove('domain')";
   String PROPAGATE_ENTITY_REFERENCE_FIELD_SCRIPT =
-          "if(ctx._source.%s == null){ ctx._source.put('%s', params)}";
+      "if(ctx._source.%s == null){ ctx._source.put('%s', params)}";
 
   String PROPAGATE_FIELD_SCRIPT = "ctx._source.put('%s', '%s')";
 
   String REMOVE_PROPAGATED_ENTITY_REFERENCE_FIELD_SCRIPT =
-          "if((ctx._source.%s != null) && (ctx._source.%s.id == '%s')){ ctx._source.remove('%s')}";
+      "if((ctx._source.%s != null) && (ctx._source.%s.id == '%s')){ ctx._source.remove('%s')}";
   String REMOVE_PROPAGATED_FIELD_SCRIPT = "ctx._source.remove('%s')";
   String UPDATE_PROPAGATED_ENTITY_REFERENCE_FIELD_SCRIPT =
-          "if((ctx._source.%s == null) || (ctx._source.%s.id == '%s')) { ctx._source.put('%s', params)}";
+      "if((ctx._source.%s == null) || (ctx._source.%s.id == '%s')) { ctx._source.put('%s', params)}";
   String SOFT_DELETE_RESTORE_SCRIPT = "ctx._source.put('deleted', '%s')";
   String REMOVE_TAGS_CHILDREN_SCRIPT =
-          "for (int i = 0; i < ctx._source.tags.length; i++) { if (ctx._source.tags[i].tagFQN == params.fqn) { ctx._source.tags.remove(i) }}";
+      "for (int i = 0; i < ctx._source.tags.length; i++) { if (ctx._source.tags[i].tagFQN == params.fqn) { ctx._source.tags.remove(i) }}";
 
   String REMOVE_LINEAGE_SCRIPT =
-          "for (int i = 0; i < ctx._source.lineage.length; i++) { if (ctx._source.lineage[i].doc_id == '%s') { ctx._source.lineage.remove(i) }}";
+      "for (int i = 0; i < ctx._source.lineage.length; i++) { if (ctx._source.lineage[i].doc_id == '%s') { ctx._source.lineage.remove(i) }}";
 
   String ADD_UPDATE_LINEAGE =
-          "boolean docIdExists = false; for (int i = 0; i < ctx._source.lineage.size(); i++) { if (ctx._source.lineage[i].doc_id.equalsIgnoreCase(params.lineageData.doc_id)) { ctx._source.lineage[i] = params.lineageData; docIdExists = true; break;}}if (!docIdExists) {ctx._source.lineage.add(params.lineageData);}";
+      "boolean docIdExists = false; for (int i = 0; i < ctx._source.lineage.size(); i++) { if (ctx._source.lineage[i].doc_id.equalsIgnoreCase(params.lineageData.doc_id)) { ctx._source.lineage[i] = params.lineageData; docIdExists = true; break;}}if (!docIdExists) {ctx._source.lineage.add(params.lineageData);}";
   String UPDATE_ADDED_DELETE_GLOSSARY_TAGS =
-          "if (ctx._source.tags != null) { for (int i = ctx._source.tags.size() - 1; i >= 0; i--) { if (params.tagDeleted != null) { for (int j = 0; j < params.tagDeleted.size(); j++) { if (ctx._source.tags[i].tagFQN.equalsIgnoreCase(params.tagDeleted[j].tagFQN)) { ctx._source.tags.remove(i); } } } } } if (ctx._source.tags == null) { ctx._source.tags = []; } if (params.tagAdded != null) { ctx._source.tags.addAll(params.tagAdded); } ctx._source.tags = ctx._source.tags .stream() .distinct() .sorted((o1, o2) -> o1.tagFQN.compareTo(o2.tagFQN)) .collect(Collectors.toList());";
+      "if (ctx._source.tags != null) { for (int i = ctx._source.tags.size() - 1; i >= 0; i--) { if (params.tagDeleted != null) { for (int j = 0; j < params.tagDeleted.size(); j++) { if (ctx._source.tags[i].tagFQN.equalsIgnoreCase(params.tagDeleted[j].tagFQN)) { ctx._source.tags.remove(i); } } } } } if (ctx._source.tags == null) { ctx._source.tags = []; } if (params.tagAdded != null) { ctx._source.tags.addAll(params.tagAdded); } ctx._source.tags = ctx._source.tags .stream() .distinct() .sorted((o1, o2) -> o1.tagFQN.compareTo(o2.tagFQN)) .collect(Collectors.toList());";
   String REMOVE_TEST_SUITE_CHILDREN_SCRIPT =
-          "for (int i = 0; i < ctx._source.testSuites.length; i++) { if (ctx._source.testSuites[i].id == '%s') { ctx._source.testSuites.remove(i) }}";
+      "for (int i = 0; i < ctx._source.testSuites.length; i++) { if (ctx._source.testSuites[i].id == '%s') { ctx._source.testSuites.remove(i) }}";
 
   String NOT_IMPLEMENTED_ERROR_TYPE = "NOT_IMPLEMENTED";
 
@@ -88,33 +88,33 @@ public interface SearchClient {
   }
 
   SearchResultListMapper listWithOffset(
-          String filter,
-          int limit,
-          int offset,
-          String index,
-          SearchSortFilter searchSortFilter,
-          String q)
-          throws IOException;
+      String filter,
+      int limit,
+      int offset,
+      String index,
+      SearchSortFilter searchSortFilter,
+      String q)
+      throws IOException;
 
   Response searchBySourceUrl(String sourceUrl) throws IOException;
 
   Response searchLineage(
-          String fqn,
-          int upstreamDepth,
-          int downstreamDepth,
-          String queryFilter,
-          boolean deleted,
-          String entityType)
-          throws IOException;
+      String fqn,
+      int upstreamDepth,
+      int downstreamDepth,
+      String queryFilter,
+      boolean deleted,
+      String entityType)
+      throws IOException;
 
   Map<String, Object> searchLineageInternal(
-          String fqn,
-          int upstreamDepth,
-          int downstreamDepth,
-          String queryFilter,
-          boolean deleted,
-          String entityType)
-          throws IOException;
+      String fqn,
+      int upstreamDepth,
+      int downstreamDepth,
+      String queryFilter,
+      boolean deleted,
+      String entityType)
+      throws IOException;
 
   Response searchByField(String fieldName, String fieldValue, String index) throws IOException;
 
@@ -142,77 +142,77 @@ public interface SearchClient {
   void softDeleteOrRestoreEntity(String indexName, String docId, String scriptTxt);
 
   void softDeleteOrRestoreChildren(
-          List<String> indexName, String scriptTxt, List<Pair<String, String>> fieldAndValue);
+      List<String> indexName, String scriptTxt, List<Pair<String, String>> fieldAndValue);
 
   void updateChildren(
-          String indexName,
-          Pair<String, String> fieldAndValue,
-          Pair<String, Map<String, Object>> updates);
+      String indexName,
+      Pair<String, String> fieldAndValue,
+      Pair<String, Map<String, Object>> updates);
 
   void updateChildren(
-          List<String> indexName,
-          Pair<String, String> fieldAndValue,
-          Pair<String, Map<String, Object>> updates);
+      List<String> indexName,
+      Pair<String, String> fieldAndValue,
+      Pair<String, Map<String, Object>> updates);
 
   void updateLineage(
-          String indexName, Pair<String, String> fieldAndValue, Map<String, Object> lineagaData);
+      String indexName, Pair<String, String> fieldAndValue, Map<String, Object> lineagaData);
 
   TreeMap<Long, List<Object>> getSortedDate(
-          String team,
-          Long scheduleTime,
-          Long currentTime,
-          DataInsightChartResult.DataInsightChartType chartType,
-          String indexName)
-          throws IOException, ParseException;
+      String team,
+      Long scheduleTime,
+      Long currentTime,
+      DataInsightChartResult.DataInsightChartType chartType,
+      String indexName)
+      throws IOException, ParseException;
 
   Response listDataInsightChartResult(
-          Long startTs,
-          Long endTs,
-          String tier,
-          String team,
-          DataInsightChartResult.DataInsightChartType dataInsightChartName,
-          Integer size,
-          Integer from,
-          String queryFilter,
-          String dataReportIndex)
-          throws IOException, ParseException;
+      Long startTs,
+      Long endTs,
+      String tier,
+      String team,
+      DataInsightChartResult.DataInsightChartType dataInsightChartName,
+      Integer size,
+      Integer from,
+      String queryFilter,
+      String dataReportIndex)
+      throws IOException, ParseException;
 
   // TODO: Think if it makes sense to have this or maybe a specific deleteByRange
   public void deleteByQuery(String index, String query) throws IOException;
 
   default BulkResponse bulk(BulkRequest data, RequestOptions options) throws IOException {
     throw new CustomExceptionMessage(
-            Response.Status.NOT_IMPLEMENTED, NOT_IMPLEMENTED_ERROR_TYPE, NOT_IMPLEMENTED_METHOD);
+        Response.Status.NOT_IMPLEMENTED, NOT_IMPLEMENTED_ERROR_TYPE, NOT_IMPLEMENTED_METHOD);
   }
 
   default es.org.elasticsearch.action.bulk.BulkResponse bulk(
-          es.org.elasticsearch.action.bulk.BulkRequest data,
-          es.org.elasticsearch.client.RequestOptions options)
-          throws IOException {
+      es.org.elasticsearch.action.bulk.BulkRequest data,
+      es.org.elasticsearch.client.RequestOptions options)
+      throws IOException {
     throw new CustomExceptionMessage(
-            Response.Status.NOT_IMPLEMENTED, NOT_IMPLEMENTED_ERROR_TYPE, NOT_IMPLEMENTED_METHOD);
+        Response.Status.NOT_IMPLEMENTED, NOT_IMPLEMENTED_ERROR_TYPE, NOT_IMPLEMENTED_METHOD);
   }
 
   default int getSuccessFromBulkResponse(BulkResponse response) {
     throw new CustomExceptionMessage(
-            Response.Status.NOT_IMPLEMENTED, NOT_IMPLEMENTED_ERROR_TYPE, NOT_IMPLEMENTED_METHOD);
+        Response.Status.NOT_IMPLEMENTED, NOT_IMPLEMENTED_ERROR_TYPE, NOT_IMPLEMENTED_METHOD);
   }
 
   default int getSuccessFromBulkResponse(es.org.elasticsearch.action.bulk.BulkResponse response) {
     throw new CustomExceptionMessage(
-            Response.Status.NOT_IMPLEMENTED, NOT_IMPLEMENTED_ERROR_TYPE, NOT_IMPLEMENTED_METHOD);
+        Response.Status.NOT_IMPLEMENTED, NOT_IMPLEMENTED_ERROR_TYPE, NOT_IMPLEMENTED_METHOD);
   }
 
   void close();
 
   default SSLContext createElasticSearchSSLContext(
-          ElasticSearchConfiguration elasticSearchConfiguration) throws KeyStoreException {
+      ElasticSearchConfiguration elasticSearchConfiguration) throws KeyStoreException {
     return elasticSearchConfiguration.getScheme().equals("https")
-            ? SSLUtil.createSSLContext(
+        ? SSLUtil.createSSLContext(
             elasticSearchConfiguration.getTruststorePath(),
             elasticSearchConfiguration.getTruststorePassword(),
             "ElasticSearch")
-            : null;
+        : null;
   }
 
   @Getter
@@ -239,7 +239,7 @@ public interface SearchClient {
   }
 
   default DataInsightCustomChartResultList buildDIChart(
-          DataInsightCustomChart diChart, long start, long end) throws IOException {
+      DataInsightCustomChart diChart, long start, long end) throws IOException {
     return null;
   }
 

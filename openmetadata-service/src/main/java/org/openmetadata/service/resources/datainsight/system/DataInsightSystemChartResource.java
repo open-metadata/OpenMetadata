@@ -36,7 +36,9 @@ import org.openmetadata.service.security.Authorizer;
 
 @Slf4j
 @Path("/v1/analytics/dataInsights/system/charts")
-@Tag(name = "Data Insights System Chats", description = "APIs related to Data Insights system charts.")
+@Tag(
+    name = "Data Insights System Chats",
+    description = "APIs related to Data Insights system charts.")
 @Hidden
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
@@ -141,7 +143,8 @@ public class DataInsightSystemChartResource
     return Response.status(Response.Status.OK).entity(resultList).build();
   }
 
-  private DataInsightCustomChart getDataInsightCustomChart(CreateDataInsightCustomChart create, String user) {
+  private DataInsightCustomChart getDataInsightCustomChart(
+      CreateDataInsightCustomChart create, String user) {
     return repository
         .copy(new DataInsightCustomChart(), create, user)
         .withName(create.getName())

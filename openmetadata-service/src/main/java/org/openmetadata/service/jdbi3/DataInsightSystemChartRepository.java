@@ -3,16 +3,11 @@ package org.openmetadata.service.jdbi3;
 import static org.openmetadata.service.Entity.DATA_INSIGHT_CUSTOM_CHART;
 
 import java.io.IOException;
-import java.text.ParseException;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 import org.openmetadata.schema.dataInsight.custom.DataInsightCustomChart;
 import org.openmetadata.schema.dataInsight.custom.DataInsightCustomChartResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.search.SearchClient;
-import org.openmetadata.service.security.policyevaluator.CompiledRule;
 import org.openmetadata.service.util.EntityUtil;
-import org.springframework.expression.Expression;
 
 public class DataInsightSystemChartRepository extends EntityRepository<DataInsightCustomChart> {
   public static final String COLLECTION_PATH = "/v1/analytics/dataInsights/system/charts";
