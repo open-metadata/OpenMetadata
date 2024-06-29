@@ -11,11 +11,12 @@
  *  limitations under the License.
  */
 import { CheckOutlined, CloseOutlined } from '@ant-design/icons';
-import { NodeViewContent, NodeViewProps, NodeViewWrapper } from '@tiptap/react';
-import { Button, Input, Space } from 'antd';
+import { NodeViewProps, NodeViewWrapper } from '@tiptap/react';
+import { Button, Input, Space, Tooltip } from 'antd';
 import { TextAreaRef } from 'antd/lib/input/TextArea';
 import 'katex/dist/katex.min.css';
 import React, { FC } from 'react';
+import { useTranslation } from 'react-i18next';
 import Latex from 'react-latex-next';
 import { ReactComponent as EditIcon } from '../../../../assets/svg/edit-new.svg';
 import './math-equation.less';
@@ -24,6 +25,7 @@ export const MathEquationComponent: FC<NodeViewProps> = ({
   node,
   updateAttributes,
 }) => {
+  const { t } = useTranslation();
   const inputRef = React.useRef<TextAreaRef>(null);
   const equation = node.attrs.math_equation;
 
@@ -35,6 +37,7 @@ export const MathEquationComponent: FC<NodeViewProps> = ({
     updateAttributes({
       math_equation:
         inputRef.current?.resizableTextArea?.textArea.value ?? equation,
+      isEditing: false,
     });
     setIsEditing(false);
   };
@@ -71,16 +74,18 @@ export const MathEquationComponent: FC<NodeViewProps> = ({
           <Latex>{equation}</Latex>
         )}
         {!isEditing && (
-          <Button
-            className="edit-button"
-            icon={<EditIcon width={16} />}
-            size="small"
-            type="text"
-            onClick={() => setIsEditing(true)}
-          />
+          <Tooltip
+            title={t('label.edit-entity', { entity: t('label.equation') })}>
+            <Button
+              className="edit-button"
+              icon={<EditIcon width={16} />}
+              size="small"
+              type="text"
+              onClick={() => setIsEditing(true)}
+            />
+          </Tooltip>
         )}
       </div>
-      <NodeViewContent />
     </NodeViewWrapper>
   );
 };
