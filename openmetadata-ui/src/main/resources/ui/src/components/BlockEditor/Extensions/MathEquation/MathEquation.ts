@@ -11,11 +11,10 @@
  *  limitations under the License.
  */
 import {
-  Content,
-  InputRule,
   mergeAttributes,
   Node,
-  PasteRule,
+  nodeInputRule,
+  nodePasteRule,
 } from '@tiptap/core';
 import { ReactNodeViewRenderer } from '@tiptap/react';
 import { MathEquationComponent } from './MathEquationComponent';
@@ -30,6 +29,9 @@ export default Node.create({
     return {
       math_equation: {
         default: '',
+      },
+      isEditing: {
+        default: false,
       },
     };
   },
@@ -52,56 +54,23 @@ export default Node.create({
 
   addInputRules() {
     return [
-      new InputRule({
+      nodeInputRule({
         find: new RegExp(`\\$((?:\\.|[^\\$]|\\$)+?)\\$$`, 'g'),
-        handler: (props) => {
-          const latex = props.match[0];
-
-          const content: Content = [
-            {
-              type: 'MathEquation',
-              attrs: {
-                math_equation: latex,
-              },
-            },
-          ];
-          props
-            .chain()
-            .insertContentAt(
-              {
-                from: props.range.from,
-                to: props.range.to,
-              },
-              content,
-              { updateSelection: true }
-            )
-            .run();
+        type: this.type,
+        getAttributes: (match) => {
+          return {
+            math_equation: match[0],
+          };
         },
       }),
-      new InputRule({
-        find: new RegExp(`\\$\\$((?:\\.|[^\\$]|\\$)+?)\\$\\$`, ''),
-        handler: (props) => {
-          const latex = props.match[0];
 
-          const content: Content = [
-            {
-              type: 'MathEquation',
-              attrs: {
-                math_equation: latex,
-              },
-            },
-          ];
-          props
-            .chain()
-            .insertContentAt(
-              {
-                from: props.range.from,
-                to: props.range.to,
-              },
-              content,
-              { updateSelection: true }
-            )
-            .run();
+      nodeInputRule({
+        find: new RegExp(`\\$\\$((?:\\.|[^\\$]|\\$)+?)\\$\\$`, 'g'),
+        type: this.type,
+        getAttributes: (match) => {
+          return {
+            math_equation: match[0],
+          };
         },
       }),
     ];
@@ -109,46 +78,22 @@ export default Node.create({
 
   addPasteRules() {
     return [
-      new PasteRule({
+      nodePasteRule({
         find: new RegExp(`\\$((?:\\.|[^\\$]|\\$)+?)\\$$`, 'g'),
-        handler: (props) => {
-          const latex = props.match[0];
-          props
-            .chain()
-            .insertContentAt(
-              { from: props.range.from, to: props.range.to },
-              [
-                {
-                  type: 'MathEquation',
-                  attrs: {
-                    math_equation: latex,
-                  },
-                },
-              ],
-              { updateSelection: true }
-            )
-            .run();
+        type: this.type,
+        getAttributes: (match) => {
+          return {
+            math_equation: match[0],
+          };
         },
       }),
-      new PasteRule({
+      nodePasteRule({
         find: new RegExp(`\\$\\$((?:\\.|[^\\$]|\\$)+?)\\$\\$`, 'g'),
-        handler: (props) => {
-          const latex = props.match[0];
-          props
-            .chain()
-            .insertContentAt(
-              { from: props.range.from, to: props.range.to },
-              [
-                {
-                  type: 'MathEquation',
-                  attrs: {
-                    math_equation: latex,
-                  },
-                },
-              ],
-              { updateSelection: true }
-            )
-            .run();
+        type: this.type,
+        getAttributes: (match) => {
+          return {
+            math_equation: match[0],
+          };
         },
       }),
     ];

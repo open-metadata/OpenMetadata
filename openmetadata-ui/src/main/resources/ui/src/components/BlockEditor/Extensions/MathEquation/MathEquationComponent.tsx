@@ -10,12 +10,12 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { NodeViewProps, NodeViewWrapper } from '@tiptap/react';
+import { CheckOutlined, CloseOutlined } from '@ant-design/icons';
+import { NodeViewContent, NodeViewProps, NodeViewWrapper } from '@tiptap/react';
 import { Button, Input, Space } from 'antd';
 import { TextAreaRef } from 'antd/lib/input/TextArea';
 import 'katex/dist/katex.min.css';
 import React, { FC } from 'react';
-import { useTranslation } from 'react-i18next';
 import Latex from 'react-latex-next';
 import { ReactComponent as EditIcon } from '../../../../assets/svg/edit-new.svg';
 import './math-equation.less';
@@ -25,10 +25,11 @@ export const MathEquationComponent: FC<NodeViewProps> = ({
   updateAttributes,
 }) => {
   const inputRef = React.useRef<TextAreaRef>(null);
-  const { t } = useTranslation();
   const equation = node.attrs.math_equation;
 
-  const [isEditing, setIsEditing] = React.useState(false);
+  const [isEditing, setIsEditing] = React.useState(
+    Boolean(node.attrs.isEditing)
+  );
 
   const handleSaveEquation = () => {
     updateAttributes({
@@ -49,18 +50,21 @@ export const MathEquationComponent: FC<NodeViewProps> = ({
               className="math-equation-input"
               defaultValue={equation}
               ref={inputRef}
-              rows={3}
+              rows={1}
             />
             <Space direction="horizontal" size={8}>
               <Button
+                icon={<CloseOutlined />}
                 size="small"
                 type="default"
-                onClick={() => setIsEditing(false)}>
-                {t('label.cancel')}
-              </Button>
-              <Button size="small" type="primary" onClick={handleSaveEquation}>
-                {t('label.save')}
-              </Button>
+                onClick={() => setIsEditing(false)}
+              />
+              <Button
+                icon={<CheckOutlined />}
+                size="small"
+                type="primary"
+                onClick={handleSaveEquation}
+              />
             </Space>
           </div>
         ) : (
@@ -76,6 +80,7 @@ export const MathEquationComponent: FC<NodeViewProps> = ({
           />
         )}
       </div>
+      <NodeViewContent />
     </NodeViewWrapper>
   );
 };
