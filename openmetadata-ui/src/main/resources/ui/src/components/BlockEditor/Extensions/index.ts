@@ -34,6 +34,7 @@ import { mentionSuggestion } from './mention/mentionSuggestions';
 import slashCommand from './slash-command';
 import { getSuggestionItems } from './slash-command/items';
 import renderItems from './slash-command/renderItems';
+import { TrailingNode } from './trailing-node';
 
 export const extensions = [
   StarterKit.configure({
@@ -146,4 +147,5 @@ export const extensions = [
     },
   }),
   MathEquation,
+  TrailingNode,
 ];
