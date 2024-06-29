@@ -53,6 +53,7 @@ public class SecretsManagerFactory {
       case MANAGED_AWS_SSM -> secretsManager = AWSSSMSecretsManager.getInstance(secretsConfig);
       case IN_MEMORY -> secretsManager = InMemorySecretsManager.getInstance(secretsConfig);
       case MANAGED_AZURE_KV -> secretsManager = AzureKVSecretsManager.getInstance(secretsConfig);
+      case GCP -> secretsManager = GCPSecretsManager.getInstance(secretsConfig);
     }
     return secretsManager;
   }
