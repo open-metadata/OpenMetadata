@@ -94,8 +94,11 @@ const EditorSlots = forwardRef<EditorSlotsRef, EditorSlotsProps>(
 
         return;
       }
-      if (target.nodeName === 'A') {
-        const href = target.getAttribute('href');
+
+      const closestElement = target.closest('a');
+      if (target.nodeName === 'A' || closestElement) {
+        const href =
+          target.getAttribute('href') || closestElement?.getAttribute('href');
 
         component = new ReactRenderer(LinkPopup, {
           editor: editor as Editor,
