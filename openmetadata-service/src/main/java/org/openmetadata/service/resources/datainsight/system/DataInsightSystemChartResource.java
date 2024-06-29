@@ -143,7 +143,7 @@ public class DataInsightSystemChartResource
     return Response.status(Response.Status.OK).entity(resultList).build();
   }
 
-  private DataInsightCustomChart getDataInsightCustomChart(
+  public DataInsightCustomChart getDataInsightCustomChart(
       CreateDataInsightCustomChart create, String user) {
     return repository
         .copy(new DataInsightCustomChart(), create, user)
