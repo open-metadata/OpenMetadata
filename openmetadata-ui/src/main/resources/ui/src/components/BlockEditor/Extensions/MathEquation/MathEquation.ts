@@ -10,12 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import {
-  mergeAttributes,
-  Node,
-  nodeInputRule,
-  nodePasteRule,
-} from '@tiptap/core';
+import { InputRule, mergeAttributes, Node, nodePasteRule } from '@tiptap/core';
 import { ReactNodeViewRenderer } from '@tiptap/react';
 import { MathEquationComponent } from './MathEquationComponent';
 
@@ -54,23 +49,22 @@ export default Node.create({
 
   addInputRules() {
     return [
-      nodeInputRule({
-        find: new RegExp(`\\$((?:\\.|[^\\$]|\\$)+?)\\$$`, 'g'),
-        type: this.type,
-        getAttributes: (match) => {
-          return {
-            math_equation: match[0],
-          };
-        },
-      }),
-
-      nodeInputRule({
+      new InputRule({
         find: new RegExp(`\\$\\$((?:\\.|[^\\$]|\\$)+?)\\$\\$`, 'g'),
-        type: this.type,
-        getAttributes: (match) => {
-          return {
-            math_equation: match[0],
-          };
+        handler: (props) => {
+          const latex = props.match[0];
+
+          props
+            .chain()
+            .focus()
+            .deleteRange(props.range)
+            .insertContent({
+              type: 'MathEquation',
+              attrs: {
+                math_equation: latex,
+              },
+            })
+            .run();
         },
       }),
     ];

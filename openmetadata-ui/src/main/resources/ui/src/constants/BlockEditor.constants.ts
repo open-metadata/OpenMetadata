@@ -31,6 +31,8 @@ export const EDITOR_OPTIONS: Partial<EditorOptions> = {
     'image',
     'taskItem',
     'callout',
+    'link',
+    'MathEquation',
   ],
   parseOptions: {
     preserveWhitespace: 'full',
