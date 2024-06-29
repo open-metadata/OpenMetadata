@@ -152,7 +152,7 @@ import org.openmetadata.sdk.exception.SearchIndexNotFoundException;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.dataInsight.DataInsightAggregatorInterface;
 import org.openmetadata.service.jdbi3.DataInsightChartRepository;
-import org.openmetadata.service.jdbi3.DataInsightCustomChartRepository;
+import org.openmetadata.service.jdbi3.DataInsightSystemChartRepository;
 import org.openmetadata.service.search.SearchClient;
 import org.openmetadata.service.search.SearchRequest;
 import org.openmetadata.service.search.SearchSortFilter;
@@ -1918,7 +1918,7 @@ public class ElasticSearchClient implements SearchClient {
   @Override
   public List<String> fetchDIChartFields() throws IOException {
     GetMappingsRequest request =
-            new GetMappingsRequest().indices(DataInsightCustomChartRepository.DI_SEARCH_INDEX);
+            new GetMappingsRequest().indices(DataInsightSystemChartRepository.DI_SEARCH_INDEX);
 
     // Execute request
     GetMappingsResponse response = client.indices().getMapping(request, RequestOptions.DEFAULT);

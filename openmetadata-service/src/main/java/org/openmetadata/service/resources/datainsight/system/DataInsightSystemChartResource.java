@@ -1,4 +1,4 @@
-package org.openmetadata.service.resources.datainsight.custom;
+package org.openmetadata.service.resources.datainsight.system;
 
 import io.swagger.v3.oas.annotations.Hidden;
 import io.swagger.v3.oas.annotations.Operation;
@@ -8,7 +8,6 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import java.io.IOException;
-import java.text.ParseException;
 import java.util.List;
 import javax.validation.Valid;
 import javax.ws.rs.Consumes;
@@ -30,30 +29,24 @@ import org.openmetadata.schema.dataInsight.custom.DataInsightCustomChart;
 import org.openmetadata.schema.dataInsight.custom.DataInsightCustomChartResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
-import org.openmetadata.service.jdbi3.DataInsightCustomChartRepository;
+import org.openmetadata.service.jdbi3.DataInsightSystemChartRepository;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
-import org.openmetadata.service.util.ResultList;
 
 @Slf4j
-@Path("/v1/analytics/dataInsights/custom/charts")
-@Tag(name = "Data Insights NEW", description = "APIs related to Data Insights data and charts.")
+@Path("/v1/analytics/dataInsights/system/charts")
+@Tag(name = "Data Insights System Chats", description = "APIs related to Data Insights system charts.")
 @Hidden
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "analytics")
-public class DataInsightCustomChartResource
-    extends EntityResource<DataInsightCustomChart, DataInsightCustomChartRepository> {
-  public static final String COLLECTION_PATH = "/v1/analytics/dataInsights/custom/charts";
-  static final String FIELDS = "owner";
+public class DataInsightSystemChartResource
+    extends EntityResource<DataInsightCustomChart, DataInsightSystemChartRepository> {
+  public static final String COLLECTION_PATH = "/v1/analytics/dataInsights/system/charts";
 
-  public DataInsightCustomChartResource(Authorizer authorizer) {
+  public DataInsightSystemChartResource(Authorizer authorizer) {
     super(Entity.DATA_INSIGHT_CUSTOM_CHART, authorizer);
-  }
-
-  public static class DataInsightCustomChartList extends ResultList<DataInsightCustomChart> {
-    /* Required for serde */
   }
 
   @Override
@@ -65,6 +58,7 @@ public class DataInsightCustomChartResource
     }
   }
 
+  // TODO: NEED TO DELETE THIS AFTER DEMO
   @POST
   @Path("/preview")
   @Operation(
@@ -97,33 +91,11 @@ public class DataInsightCustomChartResource
           @QueryParam("end")
           long end,
       @Valid CreateDataInsightCustomChart create)
-      throws IOException, ParseException {
+      throws IOException {
     DataInsightCustomChart diChart =
-        getDIChart(create, securityContext.getUserPrincipal().getName());
+        getDataInsightCustomChart(create, securityContext.getUserPrincipal().getName());
     DataInsightCustomChartResultList resultList = repository.getPreviewData(diChart, start, end);
     return Response.status(Response.Status.OK).entity(resultList).build();
-  }
-
-  @GET
-  @Path("/fields")
-  @Operation(
-      operationId = "getDIChartIndexFields",
-      summary = "Get data insight chart index fields",
-      description = "Get data insight chart index fields.",
-      responses = {
-        @ApiResponse(
-            responseCode = "200",
-            description = "Get data insight chart index fields.",
-            content =
-                @Content(
-                    mediaType = "application/json",
-                    schema = @Schema(implementation = DataInsightChart.class))),
-        @ApiResponse(responseCode = "400", description = "Bad request")
-      })
-  public Response getDIChartIndexFields(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext) throws IOException {
-    List<String> fieldList = repository.getFields();
-    return Response.status(Response.Status.OK).entity(fieldList).build();
   }
 
   @GET
@@ -163,13 +135,13 @@ public class DataInsightCustomChartResource
               schema = @Schema(type = "long", example = "1426349294842"))
           @QueryParam("end")
           long end)
-      throws IOException, ParseException {
+      throws IOException {
     DataInsightCustomChart diChart = getByNameInternal(uriInfo, securityContext, fqn, null, null);
     DataInsightCustomChartResultList resultList = repository.getPreviewData(diChart, start, end);
     return Response.status(Response.Status.OK).entity(resultList).build();
   }
 
-  private DataInsightCustomChart getDIChart(CreateDataInsightCustomChart create, String user) {
+  private DataInsightCustomChart getDataInsightCustomChart(CreateDataInsightCustomChart create, String user) {
     return repository
         .copy(new DataInsightCustomChart(), create, user)
         .withName(create.getName())

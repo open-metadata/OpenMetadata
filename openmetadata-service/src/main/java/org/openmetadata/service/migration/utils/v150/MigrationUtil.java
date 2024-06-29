@@ -9,11 +9,11 @@ import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.resources.databases.DatasourceConfig;
 import org.openmetadata.service.util.JsonUtils;
 import java.util.UUID;
-import lombok.extern.slf4j.Slf4j;
+
 import org.openmetadata.schema.dataInsight.custom.DataInsightCustomChart;
 import org.openmetadata.schema.dataInsight.custom.LineChart;
 import org.openmetadata.schema.dataInsight.custom.SummaryCard;
-import org.openmetadata.service.jdbi3.DataInsightCustomChartRepository;
+import org.openmetadata.service.jdbi3.DataInsightSystemChartRepository;
 
 
 
@@ -82,7 +82,7 @@ public class MigrationUtil {
       LOG.warn("Error running the test case resolution migration ", e);
     }
   }
-  static DataInsightCustomChartRepository dataInsightCustomChartRepository;
+  static DataInsightSystemChartRepository dataInsightSystemChartRepository;
 
   private static void createChart(String chartName, Object chartObject) {
     DataInsightCustomChart chart =
@@ -94,9 +94,9 @@ public class MigrationUtil {
             .withUpdatedBy("ingestion-bot")
             .withDeleted(false)
             .withIsSystemChart(true);
-    dataInsightCustomChartRepository.prepareInternal(chart, false);
+    dataInsightSystemChartRepository.prepareInternal(chart, false);
     try {
-      dataInsightCustomChartRepository
+      dataInsightSystemChartRepository
           .getDao()
           .insert("fqnHash", chart, chart.getFullyQualifiedName());
     } catch (Exception ex) {
@@ -106,7 +106,7 @@ public class MigrationUtil {
   }
 
   public static void createSystemDICharts() {
-    dataInsightCustomChartRepository = new DataInsightCustomChartRepository();
+    dataInsightSystemChartRepository = new DataInsightSystemChartRepository();
 
     // total data assets
     createChart(

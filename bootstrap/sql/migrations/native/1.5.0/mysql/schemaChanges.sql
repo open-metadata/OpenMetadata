@@ -12,8 +12,6 @@ CREATE TABLE IF NOT EXISTS di_chart_entity (
     INDEX name_index (name)
 );
 
---- UPDATE KPI 
-
 -- Update the KPI entity to remove the targetDefinition and set the targetValue to the value of the targetDefinition
 UPDATE kpi_entity
 SET json = JSON_REMOVE(

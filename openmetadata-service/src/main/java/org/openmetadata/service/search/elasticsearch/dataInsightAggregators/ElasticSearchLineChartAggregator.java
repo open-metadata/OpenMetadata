@@ -22,7 +22,7 @@ import org.openmetadata.schema.dataInsight.custom.DataInsightCustomChartResult;
 import org.openmetadata.schema.dataInsight.custom.DataInsightCustomChartResultList;
 import org.openmetadata.schema.dataInsight.custom.FormulaHolder;
 import org.openmetadata.schema.dataInsight.custom.LineChart;
-import org.openmetadata.service.jdbi3.DataInsightCustomChartRepository;
+import org.openmetadata.service.jdbi3.DataInsightSystemChartRepository;
 import org.openmetadata.service.util.JsonUtils;
 
 public class ElasticSearchLineChartAggregator
@@ -33,7 +33,7 @@ public class ElasticSearchLineChartAggregator
     LineChart lineChart = JsonUtils.convertValue(diChart.getChartDetails(), LineChart.class);
     DateHistogramAggregationBuilder dateHistogramAggregationBuilder =
         AggregationBuilders.dateHistogram("1")
-            .field(DataInsightCustomChartRepository.TIMESTAMP_FIELD)
+            .field(DataInsightSystemChartRepository.TIMESTAMP_FIELD)
             .calendarInterval(DateHistogramInterval.DAY);
     populateDateHistogram(
         lineChart.getFunction(),
@@ -65,7 +65,7 @@ public class ElasticSearchLineChartAggregator
     searchSourceBuilder.query(queryFilter);
     es.org.elasticsearch.action.search.SearchRequest searchRequest =
         new es.org.elasticsearch.action.search.SearchRequest(
-            DataInsightCustomChartRepository.DI_SEARCH_INDEX);
+            DataInsightSystemChartRepository.DI_SEARCH_INDEX);
     searchRequest.source(searchSourceBuilder);
     return searchRequest;
   }

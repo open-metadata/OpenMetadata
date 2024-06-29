@@ -312,7 +312,7 @@ public interface CollectionDAO {
   WebAnalyticEventDAO webAnalyticEventDAO();
 
   @CreateSqlObject
-  DIChartDao diChartDAO();
+  DataInsightCustomChartDAO dataInsightCustomChartDAO();
 
   @CreateSqlObject
   DataInsightChartDAO dataInsightChartDAO();
@@ -3811,7 +3811,7 @@ public interface CollectionDAO {
     }
   }
 
-  interface DIChartDao extends EntityDAO<DataInsightCustomChart> {
+  interface DataInsightCustomChartDAO extends EntityDAO<DataInsightCustomChart> {
     @Override
     default String getTableName() {
       return "di_chart_entity";

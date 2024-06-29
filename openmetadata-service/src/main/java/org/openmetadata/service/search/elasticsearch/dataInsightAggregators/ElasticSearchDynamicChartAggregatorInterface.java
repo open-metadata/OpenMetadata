@@ -30,7 +30,7 @@ import org.openmetadata.schema.dataInsight.custom.DataInsightCustomChartResult;
 import org.openmetadata.schema.dataInsight.custom.DataInsightCustomChartResultList;
 import org.openmetadata.schema.dataInsight.custom.FormulaHolder;
 import org.openmetadata.schema.dataInsight.custom.Function;
-import org.openmetadata.service.jdbi3.DataInsightCustomChartRepository;
+import org.openmetadata.service.jdbi3.DataInsightSystemChartRepository;
 import org.openmetadata.service.security.policyevaluator.CompiledRule;
 import org.springframework.expression.Expression;
 
@@ -58,7 +58,7 @@ public interface ElasticSearchDynamicChartAggregatorInterface {
       String formula,
       DateHistogramAggregationBuilder dateHistogramAggregationBuilder,
       List<FormulaHolder> formulas) {
-    Pattern pattern = Pattern.compile(DataInsightCustomChartRepository.FORMULA_FUNC_REGEX);
+    Pattern pattern = Pattern.compile(DataInsightSystemChartRepository.FORMULA_FUNC_REGEX);
     Matcher matcher = pattern.matcher(formula);
     int index = 0;
     while (matcher.find()) {
@@ -105,7 +105,7 @@ public interface ElasticSearchDynamicChartAggregatorInterface {
             formulaCopy.replace(holder.get(i).getFormula(), result.get(i).getCount().toString());
       }
       if (evaluate
-          && formulaCopy.matches(DataInsightCustomChartRepository.NUMERIC_VALIDATION_REGEX)
+          && formulaCopy.matches(DataInsightSystemChartRepository.NUMERIC_VALIDATION_REGEX)
           && day != null) {
         Expression expression = CompiledRule.parseExpression(formulaCopy);
         Double value = (Double) expression.getValue();
