@@ -35,10 +35,6 @@ const EditorSlots = forwardRef<EditorSlotsRef, EditorSlotsProps>(
 
     const handleLinkCancel = () => {
       handleLinkToggle();
-      if (!isNil(editor)) {
-        editor.chain().focus().extendMarkRange('link').unsetLink().run();
-        editor.chain().blur().run();
-      }
     };
 
     const handleLinkSave = (values: LinkData, op: 'edit' | 'add') => {
