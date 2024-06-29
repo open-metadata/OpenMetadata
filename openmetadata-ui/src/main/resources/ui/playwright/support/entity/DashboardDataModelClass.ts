@@ -11,8 +11,9 @@
  *  limitations under the License.
  */
 import { APIRequestContext, Page } from '@playwright/test';
-import { uuid } from '../../utils/common';
-import { visitEntityPage } from '../../utils/entity';
+import { toLower } from 'lodash';
+import { getEntityTypeSearchIndexMapping, uuid } from '../../utils/common';
+import { checkDataAssetWidget, visitEntityPage } from '../../utils/entity';
 import { EntityTypeEndpoint } from './Entity.interface';
 import { EntityClass } from './EntityClass';
 
@@ -94,6 +95,15 @@ export class DashboardDataModelClass extends EntityClass {
       searchTerm: this.entityResponseData?.['fullyQualifiedName'],
       dataTestId: `${this.service.name}-${this.entity.name}`,
     });
+  }
+
+  async checkDataAssetWidget(page: Page) {
+    await checkDataAssetWidget(
+      page,
+      'Dashboards',
+      getEntityTypeSearchIndexMapping('Dashboard'),
+      toLower(this.service.serviceType)
+    );
   }
 
   async delete(apiContext: APIRequestContext) {

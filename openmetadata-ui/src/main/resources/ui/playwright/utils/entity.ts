@@ -873,3 +873,36 @@ export const hardDeleteEntity = async (
 
   await page.click('.Toastify__close-button');
 };
+
+export const checkDataAssetWidget = async (
+  page: Page,
+  type: string,
+  index: string,
+  serviceType: string
+) => {
+  await page.waitForResponse(`/api/v1/search/query?q=**&from=0&size=0&index=table_search_index%2Ctopic_search_index%2Cdashboard_search_index%2Cpipeline_search_index
+  %2Cmlmodel_search_index%2Ccontainer_search_index%2Csearch_entity_search_index&sort_field=updatedAt
+  `);
+
+  const quickFilterResponse = page.waitForResponse(
+    `/api/v1/search/query?q=&index=${index}*${serviceType}*`
+  );
+
+  await page
+    .locator(`[data-testid="data-asset-service-${serviceType}"]`)
+    .click();
+
+  await quickFilterResponse;
+
+  expect(
+    page.locator('[data-testid="search-dropdown-Service Type"]')
+  ).toContainText(serviceType);
+
+  const isSelected = await page
+    .getByRole('menuitem', { name: type })
+    .evaluate((element) => {
+      return element.classList.contains('ant-menu-item-selected');
+    });
+
+  expect(isSelected).toBe(true);
+};

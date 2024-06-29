@@ -64,6 +64,11 @@ entities.forEach((EntityClass) => {
       await entity.visitEntityPage(page);
     });
 
+    test('Check Data Asset and Service Filtration', async ({ page }) => {
+      await redirectToHomePage(page);
+      await entity.checkDataAssetWidget(page);
+    });
+
     test('Domain Add, Update and Remove', async ({ page }) => {
       await entity.domain(
         page,
