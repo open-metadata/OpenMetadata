@@ -46,7 +46,19 @@ workbooks(filter:{{luid: "{workbook_id}"}}){{
           remoteType
         }}
         description
+        ... on ColumnField {{
+          columns {{
+            table {{
+              ... on CustomSQLTable {{
+                id
+                name
+                query
+              }}
+            }}
+          }}
+        }}
       }}
+      containUnsupportedCustomSql
       upstreamTables {{
         id
         luid

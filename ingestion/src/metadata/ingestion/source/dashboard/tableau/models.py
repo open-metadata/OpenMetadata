@@ -15,9 +15,11 @@ Tableau Source Model module
 
 from typing import Any, Dict, List, Optional, Union
 
-from pydantic import BaseModel, ConfigDict, Field, validator
+from pydantic import BaseModel, ConfigDict, Field, root_validator, validator
 
 from metadata.generated.schema.entity.data.chart import ChartType
+from metadata.ingestion.lineage.models import Dialect
+from metadata.ingestion.lineage.parser import LineageParser
 
 
 class TableauBaseModel(BaseModel):
@@ -75,12 +77,14 @@ def transform_tags(raw: Union[Dict[str, Any], List[TableauTag]]) -> List[Tableau
     return tags
 
 
-class CustomSQLTable(TableauBaseModel):
+class CustomSQLTable(BaseModel):
     """
     GraphQL API CustomSQLTable schema
     https://help.tableau.com/current/api/metadata_api/en-us/reference/customsqltable.doc.html
     """
 
+    id: Optional[str]
+    name: Optional[str]
     query: Optional[str] = None
 
 
@@ -90,11 +94,20 @@ class UpstreamColumn(BaseModel):
     remoteType: Optional[str] = None
 
 
+class ColumnsWrapper(BaseModel):
+    """
+    Wrapper for table objects in columns
+    """
+
+    table: Optional[CustomSQLTable]
+
+
 class DatasourceField(BaseModel):
     id: str
     name: Optional[str] = None
     upstreamColumns: Optional[List[Union[UpstreamColumn, None]]] = None
     description: Optional[str] = None
+    columns: Optional[List[ColumnsWrapper]]
 
 
 class UpstreamTableColumn(BaseModel):
@@ -121,9 +134,48 @@ class UpstreamTable(BaseModel):
 class DataSource(BaseModel):
     id: str
     name: Optional[str] = None
+    containsUnsupportedCustomSql: bool
     fields: Optional[List[DatasourceField]] = None
     upstreamTables: Optional[List[UpstreamTable]] = None
-    upstreamDatasources: Optional[List["DataSource"]] = None
+
+    @root_validator(pre=False)
+    def generate_upstream_tables_if_unsupported_custom_sql(cls, values):
+        if not values.get("upstreamTables") and values.get(
+            "containsUnsupportedCustomSql"
+        ):
+            query = cls._extract_query_from_fields(values.get("fields"))
+            if query:
+                upstream_tables = cls._parse_upstream_tables(query)
+                values.setdefault("upstreamTables", []).extend(upstream_tables)
+        return values
+
+    @staticmethod
+    def _extract_query_from_fields(
+        fields: Optional[List[DatasourceField]],
+    ) -> Optional[str]:
+        if not fields:
+            return None
+
+        for field in fields:
+            if not field.columns:
+                continue
+            for column in field.columns:
+                if column.table and getattr(column.table, "query", None):
+                    return column.table.query
+        return None
+
+    @staticmethod
+    def _parse_upstream_tables(query: str) -> List[UpstreamTable]:
+        parser = LineageParser(query, Dialect.ANSI, timeout_seconds=60)
+        return [
+            UpstreamTable(
+                id=f"{table.schema}.{table.raw_name}",
+                luid=f"{table.schema}.{table.raw_name}",
+                name=f"{table.raw_name}",
+                schema=f"{table.schema}",
+            )
+            for table in parser.source_tables
+        ]
 
 
 class TableauDatasources(BaseModel):
