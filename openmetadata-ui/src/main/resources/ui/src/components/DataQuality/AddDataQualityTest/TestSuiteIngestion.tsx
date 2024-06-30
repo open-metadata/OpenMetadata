@@ -47,6 +47,7 @@ import {
   Transi18next,
 } from '../../../utils/CommonUtils';
 import { getScheduleOptionsFromSchedules } from '../../../utils/ScheduleUtils';
+import { getEntityName } from '../../../utils/EntityUtils';
 import { getIngestionName } from '../../../utils/ServiceUtils';
 import { generateUUID } from '../../../utils/StringsUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
@@ -63,6 +64,8 @@ const TestSuiteIngestion: React.FC<TestSuiteIngestionProps> = ({
   ingestionPipeline,
   testSuite,
   onCancel,
+  testCaseNames,
+  pipelineName,
 }) => {
   const { ingestionFQN } = useFqn();
   const history = useHistory();
@@ -106,14 +109,18 @@ const TestSuiteIngestion: React.FC<TestSuiteIngestionProps> = ({
         }
         renderElement={<strong />}
         values={{
-          entity: `"${ingestionData?.name ?? t('label.test-suite')}"`,
+          entity: `"${
+            pipelineName ??
+            getEntityName(ingestionData) ??
+            t('label.test-suite')
+          }"`,
           entityStatus: ingestionFQN
             ? t('label.updated-lowercase')
             : t('label.created-lowercase'),
         }}
       />
     );
-  }, [ingestionData, showDeployButton]);
+  }, [ingestionData, showDeployButton, pipelineName]);
 
   const initialFormData = useMemo(() => {
     return {
@@ -158,7 +165,8 @@ const TestSuiteIngestion: React.FC<TestSuiteIngestionProps> = ({
         testSuite.executableEntityReference?.fullyQualifiedName ?? ''
       )
     );
-    const updatedName = getIngestionName(tableName, PipelineType.TestSuite);
+    const updatedName =
+      pipelineName ?? getIngestionName(tableName, PipelineType.TestSuite);
 
     const ingestionPayload: CreateIngestionPipeline = {
       airflowConfig: {
@@ -179,6 +187,7 @@ const TestSuiteIngestion: React.FC<TestSuiteIngestionProps> = ({
           type: ConfigType.TestSuite,
           entityFullyQualifiedName:
             testSuite.executableEntityReference?.fullyQualifiedName,
+          testCases: testCaseNames,
         },
       },
     };
@@ -198,6 +207,7 @@ const TestSuiteIngestion: React.FC<TestSuiteIngestionProps> = ({
 
     const updatedPipelineData = {
       ...ingestionPipeline,
+      displayName: pipelineName,
       airflowConfig: {
         ...ingestionPipeline?.airflowConfig,
         scheduleInterval: isEmpty(data.repeatFrequency)
@@ -205,6 +215,13 @@ const TestSuiteIngestion: React.FC<TestSuiteIngestionProps> = ({
           : data.repeatFrequency,
       },
       loggerLevel: data.enableDebugLog ? LogLevels.Debug : LogLevels.Info,
+      sourceConfig: {
+        ...ingestionPipeline?.sourceConfig,
+        config: {
+          ...ingestionPipeline?.sourceConfig.config,
+          testCases: testCaseNames,
+        },
+      },
     };
     const jsonPatch = compare(ingestionPipeline, updatedPipelineData);
     try {
@@ -285,7 +302,7 @@ const TestSuiteIngestion: React.FC<TestSuiteIngestionProps> = ({
       </Col>
       <DeployIngestionLoaderModal
         action={ingestionAction}
-        ingestionName={ingestionData?.name || ''}
+        ingestionName={pipelineName ?? getEntityName(ingestionData)}
         isDeployed={isIngestionDeployed}
         isIngestionCreated={isIngestionCreated}
         progress={ingestionProgress}
