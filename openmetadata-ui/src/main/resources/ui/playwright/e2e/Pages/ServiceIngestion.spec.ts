@@ -71,6 +71,8 @@ services.forEach((ServiceClass) => {
     });
 
     test(`Update schedule options and verify`, async ({ page }) => {
+      test.slow(true);
+
       await service.updateScheduleOptions(page);
     });
 

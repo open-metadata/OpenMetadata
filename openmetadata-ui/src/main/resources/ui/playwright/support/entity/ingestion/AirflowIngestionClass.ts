@@ -17,10 +17,6 @@ import { Services } from '../../../utils/serviceIngestion';
 import ServiceBaseClass from './ServiceBaseClass';
 
 class MetabaseIngestionClass extends ServiceBaseClass {
-  name: string;
-  serviceName: string;
-  serviceType: string;
-
   constructor() {
     super(
       Services.Pipeline,

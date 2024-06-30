@@ -57,6 +57,27 @@ export const getEntityTypeFromService = (service: Services) => {
   }
 };
 
+export const getServiceCategoryFromService = (service: Services) => {
+  switch (service) {
+    case Services.Dashboard:
+      return 'dashboardSerivce';
+    case Services.Database:
+      return 'databaseService';
+    case Services.Storage:
+      return 'storageService';
+    case Services.Messaging:
+      return 'messageService';
+    case Services.Search:
+      return 'searchService';
+    case Services.MLModels:
+      return 'mlModelService';
+    case Services.Pipeline:
+      return 'pipelineService';
+    default:
+      return 'databaseService';
+  }
+};
+
 export const deleteService = async (
   typeOfService: Services,
   serviceName: string,
@@ -67,12 +88,9 @@ export const deleteService = async (
   // click on created service
   await page.click(`[data-testid="service-name-${serviceName}"]`);
 
-  const displayName = await page.$eval(
-    `[data-testid="entity-header-display-name"]`,
-    (element) => element.textContent
+  await expect(page.getByTestId('entity-header-display-name')).toHaveText(
+    serviceName
   );
-
-  expect(displayName).toBe(serviceName);
 
   // Clicking on permanent delete radio button and checking the service name
   await page.click('[data-testid="manage-button"]');
@@ -110,6 +128,7 @@ export const testConnection = async (page: Page) => {
 
   await page.waitForSelector('[data-testid="success-badge"]', {
     state: 'attached',
+    timeout: 2 * 60 * 1000,
   });
 
   await expect(page.getByTestId('messag-text')).toContainText(

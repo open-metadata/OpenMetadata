@@ -20,10 +20,10 @@ import ServiceBaseClass from './ServiceBaseClass';
 
 class MysqlIngestionClass extends ServiceBaseClass {
   name: string;
-  tableFilter: string;
+  tableFilter: string[];
   constructor() {
     super(Services.Database, `pw-mysql-${uuid()}`, 'Mysql', 'bot_entity');
-    this.tableFilter = 'bot_entity{enter} alert_entity{enter} chart_entity';
+    this.tableFilter = ['bot_entity', 'alert_entity', 'chart_entity'];
   }
 
   async createService(page: Page) {
@@ -48,17 +48,20 @@ class MysqlIngestionClass extends ServiceBaseClass {
   }
 
   async fillIngestionDetails(page: Page) {
-    await page.fill('#root\\/tableFilterPattern\\/includes', this.tableFilter);
+    for (const filter of this.tableFilter) {
+      await page.fill('#root\\/tableFilterPattern\\/includes', filter);
+      await page
+        .locator('#root\\/tableFilterPattern\\/includes')
+        .press('Enter');
+    }
   }
 
   async validateIngestionDetails(page: Page) {
     await page.waitForSelector('.ant-select-selection-item-content');
-    const content = await page.$eval(
-      '.ant-select-selection-item-content',
-      (el) => el.textContent
-    );
 
-    expect(content).toBe(this.tableFilter);
+    expect(page.locator('.ant-select-selection-item-content')).toHaveText(
+      this.tableFilter
+    );
   }
 }
 

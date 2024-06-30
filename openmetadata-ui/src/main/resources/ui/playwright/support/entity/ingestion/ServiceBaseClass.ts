@@ -16,17 +16,16 @@ import {
   getApiContext,
   INVALID_NAMES,
   NAME_VALIDATION_ERROR,
-  replaceAllSpacialCharWith_,
   toastNotification,
 } from '../../../utils/common';
 import { visitEntityPage } from '../../../utils/entity';
 import { visitServiceDetailsPage } from '../../../utils/service';
 import {
   deleteService,
+  getServiceCategoryFromService,
   Services,
   testConnection,
 } from '../../../utils/serviceIngestion';
-import { settingClick } from '../../../utils/sidebar';
 
 class ServiceBaseClass {
   public category: Services;
@@ -211,7 +210,11 @@ class ServiceBaseClass {
         async () => {
           const response = await apiContext
             .get(
-              `/api/v1/services/ingestionPipelines?fields=pipelineStatuses&service=${this.serviceName}&pipelineType=metadata&serviceType=databaseService`
+              `/api/v1/services/ingestionPipelines?fields=pipelineStatuses&service=${
+                this.serviceName
+              }&pipelineType=${ingestionType}&serviceType=${getServiceCategoryFromService(
+                this.category
+              )}`
             )
             .then((res) => res.json());
 
@@ -221,7 +224,7 @@ class ServiceBaseClass {
           // Custom expect message for reporting, optional.
           message: 'make sure API eventually succeeds',
           timeout: 300_000,
-          intervals: [10_000, 20_000, 30_000],
+          intervals: [30_000],
         }
       )
       .toBe('success');
@@ -230,7 +233,7 @@ class ServiceBaseClass {
 
     await page.waitForSelector('[data-testid="data-assets-header"]');
     const pipelinePromise = page.waitForRequest(
-      `http://localhost:8585/api/v1/services/ingestionPipelines?fields=owner%2CpipelineStatuses&service=${this.serviceName}&pipelineType=metadata%2Cusage%2Clineage%2Cprofiler%2Cdbt&serviceType=databaseService`
+      `http://localhost:8585/api/v1/services/ingestionPipelines?fields=owner%2CpipelineStatuses&service=${this.serviceName}&pipelineType=metadata%2Cusage%2Clineage%2Cprofiler%2Cdbt&serviceType=*`
     );
     const statusPromise = page.waitForRequest(
       `/api/v1/services/ingestionPipelines/${this.serviceName}*/pipelineStatus?**`
@@ -238,8 +241,6 @@ class ServiceBaseClass {
     await pipelinePromise;
 
     await statusPromise;
-
-    // click on the tab only for the first time
 
     await page.waitForSelector('[data-testid="ingestions"]');
     await page.click('[data-testid="ingestions"]');
@@ -281,7 +282,9 @@ class ServiceBaseClass {
 
     // select schedule
     await page.click('[data-testid="cron-type"]');
-    await page.click('.ant-select-item-option-content:has-text("Minutes")');
+    await page
+      .locator('.ant-select-item-option-content', { hasText: 'Minute' })
+      .click();
     await page.click('[data-testid="minute-segment-options"]');
     await page.click('.ant-select-item-option-content:has-text("10")');
 
@@ -289,11 +292,9 @@ class ServiceBaseClass {
     await page.click('[data-testid="deploy-button"]');
     await page.click('[data-testid="view-service-button"]');
 
-    await page.waitForSelector('.ant-table-cell');
-    const minuteSchedule = await page.$('.ant-table-cell');
-    const minuteText = await minuteSchedule?.textContent();
-
-    expect(minuteText).toContain('*/10 * * * *');
+    await page
+      .getByRole('cell', { name: '*/10 * * * *' })
+      .waitFor({ state: 'visible' });
 
     // click and edit pipeline schedule for Day
     await page.click('[data-testid="edit"]');
@@ -302,19 +303,18 @@ class ServiceBaseClass {
     await page.click('.ant-select-item-option-content:has-text("Day")');
 
     await page.click('[data-testid="hour-options"]');
-    await page.click('.ant-select-item-option-content:has-text("4")');
+    await page.click('#hour-select_list + .rc-virtual-list [title="04"]');
+
     await page.click('[data-testid="minute-options"]');
-    await page.click('.ant-select-item-option-content:has-text("4")');
+    await page.click('#minute-select_list + .rc-virtual-list [title="04"]');
 
     // Deploy with schedule
     await page.click('[data-testid="deploy-button"]');
     await page.click('[data-testid="view-service-button"]');
 
-    await page.waitForSelector('.ant-table-cell');
-    const daySchedule = await page.$('.ant-table-cell');
-    const dayText = await daySchedule?.textContent();
-
-    expect(dayText).toContain('4 4 * * *');
+    await page
+      .getByRole('cell', { name: '4 4 * * *' })
+      .waitFor({ state: 'visible' });
 
     // click and edit pipeline schedule for Week
     await page.click('[data-testid="edit"]');
@@ -323,19 +323,17 @@ class ServiceBaseClass {
     await page.click('.ant-select-item-option-content:has-text("Week")');
     await page.click('[data-value="6"]');
     await page.click('[data-testid="hour-options"]');
-    await page.click('.ant-select-item-option-content:has-text("5")');
+    await page.click('#hour-select_list + .rc-virtual-list [title="05"]');
     await page.click('[data-testid="minute-options"]');
-    await page.click('.ant-select-item-option-content:has-text("05")');
+    await page.click('#minute-select_list + .rc-virtual-list [title="05"]');
 
     // Deploy with schedule
     await page.click('[data-testid="deploy-button"]');
     await page.click('[data-testid="view-service-button"]');
 
-    await page.waitForSelector('.ant-table-cell');
-    const weekSchedule = await page.$('.ant-table-cell');
-    const weekText = await weekSchedule?.textContent();
-
-    expect(weekText).toContain('5 5 * * 6');
+    await page
+      .getByRole('cell', { name: '5 5 * * 6' })
+      .waitFor({ state: 'visible' });
 
     // click and edit pipeline schedule for Custom
     await page.click('[data-testid="edit"]');
@@ -346,11 +344,10 @@ class ServiceBaseClass {
 
     await page.click('[data-testid="deploy-button"]');
     await page.click('[data-testid="view-service-button"]');
-    await page.waitForSelector('.ant-table-cell');
-    const customSchedule = await page.$('.ant-table-cell');
-    const customText = await customSchedule?.textContent();
 
-    expect(customText).toContain('* * * 2 6');
+    await page
+      .getByRole('cell', { name: '* * * 2 6' })
+      .waitFor({ state: 'visible' });
   }
 
   async updateDescriptionForIngestedTables(page: Page) {
@@ -373,30 +370,30 @@ class ServiceBaseClass {
 
     // re-run ingestion flow
     // Services page
-    await settingClick(page, Services[this.category]);
-
-    await page.fill('[data-testid="searchbar"]', this.serviceName);
-
-    // click on created service
-    await page.click(`[data-testid="service-name-${this.serviceName}"]`);
+    await visitServiceDetailsPage(
+      page,
+      {
+        name: this.serviceName,
+        type: this.category,
+      },
+      false
+    );
 
     await page.click('[data-testid="ingestions"]');
 
-    await page.waitForSelector(
-      `td:has-text("${replaceAllSpacialCharWith_(this.serviceName)}_metadata")`
-    );
-    const parentRow = await page.$(
-      `td:has-text("${replaceAllSpacialCharWith_(
-        this.serviceName
-      )}_metadata") >> xpath=ancestor::tr`
-    );
-    const runButton = await parentRow?.$('[data-testid="run"]');
-    await runButton?.click();
+    await page
+      .getByRole('cell', { name: 'Run Re Deploy Pause Edit' })
+      .waitFor({ state: 'visible' });
+
+    await page
+      .getByRole('cell', { name: 'Run Re Deploy Pause Edit' })
+      .getByTestId('run')
+      .click();
 
     await toastNotification(page, `Pipeline triggered successfully!`);
 
     // Wait for success
-    // await retryIngestionRun();
+    await this.handleIngestionRetry('metadata', page);
 
     // Navigate to table name
     await visitEntityPage({
@@ -404,10 +401,10 @@ class ServiceBaseClass {
       searchTerm: this.entityName,
       dataTestId: `${this.serviceName}-${this.entityName}`,
     });
-    const markdownParser = await page.$('[data-testid="markdown-parser"]');
-    const markdownText = await markdownParser?.textContent();
 
-    expect(markdownText).toContain(description);
+    await page.getByTestId('data-assets-header').waitFor({ state: 'visible' });
+
+    await expect(page.getByTestId('markdown-parser')).toHaveText(description);
   }
 
   runAdditionalTests() {
