@@ -108,7 +108,7 @@
         },
         "dashboard": {
             "description": "Dashboard where this chart is displayed",
-            "$ref": "../../../type/entityReference.json"
+            "$ref": "../../type/entityReference.json"
         }
     },
     "required": [
