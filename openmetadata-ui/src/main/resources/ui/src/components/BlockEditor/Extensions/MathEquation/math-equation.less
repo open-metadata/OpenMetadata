@@ -34,4 +34,24 @@
     display: flex;
     justify-content: space-between;
   }
+
+  &.isediting {
+    background-color: black;
+    .edit-button,
+    .math-equation-input {
+      color: white;
+    }
+  }
+}
+
+.react-renderer.node-MathEquation.ProseMirror-selectednode {
+  background-color: black;
+  .math-equation-wrapper {
+    .edit-button {
+      color: white;
+    }
+  }
+  &.has-focus {
+    color: white;
+  }
 }

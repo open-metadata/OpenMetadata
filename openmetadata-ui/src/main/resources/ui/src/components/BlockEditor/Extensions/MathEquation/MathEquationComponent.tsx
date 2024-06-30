@@ -14,6 +14,7 @@ import { CheckOutlined, CloseOutlined } from '@ant-design/icons';
 import { NodeViewProps, NodeViewWrapper } from '@tiptap/react';
 import { Button, Input, Space, Tooltip } from 'antd';
 import { TextAreaRef } from 'antd/lib/input/TextArea';
+import classNames from 'classnames';
 import 'katex/dist/katex.min.css';
 import React, { FC } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -44,7 +45,10 @@ export const MathEquationComponent: FC<NodeViewProps> = ({
 
   return (
     <NodeViewWrapper className="block-math-equation">
-      <div className="math-equation-wrapper">
+      <div
+        className={classNames('math-equation-wrapper', {
+          isediting: isEditing,
+        })}>
         {isEditing ? (
           <div className="math-equation-edit-input-wrapper">
             <Input.TextArea
