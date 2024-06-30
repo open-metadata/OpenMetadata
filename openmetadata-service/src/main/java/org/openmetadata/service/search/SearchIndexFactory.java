@@ -20,6 +20,7 @@ import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.data.Topic;
 import org.openmetadata.schema.entity.domains.DataProduct;
 import org.openmetadata.schema.entity.domains.Domain;
+import org.openmetadata.schema.entity.services.APIService;
 import org.openmetadata.schema.entity.services.DashboardService;
 import org.openmetadata.schema.entity.services.DatabaseService;
 import org.openmetadata.schema.entity.services.MessagingService;
@@ -35,6 +36,7 @@ import org.openmetadata.schema.tests.TestCase;
 import org.openmetadata.schema.tests.TestSuite;
 import org.openmetadata.schema.tests.type.TestCaseResolutionStatus;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.search.indexes.APIServiceIndex;
 import org.openmetadata.service.search.indexes.AggregatedCostAnalysisReportDataIndex;
 import org.openmetadata.service.search.indexes.ChartIndex;
 import org.openmetadata.service.search.indexes.ClassificationIndex;
@@ -105,6 +107,7 @@ public class SearchIndexFactory {
       case Entity.MESSAGING_SERVICE -> new MessagingServiceIndex((MessagingService) entity);
       case Entity.MLMODEL_SERVICE -> new MlModelServiceIndex((MlModelService) entity);
       case Entity.SEARCH_SERVICE -> new SearchServiceIndex((SearchService) entity);
+      case Entity.API_SERVICE -> new APIServiceIndex((APIService) entity);
       case Entity.SEARCH_INDEX -> new SearchEntityIndex(
           (org.openmetadata.schema.entity.data.SearchIndex) entity);
       case Entity.PIPELINE_SERVICE -> new PipelineServiceIndex((PipelineService) entity);

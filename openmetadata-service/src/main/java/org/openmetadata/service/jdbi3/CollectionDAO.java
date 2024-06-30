@@ -95,6 +95,7 @@ import org.openmetadata.schema.entity.domains.DataProduct;
 import org.openmetadata.schema.entity.domains.Domain;
 import org.openmetadata.schema.entity.events.EventSubscription;
 import org.openmetadata.schema.entity.policies.Policy;
+import org.openmetadata.schema.entity.services.APIService;
 import org.openmetadata.schema.entity.services.DashboardService;
 import org.openmetadata.schema.entity.services.DatabaseService;
 import org.openmetadata.schema.entity.services.MessagingService;
@@ -279,6 +280,9 @@ public interface CollectionDAO {
 
   @CreateSqlObject
   SearchServiceDAO searchServiceDAO();
+
+  @CreateSqlObject
+  APIServiceDAO apiServiceDAO();
 
   @CreateSqlObject
   ContainerDAO containerDAO();
@@ -603,6 +607,23 @@ public interface CollectionDAO {
     @Override
     default Class<SearchService> getEntityClass() {
       return SearchService.class;
+    }
+
+    @Override
+    default String getNameHashColumn() {
+      return "nameHash";
+    }
+  }
+
+  interface APIServiceDAO extends EntityDAO<APIService> {
+    @Override
+    default String getTableName() {
+      return "api_service_entity";
+    }
+
+    @Override
+    default Class<APIService> getEntityClass() {
+      return APIService.class;
     }
 
     @Override

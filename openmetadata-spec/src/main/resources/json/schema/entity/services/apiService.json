@@ -41,7 +41,7 @@
           "mask": true,
           "oneOf": [
             {
-              "$ref": "connections/apiService/openAPIConnection.json"
+              "$ref": "connections/apiService/RESTConnection.json"
             }
           ]
         }
