@@ -105,6 +105,10 @@
             "description": "When `true` indicates the entity has been soft deleted.",
             "type": "boolean",
             "default": false
+        },
+        "dashboard": {
+            "description": "Dashboard where this chart is displayed",
+            "$ref": "../../../type/entityReference.json"
         }
     },
     "required": [

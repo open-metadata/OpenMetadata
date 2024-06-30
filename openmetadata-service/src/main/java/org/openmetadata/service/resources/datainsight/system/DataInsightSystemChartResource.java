@@ -101,11 +101,11 @@ public class DataInsightSystemChartResource
   }
 
   @GET
-  @Path("/name/{fqn}/preview")
+  @Path("/name/{fqn}/data")
   @Operation(
-      operationId = "getDataInsightChartPreview",
-      summary = "Get data insight chart preview",
-      description = "Get data insight chart preview",
+      operationId = "getDataInsightChartData",
+      summary = "Get data insight chart data",
+      description = "Get data insight chart data",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -116,7 +116,7 @@ public class DataInsightSystemChartResource
                     schema = @Schema(implementation = DataInsightChart.class))),
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
-  public Response previewByName(
+  public Response getDataByChartName(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Parameter(
@@ -143,6 +143,7 @@ public class DataInsightSystemChartResource
     return Response.status(Response.Status.OK).entity(resultList).build();
   }
 
+  // TODO: NEED TO DELETE THIS AFTER DEMO
   public DataInsightCustomChart getDataInsightCustomChart(
       CreateDataInsightCustomChart create, String user) {
     return repository
