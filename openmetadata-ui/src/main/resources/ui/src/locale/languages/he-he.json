@@ -429,6 +429,7 @@
     "entity-type-plural": "סוגי {{entity}}",
     "entity-version-detail-plural": "גרסאות פרטי {{entity}}",
     "enum-value-plural": "Enum Values",
+    "equation": "Equation",
     "error": "Error",
     "error-plural": "Errors",
     "event-publisher-plural": "מפרסמי אירועים",

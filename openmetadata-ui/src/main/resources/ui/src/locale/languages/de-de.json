@@ -429,6 +429,7 @@
     "entity-type-plural": "{{entity}}-Typen",
     "entity-version-detail-plural": "Details zu {{entity}}-Versionen",
     "enum-value-plural": "Enum Values",
+    "equation": "Equation",
     "error": "Error",
     "error-plural": "Errors",
     "event-publisher-plural": "Ereignisveröffentlicher",

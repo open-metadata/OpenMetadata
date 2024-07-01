@@ -41,7 +41,7 @@ const LinkPopup: FC<LinkPopupProps> = ({
       <Button
         className="p-0"
         href={href}
-        icon={<ExternalLinkIcon width={iconSize} />}
+        icon={<ExternalLinkIcon width={iconSize + 2} />}
         target="_blank"
         type="link"
       />
