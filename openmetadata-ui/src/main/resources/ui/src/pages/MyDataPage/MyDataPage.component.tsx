@@ -31,6 +31,7 @@ import { AssetsType, EntityType } from '../../enums/entity.enum';
 import { Thread } from '../../generated/entity/feed/thread';
 import { PageType } from '../../generated/system/ui/page';
 import { EntityReference } from '../../generated/type/entityReference';
+import LimitWrapper from '../../hoc/LimitWrapper';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
 import { useGridLayoutDirection } from '../../hooks/useGridLayoutDirection';
 import { getDocumentByFQN } from '../../rest/DocStoreAPI';
@@ -223,6 +224,9 @@ const MyDataPage = () => {
             {widgets}
           </ReactGridLayout>
         )}
+        <LimitWrapper resource="dataAssets">
+          <br />
+        </LimitWrapper>
       </PageLayoutV1>
     </ActivityFeedProvider>
   );

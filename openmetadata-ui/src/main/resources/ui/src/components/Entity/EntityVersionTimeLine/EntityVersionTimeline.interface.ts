@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { EntityType } from '../../../enums/entity.enum';
 import { ChangeDescription } from '../../../generated/entity/type';
 import { EntityHistory } from '../../../generated/type/entityHistory';
 
@@ -18,6 +19,7 @@ export type EntityVersionTimelineProps = {
   currentVersion: string;
   versionHandler: (v: string) => void;
   onBack: () => void;
+  entityType?: EntityType;
 };
 
 export type EntityVersionButtonProps = {
@@ -31,4 +33,5 @@ export type EntityVersionButtonProps = {
   onVersionSelect: (v: string) => void;
   selected: boolean;
   isMajorVersion: boolean;
+  className?: string;
 };

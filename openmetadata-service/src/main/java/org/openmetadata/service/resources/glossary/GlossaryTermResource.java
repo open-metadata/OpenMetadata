@@ -69,6 +69,7 @@ import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.GlossaryRepository;
 import org.openmetadata.service.jdbi3.GlossaryTermRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
+import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
@@ -100,8 +101,8 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
     return term;
   }
 
-  public GlossaryTermResource(Authorizer authorizer) {
-    super(Entity.GLOSSARY_TERM, authorizer);
+  public GlossaryTermResource(Authorizer authorizer, Limits limits) {
+    super(Entity.GLOSSARY_TERM, authorizer, limits);
   }
 
   @Override

@@ -177,6 +177,16 @@ jest.mock('../../PageLayoutV1/PageLayoutV1', () =>
   ))
 );
 
+const mockGetResourceLimit = jest.fn().mockResolvedValue({
+  configuredLimit: { disabledFields: [] },
+});
+
+jest.mock('../../../context/LimitsProvider/useLimitsStore', () => ({
+  useLimitStore: jest.fn().mockImplementation(() => ({
+    getResourceLimit: mockGetResourceLimit,
+  })),
+}));
+
 describe('Test User Component', () => {
   it('Should render user component', async () => {
     const { container } = render(
@@ -369,5 +379,25 @@ describe('Test User Component', () => {
     const assetComponent = await screen.findByTestId('center-panel');
 
     expect(assetComponent).toBeInTheDocument();
+  });
+
+  it('should disable access token tab, if limit has personalAccessToken as disabledFields', async () => {
+    mockGetResourceLimit.mockResolvedValueOnce({
+      configuredLimit: { disabledFields: ['personalAccessToken'] },
+    });
+    render(
+      <Users
+        authenticationMechanism={mockAccessData}
+        userData={mockUserData}
+        {...mockProp}
+      />,
+      {
+        wrapper: MemoryRouter,
+      }
+    );
+
+    expect(
+      (await screen.findByTestId('access-token'))?.closest('.ant-tabs-tab')
+    ).toHaveClass('ant-tabs-tab-disabled');
   });
 });

@@ -355,6 +355,7 @@ function DatabaseSchemaVersionPage() {
 
         <EntityVersionTimeLine
           currentVersion={toString(version)}
+          entityType={EntityType.DATABASE_SCHEMA}
           versionHandler={versionHandler}
           versionList={versionList}
           onBack={backHandler}

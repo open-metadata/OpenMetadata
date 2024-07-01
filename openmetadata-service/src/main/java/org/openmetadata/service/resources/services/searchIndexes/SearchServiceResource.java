@@ -45,6 +45,7 @@ import org.openmetadata.schema.type.SearchConnection;
 import org.openmetadata.schema.utils.EntityInterfaceUtil;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.SearchServiceRepository;
+import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.services.ServiceEntityResource;
 import org.openmetadata.service.security.Authorizer;
@@ -72,8 +73,8 @@ public class SearchServiceResource
     return service;
   }
 
-  public SearchServiceResource(Authorizer authorizer) {
-    super(Entity.SEARCH_SERVICE, authorizer, ServiceType.SEARCH);
+  public SearchServiceResource(Authorizer authorizer, Limits limits) {
+    super(Entity.SEARCH_SERVICE, authorizer, limits, ServiceType.SEARCH);
   }
 
   @Override

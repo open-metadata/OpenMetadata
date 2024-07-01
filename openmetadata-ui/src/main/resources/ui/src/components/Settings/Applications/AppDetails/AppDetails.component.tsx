@@ -43,6 +43,7 @@ import { ReactComponent as IconRestore } from '../../../../assets/svg/ic-restore
 import { ReactComponent as IconDropdown } from '../../../../assets/svg/menu.svg';
 import { ICON_DIMENSION } from '../../../../constants/constants';
 import { GlobalSettingOptions } from '../../../../constants/GlobalSettings.constants';
+import { useLimitStore } from '../../../../context/LimitsProvider/useLimitsStore';
 import { ServiceCategory } from '../../../../enums/service.enum';
 import {
   App,
@@ -93,6 +94,7 @@ const AppDetails = () => {
     isRunLoading: false,
     isSaveLoading: false,
   });
+  const { getResourceLimit } = useLimitStore();
   const UiSchema = applicationsClassBase.getJSONUISchema();
 
   const fetchAppDetails = useCallback(async () => {
@@ -152,6 +154,9 @@ const AppDetails = () => {
             ? t('message.app-disabled-successfully')
             : t('message.app-uninstalled-successfully')
         );
+
+        // Update current count when Create / Delete operation performed
+        await getResourceLimit('app', true, true);
 
         onBrowseAppsClick();
       }

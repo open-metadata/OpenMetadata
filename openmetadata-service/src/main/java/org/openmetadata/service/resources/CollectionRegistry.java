@@ -25,7 +25,6 @@ import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.net.URI;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -40,6 +39,7 @@ import org.openmetadata.schema.Function;
 import org.openmetadata.schema.type.CollectionDescriptor;
 import org.openmetadata.schema.type.CollectionInfo;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
+import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.auth.AuthenticatorHandler;
 import org.openmetadata.service.util.ReflectionUtil;
@@ -86,10 +86,6 @@ public final class CollectionRegistry {
     } else {
       LOG.info("[Collection Registry] is already initialized.");
     }
-  }
-
-  public Map<String, CollectionDetails> getCollectionMap() {
-    return Collections.unmodifiableMap(collectionMap);
   }
 
   /**
@@ -152,19 +148,20 @@ public final class CollectionRegistry {
       Environment environment,
       OpenMetadataApplicationConfig config,
       Authorizer authorizer,
-      AuthenticatorHandler authenticatorHandler) {
+      AuthenticatorHandler authenticatorHandler,
+      Limits limits) {
     // Build list of ResourceDescriptors
     for (Map.Entry<String, CollectionDetails> e : collectionMap.entrySet()) {
       CollectionDetails details = e.getValue();
       String resourceClass = details.resourceClass;
       try {
         Object resource =
-            createResource(jdbi, resourceClass, config, authorizer, authenticatorHandler);
+            createResource(jdbi, resourceClass, config, authorizer, authenticatorHandler, limits);
         details.setResource(resource);
         environment.jersey().register(resource);
         LOG.info("Registering {} with order {}", resourceClass, details.order);
       } catch (Exception ex) {
-        LOG.warn("Failed to create resource for class {} {}", resourceClass, ex);
+        LOG.warn("Failed to create resource for class {} {}", resourceClass, ex.getMessage());
       }
     }
 
@@ -181,6 +178,7 @@ public final class CollectionRegistry {
       OpenMetadataApplicationConfig config,
       Authorizer authorizer,
       AuthenticatorHandler authenticatorHandler,
+      Limits limits,
       boolean isOperations) {
     // Build list of ResourceDescriptors
     for (Map.Entry<String, CollectionDetails> e : collectionMap.entrySet()) {
@@ -188,8 +186,7 @@ public final class CollectionRegistry {
       if (!isOperations || (isOperations && details.requiredForOps)) {
         String resourceClass = details.resourceClass;
         try {
-          Object resource =
-              createResource(jdbi, resourceClass, config, authorizer, authenticatorHandler);
+          createResource(jdbi, resourceClass, config, authorizer, authenticatorHandler, limits);
         } catch (Exception ex) {
           LOG.warn("Failed to create resource for class {} {}", resourceClass, ex);
         }
@@ -241,7 +238,8 @@ public final class CollectionRegistry {
       String resourceClass,
       OpenMetadataApplicationConfig config,
       Authorizer authorizer,
-      AuthenticatorHandler authHandler)
+      AuthenticatorHandler authHandler,
+      Limits limits)
       throws ClassNotFoundException,
           NoSuchMethodException,
           IllegalAccessException,
@@ -253,19 +251,36 @@ public final class CollectionRegistry {
 
     // Create the resource identified by resourceClass
     try {
-      resource = clz.getDeclaredConstructor(Authorizer.class).newInstance(authorizer);
+      resource =
+          clz.getDeclaredConstructor(OpenMetadataApplicationConfig.class, Limits.class)
+              .newInstance(config, limits);
     } catch (NoSuchMethodException e) {
       try {
         resource =
-            clz.getDeclaredConstructor(Authorizer.class, AuthenticatorHandler.class)
-                .newInstance(authorizer, authHandler);
+            clz.getDeclaredConstructor(Authorizer.class, Limits.class)
+                .newInstance(authorizer, limits);
       } catch (NoSuchMethodException ex) {
         try {
-          resource =
-              clz.getDeclaredConstructor(Jdbi.class, Authorizer.class)
-                  .newInstance(jdbi, authorizer);
+          resource = clz.getDeclaredConstructor(Authorizer.class).newInstance(authorizer);
         } catch (NoSuchMethodException exe) {
-          resource = Class.forName(resourceClass).getConstructor().newInstance();
+          try {
+            resource =
+                clz.getDeclaredConstructor(
+                        Authorizer.class, Limits.class, AuthenticatorHandler.class)
+                    .newInstance(authorizer, limits, authHandler);
+          } catch (NoSuchMethodException exec) {
+            try {
+              resource =
+                  clz.getDeclaredConstructor(Jdbi.class, Authorizer.class)
+                      .newInstance(jdbi, authorizer);
+            } catch (NoSuchMethodException execp) {
+              try {
+                resource = clz.getDeclaredConstructor(Limits.class).newInstance(limits);
+              } catch (NoSuchMethodException except) {
+                resource = Class.forName(resourceClass).getConstructor().newInstance();
+              }
+            }
+          }
         }
       }
     } catch (Exception ex) {

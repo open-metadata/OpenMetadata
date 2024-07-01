@@ -261,6 +261,7 @@ const ContainerVersion: React.FC<ContainerVersionProp> = ({
 
       <EntityVersionTimeLine
         currentVersion={toString(version)}
+        entityType={EntityType.CONTAINER}
         versionHandler={versionHandler}
         versionList={versionList}
         onBack={backHandler}

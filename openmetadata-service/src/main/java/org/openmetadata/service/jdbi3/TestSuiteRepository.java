@@ -138,6 +138,7 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
       Table table =
           Entity.getEntity(TABLE, testSuite.getExecutableEntityReference().getId(), "owner", ALL);
       inheritOwner(testSuite, fields, table);
+      inheritDomain(testSuite, fields, table);
     }
   }
 

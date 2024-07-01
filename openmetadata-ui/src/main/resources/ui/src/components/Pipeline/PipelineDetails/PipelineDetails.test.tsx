@@ -227,6 +227,10 @@ jest.mock('../../Database/TableTags/TableTags.component', () =>
     ))
 );
 
+jest.mock('../../../hoc/LimitWrapper', () => {
+  return jest.fn().mockImplementation(({ children }) => <div>{children}</div>);
+});
+
 describe('Test PipelineDetails component', () => {
   it('Checks if the PipelineDetails component has all the proper components rendered', async () => {
     const { container } = render(

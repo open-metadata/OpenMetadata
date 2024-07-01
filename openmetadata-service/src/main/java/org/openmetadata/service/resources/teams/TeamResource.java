@@ -67,6 +67,7 @@ import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.TeamRepository;
 import org.openmetadata.service.jdbi3.TeamRepository.TeamCsv;
+import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
@@ -103,8 +104,8 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
     return team;
   }
 
-  public TeamResource(Authorizer authorizer) {
-    super(Entity.TEAM, authorizer);
+  public TeamResource(Authorizer authorizer, Limits limits) {
+    super(Entity.TEAM, authorizer, limits);
   }
 
   @Override

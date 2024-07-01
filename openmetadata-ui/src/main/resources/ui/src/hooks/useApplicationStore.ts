@@ -50,6 +50,11 @@ export const useApplicationStore = create<ApplicationStore>()(
       oidcIdToken: '',
       refreshTokenKey: '',
       searchCriteria: '',
+      inlineAlertDetails: undefined,
+
+      setInlineAlertDetails: (inlineAlertDetails) => {
+        set({ inlineAlertDetails });
+      },
 
       setHelperFunctionsRef: (helperFunctions: HelperFunctions) => {
         set({ ...helperFunctions });

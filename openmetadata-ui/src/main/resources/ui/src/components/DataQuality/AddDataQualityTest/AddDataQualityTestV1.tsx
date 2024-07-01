@@ -31,6 +31,7 @@ import {
   DEFAULT_RANGE_DATA,
   STEPS_FOR_ADD_TEST_CASE,
 } from '../../../constants/profiler.constant';
+import { useLimitStore } from '../../../context/LimitsProvider/useLimitsStore';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
 import { FormSubmitType } from '../../../enums/form.enum';
 import { ProfilerDashboardType } from '../../../enums/table.enum';
@@ -79,6 +80,7 @@ const AddDataQualityTestV1: React.FC<AddDataQualityTestProps> = ({
   const [testCaseRes, setTestCaseRes] = useState<TestCase>();
   const [addIngestion, setAddIngestion] = useState(false);
   const { currentUser } = useApplicationStore();
+  const { getResourceLimit } = useLimitStore();
 
   const breadcrumb = useMemo(() => {
     const data: TitleBreadcrumbProps['titleLinks'] = [
@@ -164,6 +166,8 @@ const AddDataQualityTestV1: React.FC<AddDataQualityTestProps> = ({
       };
 
       const testCaseResponse = await createTestCase(testCasePayload);
+      // Update current count when Create / Delete operation performed
+      await getResourceLimit('dataQuality', true, true);
       setActiveServiceStep(2);
       setTestCaseRes(testCaseResponse);
     } catch (error) {

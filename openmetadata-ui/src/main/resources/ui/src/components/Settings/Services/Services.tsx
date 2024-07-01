@@ -39,6 +39,7 @@ import { ServiceCategory } from '../../../enums/service.enum';
 import { Operation } from '../../../generated/entity/policies/policy';
 import { EntityReference } from '../../../generated/entity/type';
 import { Include } from '../../../generated/type/include';
+import LimitWrapper from '../../../hoc/LimitWrapper';
 import { usePaging } from '../../../hooks/paging/usePaging';
 import { useAirflowStatus } from '../../../hooks/useAirflowStatus';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
@@ -461,16 +462,18 @@ const Services = ({ serviceName }: ServicesProps) => {
                   : NO_PERMISSION_FOR_ACTION
               }>
               {addServicePermission && !isPlatFormDisabled && (
-                <Button
-                  className="m-b-xs"
-                  data-testid="add-service-button"
-                  size="middle"
-                  type="primary"
-                  onClick={handleAddServiceClick}>
-                  {t('label.add-new-entity', {
-                    entity: t('label.service'),
-                  })}
-                </Button>
+                <LimitWrapper resource="dataAssets">
+                  <Button
+                    className="m-b-xs"
+                    data-testid="add-service-button"
+                    size="middle"
+                    type="primary"
+                    onClick={handleAddServiceClick}>
+                    {t('label.add-new-entity', {
+                      entity: t('label.service'),
+                    })}
+                  </Button>
+                </LimitWrapper>
               )}
             </Tooltip>
           )}

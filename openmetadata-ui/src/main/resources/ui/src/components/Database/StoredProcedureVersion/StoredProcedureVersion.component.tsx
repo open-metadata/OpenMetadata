@@ -205,6 +205,7 @@ const StoredProcedureVersion = ({
 
       <EntityVersionTimeLine
         currentVersion={toString(version)}
+        entityType={EntityType.STORED_PROCEDURE}
         versionHandler={versionHandler}
         versionList={versionList}
         onBack={backHandler}

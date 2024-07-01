@@ -164,7 +164,6 @@ const MyDataWidgetInternal = ({
                   key={item.id}>
                   <div className="d-flex items-center">
                     <Link
-                      className=""
                       to={entityUtilClassBase.getEntityLink(
                         item.entityType ?? '',
                         item.fullyQualifiedName as string

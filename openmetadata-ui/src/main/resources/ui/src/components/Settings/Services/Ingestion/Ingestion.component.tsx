@@ -24,6 +24,7 @@ import {
   ResourceEntity,
 } from '../../../../context/PermissionProvider/PermissionProvider.interface';
 import { IngestionPipeline } from '../../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
+import LimitWrapper from '../../../../hoc/LimitWrapper';
 import { useAirflowStatus } from '../../../../hooks/useAirflowStatus';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import ErrorPlaceHolderIngestion from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolderIngestion';
@@ -165,15 +166,17 @@ const Ingestion: React.FC<IngestionProps> = ({
 
     if (showAddIngestionButton) {
       return (
-        <AddIngestionButton
-          ingestionData={ingestionData}
-          ingestionList={ingestionList}
-          permissions={permissions}
-          pipelineType={pipelineType}
-          serviceCategory={serviceCategory}
-          serviceDetails={serviceDetails}
-          serviceName={serviceName}
-        />
+        <LimitWrapper resource="ingestionPipeline">
+          <AddIngestionButton
+            ingestionData={ingestionData}
+            ingestionList={ingestionList}
+            permissions={permissions}
+            pipelineType={pipelineType}
+            serviceCategory={serviceCategory}
+            serviceDetails={serviceDetails}
+            serviceName={serviceName}
+          />
+        </LimitWrapper>
       );
     }
 

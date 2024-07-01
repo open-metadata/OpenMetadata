@@ -1857,6 +1857,7 @@
     "entity-fetch-error": "Une erreur est survenue lors de la récupération de {{entity}}",
     "entity-fetch-version-error": "Erreur lors de la récupération des versions de {{entity}} {{version}}",
     "entity-follow-error": "Erreur lors du suivi de {{entity}}",
+    "entity-limit-reached": "{{entity}} limit reached",
     "entity-removing-error": "Erreur lors de la suppression de {{entity}}",
     "entity-unfollow-error": "Erreur lors de l'arrêt de suivi de {{entity}}",
     "entity-updating-error": "Erreur lors de la mise à jour de {{entity}}",

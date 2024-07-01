@@ -16,6 +16,6 @@ import { ReactNode } from 'react';
 export interface HeaderProps {
   data: {
     header: ReactNode;
-    subHeader: string;
+    subHeader: ReactNode;
   };
 }

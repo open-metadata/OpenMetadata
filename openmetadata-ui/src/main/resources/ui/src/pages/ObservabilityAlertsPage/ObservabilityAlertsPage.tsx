@@ -27,6 +27,7 @@ import PageHeader from '../../components/PageHeader/PageHeader.component';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import { ROUTES } from '../../constants/constants';
 import { ALERTS_DOCS } from '../../constants/docs.constants';
+import { useLimitStore } from '../../context/LimitsProvider/useLimitsStore';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { EntityType } from '../../enums/entity.enum';
 import {
@@ -35,6 +36,7 @@ import {
   ProviderType,
 } from '../../generated/events/eventSubscription';
 import { Paging } from '../../generated/type/paging';
+import LimitWrapper from '../../hoc/LimitWrapper';
 import { usePaging } from '../../hooks/paging/usePaging';
 import { getAllAlerts } from '../../rest/alertsAPI';
 import { getEntityName } from '../../utils/EntityUtils';
@@ -59,6 +61,7 @@ const ObservabilityAlertsPage = () => {
     showPagination,
     paging,
   } = usePaging();
+  const { getResourceLimit } = useLimitStore();
 
   const fetchAlerts = useCallback(
     async (params?: Partial<Paging>) => {
@@ -91,6 +94,7 @@ const ObservabilityAlertsPage = () => {
   const handleAlertDelete = useCallback(async () => {
     try {
       setSelectedAlert(undefined);
+      await getResourceLimit('eventsubscription', true, true);
       fetchAlerts();
     } catch (error) {
       showErrorToast(error as AxiosError);
@@ -201,11 +205,14 @@ const ObservabilityAlertsPage = () => {
         <Col span={24}>
           <div className="d-flex justify-between">
             <PageHeader data={pageHeaderData} />
-            <Link to={ROUTES.ADD_OBSERVABILITY_ALERTS}>
-              <Button data-testid="create-observability" type="primary">
+            <LimitWrapper resource="eventsubscription">
+              <Button
+                data-testid="create-observability"
+                type="primary"
+                onClick={() => history.push(ROUTES.ADD_OBSERVABILITY_ALERTS)}>
                 {t('label.add-entity', { entity: t('label.alert') })}
               </Button>
-            </Link>
+            </LimitWrapper>
           </div>
         </Col>
         <Col span={24}>

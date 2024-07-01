@@ -202,6 +202,12 @@ jest.mock('../../components/common/Loader/Loader', () => {
 
 jest.useFakeTimers();
 
+jest.mock('../../hoc/LimitWrapper', () => {
+  return jest
+    .fn()
+    .mockImplementation(({ children }) => <>LimitWrapper{children}</>);
+});
+
 describe('TestDetailsPageV1 component', () => {
   it('TableDetailsPageV1 should fetch permissions', () => {
     render(<TableDetailsPageV1 />);

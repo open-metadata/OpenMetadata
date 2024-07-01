@@ -57,6 +57,7 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.jdbi3.DocumentRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
+import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
@@ -83,8 +84,8 @@ public class DocStoreResource extends EntityResource<Document, DocumentRepositor
     return listOf(MetadataOperation.EDIT_ALL);
   }
 
-  public DocStoreResource(Authorizer authorizer) {
-    super(Entity.DOCUMENT, authorizer);
+  public DocStoreResource(Authorizer authorizer, Limits limits) {
+    super(Entity.DOCUMENT, authorizer, limits);
   }
 
   public static class DocumentList extends ResultList<Document> {

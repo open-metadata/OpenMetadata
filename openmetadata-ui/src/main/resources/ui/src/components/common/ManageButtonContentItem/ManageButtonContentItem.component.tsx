@@ -12,6 +12,7 @@
  */
 
 import { Col, Row, Typography } from 'antd';
+import classNames from 'classnames';
 import React from 'react';
 import { MangeButtonItemLabelProps } from './ManageButtonItemLabel.interface';
 
@@ -21,11 +22,19 @@ export const ManageButtonItemLabel = ({
   icon,
   description,
   id,
+  disabled,
 }: MangeButtonItemLabelProps) => {
   const Icon = icon;
 
   return (
-    <Row className="cursor-pointer" data-testid={id} onClick={onClick}>
+    <Row
+      className={classNames({
+        'cursor-pointer': !disabled,
+        'cursor-not-allowed': disabled,
+        'opacity-50': disabled,
+      })}
+      data-testid={id}
+      onClick={onClick}>
       <Col className="self-center" data-testid={`${id}-icon`} span={3}>
         <Icon width="18px" />
       </Col>

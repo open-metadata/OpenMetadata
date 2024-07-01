@@ -58,6 +58,7 @@ import org.openmetadata.schema.type.topic.TopicSampleData;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.TopicRepository;
+import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
@@ -85,8 +86,8 @@ public class TopicResource extends EntityResource<Topic, TopicRepository> {
     return topic;
   }
 
-  public TopicResource(Authorizer authorizer) {
-    super(Entity.TOPIC, authorizer);
+  public TopicResource(Authorizer authorizer, Limits limits) {
+    super(Entity.TOPIC, authorizer, limits);
   }
 
   @Override

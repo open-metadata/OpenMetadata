@@ -990,7 +990,7 @@ public class TestSuiteResourceTest extends EntityResourceTest<TestSuite, CreateT
             ? getEntityByName(entity.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)
             : getEntity(entity.getId(), null, ADMIN_AUTH_HEADERS);
     assertListNull(entity.getOwner(), entity.getTests());
-    fields = "owner,tests";
+    fields = "owner,tests,tags";
     entity =
         byName
             ? getEntityByName(entity.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)

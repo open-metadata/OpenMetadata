@@ -57,6 +57,7 @@ import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.PipelineConnection;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.PipelineServiceRepository;
+import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.services.ServiceEntityResource;
 import org.openmetadata.service.security.Authorizer;
@@ -81,8 +82,8 @@ public class PipelineServiceResource
     return service;
   }
 
-  public PipelineServiceResource(Authorizer authorizer) {
-    super(Entity.PIPELINE_SERVICE, authorizer, ServiceType.PIPELINE);
+  public PipelineServiceResource(Authorizer authorizer, Limits limits) {
+    super(Entity.PIPELINE_SERVICE, authorizer, limits, ServiceType.PIPELINE);
   }
 
   @Override

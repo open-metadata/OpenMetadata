@@ -20,6 +20,7 @@ import React from 'react';
 import { AppType } from '../../../../generated/entity/applications/app';
 import { EntityReference } from '../../../../generated/tests/testSuite';
 import { mockApplicationData } from '../../../../mocks/rests/applicationAPI.mock';
+import { getScheduleOptionsFromSchedules } from '../../../../utils/ScheduleUtils';
 import AppSchedule from './AppSchedule.component';
 
 const mockGetIngestionPipelineByFqn = jest.fn().mockResolvedValue({
@@ -98,6 +99,24 @@ const mockProps3 = {
   },
 };
 
+jest.mock('../../../../context/LimitsProvider/useLimitsStore', () => ({
+  useLimitStore: jest.fn().mockReturnValue({
+    config: {
+      limits: {
+        config: {
+          featureLimits: [
+            { name: 'app', pipelineSchedules: ['daily', 'weekly'] },
+          ],
+        },
+      },
+    },
+  }),
+}));
+
+jest.mock('../../../../utils/ScheduleUtils', () => ({
+  getScheduleOptionsFromSchedules: jest.fn().mockReturnValue([]),
+}));
+
 describe('AppSchedule component', () => {
   it('should render necessary elements for mockProps1', () => {
     render(<AppSchedule {...mockProps1} />);
@@ -171,5 +190,24 @@ describe('AppSchedule component', () => {
     render(<AppSchedule {...mockProps2} />);
 
     expect(screen.queryByText('AppRunsHistory')).not.toBeInTheDocument();
+  });
+
+  it('should call getScheduleOptionsFromSchedules with application pipelineStatus values', () => {
+    mockGetIngestionPipelineByFqn.mockRejectedValueOnce({});
+    render(
+      <AppSchedule
+        {...mockProps1}
+        appData={{
+          ...mockApplicationData,
+          name: 'something',
+          appType: AppType.Internal,
+        }}
+      />
+    );
+
+    expect(getScheduleOptionsFromSchedules).toHaveBeenCalledWith([
+      'daily',
+      'weekly',
+    ]);
   });
 });

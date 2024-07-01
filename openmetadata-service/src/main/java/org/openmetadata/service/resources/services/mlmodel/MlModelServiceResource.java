@@ -59,6 +59,7 @@ import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.MlModelConnection;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.MlModelServiceRepository;
+import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.services.ServiceEntityResource;
 import org.openmetadata.service.security.Authorizer;
@@ -83,8 +84,8 @@ public class MlModelServiceResource
     return service;
   }
 
-  public MlModelServiceResource(Authorizer authorizer) {
-    super(Entity.MLMODEL_SERVICE, authorizer, ServiceType.ML_MODEL);
+  public MlModelServiceResource(Authorizer authorizer, Limits limits) {
+    super(Entity.MLMODEL_SERVICE, authorizer, limits, ServiceType.ML_MODEL);
   }
 
   @Override

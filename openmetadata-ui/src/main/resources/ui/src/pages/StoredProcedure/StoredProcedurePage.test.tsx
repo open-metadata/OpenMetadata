@@ -129,6 +129,10 @@ jest.mock('../../components/common/Loader/Loader', () => {
   return jest.fn().mockImplementation(() => <>testLoader</>);
 });
 
+jest.mock('../../hoc/LimitWrapper', () => {
+  return jest.fn().mockImplementation(({ children }) => <p>{children}</p>);
+});
+
 jest.useFakeTimers();
 
 describe('StoredProcedure component', () => {

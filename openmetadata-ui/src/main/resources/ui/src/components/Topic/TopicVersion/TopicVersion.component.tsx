@@ -249,6 +249,7 @@ const TopicVersion: FC<TopicVersionProp> = ({
 
       <EntityVersionTimeLine
         currentVersion={version}
+        entityType={EntityType.TOPIC}
         versionHandler={versionHandler}
         versionList={versionList}
         onBack={backHandler}

@@ -23,6 +23,7 @@ import {
 import { getDocumentByFQN } from '../../rest/DocStoreAPI';
 import { getActiveAnnouncement } from '../../rest/feedsAPI';
 import MyDataPage from './MyDataPage.component';
+
 const mockLocalStorage = (() => {
   let store: Record<string, string> = {};
 
@@ -38,6 +39,7 @@ const mockLocalStorage = (() => {
     },
   };
 })();
+
 Object.defineProperty(window, 'localStorage', {
   value: mockLocalStorage,
 });
@@ -123,6 +125,12 @@ jest.mock('react-grid-layout', () => ({
   __esModule: true,
   default: '',
 }));
+
+jest.mock('../../hoc/LimitWrapper', () => {
+  return jest
+    .fn()
+    .mockImplementation(({ children }) => <>LimitWrapper{children}</>);
+});
 
 describe('MyDataPage component', () => {
   beforeEach(() => {

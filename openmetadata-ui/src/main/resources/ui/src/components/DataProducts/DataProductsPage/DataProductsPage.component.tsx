@@ -212,6 +212,7 @@ const DataProductsPage = () => {
       {version && (
         <EntityVersionTimeLine
           currentVersion={toString(version)}
+          entityType={EntityType.DATA_PRODUCT}
           versionHandler={onVersionChange}
           versionList={versionList}
           onBack={onBackHandler}

@@ -31,6 +31,7 @@ import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { App } from '../../generated/entity/applications/app';
 import { Include } from '../../generated/type/include';
 import { Paging } from '../../generated/type/paging';
+import LimitWrapper from '../../hoc/LimitWrapper';
 import { usePaging } from '../../hooks/paging/usePaging';
 import { getApplicationList } from '../../rest/applicationAPI';
 import { getEntityName } from '../../utils/EntityUtils';
@@ -150,14 +151,16 @@ const ApplicationPage = () => {
               />
               <span className="m-l-xs">{t('label.disabled')}</span>
             </div>
-            <Button
-              data-testid="add-application"
-              type="primary"
-              onClick={handleAddApplication}>
-              {t('label.add-entity', {
-                entity: t('label.app-plural'),
-              })}
-            </Button>
+            <LimitWrapper resource="app">
+              <Button
+                data-testid="add-application"
+                type="primary"
+                onClick={handleAddApplication}>
+                {t('label.add-entity', {
+                  entity: t('label.app-plural'),
+                })}
+              </Button>
+            </LimitWrapper>
           </Space>
         </Col>
       </Row>

@@ -1857,6 +1857,7 @@
     "entity-fetch-error": "获取{{entity}}时发生错误！",
     "entity-fetch-version-error": "获取{{entity}}版本{{version}}时发生错误！",
     "entity-follow-error": "关注{{entity}}时发生错误",
+    "entity-limit-reached": "{{entity}} limit reached",
     "entity-removing-error": "删除{{entity}}时发生错误",
     "entity-unfollow-error": "取消关注{{entity}}时发生错误",
     "entity-updating-error": "更新{{entity}}时发生错误",

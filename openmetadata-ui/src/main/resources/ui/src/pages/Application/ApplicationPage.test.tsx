@@ -15,6 +15,7 @@ import userEvent from '@testing-library/user-event';
 import React from 'react';
 import { ROUTES } from '../../constants/constants';
 import { CursorType } from '../../enums/pagination.enum';
+import LimitWrapper from '../../hoc/LimitWrapper';
 import ApplicationPage from './ApplicationPage';
 
 const mockPush = jest.fn();
@@ -105,6 +106,12 @@ jest.mock('../../utils/ToastUtils', () => ({
   showErrorToast: jest.fn((...args) => mockShowErrorToast(...args)),
 }));
 
+jest.mock('../../hoc/LimitWrapper', () => {
+  return jest
+    .fn()
+    .mockImplementation(({ children }) => <>LimitWrapper{children}</>);
+});
+
 describe('ApplicationPage', () => {
   it('should render all necessary elements', async () => {
     await act(async () => {
@@ -163,5 +170,16 @@ describe('ApplicationPage', () => {
 
     expect(mockShowErrorToast).toHaveBeenCalledWith('ERROR');
     expect(screen.getByText('ErrorPlaceHolder')).toBeInTheDocument();
+  });
+
+  it('should call limitWrapper with app as resource', async () => {
+    await act(async () => {
+      render(<ApplicationPage />);
+    });
+
+    expect(LimitWrapper).toHaveBeenCalledWith(
+      expect.objectContaining({ resource: 'app' }),
+      {}
+    );
   });
 });

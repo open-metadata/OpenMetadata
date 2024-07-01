@@ -30,4 +30,5 @@ export const HTTP_STATUS_CODE = {
   EXCEPTION_FAILED: 417, // The server cannot meet the requirements of the Expect request-header field
   BAD_GATEWAY: 502, // The server was acting as a gateway or proxy and received an invalid response from the upstream server
   FAILED_DEPENDENCY: 424, // The method could not be performed on the resource because the requested action depended on another action and that action failed.
+  LIMIT_REACHED: 429, // Entity creation limit reached
 };

@@ -94,14 +94,14 @@
     "indexName": "test_case_search_index",
     "indexMappingFile": "/elasticsearch/%s/test_case_index_mapping.json",
     "alias": "testCase",
-    "parentAliases": ["testSuite"],
+    "parentAliases": ["testSuite", "all"],
     "childAliases": ["testCaseResolutionStatus"]
   },
   "testSuite": {
     "indexName": "test_suite_search_index",
     "indexMappingFile": "/elasticsearch/%s/test_suite_index_mapping.json",
     "alias": "testSuite",
-    "parentAliases": [],
+    "parentAliases": ["all"],
     "childAliases": ["testCase", "testCaseResolutionStatus"]
   },
   "dataProduct": {

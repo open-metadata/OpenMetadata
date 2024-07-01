@@ -13,6 +13,8 @@
 import { render, screen } from '@testing-library/react';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
+import { useDomainStore } from '../../hooks/useDomainStore';
+import { getLimitConfig } from '../../rest/limitsAPI';
 import AppContainer from './AppContainer';
 
 jest.mock('../../hooks/useApplicationStore', () => {
@@ -35,6 +37,14 @@ jest.mock('../../components/AppRouter/AuthenticatedAppRouter', () =>
   jest.fn().mockReturnValue(<p>AuthenticatedAppRouter</p>)
 );
 
+jest.mock('../../rest/limitsAPI');
+
+jest.mock('../../hooks/useDomainStore', () => ({
+  useDomainStore: jest.fn().mockReturnValue({
+    fetchDomainList: jest.fn(),
+  }),
+}));
+
 describe('AppContainer', () => {
   it('renders the Appbar, LeftSidebar, and AuthenticatedAppRouter components', () => {
     render(
@@ -46,5 +56,25 @@ describe('AppContainer', () => {
     expect(screen.getByText('Appbar')).toBeInTheDocument();
     expect(screen.getByText('Sidebar')).toBeInTheDocument();
     expect(screen.getByText('AuthenticatedAppRouter')).toBeInTheDocument();
+  });
+
+  it('should call limit api', () => {
+    render(
+      <MemoryRouter>
+        <AppContainer />
+      </MemoryRouter>
+    );
+
+    expect(getLimitConfig).toHaveBeenCalled();
+  });
+
+  it('should call domain list to cache domains', () => {
+    render(
+      <MemoryRouter>
+        <AppContainer />
+      </MemoryRouter>
+    );
+
+    expect(useDomainStore().fetchDomainList).toHaveBeenCalled();
   });
 });

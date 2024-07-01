@@ -49,6 +49,7 @@ import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.TestSuiteRepository;
+import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.search.SearchListFilter;
@@ -78,8 +79,8 @@ public class TestSuiteResource extends EntityResource<TestSuite, TestSuiteReposi
   static final String FIELDS = "owner,tests,summary";
   static final String SEARCH_FIELDS_EXCLUDE = "table,database,databaseSchema,service";
 
-  public TestSuiteResource(Authorizer authorizer) {
-    super(Entity.TEST_SUITE, authorizer);
+  public TestSuiteResource(Authorizer authorizer, Limits limits) {
+    super(Entity.TEST_SUITE, authorizer, limits);
   }
 
   @Override

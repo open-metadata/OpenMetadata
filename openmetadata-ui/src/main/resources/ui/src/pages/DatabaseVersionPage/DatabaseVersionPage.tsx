@@ -308,6 +308,7 @@ function DatabaseVersionPage() {
 
         <EntityVersionTimeLine
           currentVersion={toString(version)}
+          entityType={EntityType.DATABASE}
           versionHandler={versionHandler}
           versionList={versionList}
           onBack={backHandler}

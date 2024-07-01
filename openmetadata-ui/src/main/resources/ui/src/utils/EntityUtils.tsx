@@ -2049,8 +2049,10 @@ export const getEntityNameLabel = (entityName?: string) => {
     mlmodel: t('label.ml-model'),
     location: t('label.location'),
     database: t('label.database'),
+    alert: t('label.alert-plural'),
     query: t('label.query'),
     THREAD: t('label.thread'),
+    app: t('label.application'),
   };
 
   return (

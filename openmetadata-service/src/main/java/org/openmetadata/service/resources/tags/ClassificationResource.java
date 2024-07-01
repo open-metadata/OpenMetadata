@@ -55,6 +55,7 @@ import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.ClassificationRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
+import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
@@ -84,8 +85,8 @@ public class ClassificationResource
     /* Required for serde */
   }
 
-  public ClassificationResource(Authorizer authorizer) {
-    super(Entity.CLASSIFICATION, authorizer);
+  public ClassificationResource(Authorizer authorizer, Limits limits) {
+    super(Entity.CLASSIFICATION, authorizer, limits);
   }
 
   @Override

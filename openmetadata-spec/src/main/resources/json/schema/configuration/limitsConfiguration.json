@@ -1,0 +1,27 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/configuration/limitsConfiguration.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "FernetConfiguration",
+  "description": "This schema defines the Limits Configuration.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.configuration.LimitsConfiguration",
+  "properties": {
+    "className": {
+      "description": "Class Name for authorizer.",
+      "type": "string",
+      "default": "org.openmetadata.service.limits.DefaultLimits"
+    },
+    "enable": {
+      "description": "Limits Enabled or Disabled.",
+      "type": "boolean",
+      "default": false
+    },
+    "limitsConfigFile": {
+      "description": "Limits Configuration File.",
+      "type": "string",
+      "default": "limits-config.yaml"
+    }
+  },
+  "required": ["enable"],
+  "additionalProperties": false
+}

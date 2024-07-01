@@ -811,3 +811,11 @@ body .list-option.rdw-option-active {
   color: #fff !important;
   opacity: 0.5 !important;
 }
+
+:root {
+  --ant-navbar-height: 64px;
+}
+
+:root .extra-banner {
+  --ant-navbar-height: 128px;
+}

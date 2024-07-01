@@ -160,7 +160,10 @@ const removeAssetsFromGlossaryTerm = (glossaryTerm, glossary) => {
 const deleteGlossaryTerm = ({ name, fullyQualifiedName }) => {
   visitGlossaryTermPage(name, fullyQualifiedName);
 
-  cy.get('[data-testid="manage-button"]').should('be.visible').click();
+  cy.get('[data-testid="manage-button"]')
+    .scrollIntoView()
+    .should('be.visible')
+    .click();
   cy.get('[data-testid="delete-button"]')
     .scrollIntoView()
     .should('be.visible')
@@ -198,7 +201,10 @@ const goToAssetsTab = (
 ) => {
   visitGlossaryTermPage(name, fqn, fetchPermission);
 
-  cy.get('[data-testid="assets"]').should('be.visible').click();
+  cy.get('[data-testid="assets"]')
+    .scrollIntoView()
+    .should('be.visible')
+    .click();
   cy.get('.ant-tabs-tab-active').contains('Assets').should('be.visible');
 };
 
