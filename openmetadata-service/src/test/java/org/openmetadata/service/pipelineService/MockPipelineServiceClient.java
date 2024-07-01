@@ -10,7 +10,8 @@ import org.openmetadata.schema.entity.automations.Workflow;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineServiceClientResponse;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineStatus;
-import org.openmetadata.sdk.PipelineServiceClient;
+import org.openmetadata.service.clients.pipeline.PipelineServiceAPIClientConfig;
+import org.openmetadata.service.clients.pipeline.PipelineServiceClient;
 
 public class MockPipelineServiceClient extends PipelineServiceClient {
 

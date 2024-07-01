@@ -60,11 +60,13 @@ import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
-import org.openmetadata.sdk.PipelineServiceClient;
+import org.openmetadata.sdk.PipelineServiceClientInterface;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.apps.ApplicationHandler;
 import org.openmetadata.service.apps.scheduler.AppScheduler;
+import org.openmetadata.service.clients.pipeline.PipelineServiceAPIClientConfig;
+import org.openmetadata.service.clients.pipeline.PipelineServiceClient;
 import org.openmetadata.service.clients.pipeline.PipelineServiceClientFactory;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.exception.EntityNotFoundException;
@@ -97,7 +99,7 @@ import org.quartz.SchedulerException;
 public class AppResource extends EntityResource<App, AppRepository> {
   public static final String COLLECTION_PATH = "v1/apps/";
   private OpenMetadataApplicationConfig openMetadataApplicationConfig;
-  private PipelineServiceClient pipelineServiceClient;
+  private PipelineServiceClientInterface pipelineServiceClient;
   static final String FIELDS = "owner";
   private SearchRepository searchRepository;
 
