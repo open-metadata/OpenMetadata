@@ -222,9 +222,9 @@ class ServiceBaseClass {
         },
         {
           // Custom expect message for reporting, optional.
-          message: 'make sure API eventually succeeds',
-          timeout: 300_000,
-          intervals: [30_000],
+          message: 'Wait for pipeline to be successful',
+          timeout: 300000,
+          intervals: [30000],
         }
       )
       .toBe('success');
