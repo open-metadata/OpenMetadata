@@ -142,6 +142,7 @@
     "chart": "Chart",
     "chart-entity": "Chart {{entity}}",
     "chart-plural": "Charts",
+    "chart-type": "Chart type",
     "check-status": "Check status",
     "children": "Children",
     "children-lowercase": "children",
