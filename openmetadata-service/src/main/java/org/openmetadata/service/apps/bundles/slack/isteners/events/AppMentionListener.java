@@ -13,6 +13,8 @@ import org.openmetadata.service.apps.bundles.slack.isteners.events.AppMentionLis
 
 public class AppMentionListener implements BoltEventHandler<AppMentionEvent> {
   private final App app;
+  private static final String HELP_COMMAND = "help";
+  private static final String INFO_COMMAND = "info";
 
   public AppMentionListener(App app) {
     this.app = app;
@@ -25,8 +27,9 @@ public class AppMentionListener implements BoltEventHandler<AppMentionEvent> {
     String command = payload.getEvent().getText().replaceFirst("<@\\w+>", "").trim();
 
     return switch (command.toLowerCase()) {
-      case "help" -> new HelpCommandHandler(app).handle(ctx);
+      case HELP_COMMAND -> new HelpCommandHandler(app).handle(ctx);
       case "" -> new DefaultCommandHandler(app).handle(ctx);
+      case INFO_COMMAND -> Response.ok(); // pending
       default -> Response.ok(); // doing nothing for unknown commands as of now.
     };
   }

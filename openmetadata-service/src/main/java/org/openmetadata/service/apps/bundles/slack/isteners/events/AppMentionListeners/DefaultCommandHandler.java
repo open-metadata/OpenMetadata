@@ -79,9 +79,8 @@ public class DefaultCommandHandler {
                           .build());
 
               try {
-                String channelId = ctx.getChannelId();
                 var postMessageResponse =
-                    ctx.say(sayReq -> sayReq.channel(channelId).blocks(blocks));
+                    ctx.say(sayReq -> sayReq.channel(ctx.getChannelId()).blocks(blocks));
                 if (!postMessageResponse.isOk()) {
                   ctx.logger.error(postMessageResponse.toString());
                 }
@@ -90,6 +89,7 @@ public class DefaultCommandHandler {
                     "Failed to call chat.postMessage API (error: {})", e.getMessage(), e);
               }
             });
+
     return Response.ok();
   }
 }

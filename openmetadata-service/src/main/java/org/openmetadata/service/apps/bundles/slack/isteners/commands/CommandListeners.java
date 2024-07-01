@@ -9,9 +9,10 @@ public class CommandListeners implements ListenerProvider {
 
   @Override
   public void register(App app) {
-    app.command("/search-glossary", new GlossarySearchCommand(decorator));
-    app.command("/search-term", new GlossaryTermSearchCommand(decorator));
-    app.command("/search-tag", new TagSearchCommand(decorator));
-    app.command("/search-table", new TableSearchCommand(decorator));
+    // Command to search OpenMetadata for assets
+    app.command("/search-omd", new GlobalSearchCommand(decorator));
+
+    // Command to fetch details of a specific asset using its fully qualified name (FQN) or ID
+    app.command("/asset", new FetchAssetCommand(decorator));
   }
 }
