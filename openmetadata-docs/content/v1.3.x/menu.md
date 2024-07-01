@@ -199,6 +199,9 @@ site_menu:
   - category: Deployment / Backup & Restore Metadata
     url: /deployment/backup-restore-metadata
 
+  - category: Deployment / Metrics
+    url: /deployment/metrics
+
   - category: How-to Guides
     url: /how-to-guides
     color: violet-70
