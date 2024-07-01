@@ -12,7 +12,7 @@
  */
 import { EntityType } from '../enums/entity.enum';
 import { SearchIndex } from '../enums/search.enum';
-import { getEntityTypeFromSearchIndex } from './SearchUtils';
+import { getEntityTypeFromSearchIndex, getGroupLabel } from './SearchUtils';
 
 describe('getEntityTypeFromSearchIndex', () => {
   it.each([
@@ -44,5 +44,81 @@ describe('getEntityTypeFromSearchIndex', () => {
 
   it('returns null for an unknown search index', () => {
     expect(getEntityTypeFromSearchIndex('DUMMY_INDEX')).toBeNull();
+  });
+});
+
+describe('getGroupLabel', () => {
+  it('should return topic details if index type is chart', () => {
+    const result = JSON.stringify(getGroupLabel(SearchIndex.TOPIC));
+
+    expect(result).toContain('label.topic-plural');
+  });
+
+  it('should return dashboard details if index type is chart', () => {
+    const result = JSON.stringify(getGroupLabel(SearchIndex.DASHBOARD));
+
+    expect(result).toContain('label.dashboard-plural');
+  });
+
+  it('should return pipeline details if index type is chart', () => {
+    const result = JSON.stringify(getGroupLabel(SearchIndex.PIPELINE));
+
+    expect(result).toContain('label.pipeline-plural');
+  });
+
+  it('should return ml-model details if index type is chart', () => {
+    const result = JSON.stringify(getGroupLabel(SearchIndex.MLMODEL));
+
+    expect(result).toContain('label.ml-model-plural');
+  });
+
+  it('should return glossary-term details if index type is chart', () => {
+    const result = JSON.stringify(getGroupLabel(SearchIndex.GLOSSARY_TERM));
+
+    expect(result).toContain('label.glossary-term-plural');
+  });
+
+  it('should return chart details if index type is chart', () => {
+    const result = JSON.stringify(getGroupLabel(SearchIndex.CHART));
+
+    expect(result).toContain('label.chart-plural');
+  });
+
+  it('should return tag details if index type is chart', () => {
+    const result = JSON.stringify(getGroupLabel(SearchIndex.TAG));
+
+    expect(result).toContain('label.tag-plural');
+  });
+
+  it('should return container details if index type is chart', () => {
+    const result = JSON.stringify(getGroupLabel(SearchIndex.CONTAINER));
+
+    expect(result).toContain('label.container-plural');
+  });
+
+  it('should return stored-procedure details if index type is chart', () => {
+    const result = JSON.stringify(getGroupLabel(SearchIndex.STORED_PROCEDURE));
+
+    expect(result).toContain('label.stored-procedure-plural');
+  });
+
+  it('should return data-model details if index type is chart', () => {
+    const result = JSON.stringify(
+      getGroupLabel(SearchIndex.DASHBOARD_DATA_MODEL)
+    );
+
+    expect(result).toContain('label.data-model-plural');
+  });
+
+  it('should return search-index details if index type is chart', () => {
+    const result = JSON.stringify(getGroupLabel(SearchIndex.SEARCH_INDEX));
+
+    expect(result).toContain('label.search-index-plural');
+  });
+
+  it('should return data-product details if index type is chart', () => {
+    const result = JSON.stringify(getGroupLabel(SearchIndex.DATA_PRODUCT));
+
+    expect(result).toContain('label.data-product-plural');
   });
 });

@@ -333,6 +333,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   public static EntityReference METABASE_REFERENCE;
   public static EntityReference LOOKER_REFERENCE;
   public static List<String> CHART_REFERENCES;
+  public static List<String> DASHBOARD_REFERENCES;
 
   public static Database DATABASE;
   public static DatabaseSchema DATABASE_SCHEMA;

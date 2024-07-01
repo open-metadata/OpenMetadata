@@ -31,7 +31,7 @@
     "indexName": "chart_search_index",
     "alias": "chart",
     "indexMappingFile": "/elasticsearch/%s/chart_index_mapping.json",
-    "parentAliases": ["dashboard", "dashboardService", "dataAsset"],
+    "parentAliases": ["dashboard", "dashboardService", "all", "dataAsset"],
     "childAliases": []
   },
   "dashboard": {

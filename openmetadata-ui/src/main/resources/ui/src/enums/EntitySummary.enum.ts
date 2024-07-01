@@ -18,4 +18,5 @@ export enum SummaryEntityType {
   MLFEATURE = 'mlFeature',
   SCHEMAFIELD = 'schemaField',
   FIELD = 'field',
+  DASHBOARD = 'dashboard',
 }
