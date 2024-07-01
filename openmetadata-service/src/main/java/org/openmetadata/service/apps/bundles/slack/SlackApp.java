@@ -37,6 +37,10 @@ import org.openmetadata.service.util.JsonUtils;
 @Slf4j
 public class SlackApp extends AbstractNativeApplication {
   private SlackAppConfiguration appConfig;
+  public static final String SLACK_INSTALL_ENDPOINT = "/api/slack/install";
+  public static final String SLACK_CALLBACK_ENDPOINT = "/api/slack/callback";
+  public static final String SLACK_EVENTS_ENDPOINT = "/api/slack/events";
+
   private static final SlackInstallationService installationService =
       new SlackInstallationService();
 
@@ -56,8 +60,8 @@ public class SlackApp extends AbstractNativeApplication {
             .clientSecret(config.getClientSecret())
             .signingSecret(config.getSigningSecret())
             .scope(config.getScopes())
-            .oauthInstallPath("/api/slack/install")
-            .oauthRedirectUriPath("/api/slack/callback")
+            .oauthInstallPath(SLACK_INSTALL_ENDPOINT)
+            .oauthRedirectUriPath(SLACK_CALLBACK_ENDPOINT)
             .oauthCompletionUrl(config.getCallbackRedirectURL() + SlackConstants.SUCCESS_FRAGMENT)
             .oauthCancellationUrl(config.getCallbackRedirectURL() + SlackConstants.FAILED_FRAGMENT)
             .stateValidationEnabled(true)

@@ -10,7 +10,7 @@ import javax.servlet.annotation.WebServlet;
  * Security:
  * - The endpoint is secured by verifying the Slack signing secret internally by bolt.
  */
-@WebServlet("/api/slack/events")
+@WebServlet(SlackApp.SLACK_EVENTS_ENDPOINT)
 public class SlackAppController extends SlackAppServlet {
   public SlackAppController(App app) {
     super(app);

@@ -13,7 +13,7 @@ import javax.servlet.annotation.WebServlet;
  * Security:
  * - This endpoint is secured by validating the state parameter sent from Slack to prevent CSRF attacks.
  */
-@WebServlet({"/api/slack/install", "/api/slack/callback"})
+@WebServlet({SlackApp.SLACK_INSTALL_ENDPOINT, SlackApp.SLACK_CALLBACK_ENDPOINT})
 public class SlackAppOAuthController extends SlackOAuthAppServlet {
   public SlackAppOAuthController(App app) {
     super(app);

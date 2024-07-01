@@ -140,6 +140,7 @@ import org.quartz.SchedulerException;
 public class OpenMetadataApplication extends Application<OpenMetadataApplicationConfig> {
   private Authorizer authorizer;
   private AuthenticatorHandler authenticatorHandler;
+  private Limits limits;
 
   protected Jdbi jdbi;
 
@@ -282,13 +283,13 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     environment
         .servlets()
         .addServlet("SlackOAuthAppServlet", slackAppOAuthController)
-        .addMapping("/api/slack/install", "/api/slack/callback");
+        .addMapping(SlackApp.SLACK_INSTALL_ENDPOINT, SlackApp.SLACK_CALLBACK_ENDPOINT);
 
     SlackAppController slackAppController = new SlackAppController(slackApp);
     environment
         .servlets()
         .addServlet("SlackAppServlet", slackAppController)
-        .addMapping("/api/slack/events");
+        .addMapping(SlackApp.SLACK_EVENTS_ENDPOINT);
   }
 
   private void registerAuthServlets(OpenMetadataApplicationConfig config, Environment environment) {
@@ -612,7 +613,7 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
       OpenMetadataApplicationConfig config, Environment environment, Jdbi jdbi) {
     CollectionRegistry.initialize();
     CollectionRegistry.getInstance()
-        .registerResources(jdbi, environment, config, authorizer, authenticatorHandler);
+        .registerResources(jdbi, environment, config, authorizer, authenticatorHandler, limits);
     environment.jersey().register(new JsonPatchProvider());
     OMErrorPageHandler eph = new OMErrorPageHandler(config.getWebConfiguration());
     eph.addErrorPage(Response.Status.NOT_FOUND.getStatusCode(), "/");
