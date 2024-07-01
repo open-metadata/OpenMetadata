@@ -2652,6 +2652,18 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
         () -> createEntity(request3, ADMIN_AUTH_HEADERS), BAD_REQUEST, "name must match");
   }
 
+  @Test
+  void createUpdate_DynamicAssertionTests(TestInfo testInfo) throws IOException {
+    CreateTestCase create = createRequest(testInfo).withUseDynamicAssertion(true);
+    TestCase testCase = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
+    testCase = getTestCase(testCase.getFullyQualifiedName(), ADMIN_AUTH_HEADERS);
+    assertTrue(testCase.getUseDynamicAssertion());
+    CreateTestCase update = create.withUseDynamicAssertion(false);
+    updateEntity(update, OK, ADMIN_AUTH_HEADERS);
+    testCase = getTestCase(testCase.getFullyQualifiedName(), ADMIN_AUTH_HEADERS);
+    assertFalse(testCase.getUseDynamicAssertion());
+  }
+
   private void putInspectionQuery(TestCase testCase, String sql, Map<String, String> authHeaders)
       throws IOException {
     TestCase putResponse = putInspectionQuery(testCase.getId(), sql, authHeaders);

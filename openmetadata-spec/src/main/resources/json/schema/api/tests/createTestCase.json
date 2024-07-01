@@ -44,6 +44,11 @@
       "description": "Compute the passed and failed row count for the test case.",
       "type": "boolean",
       "default": false
+    },
+    "useDynamicAssertion": {
+      "description": "If the test definition supports it, use dynamic assertion to evaluate the test case.",
+      "type": "boolean",
+      "default": false
     }
   },
   "required": ["name", "testDefinition", "entityLink", "testSuite"],
