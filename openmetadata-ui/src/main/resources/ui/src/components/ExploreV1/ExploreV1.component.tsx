@@ -21,7 +21,6 @@ import {
   Button,
   Col,
   Layout,
-  Menu,
   Row,
   Space,
   Switch,
@@ -60,8 +59,8 @@ import ResizablePanels from '../common/ResizablePanels/ResizablePanels';
 import {
   ExploreProps,
   ExploreQuickFilterField,
-  ExploreSearchIndex,
 } from '../Explore/ExplorePage.interface';
+import ExploreTree from '../Explore/ExploreTree/ExploreTree';
 import SearchedData from '../SearchedData/SearchedData';
 import { SearchedDataProps } from '../SearchedData/SearchedData.interface';
 import './exploreV1.less';
@@ -302,11 +301,11 @@ const ExploreV1: React.FC<ExploreProps> = ({
       <div className="w-full h-full">
         {tabItems.length > 0 && (
           <Layout hasSider className="bg-white">
-            <Sider className="bg-white border-right" width={270}>
+            <Sider className="bg-white border-right" width={300}>
               <Typography.Paragraph className="explore-data-header">
                 {t('label.data-asset-plural')}
               </Typography.Paragraph>
-              <Menu
+              {/* <Menu
                 className="custom-menu"
                 data-testid="explore-left-panel"
                 items={tabItems}
@@ -319,7 +318,8 @@ const ExploreV1: React.FC<ExploreProps> = ({
                     setShowSummaryPanel(false);
                   }
                 }}
-              />
+              /> */}
+              <ExploreTree />
             </Sider>
             <Content>
               <Row className="filters-row">

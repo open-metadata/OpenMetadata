@@ -159,11 +159,8 @@ class ServiceUtilClassBase {
     };
   }
 
-  public getServiceTypeLogo(
-    searchSource: SearchSuggestions[number] | SearchSourceAlias
-  ) {
+  public getLogoFromServiceType(type: string) {
     const serviceTypes = this.getSupportedServiceFromList();
-    const type = searchSource?.serviceType ?? '';
     switch (type) {
       case DatabaseServiceType.Mysql:
         return MYSQL;
@@ -413,6 +410,14 @@ class ServiceUtilClassBase {
         return logo;
       }
     }
+  }
+
+  public getServiceTypeLogo(
+    searchSource: SearchSuggestions[number] | SearchSourceAlias
+  ) {
+    const type = searchSource?.serviceType ?? '';
+
+    return this.getLogoFromServiceType(type);
   }
 
   public getStorageServiceConfig(type: StorageServiceType) {
