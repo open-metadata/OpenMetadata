@@ -1,9 +1,6 @@
----
-title: FAQs
-slug: /deployment/kubernetes/faqs
----
+# FAQs
 
-# Java Memory Heap Issue
+## Java Memory Heap Issue
 
 If your openmetadata pods are not in ready state at any point in time and the openmetadata pod logs speaks about the below issue -
 
@@ -27,11 +24,11 @@ The flag `Xmx` specifies the maximum memory allocation pool for a Java virtual m
 
 Upgrade the helm charts with the above changes using the following command `helm upgrade --install openmetadata open-metadata/openmetadata --values <values.yml> --namespace <namespaceName>`. Update this command your `values.yml` filename and `namespaceName` where you have deployed OpenMetadata in Kubernetes.
 
-# PostgreSQL Issue permission denied to create extension "pgcrypto"
+## PostgreSQL Issue permission denied to create extension "pgcrypto"
 
-{% partial file="/v1.5/deployment/postgresql-issue-permission-denied-extension-pgcrypto.md" /%}
+{% partial file="/v1.4/deployment/postgresql-issue-permission-denied-extension-pgcrypto.md" /%}
 
-# How to extend and use custom docker images with OpenMetadata Helm Charts ?
+## How to extend and use custom docker images with OpenMetadata Helm Charts ?
 
 ## Extending OpenMetadata Server Docker Image
 
@@ -121,7 +118,7 @@ Upgrade/Install your openmetadata-dependencies helm charts with the below single
 helm upgrade --install openmetadata-dependencies open-metadata/openmetadata-dependencies --values values.deps.yaml
 ```
 
-# How to disable MySQL and ElasticSearch from OpenMetadata Dependencies Helm Charts ?
+## How to disable MySQL and ElasticSearch from OpenMetadata Dependencies Helm Charts ?
 
 If you are using MySQL and ElasticSearch externally, you would want to disable the local installation of mysql and elasticsearch while installing OpenMetadata Dependencies Helm Chart. You can disable the MySQL and ElasticSearch Helm Dependencies by setting `enabled: false` value for each dependency. Below is the command to set helm values from Helm CLI -
 
@@ -141,7 +138,7 @@ elasticsearch:
 ...
 ```
 
-# How to configure external database like PostgreSQL with OpenMetadata Helm Charts ?
+## How to configure external database like PostgreSQL with OpenMetadata Helm Charts ?
 
 OpenMetadata Supports PostgreSQL as one of the Database Dependencies. OpenMetadata Helm Charts by default does not include PostgreSQL as Database Dependencies. In order to configure Helm Charts with External Database like PostgreSQL, follow the below guide to make the helm values change and upgrade / install OpenMetadata helm charts with the same.
 
@@ -201,19 +198,7 @@ helm upgrade --install openmetadata-dependencies open-metadata/openmetadata-depe
 helm upgrade --install openmetadata open-metadata/openmetadata --values <<path-to-values-file>> --namespace <kubernetes_namespace>
 ```
 
-# Getting an error when install OpenMetadata Dependencies Helm Charts on EKS with EFS
-
-If you are facing the below issue -
-
-```
-MountVolume.SetUp failed for volume "openmetadata-dependencies-dags-pv" : rpc error: code = Internal desc = Could not mount "fs-012345abcdef:/airflow-dags" at "/var/lib/kubelet/pods/xyzabc-123-0062-44c3-b0e9-fa193c19f41c/volumes/kubernetes.io~csi/openmetadata-dependencies-dags-pv/mount": mount failed: exit status 1 Mounting command: mount Mounting arguments: -t efs -o tls fs-012345abcdef:/airflow-dags /var/lib/kubelet/pods/xyzabc-123-0062-44c3-b0e9-fa193c19f41c/volumes/kubernetes.io~csi/openmetadata-dependencies-dags-pv/mount Output: Failed to locate an available port in the range [20049, 20449], try specifying a different port range in /etc/amazon/efs/efs-utils.conf
-```
-
-This error is typically related to EKS Cluster not able to reach to EFS File systems. You can check the security groups associated between the connectivity EFS and EKS. [Here is an article](https://github.com/kubernetes-sigs/aws-efs-csi-driver/blob/master/docs/efs-create-filesystem.md) which further describes the steps required to create Security Group Rules for EKS to use EFS over `port 2049`.
-
-It can also happen if the mount targets are already available for EKS Nodes but the Nodes do not pick that up. In such cases, you can do an [AWS AutoScaling Group instance refresh](https://docs.aws.amazon.com/autoscaling/ec2/userguide/start-instance-refresh.html) in order for EKS nodes to get the available mount targets.
-
-# How to customize OpenMetadata Dependencies Helm Chart with custom helm values
+## How to customize OpenMetadata Dependencies Helm Chart with custom helm values
 
 Our OpenMetadata Dependencies Helm Charts are internally depends on three sub-charts -
 

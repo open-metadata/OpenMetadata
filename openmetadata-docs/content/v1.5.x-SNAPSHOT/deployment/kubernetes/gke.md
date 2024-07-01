@@ -415,3 +415,5 @@ Please validate:
 - all the prerequisites mentioned in this [section](#prerequisites)
 - the configuration of `dags_pv_pvc.yml` file
 - `storageClassName` field in YAML file
+
+{% partial file="/v1.5/deployment/faqs.md" /%}

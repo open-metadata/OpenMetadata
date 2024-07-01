@@ -331,3 +331,5 @@ The same configuration without cache:
 
 You can find more information about this error [here](https://github.com/open-metadata/OpenMetadata/issues/15321), and similar
 discussions [here](https://github.com/Azure/azure-storage-fuse/issues/1171) and [here](https://github.com/Azure/azure-storage-fuse/issues/1139).
+
+{% partial file="/v1.5/deployment/faqs.md" /%}
