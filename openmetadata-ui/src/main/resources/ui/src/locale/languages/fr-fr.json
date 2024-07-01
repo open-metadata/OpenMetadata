@@ -142,6 +142,7 @@
     "chart": "Graphique",
     "chart-entity": "Graphique {{entity}}",
     "chart-plural": "Graphiques",
+    "chart-type": "Chart type",
     "check-status": "Vérifier le Statut",
     "children": "Enfants",
     "children-lowercase": "enfants",
