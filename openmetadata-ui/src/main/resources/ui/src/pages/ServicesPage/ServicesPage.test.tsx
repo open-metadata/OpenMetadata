@@ -77,10 +77,6 @@ jest.mock('../../utils/GlobalSettingsUtils', () => ({
   }),
 }));
 
-// jest.mock('../../utils/ServiceUtils', () => ({
-//   getResourceEntityFromServiceCategory: jest.fn().mockReturnValue(null),
-// }));
-
 jest.mock('../../utils/PermissionsUtils', () => ({
   userPermissions: {
     hasViewPermissions: jest.fn().mockReturnValue(true),
@@ -97,7 +93,7 @@ describe('ServicesPage', () => {
       );
     });
 
-    expect(await screen.findByText('Services')).toBeInTheDocument();
+    expect(await screen.findByText('mockServices')).toBeInTheDocument();
   });
 
   it('should render Pipelines tab', async () => {
