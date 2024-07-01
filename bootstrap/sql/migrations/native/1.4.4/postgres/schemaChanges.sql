@@ -1,6 +1,6 @@
 ALTER TABLE user_entity ADD UNIQUE (name);
 
-- Adding a new column 'taskAssigneesIds' to improve query performance by avoiding the use of JSON_EXTRACT in queries
+-- Adding a new column 'taskAssigneesIds' to improve query performance by avoiding the use of JSON_EXTRACT in queries
 -- This column is generated to store the 'id' values extracted from the 'taskAssignees' JSON array, which helps in optimizing search and filtering operations.
 ALTER TABLE thread_entity
 ADD COLUMN taskAssigneesIds VARCHAR(1000);
