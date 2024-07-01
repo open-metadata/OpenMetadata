@@ -92,6 +92,7 @@ export const getEntityTypeSearchIndexMapping = (entityType: string) => {
     Table: 'table_search_index',
     Topic: 'topic_search_index',
     Dashboard: 'dashboard_search_index',
+    Pipeline: 'pipeline_search_index',
     MlModel: 'mlmodel_search_index',
     Container: 'container_search_index',
     SearchIndex: 'search_entity_search_index',

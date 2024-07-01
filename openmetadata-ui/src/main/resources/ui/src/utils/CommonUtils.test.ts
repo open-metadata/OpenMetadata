@@ -31,6 +31,7 @@ import {
   getIngestionFrequency,
   getIsErrorMatch,
   getNameFromFQN,
+  getServiceTypeExploreQueryFilter,
   getTagValue,
   prepareLabel,
   reduceColorOpacity,
@@ -311,6 +312,16 @@ describe('Tests for CommonUtils', () => {
         const result = prepareLabel(type, fqn, withQuotes);
 
         expect(result).toEqual(expected);
+      });
+    });
+
+    describe('getServiceTypeExploreQueryFilter', () => {
+      it('should return json string with the key', () => {
+        const result = getServiceTypeExploreQueryFilter('mysql');
+
+        expect(result).toEqual(
+          '{"query":{"bool":{"must":[{"bool":{"should":[{"term":{"serviceType":"mysql"}}]}}]}}}'
+        );
       });
     });
   });
