@@ -1576,6 +1576,7 @@
     "no-config-plural": "No Configs.",
     "no-custom-properties-table": "There are currently no Custom Properties defined for the Table Data Asset. To discover how to add Custom Properties, please refer to <0>{{docs}}</0>",
     "no-data": "Keine Daten",
+    "no-data-assets": "Welcome to OpenMetadata! It looks like no data assets have been added yet. Check out our <0>How to Get Started</0> guide to begin.",
     "no-data-available": "Keine Daten verfügbar.",
     "no-data-available-entity": "No data is available in the {{entity}}.",
     "no-data-available-for-selected-filter": "Keine Daten gefunden. Versuchen Sie, die Filter zu ändern.",
