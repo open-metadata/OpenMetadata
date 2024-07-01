@@ -243,7 +243,6 @@ export const CustomEdge = ({
             />
           ) : (
             <EntityPopOverCard
-              defaultOpen={isPipelineRootNode}
               entityFQN={pipeline?.fullyQualifiedName}
               entityType={pipelineEntityType}
               extraInfo={

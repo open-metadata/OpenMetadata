@@ -61,10 +61,12 @@ import org.eclipse.jetty.websocket.server.WebSocketUpgradeFilter;
 import org.glassfish.jersey.media.multipart.MultiPartFeature;
 import org.glassfish.jersey.server.ServerProperties;
 import org.jdbi.v3.core.Jdbi;
+import org.jdbi.v3.core.statement.SqlStatements;
 import org.jdbi.v3.sqlobject.SqlObjects;
 import org.openmetadata.schema.api.security.AuthenticationConfiguration;
 import org.openmetadata.schema.api.security.AuthorizerConfiguration;
 import org.openmetadata.schema.api.security.ClientType;
+import org.openmetadata.schema.configuration.LimitsConfiguration;
 import org.openmetadata.schema.services.connections.metadata.AuthProvider;
 import org.openmetadata.service.apps.ApplicationHandler;
 import org.openmetadata.service.apps.scheduler.AppScheduler;
@@ -84,6 +86,8 @@ import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.MigrationDAO;
 import org.openmetadata.service.jdbi3.locator.ConnectionAwareAnnotationSqlLocator;
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
+import org.openmetadata.service.limits.DefaultLimits;
+import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.migration.Migration;
 import org.openmetadata.service.migration.MigrationValidationClient;
 import org.openmetadata.service.migration.api.MigrationWorkflow;
@@ -131,6 +135,7 @@ import org.quartz.SchedulerException;
 public class OpenMetadataApplication extends Application<OpenMetadataApplicationConfig> {
   private Authorizer authorizer;
   private AuthenticatorHandler authenticatorHandler;
+  private Limits limits;
 
   protected Jdbi jdbi;
 
@@ -200,6 +205,9 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
 
     // Register Authenticator
     registerAuthenticator(catalogConfig);
+
+    // Register Limits
+    registerLimits(catalogConfig);
 
     // Unregister dropwizard default exception mappers
     ((DefaultServerFactory) catalogConfig.getServerFactory())
@@ -394,6 +402,7 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     jdbiInstance
         .getConfig(SqlObjects.class)
         .setSqlLocator(new ConnectionAwareAnnotationSqlLocator(dbFactory.getDriverClass()));
+    jdbiInstance.getConfig(SqlStatements.class).setUnusedBindingAllowed(true);
 
     return jdbiInstance;
   }
@@ -524,6 +533,26 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     }
   }
 
+  private void registerLimits(OpenMetadataApplicationConfig serverConfig)
+      throws NoSuchMethodException,
+          ClassNotFoundException,
+          IllegalAccessException,
+          InvocationTargetException,
+          InstantiationException {
+    LimitsConfiguration limitsConfiguration = serverConfig.getLimitsConfiguration();
+    if (limitsConfiguration != null) {
+      limits =
+          Class.forName(limitsConfiguration.getClassName())
+              .asSubclass(Limits.class)
+              .getConstructor()
+              .newInstance();
+    } else {
+      LOG.info("Limits config not set, setting DefaultLimits");
+      limits = new DefaultLimits();
+    }
+    limits.init(serverConfig, jdbi);
+  }
+
   private void registerEventFilter(
       OpenMetadataApplicationConfig catalogConfig, Environment environment) {
     if (catalogConfig.getEventHandlerConfiguration() != null) {
@@ -550,7 +579,7 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
       OpenMetadataApplicationConfig config, Environment environment, Jdbi jdbi) {
     CollectionRegistry.initialize();
     CollectionRegistry.getInstance()
-        .registerResources(jdbi, environment, config, authorizer, authenticatorHandler);
+        .registerResources(jdbi, environment, config, authorizer, authenticatorHandler, limits);
     environment.jersey().register(new JsonPatchProvider());
     OMErrorPageHandler eph = new OMErrorPageHandler(config.getWebConfiguration());
     eph.addErrorPage(Response.Status.NOT_FOUND.getStatusCode(), "/");

@@ -15,6 +15,8 @@ Redshift E2E tests
 
 from typing import List
 
+from metadata.ingestion.api.status import Status
+
 from .common.test_cli_db import CliCommonDB
 from .common_e2e_sqa_mixins import SQACommonMethods
 
@@ -59,6 +61,23 @@ class RedshiftCliTest(CliCommonDB.TestSuite, SQACommonMethods):
 
     def tearDown(self) -> None:
         self.delete_table_and_view()
+
+    def assert_for_vanilla_ingestion(
+        self, source_status: Status, sink_status: Status
+    ) -> None:
+        self.assertEqual(len(source_status.failures), 0)
+        self.assertEqual(len(source_status.warnings), 0)
+        self.assertEqual(len(source_status.filtered), 1)
+        self.assertGreaterEqual(
+            (len(source_status.records) + len(source_status.updated_records)),
+            self.expected_tables(),
+        )
+        self.assertEqual(len(sink_status.failures), 0)
+        self.assertEqual(len(sink_status.warnings), 0)
+        self.assertGreater(
+            (len(sink_status.records) + len(sink_status.updated_records)),
+            self.expected_tables(),
+        )
 
     def create_table_and_view(self) -> None:
         SQACommonMethods.create_table_and_view(self)
@@ -114,6 +133,10 @@ class RedshiftCliTest(CliCommonDB.TestSuite, SQACommonMethods):
     def get_includes_schemas() -> List[str]:
         return ["dbt_jaffle"]
 
+    @classmethod
+    def get_excludes_schemas(cls) -> List[str]:
+        return ["dbt_jaffle", "information_schema"]
+
     @staticmethod
     def get_includes_tables() -> List[str]:
         return ["customer", "listing"]
@@ -128,15 +151,15 @@ class RedshiftCliTest(CliCommonDB.TestSuite, SQACommonMethods):
 
     @staticmethod
     def expected_filtered_schema_excludes() -> int:
-        return 1
+        return 2
 
     @staticmethod
     def expected_filtered_table_includes() -> int:
-        return 45
+        return 6
 
     @staticmethod
     def expected_filtered_table_excludes() -> int:
-        return 2
+        return 3
 
     @staticmethod
     def expected_filtered_mix() -> int:

@@ -58,6 +58,8 @@ For the usage and lineage workflow, the user will need `SELECT` privilege on `ST
 } 
 /%}
 
+It is recommmended to exclude the schema "information_schema" from the metadata ingestion as it contains system tables and views.
+
 {% stepsContainer %}
 {% extraContent parentTagName="stepsContainer" %}
 

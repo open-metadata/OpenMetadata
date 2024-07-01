@@ -268,14 +268,18 @@
 }
 
 .link-popup {
+  align-items: center;
   padding: 4px;
   background: @white;
   border: @global-border;
-  border-radius: 20px;
+  border-radius: @border-radius-base;
 
   button,
   a {
     color: @text-color !important;
+    &:hover {
+      background-color: @hover-bg;
+    }
   }
 }
 

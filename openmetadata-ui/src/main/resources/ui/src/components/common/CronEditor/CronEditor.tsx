@@ -58,7 +58,7 @@ const CronEditor: FC<CronEditorProp> = (props) => {
     const { includePeriodOptions } = props;
     if (includePeriodOptions) {
       return periodOptions.filter((option) =>
-        includePeriodOptions.includes(option.label)
+        includePeriodOptions.includes(option.value)
       );
     } else {
       return periodOptions;
@@ -549,6 +549,9 @@ const CronEditor: FC<CronEditorProp> = (props) => {
             rules={[
               {
                 required: true,
+                message: t('label.field-required', {
+                  field: t('label.cron'),
+                }),
               },
               {
                 validator: async (_, value) => {

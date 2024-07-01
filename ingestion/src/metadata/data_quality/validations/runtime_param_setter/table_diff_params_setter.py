@@ -162,7 +162,7 @@ class TableDiffParamsSetter(RuntimeParameterSetter):
     @staticmethod
     def get_data_diff_url(service_url: str, table_fqn) -> str:
         url = urlparse(service_url)
-        # remove the drivername from the url becuase table-diff doesn't support it
+        # remove the driver name from the url because table-diff doesn't support it
         kwargs = {"scheme": url.scheme.split("+")[0]}
         service, database, schema, table = fqn.split(  # pylint: disable=unused-variable
             table_fqn
