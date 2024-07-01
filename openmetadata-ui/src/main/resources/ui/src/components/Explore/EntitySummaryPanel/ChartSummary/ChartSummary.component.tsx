@@ -17,7 +17,6 @@ import { useTranslation } from 'react-i18next';
 import { SummaryEntityType } from '../../../../enums/EntitySummary.enum';
 import { ExplorePageTabs } from '../../../../enums/Explore.enum';
 import { Chart } from '../../../../generated/entity/data/chart';
-import { TagLabel } from '../../../../generated/tests/testCase';
 import {
   getFormattedEntityData,
   getSortedTagsWithHighlight,
@@ -34,15 +33,10 @@ import { BasicEntityInfo } from '../SummaryList/SummaryList.interface';
 
 interface ChartsSummaryProps {
   entityDetails: Chart;
-  tags?: TagLabel[];
   highlights?: SearchedDataProps['data'][number]['highlight'];
 }
 
-const ChartSummary = ({
-  entityDetails,
-  tags,
-  highlights,
-}: ChartsSummaryProps) => {
+const ChartSummary = ({ entityDetails, highlights }: ChartsSummaryProps) => {
   const { t } = useTranslation();
   const entityInfo = useMemo(
     () => getEntityOverview(ExplorePageTabs.CHARTS, entityDetails),
@@ -71,13 +65,10 @@ const ChartSummary = ({
 
       <SummaryTagsDescription
         entityDetail={entityDetails}
-        tags={
-          tags ??
-          getSortedTagsWithHighlight(
-            entityDetails.tags,
-            get(highlights, 'tag.name')
-          )
-        }
+        tags={getSortedTagsWithHighlight(
+          entityDetails.tags,
+          get(highlights, 'tag.name')
+        )}
       />
 
       <Divider className="m-y-xs" />
