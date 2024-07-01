@@ -1,3 +1,4 @@
+/* eslint-disable i18next/no-literal-string */
 /*
  *  Copyright 2023 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
@@ -75,6 +76,7 @@ import { Suggestion } from '../../generated/entity/feed/suggestion';
 import { ThreadType } from '../../generated/entity/feed/thread';
 import { TestSummary } from '../../generated/tests/testCase';
 import { TagLabel } from '../../generated/type/tagLabel';
+import LimitWrapper from '../../hoc/LimitWrapper';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
 import { useFqn } from '../../hooks/useFqn';
 import { useSub } from '../../hooks/usePubSub';
@@ -1106,7 +1108,6 @@ const TableDetailsPageV1: React.FC = () => {
             onVersionClick={versionHandler}
           />
         </Col>
-
         {/* Entity Tabs */}
         <Col span={24}>
           <Tabs
@@ -1121,7 +1122,9 @@ const TableDetailsPageV1: React.FC = () => {
             onChange={handleTabChange}
           />
         </Col>
-
+        <LimitWrapper resource="table">
+          <></>
+        </LimitWrapper>
         {threadLink ? (
           <ActivityThreadPanel
             createThread={createThread}

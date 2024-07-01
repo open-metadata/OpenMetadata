@@ -57,6 +57,7 @@ import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.ChartRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
+import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
@@ -82,8 +83,8 @@ public class ChartResource extends EntityResource<Chart, ChartRepository> {
     return chart;
   }
 
-  public ChartResource(Authorizer authorizer) {
-    super(Entity.CHART, authorizer);
+  public ChartResource(Authorizer authorizer, Limits limits) {
+    super(Entity.CHART, authorizer, limits);
   }
 
   @Override

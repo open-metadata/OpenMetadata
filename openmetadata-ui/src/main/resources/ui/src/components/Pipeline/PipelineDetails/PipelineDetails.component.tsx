@@ -44,6 +44,7 @@ import {
 } from '../../../generated/entity/data/pipeline';
 import { ThreadType } from '../../../generated/entity/feed/thread';
 import { TagSource } from '../../../generated/type/schema';
+import LimitWrapper from '../../../hoc/LimitWrapper';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { FeedCounts } from '../../../interface/feed.interface';
 import { postThread } from '../../../rest/feedsAPI';
@@ -837,6 +838,10 @@ const PipelineDetails = ({
           onSave={onTaskUpdate}
         />
       )}
+
+      <LimitWrapper resource="pipeline">
+        <></>
+      </LimitWrapper>
 
       {threadLink ? (
         <ActivityThreadPanel
