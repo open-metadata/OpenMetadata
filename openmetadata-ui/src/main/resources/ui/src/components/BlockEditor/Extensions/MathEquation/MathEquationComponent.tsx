@@ -56,6 +56,7 @@ export const MathEquationComponent: FC<NodeViewProps> = ({
               bordered={false}
               className="math-equation-input"
               defaultValue={equation}
+              placeholder='Enter your equation here. For example: "x^2 + y^2 = z^2"'
               ref={inputRef}
               rows={2}
             />
