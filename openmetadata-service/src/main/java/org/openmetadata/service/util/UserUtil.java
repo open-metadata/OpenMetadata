@@ -42,6 +42,7 @@ import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.security.client.OpenMetadataJWTClientConfig;
 import org.openmetadata.schema.services.connections.metadata.AuthProvider;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.utils.EntityInterfaceUtil;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.EntityRepository;
@@ -329,7 +330,7 @@ public final class UserUtil {
     return new User()
         .withId(UUID.randomUUID())
         .withName(create.getName().toLowerCase())
-        .withFullyQualifiedName(create.getName().toLowerCase())
+        .withFullyQualifiedName(EntityInterfaceUtil.quoteName(create.getName().toLowerCase()))
         .withEmail(create.getEmail().toLowerCase())
         .withDescription(create.getDescription())
         .withDisplayName(create.getDisplayName())

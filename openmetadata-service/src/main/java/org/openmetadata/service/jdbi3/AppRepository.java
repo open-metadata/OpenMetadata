@@ -118,12 +118,12 @@ public class AppRepository extends EntityRepository<App> {
       Bot appBot =
           new Bot()
               .withId(UUID.randomUUID())
-              .withName(botUser.getName())
+              .withName(botName)
               .withUpdatedBy("admin")
               .withUpdatedAt(System.currentTimeMillis())
               .withBotUser(botUser.getEntityReference())
               .withProvider(ProviderType.USER)
-              .withFullyQualifiedName(botUser.getName());
+              .withFullyQualifiedName(botName);
 
       // Create Bot with above user
       bot = botRepository.createInternal(appBot);
