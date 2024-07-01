@@ -229,6 +229,11 @@ public class AbstractNativeApplication implements NativeApplication {
   }
 
   @Override
+  public void cleanup() {
+    /* Not needed by default*/
+  }
+
+  @Override
   public void raisePreviewMessage(App app) {
     throw AppException.byMessage(
         app.getName(),

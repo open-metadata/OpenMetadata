@@ -714,6 +714,13 @@ public class AppResource extends EntityResource<App, AppRepository> {
       throw new IllegalArgumentException(
           CatalogExceptionMessage.systemEntityDeleteNotAllowed(app.getName(), "SystemApp"));
     }
+
+    if (app.getScheduleType().equals(ScheduleType.Scheduled)
+        && app.getName().equals("SlackApplication")) {
+      ApplicationHandler.getInstance()
+          .performCleanup(app, Entity.getCollectionDAO(), searchRepository);
+    }
+
     // Remove from Pipeline Service
     deleteApp(securityContext, app, hardDelete);
     return deleteByName(uriInfo, securityContext, name, true, hardDelete);
@@ -722,7 +729,7 @@ public class AppResource extends EntityResource<App, AppRepository> {
   @DELETE
   @Path("/{id}")
   @Operation(
-      operationId = "uninstallAppByName",
+      operationId = "uninstallAppById",
       summary = "Delete a App by Id",
       description = "Delete a App by `Id`.",
       responses = {
@@ -746,6 +753,13 @@ public class AppResource extends EntityResource<App, AppRepository> {
       throw new IllegalArgumentException(
           CatalogExceptionMessage.systemEntityDeleteNotAllowed(app.getName(), "SystemApp"));
     }
+
+    if (app.getScheduleType().equals(ScheduleType.Scheduled)
+        && app.getName().equals("SlackApplication")) {
+      ApplicationHandler.getInstance()
+          .performCleanup(app, Entity.getCollectionDAO(), searchRepository);
+    }
+
     // Remove from Pipeline Service
     deleteApp(securityContext, app, hardDelete);
     // Remove from repository

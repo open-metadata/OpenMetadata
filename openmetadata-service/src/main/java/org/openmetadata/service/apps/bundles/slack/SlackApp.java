@@ -37,10 +37,16 @@ import org.openmetadata.service.util.JsonUtils;
 @Slf4j
 public class SlackApp extends AbstractNativeApplication {
   private SlackAppConfiguration appConfig;
-  private final SlackInstallationService installationService = new SlackInstallationService();
+  private static final SlackInstallationService installationService =
+      new SlackInstallationService();
 
   public SlackApp(CollectionDAO collectionDAO, SearchRepository searchRepository) {
     super(collectionDAO, searchRepository);
+  }
+
+  @Override
+  public void cleanup() {
+    revokeSlackAppTokenAndRemoveSlackFromInstalledWorkSpace();
   }
 
   public static App boltSlackAppRegistration(SlackAppConfiguration config) throws Exception {
@@ -204,7 +210,8 @@ public class SlackApp extends AbstractNativeApplication {
     }
   }
 
-  boolean revokeSlackAppToken() {
+  // remove installed slack application from workspace
+  public static boolean revokeSlackAppTokenAndRemoveSlackFromInstalledWorkSpace() {
     try {
       HashMap<String, Object> tokenMap = installationService.getSavedToken();
 
@@ -212,7 +219,7 @@ public class SlackApp extends AbstractNativeApplication {
         throw AppException.byMessage(
             SlackConstants.SLACK_APP,
             "revokeSlackAppToken",
-            "Bot access token is missing",
+            "Bot access token is missing.",
             Response.Status.BAD_REQUEST);
       }
 

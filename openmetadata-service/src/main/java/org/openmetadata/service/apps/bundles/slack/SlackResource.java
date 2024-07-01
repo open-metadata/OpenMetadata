@@ -122,7 +122,7 @@ public class SlackResource {
       })
   public Response handleUninstall(String token) {
     initializeSlackApp();
-    boolean isRevoked = slackApp.revokeSlackAppToken();
+    boolean isRevoked = slackApp.revokeSlackAppTokenAndRemoveSlackFromInstalledWorkSpace();
     if (isRevoked) {
       return Response.ok()
           .entity(
