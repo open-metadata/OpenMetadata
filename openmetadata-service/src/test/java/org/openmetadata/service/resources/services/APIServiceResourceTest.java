@@ -66,6 +66,7 @@ public class APIServiceResourceTest extends ServiceResourceTest<APIService, Crea
             .withConnection(TestUtils.API_SERVICE_CONNECTION);
     APIService sampleAPIService =
         new APIServiceResourceTest().createEntity(createAPIService, ADMIN_AUTH_HEADERS);
+    SAMPLE_API_SERVICE_REFERENCE = sampleAPIService.getEntityReference();
   }
 
   @Test
