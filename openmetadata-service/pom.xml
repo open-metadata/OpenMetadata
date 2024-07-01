@@ -5,7 +5,7 @@
   <parent>
     <artifactId>platform</artifactId>
     <groupId>org.open-metadata</groupId>
-    <version>1.5.0-SNAPSHOT</version>
+    <version>1.4.3</version>
   </parent>
   <modelVersion>4.0.0</modelVersion>
   <artifactId>openmetadata-service</artifactId>
@@ -33,6 +33,13 @@
         <artifactId>aws-java-sdk-bom</artifactId>
         <version>${awssdk.version}</version>
         <type>pom</type>
+      </dependency>
+      <dependency>
+        <groupId>com.google.cloud</groupId>
+        <artifactId>libraries-bom</artifactId>
+        <version>26.34.0</version>
+        <type>pom</type>
+        <scope>import</scope>
       </dependency>
     </dependencies>
   </dependencyManagement>
@@ -606,11 +613,14 @@
       <scope>compile</scope>
     </dependency>
     <dependency>
+      <groupId>com.google.cloud</groupId>
+      <artifactId>google-cloud-secretmanager</artifactId>
+    </dependency>
+    <dependency>
       <groupId>com.googlecode.owasp-java-html-sanitizer</groupId>
       <artifactId>owasp-java-html-sanitizer</artifactId>
       <version>20211018.2</version> 
     </dependency>
-
   </dependencies>
 
   <profiles>

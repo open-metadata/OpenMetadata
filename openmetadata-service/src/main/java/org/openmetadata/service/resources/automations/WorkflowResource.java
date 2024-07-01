@@ -57,6 +57,7 @@ import org.openmetadata.service.clients.pipeline.PipelineServiceClientFactory;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.WorkflowRepository;
+import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.secrets.SecretsManager;
@@ -86,8 +87,8 @@ public class WorkflowResource extends EntityResource<Workflow, WorkflowRepositor
   private PipelineServiceClient pipelineServiceClient;
   private OpenMetadataApplicationConfig openMetadataApplicationConfig;
 
-  public WorkflowResource(Authorizer authorizer) {
-    super(Entity.WORKFLOW, authorizer);
+  public WorkflowResource(Authorizer authorizer, Limits limits) {
+    super(Entity.WORKFLOW, authorizer, limits);
   }
 
   @Override

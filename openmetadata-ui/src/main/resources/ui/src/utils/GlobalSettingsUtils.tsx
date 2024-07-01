@@ -55,7 +55,8 @@ import {
   UIPermission,
 } from '../context/PermissionProvider/PermissionProvider.interface';
 import { EntityType } from '../enums/entity.enum';
-import { userPermissions } from '../utils/PermissionsUtils';
+import globalSettingsClassBase from './GlobalSettingsClassBase';
+import { userPermissions } from './PermissionsUtils';
 import { getSettingPath } from './RouterUtils';
 import { getEncodedFqn } from './StringsUtils';
 
@@ -482,46 +483,11 @@ export const getCustomizePagePath = (personaFqn: string, pageFqn: string) => {
     .replace(':pageFqn', pageFqn);
 };
 
-export const settingCategories = {
-  [GlobalSettingsMenuCategory.SERVICES]: {
-    name: i18next.t('label.service-plural'),
-    url: GlobalSettingsMenuCategory.SERVICES,
-  },
-  [GlobalSettingsMenuCategory.NOTIFICATIONS]: {
-    name: i18next.t('label.notification-plural'),
-    url: GlobalSettingsMenuCategory.NOTIFICATIONS,
-  },
-  [GlobalSettingsMenuCategory.MEMBERS]: {
-    name: i18next.t('label.member-plural'),
-    url: GlobalSettingsMenuCategory.MEMBERS,
-  },
-  [GlobalSettingsMenuCategory.ACCESS]: {
-    name: i18next.t('label.access-control'),
-    url: GlobalSettingsMenuCategory.ACCESS,
-  },
-  [GlobalSettingsMenuCategory.PREFERENCES]: {
-    name: i18next.t('label.preference-plural'),
-    url: GlobalSettingsMenuCategory.PREFERENCES,
-  },
-  [GlobalSettingsMenuCategory.CUSTOM_PROPERTIES]: {
-    name: i18next.t('label.custom-property-plural'),
-    url: GlobalSettingsMenuCategory.CUSTOM_PROPERTIES,
-  },
-  [GlobalSettingsMenuCategory.BOTS]: {
-    name: i18next.t('label.bot-plural'),
-    url: GlobalSettingsMenuCategory.BOTS,
-  },
-  [GlobalSettingsMenuCategory.APPLICATIONS]: {
-    name: i18next.t('label.application-plural'),
-    url: GlobalSettingsMenuCategory.APPLICATIONS,
-  },
-};
-
 export const getSettingPageEntityBreadCrumb = (
   category: GlobalSettingsMenuCategory,
   entityName?: string
 ) => {
-  const categoryObject = settingCategories[category];
+  const categoryObject = globalSettingsClassBase.settingCategories[category];
 
   return [
     {
@@ -529,7 +495,7 @@ export const getSettingPageEntityBreadCrumb = (
       url: ROUTES.SETTINGS,
     },
     {
-      name: categoryObject.name,
+      name: categoryObject?.name ?? '',
       url: entityName ? getSettingPath(categoryObject.url) : '',
       activeTitle: !entityName,
     },

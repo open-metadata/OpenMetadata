@@ -25,7 +25,7 @@ Configure and schedule DBTCloud metadata and profiler workflows from the OpenMet
 - [Troubleshooting](#troubleshooting)
     - [Workflow Deployment Error](#workflow-deployment-error)
 
-{% partial file="/v1.4/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/pipeline/dbtcloud/yaml"} /%}
+{% partial file="/v1.5/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/pipeline/dbtcloud/yaml"} /%}
 
 ## Requirements
 
@@ -49,12 +49,12 @@ To know more about permissions required refer [here](https://docs.getdbt.com/doc
 ## Metadata Ingestion
 
 {% partial 
-    file="/v1.4/connectors/metadata-ingestion-ui.md" 
+    file="/v1.5/connectors/metadata-ingestion-ui.md" 
     variables={
         connector: "DBTCloud", 
-        selectServicePath: "/images/v1.4/connectors/dbtcloud/select-service.webp",
-        addNewServicePath: "/images/v1.4/connectors/dbtcloud/add-new-service.webp",
-        serviceConnectionPath: "/images/v1.4/connectors/dbtcloud/service-connection.webp",
+        selectServicePath: "/images/v1.5/connectors/dbtcloud/select-service.webp",
+        addNewServicePath: "/images/v1.5/connectors/dbtcloud/add-new-service.webp",
+        serviceConnectionPath: "/images/v1.5/connectors/dbtcloud/service-connection.webp",
     } 
 /%}
 
@@ -76,11 +76,11 @@ Make sure you have the necessary permissions on the token to run graphql queries
 
 {% /extraContent %}
 
-{% partial file="/v1.4/connectors/test-connection.md" /%}
+{% partial file="/v1.5/connectors/test-connection.md" /%}
 
-{% partial file="/v1.4/connectors/pipeline/configure-ingestion.md" /%}
+{% partial file="/v1.5/connectors/pipeline/configure-ingestion.md" /%}
 
-{% partial file="/v1.4/connectors/ingestion-schedule-and-deploy.md" /%}
+{% partial file="/v1.5/connectors/ingestion-schedule-and-deploy.md" /%}
 
 {% /stepsContainer %}
 
@@ -92,12 +92,12 @@ Steps to retrieve and display the lineage information for a DBT Cloud service. N
 By successfully completing these steps, the lineage information for the service will be displayed.
 
 {% image
-  src="/images/v1.4/connectors/dbtcloud/lineage.webp"
+  src="/images/v1.5/connectors/dbtcloud/lineage.webp"
   alt="DBT Cloud Lineage" /%}
 
 
 
-{% partial file="/v1.4/connectors/troubleshooting.md" /%}
+{% partial file="/v1.5/connectors/troubleshooting.md" /%}
 
 ### Missing Lineage
 If lineage information is not displayed for a DBT Cloud service, follow these steps to diagnose the issue.

@@ -39,6 +39,8 @@ export interface TestSuiteIngestionProps {
   testSuite: TestSuite;
   ingestionPipeline?: IngestionPipeline;
   onCancel: () => void;
+  testCaseNames?: string[];
+  pipelineName?: string;
 }
 
 export type TestSuiteIngestionDataType = {
