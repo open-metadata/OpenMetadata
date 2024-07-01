@@ -721,6 +721,7 @@ public class AppResource extends EntityResource<App, AppRepository> {
           CatalogExceptionMessage.systemEntityDeleteNotAllowed(app.getName(), "SystemApp"));
     }
 
+    // invalidate slackApp from workspace
     if (app.getScheduleType().equals(ScheduleType.Scheduled)
         && app.getName().equals("SlackApplication")) {
       ApplicationHandler.getInstance()
@@ -761,6 +762,7 @@ public class AppResource extends EntityResource<App, AppRepository> {
           CatalogExceptionMessage.systemEntityDeleteNotAllowed(app.getName(), "SystemApp"));
     }
 
+    // invalidate slackApp from workspace
     if (app.getScheduleType().equals(ScheduleType.Scheduled)
         && app.getName().equals("SlackApplication")) {
       ApplicationHandler.getInstance()
