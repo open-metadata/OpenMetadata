@@ -1538,7 +1538,9 @@ class SampleDataSource(
                         rows=test_case_results["failedRowsSample"]["rows"],
                         columns=test_case_results["failedRowsSample"]["columns"],
                     ),
-                    validate=test_case_results["failedRowsSample"].get("validate", True)
+                    validate=test_case_results["failedRowsSample"].get(
+                        "validate", True
+                    ),
                 )
             if test_case_results.get("inspectionQuery"):
                 self.metadata.ingest_inspection_query(
