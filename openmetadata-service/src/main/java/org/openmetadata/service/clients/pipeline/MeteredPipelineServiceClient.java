@@ -40,7 +40,7 @@ public class MeteredPipelineServiceClient implements PipelineServiceClientInterf
   private <T> T executeWithMetering(String name, Supplier<T> operation) {
     try {
       T result = operation.get();
-      pipelineClientStatusCounter.labels(name,"200").inc();
+      pipelineClientStatusCounter.labels(name, "200").inc();
       return result;
     } catch (PipelineServiceClientException e) {
       pipelineClientStatusCounter.labels(name, Integer.toString(e.getResponse().getStatus())).inc();

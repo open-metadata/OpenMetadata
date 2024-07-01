@@ -4,8 +4,6 @@ import io.micrometer.prometheus.PrometheusMeterRegistry;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.api.configuration.pipelineServiceClient.PipelineServiceClientConfiguration;
 import org.openmetadata.sdk.PipelineServiceClientInterface;
-import org.openmetadata.service.clients.pipeline.PipelineServiceAPIClientConfig;
-import org.openmetadata.service.clients.pipeline.PipelineServiceClient;
 import org.openmetadata.service.clients.pipeline.PipelineServiceClientFactory;
 import org.openmetadata.service.util.MicrometerBundleSingleton;
 import org.quartz.JobBuilder;
