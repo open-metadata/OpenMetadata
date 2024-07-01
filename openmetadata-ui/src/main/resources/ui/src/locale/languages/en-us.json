@@ -1857,6 +1857,7 @@
     "entity-fetch-error": "Error while fetching {{entity}}",
     "entity-fetch-version-error": "Error while fetching {{entity}} versions {{version}}",
     "entity-follow-error": "Error while following {{entity}}",
+    "entity-limit-reached": "{{entity}} limit reached",
     "entity-removing-error": "Error while removing {{entity}}",
     "entity-unfollow-error": "Error while unfollowing {{entity}}",
     "entity-updating-error": "Error while updating {{entity}}",

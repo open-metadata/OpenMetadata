@@ -19,3 +19,4 @@ export const RED_3 = '#f24822';
 export const RED_3_OPACITY = '#FF7C501A';
 export const PURPLE_2 = '#7147e8';
 export const TEXT_COLOR = '#292929';
+export const GRAY_COLOR = '#CFD6DD';

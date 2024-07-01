@@ -234,6 +234,7 @@ const SearchIndexVersion: React.FC<SearchIndexVersionProps> = ({
 
       <EntityVersionTimeLine
         currentVersion={toString(version)}
+        entityType={EntityType.SEARCH_INDEX}
         versionHandler={versionHandler}
         versionList={versionList}
         onBack={backHandler}
