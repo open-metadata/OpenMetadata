@@ -34,6 +34,7 @@ import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.BotRepository;
 import org.openmetadata.service.jdbi3.UserRepository;
+import org.openmetadata.service.secrets.SecretsManager;
 import org.openmetadata.service.secrets.SecretsManagerFactory;
 import org.openmetadata.service.util.EntityUtil.Fields;
 
@@ -51,6 +52,7 @@ public class OpenMetadataConnectionBuilder {
   private Object openMetadataSSLConfig;
   BotRepository botRepository;
   UserRepository userRepository;
+  SecretsManager secretsManager;
 
   public OpenMetadataConnectionBuilder(
       OpenMetadataApplicationConfig openMetadataApplicationConfig) {
@@ -93,7 +95,8 @@ public class OpenMetadataConnectionBuilder {
 
     clusterName = openMetadataApplicationConfig.getClusterName();
     secretsManagerLoader = pipelineServiceClientConfiguration.getSecretsManagerLoader();
-    secretsManagerProvider = SecretsManagerFactory.getSecretsManager().getSecretsManagerProvider();
+    secretsManager = SecretsManagerFactory.getSecretsManager();
+    secretsManagerProvider = secretsManager.getSecretsManagerProvider();
   }
 
   private void initializeBotUser(String botName) {
@@ -122,6 +125,7 @@ public class OpenMetadataConnectionBuilder {
         == AuthenticationMechanism.AuthType.JWT) {
       JWTAuthMechanism jwtAuthMechanism =
           JsonUtils.convertValue(authMechanism.getConfig(), JWTAuthMechanism.class);
+      secretsManager.decryptJWTAuthMechanism(jwtAuthMechanism);
       return new OpenMetadataJWTClientConfig().withJwtToken(jwtAuthMechanism.getJWTToken());
     }
     throw new IllegalArgumentException(

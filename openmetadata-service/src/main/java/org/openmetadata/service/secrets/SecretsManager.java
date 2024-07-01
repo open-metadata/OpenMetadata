@@ -30,6 +30,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.annotations.PasswordField;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.auth.BasicAuthMechanism;
+import org.openmetadata.schema.auth.JWTAuthMechanism;
 import org.openmetadata.schema.entity.automations.Workflow;
 import org.openmetadata.schema.entity.services.ServiceType;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
@@ -124,32 +125,34 @@ public abstract class SecretsManager {
     }
   }
 
-  public void encryptAuthenticationMechanism(
+  public Object encryptAuthenticationMechanism(
       String name, AuthenticationMechanism authenticationMechanism) {
     if (authenticationMechanism != null) {
       AuthenticationMechanismBuilder.addDefinedConfig(authenticationMechanism);
       try {
-        encryptPasswordFields(authenticationMechanism, buildSecretId(true, "bot", name), true);
+        return encryptPasswordFields(authenticationMechanism, buildSecretId(true, "bot", name), true);
       } catch (Exception e) {
         throw new SecretsManagerException(
             Response.Status.BAD_REQUEST,
             String.format("Failed to encrypt user bot instance [%s]", name));
       }
     }
+    return null;
   }
 
-  public void decryptAuthenticationMechanism(
+  public AuthenticationMechanism decryptAuthenticationMechanism(
       String name, AuthenticationMechanism authenticationMechanism) {
     if (authenticationMechanism != null) {
       AuthenticationMechanismBuilder.addDefinedConfig(authenticationMechanism);
       try {
-        decryptPasswordFields(authenticationMechanism);
+        return (AuthenticationMechanism) decryptPasswordFields(authenticationMechanism);
       } catch (Exception e) {
         throw new SecretsManagerException(
             Response.Status.BAD_REQUEST,
             String.format("Failed to decrypt user bot instance [%s]", name));
       }
     }
+    return null;
   }
 
   public void encryptIngestionPipeline(IngestionPipeline ingestionPipeline) {
@@ -257,6 +260,19 @@ public abstract class SecretsManager {
             Response.Status.BAD_REQUEST, "Failed to decrypt OpenMetadataConnection instance.");
       }
       return openMetadataConnectionConverted;
+    }
+    return null;
+  }
+
+  public JWTAuthMechanism decryptJWTAuthMechanism(JWTAuthMechanism authMechanism) {
+    if (authMechanism != null) {
+      try {
+        decryptPasswordFields(authMechanism);
+      } catch (Exception e) {
+        throw new SecretsManagerException(
+            Response.Status.BAD_REQUEST, "Failed to decrypt OpenMetadataConnection instance.");
+      }
+      return authMechanism;
     }
     return null;
   }

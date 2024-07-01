@@ -1544,7 +1544,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
       switch (authType) {
         case JWT -> {
           User original = retrieveBotUser(user, uriInfo);
-          if (original == null || !hasAJWTAuthMechanism(original.getAuthenticationMechanism())) {
+          if (original == null || !hasAJWTAuthMechanism(user, original.getAuthenticationMechanism())) {
             JWTAuthMechanism jwtAuthMechanism =
                 JsonUtils.convertValue(authMechanism.getConfig(), JWTAuthMechanism.class);
             authMechanism.setConfig(
@@ -1595,8 +1595,10 @@ public class UserResource extends EntityResource<User, UserRepository> {
         new AuthenticationMechanism().withAuthType(BASIC).withConfig(newAuthForUser));
   }
 
-  private boolean hasAJWTAuthMechanism(AuthenticationMechanism authMechanism) {
+  private boolean hasAJWTAuthMechanism(User user, AuthenticationMechanism authMechanism) {
     if (authMechanism != null && JWT.equals(authMechanism.getAuthType())) {
+      SecretsManager secretsManager = SecretsManagerFactory.getSecretsManager();
+      secretsManager.decryptAuthenticationMechanism(user.getName(), authMechanism);
       JWTAuthMechanism jwtAuthMechanism =
           JsonUtils.convertValue(authMechanism.getConfig(), JWTAuthMechanism.class);
       return jwtAuthMechanism != null
