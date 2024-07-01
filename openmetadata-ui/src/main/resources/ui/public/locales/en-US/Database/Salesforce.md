@@ -1,3 +1,4 @@
+
 # Salesforce
 
 In this section, we provide guides and references to use the Salesforce connector.
@@ -66,6 +67,13 @@ When connecting to Salesforce, you can specify the domain to use for accessing t
 By default, the domain `login` is used for accessing Salesforce.
 
 $$
+
+
+$$section
+### SSL CA $(id="caCertificate")
+The CA certificate used for SSL validation to connect to Salesforce.
+$$
+
 
 $$section
 ### Connection Options $(id="connectionOptions")

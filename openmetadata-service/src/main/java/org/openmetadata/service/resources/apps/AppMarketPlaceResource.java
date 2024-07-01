@@ -51,6 +51,7 @@ import org.openmetadata.service.apps.ApplicationHandler;
 import org.openmetadata.service.clients.pipeline.PipelineServiceClientFactory;
 import org.openmetadata.service.jdbi3.AppMarketPlaceRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
+import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
@@ -96,8 +97,8 @@ public class AppMarketPlaceResource
     }
   }
 
-  public AppMarketPlaceResource(Authorizer authorizer) {
-    super(Entity.APP_MARKET_PLACE_DEF, authorizer);
+  public AppMarketPlaceResource(Authorizer authorizer, Limits limits) {
+    super(Entity.APP_MARKET_PLACE_DEF, authorizer, limits);
   }
 
   public static class AppMarketPlaceDefinitionList extends ResultList<AppMarketPlaceDefinition> {

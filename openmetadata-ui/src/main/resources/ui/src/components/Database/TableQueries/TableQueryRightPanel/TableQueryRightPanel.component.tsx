@@ -112,7 +112,7 @@ const TableQueryRightPanel = ({
                   </UserTeamSelectableList>
                 )}
               </Space>
-              <OwnerLabel hasPermission={false} owner={query.owner} />
+              <OwnerLabel pills hasPermission={false} owner={query.owner} />
             </Space>
           </Col>
           <Col span={24}>

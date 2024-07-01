@@ -12,16 +12,13 @@
  */
 
 import { CheckOutlined, PlusOutlined } from '@ant-design/icons';
-import Icon from '@ant-design/icons/lib/components/Icon';
-import { Button, Divider, Row, Space, Tooltip } from 'antd';
+import { Button, Col, Divider, Row, Space, Tooltip } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import cronstrue from 'cronstrue';
 import React, { Fragment, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useHistory } from 'react-router-dom';
-import { ReactComponent as ExternalLinkIcon } from '../../../../assets/svg/external-links.svg';
-import { DATA_ASSET_ICON_DIMENSION } from '../../../../constants/constants';
 import { usePermissionProvider } from '../../../../context/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../../../context/PermissionProvider/PermissionProvider.interface';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../../enums/common.enum';
@@ -323,30 +320,7 @@ const TestSuitePipelineTab = ({ testSuite }: Props) => {
         key: 'name',
         width: 300,
         render: (_, record) => {
-          const name = getEntityName(record);
-
-          return (
-            <Tooltip
-              title={
-                viewPermission ? name : t('message.no-permission-to-view')
-              }>
-              <a
-                className="link-text"
-                data-testid="airflow-tree-view"
-                href={`${airFlowEndPoint}`}
-                rel="noopener noreferrer"
-                target="_blank">
-                <Space align="center">
-                  {name}
-                  <Icon
-                    className="align-middle"
-                    component={ExternalLinkIcon}
-                    style={DATA_ASSET_ICON_DIMENSION}
-                  />
-                </Space>
-              </a>
-            </Tooltip>
-          );
+          return getEntityName(record);
         },
       },
       {
@@ -601,34 +575,56 @@ const TestSuitePipelineTab = ({ testSuite }: Props) => {
     [testSuiteFQN]
   );
 
+  const dataSource = useMemo(() => {
+    return testSuitePipelines.map((test) => ({
+      ...test,
+      key: test.name,
+    }));
+  }, [testSuitePipelines]);
+
   if (!isAirflowAvailable && !(isLoading || isFetchingStatus)) {
     return <ErrorPlaceHolderIngestion />;
   }
 
   return (
-    <div className="m-t-md">
-      <Table
-        bordered
-        columns={pipelineColumns}
-        dataSource={testSuitePipelines.map((test) => ({
-          ...test,
-          key: test.name,
-        }))}
-        loading={isLoading || isFetchingStatus}
-        locale={{ emptyText: errorPlaceholder }}
-        pagination={false}
-        rowKey="name"
-        scroll={{ x: 1200 }}
-        size="small"
-      />
-      <EntityDeleteModal
-        entityName={deleteSelection.name}
-        entityType={t('label.ingestion-lowercase')}
-        visible={isConfirmationModalOpen}
-        onCancel={handleCancelConfirmationModal}
-        onConfirm={() => handleDelete(deleteSelection.id, deleteSelection.name)}
-      />
-    </div>
+    <Row className="m-t-md" gutter={[16, 16]}>
+      {dataSource.length > 0 && (
+        <Col className="d-flex justify-end" span={24}>
+          <Button
+            data-testid="add-pipeline-button"
+            type="primary"
+            onClick={() => {
+              history.push(getTestSuiteIngestionPath(testSuiteFQN));
+            }}>
+            {t('label.add-entity', { entity: t('label.pipeline') })}
+          </Button>
+        </Col>
+      )}
+      <Col span={24}>
+        <Table
+          bordered
+          columns={pipelineColumns}
+          dataSource={dataSource}
+          loading={isLoading || isFetchingStatus}
+          locale={{ emptyText: errorPlaceholder }}
+          pagination={false}
+          rowKey="name"
+          scroll={{ x: 1200 }}
+          size="small"
+        />
+      </Col>
+      <Col span={24}>
+        <EntityDeleteModal
+          entityName={deleteSelection.name}
+          entityType={t('label.ingestion-lowercase')}
+          visible={isConfirmationModalOpen}
+          onCancel={handleCancelConfirmationModal}
+          onConfirm={() =>
+            handleDelete(deleteSelection.id, deleteSelection.name)
+          }
+        />
+      </Col>
+    </Row>
   );
 };
 

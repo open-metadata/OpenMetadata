@@ -59,6 +59,7 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.TypeRepository;
+import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
@@ -88,8 +89,8 @@ public class TypeResource extends EntityResource<Type, TypeRepository> {
     return type;
   }
 
-  public TypeResource(Authorizer authorizer) {
-    super(Entity.TYPE, authorizer);
+  public TypeResource(Authorizer authorizer, Limits limits) {
+    super(Entity.TYPE, authorizer, limits);
   }
 
   @Override

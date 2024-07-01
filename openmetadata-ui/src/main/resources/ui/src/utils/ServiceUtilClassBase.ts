@@ -31,6 +31,7 @@ import {
   DATABASE_DEFAULT,
   DATABRICK,
   DATALAKE,
+  DBT,
   DEFAULT_SERVICE,
   DELTALAKE,
   DOMO,
@@ -39,6 +40,7 @@ import {
   DYNAMODB,
   ELASTIC_SEARCH,
   FIVETRAN,
+  FLINK,
   GLUE,
   GREENPLUM,
   HIVE,
@@ -328,6 +330,9 @@ class ServiceUtilClassBase {
       case PipelineServiceType.Dagster:
         return DAGSTER;
 
+      case PipelineServiceType.DBTCloud:
+        return DBT;
+
       case PipelineServiceType.Fivetran:
         return FIVETRAN;
 
@@ -354,6 +359,9 @@ class ServiceUtilClassBase {
 
       case PipelineServiceType.OpenLineage:
         return OPENLINEAGE;
+
+      case PipelineServiceType.Flink:
+        return FLINK;
 
       case MlModelServiceType.Mlflow:
         return MLFLOW;

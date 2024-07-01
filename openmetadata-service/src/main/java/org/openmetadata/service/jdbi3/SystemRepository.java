@@ -425,7 +425,7 @@ public class SystemRepository {
     OpenMetadataConnection openMetadataServerConnection =
         new OpenMetadataConnectionBuilder(applicationConfig).build();
     try {
-      jwtFilter.validateAndReturnDecodedJwtToken(
+      jwtFilter.validateJwtAndGetClaims(
           openMetadataServerConnection.getSecurityConfig().getJwtToken());
       return new StepValidation()
           .withDescription(ValidationStepDescription.JWT_TOKEN.key)

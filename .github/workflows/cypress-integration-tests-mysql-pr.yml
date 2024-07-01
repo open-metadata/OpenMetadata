@@ -22,8 +22,8 @@ on:
       - synchronize
       - reopened
       - ready_for_review
-    paths:
-      - openmetadata-ui/**
+    paths-ignore:
+      - 'openmetadata-docs/**'
 
 permissions:
   contents: read
@@ -35,8 +35,7 @@ concurrency:
 jobs:
   cypress-ci-mysql:
     if: |
-      github.event_name == 'workflow_dispatch' || 
-      ( github.event_name == 'pull_request_target'&& github.event.pull_request.draft == false )
+      github.event_name == 'workflow_dispatch' || contains( github.event.pull_request.labels.*.name, 'e2e')
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false

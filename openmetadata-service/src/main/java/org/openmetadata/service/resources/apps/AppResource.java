@@ -72,6 +72,7 @@ import org.openmetadata.service.jdbi3.AppRepository;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.IngestionPipelineRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
+import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.search.SearchRepository;
@@ -162,8 +163,8 @@ public class AppResource extends EntityResource<App, AppRepository> {
     }
   }
 
-  public AppResource(Authorizer authorizer) {
-    super(Entity.APPLICATION, authorizer);
+  public AppResource(Authorizer authorizer, Limits limits) {
+    super(Entity.APPLICATION, authorizer, limits);
   }
 
   public static class AppList extends ResultList<App> {
@@ -545,6 +546,7 @@ public class AppResource extends EntityResource<App, AppRepository> {
       })
   public Response create(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateApp create) {
+
     AppMarketPlaceDefinition definition =
         repository
             .getMarketPlace()
@@ -553,6 +555,10 @@ public class AppResource extends EntityResource<App, AppRepository> {
                 create.getName(),
                 new EntityUtil.Fields(repository.getMarketPlace().getAllowedFields()));
     App app = getApplication(definition, create, securityContext.getUserPrincipal().getName());
+    limits.enforceLimits(
+        securityContext,
+        getResourceContext(),
+        new OperationContext(Entity.APPLICATION, MetadataOperation.CREATE));
     if (app.getScheduleType().equals(ScheduleType.Scheduled)) {
       ApplicationHandler.getInstance()
           .installApplication(app, Entity.getCollectionDAO(), searchRepository);
@@ -721,6 +727,7 @@ public class AppResource extends EntityResource<App, AppRepository> {
           .performCleanup(app, Entity.getCollectionDAO(), searchRepository);
     }
 
+    limits.invalidateCache(entityType);
     // Remove from Pipeline Service
     deleteApp(securityContext, app, hardDelete);
     return deleteByName(uriInfo, securityContext, name, true, hardDelete);

@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { isEmpty, isEqual } from 'lodash';
+import { isEmpty, isEqual, uniqBy } from 'lodash';
 import { DateRangeObject } from 'Models';
 import React, {
   createContext,
@@ -254,7 +254,7 @@ const DataInsightProvider = ({ children }: DataInsightProviderProps) => {
         data: kpiList,
       },
       teamFilter: {
-        options: teamsOptions.options,
+        options: uniqBy(teamsOptions.options, 'id'),
         selectedKeys: teamsOptions.selectedOptions,
         onChange: handleTeamChange,
         onGetInitialOptions: fetchDefaultTeamOptions,

@@ -88,7 +88,7 @@ class PandasProfilerInterface(ProfilerInterface, PandasInterfaceMixin):
         self.client = self.connection.client
         self.dfs = self.return_ometa_dataframes_sampled(
             service_connection_config=self.service_connection_config,
-            client=self.client,
+            client=self.client._client,
             table=self.table_entity,
             profile_sample_config=profile_sample_config,
         )
@@ -137,7 +137,7 @@ class PandasProfilerInterface(ProfilerInterface, PandasInterfaceMixin):
 
         return sampler_factory_.create(
             DatalakeConnection.__name__,
-            client=self.client,
+            client=self.client._client,  # pylint: disable=W0212
             table=self.dfs,
             profile_sample_config=self.profile_sample_config,
             partition_details=self.partition_details,

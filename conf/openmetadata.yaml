@@ -175,6 +175,7 @@ authenticationConfiguration:
   clientId: ${AUTHENTICATION_CLIENT_ID:-""}
   callbackUrl: ${AUTHENTICATION_CALLBACK_URL:-""}
   jwtPrincipalClaims: ${AUTHENTICATION_JWT_PRINCIPAL_CLAIMS:-[email,preferred_username,sub]}
+  jwtPrincipalClaimsMapping: ${AUTHENTICATION_JWT_PRINCIPAL_CLAIMS_MAPPING:-[]}
   enableSelfSignup : ${AUTHENTICATION_ENABLE_SELF_SIGNUP:-true}
   oidcConfiguration:
     id: ${OIDC_CLIENT_ID:-""}
@@ -367,6 +368,11 @@ email:
   password: ${SMTP_SERVER_PWD:-""}
   transportationStrategy: ${SMTP_SERVER_STRATEGY:-"SMTP_TLS"}
 
+limits:
+  enable: ${LIMITS_ENABLED:-false}
+  className: ${LIMITS_CLASS_NAME:-"org.openmetadata.service.limits.DefaultLimits"}
+  limitsConfigFile: ${LIMITS_CONFIG_FILE:-""}
+
 web:
   uriPath: ${WEB_CONF_URI_PATH:-"/api"}
   hsts:
@@ -394,6 +400,9 @@ web:
   permission-policy:
     enabled: ${WEB_CONF_PERMISSION_POLICY_ENABLED:-false}
     option: ${WEB_CONF_PERMISSION_POLICY_OPTION:-""}
+  cache-control: ${WEB_CONF_CACHE_CONTROL:-""}
+  pragma: ${WEB_CONF_PRAGMA:-""}
+
 
 applications:
   appsPrivateConfiguration:
