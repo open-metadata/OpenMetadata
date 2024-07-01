@@ -11,9 +11,8 @@
  *  limitations under the License.
  */
 import { APIRequestContext, Page } from '@playwright/test';
-import { toLower } from 'lodash';
-import { getEntityTypeSearchIndexMapping, uuid } from '../../utils/common';
-import { checkDataAssetWidget, visitEntityPage } from '../../utils/entity';
+import { uuid } from '../../utils/common';
+import { visitEntityPage } from '../../utils/entity';
 import { EntityTypeEndpoint } from './Entity.interface';
 import { EntityClass } from './EntityClass';
 
@@ -52,17 +51,11 @@ export class StoredProcedureClass extends EntityClass {
       code: 'CREATE OR REPLACE PROCEDURE output_message(message VARCHAR)\nRETURNS VARCHAR NOT NULL\nLANGUAGE SQL\nAS\n$$\nBEGIN\n  RETURN message;\nEND;\n$$\n;',
     },
   };
-  tableEntity = {
-    name: `pw-table-${uuid()}`,
-    description: 'description',
-    databaseSchema: `${this.service.name}.${this.database.name}.${this.schema.name}`,
-  };
 
   serviceResponseData: unknown;
   databaseResponseData: unknown;
   schemaResponseData: unknown;
   entityResponseData: unknown;
-  tableResponseData: unknown;
 
   constructor(name?: string) {
     super(EntityTypeEndpoint.StoreProcedure);
@@ -87,28 +80,21 @@ export class StoredProcedureClass extends EntityClass {
       data: this.entity,
     });
 
-    const tableResponse = await apiContext.post('/api/v1/tables', {
-      data: this.tableEntity,
-    });
-
     const service = await serviceResponse.json();
     const database = await databaseResponse.json();
     const schema = await schemaResponse.json();
     const entity = await entityResponse.json();
-    const table = await tableResponse.json();
 
     this.serviceResponseData = service;
     this.databaseResponseData = database;
     this.schemaResponseData = schema;
     this.entityResponseData = entity;
-    this.tableResponseData = table;
 
     return {
       service,
       database,
       schema,
       entity,
-      table,
     };
   }
 
@@ -118,7 +104,6 @@ export class StoredProcedureClass extends EntityClass {
       database: this.databaseResponseData,
       schema: this.schemaResponseData,
       entity: this.entityResponseData,
-      table: this.tableResponseData,
     };
   }
 
@@ -128,15 +113,6 @@ export class StoredProcedureClass extends EntityClass {
       searchTerm: this.entityResponseData?.['fullyQualifiedName'],
       dataTestId: `${this.service.name}-${this.entity.name}`,
     });
-  }
-
-  async checkDataAssetWidget(page: Page) {
-    await checkDataAssetWidget(
-      page,
-      'Tables',
-      getEntityTypeSearchIndexMapping('Table'),
-      toLower(this.service.serviceType)
-    );
   }
 
   async delete(apiContext: APIRequestContext) {

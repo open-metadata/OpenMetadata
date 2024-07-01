@@ -11,9 +11,8 @@
  *  limitations under the License.
  */
 import { APIRequestContext, Page } from '@playwright/test';
-import { toLower } from 'lodash';
-import { getEntityTypeSearchIndexMapping, uuid } from '../../utils/common';
-import { checkDataAssetWidget, visitEntityPage } from '../../utils/entity';
+import { uuid } from '../../utils/common';
+import { visitEntityPage } from '../../utils/entity';
 import { EntityTypeEndpoint } from './Entity.interface';
 import { EntityClass } from './EntityClass';
 
@@ -82,15 +81,6 @@ export class ContainerClass extends EntityClass {
       searchTerm: this.entityResponseData?.['fullyQualifiedName'],
       dataTestId: `${this.service.name}-${this.entity.name}`,
     });
-  }
-
-  async checkDataAssetWidget(page: Page) {
-    await checkDataAssetWidget(
-      page,
-      `${this.type}s`,
-      getEntityTypeSearchIndexMapping(this.type),
-      toLower(this.service.serviceType)
-    );
   }
 
   async delete(apiContext: APIRequestContext) {
