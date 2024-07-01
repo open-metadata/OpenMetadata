@@ -75,6 +75,7 @@ import org.openmetadata.schema.entity.automations.Workflow;
 import org.openmetadata.schema.entity.classification.Classification;
 import org.openmetadata.schema.entity.classification.Tag;
 import org.openmetadata.schema.entity.data.APICollection;
+import org.openmetadata.schema.entity.data.APIEndpoint;
 import org.openmetadata.schema.entity.data.Chart;
 import org.openmetadata.schema.entity.data.Container;
 import org.openmetadata.schema.entity.data.Dashboard;
@@ -341,6 +342,9 @@ public interface CollectionDAO {
 
   @CreateSqlObject
   APICollectionDAO apiCollectionDAO();
+
+  @CreateSqlObject
+  APIEndpointDAO apiEndpointDAO();
 
   interface DashboardDAO extends EntityDAO<Dashboard> {
     @Override
@@ -4740,6 +4744,23 @@ public interface CollectionDAO {
     @Override
     default Class<APICollection> getEntityClass() {
       return APICollection.class;
+    }
+
+    @Override
+    default String getNameHashColumn() {
+      return "fqnHash";
+    }
+  }
+
+  interface APIEndpointDAO extends EntityDAO<APIEndpoint> {
+    @Override
+    default String getTableName() {
+      return "api_endpoint_entity";
+    }
+
+    @Override
+    default Class<APIEndpoint> getEntityClass() {
+      return APIEndpoint.class;
     }
 
     @Override

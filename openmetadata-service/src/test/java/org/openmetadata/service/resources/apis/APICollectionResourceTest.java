@@ -8,6 +8,7 @@ import static org.openmetadata.service.util.TestUtils.assertListNotNull;
 import static org.openmetadata.service.util.TestUtils.assertResponseContains;
 
 import java.io.IOException;
+import java.net.URI;
 import java.util.HashMap;
 import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
@@ -33,6 +34,31 @@ public class APICollectionResourceTest
         "apiCollections",
         APICollectionResource.FIELDS);
     supportedNameCharacters = "_'+#- .()$" + EntityResourceTest.RANDOM_STRING_GENERATOR.generate(1);
+  }
+
+  public void setupAPICollection(TestInfo test) throws HttpResponseException {
+    APICollectionResourceTest apiCollectionResourceTest = new APICollectionResourceTest();
+    CreateAPICollection createAPICollection =
+        apiCollectionResourceTest
+            .createRequest(test)
+            .withName("users")
+            .withEndpointURL(URI.create("https://locahost:8585/api/v1/users"))
+            .withService(OPENMETADATA_API_SERVICE_REFERENCE.getFullyQualifiedName());
+
+    APICollection omAPICollection =
+        new APICollectionResourceTest().createEntity(createAPICollection, ADMIN_AUTH_HEADERS);
+    OPENMETADATA_API_COLLECTION_REFERENCE = omAPICollection.getEntityReference();
+
+    createAPICollection =
+        apiCollectionResourceTest
+            .createRequest(test)
+            .withName("sample")
+            .withEndpointURL(URI.create("https://locahost:8585/api/v1/sample"))
+            .withService(OPENMETADATA_API_SERVICE_REFERENCE.getFullyQualifiedName());
+
+    APICollection sampleAPICollection =
+        new APICollectionResourceTest().createEntity(createAPICollection, ADMIN_AUTH_HEADERS);
+    SAMPLE_API_COLLECTION_REFERENCE = sampleAPICollection.getEntityReference();
   }
 
   @Test
