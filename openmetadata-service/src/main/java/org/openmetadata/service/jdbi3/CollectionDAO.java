@@ -74,6 +74,7 @@ import org.openmetadata.schema.entity.app.AppMarketPlaceDefinition;
 import org.openmetadata.schema.entity.automations.Workflow;
 import org.openmetadata.schema.entity.classification.Classification;
 import org.openmetadata.schema.entity.classification.Tag;
+import org.openmetadata.schema.entity.data.APICollection;
 import org.openmetadata.schema.entity.data.Chart;
 import org.openmetadata.schema.entity.data.Container;
 import org.openmetadata.schema.entity.data.Dashboard;
@@ -337,6 +338,9 @@ public interface CollectionDAO {
 
   @CreateSqlObject
   SuggestionDAO suggestionDAO();
+
+  @CreateSqlObject
+  APICollectionDAO apiCollectionDAO();
 
   interface DashboardDAO extends EntityDAO<Dashboard> {
     @Override
@@ -4725,5 +4729,22 @@ public interface CollectionDAO {
         @Define("psqlCond") String psqlCond,
         @Bind("limit") int limit,
         @Bind("after") String after);
+  }
+
+  interface APICollectionDAO extends EntityDAO<APICollection> {
+    @Override
+    default String getTableName() {
+      return "api_collection_entity";
+    }
+
+    @Override
+    default Class<APICollection> getEntityClass() {
+      return APICollection.class;
+    }
+
+    @Override
+    default String getNameHashColumn() {
+      return "fqnHash";
+    }
   }
 }

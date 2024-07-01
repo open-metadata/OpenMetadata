@@ -59,10 +59,6 @@
       "description": "Owner of this API Collection.",
       "$ref": "../../type/entityReference.json"
     },
-    "followers": {
-      "description": "Followers of this API Collection.",
-      "$ref": "../../type/entityReferenceList.json"
-    },
     "tags": {
       "description": "Tags for this API Collection.",
       "type": "array",
