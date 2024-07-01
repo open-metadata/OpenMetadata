@@ -21,7 +21,6 @@ import com.sun.codemodel.JFieldVar;
 import com.sun.codemodel.JMethod;
 import java.lang.reflect.Field;
 import java.util.TreeMap;
-
 import org.jsonschema2pojo.AbstractAnnotator;
 
 /** Add {@link PasswordField} annotation to generated Java classes */
@@ -63,7 +62,8 @@ public class PasswordAnnotator extends AbstractAnnotator {
       outerClassField.setAccessible(true);
       JDefinedClass outerClass = (JDefinedClass) outerClassField.get(jMethod);
 
-      TreeMap<String, JFieldVar> insensitiveFieldsMap = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
+      TreeMap<String, JFieldVar> insensitiveFieldsMap =
+          new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
       insensitiveFieldsMap.putAll(outerClass.fields());
 
       if (insensitiveFieldsMap.containsKey(propertyName)

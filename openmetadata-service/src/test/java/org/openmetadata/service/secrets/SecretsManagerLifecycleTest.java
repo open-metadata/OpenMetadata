@@ -55,20 +55,20 @@ public class SecretsManagerLifecycleTest {
     AuthenticationMechanism authenticationMechanism =
         new AuthenticationMechanism()
             .withAuthType(AuthenticationMechanism.AuthType.JWT)
-            .withConfig(new JWTAuthMechanism()
-                .withJWTToken("token")
-                .withJWTTokenExpiry(JWTTokenExpiry.Unlimited));
+            .withConfig(
+                new JWTAuthMechanism()
+                    .withJWTToken("token")
+                    .withJWTTokenExpiry(JWTTokenExpiry.Unlimited));
 
-    AuthenticationMechanism encrypted = (AuthenticationMechanism) secretsManager.encryptAuthenticationMechanism(
-        "ingestion-bot", authenticationMechanism
-    );
+    AuthenticationMechanism encrypted =
+        (AuthenticationMechanism)
+            secretsManager.encryptAuthenticationMechanism("ingestion-bot", authenticationMechanism);
     // Validate that the JWT Token gets properly encrypted
     JWTAuthMechanism encryptedAuth = (JWTAuthMechanism) encrypted.getConfig();
     assertEquals(ENCRYPTED_VALUE, encryptedAuth.getJWTToken());
 
-    AuthenticationMechanism decrypted = secretsManager.decryptAuthenticationMechanism(
-        "ingestion-bot", encrypted
-    );
+    AuthenticationMechanism decrypted =
+        secretsManager.decryptAuthenticationMechanism("ingestion-bot", encrypted);
 
     JWTAuthMechanism decryptedAuth = (JWTAuthMechanism) decrypted.getConfig();
     assertEquals(DECRYPTED_VALUE, decryptedAuth.getJWTToken());

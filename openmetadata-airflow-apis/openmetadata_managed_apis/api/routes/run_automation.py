@@ -49,15 +49,11 @@ def get_fn(blueprint: Blueprint) -> Callable:
         """
 
         json_request = request.get_json(cache=False)
-        logger.info("Received request: %s", json_request)
 
         try:
             automation_workflow = parse_automation_workflow_gracefully(
                 config_dict=json_request
             )
-
-            logger.info("PARSER AUTOMATION WORKFLOW")
-            logger.info(automation_workflow.model_dump_json())
 
             # we need to instantiate the secret manager in case secrets are passed
             SecretsManagerFactory(
