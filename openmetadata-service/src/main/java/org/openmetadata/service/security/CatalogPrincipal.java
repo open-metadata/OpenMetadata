@@ -16,14 +16,14 @@ package org.openmetadata.service.security;
 import java.security.Principal;
 import lombok.Getter;
 
-public record CatalogPrincipal(@Getter String name, @Getter String email) implements Principal {
-  @Override
-  public String getName() {
-    return name;
-  }
+@Getter
+public class CatalogPrincipal implements Principal {
+  private final String name;
+  private final String email;
 
-  public String getEmail() {
-    return email;
+  public CatalogPrincipal(String name, String email) {
+    this.name = name.toLowerCase();
+    this.email = email.toLowerCase();
   }
 
   @Override
