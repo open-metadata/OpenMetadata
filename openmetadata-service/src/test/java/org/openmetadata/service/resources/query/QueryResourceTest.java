@@ -53,9 +53,7 @@ public class QueryResourceTest extends EntityResourceTest<Query, CreateQuery> {
     super(
         Entity.QUERY, Query.class, QueryResource.QueryList.class, "queries", QueryResource.FIELDS);
     supportsSearchIndex = true;
-    runWebhookTests = false;
-    runSlackTests = false;
-    runMSTeamsTests = false;
+    EVENT_SUBSCRIPTION_TEST_CONTROL_FLAG = false;
   }
 
   @BeforeAll
