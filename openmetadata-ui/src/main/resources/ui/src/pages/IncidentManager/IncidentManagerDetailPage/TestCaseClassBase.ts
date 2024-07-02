@@ -13,8 +13,13 @@
 import { ReactElement } from 'react';
 import TabsLabel from '../../../components/common/TabsLabel/TabsLabel.component';
 import { TabsLabelProps } from '../../../components/common/TabsLabel/TabsLabel.interface';
+import { TestCaseFormType } from '../../../components/DataQuality/AddDataQualityTest/AddDataQualityTest.interface';
 import TestCaseIncidentTab from '../../../components/DataQuality/IncidentManager/TestCaseIncidentTab/TestCaseIncidentTab.component';
 import TestCaseResultTab from '../../../components/DataQuality/IncidentManager/TestCaseResultTab/TestCaseResultTab.component';
+import { CreateTestCase } from '../../../generated/api/tests/createTestCase';
+import { TestDefinition } from '../../../generated/tests/testDefinition';
+import { FieldProp } from '../../../interface/FormUtils.interface';
+import { createTestCaseParameters } from '../../../utils/DataQuality/DataQualityUtils';
 import i18n from '../../../utils/i18next/LocalUtil';
 import { IncidentManagerTabs } from '../IncidentManager.interface';
 
@@ -68,6 +73,28 @@ class TestCaseClassBase {
       'owner',
       'incidentId',
     ];
+  }
+
+  public createFormAdditionalFields(
+    _supportsDynamicAssertion: boolean
+  ): FieldProp[] {
+    return [];
+  }
+
+  public initialFormValues(): Record<string, unknown> {
+    return {};
+  }
+
+  public getCreateTestCaseObject(
+    value: TestCaseFormType,
+    selectedDefinition?: TestDefinition
+  ): Partial<CreateTestCase> {
+    return {
+      parameterValues: createTestCaseParameters(
+        value.params,
+        selectedDefinition
+      ),
+    };
   }
 }
 

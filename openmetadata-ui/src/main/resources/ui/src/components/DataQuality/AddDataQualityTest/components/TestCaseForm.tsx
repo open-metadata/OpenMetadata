@@ -15,7 +15,7 @@ import { Button, Form, FormProps, Input, Select, Space } from 'antd';
 import { AxiosError } from 'axios';
 import cryptoRandomString from 'crypto-random-string-with-promisify-polyfill';
 import { t } from 'i18next';
-import { isEmpty, snakeCase } from 'lodash';
+import { isEmpty, isEqual, snakeCase } from 'lodash';
 import Qs from 'qs';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useHistory, useParams } from 'react-router-dom';
@@ -27,10 +27,7 @@ import {
 } from '../../../../constants/TestSuite.constant';
 import { ProfilerDashboardType } from '../../../../enums/table.enum';
 import { CreateTestCase } from '../../../../generated/api/tests/createTestCase';
-import {
-  TestCase,
-  TestCaseParameterValue,
-} from '../../../../generated/tests/testCase';
+import { TestCase } from '../../../../generated/tests/testCase';
 import {
   EntityType,
   TestDataType,
@@ -43,6 +40,7 @@ import {
   FieldTypes,
   FormItemLayout,
 } from '../../../../interface/FormUtils.interface';
+import testCaseClassBase from '../../../../pages/IncidentManager/IncidentManagerDetailPage/TestCaseClassBase';
 import {
   getListTestCase,
   getListTestDefinitions,
@@ -51,13 +49,15 @@ import {
   getNameFromFQN,
   replaceAllSpacialCharWith_,
 } from '../../../../utils/CommonUtils';
-import { createTestCaseParameters } from '../../../../utils/DataQuality/DataQualityUtils';
 import { getEntityName } from '../../../../utils/EntityUtils';
 import { generateFormFields } from '../../../../utils/formUtils';
 import { generateEntityLink } from '../../../../utils/TableUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import RichTextEditor from '../../../common/RichTextEditor/RichTextEditor';
-import { TestCaseFormProps } from '../AddDataQualityTest.interface';
+import {
+  TestCaseFormProps,
+  TestCaseFormType,
+} from '../AddDataQualityTest.interface';
 import ParameterForm from './ParameterForm';
 
 const TestCaseForm: React.FC<TestCaseFormProps> = ({
@@ -172,19 +172,9 @@ const TestCaseForm: React.FC<TestCaseFormProps> = ({
     return null;
   }, [selectedTestType, initialValue, testDefinitions]);
 
-  const createTestCaseObj = (value: {
-    testName: string;
-    params: Record<string, string | { [key: string]: string }[]>;
-    testTypeId: string;
-    computePassedFailedRowCount?: boolean;
-    description?: string;
-  }): CreateTestCase => {
+  const createTestCaseObj = (value: TestCaseFormType): CreateTestCase => {
     const selectedDefinition = getSelectedTestDefinition();
 
-    const parameterValues = createTestCaseParameters(
-      value.params,
-      selectedDefinition
-    );
     const name =
       value.testName?.trim() ||
       `${replaceAllSpacialCharWith_(columnName ?? table.name)}_${snakeCase(
@@ -202,10 +192,10 @@ const TestCaseForm: React.FC<TestCaseFormProps> = ({
         isColumnFqn ? `${decodedEntityFQN}.${columnName}` : decodedEntityFQN,
         isColumnFqn
       ),
-      parameterValues: parameterValues as TestCaseParameterValue[],
       testDefinition: value.testTypeId,
       description: isEmpty(value.description) ? undefined : value.description,
       testSuite: '',
+      ...testCaseClassBase.getCreateTestCaseObject(value, selectedDefinition),
     };
   };
 
@@ -284,6 +274,7 @@ const TestCaseForm: React.FC<TestCaseFormProps> = ({
     <Form
       data-testid="test-case-form"
       form={form}
+      initialValues={{ ...testCaseClassBase.initialFormValues() }}
       layout="vertical"
       name="tableTestForm"
       preserve={false}
@@ -369,9 +360,23 @@ const TestCaseForm: React.FC<TestCaseFormProps> = ({
           onChange={handleTestDefinitionChange}
         />
       </Form.Item>
-
-      {GenerateParamsField()}
-
+      {generateFormFields(
+        testCaseClassBase.createFormAdditionalFields(
+          testDefinition?.supportsDynamicAssertion ?? false
+        )
+      )}
+      <Form.Item
+        noStyle
+        shouldUpdate={(prevValues, currentValues) => {
+          return !isEqual(
+            prevValues['useDynamicAssertion'],
+            currentValues['useDynamicAssertion']
+          );
+        }}>
+        {({ getFieldValue }) =>
+          getFieldValue('useDynamicAssertion') ? null : GenerateParamsField()
+        }
+      </Form.Item>
       <Form.Item
         label={t('label.description')}
         name="description"
