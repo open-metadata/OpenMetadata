@@ -1,0 +1,66 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/services/connections/database/sapErpConnection.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "SapErpConnection",
+  "description": "Sap ERP Database Connection Config",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.services.connections.database.SapErpConnection",
+  "definitions": {
+    "sapErpType": {
+      "description": "Service type.",
+      "type": "string",
+      "enum": ["SapErp"],
+      "default": "SapErp"
+    }
+   },
+  "properties": {
+    "type": {
+      "title": "Service Type",
+      "description": "Service Type",
+      "$ref": "#/definitions/sapErpType",
+      "default": "SapErp"
+    },
+    "hostPort": {
+      "expose": true,
+      "title": "Host and Port",
+      "description": "Host and Port of the SAP ERP instance.",
+      "type": "string",
+      "format": "uri"
+    },
+    "apiKey": {
+      "title": "API Key",
+      "description": "API key to authenticate with the SAP ERP APIs.",
+      "type": "string",
+      "format": "password"
+    },
+    "databaseName": {
+      "title": "Database Name",
+      "description": "Optional name to give to the database in OpenMetadata. If left blank, we will use default as the database name.",
+      "type": "string"
+    },
+    "databaseSchema": {
+      "title": "Database Schema",
+      "description": "Optional name to give to the schema in OpenMetadata. If left blank, we will use default as the schema name",
+      "type": "string"
+    },
+    "paginationLimit": {
+      "title": "Pagination Limit",
+      "description": "Pagination limit used while querying the SAP ERP API for fetching the entities",
+      "type": "integer",
+      "default": 10
+    },
+    "connectionOptions": {
+      "title": "Connection Options",
+      "$ref": "../connectionBasicType.json#/definitions/connectionOptions"
+    },
+    "connectionArguments": {
+      "title": "Connection Arguments",
+      "$ref": "../connectionBasicType.json#/definitions/connectionArguments"
+    },
+    "supportsMetadataExtraction": {
+      "title": "Supports Metadata Extraction",
+      "$ref": "../connectionBasicType.json#/definitions/supportsMetadataExtraction"
+    }
+  },
+  "additionalProperties": false
+}

@@ -276,6 +276,22 @@ class ColumnTypeParser:
         "WDC_BOOL": "BOOLEAN",
         "WDC_DATE": "DATE",
         "WDC_GEOMETRY": "GEOMETRY",
+        # SAP ERP
+        "CLNT": "INT",
+        "INT1": "INT",
+        "LRAW": "BLOB",
+        "UNIT": "CHAR",
+        "NUMC": "CHAR",
+        "LANG": "CHAR",
+        "CUKY": "CHAR",
+        "DATS": "DATE",
+        "TIMS": "TIME",
+        "FLTP": "FLOAT",
+        "QUAN": "DECIMAL",
+        "DEC": "DECIMAL",
+        "CURR": "DECIMAL",
+        "STRG": "STRING",
+        "RSTR": "STRING",
     }
 
     _COMPLEX_TYPE = re.compile("^(struct|map|array|uniontype)")

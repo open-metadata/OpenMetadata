@@ -1,0 +1,20 @@
+{
+  "name": "SapErp",
+  "displayName": "SAP ERP Test Connection",
+  "description": "This Test Connection validates the access against the database and basic metadata extraction tables and columns.",
+  "steps": [
+    {
+      "name": "GetTables",
+      "description": "Validate that we can fetch the list of tables from the API",
+      "errorMessage": "Failed to fetch tables, please validate if the access token is correct and has enough privilege to fetch tables.",
+      "mandatory": true
+    },
+    {
+      "name": "GetColumns",
+      "description": "Validate that we can fetch the list of tables from the API",
+      "errorMessage": "Failed to fetch columns, please validate if the access token is correct and has enough privilege to fetch columns.",
+      "mandatory": false
+    }
+  ]
+}
+
