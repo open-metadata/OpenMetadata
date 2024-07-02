@@ -140,6 +140,12 @@ site_menu:
     url: /deployment/security/keycloak/kubernetes
   - category: Deployment / Enable Security / Saml
     url: /deployment/security/saml
+  - category: Deployment / Enable Security / Saml / Docker 
+    url: /deployment/security/saml/docker
+  - category: Deployment / Enable Security / Saml / Bare Metal 
+    url: /deployment/security/saml/bare-metal
+  - category: Deployment / Enable Security / Saml / Kubernetes
+    url: /deployment/security/saml/kubernetes
   - category: Deployment / Enable Security / Saml / AWS
     url: /deployment/security/saml/aws
   - category: Deployment / Enable Security / Enable SSL
