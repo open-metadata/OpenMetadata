@@ -95,7 +95,7 @@
         "type": "text"
       },
       "sourceUrl": {
-        "type": "keyword"
+        "type": "text"
       },
       "lineage": {
         "type" : "object"
