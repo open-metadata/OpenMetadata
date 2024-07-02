@@ -23,6 +23,7 @@ import {
 import serviceUtilClassBase from '../../../../../utils/ServiceUtilClassBase';
 import AppBadge from '../../../../common/Badge/Badge.component';
 import '../data-assets-widget.less';
+
 interface DataAssetCardProps {
   service: Bucket;
 }
@@ -47,19 +48,19 @@ const DataAssetCard = ({ service: { key, doc_count } }: DataAssetCardProps) => {
       to={redirectLink}>
       <Card className="service-card" data-testid="service-card" size="small">
         <div
-          className="p-t-xs d-flex justify-center items-center"
+          className="d-flex justify-center items-center"
           data-testid="service-icon">
           {getServiceLogo(capitalize(key) ?? '', 'h-8')}
         </div>
 
         <Typography.Text
-          className="m-t-xss text-base text-grey-body font-medium truncate w-full d-inline-block"
+          className="m-t-sm text-sm text-grey-body font-medium truncate w-full d-inline-block"
           data-testid={`service-name-${key}`}>
-          {capitalize(key)}
+          {serviceUtilClassBase.getServiceName(key)}
         </Typography.Text>
 
         <AppBadge
-          className="data-asset-badge m-t-xs m-b-xss"
+          className="data-asset-badge m-t-sm"
           label={toString(doc_count)}
         />
       </Card>
