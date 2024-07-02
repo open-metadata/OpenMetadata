@@ -97,3 +97,5 @@ export const CUSTOM_PROPERTIES_DOCS =
 
 export const DATA_DISCOVERY_DOCS =
   'https://docs.open-metadata.org/how-to-guides/data-discovery';
+
+export const HOW_TO_GUIDE_DOCS = 'https://docs.open-metadata.org/how-to-guides';

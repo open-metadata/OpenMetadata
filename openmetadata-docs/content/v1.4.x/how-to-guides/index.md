@@ -25,10 +25,10 @@ OpenMetadata is a complete package for data teams to break down team silos, shar
     icon="collaboration"
 /%}
 {% tile
-    title="Data Quality & Profiler"
-    description="Trust your data with quality tests that ensure freshness, & accuracy."
-    link="/how-to-guides/data-quality-profiler"
-    icon="quality"
+    title="Data Quality and Observability"
+    description="Trust your data with quality tests & monitor the health of your data systems."
+    link="/how-to-guides/data-quality-observability"
+    icon="observability"
 /%}
 {% tile
     title="Data Lineage"
@@ -47,12 +47,6 @@ OpenMetadata is a complete package for data teams to break down team silos, shar
     description="Enhance your data platform governance using OpenMetadata."
     link="/how-to-guides/data-governance"
     icon="governance"
-/%}
-{% tile
-    title="Data Observability"
-    description="Ensure the health and performance of your data systems with OpenMetadata."
-    link="/how-to-guides/data-observability"
-    icon="observability"
 /%}
 {% /tilesContainer %}
 
@@ -85,7 +79,7 @@ OpenMetadata is a complete package for data teams to break down team silos, shar
 
 - Foster **[Team Collaboration](/how-to-guides/data-collaboration)** with conversations, tasks, announcements, and alerts in real time.
 
-- Build trust in your data with **[Data Quality Tests](/how-to-guides/data-quality-profiler)** to ensure completeness and accuracy.
+- Build trust in your data with **[Data Quality Tests](/how-to-guides/data-quality-observability)** to ensure completeness and accuracy.
 
 - Track your data evolution with end-to-end **[Data Lineage](/how-to-guides/data-lineage)**.
 
@@ -97,6 +91,6 @@ OpenMetadata is a complete package for data teams to break down team silos, shar
 
 - Implement **[Data Governance](/how-to-guides/data-governance)** to maintain data integrity, security, and compliance.
 
-- Implement **[Data Observability](/how-to-guides/data-observability)** to ensure the health and performance of your data systems.
+- Implement **[Data Observability](/how-to-guides/data-quality-observability)** to ensure the health and performance of your data systems.
 
 {% /note %}

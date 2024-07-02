@@ -109,6 +109,7 @@ export const updateOwner = async (
 export const removeOwner = async (
   page: Page,
   endpoint: EntityTypeEndpoint,
+  ownerName: string,
   dataTestId?: string
 ) => {
   await page.getByTestId('edit-owner').click();
@@ -120,8 +121,8 @@ export const removeOwner = async (
   await page.getByTestId('remove-owner').locator('svg').click();
   await patchRequest;
 
-  await expect(page.getByTestId(dataTestId ?? 'owner-link')).toContainText(
-    'No Owner'
+  await expect(page.getByTestId(dataTestId ?? 'owner-link')).not.toContainText(
+    ownerName
   );
 };
 
@@ -871,4 +872,42 @@ export const hardDeleteEntity = async (
   );
 
   await page.click('.Toastify__close-button');
+};
+
+export const checkDataAssetWidget = async (
+  page: Page,
+  type: string,
+  index: string,
+  serviceType: string
+) => {
+  const dataAssetWidgetResponse = page.waitForResponse(
+    // eslint-disable-next-line max-len
+    '/api/v1/search/query?q=**&from=0&size=0&index=table_search_index%2Ctopic_search_index%2Cdashboard_search_index%2Cpipeline_search_index%2Cmlmodel_search_index%2Ccontainer_search_index%2Csearch_entity_search_index&sort_field=updatedAt'
+  );
+
+  await page.click('[data-testid="welcome-screen-close-btn"]');
+
+  await dataAssetWidgetResponse;
+
+  const quickFilterResponse = page.waitForResponse(
+    `/api/v1/search/query?q=&index=${index}*${serviceType}*`
+  );
+
+  await page
+    .locator(`[data-testid="data-asset-service-${serviceType}"]`)
+    .click();
+
+  await quickFilterResponse;
+
+  await expect(
+    page.locator('[data-testid="search-dropdown-Service Type"]')
+  ).toContainText(serviceType);
+
+  const isSelected = await page
+    .getByRole('menuitem', { name: type })
+    .evaluate((element) => {
+      return element.classList.contains('ant-menu-item-selected');
+    });
+
+  expect(isSelected).toBe(true);
 };

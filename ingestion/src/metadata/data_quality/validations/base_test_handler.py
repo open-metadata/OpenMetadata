@@ -18,8 +18,11 @@ from __future__ import annotations
 import reprlib
 from abc import ABC, abstractmethod
 from datetime import datetime
-from typing import Callable, List, Optional, TypeVar, Union
+from typing import Callable, List, Optional, Type, TypeVar, Union
 
+from metadata.data_quality.validations.runtime_param_setter.param_setter import (
+    RuntimeParameterSetter,
+)
 from metadata.generated.schema.tests.basic import (
     TestCaseResult,
     TestCaseStatus,
@@ -33,7 +36,12 @@ R = TypeVar("R")
 
 
 class BaseTestValidator(ABC):
-    """Abstract class for test case handlers"""
+    """Abstract class for test case handlers
+    The runtime_parameter_setter is run after the test case is created to set the runtime parameters.
+    This can be useful to resolve complex test parameters based on the parameters gibven by the user.
+    """
+
+    runtime_parameter_setter: Optional[Type[RuntimeParameterSetter]] = None
 
     def __init__(
         self,
@@ -171,3 +179,7 @@ class BaseTestValidator(ABC):
             float,
             default=float("inf"),
         )
+
+    def get_predicted_value(self) -> Optional[str]:
+        """Get predicted value"""
+        return None

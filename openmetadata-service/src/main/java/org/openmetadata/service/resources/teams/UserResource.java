@@ -15,12 +15,14 @@ package org.openmetadata.service.resources.teams;
 
 import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
 import static javax.ws.rs.core.Response.Status.CONFLICT;
+import static javax.ws.rs.core.Response.Status.FORBIDDEN;
 import static javax.ws.rs.core.Response.Status.OK;
 import static org.openmetadata.common.utils.CommonUtil.listOf;
 import static org.openmetadata.schema.api.teams.CreateUser.CreatePasswordType.ADMIN_CREATE;
 import static org.openmetadata.schema.auth.ChangePasswordRequest.RequestType.SELF;
 import static org.openmetadata.schema.entity.teams.AuthenticationMechanism.AuthType.BASIC;
 import static org.openmetadata.schema.entity.teams.AuthenticationMechanism.AuthType.JWT;
+import static org.openmetadata.schema.type.Include.ALL;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.EMAIL_SENDING_ISSUE;
 import static org.openmetadata.service.jdbi3.UserRepository.AUTH_MECHANISM_FIELD;
 import static org.openmetadata.service.security.jwt.JWTTokenGenerator.getExpiryDate;
@@ -123,6 +125,7 @@ import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.TokenRepository;
 import org.openmetadata.service.jdbi3.UserRepository;
 import org.openmetadata.service.jdbi3.UserRepository.UserCsv;
+import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.secrets.SecretsManager;
@@ -130,8 +133,10 @@ import org.openmetadata.service.secrets.SecretsManagerFactory;
 import org.openmetadata.service.secrets.masker.EntityMaskerFactory;
 import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.security.CatalogPrincipal;
 import org.openmetadata.service.security.auth.AuthenticatorHandler;
 import org.openmetadata.service.security.auth.BotTokenCache;
+import org.openmetadata.service.security.auth.CatalogSecurityContext;
 import org.openmetadata.service.security.auth.UserTokenCache;
 import org.openmetadata.service.security.jwt.JWTTokenGenerator;
 import org.openmetadata.service.security.mask.PIIMasker;
@@ -168,6 +173,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
   private AuthenticationConfiguration authenticationConfiguration;
   private AuthorizerConfiguration authorizerConfiguration;
   private final AuthenticatorHandler authHandler;
+  private boolean isSelfSignUpEnabled = false;
   static final String FIELDS = "profile,roles,teams,follows,owns,domain,personas,defaultPersona";
 
   @Override
@@ -182,8 +188,9 @@ public class UserResource extends EntityResource<User, UserRepository> {
     return user;
   }
 
-  public UserResource(Authorizer authorizer, AuthenticatorHandler authenticatorHandler) {
-    super(Entity.USER, authorizer);
+  public UserResource(
+      Authorizer authorizer, Limits limits, AuthenticatorHandler authenticatorHandler) {
+    super(Entity.USER, authorizer, limits);
     jwtTokenGenerator = JWTTokenGenerator.getInstance();
     allowedFields.remove(USER_PROTECTED_FIELDS);
     tokenRepository = Entity.getTokenRepository();
@@ -205,6 +212,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
     SmtpSettings smtpSettings = config.getSmtpSettings();
     this.isEmailServiceEnabled = smtpSettings != null && smtpSettings.getEnableSmtpServer();
     this.repository.initializeUsers(config);
+    this.isSelfSignUpEnabled = authenticationConfiguration.getEnableSelfSignup();
   }
 
   public static class UserList extends ResultList<User> {
@@ -430,15 +438,20 @@ public class UserResource extends EntityResource<User, UserRepository> {
               schema = @Schema(type = "string", example = FIELDS))
           @QueryParam("fields")
           String fieldsParam) {
+    CatalogSecurityContext catalogSecurityContext =
+        (CatalogSecurityContext) containerRequestContext.getSecurityContext();
     Fields fields = getFields(fieldsParam);
-    String currentUserName = securityContext.getUserPrincipal().getName();
-    User user = repository.getByName(uriInfo, currentUserName, fields);
+    String currentEmail = ((CatalogPrincipal) catalogSecurityContext.getUserPrincipal()).getEmail();
+    User user = repository.getByEmail(uriInfo, currentEmail, fields);
+
+    repository.validateLoggedInUserNameAndEmailMatches(
+        securityContext.getUserPrincipal().getName(), currentEmail, user);
 
     // Sync the Roles from token to User
     if (Boolean.TRUE.equals(authorizerConfiguration.getUseRolesFromProvider())
         && Boolean.FALSE.equals(user.getIsBot() != null && user.getIsBot())) {
       reSyncUserRolesFromToken(
-          uriInfo, user, getRolesFromAuthorizationToken(containerRequestContext));
+          uriInfo, user, getRolesFromAuthorizationToken(catalogSecurityContext));
     }
     return addHref(uriInfo, user);
   }
@@ -463,9 +476,13 @@ public class UserResource extends EntityResource<User, UserRepository> {
         @ApiResponse(responseCode = "404", description = "User not found")
       })
   public List<EntityReference> getCurrentLoggedInUser(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext) {
-    String currentUserName = securityContext.getUserPrincipal().getName();
-    return repository.getGroupTeams(uriInfo, currentUserName);
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Context ContainerRequestContext containerRequestContext) {
+    CatalogSecurityContext catalogSecurityContext =
+        (CatalogSecurityContext) containerRequestContext.getSecurityContext();
+    String currentEmail = ((CatalogPrincipal) catalogSecurityContext.getUserPrincipal()).getEmail();
+    return repository.getGroupTeams(uriInfo, catalogSecurityContext, currentEmail);
   }
 
   @POST
@@ -554,7 +571,9 @@ public class UserResource extends EntityResource<User, UserRepository> {
 
     //
     try {
-      validateAndAddUserAuthForBasic(user, create);
+      // Email Validation
+      validateEmailAlreadyExists(create.getEmail());
+      addUserAuthForBasic(user, create);
     } catch (RuntimeException ex) {
       return Response.status(CONFLICT)
           .type(MediaType.APPLICATION_JSON_TYPE)
@@ -567,14 +586,26 @@ public class UserResource extends EntityResource<User, UserRepository> {
     // Add the roles on user creation
     updateUserRolesIfRequired(user, containerRequestContext);
 
-    Response createdUserRes = null;
+    Response createdUserRes;
     try {
       createdUserRes = create(uriInfo, securityContext, user);
     } catch (EntityNotFoundException ex) {
-      if (securityContext.getUserPrincipal().getName().equals(create.getName())) {
-        // User is creating himself on signup ?! :(
-        User created = addHref(uriInfo, repository.create(uriInfo, user));
-        createdUserRes = Response.created(created.getHref()).entity(created).build();
+      if (isSelfSignUpEnabled) {
+        if (securityContext.getUserPrincipal().getName().equals(create.getName())) {
+          // User is creating himself on signup ?! :(
+          User created = addHref(uriInfo, repository.create(uriInfo, user));
+          createdUserRes = Response.created(created.getHref()).entity(created).build();
+        } else {
+          throw new CustomExceptionMessage(
+              FORBIDDEN,
+              CatalogExceptionMessage.OTHER_USER_SIGN_UP_ERROR,
+              CatalogExceptionMessage.OTHER_USER_SIGN_UP);
+        }
+      } else {
+        throw new CustomExceptionMessage(
+            FORBIDDEN,
+            CatalogExceptionMessage.SELF_SIGNUP_NOT_ENABLED,
+            CatalogExceptionMessage.SELF_SIGNUP_DISABLED_MESSAGE);
       }
     }
 
@@ -589,26 +620,23 @@ public class UserResource extends EntityResource<User, UserRepository> {
     return Response.status(BAD_REQUEST).entity("User Cannot be created Successfully.").build();
   }
 
-  private void validateAndAddUserAuthForBasic(User user, CreateUser create) {
+  private void addUserAuthForBasic(User user, CreateUser create) {
     if (isBasicAuth()) {
-      // basic auth doesn't allow duplicate emails, since username part of the email is used as
-      // login name
-      validateEmailAlreadyExists(create.getEmail());
       user.setName(user.getEmail().split("@")[0]);
       if (Boolean.FALSE.equals(create.getIsBot())
           && create.getCreatePasswordType() == ADMIN_CREATE) {
         addAuthMechanismToUser(user, create);
       }
-      // else the user will get a mail if configured smtp
     }
   }
 
   private void updateUserRolesIfRequired(
       User user, ContainerRequestContext containerRequestContext) {
+    CatalogSecurityContext catalogSecurityContext =
+        (CatalogSecurityContext) containerRequestContext.getSecurityContext();
     if (Boolean.TRUE.equals(authorizerConfiguration.getUseRolesFromProvider())
         && Boolean.FALSE.equals(user.getIsBot() != null && user.getIsBot())) {
-      user.setRoles(
-          validateAndGetRolesRef(getRolesFromAuthorizationToken(containerRequestContext)));
+      user.setRoles(validateAndGetRolesRef(getRolesFromAuthorizationToken(catalogSecurityContext)));
     }
   }
 
@@ -651,7 +679,13 @@ public class UserResource extends EntityResource<User, UserRepository> {
       @Valid CreateUser create) {
     User user = getUser(securityContext.getUserPrincipal().getName(), create);
     repository.prepareInternal(user, true);
-
+    User existingUser = repository.findByNameOrNull(user.getFullyQualifiedName(), ALL);
+    if (existingUser == null) {
+      limits.enforceLimits(
+          securityContext,
+          getResourceContextByName(user.getFullyQualifiedName()),
+          new OperationContext(entityType, MetadataOperation.CREATE));
+    }
     ResourceContext<?> resourceContext = getResourceContextByName(user.getFullyQualifiedName());
     if (Boolean.TRUE.equals(create.getIsAdmin()) || Boolean.TRUE.equals(create.getIsBot())) {
       authorizer.authorizeAdmin(securityContext);
@@ -804,11 +838,14 @@ public class UserResource extends EntityResource<User, UserRepository> {
       @Context SecurityContext securityContext,
       @Parameter(description = "Id of the user", schema = @Schema(type = "UUID")) @PathParam("id")
           UUID id) {
-
     User user = repository.get(uriInfo, id, new Fields(Set.of(AUTH_MECHANISM_FIELD)));
     if (!Boolean.TRUE.equals(user.getIsBot())) {
       throw new IllegalArgumentException("JWT token is only supported for bot users");
     }
+    limits.enforceLimits(
+        securityContext,
+        getResourceContext(),
+        new OperationContext(entityType, MetadataOperation.GENERATE_TOKEN));
     decryptOrNullify(securityContext, user);
     authorizer.authorizeAdmin(securityContext);
     return user.getAuthenticationMechanism();
@@ -1224,6 +1261,10 @@ public class UserResource extends EntityResource<User, UserRepository> {
       @Parameter(description = "User Name of the User for which to get. (Default = `false`)")
           @QueryParam("username")
           String userName) {
+    limits.enforceLimits(
+        securityContext,
+        getResourceContext(),
+        new OperationContext(entityType, MetadataOperation.GENERATE_TOKEN));
     if (userName != null) {
       authorizer.authorizeAdmin(securityContext);
     } else {
@@ -1302,6 +1343,10 @@ public class UserResource extends EntityResource<User, UserRepository> {
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Valid CreatePersonalToken tokenRequest) {
+    limits.enforceLimits(
+        securityContext,
+        getResourceContext(),
+        new OperationContext(entityType, MetadataOperation.GENERATE_TOKEN));
     String userName = securityContext.getUserPrincipal().getName();
     User user =
         repository.getByName(

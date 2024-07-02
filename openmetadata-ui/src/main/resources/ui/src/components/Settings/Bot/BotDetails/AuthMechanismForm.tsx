@@ -15,6 +15,7 @@ import { Button, Form, FormProps, Select, Space } from 'antd';
 import { isEmpty } from 'lodash';
 import React, { FC, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
+import { VALIDATION_MESSAGES } from '../../../../constants/constants';
 import {
   PersonalAccessToken,
   TokenType,
@@ -85,67 +86,62 @@ const AuthMechanismForm: FC<Props> = ({
   }, [isBot, authenticationMechanism]);
 
   return (
-    <>
-      <Form
-        id="update-auth-mechanism-form"
-        initialValues={{ authType, tokenExpiry }}
-        layout="vertical"
-        onFinish={handleSave}>
-        <Form.Item label={t('label.auth-mechanism')} name="authType">
-          <Select
-            disabled
-            className="w-full"
-            data-testid="auth-mechanism"
-            placeholder={t('label.select-field', {
-              field: t('label.auth-mechanism'),
-            })}>
-            <Option key={authOptions.value}>{authOptions.label}</Option>
-          </Select>
-        </Form.Item>
+    <Form
+      id="update-auth-mechanism-form"
+      initialValues={{ authType, tokenExpiry }}
+      layout="vertical"
+      validateMessages={VALIDATION_MESSAGES}
+      onFinish={handleSave}>
+      <Form.Item label={t('label.auth-mechanism')} name="authType">
+        <Select
+          disabled
+          className="w-full"
+          data-testid="auth-mechanism"
+          placeholder={t('label.select-field', {
+            field: t('label.auth-mechanism'),
+          })}>
+          <Option key={authOptions.value}>{authOptions.label}</Option>
+        </Select>
+      </Form.Item>
 
-        <Form.Item
-          label={t('label.token-expiration')}
-          name="tokenExpiry"
-          rules={[
-            {
-              required: true,
-            },
-          ]}>
-          <Select
-            className="w-full"
-            data-testid="token-expiry"
-            placeholder={t('message.select-token-expiration')}>
-            {isBot
-              ? getJWTTokenExpiryOptions().map((option) => (
-                  <Option key={option.value}>{option.label}</Option>
-                ))
-              : getJWTTokenExpiryOptions()
-                  .filter((option) => option.value !== 'Unlimited')
-                  .map((filteredOption) => (
-                    <Option key={filteredOption.value}>
-                      {filteredOption.label}
-                    </Option>
-                  ))}
-          </Select>
-        </Form.Item>
+      <Form.Item
+        label={t('label.token-expiration')}
+        name="tokenExpiry"
+        rules={[{ required: true }]}>
+        <Select
+          className="w-full"
+          data-testid="token-expiry"
+          placeholder={t('message.select-token-expiration')}>
+          {isBot
+            ? getJWTTokenExpiryOptions().map((option) => (
+                <Option key={option.value}>{option.label}</Option>
+              ))
+            : getJWTTokenExpiryOptions()
+                .filter((option) => option.value !== 'Unlimited')
+                .map((filteredOption) => (
+                  <Option key={filteredOption.value}>
+                    {filteredOption.label}
+                  </Option>
+                ))}
+        </Select>
+      </Form.Item>
 
-        <Space className="w-full justify-end" size={4}>
-          {!isEmpty(authenticationMechanism) && (
-            <Button data-testid="cancel-edit" type="link" onClick={onCancel}>
-              {t('label.cancel')}
-            </Button>
-          )}
-          <Button
-            data-testid="save-edit"
-            form="update-auth-mechanism-form"
-            htmlType="submit"
-            loading={isUpdating}
-            type="primary">
-            {t('label.generate')}
+      <Space className="w-full justify-end" size={4}>
+        {!isEmpty(authenticationMechanism) && (
+          <Button data-testid="cancel-edit" type="link" onClick={onCancel}>
+            {t('label.cancel')}
           </Button>
-        </Space>
-      </Form>
-    </>
+        )}
+        <Button
+          data-testid="save-edit"
+          form="update-auth-mechanism-form"
+          htmlType="submit"
+          loading={isUpdating}
+          type="primary">
+          {t('label.generate')}
+        </Button>
+      </Space>
+    </Form>
   );
 };
 

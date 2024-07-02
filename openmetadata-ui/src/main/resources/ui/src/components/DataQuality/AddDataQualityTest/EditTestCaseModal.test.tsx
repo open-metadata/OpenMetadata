@@ -26,6 +26,12 @@ const mockProps: EditTestCaseModalProps = {
   onUpdate: jest.fn(),
 };
 
+jest.mock('../../../utils/DataQuality/DataQualityUtils', () => {
+  return {
+    createTestCaseParameters: jest.fn().mockImplementation(() => []),
+  };
+});
+
 jest.mock('../../common/RichTextEditor/RichTextEditor', () => {
   return forwardRef(
     jest.fn().mockImplementation(() => <div>RichTextEditor.component</div>)
@@ -94,7 +100,7 @@ describe('EditTestCaseModal Component', () => {
       'column_values_to_match_regex'
     );
     expect(await screen.findByLabelText('label.test-entity')).toHaveValue(
-      'columnValuesToMatchRegex'
+      'Column Values To Match Regex Pattern'
     );
   });
 

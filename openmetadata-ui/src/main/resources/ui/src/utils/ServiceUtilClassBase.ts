@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { cloneDeep } from 'lodash';
+import { cloneDeep, toLower } from 'lodash';
 import {
   AIRBYTE,
   AIRFLOW,
@@ -31,6 +31,7 @@ import {
   DATABASE_DEFAULT,
   DATABRICK,
   DATALAKE,
+  DBT,
   DEFAULT_SERVICE,
   DELTALAKE,
   DOMO,
@@ -39,6 +40,7 @@ import {
   DYNAMODB,
   ELASTIC_SEARCH,
   FIVETRAN,
+  FLINK,
   GLUE,
   GREENPLUM,
   HIVE,
@@ -92,6 +94,17 @@ import {
   VERTICA,
 } from '../constants/Services.constant';
 import { SearchSuggestions } from '../context/GlobalSearchProvider/GlobalSearchSuggestions/GlobalSearchSuggestions.interface';
+import { ExplorePageTabs } from '../enums/Explore.enum';
+import {
+  DashboardServiceTypeSmallCaseType,
+  DatabaseServiceTypeSmallCaseType,
+  MessagingServiceTypeSmallCaseType,
+  MetadataServiceTypeSmallCaseType,
+  MlModelServiceTypeSmallCaseType,
+  PipelineServiceTypeSmallCaseType,
+  SearchServiceTypeSmallCaseType,
+  StorageServiceTypeSmallCaseType,
+} from '../enums/service.enum';
 import { StorageServiceType } from '../generated/entity/data/container';
 import { DashboardServiceType } from '../generated/entity/data/dashboard';
 import { DatabaseServiceType } from '../generated/entity/data/database';
@@ -120,6 +133,46 @@ class ServiceUtilClassBase {
     StorageServiceType.Gcs,
     MetadataServiceType.Alation,
   ];
+
+  DatabaseServiceTypeSmallCase = this.convertEnumToLowerCase<
+    { [k: string]: string },
+    DatabaseServiceTypeSmallCaseType
+  >(DatabaseServiceType);
+
+  MessagingServiceTypeSmallCase = this.convertEnumToLowerCase<
+    { [k: string]: string },
+    MessagingServiceTypeSmallCaseType
+  >(MessagingServiceType);
+
+  DashboardServiceTypeSmallCase = this.convertEnumToLowerCase<
+    { [k: string]: string },
+    DashboardServiceTypeSmallCaseType
+  >(DashboardServiceType);
+
+  PipelineServiceTypeSmallCase = this.convertEnumToLowerCase<
+    { [k: string]: string },
+    PipelineServiceTypeSmallCaseType
+  >(PipelineServiceType);
+
+  MlModelServiceTypeSmallCase = this.convertEnumToLowerCase<
+    { [k: string]: string },
+    MlModelServiceTypeSmallCaseType
+  >(MlModelServiceType);
+
+  MetadataServiceTypeSmallCase = this.convertEnumToLowerCase<
+    { [k: string]: string },
+    MetadataServiceTypeSmallCaseType
+  >(MetadataServiceType);
+
+  StorageServiceTypeSmallCase = this.convertEnumToLowerCase<
+    { [k: string]: string },
+    StorageServiceTypeSmallCaseType
+  >(StorageServiceType);
+
+  SearchServiceTypeSmallCase = this.convertEnumToLowerCase<
+    { [k: string]: string },
+    SearchServiceTypeSmallCaseType
+  >(SearchServiceType);
 
   protected updateUnsupportedServices(types: string[]) {
     this.unSupportedServices = types;
@@ -163,230 +216,236 @@ class ServiceUtilClassBase {
   ) {
     const serviceTypes = this.getSupportedServiceFromList();
     const type = searchSource?.serviceType ?? '';
-    switch (type) {
-      case DatabaseServiceType.Mysql:
+    switch (toLower(type)) {
+      case this.DatabaseServiceTypeSmallCase.Mysql:
         return MYSQL;
 
-      case DatabaseServiceType.Redshift:
+      case this.DatabaseServiceTypeSmallCase.Redshift:
         return REDSHIFT;
 
-      case DatabaseServiceType.BigQuery:
+      case this.DatabaseServiceTypeSmallCase.BigQuery:
         return BIGQUERY;
 
-      case DatabaseServiceType.BigTable:
+      case this.DatabaseServiceTypeSmallCase.BigTable:
         return BIGTABLE;
 
-      case DatabaseServiceType.Hive:
+      case this.DatabaseServiceTypeSmallCase.Hive:
         return HIVE;
 
-      case DatabaseServiceType.Impala:
+      case this.DatabaseServiceTypeSmallCase.Impala:
         return IMPALA;
 
-      case DatabaseServiceType.Postgres:
+      case this.DatabaseServiceTypeSmallCase.Postgres:
         return POSTGRES;
 
-      case DatabaseServiceType.Oracle:
+      case this.DatabaseServiceTypeSmallCase.Oracle:
         return ORACLE;
 
-      case DatabaseServiceType.Snowflake:
+      case this.DatabaseServiceTypeSmallCase.Snowflake:
         return SNOWFLAKE;
 
-      case DatabaseServiceType.Mssql:
+      case this.DatabaseServiceTypeSmallCase.Mssql:
         return MSSQL;
 
-      case DatabaseServiceType.Athena:
+      case this.DatabaseServiceTypeSmallCase.Athena:
         return ATHENA;
 
-      case DatabaseServiceType.Presto:
+      case this.DatabaseServiceTypeSmallCase.Presto:
         return PRESTO;
 
-      case DatabaseServiceType.Trino:
+      case this.DatabaseServiceTypeSmallCase.Trino:
         return TRINO;
 
-      case DatabaseServiceType.Glue:
+      case this.DatabaseServiceTypeSmallCase.Glue:
         return GLUE;
 
-      case DatabaseServiceType.DomoDatabase:
+      case this.DatabaseServiceTypeSmallCase.DomoDatabase:
         return DOMO;
 
-      case DatabaseServiceType.MariaDB:
+      case this.DatabaseServiceTypeSmallCase.MariaDB:
         return MARIADB;
 
-      case DatabaseServiceType.Vertica:
+      case this.DatabaseServiceTypeSmallCase.Vertica:
         return VERTICA;
 
-      case DatabaseServiceType.AzureSQL:
+      case this.DatabaseServiceTypeSmallCase.AzureSQL:
         return AZURESQL;
 
-      case DatabaseServiceType.Clickhouse:
+      case this.DatabaseServiceTypeSmallCase.Clickhouse:
         return CLICKHOUSE;
 
-      case DatabaseServiceType.Databricks:
+      case this.DatabaseServiceTypeSmallCase.Databricks:
         return DATABRICK;
 
-      case DatabaseServiceType.UnityCatalog:
+      case this.DatabaseServiceTypeSmallCase.UnityCatalog:
         return UNITYCATALOG;
 
-      case DatabaseServiceType.Db2:
+      case this.DatabaseServiceTypeSmallCase.Db2:
         return IBMDB2;
 
-      case DatabaseServiceType.Doris:
+      case this.DatabaseServiceTypeSmallCase.Doris:
         return DORIS;
 
-      case DatabaseServiceType.Druid:
+      case this.DatabaseServiceTypeSmallCase.Druid:
         return DRUID;
 
-      case DatabaseServiceType.DynamoDB:
+      case this.DatabaseServiceTypeSmallCase.DynamoDB:
         return DYNAMODB;
 
-      case DatabaseServiceType.SingleStore:
+      case this.DatabaseServiceTypeSmallCase.SingleStore:
         return SINGLESTORE;
 
-      case DatabaseServiceType.SQLite:
+      case this.DatabaseServiceTypeSmallCase.SQLite:
         return SQLITE;
 
-      case DatabaseServiceType.Salesforce:
+      case this.DatabaseServiceTypeSmallCase.Salesforce:
         return SALESFORCE;
 
-      case DatabaseServiceType.SapHana:
+      case this.DatabaseServiceTypeSmallCase.SapHana:
         return SAP_HANA;
 
-      case DatabaseServiceType.SapERP:
+      case this.DatabaseServiceTypeSmallCase.SapERP:
         return SAP_ERP;
 
-      case DatabaseServiceType.DeltaLake:
+      case this.DatabaseServiceTypeSmallCase.DeltaLake:
         return DELTALAKE;
 
-      case DatabaseServiceType.PinotDB:
+      case this.DatabaseServiceTypeSmallCase.PinotDB:
         return PINOT;
 
-      case DatabaseServiceType.Datalake:
+      case this.DatabaseServiceTypeSmallCase.Datalake:
         return DATALAKE;
 
-      case DatabaseServiceType.MongoDB:
+      case this.DatabaseServiceTypeSmallCase.MongoDB:
         return MONGODB;
 
-      case DatabaseServiceType.SAS:
+      case this.DatabaseServiceTypeSmallCase.SAS:
         return SAS;
 
-      case DatabaseServiceType.Couchbase:
+      case this.DatabaseServiceTypeSmallCase.Couchbase:
         return COUCHBASE;
 
-      case DatabaseServiceType.Greenplum:
+      case this.DatabaseServiceTypeSmallCase.Greenplum:
         return GREENPLUM;
 
-      case DatabaseServiceType.Iceberg:
+      case this.DatabaseServiceTypeSmallCase.Iceberg:
         return ICEBERGE;
 
-      case MessagingServiceType.Kafka:
+      case this.DatabaseServiceTypeSmallCase.Teradata:
+        return TERADATA;
+
+      case this.MessagingServiceTypeSmallCase.Kafka:
         return KAFKA;
 
-      case MessagingServiceType.Redpanda:
+      case this.MessagingServiceTypeSmallCase.Redpanda:
         return REDPANDA;
 
-      case MessagingServiceType.Kinesis:
+      case this.MessagingServiceTypeSmallCase.Kinesis:
         return KINESIS;
 
-      case DashboardServiceType.Superset:
+      case this.DashboardServiceTypeSmallCase.Superset:
         return SUPERSET;
 
-      case DashboardServiceType.Looker:
+      case this.DashboardServiceTypeSmallCase.Looker:
         return LOOKER;
 
-      case DashboardServiceType.Tableau:
+      case this.DashboardServiceTypeSmallCase.Tableau:
         return TABLEAU;
 
-      case DashboardServiceType.Redash:
+      case this.DashboardServiceTypeSmallCase.Redash:
         return REDASH;
 
-      case DashboardServiceType.Metabase:
+      case this.DashboardServiceTypeSmallCase.Metabase:
         return METABASE;
 
-      case DashboardServiceType.PowerBI:
+      case this.DashboardServiceTypeSmallCase.PowerBI:
         return POWERBI;
 
-      case DashboardServiceType.QuickSight:
+      case this.DashboardServiceTypeSmallCase.QuickSight:
         return QUICKSIGHT;
 
-      case DashboardServiceType.DomoDashboard:
+      case this.DashboardServiceTypeSmallCase.DomoDashboard:
         return DOMO;
 
-      case DashboardServiceType.Mode:
+      case this.DashboardServiceTypeSmallCase.Mode:
         return MODE;
 
-      case DashboardServiceType.QlikSense:
+      case this.DashboardServiceTypeSmallCase.QlikSense:
         return QLIK_SENSE;
 
-      case DashboardServiceType.QlikCloud:
+      case this.DashboardServiceTypeSmallCase.QlikCloud:
         return QLIK_SENSE;
 
-      case DashboardServiceType.Lightdash:
+      case this.DashboardServiceTypeSmallCase.Lightdash:
         return LIGHT_DASH;
 
-      case PipelineServiceType.Airflow:
+      case this.PipelineServiceTypeSmallCase.Airflow:
         return AIRFLOW;
 
-      case PipelineServiceType.Airbyte:
+      case this.PipelineServiceTypeSmallCase.Airbyte:
         return AIRBYTE;
 
-      case PipelineServiceType.Dagster:
+      case this.PipelineServiceTypeSmallCase.Dagster:
         return DAGSTER;
 
-      case PipelineServiceType.Fivetran:
+      case this.PipelineServiceTypeSmallCase.Fivetran:
         return FIVETRAN;
 
-      case PipelineServiceType.GluePipeline:
+      case this.PipelineServiceTypeSmallCase.DBTCloud:
+        return DBT;
+
+      case this.PipelineServiceTypeSmallCase.GluePipeline:
         return GLUE;
 
-      case PipelineServiceType.KafkaConnect:
+      case this.PipelineServiceTypeSmallCase.KafkaConnect:
         return KAFKA;
 
-      case PipelineServiceType.Spark:
+      case this.PipelineServiceTypeSmallCase.Spark:
         return SPARK;
 
-      case PipelineServiceType.Spline:
+      case this.PipelineServiceTypeSmallCase.Spline:
         return SPLINE;
 
-      case PipelineServiceType.Nifi:
+      case this.PipelineServiceTypeSmallCase.Nifi:
         return NIFI;
 
-      case PipelineServiceType.DomoPipeline:
+      case this.PipelineServiceTypeSmallCase.DomoPipeline:
         return DOMO;
 
-      case PipelineServiceType.DatabricksPipeline:
+      case this.PipelineServiceTypeSmallCase.DatabricksPipeline:
         return DATABRICK;
 
-      case PipelineServiceType.OpenLineage:
+      case this.PipelineServiceTypeSmallCase.OpenLineage:
         return OPENLINEAGE;
 
-      case MlModelServiceType.Mlflow:
+      case this.PipelineServiceTypeSmallCase.Flink:
+        return FLINK;
+
+      case this.MlModelServiceTypeSmallCase.Mlflow:
         return MLFLOW;
 
-      case MlModelServiceType.Sklearn:
+      case this.MlModelServiceTypeSmallCase.Sklearn:
         return SCIKIT;
-      case MlModelServiceType.SageMaker:
+      case this.MlModelServiceTypeSmallCase.SageMaker:
         return SAGEMAKER;
 
-      case MetadataServiceType.Amundsen:
+      case this.MetadataServiceTypeSmallCase.Amundsen:
         return AMUNDSEN;
 
-      case MetadataServiceType.Atlas:
+      case this.MetadataServiceTypeSmallCase.Atlas:
         return ATLAS;
 
-      case MetadataServiceType.OpenMetadata:
+      case this.MetadataServiceTypeSmallCase.OpenMetadata:
         return LOGO;
 
-      case StorageServiceType.S3:
+      case this.StorageServiceTypeSmallCase.S3:
         return AMAZON_S3;
 
-      case SearchServiceType.ElasticSearch:
+      case this.SearchServiceTypeSmallCase.ElasticSearch:
         return ELASTIC_SEARCH;
 
-      case SearchServiceType.OpenSearch:
+      case this.SearchServiceTypeSmallCase.OpenSearch:
         return OPEN_SEARCH;
-
-      case DatabaseServiceType.Teradata:
-        return TERADATA;
 
       default: {
         let logo;
@@ -408,6 +467,50 @@ class ServiceUtilClassBase {
 
         return logo;
       }
+    }
+  }
+
+  public getDataAssetsService(serviceType: string): ExplorePageTabs {
+    const database = this.DatabaseServiceTypeSmallCase;
+    const messaging = this.MessagingServiceTypeSmallCase;
+    const dashboard = this.DashboardServiceTypeSmallCase;
+    const pipeline = this.PipelineServiceTypeSmallCase;
+    const mlmodel = this.MlModelServiceTypeSmallCase;
+    const storage = this.StorageServiceTypeSmallCase;
+    const search = this.SearchServiceTypeSmallCase;
+
+    switch (true) {
+      case Object.values(database).includes(
+        serviceType as typeof database[keyof typeof database]
+      ):
+        return ExplorePageTabs.TABLES;
+      case Object.values(messaging).includes(
+        serviceType as typeof messaging[keyof typeof messaging]
+      ):
+        return ExplorePageTabs.TOPICS;
+      case Object.values(dashboard).includes(
+        serviceType as typeof dashboard[keyof typeof dashboard]
+      ):
+        return ExplorePageTabs.DASHBOARDS;
+      case Object.values(mlmodel).includes(
+        serviceType as typeof mlmodel[keyof typeof mlmodel]
+      ):
+        return ExplorePageTabs.MLMODELS;
+      case Object.values(pipeline).includes(
+        serviceType as typeof pipeline[keyof typeof pipeline]
+      ):
+        return ExplorePageTabs.PIPELINES;
+      case Object.values(storage).includes(
+        serviceType as typeof storage[keyof typeof storage]
+      ):
+        return ExplorePageTabs.CONTAINERS;
+      case Object.values(search).includes(
+        serviceType as typeof search[keyof typeof search]
+      ):
+        return ExplorePageTabs.SEARCH_INDEX;
+
+      default:
+        return ExplorePageTabs.TABLES;
     }
   }
 
@@ -456,6 +559,21 @@ class ServiceUtilClassBase {
 
   public getMetadataServiceConfig(type: MetadataServiceType) {
     return getMetadataConfig(type);
+  }
+
+  /**
+   * @param originalEnum will take the enum that should be converted
+   * @returns object with lowercase value
+   */
+  public convertEnumToLowerCase<T extends { [k: string]: string }, U>(
+    originalEnum: T
+  ): U {
+    return Object.fromEntries(
+      Object.entries(originalEnum).map(([key, value]) => [
+        key,
+        value.toLowerCase(),
+      ])
+    ) as unknown as U;
   }
 }
 

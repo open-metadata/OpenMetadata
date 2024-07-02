@@ -31,6 +31,8 @@ export const EDITOR_OPTIONS: Partial<EditorOptions> = {
     'image',
     'taskItem',
     'callout',
+    'link',
+    'MathEquation',
   ],
   parseOptions: {
     preserveWhitespace: 'full',
@@ -63,3 +65,9 @@ export const CALLOUT_CONTENT = {
 
 export const CALL_OUT_REGEX = /^:::([A-Za-z]*)?$/;
 export const CALL_OUT_INPUT_RULE_REGEX = /^::: $/;
+
+export const LINK_INPUT_REGEX =
+  /(?:^|\s)\[([^\]]*)?\]\((\S+)(?: ["“](.+)["”])?\)$/i;
+
+export const LINK_PASTE_REGEX =
+  /(?:^|\s)\[([^\]]*)?\]\((\S+)(?: ["“](.+)["”])?\)/gi;
