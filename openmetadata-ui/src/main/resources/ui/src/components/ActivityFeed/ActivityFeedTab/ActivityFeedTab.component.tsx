@@ -412,8 +412,9 @@ export const ActivityFeedTab = ({
       />
 
       <ResizablePanels
-        applyDefaultStyle={false}
+        className="tab-content-height-with-resizable-panel"
         firstPanel={{
+          className: 'entity-resizable-panel-container',
           children: (
             <div className="center-container" id="center-container">
               {isTaskActiveTab && (
@@ -475,7 +476,7 @@ export const ActivityFeedTab = ({
               />
             </div>
           ),
-          minWidth: 700,
+          minWidth: 500,
           flex: 0.5,
         }}
         hideSecondPanel={!selectedThread}
@@ -543,7 +544,8 @@ export const ActivityFeedTab = ({
           ),
           minWidth: 420,
           flex: 0.5,
-          className: 'entity-resizable-right-panel-container p-l-0',
+          className:
+            'entity-resizable-right-panel-container p-l-0 entity-resizable-panel-container',
         }}
       />
     </div>

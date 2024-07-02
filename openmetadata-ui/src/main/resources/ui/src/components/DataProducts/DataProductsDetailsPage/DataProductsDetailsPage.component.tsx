@@ -410,7 +410,6 @@ const DataProductsDetailsPage = ({
               key: DataProductTabs.ASSETS,
               children: (
                 <ResizablePanels
-                  applyDefaultStyle={false}
                   firstPanel={{
                     children: (
                       <div className="p-x-md p-y-md">

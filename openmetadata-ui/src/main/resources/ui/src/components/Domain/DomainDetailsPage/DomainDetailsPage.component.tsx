@@ -474,7 +474,6 @@ const DomainDetailsPage = ({
               key: DomainTabs.ASSETS,
               children: (
                 <ResizablePanels
-                  applyDefaultStyle={false}
                   firstPanel={{
                     children: (
                       <div className="p-x-md p-y-md">

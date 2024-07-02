@@ -512,10 +512,10 @@ const DatabaseDetails: FunctionComponent = () => {
         key: EntityTabs.SCHEMA,
         children: (
           <Row gutter={[0, 16]} wrap={false}>
-            <Col className="tab-content-height" span={24}>
+            <Col className="tab-content-height-with-resizable-panel" span={24}>
               <ResizablePanels
-                applyDefaultStyle={false}
                 firstPanel={{
+                  className: 'entity-resizable-panel-container',
                   children: (
                     <div className="p-t-sm m-x-lg">
                       <Row gutter={[16, 16]}>
@@ -568,7 +568,8 @@ const DatabaseDetails: FunctionComponent = () => {
                   ),
                   minWidth: 320,
                   flex: 0.13,
-                  className: 'entity-resizable-right-panel-container',
+                  className:
+                    'entity-resizable-right-panel-container entity-resizable-panel-container',
                 }}
               />
             </Col>

@@ -46,8 +46,8 @@ import {
   replaceAllSpacialCharWith_,
   Transi18next,
 } from '../../../utils/CommonUtils';
-import { getScheduleOptionsFromSchedules } from '../../../utils/ScheduleUtils';
 import { getEntityName } from '../../../utils/EntityUtils';
+import { getScheduleOptionsFromSchedules } from '../../../utils/ScheduleUtils';
 import { getIngestionName } from '../../../utils/ServiceUtils';
 import { generateUUID } from '../../../utils/StringsUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
