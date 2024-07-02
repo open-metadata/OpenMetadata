@@ -79,7 +79,7 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
   private static final String UPDATE_FIELDS =
       "owner,entityLink,testSuite,testSuites,testDefinition";
   private static final String PATCH_FIELDS =
-      "owner,entityLink,testSuite,testDefinition,computePassedFailedRowCount";
+      "owner,entityLink,testSuite,testDefinition,computePassedFailedRowCount,useDynamicAssertion";
   public static final String TESTCASE_RESULT_EXTENSION = "testCase.testCaseResult";
   public static final String FAILED_ROWS_SAMPLE_EXTENSION = "testCase.failedRowsSample";
 
@@ -790,6 +790,8 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
             "failedRowsSample",
             JsonUtils.pojoToJson(tableData));
     setFieldsInternal(testCase, Fields.EMPTY_FIELDS);
+    // deep copy the test case to avoid updating the cached entity
+    testCase = JsonUtils.deepCopy(testCase, TestCase.class);
     return testCase.withFailedRowsSample(tableData);
   }
 
@@ -972,6 +974,10 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
           "computePassedFailedRowCount",
           original.getComputePassedFailedRowCount(),
           updated.getComputePassedFailedRowCount());
+      recordChange(
+          "useDynamicAssertion",
+          original.getUseDynamicAssertion(),
+          updated.getUseDynamicAssertion());
       recordChange("testCaseResult", original.getTestCaseResult(), updated.getTestCaseResult());
     }
   }
@@ -995,7 +1001,7 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
           Entity.TABLE, table.getColumns(), table.getFullyQualifiedName(), true);
       List<TagLabel> tags = daoCollection.tagUsageDAO().getTags(table.getFullyQualifiedName());
       table.setTags(tags);
-      return maskSampleData(testCase.getFailedRowsSample(), table, table.getColumns());
+      return maskSampleData(sampleData, table, table.getColumns());
     }
     return sampleData;
   }

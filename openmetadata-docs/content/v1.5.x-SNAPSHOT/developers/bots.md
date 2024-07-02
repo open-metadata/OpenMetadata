@@ -5,7 +5,12 @@ slug: /developers/bots
 
 # How to Set Up Bots
 
-The default account for any ingestion pipeline deployed from the UI is `ingestion-bot`. To configure `ingestion-bot` from the UI, go to the settings page, scroll down to the Integration section, and access the `Bots` tab.
+The default account for any ingestion pipeline deployed from the UI is `ingestion-bot`. To configure `ingestion-bot` from the UI, go to the settings page and access the `Bots` tile.
+
+{% image
+src="/images/v1.4/developers/settings-bot.png"
+alt="settings-bot"
+/%}
 
 {% image
 src="/images/v1.5/developers/bot-listing.png"

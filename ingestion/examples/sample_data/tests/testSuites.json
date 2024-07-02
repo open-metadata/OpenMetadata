@@ -340,6 +340,32 @@
                         }
                     ],
                     "resolutions": {}
+                },
+                {
+                    "name": "diff_with_production",
+                    "description": "compare with production data",
+                    "entityLink": "<#E::table::sample_data.ecommerce_db.shopify.dim_address>",
+                    "testDefinitionName": "tableDiff",
+                    "parameterValues": [
+                        {
+                            "name": "table2",
+                            "value": "sample_data.ecommerce_db.shopify.production_dim_address"
+                        }
+                    ],
+                    "resolutions": {}
+                },
+                {
+                    "name": "diff_columns",
+                    "description": "compare with a table with different columns",
+                    "entityLink": "<#E::table::sample_data.ecommerce_db.shopify.dim_address>",
+                    "testDefinitionName": "tableDiff",
+                    "parameterValues": [
+                        {
+                            "name": "table2",
+                            "value": "sample_data.ecommerce_db.shopify.production_dim_address"
+                        }
+                    ],
+                    "resolutions": {}
                 }
             ]
         }
