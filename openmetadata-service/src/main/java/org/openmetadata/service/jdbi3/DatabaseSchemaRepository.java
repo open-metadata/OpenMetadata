@@ -87,13 +87,14 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
 
   @Override
   public void storeEntity(DatabaseSchema schema, boolean update) {
-    // Relationships and fields such as service are derived and not stored as part of json
+    // Relationships and fields such as service, database are derived and not stored as part of json
     EntityReference service = schema.getService();
-    schema.withService(null);
+    EntityReference database = schema.getDatabase();
+    schema.withService(null).withDatabase(null);
 
     store(schema, update);
     // Restore the relationships
-    schema.withService(service);
+    schema.withService(service).withDatabase(database);
   }
 
   @Override
