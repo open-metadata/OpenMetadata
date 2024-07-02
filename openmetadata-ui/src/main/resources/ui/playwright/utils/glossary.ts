@@ -613,14 +613,12 @@ export const addAssetToGlossaryTerm = async (
   }
 
   await page.click('[data-testid="glossary-term-add-button-menu"]');
-  await page
-    .locator('.ant-dropdown-menu .ant-dropdown-menu-title-content')
-    .filter({ hasText: 'Assets' })
-    .click();
+  await page.getByRole('menuitem', { name: 'Assets' }).click();
 
-  await page
-    .locator('[data-testid="asset-selection-modal"] .ant-modal-title')
-    .filter({ hasText: 'Add Assets' });
+  await expect(page.locator('[role="dialog"].ant-modal')).toBeVisible();
+  await expect(
+    page.locator('[data-testid="asset-selection-modal"] .ant-modal-title')
+  ).toContainText('Add Assets');
 
   for (const asset of assets) {
     const entityFqn = get(asset, 'entityResponseData.fullyQualifiedName');
