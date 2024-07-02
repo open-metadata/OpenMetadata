@@ -175,6 +175,7 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationTest;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.jdbi3.EntityRepository.EntityUpdater;
+import org.openmetadata.service.resources.apis.APICollectionResourceTest;
 import org.openmetadata.service.resources.bots.BotResourceTest;
 import org.openmetadata.service.resources.databases.TableResourceTest;
 import org.openmetadata.service.resources.domains.DataProductResourceTest;
@@ -190,6 +191,7 @@ import org.openmetadata.service.resources.kpi.KpiResourceTest;
 import org.openmetadata.service.resources.metadata.TypeResourceTest;
 import org.openmetadata.service.resources.policies.PolicyResourceTest;
 import org.openmetadata.service.resources.query.QueryResourceTest;
+import org.openmetadata.service.resources.services.APIServiceResourceTest;
 import org.openmetadata.service.resources.services.DashboardServiceResourceTest;
 import org.openmetadata.service.resources.services.DatabaseServiceResourceTest;
 import org.openmetadata.service.resources.services.MessagingServiceResourceTest;
@@ -310,6 +312,10 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   public static EntityReference ELASTICSEARCH_SEARCH_SERVICE_REFERENCE;
   public static EntityReference OPENSEARCH_SEARCH_SERVICE_REFERENCE;
 
+  public static EntityReference OPENMETADATA_API_SERVICE_REFERENCE;
+  public static EntityReference SAMPLE_API_SERVICE_REFERENCE;
+  public static EntityReference OPENMETADATA_API_COLLECTION_REFERENCE;
+  public static EntityReference SAMPLE_API_COLLECTION_REFERENCE;
   public static EntityReference AMUNDSEN_SERVICE_REFERENCE;
   public static EntityReference ATLAS_SERVICE_REFERENCE;
 
@@ -447,6 +453,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     new MlModelServiceResourceTest().setupMlModelServices(test);
     new StorageServiceResourceTest().setupStorageService(test);
     new SearchServiceResourceTest().setupSearchService(test);
+    new APIServiceResourceTest().setupAPIService(test);
     new MetadataServiceResourceTest().setupMetadataServices();
     new TableResourceTest().setupDatabaseSchemas(test);
     new TestSuiteResourceTest().setupTestSuites(test);
@@ -456,6 +463,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     new KpiResourceTest().setupKpi();
     new BotResourceTest().setupBots();
     new QueryResourceTest().setupQuery(test);
+    new APICollectionResourceTest().setupAPICollection(test);
 
     if (EVENT_SUBSCRIPTION_TEST_CONTROL_FLAG) {
       switch (selectedTestCategory) {
