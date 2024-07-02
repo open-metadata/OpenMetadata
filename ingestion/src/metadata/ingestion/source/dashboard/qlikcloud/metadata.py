@@ -36,7 +36,7 @@ from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.dashboard.qlikcloud.client import QlikCloudClient
-from metadata.ingestion.source.dashboard.qlikcloud.models import QlikApp, QlikAppList
+from metadata.ingestion.source.dashboard.qlikcloud.models import QlikApp
 from metadata.ingestion.source.dashboard.qliksense.metadata import QliksenseSource
 from metadata.ingestion.source.dashboard.qliksense.models import QlikTable
 from metadata.utils import fqn
@@ -74,7 +74,7 @@ class QlikcloudSource(QliksenseSource):
         metadata: OpenMetadata,
     ):
         super().__init__(config, metadata)
-        self.collections: List[QlikAppList] = []
+        self.collections: List[QlikApp] = []
         self.data_models: List[QlikTable] = []
 
     def filter_draft_dashboard(self, dashboard: QlikApp) -> bool:
