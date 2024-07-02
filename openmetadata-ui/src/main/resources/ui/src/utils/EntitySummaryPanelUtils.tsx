@@ -24,6 +24,7 @@ import {
 } from '../components/Explore/EntitySummaryPanel/SummaryList/SummaryList.interface';
 import { ICON_DIMENSION, NO_DATA_PLACEHOLDER } from '../constants/constants';
 import { SummaryListHighlightKeys } from '../constants/EntitySummaryPanelUtils.constant';
+import { EntityType } from '../enums/entity.enum';
 import { SummaryEntityType } from '../enums/EntitySummary.enum';
 import { Chart } from '../generated/entity/data/chart';
 import { TagLabel } from '../generated/entity/data/container';
@@ -31,6 +32,8 @@ import { MlFeature } from '../generated/entity/data/mlmodel';
 import { Task } from '../generated/entity/data/pipeline';
 import { Column, TableConstraint } from '../generated/entity/data/table';
 import { Field } from '../generated/entity/data/topic';
+import { EntityReference } from '../generated/tests/testCase';
+import entityUtilClassBase from './EntityUtilClassBase';
 import { getEntityName } from './EntityUtils';
 import { stringToHTML } from './StringsUtils';
 
@@ -64,6 +67,23 @@ export const getTitle = (
     ? stringToHTML(highlightedTitle)
     : getEntityName(listItem) || NO_DATA_PLACEHOLDER;
   const sourceUrl = (listItem as Chart | Task).sourceUrl;
+
+  if ((listItem as EntityReference).type === SummaryEntityType.DASHBOARD) {
+    return (
+      <Link
+        to={entityUtilClassBase.getEntityLink(
+          EntityType.DASHBOARD,
+          listItem.fullyQualifiedName ?? ''
+        )}>
+        <Text
+          className="entity-title text-link-color font-medium m-r-xss"
+          data-testid="entity-title"
+          ellipsis={{ tooltip: true }}>
+          {title}
+        </Text>
+      </Link>
+    );
+  }
 
   return sourceUrl ? (
     <Link target="_blank" to={{ pathname: sourceUrl }}>

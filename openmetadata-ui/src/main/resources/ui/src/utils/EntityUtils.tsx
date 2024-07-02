@@ -68,6 +68,7 @@ import { SearchIndex } from '../enums/search.enum';
 import { ServiceCategory, ServiceCategoryPlural } from '../enums/service.enum';
 import { PrimaryTableDataTypes } from '../enums/table.enum';
 import { Classification } from '../generated/entity/classification/classification';
+import { Chart } from '../generated/entity/data/chart';
 import { Container } from '../generated/entity/data/container';
 import { Dashboard } from '../generated/entity/data/dashboard';
 import { DashboardDataModel } from '../generated/entity/data/dashboardDataModel';
@@ -135,7 +136,7 @@ import { stringToHTML } from './StringsUtils';
 import {
   getDataTypeString,
   getTagsWithoutTier,
-  getTierFromTableTags,
+  getTierTags,
   getUsagePercentile,
 } from './TableUtils';
 import { getTableTags } from './TagsUtils';
@@ -217,7 +218,7 @@ const getTableFieldsFromTableDetails = (tableDetails: Table) => {
   const databaseDisplayName = getEntityName(database) || databaseName;
   const schemaDisplayName = getEntityName(databaseSchema) || schemaName;
 
-  const tier = getTierFromTableTags(tags ?? []);
+  const tier = getTierTags(tags ?? []);
 
   return {
     fullyQualifiedName,
@@ -301,7 +302,7 @@ const getTableOverview = (tableDetails: Table) => {
     },
     {
       name: i18next.t('label.tier'),
-      value: tier ? tier.split(FQN_SEPARATOR_CHAR)[1] : NO_DATA,
+      value: tier ? tier.tagFQN.split(FQN_SEPARATOR_CHAR)[1] : NO_DATA,
       isLink: false,
       visible: [DRAWER_NAVIGATION_OPTIONS.lineage],
     },
@@ -343,7 +344,7 @@ const getTableOverview = (tableDetails: Table) => {
 
 const getPipelineOverview = (pipelineDetails: Pipeline) => {
   const { owner, tags, sourceUrl, service, displayName } = pipelineDetails;
-  const tier = getTierFromTableTags(tags ?? []);
+  const tier = getTierTags(tags ?? []);
   const serviceDisplayName = getEntityName(service);
 
   const overview = [
@@ -381,7 +382,7 @@ const getPipelineOverview = (pipelineDetails: Pipeline) => {
     },
     {
       name: i18next.t('label.tier'),
-      value: tier ? tier.split(FQN_SEPARATOR_CHAR)[1] : NO_DATA,
+      value: tier ? tier.tagFQN.split(FQN_SEPARATOR_CHAR)[1] : NO_DATA,
       isLink: false,
       visible: [DRAWER_NAVIGATION_OPTIONS.lineage],
     },
@@ -393,7 +394,7 @@ const getPipelineOverview = (pipelineDetails: Pipeline) => {
 const getDashboardOverview = (dashboardDetails: Dashboard) => {
   const { owner, tags, sourceUrl, service, displayName, project } =
     dashboardDetails;
-  const tier = getTierFromTableTags(tags ?? []);
+  const tier = getTierTags(tags ?? []);
   const serviceDisplayName = getEntityName(service);
 
   const overview = [
@@ -430,7 +431,7 @@ const getDashboardOverview = (dashboardDetails: Dashboard) => {
     },
     {
       name: i18next.t('label.tier'),
-      value: tier ? tier.split(FQN_SEPARATOR_CHAR)[1] : NO_DATA,
+      value: tier ? tier.tagFQN.split(FQN_SEPARATOR_CHAR)[1] : NO_DATA,
       isLink: false,
       isExternal: false,
       visible: [DRAWER_NAVIGATION_OPTIONS.lineage],
@@ -453,7 +454,7 @@ export const getSearchIndexOverview = (
   searchIndexDetails: SearchIndexEntity
 ) => {
   const { owner, tags, service } = searchIndexDetails;
-  const tier = getTierFromTableTags(tags ?? []);
+  const tier = getTierTags(tags ?? []);
 
   const overview = [
     {
@@ -465,7 +466,7 @@ export const getSearchIndexOverview = (
     },
     {
       name: i18next.t('label.tier'),
-      value: tier ? tier.split(FQN_SEPARATOR_CHAR)[1] : NO_DATA,
+      value: tier ? tier.tagFQN.split(FQN_SEPARATOR_CHAR)[1] : NO_DATA,
       isLink: false,
       isExternal: false,
       visible: [DRAWER_NAVIGATION_OPTIONS.lineage],
@@ -582,6 +583,67 @@ const getContainerOverview = (containerDetails: Container) => {
   return overview;
 };
 
+const getChartOverview = (chartDetails: Chart) => {
+  const { owner, sourceUrl, chartType, service, serviceType, displayName } =
+    chartDetails;
+  const serviceDisplayName = getEntityName(service);
+
+  const overview = [
+    {
+      name: i18next.t('label.owner'),
+      value: <OwnerLabel hasPermission={false} owner={owner} />,
+      url: getOwnerValue(owner as EntityReference),
+      isLink: !isEmpty(owner?.name),
+      visible: [DRAWER_NAVIGATION_OPTIONS.lineage],
+    },
+    {
+      name: `${i18next.t('label.chart')} ${i18next.t('label.url-uppercase')}`,
+      value: stringToHTML(displayName ?? '') || NO_DATA,
+      url: sourceUrl,
+      isLink: true,
+      isExternal: true,
+      visible: [
+        DRAWER_NAVIGATION_OPTIONS.lineage,
+        DRAWER_NAVIGATION_OPTIONS.explore,
+      ],
+    },
+    {
+      name: i18next.t('label.service'),
+      value: serviceDisplayName || NO_DATA,
+      url: getServiceDetailsPath(
+        service?.name ?? '',
+        ServiceCategory.DASHBOARD_SERVICES
+      ),
+      isExternal: false,
+      isLink: true,
+      visible: [
+        DRAWER_NAVIGATION_OPTIONS.lineage,
+        DRAWER_NAVIGATION_OPTIONS.explore,
+      ],
+    },
+    {
+      name: i18next.t('label.chart-type'),
+      value: chartType ?? NO_DATA,
+      isLink: false,
+      visible: [
+        DRAWER_NAVIGATION_OPTIONS.explore,
+        DRAWER_NAVIGATION_OPTIONS.lineage,
+      ],
+    },
+    {
+      name: i18next.t('label.service-type'),
+      value: serviceType ?? NO_DATA,
+      isLink: false,
+      visible: [
+        DRAWER_NAVIGATION_OPTIONS.explore,
+        DRAWER_NAVIGATION_OPTIONS.lineage,
+      ],
+    },
+  ];
+
+  return overview;
+};
+
 const getDataModelOverview = (dataModelDetails: DashboardDataModel) => {
   const {
     owner,
@@ -591,7 +653,7 @@ const getDataModelOverview = (dataModelDetails: DashboardDataModel) => {
     dataModelType,
     fullyQualifiedName,
   } = dataModelDetails;
-  const tier = getTierFromTableTags(tags ?? []);
+  const tier = getTierTags(tags ?? []);
 
   const overview = [
     {
@@ -633,7 +695,7 @@ const getDataModelOverview = (dataModelDetails: DashboardDataModel) => {
 
     {
       name: i18next.t('label.tier'),
-      value: tier ? tier.split(FQN_SEPARATOR_CHAR)[1] : NO_DATA,
+      value: tier ? tier.tagFQN.split(FQN_SEPARATOR_CHAR)[1] : NO_DATA,
       isLink: false,
       isExternal: false,
       visible: [
@@ -667,7 +729,7 @@ const getStoredProcedureOverview = (
     FQN_SEPARATOR_CHAR
   ).split(FQN_SEPARATOR_CHAR);
 
-  const tier = getTierFromTableTags(tags ?? []);
+  const tier = getTierTags(tags ?? []);
 
   const overview = [
     {
@@ -717,7 +779,7 @@ const getStoredProcedureOverview = (
     },
     {
       name: i18next.t('label.tier'),
-      value: tier ? tier.split(FQN_SEPARATOR_CHAR)[1] : NO_DATA,
+      value: tier ? tier.tagFQN.split(FQN_SEPARATOR_CHAR)[1] : NO_DATA,
       isLink: false,
       visible: [
         DRAWER_NAVIGATION_OPTIONS.lineage,
@@ -747,7 +809,7 @@ const getStoredProcedureOverview = (
 const getDatabaseOverview = (databaseDetails: Database) => {
   const { owner, service, tags, usageSummary } = databaseDetails;
 
-  const tier = getTierFromTableTags(tags ?? []);
+  const tier = getTierTags(tags ?? []);
 
   const overview = [
     {
@@ -760,7 +822,7 @@ const getDatabaseOverview = (databaseDetails: Database) => {
 
     {
       name: i18next.t('label.tier'),
-      value: tier ? tier.split(FQN_SEPARATOR_CHAR)[1] : NO_DATA,
+      value: tier ? tier.tagFQN.split(FQN_SEPARATOR_CHAR)[1] : NO_DATA,
       isLink: false,
       visible: [DRAWER_NAVIGATION_OPTIONS.explore],
     },
@@ -790,7 +852,7 @@ const getDatabaseSchemaOverview = (databaseSchemaDetails: DatabaseSchema) => {
   const { owner, service, tags, usageSummary, database } =
     databaseSchemaDetails;
 
-  const tier = getTierFromTableTags(tags ?? []);
+  const tier = getTierTags(tags ?? []);
 
   const overview = [
     {
@@ -803,7 +865,7 @@ const getDatabaseSchemaOverview = (databaseSchemaDetails: DatabaseSchema) => {
 
     {
       name: i18next.t('label.tier'),
-      value: tier ? tier.split(FQN_SEPARATOR_CHAR)[1] : NO_DATA,
+      value: tier ? tier.tagFQN.split(FQN_SEPARATOR_CHAR)[1] : NO_DATA,
       isLink: false,
       visible: [DRAWER_NAVIGATION_OPTIONS.explore],
     },
@@ -841,7 +903,7 @@ const getDatabaseSchemaOverview = (databaseSchemaDetails: DatabaseSchema) => {
 const getEntityServiceOverview = (serviceDetails: EntityServiceUnion) => {
   const { owner, tags, serviceType } = serviceDetails;
 
-  const tier = getTierFromTableTags(tags ?? []);
+  const tier = getTierTags(tags ?? []);
 
   const overview = [
     {
@@ -854,7 +916,7 @@ const getEntityServiceOverview = (serviceDetails: EntityServiceUnion) => {
 
     {
       name: i18next.t('label.tier'),
-      value: tier ? tier.split(FQN_SEPARATOR_CHAR)[1] : NO_DATA,
+      value: tier ? tier.tagFQN.split(FQN_SEPARATOR_CHAR)[1] : NO_DATA,
       isLink: false,
       visible: [DRAWER_NAVIGATION_OPTIONS.explore],
     },
@@ -895,6 +957,9 @@ export const getEntityOverview = (
     }
     case ExplorePageTabs.CONTAINERS: {
       return getContainerOverview(entityDetail as Container);
+    }
+    case ExplorePageTabs.CHARTS: {
+      return getChartOverview(entityDetail as Chart);
     }
 
     case ExplorePageTabs.DASHBOARD_DATA_MODEL: {
@@ -2049,8 +2114,10 @@ export const getEntityNameLabel = (entityName?: string) => {
     mlmodel: t('label.ml-model'),
     location: t('label.location'),
     database: t('label.database'),
+    alert: t('label.alert-plural'),
     query: t('label.query'),
     THREAD: t('label.thread'),
+    app: t('label.application'),
   };
 
   return (

@@ -37,6 +37,7 @@ import { Dashboard } from '../../../generated/entity/data/dashboard';
 import { ThreadType } from '../../../generated/entity/feed/thread';
 import { TagSource } from '../../../generated/type/schema';
 import { TagLabel } from '../../../generated/type/tagLabel';
+import LimitWrapper from '../../../hoc/LimitWrapper';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { useFqn } from '../../../hooks/useFqn';
 import { FeedCounts } from '../../../interface/feed.interface';
@@ -818,6 +819,9 @@ const DashboardDetails = ({
           onSave={onChartUpdate}
         />
       )}
+      <LimitWrapper resource="dashboard">
+        <></>
+      </LimitWrapper>
       {threadLink ? (
         <ActivityThreadPanel
           createThread={createThread}

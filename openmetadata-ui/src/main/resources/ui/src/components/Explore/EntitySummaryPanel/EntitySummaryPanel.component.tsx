@@ -24,6 +24,7 @@ import { ERROR_PLACEHOLDER_TYPE, SIZE } from '../../../enums/common.enum';
 import { EntityType } from '../../../enums/entity.enum';
 import { ExplorePageTabs } from '../../../enums/Explore.enum';
 import { Tag } from '../../../generated/entity/classification/tag';
+import { Chart } from '../../../generated/entity/data/chart';
 import { Container } from '../../../generated/entity/data/container';
 import { Dashboard } from '../../../generated/entity/data/dashboard';
 import { DashboardDataModel } from '../../../generated/entity/data/dashboardDataModel';
@@ -50,6 +51,7 @@ import searchClassBase from '../../../utils/SearchClassBase';
 import { stringToHTML } from '../../../utils/StringsUtils';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../common/Loader/Loader';
+import ChartSummary from './ChartSummary/ChartSummary.component';
 import ContainerSummary from './ContainerSummary/ContainerSummary.component';
 import DashboardSummary from './DashboardSummary/DashboardSummary.component';
 import DatabaseSchemaSummary from './DatabaseSchemaSummary/DatabaseSchemaSummary.component';
@@ -145,6 +147,14 @@ export default function EntitySummaryPanel({
         return (
           <DashboardSummary
             entityDetails={entity as Dashboard}
+            highlights={highlights}
+          />
+        );
+
+      case EntityType.CHART:
+        return (
+          <ChartSummary
+            entityDetails={entity as Chart}
             highlights={highlights}
           />
         );

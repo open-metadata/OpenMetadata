@@ -50,7 +50,7 @@ export const MOCK_ALL_CLASSIFICATIONS = {
       name: 'PII',
       fullyQualifiedName: 'PII',
       description:
-        'Personally Identifiable Information information that, when used alone or with other relevant data, can identify an individual.',
+        'Personally Identifiable Information that, when used alone or with other relevant data, can identify an individual.',
       version: 0.1,
       updatedAt: 1672135714322,
       updatedBy: 'admin',

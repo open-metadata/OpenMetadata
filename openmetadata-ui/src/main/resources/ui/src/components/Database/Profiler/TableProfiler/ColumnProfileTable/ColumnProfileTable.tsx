@@ -43,6 +43,7 @@ import {
   TestCase,
   TestCaseStatus,
 } from '../../../../../generated/tests/testCase';
+import LimitWrapper from '../../../../../hoc/LimitWrapper';
 import { useFqn } from '../../../../../hooks/useFqn';
 import { getListTestCase } from '../../../../../rest/testAPI';
 import { formatNumberWithComma } from '../../../../../utils/CommonUtils';
@@ -410,21 +411,23 @@ const ColumnProfileTable = () => {
                   )}
 
                   {editTest && (
-                    <Dropdown
-                      menu={{
-                        items: addButtonContent,
-                      }}
-                      placement="bottomRight"
-                      trigger={['click']}>
-                      <Button
-                        data-testid="profiler-add-table-test-btn"
-                        type="primary">
-                        <Space>
-                          {t('label.add')}
-                          <DownOutlined />
-                        </Space>
-                      </Button>
-                    </Dropdown>
+                    <LimitWrapper resource="dataQuality">
+                      <Dropdown
+                        menu={{
+                          items: addButtonContent,
+                        }}
+                        placement="bottomRight"
+                        trigger={['click']}>
+                        <Button
+                          data-testid="profiler-add-table-test-btn"
+                          type="primary">
+                          <Space>
+                            {t('label.add')}
+                            <DownOutlined />
+                          </Space>
+                        </Button>
+                      </Dropdown>
+                    </LimitWrapper>
                   )}
                   {editDataProfile && (
                     <Tooltip

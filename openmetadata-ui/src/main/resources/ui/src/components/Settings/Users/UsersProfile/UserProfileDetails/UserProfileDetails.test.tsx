@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { act, fireEvent, render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { AuthProvider } from '../../../../../generated/settings/settings';
@@ -305,28 +306,67 @@ describe('Test User Profile Details Component', () => {
   });
 
   it('should call updateUserDetails on click of DisplayNameButton', async () => {
-    render(<UserProfileDetails {...mockPropsData} />, {
-      wrapper: MemoryRouter,
+    await act(async () => {
+      render(<UserProfileDetails {...mockPropsData} />, {
+        wrapper: MemoryRouter,
+      });
     });
 
-    act(() => {
+    await act(async () => {
       fireEvent.click(screen.getByTestId('edit-displayName'));
     });
 
     expect(screen.getByText('InlineEdit')).toBeInTheDocument();
 
-    act(() => {
+    await act(async () => {
       fireEvent.change(screen.getByTestId('displayName'), {
         target: { value: 'test' },
       });
     });
 
-    act(() => {
+    await act(async () => {
       fireEvent.click(screen.getByTestId('display-name-save-button'));
     });
 
     expect(mockPropsData.updateUserDetails).toHaveBeenCalledWith(
       { displayName: 'test' },
+      'displayName'
+    );
+  });
+
+  it('should pass displayName undefined to the updateUserDetails in case of empty string', async () => {
+    await act(async () => {
+      render(
+        <UserProfileDetails
+          {...mockPropsData}
+          userData={{ ...mockPropsData.userData, displayName: 'Test' }}
+        />,
+        {
+          wrapper: MemoryRouter,
+        }
+      );
+    });
+
+    await act(async () => {
+      userEvent.click(screen.getByTestId('edit-displayName'));
+    });
+
+    expect(screen.getByText('InlineEdit')).toBeInTheDocument();
+
+    await act(async () => {
+      fireEvent.change(screen.getByTestId('displayName'), {
+        target: {
+          value: '',
+        },
+      });
+    });
+
+    await act(async () => {
+      userEvent.click(screen.getByTestId('display-name-save-button'));
+    });
+
+    expect(mockPropsData.updateUserDetails).toHaveBeenCalledWith(
+      { displayName: undefined },
       'displayName'
     );
   });

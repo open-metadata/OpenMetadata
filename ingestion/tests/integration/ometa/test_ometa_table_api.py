@@ -108,7 +108,9 @@ BAD_RESPONSE = {
             ],
             "tags": [
                 {
-                    "tagFQN": "myTaghasMoreThanOneHundredAndTwentyCharactersAndItShouldBreakPydanticModelValidation.myTaghasMoreThanOneHundredAndTwentyCharactersAndItShouldBreakPydanticModelValidation",
+                    # Certain test cases are expected to fail as tagFQN's
+                    # value is not a string to test out the skip_on_failure
+                    "tagFQN": 123,
                     "source": "Classification",
                     "labelType": "Manual",
                     "state": "Confirmed",
