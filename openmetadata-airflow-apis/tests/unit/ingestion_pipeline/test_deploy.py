@@ -11,6 +11,7 @@
 """
 Test Deploy
 """
+import os
 import uuid
 from unittest.mock import patch
 
@@ -54,6 +55,7 @@ INGESTION_PIPELINE = IngestionPipeline(
 )
 
 
+@patch.dict(os.environ, {"AWS_DEFAULT_REGION": "us-east-2"})
 def test_deploy_ingestion_pipeline():
     """We can dump an ingestion pipeline to a file without exposing secrets"""
     # Instantiate the Secrets Manager
