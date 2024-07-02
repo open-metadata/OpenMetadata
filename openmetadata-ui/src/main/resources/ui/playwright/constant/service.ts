@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { uuid } from '../utils/common';
 import { GlobalSettingOptions } from './settings';
 
 export const SERVICE_TYPE = {
@@ -22,4 +23,18 @@ export const SERVICE_TYPE = {
   Search: GlobalSettingOptions.SEARCH,
   Metadata: GlobalSettingOptions.METADATA,
   StoredProcedure: GlobalSettingOptions.STORED_PROCEDURES,
+};
+
+export const REDSHIFT = {
+  serviceType: 'Redshift',
+  serviceName: `redshift-ct-test-${uuid()}`,
+  tableName: 'boolean_test',
+  DBTTable: 'customers',
+  description: `This is Redshift-ct-test description`,
+};
+
+export const POSTGRES = {
+  serviceType: 'Postgres',
+  serviceName: `cy-postgres-test-${uuid()}`,
+  tableName: 'order_items',
 };
