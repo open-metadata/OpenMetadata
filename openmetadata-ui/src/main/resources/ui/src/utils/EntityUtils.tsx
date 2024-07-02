@@ -68,6 +68,7 @@ import { SearchIndex } from '../enums/search.enum';
 import { ServiceCategory, ServiceCategoryPlural } from '../enums/service.enum';
 import { PrimaryTableDataTypes } from '../enums/table.enum';
 import { Classification } from '../generated/entity/classification/classification';
+import { Chart } from '../generated/entity/data/chart';
 import { Container } from '../generated/entity/data/container';
 import { Dashboard } from '../generated/entity/data/dashboard';
 import { DashboardDataModel } from '../generated/entity/data/dashboardDataModel';
@@ -582,6 +583,67 @@ const getContainerOverview = (containerDetails: Container) => {
   return overview;
 };
 
+const getChartOverview = (chartDetails: Chart) => {
+  const { owner, sourceUrl, chartType, service, serviceType, displayName } =
+    chartDetails;
+  const serviceDisplayName = getEntityName(service);
+
+  const overview = [
+    {
+      name: i18next.t('label.owner'),
+      value: <OwnerLabel hasPermission={false} owner={owner} />,
+      url: getOwnerValue(owner as EntityReference),
+      isLink: !isEmpty(owner?.name),
+      visible: [DRAWER_NAVIGATION_OPTIONS.lineage],
+    },
+    {
+      name: `${i18next.t('label.chart')} ${i18next.t('label.url-uppercase')}`,
+      value: stringToHTML(displayName ?? '') || NO_DATA,
+      url: sourceUrl,
+      isLink: true,
+      isExternal: true,
+      visible: [
+        DRAWER_NAVIGATION_OPTIONS.lineage,
+        DRAWER_NAVIGATION_OPTIONS.explore,
+      ],
+    },
+    {
+      name: i18next.t('label.service'),
+      value: serviceDisplayName || NO_DATA,
+      url: getServiceDetailsPath(
+        service?.name ?? '',
+        ServiceCategory.DASHBOARD_SERVICES
+      ),
+      isExternal: false,
+      isLink: true,
+      visible: [
+        DRAWER_NAVIGATION_OPTIONS.lineage,
+        DRAWER_NAVIGATION_OPTIONS.explore,
+      ],
+    },
+    {
+      name: i18next.t('label.chart-type'),
+      value: chartType ?? NO_DATA,
+      isLink: false,
+      visible: [
+        DRAWER_NAVIGATION_OPTIONS.explore,
+        DRAWER_NAVIGATION_OPTIONS.lineage,
+      ],
+    },
+    {
+      name: i18next.t('label.service-type'),
+      value: serviceType ?? NO_DATA,
+      isLink: false,
+      visible: [
+        DRAWER_NAVIGATION_OPTIONS.explore,
+        DRAWER_NAVIGATION_OPTIONS.lineage,
+      ],
+    },
+  ];
+
+  return overview;
+};
+
 const getDataModelOverview = (dataModelDetails: DashboardDataModel) => {
   const {
     owner,
@@ -895,6 +957,9 @@ export const getEntityOverview = (
     }
     case ExplorePageTabs.CONTAINERS: {
       return getContainerOverview(entityDetail as Container);
+    }
+    case ExplorePageTabs.CHARTS: {
+      return getChartOverview(entityDetail as Chart);
     }
 
     case ExplorePageTabs.DASHBOARD_DATA_MODEL: {
@@ -2049,8 +2114,10 @@ export const getEntityNameLabel = (entityName?: string) => {
     mlmodel: t('label.ml-model'),
     location: t('label.location'),
     database: t('label.database'),
+    alert: t('label.alert-plural'),
     query: t('label.query'),
     THREAD: t('label.thread'),
+    app: t('label.application'),
   };
 
   return (

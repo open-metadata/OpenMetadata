@@ -61,6 +61,35 @@ export const selectActiveGlossary = async (
   }
 };
 
+export const selectActiveGlossaryTerm = async (
+  page: Page,
+  glossaryTermName: string
+) => {
+  const glossaryTermResponse = page.waitForResponse(
+    '/api/v1/glossaryTerms/name/*?fields=relatedTerms%2Creviewers%2Ctags%2Cowner%2Cchildren%2Cvotes%2Cdomain%2Cextension'
+  );
+  await page.getByTestId(glossaryTermName).click();
+  await glossaryTermResponse;
+
+  expect(
+    page.locator('[data-testid="entity-header-display-name"]')
+  ).toContainText(glossaryTermName);
+};
+
+export const goToAssetsTab = async (
+  page: Page,
+  displayName: string,
+  count = '0'
+) => {
+  await selectActiveGlossaryTerm(page, displayName);
+  await page.getByTestId('assets').click();
+  await page.waitForSelector('.ant-tabs-tab-active:has-text("Assets")');
+
+  await expect(
+    page.getByTestId('assets').getByTestId('filter-count')
+  ).toContainText(count);
+};
+
 export const addMultiOwner = async (data: {
   page: Page;
   ownerNames: string | string[];
