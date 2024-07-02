@@ -21,6 +21,7 @@ import java.util.UUID;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.UriInfo;
 import lombok.Getter;
+import lombok.Setter;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.json.JSONObject;
 import org.openmetadata.schema.EntityInterface;
@@ -34,7 +35,7 @@ import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.type.Include;
-import org.openmetadata.sdk.PipelineServiceClient;
+import org.openmetadata.sdk.PipelineServiceClientInterface;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.resources.services.ingestionpipelines.IngestionPipelineResource;
@@ -56,7 +57,7 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
   private static final String PIPELINE_STATUS_JSON_SCHEMA = "ingestionPipelineStatus";
   private static final String PIPELINE_STATUS_EXTENSION = "ingestionPipeline.pipelineStatus";
   private static final String RUN_ID_EXTENSION_KEY = "runId";
-  private PipelineServiceClient pipelineServiceClient;
+  @Setter private PipelineServiceClientInterface pipelineServiceClient;
 
   @Getter private final OpenMetadataApplicationConfig openMetadataApplicationConfig;
 
@@ -158,10 +159,6 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
   @Override
   public EntityInterface getParentEntity(IngestionPipeline entity, String fields) {
     return Entity.getEntity(entity.getService(), fields, Include.NON_DELETED);
-  }
-
-  public void setPipelineServiceClient(PipelineServiceClient client) {
-    pipelineServiceClient = client;
   }
 
   private ChangeEvent getChangeEvent(
