@@ -103,6 +103,8 @@ wget -O - {your domain}/api/v1/system/config/jwks
 
 Once the above configuration is updated, the server is restarted. Admin can go to Settings -> Bots page.
 
+{% image src="/images/v1.4/deployment/security/enable-jwt/settings-bot.png" alt="Settings Page" caption="Settings Page" /%} 
+
 {% image src="/images/v1.5/deployment/security/enable-jwt/bot.png" alt="Bot settings page" caption="Bot settings page" /%} 
 
 Click on the `ingestion-bot`. The current token can be revoked, or you can create a new one.
