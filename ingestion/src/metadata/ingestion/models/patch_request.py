@@ -404,7 +404,7 @@ def build_patch(
             # and if the sourceHash is updated in this case further updates will not be processed
             if (
                 len(updated_operations) == 1
-                and updated_operations[0]["path"] == "/sourceHash"
+                and updated_operations[0].get("path") == "/sourceHash"
             ):
                 return None
             patch.patch = updated_operations
