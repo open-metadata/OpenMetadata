@@ -104,6 +104,7 @@ def ingest_metadata(db_service, metadata: OpenMetadata):
 
 @pytest.fixture(scope="module")
 def ingest_postgres_lineage(db_service, ingest_metadata, metadata: OpenMetadata):
+    search_cache.clear()
     workflow_config = OpenMetadataWorkflowConfig(
         source=Source(
             type="postgres-lineage",
@@ -126,6 +127,7 @@ def ingest_postgres_lineage(db_service, ingest_metadata, metadata: OpenMetadata)
 
 
 def test_ingest_query_log(db_service, ingest_metadata, metadata: OpenMetadata):
+    search_cache.clear()
     reindex_search(
         metadata
     )  # since query cache is stored in ES, we need to reindex to avoid having a stale cache
@@ -205,6 +207,7 @@ def run_profiler_workflow(ingest_metadata, db_service, metadata):
 
 @pytest.fixture(scope="module")
 def ingest_query_usage(ingest_metadata, db_service, metadata):
+    search_cache.clear()
     workflow_config = {
         "source": {
             "type": "postgres-usage",
@@ -374,8 +377,11 @@ def reindex_search(metadata: OpenMetadata, timeout=60):
         if time.time() - start > timeout:
             raise TimeoutError("Timed out waiting for reindexing to start")
         time.sleep(1)
-    time.sleep(1)
+    time.sleep(
+        0.5
+    )  # app interactivity is not immediate (probably bc async operations), so we wait a bit
     metadata.client.post("/apps/trigger/SearchIndexingApplication")
+    time.sleep(0.5)  # here too
     while status != "success":
         response = metadata.client.get(
             "/apps/name/SearchIndexingApplication/status?offset=0&limit=1"

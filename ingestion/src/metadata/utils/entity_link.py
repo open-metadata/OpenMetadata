@@ -57,6 +57,14 @@ def split(str_: str) -> List[str]:
 def get_decoded_column(entity_link: str) -> str:
     """From an URL encoded entity link get the decoded column name
 
+    Examples:
+        >>> get_decoded_column("<#E::table::rds.dev.dbt_jaffle.column_w_space::columns::first_name>")
+        'first name'
+        >>> get_decoded_column("<#E::table::rds.dev.dbt_jaffle.column_w_space::columns::随机的>")
+        '随机的'
+        >>> get_decoded_column("<#E::table::rds.dev.dbt_jaffle.table_w_space>")
+        ''
+
     Args:
         entity_link: entity link
     """
