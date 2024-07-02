@@ -43,10 +43,7 @@ def test_connection(
     of a metadata workflow or during an Automation Workflow
     """
 
-    def custom_executor():
-        return client.get_dashboards_list()
-
-    test_fn = {"GetDashboards": custom_executor}
+    test_fn = {"GetDashboards": client.get_dashboards_list_test_conn}
 
     test_connection_steps(
         metadata=metadata,
