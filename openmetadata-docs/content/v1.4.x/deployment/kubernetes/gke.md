@@ -416,4 +416,6 @@ Please validate:
 - the configuration of `dags_pv_pvc.yml` file
 - `storageClassName` field in YAML file
 
+# FAQs
+
 {% partial file="/v1.4/deployment/faqs.md" /%}

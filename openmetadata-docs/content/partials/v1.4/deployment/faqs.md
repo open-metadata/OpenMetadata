@@ -1,5 +1,3 @@
-# FAQs
-
 ## Java Memory Heap Issue
 
 If your openmetadata pods are not in ready state at any point in time and the openmetadata pod logs speaks about the below issue -
