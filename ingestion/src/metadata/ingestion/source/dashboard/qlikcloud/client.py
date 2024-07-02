@@ -43,6 +43,7 @@ from metadata.utils.logger import ingestion_logger
 logger = ingestion_logger()
 
 API_VERSION = "api"
+API_LIMIT = 100
 
 
 class QlikCloudClient:
@@ -123,9 +124,8 @@ class QlikCloudClient:
         """
         Get List of all apps
         """
-        limit = 10
         try:
-            link = f"/v1/items?resourceType=app&limit={limit}"
+            link = f"/v1/items?resourceType=app&limit={API_LIMIT}"
             while True:
                 resp_apps = self.client.get(link)
                 if resp_apps:
