@@ -94,3 +94,37 @@ export const ENTITY_REFERENCE_OPTIONS = [
     label: 'Team',
   },
 ];
+
+// supported date formats on backend
+export const SUPPORTED_DATE_FORMATS = [
+  'yyyy-MM-dd',
+  'dd MMM yyyy',
+  'EEE MMM dd',
+  'MM/dd/yyyy',
+  'dd/MM/yyyy',
+  'dd-MM-yyyy',
+  'yyyy-Www-d',
+  'yyyyDDD',
+  'd MMMM yyyy',
+];
+
+// supported date time formats on backend
+export const SUPPORTED_DATE_TIME_FORMATS = [
+  'yyyy-MM-ddTHH:mm:ssZ',
+  'yyyy-MM-ddTHH:mm:ss±HH:mm',
+  'EEE, dd MMM yyyy HH:mm:ss Z',
+  'EEE MMM dd HH:mm:ss yyyy',
+  'yyyy-MM-dd HH:mm:ss',
+  'MM/dd/yyyy HH:mm:ss',
+  'dd/MM/yyyy HH:mm:ss',
+  'dd-MM-yyyy HH:mm:ss',
+  "yyyyMMdd'T'HHmmss'Z'",
+  'yyyy-MM-dd HH:mm:ss.SSS',
+  'yyyy-MM-dd HH:mm:ss.SSSSSS',
+  'dd MMMM yyyy HH:mm:ss',
+];
+
+export const SUPPORTED_FORMAT_MAP = {
+  date: SUPPORTED_DATE_FORMATS,
+  dateTime: SUPPORTED_DATE_TIME_FORMATS,
+};
