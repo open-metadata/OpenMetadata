@@ -295,3 +295,9 @@ helm install openmetadata open-metadata/openmetadata
 ```
 Again, this uses the values defined [here](https://github.com/open-metadata/openmetadata-helm-charts/blob/main/charts/openmetadata/values.yaml).
 Use the `--values` flag to point to your own YAML configuration if needed.
+
+# FAQs
+
+{% partial file="/v1.4/deployment/faqs-eks.md" /%}
+
+{% partial file="/v1.4/deployment/faqs.md" /%}
