@@ -168,3 +168,55 @@ export const mockPipelineStatus = {
     },
   ],
 };
+
+export const FAILURE = {
+  name: 'FILES',
+  error:
+    'Unexpected exception to yield table [FILES]: (pymysql.err.OperationalError) (1227, \'Access denied; you need (at least one of) the PROCESS privilege(s) for this operation\')\n[SQL: /* {"app": "OpenMetadata", "version": "1.3.0.0.dev0"} */\nSHOW CREATE TABLE `information_schema`.`FILES`]\n(Background on this error at: https://sqlalche.me/e/14/e3q8)',
+  stackTrace:
+    'Traceback (most recent call last):\n  File "/home/airflow/.local/lib/python3.10/site-packages/sqlalchemy/engine/base.py", line 1910, in _execute_context\n    self.dialect.do_execute(\n  File "/home/airflow/.local/lib/python3.10/site-packages/sqlalchemy/engine/default.py", line 736, in do_execute\n    cursor.execute(statement, parameters)\n  File "/home/airflow/.local/lib/python3.10/site-packages/pymysql/cursors.py", line 153, in execute\n    result = self._query(query)\n  File "/home/airflow/.local/lib/python3.10/site-packages/pymysql/cursors.py", line 322, in _query\n    conn.query(q)\n  File "/home/airflow/.local/lib/python3.10/site-packages/pymysql/connections.py", line 558, in query\n    self._affected_rows = self._read_query_result(unbuffered=unbuffered)\n  File "/home/airflow/.local/lib/python3.10/site-packages/pymysql/connections.py", line 822, in _read_query_result\n    result.read()\n  File "/home/airflow/.local/lib/python3.10/site-packages/pymysql/connections.py", line 1200, in read\n    first_packet = self.connection._read_packet()\n  File "/home/airflow/.local/lib/python3.10/site-packages/pymysql/connections.py", line 772, in _read_packet\n    packet.raise_for_error()\n  File "/home/airflow/.local/lib/python3.10/site-packages/pymysql/protocol.py", line 221, in raise_for_error\n    err.raise_mysql_exception(self._data)\n  File "/home/airflow/.local/lib/python3.10/site-packages/pymysql/err.py", line 143, in raise_mysql_exception\n    raise errorclass(errno, errval)\npymysql.err.OperationalError: (1227, \'Access denied; you need (at least one of) the PROCESS privilege(s) for this operation\')\n\nThe above exception was the direct cause of the following exception:\n\nTraceback (most recent call last):\n  File "/home/airflow/.local/lib/python3.10/site-packages/metadata/ingestion/source/database/common_db_source.py", line 422, in yield_table\n    ) = self.get_columns_and_constraints(\n  File "/home/airflow/.local/lib/python3.10/site-packages/metadata/ingestion/source/database/sql_column_handler.py", line 214, in get_columns_and_constraints\n    ) = self._get_columns_with_constraints(schema_name, table_name, inspector)\n  File "/home/airflow/.local/lib/python3.10/site-packages/metadata/ingestion/source/database/sql_column_handler.py", line 114, in _get_columns_with_constraints\n    pk_constraints = inspector.get_pk_constraint(table_name, schema_name)\n  File "/home/airflow/.local/lib/python3.10/site-packages/sqlalchemy/engine/reflection.py", line 528, in get_pk_constraint\n    return self.dialect.get_pk_constraint(\n  File "<string>", line 2, in get_pk_constraint\n  File "/home/airflow/.local/lib/python3.10/site-packages/sqlalchemy/engine/reflection.py", line 55, in cache\n    ret = fn(self, con, *args, **kw)\n  File "/home/airflow/.local/lib/python3.10/site-packages/sqlalchemy/dialects/mysql/base.py", line 2842, in get_pk_constraint\n    parsed_state = self._parsed_state_or_create(\n  File "/home/airflow/.local/lib/python3.10/site-packages/sqlalchemy/dialects/mysql/base.py", line 3085, in _parsed_state_or_create\n    return self._setup_parser(\n  File "<string>", line 2, in _setup_parser\n  File "/home/airflow/.local/lib/python3.10/site-packages/sqlalchemy/engine/reflection.py", line 55, in cache\n    ret = fn(self, con, *args, **kw)\n  File "/home/airflow/.local/lib/python3.10/site-packages/sqlalchemy/dialects/mysql/base.py", line 3112, in _setup_parser\n    sql = self._show_create_table(\n  File "/home/airflow/.local/lib/python3.10/site-packages/sqlalchemy/dialects/mysql/base.py", line 3220, in _show_create_table\n    ).exec_driver_sql(st)\n  File "/home/airflow/.local/lib/python3.10/site-packages/sqlalchemy/engine/base.py", line 1770, in exec_driver_sql\n    return self._exec_driver_sql(\n  File "/home/airflow/.local/lib/python3.10/site-packages/sqlalchemy/engine/base.py", line 1674, in _exec_driver_sql\n    ret = self._execute_context(\n  File "/home/airflow/.local/lib/python3.10/site-packages/sqlalchemy/engine/base.py", line 1953, in _execute_context\n    self._handle_dbapi_exception(\n  File "/home/airflow/.local/lib/python3.10/site-packages/sqlalchemy/engine/base.py", line 2134, in _handle_dbapi_exception\n    util.raise_(\n  File "/home/airflow/.local/lib/python3.10/site-packages/sqlalchemy/util/compat.py", line 211, in raise_\n    raise exception\n  File "/home/airflow/.local/lib/python3.10/site-packages/sqlalchemy/engine/base.py", line 1910, in _execute_context\n    self.dialect.do_execute(\n  File "/home/airflow/.local/lib/python3.10/site-packages/sqlalchemy/engine/default.py", line 736, in do_execute\n    cursor.execute(statement, parameters)\n  File "/home/airflow/.local/lib/python3.10/site-packages/pymysql/cursors.py", line 153, in execute\n    result = self._query(query)\n  File "/home/airflow/.local/lib/python3.10/site-packages/pymysql/cursors.py", line 322, in _query\n    conn.query(q)\n  File "/home/airflow/.local/lib/python3.10/site-packages/pymysql/connections.py", line 558, in query\n    self._affected_rows = self._read_query_result(unbuffered=unbuffered)\n  File "/home/airflow/.local/lib/python3.10/site-packages/pymysql/connections.py", line 822, in _read_query_result\n    result.read()\n  File "/home/airflow/.local/lib/python3.10/site-packages/pymysql/connections.py", line 1200, in read\n    first_packet = self.connection._read_packet()\n  File "/home/airflow/.local/lib/python3.10/site-packages/pymysql/connections.py", line 772, in _read_packet\n    packet.raise_for_error()\n  File "/home/airflow/.local/lib/python3.10/site-packages/pymysql/protocol.py", line 221, in raise_for_error\n    err.raise_mysql_exception(self._data)\n  File "/home/airflow/.local/lib/python3.10/site-packages/pymysql/err.py", line 143, in raise_mysql_exception\n    raise errorclass(errno, errval)\nsqlalchemy.exc.OperationalError: (pymysql.err.OperationalError) (1227, \'Access denied; you need (at least one of) the PROCESS privilege(s) for this operation\')\n[SQL: /* {"app": "OpenMetadata", "version": "1.3.0.0.dev0"} */\nSHOW CREATE TABLE `information_schema`.`FILES`]\n(Background on this error at: https://sqlalche.me/e/14/e3q8)\n',
+};
+
+export const EXECUTION_RUNS = [
+  {
+    runId: 'c95cc97b-9ea2-465c-9b5a-255401674324',
+    pipelineState: 'partialSuccess',
+    startDate: 1667304123,
+    timestamp: 1667304123,
+    endDate: 1667304126,
+    status: [
+      {
+        name: 'Source',
+        records: 155,
+        updated_records: 0,
+        warnings: 0,
+        errors: 1,
+        filtered: 0,
+        failures: [FAILURE],
+      },
+      {
+        name: 'Sink',
+        records: 155,
+        updated_records: 0,
+        warnings: 0,
+        errors: 0,
+        filtered: 0,
+        failures: [],
+      },
+    ],
+  },
+  {
+    runId: '60b3e15c-3865-4c81-a1ee-36ff85d2be8e',
+    pipelineState: 'success',
+    startDate: 1667301533,
+    timestamp: 1667301533,
+    endDate: 1667301536,
+  },
+  {
+    runId: 'a2c6fbf9-952f-4ddd-9b01-c203bf54f0fe',
+    pipelineState: 'success',
+    startDate: 1667297370,
+    timestamp: 1667297370,
+    endDate: 1667297373,
+  },
+];
