@@ -292,6 +292,8 @@ export const createGlossary = async (
 
   await page.fill(descriptionBox, glossaryData.description);
 
+  await expect(page.locator('[data-testid="form-item-alert"]')).toBeVisible();
+
   if (glossaryData.mutuallyExclusive) {
     await page.click('[data-testid="mutually-exclusive-button"]');
   }
@@ -470,6 +472,8 @@ export const fillGlossaryTermDetails = async (
       .locator('[data-testid="synonyms"] input[type="search"]')
       .press('Enter');
   }
+
+  await expect(page.locator('[data-testid="form-item-alert"]')).toBeVisible();
 
   if (term.mutuallyExclusive) {
     await page.click('[data-testid="mutually-exclusive-button"]');

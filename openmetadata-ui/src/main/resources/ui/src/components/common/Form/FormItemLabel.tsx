@@ -15,11 +15,13 @@ import { InfoCircleOutlined } from '@ant-design/icons';
 import { Tooltip } from 'antd';
 import React from 'react';
 import { GRAYED_OUT_COLOR } from '../../../constants/constants';
+import { HelperTextType } from '../../../interface/FormUtils.interface';
 import { FormItemLabelProps } from './Form.interface';
 
 const FormItemLabel = ({
   label,
   helperText,
+  helperTextType,
   align,
   overlayInnerStyle,
   overlayClassName,
@@ -28,7 +30,7 @@ const FormItemLabel = ({
   return (
     <>
       <span data-testid="form-item-label">{label}</span>
-      {helperText && (
+      {helperTextType === HelperTextType.Tooltip && helperText && (
         <Tooltip
           destroyTooltipOnHide
           align={align}

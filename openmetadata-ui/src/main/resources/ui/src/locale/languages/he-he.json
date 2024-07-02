@@ -1565,6 +1565,7 @@
     "modify-hierarchy-entity-description": "Modify the hierarchy by changing the Parent {{entity}}.",
     "most-active-users": "מציג את המשתמשים הפעילים ביותר בפלטפורמה על פי צפיות בדף.",
     "most-viewed-data-assets": "מציג את הנכסים שנצפו הכי הרבה.",
+    "mutually-exclusive-alert": "The Mutually Exclusive field cannot be altered post-creation. Please ensure accuracy before proceeding.",
     "name-of-the-bucket-dbt-files-stored": "שם הדלי בו נשמרים קבצי dbt.",
     "new-conversation": "אתה מתחיל שיחה חדשה",
     "new-to-the-platform": "חדש בפלטפורמה?",

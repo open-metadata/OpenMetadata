@@ -13,10 +13,12 @@
 
 import { TooltipPlacement, TooltipProps } from 'antd/lib/tooltip';
 import { ReactNode } from 'react';
+import { HelperTextType } from '../../../interface/FormUtils.interface';
 
 export interface FormItemLabelProps {
   label: ReactNode;
   helperText?: ReactNode;
+  helperTextType?: HelperTextType;
   placement?: TooltipPlacement;
   overlayClassName?: string;
   overlayInnerStyle?: React.CSSProperties;
