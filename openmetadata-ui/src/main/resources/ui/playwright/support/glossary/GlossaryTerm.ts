@@ -138,4 +138,9 @@ export class GlossaryTerm {
 
     return await response.json();
   }
+
+  rename(newTermName: string, newTermFqn: string) {
+    this.responseData.name = newTermName;
+    this.responseData.fullyQualifiedName = newTermFqn;
+  }
 }

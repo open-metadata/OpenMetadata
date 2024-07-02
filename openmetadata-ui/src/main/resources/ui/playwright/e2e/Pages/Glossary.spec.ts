@@ -13,6 +13,8 @@
 import test, { expect } from '@playwright/test';
 import { SidebarItem } from '../../constant/sidebar';
 import { DashboardClass } from '../../support/entity/DashboardClass';
+import { TableClass } from '../../support/entity/TableClass';
+import { TopicClass } from '../../support/entity/TopicClass';
 import { Glossary } from '../../support/glossary/Glossary';
 import { GlossaryTerm } from '../../support/glossary/GlossaryTerm';
 import { TeamClass } from '../../support/team/TeamClass';
@@ -21,17 +23,22 @@ import {
   performAdminLogin,
   performUserLogin,
   redirectToHomePage,
+  uuid,
 } from '../../utils/common';
 import {
+  addAssetToGlossaryTerm,
   approveGlossaryTermTask,
   createGlossary,
   createGlossaryTerms,
   goToAssetsTab,
+  renameGlossaryTerm,
   selectActiveGlossary,
   validateGlossaryTerm,
   verifyGlossaryDetails,
+  verifyGlossaryTermAssets,
 } from '../../utils/glossary';
 import { sidebarClick } from '../../utils/sidebar';
+import { getRandomLastName } from '../../utils/user';
 
 const user1 = new UserClass();
 const user2 = new UserClass();
@@ -368,13 +375,72 @@ test.describe('Glossary tests', () => {
         expect(assetContainerText).toContain(dashboardEntity.charts.name);
       });
     } finally {
-      await glossary1.delete(apiContext);
-      await glossary2.delete(apiContext);
       await glossaryTerm1.delete(apiContext);
       await glossaryTerm2.delete(apiContext);
       await glossaryTerm3.delete(apiContext);
       await glossaryTerm4.delete(apiContext);
+      await glossary1.delete(apiContext);
+      await glossary2.delete(apiContext);
       await dashboardEntity.delete(apiContext);
+      await afterAction();
+    }
+  });
+
+  test('Rename Glossary Term and verify assets', async ({ browser }) => {
+    const { page, afterAction, apiContext } = await performAdminLogin(browser);
+    const table = new TableClass();
+    const topic = new TopicClass();
+    const dashboard = new DashboardClass();
+
+    await table.create(apiContext);
+    await topic.create(apiContext);
+    await dashboard.create(apiContext);
+
+    const glossary1 = new Glossary();
+    const glossaryTerm1 = new GlossaryTerm(glossary1);
+    glossary1.data.terms = [glossaryTerm1];
+    await glossary1.create(apiContext);
+    await glossaryTerm1.create(apiContext);
+
+    const assets = [table, topic, dashboard];
+
+    try {
+      await test.step('Rename Glossary Term', async () => {
+        const newName = `PW.${uuid()}%${getRandomLastName()}`;
+        await redirectToHomePage(page);
+        await sidebarClick(page, SidebarItem.GLOSSARY);
+        await selectActiveGlossary(page, glossary1.data.displayName);
+        await goToAssetsTab(page, glossaryTerm1.data.displayName);
+        await addAssetToGlossaryTerm(page, assets);
+        await renameGlossaryTerm(page, glossaryTerm1, newName);
+        await verifyGlossaryTermAssets(
+          page,
+          glossary1.data,
+          glossaryTerm1.data,
+          assets.length
+        );
+      });
+
+      await test.step('Rename the same entity again', async () => {
+        const newName = `PW Space.${uuid()}%${getRandomLastName()}`;
+        await redirectToHomePage(page);
+        await sidebarClick(page, SidebarItem.GLOSSARY);
+        await selectActiveGlossary(page, glossary1.data.displayName);
+        await goToAssetsTab(page, glossaryTerm1.data.displayName);
+        await renameGlossaryTerm(page, glossaryTerm1, newName);
+        await verifyGlossaryTermAssets(
+          page,
+          glossary1.data,
+          glossaryTerm1.data,
+          assets.length
+        );
+      });
+    } finally {
+      await table.delete(apiContext);
+      await topic.delete(apiContext);
+      await dashboard.delete(apiContext);
+      await glossaryTerm1.delete(apiContext);
+      await glossary1.delete(apiContext);
       await afterAction();
     }
   });

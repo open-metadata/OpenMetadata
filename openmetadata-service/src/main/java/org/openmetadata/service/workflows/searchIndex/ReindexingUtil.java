@@ -164,4 +164,8 @@ public class ReindexingUtil {
 
     return entities;
   }
+
+  public static String escapeDoubleQuotes(String str) {
+    return str.replace("\"", "\\\"");
+  }
 }
