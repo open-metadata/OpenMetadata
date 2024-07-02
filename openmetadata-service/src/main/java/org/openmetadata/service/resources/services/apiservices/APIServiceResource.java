@@ -58,6 +58,7 @@ import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.utils.EntityInterfaceUtil;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.APIServiceRepository;
+import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.services.ServiceEntityResource;
 import org.openmetadata.service.security.Authorizer;
@@ -85,8 +86,8 @@ public class APIServiceResource
     return service;
   }
 
-  public APIServiceResource(Authorizer authorizer) {
-    super(Entity.API_SERVICE, authorizer, ServiceType.API);
+  public APIServiceResource(Authorizer authorizer, Limits limits) {
+    super(Entity.API_SERVICE, authorizer, limits, ServiceType.API);
   }
 
   @Override
