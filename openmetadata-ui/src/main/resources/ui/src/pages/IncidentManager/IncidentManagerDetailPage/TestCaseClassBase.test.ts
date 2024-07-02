@@ -10,35 +10,37 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { ReactElement } from 'react';
 import TabsLabel from '../../../components/common/TabsLabel/TabsLabel.component';
-import { TabsLabelProps } from '../../../components/common/TabsLabel/TabsLabel.interface';
 import { TestCaseFormType } from '../../../components/DataQuality/AddDataQualityTest/AddDataQualityTest.interface';
 import TestCaseIncidentTab from '../../../components/DataQuality/IncidentManager/TestCaseIncidentTab/TestCaseIncidentTab.component';
 import TestCaseResultTab from '../../../components/DataQuality/IncidentManager/TestCaseResultTab/TestCaseResultTab.component';
 import { CreateTestCase } from '../../../generated/api/tests/createTestCase';
 import { TestDefinition } from '../../../generated/tests/testDefinition';
-import { FieldProp } from '../../../interface/FormUtils.interface';
 import { createTestCaseParameters } from '../../../utils/DataQuality/DataQualityUtils';
 import i18n from '../../../utils/i18next/LocalUtil';
 import { IncidentManagerTabs } from '../IncidentManager.interface';
+import { TestCaseClassBase, TestCaseTabType } from './TestCaseClassBase';
 
-export interface TestCaseTabType {
-  LabelComponent: typeof TabsLabel;
-  labelProps: TabsLabelProps;
-  Tab: () => ReactElement;
-  key: IncidentManagerTabs;
-}
+describe('TestCaseClassBase', () => {
+  let testCaseClassBase: TestCaseClassBase;
 
-class TestCaseClassBase {
-  showSqlQueryTab: boolean;
+  beforeEach(() => {
+    testCaseClassBase = new TestCaseClassBase();
+  });
 
-  constructor() {
-    this.showSqlQueryTab = false;
-  }
+  it('should set showSqlQueryTab to false by default', () => {
+    expect(testCaseClassBase.showSqlQueryTab).toBe(false);
+  });
 
-  public getTab(openTaskCount: number): TestCaseTabType[] {
-    return [
+  it('should set showSqlQueryTab correctly', () => {
+    testCaseClassBase.setShowSqlQueryTab(true);
+
+    expect(testCaseClassBase.showSqlQueryTab).toBe(true);
+  });
+
+  it('should return an array of TestCaseTabType', () => {
+    const openTaskCount = 5;
+    const expectedTabs: TestCaseTabType[] = [
       {
         LabelComponent: TabsLabel,
         labelProps: {
@@ -59,46 +61,66 @@ class TestCaseClassBase {
         key: IncidentManagerTabs.ISSUES,
       },
     ];
-  }
 
-  setShowSqlQueryTab(showSqlQueryTab: boolean) {
-    this.showSqlQueryTab = showSqlQueryTab;
-  }
+    const result = testCaseClassBase.getTab(openTaskCount);
 
-  public getFields(): string[] {
-    return [
+    expect(result).toEqual(expectedTabs);
+  });
+
+  it('should return an array of fields', () => {
+    const expectedFields = [
       'testSuite',
       'testCaseResult',
       'testDefinition',
       'owner',
       'incidentId',
     ];
-  }
 
-  public createFormAdditionalFields(
-    _supportsDynamicAssertion: boolean
-  ): FieldProp[] {
-    return [];
-  }
+    const result = testCaseClassBase.getFields();
 
-  public initialFormValues(): Record<string, unknown> {
-    return {};
-  }
+    expect(result).toEqual(expectedFields);
+  });
 
-  public getCreateTestCaseObject(
-    value: TestCaseFormType,
-    selectedDefinition?: TestDefinition
-  ): Partial<CreateTestCase> {
-    return {
+  it('should return an empty array for createFormAdditionalFields', () => {
+    const result = testCaseClassBase.createFormAdditionalFields(false);
+
+    expect(result).toEqual([]);
+  });
+
+  it('should return an empty object for initialFormValues', () => {
+    const result = testCaseClassBase.initialFormValues();
+
+    expect(result).toEqual({});
+  });
+
+  it('should return a partial CreateTestCase object', () => {
+    const value = {
+      params: { columnNames: 'id', ordered: 'true' },
+    } as unknown as TestCaseFormType;
+    const selectedDefinition = {
+      parameterDefinition: [
+        {
+          name: 'columnNames',
+          dataType: 'STRING',
+        },
+        {
+          name: 'ordered',
+          dataType: 'BOOLEAN',
+        },
+      ],
+    };
+    const expectedCreateTestCase: Partial<CreateTestCase> = {
       parameterValues: createTestCaseParameters(
         value.params,
-        selectedDefinition
+        selectedDefinition as TestDefinition
       ),
     };
-  }
-}
 
-const testCaseClassBase = new TestCaseClassBase();
+    const result = testCaseClassBase.getCreateTestCaseObject(
+      value,
+      selectedDefinition as TestDefinition
+    );
 
-export default testCaseClassBase;
-export { TestCaseClassBase };
+    expect(result).toEqual(expectedCreateTestCase);
+  });
+});

@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { TEST_CASE_FILTERS } from '../../constants/profiler.constant';
+import { TestCaseParameterValue } from '../../generated/tests/testCase';
 import {
   TestDataType,
   TestDefinition,
@@ -52,7 +53,7 @@ export const buildTestCaseParams = (
 export const createTestCaseParameters = (
   params?: Record<string, string | { [key: string]: string }[]>,
   selectedDefinition?: TestDefinition
-) => {
+): TestCaseParameterValue[] | undefined => {
   return params
     ? Object.entries(params).reduce((acc, [key, value]) => {
         const paramDef = selectedDefinition?.parameterDefinition?.find(
@@ -71,6 +72,6 @@ export const createTestCaseParameters = (
         }
 
         return acc;
-      }, [] as { name: string; value: string }[])
+      }, [] as TestCaseParameterValue[])
     : params;
 };
