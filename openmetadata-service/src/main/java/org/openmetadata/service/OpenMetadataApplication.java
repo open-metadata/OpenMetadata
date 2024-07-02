@@ -540,7 +540,7 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
           InvocationTargetException,
           InstantiationException {
     LimitsConfiguration limitsConfiguration = serverConfig.getLimitsConfiguration();
-    if (limitsConfiguration != null) {
+    if (limitsConfiguration != null && limitsConfiguration.getEnable()) {
       limits =
           Class.forName(limitsConfiguration.getClassName())
               .asSubclass(Limits.class)
