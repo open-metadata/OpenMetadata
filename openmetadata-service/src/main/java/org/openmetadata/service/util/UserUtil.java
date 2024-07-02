@@ -329,7 +329,7 @@ public final class UserUtil {
   public static User getUser(String updatedBy, CreateUser create) {
     return new User()
         .withId(UUID.randomUUID())
-        .withName(create.getName().toLowerCase())
+        .withName(create.getName())
         .withFullyQualifiedName(EntityInterfaceUtil.quoteName(create.getName().toLowerCase()))
         .withEmail(create.getEmail().toLowerCase())
         .withDescription(create.getDescription())
