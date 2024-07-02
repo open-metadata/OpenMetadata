@@ -41,6 +41,7 @@ public class ListFilter extends Filter<ListFilter> {
     conditions.add(getTestCaseResolutionStatusType());
     conditions.add(getAssignee());
     conditions.add(getEventSubscriptionAlertType());
+    conditions.add(getApiCollectionCondition(tableName));
     String condition = addCondition(conditions);
     return condition.isEmpty() ? "WHERE TRUE" : "WHERE " + condition;
   }
@@ -108,6 +109,13 @@ public class ListFilter extends Filter<ListFilter> {
         ? ""
         : "(id in (SELECT toId FROM entity_relationship WHERE fromEntity='domain' AND fromId=:domainId AND "
             + "relation=10))";
+  }
+
+  public String getApiCollectionCondition(String apiEndpoint) {
+    String apiCollection = queryParams.get("apiCollection");
+    return apiCollection == null
+        ? ""
+        : getFqnPrefixCondition(apiEndpoint, apiEndpoint, "apiCollection");
   }
 
   private String getEntityFQNHashCondition() {
