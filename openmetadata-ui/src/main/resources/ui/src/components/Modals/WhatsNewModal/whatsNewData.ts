@@ -1777,7 +1777,7 @@ API:
   {
     id: 29,
     version: 'v1.4.4',
-    description: `Released on 26th June 2024.`,
+    description: `Released on 3rd July 2024.`,
     features: [],
     changeLogs: {
       Improvements: `-   Introduced SSL for Salesforce.
