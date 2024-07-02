@@ -186,6 +186,7 @@ class MetadataRestSink(Sink):  # pylint: disable=too-many-public-methods
             allowed_fields=ALLOWED_COMMON_PATCH_FIELDS,
             restrict_update_fields=RESTRICT_UPDATE_LIST,
             array_entity_fields=ARRAY_ENTITY_FIELDS,
+            override_metadata=record.override_metadata,
         )
         patched_entity = PatchedEntity(new_entity=entity) if entity else None
         return Either(right=patched_entity)
