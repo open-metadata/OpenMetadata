@@ -12,6 +12,8 @@
 MSSQL SQLAlchemy Helper Methods
 """
 
+import re
+
 from sqlalchemy import Column, Integer, MetaData, String, Table, alias, sql, text
 from sqlalchemy import types as sqltypes
 from sqlalchemy import util
@@ -312,13 +314,16 @@ def get_columns(
 def get_view_definition(
     self, connection, viewname, dbname, owner, schema, **kw
 ):  # pylint: disable=unused-argument
-    return get_view_definition_wrapper(
+    view_definition = get_view_definition_wrapper(
         self,
         connection,
         table_name=viewname,
         schema=owner,
         query=MSSQL_ALL_VIEW_DEFINITIONS,
     )
+    if view_definition:
+        view_definition = re.sub(r"\[|\]", "", view_definition)
+    return view_definition
 
 
 @reflection.cache
