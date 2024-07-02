@@ -14,6 +14,7 @@
 package org.openmetadata.service.secrets;
 
 import java.util.Locale;
+import java.util.Objects;
 import org.openmetadata.schema.security.secrets.SecretsManagerProvider;
 import org.openmetadata.service.exception.UnhandledServerException;
 
@@ -33,7 +34,7 @@ public abstract class ExternalSecretsManager extends SecretsManager {
   protected String storeValue(String fieldName, String value, String secretId, boolean store) {
     String fieldSecretId = buildSecretId(false, secretId, fieldName.toLowerCase(Locale.ROOT));
     // check if value does not start with 'config:' only String can have password annotation
-    if (!isSecret(value)) {
+    if (Boolean.FALSE.equals(isSecret(value))) {
       if (store) {
         upsertSecret(fieldSecretId, value);
       }
@@ -77,5 +78,9 @@ public abstract class ExternalSecretsManager extends SecretsManager {
         throw new UnhandledServerException("Exception encountered", e);
       }
     }
+  }
+
+  public String cleanNullOrEmpty(String secretValue) {
+    return Objects.isNull(secretValue) || secretValue.isEmpty() ? NULL_SECRET_STRING : secretValue;
   }
 }

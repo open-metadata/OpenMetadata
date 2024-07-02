@@ -52,6 +52,9 @@ def get_fn(blueprint: Blueprint) -> Callable:
 
         json_request = request.get_json(cache=False)
 
+        logger.info("DEPLOYING A DAG WITH THE FOLLOWING CONFIGURATION")
+        logger.info(json_request)
+
         try:
             if json_request is None:
                 return ApiResponse.error(
