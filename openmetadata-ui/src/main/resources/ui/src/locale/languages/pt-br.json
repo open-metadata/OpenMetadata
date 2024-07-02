@@ -1565,6 +1565,7 @@
     "modify-hierarchy-entity-description": "Modify the hierarchy by changing the Parent {{entity}}.",
     "most-active-users": "Exibe os usuários mais ativos na plataforma com base nas Visualizações de Página.",
     "most-viewed-data-assets": "Exibe os ativos de dados mais visualizados.",
+    "mutually-exclusive-alert": "The Mutually Exclusive field cannot be altered post-creation. Please ensure accuracy before proceeding.",
     "name-of-the-bucket-dbt-files-stored": "Nome do bucket onde os arquivos dbt são armazenados.",
     "new-conversation": "Você está iniciando uma nova conversa",
     "new-to-the-platform": "Novo na plataforma?",
