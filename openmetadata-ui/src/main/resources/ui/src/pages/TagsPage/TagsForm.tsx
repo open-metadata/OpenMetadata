@@ -20,7 +20,11 @@ import {
   TAG_NAME_REGEX,
 } from '../../constants/regex.constants';
 import { DEFAULT_FORM_VALUE } from '../../constants/Tags.constant';
-import { FieldProp, FieldTypes } from '../../interface/FormUtils.interface';
+import {
+  FieldProp,
+  FieldTypes,
+  HelperTextType,
+} from '../../interface/FormUtils.interface';
 import { generateFormFields } from '../../utils/formUtils';
 import { RenameFormProps, SubmitProps } from './TagsPage.interface';
 
@@ -193,6 +197,8 @@ const TagsForm = ({
               'data-testid': 'mutually-exclusive-button',
               disabled: disableMutuallyExclusiveField,
             },
+            helperText: t('message.mutually-exclusive-alert'),
+            helperTextType: HelperTextType.ALERT,
             id: 'root/mutuallyExclusive',
             formItemLayout: 'horizontal',
             formItemProps: {

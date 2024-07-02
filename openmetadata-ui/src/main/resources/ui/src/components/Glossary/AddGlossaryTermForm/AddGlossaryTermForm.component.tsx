@@ -23,6 +23,7 @@ import {
   FieldProp,
   FieldTypes,
   FormItemLayout,
+  HelperTextType,
 } from '../../../interface/FormUtils.interface';
 import { getEntityName } from '../../../utils/EntityUtils';
 import { generateFormFields, getField } from '../../../utils/formUtils';
@@ -277,6 +278,8 @@ const AddGlossaryTermForm = ({
       },
       id: 'root/mutuallyExclusive',
       formItemLayout: FormItemLayout.HORIZONTAL,
+      helperText: t('message.mutually-exclusive-alert'),
+      helperTextType: HelperTextType.ALERT,
     },
   ];
 

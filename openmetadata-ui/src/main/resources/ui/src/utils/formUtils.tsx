@@ -12,6 +12,7 @@
  */
 import { ErrorTransformer } from '@rjsf/utils';
 import {
+  Alert,
   Divider,
   Form,
   FormItemProps,
@@ -44,7 +45,12 @@ import { UserSelectableListProps } from '../components/common/UserSelectableList
 import { UserTeamSelectableList } from '../components/common/UserTeamSelectableList/UserTeamSelectableList.component';
 import { UserSelectDropdownProps } from '../components/common/UserTeamSelectableList/UserTeamSelectableList.interface';
 import { HTTP_STATUS_CODE } from '../constants/Auth.constants';
-import { FieldProp, FieldTypes } from '../interface/FormUtils.interface';
+import {
+  FieldProp,
+  FieldTypes,
+  FormItemLayout,
+  HelperTextType,
+} from '../interface/FormUtils.interface';
 import TagSuggestion, {
   TagSuggestionProps,
 } from '../pages/TasksPage/shared/TagSuggestion';
@@ -57,6 +63,7 @@ export const getField = (field: FieldProp) => {
     name,
     type,
     helperText,
+    helperTextType = HelperTextType.Tooltip,
     required,
     props = {},
     rules = [],
@@ -64,7 +71,7 @@ export const getField = (field: FieldProp) => {
     id,
     formItemProps,
     hasSeparator = false,
-    formItemLayout = 'vertical',
+    formItemLayout = FormItemLayout.VERTICAL,
   } = field;
 
   let internalFormItemProps: FormItemProps = {};
@@ -200,8 +207,9 @@ export const getField = (field: FieldProp) => {
     <Fragment key={id}>
       <Form.Item
         className={classNames({
-          'form-item-horizontal': formItemLayout === 'horizontal',
-          'form-item-vertical': formItemLayout === 'vertical',
+          'form-item-horizontal': formItemLayout === FormItemLayout.HORIZONTAL,
+          'form-item-vertical': formItemLayout === FormItemLayout.VERTICAL,
+          'm-b-xss': helperTextType === HelperTextType.ALERT,
         })}
         id={id}
         key={id}
@@ -209,6 +217,7 @@ export const getField = (field: FieldProp) => {
           <FormItemLabel
             align={props.tooltipAlign as TooltipProps['align']}
             helperText={helperText}
+            helperTextType={helperTextType}
             label={label}
             overlayClassName={props.overlayClassName as string}
             overlayInnerStyle={props.overlayInnerStyle as React.CSSProperties}
@@ -221,6 +230,17 @@ export const getField = (field: FieldProp) => {
         {...formItemProps}>
         {fieldElement}
       </Form.Item>
+
+      {helperTextType === HelperTextType.ALERT && helperText && (
+        <Alert
+          showIcon
+          className="m-b-lg alert-icon"
+          data-testid="form-item-alert"
+          message={helperText}
+          type="warning"
+        />
+      )}
+
       {hasSeparator && <Divider />}
     </Fragment>
   );
