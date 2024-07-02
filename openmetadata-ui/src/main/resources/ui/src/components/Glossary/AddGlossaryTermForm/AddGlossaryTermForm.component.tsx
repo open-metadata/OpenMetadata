@@ -189,6 +189,15 @@ const AddGlossaryTermForm = ({
         initialValue: '',
         height: 'auto',
       },
+      rules: [
+        {
+          required: true,
+          whitespace: true,
+          message: t('label.field-required', {
+            field: t('label.description'),
+          }),
+        },
+      ],
     },
     {
       name: 'tags',
