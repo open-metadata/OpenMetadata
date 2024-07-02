@@ -16,7 +16,7 @@ import json
 import traceback
 from collections import defaultdict
 from itertools import groupby, product
-from typing import Any, Dict, Iterable, List, Optional, Tuple
+from typing import Any, Dict, Iterable, List, Optional, Tuple, Union
 
 from metadata.generated.schema.api.data.createPipeline import CreatePipelineRequest
 from metadata.generated.schema.api.data.createTable import CreateTableRequest
@@ -45,10 +45,12 @@ from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.models.pipeline_status import OMetaPipelineStatus
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.pipeline.openlineage.models import (
-    EventType,
+    Dataset,
+    InputField,
     LineageEdge,
     LineageNode,
-    OpenLineageEvent,
+    RunEvent,
+    RunState,
     TableDetails,
     TableFQN,
 )
@@ -96,28 +98,31 @@ class OpenlineageSource(PipelineServiceSource):
         self.metadata.close()
 
     @classmethod
-    def _get_table_details(cls, data: Dict) -> TableDetails:
+    def _get_table_details(cls, data: Dataset) -> TableDetails:
         """
         extracts table entity schema and name from input/output entry collected from Open Lineage.
 
         :param data: single entry from inputs/outputs objects
         :return: TableDetails object with schema and name
         """
-        symlinks = data.get("facets", {}).get("symlinks", {}).get("identifiers", [])
+        try:
+            symlinks = data.facets.symlinks.identifiers
+        except AttributeError:
+            symlinks = []
 
         # for some OL events name can be extracted from dataset facet but symlinks is preferred so - if present - we
         # use it instead
         if len(symlinks) > 0:
             try:
                 # @todo verify if table can have multiple identifiers pointing at it
-                name = symlinks[0]["name"]
+                name = symlinks[0].name
             except (KeyError, IndexError):
                 raise ValueError(
                     "input table name cannot be retrieved from symlinks.identifiers facet."
                 )
         else:
             try:
-                name = data["name"]
+                name = data.name
             except KeyError:
                 raise ValueError(
                     "input table name cannot be retrieved from name attribute."
@@ -133,14 +138,14 @@ class OpenlineageSource(PipelineServiceSource):
         # we take last two elements to explicitly collect schema and table names
         # in BigQuery Open Lineage events name_parts would be list of 3 elements as first one is GCP Project ID
         # however, concept of GCP Project ID is not represented in Open Metadata and hence - we need to skip this part
-        return TableDetails(name=name_parts[-1], schema=name_parts[-2])
+        return TableDetails(name=name_parts[-1], schema_=name_parts[-2])
 
     def _get_table_fqn(self, table_details: TableDetails) -> Optional[str]:
         try:
             return self._get_table_fqn_from_om(table_details)
         except FQNNotFoundException:
             try:
-                schema_fqn = self._get_schema_fqn_from_om(table_details.schema)
+                schema_fqn = self._get_schema_fqn_from_om(table_details.schema_)
 
                 return f"{schema_fqn}.{table_details.name}"
             except FQNNotFoundException:
@@ -149,8 +154,7 @@ class OpenlineageSource(PipelineServiceSource):
     def _get_table_fqn_from_om(self, table_details: TableDetails) -> Optional[str]:
         """
         Based on partial schema and table names look for matching table object in open metadata.
-        :param schema: schema name
-        :param table: table name
+        :param table_details: table details
         :return: fully qualified name of a Table in Open Metadata
         """
         result = None
@@ -161,7 +165,7 @@ class OpenlineageSource(PipelineServiceSource):
                 entity_type=Table,
                 service_name=db_service,
                 database_name=None,
-                schema_name=table_details.schema,
+                schema_name=table_details.schema_,
                 table_name=table_details.name,
             )
         if not result:
@@ -201,24 +205,22 @@ class OpenlineageSource(PipelineServiceSource):
         return result
 
     @classmethod
-    def _render_pipeline_name(cls, pipeline_details: OpenLineageEvent) -> str:
+    def _render_pipeline_name(cls, event: RunEvent) -> str:
         """
         Renders pipeline name from parent facet of run facet. It is our expectation that every OL event contains parent
-        run facet so we can always create pipeline entities and link them to lineage events.
+        run facet, so we can always create pipeline entities and link them to lineage events.
 
-        :param run_facet: Open Lineage run facet
+        :param event: Open Lineage event
         :return: pipeline name (not fully qualified name)
         """
-        run_facet = pipeline_details.run_facet
-
-        namespace = run_facet["facets"]["parent"]["job"]["namespace"]
-        name = run_facet["facets"]["parent"]["job"]["name"]
+        namespace = event.run.facets.parent.job.namespace
+        name = event.run.facets.parent.job.name
 
         return f"{namespace}-{name}"
 
     @classmethod
     def _filter_event_by_type(
-        cls, event: OpenLineageEvent, event_type: EventType
+        cls, event: RunEvent, event_type: RunState
     ) -> Optional[Dict]:
         """
         returns event if it's of particular event_type.
@@ -228,28 +230,24 @@ class OpenlineageSource(PipelineServiceSource):
         :param event_type: type of event we are looking for.
         :return: Open Lineage event if matches event_type, otherwise None
         """
-        return event if event.event_type == event_type else {}
+        return event if event.eventType == event_type else {}
 
     @classmethod
-    def _get_om_table_columns(cls, table_input: Dict) -> Optional[List]:
+    def _get_om_table_columns(cls, table_input: Dataset) -> Optional[List]:
         """
 
-        :param table_input:
+        :param table_input: Parsed Table object from lineage event
         :return:
         """
         try:
-            fields = table_input["facets"]["schema"]["fields"]
+            fields = table_input.facets.schema_.fields
 
-            # @todo check if this way of passing type is ok
-            columns = [
-                Column(name=f.get("name"), dataType=f.get("type").upper())
-                for f in fields
-            ]
+            columns = [Column(name=f.name, dataType=f.type_.upper()) for f in fields]
             return columns
         except KeyError:
             return None
 
-    def get_create_table_request(self, table: Dict) -> Optional[Either]:
+    def get_create_table_request(self, table: Dataset) -> Optional[Either]:
         """
         If certain table from Open Lineage events doesn't already exist in Open Metadata, register appropriate entity.
         This makes sense especially for output facet of OpenLineage event - as database service ingestion is a scheduled
@@ -278,12 +276,14 @@ class OpenlineageSource(PipelineServiceSource):
             # if fqn found then it means table is already registered and we don't need to render create table request
             return None
         except FQNNotFoundException:
-            pass
+            logger.warning(
+                f"FQN for table not found in OM. Proceeding with creating it. {table}"
+            )
 
         # If OM Table FQN was not found based on OL Partial Name - we need to register it.
         if not om_table_fqn:
             try:
-                om_schema_fqn = self._get_schema_fqn_from_om(table_details.schema)
+                om_schema_fqn = self._get_schema_fqn_from_om(table_details.schema_)
             except FQNNotFoundException as e:
                 return Either(
                     left=StackTraceError(
@@ -309,8 +309,8 @@ class OpenlineageSource(PipelineServiceSource):
         return None
 
     @classmethod
-    def _get_ol_table_name(cls, table: Dict) -> str:
-        return "/".join(table.get(f) for f in ["namespace", "name"]).replace("//", "/")
+    def _get_ol_table_name(cls, table: Union[Dataset, InputField]) -> str:
+        return f"{table.namespace}/{table.name}".replace("//", "/")
 
     def _build_ol_name_to_fqn_map(self, tables: List):
         result = {}
@@ -340,7 +340,7 @@ class OpenlineageSource(PipelineServiceSource):
         return result
 
     def _get_column_lineage(
-        self, inputs: List, outputs: List
+        self, inputs: List[Dataset], outputs: List[Dataset]
     ) -> Dict[str, Dict[str, List[ColumnLineage]]]:
         _result: List = []
 
@@ -350,13 +350,14 @@ class OpenlineageSource(PipelineServiceSource):
             output_table_fqn = self._get_table_fqn(
                 OpenlineageSource._get_table_details(table)
             )
-            for field_name, field_spec in (
-                table.get("facets", {})
-                .get("columnLineage", {})
-                .get("fields", {})
-                .items()
-            ):
-                for input_field in field_spec.get("inputFields", []):
+
+            try:
+                input_fields = table.facets.columnLineage.fields
+            except AttributeError:
+                input_fields = {}
+
+            for field_name, field_spec in input_fields.items():
+                for input_field in field_spec.inputFields:
                     input_table_ol_name = OpenlineageSource._get_ol_table_name(
                         input_field
                     )
@@ -366,19 +367,19 @@ class OpenlineageSource(PipelineServiceSource):
                             output_table_fqn,
                             ol_name_to_fqn_map.get(input_table_ol_name),
                             f"{output_table_fqn}.{field_name}",
-                            f'{ol_name_to_fqn_map.get(input_table_ol_name)}.{input_field.get("field")}',
+                            f"{ol_name_to_fqn_map.get(input_table_ol_name)}.{input_field.field}",
                         )
                     )
 
         return OpenlineageSource._create_output_lineage_dict(_result)
 
     def yield_pipeline(
-        self, pipeline_details: OpenLineageEvent
+        self, pipeline_details: RunEvent
     ) -> Iterable[Either[CreatePipelineRequest]]:
         pipeline_name = self.get_pipeline_name(pipeline_details)
         try:
             description = f"""```json
-            {json.dumps(pipeline_details.run_facet, indent=4).strip()}```"""
+            {json.dumps(pipeline_details.run, indent=4).strip()}```"""
             request = CreatePipelineRequest(
                 name=pipeline_name,
                 service=self.context.get().pipeline_service,
@@ -397,7 +398,7 @@ class OpenlineageSource(PipelineServiceSource):
             )
 
     def yield_pipeline_lineage_details(
-        self, pipeline_details: OpenLineageEvent
+        self, pipeline_details: RunEvent
     ) -> Iterable[Either[AddLineageRequest]]:
         inputs, outputs = pipeline_details.inputs, pipeline_details.outputs
 
@@ -490,7 +491,7 @@ class OpenlineageSource(PipelineServiceSource):
                         _result = message_to_open_lineage_event(
                             json.loads(message.value())
                         )
-                        result = self._filter_event_by_type(_result, EventType.COMPLETE)
+                        result = self._filter_event_by_type(_result, RunState.COMPLETE)
                         if result:
                             yield result
                     except Exception as e:
@@ -503,14 +504,13 @@ class OpenlineageSource(PipelineServiceSource):
 
         finally:
             # Close down consumer to commit final offsets.
-            # @todo address this
             consumer.close()
 
-    def get_pipeline_name(self, pipeline_details: OpenLineageEvent) -> str:
+    def get_pipeline_name(self, pipeline_details: RunEvent) -> str:
         return OpenlineageSource._render_pipeline_name(pipeline_details)
 
     def yield_pipeline_status(
-        self, pipeline_details: OpenLineageEvent
+        self, pipeline_details: RunEvent
     ) -> Iterable[Either[OMetaPipelineStatus]]:
         pass
 
