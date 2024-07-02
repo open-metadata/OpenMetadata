@@ -42,6 +42,7 @@ import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.ContainerRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
+import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
@@ -70,8 +71,8 @@ public class ContainerResource extends EntityResource<Container, ContainerReposi
     return container;
   }
 
-  public ContainerResource(Authorizer authorizer) {
-    super(Entity.CONTAINER, authorizer);
+  public ContainerResource(Authorizer authorizer, Limits limits) {
+    super(Entity.CONTAINER, authorizer, limits);
   }
 
   @Override

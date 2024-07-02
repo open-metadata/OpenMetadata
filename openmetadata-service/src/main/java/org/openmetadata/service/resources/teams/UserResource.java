@@ -22,6 +22,7 @@ import static org.openmetadata.schema.api.teams.CreateUser.CreatePasswordType.AD
 import static org.openmetadata.schema.auth.ChangePasswordRequest.RequestType.SELF;
 import static org.openmetadata.schema.entity.teams.AuthenticationMechanism.AuthType.BASIC;
 import static org.openmetadata.schema.entity.teams.AuthenticationMechanism.AuthType.JWT;
+import static org.openmetadata.schema.type.Include.ALL;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.EMAIL_SENDING_ISSUE;
 import static org.openmetadata.service.jdbi3.UserRepository.AUTH_MECHANISM_FIELD;
 import static org.openmetadata.service.security.jwt.JWTTokenGenerator.getExpiryDate;
@@ -125,6 +126,7 @@ import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.TokenRepository;
 import org.openmetadata.service.jdbi3.UserRepository;
 import org.openmetadata.service.jdbi3.UserRepository.UserCsv;
+import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.secrets.SecretsManager;
@@ -187,8 +189,9 @@ public class UserResource extends EntityResource<User, UserRepository> {
     return user;
   }
 
-  public UserResource(Authorizer authorizer, AuthenticatorHandler authenticatorHandler) {
-    super(Entity.USER, authorizer);
+  public UserResource(
+      Authorizer authorizer, Limits limits, AuthenticatorHandler authenticatorHandler) {
+    super(Entity.USER, authorizer, limits);
     jwtTokenGenerator = JWTTokenGenerator.getInstance();
     allowedFields.remove(USER_PROTECTED_FIELDS);
     tokenRepository = Entity.getTokenRepository();
@@ -677,7 +680,13 @@ public class UserResource extends EntityResource<User, UserRepository> {
       @Valid CreateUser create) {
     User user = getUser(securityContext.getUserPrincipal().getName(), create);
     repository.prepareInternal(user, true);
-
+    User existingUser = repository.findByNameOrNull(user.getFullyQualifiedName(), ALL);
+    if (existingUser == null) {
+      limits.enforceLimits(
+          securityContext,
+          getResourceContextByName(user.getFullyQualifiedName()),
+          new OperationContext(entityType, MetadataOperation.CREATE));
+    }
     ResourceContext<?> resourceContext = getResourceContextByName(user.getFullyQualifiedName());
     if (Boolean.TRUE.equals(create.getIsAdmin()) || Boolean.TRUE.equals(create.getIsBot())) {
       authorizer.authorizeAdmin(securityContext);
@@ -830,11 +839,14 @@ public class UserResource extends EntityResource<User, UserRepository> {
       @Context SecurityContext securityContext,
       @Parameter(description = "Id of the user", schema = @Schema(type = "UUID")) @PathParam("id")
           UUID id) {
-
     User user = repository.get(uriInfo, id, new Fields(Set.of(AUTH_MECHANISM_FIELD)));
     if (!Boolean.TRUE.equals(user.getIsBot())) {
       throw new IllegalArgumentException("JWT token is only supported for bot users");
     }
+    limits.enforceLimits(
+        securityContext,
+        getResourceContext(),
+        new OperationContext(entityType, MetadataOperation.GENERATE_TOKEN));
     decryptOrNullify(securityContext, user);
     authorizer.authorizeAdmin(securityContext);
     return user.getAuthenticationMechanism();
@@ -1250,6 +1262,10 @@ public class UserResource extends EntityResource<User, UserRepository> {
       @Parameter(description = "User Name of the User for which to get. (Default = `false`)")
           @QueryParam("username")
           String userName) {
+    limits.enforceLimits(
+        securityContext,
+        getResourceContext(),
+        new OperationContext(entityType, MetadataOperation.GENERATE_TOKEN));
     if (userName != null) {
       authorizer.authorizeAdmin(securityContext);
     } else {
@@ -1328,6 +1344,10 @@ public class UserResource extends EntityResource<User, UserRepository> {
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Valid CreatePersonalToken tokenRequest) {
+    limits.enforceLimits(
+        securityContext,
+        getResourceContext(),
+        new OperationContext(entityType, MetadataOperation.GENERATE_TOKEN));
     String userName = securityContext.getUserPrincipal().getName();
     User user =
         repository.getByName(

@@ -13,14 +13,16 @@
 
 import { Button, Col, Form, Input, Row, Typography } from 'antd';
 import { useForm } from 'antd/lib/form/Form';
-import { isEmpty } from 'lodash';
+import { isEmpty, isUndefined } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
+import InlineAlert from '../../components/common/InlineAlert/InlineAlert';
 import Loader from '../../components/common/Loader/Loader';
 import ResizablePanels from '../../components/common/ResizablePanels/ResizablePanels';
 import RichTextEditor from '../../components/common/RichTextEditor/RichTextEditor';
 import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
+import { useLimitStore } from '../../context/LimitsProvider/useLimitsStore';
 import { ROUTES, VALIDATION_MESSAGES } from '../../constants/constants';
 import { NAME_FIELD_RULES } from '../../constants/Form.constants';
 import { CreateEventSubscription } from '../../generated/events/api/createEventSubscription';
@@ -30,6 +32,7 @@ import {
   SubscriptionCategory,
 } from '../../generated/events/eventSubscription';
 import { FilterResourceDescriptor } from '../../generated/events/filterResourceDescriptor';
+import { useApplicationStore } from '../../hooks/useApplicationStore';
 import { useFqn } from '../../hooks/useFqn';
 import {
   createObservabilityAlert,
@@ -51,6 +54,7 @@ function AddObservabilityPage() {
   const history = useHistory();
   const [form] = useForm<CreateEventSubscription>();
   const { fqn } = useFqn();
+  const { setInlineAlertDetails, inlineAlertDetails } = useApplicationStore();
 
   const [filterResources, setFilterResources] = useState<
     FilterResourceDescriptor[]
@@ -61,6 +65,7 @@ function AddObservabilityPage() {
   const [saving, setSaving] = useState<boolean>(false);
 
   const isEditMode = useMemo(() => !isEmpty(fqn), [fqn]);
+  const { getResourceLimit } = useLimitStore();
 
   const fetchAlert = async () => {
     try {
@@ -143,9 +148,11 @@ function AddObservabilityPage() {
           fqn,
           createAlertAPI: createObservabilityAlert,
           updateAlertAPI: updateObservabilityAlertWithPut,
-          afterSaveAction: () => {
+          afterSaveAction: async () => {
+            !fqn && (await getResourceLimit('eventsubscription', true, true));
             history.push(getObservabilityAlertDetailsPath(data.name));
           },
+          setInlineAlertDetails,
         });
       } catch {
         // Error handling done in "handleAlertSave"
@@ -276,6 +283,13 @@ function AddObservabilityPage() {
                     <Col span={24}>
                       <DestinationFormItem />
                     </Col>
+
+                    {!isUndefined(inlineAlertDetails) && (
+                      <Col span={24}>
+                        <InlineAlert {...inlineAlertDetails} />
+                      </Col>
+                    )}
+
                     <Col flex="auto" />
                     <Col flex="300px" pull="right">
                       <Button

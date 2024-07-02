@@ -62,6 +62,7 @@ import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.ResourceRegistry;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.PolicyRepository;
+import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.CollectionRegistry;
 import org.openmetadata.service.resources.EntityResource;
@@ -92,8 +93,8 @@ public class PolicyResource extends EntityResource<Policy, PolicyRepository> {
     return policy;
   }
 
-  public PolicyResource(Authorizer authorizer) {
-    super(Entity.POLICY, authorizer);
+  public PolicyResource(Authorizer authorizer, Limits limits) {
+    super(Entity.POLICY, authorizer, limits);
   }
 
   @Override
