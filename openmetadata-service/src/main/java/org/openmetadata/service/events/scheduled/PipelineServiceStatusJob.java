@@ -9,7 +9,7 @@ import static org.openmetadata.service.events.scheduled.PipelineServiceStatusJob
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.prometheus.PrometheusMeterRegistry;
 import lombok.extern.slf4j.Slf4j;
-import org.openmetadata.service.clients.pipeline.PipelineServiceClient;
+import org.openmetadata.sdk.PipelineServiceClientInterface;
 import org.quartz.Job;
 import org.quartz.JobExecutionContext;
 
@@ -22,8 +22,8 @@ public class PipelineServiceStatusJob implements Job {
   @Override
   public void execute(JobExecutionContext jobExecutionContext) {
 
-    PipelineServiceClient pipelineServiceClient =
-        (PipelineServiceClient)
+    PipelineServiceClientInterface pipelineServiceClient =
+        (PipelineServiceClientInterface)
             jobExecutionContext
                 .getJobDetail()
                 .getJobDataMap()
@@ -42,7 +42,7 @@ public class PipelineServiceStatusJob implements Job {
   }
 
   private void registerStatusMetric(
-      PipelineServiceClient pipelineServiceClient,
+      PipelineServiceClientInterface pipelineServiceClient,
       PrometheusMeterRegistry meterRegistry,
       String clusterName) {
     String status = pipelineServiceClient.getServiceStatusBackoff();
