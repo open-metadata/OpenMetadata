@@ -12,11 +12,16 @@
  */
 import { APIRequestContext, expect, Page } from '@playwright/test';
 import {
-  ENTITY_PATH,
+  CUSTOM_PROPERTY_INVALID_NAMES,
+  CUSTOM_PROPERTY_NAME_VALIDATION_ERROR,
+  ENTITY_REFERENCE_PROPERTIES,
+} from '../constant/customProperty';
+import {
   EntityTypeEndpoint,
+  ENTITY_PATH,
 } from '../support/entity/Entity.interface';
 import { UserClass } from '../support/user/UserClass';
-import { uuid } from './common';
+import { descriptionBox, uuid } from './common';
 
 export enum CustomPropertyType {
   STRING = 'String',
@@ -367,4 +372,230 @@ export const createCustomPropertyForEntity = async (
   }
 
   return { customProperties, cleanupUser };
+};
+
+export const addCustomPropertiesForEntity = async ({
+  page,
+  propertyName,
+  customPropertyData,
+  customType,
+  enumConfig,
+  formatConfig,
+  entityReferenceConfig,
+}: {
+  page: Page;
+  propertyName: string;
+  customPropertyData: { description: string };
+  customType: string;
+  enumConfig?: { values: string[]; multiSelect: boolean };
+  formatConfig?: string;
+  entityReferenceConfig?: string[];
+}) => {
+  // Add Custom property for selected entity
+  await page.click('[data-testid="add-field-button"]');
+
+  // Trigger validation
+  await page.click('[data-testid="create-button"]');
+
+  await expect(page.locator('#name_help')).toContainText('Name is required');
+  await expect(page.locator('#propertyType_help')).toContainText(
+    'Property Type is required'
+  );
+  await expect(page.locator('#description_help')).toContainText(
+    'Description is required'
+  );
+
+  // Validation checks
+  await page.fill(
+    '[data-testid="name"]',
+    CUSTOM_PROPERTY_INVALID_NAMES.CAPITAL_CASE
+  );
+
+  await expect(page.locator('#name_help')).toContainText(
+    CUSTOM_PROPERTY_NAME_VALIDATION_ERROR
+  );
+
+  await page.fill(
+    '[data-testid="name"]',
+    CUSTOM_PROPERTY_INVALID_NAMES.WITH_UNDERSCORE
+  );
+
+  await expect(page.locator('#name_help')).toContainText(
+    CUSTOM_PROPERTY_NAME_VALIDATION_ERROR
+  );
+
+  await page.fill(
+    '[data-testid="name"]',
+    CUSTOM_PROPERTY_INVALID_NAMES.WITH_SPACE
+  );
+
+  await expect(page.locator('#name_help')).toContainText(
+    CUSTOM_PROPERTY_NAME_VALIDATION_ERROR
+  );
+
+  await page.fill(
+    '[data-testid="name"]',
+    CUSTOM_PROPERTY_INVALID_NAMES.WITH_DOTS
+  );
+
+  await expect(page.locator('#name_help')).toContainText(
+    CUSTOM_PROPERTY_NAME_VALIDATION_ERROR
+  );
+
+  // Name in another language
+  await page.fill('[data-testid="name"]', '汝らヴェディア');
+
+  await expect(page.locator('#name_help')).not.toBeVisible();
+
+  // Correct name
+  await page.fill('[data-testid="name"]', propertyName);
+
+  // Select custom type
+  await page.locator('[id="root\\/propertyType"]').fill(customType);
+  await page.getByTitle(`${customType}`, { exact: true }).click();
+
+  // Enum configuration
+  if (customType === 'Enum' && enumConfig) {
+    for (const val of enumConfig.values) {
+      await page.fill('#root\\/enumConfig', `${val}{Enter}`);
+    }
+
+    if (enumConfig.multiSelect) {
+      await page.click('#root\\/multiSelect');
+    }
+  }
+
+  // Entity reference configuration
+  if (
+    ENTITY_REFERENCE_PROPERTIES.includes(customType) &&
+    entityReferenceConfig
+  ) {
+    for (const val of entityReferenceConfig) {
+      await page.click('#root\\/entityReferenceConfig');
+      await page.fill('#root\\/entityReferenceConfig', val);
+      await page.click(`[title="${val}"]`);
+    }
+  }
+
+  // Format configuration
+  if (['Date', 'Date Time'].includes(customType)) {
+    await page.fill('#root\\/formatConfig', 'invalid-format');
+
+    await expect(page.locator('#formatConfig_help')).toContainText(
+      'Format is invalid'
+    );
+
+    if (formatConfig) {
+      await page.fill('#root\\/formatConfig', formatConfig);
+    }
+  }
+
+  // Description
+  await page.fill(descriptionBox, customPropertyData.description);
+
+  const createPropertyPromise = page.waitForResponse(
+    '/api/v1/metadata/types/name/*?fields=customProperties'
+  );
+
+  await page.click('[data-testid="create-button"]');
+
+  const response = await createPropertyPromise;
+
+  expect(response.status()).toBe(200);
+
+  await expect(
+    page.getByRole('row', { name: new RegExp(propertyName, 'i') })
+  ).toBeVisible();
+};
+
+export const editCreatedProperty = async (
+  page: Page,
+  propertyName: string,
+  type?: string
+) => {
+  // Fetching for edit button
+  const editButton = page.locator(
+    `[data-row-key="${propertyName}"] [data-testid="edit-button"]`
+  );
+
+  if (type === 'Enum') {
+    await expect(
+      page.locator(
+        `[data-row-key="${propertyName}"] [data-testid="enum-config"]`
+      )
+    ).toContainText('["enum1","enum2","enum3"]');
+  }
+
+  await editButton.click();
+
+  await page.locator(descriptionBox).fill('');
+  await page.locator(descriptionBox).fill('This is new description');
+
+  if (type === 'Enum') {
+    await page
+      .locator('#root\\/customPropertyConfig')
+      .fill(`updatedValue{Enter}`);
+    await page.click('body'); // Equivalent to clicking outside
+  }
+
+  if (ENTITY_REFERENCE_PROPERTIES.includes(type ?? '')) {
+    await page.locator('#root\\/customPropertyConfig').click();
+    await page.locator('#root\\/customPropertyConfig').fill(`Table{Enter}`);
+    await page.click('body'); // Equivalent to clicking outside
+  }
+
+  const patchRequest = page.waitForResponse('/api/v1/metadata/types/*');
+
+  await page.locator('button[type="submit"]').click();
+
+  const response = await patchRequest;
+
+  expect(response.status()).toBe(200);
+
+  await expect(page.locator('.ant-modal-wrap')).not.toBeVisible();
+
+  // Fetching for updated descriptions for the created custom property
+  await expect(
+    page.locator(
+      `[data-row-key="${propertyName}"] [data-testid="viewer-container"]`
+    )
+  ).toContainText('This is new description');
+
+  if (type === 'Enum') {
+    await expect(
+      page.locator(
+        `[data-row-key="${propertyName}"] [data-testid="enum-config"]`
+      )
+    ).toContainText('["enum1","enum2","enum3","updatedValue"]');
+  }
+  if (ENTITY_REFERENCE_PROPERTIES.includes(type ?? '')) {
+    await expect(
+      page.locator(
+        `[data-row-key="${propertyName}"] [data-testid="${propertyName}-config"]`
+      )
+    ).toContainText('["user","team","table"]');
+  }
+};
+
+export const deleteCreatedProperty = async (
+  page: Page,
+  propertyName: string
+) => {
+  // Fetching for delete button
+  await page
+    .locator(`[data-row-key="${propertyName}"]`)
+    .scrollIntoViewIfNeeded();
+  await page
+    .locator(`[data-row-key="${propertyName}"] [data-testid="delete-button"]`)
+    .click();
+
+  // Checking property name is present on the delete pop-up
+  await expect(page.locator('[data-testid="body-text"]')).toContainText(
+    propertyName
+  );
+
+  // Ensure the save button is visible before clicking
+  await expect(page.locator('[data-testid="save-button"]')).toBeVisible();
+
+  await page.locator('[data-testid="save-button"]').click();
 };
