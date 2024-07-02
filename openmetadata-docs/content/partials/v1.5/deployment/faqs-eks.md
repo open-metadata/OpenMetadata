@@ -1,5 +1,3 @@
-# FAQs
-
 ## Getting an error when install OpenMetadata Dependencies Helm Charts on EKS with EFS
 
 If you are facing the below issue -
