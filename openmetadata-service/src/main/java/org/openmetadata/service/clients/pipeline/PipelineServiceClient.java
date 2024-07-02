@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-package org.openmetadata.sdk;
+package org.openmetadata.service.clients.pipeline;
 
 import io.github.resilience4j.retry.Retry;
 import io.github.resilience4j.retry.RetryConfig;
@@ -33,15 +33,11 @@ import lombok.Getter;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.common.utils.CommonUtil;
-import org.openmetadata.schema.ServiceEntityInterface;
 import org.openmetadata.schema.api.configuration.pipelineServiceClient.PipelineServiceClientConfiguration;
-import org.openmetadata.schema.entity.app.App;
-import org.openmetadata.schema.entity.app.AppMarketPlaceDefinition;
-import org.openmetadata.schema.entity.automations.Workflow;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineServiceClientResponse;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineStatus;
-import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineType;
+import org.openmetadata.sdk.PipelineServiceClientInterface;
 import org.openmetadata.sdk.exception.PipelineServiceClientException;
 import org.openmetadata.sdk.exception.PipelineServiceVersionException;
 
@@ -58,7 +54,7 @@ import org.openmetadata.sdk.exception.PipelineServiceVersionException;
  * </ul>
  */
 @Slf4j
-public abstract class PipelineServiceClient {
+public abstract class PipelineServiceClient implements PipelineServiceClientInterface {
   protected final boolean pipelineServiceClientEnabled;
   protected final String hostIp;
 
@@ -72,34 +68,8 @@ public abstract class PipelineServiceClient {
   private static final Integer MAX_ATTEMPTS = 3;
   private static final Integer BACKOFF_TIME_SECONDS = 5;
   private static final String DISABLED_STATUS = "disabled";
-  public static final String HEALTHY_STATUS = "healthy";
-  public static final String UNHEALTHY_STATUS = "unhealthy";
-  public static final String STATUS_KEY = "status";
-  public static final String APP_TRIGGER = "run_application";
-  public static final String APP_VALIDATE = "validate_registration";
 
-  public static final String DEPLOYMENT_ERROR = "DEPLOYMENT_ERROR";
-  public static final String TRIGGER_ERROR = "TRIGGER_ERROR";
-  public static final Map<String, String> TYPE_TO_TASK =
-      Map.of(
-          PipelineType.METADATA.toString(),
-          "ingestion_task",
-          PipelineType.PROFILER.toString(),
-          "profiler_task",
-          PipelineType.LINEAGE.toString(),
-          "lineage_task",
-          PipelineType.DBT.toString(),
-          "dbt_task",
-          PipelineType.USAGE.toString(),
-          "usage_task",
-          PipelineType.TEST_SUITE.toString(),
-          "test_suite_task",
-          PipelineType.DATA_INSIGHT.toString(),
-          "data_insight_task",
-          PipelineType.APPLICATION.toString(),
-          "application_task");
-
-  public static final String SERVER_VERSION;
+  protected static final String SERVER_VERSION;
 
   static {
     String rawServerVersion;
@@ -156,6 +126,7 @@ public abstract class PipelineServiceClient {
     }
   }
 
+  @Override
   public final Boolean validServerClientVersions(String clientVersion) {
     return getVersionFromString(clientVersion).equals(getVersionFromString(SERVER_VERSION));
   }
@@ -172,7 +143,7 @@ public abstract class PipelineServiceClient {
   }
 
   /** To build the response of getServiceStatus */
-  public PipelineServiceClientResponse buildHealthyStatus(String ingestionVersion) {
+  protected PipelineServiceClientResponse buildHealthyStatus(String ingestionVersion) {
     return new PipelineServiceClientResponse()
         .withCode(200)
         .withVersion(ingestionVersion)
@@ -180,7 +151,7 @@ public abstract class PipelineServiceClient {
   }
 
   /** To build the response of getServiceStatus */
-  public PipelineServiceClientResponse buildUnhealthyStatus(String reason) {
+  protected PipelineServiceClientResponse buildUnhealthyStatus(String reason) {
     return new PipelineServiceClientResponse()
         .withCode(500)
         .withReason(reason)
@@ -255,46 +226,8 @@ public abstract class PipelineServiceClient {
     return new ArrayList<>();
   }
 
-  public abstract PipelineServiceClientResponse getServiceStatusInternal();
-
-  /**
-   * This workflow can be used to execute any necessary async automations from the pipeline service.
-   * This will be the new Test Connection endpoint. The UI can create a new workflow and trigger it
-   * in the server, and keep polling the results.
-   */
-  public abstract PipelineServiceClientResponse runAutomationsWorkflow(Workflow workflow);
-
-  public abstract PipelineServiceClientResponse runApplicationFlow(App application);
-
-  public abstract PipelineServiceClientResponse validateAppRegistration(
-      AppMarketPlaceDefinition app);
-
-  /* Deploy a pipeline to the pipeline service */
-  public abstract PipelineServiceClientResponse deployPipeline(
-      IngestionPipeline ingestionPipeline, ServiceEntityInterface service);
-
-  /* Deploy run the pipeline at the pipeline service */
-  public abstract PipelineServiceClientResponse runPipeline(
-      IngestionPipeline ingestionPipeline, ServiceEntityInterface service);
-
-  /* Stop and delete a pipeline at the pipeline service */
-  public abstract PipelineServiceClientResponse deletePipeline(IngestionPipeline ingestionPipeline);
-
-  /* Get the status of a deployed pipeline */
-  public abstract List<PipelineStatus> getQueuedPipelineStatusInternal(
-      IngestionPipeline ingestionPipeline);
-
-  /* Toggle the state of an Ingestion Pipeline as enabled/disabled */
-  public abstract PipelineServiceClientResponse toggleIngestion(
-      IngestionPipeline ingestionPipeline);
-
-  /* Get the all last run logs of a deployed pipeline */
-  public abstract Map<String, String> getLastIngestionLogs(
-      IngestionPipeline ingestionPipeline, String after);
-
-  /* Get the all last run logs of a deployed pipeline */
-  public abstract PipelineServiceClientResponse killIngestion(IngestionPipeline ingestionPipeline);
+  protected abstract PipelineServiceClientResponse getServiceStatusInternal();
 
   /* Get the Pipeline Service host IP to whitelist in source systems. Should return a map in the shape "ip: 111.11.11.1" */
-  public abstract Map<String, String> requestGetHostIp();
+  protected abstract Map<String, String> requestGetHostIp();
 }
