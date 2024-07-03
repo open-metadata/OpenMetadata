@@ -17,7 +17,6 @@
       "items": {
         "type": "string",
         "enum": [
-          "all",
           "table",
           "dashboard",
           "topic",
@@ -57,6 +56,7 @@
         ]
       },
       "default": ["all"],
+      "uiFieldType": "treeSelect",
       "uniqueItems": true
     },
     "recreateIndex": {

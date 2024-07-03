@@ -17,7 +17,6 @@
   },
   "appConfiguration": {
     "entities": [
-      "all",
       "table",
       "dashboard",
       "topic",
@@ -53,6 +52,7 @@
       "storageService",
       "dataProduct"
     ],
+    "uiFieldType": "treeSelect",
     "recreateIndex": true,
     "batchSize": "100",
     "searchIndexMappingLanguage": "EN"
