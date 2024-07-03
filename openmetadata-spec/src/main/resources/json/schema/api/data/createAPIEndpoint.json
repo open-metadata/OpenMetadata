@@ -6,7 +6,6 @@
   "type": "object",
   "javaType": "org.openmetadata.schema.api.data.CreateAPIEndpoint",
   "javaInterfaces": ["org.openmetadata.schema.CreateEntity"],
-
   "properties": {
     "name": {
       "description": "Name that identifies this APIEndpoint instance uniquely. We use operationId from OpenAPI specification.",
@@ -63,8 +62,7 @@
       "$ref": "../../type/basic.json#/definitions/sourceUrl"
     },
     "domain" : {
-      "description": "Fully qualified name of the domain the Topic belongs to.",
-      "type": "string",
+      "description": "Fully qualified name of the domain the API belongs to.",
       "$ref" : "../../type/basic.json#/definitions/fullyQualifiedEntityName"
     },
     "dataProducts" : {
