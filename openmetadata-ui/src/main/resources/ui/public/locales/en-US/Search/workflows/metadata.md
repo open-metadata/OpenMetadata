@@ -41,6 +41,19 @@ Set the Ingest Sample Data toggle to control whether to ingest sample data as pa
 $$
 
 $$section
+### Override Metadata $(id="overrideMetadata")
+
+Set the `Override Metadata` toggle to control whether to override the existing metadata in the OpenMetadata server with the metadata fetched from the source.
+
+If the toggle is `enabled`, the metadata fetched from the source will override and replace the existing metadata in the OpenMetadata.
+
+If the toggle is `disabled`, the metadata fetched from the source will not override the existing metadata in the OpenMetadata server. In this case the metadata will only get updated for fields that has no value added in OpenMetadata.
+
+This is applicable for fields like description, tags, owner and displayName
+
+$$
+
+$$section
 ### Sample Size $(id="sampleSize")
 
 If include sample data is enabled, 10 records will be ingested by default. Using this field you can customize the size of sample data.
