@@ -87,3 +87,12 @@ export interface EditTestCaseModalProps {
   onCancel: () => void;
   onUpdate?: (testCase: TestCase) => void;
 }
+
+export type TestCaseFormType = {
+  testName: string;
+  params: Record<string, string | { [key: string]: string }[]>;
+  useDynamicAssertion?: boolean;
+  testTypeId: string;
+  computePassedFailedRowCount?: boolean;
+  description?: string;
+};
