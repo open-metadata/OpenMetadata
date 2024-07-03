@@ -327,13 +327,13 @@ def assert_equal_pydantic_objects(
     expected: BaseModel, actual: BaseModel, ignore_none=True
 ):
     errors = []
-    for key, value in expected.dict().items():
+    for key, value in expected.model_dump().items():
         if value is not None and ignore_none:
-            if not value == actual.dict()[key]:
+            if not value == actual.model_dump()[key]:
                 # an explicit AssertionError because PyCharm does not handle helper functions well:
                 # https://youtrack.jetbrains.com/issue/PY-51929/pytest-assertion-information-not-printed-in-certain-situations#focus=Comments-27-8459641.0-0
                 errors.append(
-                    f"objects mismatched on field: [{key}], expected: [{value}], actual: [{actual.dict()[key]}]"
+                    f"objects mismatched on field: [{key}], expected: [{value}], actual: [{actual.model_dump()[key]}]"
                 )
     if errors:
         raise AssertionError("\n".join(errors))
