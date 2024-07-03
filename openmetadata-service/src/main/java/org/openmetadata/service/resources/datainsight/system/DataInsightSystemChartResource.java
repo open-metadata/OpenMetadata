@@ -30,6 +30,7 @@ import org.openmetadata.schema.dataInsight.custom.DataInsightCustomChartResultLi
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.jdbi3.DataInsightSystemChartRepository;
+import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
@@ -47,8 +48,8 @@ public class DataInsightSystemChartResource
     extends EntityResource<DataInsightCustomChart, DataInsightSystemChartRepository> {
   public static final String COLLECTION_PATH = "/v1/analytics/dataInsights/system/charts";
 
-  public DataInsightSystemChartResource(Authorizer authorizer) {
-    super(Entity.DATA_INSIGHT_CUSTOM_CHART, authorizer);
+  public DataInsightSystemChartResource(Authorizer authorizer, Limits limit) {
+    super(Entity.DATA_INSIGHT_CUSTOM_CHART, authorizer, limit);
   }
 
   @Override
