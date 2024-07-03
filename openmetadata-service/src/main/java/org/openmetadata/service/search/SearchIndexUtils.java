@@ -36,9 +36,7 @@ public final class SearchIndexUtils {
 
     String key = pathElements[0];
     Object value = currentMap.get(key);
-    if (value == null) {
-      return;
-    } else if (value instanceof Map) {
+    if (value instanceof Map) {
       currentMap = (Map<String, Object>) value;
     } else if (value instanceof List) {
       List<Map<String, Object>> list = (List<Map<String, Object>>) value;
@@ -47,6 +45,8 @@ public final class SearchIndexUtils {
             item,
             Arrays.stream(pathElements, 1, pathElements.length).collect(Collectors.joining(".")));
       }
+      return;
+    } else {
       return;
     }
 
