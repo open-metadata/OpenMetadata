@@ -182,13 +182,7 @@ class SupersetSourceMixin(DashboardServiceSource):
                             fqn=datamodel_fqn,
                         )
 
-                        datasource_json = self.client.fetch_datasource(
-                            chart_json.datasource_id
-                        )
-                        datasource_columns = self.get_column_info(
-                            datasource_json.result.columns
-                        )
-                        columns_list = [col.displayName for col in datasource_columns]
+                        columns_list = self._get_columns_list_for_lineage(chart_json)
                         column_lineage = self._get_column_lineage(
                             from_entity, to_entity, columns_list
                         )
@@ -248,7 +242,7 @@ class SupersetSourceMixin(DashboardServiceSource):
                     parsed_fields = Column(
                         dataTypeDisplay=field.type,
                         dataType=col_parse["dataType"],
-                        name=field.id,
+                        name=str(field.id),
                         displayName=field.column_name,
                         description=field.description,
                         dataLength=int(col_parse.get("dataLength", 0)),
