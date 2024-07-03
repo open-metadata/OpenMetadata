@@ -35,5 +35,5 @@
     }
   },
   "additionalProperties": false,
-  "required": ["host", "openAPISchemaURL"]
+  "required": ["openAPISchemaURL"]
 }
