@@ -26,30 +26,28 @@ CREATE TABLE IF NOT EXISTS api_service_entity (
     UNIQUE (nameHash)
 );
 
--- create API Collection entity
+-- create API collection entity
 CREATE TABLE IF NOT EXISTS api_collection_entity (
     id VARCHAR(36) GENERATED ALWAYS AS (json ->> 'id') STORED NOT NULL,
-    nameHash VARCHAR(256)  NOT NULL,
     name VARCHAR(256) GENERATED ALWAYS AS (json ->> 'name') STORED NOT NULL,
-    serviceType VARCHAR(256) GENERATED ALWAYS AS (json ->> 'serviceType') STORED NOT NULL,
+    fqnHash VARCHAR(256) NOT NULL,
     json JSONB NOT NULL,
     updatedAt BIGINT GENERATED ALWAYS AS ((json ->> 'updatedAt')::bigint) STORED NOT NULL,
     updatedBy VARCHAR(256) GENERATED ALWAYS AS (json ->> 'updatedBy') STORED NOT NULL,
     deleted BOOLEAN GENERATED ALWAYS AS ((json ->> 'deleted')::boolean) STORED,
     PRIMARY KEY (id),
-    UNIQUE (nameHash)
- );
+    UNIQUE (fqnHash)
+);
 
 -- create API Endpoint entity
 CREATE TABLE IF NOT EXISTS api_endpoint_entity (
     id VARCHAR(36) GENERATED ALWAYS AS (json ->> 'id') STORED NOT NULL,
-    nameHash VARCHAR(256)  NOT NULL,
     name VARCHAR(256) GENERATED ALWAYS AS (json ->> 'name') STORED NOT NULL,
-    serviceType VARCHAR(256) GENERATED ALWAYS AS (json ->> 'serviceType') STORED NOT NULL,
+    fqnHash VARCHAR(256) NOT NULL,
     json JSONB NOT NULL,
     updatedAt BIGINT GENERATED ALWAYS AS ((json ->> 'updatedAt')::bigint) STORED NOT NULL,
     updatedBy VARCHAR(256) GENERATED ALWAYS AS (json ->> 'updatedBy') STORED NOT NULL,
     deleted BOOLEAN GENERATED ALWAYS AS ((json ->> 'deleted')::boolean) STORED,
     PRIMARY KEY (id),
-    UNIQUE (nameHash)
+    UNIQUE (fqnHash)
 );
