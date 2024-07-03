@@ -54,7 +54,6 @@ export interface UIKpiResult extends KpiResult {
 }
 
 export enum DataInsightTabs {
-  DASHBOARD = 'dashboard',
   DATA_ASSETS = 'data-assets',
   APP_ANALYTICS = 'app-analytics',
   KPIS = 'kpi',
