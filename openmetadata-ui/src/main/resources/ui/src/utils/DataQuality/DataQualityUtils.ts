@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { isArray } from 'lodash';
 import { TEST_CASE_FILTERS } from '../../constants/profiler.constant';
 import { TestCaseParameterValue } from '../../generated/tests/testCase';
 import {
@@ -60,10 +61,8 @@ export const createTestCaseParameters = (
           (param) => param.name === key
         );
 
-        if (paramDef?.dataType === TestDataType.Array) {
-          const arrayValues = (value as { value: string }[])
-            .map((item) => item.value)
-            .filter(Boolean);
+        if (paramDef?.dataType === TestDataType.Array && isArray(value)) {
+          const arrayValues = value.map((item) => item.value).filter(Boolean);
           if (arrayValues.length) {
             acc.push({ name: key, value: JSON.stringify(arrayValues) });
           }

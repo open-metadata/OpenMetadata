@@ -148,7 +148,7 @@ const TestCaseForm: React.FC<TestCaseFormProps> = ({
     }
   };
 
-  const getSelectedTestDefinition = () => {
+  const getSelectedTestDefinition = useCallback(() => {
     const testType = isEmpty(initialValue?.testSuite)
       ? selectedTestType
       : initialValue?.testSuite;
@@ -156,21 +156,21 @@ const TestCaseForm: React.FC<TestCaseFormProps> = ({
     return testDefinitions.find(
       (definition) => definition.fullyQualifiedName === testType
     );
-  };
+  }, [initialValue?.testSuite, selectedTestType, testDefinitions]);
   const isComputeRowCountFieldVisible = useMemo(() => {
     const selectedDefinition = getSelectedTestDefinition();
 
     return selectedDefinition?.supportsRowLevelPassedFailed ?? false;
-  }, [selectedTestType, initialValue, testDefinitions]);
+  }, [getSelectedTestDefinition]);
 
-  const GenerateParamsField = useCallback(() => {
+  const generateParamsField = useMemo(() => {
     const selectedDefinition = getSelectedTestDefinition();
     if (selectedDefinition?.parameterDefinition) {
       return <ParameterForm definition={selectedDefinition} table={table} />;
     }
 
     return null;
-  }, [selectedTestType, initialValue, testDefinitions]);
+  }, [table, getSelectedTestDefinition]);
 
   const createTestCaseObj = (value: TestCaseFormType): CreateTestCase => {
     const selectedDefinition = getSelectedTestDefinition();
@@ -374,7 +374,7 @@ const TestCaseForm: React.FC<TestCaseFormProps> = ({
           );
         }}>
         {({ getFieldValue }) =>
-          getFieldValue('useDynamicAssertion') ? null : GenerateParamsField()
+          getFieldValue('useDynamicAssertion') ? null : generateParamsField
         }
       </Form.Item>
       <Form.Item
