@@ -387,9 +387,11 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   // Run webhook related tests randomly. This will ensure these tests are not run for every entity
   // evey time junit tests are run to save time. But over the course of development of a release,
   // when tests are run enough times, the webhook tests are run for all the entities.
-  public boolean runWebhookTests = new Random().nextBoolean();
-  public boolean runSlackTests = new Random().nextBoolean();
-  public boolean runMSTeamsTests = new Random().nextBoolean();
+  private static final int RUN_WEBHOOK_TEST = 0;
+  private static final int RUN_SLACK_TEST = 1;
+  private static final int RUN_MS_TEAMS_TEST = 2;
+  public static boolean EVENT_SUBSCRIPTION_TEST_CONTROL_FLAG = true;
+  private static int selectedTestCategory = new Random().nextInt(3);
 
   protected boolean supportsSearchIndex = false;
 
@@ -463,47 +465,50 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     new QueryResourceTest().setupQuery(test);
     new APICollectionResourceTest().setupAPICollection(test);
 
-    if (runWebhookTests) {
-      webhookCallbackResource.clearEvents();
-      EventSubscriptionResourceTest alertResourceTest = new EventSubscriptionResourceTest();
-      alertResourceTest.startWebhookSubscription();
-      alertResourceTest.startWebhookEntitySubscriptions(entityType);
-    }
-
-    if (runSlackTests) {
-      EventSubscriptionResourceTest alertResourceTest = new EventSubscriptionResourceTest();
-      slackCallbackResource.clearEvents();
-      alertResourceTest.startSlackSubscription();
-      alertResourceTest.startSlackEntitySubscriptions(entityType);
-    }
-
-    if (runMSTeamsTests) {
-      EventSubscriptionResourceTest alertResourceTest = new EventSubscriptionResourceTest();
-      teamsCallbackResource.clearEvents();
-      alertResourceTest.startMSTeamsSubscription();
-      alertResourceTest.startMSTeamsEntitySubscription(entityType);
+    if (EVENT_SUBSCRIPTION_TEST_CONTROL_FLAG) {
+      switch (selectedTestCategory) {
+        case RUN_WEBHOOK_TEST:
+          webhookCallbackResource.clearEvents();
+          EventSubscriptionResourceTest webhookTest = new EventSubscriptionResourceTest();
+          webhookTest.startWebhookSubscription();
+          webhookTest.startWebhookEntitySubscriptions(entityType);
+          break;
+        case RUN_SLACK_TEST:
+          slackCallbackResource.clearEvents();
+          EventSubscriptionResourceTest slackTest = new EventSubscriptionResourceTest();
+          slackTest.startSlackSubscription();
+          slackTest.startSlackEntitySubscriptions(entityType);
+          break;
+        case RUN_MS_TEAMS_TEST:
+          teamsCallbackResource.clearEvents();
+          EventSubscriptionResourceTest msTeamsTest = new EventSubscriptionResourceTest();
+          msTeamsTest.startMSTeamsSubscription();
+          msTeamsTest.startMSTeamsEntitySubscription(entityType);
+          break;
+      }
     }
   }
 
   @AfterAll
   public void afterAllTests() throws Exception {
-
-    if (runWebhookTests) {
-      EventSubscriptionResourceTest alertResourceTest = new EventSubscriptionResourceTest();
-      alertResourceTest.validateWebhookEvents();
-      alertResourceTest.validateWebhookEntityEvents(entityType);
-    }
-
-    if (runSlackTests) {
-      EventSubscriptionResourceTest alertResourceTest = new EventSubscriptionResourceTest();
-      alertResourceTest.validateSlackEvents();
-      alertResourceTest.validateSlackEntityEvents(entityType);
-    }
-
-    if (runMSTeamsTests) {
-      EventSubscriptionResourceTest alertResourceTest = new EventSubscriptionResourceTest();
-      alertResourceTest.validateMSTeamsEvents();
-      alertResourceTest.validateMSTeamsEntityEvents(entityType);
+    if (EVENT_SUBSCRIPTION_TEST_CONTROL_FLAG) {
+      switch (selectedTestCategory) {
+        case RUN_WEBHOOK_TEST:
+          EventSubscriptionResourceTest webhookTest = new EventSubscriptionResourceTest();
+          webhookTest.validateWebhookEvents();
+          webhookTest.validateWebhookEntityEvents(entityType);
+          break;
+        case RUN_SLACK_TEST:
+          EventSubscriptionResourceTest slackTest = new EventSubscriptionResourceTest();
+          slackTest.validateSlackEvents();
+          slackTest.validateSlackEntityEvents(entityType);
+          break;
+        case RUN_MS_TEAMS_TEST:
+          EventSubscriptionResourceTest msTeamsTest = new EventSubscriptionResourceTest();
+          msTeamsTest.validateMSTeamsEvents();
+          msTeamsTest.validateMSTeamsEntityEvents(entityType);
+          break;
+      }
     }
     delete_recursiveTest();
   }
@@ -2975,7 +2980,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
       ChangeDescription expectedChangeDescription,
       Map<String, String> authHeaders)
       throws IOException {
-    if (!runWebhookTests && !runSlackTests && !runMSTeamsTests) {
+    if (!EVENT_SUBSCRIPTION_TEST_CONTROL_FLAG) {
       return;
     }
     validateChangeEvents(
@@ -3119,7 +3124,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
       EventType expectedEventType,
       Double expectedVersion,
       Map<String, String> authHeaders) {
-    if (!runWebhookTests && !runSlackTests && !runMSTeamsTests) {
+    if (!EVENT_SUBSCRIPTION_TEST_CONTROL_FLAG) {
       return;
     }
     String updatedBy = SecurityUtil.getPrincipalName(authHeaders);
