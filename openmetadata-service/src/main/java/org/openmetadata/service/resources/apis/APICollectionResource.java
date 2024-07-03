@@ -414,11 +414,11 @@ public class APICollectionResource extends EntityResource<APICollection, APIColl
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Parameter(
-              description = "Recursively delete this entity and it's children. (Default `false`)")
+              description = "Recursively delete this entity and it's children. (default `false`)")
           @DefaultValue("false")
           @QueryParam("recursive")
           boolean recursive,
-      @Parameter(description = "Hard delete the entity. (Default = `false`)")
+      @Parameter(description = "Hard delete the entity. (default = `false`)")
           @QueryParam("hardDelete")
           @DefaultValue("false")
           boolean hardDelete,
@@ -471,12 +471,12 @@ public class APICollectionResource extends EntityResource<APICollection, APIColl
   public Response delete(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Hard delete the entity. (Default = `false`)")
+      @Parameter(description = "Hard delete the entity. (default = `false`)")
           @QueryParam("hardDelete")
           @DefaultValue("false")
           boolean hardDelete,
       @Parameter(
-              description = "Recursively delete this entity and it's children. (Default `false`)")
+              description = "Recursively delete this entity and it's children. (default `false`)")
           @QueryParam("recursive")
           @DefaultValue("false")
           boolean recursive,
