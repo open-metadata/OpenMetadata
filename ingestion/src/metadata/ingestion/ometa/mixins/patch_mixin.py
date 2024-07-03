@@ -111,7 +111,7 @@ class OMetaPatchMixin(OMetaPatchMixinBase):
 
     client: REST
 
-    def patch(
+    def patch(  # pylint: disable=too-many-arguments
         self,
         entity: Type[T],
         source: T,
@@ -119,6 +119,7 @@ class OMetaPatchMixin(OMetaPatchMixinBase):
         allowed_fields: Optional[Dict] = None,
         restrict_update_fields: Optional[List] = None,
         array_entity_fields: Optional[List] = None,
+        override_metadata: Optional[bool] = False,
     ) -> Optional[T]:
         """
         Given an Entity type and Source entity and Destination entity,
@@ -141,6 +142,7 @@ class OMetaPatchMixin(OMetaPatchMixinBase):
                 allowed_fields=allowed_fields,
                 restrict_update_fields=restrict_update_fields,
                 array_entity_fields=array_entity_fields,
+                override_metadata=override_metadata,
             )
 
             if not patch:
