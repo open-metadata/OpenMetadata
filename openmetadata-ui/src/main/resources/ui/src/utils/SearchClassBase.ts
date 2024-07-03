@@ -57,6 +57,7 @@ import {
 import { EntityType } from '../enums/entity.enum';
 import { ExplorePageTabs } from '../enums/Explore.enum';
 import { SearchIndex } from '../enums/search.enum';
+import { Chart } from '../generated/entity/data/chart';
 import { TestSuite } from '../generated/tests/testCase';
 import { SearchSourceAlias } from '../interface/search.interface';
 import { TabsInfoData } from '../pages/ExplorePage/ExplorePage.interface';
@@ -342,6 +343,18 @@ class SearchClassBase {
         isExecutableTestSuite: (entity as TestSuite).executable,
         fullyQualifiedName: entity.fullyQualifiedName ?? '',
       });
+    }
+
+    if (entity.entityType === EntityType.CHART) {
+      const dashboard = (entity as Chart).dashboards?.[0];
+
+      return dashboard
+        ? getEntityLinkFromType(
+            dashboard.fullyQualifiedName ?? '',
+            EntityType.DASHBOARD,
+            dashboard as SourceType
+          )
+        : '';
     }
 
     if (entity.fullyQualifiedName && entity.entityType) {
