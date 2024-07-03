@@ -1917,7 +1917,7 @@ public class ElasticSearchClient implements SearchClient {
   }
 
   @Override
-  public List<String> fetchDIChartFields() throws IOException {
+  public List<Map<String, String>> fetchDIChartFields() throws IOException {
     GetMappingsRequest request =
         new GetMappingsRequest().indices(DataInsightSystemChartRepository.DI_SEARCH_INDEX);
 
@@ -1928,14 +1928,15 @@ public class ElasticSearchClient implements SearchClient {
     for (Map.Entry<String, MappingMetadata> entry : response.mappings().entrySet()) {
       // Get fields for the index
       Map<String, Object> indexFields = entry.getValue().sourceAsMap();
-      List<String> fields = new ArrayList<>();
+      List<Map<String, String>> fields = new ArrayList<>();
       getFieldNames((Map<String, Object>) indexFields.get("properties"), "", fields);
       return fields;
     }
     return null;
   }
 
-  void getFieldNames(@NotNull Map<String, Object> fields, String prefix, List<String> fieldList) {
+  void getFieldNames(
+      @NotNull Map<String, Object> fields, String prefix, List<Map<String, String>> fieldList) {
     for (Map.Entry<String, Object> entry : fields.entrySet()) {
       String postfix = "";
       String type = (String) ((Map<String, Object>) entry.getValue()).get("type");
@@ -1944,13 +1945,17 @@ public class ElasticSearchClient implements SearchClient {
       }
 
       String fieldName = prefix + entry.getKey() + postfix;
-      fieldList.add(fieldName);
 
       if (entry.getValue() instanceof Map) {
         Map<String, Object> subFields = (Map<String, Object>) entry.getValue();
         if (subFields.containsKey("properties")) {
           getFieldNames(
               (Map<String, Object>) subFields.get("properties"), fieldName + ".", fieldList);
+        } else {
+          Map<String, String> map = new HashMap<>();
+          map.put("name", fieldName);
+          map.put("type", type);
+          fieldList.add(map);
         }
       }
     }

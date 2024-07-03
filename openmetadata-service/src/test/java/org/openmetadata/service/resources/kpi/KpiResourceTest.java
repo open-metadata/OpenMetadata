@@ -90,7 +90,7 @@ public class KpiResourceTest extends EntityResourceTest<Kpi, CreateKpiRequest> {
         "dataInsightChart instance for " + USER1_REF.getName() + " not found");
     CreateKpiRequest create2 = createRequest(String.format("Test%s", UUID.randomUUID()));
     KpiTarget target = new KpiTarget().withName("Test").withValue("Test");
-    create2.withTargetDefinition(List.of(target));
+    create2.withTargetValue(Double.valueOf(target.getValue()));
 
     assertResponseContains(
         () -> createAndCheckEntity(create2, ADMIN_AUTH_HEADERS),
@@ -108,9 +108,9 @@ public class KpiResourceTest extends EntityResourceTest<Kpi, CreateKpiRequest> {
     validateCreatedEntity(createdKpi, create, ADMIN_AUTH_HEADERS);
 
     KpiTarget newTarget = new KpiTarget().withName(KPI_TARGET.getName()).withValue("newValue");
-    create.withTargetDefinition(List.of(newTarget));
+    create.withTargetValue(Double.valueOf(newTarget.getValue()));
     ChangeDescription change = getChangeDescription(createdKpi, MINOR_UPDATE);
-    fieldUpdated(change, "targetDefinition", List.of(KPI_TARGET), create.getTargetDefinition());
+    fieldUpdated(change, "targetDefinition", List.of(KPI_TARGET), create.getTargetValue());
 
     createdKpi = updateAndCheckEntity(create, OK, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
     createdKpi = getEntity(createdKpi.getId(), KpiResource.FIELDS, ADMIN_AUTH_HEADERS);
@@ -239,7 +239,7 @@ public class KpiResourceTest extends EntityResourceTest<Kpi, CreateKpiRequest> {
         .withDataInsightChart(DI_CHART1.getFullyQualifiedName())
         .withOwner(USER1_REF)
         .withMetricType(KpiTargetType.PERCENTAGE)
-        .withTargetDefinition(List.of(KPI_TARGET));
+        .withTargetValue(Double.valueOf(KPI_TARGET.getValue()));
   }
 
   @Override
@@ -250,7 +250,7 @@ public class KpiResourceTest extends EntityResourceTest<Kpi, CreateKpiRequest> {
     assertEquals(request.getEndDate(), createdEntity.getEndDate());
     assertReference(request.getDataInsightChart(), createdEntity.getDataInsightChart());
     assertEquals(request.getMetricType(), createdEntity.getMetricType());
-    assertEquals(request.getTargetDefinition(), createdEntity.getTargetDefinition());
+    assertEquals(request.getTargetValue(), createdEntity.getTargetValue());
   }
 
   @Override
@@ -260,7 +260,7 @@ public class KpiResourceTest extends EntityResourceTest<Kpi, CreateKpiRequest> {
     assertEquals(expected.getEndDate(), updated.getEndDate());
     assertEquals(expected.getDataInsightChart(), updated.getDataInsightChart());
     assertEquals(expected.getMetricType(), updated.getMetricType());
-    assertEquals(expected.getTargetDefinition(), updated.getTargetDefinition());
+    assertEquals(expected.getTargetValue(), updated.getTargetValue());
   }
 
   @Override
