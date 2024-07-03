@@ -197,6 +197,9 @@ site_menu:
   - category: Deployment / Backup & Restore Metadata
     url: /deployment/backup-restore-metadata
 
+  - category: Deployment / Metrics
+    url: /deployment/metrics
+
   - category: Connectors
     url: /connectors
     color: violet-70
@@ -356,10 +359,6 @@ site_menu:
     url: /connectors/database/sqlite
   - category: Connectors / Database / SQLite / Run Externally
     url: /connectors/database/sqlite/yaml
-  - category: Connectors / Database / Teradata
-    url: /connectors/database/teradata
-  - category: Connectors / Database / Teradata / Run Externally
-    url: /connectors/database/teradata/yaml
   - category: Connectors / Database / Trino
     url: /connectors/database/trino
   - category: Connectors / Database / Trino / Run Externally
@@ -410,9 +409,9 @@ site_menu:
   - category: Connectors / Dashboard / Qlik Cloud
     url: /connectors/dashboard/qlikcloud
   - category: Connectors / Dashboard / Qlik Cloud / Run Externally
-    url: /connectors/dashboard/qliksense/yaml
+    url: /connectors/dashboard/qlikcloud/yaml
   - category: Connectors / Dashboard / Qlik Cloud / API Keys
-    url: /connectors/dashboard/qliksense/api_keys
+    url: /connectors/dashboard/qlikcloud/api_keys
   - category: Connectors / Dashboard / QuickSight
     url: /connectors/dashboard/quicksight
   - category: Connectors / Dashboard / QuickSight / Run Externally
@@ -473,6 +472,10 @@ site_menu:
     url: /connectors/pipeline/dagster
   - category: Connectors / Pipeline / Dagster / Run Externally
     url: /connectors/pipeline/dagster/yaml
+  - category: Connectors / Pipeline / DBTCloud
+    url: /connectors/pipeline/dbtcloud
+  - category: Connectors / Pipeline / DBTCloud / Run Externally
+    url: /connectors/pipeline/dbtcloud/yaml
   - category: Connectors / Pipeline / KafkaConnect
     url: /connectors/pipeline/kafkaconnect
   - category: Connectors / Pipeline / KafkaConnect / Run Externally
@@ -505,6 +508,10 @@ site_menu:
     url: /connectors/pipeline/spline
   - category: Connectors / Pipeline / Spline / Run Externally
     url: /connectors/pipeline/spline/yaml
+  - category: Connectors / Pipeline / Flink
+    url: /connectors/pipeline/flink
+  - category: Connectors / Pipeline / Flink / Run Externally
+    url: /connectors/pipeline/flink/yaml
 
   - category: Connectors / ML Model
     url: /connectors/ml-model
@@ -625,6 +632,8 @@ site_menu:
     url: /connectors/ingestion/lineage/spark-lineage
   - category: Connectors / Ingestion / Versioning
     url: /connectors/ingestion/versioning
+  - category: Connectors / Ingestion / Auto Tagging
+    url: /connectors/ingestion/auto_tagging
   - category: Connectors / Ingestion / Versioning / Change Feeds
     url: /connectors/ingestion/versioning/change-feeds
   - category: Connectors / Ingestion / Versioning / Change Events
@@ -882,7 +891,6 @@ site_menu:
 
   - category: Roadmap
     url: /roadmap
-
 
   - category: Quality & Observability
     url: /quality-and-observability
