@@ -455,7 +455,7 @@ public class BasicAuthenticator implements AuthenticatorHandler {
             new CreateUser()
                 .withName(username)
                 .withEmail(create.getEmail())
-                .withDisplayName(create.getFirstName() + create.getLastName())
+                .withDisplayName(String.format("%s%s", create.getFirstName(), create.getLastName()))
                 .withIsBot(false)
                 .withIsAdmin(false))
         .withAuthenticationMechanism(

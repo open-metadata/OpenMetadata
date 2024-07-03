@@ -340,7 +340,7 @@ public final class UserUtil {
         .withPersonas(create.getPersonas())
         .withDefaultPersona(create.getDefaultPersona())
         .withTimezone(create.getTimezone())
-        .withUpdatedBy(updatedBy)
+        .withUpdatedBy(updatedBy.toLowerCase())
         .withUpdatedAt(System.currentTimeMillis())
         .withTeams(EntityUtil.toEntityReferences(create.getTeams(), Entity.TEAM))
         .withRoles(EntityUtil.toEntityReferences(create.getRoles(), Entity.ROLE));
