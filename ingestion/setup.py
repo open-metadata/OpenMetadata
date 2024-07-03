@@ -24,6 +24,7 @@ VERSIONS = {
     "avro": "avro>=1.11.3,<1.12",
     "boto3": "boto3>=1.20,<2.0",  # No need to add botocore separately. It's a dep from boto3
     "geoalchemy2": "GeoAlchemy2~=0.12",
+    "google-cloud-monitoring": "google-cloud-monitoring==2.11.0",
     "google-cloud-storage": "google-cloud-storage==1.43.0",
     "gcsfs": "gcsfs>=2023.1.0",
     "great-expectations": "great-expectations>=0.18.0,<0.18.14",
@@ -196,6 +197,7 @@ plugins: Dict[str, Set[str]] = {
         *COMMONS["datalake"],
     },
     "datalake-gcs": {
+        VERSIONS["google-cloud-monitoring"],
         VERSIONS["google-cloud-storage"],
         VERSIONS["gcsfs"],
         *COMMONS["datalake"],
