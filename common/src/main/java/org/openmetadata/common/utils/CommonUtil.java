@@ -85,7 +85,7 @@ public final class CommonUtil {
   }
 
   private static Collection<String> getResourcesFromJarFile(File file, Pattern pattern) {
-  LOG.debug("Adding from file {}", file)
+    LOG.debug("Adding from file {}", file);
     ArrayList<String> retval = new ArrayList<>();
     try (ZipFile zf = new ZipFile(file)) {
       Enumeration<? extends ZipEntry> e = zf.entries();
