@@ -11,6 +11,15 @@
  *  limitations under the License.
  */
 
+import { DashboardServiceType } from '../generated/entity/data/dashboard';
+import { DatabaseServiceType } from '../generated/entity/data/database';
+import { MlModelServiceType } from '../generated/entity/data/mlmodel';
+import { MessagingServiceType } from '../generated/entity/data/topic';
+import { MetadataServiceType } from '../generated/entity/services/metadataService';
+import { PipelineServiceType } from '../generated/entity/services/pipelineService';
+import { SearchServiceType } from '../generated/entity/services/searchService';
+import { StorageServiceType } from '../generated/entity/services/storageService';
+
 export enum ServiceCategory {
   DATABASE_SERVICES = 'databaseServices',
   MESSAGING_SERVICES = 'messagingServices',
@@ -32,3 +41,49 @@ export enum ServiceCategoryPlural {
   storageService = 'storageServices',
   searchService = 'searchServices',
 }
+
+export type DatabaseServiceTypeSmallCaseType = {
+  [K in keyof typeof DatabaseServiceType]: Lowercase<
+    typeof DatabaseServiceType[K]
+  >;
+};
+
+export type MessagingServiceTypeSmallCaseType = {
+  [K in keyof typeof MessagingServiceType]: Lowercase<
+    typeof MessagingServiceType[K]
+  >;
+};
+
+export type DashboardServiceTypeSmallCaseType = {
+  [K in keyof typeof DashboardServiceType]: Lowercase<
+    typeof DashboardServiceType[K]
+  >;
+};
+
+export type PipelineServiceTypeSmallCaseType = {
+  [K in keyof typeof PipelineServiceType]: Lowercase<
+    typeof PipelineServiceType[K]
+  >;
+};
+
+export type MlModelServiceTypeSmallCaseType = {
+  [K in keyof typeof MlModelServiceType]: Lowercase<
+    typeof MlModelServiceType[K]
+  >;
+};
+
+export type StorageServiceTypeSmallCaseType = {
+  [K in keyof typeof StorageServiceType]: Lowercase<
+    typeof StorageServiceType[K]
+  >;
+};
+
+export type MetadataServiceTypeSmallCaseType = {
+  [K in keyof typeof MetadataServiceType]: Lowercase<
+    typeof MetadataServiceType[K]
+  >;
+};
+
+export type SearchServiceTypeSmallCaseType = {
+  [K in keyof typeof SearchServiceType]: Lowercase<typeof SearchServiceType[K]>;
+};

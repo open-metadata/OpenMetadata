@@ -22,6 +22,7 @@ import {
   DEPLOYED_PROGRESS_VAL,
   INGESTION_PROGRESS_END_VAL,
 } from '../../../constants/constants';
+import { useLimitStore } from '../../../context/LimitsProvider/useLimitsStore';
 import { FormSubmitType } from '../../../enums/form.enum';
 import { IngestionActionMessage } from '../../../enums/ingestion.enum';
 import {
@@ -46,9 +47,11 @@ import {
   Transi18next,
 } from '../../../utils/CommonUtils';
 import { getEntityName } from '../../../utils/EntityUtils';
+import { getScheduleOptionsFromSchedules } from '../../../utils/ScheduleUtils';
 import { getIngestionName } from '../../../utils/ServiceUtils';
 import { generateUUID } from '../../../utils/StringsUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
+import { getWeekCron } from '../../common/CronEditor/CronEditor.constant';
 import SuccessScreen from '../../common/SuccessScreen/SuccessScreen';
 import DeployIngestionLoaderModal from '../../Modals/DeployIngestionLoaderModal/DeployIngestionLoaderModal';
 import {
@@ -81,6 +84,21 @@ const TestSuiteIngestion: React.FC<TestSuiteIngestionProps> = ({
   const [isIngestionCreated, setIsIngestionCreated] = useState(false);
   const [ingestionProgress, setIngestionProgress] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
+  const { config } = useLimitStore();
+
+  const { pipelineSchedules } =
+    config?.limits?.config.featureLimits.find(
+      (feature) => feature.name === 'dataQuality'
+    ) ?? {};
+
+  const schedulerOptions = useMemo(() => {
+    if (isEmpty(pipelineSchedules) || !pipelineSchedules) {
+      return undefined;
+    }
+
+    return getScheduleOptionsFromSchedules(pipelineSchedules);
+  }, [pipelineSchedules]);
+
   const getSuccessMessage = useMemo(() => {
     return (
       <Transi18next
@@ -107,8 +125,9 @@ const TestSuiteIngestion: React.FC<TestSuiteIngestionProps> = ({
   const initialFormData = useMemo(() => {
     return {
       repeatFrequency:
-        ingestionPipeline?.airflowConfig.scheduleInterval ||
-        getIngestionFrequency(PipelineType.TestSuite),
+        ingestionPipeline?.airflowConfig.scheduleInterval ?? config?.enable
+          ? getWeekCron({ hour: 0, min: 0, dow: 0 })
+          : getIngestionFrequency(PipelineType.TestSuite),
       enableDebugLog: ingestionPipeline?.loggerLevel === LogLevels.Debug,
     };
   }, [ingestionPipeline]);
@@ -273,6 +292,7 @@ const TestSuiteIngestion: React.FC<TestSuiteIngestionProps> = ({
         ) : (
           <TestSuiteScheduler
             allowEnableDebugLog
+            includePeriodOptions={schedulerOptions}
             initialData={initialFormData}
             isLoading={isLoading}
             onCancel={onCancel}

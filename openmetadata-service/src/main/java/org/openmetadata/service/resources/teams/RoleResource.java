@@ -59,6 +59,7 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.RoleRepository;
+import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
@@ -92,8 +93,8 @@ public class RoleResource extends EntityResource<Role, RoleRepository> {
     return role;
   }
 
-  public RoleResource(Authorizer authorizer) {
-    super(Entity.ROLE, authorizer);
+  public RoleResource(Authorizer authorizer, Limits limits) {
+    super(Entity.ROLE, authorizer, limits);
   }
 
   @Override

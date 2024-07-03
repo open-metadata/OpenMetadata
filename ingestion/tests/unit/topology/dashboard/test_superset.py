@@ -482,6 +482,14 @@ class SupersetUnitTest(TestCase):
         result = self.superset_api.yield_datamodel(MOCK_DASHBOARD)
         self.assertEqual(len(list(result)), 1)
 
+    def test_datamodels_of_db_dashboard(self):
+        """
+        Mock the db client and check that we get a list
+        """
+        self.superset_db.prepare()
+        result = self.superset_db.yield_datamodel(MOCK_DASHBOARD_DB)
+        self.assertEqual(len(list(result)), 1)
+
     def test_fetch_chart_db(self):
         """
         test fetch chart method of db source

@@ -18,6 +18,7 @@ import { PIPELINE_SERVICE_PLATFORM } from '../../../constants/Services.constant'
 import { CursorType } from '../../../enums/pagination.enum';
 import { ServiceCategory } from '../../../enums/service.enum';
 import { PipelineServiceType } from '../../../generated/entity/data/pipeline';
+import LimitWrapper from '../../../hoc/LimitWrapper';
 import { getServices } from '../../../rest/serviceAPI';
 import { PagingHandlerParams } from '../../common/NextPrevious/NextPrevious.interface';
 import Services from './Services';
@@ -263,6 +264,12 @@ jest.mock('react-router-dom', () => ({
     )),
 }));
 
+jest.mock('../../../hoc/LimitWrapper', () => {
+  return jest
+    .fn()
+    .mockImplementation(({ children }) => <>LimitWrapper{children}</>);
+});
+
 describe('Services', () => {
   it('should render Services', async () => {
     await act(async () => {
@@ -295,6 +302,11 @@ describe('Services', () => {
     });
 
     expect(await screen.findByTestId('add-service-button')).toBeInTheDocument();
+
+    expect(LimitWrapper).toHaveBeenCalledWith(
+      expect.objectContaining({ resource: 'dataAssets' }),
+      {}
+    );
   });
 
   it('should call mock push add service skeleton loader while airflow status is not fetching', async () => {

@@ -23,7 +23,7 @@ import {
   Switch,
 } from 'antd';
 import { AxiosError } from 'axios';
-import { compact, isEmpty, map, trim } from 'lodash';
+import { compact, isEmpty, isUndefined, map, trim } from 'lodash';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as IconSync } from '../../../../assets/svg/ic-sync.svg';
@@ -47,6 +47,7 @@ import { handleSearchFilterOption } from '../../../../utils/CommonUtils';
 import { getEntityName } from '../../../../utils/EntityUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import CopyToClipboardButton from '../../../common/CopyToClipboardButton/CopyToClipboardButton';
+import InlineAlert from '../../../common/InlineAlert/InlineAlert';
 import Loader from '../../../common/Loader/Loader';
 import RichTextEditor from '../../../common/RichTextEditor/RichTextEditor';
 import TeamsSelectable from '../../Team/TeamsSelectable/TeamsSelectable';
@@ -63,7 +64,7 @@ const CreateUser = ({
 }: CreateUserProps) => {
   const { t } = useTranslation();
   const [form] = Form.useForm();
-  const { authConfig } = useApplicationStore();
+  const { authConfig, inlineAlertDetails } = useApplicationStore();
   const [isAdmin, setIsAdmin] = useState(false);
   const [isBot, setIsBot] = useState(forceBot);
   const [selectedTeams, setSelectedTeams] = useState<
@@ -374,6 +375,10 @@ const CreateUser = ({
             </Space>
           </Form.Item>
         </>
+      )}
+
+      {!isUndefined(inlineAlertDetails) && (
+        <InlineAlert alertClassName="m-b-xs" {...inlineAlertDetails} />
       )}
 
       <Space className="w-full justify-end" size={4}>

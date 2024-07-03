@@ -48,6 +48,7 @@ import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.MetricsRepository;
+import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
@@ -66,8 +67,8 @@ public class MetricsResource extends EntityResource<Metrics, MetricsRepository> 
   public static final String COLLECTION_PATH = "/v1/metrics/";
   static final String FIELDS = "owner,usageSummary,domain";
 
-  public MetricsResource(Authorizer authorizer) {
-    super(Entity.METRICS, authorizer);
+  public MetricsResource(Authorizer authorizer, Limits limits) {
+    super(Entity.METRICS, authorizer, limits);
   }
 
   @Override
