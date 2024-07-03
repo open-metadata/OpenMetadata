@@ -558,6 +558,26 @@ a[href].link-text-grey,
   padding: 12px 8px 0 8px;
 }
 
+.global-border-radius {
+  border-radius: 10px;
+}
+
+.full-height {
+  height: calc(100vh - @om-navbar-height); // removing only navbar height
+}
+
+.tab-content-height {
+  height: @entity-details-tab-height;
+  overflow-y: scroll;
+}
+
+/* Resizable panels CSS Start */
+
+// resizable panel inside tab
+.tab-content-height-with-resizable-panel {
+  height: @entity-details-tab-height;
+  overflow: hidden;
+}
 .reflex-container {
   .entity-resizable-panel-container {
     height: @entity-details-tab-height;
@@ -582,26 +602,18 @@ a[href].link-text-grey,
   }
 }
 
-.global-border-radius {
-  border-radius: 10px;
+// resizable panel with full height
+.content-height-with-resizable-panel {
+  height: @page-height;
+  overflow-y: hidden;
+
+  .content-resizable-panel-container {
+    height: @page-height;
+    overflow-y: scroll;
+  }
 }
 
-.full-height {
-  height: calc(100vh - @om-navbar-height); // removing only navbar height
-}
-
-.tab-content-height {
-  height: @entity-details-tab-height;
-  overflow-y: scroll;
-}
-
-.tab-content-height-with-resizable-panel {
-  height: @entity-details-tab-height;
-  // this is to remove the scrollbar from the resizable panel
-  // so that inner scrollbar will work
-  overflow: hidden;
-}
-
+// resizable panel in explore page
 .explore-content-height-resizable-panel {
   height: @explore-content-height-resizable-panel;
   overflow-y: hidden;
