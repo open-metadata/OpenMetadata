@@ -61,6 +61,7 @@ import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.DatabaseRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
+import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
@@ -95,8 +96,8 @@ public class DatabaseResource extends EntityResource<Database, DatabaseRepositor
     return listOf(MetadataOperation.VIEW_USAGE, MetadataOperation.EDIT_USAGE);
   }
 
-  public DatabaseResource(Authorizer authorizer) {
-    super(Entity.DATABASE, authorizer);
+  public DatabaseResource(Authorizer authorizer, Limits limits) {
+    super(Entity.DATABASE, authorizer, limits);
   }
 
   public static class DatabaseList extends ResultList<Database> {

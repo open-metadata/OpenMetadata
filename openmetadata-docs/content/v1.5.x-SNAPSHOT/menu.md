@@ -197,6 +197,9 @@ site_menu:
   - category: Deployment / Backup & Restore Metadata
     url: /deployment/backup-restore-metadata
 
+  - category: Deployment / Metrics
+    url: /deployment/metrics
+
   - category: How-to Guides
     url: /how-to-guides
     color: violet-70
@@ -651,9 +654,9 @@ site_menu:
   - category: Connectors / Dashboard / Qlik Cloud
     url: /connectors/dashboard/qlikcloud
   - category: Connectors / Dashboard / Qlik Cloud / Run Externally
-    url: /connectors/dashboard/qliksense/yaml
+    url: /connectors/dashboard/qlikcloud/yaml
   - category: Connectors / Dashboard / Qlik Cloud / API Keys
-    url: /connectors/dashboard/qliksense/api_keys
+    url: /connectors/dashboard/qlikcloud/api_keys
   - category: Connectors / Dashboard / QuickSight
     url: /connectors/dashboard/quicksight
   - category: Connectors / Dashboard / QuickSight / Run Externally

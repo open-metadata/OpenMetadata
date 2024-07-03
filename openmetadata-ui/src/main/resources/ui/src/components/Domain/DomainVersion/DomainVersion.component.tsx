@@ -14,6 +14,7 @@ import { AxiosError } from 'axios';
 import { noop, toString } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useHistory, useParams } from 'react-router-dom';
+import { EntityType } from '../../../enums/entity.enum';
 import { Domain } from '../../../generated/entity/domains/domain';
 import { EntityHistory } from '../../../generated/type/entityHistory';
 import { useFqn } from '../../../hooks/useFqn';
@@ -125,6 +126,7 @@ const DomainVersion = () => {
       <div className="version-data page-container p-0">{domainPageRender}</div>
       <EntityVersionTimeLine
         currentVersion={toString(version)}
+        entityType={EntityType.DOMAIN}
         versionHandler={onVersionChange}
         versionList={versionList}
         onBack={onBackHandler}
