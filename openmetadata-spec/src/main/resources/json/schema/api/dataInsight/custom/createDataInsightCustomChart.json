@@ -21,6 +21,16 @@
       "description": "Description of the data insight chart.",
       "$ref": "../../../type/basic.json#/definitions/markdown"
     },
+    "chartType": {
+      "description": "Type of chart, used for UI to render the chart",
+      "type": "string",
+      "enum": [
+        "LineChart",
+        "AreaChart",
+        "BarChart",
+        "SummaryCard"
+      ]
+    },
     "chartDetails": {
       "oneOf": [
         {
