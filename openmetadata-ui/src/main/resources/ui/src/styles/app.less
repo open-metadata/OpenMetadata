@@ -602,6 +602,15 @@ a[href].link-text-grey,
   overflow: hidden;
 }
 
+.explore-content-height-resizable-panel {
+  height: @explore-content-height-resizable-panel;
+  overflow-y: hidden;
+  .explore-resizable-panel-container {
+    height: @explore-content-height-resizable-panel;
+    overflow-y: scroll;
+  }
+}
+
 /* Diff style */
 
 .diff-added {
