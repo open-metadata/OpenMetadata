@@ -46,7 +46,7 @@ export interface DataInsightChartTooltipProps extends TooltipProps<any, any> {
 }
 
 export interface UIKpiResult extends KpiResult {
-  target: string | undefined;
+  target: number;
   metricType: KpiTargetType;
   startDate: number;
   endDate: number;

@@ -140,14 +140,14 @@ const KPIWidget = ({
           const kpi = kpiList.find((k) => k.fullyQualifiedName === kpiName);
 
           // get the kpiTarget
-          const kpiTarget = kpi?.targetDefinition?.[0];
+          const kpiTarget = kpi?.targetValue;
 
           if (!isUndefined(kpi) && !isUndefined(kpiTarget)) {
             return {
               ...previous,
               [kpiName]: {
                 ...resultValue,
-                target: kpiTarget?.value,
+                target: kpiTarget,
                 metricType: kpi?.metricType,
                 startDate: kpi?.startDate,
                 endDate: kpi?.endDate,

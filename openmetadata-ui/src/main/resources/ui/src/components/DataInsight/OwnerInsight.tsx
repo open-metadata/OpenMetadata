@@ -109,8 +109,8 @@ const OwnerInsight: FC<Props> = ({
   }, [totalEntitiesOwnerByType]);
 
   const targetValue = useMemo(() => {
-    if (kpi?.targetDefinition) {
-      return Number(kpi.targetDefinition[0].value) * 100;
+    if (kpi?.targetValue) {
+      return Number(kpi.targetValue) * 100;
     }
 
     return undefined;

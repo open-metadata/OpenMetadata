@@ -198,12 +198,7 @@ const AddKPIPage = () => {
       startDate,
       endDate,
       metricType,
-      targetDefinition: [
-        {
-          name: selectedMetric?.name as string,
-          value: targetValue + '',
-        },
-      ],
+      targetValue,
     };
     setIsCreatingKPI(true);
     try {

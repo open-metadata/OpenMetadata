@@ -128,14 +128,10 @@ const KPIList = () => {
         title: t('label.target'),
         dataIndex: 'targetDefinition',
         key: 'targetDefinition',
-        render: (targetDefinition: Kpi['targetDefinition'], record: Kpi) => {
+        render: (value: Kpi['targetValue'], record: Kpi) => {
           const isPercentageMetric =
             record.metricType === KpiTargetType.Percentage;
-          const targetValue = targetDefinition?.length
-            ? isPercentageMetric
-              ? `${+targetDefinition[0].value * 100}%`
-              : targetDefinition[0].value
-            : '-';
+          const targetValue = isPercentageMetric ? `${+value * 100}%` : value;
 
           return <Typography.Text>{targetValue}</Typography.Text>;
         },

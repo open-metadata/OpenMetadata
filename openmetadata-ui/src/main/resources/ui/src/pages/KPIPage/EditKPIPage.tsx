@@ -28,7 +28,7 @@ import {
 import { useForm } from 'antd/lib/form/Form';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
-import { isUndefined, toInteger, toNumber } from 'lodash';
+import { isUndefined, toInteger } from 'lodash';
 import moment from 'moment';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -93,7 +93,7 @@ const EditKPIPage = () => {
 
   const metricData = useMemo(() => {
     if (kpiData) {
-      return kpiData.targetDefinition[0];
+      return kpiData.targetValue;
     }
 
     return;
@@ -101,7 +101,7 @@ const EditKPIPage = () => {
 
   const initialValues = useMemo(() => {
     if (kpiData) {
-      const metric = kpiData.targetDefinition[0];
+      const metric = kpiData.targetValue;
       const chart = kpiData.dataInsightChart;
       const startDate = moment(kpiData.startDate);
       const endDate = moment(kpiData.endDate);
@@ -110,7 +110,7 @@ const EditKPIPage = () => {
         name: kpiData.name,
         displayName: kpiData.displayName,
         dataInsightChart: chart.displayName || chart.name,
-        metricType: metric.name,
+        metricType: metric,
         startDate,
         endDate,
       };
@@ -190,12 +190,7 @@ const EditKPIPage = () => {
         displayName: values.displayName,
         endDate,
         startDate,
-        targetDefinition: [
-          {
-            ...metricData,
-            value: targetValue + '',
-          },
-        ],
+        targetValue,
       };
 
       const patch = compare(kpiData, updatedData);
@@ -224,7 +219,7 @@ const EditKPIPage = () => {
   }, [kpiData]);
 
   useEffect(() => {
-    const value = toNumber(metricData?.value ?? '0');
+    const value = metricData ?? 0;
     const metricType = kpiData?.metricType;
 
     // for percentage metric convert the fraction to percentage
@@ -279,11 +274,7 @@ const EditKPIPage = () => {
               </Form.Item>
 
               <Form.Item label={t('label.metric-type')} name="metricType">
-                <Input
-                  disabled
-                  data-testid="metricType"
-                  value={metricData?.name}
-                />
+                <Input disabled data-testid="metricType" value={metricData} />
               </Form.Item>
 
               {!isUndefined(metricData) && (

@@ -43,6 +43,6 @@
       "$ref": "../../../dataInsight/kpi/basic.json#/definitions/kpiTargetType"
     }
   },
-  "required": ["name", "description", "dataInsightChart", "startDate", "endDate", "targetDefinition", "metricType"],
+  "required": ["name", "description", "dataInsightChart", "startDate", "endDate", "targetValue", "metricType"],
   "additionalProperties": false
 }
