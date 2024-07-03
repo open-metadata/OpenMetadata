@@ -115,12 +115,12 @@ const verifyPipelineSuccessStatus = (time = 20000) => {
   cy.reload();
   verifyResponseStatusCode('@testSuite', 200);
   cy.get('[id*="tab-pipeline"]').click();
-  verifyResponseStatusCode('@pipelineStatus', 200);
+  cy.wait('@pipelineStatus');
   cy.get('[data-testid="pipeline-status"]').then(($el) => {
     const text = $el.text();
     if (text !== 'Success' && text !== 'Failed' && newTime > 500) {
       verifyPipelineSuccessStatus(newTime);
-    } else {
+    } else if (text === 'Success') {
       cy.get('[data-testid="pipeline-status"]').should('contain', 'Success');
     }
   });

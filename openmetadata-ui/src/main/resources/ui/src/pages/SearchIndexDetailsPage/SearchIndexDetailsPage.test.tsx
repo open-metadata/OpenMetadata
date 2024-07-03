@@ -120,6 +120,10 @@ jest.mock('./SearchIndexFieldsTab/SearchIndexFieldsTab', () => {
   return jest.fn().mockImplementation(() => <p>testSearchIndexFieldsTab</p>);
 });
 
+jest.mock('../../hoc/LimitWrapper', () => {
+  return jest.fn().mockImplementation(({ children }) => <div>{children}</div>);
+});
+
 describe('SearchIndexDetailsPage component', () => {
   it('SearchIndexDetailsPage should fetch permissions', () => {
     render(<SearchIndexDetailsPage />);

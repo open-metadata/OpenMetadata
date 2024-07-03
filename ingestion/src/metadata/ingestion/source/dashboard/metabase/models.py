@@ -13,7 +13,10 @@ Metabase Models
 """
 from typing import List, Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, BeforeValidator, Field
+from typing_extensions import Annotated
+
+MetabaseStrId = Annotated[str, BeforeValidator(lambda x: str(x))]
 
 
 class MetabaseDashboard(BaseModel):
@@ -23,8 +26,8 @@ class MetabaseDashboard(BaseModel):
 
     description: Optional[str] = None
     name: str
-    id: int
-    collection_id: Optional[str] = None
+    id: MetabaseStrId
+    collection_id: Optional[MetabaseStrId] = None
 
 
 class MetabaseCollection(BaseModel):
@@ -33,15 +36,15 @@ class MetabaseCollection(BaseModel):
     """
 
     name: str
-    id: str
+    id: MetabaseStrId
 
 
 class MetabaseDashboardList(BaseModel):
-    data: Optional[List[MetabaseDashboard]] = None
+    data: List[MetabaseDashboard] = []
 
 
 class MetabaseCollectionList(BaseModel):
-    collections: Optional[List[MetabaseCollection]] = None
+    collections: List[MetabaseCollection] = []
 
 
 class Native(BaseModel):
@@ -59,11 +62,11 @@ class MetabaseChart(BaseModel):
     """
 
     description: Optional[str] = None
-    table_id: Optional[str] = None
-    database_id: Optional[int] = None
+    table_id: Optional[MetabaseStrId] = None
+    database_id: Optional[MetabaseStrId] = None
     name: Optional[str] = None
     dataset_query: Optional[DatasetQuery] = None
-    id: Optional[int] = None
+    id: Optional[MetabaseStrId] = None
     display: Optional[str] = None
 
 
@@ -79,8 +82,8 @@ class MetabaseDashboardDetails(BaseModel):
     description: Optional[str] = None
     dashcards: List[DashCard]
     name: Optional[str] = None
-    id: str
-    collection_id: Optional[str] = None
+    id: MetabaseStrId
+    collection_id: Optional[MetabaseStrId] = None
 
 
 class MetabaseDatabaseDetails(BaseModel):
@@ -99,5 +102,5 @@ class MetabaseTable(BaseModel):
     table_schema: Optional[str] = Field(None, alias="schema")
     db: Optional[MetabaseDatabase] = None
     name: Optional[str] = None
-    id: Optional[int] = None
+    id: Optional[MetabaseStrId] = None
     display_name: Optional[str] = None

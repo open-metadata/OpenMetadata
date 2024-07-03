@@ -66,6 +66,7 @@ export enum GlobalSettingOptions {
   APPLICATIONS = 'apps',
   OM_HEALTH = 'om-health',
   APPEARANCE = 'appearance',
+  DATA_OBSERVABILITY = 'dataObservability',
 }
 
 export const SETTINGS_OPTIONS_PATH = {
@@ -102,6 +103,10 @@ export const SETTINGS_OPTIONS_PATH = {
   [GlobalSettingOptions.METADATA]: [
     GlobalSettingsMenuCategory.SERVICES,
     `${GlobalSettingsMenuCategory.SERVICES}.${GlobalSettingOptions.METADATA}`,
+  ],
+  [GlobalSettingOptions.DATA_OBSERVABILITY]: [
+    GlobalSettingsMenuCategory.SERVICES,
+    `${GlobalSettingsMenuCategory.SERVICES}.${GlobalSettingOptions.DATA_OBSERVABILITY}`,
   ],
 
   // Applications

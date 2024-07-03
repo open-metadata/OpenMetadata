@@ -197,6 +197,9 @@ site_menu:
   - category: Deployment / Backup & Restore Metadata
     url: /deployment/backup-restore-metadata
 
+  - category: Deployment / Metrics
+    url: /deployment/metrics
+
   - category: How-to Guides
     url: /how-to-guides
     color: violet-70
@@ -300,14 +303,45 @@ site_menu:
   - category: How-to Guides / Data Collaboration / Overview of Knowledge Center
     url: /how-to-guides/data-collaboration/knowledge-center
 
-  - category: How-to Guides / Data Quality and Profiler
-    url: /how-to-guides/data-quality-profiler
-  - category: How-to Guides / Data Quality and Profiler / Profiler and Data Quality Tab
-    url: /how-to-guides/data-quality-profiler/tab
-  - category: How-to Guides / Data Quality and Profiler / How to Write and Deploy No-Code Test Cases
-    url: /how-to-guides/data-quality-profiler/test
-  - category: How-to Guides / Data Quality and Profiler / How to Set Alerts for Test Case Fails
-    url: /how-to-guides/data-quality-profiler/alerts
+  - category: How-to Guides / Data Quality and Observability
+    url: /how-to-guides/data-quality-observability
+  - category: How-to Guides / Data Quality and Observability / Data Quality
+    url: /how-to-guides/data-quality-observability/quality
+  - category: How-to Guides / Data Quality and Profiler / Data Quality / Data Quality Tab
+    url: /how-to-guides/data-quality-observability/quality/tab
+  - category: How-to Guides / Data Quality and Profiler / Data Quality / How to Write and Deploy No-Code Test Cases
+    url: /how-to-guides/data-quality-observability/quality/test
+  - category: How-to Guides / Data Quality and Observability / Data Quality / Configure Data Quality
+    url: /how-to-guides/data-quality-observability/quality/configure
+  - category: How-to Guides / Data Quality and Observability / Data Quality / Tests - YAML Config
+    url: /how-to-guides/data-quality-observability/quality/tests-yaml
+  - category: How-to Guides / Data Quality and Observability / Data Quality / Custom Tests
+    url: /how-to-guides/data-quality-observability/quality/custom-tests
+  - category: How-to Guides / Data Quality and Observability / Data Profiler
+    url: /how-to-guides/data-quality-observability/profiler
+  - category: How-to Guides / Data Quality and Profiler / Data Profiler/ Profiler Tab
+    url: /how-to-guides/data-quality-observability/profiler/tab
+  - category: How-to Guides / Data Quality and Observability / Data Profiler / Profiler Workflow
+    url: /how-to-guides/data-quality-observability/profiler/workflow
+  - category: How-to Guides / Data Quality and Observability / Data Profiler / Metrics
+    url: /how-to-guides/data-quality-observability/profiler/metrics
+  - category: How-to Guides / Data Quality and Observability / Data Profiler / Sample Data
+    url: /how-to-guides/data-quality-observability/profiler/external-sample-data
+  - category: How-to Guides / Data Quality and Observability / Data Profiler / External Workflow
+    url: /how-to-guides/data-quality-observability/profiler/external-workflow
+  - category: How-to Guides / Data Quality and Observability / Data Profiler / Auto PII Tagging
+    url: /how-to-guides/data-quality-observability/profiler/auto-pii-tagging
+  - category: How-to Guides / Data Quality and Observability / Data Observability
+    url: /how-to-guides/data-quality-observability/observability
+  - category: How-to Guides / Data Quality and Observability / Data Observability / Observability Alerts
+    url: /how-to-guides/data-quality-observability/observability/alerts
+  - category: How-to Guides / Data Quality and Observability / Incident Manager
+    url: /how-to-guides/data-quality-observability/incident-manager
+  - category: How-to Guides / Data Quality and Observability / Incident Manager / How to work with the Incident Manager
+    url: /how-to-guides/data-quality-observability/incident-manager/workflow
+  - category: How-to Guides / Data Quality and Observability / Incident Manager / Root Cause Analysis
+    url: /how-to-guides/data-quality-observability/incident-manager/root-cause-analysis
+    isCollateOnly: true
 
   - category: How-to Guides / Data Lineage
     url: /how-to-guides/data-lineage
@@ -390,6 +424,18 @@ site_menu:
     url: /releases/supported
   - category: Releases / All Releases
     url: /releases/all-releases
+  - category: Releases / All Releases / 1.4.2 Release
+    url: /releases/all-releases/#1.4.2-release
+  - category: Releases / All Releases / 1.4.1 Release
+    url: /releases/all-releases/#1.4.1-release
+  - category: Releases / All Releases / 1.4.0 Release
+    url: /releases/all-releases/#1.4.0-release
+  - category: Releases / All Releases / 1.3.4 Release
+    url: /releases/all-releases/#1.3.4-release
+  - category: Releases / All Releases / 1.3.3 Release
+    url: /releases/all-releases/#1.3.3-release
+  - category: Releases / All Releases / 1.3.2 Release
+    url: /releases/all-releases/#1.3.2-release
   - category: Releases / All Releases / 1.3.1 Release
     url: /releases/all-releases/#1.3.1-release
   - category: Releases / All Releases / 1.3.0 Release
@@ -463,8 +509,8 @@ site_menu:
     url: /connectors/database/bigquery
   - category: Connectors / Database / BigQuery / Run Externally
     url: /connectors/database/bigquery/yaml
-  - category: Connectors / Database / BigQuery / Roles
-    url: /connectors/database/bigquery/roles
+  - category: Connectors / Database / BigQuery / Create Credentials
+    url: /connectors/database/bigquery/create-credentials
   - category: Connectors / Database / BigTable
     url: /connectors/database/bigtable
   - category: Connectors / Database / BigTable / Run Externally
@@ -601,6 +647,10 @@ site_menu:
     url: /connectors/database/sqlite
   - category: Connectors / Database / SQLite / Run Externally
     url: /connectors/database/sqlite/yaml
+  - category: Connectors / Database / Teradata
+    url: /connectors/database/teradata
+  - category: Connectors / Database / Teradata / Run Externally
+    url: /connectors/database/teradata/yaml
   - category: Connectors / Database / Trino
     url: /connectors/database/trino
   - category: Connectors / Database / Trino / Run Externally
@@ -651,9 +701,9 @@ site_menu:
   - category: Connectors / Dashboard / Qlik Cloud
     url: /connectors/dashboard/qlikcloud
   - category: Connectors / Dashboard / Qlik Cloud / Run Externally
-    url: /connectors/dashboard/qliksense/yaml
+    url: /connectors/dashboard/qlikcloud/yaml
   - category: Connectors / Dashboard / Qlik Cloud / API Keys
-    url: /connectors/dashboard/qliksense/api_keys
+    url: /connectors/dashboard/qlikcloud/api_keys
   - category: Connectors / Dashboard / QuickSight
     url: /connectors/dashboard/quicksight
   - category: Connectors / Dashboard / QuickSight / Run Externally
@@ -866,8 +916,6 @@ site_menu:
     url: /connectors/ingestion/lineage/spark-lineage
   - category: Connectors / Ingestion / Versioning
     url: /connectors/ingestion/versioning
-  - category: Connectors / Ingestion / Auto Tagging
-    url: /connectors/ingestion/auto_tagging
   - category: Connectors / Ingestion / Versioning / Change Feeds
     url: /connectors/ingestion/versioning/change-feeds
   - category: Connectors / Ingestion / Versioning / Change Events
@@ -880,37 +928,6 @@ site_menu:
     url: /connectors/ingestion/deployment
   - category: Connectors / Ingestion / Best Practices
     url: /connectors/ingestion/best-practices
-
-
-  - category: Quality & Observability
-    url: /quality-and-observability
-    color: violet-70
-    icon: openmetadata
-
-  - category: Quality & Observability / Profiler
-    url: /quality-and-observability/profiler
-  - category: Quality & Observability / Profiler / Metrics
-    url: /quality-and-observability/profiler/metrics
-  - category: Quality & Observability / Profiler / Sample Data
-    url: /quality-and-observability/profiler/external-sample-data
-  - category: Quality & Observability / Profiler / External Workflow
-    url: /quality-and-observability/profiler/external-workflow
-  - category: Quality & Observability / Profiler / Auto PII Tagging
-    url: /quality-and-observability/profiler/auto-pii-tagging
-  - category: Quality & Observability / Data Quality
-    url: /quality-and-observability/data-quality
-  - category: Quality & Observability / Data Quality / Tests
-    url: /quality-and-observability/data-quality/tests
-  - category: Quality & Observability / Data Quality / Custom Tests
-    url: /quality-and-observability/data-quality/custom-tests
-  - category: Quality & Observability / Data Quality / Incident Manager
-    url: /quality-and-observability/data-quality/incident-manager
-  - category: Quality & Observability / Data Quality / Alerts
-    url: /quality-and-observability/data-quality/alerts
-  - category: Quality & Observability / Data Quality / Root Cause Analysis
-    url: /quality-and-observability/data-quality/root-cause-analysis
-    isCollateOnly: true
-
 
   - category: Main Concepts
     url: /main-concepts

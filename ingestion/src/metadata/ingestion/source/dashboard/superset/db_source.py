@@ -13,7 +13,7 @@ Superset source module
 """
 
 import traceback
-from typing import Iterable, Optional
+from typing import Iterable, List, Optional
 
 from sqlalchemy.engine import Engine
 from sqlalchemy.engine.url import make_url
@@ -252,7 +252,7 @@ class SupersetDBSource(SupersetSourceMixin):
                 col_names = self.get_column_list(chart_json.table_name)
                 try:
                     data_model_request = CreateDashboardDataModelRequest(
-                        name=EntityName(chart_json.datasource_id),
+                        name=EntityName(str(chart_json.datasource_id)),
                         displayName=chart_json.table_name,
                         service=FullyQualifiedEntityName(
                             self.context.get().dashboard_service
@@ -271,3 +271,13 @@ class SupersetDBSource(SupersetSourceMixin):
                             stackTrace=traceback.format_exc(),
                         )
                     )
+
+    def _get_columns_list_for_lineage(self, chart_json: FetchChart) -> List[str]:
+        """
+        Args:
+            chart_json: FetchChart
+        Returns:
+            List of columns as str to generate column lineage
+        """
+        col_list = self.get_column_list(chart_json.table_name)
+        return [col.column_name for col in col_list]

@@ -899,15 +899,14 @@
         }
       },
       "required": [
-        "modelType",
-        "sql"
+        "modelType"
       ],
       "additionalProperties": false
     },
     "fileFormat": {
       "description": "File format in case of file/datalake tables.",
       "type": "string",
-      "enum": ["csv", "tsv", "avro", "parquet", "json", "json.gz", "json.zip"]
+      "enum": ["csv", "tsv", "avro", "parquet", "json", "json.gz", "json.zip", "jsonl", "jsonl.gz", "jsonl.zip"]
     }
   },
   "properties": {

@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Button, Select, Space } from 'antd';
+import { Button, Select } from 'antd';
 import { AxiosError } from 'axios';
 import { capitalize, debounce } from 'lodash';
 import React, {
@@ -123,7 +123,7 @@ const NodeSuggestions: FC<EntitySuggestionProps> = ({
                 e.stopPropagation(); // Prevent select from closing
                 onSelectHandler?.(entity as EntityReference);
               }}>
-              <Space size={0}>
+              <div className="d-flex items-center w-full overflow-hidden">
                 <img
                   alt={entity.serviceType}
                   className="m-r-xs"
@@ -133,7 +133,7 @@ const NodeSuggestions: FC<EntitySuggestionProps> = ({
                 />
                 <div className="d-flex align-start flex-column flex-1">
                   {entity.entityType === EntityType.TABLE && (
-                    <p className="d-block text-xs text-grey-muted w-max-400 truncate p-b-xss">
+                    <p className="d-block text-xs text-grey-muted p-b-xss break-all whitespace-normal text-left">
                       {getSuggestionLabelHeading(
                         entity.fullyQualifiedName ?? '',
                         entity.entityType as string
@@ -147,7 +147,7 @@ const NodeSuggestions: FC<EntitySuggestionProps> = ({
                     {getEntityName(entity)}
                   </p>
                 </div>
-              </Space>
+              </div>
             </Button>
           ),
         }))}

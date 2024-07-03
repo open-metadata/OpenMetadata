@@ -45,6 +45,7 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.TestDefinitionRepository;
+import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
@@ -65,8 +66,8 @@ public class TestDefinitionResource
   public static final String COLLECTION_PATH = "/v1/dataQuality/testDefinitions";
   static final String FIELDS = "owner";
 
-  public TestDefinitionResource(Authorizer authorizer) {
-    super(Entity.TEST_DEFINITION, authorizer);
+  public TestDefinitionResource(Authorizer authorizer, Limits limits) {
+    super(Entity.TEST_DEFINITION, authorizer, limits);
   }
 
   @Override

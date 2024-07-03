@@ -18,7 +18,6 @@ import { capitalize, isEmpty, isUndefined } from 'lodash';
 import { LoadingState } from 'Models';
 import React, { useEffect, useState } from 'react';
 import { useHistory } from 'react-router-dom';
-import { HTTP_STATUS_CODE } from '../../../../constants/Auth.constants';
 import { getServiceDetailsPath } from '../../../../constants/constants';
 import { GlobalSettingsMenuCategory } from '../../../../constants/GlobalSettings.constants';
 import {
@@ -32,6 +31,7 @@ import { useAirflowStatus } from '../../../../hooks/useAirflowStatus';
 import { useApplicationStore } from '../../../../hooks/useApplicationStore';
 import { ConfigData } from '../../../../interface/service.interface';
 import { getServiceLogo } from '../../../../utils/CommonUtils';
+import { handleEntityCreationError } from '../../../../utils/formUtils';
 import {
   getAddServicePath,
   getSettingPath,
@@ -41,7 +41,6 @@ import {
   getServiceRouteFromServiceType,
   getServiceType,
 } from '../../../../utils/ServiceUtils';
-import { showErrorToast } from '../../../../utils/ToastUtils';
 import ResizablePanels from '../../../common/ResizablePanels/ResizablePanels';
 import ServiceDocPanel from '../../../common/ServiceDocPanel/ServiceDocPanel';
 import SuccessScreen from '../../../common/SuccessScreen/SuccessScreen';
@@ -69,7 +68,7 @@ const AddService = ({
   handleAddIngestion,
 }: AddServiceProps) => {
   const history = useHistory();
-  const { currentUser } = useApplicationStore();
+  const { currentUser, setInlineAlertDetails } = useApplicationStore();
   const { fetchAirflowStatus } = useAirflowStatus();
 
   const [showErrorMessage, setShowErrorMessage] = useState(
@@ -153,21 +152,15 @@ const AddService = ({
 
       await fetchAirflowStatus();
     } catch (error) {
-      if (
-        (error as AxiosError).response?.status === HTTP_STATUS_CODE.CONFLICT
-      ) {
-        showErrorToast(
-          t('server.entity-already-exist', {
-            entity: t('label.service'),
-            entityPlural: t('label.service-lowercase-plural'),
-            name: serviceConfig.serviceName,
-          })
-        );
-
-        return;
-      }
-
-      return error;
+      handleEntityCreationError({
+        error: error as AxiosError,
+        entity: t('label.service'),
+        entityLowercase: t('label.service-lowercase'),
+        entityLowercasePlural: t('label.service-lowercase-plural'),
+        setInlineAlertDetails,
+        name: serviceConfig.serviceName,
+        defaultErrorType: 'create',
+      });
     } finally {
       setSaveServiceState('initial');
     }
@@ -315,12 +308,8 @@ const AddService = ({
           />
         ),
         className: 'service-doc-panel',
-        minWidth: 60,
-        overlay: {
-          displayThreshold: 200,
-          header: t('label.setup-guide'),
-          rotation: 'counter-clockwise',
-        },
+        minWidth: 400,
+        flex: 0.3,
       }}
     />
   );

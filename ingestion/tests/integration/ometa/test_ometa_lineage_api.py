@@ -14,6 +14,7 @@ OpenMetadata high-level API Lineage test
 """
 from unittest import TestCase
 
+from _openmetadata_testutils.ometa import int_admin_ometa
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.entity.data.dashboard import Dashboard
 from metadata.generated.schema.entity.data.dashboardDataModel import DashboardDataModel
@@ -32,12 +33,7 @@ from metadata.generated.schema.type.entityLineage import (
 )
 from metadata.generated.schema.type.entityReference import EntityReference
 
-from ..integration_base import (
-    generate_name,
-    get_create_entity,
-    get_create_service,
-    int_admin_ometa,
-)
+from ..integration_base import generate_name, get_create_entity, get_create_service
 
 
 class OMetaLineageTest(TestCase):

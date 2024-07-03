@@ -29,6 +29,7 @@ import DescriptionV1 from '../../components/common/EntityDescription/Description
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../components/common/Loader/Loader';
 import QueryViewer from '../../components/common/QueryViewer/QueryViewer.component';
+import ResizablePanels from '../../components/common/ResizablePanels/ResizablePanels';
 import TabsLabel from '../../components/common/TabsLabel/TabsLabel.component';
 import { DataAssetsHeader } from '../../components/DataAssets/DataAssetsHeader/DataAssetsHeader.component';
 import SampleDataWithMessages from '../../components/Database/SampleDataWithMessages/SampleDataWithMessages';
@@ -57,6 +58,7 @@ import {
 } from '../../generated/api/feed/createThread';
 import { Tag } from '../../generated/entity/classification/tag';
 import { SearchIndex, TagLabel } from '../../generated/entity/data/searchIndex';
+import LimitWrapper from '../../hoc/LimitWrapper';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
 import { useFqn } from '../../hooks/useFqn';
 import { FeedCounts } from '../../interface/feed.interface';
@@ -377,54 +379,69 @@ function SearchIndexDetailsPage() {
         key: EntityTabs.FIELDS,
         children: (
           <Row gutter={[0, 16]} id="schemaDetails" wrap={false}>
-            <Col
-              className="p-t-sm m-l-lg tab-content-height p-r-lg"
-              flex="auto">
-              <div className="d-flex flex-col gap-4">
-                <DescriptionV1
-                  description={searchIndexDetails?.description}
-                  entityFqn={decodedSearchIndexFQN}
-                  entityName={entityName}
-                  entityType={EntityType.SEARCH_INDEX}
-                  hasEditAccess={editDescriptionPermission}
-                  isDescriptionExpanded={isEmpty(searchIndexDetails?.fields)}
-                  isEdit={isEdit}
-                  owner={searchIndexDetails?.owner}
-                  showActions={!searchIndexDetails?.deleted}
-                  onCancel={onCancel}
-                  onDescriptionEdit={onDescriptionEdit}
-                  onDescriptionUpdate={onDescriptionUpdate}
-                  onThreadLinkSelect={onThreadLinkSelect}
-                />
-                <SearchIndexFieldsTab
-                  entityFqn={decodedSearchIndexFQN}
-                  fields={searchIndexDetails?.fields ?? []}
-                  hasDescriptionEditAccess={editDescriptionPermission}
-                  hasTagEditAccess={editTagsPermission}
-                  isReadOnly={searchIndexDetails?.deleted}
-                  onThreadLinkSelect={onThreadLinkSelect}
-                  onUpdate={onFieldsUpdate}
-                />
-              </div>
-            </Col>
-            <Col
-              className="entity-tag-right-panel-container"
-              data-testid="entity-right-panel"
-              flex="320px">
-              <EntityRightPanel<EntityType.SEARCH_INDEX>
-                customProperties={searchIndexDetails}
-                dataProducts={searchIndexDetails?.dataProducts ?? []}
-                domain={searchIndexDetails?.domain}
-                editCustomAttributePermission={editCustomAttributePermission}
-                editTagPermission={editTagsPermission}
-                entityFQN={decodedSearchIndexFQN}
-                entityId={searchIndexDetails?.id ?? ''}
-                entityType={EntityType.SEARCH_INDEX}
-                selectedTags={searchIndexTags}
-                viewAllPermission={viewAllPermission}
-                onExtensionUpdate={onExtensionUpdate}
-                onTagSelectionChange={handleTagSelection}
-                onThreadLinkSelect={onThreadLinkSelect}
+            <Col className="tab-content-height" span={24}>
+              <ResizablePanels
+                applyDefaultStyle={false}
+                firstPanel={{
+                  children: (
+                    <div className="d-flex flex-col gap-4 p-t-sm m-l-lg p-r-lg">
+                      <DescriptionV1
+                        description={searchIndexDetails?.description}
+                        entityFqn={decodedSearchIndexFQN}
+                        entityName={entityName}
+                        entityType={EntityType.SEARCH_INDEX}
+                        hasEditAccess={editDescriptionPermission}
+                        isDescriptionExpanded={isEmpty(
+                          searchIndexDetails?.fields
+                        )}
+                        isEdit={isEdit}
+                        owner={searchIndexDetails?.owner}
+                        showActions={!searchIndexDetails?.deleted}
+                        onCancel={onCancel}
+                        onDescriptionEdit={onDescriptionEdit}
+                        onDescriptionUpdate={onDescriptionUpdate}
+                        onThreadLinkSelect={onThreadLinkSelect}
+                      />
+                      <SearchIndexFieldsTab
+                        entityFqn={decodedSearchIndexFQN}
+                        fields={searchIndexDetails?.fields ?? []}
+                        hasDescriptionEditAccess={editDescriptionPermission}
+                        hasTagEditAccess={editTagsPermission}
+                        isReadOnly={searchIndexDetails?.deleted}
+                        onThreadLinkSelect={onThreadLinkSelect}
+                        onUpdate={onFieldsUpdate}
+                      />
+                    </div>
+                  ),
+                  minWidth: 800,
+                  flex: 0.87,
+                }}
+                secondPanel={{
+                  children: (
+                    <div data-testid="entity-right-panel">
+                      <EntityRightPanel<EntityType.SEARCH_INDEX>
+                        customProperties={searchIndexDetails}
+                        dataProducts={searchIndexDetails?.dataProducts ?? []}
+                        domain={searchIndexDetails?.domain}
+                        editCustomAttributePermission={
+                          editCustomAttributePermission
+                        }
+                        editTagPermission={editTagsPermission}
+                        entityFQN={decodedSearchIndexFQN}
+                        entityId={searchIndexDetails?.id ?? ''}
+                        entityType={EntityType.SEARCH_INDEX}
+                        selectedTags={searchIndexTags}
+                        viewAllPermission={viewAllPermission}
+                        onExtensionUpdate={onExtensionUpdate}
+                        onTagSelectionChange={handleTagSelection}
+                        onThreadLinkSelect={onThreadLinkSelect}
+                      />
+                    </div>
+                  ),
+                  minWidth: 320,
+                  flex: 0.13,
+                  className: 'entity-resizable-right-panel-container',
+                }}
               />
             </Col>
           </Row>
@@ -776,6 +793,10 @@ function SearchIndexDetailsPage() {
             onChange={handleTabChange}
           />
         </Col>
+
+        <LimitWrapper resource="searchIndex">
+          <></>
+        </LimitWrapper>
 
         {threadLink ? (
           <ActivityThreadPanel

@@ -17,6 +17,7 @@ import i18next from 'i18next';
 import { isEmpty } from 'lodash';
 import React from 'react';
 import { Link } from 'react-router-dom';
+import { ReactComponent as IconChart } from '../assets/svg/chart.svg';
 import { ReactComponent as IconDashboard } from '../assets/svg/dashboard-grey.svg';
 import { ReactComponent as DataProductIcon } from '../assets/svg/ic-data-product.svg';
 import { ReactComponent as IconContainer } from '../assets/svg/ic-storage.svg';
@@ -156,6 +157,12 @@ export const getGroupLabel = (index: string) => {
     case SearchIndex.DATA_PRODUCT:
       label = i18next.t('label.data-product-plural');
       GroupIcon = DataProductIcon;
+
+      break;
+
+    case SearchIndex.CHART:
+      label = i18next.t('label.chart-plural');
+      GroupIcon = IconChart;
 
       break;
 

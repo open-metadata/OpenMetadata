@@ -160,7 +160,10 @@ const removeAssetsFromGlossaryTerm = (glossaryTerm, glossary) => {
 const deleteGlossaryTerm = ({ name, fullyQualifiedName }) => {
   visitGlossaryTermPage(name, fullyQualifiedName);
 
-  cy.get('[data-testid="manage-button"]').should('be.visible').click();
+  cy.get('[data-testid="manage-button"]')
+    .scrollIntoView()
+    .should('be.visible')
+    .click();
   cy.get('[data-testid="delete-button"]')
     .scrollIntoView()
     .should('be.visible')
@@ -198,7 +201,10 @@ const goToAssetsTab = (
 ) => {
   visitGlossaryTermPage(name, fqn, fetchPermission);
 
-  cy.get('[data-testid="assets"]').should('be.visible').click();
+  cy.get('[data-testid="assets"]')
+    .scrollIntoView()
+    .should('be.visible')
+    .click();
   cy.get('.ant-tabs-tab-active').contains('Assets').should('be.visible');
 };
 
@@ -716,6 +722,11 @@ describe('Glossary page should work properly', { tags: 'Governance' }, () => {
       glossary: GLOSSARY_1,
       glossaryTerm: GLOSSARY_1.terms[1],
     });
+
+    approveGlossaryTermWorkflow({
+      glossary: GLOSSARY_1,
+      glossaryTerm: GLOSSARY_1.terms[2],
+    });
     cy.logout();
     Cypress.session.clearAllSavedSessions();
     cy.login();
@@ -1217,9 +1228,10 @@ describe('Glossary page should work properly', { tags: 'Governance' }, () => {
 
     // checking the breadcrumb, if the change parent term is updated and displayed
     cy.get('[data-testid="breadcrumb-link"]')
-      .should('be.visible')
       .contains(`${parentTerm.name}`)
-      .click();
+      .as('breadcrumb');
+
+    cy.get('@breadcrumb').click();
 
     verifyResponseStatusCode('@fetchGlossaryTermData', 200);
 

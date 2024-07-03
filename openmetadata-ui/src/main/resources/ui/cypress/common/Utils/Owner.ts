@@ -64,12 +64,29 @@ export const validateOwnerAndTeamCounts = () => {
   cy.clickOutside();
 };
 
-export const addOwner = (ownerName: string, dataTestId?: string) => {
+export const addOwner = (
+  ownerName: string,
+  dataTestId?: string,
+  verifyPatchResponse = true
+) => {
+  interceptURL(
+    'GET',
+    '/api/v1/search/query?q=*&index=team_search_index*',
+    'getTeams'
+  );
   interceptURL('GET', '/api/v1/users?*isBot=false*', 'getUsers');
-  cy.get('[data-testid="edit-owner"]').click();
+  cy.get('[data-testid="edit-owner"]')
+    .scrollIntoView()
+    .click({ waitForAnimations: false });
 
   cy.get("[data-testid='select-owner-tabs']").should('be.visible');
-  cy.get('.ant-tabs [id*=tab-users]').click();
+
+  verifyResponseStatusCode('@getTeams', 200); // wait for teams to load before switching the tab
+
+  cy.get('.ant-tabs [id*=tab-users]')
+    .scrollIntoView()
+    .click({ waitForAnimations: false });
+
   verifyResponseStatusCode('@getUsers', 200);
   interceptURL(
     'GET',
@@ -84,7 +101,10 @@ export const addOwner = (ownerName: string, dataTestId?: string) => {
   interceptURL('PATCH', `/api/v1/**`, 'patchOwner');
 
   cy.get(`.ant-popover [title="${ownerName}"]`).click();
-  verifyResponseStatusCode('@patchOwner', 200);
+
+  if (verifyPatchResponse) {
+    verifyResponseStatusCode('@patchOwner', 200);
+  }
 
   cy.get(`[data-testid=${dataTestId ?? 'owner-link'}]`).should(
     'contain',

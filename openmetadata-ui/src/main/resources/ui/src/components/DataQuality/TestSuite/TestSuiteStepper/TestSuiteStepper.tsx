@@ -23,6 +23,7 @@ import {
 } from '../../../../constants/TestSuite.constant';
 import { FormSubmitType } from '../../../../enums/form.enum';
 import { OwnerType } from '../../../../enums/user.enum';
+import { TestCase } from '../../../../generated/tests/testCase';
 import { TestSuite } from '../../../../generated/tests/testSuite';
 import { useApplicationStore } from '../../../../hooks/useApplicationStore';
 import {
@@ -56,7 +57,10 @@ const TestSuiteStepper = () => {
     setActiveServiceStep(2);
   };
 
-  const onSubmit = async (data: string[]) => {
+  const onSubmit = async (data: TestCase[]) => {
+    const testCaseIds = data.reduce((ids, curr) => {
+      return curr.id ? [...ids, curr.id] : ids;
+    }, [] as string[]);
     try {
       const owner = {
         id: currentUser?.id ?? '',
@@ -70,7 +74,7 @@ const TestSuiteStepper = () => {
       });
       setTestSuiteResponse(response);
       await addTestCaseToLogicalTestSuite({
-        testCaseIds: data,
+        testCaseIds: testCaseIds,
         testSuiteId: response.id ?? '',
       });
       setActiveServiceStep(3);
@@ -171,13 +175,9 @@ const TestSuiteStepper = () => {
             )}
           />
         ),
-        className: 'p-md service-doc-panel',
-        minWidth: 60,
-        overlay: {
-          displayThreshold: 200,
-          header: t('label.setup-guide'),
-          rotation: 'counter-clockwise',
-        },
+        className: 'p-md p-t-xl',
+        minWidth: 400,
+        flex: 0.3,
       }}
     />
   );

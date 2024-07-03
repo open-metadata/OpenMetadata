@@ -18,7 +18,7 @@ import string
 import time
 import traceback
 from collections import namedtuple
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, Iterable, List, Optional, Union
 
 from pydantic import ValidationError
@@ -1525,6 +1525,8 @@ class SampleDataSource(
                                 TestResultValue.model_validate(res_value)
                                 for res_value in result["testResultValues"]
                             ],
+                            minBound=result.get("minBound"),
+                            maxBound=result.get("maxBound"),
                         ),
                         test_case_name=case.fullyQualifiedName.root,
                     )
@@ -1535,6 +1537,9 @@ class SampleDataSource(
                     TableData(
                         rows=test_case_results["failedRowsSample"]["rows"],
                         columns=test_case_results["failedRowsSample"]["columns"],
+                    ),
+                    validate=test_case_results["failedRowsSample"].get(
+                        "validate", True
                     ),
                 )
             if test_case_results.get("inspectionQuery"):
@@ -1552,9 +1557,10 @@ class SampleDataSource(
             for report_datum in report_data:
                 if report_type == ReportDataType.rawCostAnalysisReportData.value:
                     start_ts = int(
-                        (datetime.utcnow() - timedelta(days=60)).timestamp() * 1000
+                        (datetime.now(timezone.utc) - timedelta(days=60)).timestamp()
+                        * 1000
                     )
-                    end_ts = int(datetime.utcnow().timestamp() * 1000)
+                    end_ts = int(datetime.now(timezone.utc).timestamp() * 1000)
                     tmstp = random.randint(start_ts, end_ts)
                     report_datum["data"]["lifeCycle"]["accessed"]["timestamp"] = tmstp
                 record = OMetaDataInsightSample(

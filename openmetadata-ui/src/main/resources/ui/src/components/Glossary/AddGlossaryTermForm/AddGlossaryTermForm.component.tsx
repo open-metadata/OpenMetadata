@@ -17,10 +17,7 @@ import { t } from 'i18next';
 import { isEmpty, isString } from 'lodash';
 import React, { useEffect } from 'react';
 import { ReactComponent as DeleteIcon } from '../../../assets/svg/ic-delete.svg';
-import {
-  ENTITY_NAME_REGEX,
-  HEX_COLOR_CODE_REGEX,
-} from '../../../constants/regex.constants';
+import { HEX_COLOR_CODE_REGEX } from '../../../constants/regex.constants';
 import { EntityReference } from '../../../generated/entity/type';
 import {
   FieldProp,
@@ -31,6 +28,7 @@ import { getEntityName } from '../../../utils/EntityUtils';
 import { generateFormFields, getField } from '../../../utils/formUtils';
 import { fetchGlossaryList } from '../../../utils/TagsUtils';
 
+import { NAME_FIELD_RULES } from '../../../constants/Form.constants';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { UserTeam } from '../../common/AssigneeList/AssigneeList.interface';
 import { UserTag } from '../../common/UserTag/UserTag.component';
@@ -167,20 +165,7 @@ const AddGlossaryTermForm = ({
       props: {
         'data-testid': 'name',
       },
-      rules: [
-        {
-          pattern: ENTITY_NAME_REGEX,
-          message: t('message.entity-name-validation'),
-        },
-        {
-          min: 1,
-          max: 128,
-          message: `${t('message.entity-maximum-size', {
-            entity: `${t('label.name')}`,
-            max: '128',
-          })}`,
-        },
-      ],
+      rules: NAME_FIELD_RULES,
     },
     {
       name: 'displayName',

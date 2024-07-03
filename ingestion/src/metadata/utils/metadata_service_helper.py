@@ -11,7 +11,9 @@ SERVICE_TYPE_MAPPER = {
         "service_name": "DeltaLake",
         "connection": {
             "config": {
-                "metastoreConnection": {"metastoreHostPort": "http://localhost:9083"}
+                "configSource": {
+                    "connection": {"metastoreHostPort": "http://localhost:9083"}
+                }
             }
         },
     },

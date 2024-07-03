@@ -212,13 +212,19 @@ export const updateExpiration = (expiry: number | string) => {
 };
 
 export const editDisplayName = (editedUserName: string) => {
+  interceptURL(
+    'GET',
+    '/api/v1/feed?*type=Conversation*',
+    'ActivityFeedConversation'
+  );
+
   cy.get('[data-testid="edit-displayName"]').should('be.visible');
+  verifyResponseStatusCode('@ActivityFeedConversation', 200); // wait for the feed to load
   cy.get('[data-testid="edit-displayName"]').click();
   cy.get('[data-testid="displayName"]').clear();
   cy.get('[data-testid="displayName"]').type(editedUserName);
   interceptURL('PATCH', '/api/v1/users/*', 'updateName');
   cy.get('[data-testid="inline-save-btn"]').click();
-  cy.get('[data-testid="edit-displayName"]').scrollIntoView();
   cy.get('[data-testid="user-name"]').should('contain', editedUserName);
 };
 
@@ -288,9 +294,6 @@ export const handleAdminUpdateDetails = (
   editTeams(teamName);
 
   // edit description
-  cy.wait(500);
-  cy.get('.ant-collapse-expand-icon > .anticon > svg').scrollIntoView();
-  cy.get('.ant-collapse-expand-icon > .anticon > svg').click();
   editDescription(updatedDescription);
 
   // edit roles

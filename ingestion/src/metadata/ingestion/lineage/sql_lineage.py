@@ -11,6 +11,7 @@
 """
 Helper functions to handle SQL lineage operations
 """
+import itertools
 import traceback
 from typing import Any, Iterable, List, Optional, Tuple
 
@@ -250,11 +251,23 @@ def _build_table_lineage(
     query: str,
     column_lineage_map: dict,
     lineage_source: LineageSource = LineageSource.QueryLineage,
-) -> Iterable[Either[AddLineageRequest]]:
+) -> Either[AddLineageRequest]:
     """
     Prepare the lineage request generator
+
+    Args:
+        from_entity (Table): entity link comes from
+        to_entity (Table): entity to link to
+        from_table_raw_name (str): table entity raw name we link from
+        to_table_raw_name (str): table entity raw name we link to
+        query (str): query
+        column_lineage_map (dict): map of the column lineage
+        lineage_source (LineageSource): lineage source
+
+    Returns:
+        Either[AddLineageRequest] with the lineage request or an error
     """
-    if from_entity and to_entity:
+    try:
         col_lineage = get_column_lineage(
             to_entity=to_entity,
             to_table_raw_name=str(to_table_raw_name),
@@ -279,10 +292,18 @@ def _build_table_lineage(
         )
         if lineage_details:
             lineage.edge.lineageDetails = lineage_details
-        yield Either(right=lineage)
+        return Either(right=lineage)
+    except Exception as e:
+        return Either(
+            left=StackTraceError(
+                name="Lineage",
+                error=f"Error creating lineage for tables [{from_table_raw_name}] and [{to_table_raw_name}]: {e}",
+                stackTrace=traceback.format_exc(),
+            )
+        )
 
 
-# pylint: disable=too-many-arguments
+# pylint: disable=too-many-arguments,too-many-locals
 def _create_lineage_by_table_name(
     metadata: OpenMetadata,
     from_table: str,
@@ -315,9 +336,18 @@ def _create_lineage_by_table_name(
             table_name=to_table,
         )
 
-        for from_entity in from_table_entities or []:
-            for to_entity in to_table_entities or []:
-                yield from _build_table_lineage(
+        for table_name, entity in (
+            (from_table, from_table_entities),
+            (to_table, to_table_entities),
+        ):
+            if entity is None:
+                raise RuntimeError(f"Table entity not found: [{table_name}]")
+
+        for from_entity, to_entity in itertools.product(
+            from_table_entities, to_table_entities
+        ):
+            if to_entity and from_entity:
+                yield _build_table_lineage(
                     to_entity=to_entity,
                     from_entity=from_entity,
                     to_table_raw_name=to_table,

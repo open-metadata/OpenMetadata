@@ -1,0 +1,50 @@
+{
+  "name": "tableDiff",
+  "fullyQualifiedName": "tableDiff",
+  "displayName": "Compare 2 tables for differences",
+  "description": "Test if 2 tables have less that <threshold> diff rows.",
+  "entityType": "TABLE",
+  "testPlatforms": [
+    "OpenMetadata"
+  ],
+  "parameterDefinition": [
+    {
+      "name": "table2",
+      "displayName": "Table 2",
+      "description": "Fully qualified name of the table to compare against.",
+      "dataType": "STRING",
+      "required": "true"
+    },
+    {
+      "name": "keyColumns",
+      "displayName": "Key Columns",
+      "description": "The columns to use as the key for the comparison. If not provided, it will be resolved from the primary key or unique columns. The tuples created from the key columns must be unique.",
+      "dataType": "ARRAY",
+      "required": false
+    },
+    {
+      "name": "threshold",
+      "displayName": "Threshold",
+      "description": "Threshold to use to determine if the test passes or fails (defaults to 0).",
+      "dataType": "NUMBER",
+      "required": false
+    },
+    {
+      "name": "useColumns",
+      "displayName": "Use Columns",
+      "description": "Limits the scope of the test to this list of columns. If not provided, all columns will be used except the key columns.",
+      "dataType": "ARRAY",
+      "required": false
+    },
+    {
+      "name": "where",
+      "displayName": "SQL Where Clause",
+      "description": "Use this where clause to filter the rows to compare.",
+      "dataType": "STRING",
+      "required": false
+    }
+  ],
+  "provider": "system",
+  "datatQualityDimension": "Consistency"
+}
+  
