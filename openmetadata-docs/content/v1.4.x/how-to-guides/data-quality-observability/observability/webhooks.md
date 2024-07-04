@@ -1,6 +1,6 @@
 ---
 title: Webhooks
-slug: /developers/webhooks
+slug: /how-to-guides/data-quality-observability/observability/webhooks
 ---
 
 {% note %}
@@ -39,7 +39,7 @@ OpenMetadata also allows the user to customise the webhook with a wide range of 
    Event data for specific action can be achieved.
 
 {% image
-src="/images/v1.5/developers/webhook.png"
+src="/images/v1.4/how-to-guides/observability/webhook.png"
 alt="Generic Webhook"
 caption="Generic Webhook"
 /%}
@@ -54,7 +54,7 @@ caption="Generic Webhook"
 
 
 {% image
-src="/images/v1.5/developers/slack.png"
+src="/images/v1.4/how-to-guides/observability/slack.png"
 alt="Slack Webhook"
 caption="Slack Webhook"
 /%}
@@ -68,7 +68,7 @@ caption="Slack Webhook"
    Event data for specific action can be achieved.
 
 {% image
-src="/images/v1.5/developers/msteam.png"
+src="/images/v1.4/how-to-guides/observability/msteam.png"
 alt="MS Team Webhook"
 caption="MS Team Webhook"
 /%} 
@@ -82,7 +82,7 @@ caption="MS Team Webhook"
    Event data for specific action can be achieved.
 
 {% image
-src="/images/v1.5/developers/gchat.png"
+src="/images/v1.4/how-to-guides/observability/gchat.png"
 alt="Gchat Webhook"
 caption="Gchat Webhook"
 /%} 
