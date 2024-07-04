@@ -133,7 +133,6 @@ class TableDiffParamsSetter(RuntimeParameterSetter):
         url = urlparse(service_url)
         # remove the driver name from the url because table-diff doesn't support it
         kwargs = {"scheme": url.scheme.split("+")[0]}
-        # pylint: disable=unbalanced-tuple-unpacking
         _, database, schema, _ = fqn.split(table_fqn)
         # path needs to include the database AND schema in some of the connectors
         if kwargs["scheme"] in ["mssql"]:
@@ -142,7 +141,6 @@ class TableDiffParamsSetter(RuntimeParameterSetter):
 
     @staticmethod
     def get_data_diff_table_path(table_fqn: str):
-        # pylint: disable=unbalanced-tuple-unpacking
         _, _, schema, table = fqn.split(table_fqn)
         return fqn._build(  # pylint: disable=protected-access
             "___SERVICE___", "__DATABASE__", schema, table

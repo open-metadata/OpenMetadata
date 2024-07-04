@@ -86,7 +86,10 @@ class GCPSecretsManager(ExternalSecretsManager, ABC):
     """
 
     def __init__(self, loader: SecretsManagerClientLoader):
-        super().__init__(SecretsManagerProvider.gcp, loader=loader)
+        super().__init__(
+            SecretsManagerProvider.gcp,  # TODO fix this pylint: disable=no-member
+            loader=loader,
+        )
 
     def get_string_value(self, secret_id: str) -> str:
         """

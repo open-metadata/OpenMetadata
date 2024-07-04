@@ -9,10 +9,9 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 # pylint: disable=missing-module-docstring
-import itertools
 import traceback
 from itertools import islice
-from typing import Optional, List, Tuple, Iterable
+from typing import Iterable, Optional, Tuple
 from urllib.parse import urlparse
 
 import data_diff
@@ -226,13 +225,13 @@ class TableDiffValidator(BaseTestValidator, SQAValidatorMixin):
             diff_iter: iterator returned from the data_diff algorithm
 
         Returns:
-            int: accurate count of the total diffs
+            int: accurate count of the total diffs up to the limit
 
         """
         len_key_columns = len(self.runtime_params.keyColumns)
         key_set = set()
         # combine diffs on same key to "!"
-        for sign, values in diff_iter:
+        for _, values in diff_iter:
             k = values[:len_key_columns]
             if k in key_set:
                 continue
