@@ -11,7 +11,7 @@
 # pylint: disable=missing-module-docstring
 import traceback
 from itertools import islice
-from typing import Dict, List, Optional, Tuple, Iterable
+from typing import Dict, Iterable, List, Optional, Tuple
 from urllib.parse import urlparse
 
 import data_diff
