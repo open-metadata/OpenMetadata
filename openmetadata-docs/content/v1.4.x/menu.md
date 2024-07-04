@@ -780,6 +780,8 @@ site_menu:
     url: /how-to-guides/data-quality-observability/observability
   - category: How-to Guides / Data Quality and Observability / Data Observability / Observability Alerts
     url: /how-to-guides/data-quality-observability/observability/alerts
+  - category: How-to Guides / Data Quality and Observability / Data Observability / Webhooks
+    url: /how-to-guides/data-quality-observability/observability/webhooks
   - category: How-to Guides / Data Quality and Observability / Incident Manager
     url: /how-to-guides/data-quality-observability/incident-manager
   - category: How-to Guides / Data Quality and Observability / Incident Manager / How to work with the Incident Manager
@@ -1908,8 +1910,6 @@ site_menu:
     url: /developers/contribute/developing-a-new-connector/update-documentation
   - category: Developers / Contribute / UX Style Guide
     url: /developers/contribute/ux-style-guide
-  - category: Developers / Webhooks
-    url: /developers/webhooks
   - category: Developers / Bots
     url: /developers/bots
   - category: Developers / Add Language Support
