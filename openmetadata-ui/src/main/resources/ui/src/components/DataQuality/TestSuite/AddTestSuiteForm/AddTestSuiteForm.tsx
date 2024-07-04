@@ -103,7 +103,6 @@ const AddTestSuiteForm: React.FC<AddTestSuiteFormProps> = ({
       <Form.Item label={t('label.description')} name="description">
         <RichTextEditor
           data-testid="test-suite-description"
-          height="200px"
           initialValue={testSuite?.description ?? ''}
           onTextChange={(value) => form.setFieldsValue({ description: value })}
         />

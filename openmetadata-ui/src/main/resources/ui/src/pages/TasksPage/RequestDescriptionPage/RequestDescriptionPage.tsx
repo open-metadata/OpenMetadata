@@ -60,7 +60,7 @@ const RequestDescription = () => {
   const location = useLocation();
   const history = useHistory();
   const [form] = useForm();
-  const markdownRef = useRef<EditorContentRef>();
+  const markdownRef = useRef<EditorContentRef>({} as EditorContentRef);
 
   const { entityType } = useParams<{ entityType: EntityType }>();
 

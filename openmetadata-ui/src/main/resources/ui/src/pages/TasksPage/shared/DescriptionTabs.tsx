@@ -40,7 +40,7 @@ export const DescriptionTabs = ({
   const [description] = useState(value);
   const [diffs, setDiffs] = useState<Change[]>([]);
   const [activeTab, setActiveTab] = useState<string>('3');
-  const markdownRef = useRef<EditorContentRef>();
+  const markdownRef = useRef<EditorContentRef>({} as EditorContentRef);
 
   const onTabChange = useCallback(
     (key: string) => {
@@ -89,7 +89,6 @@ export const DescriptionTabs = ({
       <TabPane data-testid="new-tab" key="3" tab="New">
         <RichTextEditor
           className="m-t-sm"
-          height="208px"
           initialValue={suggestion}
           placeHolder={placeHolder ?? t('label.update-description')}
           ref={markdownRef}

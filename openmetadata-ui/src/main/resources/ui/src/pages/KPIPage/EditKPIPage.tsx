@@ -403,7 +403,6 @@ const EditKPIPage = () => {
 
               <Form.Item label={t('label.description')} name="description">
                 <RichTextEditor
-                  height="200px"
                   initialValue={description}
                   placeHolder={t('message.write-your-description')}
                   style={{ margin: 0 }}

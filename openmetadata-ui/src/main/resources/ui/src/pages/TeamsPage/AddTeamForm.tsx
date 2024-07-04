@@ -14,10 +14,9 @@
 import { Form, Input, Modal, Select } from 'antd';
 import { AxiosError } from 'axios';
 import { toLower, trim } from 'lodash';
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import RichTextEditor from '../../components/common/RichTextEditor/RichTextEditor';
-import { EditorContentRef } from '../../components/common/RichTextEditor/RichTextEditor.interface';
 import { VALIDATION_MESSAGES } from '../../constants/constants';
 import { NAME_FIELD_RULES } from '../../constants/Form.constants';
 import { Team, TeamType } from '../../generated/entity/teams/team';
@@ -42,7 +41,6 @@ const AddTeamForm: React.FC<AddTeamFormType> = ({
   const { t } = useTranslation();
   const [description, setDescription] = useState<string>('');
   const [allTeam, setAllTeam] = useState<Team[]>([]);
-  const markdownRef = useRef<EditorContentRef>();
 
   const teamTypeOptions = useMemo(() => {
     return getTeamOptionsFromType(parentTeamType).map((type) => ({
@@ -187,7 +185,6 @@ const AddTeamForm: React.FC<AddTeamFormType> = ({
           <RichTextEditor
             data-testid="description"
             initialValue=""
-            ref={markdownRef}
             onTextChange={(value) => setDescription(value)}
           />
         </Form.Item>

@@ -13,120 +13,58 @@
 
 /* eslint-disable */
 
-import { Editor, Viewer } from '@toast-ui/react-editor';
 import classNames from 'classnames';
-import { uniqueId } from 'lodash';
-import React, {
-  createRef,
-  forwardRef,
-  useEffect,
-  useImperativeHandle,
-  useState,
-} from 'react';
-import i18n from '../../../utils/i18next/LocalUtil';
-import { EDITOR_TOOLBAR_ITEMS } from './EditorToolBar';
+import React, { forwardRef, useImperativeHandle, useRef } from 'react';
+import { formatContent } from '../../../utils/BlockEditorUtils';
+import BlockEditor from '../../BlockEditor/BlockEditor';
+import { BlockEditorRef } from '../../BlockEditor/BlockEditor.interface';
 import './rich-text-editor.less';
-import { editorRef, RichTextEditorProp } from './RichTextEditor.interface';
+import {
+  EditorContentRef,
+  RichTextEditorProp,
+} from './RichTextEditor.interface';
 
-const RichTextEditor = forwardRef<editorRef, RichTextEditorProp>(
+const RichTextEditor = forwardRef<EditorContentRef, RichTextEditorProp>(
   (
     {
-      placeHolder = 'Write your description',
-      previewStyle = 'tab',
-      editorType = 'markdown',
-      previewHighlight = false,
-      useCommandShortcut = true,
-      extendedAutolinks = true,
-      hideModeSwitch = true,
       autofocus = false,
       initialValue = '',
       readonly,
-      height,
       className,
       style,
+      placeholder,
       onTextChange,
     }: RichTextEditorProp,
     ref
   ) => {
-    const richTextEditorRef = createRef<Editor>();
+    const editorRef = useRef<BlockEditorRef>({} as BlockEditorRef);
 
-    const [editorValue, setEditorValue] = useState(initialValue);
-
-    const onChangeHandler = () => {
-      const value = richTextEditorRef.current
-        ?.getInstance()
-        .getMarkdown() as string;
-      setEditorValue(value);
-      onTextChange && onTextChange(value);
+    const onChangeHandler = (backendFormatHtmlContent: string) => {
+      onTextChange && onTextChange(backendFormatHtmlContent);
     };
 
     useImperativeHandle(ref, () => ({
       getEditorContent() {
-        return editorValue;
-      },
-      clearEditorContent() {
-        richTextEditorRef.current?.getInstance().setMarkdown('');
+        const htmlContent = editorRef.current?.editor?.getHTML() ?? '';
+        const backendFormat = formatContent(htmlContent, 'server');
+
+        return backendFormat;
       },
     }));
 
-    useEffect(() => {
-      setEditorValue(initialValue);
-    }, [initialValue]);
-
-    // handle the direction of the editor
-    useEffect(() => {
-      const dir = i18n.dir();
-      const editorElement = document.querySelector('.toastui-editor.md-mode');
-      const previewElement = document.querySelector(
-        '.toastui-editor-md-preview'
-      );
-      const textAlign = dir === 'rtl' ? 'right' : 'left';
-      if (editorElement) {
-        editorElement.setAttribute('dir', dir);
-        editorElement.setAttribute('style', `text-align: ${textAlign};`);
-      }
-
-      if (previewElement) {
-        previewElement.setAttribute('dir', dir);
-        previewElement.setAttribute('style', `text-align: ${textAlign};`);
-      }
-    }, []);
-
     return (
       <div className={classNames(className)} style={style}>
-        {readonly ? (
-          <div
-            className={classNames('border p-xs rounded-4', {
-              'text-right': i18n.dir() === 'rtl',
-            })}
-            data-testid="viewer"
-            dir={i18n.dir()}>
-            <Viewer
-              extendedAutolinks={extendedAutolinks}
-              initialValue={editorValue}
-              key={uniqueId()}
-              ref={richTextEditorRef}
-            />
-          </div>
-        ) : (
-          <div data-testid="editor">
-            <Editor
-              autofocus={autofocus}
-              extendedAutolinks={extendedAutolinks}
-              height={height ?? '320px'}
-              hideModeSwitch={hideModeSwitch}
-              initialEditType={editorType}
-              initialValue={editorValue}
-              placeholder={placeHolder}
-              previewHighlight={previewHighlight}
-              previewStyle={previewStyle}
-              ref={richTextEditorRef}
-              toolbarItems={[EDITOR_TOOLBAR_ITEMS]}
-              useCommandShortcut={useCommandShortcut}
-              onChange={onChangeHandler}
-            />
-          </div>
-        )}
+        <div data-testid="editor">
+          <BlockEditor
+            placeholder={placeholder}
+            ref={editorRef}
+            autoFocus={autofocus}
+            content={initialValue}
+            menuType="bar"
+            editable={!readonly}
+            onChange={onChangeHandler}
+          />
+        </div>
       </div>
     );
   }

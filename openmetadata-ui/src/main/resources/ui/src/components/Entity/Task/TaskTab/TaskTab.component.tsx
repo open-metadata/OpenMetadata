@@ -37,13 +37,7 @@ import {
   unionBy,
 } from 'lodash';
 import { MenuInfo } from 'rc-menu/lib/interface';
-import React, {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
 import { ReactComponent as EditIcon } from '../../../../assets/svg/edit-new.svg';
@@ -102,7 +96,6 @@ import InlineEdit from '../../../common/InlineEdit/InlineEdit.component';
 import { OwnerLabel } from '../../../common/OwnerLabel/OwnerLabel.component';
 import EntityPopOverCard from '../../../common/PopOverCard/EntityPopOverCard';
 import RichTextEditor from '../../../common/RichTextEditor/RichTextEditor';
-import { EditorContentRef } from '../../../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor.interface';
 import TaskTabIncidentManagerHeader from '../TaskTabIncidentManagerHeader/TaskTabIncidentManagerHeader.component';
 import './task-tab.less';
 import { TaskTabProps } from './TaskTab.interface';
@@ -117,7 +110,6 @@ export const TaskTab = ({
   const history = useHistory();
   const [assigneesForm] = useForm();
   const { currentUser } = useApplicationStore();
-  const markdownRef = useRef<EditorContentRef>();
   const updatedAssignees = Form.useWatch('assignees', assigneesForm);
   const { permissions } = usePermissionProvider();
   const { task: taskDetails } = taskThread;
@@ -863,12 +855,10 @@ export const TaskTab = ({
               ]}
               trigger="onTextChange">
               <RichTextEditor
-                height="200px"
                 initialValue=""
                 placeHolder={t('message.write-your-text', {
                   text: t('label.comment'),
                 })}
-                ref={markdownRef}
               />
             </Form.Item>
           </Form>

@@ -35,7 +35,7 @@ export const ModalWithMarkdownEditor: FunctionComponent<ModalWithMarkdownEditorP
     const { t } = useTranslation();
     const [isLoading, setIsLoading] = useState<boolean>(false);
 
-    const markdownRef = useRef<EditorContentRef>();
+    const markdownRef = useRef<EditorContentRef>({} as EditorContentRef);
 
     const handleSaveData = async () => {
       if (markdownRef.current) {
