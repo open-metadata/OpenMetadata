@@ -44,8 +44,7 @@ site_menu:
     url: /deployment/kubernetes/security
   - category: Deployment / Kubernetes Deployment / Helm Values
     url: /deployment/kubernetes/helm-values
-  - category: Deployment / Kubernetes Deployment / FAQs
-    url: /deployment/kubernetes/faqs
+
 
   - category: Deployment / Ingestion
     url: /deployment/ingestion
@@ -142,6 +141,12 @@ site_menu:
     url: /deployment/security/saml
   - category: Deployment / Enable Security / Saml / AWS
     url: /deployment/security/saml/aws
+  - category: Deployment / Enable Security / Saml / Docker 
+    url: /deployment/security/saml/docker
+  - category: Deployment / Enable Security / Saml / Bare Metal 
+    url: /deployment/security/saml/bare-metal
+  - category: Deployment / Enable Security / Saml / Kubernetes
+    url: /deployment/security/saml/kubernetes
   - category: Deployment / Enable Security / Enable SSL
     url: /deployment/security/enable-ssl
   - category: Deployment / Enable Security / Enable SSL / Use Nginx
@@ -829,6 +834,12 @@ site_menu:
     url: /how-to-guides/data-governance/classification/tiers
   - category: How-to Guides / Data Governance / Classification / Best Practices for Classification
     url: /how-to-guides/data-governance/classification/best-practices
+  - category: How-to Guides / Data Governance / Domains & Data Product
+    url: /how-to-guides/data-governance/domains-&-data-product
+  - category: How-to Guides / Data Governance / Domains & Data Product /  How to Use Domains
+    url: /how-to-guides/data-governance/domains-&-data-product/domains
+  - category: How-to Guides / Data Governance / Domains & Data Product /  How to Use Data Products
+    url: /how-to-guides/data-governance/domains-&-data-product/data-products
 
   - category: Releases
     url: /releases
