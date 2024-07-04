@@ -205,7 +205,7 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
     config: WorkflowSource
     metadata: OpenMetadata
     # Big union of types we want to fetch dynamically
-    service_connection: DashboardConnection.__fields__["config"].annotation
+    service_connection: DashboardConnection.model_fields["config"].annotation
 
     topology = DashboardServiceTopology()
     context = TopologyContextManager(topology)
@@ -608,7 +608,7 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
         """
         patch_request = PatchRequest(
             original_entity=original_entity,
-            new_entity=original_entity.copy(update=create_request.__dict__),
+            new_entity=original_entity.model_copy(update=create_request.__dict__),
         )
         if isinstance(original_entity, Dashboard):
             # For patch the charts need to be entity ref instead of fqn
