@@ -65,6 +65,7 @@ const BlockEditor = forwardRef<BlockEditorRef, BlockEditorProps>(
           ...(autoFocus ? { autofocus: 'true' } : {}),
         },
       },
+      autofocus: autoFocus,
     });
 
     // this hook to expose the editor instance
