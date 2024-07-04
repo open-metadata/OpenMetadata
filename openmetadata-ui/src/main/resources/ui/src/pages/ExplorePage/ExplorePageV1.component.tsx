@@ -30,6 +30,7 @@ import {
   SearchHitCounts,
   UrlParams,
 } from '../../components/Explore/ExplorePage.interface';
+import { useExploreStore } from '../../components/Explore/useExplore.store';
 import ExploreV1 from '../../components/ExploreV1/ExploreV1.component';
 import { getExplorePath, PAGE_SIZE } from '../../constants/constants';
 import {
@@ -59,6 +60,7 @@ import searchClassBase from '../../utils/SearchClassBase';
 import { escapeESReservedCharacters } from '../../utils/StringsUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import {
+  ExploreSidebarTab,
   QueryFieldInterface,
   QueryFilterInterface,
 } from './ExplorePage.interface';
@@ -78,6 +80,8 @@ const ExplorePageV1: FunctionComponent = () => {
 
   const [searchResults, setSearchResults] =
     useState<SearchResponse<ExploreSearchIndex>>();
+
+  const { sidebarActiveTab } = useExploreStore();
 
   const [showIndexNotFoundAlert, setShowIndexNotFoundAlert] =
     useState<boolean>(false);
@@ -233,6 +237,10 @@ const ExplorePageV1: FunctionComponent = () => {
   };
 
   const searchIndex = useMemo(() => {
+    if (sidebarActiveTab === ExploreSidebarTab.TREE) {
+      return SearchIndex.DATA_ASSET;
+    }
+
     const tabInfo = Object.entries(tabsInfo).find(
       ([, tabInfo]) => tabInfo.path === tab
     );
@@ -245,7 +253,7 @@ const ExplorePageV1: FunctionComponent = () => {
     return !isNil(tabInfo)
       ? (tabInfo[0] as ExploreSearchIndex)
       : SearchIndex.TABLE;
-  }, [tab, searchHitCounts]);
+  }, [tab, searchHitCounts, sidebarActiveTab]);
 
   const tabItems = useMemo(() => {
     const items = Object.entries(tabsInfo).map(
