@@ -861,11 +861,11 @@ site_menu:
   - category: How-to Guides / Data Governance / Classification / Best Practices for Classification
     url: /how-to-guides/data-governance/classification/best-practices
   - category: How-to Guides / Data Governance / Domains & Data Product
-    url: /how-to-guides/data-governance/domains-&-data-product
+    url: /how-to-guides/data-governance/domains-&-data-products
   - category: How-to Guides / Data Governance / Domains & Data Product /  How to Use Domains
-    url: /how-to-guides/data-governance/domains-&-data-product/domains
+    url: /how-to-guides/data-governance/domains-&-data-products/domains
   - category: How-to Guides / Data Governance / Domains & Data Product /  How to Use Data Products
-    url: /how-to-guides/data-governance/domains-&-data-product/data-products
+    url: /how-to-guides/data-governance/domains-&-data-products/data-products
 
   - category: Releases
     url: /releases
