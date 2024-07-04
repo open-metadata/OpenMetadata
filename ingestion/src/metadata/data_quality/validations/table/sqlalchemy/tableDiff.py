@@ -138,7 +138,7 @@ class TableDiffValidator(BaseTestValidator, SQAValidatorMixin):
                 test_case_result.failedRows / count * 100
             )
             return test_case_result
-        return self.get_test_case_result(
+        return self.get_row_diff_test_case_result(
             threshold,
             self.calculate_diffs_with_limit(table_diff_iter, threshold),
         )

@@ -87,7 +87,7 @@ class GCPSecretsManager(ExternalSecretsManager, ABC):
 
     def __init__(self, loader: SecretsManagerClientLoader):
         super().__init__(
-            SecretsManagerProvider.gcp,  # TODO fix this pylint: disable=no-member
+            SecretsManagerProvider.gcp,
             loader=loader,
         )
 
