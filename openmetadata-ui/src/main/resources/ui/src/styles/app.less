@@ -634,6 +634,26 @@ a[href].link-text-grey,
   }
 }
 
+.glossary-height-with-resizable-panel {
+  height: @glossary-page-height;
+  overflow-y: hidden;
+
+  .glossary-resizable-panel-container {
+    height: @glossary-page-height;
+    overflow-y: scroll;
+  }
+}
+
+.glossary-term-height-with-resizable-panel {
+  height: @glossary-term-page-height;
+  overflow-y: hidden;
+
+  .glossary-term-resizable-panel-container {
+    height: @glossary-term-page-height;
+    overflow-y: scroll;
+  }
+}
+
 /* Diff style */
 
 .diff-added {
