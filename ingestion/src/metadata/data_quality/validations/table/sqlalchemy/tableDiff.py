@@ -9,9 +9,10 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 # pylint: disable=missing-module-docstring
+import itertools
 import traceback
 from itertools import islice
-from typing import Optional
+from typing import Optional, List, Tuple, Iterable
 from urllib.parse import urlparse
 
 import data_diff
@@ -112,7 +113,11 @@ class TableDiffValidator(BaseTestValidator, SQAValidatorMixin):
             if stats["total"] > 0:
                 logger.debug("Sample of failed rows:")
                 for s in islice(self.get_table_diff(), 10):
-                    logger.debug(s)
+                    # since the data can contiant sensitive information, we don't want to log it
+                    # we can uncomment this line if we must see the data in the logs
+                    # logger.debug(s)
+                    # by default we will log the data masked
+                    logger.debug([s[0], ["*" for _ in s[1]]])
             test_case_result = self.get_test_case_result(
                 threshold,
                 stats["total"],
@@ -122,7 +127,6 @@ class TableDiffValidator(BaseTestValidator, SQAValidatorMixin):
             )
             count = self._compute_row_count(self.runner, None)  # type: ignore
             test_case_result.passedRows = stats["unchanged"]
-            test_case_result.failedRows = stats["total"]
             test_case_result.passedRowsPercentage = (
                 test_case_result.passedRows / count * 100
             )
@@ -130,10 +134,9 @@ class TableDiffValidator(BaseTestValidator, SQAValidatorMixin):
                 test_case_result.failedRows / count * 100
             )
             return test_case_result
-        num_dffs = sum(1 for _ in islice(table_diff_iter, threshold))
         return self.get_test_case_result(
-            num_dffs,
             threshold,
+            self.calculate_diffs_with_limit(table_diff_iter, threshold),
         )
 
     def get_table_diff(self) -> DiffResultWrapper:
@@ -198,6 +201,7 @@ class TableDiffValidator(BaseTestValidator, SQAValidatorMixin):
                 (threshold or total_diffs) == 0 or total_diffs < threshold
             ),
             result=f"Found {total_diffs} different rows which is more than the threshold of {threshold}",
+            failedRows=total_diffs,
             testResultValue=result_values,
             validateColumns=False,
         )
@@ -207,3 +211,32 @@ class TableDiffValidator(BaseTestValidator, SQAValidatorMixin):
             dialect = urlparse(getattr(self.runtime_params, param)).scheme
             if dialect not in SUPPORTED_DIALECTS:
                 raise UnsupportedDialectError(param, dialect)
+
+    def calculate_diffs_with_limit(
+        self, diff_iter: Iterable[Tuple[str, Tuple[str, ...]]], limit: int
+    ) -> int:
+        """Given an iterator of diffs like
+        - ('+', (...))
+        - ('-', (...))
+        ...
+        Calculate the total diffs by combining diffs for the same key. This gives an accurate count of the total diffs
+        as opposed to self.calculate_diff_num(diff_list)just counting the number of diffs in the list.
+
+        Args:
+            diff_iter: iterator returned from the data_diff algorithm
+
+        Returns:
+            int: accurate count of the total diffs
+
+        """
+        len_key_columns = len(self.runtime_params.keyColumns)
+        key_set = set()
+        # combine diffs on same key to "!"
+        for sign, values in diff_iter:
+            k = values[:len_key_columns]
+            if k in key_set:
+                continue
+            key_set.add(k)
+            if len(key_set) > limit:
+                len(key_set)
+        return len(key_set)
