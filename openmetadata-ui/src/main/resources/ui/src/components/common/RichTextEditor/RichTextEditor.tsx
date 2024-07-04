@@ -18,7 +18,6 @@ import React, { forwardRef, useImperativeHandle, useRef } from 'react';
 import { formatContent } from '../../../utils/BlockEditorUtils';
 import BlockEditor from '../../BlockEditor/BlockEditor';
 import { BlockEditorRef } from '../../BlockEditor/BlockEditor.interface';
-import './rich-text-editor.less';
 import {
   EditorContentRef,
   RichTextEditorProp,
