@@ -35,7 +35,14 @@ import { useCustomEditor } from './hooks/useCustomEditor';
 
 const BlockEditor = forwardRef<BlockEditorRef, BlockEditorProps>(
   (
-    { content = '', editable = true, menuType = 'bubble', autoFocus, onChange },
+    {
+      content = '',
+      editable = true,
+      menuType = 'bubble',
+      autoFocus,
+      placeholder,
+      onChange,
+    },
     ref
   ) => {
     const { i18n } = useTranslation();
@@ -126,6 +133,7 @@ const BlockEditor = forwardRef<BlockEditorRef, BlockEditorProps>(
         )}
         <EditorContent
           editor={editor}
+          placeholder={placeholder}
           onMouseDown={editorSlots.current?.onMouseDown}
         />
         <EditorSlots editor={editor} menuType={menuType} ref={editorSlots} />

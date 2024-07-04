@@ -42,6 +42,7 @@ export interface BlockEditorProps {
   onChange?: (htmlContent: string) => void;
   menuType?: MenuType;
   autoFocus?: boolean;
+  placeholder?: string;
 }
 
 export interface EditorSlotsProps {
