@@ -13,6 +13,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import java.io.IOException;
 import java.util.List;
 import java.util.UUID;
+import java.util.regex.Pattern;
 import javax.json.JsonPatch;
 import javax.validation.Valid;
 import javax.validation.constraints.Max;
@@ -56,8 +57,6 @@ import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.ResultList;
-import org.owasp.html.PolicyFactory;
-import org.owasp.html.Sanitizers;
 
 @Slf4j
 @Path("/v1/analytics/web/events")
@@ -70,6 +69,7 @@ public class WebAnalyticEventResource
     extends EntityResource<WebAnalyticEvent, WebAnalyticEventRepository> {
   public static final String COLLECTION_PATH = WebAnalyticEventRepository.COLLECTION_PATH;
   static final String FIELDS = "owner";
+  private static final Pattern HTML_PATTERN = Pattern.compile(".*\\<[^>]+>.*", Pattern.DOTALL);
 
   public WebAnalyticEventResource(Authorizer authorizer, Limits limits) {
     super(Entity.WEB_ANALYTIC_EVENT, authorizer, limits);
@@ -573,8 +573,9 @@ public class WebAnalyticEventResource
       // Validate Json as type Custom Event
       CustomEvent customEventData = JsonUtils.convertValue(inputData, CustomEvent.class);
       if (customEventData.getEventType().equals(CustomEvent.CustomEventTypes.CLICK)) {
-        String sanatizedValue = sanitizeInput(customEventData.getEventValue());
-        customEventData.setEventValue(sanatizedValue);
+        if (containsHtml(customEventData.getEventValue())) {
+          throw new IllegalArgumentException("Invalid event value for custom event.");
+        }
         webAnalyticEventDataInput.setEventData(customEventData);
       } else {
         throw new IllegalArgumentException("Invalid event type for custom event");
@@ -586,11 +587,10 @@ public class WebAnalyticEventResource
     return webAnalyticEventDataInput;
   }
 
-  public static String sanitizeInput(String input) {
-    // Create a policy that allows only safe HTML
-    PolicyFactory policy = Sanitizers.FORMATTING.and(Sanitizers.LINKS);
-
-    // Sanitize the input
-    return policy.sanitize(input);
+  public static boolean containsHtml(String input) {
+    if (input == null || input.isEmpty()) {
+      return false;
+    }
+    return HTML_PATTERN.matcher(input).matches();
   }
 }
