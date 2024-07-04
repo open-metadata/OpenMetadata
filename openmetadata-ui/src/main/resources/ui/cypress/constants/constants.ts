@@ -527,7 +527,7 @@ export const ENTITIES = {
 };
 
 export const LOGIN = {
-  username: 'admin',
+  username: 'admin@openmetadata.org',
   password: 'admin',
 };
 
@@ -621,9 +621,8 @@ export const NAME_VALIDATION_ERROR =
 
 export const NAME_MIN_MAX_LENGTH_VALIDATION_ERROR =
   'Name size must be between 2 and 64';
-
-export const NAME_MAX_LENGTH_VALIDATION_ERROR =
-  'Name can be a maximum of 128 characters';
+export const NAME_MIN_MAX_LENGTH_VALIDATION_ERROR_1_128 =
+  'Name size must be between 1 and 128';
 
 export const DOMAIN_1 = {
   name: 'Cypress%Domain',
@@ -836,3 +835,5 @@ export const JWT_EXPIRY_TIME_MAP = {
   '1 hour': 3600,
   '2 hours': 7200,
 };
+
+export const EXAMPLE_LONG_STRING = 'name'.repeat(33); // 132 characters

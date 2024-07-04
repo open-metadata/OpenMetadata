@@ -12,6 +12,7 @@ from sqlalchemy.engine import Connection, make_url
 from sqlalchemy.sql import sqltypes
 
 from _openmetadata_testutils.postgres.conftest import postgres_container
+from _openmetadata_testutils.pydantic.test_utils import assert_equal_pydantic_objects
 from metadata.data_quality.api.models import TestCaseDefinition
 from metadata.generated.schema.api.services.createDatabaseService import (
     CreateDatabaseServiceRequest,
@@ -41,7 +42,11 @@ from metadata.generated.schema.metadataIngestion.workflow import (
     SourceConfig,
     WorkflowConfig,
 )
-from metadata.generated.schema.tests.basic import TestCaseResult, TestCaseStatus
+from metadata.generated.schema.tests.basic import (
+    TestCaseResult,
+    TestCaseStatus,
+    TestResultValue,
+)
 from metadata.generated.schema.tests.testCase import TestCase, TestCaseParameterValue
 from metadata.ingestion.models.custom_pydantic import CustomSecretStr
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
@@ -183,6 +188,11 @@ class TestParameters(BaseModel):
                 "POSTGRES_SERVICE.dvdrental.public.customer_without_first_name",
                 TestCaseResult(
                     testCaseStatus=TestCaseStatus.Failed,
+                    testResultValue=[
+                        TestResultValue(name="removedColumns", value="1"),
+                        TestResultValue(name="addedColumns", value="0"),
+                        TestResultValue(name="changedColumns", value="0"),
+                    ],
                 ),
             ),
             (
@@ -314,19 +324,6 @@ def test_happy_paths(
     assert_equal_pydantic_objects(parameters.expected, test_case_entity.testCaseResult)
 
 
-def assert_equal_pydantic_objects(
-    expected: BaseModel, actual: BaseModel, ignore_none=True
-):
-    for key, value in expected.dict().items():
-        if value is not None and ignore_none:
-            if not value == actual.dict()[key]:
-                # an explicit AssertionError because PyCharm does not handle helper functions well:
-                # https://youtrack.jetbrains.com/issue/PY-51929/pytest-assertion-information-not-printed-in-certain-situations#focus=Comments-27-8459641.0-0
-                raise AssertionError(
-                    f"objects mismatched on field: [{key}], expected: [{value}], actual: [{actual.dict()[key]}]"
-                )
-
-
 @pytest.mark.parametrize(
     "parameters,expected",
     [
@@ -348,14 +345,33 @@ def assert_equal_pydantic_objects(
             ),
             TestCaseResult(
                 testCaseStatus=TestCaseStatus.Aborted,
-                result="Unsupported dialect in param service2Url: mongodb",
+                result="Unsupported dialect in param table2.serviceUrl: mongodb",
             ),
             id="unsupported_dialect",
         ),
         pytest.param(
-            None,
-            None,
-            marks=pytest.mark.skip(reason="TODO: implement test - different columns"),
+            TestCaseDefinition(
+                name="unsupported_data_types",
+                testDefinitionName="tableDiff",
+                computePassedFailedRowCount=True,
+                parameterValues=[
+                    TestCaseParameterValue(
+                        name="table2",
+                        value="POSTGRES_SERVICE.dvdrental.public.customer_int_first_name",
+                    ),
+                ],
+            ),
+            TestCaseResult(
+                testCaseStatus=TestCaseStatus.Failed,
+                result="Tables have 1 different columns:"
+                "\n  Changed columns:"
+                "\n    first_name: VARCHAR -> INT",
+                testResultValue=[
+                    TestResultValue(name="removedColumns", value="0"),
+                    TestResultValue(name="addedColumns", value="0"),
+                    TestResultValue(name="changedColumns", value="1"),
+                ],
+            ),
         ),
         pytest.param(
             None,
@@ -489,6 +505,12 @@ def add_changed_tables(connection: Connection):
     connection.execute(
         "ALTER TABLE customer_without_first_name DROP COLUMN first_name;"
     )
+    connection.execute(
+        "CREATE TABLE customer_int_first_name AS SELECT * FROM customer;"
+    )
+    connection.execute("ALTER TABLE customer_int_first_name DROP COLUMN first_name;")
+    connection.execute("ALTER TABLE customer_int_first_name ADD COLUMN first_name INT;")
+    connection.execute("UPDATE customer_int_first_name SET first_name = 1;")
 
 
 @pytest.fixture(scope="module")

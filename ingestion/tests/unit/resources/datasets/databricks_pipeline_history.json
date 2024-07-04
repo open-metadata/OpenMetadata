@@ -1,174 +1,366 @@
 [
-    {
-        "job_id": 325697581681107,
-        "run_id": 820960,
-        "creator_user_name": "user_name",
-        "number_in_job": 820960,
-        "original_attempt_run_id": 820960,
-        "state": {
-            "life_cycle_state": "TERMINATED",
-            "result_state": "SUCCESS",
-            "state_message": "",
-            "user_cancelled_or_timedout": false
-        },
-        "schedule": {
-            "quartz_cron_expression": "30 1/2 * * * ?",
-            "timezone_id": "UTC",
-            "pause_status": "UNPAUSED"
-        },
-        "start_time": 1672691730552,
-        "setup_duration": 51000,
-        "execution_duration": 11000,
-        "cleanup_duration": 0,
-        "end_time": 1672691793780,
-        "trigger": "PERIODIC",
-        "run_name": "OpenMetadata Databricks Workflow",
-        "run_page_url": "https://workspace.azuredatabricks.net/?o=workspace_id#job/325697581681107/run/820960",
-        "run_type": "JOB_RUN",
-        "tasks": [
-            {
-                "run_id": 821029,
-                "task_key": "one_task",
-                "notebook_task": {
-                    "notebook_path": "/Users/user_name/notebook",
-                    "source": "WORKSPACE"
-                },
-                "job_cluster_key": "Shared_job_cluster",
-                "state": {
-                    "life_cycle_state": "TERMINATED",
-                    "result_state": "SUCCESS",
-                    "state_message": "",
-                    "user_cancelled_or_timedout": false
-                },
-                "run_page_url": "https://workspace.azuredatabricks.net/?o=workspace_id#job/325697581681107/run/821029",
-                "start_time": 1672691730568,
-                "setup_duration": 51000,
-                "execution_duration": 11000,
-                "cleanup_duration": 0,
-                "end_time": 1672691793559,
-                "cluster_instance": {
-                    "cluster_id": "0102-203531-uh2t6efy",
-                    "spark_context_id": "3018173046193599096"
-                },
-                "attempt_number": 0
-            }
-        ],
-        "job_clusters": [
-            {
-                "job_cluster_key": "Shared_job_cluster",
-                "new_cluster": {
-                    "cluster_name": "",
-                    "spark_version": "11.3.x-scala2.12",
-                    "spark_conf": {
-                        "spark.databricks.delta.preview.enabled": "true",
-                        "spark.master": "local[*, 4]",
-                        "spark.databricks.cluster.profile": "singleNode"
-                    },
-                    "azure_attributes": {
-                        "first_on_demand": 1,
-                        "availability": "ON_DEMAND_AZURE",
-                        "spot_bid_max_price": -1.0
-                    },
-                    "node_type_id": "Standard_DS3_v2",
-                    "custom_tags": {
-                        "ResourceClass": "SingleNode"
-                    },
-                    "spark_env_vars": {
-                        "PYSPARK_PYTHON": "/databricks/python3/bin/python3"
-                    },
-                    "enable_elastic_disk": true,
-                    "data_security_mode": "SINGLE_USER",
-                    "runtime_engine": "STANDARD",
-                    "num_workers": 0
-                }
-            }
-        ],
-        "format": "MULTI_TASK"
+  {
+    "job_id": 11223344,
+    "run_id": 455644833,
+    "creator_user_name": "user.name@databricks.com",
+    "number_in_job": 455644833,
+    "original_attempt_run_id": 455644833,
+    "state": {
+      "life_cycle_state": "PENDING",
+      "result_state": "SUCCESS",
+      "state_message": "string",
+      "user_cancelled_or_timedout": false,
+      "queue_reason": "Queued due to reaching maximum concurrent runs of 1."
     },
-    {
-        "job_id": 325697581681107,
-        "run_id": 820788,
-        "creator_user_name": "user_name",
-        "number_in_job": 820788,
-        "original_attempt_run_id": 820788,
+    "schedule": {
+      "quartz_cron_expression": "20 30 * * * ?",
+      "timezone_id": "Europe/London",
+      "pause_status": "UNPAUSED"
+    },
+    "cluster_spec": {
+      "existing_cluster_id": "0923-164208-meows279",
+      "new_cluster": {
+        "num_workers": 0,
+        "autoscale": {
+          "min_workers": 0,
+          "max_workers": 0
+        },
+        "cluster_name": "string",
+        "spark_version": "string",
+        "spark_conf": {
+          "property1": "string",
+          "property2": "string"
+        },
+        "aws_attributes": {
+          "first_on_demand": "0",
+          "availability": "SPOT",
+          "zone_id": "string",
+          "instance_profile_arn": "string",
+          "spot_bid_price_percent": "100",
+          "ebs_volume_type": "GENERAL_PURPOSE_SSD",
+          "ebs_volume_count": "0",
+          "ebs_volume_size": 0,
+          "ebs_volume_iops": 0,
+          "ebs_volume_throughput": 0
+        },
+        "node_type_id": "string",
+        "driver_node_type_id": "string",
+        "ssh_public_keys": [
+          "string"
+        ],
+        "custom_tags": {
+          "property1": "string",
+          "property2": "string"
+        },
+        "cluster_log_conf": {
+          "dbfs": {
+            "destination": "string"
+          },
+          "s3": {
+            "destination": "string",
+            "region": "string",
+            "endpoint": "string",
+            "enable_encryption": true,
+            "encryption_type": "string",
+            "kms_key": "string",
+            "canned_acl": "string"
+          }
+        },
+        "init_scripts": [
+          {
+            "workspace": {
+              "destination": "string"
+            },
+            "volumes": {
+              "destination": "string"
+            },
+            "s3": {
+              "destination": "string",
+              "region": "string",
+              "endpoint": "string",
+              "enable_encryption": true,
+              "encryption_type": "string",
+              "kms_key": "string",
+              "canned_acl": "string"
+            },
+            "file": {
+              "destination": "string"
+            },
+            "dbfs": {
+              "destination": "string"
+            },
+            "abfss": {
+              "destination": "string"
+            },
+            "gcs": {
+              "destination": "string"
+            }
+          }
+        ],
+        "spark_env_vars": {
+          "property1": "string",
+          "property2": "string"
+        },
+        "autotermination_minutes": 0,
+        "enable_elastic_disk": true,
+        "instance_pool_id": "string",
+        "policy_id": "string",
+        "enable_local_disk_encryption": true,
+        "driver_instance_pool_id": "string",
+        "workload_type": {
+          "clients": {
+            "notebooks": "true",
+            "jobs": "true"
+          }
+        },
+        "runtime_engine": "NULL",
+        "docker_image": {
+          "url": "string",
+          "basic_auth": {
+            "username": "string",
+            "password": "string"
+          }
+        },
+        "data_security_mode": "NONE",
+        "single_user_name": "string",
+        "apply_policy_default_values": false
+      },
+      "job_cluster_key": "string",
+      "libraries": [
+        {
+          "jar": "string",
+          "egg": "string",
+          "pypi": {
+            "package": "string",
+            "repo": "string"
+          },
+          "maven": {
+            "coordinates": "string",
+            "repo": "string",
+            "exclusions": [
+              "string"
+            ]
+          },
+          "cran": {
+            "package": "string",
+            "repo": "string"
+          },
+          "whl": "string",
+          "requirements": "string"
+        }
+      ]
+    },
+    "cluster_instance": {
+      "cluster_id": "0923-164208-meows279",
+      "spark_context_id": "string"
+    },
+    "overriding_parameters": {
+      "jar_params": [
+        "john",
+        "doe",
+        "35"
+      ],
+      "notebook_params": {
+        "age": "35",
+        "name": "john doe"
+      },
+      "python_params": [
+        "john doe",
+        "35"
+      ],
+      "spark_submit_params": [
+        "--class",
+        "org.apache.spark.examples.SparkPi"
+      ],
+      "python_named_params": {
+        "data": "dbfs:/path/to/data.json",
+        "name": "task"
+      },
+      "sql_params": {
+        "age": "35",
+        "name": "john doe"
+      },
+      "dbt_commands": [
+        "dbt deps",
+        "dbt seed",
+        "dbt run"
+      ],
+      "pipeline_params": {
+        "full_refresh": false
+      }
+    },
+    "start_time": 1625060460483,
+    "setup_duration": 0,
+    "execution_duration": 0,
+    "cleanup_duration": 0,
+    "end_time": 1625060863413,
+    "run_duration": 110183,
+    "queue_duration": 1625060863413,
+    "trigger": "PERIODIC",
+    "trigger_info": {
+      "run_id": 0
+    },
+    "run_name": "OpenMetadata Databricks Workflow run",
+    "run_page_url": "https://my-workspace.cloud.databricks.com/#job/11223344/run/123",
+    "run_type": "JOB_RUN",
+    "tasks": [
+      {
+        "setup_duration": 0,
+        "start_time": 1629989929660,
+        "task_key": "Orders_Ingest",
         "state": {
-            "life_cycle_state": "TERMINATED",
-            "result_state": "FAILED ",
-            "state_message": "",
-            "user_cancelled_or_timedout": false
+          "life_cycle_state": "INTERNAL_ERROR",
+          "result_state": "FAILED",
+          "state_message": "Library installation failed for library due to user error. Error messages:\n'Manage' permissions are required to install libraries on a cluster",
+          "user_cancelled_or_timedout": false
         },
-        "schedule": {
-            "quartz_cron_expression": "30 1/2 * * * ?",
-            "timezone_id": "UTC",
-            "pause_status": "UNPAUSED"
+        "description": "Ingests order data",
+        "job_cluster_key": "auto_scaling_cluster",
+        "end_time": 1629989930171,
+        "run_page_url": "https://my-workspace.cloud.databricks.com/#job/39832/run/20",
+        "run_id": 2112892,
+        "cluster_instance": {
+          "cluster_id": "0923-164208-meows279",
+          "spark_context_id": "4348585301701786933"
         },
-        "start_time": 1672691610525,
-        "setup_duration": 55000,
-        "execution_duration": 12000,
+        "spark_jar_task": {
+          "main_class_name": "com.databricks.OrdersIngest"
+        },
+        "libraries": [
+          {
+            "jar": "dbfs:/mnt/databricks/OrderIngest.jar"
+          }
+        ],
+        "attempt_number": 0,
         "cleanup_duration": 0,
-        "end_time": 1672691677852,
-        "trigger": "PERIODIC",
-        "run_name": "OpenMetadata Databricks Workflow",
-        "run_page_url": "https://workspace.azuredatabricks.net/?o=workspace_id#job/325697581681107/run/820788",
-        "run_type": "JOB_RUN",
-        "tasks": [
-            {
-                "run_id": 820956,
-                "task_key": "one_task",
-                "notebook_task": {
-                    "notebook_path": "/Users/user_name/notebook",
-                    "source": "WORKSPACE"
-                },
-                "job_cluster_key": "Shared_job_cluster",
-                "state": {
-                    "life_cycle_state": "TERMINATED",
-                    "result_state": "FAILED",
-                    "state_message": "",
-                    "user_cancelled_or_timedout": false
-                },
-                "run_page_url": "https://workspace.azuredatabricks.net/?o=workspace_id#job/325697581681107/run/820956",
-                "start_time": 1672691610544,
-                "setup_duration": 55000,
-                "execution_duration": 12000,
-                "cleanup_duration": 0,
-                "end_time": 1672691677696,
-                "cluster_instance": {
-                    "cluster_id": "0102-203335-kfts9a0p",
-                    "spark_context_id": "3081931546313825347"
-                },
-                "attempt_number": 0
-            }
+        "execution_duration": 0,
+        "run_if": "ALL_SUCCESS"
+      },
+      {
+        "setup_duration": 0,
+        "start_time": 0,
+        "task_key": "Match",
+        "state": {
+          "life_cycle_state": "SKIPPED",
+          "state_message": "An upstream task failed.",
+          "user_cancelled_or_timedout": false
+        },
+        "description": "Matches orders with user sessions",
+        "notebook_task": {
+          "notebook_path": "/Users/user.name@databricks.com/Match",
+          "source": "WORKSPACE"
+        },
+        "end_time": 1629989930238,
+        "depends_on": [
+          {
+            "task_key": "Orders_Ingested"
+          },
+          {
+            "task_key": "Sessionize"
+          }
         ],
-        "job_clusters": [
-            {
-                "job_cluster_key": "Shared_job_cluster",
-                "new_cluster": {
-                    "cluster_name": "",
-                    "spark_version": "11.3.x-scala2.12",
-                    "spark_conf": {
-                        "spark.databricks.delta.preview.enabled": "true",
-                        "spark.master": "local[*, 4]",
-                        "spark.databricks.cluster.profile": "singleNode"
-                    },
-                    "azure_attributes": {
-                        "first_on_demand": 1,
-                        "availability": "ON_DEMAND_AZURE",
-                        "spot_bid_max_price": -1.0
-                    },
-                    "node_type_id": "Standard_DS3_v2",
-                    "custom_tags": {
-                        "ResourceClass": "SingleNode"
-                    },
-                    "spark_env_vars": {
-                        "PYSPARK_PYTHON": "/databricks/python3/bin/python3"
-                    },
-                    "enable_elastic_disk": true,
-                    "data_security_mode": "SINGLE_USER",
-                    "runtime_engine": "STANDARD",
-                    "num_workers": 0
-                }
-            }
+        "run_page_url": "https://my-workspace.cloud.databricks.com/#job/39832/run/21",
+        "new_cluster": {
+          "autoscale": {
+            "max_workers": 16,
+            "min_workers": 2
+          },
+          "node_type_id": null,
+          "spark_conf": {
+            "spark.speculation": true
+          },
+          "spark_version": "7.3.x-scala2.12"
+        },
+        "run_id": 2112897,
+        "cluster_instance": {
+          "cluster_id": "0923-164208-meows279"
+        },
+        "attempt_number": 0,
+        "cleanup_duration": 0,
+        "execution_duration": 0,
+        "run_if": "ALL_SUCCESS"
+      },
+      {
+        "setup_duration": 0,
+        "start_time": 1629989929668,
+        "task_key": "Sessionize",
+        "state": {
+          "life_cycle_state": "INTERNAL_ERROR",
+          "result_state": "FAILED",
+          "state_message": "Library installation failed for library due to user error. Error messages:\n'Manage' permissions are required to install libraries on a cluster",
+          "user_cancelled_or_timedout": false
+        },
+        "description": "Extracts session data from events",
+        "end_time": 1629989930144,
+        "run_page_url": "https://my-workspace.cloud.databricks.com/#job/39832/run/22",
+        "run_id": 2112902,
+        "cluster_instance": {
+          "cluster_id": "0923-164208-meows279",
+          "spark_context_id": "4348585301701786933"
+        },
+        "spark_jar_task": {
+          "main_class_name": "com.databricks.Sessionize"
+        },
+        "libraries": [
+          {
+            "jar": "dbfs:/mnt/databricks/Sessionize.jar"
+          }
         ],
-        "format": "MULTI_TASK"
-    }
+        "attempt_number": 0,
+        "existing_cluster_id": "0923-164208-meows279",
+        "cleanup_duration": 0,
+        "execution_duration": 0,
+        "run_if": "ALL_SUCCESS"
+      }
+    ],
+    "description": "Some Description about the run here",
+    "attempt_number": 0,
+    "job_clusters": [
+      {
+        "job_cluster_key": "auto_scaling_cluster",
+        "new_cluster": {
+          "autoscale": {
+            "max_workers": 16,
+            "min_workers": 2
+          },
+          "node_type_id": null,
+          "spark_conf": {
+            "spark.speculation": true
+          },
+          "spark_version": "7.3.x-scala2.12"
+        }
+      }
+    ],
+    "git_source": {
+      "git_branch": "main",
+      "git_provider": "gitHub",
+      "git_url": "https://github.com/databricks/databricks-cli"
+    },
+    "repair_history": [
+      {
+        "type": "ORIGINAL",
+        "start_time": 1625060460483,
+        "end_time": 1625060863413,
+        "state": {
+          "life_cycle_state": "PENDING",
+          "result_state": "SUCCESS",
+          "state_message": "string",
+          "user_cancelled_or_timedout": false,
+          "queue_reason": "Queued due to reaching maximum concurrent runs of 1."
+        },
+        "id": 734650698524280,
+        "task_run_ids": [
+          1106460542112844,
+          988297789683452
+        ]
+      }
+    ],
+    "job_parameters": [
+      {
+        "default": "users",
+        "name": "table",
+        "value": "customers"
+      }
+    ]
+  }
 ]

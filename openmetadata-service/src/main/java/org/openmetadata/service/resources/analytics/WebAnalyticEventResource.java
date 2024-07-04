@@ -49,6 +49,7 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.WebAnalyticEventRepository;
+import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
@@ -70,8 +71,8 @@ public class WebAnalyticEventResource
   public static final String COLLECTION_PATH = WebAnalyticEventRepository.COLLECTION_PATH;
   static final String FIELDS = "owner";
 
-  public WebAnalyticEventResource(Authorizer authorizer) {
-    super(Entity.WEB_ANALYTIC_EVENT, authorizer);
+  public WebAnalyticEventResource(Authorizer authorizer, Limits limits) {
+    super(Entity.WEB_ANALYTIC_EVENT, authorizer, limits);
   }
 
   public static class WebAnalyticEventList extends ResultList<WebAnalyticEvent> {

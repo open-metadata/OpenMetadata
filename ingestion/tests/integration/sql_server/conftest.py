@@ -3,8 +3,6 @@ import os
 import shutil
 
 import pytest
-from docker_utils import try_bind
-from markers import xfail_param
 from sqlalchemy import create_engine, text
 from testcontainers.mssql import SqlServerContainer
 
@@ -15,6 +13,9 @@ from metadata.generated.schema.entity.services.databaseService import DatabaseSe
 from metadata.ingestion.lineage.sql_lineage import search_cache
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.workflow.metadata import MetadataWorkflow
+
+from ...helpers.docker_utils import try_bind
+from ...helpers.markers import xfail_param
 
 
 @pytest.fixture(scope="session", autouse=True)
@@ -104,10 +105,7 @@ def mssql_server_config(mssql_container, request):
     scope="module",
     params=[
         MssqlScheme.mssql_pytds,
-        xfail_param(
-            MssqlScheme.mssql_pyodbc,
-            "sql server fails with pyodbc (https://github.com/open-metadata/OpenMetadata/issues/16435)",
-        ),
+        MssqlScheme.mssql_pyodbc,
     ],
 )
 def ingest_metadata(mssql_container, metadata: OpenMetadata, request):
@@ -125,6 +123,7 @@ def ingest_metadata(mssql_container, metadata: OpenMetadata, request):
                     + mssql_container.get_exposed_port(mssql_container.port),
                     "database": "AdventureWorks",
                     "ingestAllDatabases": True,
+                    "connectionOptions": {"TrustServerCertificate": "yes"},
                 }
             },
             "sourceConfig": {

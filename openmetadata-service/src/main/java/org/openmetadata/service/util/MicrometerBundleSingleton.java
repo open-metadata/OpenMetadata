@@ -18,6 +18,7 @@ import static io.github.maksymdolgykh.dropwizard.micrometer.MicrometerBundle.pro
 import io.github.maksymdolgykh.dropwizard.micrometer.MicrometerBundle;
 import io.micrometer.core.instrument.Timer;
 import io.micrometer.prometheus.PrometheusMeterRegistry;
+import io.prometheus.client.Counter;
 import io.prometheus.client.Histogram;
 import lombok.Getter;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
@@ -46,6 +47,13 @@ public class MicrometerBundleSingleton {
           .name("jdbi_requests_seconds")
           .help("jdbi requests duration distribution")
           .buckets(latencyBuckets)
+          .register(MicrometerBundle.prometheusRegistry.getPrometheusRegistry());
+
+  public static final Counter pipelineClientStatusCounter =
+      Counter.build()
+          .name("pipeline_client_request_status")
+          .help("status codes returned by pipeline client by operation")
+          .labelNames("operation", "status")
           .register(MicrometerBundle.prometheusRegistry.getPrometheusRegistry());
 
   public static void initLatencyEvents(OpenMetadataApplicationConfig config) {

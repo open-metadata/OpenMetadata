@@ -62,6 +62,7 @@ import {
 } from '../../generated/entity/data/storedProcedure';
 import { Include } from '../../generated/type/include';
 import { TagLabel } from '../../generated/type/tagLabel';
+import LimitWrapper from '../../hoc/LimitWrapper';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
 import { useFqn } from '../../hooks/useFqn';
 import { FeedCounts } from '../../interface/feed.interface';
@@ -760,6 +761,10 @@ const StoredProcedurePage = () => {
             }
           />
         </Col>
+
+        <LimitWrapper resource="storedProcedure">
+          <></>
+        </LimitWrapper>
 
         {threadLink ? (
           <ActivityThreadPanel

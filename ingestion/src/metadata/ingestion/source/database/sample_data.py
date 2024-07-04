@@ -1525,6 +1525,8 @@ class SampleDataSource(
                                 TestResultValue.model_validate(res_value)
                                 for res_value in result["testResultValues"]
                             ],
+                            minBound=result.get("minBound"),
+                            maxBound=result.get("maxBound"),
                         ),
                         test_case_name=case.fullyQualifiedName.root,
                     )
@@ -1535,6 +1537,9 @@ class SampleDataSource(
                     TableData(
                         rows=test_case_results["failedRowsSample"]["rows"],
                         columns=test_case_results["failedRowsSample"]["columns"],
+                    ),
+                    validate=test_case_results["failedRowsSample"].get(
+                        "validate", True
                     ),
                 )
             if test_case_results.get("inspectionQuery"):
