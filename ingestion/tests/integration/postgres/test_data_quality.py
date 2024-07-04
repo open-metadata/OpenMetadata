@@ -133,7 +133,7 @@ def test_incompatible_column_type(ingest_metadata, metadata: OpenMetadata, db_se
                     "entityFullyQualifiedName": f"{db_service.fullyQualifiedName.root}.dvdrental.public.customer",
                 }
             },
-            "serviceConnection": db_service.connection.dict(),
+            "serviceConnection": db_service.connection.model_dump(),
         },
         "processor": {
             "type": "orm-test-runner",
@@ -166,7 +166,7 @@ def test_incompatible_column_type(ingest_metadata, metadata: OpenMetadata, db_se
         },
         "workflowConfig": {
             "loggerLevel": "DEBUG",
-            "openMetadataServerConfig": metadata.config.dict(),
+            "openMetadataServerConfig": metadata.config.model_dump(),
         },
     }
     test_suite_procesor = TestSuiteWorkflow.create(workflow_config)

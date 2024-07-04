@@ -121,7 +121,7 @@ class StorageServiceSource(TopologyRunnerMixin, Source, ABC):
     config: WorkflowSource
     metadata: OpenMetadata
     # Big union of types we want to fetch dynamically
-    service_connection: StorageConnection.__fields__["config"].annotation
+    service_connection: StorageConnection.model_fields["config"].annotation
 
     topology = StorageServiceTopology()
     context = TopologyContextManager(topology)

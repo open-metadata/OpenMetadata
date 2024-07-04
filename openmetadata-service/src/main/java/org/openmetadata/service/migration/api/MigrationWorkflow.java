@@ -64,7 +64,7 @@ public class MigrationWorkflow {
     if (!migrations.isEmpty()) {
       throw new IllegalStateException(
           "There are pending migrations to be run on the database."
-              + " Please backup your data and run `./bootstrap/bootstrap_storage.sh migrate-all`."
+              + " Please backup your data and run `./bootstrap/openmetadata-ops.sh migrate`."
               + " You can find more information on upgrading OpenMetadata at"
               + " https://docs.open-metadata.org/deployment/upgrade ");
     }

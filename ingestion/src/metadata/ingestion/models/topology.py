@@ -296,7 +296,7 @@ class TopologyContextManager:
 
         # If it does not exist yet, copies the Parent Context in order to have all context gathered until this point.
         self.contexts.setdefault(
-            thread_id, self.contexts[parent_thread_id].copy(deep=True)
+            thread_id, self.contexts[parent_thread_id].model_copy(deep=True)
         )
 
 

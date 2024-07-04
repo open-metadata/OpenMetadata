@@ -17,7 +17,7 @@ from datetime import datetime, timezone
 from types import MappingProxyType
 from typing import Dict, Iterable, Optional, Union, cast
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 from metadata.data_insight.processor.reports.cost_analysis_report_data_processor import (
     AggregatedCostAnalysisReportDataProcessor,
@@ -48,9 +48,7 @@ logger = profiler_logger()
 class DataInsightRecord(BaseModel):
     """Return class for the OpenMetadata Profiler Source"""
 
-    class Config:
-        arbitrary_types_allowed = True
-        extra = "forbid"
+    model_config = ConfigDict(extra="forbid", arbitrary_types_allowed=True)
 
     data: ReportData
 

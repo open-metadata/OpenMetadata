@@ -14,7 +14,7 @@ OpenMetadata source for the profiler
 import traceback
 from typing import Iterable, Optional, cast
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
@@ -50,9 +50,7 @@ TAGS_FIELD = ["tags"]
 class ProfilerSourceAndEntity(BaseModel):
     """Return class for the OpenMetadata Profiler Source"""
 
-    class Config:
-        arbitrary_types_allowed = True
-        extra = "forbid"
+    model_config = ConfigDict(extra="forbid", arbitrary_types_allowed=True)
 
     profiler_source: ProfilerSource
     entity: Table

@@ -243,7 +243,7 @@ class OMetaRolePolicyTest(TestCase):
 
         res_create = self.metadata.create_or_update(data=self.create_policy)
 
-        updated = self.create_policy.dict(exclude_unset=True)
+        updated = self.create_policy.model_dump(exclude_unset=True)
         updated["rules"] = [self.rule_3]
         updated_policy_entity = CreatePolicyRequest(**updated)
 
@@ -463,7 +463,7 @@ class OMetaRolePolicyTest(TestCase):
 
         res_create = self.metadata.create_or_update(data=self.create_role)
 
-        updated = self.create_role.dict(exclude_unset=True)
+        updated = self.create_role.model_dump(exclude_unset=True)
         updated["policies"] = [self.role_policy_2.name]
         updated_entity = CreateRoleRequest(**updated)
 

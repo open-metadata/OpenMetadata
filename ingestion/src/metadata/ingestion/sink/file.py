@@ -60,7 +60,7 @@ class FileSink(Sink):
         if self.wrote_something:
             self.file.write(",\n")
 
-        self.file.write(record.json())
+        self.file.write(record.model_dump_json())
         self.wrote_something = True
         return Either(right=get_log_name(record))
 

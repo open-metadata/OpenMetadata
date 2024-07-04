@@ -194,7 +194,7 @@ class EntityReportProcessorTest(unittest.TestCase):
             flat_result.timestamp = Timestamp(1695324826495)
             processed.append(flat_result)
             assert all(
-                k in flat_result.data.dict()
+                k in flat_result.data.model_dump()
                 for k in [
                     "entityType",
                     "entityTier",

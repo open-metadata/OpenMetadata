@@ -294,7 +294,7 @@ def _unsafe_parse_config(config: dict, cls: Type[T], message: str) -> None:
         cls.model_validate(config)
     except ValidationError as err:
         logger.debug(
-            f"The supported properties for {cls.__name__} are {list(cls.__fields__.keys())}"
+            f"The supported properties for {cls.__name__} are {list(cls.model_fields.keys())}"
         )
         raise err
 
@@ -315,7 +315,7 @@ def _unsafe_parse_dbt_config(config: dict, cls: Type[T], message: str) -> None:
         cls.model_validate(config)
     except ValidationError as err:
         logger.debug(
-            f"The supported properties for {cls.__name__} are {list(cls.__fields__.keys())}"
+            f"The supported properties for {cls.__name__} are {list(cls.model_fields.keys())}"
         )
         raise err
 

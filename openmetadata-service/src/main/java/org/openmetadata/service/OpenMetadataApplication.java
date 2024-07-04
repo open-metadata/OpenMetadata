@@ -448,12 +448,12 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     String maxMigration = Migration.lastMigrationFile(conf.getMigrationConfiguration());
     if (lastMigrated.isEmpty()) {
       throw new IllegalStateException(
-          "Could not validate Flyway migrations in the database. Make sure you have run `./bootstrap/bootstrap_storage.sh migrate-all` at least once.");
+          "Could not validate Flyway migrations in the database. Make sure you have run `./bootstrap/openmetadata-ops.sh migrate` at least once.");
     }
     if (lastMigrated.get().compareTo(maxMigration) < 0) {
       throw new IllegalStateException(
           "There are pending migrations to be run on the database."
-              + " Please backup your data and run `./bootstrap/bootstrap_storage.sh migrate-all`."
+              + " Please backup your data and run `./bootstrap/openmetadata-ops.sh migrate`."
               + " You can find more information on upgrading OpenMetadata at"
               + " https://docs.open-metadata.org/deployment/upgrade ");
     }

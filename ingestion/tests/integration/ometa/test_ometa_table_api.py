@@ -231,7 +231,7 @@ class OMetaTableTest(TestCase):
 
         res_create = self.metadata.create_or_update(data=self.create)
 
-        updated = self.create.dict(exclude_unset=True)
+        updated = self.create.model_dump(exclude_unset=True)
         updated["owner"] = self.owner
         updated_entity = CreateTableRequest(**updated)
 

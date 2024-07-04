@@ -243,7 +243,7 @@ class TableDiffValidator(BaseTestValidator, SQAValidatorMixin):
         raw = self.get_test_case_param_value(
             self.test_case.parameterValues, "runtimeParams", str
         )
-        runtime_params = TableDiffRuntimeParameters.parse_raw(raw)
+        runtime_params = TableDiffRuntimeParameters.model_validate_json(raw)
         return runtime_params
 
     def get_row_diff_test_case_result(

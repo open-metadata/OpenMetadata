@@ -30,7 +30,7 @@ public final class Migration {
     } catch (StatementException e) {
       throw new IllegalArgumentException(
           "Exception encountered when trying to obtain last migrated Flyway version."
-              + " Make sure you have run `./bootstrap/bootstrap_storage.sh migrate-all` at least once.",
+              + " Make sure you have run `./bootstrap/openmetadata-ops.sh migrate` at least once.",
           e);
     }
   }

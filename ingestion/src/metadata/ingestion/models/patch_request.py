@@ -440,7 +440,7 @@ def _sort_array_entity_fields(
                 destination_attr = destination_dict.get(model_str(source_attr.name))
                 if destination_attr:
                     updated_attributes.append(
-                        source_attr.copy(update=destination_attr.__dict__)
+                        source_attr.model_copy(update=destination_attr.__dict__)
                     )
                     # Remove the updated attribute from the destination dictionary
                     del destination_dict[model_str(source_attr.name)]
