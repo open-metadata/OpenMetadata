@@ -73,7 +73,8 @@
       "type": "string",
       "enum": [
         "PLAINTEXT",
-        "SSL"
+        "SSL",
+        "SASL_SSL"
       ],
       "javaEnums": [
         {
@@ -81,6 +82,9 @@
         },
         {
           "name": "SSL"
+        },
+        {
+          "name": "SASL_SSL"
         }
       ]
     },
@@ -88,6 +92,11 @@
       "title": "SSL",
       "description": "SSL Configuration details.",
       "$ref": "../../../../security/ssl/verifySSLConfig.json#/definitions/sslConfig"
+    },
+    "saslConfig": {
+      "title": "SASL",
+      "description": "SASL Configuration details.",
+      "$ref": "../../../../security/sasl/saslClientConfig.json"
     },
     "supportsMetadataExtraction": {
       "$ref": "../connectionBasicType.json#/definitions/supportsMetadataExtraction"
