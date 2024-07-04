@@ -34,6 +34,8 @@ Configure the dbt Workflow from the CLI.
 | dbt Queries                 | {% icon iconName="check" /%}              |
 | dbt Lineage                 | {% icon iconName="check" /%}              |
 | dbt Tags                    | {% icon iconName="check" /%}              |
+| dbt Tiers                   | {% icon iconName="check" /%}              |
+| dbt Glossary                | {% icon iconName="check" /%}              |
 | dbt Owner                   | {% icon iconName="check" /%}              |
 | dbt Descriptions            | {% icon iconName="check" /%}              |
 | dbt Tests                   | {% icon iconName="check" /%}              |
@@ -145,6 +147,33 @@ Tests from dbt will only be imported if the `run_results.json` file is passed.
   alt="dbt-tests"
   caption="dbt Tests"
  /%}
+
+
+### 7. dbt Tiers
+
+Table and column level Tiers can be imported from dbt
+
+Please refer [here](/connectors/ingestion/workflows/dbt/ingest-dbt-tier) for adding dbt tiers
+
+{% image
+  src="/images/v1.5/features/ingestion/workflows/dbt/dbt-features/dbt-tier.webp"
+  alt="dbt-tiers"
+  caption="dbt Tiers"
+ /%}
+
+
+### 8. dbt Glossary
+
+Table and column level Glossary can be imported from dbt
+
+Please refer [here](/connectors/ingestion/workflows/dbt/ingest-dbt-glossary) for adding dbt glossary
+
+{% image
+  src="/images/v1.5/features/ingestion/workflows/dbt/dbt-features/dbt-glossary.webp"
+  alt="dbt-glossary"
+  caption="dbt Glossary"
+ /%}
+
 
 ## Troubleshooting
 
