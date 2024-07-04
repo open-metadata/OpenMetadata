@@ -68,7 +68,7 @@
           "description": "Columns in this schema.",
           "type": "array",
           "items": {
-            "$ref": "../../type/schema.json#definitions/field"
+            "$ref": "../../type/schema.json#/definitions/field"
           },
           "default": []
         }
