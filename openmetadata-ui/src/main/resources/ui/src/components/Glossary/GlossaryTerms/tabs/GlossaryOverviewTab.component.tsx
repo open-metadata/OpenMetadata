@@ -116,8 +116,8 @@ const GlossaryOverviewTab = ({
     <Row className="glossary-overview-tab h-full" gutter={[32, 0]}>
       <Col className="glossary-term-height-with-resizable-panel" span={24}>
         <ResizablePanels
-          className="glossary-term-resizable-panel-container"
           firstPanel={{
+            className: 'glossary-term-resizable-panel-container',
             children: (
               <div data-testid="updated-by-container">
                 <Row className="p-md p-r-0" gutter={[0, 32]}>
