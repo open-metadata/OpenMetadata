@@ -44,8 +44,6 @@ site_menu:
     url: /deployment/kubernetes/security
   - category: Deployment / Kubernetes Deployment / Helm Values
     url: /deployment/kubernetes/helm-values
-  - category: Deployment / Kubernetes Deployment / FAQs
-    url: /deployment/kubernetes/faqs
 
   - category: Deployment / Ingestion
     url: /deployment/ingestion
