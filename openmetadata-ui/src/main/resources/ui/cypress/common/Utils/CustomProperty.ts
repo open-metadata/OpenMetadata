@@ -389,6 +389,8 @@ export const addCustomPropertiesForEntity = ({
   formatConfig?: string;
   entityReferenceConfig?: string[];
 }) => {
+  // eslint-disable-next-line max-len
+  const longDescription = `Lorem ipsum dolor sit amet consectetur adipisicing elit. Dolore neque fuga reprehenderit placeat, sint doloremque quo expedita consequatur fugiat maxime maiores voluptate eum quis quas dignissimos cumque perspiciatis optio dolorem blanditiis iure natus commodi dolor quam. Voluptatem excepturi aut, at ullam aliquid repudiandae distinctio ipsam voluptates tenetur a. Sit, illum.`;
   // Add Custom property for selected entity
   cy.get('[data-testid="add-field-button"]').click();
 
@@ -473,7 +475,9 @@ export const addCustomPropertiesForEntity = ({
     cy.get('#root\\/formatConfig').clear().type(formatConfig);
   }
 
-  cy.get(descriptionBox).clear().type(customPropertyData.description);
+  cy.get(descriptionBox)
+    .clear()
+    .type(`${customPropertyData.description} ${longDescription}`);
 
   // Check if the property got added
   cy.intercept('/api/v1/metadata/types/name/*?fields=customProperties').as(
