@@ -17,11 +17,14 @@ import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { GRAYED_OUT_COLOR } from '../../../constants/constants';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
+import { HelperTextType } from '../../../interface/FormUtils.interface';
 import { FormItemLabelProps } from './Form.interface';
 
 const FormItemLabel = ({
   label,
   helperText,
+  helperTextType = HelperTextType.Tooltip,
+  showHelperText = true,
   align,
   overlayInnerStyle,
   overlayClassName,
@@ -34,21 +37,23 @@ const FormItemLabel = ({
   return (
     <>
       <span data-testid="form-item-label">{label}</span>
-      {helperText && (
-        <Tooltip
-          destroyTooltipOnHide
-          align={align}
-          overlayClassName={overlayClassName}
-          overlayInnerStyle={overlayInnerStyle}
-          placement={placement}
-          title={helperText}>
-          <InfoCircleOutlined
-            className="m-l-xs"
-            data-testid="helper-icon"
-            style={{ color: GRAYED_OUT_COLOR }}
-          />
-        </Tooltip>
-      )}
+      {helperTextType === HelperTextType.Tooltip &&
+        helperText &&
+        showHelperText && (
+          <Tooltip
+            destroyTooltipOnHide
+            align={align}
+            overlayClassName={overlayClassName}
+            overlayInnerStyle={overlayInnerStyle}
+            placement={placement}
+            title={helperText}>
+            <InfoCircleOutlined
+              className="m-l-xs"
+              data-testid="helper-icon"
+              style={{ color: GRAYED_OUT_COLOR }}
+            />
+          </Tooltip>
+        )}
       {isBeta && (
         <Badge
           className="m-l-xs"
