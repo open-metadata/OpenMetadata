@@ -19,6 +19,7 @@ import { ReactComponent as IconEdit } from '../../../assets/svg/edit-new.svg';
 import { ReactComponent as IconDelete } from '../../../assets/svg/ic-delete.svg';
 import { ADD_CUSTOM_PROPERTIES_DOCS } from '../../../constants/docs.constants';
 import { NO_PERMISSION_FOR_ACTION } from '../../../constants/HelperTextUtil';
+import { TABLE_SCROLL_VALUE } from '../../../constants/Table.constants';
 import { ERROR_PLACEHOLDER_TYPE, OPERATION } from '../../../enums/common.enum';
 import { CustomProperty } from '../../../generated/type/customProperty';
 import { columnSorter, getEntityName } from '../../../utils/EntityUtils';
@@ -140,7 +141,9 @@ export const CustomPropertyTable: FC<CustomPropertyTableProp> = ({
           // If config is an object, then it is a enum config
           if (!isString(config) && !isArray(config)) {
             return (
-              <Space data-testid="enum-config" direction="vertical" size={4}>
+              <div
+                className="w-full d-flex gap-2 flex-column"
+                data-testid="enum-config">
                 <Typography.Text>
                   {JSON.stringify(config?.values ?? [])}
                 </Typography.Text>
@@ -148,7 +151,7 @@ export const CustomPropertyTable: FC<CustomPropertyTableProp> = ({
                   {t('label.multi-select')}:{' '}
                   {config?.multiSelect ? t('label.yes') : t('label.no')}
                 </Typography.Text>
-              </Space>
+              </div>
             );
           }
 
@@ -160,6 +163,7 @@ export const CustomPropertyTable: FC<CustomPropertyTableProp> = ({
         title: t('label.description'),
         dataIndex: 'description',
         key: 'description',
+        width: 300,
         render: (text) =>
           text ? (
             <RichTextEditorPreviewer markdown={text || ''} />
@@ -175,6 +179,8 @@ export const CustomPropertyTable: FC<CustomPropertyTableProp> = ({
         title: t('label.action-plural'),
         dataIndex: 'actions',
         key: 'actions',
+        width: 80,
+        fixed: 'right',
         render: (_, record) => (
           <Space align="center" size={14}>
             <Tooltip
@@ -247,6 +253,7 @@ export const CustomPropertyTable: FC<CustomPropertyTableProp> = ({
         }}
         pagination={false}
         rowKey="name"
+        scroll={TABLE_SCROLL_VALUE}
         size="small"
       />
       <ConfirmationModal
