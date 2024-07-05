@@ -73,7 +73,7 @@ def test_sample_data(db_service, db_fqn, metadata):
         },
         "workflowConfig": {
             "loggerLevel": LogLevels.DEBUG,
-            "openMetadataServerConfig": metadata.config.dict(),
+            "openMetadataServerConfig": metadata.config.model_dump(),
         },
     }
     profiler_workflow = ProfilerWorkflow.create(workflow_config)
