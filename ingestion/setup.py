@@ -342,6 +342,7 @@ test = {
     "pytest-order",
     # install dbt dependency
     "dbt-artifacts-parser",
+    "freezegun",
     VERSIONS["sqlalchemy-databricks"],
     VERSIONS["databricks-sdk"],
     VERSIONS["scikit-learn"],

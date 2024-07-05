@@ -1,26 +1,24 @@
-import logging
 import os
 import shutil
+from typing import cast
 
 import pytest
 from sqlalchemy import create_engine, text
 from testcontainers.mssql import SqlServerContainer
 
+from metadata.generated.schema.api.services.createDatabaseService import (
+    CreateDatabaseServiceRequest,
+)
 from metadata.generated.schema.entity.services.connections.database.mssqlConnection import (
     MssqlScheme,
+    MssqlConnection,
 )
-from metadata.generated.schema.entity.services.databaseService import DatabaseService
-from metadata.ingestion.lineage.sql_lineage import search_cache
-from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.workflow.metadata import MetadataWorkflow
-
+from metadata.generated.schema.entity.services.databaseService import (
+    DatabaseService,
+    DatabaseServiceType,
+    DatabaseConnection,
+)
 from ...helpers.docker_utils import try_bind
-from ...helpers.markers import xfail_param
-
-
-@pytest.fixture(scope="session", autouse=True)
-def config_logging():
-    logging.getLogger("sqlfluff").setLevel(logging.CRITICAL)
 
 
 @pytest.fixture(scope="session")
@@ -81,51 +79,44 @@ GO
 
 
 @pytest.fixture(
-    scope="module",
-    params=[
-        "english",
-        xfail_param(
-            "german",
-            "failes due to date format handling (https://github.com/open-metadata/OpenMetadata/issues/16434)",
-        ),
-    ],
-)
-def mssql_server_config(mssql_container, request):
-    language = request.param
-    engine = create_engine(
-        "mssql+pytds://" + mssql_container.get_connection_url().split("://")[1],
-        connect_args={"autocommit": True},
-    )
-    engine.execute(
-        f"ALTER LOGIN {mssql_container.username} WITH DEFAULT_LANGUAGE={language};"
-    )
-
-
-@pytest.fixture(
-    scope="module",
     params=[
         MssqlScheme.mssql_pytds,
         MssqlScheme.mssql_pyodbc,
     ],
 )
-def ingest_metadata(mssql_container, metadata: OpenMetadata, request):
-    workflow_config = {
+def scheme(request):
+    return request.param
+
+
+@pytest.fixture()
+def create_service_request(mssql_container, scheme, tmp_path_factory):
+    return CreateDatabaseServiceRequest(
+        name="docker_test_" + tmp_path_factory.mktemp("mssql").name + "_" + scheme.name,
+        serviceType=DatabaseServiceType.Mssql,
+        connection=DatabaseConnection(
+            config=MssqlConnection(
+                username=mssql_container.username,
+                password=mssql_container.password,
+                hostPort="localhost:"
+                + mssql_container.get_exposed_port(mssql_container.port),
+                database="AdventureWorks",
+                scheme=scheme,
+                ingestAllDatabases=True,
+                connectionOptions={"TrustServerCertificate": "yes"},
+            )
+        ),
+    )
+
+
+@pytest.fixture()
+def ingestion_config(
+    db_service, tmp_path_factory, workflow_config, sink_config, patch_password
+):
+    return {
         "source": {
             "type": "mssql",
-            "serviceName": "integration_test_mssql_" + request.param.name,
-            "serviceConnection": {
-                "config": {
-                    "type": "Mssql",
-                    "scheme": request.param,
-                    "username": mssql_container.username,
-                    "password": mssql_container.password,
-                    "hostPort": "localhost:"
-                    + mssql_container.get_exposed_port(mssql_container.port),
-                    "database": "AdventureWorks",
-                    "ingestAllDatabases": True,
-                    "connectionOptions": {"TrustServerCertificate": "yes"},
-                }
-            },
+            "serviceName": db_service.fullyQualifiedName.root,
+            "serviceConnection": db_service.connection.dict(),
             "sourceConfig": {
                 "config": {
                     "type": "DatabaseMetadata",
@@ -133,61 +124,18 @@ def ingest_metadata(mssql_container, metadata: OpenMetadata, request):
                 },
             },
         },
-        "sink": {"type": "metadata-rest", "config": {}},
-        "workflowConfig": {
-            "loggerLevel": "DEBUG",
-            "openMetadataServerConfig": metadata.config.dict(),
-        },
+        "sink": sink_config,
+        "workflowConfig": workflow_config,
     }
-    metadata_ingestion = MetadataWorkflow.create(workflow_config)
-    metadata_ingestion.execute()
-    metadata_ingestion.raise_from_status()
-    metadata_ingestion.stop()
-    db_service = metadata.get_by_name(
-        DatabaseService, workflow_config["source"]["serviceName"]
-    )
-    yield db_service
-    metadata.delete(DatabaseService, db_service.id, recursive=True, hard_delete=True)
 
 
-@pytest.fixture(scope="module")
-def run_lineage_workflow(
-    mssql_server_config,
-    ingest_metadata: DatabaseService,
-    mssql_container,
-    metadata: OpenMetadata,
-):
-    workflow_config = {
-        "source": {
-            "type": "mssql-lineage",
-            "serviceName": ingest_metadata.fullyQualifiedName.root,
-            "serviceConnection": {
-                "config": {
-                    "type": "Mssql",
-                    "scheme": ingest_metadata.connection.config.scheme,
-                    "username": mssql_container.username,
-                    "password": mssql_container.password,
-                    "hostPort": "localhost:"
-                    + mssql_container.get_exposed_port(mssql_container.port),
-                    "database": "AdventureWorks",
-                    "ingestAllDatabases": True,
-                }
-            },
-            "sourceConfig": {
-                "config": {
-                    "type": "DatabaseLineage",
-                    "databaseFilterPattern": {"includes": ["TestDB", "AdventureWorks"]},
-                },
-            },
-        },
-        "sink": {"type": "metadata-rest", "config": {}},
-        "workflowConfig": {
-            "loggerLevel": "INFO",
-            "openMetadataServerConfig": metadata.config.dict(),
-        },
-    }
-    metadata_ingestion = MetadataWorkflow.create(workflow_config)
-    search_cache.clear()
-    metadata_ingestion.execute()
-    metadata_ingestion.raise_from_status()
-    metadata_ingestion.stop()
+@pytest.fixture()
+def patch_password(mssql_container):
+    def inner(service: DatabaseService):
+        service.connection.config = cast(MssqlConnection, service.connection.config)
+        service.connection.config.password = type(service.connection.config.password)(
+            mssql_container.password
+        )
+        return service
+
+    return inner
