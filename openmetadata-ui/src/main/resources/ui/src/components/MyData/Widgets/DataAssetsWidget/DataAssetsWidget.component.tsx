@@ -71,7 +71,7 @@ const DataAssetsWidget = ({
       className="data-assets-explore-widget-container card-widget h-full"
       data-testid="data-assets-widget"
       loading={loading}>
-      <Row gutter={[0, 15]}>
+      <Row gutter={[0, 16]}>
         <Col span={24}>
           <Row justify="space-between">
             <Col>
@@ -119,7 +119,7 @@ const DataAssetsWidget = ({
               </Typography.Paragraph>
             </ErrorPlaceHolder>
           ) : (
-            <Row gutter={[10, 15]}>
+            <Row gutter={[0, 8]}>
               {services.map((service) => (
                 <Col key={service.key} lg={6} xl={4}>
                   <DataAssetCard service={service} />

@@ -104,6 +104,7 @@ def ingest_metadata(db_service, metadata: OpenMetadata):
 
 @pytest.fixture(scope="module")
 def ingest_postgres_lineage(db_service, ingest_metadata, metadata: OpenMetadata):
+    search_cache.clear()
     workflow_config = OpenMetadataWorkflowConfig(
         source=Source(
             type="postgres-lineage",
@@ -126,6 +127,7 @@ def ingest_postgres_lineage(db_service, ingest_metadata, metadata: OpenMetadata)
 
 
 def test_ingest_query_log(db_service, ingest_metadata, metadata: OpenMetadata):
+    search_cache.clear()
     reindex_search(
         metadata
     )  # since query cache is stored in ES, we need to reindex to avoid having a stale cache
@@ -143,7 +145,7 @@ def test_ingest_query_log(db_service, ingest_metadata, metadata: OpenMetadata):
         "sink": {"type": "metadata-rest", "config": {}},
         "workflowConfig": {
             "loggerLevel": "DEBUG",
-            "openMetadataServerConfig": metadata.config.dict(),
+            "openMetadataServerConfig": metadata.config.model_dump(),
         },
     }
     metadata_ingestion = MetadataWorkflow.create(workflow_config)
@@ -197,7 +199,7 @@ def run_profiler_workflow(ingest_metadata, db_service, metadata):
             loggerLevel=LogLevels.DEBUG, openMetadataServerConfig=metadata.config
         ),
     )
-    metadata_ingestion = ProfilerWorkflow.create(workflow_config.dict())
+    metadata_ingestion = ProfilerWorkflow.create(workflow_config.model_dump())
     search_cache.clear()
     metadata_ingestion.execute()
     return
@@ -205,11 +207,12 @@ def run_profiler_workflow(ingest_metadata, db_service, metadata):
 
 @pytest.fixture(scope="module")
 def ingest_query_usage(ingest_metadata, db_service, metadata):
+    search_cache.clear()
     workflow_config = {
         "source": {
             "type": "postgres-usage",
             "serviceName": db_service.fullyQualifiedName.root,
-            "serviceConnection": db_service.connection.dict(),
+            "serviceConnection": db_service.connection.model_dump(),
             "sourceConfig": {
                 "config": {"type": DatabaseUsageConfigType.DatabaseUsage.value}
             },
@@ -230,7 +233,7 @@ def ingest_query_usage(ingest_metadata, db_service, metadata):
         "sink": {"type": "metadata-rest", "config": {}},
         "workflowConfig": {
             "loggerLevel": "DEBUG",
-            "openMetadataServerConfig": metadata.config.dict(),
+            "openMetadataServerConfig": metadata.config.model_dump(),
         },
     }
     workflow = UsageWorkflow.create(workflow_config)
@@ -275,7 +278,7 @@ def run_usage_workflow(db_service, metadata):
         "source": {
             "type": "postgres-usage",
             "serviceName": db_service.fullyQualifiedName.root,
-            "serviceConnection": db_service.connection.dict(),
+            "serviceConnection": db_service.connection.model_dump(),
             "sourceConfig": {
                 "config": {"type": DatabaseUsageConfigType.DatabaseUsage.value}
             },
@@ -296,7 +299,7 @@ def run_usage_workflow(db_service, metadata):
         "sink": {"type": "metadata-rest", "config": {}},
         "workflowConfig": {
             "loggerLevel": "DEBUG",
-            "openMetadataServerConfig": metadata.config.dict(),
+            "openMetadataServerConfig": metadata.config.model_dump(),
         },
     }
     workflow = UsageWorkflow.create(workflow_config)
@@ -314,7 +317,7 @@ def test_usage_delete_usage(db_service, ingest_postgres_lineage, metadata):
         "source": {
             "type": "postgres-usage",
             "serviceName": db_service.fullyQualifiedName.root,
-            "serviceConnection": db_service.connection.dict(),
+            "serviceConnection": db_service.connection.model_dump(),
             "sourceConfig": {
                 "config": {"type": DatabaseUsageConfigType.DatabaseUsage.value}
             },
@@ -335,7 +338,7 @@ def test_usage_delete_usage(db_service, ingest_postgres_lineage, metadata):
         "sink": {"type": "metadata-rest", "config": {}},
         "workflowConfig": {
             "loggerLevel": "DEBUG",
-            "openMetadataServerConfig": metadata.config.dict(),
+            "openMetadataServerConfig": metadata.config.model_dump(),
         },
     }
     workflow = UsageWorkflow.create(workflow_config)
@@ -374,8 +377,11 @@ def reindex_search(metadata: OpenMetadata, timeout=60):
         if time.time() - start > timeout:
             raise TimeoutError("Timed out waiting for reindexing to start")
         time.sleep(1)
-    time.sleep(1)
+    time.sleep(
+        0.5
+    )  # app interactivity is not immediate (probably bc async operations), so we wait a bit
     metadata.client.post("/apps/trigger/SearchIndexingApplication")
+    time.sleep(0.5)  # here too
     while status != "success":
         response = metadata.client.get(
             "/apps/name/SearchIndexingApplication/status?offset=0&limit=1"

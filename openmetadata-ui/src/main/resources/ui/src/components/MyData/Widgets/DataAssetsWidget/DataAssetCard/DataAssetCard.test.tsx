@@ -33,6 +33,7 @@ jest.mock('../../../../../utils/CommonUtils', () => ({
 
 jest.mock('../../../../../utils/ServiceUtilClassBase', () => ({
   getDataAssetsService: jest.fn().mockReturnValue('tables'),
+  getServiceName: jest.fn().mockReturnValue('Mysql'),
 }));
 
 jest.mock('../../../../common/Badge/Badge.component', () => {

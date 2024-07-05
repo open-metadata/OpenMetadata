@@ -790,6 +790,8 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
             "failedRowsSample",
             JsonUtils.pojoToJson(tableData));
     setFieldsInternal(testCase, Fields.EMPTY_FIELDS);
+    // deep copy the test case to avoid updating the cached entity
+    testCase = JsonUtils.deepCopy(testCase, TestCase.class);
     return testCase.withFailedRowsSample(tableData);
   }
 
@@ -999,7 +1001,7 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
           Entity.TABLE, table.getColumns(), table.getFullyQualifiedName(), true);
       List<TagLabel> tags = daoCollection.tagUsageDAO().getTags(table.getFullyQualifiedName());
       table.setTags(tags);
-      return maskSampleData(testCase.getFailedRowsSample(), table, table.getColumns());
+      return maskSampleData(sampleData, table, table.getColumns());
     }
     return sampleData;
   }
