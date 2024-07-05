@@ -35,11 +35,11 @@
     },
     "requestSchema": {
       "description": "Request Schema for the API Endpoint.",
-      "$ref": "../../entity/data/apiEndpoint.json#/definitions/apiSchema"
+      "$ref": "../../type/apiSchema.json"
     },
     "responseSchema": {
       "description": "Response Schema for the API Endpoint.",
-      "$ref": "../../entity/data/apiEndpoint.json#/definitions/apiSchema"
+      "$ref": "../../type/apiSchema.json"
     },
     "owner": {
       "description": "Owner of this topic",

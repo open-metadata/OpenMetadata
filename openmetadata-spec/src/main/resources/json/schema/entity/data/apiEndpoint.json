@@ -53,28 +53,6 @@
           "name": "TRACE"
         }
       ]
-    },
-    "apiSchema": {
-      "javaType": "org.openmetadata.schema.type.APISchema",
-      "description": "This schema defines the Request/Response Schema for APIs.",
-      "type": "object",
-      "properties": {
-        "type": {
-          "description": "Type of the request schema.",
-          "type": "string",
-          "default": "JSON"
-        },
-        "schemaFields": {
-          "description": "Columns in this schema.",
-          "type": "array",
-          "items": {
-            "$ref": "../../type/schema.json#/definitions/field"
-          },
-          "default": []
-        }
-      },
-      "required": ["type"],
-      "additionalProperties": false
     }
   },
   "properties": {
@@ -122,11 +100,11 @@
     },
     "requestSchema": {
       "description": "Request Schema for the API Endpoint.",
-      "$ref": "#/definitions/apiSchema"
+      "$ref": "../../type/apiSchema.json"
     },
     "responseSchema": {
       "description": "Response Schema for the API Endpoint.",
-      "$ref": "#/definitions/apiSchema"
+      "$ref": "../../type/apiSchema.json"
     },
     "apiCollection": {
       "description": "Reference to API Collection that contains this API Endpoint.",
