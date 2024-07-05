@@ -63,6 +63,13 @@ $$
 - `yyyy-MM-dd HH:mm:ss.SSSSSS`
 - `dd MMMM yyyy HH:mm:ss`
 
+**Supported Time formats**
+
+- `HH:mm:ss`
+- `hh:mm:ss`
+- `hh:mm:ss AM/PM`
+- `hh:mm:ssZ`
+
 $$section
 ### Entity Reference type $(id="entityReferenceConfig")
 
