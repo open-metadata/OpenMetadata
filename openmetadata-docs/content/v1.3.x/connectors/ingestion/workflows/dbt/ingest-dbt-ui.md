@@ -128,7 +128,9 @@ File server path of the `manifest.json`, `catalog.json` and `run_results.json` f
 
 Click on the the link [here](https://docs.getdbt.com/guides/getting-started) for getting started with dbt cloud account setup if not done already.
 OpenMetadata uses dbt cloud APIs to fetch the `run artifacts` (manifest.json, catalog.json and run_results.json) from the most recent dbt run.
-The APIs need to be authenticated using an Authentication Token. Follow the link [here](https://docs.getdbt.com/dbt-cloud/api-v2#section/Authentication) to generate an authentication token for your dbt cloud account.
+The APIs need to be authenticated using an Authentication Token. Follow the link [here](https://docs.getdbt.com/docs/dbt-cloud-apis/service-tokens) to generate an authentication token for your dbt cloud account.
+
+The `Account Viewer` role is the minimum requirement for the dbt cloud token.
 
 {% image
   src="/images/v1.3/features/ingestion/workflows/dbt/dbt-cloud.webp"

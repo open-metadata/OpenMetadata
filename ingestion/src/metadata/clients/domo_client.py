@@ -17,7 +17,7 @@ import traceback
 from dataclasses import dataclass
 from typing import List, Optional, Union
 
-from pydantic import BaseModel, Extra
+from pydantic import BaseModel, ConfigDict
 from pydomo import Domo
 
 from metadata.generated.schema.entity.services.connections.dashboard.domoDashboardConnection import (
@@ -43,8 +43,7 @@ class DomoBaseModel(BaseModel):
     Domo basic configurations
     """
 
-    class Config:
-        extra = Extra.allow
+    model_config = ConfigDict(extra="allow")
 
     id: str
     name: str
@@ -75,8 +74,7 @@ class DomoChartMetadataDetails(BaseModel):
     Metadata Details in chart
     """
 
-    class Config:
-        extra = Extra.allow
+    model_config = ConfigDict(extra="allow")
 
     chartType: Optional[str] = None
 
