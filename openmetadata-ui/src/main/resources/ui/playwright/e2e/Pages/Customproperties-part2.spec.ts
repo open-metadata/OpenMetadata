@@ -20,51 +20,12 @@ import {
 } from '../../utils/customProperty';
 import { settingClick } from '../../utils/sidebar';
 
-const propertiesList = [
-  'Integer',
-  'String',
-  'Markdown',
-  'Duration',
-  'Email',
-  'Number',
-  'Sql Query',
-  'Time Interval',
-  'Timestamp',
-];
-
 // use the admin user to login
 test.use({ storageState: 'playwright/.auth/admin.json' });
 
-test.describe('Custom properties page', () => {
+test.describe('Custom properties with custom property config', () => {
   test.beforeEach('Visit Home Page', async ({ page }) => {
     await redirectToHomePage(page);
-  });
-
-  propertiesList.forEach((property) => {
-    test.describe(`Add update and delete ${property} custom properties`, () => {
-      Object.values(CUSTOM_PROPERTIES_ENTITIES).forEach(async (entity) => {
-        const propertyName = `pwcustomproperty${entity.name}test${uuid()}`;
-
-        test(`Add ${property} custom property for ${entity.name}`, async ({
-          page,
-        }) => {
-          test.slow(true);
-
-          await settingClick(page, entity.entityApiType, true);
-
-          await addCustomPropertiesForEntity({
-            page,
-            propertyName,
-            customPropertyData: entity,
-            customType: property,
-          });
-
-          await editCreatedProperty(page, propertyName);
-
-          await deleteCreatedProperty(page, propertyName);
-        });
-      });
-    });
   });
 
   test.describe('Add update and delete Enum custom properties', () => {
