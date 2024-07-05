@@ -478,7 +478,7 @@ export const addCustomPropertiesForEntity = async ({
   }
 
   // Format configuration
-  if (['Date', 'Date Time'].includes(customType)) {
+  if (['Date', 'Date Time', 'Time'].includes(customType)) {
     await page.fill('#root\\/formatConfig', 'invalid-format');
 
     await expect(page.locator('#formatConfig_help')).toContainText(

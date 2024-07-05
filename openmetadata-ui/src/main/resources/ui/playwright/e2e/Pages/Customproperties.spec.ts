@@ -28,7 +28,6 @@ const propertiesList = [
   'Email',
   'Number',
   'Sql Query',
-  'Time',
   'Time Interval',
   'Timestamp',
 ];
@@ -165,6 +164,30 @@ test.describe('Custom properties page', () => {
           customPropertyData: entity,
           customType: 'Date',
           formatConfig: entity.dateFormatConfig,
+        });
+
+        await editCreatedProperty(page, propertyName);
+
+        await deleteCreatedProperty(page, propertyName);
+      });
+    });
+  });
+
+  test.describe('Add update and delete Time custom properties', () => {
+    Object.values(CUSTOM_PROPERTIES_ENTITIES).forEach(async (entity) => {
+      const propertyName = `pwcustomproperty${entity.name}test${uuid()}`;
+
+      test(`Add Time custom property for ${entity.name}`, async ({ page }) => {
+        test.slow(true);
+
+        await settingClick(page, entity.entityApiType, true);
+
+        await addCustomPropertiesForEntity({
+          page,
+          propertyName,
+          customPropertyData: entity,
+          customType: 'Time',
+          formatConfig: entity.timeFormatConfig,
         });
 
         await editCreatedProperty(page, propertyName);
