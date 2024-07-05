@@ -199,7 +199,7 @@ class OMetaPatchMixin(OMetaPatchMixinBase):
             return None
 
         # https://docs.pydantic.dev/latest/usage/exporting_models/#modelcopy
-        destination = source.copy(deep=True)
+        destination = source.model_copy(deep=True)
         destination.description = Markdown(description)
 
         return self.patch(entity=entity, source=source, destination=destination)
@@ -228,7 +228,7 @@ class OMetaPatchMixin(OMetaPatchMixinBase):
 
         table.tableConstraints = instance.tableConstraints
 
-        destination = table.copy(deep=True)
+        destination = table.model_copy(deep=True)
         destination.tableConstraints = constraints
 
         return self.patch(entity=Table, source=table, destination=destination)
@@ -253,7 +253,7 @@ class OMetaPatchMixin(OMetaPatchMixinBase):
         if not source:
             return None
 
-        destination = source.copy(deep=True)
+        destination = source.model_copy(deep=True)
 
         destination.entityLink = EntityLink(entity_link)
         if test_case_parameter_values:
@@ -291,7 +291,7 @@ class OMetaPatchMixin(OMetaPatchMixinBase):
 
         # Initialize empty tag list or the last updated tags
         source.tags = instance.tags or []
-        destination = source.copy(deep=True)
+        destination = source.model_copy(deep=True)
 
         tag_fqns = {label.tagFQN.root for label in tag_labels}
 
@@ -385,7 +385,7 @@ class OMetaPatchMixin(OMetaPatchMixinBase):
         # Make sure we run the patch against the last updated data from the API
         table.columns = instance.columns
 
-        destination = table.copy(deep=True)
+        destination = table.model_copy(deep=True)
         for column_tag in column_tags or []:
             update_column_tags(destination.columns, column_tag, operation)
 
@@ -472,7 +472,7 @@ class OMetaPatchMixin(OMetaPatchMixinBase):
         # Make sure we run the patch against the last updated data from the API
         table.columns = instance.columns
 
-        destination = table.copy(deep=True)
+        destination = table.model_copy(deep=True)
         update_column_description(destination.columns, column_descriptions, force)
 
         patched_entity = self.patch(entity=Table, source=table, destination=destination)
@@ -531,7 +531,7 @@ class OMetaPatchMixin(OMetaPatchMixinBase):
         :param life_cycle_data: Life Cycle data to add
         """
         try:
-            destination = entity.copy(deep=True)
+            destination = entity.model_copy(deep=True)
             destination.lifeCycle = life_cycle
             return self.patch(
                 entity=type(entity), source=entity, destination=destination
@@ -546,7 +546,7 @@ class OMetaPatchMixin(OMetaPatchMixinBase):
     def patch_domain(self, entity: Entity, domain: Domain) -> Optional[Entity]:
         """Patch domain data for an Entity"""
         try:
-            destination: Entity = entity.copy(deep=True)
+            destination: Entity = entity.model_copy(deep=True)
             destination.domain = EntityReference(id=domain.id, type="domain")
             return self.patch(
                 entity=type(entity), source=entity, destination=destination
