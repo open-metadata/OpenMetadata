@@ -20,7 +20,7 @@ from typing import Callable, List, Optional, Tuple
 
 from sqlalchemy import Column, MetaData, Table, func, inspect, literal, select
 from sqlalchemy.sql.expression import ColumnOperators, and_, cte
-from sqlalchemy.types import String, DateTime
+from sqlalchemy.types import String
 
 from metadata.generated.schema.entity.data.table import Table as OMTable
 from metadata.generated.schema.entity.data.table import TableType
