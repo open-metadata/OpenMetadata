@@ -70,4 +70,26 @@ describe('Test FormItemLabel Component', () => {
     expect(label).toContainHTML(mockProps.label as string);
     expect(helpIcon).toBeInTheDocument();
   });
+
+  it('Should render beta badge if isBeta is true', async () => {
+    render(<FormItemLabel {...mockProps} isBeta />);
+
+    const label = screen.getByTestId('form-item-label');
+
+    const betaBadge = screen.getByText('label.beta');
+
+    expect(label).toContainHTML(mockProps.label as string);
+    expect(betaBadge).toBeInTheDocument();
+  });
+
+  it('Should not render beta badge if isBeta is false', async () => {
+    render(<FormItemLabel {...mockProps} />);
+
+    const label = screen.getByTestId('form-item-label');
+
+    const betaBadge = screen.queryByText('label.beta');
+
+    expect(label).toContainHTML(mockProps.label as string);
+    expect(betaBadge).not.toBeInTheDocument();
+  });
 });

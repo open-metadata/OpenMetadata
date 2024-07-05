@@ -72,6 +72,7 @@ export const getField = (field: FieldProp) => {
     formItemProps,
     hasSeparator = false,
     formItemLayout = FormItemLayout.VERTICAL,
+    isBeta = false,
   } = field;
 
   let internalFormItemProps: FormItemProps = {};
@@ -218,6 +219,7 @@ export const getField = (field: FieldProp) => {
             align={props.tooltipAlign as TooltipProps['align']}
             helperText={helperText}
             helperTextType={helperTextType}
+            isBeta={isBeta}
             label={label}
             overlayClassName={props.overlayClassName as string}
             overlayInnerStyle={props.overlayInnerStyle as React.CSSProperties}

@@ -591,7 +591,7 @@ class SasSource(
                 )
                 self.metadata.client.put(
                     path=f"{self.metadata.get_suffix(Table)}/{table_entity.id.root}/tableProfile",
-                    data=table_profile_request.json(),
+                    data=table_profile_request.model_dump_json(),
                 )
 
         except Exception as exc:

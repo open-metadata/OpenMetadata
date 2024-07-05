@@ -17,6 +17,7 @@ multiple profilers per table and columns.
 """
 from typing import List, Optional, Type, Union
 
+from pydantic import ConfigDict
 from sqlalchemy import Column
 from sqlalchemy.orm import DeclarativeMeta
 
@@ -124,10 +125,9 @@ class ProfilerResponse(ConfigModel):
 class ThreadPoolMetrics(ConfigModel):
     """A container for all metrics to be computed on the same thread."""
 
+    model_config = ConfigDict(arbitrary_types_allowed=True)
+
     metrics: Union[List[Union[Type[Metric], CustomMetric]], Type[Metric]]
     metric_type: MetricTypes
     column: Optional[Union[Column, SQALikeColumn]] = None
     table: Union[Table, DeclarativeMeta]
-
-    class Config:
-        arbitrary_types_allowed = True

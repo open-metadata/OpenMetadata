@@ -60,4 +60,5 @@ export interface FieldProp {
   placeholder?: string;
   hasSeparator?: boolean;
   formItemLayout?: FormItemLayout;
+  isBeta?: boolean;
 }

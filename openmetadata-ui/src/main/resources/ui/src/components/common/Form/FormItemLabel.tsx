@@ -12,9 +12,11 @@
  */
 
 import { InfoCircleOutlined } from '@ant-design/icons';
-import { Tooltip } from 'antd';
+import { Badge, Tooltip } from 'antd';
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import { GRAYED_OUT_COLOR } from '../../../constants/constants';
+import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { HelperTextType } from '../../../interface/FormUtils.interface';
 import { FormItemLabelProps } from './Form.interface';
 
@@ -26,7 +28,11 @@ const FormItemLabel = ({
   overlayInnerStyle,
   overlayClassName,
   placement = 'top',
+  isBeta = false,
 }: FormItemLabelProps) => {
+  const { t } = useTranslation();
+  const { theme } = useApplicationStore();
+
   return (
     <>
       <span data-testid="form-item-label">{label}</span>
@@ -44,6 +50,14 @@ const FormItemLabel = ({
             style={{ color: GRAYED_OUT_COLOR }}
           />
         </Tooltip>
+      )}
+      {isBeta && (
+        <Badge
+          className="m-l-xs"
+          color={theme.primaryColor}
+          count={t('label.beta')}
+          size="small"
+        />
       )}
     </>
   );

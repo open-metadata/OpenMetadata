@@ -23,4 +23,5 @@ export interface FormItemLabelProps {
   overlayClassName?: string;
   overlayInnerStyle?: React.CSSProperties;
   align?: TooltipProps['align'];
+  isBeta?: boolean;
 }

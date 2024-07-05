@@ -114,7 +114,7 @@ class SearchServiceSource(TopologyRunnerMixin, Source, ABC):
     source_config: SearchServiceMetadataPipeline
     config: WorkflowSource
     # Big union of types we want to fetch dynamically
-    service_connection: SearchConnection.__fields__["config"].annotation
+    service_connection: SearchConnection.model_fields["config"].annotation
 
     topology = SearchServiceTopology()
     context = TopologyContextManager(topology)
