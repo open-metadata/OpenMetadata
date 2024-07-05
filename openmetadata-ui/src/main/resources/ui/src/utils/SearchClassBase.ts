@@ -231,7 +231,7 @@ class SearchClassBase {
             },
           },
           {
-            title: i18n.t('label.classification-plural'),
+            title: i18n.t('label.tag-plural'),
             key: '4',
             isLeaf: true,
             icon: ClassificationIcon,
