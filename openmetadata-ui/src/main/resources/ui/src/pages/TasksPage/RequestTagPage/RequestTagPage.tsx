@@ -163,7 +163,9 @@ const RequestTag = () => {
 
   return (
     <ResizablePanels
+      className="content-height-with-resizable-panel"
       firstPanel={{
+        className: 'content-resizable-panel-container',
         minWidth: 700,
         flex: 0.6,
         children: (
@@ -261,6 +263,7 @@ const RequestTag = () => {
       }}
       pageTitle={t('label.task')}
       secondPanel={{
+        className: 'content-resizable-panel-container',
         minWidth: 60,
         flex: 0.4,
         children: (
