@@ -179,7 +179,7 @@ export const CustomPropertyTable: FC<CustomPropertyTableProp> = ({
         title: t('label.action-plural'),
         dataIndex: 'actions',
         key: 'actions',
-        width: 100,
+        width: 80,
         fixed: 'right',
         render: (_, record) => (
           <Space align="center" size={14}>
