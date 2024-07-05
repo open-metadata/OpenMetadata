@@ -13,7 +13,6 @@
 
 package org.openmetadata.service.util;
 
-import java.util.List;
 import java.util.Objects;
 import java.util.Set;
 import lombok.extern.slf4j.Slf4j;
@@ -23,7 +22,6 @@ import org.openmetadata.schema.auth.SSOAuthMechanism;
 import org.openmetadata.schema.entity.Bot;
 import org.openmetadata.schema.entity.applications.configuration.ApplicationConfig;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
-import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineType;
 import org.openmetadata.schema.entity.teams.AuthenticationMechanism;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.metadataIngestion.ApplicationPipeline;
@@ -36,7 +34,6 @@ import org.openmetadata.schema.services.connections.metadata.AuthProvider;
 import org.openmetadata.schema.services.connections.metadata.OpenMetadataConnection;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
-import org.openmetadata.service.apps.bundles.insights.DataInsightsApp;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.BotRepository;
 import org.openmetadata.service.jdbi3.UserRepository;
@@ -70,13 +67,17 @@ public class OpenMetadataConnectionBuilder {
   }
 
   public OpenMetadataConnectionBuilder(
-      OpenMetadataApplicationConfig openMetadataApplicationConfig, IngestionPipeline ingestionPipeline) {
+      OpenMetadataApplicationConfig openMetadataApplicationConfig,
+      IngestionPipeline ingestionPipeline) {
     initializeOpenMetadataConnectionBuilder(openMetadataApplicationConfig);
     // Try to load the pipeline bot or default to using the ingestion bot
     try {
       initializeBotUser(getBotFromPipeline(ingestionPipeline));
     } catch (Exception e) {
-      LOG.warn(String.format("Could not initialize bot for pipeline [%s] due to [%s]", ingestionPipeline.getPipelineType(), e));
+      LOG.warn(
+          String.format(
+              "Could not initialize bot for pipeline [%s] due to [%s]",
+              ingestionPipeline.getPipelineType(), e));
       initializeBotUser(Entity.INGESTION_BOT_NAME);
     }
   }
@@ -86,15 +87,20 @@ public class OpenMetadataConnectionBuilder {
     switch (ingestionPipeline.getPipelineType()) {
       case METADATA, DBT -> botName = Entity.INGESTION_BOT_NAME;
       case APPLICATION -> {
-        ApplicationPipeline applicationPipeline = JsonUtils.convertValue(ingestionPipeline.getSourceConfig().getConfig(), ApplicationPipeline.class);
-        ApplicationConfig appConfig = JsonUtils.convertValue(applicationPipeline.getAppConfig(), ApplicationConfig.class);
+        ApplicationPipeline applicationPipeline =
+            JsonUtils.convertValue(
+                ingestionPipeline.getSourceConfig().getConfig(), ApplicationPipeline.class);
+        ApplicationConfig appConfig =
+            JsonUtils.convertValue(applicationPipeline.getAppConfig(), ApplicationConfig.class);
         String type = (String) appConfig.getAdditionalProperties().get("type");
         botName = String.format("%sApplicationBot", type);
       }
-      // TODO: Remove this once we internalize the DataInsights app
-      // For now we need it since DataInsights has its own pipelineType inherited from when it was a standalone workflow
+        // TODO: Remove this once we internalize the DataInsights app
+        // For now we need it since DataInsights has its own pipelineType inherited from when it was
+        // a standalone workflow
       case DATA_INSIGHT -> botName = "DataInsightsApplicationBot";
-      default -> botName = String.format("%s-bot", ingestionPipeline.getPipelineType().toString().toLowerCase());
+      default -> botName =
+          String.format("%s-bot", ingestionPipeline.getPipelineType().toString().toLowerCase());
     }
     return botName;
   }
@@ -209,9 +215,7 @@ public class OpenMetadataConnectionBuilder {
       }
       return user;
     } catch (EntityNotFoundException ex) {
-      LOG.debug(
-          (String.format("User for bot [%s]", botName)) + " [{}] not found.",
-          botName);
+      LOG.debug((String.format("User for bot [%s]", botName)) + " [{}] not found.", botName);
       return null;
     }
   }

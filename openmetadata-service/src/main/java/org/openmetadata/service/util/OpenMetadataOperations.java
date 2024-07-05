@@ -44,7 +44,6 @@ import org.openmetadata.schema.ServiceEntityInterface;
 import org.openmetadata.schema.entity.app.App;
 import org.openmetadata.schema.entity.app.AppRunRecord;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
-import org.openmetadata.schema.services.connections.metadata.OpenMetadataConnection;
 import org.openmetadata.schema.system.EventPublisherJob;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.sdk.PipelineServiceClientInterface;
@@ -454,7 +453,8 @@ public class OpenMetadataOperations implements Callable<Integer> {
     try {
       // TODO: IS THIS OK?
       LOG.debug(String.format("deploying pipeline %s", pipeline.getName()));
-      pipeline.setOpenMetadataServerConnection(new OpenMetadataConnectionBuilder(config, pipeline).build());
+      pipeline.setOpenMetadataServerConnection(
+          new OpenMetadataConnectionBuilder(config, pipeline).build());
       secretsManager.decryptIngestionPipeline(pipeline);
       ServiceEntityInterface service =
           Entity.getEntity(pipeline.getService(), "", Include.NON_DELETED);
