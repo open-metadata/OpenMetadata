@@ -114,4 +114,66 @@ describe('createTestCaseParameters', () => {
 
     expect(result).toBeUndefined();
   });
+
+  it('should return params value for sqlExpression test defination type', () => {
+    const data = {
+      params: {
+        sqlExpression: 'select * from dim_address',
+        strategy: 'COUNT',
+        threshold: '12',
+      },
+      selectedDefinition: {
+        parameterDefinition: [
+          {
+            name: 'sqlExpression',
+            displayName: 'SQL Expression',
+            dataType: 'STRING',
+            description: 'SQL expression to run against the table',
+            required: true,
+            optionValues: [],
+          },
+          {
+            name: 'strategy',
+            displayName: 'Strategy',
+            dataType: 'ARRAY',
+            description:
+              'Strategy to use to run the custom SQL query (i.e. `SELECT COUNT(<col>)` or `SELECT <col> (defaults to ROWS)',
+            required: false,
+            optionValues: ['ROWS', 'COUNT'],
+          },
+          {
+            name: 'threshold',
+            displayName: 'Threshold',
+            dataType: 'NUMBER',
+            description:
+              'Threshold to use to determine if the test passes or fails (defaults to 0).',
+            required: false,
+            optionValues: [],
+          },
+        ],
+      } as TestDefinition,
+    };
+
+    const expected = [
+      {
+        name: 'sqlExpression',
+        value: 'select * from dim_address',
+      },
+      {
+        name: 'strategy',
+        value: 'COUNT',
+      },
+      {
+        name: 'threshold',
+        value: '12',
+      },
+    ];
+
+    const result = createTestCaseParameters(
+      data.params,
+      data.selectedDefinition
+    );
+
+    expect(result).toEqual(expected);
+  });
 });

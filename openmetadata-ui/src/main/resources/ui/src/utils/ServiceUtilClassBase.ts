@@ -76,6 +76,7 @@ import {
   REDSHIFT,
   SAGEMAKER,
   SALESFORCE,
+  SAP_ERP,
   SAP_HANA,
   SAS,
   SCIKIT,
@@ -299,6 +300,9 @@ class ServiceUtilClassBase {
 
       case this.DatabaseServiceTypeSmallCase.SapHana:
         return SAP_HANA;
+
+      case this.DatabaseServiceTypeSmallCase.SapERP:
+        return SAP_ERP;
 
       case this.DatabaseServiceTypeSmallCase.DeltaLake:
         return DELTALAKE;

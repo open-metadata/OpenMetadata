@@ -65,15 +65,15 @@ const mockTestCaseData = {
   updatedBy: 'admin',
 } as TestCase;
 
-const mockFunc = jest.fn();
+const mockUseTestCaseStore = {
+  testCase: mockTestCaseData,
+  setTestCase: jest.fn(),
+};
 
 jest.mock(
   '../../../../pages/IncidentManager/IncidentManagerDetailPage/useTestCase.store',
   () => ({
-    useTestCaseStore: jest.fn().mockImplementation(() => ({
-      testCase: mockTestCaseData,
-      setTestCase: mockFunc,
-    })),
+    useTestCaseStore: jest.fn().mockImplementation(() => mockUseTestCaseStore),
   })
 );
 jest.mock('../../../common/EntityDescription/DescriptionV1', () => {
@@ -153,7 +153,9 @@ describe('TestCaseResultTab', () => {
     const updateButton = await screen.findByTestId('update-test');
     fireEvent.click(updateButton);
 
-    expect(mockFunc).toHaveBeenCalledWith(mockTestCaseData);
+    expect(mockUseTestCaseStore.setTestCase).toHaveBeenCalledWith(
+      mockTestCaseData
+    );
   });
 
   it("Should not show edit icon if user doesn't have edit permission", () => {
@@ -163,5 +165,28 @@ describe('TestCaseResultTab', () => {
     const editButton = queryByTestId(container, 'edit-parameter-icon');
 
     expect(editButton).not.toBeInTheDocument();
+  });
+
+  it('Should show useDynamicAssertion if enabled', async () => {
+    mockUseTestCaseStore.testCase.useDynamicAssertion = true;
+
+    render(<TestCaseResultTab />);
+
+    const useDynamicAssertion = await screen.findByTestId('dynamic-assertion');
+
+    expect(useDynamicAssertion).toBeInTheDocument();
+
+    mockUseTestCaseStore.testCase.useDynamicAssertion = false;
+  });
+
+  it('Should show edit button, for useDynamicAssertion', async () => {
+    mockUseTestCaseStore.testCase.useDynamicAssertion = true;
+    render(<TestCaseResultTab />);
+    const editButton = await screen.findByTestId('edit-parameter-icon');
+    fireEvent.click(editButton);
+
+    expect(await screen.findByText('EditTestCaseModal')).toBeInTheDocument();
+
+    mockUseTestCaseStore.testCase.useDynamicAssertion = false;
   });
 });
