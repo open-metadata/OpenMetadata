@@ -452,13 +452,10 @@ public class OpenMetadataOperations implements Callable<Integer> {
       PipelineServiceClientInterface pipelineServiceClient,
       List<List<String>> pipelineStatuses) {
     try {
+      // TODO: IS THIS OK?
       LOG.debug(String.format("deploying pipeline %s", pipeline.getName()));
-      pipeline.setOpenMetadataServerConnection(new OpenMetadataConnectionBuilder(config).build());
+      pipeline.setOpenMetadataServerConnection(new OpenMetadataConnectionBuilder(config, pipeline).build());
       secretsManager.decryptIngestionPipeline(pipeline);
-      OpenMetadataConnection openMetadataServerConnection =
-          new OpenMetadataConnectionBuilder(config).build();
-      pipeline.setOpenMetadataServerConnection(
-          secretsManager.encryptOpenMetadataConnection(openMetadataServerConnection, false));
       ServiceEntityInterface service =
           Entity.getEntity(pipeline.getService(), "", Include.NON_DELETED);
       pipelineServiceClient.deployPipeline(pipeline, service);

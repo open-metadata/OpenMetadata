@@ -13,6 +13,7 @@
 
 package org.openmetadata.service.util;
 
+import java.util.List;
 import java.util.Objects;
 import java.util.Set;
 import lombok.extern.slf4j.Slf4j;
@@ -20,8 +21,12 @@ import org.openmetadata.schema.api.configuration.pipelineServiceClient.PipelineS
 import org.openmetadata.schema.auth.JWTAuthMechanism;
 import org.openmetadata.schema.auth.SSOAuthMechanism;
 import org.openmetadata.schema.entity.Bot;
+import org.openmetadata.schema.entity.applications.configuration.ApplicationConfig;
+import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
+import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineType;
 import org.openmetadata.schema.entity.teams.AuthenticationMechanism;
 import org.openmetadata.schema.entity.teams.User;
+import org.openmetadata.schema.metadataIngestion.ApplicationPipeline;
 import org.openmetadata.schema.security.client.OpenMetadataJWTClientConfig;
 import org.openmetadata.schema.security.secrets.SecretsManagerClientLoader;
 import org.openmetadata.schema.security.secrets.SecretsManagerProvider;
@@ -31,6 +36,7 @@ import org.openmetadata.schema.services.connections.metadata.AuthProvider;
 import org.openmetadata.schema.services.connections.metadata.OpenMetadataConnection;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
+import org.openmetadata.service.apps.bundles.insights.DataInsightsApp;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.BotRepository;
 import org.openmetadata.service.jdbi3.UserRepository;
@@ -41,7 +47,6 @@ import org.openmetadata.service.util.EntityUtil.Fields;
 public class OpenMetadataConnectionBuilder {
 
   AuthProvider authProvider;
-  String bot;
   OpenMetadataJWTClientConfig securityConfig;
   private VerifySSL verifySSL;
   private String openMetadataURL;
@@ -62,6 +67,36 @@ public class OpenMetadataConnectionBuilder {
       OpenMetadataApplicationConfig openMetadataApplicationConfig, String botName) {
     initializeOpenMetadataConnectionBuilder(openMetadataApplicationConfig);
     initializeBotUser(botName);
+  }
+
+  public OpenMetadataConnectionBuilder(
+      OpenMetadataApplicationConfig openMetadataApplicationConfig, IngestionPipeline ingestionPipeline) {
+    initializeOpenMetadataConnectionBuilder(openMetadataApplicationConfig);
+    // Try to load the pipeline bot or default to using the ingestion bot
+    try {
+      initializeBotUser(getBotFromPipeline(ingestionPipeline));
+    } catch (Exception e) {
+      LOG.warn(String.format("Could not initialize bot for pipeline [%s] due to [%s]", ingestionPipeline.getPipelineType(), e));
+      initializeBotUser(Entity.INGESTION_BOT_NAME);
+    }
+  }
+
+  private String getBotFromPipeline(IngestionPipeline ingestionPipeline) {
+    String botName;
+    switch (ingestionPipeline.getPipelineType()) {
+      case METADATA, DBT -> botName = Entity.INGESTION_BOT_NAME;
+      case APPLICATION -> {
+        ApplicationPipeline applicationPipeline = JsonUtils.convertValue(ingestionPipeline.getSourceConfig().getConfig(), ApplicationPipeline.class);
+        ApplicationConfig appConfig = JsonUtils.convertValue(applicationPipeline.getAppConfig(), ApplicationConfig.class);
+        String type = (String) appConfig.getAdditionalProperties().get("type");
+        botName = String.format("%sApplicationBot", type);
+      }
+      // TODO: Remove this once we internalize the DataInsights app
+      // For now we need it since DataInsights has its own pipelineType inherited from when it was a standalone workflow
+      case DATA_INSIGHT -> botName = "DataInsightsApplicationBot";
+      default -> botName = String.format("%s-bot", ingestionPipeline.getPipelineType().toString().toLowerCase());
+    }
+    return botName;
   }
 
   private void initializeOpenMetadataConnectionBuilder(
@@ -160,14 +195,14 @@ public class OpenMetadataConnectionBuilder {
 
   private User retrieveIngestionBotUser(String botName) {
     try {
-      Bot bot1 = botRepository.getByName(null, botName, Fields.EMPTY_FIELDS);
-      if (bot1.getBotUser() == null) {
+      Bot bot = botRepository.getByName(null, botName, Fields.EMPTY_FIELDS);
+      if (bot.getBotUser() == null) {
         return null;
       }
       User user =
           userRepository.getByName(
               null,
-              bot1.getBotUser().getFullyQualifiedName(),
+              bot.getBotUser().getFullyQualifiedName(),
               new EntityUtil.Fields(Set.of("authenticationMechanism")));
       if (user.getAuthenticationMechanism() != null) {
         user.getAuthenticationMechanism().setConfig(user.getAuthenticationMechanism().getConfig());
@@ -175,7 +210,7 @@ public class OpenMetadataConnectionBuilder {
       return user;
     } catch (EntityNotFoundException ex) {
       LOG.debug(
-          (bot == null ? "Bot" : String.format("User for bot [%s]", botName)) + " [{}] not found.",
+          (String.format("User for bot [%s]", botName)) + " [{}] not found.",
           botName);
       return null;
     }
