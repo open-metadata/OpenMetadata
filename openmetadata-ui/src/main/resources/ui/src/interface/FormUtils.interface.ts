@@ -57,6 +57,7 @@ export interface FieldProp {
   rules?: FormRule[];
   helperText?: ReactNode;
   helperTextType?: HelperTextType;
+  showHelperText?: boolean;
   placeholder?: string;
   hasSeparator?: boolean;
   formItemLayout?: FormItemLayout;

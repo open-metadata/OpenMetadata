@@ -63,7 +63,8 @@ export const getField = (field: FieldProp) => {
     name,
     type,
     helperText,
-    helperTextType = HelperTextType.Tooltip,
+    helperTextType,
+    showHelperText = true,
     required,
     props = {},
     rules = [],
@@ -224,6 +225,7 @@ export const getField = (field: FieldProp) => {
             overlayClassName={props.overlayClassName as string}
             overlayInnerStyle={props.overlayInnerStyle as React.CSSProperties}
             placement={props.tooltipPlacement as TooltipPlacement}
+            showHelperText={showHelperText}
           />
         }
         name={name}
@@ -233,15 +235,17 @@ export const getField = (field: FieldProp) => {
         {fieldElement}
       </Form.Item>
 
-      {helperTextType === HelperTextType.ALERT && helperText && (
-        <Alert
-          showIcon
-          className="m-b-lg alert-icon"
-          data-testid="form-item-alert"
-          message={helperText}
-          type="warning"
-        />
-      )}
+      {helperTextType === HelperTextType.ALERT &&
+        helperText &&
+        showHelperText && (
+          <Alert
+            showIcon
+            className="m-b-lg alert-icon"
+            data-testid="form-item-alert"
+            message={helperText}
+            type="warning"
+          />
+        )}
 
       {hasSeparator && <Divider />}
     </Fragment>

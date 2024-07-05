@@ -292,10 +292,14 @@ export const createGlossary = async (
 
   await page.fill(descriptionBox, glossaryData.description);
 
-  await expect(page.locator('[data-testid="form-item-alert"]')).toBeVisible();
+  await expect(
+    page.locator('[data-testid="form-item-alert"]')
+  ).not.toBeVisible();
 
   if (glossaryData.mutuallyExclusive) {
     await page.click('[data-testid="mutually-exclusive-button"]');
+
+    await expect(page.locator('[data-testid="form-item-alert"]')).toBeVisible();
   }
 
   if (glossaryData.tags && glossaryData.tags.length > 0) {
@@ -473,10 +477,14 @@ export const fillGlossaryTermDetails = async (
       .press('Enter');
   }
 
-  await expect(page.locator('[data-testid="form-item-alert"]')).toBeVisible();
+  await expect(
+    page.locator('[data-testid="form-item-alert"]')
+  ).not.toBeVisible();
 
   if (term.mutuallyExclusive) {
     await page.click('[data-testid="mutually-exclusive-button"]');
+
+    await expect(page.locator('[data-testid="form-item-alert"]')).toBeVisible();
   }
 
   await expect(page.locator('[data-testid="add-reference"]')).toBeVisible();

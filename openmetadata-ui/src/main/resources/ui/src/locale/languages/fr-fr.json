@@ -1566,7 +1566,7 @@
     "modify-hierarchy-entity-description": "Modifier la hiérarchie en changeant le {{entity}} parent.",
     "most-active-users": "Affiche les utilisateurs les plus actifs en fonction du nombre de consultations de pages.",
     "most-viewed-data-assets": "Affiche les actifs de données les plus consultés.",
-    "mutually-exclusive-alert": "The Mutually Exclusive field cannot be altered post-creation. Please ensure accuracy before proceeding.",
+    "mutually-exclusive-alert": "If you enable 'Mutually Exclusive' for a {{entity}}, users will be restricted to using only one {{child-entity}} to apply to a data asset. Once this option is activated, it cannot be deactivated.”",
     "name-of-the-bucket-dbt-files-stored": "Nom du bucket où sont stockés les fichiers dbt.",
     "new-conversation": "Vous commencez une nouvelle conversation",
     "new-to-the-platform": "Nouveau sur la plateforme ?",

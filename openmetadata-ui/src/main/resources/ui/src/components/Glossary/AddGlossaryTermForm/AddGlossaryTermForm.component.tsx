@@ -51,6 +51,11 @@ const AddGlossaryTermForm = ({
     ? reviewersData
     : [reviewersData];
 
+  const isMutuallyExclusive = Form.useWatch<boolean | undefined>(
+    'mutuallyExclusive',
+    form
+  );
+
   const getRelatedTermFqnList = (relatedTerms: DefaultOptionType[]): string[] =>
     relatedTerms.map((tag: DefaultOptionType) => tag.value as string);
 
@@ -278,8 +283,12 @@ const AddGlossaryTermForm = ({
       },
       id: 'root/mutuallyExclusive',
       formItemLayout: FormItemLayout.HORIZONTAL,
-      helperText: t('message.mutually-exclusive-alert'),
+      helperText: t('message.mutually-exclusive-alert', {
+        entity: t('label.glossary-term'),
+        'child-entity': t('label.glossary-term'),
+      }),
       helperTextType: HelperTextType.ALERT,
+      showHelperText: Boolean(isMutuallyExclusive),
     },
   ];
 

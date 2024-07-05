@@ -19,6 +19,7 @@ export interface FormItemLabelProps {
   label: ReactNode;
   helperText?: ReactNode;
   helperTextType?: HelperTextType;
+  showHelperText?: boolean;
   placement?: TooltipPlacement;
   overlayClassName?: string;
   overlayInnerStyle?: React.CSSProperties;

@@ -54,14 +54,19 @@ describe('Test FormItemLabel Component', () => {
     expect(helpIcon).not.toBeInTheDocument();
   });
 
+  it('Should not render helper icon if showHelperText is false', async () => {
+    render(<FormItemLabel {...mockProps} />);
+
+    const label = screen.getByTestId('form-item-label');
+
+    const helpIcon = screen.queryByTestId('helper-icon');
+
+    expect(label).toContainHTML(mockProps.label as string);
+    expect(helpIcon).not.toBeInTheDocument();
+  });
+
   it('Should render helper icon if helper text is passed and type is tooltip', async () => {
-    render(
-      <FormItemLabel
-        {...mockProps}
-        helperText="help"
-        helperTextType={HelperTextType.Tooltip}
-      />
-    );
+    render(<FormItemLabel {...mockProps} showHelperText helperText="help" />);
 
     const label = screen.getByTestId('form-item-label');
 

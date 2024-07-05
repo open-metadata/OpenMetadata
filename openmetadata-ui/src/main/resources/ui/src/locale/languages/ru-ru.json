@@ -1566,7 +1566,7 @@
     "modify-hierarchy-entity-description": "Modify the hierarchy by changing the Parent {{entity}}.",
     "most-active-users": "Отображает самых активных пользователей на платформе на основе просмотров страниц.",
     "most-viewed-data-assets": "Отображает наиболее просматриваемые объекты данных.",
-    "mutually-exclusive-alert": "The Mutually Exclusive field cannot be altered post-creation. Please ensure accuracy before proceeding.",
+    "mutually-exclusive-alert": "If you enable 'Mutually Exclusive' for a {{entity}}, users will be restricted to using only one {{child-entity}} to apply to a data asset. Once this option is activated, it cannot be deactivated.",
     "name-of-the-bucket-dbt-files-stored": "Имя корзины, в которой хранятся файлы dbt.",
     "new-conversation": "Начать новое обсуждение",
     "new-to-the-platform": "Новичок на платформе?",

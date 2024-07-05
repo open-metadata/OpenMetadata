@@ -36,6 +36,25 @@ describe('getField', () => {
     expect(JSON.stringify(result)).toContain('form-item-alert');
   });
 
+  it('Should not render FormItem with Alert is showHelperText is false', async () => {
+    const result = getField({
+      name: 'mutuallyExclusive',
+      label: 'label.mutually-exclusive',
+      type: FieldTypes.SWITCH,
+      required: false,
+      helperText: 'message.mutually-exclusive-alert-entity',
+      helperTextType: HelperTextType.ALERT,
+      showHelperText: false,
+      props: {
+        'data-testid': 'mutually-exclusive-button',
+      },
+      id: 'root/mutuallyExclusive',
+      formItemLayout: FormItemLayout.HORIZONTAL,
+    });
+
+    expect(JSON.stringify(result)).not.toContain('form-item-alert');
+  });
+
   it('Should not render FormItem with Alert', async () => {
     const result = getField({
       name: 'mutuallyExclusive',

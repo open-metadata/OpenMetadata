@@ -61,6 +61,11 @@ const AddGlossary = ({
     ? reviewersData
     : [reviewersData];
 
+  const isMutuallyExclusive = Form.useWatch<boolean | undefined>(
+    'mutuallyExclusive',
+    form
+  );
+
   const handleSave: FormProps['onFinish'] = (formData) => {
     const { name, displayName, description, tags, mutuallyExclusive, owner } =
       formData;
@@ -147,8 +152,12 @@ const AddGlossary = ({
       label: t('label.mutually-exclusive'),
       type: FieldTypes.SWITCH,
       required: false,
-      helperText: t('message.mutually-exclusive-alert'),
+      helperText: t('message.mutually-exclusive-alert', {
+        entity: t('label.glossary'),
+        'child-entity': t('label.glossary-term'),
+      }),
       helperTextType: HelperTextType.ALERT,
+      showHelperText: Boolean(isMutuallyExclusive),
       props: {
         'data-testid': 'mutually-exclusive-button',
       },

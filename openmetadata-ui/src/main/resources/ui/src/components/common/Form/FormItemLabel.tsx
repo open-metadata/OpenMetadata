@@ -23,7 +23,8 @@ import { FormItemLabelProps } from './Form.interface';
 const FormItemLabel = ({
   label,
   helperText,
-  helperTextType,
+  helperTextType = HelperTextType.Tooltip,
+  showHelperText = true,
   align,
   overlayInnerStyle,
   overlayClassName,
@@ -36,21 +37,23 @@ const FormItemLabel = ({
   return (
     <>
       <span data-testid="form-item-label">{label}</span>
-      {helperTextType === HelperTextType.Tooltip && helperText && (
-        <Tooltip
-          destroyTooltipOnHide
-          align={align}
-          overlayClassName={overlayClassName}
-          overlayInnerStyle={overlayInnerStyle}
-          placement={placement}
-          title={helperText}>
-          <InfoCircleOutlined
-            className="m-l-xs"
-            data-testid="helper-icon"
-            style={{ color: GRAYED_OUT_COLOR }}
-          />
-        </Tooltip>
-      )}
+      {helperTextType === HelperTextType.Tooltip &&
+        helperText &&
+        showHelperText && (
+          <Tooltip
+            destroyTooltipOnHide
+            align={align}
+            overlayClassName={overlayClassName}
+            overlayInnerStyle={overlayInnerStyle}
+            placement={placement}
+            title={helperText}>
+            <InfoCircleOutlined
+              className="m-l-xs"
+              data-testid="helper-icon"
+              style={{ color: GRAYED_OUT_COLOR }}
+            />
+          </Tooltip>
+        )}
       {isBeta && (
         <Badge
           className="m-l-xs"
