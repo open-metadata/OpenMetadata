@@ -18,12 +18,15 @@ import {
 } from '@ant-design/icons';
 import {
   Alert,
+  Badge,
   Button,
   Col,
   Layout,
+  Menu,
   Row,
   Space,
   Switch,
+  Tabs,
   Typography,
 } from 'antd';
 import { Content } from 'antd/lib/layout/layout';
@@ -63,6 +66,7 @@ import ResizablePanels from '../common/ResizablePanels/ResizablePanels';
 import {
   ExploreProps,
   ExploreQuickFilterField,
+  ExploreSearchIndex,
 } from '../Explore/ExplorePage.interface';
 import ExploreTree from '../Explore/ExploreTree/ExploreTree';
 import { useExploreStore } from '../Explore/useExplore.store';
@@ -303,33 +307,47 @@ const ExploreV1: React.FC<ExploreProps> = ({
     }
   }, [searchResults]);
 
-  // const SIDEBAR_TAB_ITEMS = [
-  //   {
-  //     key: ExploreSidebarTab.ASSETS,
-  //     label: t('label.asset-plural'),
-  //     children: (
-  //       <Menu
-  //         className="custom-menu"
-  //         data-testid="explore-left-panel"
-  //         items={tabItems}
-  //         mode="inline"
-  //         rootClassName="left-container"
-  //         selectedKeys={[activeTabKey]}
-  //         onClick={(info) => {
-  //           if (info && info.key !== activeTabKey) {
-  //             onChangeSearchIndex(info.key as ExploreSearchIndex);
-  //             setShowSummaryPanel(false);
-  //           }
-  //         }}
-  //       />
-  //     ),
-  //   },
-  //   {
-  //     key: ExploreSidebarTab.TREE,
-  //     label: t('label.tree'),
-  //     children: <ExploreTree onFieldValueSelect={handleQuickFiltersChange} />,
-  //   },
-  // ];
+  const SIDEBAR_TAB_ITEMS = [
+    {
+      key: ExploreSidebarTab.ASSETS,
+      label: (
+        <div className="p-x-sm">
+          <span>{t('label.asset-plural')}</span>
+        </div>
+      ),
+      children: (
+        <Menu
+          className="custom-menu"
+          data-testid="explore-left-panel"
+          items={tabItems}
+          mode="inline"
+          rootClassName="left-container"
+          selectedKeys={[activeTabKey]}
+          onClick={(info) => {
+            if (info && info.key !== activeTabKey) {
+              onChangeSearchIndex(info.key as ExploreSearchIndex);
+              setShowSummaryPanel(false);
+            }
+          }}
+        />
+      ),
+    },
+    {
+      key: ExploreSidebarTab.TREE,
+      label: (
+        <div className="p-x-sm">
+          <span>{t('label.tree')}</span>
+          <Badge
+            className="service-beta-tag"
+            count={t('label.beta')}
+            offset={[10, 0]}
+            size="small"
+          />
+        </div>
+      ),
+      children: <ExploreTree onFieldValueSelect={handleQuickFiltersChange} />,
+    },
+  ];
 
   if (tabItems.length === 0 && !searchQueryParam) {
     return <Loader />;
@@ -340,11 +358,15 @@ const ExploreV1: React.FC<ExploreProps> = ({
       {tabItems.length > 0 && (
         <Layout hasSider className="bg-white">
           <Sider
-            className="bg-white border-right explore-sider"
+            className="bg-white border-right"
             width={sidebarActiveTab === ExploreSidebarTab.TREE ? 340 : 300}>
-            <div className="p-sm">
-              <ExploreTree onFieldValueSelect={handleQuickFiltersChange} />
-            </div>
+            <Tabs
+              activeKey={sidebarActiveTab}
+              className="explore-page-tabs"
+              items={SIDEBAR_TAB_ITEMS}
+              tabBarGutter={24}
+              onChange={onTabChange}
+            />
           </Sider>
           <Content>
             <Row className="filters-row">
@@ -397,8 +419,8 @@ const ExploreV1: React.FC<ExploreProps> = ({
                     <span className="sorting-dropdown-container">
                       <SortingDropDown
                         fieldList={
-                          tabsInfo[searchIndex]?.sortingFields ??
-                          entitySortingFields
+                          tabsInfo[searchIndex as ExploreSearchIndex]
+                            ?.sortingFields ?? entitySortingFields
                         }
                         handleFieldDropDown={onChangeSortValue}
                         sortField={sortValue}

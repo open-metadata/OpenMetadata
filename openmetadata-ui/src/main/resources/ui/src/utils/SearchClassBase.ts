@@ -22,6 +22,7 @@ import { ReactComponent as DatabaseIcon } from '../assets/svg/ic-database.svg';
 import { ReactComponent as MlModelIcon } from '../assets/svg/ic-ml-model.svg';
 import { ReactComponent as PipelineIcon } from '../assets/svg/ic-pipeline.svg';
 import { ReactComponent as SchemaIcon } from '../assets/svg/ic-schema.svg';
+import { ReactComponent as SearchIcon } from '../assets/svg/ic-search.svg';
 import { ReactComponent as ContainerIcon } from '../assets/svg/ic-storage.svg';
 import { ReactComponent as IconStoredProcedure } from '../assets/svg/ic-stored-procedure.svg';
 import { ReactComponent as TableIcon } from '../assets/svg/ic-table.svg';
@@ -212,7 +213,7 @@ class SearchClassBase {
         title: i18n.t('label.search-index-plural'),
         key: SearchIndex.SEARCH_INDEX,
         data: { isRoot: true },
-        // icon: SearchOutlined,
+        icon: SearchIcon,
       },
       {
         title: i18n.t('label.governance'),

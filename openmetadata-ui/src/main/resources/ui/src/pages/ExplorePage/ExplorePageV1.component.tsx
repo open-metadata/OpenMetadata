@@ -360,51 +360,57 @@ const ExplorePageV1: FunctionComponent = () => {
     );
 
     setIsLoading(true);
-    Promise.all([
-      searchQuery({
-        query: !isEmpty(searchQueryParam)
-          ? escapeESReservedCharacters(searchQueryParam)
-          : '',
-        searchIndex,
-        queryFilter: combinedQueryFilter,
-        sortField: sortValue,
-        sortOrder: sortOrder,
-        pageNumber: page,
-        pageSize: size,
-        includeDeleted: showDeleted,
-      })
-        .then((res) => res)
-        .then((res) => {
-          setSearchResults(res);
-          setUpdatedAggregations(res.aggregations);
-        }),
-      searchQuery({
-        query: escapeESReservedCharacters(searchQueryParam),
-        pageNumber: 0,
-        pageSize: 0,
-        queryFilter: combinedQueryFilter,
-        searchIndex: SearchIndex.ALL,
-        includeDeleted: showDeleted,
-        trackTotalHits: true,
-        fetchSource: false,
-        filters: '',
-      }).then((res) => {
-        const buckets = res.aggregations['entityType'].buckets;
-        const counts: Record<string, number> = {};
 
-        buckets.forEach((item) => {
-          const searchIndexKey =
-            item && EntityTypeSearchIndexMapping[item.key as EntityType];
+    const searchAPICall = searchQuery({
+      query: !isEmpty(searchQueryParam)
+        ? escapeESReservedCharacters(searchQueryParam)
+        : '',
+      searchIndex,
+      queryFilter: combinedQueryFilter,
+      sortField: sortValue,
+      sortOrder: sortOrder,
+      pageNumber: page,
+      pageSize: size,
+      includeDeleted: showDeleted,
+    }).then((res) => {
+      setSearchResults(res as SearchResponse<ExploreSearchIndex>);
+      setUpdatedAggregations(res.aggregations);
+    });
 
-          if (
-            TABS_SEARCH_INDEXES.includes(searchIndexKey as ExploreSearchIndex)
-          ) {
-            counts[searchIndexKey ?? ''] = item.doc_count;
-          }
-        });
-        setSearchHitCounts(counts as SearchHitCounts);
-      }),
-    ])
+    const countAPICall = searchQuery({
+      query: escapeESReservedCharacters(searchQueryParam),
+      pageNumber: 0,
+      pageSize: 0,
+      queryFilter: combinedQueryFilter,
+      searchIndex: SearchIndex.ALL,
+      includeDeleted: showDeleted,
+      trackTotalHits: true,
+      fetchSource: false,
+      filters: '',
+    }).then((res) => {
+      const buckets = res.aggregations['entityType'].buckets;
+      const counts: Record<string, number> = {};
+
+      buckets.forEach((item) => {
+        const searchIndexKey =
+          item && EntityTypeSearchIndexMapping[item.key as EntityType];
+
+        if (
+          TABS_SEARCH_INDEXES.includes(searchIndexKey as ExploreSearchIndex)
+        ) {
+          counts[searchIndexKey ?? ''] = item.doc_count;
+        }
+      });
+      setSearchHitCounts(counts as SearchHitCounts);
+    });
+
+    const apiCalls = [searchAPICall];
+
+    if (sidebarActiveTab !== ExploreSidebarTab.TREE) {
+      apiCalls.push(countAPICall);
+    }
+
+    Promise.all(apiCalls)
       .catch((error) => {
         if (
           error.response?.data.message.includes(FAILED_TO_FIND_INDEX_ERROR) ||
@@ -415,10 +421,8 @@ const ExplorePageV1: FunctionComponent = () => {
           showErrorToast(error);
         }
       })
-
       .finally(() => setIsLoading(false));
   };
-
   useEffect(() => {
     if (isTourOpen) {
       setSearchHitCounts(MOCK_EXPLORE_PAGE_COUNT);

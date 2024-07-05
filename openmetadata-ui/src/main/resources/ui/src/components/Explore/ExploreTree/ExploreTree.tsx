@@ -25,6 +25,7 @@ import searchClassBase from '../../../utils/SearchClassBase';
 import serviceUtilClassBase from '../../../utils/ServiceUtilClassBase';
 import { getEntityIcon } from '../../../utils/TableUtils';
 import {
+  DatabaseFields,
   ExploreTreeNode,
   ExploreTreeProps,
   TreeNodeData,
@@ -60,7 +61,7 @@ const ExploreTree = ({ onFieldValueSelect }: ExploreTreeProps) => {
         };
 
     return {
-      bucket: bucketMapping[key] ?? EntityFields.SERVICE_TYPE,
+      bucket: bucketMapping[key as DatabaseFields] ?? EntityFields.SERVICE_TYPE,
       queryFilter,
     };
   };
@@ -212,6 +213,7 @@ const ExploreTree = ({ onFieldValueSelect }: ExploreTreeProps) => {
     <Tree
       blockNode
       showIcon
+      className="p-x-sm"
       loadData={onLoadData}
       titleRender={(node) => (
         <Typography.Text

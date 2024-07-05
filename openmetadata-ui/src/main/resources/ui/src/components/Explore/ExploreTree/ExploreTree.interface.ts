@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { EntityFields } from '../../../enums/AdvancedSearch.enum';
 import { EntityType } from '../../../enums/entity.enum';
 import { ExploreQuickFilterField } from '../ExplorePage.interface';
 
@@ -35,3 +36,9 @@ export type TreeNodeData = {
   rootIndex?: string;
   entityType?: EntityType;
 };
+
+export type DatabaseFields =
+  | EntityFields.SERVICE_TYPE
+  | EntityFields.SERVICE
+  | EntityFields.DATABASE
+  | EntityFields.DATABASE_SCHEMA;
