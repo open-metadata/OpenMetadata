@@ -11,11 +11,13 @@
  *  limitations under the License.
  */
 import { ExploreQuickFilterField } from '../components/Explore/ExplorePage.interface';
+import { EntityFields } from '../enums/AdvancedSearch.enum';
 import { QueryFieldInterface } from '../pages/ExplorePage/ExplorePage.interface';
 import {
   extractTermKeys,
   getQuickFilterQuery,
   getSelectedValuesFromQuickFilter,
+  getSubLevelHierarchyKey,
 } from './Explore.utils';
 
 describe('Explore Utils', () => {
@@ -169,5 +171,66 @@ describe('Explore Utils', () => {
     expect(getSelectedValuesFromQuickFilter(dropdownData, queryFilter)).toEqual(
       selectedFilters
     );
+  });
+
+  describe('getSubLevelHierarchyKey', () => {
+    it('returns the correct bucket and queryFilter when isDatabaseHierarchy is true', () => {
+      const result = getSubLevelHierarchyKey(
+        true,
+        EntityFields.SERVICE,
+        'testValue'
+      );
+
+      expect(result).toEqual({
+        bucket: EntityFields.DATABASE,
+        queryFilter: {
+          query: {
+            bool: {
+              must: {
+                term: {
+                  [EntityFields.SERVICE]: 'testValue',
+                },
+              },
+            },
+          },
+        },
+      });
+    });
+
+    it('returns the correct bucket and queryFilter when isDatabaseHierarchy is false', () => {
+      const result = getSubLevelHierarchyKey(
+        false,
+        EntityFields.SERVICE,
+        'testValue'
+      );
+
+      expect(result).toEqual({
+        bucket: EntityFields.ENTITY_TYPE,
+        queryFilter: {
+          query: {
+            bool: {
+              must: {
+                term: {
+                  [EntityFields.SERVICE]: 'testValue',
+                },
+              },
+            },
+          },
+        },
+      });
+    });
+
+    it('returns the default bucket and an empty queryFilter when key and value are not provided', () => {
+      const result = getSubLevelHierarchyKey();
+
+      expect(result).toEqual({
+        bucket: EntityFields.SERVICE_TYPE,
+        queryFilter: {
+          query: {
+            bool: {},
+          },
+        },
+      });
+    });
   });
 });

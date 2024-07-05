@@ -16,55 +16,35 @@ import { uniqueId } from 'lodash';
 import React, { useCallback, useState } from 'react';
 import { EntityFields } from '../../../enums/AdvancedSearch.enum';
 import { SearchIndex } from '../../../enums/search.enum';
-import { EsBoolQuery } from '../../../pages/ExplorePage/ExplorePage.interface';
 import { getAggregateFieldOptions } from '../../../rest/miscAPI';
 import { getCountBadge } from '../../../utils/CommonUtils';
 import { getEntityNameLabel } from '../../../utils/EntityUtils';
-import { getAggregations } from '../../../utils/Explore.utils';
+import {
+  getAggregations,
+  getSubLevelHierarchyKey,
+} from '../../../utils/Explore.utils';
 import searchClassBase from '../../../utils/SearchClassBase';
 import serviceUtilClassBase from '../../../utils/ServiceUtilClassBase';
 import { getEntityIcon } from '../../../utils/TableUtils';
 import {
-  DatabaseFields,
   ExploreTreeNode,
   ExploreTreeProps,
   TreeNodeData,
 } from './ExploreTree.interface';
 
+const ExploreTreeTitle = ({ node }: { node: ExploreTreeNode }) => (
+  <Typography.Text
+    className={classNames({
+      'm-l-xs': node.data?.isRoot,
+    })}
+    data-testid={`explore-tree-title-${node.title}`}>
+    {node.title}
+  </Typography.Text>
+);
+
 const ExploreTree = ({ onFieldValueSelect }: ExploreTreeProps) => {
   const initTreeData = searchClassBase.getExploreTree();
   const [treeData, setTreeData] = useState(initTreeData);
-
-  const getSubLevelHierarchyKey = (
-    isDatabaseHierarchy = false,
-    key?: EntityFields,
-    value?: string
-  ) => {
-    const queryFilter = {
-      query: { bool: {} },
-    };
-
-    if (key && value) {
-      (queryFilter.query.bool as EsBoolQuery).must = { term: { [key]: value } };
-    }
-
-    const bucketMapping = isDatabaseHierarchy
-      ? {
-          [EntityFields.SERVICE_TYPE]: EntityFields.SERVICE,
-          [EntityFields.SERVICE]: EntityFields.DATABASE,
-          [EntityFields.DATABASE]: EntityFields.DATABASE_SCHEMA,
-          [EntityFields.DATABASE_SCHEMA]: EntityFields.ENTITY_TYPE,
-        }
-      : {
-          [EntityFields.SERVICE_TYPE]: EntityFields.SERVICE,
-          [EntityFields.SERVICE]: EntityFields.ENTITY_TYPE,
-        };
-
-    return {
-      bucket: bucketMapping[key as DatabaseFields] ?? EntityFields.SERVICE_TYPE,
-      queryFilter,
-    };
-  };
 
   const updateTreeData = useCallback(
     (
@@ -129,6 +109,7 @@ const ExploreTree = ({ onFieldValueSelect }: ExploreTreeProps) => {
       const sortedBuckets = [...buckets].sort((a, b) =>
         a.key.localeCompare(b.key, undefined, { sensitivity: 'base' })
       );
+
       const children = sortedBuckets.map((bucket) => {
         let logo = <></>;
         const title = (
@@ -213,16 +194,10 @@ const ExploreTree = ({ onFieldValueSelect }: ExploreTreeProps) => {
     <Tree
       blockNode
       showIcon
-      className="p-x-sm"
+      className="p-sm"
+      data-testid="explore-tree"
       loadData={onLoadData}
-      titleRender={(node) => (
-        <Typography.Text
-          className={classNames({
-            'm-l-xs': node.data?.isRoot,
-          })}>
-          {node.title}
-        </Typography.Text>
-      )}
+      titleRender={(node) => <ExploreTreeTitle node={node} />}
       treeData={treeData}
       onSelect={onNodeSelect}
     />

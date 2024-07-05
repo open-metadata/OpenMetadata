@@ -18,10 +18,13 @@ import {
   ExploreSearchIndex,
   SearchHitCounts,
 } from '../components/Explore/ExplorePage.interface';
+import { DatabaseFields } from '../components/Explore/ExploreTree/ExploreTree.interface';
 import { SearchDropdownOption } from '../components/SearchDropdown/SearchDropdown.interface';
 import { NULL_OPTION_KEY } from '../constants/AdvancedSearch.constants';
+import { EntityFields } from '../enums/AdvancedSearch.enum';
 import { Aggregations } from '../interface/search.interface';
 import {
+  EsBoolQuery,
   QueryFieldInterface,
   QueryFilterInterface,
   TabsInfoData,
@@ -167,4 +170,35 @@ export const extractTermKeys = (objects: QueryFieldInterface[]): string[] => {
   });
 
   return termKeys;
+};
+
+export const getSubLevelHierarchyKey = (
+  isDatabaseHierarchy = false,
+  key?: EntityFields,
+  value?: string
+) => {
+  const queryFilter = {
+    query: { bool: {} },
+  };
+
+  if (key && value) {
+    (queryFilter.query.bool as EsBoolQuery).must = { term: { [key]: value } };
+  }
+
+  const bucketMapping = isDatabaseHierarchy
+    ? {
+        [EntityFields.SERVICE_TYPE]: EntityFields.SERVICE,
+        [EntityFields.SERVICE]: EntityFields.DATABASE,
+        [EntityFields.DATABASE]: EntityFields.DATABASE_SCHEMA,
+        [EntityFields.DATABASE_SCHEMA]: EntityFields.ENTITY_TYPE,
+      }
+    : {
+        [EntityFields.SERVICE_TYPE]: EntityFields.SERVICE,
+        [EntityFields.SERVICE]: EntityFields.ENTITY_TYPE,
+      };
+
+  return {
+    bucket: bucketMapping[key as DatabaseFields] ?? EntityFields.SERVICE_TYPE,
+    queryFilter,
+  };
 };

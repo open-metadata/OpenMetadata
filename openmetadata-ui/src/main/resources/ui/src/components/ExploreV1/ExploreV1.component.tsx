@@ -311,7 +311,7 @@ const ExploreV1: React.FC<ExploreProps> = ({
     {
       key: ExploreSidebarTab.ASSETS,
       label: (
-        <div className="p-x-sm">
+        <div className="p-x-sm" data-testid="explore-asset">
           <span>{t('label.asset-plural')}</span>
         </div>
       ),
@@ -335,11 +335,12 @@ const ExploreV1: React.FC<ExploreProps> = ({
     {
       key: ExploreSidebarTab.TREE,
       label: (
-        <div className="p-x-sm">
+        <div className="p-x-sm" data-testid="explore-tree">
           <span>{t('label.tree')}</span>
           <Badge
             className="service-beta-tag"
             count={t('label.beta')}
+            data-testid="beta-tag"
             offset={[10, 0]}
             size="small"
           />
