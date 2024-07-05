@@ -550,28 +550,6 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
     def prepare(self):
         """By default, nothing to prepare"""
 
-    def fqn_from_context(self, stage: NodeStage, entity_name: C) -> str:
-        """
-        We are overriding this method since CreateDashboardDataModelRequest needs to add an extra value to the context
-        names.
-
-        Read the context
-        :param stage: Topology node being processed
-        :param entity_request: Request sent to the sink
-        :return: Entity FQN derived from context
-        """
-        context_names = [
-            self.context.get().__dict__[dependency]
-            for dependency in stage.consumer or []  # root nodes do not have consumers
-        ]
-
-        if isinstance(stage.type_, DashboardDataModel):
-            context_names.append("model")
-
-        return fqn._build(  # pylint: disable=protected-access
-            *context_names, entity_name
-        )
-
     def check_database_schema_name(self, database_schema_name: str):
         """
         Check if the input database schema name is equal to "<default>" and return the input name if it is not.
