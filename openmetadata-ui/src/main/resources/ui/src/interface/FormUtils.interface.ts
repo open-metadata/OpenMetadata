@@ -41,6 +41,11 @@ export enum FieldTypes {
   COLOR_PICKER = 'color_picker',
 }
 
+export enum HelperTextType {
+  ALERT = 'alert',
+  Tooltip = 'tooltip',
+}
+
 export interface FieldProp {
   label: ReactNode;
   name: string;
@@ -51,6 +56,8 @@ export interface FieldProp {
   formItemProps?: FormItemProps;
   rules?: FormRule[];
   helperText?: ReactNode;
+  helperTextType?: HelperTextType;
+  showHelperText?: boolean;
   placeholder?: string;
   hasSeparator?: boolean;
   formItemLayout?: FormItemLayout;

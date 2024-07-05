@@ -20,7 +20,11 @@ import {
   TAG_NAME_REGEX,
 } from '../../constants/regex.constants';
 import { DEFAULT_FORM_VALUE } from '../../constants/Tags.constant';
-import { FieldProp, FieldTypes } from '../../interface/FormUtils.interface';
+import {
+  FieldProp,
+  FieldTypes,
+  HelperTextType,
+} from '../../interface/FormUtils.interface';
 import { generateFormFields } from '../../utils/formUtils';
 import { RenameFormProps, SubmitProps } from './TagsPage.interface';
 
@@ -41,6 +45,11 @@ const TagsForm = ({
   const { t } = useTranslation();
   const [form] = Form.useForm();
   const [saving, setSaving] = useState(false);
+
+  const isMutuallyExclusive = Form.useWatch<boolean | undefined>(
+    'mutuallyExclusive',
+    form
+  );
 
   useEffect(() => {
     form.setFieldsValue({
@@ -193,6 +202,12 @@ const TagsForm = ({
               'data-testid': 'mutually-exclusive-button',
               disabled: disableMutuallyExclusiveField,
             },
+            helperText: t('message.mutually-exclusive-alert', {
+              entity: t('label.classification'),
+              'child-entity': t('label.tag'),
+            }),
+            helperTextType: HelperTextType.ALERT,
+            showHelperText: Boolean(isMutuallyExclusive),
             id: 'root/mutuallyExclusive',
             formItemLayout: 'horizontal',
             formItemProps: {

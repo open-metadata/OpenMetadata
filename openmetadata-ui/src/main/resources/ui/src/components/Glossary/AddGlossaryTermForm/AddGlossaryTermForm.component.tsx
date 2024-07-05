@@ -23,6 +23,7 @@ import {
   FieldProp,
   FieldTypes,
   FormItemLayout,
+  HelperTextType,
 } from '../../../interface/FormUtils.interface';
 import { getEntityName } from '../../../utils/EntityUtils';
 import { generateFormFields, getField } from '../../../utils/formUtils';
@@ -49,6 +50,11 @@ const AddGlossaryTermForm = ({
   const reviewersList = Array.isArray(reviewersData)
     ? reviewersData
     : [reviewersData];
+
+  const isMutuallyExclusive = Form.useWatch<boolean | undefined>(
+    'mutuallyExclusive',
+    form
+  );
 
   const getRelatedTermFqnList = (relatedTerms: DefaultOptionType[]): string[] =>
     relatedTerms.map((tag: DefaultOptionType) => tag.value as string);
@@ -277,6 +283,12 @@ const AddGlossaryTermForm = ({
       },
       id: 'root/mutuallyExclusive',
       formItemLayout: FormItemLayout.HORIZONTAL,
+      helperText: t('message.mutually-exclusive-alert', {
+        entity: t('label.glossary-term'),
+        'child-entity': t('label.glossary-term'),
+      }),
+      helperTextType: HelperTextType.ALERT,
+      showHelperText: Boolean(isMutuallyExclusive),
     },
   ];
 
