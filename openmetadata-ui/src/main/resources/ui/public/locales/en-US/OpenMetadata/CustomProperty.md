@@ -46,14 +46,13 @@ $$
 - `MM/dd/yyyy`
 - `dd/MM/yyyy`
 - `dd-MM-yyyy`
-- `yyyy-Www-d`
+- `YYYY-'W'ww-e`
 - `yyyyDDD`
 - `d MMMM yyyy`
 
 **Supported DateTime formats**
-- `yyyy-MM-ddTHH:mm:ssZ`
-- `yyyy-MM-ddTHH:mm:ss±HH:mm`
-- `EEE, dd MMM yyyy HH:mm:ss Z`
+
+- `dd MMM yyyy HH:mm:ss Z`
 - `EEE MMM dd HH:mm:ss yyyy`
 - `yyyy-MM-dd HH:mm:ss`
 - `MM/dd/yyyy HH:mm:ss`
