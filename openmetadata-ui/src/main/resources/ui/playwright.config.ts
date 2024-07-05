@@ -32,10 +32,10 @@ export default defineConfig({
   /* Retry on CI only */
   retries: process.env.CI ? 2 : 0,
   /* Opt out of parallel tests on CI. */
-  workers: process.env.CI ? 2 : undefined,
+  workers: process.env.CI ? 4 : undefined,
   /* Reporter to use. See https://playwright.dev/docs/test-reporters */
   reporter: [
-    ['list'],
+    [process.env.CI ? 'github' : 'list'],
     ['html', { outputFolder: './playwright/output/playwright-report' }],
     [
       '@estruyf/github-actions-reporter',
@@ -54,6 +54,7 @@ export default defineConfig({
     trace: 'on-first-retry',
     /* Screenshot on failure. */
     screenshot: 'only-on-failure',
+    viewport: { width: 1440, height: 768 },
   },
 
   /* Configure projects for major browsers */
@@ -69,12 +70,15 @@ export default defineConfig({
       // Added admin setup as a dependency. This will authorize the page with an admin user before running the test. doc: https://playwright.dev/docs/auth#multiple-signed-in-roles
       dependencies: ['setup'],
     },
+    {
+      name: 'firefox',
+      use: { ...devices['Desktop Firefox'] },
+      dependencies: ['setup'],
+    },
+    {
+      name: 'webkit',
+      use: { ...devices['Desktop Safari'] },
+      dependencies: ['setup'],
+    },
   ],
-
-  /* Run your local dev server before starting the tests */
-  // webServer: {
-  //   command: 'npm run start',
-  //   url: 'http://127.0.0.1:3000',
-  //   reuseExistingServer: !process.env.CI,
-  // },
 });
