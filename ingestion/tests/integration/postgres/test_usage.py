@@ -1,16 +1,12 @@
 import sys
-import time
-from os import path
 
 import pytest
 
-from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.services.databaseService import DatabaseService
 from metadata.generated.schema.metadataIngestion.databaseServiceQueryUsagePipeline import (
     DatabaseUsageConfigType,
 )
 from metadata.ingestion.lineage.sql_lineage import search_cache
-from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.workflow.metadata import MetadataWorkflow
 from metadata.workflow.usage import UsageWorkflow
 
