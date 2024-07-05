@@ -324,7 +324,7 @@ class BigQueryTableMetricComputer(BaseTableMetricComputer):
         columns = [
             Column("row_count").label("rowCount"),
             Column("size_bytes").label("sizeInBytes"),
-            Column("creation_time").label("createDateTime"),
+            func.TIMESTAMP_MILLIS(Column("creation_time")).label(CREATE_DATETIME),
             *self._get_col_names_and_count(),
         ]
         where_clause = [
@@ -333,7 +333,6 @@ class BigQueryTableMetricComputer(BaseTableMetricComputer):
             Column("dataset_id") == self.schema_name,
             Column("table_id") == self.table_name,
         ]
-
         query = self._build_query(
             columns,
             self._build_table(
