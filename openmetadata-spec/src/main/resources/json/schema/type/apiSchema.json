@@ -1,0 +1,24 @@
+{
+  "$id": "https://open-metadata.org/schema/type/apiSchema.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "APISchema",
+  "$comment": "@om-entity-type",
+  "description": "This schema defines the API Endpoint entity's request/response schema.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.type.APISchema",
+  "properties": {
+    "schemaType": {
+      "description": "Schema used for message serialization.",
+      "$ref": "schema.json#/definitions/schemaType",
+      "default": "JSON"
+    },
+    "schemaFields": {
+      "description": "Columns in this schema.",
+      "type": "array",
+      "items": {
+        "$ref": "schema.json#/definitions/field"
+      },
+      "default": []
+    }
+  }
+}

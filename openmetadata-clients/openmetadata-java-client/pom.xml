@@ -238,6 +238,7 @@
                             <output>
                                 ${project.build.directory}/generated-sources/swagger
                             </output>
+                            <skipOperationExample>true</skipOperationExample>
                         </configuration>
                     </execution>
                 </executions>

@@ -569,7 +569,7 @@ public class TopicResourceTest extends EntityResourceTest<Topic, CreateTopic> {
     return TestUtils.get(target, Topic.class, authHeaders);
   }
 
-  private static Field getField(String name, FieldDataType fieldDataType, TagLabel tag) {
+  public static Field getField(String name, FieldDataType fieldDataType, TagLabel tag) {
     List<TagLabel> tags = tag == null ? new ArrayList<>() : singletonList(tag);
     return new Field()
         .withName(name)
