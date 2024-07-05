@@ -19,7 +19,7 @@ def configure_logging():
     logging.getLogger("pytds").setLevel(logging.CRITICAL)
 
 
-@pytest.fixture()
+@pytest.fixture(scope="session")
 def metadata():
     return int_admin_ometa()
 
@@ -41,7 +41,7 @@ def config_testcontatiners():
     testcontainers_config.max_tries = 10
 
 
-@pytest.fixture()
+@pytest.fixture(scope="session")
 def sink_config(metadata):
     return {
         "type": "metadata-rest",
@@ -49,7 +49,7 @@ def sink_config(metadata):
     }
 
 
-@pytest.fixture()
+@pytest.fixture(scope="session")
 def workflow_config(metadata):
     return {
         "loggerLevel": LogLevels.DEBUG.value,
@@ -80,7 +80,7 @@ def profiler_config(db_service, workflow_config, sink_config):
 
 
 @pytest.fixture()
-def run_workflow():
+def run_workflow(scope="module"):
     def _run(workflow_type: type(IngestionWorkflow), config, raise_from_status=True):
         workflow: IngestionWorkflow = workflow_type.create(config)
         workflow.execute()
@@ -91,7 +91,7 @@ def run_workflow():
     return _run
 
 
-@pytest.fixture()
+@pytest.fixture(scope="module")
 def db_service(metadata, create_service_request, patch_password):
     service_entity = metadata.create_or_update(data=create_service_request)
     fqn = service_entity.fullyQualifiedName.root
@@ -103,7 +103,7 @@ def db_service(metadata, create_service_request, patch_password):
         )
 
 
-@pytest.fixture()
+@pytest.fixture(scope="module")
 def patch_password():
     """Implement in the test module to override the password for a specific service
 

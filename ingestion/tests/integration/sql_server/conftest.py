@@ -79,6 +79,7 @@ GO
 
 
 @pytest.fixture(
+    scope="module",
     params=[
         MssqlScheme.mssql_pytds,
         MssqlScheme.mssql_pyodbc,
@@ -88,7 +89,7 @@ def scheme(request):
     return request.param
 
 
-@pytest.fixture()
+@pytest.fixture(scope="module")
 def create_service_request(mssql_container, scheme, tmp_path_factory):
     return CreateDatabaseServiceRequest(
         name="docker_test_" + tmp_path_factory.mktemp("mssql").name + "_" + scheme.name,
@@ -108,7 +109,7 @@ def create_service_request(mssql_container, scheme, tmp_path_factory):
     )
 
 
-@pytest.fixture()
+@pytest.fixture(scope="module")
 def ingestion_config(
     db_service, tmp_path_factory, workflow_config, sink_config, patch_password
 ):
@@ -129,7 +130,7 @@ def ingestion_config(
     }
 
 
-@pytest.fixture()
+@pytest.fixture(scope="module")
 def patch_password(mssql_container):
     def inner(service: DatabaseService):
         service.connection.config = cast(MssqlConnection, service.connection.config)

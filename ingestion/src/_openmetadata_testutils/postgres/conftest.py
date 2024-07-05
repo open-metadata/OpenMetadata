@@ -30,7 +30,7 @@ def try_bind(container, container_port, host_port):
             yield container
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture(scope="module")
 def postgres_container(tmp_path_factory):
     """Start a PostgreSQL container with the dvdrental database."""
     data_dir = tmp_path_factory.mktemp("data")

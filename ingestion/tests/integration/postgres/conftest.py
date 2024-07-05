@@ -36,10 +36,10 @@ def create_service_request(postgres_container, tmp_path_factory):
     )
 
 
-@pytest.fixture()
+@pytest.fixture(scope="module")
 def patch_password(postgres_container):
     def inner(service: DatabaseService):
-        service.connection.config = cast(PostgresConnection, result.connection.config)
+        service.connection.config = cast(PostgresConnection, service.connection.config)
         service.connection.config.authType.password = type(
             service.connection.config.authType.password
         )(postgres_container.password)
@@ -48,7 +48,7 @@ def patch_password(postgres_container):
     return inner
 
 
-@pytest.fixture()
+@pytest.fixture(scope="module")
 def ingestion_config(
     db_service, metadata, workflow_config, sink_config, postgres_container
 ):

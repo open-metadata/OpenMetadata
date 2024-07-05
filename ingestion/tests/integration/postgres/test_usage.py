@@ -42,7 +42,7 @@ def usage_config(sink_config, workflow_config, db_service):
     }
 
 
-def test_uasge(run_workflow, ingestion_config, usage_config, metadata, db_service):
+def test_usage(run_workflow, ingestion_config, usage_config, metadata, db_service):
     search_cache.clear()
     run_workflow(MetadataWorkflow, ingestion_config)
     run_workflow(UsageWorkflow, usage_config)
