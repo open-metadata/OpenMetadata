@@ -16,8 +16,8 @@ import { ExploreSidebarTab } from '../../pages/ExplorePage/ExplorePage.interface
 export const useExploreStore = create<{
   sidebarActiveTab: ExploreSidebarTab;
   setSidebarActiveTab: (tab: ExploreSidebarTab) => void;
-}>()((set, get) => ({
-  sidebarActiveTab: ExploreSidebarTab.ASSETS,
+}>()((set) => ({
+  sidebarActiveTab: ExploreSidebarTab.TREE,
   setSidebarActiveTab: (tab: ExploreSidebarTab) => {
     set({ sidebarActiveTab: tab });
   },

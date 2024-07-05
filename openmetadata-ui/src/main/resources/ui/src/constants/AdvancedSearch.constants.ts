@@ -42,6 +42,39 @@ export const COMMON_DROPDOWN_ITEMS = [
   },
 ];
 
+export const DATA_ASSET_DROPDOWN_ITEMS = [
+  {
+    label: t('label.entity-type-plural', {
+      entity: t('label.entity'),
+    }),
+    key: EntityFields.ENTITY_TYPE,
+  },
+  {
+    label: t('label.domain'),
+    key: EntityFields.DOMAIN,
+  },
+  {
+    label: t('label.owner'),
+    key: EntityFields.OWNER,
+  },
+  {
+    label: t('label.tag'),
+    key: EntityFields.TAG,
+  },
+  {
+    label: t('label.tier'),
+    key: EntityFields.TIER,
+  },
+  {
+    label: t('label.service'),
+    key: EntityFields.SERVICE,
+  },
+  {
+    label: t('label.service-type'),
+    key: EntityFields.SERVICE_TYPE,
+  },
+];
+
 export const TABLE_DROPDOWN_ITEMS = [
   {
     label: t('label.database'),

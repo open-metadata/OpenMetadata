@@ -11,92 +11,57 @@
  *  limitations under the License.
  */
 import { Tree, Typography } from 'antd';
-import { isUndefined, uniqueId } from 'lodash';
+import classNames from 'classnames';
+import { uniqueId } from 'lodash';
 import React, { useCallback, useState } from 'react';
 import { EntityFields } from '../../../enums/AdvancedSearch.enum';
 import { SearchIndex } from '../../../enums/search.enum';
+import { EsBoolQuery } from '../../../pages/ExplorePage/ExplorePage.interface';
 import { getAggregateFieldOptions } from '../../../rest/miscAPI';
 import { getCountBadge } from '../../../utils/CommonUtils';
 import { getEntityNameLabel } from '../../../utils/EntityUtils';
 import { getAggregations } from '../../../utils/Explore.utils';
+import searchClassBase from '../../../utils/SearchClassBase';
 import serviceUtilClassBase from '../../../utils/ServiceUtilClassBase';
 import { getEntityIcon } from '../../../utils/TableUtils';
-import { ExploreQuickFilterField } from '../ExplorePage.interface';
-
-type ExploreTreeNode = {
-  title: string | JSX.Element;
-  key: string;
-  children?: ExploreTreeNode[];
-  isLeaf?: boolean;
-  icon?: JSX.Element;
-  data?: Record<string | number, any>;
-};
-
-type ExploreTreeProps = {
-  onFieldValueSelect: (field: ExploreQuickFilterField[]) => void;
-};
+import {
+  ExploreTreeNode,
+  ExploreTreeProps,
+  TreeNodeData,
+} from './ExploreTree.interface';
 
 const ExploreTree = ({ onFieldValueSelect }: ExploreTreeProps) => {
-  const initTreeData: ExploreTreeNode[] = [
-    {
-      title: 'Databases',
-      key: SearchIndex.DATABASE,
-      data: { isRoot: true },
-    },
-    { title: 'Dashboards', key: SearchIndex.DASHBOARD, data: { isRoot: true } },
-    { title: 'Pipelines', key: SearchIndex.PIPELINE, data: { isRoot: true } },
-    { title: 'Topics', key: SearchIndex.TOPIC, data: { isRoot: true } },
-    { title: 'Ml Models', key: SearchIndex.MLMODEL, data: { isRoot: true } },
-    { title: 'Containers', key: SearchIndex.CONTAINER, data: { isRoot: true } },
-    {
-      title: 'Search Indexes',
-      key: SearchIndex.SEARCH_INDEX,
-      data: { isRoot: true },
-    },
-    {
-      title: 'Govern',
-      key: 'Govern',
-      children: [
-        { title: 'Glossary', key: '3', isLeaf: true },
-        { title: 'Classification', key: '4', isLeaf: true },
-      ],
-    },
-  ];
+  const initTreeData = searchClassBase.getExploreTree();
   const [treeData, setTreeData] = useState(initTreeData);
 
-  const getSubLevelHierarchyKey = (key?: string, value?: string) => {
-    if (isUndefined(key)) {
-      return {
-        bucket: EntityFields.SERVICE_TYPE,
-        queryFilter: {
-          query: { bool: {} },
-        },
-      };
+  const getSubLevelHierarchyKey = (
+    isDatabaseHierarchy = false,
+    key?: EntityFields,
+    value?: string
+  ) => {
+    const queryFilter = {
+      query: { bool: {} },
+    };
+
+    if (key && value) {
+      (queryFilter.query.bool as EsBoolQuery).must = { term: { [key]: value } };
     }
 
-    if (key === EntityFields.SERVICE_TYPE) {
-      return {
-        bucket: EntityFields.SERVICE,
-        queryFilter: {
-          query: { bool: { must: { term: { [key]: value } } } },
-        },
-      };
-    }
-
-    if (key === EntityFields.SERVICE) {
-      return {
-        bucket: EntityFields.ENTITY_TYPE,
-        queryFilter: {
-          query: { bool: { must: { term: { [key]: value } } } },
-        },
-      };
-    }
+    const bucketMapping = isDatabaseHierarchy
+      ? {
+          [EntityFields.SERVICE_TYPE]: EntityFields.SERVICE,
+          [EntityFields.SERVICE]: EntityFields.DATABASE,
+          [EntityFields.DATABASE]: EntityFields.DATABASE_SCHEMA,
+          [EntityFields.DATABASE_SCHEMA]: EntityFields.ENTITY_TYPE,
+        }
+      : {
+          [EntityFields.SERVICE_TYPE]: EntityFields.SERVICE,
+          [EntityFields.SERVICE]: EntityFields.ENTITY_TYPE,
+        };
 
     return {
-      bucket: EntityFields.SERVICE_TYPE,
-      queryFilter: {
-        query: { bool: { must: { term: { [key]: value } } } },
-      },
+      bucket: bucketMapping[key] ?? EntityFields.SERVICE_TYPE,
+      queryFilter,
     };
   };
 
@@ -136,14 +101,16 @@ const ExploreTree = ({ onFieldValueSelect }: ExploreTreeProps) => {
         currentBucketKey,
         currentBucketValue,
         filterField = [],
-      } = treeNode?.data;
+        rootIndex,
+      } = treeNode?.data as TreeNodeData;
 
       const searchIndex = isRoot
         ? treeNode.key
         : treeNode?.data?.parentSearchIndex;
 
       const { bucket: bucketToFind, queryFilter } = getSubLevelHierarchyKey(
-        currentBucketKey,
+        rootIndex === SearchIndex.DATABASE,
+        currentBucketKey as EntityFields,
         currentBucketValue
       );
 
@@ -206,6 +173,8 @@ const ExploreTree = ({ onFieldValueSelect }: ExploreTreeProps) => {
                 ],
               },
             ],
+            isRoot: false,
+            rootIndex: isRoot ? treeNode.key : treeNode.data?.rootIndex,
           },
         };
       });
@@ -220,6 +189,20 @@ const ExploreTree = ({ onFieldValueSelect }: ExploreTreeProps) => {
       const filterField = node.data?.filterField;
       if (filterField) {
         onFieldValueSelect(filterField);
+      } else if (node.isLeaf) {
+        const filterField = [
+          {
+            label: EntityFields.ENTITY_TYPE,
+            key: EntityFields.ENTITY_TYPE,
+            value: [
+              {
+                key: node.data?.entityType,
+                label: node.data?.entityType,
+              },
+            ],
+          },
+        ];
+        onFieldValueSelect(filterField);
       }
     },
     [onFieldValueSelect]
@@ -229,8 +212,15 @@ const ExploreTree = ({ onFieldValueSelect }: ExploreTreeProps) => {
     <Tree
       blockNode
       showIcon
-      className="p-x-sm"
       loadData={onLoadData}
+      titleRender={(node) => (
+        <Typography.Text
+          className={classNames({
+            'm-l-xs': node.data?.isRoot,
+          })}>
+          {node.title}
+        </Typography.Text>
+      )}
       treeData={treeData}
       onSelect={onNodeSelect}
     />

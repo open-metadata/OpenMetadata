@@ -21,11 +21,9 @@ import {
   Button,
   Col,
   Layout,
-  Menu,
   Row,
   Space,
   Switch,
-  Tabs,
   Typography,
 } from 'antd';
 import { Content } from 'antd/lib/layout/layout';
@@ -65,7 +63,6 @@ import ResizablePanels from '../common/ResizablePanels/ResizablePanels';
 import {
   ExploreProps,
   ExploreQuickFilterField,
-  ExploreSearchIndex,
 } from '../Explore/ExplorePage.interface';
 import ExploreTree from '../Explore/ExploreTree/ExploreTree';
 import { useExploreStore } from '../Explore/useExplore.store';
@@ -306,33 +303,33 @@ const ExploreV1: React.FC<ExploreProps> = ({
     }
   }, [searchResults]);
 
-  const SIDEBAR_TAB_ITEMS = [
-    {
-      key: ExploreSidebarTab.ASSETS,
-      label: t('label.asset-plural'),
-      children: (
-        <Menu
-          className="custom-menu"
-          data-testid="explore-left-panel"
-          items={tabItems}
-          mode="inline"
-          rootClassName="left-container"
-          selectedKeys={[activeTabKey]}
-          onClick={(info) => {
-            if (info && info.key !== activeTabKey) {
-              onChangeSearchIndex(info.key as ExploreSearchIndex);
-              setShowSummaryPanel(false);
-            }
-          }}
-        />
-      ),
-    },
-    {
-      key: ExploreSidebarTab.TREE,
-      label: t('label.tree'),
-      children: <ExploreTree onFieldValueSelect={handleQuickFiltersChange} />,
-    },
-  ];
+  // const SIDEBAR_TAB_ITEMS = [
+  //   {
+  //     key: ExploreSidebarTab.ASSETS,
+  //     label: t('label.asset-plural'),
+  //     children: (
+  //       <Menu
+  //         className="custom-menu"
+  //         data-testid="explore-left-panel"
+  //         items={tabItems}
+  //         mode="inline"
+  //         rootClassName="left-container"
+  //         selectedKeys={[activeTabKey]}
+  //         onClick={(info) => {
+  //           if (info && info.key !== activeTabKey) {
+  //             onChangeSearchIndex(info.key as ExploreSearchIndex);
+  //             setShowSummaryPanel(false);
+  //           }
+  //         }}
+  //       />
+  //     ),
+  //   },
+  //   {
+  //     key: ExploreSidebarTab.TREE,
+  //     label: t('label.tree'),
+  //     children: <ExploreTree onFieldValueSelect={handleQuickFiltersChange} />,
+  //   },
+  // ];
 
   if (tabItems.length === 0 && !searchQueryParam) {
     return <Loader />;
@@ -343,33 +340,27 @@ const ExploreV1: React.FC<ExploreProps> = ({
       {tabItems.length > 0 && (
         <Layout hasSider className="bg-white">
           <Sider
-            className="bg-white border-right"
+            className="bg-white border-right explore-sider"
             width={sidebarActiveTab === ExploreSidebarTab.TREE ? 340 : 300}>
-            <Tabs
-              activeKey={sidebarActiveTab}
-              className="explore-page-tabs"
-              items={SIDEBAR_TAB_ITEMS}
-              tabBarGutter={24}
-              onChange={onTabChange}
-            />
+            <div className="p-sm">
+              <ExploreTree onFieldValueSelect={handleQuickFiltersChange} />
+            </div>
           </Sider>
           <Content>
             <Row className="filters-row">
               <Col className="searched-data-container w-full">
                 <Row gutter={[0, 8]}>
                   <Col>
-                    {sidebarActiveTab === ExploreSidebarTab.ASSETS && (
-                      <ExploreQuickFilters
-                        aggregations={aggregations}
-                        fields={selectedQuickFilters}
-                        fieldsWithNullValues={SUPPORTED_EMPTY_FILTER_FIELDS}
-                        index={activeTabKey}
-                        showDeleted={showDeleted}
-                        onAdvanceSearch={() => toggleModal(true)}
-                        onChangeShowDeleted={onChangeShowDeleted}
-                        onFieldValueSelect={handleQuickFiltersValueSelect}
-                      />
-                    )}
+                    <ExploreQuickFilters
+                      aggregations={aggregations}
+                      fields={selectedQuickFilters}
+                      fieldsWithNullValues={SUPPORTED_EMPTY_FILTER_FIELDS}
+                      index={activeTabKey}
+                      showDeleted={showDeleted}
+                      onAdvanceSearch={() => toggleModal(true)}
+                      onChangeShowDeleted={onChangeShowDeleted}
+                      onFieldValueSelect={handleQuickFiltersValueSelect}
+                    />
                   </Col>
                   <Col
                     className="d-flex items-center justify-end gap-4"
