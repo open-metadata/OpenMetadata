@@ -61,6 +61,8 @@ from metadata.utils.logger import profiler_logger
 
 logger = profiler_logger()
 
+from metadata.profiler.orm.functions.table_metric_computer import CREATE_DATETIME
+
 
 class MissingMetricException(Exception):
     """
@@ -289,12 +291,12 @@ class Profiler(Generic[TMetric]):
             # Composed metrics require the results as an argument
             logger.debug(f"Running composed metric {metric.name()} for {col.name}")
 
-            self._column_results[col.name][
-                metric.name()
-            ] = self.profiler_interface.get_composed_metrics(
-                col,
-                metric,
-                current_col_results,
+            self._column_results[col.name][metric.name()] = (
+                self.profiler_interface.get_composed_metrics(
+                    col,
+                    metric,
+                    current_col_results,
+                )
             )
 
     def run_hybrid_metrics(self, col: Column):
@@ -314,13 +316,13 @@ class Profiler(Generic[TMetric]):
             HybridMetric, col, self.profiler_interface.table_entity.serviceType
         ):
             logger.debug(f"Running hybrid metric {metric.name()} for {col.name}")
-            self._column_results[col.name][
-                metric.name()
-            ] = self.profiler_interface.get_hybrid_metrics(
-                col,
-                metric,
-                current_col_results,
-                table=self.table,
+            self._column_results[col.name][metric.name()] = (
+                self.profiler_interface.get_hybrid_metrics(
+                    col,
+                    metric,
+                    current_col_results,
+                    table=self.table,
+                )
             )
 
     def _prepare_table_metrics(self) -> List:
@@ -579,7 +581,7 @@ class Profiler(Generic[TMetric]):
             ]
 
             raw_create_date: Optional[datetime] = self._table_results.get(
-                "createDateTime"
+                CREATE_DATETIME
             )
             if raw_create_date:
                 raw_create_date = raw_create_date.replace(tzinfo=timezone.utc)
