@@ -32,7 +32,6 @@ import {
   noop,
   omitBy,
   toNumber,
-  toUpper,
 } from 'lodash';
 import moment, { Moment } from 'moment';
 import React, { CSSProperties, FC, Fragment, useState } from 'react';
@@ -229,8 +228,7 @@ export const PropertyValue: FC<PropertyValueProps> = ({
       case 'dateTime-cp': {
         // Default format is 'yyyy-mm-dd'
         const format =
-          toUpper(property.customPropertyConfig?.config as string) ??
-          'yyyy-mm-dd';
+          (property.customPropertyConfig?.config as string) ?? 'yyyy-mm-dd';
 
         const initialValues = {
           dateTimeValue: value ? moment(value, format) : undefined,
@@ -273,7 +271,8 @@ export const PropertyValue: FC<PropertyValueProps> = ({
       }
 
       case 'time-cp': {
-        const format = 'HH:mm:ss';
+        const format =
+          (property.customPropertyConfig?.config as string) ?? 'HH:mm:ss';
         const initialValues = {
           time: value ? moment(value, format) : undefined,
         };
