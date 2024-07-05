@@ -133,7 +133,6 @@ class TestParameters(BaseModel):
                 TestCaseDefinition(
                     name="with_passing_threshold",
                     testDefinitionName="tableDiff",
-                    computePassedFailedRowCount=True,
                     parameterValues=[
                         TestCaseParameterValue(name="threshold", value="322"),
                     ],
@@ -141,7 +140,6 @@ class TestParameters(BaseModel):
                 "POSTGRES_SERVICE.dvdrental.public.changed_customer",
                 TestCaseResult(
                     testCaseStatus=TestCaseStatus.Success,
-                    passedRows=278,
                     failedRows=321,
                 ),
             ),
@@ -149,7 +147,6 @@ class TestParameters(BaseModel):
                 TestCaseDefinition(
                     name="with_failing_threshold",
                     testDefinitionName="tableDiff",
-                    computePassedFailedRowCount=True,
                     parameterValues=[
                         TestCaseParameterValue(name="threshold", value="321"),
                     ],
@@ -157,7 +154,6 @@ class TestParameters(BaseModel):
                 "POSTGRES_SERVICE.dvdrental.public.changed_customer",
                 TestCaseResult(
                     testCaseStatus=TestCaseStatus.Failed,
-                    passedRows=278,
                     failedRows=321,
                 ),
             ),
