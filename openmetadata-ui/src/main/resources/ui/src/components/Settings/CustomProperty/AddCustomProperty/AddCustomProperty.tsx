@@ -96,7 +96,8 @@ const AddCustomProperty = () => {
   const propertyTypeOptions = useMemo(() => {
     return map(propertyTypes, (type) => ({
       key: type.name,
-      label: startCase(type.displayName ?? type.name),
+      // Remove -cp from the name and convert to start case
+      label: startCase((type.displayName ?? type.name).replace(/-cp/g, '')),
       value: type.id,
     }));
   }, [propertyTypes]);

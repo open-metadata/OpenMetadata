@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-export const PROPERTY_TYPES_WITH_FORMAT = ['date', 'dateTime'];
+export const PROPERTY_TYPES_WITH_FORMAT = ['date-cp', 'dateTime-cp'];
 
 export const PROPERTY_TYPES_WITH_ENTITY_REFERENCE = [
   'entityReference',
