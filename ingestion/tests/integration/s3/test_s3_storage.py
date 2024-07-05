@@ -78,3 +78,12 @@ def test_s3_ingestion(metadata, ingest_s3_storage, service_name):
     assert not transactions_separator.dataModel.isPartitioned
     assert 2 == len(transactions_separator.dataModel.columns)
     assert FileFormat.csv in transactions_separator.fileFormats
+
+    png_file: Container = metadata.get_by_name(
+        entity=Container,
+        fqn=f"{service_name}.test-bucket.solved.png",
+        fields=["*"],
+    )
+    assert not png_file.dataModel.isPartitioned
+    assert 0 == len(png_file.dataModel.columns)
+    assert png_file.size  
