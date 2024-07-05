@@ -193,7 +193,9 @@ const AddNotificationPage = () => {
   return (
     <ResizablePanels
       hideSecondPanel
+      className="content-height-with-resizable-panel"
       firstPanel={{
+        className: 'content-resizable-panel-container',
         children: (
           <div className="steps-form-container">
             <Row className="page-container" gutter={[16, 16]}>
@@ -310,7 +312,11 @@ const AddNotificationPage = () => {
         flex: 0.7,
       }}
       pageTitle={t('label.entity-detail-plural', { entity: t('label.alert') })}
-      secondPanel={{ children: <></>, minWidth: 0 }}
+      secondPanel={{
+        children: <></>,
+        minWidth: 0,
+        className: 'content-resizable-panel-container',
+      }}
     />
   );
 };

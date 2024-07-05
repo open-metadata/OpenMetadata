@@ -17,7 +17,7 @@ from datetime import datetime
 from functools import lru_cache
 from typing import Dict, Iterable, List, Optional, Type
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy.engine import Engine
 
 from metadata.generated.schema.entity.data.table import Table
@@ -46,11 +46,10 @@ class LifeCycleQueryByTable(BaseModel):
     Query executed get life cycle
     """
 
+    model_config = ConfigDict(populate_by_name=True)
+
     table_name: str = Field(..., alias="TABLE_NAME")
     created_at: Optional[datetime] = Field(None, alias="CREATED_AT")
-
-    class Config:
-        populate_by_name = True
 
 
 class LifeCycleQueryMixin:

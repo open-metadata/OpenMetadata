@@ -136,7 +136,7 @@ def ingest_metadata(mssql_container, metadata: OpenMetadata, request):
         "sink": {"type": "metadata-rest", "config": {}},
         "workflowConfig": {
             "loggerLevel": "DEBUG",
-            "openMetadataServerConfig": metadata.config.dict(),
+            "openMetadataServerConfig": metadata.config.model_dump(),
         },
     }
     metadata_ingestion = MetadataWorkflow.create(workflow_config)
@@ -183,7 +183,7 @@ def run_lineage_workflow(
         "sink": {"type": "metadata-rest", "config": {}},
         "workflowConfig": {
             "loggerLevel": "INFO",
-            "openMetadataServerConfig": metadata.config.dict(),
+            "openMetadataServerConfig": metadata.config.model_dump(),
         },
     }
     metadata_ingestion = MetadataWorkflow.create(workflow_config)
