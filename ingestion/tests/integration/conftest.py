@@ -80,7 +80,7 @@ def profiler_config(db_service, workflow_config, sink_config):
 
 
 @pytest.fixture()
-def run_workflow(scope="module"):
+def run_workflow():
     def _run(workflow_type: type(IngestionWorkflow), config, raise_from_status=True):
         workflow: IngestionWorkflow = workflow_type.create(config)
         workflow.execute()
