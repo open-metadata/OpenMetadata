@@ -333,8 +333,6 @@ class BigQueryTableMetricComputer(BaseTableMetricComputer):
             Column("dataset_id") == self.schema_name,
             Column("table_id") == self.table_name,
         ]
-        # TODO this features is unsupported anymore. Need to use INFORMATION_SCHEMA.TABLES
-        # https://stackoverflow.com/a/72186250
         query = self._build_query(
             columns,
             self._build_table(
