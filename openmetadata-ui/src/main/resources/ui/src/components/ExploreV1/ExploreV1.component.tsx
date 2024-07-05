@@ -417,8 +417,9 @@ const ExploreV1: React.FC<ExploreProps> = ({
               </Col>
             </Row>
             <ResizablePanels
-              applyDefaultStyle={false}
+              className="explore-content-height-resizable-panel"
               firstPanel={{
+                className: 'explore-resizable-panel-container',
                 children: (
                   <Row className="p-t-md">
                     <Col
@@ -467,7 +468,8 @@ const ExploreV1: React.FC<ExploreProps> = ({
                 ),
                 minWidth: 400,
                 flex: 0.35,
-                className: 'entity-summary-resizable-right-panel-container',
+                className:
+                  'entity-summary-resizable-right-panel-container explore-resizable-panel-container',
               }}
             />
           </Content>

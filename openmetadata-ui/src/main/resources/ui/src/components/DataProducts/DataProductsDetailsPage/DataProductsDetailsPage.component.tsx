@@ -410,8 +410,9 @@ const DataProductsDetailsPage = ({
               key: DataProductTabs.ASSETS,
               children: (
                 <ResizablePanels
-                  applyDefaultStyle={false}
+                  className="domain-height-with-resizable-panel"
                   firstPanel={{
+                    className: 'domain-resizable-panel-container',
                     children: (
                       <div className="p-x-md p-y-md">
                         <AssetsTabs
@@ -441,7 +442,8 @@ const DataProductsDetailsPage = ({
                     ),
                     minWidth: 400,
                     flex: 0.13,
-                    className: 'entity-summary-resizable-right-panel-container',
+                    className:
+                      'entity-summary-resizable-right-panel-container domain-resizable-panel-container',
                   }}
                 />
               ),

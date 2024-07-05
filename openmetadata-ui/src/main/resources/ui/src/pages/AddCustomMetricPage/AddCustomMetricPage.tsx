@@ -196,7 +196,9 @@ const AddCustomMetricPage = () => {
 
   return (
     <ResizablePanels
+      className="content-height-with-resizable-panel"
       firstPanel={{
+        className: 'content-resizable-panel-container',
         children: (
           <div
             className="max-width-md w-9/10 service-form-container"
@@ -253,7 +255,7 @@ const AddCustomMetricPage = () => {
       })}
       secondPanel={{
         children: secondPanel,
-        className: 'p-md p-t-xl',
+        className: 'p-md p-t-xl content-resizable-panel-container',
         flex: 0.5,
         minWidth: 400,
       }}

@@ -532,10 +532,10 @@ const TableQueries: FC<TableQueriesProp> = ({
 
   return (
     <Row className="m-b-md" gutter={8} id="tablequeries" wrap={false}>
-      <Col span={24}>
+      <Col className="tab-content-height-with-resizable-panel" span={24}>
         <ResizablePanels
-          applyDefaultStyle={false}
           firstPanel={{
+            className: 'entity-resizable-panel-container',
             children: (
               <Row
                 className="p-x-md m-t-md"
@@ -665,7 +665,8 @@ const TableQueries: FC<TableQueriesProp> = ({
             ),
             minWidth: 400,
             flex: 0.13,
-            className: 'entity-summary-resizable-right-panel-container',
+            className:
+              'entity-summary-resizable-right-panel-container entity-resizable-panel-container',
           }}
         />
       </Col>
