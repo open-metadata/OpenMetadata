@@ -616,11 +616,6 @@
       <groupId>com.google.cloud</groupId>
       <artifactId>google-cloud-secretmanager</artifactId>
     </dependency>
-    <dependency>
-      <groupId>com.googlecode.owasp-java-html-sanitizer</groupId>
-      <artifactId>owasp-java-html-sanitizer</artifactId>
-      <version>20211018.2</version> 
-    </dependency>
   </dependencies>
 
   <profiles>

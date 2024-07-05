@@ -187,7 +187,13 @@ function EditConnectionFormPage() {
 
   return (
     <ResizablePanels
-      firstPanel={{ children: firstPanelChildren, minWidth: 700, flex: 0.7 }}
+      className="content-height-with-resizable-panel"
+      firstPanel={{
+        children: firstPanelChildren,
+        minWidth: 700,
+        flex: 0.7,
+        className: 'content-resizable-panel-container',
+      }}
       hideSecondPanel={!serviceDetails?.serviceType ?? ''}
       pageTitle={t('label.edit-entity', { entity: t('label.connection') })}
       secondPanel={{
@@ -198,7 +204,7 @@ function EditConnectionFormPage() {
             serviceType={getServiceType(serviceCategory)}
           />
         ),
-        className: 'service-doc-panel',
+        className: 'service-doc-panel content-resizable-panel-container',
         minWidth: 400,
         flex: 0.3,
       }}
