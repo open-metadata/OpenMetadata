@@ -1,13 +1,13 @@
 import sys
 
 import pytest
+from freezegun import freeze_time
 from sqlalchemy import create_engine
 
 from _openmetadata_testutils.helpers.markers import xfail_param
 from metadata.generated.schema.entity.data.table import Table
 from metadata.ingestion.lineage.sql_lineage import search_cache
 from metadata.workflow.metadata import MetadataWorkflow
-from freezegun import freeze_time
 
 if not sys.version_info >= (3, 9):
     pytest.skip("requires python 3.9+", allow_module_level=True)

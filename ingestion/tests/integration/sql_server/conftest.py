@@ -6,19 +6,19 @@ import pytest
 from sqlalchemy import create_engine, text
 from testcontainers.mssql import SqlServerContainer
 
+from _openmetadata_testutils.postgres.conftest import try_bind
 from metadata.generated.schema.api.services.createDatabaseService import (
     CreateDatabaseServiceRequest,
 )
 from metadata.generated.schema.entity.services.connections.database.mssqlConnection import (
-    MssqlScheme,
     MssqlConnection,
+    MssqlScheme,
 )
 from metadata.generated.schema.entity.services.databaseService import (
+    DatabaseConnection,
     DatabaseService,
     DatabaseServiceType,
-    DatabaseConnection,
 )
-from ...helpers.docker_utils import try_bind
 
 
 @pytest.fixture(scope="session")

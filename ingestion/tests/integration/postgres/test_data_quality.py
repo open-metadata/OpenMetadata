@@ -33,11 +33,6 @@ if not sys.version_info >= (3, 9):
 
 
 @pytest.fixture()
-def data_quality_config():
-    pass
-
-
-@pytest.fixture()
 def run_data_quality_workflow(
     run_workflow, ingestion_config, db_service: DatabaseService, metadata: OpenMetadata
 ):
