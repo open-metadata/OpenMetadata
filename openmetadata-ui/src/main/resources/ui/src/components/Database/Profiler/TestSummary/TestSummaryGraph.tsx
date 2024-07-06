@@ -13,13 +13,20 @@
 
 import { Typography } from 'antd';
 import { first, isEmpty, isUndefined, omitBy, round } from 'lodash';
-import React, { ReactElement, useMemo, useRef, useState } from 'react';
+import React, {
+  Fragment,
+  ReactElement,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 import {
+  Area,
   CartesianGrid,
+  ComposedChart,
   Legend,
   Line,
-  LineChart,
   LineProps,
   ReferenceArea,
   ReferenceLine,
@@ -83,8 +90,14 @@ function TestSummaryGraph({
   }, [chartRef, chartMouseEvent]);
 
   const chartData = useMemo(() => {
-    const chartData: TestCaseChartDataType['data'] = [];
-
+    const params =
+      testCaseParameterValue && testCaseParameterValue?.length >= 2
+        ? testCaseParameterValue
+        : [];
+    const dataPoints: TestCaseChartDataType['data'] = [];
+    const yValues = params.reduce((acc, curr, i) => {
+      return { ...acc, [`y${i + 1}`]: parseInt(curr.value ?? '') };
+    }, {});
     testCaseResults.forEach((result) => {
       const values = result.testResultValue?.reduce((acc, curr) => {
         const value = round(parseFloat(curr.value ?? ''), 2) || 0;
@@ -105,18 +118,22 @@ function TestSummaryGraph({
           : `${round(result.failedRowsPercentage, 2)}%`,
       };
 
-      chartData.push({
+      dataPoints.push({
         name: result.timestamp,
         status: result.testCaseStatus,
         ...values,
         ...omitBy(metric, isUndefined),
+        boundArea: [
+          result?.minBound ?? yValues.y1,
+          result?.maxBound ?? yValues.y2,
+        ],
         incidentId: result.incidentId,
         task: entityThread.find(
           (task) => task.task?.testCaseResolutionStatusId === result.incidentId
         ),
       });
     });
-    chartData.reverse();
+    dataPoints.reverse();
 
     return {
       information:
@@ -124,9 +141,9 @@ function TestSummaryGraph({
           label: info.name ?? '',
           color: COLORS[i],
         })) ?? [],
-      data: chartData,
+      data: dataPoints,
     };
-  }, [testCaseResults, entityThread]);
+  }, [testCaseResults, entityThread, testCaseParameterValue]);
 
   const incidentData = useMemo(() => {
     const data = chartData.data ?? [];
@@ -203,19 +220,8 @@ function TestSummaryGraph({
         />
       );
     }
-    const yValues = params.reduce((acc, curr, i) => {
-      return { ...acc, [`y${i + 1}`]: parseInt(curr.value ?? '') };
-    }, {});
 
-    return (
-      <ReferenceArea
-        fill={GREEN_3_OPACITY}
-        ifOverflow="extendDomain"
-        stroke={GREEN_3}
-        strokeDasharray="4"
-        {...yValues}
-      />
-    );
+    return <></>;
   };
 
   if (isEmpty(testCaseResults)) {
@@ -246,7 +252,7 @@ function TestSummaryGraph({
       className="bg-white"
       id={`${testCaseName}_graph`}
       minHeight={minHeight ?? 400}>
-      <LineChart
+      <ComposedChart
         data={chartData.data}
         margin={{
           top: 16,
@@ -281,13 +287,24 @@ function TestSummaryGraph({
         {referenceArea()}
         <Legend payload={customLegendPayLoad} />
         {chartData?.information?.map((info) => (
-          <Line
-            dataKey={info.label}
-            dot={updatedDot}
-            key={info.label}
-            stroke={info.color}
-            type="monotone"
-          />
+          <Fragment key={info.label}>
+            <Line
+              dataKey={info.label}
+              dot={updatedDot}
+              stroke={info.color}
+              type="monotone"
+            />
+            <Area
+              connectNulls
+              activeDot={false}
+              dataKey="boundArea"
+              dot={false}
+              fill={GREEN_3_OPACITY}
+              stroke={GREEN_3}
+              strokeDasharray="4"
+              type="monotone"
+            />
+          </Fragment>
         ))}
 
         {incidentData.length > 0 &&
@@ -300,7 +317,7 @@ function TestSummaryGraph({
               x2={data.x2}
             />
           ))}
-      </LineChart>
+      </ComposedChart>
     </ResponsiveContainer>
   );
 }
