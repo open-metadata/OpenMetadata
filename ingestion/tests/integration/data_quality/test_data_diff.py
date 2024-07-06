@@ -12,6 +12,7 @@ from sqlalchemy.engine import Connection, make_url
 from sqlalchemy.sql import sqltypes
 
 from _openmetadata_testutils.postgres.conftest import postgres_container
+from _openmetadata_testutils.pydantic.test_utils import assert_equal_pydantic_objects
 from metadata.data_quality.api.models import TestCaseDefinition
 from metadata.generated.schema.api.services.createDatabaseService import (
     CreateDatabaseServiceRequest,
@@ -132,7 +133,6 @@ class TestParameters(BaseModel):
                 TestCaseDefinition(
                     name="with_passing_threshold",
                     testDefinitionName="tableDiff",
-                    computePassedFailedRowCount=True,
                     parameterValues=[
                         TestCaseParameterValue(name="threshold", value="322"),
                     ],
@@ -140,7 +140,6 @@ class TestParameters(BaseModel):
                 "POSTGRES_SERVICE.dvdrental.public.changed_customer",
                 TestCaseResult(
                     testCaseStatus=TestCaseStatus.Success,
-                    passedRows=278,
                     failedRows=321,
                 ),
             ),
@@ -148,7 +147,6 @@ class TestParameters(BaseModel):
                 TestCaseDefinition(
                     name="with_failing_threshold",
                     testDefinitionName="tableDiff",
-                    computePassedFailedRowCount=True,
                     parameterValues=[
                         TestCaseParameterValue(name="threshold", value="321"),
                     ],
@@ -156,7 +154,6 @@ class TestParameters(BaseModel):
                 "POSTGRES_SERVICE.dvdrental.public.changed_customer",
                 TestCaseResult(
                     testCaseStatus=TestCaseStatus.Failed,
-                    passedRows=278,
                     failedRows=321,
                 ),
             ),
@@ -321,22 +318,6 @@ def test_happy_paths(
         metadata.delete(TestCase, test_case_entity.id, recursive=True, hard_delete=True)
     assert "ERROR: Unexpected error" not in test_case_entity.testCaseResult.result
     assert_equal_pydantic_objects(parameters.expected, test_case_entity.testCaseResult)
-
-
-def assert_equal_pydantic_objects(
-    expected: BaseModel, actual: BaseModel, ignore_none=True
-):
-    errors = []
-    for key, value in expected.dict().items():
-        if value is not None and ignore_none:
-            if not value == actual.dict()[key]:
-                # an explicit AssertionError because PyCharm does not handle helper functions well:
-                # https://youtrack.jetbrains.com/issue/PY-51929/pytest-assertion-information-not-printed-in-certain-situations#focus=Comments-27-8459641.0-0
-                errors.append(
-                    f"objects mismatched on field: [{key}], expected: [{value}], actual: [{actual.dict()[key]}]"
-                )
-    if errors:
-        raise AssertionError("\n".join(errors))
 
 
 @pytest.mark.parametrize(

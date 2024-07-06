@@ -55,3 +55,8 @@ export interface QueryFieldInterface {
 export interface QueryFilterInterface {
   query: QueryFieldInterface;
 }
+
+export enum ExploreSidebarTab {
+  ASSETS = 'assets',
+  TREE = 'tree',
+}

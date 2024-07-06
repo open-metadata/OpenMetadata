@@ -145,7 +145,7 @@ def test_ingest_query_log(db_service, ingest_metadata, metadata: OpenMetadata):
         "sink": {"type": "metadata-rest", "config": {}},
         "workflowConfig": {
             "loggerLevel": "DEBUG",
-            "openMetadataServerConfig": metadata.config.dict(),
+            "openMetadataServerConfig": metadata.config.model_dump(),
         },
     }
     metadata_ingestion = MetadataWorkflow.create(workflow_config)
@@ -199,7 +199,7 @@ def run_profiler_workflow(ingest_metadata, db_service, metadata):
             loggerLevel=LogLevels.DEBUG, openMetadataServerConfig=metadata.config
         ),
     )
-    metadata_ingestion = ProfilerWorkflow.create(workflow_config.dict())
+    metadata_ingestion = ProfilerWorkflow.create(workflow_config.model_dump())
     search_cache.clear()
     metadata_ingestion.execute()
     return
@@ -212,7 +212,7 @@ def ingest_query_usage(ingest_metadata, db_service, metadata):
         "source": {
             "type": "postgres-usage",
             "serviceName": db_service.fullyQualifiedName.root,
-            "serviceConnection": db_service.connection.dict(),
+            "serviceConnection": db_service.connection.model_dump(),
             "sourceConfig": {
                 "config": {"type": DatabaseUsageConfigType.DatabaseUsage.value}
             },
@@ -233,7 +233,7 @@ def ingest_query_usage(ingest_metadata, db_service, metadata):
         "sink": {"type": "metadata-rest", "config": {}},
         "workflowConfig": {
             "loggerLevel": "DEBUG",
-            "openMetadataServerConfig": metadata.config.dict(),
+            "openMetadataServerConfig": metadata.config.model_dump(),
         },
     }
     workflow = UsageWorkflow.create(workflow_config)
@@ -278,7 +278,7 @@ def run_usage_workflow(db_service, metadata):
         "source": {
             "type": "postgres-usage",
             "serviceName": db_service.fullyQualifiedName.root,
-            "serviceConnection": db_service.connection.dict(),
+            "serviceConnection": db_service.connection.model_dump(),
             "sourceConfig": {
                 "config": {"type": DatabaseUsageConfigType.DatabaseUsage.value}
             },
@@ -299,7 +299,7 @@ def run_usage_workflow(db_service, metadata):
         "sink": {"type": "metadata-rest", "config": {}},
         "workflowConfig": {
             "loggerLevel": "DEBUG",
-            "openMetadataServerConfig": metadata.config.dict(),
+            "openMetadataServerConfig": metadata.config.model_dump(),
         },
     }
     workflow = UsageWorkflow.create(workflow_config)
@@ -317,7 +317,7 @@ def test_usage_delete_usage(db_service, ingest_postgres_lineage, metadata):
         "source": {
             "type": "postgres-usage",
             "serviceName": db_service.fullyQualifiedName.root,
-            "serviceConnection": db_service.connection.dict(),
+            "serviceConnection": db_service.connection.model_dump(),
             "sourceConfig": {
                 "config": {"type": DatabaseUsageConfigType.DatabaseUsage.value}
             },
@@ -338,7 +338,7 @@ def test_usage_delete_usage(db_service, ingest_postgres_lineage, metadata):
         "sink": {"type": "metadata-rest", "config": {}},
         "workflowConfig": {
             "loggerLevel": "DEBUG",
-            "openMetadataServerConfig": metadata.config.dict(),
+            "openMetadataServerConfig": metadata.config.model_dump(),
         },
     }
     workflow = UsageWorkflow.create(workflow_config)
