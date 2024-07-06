@@ -172,6 +172,7 @@ const ExploreTree = ({ onFieldValueSelect }: ExploreTreeProps) => {
       showIcon
       className="p-sm"
       data-testid="explore-tree"
+      defaultExpandedKeys={[SearchIndex.DATABASE]}
       loadData={onLoadData}
       titleRender={(node) => <ExploreTreeTitle node={node} />}
       treeData={treeData}

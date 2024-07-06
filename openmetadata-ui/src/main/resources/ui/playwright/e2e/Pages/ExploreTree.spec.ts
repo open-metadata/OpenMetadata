@@ -37,9 +37,10 @@ test('Explore Tree', async ({ page }) => {
     await expect(page.getByRole('tree')).toContainText('Governance');
 
     await page
-      .locator(
-        '[data-testid="explore-tree"] .ant-tree-treenode:nth-child(8) > .ant-tree-switcher'
-      )
+      .locator('div')
+      .filter({ hasText: /^Governance$/ })
+      .locator('svg')
+      .first()
       .click();
 
     await expect(page.getByRole('tree')).toContainText('Glossaries');
