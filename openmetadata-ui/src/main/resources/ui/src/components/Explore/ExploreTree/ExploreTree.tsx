@@ -23,7 +23,7 @@ import {
   getAggregations,
   getSubLevelHierarchyKey,
   updateTreeData,
-} from '../../../utils/Explore.utils';
+} from '../../../utils/ExploreUtils';
 import searchClassBase from '../../../utils/SearchClassBase';
 import serviceUtilClassBase from '../../../utils/ServiceUtilClassBase';
 import { getEntityIcon } from '../../../utils/TableUtils';
@@ -82,7 +82,7 @@ const ExploreTree = ({ onFieldValueSelect }: ExploreTreeProps) => {
       const isServiceType = bucketToFind === EntityFields.SERVICE_TYPE;
       const isEntityType = bucketToFind === EntityFields.ENTITY_TYPE;
 
-      const sortedBuckets = [...buckets].sort((a, b) =>
+      const sortedBuckets = buckets.sort((a, b) =>
         a.key.localeCompare(b.key, undefined, { sensitivity: 'base' })
       );
 

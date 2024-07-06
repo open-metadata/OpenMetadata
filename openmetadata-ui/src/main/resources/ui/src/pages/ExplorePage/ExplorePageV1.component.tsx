@@ -51,11 +51,11 @@ import { useApplicationStore } from '../../hooks/useApplicationStore';
 import { Aggregations, SearchResponse } from '../../interface/search.interface';
 import { searchQuery } from '../../rest/searchAPI';
 import { getCountBadge } from '../../utils/CommonUtils';
+import { getCombinedQueryFilterObject } from '../../utils/ExplorePage/ExplorePageUtils';
 import {
   extractTermKeys,
   findActiveSearchIndex,
-} from '../../utils/Explore.utils';
-import { getCombinedQueryFilterObject } from '../../utils/ExplorePage/ExplorePageUtils';
+} from '../../utils/ExploreUtils';
 import searchClassBase from '../../utils/SearchClassBase';
 import { escapeESReservedCharacters } from '../../utils/StringsUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
