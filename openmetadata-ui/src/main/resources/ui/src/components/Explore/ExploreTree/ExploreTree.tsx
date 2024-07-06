@@ -170,7 +170,7 @@ const ExploreTree = ({ onFieldValueSelect }: ExploreTreeProps) => {
     <Tree
       blockNode
       showIcon
-      className="p-sm"
+      className="explore-tree p-sm"
       data-testid="explore-tree"
       defaultExpandedKeys={[SearchIndex.DATABASE]}
       loadData={onLoadData}
