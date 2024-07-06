@@ -18,6 +18,7 @@ import {
   getQuickFilterQuery,
   getSelectedValuesFromQuickFilter,
   getSubLevelHierarchyKey,
+  updateTreeData,
 } from './Explore.utils';
 
 describe('Explore Utils', () => {
@@ -231,6 +232,41 @@ describe('Explore Utils', () => {
           },
         },
       });
+    });
+  });
+
+  describe('updateTreeData', () => {
+    it('updates the correct node in the tree', () => {
+      const treeData = [
+        { title: '1', key: '1', children: [{ title: '1.1', key: '1.1' }] },
+        { title: '2', key: '2', children: [{ title: '2.1', key: '2.1' }] },
+      ];
+
+      const newChildren = [{ title: '1.1.1', key: '1.1.1' }];
+
+      const updatedTreeData = updateTreeData(treeData, '1.1', newChildren);
+
+      expect(updatedTreeData).toEqual([
+        {
+          key: '1',
+          title: '1',
+          children: [{ title: '1.1', key: '1.1', children: newChildren }],
+        },
+        { key: '2', title: '2', children: [{ title: '2.1', key: '2.1' }] },
+      ]);
+    });
+
+    it('does not modify the tree if the key is not found', () => {
+      const treeData = [
+        { title: '1', key: '1', children: [{ title: '1.1', key: '1.1' }] },
+        { title: '2', key: '2', children: [{ title: '2.1', key: '2.1' }] },
+      ];
+
+      const newChildren = [{ title: '1.1.1', key: '1.1.1' }];
+
+      const updatedTreeData = updateTreeData(treeData, '3', newChildren);
+
+      expect(updatedTreeData).toEqual(treeData);
     });
   });
 });

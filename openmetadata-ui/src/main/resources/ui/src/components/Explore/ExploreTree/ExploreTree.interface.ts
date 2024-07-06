@@ -10,12 +10,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { ReactNode } from 'react';
 import { EntityFields } from '../../../enums/AdvancedSearch.enum';
 import { EntityType } from '../../../enums/entity.enum';
 import { ExploreQuickFilterField } from '../ExplorePage.interface';
 
 export type ExploreTreeNode = {
-  title: string | JSX.Element;
+  title: ReactNode;
   key: string;
   children?: ExploreTreeNode[];
   isLeaf?: boolean;

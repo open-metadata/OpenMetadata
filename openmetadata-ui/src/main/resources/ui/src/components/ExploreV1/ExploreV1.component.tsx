@@ -335,7 +335,7 @@ const ExploreV1: React.FC<ExploreProps> = ({
     {
       key: ExploreSidebarTab.TREE,
       label: (
-        <div className="p-x-sm" data-testid="explore-tree">
+        <div className="p-x-sm" data-testid="explore-tree-tab">
           <span>{t('label.tree')}</span>
           <Badge
             className="service-beta-tag"

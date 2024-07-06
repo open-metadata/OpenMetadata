@@ -22,6 +22,7 @@ import { getEntityNameLabel } from '../../../utils/EntityUtils';
 import {
   getAggregations,
   getSubLevelHierarchyKey,
+  updateTreeData,
 } from '../../../utils/Explore.utils';
 import searchClassBase from '../../../utils/SearchClassBase';
 import serviceUtilClassBase from '../../../utils/ServiceUtilClassBase';
@@ -45,31 +46,6 @@ const ExploreTreeTitle = ({ node }: { node: ExploreTreeNode }) => (
 const ExploreTree = ({ onFieldValueSelect }: ExploreTreeProps) => {
   const initTreeData = searchClassBase.getExploreTree();
   const [treeData, setTreeData] = useState(initTreeData);
-
-  const updateTreeData = useCallback(
-    (
-      list: ExploreTreeNode[],
-      key: React.Key,
-      children: ExploreTreeNode[]
-    ): ExploreTreeNode[] =>
-      list.map((node) => {
-        if (node.key === key) {
-          return {
-            ...node,
-            children,
-          };
-        }
-        if (node.children) {
-          return {
-            ...node,
-            children: updateTreeData(node.children, key, children),
-          };
-        }
-
-        return node;
-      }),
-    []
-  );
 
   const onLoadData = useCallback(
     async (treeNode: ExploreTreeNode) => {

@@ -18,7 +18,10 @@ import {
   ExploreSearchIndex,
   SearchHitCounts,
 } from '../components/Explore/ExplorePage.interface';
-import { DatabaseFields } from '../components/Explore/ExploreTree/ExploreTree.interface';
+import {
+  DatabaseFields,
+  ExploreTreeNode,
+} from '../components/Explore/ExploreTree/ExploreTree.interface';
 import { SearchDropdownOption } from '../components/SearchDropdown/SearchDropdown.interface';
 import { NULL_OPTION_KEY } from '../constants/AdvancedSearch.constants';
 import { EntityFields } from '../enums/AdvancedSearch.enum';
@@ -202,3 +205,25 @@ export const getSubLevelHierarchyKey = (
     queryFilter,
   };
 };
+
+export const updateTreeData = (
+  list: ExploreTreeNode[],
+  key: React.Key,
+  children: ExploreTreeNode[]
+): ExploreTreeNode[] =>
+  list.map((node) => {
+    if (node.key === key) {
+      return {
+        ...node,
+        children,
+      };
+    }
+    if (node.children) {
+      return {
+        ...node,
+        children: updateTreeData(node.children, key, children),
+      };
+    }
+
+    return node;
+  });

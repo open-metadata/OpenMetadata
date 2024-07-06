@@ -12,16 +12,11 @@
  */
 import test, { expect } from '@playwright/test';
 import { SidebarItem } from '../../constant/sidebar';
-import { createNewPage, redirectToHomePage } from '../../utils/common';
+import { redirectToHomePage } from '../../utils/common';
 import { sidebarClick } from '../../utils/sidebar';
 
 // use the admin user to login
 test.use({ storageState: 'playwright/.auth/admin.json' });
-
-test.beforeAll(async ({ browser }) => {
-  const { afterAction } = await createNewPage(browser);
-  await afterAction();
-});
 
 test.beforeEach(async ({ page }) => {
   await redirectToHomePage(page);
@@ -29,7 +24,7 @@ test.beforeEach(async ({ page }) => {
 });
 
 test('Explore Tree', async ({ page }) => {
-  await page.getByTestId('explore-tree').getByText('Tree').click();
+  await page.getByTestId('explore-tree-tab').getByText('Tree').click();
 
   await test.step('Check the explore tree', async () => {
     await expect(page.getByRole('tree')).toContainText('Databases');
@@ -41,7 +36,11 @@ test('Explore Tree', async ({ page }) => {
     await expect(page.getByRole('tree')).toContainText('Search Indexes');
     await expect(page.getByRole('tree')).toContainText('Governance');
 
-    await page.locator('div:nth-child(8) > .ant-tree-switcher').click();
+    await page
+      .locator(
+        '[data-testid="explore-tree"] .ant-tree-treenode:nth-child(8) > .ant-tree-switcher'
+      )
+      .click();
 
     await expect(page.getByRole('tree')).toContainText('Glossaries');
     await expect(page.getByRole('tree')).toContainText('Tags');
