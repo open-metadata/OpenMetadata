@@ -75,7 +75,7 @@ export interface ExploreProps {
     queryFilter: QueryFilterInterface | undefined
   ) => void;
 
-  searchIndex: ExploreSearchIndex;
+  searchIndex: SearchIndex.DATA_ASSET | ExploreSearchIndex;
   onChangeSearchIndex: (searchIndex: ExploreSearchIndex) => void;
 
   sortValue: string;

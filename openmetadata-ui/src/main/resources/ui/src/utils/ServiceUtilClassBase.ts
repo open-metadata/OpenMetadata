@@ -211,11 +211,8 @@ class ServiceUtilClassBase {
     };
   }
 
-  public getServiceTypeLogo(
-    searchSource: SearchSuggestions[number] | SearchSourceAlias
-  ) {
+  public getServiceLogo(type: string) {
     const serviceTypes = this.getSupportedServiceFromList();
-    const type = searchSource?.serviceType ?? '';
     switch (toLower(type)) {
       case this.DatabaseServiceTypeSmallCase.Mysql:
         return MYSQL;
@@ -470,6 +467,13 @@ class ServiceUtilClassBase {
     }
   }
 
+  public getServiceTypeLogo(
+    searchSource: SearchSuggestions[number] | SearchSourceAlias
+  ) {
+    const type = searchSource?.serviceType ?? '';
+
+    return this.getServiceLogo(type);
+  }
   public getDataAssetsService(serviceType: string): ExplorePageTabs {
     const database = this.DatabaseServiceTypeSmallCase;
     const messaging = this.MessagingServiceTypeSmallCase;
