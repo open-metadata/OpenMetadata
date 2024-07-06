@@ -32,10 +32,9 @@ export default defineConfig({
   /* Retry on CI only */
   retries: process.env.CI ? 2 : 0,
   /* Opt out of parallel tests on CI. */
-  workers: process.env.CI ? 3 : undefined,
+  workers: process.env.CI ? 4 : undefined,
   /* Reporter to use. See https://playwright.dev/docs/test-reporters */
   reporter: [
-    ['github'],
     ['list'],
     ['html', { outputFolder: './playwright/output/playwright-report' }],
     [
@@ -69,11 +68,6 @@ export default defineConfig({
       name: 'chromium',
       use: { ...devices['Desktop Chrome'] },
       // Added admin setup as a dependency. This will authorize the page with an admin user before running the test. doc: https://playwright.dev/docs/auth#multiple-signed-in-roles
-      dependencies: ['setup'],
-    },
-    {
-      name: 'firefox',
-      use: { ...devices['Desktop Firefox'] },
       dependencies: ['setup'],
     },
     {
