@@ -81,7 +81,7 @@ import {
 import {
   getAggregations,
   getQuickFilterQuery,
-} from '../../../../utils/Explore.utils';
+} from '../../../../utils/ExploreUtils';
 import {
   escapeESReservedCharacters,
   getEncodedFqn,
