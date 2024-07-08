@@ -193,7 +193,7 @@ class StorageServiceSource(TopologyRunnerMixin, Source, ABC):
             entity_type=Container,
             service_name=self.context.get().objectstore_service,
             parent_container=parent_container,
-            container_name=container_request.name.__root__,
+            container_name=fqn.quote_name(container_request.name.__root__),
         )
 
         self.container_source_state.add(container_fqn)
