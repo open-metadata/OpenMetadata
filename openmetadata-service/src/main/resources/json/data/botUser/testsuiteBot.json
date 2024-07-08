@@ -1,0 +1,9 @@
+{
+  "name": "testsuite-bot",
+  "roles": [
+    {
+        "name": "QualityBotRole",
+        "type": "role"
+    }
+  ]
+}

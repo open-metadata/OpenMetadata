@@ -1,0 +1,11 @@
+{
+  "name": "lineage-bot",
+  "displayName": "LineageBot",
+  "description": "Bot used for ingesting lineage metadata.",
+  "fullyQualifiedName": "lineage-bot",
+  "botUser": {
+    "name" : "lineage-bot",
+    "type" : "user"
+  },
+  "provider": "system"
+}
