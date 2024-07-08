@@ -48,10 +48,6 @@ class DatabricksProfilerInterface(SQAProfilerInterface):
             if result:
                 result += "`."
             result += "`.`".join(splitted_result)
-        # `default`.`complex_data`.`struct_data.a`
-        # `default`.`complex_data`.`struct_data.a.b`
-        # `complex_data`.`struct_data.a`
-        # `struct_data.a`
         return result
 
     def __init__(self, service_connection_config, **kwargs):
@@ -63,7 +59,7 @@ class DatabricksProfilerInterface(SQAProfilerInterface):
         """Get struct columns"""
 
         columns_list = []
-        for idx, col in enumerate(columns):
+        for col in columns:
             if col.dataType != DataType.STRUCT:
                 col.name = ColumnName(f"{parent}.{col.name.root}")
                 col = build_orm_col(

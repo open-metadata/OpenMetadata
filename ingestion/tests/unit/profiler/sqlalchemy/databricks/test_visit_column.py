@@ -66,11 +66,9 @@ class TestDatabricksProfilerInterface(unittest.TestCase):
             self.profiler.visit_column(MagicMock()) == "`db`.`schema`.`table`.`col`.`1`"
         )
 
-
         mock_visit_column_super.return_value = "`table`.`1.2`"
         assert self.profiler.visit_column(MagicMock()) == "`table`.`1`.`2`"
-        
-        
+
         # single dot in column name should not be split
         mock_visit_column_super.return_value = "`col.1`"
         assert self.profiler.visit_column(MagicMock()) == "`col.1`"
