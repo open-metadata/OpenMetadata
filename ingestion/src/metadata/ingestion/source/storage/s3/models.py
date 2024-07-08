@@ -52,21 +52,21 @@ class S3ContainerDetails(BaseModel):
 
     name: str = Field(..., description="Bucket name")
     prefix: str = Field(..., description="Prefix for the container")
-    number_of_objects: float = Field(
-        ...,
+    number_of_objects: Optional[float] = Field(
+        None,
         description="Total nr. of objects",
     )
-    size: float = Field(
-        ...,
+    size: Optional[float] = Field(
+        None,
         description="Total size in bytes of all objects",
         title="Total size(bytes) of objects",
     )
     file_formats: Optional[List[FileFormat]] = Field(
-        ...,
+        None,
         description="File formats",
     )
     data_model: Optional[ContainerDataModel] = Field(
-        ...,
+        None,
         description="Data Model of the container",
     )
     creation_date: Optional[str] = Field(

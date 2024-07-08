@@ -6,6 +6,9 @@
             "isPartitioned": false
         },
         {
+            "dataPath": "solved.png"
+        },
+        {
             "dataPath": "transactions_separator",
             "structureFormat": "csv",
             "isPartitioned": false,
