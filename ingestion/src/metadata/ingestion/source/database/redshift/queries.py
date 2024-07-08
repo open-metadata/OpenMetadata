@@ -249,7 +249,7 @@ REDSHIFT_GET_ALL_RELATIONS = """
         c.relowner AS "owner_id",
         u.usename AS "owner_name",
         TRIM(TRAILING ';' FROM
-        'create view ' || n.nspname || '.' || c.relname || ' as ' ||pg_catalog.pg_get_viewdef(c.oid, true))
+        pg_catalog.pg_get_viewdef(c.oid, true))
         AS "view_definition",
         pg_catalog.array_to_string(c.relacl, '\n') AS "privileges"
     FROM pg_catalog.pg_class c
