@@ -103,7 +103,6 @@ export const SUPPORTED_DATE_FORMATS = [
   'MM/dd/yyyy',
   'dd/MM/yyyy',
   'dd-MM-yyyy',
-  "YYYY-'W'ww-e",
   'yyyyDDD',
   'd MMMM yyyy',
 ];
@@ -121,11 +120,7 @@ export const SUPPORTED_DATE_TIME_FORMATS = [
 ];
 
 // supported time formats on backend
-export const SUPPORTED_TIME_FORMATS = [
-  'HH:mm:ss',
-  'hh:mm:ss',
-  'hh:mm:ss AM/PM',
-];
+export const SUPPORTED_TIME_FORMATS = ['HH:mm:ss', 'hh:mm:ss'];
 
 export const SUPPORTED_FORMAT_MAP = {
   'date-cp': SUPPORTED_DATE_FORMATS,

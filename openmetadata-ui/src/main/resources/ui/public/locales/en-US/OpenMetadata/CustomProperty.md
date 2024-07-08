@@ -46,7 +46,6 @@ $$
 - `MM/dd/yyyy`
 - `dd/MM/yyyy`
 - `dd-MM-yyyy`
-- `YYYY-'W'ww-e`
 - `yyyyDDD`
 - `d MMMM yyyy`
 
@@ -65,7 +64,6 @@ $$
 
 - `HH:mm:ss`
 - `hh:mm:ss`
-- `hh:mm:ss AM/PM`
 
 
 $$section
