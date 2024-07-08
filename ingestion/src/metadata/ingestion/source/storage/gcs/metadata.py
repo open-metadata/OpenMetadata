@@ -16,9 +16,9 @@ from datetime import datetime, timedelta
 from enum import Enum
 from typing import Dict, Iterable, List, Optional
 
-from pydantic import ValidationError
 from google.cloud.exceptions import NotFound
 from google.cloud.monitoring_v3.types import TimeInterval
+from pydantic import ValidationError
 
 from metadata.generated.schema.api.data.createContainer import CreateContainerRequest
 from metadata.generated.schema.entity.data import container

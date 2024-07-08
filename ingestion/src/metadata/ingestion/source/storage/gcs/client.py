@@ -13,8 +13,8 @@ from functools import partial
 from typing import List, Optional, Type, Union
 
 from google import auth
-from google.cloud.storage import Client
 from google.cloud.monitoring_v3 import MetricServiceClient
+from google.cloud.storage import Client
 
 NoProject = object()
 

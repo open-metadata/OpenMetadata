@@ -13,10 +13,10 @@ Unit tests for GCS Object store source
 """
 import datetime
 import uuid
+from collections import namedtuple
 from typing import List
 from unittest import TestCase
 from unittest.mock import patch
-from collections import namedtuple
 
 import pandas as pd
 
@@ -49,7 +49,6 @@ from metadata.ingestion.source.storage.storage_service import (
 from metadata.readers.file.base import ReadException
 from metadata.readers.file.config_source_factory import get_reader
 
-
 MockBucketResponse = namedtuple("MockBucketResponse", ["name", "time_created"])
 MockObjectFilePath = namedtuple("MockObjectFilePath", ["name"])
 
@@ -58,7 +57,10 @@ MOCK_OBJECT_STORE_CONFIG = {
         "type": "gcs",
         "serviceName": "gcs_test",
         "serviceConnection": {
-            "config": {"type": "GCS", "credentials": {"gcpConfig": "/tmp/credentials.json"}}
+            "config": {
+                "type": "GCS",
+                "credentials": {"gcpConfig": "/tmp/credentials.json"},
+            }
         },
         "sourceConfig": {
             "config": {
@@ -84,7 +86,9 @@ MOCK_OBJECT_STORE_CONFIG = {
     },
 }
 MOCK_BUCKETS_RESPONSE = [
-    MockBucketResponse(name="test_transactions", time_created=datetime.datetime(2000, 1, 1)),
+    MockBucketResponse(
+        name="test_transactions", time_created=datetime.datetime(2000, 1, 1)
+    ),
     MockBucketResponse(name="test_sales", time_created=datetime.datetime(2000, 2, 2)),
     MockBucketResponse(name="events", time_created=datetime.datetime(2000, 3, 3)),
 ]
@@ -100,14 +104,21 @@ MOCK_METADATA_FILE_RESPONSE = {
 }
 EXPECTED_BUCKETS: List[GCSBucketResponse] = [
     GCSBucketResponse(
-        name="test_transactions", project_id="test_project", creation_date=datetime.datetime(2000, 1, 1)
+        name="test_transactions",
+        project_id="test_project",
+        creation_date=datetime.datetime(2000, 1, 1),
     ),
-    GCSBucketResponse(name="test_sales", project_id="test_project", creation_date=datetime.datetime(2000, 2, 2)),
+    GCSBucketResponse(
+        name="test_sales",
+        project_id="test_project",
+        creation_date=datetime.datetime(2000, 2, 2),
+    ),
 ]
 MOCK_OBJECT_FILE_PATHS = [
     MockObjectFilePath(name="transactions/transactions_1.csv"),
     MockObjectFilePath(name="transactions/transactions_2.csv"),
 ]
+
 
 def _get_str_value(data):
     if data:
@@ -148,7 +159,8 @@ class StorageUnitTest(TestCase):
             self.config.workflowConfig.openMetadataServerConfig,
         )
         self.gcs_reader = get_reader(
-            config_source=GCSConfig(), client=self.object_store_source.gcs_clients.storage_client.clients[0]
+            config_source=GCSConfig(),
+            client=self.object_store_source.gcs_clients.storage_client.clients[0],
         )
 
     def test_create_from_invalid_source(self):
@@ -188,12 +200,10 @@ class StorageUnitTest(TestCase):
         )
 
     def test_gcs_buckets_fetching(self):
-        self.object_store_source.storage_client.clients[0].list_buckets = (
-            lambda: MOCK_BUCKETS_RESPONSE
-        )
-        self.assertListEqual(
-            self.object_store_source.fetch_buckets(), EXPECTED_BUCKETS
-        )
+        self.object_store_source.storage_client.clients[
+            0
+        ].list_buckets = lambda: MOCK_BUCKETS_RESPONSE
+        self.assertListEqual(self.object_store_source.fetch_buckets(), EXPECTED_BUCKETS)
 
     def test_load_metadata_file_gcs(self):
         metadata_entry: List[MetadataEntry] = self.return_metadata_entry()
@@ -218,7 +228,9 @@ class StorageUnitTest(TestCase):
 
     def test_generate_unstructured_container(self):
         bucket_response = GCSBucketResponse(
-            name="test_bucket", project_id="test_project", creation_date=datetime.datetime(2000, 1, 1)
+            name="test_bucket",
+            project_id="test_project",
+            creation_date=datetime.datetime(2000, 1, 1),
         )
         self.object_store_source._fetch_metric = lambda bucket_name, metric: 100.0
         self.assertEqual(
@@ -282,7 +294,9 @@ class StorageUnitTest(TestCase):
             ),
             self.object_store_source._generate_container_details(
                 GCSBucketResponse(
-                    name="test_bucket", project_id="test_project", creation_date=datetime.datetime(2000, 1, 1)
+                    name="test_bucket",
+                    project_id="test_project",
+                    creation_date=datetime.datetime(2000, 1, 1),
                 ),
                 MetadataEntry(
                     dataPath="transactions",
@@ -389,9 +403,9 @@ class StorageUnitTest(TestCase):
         self.object_store_source._get_sample_file_prefix = (
             lambda metadata_entry: "/transactions"
         )
-        self.object_store_source.gcs_clients.storage_client.cliens[0].list_blobs = (
-            lambda bucket, prefix, max_results: MOCK_OBJECT_FILE_PATHS
-        )
+        self.object_store_source.gcs_clients.storage_client.cliens[
+            0
+        ].list_blobs = lambda bucket, prefix, max_results: MOCK_OBJECT_FILE_PATHS
 
         candidate = self.object_store_source._get_sample_file_path(
             bucket_name="test_bucket",

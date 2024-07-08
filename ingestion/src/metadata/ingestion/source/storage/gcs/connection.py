@@ -9,12 +9,12 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 """GCS storage connection"""
-from typing import Optional
-from functools import partial
 from dataclasses import dataclass
+from functools import partial
+from typing import Optional
 
-from google.cloud.storage import Client
 from google.cloud.monitoring_v3 import MetricServiceClient
+from google.cloud.storage import Client
 
 from metadata.generated.schema.entity.automations.workflow import (
     Workflow as AutomationWorkflow,
@@ -26,9 +26,7 @@ from metadata.generated.schema.security.credentials.gcpValues import (
     GcpCredentialsValues,
     SingleProjectId,
 )
-from metadata.ingestion.connections.test_connections import (
-    test_connection_steps,
-)
+from metadata.ingestion.connections.test_connections import test_connection_steps
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.storage.gcs.client import MultiProjectClient
 from metadata.utils.credentials import set_google_credentials
