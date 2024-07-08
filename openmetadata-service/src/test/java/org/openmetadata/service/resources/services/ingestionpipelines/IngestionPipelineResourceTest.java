@@ -798,17 +798,18 @@ public class IngestionPipelineResourceTest
 
     // Create a status without having the EDIT_INGESTION_PIPELINE_STATUS permission
     assertResponse(
-        () -> TestUtils.put(
-            getPipelineStatusTarget(ingestionPipeline.getFullyQualifiedName()),
-            new PipelineStatus()
-                .withPipelineState(PipelineStatusType.RUNNING)
-                .withRunId(runId)
-                .withTimestamp(3L),
-            Response.Status.CREATED,
-            authHeaders(USER2.getName())),
+        () ->
+            TestUtils.put(
+                getPipelineStatusTarget(ingestionPipeline.getFullyQualifiedName()),
+                new PipelineStatus()
+                    .withPipelineState(PipelineStatusType.RUNNING)
+                    .withRunId(runId)
+                    .withTimestamp(3L),
+                Response.Status.CREATED,
+                authHeaders(USER2.getName())),
         FORBIDDEN,
-        permissionNotAllowed(USER2.getName(), List.of(MetadataOperation.EDIT_INGESTION_PIPELINE_STATUS))
-    );
+        permissionNotAllowed(
+            USER2.getName(), List.of(MetadataOperation.EDIT_INGESTION_PIPELINE_STATUS)));
   }
 
   @Test
@@ -816,15 +817,21 @@ public class IngestionPipelineResourceTest
     CreateIngestionPipeline create = createRequest(getEntityName(test));
     create
         .withPipelineType(PipelineType.APPLICATION)
-        .withSourceConfig(new SourceConfig().withConfig(
-            new ApplicationPipeline()
-                .withAppConfig(new AutomatorAppConfig().withResources(new Resource().withQueryFilter("")).withActions(List.of()))));
+        .withSourceConfig(
+            new SourceConfig()
+                .withConfig(
+                    new ApplicationPipeline()
+                        .withAppConfig(
+                            new AutomatorAppConfig()
+                                .withResources(new Resource().withQueryFilter(""))
+                                .withActions(List.of()))));
 
     // Create ingestion pipeline without having the CREATE_INGESTION_PIPELINE_AUTOMATOR permission
     assertResponse(
         () -> createEntity(create, authHeaders(USER1.getName())),
         FORBIDDEN,
-        permissionNotAllowed(USER1.getName(), List.of(MetadataOperation.CREATE_INGESTION_PIPELINE_AUTOMATOR)));
+        permissionNotAllowed(
+            USER1.getName(), List.of(MetadataOperation.CREATE_INGESTION_PIPELINE_AUTOMATOR)));
 
     // Admin has permissions and can create it
     createEntity(create, ADMIN_AUTH_HEADERS);
