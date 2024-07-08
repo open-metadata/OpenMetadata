@@ -1599,16 +1599,16 @@ class SampleDataSource(
 
             life_cycle_data.updated = AccessDetails(
                 timestamp=Timestamp(
-                    int(
-                        convert_timestamp_to_milliseconds(
-                            (
-                                datetime.now()
-                                - timedelta(days=life_cycle["updated"]["days"])
-                            ).timestamp()
-                        )
+                        int(
+                            convert_timestamp_to_milliseconds(
+                                (
+                                    datetime.now()
+                                    - timedelta(days=life_cycle["updated"]["days"])
+                                ).timestamp()
+                            )
+                        ),
                     ),
-                    accessedByAProcess=life_cycle["updated"].get("accessedByAProcess"),
-                )
+                accessedByAProcess=life_cycle["updated"].get("accessedByAProcess"),
             )
 
             life_cycle_data.accessed = AccessDetails(
@@ -1621,8 +1621,8 @@ class SampleDataSource(
                             ).timestamp()
                         )
                     ),
-                    accessedByAProcess=life_cycle["accessed"].get("accessedByAProcess"),
-                )
+                ),
+                accessedByAProcess=life_cycle["accessed"].get("accessedByAProcess"),
             )
 
             if life_cycle["created"].get("accessedBy"):
