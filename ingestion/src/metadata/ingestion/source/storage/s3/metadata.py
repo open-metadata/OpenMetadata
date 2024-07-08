@@ -195,7 +195,11 @@ class S3Source(StorageServiceSource):
         parent: Optional[EntityReference] = None,
     ) -> Optional[S3ContainerDetails]:
         bucket_name = bucket_response.name
-        if not metadata_entry.structureFormat:
+        object_size = self.get_size(
+            bucket_name=bucket_name,
+            file_path=metadata_entry.dataPath.strip(KEY_SEPARATOR),
+        )
+        if not metadata_entry.structureFormat and object_size:
             prefix = f"{KEY_SEPARATOR}{metadata_entry.dataPath.strip(KEY_SEPARATOR)}"
             return S3ContainerDetails(
                 name=metadata_entry.dataPath.strip(KEY_SEPARATOR),
