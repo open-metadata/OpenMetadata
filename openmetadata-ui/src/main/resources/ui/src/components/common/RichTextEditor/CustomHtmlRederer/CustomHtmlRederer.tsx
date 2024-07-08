@@ -24,6 +24,7 @@ import {
   MdNode,
 } from '@toast-ui/editor';
 import { t } from 'i18next';
+import katex from 'katex';
 import React from 'react';
 import ReactDOMServer from 'react-dom/server';
 import { ReactComponent as CopyIcon } from '../../../../assets/svg/icon-copy.svg';
@@ -239,6 +240,19 @@ export const customHTMLRenderer: CustomHTMLRenderer = {
         outerNewLine: true,
       },
       { type: 'closeTag', tagName: 'section', outerNewLine: true },
+    ];
+  },
+
+  latex(node) {
+    const content = katex.renderToString(node.literal ?? '', {
+      throwOnError: false,
+      output: 'mathml',
+    });
+
+    return [
+      { type: 'openTag', tagName: 'div', outerNewLine: true },
+      { type: 'html', content: content },
+      { type: 'closeTag', tagName: 'div', outerNewLine: true },
     ];
   },
 };
