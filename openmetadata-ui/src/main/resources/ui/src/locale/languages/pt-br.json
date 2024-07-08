@@ -1480,7 +1480,7 @@
     "feed-asset-action-header": "{{action}} <0>data asset</0>",
     "feed-custom-property-header": "updated Custom Properties on",
     "feed-entity-action-header": "{{action}} <0>data asset</0>",
-    "feed-field-action-entity-header": "{{action}} <0>{{field}}</0> for {{entity}}",
+    "feed-field-action-entity-header": "{{action}} <0>{{field}}</0> for",
     "feed-filter-all": "Feeds para todos os ativos de dados que você possui e segue",
     "feed-filter-following": "Feeds para todos os ativos de dados que você segue",
     "feed-filter-owner": "Feeds para todos os ativos de dados que você possui",
