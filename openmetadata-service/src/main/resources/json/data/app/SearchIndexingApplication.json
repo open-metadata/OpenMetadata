@@ -40,7 +40,6 @@
       "dataProduct",
       "testCaseResolutionStatus"
     ],
-    "uiFieldType": "treeSelect",
     "recreateIndex": true,
     "batchSize": "100",
     "searchIndexMappingLanguage": "EN"

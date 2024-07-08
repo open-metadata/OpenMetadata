@@ -28,7 +28,6 @@ import { DatabaseServiceType } from '../../../../../generated/entity/data/databa
 import { MetadataServiceType } from '../../../../../generated/entity/services/metadataService';
 import { MlModelServiceType } from '../../../../../generated/entity/services/mlmodelService';
 import { PipelineServiceType } from '../../../../../generated/entity/services/pipelineService';
-import { useApplicationStore } from '../../../../../hooks/useApplicationStore';
 import { errorMsg, getServiceLogo } from '../../../../../utils/CommonUtils';
 import ServiceUtilClassBase from '../../../../../utils/ServiceUtilClassBase';
 import Searchbar from '../../../../common/SearchBarComponent/SearchBar.component';
@@ -44,7 +43,6 @@ const SelectServiceType = ({
   onCancel,
   onNext,
 }: SelectServiceTypeProps) => {
-  const { theme } = useApplicationStore();
   const { t } = useTranslation();
   const [category, setCategory] = useState('');
   const [connectorSearchTerm, setConnectorSearchTerm] = useState('');
