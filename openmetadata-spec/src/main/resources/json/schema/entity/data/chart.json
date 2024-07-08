@@ -102,7 +102,7 @@
       "$ref": "../../type/basic.json#/definitions/href"
     },
     "owner": {
-      "description": "Owner of this dashboard.",
+      "description": "Owner of this chart.",
       "$ref": "../../type/entityReference.json"
     },
     "followers": {
