@@ -17,7 +17,7 @@ from typing import List
 
 from pyhive.sqlalchemy_hive import HiveCompiler
 from sqlalchemy import Column, inspect
-
+from sqlalchemy.sql import column
 from metadata.generated.schema.entity.data.table import Column as OMColumn
 from metadata.generated.schema.entity.data.table import ColumnName, DataType, TableData
 from metadata.generated.schema.entity.services.databaseService import (
@@ -41,10 +41,17 @@ class DatabricksProfilerInterface(SQAProfilerInterface):
         # the `result` here would be `db.schema.table` or `db.schema.table.column`
         # for struct it will be `db.schema.table.column.nestedchild.nestedchild` etc
         # the logic is to add the backticks to nested children.
-        if dot_count > 2:
-            splitted_result = result.split(".", 2)[-1].split(".")
-            result = ".".join(result.split(".", 2)[:-1])
-            result += "." + "`.`".join(splitted_result)
+        dot_count = result.count(".")
+        if dot_count > 1 and "." in result.split("`.`")[-1]:
+            splitted_result = result.split("`.")[-1].split(".")
+            result = "`.".join(result.split("`.")[:-1])
+            if result:
+                result += "`."
+            result += "`.`".join(splitted_result)
+        # `default`.`complex_data`.`struct_data.a`
+        # `default`.`complex_data`.`struct_data.a.b`
+        # `complex_data`.`struct_data.a`
+        # `struct_data.a`
         return result
 
     def __init__(self, service_connection_config, **kwargs):
@@ -59,11 +66,12 @@ class DatabricksProfilerInterface(SQAProfilerInterface):
         for idx, col in enumerate(columns):
             if col.dataType != DataType.STRUCT:
                 col.name = ColumnName(f"{parent}.{col.name.root}")
-                col = build_orm_col(idx, col, DatabaseServiceType.Databricks)
+                col = build_orm_col(idx=1, col=col, table_service_type=DatabaseServiceType.Databricks)
                 col._set_parent(  # pylint: disable=protected-access
                     self.table.__table__
                 )
-                columns_list.append(col)
+                
+                columns_list.append(column(col.label(col.name.replace(".", "_"))))
             else:
                 col = self._get_struct_columns(
                     col.children, f"{parent}.{col.name.root}"
