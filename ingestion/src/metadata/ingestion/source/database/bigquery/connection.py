@@ -55,6 +55,10 @@ def get_connection_url(connection: BigQueryConnection) -> str:
     environment variable when needed
     """
 
+    # If projectId is defined in config, use it by default
+    if connection.projectId:
+        return f"{connection.scheme.value}://{connection.projectId}"
+
     if isinstance(connection.credentials.gcpConfig, GcpCredentialsValues):
         if isinstance(  # pylint: disable=no-else-return
             connection.credentials.gcpConfig.projectId, SingleProjectId

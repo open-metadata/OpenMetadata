@@ -30,6 +30,12 @@
       "$ref": "#/definitions/bigqueryType",
       "default": "BigQuery"
     },
+    "projectId": {
+      "title": "Project ID",
+      "description": "GCP Project ID to parse metadata from",
+      "type": "string",
+      "default": null
+    },
     "scheme": {
       "title": "Connection Scheme",
       "description": "SQLAlchemy driver scheme options.",
