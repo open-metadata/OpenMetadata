@@ -256,3 +256,25 @@ export const customHTMLRenderer: CustomHTMLRenderer = {
     ];
   },
 };
+
+export const replaceLatex = (content: string) => {
+  try {
+    const latexPattern = /\$\$latex[\s\S]*?\$\$/g;
+    const latexContentPattern = /\$\$latex\s*([\s\S]*?)\s*\$\$/g;
+
+    return content.replace(latexPattern, (latex) => {
+      const matches = [...latex.matchAll(latexContentPattern)];
+
+      if (matches.length === 0) {
+        return latex;
+      }
+
+      return katex.renderToString(matches[0][1] ?? '', {
+        throwOnError: false,
+        output: 'mathml',
+      });
+    });
+  } catch (error) {
+    return content;
+  }
+};
