@@ -52,13 +52,11 @@ $$
 
 **Supported DateTime formats**
 
-- `dd MMM yyyy HH:mm:ss Z`
-- `EEE MMM dd HH:mm:ss yyyy`
+- `MMM dd HH:mm:ss yyyy`
 - `yyyy-MM-dd HH:mm:ss`
 - `MM/dd/yyyy HH:mm:ss`
 - `dd/MM/yyyy HH:mm:ss`
 - `dd-MM-yyyy HH:mm:ss`
-- `yyyyMMdd'T'HHmmss'Z'`
 - `yyyy-MM-dd HH:mm:ss.SSS`
 - `yyyy-MM-dd HH:mm:ss.SSSSSS`
 - `dd MMMM yyyy HH:mm:ss`
@@ -68,7 +66,7 @@ $$
 - `HH:mm:ss`
 - `hh:mm:ss`
 - `hh:mm:ss AM/PM`
-- `hh:mm:ssZ`
+
 
 $$section
 ### Entity Reference type $(id="entityReferenceConfig")
