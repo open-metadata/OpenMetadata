@@ -99,7 +99,6 @@ export const ENTITY_REFERENCE_OPTIONS = [
 export const SUPPORTED_DATE_FORMATS = [
   'yyyy-MM-dd',
   'dd MMM yyyy',
-  'EEE MMM dd',
   'MM/dd/yyyy',
   'dd/MM/yyyy',
   'dd-MM-yyyy',

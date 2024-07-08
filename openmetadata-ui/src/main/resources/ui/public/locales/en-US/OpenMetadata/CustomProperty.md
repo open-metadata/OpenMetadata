@@ -42,7 +42,6 @@ $$
 
 - `yyyy-MM-dd`
 - `dd MMM yyyy`
-- `EEE MMM dd`
 - `MM/dd/yyyy`
 - `dd/MM/yyyy`
 - `dd-MM-yyyy`
