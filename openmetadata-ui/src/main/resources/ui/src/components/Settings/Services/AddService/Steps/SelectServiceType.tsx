@@ -146,11 +146,7 @@ const SelectServiceType = ({
                 {BETA_SERVICES.includes(
                   type as DatabaseServiceType | PipelineServiceType
                 ) ? (
-                  <Badge
-                    className="service-beta-tag"
-                    color={theme.primaryColor}
-                    count={t('label.beta')}
-                  />
+                  <Badge className="service-beta-tag" count={t('label.beta')} />
                 ) : null}
               </p>
             </Button>

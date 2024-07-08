@@ -43,14 +43,16 @@
       "dashboardService",
       "pipelineService",
       "mlmodelService",
+      "storageService",
+      "metadataService",
       "searchService",
       "entityReportData",
       "webAnalyticEntityViewReportData",
       "webAnalyticUserActivityReportData",
       "domain",
       "storedProcedure",
-      "storageService",
-      "dataProduct"
+      "dataProduct",
+      "testCaseResolutionStatus"
     ],
     "uiFieldType": "treeSelect",
     "recreateIndex": true,
