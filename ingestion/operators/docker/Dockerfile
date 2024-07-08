@@ -4,7 +4,8 @@ RUN curl -sS https://packages.microsoft.com/keys/microsoft.asc | apt-key add -
 RUN curl -sS https://packages.microsoft.com/config/debian/11/prod.list > /etc/apt/sources.list.d/mssql-release.list
 
 # Install Dependencies (listed in alphabetical order)
-RUN apt-get -qq update \
+RUN dpkg --configure -a \
+    && apt-get -qq update \
     && apt-get -qq install -y \
     alien \
     build-essential \
@@ -25,7 +26,7 @@ RUN apt-get -qq update \
     libssl-dev \
     libxml2 \
     libkrb5-dev \
-    openjdk-11-jre \
+    default-jdk \
     openssl \
     postgresql \
     postgresql-contrib \
@@ -57,21 +58,6 @@ RUN if [[ $(uname -m) == "arm64" || $(uname -m) == "aarch64" ]]; \
  fi
 
 ENV LD_LIBRARY_PATH=/instantclient
-
-# Security patches for base image
-# monitor no fixed version for
-#    https://security.snyk.io/vuln/SNYK-DEBIAN11-LIBTASN16-3061097
-#    https://security.snyk.io/vuln/SNYK-DEBIAN11-MARIADB105-2940589
-#    https://security.snyk.io/vuln/SNYK-DEBIAN11-BIND9-3027852
-#    https://security.snyk.io/vuln/SNYK-DEBIAN11-EXPAT-3023031 we are already installed the latest
-RUN echo "deb http://deb.debian.org/debian bullseye-backports main" > /etc/apt/sources.list.d/backports.list
-RUN apt-get -qq update \
-    && apt-get install -t bullseye-backports -y \
-    curl \
-    libpcre2-8-0 \
-    postgresql-common \
-    expat \
-    bind9
 
 WORKDIR ingestion/
 

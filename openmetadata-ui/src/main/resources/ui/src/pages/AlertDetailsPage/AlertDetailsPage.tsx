@@ -273,7 +273,9 @@ function AlertDetailsPage({
   return (
     <ResizablePanels
       hideSecondPanel
+      className="content-height-with-resizable-panel"
       firstPanel={{
+        className: 'content-resizable-panel-container',
         children: loading ? (
           <Loader />
         ) : (
@@ -418,7 +420,11 @@ function AlertDetailsPage({
         flex: 0.7,
       }}
       pageTitle={t('label.entity-detail-plural', { entity: t('label.alert') })}
-      secondPanel={{ children: <></>, minWidth: 0 }}
+      secondPanel={{
+        children: <></>,
+        minWidth: 0,
+        className: 'content-resizable-panel-container',
+      }}
     />
   );
 }

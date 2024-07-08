@@ -14,9 +14,10 @@ Usage Source Module
 import csv
 import traceback
 from abc import ABC
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Iterable
 
+from metadata.generated.schema.type.basic import DateTime
 from metadata.generated.schema.type.tableQuery import TableQueries, TableQuery
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.source.database.query_parser_source import QueryParserSource
@@ -43,8 +44,9 @@ class UsageSource(QueryParserSource, ABC):
             ) as fin:
                 for record in csv.DictReader(fin):
                     query_dict = dict(record)
+
                     analysis_date = (
-                        datetime.utcnow()
+                        datetime.now(timezone.utc)
                         if not query_dict.get("start_time")
                         else datetime.strptime(
                             query_dict.get("start_time"), "%Y-%m-%d %H:%M:%S.%f"
@@ -57,7 +59,7 @@ class UsageSource(QueryParserSource, ABC):
                             startTime=query_dict.get("start_time", ""),
                             endTime=query_dict.get("end_time", ""),
                             duration=query_dict.get("duration"),
-                            analysisDate=analysis_date,
+                            analysisDate=DateTime(analysis_date),
                             aborted=self.get_aborted_status(query_dict),
                             databaseName=self.get_database_name(query_dict),
                             serviceName=self.config.serviceName,
@@ -118,7 +120,7 @@ class UsageSource(QueryParserSource, ABC):
                                         userName=row["user_name"],
                                         startTime=str(row["start_time"]),
                                         endTime=str(row["end_time"]),
-                                        analysisDate=row["start_time"],
+                                        analysisDate=DateTime(row["start_time"]),
                                         aborted=self.get_aborted_status(row),
                                         databaseName=self.get_database_name(row),
                                         duration=row.get("duration"),

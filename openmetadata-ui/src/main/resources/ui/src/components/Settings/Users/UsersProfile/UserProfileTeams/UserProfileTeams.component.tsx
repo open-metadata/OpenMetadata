@@ -12,7 +12,7 @@
  */
 
 import { Card, Space, Tooltip, Typography } from 'antd';
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as EditIcon } from '../../../../../assets/svg/edit-new.svg';
 import { ReactComponent as IconTeamsGrey } from '../../../../../assets/svg/teams-grey.svg';
@@ -20,6 +20,7 @@ import {
   DE_ACTIVE_COLOR,
   ICON_DIMENSION,
 } from '../../../../../constants/constants';
+import { EntityType } from '../../../../../enums/entity.enum';
 import { EntityReference } from '../../../../../generated/entity/type';
 import { useAuth } from '../../../../../hooks/authHooks';
 import { getNonDeletedTeams } from '../../../../../utils/CommonUtils';
@@ -30,6 +31,7 @@ import { UserProfileTeamsProps } from './UserProfileTeams.interface';
 
 const UserProfileTeams = ({
   teams,
+  isDeletedUser,
   updateUserDetails,
 }: UserProfileTeamsProps) => {
   const { t } = useTranslation();
@@ -55,6 +57,7 @@ const UserProfileTeams = ({
     () => (
       <Chip
         data={getNonDeletedTeams(teams ?? [])}
+        entityType={EntityType.TEAM}
         icon={<IconTeamsGrey height={20} />}
         noDataPlaceholder={t('message.no-team-found')}
       />
@@ -62,9 +65,18 @@ const UserProfileTeams = ({
     [teams, getNonDeletedTeams]
   );
 
-  useEffect(() => {
+  const setUserTeams = useCallback(() => {
     setSelectedTeams(getNonDeletedTeams(teams ?? []));
   }, [teams]);
+
+  const handleCloseEditTeam = useCallback(() => {
+    setIsTeamsEdit(false);
+    setUserTeams();
+  }, [setUserTeams]);
+
+  useEffect(() => {
+    setUserTeams();
+  }, [setUserTeams]);
 
   return (
     <Card
@@ -77,7 +89,7 @@ const UserProfileTeams = ({
             {t('label.team-plural')}
           </Typography.Text>
 
-          {!isTeamsEdit && isAdminUser && (
+          {!isTeamsEdit && isAdminUser && !isDeletedUser && (
             <Tooltip
               title={t('label.edit-entity', {
                 entity: t('label.team-plural'),
@@ -97,7 +109,7 @@ const UserProfileTeams = ({
         <InlineEdit
           direction="vertical"
           isLoading={isLoading}
-          onCancel={() => setIsTeamsEdit(false)}
+          onCancel={handleCloseEditTeam}
           onSave={handleTeamsSave}>
           <TeamsSelectable
             filterJoinable

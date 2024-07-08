@@ -81,6 +81,7 @@ export const ActivityFeedTab = ({
   columns,
   entityType,
   refetchFeed,
+  hasGlossaryReviewer,
   entityFeedTotalCount,
   isForFeedTab = true,
   onUpdateFeedCount,
@@ -431,6 +432,7 @@ export const ActivityFeedTab = ({
               className={classNames('cursor-pointer d-flex items-center', {
                 'font-medium': taskFilter === 'close',
               })}
+              data-testid="closed-task"
               onClick={() => {
                 handleUpdateTaskFilter('close');
                 setActiveThread();
@@ -465,7 +467,8 @@ export const ActivityFeedTab = ({
           style={{ height: '2px' }}
         />
       </div>
-      <div className=" right-container">
+
+      <div className="right-container">
         {loader}
         {selectedThread &&
           !loading &&
@@ -511,6 +514,7 @@ export const ActivityFeedTab = ({
               ) : (
                 <TaskTab
                   entityType={isUserEntity ? entityTypeTask : entityType}
+                  hasGlossaryReviewer={hasGlossaryReviewer}
                   isForFeedTab={isForFeedTab}
                   owner={owner}
                   taskThread={selectedThread}

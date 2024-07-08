@@ -138,6 +138,32 @@ public class SearchListFilter extends Filter<SearchListFilter> {
     String testPlatform = getQueryParam("testPlatforms");
     String startTimestamp = getQueryParam("startTimestamp");
     String endTimestamp = getQueryParam("endTimestamp");
+    String tags = getQueryParam("tags");
+    String tier = getQueryParam("tier");
+    String serviceName = getQueryParam("serviceName");
+
+    if (tags != null) {
+      String tagsList =
+          Arrays.stream(tags.split(","))
+              .map(this::escapeDoubleQuotes)
+              .collect(Collectors.joining("\", \"", "\"", "\""));
+      conditions.add(
+          String.format(
+              "{\"nested\":{\"path\":\"tags\",\"query\":{\"terms\":{\"tags.tagFQN\":[%s]}}}}",
+              tagsList));
+    }
+
+    if (tier != null) {
+      conditions.add(
+          String.format(
+              "{\"nested\":{\"path\":\"tags\",\"query\":{\"terms\":{\"tags.tagFQN\":[\"%s\"]}}}}",
+              escapeDoubleQuotes(tier)));
+    }
+
+    if (serviceName != null) {
+      conditions.add(
+          String.format("{\"term\": {\"service.name\": \"%s\"}}", escapeDoubleQuotes(serviceName)));
+    }
 
     if (entityFQN != null) {
       conditions.add(

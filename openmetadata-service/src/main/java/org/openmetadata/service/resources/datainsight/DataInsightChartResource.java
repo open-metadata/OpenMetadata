@@ -48,6 +48,7 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.jdbi3.DataInsightChartRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
+import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.search.SearchRepository;
@@ -69,8 +70,8 @@ public class DataInsightChartResource
   public static final String FIELDS = "owner";
   private final SearchRepository searchRepository;
 
-  public DataInsightChartResource(Authorizer authorizer) {
-    super(Entity.DATA_INSIGHT_CHART, authorizer);
+  public DataInsightChartResource(Authorizer authorizer, Limits limits) {
+    super(Entity.DATA_INSIGHT_CHART, authorizer, limits);
     searchRepository = Entity.getSearchRepository();
   }
 

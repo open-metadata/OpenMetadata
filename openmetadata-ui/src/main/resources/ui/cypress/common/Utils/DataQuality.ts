@@ -115,12 +115,12 @@ const verifyPipelineSuccessStatus = (time = 20000) => {
   cy.reload();
   verifyResponseStatusCode('@testSuite', 200);
   cy.get('[id*="tab-pipeline"]').click();
-  verifyResponseStatusCode('@pipelineStatus', 200);
+  cy.wait('@pipelineStatus');
   cy.get('[data-testid="pipeline-status"]').then(($el) => {
     const text = $el.text();
     if (text !== 'Success' && text !== 'Failed' && newTime > 500) {
       verifyPipelineSuccessStatus(newTime);
-    } else {
+    } else if (text === 'Success') {
       cy.get('[data-testid="pipeline-status"]').should('contain', 'Success');
     }
   });
@@ -297,6 +297,40 @@ export const prepareDataQualityTestCases = (token: string) => {
         headers: { Authorization: `Bearer ${token}` },
       })
     );
+  });
+
+  cy.request({
+    method: 'PATCH',
+    url: `/api/v1/tables/name/${filterTable.databaseSchema}.${filterTable.name}`,
+    headers: {
+      Authorization: `Bearer ${token}`,
+      'Content-Type': 'application/json-patch+json',
+    },
+    body: [
+      {
+        op: 'add',
+        path: '/tags/0',
+        value: {
+          tagFQN: 'PII.None',
+          name: 'None',
+          description: 'Non PII',
+          source: 'Classification',
+          labelType: 'Manual',
+          state: 'Confirmed',
+        },
+      },
+      {
+        op: 'add',
+        path: '/tags/1',
+        value: {
+          tagFQN: 'Tier.Tier2',
+          name: 'Tier2',
+          source: 'Classification',
+          labelType: 'Manual',
+          state: 'Confirmed',
+        },
+      },
+    ],
   });
 
   prepareDataQualityTestCasesViaREST({

@@ -12,6 +12,7 @@
  */
 import { SearchOutlined } from '@ant-design/icons';
 import i18next from 'i18next';
+import { ReactComponent as GovernIcon } from '../assets/svg/bank.svg';
 import { ReactComponent as ClassificationIcon } from '../assets/svg/classification.svg';
 import { ReactComponent as IconDataModel } from '../assets/svg/data-model.svg';
 import { ReactComponent as GlossaryIcon } from '../assets/svg/glossary.svg';
@@ -21,18 +22,21 @@ import { ReactComponent as DatabaseIcon } from '../assets/svg/ic-database.svg';
 import { ReactComponent as MlModelIcon } from '../assets/svg/ic-ml-model.svg';
 import { ReactComponent as PipelineIcon } from '../assets/svg/ic-pipeline.svg';
 import { ReactComponent as SchemaIcon } from '../assets/svg/ic-schema.svg';
+import { ReactComponent as SearchIcon } from '../assets/svg/ic-search.svg';
 import { ReactComponent as ContainerIcon } from '../assets/svg/ic-storage.svg';
 import { ReactComponent as IconStoredProcedure } from '../assets/svg/ic-stored-procedure.svg';
 import { ReactComponent as TableIcon } from '../assets/svg/ic-table.svg';
 import { ReactComponent as TopicIcon } from '../assets/svg/ic-topic.svg';
 import { ReactComponent as IconTable } from '../assets/svg/table-grey.svg';
 import { ExploreSearchIndex } from '../components/Explore/ExplorePage.interface';
+import { ExploreTreeNode } from '../components/Explore/ExploreTree/ExploreTree.interface';
 import { SourceType } from '../components/SearchedData/SearchedData.interface';
 import {
   COMMON_DROPDOWN_ITEMS,
   CONTAINER_DROPDOWN_ITEMS,
   DASHBOARD_DATA_MODEL_TYPE,
   DASHBOARD_DROPDOWN_ITEMS,
+  DATA_ASSET_DROPDOWN_ITEMS,
   DATA_PRODUCT_DROPDOWN_ITEMS,
   GLOSSARY_DROPDOWN_ITEMS,
   ML_MODEL_DROPDOWN_ITEMS,
@@ -57,6 +61,7 @@ import {
 import { EntityType } from '../enums/entity.enum';
 import { ExplorePageTabs } from '../enums/Explore.enum';
 import { SearchIndex } from '../enums/search.enum';
+import { Chart } from '../generated/entity/data/chart';
 import { TestSuite } from '../generated/tests/testCase';
 import { SearchSourceAlias } from '../interface/search.interface';
 import { TabsInfoData } from '../pages/ExplorePage/ExplorePage.interface';
@@ -163,6 +168,79 @@ class SearchClassBase {
       { value: SearchIndex.TAG, label: i18n.t('label.tag') },
       { value: SearchIndex.SEARCH_INDEX, label: i18n.t('label.search-index') },
       { value: SearchIndex.DATA_PRODUCT, label: i18n.t('label.data-product') },
+    ];
+  }
+
+  public getExploreTree(): ExploreTreeNode[] {
+    return [
+      {
+        title: i18n.t('label.database-plural'),
+        key: SearchIndex.DATABASE,
+        data: { isRoot: true },
+        icon: DatabaseIcon,
+      },
+      {
+        title: i18n.t('label.dashboard-plural'),
+        key: SearchIndex.DASHBOARD,
+        data: { isRoot: true },
+        icon: DashboardIcon,
+      },
+      {
+        title: i18n.t('label.pipeline-plural'),
+        key: SearchIndex.PIPELINE,
+        data: { isRoot: true },
+        icon: PipelineIcon,
+      },
+      {
+        title: i18n.t('label.topic-plural'),
+        key: SearchIndex.TOPIC,
+        data: { isRoot: true },
+        icon: TopicIcon,
+      },
+      {
+        title: i18n.t('label.ml-model-plural'),
+        key: SearchIndex.MLMODEL,
+        data: { isRoot: true },
+        icon: MlModelIcon,
+      },
+      {
+        title: i18n.t('label.container-plural'),
+        key: SearchIndex.CONTAINER,
+        data: { isRoot: true },
+        icon: ContainerIcon,
+      },
+      {
+        title: i18n.t('label.search-index-plural'),
+        key: SearchIndex.SEARCH_INDEX,
+        data: { isRoot: true },
+        icon: SearchIcon,
+      },
+      {
+        title: i18n.t('label.governance'),
+        key: 'Governance',
+        data: { isRoot: true },
+        icon: GovernIcon,
+        children: [
+          {
+            title: i18n.t('label.glossary-plural'),
+            key: '3',
+            isLeaf: true,
+            icon: GlossaryIcon,
+            data: {
+              entityType: EntityType.GLOSSARY_TERM,
+            },
+          },
+          {
+            title: i18n.t('label.tag-plural'),
+            key: '4',
+            isLeaf: true,
+            icon: ClassificationIcon,
+            data: {
+              entityType: EntityType.TAG,
+            },
+          },
+        ],
+      },
     ];
   }
 
@@ -303,6 +381,8 @@ class SearchClassBase {
       case SearchIndex.DATABASE:
       case SearchIndex.DATABASE_SCHEMA:
         return COMMON_DROPDOWN_ITEMS;
+      case SearchIndex.DATA_ASSET:
+        return DATA_ASSET_DROPDOWN_ITEMS;
 
       default:
         return [];
@@ -342,6 +422,18 @@ class SearchClassBase {
         isExecutableTestSuite: (entity as TestSuite).executable,
         fullyQualifiedName: entity.fullyQualifiedName ?? '',
       });
+    }
+
+    if (entity.entityType === EntityType.CHART) {
+      const dashboard = (entity as Chart).dashboards?.[0];
+
+      return dashboard
+        ? getEntityLinkFromType(
+            dashboard.fullyQualifiedName ?? '',
+            EntityType.DASHBOARD,
+            dashboard as SourceType
+          )
+        : '';
     }
 
     if (entity.fullyQualifiedName && entity.entityType) {

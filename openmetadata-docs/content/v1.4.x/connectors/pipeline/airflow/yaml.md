@@ -118,7 +118,7 @@ In terms of `connection` we support the following selections:
 
 {% codeBlock fileName="filename.yaml" %}
 
-```yaml
+```yaml {% isCodeBlock=true %}
 source:
   type: airflow
   serviceName: airflow_source

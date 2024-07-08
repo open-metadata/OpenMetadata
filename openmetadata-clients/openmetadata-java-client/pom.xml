@@ -83,7 +83,7 @@
         <dependency>
             <groupId>com.microsoft.azure</groupId>
             <artifactId>msal4j</artifactId>
-            <version>1.15.0</version>
+            <version>1.15.1</version>
         </dependency>
         <dependency>
             <groupId>org.projectlombok</groupId>
@@ -238,6 +238,7 @@
                             <output>
                                 ${project.build.directory}/generated-sources/swagger
                             </output>
+                            <skipOperationExample>true</skipOperationExample>
                         </configuration>
                     </execution>
                 </executions>

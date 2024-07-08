@@ -224,13 +224,13 @@ Find more information about [Source Identity](https://docs.aws.amazon.com/STS/la
 
 {% codeInfo srNumber=11 %}
 
-**Connection Options (Optional)**: Enter the details for any additional connection options that can be sent to Athena during the connection. These details must be added as Key-Value pairs.
+**Connection Options (Optional)**: Enter the details for any additional connection options that can be sent to storage service during the connection. These details must be added as Key-Value pairs.
 
 {% /codeInfo %}
 
 {% codeInfo srNumber=12 %}
 
-**Connection Arguments (Optional)**: Enter the details for any additional connection arguments such as security or protocol configs that can be sent to Athena during the connection. These details must be added as Key-Value pairs.
+**Connection Arguments (Optional)**: Enter the details for any additional connection arguments such as security or protocol configs that can be sent to storage service during the connection. These details must be added as Key-Value pairs.
 
 {% /codeInfo %}
 
@@ -238,7 +238,7 @@ Find more information about [Source Identity](https://docs.aws.amazon.com/STS/la
 
 {% codeBlock fileName="filename.yaml" %}
 
-```yaml
+```yaml {% isCodeBlock=true %}
 source:
   type: s3
   serviceName: local_s3

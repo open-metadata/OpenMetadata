@@ -242,6 +242,14 @@ don't hesitate to reach to us in [Slack](https://slack.open-metadata.org/) or di
 Let's jump now into some examples on how you could create the function the run the different workflows. Note that this code
 can then be executed inside a DAG, a GitHub action, or a vanilla Python script. It will work for any environment.
 
+### Testing
+
+You can easily test every YAML configuration using the `metadata` CLI from the Ingestion Framework. 
+In order to install it, you just need to get it from [PyPI](https://pypi.org/project/openmetadata-ingestion/).
+
+In each of the examples below, we'll showcase how to run the CLI, assuming you have a YAML file that contains
+the workflow configuration.
+
 ### Metadata Workflow
 
 This is the first workflow you have to configure and run. It will take care of fetching the metadata from your sources,
@@ -286,7 +294,7 @@ It will take care of instantiating the workflow, executing it and giving us the 
 
 {% codeBlock fileName="ingestion.py" %}
 
-```python
+```python {% isCodeBlock=true %}
 import yaml
 
 ```
@@ -340,6 +348,12 @@ def run():
 
 {% /codePreview %}
 
+{% note %}
+
+You can test the workflow via `metadata ingest -c <path-to-yaml>`.
+
+{% /note %}
+
 
 ### Lineage Workflow
 
@@ -391,7 +405,7 @@ It will take care of instantiating the workflow, executing it and giving us the 
 
 {% codeBlock fileName="ingestion.py" %}
 
-```python
+```python {% isCodeBlock=true %}
 import yaml
 
 ```
@@ -440,6 +454,12 @@ def run():
 {% /codeBlock %}
 
 {% /codePreview %}
+
+{% note %}
+
+You can test the workflow via `metadata ingest -c <path-to-yaml>`.
+
+{% /note %}
 
 
 ### Usage Workflow
@@ -491,7 +511,7 @@ It will take care of instantiating the workflow, executing it and giving us the 
 
 {% codeBlock fileName="ingestion.py" %}
 
-```python
+```python {% isCodeBlock=true %}
 import yaml
 
 ```
@@ -548,6 +568,12 @@ def run():
 
 {% /codePreview %}
 
+{% note %}
+
+You can test the workflow via `metadata usage -c <path-to-yaml>`.
+
+{% /note %}
+
 ### Profiler Workflow
 
 This workflow will execute queries against your database and send the results into OpenMetadata. The goal is to compute
@@ -600,7 +626,7 @@ It will take care of instantiating the workflow, executing it and giving us the 
 
 {% codeBlock fileName="ingestion.py" %}
 
-```python
+```python {% isCodeBlock=true %}
 import yaml
 
 ```
@@ -651,6 +677,12 @@ def run():
 {% /codeBlock %}
 
 {% /codePreview %}
+
+{% note %}
+
+You can test the workflow via `metadata profile -c <path-to-yaml>`.
+
+{% /note %}
 
 
 ### Data Quality Workflow
@@ -708,7 +740,7 @@ It will take care of instantiating the workflow, executing it and giving us the 
 
 {% codeBlock fileName="ingestion.py" %}
 
-```python
+```python {% isCodeBlock=true %}
 import yaml
 
 ```
@@ -758,3 +790,9 @@ def run():
 {% /codeBlock %}
 
 {% /codePreview %}
+
+{% note %}
+
+You can test the workflow via `metadata test -c <path-to-yaml>`.
+
+{% /note %}

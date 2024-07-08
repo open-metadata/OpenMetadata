@@ -96,7 +96,7 @@ This is a sample config for Domo-Dashboard:
 
 {% codeBlock fileName="filename.yaml" %}
 
-```yaml
+```yaml {% isCodeBlock=true %}
 source:
   type: domodashboard
   serviceName: local_domodashboard

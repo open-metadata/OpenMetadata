@@ -295,7 +295,7 @@ class BigQueryTableMetricComputer(BaseTableMetricComputer):
 
         where_clause = [
             Column("project_id")
-            == self.conn_config.credentials.gcpConfig.projectId.__root__,
+            == self.conn_config.credentials.gcpConfig.projectId.root,
             Column("table_schema") == self.schema_name,
             Column("table_name") == self.table_name,
         ]
@@ -324,21 +324,20 @@ class BigQueryTableMetricComputer(BaseTableMetricComputer):
         columns = [
             Column("row_count").label("rowCount"),
             Column("size_bytes").label("sizeInBytes"),
-            Column("creation_time").label("createDateTime"),
+            func.TIMESTAMP_MILLIS(Column("creation_time")).label(CREATE_DATETIME),
             *self._get_col_names_and_count(),
         ]
         where_clause = [
             Column("project_id")
-            == self.conn_config.credentials.gcpConfig.projectId.__root__,
+            == self.conn_config.credentials.gcpConfig.projectId.root,
             Column("dataset_id") == self.schema_name,
             Column("table_id") == self.table_name,
         ]
-
         query = self._build_query(
             columns,
             self._build_table(
                 "__TABLES__",
-                f"{self.conn_config.credentials.gcpConfig.projectId.__root__}.{self.schema_name}",
+                f"{self.conn_config.credentials.gcpConfig.projectId.root}.{self.schema_name}",
             ),
             where_clause,
         )

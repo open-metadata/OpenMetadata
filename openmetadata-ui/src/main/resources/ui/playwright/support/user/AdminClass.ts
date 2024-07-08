@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { Page } from '@playwright/test';
-import { DEFAULT_ADMIN_USER } from './user.constant';
+import { DEFAULT_ADMIN_USER } from '../../constant/user';
 import { UserClass } from './UserClass';
 
 export class AdminClass extends UserClass {

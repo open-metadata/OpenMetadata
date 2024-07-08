@@ -21,14 +21,17 @@ import React, {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useLimitStore } from '../../../../context/LimitsProvider/useLimitsStore';
 import {
   AppScheduleClass,
   AppType,
 } from '../../../../generated/entity/applications/app';
 import { getIngestionPipelineByFqn } from '../../../../rest/ingestionPipelineAPI';
+import { getScheduleOptionsFromSchedules } from '../../../../utils/ScheduleUtils';
+import { getWeekCron } from '../../../common/CronEditor/CronEditor.constant';
+import Loader from '../../../common/Loader/Loader';
 import { TestSuiteIngestionDataType } from '../../../DataQuality/AddDataQualityTest/AddDataQualityTest.interface';
 import TestSuiteScheduler from '../../../DataQuality/AddDataQualityTest/components/TestSuiteScheduler';
-import Loader from '../../../common/Loader/Loader';
 import AppRunsHistory from '../AppRunsHistory/AppRunsHistory.component';
 import { AppRunsHistoryRef } from '../AppRunsHistory/AppRunsHistory.interface';
 import { AppScheduleProps } from './AppScheduleProps.interface';
@@ -46,6 +49,12 @@ const AppSchedule = ({
   const [isPipelineDeployed, setIsPipelineDeployed] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaveLoading, setIsSaveLoading] = useState(false);
+  const { config } = useLimitStore();
+
+  const { pipelineSchedules } =
+    config?.limits?.config.featureLimits.find(
+      (feature) => feature.name === 'app'
+    ) ?? {};
 
   const fetchPipelineDetails = useCallback(async () => {
     setIsLoading(true);
@@ -129,13 +138,15 @@ const AppSchedule = ({
 
   const initialOptions = useMemo(() => {
     if (appData.name === 'DataInsightsReportApplication') {
-      return ['Week'];
+      return ['week'];
     } else if (appData.appType === AppType.External) {
-      return ['Day'];
+      return ['day'];
     }
 
-    return undefined;
-  }, [appData.name, appData.appType]);
+    return pipelineSchedules
+      ? getScheduleOptionsFromSchedules(pipelineSchedules)
+      : undefined;
+  }, [appData.name, appData.appType, pipelineSchedules]);
 
   useEffect(() => {
     fetchPipelineDetails();
@@ -233,8 +244,9 @@ const AppSchedule = ({
           }}
           includePeriodOptions={initialOptions}
           initialData={{
-            repeatFrequency: (appData.appSchedule as AppScheduleClass)
-              ?.cronExpression,
+            repeatFrequency:
+              (appData.appSchedule as AppScheduleClass)?.cronExpression ??
+              getWeekCron({ hour: 0, min: 0, dow: 0 }),
           }}
           isLoading={isSaveLoading}
           onCancel={onDialogCancel}

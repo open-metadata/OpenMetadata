@@ -16,6 +16,8 @@ from abc import ABC, abstractmethod
 from typing import Iterable
 
 from dbt_artifacts_parser.parser import parse_catalog, parse_manifest, parse_run_results
+from pydantic import Field
+from typing_extensions import Annotated
 
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.api.tests.createTestCase import CreateTestCaseRequest
@@ -54,7 +56,9 @@ class DbtServiceTopology(ServiceTopology):
     dbt files -> dbt tags -> data models -> descriptions -> lineage -> tests.
     """
 
-    root = TopologyNode(
+    root: Annotated[
+        TopologyNode, Field(description="Root node for the topology")
+    ] = TopologyNode(
         producer="get_dbt_files",
         stages=[
             NodeStage(
@@ -69,7 +73,9 @@ class DbtServiceTopology(ServiceTopology):
             "process_dbt_tests",
         ],
     )
-    process_dbt_data_model = TopologyNode(
+    process_dbt_data_model: Annotated[
+        TopologyNode, Field(description="Process dbt data models")
+    ] = TopologyNode(
         producer="get_dbt_objects",
         stages=[
             NodeStage(
@@ -87,7 +93,9 @@ class DbtServiceTopology(ServiceTopology):
             ),
         ],
     )
-    process_dbt_entities = TopologyNode(
+    process_dbt_entities: Annotated[
+        TopologyNode, Field(description="Process dbt entities")
+    ] = TopologyNode(
         producer="get_data_model",
         stages=[
             NodeStage(
@@ -106,7 +114,9 @@ class DbtServiceTopology(ServiceTopology):
             ),
         ],
     )
-    process_dbt_tests = TopologyNode(
+    process_dbt_tests: Annotated[
+        TopologyNode, Field(description="Process dbt tests")
+    ] = TopologyNode(
         producer="get_dbt_tests",
         stages=[
             NodeStage(
@@ -206,8 +216,7 @@ class DbtServiceSource(TopologyRunnerMixin, Source, ABC):
         """
         Prepare the data models
         """
-        for data_model_link in self.context.get().data_model_links:
-            yield data_model_link
+        yield from self.context.get().data_model_links
 
     @abstractmethod
     def create_dbt_lineage(self, data_model_link: DataModelLink) -> AddLineageRequest:

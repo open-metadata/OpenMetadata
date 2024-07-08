@@ -95,6 +95,7 @@ module.exports = {
           path.resolve(__dirname, 'node_modules/react-toastify'),
           path.resolve(__dirname, 'node_modules/quill-emoji'),
           path.resolve(__dirname, 'node_modules/react-awesome-query-builder'),
+          path.resolve(__dirname, 'node_modules/katex'),
         ],
         // May need to handle files outside the source code
         // (from node_modules)
@@ -109,6 +110,7 @@ module.exports = {
           {
             loader: 'css-loader', // translates CSS into CommonJS
           },
+          'postcss-loader',
           {
             loader: 'less-loader', // compiles Less to CSS
             options: {

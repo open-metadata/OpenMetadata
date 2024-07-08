@@ -24,7 +24,7 @@ import org.openmetadata.schema.system.StepValidation;
 import org.openmetadata.schema.system.ValidationResponse;
 import org.openmetadata.schema.util.EntitiesCount;
 import org.openmetadata.schema.util.ServicesCount;
-import org.openmetadata.sdk.PipelineServiceClient;
+import org.openmetadata.sdk.PipelineServiceClientInterface;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.exception.CustomExceptionMessage;
@@ -246,7 +246,7 @@ public class SystemRepository {
 
   public ValidationResponse validateSystem(
       OpenMetadataApplicationConfig applicationConfig,
-      PipelineServiceClient pipelineServiceClient,
+      PipelineServiceClientInterface pipelineServiceClient,
       JwtFilter jwtFilter) {
     ValidationResponse validation = new ValidationResponse();
 
@@ -279,7 +279,9 @@ public class SystemRepository {
   private StepValidation getSearchValidation(OpenMetadataApplicationConfig applicationConfig) {
     SearchRepository searchRepository = Entity.getSearchRepository();
     if (Boolean.TRUE.equals(searchRepository.getSearchClient().isClientAvailable())
-        && searchRepository.getSearchClient().indexExists(INDEX_NAME)) {
+        && searchRepository
+            .getSearchClient()
+            .indexExists(Entity.getSearchRepository().getIndexOrAliasName(INDEX_NAME))) {
       return new StepValidation()
           .withDescription(ValidationStepDescription.SEARCH.key)
           .withPassed(Boolean.TRUE)
@@ -296,7 +298,7 @@ public class SystemRepository {
 
   private StepValidation getPipelineServiceClientValidation(
       OpenMetadataApplicationConfig applicationConfig,
-      PipelineServiceClient pipelineServiceClient) {
+      PipelineServiceClientInterface pipelineServiceClient) {
     PipelineServiceClientResponse pipelineResponse = pipelineServiceClient.getServiceStatus();
     if (pipelineResponse.getCode() == 200) {
       return new StepValidation()
@@ -320,7 +322,7 @@ public class SystemRepository {
     OpenMetadataConnection openMetadataServerConnection =
         new OpenMetadataConnectionBuilder(applicationConfig).build();
     try {
-      jwtFilter.validateAndReturnDecodedJwtToken(
+      jwtFilter.validateJwtAndGetClaims(
           openMetadataServerConnection.getSecurityConfig().getJwtToken());
       return new StepValidation()
           .withDescription(ValidationStepDescription.JWT_TOKEN.key)

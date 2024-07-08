@@ -237,7 +237,7 @@ EXPTECTED_TABLE = [
         tableProfilerConfig=None,
         owner=None,
         databaseSchema=FullyQualifiedEntityName(
-            __root__="local_databricks.hive_metastore.do_it_all_with_default_schema"
+            "local_databricks.hive_metastore.do_it_all_with_default_schema"
         ),
         tags=None,
         schemaDefinition=None,
@@ -262,21 +262,21 @@ class DatabricksUnitTest(TestCase):
         test_connection.return_value = False
         db_init_version.return_value = None
 
-        self.config = OpenMetadataWorkflowConfig.parse_obj(mock_databricks_config)
+        self.config = OpenMetadataWorkflowConfig.model_validate(mock_databricks_config)
         self.databricks_source = DatabricksSource.create(
             mock_databricks_config["source"],
             self.config.workflowConfig.openMetadataServerConfig,
         )
         self.databricks_source.context.get().__dict__[
             "database"
-        ] = MOCK_DATABASE.name.__root__
+        ] = MOCK_DATABASE.name.root
         self.databricks_source.context.get().__dict__[
             "database_service"
-        ] = MOCK_DATABASE_SERVICE.name.__root__
+        ] = MOCK_DATABASE_SERVICE.name.root
 
         self.databricks_source.context.get().__dict__[
             "database_schema"
-        ] = MOCK_DATABASE_SCHEMA.name.__root__
+        ] = MOCK_DATABASE_SCHEMA.name.root
 
     def test_database_schema_names(self):
         assert EXPECTED_DATABASE_SCHEMA_NAMES == list(

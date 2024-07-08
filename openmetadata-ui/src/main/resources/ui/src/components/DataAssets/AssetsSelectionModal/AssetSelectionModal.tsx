@@ -65,11 +65,11 @@ import {
 import { searchQuery } from '../../../rest/searchAPI';
 import { getAssetsPageQuickFilters } from '../../../utils/AdvancedSearchUtils';
 import { getEntityReferenceFromEntity } from '../../../utils/EntityUtils';
+import { getCombinedQueryFilterObject } from '../../../utils/ExplorePage/ExplorePageUtils';
 import {
   getAggregations,
   getQuickFilterQuery,
-} from '../../../utils/Explore.utils';
-import { getCombinedQueryFilterObject } from '../../../utils/ExplorePage/ExplorePageUtils';
+} from '../../../utils/ExploreUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../common/Loader/Loader';

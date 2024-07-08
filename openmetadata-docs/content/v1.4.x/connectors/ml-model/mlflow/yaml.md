@@ -79,7 +79,7 @@ This is a sample config for MLflow:
 {% codeBlock fileName="filename.yaml" %}
 
 
-```yaml
+```yaml {% isCodeBlock=true %}
 source:
   type: mlflow
   serviceName: local_mlflow

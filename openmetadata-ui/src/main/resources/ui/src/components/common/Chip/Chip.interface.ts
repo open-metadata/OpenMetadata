@@ -10,10 +10,12 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { EntityType } from '../../../enums/entity.enum';
 import { EntityReference } from '../../../generated/entity/type';
 
 export interface ChipProps {
   data: EntityReference[];
+  entityType: EntityType;
   icon?: React.ReactElement;
   noDataPlaceholder?: string;
   showNoDataPlaceholder?: boolean;

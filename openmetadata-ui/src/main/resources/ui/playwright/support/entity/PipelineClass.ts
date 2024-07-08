@@ -12,7 +12,7 @@
  */
 import { APIRequestContext, Page } from '@playwright/test';
 import { uuid } from '../../utils/common';
-import { visitEntityPage } from '../../utils/entityUtils';
+import { visitEntityPage } from '../../utils/entity';
 import { EntityTypeEndpoint } from './Entity.interface';
 import { EntityClass } from './EntityClass';
 
@@ -31,7 +31,7 @@ export class PipelineClass extends EntityClass {
     },
   };
   entity = {
-    name: `pw.pipeline%${uuid()}`,
+    name: `pw-pipeline-${uuid()}`,
     displayName: `pw-pipeline-${uuid()}`,
     service: this.service.name,
     tasks: [{ name: 'snowflake_task' }],

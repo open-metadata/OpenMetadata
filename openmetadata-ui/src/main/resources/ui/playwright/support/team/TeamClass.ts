@@ -19,6 +19,7 @@ type ResponseDataType = {
   teamType: string;
   id?: string;
   fullyQualifiedName?: string;
+  users?: string[];
 };
 
 export class TeamClass {
@@ -32,6 +33,7 @@ export class TeamClass {
       displayName: `PW Team ${this.id}`,
       description: 'playwright team description',
       teamType: 'Group',
+      users: [],
     };
   }
 
@@ -50,7 +52,7 @@ export class TeamClass {
     const data = await response.json();
     this.responseData = data;
 
-    return this.responseData;
+    return data;
   }
 
   async delete(apiContext: APIRequestContext) {
@@ -58,6 +60,22 @@ export class TeamClass {
       `/api/v1/teams/${this.responseData.id}?hardDelete=true&recursive=false`
     );
 
-    return response.body;
+    return await response.json();
+  }
+
+  async patch(apiContext: APIRequestContext, data: Record<string, unknown>[]) {
+    const response = await apiContext.patch(
+      `/api/v1/teams/${this.responseData.id}`,
+      {
+        data,
+        headers: {
+          'Content-Type': 'application/json-patch+json',
+        },
+      }
+    );
+
+    this.responseData = await response.json();
+
+    return await response.json();
   }
 }

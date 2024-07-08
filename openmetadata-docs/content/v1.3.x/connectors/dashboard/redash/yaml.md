@@ -86,7 +86,7 @@ Can be found on a user profile page.
 
 {% codeBlock fileName="filename.yaml" %}
 
-```yaml
+```yaml {% isCodeBlock=true %}
 source:
   type: redash
   serviceName: local_redash

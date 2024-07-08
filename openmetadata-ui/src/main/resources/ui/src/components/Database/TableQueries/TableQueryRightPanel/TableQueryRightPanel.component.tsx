@@ -21,6 +21,7 @@ import { ReactComponent as IconUser } from '../../../../assets/svg/user.svg';
 import { DE_ACTIVE_COLOR, getUserPath } from '../../../../constants/constants';
 import { EntityType } from '../../../../enums/entity.enum';
 import { Query } from '../../../../generated/entity/data/query';
+import { EntityReference } from '../../../../generated/entity/type';
 import { TagLabel } from '../../../../generated/type/tagLabel';
 import { getEntityName } from '../../../../utils/EntityUtils';
 import DescriptionV1 from '../../../common/EntityDescription/DescriptionV1';
@@ -93,7 +94,9 @@ const TableQueryRightPanel = ({
                   <UserTeamSelectableList
                     hasPermission={EditAll || EditOwner}
                     owner={query.owner}
-                    onUpdate={handleUpdateOwner}>
+                    onUpdate={(updatedUser) =>
+                      handleUpdateOwner(updatedUser as EntityReference)
+                    }>
                     <Tooltip
                       title={t('label.edit-entity', {
                         entity: t('label.owner-lowercase'),
@@ -109,7 +112,7 @@ const TableQueryRightPanel = ({
                   </UserTeamSelectableList>
                 )}
               </Space>
-              <OwnerLabel hasPermission={false} owner={query.owner} />
+              <OwnerLabel pills hasPermission={false} owner={query.owner} />
             </Space>
           </Col>
           <Col span={24}>

@@ -14,6 +14,7 @@ OpenMetadata high-level API Suggestion test
 """
 from unittest import TestCase
 
+from _openmetadata_testutils.ometa import int_admin_ometa
 from metadata.generated.schema.api.feed.createSuggestion import CreateSuggestionRequest
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
@@ -25,17 +26,13 @@ from metadata.generated.schema.type.basic import EntityLink
 from metadata.generated.schema.type.tagLabel import (
     LabelType,
     State,
+    TagFQN,
     TagLabel,
     TagSource,
 )
 from metadata.utils.entity_link import get_entity_link
 
-from ..integration_base import (
-    generate_name,
-    get_create_entity,
-    get_create_service,
-    int_admin_ometa,
-)
+from ..integration_base import generate_name, get_create_entity, get_create_service
 
 
 class OMetaSuggestionTest(TestCase):
@@ -62,21 +59,21 @@ class OMetaSuggestionTest(TestCase):
         cls.metadata.create_or_update(create_service)
 
         create_database = get_create_entity(
-            entity=Database, name=cls.schema_name, reference=cls.service_name.__root__
+            entity=Database, name=cls.schema_name, reference=cls.service_name.root
         )
         cls.database: Database = cls.metadata.create_or_update(create_database)
 
         create_schema = get_create_entity(
             entity=DatabaseSchema,
             name=cls.schema_name,
-            reference=cls.database.fullyQualifiedName.__root__,
+            reference=cls.database.fullyQualifiedName.root,
         )
         cls.schema: DatabaseSchema = cls.metadata.create_or_update(create_schema)
 
         create_table = get_create_entity(
             entity=Table,
             name=cls.table_name,
-            reference=cls.schema.fullyQualifiedName.__root__,
+            reference=cls.schema.fullyQualifiedName.root,
         )
         cls.table: Table = cls.metadata.create_or_update(create_table)
 
@@ -88,8 +85,8 @@ class OMetaSuggestionTest(TestCase):
 
         service_id = str(
             cls.metadata.get_by_name(
-                entity=DatabaseService, fqn=cls.service_name.__root__
-            ).id.__root__
+                entity=DatabaseService, fqn=cls.service_name.root
+            ).id.root
         )
 
         cls.metadata.delete(
@@ -105,9 +102,7 @@ class OMetaSuggestionTest(TestCase):
             description="something",
             type=SuggestionType.SuggestDescription,
             entityLink=EntityLink(
-                __root__=get_entity_link(
-                    Table, fqn=self.table.fullyQualifiedName.__root__
-                )
+                root=get_entity_link(Table, fqn=self.table.fullyQualifiedName.root)
             ),
         )
 
@@ -119,7 +114,7 @@ class OMetaSuggestionTest(TestCase):
         suggestion_request = CreateSuggestionRequest(
             tagLabels=[
                 TagLabel(
-                    tagFQN="PII.Sensitive",
+                    tagFQN=TagFQN("PII.Sensitive"),
                     labelType=LabelType.Automated,
                     state=State.Suggested.value,
                     source=TagSource.Classification,
@@ -127,9 +122,7 @@ class OMetaSuggestionTest(TestCase):
             ],
             type=SuggestionType.SuggestTagLabel,
             entityLink=EntityLink(
-                __root__=get_entity_link(
-                    Table, fqn=self.table.fullyQualifiedName.__root__
-                )
+                root=get_entity_link(Table, fqn=self.table.fullyQualifiedName.root)
             ),
         )
 
@@ -145,7 +138,7 @@ class OMetaSuggestionTest(TestCase):
 
         create_table = get_create_entity(
             entity=Table,
-            reference=self.schema.fullyQualifiedName.__root__,
+            reference=self.schema.fullyQualifiedName.root,
         )
         table: Table = self.metadata.create_or_update(create_table)
 
@@ -153,7 +146,7 @@ class OMetaSuggestionTest(TestCase):
             description="something",
             type=SuggestionType.SuggestDescription,
             entityLink=EntityLink(
-                __root__=get_entity_link(Table, fqn=table.fullyQualifiedName.__root__)
+                root=get_entity_link(Table, fqn=table.fullyQualifiedName.root)
             ),
         )
 
@@ -163,8 +156,8 @@ class OMetaSuggestionTest(TestCase):
         suggestions = self.metadata.list_all_entities(
             entity=Suggestion,
             params={
-                "entityFQN": table.fullyQualifiedName.__root__,
-                "userId": str(admin_user.id.__root__),
+                "entityFQN": table.fullyQualifiedName.root,
+                "userId": str(admin_user.id.root),
             },
         )
 
@@ -176,7 +169,7 @@ class OMetaSuggestionTest(TestCase):
         create_table = get_create_entity(
             entity=Table,
             name=self.schema_name,
-            reference=self.schema.fullyQualifiedName.__root__,
+            reference=self.schema.fullyQualifiedName.root,
         )
         table: Table = self.metadata.create_or_update(create_table)
 
@@ -184,14 +177,14 @@ class OMetaSuggestionTest(TestCase):
             description="something",
             type=SuggestionType.SuggestDescription,
             entityLink=EntityLink(
-                __root__=get_entity_link(Table, fqn=table.fullyQualifiedName.__root__)
+                root=get_entity_link(Table, fqn=table.fullyQualifiedName.root)
             ),
         )
 
         # Suggestions only support POST (not PUT)
         res: Suggestion = self.metadata.create(suggestion_request)
-        self.assertEqual(res.description, "something")
+        self.assertEqual(res.root.description, "something")
 
-        res.description = "new"
+        res.root.description = "new"
         new = self.metadata.update_suggestion(res)
-        self.assertEqual(new.description, "new")
+        self.assertEqual(new.root.description, "new")

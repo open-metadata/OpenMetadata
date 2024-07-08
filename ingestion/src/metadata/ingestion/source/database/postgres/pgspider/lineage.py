@@ -62,8 +62,8 @@ def _get_column_lineages(source_entity, target_entity):
             if source_column.name == target_column.name:
                 column_lineages.append(
                     ColumnLineage(
-                        fromColumns=[source_column.fullyQualifiedName.__root__],
-                        toColumn=target_column.fullyQualifiedName.__root__,
+                        fromColumns=[source_column.fullyQualifiedName.root],
+                        toColumn=target_column.fullyQualifiedName.root,
                     )
                 )
                 break

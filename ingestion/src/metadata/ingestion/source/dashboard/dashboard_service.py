@@ -15,7 +15,8 @@ import traceback
 from abc import ABC, abstractmethod
 from typing import Any, Iterable, List, Optional, Set, Union
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
+from typing_extensions import Annotated
 
 from metadata.generated.schema.api.data.createChart import CreateChartRequest
 from metadata.generated.schema.api.data.createDashboard import CreateDashboardRequest
@@ -40,6 +41,7 @@ from metadata.generated.schema.metadataIngestion.dashboardServiceMetadataPipelin
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
+from metadata.generated.schema.type.basic import Uuid
 from metadata.generated.schema.type.entityLineage import (
     ColumnLineage,
     EntitiesEdge,
@@ -47,6 +49,7 @@ from metadata.generated.schema.type.entityLineage import (
 )
 from metadata.generated.schema.type.entityLineage import Source as LineageSource
 from metadata.generated.schema.type.entityReference import EntityReference
+from metadata.generated.schema.type.entityReferenceList import EntityReferenceList
 from metadata.generated.schema.type.usageRequest import UsageRequest
 from metadata.ingestion.api.delete import delete_entity_from_source
 from metadata.ingestion.api.models import Either, Entity
@@ -96,7 +99,9 @@ class DashboardServiceTopology(ServiceTopology):
     data that has been produced by any parent node.
     """
 
-    root = TopologyNode(
+    root: Annotated[
+        TopologyNode, Field(description="Root node for the topology")
+    ] = TopologyNode(
         producer="get_services",
         stages=[
             NodeStage(
@@ -122,7 +127,9 @@ class DashboardServiceTopology(ServiceTopology):
     # handles them as independent entities.
     # When configuring a new source, we will either implement
     # the yield_bulk_datamodel or yield_datamodel functions.
-    bulk_data_model = TopologyNode(
+    bulk_data_model: Annotated[
+        TopologyNode, Field(description="Write data models in bulk")
+    ] = TopologyNode(
         producer="list_datamodels",
         stages=[
             NodeStage(
@@ -134,7 +141,9 @@ class DashboardServiceTopology(ServiceTopology):
             )
         ],
     )
-    dashboard = TopologyNode(
+    dashboard: Annotated[
+        TopologyNode, Field(description="Process dashboards")
+    ] = TopologyNode(
         producer="get_dashboard",
         stages=[
             NodeStage(
@@ -196,7 +205,7 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
     config: WorkflowSource
     metadata: OpenMetadata
     # Big union of types we want to fetch dynamically
-    service_connection: DashboardConnection.__fields__["config"].type_
+    service_connection: DashboardConnection.model_fields["config"].annotation
 
     topology = DashboardServiceTopology()
     context = TopologyContextManager(topology)
@@ -211,7 +220,7 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
         super().__init__()
         self.config = config
         self.metadata = metadata
-        self.service_connection = self.config.serviceConnection.__root__.config
+        self.service_connection = self.config.serviceConnection.root.config
         self.source_config: DashboardServiceMetadataPipeline = (
             self.config.sourceConfig.config
         )
@@ -432,8 +441,8 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
         dashboard_fqn = fqn.build(
             self.metadata,
             entity_type=Dashboard,
-            service_name=dashboard_request.service.__root__,
-            dashboard_name=dashboard_request.name.__root__,
+            service_name=dashboard_request.service.root,
+            dashboard_name=dashboard_request.name.root,
         )
 
         self.dashboard_source_state.add(dashboard_fqn)
@@ -447,8 +456,8 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
         datamodel_fqn = fqn.build(
             self.metadata,
             entity_type=DashboardDataModel,
-            service_name=datamodel_request.service.__root__,
-            data_model_name=datamodel_request.name.__root__,
+            service_name=datamodel_request.service.root,
+            data_model_name=datamodel_request.name.root,
         )
 
         self.datamodel_source_state.add(datamodel_fqn)
@@ -464,11 +473,11 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
                 right=AddLineageRequest(
                     edge=EntitiesEdge(
                         fromEntity=EntityReference(
-                            id=from_entity.id.__root__,
+                            id=Uuid(from_entity.id.root),
                             type=LINEAGE_MAP[type(from_entity)],
                         ),
                         toEntity=EntityReference(
-                            id=to_entity.id.__root__,
+                            id=Uuid(to_entity.id.root),
                             type=LINEAGE_MAP[type(to_entity)],
                         ),
                         lineageDetails=LineageDetails(
@@ -492,7 +501,7 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
             return None
         for tbl_column in data_model_entity.columns:
             if tbl_column.displayName.lower() == column.lower():
-                return tbl_column.fullyQualifiedName.__root__
+                return tbl_column.fullyQualifiedName.root
         return None
 
     def get_dashboard(self) -> Any:
@@ -541,28 +550,6 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
     def prepare(self):
         """By default, nothing to prepare"""
 
-    def fqn_from_context(self, stage: NodeStage, entity_name: C) -> str:
-        """
-        We are overriding this method since CreateDashboardDataModelRequest needs to add an extra value to the context
-        names.
-
-        Read the context
-        :param stage: Topology node being processed
-        :param entity_request: Request sent to the sink
-        :return: Entity FQN derived from context
-        """
-        context_names = [
-            self.context.get().__dict__[dependency]
-            for dependency in stage.consumer or []  # root nodes do not have consumers
-        ]
-
-        if isinstance(stage.type_, DashboardDataModel):
-            context_names.append("model")
-
-        return fqn._build(  # pylint: disable=protected-access
-            *context_names, entity_name
-        )
-
     def check_database_schema_name(self, database_schema_name: str):
         """
         Check if the input database schema name is equal to "<default>" and return the input name if it is not.
@@ -599,7 +586,7 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
         """
         patch_request = PatchRequest(
             original_entity=original_entity,
-            new_entity=original_entity.copy(update=create_request.__dict__),
+            new_entity=original_entity.model_copy(update=create_request.__dict__),
         )
         if isinstance(original_entity, Dashboard):
             # For patch the charts need to be entity ref instead of fqn
@@ -609,11 +596,13 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
                 if chart_entity:
                     charts_entity_ref_list.append(
                         EntityReference(
-                            id=chart_entity.id.__root__,
+                            id=chart_entity.id.root,
                             type=LINEAGE_MAP[type(chart_entity)],
                         )
                     )
-            patch_request.new_entity.charts = charts_entity_ref_list
+            patch_request.new_entity.charts = EntityReferenceList(
+                charts_entity_ref_list
+            )
 
             # For patch the datamodels need to be entity ref instead of fqn
             datamodel_entity_ref_list = []
@@ -624,11 +613,13 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
                 if datamodel_entity:
                     datamodel_entity_ref_list.append(
                         EntityReference(
-                            id=datamodel_entity.id.__root__,
+                            id=datamodel_entity.id.root,
                             type=LINEAGE_MAP[type(datamodel_entity)],
                         )
                     )
-            patch_request.new_entity.dataModels = datamodel_entity_ref_list
+            patch_request.new_entity.dataModels = EntityReferenceList(
+                datamodel_entity_ref_list
+            )
         return patch_request
 
     def _get_column_lineage(

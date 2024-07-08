@@ -122,7 +122,7 @@ const AsyncSelectList: FC<AsyncSelectListProps & SelectProps> = ({
 
   const tagOptions = useMemo(() => {
     const newTags = options
-      .filter((tag) => !tag.label?.startsWith(`Tier${FQN_SEPARATOR_CHAR}Tier`)) // To filter out Tier tags
+      .filter((tag) => !tag.label?.startsWith(`Tier${FQN_SEPARATOR_CHAR}`)) // To filter out Tier tags
       .map((tag) => {
         const displayName = tag.data?.displayName;
         const parts = Fqn.split(tag.label);
@@ -296,7 +296,6 @@ const AsyncSelectList: FC<AsyncSelectListProps & SelectProps> = ({
 
   return (
     <Select
-      autoFocus
       showSearch
       className="async-select-list"
       data-testid="tag-selector"

@@ -65,8 +65,8 @@ class SplitTestCaseFqn(BaseModel):
     database: str
     schema_: str = Field(alias="schema")
     table: str
-    column: Optional[str]
-    test_case: Optional[str]
+    column: Optional[str] = None
+    test_case: Optional[str] = None
 
 
 def split(str_: str) -> List[str]:
@@ -184,9 +184,9 @@ def _(
         fqn = _build(service_name, database_name, schema_name, table_name)
         return [fqn] if fetch_multiple_entities else fqn
     if entity and fetch_multiple_entities:
-        return [str(table.fullyQualifiedName.__root__) for table in entity]
+        return [str(table.fullyQualifiedName.root) for table in entity]
     if entity:
-        return str(entity.fullyQualifiedName.__root__)
+        return str(entity.fullyQualifiedName.root)
     return None
 
 
@@ -215,9 +215,9 @@ def _(
         fqn = _build(service_name, database_name, schema_name)
         return [fqn] if fetch_multiple_entities else fqn
     if entity and fetch_multiple_entities:
-        return [str(table.fullyQualifiedName.__root__) for table in entity]
+        return [str(table.fullyQualifiedName.root) for table in entity]
     if entity:
-        return str(entity.fullyQualifiedName.__root__)
+        return str(entity.fullyQualifiedName.root)
 
     return None
 
@@ -422,8 +422,8 @@ def _(
     if not entity:
         return None
     if fetch_multiple_entities:
-        return [str(user.fullyQualifiedName.__root__) for user in entity]
-    return str(entity.fullyQualifiedName.__root__)
+        return [str(user.fullyQualifiedName.root) for user in entity]
+    return str(entity.fullyQualifiedName.root)
 
 
 @fqn_build_registry.add(Team)
@@ -452,8 +452,8 @@ def _(
     if not entity:
         return None
     if fetch_multiple_entities:
-        return [str(user.fullyQualifiedName.__root__) for user in entity]
-    return str(entity.fullyQualifiedName.__root__)
+        return [str(user.fullyQualifiedName.root) for user in entity]
+    return str(entity.fullyQualifiedName.root)
 
 
 @fqn_build_registry.add(TestCase)

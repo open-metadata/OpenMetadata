@@ -55,13 +55,16 @@
       "default": "http://localhost:8585/api"
     },
     "authProvider": {
-     "$ref": "#/definitions/authProvider"
+      "description": "OpenMetadata Server Authentication Provider.",
+      "$ref": "#/definitions/authProvider"
     },
     "verifySSL": {
+      "description": "Flag to verify SSL Certificate for OpenMetadata Server.",
       "$ref": "../../../../security/ssl/verifySSLConfig.json#/definitions/verifySSL",
       "default": "no-ssl"
     },
     "sslConfig": {
+      "description": "SSL Configuration for OpenMetadata Server",
       "$ref": "../../../../security/ssl/verifySSLConfig.json#/definitions/sslConfig"
     },
     "securityConfig": {
@@ -70,10 +73,12 @@
       "$ref": "../../../../security/client/openMetadataJWTClientConfig.json"
     },
     "secretsManagerProvider": {
+      "description": "Secrets Manager Provider for OpenMetadata Server.",
       "$ref": "./../../../../security/secrets/secretsManagerProvider.json",
       "default": "db"
     },
     "secretsManagerLoader": {
+      "description": "Secrets Manager Loader for the Pipeline Service Client.",
       "$ref": "./../../../../security/secrets/secretsManagerClientLoader.json",
       "default": "noop"
     },
@@ -155,7 +160,7 @@
     "limitRecords": {
       "description": "Limit the number of records for Indexing.",
       "type": "integer",
-      "default": "1000"
+      "default": 1000
     },
     "forceEntityOverwriting": {
       "description": "Force the overwriting of any entity during the ingestion.",
@@ -183,9 +188,11 @@
       "required": ["type"]
     },
     "supportsDataInsightExtraction": {
+      "description": "Flag to enable Data Insight Extraction",
       "$ref": "../connectionBasicType.json#/definitions/supportsDataInsightExtraction"
     },
     "supportsElasticSearchReindexingExtraction": {
+      "description": "Flag to enable ElasticSearch Reindexing Extraction",
       "$ref": "../connectionBasicType.json#/definitions/supportsElasticSearchReindexingExtraction"
     },
     "extraHeaders": {

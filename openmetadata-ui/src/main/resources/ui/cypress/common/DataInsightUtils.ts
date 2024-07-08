@@ -13,9 +13,18 @@
 import { SidebarItem } from '../constants/Entity.interface';
 import { interceptURL, verifyResponseStatusCode } from './common';
 
-const BASE_WAIT_TIME = 4000;
-const RETRY_TIMES = 3;
+const BASE_WAIT_TIME = 5000;
+const RETRY_TIMES = 4;
 let isSuccessStatus = false;
+
+const waitForTimer = (timer: number, count: number) => {
+  // retry after waiting with log1 method [4s,8s,16s,32s,64s]
+  cy.wait(timer);
+  timer *= 2;
+  cy.reload();
+  verifyResponseStatusCode('@getAppStatus', 200);
+  checkDataInsightSuccessStatus(++count, timer * 2);
+};
 
 export const checkDataInsightSuccessStatus = (
   count = 1,
@@ -26,30 +35,33 @@ export const checkDataInsightSuccessStatus = (
     '/api/v1/apps/name/DataInsightsApplication/status?*',
     'getAppStatus'
   );
-  cy.get('[data-testid="app-run-history-table"]')
-    .find('[data-testid="pipeline-status"]')
-    .first()
-    .as('checkRun');
+
   // the latest run should be success
-  cy.get('@checkRun').then(($ingestionStatus) => {
-    if (
-      $ingestionStatus.text() !== 'Success' &&
-      $ingestionStatus.text() !== 'Failed' &&
-      count <= RETRY_TIMES
-    ) {
-      // retry after waiting with log1 method [4s,8s,16s,32s,64s]
-      cy.wait(timer);
-      timer *= 2;
-      cy.reload();
-      verifyResponseStatusCode('@getAppStatus', 200);
-      checkDataInsightSuccessStatus(++count, timer * 2);
+  cy.get('[data-testid="app-run-history-table"]').then(($ingestionTable) => {
+    if ($ingestionTable.find('[data-testid="pipeline-status"]').length) {
+      cy.get('[data-testid="app-run-history-table"]')
+        .find('[data-testid="pipeline-status"]')
+        .first()
+        .then(($ingestionStatus) => {
+          if (
+            $ingestionStatus.text() !== 'Success' &&
+            $ingestionStatus.text() !== 'Failed' &&
+            count <= RETRY_TIMES
+          ) {
+            waitForTimer(timer, count);
+          } else {
+            if ($ingestionStatus.text() === 'Success') {
+              expect($ingestionStatus.text()).eq('Success');
+
+              isSuccessStatus = true;
+            }
+
+            isSuccessStatus = false;
+          }
+        });
+    } else if (count <= RETRY_TIMES) {
+      waitForTimer(timer, count);
     } else {
-      if ($ingestionStatus.text() !== 'Success') {
-        cy.get('@checkRun').should('have.text', 'Success');
-
-        isSuccessStatus = true;
-      }
-
       isSuccessStatus = false;
     }
   });

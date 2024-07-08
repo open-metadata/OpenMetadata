@@ -16,11 +16,12 @@ import threading
 from functools import singledispatchmethod
 from typing import Any, Dict, Generic, List, Optional, Type, TypeVar
 
-from pydantic import BaseModel, Extra, Field, create_model
+from pydantic import BaseModel, ConfigDict, Field, create_model
 
 from metadata.generated.schema.api.data.createStoredProcedure import (
     CreateStoredProcedureRequest,
 )
+from metadata.generated.schema.entity.data.dashboardDataModel import DashboardDataModel
 from metadata.generated.schema.entity.data.storedProcedure import StoredProcedure
 from metadata.ingestion.ometa.utils import model_str
 from metadata.utils import fqn
@@ -37,8 +38,9 @@ class NodeStage(BaseModel, Generic[T]):
     source.
     """
 
-    class Config:
-        extra = Extra.forbid
+    model_config = ConfigDict(
+        extra="forbid",
+    )
 
     # Required fields to define the yielded entity type and the function processing it
     type_: Type[T] = Field(
@@ -99,8 +101,9 @@ class TopologyNode(BaseModel):
     with the updated element from the OM API.
     """
 
-    class Config:
-        extra = Extra.forbid
+    model_config = ConfigDict(
+        extra="forbid",
+    )
 
     producer: str = Field(
         ...,
@@ -128,8 +131,7 @@ class ServiceTopology(BaseModel):
     Bounds all service topologies
     """
 
-    class Config:
-        extra = Extra.allow
+    model_config = ConfigDict(extra="allow")
 
 
 class TopologyContext(BaseModel):
@@ -137,11 +139,10 @@ class TopologyContext(BaseModel):
     Bounds all topology contexts
     """
 
-    class Config:
-        extra = Extra.allow
+    model_config = ConfigDict(extra="allow")
 
     def __repr__(self):
-        ctx = {key: value.name.__root__ for key, value in self.__dict__.items()}
+        ctx = {key: value.name.root for key, value in self.__dict__.items()}
         return f"TopologyContext({ctx})"
 
     @classmethod
@@ -202,6 +203,11 @@ class TopologyContext(BaseModel):
             self.__dict__[dependency]
             for dependency in stage.consumer or []  # root nodes do not have consumers
         ]
+
+        # DashboardDataModel requires extra parameter to build the correct FQN
+        if stage.type_ == DashboardDataModel:
+            context_names.append("model")
+
         return fqn._build(  # pylint: disable=protected-access
             *context_names, entity_name
         )
@@ -247,7 +253,7 @@ class TopologyContext(BaseModel):
             service_name=self.__dict__["database_service"],
             database_name=self.__dict__["database"],
             schema_name=self.__dict__["database_schema"],
-            procedure_name=right.name.__root__,
+            procedure_name=right.name.root,
         )
 
 
@@ -296,7 +302,7 @@ class TopologyContextManager:
 
         # If it does not exist yet, copies the Parent Context in order to have all context gathered until this point.
         self.contexts.setdefault(
-            thread_id, self.contexts[parent_thread_id].copy(deep=True)
+            thread_id, self.contexts[parent_thread_id].model_copy(deep=True)
         )
 
 

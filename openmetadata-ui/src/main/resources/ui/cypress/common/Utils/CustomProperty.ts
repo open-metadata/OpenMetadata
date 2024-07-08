@@ -112,7 +112,7 @@ export const getPropertyValues = (type: string) => {
     case 'entityReference':
       return {
         value: 'Adam Matthews',
-        newValue: 'Aaron Singh',
+        newValue: 'Amber Green',
       };
 
     case 'entityReferenceList':
@@ -389,6 +389,8 @@ export const addCustomPropertiesForEntity = ({
   formatConfig?: string;
   entityReferenceConfig?: string[];
 }) => {
+  // eslint-disable-next-line max-len
+  const longDescription = `Lorem ipsum dolor sit amet consectetur adipisicing elit. Dolore neque fuga reprehenderit placeat, sint doloremque quo expedita consequatur fugiat maxime maiores voluptate eum quis quas dignissimos cumque perspiciatis optio dolorem blanditiis iure natus commodi dolor quam. Voluptatem excepturi aut, at ullam aliquid repudiandae distinctio ipsam voluptates tenetur a. Sit, illum.`;
   // Add Custom property for selected entity
   cy.get('[data-testid="add-field-button"]').click();
 
@@ -473,7 +475,9 @@ export const addCustomPropertiesForEntity = ({
     cy.get('#root\\/formatConfig').clear().type(formatConfig);
   }
 
-  cy.get(descriptionBox).clear().type(customPropertyData.description);
+  cy.get(descriptionBox)
+    .clear()
+    .type(`${customPropertyData.description} ${longDescription}`);
 
   // Check if the property got added
   cy.intercept('/api/v1/metadata/types/name/*?fields=customProperties').as(
@@ -523,9 +527,9 @@ export const editCreatedProperty = (propertyName: string, type?: string) => {
   /**
    * @link https://docs.cypress.io/guides/references/configuration#Timeouts
    * default responseTimeout is 30000ms which is not enough for the patch request
-   * so we need to increase the responseTimeout to 50000ms
+   * so we need to increase the responseTimeout to 70000ms for AUT environment in PATCH request
    */
-  cy.wait('@checkPatchForDescription', { responseTimeout: 50000 });
+  cy.wait('@checkPatchForDescription', { responseTimeout: 70000 });
 
   cy.get('.ant-modal-wrap').should('not.exist');
 

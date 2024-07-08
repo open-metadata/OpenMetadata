@@ -58,6 +58,7 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.GlossaryRepository;
 import org.openmetadata.service.jdbi3.GlossaryRepository.GlossaryCsv;
 import org.openmetadata.service.jdbi3.ListFilter;
+import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
@@ -77,8 +78,8 @@ public class GlossaryResource extends EntityResource<Glossary, GlossaryRepositor
   public static final String COLLECTION_PATH = "v1/glossaries/";
   static final String FIELDS = "owner,tags,reviewers,usageCount,termCount,domain,extension";
 
-  public GlossaryResource(Authorizer authorizer) {
-    super(Entity.GLOSSARY, authorizer);
+  public GlossaryResource(Authorizer authorizer, Limits limits) {
+    super(Entity.GLOSSARY, authorizer, limits);
   }
 
   @Override
@@ -563,7 +564,6 @@ public class GlossaryResource extends EntityResource<Glossary, GlossaryRepositor
       GlossaryRepository repository, CreateGlossary create, String updatedBy) {
     return repository
         .copy(new Glossary(), create, updatedBy)
-        .withReviewers(getEntityReferences(Entity.USER, create.getReviewers()))
         .withProvider(create.getProvider())
         .withMutuallyExclusive(create.getMutuallyExclusive());
   }

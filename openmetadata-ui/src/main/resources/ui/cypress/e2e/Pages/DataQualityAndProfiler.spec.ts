@@ -106,6 +106,16 @@ const verifyFilterTestCase = () => {
     cy.get(`[data-testid="${testCase}"]`).scrollIntoView().should('be.visible');
   });
 };
+const verifyFilter2TestCase = (negation = false) => {
+  filterTable2TestCases.map((testCase) => {
+    negation
+      ? cy.get(`[data-testid="${testCase}"]`).should('not.exist')
+      : cy
+          .get(`[data-testid="${testCase}"]`)
+          .scrollIntoView()
+          .should('be.visible');
+  });
+};
 
 describe(
   'Data Quality and Profiler should work properly',
@@ -612,12 +622,12 @@ describe(
 
       cy.get('[data-testid="by-test-suites"]').click();
       verifyResponseStatusCode('@testSuite', 200);
-
+      interceptURL('GET', '/api/v1/users?*isBot=false*', 'getOwner');
       // owner filter
       cy.get('[data-testid="owner-select-filter"]').click();
       cy.get("[data-testid='select-owner-tabs']").should('be.visible');
       cy.get('.ant-tabs [id*=tab-users]').click();
-
+      cy.wait('@getOwner');
       interceptURL(
         'GET',
         `api/v1/search/query?q=*&index=user_search_index*`,
@@ -876,7 +886,7 @@ describe(
       cy.get('#tableTestForm_name').should('have.value', testCase2.name);
       cy.get('#tableTestForm_testDefinition').should(
         'have.value',
-        testCase2.testDefinition
+        'Column Values To Be In Set'
       );
       cy.get('.ant-modal-footer').contains('Submit').click();
       cy.wait('@updateTestCase').then((interception) => {
@@ -967,6 +977,12 @@ describe(
         'getTestCase'
       );
 
+      interceptURL(
+        'GET',
+        `/api/v1/search/query?q=*index=tag_search_index*`,
+        'searchTags'
+      );
+
       cy.sidebarClick(SidebarItem.DATA_QUALITY);
 
       cy.get('[data-testid="by-test-cases"]').click();
@@ -988,6 +1004,19 @@ describe(
         waitForAnimations: true,
       });
       cy.get('[value="lastRunRange"]').click({ waitForAnimations: true });
+      cy.get('[data-testid="advanced-filter"]').click({
+        waitForAnimations: true,
+      });
+      cy.get('[value="serviceName"]').click({ waitForAnimations: true });
+
+      cy.get('[data-testid="advanced-filter"]').click({
+        waitForAnimations: true,
+      });
+      cy.get('[value="tags"]').click({ waitForAnimations: true });
+      cy.get('[data-testid="advanced-filter"]').click({
+        waitForAnimations: true,
+      });
+      cy.get('[value="tier"]').click({ waitForAnimations: true });
 
       // Test case search filter
       cy.get(
@@ -998,6 +1027,78 @@ describe(
         .scrollIntoView()
         .should('be.visible');
       cy.get('.ant-input-clear-icon').click();
+      verifyResponseStatusCode('@getTestCase', 200);
+
+      // Test case filter by service name
+      interceptURL(
+        'GET',
+        `/api/v1/dataQuality/testCases/search/list?*serviceName=${DATABASE_SERVICE.service.name}*`,
+        'getTestCaseByServiceName'
+      );
+      interceptURL(
+        'GET',
+        `/api/v1/search/query?q=*index=database_service_search_index*`,
+        'searchService'
+      );
+      cy.get('#serviceName')
+        .scrollIntoView()
+        .type(DATABASE_SERVICE.service.name);
+      verifyResponseStatusCode('@searchService', 200);
+      cy.get('.ant-select-dropdown')
+        .not('.ant-select-dropdown-hidden')
+        .find(`[data-testid="${DATABASE_SERVICE.service.name}"]`)
+        .click({ force: true });
+      verifyResponseStatusCode('@getTestCaseByServiceName', 200);
+      verifyFilterTestCase();
+      verifyFilter2TestCase();
+      // remove service filter
+      cy.get('[data-testid="advanced-filter"]').click({
+        waitForAnimations: true,
+      });
+      cy.get('[value="serviceName"]').click({ waitForAnimations: true });
+      verifyResponseStatusCode('@getTestCase', 200);
+
+      // Test case filter by Tags
+      interceptURL(
+        'GET',
+        `/api/v1/dataQuality/testCases/search/list?*tags=${'PII.None'}*`,
+        'getTestCaseByTags'
+      );
+      cy.get('#tags').scrollIntoView().click().type('PII.None');
+      verifyResponseStatusCode('@searchTags', 200);
+      cy.get('.ant-select-dropdown')
+        .not('.ant-select-dropdown-hidden')
+        .find(`[data-testid="${'PII.None'}"]`)
+        .click({ force: true });
+      verifyResponseStatusCode('@getTestCaseByTags', 200);
+      verifyFilterTestCase();
+      verifyFilter2TestCase(true);
+      // remove service filter
+      cy.get('[data-testid="advanced-filter"]').click({
+        waitForAnimations: true,
+      });
+      cy.get('[value="tags"]').click({ waitForAnimations: true });
+      verifyResponseStatusCode('@getTestCase', 200);
+
+      // Test case filter by Tier
+      interceptURL(
+        'GET',
+        `/api/v1/dataQuality/testCases/search/list?*tier=${'Tier.Tier2'}*`,
+        'getTestCaseByTier'
+      );
+      cy.get('#tier').click();
+      cy.get('.ant-select-dropdown')
+        .not('.ant-select-dropdown-hidden')
+        .find(`[data-testid="${'Tier.Tier2'}"]`)
+        .click({ force: true });
+      verifyResponseStatusCode('@getTestCaseByTier', 200);
+      verifyFilterTestCase();
+      verifyFilter2TestCase(true);
+      // remove service filter
+      cy.get('[data-testid="advanced-filter"]').click({
+        waitForAnimations: true,
+      });
+      cy.get('[value="tier"]').click({ waitForAnimations: true });
       verifyResponseStatusCode('@getTestCase', 200);
 
       // Test case filter by table name
@@ -1021,10 +1122,7 @@ describe(
         .click({ force: true });
       verifyResponseStatusCode('@searchTestCaseByTable', 200);
       verifyFilterTestCase();
-
-      filterTable2TestCases.map((testCase) => {
-        cy.get(`[data-testid="${testCase}"]`).should('not.exist');
-      });
+      verifyFilter2TestCase(true);
 
       // Test case filter by test type
       interceptURL(

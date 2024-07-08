@@ -5,7 +5,9 @@ slug: /deployment/ingestion/external
 
 # Ingestion Framework External Deployment
 
-Any tool capable of running Python code can be used to configure the metadata extraction from your sources({% partial file="/v1.4/connectors/python-requirements.md" /%}).
+Any tool capable of running Python code can be used to configure the metadata extraction from your sources.
+
+{% partial file="/v1.4/connectors/python-requirements.md" /%}
 
 ## 1. How does the Ingestion Framework work?
 
@@ -242,6 +244,14 @@ don't hesitate to reach to us in [Slack](https://slack.open-metadata.org/) or di
 Let's jump now into some examples on how you could create the function the run the different workflows. Note that this code
 can then be executed inside a DAG, a GitHub action, or a vanilla Python script. It will work for any environment.
 
+### Testing
+
+You can easily test every YAML configuration using the `metadata` CLI from the Ingestion Framework.
+In order to install it, you just need to get it from [PyPI](https://pypi.org/project/openmetadata-ingestion/).
+
+In each of the examples below, we'll showcase how to run the CLI, assuming you have a YAML file that contains
+the workflow configuration.
+
 ### Metadata Workflow
 
 This is the first workflow you have to configure and run. It will take care of fetching the metadata from your sources,
@@ -286,7 +296,7 @@ It will take care of instantiating the workflow, executing it and giving us the 
 
 {% codeBlock fileName="ingestion.py" %}
 
-```python
+```python {% isCodeBlock=true %}
 import yaml
 
 ```
@@ -340,6 +350,12 @@ def run():
 
 {% /codePreview %}
 
+{% note %}
+
+You can test the workflow via `metadata ingest -c <path-to-yaml>`.
+
+{% /note %}
+
 
 ### Lineage Workflow
 
@@ -391,7 +407,7 @@ It will take care of instantiating the workflow, executing it and giving us the 
 
 {% codeBlock fileName="ingestion.py" %}
 
-```python
+```python {% isCodeBlock=true %}
 import yaml
 
 ```
@@ -440,6 +456,12 @@ def run():
 {% /codeBlock %}
 
 {% /codePreview %}
+
+{% note %}
+
+You can test the workflow via `metadata ingest -c <path-to-yaml>`.
+
+{% /note %}
 
 
 ### Usage Workflow
@@ -491,7 +513,7 @@ It will take care of instantiating the workflow, executing it and giving us the 
 
 {% codeBlock fileName="ingestion.py" %}
 
-```python
+```python {% isCodeBlock=true %}
 import yaml
 
 ```
@@ -549,6 +571,12 @@ def run():
 
 {% /codePreview %}
 
+{% note %}
+
+You can test the workflow via `metadata usage -c <path-to-yaml>`.
+
+{% /note %}
+
 ### Profiler Workflow
 
 This workflow will execute queries against your database and send the results into OpenMetadata. The goal is to compute
@@ -556,7 +584,7 @@ metrics about your data and give you a high-level view of its shape, together wi
 
 This is an interesting previous step before creating Data Quality Workflows.
 
-You can find more information about this workflow [here](/connectors/ingestion/workflows/profiler).
+You can find more information about this workflow [here](/how-to-guides/data-quality-observability/profiler/workflow).
 
 {% codePreview %}
 
@@ -601,7 +629,7 @@ It will take care of instantiating the workflow, executing it and giving us the 
 
 {% codeBlock fileName="ingestion.py" %}
 
-```python
+```python {% isCodeBlock=true %}
 import yaml
 
 ```
@@ -653,6 +681,12 @@ def run():
 
 {% /codePreview %}
 
+{% note %}
+
+You can test the workflow via `metadata profile -c <path-to-yaml>`.
+
+{% /note %}
+
 
 ### Data Quality Workflow
 
@@ -661,7 +695,7 @@ metrics about your data and give you a high-level view of its shape, together wi
 
 This is an interesting previous step before creating Data Quality Workflows.
 
-You can find more information about this workflow [here](/connectors/ingestion/workflows/data-quality).
+You can find more information about this workflow [here](/how-to-guides/data-quality-observability/quality/configure).
 
 {% codePreview %}
 
@@ -687,7 +721,7 @@ metadata ingestion, we can let the Ingestion Framework dynamically fetch the Ser
 If, however, you are configuring the workflow with `storeServiceConnection: false`, you'll need to explicitly
 define the `serviceConnection`.
 
-Moreover, see how we are not configuring any tests in the `processor`. You can do [that](/connectors/ingestion/workflows/data-quality#full-yaml-config-example),
+Moreover, see how we are not configuring any tests in the `processor`. You can do [that](/how-to-guides/data-quality-observability/quality/configure#full-yaml-config-example),
 but even if nothing gets defined in the YAML, we will execute all the tests configured against the table.
 
 {% note %}
@@ -709,7 +743,7 @@ It will take care of instantiating the workflow, executing it and giving us the 
 
 {% codeBlock fileName="ingestion.py" %}
 
-```python
+```python {% isCodeBlock=true %}
 import yaml
 
 ```
@@ -759,3 +793,9 @@ def run():
 {% /codeBlock %}
 
 {% /codePreview %}
+
+{% note %}
+
+You can test the workflow via `metadata test -c <path-to-yaml>`.
+
+{% /note %}

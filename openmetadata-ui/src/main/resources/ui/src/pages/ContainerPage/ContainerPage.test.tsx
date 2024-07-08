@@ -227,6 +227,10 @@ jest.mock('react-router-dom', () => ({
   useParams: jest.fn().mockImplementation(() => mockUseParams()),
 }));
 
+jest.mock('../../hoc/LimitWrapper', () => {
+  return jest.fn().mockImplementation(({ children }) => <>{children}</>);
+});
+
 describe('Container Page Component', () => {
   it('should show error-placeholder, if not have view permission', async () => {
     mockGetEntityPermissionByFqn.mockResolvedValueOnce({

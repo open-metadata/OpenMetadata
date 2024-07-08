@@ -68,6 +68,7 @@ export enum EntityType {
   WEB_ANALYTIC_USER_ACTIVITY_REPORT_DATA = 'webAnalyticUserActivityReportData',
   TEST_CASE_RESOLUTION_STATUS = 'test_case_resolution_status_search_index',
   EVENT_SUBSCRIPTION = 'eventsubscription',
+  LINEAGE_EDGE = 'lineageEdge',
 }
 
 export enum AssetsType {
@@ -122,6 +123,7 @@ export enum TabSpecificField {
   VOTES = 'votes',
   DOMAIN = 'domain',
   DATA_PRODUCTS = 'dataProducts',
+  REVIEWERS = 'reviewers',
 }
 
 export enum FqnPart {

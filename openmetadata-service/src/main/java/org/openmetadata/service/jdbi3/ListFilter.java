@@ -41,6 +41,7 @@ public class ListFilter extends Filter<ListFilter> {
     conditions.add(getTestCaseResolutionStatusType());
     conditions.add(getAssignee());
     conditions.add(getEventSubscriptionAlertType());
+    conditions.add(getApiCollectionCondition(tableName));
     String condition = addCondition(conditions);
     return condition.isEmpty() ? "WHERE TRUE" : "WHERE " + condition;
   }
@@ -72,60 +73,61 @@ public class ListFilter extends Filter<ListFilter> {
 
   public String getIncludeCondition(String tableName) {
     String columnName = tableName == null ? "deleted" : tableName + ".deleted";
-    if (include == Include.NON_DELETED) {
-      return columnName + " = FALSE";
-    }
-    if (include == Include.DELETED) {
-      return columnName + " = TRUE";
+    if (include == Include.NON_DELETED || include == Include.DELETED) {
+      return columnName + String.format(" =%s", include == Include.NON_DELETED ? "FALSE" : "TRUE");
     }
     return "";
   }
 
   public String getDatabaseCondition(String tableName) {
     String database = queryParams.get("database");
-    return database == null ? "" : getFqnPrefixCondition(tableName, database);
+    return database == null ? "" : getFqnPrefixCondition(tableName, database, "database");
   }
 
   public String getDatabaseSchemaCondition(String tableName) {
     String databaseSchema = queryParams.get("databaseSchema");
-    return databaseSchema == null ? "" : getFqnPrefixCondition(tableName, databaseSchema);
+    return databaseSchema == null
+        ? ""
+        : getFqnPrefixCondition(tableName, databaseSchema, "databaseSchema");
   }
 
   public String getServiceCondition(String tableName) {
     String service = queryParams.get("service");
     return service == null
         ? ""
-        : getFqnPrefixCondition(tableName, EntityInterfaceUtil.quoteName(service));
+        : getFqnPrefixCondition(tableName, EntityInterfaceUtil.quoteName(service), "service");
   }
 
   public String getTestSuiteFQNCondition() {
     String testSuiteName = queryParams.get("testSuite");
-    return testSuiteName == null
-        ? ""
-        : String.format(
-            "fqnHash LIKE '%s%s%%'", FullyQualifiedName.buildHash(testSuiteName), Entity.SEPARATOR);
+    return testSuiteName == null ? "" : getFqnPrefixCondition(null, testSuiteName, "testSuite");
   }
 
   private String getDomainCondition() {
     String domainId = getQueryParam("domainId");
     return domainId == null
         ? ""
-        : String.format(
-            "(id in (SELECT toId FROM entity_relationship WHERE fromEntity='domain' AND fromId='%s' AND "
-                + "relation=10))",
-            domainId);
+        : "(id in (SELECT toId FROM entity_relationship WHERE fromEntity='domain' AND fromId=:domainId AND "
+            + "relation=10))";
+  }
+
+  public String getApiCollectionCondition(String apiEndpoint) {
+    String apiCollection = queryParams.get("apiCollection");
+    return apiCollection == null
+        ? ""
+        : getFqnPrefixCondition(apiEndpoint, apiEndpoint, "apiCollection");
   }
 
   private String getEntityFQNHashCondition() {
     String entityFQN = getQueryParam("entityFQNHash");
     return entityFQN == null
         ? ""
-        : String.format("entityFQNHash = '%s'", FullyQualifiedName.buildHash(entityFQN));
+        : String.format("entityFQNHash = :entityFQNHash", FullyQualifiedName.buildHash(entityFQN));
   }
 
   public String getParentCondition(String tableName) {
     String parentFqn = queryParams.get("parent");
-    return parentFqn == null ? "" : getFqnPrefixCondition(tableName, parentFqn);
+    return parentFqn == null ? "" : getFqnPrefixCondition(tableName, parentFqn, "parent");
   }
 
   public String getDisabledCondition() {
@@ -178,14 +180,7 @@ public class ListFilter extends Filter<ListFilter> {
     if (applicationType == null) {
       return "";
     }
-    if (Boolean.TRUE.equals(DatasourceConfig.getInstance().isMySQL())) {
-      return String.format(
-          "(JSON_UNQUOTE(JSON_EXTRACT(ingestion_pipeline_entity.json, '$.sourceConfig.config.appConfig.type')) = '%s')",
-          applicationType);
-    }
-    return String.format(
-        "(ingestion_pipeline_entity.json ->> '{sourceConfig,config,appConfig,type}' = '%s')",
-        applicationType);
+    return "(appType = :applicationType)";
   }
 
   private String getTestCaseCondition() {
@@ -198,6 +193,9 @@ public class ListFilter extends Filter<ListFilter> {
     String type = getQueryParam("testCaseType");
 
     if (entityFQN != null) {
+      // EntityLink gets validated in the resource layer
+      // EntityLink entityLinkParsed = EntityLink.parse(entityLink);
+      // filter.addQueryParam("entityFQN", entityLinkParsed.getFullyQualifiedFieldValue());
       conditions.add(
           includeAllTests
               ? String.format(
@@ -209,12 +207,12 @@ public class ListFilter extends Filter<ListFilter> {
     if (testSuiteId != null) {
       conditions.add(
           String.format(
-              "id IN (SELECT toId FROM entity_relationship WHERE fromId='%s' AND toEntity='%s' AND relation=%d AND fromEntity='%s')",
-              testSuiteId, Entity.TEST_CASE, Relationship.CONTAINS.ordinal(), Entity.TEST_SUITE));
+              "id IN (SELECT toId FROM entity_relationship WHERE fromId=:testSuiteId AND toEntity='%s' AND relation=%d AND fromEntity='%s')",
+              Entity.TEST_CASE, Relationship.CONTAINS.ordinal(), Entity.TEST_SUITE));
     }
 
     if (status != null) {
-      conditions.add(String.format("status = '%s'", status));
+      conditions.add("status = :testCaseStatus");
     }
 
     if (type != null) {
@@ -258,20 +256,21 @@ public class ListFilter extends Filter<ListFilter> {
     };
   }
 
-  private String getFqnPrefixCondition(String tableName, String fqnPrefix) {
+  private String getFqnPrefixCondition(String tableName, String fqnPrefix, String paramName) {
+    String databaseFqnHash =
+        String.format("%s%s%%", FullyQualifiedName.buildHash(fqnPrefix), Entity.SEPARATOR);
+    queryParams.put(paramName + "Hash", databaseFqnHash);
     return tableName == null
-        ? String.format(
-            "fqnHash LIKE '%s%s%%'", FullyQualifiedName.buildHash(fqnPrefix), Entity.SEPARATOR)
-        : String.format(
-            "%s.fqnHash LIKE '%s%s%%'",
-            tableName, FullyQualifiedName.buildHash(fqnPrefix), Entity.SEPARATOR);
+        ? String.format("fqnHash LIKE :%s", paramName + "Hash")
+        : String.format("%s.fqnHash LIKE :%s", tableName, paramName + "Hash");
   }
 
   private String getWebhookTypePrefixCondition(String tableName, String typePrefix) {
-    typePrefix = escape(typePrefix);
+    typePrefix = String.format("%s%%", escape(typePrefix));
+    queryParams.put("typePrefix", typePrefix);
     return tableName == null
-        ? String.format("webhookType LIKE '%s%%'", typePrefix)
-        : String.format("%s.webhookType LIKE '%s%%'", tableName, typePrefix);
+        ? "webhookType LIKE :typePrefix"
+        : tableName + ".webhookType LIKE typePrefix";
   }
 
   private String getPipelineTypePrefixCondition(String tableName, String pipelineType) {
@@ -279,15 +278,13 @@ public class ListFilter extends Filter<ListFilter> {
     String inCondition = getInConditionFromString(pipelineType);
     if (Boolean.TRUE.equals(DatasourceConfig.getInstance().isMySQL())) {
       return tableName == null
-          ? String.format(
-              "JSON_UNQUOTE(JSON_EXTRACT(ingestion_pipeline_entity.json, '$.pipelineType')) IN (%s)",
-              inCondition)
+          ? String.format("pipelineType IN (%s)", inCondition)
           : String.format(
               "%s.JSON_UNQUOTE(JSON_EXTRACT(ingestion_pipeline_entity.json, '$.pipelineType')) IN (%s)",
               tableName, inCondition);
     }
     return tableName == null
-        ? String.format("ingestion_pipeline_entity.json->>'pipelineType' IN (%s)", inCondition)
+        ? String.format("pipelineType IN (%s)", inCondition)
         : String.format("%s.json->>'pipelineType' IN (%s)", tableName, inCondition);
   }
 
@@ -298,10 +295,11 @@ public class ListFilter extends Filter<ListFilter> {
   }
 
   private String getCategoryPrefixCondition(String tableName, String category) {
-    category = escape(category);
+    category = String.format("%s%%", escape(category));
+    queryParams.put("escapedCategory", category);
     return tableName == null
-        ? String.format("category LIKE '%s%s%%'", category, "")
-        : String.format("%s.category LIKE '%s%s%%'", tableName, category, "");
+        ? "category LIKE :escapedCategory"
+        : String.format(tableName + ".category LIKE :escapedCategory");
   }
 
   private String getStatusPrefixCondition(String tableName, String statusPrefix) {
@@ -312,11 +310,13 @@ public class ListFilter extends Filter<ListFilter> {
         String format = "\"" + s + "\"";
         condition.add(format);
       }
-      return "status in (" + String.join(",", condition) + ")";
+      queryParams.put("statusList", String.join(",", condition));
+      return "status in (:statusList)";
     }
+    queryParams.put("statusPrefix", String.format("%s%%", statusPrefix));
     return tableName == null
-        ? String.format("status LIKE '%s%s%%'", statusPrefix, "")
-        : String.format("%s.status LIKE '%s%s%%'", tableName, statusPrefix, "");
+        ? "status LIKE :statusPrefix"
+        : tableName + ".status LIKE :statusPrefix";
   }
 
   protected String addCondition(List<String> conditions) {

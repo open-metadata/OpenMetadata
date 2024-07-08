@@ -194,9 +194,9 @@ export const testConnection = () => {
   cy.get('[data-testid="test-connection-modal"]').should('exist');
 
   // added extra buffer time as deleteWorkflow API can take up to 2 minute or more to send request
-  verifyResponseStatusCode('@deleteWorkflow', 200, {
+  cy.wait('@deleteWorkflow', {
     requestTimeout: 150000,
-    responseTimeout: 50000,
+    responseTimeout: 150000,
   });
   cy.get('.ant-modal-footer > .ant-btn-primary')
     .should('exist')

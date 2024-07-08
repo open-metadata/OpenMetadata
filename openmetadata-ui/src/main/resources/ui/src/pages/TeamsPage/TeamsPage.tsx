@@ -217,7 +217,7 @@ const TeamsPage = () => {
     setIsPageLoading(loadPage);
     try {
       const data = await getTeamByName(name, {
-        fields: 'users,parents,profile',
+        fields: 'users,parents,profile,owner',
         include: Include.All,
       });
 
@@ -268,6 +268,7 @@ const TeamsPage = () => {
         teamType: data.teamType as TeamType,
         parents: fqn ? [selectedTeam.id] : undefined,
         email: data.email || undefined,
+        isJoinable: data.isJoinable,
       };
       const res = await createTeam(teamData);
       if (res) {

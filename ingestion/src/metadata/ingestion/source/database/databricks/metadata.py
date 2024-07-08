@@ -68,8 +68,8 @@ from metadata.utils.tag_utils import get_ometa_tag_and_classification
 
 logger = ingestion_logger()
 
-DATABRICKS_TAG = "DATABRICK TAG"
-DATABRICKS_TAG_CLASSIFICATION = "DATABRICK TAG CLASSIFICATION"
+DATABRICKS_TAG = "DATABRICKS TAG"
+DATABRICKS_TAG_CLASSIFICATION = "DATABRICKS TAG CLASSIFICATION"
 DEFAULT_TAG_VALUE = "NONE"
 
 
@@ -307,8 +307,8 @@ class DatabricksSource(ExternalTableLineageMixin, CommonDbSourceService, MultiDB
     def create(
         cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None
     ):
-        config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
-        connection: DatabricksConnection = config.serviceConnection.__root__.config
+        config: WorkflowSource = WorkflowSource.model_validate(config_dict)
+        connection: DatabricksConnection = config.serviceConnection.root.config
         if not isinstance(connection, DatabricksConnection):
             raise InvalidSourceException(
                 f"Expected DatabricksConnection, but got {connection}"
