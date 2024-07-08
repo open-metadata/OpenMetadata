@@ -200,7 +200,7 @@ server_config = OpenMetadataConnection(
         jwtToken="<YOUR-INGESTION-BOT-JWT-TOKEN>",
     ),
     verifySSL="validate" # ignore, validate or no-ssl,
-    sslConfig=ValidateSslClientConfig(caCertificate="/path/to/rootCert",sslCertificate="/path/to/cert",sslKey="/path/to/key"),
+    sslConfig=ValidateSslClientConfig(caCertificate="/path/to/rootCert"),
 )
 
 metadata = OpenMetadata(server_config)
