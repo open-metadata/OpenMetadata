@@ -20,7 +20,10 @@ import { useTranslation } from 'react-i18next';
 import { DESCRIPTION_MAX_PREVIEW_CHARACTERS } from '../../../constants/constants';
 import { formatContent, isHTMLString } from '../../../utils/BlockEditorUtils';
 import { getTrimmedContent } from '../../../utils/CommonUtils';
-import { customHTMLRenderer } from './CustomHtmlRederer/CustomHtmlRederer';
+import {
+  customHTMLRenderer,
+  replaceLatex,
+} from './CustomHtmlRederer/CustomHtmlRederer';
 import './rich-text-editor-previewer.less';
 import { PreviewerProp } from './RichTextEditor.interface';
 
@@ -112,7 +115,7 @@ const RichTextEditorPreviewer = ({
         <Viewer
           extendedAutolinks
           customHTMLRenderer={customHTMLRenderer}
-          initialValue={viewerValue}
+          initialValue={replaceLatex(viewerValue)}
           key={uniqueId()}
           linkAttributes={{ target: '_blank' }}
         />
