@@ -8,12 +8,8 @@ from metadata.ingestion.models.custom_pydantic import CustomSecretStr
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.workflow.metadata import MetadataWorkflow
 
-from ..postgres.conftest import db_service as postgres_service
-from ..postgres.conftest import ingest_metadata as ingest_postgres
 
 __all__ = [
-    "ingest_postgres",
-    "postgres_service",
     "postgres_container",
 ]
 
