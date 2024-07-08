@@ -72,7 +72,6 @@ describe('Search Index Application', { tags: 'Settings' }, () => {
     cy.get('[data-testid="configuration"]').click();
 
     cy.get('#root\\/batchSize').type('0');
-
     cy.get(
       '[data-testid="select-widget"] > .ant-select-selector > .ant-select-selection-item'
     ).click();

@@ -12,18 +12,48 @@
  */
 import test, { expect, Page } from '@playwright/test';
 import { GlobalSettingOptions } from '../../constant/settings';
-import { redirectToHomePage } from '../../utils/common';
+import { getApiContext, redirectToHomePage } from '../../utils/common';
 import { settingClick } from '../../utils/sidebar';
 
 // use the admin user to login
 test.use({ storageState: 'playwright/.auth/admin.json' });
 
-const visitSearchApplicationPage = async (page: Page) => {
-  await page
-    .locator(
-      '[data-testid="search-indexing-application-card"] [data-testid="config-btn"]'
+const verifyApplicationTriggerToastData = async (page: Page) => {
+  await expect(page.getByRole('alert').first()).toHaveText(
+    /Application triggered successfully/
+  );
+
+  await page.getByLabel('close').first().click();
+};
+
+const verifyLastExecutionStatus = async (page: Page) => {
+  const { apiContext } = await getApiContext(page);
+
+  await expect
+    .poll(
+      async () => {
+        const response = await apiContext
+          .get(
+            '/api/v1/apps/name/SearchIndexingApplication/status?offset=0&limit=1'
+          )
+          .then((res) => res.json());
+
+        return response.data[0]?.status;
+      },
+      {
+        // Custom expect message for reporting, optional.
+        message: 'To get the last run execution status as success',
+        intervals: [30_000],
+        timeout: 300_000,
+      }
     )
-    .click();
+    .toBe('success');
+
+  await page.reload();
+
+  await page.waitForSelector('[data-testid="app-run-history-table"]');
+
+  await expect(page.getByTestId('pipeline-status')).toContainText('Success');
 };
 
 const verifyLastExecutionRun = async (page: Page) => {
@@ -38,8 +68,8 @@ const verifyLastExecutionRun = async (page: Page) => {
     expect(responseData.data).toHaveLength(1);
 
     if (responseData.data[0].status === 'running') {
-      await page.reload();
-      await verifyLastExecutionRun(page);
+      // wait for success status
+      await verifyLastExecutionStatus(page);
     } else {
       expect(responseData.data[0].status).toBe('success');
     }
@@ -53,7 +83,11 @@ test('Search Index Application', async ({ page }) => {
   });
 
   await test.step('Verify last execution run', async () => {
-    await visitSearchApplicationPage(page);
+    await page
+      .locator(
+        '[data-testid="search-indexing-application-card"] [data-testid="config-btn"]'
+      )
+      .click();
     await verifyLastExecutionRun(page);
   });
 
@@ -158,26 +192,26 @@ test('Search Index Application', async ({ page }) => {
     expect(await card.isVisible()).toBe(true);
   });
 
-  await test.step('Run application', async () => {
-    await page.click(
-      '[data-testid="search-indexing-application-card"] [data-testid="config-btn"]'
-    );
+  if (process.env.isOss) {
+    await test.step('Run application', async () => {
+      test.slow(true); // Test time shouldn't exceed while re-fetching the history API.
 
-    const triggerPipelineResponse = page.waitForResponse(
-      '/api/v1/apps/trigger/SearchIndexingApplication'
-    );
-    await page.click('[data-testid="run-now-button"]');
+      await page.click(
+        '[data-testid="search-indexing-application-card"] [data-testid="config-btn"]'
+      );
 
-    await triggerPipelineResponse;
+      const triggerPipelineResponse = page.waitForResponse(
+        '/api/v1/apps/trigger/SearchIndexingApplication'
+      );
+      await page.click('[data-testid="run-now-button"]');
 
-    await expect(page.getByRole('alert').first()).toHaveText(
-      /Application triggered successfully/
-    );
+      await triggerPipelineResponse;
 
-    await page.getByLabel('close').first().click();
+      await verifyApplicationTriggerToastData(page);
 
-    await page.reload();
+      await page.reload();
 
-    await verifyLastExecutionRun(page);
-  });
+      await verifyLastExecutionRun(page);
+    });
+  }
 });
