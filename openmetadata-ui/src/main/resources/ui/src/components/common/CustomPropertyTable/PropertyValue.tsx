@@ -304,6 +304,7 @@ export const PropertyValue: FC<PropertyValueProps> = ({
                   allowClear
                   data-testid="time-picker"
                   disabled={isLoading}
+                  format={format}
                   style={{ width: '250px' }}
                 />
               </Form.Item>
