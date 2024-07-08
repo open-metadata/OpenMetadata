@@ -74,8 +74,6 @@ class RedshiftWithDBTIngestionClass extends ServiceBaseClass {
     cy.get('#root\\/schemaFilterPattern\\/includes')
       .scrollIntoView()
       .type('dbt_jaffle{enter}');
-
-    cy.get('#root\\/includeViews').click();
   }
 
   runAdditionalTests() {

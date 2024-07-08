@@ -218,6 +218,7 @@ describe('Data Insight feature', { tags: 'Observability' }, () => {
 
   it('Verifying App analytics tab', () => {
     cy.sidebarClick(SidebarItem.DATA_INSIGHT);
+    verifyResponseStatusCode('@getKpi', 200);
     cy.get('[data-menu-id*="app-analytics"]').click();
     verifyResponseStatusCode('@dataInsightsChart', 200);
     cy.get('[data-testid="summary-card-content"]').should('be.visible');
