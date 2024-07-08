@@ -1599,15 +1599,15 @@ class SampleDataSource(
 
             life_cycle_data.updated = AccessDetails(
                 timestamp=Timestamp(
-                        int(
-                            convert_timestamp_to_milliseconds(
-                                (
-                                    datetime.now()
-                                    - timedelta(days=life_cycle["updated"]["days"])
-                                ).timestamp()
-                            )
-                        ),
+                    int(
+                        convert_timestamp_to_milliseconds(
+                            (
+                                datetime.now()
+                                - timedelta(days=life_cycle["updated"]["days"])
+                            ).timestamp()
+                        )
                     ),
+                ),
                 accessedByAProcess=life_cycle["updated"].get("accessedByAProcess"),
             )
 
