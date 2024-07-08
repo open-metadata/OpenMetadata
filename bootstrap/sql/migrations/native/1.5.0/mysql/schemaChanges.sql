@@ -18,6 +18,20 @@ SET
   , '$.connection.config.appName'), '$.connection.config.metastoreConnection')
 WHERE dbse.serviceType = 'DeltaLake';
 
+-- Allow all bots to update the ingestion pipeline status
+UPDATE policy_entity
+SET json = JSON_ARRAY_APPEND(
+    json,
+    '$.rules',
+    CAST('{
+      "name": "BotRule-IngestionPipeline",
+      "description": "A bot can Edit ingestion pipelines to pass the status",
+      "resources": ["ingestionPipeline"],
+      "operations": ["ViewAll","EditAll"],
+      "effect": "allow"
+    }' AS JSON)
+  )
+WHERE name = 'DefaultBotPolicy';
 
 -- create API service entity
 CREATE TABLE IF NOT EXISTS api_service_entity (
