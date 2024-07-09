@@ -1,0 +1,6 @@
+{
+    "name": "sample endpoint",
+    "apiCollection": "MOCK_API_SERVICE.MOCK_API_COLLECTION",
+    "endpointURL": "localhost:1234/api/v2"
+  }
+  

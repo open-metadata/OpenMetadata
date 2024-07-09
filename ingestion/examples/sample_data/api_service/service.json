@@ -1,0 +1,14 @@
+{
+	"type": "API",
+	"serviceName": "sample_api",
+	"serviceConnection": {
+		"config": {
+			"type": "REST",
+			"openAPISchemaURL": "http://localhost:2000",
+    		"token":"mock_token"
+		}
+	},
+	"sourceConfig": {
+   		"config": {}
+  	}
+}
