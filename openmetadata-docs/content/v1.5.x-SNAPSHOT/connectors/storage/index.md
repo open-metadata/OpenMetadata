@@ -100,7 +100,6 @@ Our global manifest looks like follows:
             "isPartitioned": false,
             "containerName": "collate-demo-storage"
         },
-        // unstructured file
         {
             "dataPath": "solution.pdf",
         },
