@@ -209,6 +209,10 @@
     },
     "provider" : {
       "$ref": "../../../type/basic.json#/definitions/providerType"
+    },
+    "applicationType": {
+      "description": "Type of the application when pipelineType is 'application'.",
+      "type": "string"
     }
   },
   "required": [
