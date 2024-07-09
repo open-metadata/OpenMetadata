@@ -26,7 +26,9 @@ import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import java.io.IOException;
+import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import javax.json.JsonPatch;
 import javax.validation.Valid;
@@ -47,6 +49,7 @@ import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
+import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.entities.docStore.CreateDocument;
 import org.openmetadata.schema.entities.docStore.Document;
@@ -61,7 +64,9 @@ import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.util.DefaultTemplateProvider;
 import org.openmetadata.service.util.ResultList;
+import org.openmetadata.service.util.TemplateProvider;
 
 @Slf4j
 @Path("/v1/docStore")
@@ -71,6 +76,7 @@ import org.openmetadata.service.util.ResultList;
 @Collection(name = "knowledgePanel", order = 2)
 public class DocStoreResource extends EntityResource<Document, DocumentRepository> {
   public static final String COLLECTION_PATH = "/v1/docStore";
+  private static TemplateProvider templateProvider;
 
   @Override
   public Document addHref(UriInfo uriInfo, Document doc) {
@@ -96,6 +102,7 @@ public class DocStoreResource extends EntityResource<Document, DocumentRepositor
   public void initialize(OpenMetadataApplicationConfig config) throws IOException {
     // Load any existing rules from database, before loading seed data.
     repository.initSeedDataFromResources();
+    templateProvider = new DefaultTemplateProvider();
   }
 
   @GET
@@ -320,7 +327,38 @@ public class DocStoreResource extends EntityResource<Document, DocumentRepositor
       @Context SecurityContext securityContext,
       @Valid CreateDocument cd) {
     Document doc = getDocument(cd, securityContext.getUserPrincipal().getName());
+
+    Response emailTemplateValidationResponse = null;
+    if (doc.getEntityType().endsWith(DefaultTemplateProvider.ENTITY_TYPE_EMAIL_TEMPLATE)) {
+      emailTemplateValidationResponse = validateTemplate(doc);
+    }
+
+    if (emailTemplateValidationResponse != null) {
+      return emailTemplateValidationResponse;
+    }
+
     return createOrUpdate(uriInfo, securityContext, doc);
+  }
+
+  private Response validateTemplate(Document document) {
+    Map<String, Object> validationResponse = templateProvider.validateEmailTemplate(document);
+    boolean isValid =
+        (boolean) validationResponse.get(DefaultTemplateProvider.EMAIL_TEMPLATE_VALID);
+
+    @SuppressWarnings("unchecked")
+    List<String> missingPlaceholders =
+        (List<String>)
+            validationResponse.getOrDefault(
+                DefaultTemplateProvider.EMAIL_TEMPLATE_MISSING_PLACEHOLDERS,
+                Collections.emptyList());
+
+    if (isValid) {
+      return null; // Validation passed
+    }
+
+    return Response.status(Response.Status.BAD_REQUEST.getStatusCode())
+        .entity(new EmailTemplateValidationErrorResponse(missingPlaceholders))
+        .build();
   }
 
   @PATCH
@@ -427,5 +465,19 @@ public class DocStoreResource extends EntityResource<Document, DocumentRepositor
         .withFullyQualifiedName(cd.getFullyQualifiedName())
         .withData(cd.getData())
         .withEntityType(cd.getEntityType());
+  }
+}
+
+@Getter
+class EmailTemplateValidationErrorResponse {
+  private final int status;
+  private final String message;
+  private final List<String> missingParameters;
+  public static final String EMAIL_VALIDATION_MESSAGE = "Email template validation failed.";
+
+  public EmailTemplateValidationErrorResponse(List<String> missingParameters) {
+    this.status = Response.Status.BAD_REQUEST.getStatusCode();
+    this.message = EMAIL_VALIDATION_MESSAGE;
+    this.missingParameters = missingParameters;
   }
 }
