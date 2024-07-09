@@ -41,7 +41,7 @@ from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.source.storage.gcs.metadata import (
     GCSBucketResponse,
     GCSContainerDetails,
-    GCSSource,
+    GcsSource,
 )
 from metadata.ingestion.source.storage.storage_service import (
     OPENMETADATA_TEMPLATE_FILE_NAME,
@@ -59,7 +59,12 @@ MOCK_OBJECT_STORE_CONFIG = {
         "serviceConnection": {
             "config": {
                 "type": "GCS",
-                "credentials": {"gcpConfig": "/tmp/credentials.json"},
+                "credentials": {
+                    "gcpConfig": {
+                        "type": "service_account",
+                        "projectId": "test_project",
+                    }
+                },
             }
         },
         "sourceConfig": {
@@ -67,7 +72,12 @@ MOCK_OBJECT_STORE_CONFIG = {
                 "type": "StorageMetadata",
                 "containerFilterPattern": {"includes": ["^test_*"]},
                 "storageMetadataConfigSource": {
-                    "securityConfig": {"gcpConfig": "/tmp/credentials.json"},
+                    "securityConfig": {
+                        "gcpConfig": {
+                            "type": "service_account",
+                            "projectId": "test_project",
+                        }
+                    },
                     "prefixConfig": {
                         "containerName": "test_bucket",
                         "objectPrefix": "manifest",
@@ -151,16 +161,20 @@ class StorageUnitTest(TestCase):
     def __init__(self, method_name: str, test_connection) -> None:
         super().__init__(method_name)
         test_connection.return_value = False
-        self.config = OpenMetadataWorkflowConfig.parse_obj(MOCK_OBJECT_STORE_CONFIG)
+        self.config = OpenMetadataWorkflowConfig.model_validate(
+            MOCK_OBJECT_STORE_CONFIG
+        )
 
         # This already validates that the source can be initialized
-        self.object_store_source = GCSSource.create(
+        self.object_store_source = GcsSource.create(
             MOCK_OBJECT_STORE_CONFIG["source"],
             self.config.workflowConfig.openMetadataServerConfig,
         )
         self.gcs_reader = get_reader(
             config_source=GCSConfig(),
-            client=self.object_store_source.gcs_clients.storage_client.clients[0],
+            client=self.object_store_source.gcs_clients.storage_client.clients[
+                "test_project"
+            ],
         )
 
     def test_create_from_invalid_source(self):
@@ -183,7 +197,12 @@ class StorageUnitTest(TestCase):
                 "config": {
                     "type": "StorageMetadata",
                     "storageMetadataConfigSource": {
-                        "securityConfig": {"gcpConfig": "/tmp/credentials.json"},
+                        "securityConfig": {
+                            "gcpConfig": {
+                                "type": "service_account",
+                                "projectId": "test_project",
+                            }
+                        },
                         "prefixConfig": {
                             "containerName": "test_bucket",
                             "objectPrefix": "manifest",
@@ -194,14 +213,14 @@ class StorageUnitTest(TestCase):
         }
         self.assertRaises(
             InvalidSourceException,
-            GCSSource.create,
+            GcsSource.create,
             not_object_store_source,
             self.config.workflowConfig.openMetadataServerConfig,
         )
 
     def test_gcs_buckets_fetching(self):
-        self.object_store_source.storage_client.clients[
-            0
+        self.object_store_source.gcs_clients.storage_client.clients[
+            "test_project"
         ].list_buckets = lambda: MOCK_BUCKETS_RESPONSE
         self.assertListEqual(self.object_store_source.fetch_buckets(), EXPECTED_BUCKETS)
 
@@ -232,7 +251,7 @@ class StorageUnitTest(TestCase):
             project_id="test_project",
             creation_date=datetime.datetime(2000, 1, 1),
         )
-        self.object_store_source._fetch_metric = lambda bucket_name, metric: 100.0
+        self.object_store_source._fetch_metric = lambda bucket, metric: 100.0
         self.assertEqual(
             GCSContainerDetails(
                 name=bucket_response.name,
@@ -254,9 +273,9 @@ class StorageUnitTest(TestCase):
 
     def test_generate_structured_container(self):
         self.object_store_source._get_sample_file_path = (
-            lambda bucket_name, metadata_entry: "transactions/file_1.csv"
+            lambda bucket, metadata_entry: "transactions/file_1.csv"
         )
-        self.object_store_source._fetch_metric = lambda bucket_name, metric: 100.0
+        self.object_store_source._fetch_metric = lambda bucket, metric: 100.0
         columns: List[Column] = [
             Column(
                 name=ColumnName("transaction_id"),
@@ -390,7 +409,11 @@ class StorageUnitTest(TestCase):
         )
         self.assertIsNone(
             self.object_store_source._get_sample_file_path(
-                bucket_name="test_bucket",
+                bucket=GCSBucketResponse(
+                    name="test_bucket",
+                    project_id="test_project",
+                    creation_date=datetime.datetime(2000, 1, 1),
+                ),
                 metadata_entry=MetadataEntry(
                     dataPath="invalid_path",
                     structureFormat="csv",
@@ -404,11 +427,15 @@ class StorageUnitTest(TestCase):
             lambda metadata_entry: "/transactions"
         )
         self.object_store_source.gcs_clients.storage_client.clients[
-            0
+            "test_project"
         ].list_blobs = lambda bucket, prefix, max_results: MOCK_OBJECT_FILE_PATHS
 
         candidate = self.object_store_source._get_sample_file_path(
-            bucket_name="test_bucket",
+            bucket=GCSBucketResponse(
+                name="test_bucket",
+                project_id="test_project",
+                creation_date=datetime.datetime(2000, 1, 1),
+            ),
             metadata_entry=MetadataEntry(
                 dataPath="/transactions",
                 structureFormat="csv",
@@ -425,5 +452,7 @@ class StorageUnitTest(TestCase):
         )
 
     def return_metadata_entry(self):
-        container_config = StorageContainerConfig.parse_obj(MOCK_METADATA_FILE_RESPONSE)
+        container_config = StorageContainerConfig.model_validate(
+            MOCK_METADATA_FILE_RESPONSE
+        )
         return container_config.entries
