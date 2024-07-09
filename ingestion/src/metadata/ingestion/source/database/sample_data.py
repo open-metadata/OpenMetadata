@@ -608,7 +608,7 @@ class SampleDataSource(
         yield from self.ingest_incidents()
         yield from self.ingest_logical_test_suite()
         yield from self.ingest_data_insights()
-        # yield from self.ingest_life_cycle()
+        yield from self.ingest_life_cycle()
         yield from self.ingest_api_service()
 
     def ingest_teams(self) -> Iterable[Either[CreateTeamRequest]]:
