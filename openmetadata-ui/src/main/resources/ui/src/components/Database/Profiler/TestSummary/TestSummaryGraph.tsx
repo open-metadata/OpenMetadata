@@ -12,14 +12,8 @@
  */
 
 import { Typography } from 'antd';
-import { first, isEmpty, isUndefined, omitBy, round } from 'lodash';
-import React, {
-  Fragment,
-  ReactElement,
-  useMemo,
-  useRef,
-  useState,
-} from 'react';
+import { first, isEmpty, isUndefined } from 'lodash';
+import React, { ReactElement, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   Area,
@@ -46,7 +40,6 @@ import {
   YELLOW_2,
 } from '../../../../constants/Color.constants';
 import { GRAPH_BACKGROUND_COLOR } from '../../../../constants/constants';
-import { COLORS } from '../../../../constants/profiler.constant';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../../enums/common.enum';
 import {
   Thread,
@@ -54,13 +47,11 @@ import {
 } from '../../../../generated/entity/feed/thread';
 import { TestCaseStatus } from '../../../../generated/tests/testCase';
 import { axisTickFormatter } from '../../../../utils/ChartUtils';
+import { prepareChartData } from '../../../../utils/DataQuality/TestSummaryGraphUtils';
 import { formatDateTime } from '../../../../utils/date-time/DateTimeUtils';
 import { useActivityFeedProvider } from '../../../ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
 import ErrorPlaceHolder from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
-import {
-  LineChartRef,
-  TestCaseChartDataType,
-} from '../ProfilerDashboard/profilerDashboard.interface';
+import { LineChartRef } from '../ProfilerDashboard/profilerDashboard.interface';
 import TestSummaryCustomTooltip from '../TestSummaryCustomTooltip/TestSummaryCustomTooltip.component';
 import { TestSummaryGraphProps } from './TestSummaryGraph.interface';
 
@@ -90,59 +81,11 @@ function TestSummaryGraph({
   }, [chartRef, chartMouseEvent]);
 
   const chartData = useMemo(() => {
-    const params =
-      testCaseParameterValue && testCaseParameterValue?.length >= 2
-        ? testCaseParameterValue
-        : [];
-    const dataPoints: TestCaseChartDataType['data'] = [];
-    const yValues = params.reduce((acc, curr, i) => {
-      return { ...acc, [`y${i + 1}`]: parseInt(curr.value ?? '') };
-    }, {});
-    testCaseResults.forEach((result) => {
-      const values = result.testResultValue?.reduce((acc, curr) => {
-        const value = round(parseFloat(curr.value ?? ''), 2) || 0;
-
-        return {
-          ...acc,
-          [curr.name ?? 'value']: value,
-        };
-      }, {});
-      const metric = {
-        passedRows: result.passedRows,
-        failedRows: result.failedRows,
-        passedRowsPercentage: isUndefined(result.passedRowsPercentage)
-          ? undefined
-          : `${round(result.passedRowsPercentage, 2)}%`,
-        failedRowsPercentage: isUndefined(result.failedRowsPercentage)
-          ? undefined
-          : `${round(result.failedRowsPercentage, 2)}%`,
-      };
-
-      dataPoints.push({
-        name: result.timestamp,
-        status: result.testCaseStatus,
-        ...values,
-        ...omitBy(metric, isUndefined),
-        boundArea: [
-          result?.minBound ?? yValues.y1,
-          result?.maxBound ?? yValues.y2,
-        ],
-        incidentId: result.incidentId,
-        task: entityThread.find(
-          (task) => task.task?.testCaseResolutionStatusId === result.incidentId
-        ),
-      });
+    return prepareChartData({
+      testCaseParameterValue: testCaseParameterValue ?? [],
+      testCaseResults,
+      entityThread,
     });
-    dataPoints.reverse();
-
-    return {
-      information:
-        testCaseResults[0]?.testResultValue?.map((info, i) => ({
-          label: info.name ?? '',
-          color: COLORS[i],
-        })) ?? [],
-      data: dataPoints,
-    };
   }, [testCaseResults, entityThread, testCaseParameterValue]);
 
   const incidentData = useMemo(() => {
@@ -208,10 +151,10 @@ function TestSummaryGraph({
     );
   };
 
-  const referenceArea = () => {
+  const referenceArea = useMemo(() => {
     const params = testCaseParameterValue ?? [];
 
-    if (params.length && params.length < 2) {
+    if (params.length === 1) {
       return (
         <ReferenceLine
           label={params[0].name}
@@ -222,7 +165,7 @@ function TestSummaryGraph({
     }
 
     return <></>;
-  };
+  }, [testCaseParameterValue]);
 
   if (isEmpty(testCaseResults)) {
     return (
@@ -284,27 +227,26 @@ function TestSummaryGraph({
           position={{ y: 100 }}
           wrapperStyle={{ pointerEvents: 'auto' }}
         />
-        {referenceArea()}
+        {referenceArea}
         <Legend payload={customLegendPayLoad} />
+        <Area
+          connectNulls
+          activeDot={false}
+          dataKey="boundArea"
+          dot={false}
+          fill={GREEN_3_OPACITY}
+          stroke={GREEN_3}
+          strokeDasharray="4"
+          type="monotone"
+        />
         {chartData?.information?.map((info) => (
-          <Fragment key={info.label}>
-            <Line
-              dataKey={info.label}
-              dot={updatedDot}
-              stroke={info.color}
-              type="monotone"
-            />
-            <Area
-              connectNulls
-              activeDot={false}
-              dataKey="boundArea"
-              dot={false}
-              fill={GREEN_3_OPACITY}
-              stroke={GREEN_3}
-              strokeDasharray="4"
-              type="monotone"
-            />
-          </Fragment>
+          <Line
+            dataKey={info.label}
+            dot={updatedDot}
+            key={info.label}
+            stroke={info.color}
+            type="monotone"
+          />
         ))}
 
         {incidentData.length > 0 &&
