@@ -16,9 +16,10 @@ import { persist } from 'zustand/middleware';
 import {
   DEFAULT_DOMAIN_VALUE,
   DOMAIN_STORAGE_KEY,
-  PAGE_SIZE_LARGE,
+  ES_MAX_PAGE_SIZE,
 } from '../constants/constants';
 import { Domain } from '../generated/entity/domains/domain';
+import { EntityReference } from '../generated/entity/type';
 import { DomainStore } from '../interface/store.interface';
 import { getDomainList } from '../rest/domainAPI';
 import {
@@ -32,6 +33,7 @@ export const useDomainStore = create<DomainStore>()(
   persist(
     (set, get) => ({
       domains: [],
+      userDomains: [],
       domainLoading: false,
       activeDomain: DEFAULT_DOMAIN_VALUE, // Set default value here
       activeDomainEntityRef: undefined,
@@ -42,10 +44,12 @@ export const useDomainStore = create<DomainStore>()(
         const userDomainsObj = isAdmin ? [] : userDomains;
         const userDomainFqn =
           userDomainsObj.map((item) => item.fullyQualifiedName) ?? [];
-        set({ domainLoading: true });
+
+        set({ domainLoading: true, userDomains: userDomainsObj });
+
         try {
           const { data } = await getDomainList({
-            limit: PAGE_SIZE_LARGE,
+            limit: ES_MAX_PAGE_SIZE,
             fields: 'parent',
           });
 
@@ -58,8 +62,15 @@ export const useDomainStore = create<DomainStore>()(
 
           set({
             domains: filteredDomains,
-            domainOptions: getDomainOptions(filteredDomains),
+            domainOptions: getDomainOptions(
+              isAdmin ? filteredDomains : userDomainsObj,
+              isAdmin
+            ),
           });
+
+          if (!isAdmin && userDomainsObj.length > 0) {
+            set({ activeDomain: userDomainsObj[0].fullyQualifiedName });
+          }
         } catch (error) {
           showErrorToast(error as AxiosError);
         } finally {
@@ -83,6 +94,11 @@ export const useDomainStore = create<DomainStore>()(
         set({
           domains: domainsArr,
           domainOptions: getDomainOptions(domainsArr),
+        });
+      },
+      setUserDomains: (userDomainsArr: EntityReference[]) => {
+        set({
+          userDomains: userDomainsArr,
         });
       },
     }),

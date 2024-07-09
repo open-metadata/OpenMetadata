@@ -13,7 +13,7 @@
 
 import { PlusOutlined } from '@ant-design/icons';
 import { Button, Form, Input, Modal, Select } from 'antd';
-import { useForm } from 'antd/es/form/Form';
+import { useForm } from 'antd/lib/form/Form';
 import { AxiosError } from 'axios';
 import { toLower, trim } from 'lodash';
 import React, { useEffect, useMemo, useRef, useState } from 'react';

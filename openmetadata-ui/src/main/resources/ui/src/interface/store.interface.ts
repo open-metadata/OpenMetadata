@@ -86,6 +86,7 @@ export interface ApplicationStore
 
 export interface DomainStore {
   domains: Domain[];
+  userDomains: EntityReference[];
   domainLoading: boolean;
   activeDomain: string;
   activeDomainEntityRef?: EntityReference;
@@ -95,4 +96,5 @@ export interface DomainStore {
   refreshDomains: () => Promise<void>;
   updateActiveDomain: (activeDomainKey: string) => void;
   setDomains: (domains: Domain[]) => void;
+  setUserDomains: (userDomainsArr: EntityReference[]) => void;
 }

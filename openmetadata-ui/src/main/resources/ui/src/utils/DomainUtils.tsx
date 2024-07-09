@@ -196,13 +196,18 @@ export const domainTypeTooltipDataRender = () => (
   </Space>
 );
 
-export const getDomainOptions = (domains: Domain[] | EntityReference[]) => {
-  const domainOptions: ItemType[] = [
-    {
-      label: t('label.all-domain-plural'),
-      key: DEFAULT_DOMAIN_VALUE,
-    },
-  ];
+export const getDomainOptions = (
+  domains: Domain[] | EntityReference[],
+  isAdmin = true
+) => {
+  const domainOptions: ItemType[] = isAdmin
+    ? [
+        {
+          label: t('label.all-domain-plural'),
+          key: DEFAULT_DOMAIN_VALUE,
+        },
+      ]
+    : [];
   domains.forEach((domain) => {
     domainOptions.push({
       label: getEntityName(domain),

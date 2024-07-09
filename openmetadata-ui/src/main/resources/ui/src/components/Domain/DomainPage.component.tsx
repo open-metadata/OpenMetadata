@@ -177,7 +177,7 @@ const DomainPage = () => {
             : ERROR_PLACEHOLDER_TYPE.CUSTOM
         }
         onClick={handleAddDomainClick}>
-        {t('message.rootDomains-not-configured')}
+        {t('message.domains-not-configured')}
       </ErrorPlaceHolder>
     );
   }
