@@ -31,7 +31,7 @@ export const prepareChartData = ({
   entityThread,
 }: PrepareChartDataType) => {
   const params =
-    testCaseParameterValue?.length >= 2 ? testCaseParameterValue : [];
+    testCaseParameterValue.length === 2 ? testCaseParameterValue : [];
   const dataPoints: TestCaseChartDataType['data'] = [];
   const yValues = params.reduce((acc, curr, i) => {
     return { ...acc, [`y${i + 1}`]: parseInt(curr.value ?? '') };
