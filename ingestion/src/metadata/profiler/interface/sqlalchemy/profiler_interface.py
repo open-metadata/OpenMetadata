@@ -20,7 +20,7 @@ import threading
 import traceback
 from collections import defaultdict
 from datetime import datetime
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Any
 
 from sqlalchemy import Column, inspect, text
 from sqlalchemy.exc import DBAPIError, ProgrammingError, ResourceClosedError
@@ -530,8 +530,15 @@ class SQAProfilerInterface(ProfilerInterface, SQAInterfaceMixin):
         sampler = self._get_sampler(
             table=table,
         )
-
-        return sampler.fetch_sample_data(columns)
+        sample = sampler.fetch_sample_data(columns)
+        # TODO: this is innefficient, we should change the schema to be a string and
+        # manage the casting when creating the TableData object with the logic coupled to OpenMetdata
+        # DataType / Pydantic instead of letting the underlying ORM / DB client handle it.
+        for i, row in enumerate(sample.rows):
+            sample.rows[i] = list(row)
+            for j, value in enumerate(row):
+                sample.rows[i][j] = self._json_safe(value)
+        return sample
 
     def get_composed_metrics(
         self, column: Column, metric: Metrics, column_results: Dict
@@ -589,3 +596,14 @@ class SQAProfilerInterface(ProfilerInterface, SQAInterfaceMixin):
         """Clean up session"""
         self.session.close()
         self.connection.pool.dispose()
+
+    @staticmethod
+    def _json_safe(data: Any):
+        try:
+            TableData(rows=[[data]]).model_dump_json()
+            return data
+        except Exception:  # noqa
+            logger.debug(
+                f"Failed to serialize data: {type(data).__name__} to JSON. Returning as string."
+            )
+            return str(data)
