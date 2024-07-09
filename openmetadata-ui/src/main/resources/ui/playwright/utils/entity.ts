@@ -24,7 +24,7 @@ import {
 } from '../constant/delete';
 import { ES_RESERVED_CHARACTERS } from '../constant/entity';
 import { EntityTypeEndpoint } from '../support/entity/Entity.interface';
-import { redirectToHomePage } from './common';
+import { clickOutside, redirectToHomePage } from './common';
 
 export const visitEntityPage = async (data: {
   page: Page;
@@ -131,7 +131,7 @@ export const assignTier = async (page: Page, tier: string) => {
   await page.getByTestId('edit-tier').click();
   await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
   await page.getByTestId(`radio-btn-${tier}`).click();
-  await page.getByTestId('Tier').click();
+  await clickOutside(page);
 
   await expect(page.getByTestId('Tier')).toContainText(tier);
 };
@@ -140,7 +140,7 @@ export const removeTier = async (page: Page) => {
   await page.getByTestId('edit-tier').click();
   await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
   await page.getByTestId('clear-tier').click();
-  await page.getByTestId('Tier').click();
+  await clickOutside(page);
 
   await expect(page.getByTestId('Tier')).toContainText('No Tier');
 };
