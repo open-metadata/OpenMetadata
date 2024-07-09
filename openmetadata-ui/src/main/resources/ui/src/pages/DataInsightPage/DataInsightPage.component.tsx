@@ -34,9 +34,11 @@ import { DataInsightTabs } from '../../interface/data-insight.interface';
 import { getDataInsightPathWithFqn } from '../../utils/DataInsightUtils';
 import { checkPermission } from '../../utils/PermissionsUtils';
 import './data-insight.less';
-import DataInsightClassBase from './DataInsightClassBase';
+import {
+  default as DataInsightClassBase,
+  default as dataInsightClassBase,
+} from './DataInsightClassBase';
 import DataInsightHeader from './DataInsightHeader/DataInsightHeader.component';
-import DataInsightLeftPanel from './DataInsightLeftPanel/DataInsightLeftPanel';
 import DataInsightProvider from './DataInsightProvider';
 
 const DataInsightPage = () => {
@@ -44,12 +46,14 @@ const DataInsightPage = () => {
 
   const { permissions } = usePermissionProvider();
   const history = useHistory();
+  const LeftPanel = dataInsightClassBase.getLeftPanel();
   const isHeaderVisible = useMemo(
     () =>
       [
         DataInsightTabs.DATA_ASSETS,
         DataInsightTabs.KPIS,
         DataInsightTabs.APP_ANALYTICS,
+        'dashboard',
       ].includes(tab),
     [tab]
   );
@@ -119,9 +123,7 @@ const DataInsightPage = () => {
   }
 
   return (
-    <PageLayoutV1
-      leftPanel={<DataInsightLeftPanel />}
-      pageTitle={t('label.data-insight')}>
+    <PageLayoutV1 leftPanel={<LeftPanel />} pageTitle={t('label.data-insight')}>
       <DataInsightProvider>
         <Row
           className="page-container"
